@@ -1,0 +1,22 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "{8920D277-4E30-C717-7562-49B6F7006723}",
+	"Category": "",
+	"Description": "",
+	"Modules": [
+		{
+			"Name": "Project_MuseumHeist",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "ModelingToolsEditorMode",
+			"Enabled": true,
+			"TargetAllowList": [
+				"Editor"
+			]
+		}
+	]
+}
