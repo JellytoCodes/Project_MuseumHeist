@@ -5,9 +5,6 @@
     <BuildType Name="Development" />
     <BuildType Name="Development Editor" />
     <BuildType Name="Shipping" />
-    <Platform Name="Android" />
-    <Platform Name="Android-arm64" />
-    <Platform Name="Android-x64" />
     <Platform Name="Win64" />
     <Platform Name="Win64-arm64" />
     <Platform Name="Win64-arm64ec" />
@@ -21,42 +18,18 @@
   </Folder>
   <Folder Name="/Games/">
     <Project Path="Intermediate/ProjectFiles/Project_MuseumHeist.vcxproj" Id="e2ce83b9-f7ac-37e2-9723-7c177b768dce">
-      <BuildType Solution="DebugGame Editor|Android" Project="Invalid" />
-      <BuildType Solution="DebugGame Editor|Android-arm64" Project="Invalid" />
-      <BuildType Solution="DebugGame Editor|Android-x64" Project="Invalid" />
       <BuildType Solution="DebugGame Editor|Win64" Project="DebugGame_Editor" />
       <BuildType Solution="DebugGame Editor|Win64-arm64" Project="Win64_arm64_DebugGame_Editor" />
       <BuildType Solution="DebugGame Editor|Win64-arm64ec" Project="DebugGame_Editor" />
-      <BuildType Solution="DebugGame|Android" Project="Android_arm64_DebugGame" />
-      <BuildType Solution="DebugGame|Android-arm64" Project="Android_arm64_DebugGame" />
-      <BuildType Solution="DebugGame|Android-x64" Project="Android_x64_DebugGame" />
       <BuildType Solution="DebugGame|Win64-arm64" Project="Win64_arm64_DebugGame" />
-      <BuildType Solution="Development Editor|Android" Project="Invalid" />
-      <BuildType Solution="Development Editor|Android-arm64" Project="Invalid" />
-      <BuildType Solution="Development Editor|Android-x64" Project="Invalid" />
       <BuildType Solution="Development Editor|Win64" Project="Development_Editor" />
       <BuildType Solution="Development Editor|Win64-arm64" Project="Win64_arm64_Development_Editor" />
       <BuildType Solution="Development Editor|Win64-arm64ec" Project="Development_Editor" />
-      <BuildType Solution="Development|Android" Project="Android_arm64_Development" />
-      <BuildType Solution="Development|Android-arm64" Project="Android_arm64_Development" />
-      <BuildType Solution="Development|Android-x64" Project="Android_x64_Development" />
       <BuildType Solution="Development|Win64-arm64" Project="Win64_arm64_Development" />
-      <BuildType Solution="Shipping|Android" Project="Android_arm64_Shipping" />
-      <BuildType Solution="Shipping|Android-arm64" Project="Android_arm64_Shipping" />
-      <BuildType Solution="Shipping|Android-x64" Project="Android_x64_Shipping" />
       <BuildType Solution="Shipping|Win64-arm64" Project="Win64_arm64_Shipping" />
-      <Platform Solution="*|Android" Project="x64" />
-      <Platform Solution="*|Android-arm64" Project="x64" />
-      <Platform Solution="*|Android-x64" Project="x64" />
       <Platform Solution="*|Win64" Project="x64" />
       <Platform Solution="*|Win64-arm64" Project="x64" />
       <Platform Solution="*|Win64-arm64ec" Project="arm64ec" />
-      <Build Solution="DebugGame Editor|Android" Project="false" />
-      <Build Solution="DebugGame Editor|Android-arm64" Project="false" />
-      <Build Solution="DebugGame Editor|Android-x64" Project="false" />
-      <Build Solution="Development Editor|Android" Project="false" />
-      <Build Solution="Development Editor|Android-arm64" Project="false" />
-      <Build Solution="Development Editor|Android-x64" Project="false" />
     </Project>
   </Folder>
   <Folder Name="/Visualizers/">
@@ -65,6 +38,6 @@
     <File Path="../../../UE_5.8/Engine/Extras/VisualStudioDebugging/Unreal.natvis" />
   </Folder>
   <Properties Name="ddbf523f-7eb6-4887-bd51-85a714ff87eb">
-    <Property Name="AvailablePlatforms" Value="Win64;Android" />
+    <Property Name="AvailablePlatforms" Value="Win64" />
   </Properties>
 </Solution>

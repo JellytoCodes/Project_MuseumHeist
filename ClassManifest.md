@@ -1,286 +1,421 @@
-# Project_MuseumHeist — Codex Instructions
+# Project_MuseumHeist — Class Manifest
 
-## Project Overview
+## Current Goal
 
-Project_MuseumHeist is an Unreal Engine 5.8 C++ multiplayer top-down stealth action game.
+Generate C++ class skeletons only.
 
-Core loop:
-4 players connect -> loot artifacts -> inventory weight slows movement -> use Coin / Smoke / Glue Trap to interfere -> stun and drop loot -> escape through vents -> result screen.
-
-v1.0 scope:
-
-* Listen Server multiplayer
-* 4x5 Grid Inventory
-* Loot / Weight / Score
-* Coin / Smoke Grenade / Glue Trap
-* Stun / Pinata Drop
-* Rare Loot Event
-* Gap Tracker
-* Guard FSM
-* HUD / Result UI
-* Fixed map prototype support
-
-v1.1 or later scope:
-
-* Noise Trap implementation
-* Advanced Loadout inventory editing
-* Steam Voice
-* Security Room interaction
-* PCG map generation
-* Additional maps
-* Cinematic systems
-* Advanced guard patterns
-
-Do not implement v1.1 systems unless explicitly requested.
+Do not implement internal gameplay logic yet.
+Do not implement full inventory movement, item usage, stun, AI chase, scoring, UI binding, or networking behavior yet.
+Only create compile-ready class and type structure.
 
 ---
 
-## Primary Goal For Current Phase
+# 1. Core
 
-The current phase is class skeleton generation only.
+## Files
 
-Create headers and source files.
-Create Unreal reflection declarations.
-Create minimal constructors.
-Create placeholder methods only when needed for compile and later extension.
-Do not implement gameplay logic yet.
+`Source/Project_MuseumHeist/Core/HeistTypes.h`
 
----
+Contains:
 
-## Hard Rules
-
-* Use Unreal Engine 5.8.
-* Use C++ for gameplay logic, replicated state, validation, ViewModels, and Widget base classes.
-* Use Blueprint Widgets only as layout, visual design, and animation layer.
-* Do not put gameplay logic in Blueprint graphs.
-* Do not create `.uasset` or `.umap` files.
-* Do not modify engine version.
-* Do not modify plugins unless explicitly requested.
-* Do not modify packaging settings unless explicitly requested.
-* Do not introduce unnecessary Manager, Service, Factory, Processor, or Subsystem classes.
-* Do not create one Actor class per loot item.
-* Loot must be data-driven through `AHeistLootActor` and DataTable rows.
-* Do not implement Noise Trap actor in v1.0.
-* Do not implement Steam Voice.
-* Do not implement PCG.
-* Do not implement Security Room interaction.
-* Do not implement cinematic systems.
+* `EHeistMatchPhase`
+* `EHeistItemType`
+* `EHeistLootGrade`
+* `EHeistUseType`
+* `EHeistTargetType`
+* `EHeistGuardState`
+* `EHeistZoneId`
+* `EHeistQuickSlotType`
 
 ---
 
-## Naming Rules
+`Source/Project_MuseumHeist/Core/HeistGameplayTags.h`
+`Source/Project_MuseumHeist/Core/HeistGameplayTags.cpp`
 
-Use the `Heist` prefix.
+Contains:
 
-Correct examples:
+* `FHeistGameplayTags`
 
-* `AHeistGameMode`
-* `AHeistGameState`
-* `AHeistPlayerState`
-* `AHeistPlayerCharacter`
-* `UHeistInventoryComponent`
-* `UHeistHUDViewModel`
+Purpose:
 
-Avoid unclear abbreviations:
-
-* Do not use `MHInvComp`
-* Do not use `Mgr`
-* Do not use `Svc`
-* Do not use vague names like `Processor`, `Handler`, `Manager`, `System` unless explicitly approved.
+* Central native GameplayTag registration point.
 
 ---
 
-## Module And API Macro
+`Source/Project_MuseumHeist/Core/HeistLogChannels.h`
+`Source/Project_MuseumHeist/Core/HeistLogChannels.cpp`
 
-The module name is:
+Contains:
 
-`Project_MuseumHeist`
-
-Use the module API macro:
-
-`PROJECT_MUSEUMHEIST_API`
-
-Every exported Unreal class must use this API macro.
-
----
-
-## Architecture Rules
-
-Server-authoritative flow:
-
-UI input
--> `AHeistPlayerController` Server RPC
--> C++ Component validation
--> replicated state update
--> ViewModel update
--> Widget refresh
-
-Widgets must not directly mutate:
-
-* Inventory items
-* Score
-* Weight
-* Match phase
-* Stun state
-* Escape state
-* QuickSlot state
-
-Widgets may only send requests to `AHeistPlayerController`.
+* `LogHeist`
+* `LogHeistInventory`
+* `LogHeistNetwork`
+* `LogHeistUI`
+* `LogHeistAI`
 
 ---
 
-## UI Rules
+`Source/Project_MuseumHeist/Core/HeistGameMode.h`
+`Source/Project_MuseumHeist/Core/HeistGameMode.cpp`
 
-C++ owns:
+Class:
 
-* ViewModels
-* Widget base classes
-* input routing
-* drag/drop request handling
-* widget pooling
-* gameplay-facing UI events
+* `AHeistGameMode : public AGameModeBase`
 
-WBP owns:
+Purpose:
 
-* layout
-* fonts
-* colors
-* images
-* animation
-* visual-only effects
+* Server-only match flow owner.
+* Placeholder methods for match phase transitions.
 
-Blueprint graph logic is not allowed except simple visual events such as:
-
-* play animation
-* set visibility
-* update visual color
-* trigger visual-only feedback
+Do not implement full match flow yet.
 
 ---
 
-## Networking Rules
+`Source/Project_MuseumHeist/Core/HeistGameState.h`
+`Source/Project_MuseumHeist/Core/HeistGameState.cpp`
 
-* Validate all inventory, item use, stun, loot, trap, and escape actions on the server.
-* Do not trust client-side inventory data.
-* Replicate only the state needed by clients.
-* Prefer event/delegate-driven UI updates.
-* Do not use Tick for replicated UI updates unless explicitly justified.
-* Keep replicated properties minimal and intentional.
-* Use `DOREPLIFETIME` only for properties that are actually needed by clients.
+Class:
 
----
+* `AHeistGameState : public AGameStateBase`
 
-## Inventory Rules
+Purpose:
 
-Inventory is 4 columns x 5 rows.
+* Replicated match phase and timer state.
 
-Use FastArray for replicated inventory state.
-
-Item movement must eventually validate:
-
-* owner
-* inventory open state
-* stun state
-* casting state
-* escaped state
-* target cell bounds
-* occupancy
-* rotation state
-
-Current phase:
-
-* Create the types and placeholder methods only.
-* Do not implement full movement logic yet.
+Create replicated properties only if compile-safe and minimal.
 
 ---
 
-## Data Rules
+`Source/Project_MuseumHeist/Core/HeistPlayerState.h`
+`Source/Project_MuseumHeist/Core/HeistPlayerState.cpp`
 
-Use stable IDs.
+Class:
 
-* `ItemId` is an `FName`.
-* `ItemId` should match the DataTable RowName.
-* GameplayTag is for category, state, and conditional checks.
-* DisplayName is for UI text only.
+* `AHeistPlayerState : public APlayerState`
 
-Do not mix:
+Purpose:
 
-* RowName
-* ItemId
-* GameplayTag
-* DisplayName
-
-Do not hardcode balance values inside gameplay classes when they belong in `UHeistGameBalanceDataAsset`.
+* Player score, carried weight, escaped state, customization state placeholder.
 
 ---
 
-## AI Rules
+`Source/Project_MuseumHeist/Core/HeistPlayerController.h`
+`Source/Project_MuseumHeist/Core/HeistPlayerController.cpp`
 
-Use a simple C++ FSM first.
+Class:
 
-v1.0 guard states:
+* `AHeistPlayerController : public APlayerController`
 
-* Patrol
-* Chase
-* Stunned
-* Investigate
+Purpose:
 
-Do not introduce Behavior Tree unless explicitly requested.
-Do not implement advanced guard behavior in the skeleton phase.
+* UI request routing.
+* Future Server RPC entry point.
 
----
-
-## Include And Dependency Rules
-
-* Use forward declarations where possible.
-* Keep headers minimal.
-* Do not include heavy headers in `.h` files unless necessary.
-* Prefer including engine/component headers in `.cpp`.
-* Do not create circular dependencies.
-* Keep components independent from UI.
-* Keep UI independent from gameplay component internals.
+Do not implement actual Server RPC behavior yet.
 
 ---
 
-## Current Phase Output Rules
+`Source/Project_MuseumHeist/Core/HeistHUD.h`
+`Source/Project_MuseumHeist/Core/HeistHUD.cpp`
 
-When creating class skeletons:
+Class:
 
-* Do not implement internal gameplay logic.
-* Do not add complex algorithms.
-* Do not add temporary fake gameplay.
-* Do not create Blueprint assets.
-* Do not create DataTable assets.
-* Do not create Maps.
-* Do not create Materials.
-* Do not create Widgets as `.uasset`.
+* `AHeistHUD : public AHUD`
 
-Allowed:
+Purpose:
 
-* Create `.h` and `.cpp`.
-* Create enums.
-* Create structs.
-* Create UCLASS/USTRUCT/UENUM declarations.
-* Create constructors.
-* Create placeholder methods.
-* Add minimal replication setup.
-* Add TODO comments.
-* Add minimal log categories.
-* Add minimal Build.cs dependencies if required.
+* Future UI / ViewModel creation hub.
 
 ---
 
-## Required Response Format
+`Source/Project_MuseumHeist/Core/HeistGameInstance.h`
+`Source/Project_MuseumHeist/Core/HeistGameInstance.cpp`
 
-After making changes, report:
+Class:
 
-1. Files created
-2. Files modified
-3. Classes added
-4. Whether gameplay logic was intentionally left empty
-5. Whether manual Unreal Editor setup is required
-6. Whether the project should compile
-7. Any Build.cs changes
+* `UHeistGameInstance : public UGameInstance`
 
-Do not claim packaging success unless packaging was actually run.
-Do not claim editor validation success unless the editor was actually opened.
+Purpose:
+
+* Future session and global game settings placeholder.
+
+---
+
+# 2. Character
+
+`Source/Project_MuseumHeist/Character/HeistPlayerCharacter.h`
+`Source/Project_MuseumHeist/Character/HeistPlayerCharacter.cpp`
+
+Class:
+
+* `AHeistPlayerCharacter : public ACharacter`
+
+Purpose:
+
+* Player character root.
+* Owns core gameplay components.
+
+Create component default subobjects.
+Do not implement movement, combat, item use, or interaction logic yet.
+
+---
+
+# 3. Character Components
+
+Folder:
+`Source/Project_MuseumHeist/Character/Components/`
+
+Classes:
+
+* `UHeistTagComponent : public UActorComponent`
+* `UHeistStatusComponent : public UActorComponent`
+* `UHeistInventoryComponent : public UActorComponent`
+* `UHeistInteractionComponent : public UActorComponent`
+* `UHeistActionComponent : public UActorComponent`
+* `UHeistVisionComponent : public UActorComponent`
+* `UHeistCustomizationComponent : public UActorComponent`
+* `UHeistNoiseEmitterComponent : public UActorComponent`
+
+Purpose:
+
+* Split gameplay responsibility across server-authoritative components.
+
+Do not implement internal gameplay logic yet.
+
+---
+
+# 4. Inventory And Data
+
+Folder:
+`Source/Project_MuseumHeist/Inventory/`
+
+Files:
+
+* `HeistInventoryTypes.h`
+* `HeistItemDataTypes.h`
+
+Types:
+
+* `FHeistInventoryItem`
+* `FHeistInventoryFastArrayItem`
+* `FHeistReplicatedInventory`
+* `FHeistQuickSlotState`
+* `FHeistItemDataRow`
+* `FHeistLootDataRow`
+* `FHeistUsableItemDataRow`
+* `FHeistSoundPingDataRow`
+* `FHeistGuardDataRow`
+* `FHeistLootSpawnRow`
+* `FHeistVentDataRow`
+* `FHeistCustomizationRow`
+* `FHeistUITextRow`
+
+Use `FFastArraySerializerItem` and `FFastArraySerializer` for inventory skeleton types.
+
+Do not implement full add, move, remove, rotate, or occupancy algorithms yet.
+
+---
+
+Folder:
+`Source/Project_MuseumHeist/Data/`
+
+Files:
+
+* `HeistGameBalanceDataAsset.h`
+* `HeistGameBalanceDataAsset.cpp`
+
+Class:
+
+* `UHeistGameBalanceDataAsset : public UDataAsset`
+
+Purpose:
+
+* Central balance values and DataTable references.
+
+---
+
+# 5. World And Interactable
+
+Folder:
+`Source/Project_MuseumHeist/World/`
+
+Classes:
+
+* `UHeistInteractable : public UInterface`
+* `IHeistInteractable`
+* `AHeistInteractableActor : public AActor`
+* `AHeistLootActor : public AHeistInteractableActor`
+* `AHeistDisplayCaseActor : public AHeistInteractableActor`
+* `AHeistVentActor : public AHeistInteractableActor`
+* `AHeistTrapActor : public AActor`
+* `AHeistGlueTrapActor : public AHeistTrapActor`
+* `AHeistThrowableProjectile : public AActor`
+* `AHeistCoinProjectile : public AHeistThrowableProjectile`
+* `AHeistSmokeProjectile : public AHeistThrowableProjectile`
+* `AHeistSmokeCloudActor : public AActor`
+* `AHeistLootSpawnPoint : public AActor`
+* `AHeistPlayerStart : public APlayerStart`
+* `AHeistGuardWaypoint : public AActor`
+
+Do not create:
+
+* `AHeistNoiseTrapActor`
+* `ARoyalCrownActor`
+* `APaintingActor`
+* `AAncientSwordActor`
+* `ARareArtifactActor`
+
+Loot must remain data-driven.
+
+---
+
+# 6. AI
+
+Folder:
+`Source/Project_MuseumHeist/AI/`
+
+Classes:
+
+* `AHeistGuardCharacter : public ACharacter`
+* `AHeistGuardAIController : public AAIController`
+* `UHeistGuardStateComponent : public UActorComponent`
+* `UHeistPatrolPathComponent : public UActorComponent`
+* `UHeistGuardNoiseReactionComponent : public UActorComponent`
+
+Use enum:
+
+* `EHeistGuardState`
+
+Do not implement full AI logic yet.
+Do not introduce Behavior Tree.
+
+---
+
+# 7. UI
+
+Folder:
+`Source/Project_MuseumHeist/UI/Widgets/`
+
+Classes:
+
+* `UHeistUserWidgetBase : public UUserWidget`
+* `UHeistHUDWidget : public UHeistUserWidgetBase`
+* `UHeistInventoryWidget : public UHeistUserWidgetBase`
+* `UHeistInventorySlotWidget : public UHeistUserWidgetBase`
+* `UHeistInventoryItemWidget : public UHeistUserWidgetBase`
+* `UHeistQuickSlotWidget : public UHeistUserWidgetBase`
+* `UHeistResultWidget : public UHeistUserWidgetBase`
+* `UHeistLobbyWidget : public UHeistUserWidgetBase`
+* `UHeistInteractionPromptWidget : public UHeistUserWidgetBase`
+* `UHeistSoundPingMarkerWidget : public UHeistUserWidgetBase`
+* `UHeistRareLootAlertWidget : public UHeistUserWidgetBase`
+
+---
+
+Folder:
+`Source/Project_MuseumHeist/UI/ViewModels/`
+
+Classes:
+
+* `UHeistHUDViewModel : public UMVVMViewModelBase`
+* `UHeistInventoryViewModel : public UMVVMViewModelBase`
+* `UHeistQuickSlotViewModel : public UMVVMViewModelBase`
+* `UHeistResultViewModel : public UMVVMViewModelBase`
+* `UHeistLobbyViewModel : public UMVVMViewModelBase`
+* `UHeistGapTrackerViewModel : public UMVVMViewModelBase`
+
+---
+
+Folder:
+`Source/Project_MuseumHeist/UI/DragDrop/`
+
+Classes:
+
+* `UHeistInventoryDragDropOperation : public UDragDropOperation`
+
+---
+
+Folder:
+`Source/Project_MuseumHeist/UI/Pool/`
+
+Classes:
+
+* `UHeistSoundPingWidgetPool : public UObject`
+* `UHeistPopupWidgetPool : public UObject`
+
+Do not create WBP assets.
+Do not implement full binding logic yet.
+Do not implement actual drag/drop item movement yet.
+
+---
+
+# 8. Debug
+
+Folder:
+`Source/Project_MuseumHeist/Debug/`
+
+Classes:
+
+* `UHeistCheatManager : public UCheatManager`
+* `UHeistDebugFunctionLibrary : public UBlueprintFunctionLibrary`
+
+Purpose:
+
+* Future test commands and utility validation.
+
+Do not implement actual cheat commands yet.
+Only create placeholder functions if needed.
+
+---
+
+# 9. Build.cs Dependencies
+
+Ensure required dependencies are present if classes require them:
+
+* Core
+* CoreUObject
+* Engine
+* InputCore
+* EnhancedInput
+* NetCore
+* GameplayTags
+* UMG
+* Slate
+* SlateCore
+* ModelViewViewModel
+* AIModule
+
+Do not add extra dependencies unless required for compilation.
+
+---
+
+# 10. Explicitly Forbidden In Skeleton Phase
+
+Do not implement:
+
+* Full match flow
+* Full inventory placement algorithm
+* Full FastArray mutation logic
+* Full item use logic
+* Full projectile behavior
+* Full stun logic
+* Full Piñata Drop logic
+* Full scoring logic
+* Full Rare Loot event
+* Full Gap Tracker logic
+* Full guard AI behavior
+* Full Sound Ping behavior
+* Full UI binding
+* Full drag/drop behavior
+* Full session or Steam logic
+
+Do not create:
+
+* Blueprint assets
+* Widget Blueprint assets
+* DataTable assets
+* DataAsset assets
+* Maps
+* Materials
+* Niagara systems
+* Animations

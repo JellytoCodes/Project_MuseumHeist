@@ -2,8 +2,10 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=unrealengine
 
 ### UnrealEngine ###
-# Visual Studio 2015 user specific files
+# Visual Studio 2015 user specific files & CODEX
 .vs/
+.agents/
+.codex/
 
 # Compiled Object files
 *.slo
