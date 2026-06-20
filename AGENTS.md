@@ -145,6 +145,251 @@ Widgets may only send requests to `AHeistPlayerController`.
 
 ---
 
+## Unreal C++ / Blueprint / Data Responsibility Boundary
+
+Project_MuseumHeist uses a hybrid Unreal workflow.
+
+C++ must define stable gameplay rules, authority, replication, validation, and safe APIs.
+
+Blueprint must assemble editor-facing assets, visual configuration, animation references, input asset references, and tuning-friendly defaults.
+
+DataTable and DataAsset must hold repeated design data and balance values.
+
+Map and level assets must own placement and scene composition.
+
+This policy is criteria-based.
+
+Do not decide responsibility by asking "Can this be done in C++?"
+
+Decide responsibility by asking "Who should own this so the project remains maintainable, testable, and Unreal-friendly?"
+
+### Core Principle
+
+Use this division:
+
+```txt
+C++ = Rules, authority, state, validation, replication, stable API
+Blueprint = Asset assignment, visual composition, animation, editor defaults, presentation
+DataAsset/DataTable = Design data, balance values, item definitions, reusable configuration
+Map/Level = Placement, layout, scene composition
+Widget Blueprint = Layout, animation, colors, visual presentation
+C++ Widget/ViewModel = UI state exposure and data flow
+```
+
+Blueprint may configure and assemble systems.
+
+Blueprint must not own authoritative gameplay rules.
+
+C++ may expose hooks and defaults.
+
+C++ must not swallow all editor-facing asset configuration.
+
+### Decision Questions
+
+Before implementing a feature, Codex must decide responsibility using these questions.
+
+#### Use C++ when:
+
+* The logic changes gameplay state.
+* The logic must be server-authoritative.
+* The logic must replicate.
+* The logic validates player requests.
+* The logic prevents cheating or invalid state.
+* The logic determines score, weight, inventory, stun, trap, escape, match phase, or result.
+* The logic must be deterministic across clients.
+* The logic is a reusable base API for Blueprint child classes.
+* The logic must be unit-testable or audit-friendly.
+* The logic is required even when editor assets are missing.
+
+#### Use Blueprint when:
+
+* The work assigns visual assets.
+* The work assigns SkeletalMesh, StaticMesh, materials, AnimBP, Niagara, sound, or widget classes.
+* The work configures editor-facing defaults for a specific child asset.
+* The work creates a playable Blueprint child from a C++ base class.
+* The work tunes values that designers may iterate in the editor.
+* The work controls visual presentation without changing authoritative gameplay state.
+* The work wires asset references such as InputAction, InputMappingContext, WidgetClass, AnimClass, mesh, or material references.
+* The work creates visual variants of the same C++ gameplay class.
+
+#### Use DataTable or DataAsset when:
+
+* The data is repeated across many items, actors, abilities, UI labels, or balance entries.
+* The data is design-facing and likely to change.
+* The data defines loot score, weight, grade, item type, use type, interaction duration, guard tuning, vent tuning, sound ping tuning, or balance constants.
+* The data should be editable without recompiling C++.
+* The data should be referenced by RowId, DataTableRowHandle, PrimaryDataAsset, or project-defined data assets.
+
+#### Use Map or Level assets when:
+
+* The work places actors in the world.
+* The work defines player starts, loot spawn locations, vent positions, guard waypoints, blockout, lighting, or scene composition.
+* The work changes `.umap`.
+
+Codex must not modify `.umap` unless explicitly requested.
+
+### C++ Base / Blueprint Child Pattern
+
+Visual or asset-backed gameplay actors should usually follow this pattern:
+
+```txt
+C++ base class
+-> Blueprint child class
+-> asset assignment and editor tuning
+-> map placement
+```
+
+Examples:
+
+```txt
+AHeistPlayerCharacter
+-> BP_HeistPlayerCharacter
+-> SkeletalMesh / AnimBP / InputAction references / visual defaults assigned in Blueprint
+
+AHeistLootActor
+-> BP_HeistLootActor
+-> StaticMesh / Material / collision preset / LootDataRow assigned in Blueprint
+
+UHeistUserWidgetBase
+-> WBP_HeistHUD / WBP_Inventory / WBP_Result
+-> layout, animation, font, color assigned in Widget Blueprint
+```
+
+C++ owns the gameplay contract.
+
+Blueprint owns the asset instance.
+
+### Character Responsibility Boundary
+
+`AHeistPlayerCharacter` is a C++ gameplay base class.
+
+C++ should own required gameplay component creation, movement and interaction APIs, replication-safe state access, camera component slots required by the gameplay baseline, safe accessors, server-safe calls, and fallback values.
+
+Blueprint should own SkeletalMesh, AnimBP, character materials, cosmetic meshes, visual scale, animation references, child-specific camera tuning, input asset references, and final playable-pawn editor defaults.
+
+C++ may expose Blueprint-editable properties for values that need tuning.
+
+### Input Responsibility Boundary
+
+C++ owns the input handling path.
+
+Blueprint or DataAsset owns the input asset references.
+
+C++ should own binding code, validation of required references, routing to the controller, character, or components, server RPC entry points when gameplay state is affected, and no-crash behavior when references are missing.
+
+Blueprint or DataAsset should own InputAction assignment, InputMappingContext assignment, project-specific input references, and editor-facing input configuration.
+
+C++ must not assume input assets are always assigned. Missing references must produce a clear warning, remain compile- and PIE-safe, and be reported as required editor setup.
+
+Allowed pattern:
+
+```cpp
+UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Input")
+TObjectPtr<class UInputMappingContext> DefaultMappingContext;
+
+UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Input")
+TObjectPtr<class UInputAction> MoveAction;
+
+UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Input")
+TObjectPtr<class UInputAction> InteractAction;
+```
+
+### Loot Responsibility Boundary
+
+`AHeistLootActor` should be generic.
+
+C++ should own the generic loot actor base, interactable support, availability state, data row reference access, safe fallback behavior, score/weight/grade/identity getters, and later server-authoritative pickup validation.
+
+Blueprint should own StaticMesh, Material, visual scale, asset-specific collision preset, child Blueprint defaults, and visual variants.
+
+DataTable or DataAsset should own loot ID, display name, score, weight, grade, item type, and design-facing interaction duration.
+
+Map should own placed loot actors, spawn point positions, and test layout.
+
+Do not create one C++ class per loot item. Prefer `AHeistLootActor + LootDataRow + BP_HeistLootActor variants` unless a special gameplay reason is explicitly requested.
+
+### UI Responsibility Boundary
+
+C++ should own Widget base classes, ViewModel classes, replicated-state-to-UI data flow, safe binding/update APIs, and necessary formatting helpers.
+
+Widget Blueprint should own layout, fonts, colors, animations, icons, images, visual states, and screen composition.
+
+Widgets must not directly mutate authoritative gameplay state.
+
+### Asset Reference Rule
+
+C++ may declare asset reference properties.
+
+Blueprint, DataAsset, or editor defaults should assign them.
+
+Avoid hardcoded project asset paths in C++ unless the user explicitly asks for an engine-level bootstrap exception.
+
+Avoid making C++ silently choose project-specific content assets.
+
+If a task needs assets, Codex must report the required manual setup instead of hiding it in C++.
+
+### Component Creation Rule
+
+C++ may create required component slots when the component is part of the gameplay contract.
+
+Examples include the inherited CapsuleComponent and CharacterMovementComponent, required SpringArm and Camera components, and interaction, inventory, status, action, vision, and noise-emitter components.
+
+Blueprint should configure asset-specific or variant-specific component properties.
+
+C++ creates the slot. Blueprint fills the content.
+
+### Codex Output Requirement
+
+When a task touches a class that depends on assets or editor setup, Codex must separate the final output into:
+
+```txt
+Implemented in C++
+Requires Blueprint setup
+Requires DataTable/DataAsset setup
+Requires Map setup
+Not implemented in this task
+```
+
+Codex must not imply the task is fully usable in-game if required Blueprint/DataAsset/Map setup remains.
+
+### Manual Setup Checklist Requirement
+
+If a task exposes Blueprint/DataAsset/Map responsibilities, Codex must provide a checklist.
+
+Example:
+
+```txt
+1. Create BP_HeistPlayerCharacter from AHeistPlayerCharacter.
+2. Assign SkeletalMesh.
+3. Assign AnimBP.
+4. Assign InputMappingContext.
+5. Assign Move / Interact InputAction references.
+6. Set BP_HeistPlayerCharacter as the default pawn when map/project settings are allowed.
+```
+
+### Blueprint Graph Logic Boundary
+
+Blueprint Graph gameplay logic remains restricted.
+
+Allowed Blueprint work includes asset-reference assignment, defaults, visuals, cosmetic animations, visual-state updates, child Blueprint assets, and Widget Blueprint presentation.
+
+Restricted Blueprint work includes authoritative score changes, inventory mutation, loot pickup confirmation, stun/trap/escape result decisions, match phase transitions, replicated-state authority, and server validation.
+
+If Blueprint needs to trigger gameplay, it should call a C++ API or C++ RPC path.
+
+### Responsibility Summary
+
+Use this rule:
+
+```txt
+C++ decides what is allowed.
+Blueprint decides how it looks and which assets are used.
+Data decides what values are used.
+Map decides where it exists.
+```
+
+---
+
 ## UI Rules
 
 C++ owns:
@@ -293,6 +538,281 @@ Do not implement advanced guard behavior in the skeleton phase.
 * Do not create circular dependencies.
 * Keep components independent from UI.
 * Keep UI independent from gameplay component internals.
+
+---
+
+## C++ Code Organization And Region Standard
+
+Project_MuseumHeist C++ code must prioritize readability, auditability, and stable class structure.
+
+Use `#pragma region` / `#pragma endregion` only when it improves readability.
+
+Regions must be organized by responsibility, not by access specifier.
+
+### Core Principle
+
+The primary grouping unit is the responsibility of the code.
+
+Examples:
+
+```cpp
+#pragma region Construction
+#pragma endregion
+
+#pragma region Lifecycle
+#pragma endregion
+
+#pragma region Movement
+#pragma endregion
+
+#pragma region Camera
+#pragma endregion
+
+#pragma region Input
+#pragma endregion
+
+#pragma region Interaction
+#pragma endregion
+
+#pragma region Inventory
+#pragma endregion
+
+#pragma region ScoreAndWeight
+#pragma endregion
+
+#pragma region Networking
+#pragma endregion
+
+#pragma region Replication
+#pragma endregion
+
+#pragma region UI
+#pragma endregion
+
+#pragma region Debug
+#pragma endregion
+
+#pragma region InternalHelpers
+#pragma endregion
+```
+
+Access specifiers belong inside the responsibility region when needed.
+
+Correct:
+
+```cpp
+#pragma region Movement
+
+public:
+	void MoveOnGameplayPlane(const FVector2D& MovementInput);
+
+private:
+	void ConfigureMovementDefaults();
+
+#pragma endregion
+```
+
+Incorrect:
+
+```cpp
+public:
+#pragma region Movement
+	void MoveOnGameplayPlane(const FVector2D& MovementInput);
+#pragma endregion
+
+private:
+#pragma region Movement
+	void ConfigureMovementDefaults();
+#pragma endregion
+```
+
+The incorrect version splits one responsibility across multiple access sections and makes the class harder to scan.
+
+### Header Organization Standard
+
+In header files, group declarations by responsibility first.
+
+Each region may contain one or more access specifiers.
+
+Correct example:
+
+```cpp
+UCLASS()
+class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter
+{
+	GENERATED_BODY()
+
+#pragma region Construction
+
+public:
+	AHeistPlayerCharacter();
+
+#pragma endregion
+
+#pragma region Lifecycle
+
+protected:
+	virtual void BeginPlay() override;
+
+#pragma endregion
+
+#pragma region Movement
+
+public:
+	void MoveOnGameplayPlane(const FVector2D& MovementInput);
+
+private:
+	void ConfigureMovementDefaults();
+
+#pragma endregion
+
+#pragma region Camera
+
+private:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Camera", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<class USpringArmComponent> CameraSpringArm;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Camera", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<class UCameraComponent> TopDownCamera;
+
+#pragma endregion
+
+#pragma region GameplayComponents
+
+private:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<class UHeistInventoryComponent> InventoryComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<class UHeistInteractionComponent> InteractionComponent;
+
+#pragma endregion
+};
+```
+
+### Source Organization Standard
+
+In `.cpp` files, group method implementations by the same responsibility regions used in the header when practical.
+
+Correct example:
+
+```cpp
+#pragma region Construction
+
+AHeistPlayerCharacter::AHeistPlayerCharacter()
+{
+}
+
+#pragma endregion
+
+#pragma region Lifecycle
+
+void AHeistPlayerCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+}
+
+#pragma endregion
+
+#pragma region Movement
+
+void AHeistPlayerCharacter::MoveOnGameplayPlane(const FVector2D& MovementInput)
+{
+}
+
+void AHeistPlayerCharacter::ConfigureMovementDefaults()
+{
+}
+
+#pragma endregion
+```
+
+### Region Placement Rules
+
+Do not use regions as decoration.
+
+Use regions only when a file has multiple meaningful responsibility groups.
+
+Do not create one region per function unless the class is exceptionally large and the grouping is justified.
+
+Do not duplicate the same region name multiple times inside one class declaration unless there is a strong reason.
+
+Prefer one contiguous region per responsibility.
+
+### Unreal Reflection Safety Rules
+
+Never place `#pragma region` between an Unreal reflection macro and the declaration it belongs to.
+
+Do not place `#pragma region` between:
+
+* `UCLASS()` and the class declaration.
+* `USTRUCT()` and the struct declaration.
+* `UENUM()` and the enum declaration.
+* `UFUNCTION()` and its function declaration.
+* `UPROPERTY()` and its property declaration.
+* `UDELEGATE()` and its delegate declaration.
+* `#include "FileName.generated.h"` and the declarations that depend on it.
+
+Correct:
+
+```cpp
+#pragma region Camera
+
+private:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Camera", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<class UCameraComponent> TopDownCamera;
+
+#pragma endregion
+```
+
+Incorrect:
+
+```cpp
+UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Camera", meta = (AllowPrivateAccess = "true"))
+#pragma region Camera
+TObjectPtr<class UCameraComponent> TopDownCamera;
+#pragma endregion
+```
+
+### Behavior Preservation Rule
+
+Region organization must never change behavior.
+
+When applying or updating regions:
+
+* Do not rename classes.
+* Do not rename functions.
+* Do not rename variables.
+* Do not move files.
+* Do not change architecture.
+* Do not change access specifiers unless explicitly required by the requested task.
+* Do not change RPC declarations.
+* Do not change replication behavior.
+* Do not change UPROPERTY metadata.
+* Do not change UFUNCTION metadata.
+* Do not change constructor initialization behavior.
+* Do not change gameplay logic.
+* Do not change generated header include order.
+
+### Expected Codex Output For Region-Only Tasks
+
+For region-only organization tasks, Codex must report:
+
+```txt
+Modified files
+Region groups added or corrected
+Confirmation that regions are responsibility-first
+Confirmation that behavior was not changed
+Confirmation that UPROPERTY/UFUNCTION/GENERATED_BODY placement was preserved
+Compile result
+Formal Test Log decision
+```
+
+Formal Test Log:
+Not required.
+
+Reason:
+Region-only organization does not independently verify multiplayer authority, replication, ownership, Gate readiness, or bug-fix validity.
 
 ---
 
@@ -481,6 +1001,185 @@ Every test report must use this structure:
 - If the result blocks the next task, mark result as `Blocked`.
 - If the test was not executed, mark result as `Not Tested`.
 - Do not hide failures.
+
+## Test Log Recording Decision Standard
+
+Not every implementation task requires a formal Notion Test Log entry.
+
+Formal Test Logs are reserved for verification results that prove multiplayer reliability, server authority, replication correctness, integration stability, weekly Gate readiness, or bug fix validity.
+
+Small implementation checks should remain as compile checks, PIE smoke checks, or Codex task output notes.
+
+### Core Principle
+
+Create a formal Test Log only when the result answers a project-level verification question.
+
+Do not create a formal Test Log just because a task was implemented.
+
+A formal Test Log must prove at least one of the following:
+
+* Multiplayer behavior is correct.
+* Server authority is correct.
+* Replicated state is correct.
+* Player ownership is correct.
+* Multiple systems work together correctly.
+* A weekly Gate can be passed.
+* A Critical or Major bug was verified.
+* A gameplay result remains consistent across clients.
+
+### Formal Test Log Required
+
+Create a formal Notion Test Log when the task verifies one or more of these conditions:
+
+1. Multiplayer connection or session stability
+
+   * Example criteria:
+
+     * Multiple players can join.
+     * Players remain connected.
+     * Logout or disconnect behavior is handled correctly.
+
+2. Server-authoritative gameplay
+
+   * Example criteria:
+
+     * The server is the only authority deciding loot pickup.
+     * The server is the only authority deciding stun, escape, score, match state, or trap result.
+
+3. Replication correctness
+
+   * Example criteria:
+
+     * PlayerState values replicate correctly.
+     * Inventory, score, weight, match phase, stun state, or escape state is visible consistently across clients.
+
+4. Ownership correctness
+
+   * Example criteria:
+
+     * Each client controls only its own Pawn.
+     * PlayerController, PlayerState, Pawn, components, and UI state are connected to the correct owner.
+
+5. Concurrency or conflict resolution
+
+   * Example criteria:
+
+     * Two players interact with the same loot at the same time.
+     * Multiple players trigger the same trap.
+     * Multiple players attempt escape.
+     * Disconnect occurs during an interaction.
+     * Only one deterministic result is accepted.
+
+6. Cross-system integration
+
+   * Example criteria:
+
+     * Character movement, interaction, loot, inventory, score, weight, and UI work together.
+     * A gameplay loop works across multiple components or actors.
+
+7. Weekly Gate validation
+
+   * Example criteria:
+
+     * The weekly objective is complete.
+     * Required systems for the week are integrated.
+     * Gate-critical checks passed.
+
+8. Critical or Major bug verification
+
+   * Example criteria:
+
+     * A blocking bug was reproduced and fixed.
+     * A regression-prone bug was verified after a fix.
+     * A multiplayer desync, crash, or data loss issue was fixed.
+
+### Formal Test Log Not Required
+
+Do not create a formal Notion Test Log for small local checks.
+
+A formal Test Log is not required for:
+
+1. Simple compile success after a small code change.
+2. Basic local movement confirmation.
+3. Camera value confirmation.
+4. Mouse cursor visibility by itself.
+5. A single input binding check.
+6. A single component constructor check.
+7. A simple C++ refactor with no multiplayer behavior change.
+8. Pure UI layout or visual polish with no gameplay state mutation.
+9. Comment, README, or documentation wording changes.
+10. Log formatting changes.
+11. Local editor-only checks.
+12. Non-authoritative single-player-only smoke checks.
+
+These results should be reported only in the Codex task output.
+
+### Smoke Check Standard
+
+A smoke check is a lightweight local verification.
+
+Smoke checks may include:
+
+* Project compiles.
+* PIE opens.
+* Existing 4-player spawn baseline is not obviously broken.
+* Local player can possess the Pawn.
+* Local input responds.
+* Camera follows the local Pawn.
+* No obvious runtime error appears in the Output Log.
+
+Smoke checks are not formal Test Logs.
+
+### Task Output Standard
+
+For normal implementation tasks that do not require a formal Test Log, Codex must report:
+
+* Modified files
+* Implementation summary
+* Compile result
+* PIE smoke-check steps
+* Known warnings or caveats
+* Formal Test Log decision
+
+Use this wording when a formal Test Log is not required:
+
+Formal Test Log: Not required.
+Reason: This task is covered by compile/PIE smoke check and does not independently verify multiplayer authority, replication, ownership, Gate readiness, or bug-fix validity.
+
+Use this wording when a formal Test Log is required:
+
+Formal Test Log: Required.
+Reason: This task verifies multiplayer integration, server authority, replication correctness, ownership correctness, Gate readiness, or bug-fix validity.
+
+### Decision Flow
+
+Before creating or recommending a formal Test Log, ask:
+
+1. Does this verify behavior with multiple players?
+2. Does this verify that the server is the authority?
+3. Does this verify replicated state across clients?
+4. Does this verify correct ownership?
+5. Does this verify simultaneous player actions or conflict resolution?
+6. Does this verify multiple systems working together?
+7. Does this determine whether a weekly Gate passes?
+8. Does this verify a Critical or Major bug fix?
+
+If all answers are no, do not create a formal Test Log.
+
+### Aggregation Rule
+
+Small implementation tasks should be aggregated into a later formal integration test when they are part of the same feature chain.
+
+Example:
+
+* Movement setup alone does not require a formal Test Log.
+* Camera setup alone does not require a formal Test Log.
+* Cursor setup alone does not require a formal Test Log.
+* Interaction routing alone does not require a formal Test Log.
+
+But when those pieces are verified together in a multiplayer environment as a character control baseline, a formal Test Log may be required.
+
+The Test Log should describe the integrated multiplayer behavior, not each small implementation task.
 
 ### Weekly Gate Rule
 

@@ -13,6 +13,8 @@ class USoundBase;
 class UStaticMesh;
 class UTexture2D;
 
+#pragma region Inventory
+
 USTRUCT(BlueprintType)
 struct PROJECT_MUSEUMHEIST_API FHeistItemDataRow : public FTableRowBase
 {
@@ -97,6 +99,10 @@ struct PROJECT_MUSEUMHEIST_API FHeistUsableItemDataRow : public FTableRowBase
 	TSoftObjectPtr<UTexture2D> Icon;
 };
 
+#pragma endregion
+
+#pragma region AI
+
 USTRUCT(BlueprintType)
 struct PROJECT_MUSEUMHEIST_API FHeistSoundPingDataRow : public FTableRowBase
 {
@@ -139,6 +145,10 @@ struct PROJECT_MUSEUMHEIST_API FHeistGuardDataRow : public FTableRowBase
 	float ChaseSpeed = 0.0f;
 };
 
+#pragma endregion
+
+#pragma region World
+
 USTRUCT(BlueprintType)
 struct PROJECT_MUSEUMHEIST_API FHeistLootSpawnRow : public FTableRowBase
 {
@@ -175,6 +185,10 @@ struct PROJECT_MUSEUMHEIST_API FHeistVentDataRow : public FTableRowBase
 	EHeistZoneId DestinationZone = EHeistZoneId::None;
 };
 
+#pragma endregion
+
+#pragma region UI
+
 USTRUCT(BlueprintType)
 struct PROJECT_MUSEUMHEIST_API FHeistCustomizationRow : public FTableRowBase
 {
@@ -207,3 +221,5 @@ struct PROJECT_MUSEUMHEIST_API FHeistUITextRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FText DisplayText;
 };
+
+#pragma endregion

@@ -14,8 +14,14 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
+#pragma region Construction
+
 public:
 	AHeistGuardCharacter();
+
+#pragma endregion
+
+#pragma region GameplayComponents
 
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|AI", meta = (AllowPrivateAccess = "true"))
@@ -26,4 +32,6 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|AI", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistGuardNoiseReactionComponent> NoiseReactionComponent;
+
+#pragma endregion
 };

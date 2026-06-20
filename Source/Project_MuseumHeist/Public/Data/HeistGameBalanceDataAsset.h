@@ -12,9 +12,16 @@ class PROJECT_MUSEUMHEIST_API UHeistGameBalanceDataAsset : public UDataAsset
 {
 	GENERATED_BODY()
 
+#pragma region Construction
+
 public:
 	UHeistGameBalanceDataAsset();
 
+#pragma endregion
+
+#pragma region Config
+
+public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Data Tables")
 	TSoftObjectPtr<UDataTable> ItemDataTable;
 
@@ -41,4 +48,6 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Data Tables")
 	TSoftObjectPtr<UDataTable> UITextDataTable;
+
+#pragma endregion
 };

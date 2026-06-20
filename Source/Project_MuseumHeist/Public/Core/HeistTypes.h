@@ -4,6 +4,8 @@
 
 #include "HeistTypes.generated.h"
 
+#pragma region MatchFlow
+
 UENUM(BlueprintType)
 enum class EHeistMatchPhase : uint8
 {
@@ -12,6 +14,10 @@ enum class EHeistMatchPhase : uint8
 	InProgress,
 	Results
 };
+
+#pragma endregion
+
+#pragma region Inventory
 
 UENUM(BlueprintType)
 enum class EHeistItemType : uint8
@@ -28,6 +34,10 @@ enum class EHeistLootGrade : uint8
 	Common,
 	Rare
 };
+
+#pragma endregion
+
+#pragma region Interaction
 
 UENUM(BlueprintType)
 enum class EHeistUseType : uint8
@@ -47,6 +57,10 @@ enum class EHeistTargetType : uint8
 	World
 };
 
+#pragma endregion
+
+#pragma region AI
+
 UENUM(BlueprintType)
 enum class EHeistGuardState : uint8
 {
@@ -56,11 +70,19 @@ enum class EHeistGuardState : uint8
 	Investigate
 };
 
+#pragma endregion
+
+#pragma region World
+
 UENUM(BlueprintType)
 enum class EHeistZoneId : uint8
 {
 	None
 };
+
+#pragma endregion
+
+#pragma region QuickSlots
 
 UENUM(BlueprintType)
 enum class EHeistQuickSlotType : uint8
@@ -70,3 +92,5 @@ enum class EHeistQuickSlotType : uint8
 	SmokeGrenade,
 	GlueTrap
 };
+
+#pragma endregion

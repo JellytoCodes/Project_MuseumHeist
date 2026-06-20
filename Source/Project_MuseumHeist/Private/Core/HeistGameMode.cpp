@@ -3,9 +3,10 @@
 #include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistHUD.h"
-#include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
+
+#pragma region InternalHelpers
 
 namespace
 {
@@ -18,6 +19,10 @@ namespace
 	};
 }
 
+#pragma endregion
+
+#pragma region Construction
+
 AHeistGameMode::AHeistGameMode()
 {
 	PlayerControllerClass = AHeistPlayerController::StaticClass();
@@ -27,51 +32,9 @@ AHeistGameMode::AHeistGameMode()
 	DefaultPawnClass = AHeistPlayerCharacter::StaticClass();
 }
 
-void AHeistGameMode::BeginPlay()
-{
-	Super::BeginPlay();
+#pragma endregion
 
-	UE_LOG(LogHeist, Log, TEXT("HeistGameMode BeginPlay"));
-}
-
-void AHeistGameMode::PostLogin(APlayerController* NewPlayer)
-{
-	Super::PostLogin(NewPlayer);
-
-	AHeistPlayerState* HeistPlayerState = NewPlayer ? NewPlayer->GetPlayerState<AHeistPlayerState>() : nullptr;
-	const AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
-	const int32 ConnectedPlayers = HeistGameState ? HeistGameState->GetConnectedPlayerCount() : 0;
-
-	UE_LOG(
-		LogHeistNetwork,
-		Log,
-		TEXT("Player joined: Controller=%s ConnectedPlayers=%d HasPlayerController=%s HasPlayerState=%s HasPawn=%s HeistPlayerId=%d"),
-		*GetNameSafe(NewPlayer),
-		ConnectedPlayers,
-		NewPlayer ? TEXT("true") : TEXT("false"),
-		HeistPlayerState ? TEXT("true") : TEXT("false"),
-		NewPlayer && NewPlayer->GetPawn() ? TEXT("true") : TEXT("false"),
-		HeistPlayerState ? HeistPlayerState->HeistPlayerId : INDEX_NONE);
-}
-
-void AHeistGameMode::Logout(AController* Exiting)
-{
-	const FString LeavingControllerName = GetNameSafe(Exiting);
-	const bool bHasLeavingPlayerState = Exiting && Exiting->GetPlayerState<AHeistPlayerState>();
-
-	Super::Logout(Exiting);
-
-	const AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
-	const int32 TrackedPlayers = HeistGameState ? HeistGameState->GetConnectedPlayerCount() : 0;
-	const int32 RemainingPlayers = FMath::Max(0, TrackedPlayers - (bHasLeavingPlayerState ? 1 : 0));
-
-	UE_LOG(
-		LogHeistNetwork,
-		Log,
-		TEXT("Player left: Controller=%s RemainingPlayers=%d"),
-		*LeavingControllerName,
-		RemainingPlayers);
-}
+#pragma region Lifecycle
 
 void AHeistGameMode::RestartPlayer(AController* NewPlayer)
 {
@@ -84,16 +47,6 @@ void AHeistGameMode::RestartPlayer(AController* NewPlayer)
 	}
 
 	Super::RestartPlayer(NewPlayer);
-
-	const APawn* SpawnedPawn = NewPlayer ? NewPlayer->GetPawn() : nullptr;
-	const FString PawnLocation = SpawnedPawn ? SpawnedPawn->GetActorLocation().ToCompactString() : TEXT("Unavailable");
-
-	UE_LOG(
-		LogHeistNetwork,
-		Log,
-		TEXT("Player spawn verified: Controller=%s HeistPlayerId=%d Pawn=%s Location=%s"),
-		*GetNameSafe(NewPlayer),
-		HeistPlayerState ? HeistPlayerState->HeistPlayerId : INDEX_NONE,
-		*GetNameSafe(SpawnedPawn),
-		*PawnLocation);
 }
+
+#pragma endregion

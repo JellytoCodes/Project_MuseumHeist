@@ -6,6 +6,8 @@
 
 #include "HeistInventoryTypes.generated.h"
 
+#pragma region Inventory
+
 USTRUCT(BlueprintType)
 struct PROJECT_MUSEUMHEIST_API FHeistInventoryItem
 {
@@ -26,6 +28,10 @@ struct PROJECT_MUSEUMHEIST_API FHeistInventoryItem
 	UPROPERTY()
 	bool bRotated = false;
 };
+
+#pragma endregion
+
+#pragma region Replication
 
 USTRUCT()
 struct PROJECT_MUSEUMHEIST_API FHeistInventoryFastArrayItem : public FFastArraySerializerItem
@@ -59,6 +65,10 @@ struct TStructOpsTypeTraits<FHeistReplicatedInventory> : public TStructOpsTypeTr
 	};
 };
 
+#pragma endregion
+
+#pragma region QuickSlots
+
 USTRUCT(BlueprintType)
 struct PROJECT_MUSEUMHEIST_API FHeistQuickSlotState
 {
@@ -73,3 +83,5 @@ struct PROJECT_MUSEUMHEIST_API FHeistQuickSlotState
 	UPROPERTY()
 	FName ItemId = NAME_None;
 };
+
+#pragma endregion
