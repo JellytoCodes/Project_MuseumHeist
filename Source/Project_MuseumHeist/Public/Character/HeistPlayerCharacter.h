@@ -22,6 +22,9 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter
 public:
 	AHeistPlayerCharacter();
 
+protected:
+	virtual void BeginPlay() override;
+
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistTagComponent> TagComponent;

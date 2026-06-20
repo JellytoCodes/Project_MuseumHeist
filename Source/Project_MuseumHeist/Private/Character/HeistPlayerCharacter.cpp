@@ -8,6 +8,7 @@
 #include "Character/Components/HeistStatusComponent.h"
 #include "Character/Components/HeistTagComponent.h"
 #include "Character/Components/HeistVisionComponent.h"
+#include "Core/HeistLogChannels.h"
 
 AHeistPlayerCharacter::AHeistPlayerCharacter()
 {
@@ -19,4 +20,11 @@ AHeistPlayerCharacter::AHeistPlayerCharacter()
 	VisionComponent = CreateDefaultSubobject<UHeistVisionComponent>(TEXT("VisionComponent"));
 	CustomizationComponent = CreateDefaultSubobject<UHeistCustomizationComponent>(TEXT("CustomizationComponent"));
 	NoiseEmitterComponent = CreateDefaultSubobject<UHeistNoiseEmitterComponent>(TEXT("NoiseEmitterComponent"));
+}
+
+void AHeistPlayerCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	UE_LOG(LogHeist, Log, TEXT("HeistPlayerCharacter BeginPlay"));
 }

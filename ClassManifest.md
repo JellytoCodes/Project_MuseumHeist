@@ -1,5 +1,19 @@
 # Project_MuseumHeist — Class Manifest
 
+## Design Reference
+
+`Museum_Heist_GDD.docx` is the design source for gameplay rules, balance defaults, data schemas, and weekly milestones.
+
+This manifest controls which C++ types may be created in the current phase. Do not create every future GDD type at once. Add deferred types only when their scheduled weekly task begins.
+
+If the GDD and this manifest disagree on architecture or type ownership, update this manifest before implementation.
+
+Path convention used by every section below:
+
+* Header paths map to `Source/Project_MuseumHeist/Public/<Feature>/`.
+* Source paths map to `Source/Project_MuseumHeist/Private/<Feature>/`.
+* Legacy paths written as `Source/Project_MuseumHeist/<Feature>/...` describe the logical feature folder, not a third physical source root.
+
 ## Current Goal
 
 Generate C++ class skeletons only.
@@ -23,9 +37,27 @@ Contains:
 * `EHeistLootGrade`
 * `EHeistUseType`
 * `EHeistTargetType`
+* `EHeistSpawnCategory`
+* `EHeistSoundPingType`
 * `EHeistGuardState`
+* `EHeistCustomizationType`
 * `EHeistZoneId`
 * `EHeistQuickSlotType`
+
+Canonical values:
+
+* `EHeistMatchPhase`: `None`, `Lobby`, `Loadout`, `ReadyCountdown`, `InGame`, `End`
+* `EHeistItemType`: `None`, `Loot`, `Trap`, `Throwable`, `KeyItem`
+* `EHeistLootGrade`: `OneStar`, `TwoStar`, `ThreeStar`, `FourStar`
+* `EHeistUseType`: `None`, `Throw`, `PlaceTrap`, `DeployArea`, `Consume`
+* `EHeistTargetType`: `None`, `Self`, `WorldLocation`, `ActorHit`, `Area`
+* `EHeistSpawnCategory`: `None`, `VaultFixed`, `ExhibitionRoom`, `RareEvent`, `Dropped`
+* `EHeistSoundPingType`: `None`, `Footstep`, `GlassBreak`, `CoinImpact`, `NoiseTrap`, `StunHit`
+* `EHeistGuardState`: `Patrol`, `Chase`, `Stunned`, `Investigate`
+* `EHeistCustomizationType`: `Hat`, `Cloth`, `SkinColor`, `HatColor`, `ClothColor`
+* `EHeistZoneId`: `None`, `ZoneA`, `ZoneB`, `ZoneC`, `ZoneD`
+
+`EHeistQuickSlotType` remains a project routing enum for the three v1.0 quick slots: Coin, Smoke Grenade, and Glue Trap.
 
 ---
 
@@ -81,6 +113,7 @@ Class:
 Purpose:
 
 * Replicated match phase and timer state.
+* Uses the phase order Lobby -> Loadout -> ReadyCountdown -> InGame -> End.
 
 Create replicated properties only if compile-safe and minimal.
 
@@ -96,6 +129,7 @@ Class:
 Purpose:
 
 * Player score, carried weight, escaped state, customization state placeholder.
+* Owns result-facing values such as `TotalLootScore`, `FinalScore`, and escaped state.
 
 ---
 
@@ -210,9 +244,35 @@ Types:
 * `FHeistCustomizationRow`
 * `FHeistUITextRow`
 
+Inventory ownership and identity:
+
+* `UHeistInventoryComponent` on the player Character/Pawn owns `FHeistReplicatedInventory`.
+* `FHeistInventoryItem::ItemId` is an `FName` matching its DataTable RowName.
+* `FHeistInventoryItem::InstanceId` is initially a component-local monotonically increasing `int32`.
+* `FHeistQuickSlotState` references an inventory entry by `InstanceId` and does not duplicate the item state.
+* `FGuid` or a server-global ID is deferred until save/load, persistent ownership, or cross-inventory tracking requires it.
+
 Use `FFastArraySerializerItem` and `FFastArraySerializer` for inventory skeleton types.
 
 Do not implement full add, move, remove, rotate, or occupancy algorithms yet.
+
+GDD row schema baseline:
+
+* `FHeistItemDataRow`: ItemId/RowName, ItemTag, grid width/height, weight, QuickSlot eligibility, v1.0 availability, ItemType, display text, and soft asset references.
+* `FHeistLootDataRow`: ItemId, LootGrade, ScoreValue, SpawnCategory, SpawnWeight, Piñata-drop eligibility.
+* `FHeistUsableItemDataRow`: ItemId, UseType, TargetType, Cooldown, CastTime, Duration, ProjectileSpeed.
+* `FHeistSoundPingDataRow`: ID, SoundPingTag/Type, Radius, Duration, Refresh interval, guard reaction flag.
+* `FHeistGuardDataRow`: ID, SightRadius, SightAngle, PatrolSpeed, ChaseSpeed, StunDuration, AggroResetDistance.
+* `FHeistLootSpawnRow`: ID, SpawnCategory, CandidateItemIds, MinCount, MaxCount, reveal flag.
+* `FHeistVentDataRow`: VentId, ZoneId, LinkedRoom, initial active flag, reactivation flag.
+* `FHeistCustomizationRow`: stable customization ID, type/tag, display text, and soft mesh/material references.
+* `FHeistUITextRow`: stable text ID and localized `FText`.
+
+Deferred weekly types — do not create until the relevant weekly task explicitly requests them:
+
+* `FHeistTimedTagState` for GameplayTags/Stun work.
+* `FHeistCooldownState` for item action/cooldown work.
+* `FHeistLootDropRequest` for authoritative inventory drop work.
 
 ---
 
@@ -231,6 +291,16 @@ Class:
 Purpose:
 
 * Central balance values and DataTable references.
+
+Initial GDD balance defaults belong here:
+
+* MatchDuration `300.0`, VentUnlockTime `180.0`
+* RareLootEventTimes `90.0`, `225.0`
+* BaseWalkSpeed `600.0`, MinimumWalkSpeed `200.0`, LootCellSpeedPenalty `15.0`
+* StunDuration `3.0`, StunImmunityDuration `2.0`
+* LootCastTime `1.5`, EscapeCastTime `2.0`, TrapCastTime `1.5`
+* SharedThrowableCooldown `5.0`
+* GapTrackerThreshold `1000`
 
 ---
 
@@ -324,6 +394,8 @@ Classes:
 * `UHeistLobbyViewModel : public UMVVMViewModelBase`
 * `UHeistGapTrackerViewModel : public UMVVMViewModelBase`
 
+`UHeistGapTrackerViewModel` is an HUD-owned sub-viewmodel. It must not become an independent gameplay authority or standalone system.
+
 ---
 
 Folder:
@@ -358,6 +430,8 @@ Classes:
 
 * `UHeistCheatManager : public UCheatManager`
 * `UHeistDebugFunctionLibrary : public UBlueprintFunctionLibrary`
+
+`UHeistCheatManager` is the explicit exception to the general ban on new Manager-named classes because Unreal's framework base type is `UCheatManager`.
 
 Purpose:
 

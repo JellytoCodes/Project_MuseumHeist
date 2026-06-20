@@ -6,6 +6,7 @@
 .vs/
 .agents/
 .codex/
+.codex-doc-review/
 
 # Compiled Object files
 *.slo

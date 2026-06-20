@@ -4,12 +4,26 @@
 
 Project_MuseumHeist is an Unreal Engine 5.8 C++ multiplayer top-down stealth action game.
 
+## Design Source And Scope Priority
+
+Use the project documents in this order:
+
+1. `AGENTS.md` defines engineering policy and current implementation constraints.
+2. `ClassManifest.md` defines the C++ types allowed in the current implementation phase.
+3. `Museum_Heist_GDD.docx` is the design source for gameplay rules, balance defaults, data schemas, and weekly milestones.
+
+When starting a weekly implementation task, read only the relevant GDD sections and apply them within the current policy and manifest scope.
+
+Do not bulk-implement the complete GDD ahead of the requested week.
+If the GDD conflicts with this file or `ClassManifest.md`, update or clarify the policy documents before changing architecture or gameplay code.
+
 Core loop:
 4 players connect -> loot artifacts -> inventory weight slows movement -> use Coin / Smoke / Glue Trap to interfere -> stun and drop loot -> escape through vents -> result screen.
 
 v1.0 scope:
 
-* Listen Server multiplayer
+* 4-player Listen Server multiplayer, LAN-first
+* Lobby -> Loadout -> Ready Countdown -> In-Game -> End match flow
 * 4x5 Grid Inventory
 * Loot / Weight / Score
 * Coin / Smoke Grenade / Glue Trap
@@ -19,6 +33,7 @@ v1.0 scope:
 * Guard FSM
 * HUD / Result UI
 * Fixed map prototype support
+* Royal Crown / Rare Artifact / Painting / Ancient Sword as data-driven v1.0 loot rows
 
 v1.1 or later scope:
 
@@ -58,6 +73,7 @@ Do not implement gameplay logic yet.
 * Do not modify plugins unless explicitly requested.
 * Do not modify packaging settings unless explicitly requested.
 * Do not introduce unnecessary Manager, Service, Factory, Processor, or Subsystem classes.
+* `UHeistCheatManager` is the single manifest-approved exception because it derives from Unreal's `UCheatManager` framework type.
 * Do not create one Actor class per loot item.
 * Loot must be data-driven through `AHeistLootActor` and DataTable rows.
 * Do not implement Noise Trap actor in v1.0.
@@ -163,6 +179,8 @@ Blueprint graph logic is not allowed except simple visual events such as:
 * Validate all inventory, item use, stun, loot, trap, and escape actions on the server.
 * Do not trust client-side inventory data.
 * Replicate only the state needed by clients.
+* Prefer replicated authoritative state and RepNotify/FastArray updates for persistent gameplay state.
+* Use Multicast RPCs only for transient cosmetic events when normal replicated state is not appropriate.
 * Prefer event/delegate-driven UI updates.
 * Do not use Tick for replicated UI updates unless explicitly justified.
 * Keep replicated properties minimal and intentional.
@@ -175,6 +193,14 @@ Blueprint graph logic is not allowed except simple visual events such as:
 Inventory is 4 columns x 5 rows.
 
 Use FastArray for replicated inventory state.
+
+v1.0 inventory ownership and identity:
+
+* `UHeistInventoryComponent` on the player Character/Pawn owns the inventory.
+* `AHeistPlayerState` owns result-facing values such as `TotalLootScore`, `FinalScore`, and escaped state.
+* Inventory `InstanceId` starts as a component-local monotonically increasing `int32`.
+* QuickSlots reference inventory entries by `InstanceId`; they do not duplicate item state.
+* Reconsider `FGuid` or a server-global ID only when save/load, persistent ownership, or cross-inventory tracking is required.
 
 Item movement must eventually validate:
 
@@ -210,6 +236,31 @@ Do not mix:
 * GameplayTag
 * DisplayName
 
+Canonical GDD enum values:
+
+* `EHeistMatchPhase`: `None`, `Lobby`, `Loadout`, `ReadyCountdown`, `InGame`, `End`
+* `EHeistItemType`: `None`, `Loot`, `Trap`, `Throwable`, `KeyItem`
+* `EHeistLootGrade`: `OneStar`, `TwoStar`, `ThreeStar`, `FourStar`
+* `EHeistUseType`: `None`, `Throw`, `PlaceTrap`, `DeployArea`, `Consume`
+* `EHeistTargetType`: `None`, `Self`, `WorldLocation`, `ActorHit`, `Area`
+* `EHeistSpawnCategory`: `None`, `VaultFixed`, `ExhibitionRoom`, `RareEvent`, `Dropped`
+* `EHeistSoundPingType`: `None`, `Footstep`, `GlassBreak`, `CoinImpact`, `NoiseTrap`, `StunHit`
+* `EHeistGuardState`: `Patrol`, `Chase`, `Stunned`, `Investigate`
+* `EHeistCustomizationType`: `Hat`, `Cloth`, `SkinColor`, `HatColor`, `ClothColor`
+* `EHeistZoneId`: `None`, `ZoneA`, `ZoneB`, `ZoneC`, `ZoneD`
+
+GDD balance numbers are initial DataAsset defaults, not gameplay-class constants:
+
+* Match duration: `300.0` seconds
+* Vent unlock time: `180.0` seconds
+* Rare Loot events: `90.0` and `225.0` seconds
+* Base / minimum walk speed: `600.0` / `200.0` cm/s
+* Loot speed penalty: `15.0` cm/s per occupied loot cell
+* Stun / stun immunity: `3.0` / `2.0` seconds
+* Loot / escape / trap cast time: `1.5` / `2.0` / `1.5` seconds
+* Shared throwable cooldown: `5.0` seconds
+* Gap Tracker threshold: `1000` points
+
 Do not hardcode balance values inside gameplay classes when they belong in `UHeistGameBalanceDataAsset`.
 
 ---
@@ -232,6 +283,9 @@ Do not implement advanced guard behavior in the skeleton phase.
 
 ## Include And Dependency Rules
 
+* Place exported headers under `Source/Project_MuseumHeist/Public/<Feature>/`.
+* Place implementation files under `Source/Project_MuseumHeist/Private/<Feature>/`.
+* Use module-relative includes such as `#include "Feature/ClassName.h"`.
 * Use forward declarations where possible.
 * Keep headers minimal.
 * Do not include heavy headers in `.h` files unless necessary.
@@ -284,3 +338,155 @@ After making changes, report:
 
 Do not claim packaging success unless packaging was actually run.
 Do not claim editor validation success unless the editor was actually opened.
+
+---
+
+## Notion ID And Test Report Standard
+
+All Project_MuseumHeist Notion database IDs must use the same structure:
+
+```txt
+<TYPE>-W<WeekNumber>-<SequenceNumber>
+```
+
+Examples:
+
+```txt
+TASK-W1-001
+TEST-W1-001
+BUG-W1-001
+DEC-W1-001
+```
+
+### ID Prefix Rules
+
+Use the following prefixes:
+
+| Database          | Prefix | Example       |
+| ----------------- | ------ | ------------- |
+| Weekly Task Board | `TASK` | `TASK-W1-001` |
+| Test Log          | `TEST` | `TEST-W1-001` |
+| Bug Issue Log     | `BUG`  | `BUG-W1-001`  |
+| Decision Log      | `DEC`  | `DEC-W1-001`  |
+
+### Invalid ID Formats
+
+Do not use mixed ID styles.
+
+Invalid:
+
+```txt
+W1-001
+W1-T001
+W2-LOG-01
+DEC-W1-001 mixed with W1-001
+```
+
+Correct:
+
+```txt
+TASK-W1-001
+TEST-W1-001
+BUG-W1-001
+DEC-W1-001
+```
+
+### Notion Title Rules
+
+Notion database title properties must use IDs.
+
+Weekly Task Board:
+
+* Title / `작업 ID` = `TASK-Wn-###`
+* Description / `작업 항목` = human-readable task name
+
+Test Log:
+
+* Title / `테스트ID` = `TEST-Wn-###`
+* Description / `테스트 항목` = human-readable test name
+
+Bug Issue Log:
+
+* Title / `이슈ID` = `BUG-Wn-###`
+* Description / `제목` = human-readable bug title
+
+Decision Log:
+
+* Title / `결정ID` = `DEC-Wn-###`
+* Description / `결정 사항` = human-readable decision title
+
+This rule exists so relation search works by ID and all databases use the same naming structure.
+
+### Test Report Body Format
+
+Every test report must use this structure:
+
+````md
+# <Test Report Title>
+
+## 테스트 개요
+
+- 테스트ID:
+- 프로젝트: Project_MuseumHeist
+- 엔진: Unreal Engine 5.8
+- 테스트 일자:
+- 테스트 항목:
+- 테스트 환경:
+- 빌드:
+- 최종 결과:
+
+## 테스트 목적
+
+<What this test verifies.>
+
+## 기대 결과
+
+<Expected behavior before running the test.>
+
+## 검증 항목
+
+| 검증 항목 | 실제 결과 | 판정 |
+|---|---|---|
+| <Item> | <Observed result> | PASS/FAIL/BLOCKED |
+
+## 주요 로그
+
+```txt
+<Paste only the important logs here.>
+```
+
+## 참고사항
+
+<Known caveats, interpretation notes, PIE-specific behavior, warnings, or non-blocking issues.>
+
+## 최종 결론
+
+<State the final judgment clearly.>
+
+따라서 <related TASK-Wn-### tasks>는 완료 처리한다.
+````
+
+### Test Result Rules
+
+- Keep reports factual.
+- Do not exaggerate results.
+- Do not claim gameplay completion if only baseline behavior was verified.
+- Distinguish between:
+  - compile success
+  - framework hookup success
+  - multiplayer connection success
+  - gameplay feature completion
+- Mention non-blocking warnings as `Known Warning`.
+- If the test passed with caveats, mark result as `Pass` and explain caveats in `참고사항`.
+- If the result blocks the next task, mark result as `Blocked`.
+- If the test was not executed, mark result as `Not Tested`.
+- Do not hide failures.
+
+### Weekly Gate Rule
+
+A weekly Gate can be marked `Pass` only when:
+
+1. Required tasks are complete.
+2. Required tests are recorded in the test log.
+3. Critical failures are either resolved or explicitly deferred.
+4. The weekly decision / summary log is recorded when required.

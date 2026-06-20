@@ -12,4 +12,6 @@ class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
 
 public:
 	AHeistGameState();
+
+	int32 GetConnectedPlayerCount() const;
 };

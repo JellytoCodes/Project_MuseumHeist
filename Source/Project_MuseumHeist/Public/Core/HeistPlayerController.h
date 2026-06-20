@@ -12,4 +12,7 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 
 public:
 	AHeistPlayerController();
+
+protected:
+	virtual void BeginPlay() override;
 };
