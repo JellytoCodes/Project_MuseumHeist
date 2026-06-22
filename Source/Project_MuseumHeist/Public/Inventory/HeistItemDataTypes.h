@@ -8,6 +8,7 @@
 #include "HeistItemDataTypes.generated.h"
 
 class AActor;
+class AHeistLootActor;
 class USkeletalMesh;
 class USoundBase;
 class UStaticMesh;
@@ -39,7 +40,19 @@ struct PROJECT_MUSEUMHEIST_API FHeistItemDataRow : public FTableRowBase
 	float Weight = 0.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	bool bCanRotate = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	bool bCanUseQuickSlot = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	bool bAvailableInV1 = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TSoftObjectPtr<UTexture2D> Icon;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TSoftClassPtr<AHeistLootActor> WorldLootActorClass;
 };
 
 USTRUCT(BlueprintType)
@@ -57,13 +70,22 @@ struct PROJECT_MUSEUMHEIST_API FHeistLootDataRow : public FTableRowBase
 	FGameplayTag CategoryTag;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	EHeistLootGrade LootGrade = EHeistLootGrade::None;
+	EHeistLootGrade LootGrade = EHeistLootGrade::OneStar;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	float Weight = 0.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	int32 ScoreValue = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	EHeistSpawnCategory SpawnCategory = EHeistSpawnCategory::None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0"))
+	float SpawnWeight = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	bool bCanDropOnStun = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TSoftObjectPtr<UStaticMesh> WorldMesh;
@@ -91,6 +113,18 @@ struct PROJECT_MUSEUMHEIST_API FHeistUsableItemDataRow : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	EHeistTargetType TargetType = EHeistTargetType::None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0", Units = "s"))
+	float Cooldown = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0", Units = "s"))
+	float CastTime = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0", Units = "s"))
+	float Duration = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0", Units = "cm/s"))
+	float ProjectileSpeed = 0.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TSoftClassPtr<AActor> SpawnedActorClass;

@@ -30,6 +30,7 @@ protected:
 
 public:
 	FName GetLootRowId() const;
+	void InitializeLootData(UDataTable* InLootDataTable, FName InLootRowId);
 	int32 GetScoreValue() const;
 	float GetWeightValue() const;
 	EHeistLootGrade GetLootGrade() const;
@@ -43,7 +44,7 @@ private:
 	FName LootRowId = NAME_None;
 
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Loot", meta = (AllowPrivateAccess = "true"))
-	EHeistLootGrade LootGrade = EHeistLootGrade::None;
+	EHeistLootGrade LootGrade = EHeistLootGrade::OneStar;
 
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Loot", meta = (AllowPrivateAccess = "true"))
 	int32 ScoreValue = 0;
@@ -73,7 +74,12 @@ public:
 #pragma region LootPickup
 
 public:
-	bool TryReserveForPickup(const AActor* Requester);
+	bool TryReserveForPickup(AActor* Requester);
+	bool CommitPickupReservation(AActor* Requester);
+	void ReleasePickupReservation(AActor* Requester);
+
+private:
+	TWeakObjectPtr<AActor> PickupReservationOwner;
 
 #pragma endregion
 

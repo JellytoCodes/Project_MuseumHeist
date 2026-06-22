@@ -166,7 +166,23 @@ void AHeistPlayerCharacter::OnRep_CurrentMoveSpeed()
 bool AHeistPlayerCharacter::CanPerformGameplayActions() const
 {
 	const AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
-	return !IsValid(HeistPlayerState) || !HeistPlayerState->IsEscaped();
+	const bool bEscaped = IsValid(HeistPlayerState) && HeistPlayerState->IsEscaped();
+	const bool bInventoryOpen = IsValid(InventoryComponent) && InventoryComponent->IsInventoryOpen();
+	const bool bStunned = IsValid(StatusComponent) && StatusComponent->IsStunned();
+	return !bEscaped && !bInventoryOpen && !bStunned;
+}
+
+void AHeistPlayerCharacter::HandleInventoryOpenStateChanged(const bool bInventoryOpen)
+{
+	if (!bInventoryOpen)
+	{
+		return;
+	}
+
+	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
+	{
+		MovementComponent->StopMovementImmediately();
+	}
 }
 
 void AHeistPlayerCharacter::ApplyEscapedGameplayRestrictions()

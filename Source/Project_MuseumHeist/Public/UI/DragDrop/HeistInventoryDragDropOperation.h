@@ -13,5 +13,12 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryDragDropOperation : public UDragDro
 public:
 	UHeistInventoryDragDropOperation(const FObjectInitializer& ObjectInitializer);
 
-	void SetupDragOperation();
+	UFUNCTION(BlueprintCallable, Category = "Heist|Inventory")
+	void SetupDragOperation(int32 InInstanceId, FIntPoint InSourceGridPosition);
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Inventory")
+	int32 InstanceId = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Inventory")
+	FIntPoint SourceGridPosition = FIntPoint(-1, -1);
 };

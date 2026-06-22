@@ -70,6 +70,7 @@ private:
 public:
 	bool CanPerformGameplayActions() const;
 	void ApplyEscapedGameplayRestrictions();
+	void HandleInventoryOpenStateChanged(bool bInventoryOpen);
 
 protected:
 	virtual void OnRep_PlayerState() override;

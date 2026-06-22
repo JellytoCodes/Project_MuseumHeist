@@ -11,8 +11,10 @@ enum class EHeistMatchPhase : uint8
 {
 	None,
 	Lobby,
-	InProgress,
-	Results
+	Loadout,
+	ReadyCountdown,
+	InGame,
+	End
 };
 
 #pragma endregion
@@ -66,15 +68,18 @@ enum class EHeistItemType : uint8
 {
 	None,
 	Loot,
-	Usable
+	Trap,
+	Throwable,
+	KeyItem
 };
 
 UENUM(BlueprintType)
 enum class EHeistLootGrade : uint8
 {
-	None,
-	Common,
-	Rare
+	OneStar,
+	TwoStar,
+	ThreeStar,
+	FourStar
 };
 
 #pragma endregion
@@ -85,9 +90,10 @@ UENUM(BlueprintType)
 enum class EHeistUseType : uint8
 {
 	None,
-	Instant,
-	Throwable,
-	Placeable
+	Throw,
+	PlaceTrap,
+	DeployArea,
+	Consume
 };
 
 UENUM(BlueprintType)
@@ -95,8 +101,9 @@ enum class EHeistTargetType : uint8
 {
 	None,
 	Self,
-	Actor,
-	World
+	WorldLocation,
+	ActorHit,
+	Area
 };
 
 #pragma endregion
@@ -117,9 +124,44 @@ enum class EHeistGuardState : uint8
 #pragma region World
 
 UENUM(BlueprintType)
+enum class EHeistSpawnCategory : uint8
+{
+	None,
+	VaultFixed,
+	ExhibitionRoom,
+	RareEvent,
+	Dropped
+};
+
+UENUM(BlueprintType)
+enum class EHeistSoundPingType : uint8
+{
+	None,
+	Footstep,
+	GlassBreak,
+	CoinImpact,
+	NoiseTrap,
+	StunHit
+};
+
+UENUM(BlueprintType)
+enum class EHeistCustomizationType : uint8
+{
+	Hat,
+	Cloth,
+	SkinColor,
+	HatColor,
+	ClothColor
+};
+
+UENUM(BlueprintType)
 enum class EHeistZoneId : uint8
 {
-	None
+	None,
+	ZoneA,
+	ZoneB,
+	ZoneC,
+	ZoneD
 };
 
 #pragma endregion

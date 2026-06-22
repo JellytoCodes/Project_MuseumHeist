@@ -19,6 +19,8 @@ public:
 	float GetTotalLootWeight() const;
 	bool CanAddLootScoreAndWeight(int32 ScoreDelta, float WeightDelta) const;
 	bool AddLootScoreAndWeight(int32 ScoreDelta, float WeightDelta);
+	bool CanRemoveLootScoreAndWeight(int32 ScoreDelta, float WeightDelta) const;
+	bool RemoveLootScoreAndWeight(int32 ScoreDelta, float WeightDelta);
 
 private:
 	UPROPERTY(ReplicatedUsing = OnRep_TotalLootScore, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Score", meta = (AllowPrivateAccess = "true"))

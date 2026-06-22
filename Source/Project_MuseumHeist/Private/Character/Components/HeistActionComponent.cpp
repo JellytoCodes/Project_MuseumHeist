@@ -152,6 +152,11 @@ bool UHeistActionComponent::TryBeginEscapeRequest(AHeistVentActor* TargetVentAct
 	return true;
 }
 
+bool UHeistActionComponent::IsGameplayCastActive() const
+{
+	return bEscapeCastActive;
+}
+
 bool UHeistActionComponent::HasPendingEscapeRequest() const
 {
 	return bEscapeCastActive || PendingEscapeVent.IsValid();

@@ -1,9 +1,15 @@
 #include "Core/HeistHUD.h"
 
+#include "Character/Components/HeistInventoryComponent.h"
+#include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistLogChannels.h"
+#include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
+#include "UI/ViewModels/HeistInventoryViewModel.h"
+#include "UI/ViewModels/HeistQuickSlotViewModel.h"
 #include "UI/ViewModels/HeistResultViewModel.h"
+#include "UI/Widgets/HeistInventoryWidget.h"
 #include "UI/Widgets/HeistResultWidget.h"
 
 #pragma region Construction
@@ -19,7 +25,75 @@ AHeistHUD::AHeistHUD()
 void AHeistHUD::BeginPlay()
 {
 	Super::BeginPlay();
+	InitializeInventoryPresentation();
 	InitializeResultPresentation();
+}
+
+#pragma endregion
+
+#pragma region InventoryPresentation
+
+bool AHeistHUD::ShowInventoryScreen()
+{
+	InitializeInventoryPresentation();
+	AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(GetOwningPlayerController());
+	if (!IsValid(HeistPlayerController)
+		|| !IsValid(InventoryViewModel)
+		|| !IsValid(QuickSlotViewModel)
+		|| !InventoryWidgetClass)
+	{
+		return false;
+	}
+
+	if (!IsValid(InventoryWidget))
+	{
+		InventoryWidget = CreateWidget<UHeistInventoryWidget>(HeistPlayerController, InventoryWidgetClass);
+		if (!IsValid(InventoryWidget))
+		{
+			return false;
+		}
+
+		InventoryWidget->SetupInventoryWidget(InventoryViewModel, QuickSlotViewModel, HeistPlayerController);
+		InventoryWidget->AddToViewport();
+	}
+
+	return true;
+}
+
+UHeistInventoryViewModel* AHeistHUD::GetInventoryViewModel() const
+{
+	return InventoryViewModel;
+}
+
+UHeistQuickSlotViewModel* AHeistHUD::GetQuickSlotViewModel() const
+{
+	return QuickSlotViewModel;
+}
+
+void AHeistHUD::InitializeInventoryPresentation()
+{
+	AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(GetOwningPlayerController());
+	if (!IsValid(HeistPlayerController) || !HeistPlayerController->IsLocalController())
+	{
+		return;
+	}
+
+	if (!IsValid(InventoryViewModel))
+	{
+		InventoryViewModel = NewObject<UHeistInventoryViewModel>(this);
+	}
+
+	if (!IsValid(QuickSlotViewModel))
+	{
+		QuickSlotViewModel = NewObject<UHeistQuickSlotViewModel>(this);
+	}
+
+	AHeistPlayerCharacter* HeistPlayerCharacter = HeistPlayerController->GetPawn<AHeistPlayerCharacter>();
+	UHeistInventoryComponent* InventoryComponent = IsValid(HeistPlayerCharacter)
+		? HeistPlayerCharacter->GetInventoryComponent()
+		: nullptr;
+	InventoryViewModel->SetupViewModel(InventoryComponent);
+	QuickSlotViewModel->SetupViewModel(InventoryComponent);
 }
 
 #pragma endregion

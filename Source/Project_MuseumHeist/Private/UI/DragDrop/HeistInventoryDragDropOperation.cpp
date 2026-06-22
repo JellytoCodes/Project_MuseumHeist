@@ -5,6 +5,10 @@ UHeistInventoryDragDropOperation::UHeistInventoryDragDropOperation(const FObject
 {
 }
 
-void UHeistInventoryDragDropOperation::SetupDragOperation()
+void UHeistInventoryDragDropOperation::SetupDragOperation(
+	const int32 InInstanceId,
+	const FIntPoint InSourceGridPosition)
 {
+	InstanceId = InInstanceId;
+	SourceGridPosition = InSourceGridPosition;
 }

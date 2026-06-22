@@ -36,6 +36,15 @@ FName AHeistLootActor::GetLootRowId() const
 	return LootRowId;
 }
 
+void AHeistLootActor::InitializeLootData(UDataTable* InLootDataTable, const FName InLootRowId)
+{
+	checkf(HasAuthority(), TEXT("Loot data initialization requires authority."));
+	checkf(!HasActorBegunPlay(), TEXT("Loot data must be initialized before BeginPlay."));
+
+	LootDataRow.DataTable = InLootDataTable;
+	LootDataRow.RowName = InLootRowId;
+}
+
 int32 AHeistLootActor::GetScoreValue() const
 {
 	return ScoreValue;
@@ -53,7 +62,7 @@ EHeistLootGrade AHeistLootActor::GetLootGrade() const
 
 bool AHeistLootActor::IsLootAvailable() const
 {
-	return bIsAvailable;
+	return bIsAvailable && !PickupReservationOwner.IsValid();
 }
 
 #pragma endregion
@@ -62,7 +71,7 @@ bool AHeistLootActor::IsLootAvailable() const
 
 bool AHeistLootActor::CanInteract(const AActor* Interactor) const
 {
-	return bIsAvailable && Super::CanInteract(Interactor);
+	return IsLootAvailable() && Super::CanInteract(Interactor);
 }
 
 #pragma endregion
@@ -84,16 +93,36 @@ void AHeistLootActor::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 
 #pragma region LootPickup
 
-bool AHeistLootActor::TryReserveForPickup(const AActor* Requester)
+bool AHeistLootActor::TryReserveForPickup(AActor* Requester)
 {
-	if (!HasAuthority() || !IsValid(Requester) || !bIsAvailable)
+	if (!HasAuthority() || !IsValid(Requester) || !bIsAvailable || PickupReservationOwner.IsValid())
+	{
+		return false;
+	}
+
+	PickupReservationOwner = Requester;
+	return true;
+}
+
+bool AHeistLootActor::CommitPickupReservation(AActor* Requester)
+{
+	if (!HasAuthority() || !IsValid(Requester) || PickupReservationOwner.Get() != Requester || !bIsAvailable)
 	{
 		return false;
 	}
 
 	bIsAvailable = false;
+	PickupReservationOwner.Reset();
 	ForceNetUpdate();
 	return true;
+}
+
+void AHeistLootActor::ReleasePickupReservation(AActor* Requester)
+{
+	if (HasAuthority() && IsValid(Requester) && PickupReservationOwner.Get() == Requester)
+	{
+		PickupReservationOwner.Reset();
+	}
 }
 
 #pragma endregion
@@ -127,7 +156,7 @@ void AHeistLootActor::ResolveLootData()
 void AHeistLootActor::ApplyFallbackLootData()
 {
 	LootRowId = LootDataRow.RowName;
-	LootGrade = EHeistLootGrade::None;
+	LootGrade = EHeistLootGrade::OneStar;
 	ScoreValue = 0;
 	WeightValue = 0.0f;
 	bIsAvailable = true;

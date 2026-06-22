@@ -1,15 +1,20 @@
-﻿#include "Core/HeistPlayerController.h"
+#include "Core/HeistPlayerController.h"
 
 #include "Character/Components/HeistActionComponent.h"
 #include "Character/Components/HeistInteractionComponent.h"
+#include "Character/Components/HeistInventoryComponent.h"
+#include "Character/Components/HeistStatusComponent.h"
 #include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameState.h"
+#include "Core/HeistGameMode.h"
+#include "Core/HeistHUD.h"
 #include "Core/HeistPlayerState.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "Engine/LocalPlayer.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
+#include "Inventory/HeistItemDataTypes.h"
 #include "World/HeistLootActor.h"
 #include "World/HeistVentActor.h"
 
@@ -64,6 +69,22 @@ void AHeistPlayerController::SetupInputComponent()
 			EHeistDebugLevel::Warning);
 	}
 
+	if (InventoryInputAction != nullptr)
+	{
+		EnhancedInputComponent->BindAction(
+			InventoryInputAction,
+			ETriggerEvent::Started,
+			this,
+			&AHeistPlayerController::HandleInventoryToggle);
+	}
+	else
+	{
+		UHeistDebugFunctionLibrary::Message(
+			this,
+			TEXT("InventoryInputAction is not assigned in the PlayerController Blueprint."),
+			EHeistDebugLevel::Warning);
+	}
+
 	if (GameplayInputMappingContext == nullptr)
 	{
 		UHeistDebugFunctionLibrary::Message(
@@ -94,6 +115,34 @@ void AHeistPlayerController::HandleMoveInput(const FInputActionValue& InputValue
 
 	const FVector2D MovementInput = InputValue.Get<FVector2D>();
 	HeistCharacter->MoveOnGameplayPlane(MovementInput);
+}
+
+void AHeistPlayerController::HandleInventoryToggle()
+{
+	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	if (!IsValid(HeistCharacter))
+	{
+		return;
+	}
+
+	UHeistInventoryComponent* InventoryComponent = HeistCharacter->GetInventoryComponent();
+	checkf(IsValid(InventoryComponent), TEXT("HeistPlayerCharacter requires HeistInventoryComponent"));
+
+	const bool bRequestOpen = !InventoryComponent->IsInventoryOpen();
+	if (bRequestOpen)
+	{
+		AHeistHUD* HeistHUD = GetHUD<AHeistHUD>();
+		if (!IsValid(HeistHUD) || !HeistHUD->ShowInventoryScreen())
+		{
+			UHeistDebugFunctionLibrary::Message(
+				this,
+				TEXT("Inventory open request skipped: Inventory Widget/ViewModel setup is incomplete."),
+				EHeistDebugLevel::Warning);
+			return;
+		}
+	}
+
+	RequestSetInventoryOpen(bRequestOpen);
 }
 
 #pragma endregion
@@ -136,6 +185,40 @@ void AHeistPlayerController::HandleInteractPressed()
 #pragma endregion
 
 #pragma region Networking
+
+void AHeistPlayerController::RequestSetInventoryOpen(const bool bInventoryOpen)
+{
+	Server_SetInventoryOpen(bInventoryOpen);
+}
+
+void AHeistPlayerController::RequestMoveInventoryItem(
+	const int32 InstanceId,
+	const FIntPoint TargetGridPosition)
+{
+	Server_RequestMoveInventoryItem(InstanceId, TargetGridPosition);
+}
+
+void AHeistPlayerController::RequestRotateInventoryItem(const int32 InstanceId)
+{
+	Server_RequestRotateInventoryItem(InstanceId);
+}
+
+void AHeistPlayerController::RequestDropInventoryItem(const int32 InstanceId)
+{
+	Server_RequestDropInventoryItem(InstanceId);
+}
+
+void AHeistPlayerController::RequestAssignQuickSlot(
+	const EHeistQuickSlotType SlotType,
+	const int32 InstanceId)
+{
+	Server_RequestAssignQuickSlot(SlotType, InstanceId);
+}
+
+void AHeistPlayerController::RequestClearQuickSlot(const EHeistQuickSlotType SlotType)
+{
+	Server_RequestClearQuickSlot(SlotType);
+}
 
 void AHeistPlayerController::Server_RequestLootPickup_Implementation(AHeistLootActor* TargetLootActor)
 {
@@ -198,19 +281,28 @@ void AHeistPlayerController::Server_RequestLootPickup_Implementation(AHeistLootA
 		return;
 	}
 
-	if (!ensureMsgf(
-		RequestContext.PlayerState->AddLootScoreAndWeight(ScoreDelta, WeightDelta),
-		TEXT("Validated loot score and weight must apply after a successful reservation")))
+	int32 AddedInstanceId = INDEX_NONE;
+	if (!RequestContext.InventoryComponent->TryAddItem(TargetLootActor->GetLootRowId(), AddedInstanceId))
 	{
-		LogLootPickupRejected(TargetLootActor, TEXT("ScoreWeightApplicationFailed"), Distance);
+		TargetLootActor->ReleasePickupReservation(RequestContext.Character);
+		LogLootPickupRejected(TargetLootActor, TEXT("InventoryRejected"), Distance);
 		return;
 	}
+
+	checkf(
+		RequestContext.PlayerState->AddLootScoreAndWeight(ScoreDelta, WeightDelta),
+		TEXT("Validated loot score and weight must apply after inventory commit"));
+	checkf(
+		TargetLootActor->CommitPickupReservation(RequestContext.Character),
+		TEXT("Reserved loot must commit after inventory and score/weight commit"));
 
 	UHeistDebugFunctionLibrary::Message(
 		this,
 		FString::Printf(
-			TEXT("Loot pickup request accepted: Target=%s Distance=%.1f"),
+			TEXT("Loot pickup request accepted: Target=%s ItemId=%s InstanceId=%d Distance=%.1f InventoryCommitted=true"),
 			*GetNameSafe(TargetLootActor),
+			*TargetLootActor->GetLootRowId().ToString(),
+			AddedInstanceId,
 			Distance));
 }
 
@@ -289,6 +381,163 @@ void AHeistPlayerController::Server_RequestEscape_Implementation(AHeistVentActor
 			Distance));
 }
 
+void AHeistPlayerController::Server_SetInventoryOpen_Implementation(const bool bInventoryOpen)
+{
+	FHeistGameplayRequestContext RequestContext;
+	const TCHAR* RejectReason = nullptr;
+	if (!TryBuildGameplayRequestContext(RequestContext, RejectReason))
+	{
+		LogInventoryRequestRejected(TEXT("SetOpen"), INDEX_NONE, RejectReason);
+		return;
+	}
+
+	if (bInventoryOpen
+		&& (RequestContext.Character->GetStatusComponent()->IsStunned()
+			|| RequestContext.Character->GetActionComponent()->IsGameplayCastActive()))
+	{
+		LogInventoryRequestRejected(TEXT("SetOpen"), INDEX_NONE, TEXT("GameplayStateBlocked"));
+		return;
+	}
+
+	if (!RequestContext.InventoryComponent->TrySetInventoryOpen(bInventoryOpen))
+	{
+		LogInventoryRequestRejected(TEXT("SetOpen"), INDEX_NONE, TEXT("MutationRejected"));
+	}
+}
+
+void AHeistPlayerController::Server_RequestMoveInventoryItem_Implementation(
+	const int32 InstanceId,
+	const FIntPoint TargetGridPosition)
+{
+	FHeistGameplayRequestContext RequestContext;
+	const TCHAR* RejectReason = nullptr;
+	if (!TryBuildInventoryMutationRequestContext(RequestContext, RejectReason))
+	{
+		LogInventoryRequestRejected(TEXT("Move"), InstanceId, RejectReason);
+		return;
+	}
+
+	if (!RequestContext.InventoryComponent->TryMoveItem(InstanceId, TargetGridPosition))
+	{
+		LogInventoryRequestRejected(TEXT("Move"), InstanceId, TEXT("InvalidTargetPlacement"));
+	}
+}
+
+void AHeistPlayerController::Server_RequestRotateInventoryItem_Implementation(const int32 InstanceId)
+{
+	FHeistGameplayRequestContext RequestContext;
+	const TCHAR* RejectReason = nullptr;
+	if (!TryBuildInventoryMutationRequestContext(RequestContext, RejectReason))
+	{
+		LogInventoryRequestRejected(TEXT("Rotate"), InstanceId, RejectReason);
+		return;
+	}
+
+	if (!RequestContext.InventoryComponent->TryRotateItem(InstanceId))
+	{
+		LogInventoryRequestRejected(TEXT("Rotate"), InstanceId, TEXT("RotationRejected"));
+	}
+}
+
+void AHeistPlayerController::Server_RequestDropInventoryItem_Implementation(const int32 InstanceId)
+{
+	FHeistGameplayRequestContext RequestContext;
+	const TCHAR* RejectReason = nullptr;
+	if (!TryBuildInventoryMutationRequestContext(RequestContext, RejectReason))
+	{
+		LogInventoryRequestRejected(TEXT("Drop"), InstanceId, RejectReason);
+		return;
+	}
+
+	FHeistInventoryItem InventoryItem;
+	if (!RequestContext.InventoryComponent->TryGetItem(InstanceId, InventoryItem))
+	{
+		LogInventoryRequestRejected(TEXT("Drop"), InstanceId, TEXT("InvalidInstanceId"));
+		return;
+	}
+
+	AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	FHeistLootDataRow LootDefinition;
+	if (!IsValid(HeistGameMode)
+		|| !HeistGameMode->TryGetLootDefinition(InventoryItem.ItemId, LootDefinition)
+		|| !RequestContext.PlayerState->CanRemoveLootScoreAndWeight(LootDefinition.ScoreValue, LootDefinition.Weight))
+	{
+		LogInventoryRequestRejected(TEXT("Drop"), InstanceId, TEXT("InvalidLootState"));
+		return;
+	}
+
+	FHeistLootDropRequest DropRequest;
+	DropRequest.DroppedBy = RequestContext.Character;
+	DropRequest.ItemId = InventoryItem.ItemId;
+	DropRequest.SourceInstanceId = InstanceId;
+	DropRequest.DropOrigin = RequestContext.Character->GetActorLocation()
+		+ RequestContext.Character->GetActorForwardVector() * 100.0f;
+
+	AHeistLootActor* DroppedLootActor = nullptr;
+	if (!HeistGameMode->TrySpawnDroppedLoot(DropRequest, DroppedLootActor))
+	{
+		LogInventoryRequestRejected(TEXT("Drop"), InstanceId, TEXT("WorldSpawnFailed"));
+		return;
+	}
+
+	FHeistInventoryItem RemovedItem;
+	if (!RequestContext.InventoryComponent->TryRemoveItem(InstanceId, RemovedItem))
+	{
+		DroppedLootActor->Destroy();
+		LogInventoryRequestRejected(TEXT("Drop"), InstanceId, TEXT("InventoryRemovalFailed"));
+		return;
+	}
+
+	checkf(RemovedItem.ItemId == DropRequest.ItemId, TEXT("Validated inventory drop item changed during commit."));
+	checkf(
+		RequestContext.PlayerState->RemoveLootScoreAndWeight(LootDefinition.ScoreValue, LootDefinition.Weight),
+		TEXT("Validated loot score and weight removal must succeed after inventory commit."));
+
+	UHeistDebugFunctionLibrary::Message(
+		this,
+		FString::Printf(
+			TEXT("Inventory drop accepted: Character=%s ItemId=%s InstanceId=%d WorldLoot=%s DropOrigin=%s"),
+			*GetNameSafe(RequestContext.Character),
+			*DropRequest.ItemId.ToString(),
+			InstanceId,
+			*GetNameSafe(DroppedLootActor),
+			*FVector(DropRequest.DropOrigin).ToCompactString()));
+}
+
+void AHeistPlayerController::Server_RequestAssignQuickSlot_Implementation(
+	const EHeistQuickSlotType SlotType,
+	const int32 InstanceId)
+{
+	FHeistGameplayRequestContext RequestContext;
+	const TCHAR* RejectReason = nullptr;
+	if (!TryBuildInventoryMutationRequestContext(RequestContext, RejectReason))
+	{
+		LogInventoryRequestRejected(TEXT("AssignQuickSlot"), InstanceId, RejectReason);
+		return;
+	}
+
+	if (!RequestContext.InventoryComponent->TryAssignQuickSlot(SlotType, InstanceId))
+	{
+		LogInventoryRequestRejected(TEXT("AssignQuickSlot"), InstanceId, TEXT("InvalidSlotAssignment"));
+	}
+}
+
+void AHeistPlayerController::Server_RequestClearQuickSlot_Implementation(const EHeistQuickSlotType SlotType)
+{
+	FHeistGameplayRequestContext RequestContext;
+	const TCHAR* RejectReason = nullptr;
+	if (!TryBuildInventoryMutationRequestContext(RequestContext, RejectReason))
+	{
+		LogInventoryRequestRejected(TEXT("ClearQuickSlot"), INDEX_NONE, RejectReason);
+		return;
+	}
+
+	if (!RequestContext.InventoryComponent->TryClearQuickSlot(SlotType))
+	{
+		LogInventoryRequestRejected(TEXT("ClearQuickSlot"), INDEX_NONE, TEXT("InvalidSlot"));
+	}
+}
+
 #pragma endregion
 
 #pragma region InternalHelpers
@@ -328,6 +577,44 @@ bool AHeistPlayerController::TryBuildGameplayRequestContext(
 
 	OutContext.Character = HeistCharacter;
 	OutContext.PlayerState = HeistPlayerState;
+	OutContext.InventoryComponent = HeistCharacter->GetInventoryComponent();
+	checkf(IsValid(OutContext.InventoryComponent), TEXT("HeistPlayerCharacter requires HeistInventoryComponent"));
+	return true;
+}
+
+bool AHeistPlayerController::TryBuildInventoryMutationRequestContext(
+	FHeistGameplayRequestContext& OutContext,
+	const TCHAR*& OutRejectReason) const
+{
+	if (!TryBuildGameplayRequestContext(OutContext, OutRejectReason))
+	{
+		return false;
+	}
+
+	if (OutContext.InventoryComponent->GetOwner() != OutContext.Character)
+	{
+		OutRejectReason = TEXT("InvalidInventoryOwnership");
+		return false;
+	}
+
+	if (!OutContext.InventoryComponent->IsInventoryOpen())
+	{
+		OutRejectReason = TEXT("InventoryClosed");
+		return false;
+	}
+
+	if (OutContext.Character->GetStatusComponent()->IsStunned())
+	{
+		OutRejectReason = TEXT("Stunned");
+		return false;
+	}
+
+	if (OutContext.Character->GetActionComponent()->IsGameplayCastActive())
+	{
+		OutRejectReason = TEXT("Casting");
+		return false;
+	}
+
 	return true;
 }
 
@@ -366,6 +653,21 @@ void AHeistPlayerController::LogEscapeRequestRejected(
 			*GetNameSafe(TargetVentActor),
 			Reason,
 			*DistanceText),
+		EHeistDebugLevel::Warning);
+}
+
+void AHeistPlayerController::LogInventoryRequestRejected(
+	const TCHAR* RequestName,
+	const int32 InstanceId,
+	const TCHAR* Reason) const
+{
+	UHeistDebugFunctionLibrary::Message(
+		this,
+		FString::Printf(
+			TEXT("Inventory request rejected: Request=%s InstanceId=%d Reason=%s"),
+			RequestName,
+			InstanceId,
+			Reason),
 		EHeistDebugLevel::Warning);
 }
 

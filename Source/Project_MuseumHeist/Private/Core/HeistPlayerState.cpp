@@ -100,6 +100,45 @@ bool AHeistPlayerState::AddLootScoreAndWeight(int32 ScoreDelta, float WeightDelt
 	return true;
 }
 
+bool AHeistPlayerState::CanRemoveLootScoreAndWeight(const int32 ScoreDelta, const float WeightDelta) const
+{
+	return HasAuthority()
+		&& !bEscaped
+		&& ScoreDelta >= 0
+		&& WeightDelta >= 0.0f
+		&& FMath::IsFinite(WeightDelta)
+		&& ScoreDelta <= TotalLootScore
+		&& WeightDelta <= TotalLootWeight + KINDA_SMALL_NUMBER;
+}
+
+bool AHeistPlayerState::RemoveLootScoreAndWeight(const int32 ScoreDelta, const float WeightDelta)
+{
+	if (!CanRemoveLootScoreAndWeight(ScoreDelta, WeightDelta))
+	{
+		return false;
+	}
+
+	TotalLootScore -= ScoreDelta;
+	TotalLootWeight = FMath::Max(0.0f, TotalLootWeight - WeightDelta);
+	ForceNetUpdate();
+
+	if (AHeistPlayerCharacter* HeistPlayerCharacter = Cast<AHeistPlayerCharacter>(GetPawn()))
+	{
+		HeistPlayerCharacter->RefreshMovementSpeedFromWeight();
+	}
+
+	UHeistDebugFunctionLibrary::Message(
+		this,
+		FString::Printf(
+			TEXT("Loot score/weight removed: PlayerState=%s ScoreDelta=%d WeightDelta=%.2f TotalScore=%d TotalWeight=%.2f"),
+			*GetNameSafe(this),
+			ScoreDelta,
+			WeightDelta,
+			TotalLootScore,
+			TotalLootWeight));
+	return true;
+}
+
 #pragma endregion
 
 #pragma region EscapeState

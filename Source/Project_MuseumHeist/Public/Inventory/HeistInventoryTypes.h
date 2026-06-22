@@ -6,6 +6,9 @@
 
 #include "HeistInventoryTypes.generated.h"
 
+class UHeistInventoryComponent;
+class AActor;
+
 #pragma region Inventory
 
 USTRUCT(BlueprintType)
@@ -13,20 +16,51 @@ struct PROJECT_MUSEUMHEIST_API FHeistInventoryItem
 {
 	GENERATED_BODY()
 
+	UPROPERTY(BlueprintReadOnly)
+	int32 InstanceId = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadOnly)
+	FName ItemId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly)
+	FIntPoint GridPosition = FIntPoint(-1, -1);
+
+	UPROPERTY(BlueprintReadOnly)
+	int32 Quantity = 1;
+
+	UPROPERTY(BlueprintReadOnly)
+	bool bRotated = false;
+
+	bool operator==(const FHeistInventoryItem& Other) const
+	{
+		return InstanceId == Other.InstanceId
+			&& ItemId == Other.ItemId
+			&& GridPosition == Other.GridPosition
+			&& Quantity == Other.Quantity
+			&& bRotated == Other.bRotated;
+	}
+};
+
+#pragma endregion
+
+#pragma region LootDrop
+
+USTRUCT()
+struct PROJECT_MUSEUMHEIST_API FHeistLootDropRequest
+{
+	GENERATED_BODY()
+
 	UPROPERTY()
-	FGuid InstanceId;
+	TObjectPtr<AActor> DroppedBy;
 
 	UPROPERTY()
 	FName ItemId = NAME_None;
 
 	UPROPERTY()
-	FIntPoint GridPosition = FIntPoint(-1, -1);
+	int32 SourceInstanceId = INDEX_NONE;
 
 	UPROPERTY()
-	int32 Quantity = 1;
-
-	UPROPERTY()
-	bool bRotated = false;
+	FVector_NetQuantize DropOrigin = FVector::ZeroVector;
 };
 
 #pragma endregion
@@ -54,6 +88,12 @@ struct PROJECT_MUSEUMHEIST_API FHeistReplicatedInventory : public FFastArraySeri
 	{
 		return FastArrayDeltaSerialize<FHeistInventoryFastArrayItem, FHeistReplicatedInventory>(Items, DeltaParams, *this);
 	}
+
+	void SetOwnerComponent(UHeistInventoryComponent* InOwnerComponent);
+	void PostReplicatedReceive(const FFastArraySerializer::FPostReplicatedReceiveParameters& Parameters);
+
+private:
+	TWeakObjectPtr<UHeistInventoryComponent> OwnerComponent;
 };
 
 template<>
@@ -74,14 +114,16 @@ struct PROJECT_MUSEUMHEIST_API FHeistQuickSlotState
 {
 	GENERATED_BODY()
 
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly)
 	EHeistQuickSlotType SlotType = EHeistQuickSlotType::None;
 
-	UPROPERTY()
-	FGuid ItemInstanceId;
+	UPROPERTY(BlueprintReadOnly)
+	int32 ItemInstanceId = INDEX_NONE;
 
-	UPROPERTY()
-	FName ItemId = NAME_None;
+	bool operator==(const FHeistQuickSlotState& Other) const
+	{
+		return SlotType == Other.SlotType && ItemInstanceId == Other.ItemInstanceId;
+	}
 };
 
 #pragma endregion

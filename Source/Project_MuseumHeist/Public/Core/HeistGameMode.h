@@ -6,6 +6,11 @@
 #include "HeistGameMode.generated.h"
 
 class UHeistGameBalanceDataAsset;
+class UDataTable;
+class AHeistLootActor;
+struct FHeistItemDataRow;
+struct FHeistLootDataRow;
+struct FHeistLootDropRequest;
 
 UCLASS()
 class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
@@ -24,6 +29,19 @@ public:
 protected:
 	virtual void StartPlay() override;
 	virtual void RestartPlayer(AController* NewPlayer) override;
+
+#pragma endregion
+
+#pragma region Balance
+
+public:
+	UDataTable* GetItemDataTable() const;
+	bool TryGetItemDefinition(FName ItemId, FHeistItemDataRow& OutItemDefinition) const;
+	bool TryGetLootDefinition(FName ItemId, FHeistLootDataRow& OutLootDefinition) const;
+	bool TrySpawnDroppedLoot(const FHeistLootDropRequest& DropRequest, AHeistLootActor*& OutDroppedLootActor) const;
+
+private:
+	void ValidateItemDataTable() const;
 
 #pragma endregion
 

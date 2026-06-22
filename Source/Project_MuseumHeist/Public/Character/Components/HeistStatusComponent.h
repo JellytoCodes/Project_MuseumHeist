@@ -12,4 +12,8 @@ class PROJECT_MUSEUMHEIST_API UHeistStatusComponent : public UActorComponent
 
 public:
 	UHeistStatusComponent();
+	bool IsStunned() const;
+
+private:
+	bool bStunned = false;
 };
