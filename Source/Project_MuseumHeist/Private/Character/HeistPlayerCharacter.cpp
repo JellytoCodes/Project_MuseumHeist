@@ -52,11 +52,31 @@ AHeistPlayerCharacter::AHeistPlayerCharacter()
 
 #pragma endregion
 
+#pragma region Lifecycle
+
+void AHeistPlayerCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	checkf(IsValid(CameraSpringArm), TEXT("HeistPlayerCharacter requires CameraSpringArm"));
+	checkf(IsValid(TopDownCamera), TEXT("HeistPlayerCharacter requires TopDownCamera"));
+	checkf(IsValid(TagComponent), TEXT("HeistPlayerCharacter requires HeistTagComponent"));
+	checkf(IsValid(StatusComponent), TEXT("HeistPlayerCharacter requires HeistStatusComponent"));
+	checkf(IsValid(InventoryComponent), TEXT("HeistPlayerCharacter requires HeistInventoryComponent"));
+	checkf(IsValid(InteractionComponent), TEXT("HeistPlayerCharacter requires HeistInteractionComponent"));
+	checkf(IsValid(ActionComponent), TEXT("HeistPlayerCharacter requires HeistActionComponent"));
+	checkf(IsValid(VisionComponent), TEXT("HeistPlayerCharacter requires HeistVisionComponent"));
+	checkf(IsValid(CustomizationComponent), TEXT("HeistPlayerCharacter requires HeistCustomizationComponent"));
+	checkf(IsValid(NoiseEmitterComponent), TEXT("HeistPlayerCharacter requires HeistNoiseEmitterComponent"));
+}
+
+#pragma endregion
+
 #pragma region Movement
 
 void AHeistPlayerCharacter::MoveOnGameplayPlane(const FVector2D& MovementInput)
 {
-	if (MovementInput.IsNearlyZero())
+	if (!CanPerformGameplayActions() || MovementInput.IsNearlyZero())
 	{
 		return;
 	}
@@ -103,6 +123,7 @@ void AHeistPlayerCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 	RefreshMovementSpeedFromWeight();
+	ApplyEscapedGameplayRestrictions();
 }
 
 float AHeistPlayerCharacter::CalculateMoveSpeedFromWeight(float InTotalWeight) const
@@ -136,6 +157,45 @@ void AHeistPlayerCharacter::ApplyCurrentMoveSpeed()
 void AHeistPlayerCharacter::OnRep_CurrentMoveSpeed()
 {
 	ApplyCurrentMoveSpeed();
+}
+
+#pragma endregion
+
+#pragma region EscapeState
+
+bool AHeistPlayerCharacter::CanPerformGameplayActions() const
+{
+	const AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
+	return !IsValid(HeistPlayerState) || !HeistPlayerState->IsEscaped();
+}
+
+void AHeistPlayerCharacter::ApplyEscapedGameplayRestrictions()
+{
+	if (CanPerformGameplayActions())
+	{
+		return;
+	}
+
+	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
+	{
+		MovementComponent->StopMovementImmediately();
+		MovementComponent->DisableMovement();
+	}
+
+	SetActorEnableCollision(false);
+	SetActorHiddenInGame(true);
+
+	UHeistDebugFunctionLibrary::Message(
+		this,
+		FString::Printf(
+			TEXT("Escaped player restrictions applied: Character=%s MovementDisabled=true InteractionDisabled=true CollisionDisabled=true Hidden=true"),
+			*GetNameSafe(this)));
+}
+
+void AHeistPlayerCharacter::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+	ApplyEscapedGameplayRestrictions();
 }
 
 #pragma endregion

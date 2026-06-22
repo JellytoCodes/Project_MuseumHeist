@@ -29,6 +29,8 @@ public:
 	bool IsActorWithinInteractionRange(const AActor* TargetActor) const;
 
 private:
+	bool CanOwnerInteract() const;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Interaction", meta = (AllowPrivateAccess = "true"))
 	float InteractionRange = 300.0f;
 

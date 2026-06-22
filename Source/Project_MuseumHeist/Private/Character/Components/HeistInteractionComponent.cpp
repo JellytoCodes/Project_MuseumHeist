@@ -1,5 +1,7 @@
 #include "Character/Components/HeistInteractionComponent.h"
 
+#include "Character/HeistPlayerCharacter.h"
+#include "Core/HeistPlayerState.h"
 #include "Engine/OverlapResult.h"
 #include "Engine/World.h"
 #include "World/HeistInteractable.h"
@@ -19,7 +21,7 @@ bool UHeistInteractionComponent::RefreshInteractionTarget()
 {
 	AActor* OwnerActor = GetOwner();
 	UWorld* World = GetWorld();
-	if (!IsValid(OwnerActor) || World == nullptr)
+	if (!IsValid(OwnerActor) || World == nullptr || !CanOwnerInteract())
 	{
 		CurrentInteractionTarget.Reset();
 		return false;
@@ -88,6 +90,11 @@ AActor* UHeistInteractionComponent::GetCurrentInteractionTarget() const
 
 bool UHeistInteractionComponent::HasValidInteractionTarget() const
 {
+	if (!CanOwnerInteract())
+	{
+		return false;
+	}
+
 	AActor* TargetActor = CurrentInteractionTarget.Get();
 	if (!IsActorWithinInteractionRange(TargetActor))
 	{
@@ -106,13 +113,23 @@ float UHeistInteractionComponent::GetInteractionRange() const
 bool UHeistInteractionComponent::IsActorWithinInteractionRange(const AActor* TargetActor) const
 {
 	const AActor* OwnerActor = GetOwner();
-	if (!IsValid(OwnerActor) || !IsValid(TargetActor))
+	if (!IsValid(OwnerActor) || !IsValid(TargetActor) || !CanOwnerInteract())
 	{
 		return false;
 	}
 
 	return FVector::DistSquared(OwnerActor->GetActorLocation(), TargetActor->GetActorLocation())
 		<= FMath::Square(InteractionRange);
+}
+
+bool UHeistInteractionComponent::CanOwnerInteract() const
+{
+	const AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
+	const AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter)
+		? HeistCharacter->GetPlayerState<AHeistPlayerState>()
+		: nullptr;
+
+	return !IsValid(HeistPlayerState) || !HeistPlayerState->IsEscaped();
 }
 
 #pragma endregion

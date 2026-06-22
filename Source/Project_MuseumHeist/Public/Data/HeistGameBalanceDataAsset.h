@@ -22,6 +22,12 @@ public:
 #pragma region Config
 
 public:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Match", meta = (ClampMin = "0.0", Units = "s"))
+	float VentUnlockTime = 180.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Interaction", meta = (ClampMin = "0.0", Units = "s"))
+	float EscapeCastTime = 2.0f;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Data Tables")
 	TSoftObjectPtr<UDataTable> ItemDataTable;
 

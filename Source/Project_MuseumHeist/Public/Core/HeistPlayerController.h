@@ -7,6 +7,8 @@
 
 class AHeistPlayerCharacter;
 class AHeistLootActor;
+class AHeistPlayerState;
+class AHeistVentActor;
 class UInputAction;
 class UInputMappingContext;
 struct FHitResult;
@@ -54,12 +56,26 @@ private:
 	UFUNCTION(Server, Reliable)
 	void Server_RequestLootPickup(AHeistLootActor* TargetLootActor);
 
+	UFUNCTION(Server, Reliable)
+	void Server_RequestEscape(AHeistVentActor* TargetVentActor);
+
 #pragma endregion
 
 #pragma region InternalHelpers
 
 private:
+	struct FHeistGameplayRequestContext
+	{
+		AHeistPlayerCharacter* Character = nullptr;
+		AHeistPlayerState* PlayerState = nullptr;
+	};
+
+	bool TryBuildGameplayRequestContext(
+		FHeistGameplayRequestContext& OutContext,
+		const TCHAR*& OutRejectReason) const;
+
 	void LogLootPickupRejected(const AHeistLootActor* TargetLootActor, const TCHAR* Reason, float Distance = -1.0f) const;
+	void LogEscapeRequestRejected(const AHeistVentActor* TargetVentActor, const TCHAR* Reason, float Distance = -1.0f) const;
 
 #pragma endregion
 

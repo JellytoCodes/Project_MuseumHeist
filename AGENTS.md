@@ -338,6 +338,21 @@ Blueprint should configure asset-specific or variant-specific component properti
 
 C++ creates the slot. Blueprint fills the content.
 
+### Required Character Component Contract
+
+Components created as required default subobjects of `AHeistPlayerCharacter` must be validated once in `BeginPlay()` with `checkf`.
+
+After that validation, trusted internal gameplay code such as `AHeistPlayerController` may use those required Character components without repeating nullable fallback branches.
+
+This rule applies only to required C++-owned component slots. It does not remove runtime validation for:
+
+* Pawn or PlayerState lifecycle and ownership
+* Client-provided RPC targets
+* Distance, availability, phase, escaped, stun, or other mutable gameplay state
+* Optional Blueprint-assigned assets and input references
+
+If a required Character component is missing, fail immediately as an invalid project configuration instead of continuing with partial gameplay behavior.
+
 ### Codex Output Requirement
 
 When a task touches a class that depends on assets or editor setup, Codex must separate the final output into:

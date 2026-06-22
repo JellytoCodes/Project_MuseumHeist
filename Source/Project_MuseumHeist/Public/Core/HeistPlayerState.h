@@ -5,6 +5,8 @@
 
 #include "HeistPlayerState.generated.h"
 
+DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerEscapeStateChanged, bool);
+
 UCLASS()
 class PROJECT_MUSEUMHEIST_API AHeistPlayerState : public APlayerState
 {
@@ -24,6 +26,37 @@ private:
 
 	UPROPERTY(ReplicatedUsing = OnRep_TotalLootWeight, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Weight", meta = (AllowPrivateAccess = "true"))
 	float TotalLootWeight = 0.0f;
+
+#pragma endregion
+
+#pragma region EscapeState
+
+public:
+	bool IsEscaped() const;
+	bool MarkEscaped();
+	int32 GetFinalScore() const;
+	float GetEscapeTimeSeconds() const;
+	int32 GetPlayerRank() const;
+	void SetPlayerRank(int32 InPlayerRank);
+	FHeistPlayerEscapeStateChanged& GetEscapeStateChangedDelegate();
+
+private:
+	UPROPERTY(ReplicatedUsing = OnRep_Escaped, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Escape", meta = (AllowPrivateAccess = "true"))
+	bool bEscaped = false;
+
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
+	int32 FinalScore = 0;
+
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
+	float EscapeTimeSeconds = -1.0f;
+
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
+	int32 PlayerRank = 0;
+
+	FHeistPlayerEscapeStateChanged EscapeStateChangedDelegate;
+
+	UFUNCTION()
+	void OnRep_Escaped();
 
 #pragma endregion
 

@@ -33,6 +33,7 @@ Only create compile-ready class and type structure.
 Contains:
 
 * `EHeistMatchPhase`
+* `FHeistPlayerResult`
 * `EHeistItemType`
 * `EHeistLootGrade`
 * `EHeistUseType`
@@ -113,6 +114,7 @@ Class:
 Purpose:
 
 * Replicated match phase and timer state.
+* Replicated result aggregation and deterministic ranking baseline.
 * Uses the phase order Lobby -> Loadout -> ReadyCountdown -> InGame -> End.
 
 Create replicated properties only if compile-safe and minimal.
@@ -130,6 +132,7 @@ Purpose:
 
 * Player score, carried weight, escaped state, customization state placeholder.
 * Owns result-facing values such as `TotalLootScore`, `FinalScore`, and escaped state.
+* Owns escape time and player rank assigned by the authoritative result aggregation.
 
 ---
 

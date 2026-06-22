@@ -28,6 +28,13 @@ public:
 
 #pragma endregion
 
+#pragma region Lifecycle
+
+protected:
+	virtual void BeginPlay() override;
+
+#pragma endregion
+
 #pragma region Movement
 
 public:
@@ -55,6 +62,17 @@ private:
 
 	UPROPERTY(ReplicatedUsing = OnRep_CurrentMoveSpeed, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Movement", meta = (AllowPrivateAccess = "true"))
 	float CurrentMoveSpeed = 600.0f;
+
+#pragma endregion
+
+#pragma region EscapeState
+
+public:
+	bool CanPerformGameplayActions() const;
+	void ApplyEscapedGameplayRestrictions();
+
+protected:
+	virtual void OnRep_PlayerState() override;
 
 #pragma endregion
 

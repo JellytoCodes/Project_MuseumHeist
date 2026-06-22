@@ -5,6 +5,8 @@
 
 #include "HeistGameMode.generated.h"
 
+class UHeistGameBalanceDataAsset;
+
 UCLASS()
 class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 {
@@ -20,7 +22,25 @@ public:
 #pragma region Lifecycle
 
 protected:
+	virtual void StartPlay() override;
 	virtual void RestartPlayer(AController* NewPlayer) override;
+
+#pragma endregion
+
+#pragma region EscapePhase
+
+public:
+	float GetEscapeCastTimeSeconds() const;
+
+private:
+	void StartEscapePhaseTimer();
+	void HandleEscapePhaseTimerElapsed();
+	float ResolveEscapePhaseDelaySeconds() const;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Balance", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UHeistGameBalanceDataAsset> GameBalanceDataAsset;
+
+	FTimerHandle EscapePhaseTimerHandle;
 
 #pragma endregion
 
