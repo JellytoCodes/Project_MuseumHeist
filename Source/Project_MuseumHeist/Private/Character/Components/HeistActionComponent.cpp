@@ -121,14 +121,12 @@ bool UHeistActionComponent::TryBeginEscapeRequest(AHeistVentActor* TargetVentAct
 	SetComponentTickEnabled(true);
 	OwnerActor->ForceNetUpdate();
 
-	UHeistDebugFunctionLibrary::Message(
+	UHeistDebugFunctionLibrary::DebugEscapeCastStarted(
 		this,
-		FString::Printf(
-			TEXT("Escape cast started: Character=%s Vent=%s Duration=%.2f EndServerTime=%.2f"),
-			*GetNameSafe(OwnerActor),
-			*GetNameSafe(TargetVentActor),
-			EscapeCastDurationSeconds,
-			EscapeCastEndServerTime));
+		OwnerActor,
+		TargetVentActor,
+		EscapeCastDurationSeconds,
+		EscapeCastEndServerTime);
 
 	if (EscapeCastDurationSeconds <= 0.0f)
 	{
@@ -193,13 +191,11 @@ FHeistEscapeCastCompleted& UHeistActionComponent::GetEscapeCastCompletedDelegate
 
 void UHeistActionComponent::OnRep_EscapeCastActive()
 {
-	UHeistDebugFunctionLibrary::Message(
+	UHeistDebugFunctionLibrary::DebugEscapeCastStateReplicated(
 		this,
-		FString::Printf(
-			TEXT("Escape cast state replicated: Character=%s IsActive=%s EndServerTime=%.2f"),
-			*GetNameSafe(GetOwner()),
-			bEscapeCastActive ? TEXT("true") : TEXT("false"),
-			EscapeCastEndServerTime));
+		GetOwner(),
+		bEscapeCastActive,
+		EscapeCastEndServerTime);
 }
 
 void UHeistActionComponent::HandleOwnerTakeAnyDamage(
@@ -281,12 +277,7 @@ void UHeistActionComponent::HandleEscapeCastTimerElapsed()
 
 	ClearEscapeCastState();
 
-	UHeistDebugFunctionLibrary::Message(
-		this,
-		FString::Printf(
-			TEXT("Escape cast completed: Character=%s Vent=%s Result=Escaped"),
-			*GetNameSafe(HeistCharacter),
-			*GetNameSafe(TargetVentActor)));
+	UHeistDebugFunctionLibrary::DebugEscapeCastCompleted(this, HeistCharacter, TargetVentActor);
 
 	EscapeCastCompletedDelegate.Broadcast(HeistCharacter, TargetVentActor);
 }
@@ -302,13 +293,7 @@ void UHeistActionComponent::CancelEscapeCast(const TCHAR* Reason)
 	const FString VentName = GetNameSafe(PendingEscapeVent.Get());
 	ClearEscapeCastState();
 
-	UHeistDebugFunctionLibrary::Message(
-		this,
-		FString::Printf(
-			TEXT("Escape cast cancelled: Character=%s Vent=%s Reason=%s"),
-			*CharacterName,
-			*VentName,
-			Reason));
+	UHeistDebugFunctionLibrary::DebugEscapeCastCancelled(this, CharacterName, VentName, Reason);
 }
 
 void UHeistActionComponent::ClearEscapeCastState()

@@ -9,7 +9,9 @@
 #include "Core/HeistGameMode.h"
 #include "Core/HeistHUD.h"
 #include "Core/HeistPlayerState.h"
+#if !UE_BUILD_SHIPPING
 #include "Debug/HeistCheatManager.h"
+#endif
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "Engine/LocalPlayer.h"
 #include "EnhancedInputComponent.h"
@@ -23,7 +25,9 @@
 
 AHeistPlayerController::AHeistPlayerController()
 {
+#if !UE_BUILD_SHIPPING
 	CheatClass = UHeistCheatManager::StaticClass();
+#endif
 }
 
 #pragma endregion
@@ -57,10 +61,7 @@ void AHeistPlayerController::SetupInputComponent()
 	}
 	else
 	{
-		UHeistDebugFunctionLibrary::Message(
-			this,
-			TEXT("MoveInputAction is not assigned in the PlayerController Blueprint."),
-			EHeistDebugLevel::Warning);
+		UHeistDebugFunctionLibrary::DebugMissingInputAsset(this, TEXT("MoveInputAction"));
 	}
 
 	if (InteractInputAction != nullptr)
@@ -73,10 +74,7 @@ void AHeistPlayerController::SetupInputComponent()
 	}
 	else
 	{
-		UHeistDebugFunctionLibrary::Message(
-			this,
-			TEXT("InteractInputAction is not assigned in the PlayerController Blueprint."),
-			EHeistDebugLevel::Warning);
+		UHeistDebugFunctionLibrary::DebugMissingInputAsset(this, TEXT("InteractInputAction"));
 	}
 
 	if (InventoryInputAction != nullptr)
@@ -89,18 +87,12 @@ void AHeistPlayerController::SetupInputComponent()
 	}
 	else
 	{
-		UHeistDebugFunctionLibrary::Message(
-			this,
-			TEXT("InventoryInputAction is not assigned in the PlayerController Blueprint."),
-			EHeistDebugLevel::Warning);
+		UHeistDebugFunctionLibrary::DebugMissingInputAsset(this, TEXT("InventoryInputAction"));
 	}
 
 	if (GameplayInputMappingContext == nullptr)
 	{
-		UHeistDebugFunctionLibrary::Message(
-			this,
-			TEXT("GameplayInputMappingContext is not assigned in the PlayerController Blueprint."),
-			EHeistDebugLevel::Warning);
+		UHeistDebugFunctionLibrary::DebugMissingInputAsset(this, TEXT("GameplayInputMappingContext"));
 		return;
 	}
 
@@ -144,10 +136,7 @@ void AHeistPlayerController::HandleInventoryToggle()
 		AHeistHUD* HeistHUD = GetHUD<AHeistHUD>();
 		if (!IsValid(HeistHUD) || !HeistHUD->ShowInventoryScreen())
 		{
-			UHeistDebugFunctionLibrary::Message(
-				this,
-				TEXT("Inventory open request skipped: Inventory Widget/ViewModel setup is incomplete."),
-				EHeistDebugLevel::Warning);
+			UHeistDebugFunctionLibrary::DebugInventoryOpenSkipped(this);
 			return;
 		}
 	}
@@ -246,12 +235,10 @@ void AHeistPlayerController::Server_RequestLootPickup_Implementation(AHeistLootA
 		return;
 	}
 
-	UHeistDebugFunctionLibrary::Message(
+	UHeistDebugFunctionLibrary::DebugLootPickupRequestReceived(
 		this,
-		FString::Printf(
-			TEXT("Loot pickup request received: Character=%s Target=%s"),
-			*GetNameSafe(RequestContext.Character),
-			*GetNameSafe(TargetLootActor)));
+		RequestContext.Character,
+		TargetLootActor);
 
 	UHeistInteractionComponent* InteractionComponent = RequestContext.Character->GetInteractionComponent();
 	const float Distance = FVector::Distance(
@@ -306,14 +293,12 @@ void AHeistPlayerController::Server_RequestLootPickup_Implementation(AHeistLootA
 		TargetLootActor->CommitPickupReservation(RequestContext.Character),
 		TEXT("Reserved loot must commit after inventory and score/weight commit"));
 
-	UHeistDebugFunctionLibrary::Message(
+	UHeistDebugFunctionLibrary::DebugLootPickupRequestAccepted(
 		this,
-		FString::Printf(
-			TEXT("Loot pickup request accepted: Target=%s ItemId=%s InstanceId=%d Distance=%.1f InventoryCommitted=true"),
-			*GetNameSafe(TargetLootActor),
-			*TargetLootActor->GetLootRowId().ToString(),
-			AddedInstanceId,
-			Distance));
+		TargetLootActor,
+		TargetLootActor->GetLootRowId(),
+		AddedInstanceId,
+		Distance);
 }
 
 void AHeistPlayerController::Server_RequestEscape_Implementation(AHeistVentActor* TargetVentActor)
@@ -382,13 +367,11 @@ void AHeistPlayerController::Server_RequestEscape_Implementation(AHeistVentActor
 		return;
 	}
 
-	UHeistDebugFunctionLibrary::Message(
+	UHeistDebugFunctionLibrary::DebugEscapeRequestAccepted(
 		this,
-		FString::Printf(
-			TEXT("Escape request accepted: Character=%s Vent=%s Distance=%.1f State=Casting"),
-			*GetNameSafe(RequestContext.Character),
-			*GetNameSafe(TargetVentActor),
-			Distance));
+		RequestContext.Character,
+		TargetVentActor,
+		Distance);
 }
 
 void AHeistPlayerController::Server_SetInventoryOpen_Implementation(const bool bInventoryOpen)
@@ -503,15 +486,13 @@ void AHeistPlayerController::Server_RequestDropInventoryItem_Implementation(cons
 		RequestContext.PlayerState->RemoveLootScoreAndWeight(LootDefinition.ScoreValue, LootDefinition.Weight),
 		TEXT("Validated loot score and weight removal must succeed after inventory commit."));
 
-	UHeistDebugFunctionLibrary::Message(
+	UHeistDebugFunctionLibrary::DebugInventoryDropAccepted(
 		this,
-		FString::Printf(
-			TEXT("Inventory drop accepted: Character=%s ItemId=%s InstanceId=%d WorldLoot=%s DropOrigin=%s"),
-			*GetNameSafe(RequestContext.Character),
-			*DropRequest.ItemId.ToString(),
-			InstanceId,
-			*GetNameSafe(DroppedLootActor),
-			*FVector(DropRequest.DropOrigin).ToCompactString()));
+		RequestContext.Character,
+		DropRequest.ItemId,
+		InstanceId,
+		DroppedLootActor,
+		FVector(DropRequest.DropOrigin));
 }
 
 void AHeistPlayerController::Server_RequestAssignQuickSlot_Implementation(
@@ -633,18 +614,7 @@ void AHeistPlayerController::LogLootPickupRejected(
 	const TCHAR* Reason,
 	float Distance) const
 {
-	const FString DistanceText = Distance >= 0.0f
-		? FString::Printf(TEXT(" Distance=%.1f"), Distance)
-		: FString();
-
-	UHeistDebugFunctionLibrary::Message(
-		this,
-		FString::Printf(
-			TEXT("Loot pickup request rejected: Target=%s Reason=%s%s"),
-			*GetNameSafe(TargetLootActor),
-			Reason,
-			*DistanceText),
-		EHeistDebugLevel::Warning);
+	UHeistDebugFunctionLibrary::DebugLootPickupRequestRejected(this, TargetLootActor, Reason, Distance);
 }
 
 void AHeistPlayerController::LogEscapeRequestRejected(
@@ -652,18 +622,7 @@ void AHeistPlayerController::LogEscapeRequestRejected(
 	const TCHAR* Reason,
 	float Distance) const
 {
-	const FString DistanceText = Distance >= 0.0f
-		? FString::Printf(TEXT(" Distance=%.1f"), Distance)
-		: FString();
-
-	UHeistDebugFunctionLibrary::Message(
-		this,
-		FString::Printf(
-			TEXT("Escape request rejected: Vent=%s Reason=%s%s"),
-			*GetNameSafe(TargetVentActor),
-			Reason,
-			*DistanceText),
-		EHeistDebugLevel::Warning);
+	UHeistDebugFunctionLibrary::DebugEscapeRequestRejected(this, TargetVentActor, Reason, Distance);
 }
 
 void AHeistPlayerController::LogInventoryRequestRejected(
@@ -671,14 +630,7 @@ void AHeistPlayerController::LogInventoryRequestRejected(
 	const int32 InstanceId,
 	const TCHAR* Reason) const
 {
-	UHeistDebugFunctionLibrary::Message(
-		this,
-		FString::Printf(
-			TEXT("Inventory request rejected: Request=%s InstanceId=%d Reason=%s"),
-			RequestName,
-			InstanceId,
-			Reason),
-		EHeistDebugLevel::Warning);
+	UHeistDebugFunctionLibrary::DebugInventoryRequestRejected(this, RequestName, InstanceId, Reason);
 }
 
 #pragma endregion

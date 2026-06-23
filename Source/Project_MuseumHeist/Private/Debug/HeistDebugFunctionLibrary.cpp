@@ -6,6 +6,7 @@
 #include "Core/HeistLogChannels.h"
 #include "Engine/Engine.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/PlayerState.h"
 #include "Inventory/HeistInventoryTypes.h"
 
 #pragma region InternalHelpers
@@ -69,6 +70,13 @@ namespace
 		OutSlotType = EHeistQuickSlotType::None;
 		return false;
 	}
+
+	FString FormatOptionalDistance(const float Distance)
+	{
+		return Distance >= 0.0f
+			? FString::Printf(TEXT(" Distance=%.1f"), Distance)
+			: FString();
+	}
 }
 
 #pragma endregion
@@ -82,6 +90,9 @@ void UHeistDebugFunctionLibrary::Message(
 	bool bPrintToScreen,
 	float Duration)
 {
+#if UE_BUILD_SHIPPING
+	return;
+#else
 	const FString ContextName = GetNameSafe(WorldContextObject);
 	const FString FormattedMessage = FString::Printf(TEXT("[%s] %s"), *ContextName, *Message);
 
@@ -118,14 +129,722 @@ void UHeistDebugFunctionLibrary::Message(
 		FMath::Max(0.0f, Duration),
 		MessageColor,
 		FormattedMessage);
+#endif
+}
+
+#pragma endregion
+
+#pragma region GameplayDebug
+
+void UHeistDebugFunctionLibrary::DebugMissingInputAsset(const UObject* WorldContextObject, const TCHAR* AssetName)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(TEXT("%s is not assigned in the PlayerController Blueprint."), AssetName),
+		EHeistDebugLevel::Warning);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugInventoryOpenSkipped(const UObject* WorldContextObject)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		TEXT("Inventory open request skipped: Inventory Widget/ViewModel setup is incomplete."),
+		EHeistDebugLevel::Warning);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugInventoryRequestRejected(
+	const UObject* WorldContextObject,
+	const TCHAR* RequestName,
+	const int32 InstanceId,
+	const TCHAR* Reason)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Inventory request rejected: Request=%s InstanceId=%d Reason=%s"),
+			RequestName,
+			InstanceId,
+			Reason),
+		EHeistDebugLevel::Warning);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugInventoryDropAccepted(
+	const UObject* WorldContextObject,
+	const UObject* Character,
+	const FName ItemId,
+	const int32 InstanceId,
+	const UObject* DroppedLootActor,
+	const FVector& DropOrigin)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Inventory drop accepted: Character=%s ItemId=%s InstanceId=%d WorldLoot=%s DropOrigin=%s"),
+			*GetNameSafe(Character),
+			*ItemId.ToString(),
+			InstanceId,
+			*GetNameSafe(DroppedLootActor),
+			*DropOrigin.ToCompactString()));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugInventoryItemDefinitionLookupRejected(
+	const FName ItemId,
+	const TCHAR* Reason)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	UE_LOG(
+		LogHeistInventory,
+		Warning,
+		TEXT("Item definition lookup rejected: ItemId=%s Reason=%s"),
+		*ItemId.ToString(),
+		Reason);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugInventoryAddRejected(
+	const UObject* OwnerActor,
+	const FName ItemId,
+	const TCHAR* Reason,
+	const int32 GridColumnCount,
+	const int32 GridRowCount)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	if (GridColumnCount != INDEX_NONE && GridRowCount != INDEX_NONE)
+	{
+		UE_LOG(
+			LogHeistInventory,
+			Warning,
+			TEXT("Inventory add rejected: Owner=%s ItemId=%s Reason=%s Grid=%dx%d"),
+			*GetNameSafe(OwnerActor),
+			*ItemId.ToString(),
+			Reason,
+			GridColumnCount,
+			GridRowCount);
+		return;
+	}
+
+	UE_LOG(
+		LogHeistInventory,
+		Warning,
+		TEXT("Inventory add rejected: Owner=%s ItemId=%s Reason=%s"),
+		*GetNameSafe(OwnerActor),
+		*ItemId.ToString(),
+		Reason);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugInventoryItemAdded(
+	const UObject* OwnerActor,
+	const FName ItemId,
+	const int32 InstanceId,
+	const FIntPoint& GridPosition,
+	const FIntPoint& PlacedSize,
+	const bool bRotated,
+	const int32 ItemCount)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	UE_LOG(
+		LogHeistInventory,
+		Log,
+		TEXT("Inventory item added: Owner=%s ItemId=%s InstanceId=%d Grid=(%d,%d) Size=%dx%d Rotated=%s ItemCount=%d"),
+		*GetNameSafe(OwnerActor),
+		*ItemId.ToString(),
+		InstanceId,
+		GridPosition.X,
+		GridPosition.Y,
+		PlacedSize.X,
+		PlacedSize.Y,
+		bRotated ? TEXT("true") : TEXT("false"),
+		ItemCount);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugInventoryItemMoved(
+	const UObject* OwnerActor,
+	const int32 InstanceId,
+	const FIntPoint& GridPosition)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	UE_LOG(
+		LogHeistInventory,
+		Log,
+		TEXT("Inventory item moved: Owner=%s InstanceId=%d Grid=(%d,%d)"),
+		*GetNameSafe(OwnerActor),
+		InstanceId,
+		GridPosition.X,
+		GridPosition.Y);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugInventoryItemRotated(
+	const UObject* OwnerActor,
+	const int32 InstanceId,
+	const bool bRotated)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	UE_LOG(
+		LogHeistInventory,
+		Log,
+		TEXT("Inventory item rotated: Owner=%s InstanceId=%d Rotated=%s"),
+		*GetNameSafe(OwnerActor),
+		InstanceId,
+		bRotated ? TEXT("true") : TEXT("false"));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugInventoryItemRemoved(
+	const UObject* OwnerActor,
+	const FName ItemId,
+	const int32 InstanceId,
+	const int32 ItemCount)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	UE_LOG(
+		LogHeistInventory,
+		Log,
+		TEXT("Inventory item removed: Owner=%s ItemId=%s InstanceId=%d ItemCount=%d"),
+		*GetNameSafe(OwnerActor),
+		*ItemId.ToString(),
+		InstanceId,
+		ItemCount);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugQuickSlotAssigned(
+	const UObject* OwnerActor,
+	const int32 SlotTypeValue,
+	const int32 InstanceId,
+	const FName ItemId)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	UE_LOG(
+		LogHeistInventory,
+		Log,
+		TEXT("QuickSlot assigned: Owner=%s Slot=%d InstanceId=%d ItemId=%s"),
+		*GetNameSafe(OwnerActor),
+		SlotTypeValue,
+		InstanceId,
+		*ItemId.ToString());
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugInventoryOccupancyInvalid(
+	const int32 InstanceId,
+	const FName ItemId,
+	const TCHAR* Reason,
+	const FIntPoint& GridPosition,
+	const FIntPoint& ItemSize)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	if (ItemSize != FIntPoint::ZeroValue)
+	{
+		UE_LOG(
+			LogHeistInventory,
+			Error,
+			TEXT("Inventory occupancy invalid: InstanceId=%d ItemId=%s Grid=(%d,%d) Size=%dx%d Reason=%s"),
+			InstanceId,
+			*ItemId.ToString(),
+			GridPosition.X,
+			GridPosition.Y,
+			ItemSize.X,
+			ItemSize.Y,
+			Reason);
+		return;
+	}
+
+	UE_LOG(
+		LogHeistInventory,
+		Error,
+		TEXT("Inventory occupancy invalid: InstanceId=%d ItemId=%s Reason=%s"),
+		InstanceId,
+		*ItemId.ToString(),
+		Reason);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugLootPickupRequestReceived(
+	const UObject* WorldContextObject,
+	const UObject* Character,
+	const UObject* TargetLootActor)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Loot pickup request received: Character=%s Target=%s"),
+			*GetNameSafe(Character),
+			*GetNameSafe(TargetLootActor)));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugLootPickupRequestRejected(
+	const UObject* WorldContextObject,
+	const UObject* TargetLootActor,
+	const TCHAR* Reason,
+	const float Distance)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Loot pickup request rejected: Target=%s Reason=%s%s"),
+			*GetNameSafe(TargetLootActor),
+			Reason,
+			*FormatOptionalDistance(Distance)),
+		EHeistDebugLevel::Warning);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugLootPickupRequestAccepted(
+	const UObject* WorldContextObject,
+	const UObject* TargetLootActor,
+	const FName ItemId,
+	const int32 InstanceId,
+	const float Distance)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Loot pickup request accepted: Target=%s ItemId=%s InstanceId=%d Distance=%.1f InventoryCommitted=true"),
+			*GetNameSafe(TargetLootActor),
+			*ItemId.ToString(),
+			InstanceId,
+			Distance));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugLootDataFallbackApplied(const UObject* WorldContextObject, const FName LootRowName)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(TEXT("LootDataRow '%s' was not found. Fallback values are active."), *LootRowName.ToString()),
+		EHeistDebugLevel::Warning);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugEscapeRequestRejected(
+	const UObject* WorldContextObject,
+	const UObject* TargetVentActor,
+	const TCHAR* Reason,
+	const float Distance)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Escape request rejected: Vent=%s Reason=%s%s"),
+			*GetNameSafe(TargetVentActor),
+			Reason,
+			*FormatOptionalDistance(Distance)),
+		EHeistDebugLevel::Warning);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugEscapeRequestAccepted(
+	const UObject* WorldContextObject,
+	const UObject* Character,
+	const UObject* TargetVentActor,
+	const float Distance)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Escape request accepted: Character=%s Vent=%s Distance=%.1f State=Casting"),
+			*GetNameSafe(Character),
+			*GetNameSafe(TargetVentActor),
+			Distance));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugEscapeCastStarted(
+	const UObject* WorldContextObject,
+	const UObject* Character,
+	const UObject* TargetVentActor,
+	const float DurationSeconds,
+	const float EndServerTime)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Escape cast started: Character=%s Vent=%s Duration=%.2f EndServerTime=%.2f"),
+			*GetNameSafe(Character),
+			*GetNameSafe(TargetVentActor),
+			DurationSeconds,
+			EndServerTime));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugEscapeCastStateReplicated(
+	const UObject* WorldContextObject,
+	const UObject* Character,
+	const bool bIsActive,
+	const float EndServerTime)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Escape cast state replicated: Character=%s IsActive=%s EndServerTime=%.2f"),
+			*GetNameSafe(Character),
+			bIsActive ? TEXT("true") : TEXT("false"),
+			EndServerTime));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugEscapeCastCompleted(
+	const UObject* WorldContextObject,
+	const UObject* Character,
+	const UObject* TargetVentActor)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Escape cast completed: Character=%s Vent=%s Result=Escaped"),
+			*GetNameSafe(Character),
+			*GetNameSafe(TargetVentActor)));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugEscapeCastCancelled(
+	const UObject* WorldContextObject,
+	const FString& CharacterName,
+	const FString& VentName,
+	const TCHAR* Reason)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Escape cast cancelled: Character=%s Vent=%s Reason=%s"),
+			*CharacterName,
+			*VentName,
+			Reason));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugLootScoreWeightRejected(
+	const UObject* WorldContextObject,
+	const TCHAR* Reason,
+	const int32 ScoreDelta,
+	const float WeightDelta)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	const bool bHasDeltaContext = ScoreDelta != INDEX_NONE || WeightDelta >= 0.0f;
+	Message(
+		WorldContextObject,
+		bHasDeltaContext
+			? FString::Printf(
+				TEXT("Loot score/weight rejected: PlayerState=%s Reason=%s ScoreDelta=%d WeightDelta=%.2f"),
+				*GetNameSafe(WorldContextObject),
+				Reason,
+				ScoreDelta,
+				WeightDelta)
+			: FString::Printf(
+				TEXT("Loot score/weight rejected: PlayerState=%s Reason=%s"),
+				*GetNameSafe(WorldContextObject),
+				Reason),
+		EHeistDebugLevel::Warning);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugLootScoreWeightApplied(
+	const UObject* WorldContextObject,
+	const int32 ScoreDelta,
+	const float WeightDelta,
+	const int32 TotalScore,
+	const float TotalWeight)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Loot score/weight applied: PlayerState=%s ScoreDelta=%d WeightDelta=%.2f TotalScore=%d TotalWeight=%.2f"),
+			*GetNameSafe(WorldContextObject),
+			ScoreDelta,
+			WeightDelta,
+			TotalScore,
+			TotalWeight));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugLootScoreWeightRemoved(
+	const UObject* WorldContextObject,
+	const int32 ScoreDelta,
+	const float WeightDelta,
+	const int32 TotalScore,
+	const float TotalWeight)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Loot score/weight removed: PlayerState=%s ScoreDelta=%d WeightDelta=%.2f TotalScore=%d TotalWeight=%.2f"),
+			*GetNameSafe(WorldContextObject),
+			ScoreDelta,
+			WeightDelta,
+			TotalScore,
+			TotalWeight));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugPlayerEscapeStateRejected(
+	const UObject* WorldContextObject,
+	const TCHAR* Reason)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Player escape state rejected: PlayerState=%s Reason=%s"),
+			*GetNameSafe(WorldContextObject),
+			Reason),
+		EHeistDebugLevel::Warning);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugPlayerEscapeStateCommitted(
+	const UObject* WorldContextObject,
+	const int32 HeistPlayerId,
+	const int32 FinalScore,
+	const float EscapeTimeSeconds)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Player escape state committed: PlayerState=%s HeistPlayerId=%d IsEscaped=true FinalScore=%d EscapeTime=%.2f ScoreFrozen=true"),
+			*GetNameSafe(WorldContextObject),
+			HeistPlayerId,
+			FinalScore,
+			EscapeTimeSeconds));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugPlayerEscapeStateReplicated(
+	const UObject* WorldContextObject,
+	const int32 HeistPlayerId,
+	const bool bEscaped)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Player escape state replicated: PlayerState=%s HeistPlayerId=%d IsEscaped=%s"),
+			*GetNameSafe(WorldContextObject),
+			HeistPlayerId,
+			bEscaped ? TEXT("true") : TEXT("false")));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugPlayerStateScoreReplicated(
+	const UObject* WorldContextObject,
+	const int32 TotalLootScore)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("PlayerState score replicated: PlayerState=%s TotalLootScore=%d"),
+			*GetNameSafe(WorldContextObject),
+			TotalLootScore));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugPlayerStateWeightReplicated(
+	const UObject* WorldContextObject,
+	const float TotalLootWeight)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("PlayerState weight replicated: PlayerState=%s TotalLootWeight=%.2f"),
+			*GetNameSafe(WorldContextObject),
+			TotalLootWeight));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugWeightMovementSkipped(
+	const UObject* WorldContextObject,
+	const TCHAR* Reason)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Weight movement speed skipped: %s=%s Reason=%s"),
+			WorldContextObject && WorldContextObject->IsA<APlayerState>() ? TEXT("PlayerState") : TEXT("Character"),
+			*GetNameSafe(WorldContextObject),
+			Reason),
+		EHeistDebugLevel::Warning);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugWeightMovementSpeedApplied(
+	const UObject* WorldContextObject,
+	const float TotalWeight,
+	const float BaseSpeed,
+	const float FinalSpeed)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Weight movement speed applied: Character=%s TotalWeight=%.2f BaseSpeed=%.2f FinalSpeed=%.2f"),
+			*GetNameSafe(WorldContextObject),
+			TotalWeight,
+			BaseSpeed,
+			FinalSpeed));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugEscapedPlayerRestrictionsApplied(const UObject* WorldContextObject)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Escaped player restrictions applied: Character=%s MovementDisabled=true InteractionDisabled=true CollisionDisabled=true Hidden=true"),
+			*GetNameSafe(WorldContextObject)));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugResultScreenShowSkipped(
+	const UObject* HUD,
+	const UObject* ViewModel,
+	const UClass* WidgetClass)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	UE_LOG(
+		LogHeistUI,
+		Warning,
+		TEXT("Result screen show skipped: HUD=%s ViewModel=%s WidgetClass=%s"),
+		*GetNameSafe(HUD),
+		*GetNameSafe(ViewModel),
+		*GetNameSafe(WidgetClass));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugWidgetMissingMVVMView(
+	const UObject* Widget,
+	const TCHAR* WidgetRole)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	UE_LOG(
+		LogHeistUI,
+		Warning,
+		TEXT("%s widget has no MVVMView extension; MVVM binding injection skipped. Widget=%s"),
+		WidgetRole,
+		*GetNameSafe(Widget));
+#endif
 }
 
 #pragma endregion
 
 #pragma region InventoryDebug
 
+void UHeistDebugFunctionLibrary::DebugInventoryHelp(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		PlayerController,
+		TEXT("Inventory debug commands: HeistInvDump | HeistInvOpen 1/0 | HeistInvMove <InstanceId> <X> <Y> | HeistInvRotate <InstanceId> | HeistInvDrop <InstanceId> | HeistInvAssign <Q|E|R|Coin|Smoke|Glue> <InstanceId> | HeistInvClear <Q|E|R|Coin|Smoke|Glue> | HeistInvInvalidMove <InstanceId>"),
+		EHeistDebugLevel::Info,
+		true,
+		8.0f);
+#endif
+}
+
 void UHeistDebugFunctionLibrary::DebugInventoryDump(APlayerController* PlayerController)
 {
+#if UE_BUILD_SHIPPING
+	return;
+#else
 	const UHeistInventoryComponent* InventoryComponent = ResolveInventoryComponent(PlayerController);
 	if (!IsValid(InventoryComponent))
 	{
@@ -179,10 +898,14 @@ void UHeistDebugFunctionLibrary::DebugInventoryDump(APlayerController* PlayerCon
 			EHeistDebugLevel::Info,
 			false);
 	}
+#endif
 }
 
 void UHeistDebugFunctionLibrary::DebugInventoryOpen(APlayerController* PlayerController, const bool bOpen)
 {
+#if UE_BUILD_SHIPPING
+	return;
+#else
 	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
 	if (!IsValid(HeistPlayerController))
 	{
@@ -196,6 +919,7 @@ void UHeistDebugFunctionLibrary::DebugInventoryOpen(APlayerController* PlayerCon
 		FString::Printf(TEXT("Inventory debug open requested: Open=%s"), bOpen ? TEXT("true") : TEXT("false")),
 		EHeistDebugLevel::Info,
 		true);
+#endif
 }
 
 void UHeistDebugFunctionLibrary::DebugInventoryMove(
@@ -204,6 +928,9 @@ void UHeistDebugFunctionLibrary::DebugInventoryMove(
 	const int32 GridX,
 	const int32 GridY)
 {
+#if UE_BUILD_SHIPPING
+	return;
+#else
 	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
 	if (!IsValid(HeistPlayerController))
 	{
@@ -217,10 +944,14 @@ void UHeistDebugFunctionLibrary::DebugInventoryMove(
 		FString::Printf(TEXT("Inventory debug move requested: InstanceId=%d Grid=(%d,%d)"), InstanceId, GridX, GridY),
 		EHeistDebugLevel::Info,
 		true);
+#endif
 }
 
 void UHeistDebugFunctionLibrary::DebugInventoryRotate(APlayerController* PlayerController, const int32 InstanceId)
 {
+#if UE_BUILD_SHIPPING
+	return;
+#else
 	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
 	if (!IsValid(HeistPlayerController))
 	{
@@ -234,10 +965,14 @@ void UHeistDebugFunctionLibrary::DebugInventoryRotate(APlayerController* PlayerC
 		FString::Printf(TEXT("Inventory debug rotate requested: InstanceId=%d"), InstanceId),
 		EHeistDebugLevel::Info,
 		true);
+#endif
 }
 
 void UHeistDebugFunctionLibrary::DebugInventoryDrop(APlayerController* PlayerController, const int32 InstanceId)
 {
+#if UE_BUILD_SHIPPING
+	return;
+#else
 	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
 	if (!IsValid(HeistPlayerController))
 	{
@@ -251,6 +986,7 @@ void UHeistDebugFunctionLibrary::DebugInventoryDrop(APlayerController* PlayerCon
 		FString::Printf(TEXT("Inventory debug drop requested: InstanceId=%d"), InstanceId),
 		EHeistDebugLevel::Info,
 		true);
+#endif
 }
 
 void UHeistDebugFunctionLibrary::DebugInventoryAssignQuickSlot(
@@ -258,6 +994,9 @@ void UHeistDebugFunctionLibrary::DebugInventoryAssignQuickSlot(
 	const FString& SlotName,
 	const int32 InstanceId)
 {
+#if UE_BUILD_SHIPPING
+	return;
+#else
 	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
 	if (!IsValid(HeistPlayerController))
 	{
@@ -285,10 +1024,14 @@ void UHeistDebugFunctionLibrary::DebugInventoryAssignQuickSlot(
 			InstanceId),
 		EHeistDebugLevel::Info,
 		true);
+#endif
 }
 
 void UHeistDebugFunctionLibrary::DebugInventoryClearQuickSlot(APlayerController* PlayerController, const FString& SlotName)
 {
+#if UE_BUILD_SHIPPING
+	return;
+#else
 	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
 	if (!IsValid(HeistPlayerController))
 	{
@@ -313,10 +1056,14 @@ void UHeistDebugFunctionLibrary::DebugInventoryClearQuickSlot(APlayerController*
 		FString::Printf(TEXT("Inventory debug clear requested: Slot=%s"), ToQuickSlotText(SlotType)),
 		EHeistDebugLevel::Info,
 		true);
+#endif
 }
 
 void UHeistDebugFunctionLibrary::DebugInventoryInvalidMove(APlayerController* PlayerController, const int32 InstanceId)
 {
+#if UE_BUILD_SHIPPING
+	return;
+#else
 	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
 	if (!IsValid(HeistPlayerController))
 	{
@@ -330,6 +1077,7 @@ void UHeistDebugFunctionLibrary::DebugInventoryInvalidMove(APlayerController* Pl
 		FString::Printf(TEXT("Inventory debug invalid move requested: InstanceId=%d Grid=(-1,-1)"), InstanceId),
 		EHeistDebugLevel::Info,
 		true);
+#endif
 }
 
 #pragma endregion

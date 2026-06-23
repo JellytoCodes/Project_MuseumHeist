@@ -95,12 +95,7 @@ void AHeistPlayerCharacter::RefreshMovementSpeedFromWeight()
 	const AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
 	if (!IsValid(HeistPlayerState))
 	{
-		UHeistDebugFunctionLibrary::Message(
-			this,
-			FString::Printf(
-				TEXT("Weight movement speed skipped: Character=%s Reason=MissingPlayerState"),
-				*GetNameSafe(this)),
-			EHeistDebugLevel::Warning);
+		UHeistDebugFunctionLibrary::DebugWeightMovementSkipped(this, TEXT("MissingPlayerState"));
 		return;
 	}
 
@@ -109,14 +104,11 @@ void AHeistPlayerCharacter::RefreshMovementSpeedFromWeight()
 	ApplyCurrentMoveSpeed();
 	ForceNetUpdate();
 
-	UHeistDebugFunctionLibrary::Message(
+	UHeistDebugFunctionLibrary::DebugWeightMovementSpeedApplied(
 		this,
-		FString::Printf(
-			TEXT("Weight movement speed applied: Character=%s TotalWeight=%.2f BaseSpeed=%.2f FinalSpeed=%.2f"),
-			*GetNameSafe(this),
-			TotalLootWeight,
-			BaseMoveSpeed,
-			CurrentMoveSpeed));
+		TotalLootWeight,
+		BaseMoveSpeed,
+		CurrentMoveSpeed);
 }
 
 void AHeistPlayerCharacter::PossessedBy(AController* NewController)
@@ -142,12 +134,7 @@ void AHeistPlayerCharacter::ApplyCurrentMoveSpeed()
 	UCharacterMovementComponent* MovementComponent = GetCharacterMovement();
 	if (!IsValid(MovementComponent))
 	{
-		UHeistDebugFunctionLibrary::Message(
-			this,
-			FString::Printf(
-				TEXT("Weight movement speed skipped: Character=%s Reason=MissingCharacterMovement"),
-				*GetNameSafe(this)),
-			EHeistDebugLevel::Warning);
+		UHeistDebugFunctionLibrary::DebugWeightMovementSkipped(this, TEXT("MissingCharacterMovement"));
 		return;
 	}
 
@@ -201,11 +188,7 @@ void AHeistPlayerCharacter::ApplyEscapedGameplayRestrictions()
 	SetActorEnableCollision(false);
 	SetActorHiddenInGame(true);
 
-	UHeistDebugFunctionLibrary::Message(
-		this,
-		FString::Printf(
-			TEXT("Escaped player restrictions applied: Character=%s MovementDisabled=true InteractionDisabled=true CollisionDisabled=true Hidden=true"),
-			*GetNameSafe(this)));
+	UHeistDebugFunctionLibrary::DebugEscapedPlayerRestrictionsApplied(this);
 }
 
 void AHeistPlayerCharacter::OnRep_PlayerState()

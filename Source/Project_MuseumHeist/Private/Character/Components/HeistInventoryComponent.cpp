@@ -2,7 +2,7 @@
 
 #include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameMode.h"
-#include "Core/HeistLogChannels.h"
+#include "Debug/HeistDebugFunctionLibrary.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
 #include "Inventory/HeistItemDataTypes.h"
@@ -101,11 +101,7 @@ bool UHeistInventoryComponent::TryGetItemDefinition(
 	const AActor* OwnerActor = GetOwner();
 	if (!IsValid(OwnerActor) || !OwnerActor->HasAuthority())
 	{
-		UE_LOG(
-			LogHeistInventory,
-			Warning,
-			TEXT("Item definition lookup rejected: ItemId=%s Reason=RequiresAuthority"),
-			*ItemId.ToString());
+		UHeistDebugFunctionLibrary::DebugInventoryItemDefinitionLookupRejected(ItemId, TEXT("RequiresAuthority"));
 		return false;
 	}
 
@@ -113,11 +109,7 @@ bool UHeistInventoryComponent::TryGetItemDefinition(
 	const AHeistGameMode* HeistGameMode = World ? World->GetAuthGameMode<AHeistGameMode>() : nullptr;
 	if (!IsValid(HeistGameMode))
 	{
-		UE_LOG(
-			LogHeistInventory,
-			Warning,
-			TEXT("Item definition lookup rejected: ItemId=%s Reason=MissingAuthGameMode"),
-			*ItemId.ToString());
+		UHeistDebugFunctionLibrary::DebugInventoryItemDefinitionLookupRejected(ItemId, TEXT("MissingAuthGameMode"));
 		return false;
 	}
 
@@ -131,24 +123,14 @@ bool UHeistInventoryComponent::TryAddItem(const FName ItemId, int32& OutInstance
 	AActor* OwnerActor = GetOwner();
 	if (!IsValid(OwnerActor) || !OwnerActor->HasAuthority())
 	{
-		UE_LOG(
-			LogHeistInventory,
-			Warning,
-			TEXT("Inventory add rejected: Owner=%s ItemId=%s Reason=RequiresAuthority"),
-			*GetNameSafe(OwnerActor),
-			*ItemId.ToString());
+		UHeistDebugFunctionLibrary::DebugInventoryAddRejected(OwnerActor, ItemId, TEXT("RequiresAuthority"));
 		return false;
 	}
 
 	FHeistItemDataRow ItemDefinition;
 	if (!TryGetItemDefinition(ItemId, ItemDefinition) || !ItemDefinition.bAvailableInV1)
 	{
-		UE_LOG(
-			LogHeistInventory,
-			Warning,
-			TEXT("Inventory add rejected: Owner=%s ItemId=%s Reason=InvalidItemDefinition"),
-			*GetNameSafe(OwnerActor),
-			*ItemId.ToString());
+		UHeistDebugFunctionLibrary::DebugInventoryAddRejected(OwnerActor, ItemId, TEXT("InvalidItemDefinition"));
 		return false;
 	}
 
@@ -156,12 +138,10 @@ bool UHeistInventoryComponent::TryAddItem(const FName ItemId, int32& OutInstance
 	bool bRotated = false;
 	if (!TryFindAutoPlacement(ItemDefinition, GridPosition, bRotated))
 	{
-		UE_LOG(
-			LogHeistInventory,
-			Warning,
-			TEXT("Inventory add rejected: Owner=%s ItemId=%s Reason=InventoryFull Grid=%dx%d"),
-			*GetNameSafe(OwnerActor),
-			*ItemId.ToString(),
+		UHeistDebugFunctionLibrary::DebugInventoryAddRejected(
+			OwnerActor,
+			ItemId,
+			TEXT("InventoryFull"),
 			GridColumnCount,
 			GridRowCount);
 		return false;
@@ -182,18 +162,13 @@ bool UHeistInventoryComponent::TryAddItem(const FName ItemId, int32& OutInstance
 		? FIntPoint(ItemDefinition.GridSize.Y, ItemDefinition.GridSize.X)
 		: ItemDefinition.GridSize;
 
-	UE_LOG(
-		LogHeistInventory,
-		Log,
-		TEXT("Inventory item added: Owner=%s ItemId=%s InstanceId=%d Grid=(%d,%d) Size=%dx%d Rotated=%s ItemCount=%d"),
-		*GetNameSafe(OwnerActor),
-		*ItemId.ToString(),
+	UHeistDebugFunctionLibrary::DebugInventoryItemAdded(
+		OwnerActor,
+		ItemId,
 		OutInstanceId,
-		GridPosition.X,
-		GridPosition.Y,
-		PlacedSize.X,
-		PlacedSize.Y,
-		bRotated ? TEXT("true") : TEXT("false"),
+		GridPosition,
+		PlacedSize,
+		bRotated,
 		ReplicatedInventory.Items.Num());
 
 	return true;
@@ -252,14 +227,7 @@ bool UHeistInventoryComponent::TryMoveItem(const int32 InstanceId, const FIntPoi
 	ReplicatedInventory.MarkItemDirty(*ItemEntry);
 	OwnerActor->ForceNetUpdate();
 	NotifyInventoryChanged();
-	UE_LOG(
-		LogHeistInventory,
-		Log,
-		TEXT("Inventory item moved: Owner=%s InstanceId=%d Grid=(%d,%d)"),
-		*GetNameSafe(OwnerActor),
-		InstanceId,
-		TargetGridPosition.X,
-		TargetGridPosition.Y);
+	UHeistDebugFunctionLibrary::DebugInventoryItemMoved(OwnerActor, InstanceId, TargetGridPosition);
 	return true;
 }
 
@@ -302,13 +270,10 @@ bool UHeistInventoryComponent::TryRotateItem(const int32 InstanceId)
 	ReplicatedInventory.MarkItemDirty(*ItemEntry);
 	OwnerActor->ForceNetUpdate();
 	NotifyInventoryChanged();
-	UE_LOG(
-		LogHeistInventory,
-		Log,
-		TEXT("Inventory item rotated: Owner=%s InstanceId=%d Rotated=%s"),
-		*GetNameSafe(OwnerActor),
+	UHeistDebugFunctionLibrary::DebugInventoryItemRotated(
+		OwnerActor,
 		InstanceId,
-		ItemEntry->InventoryItem.bRotated ? TEXT("true") : TEXT("false"));
+		ItemEntry->InventoryItem.bRotated);
 	return true;
 }
 
@@ -340,12 +305,9 @@ bool UHeistInventoryComponent::TryRemoveItem(
 	OwnerActor->ForceNetUpdate();
 	NotifyInventoryChanged();
 
-	UE_LOG(
-		LogHeistInventory,
-		Log,
-		TEXT("Inventory item removed: Owner=%s ItemId=%s InstanceId=%d ItemCount=%d"),
-		*GetNameSafe(OwnerActor),
-		*OutRemovedItem.ItemId.ToString(),
+	UHeistDebugFunctionLibrary::DebugInventoryItemRemoved(
+		OwnerActor,
+		OutRemovedItem.ItemId,
 		InstanceId,
 		ReplicatedInventory.Items.Num());
 	return true;
@@ -376,14 +338,11 @@ bool UHeistInventoryComponent::TryAssignQuickSlot(
 	QuickSlot->ItemInstanceId = InstanceId;
 	OwnerActor->ForceNetUpdate();
 	NotifyInventoryChanged();
-	UE_LOG(
-		LogHeistInventory,
-		Log,
-		TEXT("QuickSlot assigned: Owner=%s Slot=%d InstanceId=%d ItemId=%s"),
-		*GetNameSafe(OwnerActor),
+	UHeistDebugFunctionLibrary::DebugQuickSlotAssigned(
+		OwnerActor,
 		static_cast<int32>(SlotType),
 		InstanceId,
-		*InventoryItem.ItemId.ToString());
+		InventoryItem.ItemId);
 	return true;
 }
 
@@ -493,12 +452,10 @@ bool UHeistInventoryComponent::TryBuildOccupiedCellsExcluding(
 		FHeistItemDataRow ExistingDefinition;
 		if (!TryGetItemDefinition(ExistingItem.ItemId, ExistingDefinition))
 		{
-			UE_LOG(
-				LogHeistInventory,
-				Error,
-				TEXT("Inventory occupancy invalid: InstanceId=%d ItemId=%s Reason=InvalidItemDefinition"),
+			UHeistDebugFunctionLibrary::DebugInventoryOccupancyInvalid(
 				ExistingItem.InstanceId,
-				*ExistingItem.ItemId.ToString());
+				ExistingItem.ItemId,
+				TEXT("InvalidItemDefinition"));
 			return false;
 		}
 
@@ -508,16 +465,12 @@ bool UHeistInventoryComponent::TryBuildOccupiedCellsExcluding(
 
 		if (!CanPlaceAt(OutOccupiedCells, ExistingItem.GridPosition, ExistingSize))
 		{
-			UE_LOG(
-				LogHeistInventory,
-				Error,
-				TEXT("Inventory occupancy invalid: InstanceId=%d ItemId=%s Grid=(%d,%d) Size=%dx%d Reason=OutOfBoundsOrOverlap"),
+			UHeistDebugFunctionLibrary::DebugInventoryOccupancyInvalid(
 				ExistingItem.InstanceId,
-				*ExistingItem.ItemId.ToString(),
-				ExistingItem.GridPosition.X,
-				ExistingItem.GridPosition.Y,
-				ExistingSize.X,
-				ExistingSize.Y);
+				ExistingItem.ItemId,
+				TEXT("OutOfBoundsOrOverlap"),
+				ExistingItem.GridPosition,
+				ExistingSize);
 			return false;
 		}
 

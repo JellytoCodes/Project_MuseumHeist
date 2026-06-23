@@ -1,7 +1,7 @@
 #include "UI/Widgets/HeistInventoryWidget.h"
 
-#include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerController.h"
+#include "Debug/HeistDebugFunctionLibrary.h"
 #include "UI/ViewModels/HeistInventoryViewModel.h"
 #include "UI/ViewModels/HeistQuickSlotViewModel.h"
 #include "View/MVVMView.h"
@@ -61,11 +61,7 @@ void UHeistInventoryWidget::SetupInventoryWidget(
 	}
 	else
 	{
-		UE_LOG(
-			LogHeistUI,
-			Warning,
-			TEXT("Inventory widget has no MVVMView extension; MVVM binding injection skipped. Widget=%s"),
-			*GetNameSafe(this));
+		UHeistDebugFunctionLibrary::DebugWidgetMissingMVVMView(this, TEXT("Inventory"));
 	}
 
 	RefreshVisibilityFromConfirmedSnapshot();

@@ -145,11 +145,7 @@ void AHeistLootActor::ResolveLootData()
 	else
 	{
 		ApplyFallbackLootData();
-
-		UHeistDebugFunctionLibrary::Message(
-			this,
-			FString::Printf(TEXT("LootDataRow '%s' was not found. Fallback values are active."), *LootDataRow.RowName.ToString()),
-			EHeistDebugLevel::Warning);
+		UHeistDebugFunctionLibrary::DebugLootDataFallbackApplied(this, LootDataRow.RowName);
 	}
 }
 

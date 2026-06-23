@@ -1,6 +1,6 @@
 #include "UI/Widgets/HeistResultWidget.h"
 
-#include "Core/HeistLogChannels.h"
+#include "Debug/HeistDebugFunctionLibrary.h"
 #include "UI/ViewModels/HeistResultViewModel.h"
 #include "View/MVVMView.h"
 
@@ -31,11 +31,7 @@ void UHeistResultWidget::SetupResultWidget(UHeistResultViewModel* InResultViewMo
 	}
 	else
 	{
-		UE_LOG(
-			LogHeistUI,
-			Warning,
-			TEXT("Result widget has no MVVMView extension; MVVM binding injection skipped. Widget=%s"),
-			*GetNameSafe(this));
+		UHeistDebugFunctionLibrary::DebugWidgetMissingMVVMView(this, TEXT("Result"));
 	}
 }
 

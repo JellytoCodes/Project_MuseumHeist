@@ -16,53 +16,65 @@ UHeistCheatManager::UHeistCheatManager(const FObjectInitializer& ObjectInitializ
 
 void UHeistCheatManager::HeistInvHelp()
 {
-	APlayerController* PlayerController = GetOuterAPlayerController();
-	UHeistDebugFunctionLibrary::Message(
-		PlayerController,
-		TEXT("Inventory debug commands: HeistInvDump | HeistInvOpen 1/0 | HeistInvMove <InstanceId> <X> <Y> | HeistInvRotate <InstanceId> | HeistInvDrop <InstanceId> | HeistInvAssign <Q|E|R|Coin|Smoke|Glue> <InstanceId> | HeistInvClear <Q|E|R|Coin|Smoke|Glue> | HeistInvInvalidMove <InstanceId>"),
-		EHeistDebugLevel::Info,
-		true,
-		8.0f);
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugInventoryHelp(GetOuterAPlayerController());
+#endif
 }
 
 void UHeistCheatManager::HeistInvDump()
 {
+#if !UE_BUILD_SHIPPING
 	UHeistDebugFunctionLibrary::DebugInventoryDump(GetOuterAPlayerController());
+#endif
 }
 
 void UHeistCheatManager::HeistInvOpen(const bool bOpen)
 {
+#if !UE_BUILD_SHIPPING
 	UHeistDebugFunctionLibrary::DebugInventoryOpen(GetOuterAPlayerController(), bOpen);
+#endif
 }
 
 void UHeistCheatManager::HeistInvMove(const int32 InstanceId, const int32 GridX, const int32 GridY)
 {
+#if !UE_BUILD_SHIPPING
 	UHeistDebugFunctionLibrary::DebugInventoryMove(GetOuterAPlayerController(), InstanceId, GridX, GridY);
+#endif
 }
 
 void UHeistCheatManager::HeistInvRotate(const int32 InstanceId)
 {
+#if !UE_BUILD_SHIPPING
 	UHeistDebugFunctionLibrary::DebugInventoryRotate(GetOuterAPlayerController(), InstanceId);
+#endif
 }
 
 void UHeistCheatManager::HeistInvDrop(const int32 InstanceId)
 {
+#if !UE_BUILD_SHIPPING
 	UHeistDebugFunctionLibrary::DebugInventoryDrop(GetOuterAPlayerController(), InstanceId);
+#endif
 }
 
 void UHeistCheatManager::HeistInvAssign(const FString& SlotName, const int32 InstanceId)
 {
+#if !UE_BUILD_SHIPPING
 	UHeistDebugFunctionLibrary::DebugInventoryAssignQuickSlot(GetOuterAPlayerController(), SlotName, InstanceId);
+#endif
 }
 
 void UHeistCheatManager::HeistInvClear(const FString& SlotName)
 {
+#if !UE_BUILD_SHIPPING
 	UHeistDebugFunctionLibrary::DebugInventoryClearQuickSlot(GetOuterAPlayerController(), SlotName);
+#endif
 }
 
 void UHeistCheatManager::HeistInvInvalidMove(const int32 InstanceId)
 {
+#if !UE_BUILD_SHIPPING
 	UHeistDebugFunctionLibrary::DebugInventoryInvalidMove(GetOuterAPlayerController(), InstanceId);
+#endif
 }
 
 #pragma endregion

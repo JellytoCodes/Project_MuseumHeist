@@ -3,9 +3,9 @@
 #include "Character/Components/HeistInventoryComponent.h"
 #include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameState.h"
-#include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
+#include "Debug/HeistDebugFunctionLibrary.h"
 #include "UI/ViewModels/HeistInventoryViewModel.h"
 #include "UI/ViewModels/HeistQuickSlotViewModel.h"
 #include "UI/ViewModels/HeistResultViewModel.h"
@@ -106,13 +106,7 @@ bool AHeistHUD::ShowResultScreen()
 
 	if (!IsValid(ResultViewModel) || !ResultWidgetClass)
 	{
-		UE_LOG(
-			LogHeistUI,
-			Warning,
-			TEXT("Result screen show skipped: HUD=%s ViewModel=%s WidgetClass=%s"),
-			*GetNameSafe(this),
-			*GetNameSafe(ResultViewModel),
-			*GetNameSafe(ResultWidgetClass));
+		UHeistDebugFunctionLibrary::DebugResultScreenShowSkipped(this, ResultViewModel, ResultWidgetClass);
 		return false;
 	}
 
