@@ -1,12 +1,16 @@
 #include "Debug/HeistDebugFunctionLibrary.h"
 
 #include "Character/Components/HeistInventoryComponent.h"
+#include "Character/Components/HeistStatusComponent.h"
 #include "Character/HeistPlayerCharacter.h"
+#include "Core/HeistGameplayTags.h"
+#include "Core/HeistTypes.h"
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistLogChannels.h"
 #include "Engine/Engine.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
+#include "GameplayTagContainer.h"
 #include "Inventory/HeistInventoryTypes.h"
 
 #pragma region InternalHelpers
@@ -25,6 +29,15 @@ namespace
 			? HeistPlayerController->GetPawn<AHeistPlayerCharacter>()
 			: nullptr;
 		return IsValid(HeistCharacter) ? HeistCharacter->GetInventoryComponent() : nullptr;
+	}
+
+	UHeistStatusComponent* ResolveStatusComponent(APlayerController* PlayerController)
+	{
+		const AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+		const AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController)
+			? HeistPlayerController->GetPawn<AHeistPlayerCharacter>()
+			: nullptr;
+		return IsValid(HeistCharacter) ? HeistCharacter->GetStatusComponent() : nullptr;
 	}
 
 	const TCHAR* ToQuickSlotText(const EHeistQuickSlotType SlotType)
@@ -76,6 +89,26 @@ namespace
 		return Distance >= 0.0f
 			? FString::Printf(TEXT(" Distance=%.1f"), Distance)
 			: FString();
+	}
+
+	FString FormatStatusTags(const TArray<FHeistTimedTagState>& StatusTags)
+	{
+		if (StatusTags.IsEmpty())
+		{
+			return TEXT("None");
+		}
+
+		TArray<FString> Entries;
+		Entries.Reserve(StatusTags.Num());
+		for (const FHeistTimedTagState& StatusTagState : StatusTags)
+		{
+			Entries.Add(FString::Printf(
+				TEXT("%s@%.2f"),
+				*StatusTagState.StateTag.ToString(),
+				StatusTagState.EndServerTime));
+		}
+
+		return FString::Join(Entries, TEXT(", "));
 	}
 }
 
@@ -775,6 +808,54 @@ void UHeistDebugFunctionLibrary::DebugWeightMovementSpeedApplied(
 #endif
 }
 
+void UHeistDebugFunctionLibrary::DebugStatusTagApplied(
+	const UObject* WorldContextObject,
+	const FGameplayTag& StateTag,
+	const float EndServerTime)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Status tag applied: Owner=%s Tag=%s EndServerTime=%.2f"),
+			*GetNameSafe(WorldContextObject ? WorldContextObject->GetOuter() : nullptr),
+			*StateTag.ToString(),
+			EndServerTime));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugStatusTagCleared(const UObject* WorldContextObject, const FGameplayTag& StateTag)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Status tag cleared: Owner=%s Tag=%s"),
+			*GetNameSafe(WorldContextObject ? WorldContextObject->GetOuter() : nullptr),
+			*StateTag.ToString()));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugStatusTagsReplicated(
+	const UObject* WorldContextObject,
+	const TArray<FHeistTimedTagState>& StatusTags)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Status tags replicated: Owner=%s Tags=[%s]"),
+			*GetNameSafe(WorldContextObject ? WorldContextObject->GetOuter() : nullptr),
+			*FormatStatusTags(StatusTags)));
+#endif
+}
+
 void UHeistDebugFunctionLibrary::DebugEscapedPlayerRestrictionsApplied(const UObject* WorldContextObject)
 {
 #if UE_BUILD_SHIPPING
@@ -1075,6 +1156,126 @@ void UHeistDebugFunctionLibrary::DebugInventoryInvalidMove(APlayerController* Pl
 	Message(
 		PlayerController,
 		FString::Printf(TEXT("Inventory debug invalid move requested: InstanceId=%d Grid=(-1,-1)"), InstanceId),
+		EHeistDebugLevel::Info,
+		true);
+#endif
+}
+
+#pragma endregion
+
+#pragma region StatusDebug
+
+void UHeistDebugFunctionLibrary::DebugStatusHelp(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		PlayerController,
+		TEXT("Status debug commands: HeistStatusDump | HeistStatusStun <Seconds> | HeistStatusImmune <Seconds> | HeistStatusClear"),
+		EHeistDebugLevel::Info,
+		true,
+		8.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugStatusDump(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	const UHeistStatusComponent* StatusComponent = ResolveStatusComponent(PlayerController);
+	if (!IsValid(StatusComponent))
+	{
+		Message(PlayerController, TEXT("Status debug dump failed: missing local Heist status component."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Status dump: Stunned=%s StunImmune=%s Tags=[%s]"),
+			StatusComponent->IsStunned() ? TEXT("true") : TEXT("false"),
+			StatusComponent->IsStunImmune() ? TEXT("true") : TEXT("false"),
+			*FormatStatusTags(StatusComponent->GetStatusTags())),
+		EHeistDebugLevel::Info,
+		true,
+		6.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugStatusStun(APlayerController* PlayerController, const float DurationSeconds)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	UHeistStatusComponent* StatusComponent = ResolveStatusComponent(PlayerController);
+	if (!IsValid(StatusComponent))
+	{
+		Message(PlayerController, TEXT("Status debug stun failed: missing local Heist status component."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	if (!StatusComponent->ApplyStun(DurationSeconds))
+	{
+		Message(PlayerController, TEXT("Status debug stun rejected."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	Message(
+		PlayerController,
+		FString::Printf(TEXT("Status debug stun requested: Duration=%.2f"), DurationSeconds),
+		EHeistDebugLevel::Info,
+		true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugStatusImmune(APlayerController* PlayerController, const float DurationSeconds)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	UHeistStatusComponent* StatusComponent = ResolveStatusComponent(PlayerController);
+	if (!IsValid(StatusComponent))
+	{
+		Message(PlayerController, TEXT("Status debug immunity failed: missing local Heist status component."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	if (!StatusComponent->ApplyStunImmunity(DurationSeconds))
+	{
+		Message(PlayerController, TEXT("Status debug immunity rejected."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	Message(
+		PlayerController,
+		FString::Printf(TEXT("Status debug immunity requested: Duration=%.2f"), DurationSeconds),
+		EHeistDebugLevel::Info,
+		true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugStatusClear(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	UHeistStatusComponent* StatusComponent = ResolveStatusComponent(PlayerController);
+	if (!IsValid(StatusComponent))
+	{
+		Message(PlayerController, TEXT("Status debug clear failed: missing local Heist status component."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const bool bClearedStunned = StatusComponent->ClearStatusTag(FHeistGameplayTags::Get().State_Stunned);
+	const bool bClearedImmune = StatusComponent->ClearStatusTag(FHeistGameplayTags::Get().State_StunImmune);
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Status debug clear requested: ClearedStunned=%s ClearedStunImmune=%s"),
+			bClearedStunned ? TEXT("true") : TEXT("false"),
+			bClearedImmune ? TEXT("true") : TEXT("false")),
 		EHeistDebugLevel::Info,
 		true);
 #endif

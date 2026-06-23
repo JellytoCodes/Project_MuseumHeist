@@ -1,6 +1,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Core/HeistTypes.h"
+#include "GameplayTagContainer.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 
 #include "HeistDebugFunctionLibrary.generated.h"
@@ -172,6 +174,9 @@ public:
 		float TotalWeight,
 		float BaseSpeed,
 		float FinalSpeed);
+	static void DebugStatusTagApplied(const UObject* WorldContextObject, const FGameplayTag& StateTag, float EndServerTime);
+	static void DebugStatusTagCleared(const UObject* WorldContextObject, const FGameplayTag& StateTag);
+	static void DebugStatusTagsReplicated(const UObject* WorldContextObject, const TArray<FHeistTimedTagState>& StatusTags);
 	static void DebugEscapedPlayerRestrictionsApplied(const UObject* WorldContextObject);
 	static void DebugResultScreenShowSkipped(
 		const UObject* HUD,
@@ -212,6 +217,25 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Inventory", meta = (DevelopmentOnly))
 	static void DebugInventoryInvalidMove(class APlayerController* PlayerController, int32 InstanceId);
+
+#pragma endregion
+
+#pragma region StatusDebug
+
+public:
+	static void DebugStatusHelp(class APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Status", meta = (DevelopmentOnly))
+	static void DebugStatusDump(class APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Status", meta = (DevelopmentOnly, ClampMin = "0.0", Units = "s"))
+	static void DebugStatusStun(class APlayerController* PlayerController, float DurationSeconds);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Status", meta = (DevelopmentOnly, ClampMin = "0.0", Units = "s"))
+	static void DebugStatusImmune(class APlayerController* PlayerController, float DurationSeconds);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Status", meta = (DevelopmentOnly))
+	static void DebugStatusClear(class APlayerController* PlayerController);
 
 #pragma endregion
 };

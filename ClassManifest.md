@@ -270,10 +270,10 @@ GDD row schema baseline:
 * `FHeistVentDataRow`: VentId, ZoneId, LinkedRoom, initial active flag, reactivation flag.
 * `FHeistCustomizationRow`: stable customization ID, type/tag, display text, and soft mesh/material references.
 * `FHeistUITextRow`: stable text ID and localized `FText`.
+* `FHeistTimedTagState`: replicated GameplayTag status entry with an authoritative server end time.
 
 Deferred weekly types — do not create until the relevant weekly task explicitly requests them:
 
-* `FHeistTimedTagState` for GameplayTags/Stun work.
 * `FHeistCooldownState` for item action/cooldown work.
 * `FHeistLootDropRequest` for authoritative inventory drop work.
 

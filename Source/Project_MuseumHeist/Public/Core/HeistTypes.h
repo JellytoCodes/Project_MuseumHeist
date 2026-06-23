@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 
 #include "HeistTypes.generated.h"
 
@@ -56,6 +57,28 @@ struct PROJECT_MUSEUMHEIST_API FHeistPlayerResult
 			&& EscapeTimeSeconds == Other.EscapeTimeSeconds
 			&& Rank == Other.Rank
 			&& bEscaped == Other.bEscaped;
+	}
+};
+
+#pragma endregion
+
+#pragma region Status
+
+USTRUCT(BlueprintType)
+struct PROJECT_MUSEUMHEIST_API FHeistTimedTagState
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Status")
+	FGameplayTag StateTag;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Status")
+	float EndServerTime = 0.0f;
+
+	bool operator==(const FHeistTimedTagState& Other) const
+	{
+		return StateTag == Other.StateTag
+			&& FMath::IsNearlyEqual(EndServerTime, Other.EndServerTime);
 	}
 };
 

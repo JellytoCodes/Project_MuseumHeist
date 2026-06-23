@@ -235,6 +235,12 @@ void AHeistPlayerController::Server_RequestLootPickup_Implementation(AHeistLootA
 		return;
 	}
 
+	if (RequestContext.Character->GetStatusComponent()->IsStunned())
+	{
+		LogLootPickupRejected(TargetLootActor, TEXT("Stunned"));
+		return;
+	}
+
 	UHeistDebugFunctionLibrary::DebugLootPickupRequestReceived(
 		this,
 		RequestContext.Character,
@@ -314,6 +320,12 @@ void AHeistPlayerController::Server_RequestEscape_Implementation(AHeistVentActor
 	if (!IsValid(TargetVentActor))
 	{
 		LogEscapeRequestRejected(nullptr, TEXT("InvalidTarget"));
+		return;
+	}
+
+	if (RequestContext.Character->GetStatusComponent()->IsStunned())
+	{
+		LogEscapeRequestRejected(TargetVentActor, TEXT("Stunned"));
 		return;
 	}
 

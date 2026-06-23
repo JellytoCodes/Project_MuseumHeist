@@ -44,4 +44,24 @@ public:
 	void HeistInvInvalidMove(int32 InstanceId);
 
 #pragma endregion
+
+#pragma region StatusDebug
+
+public:
+	UFUNCTION(Exec)
+	void HeistStatusHelp();
+
+	UFUNCTION(Exec)
+	void HeistStatusDump();
+
+	UFUNCTION(Exec)
+	void HeistStatusStun(float DurationSeconds = 3.0f);
+
+	UFUNCTION(Exec)
+	void HeistStatusImmune(float DurationSeconds = 2.0f);
+
+	UFUNCTION(Exec)
+	void HeistStatusClear();
+
+#pragma endregion
 };

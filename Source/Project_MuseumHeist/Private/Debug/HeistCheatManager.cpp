@@ -78,3 +78,42 @@ void UHeistCheatManager::HeistInvInvalidMove(const int32 InstanceId)
 }
 
 #pragma endregion
+
+#pragma region StatusDebug
+
+void UHeistCheatManager::HeistStatusHelp()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugStatusHelp(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistStatusDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugStatusDump(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistStatusStun(const float DurationSeconds)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugStatusStun(GetOuterAPlayerController(), DurationSeconds);
+#endif
+}
+
+void UHeistCheatManager::HeistStatusImmune(const float DurationSeconds)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugStatusImmune(GetOuterAPlayerController(), DurationSeconds);
+#endif
+}
+
+void UHeistCheatManager::HeistStatusClear()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugStatusClear(GetOuterAPlayerController());
+#endif
+}
+
+#pragma endregion

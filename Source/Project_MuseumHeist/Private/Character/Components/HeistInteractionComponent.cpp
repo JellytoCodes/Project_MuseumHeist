@@ -1,7 +1,6 @@
 #include "Character/Components/HeistInteractionComponent.h"
 
 #include "Character/HeistPlayerCharacter.h"
-#include "Core/HeistPlayerState.h"
 #include "Engine/OverlapResult.h"
 #include "Engine/World.h"
 #include "World/HeistInteractable.h"
@@ -125,11 +124,7 @@ bool UHeistInteractionComponent::IsActorWithinInteractionRange(const AActor* Tar
 bool UHeistInteractionComponent::CanOwnerInteract() const
 {
 	const AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
-	const AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter)
-		? HeistCharacter->GetPlayerState<AHeistPlayerState>()
-		: nullptr;
-
-	return !IsValid(HeistPlayerState) || !HeistPlayerState->IsEscaped();
+	return IsValid(HeistCharacter) && HeistCharacter->CanPerformGameplayActions();
 }
 
 #pragma endregion
