@@ -9,6 +9,7 @@
 #include "Core/HeistGameMode.h"
 #include "Core/HeistHUD.h"
 #include "Core/HeistPlayerState.h"
+#include "Debug/HeistCheatManager.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "Engine/LocalPlayer.h"
 #include "EnhancedInputComponent.h"
@@ -17,6 +18,15 @@
 #include "Inventory/HeistItemDataTypes.h"
 #include "World/HeistLootActor.h"
 #include "World/HeistVentActor.h"
+
+#pragma region Construction
+
+AHeistPlayerController::AHeistPlayerController()
+{
+	CheatClass = UHeistCheatManager::StaticClass();
+}
+
+#pragma endregion
 
 #pragma region Lifecycle
 

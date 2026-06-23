@@ -36,4 +36,36 @@ public:
 		float Duration = 3.0f);
 
 #pragma endregion
+
+#pragma region InventoryDebug
+
+public:
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Inventory", meta = (DevelopmentOnly))
+	static void DebugInventoryDump(class APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Inventory", meta = (DevelopmentOnly))
+	static void DebugInventoryOpen(class APlayerController* PlayerController, bool bOpen);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Inventory", meta = (DevelopmentOnly))
+	static void DebugInventoryMove(class APlayerController* PlayerController, int32 InstanceId, int32 GridX, int32 GridY);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Inventory", meta = (DevelopmentOnly))
+	static void DebugInventoryRotate(class APlayerController* PlayerController, int32 InstanceId);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Inventory", meta = (DevelopmentOnly))
+	static void DebugInventoryDrop(class APlayerController* PlayerController, int32 InstanceId);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Inventory", meta = (DevelopmentOnly))
+	static void DebugInventoryAssignQuickSlot(
+		class APlayerController* PlayerController,
+		const FString& SlotName,
+		int32 InstanceId);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Inventory", meta = (DevelopmentOnly))
+	static void DebugInventoryClearQuickSlot(class APlayerController* PlayerController, const FString& SlotName);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Inventory", meta = (DevelopmentOnly))
+	static void DebugInventoryInvalidMove(class APlayerController* PlayerController, int32 InstanceId);
+
+#pragma endregion
 };

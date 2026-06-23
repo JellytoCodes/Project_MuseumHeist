@@ -1,7 +1,8 @@
 #include "UI/Widgets/HeistResultWidget.h"
 
-#include "MVVMBlueprintLibrary.h"
+#include "Core/HeistLogChannels.h"
 #include "UI/ViewModels/HeistResultViewModel.h"
+#include "View/MVVMView.h"
 
 #pragma region Construction
 
@@ -23,7 +24,19 @@ void UHeistResultWidget::SetupResultWidget(UHeistResultViewModel* InResultViewMo
 	TScriptInterface<INotifyFieldValueChanged> ViewModelInterface;
 	ViewModelInterface.SetObject(ResultViewModel);
 	ViewModelInterface.SetInterface(ResultViewModel);
-	UMVVMBlueprintLibrary::SetViewModelByClass(this, ViewModelInterface);
+
+	if (UMVVMView* MVVMView = GetExtension<UMVVMView>())
+	{
+		MVVMView->SetViewModelByClass(ViewModelInterface);
+	}
+	else
+	{
+		UE_LOG(
+			LogHeistUI,
+			Warning,
+			TEXT("Result widget has no MVVMView extension; MVVM binding injection skipped. Widget=%s"),
+			*GetNameSafe(this));
+	}
 }
 
 UHeistResultViewModel* UHeistResultWidget::GetResultViewModel() const

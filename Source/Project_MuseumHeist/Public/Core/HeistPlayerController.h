@@ -21,6 +21,13 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 {
 	GENERATED_BODY()
 
+#pragma region Construction
+
+public:
+	AHeistPlayerController();
+
+#pragma endregion
+
 #pragma region Lifecycle
 
 protected:

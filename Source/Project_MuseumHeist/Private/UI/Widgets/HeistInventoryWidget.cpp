@@ -1,9 +1,10 @@
 #include "UI/Widgets/HeistInventoryWidget.h"
 
+#include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerController.h"
-#include "MVVMBlueprintLibrary.h"
 #include "UI/ViewModels/HeistInventoryViewModel.h"
 #include "UI/ViewModels/HeistQuickSlotViewModel.h"
+#include "View/MVVMView.h"
 
 UHeistInventoryWidget::UHeistInventoryWidget(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -48,12 +49,25 @@ void UHeistInventoryWidget::SetupInventoryWidget(
 	TScriptInterface<INotifyFieldValueChanged> InventoryViewModelInterface;
 	InventoryViewModelInterface.SetObject(InventoryViewModel);
 	InventoryViewModelInterface.SetInterface(InventoryViewModel);
-	UMVVMBlueprintLibrary::SetViewModelByClass(this, InventoryViewModelInterface);
 
 	TScriptInterface<INotifyFieldValueChanged> QuickSlotViewModelInterface;
 	QuickSlotViewModelInterface.SetObject(QuickSlotViewModel);
 	QuickSlotViewModelInterface.SetInterface(QuickSlotViewModel);
-	UMVVMBlueprintLibrary::SetViewModelByClass(this, QuickSlotViewModelInterface);
+
+	if (UMVVMView* MVVMView = GetExtension<UMVVMView>())
+	{
+		MVVMView->SetViewModelByClass(InventoryViewModelInterface);
+		MVVMView->SetViewModelByClass(QuickSlotViewModelInterface);
+	}
+	else
+	{
+		UE_LOG(
+			LogHeistUI,
+			Warning,
+			TEXT("Inventory widget has no MVVMView extension; MVVM binding injection skipped. Widget=%s"),
+			*GetNameSafe(this));
+	}
+
 	RefreshVisibilityFromConfirmedSnapshot();
 	RefreshQuickSlotPresentation();
 }
