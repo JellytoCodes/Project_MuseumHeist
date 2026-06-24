@@ -177,6 +177,42 @@ public:
 	static void DebugStatusTagApplied(const UObject* WorldContextObject, const FGameplayTag& StateTag, float EndServerTime);
 	static void DebugStatusTagCleared(const UObject* WorldContextObject, const FGameplayTag& StateTag);
 	static void DebugStatusTagsReplicated(const UObject* WorldContextObject, const TArray<FHeistTimedTagState>& StatusTags);
+	static void DebugThrowableUseRejected(
+		const UObject* WorldContextObject,
+		EHeistQuickSlotType SlotType,
+		FName ItemId,
+		const TCHAR* Reason);
+	static void DebugThrowableProjectileSpawned(
+		const UObject* WorldContextObject,
+		const UObject* Character,
+		const UObject* Projectile,
+		FName ItemId,
+		const FVector& TargetWorldLocation,
+		float ProjectileSpeed,
+		bool bDebugBypassInventory);
+	static void DebugThrowableProjectileImpact(
+		const UObject* WorldContextObject,
+		const UObject* Projectile,
+		const UObject* OtherActor,
+		FName ItemId,
+		const FVector& ImpactLocation);
+	static void DebugCoinProjectileDamageApplied(
+		const UObject* WorldContextObject,
+		const UObject* Projectile,
+		const UObject* HitCharacter,
+		float Damage);
+	static void DebugCoinProjectileStunApplied(
+		const UObject* WorldContextObject,
+		const UObject* Projectile,
+		const UObject* HitCharacter,
+		float DurationSeconds);
+	static void DebugCoinProjectileStunRejected(
+		const UObject* WorldContextObject,
+		const UObject* Projectile,
+		const UObject* HitCharacter,
+		const TCHAR* Reason);
+	static void DebugSoundPingReported(const UObject* WorldContextObject, const FHeistSoundPingEvent& SoundPingEvent);
+	static void DebugSoundPingReplicated(const UObject* WorldContextObject, const FHeistSoundPingEvent& SoundPingEvent);
 	static void DebugEscapedPlayerRestrictionsApplied(const UObject* WorldContextObject);
 	static void DebugResultScreenShowSkipped(
 		const UObject* HUD,
@@ -236,6 +272,19 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Status", meta = (DevelopmentOnly))
 	static void DebugStatusClear(class APlayerController* PlayerController);
+
+#pragma endregion
+
+#pragma region ThrowableDebug
+
+public:
+	static void DebugThrowableHelp(class APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Throwable", meta = (DevelopmentOnly))
+	static void DebugCoinThrow(class APlayerController* PlayerController, float Distance);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Throwable", meta = (DevelopmentOnly))
+	static void DebugCoinThrowAt(class APlayerController* PlayerController, float TargetX, float TargetY, float TargetZ);
 
 #pragma endregion
 };

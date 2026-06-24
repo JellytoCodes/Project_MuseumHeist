@@ -117,3 +117,28 @@ void UHeistCheatManager::HeistStatusClear()
 }
 
 #pragma endregion
+
+#pragma region ThrowableDebug
+
+void UHeistCheatManager::HeistThrowHelp()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugThrowableHelp(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistCoinThrow(const float Distance)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugCoinThrow(GetOuterAPlayerController(), Distance);
+#endif
+}
+
+void UHeistCheatManager::HeistCoinThrowAt(const float TargetX, const float TargetY, const float TargetZ)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugCoinThrowAt(GetOuterAPlayerController(), TargetX, TargetY, TargetZ);
+#endif
+}
+
+#pragma endregion

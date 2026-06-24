@@ -856,6 +856,176 @@ void UHeistDebugFunctionLibrary::DebugStatusTagsReplicated(
 #endif
 }
 
+void UHeistDebugFunctionLibrary::DebugThrowableUseRejected(
+	const UObject* WorldContextObject,
+	const EHeistQuickSlotType SlotType,
+	const FName ItemId,
+	const TCHAR* Reason)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Throwable use rejected: Slot=%s ItemId=%s Reason=%s"),
+			ToQuickSlotText(SlotType),
+			*ItemId.ToString(),
+			Reason),
+		EHeistDebugLevel::Warning);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugThrowableProjectileSpawned(
+	const UObject* WorldContextObject,
+	const UObject* Character,
+	const UObject* Projectile,
+	const FName ItemId,
+	const FVector& TargetWorldLocation,
+	const float ProjectileSpeed,
+	const bool bDebugBypassInventory)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Throwable projectile spawned: Character=%s Projectile=%s ItemId=%s Target=(%.1f,%.1f,%.1f) Speed=%.1f DebugBypassInventory=%s"),
+			*GetNameSafe(Character),
+			*GetNameSafe(Projectile),
+			*ItemId.ToString(),
+			TargetWorldLocation.X,
+			TargetWorldLocation.Y,
+			TargetWorldLocation.Z,
+			ProjectileSpeed,
+			bDebugBypassInventory ? TEXT("true") : TEXT("false")));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugThrowableProjectileImpact(
+	const UObject* WorldContextObject,
+	const UObject* Projectile,
+	const UObject* OtherActor,
+	const FName ItemId,
+	const FVector& ImpactLocation)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Throwable projectile impact: Projectile=%s OtherActor=%s ItemId=%s Location=(%.1f,%.1f,%.1f)"),
+			*GetNameSafe(Projectile),
+			*GetNameSafe(OtherActor),
+			*ItemId.ToString(),
+			ImpactLocation.X,
+			ImpactLocation.Y,
+			ImpactLocation.Z));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugCoinProjectileDamageApplied(
+	const UObject* WorldContextObject,
+	const UObject* Projectile,
+	const UObject* HitCharacter,
+	const float Damage)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Coin projectile damage applied: Projectile=%s HitCharacter=%s Damage=%.1f"),
+			*GetNameSafe(Projectile),
+			*GetNameSafe(HitCharacter),
+			Damage));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugCoinProjectileStunApplied(
+	const UObject* WorldContextObject,
+	const UObject* Projectile,
+	const UObject* HitCharacter,
+	const float DurationSeconds)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Coin projectile stun applied: Projectile=%s HitCharacter=%s Duration=%.2f"),
+			*GetNameSafe(Projectile),
+			*GetNameSafe(HitCharacter),
+			DurationSeconds));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugCoinProjectileStunRejected(
+	const UObject* WorldContextObject,
+	const UObject* Projectile,
+	const UObject* HitCharacter,
+	const TCHAR* Reason)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Coin projectile stun rejected: Projectile=%s HitCharacter=%s Reason=%s"),
+			*GetNameSafe(Projectile),
+			*GetNameSafe(HitCharacter),
+			Reason),
+		EHeistDebugLevel::Warning);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugSoundPingReported(
+	const UObject* WorldContextObject,
+	const FHeistSoundPingEvent& SoundPingEvent)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Sound ping reported: SequenceId=%d Type=%d Tag=%s Location=(%.1f,%.1f,%.1f) ServerTime=%.2f"),
+			SoundPingEvent.SequenceId,
+			static_cast<int32>(SoundPingEvent.PingType),
+			*SoundPingEvent.SoundPingTag.ToString(),
+			SoundPingEvent.WorldLocation.X,
+			SoundPingEvent.WorldLocation.Y,
+			SoundPingEvent.WorldLocation.Z,
+			SoundPingEvent.ServerTimeSeconds));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugSoundPingReplicated(
+	const UObject* WorldContextObject,
+	const FHeistSoundPingEvent& SoundPingEvent)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Sound ping replicated: SequenceId=%d Type=%d Tag=%s Location=(%.1f,%.1f,%.1f) ServerTime=%.2f"),
+			SoundPingEvent.SequenceId,
+			static_cast<int32>(SoundPingEvent.PingType),
+			*SoundPingEvent.SoundPingTag.ToString(),
+			SoundPingEvent.WorldLocation.X,
+			SoundPingEvent.WorldLocation.Y,
+			SoundPingEvent.WorldLocation.Z,
+			SoundPingEvent.ServerTimeSeconds));
+#endif
+}
+
 void UHeistDebugFunctionLibrary::DebugEscapedPlayerRestrictionsApplied(const UObject* WorldContextObject)
 {
 #if UE_BUILD_SHIPPING
@@ -1276,6 +1446,81 @@ void UHeistDebugFunctionLibrary::DebugStatusClear(APlayerController* PlayerContr
 			TEXT("Status debug clear requested: ClearedStunned=%s ClearedStunImmune=%s"),
 			bClearedStunned ? TEXT("true") : TEXT("false"),
 			bClearedImmune ? TEXT("true") : TEXT("false")),
+		EHeistDebugLevel::Info,
+		true);
+#endif
+}
+
+#pragma endregion
+
+#pragma region ThrowableDebug
+
+void UHeistDebugFunctionLibrary::DebugThrowableHelp(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		PlayerController,
+		TEXT("Throwable debug commands: HeistCoinThrow <Distance> | HeistCoinThrowAt <X> <Y> <Z>"),
+		EHeistDebugLevel::Info,
+		true,
+		8.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugCoinThrow(APlayerController* PlayerController, const float Distance)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController)
+		? HeistPlayerController->GetPawn<AHeistPlayerCharacter>()
+		: nullptr;
+	if (!IsValid(HeistPlayerController) || !IsValid(HeistCharacter))
+	{
+		Message(PlayerController, TEXT("Coin debug throw failed: invalid Heist player controller or pawn."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const float ClampedDistance = FMath::Clamp(Distance, 100.0f, 5000.0f);
+	const FVector TargetWorldLocation = HeistCharacter->GetActorLocation()
+		+ HeistCharacter->GetActorForwardVector() * ClampedDistance;
+	HeistPlayerController->DebugRequestThrowCoinAtWorldLocation(TargetWorldLocation);
+	Message(
+		PlayerController,
+		FString::Printf(TEXT("Coin debug throw requested: Distance=%.1f"), ClampedDistance),
+		EHeistDebugLevel::Info,
+		true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugCoinThrowAt(
+	APlayerController* PlayerController,
+	const float TargetX,
+	const float TargetY,
+	const float TargetZ)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		Message(PlayerController, TEXT("Coin debug throw-at failed: invalid Heist player controller."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const FVector TargetWorldLocation(TargetX, TargetY, TargetZ);
+	HeistPlayerController->DebugRequestThrowCoinAtWorldLocation(TargetWorldLocation);
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Coin debug throw-at requested: Target=(%.1f,%.1f,%.1f)"),
+			TargetX,
+			TargetY,
+			TargetZ),
 		EHeistDebugLevel::Info,
 		true);
 #endif

@@ -8,6 +8,7 @@
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistEscapePhaseStateChanged, bool);
 DECLARE_MULTICAST_DELEGATE(FHeistPlayerResultsChanged);
+DECLARE_MULTICAST_DELEGATE_OneParam(FHeistSoundPingEventReported, const FHeistSoundPingEvent&);
 
 UCLASS()
 class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
@@ -53,6 +54,27 @@ private:
 	void OnRep_EscapePhaseOpen();
 
 	FHeistEscapePhaseStateChanged EscapePhaseStateChangedDelegate;
+
+#pragma endregion
+
+#pragma region SoundPing
+
+public:
+	void ReportSoundPing(const FHeistSoundPingEvent& SoundPingEvent);
+	const FHeistSoundPingEvent& GetLastSoundPingEvent() const;
+	FHeistSoundPingEventReported& GetSoundPingEventReportedDelegate();
+
+private:
+	UPROPERTY(ReplicatedUsing = OnRep_LastSoundPingEvent, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|SoundPing", meta = (AllowPrivateAccess = "true"))
+	FHeistSoundPingEvent LastSoundPingEvent;
+
+	UPROPERTY(Transient)
+	int32 NextSoundPingSequenceId = 1;
+
+	UFUNCTION()
+	void OnRep_LastSoundPingEvent();
+
+	FHeistSoundPingEventReported SoundPingEventReportedDelegate;
 
 #pragma endregion
 

@@ -10,6 +10,7 @@ class UDataTable;
 class AHeistLootActor;
 struct FHeistItemDataRow;
 struct FHeistLootDataRow;
+struct FHeistUsableItemDataRow;
 struct FHeistLootDropRequest;
 
 UCLASS()
@@ -38,6 +39,7 @@ public:
 	UDataTable* GetItemDataTable() const;
 	bool TryGetItemDefinition(FName ItemId, FHeistItemDataRow& OutItemDefinition) const;
 	bool TryGetLootDefinition(FName ItemId, FHeistLootDataRow& OutLootDefinition) const;
+	bool TryGetUsableItemDefinition(FName ItemId, FHeistUsableItemDataRow& OutUsableItemDefinition) const;
 	bool TrySpawnDroppedLoot(const FHeistLootDropRequest& DropRequest, AHeistLootActor*& OutDroppedLootActor) const;
 
 private:

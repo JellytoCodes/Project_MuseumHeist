@@ -167,6 +167,36 @@ enum class EHeistSoundPingType : uint8
 	StunHit
 };
 
+USTRUCT(BlueprintType)
+struct PROJECT_MUSEUMHEIST_API FHeistSoundPingEvent
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|SoundPing")
+	int32 SequenceId = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|SoundPing")
+	FGameplayTag SoundPingTag;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|SoundPing")
+	EHeistSoundPingType PingType = EHeistSoundPingType::None;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|SoundPing")
+	FVector WorldLocation = FVector::ZeroVector;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|SoundPing")
+	float ServerTimeSeconds = 0.0f;
+
+	bool operator==(const FHeistSoundPingEvent& Other) const
+	{
+		return SequenceId == Other.SequenceId
+			&& SoundPingTag == Other.SoundPingTag
+			&& PingType == Other.PingType
+			&& WorldLocation.Equals(Other.WorldLocation)
+			&& FMath::IsNearlyEqual(ServerTimeSeconds, Other.ServerTimeSeconds);
+	}
+};
+
 UENUM(BlueprintType)
 enum class EHeistCustomizationType : uint8
 {

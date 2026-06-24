@@ -9,10 +9,13 @@
 class AHeistPlayerCharacter;
 class AHeistLootActor;
 class AHeistPlayerState;
+class AHeistThrowableProjectile;
 class AHeistVentActor;
 class UHeistInventoryComponent;
 class UInputAction;
 class UInputMappingContext;
+struct FHeistItemDataRow;
+struct FHeistUsableItemDataRow;
 struct FHitResult;
 struct FInputActionValue;
 
@@ -84,6 +87,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Heist|Inventory")
 	void RequestClearQuickSlot(EHeistQuickSlotType SlotType);
 
+	UFUNCTION(BlueprintCallable, Category = "Heist|QuickSlot")
+	void RequestUseQuickSlotAtWorldLocation(EHeistQuickSlotType SlotType, FVector TargetWorldLocation);
+
+	void DebugRequestThrowCoinAtWorldLocation(FVector TargetWorldLocation);
+
 private:
 	UFUNCTION(Server, Reliable)
 	void Server_RequestLootPickup(AHeistLootActor* TargetLootActor);
@@ -109,6 +117,12 @@ private:
 	UFUNCTION(Server, Reliable)
 	void Server_RequestClearQuickSlot(EHeistQuickSlotType SlotType);
 
+	UFUNCTION(Server, Reliable)
+	void Server_RequestUseQuickSlotAtWorldLocation(EHeistQuickSlotType SlotType, FVector TargetWorldLocation);
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestThrowCoinAtWorldLocation(FVector TargetWorldLocation);
+
 #pragma endregion
 
 #pragma region InternalHelpers
@@ -128,9 +142,24 @@ private:
 		FHeistGameplayRequestContext& OutContext,
 		const TCHAR*& OutRejectReason) const;
 
+	bool TryResolveQuickSlotItem(
+		const FHeistGameplayRequestContext& RequestContext,
+		EHeistQuickSlotType SlotType,
+		FName& OutItemId,
+		const TCHAR*& OutRejectReason) const;
+	bool TrySpawnThrowableProjectile(
+		const FHeistGameplayRequestContext& RequestContext,
+		FName ItemId,
+		const FVector& TargetWorldLocation,
+		bool bDebugBypassInventory,
+		AHeistThrowableProjectile*& OutProjectile,
+		const TCHAR*& OutRejectReason) const;
+	static FName GetExpectedQuickSlotItemId(EHeistQuickSlotType SlotType);
+
 	void LogLootPickupRejected(const AHeistLootActor* TargetLootActor, const TCHAR* Reason, float Distance = -1.0f) const;
 	void LogEscapeRequestRejected(const AHeistVentActor* TargetVentActor, const TCHAR* Reason, float Distance = -1.0f) const;
 	void LogInventoryRequestRejected(const TCHAR* RequestName, int32 InstanceId, const TCHAR* Reason) const;
+	void LogThrowableUseRejected(EHeistQuickSlotType SlotType, FName ItemId, const TCHAR* Reason) const;
 
 #pragma endregion
 

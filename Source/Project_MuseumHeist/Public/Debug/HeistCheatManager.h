@@ -64,4 +64,18 @@ public:
 	void HeistStatusClear();
 
 #pragma endregion
+
+#pragma region ThrowableDebug
+
+public:
+	UFUNCTION(Exec)
+	void HeistThrowHelp();
+
+	UFUNCTION(Exec)
+	void HeistCoinThrow(float Distance = 1000.0f);
+
+	UFUNCTION(Exec)
+	void HeistCoinThrowAt(float TargetX, float TargetY, float TargetZ);
+
+#pragma endregion
 };

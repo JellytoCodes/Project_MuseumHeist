@@ -1,5 +1,6 @@
 #include "Core/HeistGameState.h"
 
+#include "Debug/HeistDebugFunctionLibrary.h"
 #include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerState.h"
 #include "Net/UnrealNetwork.h"
@@ -110,6 +111,42 @@ void AHeistGameState::OnRep_EscapePhaseOpen()
 		bEscapePhaseOpen ? TEXT("true") : TEXT("false"),
 		EscapePhaseOpenTimeSeconds,
 		EscapePhaseDelaySeconds);
+}
+
+#pragma endregion
+
+#pragma region SoundPing
+
+void AHeistGameState::ReportSoundPing(const FHeistSoundPingEvent& SoundPingEvent)
+{
+	if (!HasAuthority())
+	{
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Sound ping report rejected: GameState=%s Reason=NotAuthority"), *GetNameSafe(this));
+		return;
+	}
+
+	LastSoundPingEvent = SoundPingEvent;
+	LastSoundPingEvent.SequenceId = NextSoundPingSequenceId++;
+	LastSoundPingEvent.ServerTimeSeconds = GetServerWorldTimeSeconds();
+	ForceNetUpdate();
+	SoundPingEventReportedDelegate.Broadcast(LastSoundPingEvent);
+	UHeistDebugFunctionLibrary::DebugSoundPingReported(this, LastSoundPingEvent);
+}
+
+const FHeistSoundPingEvent& AHeistGameState::GetLastSoundPingEvent() const
+{
+	return LastSoundPingEvent;
+}
+
+FHeistSoundPingEventReported& AHeistGameState::GetSoundPingEventReportedDelegate()
+{
+	return SoundPingEventReportedDelegate;
+}
+
+void AHeistGameState::OnRep_LastSoundPingEvent()
+{
+	SoundPingEventReportedDelegate.Broadcast(LastSoundPingEvent);
+	UHeistDebugFunctionLibrary::DebugSoundPingReplicated(this, LastSoundPingEvent);
 }
 
 #pragma endregion
@@ -264,6 +301,7 @@ void AHeistGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(AHeistGameState, bEscapePhaseOpen);
 	DOREPLIFETIME(AHeistGameState, EscapePhaseDelaySeconds);
 	DOREPLIFETIME(AHeistGameState, EscapePhaseOpenTimeSeconds);
+	DOREPLIFETIME(AHeistGameState, LastSoundPingEvent);
 	DOREPLIFETIME(AHeistGameState, PlayerResults);
 }
 

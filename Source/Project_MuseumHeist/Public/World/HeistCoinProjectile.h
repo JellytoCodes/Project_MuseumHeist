@@ -12,4 +12,11 @@ class PROJECT_MUSEUMHEIST_API AHeistCoinProjectile : public AHeistThrowableProje
 
 public:
 	AHeistCoinProjectile();
+
+#pragma region Projectile
+
+protected:
+	virtual void HandleAuthorityImpact(const FHitResult& Hit) override;
+
+#pragma endregion
 };

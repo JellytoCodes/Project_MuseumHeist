@@ -187,6 +187,33 @@ bool AHeistGameMode::TryGetLootDefinition(
 	return true;
 }
 
+bool AHeistGameMode::TryGetUsableItemDefinition(
+	const FName ItemId,
+	FHeistUsableItemDataRow& OutUsableItemDefinition) const
+{
+	OutUsableItemDefinition = FHeistUsableItemDataRow();
+	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset)
+		? GameBalanceDataAsset.Get()
+		: GetDefault<UHeistGameBalanceDataAsset>();
+	const UDataTable* UsableItemDataTable = ResolvedBalanceData->UsableItemDataTable.LoadSynchronous();
+	if (!IsValid(UsableItemDataTable) || UsableItemDataTable->GetRowStruct() != FHeistUsableItemDataRow::StaticStruct())
+	{
+		return false;
+	}
+
+	const FHeistUsableItemDataRow* UsableItemDefinition = UsableItemDataTable->FindRow<FHeistUsableItemDataRow>(
+		ItemId,
+		TEXT("AHeistGameMode::TryGetUsableItemDefinition"),
+		false);
+	if (UsableItemDefinition == nullptr || UsableItemDefinition->ItemId != ItemId)
+	{
+		return false;
+	}
+
+	OutUsableItemDefinition = *UsableItemDefinition;
+	return true;
+}
+
 bool AHeistGameMode::TrySpawnDroppedLoot(
 	const FHeistLootDropRequest& DropRequest,
 	AHeistLootActor*& OutDroppedLootActor) const

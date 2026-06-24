@@ -18,7 +18,11 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "Inventory/HeistItemDataTypes.h"
+#include "Inventory/HeistInventoryTypes.h"
+#include "Kismet/GameplayStatics.h"
+#include "World/HeistCoinProjectile.h"
 #include "World/HeistLootActor.h"
+#include "World/HeistThrowableProjectile.h"
 #include "World/HeistVentActor.h"
 
 #pragma region Construction
@@ -217,6 +221,18 @@ void AHeistPlayerController::RequestAssignQuickSlot(
 void AHeistPlayerController::RequestClearQuickSlot(const EHeistQuickSlotType SlotType)
 {
 	Server_RequestClearQuickSlot(SlotType);
+}
+
+void AHeistPlayerController::RequestUseQuickSlotAtWorldLocation(
+	const EHeistQuickSlotType SlotType,
+	const FVector TargetWorldLocation)
+{
+	Server_RequestUseQuickSlotAtWorldLocation(SlotType, TargetWorldLocation);
+}
+
+void AHeistPlayerController::DebugRequestThrowCoinAtWorldLocation(const FVector TargetWorldLocation)
+{
+	Server_DebugRequestThrowCoinAtWorldLocation(TargetWorldLocation);
 }
 
 void AHeistPlayerController::Server_RequestLootPickup_Implementation(AHeistLootActor* TargetLootActor)
@@ -541,6 +557,91 @@ void AHeistPlayerController::Server_RequestClearQuickSlot_Implementation(const E
 	}
 }
 
+void AHeistPlayerController::Server_RequestUseQuickSlotAtWorldLocation_Implementation(
+	const EHeistQuickSlotType SlotType,
+	const FVector TargetWorldLocation)
+{
+	FHeistGameplayRequestContext RequestContext;
+	const TCHAR* RejectReason = nullptr;
+	if (!TryBuildGameplayRequestContext(RequestContext, RejectReason))
+	{
+		LogThrowableUseRejected(SlotType, NAME_None, RejectReason);
+		return;
+	}
+
+	if (RequestContext.Character->GetStatusComponent()->IsStunned())
+	{
+		LogThrowableUseRejected(SlotType, NAME_None, TEXT("Stunned"));
+		return;
+	}
+
+	if (RequestContext.Character->GetActionComponent()->IsGameplayCastActive())
+	{
+		LogThrowableUseRejected(SlotType, NAME_None, TEXT("Casting"));
+		return;
+	}
+
+	if (RequestContext.InventoryComponent->IsInventoryOpen())
+	{
+		LogThrowableUseRejected(SlotType, NAME_None, TEXT("InventoryOpen"));
+		return;
+	}
+
+	FName ItemId = NAME_None;
+	if (!TryResolveQuickSlotItem(RequestContext, SlotType, ItemId, RejectReason))
+	{
+		LogThrowableUseRejected(SlotType, ItemId, RejectReason);
+		return;
+	}
+
+	AHeistThrowableProjectile* SpawnedProjectile = nullptr;
+	if (!TrySpawnThrowableProjectile(
+		RequestContext,
+		ItemId,
+		TargetWorldLocation,
+		false,
+		SpawnedProjectile,
+		RejectReason))
+	{
+		LogThrowableUseRejected(SlotType, ItemId, RejectReason);
+	}
+}
+
+void AHeistPlayerController::Server_DebugRequestThrowCoinAtWorldLocation_Implementation(const FVector TargetWorldLocation)
+{
+	FHeistGameplayRequestContext RequestContext;
+	const TCHAR* RejectReason = nullptr;
+	if (!TryBuildGameplayRequestContext(RequestContext, RejectReason))
+	{
+		LogThrowableUseRejected(EHeistQuickSlotType::Coin, FName(TEXT("Throwable_Coin")), RejectReason);
+		return;
+	}
+
+	if (RequestContext.Character->GetStatusComponent()->IsStunned())
+	{
+		LogThrowableUseRejected(EHeistQuickSlotType::Coin, FName(TEXT("Throwable_Coin")), TEXT("Stunned"));
+		return;
+	}
+
+	if (RequestContext.Character->GetActionComponent()->IsGameplayCastActive())
+	{
+		LogThrowableUseRejected(EHeistQuickSlotType::Coin, FName(TEXT("Throwable_Coin")), TEXT("Casting"));
+		return;
+	}
+
+	AHeistThrowableProjectile* SpawnedProjectile = nullptr;
+	if (!TrySpawnThrowableProjectile(
+		RequestContext,
+		FName(TEXT("Throwable_Coin")),
+		TargetWorldLocation,
+		true,
+		SpawnedProjectile,
+		RejectReason))
+	{
+		LogThrowableUseRejected(EHeistQuickSlotType::Coin, FName(TEXT("Throwable_Coin")), RejectReason);
+	}
+}
+
 #pragma endregion
 
 #pragma region InternalHelpers
@@ -621,6 +722,169 @@ bool AHeistPlayerController::TryBuildInventoryMutationRequestContext(
 	return true;
 }
 
+bool AHeistPlayerController::TryResolveQuickSlotItem(
+	const FHeistGameplayRequestContext& RequestContext,
+	const EHeistQuickSlotType SlotType,
+	FName& OutItemId,
+	const TCHAR*& OutRejectReason) const
+{
+	OutItemId = NAME_None;
+	OutRejectReason = nullptr;
+
+	const FHeistQuickSlotState* QuickSlot = RequestContext.InventoryComponent->GetQuickSlots().FindByPredicate(
+		[SlotType](const FHeistQuickSlotState& ExistingQuickSlot)
+		{
+			return ExistingQuickSlot.SlotType == SlotType;
+		});
+	if (QuickSlot == nullptr || QuickSlot->ItemInstanceId == INDEX_NONE)
+	{
+		OutRejectReason = TEXT("EmptyQuickSlot");
+		return false;
+	}
+
+	FHeistInventoryItem InventoryItem;
+	if (!RequestContext.InventoryComponent->TryGetItem(QuickSlot->ItemInstanceId, InventoryItem))
+	{
+		OutRejectReason = TEXT("InvalidQuickSlotItem");
+		return false;
+	}
+
+	const FName ExpectedItemId = GetExpectedQuickSlotItemId(SlotType);
+	if (ExpectedItemId.IsNone() || InventoryItem.ItemId != ExpectedItemId)
+	{
+		OutItemId = InventoryItem.ItemId;
+		OutRejectReason = TEXT("QuickSlotItemMismatch");
+		return false;
+	}
+
+	OutItemId = InventoryItem.ItemId;
+	return true;
+}
+
+bool AHeistPlayerController::TrySpawnThrowableProjectile(
+	const FHeistGameplayRequestContext& RequestContext,
+	const FName ItemId,
+	const FVector& TargetWorldLocation,
+	const bool bDebugBypassInventory,
+	AHeistThrowableProjectile*& OutProjectile,
+	const TCHAR*& OutRejectReason) const
+{
+	OutProjectile = nullptr;
+	OutRejectReason = nullptr;
+
+	AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	if (!IsValid(HeistGameMode))
+	{
+		OutRejectReason = TEXT("MissingAuthGameMode");
+		return false;
+	}
+
+	FHeistItemDataRow ItemDefinition;
+	if (!HeistGameMode->TryGetItemDefinition(ItemId, ItemDefinition)
+		|| ItemDefinition.ItemType != EHeistItemType::Throwable
+		|| !ItemDefinition.bCanUseQuickSlot)
+	{
+		OutRejectReason = TEXT("InvalidThrowableItem");
+		return false;
+	}
+
+	FHeistUsableItemDataRow UsableItemDefinition;
+	if (!HeistGameMode->TryGetUsableItemDefinition(ItemId, UsableItemDefinition)
+		|| UsableItemDefinition.UseType != EHeistUseType::Throw)
+	{
+		if (!bDebugBypassInventory || ItemId != FName(TEXT("Throwable_Coin")))
+		{
+			OutRejectReason = TEXT("InvalidUsableItem");
+			return false;
+		}
+
+		UsableItemDefinition.ItemId = ItemId;
+		UsableItemDefinition.UseType = EHeistUseType::Throw;
+		UsableItemDefinition.TargetType = EHeistTargetType::ActorHit;
+		UsableItemDefinition.Duration = 3.0f;
+		UsableItemDefinition.ProjectileSpeed = 1500.0f;
+	}
+
+	UClass* ProjectileClass = UsableItemDefinition.SpawnedActorClass.LoadSynchronous();
+	if (!IsValid(ProjectileClass) && ItemId == FName(TEXT("Throwable_Coin")))
+	{
+		ProjectileClass = AHeistCoinProjectile::StaticClass();
+	}
+
+	if (!IsValid(ProjectileClass) || !ProjectileClass->IsChildOf(AHeistThrowableProjectile::StaticClass()))
+	{
+		OutRejectReason = TEXT("InvalidProjectileClass");
+		return false;
+	}
+
+	const FVector ProjectileSpawnLocation = RequestContext.Character->GetActorLocation()
+		+ RequestContext.Character->GetActorForwardVector() * 80.0f
+		+ FVector::UpVector * 40.0f;
+	FVector LaunchDirection = TargetWorldLocation - ProjectileSpawnLocation;
+	if (!LaunchDirection.Normalize())
+	{
+		LaunchDirection = RequestContext.Character->GetActorForwardVector().GetSafeNormal2D();
+	}
+
+	if (LaunchDirection.IsNearlyZero())
+	{
+		OutRejectReason = TEXT("InvalidThrowDirection");
+		return false;
+	}
+
+	const float ProjectileSpeed = FMath::Max(1.0f, UsableItemDefinition.ProjectileSpeed);
+	const FTransform SpawnTransform(LaunchDirection.Rotation(), ProjectileSpawnLocation);
+	AHeistThrowableProjectile* Projectile = GetWorld()->SpawnActorDeferred<AHeistThrowableProjectile>(
+		ProjectileClass,
+		SpawnTransform,
+		RequestContext.Character,
+		RequestContext.Character,
+		ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
+	if (!IsValid(Projectile))
+	{
+		OutRejectReason = TEXT("ProjectileSpawnFailed");
+		return false;
+	}
+
+	Projectile->InitializeThrowable(
+		RequestContext.Character,
+		ItemId,
+		LaunchDirection,
+		ProjectileSpeed,
+		UsableItemDefinition.Duration);
+	OutProjectile = Cast<AHeistThrowableProjectile>(UGameplayStatics::FinishSpawningActor(Projectile, SpawnTransform));
+	if (!IsValid(OutProjectile))
+	{
+		OutRejectReason = TEXT("ProjectileFinishSpawnFailed");
+		return false;
+	}
+
+	UHeistDebugFunctionLibrary::DebugThrowableProjectileSpawned(
+		this,
+		RequestContext.Character,
+		OutProjectile,
+		ItemId,
+		TargetWorldLocation,
+		ProjectileSpeed,
+		bDebugBypassInventory);
+	return true;
+}
+
+FName AHeistPlayerController::GetExpectedQuickSlotItemId(const EHeistQuickSlotType SlotType)
+{
+	switch (SlotType)
+	{
+	case EHeistQuickSlotType::Coin:
+		return FName(TEXT("Throwable_Coin"));
+	case EHeistQuickSlotType::SmokeGrenade:
+		return FName(TEXT("Throwable_Smoke"));
+	case EHeistQuickSlotType::GlueTrap:
+		return FName(TEXT("Trap_Glue"));
+	default:
+		return NAME_None;
+	}
+}
+
 void AHeistPlayerController::LogLootPickupRejected(
 	const AHeistLootActor* TargetLootActor,
 	const TCHAR* Reason,
@@ -643,6 +907,14 @@ void AHeistPlayerController::LogInventoryRequestRejected(
 	const TCHAR* Reason) const
 {
 	UHeistDebugFunctionLibrary::DebugInventoryRequestRejected(this, RequestName, InstanceId, Reason);
+}
+
+void AHeistPlayerController::LogThrowableUseRejected(
+	const EHeistQuickSlotType SlotType,
+	const FName ItemId,
+	const TCHAR* Reason) const
+{
+	UHeistDebugFunctionLibrary::DebugThrowableUseRejected(this, SlotType, ItemId, Reason);
 }
 
 #pragma endregion
