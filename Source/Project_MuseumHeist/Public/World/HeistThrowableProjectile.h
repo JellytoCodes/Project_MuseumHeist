@@ -31,12 +31,7 @@ protected:
 #pragma region Projectile
 
 public:
-	void InitializeThrowable(
-		AHeistPlayerCharacter* InThrowerCharacter,
-		FName InSourceItemId,
-		const FVector& InLaunchDirection,
-		float InProjectileSpeed,
-		float InEffectDurationSeconds);
+	void InitializeThrowable(AHeistPlayerCharacter* InThrowerCharacter, FName InSourceItemId, const FVector& InLaunchDirection, float InProjectileSpeed, float InEffectDurationSeconds);
 
 	AHeistPlayerCharacter* GetThrowerCharacter() const;
 	FName GetSourceItemId() const;
@@ -47,12 +42,7 @@ protected:
 
 private:
 	UFUNCTION()
-	void HandleProjectileHit(
-		UPrimitiveComponent* HitComponent,
-		AActor* OtherActor,
-		UPrimitiveComponent* OtherComp,
-		FVector NormalImpulse,
-		const FHitResult& Hit);
+	void HandleProjectileHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Projectile", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<USphereComponent> CollisionComponent;

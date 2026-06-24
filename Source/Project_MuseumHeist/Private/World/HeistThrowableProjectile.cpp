@@ -49,12 +49,7 @@ void AHeistThrowableProjectile::BeginPlay()
 
 #pragma region Projectile
 
-void AHeistThrowableProjectile::InitializeThrowable(
-	AHeistPlayerCharacter* InThrowerCharacter,
-	const FName InSourceItemId,
-	const FVector& InLaunchDirection,
-	const float InProjectileSpeed,
-	const float InEffectDurationSeconds)
+void AHeistThrowableProjectile::InitializeThrowable(AHeistPlayerCharacter* InThrowerCharacter, const FName InSourceItemId, const FVector& InLaunchDirection, const float InProjectileSpeed, const float InEffectDurationSeconds)
 {
 	if (!HasAuthority())
 	{
@@ -108,15 +103,11 @@ void AHeistThrowableProjectile::HandleAuthorityImpact(const FHitResult& Hit)
 		Hit.GetActor(),
 		SourceItemId,
 		Hit.ImpactPoint);
+
 	Destroy();
 }
 
-void AHeistThrowableProjectile::HandleProjectileHit(
-	UPrimitiveComponent*,
-	AActor* OtherActor,
-	UPrimitiveComponent*,
-	FVector,
-	const FHitResult& Hit)
+void AHeistThrowableProjectile::HandleProjectileHit(UPrimitiveComponent*, AActor* OtherActor, UPrimitiveComponent*, FVector, const FHitResult& Hit)
 {
 	if (!HasAuthority() || OtherActor == this || OtherActor == ThrowerCharacter)
 	{

@@ -116,12 +116,7 @@ namespace
 
 #pragma region Logging
 
-void UHeistDebugFunctionLibrary::Message(
-	const UObject* WorldContextObject,
-	const FString& Message,
-	EHeistDebugLevel Level,
-	bool bPrintToScreen,
-	float Duration)
+void UHeistDebugFunctionLibrary::Message(const UObject* WorldContextObject, const FString& Message, EHeistDebugLevel Level, bool bPrintToScreen, float Duration)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -213,13 +208,7 @@ void UHeistDebugFunctionLibrary::DebugInventoryRequestRejected(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugInventoryDropAccepted(
-	const UObject* WorldContextObject,
-	const UObject* Character,
-	const FName ItemId,
-	const int32 InstanceId,
-	const UObject* DroppedLootActor,
-	const FVector& DropOrigin)
+void UHeistDebugFunctionLibrary::DebugInventoryDropAccepted(const UObject* WorldContextObject, const UObject* Character, const FName ItemId, const int32 InstanceId, const UObject* DroppedLootActor, const FVector& DropOrigin)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -236,9 +225,7 @@ void UHeistDebugFunctionLibrary::DebugInventoryDropAccepted(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugInventoryItemDefinitionLookupRejected(
-	const FName ItemId,
-	const TCHAR* Reason)
+void UHeistDebugFunctionLibrary::DebugInventoryItemDefinitionLookupRejected(const FName ItemId, const TCHAR* Reason)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -252,12 +239,7 @@ void UHeistDebugFunctionLibrary::DebugInventoryItemDefinitionLookupRejected(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugInventoryAddRejected(
-	const UObject* OwnerActor,
-	const FName ItemId,
-	const TCHAR* Reason,
-	const int32 GridColumnCount,
-	const int32 GridRowCount)
+void UHeistDebugFunctionLibrary::DebugInventoryAddRejected(const UObject* OwnerActor, const FName ItemId, const TCHAR* Reason, const int32 GridColumnCount, const int32 GridRowCount)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -286,14 +268,7 @@ void UHeistDebugFunctionLibrary::DebugInventoryAddRejected(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugInventoryItemAdded(
-	const UObject* OwnerActor,
-	const FName ItemId,
-	const int32 InstanceId,
-	const FIntPoint& GridPosition,
-	const FIntPoint& PlacedSize,
-	const bool bRotated,
-	const int32 ItemCount)
+void UHeistDebugFunctionLibrary::DebugInventoryItemAdded(const UObject* OwnerActor, const FName ItemId, const int32 InstanceId, const FIntPoint& GridPosition, const FIntPoint& PlacedSize, const bool bRotated, const int32 ItemCount)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -314,10 +289,7 @@ void UHeistDebugFunctionLibrary::DebugInventoryItemAdded(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugInventoryItemMoved(
-	const UObject* OwnerActor,
-	const int32 InstanceId,
-	const FIntPoint& GridPosition)
+void UHeistDebugFunctionLibrary::DebugInventoryItemMoved(const UObject* OwnerActor, const int32 InstanceId, const FIntPoint& GridPosition)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -333,10 +305,7 @@ void UHeistDebugFunctionLibrary::DebugInventoryItemMoved(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugInventoryItemRotated(
-	const UObject* OwnerActor,
-	const int32 InstanceId,
-	const bool bRotated)
+void UHeistDebugFunctionLibrary::DebugInventoryItemRotated(const UObject* OwnerActor, const int32 InstanceId, const bool bRotated)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -351,11 +320,7 @@ void UHeistDebugFunctionLibrary::DebugInventoryItemRotated(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugInventoryItemRemoved(
-	const UObject* OwnerActor,
-	const FName ItemId,
-	const int32 InstanceId,
-	const int32 ItemCount)
+void UHeistDebugFunctionLibrary::DebugInventoryItemRemoved(const UObject* OwnerActor, const FName ItemId, const int32 InstanceId, const int32 ItemCount)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -371,11 +336,7 @@ void UHeistDebugFunctionLibrary::DebugInventoryItemRemoved(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugQuickSlotAssigned(
-	const UObject* OwnerActor,
-	const int32 SlotTypeValue,
-	const int32 InstanceId,
-	const FName ItemId)
+void UHeistDebugFunctionLibrary::DebugQuickSlotAssigned(const UObject* OwnerActor, const int32 SlotTypeValue, const int32 InstanceId, const FName ItemId)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -391,12 +352,7 @@ void UHeistDebugFunctionLibrary::DebugQuickSlotAssigned(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugInventoryOccupancyInvalid(
-	const int32 InstanceId,
-	const FName ItemId,
-	const TCHAR* Reason,
-	const FIntPoint& GridPosition,
-	const FIntPoint& ItemSize)
+void UHeistDebugFunctionLibrary::DebugInventoryOccupancyInvalid(const int32 InstanceId, const FName ItemId, const TCHAR* Reason, const FIntPoint& GridPosition, const FIntPoint& ItemSize)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -427,10 +383,7 @@ void UHeistDebugFunctionLibrary::DebugInventoryOccupancyInvalid(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugLootPickupRequestReceived(
-	const UObject* WorldContextObject,
-	const UObject* Character,
-	const UObject* TargetLootActor)
+void UHeistDebugFunctionLibrary::DebugLootPickupRequestReceived(const UObject* WorldContextObject, const UObject* Character, const UObject* TargetLootActor)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -444,11 +397,7 @@ void UHeistDebugFunctionLibrary::DebugLootPickupRequestReceived(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugLootPickupRequestRejected(
-	const UObject* WorldContextObject,
-	const UObject* TargetLootActor,
-	const TCHAR* Reason,
-	const float Distance)
+void UHeistDebugFunctionLibrary::DebugLootPickupRequestRejected(const UObject* WorldContextObject, const UObject* TargetLootActor, const TCHAR* Reason, const float Distance)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -464,12 +413,7 @@ void UHeistDebugFunctionLibrary::DebugLootPickupRequestRejected(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugLootPickupRequestAccepted(
-	const UObject* WorldContextObject,
-	const UObject* TargetLootActor,
-	const FName ItemId,
-	const int32 InstanceId,
-	const float Distance)
+void UHeistDebugFunctionLibrary::DebugLootPickupRequestAccepted(const UObject* WorldContextObject, const UObject* TargetLootActor, const FName ItemId, const int32 InstanceId, const float Distance)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -517,11 +461,7 @@ void UHeistDebugFunctionLibrary::DebugEscapeRequestRejected(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugEscapeRequestAccepted(
-	const UObject* WorldContextObject,
-	const UObject* Character,
-	const UObject* TargetVentActor,
-	const float Distance)
+void UHeistDebugFunctionLibrary::DebugEscapeRequestAccepted(const UObject* WorldContextObject, const UObject* Character, const UObject* TargetVentActor, const float Distance)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -536,12 +476,7 @@ void UHeistDebugFunctionLibrary::DebugEscapeRequestAccepted(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugEscapeCastStarted(
-	const UObject* WorldContextObject,
-	const UObject* Character,
-	const UObject* TargetVentActor,
-	const float DurationSeconds,
-	const float EndServerTime)
+void UHeistDebugFunctionLibrary::DebugEscapeCastStarted(const UObject* WorldContextObject, const UObject* Character, const UObject* TargetVentActor, const float DurationSeconds, const float EndServerTime)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -557,11 +492,7 @@ void UHeistDebugFunctionLibrary::DebugEscapeCastStarted(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugEscapeCastStateReplicated(
-	const UObject* WorldContextObject,
-	const UObject* Character,
-	const bool bIsActive,
-	const float EndServerTime)
+void UHeistDebugFunctionLibrary::DebugEscapeCastStateReplicated(const UObject* WorldContextObject, const UObject* Character, const bool bIsActive, const float EndServerTime)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -576,10 +507,7 @@ void UHeistDebugFunctionLibrary::DebugEscapeCastStateReplicated(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugEscapeCastCompleted(
-	const UObject* WorldContextObject,
-	const UObject* Character,
-	const UObject* TargetVentActor)
+void UHeistDebugFunctionLibrary::DebugEscapeCastCompleted(const UObject* WorldContextObject, const UObject* Character, const UObject* TargetVentActor)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -593,11 +521,7 @@ void UHeistDebugFunctionLibrary::DebugEscapeCastCompleted(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugEscapeCastCancelled(
-	const UObject* WorldContextObject,
-	const FString& CharacterName,
-	const FString& VentName,
-	const TCHAR* Reason)
+void UHeistDebugFunctionLibrary::DebugEscapeCastCancelled(const UObject* WorldContextObject, const FString& CharacterName, const FString& VentName, const TCHAR* Reason)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -612,11 +536,7 @@ void UHeistDebugFunctionLibrary::DebugEscapeCastCancelled(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugLootScoreWeightRejected(
-	const UObject* WorldContextObject,
-	const TCHAR* Reason,
-	const int32 ScoreDelta,
-	const float WeightDelta)
+void UHeistDebugFunctionLibrary::DebugLootScoreWeightRejected(const UObject* WorldContextObject, const TCHAR* Reason, const int32 ScoreDelta, const float WeightDelta)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -639,12 +559,7 @@ void UHeistDebugFunctionLibrary::DebugLootScoreWeightRejected(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugLootScoreWeightApplied(
-	const UObject* WorldContextObject,
-	const int32 ScoreDelta,
-	const float WeightDelta,
-	const int32 TotalScore,
-	const float TotalWeight)
+void UHeistDebugFunctionLibrary::DebugLootScoreWeightApplied(const UObject* WorldContextObject, const int32 ScoreDelta, const float WeightDelta, const int32 TotalScore, const float TotalWeight)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -661,12 +576,7 @@ void UHeistDebugFunctionLibrary::DebugLootScoreWeightApplied(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugLootScoreWeightRemoved(
-	const UObject* WorldContextObject,
-	const int32 ScoreDelta,
-	const float WeightDelta,
-	const int32 TotalScore,
-	const float TotalWeight)
+void UHeistDebugFunctionLibrary::DebugLootScoreWeightRemoved(const UObject* WorldContextObject, const int32 ScoreDelta, const float WeightDelta, const int32 TotalScore, const float TotalWeight)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -683,9 +593,7 @@ void UHeistDebugFunctionLibrary::DebugLootScoreWeightRemoved(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugPlayerEscapeStateRejected(
-	const UObject* WorldContextObject,
-	const TCHAR* Reason)
+void UHeistDebugFunctionLibrary::DebugPlayerEscapeStateRejected(const UObject* WorldContextObject, const TCHAR* Reason)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -700,11 +608,7 @@ void UHeistDebugFunctionLibrary::DebugPlayerEscapeStateRejected(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugPlayerEscapeStateCommitted(
-	const UObject* WorldContextObject,
-	const int32 HeistPlayerId,
-	const int32 FinalScore,
-	const float EscapeTimeSeconds)
+void UHeistDebugFunctionLibrary::DebugPlayerEscapeStateCommitted(const UObject* WorldContextObject, const int32 HeistPlayerId, const int32 FinalScore, const float EscapeTimeSeconds)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -720,10 +624,7 @@ void UHeistDebugFunctionLibrary::DebugPlayerEscapeStateCommitted(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugPlayerEscapeStateReplicated(
-	const UObject* WorldContextObject,
-	const int32 HeistPlayerId,
-	const bool bEscaped)
+void UHeistDebugFunctionLibrary::DebugPlayerEscapeStateReplicated(const UObject* WorldContextObject, const int32 HeistPlayerId, const bool bEscaped)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -738,9 +639,7 @@ void UHeistDebugFunctionLibrary::DebugPlayerEscapeStateReplicated(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugPlayerStateScoreReplicated(
-	const UObject* WorldContextObject,
-	const int32 TotalLootScore)
+void UHeistDebugFunctionLibrary::DebugPlayerStateScoreReplicated(const UObject* WorldContextObject, const int32 TotalLootScore)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -754,9 +653,7 @@ void UHeistDebugFunctionLibrary::DebugPlayerStateScoreReplicated(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugPlayerStateWeightReplicated(
-	const UObject* WorldContextObject,
-	const float TotalLootWeight)
+void UHeistDebugFunctionLibrary::DebugPlayerStateWeightReplicated(const UObject* WorldContextObject, const float TotalLootWeight)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -770,9 +667,7 @@ void UHeistDebugFunctionLibrary::DebugPlayerStateWeightReplicated(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugWeightMovementSkipped(
-	const UObject* WorldContextObject,
-	const TCHAR* Reason)
+void UHeistDebugFunctionLibrary::DebugWeightMovementSkipped(const UObject* WorldContextObject, const TCHAR* Reason)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -788,11 +683,7 @@ void UHeistDebugFunctionLibrary::DebugWeightMovementSkipped(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugWeightMovementSpeedApplied(
-	const UObject* WorldContextObject,
-	const float TotalWeight,
-	const float BaseSpeed,
-	const float FinalSpeed)
+void UHeistDebugFunctionLibrary::DebugWeightMovementSpeedApplied(const UObject* WorldContextObject, const float TotalWeight, const float BaseSpeed, const float FinalSpeed)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -808,10 +699,7 @@ void UHeistDebugFunctionLibrary::DebugWeightMovementSpeedApplied(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugStatusTagApplied(
-	const UObject* WorldContextObject,
-	const FGameplayTag& StateTag,
-	const float EndServerTime)
+void UHeistDebugFunctionLibrary::DebugStatusTagApplied(const UObject* WorldContextObject, const FGameplayTag& StateTag, const float EndServerTime)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -840,9 +728,7 @@ void UHeistDebugFunctionLibrary::DebugStatusTagCleared(const UObject* WorldConte
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugStatusTagsReplicated(
-	const UObject* WorldContextObject,
-	const TArray<FHeistTimedTagState>& StatusTags)
+void UHeistDebugFunctionLibrary::DebugStatusTagsReplicated(const UObject* WorldContextObject, const TArray<FHeistTimedTagState>& StatusTags)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -856,11 +742,7 @@ void UHeistDebugFunctionLibrary::DebugStatusTagsReplicated(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugThrowableUseRejected(
-	const UObject* WorldContextObject,
-	const EHeistQuickSlotType SlotType,
-	const FName ItemId,
-	const TCHAR* Reason)
+void UHeistDebugFunctionLibrary::DebugThrowableUseRejected(const UObject* WorldContextObject, const EHeistQuickSlotType SlotType, const FName ItemId, const TCHAR* Reason)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -876,14 +758,7 @@ void UHeistDebugFunctionLibrary::DebugThrowableUseRejected(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugThrowableProjectileSpawned(
-	const UObject* WorldContextObject,
-	const UObject* Character,
-	const UObject* Projectile,
-	const FName ItemId,
-	const FVector& TargetWorldLocation,
-	const float ProjectileSpeed,
-	const bool bDebugBypassInventory)
+void UHeistDebugFunctionLibrary::DebugThrowableProjectileSpawned(const UObject* WorldContextObject, const UObject* Character, const UObject* Projectile, const FName ItemId, const FVector& TargetWorldLocation, const float ProjectileSpeed, const bool bDebugBypassInventory)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -903,12 +778,7 @@ void UHeistDebugFunctionLibrary::DebugThrowableProjectileSpawned(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugThrowableProjectileImpact(
-	const UObject* WorldContextObject,
-	const UObject* Projectile,
-	const UObject* OtherActor,
-	const FName ItemId,
-	const FVector& ImpactLocation)
+void UHeistDebugFunctionLibrary::DebugThrowableProjectileImpact(const UObject* WorldContextObject, const UObject* Projectile, const UObject* OtherActor, const FName ItemId, const FVector& ImpactLocation)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -926,11 +796,7 @@ void UHeistDebugFunctionLibrary::DebugThrowableProjectileImpact(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugCoinProjectileDamageApplied(
-	const UObject* WorldContextObject,
-	const UObject* Projectile,
-	const UObject* HitCharacter,
-	const float Damage)
+void UHeistDebugFunctionLibrary::DebugCoinProjectileDamageApplied(const UObject* WorldContextObject, const UObject* Projectile, const UObject* HitCharacter, const float Damage)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -945,11 +811,7 @@ void UHeistDebugFunctionLibrary::DebugCoinProjectileDamageApplied(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugCoinProjectileStunApplied(
-	const UObject* WorldContextObject,
-	const UObject* Projectile,
-	const UObject* HitCharacter,
-	const float DurationSeconds)
+void UHeistDebugFunctionLibrary::DebugCoinProjectileStunApplied(const UObject* WorldContextObject, const UObject* Projectile, const UObject* HitCharacter, const float DurationSeconds)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -964,11 +826,7 @@ void UHeistDebugFunctionLibrary::DebugCoinProjectileStunApplied(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugCoinProjectileStunRejected(
-	const UObject* WorldContextObject,
-	const UObject* Projectile,
-	const UObject* HitCharacter,
-	const TCHAR* Reason)
+void UHeistDebugFunctionLibrary::DebugCoinProjectileStunRejected(const UObject* WorldContextObject, const UObject* Projectile, const UObject* HitCharacter, const TCHAR* Reason)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -984,9 +842,7 @@ void UHeistDebugFunctionLibrary::DebugCoinProjectileStunRejected(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugSoundPingReported(
-	const UObject* WorldContextObject,
-	const FHeistSoundPingEvent& SoundPingEvent)
+void UHeistDebugFunctionLibrary::DebugSoundPingReported(const UObject* WorldContextObject, const FHeistSoundPingEvent& SoundPingEvent)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -1005,9 +861,7 @@ void UHeistDebugFunctionLibrary::DebugSoundPingReported(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugSoundPingReplicated(
-	const UObject* WorldContextObject,
-	const FHeistSoundPingEvent& SoundPingEvent)
+void UHeistDebugFunctionLibrary::DebugSoundPingReplicated(const UObject* WorldContextObject, const FHeistSoundPingEvent& SoundPingEvent)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -1039,10 +893,7 @@ void UHeistDebugFunctionLibrary::DebugEscapedPlayerRestrictionsApplied(const UOb
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugResultScreenShowSkipped(
-	const UObject* HUD,
-	const UObject* ViewModel,
-	const UClass* WidgetClass)
+void UHeistDebugFunctionLibrary::DebugResultScreenShowSkipped(const UObject* HUD, const UObject* ViewModel, const UClass* WidgetClass)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -1057,9 +908,7 @@ void UHeistDebugFunctionLibrary::DebugResultScreenShowSkipped(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugWidgetMissingMVVMView(
-	const UObject* Widget,
-	const TCHAR* WidgetRole)
+void UHeistDebugFunctionLibrary::DebugWidgetMissingMVVMView(const UObject* Widget, const TCHAR* WidgetRole)
 {
 #if UE_BUILD_SHIPPING
 	return;
