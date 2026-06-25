@@ -225,6 +225,42 @@ void UHeistDebugFunctionLibrary::DebugInventoryDropAccepted(const UObject* World
 #endif
 }
 
+void UHeistDebugFunctionLibrary::DebugPinataDropAccepted(
+	const UObject* WorldContextObject,
+	const UObject* Character,
+	const UObject* DropInstigator,
+	const FName ItemId,
+	const int32 InstanceId,
+	const UObject* DroppedLootActor,
+	const FVector& DropOrigin)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Pinata drop accepted: Character=%s Instigator=%s ItemId=%s InstanceId=%d WorldLoot=%s DropOrigin=%s"),
+			*GetNameSafe(Character),
+			*GetNameSafe(DropInstigator),
+			*ItemId.ToString(),
+			InstanceId,
+			*GetNameSafe(DroppedLootActor),
+			*DropOrigin.ToCompactString()));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugPinataDropSkipped(const UObject* WorldContextObject, const TCHAR* Reason)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(TEXT("Pinata drop skipped: Reason=%s"), Reason));
+#endif
+}
+
 void UHeistDebugFunctionLibrary::DebugInventoryItemDefinitionLookupRejected(const FName ItemId, const TCHAR* Reason)
 {
 #if UE_BUILD_SHIPPING

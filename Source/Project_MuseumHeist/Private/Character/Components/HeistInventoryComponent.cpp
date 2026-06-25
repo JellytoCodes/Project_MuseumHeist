@@ -2,11 +2,14 @@
 
 #include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameMode.h"
+#include "Core/HeistPlayerState.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
+#include "GameFramework/Controller.h"
 #include "Inventory/HeistItemDataTypes.h"
 #include "Net/UnrealNetwork.h"
+#include "World/HeistLootActor.h"
 
 #pragma region InternalConstants
 
@@ -313,6 +316,84 @@ bool UHeistInventoryComponent::TryRemoveItem(
 	return true;
 }
 
+bool UHeistInventoryComponent::TryDropRandomLootOnStun(AActor* DropInstigator)
+{
+	AActor* OwnerActor = GetOwner();
+	if (!IsValid(OwnerActor) || !OwnerActor->HasAuthority())
+	{
+		return false;
+	}
+
+	AHeistPlayerCharacter* OwnerCharacter = Cast<AHeistPlayerCharacter>(OwnerActor);
+	AHeistPlayerState* HeistPlayerState = nullptr;
+	if (IsValid(OwnerCharacter))
+	{
+		HeistPlayerState = OwnerCharacter->GetPlayerState<AHeistPlayerState>();
+	}
+	if (!IsValid(HeistPlayerState))
+	{
+		UHeistDebugFunctionLibrary::DebugPinataDropSkipped(OwnerActor, TEXT("MissingPlayerState"));
+		return false;
+	}
+
+	FHeistInventoryItem DropCandidate;
+	if (!TrySelectRandomStunDropCandidate(DropCandidate))
+	{
+		UHeistDebugFunctionLibrary::DebugPinataDropSkipped(OwnerActor, TEXT("NoEligibleLoot"));
+		return false;
+	}
+
+	AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	FHeistLootDataRow LootDefinition;
+	if (!IsValid(HeistGameMode)
+		|| !HeistGameMode->TryGetLootDefinition(DropCandidate.ItemId, LootDefinition)
+		|| !HeistPlayerState->CanRemoveLootScoreAndWeight(LootDefinition.ScoreValue, LootDefinition.Weight))
+	{
+		UHeistDebugFunctionLibrary::DebugPinataDropSkipped(OwnerActor, TEXT("InvalidLootState"));
+		return false;
+	}
+
+	const FVector OwnerLocation = OwnerActor->GetActorLocation();
+	const FVector RandomDirection = FRotator(0.0f, FMath::FRandRange(0.0f, 360.0f), 0.0f).Vector();
+	const float DropDistance = FMath::FRandRange(50.0f, 150.0f);
+
+	FHeistLootDropRequest DropRequest;
+	DropRequest.DroppedBy = IsValid(DropInstigator) ? DropInstigator : OwnerActor;
+	DropRequest.ItemId = DropCandidate.ItemId;
+	DropRequest.SourceInstanceId = DropCandidate.InstanceId;
+	DropRequest.DropOrigin = OwnerLocation + RandomDirection * DropDistance;
+
+	AHeistLootActor* DroppedLootActor = nullptr;
+	if (!HeistGameMode->TrySpawnDroppedLoot(DropRequest, DroppedLootActor))
+	{
+		UHeistDebugFunctionLibrary::DebugPinataDropSkipped(OwnerActor, TEXT("WorldSpawnFailed"));
+		return false;
+	}
+
+	FHeistInventoryItem RemovedItem;
+	if (!TryRemoveItem(DropCandidate.InstanceId, RemovedItem))
+	{
+		DroppedLootActor->Destroy();
+		UHeistDebugFunctionLibrary::DebugPinataDropSkipped(OwnerActor, TEXT("InventoryRemovalFailed"));
+		return false;
+	}
+
+	checkf(RemovedItem.ItemId == DropRequest.ItemId, TEXT("Validated stun drop item changed during commit."));
+	checkf(
+		HeistPlayerState->RemoveLootScoreAndWeight(LootDefinition.ScoreValue, LootDefinition.Weight),
+		TEXT("Validated loot score and weight removal must succeed after stun drop inventory commit."));
+
+	UHeistDebugFunctionLibrary::DebugPinataDropAccepted(
+		OwnerActor,
+		OwnerActor,
+		DropRequest.DroppedBy,
+		DropRequest.ItemId,
+		DropCandidate.InstanceId,
+		DroppedLootActor,
+		FVector(DropRequest.DropOrigin));
+	return true;
+}
+
 bool UHeistInventoryComponent::TryAssignQuickSlot(
 	const EHeistQuickSlotType SlotType,
 	const int32 InstanceId)
@@ -502,6 +583,41 @@ const FHeistInventoryFastArrayItem* UHeistInventoryComponent::FindItemEntry(cons
 		{
 			return Entry.InventoryItem.InstanceId == InstanceId;
 		});
+}
+
+bool UHeistInventoryComponent::TrySelectRandomStunDropCandidate(FHeistInventoryItem& OutInventoryItem) const
+{
+	OutInventoryItem = FHeistInventoryItem();
+
+	TArray<FHeistInventoryItem> Candidates;
+	for (const FHeistInventoryFastArrayItem& Entry : ReplicatedInventory.Items)
+	{
+		FHeistItemDataRow ItemDefinition;
+		FHeistLootDataRow LootDefinition;
+		const AActor* OwnerActor = GetOwner();
+		const UWorld* World = GetWorld();
+		const AHeistGameMode* HeistGameMode = World ? World->GetAuthGameMode<AHeistGameMode>() : nullptr;
+		if (!IsValid(OwnerActor)
+			|| !OwnerActor->HasAuthority()
+			|| !IsValid(HeistGameMode)
+			|| !HeistGameMode->TryGetItemDefinition(Entry.InventoryItem.ItemId, ItemDefinition)
+			|| ItemDefinition.ItemType != EHeistItemType::Loot
+			|| !HeistGameMode->TryGetLootDefinition(Entry.InventoryItem.ItemId, LootDefinition)
+			|| !LootDefinition.bCanDropOnStun)
+		{
+			continue;
+		}
+
+		Candidates.Add(Entry.InventoryItem);
+	}
+
+	if (Candidates.IsEmpty())
+	{
+		return false;
+	}
+
+	OutInventoryItem = Candidates[FMath::RandRange(0, Candidates.Num() - 1)];
+	return true;
 }
 
 FHeistQuickSlotState* UHeistInventoryComponent::FindQuickSlot(const EHeistQuickSlotType SlotType)

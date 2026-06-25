@@ -1,5 +1,7 @@
 #include "Character/Components/HeistStatusComponent.h"
 
+#include "Character/Components/HeistInventoryComponent.h"
+#include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameplayTags.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "Engine/World.h"
@@ -43,14 +45,28 @@ const TArray<FHeistTimedTagState>& UHeistStatusComponent::GetStatusTags() const
 
 #pragma region StatusMutation
 
-bool UHeistStatusComponent::ApplyStun(const float DurationSeconds)
+bool UHeistStatusComponent::ApplyStun(const float DurationSeconds, AActor* StunSource)
 {
 	if (IsStunImmune())
 	{
 		return false;
 	}
 
-	return ApplyTimedStatusTag(FHeistGameplayTags::Get().State_Stunned, DurationSeconds);
+	const bool bWasStunned = IsStunned();
+	const bool bApplied = ApplyTimedStatusTag(FHeistGameplayTags::Get().State_Stunned, DurationSeconds);
+	if (bApplied && !bWasStunned)
+	{
+		AHeistPlayerCharacter* OwnerCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
+		UHeistInventoryComponent* InventoryComponent = IsValid(OwnerCharacter)
+			? OwnerCharacter->GetInventoryComponent()
+			: nullptr;
+		if (IsValid(InventoryComponent))
+		{
+			InventoryComponent->TryDropRandomLootOnStun(IsValid(StunSource) ? StunSource : OwnerCharacter);
+		}
+	}
+
+	return bApplied;
 }
 
 bool UHeistStatusComponent::ApplyStunImmunity(const float DurationSeconds)

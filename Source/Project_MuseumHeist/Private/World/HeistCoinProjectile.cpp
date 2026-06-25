@@ -36,7 +36,7 @@ void AHeistCoinProjectile::HandleAuthorityImpact(const FHitResult& Hit)
 		UHeistStatusComponent* StatusComponent = HitCharacter->GetStatusComponent();
 		checkf(IsValid(StatusComponent), TEXT("HeistPlayerCharacter requires HeistStatusComponent"));
 		const float StunDurationSeconds = FMath::Max(0.0f, GetEffectDurationSeconds());
-		if (StatusComponent->ApplyStun(StunDurationSeconds))
+		if (StatusComponent->ApplyStun(StunDurationSeconds, this))
 		{
 			UHeistDebugFunctionLibrary::DebugCoinProjectileStunApplied(
 				this,

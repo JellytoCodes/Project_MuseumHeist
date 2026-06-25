@@ -28,7 +28,7 @@ public:
 
 public:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Heist|Status", meta = (ClampMin = "0.0", Units = "s"))
-	bool ApplyStun(float DurationSeconds);
+	bool ApplyStun(float DurationSeconds, AActor* StunSource = nullptr);
 
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Heist|Status", meta = (ClampMin = "0.0", Units = "s"))
 	bool ApplyStunImmunity(float DurationSeconds);

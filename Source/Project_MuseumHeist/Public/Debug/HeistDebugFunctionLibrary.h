@@ -37,6 +37,8 @@ public:
 	static void DebugInventoryOpenSkipped(const UObject* WorldContextObject);
 	static void DebugInventoryRequestRejected(const UObject* WorldContextObject, const TCHAR* RequestName, int32 InstanceId, const TCHAR* Reason);
 	static void DebugInventoryDropAccepted(const UObject* WorldContextObject, const UObject* Character, FName ItemId, int32 InstanceId, const UObject* DroppedLootActor, const FVector& DropOrigin);
+	static void DebugPinataDropAccepted(const UObject* WorldContextObject, const UObject* Character, const UObject* DropInstigator, FName ItemId, int32 InstanceId, const UObject* DroppedLootActor, const FVector& DropOrigin);
+	static void DebugPinataDropSkipped(const UObject* WorldContextObject, const TCHAR* Reason);
 	static void DebugInventoryItemDefinitionLookupRejected(FName ItemId, const TCHAR* Reason);
 	static void DebugInventoryAddRejected(const UObject* OwnerActor, FName ItemId, const TCHAR* Reason, int32 GridColumnCount = INDEX_NONE, int32 GridRowCount = INDEX_NONE);
 	static void DebugInventoryItemAdded(const UObject* OwnerActor, FName ItemId, int32 InstanceId, const FIntPoint& GridPosition, const FIntPoint& PlacedSize, bool bRotated, int32 ItemCount);

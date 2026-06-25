@@ -50,6 +50,7 @@ public:
 	bool TryMoveItem(int32 InstanceId, const FIntPoint& TargetGridPosition);
 	bool TryRotateItem(int32 InstanceId);
 	bool TryRemoveItem(int32 InstanceId, FHeistInventoryItem& OutRemovedItem);
+	bool TryDropRandomLootOnStun(AActor* DropInstigator);
 	bool TryAssignQuickSlot(EHeistQuickSlotType SlotType, int32 InstanceId);
 	bool TryClearQuickSlot(EHeistQuickSlotType SlotType);
 	bool IsInventoryOpen() const;
@@ -64,6 +65,7 @@ private:
 	bool TryBuildOccupiedCellsExcluding(int32 ExcludedInstanceId, TArray<bool>& OutOccupiedCells) const;
 	FHeistInventoryFastArrayItem* FindItemEntry(int32 InstanceId);
 	const FHeistInventoryFastArrayItem* FindItemEntry(int32 InstanceId) const;
+	bool TrySelectRandomStunDropCandidate(FHeistInventoryItem& OutInventoryItem) const;
 	FHeistQuickSlotState* FindQuickSlot(EHeistQuickSlotType SlotType);
 	const FHeistQuickSlotState* FindQuickSlot(EHeistQuickSlotType SlotType) const;
 	EHeistQuickSlotType ResolveQuickSlotType(FName ItemId) const;
