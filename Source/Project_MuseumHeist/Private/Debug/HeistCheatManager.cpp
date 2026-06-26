@@ -141,6 +141,34 @@ void UHeistCheatManager::HeistCoinThrowAt(const float TargetX, const float Targe
 #endif
 }
 
+void UHeistCheatManager::HeistSmokeThrow(const float Distance)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugSmokeThrow(GetOuterAPlayerController(), Distance);
+#endif
+}
+
+void UHeistCheatManager::HeistSmokeThrowAt(const float TargetX, const float TargetY, const float TargetZ)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugSmokeThrowAt(GetOuterAPlayerController(), TargetX, TargetY, TargetZ);
+#endif
+}
+
+void UHeistCheatManager::HeistSmokeSightCheck(const float Distance)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugSmokeSightCheck(GetOuterAPlayerController(), Distance);
+#endif
+}
+
+void UHeistCheatManager::HeistSmokeSightCheckAt(const float TargetX, const float TargetY, const float TargetZ)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugSmokeSightCheckAt(GetOuterAPlayerController(), TargetX, TargetY, TargetZ);
+#endif
+}
+
 #pragma endregion
 
 #pragma region TrapDebug

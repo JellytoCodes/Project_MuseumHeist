@@ -12,6 +12,7 @@
 #include "GameFramework/PlayerState.h"
 #include "GameplayTagContainer.h"
 #include "Inventory/HeistInventoryTypes.h"
+#include "World/Actors/Area/HeistSmokeCloudActor.h"
 
 #pragma region InternalHelpers
 
@@ -953,6 +954,100 @@ void UHeistDebugFunctionLibrary::DebugCoinProjectileStunRejected(const UObject* 
 #endif
 }
 
+void UHeistDebugFunctionLibrary::DebugSmokeCloudSpawned(
+	const UObject* WorldContextObject,
+	const UObject* Projectile,
+	const UObject* SmokeCloud,
+	const FName ItemId,
+	const FVector& WorldLocation,
+	const float Radius,
+	const float DurationSeconds)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Smoke cloud spawned: Projectile=%s SmokeCloud=%s ItemId=%s Location=(%.1f,%.1f,%.1f) Radius=%.1f Duration=%.2f BlocksAISight=true"),
+			*GetNameSafe(Projectile),
+			*GetNameSafe(SmokeCloud),
+			*ItemId.ToString(),
+			WorldLocation.X,
+			WorldLocation.Y,
+			WorldLocation.Z,
+			Radius,
+			DurationSeconds));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugSmokeCloudStateReplicated(
+	const UObject* WorldContextObject,
+	const UObject* SmokeCloud,
+	const float Radius,
+	const float EndServerTime,
+	const bool bBlocksAISight)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Smoke cloud state replicated: SmokeCloud=%s Radius=%.1f EndServerTime=%.2f BlocksAISight=%s"),
+			*GetNameSafe(SmokeCloud),
+			Radius,
+			EndServerTime,
+			bBlocksAISight ? TEXT("true") : TEXT("false")));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugSmokeCloudOverlapChanged(
+	const UObject* WorldContextObject,
+	const UObject* SmokeCloud,
+	const UObject* Actor,
+	const bool bInsideSmoke,
+	const float RemainingSeconds)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Smoke cloud overlap changed: SmokeCloud=%s Actor=%s InSmoke=%s Remaining=%.2f"),
+			*GetNameSafe(SmokeCloud),
+			*GetNameSafe(Actor),
+			bInsideSmoke ? TEXT("true") : TEXT("false"),
+			RemainingSeconds));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugSmokeSightQuery(
+	const UObject* WorldContextObject,
+	const UObject* SmokeCloud,
+	const FVector& FromLocation,
+	const FVector& ToLocation,
+	const bool bBlocked)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Smoke sight query: Blocked=%s SmokeCloud=%s From=(%.1f,%.1f,%.1f) To=(%.1f,%.1f,%.1f)"),
+			bBlocked ? TEXT("true") : TEXT("false"),
+			*GetNameSafe(SmokeCloud),
+			FromLocation.X,
+			FromLocation.Y,
+			FromLocation.Z,
+			ToLocation.X,
+			ToLocation.Y,
+			ToLocation.Z));
+#endif
+}
+
 void UHeistDebugFunctionLibrary::DebugTrapPlacementCastStarted(
 	const UObject* WorldContextObject,
 	const UObject* Character,
@@ -1592,7 +1687,7 @@ void UHeistDebugFunctionLibrary::DebugThrowableHelp(APlayerController* PlayerCon
 #else
 	Message(
 		PlayerController,
-		TEXT("Throwable debug commands: HeistCoinThrow <Distance> | HeistCoinThrowAt <X> <Y> <Z>"),
+		TEXT("Throwable debug commands: HeistCoinThrow <Distance> | HeistCoinThrowAt <X> <Y> <Z> | HeistSmokeThrow <Distance> | HeistSmokeThrowAt <X> <Y> <Z> | HeistSmokeSightCheck <Distance> | HeistSmokeSightCheckAt <X> <Y> <Z>"),
 		EHeistDebugLevel::Info,
 		true,
 		8.0f);
@@ -1652,6 +1747,139 @@ void UHeistDebugFunctionLibrary::DebugCoinThrowAt(
 			TargetY,
 			TargetZ),
 		EHeistDebugLevel::Info,
+		true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugSmokeThrow(APlayerController* PlayerController, const float Distance)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController)
+		? HeistPlayerController->GetPawn<AHeistPlayerCharacter>()
+		: nullptr;
+	if (!IsValid(HeistPlayerController) || !IsValid(HeistCharacter))
+	{
+		Message(PlayerController, TEXT("Smoke debug throw failed: invalid Heist player controller or pawn."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const float ClampedDistance = FMath::Clamp(Distance, 100.0f, 5000.0f);
+	const FVector TargetWorldLocation = HeistCharacter->GetActorLocation()
+		+ HeistCharacter->GetActorForwardVector() * ClampedDistance;
+	HeistPlayerController->DebugRequestThrowSmokeAtWorldLocation(TargetWorldLocation);
+	Message(
+		PlayerController,
+		FString::Printf(TEXT("Smoke debug throw requested: Distance=%.1f"), ClampedDistance),
+		EHeistDebugLevel::Info,
+		true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugSmokeThrowAt(
+	APlayerController* PlayerController,
+	const float TargetX,
+	const float TargetY,
+	const float TargetZ)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		Message(PlayerController, TEXT("Smoke debug throw-at failed: invalid Heist player controller."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const FVector TargetWorldLocation(TargetX, TargetY, TargetZ);
+	HeistPlayerController->DebugRequestThrowSmokeAtWorldLocation(TargetWorldLocation);
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Smoke debug throw-at requested: Target=(%.1f,%.1f,%.1f)"),
+			TargetX,
+			TargetY,
+			TargetZ),
+		EHeistDebugLevel::Info,
+		true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugSmokeSightCheck(APlayerController* PlayerController, const float Distance)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController)
+		? HeistPlayerController->GetPawn<AHeistPlayerCharacter>()
+		: nullptr;
+	if (!IsValid(HeistPlayerController) || !IsValid(HeistCharacter))
+	{
+		Message(PlayerController, TEXT("Smoke sight check failed: invalid Heist player controller or pawn."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const float ClampedDistance = FMath::Clamp(Distance, 100.0f, 5000.0f);
+	const FVector TargetWorldLocation = HeistCharacter->GetActorLocation()
+		+ HeistCharacter->GetActorForwardVector() * ClampedDistance;
+	AHeistSmokeCloudActor* BlockingSmokeCloud = nullptr;
+	const bool bBlocked = AHeistSmokeCloudActor::IsAISightBlockedBySmoke(
+		HeistPlayerController,
+		HeistCharacter->GetActorLocation(),
+		TargetWorldLocation,
+		BlockingSmokeCloud);
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Smoke sight debug check completed: Distance=%.1f Blocked=%s BlockingSmoke=%s"),
+			ClampedDistance,
+			bBlocked ? TEXT("true") : TEXT("false"),
+			*GetNameSafe(BlockingSmokeCloud)),
+		bBlocked ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+		true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugSmokeSightCheckAt(
+	APlayerController* PlayerController,
+	const float TargetX,
+	const float TargetY,
+	const float TargetZ)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController)
+		? HeistPlayerController->GetPawn<AHeistPlayerCharacter>()
+		: nullptr;
+	if (!IsValid(HeistPlayerController) || !IsValid(HeistCharacter))
+	{
+		Message(PlayerController, TEXT("Smoke sight check-at failed: invalid Heist player controller or pawn."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const FVector TargetWorldLocation(TargetX, TargetY, TargetZ);
+	AHeistSmokeCloudActor* BlockingSmokeCloud = nullptr;
+	const bool bBlocked = AHeistSmokeCloudActor::IsAISightBlockedBySmoke(
+		HeistPlayerController,
+		HeistCharacter->GetActorLocation(),
+		TargetWorldLocation,
+		BlockingSmokeCloud);
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Smoke sight debug check-at completed: Target=(%.1f,%.1f,%.1f) Blocked=%s BlockingSmoke=%s"),
+			TargetX,
+			TargetY,
+			TargetZ,
+			bBlocked ? TEXT("true") : TEXT("false"),
+			*GetNameSafe(BlockingSmokeCloud)),
+		bBlocked ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
 		true);
 #endif
 }

@@ -92,6 +92,7 @@ public:
 	void RequestUseQuickSlotAtWorldLocation(EHeistQuickSlotType SlotType, FVector TargetWorldLocation);
 
 	void DebugRequestThrowCoinAtWorldLocation(FVector TargetWorldLocation);
+	void DebugRequestThrowSmokeAtWorldLocation(FVector TargetWorldLocation);
 	void DebugRequestPlaceGlueTrapAtWorldLocation(FVector TargetWorldLocation);
 
 private:
@@ -124,6 +125,9 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void Server_DebugRequestThrowCoinAtWorldLocation(FVector TargetWorldLocation);
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestThrowSmokeAtWorldLocation(FVector TargetWorldLocation);
 
 	UFUNCTION(Server, Reliable)
 	void Server_DebugRequestPlaceGlueTrapAtWorldLocation(FVector TargetWorldLocation);

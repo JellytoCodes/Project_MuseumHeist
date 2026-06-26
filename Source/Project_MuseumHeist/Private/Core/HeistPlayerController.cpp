@@ -23,6 +23,7 @@
 #include "World/Actors/Escape/HeistVentActor.h"
 #include "World/Actors/Loot/HeistLootActor.h"
 #include "World/Actors/Projectile/HeistCoinProjectile.h"
+#include "World/Actors/Projectile/HeistSmokeProjectile.h"
 #include "World/Actors/Projectile/HeistThrowableProjectile.h"
 #include "World/Actors/Trap/HeistGlueTrapActor.h"
 #include "World/Actors/Trap/HeistTrapActor.h"
@@ -235,6 +236,11 @@ void AHeistPlayerController::RequestUseQuickSlotAtWorldLocation(
 void AHeistPlayerController::DebugRequestThrowCoinAtWorldLocation(const FVector TargetWorldLocation)
 {
 	Server_DebugRequestThrowCoinAtWorldLocation(TargetWorldLocation);
+}
+
+void AHeistPlayerController::DebugRequestThrowSmokeAtWorldLocation(const FVector TargetWorldLocation)
+{
+	Server_DebugRequestThrowSmokeAtWorldLocation(TargetWorldLocation);
 }
 
 void AHeistPlayerController::DebugRequestPlaceGlueTrapAtWorldLocation(const FVector TargetWorldLocation)
@@ -679,6 +685,43 @@ void AHeistPlayerController::Server_DebugRequestThrowCoinAtWorldLocation_Impleme
 	}
 }
 
+void AHeistPlayerController::Server_DebugRequestThrowSmokeAtWorldLocation_Implementation(const FVector TargetWorldLocation)
+{
+	const FName SmokeItemId(TEXT("Throwable_Smoke"));
+
+	FHeistGameplayRequestContext RequestContext;
+	const TCHAR* RejectReason = nullptr;
+	if (!TryBuildGameplayRequestContext(RequestContext, RejectReason))
+	{
+		LogThrowableUseRejected(EHeistQuickSlotType::SmokeGrenade, SmokeItemId, RejectReason);
+		return;
+	}
+
+	if (RequestContext.Character->GetStatusComponent()->IsStunned())
+	{
+		LogThrowableUseRejected(EHeistQuickSlotType::SmokeGrenade, SmokeItemId, TEXT("Stunned"));
+		return;
+	}
+
+	if (RequestContext.Character->GetActionComponent()->IsGameplayCastActive())
+	{
+		LogThrowableUseRejected(EHeistQuickSlotType::SmokeGrenade, SmokeItemId, TEXT("Casting"));
+		return;
+	}
+
+	AHeistThrowableProjectile* SpawnedProjectile = nullptr;
+	if (!TrySpawnThrowableProjectile(
+		RequestContext,
+		SmokeItemId,
+		TargetWorldLocation,
+		true,
+		SpawnedProjectile,
+		RejectReason))
+	{
+		LogThrowableUseRejected(EHeistQuickSlotType::SmokeGrenade, SmokeItemId, RejectReason);
+	}
+}
+
 void AHeistPlayerController::Server_DebugRequestPlaceGlueTrapAtWorldLocation_Implementation(const FVector TargetWorldLocation)
 {
 	FHeistGameplayRequestContext RequestContext;
@@ -853,20 +896,30 @@ bool AHeistPlayerController::TrySpawnThrowableProjectile(
 		return false;
 	}
 
+	const bool bIsDebugFallbackThrowable = bDebugBypassInventory
+		&& (ItemId == FName(TEXT("Throwable_Coin")) || ItemId == FName(TEXT("Throwable_Smoke")));
+
 	FHeistItemDataRow ItemDefinition;
 	if (!HeistGameMode->TryGetItemDefinition(ItemId, ItemDefinition)
 		|| ItemDefinition.ItemType != EHeistItemType::Throwable
 		|| !ItemDefinition.bCanUseQuickSlot)
 	{
-		OutRejectReason = TEXT("InvalidThrowableItem");
-		return false;
+		if (!bIsDebugFallbackThrowable)
+		{
+			OutRejectReason = TEXT("InvalidThrowableItem");
+			return false;
+		}
+
+		ItemDefinition.ItemId = ItemId;
+		ItemDefinition.ItemType = EHeistItemType::Throwable;
+		ItemDefinition.bCanUseQuickSlot = true;
 	}
 
 	FHeistUsableItemDataRow UsableItemDefinition;
 	if (!HeistGameMode->TryGetUsableItemDefinition(ItemId, UsableItemDefinition)
 		|| UsableItemDefinition.UseType != EHeistUseType::Throw)
 	{
-		if (!bDebugBypassInventory || ItemId != FName(TEXT("Throwable_Coin")))
+		if (!bIsDebugFallbackThrowable)
 		{
 			OutRejectReason = TEXT("InvalidUsableItem");
 			return false;
@@ -875,7 +928,7 @@ bool AHeistPlayerController::TrySpawnThrowableProjectile(
 		UsableItemDefinition.ItemId = ItemId;
 		UsableItemDefinition.UseType = EHeistUseType::Throw;
 		UsableItemDefinition.TargetType = EHeistTargetType::ActorHit;
-		UsableItemDefinition.Duration = 3.0f;
+		UsableItemDefinition.Duration = ItemId == FName(TEXT("Throwable_Smoke")) ? 5.0f : 3.0f;
 		UsableItemDefinition.ProjectileSpeed = 1500.0f;
 	}
 
@@ -883,6 +936,10 @@ bool AHeistPlayerController::TrySpawnThrowableProjectile(
 	if (!IsValid(ProjectileClass) && ItemId == FName(TEXT("Throwable_Coin")))
 	{
 		ProjectileClass = AHeistCoinProjectile::StaticClass();
+	}
+	else if (!IsValid(ProjectileClass) && ItemId == FName(TEXT("Throwable_Smoke")))
+	{
+		ProjectileClass = AHeistSmokeProjectile::StaticClass();
 	}
 
 	if (!IsValid(ProjectileClass) || !ProjectileClass->IsChildOf(AHeistThrowableProjectile::StaticClass()))

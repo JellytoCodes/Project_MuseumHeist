@@ -80,6 +80,10 @@ public:
 	static void DebugCoinProjectileDamageApplied(const UObject* WorldContextObject, const UObject* Projectile, const UObject* HitCharacter, float Damage);
 	static void DebugCoinProjectileStunApplied(const UObject* WorldContextObject, const UObject* Projectile, const UObject* HitCharacter, float DurationSeconds);
 	static void DebugCoinProjectileStunRejected(const UObject* WorldContextObject, const UObject* Projectile, const UObject* HitCharacter, const TCHAR* Reason);
+	static void DebugSmokeCloudSpawned(const UObject* WorldContextObject, const UObject* Projectile, const UObject* SmokeCloud, FName ItemId, const FVector& WorldLocation, float Radius, float DurationSeconds);
+	static void DebugSmokeCloudStateReplicated(const UObject* WorldContextObject, const UObject* SmokeCloud, float Radius, float EndServerTime, bool bBlocksAISight);
+	static void DebugSmokeCloudOverlapChanged(const UObject* WorldContextObject, const UObject* SmokeCloud, const UObject* Actor, bool bInsideSmoke, float RemainingSeconds);
+	static void DebugSmokeSightQuery(const UObject* WorldContextObject, const UObject* SmokeCloud, const FVector& FromLocation, const FVector& ToLocation, bool bBlocked);
 	static void DebugTrapPlacementCastStarted(const UObject* WorldContextObject, const UObject* Character, FName ItemId, const FVector& TargetWorldLocation, float DurationSeconds, float EndServerTime);
 	static void DebugTrapPlacementCastStateReplicated(const UObject* WorldContextObject, const UObject* Character, bool bIsActive, float EndServerTime);
 	static void DebugTrapPlacementCastCancelled(const UObject* WorldContextObject, const FString& CharacterName, FName ItemId, const TCHAR* Reason);
@@ -157,6 +161,18 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Throwable", meta = (DevelopmentOnly))
 	static void DebugCoinThrowAt(APlayerController* PlayerController, float TargetX, float TargetY, float TargetZ);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Throwable", meta = (DevelopmentOnly))
+	static void DebugSmokeThrow(APlayerController* PlayerController, float Distance);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Throwable", meta = (DevelopmentOnly))
+	static void DebugSmokeThrowAt(APlayerController* PlayerController, float TargetX, float TargetY, float TargetZ);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Throwable", meta = (DevelopmentOnly))
+	static void DebugSmokeSightCheck(APlayerController* PlayerController, float Distance);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Throwable", meta = (DevelopmentOnly))
+	static void DebugSmokeSightCheckAt(APlayerController* PlayerController, float TargetX, float TargetY, float TargetZ);
 
 #pragma endregion
 

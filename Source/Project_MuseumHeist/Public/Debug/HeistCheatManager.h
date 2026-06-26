@@ -77,6 +77,18 @@ public:
 	UFUNCTION(Exec)
 	void HeistCoinThrowAt(float TargetX, float TargetY, float TargetZ);
 
+	UFUNCTION(Exec)
+	void HeistSmokeThrow(float Distance = 1000.0f);
+
+	UFUNCTION(Exec)
+	void HeistSmokeThrowAt(float TargetX, float TargetY, float TargetZ);
+
+	UFUNCTION(Exec)
+	void HeistSmokeSightCheck(float Distance = 1000.0f);
+
+	UFUNCTION(Exec)
+	void HeistSmokeSightCheckAt(float TargetX, float TargetY, float TargetZ);
+
 #pragma endregion
 
 #pragma region TrapDebug
