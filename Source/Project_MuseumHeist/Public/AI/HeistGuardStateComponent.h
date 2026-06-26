@@ -14,7 +14,20 @@ class PROJECT_MUSEUMHEIST_API UHeistGuardStateComponent : public UActorComponent
 public:
 	UHeistGuardStateComponent();
 
+	bool ApplyStun(float DurationSeconds);
+	EHeistGuardState GetGuardState() const;
+
 private:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|AI", meta = (AllowPrivateAccess = "true"))
+	void ClearStun();
+
+	UFUNCTION()
+	void OnRep_GuardState();
+
+	UPROPERTY(ReplicatedUsing = OnRep_GuardState, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|AI", meta = (AllowPrivateAccess = "true"))
 	EHeistGuardState GuardState = EHeistGuardState::Patrol;
+
+	FTimerHandle StunTimerHandle;
+
+public:
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 };

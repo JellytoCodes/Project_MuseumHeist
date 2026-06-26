@@ -6,6 +6,7 @@
 #include "HeistActionComponent.generated.h"
 
 class AHeistPlayerCharacter;
+class AHeistTrapActor;
 class AHeistVentActor;
 class UDamageType;
 
@@ -13,6 +14,11 @@ DECLARE_MULTICAST_DELEGATE_TwoParams(
 	FHeistEscapeCastCompleted,
 	AHeistPlayerCharacter*,
 	AHeistVentActor*);
+
+DECLARE_MULTICAST_DELEGATE_TwoParams(
+	FHeistTrapPlacementCastCompleted,
+	AHeistPlayerCharacter*,
+	AHeistTrapActor*);
 
 UCLASS(ClassGroup = (Heist), meta = (BlueprintSpawnableComponent))
 class PROJECT_MUSEUMHEIST_API UHeistActionComponent : public UActorComponent
@@ -82,6 +88,59 @@ private:
 
 #pragma endregion
 
+#pragma region TrapPlacementCast
+
+public:
+	bool TryBeginTrapPlacementRequest(
+		FName SourceItemId,
+		int32 SourceInstanceId,
+		const FVector& TargetWorldLocation,
+		float CastDurationSeconds,
+		float EffectDurationSeconds,
+		TSubclassOf<AHeistTrapActor> TrapActorClass,
+		bool bConsumeSourceItem);
+	bool IsTrapPlacementCastActive() const;
+	FHeistTrapPlacementCastCompleted& GetTrapPlacementCastCompletedDelegate();
+
+private:
+	UPROPERTY(ReplicatedUsing = OnRep_TrapPlacementCastActive, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Trap", meta = (AllowPrivateAccess = "true"))
+	bool bTrapPlacementCastActive = false;
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Trap", meta = (AllowPrivateAccess = "true"))
+	float TrapPlacementCastEndServerTime = 0.0f;
+
+	UPROPERTY(Transient)
+	FName PendingTrapItemId = NAME_None;
+
+	UPROPERTY(Transient)
+	int32 PendingTrapSourceInstanceId = INDEX_NONE;
+
+	UPROPERTY(Transient)
+	FVector PendingTrapTargetWorldLocation = FVector::ZeroVector;
+
+	UPROPERTY(Transient)
+	float PendingTrapEffectDurationSeconds = 0.0f;
+
+	UPROPERTY(Transient)
+	TSubclassOf<AHeistTrapActor> PendingTrapActorClass;
+
+	UPROPERTY(Transient)
+	bool bPendingTrapConsumesSourceItem = false;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Trap", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "cm"))
+	float TrapPlacementMovementCancelDistance = 5.0f;
+
+	UPROPERTY(Transient)
+	FVector TrapPlacementCastStartLocation = FVector::ZeroVector;
+
+	FTimerHandle TrapPlacementCastTimerHandle;
+	FHeistTrapPlacementCastCompleted TrapPlacementCastCompletedDelegate;
+
+	UFUNCTION()
+	void OnRep_TrapPlacementCastActive();
+
+#pragma endregion
+
 #pragma region Replication
 
 public:
@@ -94,9 +153,13 @@ public:
 private:
 	float ResolveEscapeCastDurationSeconds() const;
 	bool HasMovedBeyondEscapeCastTolerance() const;
+	bool HasMovedBeyondTrapPlacementCastTolerance() const;
 	void HandleEscapeCastTimerElapsed();
+	void HandleTrapPlacementCastTimerElapsed();
 	void CancelEscapeCast(const TCHAR* Reason);
+	void CancelTrapPlacementCast(const TCHAR* Reason);
 	void ClearEscapeCastState();
+	void ClearTrapPlacementCastState();
 
 #pragma endregion
 };

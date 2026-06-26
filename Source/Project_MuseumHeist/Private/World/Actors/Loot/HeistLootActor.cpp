@@ -1,4 +1,4 @@
-#include "World/HeistLootActor.h"
+#include "World/Actors/Loot/HeistLootActor.h"
 
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "Inventory/HeistItemDataTypes.h"

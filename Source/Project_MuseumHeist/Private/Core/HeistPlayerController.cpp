@@ -20,10 +20,12 @@
 #include "Inventory/HeistItemDataTypes.h"
 #include "Inventory/HeistInventoryTypes.h"
 #include "Kismet/GameplayStatics.h"
-#include "World/HeistCoinProjectile.h"
-#include "World/HeistLootActor.h"
-#include "World/HeistThrowableProjectile.h"
-#include "World/HeistVentActor.h"
+#include "World/Actors/Escape/HeistVentActor.h"
+#include "World/Actors/Loot/HeistLootActor.h"
+#include "World/Actors/Projectile/HeistCoinProjectile.h"
+#include "World/Actors/Projectile/HeistThrowableProjectile.h"
+#include "World/Actors/Trap/HeistGlueTrapActor.h"
+#include "World/Actors/Trap/HeistTrapActor.h"
 
 #pragma region Construction
 
@@ -233,6 +235,11 @@ void AHeistPlayerController::RequestUseQuickSlotAtWorldLocation(
 void AHeistPlayerController::DebugRequestThrowCoinAtWorldLocation(const FVector TargetWorldLocation)
 {
 	Server_DebugRequestThrowCoinAtWorldLocation(TargetWorldLocation);
+}
+
+void AHeistPlayerController::DebugRequestPlaceGlueTrapAtWorldLocation(const FVector TargetWorldLocation)
+{
+	Server_DebugRequestPlaceGlueTrapAtWorldLocation(TargetWorldLocation);
 }
 
 void AHeistPlayerController::Server_RequestLootPickup_Implementation(AHeistLootActor* TargetLootActor)
@@ -588,23 +595,53 @@ void AHeistPlayerController::Server_RequestUseQuickSlotAtWorldLocation_Implement
 	}
 
 	FName ItemId = NAME_None;
-	if (!TryResolveQuickSlotItem(RequestContext, SlotType, ItemId, RejectReason))
+	int32 SourceInstanceId = INDEX_NONE;
+	if (!TryResolveQuickSlotItem(RequestContext, SlotType, ItemId, SourceInstanceId, RejectReason))
 	{
 		LogThrowableUseRejected(SlotType, ItemId, RejectReason);
 		return;
 	}
 
-	AHeistThrowableProjectile* SpawnedProjectile = nullptr;
-	if (!TrySpawnThrowableProjectile(
-		RequestContext,
-		ItemId,
-		TargetWorldLocation,
-		false,
-		SpawnedProjectile,
-		RejectReason))
+	AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	FHeistUsableItemDataRow UsableItemDefinition;
+	if (!IsValid(HeistGameMode) || !HeistGameMode->TryGetUsableItemDefinition(ItemId, UsableItemDefinition))
 	{
-		LogThrowableUseRejected(SlotType, ItemId, RejectReason);
+		LogThrowableUseRejected(SlotType, ItemId, TEXT("InvalidUsableItem"));
+		return;
 	}
+
+	if (UsableItemDefinition.UseType == EHeistUseType::Throw)
+	{
+		AHeistThrowableProjectile* SpawnedProjectile = nullptr;
+		if (!TrySpawnThrowableProjectile(
+			RequestContext,
+			ItemId,
+			TargetWorldLocation,
+			false,
+			SpawnedProjectile,
+			RejectReason))
+		{
+			LogThrowableUseRejected(SlotType, ItemId, RejectReason);
+		}
+		return;
+	}
+
+	if (UsableItemDefinition.UseType == EHeistUseType::PlaceTrap)
+	{
+		if (!TryBeginTrapPlacement(
+			RequestContext,
+			ItemId,
+			SourceInstanceId,
+			TargetWorldLocation,
+			false,
+			RejectReason))
+		{
+			LogThrowableUseRejected(SlotType, ItemId, RejectReason);
+		}
+		return;
+	}
+
+	LogThrowableUseRejected(SlotType, ItemId, TEXT("UnsupportedUseType"));
 }
 
 void AHeistPlayerController::Server_DebugRequestThrowCoinAtWorldLocation_Implementation(const FVector TargetWorldLocation)
@@ -639,6 +676,40 @@ void AHeistPlayerController::Server_DebugRequestThrowCoinAtWorldLocation_Impleme
 		RejectReason))
 	{
 		LogThrowableUseRejected(EHeistQuickSlotType::Coin, FName(TEXT("Throwable_Coin")), RejectReason);
+	}
+}
+
+void AHeistPlayerController::Server_DebugRequestPlaceGlueTrapAtWorldLocation_Implementation(const FVector TargetWorldLocation)
+{
+	FHeistGameplayRequestContext RequestContext;
+	const TCHAR* RejectReason = nullptr;
+	if (!TryBuildGameplayRequestContext(RequestContext, RejectReason))
+	{
+		LogThrowableUseRejected(EHeistQuickSlotType::GlueTrap, FName(TEXT("Trap_Glue")), RejectReason);
+		return;
+	}
+
+	if (RequestContext.Character->GetStatusComponent()->IsStunned())
+	{
+		LogThrowableUseRejected(EHeistQuickSlotType::GlueTrap, FName(TEXT("Trap_Glue")), TEXT("Stunned"));
+		return;
+	}
+
+	if (RequestContext.Character->GetActionComponent()->IsGameplayCastActive())
+	{
+		LogThrowableUseRejected(EHeistQuickSlotType::GlueTrap, FName(TEXT("Trap_Glue")), TEXT("Casting"));
+		return;
+	}
+
+	if (!TryBeginTrapPlacement(
+		RequestContext,
+		FName(TEXT("Trap_Glue")),
+		INDEX_NONE,
+		TargetWorldLocation,
+		true,
+		RejectReason))
+	{
+		LogThrowableUseRejected(EHeistQuickSlotType::GlueTrap, FName(TEXT("Trap_Glue")), RejectReason);
 	}
 }
 
@@ -726,9 +797,11 @@ bool AHeistPlayerController::TryResolveQuickSlotItem(
 	const FHeistGameplayRequestContext& RequestContext,
 	const EHeistQuickSlotType SlotType,
 	FName& OutItemId,
+	int32& OutInstanceId,
 	const TCHAR*& OutRejectReason) const
 {
 	OutItemId = NAME_None;
+	OutInstanceId = INDEX_NONE;
 	OutRejectReason = nullptr;
 
 	const FHeistQuickSlotState* QuickSlot = RequestContext.InventoryComponent->GetQuickSlots().FindByPredicate(
@@ -758,6 +831,7 @@ bool AHeistPlayerController::TryResolveQuickSlotItem(
 	}
 
 	OutItemId = InventoryItem.ItemId;
+	OutInstanceId = InventoryItem.InstanceId;
 	return true;
 }
 
@@ -867,6 +941,86 @@ bool AHeistPlayerController::TrySpawnThrowableProjectile(
 		TargetWorldLocation,
 		ProjectileSpeed,
 		bDebugBypassInventory);
+	return true;
+}
+
+bool AHeistPlayerController::TryBeginTrapPlacement(
+	const FHeistGameplayRequestContext& RequestContext,
+	const FName ItemId,
+	const int32 SourceInstanceId,
+	const FVector& TargetWorldLocation,
+	const bool bDebugBypassInventory,
+	const TCHAR*& OutRejectReason) const
+{
+	OutRejectReason = nullptr;
+
+	AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	if (!IsValid(HeistGameMode))
+	{
+		OutRejectReason = TEXT("MissingAuthGameMode");
+		return false;
+	}
+
+	FHeistItemDataRow ItemDefinition;
+	if (!HeistGameMode->TryGetItemDefinition(ItemId, ItemDefinition)
+		|| ItemDefinition.ItemType != EHeistItemType::Trap
+		|| !ItemDefinition.bCanUseQuickSlot)
+	{
+		if (!bDebugBypassInventory || ItemId != FName(TEXT("Trap_Glue")))
+		{
+			OutRejectReason = TEXT("InvalidTrapItem");
+			return false;
+		}
+
+		ItemDefinition.ItemId = ItemId;
+		ItemDefinition.ItemType = EHeistItemType::Trap;
+		ItemDefinition.bCanUseQuickSlot = true;
+	}
+
+	FHeistUsableItemDataRow UsableItemDefinition;
+	if (!HeistGameMode->TryGetUsableItemDefinition(ItemId, UsableItemDefinition)
+		|| UsableItemDefinition.UseType != EHeistUseType::PlaceTrap)
+	{
+		if (!bDebugBypassInventory || ItemId != FName(TEXT("Trap_Glue")))
+		{
+			OutRejectReason = TEXT("InvalidUsableItem");
+			return false;
+		}
+
+		UsableItemDefinition.ItemId = ItemId;
+		UsableItemDefinition.UseType = EHeistUseType::PlaceTrap;
+		UsableItemDefinition.TargetType = EHeistTargetType::WorldLocation;
+		UsableItemDefinition.CastTime = 1.5f;
+		UsableItemDefinition.Duration = 3.0f;
+	}
+
+	UClass* TrapActorClass = UsableItemDefinition.SpawnedActorClass.LoadSynchronous();
+	if (!IsValid(TrapActorClass) && ItemId == FName(TEXT("Trap_Glue")))
+	{
+		TrapActorClass = AHeistGlueTrapActor::StaticClass();
+	}
+
+	if (!IsValid(TrapActorClass) || !TrapActorClass->IsChildOf(AHeistTrapActor::StaticClass()))
+	{
+		OutRejectReason = TEXT("InvalidTrapClass");
+		return false;
+	}
+
+	const float CastTimeSeconds = FMath::Max(0.0f, UsableItemDefinition.CastTime);
+	const float EffectDurationSeconds = FMath::Max(0.0f, UsableItemDefinition.Duration);
+	if (!RequestContext.Character->GetActionComponent()->TryBeginTrapPlacementRequest(
+		ItemId,
+		SourceInstanceId,
+		TargetWorldLocation,
+		CastTimeSeconds,
+		EffectDurationSeconds,
+		TrapActorClass,
+		!bDebugBypassInventory))
+	{
+		OutRejectReason = TEXT("TrapPlacementCastRejected");
+		return false;
+	}
+
 	return true;
 }
 

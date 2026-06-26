@@ -1,4 +1,4 @@
-#include "World/HeistLootSpawnPoint.h"
+#include "World/Spawn/HeistLootSpawnPoint.h"
 
 AHeistLootSpawnPoint::AHeistLootSpawnPoint()
 {

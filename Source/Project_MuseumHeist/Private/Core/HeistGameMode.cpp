@@ -13,7 +13,7 @@
 #include "Inventory/HeistInventoryTypes.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
-#include "World/HeistLootActor.h"
+#include "World/Actors/Loot/HeistLootActor.h"
 
 #pragma region InternalHelpers
 

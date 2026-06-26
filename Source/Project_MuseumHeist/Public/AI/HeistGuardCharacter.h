@@ -23,6 +23,9 @@ public:
 
 #pragma region GameplayComponents
 
+public:
+	UHeistGuardStateComponent* GetGuardStateComponent() const;
+
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|AI", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistGuardStateComponent> GuardStateComponent;

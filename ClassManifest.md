@@ -312,23 +312,41 @@ Initial GDD balance defaults belong here:
 Folder:
 `Source/Project_MuseumHeist/World/`
 
-Classes:
+World classes are organized by world responsibility rather than being kept in one flat actor folder.
 
-* `UHeistInteractable : public UInterface`
-* `IHeistInteractable`
-* `AHeistInteractableActor : public AActor`
-* `AHeistLootActor : public AHeistInteractableActor`
-* `AHeistDisplayCaseActor : public AHeistInteractableActor`
-* `AHeistVentActor : public AHeistInteractableActor`
-* `AHeistTrapActor : public AActor`
-* `AHeistGlueTrapActor : public AHeistTrapActor`
-* `AHeistThrowableProjectile : public AActor`
-* `AHeistCoinProjectile : public AHeistThrowableProjectile`
-* `AHeistSmokeProjectile : public AHeistThrowableProjectile`
-* `AHeistSmokeCloudActor : public AActor`
-* `AHeistLootSpawnPoint : public AActor`
-* `AHeistPlayerStart : public APlayerStart`
-* `AHeistGuardWaypoint : public AActor`
+Folders and classes:
+
+* `World/Interaction/`
+  * `UHeistInteractable : public UInterface`
+  * `IHeistInteractable`
+  * `AHeistInteractableActor : public AActor`
+* `World/Actors/Loot/`
+  * `AHeistLootActor : public AHeistInteractableActor`
+  * `AHeistDisplayCaseActor : public AHeistInteractableActor`
+* `World/Actors/Escape/`
+  * `AHeistVentActor : public AHeistInteractableActor`
+* `World/Actors/Trap/`
+  * `AHeistTrapActor : public AActor`
+  * `AHeistGlueTrapActor : public AHeistTrapActor`
+* `World/Actors/Projectile/`
+  * `AHeistThrowableProjectile : public AActor`
+  * `AHeistCoinProjectile : public AHeistThrowableProjectile`
+  * `AHeistSmokeProjectile : public AHeistThrowableProjectile`
+* `World/Actors/Area/`
+  * `AHeistSmokeCloudActor : public AActor`
+* `World/Spawn/`
+  * `AHeistLootSpawnPoint : public AActor`
+  * `AHeistPlayerStart : public APlayerStart`
+* `World/AI/`
+  * `AHeistGuardWaypoint : public AActor`
+
+Visual actor base classes should expose C++ component slots for Blueprint asset assignment:
+
+* `AHeistInteractableActor` owns interaction collision and a visual static mesh component.
+* `AHeistTrapActor` owns trigger collision and a visual static mesh component.
+* `AHeistThrowableProjectile` owns projectile collision, projectile movement, and a visual static mesh component.
+
+Gameplay collision remains owned by the C++ collision components. Static mesh components are visual-only by default and should be configured with mesh/material/scale in Blueprint children.
 
 Do not create:
 

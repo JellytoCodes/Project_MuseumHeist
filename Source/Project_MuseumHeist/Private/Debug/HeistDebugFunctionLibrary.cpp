@@ -114,6 +114,81 @@ namespace
 
 #pragma endregion
 
+#pragma region TrapDebug
+
+void UHeistDebugFunctionLibrary::DebugTrapHelp(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		PlayerController,
+		TEXT("Trap debug commands: HeistGlueTrapPlace <Distance> | HeistGlueTrapPlaceAt <X> <Y> <Z>"),
+		EHeistDebugLevel::Info,
+		true,
+		8.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGlueTrapPlace(APlayerController* PlayerController, const float Distance)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController)
+		? HeistPlayerController->GetPawn<AHeistPlayerCharacter>()
+		: nullptr;
+	if (!IsValid(HeistPlayerController) || !IsValid(HeistCharacter))
+	{
+		Message(PlayerController, TEXT("Glue trap debug place failed: invalid Heist player controller or pawn."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const float ClampedDistance = FMath::Clamp(Distance, 100.0f, 1000.0f);
+	const FVector TargetWorldLocation = HeistCharacter->GetActorLocation()
+		+ HeistCharacter->GetActorForwardVector() * ClampedDistance;
+	HeistPlayerController->DebugRequestPlaceGlueTrapAtWorldLocation(TargetWorldLocation);
+	Message(
+		PlayerController,
+		FString::Printf(TEXT("Glue trap debug place requested: Distance=%.1f"), ClampedDistance),
+		EHeistDebugLevel::Info,
+		true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGlueTrapPlaceAt(
+	APlayerController* PlayerController,
+	const float TargetX,
+	const float TargetY,
+	const float TargetZ)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		Message(PlayerController, TEXT("Glue trap debug place-at failed: invalid Heist player controller."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const FVector TargetWorldLocation(TargetX, TargetY, TargetZ);
+	HeistPlayerController->DebugRequestPlaceGlueTrapAtWorldLocation(TargetWorldLocation);
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Glue trap debug place-at requested: Target=(%.1f,%.1f,%.1f)"),
+			TargetX,
+			TargetY,
+			TargetZ),
+		EHeistDebugLevel::Info,
+		true);
+#endif
+}
+
+#pragma endregion
+
 #pragma region Logging
 
 void UHeistDebugFunctionLibrary::Message(const UObject* WorldContextObject, const FString& Message, EHeistDebugLevel Level, bool bPrintToScreen, float Duration)
@@ -875,6 +950,176 @@ void UHeistDebugFunctionLibrary::DebugCoinProjectileStunRejected(const UObject* 
 			*GetNameSafe(HitCharacter),
 			Reason),
 		EHeistDebugLevel::Warning);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugTrapPlacementCastStarted(
+	const UObject* WorldContextObject,
+	const UObject* Character,
+	const FName ItemId,
+	const FVector& TargetWorldLocation,
+	const float DurationSeconds,
+	const float EndServerTime)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Trap placement cast started: Character=%s ItemId=%s Target=(%.1f,%.1f,%.1f) Duration=%.2f EndServerTime=%.2f"),
+			*GetNameSafe(Character),
+			*ItemId.ToString(),
+			TargetWorldLocation.X,
+			TargetWorldLocation.Y,
+			TargetWorldLocation.Z,
+			DurationSeconds,
+			EndServerTime));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugTrapPlacementCastStateReplicated(
+	const UObject* WorldContextObject,
+	const UObject* Character,
+	const bool bIsActive,
+	const float EndServerTime)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Trap placement cast state replicated: Character=%s IsActive=%s EndServerTime=%.2f"),
+			*GetNameSafe(Character),
+			bIsActive ? TEXT("true") : TEXT("false"),
+			EndServerTime));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugTrapPlacementCastCancelled(
+	const UObject* WorldContextObject,
+	const FString& CharacterName,
+	const FName ItemId,
+	const TCHAR* Reason)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Trap placement cast cancelled: Character=%s ItemId=%s Reason=%s"),
+			*CharacterName,
+			*ItemId.ToString(),
+			Reason),
+		EHeistDebugLevel::Warning);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugTrapPlaced(
+	const UObject* WorldContextObject,
+	const UObject* Character,
+	const UObject* TrapActor,
+	const FName ItemId,
+	const FVector& WorldLocation)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Trap placed: Character=%s Trap=%s ItemId=%s Location=(%.1f,%.1f,%.1f)"),
+			*GetNameSafe(Character),
+			*GetNameSafe(TrapActor),
+			*ItemId.ToString(),
+			WorldLocation.X,
+			WorldLocation.Y,
+			WorldLocation.Z));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugTrapTriggered(
+	const UObject* WorldContextObject,
+	const UObject* TrapActor,
+	const UObject* TriggeringActor,
+	const FName ItemId,
+	const float DurationSeconds)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Trap triggered: Trap=%s TriggeringActor=%s ItemId=%s Duration=%.2f"),
+			*GetNameSafe(TrapActor),
+			*GetNameSafe(TriggeringActor),
+			*ItemId.ToString(),
+			DurationSeconds));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugTrapTriggerRejected(
+	const UObject* WorldContextObject,
+	const UObject* TrapActor,
+	const UObject* TriggeringActor,
+	const TCHAR* Reason)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Trap trigger rejected: Trap=%s TriggeringActor=%s Reason=%s"),
+			*GetNameSafe(TrapActor),
+			*GetNameSafe(TriggeringActor),
+			Reason),
+		EHeistDebugLevel::Warning);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardStunApplied(const UObject* WorldContextObject, const UObject* GuardActor, const float DurationSeconds)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Guard stun applied: Guard=%s Duration=%.2f"),
+			*GetNameSafe(GuardActor),
+			DurationSeconds));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardStunCleared(const UObject* WorldContextObject, const UObject* GuardActor, const EHeistGuardState NewState)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Guard stun cleared: Guard=%s NewState=%d"),
+			*GetNameSafe(GuardActor),
+			static_cast<int32>(NewState)));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardStateReplicated(const UObject* WorldContextObject, const UObject* GuardActor, const EHeistGuardState NewState)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Guard state replicated: Guard=%s State=%d"),
+			*GetNameSafe(GuardActor),
+			static_cast<int32>(NewState)));
 #endif
 }
 

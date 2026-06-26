@@ -1,7 +1,8 @@
-#include "World/HeistThrowableProjectile.h"
+#include "World/Actors/Projectile/HeistThrowableProjectile.h"
 
 #include "Character/HeistPlayerCharacter.h"
 #include "Components/SphereComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Net/UnrealNetwork.h"
@@ -22,6 +23,11 @@ AHeistThrowableProjectile::AHeistThrowableProjectile()
 	CollisionComponent->SetCollisionObjectType(ECC_WorldDynamic);
 	CollisionComponent->SetCollisionResponseToAllChannels(ECR_Block);
 	CollisionComponent->SetNotifyRigidBodyCollision(true);
+
+	VisualMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("VisualMeshComponent"));
+	VisualMeshComponent->SetupAttachment(CollisionComponent);
+	VisualMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	VisualMeshComponent->SetGenerateOverlapEvents(false);
 
 	ProjectileMovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovementComponent"));
 	ProjectileMovementComponent->InitialSpeed = 1500.0f;

@@ -1,4 +1,4 @@
-#include "World/HeistSmokeProjectile.h"
+#include "World/Actors/Projectile/HeistSmokeProjectile.h"
 
 AHeistSmokeProjectile::AHeistSmokeProjectile()
 {

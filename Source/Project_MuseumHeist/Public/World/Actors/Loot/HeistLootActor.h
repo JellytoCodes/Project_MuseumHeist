@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "Core/HeistTypes.h"
 #include "Engine/DataTable.h"
-#include "World/HeistInteractableActor.h"
+#include "World/Interaction/HeistInteractableActor.h"
 
 #include "HeistLootActor.generated.h"
 

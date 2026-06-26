@@ -1,4 +1,4 @@
-#include "World/HeistDisplayCaseActor.h"
+#include "World/Actors/Loot/HeistDisplayCaseActor.h"
 
 AHeistDisplayCaseActor::AHeistDisplayCaseActor()
 {

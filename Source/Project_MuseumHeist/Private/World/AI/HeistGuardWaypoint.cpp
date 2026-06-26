@@ -1,4 +1,4 @@
-#include "World/HeistGuardWaypoint.h"
+#include "World/AI/HeistGuardWaypoint.h"
 
 AHeistGuardWaypoint::AHeistGuardWaypoint()
 {

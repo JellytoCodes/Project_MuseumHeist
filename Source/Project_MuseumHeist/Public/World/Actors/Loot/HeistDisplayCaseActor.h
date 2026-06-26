@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "World/HeistInteractableActor.h"
+#include "World/Interaction/HeistInteractableActor.h"
 
 #include "HeistDisplayCaseActor.generated.h"
 

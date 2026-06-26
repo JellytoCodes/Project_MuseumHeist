@@ -80,6 +80,15 @@ public:
 	static void DebugCoinProjectileDamageApplied(const UObject* WorldContextObject, const UObject* Projectile, const UObject* HitCharacter, float Damage);
 	static void DebugCoinProjectileStunApplied(const UObject* WorldContextObject, const UObject* Projectile, const UObject* HitCharacter, float DurationSeconds);
 	static void DebugCoinProjectileStunRejected(const UObject* WorldContextObject, const UObject* Projectile, const UObject* HitCharacter, const TCHAR* Reason);
+	static void DebugTrapPlacementCastStarted(const UObject* WorldContextObject, const UObject* Character, FName ItemId, const FVector& TargetWorldLocation, float DurationSeconds, float EndServerTime);
+	static void DebugTrapPlacementCastStateReplicated(const UObject* WorldContextObject, const UObject* Character, bool bIsActive, float EndServerTime);
+	static void DebugTrapPlacementCastCancelled(const UObject* WorldContextObject, const FString& CharacterName, FName ItemId, const TCHAR* Reason);
+	static void DebugTrapPlaced(const UObject* WorldContextObject, const UObject* Character, const UObject* TrapActor, FName ItemId, const FVector& WorldLocation);
+	static void DebugTrapTriggered(const UObject* WorldContextObject, const UObject* TrapActor, const UObject* TriggeringActor, FName ItemId, float DurationSeconds);
+	static void DebugTrapTriggerRejected(const UObject* WorldContextObject, const UObject* TrapActor, const UObject* TriggeringActor, const TCHAR* Reason);
+	static void DebugGuardStunApplied(const UObject* WorldContextObject, const UObject* GuardActor, float DurationSeconds);
+	static void DebugGuardStunCleared(const UObject* WorldContextObject, const UObject* GuardActor, EHeistGuardState NewState);
+	static void DebugGuardStateReplicated(const UObject* WorldContextObject, const UObject* GuardActor, EHeistGuardState NewState);
 	static void DebugSoundPingReported(const UObject* WorldContextObject, const FHeistSoundPingEvent& SoundPingEvent);
 	static void DebugSoundPingReplicated(const UObject* WorldContextObject, const FHeistSoundPingEvent& SoundPingEvent);
 	static void DebugEscapedPlayerRestrictionsApplied(const UObject* WorldContextObject);
@@ -148,6 +157,19 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Throwable", meta = (DevelopmentOnly))
 	static void DebugCoinThrowAt(APlayerController* PlayerController, float TargetX, float TargetY, float TargetZ);
+
+#pragma endregion
+
+#pragma region TrapDebug
+
+public:
+	static void DebugTrapHelp(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Trap", meta = (DevelopmentOnly))
+	static void DebugGlueTrapPlace(APlayerController* PlayerController, float Distance);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Trap", meta = (DevelopmentOnly))
+	static void DebugGlueTrapPlaceAt(APlayerController* PlayerController, float TargetX, float TargetY, float TargetZ);
 
 #pragma endregion
 };

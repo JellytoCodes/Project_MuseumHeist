@@ -142,3 +142,28 @@ void UHeistCheatManager::HeistCoinThrowAt(const float TargetX, const float Targe
 }
 
 #pragma endregion
+
+#pragma region TrapDebug
+
+void UHeistCheatManager::HeistTrapHelp()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugTrapHelp(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistGlueTrapPlace(const float Distance)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugGlueTrapPlace(GetOuterAPlayerController(), Distance);
+#endif
+}
+
+void UHeistCheatManager::HeistGlueTrapPlaceAt(const float TargetX, const float TargetY, const float TargetZ)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugGlueTrapPlaceAt(GetOuterAPlayerController(), TargetX, TargetY, TargetZ);
+#endif
+}
+
+#pragma endregion

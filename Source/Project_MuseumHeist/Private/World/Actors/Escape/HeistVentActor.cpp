@@ -1,4 +1,4 @@
-#include "World/HeistVentActor.h"
+#include "World/Actors/Escape/HeistVentActor.h"
 
 #include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameState.h"

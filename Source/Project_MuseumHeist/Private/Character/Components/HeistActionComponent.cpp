@@ -1,5 +1,6 @@
 #include "Character/Components/HeistActionComponent.h"
 
+#include "Character/Components/HeistInventoryComponent.h"
 #include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameMode.h"
 #include "Core/HeistGameState.h"
@@ -7,9 +8,12 @@
 #include "Data/HeistGameBalanceDataAsset.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "Engine/World.h"
+#include "Inventory/HeistInventoryTypes.h"
+#include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 #include "TimerManager.h"
-#include "World/HeistVentActor.h"
+#include "World/Actors/Escape/HeistVentActor.h"
+#include "World/Actors/Trap/HeistTrapActor.h"
 
 #pragma region Construction
 
@@ -48,6 +52,7 @@ void UHeistActionComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().ClearTimer(EscapeCastTimerHandle);
+		World->GetTimerManager().ClearTimer(TrapPlacementCastTimerHandle);
 	}
 
 	Super::EndPlay(EndPlayReason);
@@ -60,26 +65,39 @@ void UHeistActionComponent::TickComponent(
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	if (!bEscapeCastActive)
+	if (!bEscapeCastActive && !bTrapPlacementCastActive)
 	{
 		SetComponentTickEnabled(false);
 		return;
 	}
 
 	const AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
-	if (!IsValid(HeistCharacter) || !PendingEscapeVent.IsValid())
+	if (!IsValid(HeistCharacter))
+	{
+		CancelEscapeCast(TEXT("InvalidCastState"));
+		CancelTrapPlacementCast(TEXT("InvalidCastState"));
+		return;
+	}
+
+	if (bEscapeCastActive && !PendingEscapeVent.IsValid())
 	{
 		CancelEscapeCast(TEXT("InvalidCastState"));
 		return;
 	}
 
-	if (HasMovedBeyondEscapeCastTolerance())
+	if (bEscapeCastActive && HasMovedBeyondEscapeCastTolerance())
 	{
 		CancelEscapeCast(TEXT("Movement"));
 		return;
 	}
 
-	if (!PendingEscapeVent->CanUseVent(HeistCharacter))
+	if (bTrapPlacementCastActive && HasMovedBeyondTrapPlacementCastTolerance())
+	{
+		CancelTrapPlacementCast(TEXT("Movement"));
+		return;
+	}
+
+	if (bEscapeCastActive && !PendingEscapeVent->CanUseVent(HeistCharacter))
 	{
 		CancelEscapeCast(TEXT("VentUnavailable"));
 	}
@@ -152,7 +170,7 @@ bool UHeistActionComponent::TryBeginEscapeRequest(AHeistVentActor* TargetVentAct
 
 bool UHeistActionComponent::IsGameplayCastActive() const
 {
-	return bEscapeCastActive;
+	return bEscapeCastActive || bTrapPlacementCastActive;
 }
 
 bool UHeistActionComponent::HasPendingEscapeRequest() const
@@ -209,6 +227,110 @@ void UHeistActionComponent::HandleOwnerTakeAnyDamage(
 	{
 		CancelEscapeCast(TEXT("Damage"));
 	}
+
+	if (bTrapPlacementCastActive && Damage > 0.0f)
+	{
+		CancelTrapPlacementCast(TEXT("Damage"));
+	}
+}
+
+#pragma endregion
+
+#pragma region TrapPlacementCast
+
+bool UHeistActionComponent::TryBeginTrapPlacementRequest(
+	const FName SourceItemId,
+	const int32 SourceInstanceId,
+	const FVector& TargetWorldLocation,
+	const float CastDurationSeconds,
+	const float EffectDurationSeconds,
+	const TSubclassOf<AHeistTrapActor> TrapActorClass,
+	const bool bConsumeSourceItem)
+{
+	AActor* OwnerActor = GetOwner();
+	const AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(OwnerActor);
+	const AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter)
+		? HeistCharacter->GetPlayerState<AHeistPlayerState>()
+		: nullptr;
+	if (!IsValid(OwnerActor)
+		|| !OwnerActor->HasAuthority()
+		|| !IsValid(HeistPlayerState)
+		|| HeistPlayerState->IsEscaped()
+		|| SourceItemId.IsNone()
+		|| !IsValid(TrapActorClass)
+		|| EffectDurationSeconds <= 0.0f
+		|| bEscapeCastActive
+		|| bTrapPlacementCastActive)
+	{
+		return false;
+	}
+
+	PendingTrapItemId = SourceItemId;
+	PendingTrapSourceInstanceId = SourceInstanceId;
+	PendingTrapTargetWorldLocation = TargetWorldLocation;
+	PendingTrapEffectDurationSeconds = FMath::Max(0.0f, EffectDurationSeconds);
+	PendingTrapActorClass = TrapActorClass;
+	bPendingTrapConsumesSourceItem = bConsumeSourceItem;
+	bTrapPlacementCastActive = true;
+	TrapPlacementCastStartLocation = OwnerActor->GetActorLocation();
+
+	const float SafeCastDurationSeconds = FMath::Max(0.0f, CastDurationSeconds);
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	const float ServerWorldTime = IsValid(HeistGameState)
+		? HeistGameState->GetServerWorldTimeSeconds()
+		: (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
+	TrapPlacementCastEndServerTime = ServerWorldTime + SafeCastDurationSeconds;
+
+	SetComponentTickEnabled(true);
+	OwnerActor->ForceNetUpdate();
+
+	UHeistDebugFunctionLibrary::DebugTrapPlacementCastStarted(
+		this,
+		OwnerActor,
+		SourceItemId,
+		TargetWorldLocation,
+		SafeCastDurationSeconds,
+		TrapPlacementCastEndServerTime);
+
+	if (SafeCastDurationSeconds <= 0.0f)
+	{
+		HandleTrapPlacementCastTimerElapsed();
+	}
+	else if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().SetTimer(
+			TrapPlacementCastTimerHandle,
+			this,
+			&UHeistActionComponent::HandleTrapPlacementCastTimerElapsed,
+			SafeCastDurationSeconds,
+			false);
+	}
+	else
+	{
+		CancelTrapPlacementCast(TEXT("MissingWorld"));
+		return false;
+	}
+
+	return true;
+}
+
+bool UHeistActionComponent::IsTrapPlacementCastActive() const
+{
+	return bTrapPlacementCastActive;
+}
+
+FHeistTrapPlacementCastCompleted& UHeistActionComponent::GetTrapPlacementCastCompletedDelegate()
+{
+	return TrapPlacementCastCompletedDelegate;
+}
+
+void UHeistActionComponent::OnRep_TrapPlacementCastActive()
+{
+	UHeistDebugFunctionLibrary::DebugTrapPlacementCastStateReplicated(
+		this,
+		GetOwner(),
+		bTrapPlacementCastActive,
+		TrapPlacementCastEndServerTime);
 }
 
 #pragma endregion
@@ -221,6 +343,8 @@ void UHeistActionComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 
 	DOREPLIFETIME(UHeistActionComponent, bEscapeCastActive);
 	DOREPLIFETIME(UHeistActionComponent, EscapeCastEndServerTime);
+	DOREPLIFETIME(UHeistActionComponent, bTrapPlacementCastActive);
+	DOREPLIFETIME(UHeistActionComponent, TrapPlacementCastEndServerTime);
 }
 
 #pragma endregion
@@ -249,6 +373,18 @@ bool UHeistActionComponent::HasMovedBeyondEscapeCastTolerance() const
 
 	return FVector::DistSquared2D(OwnerActor->GetActorLocation(), EscapeCastStartLocation)
 		> FMath::Square(EscapeCastMovementCancelDistance);
+}
+
+bool UHeistActionComponent::HasMovedBeyondTrapPlacementCastTolerance() const
+{
+	const AActor* OwnerActor = GetOwner();
+	if (!IsValid(OwnerActor))
+	{
+		return true;
+	}
+
+	return FVector::DistSquared2D(OwnerActor->GetActorLocation(), TrapPlacementCastStartLocation)
+		> FMath::Square(TrapPlacementMovementCancelDistance);
 }
 
 void UHeistActionComponent::HandleEscapeCastTimerElapsed()
@@ -282,6 +418,81 @@ void UHeistActionComponent::HandleEscapeCastTimerElapsed()
 	EscapeCastCompletedDelegate.Broadcast(HeistCharacter, TargetVentActor);
 }
 
+void UHeistActionComponent::HandleTrapPlacementCastTimerElapsed()
+{
+	AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
+	UHeistInventoryComponent* InventoryComponent = IsValid(HeistCharacter)
+		? HeistCharacter->GetInventoryComponent()
+		: nullptr;
+	if (!bTrapPlacementCastActive
+		|| !IsValid(HeistCharacter)
+		|| !IsValid(InventoryComponent)
+		|| PendingTrapItemId.IsNone()
+		|| !IsValid(PendingTrapActorClass)
+		|| HasMovedBeyondTrapPlacementCastTolerance())
+	{
+		CancelTrapPlacementCast(TEXT("CompletionValidationFailed"));
+		return;
+	}
+
+	if (bPendingTrapConsumesSourceItem)
+	{
+		FHeistInventoryItem SourceItem;
+		if (PendingTrapSourceInstanceId == INDEX_NONE
+			|| !InventoryComponent->TryGetItem(PendingTrapSourceInstanceId, SourceItem)
+			|| SourceItem.ItemId != PendingTrapItemId)
+		{
+			CancelTrapPlacementCast(TEXT("SourceItemInvalid"));
+			return;
+		}
+	}
+
+	const FTransform SpawnTransform(FRotator::ZeroRotator, PendingTrapTargetWorldLocation);
+	AHeistTrapActor* TrapActor = GetWorld()->SpawnActorDeferred<AHeistTrapActor>(
+		PendingTrapActorClass,
+		SpawnTransform,
+		HeistCharacter,
+		HeistCharacter,
+		ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
+	if (!IsValid(TrapActor))
+	{
+		CancelTrapPlacementCast(TEXT("TrapSpawnFailed"));
+		return;
+	}
+
+	TrapActor->InitializeTrap(HeistCharacter, PendingTrapItemId, PendingTrapEffectDurationSeconds);
+	AHeistTrapActor* SpawnedTrap = Cast<AHeistTrapActor>(UGameplayStatics::FinishSpawningActor(TrapActor, SpawnTransform));
+	if (!IsValid(SpawnedTrap))
+	{
+		CancelTrapPlacementCast(TEXT("TrapFinishSpawnFailed"));
+		return;
+	}
+
+	if (bPendingTrapConsumesSourceItem)
+	{
+		FHeistInventoryItem RemovedItem;
+		if (!InventoryComponent->TryRemoveItem(PendingTrapSourceInstanceId, RemovedItem)
+			|| RemovedItem.ItemId != PendingTrapItemId)
+		{
+			SpawnedTrap->Destroy();
+			CancelTrapPlacementCast(TEXT("SourceItemRemoveFailed"));
+			return;
+		}
+	}
+
+	const FName CompletedItemId = PendingTrapItemId;
+	ClearTrapPlacementCastState();
+
+	UHeistDebugFunctionLibrary::DebugTrapPlaced(
+		this,
+		HeistCharacter,
+		SpawnedTrap,
+		CompletedItemId,
+		SpawnedTrap->GetActorLocation());
+
+	TrapPlacementCastCompletedDelegate.Broadcast(HeistCharacter, SpawnedTrap);
+}
+
 void UHeistActionComponent::CancelEscapeCast(const TCHAR* Reason)
 {
 	if (!bEscapeCastActive)
@@ -296,6 +507,20 @@ void UHeistActionComponent::CancelEscapeCast(const TCHAR* Reason)
 	UHeistDebugFunctionLibrary::DebugEscapeCastCancelled(this, CharacterName, VentName, Reason);
 }
 
+void UHeistActionComponent::CancelTrapPlacementCast(const TCHAR* Reason)
+{
+	if (!bTrapPlacementCastActive)
+	{
+		return;
+	}
+
+	const FString CharacterName = GetNameSafe(GetOwner());
+	const FName ItemId = PendingTrapItemId;
+	ClearTrapPlacementCastState();
+
+	UHeistDebugFunctionLibrary::DebugTrapPlacementCastCancelled(this, CharacterName, ItemId, Reason);
+}
+
 void UHeistActionComponent::ClearEscapeCastState()
 {
 	if (UWorld* World = GetWorld())
@@ -307,6 +532,33 @@ void UHeistActionComponent::ClearEscapeCastState()
 	bEscapeCastActive = false;
 	EscapeCastEndServerTime = 0.0f;
 	SetComponentTickEnabled(false);
+
+	if (AActor* OwnerActor = GetOwner())
+	{
+		OwnerActor->ForceNetUpdate();
+	}
+}
+
+void UHeistActionComponent::ClearTrapPlacementCastState()
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(TrapPlacementCastTimerHandle);
+	}
+
+	PendingTrapItemId = NAME_None;
+	PendingTrapSourceInstanceId = INDEX_NONE;
+	PendingTrapTargetWorldLocation = FVector::ZeroVector;
+	PendingTrapEffectDurationSeconds = 0.0f;
+	PendingTrapActorClass = nullptr;
+	bPendingTrapConsumesSourceItem = false;
+	bTrapPlacementCastActive = false;
+	TrapPlacementCastEndServerTime = 0.0f;
+
+	if (!bEscapeCastActive)
+	{
+		SetComponentTickEnabled(false);
+	}
 
 	if (AActor* OwnerActor = GetOwner())
 	{

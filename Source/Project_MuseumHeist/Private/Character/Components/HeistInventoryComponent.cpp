@@ -9,7 +9,7 @@
 #include "GameFramework/Controller.h"
 #include "Inventory/HeistItemDataTypes.h"
 #include "Net/UnrealNetwork.h"
-#include "World/HeistLootActor.h"
+#include "World/Actors/Loot/HeistLootActor.h"
 
 #pragma region InternalConstants
 

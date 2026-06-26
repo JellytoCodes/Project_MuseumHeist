@@ -12,3 +12,8 @@ AHeistGuardCharacter::AHeistGuardCharacter()
 	PatrolPathComponent = CreateDefaultSubobject<UHeistPatrolPathComponent>(TEXT("PatrolPathComponent"));
 	NoiseReactionComponent = CreateDefaultSubobject<UHeistGuardNoiseReactionComponent>(TEXT("NoiseReactionComponent"));
 }
+
+UHeistGuardStateComponent* AHeistGuardCharacter::GetGuardStateComponent() const
+{
+	return GuardStateComponent.Get();
+}

@@ -1,6 +1,7 @@
-#include "World/HeistInteractableActor.h"
+#include "World/Interaction/HeistInteractableActor.h"
 
 #include "Components/SphereComponent.h"
+#include "Components/StaticMeshComponent.h"
 
 #pragma region Construction
 
@@ -15,6 +16,11 @@ AHeistInteractableActor::AHeistInteractableActor()
 	InteractionCollision->SetCollisionObjectType(ECC_WorldDynamic);
 	InteractionCollision->SetCollisionResponseToAllChannels(ECR_Overlap);
 	InteractionCollision->SetGenerateOverlapEvents(false);
+
+	VisualMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("VisualMeshComponent"));
+	VisualMeshComponent->SetupAttachment(InteractionCollision);
+	VisualMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	VisualMeshComponent->SetGenerateOverlapEvents(false);
 }
 
 #pragma endregion

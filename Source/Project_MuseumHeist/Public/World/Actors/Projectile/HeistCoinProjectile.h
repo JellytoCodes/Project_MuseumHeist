@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "World/HeistThrowableProjectile.h"
+#include "World/Actors/Projectile/HeistThrowableProjectile.h"
 
 #include "HeistCoinProjectile.generated.h"
 

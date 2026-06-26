@@ -9,6 +9,7 @@
 class AHeistPlayerCharacter;
 class AHeistLootActor;
 class AHeistPlayerState;
+class AHeistTrapActor;
 class AHeistThrowableProjectile;
 class AHeistVentActor;
 class UHeistInventoryComponent;
@@ -91,6 +92,7 @@ public:
 	void RequestUseQuickSlotAtWorldLocation(EHeistQuickSlotType SlotType, FVector TargetWorldLocation);
 
 	void DebugRequestThrowCoinAtWorldLocation(FVector TargetWorldLocation);
+	void DebugRequestPlaceGlueTrapAtWorldLocation(FVector TargetWorldLocation);
 
 private:
 	UFUNCTION(Server, Reliable)
@@ -123,6 +125,9 @@ private:
 	UFUNCTION(Server, Reliable)
 	void Server_DebugRequestThrowCoinAtWorldLocation(FVector TargetWorldLocation);
 
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestPlaceGlueTrapAtWorldLocation(FVector TargetWorldLocation);
+
 #pragma endregion
 
 #pragma region InternalHelpers
@@ -146,6 +151,7 @@ private:
 		const FHeistGameplayRequestContext& RequestContext,
 		EHeistQuickSlotType SlotType,
 		FName& OutItemId,
+		int32& OutInstanceId,
 		const TCHAR*& OutRejectReason) const;
 	bool TrySpawnThrowableProjectile(
 		const FHeistGameplayRequestContext& RequestContext,
@@ -153,6 +159,13 @@ private:
 		const FVector& TargetWorldLocation,
 		bool bDebugBypassInventory,
 		AHeistThrowableProjectile*& OutProjectile,
+		const TCHAR*& OutRejectReason) const;
+	bool TryBeginTrapPlacement(
+		const FHeistGameplayRequestContext& RequestContext,
+		FName ItemId,
+		int32 SourceInstanceId,
+		const FVector& TargetWorldLocation,
+		bool bDebugBypassInventory,
 		const TCHAR*& OutRejectReason) const;
 	static FName GetExpectedQuickSlotItemId(EHeistQuickSlotType SlotType);
 

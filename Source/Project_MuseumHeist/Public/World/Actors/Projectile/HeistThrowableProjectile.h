@@ -8,6 +8,7 @@
 class AHeistPlayerCharacter;
 class UProjectileMovementComponent;
 class USphereComponent;
+class UStaticMeshComponent;
 
 UCLASS()
 class PROJECT_MUSEUMHEIST_API AHeistThrowableProjectile : public AActor
@@ -46,6 +47,9 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Projectile", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<USphereComponent> CollisionComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Visual", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UStaticMeshComponent> VisualMeshComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Projectile", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UProjectileMovementComponent> ProjectileMovementComponent;

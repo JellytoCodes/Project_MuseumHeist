@@ -3,7 +3,7 @@
 #include "Character/HeistPlayerCharacter.h"
 #include "Engine/OverlapResult.h"
 #include "Engine/World.h"
-#include "World/HeistInteractable.h"
+#include "World/Interaction/HeistInteractable.h"
 
 #pragma region Construction
 

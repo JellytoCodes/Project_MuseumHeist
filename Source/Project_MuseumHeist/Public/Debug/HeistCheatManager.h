@@ -78,4 +78,18 @@ public:
 	void HeistCoinThrowAt(float TargetX, float TargetY, float TargetZ);
 
 #pragma endregion
+
+#pragma region TrapDebug
+
+public:
+	UFUNCTION(Exec)
+	void HeistTrapHelp();
+
+	UFUNCTION(Exec)
+	void HeistGlueTrapPlace(float Distance = 200.0f);
+
+	UFUNCTION(Exec)
+	void HeistGlueTrapPlaceAt(float TargetX, float TargetY, float TargetZ);
+
+#pragma endregion
 };

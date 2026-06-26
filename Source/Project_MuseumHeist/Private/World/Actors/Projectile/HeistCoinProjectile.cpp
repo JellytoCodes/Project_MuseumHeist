@@ -1,4 +1,4 @@
-#include "World/HeistCoinProjectile.h"
+#include "World/Actors/Projectile/HeistCoinProjectile.h"
 
 #include "Character/Components/HeistStatusComponent.h"
 #include "Character/HeistPlayerCharacter.h"
