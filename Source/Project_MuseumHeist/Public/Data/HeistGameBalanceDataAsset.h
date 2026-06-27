@@ -25,6 +25,21 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Match", meta = (ClampMin = "0.0", Units = "s"))
 	float VentUnlockTime = 180.0f;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Rare Loot")
+	TArray<float> RareLootEventTimes = { 90.0f, 225.0f };
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Rare Loot", meta = (ClampMin = "0.0", Units = "s"))
+	float RareLootWarningLeadTime = 5.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Rare Loot")
+	FName RareLootItemId = FName(TEXT("Loot_RareArtifact"));
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Gap Tracker", meta = (ClampMin = "0"))
+	int32 GapTrackerScoreThreshold = 1000;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Gap Tracker", meta = (ClampMin = "0.01", Units = "s"))
+	float GapTrackerUpdateInterval = 0.1f;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Interaction", meta = (ClampMin = "0.0", Units = "s"))
 	float EscapeCastTime = 2.0f;
 

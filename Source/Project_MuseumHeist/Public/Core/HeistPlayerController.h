@@ -94,6 +94,10 @@ public:
 	void DebugRequestThrowCoinAtWorldLocation(FVector TargetWorldLocation);
 	void DebugRequestThrowSmokeAtWorldLocation(FVector TargetWorldLocation);
 	void DebugRequestPlaceGlueTrapAtWorldLocation(FVector TargetWorldLocation);
+	void DebugRequestForceRareLootEvent(float WarningDelaySeconds);
+	void DebugRequestSetGapTrackerScore(int32 Score);
+	void DebugRequestForceGapTracker(bool bActive);
+	void DebugRequestClearGapTrackerOverride();
 
 private:
 	UFUNCTION(Server, Reliable)
@@ -131,6 +135,18 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void Server_DebugRequestPlaceGlueTrapAtWorldLocation(FVector TargetWorldLocation);
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestForceRareLootEvent(float WarningDelaySeconds);
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestSetGapTrackerScore(int32 Score);
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestForceGapTracker(bool bActive);
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestClearGapTrackerOverride();
 
 #pragma endregion
 

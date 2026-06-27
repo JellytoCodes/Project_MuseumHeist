@@ -45,6 +45,13 @@ void AHeistPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
+#if !UE_BUILD_SHIPPING
+	if (IsLocalController())
+	{
+		EnableCheats();
+	}
+#endif
+
 	ConfigureMouseCursorDefaults();
 }
 
@@ -246,6 +253,26 @@ void AHeistPlayerController::DebugRequestThrowSmokeAtWorldLocation(const FVector
 void AHeistPlayerController::DebugRequestPlaceGlueTrapAtWorldLocation(const FVector TargetWorldLocation)
 {
 	Server_DebugRequestPlaceGlueTrapAtWorldLocation(TargetWorldLocation);
+}
+
+void AHeistPlayerController::DebugRequestForceRareLootEvent(const float WarningDelaySeconds)
+{
+	Server_DebugRequestForceRareLootEvent(WarningDelaySeconds);
+}
+
+void AHeistPlayerController::DebugRequestSetGapTrackerScore(const int32 Score)
+{
+	Server_DebugRequestSetGapTrackerScore(Score);
+}
+
+void AHeistPlayerController::DebugRequestForceGapTracker(const bool bActive)
+{
+	Server_DebugRequestForceGapTracker(bActive);
+}
+
+void AHeistPlayerController::DebugRequestClearGapTrackerOverride()
+{
+	Server_DebugRequestClearGapTrackerOverride();
 }
 
 void AHeistPlayerController::Server_RequestLootPickup_Implementation(AHeistLootActor* TargetLootActor)
@@ -754,6 +781,55 @@ void AHeistPlayerController::Server_DebugRequestPlaceGlueTrapAtWorldLocation_Imp
 	{
 		LogThrowableUseRejected(EHeistQuickSlotType::GlueTrap, FName(TEXT("Trap_Glue")), RejectReason);
 	}
+}
+
+void AHeistPlayerController::Server_DebugRequestForceRareLootEvent_Implementation(const float WarningDelaySeconds)
+{
+#if !UE_BUILD_SHIPPING
+	AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	if (!IsValid(HeistGameMode))
+	{
+		UHeistDebugFunctionLibrary::DebugRareLootEventFailed(this, 0, TEXT("MissingAuthGameMode"));
+		return;
+	}
+
+	HeistGameMode->ForceRareLootEvent(FMath::Max(0.0f, WarningDelaySeconds));
+#endif
+}
+
+void AHeistPlayerController::Server_DebugRequestSetGapTrackerScore_Implementation(const int32 Score)
+{
+#if !UE_BUILD_SHIPPING
+	AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
+	AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	if (!IsValid(HeistPlayerState) || !IsValid(HeistGameMode))
+	{
+		return;
+	}
+
+	HeistPlayerState->DebugSetTotalLootScore(FMath::Max(0, Score));
+	HeistGameMode->RefreshGapTrackerState();
+#endif
+}
+
+void AHeistPlayerController::Server_DebugRequestForceGapTracker_Implementation(const bool bActive)
+{
+#if !UE_BUILD_SHIPPING
+	if (AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr)
+	{
+		HeistGameMode->DebugForceGapTracker(bActive);
+	}
+#endif
+}
+
+void AHeistPlayerController::Server_DebugRequestClearGapTrackerOverride_Implementation()
+{
+#if !UE_BUILD_SHIPPING
+	if (AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr)
+	{
+		HeistGameMode->DebugClearGapTrackerOverride();
+	}
+#endif
 }
 
 #pragma endregion

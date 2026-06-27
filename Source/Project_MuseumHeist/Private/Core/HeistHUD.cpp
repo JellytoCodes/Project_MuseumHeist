@@ -6,10 +6,13 @@
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
+#include "UI/ViewModels/HeistGapTrackerViewModel.h"
+#include "UI/ViewModels/HeistHUDViewModel.h"
 #include "UI/ViewModels/HeistInventoryViewModel.h"
 #include "UI/ViewModels/HeistQuickSlotViewModel.h"
 #include "UI/ViewModels/HeistResultViewModel.h"
 #include "UI/Widgets/HeistInventoryWidget.h"
+#include "UI/Widgets/HeistRareLootAlertWidget.h"
 #include "UI/Widgets/HeistResultWidget.h"
 
 #pragma region Construction
@@ -26,6 +29,8 @@ void AHeistHUD::BeginPlay()
 {
 	Super::BeginPlay();
 	InitializeInventoryPresentation();
+	InitializeRareLootPresentation();
+	InitializeGapTrackerPresentation();
 	InitializeResultPresentation();
 }
 
@@ -94,6 +99,73 @@ void AHeistHUD::InitializeInventoryPresentation()
 		: nullptr;
 	InventoryViewModel->SetupViewModel(InventoryComponent);
 	QuickSlotViewModel->SetupViewModel(InventoryComponent);
+}
+
+#pragma endregion
+
+#pragma region RareLootPresentation
+
+UHeistHUDViewModel* AHeistHUD::GetHUDViewModel() const
+{
+	return HUDViewModel;
+}
+
+void AHeistHUD::InitializeRareLootPresentation()
+{
+	APlayerController* OwningPlayerController = GetOwningPlayerController();
+	if (!IsValid(OwningPlayerController) || !OwningPlayerController->IsLocalController())
+	{
+		return;
+	}
+
+	if (!IsValid(HUDViewModel))
+	{
+		HUDViewModel = NewObject<UHeistHUDViewModel>(this);
+	}
+
+	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	HUDViewModel->SetupViewModel(HeistGameState);
+
+	if (!RareLootAlertWidgetClass || IsValid(RareLootAlertWidget))
+	{
+		return;
+	}
+
+	RareLootAlertWidget = CreateWidget<UHeistRareLootAlertWidget>(
+		OwningPlayerController,
+		RareLootAlertWidgetClass);
+	if (IsValid(RareLootAlertWidget))
+	{
+		RareLootAlertWidget->SetupRareLootAlertWidget(HUDViewModel);
+		RareLootAlertWidget->AddToViewport();
+	}
+}
+
+#pragma endregion
+
+#pragma region GapTrackerPresentation
+
+UHeistGapTrackerViewModel* AHeistHUD::GetGapTrackerViewModel() const
+{
+	return GapTrackerViewModel;
+}
+
+void AHeistHUD::InitializeGapTrackerPresentation()
+{
+	APlayerController* OwningPlayerController = GetOwningPlayerController();
+	if (!IsValid(OwningPlayerController) || !OwningPlayerController->IsLocalController())
+	{
+		return;
+	}
+
+	if (!IsValid(GapTrackerViewModel))
+	{
+		GapTrackerViewModel = NewObject<UHeistGapTrackerViewModel>(this);
+	}
+
+	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	AHeistPlayerState* LocalPlayerState = OwningPlayerController->GetPlayerState<AHeistPlayerState>();
+	GapTrackerViewModel->SetupViewModel(HeistGameState, LocalPlayerState);
 }
 
 #pragma endregion

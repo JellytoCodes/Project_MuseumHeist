@@ -6,6 +6,7 @@
 #include "HeistPlayerState.generated.h"
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerEscapeStateChanged, bool);
+DECLARE_MULTICAST_DELEGATE_OneParam(FHeistGapTrackerDirectionChanged, const FVector&);
 
 UCLASS()
 class PROJECT_MUSEUMHEIST_API AHeistPlayerState : public APlayerState
@@ -28,6 +29,24 @@ private:
 
 	UPROPERTY(ReplicatedUsing = OnRep_TotalLootWeight, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Weight", meta = (AllowPrivateAccess = "true"))
 	float TotalLootWeight = 0.0f;
+
+#pragma endregion
+
+#pragma region GapTracker
+
+public:
+	FVector GetGapTrackerDirection() const;
+	void SetGapTrackerDirection(const FVector& InDirection);
+	FHeistGapTrackerDirectionChanged& GetGapTrackerDirectionChangedDelegate();
+
+private:
+	UPROPERTY(ReplicatedUsing = OnRep_GapTrackerDirection, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|GapTracker", meta = (AllowPrivateAccess = "true"))
+	FVector_NetQuantizeNormal GapTrackerDirection = FVector::ZeroVector;
+
+	UFUNCTION()
+	void OnRep_GapTrackerDirection();
+
+	FHeistGapTrackerDirectionChanged GapTrackerDirectionChangedDelegate;
 
 #pragma endregion
 
@@ -73,6 +92,13 @@ private:
 
 	UFUNCTION()
 	void OnRep_TotalLootWeight();
+
+#pragma endregion
+
+#pragma region Debug
+
+public:
+	void DebugSetTotalLootScore(int32 InScore);
 
 #pragma endregion
 

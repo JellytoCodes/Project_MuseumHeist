@@ -48,6 +48,38 @@ private:
 
 #pragma endregion
 
+#pragma region RareLootPresentation
+
+public:
+	class UHeistHUDViewModel* GetHUDViewModel() const;
+
+private:
+	void InitializeRareLootPresentation();
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|UI", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<class UHeistRareLootAlertWidget> RareLootAlertWidgetClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHeistHUDViewModel> HUDViewModel;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHeistRareLootAlertWidget> RareLootAlertWidget;
+
+#pragma endregion
+
+#pragma region GapTrackerPresentation
+
+public:
+	class UHeistGapTrackerViewModel* GetGapTrackerViewModel() const;
+
+private:
+	void InitializeGapTrackerPresentation();
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHeistGapTrackerViewModel> GapTrackerViewModel;
+
+#pragma endregion
+
 #pragma region ResultPresentation
 
 public:

@@ -171,6 +171,70 @@ void UHeistCheatManager::HeistSmokeSightCheckAt(const float TargetX, const float
 
 #pragma endregion
 
+#pragma region RareLootDebug
+
+void UHeistCheatManager::HeistRareLootHelp()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugRareLootHelp(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistRareLootForce(const float WarningDelaySeconds)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugForceRareLootEvent(GetOuterAPlayerController(), WarningDelaySeconds);
+#endif
+}
+
+void UHeistCheatManager::HeistRareLootDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugDumpRareLootState(GetOuterAPlayerController());
+#endif
+}
+
+#pragma endregion
+
+#pragma region GapTrackerDebug
+
+void UHeistCheatManager::HeistGapHelp()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugGapTrackerHelp(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistGapDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugDumpGapTrackerState(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistGapScore(const int32 Score)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugSetGapTrackerScore(GetOuterAPlayerController(), Score);
+#endif
+}
+
+void UHeistCheatManager::HeistGapForce(const bool bActive)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugForceGapTracker(GetOuterAPlayerController(), bActive);
+#endif
+}
+
+void UHeistCheatManager::HeistGapAuto()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugClearGapTrackerOverride(GetOuterAPlayerController());
+#endif
+}
+
+#pragma endregion
+
 #pragma region TrapDebug
 
 void UHeistCheatManager::HeistTrapHelp()

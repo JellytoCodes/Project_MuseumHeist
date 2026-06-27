@@ -168,6 +168,40 @@ enum class EHeistSoundPingType : uint8
 };
 
 USTRUCT(BlueprintType)
+struct PROJECT_MUSEUMHEIST_API FHeistRareLootEventState
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|RareLoot")
+	int32 EventIndex = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|RareLoot")
+	FName ItemId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|RareLoot")
+	FVector_NetQuantize WorldLocation = FVector::ZeroVector;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|RareLoot")
+	float SpawnServerTime = -1.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|RareLoot")
+	bool bIncomingWarningActive = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|RareLoot")
+	bool bDirectionMarkerActive = false;
+
+	bool operator==(const FHeistRareLootEventState& Other) const
+	{
+		return EventIndex == Other.EventIndex
+			&& ItemId == Other.ItemId
+			&& WorldLocation.Equals(Other.WorldLocation)
+			&& FMath::IsNearlyEqual(SpawnServerTime, Other.SpawnServerTime)
+			&& bIncomingWarningActive == Other.bIncomingWarningActive
+			&& bDirectionMarkerActive == Other.bDirectionMarkerActive;
+	}
+};
+
+USTRUCT(BlueprintType)
 struct PROJECT_MUSEUMHEIST_API FHeistSoundPingEvent
 {
 	GENERATED_BODY()

@@ -8,6 +8,8 @@
 class UHeistGameBalanceDataAsset;
 class UDataTable;
 class AHeistLootActor;
+class AHeistLootSpawnPoint;
+class AHeistPlayerState;
 struct FHeistItemDataRow;
 struct FHeistLootDataRow;
 struct FHeistUsableItemDataRow;
@@ -44,6 +46,44 @@ public:
 
 private:
 	void ValidateItemDataTable() const;
+
+#pragma endregion
+
+#pragma region RareLootEvent
+
+public:
+	void ForceRareLootEvent(float WarningDelaySeconds = 5.0f);
+
+private:
+	void StartRareLootEventTimers();
+	void BeginRareLootWarning(int32 EventIndex, float ScheduledSpawnTime);
+	void TriggerRareLootEvent(int32 EventIndex);
+	bool TrySpawnRareLoot(int32 EventIndex, AHeistLootActor*& OutRareLootActor, AHeistLootSpawnPoint*& OutSpawnPoint);
+	void HandleRareLootPickedUp(AHeistLootActor* LootActor, AActor* Requester);
+	const UHeistGameBalanceDataAsset* ResolveGameBalanceData() const;
+
+	TArray<FTimerHandle> RareLootWarningTimerHandles;
+	TArray<FTimerHandle> RareLootSpawnTimerHandles;
+	TSet<int32> TriggeredRareLootEventIndices;
+	TMap<TWeakObjectPtr<AHeistLootActor>, int32> ActiveRareLootEventIndices;
+	int32 NextForcedRareLootEventIndex = 1;
+
+#pragma endregion
+
+#pragma region GapTracker
+
+public:
+	void RefreshGapTrackerState();
+	void DebugForceGapTracker(bool bActive);
+	void DebugClearGapTrackerOverride();
+
+private:
+	void StartGapTrackerTimer();
+	void UpdateGapTrackerDirections(AHeistPlayerState* LeaderPlayerState, const TArray<AHeistPlayerState*>& RankedPlayerStates);
+
+	FTimerHandle GapTrackerUpdateTimerHandle;
+	bool bGapTrackerDebugOverride = false;
+	bool bGapTrackerDebugForcedActive = false;
 
 #pragma endregion
 

@@ -84,6 +84,19 @@ public:
 	static void DebugSmokeCloudStateReplicated(const UObject* WorldContextObject, const UObject* SmokeCloud, float Radius, float EndServerTime, bool bBlocksAISight);
 	static void DebugSmokeCloudOverlapChanged(const UObject* WorldContextObject, const UObject* SmokeCloud, const UObject* Actor, bool bInsideSmoke, float RemainingSeconds);
 	static void DebugSmokeSightQuery(const UObject* WorldContextObject, const UObject* SmokeCloud, const FVector& FromLocation, const FVector& ToLocation, bool bBlocked);
+	static void DebugRareLootTimersStarted(const UObject* WorldContextObject, const TArray<float>& EventTimes, float WarningLeadTime);
+	static void DebugRareLootWarningStarted(const UObject* WorldContextObject, int32 EventIndex, FName ItemId, float SpawnServerTime);
+	static void DebugRareLootSpawned(const UObject* WorldContextObject, int32 EventIndex, const UObject* LootActor, const UObject* SpawnPoint, FName ItemId, const FVector& WorldLocation);
+	static void DebugRareLootEventFailed(const UObject* WorldContextObject, int32 EventIndex, const TCHAR* Reason);
+	static void DebugRareLootPickedUp(const UObject* WorldContextObject, int32 EventIndex, const UObject* LootActor, const UObject* Requester, FName ItemId);
+	static void DebugRareLootStateReplicated(const UObject* WorldContextObject, const FHeistRareLootEventState& EventState);
+	static void DebugGapTrackerTimerStarted(const UObject* WorldContextObject, float UpdateInterval);
+	static void DebugGapTrackerStateChanged(const UObject* WorldContextObject, bool bActive, int32 LeaderPlayerId);
+	static void DebugGapTrackerStateReplicated(const UObject* WorldContextObject, bool bActive, int32 LeaderPlayerId);
+	static void DebugGapTrackerDirectionUpdated(const UObject* WorldContextObject, int32 PlayerId, const FVector& Direction);
+	static void DebugGapTrackerDirectionReplicated(const UObject* WorldContextObject, int32 PlayerId, const FVector& Direction);
+	static void DebugGapTrackerOverrideChanged(const UObject* WorldContextObject, bool bOverrideEnabled, bool bForcedActive);
+	static void DebugGapTrackerScoreSet(const UObject* WorldContextObject, int32 PlayerId, int32 Score);
 	static void DebugTrapPlacementCastStarted(const UObject* WorldContextObject, const UObject* Character, FName ItemId, const FVector& TargetWorldLocation, float DurationSeconds, float EndServerTime);
 	static void DebugTrapPlacementCastStateReplicated(const UObject* WorldContextObject, const UObject* Character, bool bIsActive, float EndServerTime);
 	static void DebugTrapPlacementCastCancelled(const UObject* WorldContextObject, const FString& CharacterName, FName ItemId, const TCHAR* Reason);
@@ -173,6 +186,38 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Throwable", meta = (DevelopmentOnly))
 	static void DebugSmokeSightCheckAt(APlayerController* PlayerController, float TargetX, float TargetY, float TargetZ);
+
+#pragma endregion
+
+#pragma region RareLootDebug
+
+public:
+	static void DebugRareLootHelp(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|RareLoot", meta = (DevelopmentOnly))
+	static void DebugForceRareLootEvent(APlayerController* PlayerController, float WarningDelaySeconds);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|RareLoot", meta = (DevelopmentOnly))
+	static void DebugDumpRareLootState(APlayerController* PlayerController);
+
+#pragma endregion
+
+#pragma region GapTrackerDebug
+
+public:
+	static void DebugGapTrackerHelp(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|GapTracker", meta = (DevelopmentOnly))
+	static void DebugDumpGapTrackerState(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|GapTracker", meta = (DevelopmentOnly))
+	static void DebugSetGapTrackerScore(APlayerController* PlayerController, int32 Score);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|GapTracker", meta = (DevelopmentOnly))
+	static void DebugForceGapTracker(APlayerController* PlayerController, bool bActive);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|GapTracker", meta = (DevelopmentOnly))
+	static void DebugClearGapTrackerOverride(APlayerController* PlayerController);
 
 #pragma endregion
 

@@ -117,6 +117,49 @@ bool AHeistPlayerState::RemoveLootScoreAndWeight(const int32 ScoreDelta, const f
 
 #pragma endregion
 
+#pragma region GapTracker
+
+FVector AHeistPlayerState::GetGapTrackerDirection() const
+{
+	return FVector(GapTrackerDirection);
+}
+
+void AHeistPlayerState::SetGapTrackerDirection(const FVector& InDirection)
+{
+	check(HasAuthority());
+
+	const FVector NormalizedDirection = InDirection.GetSafeNormal();
+	if (FVector(GapTrackerDirection).Equals(NormalizedDirection, 0.001f))
+	{
+		return;
+	}
+
+	GapTrackerDirection = NormalizedDirection;
+	ForceNetUpdate();
+	GapTrackerDirectionChangedDelegate.Broadcast(NormalizedDirection);
+	UHeistDebugFunctionLibrary::DebugGapTrackerDirectionUpdated(
+		this,
+		HeistPlayerId,
+		NormalizedDirection);
+}
+
+FHeistGapTrackerDirectionChanged& AHeistPlayerState::GetGapTrackerDirectionChangedDelegate()
+{
+	return GapTrackerDirectionChangedDelegate;
+}
+
+void AHeistPlayerState::OnRep_GapTrackerDirection()
+{
+	const FVector Direction = FVector(GapTrackerDirection);
+	GapTrackerDirectionChangedDelegate.Broadcast(Direction);
+	UHeistDebugFunctionLibrary::DebugGapTrackerDirectionReplicated(
+		this,
+		HeistPlayerId,
+		Direction);
+}
+
+#pragma endregion
+
 #pragma region EscapeState
 
 bool AHeistPlayerState::IsEscaped() const
@@ -217,8 +260,9 @@ void AHeistPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 
 	DOREPLIFETIME(AHeistPlayerState, HeistPlayerId);
 	DOREPLIFETIME(AHeistPlayerState, PlayerColor);
-	DOREPLIFETIME(AHeistPlayerState, TotalLootScore);
-	DOREPLIFETIME(AHeistPlayerState, TotalLootWeight);
+	DOREPLIFETIME_CONDITION(AHeistPlayerState, TotalLootScore, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(AHeistPlayerState, TotalLootWeight, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(AHeistPlayerState, GapTrackerDirection, COND_OwnerOnly);
 	DOREPLIFETIME(AHeistPlayerState, bEscaped);
 	DOREPLIFETIME(AHeistPlayerState, FinalScore);
 	DOREPLIFETIME(AHeistPlayerState, EscapeTimeSeconds);
@@ -233,6 +277,24 @@ void AHeistPlayerState::OnRep_TotalLootScore()
 void AHeistPlayerState::OnRep_TotalLootWeight()
 {
 	UHeistDebugFunctionLibrary::DebugPlayerStateWeightReplicated(this, TotalLootWeight);
+}
+
+#pragma endregion
+
+#pragma region Debug
+
+void AHeistPlayerState::DebugSetTotalLootScore(const int32 InScore)
+{
+#if !UE_BUILD_SHIPPING
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	TotalLootScore = FMath::Max(0, InScore);
+	ForceNetUpdate();
+	UHeistDebugFunctionLibrary::DebugGapTrackerScoreSet(this, HeistPlayerId, TotalLootScore);
+#endif
 }
 
 #pragma endregion

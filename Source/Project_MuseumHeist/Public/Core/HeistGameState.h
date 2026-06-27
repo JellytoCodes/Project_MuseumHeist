@@ -9,6 +9,8 @@
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistEscapePhaseStateChanged, bool);
 DECLARE_MULTICAST_DELEGATE(FHeistPlayerResultsChanged);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistSoundPingEventReported, const FHeistSoundPingEvent&);
+DECLARE_MULTICAST_DELEGATE_OneParam(FHeistRareLootEventStateChanged, const FHeistRareLootEventState&);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistGapTrackerStateChanged, bool, int32);
 
 UCLASS()
 class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
@@ -54,6 +56,52 @@ private:
 	void OnRep_EscapePhaseOpen();
 
 	FHeistEscapePhaseStateChanged EscapePhaseStateChangedDelegate;
+
+#pragma endregion
+
+#pragma region RareLootEvent
+
+public:
+	const FHeistRareLootEventState& GetRareLootEventState() const;
+	void BeginRareLootWarning(int32 EventIndex, FName ItemId, float SpawnServerTime);
+	void ActivateRareLootMarker(int32 EventIndex, FName ItemId, const FVector& WorldLocation);
+	void DeactivateRareLootMarker(int32 EventIndex);
+	FHeistRareLootEventStateChanged& GetRareLootEventStateChangedDelegate();
+
+private:
+	UPROPERTY(ReplicatedUsing = OnRep_RareLootEventState, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|RareLoot", meta = (AllowPrivateAccess = "true"))
+	FHeistRareLootEventState RareLootEventState;
+
+	UFUNCTION()
+	void OnRep_RareLootEventState();
+
+	void BroadcastRareLootEventState();
+
+	FHeistRareLootEventStateChanged RareLootEventStateChangedDelegate;
+
+#pragma endregion
+
+#pragma region GapTracker
+
+public:
+	bool IsGapTrackerActive() const;
+	int32 GetGapTrackerLeaderPlayerId() const;
+	void SetGapTrackerState(bool bInActive, int32 InLeaderPlayerId);
+	FHeistGapTrackerStateChanged& GetGapTrackerStateChangedDelegate();
+
+private:
+	UPROPERTY(ReplicatedUsing = OnRep_GapTrackerState, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|GapTracker", meta = (AllowPrivateAccess = "true"))
+	bool bGapTrackerActive = false;
+
+	UPROPERTY(ReplicatedUsing = OnRep_GapTrackerState, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|GapTracker", meta = (AllowPrivateAccess = "true"))
+	int32 GapTrackerLeaderPlayerId = INDEX_NONE;
+
+	UFUNCTION()
+	void OnRep_GapTrackerState();
+
+	void BroadcastGapTrackerState();
+
+	FHeistGapTrackerStateChanged GapTrackerStateChangedDelegate;
 
 #pragma endregion
 

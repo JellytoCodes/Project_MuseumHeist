@@ -114,6 +114,7 @@ bool AHeistLootActor::CommitPickupReservation(AActor* Requester)
 	bIsAvailable = false;
 	PickupReservationOwner.Reset();
 	ForceNetUpdate();
+	LootPickupCommittedDelegate.Broadcast(this, Requester);
 	return true;
 }
 
@@ -123,6 +124,11 @@ void AHeistLootActor::ReleasePickupReservation(AActor* Requester)
 	{
 		PickupReservationOwner.Reset();
 	}
+}
+
+FHeistLootPickupCommitted& AHeistLootActor::GetLootPickupCommittedDelegate()
+{
+	return LootPickupCommittedDelegate;
 }
 
 #pragma endregion

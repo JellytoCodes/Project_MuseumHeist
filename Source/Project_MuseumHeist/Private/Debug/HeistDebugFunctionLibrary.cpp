@@ -4,8 +4,10 @@
 #include "Character/Components/HeistStatusComponent.h"
 #include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameplayTags.h"
+#include "Core/HeistGameState.h"
 #include "Core/HeistTypes.h"
 #include "Core/HeistPlayerController.h"
+#include "Core/HeistPlayerState.h"
 #include "Core/HeistLogChannels.h"
 #include "Engine/Engine.h"
 #include "GameFramework/PlayerController.h"
@@ -111,6 +113,306 @@ namespace
 
 		return FString::Join(Entries, TEXT(", "));
 	}
+}
+
+#pragma endregion
+
+#pragma region GapTrackerLogging
+
+void UHeistDebugFunctionLibrary::DebugGapTrackerTimerStarted(
+	const UObject* WorldContextObject,
+	const float UpdateInterval)
+{
+#if !UE_BUILD_SHIPPING
+	Message(
+		WorldContextObject,
+		FString::Printf(TEXT("Gap Tracker timer started: UpdateInterval=%.2f"), UpdateInterval));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGapTrackerStateChanged(
+	const UObject* WorldContextObject,
+	const bool bActive,
+	const int32 LeaderPlayerId)
+{
+#if !UE_BUILD_SHIPPING
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Gap Tracker state changed: Active=%s LeaderPlayerId=%d"),
+			bActive ? TEXT("true") : TEXT("false"),
+			LeaderPlayerId));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGapTrackerStateReplicated(
+	const UObject* WorldContextObject,
+	const bool bActive,
+	const int32 LeaderPlayerId)
+{
+#if !UE_BUILD_SHIPPING
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Gap Tracker state replicated: Active=%s LeaderPlayerId=%d"),
+			bActive ? TEXT("true") : TEXT("false"),
+			LeaderPlayerId));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGapTrackerDirectionUpdated(
+	const UObject* WorldContextObject,
+	const int32 PlayerId,
+	const FVector& Direction)
+{
+#if !UE_BUILD_SHIPPING
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Gap Tracker direction updated: PlayerId=%d Direction=(%.3f,%.3f,%.3f)"),
+			PlayerId,
+			Direction.X,
+			Direction.Y,
+			Direction.Z));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGapTrackerDirectionReplicated(
+	const UObject* WorldContextObject,
+	const int32 PlayerId,
+	const FVector& Direction)
+{
+#if !UE_BUILD_SHIPPING
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Gap Tracker direction replicated: PlayerId=%d Direction=(%.3f,%.3f,%.3f)"),
+			PlayerId,
+			Direction.X,
+			Direction.Y,
+			Direction.Z));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGapTrackerOverrideChanged(
+	const UObject* WorldContextObject,
+	const bool bOverrideEnabled,
+	const bool bForcedActive)
+{
+#if !UE_BUILD_SHIPPING
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Gap Tracker debug override changed: Override=%s ForcedActive=%s"),
+			bOverrideEnabled ? TEXT("true") : TEXT("false"),
+			bForcedActive ? TEXT("true") : TEXT("false")));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGapTrackerScoreSet(
+	const UObject* WorldContextObject,
+	const int32 PlayerId,
+	const int32 Score)
+{
+#if !UE_BUILD_SHIPPING
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Gap Tracker debug score set: PlayerId=%d Score=%d"),
+			PlayerId,
+			Score));
+#endif
+}
+
+#pragma endregion
+
+#pragma region RareLootDebug
+
+void UHeistDebugFunctionLibrary::DebugRareLootHelp(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		PlayerController,
+		TEXT("Rare Loot debug commands: HeistRareLootForce <WarningDelaySeconds> | HeistRareLootDump"),
+		EHeistDebugLevel::Info,
+		true,
+		8.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugForceRareLootEvent(
+	APlayerController* PlayerController,
+	const float WarningDelaySeconds)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		Message(PlayerController, TEXT("Rare Loot force failed: invalid Heist player controller."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const float SafeWarningDelay = FMath::Max(0.0f, WarningDelaySeconds);
+	HeistPlayerController->DebugRequestForceRareLootEvent(SafeWarningDelay);
+	Message(
+		PlayerController,
+		FString::Printf(TEXT("Rare Loot force requested: WarningDelay=%.2f"), SafeWarningDelay),
+		EHeistDebugLevel::Info,
+		true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugDumpRareLootState(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	const AHeistGameState* HeistGameState = IsValid(PlayerController) && PlayerController->GetWorld()
+		? PlayerController->GetWorld()->GetGameState<AHeistGameState>()
+		: nullptr;
+	if (!IsValid(HeistGameState))
+	{
+		Message(PlayerController, TEXT("Rare Loot dump failed: missing Heist GameState."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const FHeistRareLootEventState& State = HeistGameState->GetRareLootEventState();
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Rare Loot dump: EventIndex=%d ItemId=%s Incoming=%s MarkerActive=%s SpawnServerTime=%.2f Location=(%.1f,%.1f,%.1f)"),
+			State.EventIndex,
+			*State.ItemId.ToString(),
+			State.bIncomingWarningActive ? TEXT("true") : TEXT("false"),
+			State.bDirectionMarkerActive ? TEXT("true") : TEXT("false"),
+			State.SpawnServerTime,
+			State.WorldLocation.X,
+			State.WorldLocation.Y,
+			State.WorldLocation.Z),
+		EHeistDebugLevel::Info,
+		true,
+		8.0f);
+#endif
+}
+
+#pragma endregion
+
+#pragma region GapTrackerDebug
+
+void UHeistDebugFunctionLibrary::DebugGapTrackerHelp(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		PlayerController,
+		TEXT("Gap Tracker debug commands: HeistGapDump | HeistGapScore <Score> | HeistGapForce <0|1> | HeistGapAuto"),
+		EHeistDebugLevel::Info,
+		true,
+		8.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugDumpGapTrackerState(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	const AHeistGameState* HeistGameState = IsValid(PlayerController) && PlayerController->GetWorld()
+		? PlayerController->GetWorld()->GetGameState<AHeistGameState>()
+		: nullptr;
+	const AHeistPlayerState* HeistPlayerState = IsValid(PlayerController)
+		? PlayerController->GetPlayerState<AHeistPlayerState>()
+		: nullptr;
+	if (!IsValid(HeistGameState) || !IsValid(HeistPlayerState))
+	{
+		Message(PlayerController, TEXT("Gap Tracker dump failed: missing GameState or local PlayerState."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const FVector Direction = HeistPlayerState->GetGapTrackerDirection();
+	const float AngleDegrees = FMath::RadiansToDegrees(FMath::Atan2(Direction.Y, Direction.X));
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Gap Tracker dump: Active=%s LeaderPlayerId=%d LocalPlayerId=%d LocalScore=%d IsLeader=%s Direction=(%.3f,%.3f,%.3f) Angle=%.1f"),
+			HeistGameState->IsGapTrackerActive() ? TEXT("true") : TEXT("false"),
+			HeistGameState->GetGapTrackerLeaderPlayerId(),
+			HeistPlayerState->HeistPlayerId,
+			HeistPlayerState->GetTotalLootScore(),
+			HeistGameState->GetGapTrackerLeaderPlayerId() == HeistPlayerState->HeistPlayerId ? TEXT("true") : TEXT("false"),
+			Direction.X,
+			Direction.Y,
+			Direction.Z,
+			AngleDegrees),
+		EHeistDebugLevel::Info,
+		true,
+		8.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugSetGapTrackerScore(
+	APlayerController* PlayerController,
+	const int32 Score)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		return;
+	}
+
+	HeistPlayerController->DebugRequestSetGapTrackerScore(FMath::Max(0, Score));
+	Message(
+		PlayerController,
+		FString::Printf(TEXT("Gap Tracker debug score requested: Score=%d"), FMath::Max(0, Score)),
+		EHeistDebugLevel::Info,
+		true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugForceGapTracker(
+	APlayerController* PlayerController,
+	const bool bActive)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		return;
+	}
+
+	HeistPlayerController->DebugRequestForceGapTracker(bActive);
+	Message(
+		PlayerController,
+		FString::Printf(TEXT("Gap Tracker force requested: Active=%s"), bActive ? TEXT("true") : TEXT("false")),
+		EHeistDebugLevel::Info,
+		true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugClearGapTrackerOverride(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		return;
+	}
+
+	HeistPlayerController->DebugRequestClearGapTrackerOverride();
+	Message(PlayerController, TEXT("Gap Tracker automatic score evaluation requested."), EHeistDebugLevel::Info, true);
+#endif
 }
 
 #pragma endregion
@@ -233,6 +535,127 @@ void UHeistDebugFunctionLibrary::Message(const UObject* WorldContextObject, cons
 		FMath::Max(0.0f, Duration),
 		MessageColor,
 		FormattedMessage);
+#endif
+}
+
+#pragma endregion
+
+#pragma region RareLootLogging
+
+void UHeistDebugFunctionLibrary::DebugRareLootTimersStarted(
+	const UObject* WorldContextObject,
+	const TArray<float>& EventTimes,
+	const float WarningLeadTime)
+{
+#if !UE_BUILD_SHIPPING
+	TArray<FString> TimeEntries;
+	TimeEntries.Reserve(EventTimes.Num());
+	for (const float EventTime : EventTimes)
+	{
+		TimeEntries.Add(FString::Printf(TEXT("%.2f"), EventTime));
+	}
+
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Rare Loot timers started: EventTimes=[%s] WarningLeadTime=%.2f"),
+			*FString::Join(TimeEntries, TEXT(",")),
+			WarningLeadTime));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugRareLootWarningStarted(
+	const UObject* WorldContextObject,
+	const int32 EventIndex,
+	const FName ItemId,
+	const float SpawnServerTime)
+{
+#if !UE_BUILD_SHIPPING
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Rare Loot warning started: EventIndex=%d ItemId=%s SpawnServerTime=%.2f"),
+			EventIndex,
+			*ItemId.ToString(),
+			SpawnServerTime));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugRareLootSpawned(
+	const UObject* WorldContextObject,
+	const int32 EventIndex,
+	const UObject* LootActor,
+	const UObject* SpawnPoint,
+	const FName ItemId,
+	const FVector& WorldLocation)
+{
+#if !UE_BUILD_SHIPPING
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Rare Loot spawned: EventIndex=%d LootActor=%s SpawnPoint=%s ItemId=%s Location=(%.1f,%.1f,%.1f)"),
+			EventIndex,
+			*GetNameSafe(LootActor),
+			*GetNameSafe(SpawnPoint),
+			*ItemId.ToString(),
+			WorldLocation.X,
+			WorldLocation.Y,
+			WorldLocation.Z));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugRareLootEventFailed(
+	const UObject* WorldContextObject,
+	const int32 EventIndex,
+	const TCHAR* Reason)
+{
+#if !UE_BUILD_SHIPPING
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Rare Loot event failed: EventIndex=%d Reason=%s"),
+			EventIndex,
+			Reason),
+		EHeistDebugLevel::Warning);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugRareLootPickedUp(
+	const UObject* WorldContextObject,
+	const int32 EventIndex,
+	const UObject* LootActor,
+	const UObject* Requester,
+	const FName ItemId)
+{
+#if !UE_BUILD_SHIPPING
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Rare Loot picked up: EventIndex=%d LootActor=%s Requester=%s ItemId=%s MarkerActive=false"),
+			EventIndex,
+			*GetNameSafe(LootActor),
+			*GetNameSafe(Requester),
+			*ItemId.ToString()));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugRareLootStateReplicated(
+	const UObject* WorldContextObject,
+	const FHeistRareLootEventState& EventState)
+{
+#if !UE_BUILD_SHIPPING
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Rare Loot state replicated: EventIndex=%d ItemId=%s Incoming=%s MarkerActive=%s SpawnServerTime=%.2f Location=(%.1f,%.1f,%.1f)"),
+			EventState.EventIndex,
+			*EventState.ItemId.ToString(),
+			EventState.bIncomingWarningActive ? TEXT("true") : TEXT("false"),
+			EventState.bDirectionMarkerActive ? TEXT("true") : TEXT("false"),
+			EventState.SpawnServerTime,
+			EventState.WorldLocation.X,
+			EventState.WorldLocation.Y,
+			EventState.WorldLocation.Z));
 #endif
 }
 

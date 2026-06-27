@@ -7,13 +7,16 @@
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
 #include "Data/HeistGameBalanceDataAsset.h"
+#include "Debug/HeistDebugFunctionLibrary.h"
 #include "Engine/DataTable.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "Inventory/HeistItemDataTypes.h"
 #include "Inventory/HeistInventoryTypes.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
 #include "World/Actors/Loot/HeistLootActor.h"
+#include "World/Spawn/HeistLootSpawnPoint.h"
 
 #pragma region InternalHelpers
 
@@ -50,6 +53,8 @@ void AHeistGameMode::StartPlay()
 	Super::StartPlay();
 	ValidateItemDataTable();
 	StartEscapePhaseTimer();
+	StartRareLootEventTimers();
+	StartGapTrackerTimer();
 }
 
 void AHeistGameMode::RestartPlayer(AController* NewPlayer)
@@ -316,6 +321,428 @@ void AHeistGameMode::ValidateItemDataTable() const
 		*GetNameSafe(ItemDataTable),
 		RowNames.Num(),
 		ValidRowCount);
+}
+
+#pragma endregion
+
+#pragma region RareLootEvent
+
+void AHeistGameMode::ForceRareLootEvent(const float WarningDelaySeconds)
+{
+#if !UE_BUILD_SHIPPING
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	while (TriggeredRareLootEventIndices.Contains(NextForcedRareLootEventIndex))
+	{
+		++NextForcedRareLootEventIndex;
+	}
+
+	const int32 EventIndex = NextForcedRareLootEventIndex;
+	const float SafeWarningDelay = FMath::Max(0.0f, WarningDelaySeconds);
+	const AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	const float SpawnServerTime = IsValid(HeistGameState)
+		? HeistGameState->GetServerWorldTimeSeconds() + SafeWarningDelay
+		: GetWorld()->GetTimeSeconds() + SafeWarningDelay;
+	BeginRareLootWarning(EventIndex, SpawnServerTime);
+
+	if (SafeWarningDelay <= 0.0f)
+	{
+		TriggerRareLootEvent(EventIndex);
+		return;
+	}
+
+	FTimerHandle& SpawnTimerHandle = RareLootSpawnTimerHandles.AddDefaulted_GetRef();
+	FTimerDelegate SpawnDelegate;
+	SpawnDelegate.BindUObject(this, &AHeistGameMode::TriggerRareLootEvent, EventIndex);
+	GetWorldTimerManager().SetTimer(SpawnTimerHandle, SpawnDelegate, SafeWarningDelay, false);
+#endif
+}
+
+void AHeistGameMode::StartRareLootEventTimers()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	if (!IsValid(BalanceData) || !IsValid(HeistGameState))
+	{
+		UHeistDebugFunctionLibrary::DebugRareLootEventFailed(this, 0, TEXT("MissingBalanceOrGameState"));
+		return;
+	}
+
+	const float WarningLeadTime = FMath::Max(0.0f, BalanceData->RareLootWarningLeadTime);
+	for (int32 EventArrayIndex = 0; EventArrayIndex < BalanceData->RareLootEventTimes.Num(); ++EventArrayIndex)
+	{
+		const int32 EventIndex = EventArrayIndex + 1;
+		const float SpawnDelay = FMath::Max(0.0f, BalanceData->RareLootEventTimes[EventArrayIndex]);
+		const float WarningDelay = FMath::Max(0.0f, SpawnDelay - WarningLeadTime);
+		const float ScheduledSpawnServerTime = HeistGameState->GetServerWorldTimeSeconds() + SpawnDelay;
+
+		FTimerHandle& WarningTimerHandle = RareLootWarningTimerHandles.AddDefaulted_GetRef();
+		FTimerDelegate WarningDelegate;
+		WarningDelegate.BindUObject(
+			this,
+			&AHeistGameMode::BeginRareLootWarning,
+			EventIndex,
+			ScheduledSpawnServerTime);
+		GetWorldTimerManager().SetTimer(WarningTimerHandle, WarningDelegate, WarningDelay, false);
+
+		FTimerHandle& SpawnTimerHandle = RareLootSpawnTimerHandles.AddDefaulted_GetRef();
+		FTimerDelegate SpawnDelegate;
+		SpawnDelegate.BindUObject(this, &AHeistGameMode::TriggerRareLootEvent, EventIndex);
+		GetWorldTimerManager().SetTimer(SpawnTimerHandle, SpawnDelegate, SpawnDelay, false);
+	}
+
+	UHeistDebugFunctionLibrary::DebugRareLootTimersStarted(
+		this,
+		BalanceData->RareLootEventTimes,
+		WarningLeadTime);
+}
+
+void AHeistGameMode::BeginRareLootWarning(const int32 EventIndex, const float ScheduledSpawnTime)
+{
+	if (!HasAuthority() || TriggeredRareLootEventIndices.Contains(EventIndex))
+	{
+		return;
+	}
+
+	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	if (!IsValid(HeistGameState) || !IsValid(BalanceData) || BalanceData->RareLootItemId.IsNone())
+	{
+		UHeistDebugFunctionLibrary::DebugRareLootEventFailed(this, EventIndex, TEXT("InvalidWarningState"));
+		return;
+	}
+
+	HeistGameState->BeginRareLootWarning(EventIndex, BalanceData->RareLootItemId, ScheduledSpawnTime);
+	UHeistDebugFunctionLibrary::DebugRareLootWarningStarted(
+		this,
+		EventIndex,
+		BalanceData->RareLootItemId,
+		ScheduledSpawnTime);
+}
+
+void AHeistGameMode::TriggerRareLootEvent(const int32 EventIndex)
+{
+	if (!HasAuthority() || TriggeredRareLootEventIndices.Contains(EventIndex))
+	{
+		return;
+	}
+
+	AHeistLootActor* RareLootActor = nullptr;
+	AHeistLootSpawnPoint* SpawnPoint = nullptr;
+	if (!TrySpawnRareLoot(EventIndex, RareLootActor, SpawnPoint))
+	{
+		if (AHeistGameState* HeistGameState = GetGameState<AHeistGameState>())
+		{
+			HeistGameState->DeactivateRareLootMarker(EventIndex);
+		}
+		return;
+	}
+
+	TriggeredRareLootEventIndices.Add(EventIndex);
+	ActiveRareLootEventIndices.Add(RareLootActor, EventIndex);
+	NextForcedRareLootEventIndex = FMath::Max(NextForcedRareLootEventIndex, EventIndex + 1);
+	RareLootActor->GetLootPickupCommittedDelegate().AddUObject(
+		this,
+		&AHeistGameMode::HandleRareLootPickedUp);
+
+	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	checkf(IsValid(HeistGameState), TEXT("Rare Loot event requires AHeistGameState."));
+	checkf(IsValid(BalanceData), TEXT("Rare Loot event requires balance data."));
+	HeistGameState->ActivateRareLootMarker(
+		EventIndex,
+		BalanceData->RareLootItemId,
+		RareLootActor->GetActorLocation());
+	UHeistDebugFunctionLibrary::DebugRareLootSpawned(
+		this,
+		EventIndex,
+		RareLootActor,
+		SpawnPoint,
+		BalanceData->RareLootItemId,
+		RareLootActor->GetActorLocation());
+}
+
+bool AHeistGameMode::TrySpawnRareLoot(
+	const int32 EventIndex,
+	AHeistLootActor*& OutRareLootActor,
+	AHeistLootSpawnPoint*& OutSpawnPoint)
+{
+	OutRareLootActor = nullptr;
+	OutSpawnPoint = nullptr;
+
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	if (!IsValid(BalanceData) || BalanceData->RareLootItemId.IsNone())
+	{
+		UHeistDebugFunctionLibrary::DebugRareLootEventFailed(this, EventIndex, TEXT("MissingRareLootConfig"));
+		return false;
+	}
+
+	FHeistItemDataRow ItemDefinition;
+	FHeistLootDataRow LootDefinition;
+	if (!TryGetItemDefinition(BalanceData->RareLootItemId, ItemDefinition)
+		|| ItemDefinition.ItemType != EHeistItemType::Loot
+		|| !TryGetLootDefinition(BalanceData->RareLootItemId, LootDefinition)
+		|| LootDefinition.SpawnCategory != EHeistSpawnCategory::RareEvent)
+	{
+		UHeistDebugFunctionLibrary::DebugRareLootEventFailed(this, EventIndex, TEXT("InvalidRareLootData"));
+		return false;
+	}
+
+	TArray<AHeistLootSpawnPoint*> CandidateSpawnPoints;
+	for (TActorIterator<AHeistLootSpawnPoint> It(GetWorld()); It; ++It)
+	{
+		AHeistLootSpawnPoint* SpawnPoint = *It;
+		if (IsValid(SpawnPoint) && SpawnPoint->CanSpawnCategory(EHeistSpawnCategory::RareEvent))
+		{
+			CandidateSpawnPoints.Add(SpawnPoint);
+		}
+	}
+
+	if (CandidateSpawnPoints.IsEmpty())
+	{
+		UHeistDebugFunctionLibrary::DebugRareLootEventFailed(this, EventIndex, TEXT("NoEmptyRareEventSpawnPoint"));
+		return false;
+	}
+
+	OutSpawnPoint = CandidateSpawnPoints[FMath::RandRange(0, CandidateSpawnPoints.Num() - 1)];
+	UClass* LootActorClass = ItemDefinition.WorldLootActorClass.LoadSynchronous();
+	if (!IsValid(LootActorClass) || !LootActorClass->IsChildOf(AHeistLootActor::StaticClass()))
+	{
+		LootActorClass = AHeistLootActor::StaticClass();
+	}
+
+	UDataTable* LootDataTable = BalanceData->LootDataTable.LoadSynchronous();
+	if (!IsValid(LootDataTable))
+	{
+		UHeistDebugFunctionLibrary::DebugRareLootEventFailed(this, EventIndex, TEXT("MissingLootDataTable"));
+		return false;
+	}
+
+	const FTransform SpawnTransform = OutSpawnPoint->GetActorTransform();
+	AHeistLootActor* DeferredLootActor = GetWorld()->SpawnActorDeferred<AHeistLootActor>(
+		LootActorClass,
+		SpawnTransform,
+		nullptr,
+		nullptr,
+		ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
+	if (!IsValid(DeferredLootActor))
+	{
+		UHeistDebugFunctionLibrary::DebugRareLootEventFailed(this, EventIndex, TEXT("DeferredSpawnFailed"));
+		return false;
+	}
+
+	DeferredLootActor->InitializeLootData(LootDataTable, BalanceData->RareLootItemId);
+	OutRareLootActor = Cast<AHeistLootActor>(
+		UGameplayStatics::FinishSpawningActor(DeferredLootActor, SpawnTransform));
+	if (!IsValid(OutRareLootActor))
+	{
+		UHeistDebugFunctionLibrary::DebugRareLootEventFailed(this, EventIndex, TEXT("FinishSpawnFailed"));
+		return false;
+	}
+
+	return true;
+}
+
+void AHeistGameMode::HandleRareLootPickedUp(AHeistLootActor* LootActor, AActor* Requester)
+{
+	if (!HasAuthority() || !IsValid(LootActor))
+	{
+		return;
+	}
+
+	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	if (!IsValid(HeistGameState))
+	{
+		return;
+	}
+
+	const int32* EventIndexPtr = ActiveRareLootEventIndices.Find(LootActor);
+	if (EventIndexPtr == nullptr)
+	{
+		return;
+	}
+
+	const int32 EventIndex = *EventIndexPtr;
+	if (HeistGameState->GetRareLootEventState().EventIndex == EventIndex)
+	{
+		HeistGameState->DeactivateRareLootMarker(EventIndex);
+	}
+	ActiveRareLootEventIndices.Remove(LootActor);
+	LootActor->GetLootPickupCommittedDelegate().RemoveAll(this);
+	UHeistDebugFunctionLibrary::DebugRareLootPickedUp(
+		this,
+		EventIndex,
+		LootActor,
+		Requester,
+		LootActor->GetLootRowId());
+}
+
+const UHeistGameBalanceDataAsset* AHeistGameMode::ResolveGameBalanceData() const
+{
+	return IsValid(GameBalanceDataAsset)
+		? GameBalanceDataAsset.Get()
+		: GetDefault<UHeistGameBalanceDataAsset>();
+}
+
+#pragma endregion
+
+#pragma region GapTracker
+
+void AHeistGameMode::StartGapTrackerTimer()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	const float UpdateInterval = IsValid(BalanceData)
+		? FMath::Max(0.01f, BalanceData->GapTrackerUpdateInterval)
+		: 0.1f;
+	GetWorldTimerManager().SetTimer(
+		GapTrackerUpdateTimerHandle,
+		this,
+		&AHeistGameMode::RefreshGapTrackerState,
+		UpdateInterval,
+		true);
+	RefreshGapTrackerState();
+	UHeistDebugFunctionLibrary::DebugGapTrackerTimerStarted(this, UpdateInterval);
+}
+
+void AHeistGameMode::RefreshGapTrackerState()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	if (!IsValid(HeistGameState) || !IsValid(BalanceData))
+	{
+		return;
+	}
+
+	TArray<AHeistPlayerState*> RankedPlayerStates;
+	RankedPlayerStates.Reserve(HeistGameState->PlayerArray.Num());
+	for (APlayerState* PlayerState : HeistGameState->PlayerArray)
+	{
+		AHeistPlayerState* HeistPlayerState = Cast<AHeistPlayerState>(PlayerState);
+		if (IsValid(HeistPlayerState) && !HeistPlayerState->IsEscaped())
+		{
+			RankedPlayerStates.Add(HeistPlayerState);
+		}
+	}
+
+	RankedPlayerStates.Sort([](const AHeistPlayerState& Left, const AHeistPlayerState& Right)
+	{
+		if (Left.GetTotalLootScore() != Right.GetTotalLootScore())
+		{
+			return Left.GetTotalLootScore() > Right.GetTotalLootScore();
+		}
+
+		return Left.HeistPlayerId < Right.HeistPlayerId;
+	});
+
+	const bool bHasLeader = !RankedPlayerStates.IsEmpty();
+	const int32 ScoreGap = RankedPlayerStates.Num() >= 2
+		? RankedPlayerStates[0]->GetTotalLootScore() - RankedPlayerStates[1]->GetTotalLootScore()
+		: 0;
+	const bool bScoreThresholdMet = RankedPlayerStates.Num() >= 2
+		&& ScoreGap >= FMath::Max(0, BalanceData->GapTrackerScoreThreshold);
+	const bool bShouldActivate = bGapTrackerDebugOverride
+		? bGapTrackerDebugForcedActive && bHasLeader
+		: bScoreThresholdMet;
+	AHeistPlayerState* LeaderPlayerState = bShouldActivate ? RankedPlayerStates[0] : nullptr;
+	const int32 LeaderPlayerId = IsValid(LeaderPlayerState)
+		? LeaderPlayerState->HeistPlayerId
+		: INDEX_NONE;
+
+	HeistGameState->SetGapTrackerState(bShouldActivate, LeaderPlayerId);
+	UpdateGapTrackerDirections(LeaderPlayerState, RankedPlayerStates);
+}
+
+void AHeistGameMode::UpdateGapTrackerDirections(
+	AHeistPlayerState* LeaderPlayerState,
+	const TArray<AHeistPlayerState*>& RankedPlayerStates)
+{
+	const AHeistPlayerCharacter* LeaderCharacter = IsValid(LeaderPlayerState)
+		? Cast<AHeistPlayerCharacter>(LeaderPlayerState->GetPawn())
+		: nullptr;
+	const FVector LeaderLocation = IsValid(LeaderCharacter)
+		? LeaderCharacter->GetActorLocation()
+		: FVector::ZeroVector;
+
+	for (AHeistPlayerState* HeistPlayerState : RankedPlayerStates)
+	{
+		if (!IsValid(HeistPlayerState)
+			|| !IsValid(LeaderCharacter)
+			|| HeistPlayerState == LeaderPlayerState)
+		{
+			if (IsValid(HeistPlayerState))
+			{
+				HeistPlayerState->SetGapTrackerDirection(FVector::ZeroVector);
+			}
+			continue;
+		}
+
+		const AHeistPlayerCharacter* FollowerCharacter = Cast<AHeistPlayerCharacter>(HeistPlayerState->GetPawn());
+		const FVector Direction = IsValid(FollowerCharacter)
+			? (LeaderLocation - FollowerCharacter->GetActorLocation()).GetSafeNormal()
+			: FVector::ZeroVector;
+		HeistPlayerState->SetGapTrackerDirection(Direction);
+	}
+
+	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	if (IsValid(HeistGameState))
+	{
+		for (APlayerState* PlayerState : HeistGameState->PlayerArray)
+		{
+			AHeistPlayerState* HeistPlayerState = Cast<AHeistPlayerState>(PlayerState);
+			if (IsValid(HeistPlayerState) && !RankedPlayerStates.Contains(HeistPlayerState))
+			{
+				HeistPlayerState->SetGapTrackerDirection(FVector::ZeroVector);
+			}
+		}
+	}
+}
+
+void AHeistGameMode::DebugForceGapTracker(const bool bActive)
+{
+#if !UE_BUILD_SHIPPING
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	bGapTrackerDebugOverride = true;
+	bGapTrackerDebugForcedActive = bActive;
+	RefreshGapTrackerState();
+	UHeistDebugFunctionLibrary::DebugGapTrackerOverrideChanged(this, true, bActive);
+#endif
+}
+
+void AHeistGameMode::DebugClearGapTrackerOverride()
+{
+#if !UE_BUILD_SHIPPING
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	bGapTrackerDebugOverride = false;
+	bGapTrackerDebugForcedActive = false;
+	RefreshGapTrackerState();
+	UHeistDebugFunctionLibrary::DebugGapTrackerOverrideChanged(this, false, false);
+#endif
 }
 
 #pragma endregion

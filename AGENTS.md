@@ -52,13 +52,14 @@ Do not implement v1.1 systems unless explicitly requested.
 
 ## Primary Goal For Current Phase
 
-The current phase is class skeleton generation only.
+The initial class-skeleton phase is complete.
 
-Create headers and source files.
-Create Unreal reflection declarations.
-Create minimal constructors.
-Create placeholder methods only when needed for compile and later extension.
-Do not implement gameplay logic yet.
+The current phase is numbered weekly implementation.
+
+Implement only the explicitly requested `TASK-Wn-###` scope, using the GDD sections
+relevant to that task. Do not bulk-implement later tasks or the complete GDD.
+Previously created manifest-approved skeletons may now receive gameplay logic when
+the active numbered task requires it.
 
 ---
 
@@ -475,8 +476,8 @@ Item movement must eventually validate:
 
 Current phase:
 
-* Create the types and placeholder methods only.
-* Do not implement full movement logic yet.
+* Implement inventory behavior only when required by the active numbered task.
+* Do not implement later inventory features ahead of their task.
 
 ---
 

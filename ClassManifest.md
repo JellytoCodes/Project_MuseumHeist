@@ -16,11 +16,10 @@ Path convention used by every section below:
 
 ## Current Goal
 
-Generate C++ class skeletons only.
+Implement the explicitly requested numbered weekly task using only the
+manifest-approved types and the relevant GDD scope.
 
-Do not implement internal gameplay logic yet.
-Do not implement full inventory movement, item usage, stun, AI chase, scoring, UI binding, or networking behavior yet.
-Only create compile-ready class and type structure.
+Do not bulk-implement later tasks. New types still require manifest approval.
 
 ---
 
@@ -34,6 +33,7 @@ Contains:
 
 * `EHeistMatchPhase`
 * `FHeistPlayerResult`
+* `FHeistRareLootEventState`
 * `EHeistItemType`
 * `EHeistLootGrade`
 * `EHeistUseType`
@@ -456,10 +456,10 @@ Classes:
 
 Purpose:
 
-* Future test commands and utility validation.
+* Development-only test commands and centralized utility validation.
 
-Do not implement actual cheat commands yet.
-Only create placeholder functions if needed.
+Commands must route through `UHeistDebugFunctionLibrary` and remain disabled in
+Shipping builds.
 
 ---
 
@@ -484,9 +484,12 @@ Do not add extra dependencies unless required for compilation.
 
 ---
 
-# 10. Explicitly Forbidden In Skeleton Phase
+# 10. Numbered Task Implementation Boundary
 
-Do not implement:
+The initial skeleton phase is complete. Manifest-approved types may receive gameplay
+logic only for the active, explicitly requested `TASK-Wn-###`.
+
+Do not implement ahead of the active task:
 
 * Full match flow
 * Full inventory placement algorithm
@@ -496,8 +499,6 @@ Do not implement:
 * Full stun logic
 * Full Piñata Drop logic
 * Full scoring logic
-* Full Rare Loot event
-* Full Gap Tracker logic
 * Full guard AI behavior
 * Full Sound Ping behavior
 * Full UI binding

@@ -91,6 +91,40 @@ public:
 
 #pragma endregion
 
+#pragma region RareLootDebug
+
+public:
+	UFUNCTION(Exec)
+	void HeistRareLootHelp();
+
+	UFUNCTION(Exec)
+	void HeistRareLootForce(float WarningDelaySeconds = 5.0f);
+
+	UFUNCTION(Exec)
+	void HeistRareLootDump();
+
+#pragma endregion
+
+#pragma region GapTrackerDebug
+
+public:
+	UFUNCTION(Exec)
+	void HeistGapHelp();
+
+	UFUNCTION(Exec)
+	void HeistGapDump();
+
+	UFUNCTION(Exec)
+	void HeistGapScore(int32 Score);
+
+	UFUNCTION(Exec)
+	void HeistGapForce(bool bActive = true);
+
+	UFUNCTION(Exec)
+	void HeistGapAuto();
+
+#pragma endregion
+
 #pragma region TrapDebug
 
 public:

@@ -7,6 +7,10 @@
 
 #include "HeistLootActor.generated.h"
 
+class AHeistLootActor;
+
+DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistLootPickupCommitted, AHeistLootActor*, AActor*);
+
 UCLASS()
 class PROJECT_MUSEUMHEIST_API AHeistLootActor : public AHeistInteractableActor
 {
@@ -77,9 +81,11 @@ public:
 	bool TryReserveForPickup(AActor* Requester);
 	bool CommitPickupReservation(AActor* Requester);
 	void ReleasePickupReservation(AActor* Requester);
+	FHeistLootPickupCommitted& GetLootPickupCommittedDelegate();
 
 private:
 	TWeakObjectPtr<AActor> PickupReservationOwner;
+	FHeistLootPickupCommitted LootPickupCommittedDelegate;
 
 #pragma endregion
 

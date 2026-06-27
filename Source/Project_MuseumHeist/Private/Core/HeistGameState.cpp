@@ -115,6 +115,140 @@ void AHeistGameState::OnRep_EscapePhaseOpen()
 
 #pragma endregion
 
+#pragma region RareLootEvent
+
+const FHeistRareLootEventState& AHeistGameState::GetRareLootEventState() const
+{
+	return RareLootEventState;
+}
+
+void AHeistGameState::BeginRareLootWarning(
+	const int32 EventIndex,
+	const FName ItemId,
+	const float SpawnServerTime)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	RareLootEventState.EventIndex = EventIndex;
+	RareLootEventState.ItemId = ItemId;
+	RareLootEventState.WorldLocation = FVector::ZeroVector;
+	RareLootEventState.SpawnServerTime = SpawnServerTime;
+	RareLootEventState.bIncomingWarningActive = true;
+	RareLootEventState.bDirectionMarkerActive = false;
+	ForceNetUpdate();
+	BroadcastRareLootEventState();
+}
+
+void AHeistGameState::ActivateRareLootMarker(
+	const int32 EventIndex,
+	const FName ItemId,
+	const FVector& WorldLocation)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	RareLootEventState.EventIndex = EventIndex;
+	RareLootEventState.ItemId = ItemId;
+	RareLootEventState.WorldLocation = WorldLocation;
+	RareLootEventState.SpawnServerTime = GetServerWorldTimeSeconds();
+	RareLootEventState.bIncomingWarningActive = false;
+	RareLootEventState.bDirectionMarkerActive = true;
+	ForceNetUpdate();
+	BroadcastRareLootEventState();
+}
+
+void AHeistGameState::DeactivateRareLootMarker(const int32 EventIndex)
+{
+	if (!HasAuthority() || RareLootEventState.EventIndex != EventIndex)
+	{
+		return;
+	}
+
+	RareLootEventState.bIncomingWarningActive = false;
+	RareLootEventState.bDirectionMarkerActive = false;
+	ForceNetUpdate();
+	BroadcastRareLootEventState();
+}
+
+FHeistRareLootEventStateChanged& AHeistGameState::GetRareLootEventStateChangedDelegate()
+{
+	return RareLootEventStateChangedDelegate;
+}
+
+void AHeistGameState::OnRep_RareLootEventState()
+{
+	BroadcastRareLootEventState();
+	UHeistDebugFunctionLibrary::DebugRareLootStateReplicated(this, RareLootEventState);
+}
+
+void AHeistGameState::BroadcastRareLootEventState()
+{
+	RareLootEventStateChangedDelegate.Broadcast(RareLootEventState);
+}
+
+#pragma endregion
+
+#pragma region GapTracker
+
+bool AHeistGameState::IsGapTrackerActive() const
+{
+	return bGapTrackerActive;
+}
+
+int32 AHeistGameState::GetGapTrackerLeaderPlayerId() const
+{
+	return GapTrackerLeaderPlayerId;
+}
+
+void AHeistGameState::SetGapTrackerState(const bool bInActive, const int32 InLeaderPlayerId)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	const int32 ResolvedLeaderPlayerId = bInActive ? InLeaderPlayerId : INDEX_NONE;
+	if (bGapTrackerActive == bInActive && GapTrackerLeaderPlayerId == ResolvedLeaderPlayerId)
+	{
+		return;
+	}
+
+	bGapTrackerActive = bInActive;
+	GapTrackerLeaderPlayerId = ResolvedLeaderPlayerId;
+	ForceNetUpdate();
+	BroadcastGapTrackerState();
+	UHeistDebugFunctionLibrary::DebugGapTrackerStateChanged(
+		this,
+		bGapTrackerActive,
+		GapTrackerLeaderPlayerId);
+}
+
+FHeistGapTrackerStateChanged& AHeistGameState::GetGapTrackerStateChangedDelegate()
+{
+	return GapTrackerStateChangedDelegate;
+}
+
+void AHeistGameState::OnRep_GapTrackerState()
+{
+	BroadcastGapTrackerState();
+	UHeistDebugFunctionLibrary::DebugGapTrackerStateReplicated(
+		this,
+		bGapTrackerActive,
+		GapTrackerLeaderPlayerId);
+}
+
+void AHeistGameState::BroadcastGapTrackerState()
+{
+	GapTrackerStateChangedDelegate.Broadcast(bGapTrackerActive, GapTrackerLeaderPlayerId);
+}
+
+#pragma endregion
+
 #pragma region SoundPing
 
 void AHeistGameState::ReportSoundPing(const FHeistSoundPingEvent& SoundPingEvent)
@@ -301,6 +435,9 @@ void AHeistGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(AHeistGameState, bEscapePhaseOpen);
 	DOREPLIFETIME(AHeistGameState, EscapePhaseDelaySeconds);
 	DOREPLIFETIME(AHeistGameState, EscapePhaseOpenTimeSeconds);
+	DOREPLIFETIME(AHeistGameState, RareLootEventState);
+	DOREPLIFETIME(AHeistGameState, bGapTrackerActive);
+	DOREPLIFETIME(AHeistGameState, GapTrackerLeaderPlayerId);
 	DOREPLIFETIME(AHeistGameState, LastSoundPingEvent);
 	DOREPLIFETIME(AHeistGameState, PlayerResults);
 }
