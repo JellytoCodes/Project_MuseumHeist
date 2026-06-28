@@ -147,12 +147,10 @@ bool AHeistSmokeCloudActor::IsAISightBlockedBySmoke(
 		if (DistanceToSightSegment <= SmokeCloud->SmokeRadius)
 		{
 			OutBlockingSmokeCloud = SmokeCloud;
-			UHeistDebugFunctionLibrary::DebugSmokeSightQuery(WorldContextObject, SmokeCloud, FromLocation, ToLocation, true);
 			return true;
 		}
 	}
 
-	UHeistDebugFunctionLibrary::DebugSmokeSightQuery(WorldContextObject, nullptr, FromLocation, ToLocation, false);
 	return false;
 }
 

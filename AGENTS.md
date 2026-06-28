@@ -506,7 +506,7 @@ Canonical GDD enum values:
 * `EHeistTargetType`: `None`, `Self`, `WorldLocation`, `ActorHit`, `Area`
 * `EHeistSpawnCategory`: `None`, `VaultFixed`, `ExhibitionRoom`, `RareEvent`, `Dropped`
 * `EHeistSoundPingType`: `None`, `Footstep`, `GlassBreak`, `CoinImpact`, `NoiseTrap`, `StunHit`
-* `EHeistGuardState`: `Patrol`, `Chase`, `Stunned`, `Investigate`
+* `EHeistGuardState`: `Disabled`, `Stunned`, `Patrol`, `InvestigateNoise`, `ChasePlayer`, `SearchLastKnownLocation`, `ReturnToPatrol`
 * `EHeistCustomizationType`: `Hat`, `Cloth`, `SkinColor`, `HatColor`, `ClothColor`
 * `EHeistZoneId`: `None`, `ZoneA`, `ZoneB`, `ZoneC`, `ZoneD`
 
@@ -528,17 +528,44 @@ Do not hardcode balance values inside gameplay classes when they belong in `UHei
 
 ## AI Rules
 
-Use a simple C++ FSM first.
+Use StateTree as the default high-level flow framework for Guard AI and future
+mode-based pattern AI.
+
+C++ remains authoritative and owns:
+
+* state data and transition validation
+* target selection and validation
+* perception and stimulus results
+* stun, timers, last-known locations, and patrol indices
+* replication and gameplay consequences
+
+StateTree owns readable high-level state flow and lifecycle only. Blueprint
+graphs must not own authoritative AI gameplay logic.
 
 v1.0 guard states:
 
-* Patrol
-* Chase
+* Disabled
 * Stunned
-* Investigate
+* Patrol
+* InvestigateNoise
+* ChasePlayer
+* SearchLastKnownLocation
+* ReturnToPatrol
 
-Do not introduce Behavior Tree unless explicitly requested.
-Do not implement advanced guard behavior in the skeleton phase.
+Transition priority:
+
+`Stunned > ChasePlayer > InvestigateNoise > SearchLastKnownLocation > ReturnToPatrol > Patrol`
+
+AI decisions run on the server. Clients observe replicated movement and the
+minimal replicated state required for presentation.
+
+Behavior Tree is not globally prohibited, but it may be introduced only when a
+tactical decision problem is better represented by continuous priority
+selection and the user explicitly approves it.
+
+For numbered tasks, implement only the states and transitions required by the
+active task. Do not bulk-implement later perception, sound, or advanced guard
+behavior.
 
 ---
 

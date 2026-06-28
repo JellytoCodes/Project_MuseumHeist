@@ -2,11 +2,13 @@
 
 #include "Character/Components/HeistStatusComponent.h"
 #include "Character/HeistPlayerCharacter.h"
+#include "Core/HeistGameMode.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistGameplayTags.h"
 #include "Core/HeistTypes.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "GameFramework/DamageType.h"
+#include "Inventory/HeistItemDataTypes.h"
 #include "Kismet/GameplayStatics.h"
 
 #pragma region Construction
@@ -51,10 +53,31 @@ void AHeistCoinProjectile::HandleAuthorityImpact(const FHitResult& Hit)
 	}
 	else if (AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr)
 	{
+		const FName SoundPingId(TEXT("Ping_CoinImpact"));
+		const AHeistGameMode* HeistGameMode =
+			GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+		FHeistSoundPingDataRow SoundPingDefinition;
+		if (!IsValid(HeistGameMode)
+			|| !HeistGameMode->TryGetSoundPingDefinition(
+				SoundPingId,
+				SoundPingDefinition))
+		{
+			UHeistDebugFunctionLibrary::DebugSoundPingDefinitionRejected(
+				this,
+				SoundPingId,
+				TEXT("MissingSoundPingDataRow"));
+			Super::HandleAuthorityImpact(Hit);
+			return;
+		}
+
 		FHeistSoundPingEvent SoundPingEvent;
-		SoundPingEvent.SoundPingTag = FHeistGameplayTags::Get().Event_SoundPing_CoinImpact;
-		SoundPingEvent.PingType = EHeistSoundPingType::CoinImpact;
+		SoundPingEvent.SoundPingTag = SoundPingDefinition.SoundPingTag;
+		SoundPingEvent.PingType = SoundPingDefinition.PingType;
 		SoundPingEvent.WorldLocation = Hit.ImpactPoint;
+		SoundPingEvent.Radius = FMath::Max(0.0f, SoundPingDefinition.Radius);
+		SoundPingEvent.Duration = FMath::Max(0.0f, SoundPingDefinition.Duration);
+		SoundPingEvent.bAffectsGuards = SoundPingDefinition.bAffectsGuards;
+		SoundPingEvent.bAffectsPlayers = SoundPingDefinition.bAffectsPlayers;
 		HeistGameState->ReportSoundPing(SoundPingEvent);
 	}
 

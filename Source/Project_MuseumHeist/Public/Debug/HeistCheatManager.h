@@ -138,4 +138,33 @@ public:
 	void HeistGlueTrapPlaceAt(float TargetX, float TargetY, float TargetZ);
 
 #pragma endregion
+
+#pragma region GuardDebug
+
+public:
+	UFUNCTION(Exec)
+	void HeistGuardHelp();
+
+	UFUNCTION(Exec)
+	void HeistGuardSpawn(float Distance = 300.0f);
+
+	UFUNCTION(Exec)
+	void HeistGuardDump();
+
+	UFUNCTION(Exec)
+	void HeistGuardState(const FString& StateName, float DurationSeconds = 5.0f);
+
+	UFUNCTION(Exec)
+	void HeistGuardStun(float DurationSeconds = 3.0f);
+
+	UFUNCTION(Exec)
+	void HeistGuardSightCheck();
+
+	UFUNCTION(Exec)
+	void HeistGuardSightAuto(int32 Enabled = 0);
+
+	UFUNCTION(Exec)
+	void HeistGuardNoise(float Distance = 500.0f);
+
+#pragma endregion
 };

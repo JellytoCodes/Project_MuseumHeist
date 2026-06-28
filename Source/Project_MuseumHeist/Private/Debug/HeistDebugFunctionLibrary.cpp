@@ -1,15 +1,20 @@
 #include "Debug/HeistDebugFunctionLibrary.h"
 
+#include "AI/HeistGuardCharacter.h"
+#include "AI/HeistGuardStateComponent.h"
 #include "Character/Components/HeistInventoryComponent.h"
 #include "Character/Components/HeistStatusComponent.h"
 #include "Character/HeistPlayerCharacter.h"
+#include "Components/CapsuleComponent.h"
 #include "Core/HeistGameplayTags.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistTypes.h"
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
 #include "Core/HeistLogChannels.h"
+#include "DrawDebugHelpers.h"
 #include "Engine/Engine.h"
+#include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
 #include "GameplayTagContainer.h"
@@ -41,6 +46,42 @@ namespace
 			? HeistPlayerController->GetPawn<AHeistPlayerCharacter>()
 			: nullptr;
 		return IsValid(HeistCharacter) ? HeistCharacter->GetStatusComponent() : nullptr;
+	}
+
+	AHeistGuardCharacter* ResolveNearestGuard(APlayerController* PlayerController)
+	{
+		if (!IsValid(PlayerController) || !IsValid(PlayerController->GetWorld()))
+		{
+			return nullptr;
+		}
+
+		const APawn* ReferencePawn = PlayerController->GetPawn();
+		const FVector ReferenceLocation = IsValid(ReferencePawn)
+			? ReferencePawn->GetActorLocation()
+			: FVector::ZeroVector;
+		AHeistGuardCharacter* NearestGuard = nullptr;
+		float NearestDistanceSquared = TNumericLimits<float>::Max();
+		for (TActorIterator<AHeistGuardCharacter> GuardIterator(PlayerController->GetWorld());
+			GuardIterator;
+			++GuardIterator)
+		{
+			AHeistGuardCharacter* CandidateGuard = *GuardIterator;
+			if (!IsValid(CandidateGuard))
+			{
+				continue;
+			}
+
+			const float DistanceSquared = FVector::DistSquared(
+				ReferenceLocation,
+				CandidateGuard->GetActorLocation());
+			if (DistanceSquared < NearestDistanceSquared)
+			{
+				NearestDistanceSquared = DistanceSquared;
+				NearestGuard = CandidateGuard;
+			}
+		}
+
+		return NearestGuard;
 	}
 
 	const TCHAR* ToQuickSlotText(const EHeistQuickSlotType SlotType)
@@ -412,6 +453,304 @@ void UHeistDebugFunctionLibrary::DebugClearGapTrackerOverride(APlayerController*
 
 	HeistPlayerController->DebugRequestClearGapTrackerOverride();
 	Message(PlayerController, TEXT("Gap Tracker automatic score evaluation requested."), EHeistDebugLevel::Info, true);
+#endif
+}
+
+#pragma endregion
+
+#pragma region GuardDebug
+
+void UHeistDebugFunctionLibrary::DebugGuardHelp(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		PlayerController,
+		TEXT("Guard debug commands: HeistGuardSpawn <Distance> | HeistGuardDump | HeistGuardState <Disabled|Patrol|Investigate|Chase|Search|Return> <Duration> | HeistGuardStun <Duration> | HeistGuardSightCheck | HeistGuardSightAuto <0|1> | HeistGuardNoise <Distance>"),
+		EHeistDebugLevel::Info,
+		true,
+		10.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardSpawn(
+	APlayerController* PlayerController,
+	const float Distance)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController =
+		ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		Message(
+			PlayerController,
+			TEXT("Guard debug spawn failed: invalid Heist player controller."),
+			EHeistDebugLevel::Warning,
+			true);
+		return;
+	}
+
+	const float SafeDistance = FMath::Clamp(Distance, 100.0f, 3000.0f);
+	HeistPlayerController->DebugRequestSpawnGuard(SafeDistance);
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Guard debug spawn requested: Distance=%.1f"),
+			SafeDistance),
+		EHeistDebugLevel::Info,
+		true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardDump(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	const AHeistGuardCharacter* GuardCharacter =
+		ResolveNearestGuard(PlayerController);
+	const UHeistGuardStateComponent* GuardStateComponent =
+		IsValid(GuardCharacter)
+			? GuardCharacter->GetGuardStateComponent()
+			: nullptr;
+	if (!IsValid(GuardCharacter) || !IsValid(GuardStateComponent))
+	{
+		Message(
+			PlayerController,
+			TEXT("Guard dump failed: no replicated Guard exists."),
+			EHeistDebugLevel::Warning,
+			true);
+		return;
+	}
+
+	const float ServerTime = PlayerController->GetWorld()
+		&& PlayerController->GetWorld()->GetGameState()
+			? PlayerController->GetWorld()->GetGameState()->GetServerWorldTimeSeconds()
+			: 0.0f;
+	const float RemainingSeconds = FMath::Max(
+		0.0f,
+		GuardStateComponent->GetStateEndServerTime() - ServerTime);
+	const FVector FocusLocation = GuardStateComponent->GetStateFocusLocation();
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Guard dump: Guard=%s State=%s Remaining=%.2f Focus=(%.1f,%.1f,%.1f) Authority=%s"),
+			*GetNameSafe(GuardCharacter),
+			*UEnum::GetValueAsString(GuardStateComponent->GetGuardState()),
+			RemainingSeconds,
+			FocusLocation.X,
+			FocusLocation.Y,
+			FocusLocation.Z,
+			GuardCharacter->HasAuthority() ? TEXT("true") : TEXT("false")),
+		EHeistDebugLevel::Info,
+		true,
+		8.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardSetState(
+	APlayerController* PlayerController,
+	const FString& StateName,
+	const float DurationSeconds)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController =
+		ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		Message(
+			PlayerController,
+			TEXT("Guard state debug failed: invalid Heist player controller."),
+			EHeistDebugLevel::Warning,
+			true);
+		return;
+	}
+
+	EHeistGuardState RequestedState = EHeistGuardState::Disabled;
+	bool bValidStateName = true;
+	if (StateName.Equals(TEXT("Disabled"), ESearchCase::IgnoreCase))
+	{
+		RequestedState = EHeistGuardState::Disabled;
+	}
+	else if (StateName.Equals(TEXT("Patrol"), ESearchCase::IgnoreCase))
+	{
+		RequestedState = EHeistGuardState::Patrol;
+	}
+	else if (StateName.Equals(TEXT("Investigate"), ESearchCase::IgnoreCase)
+		|| StateName.Equals(TEXT("InvestigateNoise"), ESearchCase::IgnoreCase))
+	{
+		RequestedState = EHeistGuardState::InvestigateNoise;
+	}
+	else if (StateName.Equals(TEXT("Chase"), ESearchCase::IgnoreCase)
+		|| StateName.Equals(TEXT("ChasePlayer"), ESearchCase::IgnoreCase))
+	{
+		RequestedState = EHeistGuardState::ChasePlayer;
+	}
+	else if (StateName.Equals(TEXT("Search"), ESearchCase::IgnoreCase)
+		|| StateName.Equals(TEXT("SearchLastKnownLocation"), ESearchCase::IgnoreCase))
+	{
+		RequestedState = EHeistGuardState::SearchLastKnownLocation;
+	}
+	else if (StateName.Equals(TEXT("Return"), ESearchCase::IgnoreCase)
+		|| StateName.Equals(TEXT("ReturnToPatrol"), ESearchCase::IgnoreCase))
+	{
+		RequestedState = EHeistGuardState::ReturnToPatrol;
+	}
+	else
+	{
+		bValidStateName = false;
+	}
+
+	if (!bValidStateName)
+	{
+		Message(
+			PlayerController,
+			FString::Printf(
+				TEXT("Guard state debug failed: unknown state '%s'. Run HeistGuardHelp."),
+				*StateName),
+			EHeistDebugLevel::Warning,
+			true);
+		return;
+	}
+
+	const float SafeDuration = FMath::Max(0.0f, DurationSeconds);
+	HeistPlayerController->DebugRequestSetNearestGuardState(
+		RequestedState,
+		SafeDuration);
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Guard state debug requested: State=%s Duration=%.2f"),
+			*UEnum::GetValueAsString(RequestedState),
+			SafeDuration),
+		EHeistDebugLevel::Info,
+		true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardApplyStun(
+	APlayerController* PlayerController,
+	const float DurationSeconds)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController =
+		ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		Message(
+			PlayerController,
+			TEXT("Guard stun debug failed: invalid Heist player controller."),
+			EHeistDebugLevel::Warning,
+			true);
+		return;
+	}
+
+	const float SafeDuration = FMath::Max(0.01f, DurationSeconds);
+	HeistPlayerController->DebugRequestSetNearestGuardState(
+		EHeistGuardState::Stunned,
+		SafeDuration);
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Guard stun debug requested: Duration=%.2f"),
+			SafeDuration),
+		EHeistDebugLevel::Info,
+		true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardSightCheck(
+	APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController =
+		ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		Message(
+			PlayerController,
+			TEXT("Guard sight debug failed: invalid Heist player controller."),
+			EHeistDebugLevel::Warning,
+			true);
+		return;
+	}
+
+	HeistPlayerController->DebugRequestEvaluateNearestGuardSight();
+	Message(
+		PlayerController,
+		TEXT("Guard sight debug requested against nearest Guard."),
+		EHeistDebugLevel::Info,
+		true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardAutomaticSight(
+	APlayerController* PlayerController,
+	const bool bEnabled)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController =
+		ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		Message(
+			PlayerController,
+			TEXT("Guard automatic sight debug failed: invalid Heist player controller."),
+			EHeistDebugLevel::Warning,
+			true);
+		return;
+	}
+
+	HeistPlayerController->DebugRequestSetNearestGuardAutomaticSight(bEnabled);
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Guard automatic sight debug requested: Enabled=%s"),
+			bEnabled ? TEXT("true") : TEXT("false")),
+		EHeistDebugLevel::Info,
+		true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardNoise(
+	APlayerController* PlayerController,
+	const float Distance)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController =
+		ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		Message(
+			PlayerController,
+			TEXT("Guard noise debug failed: invalid Heist player controller."),
+			EHeistDebugLevel::Warning,
+			true);
+		return;
+	}
+
+	const float SafeDistance = FMath::Clamp(Distance, 0.0f, 5000.0f);
+	HeistPlayerController->DebugRequestReportGuardNoise(SafeDistance);
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Guard CoinImpact noise debug requested: Distance=%.1f"),
+			SafeDistance),
+		EHeistDebugLevel::Info,
+		true);
 #endif
 }
 
@@ -1621,9 +1960,50 @@ void UHeistDebugFunctionLibrary::DebugGuardStunCleared(const UObject* WorldConte
 	Message(
 		WorldContextObject,
 		FString::Printf(
-			TEXT("Guard stun cleared: Guard=%s NewState=%d"),
+			TEXT("Guard stun cleared: Guard=%s NewState=%s"),
 			*GetNameSafe(GuardActor),
-			static_cast<int32>(NewState)));
+			*UEnum::GetValueAsString(NewState)));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardStateChanged(
+	const UObject* WorldContextObject,
+	const UObject* GuardActor,
+	const EHeistGuardState PreviousState,
+	const EHeistGuardState NewState,
+	const float StateEndServerTime)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Guard state changed: Guard=%s Previous=%s New=%s EndServerTime=%.2f"),
+			*GetNameSafe(GuardActor),
+			*UEnum::GetValueAsString(PreviousState),
+			*UEnum::GetValueAsString(NewState),
+			StateEndServerTime));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardStateRequestRejected(
+	const UObject* WorldContextObject,
+	const UObject* GuardActor,
+	const EHeistGuardState RequestedState,
+	const TCHAR* Reason)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Guard state request rejected: Guard=%s Requested=%s Reason=%s"),
+			*GetNameSafe(GuardActor),
+			*UEnum::GetValueAsString(RequestedState),
+			Reason),
+		EHeistDebugLevel::Warning);
 #endif
 }
 
@@ -1635,9 +2015,284 @@ void UHeistDebugFunctionLibrary::DebugGuardStateReplicated(const UObject* WorldC
 	Message(
 		WorldContextObject,
 		FString::Printf(
-			TEXT("Guard state replicated: Guard=%s State=%d"),
+			TEXT("Guard state replicated: Guard=%s State=%s"),
 			*GetNameSafe(GuardActor),
-			static_cast<int32>(NewState)));
+			*UEnum::GetValueAsString(NewState)));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardProfileResolved(
+	const UObject* WorldContextObject,
+	const UObject* GuardActor,
+	const FName GuardProfileId,
+	const float PatrolSpeed,
+	const float ChaseSpeed)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Guard profile resolved: Guard=%s Profile=%s PatrolSpeed=%.1f ChaseSpeed=%.1f"),
+			*GetNameSafe(GuardActor),
+			*GuardProfileId.ToString(),
+			PatrolSpeed,
+			ChaseSpeed));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardProfileRejected(
+	const UObject* WorldContextObject,
+	const UObject* GuardActor,
+	const FName GuardProfileId,
+	const TCHAR* Reason)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Guard profile rejected: Guard=%s Profile=%s Reason=%s"),
+			*GetNameSafe(GuardActor),
+			*GuardProfileId.ToString(),
+			Reason),
+		EHeistDebugLevel::Warning);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugDrawGuardSpawnMarker(
+	const UObject* WorldContextObject,
+	UObject* GuardActor)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistGuardCharacter* GuardCharacter =
+		Cast<AHeistGuardCharacter>(GuardActor);
+	const UCapsuleComponent* CapsuleComponent =
+		IsValid(GuardCharacter)
+			? GuardCharacter->GetCapsuleComponent()
+			: nullptr;
+	UWorld* World = IsValid(WorldContextObject)
+		? WorldContextObject->GetWorld()
+		: nullptr;
+	if (!IsValid(World) || !IsValid(CapsuleComponent))
+	{
+		return;
+	}
+
+	const FVector CapsuleLocation = CapsuleComponent->GetComponentLocation();
+	const float CapsuleHalfHeight =
+		CapsuleComponent->GetScaledCapsuleHalfHeight();
+	DrawDebugCapsule(
+		World,
+		CapsuleLocation,
+		CapsuleHalfHeight,
+		CapsuleComponent->GetScaledCapsuleRadius(),
+		CapsuleComponent->GetComponentQuat(),
+		FColor::Green,
+		true,
+		-1.0f,
+		0,
+		3.0f);
+
+	const FVector ArrowStart =
+		CapsuleLocation + FVector::UpVector * CapsuleHalfHeight;
+	DrawDebugDirectionalArrow(
+		World,
+		ArrowStart,
+		ArrowStart + GuardCharacter->GetActorForwardVector() * 150.0f,
+		40.0f,
+		FColor::Yellow,
+		true,
+		-1.0f,
+		0,
+		3.0f);
+	DrawDebugString(
+		World,
+		FVector::UpVector * 30.0f,
+		TEXT("DEBUG GUARD"),
+		GuardCharacter,
+		FColor::Green,
+		0.0f,
+		true,
+		1.2f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardStateTreeEvent(
+	const UObject* WorldContextObject,
+	const UObject* GuardActor,
+	const FGameplayTag& StateEventTag)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Guard StateTree event sent: Guard=%s Event=%s"),
+			*GetNameSafe(GuardActor),
+			*StateEventTag.ToString()));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardPerceptionConfigured(
+	const UObject* WorldContextObject,
+	const UObject* GuardActor,
+	const float SightRadius,
+	const float AggroResetDistance,
+	const float SightAngle,
+	const float InvestigateSightAngle,
+	const float UpdateInterval)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Guard perception configured: Guard=%s SightRadius=%.1f AggroReset=%.1f SightAngle=%.1f InvestigateAngle=%.1f UpdateInterval=%.2f"),
+			*GetNameSafe(GuardActor),
+			SightRadius,
+			AggroResetDistance,
+			SightAngle,
+			InvestigateSightAngle,
+			UpdateInterval));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardSightEvaluated(
+	const UObject* WorldContextObject,
+	const UObject* GuardActor,
+	const UObject* TargetActor,
+	const bool bCanSeeTarget,
+	const TCHAR* Reason,
+	const UObject* BlockingSmokeCloud)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Guard sight evaluated: Guard=%s Target=%s Visible=%s Reason=%s BlockingSmoke=%s"),
+			*GetNameSafe(GuardActor),
+			*GetNameSafe(TargetActor),
+			bCanSeeTarget ? TEXT("true") : TEXT("false"),
+			Reason ? Reason : TEXT("None"),
+			*GetNameSafe(BlockingSmokeCloud)),
+		bCanSeeTarget ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardSightTargetAcquired(
+	const UObject* WorldContextObject,
+	const UObject* GuardActor,
+	const UObject* TargetActor)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Guard sight target acquired: Guard=%s Target=%s"),
+			*GetNameSafe(GuardActor),
+			*GetNameSafe(TargetActor)));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardSightTargetLost(
+	const UObject* WorldContextObject,
+	const UObject* GuardActor,
+	const UObject* TargetActor,
+	const FVector& LastKnownLocation,
+	const TCHAR* Reason)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Guard sight target lost: Guard=%s Target=%s LastKnown=(%.1f,%.1f,%.1f) Reason=%s"),
+			*GetNameSafe(GuardActor),
+			*GetNameSafe(TargetActor),
+			LastKnownLocation.X,
+			LastKnownLocation.Y,
+			LastKnownLocation.Z,
+			Reason ? Reason : TEXT("None")));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardNoiseReactionAccepted(
+	const UObject* WorldContextObject,
+	const UObject* GuardActor,
+	const FHeistSoundPingEvent& SoundPingEvent,
+	const float Distance,
+	const float InvestigateDuration)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Guard noise reaction accepted: Guard=%s SequenceId=%d Type=%d Distance=%.1f Radius=%.1f InvestigateDuration=%.2f Location=(%.1f,%.1f,%.1f)"),
+			*GetNameSafe(GuardActor),
+			SoundPingEvent.SequenceId,
+			static_cast<int32>(SoundPingEvent.PingType),
+			Distance,
+			SoundPingEvent.Radius,
+			InvestigateDuration,
+			SoundPingEvent.WorldLocation.X,
+			SoundPingEvent.WorldLocation.Y,
+			SoundPingEvent.WorldLocation.Z));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardNoiseReactionRejected(
+	const UObject* WorldContextObject,
+	const UObject* GuardActor,
+	const FHeistSoundPingEvent& SoundPingEvent,
+	const TCHAR* Reason,
+	const float Distance)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Guard noise reaction rejected: Guard=%s SequenceId=%d Type=%d Distance=%.1f Radius=%.1f Reason=%s"),
+			*GetNameSafe(GuardActor),
+			SoundPingEvent.SequenceId,
+			static_cast<int32>(SoundPingEvent.PingType),
+			Distance,
+			SoundPingEvent.Radius,
+			Reason ? Reason : TEXT("None")),
+		EHeistDebugLevel::Warning);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugSoundPingDefinitionRejected(
+	const UObject* WorldContextObject,
+	const FName SoundPingId,
+	const TCHAR* Reason)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Sound Ping definition rejected: SoundPingId=%s Reason=%s"),
+			*SoundPingId.ToString(),
+			Reason),
+		EHeistDebugLevel::Warning);
 #endif
 }
 
@@ -1649,13 +2304,16 @@ void UHeistDebugFunctionLibrary::DebugSoundPingReported(const UObject* WorldCont
 	Message(
 		WorldContextObject,
 		FString::Printf(
-			TEXT("Sound ping reported: SequenceId=%d Type=%d Tag=%s Location=(%.1f,%.1f,%.1f) ServerTime=%.2f"),
+			TEXT("Sound ping reported: SequenceId=%d Type=%d Tag=%s Location=(%.1f,%.1f,%.1f) Radius=%.1f Duration=%.2f AffectsGuards=%s ServerTime=%.2f"),
 			SoundPingEvent.SequenceId,
 			static_cast<int32>(SoundPingEvent.PingType),
 			*SoundPingEvent.SoundPingTag.ToString(),
 			SoundPingEvent.WorldLocation.X,
 			SoundPingEvent.WorldLocation.Y,
 			SoundPingEvent.WorldLocation.Z,
+			SoundPingEvent.Radius,
+			SoundPingEvent.Duration,
+			SoundPingEvent.bAffectsGuards ? TEXT("true") : TEXT("false"),
 			SoundPingEvent.ServerTimeSeconds));
 #endif
 }
@@ -1668,13 +2326,16 @@ void UHeistDebugFunctionLibrary::DebugSoundPingReplicated(const UObject* WorldCo
 	Message(
 		WorldContextObject,
 		FString::Printf(
-			TEXT("Sound ping replicated: SequenceId=%d Type=%d Tag=%s Location=(%.1f,%.1f,%.1f) ServerTime=%.2f"),
+			TEXT("Sound ping replicated: SequenceId=%d Type=%d Tag=%s Location=(%.1f,%.1f,%.1f) Radius=%.1f Duration=%.2f AffectsGuards=%s ServerTime=%.2f"),
 			SoundPingEvent.SequenceId,
 			static_cast<int32>(SoundPingEvent.PingType),
 			*SoundPingEvent.SoundPingTag.ToString(),
 			SoundPingEvent.WorldLocation.X,
 			SoundPingEvent.WorldLocation.Y,
 			SoundPingEvent.WorldLocation.Z,
+			SoundPingEvent.Radius,
+			SoundPingEvent.Duration,
+			SoundPingEvent.bAffectsGuards ? TEXT("true") : TEXT("false"),
 			SoundPingEvent.ServerTimeSeconds));
 #endif
 }

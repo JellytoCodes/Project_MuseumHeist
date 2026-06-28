@@ -149,7 +149,28 @@ struct PROJECT_MUSEUMHEIST_API FHeistSoundPingDataRow : public FTableRowBase
 	FText DisplayName;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	FGameplayTag SoundTypeTag;
+	FGameplayTag SoundPingTag;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	EHeistSoundPingType PingType = EHeistSoundPingType::None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0", Units = "cm"))
+	float Radius = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0", Units = "s"))
+	float Duration = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0", Units = "s"))
+	float RefreshInterval = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	bool bShowDirectionOnly = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	bool bAffectsGuards = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	bool bAffectsPlayers = true;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TSoftObjectPtr<USoundBase> Sound;
@@ -164,7 +185,7 @@ struct PROJECT_MUSEUMHEIST_API FHeistGuardDataRow : public FTableRowBase
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	FName GuardId = NAME_None;
+	FName GuardProfileId = NAME_None;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FText DisplayName;
@@ -172,11 +193,32 @@ struct PROJECT_MUSEUMHEIST_API FHeistGuardDataRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FGameplayTag GuardTypeTag;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0", Units = "cm"))
+	float SightRadius = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0", ClampMax = "360.0", Units = "deg"))
+	float SightAngle = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0", ClampMax = "360.0", Units = "deg"))
+	float InvestigateSightAngle = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0", Units = "cm/s"))
 	float PatrolSpeed = 0.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0", Units = "cm/s"))
 	float ChaseSpeed = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0", Units = "s"))
+	float StunDuration = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0", Units = "s"))
+	float InvestigateDuration = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0", Units = "cm"))
+	float AggroResetDistance = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.01", Units = "s"))
+	float SightUpdateInterval = 0.0f;
 };
 
 #pragma endregion

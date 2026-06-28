@@ -13,6 +13,8 @@ class AHeistPlayerState;
 struct FHeistItemDataRow;
 struct FHeistLootDataRow;
 struct FHeistUsableItemDataRow;
+struct FHeistGuardDataRow;
+struct FHeistSoundPingDataRow;
 struct FHeistLootDropRequest;
 
 UCLASS()
@@ -42,6 +44,8 @@ public:
 	bool TryGetItemDefinition(FName ItemId, FHeistItemDataRow& OutItemDefinition) const;
 	bool TryGetLootDefinition(FName ItemId, FHeistLootDataRow& OutLootDefinition) const;
 	bool TryGetUsableItemDefinition(FName ItemId, FHeistUsableItemDataRow& OutUsableItemDefinition) const;
+	bool TryGetGuardDefinition(FName GuardProfileId, FHeistGuardDataRow& OutGuardDefinition) const;
+	bool TryGetSoundPingDefinition(FName SoundPingId, FHeistSoundPingDataRow& OutSoundPingDefinition) const;
 	bool TrySpawnDroppedLoot(const FHeistLootDropRequest& DropRequest, AHeistLootActor*& OutDroppedLootActor) const;
 
 private:

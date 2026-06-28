@@ -58,10 +58,13 @@ struct PROJECT_MUSEUMHEIST_API FHeistGameplayTags
 	FGameplayTag Event_Match_Started;
 	FGameplayTag Event_Match_Ended;
 
-	FGameplayTag AI_State_Patrol;
-	FGameplayTag AI_State_Chase;
+	FGameplayTag AI_State_Disabled;
 	FGameplayTag AI_State_Stunned;
-	FGameplayTag AI_State_Investigate;
+	FGameplayTag AI_State_Patrol;
+	FGameplayTag AI_State_InvestigateNoise;
+	FGameplayTag AI_State_ChasePlayer;
+	FGameplayTag AI_State_SearchLastKnownLocation;
+	FGameplayTag AI_State_ReturnToPatrol;
 	FGameplayTag AI_Stimulus_Sight;
 	FGameplayTag AI_Stimulus_Noise;
 	FGameplayTag AI_Stimulus_Coin;

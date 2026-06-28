@@ -54,7 +54,7 @@ Canonical values:
 * `EHeistTargetType`: `None`, `Self`, `WorldLocation`, `ActorHit`, `Area`
 * `EHeistSpawnCategory`: `None`, `VaultFixed`, `ExhibitionRoom`, `RareEvent`, `Dropped`
 * `EHeistSoundPingType`: `None`, `Footstep`, `GlassBreak`, `CoinImpact`, `NoiseTrap`, `StunHit`
-* `EHeistGuardState`: `Patrol`, `Chase`, `Stunned`, `Investigate`
+* `EHeistGuardState`: `Disabled`, `Stunned`, `Patrol`, `InvestigateNoise`, `ChasePlayer`, `SearchLastKnownLocation`, `ReturnToPatrol`
 * `EHeistCustomizationType`: `Hat`, `Cloth`, `SkinColor`, `HatColor`, `ClothColor`
 * `EHeistZoneId`: `None`, `ZoneA`, `ZoneB`, `ZoneC`, `ZoneD`
 
@@ -264,8 +264,8 @@ GDD row schema baseline:
 * `FHeistItemDataRow`: ItemId/RowName, ItemTag, grid width/height, weight, QuickSlot eligibility, v1.0 availability, ItemType, display text, and soft asset references.
 * `FHeistLootDataRow`: ItemId, LootGrade, ScoreValue, SpawnCategory, SpawnWeight, Piñata-drop eligibility.
 * `FHeistUsableItemDataRow`: ItemId, UseType, TargetType, Cooldown, CastTime, Duration, ProjectileSpeed.
-* `FHeistSoundPingDataRow`: ID, SoundPingTag/Type, Radius, Duration, Refresh interval, guard reaction flag.
-* `FHeistGuardDataRow`: ID, SightRadius, SightAngle, PatrolSpeed, ChaseSpeed, StunDuration, AggroResetDistance.
+* `FHeistSoundPingDataRow`: SoundPingId, SoundPingTag/Type, Radius, Duration, RefreshInterval, direction-only flag, guard/player reaction flags, and soft sound/icon references.
+* `FHeistGuardDataRow`: GuardProfileId, SightRadius, SightAngle, InvestigateSightAngle, PatrolSpeed, ChaseSpeed, StunDuration, InvestigateDuration, AggroResetDistance, SightUpdateInterval.
 * `FHeistLootSpawnRow`: ID, SpawnCategory, CandidateItemIds, MinCount, MaxCount, reveal flag.
 * `FHeistVentDataRow`: VentId, ZoneId, LinkedRoom, initial active flag, reactivation flag.
 * `FHeistCustomizationRow`: stable customization ID, type/tag, display text, and soft mesh/material references.
@@ -377,8 +377,15 @@ Use enum:
 
 * `EHeistGuardState`
 
-Do not implement full AI logic yet.
-Do not introduce Behavior Tree.
+Architecture:
+
+* `UHeistGuardStateComponent` owns server-authoritative state, transition validation, timers, and minimal replicated state.
+* `AHeistGuardAIController` owns the `UStateTreeAIComponent` slot and forwards authoritative state changes to StateTree events.
+* StateTree is the default high-level state-flow framework.
+* Blueprint assigns the StateTree asset and visual configuration only.
+* Behavior Tree requires explicit user approval for a concrete tactical AI need.
+
+Implement AI behavior only when required by the active numbered task.
 
 ---
 

@@ -136,10 +136,13 @@ enum class EHeistTargetType : uint8
 UENUM(BlueprintType)
 enum class EHeistGuardState : uint8
 {
-	Patrol,
-	Chase,
+	Disabled,
 	Stunned,
-	Investigate
+	Patrol,
+	InvestigateNoise,
+	ChasePlayer,
+	SearchLastKnownLocation,
+	ReturnToPatrol
 };
 
 #pragma endregion
@@ -219,6 +222,18 @@ struct PROJECT_MUSEUMHEIST_API FHeistSoundPingEvent
 	FVector WorldLocation = FVector::ZeroVector;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|SoundPing")
+	float Radius = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|SoundPing")
+	float Duration = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|SoundPing")
+	bool bAffectsGuards = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|SoundPing")
+	bool bAffectsPlayers = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|SoundPing")
 	float ServerTimeSeconds = 0.0f;
 
 	bool operator==(const FHeistSoundPingEvent& Other) const
@@ -227,6 +242,10 @@ struct PROJECT_MUSEUMHEIST_API FHeistSoundPingEvent
 			&& SoundPingTag == Other.SoundPingTag
 			&& PingType == Other.PingType
 			&& WorldLocation.Equals(Other.WorldLocation)
+			&& FMath::IsNearlyEqual(Radius, Other.Radius)
+			&& FMath::IsNearlyEqual(Duration, Other.Duration)
+			&& bAffectsGuards == Other.bAffectsGuards
+			&& bAffectsPlayers == Other.bAffectsPlayers
 			&& FMath::IsNearlyEqual(ServerTimeSeconds, Other.ServerTimeSeconds);
 	}
 };

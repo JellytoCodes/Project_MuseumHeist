@@ -7,6 +7,7 @@
 #include "HeistPlayerController.generated.h"
 
 class AHeistPlayerCharacter;
+class AHeistGuardCharacter;
 class AHeistLootActor;
 class AHeistPlayerState;
 class AHeistTrapActor;
@@ -98,6 +99,11 @@ public:
 	void DebugRequestSetGapTrackerScore(int32 Score);
 	void DebugRequestForceGapTracker(bool bActive);
 	void DebugRequestClearGapTrackerOverride();
+	void DebugRequestSpawnGuard(float Distance);
+	void DebugRequestSetNearestGuardState(EHeistGuardState GuardState, float DurationSeconds);
+	void DebugRequestEvaluateNearestGuardSight();
+	void DebugRequestSetNearestGuardAutomaticSight(bool bEnabled);
+	void DebugRequestReportGuardNoise(float Distance);
 
 private:
 	UFUNCTION(Server, Reliable)
@@ -148,6 +154,21 @@ private:
 	UFUNCTION(Server, Reliable)
 	void Server_DebugRequestClearGapTrackerOverride();
 
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestSpawnGuard(float Distance);
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestSetNearestGuardState(EHeistGuardState GuardState, float DurationSeconds);
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestEvaluateNearestGuardSight();
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestSetNearestGuardAutomaticSight(bool bEnabled);
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestReportGuardNoise(float Distance);
+
 #pragma endregion
 
 #pragma region InternalHelpers
@@ -173,6 +194,7 @@ private:
 		FName& OutItemId,
 		int32& OutInstanceId,
 		const TCHAR*& OutRejectReason) const;
+	AHeistGuardCharacter* FindNearestGuard() const;
 	bool TrySpawnThrowableProjectile(
 		const FHeistGameplayRequestContext& RequestContext,
 		FName ItemId,

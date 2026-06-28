@@ -19,7 +19,8 @@ public class Project_MuseumHeist : ModuleRules
 			"GameplayTags",
 			"UMG",
 			"ModelViewViewModel",
-			"AIModule"
+			"AIModule",
+			"GameplayStateTreeModule"
 		});
 
         PrivateDependencyModuleNames.AddRange(new string[] {  });

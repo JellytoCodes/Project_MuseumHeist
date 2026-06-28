@@ -219,6 +219,77 @@ bool AHeistGameMode::TryGetUsableItemDefinition(
 	return true;
 }
 
+bool AHeistGameMode::TryGetGuardDefinition(
+	const FName GuardProfileId,
+	FHeistGuardDataRow& OutGuardDefinition) const
+{
+	OutGuardDefinition = FHeistGuardDataRow();
+	if (GuardProfileId.IsNone())
+	{
+		return false;
+	}
+
+	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset)
+		? GameBalanceDataAsset.Get()
+		: GetDefault<UHeistGameBalanceDataAsset>();
+	const UDataTable* GuardDataTable = ResolvedBalanceData->GuardDataTable.LoadSynchronous();
+	if (!IsValid(GuardDataTable)
+		|| GuardDataTable->GetRowStruct() != FHeistGuardDataRow::StaticStruct())
+	{
+		return false;
+	}
+
+	const FHeistGuardDataRow* GuardDefinition =
+		GuardDataTable->FindRow<FHeistGuardDataRow>(
+			GuardProfileId,
+			TEXT("AHeistGameMode::TryGetGuardDefinition"),
+			false);
+	if (GuardDefinition == nullptr
+		|| GuardDefinition->GuardProfileId != GuardProfileId)
+	{
+		return false;
+	}
+
+	OutGuardDefinition = *GuardDefinition;
+	return true;
+}
+
+bool AHeistGameMode::TryGetSoundPingDefinition(
+	const FName SoundPingId,
+	FHeistSoundPingDataRow& OutSoundPingDefinition) const
+{
+	OutSoundPingDefinition = FHeistSoundPingDataRow();
+	if (SoundPingId.IsNone())
+	{
+		return false;
+	}
+
+	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset)
+		? GameBalanceDataAsset.Get()
+		: GetDefault<UHeistGameBalanceDataAsset>();
+	const UDataTable* SoundPingDataTable =
+		ResolvedBalanceData->SoundPingDataTable.LoadSynchronous();
+	if (!IsValid(SoundPingDataTable)
+		|| SoundPingDataTable->GetRowStruct() != FHeistSoundPingDataRow::StaticStruct())
+	{
+		return false;
+	}
+
+	const FHeistSoundPingDataRow* SoundPingDefinition =
+		SoundPingDataTable->FindRow<FHeistSoundPingDataRow>(
+			SoundPingId,
+			TEXT("AHeistGameMode::TryGetSoundPingDefinition"),
+			false);
+	if (SoundPingDefinition == nullptr
+		|| SoundPingDefinition->SoundPingId != SoundPingId)
+	{
+		return false;
+	}
+
+	OutSoundPingDefinition = *SoundPingDefinition;
+	return true;
+}
+
 bool AHeistGameMode::TrySpawnDroppedLoot(
 	const FHeistLootDropRequest& DropRequest,
 	AHeistLootActor*& OutDroppedLootActor) const

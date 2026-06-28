@@ -1,5 +1,8 @@
 #include "Core/HeistPlayerController.h"
 
+#include "AI/HeistGuardAIController.h"
+#include "AI/HeistGuardCharacter.h"
+#include "AI/HeistGuardStateComponent.h"
 #include "Character/Components/HeistActionComponent.h"
 #include "Character/Components/HeistInteractionComponent.h"
 #include "Character/Components/HeistInventoryComponent.h"
@@ -13,6 +16,7 @@
 #include "Debug/HeistCheatManager.h"
 #endif
 #include "Debug/HeistDebugFunctionLibrary.h"
+#include "EngineUtils.h"
 #include "Engine/LocalPlayer.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -273,6 +277,34 @@ void AHeistPlayerController::DebugRequestForceGapTracker(const bool bActive)
 void AHeistPlayerController::DebugRequestClearGapTrackerOverride()
 {
 	Server_DebugRequestClearGapTrackerOverride();
+}
+
+void AHeistPlayerController::DebugRequestSpawnGuard(const float Distance)
+{
+	Server_DebugRequestSpawnGuard(Distance);
+}
+
+void AHeistPlayerController::DebugRequestSetNearestGuardState(
+	const EHeistGuardState GuardState,
+	const float DurationSeconds)
+{
+	Server_DebugRequestSetNearestGuardState(GuardState, DurationSeconds);
+}
+
+void AHeistPlayerController::DebugRequestEvaluateNearestGuardSight()
+{
+	Server_DebugRequestEvaluateNearestGuardSight();
+}
+
+void AHeistPlayerController::DebugRequestSetNearestGuardAutomaticSight(
+	const bool bEnabled)
+{
+	Server_DebugRequestSetNearestGuardAutomaticSight(bEnabled);
+}
+
+void AHeistPlayerController::DebugRequestReportGuardNoise(const float Distance)
+{
+	Server_DebugRequestReportGuardNoise(Distance);
 }
 
 void AHeistPlayerController::Server_RequestLootPickup_Implementation(AHeistLootActor* TargetLootActor)
@@ -714,38 +746,38 @@ void AHeistPlayerController::Server_DebugRequestThrowCoinAtWorldLocation_Impleme
 
 void AHeistPlayerController::Server_DebugRequestThrowSmokeAtWorldLocation_Implementation(const FVector TargetWorldLocation)
 {
-	const FName SmokeItemId(TEXT("Throwable_Smoke"));
+	const FName DebugSmokeItemId(TEXT("Throwable_Smoke"));
 
 	FHeistGameplayRequestContext RequestContext;
 	const TCHAR* RejectReason = nullptr;
 	if (!TryBuildGameplayRequestContext(RequestContext, RejectReason))
 	{
-		LogThrowableUseRejected(EHeistQuickSlotType::SmokeGrenade, SmokeItemId, RejectReason);
+		LogThrowableUseRejected(EHeistQuickSlotType::SmokeGrenade, DebugSmokeItemId, RejectReason);
 		return;
 	}
 
 	if (RequestContext.Character->GetStatusComponent()->IsStunned())
 	{
-		LogThrowableUseRejected(EHeistQuickSlotType::SmokeGrenade, SmokeItemId, TEXT("Stunned"));
+		LogThrowableUseRejected(EHeistQuickSlotType::SmokeGrenade, DebugSmokeItemId, TEXT("Stunned"));
 		return;
 	}
 
 	if (RequestContext.Character->GetActionComponent()->IsGameplayCastActive())
 	{
-		LogThrowableUseRejected(EHeistQuickSlotType::SmokeGrenade, SmokeItemId, TEXT("Casting"));
+		LogThrowableUseRejected(EHeistQuickSlotType::SmokeGrenade, DebugSmokeItemId, TEXT("Casting"));
 		return;
 	}
 
 	AHeistThrowableProjectile* SpawnedProjectile = nullptr;
 	if (!TrySpawnThrowableProjectile(
 		RequestContext,
-		SmokeItemId,
+		DebugSmokeItemId,
 		TargetWorldLocation,
 		true,
 		SpawnedProjectile,
 		RejectReason))
 	{
-		LogThrowableUseRejected(EHeistQuickSlotType::SmokeGrenade, SmokeItemId, RejectReason);
+		LogThrowableUseRejected(EHeistQuickSlotType::SmokeGrenade, DebugSmokeItemId, RejectReason);
 	}
 }
 
@@ -832,9 +864,258 @@ void AHeistPlayerController::Server_DebugRequestClearGapTrackerOverride_Implemen
 #endif
 }
 
+void AHeistPlayerController::Server_DebugRequestSpawnGuard_Implementation(
+	const float Distance)
+{
+#if !UE_BUILD_SHIPPING
+	APawn* RequestingPawn = GetPawn();
+	UWorld* World = GetWorld();
+	if (!IsValid(RequestingPawn) || !IsValid(World))
+	{
+		UHeistDebugFunctionLibrary::Message(
+			this,
+			TEXT("Guard debug spawn rejected: missing pawn or world."),
+			EHeistDebugLevel::Warning);
+		return;
+	}
+
+	const float SafeDistance = FMath::Clamp(Distance, 100.0f, 3000.0f);
+	const FVector DebugGuardSpawnLocation =
+		RequestingPawn->GetActorLocation()
+		+ RequestingPawn->GetActorForwardVector() * SafeDistance;
+	const FTransform SpawnTransform(
+		(-RequestingPawn->GetActorForwardVector()).Rotation(),
+		DebugGuardSpawnLocation);
+	AHeistGuardCharacter* SpawnedGuard =
+		World->SpawnActorDeferred<AHeistGuardCharacter>(
+			AHeistGuardCharacter::StaticClass(),
+			SpawnTransform,
+			nullptr,
+			nullptr,
+			ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
+	if (!IsValid(SpawnedGuard))
+	{
+		UHeistDebugFunctionLibrary::Message(
+			this,
+			TEXT("Guard debug spawn rejected: deferred spawn failed."),
+			EHeistDebugLevel::Warning);
+		return;
+	}
+
+	SpawnedGuard->FinishSpawning(SpawnTransform);
+	UHeistDebugFunctionLibrary::DebugDrawGuardSpawnMarker(this, SpawnedGuard);
+	UHeistDebugFunctionLibrary::Message(
+		this,
+		FString::Printf(
+			TEXT("Guard debug spawned: Guard=%s Location=(%.1f,%.1f,%.1f)"),
+			*GetNameSafe(SpawnedGuard),
+			SpawnedGuard->GetActorLocation().X,
+			SpawnedGuard->GetActorLocation().Y,
+			SpawnedGuard->GetActorLocation().Z));
+#endif
+}
+
+void AHeistPlayerController::Server_DebugRequestSetNearestGuardState_Implementation(
+	const EHeistGuardState RequestedGuardState,
+	const float DurationSeconds)
+{
+#if !UE_BUILD_SHIPPING
+	APawn* RequestingPawn = GetPawn();
+	if (!IsValid(RequestingPawn) || !IsValid(GetWorld()))
+	{
+		return;
+	}
+
+	AHeistGuardCharacter* NearestGuard = FindNearestGuard();
+
+	if (!IsValid(NearestGuard))
+	{
+		UHeistDebugFunctionLibrary::Message(
+			this,
+			TEXT("Guard state debug request rejected: no Guard exists."),
+			EHeistDebugLevel::Warning);
+		return;
+	}
+
+	UHeistGuardStateComponent* GuardStateComponent =
+		NearestGuard->GetGuardStateComponent();
+	checkf(IsValid(GuardStateComponent), TEXT("Heist Guard requires GuardStateComponent."));
+
+	const float SafeDuration = FMath::Max(0.0f, DurationSeconds);
+	switch (RequestedGuardState)
+	{
+	case EHeistGuardState::Disabled:
+		GuardStateComponent->SetDisabled(true);
+		break;
+	case EHeistGuardState::Stunned:
+		GuardStateComponent->ApplyStun(SafeDuration);
+		break;
+	case EHeistGuardState::Patrol:
+		if (GuardStateComponent->GetGuardState() == EHeistGuardState::Disabled)
+		{
+			GuardStateComponent->SetDisabled(false);
+		}
+		else
+		{
+			GuardStateComponent->EnterPatrol();
+		}
+		break;
+	case EHeistGuardState::InvestigateNoise:
+		GuardStateComponent->EnterInvestigateNoise(
+			RequestingPawn->GetActorLocation(),
+			SafeDuration);
+		break;
+	case EHeistGuardState::ChasePlayer:
+		GuardStateComponent->EnterChasePlayer(RequestingPawn);
+		break;
+	case EHeistGuardState::SearchLastKnownLocation:
+		GuardStateComponent->EnterSearchLastKnownLocation(
+			RequestingPawn->GetActorLocation());
+		break;
+	case EHeistGuardState::ReturnToPatrol:
+		GuardStateComponent->EnterReturnToPatrol();
+		break;
+	default:
+		break;
+	}
+#endif
+}
+
+void AHeistPlayerController::Server_DebugRequestEvaluateNearestGuardSight_Implementation()
+{
+#if !UE_BUILD_SHIPPING
+	AHeistGuardCharacter* NearestGuard = FindNearestGuard();
+	AHeistGuardAIController* GuardAIController =
+		IsValid(NearestGuard)
+			? Cast<AHeistGuardAIController>(NearestGuard->GetController())
+			: nullptr;
+	if (!IsValid(GuardAIController) || !IsValid(GetPawn()))
+	{
+		UHeistDebugFunctionLibrary::Message(
+			this,
+			TEXT("Guard sight debug request rejected: missing Guard AIController or player pawn."),
+			EHeistDebugLevel::Warning);
+		return;
+	}
+
+	GuardAIController->DebugEvaluateSightTarget(GetPawn());
+#endif
+}
+
+void AHeistPlayerController::Server_DebugRequestSetNearestGuardAutomaticSight_Implementation(
+	const bool bEnabled)
+{
+#if !UE_BUILD_SHIPPING
+	AHeistGuardCharacter* NearestGuard = FindNearestGuard();
+	AHeistGuardAIController* GuardAIController =
+		IsValid(NearestGuard)
+			? Cast<AHeistGuardAIController>(NearestGuard->GetController())
+			: nullptr;
+	if (!IsValid(GuardAIController))
+	{
+		UHeistDebugFunctionLibrary::Message(
+			this,
+			TEXT("Guard automatic sight debug request rejected: missing Guard AIController."),
+			EHeistDebugLevel::Warning);
+		return;
+	}
+
+	GuardAIController->SetAutomaticSightEnabled(bEnabled);
+	UHeistDebugFunctionLibrary::Message(
+		this,
+		FString::Printf(
+			TEXT("Guard automatic sight changed: Guard=%s Enabled=%s"),
+			*GetNameSafe(NearestGuard),
+			GuardAIController->IsAutomaticSightEnabled()
+				? TEXT("true")
+				: TEXT("false")),
+		EHeistDebugLevel::Info);
+#endif
+}
+
+void AHeistPlayerController::Server_DebugRequestReportGuardNoise_Implementation(
+	const float Distance)
+{
+#if !UE_BUILD_SHIPPING
+	APawn* RequestingPawn = GetPawn();
+	AHeistGameMode* HeistGameMode =
+		GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	AHeistGameState* HeistGameState =
+		GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	if (!IsValid(RequestingPawn)
+		|| !IsValid(HeistGameMode)
+		|| !IsValid(HeistGameState))
+	{
+		return;
+	}
+
+	const FName SoundPingId(TEXT("Ping_CoinImpact"));
+	FHeistSoundPingDataRow SoundPingDefinition;
+	if (!HeistGameMode->TryGetSoundPingDefinition(
+		SoundPingId,
+		SoundPingDefinition))
+	{
+		UHeistDebugFunctionLibrary::DebugSoundPingDefinitionRejected(
+			this,
+			SoundPingId,
+			TEXT("MissingSoundPingDataRow"));
+		return;
+	}
+
+	const float SafeDistance = FMath::Clamp(Distance, 0.0f, 5000.0f);
+	FHeistSoundPingEvent SoundPingEvent;
+	SoundPingEvent.SoundPingTag = SoundPingDefinition.SoundPingTag;
+	SoundPingEvent.PingType = SoundPingDefinition.PingType;
+	SoundPingEvent.WorldLocation =
+		RequestingPawn->GetActorLocation()
+		+ RequestingPawn->GetActorForwardVector() * SafeDistance;
+	SoundPingEvent.Radius = FMath::Max(0.0f, SoundPingDefinition.Radius);
+	SoundPingEvent.Duration = FMath::Max(0.0f, SoundPingDefinition.Duration);
+	SoundPingEvent.bAffectsGuards = SoundPingDefinition.bAffectsGuards;
+	SoundPingEvent.bAffectsPlayers = SoundPingDefinition.bAffectsPlayers;
+	HeistGameState->ReportSoundPing(SoundPingEvent);
+#endif
+}
+
 #pragma endregion
 
 #pragma region InternalHelpers
+
+AHeistGuardCharacter* AHeistPlayerController::FindNearestGuard() const
+{
+	if (!IsValid(GetWorld()))
+	{
+		return nullptr;
+	}
+
+	const APawn* ReferencePawn = GetPawn();
+	const FVector ReferenceLocation = IsValid(ReferencePawn)
+		? ReferencePawn->GetActorLocation()
+		: FVector::ZeroVector;
+	AHeistGuardCharacter* NearestGuard = nullptr;
+	float NearestDistanceSquared = TNumericLimits<float>::Max();
+	for (TActorIterator<AHeistGuardCharacter> GuardIterator(GetWorld());
+		GuardIterator;
+		++GuardIterator)
+	{
+		AHeistGuardCharacter* CandidateGuard = *GuardIterator;
+		if (!IsValid(CandidateGuard))
+		{
+			continue;
+		}
+
+		const float DistanceSquared = FVector::DistSquared(
+			ReferenceLocation,
+			CandidateGuard->GetActorLocation());
+		if (DistanceSquared < NearestDistanceSquared)
+		{
+			NearestDistanceSquared = DistanceSquared;
+			NearestGuard = CandidateGuard;
+		}
+	}
+
+	return NearestGuard;
+}
 
 bool AHeistPlayerController::TryBuildGameplayRequestContext(
 	FHeistGameplayRequestContext& OutContext,

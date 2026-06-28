@@ -66,10 +66,13 @@ void FHeistGameplayTags::InitializeNativeGameplayTags()
 	HEIST_ADD_NATIVE_TAG(Event_Match_Started, "Event.Match.Started", "Match started.");
 	HEIST_ADD_NATIVE_TAG(Event_Match_Ended, "Event.Match.Ended", "Match ended.");
 
-	HEIST_ADD_NATIVE_TAG(AI_State_Patrol, "AI.State.Patrol", "Guard patrol state.");
-	HEIST_ADD_NATIVE_TAG(AI_State_Chase, "AI.State.Chase", "Guard chase state.");
+	HEIST_ADD_NATIVE_TAG(AI_State_Disabled, "AI.State.Disabled", "Guard disabled state.");
 	HEIST_ADD_NATIVE_TAG(AI_State_Stunned, "AI.State.Stunned", "Guard stunned state.");
-	HEIST_ADD_NATIVE_TAG(AI_State_Investigate, "AI.State.Investigate", "Guard investigate state.");
+	HEIST_ADD_NATIVE_TAG(AI_State_Patrol, "AI.State.Patrol", "Guard patrol state.");
+	HEIST_ADD_NATIVE_TAG(AI_State_InvestigateNoise, "AI.State.InvestigateNoise", "Guard noise investigation state.");
+	HEIST_ADD_NATIVE_TAG(AI_State_ChasePlayer, "AI.State.ChasePlayer", "Guard player chase state.");
+	HEIST_ADD_NATIVE_TAG(AI_State_SearchLastKnownLocation, "AI.State.SearchLastKnownLocation", "Guard last-known-location search state.");
+	HEIST_ADD_NATIVE_TAG(AI_State_ReturnToPatrol, "AI.State.ReturnToPatrol", "Guard return-to-patrol state.");
 	HEIST_ADD_NATIVE_TAG(AI_Stimulus_Sight, "AI.Stimulus.Sight", "Guard sight stimulus.");
 	HEIST_ADD_NATIVE_TAG(AI_Stimulus_Noise, "AI.Stimulus.Noise", "Guard noise stimulus.");
 	HEIST_ADD_NATIVE_TAG(AI_Stimulus_Coin, "AI.Stimulus.Coin", "Guard coin stimulus.");

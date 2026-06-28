@@ -1,0 +1,47 @@
+[
+  {
+    "Name": "Guard_Default",
+    "GuardProfileId": "Guard_Default",
+    "DisplayName": "Default Guard",
+    "GuardTypeTag": "",
+    "SightRadius": 1200.0,
+    "SightAngle": 90.0,
+    "InvestigateSightAngle": 180.0,
+    "PatrolSpeed": 250.0,
+    "ChaseSpeed": 600.0,
+    "StunDuration": 3.0,
+    "InvestigateDuration": 5.0,
+    "AggroResetDistance": 3000.0,
+    "SightUpdateInterval": 0.1
+  },
+  {
+    "Name": "Guard_Vault",
+    "GuardProfileId": "Guard_Vault",
+    "DisplayName": "Vault Guard",
+    "GuardTypeTag": "",
+    "SightRadius": 1200.0,
+    "SightAngle": 90.0,
+    "InvestigateSightAngle": 180.0,
+    "PatrolSpeed": 220.0,
+    "ChaseSpeed": 600.0,
+    "StunDuration": 3.0,
+    "InvestigateDuration": 5.0,
+    "AggroResetDistance": 2500.0,
+    "SightUpdateInterval": 0.1
+  },
+  {
+    "Name": "Guard_SecurityRoom",
+    "GuardProfileId": "Guard_SecurityRoom",
+    "DisplayName": "Security Room Guard",
+    "GuardTypeTag": "",
+    "SightRadius": 1300.0,
+    "SightAngle": 90.0,
+    "InvestigateSightAngle": 180.0,
+    "PatrolSpeed": 250.0,
+    "ChaseSpeed": 620.0,
+    "StunDuration": 3.0,
+    "InvestigateDuration": 5.0,
+    "AggroResetDistance": 3000.0,
+    "SightUpdateInterval": 0.1
+  }
+]

@@ -12,6 +12,78 @@ UHeistCheatManager::UHeistCheatManager(const FObjectInitializer& ObjectInitializ
 
 #pragma endregion
 
+#pragma region GuardDebug
+
+void UHeistCheatManager::HeistGuardHelp()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugGuardHelp(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistGuardSpawn(const float Distance)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugGuardSpawn(GetOuterAPlayerController(), Distance);
+#endif
+}
+
+void UHeistCheatManager::HeistGuardDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugGuardDump(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistGuardState(
+	const FString& StateName,
+	const float DurationSeconds)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugGuardSetState(
+		GetOuterAPlayerController(),
+		StateName,
+		DurationSeconds);
+#endif
+}
+
+void UHeistCheatManager::HeistGuardStun(const float DurationSeconds)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugGuardApplyStun(
+		GetOuterAPlayerController(),
+		DurationSeconds);
+#endif
+}
+
+void UHeistCheatManager::HeistGuardSightCheck()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugGuardSightCheck(
+		GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistGuardSightAuto(const int32 Enabled)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugGuardAutomaticSight(
+		GetOuterAPlayerController(),
+		Enabled != 0);
+#endif
+}
+
+void UHeistCheatManager::HeistGuardNoise(const float Distance)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugGuardNoise(
+		GetOuterAPlayerController(),
+		Distance);
+#endif
+}
+
+#pragma endregion
+
 #pragma region InventoryDebug
 
 void UHeistCheatManager::HeistInvHelp()

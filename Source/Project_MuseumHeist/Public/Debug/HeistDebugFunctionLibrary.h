@@ -105,7 +105,20 @@ public:
 	static void DebugTrapTriggerRejected(const UObject* WorldContextObject, const UObject* TrapActor, const UObject* TriggeringActor, const TCHAR* Reason);
 	static void DebugGuardStunApplied(const UObject* WorldContextObject, const UObject* GuardActor, float DurationSeconds);
 	static void DebugGuardStunCleared(const UObject* WorldContextObject, const UObject* GuardActor, EHeistGuardState NewState);
+	static void DebugGuardStateChanged(const UObject* WorldContextObject, const UObject* GuardActor, EHeistGuardState PreviousState, EHeistGuardState NewState, float StateEndServerTime);
+	static void DebugGuardStateRequestRejected(const UObject* WorldContextObject, const UObject* GuardActor, EHeistGuardState RequestedState, const TCHAR* Reason);
 	static void DebugGuardStateReplicated(const UObject* WorldContextObject, const UObject* GuardActor, EHeistGuardState NewState);
+	static void DebugGuardProfileResolved(const UObject* WorldContextObject, const UObject* GuardActor, FName GuardProfileId, float PatrolSpeed, float ChaseSpeed);
+	static void DebugGuardProfileRejected(const UObject* WorldContextObject, const UObject* GuardActor, FName GuardProfileId, const TCHAR* Reason);
+	static void DebugDrawGuardSpawnMarker(const UObject* WorldContextObject, UObject* GuardActor);
+	static void DebugGuardStateTreeEvent(const UObject* WorldContextObject, const UObject* GuardActor, const FGameplayTag& StateEventTag);
+	static void DebugGuardPerceptionConfigured(const UObject* WorldContextObject, const UObject* GuardActor, float SightRadius, float AggroResetDistance, float SightAngle, float InvestigateSightAngle, float UpdateInterval);
+	static void DebugGuardSightEvaluated(const UObject* WorldContextObject, const UObject* GuardActor, const UObject* TargetActor, bool bCanSeeTarget, const TCHAR* Reason, const UObject* BlockingSmokeCloud);
+	static void DebugGuardSightTargetAcquired(const UObject* WorldContextObject, const UObject* GuardActor, const UObject* TargetActor);
+	static void DebugGuardSightTargetLost(const UObject* WorldContextObject, const UObject* GuardActor, const UObject* TargetActor, const FVector& LastKnownLocation, const TCHAR* Reason);
+	static void DebugGuardNoiseReactionAccepted(const UObject* WorldContextObject, const UObject* GuardActor, const FHeistSoundPingEvent& SoundPingEvent, float Distance, float InvestigateDuration);
+	static void DebugGuardNoiseReactionRejected(const UObject* WorldContextObject, const UObject* GuardActor, const FHeistSoundPingEvent& SoundPingEvent, const TCHAR* Reason, float Distance = -1.0f);
+	static void DebugSoundPingDefinitionRejected(const UObject* WorldContextObject, FName SoundPingId, const TCHAR* Reason);
 	static void DebugSoundPingReported(const UObject* WorldContextObject, const FHeistSoundPingEvent& SoundPingEvent);
 	static void DebugSoundPingReplicated(const UObject* WorldContextObject, const FHeistSoundPingEvent& SoundPingEvent);
 	static void DebugEscapedPlayerRestrictionsApplied(const UObject* WorldContextObject);
@@ -231,6 +244,34 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Trap", meta = (DevelopmentOnly))
 	static void DebugGlueTrapPlaceAt(APlayerController* PlayerController, float TargetX, float TargetY, float TargetZ);
+
+#pragma endregion
+
+#pragma region GuardDebug
+
+public:
+	static void DebugGuardHelp(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Guard", meta = (DevelopmentOnly))
+	static void DebugGuardSpawn(APlayerController* PlayerController, float Distance);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Guard", meta = (DevelopmentOnly))
+	static void DebugGuardDump(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Guard", meta = (DevelopmentOnly))
+	static void DebugGuardSetState(APlayerController* PlayerController, const FString& StateName, float DurationSeconds);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Guard", meta = (DevelopmentOnly))
+	static void DebugGuardApplyStun(APlayerController* PlayerController, float DurationSeconds);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Guard", meta = (DevelopmentOnly))
+	static void DebugGuardSightCheck(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Guard", meta = (DevelopmentOnly))
+	static void DebugGuardAutomaticSight(APlayerController* PlayerController, bool bEnabled);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Guard", meta = (DevelopmentOnly))
+	static void DebugGuardNoise(APlayerController* PlayerController, float Distance);
 
 #pragma endregion
 };
