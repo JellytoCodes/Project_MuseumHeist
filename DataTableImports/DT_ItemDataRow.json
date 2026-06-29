@@ -10,8 +10,7 @@
     "bCanRotate": false,
     "bCanUseQuickSlot": false,
     "bAvailableInV1": true,
-    "Icon": "",
-    "WorldLootActorClass": "BlueprintGeneratedClass'/Game/Blueprints/Actors/LootActors/BP_TestLoot.BP_TestLoot_C'"
+    "Icon": ""
   },
   {
     "Name": "Loot_RareArtifact",
@@ -24,8 +23,7 @@
     "bCanRotate": false,
     "bCanUseQuickSlot": false,
     "bAvailableInV1": true,
-    "Icon": "",
-    "WorldLootActorClass": "BlueprintGeneratedClass'/Game/Blueprints/Actors/LootActors/BP_TestLoot.BP_TestLoot_C'"
+    "Icon": ""
   },
   {
     "Name": "Loot_Painting",
@@ -38,8 +36,7 @@
     "bCanRotate": true,
     "bCanUseQuickSlot": false,
     "bAvailableInV1": true,
-    "Icon": "",
-    "WorldLootActorClass": "BlueprintGeneratedClass'/Game/Blueprints/Actors/LootActors/BP_TestLoot.BP_TestLoot_C'"
+    "Icon": ""
   },
   {
     "Name": "Loot_AncientSword",
@@ -52,8 +49,7 @@
     "bCanRotate": true,
     "bCanUseQuickSlot": false,
     "bAvailableInV1": true,
-    "Icon": "",
-    "WorldLootActorClass": "BlueprintGeneratedClass'/Game/Blueprints/Actors/LootActors/BP_TestLoot.BP_TestLoot_C'"
+    "Icon": ""
   },
   {
     "Name": "Trap_Glue",
@@ -66,8 +62,7 @@
     "bCanRotate": true,
     "bCanUseQuickSlot": true,
     "bAvailableInV1": true,
-    "Icon": "",
-    "WorldLootActorClass": ""
+    "Icon": ""
   },
   {
     "Name": "Trap_Noise",
@@ -80,8 +75,7 @@
     "bCanRotate": false,
     "bCanUseQuickSlot": true,
     "bAvailableInV1": false,
-    "Icon": "",
-    "WorldLootActorClass": ""
+    "Icon": ""
   },
   {
     "Name": "Throwable_Coin",
@@ -94,8 +88,7 @@
     "bCanRotate": false,
     "bCanUseQuickSlot": true,
     "bAvailableInV1": true,
-    "Icon": "",
-    "WorldLootActorClass": ""
+    "Icon": ""
   },
   {
     "Name": "Throwable_Smoke",
@@ -108,7 +101,6 @@
     "bCanRotate": false,
     "bCanUseQuickSlot": true,
     "bAvailableInV1": true,
-    "Icon": "",
-    "WorldLootActorClass": ""
+    "Icon": ""
   }
 ]

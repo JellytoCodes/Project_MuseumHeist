@@ -344,10 +344,13 @@ bool UHeistInventoryComponent::TryDropRandomLootOnStun(AActor* DropInstigator)
 	}
 
 	AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	FHeistItemDataRow ItemDefinition;
 	FHeistLootDataRow LootDefinition;
 	if (!IsValid(HeistGameMode)
+		|| !HeistGameMode->TryGetItemDefinition(DropCandidate.ItemId, ItemDefinition)
+		|| ItemDefinition.ItemType != EHeistItemType::Loot
 		|| !HeistGameMode->TryGetLootDefinition(DropCandidate.ItemId, LootDefinition)
-		|| !HeistPlayerState->CanRemoveLootScoreAndWeight(LootDefinition.ScoreValue, LootDefinition.Weight))
+		|| !HeistPlayerState->CanRemoveLootScoreAndWeight(LootDefinition.ScoreValue, ItemDefinition.Weight))
 	{
 		UHeistDebugFunctionLibrary::DebugPinataDropSkipped(OwnerActor, TEXT("InvalidLootState"));
 		return false;
@@ -380,7 +383,7 @@ bool UHeistInventoryComponent::TryDropRandomLootOnStun(AActor* DropInstigator)
 
 	checkf(RemovedItem.ItemId == DropRequest.ItemId, TEXT("Validated stun drop item changed during commit."));
 	checkf(
-		HeistPlayerState->RemoveLootScoreAndWeight(LootDefinition.ScoreValue, LootDefinition.Weight),
+		HeistPlayerState->RemoveLootScoreAndWeight(LootDefinition.ScoreValue, ItemDefinition.Weight),
 		TEXT("Validated loot score and weight removal must succeed after stun drop inventory commit."));
 
 	UHeistDebugFunctionLibrary::DebugPinataDropAccepted(

@@ -49,7 +49,7 @@ public:
 	bool TrySpawnDroppedLoot(const FHeistLootDropRequest& DropRequest, AHeistLootActor*& OutDroppedLootActor) const;
 
 private:
-	void ValidateItemDataTable() const;
+	void ValidateItemDataTables() const;
 
 #pragma endregion
 

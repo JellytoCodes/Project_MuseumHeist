@@ -11,7 +11,6 @@ class AActor;
 class AHeistLootActor;
 class USkeletalMesh;
 class USoundBase;
-class UStaticMesh;
 class UTexture2D;
 
 #pragma region Inventory
@@ -50,9 +49,6 @@ struct PROJECT_MUSEUMHEIST_API FHeistItemDataRow : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TSoftObjectPtr<UTexture2D> Icon;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TSoftClassPtr<AHeistLootActor> WorldLootActorClass;
 };
 
 USTRUCT(BlueprintType)
@@ -64,16 +60,7 @@ struct PROJECT_MUSEUMHEIST_API FHeistLootDataRow : public FTableRowBase
 	FName ItemId = NAME_None;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	FText DisplayName;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	FGameplayTag CategoryTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	EHeistLootGrade LootGrade = EHeistLootGrade::OneStar;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	float Weight = 0.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	int32 ScoreValue = 0;
@@ -88,10 +75,7 @@ struct PROJECT_MUSEUMHEIST_API FHeistLootDataRow : public FTableRowBase
 	bool bCanDropOnStun = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TSoftObjectPtr<UStaticMesh> WorldMesh;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TSoftObjectPtr<UTexture2D> Icon;
+	TSoftClassPtr<AHeistLootActor> WorldLootActorClass;
 };
 
 USTRUCT(BlueprintType)
@@ -101,12 +85,6 @@ struct PROJECT_MUSEUMHEIST_API FHeistUsableItemDataRow : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FName ItemId = NAME_None;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	FText DisplayName;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	FGameplayTag CategoryTag;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	EHeistUseType UseType = EHeistUseType::None;
@@ -128,9 +106,6 @@ struct PROJECT_MUSEUMHEIST_API FHeistUsableItemDataRow : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TSoftClassPtr<AActor> SpawnedActorClass;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TSoftObjectPtr<UTexture2D> Icon;
 };
 
 #pragma endregion

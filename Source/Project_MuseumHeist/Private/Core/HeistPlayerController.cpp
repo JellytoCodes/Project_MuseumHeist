@@ -550,10 +550,13 @@ void AHeistPlayerController::Server_RequestDropInventoryItem_Implementation(cons
 	}
 
 	AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	FHeistItemDataRow ItemDefinition;
 	FHeistLootDataRow LootDefinition;
 	if (!IsValid(HeistGameMode)
+		|| !HeistGameMode->TryGetItemDefinition(InventoryItem.ItemId, ItemDefinition)
+		|| ItemDefinition.ItemType != EHeistItemType::Loot
 		|| !HeistGameMode->TryGetLootDefinition(InventoryItem.ItemId, LootDefinition)
-		|| !RequestContext.PlayerState->CanRemoveLootScoreAndWeight(LootDefinition.ScoreValue, LootDefinition.Weight))
+		|| !RequestContext.PlayerState->CanRemoveLootScoreAndWeight(LootDefinition.ScoreValue, ItemDefinition.Weight))
 	{
 		LogInventoryRequestRejected(TEXT("Drop"), InstanceId, TEXT("InvalidLootState"));
 		return;
@@ -583,7 +586,7 @@ void AHeistPlayerController::Server_RequestDropInventoryItem_Implementation(cons
 
 	checkf(RemovedItem.ItemId == DropRequest.ItemId, TEXT("Validated inventory drop item changed during commit."));
 	checkf(
-		RequestContext.PlayerState->RemoveLootScoreAndWeight(LootDefinition.ScoreValue, LootDefinition.Weight),
+		RequestContext.PlayerState->RemoveLootScoreAndWeight(LootDefinition.ScoreValue, ItemDefinition.Weight),
 		TEXT("Validated loot score and weight removal must succeed after inventory commit."));
 
 	UHeistDebugFunctionLibrary::DebugInventoryDropAccepted(

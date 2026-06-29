@@ -2,57 +2,45 @@
   {
     "Name": "Throwable_Coin",
     "ItemId": "Throwable_Coin",
-    "DisplayName": "Coin",
-    "CategoryTag": "Item.Throwable.Coin",
     "UseType": "Throw",
     "TargetType": "ActorHit",
     "Cooldown": 5.0,
     "CastTime": 0.0,
     "Duration": 3.0,
     "ProjectileSpeed": 1500.0,
-    "SpawnedActorClass": "Class'/Script/Project_MuseumHeist.HeistCoinProjectile'",
-    "Icon": ""
+    "SpawnedActorClass": "BlueprintGeneratedClass'/Game/Blueprints/Actors/ProjectileActors/BP_HeistCoinProjectile.BP_HeistCoinProjectile_C'"
   },
   {
     "Name": "Throwable_Smoke",
     "ItemId": "Throwable_Smoke",
-    "DisplayName": "Smoke Grenade",
-    "CategoryTag": "Item.Throwable.Smoke",
     "UseType": "Throw",
     "TargetType": "WorldLocation",
     "Cooldown": 5.0,
     "CastTime": 0.0,
     "Duration": 5.0,
     "ProjectileSpeed": 1200.0,
-    "SpawnedActorClass": "Class'/Script/Project_MuseumHeist.HeistSmokeProjectile'",
-    "Icon": ""
+    "SpawnedActorClass": "Class'/Script/Project_MuseumHeist.HeistSmokeProjectile'"
   },
   {
     "Name": "Trap_Glue",
     "ItemId": "Trap_Glue",
-    "DisplayName": "Glue Trap",
-    "CategoryTag": "Item.Trap.Glue",
     "UseType": "PlaceTrap",
     "TargetType": "WorldLocation",
     "Cooldown": 0.0,
     "CastTime": 1.5,
     "Duration": 3.0,
     "ProjectileSpeed": 0.0,
-    "SpawnedActorClass": "Class'/Script/Project_MuseumHeist.HeistGlueTrapActor'",
-    "Icon": ""
+    "SpawnedActorClass": "BlueprintGeneratedClass'/Game/Blueprints/Actors/TrapActors/BP_TrapGlue.BP_TrapGlue_C'"
   },
   {
     "Name": "Trap_Noise",
     "ItemId": "Trap_Noise",
-    "DisplayName": "Noise Trap",
-    "CategoryTag": "Item.Trap.Noise",
     "UseType": "PlaceTrap",
     "TargetType": "WorldLocation",
     "Cooldown": 0.0,
     "CastTime": 1.5,
     "Duration": 3.0,
     "ProjectileSpeed": 0.0,
-    "SpawnedActorClass": "",
-    "Icon": ""
+    "SpawnedActorClass": ""
   }
 ]

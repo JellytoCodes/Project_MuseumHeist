@@ -51,7 +51,7 @@ AHeistGameMode::AHeistGameMode()
 void AHeistGameMode::StartPlay()
 {
 	Super::StartPlay();
-	ValidateItemDataTable();
+	ValidateItemDataTables();
 	StartEscapePhaseTimer();
 	StartRareLootEventTimers();
 	StartGapTrackerTimer();
@@ -170,6 +170,18 @@ bool AHeistGameMode::TryGetLootDefinition(
 	FHeistLootDataRow& OutLootDefinition) const
 {
 	OutLootDefinition = FHeistLootDataRow();
+	if (ItemId.IsNone())
+	{
+		return false;
+	}
+
+	FHeistItemDataRow ItemDefinition;
+	if (!TryGetItemDefinition(ItemId, ItemDefinition)
+		|| ItemDefinition.ItemType != EHeistItemType::Loot)
+	{
+		return false;
+	}
+
 	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset)
 		? GameBalanceDataAsset.Get()
 		: GetDefault<UHeistGameBalanceDataAsset>();
@@ -183,7 +195,12 @@ bool AHeistGameMode::TryGetLootDefinition(
 		ItemId,
 		TEXT("AHeistGameMode::TryGetLootDefinition"),
 		false);
-	if (LootDefinition == nullptr || LootDefinition->ItemId != ItemId)
+	if (LootDefinition == nullptr
+		|| LootDefinition->ItemId != ItemId
+		|| LootDefinition->ScoreValue < 0
+		|| LootDefinition->SpawnCategory == EHeistSpawnCategory::None
+		|| LootDefinition->SpawnWeight < 0.0f
+		|| (ItemDefinition.bAvailableInV1 && LootDefinition->WorldLootActorClass.IsNull()))
 	{
 		return false;
 	}
@@ -197,6 +214,19 @@ bool AHeistGameMode::TryGetUsableItemDefinition(
 	FHeistUsableItemDataRow& OutUsableItemDefinition) const
 {
 	OutUsableItemDefinition = FHeistUsableItemDataRow();
+	if (ItemId.IsNone())
+	{
+		return false;
+	}
+
+	FHeistItemDataRow ItemDefinition;
+	if (!TryGetItemDefinition(ItemId, ItemDefinition)
+		|| (ItemDefinition.ItemType != EHeistItemType::Trap
+			&& ItemDefinition.ItemType != EHeistItemType::Throwable))
+	{
+		return false;
+	}
+
 	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset)
 		? GameBalanceDataAsset.Get()
 		: GetDefault<UHeistGameBalanceDataAsset>();
@@ -210,7 +240,20 @@ bool AHeistGameMode::TryGetUsableItemDefinition(
 		ItemId,
 		TEXT("AHeistGameMode::TryGetUsableItemDefinition"),
 		false);
-	if (UsableItemDefinition == nullptr || UsableItemDefinition->ItemId != ItemId)
+	const bool bUseTypeMatchesItemType = UsableItemDefinition != nullptr
+		&& ((ItemDefinition.ItemType == EHeistItemType::Throwable
+				&& UsableItemDefinition->UseType == EHeistUseType::Throw)
+			|| (ItemDefinition.ItemType == EHeistItemType::Trap
+				&& UsableItemDefinition->UseType == EHeistUseType::PlaceTrap));
+	if (UsableItemDefinition == nullptr
+		|| UsableItemDefinition->ItemId != ItemId
+		|| !bUseTypeMatchesItemType
+		|| UsableItemDefinition->TargetType == EHeistTargetType::None
+		|| UsableItemDefinition->Cooldown < 0.0f
+		|| UsableItemDefinition->CastTime < 0.0f
+		|| UsableItemDefinition->Duration < 0.0f
+		|| UsableItemDefinition->ProjectileSpeed < 0.0f
+		|| (ItemDefinition.bAvailableInV1 && UsableItemDefinition->SpawnedActorClass.IsNull()))
 	{
 		return false;
 	}
@@ -309,7 +352,7 @@ bool AHeistGameMode::TrySpawnDroppedLoot(
 		return false;
 	}
 
-	UClass* LootActorClass = ItemDefinition.WorldLootActorClass.LoadSynchronous();
+	UClass* LootActorClass = LootDefinition.WorldLootActorClass.LoadSynchronous();
 	if (!IsValid(LootActorClass) || !LootActorClass->IsChildOf(AHeistLootActor::StaticClass()))
 	{
 		return false;
@@ -336,7 +379,7 @@ bool AHeistGameMode::TrySpawnDroppedLoot(
 	return IsValid(OutDroppedLootActor);
 }
 
-void AHeistGameMode::ValidateItemDataTable() const
+void AHeistGameMode::ValidateItemDataTables() const
 {
 	if (!HasAuthority())
 	{
@@ -347,6 +390,29 @@ void AHeistGameMode::ValidateItemDataTable() const
 	if (!IsValid(ItemDataTable))
 	{
 		UE_LOG(LogHeistInventory, Error, TEXT("Item data validation completed: Result=FAIL Reason=MissingItemDataTable"));
+		return;
+	}
+
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	const UDataTable* LootDataTable = IsValid(BalanceData)
+		? BalanceData->LootDataTable.LoadSynchronous()
+		: nullptr;
+	const UDataTable* UsableItemDataTable = IsValid(BalanceData)
+		? BalanceData->UsableItemDataTable.LoadSynchronous()
+		: nullptr;
+	if (ItemDataTable->GetRowStruct() != FHeistItemDataRow::StaticStruct()
+		|| !IsValid(LootDataTable)
+		|| LootDataTable->GetRowStruct() != FHeistLootDataRow::StaticStruct()
+		|| !IsValid(UsableItemDataTable)
+		|| UsableItemDataTable->GetRowStruct() != FHeistUsableItemDataRow::StaticStruct())
+	{
+		UE_LOG(
+			LogHeistInventory,
+			Error,
+			TEXT("Item data validation completed: Result=FAIL Reason=MissingOrInvalidTableSchema ItemTable=%s LootTable=%s UsableTable=%s"),
+			*GetNameSafe(ItemDataTable),
+			*GetNameSafe(LootDataTable),
+			*GetNameSafe(UsableItemDataTable));
 		return;
 	}
 
@@ -365,31 +431,97 @@ void AHeistGameMode::ValidateItemDataTable() const
 	for (const FName RowName : RowNames)
 	{
 		FHeistItemDataRow ItemDefinition;
-		if (TryGetItemDefinition(RowName, ItemDefinition))
+		if (!TryGetItemDefinition(RowName, ItemDefinition))
+		{
+			continue;
+		}
+
+		const bool bHasLootExtension = LootDataTable->FindRowUnchecked(RowName) != nullptr;
+		const bool bHasUsableExtension = UsableItemDataTable->FindRowUnchecked(RowName) != nullptr;
+		bool bValidExtension = false;
+		if (ItemDefinition.ItemType == EHeistItemType::Loot)
+		{
+			FHeistLootDataRow LootDefinition;
+			bValidExtension = bHasLootExtension
+				&& !bHasUsableExtension
+				&& TryGetLootDefinition(RowName, LootDefinition);
+		}
+		else if (ItemDefinition.ItemType == EHeistItemType::Trap
+			|| ItemDefinition.ItemType == EHeistItemType::Throwable)
+		{
+			FHeistUsableItemDataRow UsableItemDefinition;
+			bValidExtension = !bHasLootExtension
+				&& bHasUsableExtension
+				&& TryGetUsableItemDefinition(RowName, UsableItemDefinition);
+		}
+
+		if (bValidExtension)
 		{
 			++ValidRowCount;
 		}
+		else
+		{
+			UE_LOG(
+				LogHeistInventory,
+				Error,
+				TEXT("Item data validation rejected row: ItemId=%s Type=%d HasLootExtension=%s HasUsableExtension=%s"),
+				*RowName.ToString(),
+				static_cast<int32>(ItemDefinition.ItemType),
+				bHasLootExtension ? TEXT("true") : TEXT("false"),
+				bHasUsableExtension ? TEXT("true") : TEXT("false"));
+		}
 	}
 
-	const int32 InvalidRowCount = RowNames.Num() - ValidRowCount;
+	int32 OrphanExtensionCount = 0;
+	for (const FName RowName : LootDataTable->GetRowNames())
+	{
+		if (!RowNames.Contains(RowName))
+		{
+			++OrphanExtensionCount;
+			UE_LOG(
+				LogHeistInventory,
+				Error,
+				TEXT("Item data validation rejected orphan Loot row: ItemId=%s"),
+				*RowName.ToString());
+		}
+	}
+	for (const FName RowName : UsableItemDataTable->GetRowNames())
+	{
+		if (!RowNames.Contains(RowName))
+		{
+			++OrphanExtensionCount;
+			UE_LOG(
+				LogHeistInventory,
+				Error,
+				TEXT("Item data validation rejected orphan Usable row: ItemId=%s"),
+				*RowName.ToString());
+		}
+	}
+
+	const int32 InvalidRowCount = RowNames.Num() - ValidRowCount + OrphanExtensionCount;
 	if (InvalidRowCount > 0)
 	{
 		UE_LOG(
 			LogHeistInventory,
 			Error,
-			TEXT("Item data validation completed: Table=%s TotalRows=%d ValidRows=%d InvalidRows=%d Result=FAIL"),
+			TEXT("Item data validation completed: ItemTable=%s LootTable=%s UsableTable=%s TotalItems=%d ValidItems=%d InvalidRows=%d OrphanExtensions=%d Result=FAIL"),
 			*GetNameSafe(ItemDataTable),
+			*GetNameSafe(LootDataTable),
+			*GetNameSafe(UsableItemDataTable),
 			RowNames.Num(),
 			ValidRowCount,
-			InvalidRowCount);
+			InvalidRowCount,
+			OrphanExtensionCount);
 		return;
 	}
 
 	UE_LOG(
 		LogHeistInventory,
 		Log,
-		TEXT("Item data validation completed: Table=%s TotalRows=%d ValidRows=%d InvalidRows=0 Result=PASS"),
+		TEXT("Item data validation completed: ItemTable=%s LootTable=%s UsableTable=%s TotalItems=%d ValidItems=%d InvalidRows=0 OrphanExtensions=0 Result=PASS"),
 		*GetNameSafe(ItemDataTable),
+		*GetNameSafe(LootDataTable),
+		*GetNameSafe(UsableItemDataTable),
 		RowNames.Num(),
 		ValidRowCount);
 }
@@ -584,7 +716,7 @@ bool AHeistGameMode::TrySpawnRareLoot(
 	}
 
 	OutSpawnPoint = CandidateSpawnPoints[FMath::RandRange(0, CandidateSpawnPoints.Num() - 1)];
-	UClass* LootActorClass = ItemDefinition.WorldLootActorClass.LoadSynchronous();
+	UClass* LootActorClass = LootDefinition.WorldLootActorClass.LoadSynchronous();
 	if (!IsValid(LootActorClass) || !LootActorClass->IsChildOf(AHeistLootActor::StaticClass()))
 	{
 		LootActorClass = AHeistLootActor::StaticClass();

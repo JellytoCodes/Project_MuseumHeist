@@ -261,9 +261,10 @@ Do not implement full add, move, remove, rotate, or occupancy algorithms yet.
 
 GDD row schema baseline:
 
-* `FHeistItemDataRow`: ItemId/RowName, ItemTag, grid width/height, weight, QuickSlot eligibility, v1.0 availability, ItemType, display text, and soft asset references.
-* `FHeistLootDataRow`: ItemId, LootGrade, ScoreValue, SpawnCategory, SpawnWeight, Piñata-drop eligibility.
-* `FHeistUsableItemDataRow`: ItemId, UseType, TargetType, Cooldown, CastTime, Duration, ProjectileSpeed.
+* `FHeistItemDataRow`: master item row containing ItemId/RowName, ItemTag, grid width/height, weight, QuickSlot eligibility, v1.0 availability, ItemType, display text, and shared icon reference.
+* `FHeistLootDataRow`: loot-only extension keyed by ItemId, containing LootGrade, ScoreValue, SpawnCategory, SpawnWeight, Piñata-drop eligibility, and the `AHeistLootActor` Blueprint class reference.
+* `FHeistUsableItemDataRow`: usable-item extension keyed by ItemId, containing UseType, TargetType, Cooldown, CastTime, Duration, ProjectileSpeed, and the spawned Actor class reference.
+* Common display, category, weight, and icon values must not be duplicated in extension rows. Every extension RowName and ItemId must match an existing master item row.
 * `FHeistSoundPingDataRow`: SoundPingId, SoundPingTag/Type, Radius, Duration, RefreshInterval, direction-only flag, guard/player reaction flags, and soft sound/icon references.
 * `FHeistGuardDataRow`: GuardProfileId, SightRadius, SightAngle, InvestigateSightAngle, PatrolSpeed, ChaseSpeed, StunDuration, InvestigateDuration, AggroResetDistance, SightUpdateInterval.
 * `FHeistLootSpawnRow`: ID, SpawnCategory, CandidateItemIds, MinCount, MaxCount, reveal flag.

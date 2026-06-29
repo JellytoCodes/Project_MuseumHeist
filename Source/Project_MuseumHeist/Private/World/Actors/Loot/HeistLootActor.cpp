@@ -1,5 +1,6 @@
 #include "World/Actors/Loot/HeistLootActor.h"
 
+#include "Core/HeistGameMode.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "Inventory/HeistItemDataTypes.h"
 #include "Net/UnrealNetwork.h"
@@ -142,17 +143,27 @@ void AHeistLootActor::ResolveLootData()
 
 	if (ResolvedRow != nullptr)
 	{
-		LootRowId = ResolvedRow->ItemId.IsNone() ? LootDataRow.RowName : ResolvedRow->ItemId;
-		LootGrade = ResolvedRow->LootGrade;
-		ScoreValue = ResolvedRow->ScoreValue;
-		WeightValue = ResolvedRow->Weight;
-		bIsAvailable = true;
+		const FName ResolvedItemId = ResolvedRow->ItemId.IsNone()
+			? LootDataRow.RowName
+			: ResolvedRow->ItemId;
+		const AHeistGameMode* HeistGameMode =
+			GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+		FHeistItemDataRow ItemDefinition;
+		if (IsValid(HeistGameMode)
+			&& HeistGameMode->TryGetItemDefinition(ResolvedItemId, ItemDefinition)
+			&& ItemDefinition.ItemType == EHeistItemType::Loot)
+		{
+			LootRowId = ResolvedItemId;
+			LootGrade = ResolvedRow->LootGrade;
+			ScoreValue = ResolvedRow->ScoreValue;
+			WeightValue = ItemDefinition.Weight;
+			bIsAvailable = true;
+			return;
+		}
 	}
-	else
-	{
-		ApplyFallbackLootData();
-		UHeistDebugFunctionLibrary::DebugLootDataFallbackApplied(this, LootDataRow.RowName);
-	}
+
+	ApplyFallbackLootData();
+	UHeistDebugFunctionLibrary::DebugLootDataFallbackApplied(this, LootDataRow.RowName);
 }
 
 void AHeistLootActor::ApplyFallbackLootData()

@@ -2,57 +2,41 @@
   {
     "Name": "Loot_RoyalCrown",
     "ItemId": "Loot_RoyalCrown",
-    "DisplayName": "Royal Crown",
-    "CategoryTag": "Item.Loot.RoyalCrown",
     "LootGrade": "FourStar",
-    "Weight": 4.0,
     "ScoreValue": 1000,
     "SpawnCategory": "VaultFixed",
     "SpawnWeight": 1.0,
     "bCanDropOnStun": true,
-    "WorldMesh": "",
-    "Icon": ""
+    "WorldLootActorClass": "BlueprintGeneratedClass'/Game/Blueprints/Actors/LootActors/BP_LootRoyalCrown.BP_LootRoyalCrown_C'"
   },
   {
     "Name": "Loot_RareArtifact",
     "ItemId": "Loot_RareArtifact",
-    "DisplayName": "Rare Artifact",
-    "CategoryTag": "Item.Loot.RareArtifact",
     "LootGrade": "FourStar",
-    "Weight": 4.0,
     "ScoreValue": 1000,
     "SpawnCategory": "RareEvent",
     "SpawnWeight": 1.0,
     "bCanDropOnStun": true,
-    "WorldMesh": "",
-    "Icon": ""
+    "WorldLootActorClass": "BlueprintGeneratedClass'/Game/Blueprints/Actors/LootActors/BP_LootRareArtifact.BP_LootRareArtifact_C'"
   },
   {
     "Name": "Loot_Painting",
     "ItemId": "Loot_Painting",
-    "DisplayName": "Painting",
-    "CategoryTag": "Item.Loot.Painting",
     "LootGrade": "TwoStar",
-    "Weight": 3.0,
     "ScoreValue": 300,
     "SpawnCategory": "ExhibitionRoom",
     "SpawnWeight": 1.0,
     "bCanDropOnStun": true,
-    "WorldMesh": "",
-    "Icon": ""
+    "WorldLootActorClass": "BlueprintGeneratedClass'/Game/Blueprints/Actors/LootActors/BP_Painting.BP_Painting_C'"
   },
   {
     "Name": "Loot_AncientSword",
     "ItemId": "Loot_AncientSword",
-    "DisplayName": "Ancient Sword",
-    "CategoryTag": "Item.Loot.AncientSword",
     "LootGrade": "TwoStar",
-    "Weight": 3.0,
     "ScoreValue": 300,
     "SpawnCategory": "ExhibitionRoom",
     "SpawnWeight": 1.0,
     "bCanDropOnStun": true,
-    "WorldMesh": "",
-    "Icon": ""
+    "WorldLootActorClass": "BlueprintGeneratedClass'/Game/Blueprints/Actors/LootActors/BP_LootAncientSword.BP_LootAncientSword_C'"
   }
 ]
