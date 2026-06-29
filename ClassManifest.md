@@ -329,6 +329,7 @@ Folders and classes:
 * `World/Actors/Trap/`
   * `AHeistTrapActor : public AActor`
   * `AHeistGlueTrapActor : public AHeistTrapActor`
+  * `AHeistNoiseTrapActor : public AHeistTrapActor`
 * `World/Actors/Projectile/`
   * `AHeistThrowableProjectile : public AActor`
   * `AHeistCoinProjectile : public AHeistThrowableProjectile`
@@ -351,13 +352,16 @@ Gameplay collision remains owned by the C++ collision components. Static mesh co
 
 Do not create:
 
-* `AHeistNoiseTrapActor`
 * `ARoyalCrownActor`
 * `APaintingActor`
 * `AAncientSwordActor`
 * `ARareArtifactActor`
 
 Loot must remain data-driven.
+
+`AHeistNoiseTrapActor` is approved as a data-reference and Blueprint-shell parent only.
+Its sound emission, perception stimulus, trigger result, and other gameplay behavior remain
+deferred until a separately requested v1.1 implementation task.
 
 ---
 

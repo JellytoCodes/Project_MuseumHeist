@@ -41,6 +41,6 @@
     "CastTime": 1.5,
     "Duration": 3.0,
     "ProjectileSpeed": 0.0,
-    "SpawnedActorClass": ""
+    "SpawnedActorClass": "Class'/Script/Project_MuseumHeist.HeistNoiseTrapActor'"
   }
 ]

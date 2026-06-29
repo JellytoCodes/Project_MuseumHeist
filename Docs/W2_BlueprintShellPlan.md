@@ -909,7 +909,7 @@ P4 TEST-W2 and close
 - 최종 icon/font/UI art 완성
 - final map layout, lighting, environment art
 - PCG, Security Room, cinematic, Steam Voice
-- Noise Trap 구현
+- Noise Trap gameplay 구현 (`AHeistNoiseTrapActor` C++/Blueprint shell은 허용)
 - advanced Loadout inventory editing
 - Blueprint에서 gameplay authority 구현
 - 신규 item별 C++ Actor 클래스 생성
