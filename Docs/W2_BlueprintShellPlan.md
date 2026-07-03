@@ -32,11 +32,15 @@ W2의 작업 체크, 진행 상태, Gate 판단, 테스트 결과, 결정 로그
 
 ## W2 운영 방식
 
-W2의 실제 Blueprint / Widget Blueprint 생성 작업은 사용자가 Unreal Editor에서 직접 수행한다.
+Codex는 W2의 C++ 및 Blueprint / Widget Blueprint 생성·수정 작업을 주로 담당한다.
 
-Codex는 W2 작업의 주 실행자가 아니다. Codex는 현재 코드와 이 기준 문서를 바탕으로 구조를 체크하고, 사용자가 만든 자산을 리뷰하며, 로그·MVVM Warning·Accessed None·Missing Class·Missing Row·owner-only UI·replicated state 문제를 추적하는 보조 역할만 담당한다.
+Blueprint / Widget Blueprint `.uasset`은 Unreal Editor/MCP를 통해서만 다루며, raw filesystem이나 CLI binary 조작으로 생성·수정하지 않는다. `.umap`은 사용자가 명시적으로 요청하지 않는 한 수정하지 않는다.
 
-Codex는 `.uasset`이나 `.umap`을 직접 생성하거나 수정하지 않는다. Codex는 사용자가 Editor에서 수행해야 하는 작업을 완료했다고 주장하지 않으며, 별도 Markdown 실행 체크리스트를 생성하지 않는다.
+Codex는 개별 구현 Task의 완료 여부를 C++ 빌드, Blueprint compile, 프로젝트 Debug class/command, 목표 로그, Output Log 오류 여부로 판단할 수 있다. 다중 PIE 창 조작과 수동 입력 검증은 사용자가 담당하며, 사용자가 명시적으로 요청하지 않는 한 Codex가 자동화하지 않는다.
+
+주차 Gate, multiplayer reliability, replication, ownership, bug-fix validity처럼 대화형 멀티플레이 증거가 필요한 판정은 사용자가 PIE를 실행하고 결과 또는 로그를 제공하기 전까지 완료로 주장하지 않는다.
+
+Codex는 별도 Markdown 실행 체크리스트를 생성하지 않는다.
 
 ## 2. 기준과 표기
 
@@ -44,9 +48,9 @@ Codex는 `.uasset`이나 `.umap`을 직접 생성하거나 수정하지 않는�
 - 엔진: Unreal Engine 5.8
 - 기준 우선순위: `AGENTS.md` -> `ClassManifest.md` -> 관련 GDD 범위
 - `[기존]`: 현재 `Content`에 `.uasset`이 존재한다.
-- `[신규]`: Unreal Editor에서 수동 생성해야 한다.
+- `[신규]`: Unreal Editor/MCP에서 생성해야 한다.
 - `[확인 필요]`: C++ 타입은 존재하지만 현재 노출 계약만으로 요구 기능을 연결할 수 없거나, binary `.uasset` 내부 설정을 코드 검사만으로 확정할 수 없다.
-- 이 문서는 `.uasset` 생성 완료를 주장하지 않는다. Blueprint/WBP/Map 작업의 실제 수행자와 완료 판단 주체는 사용자이며, 상태 기록은 Notion에서만 관리한다.
+- Blueprint/WBP 생성 완료는 실제 Editor asset과 compile 결과를 확인한 경우에만 주장한다. 사용자 PIE와 주차 Gate 검증은 별도이며, 상태 기록은 Notion에서만 관리한다.
 
 ## 3. 현재 코드/Content 진단 요약
 

@@ -37,6 +37,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void PlayerTick(float DeltaTime) override;
 	virtual void SetupInputComponent() override;
 
 #pragma endregion
@@ -46,6 +47,7 @@ protected:
 private:
 	void HandleMoveInput(const FInputActionValue& InputValue);
 	void HandleInventoryToggle();
+	void UpdateFlashlightAimDirection();
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Input", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInputAction> MoveInputAction;

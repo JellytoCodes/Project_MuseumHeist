@@ -63,13 +63,44 @@ the active numbered task requires it.
 
 ---
 
+## Codex Implementation And Verification Responsibility
+
+Codex is the primary implementation agent for task-scoped C++ and Blueprint work.
+
+Codex should:
+
+* Create and modify C++ classes required by the active numbered task.
+* Create and modify Blueprint and Widget Blueprint assets through Unreal Editor/MCP when the active task requires them.
+* Keep Blueprint work within asset assignment, class defaults, component assembly, layout, MVVM binding, and visual presentation responsibilities.
+* Use C++ builds, Blueprint compile results, project Debug classes, targeted debug commands, and Output Log evidence as the normal completion evidence for individual implementation tasks.
+* Update the related Notion task when the implementation, compile checks, and required debug-log evidence pass.
+
+The user owns interactive PIE verification.
+
+Unless the user explicitly requests Codex-driven PIE automation:
+
+* Do not spend tool calls driving multiple PIE windows or simulating per-client input.
+* Provide the user with the shortest relevant PIE checklist and expected debug-log signals.
+* Treat user-run PIE results and supplied logs as the authoritative interactive verification result.
+* Do not block an individual implementation task solely because Codex did not automate PIE when compile, Blueprint compile, and targeted project debug logs already prove the task's implementation contract.
+
+This does not lower weekly Gate or Formal Test Log standards.
+
+* A weekly Gate, multiplayer reliability claim, replication claim, ownership claim, or bug-fix validation that requires interactive multiplayer evidence remains pending until the user runs PIE and provides the result or logs.
+* Codex must distinguish implementation completion from user-run PIE and Gate verification in its final output.
+* Codex must never claim that user-run PIE occurred when it did not.
+
+---
+
 ## Hard Rules
 
 * Use Unreal Engine 5.8.
 * Use C++ for gameplay logic, replicated state, validation, ViewModels, and Widget base classes.
 * Use Blueprint Widgets only as layout, visual design, and animation layer.
 * Do not put gameplay logic in Blueprint graphs.
-* Do not create `.uasset` or `.umap` files.
+* Blueprint and Widget Blueprint `.uasset` files may be created or modified only through Unreal Editor/MCP for the active numbered task.
+* Do not create or edit `.uasset` files through raw filesystem or CLI binary manipulation.
+* Do not create or modify `.umap` files unless explicitly requested.
 * Do not modify engine version.
 * Do not modify plugins unless explicitly requested.
 * Do not modify packaging settings unless explicitly requested.
@@ -1051,7 +1082,7 @@ Not every implementation task requires a formal Notion Test Log entry.
 
 Formal Test Logs are reserved for verification results that prove multiplayer reliability, server authority, replication correctness, integration stability, weekly Gate readiness, or bug fix validity.
 
-Small implementation checks should remain as compile checks, PIE smoke checks, or Codex task output notes.
+Small implementation checks should remain as compile checks, Blueprint compile checks, targeted debug-log checks, user PIE checklists, or Codex task output notes.
 
 ### Core Principle
 
@@ -1164,12 +1195,12 @@ A smoke check is a lightweight local verification.
 Smoke checks may include:
 
 * Project compiles.
-* PIE opens.
-* Existing 4-player spawn baseline is not obviously broken.
-* Local player can possess the Pawn.
-* Local input responds.
-* Camera follows the local Pawn.
-* No obvious runtime error appears in the Output Log.
+* Blueprint assets compile.
+* Targeted project Debug commands emit the expected logs.
+* No task-relevant error appears in the Output Log.
+* The user confirms that PIE opens.
+* The user confirms that the existing 4-player spawn baseline is not obviously broken.
+* The user confirms that local possession, input, and camera behavior respond as expected.
 
 Smoke checks are not formal Test Logs.
 
@@ -1180,14 +1211,15 @@ For normal implementation tasks that do not require a formal Test Log, Codex mus
 * Modified files
 * Implementation summary
 * Compile result
-* PIE smoke-check steps
+* Debug-log verification result
+* User PIE checklist and whether the user ran it
 * Known warnings or caveats
 * Formal Test Log decision
 
 Use this wording when a formal Test Log is not required:
 
 Formal Test Log: Not required.
-Reason: This task is covered by compile/PIE smoke check and does not independently verify multiplayer authority, replication, ownership, Gate readiness, or bug-fix validity.
+Reason: This task is covered by compile, Blueprint compile, targeted debug-log checks, and user PIE guidance and does not independently verify multiplayer authority, replication, ownership, Gate readiness, or bug-fix validity.
 
 Use this wording when a formal Test Log is required:
 

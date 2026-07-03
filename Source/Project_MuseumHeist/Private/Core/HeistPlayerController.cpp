@@ -7,6 +7,7 @@
 #include "Character/Components/HeistInteractionComponent.h"
 #include "Character/Components/HeistInventoryComponent.h"
 #include "Character/Components/HeistStatusComponent.h"
+#include "Character/Components/HeistVisionComponent.h"
 #include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistGameMode.h"
@@ -57,6 +58,12 @@ void AHeistPlayerController::BeginPlay()
 #endif
 
 	ConfigureMouseCursorDefaults();
+}
+
+void AHeistPlayerController::PlayerTick(const float DeltaTime)
+{
+	Super::PlayerTick(DeltaTime);
+	UpdateFlashlightAimDirection();
 }
 
 void AHeistPlayerController::SetupInputComponent()
@@ -160,6 +167,38 @@ void AHeistPlayerController::HandleInventoryToggle()
 	}
 
 	RequestSetInventoryOpen(bRequestOpen);
+}
+
+void AHeistPlayerController::UpdateFlashlightAimDirection()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	if (!IsValid(HeistCharacter))
+	{
+		return;
+	}
+
+	UHeistInventoryComponent* InventoryComponent = HeistCharacter->GetInventoryComponent();
+	checkf(IsValid(InventoryComponent), TEXT("HeistPlayerCharacter requires HeistInventoryComponent"));
+	if (InventoryComponent->IsInventoryOpen())
+	{
+		return;
+	}
+
+	FVector CursorWorldLocation;
+	if (!GetCursorWorldLocation(CursorWorldLocation))
+	{
+		return;
+	}
+
+	UHeistVisionComponent* VisionComponent = HeistCharacter->GetVisionComponent();
+	checkf(IsValid(VisionComponent), TEXT("HeistPlayerCharacter requires HeistVisionComponent"));
+	VisionComponent->UpdateFlashlightAimDirection(
+		CursorWorldLocation - HeistCharacter->GetActorLocation());
 }
 
 #pragma endregion
