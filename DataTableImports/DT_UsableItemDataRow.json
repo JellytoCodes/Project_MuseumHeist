@@ -8,7 +8,7 @@
     "CastTime": 0.0,
     "Duration": 3.0,
     "ProjectileSpeed": 1500.0,
-    "SpawnedActorClass": "BlueprintGeneratedClass'/Game/Blueprints/Actors/ProjectileActors/BP_HeistCoinProjectile.BP_HeistCoinProjectile_C'"
+    "SpawnedActorClass": "BlueprintGeneratedClass'/Game/Blueprints/Actors/ProjectileActors/BP_CoinProjectile.BP_CoinProjectile_C'"
   },
   {
     "Name": "Throwable_Smoke",
@@ -19,7 +19,7 @@
     "CastTime": 0.0,
     "Duration": 5.0,
     "ProjectileSpeed": 1200.0,
-    "SpawnedActorClass": "Class'/Script/Project_MuseumHeist.HeistSmokeProjectile'"
+    "SpawnedActorClass": "BlueprintGeneratedClass'/Game/Blueprints/Actors/ProjectileActors/BP_SmokeProjectile.BP_SmokeProjectile_C'"
   },
   {
     "Name": "Trap_Glue",
