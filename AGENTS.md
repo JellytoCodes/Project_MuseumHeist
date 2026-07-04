@@ -90,6 +90,42 @@ This does not lower weekly Gate or Formal Test Log standards.
 * Codex must distinguish implementation completion from user-run PIE and Gate verification in its final output.
 * Codex must never claim that user-run PIE occurred when it did not.
 
+### Post-Task User PIE Handoff Standard
+
+After implementing and verifying each numbered `TASK-Wn-###`, Codex must tell the
+user whether interactive PIE adds meaningful verification value.
+
+When PIE is relevant, Codex must provide the shortest task-specific checklist
+before moving to the next numbered task. The checklist must include:
+
+* Required PIE mode and player count, such as Listen Server with 4 players.
+* Which PIE window should execute each command or input.
+* Exact project Debug/Cheat commands or manual input sequence.
+* Expected visible behavior.
+* Expected high-signal Output Log messages.
+* Explicit PASS criteria.
+* Explicit FAIL or blocker signals.
+* Whether the result is an individual task check or a weekly Gate / Formal Test.
+
+Prefer existing project Debug classes and commands over long manual setup.
+Do not ask the user to perform unrelated regression steps.
+
+When PIE has no meaningful standalone value for the active task, state:
+
+```txt
+User PIE: Not required.
+Reason: <task-specific reason>
+```
+
+When the user supplies PIE results or logs, Codex must:
+
+* Compare them against the previously stated PASS and FAIL signals.
+* Classify the result as `PASS`, `FAIL`, or `BLOCKED`.
+* Separate task-level verification from weekly Gate status.
+* Update the related Notion task or Formal Test Log when the supplied evidence
+  changes its recorded verification state.
+* Never require the user to infer whether the logs are sufficient.
+
 ---
 
 ## Hard Rules
@@ -1212,7 +1248,10 @@ For normal implementation tasks that do not require a formal Test Log, Codex mus
 * Implementation summary
 * Compile result
 * Debug-log verification result
-* User PIE checklist and whether the user ran it
+* User PIE relevance decision
+* When relevant, exact PIE mode/player count, commands or inputs, expected
+  behavior, expected logs, and PASS/FAIL signals
+* Whether the user ran PIE and the resulting PASS/FAIL/BLOCKED judgment
 * Known warnings or caveats
 * Formal Test Log decision
 

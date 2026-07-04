@@ -8,7 +8,7 @@
     "CastTime": 0.0,
     "Duration": 3.0,
     "ProjectileSpeed": 1500.0,
-    "SpawnedActorClass": "BlueprintGeneratedClass'/Game/Blueprints/Actors/ProjectileActors/BP_CoinProjectile.BP_CoinProjectile_C'"
+    "SpawnedActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Projectile/BP_HeistCoinProjectile.BP_HeistCoinProjectile_C'"
   },
   {
     "Name": "Throwable_Smoke",
@@ -19,7 +19,7 @@
     "CastTime": 0.0,
     "Duration": 5.0,
     "ProjectileSpeed": 1200.0,
-    "SpawnedActorClass": "BlueprintGeneratedClass'/Game/Blueprints/Actors/ProjectileActors/BP_SmokeProjectile.BP_SmokeProjectile_C'"
+    "SpawnedActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Projectile/BP_HeistSmokeProjectile.BP_HeistSmokeProjectile_C'"
   },
   {
     "Name": "Trap_Glue",
@@ -30,7 +30,7 @@
     "CastTime": 1.5,
     "Duration": 3.0,
     "ProjectileSpeed": 0.0,
-    "SpawnedActorClass": "BlueprintGeneratedClass'/Game/Blueprints/Actors/TrapActors/BP_TrapGlue.BP_TrapGlue_C'"
+    "SpawnedActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Trap/BP_HeistGlueTrap.BP_HeistGlueTrap_C'"
   },
   {
     "Name": "Trap_Noise",
