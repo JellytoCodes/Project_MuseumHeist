@@ -7,6 +7,15 @@
 
 #include "HeistInventoryWidget.generated.h"
 
+class UButton;
+class UCanvasPanel;
+class UDataTable;
+class UHeistInventoryItemWidget;
+class UHeistInventorySlotWidget;
+class UTextBlock;
+class UTexture2D;
+class UUniformGridPanel;
+
 UCLASS(Blueprintable)
 class PROJECT_MUSEUMHEIST_API UHeistInventoryWidget : public UHeistUserWidgetBase
 {
@@ -22,7 +31,17 @@ public:
 #pragma region Lifecycle
 
 protected:
+	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
+	virtual bool NativeOnDragOver(
+		const FGeometry& InGeometry,
+		const FDragDropEvent& InDragDropEvent,
+		UDragDropOperation* InOperation) override;
+	virtual void NativeOnDragLeave(const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
+	virtual bool NativeOnDrop(
+		const FGeometry& InGeometry,
+		const FDragDropEvent& InDragDropEvent,
+		UDragDropOperation* InOperation) override;
 
 #pragma endregion
 
@@ -79,6 +98,81 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Inventory")
 	void RequestClearQuickSlot(EHeistQuickSlotType SlotType);
+
+#pragma endregion
+
+#pragma region DragDropPresentation
+
+public:
+	bool CanPreviewItemDrop(int32 InstanceId, const FIntPoint& TargetGridPosition) const;
+
+private:
+	void RebuildConfirmedInventory(
+		const TArray<FHeistInventoryItem>& ConfirmedItems,
+		int32 GridColumns,
+		int32 GridRows);
+	bool TryResolveItemPresentation(
+		const FHeistInventoryItem& InventoryItem,
+		FIntPoint& OutPlacedSize,
+		UTexture2D*& OutIcon) const;
+	bool TryGetDropTargetGridPosition(
+		const FDragDropEvent& DragDropEvent,
+		FIntPoint& OutGridPosition) const;
+	void UpdateDropPreview(int32 InstanceId, const FIntPoint& TargetGridPosition);
+	void ClearDropPreview();
+	bool IsGridCoordinateOccupied(
+		const FIntPoint& GridCoordinate,
+		int32 ExcludedInstanceId = INDEX_NONE) const;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Inventory|Presentation", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<UHeistInventorySlotWidget> InventorySlotWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Inventory|Presentation", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<UHeistInventoryItemWidget> InventoryItemWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Inventory|Presentation", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UDataTable> ItemDataTable;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Inventory|Presentation", meta = (AllowPrivateAccess = "true"))
+	FVector2D InventoryCellSize = FVector2D(123.0, 108.4);
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UHeistInventorySlotWidget>> InventorySlotWidgets;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UHeistInventoryItemWidget>> InventoryItemWidgets;
+
+	UPROPERTY(Transient)
+	TArray<FHeistInventoryItem> ConfirmedInventoryItems;
+
+	UPROPERTY(Transient)
+	int32 ConfirmedGridColumns = 0;
+
+	UPROPERTY(Transient)
+	int32 ConfirmedGridRows = 0;
+
+#pragma endregion
+
+#pragma region Presentation
+
+private:
+	UFUNCTION()
+	void HandleCloseButtonClicked();
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UButton> CloseButton;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> InventorySummaryText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> QuickSlotSummaryText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UUniformGridPanel> InventoryGrid;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UCanvasPanel> ItemOverlay;
 
 #pragma endregion
 };

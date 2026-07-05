@@ -41,6 +41,11 @@ const TArray<FHeistTimedTagState>& UHeistStatusComponent::GetStatusTags() const
 	return StatusTags;
 }
 
+FHeistStatusTagsChanged& UHeistStatusComponent::GetStatusTagsChangedDelegate()
+{
+	return StatusTagsChangedDelegate;
+}
+
 #pragma endregion
 
 #pragma region StatusMutation
@@ -92,6 +97,7 @@ bool UHeistStatusComponent::ApplyTimedStatusTag(const FGameplayTag StateTag, con
 	RefreshStatusTagTimer(*ExistingState);
 	GetOwner()->ForceNetUpdate();
 	StopOwnerMovementForStun();
+	StatusTagsChangedDelegate.Broadcast(StatusTags);
 
 	UHeistDebugFunctionLibrary::DebugStatusTagApplied(this, StateTag, ExistingState->EndServerTime);
 	return true;
@@ -117,6 +123,7 @@ bool UHeistStatusComponent::ClearStatusTag(const FGameplayTag StateTag)
 
 	ClearStatusTagTimer(StateTag);
 	GetOwner()->ForceNetUpdate();
+	StatusTagsChangedDelegate.Broadcast(StatusTags);
 
 	UHeistDebugFunctionLibrary::DebugStatusTagCleared(this, StateTag);
 	return true;
@@ -224,6 +231,7 @@ void UHeistStatusComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 
 void UHeistStatusComponent::OnRep_StatusTags()
 {
+	StatusTagsChangedDelegate.Broadcast(StatusTags);
 	UHeistDebugFunctionLibrary::DebugStatusTagsReplicated(this, StatusTags);
 	StopOwnerMovementForStun();
 }

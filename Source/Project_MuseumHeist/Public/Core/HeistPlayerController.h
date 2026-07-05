@@ -37,8 +37,14 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void OnPossess(APawn* InPawn) override;
+	virtual void OnRep_Pawn() override;
+	virtual void OnRep_PlayerState() override;
 	virtual void PlayerTick(float DeltaTime) override;
 	virtual void SetupInputComponent() override;
+
+private:
+	void RefreshLocalHUDPresentation();
 
 #pragma endregion
 
@@ -101,6 +107,9 @@ public:
 	void DebugRequestSetGapTrackerScore(int32 Score);
 	void DebugRequestForceGapTracker(bool bActive);
 	void DebugRequestClearGapTrackerOverride();
+	void DebugRequestApplyStatusStun(float DurationSeconds);
+	void DebugRequestApplyStatusImmunity(float DurationSeconds);
+	void DebugRequestClearStatus();
 	void DebugRequestSpawnGuard(float Distance);
 	void DebugRequestSetNearestGuardState(EHeistGuardState GuardState, float DurationSeconds);
 	void DebugRequestEvaluateNearestGuardSight();
@@ -155,6 +164,15 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void Server_DebugRequestClearGapTrackerOverride();
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestApplyStatusStun(float DurationSeconds);
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestApplyStatusImmunity(float DurationSeconds);
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestClearStatus();
 
 	UFUNCTION(Server, Reliable)
 	void Server_DebugRequestSpawnGuard(float Distance);

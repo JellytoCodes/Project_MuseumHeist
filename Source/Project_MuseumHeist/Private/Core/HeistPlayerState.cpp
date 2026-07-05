@@ -17,6 +17,11 @@ float AHeistPlayerState::GetTotalLootWeight() const
 	return TotalLootWeight;
 }
 
+FHeistLootTotalsChanged& AHeistPlayerState::GetLootTotalsChangedDelegate()
+{
+	return LootTotalsChangedDelegate;
+}
+
 bool AHeistPlayerState::CanAddLootScoreAndWeight(int32 ScoreDelta, float WeightDelta) const
 {
 	if (!HasAuthority() || bEscaped || ScoreDelta < 0 || WeightDelta < 0.0f || !FMath::IsFinite(WeightDelta))
@@ -59,6 +64,7 @@ bool AHeistPlayerState::AddLootScoreAndWeight(int32 ScoreDelta, float WeightDelt
 	TotalLootScore += ScoreDelta;
 	TotalLootWeight += WeightDelta;
 	ForceNetUpdate();
+	BroadcastLootTotalsChanged();
 
 	if (AHeistPlayerCharacter* HeistPlayerCharacter = Cast<AHeistPlayerCharacter>(GetPawn()))
 	{
@@ -100,6 +106,7 @@ bool AHeistPlayerState::RemoveLootScoreAndWeight(const int32 ScoreDelta, const f
 	TotalLootScore -= ScoreDelta;
 	TotalLootWeight = FMath::Max(0.0f, TotalLootWeight - WeightDelta);
 	ForceNetUpdate();
+	BroadcastLootTotalsChanged();
 
 	if (AHeistPlayerCharacter* HeistPlayerCharacter = Cast<AHeistPlayerCharacter>(GetPawn()))
 	{
@@ -113,6 +120,11 @@ bool AHeistPlayerState::RemoveLootScoreAndWeight(const int32 ScoreDelta, const f
 		TotalLootScore,
 		TotalLootWeight);
 	return true;
+}
+
+void AHeistPlayerState::BroadcastLootTotalsChanged()
+{
+	LootTotalsChangedDelegate.Broadcast(TotalLootScore, TotalLootWeight);
 }
 
 #pragma endregion
@@ -271,11 +283,13 @@ void AHeistPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 
 void AHeistPlayerState::OnRep_TotalLootScore()
 {
+	BroadcastLootTotalsChanged();
 	UHeistDebugFunctionLibrary::DebugPlayerStateScoreReplicated(this, TotalLootScore);
 }
 
 void AHeistPlayerState::OnRep_TotalLootWeight()
 {
+	BroadcastLootTotalsChanged();
 	UHeistDebugFunctionLibrary::DebugPlayerStateWeightReplicated(this, TotalLootWeight);
 }
 
@@ -293,6 +307,7 @@ void AHeistPlayerState::DebugSetTotalLootScore(const int32 InScore)
 
 	TotalLootScore = FMath::Max(0, InScore);
 	ForceNetUpdate();
+	BroadcastLootTotalsChanged();
 	UHeistDebugFunctionLibrary::DebugGapTrackerScoreSet(this, HeistPlayerId, TotalLootScore);
 #endif
 }

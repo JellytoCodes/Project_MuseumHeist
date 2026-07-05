@@ -6,6 +6,8 @@
 
 #include "HeistStatusComponent.generated.h"
 
+DECLARE_MULTICAST_DELEGATE_OneParam(FHeistStatusTagsChanged, const TArray<FHeistTimedTagState>&);
+
 UCLASS(ClassGroup = (Heist), meta = (BlueprintSpawnableComponent))
 class PROJECT_MUSEUMHEIST_API UHeistStatusComponent : public UActorComponent
 {
@@ -21,6 +23,7 @@ public:
 	bool IsStunImmune() const;
 	bool HasStatusTag(FGameplayTag StateTag) const;
 	const TArray<FHeistTimedTagState>& GetStatusTags() const;
+	FHeistStatusTagsChanged& GetStatusTagsChangedDelegate();
 
 #pragma endregion
 
@@ -52,6 +55,8 @@ private:
 	TArray<FHeistTimedTagState> StatusTags;
 
 	TMap<FGameplayTag, FTimerHandle> StatusTagTimers;
+
+	FHeistStatusTagsChanged StatusTagsChangedDelegate;
 
 #pragma endregion
 

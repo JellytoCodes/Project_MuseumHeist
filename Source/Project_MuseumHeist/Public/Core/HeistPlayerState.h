@@ -7,6 +7,7 @@
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerEscapeStateChanged, bool);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistGapTrackerDirectionChanged, const FVector&);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistLootTotalsChanged, int32, float);
 
 UCLASS()
 class PROJECT_MUSEUMHEIST_API AHeistPlayerState : public APlayerState
@@ -18,17 +19,22 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerState : public APlayerState
 public:
 	int32 GetTotalLootScore() const;
 	float GetTotalLootWeight() const;
+	FHeistLootTotalsChanged& GetLootTotalsChangedDelegate();
 	bool CanAddLootScoreAndWeight(int32 ScoreDelta, float WeightDelta) const;
 	bool AddLootScoreAndWeight(int32 ScoreDelta, float WeightDelta);
 	bool CanRemoveLootScoreAndWeight(int32 ScoreDelta, float WeightDelta) const;
 	bool RemoveLootScoreAndWeight(int32 ScoreDelta, float WeightDelta);
 
 private:
+	void BroadcastLootTotalsChanged();
+
 	UPROPERTY(ReplicatedUsing = OnRep_TotalLootScore, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Score", meta = (AllowPrivateAccess = "true"))
 	int32 TotalLootScore = 0;
 
 	UPROPERTY(ReplicatedUsing = OnRep_TotalLootWeight, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Weight", meta = (AllowPrivateAccess = "true"))
 	float TotalLootWeight = 0.0f;
+
+	FHeistLootTotalsChanged LootTotalsChangedDelegate;
 
 #pragma endregion
 

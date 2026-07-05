@@ -2688,22 +2688,18 @@ void UHeistDebugFunctionLibrary::DebugStatusStun(APlayerController* PlayerContro
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	UHeistStatusComponent* StatusComponent = ResolveStatusComponent(PlayerController);
-	if (!IsValid(StatusComponent))
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController) || !IsValid(ResolveStatusComponent(PlayerController)))
 	{
 		Message(PlayerController, TEXT("Status debug stun failed: missing local Heist status component."), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
-	if (!StatusComponent->ApplyStun(DurationSeconds))
-	{
-		Message(PlayerController, TEXT("Status debug stun rejected."), EHeistDebugLevel::Warning, true);
-		return;
-	}
-
+	const float SafeDuration = FMath::Clamp(DurationSeconds, 0.01f, 600.0f);
+	HeistPlayerController->DebugRequestApplyStatusStun(SafeDuration);
 	Message(
 		PlayerController,
-		FString::Printf(TEXT("Status debug stun requested: Duration=%.2f"), DurationSeconds),
+		FString::Printf(TEXT("Status debug stun requested: Duration=%.2f"), SafeDuration),
 		EHeistDebugLevel::Info,
 		true);
 #endif
@@ -2714,22 +2710,18 @@ void UHeistDebugFunctionLibrary::DebugStatusImmune(APlayerController* PlayerCont
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	UHeistStatusComponent* StatusComponent = ResolveStatusComponent(PlayerController);
-	if (!IsValid(StatusComponent))
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController) || !IsValid(ResolveStatusComponent(PlayerController)))
 	{
 		Message(PlayerController, TEXT("Status debug immunity failed: missing local Heist status component."), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
-	if (!StatusComponent->ApplyStunImmunity(DurationSeconds))
-	{
-		Message(PlayerController, TEXT("Status debug immunity rejected."), EHeistDebugLevel::Warning, true);
-		return;
-	}
-
+	const float SafeDuration = FMath::Clamp(DurationSeconds, 0.01f, 600.0f);
+	HeistPlayerController->DebugRequestApplyStatusImmunity(SafeDuration);
 	Message(
 		PlayerController,
-		FString::Printf(TEXT("Status debug immunity requested: Duration=%.2f"), DurationSeconds),
+		FString::Printf(TEXT("Status debug immunity requested: Duration=%.2f"), SafeDuration),
 		EHeistDebugLevel::Info,
 		true);
 #endif
@@ -2740,21 +2732,17 @@ void UHeistDebugFunctionLibrary::DebugStatusClear(APlayerController* PlayerContr
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	UHeistStatusComponent* StatusComponent = ResolveStatusComponent(PlayerController);
-	if (!IsValid(StatusComponent))
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController) || !IsValid(ResolveStatusComponent(PlayerController)))
 	{
 		Message(PlayerController, TEXT("Status debug clear failed: missing local Heist status component."), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
-	const bool bClearedStunned = StatusComponent->ClearStatusTag(FHeistGameplayTags::Get().State_Stunned);
-	const bool bClearedImmune = StatusComponent->ClearStatusTag(FHeistGameplayTags::Get().State_StunImmune);
+	HeistPlayerController->DebugRequestClearStatus();
 	Message(
 		PlayerController,
-		FString::Printf(
-			TEXT("Status debug clear requested: ClearedStunned=%s ClearedStunImmune=%s"),
-			bClearedStunned ? TEXT("true") : TEXT("false"),
-			bClearedImmune ? TEXT("true") : TEXT("false")),
+		TEXT("Status debug clear requested."),
 		EHeistDebugLevel::Info,
 		true);
 #endif

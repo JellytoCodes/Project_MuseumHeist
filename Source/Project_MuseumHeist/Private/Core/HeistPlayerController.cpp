@@ -9,6 +9,7 @@
 #include "Character/Components/HeistStatusComponent.h"
 #include "Character/Components/HeistVisionComponent.h"
 #include "Character/HeistPlayerCharacter.h"
+#include "Core/HeistGameplayTags.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistGameMode.h"
 #include "Core/HeistHUD.h"
@@ -58,6 +59,25 @@ void AHeistPlayerController::BeginPlay()
 #endif
 
 	ConfigureMouseCursorDefaults();
+	RefreshLocalHUDPresentation();
+}
+
+void AHeistPlayerController::OnPossess(APawn* InPawn)
+{
+	Super::OnPossess(InPawn);
+	RefreshLocalHUDPresentation();
+}
+
+void AHeistPlayerController::OnRep_Pawn()
+{
+	Super::OnRep_Pawn();
+	RefreshLocalHUDPresentation();
+}
+
+void AHeistPlayerController::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+	RefreshLocalHUDPresentation();
 }
 
 void AHeistPlayerController::PlayerTick(const float DeltaTime)
@@ -128,6 +148,19 @@ void AHeistPlayerController::SetupInputComponent()
 	}
 }
 
+void AHeistPlayerController::RefreshLocalHUDPresentation()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	if (AHeistHUD* HeistHUD = GetHUD<AHeistHUD>())
+	{
+		HeistHUD->RefreshPresentationSources();
+	}
+}
+
 #pragma endregion
 
 #pragma region Input
@@ -156,16 +189,6 @@ void AHeistPlayerController::HandleInventoryToggle()
 	checkf(IsValid(InventoryComponent), TEXT("HeistPlayerCharacter requires HeistInventoryComponent"));
 
 	const bool bRequestOpen = !InventoryComponent->IsInventoryOpen();
-	if (bRequestOpen)
-	{
-		AHeistHUD* HeistHUD = GetHUD<AHeistHUD>();
-		if (!IsValid(HeistHUD) || !HeistHUD->ShowInventoryScreen())
-		{
-			UHeistDebugFunctionLibrary::DebugInventoryOpenSkipped(this);
-			return;
-		}
-	}
-
 	RequestSetInventoryOpen(bRequestOpen);
 }
 
@@ -244,6 +267,16 @@ void AHeistPlayerController::HandleInteractPressed()
 
 void AHeistPlayerController::RequestSetInventoryOpen(const bool bInventoryOpen)
 {
+	if (bInventoryOpen && IsLocalController())
+	{
+		AHeistHUD* HeistHUD = GetHUD<AHeistHUD>();
+		if (!IsValid(HeistHUD) || !HeistHUD->ShowInventoryScreen())
+		{
+			UHeistDebugFunctionLibrary::DebugInventoryOpenSkipped(this);
+			return;
+		}
+	}
+
 	Server_SetInventoryOpen(bInventoryOpen);
 }
 
@@ -316,6 +349,21 @@ void AHeistPlayerController::DebugRequestForceGapTracker(const bool bActive)
 void AHeistPlayerController::DebugRequestClearGapTrackerOverride()
 {
 	Server_DebugRequestClearGapTrackerOverride();
+}
+
+void AHeistPlayerController::DebugRequestApplyStatusStun(const float DurationSeconds)
+{
+	Server_DebugRequestApplyStatusStun(DurationSeconds);
+}
+
+void AHeistPlayerController::DebugRequestApplyStatusImmunity(const float DurationSeconds)
+{
+	Server_DebugRequestApplyStatusImmunity(DurationSeconds);
+}
+
+void AHeistPlayerController::DebugRequestClearStatus()
+{
+	Server_DebugRequestClearStatus();
 }
 
 void AHeistPlayerController::DebugRequestSpawnGuard(const float Distance)
@@ -903,6 +951,51 @@ void AHeistPlayerController::Server_DebugRequestClearGapTrackerOverride_Implemen
 	{
 		HeistGameMode->DebugClearGapTrackerOverride();
 	}
+#endif
+}
+
+void AHeistPlayerController::Server_DebugRequestApplyStatusStun_Implementation(
+	const float DurationSeconds)
+{
+#if !UE_BUILD_SHIPPING
+	AHeistPlayerCharacter* HeistPlayerCharacter = GetPawn<AHeistPlayerCharacter>();
+	if (!IsValid(HeistPlayerCharacter))
+	{
+		return;
+	}
+
+	HeistPlayerCharacter->GetStatusComponent()->ApplyStun(
+		FMath::Clamp(DurationSeconds, 0.01f, 600.0f));
+#endif
+}
+
+void AHeistPlayerController::Server_DebugRequestApplyStatusImmunity_Implementation(
+	const float DurationSeconds)
+{
+#if !UE_BUILD_SHIPPING
+	AHeistPlayerCharacter* HeistPlayerCharacter = GetPawn<AHeistPlayerCharacter>();
+	if (!IsValid(HeistPlayerCharacter))
+	{
+		return;
+	}
+
+	HeistPlayerCharacter->GetStatusComponent()->ApplyStunImmunity(
+		FMath::Clamp(DurationSeconds, 0.01f, 600.0f));
+#endif
+}
+
+void AHeistPlayerController::Server_DebugRequestClearStatus_Implementation()
+{
+#if !UE_BUILD_SHIPPING
+	AHeistPlayerCharacter* HeistPlayerCharacter = GetPawn<AHeistPlayerCharacter>();
+	if (!IsValid(HeistPlayerCharacter))
+	{
+		return;
+	}
+
+	UHeistStatusComponent* StatusComponent = HeistPlayerCharacter->GetStatusComponent();
+	StatusComponent->ClearStatusTag(FHeistGameplayTags::Get().State_Stunned);
+	StatusComponent->ClearStatusTag(FHeistGameplayTags::Get().State_StunImmune);
 #endif
 }
 

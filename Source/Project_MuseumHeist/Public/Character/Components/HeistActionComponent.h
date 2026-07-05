@@ -20,6 +20,8 @@ DECLARE_MULTICAST_DELEGATE_TwoParams(
 	AHeistPlayerCharacter*,
 	AHeistTrapActor*);
 
+DECLARE_MULTICAST_DELEGATE(FHeistActionStateChanged);
+
 UCLASS(ClassGroup = (Heist), meta = (BlueprintSpawnableComponent))
 class PROJECT_MUSEUMHEIST_API UHeistActionComponent : public UActorComponent
 {
@@ -55,6 +57,7 @@ public:
 	bool IsEscapeCastActive() const;
 	float GetEscapeCastEndServerTime() const;
 	FHeistEscapeCastCompleted& GetEscapeCastCompletedDelegate();
+	FHeistActionStateChanged& GetActionStateChangedDelegate();
 
 private:
 	UPROPERTY(Transient)
@@ -74,6 +77,7 @@ private:
 
 	FTimerHandle EscapeCastTimerHandle;
 	FHeistEscapeCastCompleted EscapeCastCompletedDelegate;
+	FHeistActionStateChanged ActionStateChangedDelegate;
 
 	UFUNCTION()
 	void OnRep_EscapeCastActive();
@@ -100,6 +104,7 @@ public:
 		TSubclassOf<AHeistTrapActor> TrapActorClass,
 		bool bConsumeSourceItem);
 	bool IsTrapPlacementCastActive() const;
+	float GetTrapPlacementCastEndServerTime() const;
 	FHeistTrapPlacementCastCompleted& GetTrapPlacementCastCompletedDelegate();
 
 private:

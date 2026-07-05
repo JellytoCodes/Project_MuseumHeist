@@ -138,6 +138,7 @@ bool UHeistActionComponent::TryBeginEscapeRequest(AHeistVentActor* TargetVentAct
 
 	SetComponentTickEnabled(true);
 	OwnerActor->ForceNetUpdate();
+	ActionStateChangedDelegate.Broadcast();
 
 	UHeistDebugFunctionLibrary::DebugEscapeCastStarted(
 		this,
@@ -207,8 +208,14 @@ FHeistEscapeCastCompleted& UHeistActionComponent::GetEscapeCastCompletedDelegate
 	return EscapeCastCompletedDelegate;
 }
 
+FHeistActionStateChanged& UHeistActionComponent::GetActionStateChangedDelegate()
+{
+	return ActionStateChangedDelegate;
+}
+
 void UHeistActionComponent::OnRep_EscapeCastActive()
 {
+	ActionStateChangedDelegate.Broadcast();
 	UHeistDebugFunctionLibrary::DebugEscapeCastStateReplicated(
 		this,
 		GetOwner(),
@@ -283,6 +290,7 @@ bool UHeistActionComponent::TryBeginTrapPlacementRequest(
 
 	SetComponentTickEnabled(true);
 	OwnerActor->ForceNetUpdate();
+	ActionStateChangedDelegate.Broadcast();
 
 	UHeistDebugFunctionLibrary::DebugTrapPlacementCastStarted(
 		this,
@@ -319,6 +327,11 @@ bool UHeistActionComponent::IsTrapPlacementCastActive() const
 	return bTrapPlacementCastActive;
 }
 
+float UHeistActionComponent::GetTrapPlacementCastEndServerTime() const
+{
+	return TrapPlacementCastEndServerTime;
+}
+
 FHeistTrapPlacementCastCompleted& UHeistActionComponent::GetTrapPlacementCastCompletedDelegate()
 {
 	return TrapPlacementCastCompletedDelegate;
@@ -326,6 +339,7 @@ FHeistTrapPlacementCastCompleted& UHeistActionComponent::GetTrapPlacementCastCom
 
 void UHeistActionComponent::OnRep_TrapPlacementCastActive()
 {
+	ActionStateChangedDelegate.Broadcast();
 	UHeistDebugFunctionLibrary::DebugTrapPlacementCastStateReplicated(
 		this,
 		GetOwner(),
@@ -537,6 +551,8 @@ void UHeistActionComponent::ClearEscapeCastState()
 	{
 		OwnerActor->ForceNetUpdate();
 	}
+
+	ActionStateChangedDelegate.Broadcast();
 }
 
 void UHeistActionComponent::ClearTrapPlacementCastState()
@@ -564,6 +580,8 @@ void UHeistActionComponent::ClearTrapPlacementCastState()
 	{
 		OwnerActor->ForceNetUpdate();
 	}
+
+	ActionStateChangedDelegate.Broadcast();
 }
 
 #pragma endregion

@@ -1,6 +1,8 @@
 #include "Core/HeistHUD.h"
 
+#include "Character/Components/HeistActionComponent.h"
 #include "Character/Components/HeistInventoryComponent.h"
+#include "Character/Components/HeistStatusComponent.h"
 #include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistPlayerController.h"
@@ -11,6 +13,7 @@
 #include "UI/ViewModels/HeistInventoryViewModel.h"
 #include "UI/ViewModels/HeistQuickSlotViewModel.h"
 #include "UI/ViewModels/HeistResultViewModel.h"
+#include "UI/Widgets/HeistHUDWidget.h"
 #include "UI/Widgets/HeistInventoryWidget.h"
 #include "UI/Widgets/HeistRareLootAlertWidget.h"
 #include "UI/Widgets/HeistResultWidget.h"
@@ -28,10 +31,107 @@ AHeistHUD::AHeistHUD()
 void AHeistHUD::BeginPlay()
 {
 	Super::BeginPlay();
+	RefreshPresentationSources();
+}
+
+#pragma endregion
+
+#pragma region MainHUDPresentation
+
+bool AHeistHUD::ShowMainHUD()
+{
 	InitializeInventoryPresentation();
-	InitializeRareLootPresentation();
 	InitializeGapTrackerPresentation();
+	InitializeMainHUDPresentation();
+
+	if (!IsValid(MainHUDWidget))
+	{
+		return false;
+	}
+
+	MainHUDWidget->SetVisibility(ESlateVisibility::Visible);
+	return true;
+}
+
+void AHeistHUD::HideMainHUD()
+{
+	if (IsValid(MainHUDWidget))
+	{
+		MainHUDWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+void AHeistHUD::RefreshPresentationSources()
+{
+	InitializeInventoryPresentation();
+	InitializeGapTrackerPresentation();
+	InitializeMainHUDPresentation();
+	InitializeRareLootPresentation();
 	InitializeResultPresentation();
+}
+
+UHeistHUDViewModel* AHeistHUD::GetHUDViewModel() const
+{
+	return HUDViewModel;
+}
+
+UHeistHUDWidget* AHeistHUD::GetMainHUDWidget() const
+{
+	return MainHUDWidget;
+}
+
+void AHeistHUD::InitializeMainHUDPresentation()
+{
+	AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(GetOwningPlayerController());
+	if (!IsValid(HeistPlayerController) || !HeistPlayerController->IsLocalController())
+	{
+		return;
+	}
+
+	if (!IsValid(HUDViewModel))
+	{
+		HUDViewModel = NewObject<UHeistHUDViewModel>(this);
+	}
+
+	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	AHeistPlayerState* HeistPlayerState = HeistPlayerController->GetPlayerState<AHeistPlayerState>();
+	AHeistPlayerCharacter* HeistPlayerCharacter =
+		HeistPlayerController->GetPawn<AHeistPlayerCharacter>();
+	UHeistStatusComponent* StatusComponent = IsValid(HeistPlayerCharacter)
+		? HeistPlayerCharacter->GetStatusComponent()
+		: nullptr;
+	UHeistActionComponent* ActionComponent = IsValid(HeistPlayerCharacter)
+		? HeistPlayerCharacter->GetActionComponent()
+		: nullptr;
+	HUDViewModel->SetupViewModel(
+		HeistGameState,
+		HeistPlayerState,
+		StatusComponent,
+		ActionComponent);
+
+	if (!MainHUDWidgetClass)
+	{
+		return;
+	}
+
+	if (!IsValid(MainHUDWidget))
+	{
+		MainHUDWidget = CreateWidget<UHeistHUDWidget>(
+			HeistPlayerController,
+			MainHUDWidgetClass);
+		if (!IsValid(MainHUDWidget))
+		{
+			return;
+		}
+
+		MainHUDWidget->AddToViewport();
+	}
+
+	MainHUDWidget->SetupHUDWidget(
+		HUDViewModel,
+		InventoryViewModel,
+		QuickSlotViewModel,
+		GapTrackerViewModel);
 }
 
 #pragma endregion
@@ -105,11 +205,6 @@ void AHeistHUD::InitializeInventoryPresentation()
 
 #pragma region RareLootPresentation
 
-UHeistHUDViewModel* AHeistHUD::GetHUDViewModel() const
-{
-	return HUDViewModel;
-}
-
 void AHeistHUD::InitializeRareLootPresentation()
 {
 	APlayerController* OwningPlayerController = GetOwningPlayerController();
@@ -120,13 +215,12 @@ void AHeistHUD::InitializeRareLootPresentation()
 
 	if (!IsValid(HUDViewModel))
 	{
-		HUDViewModel = NewObject<UHeistHUDViewModel>(this);
+		InitializeMainHUDPresentation();
 	}
 
-	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
-	HUDViewModel->SetupViewModel(HeistGameState);
-
-	if (!RareLootAlertWidgetClass || IsValid(RareLootAlertWidget))
+	if (!IsValid(HUDViewModel)
+		|| !RareLootAlertWidgetClass
+		|| IsValid(RareLootAlertWidget))
 	{
 		return;
 	}

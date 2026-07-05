@@ -24,6 +24,29 @@ protected:
 
 #pragma endregion
 
+#pragma region MainHUDPresentation
+
+public:
+	bool ShowMainHUD();
+	void HideMainHUD();
+	void RefreshPresentationSources();
+	class UHeistHUDViewModel* GetHUDViewModel() const;
+	class UHeistHUDWidget* GetMainHUDWidget() const;
+
+private:
+	void InitializeMainHUDPresentation();
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|UI", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<UHeistHUDWidget> MainHUDWidgetClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHeistHUDViewModel> HUDViewModel;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHeistHUDWidget> MainHUDWidget;
+
+#pragma endregion
+
 #pragma region InventoryPresentation
 
 public:
@@ -50,17 +73,11 @@ private:
 
 #pragma region RareLootPresentation
 
-public:
-	class UHeistHUDViewModel* GetHUDViewModel() const;
-
 private:
 	void InitializeRareLootPresentation();
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|UI", meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<class UHeistRareLootAlertWidget> RareLootAlertWidgetClass;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UHeistHUDViewModel> HUDViewModel;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UHeistRareLootAlertWidget> RareLootAlertWidget;

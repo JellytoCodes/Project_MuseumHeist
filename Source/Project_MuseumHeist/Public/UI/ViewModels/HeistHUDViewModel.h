@@ -7,6 +7,7 @@
 #include "HeistHUDViewModel.generated.h"
 
 DECLARE_MULTICAST_DELEGATE(FHeistRareLootPresentationChanged);
+DECLARE_MULTICAST_DELEGATE(FHeistHUDPresentationChanged);
 
 UCLASS(BlueprintType)
 class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
@@ -30,17 +31,93 @@ protected:
 #pragma region Setup
 
 public:
-	void SetupViewModel(class AHeistGameState* InGameState);
+	void SetupViewModel(
+		class AHeistGameState* InGameState,
+		class AHeistPlayerState* InLocalPlayerState,
+		class UHeistStatusComponent* InStatusComponent,
+		class UHeistActionComponent* InActionComponent);
+	void RefreshPresentationState();
 	void RefreshRareLootState();
+	FHeistHUDPresentationChanged& GetPresentationChangedDelegate();
 	FHeistRareLootPresentationChanged& GetRareLootPresentationChangedDelegate();
 
 private:
 	void HandleRareLootEventStateChanged(const FHeistRareLootEventState& EventState);
+	void HandleEscapePhaseStateChanged(bool bEscapePhaseOpen);
+	void HandleLootTotalsChanged(int32 TotalLootScore, float TotalLootWeight);
+	void HandleEscapeStateChanged(bool bEscaped);
+	void HandleStatusTagsChanged(const TArray<FHeistTimedTagState>& StatusTags);
+	void HandleActionStateChanged();
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHeistGameState> GameState;
 
+	UPROPERTY(Transient)
+	TObjectPtr<AHeistPlayerState> LocalPlayerState;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHeistStatusComponent> StatusComponent;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHeistActionComponent> ActionComponent;
+
+	FHeistHUDPresentationChanged PresentationChangedDelegate;
 	FHeistRareLootPresentationChanged RareLootPresentationChangedDelegate;
+
+#pragma endregion
+
+#pragma region GeneralPresentation
+
+public:
+	int32 GetLocalLootScore() const;
+	float GetLocalLootWeight() const;
+	int32 GetConnectedPlayerCount() const;
+	bool IsLocalPlayerEscaped() const;
+	bool IsEscapePhaseOpen() const;
+	bool IsStunned() const;
+	bool IsStunImmune() const;
+	bool IsInSmoke() const;
+	bool IsEscapeCastActive() const;
+	float GetEscapeCastEndServerTime() const;
+	bool IsTrapPlacementCastActive() const;
+	float GetTrapPlacementCastEndServerTime() const;
+
+private:
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|HUD", meta = (AllowPrivateAccess = "true"))
+	int32 LocalLootScore = 0;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|HUD", meta = (AllowPrivateAccess = "true"))
+	float LocalLootWeight = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|HUD", meta = (AllowPrivateAccess = "true"))
+	int32 ConnectedPlayerCount = 0;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|HUD", meta = (AllowPrivateAccess = "true"))
+	bool bLocalPlayerEscaped = false;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|HUD", meta = (AllowPrivateAccess = "true"))
+	bool bEscapePhaseOpen = false;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Status", meta = (AllowPrivateAccess = "true"))
+	bool bStunned = false;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Status", meta = (AllowPrivateAccess = "true"))
+	bool bStunImmune = false;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Status", meta = (AllowPrivateAccess = "true"))
+	bool bInSmoke = false;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Action", meta = (AllowPrivateAccess = "true"))
+	bool bEscapeCastActive = false;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Action", meta = (AllowPrivateAccess = "true"))
+	float EscapeCastEndServerTime = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Action", meta = (AllowPrivateAccess = "true"))
+	bool bTrapPlacementCastActive = false;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Action", meta = (AllowPrivateAccess = "true"))
+	float TrapPlacementCastEndServerTime = 0.0f;
 
 #pragma endregion
 
