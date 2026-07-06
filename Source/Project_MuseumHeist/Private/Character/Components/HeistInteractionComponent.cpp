@@ -1,6 +1,7 @@
 #include "Character/Components/HeistInteractionComponent.h"
 
 #include "Character/HeistPlayerCharacter.h"
+#include "Core/HeistLogChannels.h"
 #include "Engine/OverlapResult.h"
 #include "Engine/World.h"
 #include "World/Interaction/HeistInteractable.h"
@@ -18,11 +19,21 @@ UHeistInteractionComponent::UHeistInteractionComponent()
 
 bool UHeistInteractionComponent::RefreshInteractionTarget()
 {
+	AActor* PreviousTarget = CurrentInteractionTarget.Get();
 	AActor* OwnerActor = GetOwner();
 	UWorld* World = GetWorld();
 	if (!IsValid(OwnerActor) || World == nullptr || !CanOwnerInteract())
 	{
 		CurrentInteractionTarget.Reset();
+		if (IsValid(PreviousTarget))
+		{
+			UE_LOG(
+				LogHeistUI,
+				Log,
+				TEXT("[%s] Interaction prompt target cleared: Previous=%s Reason=OwnerCannotInteract"),
+				*GetNameSafe(OwnerActor),
+				*GetNameSafe(PreviousTarget));
+		}
 		return false;
 	}
 
@@ -78,6 +89,17 @@ bool UHeistInteractionComponent::RefreshInteractionTarget()
 	}
 
 	CurrentInteractionTarget = ClosestTarget;
+	if (PreviousTarget != ClosestTarget)
+	{
+		UE_LOG(
+			LogHeistUI,
+			Log,
+			TEXT("[%s] Interaction prompt target changed: Previous=%s Target=%s Available=%s Key=E"),
+			*GetNameSafe(OwnerActor),
+			*GetNameSafe(PreviousTarget),
+			*GetNameSafe(ClosestTarget),
+			ClosestTarget != nullptr ? TEXT("true") : TEXT("false"));
+	}
 
 	return ClosestTarget != nullptr;
 }

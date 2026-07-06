@@ -65,17 +65,65 @@ the active numbered task requires it.
 
 ## Codex Implementation And Verification Responsibility
 
-Codex is the primary implementation agent for task-scoped C++ and Blueprint work.
+Starting with `TASK-W2-010`, Codex is the primary implementation agent for
+task-scoped C++ work. The user is the primary implementation owner for
+Blueprint, Widget Blueprint, DataTable/DataAsset editor assignment, and Map
+setup work.
 
 Codex should:
 
 * Create and modify C++ classes required by the active numbered task.
-* Create and modify Blueprint and Widget Blueprint assets through Unreal Editor/MCP when the active task requires them.
-* Keep Blueprint work within asset assignment, class defaults, component assembly, layout, MVVM binding, and visual presentation responsibilities.
-* Use C++ builds, Blueprint compile results, project Debug classes, targeted debug commands, and Output Log evidence as the normal completion evidence for individual implementation tasks.
+* Inspect existing Blueprint and Widget Blueprint assets read-only through
+  Unreal Editor/MCP when needed to produce accurate setup instructions.
+* Do not create or modify Blueprint, Widget Blueprint, DataTable/DataAsset, or
+  Map assets unless the user explicitly asks Codex to perform that specific
+  editor operation.
+* Provide the user with a task-specific Blueprint work instruction document
+  for every required editor-side change.
+* Keep instructed Blueprint work within asset assignment, class defaults,
+  component assembly, layout, MVVM binding, and visual presentation
+  responsibilities.
+* Use C++ builds, user-reported Blueprint compile results, project Debug
+  classes, targeted debug commands, and Output Log evidence as the normal
+  completion evidence for individual implementation tasks.
 * Update the related Notion task when the implementation, compile checks, and required debug-log evidence pass.
 
-The user owns interactive PIE verification.
+The user owns Blueprint implementation and interactive PIE verification.
+
+### User-Owned Blueprint Work Instruction Standard
+
+For `TASK-W2-010` and later tasks, when Blueprint, Widget Blueprint,
+DataTable/DataAsset, or Map work is required, Codex must provide a
+paste-ready, ordered instruction document containing:
+
+* Exact asset name and Content Browser path.
+* Whether to create a new asset or modify an existing asset.
+* Required parent C++ class.
+* Exact component, widget, variable, function, and `BindWidget` names and
+  their expected Unreal types.
+* Exact Class Defaults values and asset references to assign.
+* Ordered Unreal Editor operations with no omitted intermediate step.
+* Any allowed Blueprint graph nodes and connections. Gameplay-authoritative
+  graph logic must not be instructed.
+* Expected Blueprint compile result and relevant warnings that must not
+  remain.
+* A short visual/structural confirmation checklist.
+* The PIE verification procedure and expected high-signal Output Log lines.
+
+Codex must clearly separate:
+
+```txt
+Implemented in C++
+User Blueprint work instructions
+User DataTable/DataAsset work instructions
+User Map work instructions
+User PIE verification
+```
+
+Codex must not mark the task complete merely because the C++ portion builds.
+When editor-side work is required, the user must confirm that the instructions
+were applied and provide the requested compile/PIE evidence before Codex
+classifies the task and updates Notion.
 
 Unless the user explicitly requests Codex-driven PIE automation:
 
@@ -134,6 +182,10 @@ When the user supplies PIE results or logs, Codex must:
 * Use C++ for gameplay logic, replicated state, validation, ViewModels, and Widget base classes.
 * Use Blueprint Widgets only as layout, visual design, and animation layer.
 * Do not put gameplay logic in Blueprint graphs.
+* Starting with `TASK-W2-010`, Blueprint, Widget Blueprint,
+  DataTable/DataAsset, and Map editor changes are user-owned by default. Codex
+  may perform them only when the user explicitly requests that specific editor
+  change.
 * Blueprint and Widget Blueprint `.uasset` files may be created or modified only through Unreal Editor/MCP for the active numbered task.
 * Do not create or edit `.uasset` files through raw filesystem or CLI binary manipulation.
 * Do not create or modify `.umap` files unless explicitly requested.
@@ -437,7 +489,9 @@ Codex must not imply the task is fully usable in-game if required Blueprint/Data
 
 ### Manual Setup Checklist Requirement
 
-If a task exposes Blueprint/DataAsset/Map responsibilities, Codex must provide a checklist.
+If a task exposes Blueprint/DataAsset/Map responsibilities, Codex must provide
+the full User-Owned Blueprint Work Instruction Standard above, not only a
+high-level checklist.
 
 Example:
 

@@ -14,6 +14,7 @@
 #include "UI/ViewModels/HeistInventoryViewModel.h"
 #include "UI/ViewModels/HeistQuickSlotViewModel.h"
 #include "UI/Widgets/HeistInventoryItemWidget.h"
+#include "UI/Widgets/HeistQuickSlotWidget.h"
 #include "UI/Widgets/HeistInventorySlotWidget.h"
 #include "View/MVVMView.h"
 
@@ -189,6 +190,7 @@ void UHeistInventoryWidget::RefreshQuickSlotPresentation()
 		}
 
 		BP_RefreshConfirmedQuickSlots(ConfirmedQuickSlots);
+		RebuildConfirmedQuickSlots(QuickSlotViewModel->GetQuickSlotPresentations());
 	}
 }
 
@@ -357,6 +359,42 @@ void UHeistInventoryWidget::RebuildConfirmedInventory(
 	}
 }
 
+void UHeistInventoryWidget::RebuildConfirmedQuickSlots(
+	const TArray<FHeistQuickSlotPresentation>& ConfirmedQuickSlots)
+{
+	QuickSlotWidgets.Reset();
+	if (!IsValid(QuickSlotPanel))
+	{
+		return;
+	}
+
+	QuickSlotPanel->ClearChildren();
+	if (!QuickSlotWidgetClass)
+	{
+		return;
+	}
+
+	for (int32 SlotIndex = 0; SlotIndex < ConfirmedQuickSlots.Num(); ++SlotIndex)
+	{
+		const FHeistQuickSlotPresentation& ConfirmedQuickSlot = ConfirmedQuickSlots[SlotIndex];
+		UHeistQuickSlotWidget* QuickSlotWidget =
+			CreateWidget<UHeistQuickSlotWidget>(GetOwningPlayer(), QuickSlotWidgetClass);
+		if (!IsValid(QuickSlotWidget))
+		{
+			continue;
+		}
+
+		QuickSlotWidget->SetupQuickSlot(
+			ConfirmedQuickSlot,
+			ResolveQuickSlotIcon(ConfirmedQuickSlot.ItemId),
+			this);
+		UUniformGridSlot* GridSlot = QuickSlotPanel->AddChildToUniformGrid(QuickSlotWidget, 0, SlotIndex);
+		GridSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Fill);
+		GridSlot->SetVerticalAlignment(EVerticalAlignment::VAlign_Fill);
+		QuickSlotWidgets.Add(QuickSlotWidget);
+	}
+}
+
 bool UHeistInventoryWidget::TryResolveItemPresentation(
 	const FHeistInventoryItem& InventoryItem,
 	FIntPoint& OutPlacedSize,
@@ -384,6 +422,22 @@ bool UHeistInventoryWidget::TryResolveItemPresentation(
 		: ItemDefinition->GridSize;
 	OutIcon = ItemDefinition->Icon.LoadSynchronous();
 	return true;
+}
+
+UTexture2D* UHeistInventoryWidget::ResolveQuickSlotIcon(const FName ItemId) const
+{
+	if (ItemId.IsNone()
+		|| !IsValid(ItemDataTable)
+		|| ItemDataTable->GetRowStruct() != FHeistItemDataRow::StaticStruct())
+	{
+		return nullptr;
+	}
+
+	const FHeistItemDataRow* ItemDefinition = ItemDataTable->FindRow<FHeistItemDataRow>(
+		ItemId,
+		TEXT("UHeistInventoryWidget::ResolveQuickSlotIcon"),
+		false);
+	return ItemDefinition ? ItemDefinition->Icon.LoadSynchronous() : nullptr;
 }
 
 bool UHeistInventoryWidget::TryGetDropTargetGridPosition(

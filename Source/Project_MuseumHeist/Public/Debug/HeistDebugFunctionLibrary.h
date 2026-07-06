@@ -139,6 +139,9 @@ public:
 	static void DebugInventoryOpen(APlayerController* PlayerController, bool bOpen);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Inventory", meta = (DevelopmentOnly))
+	static void DebugInventoryAdd(APlayerController* PlayerController, FName ItemId);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Inventory", meta = (DevelopmentOnly))
 	static void DebugInventoryMove(APlayerController* PlayerController, int32 InstanceId, int32 GridX, int32 GridY);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Inventory", meta = (DevelopmentOnly))

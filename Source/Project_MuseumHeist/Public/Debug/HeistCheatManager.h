@@ -26,6 +26,9 @@ public:
 	void HeistInvOpen(bool bOpen);
 
 	UFUNCTION(Exec)
+	void HeistInvAdd(const FString& ItemId);
+
+	UFUNCTION(Exec)
 	void HeistInvMove(int32 InstanceId, int32 GridX, int32 GridY);
 
 	UFUNCTION(Exec)

@@ -316,6 +316,11 @@ void AHeistPlayerController::RequestUseQuickSlotAtWorldLocation(
 	Server_RequestUseQuickSlotAtWorldLocation(SlotType, TargetWorldLocation);
 }
 
+void AHeistPlayerController::DebugRequestAddInventoryItem(const FName ItemId)
+{
+	Server_DebugRequestAddInventoryItem(ItemId);
+}
+
 void AHeistPlayerController::DebugRequestThrowCoinAtWorldLocation(const FVector TargetWorldLocation)
 {
 	Server_DebugRequestThrowCoinAtWorldLocation(TargetWorldLocation);
@@ -797,6 +802,27 @@ void AHeistPlayerController::Server_RequestUseQuickSlotAtWorldLocation_Implement
 	}
 
 	LogThrowableUseRejected(SlotType, ItemId, TEXT("UnsupportedUseType"));
+}
+
+void AHeistPlayerController::Server_DebugRequestAddInventoryItem_Implementation(const FName ItemId)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	FHeistGameplayRequestContext RequestContext;
+	const TCHAR* RejectReason = nullptr;
+	if (!TryBuildGameplayRequestContext(RequestContext, RejectReason))
+	{
+		LogInventoryRequestRejected(TEXT("DebugAddItem"), INDEX_NONE, RejectReason);
+		return;
+	}
+
+	int32 AddedInstanceId = INDEX_NONE;
+	if (!RequestContext.InventoryComponent->TryAddItem(ItemId, AddedInstanceId))
+	{
+		LogInventoryRequestRejected(TEXT("DebugAddItem"), INDEX_NONE, TEXT("AddRejected"));
+	}
+#endif
 }
 
 void AHeistPlayerController::Server_DebugRequestThrowCoinAtWorldLocation_Implementation(const FVector TargetWorldLocation)

@@ -2393,7 +2393,7 @@ void UHeistDebugFunctionLibrary::DebugInventoryHelp(APlayerController* PlayerCon
 #else
 	Message(
 		PlayerController,
-		TEXT("Inventory debug commands: HeistInvDump | HeistInvOpen 1/0 | HeistInvMove <InstanceId> <X> <Y> | HeistInvRotate <InstanceId> | HeistInvDrop <InstanceId> | HeistInvAssign <Q|E|R|Coin|Smoke|Glue> <InstanceId> | HeistInvClear <Q|E|R|Coin|Smoke|Glue> | HeistInvInvalidMove <InstanceId>"),
+		TEXT("Inventory debug commands: HeistInvDump | HeistInvOpen 1/0 | HeistInvAdd <ItemId> | HeistInvMove <InstanceId> <X> <Y> | HeistInvRotate <InstanceId> | HeistInvDrop <InstanceId> | HeistInvAssign <Q|E|R|Coin|Smoke|Glue> <InstanceId> | HeistInvClear <Q|E|R|Coin|Smoke|Glue> | HeistInvInvalidMove <InstanceId>"),
 		EHeistDebugLevel::Info,
 		true,
 		8.0f);
@@ -2477,6 +2477,31 @@ void UHeistDebugFunctionLibrary::DebugInventoryOpen(APlayerController* PlayerCon
 	Message(
 		PlayerController,
 		FString::Printf(TEXT("Inventory debug open requested: Open=%s"), bOpen ? TEXT("true") : TEXT("false")),
+		EHeistDebugLevel::Info,
+		true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugInventoryAdd(APlayerController* PlayerController, const FName ItemId)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController) || ItemId.IsNone())
+	{
+		Message(
+			PlayerController,
+			TEXT("Inventory debug add failed: invalid Heist player controller or ItemId."),
+			EHeistDebugLevel::Warning,
+			true);
+		return;
+	}
+
+	HeistPlayerController->DebugRequestAddInventoryItem(ItemId);
+	Message(
+		PlayerController,
+		FString::Printf(TEXT("Inventory debug add requested: ItemId=%s"), *ItemId.ToString()),
 		EHeistDebugLevel::Info,
 		true);
 #endif

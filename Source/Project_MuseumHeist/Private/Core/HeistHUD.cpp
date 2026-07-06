@@ -2,6 +2,7 @@
 
 #include "Character/Components/HeistActionComponent.h"
 #include "Character/Components/HeistInventoryComponent.h"
+#include "Character/Components/HeistInteractionComponent.h"
 #include "Character/Components/HeistStatusComponent.h"
 #include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameState.h"
@@ -103,6 +104,9 @@ void AHeistHUD::InitializeMainHUDPresentation()
 	UHeistActionComponent* ActionComponent = IsValid(HeistPlayerCharacter)
 		? HeistPlayerCharacter->GetActionComponent()
 		: nullptr;
+	UHeistInteractionComponent* InteractionComponent = IsValid(HeistPlayerCharacter)
+		? HeistPlayerCharacter->GetInteractionComponent()
+		: nullptr;
 	HUDViewModel->SetupViewModel(
 		HeistGameState,
 		HeistPlayerState,
@@ -131,7 +135,8 @@ void AHeistHUD::InitializeMainHUDPresentation()
 		HUDViewModel,
 		InventoryViewModel,
 		QuickSlotViewModel,
-		GapTrackerViewModel);
+		GapTrackerViewModel,
+		InteractionComponent);
 }
 
 #pragma endregion

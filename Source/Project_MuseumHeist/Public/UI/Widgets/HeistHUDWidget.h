@@ -33,7 +33,8 @@ public:
 		class UHeistHUDViewModel* InHUDViewModel,
 		class UHeistInventoryViewModel* InInventoryViewModel,
 		class UHeistQuickSlotViewModel* InQuickSlotViewModel,
-		class UHeistGapTrackerViewModel* InGapTrackerViewModel);
+		class UHeistGapTrackerViewModel* InGapTrackerViewModel,
+		class UHeistInteractionComponent* InInteractionComponent);
 
 private:
 	void RefreshHUDPresentation();
@@ -49,6 +50,9 @@ private:
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Heist|HUD", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistGapTrackerViewModel> GapTrackerViewModel;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHeistInteractionComponent> InteractionComponent;
 
 protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|HUD", meta = (DisplayName = "HUD Sources Ready"))
@@ -88,6 +92,12 @@ private:
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> AlertText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<class UHeistInteractionPromptWidget> InteractionPromptWidget;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UHeistInteractionPromptWidget> ActionProgressWidget;
 
 #pragma endregion
 };

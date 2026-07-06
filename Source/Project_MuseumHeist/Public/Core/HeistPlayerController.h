@@ -100,6 +100,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Heist|QuickSlot")
 	void RequestUseQuickSlotAtWorldLocation(EHeistQuickSlotType SlotType, FVector TargetWorldLocation);
 
+	void DebugRequestAddInventoryItem(FName ItemId);
 	void DebugRequestThrowCoinAtWorldLocation(FVector TargetWorldLocation);
 	void DebugRequestThrowSmokeAtWorldLocation(FVector TargetWorldLocation);
 	void DebugRequestPlaceGlueTrapAtWorldLocation(FVector TargetWorldLocation);
@@ -143,6 +144,9 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestUseQuickSlotAtWorldLocation(EHeistQuickSlotType SlotType, FVector TargetWorldLocation);
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestAddInventoryItem(FName ItemId);
 
 	UFUNCTION(Server, Reliable)
 	void Server_DebugRequestThrowCoinAtWorldLocation(FVector TargetWorldLocation);

@@ -5,6 +5,7 @@
 #include "UI/ViewModels/HeistHUDViewModel.h"
 #include "UI/ViewModels/HeistInventoryViewModel.h"
 #include "UI/ViewModels/HeistQuickSlotViewModel.h"
+#include "UI/Widgets/HeistInteractionPromptWidget.h"
 
 #pragma region Construction
 
@@ -35,7 +36,8 @@ void UHeistHUDWidget::SetupHUDWidget(
 	UHeistHUDViewModel* InHUDViewModel,
 	UHeistInventoryViewModel* InInventoryViewModel,
 	UHeistQuickSlotViewModel* InQuickSlotViewModel,
-	UHeistGapTrackerViewModel* InGapTrackerViewModel)
+	UHeistGapTrackerViewModel* InGapTrackerViewModel,
+	UHeistInteractionComponent* InInteractionComponent)
 {
 	checkf(IsValid(InHUDViewModel), TEXT("HeistHUDWidget requires a valid HUD ViewModel."));
 
@@ -48,6 +50,7 @@ void UHeistHUDWidget::SetupHUDWidget(
 	InventoryViewModel = InInventoryViewModel;
 	QuickSlotViewModel = InQuickSlotViewModel;
 	GapTrackerViewModel = InGapTrackerViewModel;
+	InteractionComponent = InInteractionComponent;
 
 	HUDViewModel->GetPresentationChangedDelegate().RemoveAll(this);
 	HUDViewModel->GetPresentationChangedDelegate().AddUObject(
@@ -55,6 +58,14 @@ void UHeistHUDWidget::SetupHUDWidget(
 		&UHeistHUDWidget::RefreshHUDPresentation);
 
 	BP_OnHUDSourcesReady();
+	if (IsValid(InteractionPromptWidget))
+	{
+		InteractionPromptWidget->SetupInteractionPresentation(InteractionComponent, HUDViewModel);
+	}
+	if (IsValid(ActionProgressWidget))
+	{
+		ActionProgressWidget->SetupInteractionPresentation(InteractionComponent, HUDViewModel);
+	}
 	RefreshHUDPresentation();
 }
 

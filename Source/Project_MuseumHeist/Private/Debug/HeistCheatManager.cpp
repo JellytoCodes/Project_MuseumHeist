@@ -107,6 +107,13 @@ void UHeistCheatManager::HeistInvOpen(const bool bOpen)
 #endif
 }
 
+void UHeistCheatManager::HeistInvAdd(const FString& ItemId)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugInventoryAdd(GetOuterAPlayerController(), FName(*ItemId));
+#endif
+}
+
 void UHeistCheatManager::HeistInvMove(const int32 InstanceId, const int32 GridX, const int32 GridY)
 {
 #if !UE_BUILD_SHIPPING

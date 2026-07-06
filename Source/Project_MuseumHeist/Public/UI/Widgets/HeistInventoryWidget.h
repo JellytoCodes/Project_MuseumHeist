@@ -11,6 +11,7 @@ class UButton;
 class UCanvasPanel;
 class UDataTable;
 class UHeistInventoryItemWidget;
+class UHeistQuickSlotWidget;
 class UHeistInventorySlotWidget;
 class UTextBlock;
 class UTexture2D;
@@ -111,10 +112,13 @@ private:
 		const TArray<FHeistInventoryItem>& ConfirmedItems,
 		int32 GridColumns,
 		int32 GridRows);
+	void RebuildConfirmedQuickSlots(
+		const TArray<struct FHeistQuickSlotPresentation>& ConfirmedQuickSlots);
 	bool TryResolveItemPresentation(
 		const FHeistInventoryItem& InventoryItem,
 		FIntPoint& OutPlacedSize,
 		UTexture2D*& OutIcon) const;
+	UTexture2D* ResolveQuickSlotIcon(FName ItemId) const;
 	bool TryGetDropTargetGridPosition(
 		const FDragDropEvent& DragDropEvent,
 		FIntPoint& OutGridPosition) const;
@@ -131,6 +135,9 @@ private:
 	TSubclassOf<UHeistInventoryItemWidget> InventoryItemWidgetClass;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Inventory|Presentation", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<UHeistQuickSlotWidget> QuickSlotWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Inventory|Presentation", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UDataTable> ItemDataTable;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Inventory|Presentation", meta = (AllowPrivateAccess = "true"))
@@ -141,6 +148,9 @@ private:
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UHeistInventoryItemWidget>> InventoryItemWidgets;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UHeistQuickSlotWidget>> QuickSlotWidgets;
 
 	UPROPERTY(Transient)
 	TArray<FHeistInventoryItem> ConfirmedInventoryItems;
@@ -173,6 +183,9 @@ private:
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UCanvasPanel> ItemOverlay;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UUniformGridPanel> QuickSlotPanel;
 
 #pragma endregion
 };
