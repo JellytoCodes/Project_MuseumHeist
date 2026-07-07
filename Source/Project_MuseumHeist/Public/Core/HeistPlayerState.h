@@ -8,6 +8,7 @@
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerEscapeStateChanged, bool);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistGapTrackerDirectionChanged, const FVector&);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistLootTotalsChanged, int32, float);
+DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerIdentityChanged, int32);
 
 UCLASS()
 class PROJECT_MUSEUMHEIST_API AHeistPlayerState : public APlayerState
@@ -112,12 +113,19 @@ public:
 
 public:
 	void InitializeVerificationIdentity(int32 InHeistPlayerId, const FLinearColor& InPlayerColor);
+	FHeistPlayerIdentityChanged& GetPlayerIdentityChangedDelegate();
 
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Verification")
+	UPROPERTY(ReplicatedUsing = OnRep_HeistPlayerId, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Verification")
 	int32 HeistPlayerId = INDEX_NONE;
 
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Verification")
 	FLinearColor PlayerColor = FLinearColor::White;
+
+private:
+	UFUNCTION()
+	void OnRep_HeistPlayerId();
+
+	FHeistPlayerIdentityChanged PlayerIdentityChangedDelegate;
 
 #pragma endregion
 };

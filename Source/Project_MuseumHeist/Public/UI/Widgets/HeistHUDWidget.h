@@ -6,6 +6,8 @@
 #include "HeistHUDWidget.generated.h"
 
 class UTextBlock;
+class UHeistInteractionPromptWidget;
+class UWidget;
 
 UCLASS(Blueprintable)
 class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
@@ -38,6 +40,10 @@ public:
 
 private:
 	void RefreshHUDPresentation();
+	void ResolveInteractionChildWidgets();
+	UHeistInteractionPromptWidget* ResolveInteractionChildWidget(
+		FName WidgetName,
+		UHeistInteractionPromptWidget* ExistingWidget) const;
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Heist|HUD", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistHUDViewModel> HUDViewModel;
@@ -94,7 +100,7 @@ private:
 	TObjectPtr<UTextBlock> AlertText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<class UHeistInteractionPromptWidget> InteractionPromptWidget;
+	TObjectPtr<UHeistInteractionPromptWidget> InteractionPromptWidget;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistInteractionPromptWidget> ActionProgressWidget;

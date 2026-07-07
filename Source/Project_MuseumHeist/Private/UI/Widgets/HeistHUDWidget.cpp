@@ -1,6 +1,9 @@
 #include "UI/Widgets/HeistHUDWidget.h"
 
+#include "Character/Components/HeistInteractionComponent.h"
 #include "Components/TextBlock.h"
+#include "Components/Widget.h"
+#include "Core/HeistLogChannels.h"
 #include "UI/ViewModels/HeistGapTrackerViewModel.h"
 #include "UI/ViewModels/HeistHUDViewModel.h"
 #include "UI/ViewModels/HeistInventoryViewModel.h"
@@ -57,7 +60,22 @@ void UHeistHUDWidget::SetupHUDWidget(
 		this,
 		&UHeistHUDWidget::RefreshHUDPresentation);
 
+	ResolveInteractionChildWidgets();
+	UE_LOG(
+		LogHeistUI,
+		Log,
+		TEXT("[%s] HUD widget setup: Class=%s HUDViewModel=%s InteractionComponent=%s InteractionPromptWidget=%s InteractionPromptClass=%s ActionProgressWidget=%s ActionProgressClass=%s"),
+		*GetName(),
+		*GetClass()->GetName(),
+		*GetNameSafe(HUDViewModel.Get()),
+		*GetNameSafe(InteractionComponent.Get()),
+		*GetNameSafe(InteractionPromptWidget.Get()),
+		IsValid(InteractionPromptWidget) ? *InteractionPromptWidget->GetClass()->GetName() : TEXT("None"),
+		*GetNameSafe(ActionProgressWidget.Get()),
+		IsValid(ActionProgressWidget) ? *ActionProgressWidget->GetClass()->GetName() : TEXT("None"));
+
 	BP_OnHUDSourcesReady();
+	ResolveInteractionChildWidgets();
 	if (IsValid(InteractionPromptWidget))
 	{
 		InteractionPromptWidget->SetupInteractionPresentation(InteractionComponent, HUDViewModel);
@@ -69,6 +87,62 @@ void UHeistHUDWidget::SetupHUDWidget(
 	RefreshHUDPresentation();
 }
 
+void UHeistHUDWidget::ResolveInteractionChildWidgets()
+{
+	InteractionPromptWidget = ResolveInteractionChildWidget(
+		TEXT("InteractionPromptWidget"),
+		InteractionPromptWidget);
+	ActionProgressWidget = ResolveInteractionChildWidget(
+		TEXT("ActionProgressWidget"),
+		ActionProgressWidget);
+}
+
+UHeistInteractionPromptWidget* UHeistHUDWidget::ResolveInteractionChildWidget(
+	const FName WidgetName,
+	UHeistInteractionPromptWidget* ExistingWidget) const
+{
+	if (IsValid(ExistingWidget))
+	{
+		return ExistingWidget;
+	}
+
+	UWidget* FoundWidget = GetWidgetFromName(WidgetName);
+	if (!IsValid(FoundWidget))
+	{
+		UE_LOG(
+			LogHeistUI,
+			Warning,
+			TEXT("[%s] HUD child widget missing: Name=%s"),
+			*GetName(),
+			*WidgetName.ToString());
+		return nullptr;
+	}
+
+	UHeistInteractionPromptWidget* ResolvedWidget = Cast<UHeistInteractionPromptWidget>(FoundWidget);
+	if (!IsValid(ResolvedWidget))
+	{
+		UE_LOG(
+			LogHeistUI,
+			Warning,
+			TEXT("[%s] HUD child widget type mismatch: Name=%s Found=%s FoundClass=%s Expected=HeistInteractionPromptWidget"),
+			*GetName(),
+			*WidgetName.ToString(),
+			*GetNameSafe(FoundWidget),
+			*FoundWidget->GetClass()->GetName());
+		return nullptr;
+	}
+
+	UE_LOG(
+		LogHeistUI,
+		Log,
+		TEXT("[%s] HUD child widget resolved by name: Name=%s Widget=%s Class=%s"),
+		*GetName(),
+		*WidgetName.ToString(),
+		*GetNameSafe(ResolvedWidget),
+		*ResolvedWidget->GetClass()->GetName());
+	return ResolvedWidget;
+}
+
 void UHeistHUDWidget::RefreshHUDPresentation()
 {
 	if (!IsValid(HUDViewModel))
@@ -78,6 +152,7 @@ void UHeistHUDWidget::RefreshHUDPresentation()
 
 	const int32 LocalLootScore = HUDViewModel->GetLocalLootScore();
 	const float LocalLootWeight = HUDViewModel->GetLocalLootWeight();
+	const int32 LocalPlayerId = HUDViewModel->GetLocalPlayerId();
 	const int32 ConnectedPlayerCount = HUDViewModel->GetConnectedPlayerCount();
 	const bool bLocalPlayerEscaped = HUDViewModel->IsLocalPlayerEscaped();
 	const bool bEscapePhaseOpen = HUDViewModel->IsEscapePhaseOpen();
@@ -132,10 +207,14 @@ void UHeistHUDWidget::RefreshHUDPresentation()
 
 	if (IsValid(AlertText))
 	{
+		const FText PlayerIdText = LocalPlayerId > 0
+			? FText::AsNumber(LocalPlayerId)
+			: NSLOCTEXT("HeistHUD", "UnknownPlayerId", "?");
 		AlertText->SetText(FText::Format(
 			bEscapePhaseOpen
-				? NSLOCTEXT("HeistHUD", "EscapeOpenAlertFormat", "ALERT  ESCAPE OPEN  |  PLAYERS {0}/4")
-				: NSLOCTEXT("HeistHUD", "PlayerCountAlertFormat", "PLAYERS  {0}/4"),
+				? NSLOCTEXT("HeistHUD", "EscapeOpenAlertFormat", "ALERT  ESCAPE OPEN  |  PLAYER {0}  |  PLAYERS {1}/4")
+				: NSLOCTEXT("HeistHUD", "PlayerIdentityCountAlertFormat", "PLAYER {0}  |  PLAYERS {1}/4"),
+			PlayerIdText,
 			FText::AsNumber(ConnectedPlayerCount)));
 	}
 

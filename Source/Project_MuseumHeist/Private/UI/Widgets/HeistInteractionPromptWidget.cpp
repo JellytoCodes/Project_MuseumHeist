@@ -4,6 +4,7 @@
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Components/Widget.h"
+#include "Core/HeistLogChannels.h"
 #include "Engine/World.h"
 #include "GameFramework/GameStateBase.h"
 #include "TimerManager.h"
@@ -54,6 +55,24 @@ void UHeistInteractionPromptWidget::SetupInteractionPresentation(
 	InteractionComponent = InInteractionComponent;
 	HUDViewModel = InHUDViewModel;
 
+	UE_LOG(
+		LogHeistUI,
+		Log,
+		TEXT("[%s] Interaction presentation setup: InteractionComponent=%s HUDViewModel=%s PromptContainer=%s ActionProgressContainer=%s SelfPromptFallback=%s SelfActionFallback=%s"),
+		*GetName(),
+		*GetNameSafe(InteractionComponent.Get()),
+		*GetNameSafe(HUDViewModel.Get()),
+		IsValid(InteractionPromptContainer) ? TEXT("true") : TEXT("false"),
+		IsValid(ActionProgressContainer) ? TEXT("true") : TEXT("false"),
+		(!IsValid(InteractionPromptContainer)
+			&& (IsValid(TargetText) || IsValid(KeyText) || IsValid(AvailabilityText))
+			&& !(IsValid(ActionTypeText) || IsValid(ActionProgressBar) || IsValid(ActionRemainingText) || IsValid(CancelHintText)))
+			? TEXT("true") : TEXT("false"),
+		(!IsValid(ActionProgressContainer)
+			&& (IsValid(ActionTypeText) || IsValid(ActionProgressBar) || IsValid(ActionRemainingText) || IsValid(CancelHintText))
+			&& !(IsValid(TargetText) || IsValid(KeyText) || IsValid(AvailabilityText)))
+			? TEXT("true") : TEXT("false"));
+
 	if (IsValid(HUDViewModel))
 	{
 		HUDViewModel->GetPresentationChangedDelegate().RemoveAll(this);
@@ -101,6 +120,19 @@ void UHeistInteractionPromptWidget::RefreshInteractionPrompt(const bool bActionA
 	{
 		InteractionPromptContainer->SetVisibility(
 			bVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+	else if (!IsValid(InteractionPromptContainer)
+		&& (IsValid(TargetText) || IsValid(KeyText) || IsValid(AvailabilityText))
+		&& !(IsValid(ActionTypeText) || IsValid(ActionProgressBar) || IsValid(ActionRemainingText) || IsValid(CancelHintText)))
+	{
+		const ESlateVisibility FallbackVisibility = bVisible
+			? ESlateVisibility::HitTestInvisible
+			: ESlateVisibility::Collapsed;
+		SetVisibility(FallbackVisibility);
+		if (UWidget* RootWidget = GetRootWidget())
+		{
+			RootWidget->SetVisibility(FallbackVisibility);
+		}
 	}
 	if (IsValid(TargetText))
 	{
@@ -158,6 +190,19 @@ void UHeistInteractionPromptWidget::RefreshActionProgress()
 	{
 		ActionProgressContainer->SetVisibility(
 			bActionActive ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+	else if (!IsValid(ActionProgressContainer)
+		&& (IsValid(ActionTypeText) || IsValid(ActionProgressBar) || IsValid(ActionRemainingText) || IsValid(CancelHintText))
+		&& !(IsValid(TargetText) || IsValid(KeyText) || IsValid(AvailabilityText)))
+	{
+		const ESlateVisibility FallbackVisibility = bActionActive
+			? ESlateVisibility::HitTestInvisible
+			: ESlateVisibility::Collapsed;
+		SetVisibility(FallbackVisibility);
+		if (UWidget* RootWidget = GetRootWidget())
+		{
+			RootWidget->SetVisibility(FallbackVisibility);
+		}
 	}
 	if (IsValid(ActionTypeText))
 	{

@@ -19,10 +19,10 @@ C++가 다음 항목을 담당한다.
 - 캐스팅 완료 판정
 - 캐스팅 취소 판정
 
-## 1. WBP_InteractionPrompt 생성
+## 1. WBP_InteractionPrompt 생성 또는 확인
 
-- 에셋 경로: `/Game/Blueprints/UI/HUD/WBP_InteractionPrompt`
-- 작업 유형: 신규 Widget Blueprint 생성
+- 현재 에셋 경로: `/Game/Blueprints/Widget/WBP_InteractionPrompt`
+- 작업 유형: 신규 Widget Blueprint 생성 또는 기존 Widget Blueprint 확인
 - 부모 클래스: `UHeistInteractionPromptWidget`
 
 아래 구조로 위젯을 구성한다. C++ 바인딩 이름은 대소문자까지 정확히
@@ -35,6 +35,13 @@ InteractionPromptContainer (Border)
    ├─ TargetText (TextBlock)
    └─ AvailabilityText (TextBlock)
 ```
+
+`InteractionPromptContainer`는 권장 바인딩 이름이다. 현재 C++는 이
+컨테이너가 없더라도 `TargetText`, `KeyText`, `AvailabilityText`만 존재하고
+Action Progress용 위젯이 없으면 `WBP_InteractionPrompt` 자체 Visibility를
+전환하는 fallback을 제공한다. 그래도 디버깅을 쉽게 하려면 루트 Border 또는
+최상위 표시 컨테이너 이름을 `InteractionPromptContainer`로 맞추는 것을
+권장한다.
 
 권장 플레이스홀더 값:
 
@@ -49,10 +56,10 @@ Event Graph는 비워 둔다. 텍스트와 Visibility는 C++에서 갱신한다.
 완료 후 Compile과 Save를 실행한다. 누락된 바인딩 또는 컴파일 경고가
 발생하지 않아야 한다.
 
-## 2. WBP_ActionProgress 생성
+## 2. WBP_ActionProgress 생성 또는 확인
 
-- 에셋 경로: `/Game/Blueprints/UI/HUD/WBP_ActionProgress`
-- 작업 유형: 신규 Widget Blueprint 생성
+- 현재 에셋 경로: `/Game/Blueprints/Widget/WBP_ActionProgress`
+- 작업 유형: 신규 Widget Blueprint 생성 또는 기존 Widget Blueprint 확인
 - 부모 클래스: `UHeistInteractionPromptWidget`
 
 별도의 Action Progress C++ 클래스는 생성하지 않는다. 현재 manifest에서
@@ -69,6 +76,13 @@ ActionProgressContainer (Border)
    ├─ ActionRemainingText (TextBlock)
    └─ CancelHintText (TextBlock)
 ```
+
+`ActionProgressContainer`는 권장 바인딩 이름이다. 현재 C++는 이 컨테이너가
+없더라도 `ActionTypeText`, `ActionProgressBar`, `ActionRemainingText`,
+`CancelHintText`만 존재하고 Interaction Prompt용 위젯이 없으면
+`WBP_ActionProgress` 자체 Visibility를 전환하는 fallback을 제공한다. 그래도
+디버깅을 쉽게 하려면 루트 Border 또는 최상위 표시 컨테이너 이름을
+`ActionProgressContainer`로 맞추는 것을 권장한다.
 
 권장 플레이스홀더 값:
 
@@ -117,6 +131,18 @@ ProgressBar가 0에서 1까지 채워진다.
 - `Accessed None`, 클래스 누락, 바인딩 타입 불일치가 발생하지 않는다.
 - 유효한 대상이 없으면 Interaction Prompt가 숨겨진다.
 - 진행 중인 캐스팅이 없으면 Action Progress가 숨겨진다.
+- PIE 시작 시 다음 setup 로그가 두 줄 출력된다.
+
+```text
+Interaction presentation setup: ... PromptContainer=<true|false> ActionProgressContainer=<true|false> SelfPromptFallback=<true|false> SelfActionFallback=<true|false>
+```
+
+현재 구조처럼 권장 컨테이너 이름을 만들지 않은 경우 예상값은 다음과 같다.
+
+```text
+WBP_InteractionPrompt: PromptContainer=false ActionProgressContainer=false SelfPromptFallback=true SelfActionFallback=false
+WBP_ActionProgress: PromptContainer=false ActionProgressContainer=false SelfPromptFallback=false SelfActionFallback=true
+```
 
 ## 4. 사용자 PIE 검증
 

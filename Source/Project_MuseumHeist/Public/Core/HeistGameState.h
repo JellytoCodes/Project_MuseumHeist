@@ -11,6 +11,7 @@ DECLARE_MULTICAST_DELEGATE(FHeistPlayerResultsChanged);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistSoundPingEventReported, const FHeistSoundPingEvent&);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistRareLootEventStateChanged, const FHeistRareLootEventState&);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistGapTrackerStateChanged, bool, int32);
+DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerConnectionsChanged, int32);
 
 UCLASS()
 class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
@@ -28,7 +29,13 @@ public:
 #pragma region PlayerConnections
 
 public:
+	virtual void AddPlayerState(APlayerState* PlayerState) override;
+	virtual void RemovePlayerState(APlayerState* PlayerState) override;
 	int32 GetConnectedPlayerCount() const;
+	FHeistPlayerConnectionsChanged& GetPlayerConnectionsChangedDelegate();
+
+private:
+	FHeistPlayerConnectionsChanged PlayerConnectionsChangedDelegate;
 
 #pragma endregion
 

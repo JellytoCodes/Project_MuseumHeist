@@ -15,9 +15,26 @@ AHeistGameState::AHeistGameState()
 
 #pragma region PlayerConnections
 
+void AHeistGameState::AddPlayerState(APlayerState* PlayerState)
+{
+	Super::AddPlayerState(PlayerState);
+	PlayerConnectionsChangedDelegate.Broadcast(GetConnectedPlayerCount());
+}
+
+void AHeistGameState::RemovePlayerState(APlayerState* PlayerState)
+{
+	Super::RemovePlayerState(PlayerState);
+	PlayerConnectionsChangedDelegate.Broadcast(GetConnectedPlayerCount());
+}
+
 int32 AHeistGameState::GetConnectedPlayerCount() const
 {
 	return PlayerArray.Num();
+}
+
+FHeistPlayerConnectionsChanged& AHeistGameState::GetPlayerConnectionsChangedDelegate()
+{
+	return PlayerConnectionsChangedDelegate;
 }
 
 #pragma endregion

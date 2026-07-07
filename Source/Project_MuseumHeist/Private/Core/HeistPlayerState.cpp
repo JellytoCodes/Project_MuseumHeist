@@ -323,6 +323,17 @@ void AHeistPlayerState::InitializeVerificationIdentity(int32 InHeistPlayerId, co
 	HeistPlayerId = InHeistPlayerId;
 	PlayerColor = InPlayerColor;
 	ForceNetUpdate();
+	PlayerIdentityChangedDelegate.Broadcast(HeistPlayerId);
+}
+
+FHeistPlayerIdentityChanged& AHeistPlayerState::GetPlayerIdentityChangedDelegate()
+{
+	return PlayerIdentityChangedDelegate;
+}
+
+void AHeistPlayerState::OnRep_HeistPlayerId()
+{
+	PlayerIdentityChangedDelegate.Broadcast(HeistPlayerId);
 }
 
 #pragma endregion

@@ -21,12 +21,14 @@ void UHeistHUDViewModel::BeginDestroy()
 {
 	if (IsValid(GameState))
 	{
+		GameState->GetPlayerConnectionsChangedDelegate().RemoveAll(this);
 		GameState->GetEscapePhaseStateChangedDelegate().RemoveAll(this);
 		GameState->GetRareLootEventStateChangedDelegate().RemoveAll(this);
 	}
 
 	if (IsValid(LocalPlayerState))
 	{
+		LocalPlayerState->GetPlayerIdentityChangedDelegate().RemoveAll(this);
 		LocalPlayerState->GetLootTotalsChangedDelegate().RemoveAll(this);
 		LocalPlayerState->GetEscapeStateChangedDelegate().RemoveAll(this);
 	}
@@ -56,12 +58,14 @@ void UHeistHUDViewModel::SetupViewModel(
 {
 	if (GameState != InGameState && IsValid(GameState))
 	{
+		GameState->GetPlayerConnectionsChangedDelegate().RemoveAll(this);
 		GameState->GetEscapePhaseStateChangedDelegate().RemoveAll(this);
 		GameState->GetRareLootEventStateChangedDelegate().RemoveAll(this);
 	}
 
 	if (LocalPlayerState != InLocalPlayerState && IsValid(LocalPlayerState))
 	{
+		LocalPlayerState->GetPlayerIdentityChangedDelegate().RemoveAll(this);
 		LocalPlayerState->GetLootTotalsChangedDelegate().RemoveAll(this);
 		LocalPlayerState->GetEscapeStateChangedDelegate().RemoveAll(this);
 	}
@@ -83,6 +87,10 @@ void UHeistHUDViewModel::SetupViewModel(
 
 	if (IsValid(GameState))
 	{
+		GameState->GetPlayerConnectionsChangedDelegate().RemoveAll(this);
+		GameState->GetPlayerConnectionsChangedDelegate().AddUObject(
+			this,
+			&UHeistHUDViewModel::HandlePlayerConnectionsChanged);
 		GameState->GetEscapePhaseStateChangedDelegate().RemoveAll(this);
 		GameState->GetEscapePhaseStateChangedDelegate().AddUObject(
 			this,
@@ -95,6 +103,10 @@ void UHeistHUDViewModel::SetupViewModel(
 
 	if (IsValid(LocalPlayerState))
 	{
+		LocalPlayerState->GetPlayerIdentityChangedDelegate().RemoveAll(this);
+		LocalPlayerState->GetPlayerIdentityChangedDelegate().AddUObject(
+			this,
+			&UHeistHUDViewModel::HandlePlayerIdentityChanged);
 		LocalPlayerState->GetLootTotalsChangedDelegate().RemoveAll(this);
 		LocalPlayerState->GetLootTotalsChangedDelegate().AddUObject(
 			this,
@@ -135,6 +147,9 @@ void UHeistHUDViewModel::RefreshPresentationState()
 	UE_MVVM_SET_PROPERTY_VALUE(
 		LocalLootWeight,
 		IsValid(LocalPlayerState) ? LocalPlayerState->GetTotalLootWeight() : 0.0f);
+	UE_MVVM_SET_PROPERTY_VALUE(
+		LocalPlayerId,
+		IsValid(LocalPlayerState) ? LocalPlayerState->HeistPlayerId : INDEX_NONE);
 	UE_MVVM_SET_PROPERTY_VALUE(
 		ConnectedPlayerCount,
 		IsValid(GameState) ? GameState->GetConnectedPlayerCount() : 0);
@@ -194,6 +209,16 @@ void UHeistHUDViewModel::HandleRareLootEventStateChanged(const FHeistRareLootEve
 	RefreshRareLootState();
 }
 
+void UHeistHUDViewModel::HandlePlayerConnectionsChanged(const int32)
+{
+	RefreshPresentationState();
+}
+
+void UHeistHUDViewModel::HandlePlayerIdentityChanged(const int32)
+{
+	RefreshPresentationState();
+}
+
 void UHeistHUDViewModel::HandleEscapePhaseStateChanged(const bool)
 {
 	RefreshPresentationState();
@@ -241,6 +266,11 @@ int32 UHeistHUDViewModel::GetLocalLootScore() const
 float UHeistHUDViewModel::GetLocalLootWeight() const
 {
 	return LocalLootWeight;
+}
+
+int32 UHeistHUDViewModel::GetLocalPlayerId() const
+{
+	return LocalPlayerId;
 }
 
 int32 UHeistHUDViewModel::GetConnectedPlayerCount() const

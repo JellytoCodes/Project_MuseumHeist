@@ -43,6 +43,8 @@ public:
 
 private:
 	void HandleRareLootEventStateChanged(const FHeistRareLootEventState& EventState);
+	void HandlePlayerConnectionsChanged(int32 ConnectedPlayers);
+	void HandlePlayerIdentityChanged(int32 PlayerId);
 	void HandleEscapePhaseStateChanged(bool bEscapePhaseOpen);
 	void HandleLootTotalsChanged(int32 TotalLootScore, float TotalLootWeight);
 	void HandleEscapeStateChanged(bool bEscaped);
@@ -71,6 +73,7 @@ private:
 public:
 	int32 GetLocalLootScore() const;
 	float GetLocalLootWeight() const;
+	int32 GetLocalPlayerId() const;
 	int32 GetConnectedPlayerCount() const;
 	bool IsLocalPlayerEscaped() const;
 	bool IsEscapePhaseOpen() const;
@@ -88,6 +91,9 @@ private:
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|HUD", meta = (AllowPrivateAccess = "true"))
 	float LocalLootWeight = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|HUD", meta = (AllowPrivateAccess = "true"))
+	int32 LocalPlayerId = INDEX_NONE;
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|HUD", meta = (AllowPrivateAccess = "true"))
 	int32 ConnectedPlayerCount = 0;
