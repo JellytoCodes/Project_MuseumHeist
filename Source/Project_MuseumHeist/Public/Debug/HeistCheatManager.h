@@ -142,6 +142,29 @@ public:
 
 #pragma endregion
 
+#pragma region ResultDebug
+
+public:
+	UFUNCTION(Exec)
+	void HeistResultHelp();
+
+	UFUNCTION(Exec)
+	void HeistResultShow();
+
+	UFUNCTION(Exec)
+	void HeistResultHide();
+
+	UFUNCTION(Exec)
+	void HeistResultDump();
+
+	UFUNCTION(Exec)
+	void HeistResultRebuild();
+
+	UFUNCTION(Exec)
+	void HeistResultSeed(int32 Score = 1000, bool bEscaped = true, float EscapeTimeSeconds = 10.0f);
+
+#pragma endregion
+
 #pragma region GuardDebug
 
 public:

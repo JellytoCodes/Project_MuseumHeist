@@ -312,6 +312,36 @@ void AHeistPlayerState::DebugSetTotalLootScore(const int32 InScore)
 #endif
 }
 
+void AHeistPlayerState::DebugSetResultState(
+	const int32 InScore,
+	const bool bInEscaped,
+	const float InEscapeTimeSeconds)
+{
+#if !UE_BUILD_SHIPPING
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	TotalLootScore = FMath::Max(0, InScore);
+	FinalScore = TotalLootScore;
+	bEscaped = bInEscaped;
+	EscapeTimeSeconds = bEscaped ? FMath::Max(0.0f, InEscapeTimeSeconds) : -1.0f;
+	ForceNetUpdate();
+	BroadcastLootTotalsChanged();
+	EscapeStateChangedDelegate.Broadcast(bEscaped);
+
+	UHeistDebugFunctionLibrary::Message(
+		this,
+		FString::Printf(
+			TEXT("Result debug state seeded: PlayerId=%d Escaped=%s FinalScore=%d EscapeTime=%.2f"),
+			HeistPlayerId,
+			bEscaped ? TEXT("true") : TEXT("false"),
+			FinalScore,
+			EscapeTimeSeconds));
+#endif
+}
+
 #pragma endregion
 
 #pragma region Verification

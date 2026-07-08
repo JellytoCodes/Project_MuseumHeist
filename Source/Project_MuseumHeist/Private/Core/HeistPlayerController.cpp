@@ -399,6 +399,19 @@ void AHeistPlayerController::DebugRequestReportGuardNoise(const float Distance)
 	Server_DebugRequestReportGuardNoise(Distance);
 }
 
+void AHeistPlayerController::DebugRequestRebuildResults()
+{
+	Server_DebugRequestRebuildResults();
+}
+
+void AHeistPlayerController::DebugRequestSeedResult(
+	const int32 Score,
+	const bool bEscaped,
+	const float EscapeTimeSeconds)
+{
+	Server_DebugRequestSeedResult(Score, bEscaped, EscapeTimeSeconds);
+}
+
 void AHeistPlayerController::Server_RequestLootPickup_Implementation(AHeistLootActor* TargetLootActor)
 {
 	FHeistGameplayRequestContext RequestContext;
@@ -1235,6 +1248,50 @@ void AHeistPlayerController::Server_DebugRequestReportGuardNoise_Implementation(
 	SoundPingEvent.bAffectsGuards = SoundPingDefinition.bAffectsGuards;
 	SoundPingEvent.bAffectsPlayers = SoundPingDefinition.bAffectsPlayers;
 	HeistGameState->ReportSoundPing(SoundPingEvent);
+#endif
+}
+
+void AHeistPlayerController::Server_DebugRequestRebuildResults_Implementation()
+{
+#if !UE_BUILD_SHIPPING
+	AHeistGameState* HeistGameState =
+		GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	if (!IsValid(HeistGameState))
+	{
+		UHeistDebugFunctionLibrary::Message(
+			this,
+			TEXT("Result debug rebuild rejected: missing Heist GameState."),
+			EHeistDebugLevel::Warning);
+		return;
+	}
+
+	HeistGameState->RebuildPlayerResults();
+#endif
+}
+
+void AHeistPlayerController::Server_DebugRequestSeedResult_Implementation(
+	const int32 Score,
+	const bool bEscaped,
+	const float EscapeTimeSeconds)
+{
+#if !UE_BUILD_SHIPPING
+	AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
+	AHeistGameState* HeistGameState =
+		GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	if (!IsValid(HeistPlayerState) || !IsValid(HeistGameState))
+	{
+		UHeistDebugFunctionLibrary::Message(
+			this,
+			TEXT("Result debug seed rejected: missing Heist PlayerState or GameState."),
+			EHeistDebugLevel::Warning);
+		return;
+	}
+
+	HeistPlayerState->DebugSetResultState(
+		FMath::Max(0, Score),
+		bEscaped,
+		FMath::Max(0.0f, EscapeTimeSeconds));
+	HeistGameState->RebuildPlayerResults();
 #endif
 }
 

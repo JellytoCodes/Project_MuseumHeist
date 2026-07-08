@@ -116,6 +116,8 @@ public:
 	void DebugRequestEvaluateNearestGuardSight();
 	void DebugRequestSetNearestGuardAutomaticSight(bool bEnabled);
 	void DebugRequestReportGuardNoise(float Distance);
+	void DebugRequestRebuildResults();
+	void DebugRequestSeedResult(int32 Score, bool bEscaped, float EscapeTimeSeconds);
 
 private:
 	UFUNCTION(Server, Reliable)
@@ -192,6 +194,12 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void Server_DebugRequestReportGuardNoise(float Distance);
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestRebuildResults();
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestSeedResult(int32 Score, bool bEscaped, float EscapeTimeSeconds);
 
 #pragma endregion
 

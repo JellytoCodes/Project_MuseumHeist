@@ -106,6 +106,7 @@ private:
 
 public:
 	void DebugSetTotalLootScore(int32 InScore);
+	void DebugSetResultState(int32 InScore, bool bInEscaped, float InEscapeTimeSeconds);
 
 #pragma endregion
 

@@ -127,6 +127,28 @@ public:
 
 #pragma endregion
 
+#pragma region ResultDebug
+
+public:
+	static void DebugResultHelp(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Result", meta = (DevelopmentOnly))
+	static void DebugResultShow(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Result", meta = (DevelopmentOnly))
+	static void DebugResultHide(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Result", meta = (DevelopmentOnly))
+	static void DebugResultDump(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Result", meta = (DevelopmentOnly))
+	static void DebugResultRebuild(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Result", meta = (DevelopmentOnly))
+	static void DebugResultSeed(APlayerController* PlayerController, int32 Score, bool bEscaped, float EscapeTimeSeconds);
+
+#pragma endregion
+
 #pragma region InventoryDebug
 
 public:

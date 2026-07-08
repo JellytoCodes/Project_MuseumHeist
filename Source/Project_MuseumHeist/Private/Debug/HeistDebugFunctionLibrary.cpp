@@ -8,6 +8,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Core/HeistGameplayTags.h"
 #include "Core/HeistGameState.h"
+#include "Core/HeistHUD.h"
 #include "Core/HeistTypes.h"
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
@@ -153,6 +154,19 @@ namespace
 		}
 
 		return FString::Join(Entries, TEXT(", "));
+	}
+
+	FString FormatResultEntry(const FHeistPlayerResult& PlayerResult)
+	{
+		return FString::Printf(
+			TEXT("PlayerId=%d Rank=%d Escaped=%s LootScore=%d FinalScore=%d LootWeight=%.2f EscapeTime=%.2f"),
+			PlayerResult.PlayerId,
+			PlayerResult.Rank,
+			PlayerResult.bEscaped ? TEXT("true") : TEXT("false"),
+			PlayerResult.LootScore,
+			PlayerResult.FinalScore,
+			PlayerResult.LootWeight,
+			PlayerResult.EscapeTimeSeconds);
 	}
 }
 
@@ -2379,6 +2393,152 @@ void UHeistDebugFunctionLibrary::DebugWidgetMissingMVVMView(const UObject* Widge
 		TEXT("%s widget has no MVVMView extension; MVVM binding injection skipped. Widget=%s"),
 		WidgetRole,
 		*GetNameSafe(Widget));
+#endif
+}
+
+#pragma endregion
+
+#pragma region ResultDebug
+
+void UHeistDebugFunctionLibrary::DebugResultHelp(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		PlayerController,
+		TEXT("Result debug commands: HeistResultShow | HeistResultHide | HeistResultDump | HeistResultRebuild | HeistResultSeed <Score> <Escaped 1/0> <EscapeTime>"),
+		EHeistDebugLevel::Info,
+		true,
+		8.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugResultShow(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	AHeistHUD* HeistHUD = IsValid(HeistPlayerController)
+		? Cast<AHeistHUD>(HeistPlayerController->GetHUD())
+		: nullptr;
+	if (!IsValid(HeistHUD))
+	{
+		Message(PlayerController, TEXT("Result debug show failed: missing Heist HUD."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const bool bShown = HeistHUD->ShowResultScreen();
+	Message(
+		PlayerController,
+		FString::Printf(TEXT("Result debug show requested: Shown=%s"), bShown ? TEXT("true") : TEXT("false")),
+		bShown ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+		true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugResultHide(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	AHeistHUD* HeistHUD = IsValid(HeistPlayerController)
+		? Cast<AHeistHUD>(HeistPlayerController->GetHUD())
+		: nullptr;
+	if (!IsValid(HeistHUD))
+	{
+		Message(PlayerController, TEXT("Result debug hide failed: missing Heist HUD."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	HeistHUD->HideResultScreen();
+	Message(PlayerController, TEXT("Result debug hide requested."), EHeistDebugLevel::Info, true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugResultDump(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	const AHeistGameState* HeistGameState = IsValid(PlayerController) && IsValid(PlayerController->GetWorld())
+		? PlayerController->GetWorld()->GetGameState<AHeistGameState>()
+		: nullptr;
+	if (!IsValid(HeistGameState))
+	{
+		Message(PlayerController, TEXT("Result debug dump failed: missing Heist GameState."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const TArray<FHeistPlayerResult>& PlayerResults = HeistGameState->GetPlayerResults();
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Result dump: PlayerCount=%d WinnerPlayerId=%d"),
+			PlayerResults.Num(),
+			HeistGameState->GetWinnerPlayerId()),
+		EHeistDebugLevel::Info,
+		true,
+		6.0f);
+
+	for (const FHeistPlayerResult& PlayerResult : PlayerResults)
+	{
+		Message(
+			PlayerController,
+			FString::Printf(TEXT("Result entry: %s"), *FormatResultEntry(PlayerResult)),
+			EHeistDebugLevel::Info,
+			false);
+	}
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugResultRebuild(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		Message(PlayerController, TEXT("Result debug rebuild failed: invalid Heist player controller."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	HeistPlayerController->DebugRequestRebuildResults();
+	Message(PlayerController, TEXT("Result debug rebuild requested."), EHeistDebugLevel::Info, true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugResultSeed(
+	APlayerController* PlayerController,
+	const int32 Score,
+	const bool bEscaped,
+	const float EscapeTimeSeconds)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		Message(PlayerController, TEXT("Result debug seed failed: invalid Heist player controller."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const int32 SafeScore = FMath::Max(0, Score);
+	const float SafeEscapeTimeSeconds = FMath::Max(0.0f, EscapeTimeSeconds);
+	HeistPlayerController->DebugRequestSeedResult(SafeScore, bEscaped, SafeEscapeTimeSeconds);
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Result debug seed requested: Score=%d Escaped=%s EscapeTime=%.2f"),
+			SafeScore,
+			bEscaped ? TEXT("true") : TEXT("false"),
+			SafeEscapeTimeSeconds),
+		EHeistDebugLevel::Info,
+		true);
 #endif
 }
 

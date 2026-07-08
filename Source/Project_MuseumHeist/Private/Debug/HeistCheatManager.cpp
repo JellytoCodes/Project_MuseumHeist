@@ -314,6 +314,59 @@ void UHeistCheatManager::HeistGapAuto()
 
 #pragma endregion
 
+#pragma region ResultDebug
+
+void UHeistCheatManager::HeistResultHelp()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugResultHelp(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistResultShow()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugResultShow(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistResultHide()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugResultHide(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistResultDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugResultDump(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistResultRebuild()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugResultRebuild(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistResultSeed(
+	const int32 Score,
+	const bool bEscaped,
+	const float EscapeTimeSeconds)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugResultSeed(
+		GetOuterAPlayerController(),
+		Score,
+		bEscaped,
+		EscapeTimeSeconds);
+#endif
+}
+
+#pragma endregion
+
 #pragma region TrapDebug
 
 void UHeistCheatManager::HeistTrapHelp()

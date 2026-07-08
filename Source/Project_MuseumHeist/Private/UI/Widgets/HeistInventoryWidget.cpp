@@ -311,10 +311,15 @@ void UHeistInventoryWidget::RebuildConfirmedInventory(
 
 					const FIntPoint GridCoordinate(Column, Row);
 					SlotWidget->SetupSlot(
-						GridCoordinate,
+						GridCoordinate,	
 						IsGridCoordinateOccupied(GridCoordinate),
 						this);
-					InventoryGrid->AddChildToUniformGrid(SlotWidget, Row, Column);
+					UUniformGridSlot* GridSlot = InventoryGrid->AddChildToUniformGrid(SlotWidget, Row, Column);
+					if (IsValid(GridSlot))
+					{
+						GridSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Fill);
+						GridSlot->SetVerticalAlignment(EVerticalAlignment::VAlign_Fill);
+					}
 					InventorySlotWidgets.Add(SlotWidget);
 				}
 			}
