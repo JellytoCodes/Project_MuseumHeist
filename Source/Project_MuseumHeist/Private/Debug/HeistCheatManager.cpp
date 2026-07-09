@@ -314,6 +314,38 @@ void UHeistCheatManager::HeistGapAuto()
 
 #pragma endregion
 
+#pragma region LobbyDebug
+
+void UHeistCheatManager::HeistLobbyHelp()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugLobbyHelp(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistLobbyShow()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugLobbyShow(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistLobbyHide()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugLobbyHide(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistLobbyDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugLobbyDump(GetOuterAPlayerController());
+#endif
+}
+
+#pragma endregion
+
 #pragma region ResultDebug
 
 void UHeistCheatManager::HeistResultHelp()

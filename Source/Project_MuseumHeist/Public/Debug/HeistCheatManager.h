@@ -142,6 +142,23 @@ public:
 
 #pragma endregion
 
+#pragma region LobbyDebug
+
+public:
+	UFUNCTION(Exec)
+	void HeistLobbyHelp();
+
+	UFUNCTION(Exec)
+	void HeistLobbyShow();
+
+	UFUNCTION(Exec)
+	void HeistLobbyHide();
+
+	UFUNCTION(Exec)
+	void HeistLobbyDump();
+
+#pragma endregion
+
 #pragma region ResultDebug
 
 public:

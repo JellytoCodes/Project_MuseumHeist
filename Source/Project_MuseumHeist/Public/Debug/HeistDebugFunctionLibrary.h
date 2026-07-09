@@ -127,6 +127,22 @@ public:
 
 #pragma endregion
 
+#pragma region LobbyDebug
+
+public:
+	static void DebugLobbyHelp(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Lobby", meta = (DevelopmentOnly))
+	static void DebugLobbyShow(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Lobby", meta = (DevelopmentOnly))
+	static void DebugLobbyHide(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Lobby", meta = (DevelopmentOnly))
+	static void DebugLobbyDump(APlayerController* PlayerController);
+
+#pragma endregion
+
 #pragma region ResultDebug
 
 public:

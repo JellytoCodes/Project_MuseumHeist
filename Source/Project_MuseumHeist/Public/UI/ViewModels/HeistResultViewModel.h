@@ -7,6 +7,8 @@
 
 #include "HeistResultViewModel.generated.h"
 
+DECLARE_MULTICAST_DELEGATE(FHeistResultSnapshotChanged);
+
 UCLASS(BlueprintType)
 class PROJECT_MUSEUMHEIST_API UHeistResultViewModel : public UMVVMViewModelBase
 {
@@ -31,6 +33,7 @@ protected:
 public:
 	void SetupViewModel(class AHeistGameState* InGameState, class AHeistPlayerState* InLocalPlayerState);
 	void RefreshResultData();
+	FHeistResultSnapshotChanged& GetSnapshotChangedDelegate();
 
 private:
 	UPROPERTY(Transient)
@@ -38,6 +41,8 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHeistPlayerState> LocalPlayerState;
+
+	FHeistResultSnapshotChanged SnapshotChangedDelegate;
 
 #pragma endregion
 

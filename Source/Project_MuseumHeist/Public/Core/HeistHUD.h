@@ -47,6 +47,27 @@ private:
 
 #pragma endregion
 
+#pragma region LobbyPresentation
+
+public:
+	bool ShowLobbyScreen();
+	void HideLobbyScreen();
+	class UHeistLobbyViewModel* GetLobbyViewModel() const;
+
+private:
+	void InitializeLobbyPresentation();
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|UI", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<class UHeistLobbyWidget> LobbyWidgetClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHeistLobbyViewModel> LobbyViewModel;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHeistLobbyWidget> LobbyWidget;
+
+#pragma endregion
+
 #pragma region InventoryPresentation
 
 public:

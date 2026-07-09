@@ -12,10 +12,12 @@
 #include "UI/ViewModels/HeistGapTrackerViewModel.h"
 #include "UI/ViewModels/HeistHUDViewModel.h"
 #include "UI/ViewModels/HeistInventoryViewModel.h"
+#include "UI/ViewModels/HeistLobbyViewModel.h"
 #include "UI/ViewModels/HeistQuickSlotViewModel.h"
 #include "UI/ViewModels/HeistResultViewModel.h"
 #include "UI/Widgets/HeistHUDWidget.h"
 #include "UI/Widgets/HeistInventoryWidget.h"
+#include "UI/Widgets/HeistLobbyWidget.h"
 #include "UI/Widgets/HeistRareLootAlertWidget.h"
 #include "UI/Widgets/HeistResultWidget.h"
 
@@ -69,6 +71,7 @@ void AHeistHUD::RefreshPresentationSources()
 	InitializeMainHUDPresentation();
 	InitializeRareLootPresentation();
 	InitializeResultPresentation();
+	InitializeLobbyPresentation();
 }
 
 UHeistHUDViewModel* AHeistHUD::GetHUDViewModel() const
@@ -137,6 +140,84 @@ void AHeistHUD::InitializeMainHUDPresentation()
 		QuickSlotViewModel,
 		GapTrackerViewModel,
 		InteractionComponent);
+}
+
+#pragma endregion
+
+#pragma region LobbyPresentation
+
+bool AHeistHUD::ShowLobbyScreen()
+{
+	InitializeLobbyPresentation();
+
+	if (!IsValid(LobbyViewModel) || !LobbyWidgetClass)
+	{
+		UHeistDebugFunctionLibrary::Message(
+			this,
+			FString::Printf(
+				TEXT("Lobby screen show skipped: HUD=%s ViewModel=%s WidgetClass=%s"),
+				*GetNameSafe(this),
+				*GetNameSafe(LobbyViewModel),
+				*GetNameSafe(LobbyWidgetClass)),
+			EHeistDebugLevel::Warning);
+		return false;
+	}
+
+	if (!IsValid(LobbyWidget))
+	{
+		APlayerController* OwningPlayerController = GetOwningPlayerController();
+		if (!IsValid(OwningPlayerController))
+		{
+			return false;
+		}
+
+		LobbyWidget = CreateWidget<UHeistLobbyWidget>(OwningPlayerController, LobbyWidgetClass);
+		if (!IsValid(LobbyWidget))
+		{
+			return false;
+		}
+
+		LobbyWidget->SetupLobbyWidget(LobbyViewModel);
+		LobbyWidget->AddToViewport();
+	}
+	else
+	{
+		LobbyWidget->SetVisibility(ESlateVisibility::Visible);
+	}
+
+	LobbyViewModel->RefreshLobbyData();
+	return true;
+}
+
+void AHeistHUD::HideLobbyScreen()
+{
+	if (IsValid(LobbyWidget))
+	{
+		LobbyWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+UHeistLobbyViewModel* AHeistHUD::GetLobbyViewModel() const
+{
+	return LobbyViewModel;
+}
+
+void AHeistHUD::InitializeLobbyPresentation()
+{
+	APlayerController* OwningPlayerController = GetOwningPlayerController();
+	if (!IsValid(OwningPlayerController) || !OwningPlayerController->IsLocalController())
+	{
+		return;
+	}
+
+	if (!IsValid(LobbyViewModel))
+	{
+		LobbyViewModel = NewObject<UHeistLobbyViewModel>(this);
+	}
+
+	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	AHeistPlayerState* HeistPlayerState = OwningPlayerController->GetPlayerState<AHeistPlayerState>();
+	LobbyViewModel->SetupViewModel(HeistGameState, HeistPlayerState);
 }
 
 #pragma endregion

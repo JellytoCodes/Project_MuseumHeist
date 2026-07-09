@@ -21,6 +21,7 @@
 #include "GameplayTagContainer.h"
 #include "Inventory/HeistInventoryTypes.h"
 #include "World/Actors/Area/HeistSmokeCloudActor.h"
+#include "UI/ViewModels/HeistLobbyViewModel.h"
 
 #pragma region InternalHelpers
 
@@ -2393,6 +2394,107 @@ void UHeistDebugFunctionLibrary::DebugWidgetMissingMVVMView(const UObject* Widge
 		TEXT("%s widget has no MVVMView extension; MVVM binding injection skipped. Widget=%s"),
 		WidgetRole,
 		*GetNameSafe(Widget));
+#endif
+}
+
+#pragma endregion
+
+#pragma region LobbyDebug
+
+void UHeistDebugFunctionLibrary::DebugLobbyHelp(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		PlayerController,
+		TEXT("Lobby debug commands: HeistLobbyShow | HeistLobbyHide | HeistLobbyDump"),
+		EHeistDebugLevel::Info,
+		true,
+		8.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugLobbyShow(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	AHeistHUD* HeistHUD = IsValid(HeistPlayerController)
+		? Cast<AHeistHUD>(HeistPlayerController->GetHUD())
+		: nullptr;
+	if (!IsValid(HeistHUD))
+	{
+		Message(PlayerController, TEXT("Lobby debug show failed: missing Heist HUD."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const bool bShown = HeistHUD->ShowLobbyScreen();
+	Message(
+		PlayerController,
+		FString::Printf(TEXT("Lobby debug show requested: Shown=%s"), bShown ? TEXT("true") : TEXT("false")),
+		bShown ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+		true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugLobbyHide(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	AHeistHUD* HeistHUD = IsValid(HeistPlayerController)
+		? Cast<AHeistHUD>(HeistPlayerController->GetHUD())
+		: nullptr;
+	if (!IsValid(HeistHUD))
+	{
+		Message(PlayerController, TEXT("Lobby debug hide failed: missing Heist HUD."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	HeistHUD->HideLobbyScreen();
+	Message(PlayerController, TEXT("Lobby debug hide requested."), EHeistDebugLevel::Info, true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugLobbyDump(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	AHeistHUD* HeistHUD = IsValid(HeistPlayerController)
+		? Cast<AHeistHUD>(HeistPlayerController->GetHUD())
+		: nullptr;
+	UHeistLobbyViewModel* LobbyViewModel = IsValid(HeistHUD)
+		? HeistHUD->GetLobbyViewModel()
+		: nullptr;
+	if (!IsValid(LobbyViewModel))
+	{
+		Message(PlayerController, TEXT("Lobby debug dump failed: missing Lobby ViewModel."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	LobbyViewModel->RefreshLobbyData();
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Lobby dump: Connected=%d LocalPlayerId=%d Phase=%s Countdown=%s Loadout=%s Blocker=%s"),
+			LobbyViewModel->GetConnectedPlayerCount(),
+			LobbyViewModel->GetLocalPlayerId(),
+			*LobbyViewModel->GetPhaseText().ToString(),
+			*LobbyViewModel->GetReadyCountdownText().ToString(),
+			*LobbyViewModel->GetDefaultLoadoutText().ToString(),
+			*LobbyViewModel->GetAuthorityBlockerText().ToString()),
+		EHeistDebugLevel::Info,
+		true,
+		8.0f);
+	Message(PlayerController, FString::Printf(TEXT("Lobby slot: %s"), *LobbyViewModel->GetPlayerSlot1Text().ToString()), EHeistDebugLevel::Info, false);
+	Message(PlayerController, FString::Printf(TEXT("Lobby slot: %s"), *LobbyViewModel->GetPlayerSlot2Text().ToString()), EHeistDebugLevel::Info, false);
+	Message(PlayerController, FString::Printf(TEXT("Lobby slot: %s"), *LobbyViewModel->GetPlayerSlot3Text().ToString()), EHeistDebugLevel::Info, false);
+	Message(PlayerController, FString::Printf(TEXT("Lobby slot: %s"), *LobbyViewModel->GetPlayerSlot4Text().ToString()), EHeistDebugLevel::Info, false);
 #endif
 }
 

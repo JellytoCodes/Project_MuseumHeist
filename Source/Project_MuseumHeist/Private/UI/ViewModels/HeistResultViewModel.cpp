@@ -84,6 +84,12 @@ void UHeistResultViewModel::RefreshResultData()
 		bNewEscaped ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 
 	RefreshResultRows();
+	SnapshotChangedDelegate.Broadcast();
+}
+
+FHeistResultSnapshotChanged& UHeistResultViewModel::GetSnapshotChangedDelegate()
+{
+	return SnapshotChangedDelegate;
 }
 
 #pragma endregion
@@ -190,7 +196,7 @@ FText UHeistResultViewModel::BuildResultRowText(const int32 ResultIndex) const
 		NSLOCTEXT(
 			"HeistResult",
 			"ResultRowFormat",
-			"#{0}  P{1}  Score {2}  Weight {3}  {4}"),
+			"#{0} \n P{1} \n Score {2} \n Weight {3} \n {4}"),
 		FText::AsNumber(PlayerResult.Rank),
 		FText::AsNumber(PlayerResult.PlayerId),
 		FText::AsNumber(PlayerResult.FinalScore),
