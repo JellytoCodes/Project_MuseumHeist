@@ -29,24 +29,48 @@ protected:
 
 public:
 	void SetupRareLootAlertWidget(class UHeistHUDViewModel* InViewModel);
+	class UHeistHUDViewModel* GetHUDViewModel() const;
 
 private:
 	void RefreshRareLootPresentation();
+	void RefreshWarningCountdownText();
+	void RefreshDirectionMarkerPresentation();
+	float GetRareLootWarningRemainingSeconds() const;
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Heist|RareLoot", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistHUDViewModel> ViewModel;
 
-protected:
-	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|RareLoot", meta = (DisplayName = "Refresh Rare Loot Presentation"))
-	void BP_RefreshRareLootPresentation(
-		bool bIncomingWarningActive,
-		bool bDirectionMarkerActive,
-		int32 EventIndex,
-		FName ItemId,
-		float SpawnServerTime);
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|RareLoot", meta = (AllowPrivateAccess = "true"))
+	bool bShowIncomingWarning = true;
 
-	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|RareLoot", meta = (DisplayName = "Update Rare Loot Direction Marker"))
-	void BP_UpdateRareLootDirectionMarker(FVector2D Direction, float AngleDegrees);
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|RareLoot", meta = (AllowPrivateAccess = "true"))
+	bool bShowDirectionMarker = true;
+
+#pragma endregion
+
+#pragma region BindWidgets
+
+private:
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<class UWidget> IncomingWarningContainer;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<class UTextBlock> RareLootItemText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<class UTextBlock> RareLootCountdownText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<class UTextBlock> RareLootStatusText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<class UWidget> DirectionMarkerContainer;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<class UWidget> DirectionMarkerArrow;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<class UTextBlock> DirectionMarkerText;
 
 #pragma endregion
 };

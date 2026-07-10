@@ -92,19 +92,6 @@ private:
 
 #pragma endregion
 
-#pragma region RareLootPresentation
-
-private:
-	void InitializeRareLootPresentation();
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|UI", meta = (AllowPrivateAccess = "true"))
-	TSubclassOf<class UHeistRareLootAlertWidget> RareLootAlertWidgetClass;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UHeistRareLootAlertWidget> RareLootAlertWidget;
-
-#pragma endregion
-
 #pragma region GapTrackerPresentation
 
 public:

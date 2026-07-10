@@ -6,7 +6,9 @@
 #include "HeistHUDWidget.generated.h"
 
 class UTextBlock;
+class UHeistGapTrackerWidget;
 class UHeistInteractionPromptWidget;
+class UHeistRareLootAlertWidget;
 class UWidget;
 
 UCLASS(Blueprintable)
@@ -44,6 +46,11 @@ private:
 	UHeistInteractionPromptWidget* ResolveInteractionChildWidget(
 		FName WidgetName,
 		UHeistInteractionPromptWidget* ExistingWidget) const;
+	void ResolveRareLootChildWidgets();
+	UHeistRareLootAlertWidget* ResolveRareLootChildWidget(
+		FName WidgetName,
+		UHeistRareLootAlertWidget* ExistingWidget) const;
+	void ResolveGapTrackerChildWidget();
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Heist|HUD", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistHUDViewModel> HUDViewModel;
@@ -104,6 +111,15 @@ private:
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistInteractionPromptWidget> ActionProgressWidget;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UHeistRareLootAlertWidget> RareLootWarningWidget;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UHeistRareLootAlertWidget> RareLootMarkerWidget;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UHeistGapTrackerWidget> GapTrackerWidget;
 
 #pragma endregion
 };

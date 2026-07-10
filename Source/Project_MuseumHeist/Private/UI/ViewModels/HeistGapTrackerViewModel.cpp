@@ -85,6 +85,12 @@ void UHeistGapTrackerViewModel::RefreshGapTrackerState()
 		NewDirection.IsNearlyZero()
 			? 0.0f
 			: FMath::RadiansToDegrees(FMath::Atan2(NewDirection.Y, NewDirection.X)));
+	SnapshotChangedDelegate.Broadcast();
+}
+
+FHeistGapTrackerSnapshotChanged& UHeistGapTrackerViewModel::GetSnapshotChangedDelegate()
+{
+	return SnapshotChangedDelegate;
 }
 
 void UHeistGapTrackerViewModel::HandleGlobalStateChanged(const bool, const int32)

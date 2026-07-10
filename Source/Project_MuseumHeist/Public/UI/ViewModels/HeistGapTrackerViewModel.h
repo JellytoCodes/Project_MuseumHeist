@@ -5,6 +5,8 @@
 
 #include "HeistGapTrackerViewModel.generated.h"
 
+DECLARE_MULTICAST_DELEGATE(FHeistGapTrackerSnapshotChanged);
+
 UCLASS(BlueprintType)
 class PROJECT_MUSEUMHEIST_API UHeistGapTrackerViewModel : public UMVVMViewModelBase
 {
@@ -31,6 +33,7 @@ public:
 		class AHeistGameState* InGameState,
 		class AHeistPlayerState* InLocalPlayerState);
 	void RefreshGapTrackerState();
+	FHeistGapTrackerSnapshotChanged& GetSnapshotChangedDelegate();
 
 private:
 	void HandleGlobalStateChanged(bool bActive, int32 LeaderPlayerId);
@@ -41,6 +44,8 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHeistPlayerState> LocalPlayerState;
+
+	FHeistGapTrackerSnapshotChanged SnapshotChangedDelegate;
 
 #pragma endregion
 

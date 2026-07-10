@@ -8,7 +8,9 @@
 #include "UI/ViewModels/HeistHUDViewModel.h"
 #include "UI/ViewModels/HeistInventoryViewModel.h"
 #include "UI/ViewModels/HeistQuickSlotViewModel.h"
+#include "UI/Widgets/HeistGapTrackerWidget.h"
 #include "UI/Widgets/HeistInteractionPromptWidget.h"
+#include "UI/Widgets/HeistRareLootAlertWidget.h"
 
 #pragma region Construction
 
@@ -27,7 +29,6 @@ void UHeistHUDWidget::NativeDestruct()
 	{
 		HUDViewModel->GetPresentationChangedDelegate().RemoveAll(this);
 	}
-
 	Super::NativeDestruct();
 }
 
@@ -48,7 +49,6 @@ void UHeistHUDWidget::SetupHUDWidget(
 	{
 		HUDViewModel->GetPresentationChangedDelegate().RemoveAll(this);
 	}
-
 	HUDViewModel = InHUDViewModel;
 	InventoryViewModel = InInventoryViewModel;
 	QuickSlotViewModel = InQuickSlotViewModel;
@@ -59,12 +59,13 @@ void UHeistHUDWidget::SetupHUDWidget(
 	HUDViewModel->GetPresentationChangedDelegate().AddUObject(
 		this,
 		&UHeistHUDWidget::RefreshHUDPresentation);
-
 	ResolveInteractionChildWidgets();
+	ResolveRareLootChildWidgets();
+	ResolveGapTrackerChildWidget();
 	UE_LOG(
 		LogHeistUI,
 		Log,
-		TEXT("[%s] HUD widget setup: Class=%s HUDViewModel=%s InteractionComponent=%s InteractionPromptWidget=%s InteractionPromptClass=%s ActionProgressWidget=%s ActionProgressClass=%s"),
+		TEXT("[%s] HUD widget setup: Class=%s HUDViewModel=%s InteractionComponent=%s InteractionPromptWidget=%s InteractionPromptClass=%s ActionProgressWidget=%s ActionProgressClass=%s RareLootWarningWidget=%s RareLootWarningClass=%s RareLootMarkerWidget=%s RareLootMarkerClass=%s"),
 		*GetName(),
 		*GetClass()->GetName(),
 		*GetNameSafe(HUDViewModel.Get()),
@@ -72,10 +73,16 @@ void UHeistHUDWidget::SetupHUDWidget(
 		*GetNameSafe(InteractionPromptWidget.Get()),
 		IsValid(InteractionPromptWidget) ? *InteractionPromptWidget->GetClass()->GetName() : TEXT("None"),
 		*GetNameSafe(ActionProgressWidget.Get()),
-		IsValid(ActionProgressWidget) ? *ActionProgressWidget->GetClass()->GetName() : TEXT("None"));
+		IsValid(ActionProgressWidget) ? *ActionProgressWidget->GetClass()->GetName() : TEXT("None"),
+		*GetNameSafe(RareLootWarningWidget.Get()),
+		IsValid(RareLootWarningWidget) ? *RareLootWarningWidget->GetClass()->GetName() : TEXT("None"),
+		*GetNameSafe(RareLootMarkerWidget.Get()),
+		IsValid(RareLootMarkerWidget) ? *RareLootMarkerWidget->GetClass()->GetName() : TEXT("None"));
 
 	BP_OnHUDSourcesReady();
 	ResolveInteractionChildWidgets();
+	ResolveRareLootChildWidgets();
+	ResolveGapTrackerChildWidget();
 	if (IsValid(InteractionPromptWidget))
 	{
 		InteractionPromptWidget->SetupInteractionPresentation(InteractionComponent, HUDViewModel);
@@ -83,6 +90,18 @@ void UHeistHUDWidget::SetupHUDWidget(
 	if (IsValid(ActionProgressWidget))
 	{
 		ActionProgressWidget->SetupInteractionPresentation(InteractionComponent, HUDViewModel);
+	}
+	if (IsValid(RareLootWarningWidget))
+	{
+		RareLootWarningWidget->SetupRareLootAlertWidget(HUDViewModel);
+	}
+	if (IsValid(RareLootMarkerWidget))
+	{
+		RareLootMarkerWidget->SetupRareLootAlertWidget(HUDViewModel);
+	}
+	if (IsValid(GapTrackerWidget) && IsValid(GapTrackerViewModel))
+	{
+		GapTrackerWidget->SetupGapTrackerWidget(GapTrackerViewModel);
 	}
 	RefreshHUDPresentation();
 }
@@ -141,6 +160,102 @@ UHeistInteractionPromptWidget* UHeistHUDWidget::ResolveInteractionChildWidget(
 		*GetNameSafe(ResolvedWidget),
 		*ResolvedWidget->GetClass()->GetName());
 	return ResolvedWidget;
+}
+
+void UHeistHUDWidget::ResolveRareLootChildWidgets()
+{
+	RareLootWarningWidget = ResolveRareLootChildWidget(
+		TEXT("RareLootWarningWidget"),
+		RareLootWarningWidget);
+	RareLootMarkerWidget = ResolveRareLootChildWidget(
+		TEXT("RareLootMarkerWidget"),
+		RareLootMarkerWidget);
+}
+
+UHeistRareLootAlertWidget* UHeistHUDWidget::ResolveRareLootChildWidget(
+	const FName WidgetName,
+	UHeistRareLootAlertWidget* ExistingWidget) const
+{
+	if (IsValid(ExistingWidget))
+	{
+		return ExistingWidget;
+	}
+
+	UWidget* FoundWidget = GetWidgetFromName(WidgetName);
+	if (!IsValid(FoundWidget))
+	{
+		UE_LOG(
+			LogHeistUI,
+			Warning,
+			TEXT("[%s] HUD rare loot child widget missing: Name=%s"),
+			*GetName(),
+			*WidgetName.ToString());
+		return nullptr;
+	}
+
+	UHeistRareLootAlertWidget* ResolvedWidget = Cast<UHeistRareLootAlertWidget>(FoundWidget);
+	if (!IsValid(ResolvedWidget))
+	{
+		UE_LOG(
+			LogHeistUI,
+			Warning,
+			TEXT("[%s] HUD rare loot child widget type mismatch: Name=%s Found=%s FoundClass=%s Expected=HeistRareLootAlertWidget"),
+			*GetName(),
+			*WidgetName.ToString(),
+			*GetNameSafe(FoundWidget),
+			*FoundWidget->GetClass()->GetName());
+		return nullptr;
+	}
+
+	UE_LOG(
+		LogHeistUI,
+		Log,
+		TEXT("[%s] HUD rare loot child widget resolved by name: Name=%s Widget=%s Class=%s"),
+		*GetName(),
+		*WidgetName.ToString(),
+		*GetNameSafe(ResolvedWidget),
+		*ResolvedWidget->GetClass()->GetName());
+	return ResolvedWidget;
+}
+
+void UHeistHUDWidget::ResolveGapTrackerChildWidget()
+{
+	if (IsValid(GapTrackerWidget))
+	{
+		return;
+	}
+
+	UWidget* FoundWidget = GetWidgetFromName(TEXT("GapTrackerWidget"));
+	if (!IsValid(FoundWidget))
+	{
+		UE_LOG(
+			LogHeistUI,
+			Warning,
+			TEXT("[%s] HUD Gap Tracker child widget missing: Name=GapTrackerWidget"),
+			*GetName());
+		return;
+	}
+
+	GapTrackerWidget = Cast<UHeistGapTrackerWidget>(FoundWidget);
+	if (!IsValid(GapTrackerWidget))
+	{
+		UE_LOG(
+			LogHeistUI,
+			Warning,
+			TEXT("[%s] HUD Gap Tracker child widget type mismatch: Name=GapTrackerWidget Found=%s FoundClass=%s Expected=HeistGapTrackerWidget"),
+			*GetName(),
+			*GetNameSafe(FoundWidget),
+			*FoundWidget->GetClass()->GetName());
+		return;
+	}
+
+	UE_LOG(
+		LogHeistUI,
+		Log,
+		TEXT("[%s] HUD Gap Tracker child widget resolved: Widget=%s Class=%s"),
+		*GetName(),
+		*GetNameSafe(GapTrackerWidget.Get()),
+		*GapTrackerWidget->GetClass()->GetName());
 }
 
 void UHeistHUDWidget::RefreshHUDPresentation()

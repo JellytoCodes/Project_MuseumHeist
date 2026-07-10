@@ -410,6 +410,7 @@ Classes:
 * `UHeistResultWidget : public UHeistUserWidgetBase`
 * `UHeistLobbyWidget : public UHeistUserWidgetBase`
 * `UHeistInteractionPromptWidget : public UHeistUserWidgetBase`
+* `UHeistGapTrackerWidget : public UHeistUserWidgetBase`
 * `UHeistSoundPingMarkerWidget : public UHeistUserWidgetBase`
 * `UHeistRareLootAlertWidget : public UHeistUserWidgetBase`
 

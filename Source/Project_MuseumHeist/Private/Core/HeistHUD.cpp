@@ -8,6 +8,7 @@
 #include "Core/HeistGameState.h"
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
+#include "Core/HeistLogChannels.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "UI/ViewModels/HeistGapTrackerViewModel.h"
 #include "UI/ViewModels/HeistHUDViewModel.h"
@@ -18,7 +19,6 @@
 #include "UI/Widgets/HeistHUDWidget.h"
 #include "UI/Widgets/HeistInventoryWidget.h"
 #include "UI/Widgets/HeistLobbyWidget.h"
-#include "UI/Widgets/HeistRareLootAlertWidget.h"
 #include "UI/Widgets/HeistResultWidget.h"
 
 #pragma region Construction
@@ -69,7 +69,6 @@ void AHeistHUD::RefreshPresentationSources()
 	InitializeInventoryPresentation();
 	InitializeGapTrackerPresentation();
 	InitializeMainHUDPresentation();
-	InitializeRareLootPresentation();
 	InitializeResultPresentation();
 	InitializeLobbyPresentation();
 }
@@ -285,40 +284,6 @@ void AHeistHUD::InitializeInventoryPresentation()
 		: nullptr;
 	InventoryViewModel->SetupViewModel(InventoryComponent);
 	QuickSlotViewModel->SetupViewModel(InventoryComponent);
-}
-
-#pragma endregion
-
-#pragma region RareLootPresentation
-
-void AHeistHUD::InitializeRareLootPresentation()
-{
-	APlayerController* OwningPlayerController = GetOwningPlayerController();
-	if (!IsValid(OwningPlayerController) || !OwningPlayerController->IsLocalController())
-	{
-		return;
-	}
-
-	if (!IsValid(HUDViewModel))
-	{
-		InitializeMainHUDPresentation();
-	}
-
-	if (!IsValid(HUDViewModel)
-		|| !RareLootAlertWidgetClass
-		|| IsValid(RareLootAlertWidget))
-	{
-		return;
-	}
-
-	RareLootAlertWidget = CreateWidget<UHeistRareLootAlertWidget>(
-		OwningPlayerController,
-		RareLootAlertWidgetClass);
-	if (IsValid(RareLootAlertWidget))
-	{
-		RareLootAlertWidget->SetupRareLootAlertWidget(HUDViewModel);
-		RareLootAlertWidget->AddToViewport();
-	}
 }
 
 #pragma endregion
