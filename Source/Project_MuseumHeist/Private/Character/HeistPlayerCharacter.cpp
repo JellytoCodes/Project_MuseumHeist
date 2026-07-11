@@ -10,31 +10,21 @@
 #include "Character/Components/HeistVisionComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerState.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "GameFramework/SpringArmComponent.h"
 #include "Net/UnrealNetwork.h"
 
 #pragma region Construction
 
 AHeistPlayerCharacter::AHeistPlayerCharacter()
 {
-	CameraSpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraSpringArm"));
-	CameraSpringArm->SetupAttachment(GetCapsuleComponent());
-	CameraSpringArm->SetUsingAbsoluteRotation(true);
-	CameraSpringArm->TargetArmLength = 1200.0f;
-	CameraSpringArm->SetRelativeRotation(FRotator(-75.0f, 0.0f, 0.0f));
-	CameraSpringArm->bUsePawnControlRotation = false;
-	CameraSpringArm->bInheritPitch = false;
-	CameraSpringArm->bInheritYaw = false;
-	CameraSpringArm->bInheritRoll = false;
-	CameraSpringArm->bDoCollisionTest = false;
-	CameraSpringArm->bEnableCameraLag = false;
-
-	TopDownCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("TopDownCamera"));
-	TopDownCamera->SetupAttachment(CameraSpringArm, USpringArmComponent::SocketName);
-	TopDownCamera->bUsePawnControlRotation = false;
+	FirstPersonCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
+	FirstPersonCamera->SetupAttachment(GetCapsuleComponent());
+	FirstPersonCamera->SetRelativeLocation(FVector(0.0f, 0.0f, 64.0f));
+	FirstPersonCamera->bUsePawnControlRotation = true;
+	FirstPersonCamera->SetFieldOfView(90.0f);
 
 	TagComponent = CreateDefaultSubobject<UHeistTagComponent>(TEXT("TagComponent"));
 	StatusComponent = CreateDefaultSubobject<UHeistStatusComponent>(TEXT("StatusComponent"));
@@ -45,8 +35,10 @@ AHeistPlayerCharacter::AHeistPlayerCharacter()
 	CustomizationComponent = CreateDefaultSubobject<UHeistCustomizationComponent>(TEXT("CustomizationComponent"));
 	NoiseEmitterComponent = CreateDefaultSubobject<UHeistNoiseEmitterComponent>(TEXT("NoiseEmitterComponent"));
 
-	bUseControllerRotationYaw = false;
-	GetCharacterMovement()->bOrientRotationToMovement = true;
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationYaw = true;
+	bUseControllerRotationRoll = false;
+	GetCharacterMovement()->bOrientRotationToMovement = false;
 	GetCharacterMovement()->MaxWalkSpeed = BaseMoveSpeed;
 }
 
@@ -58,8 +50,7 @@ void AHeistPlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	checkf(IsValid(CameraSpringArm), TEXT("HeistPlayerCharacter requires CameraSpringArm"));
-	checkf(IsValid(TopDownCamera), TEXT("HeistPlayerCharacter requires TopDownCamera"));
+	checkf(IsValid(FirstPersonCamera), TEXT("HeistPlayerCharacter requires FirstPersonCamera"));
 	checkf(IsValid(TagComponent), TEXT("HeistPlayerCharacter requires HeistTagComponent"));
 	checkf(IsValid(StatusComponent), TEXT("HeistPlayerCharacter requires HeistStatusComponent"));
 	checkf(IsValid(InventoryComponent), TEXT("HeistPlayerCharacter requires HeistInventoryComponent"));
@@ -68,6 +59,18 @@ void AHeistPlayerCharacter::BeginPlay()
 	checkf(IsValid(VisionComponent), TEXT("HeistPlayerCharacter requires HeistVisionComponent"));
 	checkf(IsValid(CustomizationComponent), TEXT("HeistPlayerCharacter requires HeistCustomizationComponent"));
 	checkf(IsValid(NoiseEmitterComponent), TEXT("HeistPlayerCharacter requires HeistNoiseEmitterComponent"));
+
+	UE_LOG(
+		LogHeist,
+		Log,
+		TEXT("[%s] First-person camera contract: Camera=%s RelativeLocation=%s FOV=%.1f UsePawnControlRotation=%s UseControllerYaw=%s OrientRotationToMovement=%s"),
+		*GetName(),
+		*GetNameSafe(FirstPersonCamera),
+		*FirstPersonCamera->GetRelativeLocation().ToCompactString(),
+		FirstPersonCamera->FieldOfView,
+		FirstPersonCamera->bUsePawnControlRotation ? TEXT("true") : TEXT("false"),
+		bUseControllerRotationYaw ? TEXT("true") : TEXT("false"),
+		GetCharacterMovement()->bOrientRotationToMovement ? TEXT("true") : TEXT("false"));
 }
 
 #pragma endregion
@@ -81,8 +84,13 @@ void AHeistPlayerCharacter::MoveOnGameplayPlane(const FVector2D& MovementInput)
 		return;
 	}
 
-	AddMovementInput(FVector::ForwardVector, MovementInput.Y);
-	AddMovementInput(FVector::RightVector, MovementInput.X);
+	const FRotator ControlRotation = Controller != nullptr ? Controller->GetControlRotation() : GetActorRotation();
+	const FRotator YawRotation(0.0f, ControlRotation.Yaw, 0.0f);
+	const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+	const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+
+	AddMovementInput(ForwardDirection, MovementInput.Y);
+	AddMovementInput(RightDirection, MovementInput.X);
 }
 
 void AHeistPlayerCharacter::RefreshMovementSpeedFromWeight()

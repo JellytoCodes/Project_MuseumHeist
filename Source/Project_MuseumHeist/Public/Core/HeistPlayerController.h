@@ -21,6 +21,8 @@ struct FHeistUsableItemDataRow;
 struct FHitResult;
 struct FInputActionValue;
 
+DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistPopupFeedbackRequested, const FText&, float);
+
 UCLASS()
 class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 {
@@ -51,12 +53,16 @@ private:
 #pragma region Input
 
 private:
+	void HandleLookInput(const FInputActionValue& InputValue);
 	void HandleMoveInput(const FInputActionValue& InputValue);
 	void HandleInventoryToggle();
 	void UpdateFlashlightAimDirection();
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Input", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInputAction> MoveInputAction;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Input", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UInputAction> LookInputAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Input", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInputAction> InteractInputAction;
@@ -118,6 +124,9 @@ public:
 	void DebugRequestReportGuardNoise(float Distance);
 	void DebugRequestRebuildResults();
 	void DebugRequestSeedResult(int32 Score, bool bEscaped, float EscapeTimeSeconds);
+	void DebugRequestFeedbackTest();
+	void DebugRequestFillInventoryForFeedback(FName ItemId);
+	void DebugRequestApplyStatusSmoke(float DurationSeconds);
 
 private:
 	UFUNCTION(Server, Reliable)
@@ -203,6 +212,32 @@ private:
 
 #pragma endregion
 
+#pragma region Feedback
+
+public:
+	FHeistPopupFeedbackRequested& GetPopupFeedbackRequestedDelegate();
+
+private:
+	UFUNCTION(Client, Reliable)
+	void Client_ReceivePopupFeedback(const FText& Message, float DurationSeconds);
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestFeedbackTest();
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestFillInventoryForFeedback(FName ItemId);
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestApplyStatusSmoke(float DurationSeconds);
+
+	void SendPopupFeedback(const FText& Message, float DurationSeconds = 2.0f);
+	void SendPopupFeedbackForRejection(const TCHAR* RequestName, const TCHAR* Reason);
+	static FText ResolvePopupFeedbackText(const TCHAR* RequestName, const TCHAR* Reason);
+
+	FHeistPopupFeedbackRequested PopupFeedbackRequestedDelegate;
+
+#pragma endregion
+
 #pragma region InternalHelpers
 
 private:
@@ -243,10 +278,10 @@ private:
 		const TCHAR*& OutRejectReason) const;
 	static FName GetExpectedQuickSlotItemId(EHeistQuickSlotType SlotType);
 
-	void LogLootPickupRejected(const AHeistLootActor* TargetLootActor, const TCHAR* Reason, float Distance = -1.0f) const;
-	void LogEscapeRequestRejected(const AHeistVentActor* TargetVentActor, const TCHAR* Reason, float Distance = -1.0f) const;
-	void LogInventoryRequestRejected(const TCHAR* RequestName, int32 InstanceId, const TCHAR* Reason) const;
-	void LogThrowableUseRejected(EHeistQuickSlotType SlotType, FName ItemId, const TCHAR* Reason) const;
+	void LogLootPickupRejected(const AHeistLootActor* TargetLootActor, const TCHAR* Reason, float Distance = -1.0f);
+	void LogEscapeRequestRejected(const AHeistVentActor* TargetVentActor, const TCHAR* Reason, float Distance = -1.0f);
+	void LogInventoryRequestRejected(const TCHAR* RequestName, int32 InstanceId, const TCHAR* Reason);
+	void LogThrowableUseRejected(EHeistQuickSlotType SlotType, FName ItemId, const TCHAR* Reason);
 
 #pragma endregion
 

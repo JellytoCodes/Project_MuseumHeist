@@ -14,7 +14,6 @@ class UHeistStatusComponent;
 class UHeistTagComponent;
 class UHeistVisionComponent;
 class UCameraComponent;
-class USpringArmComponent;
 
 UCLASS()
 class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter
@@ -88,10 +87,7 @@ public:
 
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Camera", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<USpringArmComponent> CameraSpringArm;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Camera", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UCameraComponent> TopDownCamera;
+	TObjectPtr<UCameraComponent> FirstPersonCamera;
 
 #pragma endregion
 

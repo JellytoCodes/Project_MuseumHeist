@@ -22,6 +22,7 @@
 #include "Inventory/HeistInventoryTypes.h"
 #include "World/Actors/Area/HeistSmokeCloudActor.h"
 #include "UI/ViewModels/HeistLobbyViewModel.h"
+#include "UI/Widgets/HeistHUDWidget.h"
 
 #pragma region InternalHelpers
 
@@ -468,6 +469,60 @@ void UHeistDebugFunctionLibrary::DebugClearGapTrackerOverride(APlayerController*
 
 	HeistPlayerController->DebugRequestClearGapTrackerOverride();
 	Message(PlayerController, TEXT("Gap Tracker automatic score evaluation requested."), EHeistDebugLevel::Info, true);
+#endif
+}
+
+#pragma endregion
+
+#pragma region SoundPingDebug
+
+void UHeistDebugFunctionLibrary::DebugSoundPingHelp(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		PlayerController,
+		TEXT("Sound Ping debug commands: HeistSoundPingDump | HeistSoundPingTest | HeistCoinThrow <Distance>"),
+		EHeistDebugLevel::Info,
+		true,
+		8.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugSoundPingPoolDump(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistHUD* HeistHUD = IsValid(PlayerController) ? Cast<AHeistHUD>(PlayerController->GetHUD()) : nullptr;
+	UHeistHUDWidget* HUDWidget = IsValid(HeistHUD) ? HeistHUD->GetMainHUDWidget() : nullptr;
+	if (!IsValid(HUDWidget))
+	{
+		Message(PlayerController, TEXT("Sound Ping pool dump failed: missing local Heist HUD widget."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	HUDWidget->DebugDumpSoundPingMarkers();
+	Message(PlayerController, TEXT("Sound Ping pool dump requested."), EHeistDebugLevel::Info, true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugSoundPingPoolTest(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistHUD* HeistHUD = IsValid(PlayerController) ? Cast<AHeistHUD>(PlayerController->GetHUD()) : nullptr;
+	UHeistHUDWidget* HUDWidget = IsValid(HeistHUD) ? HeistHUD->GetMainHUDWidget() : nullptr;
+	if (!IsValid(HUDWidget))
+	{
+		Message(PlayerController, TEXT("Sound Ping pool test failed: missing local Heist HUD widget."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	HUDWidget->DebugRunSoundPingPoolTest();
+	Message(PlayerController, TEXT("Sound Ping deterministic pool test requested."), EHeistDebugLevel::Info, true, 8.0f);
 #endif
 }
 
@@ -2938,7 +2993,7 @@ void UHeistDebugFunctionLibrary::DebugStatusHelp(APlayerController* PlayerContro
 #else
 	Message(
 		PlayerController,
-		TEXT("Status debug commands: HeistStatusDump | HeistStatusStun <Seconds> | HeistStatusImmune <Seconds> | HeistStatusClear"),
+		TEXT("Status debug commands: HeistStatusDump | HeistStatusStun <Seconds> | HeistStatusImmune <Seconds> | HeistStatusSmoke <Seconds> | HeistStatusClear"),
 		EHeistDebugLevel::Info,
 		true,
 		8.0f);
@@ -3014,6 +3069,28 @@ void UHeistDebugFunctionLibrary::DebugStatusImmune(APlayerController* PlayerCont
 #endif
 }
 
+void UHeistDebugFunctionLibrary::DebugStatusSmoke(APlayerController* PlayerController, const float DurationSeconds)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController) || !IsValid(ResolveStatusComponent(PlayerController)))
+	{
+		Message(PlayerController, TEXT("Status debug smoke failed: missing local Heist status component."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const float SafeDuration = FMath::Clamp(DurationSeconds, 0.01f, 600.0f);
+	HeistPlayerController->DebugRequestApplyStatusSmoke(SafeDuration);
+	Message(
+		PlayerController,
+		FString::Printf(TEXT("Status debug smoke requested: Duration=%.2f"), SafeDuration),
+		EHeistDebugLevel::Info,
+		true);
+#endif
+}
+
 void UHeistDebugFunctionLibrary::DebugStatusClear(APlayerController* PlayerController)
 {
 #if UE_BUILD_SHIPPING
@@ -3032,6 +3109,76 @@ void UHeistDebugFunctionLibrary::DebugStatusClear(APlayerController* PlayerContr
 		TEXT("Status debug clear requested."),
 		EHeistDebugLevel::Info,
 		true);
+#endif
+}
+
+#pragma endregion
+
+#pragma region FeedbackDebug
+
+void UHeistDebugFunctionLibrary::DebugFeedbackHelp(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		PlayerController,
+		TEXT("Feedback debug commands: HeistFeedbackTest | HeistFeedbackBagFull | HeistFeedbackDump | HeistStatusStun/Immune/Smoke <Seconds>"),
+		EHeistDebugLevel::Info,
+		true,
+		8.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugFeedbackTest(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		Message(PlayerController, TEXT("Feedback test failed: invalid Heist player controller."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	HeistPlayerController->DebugRequestFeedbackTest();
+	Message(PlayerController, TEXT("Popup feedback ownership test requested."), EHeistDebugLevel::Info, true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugFeedbackBagFull(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		Message(PlayerController, TEXT("Bag Full feedback test failed: invalid Heist player controller."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	HeistPlayerController->DebugRequestFillInventoryForFeedback(TEXT("Throwable_coin"));
+	Message(PlayerController, TEXT("Bag Full feedback test requested."), EHeistDebugLevel::Info, true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugFeedbackDump(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistHUD* HeistHUD = IsValid(PlayerController) ? Cast<AHeistHUD>(PlayerController->GetHUD()) : nullptr;
+	UHeistHUDWidget* HUDWidget = IsValid(HeistHUD) ? HeistHUD->GetMainHUDWidget() : nullptr;
+	if (!IsValid(HUDWidget))
+	{
+		Message(PlayerController, TEXT("Feedback dump failed: missing local Heist HUD widget."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	HUDWidget->DebugDumpFeedbackState();
+	Message(PlayerController, TEXT("Feedback presentation dump requested."), EHeistDebugLevel::Info, true);
 #endif
 }
 

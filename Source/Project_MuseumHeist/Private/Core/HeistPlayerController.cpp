@@ -13,6 +13,7 @@
 #include "Core/HeistGameState.h"
 #include "Core/HeistGameMode.h"
 #include "Core/HeistHUD.h"
+#include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerState.h"
 #if !UE_BUILD_SHIPPING
 #include "Debug/HeistCheatManager.h"
@@ -109,6 +110,19 @@ void AHeistPlayerController::SetupInputComponent()
 		UHeistDebugFunctionLibrary::DebugMissingInputAsset(this, TEXT("MoveInputAction"));
 	}
 
+	if (LookInputAction != nullptr)
+	{
+		EnhancedInputComponent->BindAction(
+			LookInputAction,
+			ETriggerEvent::Triggered,
+			this,
+			&AHeistPlayerController::HandleLookInput);
+	}
+	else
+	{
+		UHeistDebugFunctionLibrary::DebugMissingInputAsset(this, TEXT("LookInputAction"));
+	}
+
 	if (InteractInputAction != nullptr)
 	{
 		EnhancedInputComponent->BindAction(
@@ -164,6 +178,20 @@ void AHeistPlayerController::RefreshLocalHUDPresentation()
 #pragma endregion
 
 #pragma region Input
+
+void AHeistPlayerController::HandleLookInput(const FInputActionValue& InputValue)
+{
+	const AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	if (!ensureMsgf(HeistCharacter != nullptr, TEXT("Look input requires a possessed HeistPlayerCharacter"))
+		|| !HeistCharacter->CanPerformGameplayActions())
+	{
+		return;
+	}
+
+	const FVector2D LookInput = InputValue.Get<FVector2D>();
+	AddYawInput(LookInput.X);
+	AddPitchInput(LookInput.Y);
+}
 
 void AHeistPlayerController::HandleMoveInput(const FInputActionValue& InputValue)
 {
@@ -412,6 +440,21 @@ void AHeistPlayerController::DebugRequestSeedResult(
 	Server_DebugRequestSeedResult(Score, bEscaped, EscapeTimeSeconds);
 }
 
+void AHeistPlayerController::DebugRequestFeedbackTest()
+{
+	Server_DebugRequestFeedbackTest();
+}
+
+void AHeistPlayerController::DebugRequestFillInventoryForFeedback(const FName ItemId)
+{
+	Server_DebugRequestFillInventoryForFeedback(ItemId);
+}
+
+void AHeistPlayerController::DebugRequestApplyStatusSmoke(const float DurationSeconds)
+{
+	Server_DebugRequestApplyStatusSmoke(DurationSeconds);
+}
+
 void AHeistPlayerController::Server_RequestLootPickup_Implementation(AHeistLootActor* TargetLootActor)
 {
 	FHeistGameplayRequestContext RequestContext;
@@ -478,10 +521,17 @@ void AHeistPlayerController::Server_RequestLootPickup_Implementation(AHeistLootA
 	}
 
 	int32 AddedInstanceId = INDEX_NONE;
-	if (!RequestContext.InventoryComponent->TryAddItem(TargetLootActor->GetLootRowId(), AddedInstanceId))
+	const TCHAR* InventoryRejectReason = nullptr;
+	if (!RequestContext.InventoryComponent->TryAddItem(
+		TargetLootActor->GetLootRowId(),
+		AddedInstanceId,
+		InventoryRejectReason))
 	{
 		TargetLootActor->ReleasePickupReservation(RequestContext.Character);
-		LogLootPickupRejected(TargetLootActor, TEXT("InventoryRejected"), Distance);
+		LogLootPickupRejected(
+			TargetLootActor,
+			InventoryRejectReason != nullptr ? InventoryRejectReason : TEXT("InventoryRejected"),
+			Distance);
 		return;
 	}
 
@@ -831,9 +881,13 @@ void AHeistPlayerController::Server_DebugRequestAddInventoryItem_Implementation(
 	}
 
 	int32 AddedInstanceId = INDEX_NONE;
-	if (!RequestContext.InventoryComponent->TryAddItem(ItemId, AddedInstanceId))
+	const TCHAR* AddRejectReason = nullptr;
+	if (!RequestContext.InventoryComponent->TryAddItem(ItemId, AddedInstanceId, AddRejectReason))
 	{
-		LogInventoryRequestRejected(TEXT("DebugAddItem"), INDEX_NONE, TEXT("AddRejected"));
+		LogInventoryRequestRejected(
+			TEXT("DebugAddItem"),
+			INDEX_NONE,
+			AddRejectReason != nullptr ? AddRejectReason : TEXT("AddRejected"));
 	}
 #endif
 }
@@ -1297,6 +1351,175 @@ void AHeistPlayerController::Server_DebugRequestSeedResult_Implementation(
 
 #pragma endregion
 
+#pragma region Feedback
+
+FHeistPopupFeedbackRequested& AHeistPlayerController::GetPopupFeedbackRequestedDelegate()
+{
+	return PopupFeedbackRequestedDelegate;
+}
+
+void AHeistPlayerController::Client_ReceivePopupFeedback_Implementation(
+	const FText& Message,
+	const float DurationSeconds)
+{
+	if (Message.IsEmpty())
+	{
+		return;
+	}
+
+	const float SafeDuration = FMath::Max(0.1f, DurationSeconds);
+	PopupFeedbackRequestedDelegate.Broadcast(Message, SafeDuration);
+	UE_LOG(
+		LogHeistUI,
+		Log,
+		TEXT("[%s] Popup feedback received: Message=%s Duration=%.2f Local=%s"),
+		*GetName(),
+		*Message.ToString(),
+		SafeDuration,
+		IsLocalController() ? TEXT("true") : TEXT("false"));
+}
+
+void AHeistPlayerController::Server_DebugRequestFeedbackTest_Implementation()
+{
+#if !UE_BUILD_SHIPPING
+	SendPopupFeedback(
+		NSLOCTEXT("HeistFeedback", "ServerConfirmedTest", "SERVER CONFIRMED FEEDBACK"),
+		3.0f);
+#endif
+}
+
+void AHeistPlayerController::Server_DebugRequestFillInventoryForFeedback_Implementation(const FName ItemId)
+{
+#if !UE_BUILD_SHIPPING
+	FHeistGameplayRequestContext RequestContext;
+	const TCHAR* ContextRejectReason = nullptr;
+	if (!TryBuildGameplayRequestContext(RequestContext, ContextRejectReason))
+	{
+		LogInventoryRequestRejected(TEXT("FeedbackBagFull"), INDEX_NONE, ContextRejectReason);
+		return;
+	}
+
+	for (int32 AddAttempt = 0; AddAttempt < 64; ++AddAttempt)
+	{
+		int32 AddedInstanceId = INDEX_NONE;
+		const TCHAR* AddRejectReason = nullptr;
+		if (!RequestContext.InventoryComponent->TryAddItem(ItemId, AddedInstanceId, AddRejectReason))
+		{
+			LogInventoryRequestRejected(
+				TEXT("FeedbackBagFull"),
+				AddedInstanceId,
+				AddRejectReason != nullptr ? AddRejectReason : TEXT("AddRejected"));
+			return;
+		}
+	}
+
+	LogInventoryRequestRejected(TEXT("FeedbackBagFull"), INDEX_NONE, TEXT("TestLimitReached"));
+#endif
+}
+
+void AHeistPlayerController::Server_DebugRequestApplyStatusSmoke_Implementation(const float DurationSeconds)
+{
+#if !UE_BUILD_SHIPPING
+	FHeistGameplayRequestContext RequestContext;
+	const TCHAR* RejectReason = nullptr;
+	if (!TryBuildGameplayRequestContext(RequestContext, RejectReason))
+	{
+		SendPopupFeedbackForRejection(TEXT("StatusSmoke"), RejectReason);
+		return;
+	}
+
+	if (!RequestContext.Character->GetStatusComponent()->ApplyTimedStatusTag(
+		FHeistGameplayTags::Get().State_InSmoke,
+		FMath::Max(0.1f, DurationSeconds)))
+	{
+		SendPopupFeedbackForRejection(TEXT("StatusSmoke"), TEXT("StatusRejected"));
+	}
+#endif
+}
+
+void AHeistPlayerController::SendPopupFeedback(const FText& Message, const float DurationSeconds)
+{
+	if (Message.IsEmpty())
+	{
+		return;
+	}
+
+	Client_ReceivePopupFeedback(Message, FMath::Max(0.1f, DurationSeconds));
+}
+
+void AHeistPlayerController::SendPopupFeedbackForRejection(
+	const TCHAR* RequestName,
+	const TCHAR* Reason)
+{
+	SendPopupFeedback(ResolvePopupFeedbackText(RequestName, Reason));
+}
+
+FText AHeistPlayerController::ResolvePopupFeedbackText(const TCHAR* RequestName, const TCHAR* Reason)
+{
+	const FString Request = RequestName != nullptr ? RequestName : TEXT("Request");
+	const FString Rejection = Reason != nullptr ? Reason : TEXT("Rejected");
+
+	if (Rejection == TEXT("InventoryFull"))
+	{
+		return NSLOCTEXT("HeistFeedback", "BagFull", "BAG FULL");
+	}
+	if (Rejection == TEXT("AlreadyTaken"))
+	{
+		return NSLOCTEXT("HeistFeedback", "AlreadyTaken", "LOOT ALREADY TAKEN");
+	}
+	if (Rejection == TEXT("OutOfRange") || Rejection == TEXT("NotCurrentTarget"))
+	{
+		return NSLOCTEXT("HeistFeedback", "TooFarAway", "TOO FAR AWAY");
+	}
+	if (Rejection == TEXT("Stunned"))
+	{
+		return NSLOCTEXT("HeistFeedback", "BlockedByStun", "ACTION BLOCKED: STUNNED");
+	}
+	if (Rejection == TEXT("Casting"))
+	{
+		return NSLOCTEXT("HeistFeedback", "BlockedByCast", "ACTION ALREADY IN PROGRESS");
+	}
+	if (Rejection == TEXT("InventoryClosed"))
+	{
+		return NSLOCTEXT("HeistFeedback", "InventoryClosed", "INVENTORY CLOSED");
+	}
+	if (Rejection == TEXT("InvalidTargetPlacement"))
+	{
+		return NSLOCTEXT("HeistFeedback", "InvalidPlacement", "INVALID PLACEMENT");
+	}
+	if (Rejection == TEXT("RotationRejected"))
+	{
+		return NSLOCTEXT("HeistFeedback", "RotationBlocked", "ROTATION BLOCKED");
+	}
+	if (Rejection == TEXT("InvalidSlotAssignment") || Rejection == TEXT("InvalidSlot"))
+	{
+		return NSLOCTEXT("HeistFeedback", "InvalidQuickSlot", "INVALID QUICK SLOT");
+	}
+	if (Rejection == TEXT("EmptyQuickSlot"))
+	{
+		return NSLOCTEXT("HeistFeedback", "EmptyQuickSlot", "QUICK SLOT EMPTY");
+	}
+	if (Rejection == TEXT("EscapePhaseClosed"))
+	{
+		return NSLOCTEXT("HeistFeedback", "EscapeClosed", "ESCAPE NOT AVAILABLE");
+	}
+	if (Request.Contains(TEXT("Loot")))
+	{
+		return NSLOCTEXT("HeistFeedback", "LootRejected", "LOOT REQUEST REJECTED");
+	}
+	if (Request.Contains(TEXT("Escape")))
+	{
+		return NSLOCTEXT("HeistFeedback", "EscapeRejected", "ESCAPE REQUEST REJECTED");
+	}
+	if (Request.Contains(TEXT("Throwable")))
+	{
+		return NSLOCTEXT("HeistFeedback", "ItemUseRejected", "ITEM USE REJECTED");
+	}
+	return NSLOCTEXT("HeistFeedback", "RequestRejected", "REQUEST REJECTED");
+}
+
+#pragma endregion
+
 #pragma region InternalHelpers
 
 AHeistGuardCharacter* AHeistPlayerController::FindNearestGuard() const
@@ -1674,33 +1897,37 @@ FName AHeistPlayerController::GetExpectedQuickSlotItemId(const EHeistQuickSlotTy
 void AHeistPlayerController::LogLootPickupRejected(
 	const AHeistLootActor* TargetLootActor,
 	const TCHAR* Reason,
-	float Distance) const
+	float Distance)
 {
 	UHeistDebugFunctionLibrary::DebugLootPickupRequestRejected(this, TargetLootActor, Reason, Distance);
+	SendPopupFeedbackForRejection(TEXT("LootPickup"), Reason);
 }
 
 void AHeistPlayerController::LogEscapeRequestRejected(
 	const AHeistVentActor* TargetVentActor,
 	const TCHAR* Reason,
-	float Distance) const
+	float Distance)
 {
 	UHeistDebugFunctionLibrary::DebugEscapeRequestRejected(this, TargetVentActor, Reason, Distance);
+	SendPopupFeedbackForRejection(TEXT("Escape"), Reason);
 }
 
 void AHeistPlayerController::LogInventoryRequestRejected(
 	const TCHAR* RequestName,
 	const int32 InstanceId,
-	const TCHAR* Reason) const
+	const TCHAR* Reason)
 {
 	UHeistDebugFunctionLibrary::DebugInventoryRequestRejected(this, RequestName, InstanceId, Reason);
+	SendPopupFeedbackForRejection(RequestName, Reason);
 }
 
 void AHeistPlayerController::LogThrowableUseRejected(
 	const EHeistQuickSlotType SlotType,
 	const FName ItemId,
-	const TCHAR* Reason) const
+	const TCHAR* Reason)
 {
 	UHeistDebugFunctionLibrary::DebugThrowableUseRejected(this, SlotType, ItemId, Reason);
+	SendPopupFeedbackForRejection(TEXT("ThrowableUse"), Reason);
 }
 
 #pragma endregion
@@ -1739,13 +1966,12 @@ void AHeistPlayerController::ConfigureMouseCursorDefaults()
 		return;
 	}
 
-	bShowMouseCursor = true;
+	bShowMouseCursor = false;
 	bEnableClickEvents = false;
 	bEnableMouseOverEvents = false;
 
-	FInputModeGameAndUI InputMode;
-	InputMode.SetHideCursorDuringCapture(false);
-	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	FInputModeGameOnly InputMode;
+	InputMode.SetConsumeCaptureMouseDown(true);
 	SetInputMode(InputMode);
 }
 

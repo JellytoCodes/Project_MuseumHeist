@@ -188,10 +188,49 @@ void UHeistCheatManager::HeistStatusImmune(const float DurationSeconds)
 #endif
 }
 
+void UHeistCheatManager::HeistStatusSmoke(const float DurationSeconds)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugStatusSmoke(GetOuterAPlayerController(), DurationSeconds);
+#endif
+}
+
 void UHeistCheatManager::HeistStatusClear()
 {
 #if !UE_BUILD_SHIPPING
 	UHeistDebugFunctionLibrary::DebugStatusClear(GetOuterAPlayerController());
+#endif
+}
+
+#pragma endregion
+
+#pragma region FeedbackDebug
+
+void UHeistCheatManager::HeistFeedbackHelp()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugFeedbackHelp(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistFeedbackTest()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugFeedbackTest(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistFeedbackBagFull()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugFeedbackBagFull(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistFeedbackDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugFeedbackDump(GetOuterAPlayerController());
 #endif
 }
 
@@ -309,6 +348,31 @@ void UHeistCheatManager::HeistGapAuto()
 {
 #if !UE_BUILD_SHIPPING
 	UHeistDebugFunctionLibrary::DebugClearGapTrackerOverride(GetOuterAPlayerController());
+#endif
+}
+
+#pragma endregion
+
+#pragma region SoundPingDebug
+
+void UHeistCheatManager::HeistSoundPingHelp()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugSoundPingHelp(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistSoundPingDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugSoundPingPoolDump(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistSoundPingTest()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugSoundPingPoolTest(GetOuterAPlayerController());
 #endif
 }
 

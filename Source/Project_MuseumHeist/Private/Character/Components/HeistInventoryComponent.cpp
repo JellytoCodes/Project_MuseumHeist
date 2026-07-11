@@ -121,11 +121,22 @@ bool UHeistInventoryComponent::TryGetItemDefinition(
 
 bool UHeistInventoryComponent::TryAddItem(const FName ItemId, int32& OutInstanceId)
 {
+	const TCHAR* RejectReason = nullptr;
+	return TryAddItem(ItemId, OutInstanceId, RejectReason);
+}
+
+bool UHeistInventoryComponent::TryAddItem(
+	const FName ItemId,
+	int32& OutInstanceId,
+	const TCHAR*& OutRejectReason)
+{
 	OutInstanceId = INDEX_NONE;
+	OutRejectReason = nullptr;
 
 	AActor* OwnerActor = GetOwner();
 	if (!IsValid(OwnerActor) || !OwnerActor->HasAuthority())
 	{
+		OutRejectReason = TEXT("RequiresAuthority");
 		UHeistDebugFunctionLibrary::DebugInventoryAddRejected(OwnerActor, ItemId, TEXT("RequiresAuthority"));
 		return false;
 	}
@@ -133,6 +144,7 @@ bool UHeistInventoryComponent::TryAddItem(const FName ItemId, int32& OutInstance
 	FHeistItemDataRow ItemDefinition;
 	if (!TryGetItemDefinition(ItemId, ItemDefinition) || !ItemDefinition.bAvailableInV1)
 	{
+		OutRejectReason = TEXT("InvalidItemDefinition");
 		UHeistDebugFunctionLibrary::DebugInventoryAddRejected(OwnerActor, ItemId, TEXT("InvalidItemDefinition"));
 		return false;
 	}
@@ -141,6 +153,7 @@ bool UHeistInventoryComponent::TryAddItem(const FName ItemId, int32& OutInstance
 	bool bRotated = false;
 	if (!TryFindAutoPlacement(ItemDefinition, GridPosition, bRotated))
 	{
+		OutRejectReason = TEXT("InventoryFull");
 		UHeistDebugFunctionLibrary::DebugInventoryAddRejected(
 			OwnerActor,
 			ItemId,

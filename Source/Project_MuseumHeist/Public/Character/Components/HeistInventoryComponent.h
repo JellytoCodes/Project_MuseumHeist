@@ -46,6 +46,7 @@ public:
 	FHeistInventoryChanged& GetInventoryChangedDelegate();
 	bool TryGetItemDefinition(FName ItemId, FHeistItemDataRow& OutItemDefinition) const;
 	bool TryAddItem(FName ItemId, int32& OutInstanceId);
+	bool TryAddItem(FName ItemId, int32& OutInstanceId, const TCHAR*& OutRejectReason);
 	bool TryGetItem(int32 InstanceId, FHeistInventoryItem& OutInventoryItem) const;
 	bool TryMoveItem(int32 InstanceId, const FIntPoint& TargetGridPosition);
 	bool TryRotateItem(int32 InstanceId);

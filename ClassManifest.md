@@ -1,530 +1,348 @@
 # Project_MuseumHeist — Class Manifest
+## Rev 2: First-Person Cooperative Forgery
 
-## Design Reference
+상태:
 
-`Museum_Heist_GDD.docx` is the design source for gameplay rules, balance defaults, data schemas, and weekly milestones.
+- **Keep**: 기존 책임 유지
+- **Modify**: 기존 타입을 새 방향에 맞게 수정
+- **Add**: 현재 Manifest에서 신규 생성 허용
+- **Deprecate**: 신규 흐름에서 미사용, 즉시 삭제 금지
+- **Deferred**: v1.0 범위 밖, 현재 생성 금지
 
-This manifest controls which C++ types may be created in the current phase. Do not create every future GDD type at once. Add deferred types only when their scheduled weekly task begins.
-
-If the GDD and this manifest disagree on architecture or type ownership, update this manifest before implementation.
-
-Path convention used by every section below:
-
-* Header paths map to `Source/Project_MuseumHeist/Public/<Feature>/`.
-* Source paths map to `Source/Project_MuseumHeist/Private/<Feature>/`.
-* Legacy paths written as `Source/Project_MuseumHeist/<Feature>/...` describe the logical feature folder, not a third physical source root.
-
-## Current Goal
-
-Implement the explicitly requested numbered weekly task using only the
-manifest-approved types and the relevant GDD scope.
-
-Do not bulk-implement later tasks. New types still require manifest approval.
+Design Reference: `Museum_Heist_GDD.docx` Rev.7
 
 ---
 
-# 1. Core
+# 1. Core Types
 
-## Files
+## `Core/HeistTypes.h` — Modify
 
-`Source/Project_MuseumHeist/Core/HeistTypes.h`
+| 타입 | 상태 | Rev 2 책임 |
+|---|---|---|
+| `EHeistMatchPhase` | Modify | Enum 호환성은 유지하고 v1.0 흐름은 Lobby/ReadyCountdown/InGame/End만 사용 |
+| `FHeistPlayerResult` | Deprecate | 기존 결과 호환용. 신규 결과는 TeamResult/Contribution 사용 |
+| `FHeistRareLootEventState` | Deferred | Optional Objective 검토 전까지 비활성 |
+| `EHeistItemType` | Keep | Loose Loot, Throwable, Trap, KeyItem 분류 |
+| `EHeistLootGrade` | Keep | Loose Loot 등급 |
+| `EHeistUseType` | Keep | Coin/Smoke 사용 |
+| `EHeistTargetType` | Keep | 사용 대상 분류 |
+| `EHeistSpawnCategory` | Keep | Loose Loot Spawn |
+| `EHeistSoundPingType` | Modify | Alarm, Teammate Ping 확장 가능 |
+| `EHeistGuardState` | Modify | `InspectExhibit` 추가 |
+| `EHeistCustomizationType` | Keep | 변경 없음 |
+| `EHeistZoneId` | Keep | 변경 없음 |
+| `EHeistQuickSlotType` | Keep | Coin/Smoke 필수, Glue는 Stretch |
 
-Contains:
+## 신규 Enum — Add
 
-* `EHeistMatchPhase`
-* `FHeistPlayerResult`
-* `FHeistRareLootEventState`
-* `EHeistItemType`
-* `EHeistLootGrade`
-* `EHeistUseType`
-* `EHeistTargetType`
-* `EHeistSpawnCategory`
-* `EHeistSoundPingType`
-* `EHeistGuardState`
-* `EHeistCustomizationType`
-* `EHeistZoneId`
-* `EHeistQuickSlotType`
+```cpp
+EHeistForgeryType
+- None
+- Drawing
 
-Canonical values:
+EHeistDisplayCaseState
+- Secured
+- Observed
+- ForgeryInProgress
+- ReplicaReady
+- ReplicaPlaced
+- OriginalAvailable
+- OriginalRemoved
+- Inspecting
+- Completed
+- Suspected
+- Alarmed
+- Failed
 
-* `EHeistMatchPhase`: `None`, `Lobby`, `Loadout`, `ReadyCountdown`, `InGame`, `End`
-* `EHeistItemType`: `None`, `Loot`, `Trap`, `Throwable`, `KeyItem`
-* `EHeistLootGrade`: `OneStar`, `TwoStar`, `ThreeStar`, `FourStar`
-* `EHeistUseType`: `None`, `Throw`, `PlaceTrap`, `DeployArea`, `Consume`
-* `EHeistTargetType`: `None`, `Self`, `WorldLocation`, `ActorHit`, `Area`
-* `EHeistSpawnCategory`: `None`, `VaultFixed`, `ExhibitionRoom`, `RareEvent`, `Dropped`
-* `EHeistSoundPingType`: `None`, `Footstep`, `GlassBreak`, `CoinImpact`, `NoiseTrap`, `StunHit`
-* `EHeistGuardState`: `Disabled`, `Stunned`, `Patrol`, `InvestigateNoise`, `ChasePlayer`, `SearchLastKnownLocation`, `ReturnToPatrol`
-* `EHeistCustomizationType`: `Hat`, `Cloth`, `SkinColor`, `HatColor`, `ClothColor`
-* `EHeistZoneId`: `None`, `ZoneA`, `ZoneB`, `ZoneC`, `ZoneD`
+EHeistAlertLevel
+- Quiet
+- Suspicious
+- Searching
+- Alarmed
+- Lockdown
 
-`EHeistQuickSlotType` remains a project routing enum for the three v1.0 quick slots: Coin, Smoke Grenade, and Glue Trap.
+EHeistObjectiveState
+- Inactive
+- Available
+- InProgress
+- Completed
+- Failed
+```
 
----
+## 신규 Struct — Add
 
-`Source/Project_MuseumHeist/Core/HeistGameplayTags.h`
-`Source/Project_MuseumHeist/Core/HeistGameplayTags.cpp`
+```cpp
+FHeistForgeryResult
+- ArtifactId
+- TemplateId
+- ForgeryType
+- SimilarityScore
+- CoverageScore
+- ExtraStrokePenalty
+- CompletionTime
+- bReplicaPlaced
 
-Contains:
+FHeistTeamResult
+- bMissionSuccess
+- bPartialSuccess
+- TargetArtifactValue
+- LooseLootValue
+- AverageForgeryScore
+- FinalAlertLevel
+- ExtractedPlayerCount
+- ArrestedPlayerCount
+- FinalTeamReward
 
-* `FHeistGameplayTags`
-
-Purpose:
-
-* Central native GameplayTag registration point.
-
----
-
-`Source/Project_MuseumHeist/Core/HeistLogChannels.h`
-`Source/Project_MuseumHeist/Core/HeistLogChannels.cpp`
-
-Contains:
-
-* `LogHeist`
-* `LogHeistInventory`
-* `LogHeistNetwork`
-* `LogHeistUI`
-* `LogHeistAI`
-
----
-
-`Source/Project_MuseumHeist/Core/HeistGameMode.h`
-`Source/Project_MuseumHeist/Core/HeistGameMode.cpp`
-
-Class:
-
-* `AHeistGameMode : public AGameModeBase`
-
-Purpose:
-
-* Server-only match flow owner.
-* Placeholder methods for match phase transitions.
-
-Do not implement full match flow yet.
-
----
-
-`Source/Project_MuseumHeist/Core/HeistGameState.h`
-`Source/Project_MuseumHeist/Core/HeistGameState.cpp`
-
-Class:
-
-* `AHeistGameState : public AGameStateBase`
-
-Purpose:
-
-* Replicated match phase and timer state.
-* Replicated result aggregation and deterministic ranking baseline.
-* Uses the phase order Lobby -> Loadout -> ReadyCountdown -> InGame -> End.
-
-Create replicated properties only if compile-safe and minimal.
+FHeistPlayerContribution
+- PlayerId
+- LooseLootValueCarried
+- ForgeriesCompleted
+- BestForgeryScore
+- GuardsDistracted
+- TeammatesRescued
+- AlarmsTriggered
+- bEscaped
+- bArrested
+```
 
 ---
 
-`Source/Project_MuseumHeist/Core/HeistPlayerState.h`
-`Source/Project_MuseumHeist/Core/HeistPlayerState.cpp`
+# 2. Core Framework
 
-Class:
+| 파일 / 클래스 | 상태 | 책임 |
+|---|---|---|
+| `Core/HeistGameplayTags.*` / `FHeistGameplayTags` | Keep + Extend | Forgery/Objective/Alert 태그 등록 |
+| `Core/HeistLogChannels.*` | Keep | 기존 로그 채널 유지 |
+| `Core/HeistGameMode.*` / `AHeistGameMode` | Modify | Match Phase, Objective, Alert/Lockdown 전이 판정, Team Result 확정 |
+| `Core/HeistGameState.*` / `AHeistGameState` | Modify | Replicated Objective, Alert, Lockdown, Team Result |
+| `Core/HeistPlayerState.*` / `AHeistPlayerState` | Modify | Contribution, Escape/Arrest, Carry Value. Rank 필드는 Legacy 미사용 |
+| `Core/HeistPlayerController.*` / `AHeistPlayerController` | Modify | Input Mode, Center Interaction, Forgery Request RPC |
+| `Core/HeistHUD.*` / `AHeistHUD` | Keep + Extend | HUD/Forgery/Result ViewModel 생성 |
+| `Core/HeistGameInstance.*` / `UHeistGameInstance` | Keep | Session/global settings placeholder |
 
-* `AHeistPlayerState : public APlayerState`
+Authority:
 
-Purpose:
-
-* Player score, carried weight, escaped state, customization state placeholder.
-* Owns result-facing values such as `TotalLootScore`, `FinalScore`, and escaped state.
-* Owns escape time and player rank assigned by the authoritative result aggregation.
-
----
-
-`Source/Project_MuseumHeist/Core/HeistPlayerController.h`
-`Source/Project_MuseumHeist/Core/HeistPlayerController.cpp`
-
-Class:
-
-* `AHeistPlayerController : public APlayerController`
-
-Purpose:
-
-* UI request routing.
-* Future Server RPC entry point.
-
-Do not implement actual Server RPC behavior yet.
+- GameMode: Server only
+- GameState/PlayerState: Server mutation + Replication
+- PlayerController: Local input + Server RPC entry
+- HUD: Local presentation
 
 ---
 
-`Source/Project_MuseumHeist/Core/HeistHUD.h`
-`Source/Project_MuseumHeist/Core/HeistHUD.cpp`
+# 3. Character
 
-Class:
+## `Character/HeistPlayerCharacter.*`
+`AHeistPlayerCharacter : public ACharacter` — Modify
 
-* `AHeistHUD : public AHUD`
-
-Purpose:
-
-* Future UI / ViewModel creation hub.
-
----
-
-`Source/Project_MuseumHeist/Core/HeistGameInstance.h`
-`Source/Project_MuseumHeist/Core/HeistGameInstance.cpp`
-
-Class:
-
-* `UHeistGameInstance : public UGameInstance`
-
-Purpose:
-
-* Future session and global game settings placeholder.
+- First-Person Camera Component 소유
+- Controller Yaw 기반 Rotation
+- Local Head Hide API
+- Forgery Movement Lock 반영
+- Full Body Mesh 유지
+- 기존 Gameplay Component 유지
+- SpringArm은 참조 감사 후 Deprecate
 
 ---
 
-# 2. Character
+# 4. Character Components
 
-`Source/Project_MuseumHeist/Character/HeistPlayerCharacter.h`
-`Source/Project_MuseumHeist/Character/HeistPlayerCharacter.cpp`
+Folder: `Character/Components/`
 
-Class:
+| 클래스 | 상태 | 책임 |
+|---|---|---|
+| `UHeistTagComponent` | Keep | Gameplay Tag 상태 |
+| `UHeistStatusComponent` | Modify | Arrest/Disabled 상태. PvP Stun 신규 사용 금지 |
+| `UHeistInventoryComponent` | Keep + Extend | Grid/FastArray 유지, Original Carry Entry 연결 |
+| `UHeistInteractionComponent` | Modify | Center Screen Trace, Target Filter, Prompt Snapshot |
+| `UHeistActionComponent` | Modify | Action Lock, Forgery Cast/Cancel, Submit 중복 방지 |
+| `UHeistVisionComponent` | Modify | Camera Forward Flashlight |
+| `UHeistCustomizationComponent` | Keep | 외형 |
+| `UHeistNoiseEmitterComponent` | Keep | Footstep/Coin/Alarm Noise |
+| `UHeistForgeryComponent` | Add | Session, Stroke, Timeout, Submit/Cancel, 서버 판정, Cleanup |
 
-* `AHeistPlayerCharacter : public ACharacter`
-
-Purpose:
-
-* Player character root.
-* Owns core gameplay components.
-
-Create component default subobjects.
-Do not implement movement, combat, item use, or interaction logic yet.
-
----
-
-# 3. Character Components
-
-Folder:
-`Source/Project_MuseumHeist/Character/Components/`
-
-Classes:
-
-* `UHeistTagComponent : public UActorComponent`
-* `UHeistStatusComponent : public UActorComponent`
-* `UHeistInventoryComponent : public UActorComponent`
-* `UHeistInteractionComponent : public UActorComponent`
-* `UHeistActionComponent : public UActorComponent`
-* `UHeistVisionComponent : public UActorComponent`
-* `UHeistCustomizationComponent : public UActorComponent`
-* `UHeistNoiseEmitterComponent : public UActorComponent`
-
-Purpose:
-
-* Split gameplay responsibility across server-authoritative components.
-
-Do not implement internal gameplay logic yet.
+`UHeistForgeryComponent`는 Player Character에 기본 Subobject로 생성한다. 별도 Manager를 만들지 않는다.
 
 ---
 
-# 4. Inventory And Data
+# 5. Inventory And Data
 
-Folder:
-`Source/Project_MuseumHeist/Inventory/`
+기존 Inventory/FastArray 타입은 Keep한다.
 
-Files:
+- `FHeistInventoryItem`
+- `FHeistInventoryFastArrayItem`
+- `FHeistReplicatedInventory`
+- `FHeistQuickSlotState`
+- `FHeistItemDataRow`
+- `FHeistLootDataRow`
+- `FHeistUsableItemDataRow`
+- `FHeistSoundPingDataRow`
+- `FHeistGuardDataRow`
+- `FHeistLootSpawnRow`
+- `FHeistVentDataRow`
+- `FHeistCustomizationRow`
+- `FHeistUITextRow`
 
-* `HeistInventoryTypes.h`
-* `HeistItemDataTypes.h`
+변경:
 
-Types:
+- `FHeistLootDataRow`는 Loose Loot 데이터로 사용한다.
+- `FHeistGuardDataRow`에 Inspect/Alert 튜닝을 추가한다.
+- `FHeistVentDataRow`는 Shared Extraction 설정으로 재해석한다.
 
-* `FHeistInventoryItem`
-* `FHeistInventoryFastArrayItem`
-* `FHeistReplicatedInventory`
-* `FHeistQuickSlotState`
-* `FHeistItemDataRow`
-* `FHeistLootDataRow`
-* `FHeistUsableItemDataRow`
-* `FHeistSoundPingDataRow`
-* `FHeistGuardDataRow`
-* `FHeistLootSpawnRow`
-* `FHeistVentDataRow`
-* `FHeistCustomizationRow`
-* `FHeistUITextRow`
+## 신규 Data Row — Add
 
-Inventory ownership and identity:
+```cpp
+FHeistArtifactDataRow
+- ArtifactId
+- DisplayName
+- ArtifactValue
+- Weight
+- GridWidth
+- GridHeight
+- ForgeryType
+- ForgeryTemplateId
+- MinimumForgeryScore
+- BaseInspectionDelay
+- VisualActorClass
 
-* `UHeistInventoryComponent` on the player Character/Pawn owns `FHeistReplicatedInventory`.
-* `FHeistInventoryItem::ItemId` is an `FName` matching its DataTable RowName.
-* `FHeistInventoryItem::InstanceId` is initially a component-local monotonically increasing `int32`.
-* `FHeistQuickSlotState` references an inventory entry by `InstanceId` and does not duplicate the item state.
-* `FGuid` or a server-global ID is deferred until save/load, persistent ownership, or cross-inventory tracking requires it.
+FHeistForgeryTemplateRow
+- TemplateId
+- ReferenceImage
+- ReferenceMask
+- ObservationDuration
+- ForgeryDuration
+- StrokeLimit
+- BrushSize
+- CoverageWeight
+- MajorShapeWeight
+- ExtraStrokePenaltyWeight
+- TimeoutPenalty
+```
 
-Use `FFastArraySerializerItem` and `FFastArraySerializer` for inventory skeleton types.
+## `Data/HeistGameBalanceDataAsset.*`
+`UHeistGameBalanceDataAsset` — Modify
 
-Do not implement full add, move, remove, rotate, or occupancy algorithms yet.
-
-GDD row schema baseline:
-
-* `FHeistItemDataRow`: master item row containing ItemId/RowName, ItemTag, grid width/height, weight, QuickSlot eligibility, v1.0 availability, ItemType, display text, and shared icon reference.
-* `FHeistLootDataRow`: loot-only extension keyed by ItemId, containing LootGrade, ScoreValue, SpawnCategory, SpawnWeight, Piñata-drop eligibility, and the `AHeistLootActor` Blueprint class reference.
-* `FHeistUsableItemDataRow`: usable-item extension keyed by ItemId, containing UseType, TargetType, Cooldown, CastTime, Duration, ProjectileSpeed, and the spawned Actor class reference.
-* Common display, category, weight, and icon values must not be duplicated in extension rows. Every extension RowName and ItemId must match an existing master item row.
-* `FHeistSoundPingDataRow`: SoundPingId, SoundPingTag/Type, Radius, Duration, RefreshInterval, direction-only flag, guard/player reaction flags, and soft sound/icon references.
-* `FHeistGuardDataRow`: GuardProfileId, SightRadius, SightAngle, InvestigateSightAngle, PatrolSpeed, ChaseSpeed, StunDuration, InvestigateDuration, AggroResetDistance, SightUpdateInterval.
-* `FHeistLootSpawnRow`: ID, SpawnCategory, CandidateItemIds, MinCount, MaxCount, reveal flag.
-* `FHeistVentDataRow`: VentId, ZoneId, LinkedRoom, initial active flag, reactivation flag.
-* `FHeistCustomizationRow`: stable customization ID, type/tag, display text, and soft mesh/material references.
-* `FHeistUITextRow`: stable text ID and localized `FText`.
-* `FHeistTimedTagState`: replicated GameplayTag status entry with an authoritative server end time.
-
-Deferred weekly types — do not create until the relevant weekly task explicitly requests them:
-
-* `FHeistCooldownState` for item action/cooldown work.
-* `FHeistLootDropRequest` for authoritative inventory drop work.
-
----
-
-Folder:
-`Source/Project_MuseumHeist/Data/`
-
-Files:
-
-* `HeistGameBalanceDataAsset.h`
-* `HeistGameBalanceDataAsset.cpp`
-
-Class:
-
-* `UHeistGameBalanceDataAsset : public UDataAsset`
-
-Purpose:
-
-* Central balance values and DataTable references.
-
-Initial GDD balance defaults belong here:
-
-* MatchDuration `300.0`, VentUnlockTime `180.0`
-* RareLootEventTimes `90.0`, `225.0`
-* BaseWalkSpeed `600.0`, MinimumWalkSpeed `200.0`, LootCellSpeedPenalty `15.0`
-* StunDuration `3.0`, StunImmunityDuration `2.0`
-* LootCastTime `1.5`, EscapeCastTime `2.0`, TrapCastTime `1.5`
-* SharedThrowableCooldown `5.0`
-* GapTrackerThreshold `1000`
+- Alert/Lockdown 기본값
+- Player Count Scaling
+- Legacy Gap/PvP 값은 미사용 처리
+- Painting별 Observation/Forgery 값은 Template Row가 우선
 
 ---
 
-# 5. World And Interactable
+# 6. World And Interactable
 
-Folder:
-`Source/Project_MuseumHeist/World/`
+| 클래스 | 상태 | Rev 2 책임 |
+|---|---|---|
+| `IHeistInteractable` | Keep | 공통 인터랙션 |
+| `AHeistInteractableActor` | Keep | 공통 기반 |
+| `AHeistLootActor` | Keep | Loose Loot |
+| `AHeistDisplayCaseActor` | Modify | Target Artifact, Session Lock, Replica/Original, Inspection State |
+| `AHeistVentActor` | Modify | Shared Extraction |
+| `AHeistCoinProjectile` | Modify | Guard Distraction |
+| `AHeistSmokeProjectile` / `AHeistSmokeCloudActor` | Modify | Guard Sight Blocking |
+| `AHeistGlueTrapActor` | Deferred | Guard 전용 Stretch |
+| `AHeistNoiseTrapActor` | Deferred | Post-v1.0 |
+| `AHeistLootSpawnPoint` | Keep | Loose Loot Spawn |
+| `AHeistPlayerStart` | Keep | Spawn |
+| `AHeistGuardWaypoint` | Keep | Patrol |
 
-World classes are organized by world responsibility rather than being kept in one flat actor folder.
+금지:
 
-Folders and classes:
-
-* `World/Interaction/`
-  * `UHeistInteractable : public UInterface`
-  * `IHeistInteractable`
-  * `AHeistInteractableActor : public AActor`
-* `World/Actors/Loot/`
-  * `AHeistLootActor : public AHeistInteractableActor`
-  * `AHeistDisplayCaseActor : public AHeistInteractableActor`
-* `World/Actors/Escape/`
-  * `AHeistVentActor : public AHeistInteractableActor`
-* `World/Actors/Trap/`
-  * `AHeistTrapActor : public AActor`
-  * `AHeistGlueTrapActor : public AHeistTrapActor`
-  * `AHeistNoiseTrapActor : public AHeistTrapActor`
-* `World/Actors/Projectile/`
-  * `AHeistThrowableProjectile : public AActor`
-  * `AHeistCoinProjectile : public AHeistThrowableProjectile`
-  * `AHeistSmokeProjectile : public AHeistThrowableProjectile`
-* `World/Actors/Area/`
-  * `AHeistSmokeCloudActor : public AActor`
-* `World/Spawn/`
-  * `AHeistLootSpawnPoint : public AActor`
-  * `AHeistPlayerStart : public APlayerStart`
-* `World/AI/`
-  * `AHeistGuardWaypoint : public AActor`
-
-Visual actor base classes should expose C++ component slots for Blueprint asset assignment:
-
-* `AHeistInteractableActor` owns interaction collision and a visual static mesh component.
-* `AHeistTrapActor` owns trigger collision and a visual static mesh component.
-* `AHeistThrowableProjectile` owns projectile collision, projectile movement, and a visual static mesh component.
-
-Gameplay collision remains owned by the C++ collision components. Static mesh components are visual-only by default and should be configured with mesh/material/scale in Blueprint children.
-
-Do not create:
-
-* `ARoyalCrownActor`
-* `APaintingActor`
-* `AAncientSwordActor`
-* `ARareArtifactActor`
-
-Loot must remain data-driven.
-
-`AHeistNoiseTrapActor` is approved as a data-reference and Blueprint-shell parent only.
-Its sound emission, perception stimulus, trigger result, and other gameplay behavior remain
-deferred until a separately requested v1.1 implementation task.
+- Painting별 `AActor` 파생 클래스
+- `ForgeryManager`
+- `ReplicaManager`
+- `ArtifactFactory`
+- `ObjectiveService`
+- 신규 Camera Manager
 
 ---
 
-# 6. AI
+# 7. AI
 
-Folder:
-`Source/Project_MuseumHeist/AI/`
+| 클래스 | 상태 | 책임 |
+|---|---|---|
+| `AHeistGuardCharacter` | Keep + Extend | First-Person 감지 튜닝 |
+| `AHeistGuardAIController` | Keep + Extend | Inspect Target 선택 |
+| `UHeistGuardStateComponent` | Modify | InspectExhibit, Alert 반응 |
+| `UHeistGuardNoiseReactionComponent` | Keep | Coin/Footstep/Alarm |
+| `UHeistPatrolPathComponent` | Keep | Patrol |
 
-Classes:
-
-* `AHeistGuardCharacter : public ACharacter`
-* `AHeistGuardAIController : public AAIController`
-* `UHeistGuardStateComponent : public UActorComponent`
-* `UHeistPatrolPathComponent : public UActorComponent`
-* `UHeistGuardNoiseReactionComponent : public UActorComponent`
-
-Use enum:
-
-* `EHeistGuardState`
-
-Architecture:
-
-* `UHeistGuardStateComponent` owns server-authoritative state, transition validation, timers, and minimal replicated state.
-* `AHeistGuardAIController` owns the `UStateTreeAIComponent` slot and forwards authoritative state changes to StateTree events.
-* StateTree is the default high-level state-flow framework.
-* Blueprint assigns the StateTree asset and visual configuration only.
-* Behavior Tree requires explicit user approval for a concrete tactical AI need.
-
-Implement AI behavior only when required by the active numbered task.
+StateTree Asset는 Editor 작업이며 사용자가 소유한다.
 
 ---
 
-# 7. UI
+# 8. UI
 
-Folder:
-`Source/Project_MuseumHeist/UI/Widgets/`
+## Widget Classes
 
-Classes:
+| 클래스 | 상태 | 책임 |
+|---|---|---|
+| `UHeistHUDWidget` | Modify | Crosshair, Objective, Alert, Team Status |
+| `UHeistInventoryWidget` | Keep | Inventory |
+| `UHeistInventorySlotWidget` | Keep | Slot |
+| `UHeistInventoryItemWidget` | Keep | Item |
+| `UHeistQuickSlotWidget` | Keep | QuickSlot |
+| `UHeistInteractionPromptWidget` | Modify | Center Screen Prompt |
+| `UHeistResultWidget` | Modify | Team Result / Contribution |
+| `UHeistRareLootAlertWidget` | Deferred / Repurpose | Optional Objective 또는 Lockdown Banner |
+| `UHeistGapTrackerWidget` | Deprecate | 신규 HUD에서 생성하지 않음 |
+| `UHeistForgeryWidget` | Add | Owner-only Full-Screen Forgery Presentation |
 
-* `UHeistUserWidgetBase : public UUserWidget`
-* `UHeistHUDWidget : public UHeistUserWidgetBase`
-* `UHeistInventoryWidget : public UHeistUserWidgetBase`
-* `UHeistInventorySlotWidget : public UHeistUserWidgetBase`
-* `UHeistInventoryItemWidget : public UHeistUserWidgetBase`
-* `UHeistQuickSlotWidget : public UHeistUserWidgetBase`
-* `UHeistResultWidget : public UHeistUserWidgetBase`
-* `UHeistLobbyWidget : public UHeistUserWidgetBase`
-* `UHeistInteractionPromptWidget : public UHeistUserWidgetBase`
-* `UHeistGapTrackerWidget : public UHeistUserWidgetBase`
-* `UHeistSoundPingMarkerWidget : public UHeistUserWidgetBase`
-* `UHeistRareLootAlertWidget : public UHeistUserWidgetBase`
+## ViewModels
 
----
-
-Folder:
-`Source/Project_MuseumHeist/UI/ViewModels/`
-
-Classes:
-
-* `UHeistHUDViewModel : public UMVVMViewModelBase`
-* `UHeistInventoryViewModel : public UMVVMViewModelBase`
-* `UHeistQuickSlotViewModel : public UMVVMViewModelBase`
-* `UHeistResultViewModel : public UMVVMViewModelBase`
-* `UHeistLobbyViewModel : public UMVVMViewModelBase`
-* `UHeistGapTrackerViewModel : public UMVVMViewModelBase`
-
-`UHeistGapTrackerViewModel` is an HUD-owned sub-viewmodel. It must not become an independent gameplay authority or standalone system.
+| 클래스 | 상태 | 책임 |
+|---|---|---|
+| `UHeistHUDViewModel` | Modify | Objective, Alert, Lockdown, Carrier, Team Status |
+| `UHeistInventoryViewModel` | Keep | Inventory Snapshot |
+| `UHeistQuickSlotViewModel` | Keep | QuickSlot |
+| `UHeistResultViewModel` | Modify | Team Result / Contribution |
+| `UHeistLobbyViewModel` | Keep | 1~4인 Lobby |
+| `UHeistGapTrackerViewModel` | Deprecate | 신규 HUD에서 미사용 |
+| `UHeistForgeryViewModel` | Add | Forgery UI 상태만 노출, 판정 없음 |
 
 ---
 
-Folder:
-`Source/Project_MuseumHeist/UI/DragDrop/`
+# 9. Debug
 
-Classes:
+- `UHeistCheatManager` — Keep
+- `UHeistDebugFunctionLibrary` — Keep
 
-* `UHeistInventoryDragDropOperation : public UDragDropOperation`
-
----
-
-Folder:
-`Source/Project_MuseumHeist/UI/Pool/`
-
-Classes:
-
-* `UHeistSoundPingWidgetPool : public UObject`
-* `UHeistPopupWidgetPool : public UObject`
-
-Do not create WBP assets.
-Do not implement full binding logic yet.
-Do not implement actual drag/drop item movement yet.
+활성 Task에서 필요한 Forgery/Case/Alert Debug Command만 추가한다.
 
 ---
 
-# 8. Debug
+# 10. Module Dependencies
 
-Folder:
-`Source/Project_MuseumHeist/Debug/`
+기존 의존성 유지:
 
-Classes:
+- Core
+- CoreUObject
+- Engine
+- InputCore
+- EnhancedInput
+- NetCore
+- GameplayTags
+- UMG
+- Slate
+- SlateCore
+- ModelViewViewModel
+- AIModule
 
-* `UHeistCheatManager : public UCheatManager`
-* `UHeistDebugFunctionLibrary : public UBlueprintFunctionLibrary`
-
-`UHeistCheatManager` is the explicit exception to the general ban on new Manager-named classes because Unreal's framework base type is `UCheatManager`.
-
-Purpose:
-
-* Development-only test commands and centralized utility validation.
-
-Commands must route through `UHeistDebugFunctionLibrary` and remain disabled in
-Shipping builds.
-
----
-
-# 9. Build.cs Dependencies
-
-Ensure required dependencies are present if classes require them:
-
-* Core
-* CoreUObject
-* Engine
-* InputCore
-* EnhancedInput
-* NetCore
-* GameplayTags
-* UMG
-* Slate
-* SlateCore
-* ModelViewViewModel
-* AIModule
-
-Do not add extra dependencies unless required for compilation.
+Drawing 방식이 UMG Custom Widget + Stroke Data로 해결되면 신규 모듈은 필요 없다. Render Target 또는 Image Processing 모듈이 필요해질 경우 활성 Task에서 Manifest를 먼저 수정한다.
 
 ---
 
-# 10. Numbered Task Implementation Boundary
+# 11. Implementation Boundary
 
-The initial skeleton phase is complete. Manifest-approved types may receive gameplay
-logic only for the active, explicitly requested `TASK-Wn-###`.
+Manifest에 Add로 승인된 타입이라도 활성 Task 이전에 전체 로직을 구현하지 않는다.
 
-Do not implement ahead of the active task:
+Legacy 타입이나 필드를 물리적으로 삭제하기 전에:
 
-* Full match flow
-* Full inventory placement algorithm
-* Full FastArray mutation logic
-* Full item use logic
-* Full projectile behavior
-* Full stun logic
-* Full Piñata Drop logic
-* Full scoring logic
-* Full guard AI behavior
-* Full Sound Ping behavior
-* Full UI binding
-* Full drag/drop behavior
-* Full session or Steam logic
+1. 신규 경로 구현
+2. C++ Compile
+3. Blueprint Reference 교체
+4. Blueprint Compile
+5. PIE
+6. Reference Viewer 0 참조
+7. Cleanup Task 승인
 
-Do not create:
-
-* Blueprint assets
-* Widget Blueprint assets
-* DataTable assets
-* DataAsset assets
-* Maps
-* Materials
-* Niagara systems
-* Animations
+을 거친다.

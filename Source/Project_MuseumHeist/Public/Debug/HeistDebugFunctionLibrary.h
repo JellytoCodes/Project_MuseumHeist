@@ -213,8 +213,27 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Status", meta = (DevelopmentOnly, ClampMin = "0.0", Units = "s"))
 	static void DebugStatusImmune(APlayerController* PlayerController, float DurationSeconds);
 
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Status", meta = (DevelopmentOnly, ClampMin = "0.0", Units = "s"))
+	static void DebugStatusSmoke(APlayerController* PlayerController, float DurationSeconds);
+
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Status", meta = (DevelopmentOnly))
 	static void DebugStatusClear(APlayerController* PlayerController);
+
+#pragma endregion
+
+#pragma region FeedbackDebug
+
+public:
+	static void DebugFeedbackHelp(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Feedback", meta = (DevelopmentOnly))
+	static void DebugFeedbackTest(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Feedback", meta = (DevelopmentOnly))
+	static void DebugFeedbackBagFull(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Feedback", meta = (DevelopmentOnly))
+	static void DebugFeedbackDump(APlayerController* PlayerController);
 
 #pragma endregion
 
@@ -272,6 +291,19 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|GapTracker", meta = (DevelopmentOnly))
 	static void DebugClearGapTrackerOverride(APlayerController* PlayerController);
+
+#pragma endregion
+
+#pragma region SoundPingDebug
+
+public:
+	static void DebugSoundPingHelp(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|SoundPing", meta = (DevelopmentOnly))
+	static void DebugSoundPingPoolDump(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|SoundPing", meta = (DevelopmentOnly))
+	static void DebugSoundPingPoolTest(APlayerController* PlayerController);
 
 #pragma endregion
 

@@ -8,7 +8,12 @@
 class UTextBlock;
 class UHeistGapTrackerWidget;
 class UHeistInteractionPromptWidget;
+class UHeistPopupWidgetPool;
 class UHeistRareLootAlertWidget;
+class UHeistSoundPingMarkerWidget;
+class UHeistSoundPingWidgetPool;
+class UHeistUserWidgetBase;
+class UPanelWidget;
 class UWidget;
 
 UCLASS(Blueprintable)
@@ -42,6 +47,8 @@ public:
 
 private:
 	void RefreshHUDPresentation();
+	void SetupPopupFeedbackPresentation();
+	void SetupSoundPingPresentation();
 	void ResolveInteractionChildWidgets();
 	UHeistInteractionPromptWidget* ResolveInteractionChildWidget(
 		FName WidgetName,
@@ -51,6 +58,8 @@ private:
 		FName WidgetName,
 		UHeistRareLootAlertWidget* ExistingWidget) const;
 	void ResolveGapTrackerChildWidget();
+	void ResolveStatusFeedbackChildWidgets();
+	void RefreshStatusFeedbackPresentation(bool bStunned, bool bStunImmune, bool bInSmoke);
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Heist|HUD", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistHUDViewModel> HUDViewModel;
@@ -88,6 +97,15 @@ protected:
 
 #pragma endregion
 
+#pragma region Debug
+
+public:
+	void DebugDumpFeedbackState() const;
+	void DebugDumpSoundPingMarkers() const;
+	void DebugRunSoundPingPoolTest();
+
+#pragma endregion
+
 #pragma region Presentation
 
 private:
@@ -120,6 +138,53 @@ private:
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistGapTrackerWidget> GapTrackerWidget;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UHeistUserWidgetBase> StatusFeedbackWidget;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UWidget> StatusFeedbackContainer;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> StatusFeedbackText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UWidget> StatusStunnedVignette;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UWidget> StatusImmuneVignette;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UWidget> StatusSmokeVignette;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UPanelWidget> PopupFeedbackLayer;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Feedback", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<UHeistUserWidgetBase> PopupFeedbackWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Feedback", meta = (ClampMin = "1", ClampMax = "5", AllowPrivateAccess = "true"))
+	int32 PopupFeedbackCapacity = 3;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHeistPopupWidgetPool> PopupWidgetPool;
+
+	bool bStatusFeedbackInitialized = false;
+	bool bCachedStatusStunned = false;
+	bool bCachedStatusStunImmune = false;
+	bool bCachedStatusInSmoke = false;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UPanelWidget> SoundPingMarkerLayer;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|SoundPing", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<UHeistSoundPingMarkerWidget> SoundPingMarkerWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|SoundPing", meta = (ClampMin = "0.0", AllowPrivateAccess = "true"))
+	float SoundPingMarkerScreenMarginPixels = 80.0f;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHeistSoundPingWidgetPool> SoundPingWidgetPool;
 
 #pragma endregion
 };

@@ -64,7 +64,27 @@ public:
 	void HeistStatusImmune(float DurationSeconds = 2.0f);
 
 	UFUNCTION(Exec)
+	void HeistStatusSmoke(float DurationSeconds = 3.0f);
+
+	UFUNCTION(Exec)
 	void HeistStatusClear();
+
+#pragma endregion
+
+#pragma region FeedbackDebug
+
+public:
+	UFUNCTION(Exec)
+	void HeistFeedbackHelp();
+
+	UFUNCTION(Exec)
+	void HeistFeedbackTest();
+
+	UFUNCTION(Exec)
+	void HeistFeedbackBagFull();
+
+	UFUNCTION(Exec)
+	void HeistFeedbackDump();
 
 #pragma endregion
 
@@ -125,6 +145,20 @@ public:
 
 	UFUNCTION(Exec)
 	void HeistGapAuto();
+
+#pragma endregion
+
+#pragma region SoundPingDebug
+
+public:
+	UFUNCTION(Exec)
+	void HeistSoundPingHelp();
+
+	UFUNCTION(Exec)
+	void HeistSoundPingDump();
+
+	UFUNCTION(Exec)
+	void HeistSoundPingTest();
 
 #pragma endregion
 

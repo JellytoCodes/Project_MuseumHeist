@@ -1,9 +1,15 @@
 #include "UI/Widgets/HeistHUDWidget.h"
 
 #include "Character/Components/HeistInteractionComponent.h"
+#include "Components/PanelWidget.h"
 #include "Components/TextBlock.h"
 #include "Components/Widget.h"
+#include "Core/HeistGameState.h"
 #include "Core/HeistLogChannels.h"
+#include "Core/HeistPlayerController.h"
+#include "GameFramework/PlayerController.h"
+#include "UI/Pool/HeistPopupWidgetPool.h"
+#include "UI/Pool/HeistSoundPingWidgetPool.h"
 #include "UI/ViewModels/HeistGapTrackerViewModel.h"
 #include "UI/ViewModels/HeistHUDViewModel.h"
 #include "UI/ViewModels/HeistInventoryViewModel.h"
@@ -11,6 +17,7 @@
 #include "UI/Widgets/HeistGapTrackerWidget.h"
 #include "UI/Widgets/HeistInteractionPromptWidget.h"
 #include "UI/Widgets/HeistRareLootAlertWidget.h"
+#include "UI/Widgets/HeistSoundPingMarkerWidget.h"
 
 #pragma region Construction
 
@@ -25,6 +32,14 @@ UHeistHUDWidget::UHeistHUDWidget(const FObjectInitializer& ObjectInitializer)
 
 void UHeistHUDWidget::NativeDestruct()
 {
+	if (IsValid(PopupWidgetPool))
+	{
+		PopupWidgetPool->ShutdownPool();
+	}
+	if (IsValid(SoundPingWidgetPool))
+	{
+		SoundPingWidgetPool->ShutdownPool();
+	}
 	if (IsValid(HUDViewModel))
 	{
 		HUDViewModel->GetPresentationChangedDelegate().RemoveAll(this);
@@ -62,6 +77,7 @@ void UHeistHUDWidget::SetupHUDWidget(
 	ResolveInteractionChildWidgets();
 	ResolveRareLootChildWidgets();
 	ResolveGapTrackerChildWidget();
+	ResolveStatusFeedbackChildWidgets();
 	UE_LOG(
 		LogHeistUI,
 		Log,
@@ -83,6 +99,7 @@ void UHeistHUDWidget::SetupHUDWidget(
 	ResolveInteractionChildWidgets();
 	ResolveRareLootChildWidgets();
 	ResolveGapTrackerChildWidget();
+	ResolveStatusFeedbackChildWidgets();
 	if (IsValid(InteractionPromptWidget))
 	{
 		InteractionPromptWidget->SetupInteractionPresentation(InteractionComponent, HUDViewModel);
@@ -103,7 +120,70 @@ void UHeistHUDWidget::SetupHUDWidget(
 	{
 		GapTrackerWidget->SetupGapTrackerWidget(GapTrackerViewModel);
 	}
+	SetupPopupFeedbackPresentation();
+	SetupSoundPingPresentation();
 	RefreshHUDPresentation();
+}
+
+void UHeistHUDWidget::SetupPopupFeedbackPresentation()
+{
+	AHeistPlayerController* OwningPlayerController = Cast<AHeistPlayerController>(GetOwningPlayer());
+	if (!IsValid(OwningPlayerController) || !IsValid(PopupFeedbackLayer) || !PopupFeedbackWidgetClass)
+	{
+		UE_LOG(
+			LogHeistUI,
+			Warning,
+			TEXT("[%s] Popup feedback presentation setup skipped: Controller=%s Layer=%s Class=%s"),
+			*GetName(),
+			*GetNameSafe(OwningPlayerController),
+			*GetNameSafe(PopupFeedbackLayer),
+			*GetNameSafe(PopupFeedbackWidgetClass.Get()));
+		return;
+	}
+
+	if (!IsValid(PopupWidgetPool))
+	{
+		PopupWidgetPool = NewObject<UHeistPopupWidgetPool>(this);
+	}
+	PopupWidgetPool->SetupPool(
+		OwningPlayerController,
+		PopupFeedbackLayer,
+		PopupFeedbackWidgetClass,
+		PopupFeedbackCapacity);
+}
+
+void UHeistHUDWidget::SetupSoundPingPresentation()
+{
+	APlayerController* OwningPlayerController = GetOwningPlayer();
+	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	if (!IsValid(OwningPlayerController)
+		|| !IsValid(HeistGameState)
+		|| !IsValid(SoundPingMarkerLayer)
+		|| !SoundPingMarkerWidgetClass)
+	{
+		UE_LOG(
+			LogHeistUI,
+			Warning,
+			TEXT("[%s] Sound Ping presentation setup skipped: Controller=%s GameState=%s MarkerLayer=%s MarkerClass=%s"),
+			*GetName(),
+			*GetNameSafe(OwningPlayerController),
+			*GetNameSafe(HeistGameState),
+			*GetNameSafe(SoundPingMarkerLayer),
+			*GetNameSafe(SoundPingMarkerWidgetClass.Get()));
+		return;
+	}
+
+	if (!IsValid(SoundPingWidgetPool))
+	{
+		SoundPingWidgetPool = NewObject<UHeistSoundPingWidgetPool>(this);
+	}
+
+	SoundPingWidgetPool->SetupPool(
+		OwningPlayerController,
+		HeistGameState,
+		SoundPingMarkerLayer,
+		SoundPingMarkerWidgetClass,
+		SoundPingMarkerScreenMarginPixels);
 }
 
 void UHeistHUDWidget::ResolveInteractionChildWidgets()
@@ -258,6 +338,123 @@ void UHeistHUDWidget::ResolveGapTrackerChildWidget()
 		*GapTrackerWidget->GetClass()->GetName());
 }
 
+void UHeistHUDWidget::ResolveStatusFeedbackChildWidgets()
+{
+	if (!IsValid(StatusFeedbackWidget))
+	{
+		StatusFeedbackWidget = Cast<UHeistUserWidgetBase>(GetWidgetFromName(TEXT("StatusFeedbackWidget")));
+	}
+
+	if (!IsValid(StatusFeedbackWidget))
+	{
+		UE_LOG(LogHeistUI, Warning, TEXT("[%s] HUD status feedback child widget missing: Name=StatusFeedbackWidget"), *GetName());
+		return;
+	}
+
+	StatusFeedbackContainer = StatusFeedbackWidget->GetWidgetFromName(TEXT("StatusFeedbackContainer"));
+	StatusFeedbackText = Cast<UTextBlock>(StatusFeedbackWidget->GetWidgetFromName(TEXT("StatusFeedbackText")));
+	StatusStunnedVignette = StatusFeedbackWidget->GetWidgetFromName(TEXT("StatusStunnedVignette"));
+	StatusImmuneVignette = StatusFeedbackWidget->GetWidgetFromName(TEXT("StatusImmuneVignette"));
+	StatusSmokeVignette = StatusFeedbackWidget->GetWidgetFromName(TEXT("StatusSmokeVignette"));
+
+	const bool bContractValid = IsValid(StatusFeedbackContainer)
+		&& IsValid(StatusFeedbackText)
+		&& IsValid(StatusStunnedVignette)
+		&& IsValid(StatusImmuneVignette)
+		&& IsValid(StatusSmokeVignette);
+	if (bContractValid)
+	{
+		UE_LOG(
+			LogHeistUI,
+			Log,
+			TEXT("[%s] Status feedback widget contract resolved: Widget=%s Container=%s Text=%s Stunned=%s Immune=%s Smoke=%s Valid=true"),
+			*GetName(),
+			*GetNameSafe(StatusFeedbackWidget),
+			*GetNameSafe(StatusFeedbackContainer),
+			*GetNameSafe(StatusFeedbackText),
+			*GetNameSafe(StatusStunnedVignette),
+			*GetNameSafe(StatusImmuneVignette),
+			*GetNameSafe(StatusSmokeVignette));
+	}
+	else
+	{
+		UE_LOG(
+			LogHeistUI,
+			Warning,
+			TEXT("[%s] Status feedback widget contract incomplete: Widget=%s Container=%s Text=%s Stunned=%s Immune=%s Smoke=%s"),
+			*GetName(),
+			*GetNameSafe(StatusFeedbackWidget),
+			*GetNameSafe(StatusFeedbackContainer),
+			*GetNameSafe(StatusFeedbackText),
+			*GetNameSafe(StatusStunnedVignette),
+			*GetNameSafe(StatusImmuneVignette),
+			*GetNameSafe(StatusSmokeVignette));
+	}
+
+	StatusFeedbackWidget->SetVisibility(ESlateVisibility::Collapsed);
+}
+
+void UHeistHUDWidget::RefreshStatusFeedbackPresentation(
+	const bool bStunned,
+	const bool bStunImmune,
+	const bool bInSmoke)
+{
+	if (!IsValid(StatusFeedbackWidget))
+	{
+		return;
+	}
+
+	const bool bAnyStatus = bStunned || bStunImmune || bInSmoke;
+	StatusFeedbackWidget->SetVisibility(bAnyStatus ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	if (IsValid(StatusFeedbackContainer))
+	{
+		StatusFeedbackContainer->SetVisibility(bAnyStatus ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+	if (IsValid(StatusStunnedVignette))
+	{
+		StatusStunnedVignette->SetVisibility(bStunned ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+	if (IsValid(StatusImmuneVignette))
+	{
+		StatusImmuneVignette->SetVisibility(bStunImmune ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+	if (IsValid(StatusSmokeVignette))
+	{
+		StatusSmokeVignette->SetVisibility(bInSmoke ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+	if (IsValid(StatusFeedbackText))
+	{
+		StatusFeedbackText->SetText(
+			bStunned
+				? NSLOCTEXT("HeistFeedback", "StunnedStatusFeedback", "STUNNED")
+				: bStunImmune
+					? NSLOCTEXT("HeistFeedback", "ImmuneStatusFeedback", "STUN IMMUNE")
+					: bInSmoke
+						? NSLOCTEXT("HeistFeedback", "SmokeStatusFeedback", "IN SMOKE")
+						: FText::GetEmpty());
+	}
+
+	if (!bStatusFeedbackInitialized
+		|| bCachedStatusStunned != bStunned
+		|| bCachedStatusStunImmune != bStunImmune
+		|| bCachedStatusInSmoke != bInSmoke)
+	{
+		UE_LOG(
+			LogHeistUI,
+			Log,
+			TEXT("[%s] Status feedback refreshed: Stunned=%s StunImmune=%s InSmoke=%s Visible=%s"),
+			*GetName(),
+			bStunned ? TEXT("true") : TEXT("false"),
+			bStunImmune ? TEXT("true") : TEXT("false"),
+			bInSmoke ? TEXT("true") : TEXT("false"),
+			bAnyStatus ? TEXT("true") : TEXT("false"));
+		bStatusFeedbackInitialized = true;
+		bCachedStatusStunned = bStunned;
+		bCachedStatusStunImmune = bStunImmune;
+		bCachedStatusInSmoke = bInSmoke;
+	}
+}
+
 void UHeistHUDWidget::RefreshHUDPresentation()
 {
 	if (!IsValid(HUDViewModel))
@@ -333,6 +530,8 @@ void UHeistHUDWidget::RefreshHUDPresentation()
 			FText::AsNumber(ConnectedPlayerCount)));
 	}
 
+	RefreshStatusFeedbackPresentation(bStunned, bStunImmune, bInSmoke);
+
 	BP_RefreshHUDPresentation(
 		LocalLootScore,
 		LocalLootWeight,
@@ -346,6 +545,57 @@ void UHeistHUDWidget::RefreshHUDPresentation()
 		EscapeCastEndServerTime,
 		bTrapPlacementCastActive,
 		TrapPlacementCastEndServerTime);
+}
+
+#pragma endregion
+
+#pragma region Debug
+
+void UHeistHUDWidget::DebugDumpFeedbackState() const
+{
+	if (IsValid(PopupWidgetPool))
+	{
+		PopupWidgetPool->DebugDumpState();
+	}
+	else
+	{
+		UE_LOG(LogHeistUI, Warning, TEXT("[%s] Popup feedback pool dump failed: Reason=MissingPool"), *GetName());
+	}
+
+	UE_LOG(
+		LogHeistUI,
+		Log,
+		TEXT("[%s] Status feedback dump: Initialized=%s Stunned=%s StunImmune=%s InSmoke=%s Widget=%s"),
+		*GetName(),
+		bStatusFeedbackInitialized ? TEXT("true") : TEXT("false"),
+		bCachedStatusStunned ? TEXT("true") : TEXT("false"),
+		bCachedStatusStunImmune ? TEXT("true") : TEXT("false"),
+		bCachedStatusInSmoke ? TEXT("true") : TEXT("false"),
+		*GetNameSafe(StatusFeedbackWidget));
+}
+
+void UHeistHUDWidget::DebugDumpSoundPingMarkers() const
+{
+	if (IsValid(SoundPingWidgetPool))
+	{
+		SoundPingWidgetPool->DebugDumpState();
+	}
+	else
+	{
+		UE_LOG(LogHeistUI, Warning, TEXT("[%s] Sound Ping pool dump failed: Reason=MissingPool"), *GetName());
+	}
+}
+
+void UHeistHUDWidget::DebugRunSoundPingPoolTest()
+{
+	if (IsValid(SoundPingWidgetPool))
+	{
+		SoundPingWidgetPool->DebugRunPresentationTest();
+	}
+	else
+	{
+		UE_LOG(LogHeistUI, Warning, TEXT("[%s] Sound Ping pool test failed: Reason=MissingPool"), *GetName());
+	}
 }
 
 #pragma endregion
