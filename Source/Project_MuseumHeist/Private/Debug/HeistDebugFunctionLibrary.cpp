@@ -1702,7 +1702,7 @@ void UHeistDebugFunctionLibrary::DebugThrowableUseRejected(const UObject* WorldC
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugThrowableProjectileSpawned(const UObject* WorldContextObject, const UObject* Character, const UObject* Projectile, const FName ItemId, const FVector& TargetWorldLocation, const float ProjectileSpeed, const bool bDebugBypassInventory)
+void UHeistDebugFunctionLibrary::DebugThrowableProjectileSpawned(const UObject* WorldContextObject, const UObject* Character, const UObject* Projectile, const FName ItemId, const FVector& TargetWorldLocation, const FVector& LaunchDirection, const float ProjectileSpeed, const bool bDebugBypassInventory)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -1710,13 +1710,16 @@ void UHeistDebugFunctionLibrary::DebugThrowableProjectileSpawned(const UObject* 
 	Message(
 		WorldContextObject,
 		FString::Printf(
-			TEXT("Throwable projectile spawned: Character=%s Projectile=%s ItemId=%s Target=(%.1f,%.1f,%.1f) Speed=%.1f DebugBypassInventory=%s"),
+			TEXT("Throwable projectile spawned: Character=%s Projectile=%s ItemId=%s CrosshairTarget=(%.1f,%.1f,%.1f) LaunchDirection=(%.3f,%.3f,%.3f) Speed=%.1f DebugBypassInventory=%s"),
 			*GetNameSafe(Character),
 			*GetNameSafe(Projectile),
 			*ItemId.ToString(),
 			TargetWorldLocation.X,
 			TargetWorldLocation.Y,
 			TargetWorldLocation.Z,
+			LaunchDirection.X,
+			LaunchDirection.Y,
+			LaunchDirection.Z,
 			ProjectileSpeed,
 			bDebugBypassInventory ? TEXT("true") : TEXT("false")));
 #endif
@@ -3206,22 +3209,25 @@ void UHeistDebugFunctionLibrary::DebugCoinThrow(APlayerController* PlayerControl
 	return;
 #else
 	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
-	AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController)
-		? HeistPlayerController->GetPawn<AHeistPlayerCharacter>()
-		: nullptr;
-	if (!IsValid(HeistPlayerController) || !IsValid(HeistCharacter))
+	if (!IsValid(HeistPlayerController))
 	{
 		Message(PlayerController, TEXT("Coin debug throw failed: invalid Heist player controller or pawn."), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
 	const float ClampedDistance = FMath::Clamp(Distance, 100.0f, 5000.0f);
-	const FVector TargetWorldLocation = HeistCharacter->GetActorLocation()
-		+ HeistCharacter->GetActorForwardVector() * ClampedDistance;
+	FVector ViewLocation;
+	FVector CameraForward;
+	FVector TargetWorldLocation;
+	if (!HeistPlayerController->TryBuildCameraForwardAim(ClampedDistance, ViewLocation, CameraForward, TargetWorldLocation))
+	{
+		Message(PlayerController, TEXT("Coin debug throw failed: invalid camera forward."), EHeistDebugLevel::Warning, true);
+		return;
+	}
 	HeistPlayerController->DebugRequestThrowCoinAtWorldLocation(TargetWorldLocation);
 	Message(
 		PlayerController,
-		FString::Printf(TEXT("Coin debug throw requested: Distance=%.1f"), ClampedDistance),
+		FString::Printf(TEXT("Coin debug throw requested: Distance=%.1f CameraForward=(%.3f,%.3f,%.3f)"), ClampedDistance, CameraForward.X, CameraForward.Y, CameraForward.Z),
 		EHeistDebugLevel::Info,
 		true);
 #endif
@@ -3263,22 +3269,25 @@ void UHeistDebugFunctionLibrary::DebugSmokeThrow(APlayerController* PlayerContro
 	return;
 #else
 	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
-	AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController)
-		? HeistPlayerController->GetPawn<AHeistPlayerCharacter>()
-		: nullptr;
-	if (!IsValid(HeistPlayerController) || !IsValid(HeistCharacter))
+	if (!IsValid(HeistPlayerController))
 	{
 		Message(PlayerController, TEXT("Smoke debug throw failed: invalid Heist player controller or pawn."), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
 	const float ClampedDistance = FMath::Clamp(Distance, 100.0f, 5000.0f);
-	const FVector TargetWorldLocation = HeistCharacter->GetActorLocation()
-		+ HeistCharacter->GetActorForwardVector() * ClampedDistance;
+	FVector ViewLocation;
+	FVector CameraForward;
+	FVector TargetWorldLocation;
+	if (!HeistPlayerController->TryBuildCameraForwardAim(ClampedDistance, ViewLocation, CameraForward, TargetWorldLocation))
+	{
+		Message(PlayerController, TEXT("Smoke debug throw failed: invalid camera forward."), EHeistDebugLevel::Warning, true);
+		return;
+	}
 	HeistPlayerController->DebugRequestThrowSmokeAtWorldLocation(TargetWorldLocation);
 	Message(
 		PlayerController,
-		FString::Printf(TEXT("Smoke debug throw requested: Distance=%.1f"), ClampedDistance),
+		FString::Printf(TEXT("Smoke debug throw requested: Distance=%.1f CameraForward=(%.3f,%.3f,%.3f)"), ClampedDistance, CameraForward.X, CameraForward.Y, CameraForward.Z),
 		EHeistDebugLevel::Info,
 		true);
 #endif

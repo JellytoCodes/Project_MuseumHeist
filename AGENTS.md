@@ -164,8 +164,10 @@ Client가 직접 확정할 수 없는 항목:
 - Interaction은 Center Screen Line Trace를 사용한다.
 - Flashlight와 Throw Direction은 Camera Forward를 기준으로 한다.
 - Top-Down Camera, SpringArm Gameplay Camera, Cursor World Aim은 사용하지 않는다.
-- 다른 플레이어에게는 Full Body Mesh를 표시한다.
-- Owning Player의 Head는 로컬 화면에서 숨긴다.
+- First-Person Camera는 Full Body Mesh의 Head Bone/Socket에 부착한다.
+- Camera 위치 오프셋은 Blueprint에서 캐릭터 Mesh에 맞게 조정한다.
+- Owning Player와 다른 플레이어 모두 Full Body Mesh와 자연스러운 그림자를 유지한다.
+- Local Head를 자동으로 숨기지 않으며, 얼굴 클리핑은 Camera Socket Offset으로 해결한다.
 - FOV 기본값은 90이다.
 - Head Bob, Camera Roll, Sprint Camera Effect는 v1.0에서 사용하지 않는다.
 - Inventory/Forgery 진입 시 Cursor와 UI Input Mode를 활성화한다.
@@ -306,7 +308,7 @@ Known Warning은 숨기지 않는다. Critical Replication, Ownership, Duplicate
 첫 우선순위:
 
 1. `TASK-W3-001` First-Person Camera / Rotation
-2. `TASK-W3-002` Local Head Hide / Remote Full Body
+2. `TASK-W3-002` Head-Socket True First-Person / Full Body
 3. `TASK-W3-003` Center Screen Interaction / Crosshair
 4. `TASK-W3-004` Camera Forward Flashlight / Throw
 5. `TASK-W3-005` Gameplay / Inventory Input Restore

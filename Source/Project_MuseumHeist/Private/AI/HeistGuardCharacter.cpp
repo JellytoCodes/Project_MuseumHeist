@@ -5,7 +5,10 @@
 #include "AI/HeistGuardStateComponent.h"
 #include "AI/HeistPatrolPathComponent.h"
 #include "Core/HeistGameMode.h"
+#include "Core/HeistLogChannels.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
+#include "Components/CapsuleComponent.h"
+#include "Core/HeistCollisionChannels.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 #pragma region Construction
@@ -31,6 +34,19 @@ AHeistGuardCharacter::AHeistGuardCharacter()
 void AHeistGuardCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	UCapsuleComponent* GuardCapsule = GetCapsuleComponent();
+	checkf(IsValid(GuardCapsule), TEXT("HeistGuardCharacter requires CapsuleComponent."));
+	GuardCapsule->SetCollisionObjectType(HeistCollisionChannels::Guard);
+	GuardCapsule->SetCollisionResponseToChannel(HeistCollisionChannels::Player, ECR_Block);
+	GuardCapsule->SetCollisionResponseToChannel(HeistCollisionChannels::Interactable, ECR_Ignore);
+	GuardCapsule->SetCollisionResponseToChannel(HeistCollisionChannels::InteractionTrace, ECR_Ignore);
+	UE_LOG(
+		LogHeist,
+		Log,
+		TEXT("[%s] Guard collision channels configured: Capsule=%s ObjectType=HeistGuard InteractionTrace=Ignore Player=Block Interactable=Ignore"),
+		*GetName(),
+		*GetNameSafe(GuardCapsule));
 
 	checkf(IsValid(GuardStateComponent), TEXT("HeistGuardCharacter requires GuardStateComponent."));
 	checkf(IsValid(PatrolPathComponent), TEXT("HeistGuardCharacter requires PatrolPathComponent."));

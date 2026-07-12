@@ -136,7 +136,7 @@ Authority:
 
 - First-Person Camera Component 소유
 - Controller Yaw 기반 Rotation
-- Local Head Hide API
+- Head-Socket True First-Person Camera Contract
 - Forgery Movement Lock 반영
 - Full Body Mesh 유지
 - 기존 Gameplay Component 유지

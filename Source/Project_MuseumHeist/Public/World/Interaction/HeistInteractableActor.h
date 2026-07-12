@@ -21,6 +21,13 @@ public:
 
 #pragma endregion
 
+#pragma region Lifecycle
+
+protected:
+	virtual void BeginPlay() override;
+
+#pragma endregion
+
 #pragma region Components
 
 private:

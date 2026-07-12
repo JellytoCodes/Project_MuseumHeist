@@ -91,6 +91,10 @@ void UHeistInteractionPromptWidget::SetupInteractionPresentation(
 			0.1f,
 			true);
 	}
+	if (IsValid(InteractionComponent))
+	{
+		InteractionComponent->RefreshInteractionTarget(true);
+	}
 
 	RefreshPresentation();
 }
@@ -110,7 +114,6 @@ void UHeistInteractionPromptWidget::RefreshInteractionPrompt(const bool bActionA
 	bool bAvailable = false;
 	if (IsValid(InteractionComponent))
 	{
-		InteractionComponent->RefreshInteractionTarget();
 		TargetActor = InteractionComponent->GetCurrentInteractionTarget();
 		bAvailable = IsValid(TargetActor) && InteractionComponent->HasValidInteractionTarget();
 	}

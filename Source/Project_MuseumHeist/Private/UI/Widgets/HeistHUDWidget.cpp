@@ -32,6 +32,10 @@ UHeistHUDWidget::UHeistHUDWidget(const FObjectInitializer& ObjectInitializer)
 
 void UHeistHUDWidget::NativeDestruct()
 {
+	if (IsValid(InteractionComponent))
+	{
+		InteractionComponent->GetInteractionTargetChangedDelegate().RemoveAll(this);
+	}
 	if (IsValid(PopupWidgetPool))
 	{
 		PopupWidgetPool->ShutdownPool();
@@ -68,13 +72,25 @@ void UHeistHUDWidget::SetupHUDWidget(
 	InventoryViewModel = InInventoryViewModel;
 	QuickSlotViewModel = InQuickSlotViewModel;
 	GapTrackerViewModel = InGapTrackerViewModel;
+	if (InteractionComponent != InInteractionComponent && IsValid(InteractionComponent))
+	{
+		InteractionComponent->GetInteractionTargetChangedDelegate().RemoveAll(this);
+	}
 	InteractionComponent = InInteractionComponent;
+	if (IsValid(InteractionComponent))
+	{
+		InteractionComponent->GetInteractionTargetChangedDelegate().RemoveAll(this);
+		InteractionComponent->GetInteractionTargetChangedDelegate().AddUObject(
+			this,
+			&UHeistHUDWidget::RefreshCrosshairPresentation);
+	}
 
 	HUDViewModel->GetPresentationChangedDelegate().RemoveAll(this);
 	HUDViewModel->GetPresentationChangedDelegate().AddUObject(
 		this,
 		&UHeistHUDWidget::RefreshHUDPresentation);
 	ResolveInteractionChildWidgets();
+	ResolveCrosshairWidgets();
 	ResolveRareLootChildWidgets();
 	ResolveGapTrackerChildWidget();
 	ResolveStatusFeedbackChildWidgets();
@@ -97,6 +113,7 @@ void UHeistHUDWidget::SetupHUDWidget(
 
 	BP_OnHUDSourcesReady();
 	ResolveInteractionChildWidgets();
+	ResolveCrosshairWidgets();
 	ResolveRareLootChildWidgets();
 	ResolveGapTrackerChildWidget();
 	ResolveStatusFeedbackChildWidgets();
@@ -108,6 +125,9 @@ void UHeistHUDWidget::SetupHUDWidget(
 	{
 		ActionProgressWidget->SetupInteractionPresentation(InteractionComponent, HUDViewModel);
 	}
+	RefreshCrosshairPresentation(
+		IsValid(InteractionComponent) ? InteractionComponent->GetCurrentInteractionTarget() : nullptr,
+		IsValid(InteractionComponent) && InteractionComponent->HasValidInteractionTarget());
 	if (IsValid(RareLootWarningWidget))
 	{
 		RareLootWarningWidget->SetupRareLootAlertWidget(HUDViewModel);
@@ -194,6 +214,76 @@ void UHeistHUDWidget::ResolveInteractionChildWidgets()
 	ActionProgressWidget = ResolveInteractionChildWidget(
 		TEXT("ActionProgressWidget"),
 		ActionProgressWidget);
+}
+
+void UHeistHUDWidget::ResolveCrosshairWidgets()
+{
+	if (!IsValid(CrosshairContainer))
+	{
+		CrosshairContainer = GetWidgetFromName(TEXT("CrosshairContainer"));
+	}
+	if (!IsValid(CrosshairIdleIndicator))
+	{
+		CrosshairIdleIndicator = GetWidgetFromName(TEXT("CrosshairIdleIndicator"));
+	}
+	if (!IsValid(CrosshairFocusIndicator))
+	{
+		CrosshairFocusIndicator = GetWidgetFromName(TEXT("CrosshairFocusIndicator"));
+	}
+
+	const bool bContractValid = IsValid(CrosshairContainer)
+		&& IsValid(CrosshairIdleIndicator)
+		&& IsValid(CrosshairFocusIndicator);
+	if (bContractValid)
+	{
+		UE_LOG(
+			LogHeistUI,
+			Log,
+			TEXT("[%s] Crosshair widget contract: Container=%s Idle=%s Focus=%s Valid=true"),
+			*GetName(),
+			*GetNameSafe(CrosshairContainer),
+			*GetNameSafe(CrosshairIdleIndicator),
+			*GetNameSafe(CrosshairFocusIndicator));
+	}
+	else
+	{
+		UE_LOG(
+			LogHeistUI,
+			Warning,
+			TEXT("[%s] Crosshair widget contract: Container=%s Idle=%s Focus=%s Valid=false"),
+			*GetName(),
+			*GetNameSafe(CrosshairContainer),
+			*GetNameSafe(CrosshairIdleIndicator),
+			*GetNameSafe(CrosshairFocusIndicator));
+	}
+}
+
+void UHeistHUDWidget::RefreshCrosshairPresentation(AActor* TargetActor, const bool bAvailable)
+{
+	const bool bFocused = IsValid(TargetActor) && bAvailable;
+	if (IsValid(CrosshairContainer))
+	{
+		CrosshairContainer->SetVisibility(ESlateVisibility::HitTestInvisible);
+	}
+	if (IsValid(CrosshairIdleIndicator))
+	{
+		CrosshairIdleIndicator->SetVisibility(
+			bFocused ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	}
+	if (IsValid(CrosshairFocusIndicator))
+	{
+		CrosshairFocusIndicator->SetVisibility(
+			bFocused ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+
+	UE_LOG(
+		LogHeistUI,
+		Log,
+		TEXT("[%s] Crosshair presentation refreshed: Target=%s Available=%s State=%s"),
+		*GetName(),
+		*GetNameSafe(TargetActor),
+		bAvailable ? TEXT("true") : TEXT("false"),
+		bFocused ? TEXT("Focus") : TEXT("Idle"));
 }
 
 UHeistInteractionPromptWidget* UHeistHUDWidget::ResolveInteractionChildWidget(

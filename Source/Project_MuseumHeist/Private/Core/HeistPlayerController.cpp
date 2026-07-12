@@ -61,30 +61,27 @@ void AHeistPlayerController::BeginPlay()
 
 	ConfigureMouseCursorDefaults();
 	RefreshLocalHUDPresentation();
+	UpdateFlashlightAimDirection();
 }
 
 void AHeistPlayerController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
 	RefreshLocalHUDPresentation();
+	UpdateFlashlightAimDirection();
 }
 
 void AHeistPlayerController::OnRep_Pawn()
 {
 	Super::OnRep_Pawn();
 	RefreshLocalHUDPresentation();
+	UpdateFlashlightAimDirection();
 }
 
 void AHeistPlayerController::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
 	RefreshLocalHUDPresentation();
-}
-
-void AHeistPlayerController::PlayerTick(const float DeltaTime)
-{
-	Super::PlayerTick(DeltaTime);
-	UpdateFlashlightAimDirection();
 }
 
 void AHeistPlayerController::SetupInputComponent()
@@ -181,7 +178,7 @@ void AHeistPlayerController::RefreshLocalHUDPresentation()
 
 void AHeistPlayerController::HandleLookInput(const FInputActionValue& InputValue)
 {
-	const AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
 	if (!ensureMsgf(HeistCharacter != nullptr, TEXT("Look input requires a possessed HeistPlayerCharacter"))
 		|| !HeistCharacter->CanPerformGameplayActions())
 	{
@@ -191,6 +188,8 @@ void AHeistPlayerController::HandleLookInput(const FInputActionValue& InputValue
 	const FVector2D LookInput = InputValue.Get<FVector2D>();
 	AddYawInput(LookInput.X);
 	AddPitchInput(LookInput.Y);
+	UpdateFlashlightAimDirection();
+	HeistCharacter->GetInteractionComponent()->RefreshInteractionTarget();
 }
 
 void AHeistPlayerController::HandleMoveInput(const FInputActionValue& InputValue)
@@ -203,6 +202,7 @@ void AHeistPlayerController::HandleMoveInput(const FInputActionValue& InputValue
 
 	const FVector2D MovementInput = InputValue.Get<FVector2D>();
 	HeistCharacter->MoveOnGameplayPlane(MovementInput);
+	HeistCharacter->GetInteractionComponent()->RefreshInteractionTarget();
 }
 
 void AHeistPlayerController::HandleInventoryToggle()
@@ -240,16 +240,21 @@ void AHeistPlayerController::UpdateFlashlightAimDirection()
 		return;
 	}
 
-	FVector CursorWorldLocation;
-	if (!GetCursorWorldLocation(CursorWorldLocation))
+	FVector ViewLocation;
+	FVector CameraForward;
+	FVector TargetWorldLocation;
+	if (!TryBuildCameraForwardAim(5000.0f, ViewLocation, CameraForward, TargetWorldLocation))
 	{
 		return;
 	}
 
 	UHeistVisionComponent* VisionComponent = HeistCharacter->GetVisionComponent();
 	checkf(IsValid(VisionComponent), TEXT("HeistPlayerCharacter requires HeistVisionComponent"));
-	VisionComponent->UpdateFlashlightAimDirection(
-		CursorWorldLocation - HeistCharacter->GetActorLocation());
+	VisionComponent->UpdateFlashlightAimDirection(CameraForward);
+	if (!HasAuthority())
+	{
+		Server_UpdateFlashlightAimDirection(CameraForward);
+	}
 }
 
 #pragma endregion
@@ -270,7 +275,7 @@ void AHeistPlayerController::HandleInteractPressed()
 	}
 
 	UHeistInteractionComponent* InteractionComponent = HeistCharacter->GetInteractionComponent();
-	if (!InteractionComponent->RefreshInteractionTarget())
+	if (!InteractionComponent->RefreshInteractionTarget(true))
 	{
 		return;
 	}
@@ -341,7 +346,45 @@ void AHeistPlayerController::RequestUseQuickSlotAtWorldLocation(
 	const EHeistQuickSlotType SlotType,
 	const FVector TargetWorldLocation)
 {
-	Server_RequestUseQuickSlotAtWorldLocation(SlotType, TargetWorldLocation);
+	FVector ResolvedTargetWorldLocation = TargetWorldLocation;
+	if (SlotType == EHeistQuickSlotType::Coin || SlotType == EHeistQuickSlotType::SmokeGrenade)
+	{
+		FVector ViewLocation;
+		FVector CameraForward;
+		if (!TryBuildCameraForwardAim(1000.0f, ViewLocation, CameraForward, ResolvedTargetWorldLocation))
+		{
+			return;
+		}
+	}
+
+	Server_RequestUseQuickSlotAtWorldLocation(SlotType, ResolvedTargetWorldLocation);
+}
+
+bool AHeistPlayerController::TryBuildCameraForwardAim(
+	const float Distance,
+	FVector& OutViewLocation,
+	FVector& OutCameraForward,
+	FVector& OutTargetWorldLocation) const
+{
+	OutViewLocation = FVector::ZeroVector;
+	OutCameraForward = FVector::ZeroVector;
+	OutTargetWorldLocation = FVector::ZeroVector;
+
+	if (!IsValid(GetPawn()))
+	{
+		return false;
+	}
+
+	FRotator ViewRotation = FRotator::ZeroRotator;
+	GetPlayerViewPoint(OutViewLocation, ViewRotation);
+	OutCameraForward = ViewRotation.Vector().GetSafeNormal();
+	if (OutCameraForward.IsNearlyZero())
+	{
+		return false;
+	}
+
+	OutTargetWorldLocation = OutViewLocation + OutCameraForward * FMath::Max(100.0f, Distance);
+	return true;
 }
 
 void AHeistPlayerController::DebugRequestAddInventoryItem(const FName ItemId)
@@ -499,7 +542,7 @@ void AHeistPlayerController::Server_RequestLootPickup_Implementation(AHeistLootA
 		return;
 	}
 
-	InteractionComponent->RefreshInteractionTarget();
+	InteractionComponent->RefreshInteractionTarget(true);
 	if (InteractionComponent->GetCurrentInteractionTarget() != TargetLootActor)
 	{
 		LogLootPickupRejected(TargetLootActor, TEXT("NotCurrentTarget"), Distance);
@@ -602,7 +645,7 @@ void AHeistPlayerController::Server_RequestEscape_Implementation(AHeistVentActor
 		return;
 	}
 
-	InteractionComponent->RefreshInteractionTarget();
+	InteractionComponent->RefreshInteractionTarget(true);
 	if (InteractionComponent->GetCurrentInteractionTarget() != TargetVentActor)
 	{
 		LogEscapeRequestRejected(TargetVentActor, TEXT("NotCurrentTarget"), Distance);
@@ -865,6 +908,26 @@ void AHeistPlayerController::Server_RequestUseQuickSlotAtWorldLocation_Implement
 	}
 
 	LogThrowableUseRejected(SlotType, ItemId, TEXT("UnsupportedUseType"));
+}
+
+void AHeistPlayerController::Server_UpdateFlashlightAimDirection_Implementation(
+	const FVector_NetQuantizeNormal ClientCameraForward)
+{
+	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	if (!IsValid(HeistCharacter))
+	{
+		return;
+	}
+
+	const FVector RequestedDirection = FVector(ClientCameraForward).GetSafeNormal();
+	if (RequestedDirection.IsNearlyZero())
+	{
+		return;
+	}
+
+	UHeistVisionComponent* VisionComponent = HeistCharacter->GetVisionComponent();
+	checkf(IsValid(VisionComponent), TEXT("HeistPlayerCharacter requires HeistVisionComponent"));
+	VisionComponent->UpdateFlashlightAimDirection(RequestedDirection);
 }
 
 void AHeistPlayerController::Server_DebugRequestAddInventoryItem_Implementation(const FName ItemId)
@@ -1746,15 +1809,16 @@ bool AHeistPlayerController::TrySpawnThrowableProjectile(
 		return false;
 	}
 
-	const FVector ProjectileSpawnLocation = RequestContext.Character->GetActorLocation()
-		+ RequestContext.Character->GetActorForwardVector() * 80.0f
-		+ FVector::UpVector * 40.0f;
-	FVector LaunchDirection = TargetWorldLocation - ProjectileSpawnLocation;
-	if (!LaunchDirection.Normalize())
+	if (TargetWorldLocation.ContainsNaN()
+		|| FVector::DistSquared(RequestContext.Character->GetActorLocation(), TargetWorldLocation) > FMath::Square(10000.0f))
 	{
-		LaunchDirection = RequestContext.Character->GetActorForwardVector().GetSafeNormal2D();
+		OutRejectReason = TEXT("InvalidThrowTarget");
+		return false;
 	}
 
+	const FVector ProjectileSpawnLocation = RequestContext.Character->GetActorLocation()
+		+ FVector::UpVector * 50.0f;
+	const FVector LaunchDirection = (TargetWorldLocation - ProjectileSpawnLocation).GetSafeNormal();
 	if (LaunchDirection.IsNearlyZero())
 	{
 		OutRejectReason = TEXT("InvalidThrowDirection");
@@ -1763,30 +1827,27 @@ bool AHeistPlayerController::TrySpawnThrowableProjectile(
 
 	const float ProjectileSpeed = FMath::Max(1.0f, UsableItemDefinition.ProjectileSpeed);
 	const FTransform SpawnTransform(LaunchDirection.Rotation(), ProjectileSpawnLocation);
-	AHeistThrowableProjectile* Projectile = GetWorld()->SpawnActorDeferred<AHeistThrowableProjectile>(
+	FActorSpawnParameters SpawnParameters;
+	SpawnParameters.Owner = RequestContext.Character;
+	SpawnParameters.Instigator = RequestContext.Character;
+	SpawnParameters.SpawnCollisionHandlingOverride =
+		ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+	OutProjectile = GetWorld()->SpawnActor<AHeistThrowableProjectile>(
 		ProjectileClass,
 		SpawnTransform,
-		RequestContext.Character,
-		RequestContext.Character,
-		ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
-	if (!IsValid(Projectile))
+		SpawnParameters);
+	if (!IsValid(OutProjectile))
 	{
 		OutRejectReason = TEXT("ProjectileSpawnFailed");
 		return false;
 	}
 
-	Projectile->InitializeThrowable(
+	OutProjectile->InitializeThrowable(
 		RequestContext.Character,
 		ItemId,
 		LaunchDirection,
 		ProjectileSpeed,
 		UsableItemDefinition.Duration);
-	OutProjectile = Cast<AHeistThrowableProjectile>(UGameplayStatics::FinishSpawningActor(Projectile, SpawnTransform));
-	if (!IsValid(OutProjectile))
-	{
-		OutRejectReason = TEXT("ProjectileFinishSpawnFailed");
-		return false;
-	}
 
 	UHeistDebugFunctionLibrary::DebugThrowableProjectileSpawned(
 		this,
@@ -1794,6 +1855,7 @@ bool AHeistPlayerController::TrySpawnThrowableProjectile(
 		OutProjectile,
 		ItemId,
 		TargetWorldLocation,
+		LaunchDirection,
 		ProjectileSpeed,
 		bDebugBypassInventory);
 	return true;
@@ -1933,31 +1995,6 @@ void AHeistPlayerController::LogThrowableUseRejected(
 #pragma endregion
 
 #pragma region Cursor
-
-bool AHeistPlayerController::GetCursorWorldHit(FHitResult& OutHitResult) const
-{
-	OutHitResult = FHitResult();
-
-	if (!IsLocalController())
-	{
-		return false;
-	}
-
-	return GetHitResultUnderCursor(ECC_Visibility, false, OutHitResult);
-}
-
-bool AHeistPlayerController::GetCursorWorldLocation(FVector& OutWorldLocation) const
-{
-	FHitResult CursorHit;
-	if (!GetCursorWorldHit(CursorHit))
-	{
-		OutWorldLocation = FVector::ZeroVector;
-		return false;
-	}
-
-	OutWorldLocation = CursorHit.ImpactPoint;
-	return true;
-}
 
 void AHeistPlayerController::ConfigureMouseCursorDefaults()
 {

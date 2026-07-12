@@ -42,7 +42,6 @@ protected:
 	virtual void OnPossess(APawn* InPawn) override;
 	virtual void OnRep_Pawn() override;
 	virtual void OnRep_PlayerState() override;
-	virtual void PlayerTick(float DeltaTime) override;
 	virtual void SetupInputComponent() override;
 
 private:
@@ -106,6 +105,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Heist|QuickSlot")
 	void RequestUseQuickSlotAtWorldLocation(EHeistQuickSlotType SlotType, FVector TargetWorldLocation);
 
+	bool TryBuildCameraForwardAim(float Distance, FVector& OutViewLocation, FVector& OutCameraForward, FVector& OutTargetWorldLocation) const;
+
 	void DebugRequestAddInventoryItem(FName ItemId);
 	void DebugRequestThrowCoinAtWorldLocation(FVector TargetWorldLocation);
 	void DebugRequestThrowSmokeAtWorldLocation(FVector TargetWorldLocation);
@@ -155,6 +156,9 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestUseQuickSlotAtWorldLocation(EHeistQuickSlotType SlotType, FVector TargetWorldLocation);
+
+	UFUNCTION(Server, Unreliable)
+	void Server_UpdateFlashlightAimDirection(FVector_NetQuantizeNormal ClientCameraForward);
 
 	UFUNCTION(Server, Reliable)
 	void Server_DebugRequestAddInventoryItem(FName ItemId);
@@ -286,10 +290,6 @@ private:
 #pragma endregion
 
 #pragma region Cursor
-
-public:
-	bool GetCursorWorldHit(FHitResult& OutHitResult) const;
-	bool GetCursorWorldLocation(FVector& OutWorldLocation) const;
 
 private:
 	void ConfigureMouseCursorDefaults();

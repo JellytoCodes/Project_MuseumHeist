@@ -21,6 +21,7 @@ class PROJECT_MUSEUMHEIST_API UHeistVisionComponent : public UActorComponent
 
 public:
 	UHeistVisionComponent();
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 #pragma endregion
 
@@ -39,7 +40,10 @@ public:
 	FHeistFlashlightAimDirectionChanged FlashlightAimDirectionChanged;
 
 private:
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Vision", meta = (AllowPrivateAccess = "true"))
+	UFUNCTION()
+	void OnRep_FlashlightAimDirection();
+
+	UPROPERTY(ReplicatedUsing = OnRep_FlashlightAimDirection, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Vision", meta = (AllowPrivateAccess = "true"))
 	FVector FlashlightAimDirection = FVector::ForwardVector;
 
 #pragma endregion

@@ -3,6 +3,7 @@
 #include "Character/HeistPlayerCharacter.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Core/HeistCollisionChannels.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Net/UnrealNetwork.h"
@@ -23,6 +24,7 @@ AHeistThrowableProjectile::AHeistThrowableProjectile()
 	CollisionComponent->SetCollisionObjectType(ECC_WorldDynamic);
 	CollisionComponent->SetCollisionResponseToAllChannels(ECR_Block);
 	CollisionComponent->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
+	CollisionComponent->SetCollisionResponseToChannel(HeistCollisionChannels::InteractionTrace, ECR_Ignore);
 	CollisionComponent->SetNotifyRigidBodyCollision(true);
 
 	VisualMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("VisualMeshComponent"));
@@ -35,7 +37,7 @@ AHeistThrowableProjectile::AHeistThrowableProjectile()
 	ProjectileMovementComponent->MaxSpeed = 1500.0f;
 	ProjectileMovementComponent->bRotationFollowsVelocity = true;
 	ProjectileMovementComponent->bShouldBounce = false;
-	ProjectileMovementComponent->ProjectileGravityScale = 0.0f;
+	ProjectileMovementComponent->ProjectileGravityScale = 1.0f;
 }
 
 #pragma endregion
@@ -80,10 +82,10 @@ void AHeistThrowableProjectile::InitializeThrowable(AHeistPlayerCharacter* InThr
 	{
 		ProjectileMovementComponent->InitialSpeed = ProjectileSpeed;
 		ProjectileMovementComponent->MaxSpeed = ProjectileSpeed;
+		ProjectileMovementComponent->ProjectileGravityScale = 1.0f;
 		ProjectileMovementComponent->Velocity = LaunchDirection * ProjectileSpeed;
 	}
 
-	SetActorRotation(LaunchDirection.Rotation());
 	ForceNetUpdate();
 }
 

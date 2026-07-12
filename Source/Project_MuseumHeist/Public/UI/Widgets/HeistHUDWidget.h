@@ -50,6 +50,8 @@ private:
 	void SetupPopupFeedbackPresentation();
 	void SetupSoundPingPresentation();
 	void ResolveInteractionChildWidgets();
+	void ResolveCrosshairWidgets();
+	void RefreshCrosshairPresentation(AActor* TargetActor, bool bAvailable);
 	UHeistInteractionPromptWidget* ResolveInteractionChildWidget(
 		FName WidgetName,
 		UHeistInteractionPromptWidget* ExistingWidget) const;
@@ -129,6 +131,15 @@ private:
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistInteractionPromptWidget> ActionProgressWidget;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UWidget> CrosshairContainer;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UWidget> CrosshairIdleIndicator;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UWidget> CrosshairFocusIndicator;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistRareLootAlertWidget> RareLootWarningWidget;

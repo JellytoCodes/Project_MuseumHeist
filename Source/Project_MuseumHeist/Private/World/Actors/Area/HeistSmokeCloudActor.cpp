@@ -4,6 +4,7 @@
 #include "Character/HeistPlayerCharacter.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Core/HeistCollisionChannels.h"
 #include "Core/HeistGameplayTags.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "EngineUtils.h"
@@ -24,7 +25,8 @@ AHeistSmokeCloudActor::AHeistSmokeCloudActor()
 	SmokeCollisionComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	SmokeCollisionComponent->SetCollisionObjectType(ECC_WorldDynamic);
 	SmokeCollisionComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
-	SmokeCollisionComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	SmokeCollisionComponent->SetCollisionResponseToChannel(HeistCollisionChannels::Player, ECR_Overlap);
+	SmokeCollisionComponent->SetCollisionResponseToChannel(HeistCollisionChannels::Guard, ECR_Overlap);
 	SmokeCollisionComponent->SetGenerateOverlapEvents(true);
 
 	VisualMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("VisualMeshComponent"));

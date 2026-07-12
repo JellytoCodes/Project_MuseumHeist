@@ -3,6 +3,7 @@
 #include "Character/HeistPlayerCharacter.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Core/HeistCollisionChannels.h"
 #include "Net/UnrealNetwork.h"
 
 #pragma region Construction
@@ -19,7 +20,8 @@ AHeistTrapActor::AHeistTrapActor()
 	TriggerComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	TriggerComponent->SetCollisionObjectType(ECC_WorldDynamic);
 	TriggerComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
-	TriggerComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	TriggerComponent->SetCollisionResponseToChannel(HeistCollisionChannels::Player, ECR_Overlap);
+	TriggerComponent->SetCollisionResponseToChannel(HeistCollisionChannels::Guard, ECR_Overlap);
 
 	VisualMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("VisualMeshComponent"));
 	VisualMeshComponent->SetupAttachment(TriggerComponent);

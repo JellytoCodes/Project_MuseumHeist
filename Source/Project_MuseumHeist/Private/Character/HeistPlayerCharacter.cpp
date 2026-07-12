@@ -10,6 +10,8 @@
 #include "Character/Components/HeistVisionComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Core/HeistCollisionChannels.h"
 #include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerState.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
@@ -21,8 +23,7 @@
 AHeistPlayerCharacter::AHeistPlayerCharacter()
 {
 	FirstPersonCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
-	FirstPersonCamera->SetupAttachment(GetCapsuleComponent());
-	FirstPersonCamera->SetRelativeLocation(FVector(0.0f, 0.0f, 64.0f));
+	FirstPersonCamera->SetupAttachment(GetMesh(), TEXT("FirstPersonCameraSocket"));
 	FirstPersonCamera->bUsePawnControlRotation = true;
 	FirstPersonCamera->SetFieldOfView(90.0f);
 
@@ -59,18 +60,55 @@ void AHeistPlayerCharacter::BeginPlay()
 	checkf(IsValid(VisionComponent), TEXT("HeistPlayerCharacter requires HeistVisionComponent"));
 	checkf(IsValid(CustomizationComponent), TEXT("HeistPlayerCharacter requires HeistCustomizationComponent"));
 	checkf(IsValid(NoiseEmitterComponent), TEXT("HeistPlayerCharacter requires HeistNoiseEmitterComponent"));
+	checkf(IsValid(GetMesh()), TEXT("HeistPlayerCharacter requires a Full Body SkeletalMeshComponent"));
+	GetCapsuleComponent()->SetCollisionObjectType(HeistCollisionChannels::Player);
+	GetCapsuleComponent()->SetCollisionResponseToChannel(HeistCollisionChannels::Guard, ECR_Block);
+	GetCapsuleComponent()->SetCollisionResponseToChannel(HeistCollisionChannels::Interactable, ECR_Overlap);
+	GetCapsuleComponent()->SetCollisionResponseToChannel(HeistCollisionChannels::InteractionTrace, ECR_Ignore);
+
+	const bool bCameraSocketResolved = GetMesh()->DoesSocketExist(FirstPersonCameraSocketName);
+	if (bCameraSocketResolved)
+	{
+		FirstPersonCamera->AttachToComponent(
+			GetMesh(),
+			FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+			FirstPersonCameraSocketName);
+		FirstPersonCamera->SetRelativeLocation(FirstPersonCameraSocketOffset);
+	}
+	else
+	{
+		FirstPersonCamera->AttachToComponent(
+			GetCapsuleComponent(),
+			FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+		FirstPersonCamera->SetRelativeLocation(FVector(0.0f, 0.0f, 64.0f));
+
+		UE_LOG(
+			LogHeist,
+			Warning,
+			TEXT("[%s] First-person camera socket setup failed: RequestedSocket=%s Reason=MissingSocket Fallback=CapsuleEyeHeight"),
+			*GetName(),
+			*FirstPersonCameraSocketName.ToString());
+	}
+
+	GetMesh()->SetCastShadow(true);
 
 	UE_LOG(
 		LogHeist,
 		Log,
-		TEXT("[%s] First-person camera contract: Camera=%s RelativeLocation=%s FOV=%.1f UsePawnControlRotation=%s UseControllerYaw=%s OrientRotationToMovement=%s"),
+		TEXT("[%s] First-person camera contract: Camera=%s RequestedSocket=%s SocketResolved=%s Parent=%s AttachedSocket=%s RelativeLocation=%s FOV=%.1f UsePawnControlRotation=%s UseControllerYaw=%s OrientRotationToMovement=%s FullBodyVisible=%s HeadHidden=false CastShadow=%s"),
 		*GetName(),
 		*GetNameSafe(FirstPersonCamera),
+		*FirstPersonCameraSocketName.ToString(),
+		bCameraSocketResolved ? TEXT("true") : TEXT("false"),
+		*GetNameSafe(FirstPersonCamera->GetAttachParent()),
+		*FirstPersonCamera->GetAttachSocketName().ToString(),
 		*FirstPersonCamera->GetRelativeLocation().ToCompactString(),
 		FirstPersonCamera->FieldOfView,
 		FirstPersonCamera->bUsePawnControlRotation ? TEXT("true") : TEXT("false"),
 		bUseControllerRotationYaw ? TEXT("true") : TEXT("false"),
-		GetCharacterMovement()->bOrientRotationToMovement ? TEXT("true") : TEXT("false"));
+		GetCharacterMovement()->bOrientRotationToMovement ? TEXT("true") : TEXT("false"),
+		GetMesh()->IsVisible() ? TEXT("true") : TEXT("false"),
+		GetMesh()->CastShadow ? TEXT("true") : TEXT("false"));
 }
 
 #pragma endregion

@@ -89,6 +89,12 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Camera", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UCameraComponent> FirstPersonCamera;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Camera", meta = (AllowPrivateAccess = "true"))
+	FName FirstPersonCameraSocketName = TEXT("FirstPersonCameraSocket");
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Camera", meta = (AllowPrivateAccess = "true"))
+	FVector FirstPersonCameraSocketOffset = FVector::ZeroVector;
+
 #pragma endregion
 
 #pragma region GameplayComponents
