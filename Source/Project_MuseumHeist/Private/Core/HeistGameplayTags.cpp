@@ -17,8 +17,6 @@ void FHeistGameplayTags::InitializeNativeGameplayTags()
 	GameplayTags.PropertyName = TagsManager.AddNativeGameplayTag(FName(TEXT(TagName)), TEXT(Description))
 
 	HEIST_ADD_NATIVE_TAG(State_Alive, "State.Alive", "Player is alive and has not escaped.");
-	HEIST_ADD_NATIVE_TAG(State_Stunned, "State.Stunned", "Player is stunned.");
-	HEIST_ADD_NATIVE_TAG(State_StunImmune, "State.StunImmune", "Player is temporarily immune to stun.");
 	HEIST_ADD_NATIVE_TAG(State_Escaped, "State.Escaped", "Player has escaped.");
 	HEIST_ADD_NATIVE_TAG(State_InventoryOpen, "State.InventoryOpen", "Player inventory is open.");
 	HEIST_ADD_NATIVE_TAG(State_Interacting, "State.Interacting", "Player is performing an interaction cast.");
@@ -90,7 +88,6 @@ void FHeistGameplayTags::InitializeNativeGameplayTags()
 	HEIST_ADD_NATIVE_TAG(UI_Warning_InventoryFull, "UI.Warning.InventoryFull", "Inventory full warning.");
 	HEIST_ADD_NATIVE_TAG(UI_Warning_Revealed, "UI.Warning.Revealed", "Player revealed warning.");
 	HEIST_ADD_NATIVE_TAG(UI_Warning_RareLootIncoming, "UI.Warning.RareLootIncoming", "Rare loot incoming warning.");
-	HEIST_ADD_NATIVE_TAG(UI_Indicator_GapTracker, "UI.Indicator.GapTracker", "Gap Tracker indicator.");
 	HEIST_ADD_NATIVE_TAG(UI_Indicator_SoundPing, "UI.Indicator.SoundPing", "Sound Ping indicator.");
 
 #undef HEIST_ADD_NATIVE_TAG

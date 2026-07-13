@@ -185,8 +185,9 @@ void UHeistInventoryWidget::RefreshQuickSlotPresentation()
 		if (IsValid(QuickSlotSummaryText))
 		{
 			QuickSlotSummaryText->SetText(FText::Format(
-				NSLOCTEXT("HeistInventory", "QuickSlotSummaryFormat", "QUICK SLOTS  {0}/3 ASSIGNED"),
-				FText::AsNumber(AssignedQuickSlotCount)));
+				NSLOCTEXT("HeistInventory", "QuickSlotSummaryFormat", "QUICK SLOTS  {0}/{1} ASSIGNED"),
+				FText::AsNumber(AssignedQuickSlotCount),
+				FText::AsNumber(ConfirmedQuickSlots.Num())));
 		}
 
 		BP_RefreshConfirmedQuickSlots(ConfirmedQuickSlots);

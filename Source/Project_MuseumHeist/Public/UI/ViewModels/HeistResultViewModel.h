@@ -50,12 +50,8 @@ private:
 
 public:
 	const TArray<FHeistPlayerResult>& GetPlayerResults() const;
-	int32 GetWinnerId() const;
-	int32 GetMyRank() const;
 	int32 GetMyFinalScore() const;
 	bool IsEscaped() const;
-	const FText& GetWinnerIdText() const;
-	const FText& GetMyRankText() const;
 	const FText& GetMyFinalScoreText() const;
 	ESlateVisibility GetEscapedVisibility() const;
 	const FText& GetResultRow1Text() const;
@@ -76,22 +72,10 @@ private:
 	TArray<FHeistPlayerResult> PlayerResults;
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
-	int32 WinnerId = INDEX_NONE;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
-	int32 MyRank = 0;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
 	int32 MyFinalScore = 0;
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
 	bool bEscaped = false;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
-	FText WinnerIdText;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
-	FText MyRankText;
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
 	FText MyFinalScoreText;

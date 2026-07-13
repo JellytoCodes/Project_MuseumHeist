@@ -9,8 +9,6 @@ struct PROJECT_MUSEUMHEIST_API FHeistGameplayTags
 	static void InitializeNativeGameplayTags();
 
 	FGameplayTag State_Alive;
-	FGameplayTag State_Stunned;
-	FGameplayTag State_StunImmune;
 	FGameplayTag State_Escaped;
 	FGameplayTag State_InventoryOpen;
 	FGameplayTag State_Interacting;
@@ -84,7 +82,6 @@ struct PROJECT_MUSEUMHEIST_API FHeistGameplayTags
 	FGameplayTag UI_Warning_InventoryFull;
 	FGameplayTag UI_Warning_Revealed;
 	FGameplayTag UI_Warning_RareLootIncoming;
-	FGameplayTag UI_Indicator_GapTracker;
 	FGameplayTag UI_Indicator_SoundPing;
 
 private:

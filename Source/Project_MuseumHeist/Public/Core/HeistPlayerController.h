@@ -56,6 +56,8 @@ private:
 	void HandleMoveInput(const FInputActionValue& InputValue);
 	void HandleInventoryToggle();
 	void UpdateFlashlightAimDirection();
+	void RefreshLocalInputModeFromPawn();
+	void ApplyLocalInputMode(EHeistInputMode NewInputMode);
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Input", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInputAction> MoveInputAction;
@@ -72,6 +74,11 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Input", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInputMappingContext> GameplayInputMappingContext;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Input", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UInputMappingContext> InventoryInputMappingContext;
+
+	EHeistInputMode LocalInputMode = EHeistInputMode::Gameplay;
+
 #pragma endregion
 
 #pragma region Interaction
@@ -84,6 +91,9 @@ private:
 #pragma region Networking
 
 public:
+	void HandleInventoryOpenStateChanged(bool bInventoryOpen);
+	EHeistInputMode GetLocalInputMode() const;
+
 	UFUNCTION(BlueprintCallable, Category = "Heist|Inventory")
 	void RequestSetInventoryOpen(bool bInventoryOpen);
 
@@ -103,21 +113,16 @@ public:
 	void RequestClearQuickSlot(EHeistQuickSlotType SlotType);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|QuickSlot")
-	void RequestUseQuickSlotAtWorldLocation(EHeistQuickSlotType SlotType, FVector TargetWorldLocation);
+	void RequestUseQuickSlot(EHeistQuickSlotType SlotType);
 
 	bool TryBuildCameraForwardAim(float Distance, FVector& OutViewLocation, FVector& OutCameraForward, FVector& OutTargetWorldLocation) const;
+	bool TryBuildCameraSurfaceTarget(float Distance, FVector& OutTargetWorldLocation) const;
 
 	void DebugRequestAddInventoryItem(FName ItemId);
 	void DebugRequestThrowCoinAtWorldLocation(FVector TargetWorldLocation);
 	void DebugRequestThrowSmokeAtWorldLocation(FVector TargetWorldLocation);
 	void DebugRequestPlaceGlueTrapAtWorldLocation(FVector TargetWorldLocation);
 	void DebugRequestForceRareLootEvent(float WarningDelaySeconds);
-	void DebugRequestSetGapTrackerScore(int32 Score);
-	void DebugRequestForceGapTracker(bool bActive);
-	void DebugRequestClearGapTrackerOverride();
-	void DebugRequestApplyStatusStun(float DurationSeconds);
-	void DebugRequestApplyStatusImmunity(float DurationSeconds);
-	void DebugRequestClearStatus();
 	void DebugRequestSpawnGuard(float Distance);
 	void DebugRequestSetNearestGuardState(EHeistGuardState GuardState, float DurationSeconds);
 	void DebugRequestEvaluateNearestGuardSight();
@@ -155,7 +160,7 @@ private:
 	void Server_RequestClearQuickSlot(EHeistQuickSlotType SlotType);
 
 	UFUNCTION(Server, Reliable)
-	void Server_RequestUseQuickSlotAtWorldLocation(EHeistQuickSlotType SlotType, FVector TargetWorldLocation);
+	void Server_RequestUseQuickSlot(EHeistQuickSlotType SlotType, FVector TargetWorldLocation);
 
 	UFUNCTION(Server, Unreliable)
 	void Server_UpdateFlashlightAimDirection(FVector_NetQuantizeNormal ClientCameraForward);
@@ -171,27 +176,6 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void Server_DebugRequestPlaceGlueTrapAtWorldLocation(FVector TargetWorldLocation);
-
-	UFUNCTION(Server, Reliable)
-	void Server_DebugRequestForceRareLootEvent(float WarningDelaySeconds);
-
-	UFUNCTION(Server, Reliable)
-	void Server_DebugRequestSetGapTrackerScore(int32 Score);
-
-	UFUNCTION(Server, Reliable)
-	void Server_DebugRequestForceGapTracker(bool bActive);
-
-	UFUNCTION(Server, Reliable)
-	void Server_DebugRequestClearGapTrackerOverride();
-
-	UFUNCTION(Server, Reliable)
-	void Server_DebugRequestApplyStatusStun(float DurationSeconds);
-
-	UFUNCTION(Server, Reliable)
-	void Server_DebugRequestApplyStatusImmunity(float DurationSeconds);
-
-	UFUNCTION(Server, Reliable)
-	void Server_DebugRequestClearStatus();
 
 	UFUNCTION(Server, Reliable)
 	void Server_DebugRequestSpawnGuard(float Distance);
@@ -286,13 +270,6 @@ private:
 	void LogEscapeRequestRejected(const AHeistVentActor* TargetVentActor, const TCHAR* Reason, float Distance = -1.0f);
 	void LogInventoryRequestRejected(const TCHAR* RequestName, int32 InstanceId, const TCHAR* Reason);
 	void LogThrowableUseRejected(EHeistQuickSlotType SlotType, FName ItemId, const TCHAR* Reason);
-
-#pragma endregion
-
-#pragma region Cursor
-
-private:
-	void ConfigureMouseCursorDefaults();
 
 #pragma endregion
 

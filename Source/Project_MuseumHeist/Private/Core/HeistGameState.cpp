@@ -210,62 +210,6 @@ void AHeistGameState::BroadcastRareLootEventState()
 
 #pragma endregion
 
-#pragma region GapTracker
-
-bool AHeistGameState::IsGapTrackerActive() const
-{
-	return bGapTrackerActive;
-}
-
-int32 AHeistGameState::GetGapTrackerLeaderPlayerId() const
-{
-	return GapTrackerLeaderPlayerId;
-}
-
-void AHeistGameState::SetGapTrackerState(const bool bInActive, const int32 InLeaderPlayerId)
-{
-	if (!HasAuthority())
-	{
-		return;
-	}
-
-	const int32 ResolvedLeaderPlayerId = bInActive ? InLeaderPlayerId : INDEX_NONE;
-	if (bGapTrackerActive == bInActive && GapTrackerLeaderPlayerId == ResolvedLeaderPlayerId)
-	{
-		return;
-	}
-
-	bGapTrackerActive = bInActive;
-	GapTrackerLeaderPlayerId = ResolvedLeaderPlayerId;
-	ForceNetUpdate();
-	BroadcastGapTrackerState();
-	UHeistDebugFunctionLibrary::DebugGapTrackerStateChanged(
-		this,
-		bGapTrackerActive,
-		GapTrackerLeaderPlayerId);
-}
-
-FHeistGapTrackerStateChanged& AHeistGameState::GetGapTrackerStateChangedDelegate()
-{
-	return GapTrackerStateChangedDelegate;
-}
-
-void AHeistGameState::OnRep_GapTrackerState()
-{
-	BroadcastGapTrackerState();
-	UHeistDebugFunctionLibrary::DebugGapTrackerStateReplicated(
-		this,
-		bGapTrackerActive,
-		GapTrackerLeaderPlayerId);
-}
-
-void AHeistGameState::BroadcastGapTrackerState()
-{
-	GapTrackerStateChangedDelegate.Broadcast(bGapTrackerActive, GapTrackerLeaderPlayerId);
-}
-
-#pragma endregion
-
 #pragma region SoundPing
 
 void AHeistGameState::ReportSoundPing(const FHeistSoundPingEvent& SoundPingEvent)
@@ -334,39 +278,8 @@ void AHeistGameState::RebuildPlayerResults()
 
 	NewPlayerResults.Sort([](const FHeistPlayerResult& Left, const FHeistPlayerResult& Right)
 	{
-		if (Left.bEscaped != Right.bEscaped)
-		{
-			return Left.bEscaped;
-		}
-
-		if (Left.FinalScore != Right.FinalScore)
-		{
-			return Left.FinalScore > Right.FinalScore;
-		}
-
-		if (Left.bEscaped && Left.EscapeTimeSeconds != Right.EscapeTimeSeconds)
-		{
-			return Left.EscapeTimeSeconds < Right.EscapeTimeSeconds;
-		}
-
 		return Left.PlayerId < Right.PlayerId;
 	});
-
-	for (int32 ResultIndex = 0; ResultIndex < NewPlayerResults.Num(); ++ResultIndex)
-	{
-		FHeistPlayerResult& PlayerResult = NewPlayerResults[ResultIndex];
-		PlayerResult.Rank = ResultIndex + 1;
-
-		for (APlayerState* PlayerState : PlayerArray)
-		{
-			AHeistPlayerState* HeistPlayerState = Cast<AHeistPlayerState>(PlayerState);
-			if (IsValid(HeistPlayerState) && HeistPlayerState->HeistPlayerId == PlayerResult.PlayerId)
-			{
-				HeistPlayerState->SetPlayerRank(PlayerResult.Rank);
-				break;
-			}
-		}
-	}
 
 	PlayerResults = MoveTemp(NewPlayerResults);
 	ForceNetUpdate();
@@ -377,9 +290,8 @@ void AHeistGameState::RebuildPlayerResults()
 		UE_LOG(
 			LogHeist,
 			Log,
-			TEXT("Player result ranked: PlayerId=%d Rank=%d Escaped=%s LootScore=%d FinalScore=%d LootWeight=%.2f EscapeTime=%.2f"),
+			TEXT("Player contribution result: PlayerId=%d Escaped=%s LootScore=%d FinalScore=%d LootWeight=%.2f EscapeTime=%.2f"),
 			PlayerResult.PlayerId,
-			PlayerResult.Rank,
 			PlayerResult.bEscaped ? TEXT("true") : TEXT("false"),
 			PlayerResult.LootScore,
 			PlayerResult.FinalScore,
@@ -390,22 +302,14 @@ void AHeistGameState::RebuildPlayerResults()
 	UE_LOG(
 		LogHeist,
 		Log,
-		TEXT("Player results rebuilt: GameState=%s PlayerCount=%d WinnerPlayerId=%d"),
+		TEXT("Player contribution results rebuilt: GameState=%s PlayerCount=%d"),
 		*GetNameSafe(this),
-		PlayerResults.Num(),
-		GetWinnerPlayerId());
+		PlayerResults.Num());
 }
 
 const TArray<FHeistPlayerResult>& AHeistGameState::GetPlayerResults() const
 {
 	return PlayerResults;
-}
-
-int32 AHeistGameState::GetWinnerPlayerId() const
-{
-	return !PlayerResults.IsEmpty() && PlayerResults[0].bEscaped
-		? PlayerResults[0].PlayerId
-		: INDEX_NONE;
 }
 
 FHeistPlayerResultsChanged& AHeistGameState::GetPlayerResultsChangedDelegate()
@@ -422,9 +326,8 @@ void AHeistGameState::OnRep_PlayerResults()
 		UE_LOG(
 			LogHeistNetwork,
 			Log,
-			TEXT("Player result replicated entry: PlayerId=%d Rank=%d Escaped=%s LootScore=%d FinalScore=%d LootWeight=%.2f EscapeTime=%.2f"),
+			TEXT("Player contribution result replicated: PlayerId=%d Escaped=%s LootScore=%d FinalScore=%d LootWeight=%.2f EscapeTime=%.2f"),
 			PlayerResult.PlayerId,
-			PlayerResult.Rank,
 			PlayerResult.bEscaped ? TEXT("true") : TEXT("false"),
 			PlayerResult.LootScore,
 			PlayerResult.FinalScore,
@@ -435,10 +338,9 @@ void AHeistGameState::OnRep_PlayerResults()
 	UE_LOG(
 		LogHeistNetwork,
 		Log,
-		TEXT("Player results replicated: GameState=%s PlayerCount=%d WinnerPlayerId=%d"),
+		TEXT("Player contribution results replicated: GameState=%s PlayerCount=%d"),
 		*GetNameSafe(this),
-		PlayerResults.Num(),
-		GetWinnerPlayerId());
+		PlayerResults.Num());
 }
 
 #pragma endregion
@@ -452,9 +354,6 @@ void AHeistGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(AHeistGameState, bEscapePhaseOpen);
 	DOREPLIFETIME(AHeistGameState, EscapePhaseDelaySeconds);
 	DOREPLIFETIME(AHeistGameState, EscapePhaseOpenTimeSeconds);
-	DOREPLIFETIME(AHeistGameState, RareLootEventState);
-	DOREPLIFETIME(AHeistGameState, bGapTrackerActive);
-	DOREPLIFETIME(AHeistGameState, GapTrackerLeaderPlayerId);
 	DOREPLIFETIME(AHeistGameState, LastSoundPingEvent);
 	DOREPLIFETIME(AHeistGameState, PlayerResults);
 }

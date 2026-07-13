@@ -34,12 +34,6 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Rare Loot")
 	FName RareLootItemId = FName(TEXT("Loot_RareArtifact"));
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Gap Tracker", meta = (ClampMin = "0"))
-	int32 GapTrackerScoreThreshold = 1000;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Gap Tracker", meta = (ClampMin = "0.01", Units = "s"))
-	float GapTrackerUpdateInterval = 0.1f;
-
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Interaction", meta = (ClampMin = "0.0", Units = "s"))
 	float EscapeCastTime = 2.0f;
 

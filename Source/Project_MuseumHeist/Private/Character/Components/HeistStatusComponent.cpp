@@ -1,12 +1,7 @@
 #include "Character/Components/HeistStatusComponent.h"
 
-#include "Character/Components/HeistInventoryComponent.h"
-#include "Character/HeistPlayerCharacter.h"
-#include "Core/HeistGameplayTags.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "Engine/World.h"
-#include "GameFramework/Character.h"
-#include "GameFramework/CharacterMovementComponent.h"
 #include "Net/UnrealNetwork.h"
 
 #pragma region Construction
@@ -20,16 +15,6 @@ UHeistStatusComponent::UHeistStatusComponent()
 #pragma endregion
 
 #pragma region StatusQueries
-
-bool UHeistStatusComponent::IsStunned() const
-{
-	return HasStatusTag(FHeistGameplayTags::Get().State_Stunned);
-}
-
-bool UHeistStatusComponent::IsStunImmune() const
-{
-	return HasStatusTag(FHeistGameplayTags::Get().State_StunImmune);
-}
 
 bool UHeistStatusComponent::HasStatusTag(const FGameplayTag StateTag) const
 {
@@ -50,35 +35,6 @@ FHeistStatusTagsChanged& UHeistStatusComponent::GetStatusTagsChangedDelegate()
 
 #pragma region StatusMutation
 
-bool UHeistStatusComponent::ApplyStun(const float DurationSeconds, AActor* StunSource)
-{
-	if (IsStunImmune())
-	{
-		return false;
-	}
-
-	const bool bWasStunned = IsStunned();
-	const bool bApplied = ApplyTimedStatusTag(FHeistGameplayTags::Get().State_Stunned, DurationSeconds);
-	if (bApplied && !bWasStunned)
-	{
-		AHeistPlayerCharacter* OwnerCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
-		UHeistInventoryComponent* InventoryComponent = IsValid(OwnerCharacter)
-			? OwnerCharacter->GetInventoryComponent()
-			: nullptr;
-		if (IsValid(InventoryComponent))
-		{
-			InventoryComponent->TryDropRandomLootOnStun(IsValid(StunSource) ? StunSource : OwnerCharacter);
-		}
-	}
-
-	return bApplied;
-}
-
-bool UHeistStatusComponent::ApplyStunImmunity(const float DurationSeconds)
-{
-	return ApplyTimedStatusTag(FHeistGameplayTags::Get().State_StunImmune, DurationSeconds);
-}
-
 bool UHeistStatusComponent::ApplyTimedStatusTag(const FGameplayTag StateTag, const float DurationSeconds)
 {
 	if (!GetOwner() || !GetOwner()->HasAuthority() || !StateTag.IsValid() || DurationSeconds <= 0.0f)
@@ -96,7 +52,6 @@ bool UHeistStatusComponent::ApplyTimedStatusTag(const FGameplayTag StateTag, con
 	ExistingState->EndServerTime = GetStatusEndServerTime(DurationSeconds);
 	RefreshStatusTagTimer(*ExistingState);
 	GetOwner()->ForceNetUpdate();
-	StopOwnerMovementForStun();
 	StatusTagsChangedDelegate.Broadcast(StatusTags);
 
 	UHeistDebugFunctionLibrary::DebugStatusTagApplied(this, StateTag, ExistingState->EndServerTime);
@@ -191,26 +146,6 @@ void UHeistStatusComponent::ExpireStatusTag(const FGameplayTag StateTag)
 	ClearStatusTag(StateTag);
 }
 
-void UHeistStatusComponent::StopOwnerMovementForStun() const
-{
-	if (!IsStunned())
-	{
-		return;
-	}
-
-	const ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
-	if (!IsValid(OwnerCharacter))
-	{
-		return;
-	}
-
-	UCharacterMovementComponent* MovementComponent = OwnerCharacter->GetCharacterMovement();
-	if (IsValid(MovementComponent))
-	{
-		MovementComponent->StopMovementImmediately();
-	}
-}
-
 float UHeistStatusComponent::GetStatusEndServerTime(const float DurationSeconds) const
 {
 	const UWorld* World = GetWorld();
@@ -233,7 +168,6 @@ void UHeistStatusComponent::OnRep_StatusTags()
 {
 	StatusTagsChangedDelegate.Broadcast(StatusTags);
 	UHeistDebugFunctionLibrary::DebugStatusTagsReplicated(this, StatusTags);
-	StopOwnerMovementForStun();
 }
 
 #pragma endregion

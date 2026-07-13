@@ -6,18 +6,7 @@
     "ScoreValue": 1000,
     "SpawnCategory": "VaultFixed",
     "SpawnWeight": 1.0,
-    "bCanDropOnStun": true,
     "WorldLootActorClass": "BlueprintGeneratedClass'/Game/Blueprints/Actors/LootActors/BP_LootRoyalCrown.BP_LootRoyalCrown_C'"
-  },
-  {
-    "Name": "Loot_RareArtifact",
-    "ItemId": "Loot_RareArtifact",
-    "LootGrade": "FourStar",
-    "ScoreValue": 1000,
-    "SpawnCategory": "RareEvent",
-    "SpawnWeight": 1.0,
-    "bCanDropOnStun": true,
-    "WorldLootActorClass": "BlueprintGeneratedClass'/Game/Blueprints/Actors/LootActors/BP_LootRareArtifact.BP_LootRareArtifact_C'"
   },
   {
     "Name": "Loot_Painting",
@@ -26,7 +15,6 @@
     "ScoreValue": 300,
     "SpawnCategory": "ExhibitionRoom",
     "SpawnWeight": 1.0,
-    "bCanDropOnStun": true,
     "WorldLootActorClass": "BlueprintGeneratedClass'/Game/Blueprints/Actors/LootActors/BP_Painting.BP_Painting_C'"
   },
   {
@@ -36,7 +24,6 @@
     "ScoreValue": 300,
     "SpawnCategory": "ExhibitionRoom",
     "SpawnWeight": 1.0,
-    "bCanDropOnStun": true,
     "WorldLootActorClass": "BlueprintGeneratedClass'/Game/Blueprints/Actors/LootActors/BP_LootAncientSword.BP_LootAncientSword_C'"
   }
 ]

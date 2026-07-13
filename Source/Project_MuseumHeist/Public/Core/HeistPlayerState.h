@@ -6,7 +6,6 @@
 #include "HeistPlayerState.generated.h"
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerEscapeStateChanged, bool);
-DECLARE_MULTICAST_DELEGATE_OneParam(FHeistGapTrackerDirectionChanged, const FVector&);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistLootTotalsChanged, int32, float);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerIdentityChanged, int32);
 
@@ -39,24 +38,6 @@ private:
 
 #pragma endregion
 
-#pragma region GapTracker
-
-public:
-	FVector GetGapTrackerDirection() const;
-	void SetGapTrackerDirection(const FVector& InDirection);
-	FHeistGapTrackerDirectionChanged& GetGapTrackerDirectionChangedDelegate();
-
-private:
-	UPROPERTY(ReplicatedUsing = OnRep_GapTrackerDirection, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|GapTracker", meta = (AllowPrivateAccess = "true"))
-	FVector_NetQuantizeNormal GapTrackerDirection = FVector::ZeroVector;
-
-	UFUNCTION()
-	void OnRep_GapTrackerDirection();
-
-	FHeistGapTrackerDirectionChanged GapTrackerDirectionChangedDelegate;
-
-#pragma endregion
-
 #pragma region EscapeState
 
 public:
@@ -64,8 +45,6 @@ public:
 	bool MarkEscaped();
 	int32 GetFinalScore() const;
 	float GetEscapeTimeSeconds() const;
-	int32 GetPlayerRank() const;
-	void SetPlayerRank(int32 InPlayerRank);
 	FHeistPlayerEscapeStateChanged& GetEscapeStateChangedDelegate();
 
 private:
@@ -77,9 +56,6 @@ private:
 
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
 	float EscapeTimeSeconds = -1.0f;
-
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
-	int32 PlayerRank = 0;
 
 	FHeistPlayerEscapeStateChanged EscapeStateChangedDelegate;
 

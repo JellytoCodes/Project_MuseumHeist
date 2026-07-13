@@ -11,17 +11,6 @@
     "SpawnedActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Projectile/BP_HeistCoinProjectile.BP_HeistCoinProjectile_C'"
   },
   {
-    "Name": "Throwable_Smoke",
-    "ItemId": "Throwable_Smoke",
-    "UseType": "Throw",
-    "TargetType": "WorldLocation",
-    "Cooldown": 5.0,
-    "CastTime": 0.0,
-    "Duration": 5.0,
-    "ProjectileSpeed": 1200.0,
-    "SpawnedActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Projectile/BP_HeistSmokeProjectile.BP_HeistSmokeProjectile_C'"
-  },
-  {
     "Name": "Trap_Glue",
     "ItemId": "Trap_Glue",
     "UseType": "PlaceTrap",

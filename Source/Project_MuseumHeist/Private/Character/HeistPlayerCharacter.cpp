@@ -13,6 +13,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Core/HeistCollisionChannels.h"
 #include "Core/HeistLogChannels.h"
+#include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -201,12 +202,16 @@ bool AHeistPlayerCharacter::CanPerformGameplayActions() const
 	const AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
 	const bool bEscaped = IsValid(HeistPlayerState) && HeistPlayerState->IsEscaped();
 	const bool bInventoryOpen = IsValid(InventoryComponent) && InventoryComponent->IsInventoryOpen();
-	const bool bStunned = IsValid(StatusComponent) && StatusComponent->IsStunned();
-	return !bEscaped && !bInventoryOpen && !bStunned;
+	return !bEscaped && !bInventoryOpen;
 }
 
 void AHeistPlayerCharacter::HandleInventoryOpenStateChanged(const bool bInventoryOpen)
 {
+	if (AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(GetController()))
+	{
+		HeistPlayerController->HandleInventoryOpenStateChanged(bInventoryOpen);
+	}
+
 	if (!bInventoryOpen)
 	{
 		return;

@@ -45,12 +45,6 @@ private:
 	void RefreshResultPresentation();
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> WinnerIdText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> MyRankText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> MyFinalScoreText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))

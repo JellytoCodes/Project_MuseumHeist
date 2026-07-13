@@ -20,18 +20,19 @@ Design Reference: `Museum_Heist_GDD.docx` Rev.7
 | 타입 | 상태 | Rev 2 책임 |
 |---|---|---|
 | `EHeistMatchPhase` | Modify | Enum 호환성은 유지하고 v1.0 흐름은 Lobby/ReadyCountdown/InGame/End만 사용 |
+| `EHeistInputMode` | Add | Gameplay/Inventory/Forgery 상호 배타 로컬 입력 상태 |
 | `FHeistPlayerResult` | Deprecate | 기존 결과 호환용. 신규 결과는 TeamResult/Contribution 사용 |
 | `FHeistRareLootEventState` | Deferred | Optional Objective 검토 전까지 비활성 |
 | `EHeistItemType` | Keep | Loose Loot, Throwable, Trap, KeyItem 분류 |
 | `EHeistLootGrade` | Keep | Loose Loot 등급 |
-| `EHeistUseType` | Keep | Coin/Smoke 사용 |
+| `EHeistUseType` | Keep | Coin 사용, Smoke는 Legacy |
 | `EHeistTargetType` | Keep | 사용 대상 분류 |
 | `EHeistSpawnCategory` | Keep | Loose Loot Spawn |
 | `EHeistSoundPingType` | Modify | Alarm, Teammate Ping 확장 가능 |
 | `EHeistGuardState` | Modify | `InspectExhibit` 추가 |
 | `EHeistCustomizationType` | Keep | 변경 없음 |
 | `EHeistZoneId` | Keep | 변경 없음 |
-| `EHeistQuickSlotType` | Keep | Coin/Smoke 필수, Glue는 Stretch |
+| `EHeistQuickSlotType` | Keep | Coin만 v1 활성, Smoke는 Legacy, Glue는 Stretch |
 
 ## 신규 Enum — Add
 
@@ -151,7 +152,7 @@ Folder: `Character/Components/`
 | 클래스 | 상태 | 책임 |
 |---|---|---|
 | `UHeistTagComponent` | Keep | Gameplay Tag 상태 |
-| `UHeistStatusComponent` | Modify | Arrest/Disabled 상태. PvP Stun 신규 사용 금지 |
+| `UHeistStatusComponent` | Modify | 일반 Timed Status만 유지. Player PvP Stun/Immunity 제거 |
 | `UHeistInventoryComponent` | Keep + Extend | Grid/FastArray 유지, Original Carry Entry 연결 |
 | `UHeistInteractionComponent` | Modify | Center Screen Trace, Target Filter, Prompt Snapshot |
 | `UHeistActionComponent` | Modify | Action Lock, Forgery Cast/Cancel, Submit 중복 방지 |
@@ -238,7 +239,7 @@ FHeistForgeryTemplateRow
 | `AHeistDisplayCaseActor` | Modify | Target Artifact, Session Lock, Replica/Original, Inspection State |
 | `AHeistVentActor` | Modify | Shared Extraction |
 | `AHeistCoinProjectile` | Modify | Guard Distraction |
-| `AHeistSmokeProjectile` / `AHeistSmokeCloudActor` | Modify | Guard Sight Blocking |
+| `AHeistSmokeProjectile` / `AHeistSmokeCloudActor` | Legacy | 신규 PvE 호출 차단, 회귀 기준으로만 보존 |
 | `AHeistGlueTrapActor` | Deferred | Guard 전용 Stretch |
 | `AHeistNoiseTrapActor` | Deferred | Post-v1.0 |
 | `AHeistLootSpawnPoint` | Keep | Loose Loot Spawn |
@@ -283,8 +284,7 @@ StateTree Asset는 Editor 작업이며 사용자가 소유한다.
 | `UHeistQuickSlotWidget` | Keep | QuickSlot |
 | `UHeistInteractionPromptWidget` | Modify | Center Screen Prompt |
 | `UHeistResultWidget` | Modify | Team Result / Contribution |
-| `UHeistRareLootAlertWidget` | Deferred / Repurpose | Optional Objective 또는 Lockdown Banner |
-| `UHeistGapTrackerWidget` | Deprecate | 신규 HUD에서 생성하지 않음 |
+| `UHeistRareLootAlertWidget` | Remove | Rare Loot 제거 후 Blueprint 참조 정리 |
 | `UHeistForgeryWidget` | Add | Owner-only Full-Screen Forgery Presentation |
 
 ## ViewModels
@@ -296,7 +296,6 @@ StateTree Asset는 Editor 작업이며 사용자가 소유한다.
 | `UHeistQuickSlotViewModel` | Keep | QuickSlot |
 | `UHeistResultViewModel` | Modify | Team Result / Contribution |
 | `UHeistLobbyViewModel` | Keep | 1~4인 Lobby |
-| `UHeistGapTrackerViewModel` | Deprecate | 신규 HUD에서 미사용 |
 | `UHeistForgeryViewModel` | Add | Forgery UI 상태만 노출, 판정 없음 |
 
 ---

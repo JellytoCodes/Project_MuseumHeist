@@ -13,19 +13,6 @@
     "Icon": ""
   },
   {
-    "Name": "Loot_RareArtifact",
-    "ItemId": "Loot_RareArtifact",
-    "DisplayName": "Rare Artifact",
-    "CategoryTag": "Item.Loot.RareArtifact",
-    "ItemType": "Loot",
-    "GridSize": "(X=2,Y=2)",
-    "Weight": 4.0,
-    "bCanRotate": false,
-    "bCanUseQuickSlot": false,
-    "bAvailableInV1": true,
-    "Icon": ""
-  },
-  {
     "Name": "Loot_Painting",
     "ItemId": "Loot_Painting",
     "DisplayName": "Painting",
@@ -82,19 +69,6 @@
     "ItemId": "Throwable_Coin",
     "DisplayName": "Coin",
     "CategoryTag": "Item.Throwable.Coin",
-    "ItemType": "Throwable",
-    "GridSize": "(X=1,Y=1)",
-    "Weight": 1.0,
-    "bCanRotate": false,
-    "bCanUseQuickSlot": true,
-    "bAvailableInV1": true,
-    "Icon": ""
-  },
-  {
-    "Name": "Throwable_Smoke",
-    "ItemId": "Throwable_Smoke",
-    "DisplayName": "Smoke Grenade",
-    "CategoryTag": "Item.Throwable.Smoke",
     "ItemType": "Throwable",
     "GridSize": "(X=1,Y=1)",
     "Weight": 1.0,

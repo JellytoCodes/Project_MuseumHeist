@@ -92,19 +92,6 @@ private:
 
 #pragma endregion
 
-#pragma region GapTrackerPresentation
-
-public:
-	class UHeistGapTrackerViewModel* GetGapTrackerViewModel() const;
-
-private:
-	void InitializeGapTrackerPresentation();
-
-	UPROPERTY(Transient)
-	TObjectPtr<UHeistGapTrackerViewModel> GapTrackerViewModel;
-
-#pragma endregion
-
 #pragma region ResultPresentation
 
 public:

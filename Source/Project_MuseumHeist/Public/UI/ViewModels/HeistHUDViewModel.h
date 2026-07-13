@@ -34,7 +34,6 @@ public:
 	void SetupViewModel(
 		class AHeistGameState* InGameState,
 		class AHeistPlayerState* InLocalPlayerState,
-		class UHeistStatusComponent* InStatusComponent,
 		class UHeistActionComponent* InActionComponent);
 	void RefreshPresentationState();
 	void RefreshRareLootState();
@@ -48,7 +47,6 @@ private:
 	void HandleEscapePhaseStateChanged(bool bEscapePhaseOpen);
 	void HandleLootTotalsChanged(int32 TotalLootScore, float TotalLootWeight);
 	void HandleEscapeStateChanged(bool bEscaped);
-	void HandleStatusTagsChanged(const TArray<FHeistTimedTagState>& StatusTags);
 	void HandleActionStateChanged();
 
 	UPROPERTY(Transient)
@@ -56,9 +54,6 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHeistPlayerState> LocalPlayerState;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UHeistStatusComponent> StatusComponent;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UHeistActionComponent> ActionComponent;
@@ -77,9 +72,6 @@ public:
 	int32 GetConnectedPlayerCount() const;
 	bool IsLocalPlayerEscaped() const;
 	bool IsEscapePhaseOpen() const;
-	bool IsStunned() const;
-	bool IsStunImmune() const;
-	bool IsInSmoke() const;
 	bool IsEscapeCastActive() const;
 	float GetEscapeCastEndServerTime() const;
 	bool IsTrapPlacementCastActive() const;
@@ -103,15 +95,6 @@ private:
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|HUD", meta = (AllowPrivateAccess = "true"))
 	bool bEscapePhaseOpen = false;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Status", meta = (AllowPrivateAccess = "true"))
-	bool bStunned = false;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Status", meta = (AllowPrivateAccess = "true"))
-	bool bStunImmune = false;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Status", meta = (AllowPrivateAccess = "true"))
-	bool bInSmoke = false;
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Action", meta = (AllowPrivateAccess = "true"))
 	bool bEscapeCastActive = false;

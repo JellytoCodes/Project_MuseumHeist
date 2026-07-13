@@ -19,8 +19,6 @@ public:
 #pragma region StatusQueries
 
 public:
-	bool IsStunned() const;
-	bool IsStunImmune() const;
 	bool HasStatusTag(FGameplayTag StateTag) const;
 	const TArray<FHeistTimedTagState>& GetStatusTags() const;
 	FHeistStatusTagsChanged& GetStatusTagsChangedDelegate();
@@ -30,12 +28,6 @@ public:
 #pragma region StatusMutation
 
 public:
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Heist|Status", meta = (ClampMin = "0.0", Units = "s"))
-	bool ApplyStun(float DurationSeconds, AActor* StunSource = nullptr);
-
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Heist|Status", meta = (ClampMin = "0.0", Units = "s"))
-	bool ApplyStunImmunity(float DurationSeconds);
-
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Heist|Status", meta = (ClampMin = "0.0", Units = "s"))
 	bool ApplyTimedStatusTag(FGameplayTag StateTag, float DurationSeconds);
 
@@ -48,7 +40,6 @@ private:
 	void RefreshStatusTagTimer(const FHeistTimedTagState& StatusTagState);
 	void ClearStatusTagTimer(FGameplayTag StateTag);
 	void ExpireStatusTag(FGameplayTag StateTag);
-	void StopOwnerMovementForStun() const;
 	float GetStatusEndServerTime(float DurationSeconds) const;
 
 	UPROPERTY(ReplicatedUsing = OnRep_StatusTags, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Status", meta = (AllowPrivateAccess = "true"))

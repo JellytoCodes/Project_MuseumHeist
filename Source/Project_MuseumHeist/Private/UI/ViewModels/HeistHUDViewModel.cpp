@@ -1,8 +1,6 @@
 #include "UI/ViewModels/HeistHUDViewModel.h"
 
 #include "Character/Components/HeistActionComponent.h"
-#include "Character/Components/HeistStatusComponent.h"
-#include "Core/HeistGameplayTags.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistPlayerState.h"
 
@@ -33,11 +31,6 @@ void UHeistHUDViewModel::BeginDestroy()
 		LocalPlayerState->GetEscapeStateChangedDelegate().RemoveAll(this);
 	}
 
-	if (IsValid(StatusComponent))
-	{
-		StatusComponent->GetStatusTagsChangedDelegate().RemoveAll(this);
-	}
-
 	if (IsValid(ActionComponent))
 	{
 		ActionComponent->GetActionStateChangedDelegate().RemoveAll(this);
@@ -53,7 +46,6 @@ void UHeistHUDViewModel::BeginDestroy()
 void UHeistHUDViewModel::SetupViewModel(
 	AHeistGameState* InGameState,
 	AHeistPlayerState* InLocalPlayerState,
-	UHeistStatusComponent* InStatusComponent,
 	UHeistActionComponent* InActionComponent)
 {
 	if (GameState != InGameState && IsValid(GameState))
@@ -70,11 +62,6 @@ void UHeistHUDViewModel::SetupViewModel(
 		LocalPlayerState->GetEscapeStateChangedDelegate().RemoveAll(this);
 	}
 
-	if (StatusComponent != InStatusComponent && IsValid(StatusComponent))
-	{
-		StatusComponent->GetStatusTagsChangedDelegate().RemoveAll(this);
-	}
-
 	if (ActionComponent != InActionComponent && IsValid(ActionComponent))
 	{
 		ActionComponent->GetActionStateChangedDelegate().RemoveAll(this);
@@ -82,7 +69,6 @@ void UHeistHUDViewModel::SetupViewModel(
 
 	GameState = InGameState;
 	LocalPlayerState = InLocalPlayerState;
-	StatusComponent = InStatusComponent;
 	ActionComponent = InActionComponent;
 
 	if (IsValid(GameState))
@@ -117,14 +103,6 @@ void UHeistHUDViewModel::SetupViewModel(
 			&UHeistHUDViewModel::HandleEscapeStateChanged);
 	}
 
-	if (IsValid(StatusComponent))
-	{
-		StatusComponent->GetStatusTagsChangedDelegate().RemoveAll(this);
-		StatusComponent->GetStatusTagsChangedDelegate().AddUObject(
-			this,
-			&UHeistHUDViewModel::HandleStatusTagsChanged);
-	}
-
 	if (IsValid(ActionComponent))
 	{
 		ActionComponent->GetActionStateChangedDelegate().RemoveAll(this);
@@ -139,8 +117,6 @@ void UHeistHUDViewModel::SetupViewModel(
 
 void UHeistHUDViewModel::RefreshPresentationState()
 {
-	const FHeistGameplayTags& GameplayTags = FHeistGameplayTags::Get();
-
 	UE_MVVM_SET_PROPERTY_VALUE(
 		LocalLootScore,
 		IsValid(LocalPlayerState) ? LocalPlayerState->GetTotalLootScore() : 0);
@@ -159,16 +135,6 @@ void UHeistHUDViewModel::RefreshPresentationState()
 	UE_MVVM_SET_PROPERTY_VALUE(
 		bEscapePhaseOpen,
 		IsValid(GameState) && GameState->IsEscapePhaseOpen());
-	UE_MVVM_SET_PROPERTY_VALUE(
-		bStunned,
-		IsValid(StatusComponent) && StatusComponent->IsStunned());
-	UE_MVVM_SET_PROPERTY_VALUE(
-		bStunImmune,
-		IsValid(StatusComponent) && StatusComponent->IsStunImmune());
-	UE_MVVM_SET_PROPERTY_VALUE(
-		bInSmoke,
-		IsValid(StatusComponent)
-			&& StatusComponent->HasStatusTag(GameplayTags.State_InSmoke));
 	UE_MVVM_SET_PROPERTY_VALUE(
 		bEscapeCastActive,
 		IsValid(ActionComponent) && ActionComponent->IsEscapeCastActive());
@@ -234,11 +200,6 @@ void UHeistHUDViewModel::HandleEscapeStateChanged(const bool)
 	RefreshPresentationState();
 }
 
-void UHeistHUDViewModel::HandleStatusTagsChanged(const TArray<FHeistTimedTagState>&)
-{
-	RefreshPresentationState();
-}
-
 void UHeistHUDViewModel::HandleActionStateChanged()
 {
 	RefreshPresentationState();
@@ -286,21 +247,6 @@ bool UHeistHUDViewModel::IsLocalPlayerEscaped() const
 bool UHeistHUDViewModel::IsEscapePhaseOpen() const
 {
 	return bEscapePhaseOpen;
-}
-
-bool UHeistHUDViewModel::IsStunned() const
-{
-	return bStunned;
-}
-
-bool UHeistHUDViewModel::IsStunImmune() const
-{
-	return bStunImmune;
-}
-
-bool UHeistHUDViewModel::IsInSmoke() const
-{
-	return bInSmoke;
 }
 
 bool UHeistHUDViewModel::IsEscapeCastActive() const

@@ -10,13 +10,10 @@
 #include "GameFramework/PlayerController.h"
 #include "UI/Pool/HeistPopupWidgetPool.h"
 #include "UI/Pool/HeistSoundPingWidgetPool.h"
-#include "UI/ViewModels/HeistGapTrackerViewModel.h"
 #include "UI/ViewModels/HeistHUDViewModel.h"
 #include "UI/ViewModels/HeistInventoryViewModel.h"
 #include "UI/ViewModels/HeistQuickSlotViewModel.h"
-#include "UI/Widgets/HeistGapTrackerWidget.h"
 #include "UI/Widgets/HeistInteractionPromptWidget.h"
-#include "UI/Widgets/HeistRareLootAlertWidget.h"
 #include "UI/Widgets/HeistSoundPingMarkerWidget.h"
 
 #pragma region Construction
@@ -59,7 +56,6 @@ void UHeistHUDWidget::SetupHUDWidget(
 	UHeistHUDViewModel* InHUDViewModel,
 	UHeistInventoryViewModel* InInventoryViewModel,
 	UHeistQuickSlotViewModel* InQuickSlotViewModel,
-	UHeistGapTrackerViewModel* InGapTrackerViewModel,
 	UHeistInteractionComponent* InInteractionComponent)
 {
 	checkf(IsValid(InHUDViewModel), TEXT("HeistHUDWidget requires a valid HUD ViewModel."));
@@ -71,7 +67,6 @@ void UHeistHUDWidget::SetupHUDWidget(
 	HUDViewModel = InHUDViewModel;
 	InventoryViewModel = InInventoryViewModel;
 	QuickSlotViewModel = InQuickSlotViewModel;
-	GapTrackerViewModel = InGapTrackerViewModel;
 	if (InteractionComponent != InInteractionComponent && IsValid(InteractionComponent))
 	{
 		InteractionComponent->GetInteractionTargetChangedDelegate().RemoveAll(this);
@@ -91,13 +86,10 @@ void UHeistHUDWidget::SetupHUDWidget(
 		&UHeistHUDWidget::RefreshHUDPresentation);
 	ResolveInteractionChildWidgets();
 	ResolveCrosshairWidgets();
-	ResolveRareLootChildWidgets();
-	ResolveGapTrackerChildWidget();
-	ResolveStatusFeedbackChildWidgets();
 	UE_LOG(
 		LogHeistUI,
 		Log,
-		TEXT("[%s] HUD widget setup: Class=%s HUDViewModel=%s InteractionComponent=%s InteractionPromptWidget=%s InteractionPromptClass=%s ActionProgressWidget=%s ActionProgressClass=%s RareLootWarningWidget=%s RareLootWarningClass=%s RareLootMarkerWidget=%s RareLootMarkerClass=%s"),
+		TEXT("[%s] HUD widget setup: Class=%s HUDViewModel=%s InteractionComponent=%s InteractionPromptWidget=%s InteractionPromptClass=%s ActionProgressWidget=%s ActionProgressClass=%s"),
 		*GetName(),
 		*GetClass()->GetName(),
 		*GetNameSafe(HUDViewModel.Get()),
@@ -105,18 +97,11 @@ void UHeistHUDWidget::SetupHUDWidget(
 		*GetNameSafe(InteractionPromptWidget.Get()),
 		IsValid(InteractionPromptWidget) ? *InteractionPromptWidget->GetClass()->GetName() : TEXT("None"),
 		*GetNameSafe(ActionProgressWidget.Get()),
-		IsValid(ActionProgressWidget) ? *ActionProgressWidget->GetClass()->GetName() : TEXT("None"),
-		*GetNameSafe(RareLootWarningWidget.Get()),
-		IsValid(RareLootWarningWidget) ? *RareLootWarningWidget->GetClass()->GetName() : TEXT("None"),
-		*GetNameSafe(RareLootMarkerWidget.Get()),
-		IsValid(RareLootMarkerWidget) ? *RareLootMarkerWidget->GetClass()->GetName() : TEXT("None"));
+		IsValid(ActionProgressWidget) ? *ActionProgressWidget->GetClass()->GetName() : TEXT("None"));
 
 	BP_OnHUDSourcesReady();
 	ResolveInteractionChildWidgets();
 	ResolveCrosshairWidgets();
-	ResolveRareLootChildWidgets();
-	ResolveGapTrackerChildWidget();
-	ResolveStatusFeedbackChildWidgets();
 	if (IsValid(InteractionPromptWidget))
 	{
 		InteractionPromptWidget->SetupInteractionPresentation(InteractionComponent, HUDViewModel);
@@ -128,18 +113,6 @@ void UHeistHUDWidget::SetupHUDWidget(
 	RefreshCrosshairPresentation(
 		IsValid(InteractionComponent) ? InteractionComponent->GetCurrentInteractionTarget() : nullptr,
 		IsValid(InteractionComponent) && InteractionComponent->HasValidInteractionTarget());
-	if (IsValid(RareLootWarningWidget))
-	{
-		RareLootWarningWidget->SetupRareLootAlertWidget(HUDViewModel);
-	}
-	if (IsValid(RareLootMarkerWidget))
-	{
-		RareLootMarkerWidget->SetupRareLootAlertWidget(HUDViewModel);
-	}
-	if (IsValid(GapTrackerWidget) && IsValid(GapTrackerViewModel))
-	{
-		GapTrackerWidget->SetupGapTrackerWidget(GapTrackerViewModel);
-	}
 	SetupPopupFeedbackPresentation();
 	SetupSoundPingPresentation();
 	RefreshHUDPresentation();
@@ -332,219 +305,6 @@ UHeistInteractionPromptWidget* UHeistHUDWidget::ResolveInteractionChildWidget(
 	return ResolvedWidget;
 }
 
-void UHeistHUDWidget::ResolveRareLootChildWidgets()
-{
-	RareLootWarningWidget = ResolveRareLootChildWidget(
-		TEXT("RareLootWarningWidget"),
-		RareLootWarningWidget);
-	RareLootMarkerWidget = ResolveRareLootChildWidget(
-		TEXT("RareLootMarkerWidget"),
-		RareLootMarkerWidget);
-}
-
-UHeistRareLootAlertWidget* UHeistHUDWidget::ResolveRareLootChildWidget(
-	const FName WidgetName,
-	UHeistRareLootAlertWidget* ExistingWidget) const
-{
-	if (IsValid(ExistingWidget))
-	{
-		return ExistingWidget;
-	}
-
-	UWidget* FoundWidget = GetWidgetFromName(WidgetName);
-	if (!IsValid(FoundWidget))
-	{
-		UE_LOG(
-			LogHeistUI,
-			Warning,
-			TEXT("[%s] HUD rare loot child widget missing: Name=%s"),
-			*GetName(),
-			*WidgetName.ToString());
-		return nullptr;
-	}
-
-	UHeistRareLootAlertWidget* ResolvedWidget = Cast<UHeistRareLootAlertWidget>(FoundWidget);
-	if (!IsValid(ResolvedWidget))
-	{
-		UE_LOG(
-			LogHeistUI,
-			Warning,
-			TEXT("[%s] HUD rare loot child widget type mismatch: Name=%s Found=%s FoundClass=%s Expected=HeistRareLootAlertWidget"),
-			*GetName(),
-			*WidgetName.ToString(),
-			*GetNameSafe(FoundWidget),
-			*FoundWidget->GetClass()->GetName());
-		return nullptr;
-	}
-
-	UE_LOG(
-		LogHeistUI,
-		Log,
-		TEXT("[%s] HUD rare loot child widget resolved by name: Name=%s Widget=%s Class=%s"),
-		*GetName(),
-		*WidgetName.ToString(),
-		*GetNameSafe(ResolvedWidget),
-		*ResolvedWidget->GetClass()->GetName());
-	return ResolvedWidget;
-}
-
-void UHeistHUDWidget::ResolveGapTrackerChildWidget()
-{
-	if (IsValid(GapTrackerWidget))
-	{
-		return;
-	}
-
-	UWidget* FoundWidget = GetWidgetFromName(TEXT("GapTrackerWidget"));
-	if (!IsValid(FoundWidget))
-	{
-		UE_LOG(
-			LogHeistUI,
-			Warning,
-			TEXT("[%s] HUD Gap Tracker child widget missing: Name=GapTrackerWidget"),
-			*GetName());
-		return;
-	}
-
-	GapTrackerWidget = Cast<UHeistGapTrackerWidget>(FoundWidget);
-	if (!IsValid(GapTrackerWidget))
-	{
-		UE_LOG(
-			LogHeistUI,
-			Warning,
-			TEXT("[%s] HUD Gap Tracker child widget type mismatch: Name=GapTrackerWidget Found=%s FoundClass=%s Expected=HeistGapTrackerWidget"),
-			*GetName(),
-			*GetNameSafe(FoundWidget),
-			*FoundWidget->GetClass()->GetName());
-		return;
-	}
-
-	UE_LOG(
-		LogHeistUI,
-		Log,
-		TEXT("[%s] HUD Gap Tracker child widget resolved: Widget=%s Class=%s"),
-		*GetName(),
-		*GetNameSafe(GapTrackerWidget.Get()),
-		*GapTrackerWidget->GetClass()->GetName());
-}
-
-void UHeistHUDWidget::ResolveStatusFeedbackChildWidgets()
-{
-	if (!IsValid(StatusFeedbackWidget))
-	{
-		StatusFeedbackWidget = Cast<UHeistUserWidgetBase>(GetWidgetFromName(TEXT("StatusFeedbackWidget")));
-	}
-
-	if (!IsValid(StatusFeedbackWidget))
-	{
-		UE_LOG(LogHeistUI, Warning, TEXT("[%s] HUD status feedback child widget missing: Name=StatusFeedbackWidget"), *GetName());
-		return;
-	}
-
-	StatusFeedbackContainer = StatusFeedbackWidget->GetWidgetFromName(TEXT("StatusFeedbackContainer"));
-	StatusFeedbackText = Cast<UTextBlock>(StatusFeedbackWidget->GetWidgetFromName(TEXT("StatusFeedbackText")));
-	StatusStunnedVignette = StatusFeedbackWidget->GetWidgetFromName(TEXT("StatusStunnedVignette"));
-	StatusImmuneVignette = StatusFeedbackWidget->GetWidgetFromName(TEXT("StatusImmuneVignette"));
-	StatusSmokeVignette = StatusFeedbackWidget->GetWidgetFromName(TEXT("StatusSmokeVignette"));
-
-	const bool bContractValid = IsValid(StatusFeedbackContainer)
-		&& IsValid(StatusFeedbackText)
-		&& IsValid(StatusStunnedVignette)
-		&& IsValid(StatusImmuneVignette)
-		&& IsValid(StatusSmokeVignette);
-	if (bContractValid)
-	{
-		UE_LOG(
-			LogHeistUI,
-			Log,
-			TEXT("[%s] Status feedback widget contract resolved: Widget=%s Container=%s Text=%s Stunned=%s Immune=%s Smoke=%s Valid=true"),
-			*GetName(),
-			*GetNameSafe(StatusFeedbackWidget),
-			*GetNameSafe(StatusFeedbackContainer),
-			*GetNameSafe(StatusFeedbackText),
-			*GetNameSafe(StatusStunnedVignette),
-			*GetNameSafe(StatusImmuneVignette),
-			*GetNameSafe(StatusSmokeVignette));
-	}
-	else
-	{
-		UE_LOG(
-			LogHeistUI,
-			Warning,
-			TEXT("[%s] Status feedback widget contract incomplete: Widget=%s Container=%s Text=%s Stunned=%s Immune=%s Smoke=%s"),
-			*GetName(),
-			*GetNameSafe(StatusFeedbackWidget),
-			*GetNameSafe(StatusFeedbackContainer),
-			*GetNameSafe(StatusFeedbackText),
-			*GetNameSafe(StatusStunnedVignette),
-			*GetNameSafe(StatusImmuneVignette),
-			*GetNameSafe(StatusSmokeVignette));
-	}
-
-	StatusFeedbackWidget->SetVisibility(ESlateVisibility::Collapsed);
-}
-
-void UHeistHUDWidget::RefreshStatusFeedbackPresentation(
-	const bool bStunned,
-	const bool bStunImmune,
-	const bool bInSmoke)
-{
-	if (!IsValid(StatusFeedbackWidget))
-	{
-		return;
-	}
-
-	const bool bAnyStatus = bStunned || bStunImmune || bInSmoke;
-	StatusFeedbackWidget->SetVisibility(bAnyStatus ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-	if (IsValid(StatusFeedbackContainer))
-	{
-		StatusFeedbackContainer->SetVisibility(bAnyStatus ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-	}
-	if (IsValid(StatusStunnedVignette))
-	{
-		StatusStunnedVignette->SetVisibility(bStunned ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-	}
-	if (IsValid(StatusImmuneVignette))
-	{
-		StatusImmuneVignette->SetVisibility(bStunImmune ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-	}
-	if (IsValid(StatusSmokeVignette))
-	{
-		StatusSmokeVignette->SetVisibility(bInSmoke ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-	}
-	if (IsValid(StatusFeedbackText))
-	{
-		StatusFeedbackText->SetText(
-			bStunned
-				? NSLOCTEXT("HeistFeedback", "StunnedStatusFeedback", "STUNNED")
-				: bStunImmune
-					? NSLOCTEXT("HeistFeedback", "ImmuneStatusFeedback", "STUN IMMUNE")
-					: bInSmoke
-						? NSLOCTEXT("HeistFeedback", "SmokeStatusFeedback", "IN SMOKE")
-						: FText::GetEmpty());
-	}
-
-	if (!bStatusFeedbackInitialized
-		|| bCachedStatusStunned != bStunned
-		|| bCachedStatusStunImmune != bStunImmune
-		|| bCachedStatusInSmoke != bInSmoke)
-	{
-		UE_LOG(
-			LogHeistUI,
-			Log,
-			TEXT("[%s] Status feedback refreshed: Stunned=%s StunImmune=%s InSmoke=%s Visible=%s"),
-			*GetName(),
-			bStunned ? TEXT("true") : TEXT("false"),
-			bStunImmune ? TEXT("true") : TEXT("false"),
-			bInSmoke ? TEXT("true") : TEXT("false"),
-			bAnyStatus ? TEXT("true") : TEXT("false"));
-		bStatusFeedbackInitialized = true;
-		bCachedStatusStunned = bStunned;
-		bCachedStatusStunImmune = bStunImmune;
-		bCachedStatusInSmoke = bInSmoke;
-	}
-}
-
 void UHeistHUDWidget::RefreshHUDPresentation()
 {
 	if (!IsValid(HUDViewModel))
@@ -558,9 +318,6 @@ void UHeistHUDWidget::RefreshHUDPresentation()
 	const int32 ConnectedPlayerCount = HUDViewModel->GetConnectedPlayerCount();
 	const bool bLocalPlayerEscaped = HUDViewModel->IsLocalPlayerEscaped();
 	const bool bEscapePhaseOpen = HUDViewModel->IsEscapePhaseOpen();
-	const bool bStunned = HUDViewModel->IsStunned();
-	const bool bStunImmune = HUDViewModel->IsStunImmune();
-	const bool bInSmoke = HUDViewModel->IsInSmoke();
 	const bool bEscapeCastActive = HUDViewModel->IsEscapeCastActive();
 	const float EscapeCastEndServerTime = HUDViewModel->GetEscapeCastEndServerTime();
 	const bool bTrapPlacementCastActive = HUDViewModel->IsTrapPlacementCastActive();
@@ -597,13 +354,7 @@ void UHeistHUDWidget::RefreshHUDPresentation()
 	{
 		const FText StatusLabel = bLocalPlayerEscaped
 			? NSLOCTEXT("HeistHUD", "EscapedStatus", "STATUS  ESCAPED")
-			: bStunned
-				? NSLOCTEXT("HeistHUD", "StunnedStatus", "STATUS  STUNNED")
-				: bStunImmune
-					? NSLOCTEXT("HeistHUD", "StunImmuneStatus", "STATUS  STUN IMMUNE")
-					: bInSmoke
-						? NSLOCTEXT("HeistHUD", "SmokeStatus", "STATUS  IN SMOKE")
-						: NSLOCTEXT("HeistHUD", "NormalStatus", "STATUS  NORMAL");
+			: NSLOCTEXT("HeistHUD", "NormalStatus", "STATUS  NORMAL");
 		StatusText->SetText(StatusLabel);
 	}
 
@@ -620,17 +371,12 @@ void UHeistHUDWidget::RefreshHUDPresentation()
 			FText::AsNumber(ConnectedPlayerCount)));
 	}
 
-	RefreshStatusFeedbackPresentation(bStunned, bStunImmune, bInSmoke);
-
 	BP_RefreshHUDPresentation(
 		LocalLootScore,
 		LocalLootWeight,
 		ConnectedPlayerCount,
 		bLocalPlayerEscaped,
 		bEscapePhaseOpen,
-		bStunned,
-		bStunImmune,
-		bInSmoke,
 		bEscapeCastActive,
 		EscapeCastEndServerTime,
 		bTrapPlacementCastActive,
@@ -652,16 +398,6 @@ void UHeistHUDWidget::DebugDumpFeedbackState() const
 		UE_LOG(LogHeistUI, Warning, TEXT("[%s] Popup feedback pool dump failed: Reason=MissingPool"), *GetName());
 	}
 
-	UE_LOG(
-		LogHeistUI,
-		Log,
-		TEXT("[%s] Status feedback dump: Initialized=%s Stunned=%s StunImmune=%s InSmoke=%s Widget=%s"),
-		*GetName(),
-		bStatusFeedbackInitialized ? TEXT("true") : TEXT("false"),
-		bCachedStatusStunned ? TEXT("true") : TEXT("false"),
-		bCachedStatusStunImmune ? TEXT("true") : TEXT("false"),
-		bCachedStatusInSmoke ? TEXT("true") : TEXT("false"),
-		*GetNameSafe(StatusFeedbackWidget));
 }
 
 void UHeistHUDWidget::DebugDumpSoundPingMarkers() const

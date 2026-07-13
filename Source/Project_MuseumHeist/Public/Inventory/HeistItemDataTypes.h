@@ -72,9 +72,6 @@ struct PROJECT_MUSEUMHEIST_API FHeistLootDataRow : public FTableRowBase
 	float SpawnWeight = 1.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	bool bCanDropOnStun = false;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TSoftClassPtr<AHeistLootActor> WorldLootActorClass;
 };
 

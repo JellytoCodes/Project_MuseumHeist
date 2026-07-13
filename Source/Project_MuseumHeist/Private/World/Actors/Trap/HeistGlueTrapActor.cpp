@@ -2,8 +2,6 @@
 
 #include "AI/HeistGuardCharacter.h"
 #include "AI/HeistGuardStateComponent.h"
-#include "Character/Components/HeistStatusComponent.h"
-#include "Character/HeistPlayerCharacter.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 
 #pragma region Construction
@@ -21,25 +19,6 @@ bool AHeistGlueTrapActor::HandleAuthorityTrigger(AActor* TriggeringActor)
 {
 	if (!HasAuthority() || !IsValid(TriggeringActor))
 	{
-		return false;
-	}
-
-	if (AHeistPlayerCharacter* TriggeringCharacter = Cast<AHeistPlayerCharacter>(TriggeringActor))
-	{
-		UHeistStatusComponent* StatusComponent = TriggeringCharacter->GetStatusComponent();
-		checkf(IsValid(StatusComponent), TEXT("HeistPlayerCharacter requires HeistStatusComponent"));
-		if (StatusComponent->ApplyStun(GetEffectDurationSeconds(), this))
-		{
-			UHeistDebugFunctionLibrary::DebugTrapTriggered(
-				this,
-				this,
-				TriggeringCharacter,
-				GetSourceItemId(),
-				GetEffectDurationSeconds());
-			return true;
-		}
-
-		UHeistDebugFunctionLibrary::DebugTrapTriggerRejected(this, this, TriggeringCharacter, TEXT("StatusRejected"));
 		return false;
 	}
 

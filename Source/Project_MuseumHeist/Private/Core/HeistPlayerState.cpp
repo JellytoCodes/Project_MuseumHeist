@@ -129,49 +129,6 @@ void AHeistPlayerState::BroadcastLootTotalsChanged()
 
 #pragma endregion
 
-#pragma region GapTracker
-
-FVector AHeistPlayerState::GetGapTrackerDirection() const
-{
-	return FVector(GapTrackerDirection);
-}
-
-void AHeistPlayerState::SetGapTrackerDirection(const FVector& InDirection)
-{
-	check(HasAuthority());
-
-	const FVector NormalizedDirection = InDirection.GetSafeNormal();
-	if (FVector(GapTrackerDirection).Equals(NormalizedDirection, 0.001f))
-	{
-		return;
-	}
-
-	GapTrackerDirection = NormalizedDirection;
-	ForceNetUpdate();
-	GapTrackerDirectionChangedDelegate.Broadcast(NormalizedDirection);
-	UHeistDebugFunctionLibrary::DebugGapTrackerDirectionUpdated(
-		this,
-		HeistPlayerId,
-		NormalizedDirection);
-}
-
-FHeistGapTrackerDirectionChanged& AHeistPlayerState::GetGapTrackerDirectionChangedDelegate()
-{
-	return GapTrackerDirectionChangedDelegate;
-}
-
-void AHeistPlayerState::OnRep_GapTrackerDirection()
-{
-	const FVector Direction = FVector(GapTrackerDirection);
-	GapTrackerDirectionChangedDelegate.Broadcast(Direction);
-	UHeistDebugFunctionLibrary::DebugGapTrackerDirectionReplicated(
-		this,
-		HeistPlayerId,
-		Direction);
-}
-
-#pragma endregion
-
 #pragma region EscapeState
 
 bool AHeistPlayerState::IsEscaped() const
@@ -232,19 +189,6 @@ float AHeistPlayerState::GetEscapeTimeSeconds() const
 	return EscapeTimeSeconds;
 }
 
-int32 AHeistPlayerState::GetPlayerRank() const
-{
-	return PlayerRank;
-}
-
-void AHeistPlayerState::SetPlayerRank(int32 InPlayerRank)
-{
-	check(HasAuthority());
-
-	PlayerRank = FMath::Max(0, InPlayerRank);
-	ForceNetUpdate();
-}
-
 FHeistPlayerEscapeStateChanged& AHeistPlayerState::GetEscapeStateChangedDelegate()
 {
 	return EscapeStateChangedDelegate;
@@ -274,11 +218,9 @@ void AHeistPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME(AHeistPlayerState, PlayerColor);
 	DOREPLIFETIME_CONDITION(AHeistPlayerState, TotalLootScore, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHeistPlayerState, TotalLootWeight, COND_OwnerOnly);
-	DOREPLIFETIME_CONDITION(AHeistPlayerState, GapTrackerDirection, COND_OwnerOnly);
 	DOREPLIFETIME(AHeistPlayerState, bEscaped);
 	DOREPLIFETIME(AHeistPlayerState, FinalScore);
 	DOREPLIFETIME(AHeistPlayerState, EscapeTimeSeconds);
-	DOREPLIFETIME(AHeistPlayerState, PlayerRank);
 }
 
 void AHeistPlayerState::OnRep_TotalLootScore()
@@ -308,7 +250,6 @@ void AHeistPlayerState::DebugSetTotalLootScore(const int32 InScore)
 	TotalLootScore = FMath::Max(0, InScore);
 	ForceNetUpdate();
 	BroadcastLootTotalsChanged();
-	UHeistDebugFunctionLibrary::DebugGapTrackerScoreSet(this, HeistPlayerId, TotalLootScore);
 #endif
 }
 

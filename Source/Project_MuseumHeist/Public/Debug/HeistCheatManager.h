@@ -58,16 +58,7 @@ public:
 	void HeistStatusDump();
 
 	UFUNCTION(Exec)
-	void HeistStatusStun(float DurationSeconds = 3.0f);
-
-	UFUNCTION(Exec)
-	void HeistStatusImmune(float DurationSeconds = 2.0f);
-
-	UFUNCTION(Exec)
 	void HeistStatusSmoke(float DurationSeconds = 3.0f);
-
-	UFUNCTION(Exec)
-	void HeistStatusClear();
 
 #pragma endregion
 
@@ -125,26 +116,6 @@ public:
 
 	UFUNCTION(Exec)
 	void HeistRareLootDump();
-
-#pragma endregion
-
-#pragma region GapTrackerDebug
-
-public:
-	UFUNCTION(Exec)
-	void HeistGapHelp();
-
-	UFUNCTION(Exec)
-	void HeistGapDump();
-
-	UFUNCTION(Exec)
-	void HeistGapScore(int32 Score);
-
-	UFUNCTION(Exec)
-	void HeistGapForce(bool bActive = true);
-
-	UFUNCTION(Exec)
-	void HeistGapAuto();
 
 #pragma endregion
 

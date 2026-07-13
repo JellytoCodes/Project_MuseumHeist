@@ -10,7 +10,6 @@ DECLARE_MULTICAST_DELEGATE_OneParam(FHeistEscapePhaseStateChanged, bool);
 DECLARE_MULTICAST_DELEGATE(FHeistPlayerResultsChanged);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistSoundPingEventReported, const FHeistSoundPingEvent&);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistRareLootEventStateChanged, const FHeistRareLootEventState&);
-DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistGapTrackerStateChanged, bool, int32);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerConnectionsChanged, int32);
 
 UCLASS()
@@ -76,7 +75,7 @@ public:
 	FHeistRareLootEventStateChanged& GetRareLootEventStateChangedDelegate();
 
 private:
-	UPROPERTY(ReplicatedUsing = OnRep_RareLootEventState, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|RareLoot", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Legacy", meta = (AllowPrivateAccess = "true"))
 	FHeistRareLootEventState RareLootEventState;
 
 	UFUNCTION()
@@ -85,30 +84,6 @@ private:
 	void BroadcastRareLootEventState();
 
 	FHeistRareLootEventStateChanged RareLootEventStateChangedDelegate;
-
-#pragma endregion
-
-#pragma region GapTracker
-
-public:
-	bool IsGapTrackerActive() const;
-	int32 GetGapTrackerLeaderPlayerId() const;
-	void SetGapTrackerState(bool bInActive, int32 InLeaderPlayerId);
-	FHeistGapTrackerStateChanged& GetGapTrackerStateChangedDelegate();
-
-private:
-	UPROPERTY(ReplicatedUsing = OnRep_GapTrackerState, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|GapTracker", meta = (AllowPrivateAccess = "true"))
-	bool bGapTrackerActive = false;
-
-	UPROPERTY(ReplicatedUsing = OnRep_GapTrackerState, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|GapTracker", meta = (AllowPrivateAccess = "true"))
-	int32 GapTrackerLeaderPlayerId = INDEX_NONE;
-
-	UFUNCTION()
-	void OnRep_GapTrackerState();
-
-	void BroadcastGapTrackerState();
-
-	FHeistGapTrackerStateChanged GapTrackerStateChangedDelegate;
 
 #pragma endregion
 
@@ -138,7 +113,6 @@ private:
 public:
 	void RebuildPlayerResults();
 	const TArray<FHeistPlayerResult>& GetPlayerResults() const;
-	int32 GetWinnerPlayerId() const;
 	FHeistPlayerResultsChanged& GetPlayerResultsChangedDelegate();
 
 private:

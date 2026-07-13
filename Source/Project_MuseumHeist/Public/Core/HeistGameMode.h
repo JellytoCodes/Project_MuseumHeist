@@ -74,23 +74,6 @@ private:
 
 #pragma endregion
 
-#pragma region GapTracker
-
-public:
-	void RefreshGapTrackerState();
-	void DebugForceGapTracker(bool bActive);
-	void DebugClearGapTrackerOverride();
-
-private:
-	void StartGapTrackerTimer();
-	void UpdateGapTrackerDirections(AHeistPlayerState* LeaderPlayerState, const TArray<AHeistPlayerState*>& RankedPlayerStates);
-
-	FTimerHandle GapTrackerUpdateTimerHandle;
-	bool bGapTrackerDebugOverride = false;
-	bool bGapTrackerDebugForcedActive = false;
-
-#pragma endregion
-
 #pragma region EscapePhase
 
 public:

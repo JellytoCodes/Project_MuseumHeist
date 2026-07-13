@@ -3,14 +3,12 @@
 #include "Character/Components/HeistActionComponent.h"
 #include "Character/Components/HeistInventoryComponent.h"
 #include "Character/Components/HeistInteractionComponent.h"
-#include "Character/Components/HeistStatusComponent.h"
 #include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
 #include "Core/HeistLogChannels.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
-#include "UI/ViewModels/HeistGapTrackerViewModel.h"
 #include "UI/ViewModels/HeistHUDViewModel.h"
 #include "UI/ViewModels/HeistInventoryViewModel.h"
 #include "UI/ViewModels/HeistLobbyViewModel.h"
@@ -44,7 +42,6 @@ void AHeistHUD::BeginPlay()
 bool AHeistHUD::ShowMainHUD()
 {
 	InitializeInventoryPresentation();
-	InitializeGapTrackerPresentation();
 	InitializeMainHUDPresentation();
 
 	if (!IsValid(MainHUDWidget))
@@ -67,7 +64,6 @@ void AHeistHUD::HideMainHUD()
 void AHeistHUD::RefreshPresentationSources()
 {
 	InitializeInventoryPresentation();
-	InitializeGapTrackerPresentation();
 	InitializeMainHUDPresentation();
 	InitializeResultPresentation();
 	InitializeLobbyPresentation();
@@ -100,9 +96,6 @@ void AHeistHUD::InitializeMainHUDPresentation()
 	AHeistPlayerState* HeistPlayerState = HeistPlayerController->GetPlayerState<AHeistPlayerState>();
 	AHeistPlayerCharacter* HeistPlayerCharacter =
 		HeistPlayerController->GetPawn<AHeistPlayerCharacter>();
-	UHeistStatusComponent* StatusComponent = IsValid(HeistPlayerCharacter)
-		? HeistPlayerCharacter->GetStatusComponent()
-		: nullptr;
 	UHeistActionComponent* ActionComponent = IsValid(HeistPlayerCharacter)
 		? HeistPlayerCharacter->GetActionComponent()
 		: nullptr;
@@ -112,7 +105,6 @@ void AHeistHUD::InitializeMainHUDPresentation()
 	HUDViewModel->SetupViewModel(
 		HeistGameState,
 		HeistPlayerState,
-		StatusComponent,
 		ActionComponent);
 
 	if (!MainHUDWidgetClass)
@@ -137,7 +129,6 @@ void AHeistHUD::InitializeMainHUDPresentation()
 		HUDViewModel,
 		InventoryViewModel,
 		QuickSlotViewModel,
-		GapTrackerViewModel,
 		InteractionComponent);
 }
 
@@ -284,33 +275,6 @@ void AHeistHUD::InitializeInventoryPresentation()
 		: nullptr;
 	InventoryViewModel->SetupViewModel(InventoryComponent);
 	QuickSlotViewModel->SetupViewModel(InventoryComponent);
-}
-
-#pragma endregion
-
-#pragma region GapTrackerPresentation
-
-UHeistGapTrackerViewModel* AHeistHUD::GetGapTrackerViewModel() const
-{
-	return GapTrackerViewModel;
-}
-
-void AHeistHUD::InitializeGapTrackerPresentation()
-{
-	APlayerController* OwningPlayerController = GetOwningPlayerController();
-	if (!IsValid(OwningPlayerController) || !OwningPlayerController->IsLocalController())
-	{
-		return;
-	}
-
-	if (!IsValid(GapTrackerViewModel))
-	{
-		GapTrackerViewModel = NewObject<UHeistGapTrackerViewModel>(this);
-	}
-
-	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
-	AHeistPlayerState* LocalPlayerState = OwningPlayerController->GetPlayerState<AHeistPlayerState>();
-	GapTrackerViewModel->SetupViewModel(HeistGameState, LocalPlayerState);
 }
 
 #pragma endregion

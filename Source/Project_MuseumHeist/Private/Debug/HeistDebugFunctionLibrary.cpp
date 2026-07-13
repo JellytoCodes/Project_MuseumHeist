@@ -102,6 +102,21 @@ namespace
 		}
 	}
 
+	const TCHAR* ToInputModeText(const EHeistInputMode InputMode)
+	{
+		switch (InputMode)
+		{
+		case EHeistInputMode::Gameplay:
+			return TEXT("Gameplay");
+		case EHeistInputMode::Inventory:
+			return TEXT("Inventory");
+		case EHeistInputMode::Forgery:
+			return TEXT("Forgery");
+		default:
+			return TEXT("Unknown");
+		}
+	}
+
 	bool TryParseQuickSlotName(const FString& SlotName, EHeistQuickSlotType& OutSlotType)
 	{
 		const FString NormalizedSlotName = SlotName.TrimStartAndEnd().ToLower();
@@ -161,124 +176,14 @@ namespace
 	FString FormatResultEntry(const FHeistPlayerResult& PlayerResult)
 	{
 		return FString::Printf(
-			TEXT("PlayerId=%d Rank=%d Escaped=%s LootScore=%d FinalScore=%d LootWeight=%.2f EscapeTime=%.2f"),
+			TEXT("PlayerId=%d Escaped=%s LootScore=%d FinalScore=%d LootWeight=%.2f EscapeTime=%.2f"),
 			PlayerResult.PlayerId,
-			PlayerResult.Rank,
 			PlayerResult.bEscaped ? TEXT("true") : TEXT("false"),
 			PlayerResult.LootScore,
 			PlayerResult.FinalScore,
 			PlayerResult.LootWeight,
 			PlayerResult.EscapeTimeSeconds);
 	}
-}
-
-#pragma endregion
-
-#pragma region GapTrackerLogging
-
-void UHeistDebugFunctionLibrary::DebugGapTrackerTimerStarted(
-	const UObject* WorldContextObject,
-	const float UpdateInterval)
-{
-#if !UE_BUILD_SHIPPING
-	Message(
-		WorldContextObject,
-		FString::Printf(TEXT("Gap Tracker timer started: UpdateInterval=%.2f"), UpdateInterval));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugGapTrackerStateChanged(
-	const UObject* WorldContextObject,
-	const bool bActive,
-	const int32 LeaderPlayerId)
-{
-#if !UE_BUILD_SHIPPING
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Gap Tracker state changed: Active=%s LeaderPlayerId=%d"),
-			bActive ? TEXT("true") : TEXT("false"),
-			LeaderPlayerId));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugGapTrackerStateReplicated(
-	const UObject* WorldContextObject,
-	const bool bActive,
-	const int32 LeaderPlayerId)
-{
-#if !UE_BUILD_SHIPPING
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Gap Tracker state replicated: Active=%s LeaderPlayerId=%d"),
-			bActive ? TEXT("true") : TEXT("false"),
-			LeaderPlayerId));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugGapTrackerDirectionUpdated(
-	const UObject* WorldContextObject,
-	const int32 PlayerId,
-	const FVector& Direction)
-{
-#if !UE_BUILD_SHIPPING
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Gap Tracker direction updated: PlayerId=%d Direction=(%.3f,%.3f,%.3f)"),
-			PlayerId,
-			Direction.X,
-			Direction.Y,
-			Direction.Z));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugGapTrackerDirectionReplicated(
-	const UObject* WorldContextObject,
-	const int32 PlayerId,
-	const FVector& Direction)
-{
-#if !UE_BUILD_SHIPPING
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Gap Tracker direction replicated: PlayerId=%d Direction=(%.3f,%.3f,%.3f)"),
-			PlayerId,
-			Direction.X,
-			Direction.Y,
-			Direction.Z));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugGapTrackerOverrideChanged(
-	const UObject* WorldContextObject,
-	const bool bOverrideEnabled,
-	const bool bForcedActive)
-{
-#if !UE_BUILD_SHIPPING
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Gap Tracker debug override changed: Override=%s ForcedActive=%s"),
-			bOverrideEnabled ? TEXT("true") : TEXT("false"),
-			bForcedActive ? TEXT("true") : TEXT("false")));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugGapTrackerScoreSet(
-	const UObject* WorldContextObject,
-	const int32 PlayerId,
-	const int32 Score)
-{
-#if !UE_BUILD_SHIPPING
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Gap Tracker debug score set: PlayerId=%d Score=%d"),
-			PlayerId,
-			Score));
-#endif
 }
 
 #pragma endregion
@@ -292,8 +197,8 @@ void UHeistDebugFunctionLibrary::DebugRareLootHelp(APlayerController* PlayerCont
 #else
 	Message(
 		PlayerController,
-		TEXT("Rare Loot debug commands: HeistRareLootForce <WarningDelaySeconds> | HeistRareLootDump"),
-		EHeistDebugLevel::Info,
+		TEXT("Rare Loot commands disabled: feature removed from PvE scope."),
+		EHeistDebugLevel::Warning,
 		true,
 		8.0f);
 #endif
@@ -306,19 +211,10 @@ void UHeistDebugFunctionLibrary::DebugForceRareLootEvent(
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
-	if (!IsValid(HeistPlayerController))
-	{
-		Message(PlayerController, TEXT("Rare Loot force failed: invalid Heist player controller."), EHeistDebugLevel::Warning, true);
-		return;
-	}
-
-	const float SafeWarningDelay = FMath::Max(0.0f, WarningDelaySeconds);
-	HeistPlayerController->DebugRequestForceRareLootEvent(SafeWarningDelay);
 	Message(
 		PlayerController,
-		FString::Printf(TEXT("Rare Loot force requested: WarningDelay=%.2f"), SafeWarningDelay),
-		EHeistDebugLevel::Info,
+		TEXT("Rare Loot force rejected: feature removed from PvE scope."),
+		EHeistDebugLevel::Warning,
 		true);
 #endif
 }
@@ -328,147 +224,12 @@ void UHeistDebugFunctionLibrary::DebugDumpRareLootState(APlayerController* Playe
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	const AHeistGameState* HeistGameState = IsValid(PlayerController) && PlayerController->GetWorld()
-		? PlayerController->GetWorld()->GetGameState<AHeistGameState>()
-		: nullptr;
-	if (!IsValid(HeistGameState))
-	{
-		Message(PlayerController, TEXT("Rare Loot dump failed: missing Heist GameState."), EHeistDebugLevel::Warning, true);
-		return;
-	}
-
-	const FHeistRareLootEventState& State = HeistGameState->GetRareLootEventState();
 	Message(
 		PlayerController,
-		FString::Printf(
-			TEXT("Rare Loot dump: EventIndex=%d ItemId=%s Incoming=%s MarkerActive=%s SpawnServerTime=%.2f Location=(%.1f,%.1f,%.1f)"),
-			State.EventIndex,
-			*State.ItemId.ToString(),
-			State.bIncomingWarningActive ? TEXT("true") : TEXT("false"),
-			State.bDirectionMarkerActive ? TEXT("true") : TEXT("false"),
-			State.SpawnServerTime,
-			State.WorldLocation.X,
-			State.WorldLocation.Y,
-			State.WorldLocation.Z),
-		EHeistDebugLevel::Info,
+		TEXT("Rare Loot dump unavailable: feature removed from PvE scope."),
+		EHeistDebugLevel::Warning,
 		true,
 		8.0f);
-#endif
-}
-
-#pragma endregion
-
-#pragma region GapTrackerDebug
-
-void UHeistDebugFunctionLibrary::DebugGapTrackerHelp(APlayerController* PlayerController)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(
-		PlayerController,
-		TEXT("Gap Tracker debug commands: HeistGapDump | HeistGapScore <Score> | HeistGapForce <0|1> | HeistGapAuto"),
-		EHeistDebugLevel::Info,
-		true,
-		8.0f);
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugDumpGapTrackerState(APlayerController* PlayerController)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	const AHeistGameState* HeistGameState = IsValid(PlayerController) && PlayerController->GetWorld()
-		? PlayerController->GetWorld()->GetGameState<AHeistGameState>()
-		: nullptr;
-	const AHeistPlayerState* HeistPlayerState = IsValid(PlayerController)
-		? PlayerController->GetPlayerState<AHeistPlayerState>()
-		: nullptr;
-	if (!IsValid(HeistGameState) || !IsValid(HeistPlayerState))
-	{
-		Message(PlayerController, TEXT("Gap Tracker dump failed: missing GameState or local PlayerState."), EHeistDebugLevel::Warning, true);
-		return;
-	}
-
-	const FVector Direction = HeistPlayerState->GetGapTrackerDirection();
-	const float AngleDegrees = FMath::RadiansToDegrees(FMath::Atan2(Direction.Y, Direction.X));
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Gap Tracker dump: Active=%s LeaderPlayerId=%d LocalPlayerId=%d LocalScore=%d IsLeader=%s Direction=(%.3f,%.3f,%.3f) Angle=%.1f"),
-			HeistGameState->IsGapTrackerActive() ? TEXT("true") : TEXT("false"),
-			HeistGameState->GetGapTrackerLeaderPlayerId(),
-			HeistPlayerState->HeistPlayerId,
-			HeistPlayerState->GetTotalLootScore(),
-			HeistGameState->GetGapTrackerLeaderPlayerId() == HeistPlayerState->HeistPlayerId ? TEXT("true") : TEXT("false"),
-			Direction.X,
-			Direction.Y,
-			Direction.Z,
-			AngleDegrees),
-		EHeistDebugLevel::Info,
-		true,
-		8.0f);
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugSetGapTrackerScore(
-	APlayerController* PlayerController,
-	const int32 Score)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
-	if (!IsValid(HeistPlayerController))
-	{
-		return;
-	}
-
-	HeistPlayerController->DebugRequestSetGapTrackerScore(FMath::Max(0, Score));
-	Message(
-		PlayerController,
-		FString::Printf(TEXT("Gap Tracker debug score requested: Score=%d"), FMath::Max(0, Score)),
-		EHeistDebugLevel::Info,
-		true);
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugForceGapTracker(
-	APlayerController* PlayerController,
-	const bool bActive)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
-	if (!IsValid(HeistPlayerController))
-	{
-		return;
-	}
-
-	HeistPlayerController->DebugRequestForceGapTracker(bActive);
-	Message(
-		PlayerController,
-		FString::Printf(TEXT("Gap Tracker force requested: Active=%s"), bActive ? TEXT("true") : TEXT("false")),
-		EHeistDebugLevel::Info,
-		true);
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugClearGapTrackerOverride(APlayerController* PlayerController)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
-	if (!IsValid(HeistPlayerController))
-	{
-		return;
-	}
-
-	HeistPlayerController->DebugRequestClearGapTrackerOverride();
-	Message(PlayerController, TEXT("Gap Tracker automatic score evaluation requested."), EHeistDebugLevel::Info, true);
 #endif
 }
 
@@ -848,22 +609,28 @@ void UHeistDebugFunctionLibrary::DebugGlueTrapPlace(APlayerController* PlayerCon
 	return;
 #else
 	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
-	AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController)
-		? HeistPlayerController->GetPawn<AHeistPlayerCharacter>()
-		: nullptr;
-	if (!IsValid(HeistPlayerController) || !IsValid(HeistCharacter))
+	if (!IsValid(HeistPlayerController))
 	{
 		Message(PlayerController, TEXT("Glue trap debug place failed: invalid Heist player controller or pawn."), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
 	const float ClampedDistance = FMath::Clamp(Distance, 100.0f, 1000.0f);
-	const FVector TargetWorldLocation = HeistCharacter->GetActorLocation()
-		+ HeistCharacter->GetActorForwardVector() * ClampedDistance;
+	FVector TargetWorldLocation;
+	if (!HeistPlayerController->TryBuildCameraSurfaceTarget(ClampedDistance, TargetWorldLocation))
+	{
+		Message(PlayerController, TEXT("Glue trap debug place failed: camera ray did not hit a surface."), EHeistDebugLevel::Warning, true);
+		return;
+	}
 	HeistPlayerController->DebugRequestPlaceGlueTrapAtWorldLocation(TargetWorldLocation);
 	Message(
 		PlayerController,
-		FString::Printf(TEXT("Glue trap debug place requested: Distance=%.1f"), ClampedDistance),
+		FString::Printf(
+			TEXT("Glue trap debug place requested: Distance=%.1f CameraSurfaceTarget=(%.1f,%.1f,%.1f)"),
+			ClampedDistance,
+			TargetWorldLocation.X,
+			TargetWorldLocation.Y,
+			TargetWorldLocation.Z),
 		EHeistDebugLevel::Info,
 		true);
 #endif
@@ -1130,42 +897,6 @@ void UHeistDebugFunctionLibrary::DebugInventoryDropAccepted(const UObject* World
 			InstanceId,
 			*GetNameSafe(DroppedLootActor),
 			*DropOrigin.ToCompactString()));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugPinataDropAccepted(
-	const UObject* WorldContextObject,
-	const UObject* Character,
-	const UObject* DropInstigator,
-	const FName ItemId,
-	const int32 InstanceId,
-	const UObject* DroppedLootActor,
-	const FVector& DropOrigin)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Pinata drop accepted: Character=%s Instigator=%s ItemId=%s InstanceId=%d WorldLoot=%s DropOrigin=%s"),
-			*GetNameSafe(Character),
-			*GetNameSafe(DropInstigator),
-			*ItemId.ToString(),
-			InstanceId,
-			*GetNameSafe(DroppedLootActor),
-			*DropOrigin.ToCompactString()));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugPinataDropSkipped(const UObject* WorldContextObject, const TCHAR* Reason)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(
-		WorldContextObject,
-		FString::Printf(TEXT("Pinata drop skipped: Reason=%s"), Reason));
 #endif
 }
 
@@ -1740,52 +1471,6 @@ void UHeistDebugFunctionLibrary::DebugThrowableProjectileImpact(const UObject* W
 			ImpactLocation.X,
 			ImpactLocation.Y,
 			ImpactLocation.Z));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugCoinProjectileDamageApplied(const UObject* WorldContextObject, const UObject* Projectile, const UObject* HitCharacter, const float Damage)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Coin projectile damage applied: Projectile=%s HitCharacter=%s Damage=%.1f"),
-			*GetNameSafe(Projectile),
-			*GetNameSafe(HitCharacter),
-			Damage));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugCoinProjectileStunApplied(const UObject* WorldContextObject, const UObject* Projectile, const UObject* HitCharacter, const float DurationSeconds)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Coin projectile stun applied: Projectile=%s HitCharacter=%s Duration=%.2f"),
-			*GetNameSafe(Projectile),
-			*GetNameSafe(HitCharacter),
-			DurationSeconds));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugCoinProjectileStunRejected(const UObject* WorldContextObject, const UObject* Projectile, const UObject* HitCharacter, const TCHAR* Reason)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Coin projectile stun rejected: Projectile=%s HitCharacter=%s Reason=%s"),
-			*GetNameSafe(Projectile),
-			*GetNameSafe(HitCharacter),
-			Reason),
-		EHeistDebugLevel::Warning);
 #endif
 }
 
@@ -2636,9 +2321,8 @@ void UHeistDebugFunctionLibrary::DebugResultDump(APlayerController* PlayerContro
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Result dump: PlayerCount=%d WinnerPlayerId=%d"),
-			PlayerResults.Num(),
-			HeistGameState->GetWinnerPlayerId()),
+			TEXT("Contribution result dump: PlayerCount=%d"),
+			PlayerResults.Num()),
 		EHeistDebugLevel::Info,
 		true,
 		6.0f);
@@ -2713,7 +2397,7 @@ void UHeistDebugFunctionLibrary::DebugInventoryHelp(APlayerController* PlayerCon
 #else
 	Message(
 		PlayerController,
-		TEXT("Inventory debug commands: HeistInvDump | HeistInvOpen 1/0 | HeistInvAdd <ItemId> | HeistInvMove <InstanceId> <X> <Y> | HeistInvRotate <InstanceId> | HeistInvDrop <InstanceId> | HeistInvAssign <Q|E|R|Coin|Smoke|Glue> <InstanceId> | HeistInvClear <Q|E|R|Coin|Smoke|Glue> | HeistInvInvalidMove <InstanceId>"),
+		TEXT("Inventory debug commands: HeistInvDump | HeistInvOpen 1/0 | HeistInvAdd <ItemId> | HeistInvMove <InstanceId> <X> <Y> | HeistInvRotate <InstanceId> | HeistInvDrop <InstanceId> | HeistInvAssign <Q|Coin> <InstanceId> | HeistInvClear <Q|Coin> | HeistInvInvalidMove <InstanceId>"),
 		EHeistDebugLevel::Info,
 		true,
 		8.0f);
@@ -2737,11 +2421,16 @@ void UHeistDebugFunctionLibrary::DebugInventoryDump(APlayerController* PlayerCon
 	}
 
 	const FHeistReplicatedInventory& ReplicatedInventory = InventoryComponent->GetReplicatedInventory();
+	const AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Inventory dump: Open=%s Grid=%dx%d Items=%d QuickSlots=%d"),
+			TEXT("Inventory dump: Open=%s InputMode=%s Cursor=%s IgnoreMove=%s IgnoreLook=%s Grid=%dx%d Items=%d QuickSlots=%d"),
 			InventoryComponent->IsInventoryOpen() ? TEXT("true") : TEXT("false"),
+			IsValid(HeistPlayerController) ? ToInputModeText(HeistPlayerController->GetLocalInputMode()) : TEXT("Unknown"),
+			IsValid(HeistPlayerController) && HeistPlayerController->bShowMouseCursor ? TEXT("true") : TEXT("false"),
+			IsValid(HeistPlayerController) && HeistPlayerController->IsMoveInputIgnored() ? TEXT("true") : TEXT("false"),
+			IsValid(HeistPlayerController) && HeistPlayerController->IsLookInputIgnored() ? TEXT("true") : TEXT("false"),
 			InventoryComponent->GetGridColumnCount(),
 			InventoryComponent->GetGridRowCount(),
 			ReplicatedInventory.Items.Num(),
@@ -2996,7 +2685,7 @@ void UHeistDebugFunctionLibrary::DebugStatusHelp(APlayerController* PlayerContro
 #else
 	Message(
 		PlayerController,
-		TEXT("Status debug commands: HeistStatusDump | HeistStatusStun <Seconds> | HeistStatusImmune <Seconds> | HeistStatusSmoke <Seconds> | HeistStatusClear"),
+		TEXT("Status debug commands: HeistStatusDump | HeistStatusSmoke <Seconds>"),
 		EHeistDebugLevel::Info,
 		true,
 		8.0f);
@@ -3018,57 +2707,11 @@ void UHeistDebugFunctionLibrary::DebugStatusDump(APlayerController* PlayerContro
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Status dump: Stunned=%s StunImmune=%s Tags=[%s]"),
-			StatusComponent->IsStunned() ? TEXT("true") : TEXT("false"),
-			StatusComponent->IsStunImmune() ? TEXT("true") : TEXT("false"),
+			TEXT("Status dump: Tags=[%s]"),
 			*FormatStatusTags(StatusComponent->GetStatusTags())),
 		EHeistDebugLevel::Info,
 		true,
 		6.0f);
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugStatusStun(APlayerController* PlayerController, const float DurationSeconds)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
-	if (!IsValid(HeistPlayerController) || !IsValid(ResolveStatusComponent(PlayerController)))
-	{
-		Message(PlayerController, TEXT("Status debug stun failed: missing local Heist status component."), EHeistDebugLevel::Warning, true);
-		return;
-	}
-
-	const float SafeDuration = FMath::Clamp(DurationSeconds, 0.01f, 600.0f);
-	HeistPlayerController->DebugRequestApplyStatusStun(SafeDuration);
-	Message(
-		PlayerController,
-		FString::Printf(TEXT("Status debug stun requested: Duration=%.2f"), SafeDuration),
-		EHeistDebugLevel::Info,
-		true);
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugStatusImmune(APlayerController* PlayerController, const float DurationSeconds)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
-	if (!IsValid(HeistPlayerController) || !IsValid(ResolveStatusComponent(PlayerController)))
-	{
-		Message(PlayerController, TEXT("Status debug immunity failed: missing local Heist status component."), EHeistDebugLevel::Warning, true);
-		return;
-	}
-
-	const float SafeDuration = FMath::Clamp(DurationSeconds, 0.01f, 600.0f);
-	HeistPlayerController->DebugRequestApplyStatusImmunity(SafeDuration);
-	Message(
-		PlayerController,
-		FString::Printf(TEXT("Status debug immunity requested: Duration=%.2f"), SafeDuration),
-		EHeistDebugLevel::Info,
-		true);
 #endif
 }
 
@@ -3094,27 +2737,6 @@ void UHeistDebugFunctionLibrary::DebugStatusSmoke(APlayerController* PlayerContr
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugStatusClear(APlayerController* PlayerController)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
-	if (!IsValid(HeistPlayerController) || !IsValid(ResolveStatusComponent(PlayerController)))
-	{
-		Message(PlayerController, TEXT("Status debug clear failed: missing local Heist status component."), EHeistDebugLevel::Warning, true);
-		return;
-	}
-
-	HeistPlayerController->DebugRequestClearStatus();
-	Message(
-		PlayerController,
-		TEXT("Status debug clear requested."),
-		EHeistDebugLevel::Info,
-		true);
-#endif
-}
-
 #pragma endregion
 
 #pragma region FeedbackDebug
@@ -3126,7 +2748,7 @@ void UHeistDebugFunctionLibrary::DebugFeedbackHelp(APlayerController* PlayerCont
 #else
 	Message(
 		PlayerController,
-		TEXT("Feedback debug commands: HeistFeedbackTest | HeistFeedbackBagFull | HeistFeedbackDump | HeistStatusStun/Immune/Smoke <Seconds>"),
+		TEXT("Feedback debug commands: HeistFeedbackTest | HeistFeedbackBagFull | HeistFeedbackDump"),
 		EHeistDebugLevel::Info,
 		true,
 		8.0f);
@@ -3329,22 +2951,29 @@ void UHeistDebugFunctionLibrary::DebugSmokeSightCheck(APlayerController* PlayerC
 	return;
 #else
 	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
-	AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController)
-		? HeistPlayerController->GetPawn<AHeistPlayerCharacter>()
-		: nullptr;
-	if (!IsValid(HeistPlayerController) || !IsValid(HeistCharacter))
+	if (!IsValid(HeistPlayerController))
 	{
 		Message(PlayerController, TEXT("Smoke sight check failed: invalid Heist player controller or pawn."), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
 	const float ClampedDistance = FMath::Clamp(Distance, 100.0f, 5000.0f);
-	const FVector TargetWorldLocation = HeistCharacter->GetActorLocation()
-		+ HeistCharacter->GetActorForwardVector() * ClampedDistance;
+	FVector ViewLocation;
+	FVector CameraForward;
+	FVector TargetWorldLocation;
+	if (!HeistPlayerController->TryBuildCameraForwardAim(
+		ClampedDistance,
+		ViewLocation,
+		CameraForward,
+		TargetWorldLocation))
+	{
+		Message(PlayerController, TEXT("Smoke sight check failed: invalid camera forward."), EHeistDebugLevel::Warning, true);
+		return;
+	}
 	AHeistSmokeCloudActor* BlockingSmokeCloud = nullptr;
 	const bool bBlocked = AHeistSmokeCloudActor::IsAISightBlockedBySmoke(
 		HeistPlayerController,
-		HeistCharacter->GetActorLocation(),
+		ViewLocation,
 		TargetWorldLocation,
 		BlockingSmokeCloud);
 	Message(

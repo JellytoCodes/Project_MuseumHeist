@@ -77,7 +77,6 @@ Lobby
 - Alert Level / Lockdown
 - Loose Loot + 4×5 Grid Inventory + Weight Penalty
 - Coin Guard Distraction
-- Smoke Guard Sight Blocking
 - Shared Extraction
 - Team Success / Partial Success / Failure
 - Team Result / Player Contribution
@@ -94,6 +93,7 @@ Lobby
 - 전용 서버, Skill Matchmaking
 - Perspective Toggle, Third-Person
 - 별도 First-Person Arms와 복잡한 Hand Interaction
+- Smoke Throwable / Smoke Sight Blocking
 
 ### Stretch
 
@@ -288,10 +288,6 @@ Known Warning은 숨기지 않는다. Critical Replication, Ownership, Duplicate
 
 다음 구현은 즉시 삭제하지 않는다.
 
-- Gap Tracker
-- PvP Stun
-- Piñata Drop
-- Winner / Rank
 - Top-Down Camera 관련 Blueprint
 - Cursor Aim 관련 입력
 
@@ -312,8 +308,8 @@ Known Warning은 숨기지 않는다. Critical Replication, Ownership, Duplicate
 3. `TASK-W3-003` Center Screen Interaction / Crosshair
 4. `TASK-W3-004` Camera Forward Flashlight / Throw
 5. `TASK-W3-005` Gameplay / Inventory Input Restore
-6. `TASK-W3-006` Legacy PvP / Gap / Rank Invocation Block
-7. `TASK-W3-007` Coin / Smoke Guard-only Conversion
+6. `TASK-W3-006` Legacy PvP / Gap / Rank Cleanup
+7. `TASK-W3-007` Coin Guard Distraction Conversion
 8. `TASK-W3-008` M01 First-Person Scale / Collision Pass
 9. `TASK-W3-009` First-Person HUD Rewire
 10. `TASK-W3-010` W3 1~4 Player Integrated Gate

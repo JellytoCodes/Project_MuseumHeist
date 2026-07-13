@@ -73,16 +73,6 @@ void UHeistResultWidget::RefreshResultPresentation()
 		return;
 	}
 
-	if (IsValid(WinnerIdText))
-	{
-		WinnerIdText->SetText(ResultViewModel->GetWinnerIdText());
-	}
-
-	if (IsValid(MyRankText))
-	{
-		MyRankText->SetText(ResultViewModel->GetMyRankText());
-	}
-
 	if (IsValid(MyFinalScoreText))
 	{
 		MyFinalScoreText->SetText(ResultViewModel->GetMyFinalScoreText());

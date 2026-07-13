@@ -55,12 +55,6 @@ void UHeistResultViewModel::RefreshResultData()
 
 	UE_MVVM_SET_PROPERTY_VALUE(PlayerResults, NewPlayerResults);
 
-	const int32 NewWinnerId = IsValid(GameState) ? GameState->GetWinnerPlayerId() : INDEX_NONE;
-	UE_MVVM_SET_PROPERTY_VALUE(WinnerId, NewWinnerId);
-	UE_MVVM_SET_PROPERTY_VALUE(
-		WinnerIdText,
-		NewWinnerId != INDEX_NONE ? FText::AsNumber(NewWinnerId) : FText::GetEmpty());
-
 	const int32 LocalPlayerId = IsValid(LocalPlayerState)
 		? LocalPlayerState->HeistPlayerId
 		: INDEX_NONE;
@@ -70,11 +64,8 @@ void UHeistResultViewModel::RefreshResultData()
 			return PlayerResult.PlayerId == LocalPlayerId;
 		});
 
-	const int32 NewMyRank = LocalResult ? LocalResult->Rank : 0;
 	const int32 NewMyFinalScore = LocalResult ? LocalResult->FinalScore : 0;
-	UE_MVVM_SET_PROPERTY_VALUE(MyRank, NewMyRank);
 	UE_MVVM_SET_PROPERTY_VALUE(MyFinalScore, NewMyFinalScore);
-	UE_MVVM_SET_PROPERTY_VALUE(MyRankText, FText::AsNumber(NewMyRank));
 	UE_MVVM_SET_PROPERTY_VALUE(MyFinalScoreText, FText::AsNumber(NewMyFinalScore));
 
 	const bool bNewEscaped = LocalResult ? LocalResult->bEscaped : false;
@@ -101,16 +92,6 @@ const TArray<FHeistPlayerResult>& UHeistResultViewModel::GetPlayerResults() cons
 	return PlayerResults;
 }
 
-int32 UHeistResultViewModel::GetWinnerId() const
-{
-	return WinnerId;
-}
-
-int32 UHeistResultViewModel::GetMyRank() const
-{
-	return MyRank;
-}
-
 int32 UHeistResultViewModel::GetMyFinalScore() const
 {
 	return MyFinalScore;
@@ -119,16 +100,6 @@ int32 UHeistResultViewModel::GetMyFinalScore() const
 bool UHeistResultViewModel::IsEscaped() const
 {
 	return bEscaped;
-}
-
-const FText& UHeistResultViewModel::GetWinnerIdText() const
-{
-	return WinnerIdText;
-}
-
-const FText& UHeistResultViewModel::GetMyRankText() const
-{
-	return MyRankText;
 }
 
 const FText& UHeistResultViewModel::GetMyFinalScoreText() const
@@ -196,8 +167,7 @@ FText UHeistResultViewModel::BuildResultRowText(const int32 ResultIndex) const
 		NSLOCTEXT(
 			"HeistResult",
 			"ResultRowFormat",
-			"#{0} \n P{1} \n Score {2} \n Weight {3} \n {4}"),
-		FText::AsNumber(PlayerResult.Rank),
+			"P{0} \n Loot {1} \n Weight {2} \n {3}"),
 		FText::AsNumber(PlayerResult.PlayerId),
 		FText::AsNumber(PlayerResult.FinalScore),
 		FText::AsNumber(FMath::RoundToInt(PlayerResult.LootWeight)),

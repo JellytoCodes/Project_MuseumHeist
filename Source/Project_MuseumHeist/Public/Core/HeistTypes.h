@@ -20,6 +20,18 @@ enum class EHeistMatchPhase : uint8
 
 #pragma endregion
 
+#pragma region InputMode
+
+UENUM(BlueprintType)
+enum class EHeistInputMode : uint8
+{
+	Gameplay,
+	Inventory,
+	Forgery
+};
+
+#pragma endregion
+
 #pragma region ResultData
 
 USTRUCT(BlueprintType)
@@ -43,9 +55,6 @@ struct PROJECT_MUSEUMHEIST_API FHeistPlayerResult
 	float EscapeTimeSeconds = -1.0f;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|Result")
-	int32 Rank = 0;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Heist|Result")
 	bool bEscaped = false;
 
 	bool operator==(const FHeistPlayerResult& Other) const
@@ -55,7 +64,6 @@ struct PROJECT_MUSEUMHEIST_API FHeistPlayerResult
 			&& FinalScore == Other.FinalScore
 			&& LootWeight == Other.LootWeight
 			&& EscapeTimeSeconds == Other.EscapeTimeSeconds
-			&& Rank == Other.Rank
 			&& bEscaped == Other.bEscaped;
 	}
 };

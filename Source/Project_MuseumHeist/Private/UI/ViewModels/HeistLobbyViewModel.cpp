@@ -82,7 +82,7 @@ void UHeistLobbyViewModel::RefreshLobbyData()
 		NSLOCTEXT("HeistLobby", "ReadyCountdownPlaceholder", "READY COUNTDOWN  --"));
 	UE_MVVM_SET_PROPERTY_VALUE(
 		DefaultLoadoutText,
-		NSLOCTEXT("HeistLobby", "DefaultLoadout", "DEFAULT LOADOUT  [Q] COIN  [E] SMOKE  [R] GLUE"));
+		NSLOCTEXT("HeistLobby", "DefaultLoadout", "DEFAULT LOADOUT  [Q] COIN"));
 	UE_MVVM_SET_PROPERTY_VALUE(
 		AuthorityBlockerText,
 		NSLOCTEXT(

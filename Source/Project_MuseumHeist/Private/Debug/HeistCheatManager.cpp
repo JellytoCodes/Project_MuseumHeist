@@ -174,31 +174,10 @@ void UHeistCheatManager::HeistStatusDump()
 #endif
 }
 
-void UHeistCheatManager::HeistStatusStun(const float DurationSeconds)
-{
-#if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugStatusStun(GetOuterAPlayerController(), DurationSeconds);
-#endif
-}
-
-void UHeistCheatManager::HeistStatusImmune(const float DurationSeconds)
-{
-#if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugStatusImmune(GetOuterAPlayerController(), DurationSeconds);
-#endif
-}
-
 void UHeistCheatManager::HeistStatusSmoke(const float DurationSeconds)
 {
 #if !UE_BUILD_SHIPPING
 	UHeistDebugFunctionLibrary::DebugStatusSmoke(GetOuterAPlayerController(), DurationSeconds);
-#endif
-}
-
-void UHeistCheatManager::HeistStatusClear()
-{
-#if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugStatusClear(GetOuterAPlayerController());
 #endif
 }
 
@@ -309,45 +288,6 @@ void UHeistCheatManager::HeistRareLootDump()
 {
 #if !UE_BUILD_SHIPPING
 	UHeistDebugFunctionLibrary::DebugDumpRareLootState(GetOuterAPlayerController());
-#endif
-}
-
-#pragma endregion
-
-#pragma region GapTrackerDebug
-
-void UHeistCheatManager::HeistGapHelp()
-{
-#if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugGapTrackerHelp(GetOuterAPlayerController());
-#endif
-}
-
-void UHeistCheatManager::HeistGapDump()
-{
-#if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugDumpGapTrackerState(GetOuterAPlayerController());
-#endif
-}
-
-void UHeistCheatManager::HeistGapScore(const int32 Score)
-{
-#if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugSetGapTrackerScore(GetOuterAPlayerController(), Score);
-#endif
-}
-
-void UHeistCheatManager::HeistGapForce(const bool bActive)
-{
-#if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugForceGapTracker(GetOuterAPlayerController(), bActive);
-#endif
-}
-
-void UHeistCheatManager::HeistGapAuto()
-{
-#if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugClearGapTrackerOverride(GetOuterAPlayerController());
 #endif
 }
 
