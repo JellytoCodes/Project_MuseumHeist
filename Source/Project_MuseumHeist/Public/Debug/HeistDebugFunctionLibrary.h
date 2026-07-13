@@ -267,6 +267,22 @@ public:
 
 #pragma endregion
 
+#pragma region HUDDebug
+
+public:
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|HUD", meta = (DevelopmentOnly))
+	static void DebugFirstPersonHUDDump(APlayerController* PlayerController);
+
+#pragma endregion
+
+#pragma region FirstPersonScaleDebug
+
+public:
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|FirstPerson", meta = (DevelopmentOnly, ClampMin = "0.0", Units = "cm"))
+	static void DebugFirstPersonScaleCheck(APlayerController* PlayerController, float ForwardDistance = 200.0f);
+
+#pragma endregion
+
 #pragma region TrapDebug
 
 public:

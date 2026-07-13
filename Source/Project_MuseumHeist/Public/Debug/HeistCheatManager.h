@@ -13,6 +13,22 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 public:
 	UHeistCheatManager(const FObjectInitializer& ObjectInitializer);
 
+#pragma region FirstPersonScaleDebug
+
+public:
+	UFUNCTION(Exec)
+	void HeistFirstPersonScaleCheck(float ForwardDistance = 200.0f);
+
+#pragma endregion
+
+#pragma region HUDDebug
+
+public:
+	UFUNCTION(Exec)
+	void HeistHUDDump();
+
+#pragma endregion
+
 #pragma region InventoryDebug
 
 public:

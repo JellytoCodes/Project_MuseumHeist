@@ -253,9 +253,55 @@ Blueprint Graph 금지 항목:
 
 - 활성 `TASK-Wn-###`만 구현한다. PvE 피벗 이후에도 기존 프로젝트 주차 번호를 연속 사용하며 별도 `F` 태스크 체계를 만들지 않는다.
 - Task 시작 전 관련 문서와 Manifest 상태를 확인한다.
-- Editor 작업이 필요하면 사용자용 Blueprint/Data/Map 지침을 별도로 제공한다.
+- Editor 작업이 필요하면 사용자용 Blueprint/Data/Map 작업 절차를 현재 대화에서 바로 제공한다. 사용자가 명시적으로 요청하지 않는 한 별도 `.md` 파일을 만들지 않는다.
 - C++ 빌드만 성공했다고 Editor 작업 포함 Task를 완료 처리하지 않는다.
 - 멀티플레이·Ownership·Replication 주장은 사용자 실행 PIE 증거가 있을 때만 PASS 처리한다.
+
+### Codex / Unreal Editor Work Ownership
+
+Codex가 담당한다.
+
+- C++ Gameplay Rule, Authority, Validation, Replication 구현과 수정
+- Repository 코드, Config, Data Import JSON의 분석과 필요한 범위의 수정
+- C++ 빌드와 정적 검증
+- Task 판정에 필요한 `UHeistDebugFunctionLibrary` 로그와 Debug/Cheat Command 구현
+- 사용자가 제출한 PIE Output Log를 근거로 `PASS`, `FAIL`, `BLOCKED` 판정
+
+사용자가 Unreal Editor에서 담당한다.
+
+- Blueprint / Widget Blueprint 구성과 수정
+- DataTable / DataAsset 편집
+- Map 배치, Scale, Collision, Lighting, Navigation 수정
+- Asset Assignment와 Component Assembly
+- Blueprint Compile / Save
+- PIE 실행과 Debug Command 실행
+
+Codex는 사용자가 명시적으로 직접 조작을 요청하지 않는 한 다음을 수행하지 않는다.
+
+- Unreal Editor 실행 또는 종료
+- Unreal Editor UI 직접 조작
+- Unreal MCP 연결, 재연결, 복구 또는 직접 호출
+- `.uasset` / `.umap` 직접 수정
+
+Editor 작업 절차는 현재 대화에서 다음 항목만 간결하게 제공한다.
+
+- 열 Asset / Map
+- 선택할 Actor / Component
+- 변경할 Property와 값
+- Compile / Save 순서
+- PIE Mode와 Player 수
+- 실행할 Debug Command
+- 제출할 Output Log
+
+### Runtime Test And Log Handoff
+
+- Runtime Task는 기존 `UHeistDebugFunctionLibrary`와 `UHeistCheatManager` 경로를 우선 사용한다.
+- 완료 조건을 판정할 로그가 부족하면 Codex가 활성 Task 범위 안에서 최소 DebugLibrary 로그 또는 Debug/Cheat Command를 C++로 추가한다.
+- 사용자는 Unreal Editor PIE에서 안내된 Debug Command를 실행하고 관련 Output Log를 Codex에게 제출한다.
+- 화면 동작이 완료 조건에 포함된 경우 사용자는 관찰 결과도 함께 전달한다.
+- Codex는 제출된 로그와 관찰 결과를 Task 완료 조건에 직접 대조해 `PASS`, `FAIL`, `BLOCKED`를 판정한다.
+- 빌드 성공만으로 Runtime Task를 PASS 처리하지 않는다.
+- 개별 Task PASS와 Weekly Gate / Formal Test PASS를 분리한다.
 
 ---
 

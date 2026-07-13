@@ -12,6 +12,30 @@ UHeistCheatManager::UHeistCheatManager(const FObjectInitializer& ObjectInitializ
 
 #pragma endregion
 
+#pragma region HUDDebug
+
+void UHeistCheatManager::HeistHUDDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugFirstPersonHUDDump(GetOuterAPlayerController());
+#endif
+}
+
+#pragma endregion
+
+#pragma region FirstPersonScaleDebug
+
+void UHeistCheatManager::HeistFirstPersonScaleCheck(const float ForwardDistance)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugFirstPersonScaleCheck(
+		GetOuterAPlayerController(),
+		ForwardDistance);
+#endif
+}
+
+#pragma endregion
+
 #pragma region GuardDebug
 
 void UHeistCheatManager::HeistGuardHelp()

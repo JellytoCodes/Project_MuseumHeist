@@ -49,6 +49,7 @@ private:
 	void ResolveInteractionChildWidgets();
 	void ResolveCrosshairWidgets();
 	void RefreshCrosshairPresentation(AActor* TargetActor, bool bAvailable);
+	void RefreshToolPresentation();
 	UHeistInteractionPromptWidget* ResolveInteractionChildWidget(
 		FName WidgetName,
 		UHeistInteractionPromptWidget* ExistingWidget) const;
@@ -86,6 +87,7 @@ protected:
 #pragma region Debug
 
 public:
+	void DebugDumpFirstPersonHUDState() const;
 	void DebugDumpFeedbackState() const;
 	void DebugDumpSoundPingMarkers() const;
 	void DebugRunSoundPingPoolTest();
@@ -97,6 +99,9 @@ public:
 private:
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> ScoreText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> ToolText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> WeightText;

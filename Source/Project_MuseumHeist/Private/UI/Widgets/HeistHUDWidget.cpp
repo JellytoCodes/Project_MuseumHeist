@@ -45,6 +45,10 @@ void UHeistHUDWidget::NativeDestruct()
 	{
 		HUDViewModel->GetPresentationChangedDelegate().RemoveAll(this);
 	}
+	if (IsValid(QuickSlotViewModel))
+	{
+		QuickSlotViewModel->GetSnapshotChangedDelegate().RemoveAll(this);
+	}
 	Super::NativeDestruct();
 }
 
@@ -66,7 +70,18 @@ void UHeistHUDWidget::SetupHUDWidget(
 	}
 	HUDViewModel = InHUDViewModel;
 	InventoryViewModel = InInventoryViewModel;
+	if (QuickSlotViewModel != InQuickSlotViewModel && IsValid(QuickSlotViewModel))
+	{
+		QuickSlotViewModel->GetSnapshotChangedDelegate().RemoveAll(this);
+	}
 	QuickSlotViewModel = InQuickSlotViewModel;
+	if (IsValid(QuickSlotViewModel))
+	{
+		QuickSlotViewModel->GetSnapshotChangedDelegate().RemoveAll(this);
+		QuickSlotViewModel->GetSnapshotChangedDelegate().AddUObject(
+			this,
+			&UHeistHUDWidget::RefreshToolPresentation);
+	}
 	if (InteractionComponent != InInteractionComponent && IsValid(InteractionComponent))
 	{
 		InteractionComponent->GetInteractionTargetChangedDelegate().RemoveAll(this);
@@ -115,6 +130,7 @@ void UHeistHUDWidget::SetupHUDWidget(
 		IsValid(InteractionComponent) && InteractionComponent->HasValidInteractionTarget());
 	SetupPopupFeedbackPresentation();
 	SetupSoundPingPresentation();
+	RefreshToolPresentation();
 	RefreshHUDPresentation();
 }
 
@@ -305,6 +321,44 @@ UHeistInteractionPromptWidget* UHeistHUDWidget::ResolveInteractionChildWidget(
 	return ResolvedWidget;
 }
 
+void UHeistHUDWidget::RefreshToolPresentation()
+{
+	if (!IsValid(ToolText))
+	{
+		return;
+	}
+
+	const FHeistQuickSlotPresentation* CoinPresentation = nullptr;
+	if (IsValid(QuickSlotViewModel))
+	{
+		CoinPresentation = QuickSlotViewModel->GetQuickSlotPresentations().FindByPredicate(
+			[](const FHeistQuickSlotPresentation& Presentation)
+			{
+				return Presentation.SlotType == EHeistQuickSlotType::Coin;
+			});
+	}
+
+	if (CoinPresentation == nullptr)
+	{
+		ToolText->SetText(NSLOCTEXT("HeistHUD", "ToolUnavailable", "TOOL  --"));
+	}
+	else if (!CoinPresentation->bAssigned)
+	{
+		ToolText->SetText(FText::Format(
+			NSLOCTEXT("HeistHUD", "ToolEmptyFormat", "TOOL  {0}  EMPTY"),
+			CoinPresentation->KeyLabel));
+	}
+	else
+	{
+		ToolText->SetText(FText::Format(
+			NSLOCTEXT("HeistHUD", "CoinToolFormat", "TOOL  {0}  COIN  x{1}"),
+			CoinPresentation->KeyLabel,
+			FText::AsNumber(CoinPresentation->Quantity)));
+	}
+
+	ToolText->SetVisibility(ESlateVisibility::HitTestInvisible);
+}
+
 void UHeistHUDWidget::RefreshHUDPresentation()
 {
 	if (!IsValid(HUDViewModel))
@@ -325,9 +379,7 @@ void UHeistHUDWidget::RefreshHUDPresentation()
 
 	if (IsValid(ScoreText))
 	{
-		ScoreText->SetText(FText::Format(
-			NSLOCTEXT("HeistHUD", "ScoreFormat", "SCORE  {0}"),
-			FText::AsNumber(LocalLootScore)));
+		ScoreText->SetVisibility(ESlateVisibility::Collapsed);
 	}
 
 	if (IsValid(WeightText))
@@ -381,11 +433,64 @@ void UHeistHUDWidget::RefreshHUDPresentation()
 		EscapeCastEndServerTime,
 		bTrapPlacementCastActive,
 		TrapPlacementCastEndServerTime);
+	RefreshToolPresentation();
 }
 
 #pragma endregion
 
 #pragma region Debug
+
+void UHeistHUDWidget::DebugDumpFirstPersonHUDState() const
+{
+	const bool bCrosshairReady = IsValid(CrosshairContainer)
+		&& IsValid(CrosshairIdleIndicator)
+		&& IsValid(CrosshairFocusIndicator);
+	const bool bCenterPromptReady = IsValid(InteractionPromptWidget)
+		&& IsValid(ActionProgressWidget);
+	const bool bToolReady = IsValid(ToolText);
+	const bool bStatusReady = IsValid(StatusText) && IsValid(WeightText);
+	const bool bCompetitiveScoreHidden = !IsValid(ScoreText)
+		|| ScoreText->GetVisibility() == ESlateVisibility::Collapsed
+		|| ScoreText->GetVisibility() == ESlateVisibility::Hidden;
+	const bool bLegacyCompetitiveWidgetsAbsent = !IsValid(GetWidgetFromName(TEXT("GapTracker")))
+		&& !IsValid(GetWidgetFromName(TEXT("GapTrackerWidget")))
+		&& !IsValid(GetWidgetFromName(TEXT("RankText")))
+		&& !IsValid(GetWidgetFromName(TEXT("WinnerText")));
+	const bool bContractPass = bCrosshairReady
+		&& bCenterPromptReady
+		&& bToolReady
+		&& bStatusReady
+		&& bCompetitiveScoreHidden
+		&& bLegacyCompetitiveWidgetsAbsent;
+
+	const FString ContractMessage = FString::Printf(
+		TEXT("[%s] First-person HUD contract: Crosshair=%s CenterPrompt=%s Tool=%s Status=%s CompetitiveScoreHidden=%s LegacyGapRankAbsent=%s Result=%s"),
+		*GetName(),
+		bCrosshairReady ? TEXT("true") : TEXT("false"),
+		bCenterPromptReady ? TEXT("true") : TEXT("false"),
+		bToolReady ? TEXT("true") : TEXT("false"),
+		bStatusReady ? TEXT("true") : TEXT("false"),
+		bCompetitiveScoreHidden ? TEXT("true") : TEXT("false"),
+		bLegacyCompetitiveWidgetsAbsent ? TEXT("true") : TEXT("false"),
+		bContractPass ? TEXT("PASS") : TEXT("FAIL"));
+	if (bContractPass)
+	{
+		UE_LOG(LogHeistUI, Log, TEXT("%s"), *ContractMessage);
+	}
+	else
+	{
+		UE_LOG(LogHeistUI, Error, TEXT("%s"), *ContractMessage);
+	}
+
+	UE_LOG(
+		LogHeistUI,
+		Log,
+		TEXT("[%s] First-person HUD state: ToolText='%s' StatusText='%s' WeightText='%s'"),
+		*GetName(),
+		IsValid(ToolText) ? *ToolText->GetText().ToString() : TEXT("None"),
+		IsValid(StatusText) ? *StatusText->GetText().ToString() : TEXT("None"),
+		IsValid(WeightText) ? *WeightText->GetText().ToString() : TEXT("None"));
+}
 
 void UHeistHUDWidget::DebugDumpFeedbackState() const
 {

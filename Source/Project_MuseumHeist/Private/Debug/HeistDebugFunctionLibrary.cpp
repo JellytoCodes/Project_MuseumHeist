@@ -15,6 +15,7 @@
 #include "Core/HeistLogChannels.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/Engine.h"
+#include "Engine/World.h"
 #include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
@@ -663,6 +664,130 @@ void UHeistDebugFunctionLibrary::DebugGlueTrapPlaceAt(
 			TargetZ),
 		EHeistDebugLevel::Info,
 		true);
+#endif
+}
+
+#pragma endregion
+
+#pragma region HUDDebug
+
+void UHeistDebugFunctionLibrary::DebugFirstPersonHUDDump(APlayerController* PlayerController)
+{
+#if !UE_BUILD_SHIPPING
+	AHeistHUD* HeistHUD = IsValid(PlayerController)
+		? Cast<AHeistHUD>(PlayerController->GetHUD())
+		: nullptr;
+	UHeistHUDWidget* HUDWidget = IsValid(HeistHUD)
+		? HeistHUD->GetMainHUDWidget()
+		: nullptr;
+	if (!IsValid(HUDWidget))
+	{
+		Message(PlayerController, TEXT("First-person HUD dump failed: missing local Heist HUD widget."), EHeistDebugLevel::Error, true);
+		return;
+	}
+
+	HUDWidget->DebugDumpFirstPersonHUDState();
+	Message(PlayerController, TEXT("First-person HUD dump requested."), EHeistDebugLevel::Info, true);
+#endif
+}
+
+#pragma endregion
+
+#pragma region FirstPersonScaleDebug
+
+void UHeistDebugFunctionLibrary::DebugFirstPersonScaleCheck(
+	APlayerController* PlayerController,
+	const float ForwardDistance)
+{
+#if !UE_BUILD_SHIPPING
+	if (!IsValid(PlayerController))
+	{
+		Message(nullptr, TEXT("First-person scale check failed: PlayerController is invalid."), EHeistDebugLevel::Error, true);
+		return;
+	}
+
+	AHeistPlayerCharacter* HeistCharacter = PlayerController->GetPawn<AHeistPlayerCharacter>();
+	UCapsuleComponent* CapsuleComponent = IsValid(HeistCharacter)
+		? HeistCharacter->GetCapsuleComponent()
+		: nullptr;
+	UWorld* World = PlayerController->GetWorld();
+	if (!IsValid(HeistCharacter) || !IsValid(CapsuleComponent) || !IsValid(World))
+	{
+		Message(PlayerController, TEXT("First-person scale check failed: character, capsule, or world is invalid."), EHeistDebugLevel::Error, true);
+		return;
+	}
+
+	FVector CameraLocation = FVector::ZeroVector;
+	FRotator CameraRotation = FRotator::ZeroRotator;
+	PlayerController->GetPlayerViewPoint(CameraLocation, CameraRotation);
+
+	const FVector CapsuleLocation = CapsuleComponent->GetComponentLocation();
+	const float CapsuleRadius = CapsuleComponent->GetScaledCapsuleRadius();
+	const float CapsuleHalfHeight = CapsuleComponent->GetScaledCapsuleHalfHeight();
+	const float CheckedForwardDistance = FMath::Max(0.0f, ForwardDistance);
+
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(HeistFirstPersonScaleCheck), false, HeistCharacter);
+
+	FHitResult CameraHit;
+	const bool bCameraObstructed = World->LineTraceSingleByChannel(
+		CameraHit,
+		CapsuleLocation,
+		CameraLocation,
+		ECC_Visibility,
+		QueryParams);
+
+	constexpr float CeilingProbeDistance = 200.0f;
+	constexpr float MinimumCeilingClearance = 10.0f;
+	const FVector CapsuleTop = CapsuleLocation + FVector::UpVector * CapsuleHalfHeight;
+	FHitResult CeilingHit;
+	const bool bCeilingHit = World->LineTraceSingleByChannel(
+		CeilingHit,
+		CapsuleTop + FVector::UpVector,
+		CapsuleTop + FVector::UpVector * CeilingProbeDistance,
+		ECC_Visibility,
+		QueryParams);
+	const float CeilingClearance = bCeilingHit
+		? FVector::Distance(CapsuleTop, CeilingHit.ImpactPoint)
+		: CeilingProbeDistance;
+
+	FVector ForwardDirection = CameraRotation.Vector();
+	ForwardDirection.Z = 0.0f;
+	ForwardDirection = ForwardDirection.GetSafeNormal();
+	const FVector ForwardEnd = CapsuleLocation + ForwardDirection * CheckedForwardDistance;
+	FHitResult ForwardHit;
+	const bool bForwardBlocked = CheckedForwardDistance > 0.0f && !ForwardDirection.IsNearlyZero()
+		&& World->SweepSingleByChannel(
+			ForwardHit,
+			CapsuleLocation,
+			ForwardEnd,
+			FQuat::Identity,
+			ECC_Pawn,
+			FCollisionShape::MakeCapsule(CapsuleRadius, CapsuleHalfHeight),
+			QueryParams);
+
+	const bool bAutomaticPass = !bCameraObstructed
+		&& (!bCeilingHit || CeilingClearance >= MinimumCeilingClearance);
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("First-person scale check: Character=%s Location=%s Camera=%s CapsuleRadius=%.1f CapsuleHalfHeight=%.1f CameraObstructed=%s CameraBlocker=%s CeilingHit=%s CeilingClearance=%.1f CeilingBlocker=%s ForwardDistance=%.1f ForwardBlocked=%s ForwardBlocker=%s AutoResult=%s"),
+			*GetNameSafe(HeistCharacter),
+			*CapsuleLocation.ToCompactString(),
+			*CameraLocation.ToCompactString(),
+			CapsuleRadius,
+			CapsuleHalfHeight,
+			bCameraObstructed ? TEXT("true") : TEXT("false"),
+			bCameraObstructed ? *GetNameSafe(CameraHit.GetActor()) : TEXT("None"),
+			bCeilingHit ? TEXT("true") : TEXT("false"),
+			CeilingClearance,
+			bCeilingHit ? *GetNameSafe(CeilingHit.GetActor()) : TEXT("None"),
+			CheckedForwardDistance,
+			bForwardBlocked ? TEXT("true") : TEXT("false"),
+			bForwardBlocked ? *GetNameSafe(ForwardHit.GetActor()) : TEXT("None"),
+			bAutomaticPass ? TEXT("PASS") : TEXT("FAIL")),
+		bAutomaticPass ? EHeistDebugLevel::Info : EHeistDebugLevel::Error,
+		true,
+		8.0f);
 #endif
 }
 
