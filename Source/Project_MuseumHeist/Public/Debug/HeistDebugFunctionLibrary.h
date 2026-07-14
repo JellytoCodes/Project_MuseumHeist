@@ -100,8 +100,10 @@ public:
 	static void DebugGuardProfileRejected(const UObject* WorldContextObject, const UObject* GuardActor, FName GuardProfileId, const TCHAR* Reason);
 	static void DebugDrawGuardSpawnMarker(const UObject* WorldContextObject, UObject* GuardActor);
 	static void DebugGuardStateTreeEvent(const UObject* WorldContextObject, const UObject* GuardActor, const FGameplayTag& StateEventTag);
-	static void DebugGuardPerceptionConfigured(const UObject* WorldContextObject, const UObject* GuardActor, float SightRadius, float AggroResetDistance, float SightAngle, float InvestigateSightAngle, float UpdateInterval);
-	static void DebugGuardSightEvaluated(const UObject* WorldContextObject, const UObject* GuardActor, const UObject* TargetActor, bool bCanSeeTarget, const TCHAR* Reason, const UObject* BlockingSmokeCloud);
+	static void DebugGuardPerceptionConfigured(const UObject* WorldContextObject, const UObject* GuardActor, float SightRadius, float AggroResetDistance, float SightAngle, float InvestigateSightAngle, float EyeHeight, float DetectionGrace, bool bDoorsBlockSight, bool bDisplayCasesBlockSight, FName DoorOccluderTag, float UpdateInterval);
+	static void DebugGuardSightEvaluated(const UObject* WorldContextObject, const UObject* GuardActor, const UObject* TargetActor, bool bCanSeeTarget, const TCHAR* Reason, const UObject* BlockingActor);
+	static void DebugGuardDetectionGraceStarted(const UObject* WorldContextObject, const UObject* GuardActor, const UObject* TargetActor, float DurationSeconds);
+	static void DebugGuardDetectionGraceCancelled(const UObject* WorldContextObject, const UObject* GuardActor, const UObject* TargetActor, const TCHAR* Reason);
 	static void DebugGuardSightTargetAcquired(const UObject* WorldContextObject, const UObject* GuardActor, const UObject* TargetActor);
 	static void DebugGuardSightTargetLost(const UObject* WorldContextObject, const UObject* GuardActor, const UObject* TargetActor, const FVector& LastKnownLocation, const TCHAR* Reason);
 	static void DebugGuardNoiseReactionAccepted(const UObject* WorldContextObject, const UObject* GuardActor, const FHeistSoundPingEvent& SoundPingEvent, float Distance, float InvestigateDuration);

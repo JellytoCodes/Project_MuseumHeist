@@ -6,13 +6,15 @@
 #include "Components/StateTreeAIComponent.h"
 #include "Core/HeistGameplayTags.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
+#include "Components/PrimitiveComponent.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "Inventory/HeistItemDataTypes.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
 #include "Perception/AISense_Sight.h"
 #include "TimerManager.h"
-#include "World/Actors/Area/HeistSmokeCloudActor.h"
+#include "World/Actors/Loot/HeistDisplayCaseActor.h"
 
 #pragma region Construction
 
@@ -69,6 +71,7 @@ void AHeistGuardAIController::OnPossess(APawn* InPawn)
 
 void AHeistGuardAIController::OnUnPossess()
 {
+	ClearDetectionGrace(TEXT("GuardUnpossessed"));
 	ClearSightValidationTimer();
 	GuardPerceptionComponent->OnTargetPerceptionUpdated.RemoveDynamic(
 		this,
@@ -110,7 +113,12 @@ void AHeistGuardAIController::ConfigurePerceptionFromGuardProfile(
 	DefaultSightHalfAngle = FMath::Clamp(GuardData.SightAngle * 0.5f, 0.0f, 180.0f);
 	InvestigateSightHalfAngle =
 		FMath::Clamp(GuardData.InvestigateSightAngle * 0.5f, 0.0f, 180.0f);
+	EyeHeight = FMath::Max(0.0f, GuardData.EyeHeight);
+	DetectionGrace = FMath::Max(0.0f, GuardData.DetectionGrace);
 	SightUpdateInterval = FMath::Max(0.01f, GuardData.SightUpdateInterval);
+	bDoorsBlockSight = GuardData.bDoorsBlockSight;
+	bDisplayCasesBlockSight = GuardData.bDisplayCasesBlockSight;
+	DoorOccluderTag = GuardData.DoorOccluderTag;
 
 	GuardSightConfig->SightRadius = SightRadius;
 	GuardSightConfig->LoseSightRadius = AggroResetDistance;
@@ -142,28 +150,25 @@ void AHeistGuardAIController::ConfigurePerceptionFromGuardProfile(
 		AggroResetDistance,
 		DefaultSightHalfAngle * 2.0f,
 		InvestigateSightHalfAngle * 2.0f,
+		EyeHeight,
+		DetectionGrace,
+		bDoorsBlockSight,
+		bDisplayCasesBlockSight,
+		DoorOccluderTag,
 		SightUpdateInterval);
 }
 
 bool AHeistGuardAIController::DebugEvaluateSightTarget(AActor* TargetActor)
 {
 	const TCHAR* RejectReason = nullptr;
-	AHeistSmokeCloudActor* BlockingSmokeCloud = nullptr;
+	AActor* BlockingActor = nullptr;
 	const bool bCanSeeTarget = CanInitiallySeeTarget(
 		TargetActor,
 		RejectReason,
-		BlockingSmokeCloud);
+		BlockingActor);
 
 	AHeistGuardCharacter* GuardCharacter =
 		Cast<AHeistGuardCharacter>(GetPawn());
-	UHeistGuardStateComponent* GuardStateComponent =
-		IsValid(GuardCharacter)
-			? GuardCharacter->GetGuardStateComponent()
-			: nullptr;
-	if (bCanSeeTarget && IsValid(GuardStateComponent))
-	{
-		GuardStateComponent->EnterChasePlayer(TargetActor);
-	}
 
 	UHeistDebugFunctionLibrary::DebugGuardSightEvaluated(
 		this,
@@ -171,7 +176,7 @@ bool AHeistGuardAIController::DebugEvaluateSightTarget(AActor* TargetActor)
 		TargetActor,
 		bCanSeeTarget,
 		RejectReason,
-		BlockingSmokeCloud);
+		BlockingActor);
 	return bCanSeeTarget;
 }
 
@@ -185,6 +190,7 @@ void AHeistGuardAIController::SetAutomaticSightEnabled(const bool bEnabled)
 	bAutomaticSightEnabled = bEnabled;
 	if (!bAutomaticSightEnabled)
 	{
+		ClearDetectionGrace(TEXT("AutomaticSightDisabled"));
 		ClearSightValidationTimer();
 		if (IsValid(GuardPerceptionComponent))
 		{
@@ -239,19 +245,13 @@ void AHeistGuardAIController::HandleTargetPerceptionUpdated(
 	if (Stimulus.WasSuccessfullySensed())
 	{
 		const TCHAR* RejectReason = nullptr;
-		AHeistSmokeCloudActor* BlockingSmokeCloud = nullptr;
+		AActor* BlockingActor = nullptr;
 		if (CanInitiallySeeTarget(
 			TargetActor,
 			RejectReason,
-			BlockingSmokeCloud))
+			BlockingActor))
 		{
-			if (GuardStateComponent->EnterChasePlayer(TargetActor))
-			{
-				UHeistDebugFunctionLibrary::DebugGuardSightTargetAcquired(
-					this,
-					GuardCharacter,
-					TargetActor);
-			}
+			BeginDetectionGrace(TargetActor);
 			return;
 		}
 
@@ -261,12 +261,26 @@ void AHeistGuardAIController::HandleTargetPerceptionUpdated(
 			TargetActor,
 			false,
 			RejectReason,
-			BlockingSmokeCloud);
+			BlockingActor);
+	}
+	else if (PendingSightTarget.Get() == TargetActor)
+	{
+		ClearDetectionGrace(TEXT("PerceptionLost"));
 	}
 
 	if (GuardStateComponent->GetGuardState() == EHeistGuardState::ChasePlayer
 		&& GuardStateComponent->GetChaseTarget() == TargetActor)
 	{
+		const TCHAR* RejectReason = nullptr;
+		AActor* BlockingActor = nullptr;
+		if (!IsChaseTargetOccluded(
+			TargetActor,
+			RejectReason,
+			BlockingActor))
+		{
+			return;
+		}
+
 		const FVector LastKnownLocation =
 			GuardStateComponent->GetStateFocusLocation();
 		if (GuardStateComponent->EnterSearchLastKnownLocation(LastKnownLocation))
@@ -276,7 +290,7 @@ void AHeistGuardAIController::HandleTargetPerceptionUpdated(
 				GuardCharacter,
 				TargetActor,
 				LastKnownLocation,
-				TEXT("PerceptionLost"));
+				RejectReason);
 		}
 	}
 }
@@ -284,10 +298,10 @@ void AHeistGuardAIController::HandleTargetPerceptionUpdated(
 bool AHeistGuardAIController::CanInitiallySeeTarget(
 	const AActor* TargetActor,
 	const TCHAR*& OutRejectReason,
-	AHeistSmokeCloudActor*& OutBlockingSmokeCloud) const
+	AActor*& OutBlockingActor) const
 {
 	OutRejectReason = nullptr;
-	OutBlockingSmokeCloud = nullptr;
+	OutBlockingActor = nullptr;
 
 	const AHeistGuardCharacter* GuardCharacter =
 		Cast<AHeistGuardCharacter>(GetPawn());
@@ -315,7 +329,7 @@ bool AHeistGuardAIController::CanInitiallySeeTarget(
 	FVector EyeLocation;
 	FRotator EyeRotation;
 	GuardCharacter->GetActorEyesViewPoint(EyeLocation, EyeRotation);
-	const FVector ToTarget = TargetActor->GetActorLocation() - EyeLocation;
+	const FVector ToTarget = GetTargetSightLocation(TargetActor) - EyeLocation;
 	const float Distance = ToTarget.Size();
 	if (Distance > SightRadius)
 	{
@@ -338,16 +352,16 @@ bool AHeistGuardAIController::CanInitiallySeeTarget(
 	return !IsChaseTargetOccluded(
 		TargetActor,
 		OutRejectReason,
-		OutBlockingSmokeCloud);
+		OutBlockingActor);
 }
 
 bool AHeistGuardAIController::IsChaseTargetOccluded(
 	const AActor* TargetActor,
 	const TCHAR*& OutRejectReason,
-	AHeistSmokeCloudActor*& OutBlockingSmokeCloud) const
+	AActor*& OutBlockingActor) const
 {
 	OutRejectReason = nullptr;
-	OutBlockingSmokeCloud = nullptr;
+	OutBlockingActor = nullptr;
 
 	const AHeistGuardCharacter* GuardCharacter =
 		Cast<AHeistGuardCharacter>(GetPawn());
@@ -362,25 +376,47 @@ bool AHeistGuardAIController::IsChaseTargetOccluded(
 	FVector EyeLocation;
 	FRotator EyeRotation;
 	GuardCharacter->GetActorEyesViewPoint(EyeLocation, EyeRotation);
-	if (AHeistSmokeCloudActor::IsAISightBlockedBySmoke(
-		this,
-		EyeLocation,
-		TargetActor->GetActorLocation(),
-		OutBlockingSmokeCloud))
-	{
-		OutRejectReason = TEXT("BlockedBySmoke");
-		return true;
-	}
 
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(HeistGuardSight), false);
 	QueryParams.AddIgnoredActor(GuardCharacter);
 	QueryParams.AddIgnoredActor(TargetActor);
-	if (GetWorld()->LineTraceTestByChannel(
+	TArray<FHitResult> HitResults;
+	GetWorld()->LineTraceMultiByChannel(
+		HitResults,
 		EyeLocation,
-		TargetActor->GetActorLocation(),
+		GetTargetSightLocation(TargetActor),
 		ECC_Visibility,
-		QueryParams))
+		QueryParams);
+
+	for (const FHitResult& HitResult : HitResults)
 	{
+		AActor* HitActor = HitResult.GetActor();
+		if (IsValid(HitActor)
+			&& HitActor->IsA<AHeistDisplayCaseActor>())
+		{
+			if (!bDisplayCasesBlockSight)
+			{
+				continue;
+			}
+
+			OutBlockingActor = HitActor;
+			OutRejectReason = TEXT("BlockedByDisplayCase");
+			return true;
+		}
+
+		if (IsDoorOccluder(HitResult))
+		{
+			if (!bDoorsBlockSight)
+			{
+				continue;
+			}
+
+			OutBlockingActor = HitActor;
+			OutRejectReason = TEXT("BlockedByDoor");
+			return true;
+		}
+
+		OutBlockingActor = HitActor;
 		OutRejectReason = TEXT("BlockedByWorld");
 		return true;
 	}
@@ -388,7 +424,35 @@ bool AHeistGuardAIController::IsChaseTargetOccluded(
 	return false;
 }
 
-void AHeistGuardAIController::TryAcquirePerceivedTarget()
+FVector AHeistGuardAIController::GetTargetSightLocation(
+	const AActor* TargetActor) const
+{
+	if (!IsValid(TargetActor))
+	{
+		return FVector::ZeroVector;
+	}
+
+	FVector TargetEyeLocation;
+	FRotator TargetEyeRotation;
+	TargetActor->GetActorEyesViewPoint(TargetEyeLocation, TargetEyeRotation);
+	return TargetEyeLocation;
+}
+
+bool AHeistGuardAIController::IsDoorOccluder(
+	const FHitResult& HitResult) const
+{
+	if (DoorOccluderTag.IsNone())
+	{
+		return false;
+	}
+
+	const AActor* HitActor = HitResult.GetActor();
+	const UPrimitiveComponent* HitComponent = HitResult.GetComponent();
+	return (IsValid(HitActor) && HitActor->ActorHasTag(DoorOccluderTag))
+		|| (IsValid(HitComponent) && HitComponent->ComponentHasTag(DoorOccluderTag));
+}
+
+void AHeistGuardAIController::TryAcquireSightTarget()
 {
 	AHeistGuardCharacter* GuardCharacter =
 		Cast<AHeistGuardCharacter>(GetPawn());
@@ -400,30 +464,140 @@ void AHeistGuardAIController::TryAcquirePerceivedTarget()
 		|| GuardStateComponent->GetGuardState() == EHeistGuardState::Disabled
 		|| GuardStateComponent->GetGuardState() == EHeistGuardState::Stunned)
 	{
+		ClearDetectionGrace(TEXT("GuardCannotSee"));
 		return;
 	}
 
-	TArray<AActor*> PerceivedActors;
-	GuardPerceptionComponent->GetCurrentlyPerceivedActors(
-		UAISense_Sight::StaticClass(),
-		PerceivedActors);
-	for (AActor* PerceivedActor : PerceivedActors)
+	AHeistPlayerCharacter* BestTarget = nullptr;
+	float BestDistanceSquared = TNumericLimits<float>::Max();
+	for (TActorIterator<AHeistPlayerCharacter> It(GetWorld()); It; ++It)
 	{
+		AHeistPlayerCharacter* CandidateTarget = *It;
 		const TCHAR* RejectReason = nullptr;
-		AHeistSmokeCloudActor* BlockingSmokeCloud = nullptr;
-		if (IsValid(Cast<AHeistPlayerCharacter>(PerceivedActor))
-			&& CanInitiallySeeTarget(
-				PerceivedActor,
+		AActor* BlockingActor = nullptr;
+		if (!IsValid(CandidateTarget)
+			|| !CanInitiallySeeTarget(
+				CandidateTarget,
 				RejectReason,
-				BlockingSmokeCloud)
-			&& GuardStateComponent->EnterChasePlayer(PerceivedActor))
+				BlockingActor))
 		{
-			UHeistDebugFunctionLibrary::DebugGuardSightTargetAcquired(
-				this,
-				GuardCharacter,
-				PerceivedActor);
-			return;
+			continue;
 		}
+
+		const float CandidateDistanceSquared = FVector::DistSquared(
+			GuardCharacter->GetActorLocation(),
+			CandidateTarget->GetActorLocation());
+		if (CandidateDistanceSquared < BestDistanceSquared)
+		{
+			BestTarget = CandidateTarget;
+			BestDistanceSquared = CandidateDistanceSquared;
+		}
+	}
+
+	if (!IsValid(BestTarget))
+	{
+		ClearDetectionGrace(TEXT("NoVisibleTarget"));
+		return;
+	}
+
+	BeginDetectionGrace(BestTarget);
+}
+
+void AHeistGuardAIController::BeginDetectionGrace(AActor* TargetActor)
+{
+	if (!HasAuthority() || !IsValid(TargetActor))
+	{
+		return;
+	}
+
+	if (PendingSightTarget.Get() == TargetActor
+		&& GetWorld()
+		&& GetWorld()->GetTimerManager().IsTimerActive(DetectionGraceTimerHandle))
+	{
+		return;
+	}
+
+	ClearDetectionGrace(TEXT("TargetReplaced"));
+	PendingSightTarget = TargetActor;
+	if (DetectionGrace <= 0.0f)
+	{
+		CompleteDetectionGrace();
+		return;
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().SetTimer(
+			DetectionGraceTimerHandle,
+			this,
+			&AHeistGuardAIController::CompleteDetectionGrace,
+			DetectionGrace,
+			false);
+		UHeistDebugFunctionLibrary::DebugGuardDetectionGraceStarted(
+			this,
+			GetPawn(),
+			TargetActor,
+			DetectionGrace);
+	}
+}
+
+void AHeistGuardAIController::CompleteDetectionGrace()
+{
+	AActor* TargetActor = PendingSightTarget.Get();
+	PendingSightTarget.Reset();
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(DetectionGraceTimerHandle);
+	}
+
+	const TCHAR* RejectReason = nullptr;
+	AActor* BlockingActor = nullptr;
+	if (!IsValid(TargetActor)
+		|| !CanInitiallySeeTarget(
+			TargetActor,
+			RejectReason,
+			BlockingActor))
+	{
+		UHeistDebugFunctionLibrary::DebugGuardDetectionGraceCancelled(
+			this,
+			GetPawn(),
+			TargetActor,
+			RejectReason ? RejectReason : TEXT("InvalidTarget"));
+		return;
+	}
+
+	AHeistGuardCharacter* GuardCharacter =
+		Cast<AHeistGuardCharacter>(GetPawn());
+	UHeistGuardStateComponent* GuardStateComponent =
+		IsValid(GuardCharacter)
+			? GuardCharacter->GetGuardStateComponent()
+			: nullptr;
+	if (IsValid(GuardStateComponent)
+		&& GuardStateComponent->EnterChasePlayer(TargetActor))
+	{
+		UHeistDebugFunctionLibrary::DebugGuardSightTargetAcquired(
+			this,
+			GuardCharacter,
+			TargetActor);
+	}
+}
+
+void AHeistGuardAIController::ClearDetectionGrace(const TCHAR* Reason)
+{
+	AActor* PreviousTarget = PendingSightTarget.Get();
+	PendingSightTarget.Reset();
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(DetectionGraceTimerHandle);
+	}
+
+	if (IsValid(PreviousTarget))
+	{
+		UHeistDebugFunctionLibrary::DebugGuardDetectionGraceCancelled(
+			this,
+			GetPawn(),
+			PreviousTarget,
+			Reason ? Reason : TEXT("Cancelled"));
 	}
 }
 
@@ -447,7 +621,7 @@ void AHeistGuardAIController::ValidateCurrentChaseTarget()
 
 	if (GuardStateComponent->GetGuardState() != EHeistGuardState::ChasePlayer)
 	{
-		TryAcquirePerceivedTarget();
+		TryAcquireSightTarget();
 		return;
 	}
 
@@ -477,11 +651,11 @@ void AHeistGuardAIController::ValidateCurrentChaseTarget()
 	const FVector LastKnownLocation =
 		GuardStateComponent->GetStateFocusLocation();
 	const TCHAR* RejectReason = nullptr;
-	AHeistSmokeCloudActor* BlockingSmokeCloud = nullptr;
+	AActor* BlockingActor = nullptr;
 	if (IsChaseTargetOccluded(
 		ChaseTarget,
 		RejectReason,
-		BlockingSmokeCloud))
+		BlockingActor))
 	{
 		GuardStateComponent->EnterSearchLastKnownLocation(LastKnownLocation);
 		UHeistDebugFunctionLibrary::DebugGuardSightTargetLost(
@@ -513,6 +687,7 @@ void AHeistGuardAIController::UpdateSightForGuardState(
 		bSightEnabled);
 	if (!bSightEnabled)
 	{
+		ClearDetectionGrace(TEXT("GuardStateBlocksSight"));
 		GuardPerceptionComponent->ForgetAll();
 		return;
 	}

@@ -174,6 +174,21 @@ struct PROJECT_MUSEUMHEIST_API FHeistGuardDataRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0", ClampMax = "360.0", Units = "deg"))
 	float InvestigateSightAngle = 0.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0", Units = "cm"))
+	float EyeHeight = 160.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0", Units = "s"))
+	float DetectionGrace = 0.35f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	bool bDoorsBlockSight = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	bool bDisplayCasesBlockSight = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	FName DoorOccluderTag = TEXT("HeistDoorOccluder");
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0", Units = "cm/s"))
 	float PatrolSpeed = 0.0f;
 

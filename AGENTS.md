@@ -345,7 +345,7 @@ Known Warning은 숨기지 않는다. Critical Replication, Ownership, Duplicate
 
 ## 14. Current Phase
 
-피벗 문서와 Notion 일정 개편은 완료됐다. 다음 구현 단계는 `Museum_Heist_GDD.docx` Rev.7의 W3이며 2026-07-13에 시작한다.
+피벗 문서와 Notion 일정 개편은 완료됐다. 기존 W3 First-Person 전환 범위와 기존 W4 Stealth Loop 범위를 하나의 W3 실행 주차로 병합하며, 기간은 2026-07-13부터 2026-07-26까지다.
 
 첫 우선순위:
 
@@ -358,6 +358,17 @@ Known Warning은 숨기지 않는다. Critical Replication, Ownership, Duplicate
 7. `TASK-W3-007` Coin Guard Distraction Conversion
 8. `TASK-W3-008` M01 First-Person Scale / Collision Pass
 9. `TASK-W3-009` First-Person HUD Rewire
-10. `TASK-W3-010` W3 1~4 Player Integrated Gate
+10. `TASK-W3-010` First-Person Guard Perception Profile
+11. `TASK-W3-011` Patrol → InvestigateNoise 통합
+12. `TASK-W3-012` Chase → Search → Return 통합
+13. `TASK-W3-013` Guard Arrest / Player Disabled Flow
+14. `TASK-W3-014` Footstep + Loot Weight Noise
+15. `TASK-W3-015` Coin Distraction Reaction
+16. `TASK-W3-016` Smoke Sight Blocking — v1.0 제외 / 취소, Legacy 보존만 적용
+17. `TASK-W3-017` 1~4 Player Difficulty Baseline
+18. `TASK-W3-018` M01 Guard Route / Cover Readability
+19. `TASK-W3-019` W3 Stealth Loop Gate
+
+기존 `TASK-W3-010` W3 1~4 Player Integrated Gate는 병합 계획에서 제거했다. `TASK-W3-016`은 v1.0 Excluded 범위이므로 구현하거나 W3 Gate 조건으로 사용하지 않는다.
 
 세부 구현 상태와 주차별 Task는 `Museum_Heist_GDD.docx` Rev.7을 기준으로 Repository에서 다시 확인한다.

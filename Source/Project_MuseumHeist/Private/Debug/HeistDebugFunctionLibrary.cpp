@@ -2029,6 +2029,11 @@ void UHeistDebugFunctionLibrary::DebugGuardPerceptionConfigured(
 	const float AggroResetDistance,
 	const float SightAngle,
 	const float InvestigateSightAngle,
+	const float EyeHeight,
+	const float DetectionGrace,
+	const bool bDoorsBlockSight,
+	const bool bDisplayCasesBlockSight,
+	const FName DoorOccluderTag,
 	const float UpdateInterval)
 {
 #if UE_BUILD_SHIPPING
@@ -2037,12 +2042,17 @@ void UHeistDebugFunctionLibrary::DebugGuardPerceptionConfigured(
 	Message(
 		WorldContextObject,
 		FString::Printf(
-			TEXT("Guard perception configured: Guard=%s SightRadius=%.1f AggroReset=%.1f SightAngle=%.1f InvestigateAngle=%.1f UpdateInterval=%.2f"),
+			TEXT("Guard perception configured: Guard=%s SightRadius=%.1f AggroReset=%.1f SightAngle=%.1f InvestigateAngle=%.1f EyeHeight=%.1f DetectionGrace=%.2f DoorsBlockSight=%s DisplayCasesBlockSight=%s DoorTag=%s UpdateInterval=%.2f"),
 			*GetNameSafe(GuardActor),
 			SightRadius,
 			AggroResetDistance,
 			SightAngle,
 			InvestigateSightAngle,
+			EyeHeight,
+			DetectionGrace,
+			bDoorsBlockSight ? TEXT("true") : TEXT("false"),
+			bDisplayCasesBlockSight ? TEXT("true") : TEXT("false"),
+			*DoorOccluderTag.ToString(),
 			UpdateInterval));
 #endif
 }
@@ -2053,7 +2063,7 @@ void UHeistDebugFunctionLibrary::DebugGuardSightEvaluated(
 	const UObject* TargetActor,
 	const bool bCanSeeTarget,
 	const TCHAR* Reason,
-	const UObject* BlockingSmokeCloud)
+	const UObject* BlockingActor)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -2061,13 +2071,51 @@ void UHeistDebugFunctionLibrary::DebugGuardSightEvaluated(
 	Message(
 		WorldContextObject,
 		FString::Printf(
-			TEXT("Guard sight evaluated: Guard=%s Target=%s Visible=%s Reason=%s BlockingSmoke=%s"),
+			TEXT("Guard sight evaluated: Guard=%s Target=%s Visible=%s Reason=%s BlockingActor=%s"),
 			*GetNameSafe(GuardActor),
 			*GetNameSafe(TargetActor),
 			bCanSeeTarget ? TEXT("true") : TEXT("false"),
 			Reason ? Reason : TEXT("None"),
-			*GetNameSafe(BlockingSmokeCloud)),
+			*GetNameSafe(BlockingActor)),
 		bCanSeeTarget ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardDetectionGraceStarted(
+	const UObject* WorldContextObject,
+	const UObject* GuardActor,
+	const UObject* TargetActor,
+	const float DurationSeconds)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Guard detection grace started: Guard=%s Target=%s Duration=%.2f"),
+			*GetNameSafe(GuardActor),
+			*GetNameSafe(TargetActor),
+			DurationSeconds));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardDetectionGraceCancelled(
+	const UObject* WorldContextObject,
+	const UObject* GuardActor,
+	const UObject* TargetActor,
+	const TCHAR* Reason)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Guard detection grace cancelled: Guard=%s Target=%s Reason=%s"),
+			*GetNameSafe(GuardActor),
+			*GetNameSafe(TargetActor),
+			Reason ? Reason : TEXT("None")));
 #endif
 }
 

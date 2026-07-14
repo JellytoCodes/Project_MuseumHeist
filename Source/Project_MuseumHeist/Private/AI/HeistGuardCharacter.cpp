@@ -104,6 +104,7 @@ void AHeistGuardCharacter::ResolveGuardProfile()
 		return;
 	}
 
+	BaseEyeHeight = FMath::Max(0.0f, GuardProfile.EyeHeight);
 	bHasResolvedGuardProfile = true;
 	GuardStateComponent->ConfigureGuardProfile(GuardProfile);
 	NoiseReactionComponent->ConfigureGuardProfile(GuardProfile);
