@@ -34,8 +34,10 @@ bool UHeistGuardStateComponent::EnterPatrol()
 {
 	const TObjectPtr<AActor> PreviousTarget = ChaseTarget;
 	const FVector PreviousFocusLocation = StateFocusLocation;
+	const float PreviousPendingDuration = PendingInvestigateDuration;
 	ChaseTarget = nullptr;
 	StateFocusLocation = FVector::ZeroVector;
+	PendingInvestigateDuration = 0.0f;
 	if (CommitState(EHeistGuardState::Patrol))
 	{
 		return true;
@@ -43,6 +45,7 @@ bool UHeistGuardStateComponent::EnterPatrol()
 
 	ChaseTarget = PreviousTarget;
 	StateFocusLocation = PreviousFocusLocation;
+	PendingInvestigateDuration = PreviousPendingDuration;
 	return false;
 }
 
@@ -107,16 +110,38 @@ bool UHeistGuardStateComponent::EnterInvestigateNoise(
 
 	const TObjectPtr<AActor> PreviousTarget = ChaseTarget;
 	const FVector PreviousFocusLocation = StateFocusLocation;
+	const float PreviousPendingDuration = PendingInvestigateDuration;
 	ChaseTarget = nullptr;
 	StateFocusLocation = InvestigateLocation;
-	if (CommitState(EHeistGuardState::InvestigateNoise, DurationSeconds))
+	PendingInvestigateDuration = DurationSeconds;
+	if (CommitState(EHeistGuardState::InvestigateNoise))
 	{
 		return true;
 	}
 
 	ChaseTarget = PreviousTarget;
 	StateFocusLocation = PreviousFocusLocation;
+	PendingInvestigateDuration = PreviousPendingDuration;
 	return false;
+}
+
+bool UHeistGuardStateComponent::StartInvestigateConfirmationTimer()
+{
+	AActor* OwnerActor = GetOwner();
+	if (!IsValid(OwnerActor)
+		|| !OwnerActor->HasAuthority()
+		|| GuardState != EHeistGuardState::InvestigateNoise
+		|| PendingInvestigateDuration <= 0.0f)
+	{
+		UHeistDebugFunctionLibrary::DebugGuardStateRequestRejected(
+			this,
+			OwnerActor,
+			EHeistGuardState::InvestigateNoise,
+			TEXT("InvalidConfirmationTimer"));
+		return false;
+	}
+
+	return StartStateTimer(PendingInvestigateDuration);
 }
 
 bool UHeistGuardStateComponent::EnterSearchLastKnownLocation(const FVector& SearchLocation)
@@ -143,6 +168,25 @@ bool UHeistGuardStateComponent::EnterSearchLastKnownLocation(const FVector& Sear
 	ChaseTarget = PreviousTarget;
 	StateFocusLocation = PreviousFocusLocation;
 	return false;
+}
+
+bool UHeistGuardStateComponent::StartSearchTimer()
+{
+	AActor* OwnerActor = GetOwner();
+	if (!IsValid(OwnerActor)
+		|| !OwnerActor->HasAuthority()
+		|| GuardState != EHeistGuardState::SearchLastKnownLocation
+		|| SearchDuration <= 0.0f)
+	{
+		UHeistDebugFunctionLibrary::DebugGuardStateRequestRejected(
+			this,
+			OwnerActor,
+			EHeistGuardState::SearchLastKnownLocation,
+			TEXT("InvalidSearchTimer"));
+		return false;
+	}
+
+	return StartStateTimer(SearchDuration);
 }
 
 bool UHeistGuardStateComponent::EnterReturnToPatrol()
@@ -223,6 +267,16 @@ AActor* UHeistGuardStateComponent::GetChaseTarget() const
 	return ChaseTarget.Get();
 }
 
+float UHeistGuardStateComponent::GetInvestigateConfirmationDuration() const
+{
+	return PendingInvestigateDuration;
+}
+
+float UHeistGuardStateComponent::GetSearchDuration() const
+{
+	return SearchDuration;
+}
+
 FHeistGuardStateChanged& UHeistGuardStateComponent::GetGuardStateChangedDelegate()
 {
 	return GuardStateChangedDelegate;
@@ -231,6 +285,7 @@ FHeistGuardStateChanged& UHeistGuardStateComponent::GetGuardStateChangedDelegate
 void UHeistGuardStateComponent::ConfigureGuardProfile(const FHeistGuardDataRow& GuardData)
 {
 	InvestigateDuration = FMath::Max(0.0f, GuardData.InvestigateDuration);
+	SearchDuration = FMath::Max(0.0f, GuardData.SearchDuration);
 }
 
 bool UHeistGuardStateComponent::CommitState(
@@ -267,18 +322,7 @@ bool UHeistGuardStateComponent::CommitState(
 	const float SafeDuration = FMath::Max(0.0f, DurationSeconds);
 	if (SafeDuration > 0.0f)
 	{
-		if (UWorld* World = GetWorld())
-		{
-			StateEndServerTime = World->GetGameState()
-				? World->GetGameState()->GetServerWorldTimeSeconds() + SafeDuration
-				: World->GetTimeSeconds() + SafeDuration;
-			World->GetTimerManager().SetTimer(
-				StateTimerHandle,
-				this,
-				&UHeistGuardStateComponent::HandleTimedStateExpired,
-				SafeDuration,
-				false);
-		}
+		StartStateTimer(SafeDuration);
 	}
 
 	OwnerActor->ForceNetUpdate();
@@ -289,6 +333,33 @@ bool UHeistGuardStateComponent::CommitState(
 		PreviousState,
 		GuardState,
 		StateEndServerTime);
+	return true;
+}
+
+bool UHeistGuardStateComponent::StartStateTimer(const float DurationSeconds)
+{
+	AActor* OwnerActor = GetOwner();
+	UWorld* World = GetWorld();
+	const float SafeDuration = FMath::Max(0.0f, DurationSeconds);
+	if (!IsValid(OwnerActor)
+		|| !OwnerActor->HasAuthority()
+		|| !IsValid(World)
+		|| SafeDuration <= 0.0f)
+	{
+		return false;
+	}
+
+	ClearStateTimer();
+	StateEndServerTime = World->GetGameState()
+		? World->GetGameState()->GetServerWorldTimeSeconds() + SafeDuration
+		: World->GetTimeSeconds() + SafeDuration;
+	World->GetTimerManager().SetTimer(
+		StateTimerHandle,
+		this,
+		&UHeistGuardStateComponent::HandleTimedStateExpired,
+		SafeDuration,
+		false);
+	OwnerActor->ForceNetUpdate();
 	return true;
 }
 
@@ -329,9 +400,10 @@ void UHeistGuardStateComponent::HandleTimedStateExpired()
 	const EHeistGuardState ExpiredState = GuardState;
 	if (ExpiredState == EHeistGuardState::Stunned)
 	{
+		PendingInvestigateDuration = InvestigateDuration;
 		CommitState(
 			EHeistGuardState::InvestigateNoise,
-			InvestigateDuration,
+			0.0f,
 			true);
 		UHeistDebugFunctionLibrary::DebugGuardStunCleared(this, OwnerActor, GuardState);
 		return;
@@ -340,6 +412,12 @@ void UHeistGuardStateComponent::HandleTimedStateExpired()
 	if (ExpiredState == EHeistGuardState::InvestigateNoise)
 	{
 		EnterPatrol();
+		return;
+	}
+
+	if (ExpiredState == EHeistGuardState::SearchLastKnownLocation)
+	{
+		EnterReturnToPatrol();
 	}
 }
 
@@ -368,6 +446,7 @@ void UHeistGuardStateComponent::GetLifetimeReplicatedProps(
 
 	DOREPLIFETIME(UHeistGuardStateComponent, GuardState);
 	DOREPLIFETIME(UHeistGuardStateComponent, StateEndServerTime);
+	DOREPLIFETIME(UHeistGuardStateComponent, StateFocusLocation);
 }
 
 #pragma endregion

@@ -1,6 +1,7 @@
 #include "Debug/HeistDebugFunctionLibrary.h"
 
 #include "AI/HeistGuardCharacter.h"
+#include "AI/HeistPatrolPathComponent.h"
 #include "AI/HeistGuardStateComponent.h"
 #include "Character/Components/HeistInventoryComponent.h"
 #include "Character/Components/HeistStatusComponent.h"
@@ -348,6 +349,10 @@ void UHeistDebugFunctionLibrary::DebugGuardDump(APlayerController* PlayerControl
 		IsValid(GuardCharacter)
 			? GuardCharacter->GetGuardStateComponent()
 			: nullptr;
+	const UHeistPatrolPathComponent* PatrolPathComponent =
+		IsValid(GuardCharacter)
+			? GuardCharacter->GetPatrolPathComponent()
+			: nullptr;
 	if (!IsValid(GuardCharacter) || !IsValid(GuardStateComponent))
 	{
 		Message(
@@ -366,16 +371,25 @@ void UHeistDebugFunctionLibrary::DebugGuardDump(APlayerController* PlayerControl
 		0.0f,
 		GuardStateComponent->GetStateEndServerTime() - ServerTime);
 	const FVector FocusLocation = GuardStateComponent->GetStateFocusLocation();
+	const FVector GuardLocation = GuardCharacter->GetActorLocation();
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Guard dump: Guard=%s State=%s Remaining=%.2f Focus=(%.1f,%.1f,%.1f) Authority=%s"),
+			TEXT("Guard dump: Guard=%s State=%s Remaining=%.2f Location=(%.1f,%.1f,%.1f) Focus=(%.1f,%.1f,%.1f) RouteId=%s Waypoint=%d/%d Authority=%s"),
 			*GetNameSafe(GuardCharacter),
 			*UEnum::GetValueAsString(GuardStateComponent->GetGuardState()),
 			RemainingSeconds,
+			GuardLocation.X,
+			GuardLocation.Y,
+			GuardLocation.Z,
 			FocusLocation.X,
 			FocusLocation.Y,
 			FocusLocation.Z,
+			IsValid(PatrolPathComponent)
+				? *PatrolPathComponent->GetPatrolRouteId().ToString()
+				: TEXT("None"),
+			IsValid(PatrolPathComponent) ? PatrolPathComponent->GetCurrentWaypointIndex() : INDEX_NONE,
+			IsValid(PatrolPathComponent) ? PatrolPathComponent->GetWaypointCount() : 0,
 			GuardCharacter->HasAuthority() ? TEXT("true") : TEXT("false")),
 		EHeistDebugLevel::Info,
 		true,
@@ -2172,7 +2186,7 @@ void UHeistDebugFunctionLibrary::DebugGuardNoiseReactionAccepted(
 	Message(
 		WorldContextObject,
 		FString::Printf(
-			TEXT("Guard noise reaction accepted: Guard=%s SequenceId=%d Type=%d Distance=%.1f Radius=%.1f InvestigateDuration=%.2f Location=(%.1f,%.1f,%.1f)"),
+			TEXT("Guard noise reaction accepted: Candidate=Selected Guard=%s SequenceId=%d Type=%d Distance=%.1f Radius=%.1f InvestigateDuration=%.2f Location=(%.1f,%.1f,%.1f)"),
 			*GetNameSafe(GuardActor),
 			SoundPingEvent.SequenceId,
 			static_cast<int32>(SoundPingEvent.PingType),
@@ -2206,6 +2220,104 @@ void UHeistDebugFunctionLibrary::DebugGuardNoiseReactionRejected(
 			SoundPingEvent.Radius,
 			Reason ? Reason : TEXT("None")),
 		EHeistDebugLevel::Warning);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardPatrolPathResolved(
+	const UObject* WorldContextObject,
+	const UObject* GuardActor,
+	const FName RouteId,
+	const int32 WaypointCount)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	const AActor* GuardActorAsActor =
+		IsValid(GuardActor) && GuardActor->IsA<AActor>()
+			? static_cast<const AActor*>(GuardActor)
+			: nullptr;
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Guard patrol path resolved: Guard=%s RouteId=%s Waypoints=%d Authority=%s"),
+			*GetNameSafe(GuardActor),
+			*RouteId.ToString(),
+			WaypointCount,
+			IsValid(GuardActorAsActor) && GuardActorAsActor->HasAuthority()
+				? TEXT("true")
+				: TEXT("false")),
+		WaypointCount > 0 ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardMovement(
+	const UObject* WorldContextObject,
+	const UObject* GuardActor,
+	const EHeistGuardState State,
+	const TCHAR* Phase,
+	const FVector& TargetLocation,
+	const int32 WaypointIndex,
+	const int32 WaypointCount,
+	const TCHAR* Result)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Guard movement: Guard=%s State=%s Phase=%s Target=(%.1f,%.1f,%.1f) Waypoint=%d/%d Result=%s"),
+			*GetNameSafe(GuardActor),
+			*UEnum::GetValueAsString(State),
+			Phase ? Phase : TEXT("None"),
+			TargetLocation.X,
+			TargetLocation.Y,
+			TargetLocation.Z,
+			WaypointIndex,
+			WaypointCount,
+			Result ? Result : TEXT("None")));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardInvestigateConfirmationStarted(
+	const UObject* WorldContextObject,
+	const UObject* GuardActor,
+	const FVector& InvestigateLocation,
+	const float DurationSeconds)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Guard investigate confirmation started: Guard=%s Location=(%.1f,%.1f,%.1f) Duration=%.2f"),
+			*GetNameSafe(GuardActor),
+			InvestigateLocation.X,
+			InvestigateLocation.Y,
+			InvestigateLocation.Z,
+			DurationSeconds));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardSearchTimerStarted(
+	const UObject* WorldContextObject,
+	const UObject* GuardActor,
+	const FVector& SearchLocation,
+	const float DurationSeconds)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Guard search timer started: Guard=%s LastKnown=(%.1f,%.1f,%.1f) Duration=%.2f"),
+			*GetNameSafe(GuardActor),
+			SearchLocation.X,
+			SearchLocation.Y,
+			SearchLocation.Z,
+			DurationSeconds));
 #endif
 }
 

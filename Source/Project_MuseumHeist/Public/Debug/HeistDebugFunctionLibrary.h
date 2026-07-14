@@ -108,6 +108,10 @@ public:
 	static void DebugGuardSightTargetLost(const UObject* WorldContextObject, const UObject* GuardActor, const UObject* TargetActor, const FVector& LastKnownLocation, const TCHAR* Reason);
 	static void DebugGuardNoiseReactionAccepted(const UObject* WorldContextObject, const UObject* GuardActor, const FHeistSoundPingEvent& SoundPingEvent, float Distance, float InvestigateDuration);
 	static void DebugGuardNoiseReactionRejected(const UObject* WorldContextObject, const UObject* GuardActor, const FHeistSoundPingEvent& SoundPingEvent, const TCHAR* Reason, float Distance = -1.0f);
+	static void DebugGuardPatrolPathResolved(const UObject* WorldContextObject, const UObject* GuardActor, FName RouteId, int32 WaypointCount);
+	static void DebugGuardMovement(const UObject* WorldContextObject, const UObject* GuardActor, EHeistGuardState State, const TCHAR* Phase, const FVector& TargetLocation, int32 WaypointIndex, int32 WaypointCount, const TCHAR* Result);
+	static void DebugGuardInvestigateConfirmationStarted(const UObject* WorldContextObject, const UObject* GuardActor, const FVector& InvestigateLocation, float DurationSeconds);
+	static void DebugGuardSearchTimerStarted(const UObject* WorldContextObject, const UObject* GuardActor, const FVector& SearchLocation, float DurationSeconds);
 	static void DebugSoundPingDefinitionRejected(const UObject* WorldContextObject, FName SoundPingId, const TCHAR* Reason);
 	static void DebugSoundPingReported(const UObject* WorldContextObject, const FHeistSoundPingEvent& SoundPingEvent);
 	static void DebugSoundPingReplicated(const UObject* WorldContextObject, const FHeistSoundPingEvent& SoundPingEvent);

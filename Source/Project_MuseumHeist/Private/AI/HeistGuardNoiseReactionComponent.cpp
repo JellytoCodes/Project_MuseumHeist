@@ -43,6 +43,14 @@ void UHeistGuardNoiseReactionComponent::BeginPlay()
 	HeistGameState->GetSoundPingEventReportedDelegate().AddUObject(
 		this,
 		&UHeistGuardNoiseReactionComponent::HandleSoundPingReported);
+
+	AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(OwnerActor);
+	if (IsValid(GuardCharacter))
+	{
+		GuardCharacter->GetGuardStateComponent()->GetGuardStateChangedDelegate().AddUObject(
+			this,
+			&UHeistGuardNoiseReactionComponent::HandleGuardStateChanged);
+	}
 }
 
 void UHeistGuardNoiseReactionComponent::EndPlay(
@@ -52,6 +60,11 @@ void UHeistGuardNoiseReactionComponent::EndPlay(
 		GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr)
 	{
 		HeistGameState->GetSoundPingEventReportedDelegate().RemoveAll(this);
+	}
+
+	if (AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetOwner()))
+	{
+		GuardCharacter->GetGuardStateComponent()->GetGuardStateChangedDelegate().RemoveAll(this);
 	}
 
 	Super::EndPlay(EndPlayReason);
@@ -113,6 +126,25 @@ bool UHeistGuardNoiseReactionComponent::ReactToSoundPing(
 	UHeistGuardStateComponent* GuardStateComponent =
 		GuardCharacter->GetGuardStateComponent();
 	checkf(IsValid(GuardStateComponent), TEXT("HeistGuardCharacter requires GuardStateComponent."));
+
+	if (GuardStateComponent->GetGuardState() == EHeistGuardState::InvestigateNoise
+		&& bHasCurrentCandidate)
+	{
+		const int32 NewPriority = ResolveCandidatePriority(SoundPingEvent.PingType);
+		const int32 CurrentPriority = ResolveCandidatePriority(CurrentCandidate.PingType);
+		if (NewPriority > CurrentPriority
+			|| (NewPriority == CurrentPriority && Distance >= CurrentCandidateDistance))
+		{
+			UHeistDebugFunctionLibrary::DebugGuardNoiseReactionRejected(
+				this,
+				GuardCharacter,
+				SoundPingEvent,
+				TEXT("LowerPriorityCandidate"),
+				Distance);
+			return false;
+		}
+	}
+
 	if (!GuardStateComponent->EnterInvestigateNoise(
 		SoundPingEvent.WorldLocation,
 		InvestigateDuration))
@@ -125,6 +157,10 @@ bool UHeistGuardNoiseReactionComponent::ReactToSoundPing(
 			Distance);
 		return false;
 	}
+
+	CurrentCandidate = SoundPingEvent;
+	CurrentCandidateDistance = Distance;
+	bHasCurrentCandidate = true;
 
 	UHeistDebugFunctionLibrary::DebugGuardNoiseReactionAccepted(
 		this,
@@ -139,6 +175,39 @@ void UHeistGuardNoiseReactionComponent::HandleSoundPingReported(
 	const FHeistSoundPingEvent& SoundPingEvent)
 {
 	ReactToSoundPing(SoundPingEvent);
+}
+
+void UHeistGuardNoiseReactionComponent::HandleGuardStateChanged(
+	const EHeistGuardState,
+	const EHeistGuardState NewState)
+{
+	if (NewState == EHeistGuardState::InvestigateNoise)
+	{
+		return;
+	}
+
+	CurrentCandidate = FHeistSoundPingEvent();
+	CurrentCandidateDistance = TNumericLimits<float>::Max();
+	bHasCurrentCandidate = false;
+}
+
+int32 UHeistGuardNoiseReactionComponent::ResolveCandidatePriority(
+	const EHeistSoundPingType PingType)
+{
+	switch (PingType)
+	{
+	case EHeistSoundPingType::StunHit:
+		return 0;
+	case EHeistSoundPingType::GlassBreak:
+	case EHeistSoundPingType::NoiseTrap:
+		return 1;
+	case EHeistSoundPingType::CoinImpact:
+		return 2;
+	case EHeistSoundPingType::Footstep:
+		return 3;
+	default:
+		return MAX_int32;
+	}
 }
 
 #pragma endregion

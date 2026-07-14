@@ -16,6 +16,7 @@
     "ChaseSpeed": 600.0,
     "StunDuration": 3.0,
     "InvestigateDuration": 5.0,
+    "SearchDuration": 5.0,
     "AggroResetDistance": 3000.0,
     "SightUpdateInterval": 0.1
   },
@@ -36,6 +37,7 @@
     "ChaseSpeed": 600.0,
     "StunDuration": 3.0,
     "InvestigateDuration": 5.0,
+    "SearchDuration": 5.0,
     "AggroResetDistance": 2500.0,
     "SightUpdateInterval": 0.1
   },
@@ -56,6 +58,7 @@
     "ChaseSpeed": 620.0,
     "StunDuration": 3.0,
     "InvestigateDuration": 5.0,
+    "SearchDuration": 5.0,
     "AggroResetDistance": 3000.0,
     "SightUpdateInterval": 0.1
   }

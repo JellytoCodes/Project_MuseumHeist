@@ -29,6 +29,7 @@ public:
 protected:
 	virtual void OnPossess(APawn* InPawn) override;
 	virtual void OnUnPossess() override;
+	virtual void OnMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result) override;
 
 #pragma endregion
 
@@ -84,6 +85,26 @@ private:
 	TWeakObjectPtr<AActor> PendingSightTarget;
 	FTimerHandle DetectionGraceTimerHandle;
 	FTimerHandle SightValidationTimerHandle;
+
+#pragma endregion
+
+#pragma region Movement
+
+private:
+	void BeginPatrolMovement();
+	void HandlePatrolWaypointReached();
+	void AdvancePatrolWaypoint();
+	void BeginInvestigateMovement();
+	void StartInvestigateConfirmation();
+	void BeginChaseMovement();
+	void BeginSearchMovement();
+	void StartSearchTimer();
+	void BeginReturnToPatrolMovement();
+	void ClearGuardMovementTimer();
+
+	FTimerHandle GuardMovementTimerHandle;
+	EHeistGuardState ActiveMovementState = EHeistGuardState::Patrol;
+	bool bHasActiveGuardMove = false;
 
 #pragma endregion
 

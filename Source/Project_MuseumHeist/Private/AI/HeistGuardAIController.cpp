@@ -2,6 +2,7 @@
 
 #include "AI/HeistGuardCharacter.h"
 #include "AI/HeistGuardStateComponent.h"
+#include "AI/HeistPatrolPathComponent.h"
 #include "Character/HeistPlayerCharacter.h"
 #include "Components/StateTreeAIComponent.h"
 #include "Core/HeistGameplayTags.h"
@@ -13,7 +14,9 @@
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
 #include "Perception/AISense_Sight.h"
+#include "Navigation/PathFollowingComponent.h"
 #include "TimerManager.h"
+#include "World/AI/HeistGuardWaypoint.h"
 #include "World/Actors/Loot/HeistDisplayCaseActor.h"
 
 #pragma region Construction
@@ -67,10 +70,17 @@ void AHeistGuardAIController::OnPossess(APawn* InPawn)
 		GuardStateTreeComponent->StartLogic();
 		SendGuardStateTreeEvent(GuardStateComponent->GetGuardState());
 	}
+
+	HandleGuardStateChanged(
+		GuardStateComponent->GetGuardState(),
+		GuardStateComponent->GetGuardState());
 }
 
 void AHeistGuardAIController::OnUnPossess()
 {
+	ClearGuardMovementTimer();
+	bHasActiveGuardMove = false;
+	StopMovement();
 	ClearDetectionGrace(TEXT("GuardUnpossessed"));
 	ClearSightValidationTimer();
 	GuardPerceptionComponent->OnTargetPerceptionUpdated.RemoveDynamic(
@@ -92,6 +102,515 @@ void AHeistGuardAIController::OnUnPossess()
 	}
 
 	Super::OnUnPossess();
+}
+
+void AHeistGuardAIController::OnMoveCompleted(
+	const FAIRequestID RequestID,
+	const FPathFollowingResult& Result)
+{
+	Super::OnMoveCompleted(RequestID, Result);
+
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn());
+	UHeistGuardStateComponent* GuardStateComponent =
+		IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
+	if (!IsValid(GuardStateComponent))
+	{
+		return;
+	}
+
+	const EHeistGuardState CurrentState = GuardStateComponent->GetGuardState();
+	if (!bHasActiveGuardMove || ActiveMovementState != CurrentState)
+	{
+		return;
+	}
+	bHasActiveGuardMove = false;
+
+	if (CurrentState == EHeistGuardState::Patrol)
+	{
+		UHeistPatrolPathComponent* PatrolPath = GuardCharacter->GetPatrolPathComponent();
+		AHeistGuardWaypoint* Waypoint =
+			IsValid(PatrolPath) ? PatrolPath->GetCurrentWaypoint() : nullptr;
+		UHeistDebugFunctionLibrary::DebugGuardMovement(
+			this,
+			GuardCharacter,
+			CurrentState,
+			TEXT("Completed"),
+			IsValid(Waypoint) ? Waypoint->GetActorLocation() : GuardCharacter->GetActorLocation(),
+			IsValid(PatrolPath) ? PatrolPath->GetCurrentWaypointIndex() : INDEX_NONE,
+			IsValid(PatrolPath) ? PatrolPath->GetWaypointCount() : 0,
+			Result.IsSuccess() ? TEXT("Success") : TEXT("Failed"));
+		if (Result.IsSuccess())
+		{
+			HandlePatrolWaypointReached();
+		}
+		return;
+	}
+
+	if (CurrentState == EHeistGuardState::InvestigateNoise)
+	{
+		const FVector FocusLocation = GuardStateComponent->GetStateFocusLocation();
+		UHeistDebugFunctionLibrary::DebugGuardMovement(
+			this,
+			GuardCharacter,
+			CurrentState,
+			TEXT("Completed"),
+			FocusLocation,
+			INDEX_NONE,
+			0,
+			Result.IsSuccess() ? TEXT("Success") : TEXT("Failed"));
+		if (Result.IsSuccess())
+		{
+			StartInvestigateConfirmation();
+		}
+		else
+		{
+			GuardStateComponent->EnterPatrol();
+		}
+		return;
+	}
+
+	if (CurrentState == EHeistGuardState::ChasePlayer)
+	{
+		const FVector LastKnownLocation = GuardStateComponent->GetStateFocusLocation();
+		UHeistDebugFunctionLibrary::DebugGuardMovement(
+			this,
+			GuardCharacter,
+			CurrentState,
+			TEXT("Completed"),
+			LastKnownLocation,
+			INDEX_NONE,
+			0,
+			Result.IsSuccess() ? TEXT("Success") : TEXT("Failed"));
+		if (!Result.IsSuccess())
+		{
+			GuardStateComponent->EnterSearchLastKnownLocation(LastKnownLocation);
+		}
+		return;
+	}
+
+	if (CurrentState == EHeistGuardState::SearchLastKnownLocation)
+	{
+		const FVector SearchLocation = GuardStateComponent->GetStateFocusLocation();
+		UHeistDebugFunctionLibrary::DebugGuardMovement(
+			this,
+			GuardCharacter,
+			CurrentState,
+			TEXT("Completed"),
+			SearchLocation,
+			INDEX_NONE,
+			0,
+			Result.IsSuccess() ? TEXT("Success") : TEXT("Failed"));
+		if (Result.IsSuccess())
+		{
+			StartSearchTimer();
+		}
+		else
+		{
+			GuardStateComponent->EnterReturnToPatrol();
+		}
+		return;
+	}
+
+	if (CurrentState == EHeistGuardState::ReturnToPatrol)
+	{
+		const UHeistPatrolPathComponent* PatrolPath = GuardCharacter->GetPatrolPathComponent();
+		const AHeistGuardWaypoint* Waypoint =
+			IsValid(PatrolPath) ? PatrolPath->GetCurrentWaypoint() : nullptr;
+		UHeistDebugFunctionLibrary::DebugGuardMovement(
+			this,
+			GuardCharacter,
+			CurrentState,
+			TEXT("Completed"),
+			IsValid(Waypoint) ? Waypoint->GetActorLocation() : GuardCharacter->GetActorLocation(),
+			IsValid(PatrolPath) ? PatrolPath->GetCurrentWaypointIndex() : INDEX_NONE,
+			IsValid(PatrolPath) ? PatrolPath->GetWaypointCount() : 0,
+			Result.IsSuccess() ? TEXT("Success") : TEXT("Failed"));
+		GuardStateComponent->EnterPatrol();
+	}
+}
+
+#pragma endregion
+
+#pragma region Movement
+
+void AHeistGuardAIController::BeginPatrolMovement()
+{
+	AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn());
+	UHeistPatrolPathComponent* PatrolPath =
+		IsValid(GuardCharacter) ? GuardCharacter->GetPatrolPathComponent() : nullptr;
+	if (!HasAuthority() || !IsValid(PatrolPath))
+	{
+		return;
+	}
+
+	if (PatrolPath->GetWaypointCount() == 0)
+	{
+		PatrolPath->ResolvePatrolPath();
+		UHeistDebugFunctionLibrary::DebugGuardPatrolPathResolved(
+			this,
+			GuardCharacter,
+			PatrolPath->GetPatrolRouteId(),
+			PatrolPath->GetWaypointCount());
+	}
+
+	AHeistGuardWaypoint* Waypoint = PatrolPath->GetCurrentWaypoint();
+	if (!IsValid(Waypoint))
+	{
+		return;
+	}
+
+	const EPathFollowingRequestResult::Type MoveResult = MoveToActor(
+		Waypoint,
+		PatrolPath->GetAcceptanceRadius(),
+		true,
+		true,
+		false,
+		nullptr,
+		true);
+	UHeistDebugFunctionLibrary::DebugGuardMovement(
+		this,
+		GuardCharacter,
+		EHeistGuardState::Patrol,
+		TEXT("Requested"),
+		Waypoint->GetActorLocation(),
+		PatrolPath->GetCurrentWaypointIndex(),
+		PatrolPath->GetWaypointCount(),
+		MoveResult == EPathFollowingRequestResult::RequestSuccessful
+			? TEXT("RequestSuccessful")
+			: MoveResult == EPathFollowingRequestResult::AlreadyAtGoal
+				? TEXT("AlreadyAtGoal")
+				: TEXT("Failed"));
+
+	if (MoveResult == EPathFollowingRequestResult::AlreadyAtGoal)
+	{
+		HandlePatrolWaypointReached();
+	}
+	else if (MoveResult == EPathFollowingRequestResult::RequestSuccessful)
+	{
+		ActiveMovementState = EHeistGuardState::Patrol;
+		bHasActiveGuardMove = true;
+	}
+}
+
+void AHeistGuardAIController::HandlePatrolWaypointReached()
+{
+	AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn());
+	UHeistPatrolPathComponent* PatrolPath =
+		IsValid(GuardCharacter) ? GuardCharacter->GetPatrolPathComponent() : nullptr;
+	if (!IsValid(PatrolPath))
+	{
+		return;
+	}
+
+	ClearGuardMovementTimer();
+	const float WaitDuration = PatrolPath->GetWaypointWaitDuration();
+	if (WaitDuration <= 0.0f)
+	{
+		AdvancePatrolWaypoint();
+		return;
+	}
+
+	GetWorldTimerManager().SetTimer(
+		GuardMovementTimerHandle,
+		this,
+		&AHeistGuardAIController::AdvancePatrolWaypoint,
+		WaitDuration,
+		false);
+}
+
+void AHeistGuardAIController::AdvancePatrolWaypoint()
+{
+	AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn());
+	UHeistGuardStateComponent* GuardStateComponent =
+		IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
+	UHeistPatrolPathComponent* PatrolPath =
+		IsValid(GuardCharacter) ? GuardCharacter->GetPatrolPathComponent() : nullptr;
+	if (!IsValid(GuardStateComponent)
+		|| GuardStateComponent->GetGuardState() != EHeistGuardState::Patrol
+		|| !IsValid(PatrolPath))
+	{
+		return;
+	}
+
+	if (!IsValid(PatrolPath->AdvanceWaypoint()))
+	{
+		return;
+	}
+	BeginPatrolMovement();
+}
+
+void AHeistGuardAIController::BeginInvestigateMovement()
+{
+	AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn());
+	UHeistGuardStateComponent* GuardStateComponent =
+		IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
+	if (!HasAuthority() || !IsValid(GuardStateComponent))
+	{
+		return;
+	}
+
+	const FVector FocusLocation = GuardStateComponent->GetStateFocusLocation();
+	const UHeistPatrolPathComponent* PatrolPath = GuardCharacter->GetPatrolPathComponent();
+	const float AcceptanceRadius =
+		IsValid(PatrolPath) ? PatrolPath->GetAcceptanceRadius() : 75.0f;
+	const EPathFollowingRequestResult::Type MoveResult = MoveToLocation(
+		FocusLocation,
+		AcceptanceRadius,
+		true,
+		true,
+		true,
+		false,
+		nullptr,
+		true);
+	UHeistDebugFunctionLibrary::DebugGuardMovement(
+		this,
+		GuardCharacter,
+		EHeistGuardState::InvestigateNoise,
+		TEXT("Requested"),
+		FocusLocation,
+		INDEX_NONE,
+		0,
+		MoveResult == EPathFollowingRequestResult::RequestSuccessful
+			? TEXT("RequestSuccessful")
+			: MoveResult == EPathFollowingRequestResult::AlreadyAtGoal
+				? TEXT("AlreadyAtGoal")
+				: TEXT("Failed"));
+
+	if (MoveResult == EPathFollowingRequestResult::AlreadyAtGoal)
+	{
+		StartInvestigateConfirmation();
+	}
+	else if (MoveResult == EPathFollowingRequestResult::RequestSuccessful)
+	{
+		ActiveMovementState = EHeistGuardState::InvestigateNoise;
+		bHasActiveGuardMove = true;
+	}
+	else if (MoveResult == EPathFollowingRequestResult::Failed)
+	{
+		GuardStateComponent->EnterPatrol();
+	}
+}
+
+void AHeistGuardAIController::StartInvestigateConfirmation()
+{
+	AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn());
+	UHeistGuardStateComponent* GuardStateComponent =
+		IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
+	if (!IsValid(GuardStateComponent)
+		|| !GuardStateComponent->StartInvestigateConfirmationTimer())
+	{
+		return;
+	}
+
+	UHeistDebugFunctionLibrary::DebugGuardInvestigateConfirmationStarted(
+		this,
+		GuardCharacter,
+		GuardStateComponent->GetStateFocusLocation(),
+		GuardStateComponent->GetInvestigateConfirmationDuration());
+}
+
+void AHeistGuardAIController::BeginChaseMovement()
+{
+	AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn());
+	UHeistGuardStateComponent* GuardStateComponent =
+		IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
+	AActor* ChaseTarget =
+		IsValid(GuardStateComponent) ? GuardStateComponent->GetChaseTarget() : nullptr;
+	if (!HasAuthority() || !IsValid(GuardStateComponent) || !IsValid(ChaseTarget))
+	{
+		if (IsValid(GuardStateComponent))
+		{
+			GuardStateComponent->EnterSearchLastKnownLocation(
+				GuardStateComponent->GetStateFocusLocation());
+		}
+		return;
+	}
+
+	const UHeistPatrolPathComponent* PatrolPath = GuardCharacter->GetPatrolPathComponent();
+	const float AcceptanceRadius =
+		IsValid(PatrolPath) ? PatrolPath->GetAcceptanceRadius() : 75.0f;
+	const EPathFollowingRequestResult::Type MoveResult = MoveToActor(
+		ChaseTarget,
+		AcceptanceRadius,
+		true,
+		true,
+		false,
+		nullptr,
+		true);
+	UHeistDebugFunctionLibrary::DebugGuardMovement(
+		this,
+		GuardCharacter,
+		EHeistGuardState::ChasePlayer,
+		TEXT("Requested"),
+		GuardStateComponent->GetStateFocusLocation(),
+		INDEX_NONE,
+		0,
+		MoveResult == EPathFollowingRequestResult::RequestSuccessful
+			? TEXT("RequestSuccessful")
+			: MoveResult == EPathFollowingRequestResult::AlreadyAtGoal
+				? TEXT("AlreadyAtGoal")
+				: TEXT("Failed"));
+
+	if (MoveResult == EPathFollowingRequestResult::RequestSuccessful)
+	{
+		ActiveMovementState = EHeistGuardState::ChasePlayer;
+		bHasActiveGuardMove = true;
+	}
+	else if (MoveResult == EPathFollowingRequestResult::Failed)
+	{
+		GuardStateComponent->EnterSearchLastKnownLocation(
+			GuardStateComponent->GetStateFocusLocation());
+	}
+}
+
+void AHeistGuardAIController::BeginSearchMovement()
+{
+	AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn());
+	UHeistGuardStateComponent* GuardStateComponent =
+		IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
+	if (!HasAuthority() || !IsValid(GuardStateComponent))
+	{
+		return;
+	}
+
+	const FVector SearchLocation = GuardStateComponent->GetStateFocusLocation();
+	const UHeistPatrolPathComponent* PatrolPath = GuardCharacter->GetPatrolPathComponent();
+	const float AcceptanceRadius =
+		IsValid(PatrolPath) ? PatrolPath->GetAcceptanceRadius() : 75.0f;
+	const EPathFollowingRequestResult::Type MoveResult = MoveToLocation(
+		SearchLocation,
+		AcceptanceRadius,
+		true,
+		true,
+		true,
+		false,
+		nullptr,
+		true);
+	UHeistDebugFunctionLibrary::DebugGuardMovement(
+		this,
+		GuardCharacter,
+		EHeistGuardState::SearchLastKnownLocation,
+		TEXT("Requested"),
+		SearchLocation,
+		INDEX_NONE,
+		0,
+		MoveResult == EPathFollowingRequestResult::RequestSuccessful
+			? TEXT("RequestSuccessful")
+			: MoveResult == EPathFollowingRequestResult::AlreadyAtGoal
+				? TEXT("AlreadyAtGoal")
+				: TEXT("Failed"));
+
+	if (MoveResult == EPathFollowingRequestResult::AlreadyAtGoal)
+	{
+		StartSearchTimer();
+	}
+	else if (MoveResult == EPathFollowingRequestResult::RequestSuccessful)
+	{
+		ActiveMovementState = EHeistGuardState::SearchLastKnownLocation;
+		bHasActiveGuardMove = true;
+	}
+	else
+	{
+		GuardStateComponent->EnterReturnToPatrol();
+	}
+}
+
+void AHeistGuardAIController::StartSearchTimer()
+{
+	AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn());
+	UHeistGuardStateComponent* GuardStateComponent =
+		IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
+	if (!IsValid(GuardStateComponent) || !GuardStateComponent->StartSearchTimer())
+	{
+		if (IsValid(GuardStateComponent))
+		{
+			GuardStateComponent->EnterReturnToPatrol();
+		}
+		return;
+	}
+
+	UHeistDebugFunctionLibrary::DebugGuardSearchTimerStarted(
+		this,
+		GuardCharacter,
+		GuardStateComponent->GetStateFocusLocation(),
+		GuardStateComponent->GetSearchDuration());
+}
+
+void AHeistGuardAIController::BeginReturnToPatrolMovement()
+{
+	AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn());
+	UHeistGuardStateComponent* GuardStateComponent =
+		IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
+	UHeistPatrolPathComponent* PatrolPath =
+		IsValid(GuardCharacter) ? GuardCharacter->GetPatrolPathComponent() : nullptr;
+	if (!HasAuthority() || !IsValid(GuardStateComponent) || !IsValid(PatrolPath))
+	{
+		return;
+	}
+
+	if (PatrolPath->GetWaypointCount() == 0)
+	{
+		PatrolPath->ResolvePatrolPath();
+	}
+
+	AHeistGuardWaypoint* Waypoint = PatrolPath->GetCurrentWaypoint();
+	if (!IsValid(Waypoint))
+	{
+		UHeistDebugFunctionLibrary::DebugGuardMovement(
+			this,
+			GuardCharacter,
+			EHeistGuardState::ReturnToPatrol,
+			TEXT("Requested"),
+			GuardCharacter->GetActorLocation(),
+			INDEX_NONE,
+			PatrolPath->GetWaypointCount(),
+			TEXT("NoWaypoint"));
+		GuardStateComponent->EnterPatrol();
+		return;
+	}
+
+	const EPathFollowingRequestResult::Type MoveResult = MoveToActor(
+		Waypoint,
+		PatrolPath->GetAcceptanceRadius(),
+		true,
+		true,
+		false,
+		nullptr,
+		true);
+	UHeistDebugFunctionLibrary::DebugGuardMovement(
+		this,
+		GuardCharacter,
+		EHeistGuardState::ReturnToPatrol,
+		TEXT("Requested"),
+		Waypoint->GetActorLocation(),
+		PatrolPath->GetCurrentWaypointIndex(),
+		PatrolPath->GetWaypointCount(),
+		MoveResult == EPathFollowingRequestResult::RequestSuccessful
+			? TEXT("RequestSuccessful")
+			: MoveResult == EPathFollowingRequestResult::AlreadyAtGoal
+				? TEXT("AlreadyAtGoal")
+				: TEXT("Failed"));
+
+	if (MoveResult == EPathFollowingRequestResult::AlreadyAtGoal
+		|| MoveResult == EPathFollowingRequestResult::Failed)
+	{
+		GuardStateComponent->EnterPatrol();
+	}
+	else
+	{
+		ActiveMovementState = EHeistGuardState::ReturnToPatrol;
+		bHasActiveGuardMove = true;
+	}
+}
+
+void AHeistGuardAIController::ClearGuardMovementTimer()
+{
+	GetWorldTimerManager().ClearTimer(GuardMovementTimerHandle);
 }
 
 #pragma endregion
@@ -244,6 +763,13 @@ void AHeistGuardAIController::HandleTargetPerceptionUpdated(
 
 	if (Stimulus.WasSuccessfullySensed())
 	{
+		if (GuardStateComponent->GetGuardState() == EHeistGuardState::ChasePlayer
+			&& GuardStateComponent->GetChaseTarget() == TargetActor)
+		{
+			GuardStateComponent->RefreshChaseTargetLocation();
+			return;
+		}
+
 		const TCHAR* RejectReason = nullptr;
 		AActor* BlockingActor = nullptr;
 		if (CanInitiallySeeTarget(
@@ -339,6 +865,7 @@ bool AHeistGuardAIController::CanInitiallySeeTarget(
 
 	const float ActiveHalfAngle =
 		GuardStateComponent->GetGuardState() == EHeistGuardState::InvestigateNoise
+			|| GuardStateComponent->GetGuardState() == EHeistGuardState::SearchLastKnownLocation
 			? InvestigateSightHalfAngle
 			: DefaultSightHalfAngle;
 	const FVector DirectionToTarget = ToTarget.GetSafeNormal();
@@ -638,12 +1165,13 @@ void AHeistGuardAIController::ValidateCurrentChaseTarget()
 		ChaseTarget->GetActorLocation());
 	if (Distance > AggroResetDistance)
 	{
-		GuardStateComponent->EnterPatrol();
+		const FVector LastKnownLocation = GuardStateComponent->GetStateFocusLocation();
+		GuardStateComponent->EnterSearchLastKnownLocation(LastKnownLocation);
 		UHeistDebugFunctionLibrary::DebugGuardSightTargetLost(
 			this,
 			GuardCharacter,
 			ChaseTarget,
-			ChaseTarget->GetActorLocation(),
+			LastKnownLocation,
 			TEXT("AggroResetDistance"));
 		return;
 	}
@@ -668,6 +1196,16 @@ void AHeistGuardAIController::ValidateCurrentChaseTarget()
 	}
 
 	GuardStateComponent->RefreshChaseTargetLocation();
+	const UHeistPatrolPathComponent* PatrolPath = GuardCharacter->GetPatrolPathComponent();
+	const float AcceptanceRadius =
+		IsValid(PatrolPath) ? PatrolPath->GetAcceptanceRadius() : 75.0f;
+	if (!bHasActiveGuardMove
+		&& FVector::DistSquared(
+			GuardCharacter->GetActorLocation(),
+			ChaseTarget->GetActorLocation()) > FMath::Square(AcceptanceRadius))
+	{
+		BeginChaseMovement();
+	}
 }
 
 void AHeistGuardAIController::UpdateSightForGuardState(
@@ -736,12 +1274,37 @@ UStateTreeAIComponent* AHeistGuardAIController::GetGuardStateTreeComponent() con
 }
 
 void AHeistGuardAIController::HandleGuardStateChanged(
-	const EHeistGuardState,
+	const EHeistGuardState PreviousState,
 	const EHeistGuardState NewState)
 {
 	if (!HasAuthority())
 	{
 		return;
+	}
+
+	ClearGuardMovementTimer();
+	bHasActiveGuardMove = false;
+	StopMovement();
+
+	if (NewState == EHeistGuardState::Patrol)
+	{
+		BeginPatrolMovement();
+	}
+	else if (NewState == EHeistGuardState::InvestigateNoise)
+	{
+		BeginInvestigateMovement();
+	}
+	else if (NewState == EHeistGuardState::ChasePlayer)
+	{
+		BeginChaseMovement();
+	}
+	else if (NewState == EHeistGuardState::SearchLastKnownLocation)
+	{
+		BeginSearchMovement();
+	}
+	else if (NewState == EHeistGuardState::ReturnToPatrol)
+	{
+		BeginReturnToPatrolMovement();
 	}
 
 	UpdateSightForGuardState(NewState);

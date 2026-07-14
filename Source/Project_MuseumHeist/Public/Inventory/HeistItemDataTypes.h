@@ -201,6 +201,9 @@ struct PROJECT_MUSEUMHEIST_API FHeistGuardDataRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0", Units = "s"))
 	float InvestigateDuration = 0.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0", Units = "s"))
+	float SearchDuration = 5.0f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0", Units = "cm"))
 	float AggroResetDistance = 0.0f;
 

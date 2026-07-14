@@ -36,8 +36,13 @@ public:
 
 private:
 	void HandleSoundPingReported(const FHeistSoundPingEvent& SoundPingEvent);
+	void HandleGuardStateChanged(EHeistGuardState PreviousState, EHeistGuardState NewState);
+	static int32 ResolveCandidatePriority(EHeistSoundPingType PingType);
 
 	float InvestigateDuration = 0.0f;
+	FHeistSoundPingEvent CurrentCandidate;
+	float CurrentCandidateDistance = TNumericLimits<float>::Max();
+	bool bHasCurrentCandidate = false;
 
 #pragma endregion
 };

@@ -39,7 +39,9 @@ public:
 	bool EnterChasePlayer(AActor* TargetActor);
 	bool RefreshChaseTargetLocation();
 	bool EnterInvestigateNoise(const FVector& InvestigateLocation, float DurationSeconds);
+	bool StartInvestigateConfirmationTimer();
 	bool EnterSearchLastKnownLocation(const FVector& SearchLocation);
+	bool StartSearchTimer();
 	bool EnterReturnToPatrol();
 	bool SetDisabled(bool bDisabled);
 	bool ApplyStun(float DurationSeconds);
@@ -55,6 +57,8 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Heist|AI")
 	AActor* GetChaseTarget() const;
+	float GetInvestigateConfirmationDuration() const;
+	float GetSearchDuration() const;
 
 	FHeistGuardStateChanged& GetGuardStateChangedDelegate();
 	void ConfigureGuardProfile(const FHeistGuardDataRow& GuardData);
@@ -65,6 +69,7 @@ private:
 		float DurationSeconds = 0.0f,
 		bool bBypassPriority = false);
 	bool CanEnterState(EHeistGuardState NewState) const;
+	bool StartStateTimer(float DurationSeconds);
 	void HandleTimedStateExpired();
 	void ClearStateTimer();
 
@@ -77,13 +82,15 @@ private:
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|AI", meta = (AllowPrivateAccess = "true"))
 	float StateEndServerTime = 0.0f;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|AI", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|AI", meta = (AllowPrivateAccess = "true"))
 	FVector StateFocusLocation = FVector::ZeroVector;
 
 	UPROPERTY(Transient, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|AI", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<AActor> ChaseTarget;
 
 	float InvestigateDuration = 0.0f;
+	float SearchDuration = 0.0f;
+	float PendingInvestigateDuration = 0.0f;
 	FTimerHandle StateTimerHandle;
 	FHeistGuardStateChanged GuardStateChangedDelegate;
 
