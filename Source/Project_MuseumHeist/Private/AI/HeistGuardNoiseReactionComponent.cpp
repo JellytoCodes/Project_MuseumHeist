@@ -126,14 +126,44 @@ bool UHeistGuardNoiseReactionComponent::ReactToSoundPing(
 	UHeistGuardStateComponent* GuardStateComponent =
 		GuardCharacter->GetGuardStateComponent();
 	checkf(IsValid(GuardStateComponent), TEXT("HeistGuardCharacter requires GuardStateComponent."));
+	const EHeistGuardState GuardStateBeforeReaction = GuardStateComponent->GetGuardState();
+	const int32 NewPriority = ResolveCandidatePriority(SoundPingEvent.PingType);
+	const EHeistSoundPingType PreviousCandidateType = bHasCurrentCandidate
+		? CurrentCandidate.PingType
+		: EHeistSoundPingType::None;
+	const int32 PreviousCandidatePriority = bHasCurrentCandidate
+		? ResolveCandidatePriority(CurrentCandidate.PingType)
+		: MAX_int32;
 
-	if (GuardStateComponent->GetGuardState() == EHeistGuardState::InvestigateNoise
+	if (GuardStateBeforeReaction == EHeistGuardState::ChasePlayer)
+	{
+		UHeistDebugFunctionLibrary::DebugGuardNoiseReactionRejected(
+			this,
+			GuardCharacter,
+			SoundPingEvent,
+			TEXT("ChaseHasPriority"),
+			Distance);
+		if (SoundPingEvent.PingType == EHeistSoundPingType::CoinImpact)
+		{
+			UHeistDebugFunctionLibrary::DebugCoinDistractionDecision(
+				this,
+				GuardCharacter,
+				SoundPingEvent,
+				GuardStateBeforeReaction,
+				TEXT("REJECT"),
+				TEXT("ChaseHasPriority"),
+				NewPriority,
+				PreviousCandidateType,
+				PreviousCandidatePriority);
+		}
+		return false;
+	}
+
+	if (GuardStateBeforeReaction == EHeistGuardState::InvestigateNoise
 		&& bHasCurrentCandidate)
 	{
-		const int32 NewPriority = ResolveCandidatePriority(SoundPingEvent.PingType);
-		const int32 CurrentPriority = ResolveCandidatePriority(CurrentCandidate.PingType);
-		if (NewPriority > CurrentPriority
-			|| (NewPriority == CurrentPriority && Distance >= CurrentCandidateDistance))
+		if (NewPriority > PreviousCandidatePriority
+			|| (NewPriority == PreviousCandidatePriority && Distance >= CurrentCandidateDistance))
 		{
 			UHeistDebugFunctionLibrary::DebugGuardNoiseReactionRejected(
 				this,
@@ -141,6 +171,19 @@ bool UHeistGuardNoiseReactionComponent::ReactToSoundPing(
 				SoundPingEvent,
 				TEXT("LowerPriorityCandidate"),
 				Distance);
+			if (SoundPingEvent.PingType == EHeistSoundPingType::CoinImpact)
+			{
+				UHeistDebugFunctionLibrary::DebugCoinDistractionDecision(
+					this,
+					GuardCharacter,
+					SoundPingEvent,
+					GuardStateBeforeReaction,
+					TEXT("REJECT"),
+					TEXT("LowerPriorityCandidate"),
+					NewPriority,
+					PreviousCandidateType,
+					PreviousCandidatePriority);
+			}
 			return false;
 		}
 	}
@@ -168,6 +211,26 @@ bool UHeistGuardNoiseReactionComponent::ReactToSoundPing(
 		SoundPingEvent,
 		Distance,
 		InvestigateDuration);
+	if (SoundPingEvent.PingType == EHeistSoundPingType::CoinImpact)
+	{
+		const TCHAR* SelectionRule = TEXT("InitialCandidate");
+		if (PreviousCandidateType != EHeistSoundPingType::None)
+		{
+			SelectionRule = NewPriority < PreviousCandidatePriority
+				? TEXT("HigherPriorityReplacement")
+				: TEXT("CloserSamePriorityReplacement");
+		}
+		UHeistDebugFunctionLibrary::DebugCoinDistractionDecision(
+			this,
+			GuardCharacter,
+			SoundPingEvent,
+			GuardStateBeforeReaction,
+			TEXT("ACCEPT"),
+			SelectionRule,
+			NewPriority,
+			PreviousCandidateType,
+			PreviousCandidatePriority);
+	}
 	return true;
 }
 

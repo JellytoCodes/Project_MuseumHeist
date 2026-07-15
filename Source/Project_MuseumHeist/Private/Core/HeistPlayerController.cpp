@@ -302,6 +302,13 @@ void AHeistPlayerController::ApplyLocalInputMode(const EHeistInputMode NewInputM
 		SetInputMode(InputMode);
 	}
 
+	const AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
+	if (IsValid(HeistPlayerState) && HeistPlayerState->IsArrested())
+	{
+		SetIgnoreMoveInput(true);
+		SetIgnoreLookInput(true);
+	}
+
 	UE_LOG(
 		LogHeist,
 		Log,
@@ -418,6 +425,23 @@ void AHeistPlayerController::HandleInventoryOpenStateChanged(const bool bInvento
 	}
 }
 
+void AHeistPlayerController::HandleArrestStateChanged(const bool bArrested)
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	ApplyLocalInputMode(EHeistInputMode::Gameplay);
+	UHeistDebugFunctionLibrary::Message(
+		this,
+		FString::Printf(
+			TEXT("Local arrest input state applied: Arrested=%s InputMode=Gameplay Cursor=false IgnoreMove=%s IgnoreLook=%s"),
+			bArrested ? TEXT("true") : TEXT("false"),
+			IsMoveInputIgnored() ? TEXT("true") : TEXT("false"),
+			IsLookInputIgnored() ? TEXT("true") : TEXT("false")));
+}
+
 EHeistInputMode AHeistPlayerController::GetLocalInputMode() const
 {
 	return LocalInputMode;
@@ -425,6 +449,13 @@ EHeistInputMode AHeistPlayerController::GetLocalInputMode() const
 
 void AHeistPlayerController::RequestSetInventoryOpen(const bool bInventoryOpen)
 {
+	const AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
+	if (bInventoryOpen && IsValid(HeistPlayerState) && HeistPlayerState->IsArrested())
+	{
+		LogInventoryRequestRejected(TEXT("SetOpen"), INDEX_NONE, TEXT("PlayerArrested"));
+		return;
+	}
+
 	if (bInventoryOpen && IsLocalController())
 	{
 		AHeistHUD* HeistHUD = GetHUD<AHeistHUD>();
@@ -624,6 +655,21 @@ void AHeistPlayerController::DebugRequestFillInventoryForFeedback(const FName It
 void AHeistPlayerController::DebugRequestApplyStatusSmoke(const float DurationSeconds)
 {
 	Server_DebugRequestApplyStatusSmoke(DurationSeconds);
+}
+
+void AHeistPlayerController::DebugRequestSetArrested(const bool bArrested)
+{
+	Server_DebugRequestSetArrested(bArrested);
+}
+
+void AHeistPlayerController::DebugRequestDumpArrestState()
+{
+	Server_DebugRequestDumpArrestState();
+}
+
+void AHeistPlayerController::DebugRequestSetFootstepWeight(const float TotalLootWeight)
+{
+	Server_DebugRequestSetFootstepWeight(TotalLootWeight);
 }
 
 void AHeistPlayerController::Server_RequestLootPickup_Implementation(AHeistLootActor* TargetLootActor)
@@ -1415,6 +1461,49 @@ void AHeistPlayerController::Server_DebugRequestSeedResult_Implementation(
 #endif
 }
 
+void AHeistPlayerController::Server_DebugRequestSetArrested_Implementation(const bool bArrested)
+{
+#if !UE_BUILD_SHIPPING
+	AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
+	if (!IsValid(HeistPlayerState))
+	{
+		UHeistDebugFunctionLibrary::Message(this, TEXT("Arrest debug request failed: missing PlayerState."), EHeistDebugLevel::Warning);
+		return;
+	}
+
+	if (bArrested)
+	{
+		HeistPlayerState->MarkArrested(nullptr);
+	}
+	else
+	{
+		HeistPlayerState->ClearArrested();
+	}
+#endif
+}
+
+void AHeistPlayerController::Server_DebugRequestDumpArrestState_Implementation()
+{
+#if !UE_BUILD_SHIPPING
+	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	if (IsValid(HeistGameState))
+	{
+		HeistGameState->RebuildPlayerResults();
+	}
+#endif
+}
+
+void AHeistPlayerController::Server_DebugRequestSetFootstepWeight_Implementation(const float TotalLootWeight)
+{
+#if !UE_BUILD_SHIPPING
+	AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
+	if (IsValid(HeistPlayerState))
+	{
+		HeistPlayerState->DebugSetTotalLootWeight(TotalLootWeight);
+	}
+#endif
+}
+
 #pragma endregion
 
 #pragma region Feedback
@@ -1654,6 +1743,12 @@ bool AHeistPlayerController::TryBuildGameplayRequestContext(
 	if (HeistPlayerState->IsEscaped())
 	{
 		OutRejectReason = TEXT("AlreadyEscaped");
+		return false;
+	}
+
+	if (HeistPlayerState->IsArrested())
+	{
+		OutRejectReason = TEXT("PlayerArrested");
 		return false;
 	}
 

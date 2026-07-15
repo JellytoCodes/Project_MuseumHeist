@@ -147,6 +147,9 @@ public:
 	UFUNCTION(Exec)
 	void HeistSoundPingTest();
 
+	UFUNCTION(Exec)
+	void HeistFootstepWeight(float TotalLootWeight = 0.0f);
+
 #pragma endregion
 
 #pragma region TrapDebug
@@ -229,6 +232,15 @@ public:
 
 	UFUNCTION(Exec)
 	void HeistGuardNoise(float Distance = 500.0f);
+
+	UFUNCTION(Exec)
+	void HeistArrest();
+
+	UFUNCTION(Exec)
+	void HeistRelease();
+
+	UFUNCTION(Exec)
+	void HeistArrestDump();
 
 #pragma endregion
 };

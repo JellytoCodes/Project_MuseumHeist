@@ -106,6 +106,34 @@ void UHeistCheatManager::HeistGuardNoise(const float Distance)
 #endif
 }
 
+void UHeistCheatManager::HeistArrest()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugSetPlayerArrested(GetOuterAPlayerController(), true);
+#endif
+}
+
+void UHeistCheatManager::HeistRelease()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugSetPlayerArrested(GetOuterAPlayerController(), false);
+#endif
+}
+
+void UHeistCheatManager::HeistArrestDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugArrestDump(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistFootstepWeight(const float TotalLootWeight)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugFootstepWeight(GetOuterAPlayerController(), TotalLootWeight);
+#endif
+}
+
 #pragma endregion
 
 #pragma region InventoryDebug

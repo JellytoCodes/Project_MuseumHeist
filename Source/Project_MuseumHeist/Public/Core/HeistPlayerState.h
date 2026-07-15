@@ -6,6 +6,7 @@
 #include "HeistPlayerState.generated.h"
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerEscapeStateChanged, bool);
+DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerArrestStateChanged, bool);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistLootTotalsChanged, int32, float);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerIdentityChanged, int32);
 
@@ -35,6 +36,27 @@ private:
 	float TotalLootWeight = 0.0f;
 
 	FHeistLootTotalsChanged LootTotalsChangedDelegate;
+
+#pragma endregion
+
+#pragma region ArrestState
+
+public:
+	bool IsArrested() const;
+	bool MarkArrested(AActor* ArrestingGuard);
+	bool ClearArrested();
+	FHeistPlayerArrestStateChanged& GetArrestStateChangedDelegate();
+
+private:
+	bool SetArrestedInternal(bool bNewArrested, AActor* ArrestingGuard);
+
+	UPROPERTY(ReplicatedUsing = OnRep_Arrested, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Arrest", meta = (AllowPrivateAccess = "true"))
+	bool bArrested = false;
+
+	FHeistPlayerArrestStateChanged ArrestStateChangedDelegate;
+
+	UFUNCTION()
+	void OnRep_Arrested();
 
 #pragma endregion
 
@@ -82,6 +104,7 @@ private:
 
 public:
 	void DebugSetTotalLootScore(int32 InScore);
+	void DebugSetTotalLootWeight(float InWeight);
 	void DebugSetResultState(int32 InScore, bool bInEscaped, float InEscapeTimeSeconds);
 
 #pragma endregion

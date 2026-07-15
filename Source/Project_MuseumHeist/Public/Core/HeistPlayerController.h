@@ -92,6 +92,7 @@ private:
 
 public:
 	void HandleInventoryOpenStateChanged(bool bInventoryOpen);
+	void HandleArrestStateChanged(bool bArrested);
 	EHeistInputMode GetLocalInputMode() const;
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Inventory")
@@ -133,6 +134,9 @@ public:
 	void DebugRequestFeedbackTest();
 	void DebugRequestFillInventoryForFeedback(FName ItemId);
 	void DebugRequestApplyStatusSmoke(float DurationSeconds);
+	void DebugRequestSetArrested(bool bArrested);
+	void DebugRequestDumpArrestState();
+	void DebugRequestSetFootstepWeight(float TotalLootWeight);
 
 private:
 	UFUNCTION(Server, Reliable)
@@ -197,6 +201,15 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void Server_DebugRequestSeedResult(int32 Score, bool bEscaped, float EscapeTimeSeconds);
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestSetArrested(bool bArrested);
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestDumpArrestState();
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestSetFootstepWeight(float TotalLootWeight);
 
 #pragma endregion
 

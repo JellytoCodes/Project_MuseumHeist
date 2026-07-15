@@ -108,6 +108,7 @@ public:
 	static void DebugGuardSightTargetLost(const UObject* WorldContextObject, const UObject* GuardActor, const UObject* TargetActor, const FVector& LastKnownLocation, const TCHAR* Reason);
 	static void DebugGuardNoiseReactionAccepted(const UObject* WorldContextObject, const UObject* GuardActor, const FHeistSoundPingEvent& SoundPingEvent, float Distance, float InvestigateDuration);
 	static void DebugGuardNoiseReactionRejected(const UObject* WorldContextObject, const UObject* GuardActor, const FHeistSoundPingEvent& SoundPingEvent, const TCHAR* Reason, float Distance = -1.0f);
+	static void DebugCoinDistractionDecision(const UObject* WorldContextObject, const UObject* GuardActor, const FHeistSoundPingEvent& SoundPingEvent, EHeistGuardState GuardState, const TCHAR* Decision, const TCHAR* Rule, int32 CoinPriority, EHeistSoundPingType PreviousCandidateType, int32 PreviousCandidatePriority);
 	static void DebugGuardPatrolPathResolved(const UObject* WorldContextObject, const UObject* GuardActor, FName RouteId, int32 WaypointCount);
 	static void DebugGuardMovement(const UObject* WorldContextObject, const UObject* GuardActor, EHeistGuardState State, const TCHAR* Phase, const FVector& TargetLocation, int32 WaypointIndex, int32 WaypointCount, const TCHAR* Result);
 	static void DebugGuardInvestigateConfirmationStarted(const UObject* WorldContextObject, const UObject* GuardActor, const FVector& InvestigateLocation, float DurationSeconds);
@@ -271,6 +272,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|SoundPing", meta = (DevelopmentOnly))
 	static void DebugSoundPingPoolTest(APlayerController* PlayerController);
 
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|SoundPing", meta = (DevelopmentOnly, ClampMin = "0.0"))
+	static void DebugFootstepWeight(APlayerController* PlayerController, float TotalLootWeight);
+
 #pragma endregion
 
 #pragma region HUDDebug
@@ -327,6 +331,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Guard", meta = (DevelopmentOnly))
 	static void DebugGuardNoise(APlayerController* PlayerController, float Distance);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Guard", meta = (DevelopmentOnly))
+	static void DebugSetPlayerArrested(APlayerController* PlayerController, bool bArrested);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Guard", meta = (DevelopmentOnly))
+	static void DebugArrestDump(APlayerController* PlayerController);
 
 #pragma endregion
 };

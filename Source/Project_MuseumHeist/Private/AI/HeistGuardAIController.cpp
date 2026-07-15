@@ -6,6 +6,7 @@
 #include "Character/HeistPlayerCharacter.h"
 #include "Components/StateTreeAIComponent.h"
 #include "Core/HeistGameplayTags.h"
+#include "Core/HeistPlayerState.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "Components/PrimitiveComponent.h"
 #include "Engine/World.h"
@@ -186,7 +187,11 @@ void AHeistGuardAIController::OnMoveCompleted(
 			INDEX_NONE,
 			0,
 			Result.IsSuccess() ? TEXT("Success") : TEXT("Failed"));
-		if (!Result.IsSuccess())
+		if (Result.IsSuccess())
+		{
+			TryArrestChaseTarget();
+		}
+		else
 		{
 			GuardStateComponent->EnterSearchLastKnownLocation(LastKnownLocation);
 		}
@@ -465,6 +470,10 @@ void AHeistGuardAIController::BeginChaseMovement()
 	{
 		GuardStateComponent->EnterSearchLastKnownLocation(
 			GuardStateComponent->GetStateFocusLocation());
+	}
+	else if (MoveResult == EPathFollowingRequestResult::AlreadyAtGoal)
+	{
+		TryArrestChaseTarget();
 	}
 }
 
@@ -852,6 +861,16 @@ bool AHeistGuardAIController::CanInitiallySeeTarget(
 		return false;
 	}
 
+	const AHeistPlayerCharacter* PlayerCharacter = Cast<AHeistPlayerCharacter>(TargetActor);
+	const AHeistPlayerState* HeistPlayerState = IsValid(PlayerCharacter)
+		? PlayerCharacter->GetPlayerState<AHeistPlayerState>()
+		: nullptr;
+	if (!IsValid(HeistPlayerState) || HeistPlayerState->IsEscaped() || HeistPlayerState->IsArrested())
+	{
+		OutRejectReason = TEXT("PlayerUnavailable");
+		return false;
+	}
+
 	FVector EyeLocation;
 	FRotator EyeRotation;
 	GuardCharacter->GetActorEyesViewPoint(EyeLocation, EyeRotation);
@@ -1163,6 +1182,10 @@ void AHeistGuardAIController::ValidateCurrentChaseTarget()
 	const float Distance = FVector::Dist(
 		GuardCharacter->GetActorLocation(),
 		ChaseTarget->GetActorLocation());
+	if (Distance <= ArrestDistance && TryArrestChaseTarget())
+	{
+		return;
+	}
 	if (Distance > AggroResetDistance)
 	{
 		const FVector LastKnownLocation = GuardStateComponent->GetStateFocusLocation();
@@ -1206,6 +1229,57 @@ void AHeistGuardAIController::ValidateCurrentChaseTarget()
 	{
 		BeginChaseMovement();
 	}
+}
+
+bool AHeistGuardAIController::TryArrestChaseTarget()
+{
+	AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn());
+	UHeistGuardStateComponent* GuardStateComponent = IsValid(GuardCharacter)
+		? GuardCharacter->GetGuardStateComponent()
+		: nullptr;
+	AHeistPlayerCharacter* PlayerCharacter = IsValid(GuardStateComponent)
+		? Cast<AHeistPlayerCharacter>(GuardStateComponent->GetChaseTarget())
+		: nullptr;
+	AHeistPlayerState* HeistPlayerState = IsValid(PlayerCharacter)
+		? PlayerCharacter->GetPlayerState<AHeistPlayerState>()
+		: nullptr;
+	if (!HasAuthority()
+		|| !IsValid(GuardCharacter)
+		|| !IsValid(GuardStateComponent)
+		|| GuardStateComponent->GetGuardState() != EHeistGuardState::ChasePlayer
+		|| !IsValid(HeistPlayerState)
+		|| HeistPlayerState->IsEscaped()
+		|| HeistPlayerState->IsArrested())
+	{
+		return false;
+	}
+
+	const float Distance = FVector::Dist(
+		GuardCharacter->GetActorLocation(),
+		PlayerCharacter->GetActorLocation());
+	if (Distance > ArrestDistance)
+	{
+		return false;
+	}
+
+	if (!HeistPlayerState->MarkArrested(GuardCharacter))
+	{
+		return false;
+	}
+
+	StopMovement();
+	bHasActiveGuardMove = false;
+	UHeistDebugFunctionLibrary::Message(
+		this,
+		FString::Printf(
+			TEXT("Guard arrest committed: Guard=%s Player=%s PlayerId=%d Distance=%.1f ArrestDistance=%.1f Authority=true"),
+			*GetNameSafe(GuardCharacter),
+			*GetNameSafe(PlayerCharacter),
+			HeistPlayerState->HeistPlayerId,
+			Distance,
+			ArrestDistance));
+	GuardStateComponent->EnterReturnToPatrol();
+	return true;
 }
 
 void AHeistGuardAIController::UpdateSightForGuardState(

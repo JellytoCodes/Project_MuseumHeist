@@ -20,6 +20,7 @@
 #include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "GameplayTagContainer.h"
 #include "Inventory/HeistInventoryTypes.h"
 #include "World/Actors/Area/HeistSmokeCloudActor.h"
@@ -246,7 +247,7 @@ void UHeistDebugFunctionLibrary::DebugSoundPingHelp(APlayerController* PlayerCon
 #else
 	Message(
 		PlayerController,
-		TEXT("Sound Ping debug commands: HeistSoundPingDump | HeistSoundPingTest | HeistCoinThrow <Distance>"),
+		TEXT("Sound Ping debug commands: HeistSoundPingDump | HeistSoundPingTest | HeistFootstepWeight <Weight> | HeistCoinThrow <Distance>"),
 		EHeistDebugLevel::Info,
 		true,
 		8.0f);
@@ -300,7 +301,7 @@ void UHeistDebugFunctionLibrary::DebugGuardHelp(APlayerController* PlayerControl
 #else
 	Message(
 		PlayerController,
-		TEXT("Guard debug commands: HeistGuardSpawn <Distance> | HeistGuardDump | HeistGuardState <Disabled|Patrol|Investigate|Chase|Search|Return> <Duration> | HeistGuardStun <Duration> | HeistGuardSightCheck | HeistGuardSightAuto <0|1> | HeistGuardNoise <Distance>"),
+		TEXT("Guard debug commands: HeistGuardSpawn <Distance> | HeistGuardDump | HeistGuardState <Disabled|Patrol|Investigate|Chase|Search|Return> <Duration> | HeistGuardStun <Duration> | HeistGuardSightCheck | HeistGuardSightAuto <0|1> | HeistGuardNoise <Distance> | HeistArrest | HeistRelease | HeistArrestDump"),
 		EHeistDebugLevel::Info,
 		true,
 		10.0f);
@@ -595,6 +596,93 @@ void UHeistDebugFunctionLibrary::DebugGuardNoise(
 		FString::Printf(
 			TEXT("Guard CoinImpact noise debug requested: Distance=%.1f"),
 			SafeDistance),
+		EHeistDebugLevel::Info,
+		true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugSetPlayerArrested(
+	APlayerController* PlayerController,
+	const bool bArrested)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		Message(PlayerController, TEXT("Arrest debug failed: invalid Heist player controller."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	HeistPlayerController->DebugRequestSetArrested(bArrested);
+	Message(
+		PlayerController,
+		FString::Printf(TEXT("Player arrest debug requested: Arrested=%s"), bArrested ? TEXT("true") : TEXT("false")),
+		EHeistDebugLevel::Info,
+		true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugArrestDump(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	const AHeistPlayerState* HeistPlayerState = IsValid(HeistPlayerController)
+		? HeistPlayerController->GetPlayerState<AHeistPlayerState>()
+		: nullptr;
+	const AHeistPlayerCharacter* Character = IsValid(HeistPlayerController)
+		? HeistPlayerController->GetPawn<AHeistPlayerCharacter>()
+		: nullptr;
+	if (!IsValid(HeistPlayerController) || !IsValid(HeistPlayerState) || !IsValid(Character))
+	{
+		Message(PlayerController, TEXT("Arrest dump failed: missing local Heist player state or character."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const UCharacterMovementComponent* MovementComponent = Character->GetCharacterMovement();
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Player arrest dump: PlayerId=%d Arrested=%s Escaped=%s MovementDisabled=%s Visible=%s Collision=%s InputMode=%s Cursor=%s IgnoreMove=%s IgnoreLook=%s"),
+			HeistPlayerState->HeistPlayerId,
+			HeistPlayerState->IsArrested() ? TEXT("true") : TEXT("false"),
+			HeistPlayerState->IsEscaped() ? TEXT("true") : TEXT("false"),
+			IsValid(MovementComponent) && MovementComponent->MovementMode == MOVE_None ? TEXT("true") : TEXT("false"),
+			Character->IsHidden() ? TEXT("false") : TEXT("true"),
+			Character->GetActorEnableCollision() ? TEXT("true") : TEXT("false"),
+			HeistPlayerController->GetLocalInputMode() == EHeistInputMode::Gameplay ? TEXT("Gameplay") : TEXT("NonGameplay"),
+			HeistPlayerController->bShowMouseCursor ? TEXT("true") : TEXT("false"),
+			HeistPlayerController->IsMoveInputIgnored() ? TEXT("true") : TEXT("false"),
+			HeistPlayerController->IsLookInputIgnored() ? TEXT("true") : TEXT("false")),
+		EHeistDebugLevel::Info,
+		true,
+		8.0f);
+	HeistPlayerController->DebugRequestDumpArrestState();
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugFootstepWeight(
+	APlayerController* PlayerController,
+	const float TotalLootWeight)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		Message(PlayerController, TEXT("Footstep weight debug failed: invalid Heist player controller."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const float SafeWeight = FMath::IsFinite(TotalLootWeight) ? FMath::Max(0.0f, TotalLootWeight) : 0.0f;
+	HeistPlayerController->DebugRequestSetFootstepWeight(SafeWeight);
+	Message(
+		PlayerController,
+		FString::Printf(TEXT("Footstep weight debug requested: TotalLootWeight=%.1f"), SafeWeight),
 		EHeistDebugLevel::Info,
 		true);
 #endif
@@ -2220,6 +2308,42 @@ void UHeistDebugFunctionLibrary::DebugGuardNoiseReactionRejected(
 			SoundPingEvent.Radius,
 			Reason ? Reason : TEXT("None")),
 		EHeistDebugLevel::Warning);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugCoinDistractionDecision(
+	const UObject* WorldContextObject,
+	const UObject* GuardActor,
+	const FHeistSoundPingEvent& SoundPingEvent,
+	const EHeistGuardState GuardState,
+	const TCHAR* Decision,
+	const TCHAR* Rule,
+	const int32 CoinPriority,
+	const EHeistSoundPingType PreviousCandidateType,
+	const int32 PreviousCandidatePriority)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Coin distraction decision: Guard=%s Decision=%s Rule=%s GuardState=%d SequenceId=%d CoinPriority=%d PreviousType=%d PreviousPriority=%d Focus=(%.1f,%.1f,%.1f) Radius=%.1f"),
+			*GetNameSafe(GuardActor),
+			Decision ? Decision : TEXT("Unknown"),
+			Rule ? Rule : TEXT("None"),
+			static_cast<int32>(GuardState),
+			SoundPingEvent.SequenceId,
+			CoinPriority,
+			static_cast<int32>(PreviousCandidateType),
+			PreviousCandidatePriority,
+			SoundPingEvent.WorldLocation.X,
+			SoundPingEvent.WorldLocation.Y,
+			SoundPingEvent.WorldLocation.Z,
+			SoundPingEvent.Radius),
+		Decision && FCString::Stricmp(Decision, TEXT("ACCEPT")) == 0
+			? EHeistDebugLevel::Info
+			: EHeistDebugLevel::Warning);
 #endif
 }
 

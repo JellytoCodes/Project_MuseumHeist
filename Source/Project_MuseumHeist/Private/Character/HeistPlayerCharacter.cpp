@@ -162,7 +162,7 @@ void AHeistPlayerCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 	RefreshMovementSpeedFromWeight();
-	ApplyEscapedGameplayRestrictions();
+	ApplyPlayerStateGameplayRestrictions();
 }
 
 float AHeistPlayerCharacter::CalculateMoveSpeedFromWeight(float InTotalWeight) const
@@ -201,8 +201,9 @@ bool AHeistPlayerCharacter::CanPerformGameplayActions() const
 {
 	const AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
 	const bool bEscaped = IsValid(HeistPlayerState) && HeistPlayerState->IsEscaped();
+	const bool bArrested = IsValid(HeistPlayerState) && HeistPlayerState->IsArrested();
 	const bool bInventoryOpen = IsValid(InventoryComponent) && InventoryComponent->IsInventoryOpen();
-	return !bEscaped && !bInventoryOpen;
+	return !bEscaped && !bArrested && !bInventoryOpen;
 }
 
 void AHeistPlayerCharacter::HandleInventoryOpenStateChanged(const bool bInventoryOpen)
@@ -223,29 +224,63 @@ void AHeistPlayerCharacter::HandleInventoryOpenStateChanged(const bool bInventor
 	}
 }
 
-void AHeistPlayerCharacter::ApplyEscapedGameplayRestrictions()
+void AHeistPlayerCharacter::ApplyPlayerStateGameplayRestrictions()
 {
-	if (CanPerformGameplayActions())
+	const AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
+	if (!IsValid(HeistPlayerState))
 	{
 		return;
 	}
+	const bool bEscaped = HeistPlayerState->IsEscaped();
+	const bool bArrested = HeistPlayerState->IsArrested();
 
 	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
 	{
-		MovementComponent->StopMovementImmediately();
-		MovementComponent->DisableMovement();
+		if (bEscaped || bArrested)
+		{
+			MovementComponent->StopMovementImmediately();
+			MovementComponent->DisableMovement();
+		}
+		else
+		{
+			MovementComponent->SetMovementMode(MOVE_Walking);
+			ApplyCurrentMoveSpeed();
+		}
 	}
 
-	SetActorEnableCollision(false);
-	SetActorHiddenInGame(true);
+	SetActorEnableCollision(!bEscaped);
+	SetActorHiddenInGame(bEscaped);
 
-	UHeistDebugFunctionLibrary::DebugEscapedPlayerRestrictionsApplied(this);
+	if (bEscaped)
+	{
+		UHeistDebugFunctionLibrary::DebugEscapedPlayerRestrictionsApplied(this);
+	}
+	else
+	{
+		UHeistDebugFunctionLibrary::Message(
+			this,
+			FString::Printf(
+				TEXT("Player arrest restrictions applied: Character=%s Arrested=%s MovementDisabled=%s Visible=true Collision=true"),
+				*GetName(),
+				bArrested ? TEXT("true") : TEXT("false"),
+				bArrested ? TEXT("true") : TEXT("false")));
+	}
+
+	if (AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(GetController()))
+	{
+		HeistPlayerController->HandleArrestStateChanged(bArrested);
+	}
+}
+
+void AHeistPlayerCharacter::ApplyEscapedGameplayRestrictions()
+{
+	ApplyPlayerStateGameplayRestrictions();
 }
 
 void AHeistPlayerCharacter::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
-	ApplyEscapedGameplayRestrictions();
+	ApplyPlayerStateGameplayRestrictions();
 }
 
 #pragma endregion

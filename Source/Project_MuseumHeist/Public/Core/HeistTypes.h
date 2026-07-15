@@ -57,6 +57,9 @@ struct PROJECT_MUSEUMHEIST_API FHeistPlayerResult
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|Result")
 	bool bEscaped = false;
 
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Result")
+	bool bArrested = false;
+
 	bool operator==(const FHeistPlayerResult& Other) const
 	{
 		return PlayerId == Other.PlayerId
@@ -64,7 +67,8 @@ struct PROJECT_MUSEUMHEIST_API FHeistPlayerResult
 			&& FinalScore == Other.FinalScore
 			&& LootWeight == Other.LootWeight
 			&& EscapeTimeSeconds == Other.EscapeTimeSeconds
-			&& bEscaped == Other.bEscaped;
+			&& bEscaped == Other.bEscaped
+			&& bArrested == Other.bArrested;
 	}
 };
 

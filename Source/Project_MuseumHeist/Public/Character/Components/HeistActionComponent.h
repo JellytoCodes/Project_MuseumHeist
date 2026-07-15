@@ -51,6 +51,7 @@ protected:
 public:
 	bool TryBeginEscapeRequest(AHeistVentActor* TargetVentActor);
 	bool IsGameplayCastActive() const;
+	void CancelGameplayActions(const TCHAR* Reason);
 	bool HasPendingEscapeRequest() const;
 	AHeistVentActor* GetPendingEscapeVent() const;
 	void ClearPendingEscapeRequest();

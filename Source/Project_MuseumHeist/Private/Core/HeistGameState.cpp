@@ -274,6 +274,7 @@ void AHeistGameState::RebuildPlayerResults()
 		PlayerResult.LootWeight = HeistPlayerState->GetTotalLootWeight();
 		PlayerResult.EscapeTimeSeconds = HeistPlayerState->GetEscapeTimeSeconds();
 		PlayerResult.bEscaped = HeistPlayerState->IsEscaped();
+		PlayerResult.bArrested = HeistPlayerState->IsArrested();
 	}
 
 	NewPlayerResults.Sort([](const FHeistPlayerResult& Left, const FHeistPlayerResult& Right)
@@ -290,14 +291,35 @@ void AHeistGameState::RebuildPlayerResults()
 		UE_LOG(
 			LogHeist,
 			Log,
-			TEXT("Player contribution result: PlayerId=%d Escaped=%s LootScore=%d FinalScore=%d LootWeight=%.2f EscapeTime=%.2f"),
+			TEXT("Player contribution result: PlayerId=%d Escaped=%s Arrested=%s LootScore=%d FinalScore=%d LootWeight=%.2f EscapeTime=%.2f"),
 			PlayerResult.PlayerId,
 			PlayerResult.bEscaped ? TEXT("true") : TEXT("false"),
+			PlayerResult.bArrested ? TEXT("true") : TEXT("false"),
 			PlayerResult.LootScore,
 			PlayerResult.FinalScore,
 			PlayerResult.LootWeight,
 			PlayerResult.EscapeTimeSeconds);
 	}
+
+	int32 ArrestedPlayerCount = 0;
+	int32 EscapedPlayerCount = 0;
+	for (const FHeistPlayerResult& PlayerResult : PlayerResults)
+	{
+		ArrestedPlayerCount += PlayerResult.bArrested ? 1 : 0;
+		EscapedPlayerCount += PlayerResult.bEscaped ? 1 : 0;
+	}
+	const int32 ActivePlayerCount = PlayerResults.Num() - ArrestedPlayerCount - EscapedPlayerCount;
+	const bool bAllPlayersArrested = PlayerResults.Num() > 0 && ArrestedPlayerCount == PlayerResults.Num();
+	UE_LOG(
+		LogHeist,
+		Log,
+		TEXT("Team arrest state: Players=%d Arrested=%d Escaped=%d Active=%d AllArrested=%s FailureEligible=%s"),
+		PlayerResults.Num(),
+		ArrestedPlayerCount,
+		EscapedPlayerCount,
+		ActivePlayerCount,
+		bAllPlayersArrested ? TEXT("true") : TEXT("false"),
+		bAllPlayersArrested ? TEXT("true") : TEXT("false"));
 
 	UE_LOG(
 		LogHeist,
@@ -326,9 +348,10 @@ void AHeistGameState::OnRep_PlayerResults()
 		UE_LOG(
 			LogHeistNetwork,
 			Log,
-			TEXT("Player contribution result replicated: PlayerId=%d Escaped=%s LootScore=%d FinalScore=%d LootWeight=%.2f EscapeTime=%.2f"),
+			TEXT("Player contribution result replicated: PlayerId=%d Escaped=%s Arrested=%s LootScore=%d FinalScore=%d LootWeight=%.2f EscapeTime=%.2f"),
 			PlayerResult.PlayerId,
 			PlayerResult.bEscaped ? TEXT("true") : TEXT("false"),
+			PlayerResult.bArrested ? TEXT("true") : TEXT("false"),
 			PlayerResult.LootScore,
 			PlayerResult.FinalScore,
 			PlayerResult.LootWeight,

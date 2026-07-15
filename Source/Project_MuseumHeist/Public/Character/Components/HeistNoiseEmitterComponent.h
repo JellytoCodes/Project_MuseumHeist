@@ -11,5 +11,36 @@ class PROJECT_MUSEUMHEIST_API UHeistNoiseEmitterComponent : public UActorCompone
 	GENERATED_BODY()
 
 public:
+	virtual void BeginPlay() override;
+	virtual void TickComponent(
+		float DeltaTime,
+		ELevelTick TickType,
+		FActorComponentTickFunction* ThisTickFunction) override;
+
+public:
 	UHeistNoiseEmitterComponent();
+
+private:
+	bool TryEmitFootstepNoise();
+	float ResolveLootWeightBonus(float TotalLootWeight) const;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Noise", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", ClampMax = "1.0"))
+	float RunSpeedThresholdRatio = 0.75f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Noise", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "cm/s"))
+	float MinimumFootstepSpeed = 10.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Noise", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "kg"))
+	float MediumWeightThreshold = 5.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Noise", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "kg"))
+	float HeavyWeightThreshold = 10.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Noise", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "cm"))
+	float MediumWeightRadiusBonus = 250.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Noise", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "cm"))
+	float HeavyWeightRadiusBonus = 500.0f;
+
+	float LastFootstepServerTime = -1.0f;
 };

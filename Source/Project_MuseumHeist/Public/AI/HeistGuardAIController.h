@@ -60,6 +60,7 @@ private:
 	void CompleteDetectionGrace();
 	void ClearDetectionGrace(const TCHAR* Reason);
 	void ValidateCurrentChaseTarget();
+	bool TryArrestChaseTarget();
 	void UpdateSightForGuardState(EHeistGuardState NewState);
 	void StartSightValidationTimer();
 	void ClearSightValidationTimer();
@@ -81,6 +82,8 @@ private:
 	bool bDisplayCasesBlockSight = true;
 	bool bPerceptionConfigured = false;
 	bool bAutomaticSightEnabled = true;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|AI|Arrest", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "cm"))
+	float ArrestDistance = 125.0f;
 	FName DoorOccluderTag = FName(TEXT("HeistDoorOccluder"));
 	TWeakObjectPtr<AActor> PendingSightTarget;
 	FTimerHandle DetectionGraceTimerHandle;

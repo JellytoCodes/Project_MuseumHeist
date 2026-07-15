@@ -174,6 +174,17 @@ bool UHeistActionComponent::IsGameplayCastActive() const
 	return bEscapeCastActive || bTrapPlacementCastActive;
 }
 
+void UHeistActionComponent::CancelGameplayActions(const TCHAR* Reason)
+{
+	if (!GetOwner() || !GetOwner()->HasAuthority())
+	{
+		return;
+	}
+
+	CancelEscapeCast(Reason ? Reason : TEXT("Cancelled"));
+	CancelTrapPlacementCast(Reason ? Reason : TEXT("Cancelled"));
+}
+
 bool UHeistActionComponent::HasPendingEscapeRequest() const
 {
 	return bEscapeCastActive || PendingEscapeVent.IsValid();

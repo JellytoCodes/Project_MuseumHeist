@@ -68,6 +68,7 @@ private:
 
 public:
 	bool CanPerformGameplayActions() const;
+	void ApplyPlayerStateGameplayRestrictions();
 	void ApplyEscapedGameplayRestrictions();
 	void HandleInventoryOpenStateChanged(bool bInventoryOpen);
 

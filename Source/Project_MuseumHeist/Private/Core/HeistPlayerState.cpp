@@ -1,6 +1,8 @@
 #include "Core/HeistPlayerState.h"
 
 #include "Character/HeistPlayerCharacter.h"
+#include "Character/Components/HeistActionComponent.h"
+#include "Character/Components/HeistInventoryComponent.h"
 #include "Core/HeistGameState.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "Net/UnrealNetwork.h"
@@ -24,7 +26,7 @@ FHeistLootTotalsChanged& AHeistPlayerState::GetLootTotalsChangedDelegate()
 
 bool AHeistPlayerState::CanAddLootScoreAndWeight(int32 ScoreDelta, float WeightDelta) const
 {
-	if (!HasAuthority() || bEscaped || ScoreDelta < 0 || WeightDelta < 0.0f || !FMath::IsFinite(WeightDelta))
+	if (!HasAuthority() || bEscaped || bArrested || ScoreDelta < 0 || WeightDelta < 0.0f || !FMath::IsFinite(WeightDelta))
 	{
 		return false;
 	}
@@ -48,6 +50,12 @@ bool AHeistPlayerState::AddLootScoreAndWeight(int32 ScoreDelta, float WeightDelt
 	if (bEscaped)
 	{
 		UHeistDebugFunctionLibrary::DebugLootScoreWeightRejected(this, TEXT("AlreadyEscaped"));
+		return false;
+	}
+
+	if (bArrested)
+	{
+		UHeistDebugFunctionLibrary::DebugLootScoreWeightRejected(this, TEXT("PlayerArrested"));
 		return false;
 	}
 
@@ -89,6 +97,7 @@ bool AHeistPlayerState::CanRemoveLootScoreAndWeight(const int32 ScoreDelta, cons
 {
 	return HasAuthority()
 		&& !bEscaped
+		&& !bArrested
 		&& ScoreDelta >= 0
 		&& WeightDelta >= 0.0f
 		&& FMath::IsFinite(WeightDelta)
@@ -150,6 +159,12 @@ bool AHeistPlayerState::MarkEscaped()
 		return false;
 	}
 
+	if (bArrested)
+	{
+		UHeistDebugFunctionLibrary::DebugPlayerEscapeStateRejected(this, TEXT("PlayerArrested"));
+		return false;
+	}
+
 	bEscaped = true;
 	FinalScore = TotalLootScore;
 	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
@@ -159,7 +174,7 @@ bool AHeistPlayerState::MarkEscaped()
 
 	if (AHeistPlayerCharacter* HeistPlayerCharacter = Cast<AHeistPlayerCharacter>(GetPawn()))
 	{
-		HeistPlayerCharacter->ApplyEscapedGameplayRestrictions();
+		HeistPlayerCharacter->ApplyPlayerStateGameplayRestrictions();
 	}
 
 	if (AHeistGameState* MutableHeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr)
@@ -198,12 +213,112 @@ void AHeistPlayerState::OnRep_Escaped()
 {
 	if (AHeistPlayerCharacter* HeistPlayerCharacter = Cast<AHeistPlayerCharacter>(GetPawn()))
 	{
-		HeistPlayerCharacter->ApplyEscapedGameplayRestrictions();
+		HeistPlayerCharacter->ApplyPlayerStateGameplayRestrictions();
 	}
 
 	EscapeStateChangedDelegate.Broadcast(bEscaped);
 
 	UHeistDebugFunctionLibrary::DebugPlayerEscapeStateReplicated(this, HeistPlayerId, bEscaped);
+}
+
+#pragma endregion
+
+#pragma region ArrestState
+
+bool AHeistPlayerState::IsArrested() const
+{
+	return bArrested;
+}
+
+bool AHeistPlayerState::MarkArrested(AActor* ArrestingGuard)
+{
+	return SetArrestedInternal(true, ArrestingGuard);
+}
+
+bool AHeistPlayerState::ClearArrested()
+{
+	return SetArrestedInternal(false, nullptr);
+}
+
+FHeistPlayerArrestStateChanged& AHeistPlayerState::GetArrestStateChangedDelegate()
+{
+	return ArrestStateChangedDelegate;
+}
+
+bool AHeistPlayerState::SetArrestedInternal(const bool bNewArrested, AActor* ArrestingGuard)
+{
+	if (!HasAuthority())
+	{
+		UHeistDebugFunctionLibrary::Message(this, TEXT("Player arrest state rejected: Reason=NotAuthority"), EHeistDebugLevel::Warning);
+		return false;
+	}
+
+	if (bNewArrested && bEscaped)
+	{
+		UHeistDebugFunctionLibrary::Message(this, TEXT("Player arrest state rejected: Reason=AlreadyEscaped"), EHeistDebugLevel::Warning);
+		return false;
+	}
+
+	if (bArrested == bNewArrested)
+	{
+		UHeistDebugFunctionLibrary::Message(
+			this,
+			FString::Printf(TEXT("Player arrest state rejected: Reason=NoStateChange Arrested=%s"), bArrested ? TEXT("true") : TEXT("false")),
+			EHeistDebugLevel::Warning);
+		return false;
+	}
+
+	bArrested = bNewArrested;
+	AHeistPlayerCharacter* HeistPlayerCharacter = Cast<AHeistPlayerCharacter>(GetPawn());
+	if (IsValid(HeistPlayerCharacter))
+	{
+		if (bArrested)
+		{
+			if (UHeistActionComponent* ActionComponent = HeistPlayerCharacter->GetActionComponent())
+			{
+				ActionComponent->CancelGameplayActions(TEXT("PlayerArrested"));
+			}
+			if (UHeistInventoryComponent* InventoryComponent = HeistPlayerCharacter->GetInventoryComponent();
+				IsValid(InventoryComponent) && InventoryComponent->IsInventoryOpen())
+			{
+				InventoryComponent->TrySetInventoryOpen(false);
+			}
+		}
+
+		HeistPlayerCharacter->ApplyPlayerStateGameplayRestrictions();
+	}
+
+	if (AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr)
+	{
+		HeistGameState->RebuildPlayerResults();
+	}
+
+	ForceNetUpdate();
+	ArrestStateChangedDelegate.Broadcast(bArrested);
+	UHeistDebugFunctionLibrary::Message(
+		this,
+		FString::Printf(
+			TEXT("Player arrest state committed: PlayerId=%d Arrested=%s Guard=%s Authority=true"),
+			HeistPlayerId,
+			bArrested ? TEXT("true") : TEXT("false"),
+			*GetNameSafe(ArrestingGuard)));
+	return true;
+}
+
+void AHeistPlayerState::OnRep_Arrested()
+{
+	if (AHeistPlayerCharacter* HeistPlayerCharacter = Cast<AHeistPlayerCharacter>(GetPawn()))
+	{
+		HeistPlayerCharacter->ApplyPlayerStateGameplayRestrictions();
+	}
+
+	ArrestStateChangedDelegate.Broadcast(bArrested);
+	UHeistDebugFunctionLibrary::Message(
+		this,
+		FString::Printf(
+			TEXT("Player arrest state replicated: PlayerId=%d Arrested=%s"),
+			HeistPlayerId,
+			bArrested ? TEXT("true") : TEXT("false")));
 }
 
 #pragma endregion
@@ -219,6 +334,7 @@ void AHeistPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME_CONDITION(AHeistPlayerState, TotalLootScore, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHeistPlayerState, TotalLootWeight, COND_OwnerOnly);
 	DOREPLIFETIME(AHeistPlayerState, bEscaped);
+	DOREPLIFETIME(AHeistPlayerState, bArrested);
 	DOREPLIFETIME(AHeistPlayerState, FinalScore);
 	DOREPLIFETIME(AHeistPlayerState, EscapeTimeSeconds);
 }
@@ -250,6 +366,27 @@ void AHeistPlayerState::DebugSetTotalLootScore(const int32 InScore)
 	TotalLootScore = FMath::Max(0, InScore);
 	ForceNetUpdate();
 	BroadcastLootTotalsChanged();
+#endif
+}
+
+void AHeistPlayerState::DebugSetTotalLootWeight(const float InWeight)
+{
+#if !UE_BUILD_SHIPPING
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	TotalLootWeight = FMath::IsFinite(InWeight) ? FMath::Max(0.0f, InWeight) : 0.0f;
+	ForceNetUpdate();
+	BroadcastLootTotalsChanged();
+	if (AHeistPlayerCharacter* HeistPlayerCharacter = Cast<AHeistPlayerCharacter>(GetPawn()))
+	{
+		HeistPlayerCharacter->RefreshMovementSpeedFromWeight();
+	}
+	UHeistDebugFunctionLibrary::Message(
+		this,
+		FString::Printf(TEXT("Footstep debug weight committed: PlayerId=%d TotalLootWeight=%.1f Authority=true"), HeistPlayerId, TotalLootWeight));
 #endif
 }
 
