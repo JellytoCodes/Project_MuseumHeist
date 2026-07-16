@@ -45,6 +45,13 @@ void UHeistCheatManager::HeistGuardHelp()
 #endif
 }
 
+void UHeistCheatManager::HeistDifficultyDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugDifficultyDump(GetOuterAPlayerController());
+#endif
+}
+
 void UHeistCheatManager::HeistGuardSpawn(const float Distance)
 {
 #if !UE_BUILD_SHIPPING

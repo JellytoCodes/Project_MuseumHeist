@@ -629,6 +629,11 @@ void AHeistPlayerController::DebugRequestReportGuardNoise(const float Distance)
 	Server_DebugRequestReportGuardNoise(Distance);
 }
 
+void AHeistPlayerController::DebugRequestDumpDifficultyBaseline()
+{
+	Server_DebugRequestDumpDifficultyBaseline();
+}
+
 void AHeistPlayerController::DebugRequestRebuildResults()
 {
 	Server_DebugRequestRebuildResults();
@@ -1414,6 +1419,24 @@ void AHeistPlayerController::Server_DebugRequestReportGuardNoise_Implementation(
 	SoundPingEvent.bAffectsGuards = SoundPingDefinition.bAffectsGuards;
 	SoundPingEvent.bAffectsPlayers = SoundPingDefinition.bAffectsPlayers;
 	HeistGameState->ReportSoundPing(SoundPingEvent);
+#endif
+}
+
+void AHeistPlayerController::Server_DebugRequestDumpDifficultyBaseline_Implementation()
+{
+#if !UE_BUILD_SHIPPING
+	AHeistGameMode* HeistGameMode =
+		GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	if (!IsValid(HeistGameMode))
+	{
+		UHeistDebugFunctionLibrary::Message(
+			this,
+			TEXT("Difficulty baseline dump failed: missing Heist GameMode."),
+			EHeistDebugLevel::Warning);
+		return;
+	}
+
+	HeistGameMode->DebugDumpPlayerCountDifficultyBaseline();
 #endif
 }
 

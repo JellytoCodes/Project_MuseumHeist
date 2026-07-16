@@ -310,6 +310,7 @@ public:
 
 public:
 	static void DebugGuardHelp(APlayerController* PlayerController);
+	static void DebugDifficultyDump(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Guard", meta = (DevelopmentOnly))
 	static void DebugGuardSpawn(APlayerController* PlayerController, float Distance);

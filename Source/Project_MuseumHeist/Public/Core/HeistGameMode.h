@@ -16,6 +16,7 @@ struct FHeistUsableItemDataRow;
 struct FHeistGuardDataRow;
 struct FHeistSoundPingDataRow;
 struct FHeistLootDropRequest;
+struct FHeistPlayerCountDifficultyBaseline;
 
 UCLASS()
 class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
@@ -46,6 +47,8 @@ public:
 	bool TryGetUsableItemDefinition(FName ItemId, FHeistUsableItemDataRow& OutUsableItemDefinition) const;
 	bool TryGetGuardDefinition(FName GuardProfileId, FHeistGuardDataRow& OutGuardDefinition) const;
 	bool TryGetSoundPingDefinition(FName SoundPingId, FHeistSoundPingDataRow& OutSoundPingDefinition) const;
+	bool TryGetPlayerCountDifficultyBaseline(int32 PlayerCount, FHeistPlayerCountDifficultyBaseline& OutBaseline) const;
+	void DebugDumpPlayerCountDifficultyBaseline() const;
 	bool TrySpawnDroppedLoot(const FHeistLootDropRequest& DropRequest, AHeistLootActor*& OutDroppedLootActor) const;
 
 private:

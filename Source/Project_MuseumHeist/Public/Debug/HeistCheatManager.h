@@ -213,6 +213,9 @@ public:
 	void HeistGuardHelp();
 
 	UFUNCTION(Exec)
+	void HeistDifficultyDump();
+
+	UFUNCTION(Exec)
 	void HeistGuardSpawn(float Distance = 300.0f);
 
 	UFUNCTION(Exec)

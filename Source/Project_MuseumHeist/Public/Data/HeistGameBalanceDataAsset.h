@@ -7,6 +7,37 @@
 
 class UDataTable;
 
+USTRUCT(BlueprintType)
+struct PROJECT_MUSEUMHEIST_API FHeistPlayerCountDifficultyBaseline
+{
+	GENERATED_BODY()
+
+	FHeistPlayerCountDifficultyBaseline() = default;
+	FHeistPlayerCountDifficultyBaseline(
+		int32 InPlayerCount,
+		float InGuardCountMultiplier,
+		float InDetectionMultiplier,
+		float InInspectionDurationMultiplier)
+		: PlayerCount(InPlayerCount)
+		, GuardCountMultiplier(InGuardCountMultiplier)
+		, DetectionMultiplier(InDetectionMultiplier)
+		, InspectionDurationMultiplier(InInspectionDurationMultiplier)
+	{
+	}
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "1", ClampMax = "4"))
+	int32 PlayerCount = 1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.01"))
+	float GuardCountMultiplier = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.01"))
+	float DetectionMultiplier = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.01"))
+	float InspectionDurationMultiplier = 1.0f;
+};
+
 UCLASS(BlueprintType)
 class PROJECT_MUSEUMHEIST_API UHeistGameBalanceDataAsset : public UDataAsset
 {
@@ -16,12 +47,21 @@ class PROJECT_MUSEUMHEIST_API UHeistGameBalanceDataAsset : public UDataAsset
 
 public:
 	UHeistGameBalanceDataAsset();
+	bool TryGetPlayerCountDifficultyBaseline(
+		int32 PlayerCount,
+		FHeistPlayerCountDifficultyBaseline& OutBaseline) const;
 
 #pragma endregion
 
 #pragma region Config
 
 public:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Difficulty")
+	bool bAllowSoloProgression = true;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Difficulty")
+	TArray<FHeistPlayerCountDifficultyBaseline> PlayerCountDifficultyBaselines;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Match", meta = (ClampMin = "0.0", Units = "s"))
 	float VentUnlockTime = 180.0f;
 

@@ -301,10 +301,35 @@ void UHeistDebugFunctionLibrary::DebugGuardHelp(APlayerController* PlayerControl
 #else
 	Message(
 		PlayerController,
-		TEXT("Guard debug commands: HeistGuardSpawn <Distance> | HeistGuardDump | HeistGuardState <Disabled|Patrol|Investigate|Chase|Search|Return> <Duration> | HeistGuardStun <Duration> | HeistGuardSightCheck | HeistGuardSightAuto <0|1> | HeistGuardNoise <Distance> | HeistArrest | HeistRelease | HeistArrestDump"),
+		TEXT("Guard debug commands: HeistDifficultyDump | HeistGuardSpawn <Distance> | HeistGuardDump | HeistGuardState <Disabled|Patrol|Investigate|Chase|Search|Return> <Duration> | HeistGuardStun <Duration> | HeistGuardSightCheck | HeistGuardSightAuto <0|1> | HeistGuardNoise <Distance> | HeistArrest | HeistRelease | HeistArrestDump"),
 		EHeistDebugLevel::Info,
 		true,
 		10.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugDifficultyDump(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		Message(
+			PlayerController,
+			TEXT("Difficulty baseline dump failed: invalid Heist player controller."),
+			EHeistDebugLevel::Warning,
+			true);
+		return;
+	}
+
+	HeistPlayerController->DebugRequestDumpDifficultyBaseline();
+	Message(
+		PlayerController,
+		TEXT("Difficulty baseline dump requested."),
+		EHeistDebugLevel::Info,
+		true);
 #endif
 }
 

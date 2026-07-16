@@ -137,6 +137,7 @@ public:
 	void DebugRequestSetArrested(bool bArrested);
 	void DebugRequestDumpArrestState();
 	void DebugRequestSetFootstepWeight(float TotalLootWeight);
+	void DebugRequestDumpDifficultyBaseline();
 
 private:
 	UFUNCTION(Server, Reliable)
@@ -210,6 +211,9 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void Server_DebugRequestSetFootstepWeight(float TotalLootWeight);
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestDumpDifficultyBaseline();
 
 #pragma endregion
 

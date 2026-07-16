@@ -331,6 +331,80 @@ bool AHeistGameMode::TryGetSoundPingDefinition(
 	return true;
 }
 
+bool AHeistGameMode::TryGetPlayerCountDifficultyBaseline(
+	const int32 PlayerCount,
+	FHeistPlayerCountDifficultyBaseline& OutBaseline) const
+{
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	return IsValid(BalanceData)
+		&& BalanceData->TryGetPlayerCountDifficultyBaseline(PlayerCount, OutBaseline);
+}
+
+void AHeistGameMode::DebugDumpPlayerCountDifficultyBaseline() const
+{
+#if !UE_BUILD_SHIPPING
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	const AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	if (!IsValid(BalanceData) || !IsValid(HeistGameState))
+	{
+		UE_LOG(LogHeist, Warning, TEXT("Difficulty baseline dump: Result=FAIL Reason=MissingBalanceOrGameState"));
+		return;
+	}
+
+	bool bValid = BalanceData->bAllowSoloProgression
+		&& BalanceData->PlayerCountDifficultyBaselines.Num() == 4;
+	TSet<int32> SeenPlayerCounts;
+	for (const FHeistPlayerCountDifficultyBaseline& Baseline : BalanceData->PlayerCountDifficultyBaselines)
+	{
+		const bool bRowValid = Baseline.PlayerCount >= 1
+			&& Baseline.PlayerCount <= 4
+			&& !SeenPlayerCounts.Contains(Baseline.PlayerCount)
+			&& FMath::IsFinite(Baseline.GuardCountMultiplier)
+			&& Baseline.GuardCountMultiplier > 0.0f
+			&& FMath::IsFinite(Baseline.DetectionMultiplier)
+			&& Baseline.DetectionMultiplier > 0.0f
+			&& FMath::IsFinite(Baseline.InspectionDurationMultiplier)
+			&& Baseline.InspectionDurationMultiplier > 0.0f;
+		SeenPlayerCounts.Add(Baseline.PlayerCount);
+		bValid = bValid && bRowValid;
+		UE_LOG(
+			LogHeist,
+			Log,
+			TEXT("Difficulty baseline row: Players=%d GuardCount=%.2f Detection=%.2f InspectionDuration=%.2f Valid=%s"),
+			Baseline.PlayerCount,
+			Baseline.GuardCountMultiplier,
+			Baseline.DetectionMultiplier,
+			Baseline.InspectionDurationMultiplier,
+			bRowValid ? TEXT("true") : TEXT("false"));
+	}
+
+	const int32 ConnectedPlayerCount = HeistGameState->GetConnectedPlayerCount();
+	FHeistPlayerCountDifficultyBaseline ResolvedBaseline;
+	const bool bResolved = TryGetPlayerCountDifficultyBaseline(
+		ConnectedPlayerCount,
+		ResolvedBaseline);
+	bValid = bValid && SeenPlayerCounts.Num() == 4 && bResolved;
+	const FString Summary = FString::Printf(
+		TEXT("Difficulty baseline dump: ConnectedPlayers=%d ResolvedPlayers=%d GuardCount=%.2f Detection=%.2f InspectionDuration=%.2f SoloAllowed=%s MandatoryPlayers=1 Rows=%d Result=%s"),
+		ConnectedPlayerCount,
+		ResolvedBaseline.PlayerCount,
+		ResolvedBaseline.GuardCountMultiplier,
+		ResolvedBaseline.DetectionMultiplier,
+		ResolvedBaseline.InspectionDurationMultiplier,
+		BalanceData->bAllowSoloProgression ? TEXT("true") : TEXT("false"),
+		BalanceData->PlayerCountDifficultyBaselines.Num(),
+		bValid ? TEXT("PASS") : TEXT("FAIL"));
+	if (bValid)
+	{
+		UE_LOG(LogHeist, Log, TEXT("%s"), *Summary);
+	}
+	else
+	{
+		UE_LOG(LogHeist, Warning, TEXT("%s"), *Summary);
+	}
+#endif
+}
+
 bool AHeistGameMode::TrySpawnDroppedLoot(
 	const FHeistLootDropRequest& DropRequest,
 	AHeistLootActor*& OutDroppedLootActor) const
