@@ -225,6 +225,38 @@ namespace
 		return NearestDisplayCase;
 	}
 
+	AHeistPlayerState* ResolveHeistPlayerStateById(APlayerController* PlayerController, const int32 PlayerId)
+	{
+		if (!IsValid(PlayerController))
+		{
+			return nullptr;
+		}
+
+		if (PlayerId == INDEX_NONE)
+		{
+			return PlayerController->GetPlayerState<AHeistPlayerState>();
+		}
+
+		const AHeistGameState* HeistGameState = IsValid(PlayerController->GetWorld())
+			? PlayerController->GetWorld()->GetGameState<AHeistGameState>()
+			: nullptr;
+		if (!IsValid(HeistGameState))
+		{
+			return nullptr;
+		}
+
+		for (APlayerState* CandidatePlayerState : HeistGameState->PlayerArray)
+		{
+			AHeistPlayerState* HeistPlayerState = Cast<AHeistPlayerState>(CandidatePlayerState);
+			if (IsValid(HeistPlayerState) && HeistPlayerState->HeistPlayerId == PlayerId)
+			{
+				return HeistPlayerState;
+			}
+		}
+
+		return nullptr;
+	}
+
 	bool TryParseObjectiveState(const FString& StateName, EHeistObjectiveState& OutState)
 	{
 		const FString NormalizedStateName = StateName.TrimStartAndEnd().ToLower();
@@ -293,6 +325,43 @@ namespace
 		if (NormalizedStateName == TEXT("originalremoved"))
 		{
 			OutState = EHeistDisplayCaseState::OriginalRemoved;
+			return true;
+		}
+
+		return false;
+	}
+
+	bool TryParseMatchPhase(const FString& PhaseName, EHeistMatchPhase& OutPhase)
+	{
+		const FString NormalizedPhaseName = PhaseName.TrimStartAndEnd().ToLower();
+		if (NormalizedPhaseName == TEXT("none"))
+		{
+			OutPhase = EHeistMatchPhase::None;
+			return true;
+		}
+		if (NormalizedPhaseName == TEXT("lobby"))
+		{
+			OutPhase = EHeistMatchPhase::Lobby;
+			return true;
+		}
+		if (NormalizedPhaseName == TEXT("loadout"))
+		{
+			OutPhase = EHeistMatchPhase::Loadout;
+			return true;
+		}
+		if (NormalizedPhaseName == TEXT("readycountdown") || NormalizedPhaseName == TEXT("ready"))
+		{
+			OutPhase = EHeistMatchPhase::ReadyCountdown;
+			return true;
+		}
+		if (NormalizedPhaseName == TEXT("ingame") || NormalizedPhaseName == TEXT("game"))
+		{
+			OutPhase = EHeistMatchPhase::InGame;
+			return true;
+		}
+		if (NormalizedPhaseName == TEXT("end"))
+		{
+			OutPhase = EHeistMatchPhase::End;
 			return true;
 		}
 
@@ -407,8 +476,56 @@ void UHeistDebugFunctionLibrary::DebugDisplayCaseHelp(APlayerController* PlayerC
 #if !UE_BUILD_SHIPPING
 	Message(
 		PlayerController,
-		TEXT("Display case debug commands: HeistCaseSpawn <Distance> | HeistCaseDump | HeistCaseAdvance | HeistCaseSet <State>. Run Spawn/Advance/Set in the listen-server window."),
+		TEXT("Display case commands: HeistCaseSpawn <Distance> | HeistCaseSpawnFor <PlayerId> <Distance> | HeistCaseDump | HeistCaseBegin <PlayerId|-1> | HeistCaseCancel <PlayerId|-1> | HeistCasePhase <Phase> | HeistCaseAdvance | HeistCaseSet <State>. Run mutating commands in the listen-server window."),
 		EHeistDebugLevel::Info,
+		true,
+		10.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugDisplayCaseSpawnFor(
+	APlayerController* PlayerController,
+	const int32 PlayerId,
+	const float Distance)
+{
+#if !UE_BUILD_SHIPPING
+	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(PlayerController->GetWorld()))
+	{
+		Message(PlayerController, TEXT("Display case spawn-for rejected: Reason=NotAuthorityOrMissingWorld"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	AHeistPlayerState* TargetPlayerState = ResolveHeistPlayerStateById(PlayerController, PlayerId);
+	APawn* TargetPawn = IsValid(TargetPlayerState) ? TargetPlayerState->GetPawn() : nullptr;
+	if (!IsValid(TargetPlayerState) || !IsValid(TargetPawn))
+	{
+		Message(
+			PlayerController,
+			FString::Printf(TEXT("Display case spawn-for rejected: PlayerId=%d Reason=MissingPlayerStateOrPawn"), PlayerId),
+			EHeistDebugLevel::Warning,
+			true);
+		return;
+	}
+
+	const FVector SpawnLocation = TargetPawn->GetActorLocation()
+		+ TargetPawn->GetActorForwardVector() * FMath::Max(100.0f, Distance);
+	FActorSpawnParameters SpawnParameters;
+	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	AHeistDisplayCaseActor* DisplayCase = PlayerController->GetWorld()->SpawnActor<AHeistDisplayCaseActor>(
+		AHeistDisplayCaseActor::StaticClass(),
+		SpawnLocation,
+		FRotator::ZeroRotator,
+		SpawnParameters);
+
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Display case debug spawn-for: Result=%s Case=%s PlayerId=%d Distance=%.1f"),
+			IsValid(DisplayCase) ? TEXT("PASS") : TEXT("FAIL"),
+			*GetNameSafe(DisplayCase),
+			PlayerId,
+			FVector::Distance(TargetPawn->GetActorLocation(), SpawnLocation)),
+		IsValid(DisplayCase) ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
 		true,
 		10.0f);
 #endif
@@ -460,15 +577,118 @@ void UHeistDebugFunctionLibrary::DebugDisplayCaseDump(APlayerController* PlayerC
 		return;
 	}
 
+	const AHeistGameState* HeistGameState = IsValid(PlayerController) && IsValid(PlayerController->GetWorld())
+		? PlayerController->GetWorld()->GetGameState<AHeistGameState>()
+		: nullptr;
+	const AHeistPlayerState* SessionOwner = DisplayCase->GetSessionOwner();
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Display case dump: Case=%s State=%s Authority=%s Replicates=%s"),
+			TEXT("Display case dump: Case=%s State=%s Owner=%s OwnerPlayerId=%d Locked=%s Revision=%d MaxDistance=%.1f MatchPhase=%s Authority=%s Replicates=%s"),
 			*GetNameSafe(DisplayCase),
 			*UEnum::GetValueAsString(DisplayCase->GetDisplayCaseState()),
+			*GetNameSafe(SessionOwner),
+			IsValid(SessionOwner) ? SessionOwner->HeistPlayerId : INDEX_NONE,
+			DisplayCase->IsSessionLocked() ? TEXT("true") : TEXT("false"),
+			DisplayCase->GetSessionRevision(),
+			DisplayCase->GetMaximumSessionDistance(),
+			IsValid(HeistGameState) ? *UEnum::GetValueAsString(HeistGameState->GetMatchPhase()) : TEXT("MissingGameState"),
 			DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false"),
 			DisplayCase->GetIsReplicated() ? TEXT("true") : TEXT("false")),
 		EHeistDebugLevel::Info,
+		true,
+		10.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugDisplayCaseBegin(APlayerController* PlayerController, const int32 PlayerId)
+{
+#if !UE_BUILD_SHIPPING
+	AHeistDisplayCaseActor* DisplayCase = ResolveNearestDisplayCase(PlayerController);
+	AHeistPlayerState* RequestingPlayerState = ResolveHeistPlayerStateById(PlayerController, PlayerId);
+	if (!IsValid(DisplayCase))
+	{
+		Message(
+			PlayerController,
+			FString::Printf(TEXT("Display case debug begin: Result=REJECTED PlayerId=%d Reason=MissingDisplayCase"), PlayerId),
+			EHeistDebugLevel::Warning,
+			true);
+		return;
+	}
+
+	const bool bBegan = DisplayCase->TryBeginSession(RequestingPlayerState);
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Display case debug begin: Result=%s PlayerId=%d OwnerPlayerId=%d Locked=%s Revision=%d"),
+			bBegan ? TEXT("PASS") : TEXT("REJECTED"),
+			IsValid(RequestingPlayerState) ? RequestingPlayerState->HeistPlayerId : PlayerId,
+			IsValid(DisplayCase->GetSessionOwner()) ? DisplayCase->GetSessionOwner()->HeistPlayerId : INDEX_NONE,
+			DisplayCase->IsSessionLocked() ? TEXT("true") : TEXT("false"),
+			DisplayCase->GetSessionRevision()),
+		bBegan ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+		true,
+		10.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugDisplayCaseCancel(APlayerController* PlayerController, const int32 PlayerId)
+{
+#if !UE_BUILD_SHIPPING
+	AHeistDisplayCaseActor* DisplayCase = ResolveNearestDisplayCase(PlayerController);
+	AHeistPlayerState* RequestingPlayerState = ResolveHeistPlayerStateById(PlayerController, PlayerId);
+	if (!IsValid(DisplayCase) || !IsValid(RequestingPlayerState))
+	{
+		Message(
+			PlayerController,
+			FString::Printf(TEXT("Display case debug cancel: Result=REJECTED PlayerId=%d Reason=MissingCaseOrPlayerState"), PlayerId),
+			EHeistDebugLevel::Warning,
+			true);
+		return;
+	}
+
+	const bool bCancelled = DisplayCase->TryCancelSession(RequestingPlayerState);
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Display case debug cancel: Result=%s PlayerId=%d Locked=%s Revision=%d"),
+			bCancelled ? TEXT("PASS") : TEXT("REJECTED"),
+			RequestingPlayerState->HeistPlayerId,
+			DisplayCase->IsSessionLocked() ? TEXT("true") : TEXT("false"),
+			DisplayCase->GetSessionRevision()),
+		bCancelled ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+		true,
+		10.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugDisplayCasePhase(APlayerController* PlayerController, const FString& PhaseName)
+{
+#if !UE_BUILD_SHIPPING
+	AHeistGameState* HeistGameState = IsValid(PlayerController) && IsValid(PlayerController->GetWorld())
+		? PlayerController->GetWorld()->GetGameState<AHeistGameState>()
+		: nullptr;
+	EHeistMatchPhase ParsedPhase = EHeistMatchPhase::None;
+	if (!IsValid(HeistGameState) || !TryParseMatchPhase(PhaseName, ParsedPhase))
+	{
+		Message(
+			PlayerController,
+			FString::Printf(TEXT("Display case debug phase: Result=REJECTED Phase='%s' Reason=MissingGameStateOrInvalidPhase"), *PhaseName),
+			EHeistDebugLevel::Warning,
+			true);
+		return;
+	}
+
+	const EHeistMatchPhase PreviousPhase = HeistGameState->GetMatchPhase();
+	const bool bChanged = HeistGameState->SetMatchPhase(ParsedPhase);
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Display case debug phase: Result=%s Previous=%s New=%s"),
+			bChanged ? TEXT("PASS") : TEXT("REJECTED"),
+			*UEnum::GetValueAsString(PreviousPhase),
+			*UEnum::GetValueAsString(HeistGameState->GetMatchPhase())),
+		bChanged ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
 		true,
 		10.0f);
 #endif
@@ -1806,6 +2026,102 @@ void UHeistDebugFunctionLibrary::DebugEscapeCastCancelled(const UObject* WorldCo
 			TEXT("Escape cast cancelled: Character=%s Vent=%s Reason=%s"),
 			*CharacterName,
 			*VentName,
+			Reason));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObservationRequestRejected(
+	const UObject* WorldContextObject,
+	const UObject* TargetDisplayCase,
+	const TCHAR* Reason,
+	const float Distance)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Observation request rejected: Case=%s Reason=%s Distance=%s"),
+			*GetNameSafe(TargetDisplayCase),
+			Reason,
+			*FormatOptionalDistance(Distance)),
+		EHeistDebugLevel::Warning);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObservationCastStarted(
+	const UObject* WorldContextObject,
+	const UObject* Character,
+	const UObject* TargetDisplayCase,
+	const float DurationSeconds,
+	const float EndServerTime)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Observation cast started: Character=%s Case=%s Duration=%.2f EndServerTime=%.2f ServerApproved=true"),
+			*GetNameSafe(Character),
+			*GetNameSafe(TargetDisplayCase),
+			DurationSeconds,
+			EndServerTime));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObservationCastStateReplicated(
+	const UObject* WorldContextObject,
+	const UObject* Character,
+	const bool bIsActive,
+	const float EndServerTime)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Observation cast state replicated: Character=%s IsActive=%s EndServerTime=%.2f"),
+			*GetNameSafe(Character),
+			bIsActive ? TEXT("true") : TEXT("false"),
+			EndServerTime));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObservationCastCompleted(
+	const UObject* WorldContextObject,
+	const UObject* Character,
+	const UObject* TargetDisplayCase)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Observation cast completed: Character=%s Case=%s Result=Observed SessionRetained=true"),
+			*GetNameSafe(Character),
+			*GetNameSafe(TargetDisplayCase)));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObservationCastCancelled(
+	const UObject* WorldContextObject,
+	const FString& CharacterName,
+	const FString& DisplayCaseName,
+	const TCHAR* Reason)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(
+		WorldContextObject,
+		FString::Printf(
+			TEXT("Observation cast cancelled: Character=%s Case=%s Reason=%s SessionReleased=true"),
+			*CharacterName,
+			*DisplayCaseName,
 			Reason));
 #endif
 }

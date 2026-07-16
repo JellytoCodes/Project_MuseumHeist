@@ -29,6 +29,7 @@
 #include "Inventory/HeistInventoryTypes.h"
 #include "Kismet/GameplayStatics.h"
 #include "World/Actors/Escape/HeistVentActor.h"
+#include "World/Actors/Loot/HeistDisplayCaseActor.h"
 #include "World/Actors/Loot/HeistLootActor.h"
 #include "World/Actors/Projectile/HeistCoinProjectile.h"
 #include "World/Actors/Projectile/HeistSmokeProjectile.h"
@@ -130,6 +131,16 @@ void AHeistPlayerController::SetupInputComponent()
 			ETriggerEvent::Started,
 			this,
 			&AHeistPlayerController::HandleInteractPressed);
+		EnhancedInputComponent->BindAction(
+			InteractInputAction,
+			ETriggerEvent::Completed,
+			this,
+			&AHeistPlayerController::HandleInteractReleased);
+		EnhancedInputComponent->BindAction(
+			InteractInputAction,
+			ETriggerEvent::Canceled,
+			this,
+			&AHeistPlayerController::HandleInteractReleased);
 	}
 	else
 	{
@@ -393,11 +404,30 @@ void AHeistPlayerController::HandleInteractPressed()
 		return;
 	}
 
+	AHeistDisplayCaseActor* TargetDisplayCase = Cast<AHeistDisplayCaseActor>(
+		InteractionComponent->GetCurrentInteractionTarget());
+	if (TargetDisplayCase != nullptr)
+	{
+		Server_RequestObservation(TargetDisplayCase);
+		return;
+	}
+
 	AHeistVentActor* TargetVentActor = Cast<AHeistVentActor>(InteractionComponent->GetCurrentInteractionTarget());
 	if (TargetVentActor != nullptr)
 	{
 		Server_RequestEscape(TargetVentActor);
 	}
+}
+
+void AHeistPlayerController::HandleInteractReleased()
+{
+	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	if (!IsValid(HeistCharacter))
+	{
+		return;
+	}
+
+	Server_CancelObservation();
 }
 
 #pragma endregion
@@ -764,6 +794,82 @@ void AHeistPlayerController::Server_RequestLootPickup_Implementation(AHeistLootA
 		TargetLootActor->GetLootRowId(),
 		AddedInstanceId,
 		Distance);
+}
+
+void AHeistPlayerController::Server_RequestObservation_Implementation(AHeistDisplayCaseActor* TargetDisplayCase)
+{
+	FHeistGameplayRequestContext RequestContext;
+	const TCHAR* RejectReason = nullptr;
+	if (!TryBuildGameplayRequestContext(RequestContext, RejectReason))
+	{
+		UHeistDebugFunctionLibrary::DebugObservationRequestRejected(
+			this,
+			TargetDisplayCase,
+			RejectReason != nullptr ? RejectReason : TEXT("InvalidRequestContext"));
+		return;
+	}
+
+	if (!IsValid(TargetDisplayCase))
+	{
+		UHeistDebugFunctionLibrary::DebugObservationRequestRejected(this, nullptr, TEXT("InvalidTarget"));
+		return;
+	}
+
+	UHeistInteractionComponent* InteractionComponent = RequestContext.Character->GetInteractionComponent();
+	const float Distance = FVector::Distance(
+		RequestContext.Character->GetActorLocation(),
+		TargetDisplayCase->GetActorLocation());
+	if (!InteractionComponent->IsActorWithinInteractionRange(TargetDisplayCase))
+	{
+		UHeistDebugFunctionLibrary::DebugObservationRequestRejected(
+			this,
+			TargetDisplayCase,
+			TEXT("OutOfRange"),
+			Distance);
+		return;
+	}
+
+	InteractionComponent->RefreshInteractionTarget(true);
+	if (InteractionComponent->GetCurrentInteractionTarget() != TargetDisplayCase)
+	{
+		UHeistDebugFunctionLibrary::DebugObservationRequestRejected(
+			this,
+			TargetDisplayCase,
+			TEXT("NotCurrentTarget"),
+			Distance);
+		return;
+	}
+
+	if (TargetDisplayCase->GetDisplayCaseState() != EHeistDisplayCaseState::Secured)
+	{
+		UHeistDebugFunctionLibrary::DebugObservationRequestRejected(
+			this,
+			TargetDisplayCase,
+			TEXT("CaseNotSecured"),
+			Distance);
+		return;
+	}
+
+	UHeistActionComponent* ActionComponent = RequestContext.Character->GetActionComponent();
+	if (!ActionComponent->TryBeginObservationRequest(TargetDisplayCase))
+	{
+		UHeistDebugFunctionLibrary::DebugObservationRequestRejected(
+			this,
+			TargetDisplayCase,
+			TEXT("ObservationCastRejected"),
+			Distance);
+	}
+}
+
+void AHeistPlayerController::Server_CancelObservation_Implementation()
+{
+	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	if (!IsValid(HeistCharacter) || HeistCharacter->GetController() != this)
+	{
+		return;
+	}
+
+	HeistCharacter->GetActionComponent()->CancelObservationRequest(TEXT("InputReleased"));
 }
 
 void AHeistPlayerController::Server_RequestEscape_Implementation(AHeistVentActor* TargetVentActor)

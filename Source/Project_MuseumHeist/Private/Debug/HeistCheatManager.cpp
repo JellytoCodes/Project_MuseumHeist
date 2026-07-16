@@ -73,6 +73,13 @@ void UHeistCheatManager::HeistCaseSpawn(const float Distance)
 #endif
 }
 
+void UHeistCheatManager::HeistCaseSpawnFor(const int32 PlayerId, const float Distance)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugDisplayCaseSpawnFor(GetOuterAPlayerController(), PlayerId, Distance);
+#endif
+}
+
 void UHeistCheatManager::HeistCaseDump()
 {
 #if !UE_BUILD_SHIPPING
@@ -91,6 +98,27 @@ void UHeistCheatManager::HeistCaseSet(const FString& StateName)
 {
 #if !UE_BUILD_SHIPPING
 	UHeistDebugFunctionLibrary::DebugDisplayCaseSet(GetOuterAPlayerController(), StateName);
+#endif
+}
+
+void UHeistCheatManager::HeistCaseBegin(const int32 PlayerId)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugDisplayCaseBegin(GetOuterAPlayerController(), PlayerId);
+#endif
+}
+
+void UHeistCheatManager::HeistCaseCancel(const int32 PlayerId)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugDisplayCaseCancel(GetOuterAPlayerController(), PlayerId);
+#endif
+}
+
+void UHeistCheatManager::HeistCasePhase(const FString& PhaseName)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugDisplayCasePhase(GetOuterAPlayerController(), PhaseName);
 #endif
 }
 

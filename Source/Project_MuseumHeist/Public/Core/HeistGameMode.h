@@ -35,6 +35,7 @@ public:
 protected:
 	virtual void StartPlay() override;
 	virtual void RestartPlayer(AController* NewPlayer) override;
+	virtual void Logout(AController* Exiting) override;
 
 #pragma endregion
 

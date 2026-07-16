@@ -16,6 +16,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
 #include "World/Actors/Loot/HeistLootActor.h"
+#include "World/Actors/Loot/HeistDisplayCaseActor.h"
 #include "World/Spawn/HeistLootSpawnPoint.h"
 
 #pragma region InternalHelpers
@@ -51,6 +52,10 @@ AHeistGameMode::AHeistGameMode()
 void AHeistGameMode::StartPlay()
 {
 	Super::StartPlay();
+	if (AHeistGameState* HeistGameState = GetGameState<AHeistGameState>())
+	{
+		HeistGameState->SetMatchPhase(EHeistMatchPhase::InGame);
+	}
 	ValidateItemDataTables();
 	StartEscapePhaseTimer();
 }
@@ -66,6 +71,25 @@ void AHeistGameMode::RestartPlayer(AController* NewPlayer)
 	}
 
 	Super::RestartPlayer(NewPlayer);
+}
+
+void AHeistGameMode::Logout(AController* Exiting)
+{
+	AHeistPlayerState* ExitingPlayerState = IsValid(Exiting)
+		? Exiting->GetPlayerState<AHeistPlayerState>()
+		: nullptr;
+	if (HasAuthority() && IsValid(ExitingPlayerState))
+	{
+		for (TActorIterator<AHeistDisplayCaseActor> DisplayCaseIterator(GetWorld()); DisplayCaseIterator; ++DisplayCaseIterator)
+		{
+			if (AHeistDisplayCaseActor* DisplayCase = *DisplayCaseIterator; IsValid(DisplayCase))
+			{
+				DisplayCase->CancelSessionForOwner(ExitingPlayerState, FName(TEXT("OwnerDisconnected")));
+			}
+		}
+	}
+
+	Super::Logout(Exiting);
 }
 
 #pragma endregion

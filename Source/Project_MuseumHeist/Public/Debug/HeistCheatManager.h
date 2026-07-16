@@ -234,6 +234,9 @@ public:
 	void HeistCaseSpawn(float Distance = 250.0f);
 
 	UFUNCTION(Exec)
+	void HeistCaseSpawnFor(int32 PlayerId, float Distance = 150.0f);
+
+	UFUNCTION(Exec)
 	void HeistCaseDump();
 
 	UFUNCTION(Exec)
@@ -241,6 +244,15 @@ public:
 
 	UFUNCTION(Exec)
 	void HeistCaseSet(const FString& StateName);
+
+	UFUNCTION(Exec)
+	void HeistCaseBegin(int32 PlayerId = -1);
+
+	UFUNCTION(Exec)
+	void HeistCaseCancel(int32 PlayerId = -1);
+
+	UFUNCTION(Exec)
+	void HeistCasePhase(const FString& PhaseName);
 
 #pragma endregion
 

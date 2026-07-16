@@ -7,6 +7,7 @@
 #include "HeistPlayerController.generated.h"
 
 class AHeistPlayerCharacter;
+class AHeistDisplayCaseActor;
 class AHeistGuardCharacter;
 class AHeistLootActor;
 class AHeistPlayerState;
@@ -85,6 +86,7 @@ private:
 
 private:
 	void HandleInteractPressed();
+	void HandleInteractReleased();
 
 #pragma endregion
 
@@ -145,6 +147,12 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestEscape(AHeistVentActor* TargetVentActor);
+
+	UFUNCTION(Server, Reliable)
+	void Server_RequestObservation(AHeistDisplayCaseActor* TargetDisplayCase);
+
+	UFUNCTION(Server, Reliable)
+	void Server_CancelObservation();
 
 	UFUNCTION(Server, Reliable)
 	void Server_SetInventoryOpen(bool bInventoryOpen);

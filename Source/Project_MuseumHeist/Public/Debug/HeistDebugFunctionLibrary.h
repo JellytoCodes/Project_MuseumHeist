@@ -57,6 +57,11 @@ public:
 	static void DebugEscapeCastStateReplicated(const UObject* WorldContextObject, const UObject* Character, bool bIsActive, float EndServerTime);
 	static void DebugEscapeCastCompleted(const UObject* WorldContextObject, const UObject* Character, const UObject* TargetVentActor);
 	static void DebugEscapeCastCancelled(const UObject* WorldContextObject, const FString& CharacterName, const FString& VentName, const TCHAR* Reason);
+	static void DebugObservationRequestRejected(const UObject* WorldContextObject, const UObject* TargetDisplayCase, const TCHAR* Reason, float Distance = -1.0f);
+	static void DebugObservationCastStarted(const UObject* WorldContextObject, const UObject* Character, const UObject* TargetDisplayCase, float DurationSeconds, float EndServerTime);
+	static void DebugObservationCastStateReplicated(const UObject* WorldContextObject, const UObject* Character, bool bIsActive, float EndServerTime);
+	static void DebugObservationCastCompleted(const UObject* WorldContextObject, const UObject* Character, const UObject* TargetDisplayCase);
+	static void DebugObservationCastCancelled(const UObject* WorldContextObject, const FString& CharacterName, const FString& DisplayCaseName, const TCHAR* Reason);
 
 	static void DebugLootScoreWeightRejected(const UObject* WorldContextObject, const TCHAR* Reason, int32 ScoreDelta = INDEX_NONE, float WeightDelta = -1.0f);
 	static void DebugLootScoreWeightApplied(const UObject* WorldContextObject, int32 ScoreDelta, float WeightDelta, int32 TotalScore, float TotalWeight);
@@ -187,6 +192,9 @@ public:
 	static void DebugDisplayCaseSpawn(APlayerController* PlayerController, float Distance);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|DisplayCase", meta = (DevelopmentOnly))
+	static void DebugDisplayCaseSpawnFor(APlayerController* PlayerController, int32 PlayerId, float Distance);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|DisplayCase", meta = (DevelopmentOnly))
 	static void DebugDisplayCaseDump(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|DisplayCase", meta = (DevelopmentOnly))
@@ -194,6 +202,15 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|DisplayCase", meta = (DevelopmentOnly))
 	static void DebugDisplayCaseSet(APlayerController* PlayerController, const FString& StateName);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|DisplayCase", meta = (DevelopmentOnly))
+	static void DebugDisplayCaseBegin(APlayerController* PlayerController, int32 PlayerId);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|DisplayCase", meta = (DevelopmentOnly))
+	static void DebugDisplayCaseCancel(APlayerController* PlayerController, int32 PlayerId);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|DisplayCase", meta = (DevelopmentOnly))
+	static void DebugDisplayCasePhase(APlayerController* PlayerController, const FString& PhaseName);
 
 #pragma endregion
 

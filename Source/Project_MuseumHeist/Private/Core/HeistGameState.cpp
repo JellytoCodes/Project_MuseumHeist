@@ -39,6 +39,60 @@ FHeistPlayerConnectionsChanged& AHeistGameState::GetPlayerConnectionsChangedDele
 
 #pragma endregion
 
+#pragma region MatchPhase
+
+EHeistMatchPhase AHeistGameState::GetMatchPhase() const
+{
+	return MatchPhase;
+}
+
+bool AHeistGameState::SetMatchPhase(const EHeistMatchPhase NewMatchPhase)
+{
+	if (!HasAuthority())
+	{
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Match phase change rejected: GameState=%s Reason=NotAuthority"), *GetNameSafe(this));
+		return false;
+	}
+
+	if (MatchPhase == NewMatchPhase)
+	{
+		return true;
+	}
+
+	const EHeistMatchPhase PreviousMatchPhase = MatchPhase;
+	MatchPhase = NewMatchPhase;
+	ForceNetUpdate();
+	BroadcastMatchPhaseChanged(PreviousMatchPhase, TEXT("Server"));
+	return true;
+}
+
+FHeistMatchPhaseChanged& AHeistGameState::GetMatchPhaseChangedDelegate()
+{
+	return MatchPhaseChangedDelegate;
+}
+
+void AHeistGameState::OnRep_MatchPhase(const EHeistMatchPhase PreviousMatchPhase)
+{
+	BroadcastMatchPhaseChanged(PreviousMatchPhase, TEXT("Replicated"));
+}
+
+void AHeistGameState::BroadcastMatchPhaseChanged(
+	const EHeistMatchPhase PreviousMatchPhase,
+	const TCHAR* ChangeSource)
+{
+	MatchPhaseChangedDelegate.Broadcast(PreviousMatchPhase, MatchPhase);
+	UE_LOG(
+		LogHeistNetwork,
+		Log,
+		TEXT("Match phase %s: Previous=%s New=%s Authority=%s"),
+		ChangeSource,
+		*UEnum::GetValueAsString(PreviousMatchPhase),
+		*UEnum::GetValueAsString(MatchPhase),
+		HasAuthority() ? TEXT("true") : TEXT("false"));
+}
+
+#pragma endregion
+
 #pragma region Objective
 
 FName AHeistGameState::GetActiveTargetArtifactId() const
@@ -485,6 +539,7 @@ void AHeistGameState::OnRep_PlayerResults()
 void AHeistGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AHeistGameState, MatchPhase);
 
 	DOREPLIFETIME(AHeistGameState, bEscapePhaseOpen);
 	DOREPLIFETIME(AHeistGameState, ActiveTargetArtifactId);

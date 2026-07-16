@@ -13,6 +13,7 @@ DECLARE_MULTICAST_DELEGATE(FHeistPlayerResultsChanged);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistSoundPingEventReported, const FHeistSoundPingEvent&);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistRareLootEventStateChanged, const FHeistRareLootEventState&);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerConnectionsChanged, int32);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistMatchPhaseChanged, EHeistMatchPhase, EHeistMatchPhase);
 DECLARE_MULTICAST_DELEGATE_FourParams(
 	FHeistObjectiveStateChanged,
 	FName,
@@ -43,6 +44,30 @@ public:
 
 private:
 	FHeistPlayerConnectionsChanged PlayerConnectionsChangedDelegate;
+
+#pragma endregion
+
+#pragma region MatchPhase
+
+public:
+	UFUNCTION(BlueprintPure, Category = "Heist|Match")
+	EHeistMatchPhase GetMatchPhase() const;
+
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Heist|Match")
+	bool SetMatchPhase(EHeistMatchPhase NewMatchPhase);
+
+	FHeistMatchPhaseChanged& GetMatchPhaseChangedDelegate();
+
+private:
+	UPROPERTY(ReplicatedUsing = OnRep_MatchPhase, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Match", meta = (AllowPrivateAccess = "true"))
+	EHeistMatchPhase MatchPhase = EHeistMatchPhase::None;
+
+	UFUNCTION()
+	void OnRep_MatchPhase(EHeistMatchPhase PreviousMatchPhase);
+
+	void BroadcastMatchPhaseChanged(EHeistMatchPhase PreviousMatchPhase, const TCHAR* ChangeSource);
+
+	FHeistMatchPhaseChanged MatchPhaseChangedDelegate;
 
 #pragma endregion
 

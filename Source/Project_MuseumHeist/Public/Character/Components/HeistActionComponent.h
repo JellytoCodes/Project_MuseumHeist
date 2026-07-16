@@ -6,6 +6,7 @@
 #include "HeistActionComponent.generated.h"
 
 class AHeistPlayerCharacter;
+class AHeistDisplayCaseActor;
 class AHeistTrapActor;
 class AHeistVentActor;
 class UDamageType;
@@ -20,6 +21,11 @@ DECLARE_MULTICAST_DELEGATE_TwoParams(
 	AHeistPlayerCharacter*,
 	AHeistTrapActor*);
 
+DECLARE_MULTICAST_DELEGATE_TwoParams(
+	FHeistObservationCastCompleted,
+	AHeistPlayerCharacter*,
+	AHeistDisplayCaseActor*);
+
 DECLARE_MULTICAST_DELEGATE(FHeistActionStateChanged);
 
 UCLASS(ClassGroup = (Heist), meta = (BlueprintSpawnableComponent))
@@ -31,6 +37,43 @@ class PROJECT_MUSEUMHEIST_API UHeistActionComponent : public UActorComponent
 
 public:
 	UHeistActionComponent();
+
+#pragma endregion
+
+#pragma region ObservationCast
+
+public:
+	bool TryBeginObservationRequest(AHeistDisplayCaseActor* TargetDisplayCase);
+	void CancelObservationRequest(const TCHAR* Reason);
+	bool IsObservationCastActive() const;
+	float GetObservationCastEndServerTime() const;
+	AHeistDisplayCaseActor* GetPendingObservationDisplayCase() const;
+	FHeistObservationCastCompleted& GetObservationCastCompletedDelegate();
+
+private:
+	UPROPERTY(Transient)
+	TWeakObjectPtr<AHeistDisplayCaseActor> PendingObservationDisplayCase;
+
+	UPROPERTY(ReplicatedUsing = OnRep_ObservationCastActive, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Observation", meta = (AllowPrivateAccess = "true"))
+	bool bObservationCastActive = false;
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Observation", meta = (AllowPrivateAccess = "true"))
+	float ObservationCastEndServerTime = 0.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Observation", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "s"))
+	float ObservationCastDurationSeconds = 1.5f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Observation", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "cm"))
+	float ObservationCastMovementCancelDistance = 5.0f;
+
+	UPROPERTY(Transient)
+	FVector ObservationCastStartLocation = FVector::ZeroVector;
+
+	FTimerHandle ObservationCastTimerHandle;
+	FHeistObservationCastCompleted ObservationCastCompletedDelegate;
+
+	UFUNCTION()
+	void OnRep_ObservationCastActive();
 
 #pragma endregion
 
@@ -160,12 +203,16 @@ private:
 	float ResolveEscapeCastDurationSeconds() const;
 	bool HasMovedBeyondEscapeCastTolerance() const;
 	bool HasMovedBeyondTrapPlacementCastTolerance() const;
+	bool HasMovedBeyondObservationCastTolerance() const;
 	void HandleEscapeCastTimerElapsed();
 	void HandleTrapPlacementCastTimerElapsed();
+	void HandleObservationCastTimerElapsed();
 	void CancelEscapeCast(const TCHAR* Reason);
 	void CancelTrapPlacementCast(const TCHAR* Reason);
+	void CancelObservationCast(const TCHAR* Reason);
 	void ClearEscapeCastState();
 	void ClearTrapPlacementCastState();
+	void ClearObservationCastState();
 
 #pragma endregion
 };
