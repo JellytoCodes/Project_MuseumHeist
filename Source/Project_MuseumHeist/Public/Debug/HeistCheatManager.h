@@ -206,6 +206,44 @@ public:
 
 #pragma endregion
 
+#pragma region ObjectiveDebug
+
+public:
+	UFUNCTION(Exec)
+	void HeistObjectiveHelp();
+
+	UFUNCTION(Exec)
+	void HeistObjectiveDump();
+
+	UFUNCTION(Exec)
+	void HeistObjectiveSet(
+		const FString& ArtifactId,
+		const FString& CaseId,
+		const FString& StateName,
+		int32 UseLocalPlayerAsCarrier = 0);
+
+#pragma endregion
+
+#pragma region DisplayCaseDebug
+
+public:
+	UFUNCTION(Exec)
+	void HeistCaseHelp();
+
+	UFUNCTION(Exec)
+	void HeistCaseSpawn(float Distance = 250.0f);
+
+	UFUNCTION(Exec)
+	void HeistCaseDump();
+
+	UFUNCTION(Exec)
+	void HeistCaseAdvance();
+
+	UFUNCTION(Exec)
+	void HeistCaseSet(const FString& StateName);
+
+#pragma endregion
+
 #pragma region GuardDebug
 
 public:

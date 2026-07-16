@@ -6,11 +6,19 @@
 
 #include "HeistGameState.generated.h"
 
+class AHeistPlayerState;
+
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistEscapePhaseStateChanged, bool);
 DECLARE_MULTICAST_DELEGATE(FHeistPlayerResultsChanged);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistSoundPingEventReported, const FHeistSoundPingEvent&);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistRareLootEventStateChanged, const FHeistRareLootEventState&);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerConnectionsChanged, int32);
+DECLARE_MULTICAST_DELEGATE_FourParams(
+	FHeistObjectiveStateChanged,
+	FName,
+	FName,
+	EHeistObjectiveState,
+	AHeistPlayerState*);
 
 UCLASS()
 class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
@@ -35,6 +43,46 @@ public:
 
 private:
 	FHeistPlayerConnectionsChanged PlayerConnectionsChangedDelegate;
+
+#pragma endregion
+
+#pragma region Objective
+
+public:
+	FName GetActiveTargetArtifactId() const;
+	FName GetActiveTargetCaseId() const;
+	EHeistObjectiveState GetObjectiveState() const;
+	AHeistPlayerState* GetOriginalCarrierCandidate() const;
+	int32 GetObjectiveRevision() const;
+	bool SetObjectiveSnapshot(
+		FName InActiveTargetArtifactId,
+		FName InActiveTargetCaseId,
+		EHeistObjectiveState InObjectiveState,
+		AHeistPlayerState* InOriginalCarrierCandidate);
+	FHeistObjectiveStateChanged& GetObjectiveStateChangedDelegate();
+
+private:
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Objective", meta = (AllowPrivateAccess = "true"))
+	FName ActiveTargetArtifactId = NAME_None;
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Objective", meta = (AllowPrivateAccess = "true"))
+	FName ActiveTargetCaseId = NAME_None;
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Objective", meta = (AllowPrivateAccess = "true"))
+	EHeistObjectiveState ObjectiveState = EHeistObjectiveState::Inactive;
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Objective", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<AHeistPlayerState> OriginalCarrierCandidate;
+
+	UPROPERTY(ReplicatedUsing = OnRep_ObjectiveRevision, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Objective", meta = (AllowPrivateAccess = "true"))
+	int32 ObjectiveRevision = 0;
+
+	UFUNCTION()
+	void OnRep_ObjectiveRevision();
+
+	void BroadcastObjectiveState(const TCHAR* ChangeSource);
+
+	FHeistObjectiveStateChanged ObjectiveStateChangedDelegate;
 
 #pragma endregion
 

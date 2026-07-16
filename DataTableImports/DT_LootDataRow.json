@@ -6,7 +6,7 @@
     "ScoreValue": 1000,
     "SpawnCategory": "VaultFixed",
     "SpawnWeight": 1.0,
-    "WorldLootActorClass": "BlueprintGeneratedClass'/Game/Blueprints/Actors/LootActors/BP_LootRoyalCrown.BP_LootRoyalCrown_C'"
+    "WorldLootActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_LootRoyalCrown.BP_LootRoyalCrown_C'"
   },
   {
     "Name": "Loot_Painting",
@@ -15,7 +15,7 @@
     "ScoreValue": 300,
     "SpawnCategory": "ExhibitionRoom",
     "SpawnWeight": 1.0,
-    "WorldLootActorClass": "BlueprintGeneratedClass'/Game/Blueprints/Actors/LootActors/BP_Painting.BP_Painting_C'"
+    "WorldLootActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_Painting.BP_Painting_C'"
   },
   {
     "Name": "Loot_AncientSword",
@@ -24,6 +24,6 @@
     "ScoreValue": 300,
     "SpawnCategory": "ExhibitionRoom",
     "SpawnWeight": 1.0,
-    "WorldLootActorClass": "BlueprintGeneratedClass'/Game/Blueprints/Actors/LootActors/BP_LootAncientSword.BP_LootAncientSword_C'"
+    "WorldLootActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_LootAncientSword.BP_LootAncientSword_C'"
   }
 ]

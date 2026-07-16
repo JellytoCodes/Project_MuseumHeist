@@ -39,6 +39,118 @@ FHeistPlayerConnectionsChanged& AHeistGameState::GetPlayerConnectionsChangedDele
 
 #pragma endregion
 
+#pragma region Objective
+
+FName AHeistGameState::GetActiveTargetArtifactId() const
+{
+	return ActiveTargetArtifactId;
+}
+
+FName AHeistGameState::GetActiveTargetCaseId() const
+{
+	return ActiveTargetCaseId;
+}
+
+EHeistObjectiveState AHeistGameState::GetObjectiveState() const
+{
+	return ObjectiveState;
+}
+
+AHeistPlayerState* AHeistGameState::GetOriginalCarrierCandidate() const
+{
+	return OriginalCarrierCandidate.Get();
+}
+
+int32 AHeistGameState::GetObjectiveRevision() const
+{
+	return ObjectiveRevision;
+}
+
+bool AHeistGameState::SetObjectiveSnapshot(
+	const FName InActiveTargetArtifactId,
+	const FName InActiveTargetCaseId,
+	const EHeistObjectiveState InObjectiveState,
+	AHeistPlayerState* InOriginalCarrierCandidate)
+{
+	if (!HasAuthority())
+	{
+		UE_LOG(
+			LogHeistNetwork,
+			Warning,
+			TEXT("Objective state change rejected: GameState=%s Reason=NotAuthority"),
+			*GetNameSafe(this));
+		return false;
+	}
+
+	const bool bCarrierBelongsToMatch = !IsValid(InOriginalCarrierCandidate)
+		|| PlayerArray.ContainsByPredicate(
+			[InOriginalCarrierCandidate](const TObjectPtr<APlayerState>& CandidatePlayerState)
+			{
+				return CandidatePlayerState.Get() == InOriginalCarrierCandidate;
+			});
+	if (!bCarrierBelongsToMatch)
+	{
+		UE_LOG(
+			LogHeistNetwork,
+			Warning,
+			TEXT("Objective state change rejected: GameState=%s Carrier=%s Reason=CarrierNotInPlayerArray"),
+			*GetNameSafe(this),
+			*GetNameSafe(InOriginalCarrierCandidate));
+		return false;
+	}
+
+	if (ActiveTargetArtifactId == InActiveTargetArtifactId
+		&& ActiveTargetCaseId == InActiveTargetCaseId
+		&& ObjectiveState == InObjectiveState
+		&& OriginalCarrierCandidate.Get() == InOriginalCarrierCandidate)
+	{
+		return true;
+	}
+
+	ActiveTargetArtifactId = InActiveTargetArtifactId;
+	ActiveTargetCaseId = InActiveTargetCaseId;
+	ObjectiveState = InObjectiveState;
+	OriginalCarrierCandidate = InOriginalCarrierCandidate;
+	++ObjectiveRevision;
+	ForceNetUpdate();
+	BroadcastObjectiveState(TEXT("Server"));
+	return true;
+}
+
+FHeistObjectiveStateChanged& AHeistGameState::GetObjectiveStateChangedDelegate()
+{
+	return ObjectiveStateChangedDelegate;
+}
+
+void AHeistGameState::OnRep_ObjectiveRevision()
+{
+	BroadcastObjectiveState(TEXT("Replicated"));
+}
+
+void AHeistGameState::BroadcastObjectiveState(const TCHAR* ChangeSource)
+{
+	ObjectiveStateChangedDelegate.Broadcast(
+		ActiveTargetArtifactId,
+		ActiveTargetCaseId,
+		ObjectiveState,
+		OriginalCarrierCandidate.Get());
+
+	UE_LOG(
+		LogHeistNetwork,
+		Log,
+		TEXT("Objective state %s: GameState=%s Target=%s CaseId=%s State=%s CarrierCandidate=%s Revision=%d Authority=%s"),
+		ChangeSource,
+		*GetNameSafe(this),
+		*ActiveTargetArtifactId.ToString(),
+		*ActiveTargetCaseId.ToString(),
+		*UEnum::GetValueAsString(ObjectiveState),
+		*GetNameSafe(OriginalCarrierCandidate.Get()),
+		ObjectiveRevision,
+		HasAuthority() ? TEXT("true") : TEXT("false"));
+}
+
+#pragma endregion
+
 #pragma region EscapePhase
 
 bool AHeistGameState::IsEscapePhaseOpen() const
@@ -375,6 +487,11 @@ void AHeistGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AHeistGameState, bEscapePhaseOpen);
+	DOREPLIFETIME(AHeistGameState, ActiveTargetArtifactId);
+	DOREPLIFETIME(AHeistGameState, ActiveTargetCaseId);
+	DOREPLIFETIME(AHeistGameState, ObjectiveState);
+	DOREPLIFETIME(AHeistGameState, OriginalCarrierCandidate);
+	DOREPLIFETIME(AHeistGameState, ObjectiveRevision);
 	DOREPLIFETIME(AHeistGameState, EscapePhaseDelaySeconds);
 	DOREPLIFETIME(AHeistGameState, EscapePhaseOpenTimeSeconds);
 	DOREPLIFETIME(AHeistGameState, LastSoundPingEvent);

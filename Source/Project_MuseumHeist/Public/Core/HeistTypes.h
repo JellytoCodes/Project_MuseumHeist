@@ -32,6 +32,44 @@ enum class EHeistInputMode : uint8
 
 #pragma endregion
 
+#pragma region Objective
+
+UENUM(BlueprintType)
+enum class EHeistObjectiveState : uint8
+{
+	Inactive,
+	Available,
+	InProgress,
+	Completed,
+	Failed
+};
+
+UENUM(BlueprintType)
+enum class EHeistForgeryType : uint8
+{
+	None,
+	Drawing
+};
+
+UENUM(BlueprintType)
+enum class EHeistDisplayCaseState : uint8
+{
+	Secured,
+	Observed,
+	ForgeryInProgress,
+	ReplicaReady,
+	ReplicaPlaced,
+	OriginalAvailable,
+	OriginalRemoved,
+	Inspecting,
+	Completed,
+	Suspected,
+	Alarmed,
+	Failed
+};
+
+#pragma endregion
+
 #pragma region ResultData
 
 USTRUCT(BlueprintType)

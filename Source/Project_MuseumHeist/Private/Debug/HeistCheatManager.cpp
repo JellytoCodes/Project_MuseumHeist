@@ -23,6 +23,79 @@ void UHeistCheatManager::HeistHUDDump()
 
 #pragma endregion
 
+#pragma region ObjectiveDebug
+
+void UHeistCheatManager::HeistObjectiveHelp()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugObjectiveHelp(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistObjectiveDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugObjectiveDump(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistObjectiveSet(
+	const FString& ArtifactId,
+	const FString& CaseId,
+	const FString& StateName,
+	const int32 UseLocalPlayerAsCarrier)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugObjectiveSet(
+		GetOuterAPlayerController(),
+		FName(*ArtifactId),
+		FName(*CaseId),
+		StateName,
+		UseLocalPlayerAsCarrier != 0);
+#endif
+}
+
+#pragma endregion
+
+#pragma region DisplayCaseDebug
+
+void UHeistCheatManager::HeistCaseHelp()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugDisplayCaseHelp(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistCaseSpawn(const float Distance)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugDisplayCaseSpawn(GetOuterAPlayerController(), Distance);
+#endif
+}
+
+void UHeistCheatManager::HeistCaseDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugDisplayCaseDump(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistCaseAdvance()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugDisplayCaseAdvance(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistCaseSet(const FString& StateName)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugDisplayCaseSet(GetOuterAPlayerController(), StateName);
+#endif
+}
+
+#pragma endregion
+
 #pragma region FirstPersonScaleDebug
 
 void UHeistCheatManager::HeistFirstPersonScaleCheck(const float ForwardDistance)

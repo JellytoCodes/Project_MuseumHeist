@@ -1,0 +1,16 @@
+[
+  {
+    "Name": "Artifact_Painting_M01",
+    "ArtifactId": "Artifact_Painting_M01",
+    "DisplayName": "M01 Target Painting",
+    "ArtifactValue": 2500,
+    "Weight": 3.0,
+    "GridWidth": 2,
+    "GridHeight": 3,
+    "ForgeryType": "Drawing",
+    "ForgeryTemplateId": "Template_Painting_01",
+    "MinimumForgeryScore": 0.6,
+    "BaseInspectionDelay": 8.0,
+    "VisualActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_Painting.BP_Painting_C'"
+  }
+]

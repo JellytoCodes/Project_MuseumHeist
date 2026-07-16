@@ -160,6 +160,43 @@ public:
 
 #pragma endregion
 
+#pragma region ObjectiveDebug
+
+public:
+	static void DebugObjectiveHelp(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Objective", meta = (DevelopmentOnly))
+	static void DebugObjectiveDump(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Objective", meta = (DevelopmentOnly))
+	static void DebugObjectiveSet(
+		APlayerController* PlayerController,
+		FName ArtifactId,
+		FName CaseId,
+		const FString& StateName,
+		bool bUseLocalPlayerAsCarrier);
+
+#pragma endregion
+
+#pragma region DisplayCaseDebug
+
+public:
+	static void DebugDisplayCaseHelp(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|DisplayCase", meta = (DevelopmentOnly))
+	static void DebugDisplayCaseSpawn(APlayerController* PlayerController, float Distance);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|DisplayCase", meta = (DevelopmentOnly))
+	static void DebugDisplayCaseDump(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|DisplayCase", meta = (DevelopmentOnly))
+	static void DebugDisplayCaseAdvance(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|DisplayCase", meta = (DevelopmentOnly))
+	static void DebugDisplayCaseSet(APlayerController* PlayerController, const FString& StateName);
+
+#pragma endregion
+
 #pragma region InventoryDebug
 
 public:
