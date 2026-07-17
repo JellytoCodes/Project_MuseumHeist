@@ -6,10 +6,8 @@
 #include "Character/Components/HeistActionComponent.h"
 #include "Character/Components/HeistInteractionComponent.h"
 #include "Character/Components/HeistInventoryComponent.h"
-#include "Character/Components/HeistStatusComponent.h"
 #include "Character/Components/HeistVisionComponent.h"
 #include "Character/HeistPlayerCharacter.h"
-#include "Core/HeistGameplayTags.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistGameMode.h"
 #include "Core/HeistHUD.h"
@@ -27,7 +25,6 @@
 #include "InputMappingContext.h"
 #include "Inventory/HeistItemDataTypes.h"
 #include "Inventory/HeistInventoryTypes.h"
-#include "Kismet/GameplayStatics.h"
 #include "World/Actors/Escape/HeistVentActor.h"
 #include "World/Actors/Loot/HeistDisplayCaseActor.h"
 #include "World/Actors/Loot/HeistLootActor.h"
@@ -322,7 +319,7 @@ void AHeistPlayerController::ApplyLocalInputMode(const EHeistInputMode NewInputM
 
 	UE_LOG(
 		LogHeist,
-		Log,
+		Verbose,
 		TEXT("[%s] Local input mode applied: Mode=%s GameplayContext=%s InventoryContext=%s Cursor=%s IgnoreMove=%s IgnoreLook=%s"),
 		*GetName(),
 		NewInputMode == EHeistInputMode::Gameplay
@@ -575,37 +572,6 @@ bool AHeistPlayerController::TryBuildCameraForwardAim(
 	return true;
 }
 
-bool AHeistPlayerController::TryBuildCameraSurfaceTarget(
-	const float Distance,
-	FVector& OutTargetWorldLocation) const
-{
-	OutTargetWorldLocation = FVector::ZeroVector;
-
-	FVector ViewLocation;
-	FVector CameraForward;
-	FVector TraceEnd;
-	if (!TryBuildCameraForwardAim(Distance, ViewLocation, CameraForward, TraceEnd))
-	{
-		return false;
-	}
-
-	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(HeistCameraSurfaceTarget), false, GetPawn());
-	FHitResult SurfaceHit;
-	if (!GetWorld()->LineTraceSingleByChannel(
-		SurfaceHit,
-		ViewLocation,
-		TraceEnd,
-		ECC_Visibility,
-		QueryParams)
-		|| SurfaceHit.ImpactNormal.Z < 0.7f)
-	{
-		return false;
-	}
-
-	OutTargetWorldLocation = SurfaceHit.ImpactPoint;
-	return true;
-}
-
 void AHeistPlayerController::DebugRequestAddInventoryItem(const FName ItemId)
 {
 	Server_DebugRequestAddInventoryItem(ItemId);
@@ -614,21 +580,6 @@ void AHeistPlayerController::DebugRequestAddInventoryItem(const FName ItemId)
 void AHeistPlayerController::DebugRequestThrowCoinAtWorldLocation(const FVector TargetWorldLocation)
 {
 	Server_DebugRequestThrowCoinAtWorldLocation(TargetWorldLocation);
-}
-
-void AHeistPlayerController::DebugRequestThrowSmokeAtWorldLocation(const FVector TargetWorldLocation)
-{
-	Server_DebugRequestThrowSmokeAtWorldLocation(TargetWorldLocation);
-}
-
-void AHeistPlayerController::DebugRequestPlaceGlueTrapAtWorldLocation(const FVector TargetWorldLocation)
-{
-	Server_DebugRequestPlaceGlueTrapAtWorldLocation(TargetWorldLocation);
-}
-
-void AHeistPlayerController::DebugRequestForceRareLootEvent(const float WarningDelaySeconds)
-{
-	UHeistDebugFunctionLibrary::Message(this, TEXT("Rare Loot debug disabled: PvE cleanup."), EHeistDebugLevel::Warning);
 }
 
 void AHeistPlayerController::DebugRequestSpawnGuard(const float Distance)
@@ -685,11 +636,6 @@ void AHeistPlayerController::DebugRequestFeedbackTest()
 void AHeistPlayerController::DebugRequestFillInventoryForFeedback(const FName ItemId)
 {
 	Server_DebugRequestFillInventoryForFeedback(ItemId);
-}
-
-void AHeistPlayerController::DebugRequestApplyStatusSmoke(const float DurationSeconds)
-{
-	Server_DebugRequestApplyStatusSmoke(DurationSeconds);
 }
 
 void AHeistPlayerController::DebugRequestSetArrested(const bool bArrested)
@@ -1256,65 +1202,6 @@ void AHeistPlayerController::Server_DebugRequestThrowCoinAtWorldLocation_Impleme
 	}
 }
 
-void AHeistPlayerController::Server_DebugRequestThrowSmokeAtWorldLocation_Implementation(const FVector TargetWorldLocation)
-{
-	const FName DebugSmokeItemId(TEXT("Throwable_Smoke"));
-
-	FHeistGameplayRequestContext RequestContext;
-	const TCHAR* RejectReason = nullptr;
-	if (!TryBuildGameplayRequestContext(RequestContext, RejectReason))
-	{
-		LogThrowableUseRejected(EHeistQuickSlotType::SmokeGrenade, DebugSmokeItemId, RejectReason);
-		return;
-	}
-
-	if (RequestContext.Character->GetActionComponent()->IsGameplayCastActive())
-	{
-		LogThrowableUseRejected(EHeistQuickSlotType::SmokeGrenade, DebugSmokeItemId, TEXT("Casting"));
-		return;
-	}
-
-	AHeistThrowableProjectile* SpawnedProjectile = nullptr;
-	if (!TrySpawnThrowableProjectile(
-		RequestContext,
-		DebugSmokeItemId,
-		TargetWorldLocation,
-		true,
-		SpawnedProjectile,
-		RejectReason))
-	{
-		LogThrowableUseRejected(EHeistQuickSlotType::SmokeGrenade, DebugSmokeItemId, RejectReason);
-	}
-}
-
-void AHeistPlayerController::Server_DebugRequestPlaceGlueTrapAtWorldLocation_Implementation(const FVector TargetWorldLocation)
-{
-	FHeistGameplayRequestContext RequestContext;
-	const TCHAR* RejectReason = nullptr;
-	if (!TryBuildGameplayRequestContext(RequestContext, RejectReason))
-	{
-		LogThrowableUseRejected(EHeistQuickSlotType::GlueTrap, FName(TEXT("Trap_Glue")), RejectReason);
-		return;
-	}
-
-	if (RequestContext.Character->GetActionComponent()->IsGameplayCastActive())
-	{
-		LogThrowableUseRejected(EHeistQuickSlotType::GlueTrap, FName(TEXT("Trap_Glue")), TEXT("Casting"));
-		return;
-	}
-
-	if (!TryBeginTrapPlacement(
-		RequestContext,
-		FName(TEXT("Trap_Glue")),
-		INDEX_NONE,
-		TargetWorldLocation,
-		true,
-		RejectReason))
-	{
-		LogThrowableUseRejected(EHeistQuickSlotType::GlueTrap, FName(TEXT("Trap_Glue")), RejectReason);
-	}
-}
-
 void AHeistPlayerController::Server_DebugRequestSpawnGuard_Implementation(
 	const float Distance)
 {
@@ -1397,9 +1284,6 @@ void AHeistPlayerController::Server_DebugRequestSetNearestGuardState_Implementat
 	{
 	case EHeistGuardState::Disabled:
 		GuardStateComponent->SetDisabled(true);
-		break;
-	case EHeistGuardState::Stunned:
-		GuardStateComponent->ApplyStun(SafeDuration);
 		break;
 	case EHeistGuardState::Patrol:
 		if (GuardStateComponent->GetGuardState() == EHeistGuardState::Disabled)
@@ -1698,26 +1582,6 @@ void AHeistPlayerController::Server_DebugRequestFillInventoryForFeedback_Impleme
 	}
 
 	LogInventoryRequestRejected(TEXT("FeedbackBagFull"), INDEX_NONE, TEXT("TestLimitReached"));
-#endif
-}
-
-void AHeistPlayerController::Server_DebugRequestApplyStatusSmoke_Implementation(const float DurationSeconds)
-{
-#if !UE_BUILD_SHIPPING
-	FHeistGameplayRequestContext RequestContext;
-	const TCHAR* RejectReason = nullptr;
-	if (!TryBuildGameplayRequestContext(RequestContext, RejectReason))
-	{
-		SendPopupFeedbackForRejection(TEXT("StatusSmoke"), RejectReason);
-		return;
-	}
-
-	if (!RequestContext.Character->GetStatusComponent()->ApplyTimedStatusTag(
-		FHeistGameplayTags::Get().State_InSmoke,
-		FMath::Max(0.1f, DurationSeconds)))
-	{
-		SendPopupFeedbackForRejection(TEXT("StatusSmoke"), TEXT("StatusRejected"));
-	}
 #endif
 }
 

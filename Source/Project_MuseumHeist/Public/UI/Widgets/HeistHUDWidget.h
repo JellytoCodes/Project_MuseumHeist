@@ -110,6 +110,9 @@ private:
 	TObjectPtr<UTextBlock> ActionText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> ObjectiveText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> StatusText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))

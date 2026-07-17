@@ -103,7 +103,7 @@ void UHeistHUDWidget::SetupHUDWidget(
 	ResolveCrosshairWidgets();
 	UE_LOG(
 		LogHeistUI,
-		Log,
+		Verbose,
 		TEXT("[%s] HUD widget setup: Class=%s HUDViewModel=%s InteractionComponent=%s InteractionPromptWidget=%s InteractionPromptClass=%s ActionProgressWidget=%s ActionProgressClass=%s"),
 		*GetName(),
 		*GetClass()->GetName(),
@@ -137,14 +137,31 @@ void UHeistHUDWidget::SetupHUDWidget(
 void UHeistHUDWidget::SetupPopupFeedbackPresentation()
 {
 	AHeistPlayerController* OwningPlayerController = Cast<AHeistPlayerController>(GetOwningPlayer());
-	if (!IsValid(OwningPlayerController) || !IsValid(PopupFeedbackLayer) || !PopupFeedbackWidgetClass)
+	if (!IsValid(OwningPlayerController))
 	{
 		UE_LOG(
 			LogHeistUI,
 			Warning,
-			TEXT("[%s] Popup feedback presentation setup skipped: Controller=%s Layer=%s Class=%s"),
+			TEXT("[%s] Popup feedback presentation setup rejected: Reason=MissingController"),
+			*GetName());
+		return;
+	}
+	if (!IsValid(PopupFeedbackLayer) && !PopupFeedbackWidgetClass)
+	{
+		UE_LOG(
+			LogHeistUI,
+			Verbose,
+			TEXT("[%s] Popup feedback presentation disabled: Layer=None Class=None"),
+			*GetName());
+		return;
+	}
+	if (!IsValid(PopupFeedbackLayer) || !PopupFeedbackWidgetClass)
+	{
+		UE_LOG(
+			LogHeistUI,
+			Warning,
+			TEXT("[%s] Popup feedback presentation setup rejected: Layer=%s Class=%s"),
 			*GetName(),
-			*GetNameSafe(OwningPlayerController),
 			*GetNameSafe(PopupFeedbackLayer),
 			*GetNameSafe(PopupFeedbackWidgetClass.Get()));
 		return;
@@ -165,18 +182,31 @@ void UHeistHUDWidget::SetupSoundPingPresentation()
 {
 	APlayerController* OwningPlayerController = GetOwningPlayer();
 	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
-	if (!IsValid(OwningPlayerController)
-		|| !IsValid(HeistGameState)
-		|| !IsValid(SoundPingMarkerLayer)
-		|| !SoundPingMarkerWidgetClass)
+	if (!IsValid(OwningPlayerController))
 	{
 		UE_LOG(
 			LogHeistUI,
 			Warning,
-			TEXT("[%s] Sound Ping presentation setup skipped: Controller=%s GameState=%s MarkerLayer=%s MarkerClass=%s"),
+			TEXT("[%s] Sound Ping presentation setup rejected: Reason=MissingController"),
+			*GetName());
+		return;
+	}
+	if (!IsValid(HeistGameState))
+	{
+		UE_LOG(
+			LogHeistUI,
+			Verbose,
+			TEXT("[%s] Sound Ping presentation setup deferred: Reason=GameStateNotReady"),
+			*GetName());
+		return;
+	}
+	if (!IsValid(SoundPingMarkerLayer) || !SoundPingMarkerWidgetClass)
+	{
+		UE_LOG(
+			LogHeistUI,
+			Warning,
+			TEXT("[%s] Sound Ping presentation setup rejected: MarkerLayer=%s MarkerClass=%s"),
 			*GetName(),
-			*GetNameSafe(OwningPlayerController),
-			*GetNameSafe(HeistGameState),
 			*GetNameSafe(SoundPingMarkerLayer),
 			*GetNameSafe(SoundPingMarkerWidgetClass.Get()));
 		return;
@@ -227,7 +257,7 @@ void UHeistHUDWidget::ResolveCrosshairWidgets()
 	{
 		UE_LOG(
 			LogHeistUI,
-			Log,
+			Verbose,
 			TEXT("[%s] Crosshair widget contract: Container=%s Idle=%s Focus=%s Valid=true"),
 			*GetName(),
 			*GetNameSafe(CrosshairContainer),
@@ -267,7 +297,7 @@ void UHeistHUDWidget::RefreshCrosshairPresentation(AActor* TargetActor, const bo
 
 	UE_LOG(
 		LogHeistUI,
-		Log,
+		Verbose,
 		TEXT("[%s] Crosshair presentation refreshed: Target=%s Available=%s State=%s"),
 		*GetName(),
 		*GetNameSafe(TargetActor),
@@ -312,7 +342,7 @@ UHeistInteractionPromptWidget* UHeistHUDWidget::ResolveInteractionChildWidget(
 
 	UE_LOG(
 		LogHeistUI,
-		Log,
+		Verbose,
 		TEXT("[%s] HUD child widget resolved by name: Name=%s Widget=%s Class=%s"),
 		*GetName(),
 		*WidgetName.ToString(),
@@ -376,6 +406,7 @@ void UHeistHUDWidget::RefreshHUDPresentation()
 	const float EscapeCastEndServerTime = HUDViewModel->GetEscapeCastEndServerTime();
 	const bool bTrapPlacementCastActive = HUDViewModel->IsTrapPlacementCastActive();
 	const float TrapPlacementCastEndServerTime = HUDViewModel->GetTrapPlacementCastEndServerTime();
+	const bool bObservationCastActive = HUDViewModel->IsObservationCastActive();
 
 	if (IsValid(ScoreText))
 	{
@@ -394,12 +425,20 @@ void UHeistHUDWidget::RefreshHUDPresentation()
 
 	if (IsValid(ActionText))
 	{
-		const FText ActionLabel = bEscapeCastActive
-			? NSLOCTEXT("HeistHUD", "EscapeCastAction", "ACTION  ESCAPING")
-			: bTrapPlacementCastActive
-				? NSLOCTEXT("HeistHUD", "TrapCastAction", "ACTION  PLACING TRAP")
-				: NSLOCTEXT("HeistHUD", "ReadyAction", "ACTION  READY");
+		const FText ActionLabel = bObservationCastActive
+			? NSLOCTEXT("HeistHUD", "ObservationCastAction", "ACTION  OBSERVING")
+			: (bEscapeCastActive
+				? NSLOCTEXT("HeistHUD", "EscapeCastAction", "ACTION  ESCAPING")
+				: bTrapPlacementCastActive
+					? NSLOCTEXT("HeistHUD", "TrapCastAction", "ACTION  PLACING TRAP")
+					: NSLOCTEXT("HeistHUD", "ReadyAction", "ACTION  READY"));
 		ActionText->SetText(ActionLabel);
+	}
+
+	if (IsValid(ObjectiveText))
+	{
+		ObjectiveText->SetText(HUDViewModel->GetObjectiveStateText());
+		ObjectiveText->SetVisibility(ESlateVisibility::HitTestInvisible);
 	}
 
 	if (IsValid(StatusText))
@@ -490,6 +529,24 @@ void UHeistHUDWidget::DebugDumpFirstPersonHUDState() const
 		IsValid(ToolText) ? *ToolText->GetText().ToString() : TEXT("None"),
 		IsValid(StatusText) ? *StatusText->GetText().ToString() : TEXT("None"),
 		IsValid(WeightText) ? *WeightText->GetText().ToString() : TEXT("None"));
+
+	if (IsValid(HUDViewModel))
+	{
+		UE_LOG(
+			LogHeistUI,
+			Log,
+			TEXT("[%s] Observation presentation: Active=%s ReferenceVisible=%s ReferenceArtifact=%s EndServerTime=%.2f ObjectiveArtifact=%s ObjectiveCase=%s ObjectiveState=%d ObjectiveText='%s' OwnerOnly=true ObjectiveWidget=%s"),
+			*GetName(),
+			HUDViewModel->IsObservationCastActive() ? TEXT("true") : TEXT("false"),
+			HUDViewModel->IsObservationReferenceVisible() ? TEXT("true") : TEXT("false"),
+			*HUDViewModel->GetObservationReferenceArtifactId().ToString(),
+			HUDViewModel->GetObservationCastEndServerTime(),
+			*HUDViewModel->GetObjectiveArtifactId().ToString(),
+			*HUDViewModel->GetObjectiveCaseId().ToString(),
+			static_cast<int32>(HUDViewModel->GetObjectiveState()),
+			*HUDViewModel->GetObjectiveStateText().ToString(),
+			IsValid(ObjectiveText) ? TEXT("true") : TEXT("false"));
+	}
 }
 
 void UHeistHUDWidget::DebugDumpFeedbackState() const

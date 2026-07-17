@@ -119,13 +119,9 @@ public:
 	void RequestUseQuickSlot(EHeistQuickSlotType SlotType);
 
 	bool TryBuildCameraForwardAim(float Distance, FVector& OutViewLocation, FVector& OutCameraForward, FVector& OutTargetWorldLocation) const;
-	bool TryBuildCameraSurfaceTarget(float Distance, FVector& OutTargetWorldLocation) const;
 
 	void DebugRequestAddInventoryItem(FName ItemId);
 	void DebugRequestThrowCoinAtWorldLocation(FVector TargetWorldLocation);
-	void DebugRequestThrowSmokeAtWorldLocation(FVector TargetWorldLocation);
-	void DebugRequestPlaceGlueTrapAtWorldLocation(FVector TargetWorldLocation);
-	void DebugRequestForceRareLootEvent(float WarningDelaySeconds);
 	void DebugRequestSpawnGuard(float Distance);
 	void DebugRequestSetNearestGuardState(EHeistGuardState GuardState, float DurationSeconds);
 	void DebugRequestEvaluateNearestGuardSight();
@@ -135,7 +131,6 @@ public:
 	void DebugRequestSeedResult(int32 Score, bool bEscaped, float EscapeTimeSeconds);
 	void DebugRequestFeedbackTest();
 	void DebugRequestFillInventoryForFeedback(FName ItemId);
-	void DebugRequestApplyStatusSmoke(float DurationSeconds);
 	void DebugRequestSetArrested(bool bArrested);
 	void DebugRequestDumpArrestState();
 	void DebugRequestSetFootstepWeight(float TotalLootWeight);
@@ -183,12 +178,6 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void Server_DebugRequestThrowCoinAtWorldLocation(FVector TargetWorldLocation);
-
-	UFUNCTION(Server, Reliable)
-	void Server_DebugRequestThrowSmokeAtWorldLocation(FVector TargetWorldLocation);
-
-	UFUNCTION(Server, Reliable)
-	void Server_DebugRequestPlaceGlueTrapAtWorldLocation(FVector TargetWorldLocation);
 
 	UFUNCTION(Server, Reliable)
 	void Server_DebugRequestSpawnGuard(float Distance);
@@ -239,9 +228,6 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void Server_DebugRequestFillInventoryForFeedback(FName ItemId);
-
-	UFUNCTION(Server, Reliable)
-	void Server_DebugRequestApplyStatusSmoke(float DurationSeconds);
 
 	void SendPopupFeedback(const FText& Message, float DurationSeconds = 2.0f);
 	void SendPopupFeedbackForRejection(const TCHAR* RequestName, const TCHAR* Reason);

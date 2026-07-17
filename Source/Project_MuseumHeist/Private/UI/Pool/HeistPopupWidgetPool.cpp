@@ -87,7 +87,7 @@ void UHeistPopupWidgetPool::SetupPool(
 
 	UE_LOG(
 		LogHeistUI,
-		Log,
+		Verbose,
 		TEXT("Popup feedback pool setup: Controller=%s Layer=%s Class=%s Capacity=%d"),
 		*GetNameSafe(PlayerController),
 		*GetNameSafe(PopupLayer),
@@ -183,7 +183,7 @@ void UHeistPopupWidgetPool::HandlePopupFeedbackRequested(
 		PopupWidget = ActivePopups[OldestPopupIndex].Widget;
 		UE_LOG(
 			LogHeistUI,
-			Log,
+			Verbose,
 			TEXT("Popup feedback replaced: RemovedSequenceId=%d IncomingSequenceId=%d"),
 			ActivePopups[OldestPopupIndex].SequenceId,
 			NextSequenceId);
@@ -205,7 +205,7 @@ void UHeistPopupWidgetPool::HandlePopupFeedbackRequested(
 
 	UE_LOG(
 		LogHeistUI,
-		Log,
+		Verbose,
 		TEXT("Popup feedback activated: SequenceId=%d Message=%s Duration=%.2f Active=%d"),
 		NewPopup.SequenceId,
 		*Message.ToString(),
@@ -250,7 +250,7 @@ void UHeistPopupWidgetPool::ReleasePopupAt(const int32 ActivePopupIndex, const T
 
 	UE_LOG(
 		LogHeistUI,
-		Log,
+		Verbose,
 		TEXT("Popup feedback released: SequenceId=%d Reason=%s ActiveAfter=%d"),
 		Popup.SequenceId,
 		Reason,

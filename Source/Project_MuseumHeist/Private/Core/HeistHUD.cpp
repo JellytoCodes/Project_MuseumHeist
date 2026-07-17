@@ -8,7 +8,6 @@
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
 #include "Core/HeistLogChannels.h"
-#include "Debug/HeistDebugFunctionLibrary.h"
 #include "UI/ViewModels/HeistHUDViewModel.h"
 #include "UI/ViewModels/HeistInventoryViewModel.h"
 #include "UI/ViewModels/HeistLobbyViewModel.h"
@@ -142,14 +141,15 @@ bool AHeistHUD::ShowLobbyScreen()
 
 	if (!IsValid(LobbyViewModel) || !LobbyWidgetClass)
 	{
-		UHeistDebugFunctionLibrary::Message(
-			this,
-			FString::Printf(
-				TEXT("Lobby screen show skipped: HUD=%s ViewModel=%s WidgetClass=%s"),
-				*GetNameSafe(this),
-				*GetNameSafe(LobbyViewModel),
-				*GetNameSafe(LobbyWidgetClass)),
-			EHeistDebugLevel::Warning);
+#if !UE_BUILD_SHIPPING
+		UE_LOG(
+			LogHeistUI,
+			Warning,
+			TEXT("Lobby screen show skipped: HUD=%s ViewModel=%s WidgetClass=%s"),
+			*GetNameSafe(this),
+			*GetNameSafe(LobbyViewModel),
+			*GetNameSafe(LobbyWidgetClass));
+#endif
 		return false;
 	}
 
@@ -287,7 +287,15 @@ bool AHeistHUD::ShowResultScreen()
 
 	if (!IsValid(ResultViewModel) || !ResultWidgetClass)
 	{
-		UHeistDebugFunctionLibrary::DebugResultScreenShowSkipped(this, ResultViewModel, ResultWidgetClass);
+#if !UE_BUILD_SHIPPING
+		UE_LOG(
+			LogHeistUI,
+			Warning,
+			TEXT("Result screen show skipped: HUD=%s ViewModel=%s WidgetClass=%s"),
+			*GetNameSafe(this),
+			*GetNameSafe(ResultViewModel),
+			*GetNameSafe(ResultWidgetClass));
+#endif
 		return false;
 	}
 

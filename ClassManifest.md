@@ -263,6 +263,7 @@ FHeistForgeryTemplateRow
 |---|---|---|
 | `AHeistGuardCharacter` | Keep + Extend | First-Person 감지 튜닝 |
 | `AHeistGuardAIController` | Keep + Extend | Inspect Target 선택 |
+| `FHeistGuardStateTreeTask` | Add | StateTree-owned guard movement, wait, and authoritative state handoff |
 | `UHeistGuardStateComponent` | Modify | InspectExhibit, Alert 반응 |
 | `UHeistGuardNoiseReactionComponent` | Keep | Coin/Footstep/Alarm |
 | `UHeistPatrolPathComponent` | Keep | Patrol |

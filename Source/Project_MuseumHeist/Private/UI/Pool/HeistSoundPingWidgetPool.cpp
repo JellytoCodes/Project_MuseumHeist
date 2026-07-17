@@ -102,7 +102,7 @@ void UHeistSoundPingWidgetPool::SetupPool(
 
 	UE_LOG(
 		LogHeistUI,
-		Log,
+		Verbose,
 		TEXT("Sound Ping pool setup: Controller=%s MarkerLayer=%s MarkerClass=%s Capacity=%d MergeAngle=%.1f MergeWindow=%.2f ScreenMargin=%.1f"),
 		*GetNameSafe(OwningPlayerController),
 		*GetNameSafe(MarkerLayer),
@@ -254,7 +254,7 @@ void UHeistSoundPingWidgetPool::HandleSoundPingReported(const FHeistSoundPingEve
 	{
 		UE_LOG(
 			LogHeistUI,
-			Log,
+			Verbose,
 			TEXT("Sound Ping marker rejected: SequenceId=%d Reason=Expired EndServerTime=%.2f CurrentServerTime=%.2f"),
 			SoundPingEvent.SequenceId,
 			EndServerTime,
@@ -292,7 +292,7 @@ void UHeistSoundPingWidgetPool::HandleSoundPingReported(const FHeistSoundPingEve
 
 		UE_LOG(
 			LogHeistUI,
-			Log,
+			Verbose,
 			TEXT("Sound Ping marker merged: IncomingSequenceId=%d ActiveSequenceId=%d IncomingPriority=%d ActivePriority=%d AngleDelta=%.1f TimeDelta=%.2f IncomingWins=%s"),
 			SoundPingEvent.SequenceId,
 			PreviousSequenceId,
@@ -334,7 +334,7 @@ void UHeistSoundPingWidgetPool::ActivateMarker(
 		{
 			UE_LOG(
 				LogHeistUI,
-				Log,
+				Verbose,
 				TEXT("Sound Ping marker suppressed: SequenceId=%d Priority=%d Reason=PoolFull Active=%d"),
 				SoundPingEvent.SequenceId,
 				Priority,
@@ -349,7 +349,7 @@ void UHeistSoundPingWidgetPool::ActivateMarker(
 		MarkerWidget = ActiveMarkers[ReplacementIndex].Widget;
 		UE_LOG(
 			LogHeistUI,
-			Log,
+			Verbose,
 			TEXT("Sound Ping marker replaced: RemovedSequenceId=%d RemovedPriority=%d IncomingSequenceId=%d IncomingPriority=%d"),
 			ActiveMarkers[ReplacementIndex].Event.SequenceId,
 			ActiveMarkers[ReplacementIndex].Priority,
@@ -382,7 +382,7 @@ void UHeistSoundPingWidgetPool::ActivateMarker(
 
 	UE_LOG(
 		LogHeistUI,
-		Log,
+		Verbose,
 		TEXT("Sound Ping marker activated: SequenceId=%d Type=%d Priority=%d Angle=%.1f Duration=%.2f Active=%d"),
 		SoundPingEvent.SequenceId,
 		static_cast<int32>(SoundPingEvent.PingType),
@@ -409,7 +409,7 @@ void UHeistSoundPingWidgetPool::ReleaseMarkerAt(const int32 ActiveMarkerIndex, c
 
 	UE_LOG(
 		LogHeistUI,
-		Log,
+		Verbose,
 		TEXT("Sound Ping marker released: SequenceId=%d Reason=%s ActiveAfter=%d"),
 		Marker.Event.SequenceId,
 		Reason,

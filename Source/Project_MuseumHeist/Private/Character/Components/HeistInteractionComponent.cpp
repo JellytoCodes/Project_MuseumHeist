@@ -87,7 +87,7 @@ bool UHeistInteractionComponent::RefreshInteractionTarget(const bool bForceRefre
 	{
 		UE_LOG(
 			LogHeistUI,
-			Log,
+			Verbose,
 			TEXT("[%s] Center interaction trace: Channel=HeistInteractionTrace Start=%s End=%s Hit=%s InteractableChannel=%s WithinRange=%s Target=%s Available=%s Distance=%.1f Key=E"),
 			*GetNameSafe(OwnerCharacter),
 			*TraceStart.ToCompactString(),
@@ -178,7 +178,7 @@ void UHeistInteractionComponent::ClearInteractionTarget(const TCHAR* Reason)
 	{
 		UE_LOG(
 			LogHeistUI,
-			Log,
+			Verbose,
 			TEXT("[%s] Center interaction target cleared: PreviousTarget=%s PreviousHit=%s Reason=%s"),
 			*GetNameSafe(GetOwner()),
 			*GetNameSafe(PreviousTarget),

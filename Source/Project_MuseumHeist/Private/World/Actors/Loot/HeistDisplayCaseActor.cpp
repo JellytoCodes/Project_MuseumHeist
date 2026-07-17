@@ -1,19 +1,42 @@
 #include "World/Actors/Loot/HeistDisplayCaseActor.h"
 
+#include "Components/PrimitiveComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Core/HeistLogChannels.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistPlayerState.h"
 #include "Net/UnrealNetwork.h"
 
+const FName AHeistDisplayCaseActor::OriginalVisualComponentTag(TEXT("OriginalVisual"));
+const FName AHeistDisplayCaseActor::ReplicaVisualComponentTag(TEXT("ReplicaVisual"));
+
 AHeistDisplayCaseActor::AHeistDisplayCaseActor()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
+
+	OriginalVisualComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("OriginalVisualComponent"));
+	OriginalVisualComponent->SetupAttachment(RootComponent);
+	OriginalVisualComponent->ComponentTags.Add(OriginalVisualComponentTag);
+	OriginalVisualComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	OriginalVisualComponent->SetGenerateOverlapEvents(false);
+	OriginalVisualComponent->SetCanEverAffectNavigation(false);
+
+	ReplicaVisualComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ReplicaVisualComponent"));
+	ReplicaVisualComponent->SetupAttachment(RootComponent);
+	ReplicaVisualComponent->ComponentTags.Add(ReplicaVisualComponentTag);
+	ReplicaVisualComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	ReplicaVisualComponent->SetGenerateOverlapEvents(false);
+	ReplicaVisualComponent->SetCanEverAffectNavigation(false);
+	ReplicaVisualComponent->SetVisibility(false);
+	ReplicaVisualComponent->SetHiddenInGame(true);
 }
 
 void AHeistDisplayCaseActor::BeginPlay()
 {
 	Super::BeginPlay();
+
+	RefreshPlaceholderVisualState();
 
 	if (HasAuthority())
 	{
@@ -52,6 +75,53 @@ bool AHeistDisplayCaseActor::CanInteract(const AActor* Interactor) const
 EHeistDisplayCaseState AHeistDisplayCaseActor::GetDisplayCaseState() const
 {
 	return DisplayCaseState;
+}
+
+bool AHeistDisplayCaseActor::ShouldDisplayOriginalPlaceholder() const
+{
+	return ShouldDisplayOriginalPlaceholderForState(DisplayCaseState);
+}
+
+bool AHeistDisplayCaseActor::ShouldDisplayReplicaPlaceholder() const
+{
+	return ShouldDisplayReplicaPlaceholderForState(DisplayCaseState);
+}
+
+void AHeistDisplayCaseActor::GetPlaceholderVisualDebugState(
+	bool& OutExpectedOriginalVisible,
+	bool& OutExpectedReplicaVisible,
+	int32& OutOriginalComponentCount,
+	int32& OutReplicaComponentCount,
+	bool& OutComponentsMatchExpectedState) const
+{
+	OutExpectedOriginalVisible = ShouldDisplayOriginalPlaceholder();
+	OutExpectedReplicaVisible = ShouldDisplayReplicaPlaceholder();
+	OutOriginalComponentCount = 0;
+	OutReplicaComponentCount = 0;
+	OutComponentsMatchExpectedState = true;
+
+	TInlineComponentArray<UPrimitiveComponent*> PrimitiveComponents(this);
+	for (const UPrimitiveComponent* PrimitiveComponent : PrimitiveComponents)
+	{
+		if (!IsValid(PrimitiveComponent))
+		{
+			continue;
+		}
+
+		if (PrimitiveComponent->ComponentHasTag(OriginalVisualComponentTag))
+		{
+			++OutOriginalComponentCount;
+			OutComponentsMatchExpectedState &= PrimitiveComponent->IsVisible() == OutExpectedOriginalVisible;
+		}
+
+		if (PrimitiveComponent->ComponentHasTag(ReplicaVisualComponentTag))
+		{
+			++OutReplicaComponentCount;
+			OutComponentsMatchExpectedState &= PrimitiveComponent->IsVisible() == OutExpectedReplicaVisible;
+		}
+	}
+
+	OutComponentsMatchExpectedState &= OutOriginalComponentCount > 0 && OutReplicaComponentCount > 0;
 }
 
 bool AHeistDisplayCaseActor::CanTransitionToDisplayCaseState(const EHeistDisplayCaseState NewState) const
@@ -135,8 +205,44 @@ bool AHeistDisplayCaseActor::TryGetNextDisplayCaseState(
 	}
 }
 
+bool AHeistDisplayCaseActor::ShouldDisplayOriginalPlaceholderForState(const EHeistDisplayCaseState State)
+{
+	switch (State)
+	{
+	case EHeistDisplayCaseState::Secured:
+	case EHeistDisplayCaseState::Observed:
+	case EHeistDisplayCaseState::ForgeryInProgress:
+	case EHeistDisplayCaseState::ReplicaReady:
+	case EHeistDisplayCaseState::ReplicaPlaced:
+	case EHeistDisplayCaseState::OriginalAvailable:
+		return true;
+	default:
+		return false;
+	}
+}
+
+bool AHeistDisplayCaseActor::ShouldDisplayReplicaPlaceholderForState(const EHeistDisplayCaseState State)
+{
+	switch (State)
+	{
+	case EHeistDisplayCaseState::ReplicaPlaced:
+	case EHeistDisplayCaseState::OriginalAvailable:
+	case EHeistDisplayCaseState::OriginalRemoved:
+	case EHeistDisplayCaseState::Inspecting:
+	case EHeistDisplayCaseState::Completed:
+	case EHeistDisplayCaseState::Suspected:
+	case EHeistDisplayCaseState::Alarmed:
+	case EHeistDisplayCaseState::Failed:
+		return true;
+	default:
+		return false;
+	}
+}
+
 void AHeistDisplayCaseActor::HandleDisplayCaseStateChanged(const EHeistDisplayCaseState PreviousState)
 {
+	RefreshPlaceholderVisualState();
+
 	UE_LOG(
 		LogHeistNetwork,
 		Log,
@@ -147,6 +253,52 @@ void AHeistDisplayCaseActor::HandleDisplayCaseStateChanged(const EHeistDisplayCa
 		HasAuthority() ? TEXT("true") : TEXT("false"));
 
 	OnDisplayCaseStateChanged.Broadcast(PreviousState, DisplayCaseState);
+}
+
+void AHeistDisplayCaseActor::RefreshPlaceholderVisualState()
+{
+	const bool bOriginalVisible = ShouldDisplayOriginalPlaceholder();
+	const bool bReplicaVisible = ShouldDisplayReplicaPlaceholder();
+	int32 OriginalComponentCount = 0;
+	int32 ReplicaComponentCount = 0;
+
+	TInlineComponentArray<UPrimitiveComponent*> PrimitiveComponents(this);
+	for (UPrimitiveComponent* PrimitiveComponent : PrimitiveComponents)
+	{
+		if (!IsValid(PrimitiveComponent))
+		{
+			continue;
+		}
+
+		if (PrimitiveComponent->ComponentHasTag(OriginalVisualComponentTag))
+		{
+			++OriginalComponentCount;
+			PrimitiveComponent->SetVisibility(bOriginalVisible, true);
+			PrimitiveComponent->SetHiddenInGame(!bOriginalVisible, true);
+		}
+
+		if (PrimitiveComponent->ComponentHasTag(ReplicaVisualComponentTag))
+		{
+			++ReplicaComponentCount;
+			PrimitiveComponent->SetVisibility(bReplicaVisible, true);
+			PrimitiveComponent->SetHiddenInGame(!bReplicaVisible, true);
+		}
+	}
+
+	BP_ApplyPlaceholderVisualState(DisplayCaseState, bOriginalVisible, bReplicaVisible);
+
+	UE_LOG(
+		LogHeistNetwork,
+		Log,
+		TEXT("Display case placeholder visual applied: Case=%s State=%s OriginalVisible=%s ReplicaVisible=%s OriginalComponents=%d ReplicaComponents=%d Authority=%s Result=%s"),
+		*GetNameSafe(this),
+		*UEnum::GetValueAsString(DisplayCaseState),
+		bOriginalVisible ? TEXT("true") : TEXT("false"),
+		bReplicaVisible ? TEXT("true") : TEXT("false"),
+		OriginalComponentCount,
+		ReplicaComponentCount,
+		HasAuthority() ? TEXT("true") : TEXT("false"),
+		OriginalComponentCount > 0 && ReplicaComponentCount > 0 ? TEXT("PASS") : TEXT("MISSING_COMPONENTS"));
 }
 
 #pragma endregion

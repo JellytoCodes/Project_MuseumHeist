@@ -1,9 +1,38 @@
 #include "Core/HeistGameState.h"
 
-#include "Debug/HeistDebugFunctionLibrary.h"
 #include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerState.h"
 #include "Net/UnrealNetwork.h"
+
+namespace
+{
+#if !UE_BUILD_SHIPPING
+void LogSoundPingEvent(const TCHAR* Phase, const FHeistSoundPingEvent& SoundPingEvent)
+{
+	const FString Message = FString::Printf(
+		TEXT("Sound ping %s: SequenceId=%d Type=%d Tag=%s Location=(%.1f,%.1f,%.1f) Radius=%.1f Duration=%.2f AffectsGuards=%s ServerTime=%.2f"),
+		Phase,
+		SoundPingEvent.SequenceId,
+		static_cast<int32>(SoundPingEvent.PingType),
+		*SoundPingEvent.SoundPingTag.ToString(),
+		SoundPingEvent.WorldLocation.X,
+		SoundPingEvent.WorldLocation.Y,
+		SoundPingEvent.WorldLocation.Z,
+		SoundPingEvent.Radius,
+		SoundPingEvent.Duration,
+		SoundPingEvent.bAffectsGuards ? TEXT("true") : TEXT("false"),
+		SoundPingEvent.ServerTimeSeconds);
+
+	if (SoundPingEvent.PingType == EHeistSoundPingType::Footstep)
+	{
+		UE_LOG(LogHeistNetwork, Verbose, TEXT("%s"), *Message);
+		return;
+	}
+
+	UE_LOG(LogHeistNetwork, Log, TEXT("%s"), *Message);
+}
+#endif
+}
 
 #pragma region Construction
 
@@ -366,7 +395,20 @@ FHeistRareLootEventStateChanged& AHeistGameState::GetRareLootEventStateChangedDe
 void AHeistGameState::OnRep_RareLootEventState()
 {
 	BroadcastRareLootEventState();
-	UHeistDebugFunctionLibrary::DebugRareLootStateReplicated(this, RareLootEventState);
+#if !UE_BUILD_SHIPPING
+	UE_LOG(
+		LogHeistNetwork,
+		Log,
+		TEXT("Rare Loot state replicated: EventIndex=%d ItemId=%s Incoming=%s MarkerActive=%s SpawnServerTime=%.2f Location=(%.1f,%.1f,%.1f)"),
+		RareLootEventState.EventIndex,
+		*RareLootEventState.ItemId.ToString(),
+		RareLootEventState.bIncomingWarningActive ? TEXT("true") : TEXT("false"),
+		RareLootEventState.bDirectionMarkerActive ? TEXT("true") : TEXT("false"),
+		RareLootEventState.SpawnServerTime,
+		RareLootEventState.WorldLocation.X,
+		RareLootEventState.WorldLocation.Y,
+		RareLootEventState.WorldLocation.Z);
+#endif
 }
 
 void AHeistGameState::BroadcastRareLootEventState()
@@ -391,7 +433,9 @@ void AHeistGameState::ReportSoundPing(const FHeistSoundPingEvent& SoundPingEvent
 	LastSoundPingEvent.ServerTimeSeconds = GetServerWorldTimeSeconds();
 	ForceNetUpdate();
 	SoundPingEventReportedDelegate.Broadcast(LastSoundPingEvent);
-	UHeistDebugFunctionLibrary::DebugSoundPingReported(this, LastSoundPingEvent);
+#if !UE_BUILD_SHIPPING
+	LogSoundPingEvent(TEXT("reported"), LastSoundPingEvent);
+#endif
 }
 
 const FHeistSoundPingEvent& AHeistGameState::GetLastSoundPingEvent() const
@@ -407,7 +451,9 @@ FHeistSoundPingEventReported& AHeistGameState::GetSoundPingEventReportedDelegate
 void AHeistGameState::OnRep_LastSoundPingEvent()
 {
 	SoundPingEventReportedDelegate.Broadcast(LastSoundPingEvent);
-	UHeistDebugFunctionLibrary::DebugSoundPingReplicated(this, LastSoundPingEvent);
+#if !UE_BUILD_SHIPPING
+	LogSoundPingEvent(TEXT("replicated"), LastSoundPingEvent);
+#endif
 }
 
 #pragma endregion

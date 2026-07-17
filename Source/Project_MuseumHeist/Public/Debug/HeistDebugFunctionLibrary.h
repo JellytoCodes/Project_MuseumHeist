@@ -49,7 +49,6 @@ public:
 	static void DebugLootPickupRequestReceived(const UObject* WorldContextObject, const UObject* Character, const UObject* TargetLootActor);
 	static void DebugLootPickupRequestRejected(const UObject* WorldContextObject, const UObject* TargetLootActor, const TCHAR* Reason, float Distance = -1.0f);
 	static void DebugLootPickupRequestAccepted(const UObject* WorldContextObject, const UObject* TargetLootActor, FName ItemId, int32 InstanceId, float Distance);
-	static void DebugLootDataFallbackApplied(const UObject* WorldContextObject, FName LootRowName);
 
 	static void DebugEscapeRequestRejected(const UObject* WorldContextObject, const UObject* TargetVentActor, const TCHAR* Reason, float Distance = -1.0f);
 	static void DebugEscapeRequestAccepted(const UObject* WorldContextObject, const UObject* Character, const UObject* TargetVentActor, float Distance);
@@ -74,22 +73,17 @@ public:
 
 	static void DebugWeightMovementSkipped(const UObject* WorldContextObject, const TCHAR* Reason);
 	static void DebugWeightMovementSpeedApplied(const UObject* WorldContextObject, float TotalWeight, float BaseSpeed, float FinalSpeed);
-	static void DebugStatusTagApplied(const UObject* WorldContextObject, const FGameplayTag& StateTag, float EndServerTime);
-	static void DebugStatusTagCleared(const UObject* WorldContextObject, const FGameplayTag& StateTag);
-	static void DebugStatusTagsReplicated(const UObject* WorldContextObject, const TArray<FHeistTimedTagState>& StatusTags);
 	static void DebugThrowableUseRejected(const UObject* WorldContextObject, EHeistQuickSlotType SlotType, FName ItemId, const TCHAR* Reason);
 	static void DebugThrowableProjectileSpawned(const UObject* WorldContextObject, const UObject* Character, const UObject* Projectile, FName ItemId, const FVector& TargetWorldLocation, const FVector& LaunchDirection, float ProjectileSpeed, bool bDebugBypassInventory);
 	static void DebugThrowableProjectileImpact(const UObject* WorldContextObject, const UObject* Projectile, const UObject* OtherActor, FName ItemId, const FVector& ImpactLocation);
 	static void DebugSmokeCloudSpawned(const UObject* WorldContextObject, const UObject* Projectile, const UObject* SmokeCloud, FName ItemId, const FVector& WorldLocation, float Radius, float DurationSeconds);
 	static void DebugSmokeCloudStateReplicated(const UObject* WorldContextObject, const UObject* SmokeCloud, float Radius, float EndServerTime, bool bBlocksAISight);
 	static void DebugSmokeCloudOverlapChanged(const UObject* WorldContextObject, const UObject* SmokeCloud, const UObject* Actor, bool bInsideSmoke, float RemainingSeconds);
-	static void DebugSmokeSightQuery(const UObject* WorldContextObject, const UObject* SmokeCloud, const FVector& FromLocation, const FVector& ToLocation, bool bBlocked);
 	static void DebugRareLootTimersStarted(const UObject* WorldContextObject, const TArray<float>& EventTimes, float WarningLeadTime);
 	static void DebugRareLootWarningStarted(const UObject* WorldContextObject, int32 EventIndex, FName ItemId, float SpawnServerTime);
 	static void DebugRareLootSpawned(const UObject* WorldContextObject, int32 EventIndex, const UObject* LootActor, const UObject* SpawnPoint, FName ItemId, const FVector& WorldLocation);
 	static void DebugRareLootEventFailed(const UObject* WorldContextObject, int32 EventIndex, const TCHAR* Reason);
 	static void DebugRareLootPickedUp(const UObject* WorldContextObject, int32 EventIndex, const UObject* LootActor, const UObject* Requester, FName ItemId);
-	static void DebugRareLootStateReplicated(const UObject* WorldContextObject, const FHeistRareLootEventState& EventState);
 	static void DebugTrapPlacementCastStarted(const UObject* WorldContextObject, const UObject* Character, FName ItemId, const FVector& TargetWorldLocation, float DurationSeconds, float EndServerTime);
 	static void DebugTrapPlacementCastStateReplicated(const UObject* WorldContextObject, const UObject* Character, bool bIsActive, float EndServerTime);
 	static void DebugTrapPlacementCastCancelled(const UObject* WorldContextObject, const FString& CharacterName, FName ItemId, const TCHAR* Reason);
@@ -101,8 +95,6 @@ public:
 	static void DebugGuardStateChanged(const UObject* WorldContextObject, const UObject* GuardActor, EHeistGuardState PreviousState, EHeistGuardState NewState, float StateEndServerTime);
 	static void DebugGuardStateRequestRejected(const UObject* WorldContextObject, const UObject* GuardActor, EHeistGuardState RequestedState, const TCHAR* Reason);
 	static void DebugGuardStateReplicated(const UObject* WorldContextObject, const UObject* GuardActor, EHeistGuardState NewState);
-	static void DebugGuardProfileResolved(const UObject* WorldContextObject, const UObject* GuardActor, FName GuardProfileId, float PatrolSpeed, float ChaseSpeed);
-	static void DebugGuardProfileRejected(const UObject* WorldContextObject, const UObject* GuardActor, FName GuardProfileId, const TCHAR* Reason);
 	static void DebugDrawGuardSpawnMarker(const UObject* WorldContextObject, UObject* GuardActor);
 	static void DebugGuardStateTreeEvent(const UObject* WorldContextObject, const UObject* GuardActor, const FGameplayTag& StateEventTag);
 	static void DebugGuardPerceptionConfigured(const UObject* WorldContextObject, const UObject* GuardActor, float SightRadius, float AggroResetDistance, float SightAngle, float InvestigateSightAngle, float EyeHeight, float DetectionGrace, bool bDoorsBlockSight, bool bDisplayCasesBlockSight, FName DoorOccluderTag, float UpdateInterval);
@@ -119,11 +111,7 @@ public:
 	static void DebugGuardInvestigateConfirmationStarted(const UObject* WorldContextObject, const UObject* GuardActor, const FVector& InvestigateLocation, float DurationSeconds);
 	static void DebugGuardSearchTimerStarted(const UObject* WorldContextObject, const UObject* GuardActor, const FVector& SearchLocation, float DurationSeconds);
 	static void DebugSoundPingDefinitionRejected(const UObject* WorldContextObject, FName SoundPingId, const TCHAR* Reason);
-	static void DebugSoundPingReported(const UObject* WorldContextObject, const FHeistSoundPingEvent& SoundPingEvent);
-	static void DebugSoundPingReplicated(const UObject* WorldContextObject, const FHeistSoundPingEvent& SoundPingEvent);
 	static void DebugEscapedPlayerRestrictionsApplied(const UObject* WorldContextObject);
-	static void DebugResultScreenShowSkipped(const UObject* HUD, const UObject* ViewModel, const UClass* WidgetClass);
-	static void DebugWidgetMissingMVVMView(const UObject* Widget, const TCHAR* WidgetRole);
 
 #pragma endregion
 
@@ -256,9 +244,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Status", meta = (DevelopmentOnly))
 	static void DebugStatusDump(APlayerController* PlayerController);
 
-	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Status", meta = (DevelopmentOnly, ClampMin = "0.0", Units = "s"))
-	static void DebugStatusSmoke(APlayerController* PlayerController, float DurationSeconds);
-
 #pragma endregion
 
 #pragma region FeedbackDebug
@@ -287,31 +272,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Throwable", meta = (DevelopmentOnly))
 	static void DebugCoinThrowAt(APlayerController* PlayerController, float TargetX, float TargetY, float TargetZ);
-
-	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Throwable", meta = (DevelopmentOnly))
-	static void DebugSmokeThrow(APlayerController* PlayerController, float Distance);
-
-	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Throwable", meta = (DevelopmentOnly))
-	static void DebugSmokeThrowAt(APlayerController* PlayerController, float TargetX, float TargetY, float TargetZ);
-
-	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Throwable", meta = (DevelopmentOnly))
-	static void DebugSmokeSightCheck(APlayerController* PlayerController, float Distance);
-
-	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Throwable", meta = (DevelopmentOnly))
-	static void DebugSmokeSightCheckAt(APlayerController* PlayerController, float TargetX, float TargetY, float TargetZ);
-
-#pragma endregion
-
-#pragma region RareLootDebug
-
-public:
-	static void DebugRareLootHelp(APlayerController* PlayerController);
-
-	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|RareLoot", meta = (DevelopmentOnly))
-	static void DebugForceRareLootEvent(APlayerController* PlayerController, float WarningDelaySeconds);
-
-	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|RareLoot", meta = (DevelopmentOnly))
-	static void DebugDumpRareLootState(APlayerController* PlayerController);
 
 #pragma endregion
 
@@ -347,19 +307,6 @@ public:
 
 #pragma endregion
 
-#pragma region TrapDebug
-
-public:
-	static void DebugTrapHelp(APlayerController* PlayerController);
-
-	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Trap", meta = (DevelopmentOnly))
-	static void DebugGlueTrapPlace(APlayerController* PlayerController, float Distance);
-
-	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Trap", meta = (DevelopmentOnly))
-	static void DebugGlueTrapPlaceAt(APlayerController* PlayerController, float TargetX, float TargetY, float TargetZ);
-
-#pragma endregion
-
 #pragma region GuardDebug
 
 public:
@@ -374,9 +321,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Guard", meta = (DevelopmentOnly))
 	static void DebugGuardSetState(APlayerController* PlayerController, const FString& StateName, float DurationSeconds);
-
-	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Guard", meta = (DevelopmentOnly))
-	static void DebugGuardApplyStun(APlayerController* PlayerController, float DurationSeconds);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Guard", meta = (DevelopmentOnly))
 	static void DebugGuardSightCheck(APlayerController* PlayerController);

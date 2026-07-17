@@ -6,7 +6,6 @@
 #include "AI/HeistPatrolPathComponent.h"
 #include "Core/HeistGameMode.h"
 #include "Core/HeistLogChannels.h"
-#include "Debug/HeistDebugFunctionLibrary.h"
 #include "Components/CapsuleComponent.h"
 #include "Core/HeistCollisionChannels.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -96,11 +95,14 @@ void AHeistGuardCharacter::ResolveGuardProfile()
 	if (!IsValid(HeistGameMode)
 		|| !HeistGameMode->TryGetGuardDefinition(GuardProfileId, GuardProfile))
 	{
-		UHeistDebugFunctionLibrary::DebugGuardProfileRejected(
-			this,
-			this,
-			GuardProfileId,
-			TEXT("MissingGuardDataRow"));
+#if !UE_BUILD_SHIPPING
+		UE_LOG(
+			LogHeistAI,
+			Warning,
+			TEXT("Guard profile rejected: Guard=%s Profile=%s Reason=MissingGuardDataRow"),
+			*GetNameSafe(this),
+			*GuardProfileId.ToString());
+#endif
 		return;
 	}
 
@@ -113,12 +115,16 @@ void AHeistGuardCharacter::ResolveGuardProfile()
 	{
 		GuardAIController->ConfigurePerceptionFromGuardProfile(GuardProfile);
 	}
-	UHeistDebugFunctionLibrary::DebugGuardProfileResolved(
-		this,
-		this,
-		GuardProfileId,
+#if !UE_BUILD_SHIPPING
+	UE_LOG(
+		LogHeistAI,
+		Log,
+		TEXT("Guard profile resolved: Guard=%s Profile=%s PatrolSpeed=%.1f ChaseSpeed=%.1f"),
+		*GetNameSafe(this),
+		*GuardProfileId.ToString(),
 		GuardProfile.PatrolSpeed,
 		GuardProfile.ChaseSpeed);
+#endif
 }
 
 FName AHeistGuardCharacter::GetGuardProfileId() const

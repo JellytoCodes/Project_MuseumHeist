@@ -116,7 +116,7 @@ void UHeistRareLootAlertWidget::RefreshRareLootPresentation()
 
 	UE_LOG(
 		LogHeistUI,
-		Log,
+		Verbose,
 		TEXT("[%s] Rare Loot alert presentation refreshed: Incoming=%s MarkerActive=%s ShowIncoming=%s ShowMarker=%s EventIndex=%d ItemId=%s Visibility=%s"),
 		*GetNameSafe(this),
 		bIncoming ? TEXT("true") : TEXT("false"),

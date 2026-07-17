@@ -1,7 +1,7 @@
 #include "World/Actors/Loot/HeistLootActor.h"
 
 #include "Core/HeistGameMode.h"
-#include "Debug/HeistDebugFunctionLibrary.h"
+#include "Core/HeistLogChannels.h"
 #include "Inventory/HeistItemDataTypes.h"
 #include "Net/UnrealNetwork.h"
 
@@ -163,7 +163,13 @@ void AHeistLootActor::ResolveLootData()
 	}
 
 	ApplyFallbackLootData();
-	UHeistDebugFunctionLibrary::DebugLootDataFallbackApplied(this, LootDataRow.RowName);
+#if !UE_BUILD_SHIPPING
+	UE_LOG(
+		LogHeistInventory,
+		Warning,
+		TEXT("LootDataRow '%s' was not found. Fallback values are active."),
+		*LootDataRow.RowName.ToString());
+#endif
 }
 
 void AHeistLootActor::ApplyFallbackLootData()

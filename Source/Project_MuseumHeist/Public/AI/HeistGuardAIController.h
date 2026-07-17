@@ -29,7 +29,6 @@ public:
 protected:
 	virtual void OnPossess(APawn* InPawn) override;
 	virtual void OnUnPossess() override;
-	virtual void OnMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result) override;
 
 #pragma endregion
 
@@ -40,6 +39,7 @@ public:
 	bool DebugEvaluateSightTarget(AActor* TargetActor);
 	void SetAutomaticSightEnabled(bool bEnabled);
 	bool IsAutomaticSightEnabled() const;
+	bool TryArrestChaseTarget();
 
 private:
 	UFUNCTION()
@@ -60,7 +60,6 @@ private:
 	void CompleteDetectionGrace();
 	void ClearDetectionGrace(const TCHAR* Reason);
 	void ValidateCurrentChaseTarget();
-	bool TryArrestChaseTarget();
 	void UpdateSightForGuardState(EHeistGuardState NewState);
 	void StartSightValidationTimer();
 	void ClearSightValidationTimer();
@@ -91,26 +90,6 @@ private:
 
 #pragma endregion
 
-#pragma region Movement
-
-private:
-	void BeginPatrolMovement();
-	void HandlePatrolWaypointReached();
-	void AdvancePatrolWaypoint();
-	void BeginInvestigateMovement();
-	void StartInvestigateConfirmation();
-	void BeginChaseMovement();
-	void BeginSearchMovement();
-	void StartSearchTimer();
-	void BeginReturnToPatrolMovement();
-	void ClearGuardMovementTimer();
-
-	FTimerHandle GuardMovementTimerHandle;
-	EHeistGuardState ActiveMovementState = EHeistGuardState::Patrol;
-	bool bHasActiveGuardMove = false;
-
-#pragma endregion
-
 #pragma region StateTree
 
 public:
@@ -124,7 +103,7 @@ private:
 	TObjectPtr<UStateTreeAIComponent> GuardStateTreeComponent;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|AI|StateTree", meta = (AllowPrivateAccess = "true"))
-	bool bStartStateTreeAutomatically = false;
+	bool bStartStateTreeAutomatically = true;
 
 #pragma endregion
 };

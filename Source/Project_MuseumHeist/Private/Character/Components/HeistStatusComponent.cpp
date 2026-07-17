@@ -1,6 +1,6 @@
 #include "Character/Components/HeistStatusComponent.h"
 
-#include "Debug/HeistDebugFunctionLibrary.h"
+#include "Core/HeistLogChannels.h"
 #include "Engine/World.h"
 #include "Net/UnrealNetwork.h"
 
@@ -54,7 +54,15 @@ bool UHeistStatusComponent::ApplyTimedStatusTag(const FGameplayTag StateTag, con
 	GetOwner()->ForceNetUpdate();
 	StatusTagsChangedDelegate.Broadcast(StatusTags);
 
-	UHeistDebugFunctionLibrary::DebugStatusTagApplied(this, StateTag, ExistingState->EndServerTime);
+#if !UE_BUILD_SHIPPING
+	UE_LOG(
+		LogHeist,
+		Log,
+		TEXT("Status tag applied: Owner=%s Tag=%s EndServerTime=%.2f"),
+		*GetNameSafe(GetOwner()),
+		*StateTag.ToString(),
+		ExistingState->EndServerTime);
+#endif
 	return true;
 }
 
@@ -80,7 +88,14 @@ bool UHeistStatusComponent::ClearStatusTag(const FGameplayTag StateTag)
 	GetOwner()->ForceNetUpdate();
 	StatusTagsChangedDelegate.Broadcast(StatusTags);
 
-	UHeistDebugFunctionLibrary::DebugStatusTagCleared(this, StateTag);
+#if !UE_BUILD_SHIPPING
+	UE_LOG(
+		LogHeist,
+		Log,
+		TEXT("Status tag cleared: Owner=%s Tag=%s"),
+		*GetNameSafe(GetOwner()),
+		*StateTag.ToString());
+#endif
 	return true;
 }
 
@@ -167,7 +182,14 @@ void UHeistStatusComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 void UHeistStatusComponent::OnRep_StatusTags()
 {
 	StatusTagsChangedDelegate.Broadcast(StatusTags);
-	UHeistDebugFunctionLibrary::DebugStatusTagsReplicated(this, StatusTags);
+#if !UE_BUILD_SHIPPING
+	UE_LOG(
+		LogHeistNetwork,
+		Log,
+		TEXT("Status tags replicated: Owner=%s TagCount=%d"),
+		*GetNameSafe(GetOwner()),
+		StatusTags.Num());
+#endif
 }
 
 #pragma endregion

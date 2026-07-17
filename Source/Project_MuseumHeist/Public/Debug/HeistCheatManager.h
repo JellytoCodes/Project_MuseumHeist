@@ -73,9 +73,6 @@ public:
 	UFUNCTION(Exec)
 	void HeistStatusDump();
 
-	UFUNCTION(Exec)
-	void HeistStatusSmoke(float DurationSeconds = 3.0f);
-
 #pragma endregion
 
 #pragma region FeedbackDebug
@@ -107,32 +104,6 @@ public:
 	UFUNCTION(Exec)
 	void HeistCoinThrowAt(float TargetX, float TargetY, float TargetZ);
 
-	UFUNCTION(Exec)
-	void HeistSmokeThrow(float Distance = 1000.0f);
-
-	UFUNCTION(Exec)
-	void HeistSmokeThrowAt(float TargetX, float TargetY, float TargetZ);
-
-	UFUNCTION(Exec)
-	void HeistSmokeSightCheck(float Distance = 1000.0f);
-
-	UFUNCTION(Exec)
-	void HeistSmokeSightCheckAt(float TargetX, float TargetY, float TargetZ);
-
-#pragma endregion
-
-#pragma region RareLootDebug
-
-public:
-	UFUNCTION(Exec)
-	void HeistRareLootHelp();
-
-	UFUNCTION(Exec)
-	void HeistRareLootForce(float WarningDelaySeconds = 5.0f);
-
-	UFUNCTION(Exec)
-	void HeistRareLootDump();
-
 #pragma endregion
 
 #pragma region SoundPingDebug
@@ -149,20 +120,6 @@ public:
 
 	UFUNCTION(Exec)
 	void HeistFootstepWeight(float TotalLootWeight = 0.0f);
-
-#pragma endregion
-
-#pragma region TrapDebug
-
-public:
-	UFUNCTION(Exec)
-	void HeistTrapHelp();
-
-	UFUNCTION(Exec)
-	void HeistGlueTrapPlace(float Distance = 200.0f);
-
-	UFUNCTION(Exec)
-	void HeistGlueTrapPlaceAt(float TargetX, float TargetY, float TargetZ);
 
 #pragma endregion
 
@@ -273,9 +230,6 @@ public:
 
 	UFUNCTION(Exec)
 	void HeistGuardState(const FString& StateName, float DurationSeconds = 5.0f);
-
-	UFUNCTION(Exec)
-	void HeistGuardStun(float DurationSeconds = 3.0f);
 
 	UFUNCTION(Exec)
 	void HeistGuardSightCheck();

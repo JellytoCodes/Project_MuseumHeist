@@ -80,6 +80,12 @@ private:
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> CancelHintText;
 
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UWidget> ObservationReferenceContainer;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> ObservationReferenceText;
+
 	FTimerHandle PresentationRefreshTimerHandle;
 	FName TrackedActionType = NAME_None;
 	float TrackedActionEndServerTime = 0.0f;

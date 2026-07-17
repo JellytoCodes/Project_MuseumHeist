@@ -8,6 +8,7 @@
 
 class AHeistGameState;
 class AHeistPlayerState;
+class UStaticMeshComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(
 	FHeistDisplayCaseStateChangedSignature,
@@ -44,6 +45,19 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase")
 	EHeistDisplayCaseState GetDisplayCaseState() const;
 
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Visual")
+	bool ShouldDisplayOriginalPlaceholder() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Visual")
+	bool ShouldDisplayReplicaPlaceholder() const;
+
+	void GetPlaceholderVisualDebugState(
+		bool& OutExpectedOriginalVisible,
+		bool& OutExpectedReplicaVisible,
+		int32& OutOriginalComponentCount,
+		int32& OutReplicaComponentCount,
+		bool& OutComponentsMatchExpectedState) const;
+
 	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase")
 	bool CanTransitionToDisplayCaseState(EHeistDisplayCaseState NewState) const;
 
@@ -56,16 +70,35 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Heist|DisplayCase")
 	FHeistDisplayCaseStateChangedSignature OnDisplayCaseStateChanged;
 
+protected:
+	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|DisplayCase|Visual", meta = (DisplayName = "Apply Placeholder Visual State"))
+	void BP_ApplyPlaceholderVisualState(
+		EHeistDisplayCaseState NewState,
+		bool bOriginalVisible,
+		bool bReplicaVisible);
+
 private:
 	UPROPERTY(ReplicatedUsing = OnRep_DisplayCaseState, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase", meta = (AllowPrivateAccess = "true"))
 	EHeistDisplayCaseState DisplayCaseState = EHeistDisplayCaseState::Secured;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|DisplayCase|Visual", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UStaticMeshComponent> OriginalVisualComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|DisplayCase|Visual", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UStaticMeshComponent> ReplicaVisualComponent;
+
+	static const FName OriginalVisualComponentTag;
+	static const FName ReplicaVisualComponentTag;
 
 	UFUNCTION()
 	void OnRep_DisplayCaseState(EHeistDisplayCaseState PreviousState);
 
 	static bool TryGetNextDisplayCaseState(EHeistDisplayCaseState CurrentState, EHeistDisplayCaseState& OutNextState);
+	static bool ShouldDisplayOriginalPlaceholderForState(EHeistDisplayCaseState State);
+	static bool ShouldDisplayReplicaPlaceholderForState(EHeistDisplayCaseState State);
 
 	void HandleDisplayCaseStateChanged(EHeistDisplayCaseState PreviousState);
+	void RefreshPlaceholderVisualState();
 
 #pragma endregion
 

@@ -179,15 +179,6 @@ void UHeistCheatManager::HeistGuardState(
 #endif
 }
 
-void UHeistCheatManager::HeistGuardStun(const float DurationSeconds)
-{
-#if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugGuardApplyStun(
-		GetOuterAPlayerController(),
-		DurationSeconds);
-#endif
-}
-
 void UHeistCheatManager::HeistGuardSightCheck()
 {
 #if !UE_BUILD_SHIPPING
@@ -334,13 +325,6 @@ void UHeistCheatManager::HeistStatusDump()
 #endif
 }
 
-void UHeistCheatManager::HeistStatusSmoke(const float DurationSeconds)
-{
-#if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugStatusSmoke(GetOuterAPlayerController(), DurationSeconds);
-#endif
-}
-
 #pragma endregion
 
 #pragma region FeedbackDebug
@@ -395,59 +379,6 @@ void UHeistCheatManager::HeistCoinThrowAt(const float TargetX, const float Targe
 {
 #if !UE_BUILD_SHIPPING
 	UHeistDebugFunctionLibrary::DebugCoinThrowAt(GetOuterAPlayerController(), TargetX, TargetY, TargetZ);
-#endif
-}
-
-void UHeistCheatManager::HeistSmokeThrow(const float Distance)
-{
-#if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugSmokeThrow(GetOuterAPlayerController(), Distance);
-#endif
-}
-
-void UHeistCheatManager::HeistSmokeThrowAt(const float TargetX, const float TargetY, const float TargetZ)
-{
-#if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugSmokeThrowAt(GetOuterAPlayerController(), TargetX, TargetY, TargetZ);
-#endif
-}
-
-void UHeistCheatManager::HeistSmokeSightCheck(const float Distance)
-{
-#if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugSmokeSightCheck(GetOuterAPlayerController(), Distance);
-#endif
-}
-
-void UHeistCheatManager::HeistSmokeSightCheckAt(const float TargetX, const float TargetY, const float TargetZ)
-{
-#if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugSmokeSightCheckAt(GetOuterAPlayerController(), TargetX, TargetY, TargetZ);
-#endif
-}
-
-#pragma endregion
-
-#pragma region RareLootDebug
-
-void UHeistCheatManager::HeistRareLootHelp()
-{
-#if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugRareLootHelp(GetOuterAPlayerController());
-#endif
-}
-
-void UHeistCheatManager::HeistRareLootForce(const float WarningDelaySeconds)
-{
-#if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugForceRareLootEvent(GetOuterAPlayerController(), WarningDelaySeconds);
-#endif
-}
-
-void UHeistCheatManager::HeistRareLootDump()
-{
-#if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugDumpRareLootState(GetOuterAPlayerController());
 #endif
 }
 
@@ -558,31 +489,6 @@ void UHeistCheatManager::HeistResultSeed(
 		Score,
 		bEscaped,
 		EscapeTimeSeconds);
-#endif
-}
-
-#pragma endregion
-
-#pragma region TrapDebug
-
-void UHeistCheatManager::HeistTrapHelp()
-{
-#if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugTrapHelp(GetOuterAPlayerController());
-#endif
-}
-
-void UHeistCheatManager::HeistGlueTrapPlace(const float Distance)
-{
-#if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugGlueTrapPlace(GetOuterAPlayerController(), Distance);
-#endif
-}
-
-void UHeistCheatManager::HeistGlueTrapPlaceAt(const float TargetX, const float TargetY, const float TargetZ)
-{
-#if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugGlueTrapPlaceAt(GetOuterAPlayerController(), TargetX, TargetY, TargetZ);
 #endif
 }
 

@@ -2,6 +2,7 @@
 
 #include "Character/Components/HeistActionComponent.h"
 #include "Core/HeistGameState.h"
+#include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerState.h"
 
 #pragma region Construction
@@ -22,6 +23,7 @@ void UHeistHUDViewModel::BeginDestroy()
 		GameState->GetPlayerConnectionsChangedDelegate().RemoveAll(this);
 		GameState->GetEscapePhaseStateChangedDelegate().RemoveAll(this);
 		GameState->GetRareLootEventStateChangedDelegate().RemoveAll(this);
+		GameState->GetObjectiveStateChangedDelegate().RemoveAll(this);
 	}
 
 	if (IsValid(LocalPlayerState))
@@ -53,6 +55,7 @@ void UHeistHUDViewModel::SetupViewModel(
 		GameState->GetPlayerConnectionsChangedDelegate().RemoveAll(this);
 		GameState->GetEscapePhaseStateChangedDelegate().RemoveAll(this);
 		GameState->GetRareLootEventStateChangedDelegate().RemoveAll(this);
+		GameState->GetObjectiveStateChangedDelegate().RemoveAll(this);
 	}
 
 	if (LocalPlayerState != InLocalPlayerState && IsValid(LocalPlayerState))
@@ -85,6 +88,10 @@ void UHeistHUDViewModel::SetupViewModel(
 		GameState->GetRareLootEventStateChangedDelegate().AddUObject(
 			this,
 			&UHeistHUDViewModel::HandleRareLootEventStateChanged);
+		GameState->GetObjectiveStateChangedDelegate().RemoveAll(this);
+		GameState->GetObjectiveStateChangedDelegate().AddUObject(
+			this,
+			&UHeistHUDViewModel::HandleObjectiveStateChanged);
 	}
 
 	if (IsValid(LocalPlayerState))
@@ -151,6 +158,71 @@ void UHeistHUDViewModel::RefreshPresentationState()
 		IsValid(ActionComponent)
 			? ActionComponent->GetTrapPlacementCastEndServerTime()
 			: 0.0f);
+	const bool bLocalObservationCastActive = IsValid(ActionComponent)
+		&& ActionComponent->IsObservationCastActive();
+	const FName ActiveObjectiveArtifactId = IsValid(GameState)
+		? GameState->GetActiveTargetArtifactId()
+		: NAME_None;
+	const FName ActiveObjectiveCaseId = IsValid(GameState)
+		? GameState->GetActiveTargetCaseId()
+		: NAME_None;
+	const EHeistObjectiveState ActiveObjectiveState = IsValid(GameState)
+		? GameState->GetObjectiveState()
+		: EHeistObjectiveState::Inactive;
+
+	UE_MVVM_SET_PROPERTY_VALUE(bObservationCastActive, bLocalObservationCastActive);
+	UE_MVVM_SET_PROPERTY_VALUE(
+		ObservationCastEndServerTime,
+		bLocalObservationCastActive
+			? ActionComponent->GetObservationCastEndServerTime()
+			: 0.0f);
+	// This ViewModel is constructed from the locally owned PlayerState and ActionComponent.
+	// Remote players can replicate the cast state, but their HUD never consumes this instance.
+	UE_MVVM_SET_PROPERTY_VALUE(bObservationReferenceVisible, bLocalObservationCastActive);
+	UE_MVVM_SET_PROPERTY_VALUE(
+		ObservationReferenceArtifactId,
+		bLocalObservationCastActive ? ActiveObjectiveArtifactId : NAME_None);
+	UE_MVVM_SET_PROPERTY_VALUE(ObjectiveArtifactId, ActiveObjectiveArtifactId);
+	UE_MVVM_SET_PROPERTY_VALUE(ObjectiveCaseId, ActiveObjectiveCaseId);
+	UE_MVVM_SET_PROPERTY_VALUE(ObjectiveState, ActiveObjectiveState);
+
+	const FText ArtifactLabel = ActiveObjectiveArtifactId.IsNone()
+		? NSLOCTEXT("HeistHUD", "UnknownObjectiveArtifact", "TARGET ARTIFACT")
+		: FText::FromName(ActiveObjectiveArtifactId);
+	UE_MVVM_SET_PROPERTY_VALUE(
+		ObservationReferenceText,
+		bLocalObservationCastActive
+			? FText::Format(
+				NSLOCTEXT("HeistHUD", "ObservationReferenceFormat", "REFERENCE  {0}"),
+				ArtifactLabel)
+			: FText::GetEmpty());
+
+	FText ObjectiveStateLabel;
+	switch (ActiveObjectiveState)
+	{
+	case EHeistObjectiveState::Available:
+		ObjectiveStateLabel = NSLOCTEXT("HeistHUD", "ObjectiveAvailable", "AVAILABLE");
+		break;
+	case EHeistObjectiveState::InProgress:
+		ObjectiveStateLabel = NSLOCTEXT("HeistHUD", "ObjectiveInProgress", "IN PROGRESS");
+		break;
+	case EHeistObjectiveState::Completed:
+		ObjectiveStateLabel = NSLOCTEXT("HeistHUD", "ObjectiveCompleted", "COMPLETED");
+		break;
+	case EHeistObjectiveState::Failed:
+		ObjectiveStateLabel = NSLOCTEXT("HeistHUD", "ObjectiveFailed", "FAILED");
+		break;
+	case EHeistObjectiveState::Inactive:
+	default:
+		ObjectiveStateLabel = NSLOCTEXT("HeistHUD", "ObjectiveInactive", "INACTIVE");
+		break;
+	}
+	UE_MVVM_SET_PROPERTY_VALUE(
+		ObjectiveStateText,
+		FText::Format(
+			NSLOCTEXT("HeistHUD", "ObjectiveStateFormat", "OBJECTIVE  {0}  |  {1}"),
+			ArtifactLabel,
+			ObjectiveStateLabel));
 
 	PresentationChangedDelegate.Broadcast();
 }
@@ -185,6 +257,15 @@ void UHeistHUDViewModel::HandlePlayerIdentityChanged(const int32)
 	RefreshPresentationState();
 }
 
+void UHeistHUDViewModel::HandleObjectiveStateChanged(
+	const FName,
+	const FName,
+	const EHeistObjectiveState,
+	AHeistPlayerState*)
+{
+	RefreshPresentationState();
+}
+
 void UHeistHUDViewModel::HandleEscapePhaseStateChanged(const bool)
 {
 	RefreshPresentationState();
@@ -203,6 +284,17 @@ void UHeistHUDViewModel::HandleEscapeStateChanged(const bool)
 void UHeistHUDViewModel::HandleActionStateChanged()
 {
 	RefreshPresentationState();
+	UE_LOG(
+		LogHeistUI,
+		Verbose,
+		TEXT("[%s] Observation presentation refreshed: LocalPlayerId=%d Active=%s ReferenceVisible=%s Artifact=%s EndServerTime=%.2f ObjectiveState=%d OwnerOnly=true"),
+		*GetName(),
+		LocalPlayerId,
+		bObservationCastActive ? TEXT("true") : TEXT("false"),
+		bObservationReferenceVisible ? TEXT("true") : TEXT("false"),
+		*ObservationReferenceArtifactId.ToString(),
+		ObservationCastEndServerTime,
+		static_cast<int32>(ObjectiveState));
 }
 
 FHeistHUDPresentationChanged& UHeistHUDViewModel::GetPresentationChangedDelegate()
@@ -267,6 +359,51 @@ bool UHeistHUDViewModel::IsTrapPlacementCastActive() const
 float UHeistHUDViewModel::GetTrapPlacementCastEndServerTime() const
 {
 	return TrapPlacementCastEndServerTime;
+}
+
+bool UHeistHUDViewModel::IsObservationCastActive() const
+{
+	return bObservationCastActive;
+}
+
+float UHeistHUDViewModel::GetObservationCastEndServerTime() const
+{
+	return ObservationCastEndServerTime;
+}
+
+bool UHeistHUDViewModel::IsObservationReferenceVisible() const
+{
+	return bObservationReferenceVisible;
+}
+
+FName UHeistHUDViewModel::GetObservationReferenceArtifactId() const
+{
+	return ObservationReferenceArtifactId;
+}
+
+FName UHeistHUDViewModel::GetObjectiveArtifactId() const
+{
+	return ObjectiveArtifactId;
+}
+
+FName UHeistHUDViewModel::GetObjectiveCaseId() const
+{
+	return ObjectiveCaseId;
+}
+
+EHeistObjectiveState UHeistHUDViewModel::GetObjectiveState() const
+{
+	return ObjectiveState;
+}
+
+const FText& UHeistHUDViewModel::GetObservationReferenceText() const
+{
+	return ObservationReferenceText;
+}
+
+const FText& UHeistHUDViewModel::GetObjectiveStateText() const
+{
+	return ObjectiveStateText;
 }
 
 #pragma endregion

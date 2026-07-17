@@ -44,6 +44,11 @@ private:
 	void HandleRareLootEventStateChanged(const FHeistRareLootEventState& EventState);
 	void HandlePlayerConnectionsChanged(int32 ConnectedPlayers);
 	void HandlePlayerIdentityChanged(int32 PlayerId);
+	void HandleObjectiveStateChanged(
+		FName ArtifactId,
+		FName CaseId,
+		EHeistObjectiveState ObjectiveState,
+		class AHeistPlayerState* CarrierCandidate);
 	void HandleEscapePhaseStateChanged(bool bEscapePhaseOpen);
 	void HandleLootTotalsChanged(int32 TotalLootScore, float TotalLootWeight);
 	void HandleEscapeStateChanged(bool bEscaped);
@@ -76,6 +81,15 @@ public:
 	float GetEscapeCastEndServerTime() const;
 	bool IsTrapPlacementCastActive() const;
 	float GetTrapPlacementCastEndServerTime() const;
+	bool IsObservationCastActive() const;
+	float GetObservationCastEndServerTime() const;
+	bool IsObservationReferenceVisible() const;
+	FName GetObservationReferenceArtifactId() const;
+	FName GetObjectiveArtifactId() const;
+	FName GetObjectiveCaseId() const;
+	EHeistObjectiveState GetObjectiveState() const;
+	const FText& GetObservationReferenceText() const;
+	const FText& GetObjectiveStateText() const;
 
 private:
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|HUD", meta = (AllowPrivateAccess = "true"))
@@ -107,6 +121,33 @@ private:
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Action", meta = (AllowPrivateAccess = "true"))
 	float TrapPlacementCastEndServerTime = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Observation", meta = (AllowPrivateAccess = "true"))
+	bool bObservationCastActive = false;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Observation", meta = (AllowPrivateAccess = "true"))
+	float ObservationCastEndServerTime = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Observation", meta = (AllowPrivateAccess = "true"))
+	bool bObservationReferenceVisible = false;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Observation", meta = (AllowPrivateAccess = "true"))
+	FName ObservationReferenceArtifactId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Objective", meta = (AllowPrivateAccess = "true"))
+	FName ObjectiveArtifactId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Objective", meta = (AllowPrivateAccess = "true"))
+	FName ObjectiveCaseId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Objective", meta = (AllowPrivateAccess = "true"))
+	EHeistObjectiveState ObjectiveState = EHeistObjectiveState::Inactive;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Observation", meta = (AllowPrivateAccess = "true"))
+	FText ObservationReferenceText;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Objective", meta = (AllowPrivateAccess = "true"))
+	FText ObjectiveStateText;
 
 #pragma endregion
 

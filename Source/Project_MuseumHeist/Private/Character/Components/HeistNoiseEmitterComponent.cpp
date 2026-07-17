@@ -3,6 +3,7 @@
 #include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameMode.h"
 #include "Core/HeistGameState.h"
+#include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerState.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -92,19 +93,21 @@ bool UHeistNoiseEmitterComponent::TryEmitFootstepNoise()
 	HeistGameState->ReportSoundPing(SoundPingEvent);
 	LastFootstepServerTime = ServerTime;
 
-	UHeistDebugFunctionLibrary::Message(
-		this,
-		FString::Printf(
-			TEXT("Footstep noise emitted: PlayerId=%d Mode=%s Speed=%.1f MaxSpeed=%.1f Weight=%.1f BaseRadius=%.1f WeightBonus=%.1f FinalRadius=%.1f RefreshInterval=%.2f Authority=true"),
-			HeistPlayerState->HeistPlayerId,
-			bRunning ? TEXT("Run") : TEXT("Walk"),
-			HorizontalSpeed,
-			MaximumSpeed,
-			TotalLootWeight,
-			SoundPingDefinition.Radius,
-			WeightRadiusBonus,
-			SoundPingEvent.Radius,
-			RefreshInterval));
+#if !UE_BUILD_SHIPPING
+	UE_LOG(
+		LogHeist,
+		Verbose,
+		TEXT("Footstep noise emitted: PlayerId=%d Mode=%s Speed=%.1f MaxSpeed=%.1f Weight=%.1f BaseRadius=%.1f WeightBonus=%.1f FinalRadius=%.1f RefreshInterval=%.2f Authority=true"),
+		HeistPlayerState->HeistPlayerId,
+		bRunning ? TEXT("Run") : TEXT("Walk"),
+		HorizontalSpeed,
+		MaximumSpeed,
+		TotalLootWeight,
+		SoundPingDefinition.Radius,
+		WeightRadiusBonus,
+		SoundPingEvent.Radius,
+		RefreshInterval);
+#endif
 	return true;
 }
 

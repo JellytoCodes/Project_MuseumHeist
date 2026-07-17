@@ -7,7 +7,6 @@
 #include "Character/Components/HeistStatusComponent.h"
 #include "Character/HeistPlayerCharacter.h"
 #include "Components/CapsuleComponent.h"
-#include "Core/HeistGameplayTags.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistHUD.h"
 #include "Core/HeistTypes.h"
@@ -23,7 +22,6 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameplayTagContainer.h"
 #include "Inventory/HeistInventoryTypes.h"
-#include "World/Actors/Area/HeistSmokeCloudActor.h"
 #include "World/Actors/Loot/HeistDisplayCaseActor.h"
 #include "UI/ViewModels/HeistLobbyViewModel.h"
 #include "UI/Widgets/HeistHUDWidget.h"
@@ -581,6 +579,17 @@ void UHeistDebugFunctionLibrary::DebugDisplayCaseDump(APlayerController* PlayerC
 		? PlayerController->GetWorld()->GetGameState<AHeistGameState>()
 		: nullptr;
 	const AHeistPlayerState* SessionOwner = DisplayCase->GetSessionOwner();
+	bool bExpectedOriginalVisible = false;
+	bool bExpectedReplicaVisible = false;
+	int32 OriginalComponentCount = 0;
+	int32 ReplicaComponentCount = 0;
+	bool bVisualComponentsMatchExpectedState = false;
+	DisplayCase->GetPlaceholderVisualDebugState(
+		bExpectedOriginalVisible,
+		bExpectedReplicaVisible,
+		OriginalComponentCount,
+		ReplicaComponentCount,
+		bVisualComponentsMatchExpectedState);
 	Message(
 		PlayerController,
 		FString::Printf(
@@ -596,6 +605,26 @@ void UHeistDebugFunctionLibrary::DebugDisplayCaseDump(APlayerController* PlayerC
 			DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false"),
 			DisplayCase->GetIsReplicated() ? TEXT("true") : TEXT("false")),
 		EHeistDebugLevel::Info,
+		true,
+		10.0f);
+
+	const bool bHasRequiredVisualComponents = OriginalComponentCount > 0 && ReplicaComponentCount > 0;
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Display case placeholder visual: Case=%s State=%s OriginalVisible=%s ReplicaVisible=%s OriginalComponents=%d ReplicaComponents=%d ComponentsMatch=%s Authority=%s Result=%s"),
+			*GetNameSafe(DisplayCase),
+			*UEnum::GetValueAsString(DisplayCase->GetDisplayCaseState()),
+			bExpectedOriginalVisible ? TEXT("true") : TEXT("false"),
+			bExpectedReplicaVisible ? TEXT("true") : TEXT("false"),
+			OriginalComponentCount,
+			ReplicaComponentCount,
+			bVisualComponentsMatchExpectedState ? TEXT("true") : TEXT("false"),
+			DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false"),
+			!bHasRequiredVisualComponents
+				? TEXT("MISSING_COMPONENTS")
+				: bVisualComponentsMatchExpectedState ? TEXT("PASS") : TEXT("FAIL")),
+		bVisualComponentsMatchExpectedState ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
 		true,
 		10.0f);
 #endif
@@ -758,53 +787,6 @@ void UHeistDebugFunctionLibrary::DebugDisplayCaseSet(APlayerController* PlayerCo
 
 #pragma endregion
 
-#pragma region RareLootDebug
-
-void UHeistDebugFunctionLibrary::DebugRareLootHelp(APlayerController* PlayerController)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(
-		PlayerController,
-		TEXT("Rare Loot commands disabled: feature removed from PvE scope."),
-		EHeistDebugLevel::Warning,
-		true,
-		8.0f);
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugForceRareLootEvent(
-	APlayerController* PlayerController,
-	const float WarningDelaySeconds)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(
-		PlayerController,
-		TEXT("Rare Loot force rejected: feature removed from PvE scope."),
-		EHeistDebugLevel::Warning,
-		true);
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugDumpRareLootState(APlayerController* PlayerController)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(
-		PlayerController,
-		TEXT("Rare Loot dump unavailable: feature removed from PvE scope."),
-		EHeistDebugLevel::Warning,
-		true,
-		8.0f);
-#endif
-}
-
-#pragma endregion
-
 #pragma region SoundPingDebug
 
 void UHeistDebugFunctionLibrary::DebugSoundPingHelp(APlayerController* PlayerController)
@@ -868,7 +850,7 @@ void UHeistDebugFunctionLibrary::DebugGuardHelp(APlayerController* PlayerControl
 #else
 	Message(
 		PlayerController,
-		TEXT("Guard debug commands: HeistDifficultyDump | HeistGuardSpawn <Distance> | HeistGuardDump | HeistGuardState <Disabled|Patrol|Investigate|Chase|Search|Return> <Duration> | HeistGuardStun <Duration> | HeistGuardSightCheck | HeistGuardSightAuto <0|1> | HeistGuardNoise <Distance> | HeistArrest | HeistRelease | HeistArrestDump"),
+		TEXT("Guard debug commands: HeistDifficultyDump | HeistGuardSpawn <Distance> | HeistGuardDump | HeistGuardState <Disabled|Patrol|Investigate|Chase|Search|Return> <Duration> | HeistGuardSightCheck | HeistGuardSightAuto <0|1> | HeistGuardNoise <Distance> | HeistArrest | HeistRelease | HeistArrestDump"),
 		EHeistDebugLevel::Info,
 		true,
 		10.0f);
@@ -1072,39 +1054,6 @@ void UHeistDebugFunctionLibrary::DebugGuardSetState(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugGuardApplyStun(
-	APlayerController* PlayerController,
-	const float DurationSeconds)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	AHeistPlayerController* HeistPlayerController =
-		ResolveHeistPlayerController(PlayerController);
-	if (!IsValid(HeistPlayerController))
-	{
-		Message(
-			PlayerController,
-			TEXT("Guard stun debug failed: invalid Heist player controller."),
-			EHeistDebugLevel::Warning,
-			true);
-		return;
-	}
-
-	const float SafeDuration = FMath::Max(0.01f, DurationSeconds);
-	HeistPlayerController->DebugRequestSetNearestGuardState(
-		EHeistGuardState::Stunned,
-		SafeDuration);
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Guard stun debug requested: Duration=%.2f"),
-			SafeDuration),
-		EHeistDebugLevel::Info,
-		true);
-#endif
-}
-
 void UHeistDebugFunctionLibrary::DebugGuardSightCheck(
 	APlayerController* PlayerController)
 {
@@ -1275,87 +1224,6 @@ void UHeistDebugFunctionLibrary::DebugFootstepWeight(
 	Message(
 		PlayerController,
 		FString::Printf(TEXT("Footstep weight debug requested: TotalLootWeight=%.1f"), SafeWeight),
-		EHeistDebugLevel::Info,
-		true);
-#endif
-}
-
-#pragma endregion
-
-#pragma region TrapDebug
-
-void UHeistDebugFunctionLibrary::DebugTrapHelp(APlayerController* PlayerController)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(
-		PlayerController,
-		TEXT("Trap debug commands: HeistGlueTrapPlace <Distance> | HeistGlueTrapPlaceAt <X> <Y> <Z>"),
-		EHeistDebugLevel::Info,
-		true,
-		8.0f);
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugGlueTrapPlace(APlayerController* PlayerController, const float Distance)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
-	if (!IsValid(HeistPlayerController))
-	{
-		Message(PlayerController, TEXT("Glue trap debug place failed: invalid Heist player controller or pawn."), EHeistDebugLevel::Warning, true);
-		return;
-	}
-
-	const float ClampedDistance = FMath::Clamp(Distance, 100.0f, 1000.0f);
-	FVector TargetWorldLocation;
-	if (!HeistPlayerController->TryBuildCameraSurfaceTarget(ClampedDistance, TargetWorldLocation))
-	{
-		Message(PlayerController, TEXT("Glue trap debug place failed: camera ray did not hit a surface."), EHeistDebugLevel::Warning, true);
-		return;
-	}
-	HeistPlayerController->DebugRequestPlaceGlueTrapAtWorldLocation(TargetWorldLocation);
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Glue trap debug place requested: Distance=%.1f CameraSurfaceTarget=(%.1f,%.1f,%.1f)"),
-			ClampedDistance,
-			TargetWorldLocation.X,
-			TargetWorldLocation.Y,
-			TargetWorldLocation.Z),
-		EHeistDebugLevel::Info,
-		true);
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugGlueTrapPlaceAt(
-	APlayerController* PlayerController,
-	const float TargetX,
-	const float TargetY,
-	const float TargetZ)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
-	if (!IsValid(HeistPlayerController))
-	{
-		Message(PlayerController, TEXT("Glue trap debug place-at failed: invalid Heist player controller."), EHeistDebugLevel::Warning, true);
-		return;
-	}
-
-	const FVector TargetWorldLocation(TargetX, TargetY, TargetZ);
-	HeistPlayerController->DebugRequestPlaceGlueTrapAtWorldLocation(TargetWorldLocation);
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Glue trap debug place-at requested: Target=(%.1f,%.1f,%.1f)"),
-			TargetX,
-			TargetY,
-			TargetZ),
 		EHeistDebugLevel::Info,
 		true);
 #endif
@@ -1634,26 +1502,6 @@ void UHeistDebugFunctionLibrary::DebugRareLootPickedUp(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugRareLootStateReplicated(
-	const UObject* WorldContextObject,
-	const FHeistRareLootEventState& EventState)
-{
-#if !UE_BUILD_SHIPPING
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Rare Loot state replicated: EventIndex=%d ItemId=%s Incoming=%s MarkerActive=%s SpawnServerTime=%.2f Location=(%.1f,%.1f,%.1f)"),
-			EventState.EventIndex,
-			*EventState.ItemId.ToString(),
-			EventState.bIncomingWarningActive ? TEXT("true") : TEXT("false"),
-			EventState.bDirectionMarkerActive ? TEXT("true") : TEXT("false"),
-			EventState.SpawnServerTime,
-			EventState.WorldLocation.X,
-			EventState.WorldLocation.Y,
-			EventState.WorldLocation.Z));
-#endif
-}
-
 #pragma endregion
 
 #pragma region GameplayDebug
@@ -1920,18 +1768,6 @@ void UHeistDebugFunctionLibrary::DebugLootPickupRequestAccepted(const UObject* W
 			*ItemId.ToString(),
 			InstanceId,
 			Distance));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugLootDataFallbackApplied(const UObject* WorldContextObject, const FName LootRowName)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(
-		WorldContextObject,
-		FString::Printf(TEXT("LootDataRow '%s' was not found. Fallback values are active."), *LootRowName.ToString()),
-		EHeistDebugLevel::Warning);
 #endif
 }
 
@@ -2289,49 +2125,6 @@ void UHeistDebugFunctionLibrary::DebugWeightMovementSpeedApplied(const UObject* 
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugStatusTagApplied(const UObject* WorldContextObject, const FGameplayTag& StateTag, const float EndServerTime)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Status tag applied: Owner=%s Tag=%s EndServerTime=%.2f"),
-			*GetNameSafe(WorldContextObject ? WorldContextObject->GetOuter() : nullptr),
-			*StateTag.ToString(),
-			EndServerTime));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugStatusTagCleared(const UObject* WorldContextObject, const FGameplayTag& StateTag)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Status tag cleared: Owner=%s Tag=%s"),
-			*GetNameSafe(WorldContextObject ? WorldContextObject->GetOuter() : nullptr),
-			*StateTag.ToString()));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugStatusTagsReplicated(const UObject* WorldContextObject, const TArray<FHeistTimedTagState>& StatusTags)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Status tags replicated: Owner=%s Tags=[%s]"),
-			*GetNameSafe(WorldContextObject ? WorldContextObject->GetOuter() : nullptr),
-			*FormatStatusTags(StatusTags)));
-#endif
-}
-
 void UHeistDebugFunctionLibrary::DebugThrowableUseRejected(const UObject* WorldContextObject, const EHeistQuickSlotType SlotType, const FName ItemId, const TCHAR* Reason)
 {
 #if UE_BUILD_SHIPPING
@@ -2455,31 +2248,6 @@ void UHeistDebugFunctionLibrary::DebugSmokeCloudOverlapChanged(
 			*GetNameSafe(Actor),
 			bInsideSmoke ? TEXT("true") : TEXT("false"),
 			RemainingSeconds));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugSmokeSightQuery(
-	const UObject* WorldContextObject,
-	const UObject* SmokeCloud,
-	const FVector& FromLocation,
-	const FVector& ToLocation,
-	const bool bBlocked)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Smoke sight query: Blocked=%s SmokeCloud=%s From=(%.1f,%.1f,%.1f) To=(%.1f,%.1f,%.1f)"),
-			bBlocked ? TEXT("true") : TEXT("false"),
-			*GetNameSafe(SmokeCloud),
-			FromLocation.X,
-			FromLocation.Y,
-			FromLocation.Z,
-			ToLocation.X,
-			ToLocation.Y,
-			ToLocation.Z));
 #endif
 }
 
@@ -2691,47 +2459,6 @@ void UHeistDebugFunctionLibrary::DebugGuardStateReplicated(const UObject* WorldC
 			TEXT("Guard state replicated: Guard=%s State=%s"),
 			*GetNameSafe(GuardActor),
 			*UEnum::GetValueAsString(NewState)));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugGuardProfileResolved(
-	const UObject* WorldContextObject,
-	const UObject* GuardActor,
-	const FName GuardProfileId,
-	const float PatrolSpeed,
-	const float ChaseSpeed)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Guard profile resolved: Guard=%s Profile=%s PatrolSpeed=%.1f ChaseSpeed=%.1f"),
-			*GetNameSafe(GuardActor),
-			*GuardProfileId.ToString(),
-			PatrolSpeed,
-			ChaseSpeed));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugGuardProfileRejected(
-	const UObject* WorldContextObject,
-	const UObject* GuardActor,
-	const FName GuardProfileId,
-	const TCHAR* Reason)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Guard profile rejected: Guard=%s Profile=%s Reason=%s"),
-			*GetNameSafe(GuardActor),
-			*GuardProfileId.ToString(),
-			Reason),
-		EHeistDebugLevel::Warning);
 #endif
 }
 
@@ -2959,19 +2686,29 @@ void UHeistDebugFunctionLibrary::DebugGuardNoiseReactionAccepted(
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Guard noise reaction accepted: Candidate=Selected Guard=%s SequenceId=%d Type=%d Distance=%.1f Radius=%.1f InvestigateDuration=%.2f Location=(%.1f,%.1f,%.1f)"),
-			*GetNameSafe(GuardActor),
-			SoundPingEvent.SequenceId,
-			static_cast<int32>(SoundPingEvent.PingType),
-			Distance,
-			SoundPingEvent.Radius,
-			InvestigateDuration,
-			SoundPingEvent.WorldLocation.X,
-			SoundPingEvent.WorldLocation.Y,
-			SoundPingEvent.WorldLocation.Z));
+	const FString MessageText = FString::Printf(
+		TEXT("Guard noise reaction accepted: Candidate=Selected Guard=%s SequenceId=%d Type=%d Distance=%.1f Radius=%.1f InvestigateDuration=%.2f Location=(%.1f,%.1f,%.1f)"),
+		*GetNameSafe(GuardActor),
+		SoundPingEvent.SequenceId,
+		static_cast<int32>(SoundPingEvent.PingType),
+		Distance,
+		SoundPingEvent.Radius,
+		InvestigateDuration,
+		SoundPingEvent.WorldLocation.X,
+		SoundPingEvent.WorldLocation.Y,
+		SoundPingEvent.WorldLocation.Z);
+	if (SoundPingEvent.PingType == EHeistSoundPingType::Footstep)
+	{
+		UE_LOG(
+			LogHeistAI,
+			Verbose,
+			TEXT("[%s] %s"),
+			*GetNameSafe(WorldContextObject),
+			*MessageText);
+		return;
+	}
+
+	Message(WorldContextObject, MessageText);
 #endif
 }
 
@@ -2985,17 +2722,26 @@ void UHeistDebugFunctionLibrary::DebugGuardNoiseReactionRejected(
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Guard noise reaction rejected: Guard=%s SequenceId=%d Type=%d Distance=%.1f Radius=%.1f Reason=%s"),
-			*GetNameSafe(GuardActor),
-			SoundPingEvent.SequenceId,
-			static_cast<int32>(SoundPingEvent.PingType),
-			Distance,
-			SoundPingEvent.Radius,
-			Reason ? Reason : TEXT("None")),
-		EHeistDebugLevel::Warning);
+	const FString MessageText = FString::Printf(
+		TEXT("Guard noise reaction rejected: Guard=%s SequenceId=%d Type=%d Distance=%.1f Radius=%.1f Reason=%s"),
+		*GetNameSafe(GuardActor),
+		SoundPingEvent.SequenceId,
+		static_cast<int32>(SoundPingEvent.PingType),
+		Distance,
+		SoundPingEvent.Radius,
+		Reason ? Reason : TEXT("None"));
+	if (SoundPingEvent.PingType == EHeistSoundPingType::Footstep)
+	{
+		UE_LOG(
+			LogHeistAI,
+			Verbose,
+			TEXT("[%s] %s"),
+			*GetNameSafe(WorldContextObject),
+			*MessageText);
+		return;
+	}
+
+	Message(WorldContextObject, MessageText, EHeistDebugLevel::Warning);
 #endif
 }
 
@@ -3151,50 +2897,6 @@ void UHeistDebugFunctionLibrary::DebugSoundPingDefinitionRejected(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugSoundPingReported(const UObject* WorldContextObject, const FHeistSoundPingEvent& SoundPingEvent)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Sound ping reported: SequenceId=%d Type=%d Tag=%s Location=(%.1f,%.1f,%.1f) Radius=%.1f Duration=%.2f AffectsGuards=%s ServerTime=%.2f"),
-			SoundPingEvent.SequenceId,
-			static_cast<int32>(SoundPingEvent.PingType),
-			*SoundPingEvent.SoundPingTag.ToString(),
-			SoundPingEvent.WorldLocation.X,
-			SoundPingEvent.WorldLocation.Y,
-			SoundPingEvent.WorldLocation.Z,
-			SoundPingEvent.Radius,
-			SoundPingEvent.Duration,
-			SoundPingEvent.bAffectsGuards ? TEXT("true") : TEXT("false"),
-			SoundPingEvent.ServerTimeSeconds));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugSoundPingReplicated(const UObject* WorldContextObject, const FHeistSoundPingEvent& SoundPingEvent)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Sound ping replicated: SequenceId=%d Type=%d Tag=%s Location=(%.1f,%.1f,%.1f) Radius=%.1f Duration=%.2f AffectsGuards=%s ServerTime=%.2f"),
-			SoundPingEvent.SequenceId,
-			static_cast<int32>(SoundPingEvent.PingType),
-			*SoundPingEvent.SoundPingTag.ToString(),
-			SoundPingEvent.WorldLocation.X,
-			SoundPingEvent.WorldLocation.Y,
-			SoundPingEvent.WorldLocation.Z,
-			SoundPingEvent.Radius,
-			SoundPingEvent.Duration,
-			SoundPingEvent.bAffectsGuards ? TEXT("true") : TEXT("false"),
-			SoundPingEvent.ServerTimeSeconds));
-#endif
-}
-
 void UHeistDebugFunctionLibrary::DebugEscapedPlayerRestrictionsApplied(const UObject* WorldContextObject)
 {
 #if UE_BUILD_SHIPPING
@@ -3205,35 +2907,6 @@ void UHeistDebugFunctionLibrary::DebugEscapedPlayerRestrictionsApplied(const UOb
 		FString::Printf(
 			TEXT("Escaped player restrictions applied: Character=%s MovementDisabled=true InteractionDisabled=true CollisionDisabled=true Hidden=true"),
 			*GetNameSafe(WorldContextObject)));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugResultScreenShowSkipped(const UObject* HUD, const UObject* ViewModel, const UClass* WidgetClass)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	UE_LOG(
-		LogHeistUI,
-		Warning,
-		TEXT("Result screen show skipped: HUD=%s ViewModel=%s WidgetClass=%s"),
-		*GetNameSafe(HUD),
-		*GetNameSafe(ViewModel),
-		*GetNameSafe(WidgetClass));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugWidgetMissingMVVMView(const UObject* Widget, const TCHAR* WidgetRole)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	UE_LOG(
-		LogHeistUI,
-		Warning,
-		TEXT("%s widget has no MVVMView extension; MVVM binding injection skipped. Widget=%s"),
-		WidgetRole,
-		*GetNameSafe(Widget));
 #endif
 }
 
@@ -3782,7 +3455,7 @@ void UHeistDebugFunctionLibrary::DebugStatusHelp(APlayerController* PlayerContro
 #else
 	Message(
 		PlayerController,
-		TEXT("Status debug commands: HeistStatusDump | HeistStatusSmoke <Seconds>"),
+		TEXT("Status debug commands: HeistStatusDump"),
 		EHeistDebugLevel::Info,
 		true,
 		8.0f);
@@ -3809,28 +3482,6 @@ void UHeistDebugFunctionLibrary::DebugStatusDump(APlayerController* PlayerContro
 		EHeistDebugLevel::Info,
 		true,
 		6.0f);
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugStatusSmoke(APlayerController* PlayerController, const float DurationSeconds)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
-	if (!IsValid(HeistPlayerController) || !IsValid(ResolveStatusComponent(PlayerController)))
-	{
-		Message(PlayerController, TEXT("Status debug smoke failed: missing local Heist status component."), EHeistDebugLevel::Warning, true);
-		return;
-	}
-
-	const float SafeDuration = FMath::Clamp(DurationSeconds, 0.01f, 600.0f);
-	HeistPlayerController->DebugRequestApplyStatusSmoke(SafeDuration);
-	Message(
-		PlayerController,
-		FString::Printf(TEXT("Status debug smoke requested: Duration=%.2f"), SafeDuration),
-		EHeistDebugLevel::Info,
-		true);
 #endif
 }
 
@@ -3915,7 +3566,7 @@ void UHeistDebugFunctionLibrary::DebugThrowableHelp(APlayerController* PlayerCon
 #else
 	Message(
 		PlayerController,
-		TEXT("Throwable debug commands: HeistCoinThrow <Distance> | HeistCoinThrowAt <X> <Y> <Z> | HeistSmokeThrow <Distance> | HeistSmokeThrowAt <X> <Y> <Z> | HeistSmokeSightCheck <Distance> | HeistSmokeSightCheckAt <X> <Y> <Z>"),
+		TEXT("Throwable debug commands: HeistCoinThrow <Distance> | HeistCoinThrowAt <X> <Y> <Z>"),
 		EHeistDebugLevel::Info,
 		true,
 		8.0f);
@@ -3978,149 +3629,6 @@ void UHeistDebugFunctionLibrary::DebugCoinThrowAt(
 			TargetY,
 			TargetZ),
 		EHeistDebugLevel::Info,
-		true);
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugSmokeThrow(APlayerController* PlayerController, const float Distance)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
-	if (!IsValid(HeistPlayerController))
-	{
-		Message(PlayerController, TEXT("Smoke debug throw failed: invalid Heist player controller or pawn."), EHeistDebugLevel::Warning, true);
-		return;
-	}
-
-	const float ClampedDistance = FMath::Clamp(Distance, 100.0f, 5000.0f);
-	FVector ViewLocation;
-	FVector CameraForward;
-	FVector TargetWorldLocation;
-	if (!HeistPlayerController->TryBuildCameraForwardAim(ClampedDistance, ViewLocation, CameraForward, TargetWorldLocation))
-	{
-		Message(PlayerController, TEXT("Smoke debug throw failed: invalid camera forward."), EHeistDebugLevel::Warning, true);
-		return;
-	}
-	HeistPlayerController->DebugRequestThrowSmokeAtWorldLocation(TargetWorldLocation);
-	Message(
-		PlayerController,
-		FString::Printf(TEXT("Smoke debug throw requested: Distance=%.1f CameraForward=(%.3f,%.3f,%.3f)"), ClampedDistance, CameraForward.X, CameraForward.Y, CameraForward.Z),
-		EHeistDebugLevel::Info,
-		true);
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugSmokeThrowAt(
-	APlayerController* PlayerController,
-	const float TargetX,
-	const float TargetY,
-	const float TargetZ)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
-	if (!IsValid(HeistPlayerController))
-	{
-		Message(PlayerController, TEXT("Smoke debug throw-at failed: invalid Heist player controller."), EHeistDebugLevel::Warning, true);
-		return;
-	}
-
-	const FVector TargetWorldLocation(TargetX, TargetY, TargetZ);
-	HeistPlayerController->DebugRequestThrowSmokeAtWorldLocation(TargetWorldLocation);
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Smoke debug throw-at requested: Target=(%.1f,%.1f,%.1f)"),
-			TargetX,
-			TargetY,
-			TargetZ),
-		EHeistDebugLevel::Info,
-		true);
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugSmokeSightCheck(APlayerController* PlayerController, const float Distance)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
-	if (!IsValid(HeistPlayerController))
-	{
-		Message(PlayerController, TEXT("Smoke sight check failed: invalid Heist player controller or pawn."), EHeistDebugLevel::Warning, true);
-		return;
-	}
-
-	const float ClampedDistance = FMath::Clamp(Distance, 100.0f, 5000.0f);
-	FVector ViewLocation;
-	FVector CameraForward;
-	FVector TargetWorldLocation;
-	if (!HeistPlayerController->TryBuildCameraForwardAim(
-		ClampedDistance,
-		ViewLocation,
-		CameraForward,
-		TargetWorldLocation))
-	{
-		Message(PlayerController, TEXT("Smoke sight check failed: invalid camera forward."), EHeistDebugLevel::Warning, true);
-		return;
-	}
-	AHeistSmokeCloudActor* BlockingSmokeCloud = nullptr;
-	const bool bBlocked = AHeistSmokeCloudActor::IsAISightBlockedBySmoke(
-		HeistPlayerController,
-		ViewLocation,
-		TargetWorldLocation,
-		BlockingSmokeCloud);
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Smoke sight debug check completed: Distance=%.1f Blocked=%s BlockingSmoke=%s"),
-			ClampedDistance,
-			bBlocked ? TEXT("true") : TEXT("false"),
-			*GetNameSafe(BlockingSmokeCloud)),
-		bBlocked ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
-		true);
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugSmokeSightCheckAt(
-	APlayerController* PlayerController,
-	const float TargetX,
-	const float TargetY,
-	const float TargetZ)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
-	AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController)
-		? HeistPlayerController->GetPawn<AHeistPlayerCharacter>()
-		: nullptr;
-	if (!IsValid(HeistPlayerController) || !IsValid(HeistCharacter))
-	{
-		Message(PlayerController, TEXT("Smoke sight check-at failed: invalid Heist player controller or pawn."), EHeistDebugLevel::Warning, true);
-		return;
-	}
-
-	const FVector TargetWorldLocation(TargetX, TargetY, TargetZ);
-	AHeistSmokeCloudActor* BlockingSmokeCloud = nullptr;
-	const bool bBlocked = AHeistSmokeCloudActor::IsAISightBlockedBySmoke(
-		HeistPlayerController,
-		HeistCharacter->GetActorLocation(),
-		TargetWorldLocation,
-		BlockingSmokeCloud);
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Smoke sight debug check-at completed: Target=(%.1f,%.1f,%.1f) Blocked=%s BlockingSmoke=%s"),
-			TargetX,
-			TargetY,
-			TargetZ,
-			bBlocked ? TEXT("true") : TEXT("false"),
-			*GetNameSafe(BlockingSmokeCloud)),
-		bBlocked ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
 		true);
 #endif
 }
