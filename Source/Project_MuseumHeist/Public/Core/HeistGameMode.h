@@ -11,6 +11,7 @@ class AHeistLootActor;
 class AHeistLootSpawnPoint;
 class AHeistPlayerState;
 struct FHeistItemDataRow;
+struct FHeistArtifactDataRow;
 struct FHeistLootDataRow;
 struct FHeistUsableItemDataRow;
 struct FHeistGuardDataRow;
@@ -43,7 +44,9 @@ protected:
 
 public:
 	UDataTable* GetItemDataTable() const;
+	UDataTable* GetArtifactDataTable() const;
 	bool TryGetItemDefinition(FName ItemId, FHeistItemDataRow& OutItemDefinition) const;
+	bool TryGetArtifactDefinition(FName ArtifactId, FHeistArtifactDataRow& OutArtifactDefinition) const;
 	bool TryGetLootDefinition(FName ItemId, FHeistLootDataRow& OutLootDefinition) const;
 	bool TryGetUsableItemDefinition(FName ItemId, FHeistUsableItemDataRow& OutUsableItemDefinition) const;
 	bool TryGetGuardDefinition(FName GuardProfileId, FHeistGuardDataRow& OutGuardDefinition) const;
@@ -98,6 +101,17 @@ private:
 #pragma region RuntimeState
 
 private:
+	void InitializeObjectiveFromPlacedTargetCase();
+
+	UPROPERTY(
+		EditDefaultsOnly,
+		BlueprintReadOnly,
+		Category = "Heist|Objective",
+		meta = (
+			AllowPrivateAccess = "true",
+			ToolTip = "Optional explicit target case id. When None, the map's single DisplayCaseId ending in _Target is selected."))
+	FName ObjectiveTargetCaseId = NAME_None;
+
 	int32 NextHeistPlayerId = 1;
 
 #pragma endregion

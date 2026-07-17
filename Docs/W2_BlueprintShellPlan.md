@@ -1,5 +1,7 @@
 # W2 Blueprint Shell Plan
 
+> 보존 문서: 이 문서는 W2 완료 당시 Blueprint Shell 기준을 기록한다. 현재 활성 주차, Task 번호, Codex/Editor 작업 분담 및 검증 규칙은 `AGENTS.md` Rev.4와 `Museum_Heist_GDD.docx` Rev.9를 우선한다. 아래의 `W3 Candidate` 표기는 당시 후속 후보를 뜻하며 현재 W3 상태를 나타내지 않는다.
+
 ## 1. 문서 목적
 
 W2의 목적은 최종 에셋 주입이나 시각 폴리싱이 아니다.

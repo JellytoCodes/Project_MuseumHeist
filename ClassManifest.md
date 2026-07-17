@@ -1,5 +1,5 @@
 # Project_MuseumHeist — Class Manifest
-## Rev 2: First-Person Cooperative Forgery
+## Rev 4: W4 Forgery And Detection Baseline
 
 상태:
 
@@ -9,7 +9,7 @@
 - **Deprecate**: 신규 흐름에서 미사용, 즉시 삭제 금지
 - **Deferred**: v1.0 범위 밖, 현재 생성 금지
 
-Design Reference: `Museum_Heist_GDD.docx` Rev.7
+Design Reference: `Museum_Heist_GDD.docx` Rev.9
 
 ---
 
@@ -17,7 +17,7 @@ Design Reference: `Museum_Heist_GDD.docx` Rev.7
 
 ## `Core/HeistTypes.h` — Modify
 
-| 타입 | 상태 | Rev 2 책임 |
+| 타입 | 상태 | 현재 책임 |
 |---|---|---|
 | `EHeistMatchPhase` | Modify | Enum 호환성은 유지하고 v1.0 흐름은 Lobby/ReadyCountdown/InGame/End만 사용 |
 | `EHeistInputMode` | Add | Gameplay/Inventory/Forgery 상호 배타 로컬 입력 상태 |
@@ -231,7 +231,7 @@ FHeistForgeryTemplateRow
 
 # 6. World And Interactable
 
-| 클래스 | 상태 | Rev 2 책임 |
+| 클래스 | 상태 | 현재 책임 |
 |---|---|---|
 | `IHeistInteractable` | Keep | 공통 인터랙션 |
 | `AHeistInteractableActor` | Keep | 공통 기반 |

@@ -8,6 +8,7 @@
 
 class UHeistInventoryComponent;
 class AActor;
+class AHeistDisplayCaseActor;
 
 #pragma region Inventory
 
@@ -38,6 +39,33 @@ struct PROJECT_MUSEUMHEIST_API FHeistInventoryItem
 			&& GridPosition == Other.GridPosition
 			&& Quantity == Other.Quantity
 			&& bRotated == Other.bRotated;
+	}
+};
+
+#pragma endregion
+
+#pragma region OriginalCarry
+
+USTRUCT(BlueprintType)
+struct PROJECT_MUSEUMHEIST_API FHeistOriginalCarryEntry
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly)
+	FName ArtifactId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly)
+	float Weight = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly)
+	TObjectPtr<AHeistDisplayCaseActor> SourceDisplayCase;
+
+	bool IsValid() const
+	{
+		return !ArtifactId.IsNone()
+			&& FMath::IsFinite(Weight)
+			&& Weight >= 0.0f
+			&& SourceDisplayCase != nullptr;
 	}
 };
 

@@ -162,6 +162,12 @@ public:
 	static void DebugObjectiveDump(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Objective", meta = (DevelopmentOnly))
+	static void DebugM01ObjectivePlacementDump(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Objective", meta = (DevelopmentOnly))
+	static void DebugCoreGrayboxDump(APlayerController* PlayerController, const FString& MapId);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Objective", meta = (DevelopmentOnly))
 	static void DebugObjectiveSet(
 		APlayerController* PlayerController,
 		FName ArtifactId,
@@ -199,6 +205,48 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|DisplayCase", meta = (DevelopmentOnly))
 	static void DebugDisplayCasePhase(APlayerController* PlayerController, const FString& PhaseName);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Original", meta = (DevelopmentOnly))
+	static void DebugOriginalHelp(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Original", meta = (DevelopmentOnly))
+	static void DebugOriginalDump(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Original", meta = (DevelopmentOnly))
+	static void DebugOriginalTake(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Original", meta = (DevelopmentOnly))
+	static void DebugOriginalDrop(APlayerController* PlayerController);
+
+#pragma endregion
+
+#pragma region ForgeryDebug
+
+public:
+	static void DebugForgeryHelp(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
+	static void DebugForgeryDump(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
+	static void DebugForgeryBegin(APlayerController* PlayerController, float DurationSeconds);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
+	static void DebugForgerySubmit(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
+	static void DebugForgeryCancel(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
+	static void DebugForgeryTimeout(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
+	static void DebugForgeryUIDump(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
+	static void DebugForgeryUIPreview(
+		APlayerController* PlayerController,
+		const FString& State);
 
 #pragma endregion
 

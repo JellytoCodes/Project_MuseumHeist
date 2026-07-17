@@ -9,6 +9,8 @@
 DECLARE_MULTICAST_DELEGATE(FHeistInventoryChanged);
 
 struct FHeistItemDataRow;
+class AHeistDisplayCaseActor;
+class AHeistPlayerState;
 
 UCLASS(ClassGroup = (Heist), meta = (BlueprintSpawnableComponent))
 class PROJECT_MUSEUMHEIST_API UHeistInventoryComponent : public UActorComponent
@@ -55,6 +57,17 @@ public:
 	bool TryClearQuickSlot(EHeistQuickSlotType SlotType);
 	bool IsInventoryOpen() const;
 	bool TrySetInventoryOpen(bool bInInventoryOpen);
+	bool IsCarryingOriginal() const;
+	const FHeistOriginalCarryEntry& GetOriginalCarryEntry() const;
+	bool TryBeginOriginalCarry(
+		AHeistPlayerState* CarryingPlayerState,
+		FName ArtifactId,
+		float Weight,
+		AHeistDisplayCaseActor* SourceDisplayCase);
+	bool TryEndOriginalCarry(
+		AHeistPlayerState* CarryingPlayerState,
+		AHeistDisplayCaseActor* ExpectedSourceDisplayCase,
+		FHeistOriginalCarryEntry& OutReleasedEntry);
 
 private:
 	bool TryFindAutoPlacement(
@@ -90,6 +103,12 @@ private:
 
 	UFUNCTION()
 	void OnRep_QuickSlots();
+
+	UPROPERTY(ReplicatedUsing = OnRep_OriginalCarryEntry)
+	FHeistOriginalCarryEntry OriginalCarryEntry;
+
+	UFUNCTION()
+	void OnRep_OriginalCarryEntry();
 
 	FHeistInventoryChanged InventoryChangedDelegate;
 

@@ -1,10 +1,14 @@
 #include "World/Actors/Loot/HeistDisplayCaseActor.h"
 
+#include "Character/HeistPlayerCharacter.h"
+#include "Character/Components/HeistInventoryComponent.h"
 #include "Components/PrimitiveComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Core/HeistGameMode.h"
 #include "Core/HeistLogChannels.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistPlayerState.h"
+#include "Data/HeistArtifactDataTypes.h"
 #include "Net/UnrealNetwork.h"
 
 const FName AHeistDisplayCaseActor::OriginalVisualComponentTag(TEXT("OriginalVisual"));
@@ -52,7 +56,13 @@ void AHeistDisplayCaseActor::BeginPlay()
 
 void AHeistDisplayCaseActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	if (HasAuthority() && bSessionLocked)
+	{
+		ClearSession(FName(TEXT("CaseEndPlay")));
+	}
+
 	UnbindSessionOwnerDelegate();
+	UnbindOriginalCarrierDelegate();
 	if (BoundGameState.IsValid() && MatchPhaseChangedHandle.IsValid())
 	{
 		BoundGameState->GetMatchPhaseChangedDelegate().Remove(MatchPhaseChangedHandle);
@@ -66,8 +76,9 @@ void AHeistDisplayCaseActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 bool AHeistDisplayCaseActor::CanInteract(const AActor* Interactor) const
 {
 	return Super::CanInteract(Interactor)
-		&& DisplayCaseState == EHeistDisplayCaseState::Secured
-		&& !bSessionLocked;
+		&& !bSessionLocked
+		&& (DisplayCaseState == EHeistDisplayCaseState::Secured
+			|| DisplayCaseState == EHeistDisplayCaseState::OriginalAvailable);
 }
 
 #pragma region StateMachine
@@ -169,6 +180,31 @@ bool AHeistDisplayCaseActor::TryAdvanceDisplayCaseState()
 	EHeistDisplayCaseState NextState = DisplayCaseState;
 	return TryGetNextDisplayCaseState(DisplayCaseState, NextState)
 		&& TryTransitionToDisplayCaseState(NextState);
+}
+
+bool AHeistDisplayCaseActor::ResetForgerySessionState(const FName Reason)
+{
+	if (!HasAuthority()
+		|| (DisplayCaseState != EHeistDisplayCaseState::Observed
+			&& DisplayCaseState != EHeistDisplayCaseState::ForgeryInProgress))
+	{
+		return false;
+	}
+
+	const EHeistDisplayCaseState PreviousState = DisplayCaseState;
+	DisplayCaseState = EHeistDisplayCaseState::Secured;
+	HandleDisplayCaseStateChanged(PreviousState);
+	ForceNetUpdate();
+
+	UE_LOG(
+		LogHeistNetwork,
+		Log,
+		TEXT("Display case forgery state reset: Case=%s Previous=%s New=%s Reason=%s"),
+		*GetNameSafe(this),
+		*UEnum::GetValueAsString(PreviousState),
+		*UEnum::GetValueAsString(DisplayCaseState),
+		Reason.IsNone() ? TEXT("None") : *Reason.ToString());
+	return true;
 }
 
 void AHeistDisplayCaseActor::OnRep_DisplayCaseState(const EHeistDisplayCaseState PreviousState)
@@ -299,6 +335,338 @@ void AHeistDisplayCaseActor::RefreshPlaceholderVisualState()
 		ReplicaComponentCount,
 		HasAuthority() ? TEXT("true") : TEXT("false"),
 		OriginalComponentCount > 0 && ReplicaComponentCount > 0 ? TEXT("PASS") : TEXT("MISSING_COMPONENTS"));
+}
+
+#pragma endregion
+
+#pragma region OriginalCarry
+
+FName AHeistDisplayCaseActor::GetTargetArtifactId() const
+{
+	return TargetArtifactId;
+}
+
+FName AHeistDisplayCaseActor::GetDisplayCaseId() const
+{
+	return DisplayCaseId;
+}
+
+AHeistPlayerState* AHeistDisplayCaseActor::GetOriginalCarrier() const
+{
+	return OriginalCarrier.Get();
+}
+
+int32 AHeistDisplayCaseActor::GetOriginalCarryRevision() const
+{
+	return OriginalCarryRevision;
+}
+
+bool AHeistDisplayCaseActor::TryTakeOriginal(AHeistPlayerState* RequestingPlayerState)
+{
+	if (!HasAuthority())
+	{
+		UE_LOG(
+			LogHeistNetwork,
+			Warning,
+			TEXT("Original carry rejected: Case=%s Reason=NotAuthority"),
+			*GetNameSafe(this));
+		return false;
+	}
+
+	float ArtifactWeight = 0.0f;
+	FName RejectReason = NAME_None;
+	if (!ValidateOriginalTakeRequest(RequestingPlayerState, ArtifactWeight, RejectReason))
+	{
+		UE_LOG(
+			LogHeistNetwork,
+			Warning,
+			TEXT("Original carry rejected: Case=%s Artifact=%s Requester=%s Reason=%s"),
+			*GetNameSafe(this),
+			*TargetArtifactId.ToString(),
+			*GetNameSafe(RequestingPlayerState),
+			*RejectReason.ToString());
+		return false;
+	}
+
+	AHeistPlayerCharacter* PlayerCharacter =
+		Cast<AHeistPlayerCharacter>(RequestingPlayerState->GetPawn());
+	UHeistInventoryComponent* InventoryComponent = IsValid(PlayerCharacter)
+		? PlayerCharacter->GetInventoryComponent()
+		: nullptr;
+	check(IsValid(InventoryComponent));
+
+	if (!InventoryComponent->TryBeginOriginalCarry(
+		RequestingPlayerState,
+		TargetArtifactId,
+		ArtifactWeight,
+		this))
+	{
+		UE_LOG(
+			LogHeistNetwork,
+			Warning,
+			TEXT("Original carry rejected: Case=%s Artifact=%s Requester=%s Reason=CarryEntryCommitFailed"),
+			*GetNameSafe(this),
+			*TargetArtifactId.ToString(),
+			*GetNameSafe(RequestingPlayerState));
+		return false;
+	}
+
+	OriginalCarrier = RequestingPlayerState;
+	OriginalCarrierArrestChangedHandle =
+		RequestingPlayerState->GetArrestStateChangedDelegate().AddUObject(
+			this,
+			&AHeistDisplayCaseActor::HandleOriginalCarrierArrestStateChanged);
+	if (!TryTransitionToDisplayCaseState(EHeistDisplayCaseState::OriginalRemoved))
+	{
+		UnbindOriginalCarrierDelegate();
+		OriginalCarrier = nullptr;
+		FHeistOriginalCarryEntry RolledBackEntry;
+		const bool bRolledBack = InventoryComponent->TryEndOriginalCarry(
+			RequestingPlayerState,
+			this,
+			RolledBackEntry);
+		checkf(bRolledBack, TEXT("Failed OriginalRemoved transition must roll back carry weight."));
+		return false;
+	}
+
+	++OriginalCarryRevision;
+	SyncObjectiveCarrierCandidate(RequestingPlayerState);
+	ForceNetUpdate();
+	BroadcastOriginalCarrySnapshot(TEXT("ServerTake"), FName(TEXT("TakeAccepted")));
+	return true;
+}
+
+bool AHeistDisplayCaseActor::ReleaseOriginalForCarrier(
+	AHeistPlayerState* ExpectedCarrier,
+	const FName Reason)
+{
+	if (!HasAuthority()
+		|| DisplayCaseState != EHeistDisplayCaseState::OriginalRemoved
+		|| !IsValid(OriginalCarrier.Get())
+		|| OriginalCarrier.Get() != ExpectedCarrier)
+	{
+		return false;
+	}
+
+	AHeistPlayerCharacter* PlayerCharacter =
+		Cast<AHeistPlayerCharacter>(ExpectedCarrier->GetPawn());
+	UHeistInventoryComponent* InventoryComponent = IsValid(PlayerCharacter)
+		? PlayerCharacter->GetInventoryComponent()
+		: nullptr;
+	FHeistOriginalCarryEntry ReleasedEntry;
+	const bool bCarryEntryReleased = IsValid(InventoryComponent)
+		&& InventoryComponent->TryEndOriginalCarry(
+			ExpectedCarrier,
+			this,
+			ReleasedEntry);
+	const bool bAllowMissingInventoryCleanup =
+		Reason == FName(TEXT("OwnerDisconnected"))
+		|| Reason == FName(TEXT("OwnerArrested"));
+	if (!bCarryEntryReleased
+		&& (IsValid(InventoryComponent) || !bAllowMissingInventoryCleanup))
+	{
+		UE_LOG(
+			LogHeistNetwork,
+			Warning,
+			TEXT("Original drop rejected: Case=%s Carrier=%s Reason=CarryEntryReleaseFailed"),
+			*GetNameSafe(this),
+			*GetNameSafe(ExpectedCarrier));
+		return false;
+	}
+
+	const EHeistDisplayCaseState PreviousState = DisplayCaseState;
+	DisplayCaseState = EHeistDisplayCaseState::OriginalAvailable;
+	HandleDisplayCaseStateChanged(PreviousState);
+	UnbindOriginalCarrierDelegate();
+	OriginalCarrier = nullptr;
+	++OriginalCarryRevision;
+	SyncObjectiveCarrierCandidate(nullptr);
+	ForceNetUpdate();
+	BroadcastOriginalCarrySnapshot(TEXT("ServerRelease"), Reason);
+	return true;
+}
+
+bool AHeistDisplayCaseActor::ValidateOriginalTakeRequest(
+	AHeistPlayerState* RequestingPlayerState,
+	float& OutArtifactWeight,
+	FName& OutRejectReason) const
+{
+	OutArtifactWeight = 0.0f;
+	OutRejectReason = NAME_None;
+	if (!IsValid(RequestingPlayerState))
+	{
+		OutRejectReason = FName(TEXT("MissingPlayerState"));
+		return false;
+	}
+	if (DisplayCaseState != EHeistDisplayCaseState::OriginalAvailable)
+	{
+		OutRejectReason = FName(TEXT("OriginalNotAvailable"));
+		return false;
+	}
+	if (bSessionLocked)
+	{
+		OutRejectReason = FName(TEXT("CaseSessionLocked"));
+		return false;
+	}
+	if (IsValid(OriginalCarrier.Get()))
+	{
+		OutRejectReason = FName(TEXT("OriginalAlreadyCarried"));
+		return false;
+	}
+
+	const AHeistGameState* HeistGameState =
+		GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	if (!IsValid(HeistGameState)
+		|| HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame)
+	{
+		OutRejectReason = FName(TEXT("MatchPhaseNotInGame"));
+		return false;
+	}
+	const bool bPlayerBelongsToMatch = HeistGameState->PlayerArray.ContainsByPredicate(
+		[RequestingPlayerState](const TObjectPtr<APlayerState>& CandidatePlayerState)
+		{
+			return CandidatePlayerState.Get() == RequestingPlayerState;
+		});
+	if (!bPlayerBelongsToMatch)
+	{
+		OutRejectReason = FName(TEXT("PlayerStateNotInMatch"));
+		return false;
+	}
+	if ((!HeistGameState->GetActiveTargetArtifactId().IsNone()
+			&& HeistGameState->GetActiveTargetArtifactId() != TargetArtifactId)
+		|| (!HeistGameState->GetActiveTargetCaseId().IsNone()
+			&& HeistGameState->GetActiveTargetCaseId() != DisplayCaseId))
+	{
+		OutRejectReason = FName(TEXT("NotActiveTargetCase"));
+		return false;
+	}
+	if (RequestingPlayerState->IsArrested() || RequestingPlayerState->IsEscaped())
+	{
+		OutRejectReason = FName(TEXT("PlayerStateBlocked"));
+		return false;
+	}
+
+	AHeistPlayerCharacter* PlayerCharacter =
+		Cast<AHeistPlayerCharacter>(RequestingPlayerState->GetPawn());
+	UHeistInventoryComponent* InventoryComponent = IsValid(PlayerCharacter)
+		? PlayerCharacter->GetInventoryComponent()
+		: nullptr;
+	if (!IsValid(PlayerCharacter) || !IsValid(InventoryComponent))
+	{
+		OutRejectReason = FName(TEXT("MissingCharacterOrInventory"));
+		return false;
+	}
+	if (FVector::DistSquared(PlayerCharacter->GetActorLocation(), GetActorLocation())
+		> FMath::Square(MaximumSessionDistance))
+	{
+		OutRejectReason = FName(TEXT("OutOfRange"));
+		return false;
+	}
+	if (InventoryComponent->IsCarryingOriginal())
+	{
+		OutRejectReason = FName(TEXT("AlreadyCarryingOriginal"));
+		return false;
+	}
+
+	const AHeistGameMode* HeistGameMode =
+		GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	FHeistArtifactDataRow ArtifactDefinition;
+	if (!IsValid(HeistGameMode)
+		|| !HeistGameMode->TryGetArtifactDefinition(TargetArtifactId, ArtifactDefinition))
+	{
+		OutRejectReason = FName(TEXT("InvalidArtifactDefinition"));
+		return false;
+	}
+
+	OutArtifactWeight = ArtifactDefinition.Weight;
+	if (!RequestingPlayerState->CanAddLootScoreAndWeight(0, OutArtifactWeight))
+	{
+		OutRejectReason = FName(TEXT("InvalidCarryWeight"));
+		return false;
+	}
+	return true;
+}
+
+void AHeistDisplayCaseActor::SyncObjectiveCarrierCandidate(AHeistPlayerState* Carrier)
+{
+	AHeistGameState* HeistGameState =
+		GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	if (!IsValid(HeistGameState))
+	{
+		return;
+	}
+	if ((!HeistGameState->GetActiveTargetArtifactId().IsNone()
+			&& HeistGameState->GetActiveTargetArtifactId() != TargetArtifactId)
+		|| (!HeistGameState->GetActiveTargetCaseId().IsNone()
+			&& HeistGameState->GetActiveTargetCaseId() != DisplayCaseId))
+	{
+		return;
+	}
+
+	const FName ObjectiveArtifactId = HeistGameState->GetActiveTargetArtifactId().IsNone()
+		? TargetArtifactId
+		: HeistGameState->GetActiveTargetArtifactId();
+	const FName ObjectiveCaseId = HeistGameState->GetActiveTargetCaseId().IsNone()
+		? DisplayCaseId
+		: HeistGameState->GetActiveTargetCaseId();
+	const EHeistObjectiveState ObjectiveState =
+		HeistGameState->GetObjectiveState() == EHeistObjectiveState::Inactive
+			? EHeistObjectiveState::InProgress
+			: HeistGameState->GetObjectiveState();
+	HeistGameState->SetObjectiveSnapshot(
+		ObjectiveArtifactId,
+		ObjectiveCaseId,
+		ObjectiveState,
+		Carrier);
+}
+
+void AHeistDisplayCaseActor::UnbindOriginalCarrierDelegate()
+{
+	if (IsValid(OriginalCarrier.Get()) && OriginalCarrierArrestChangedHandle.IsValid())
+	{
+		OriginalCarrier->GetArrestStateChangedDelegate().Remove(
+			OriginalCarrierArrestChangedHandle);
+	}
+	OriginalCarrierArrestChangedHandle.Reset();
+}
+
+void AHeistDisplayCaseActor::BroadcastOriginalCarrySnapshot(
+	const TCHAR* ChangeSource,
+	const FName Reason)
+{
+	OnOriginalCarryChanged.Broadcast(
+		OriginalCarrier.Get(),
+		TargetArtifactId,
+		OriginalCarryRevision);
+	UE_LOG(
+		LogHeistNetwork,
+		Log,
+		TEXT("Original carry %s: Case=%s CaseId=%s Artifact=%s Carrier=%s CarrierPlayerId=%d State=%s Revision=%d Reason=%s Authority=%s"),
+		ChangeSource,
+		*GetNameSafe(this),
+		*DisplayCaseId.ToString(),
+		*TargetArtifactId.ToString(),
+		*GetNameSafe(OriginalCarrier.Get()),
+		IsValid(OriginalCarrier.Get()) ? OriginalCarrier->HeistPlayerId : INDEX_NONE,
+		*UEnum::GetValueAsString(DisplayCaseState),
+		OriginalCarryRevision,
+		Reason.IsNone() ? TEXT("None") : *Reason.ToString(),
+		HasAuthority() ? TEXT("true") : TEXT("false"));
+}
+
+void AHeistDisplayCaseActor::HandleOriginalCarrierArrestStateChanged(const bool bArrested)
+{
+	if (HasAuthority() && bArrested && IsValid(OriginalCarrier.Get()))
+	{
+		ReleaseOriginalForCarrier(
+			OriginalCarrier.Get(),
+			FName(TEXT("OwnerArrested")));
+	}
+}
+
+void AHeistDisplayCaseActor::OnRep_OriginalCarryRevision()
+{
+	BroadcastOriginalCarrySnapshot(TEXT("Replicated"), NAME_None);
 }
 
 #pragma endregion
@@ -477,6 +845,7 @@ bool AHeistDisplayCaseActor::ValidateSessionRequest(
 void AHeistDisplayCaseActor::ClearSession(const FName Reason)
 {
 	AHeistPlayerState* PreviousOwner = SessionOwner.Get();
+	ResetForgerySessionState(Reason);
 	UnbindSessionOwnerDelegate();
 	SessionOwner = nullptr;
 	bSessionLocked = false;
@@ -552,6 +921,8 @@ void AHeistDisplayCaseActor::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AHeistDisplayCaseActor, DisplayCaseState);
+	DOREPLIFETIME(AHeistDisplayCaseActor, OriginalCarrier);
+	DOREPLIFETIME(AHeistDisplayCaseActor, OriginalCarryRevision);
 	DOREPLIFETIME(AHeistDisplayCaseActor, SessionOwner);
 	DOREPLIFETIME(AHeistDisplayCaseActor, bSessionLocked);
 	DOREPLIFETIME(AHeistDisplayCaseActor, SessionRevision);

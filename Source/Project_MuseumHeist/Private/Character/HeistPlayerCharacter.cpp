@@ -2,6 +2,7 @@
 
 #include "Character/Components/HeistActionComponent.h"
 #include "Character/Components/HeistCustomizationComponent.h"
+#include "Character/Components/HeistForgeryComponent.h"
 #include "Character/Components/HeistInteractionComponent.h"
 #include "Character/Components/HeistInventoryComponent.h"
 #include "Character/Components/HeistNoiseEmitterComponent.h"
@@ -33,6 +34,7 @@ AHeistPlayerCharacter::AHeistPlayerCharacter()
 	InventoryComponent = CreateDefaultSubobject<UHeistInventoryComponent>(TEXT("InventoryComponent"));
 	InteractionComponent = CreateDefaultSubobject<UHeistInteractionComponent>(TEXT("InteractionComponent"));
 	ActionComponent = CreateDefaultSubobject<UHeistActionComponent>(TEXT("ActionComponent"));
+	ForgeryComponent = CreateDefaultSubobject<UHeistForgeryComponent>(TEXT("ForgeryComponent"));
 	VisionComponent = CreateDefaultSubobject<UHeistVisionComponent>(TEXT("VisionComponent"));
 	CustomizationComponent = CreateDefaultSubobject<UHeistCustomizationComponent>(TEXT("CustomizationComponent"));
 	NoiseEmitterComponent = CreateDefaultSubobject<UHeistNoiseEmitterComponent>(TEXT("NoiseEmitterComponent"));
@@ -58,6 +60,7 @@ void AHeistPlayerCharacter::BeginPlay()
 	checkf(IsValid(InventoryComponent), TEXT("HeistPlayerCharacter requires HeistInventoryComponent"));
 	checkf(IsValid(InteractionComponent), TEXT("HeistPlayerCharacter requires HeistInteractionComponent"));
 	checkf(IsValid(ActionComponent), TEXT("HeistPlayerCharacter requires HeistActionComponent"));
+	checkf(IsValid(ForgeryComponent), TEXT("HeistPlayerCharacter requires HeistForgeryComponent"));
 	checkf(IsValid(VisionComponent), TEXT("HeistPlayerCharacter requires HeistVisionComponent"));
 	checkf(IsValid(CustomizationComponent), TEXT("HeistPlayerCharacter requires HeistCustomizationComponent"));
 	checkf(IsValid(NoiseEmitterComponent), TEXT("HeistPlayerCharacter requires HeistNoiseEmitterComponent"));
@@ -321,6 +324,11 @@ UHeistInteractionComponent* AHeistPlayerCharacter::GetInteractionComponent() con
 UHeistActionComponent* AHeistPlayerCharacter::GetActionComponent() const
 {
 	return ActionComponent.Get();
+}
+
+UHeistForgeryComponent* AHeistPlayerCharacter::GetForgeryComponent() const
+{
+	return ForgeryComponent.Get();
 }
 
 UHeistVisionComponent* AHeistPlayerCharacter::GetVisionComponent() const

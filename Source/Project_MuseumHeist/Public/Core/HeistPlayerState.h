@@ -25,6 +25,7 @@ public:
 	bool AddLootScoreAndWeight(int32 ScoreDelta, float WeightDelta);
 	bool CanRemoveLootScoreAndWeight(int32 ScoreDelta, float WeightDelta) const;
 	bool RemoveLootScoreAndWeight(int32 ScoreDelta, float WeightDelta);
+	bool RemoveCarriedOriginalWeight(float WeightDelta);
 
 private:
 	void BroadcastLootTotalsChanged();

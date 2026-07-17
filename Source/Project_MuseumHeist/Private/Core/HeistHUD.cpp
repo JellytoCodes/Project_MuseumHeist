@@ -1,6 +1,7 @@
 #include "Core/HeistHUD.h"
 
 #include "Character/Components/HeistActionComponent.h"
+#include "Character/Components/HeistForgeryComponent.h"
 #include "Character/Components/HeistInventoryComponent.h"
 #include "Character/Components/HeistInteractionComponent.h"
 #include "Character/HeistPlayerCharacter.h"
@@ -9,11 +10,13 @@
 #include "Core/HeistPlayerState.h"
 #include "Core/HeistLogChannels.h"
 #include "UI/ViewModels/HeistHUDViewModel.h"
+#include "UI/ViewModels/HeistForgeryViewModel.h"
 #include "UI/ViewModels/HeistInventoryViewModel.h"
 #include "UI/ViewModels/HeistLobbyViewModel.h"
 #include "UI/ViewModels/HeistQuickSlotViewModel.h"
 #include "UI/ViewModels/HeistResultViewModel.h"
 #include "UI/Widgets/HeistHUDWidget.h"
+#include "UI/Widgets/HeistForgeryWidget.h"
 #include "UI/Widgets/HeistInventoryWidget.h"
 #include "UI/Widgets/HeistLobbyWidget.h"
 #include "UI/Widgets/HeistResultWidget.h"
@@ -42,6 +45,7 @@ bool AHeistHUD::ShowMainHUD()
 {
 	InitializeInventoryPresentation();
 	InitializeMainHUDPresentation();
+	InitializeForgeryPresentation();
 
 	if (!IsValid(MainHUDWidget))
 	{
@@ -64,6 +68,7 @@ void AHeistHUD::RefreshPresentationSources()
 {
 	InitializeInventoryPresentation();
 	InitializeMainHUDPresentation();
+	InitializeForgeryPresentation();
 	InitializeResultPresentation();
 	InitializeLobbyPresentation();
 }
@@ -275,6 +280,71 @@ void AHeistHUD::InitializeInventoryPresentation()
 		: nullptr;
 	InventoryViewModel->SetupViewModel(InventoryComponent);
 	QuickSlotViewModel->SetupViewModel(InventoryComponent);
+}
+
+#pragma endregion
+
+#pragma region ForgeryPresentation
+
+UHeistForgeryViewModel* AHeistHUD::GetForgeryViewModel() const
+{
+	return ForgeryViewModel;
+}
+
+UHeistForgeryWidget* AHeistHUD::GetForgeryWidget() const
+{
+	return ForgeryWidget;
+}
+
+void AHeistHUD::InitializeForgeryPresentation()
+{
+	AHeistPlayerController* HeistPlayerController =
+		Cast<AHeistPlayerController>(GetOwningPlayerController());
+	if (!IsValid(HeistPlayerController)
+		|| !HeistPlayerController->IsLocalController())
+	{
+		return;
+	}
+
+	if (!IsValid(ForgeryViewModel))
+	{
+		ForgeryViewModel = NewObject<UHeistForgeryViewModel>(this);
+	}
+
+	AHeistGameState* HeistGameState =
+		GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	AHeistPlayerCharacter* HeistPlayerCharacter =
+		HeistPlayerController->GetPawn<AHeistPlayerCharacter>();
+	UHeistActionComponent* ActionComponent = IsValid(HeistPlayerCharacter)
+		? HeistPlayerCharacter->GetActionComponent()
+		: nullptr;
+	UHeistForgeryComponent* ForgeryComponent = IsValid(HeistPlayerCharacter)
+		? HeistPlayerCharacter->GetForgeryComponent()
+		: nullptr;
+	ForgeryViewModel->SetupViewModel(
+		HeistGameState,
+		ActionComponent,
+		ForgeryComponent);
+
+	if (!ForgeryWidgetClass)
+	{
+		return;
+	}
+
+	if (!IsValid(ForgeryWidget))
+	{
+		ForgeryWidget = CreateWidget<UHeistForgeryWidget>(
+			HeistPlayerController,
+			ForgeryWidgetClass);
+		if (!IsValid(ForgeryWidget))
+		{
+			return;
+		}
+
+		ForgeryWidget->AddToViewport(100);
+	}
+
+	ForgeryWidget->SetupForgeryWidget(ForgeryViewModel);
 }
 
 #pragma endregion

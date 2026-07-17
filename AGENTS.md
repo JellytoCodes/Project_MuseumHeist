@@ -1,7 +1,7 @@
 # Project_MuseumHeist — Codex Instructions
-## Rev 2: First-Person Cooperative Forgery
+## Rev 4: W4 Forgery And Detection Baseline
 
-기준일: 2026-07-11  
+기준일: 2026-07-17
 엔진: Unreal Engine 5.8  
 현재 목표: 2026-09-20 W12 Final RC / 프로젝트 마무리
 
@@ -345,30 +345,50 @@ Known Warning은 숨기지 않는다. Critical Replication, Ownership, Duplicate
 
 ## 14. Current Phase
 
-피벗 문서와 Notion 일정 개편은 완료됐다. 기존 W3 First-Person 전환 범위와 기존 W4 Stealth Loop 범위를 하나의 W3 실행 주차로 병합하며, 기간은 2026-07-13부터 2026-07-26까지다.
+W3는 완료됐다. 현재 실행 기준은 W4 단일 범위이며 기간은 2026-08-03부터 2026-08-16까지다.
 
-첫 우선순위:
+### W3 Closeout
 
-1. `TASK-W3-001` First-Person Camera / Rotation
-2. `TASK-W3-002` Head-Socket True First-Person / Full Body
-3. `TASK-W3-003` Center Screen Interaction / Crosshair
-4. `TASK-W3-004` Camera Forward Flashlight / Throw
-5. `TASK-W3-005` Gameplay / Inventory Input Restore
-6. `TASK-W3-006` Legacy PvP / Gap / Rank Cleanup
-7. `TASK-W3-007` Coin Guard Distraction Conversion
-8. `TASK-W3-008` M01 First-Person Scale / Collision Pass
-9. `TASK-W3-009` First-Person HUD Rewire
-10. `TASK-W3-010` First-Person Guard Perception Profile
-11. `TASK-W3-011` Patrol → InvestigateNoise 통합
-12. `TASK-W3-012` Chase → Search → Return 통합
-13. `TASK-W3-013` Guard Arrest / Player Disabled Flow
-14. `TASK-W3-014` Footstep + Loot Weight Noise
-15. `TASK-W3-015` Coin Distraction Reaction
-16. `TASK-W3-016` Smoke Sight Blocking — v1.0 제외 / 취소, Legacy 보존만 적용
-17. `TASK-W3-017` 1~4 Player Difficulty Baseline
-18. `TASK-W3-018` M01 Guard Route / Cover Readability
-19. `TASK-W3-019` W3 Stealth Loop Gate
+- `TASK-W3-001~015`, `TASK-W3-017~028`: 완료
+- `TASK-W3-016`: v1.0 Excluded / 취소. Smoke는 Legacy로만 보존하며 활성 기능이나 Gate 조건으로 사용하지 않는다.
+- `TASK-W3-029`: 앞선 개별 검증과 중복되는 통합 Gate였으므로 제거했다.
+- 테스트 로그는 Task 번호와 독립된 연속 번호를 사용하며 현재 `TEST-W3-001~027`이 PASS다.
 
-기존 `TASK-W3-010` W3 1~4 Player Integrated Gate는 병합 계획에서 제거했다. `TASK-W3-016`은 v1.0 Excluded 범위이므로 구현하거나 W3 Gate 조건으로 사용하지 않는다.
+### W4 Scope
 
-세부 구현 상태와 주차별 Task는 `Museum_Heist_GDD.docx` Rev.7을 기준으로 Repository에서 다시 확인한다.
+#### Forgery Vertical Slice
+
+1. `TASK-W4-001` Forgery Session Lifecycle
+2. `TASK-W4-002` Owner-only Full-Screen Forgery UI
+3. `TASK-W4-003` Forgery Input Mode / Restore
+4. `TASK-W4-004` Reference Template Load / Observation Handoff
+5. `TASK-W4-005` Drawing Canvas / Stroke Collection
+6. `TASK-W4-006` Stroke Transport / Server Validation
+7. `TASK-W4-007` Reference Mask Forgery Score
+8. `TASK-W4-008` Replica Placement / Original Removal
+9. `TASK-W4-009` Submitted Replica World Visual
+10. `TASK-W4-010` Forgery Recovery Edge Cases
+11. `TASK-W4-011` W4 3-Map Forgery Gate
+
+#### Detection / Alert / Lockdown
+
+12. `TASK-W4-012` Inspection Target Registration
+13. `TASK-W4-013` Guard InspectExhibit State
+14. `TASK-W4-014` Score → Inspection Delay Mapping
+15. `TASK-W4-015` Global Alert State Replication
+16. `TASK-W4-016` Alert-driven Guard Modifiers
+17. `TASK-W4-017` Lockdown Countdown / World Restriction
+18. `TASK-W4-018` Alert HUD / Audio Layers
+19. `TASK-W4-019` Duplicate Inspection / Timer Protection
+20. `TASK-W4-020` M01 / M02 / M03 Alert Profiles
+21. `TASK-W4-021` W4 Detection Loop Gate
+
+### W4 Execution Rules
+
+- 활성 구현 범위는 `TASK-W4-001~021`이다.
+- Forgery Session, Score, Replica/Original 확정, Alert, Lockdown은 서버 권한 C++ 경로를 유지한다.
+- Owner-only UI, Input Restore, Case Lock Cleanup, Duplicate 방지, Timer 정리는 Critical Gate 조건이다.
+- 멀티플레이·Ownership·Replication·Recovery 주장은 사용자 PIE와 DebugLibrary/Cheat Command 로그가 있을 때만 PASS 처리한다.
+- 이미 증명된 동일 흐름을 같은 조건으로 반복하는 중복 Gate는 만들지 않는다. 새로운 위험을 검증할 때만 별도 Gate를 추가한다.
+
+세부 설계와 주차별 Task 정의는 `Museum_Heist_GDD.docx` Rev.9를 기준으로 Repository에서 확인한다.

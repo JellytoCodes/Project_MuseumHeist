@@ -1,7 +1,12 @@
 #include "Data/HeistGameBalanceDataAsset.h"
 
+#include "Engine/DataTable.h"
+
 UHeistGameBalanceDataAsset::UHeistGameBalanceDataAsset()
 {
+	ArtifactDataTable = TSoftObjectPtr<UDataTable>(
+		FSoftObjectPath(TEXT("/Game/Data/DataTable/DT_ArtifactData.DT_ArtifactData")));
+
 	PlayerCountDifficultyBaselines =
 	{
 		FHeistPlayerCountDifficultyBaseline(1, 0.75f, 0.85f, 1.20f),

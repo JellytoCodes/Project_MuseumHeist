@@ -131,6 +131,34 @@ bool AHeistPlayerState::RemoveLootScoreAndWeight(const int32 ScoreDelta, const f
 	return true;
 }
 
+bool AHeistPlayerState::RemoveCarriedOriginalWeight(const float WeightDelta)
+{
+	if (!HasAuthority()
+		|| !FMath::IsFinite(WeightDelta)
+		|| WeightDelta < 0.0f
+		|| WeightDelta > TotalLootWeight + KINDA_SMALL_NUMBER)
+	{
+		return false;
+	}
+
+	TotalLootWeight = FMath::Max(0.0f, TotalLootWeight - WeightDelta);
+	ForceNetUpdate();
+	BroadcastLootTotalsChanged();
+
+	if (AHeistPlayerCharacter* HeistPlayerCharacter = Cast<AHeistPlayerCharacter>(GetPawn()))
+	{
+		HeistPlayerCharacter->RefreshMovementSpeedFromWeight();
+	}
+
+	UHeistDebugFunctionLibrary::DebugLootScoreWeightRemoved(
+		this,
+		0,
+		WeightDelta,
+		TotalLootScore,
+		TotalLootWeight);
+	return true;
+}
+
 void AHeistPlayerState::BroadcastLootTotalsChanged()
 {
 	LootTotalsChangedDelegate.Broadcast(TotalLootScore, TotalLootWeight);

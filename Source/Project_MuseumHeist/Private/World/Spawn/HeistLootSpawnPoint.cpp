@@ -47,4 +47,14 @@ bool AHeistLootSpawnPoint::IsOccupied() const
 	return false;
 }
 
+EHeistSpawnCategory AHeistLootSpawnPoint::GetSpawnCategory() const
+{
+	return SpawnCategory;
+}
+
+bool AHeistLootSpawnPoint::IsSpawnEnabled() const
+{
+	return bSpawnEnabled;
+}
+
 #pragma endregion

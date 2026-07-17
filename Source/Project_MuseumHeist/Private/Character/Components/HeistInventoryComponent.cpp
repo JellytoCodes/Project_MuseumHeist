@@ -2,6 +2,7 @@
 
 #include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameMode.h"
+#include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerState.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "Engine/World.h"
@@ -9,6 +10,7 @@
 #include "GameFramework/Controller.h"
 #include "Inventory/HeistItemDataTypes.h"
 #include "Net/UnrealNetwork.h"
+#include "World/Actors/Loot/HeistDisplayCaseActor.h"
 #include "World/Actors/Loot/HeistLootActor.h"
 
 #pragma region InternalConstants
@@ -398,6 +400,115 @@ bool UHeistInventoryComponent::TrySetInventoryOpen(const bool bInInventoryOpen)
 	return true;
 }
 
+bool UHeistInventoryComponent::IsCarryingOriginal() const
+{
+	return OriginalCarryEntry.IsValid();
+}
+
+const FHeistOriginalCarryEntry& UHeistInventoryComponent::GetOriginalCarryEntry() const
+{
+	return OriginalCarryEntry;
+}
+
+bool UHeistInventoryComponent::TryBeginOriginalCarry(
+	AHeistPlayerState* CarryingPlayerState,
+	const FName ArtifactId,
+	const float Weight,
+	AHeistDisplayCaseActor* SourceDisplayCase)
+{
+	AHeistPlayerCharacter* OwnerCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
+	const TCHAR* RejectReason = nullptr;
+	if (!IsValid(OwnerCharacter))
+	{
+		RejectReason = TEXT("InvalidInventoryOwner");
+	}
+	else if (!OwnerCharacter->HasAuthority())
+	{
+		RejectReason = TEXT("NotAuthority");
+	}
+	else if (!IsValid(CarryingPlayerState)
+		|| CarryingPlayerState->GetPawn() != OwnerCharacter)
+	{
+		RejectReason = TEXT("PlayerStatePawnMismatch");
+	}
+	else if (ArtifactId.IsNone()
+		|| !FMath::IsFinite(Weight)
+		|| Weight < 0.0f
+		|| !IsValid(SourceDisplayCase))
+	{
+		RejectReason = TEXT("InvalidCarryDefinition");
+	}
+	else if (IsCarryingOriginal())
+	{
+		RejectReason = TEXT("AlreadyCarryingOriginal");
+	}
+	else if (!CarryingPlayerState->CanAddLootScoreAndWeight(0, Weight))
+	{
+		RejectReason = TEXT("CarryWeightRejected");
+	}
+
+	if (RejectReason != nullptr)
+	{
+		UE_LOG(
+			LogHeistInventory,
+			Warning,
+			TEXT("Original carry entry begin rejected: Owner=%s PlayerState=%s Artifact=%s Weight=%.1f SourceCase=%s Reason=%s"),
+			*GetNameSafe(OwnerCharacter),
+			*GetNameSafe(CarryingPlayerState),
+			*ArtifactId.ToString(),
+			Weight,
+			*GetNameSafe(SourceDisplayCase),
+			RejectReason);
+		return false;
+	}
+
+	if (!CarryingPlayerState->AddLootScoreAndWeight(0, Weight))
+	{
+		UE_LOG(
+			LogHeistInventory,
+			Warning,
+			TEXT("Original carry entry begin rejected: Owner=%s PlayerState=%s Artifact=%s Weight=%.1f Reason=WeightCommitFailed"),
+			*GetNameSafe(OwnerCharacter),
+			*GetNameSafe(CarryingPlayerState),
+			*ArtifactId.ToString(),
+			Weight);
+		return false;
+	}
+
+	OriginalCarryEntry.ArtifactId = ArtifactId;
+	OriginalCarryEntry.Weight = Weight;
+	OriginalCarryEntry.SourceDisplayCase = SourceDisplayCase;
+	OwnerCharacter->ForceNetUpdate();
+	NotifyInventoryChanged();
+	return true;
+}
+
+bool UHeistInventoryComponent::TryEndOriginalCarry(
+	AHeistPlayerState* CarryingPlayerState,
+	AHeistDisplayCaseActor* ExpectedSourceDisplayCase,
+	FHeistOriginalCarryEntry& OutReleasedEntry)
+{
+	OutReleasedEntry = FHeistOriginalCarryEntry();
+	AHeistPlayerCharacter* OwnerCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
+	if (!IsValid(OwnerCharacter)
+		|| !OwnerCharacter->HasAuthority()
+		|| !IsValid(CarryingPlayerState)
+		|| CarryingPlayerState->GetPawn() != OwnerCharacter
+		|| !OriginalCarryEntry.IsValid()
+		|| (IsValid(ExpectedSourceDisplayCase)
+			&& OriginalCarryEntry.SourceDisplayCase != ExpectedSourceDisplayCase)
+		|| !CarryingPlayerState->RemoveCarriedOriginalWeight(OriginalCarryEntry.Weight))
+	{
+		return false;
+	}
+
+	OutReleasedEntry = OriginalCarryEntry;
+	OriginalCarryEntry = FHeistOriginalCarryEntry();
+	OwnerCharacter->ForceNetUpdate();
+	NotifyInventoryChanged();
+	return true;
+}
+
 bool UHeistInventoryComponent::TryFindAutoPlacement(
 	const FHeistItemDataRow& ItemDefinition,
 	FIntPoint& OutGridPosition,
@@ -581,6 +692,11 @@ void UHeistInventoryComponent::OnRep_InventoryOpen()
 	NotifyInventoryChanged();
 }
 
+void UHeistInventoryComponent::OnRep_OriginalCarryEntry()
+{
+	NotifyInventoryChanged();
+}
+
 bool UHeistInventoryComponent::CanPlaceAt(
 	const TArray<bool>& OccupiedCells,
 	const FIntPoint& GridPosition,
@@ -638,6 +754,7 @@ void UHeistInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProper
 	DOREPLIFETIME_CONDITION(UHeistInventoryComponent, ReplicatedInventory, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(UHeistInventoryComponent, bInventoryOpen, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(UHeistInventoryComponent, QuickSlots, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(UHeistInventoryComponent, OriginalCarryEntry, COND_OwnerOnly);
 }
 
 #pragma endregion

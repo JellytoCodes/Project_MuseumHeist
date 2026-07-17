@@ -26,6 +26,15 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(
 	int32,
 	Revision);
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(
+	FHeistOriginalCarryChangedSignature,
+	AHeistPlayerState*,
+	Carrier,
+	FName,
+	ArtifactId,
+	int32,
+	Revision);
+
 UCLASS()
 class PROJECT_MUSEUMHEIST_API AHeistDisplayCaseActor : public AHeistInteractableActor
 {
@@ -67,6 +76,8 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Heist|DisplayCase")
 	bool TryAdvanceDisplayCaseState();
 
+	bool ResetForgerySessionState(FName Reason);
+
 	UPROPERTY(BlueprintAssignable, Category = "Heist|DisplayCase")
 	FHeistDisplayCaseStateChangedSignature OnDisplayCaseStateChanged;
 
@@ -99,6 +110,76 @@ private:
 
 	void HandleDisplayCaseStateChanged(EHeistDisplayCaseState PreviousState);
 	void RefreshPlaceholderVisualState();
+
+#pragma endregion
+
+#pragma region OriginalCarry
+
+public:
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Original")
+	FName GetTargetArtifactId() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Original")
+	FName GetDisplayCaseId() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Original")
+	AHeistPlayerState* GetOriginalCarrier() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Original")
+	int32 GetOriginalCarryRevision() const;
+
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Heist|DisplayCase|Original")
+	bool TryTakeOriginal(AHeistPlayerState* RequestingPlayerState);
+
+	bool ReleaseOriginalForCarrier(AHeistPlayerState* ExpectedCarrier, FName Reason);
+
+	UPROPERTY(BlueprintAssignable, Category = "Heist|DisplayCase|Original")
+	FHeistOriginalCarryChangedSignature OnOriginalCarryChanged;
+
+private:
+	bool ValidateOriginalTakeRequest(
+		AHeistPlayerState* RequestingPlayerState,
+		float& OutArtifactWeight,
+		FName& OutRejectReason) const;
+	void SyncObjectiveCarrierCandidate(AHeistPlayerState* Carrier);
+	void UnbindOriginalCarrierDelegate();
+	void BroadcastOriginalCarrySnapshot(const TCHAR* ChangeSource, FName Reason);
+	void HandleOriginalCarrierArrestStateChanged(bool bArrested);
+
+	UPROPERTY(
+		EditInstanceOnly,
+		BlueprintReadOnly,
+		Category = "Heist|DisplayCase|Original",
+		meta = (AllowPrivateAccess = "true"))
+	FName TargetArtifactId = TEXT("Artifact_Painting_M01");
+
+	UPROPERTY(
+		EditInstanceOnly,
+		BlueprintReadOnly,
+		Category = "Heist|DisplayCase|Original",
+		meta = (AllowPrivateAccess = "true"))
+	FName DisplayCaseId = TEXT("Case_M01_Target");
+
+	UPROPERTY(
+		Replicated,
+		VisibleInstanceOnly,
+		BlueprintReadOnly,
+		Category = "Heist|DisplayCase|Original",
+		meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<AHeistPlayerState> OriginalCarrier;
+
+	UPROPERTY(
+		ReplicatedUsing = OnRep_OriginalCarryRevision,
+		VisibleInstanceOnly,
+		BlueprintReadOnly,
+		Category = "Heist|DisplayCase|Original",
+		meta = (AllowPrivateAccess = "true"))
+	int32 OriginalCarryRevision = 0;
+
+	UFUNCTION()
+	void OnRep_OriginalCarryRevision();
+
+	FDelegateHandle OriginalCarrierArrestChangedHandle;
 
 #pragma endregion
 

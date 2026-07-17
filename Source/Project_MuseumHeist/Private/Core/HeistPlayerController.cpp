@@ -405,7 +405,15 @@ void AHeistPlayerController::HandleInteractPressed()
 		InteractionComponent->GetCurrentInteractionTarget());
 	if (TargetDisplayCase != nullptr)
 	{
-		Server_RequestObservation(TargetDisplayCase);
+		if (TargetDisplayCase->GetDisplayCaseState()
+			== EHeistDisplayCaseState::OriginalAvailable)
+		{
+			Server_RequestTakeOriginal(TargetDisplayCase);
+		}
+		else
+		{
+			Server_RequestObservation(TargetDisplayCase);
+		}
 		return;
 	}
 
@@ -511,6 +519,16 @@ void AHeistPlayerController::RequestRotateInventoryItem(const int32 InstanceId)
 void AHeistPlayerController::RequestDropInventoryItem(const int32 InstanceId)
 {
 	Server_RequestDropInventoryItem(InstanceId);
+}
+
+void AHeistPlayerController::RequestTakeOriginal(AHeistDisplayCaseActor* TargetDisplayCase)
+{
+	Server_RequestTakeOriginal(TargetDisplayCase);
+}
+
+void AHeistPlayerController::RequestDropCarriedOriginal()
+{
+	Server_RequestDropCarriedOriginal();
 }
 
 void AHeistPlayerController::RequestAssignQuickSlot(
@@ -816,6 +834,144 @@ void AHeistPlayerController::Server_CancelObservation_Implementation()
 	}
 
 	HeistCharacter->GetActionComponent()->CancelObservationRequest(TEXT("InputReleased"));
+}
+
+void AHeistPlayerController::Server_RequestTakeOriginal_Implementation(
+	AHeistDisplayCaseActor* TargetDisplayCase)
+{
+	FHeistGameplayRequestContext RequestContext;
+	const TCHAR* RejectReason = nullptr;
+	if (!TryBuildGameplayRequestContext(RequestContext, RejectReason))
+	{
+		UHeistDebugFunctionLibrary::Message(
+			this,
+			FString::Printf(
+				TEXT("Original take request rejected: Case=%s Reason=%s"),
+				*GetNameSafe(TargetDisplayCase),
+				RejectReason != nullptr ? RejectReason : TEXT("InvalidRequestContext")),
+			EHeistDebugLevel::Warning);
+		return;
+	}
+	if (!IsValid(TargetDisplayCase))
+	{
+		UHeistDebugFunctionLibrary::Message(
+			this,
+			TEXT("Original take request rejected: Reason=InvalidTarget"),
+			EHeistDebugLevel::Warning);
+		return;
+	}
+
+	UHeistInteractionComponent* InteractionComponent =
+		RequestContext.Character->GetInteractionComponent();
+	const float Distance = FVector::Distance(
+		RequestContext.Character->GetActorLocation(),
+		TargetDisplayCase->GetActorLocation());
+	if (!InteractionComponent->IsActorWithinInteractionRange(TargetDisplayCase))
+	{
+		UHeistDebugFunctionLibrary::Message(
+			this,
+			FString::Printf(
+				TEXT("Original take request rejected: Case=%s Distance=%.1f Reason=OutOfRange"),
+				*GetNameSafe(TargetDisplayCase),
+				Distance),
+			EHeistDebugLevel::Warning);
+		return;
+	}
+
+	InteractionComponent->RefreshInteractionTarget(true);
+	if (InteractionComponent->GetCurrentInteractionTarget() != TargetDisplayCase)
+	{
+		UHeistDebugFunctionLibrary::Message(
+			this,
+			FString::Printf(
+				TEXT("Original take request rejected: Case=%s Distance=%.1f Reason=NotCurrentTarget"),
+				*GetNameSafe(TargetDisplayCase),
+				Distance),
+			EHeistDebugLevel::Warning);
+		return;
+	}
+
+	const float PreviousWeight = RequestContext.PlayerState->GetTotalLootWeight();
+	if (!TargetDisplayCase->TryTakeOriginal(RequestContext.PlayerState))
+	{
+		UHeistDebugFunctionLibrary::Message(
+			this,
+			FString::Printf(
+				TEXT("Original take request rejected: Case=%s Artifact=%s Reason=ServerValidationFailed"),
+				*GetNameSafe(TargetDisplayCase),
+				*TargetDisplayCase->GetTargetArtifactId().ToString()),
+			EHeistDebugLevel::Warning);
+		return;
+	}
+
+	const FHeistOriginalCarryEntry& CarryEntry =
+		RequestContext.InventoryComponent->GetOriginalCarryEntry();
+	UHeistDebugFunctionLibrary::Message(
+		this,
+		FString::Printf(
+			TEXT("Original take request accepted: Case=%s Artifact=%s PlayerId=%d CarryWeight=%.1f PreviousWeight=%.1f TotalWeight=%.1f State=%s Authority=true Result=PASS"),
+			*GetNameSafe(TargetDisplayCase),
+			*CarryEntry.ArtifactId.ToString(),
+			RequestContext.PlayerState->HeistPlayerId,
+			CarryEntry.Weight,
+			PreviousWeight,
+			RequestContext.PlayerState->GetTotalLootWeight(),
+			*UEnum::GetValueAsString(TargetDisplayCase->GetDisplayCaseState())));
+}
+
+void AHeistPlayerController::Server_RequestDropCarriedOriginal_Implementation()
+{
+	FHeistGameplayRequestContext RequestContext;
+	const TCHAR* RejectReason = nullptr;
+	if (!TryBuildGameplayRequestContext(RequestContext, RejectReason))
+	{
+		UHeistDebugFunctionLibrary::Message(
+			this,
+			FString::Printf(
+				TEXT("Original drop request rejected: Reason=%s"),
+				RejectReason != nullptr ? RejectReason : TEXT("InvalidRequestContext")),
+			EHeistDebugLevel::Warning);
+		return;
+	}
+
+	const FHeistOriginalCarryEntry CarryEntry =
+		RequestContext.InventoryComponent->GetOriginalCarryEntry();
+	AHeistDisplayCaseActor* SourceDisplayCase = CarryEntry.SourceDisplayCase.Get();
+	if (!CarryEntry.IsValid() || !IsValid(SourceDisplayCase))
+	{
+		UHeistDebugFunctionLibrary::Message(
+			this,
+			TEXT("Original drop request rejected: Reason=NotCarryingOriginal"),
+			EHeistDebugLevel::Warning);
+		return;
+	}
+
+	const float PreviousWeight = RequestContext.PlayerState->GetTotalLootWeight();
+	if (!SourceDisplayCase->ReleaseOriginalForCarrier(
+		RequestContext.PlayerState,
+		FName(TEXT("OwnerDropped"))))
+	{
+		UHeistDebugFunctionLibrary::Message(
+			this,
+			FString::Printf(
+				TEXT("Original drop request rejected: Case=%s Artifact=%s Reason=ServerValidationFailed"),
+				*GetNameSafe(SourceDisplayCase),
+				*CarryEntry.ArtifactId.ToString()),
+			EHeistDebugLevel::Warning);
+		return;
+	}
+
+	UHeistDebugFunctionLibrary::Message(
+		this,
+		FString::Printf(
+			TEXT("Original drop request accepted: Case=%s Artifact=%s PlayerId=%d ReleasedWeight=%.1f PreviousWeight=%.1f TotalWeight=%.1f RestoredState=%s Policy=ReturnToSourceCase Authority=true Result=PASS"),
+			*GetNameSafe(SourceDisplayCase),
+			*CarryEntry.ArtifactId.ToString(),
+			RequestContext.PlayerState->HeistPlayerId,
+			CarryEntry.Weight,
+			PreviousWeight,
+			RequestContext.PlayerState->GetTotalLootWeight(),
+			*UEnum::GetValueAsString(SourceDisplayCase->GetDisplayCaseState())));
 }
 
 void AHeistPlayerController::Server_RequestEscape_Implementation(AHeistVentActor* TargetVentActor)

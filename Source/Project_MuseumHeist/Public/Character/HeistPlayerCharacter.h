@@ -7,6 +7,7 @@
 
 class UHeistActionComponent;
 class UHeistCustomizationComponent;
+class UHeistForgeryComponent;
 class UHeistInteractionComponent;
 class UHeistInventoryComponent;
 class UHeistNoiseEmitterComponent;
@@ -117,6 +118,9 @@ private:
 	TObjectPtr<UHeistActionComponent> ActionComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UHeistForgeryComponent> ForgeryComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistVisionComponent> VisionComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Components", meta = (AllowPrivateAccess = "true"))
@@ -131,6 +135,7 @@ public:
 	UHeistInventoryComponent* GetInventoryComponent() const;
 	UHeistInteractionComponent* GetInteractionComponent() const;
 	UHeistActionComponent* GetActionComponent() const;
+	UHeistForgeryComponent* GetForgeryComponent() const;
 	UHeistVisionComponent* GetVisionComponent() const;
 	UHeistCustomizationComponent* GetCustomizationComponent() const;
 	UHeistNoiseEmitterComponent* GetNoiseEmitterComponent() const;

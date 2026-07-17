@@ -173,6 +173,12 @@ public:
 	void HeistObjectiveDump();
 
 	UFUNCTION(Exec)
+	void HeistM01ObjectiveDump();
+
+	UFUNCTION(Exec)
+	void HeistGrayboxDump(const FString& MapId);
+
+	UFUNCTION(Exec)
 	void HeistObjectiveSet(
 		const FString& ArtifactId,
 		const FString& CaseId,
@@ -210,6 +216,47 @@ public:
 
 	UFUNCTION(Exec)
 	void HeistCasePhase(const FString& PhaseName);
+
+	UFUNCTION(Exec)
+	void HeistOriginalHelp();
+
+	UFUNCTION(Exec)
+	void HeistOriginalDump();
+
+	UFUNCTION(Exec)
+	void HeistOriginalTake();
+
+	UFUNCTION(Exec)
+	void HeistOriginalDrop();
+
+#pragma endregion
+
+#pragma region ForgeryDebug
+
+public:
+	UFUNCTION(Exec)
+	void HeistForgeryHelp();
+
+	UFUNCTION(Exec)
+	void HeistForgeryDump();
+
+	UFUNCTION(Exec)
+	void HeistForgeryBegin(float DurationSeconds = 60.0f);
+
+	UFUNCTION(Exec)
+	void HeistForgerySubmit();
+
+	UFUNCTION(Exec)
+	void HeistForgeryCancel();
+
+	UFUNCTION(Exec)
+	void HeistForgeryTimeout();
+
+	UFUNCTION(Exec)
+	void HeistForgeryUIDump();
+
+	UFUNCTION(Exec)
+	void HeistForgeryUIPreview(FString State);
 
 #pragma endregion
 

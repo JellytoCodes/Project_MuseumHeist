@@ -109,6 +109,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Heist|Inventory")
 	void RequestDropInventoryItem(int32 InstanceId);
 
+	UFUNCTION(BlueprintCallable, Category = "Heist|Objective")
+	void RequestTakeOriginal(AHeistDisplayCaseActor* TargetDisplayCase);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Objective")
+	void RequestDropCarriedOriginal();
+
 	UFUNCTION(BlueprintCallable, Category = "Heist|Inventory")
 	void RequestAssignQuickSlot(EHeistQuickSlotType SlotType, int32 InstanceId);
 
@@ -160,6 +166,12 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestDropInventoryItem(int32 InstanceId);
+
+	UFUNCTION(Server, Reliable)
+	void Server_RequestTakeOriginal(AHeistDisplayCaseActor* TargetDisplayCase);
+
+	UFUNCTION(Server, Reliable)
+	void Server_RequestDropCarriedOriginal();
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestAssignQuickSlot(EHeistQuickSlotType SlotType, int32 InstanceId);

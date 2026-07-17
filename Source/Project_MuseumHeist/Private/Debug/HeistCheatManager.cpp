@@ -39,6 +39,20 @@ void UHeistCheatManager::HeistObjectiveDump()
 #endif
 }
 
+void UHeistCheatManager::HeistM01ObjectiveDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugM01ObjectivePlacementDump(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistGrayboxDump(const FString& MapId)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugCoreGrayboxDump(GetOuterAPlayerController(), MapId);
+#endif
+}
+
 void UHeistCheatManager::HeistObjectiveSet(
 	const FString& ArtifactId,
 	const FString& CaseId,
@@ -119,6 +133,98 @@ void UHeistCheatManager::HeistCasePhase(const FString& PhaseName)
 {
 #if !UE_BUILD_SHIPPING
 	UHeistDebugFunctionLibrary::DebugDisplayCasePhase(GetOuterAPlayerController(), PhaseName);
+#endif
+}
+
+void UHeistCheatManager::HeistOriginalHelp()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugOriginalHelp(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistOriginalDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugOriginalDump(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistOriginalTake()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugOriginalTake(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistOriginalDrop()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugOriginalDrop(GetOuterAPlayerController());
+#endif
+}
+
+#pragma endregion
+
+#pragma region ForgeryDebug
+
+void UHeistCheatManager::HeistForgeryHelp()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugForgeryHelp(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistForgeryDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugForgeryDump(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistForgeryBegin(const float DurationSeconds)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugForgeryBegin(
+		GetOuterAPlayerController(),
+		DurationSeconds);
+#endif
+}
+
+void UHeistCheatManager::HeistForgerySubmit()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugForgerySubmit(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistForgeryCancel()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugForgeryCancel(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistForgeryTimeout()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugForgeryTimeout(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistForgeryUIDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugForgeryUIDump(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistForgeryUIPreview(FString State)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugForgeryUIPreview(
+		GetOuterAPlayerController(),
+		State);
 #endif
 }
 

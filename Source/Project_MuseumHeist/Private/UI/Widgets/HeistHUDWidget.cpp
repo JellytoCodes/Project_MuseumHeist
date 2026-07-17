@@ -488,6 +488,12 @@ void UHeistHUDWidget::DebugDumpFirstPersonHUDState() const
 		&& IsValid(ActionProgressWidget);
 	const bool bToolReady = IsValid(ToolText);
 	const bool bStatusReady = IsValid(StatusText) && IsValid(WeightText);
+	const bool bObjectiveReady = IsValid(ObjectiveText)
+		&& IsValid(HUDViewModel)
+		&& !HUDViewModel->GetObjectiveArtifactId().IsNone()
+		&& !HUDViewModel->GetObjectiveCaseId().IsNone()
+		&& HUDViewModel->GetObjectiveState() != EHeistObjectiveState::Inactive
+		&& !ObjectiveText->GetText().IsEmpty();
 	const bool bCompetitiveScoreHidden = !IsValid(ScoreText)
 		|| ScoreText->GetVisibility() == ESlateVisibility::Collapsed
 		|| ScoreText->GetVisibility() == ESlateVisibility::Hidden;
@@ -499,16 +505,18 @@ void UHeistHUDWidget::DebugDumpFirstPersonHUDState() const
 		&& bCenterPromptReady
 		&& bToolReady
 		&& bStatusReady
+		&& bObjectiveReady
 		&& bCompetitiveScoreHidden
 		&& bLegacyCompetitiveWidgetsAbsent;
 
 	const FString ContractMessage = FString::Printf(
-		TEXT("[%s] First-person HUD contract: Crosshair=%s CenterPrompt=%s Tool=%s Status=%s CompetitiveScoreHidden=%s LegacyGapRankAbsent=%s Result=%s"),
+		TEXT("[%s] First-person HUD contract: Crosshair=%s CenterPrompt=%s Tool=%s Status=%s Objective=%s CompetitiveScoreHidden=%s LegacyGapRankAbsent=%s Result=%s"),
 		*GetName(),
 		bCrosshairReady ? TEXT("true") : TEXT("false"),
 		bCenterPromptReady ? TEXT("true") : TEXT("false"),
 		bToolReady ? TEXT("true") : TEXT("false"),
 		bStatusReady ? TEXT("true") : TEXT("false"),
+		bObjectiveReady ? TEXT("true") : TEXT("false"),
 		bCompetitiveScoreHidden ? TEXT("true") : TEXT("false"),
 		bLegacyCompetitiveWidgetsAbsent ? TEXT("true") : TEXT("false"),
 		bContractPass ? TEXT("PASS") : TEXT("FAIL"));

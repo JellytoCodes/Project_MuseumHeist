@@ -23,6 +23,8 @@ public:
 public:
 	bool CanSpawnCategory(EHeistSpawnCategory RequestedCategory) const;
 	bool IsOccupied() const;
+	EHeistSpawnCategory GetSpawnCategory() const;
+	bool IsSpawnEnabled() const;
 
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Spawn", meta = (AllowPrivateAccess = "true"))

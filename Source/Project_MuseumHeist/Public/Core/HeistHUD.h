@@ -92,6 +92,26 @@ private:
 
 #pragma endregion
 
+#pragma region ForgeryPresentation
+
+public:
+	class UHeistForgeryViewModel* GetForgeryViewModel() const;
+	class UHeistForgeryWidget* GetForgeryWidget() const;
+
+private:
+	void InitializeForgeryPresentation();
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|UI", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<class UHeistForgeryWidget> ForgeryWidgetClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHeistForgeryViewModel> ForgeryViewModel;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHeistForgeryWidget> ForgeryWidget;
+
+#pragma endregion
+
 #pragma region ResultPresentation
 
 public:

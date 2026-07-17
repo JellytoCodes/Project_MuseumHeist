@@ -6,6 +6,7 @@
 #include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
+#include "Data/HeistArtifactDataTypes.h"
 #include "Data/HeistGameBalanceDataAsset.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "Engine/DataTable.h"
@@ -56,6 +57,7 @@ void AHeistGameMode::StartPlay()
 	{
 		HeistGameState->SetMatchPhase(EHeistMatchPhase::InGame);
 	}
+	InitializeObjectiveFromPlacedTargetCase();
 	ValidateItemDataTables();
 	StartEscapePhaseTimer();
 }
@@ -85,11 +87,105 @@ void AHeistGameMode::Logout(AController* Exiting)
 			if (AHeistDisplayCaseActor* DisplayCase = *DisplayCaseIterator; IsValid(DisplayCase))
 			{
 				DisplayCase->CancelSessionForOwner(ExitingPlayerState, FName(TEXT("OwnerDisconnected")));
+				DisplayCase->ReleaseOriginalForCarrier(
+					ExitingPlayerState,
+					FName(TEXT("OwnerDisconnected")));
 			}
 		}
 	}
 
 	Super::Logout(Exiting);
+}
+
+#pragma endregion
+
+#pragma region Objective
+
+void AHeistGameMode::InitializeObjectiveFromPlacedTargetCase()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	if (!IsValid(HeistGameState))
+	{
+		UE_LOG(
+			LogHeist,
+			Error,
+			TEXT("Objective initialization: ConfiguredTargetCaseId=%s Result=FAIL Reason=MissingGameState"),
+			*ObjectiveTargetCaseId.ToString());
+		return;
+	}
+
+	TArray<AHeistDisplayCaseActor*> MatchingTargetCases;
+	for (TActorIterator<AHeistDisplayCaseActor> DisplayCaseIterator(GetWorld());
+		DisplayCaseIterator;
+		++DisplayCaseIterator)
+	{
+		AHeistDisplayCaseActor* DisplayCase = *DisplayCaseIterator;
+		if (!IsValid(DisplayCase))
+		{
+			continue;
+		}
+
+		const FName DisplayCaseId = DisplayCase->GetDisplayCaseId();
+		const bool bMatchesConfiguredId = !ObjectiveTargetCaseId.IsNone()
+			&& DisplayCaseId == ObjectiveTargetCaseId;
+		const bool bMatchesMapTargetConvention = ObjectiveTargetCaseId.IsNone()
+			&& DisplayCaseId.ToString().EndsWith(TEXT("_Target"), ESearchCase::IgnoreCase);
+		if (bMatchesConfiguredId || bMatchesMapTargetConvention)
+		{
+			MatchingTargetCases.Add(DisplayCase);
+		}
+	}
+
+	if (MatchingTargetCases.Num() != 1)
+	{
+		UE_LOG(
+			LogHeist,
+			Error,
+			TEXT("Objective initialization: ConfiguredTargetCaseId=%s MatchingCases=%d Result=FAIL Reason=%s"),
+			*ObjectiveTargetCaseId.ToString(),
+			MatchingTargetCases.Num(),
+			MatchingTargetCases.IsEmpty() ? TEXT("MissingTargetCase") : TEXT("DuplicateTargetCaseId"));
+		return;
+	}
+
+	AHeistDisplayCaseActor* TargetDisplayCase = MatchingTargetCases[0];
+	const FName TargetArtifactId = TargetDisplayCase->GetTargetArtifactId();
+	FHeistArtifactDataRow ArtifactDefinition;
+	const bool bArtifactValid = TryGetArtifactDefinition(TargetArtifactId, ArtifactDefinition);
+	const bool bCaseStateValid =
+		TargetDisplayCase->GetDisplayCaseState() == EHeistDisplayCaseState::Secured;
+	const bool bObjectiveInitialized = bArtifactValid
+		&& bCaseStateValid
+		&& HeistGameState->SetObjectiveSnapshot(
+			TargetArtifactId,
+			TargetDisplayCase->GetDisplayCaseId(),
+			EHeistObjectiveState::Available,
+			nullptr);
+
+	const FString InitializationMessage = FString::Printf(
+		TEXT("Objective initialization: TargetCase=%s CaseId=%s ArtifactId=%s Location=%s CaseState=%s CaseStateValid=%s ArtifactValid=%s ObjectiveState=%s Result=%s"),
+		*GetNameSafe(TargetDisplayCase),
+		*TargetDisplayCase->GetDisplayCaseId().ToString(),
+		*TargetArtifactId.ToString(),
+		*TargetDisplayCase->GetActorLocation().ToCompactString(),
+		*UEnum::GetValueAsString(TargetDisplayCase->GetDisplayCaseState()),
+		bCaseStateValid ? TEXT("true") : TEXT("false"),
+		bArtifactValid ? TEXT("true") : TEXT("false"),
+		*UEnum::GetValueAsString(HeistGameState->GetObjectiveState()),
+		bObjectiveInitialized ? TEXT("PASS") : TEXT("FAIL"));
+	if (bObjectiveInitialized)
+	{
+		UE_LOG(LogHeist, Log, TEXT("%s"), *InitializationMessage);
+	}
+	else
+	{
+		UE_LOG(LogHeist, Error, TEXT("%s"), *InitializationMessage);
+	}
 }
 
 #pragma endregion
@@ -103,6 +199,15 @@ UDataTable* AHeistGameMode::GetItemDataTable() const
 		: GetDefault<UHeistGameBalanceDataAsset>();
 
 	return ResolvedBalanceData->ItemDataTable.LoadSynchronous();
+}
+
+UDataTable* AHeistGameMode::GetArtifactDataTable() const
+{
+	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset)
+		? GameBalanceDataAsset.Get()
+		: GetDefault<UHeistGameBalanceDataAsset>();
+
+	return ResolvedBalanceData->ArtifactDataTable.LoadSynchronous();
 }
 
 bool AHeistGameMode::TryGetItemDefinition(
@@ -184,6 +289,52 @@ bool AHeistGameMode::TryGetItemDefinition(
 	}
 
 	OutItemDefinition = *ItemDefinition;
+	return true;
+}
+
+bool AHeistGameMode::TryGetArtifactDefinition(
+	const FName ArtifactId,
+	FHeistArtifactDataRow& OutArtifactDefinition) const
+{
+	OutArtifactDefinition = FHeistArtifactDataRow();
+	if (ArtifactId.IsNone())
+	{
+		UE_LOG(LogHeist, Warning, TEXT("Artifact definition lookup rejected: Reason=MissingArtifactId"));
+		return false;
+	}
+
+	const UDataTable* ArtifactDataTable = GetArtifactDataTable();
+	if (!IsValid(ArtifactDataTable)
+		|| ArtifactDataTable->GetRowStruct() != FHeistArtifactDataRow::StaticStruct())
+	{
+		UE_LOG(
+			LogHeist,
+			Error,
+			TEXT("Artifact definition lookup rejected: ArtifactId=%s Reason=MissingOrInvalidArtifactDataTable"),
+			*ArtifactId.ToString());
+		return false;
+	}
+
+	const FHeistArtifactDataRow* ArtifactDefinition =
+		ArtifactDataTable->FindRow<FHeistArtifactDataRow>(
+			ArtifactId,
+			TEXT("AHeistGameMode::TryGetArtifactDefinition"),
+			false);
+	if (ArtifactDefinition == nullptr
+		|| ArtifactDefinition->ArtifactId != ArtifactId
+		|| ArtifactDefinition->ArtifactValue < 0
+		|| !FMath::IsFinite(ArtifactDefinition->Weight)
+		|| ArtifactDefinition->Weight < 0.0f)
+	{
+		UE_LOG(
+			LogHeist,
+			Error,
+			TEXT("Artifact definition lookup rejected: ArtifactId=%s Reason=MissingOrInvalidDefinition"),
+			*ArtifactId.ToString());
+		return false;
+	}
+
+	OutArtifactDefinition = *ArtifactDefinition;
 	return true;
 }
 
