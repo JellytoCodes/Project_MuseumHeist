@@ -1,0 +1,16 @@
+[
+  {
+    "Name": "Template_Painting_01",
+    "TemplateId": "Template_Painting_01",
+    "ReferenceImage": "Texture2D'/Game/StarterContent/Textures/T_Brick_Clay_New_D.T_Brick_Clay_New_D'",
+    "ReferenceMask": "Texture2D'/Game/StarterContent/Textures/T_Burst_M.T_Burst_M'",
+    "ObservationDuration": 1.5,
+    "ForgeryDuration": 60.0,
+    "StrokeLimit": 2048,
+    "BrushSize": 0.02,
+    "CoverageWeight": 0.45,
+    "MajorShapeWeight": 0.55,
+    "ExtraStrokePenaltyWeight": 0.15,
+    "TimeoutPenalty": 0.25
+  }
+]

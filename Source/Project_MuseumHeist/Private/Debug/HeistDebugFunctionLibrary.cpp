@@ -16,6 +16,7 @@
 #include "Core/HeistLogChannels.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/Engine.h"
+#include "Engine/Texture2D.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
@@ -1425,7 +1426,7 @@ void UHeistDebugFunctionLibrary::DebugForgeryHelp(APlayerController* PlayerContr
 #if !UE_BUILD_SHIPPING
 	Message(
 		PlayerController,
-		TEXT("Forgery commands: HeistCasePhase InGame | HeistCaseSpawn 250 | HeistCaseBegin -1 | HeistCaseAdvance | HeistForgeryBegin <Duration> | HeistForgeryDump | HeistForgerySubmit | HeistForgeryCancel | HeistForgeryTimeout | HeistForgeryUIDump | HeistForgeryUIPreview <None|Observation|Drawing|Validation|Result>. Run gameplay mutations in the listen-server window; UI preview is local-only."),
+		TEXT("Forgery commands: HeistCasePhase InGame | HeistCaseSpawn 250 | interact/hold E | HeistForgeryTemplateDump | HeistForgeryDump | HeistForgeryInputDump | HeistForgerySubmit | HeistForgeryCancel | HeistForgeryTimeout | HeistForgeryUIDump | HeistForgeryUIPreview <None|Observation|Drawing|Validation|Result>. Run gameplay mutations in the listen-server window; UI preview is local-only."),
 		EHeistDebugLevel::Info,
 		true,
 		12.0f);
@@ -1514,6 +1515,162 @@ void UHeistDebugFunctionLibrary::DebugForgeryDump(
 			: EHeistDebugLevel::Warning,
 		true,
 		12.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugForgeryInputDump(
+	APlayerController* PlayerController)
+{
+#if !UE_BUILD_SHIPPING
+	const AHeistPlayerController* HeistPlayerController =
+		ResolveHeistPlayerController(PlayerController);
+	const AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController)
+		? HeistPlayerController->GetPawn<AHeistPlayerCharacter>()
+		: nullptr;
+	const UHeistForgeryComponent* ForgeryComponent = IsValid(HeistCharacter)
+		? HeistCharacter->GetForgeryComponent()
+		: nullptr;
+	const UHeistInventoryComponent* InventoryComponent = IsValid(HeistCharacter)
+		? HeistCharacter->GetInventoryComponent()
+		: nullptr;
+	if (!IsValid(HeistPlayerController)
+		|| !HeistPlayerController->IsLocalController()
+		|| !IsValid(HeistCharacter)
+		|| !IsValid(ForgeryComponent)
+		|| !IsValid(InventoryComponent))
+	{
+		Message(
+			PlayerController,
+			TEXT("Forgery input dump: Result=FAIL Reason=MissingLocalInputContext"),
+			EHeistDebugLevel::Warning,
+			true);
+		return;
+	}
+
+	const bool bGameplayContext =
+		HeistPlayerController->IsLocalInputMappingContextActive(
+			EHeistInputMode::Gameplay);
+	const bool bInventoryContext =
+		HeistPlayerController->IsLocalInputMappingContextActive(
+			EHeistInputMode::Inventory);
+	const bool bForgeryContext =
+		HeistPlayerController->IsLocalInputMappingContextActive(
+			EHeistInputMode::Forgery);
+	const bool bContractPassed =
+		HeistPlayerController->IsLocalInputModeContractSatisfied();
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Forgery input dump: Controller=%s Mode=%s SessionActive=%s InventoryOpen=%s GameplayContext=%s InventoryContext=%s ForgeryContext=%s ActiveContexts=%d Cursor=%s IgnoreMove=%s IgnoreLook=%s GameplayActionsAllowed=%s Contract=%s Result=%s"),
+			*GetNameSafe(HeistPlayerController),
+			ToInputModeText(HeistPlayerController->GetLocalInputMode()),
+			ForgeryComponent->IsSessionActive() ? TEXT("true") : TEXT("false"),
+			InventoryComponent->IsInventoryOpen() ? TEXT("true") : TEXT("false"),
+			bGameplayContext ? TEXT("true") : TEXT("false"),
+			bInventoryContext ? TEXT("true") : TEXT("false"),
+			bForgeryContext ? TEXT("true") : TEXT("false"),
+			HeistPlayerController->GetActiveHeistInputMappingContextCount(),
+			HeistPlayerController->bShowMouseCursor ? TEXT("true") : TEXT("false"),
+			HeistPlayerController->IsMoveInputIgnored() ? TEXT("true") : TEXT("false"),
+			HeistPlayerController->IsLookInputIgnored() ? TEXT("true") : TEXT("false"),
+			HeistCharacter->CanPerformGameplayActions()
+				? TEXT("true")
+				: TEXT("false"),
+			bContractPassed ? TEXT("PASS") : TEXT("FAIL"),
+			bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bContractPassed
+			? EHeistDebugLevel::Info
+			: EHeistDebugLevel::Warning,
+		true,
+		12.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugForgeryTemplateDump(
+	APlayerController* PlayerController)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistForgeryComponent* ForgeryComponent =
+		ResolveForgeryComponent(PlayerController);
+	AHeistPlayerController* HeistPlayerController =
+		ResolveHeistPlayerController(PlayerController);
+	AHeistHUD* HeistHUD = IsValid(HeistPlayerController)
+		? HeistPlayerController->GetHUD<AHeistHUD>()
+		: nullptr;
+	if (IsValid(HeistHUD))
+	{
+		HeistHUD->RefreshPresentationSources();
+	}
+	const UHeistForgeryViewModel* ForgeryViewModel = IsValid(HeistHUD)
+		? HeistHUD->GetForgeryViewModel()
+		: nullptr;
+	if (!IsValid(ForgeryComponent))
+	{
+		Message(
+			PlayerController,
+			TEXT("Forgery template dump: Result=FAIL Reason=MissingForgeryComponent"),
+			EHeistDebugLevel::Warning,
+			true);
+		return;
+	}
+
+	UTexture2D* ReferenceImage = ForgeryComponent->LoadReferenceImage();
+	UTexture2D* ReferenceMask = ForgeryComponent->LoadReferenceMask();
+	const bool bTemplateContract =
+		ForgeryComponent->HasPreparedForgeryTemplate()
+		&& !ForgeryComponent->GetActiveArtifactId().IsNone()
+		&& !ForgeryComponent->GetActiveTemplateId().IsNone()
+		&& ForgeryComponent->GetReferenceImageAsset().ToSoftObjectPath().IsValid()
+		&& ForgeryComponent->GetReferenceMaskAsset().ToSoftObjectPath().IsValid()
+		&& IsValid(ReferenceImage)
+		&& IsValid(ReferenceMask)
+		&& ForgeryComponent->GetTemplateObservationDuration() >= 0.0f
+		&& ForgeryComponent->GetTemplateForgeryDuration() > 0.0f
+		&& ForgeryComponent->GetTemplateStrokeLimit() > 0
+		&& ForgeryComponent->GetTemplateBrushSize() > 0.0f;
+	const bool bHandoffContract =
+		!ForgeryComponent->IsSessionActive()
+		|| (IsValid(ForgeryViewModel)
+			&& ForgeryViewModel->IsDrawingVisible()
+			&& !ForgeryViewModel->IsObservationVisible()
+			&& ForgeryViewModel->GetReferenceTemplateId()
+				== ForgeryComponent->GetActiveTemplateId());
+	const bool bContractPassed = bTemplateContract && bHandoffContract;
+
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Forgery template dump: Prepared=%s Artifact=%s Template=%s ReferenceImage=%s ImageLoaded=%s ReferenceMask=%s MaskLoaded=%s Observation=%.2f Forgery=%.2f StrokeLimit=%d Brush=%.4f SessionActive=%s ObservationUI=%s DrawingUI=%s TemplateContract=%s HandoffContract=%s Result=%s"),
+			ForgeryComponent->HasPreparedForgeryTemplate()
+				? TEXT("true")
+				: TEXT("false"),
+			*ForgeryComponent->GetActiveArtifactId().ToString(),
+			*ForgeryComponent->GetActiveTemplateId().ToString(),
+			*ForgeryComponent->GetReferenceImageAsset().ToSoftObjectPath().ToString(),
+			IsValid(ReferenceImage) ? TEXT("true") : TEXT("false"),
+			*ForgeryComponent->GetReferenceMaskAsset().ToSoftObjectPath().ToString(),
+			IsValid(ReferenceMask) ? TEXT("true") : TEXT("false"),
+			ForgeryComponent->GetTemplateObservationDuration(),
+			ForgeryComponent->GetTemplateForgeryDuration(),
+			ForgeryComponent->GetTemplateStrokeLimit(),
+			ForgeryComponent->GetTemplateBrushSize(),
+			ForgeryComponent->IsSessionActive() ? TEXT("true") : TEXT("false"),
+			IsValid(ForgeryViewModel)
+				&& ForgeryViewModel->IsObservationVisible()
+					? TEXT("true")
+					: TEXT("false"),
+			IsValid(ForgeryViewModel)
+				&& ForgeryViewModel->IsDrawingVisible()
+					? TEXT("true")
+					: TEXT("false"),
+			bTemplateContract ? TEXT("PASS") : TEXT("FAIL"),
+			bHandoffContract ? TEXT("PASS") : TEXT("FAIL"),
+			bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bContractPassed
+			? EHeistDebugLevel::Info
+			: EHeistDebugLevel::Warning,
+		true,
+		15.0f);
 #endif
 }
 

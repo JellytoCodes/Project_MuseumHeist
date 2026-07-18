@@ -4,12 +4,13 @@
 #include "AI/HeistGuardCharacter.h"
 #include "AI/HeistGuardStateComponent.h"
 #include "Character/Components/HeistActionComponent.h"
+#include "Character/Components/HeistForgeryComponent.h"
 #include "Character/Components/HeistInteractionComponent.h"
 #include "Character/Components/HeistInventoryComponent.h"
 #include "Character/Components/HeistVisionComponent.h"
 #include "Character/HeistPlayerCharacter.h"
-#include "Core/HeistGameState.h"
 #include "Core/HeistGameMode.h"
+#include "Core/HeistGameState.h"
 #include "Core/HeistHUD.h"
 #include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerState.h"
@@ -21,18 +22,16 @@
 #include "Engine/LocalPlayer.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "InputActionValue.h"
 #include "InputMappingContext.h"
-#include "Inventory/HeistItemDataTypes.h"
 #include "Inventory/HeistInventoryTypes.h"
+#include "Inventory/HeistItemDataTypes.h"
 #include "World/Actors/Escape/HeistVentActor.h"
 #include "World/Actors/Loot/HeistDisplayCaseActor.h"
 #include "World/Actors/Loot/HeistLootActor.h"
 #include "World/Actors/Projectile/HeistCoinProjectile.h"
-#include "World/Actors/Projectile/HeistSmokeProjectile.h"
 #include "World/Actors/Projectile/HeistThrowableProjectile.h"
-#include "World/Actors/Trap/HeistGlueTrapActor.h"
-#include "World/Actors/Trap/HeistTrapActor.h"
 
 #pragma region Construction
 
@@ -63,8 +62,17 @@ void AHeistPlayerController::BeginPlay()
 	UpdateFlashlightAimDirection();
 }
 
+void AHeistPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	bLocalObservationInputHeld = false;
+	UnbindLocalForgeryInputState();
+	Super::EndPlay(EndPlayReason);
+}
+
 void AHeistPlayerController::OnPossess(APawn* InPawn)
 {
+	bLocalObservationInputHeld = false;
+	UnbindLocalForgeryInputState();
 	Super::OnPossess(InPawn);
 	RefreshLocalInputModeFromPawn();
 	RefreshLocalHUDPresentation();
@@ -74,6 +82,7 @@ void AHeistPlayerController::OnPossess(APawn* InPawn)
 void AHeistPlayerController::OnRep_Pawn()
 {
 	Super::OnRep_Pawn();
+	bLocalObservationInputHeld = false;
 	RefreshLocalInputModeFromPawn();
 	RefreshLocalHUDPresentation();
 	UpdateFlashlightAimDirection();
@@ -157,6 +166,19 @@ void AHeistPlayerController::SetupInputComponent()
 		UHeistDebugFunctionLibrary::DebugMissingInputAsset(this, TEXT("InventoryInputAction"));
 	}
 
+	if (ForgeryCancelInputAction != nullptr)
+	{
+		EnhancedInputComponent->BindAction(
+			ForgeryCancelInputAction,
+			ETriggerEvent::Started,
+			this,
+			&AHeistPlayerController::HandleForgeryCancel);
+	}
+	else
+	{
+		UHeistDebugFunctionLibrary::DebugMissingInputAsset(this, TEXT("ForgeryCancelInputAction"));
+	}
+
 	RefreshLocalInputModeFromPawn();
 }
 
@@ -208,6 +230,11 @@ void AHeistPlayerController::HandleMoveInput(const FInputActionValue& InputValue
 
 void AHeistPlayerController::HandleInventoryToggle()
 {
+	if (LocalInputMode == EHeistInputMode::Forgery)
+	{
+		return;
+	}
+
 	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
 	if (!IsValid(HeistCharacter))
 	{
@@ -221,6 +248,81 @@ void AHeistPlayerController::HandleInventoryToggle()
 	RequestSetInventoryOpen(bRequestOpen);
 }
 
+void AHeistPlayerController::HandleForgeryCancel()
+{
+	if (LocalInputMode == EHeistInputMode::Forgery)
+	{
+		RequestCancelForgery();
+	}
+}
+
+void AHeistPlayerController::RefreshLocalForgeryInputBinding()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	UHeistForgeryComponent* ForgeryComponent = IsValid(HeistCharacter)
+		? HeistCharacter->GetForgeryComponent()
+		: nullptr;
+	if (BoundForgeryComponent.Get() == ForgeryComponent)
+	{
+		return;
+	}
+
+	UnbindLocalForgeryInputState();
+	if (IsValid(ForgeryComponent))
+	{
+		BoundForgeryComponent = ForgeryComponent;
+		bLocalForgerySessionActive = ForgeryComponent->IsSessionActive();
+		ForgeryComponent->GetSessionStateChangedDelegate().AddUObject(
+			this,
+			&AHeistPlayerController::HandleForgerySessionStateChanged);
+	}
+}
+
+void AHeistPlayerController::UnbindLocalForgeryInputState()
+{
+	if (UHeistForgeryComponent* ForgeryComponent = BoundForgeryComponent.Get())
+	{
+		ForgeryComponent->GetSessionStateChangedDelegate().RemoveAll(this);
+	}
+	BoundForgeryComponent.Reset();
+	bLocalForgerySessionActive = false;
+}
+
+void AHeistPlayerController::HandleForgerySessionStateChanged()
+{
+	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	const UHeistForgeryComponent* ForgeryComponent = IsValid(HeistCharacter)
+		? HeistCharacter->GetForgeryComponent()
+		: nullptr;
+	const bool bForgeryActive = IsValid(ForgeryComponent)
+		&& ForgeryComponent->IsSessionActive();
+	if (bForgeryActive == bLocalForgerySessionActive)
+	{
+		return;
+	}
+	bLocalForgerySessionActive = bForgeryActive;
+
+	if (bForgeryActive && IsValid(HeistCharacter->GetCharacterMovement()))
+	{
+		HeistCharacter->GetCharacterMovement()->StopMovementImmediately();
+	}
+
+	RefreshLocalInputModeFromPawn();
+	if (!bForgeryActive)
+	{
+		UpdateFlashlightAimDirection();
+		if (IsValid(HeistCharacter))
+		{
+			HeistCharacter->GetInteractionComponent()->RefreshInteractionTarget(true);
+		}
+	}
+}
+
 void AHeistPlayerController::RefreshLocalInputModeFromPawn()
 {
 	if (!IsLocalController())
@@ -228,12 +330,18 @@ void AHeistPlayerController::RefreshLocalInputModeFromPawn()
 		return;
 	}
 
+	RefreshLocalForgeryInputBinding();
 	const AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	const UHeistForgeryComponent* ForgeryComponent = IsValid(HeistCharacter)
+		? HeistCharacter->GetForgeryComponent()
+		: nullptr;
 	const UHeistInventoryComponent* InventoryComponent = IsValid(HeistCharacter)
 		? HeistCharacter->GetInventoryComponent()
 		: nullptr;
 	ApplyLocalInputMode(
-		IsValid(InventoryComponent) && InventoryComponent->IsInventoryOpen()
+		IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive()
+			? EHeistInputMode::Forgery
+			: IsValid(InventoryComponent) && InventoryComponent->IsInventoryOpen()
 			? EHeistInputMode::Inventory
 			: EHeistInputMode::Gameplay);
 }
@@ -241,6 +349,12 @@ void AHeistPlayerController::RefreshLocalInputModeFromPawn()
 void AHeistPlayerController::ApplyLocalInputMode(const EHeistInputMode NewInputMode)
 {
 	if (!IsLocalController())
+	{
+		return;
+	}
+
+	if (LocalInputMode == NewInputMode
+		&& IsLocalInputModeContractSatisfied())
 	{
 		return;
 	}
@@ -257,6 +371,10 @@ void AHeistPlayerController::ApplyLocalInputMode(const EHeistInputMode NewInputM
 		{
 			InputSubsystem->RemoveMappingContext(InventoryInputMappingContext);
 		}
+		if (IsValid(ForgeryInputMappingContext.Get()))
+		{
+			InputSubsystem->RemoveMappingContext(ForgeryInputMappingContext);
+		}
 	}
 
 	ResetIgnoreMoveInput();
@@ -264,33 +382,7 @@ void AHeistPlayerController::ApplyLocalInputMode(const EHeistInputMode NewInputM
 	FlushPressedKeys();
 	LocalInputMode = NewInputMode;
 
-	if (NewInputMode == EHeistInputMode::Inventory)
-	{
-		if (IsValid(InputSubsystem))
-		{
-			if (IsValid(InventoryInputMappingContext.Get()))
-			{
-				InputSubsystem->AddMappingContext(InventoryInputMappingContext, 10);
-			}
-			else if (IsValid(GameplayInputMappingContext.Get()))
-			{
-				InputSubsystem->AddMappingContext(GameplayInputMappingContext, 0);
-				UHeistDebugFunctionLibrary::DebugMissingInputAsset(this, TEXT("InventoryInputMappingContext"));
-			}
-		}
-
-		SetIgnoreMoveInput(true);
-		SetIgnoreLookInput(true);
-		bShowMouseCursor = true;
-		bEnableClickEvents = true;
-		bEnableMouseOverEvents = true;
-
-		FInputModeGameAndUI InputMode;
-		InputMode.SetHideCursorDuringCapture(false);
-		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-		SetInputMode(InputMode);
-	}
-	else
+	if (NewInputMode == EHeistInputMode::Gameplay)
 	{
 		if (IsValid(InputSubsystem) && IsValid(GameplayInputMappingContext.Get()))
 		{
@@ -309,6 +401,43 @@ void AHeistPlayerController::ApplyLocalInputMode(const EHeistInputMode NewInputM
 		InputMode.SetConsumeCaptureMouseDown(true);
 		SetInputMode(InputMode);
 	}
+	else
+	{
+		if (IsValid(InputSubsystem))
+		{
+			UInputMappingContext* RequestedMappingContext =
+				NewInputMode == EHeistInputMode::Inventory
+					? InventoryInputMappingContext.Get()
+					: ForgeryInputMappingContext.Get();
+			if (IsValid(RequestedMappingContext))
+			{
+				InputSubsystem->AddMappingContext(
+					RequestedMappingContext,
+					NewInputMode == EHeistInputMode::Inventory ? 10 : 20);
+			}
+		}
+		if (NewInputMode == EHeistInputMode::Inventory
+			&& !IsValid(InventoryInputMappingContext.Get()))
+		{
+			UHeistDebugFunctionLibrary::DebugMissingInputAsset(this, TEXT("InventoryInputMappingContext"));
+		}
+		else if (NewInputMode == EHeistInputMode::Forgery
+			&& !IsValid(ForgeryInputMappingContext.Get()))
+		{
+			UHeistDebugFunctionLibrary::DebugMissingInputAsset(this, TEXT("ForgeryInputMappingContext"));
+		}
+
+		SetIgnoreMoveInput(true);
+		SetIgnoreLookInput(true);
+		bShowMouseCursor = true;
+		bEnableClickEvents = true;
+		bEnableMouseOverEvents = true;
+
+		FInputModeGameAndUI InputMode;
+		InputMode.SetHideCursorDuringCapture(false);
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		SetInputMode(InputMode);
+	}
 
 	const AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
 	if (IsValid(HeistPlayerState) && HeistPlayerState->IsArrested())
@@ -320,7 +449,7 @@ void AHeistPlayerController::ApplyLocalInputMode(const EHeistInputMode NewInputM
 	UE_LOG(
 		LogHeist,
 		Verbose,
-		TEXT("[%s] Local input mode applied: Mode=%s GameplayContext=%s InventoryContext=%s Cursor=%s IgnoreMove=%s IgnoreLook=%s"),
+		TEXT("[%s] Local input mode applied: Mode=%s GameplayContext=%s InventoryContext=%s ForgeryContext=%s ActiveContexts=%d Cursor=%s IgnoreMove=%s IgnoreLook=%s Contract=%s"),
 		*GetName(),
 		NewInputMode == EHeistInputMode::Gameplay
 			? TEXT("Gameplay")
@@ -329,9 +458,116 @@ void AHeistPlayerController::ApplyLocalInputMode(const EHeistInputMode NewInputM
 				: TEXT("Forgery"),
 		*GetNameSafe(GameplayInputMappingContext.Get()),
 		*GetNameSafe(InventoryInputMappingContext.Get()),
+		*GetNameSafe(ForgeryInputMappingContext.Get()),
+		GetActiveHeistInputMappingContextCount(),
 		bShowMouseCursor ? TEXT("true") : TEXT("false"),
 		IsMoveInputIgnored() ? TEXT("true") : TEXT("false"),
-		IsLookInputIgnored() ? TEXT("true") : TEXT("false"));
+		IsLookInputIgnored() ? TEXT("true") : TEXT("false"),
+		IsLocalInputModeContractSatisfied() ? TEXT("PASS") : TEXT("FAIL"));
+}
+
+void AHeistPlayerController::HandleInventoryOpenStateChanged(const bool bInventoryOpen)
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	RefreshLocalInputModeFromPawn();
+	if (!bInventoryOpen && LocalInputMode == EHeistInputMode::Gameplay)
+	{
+		UpdateFlashlightAimDirection();
+		if (AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>())
+		{
+			HeistCharacter->GetInteractionComponent()->RefreshInteractionTarget(true);
+		}
+	}
+}
+
+void AHeistPlayerController::HandleArrestStateChanged(const bool bArrested)
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	RefreshLocalInputModeFromPawn();
+	UHeistDebugFunctionLibrary::Message(
+		this,
+		FString::Printf(
+			TEXT("Local arrest input state applied: Arrested=%s InputMode=%s Cursor=%s IgnoreMove=%s IgnoreLook=%s"),
+			bArrested ? TEXT("true") : TEXT("false"),
+			LocalInputMode == EHeistInputMode::Gameplay
+				? TEXT("Gameplay")
+				: LocalInputMode == EHeistInputMode::Inventory
+					? TEXT("Inventory")
+					: TEXT("Forgery"),
+			bShowMouseCursor ? TEXT("true") : TEXT("false"),
+			IsMoveInputIgnored() ? TEXT("true") : TEXT("false"),
+			IsLookInputIgnored() ? TEXT("true") : TEXT("false")));
+}
+
+EHeistInputMode AHeistPlayerController::GetLocalInputMode() const
+{
+	return LocalInputMode;
+}
+
+bool AHeistPlayerController::IsLocalInputMappingContextActive(
+	const EHeistInputMode InputMode) const
+{
+	const UEnhancedInputLocalPlayerSubsystem* InputSubsystem =
+		ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer());
+	if (!IsValid(InputSubsystem))
+	{
+		return false;
+	}
+
+	const UInputMappingContext* MappingContext = nullptr;
+	switch (InputMode)
+	{
+	case EHeistInputMode::Gameplay:
+		MappingContext = GameplayInputMappingContext;
+		break;
+	case EHeistInputMode::Inventory:
+		MappingContext = InventoryInputMappingContext;
+		break;
+	case EHeistInputMode::Forgery:
+		MappingContext = ForgeryInputMappingContext;
+		break;
+	default:
+		break;
+	}
+
+	return IsValid(MappingContext)
+		&& InputSubsystem->HasMappingContext(MappingContext);
+}
+
+int32 AHeistPlayerController::GetActiveHeistInputMappingContextCount() const
+{
+	int32 ActiveContextCount = 0;
+	ActiveContextCount += IsLocalInputMappingContextActive(EHeistInputMode::Gameplay) ? 1 : 0;
+	ActiveContextCount += IsLocalInputMappingContextActive(EHeistInputMode::Inventory) ? 1 : 0;
+	ActiveContextCount += IsLocalInputMappingContextActive(EHeistInputMode::Forgery) ? 1 : 0;
+	return ActiveContextCount;
+}
+
+bool AHeistPlayerController::IsLocalInputModeContractSatisfied() const
+{
+	if (!IsLocalController()
+		|| GetActiveHeistInputMappingContextCount() != 1
+		|| !IsLocalInputMappingContextActive(LocalInputMode))
+	{
+		return false;
+	}
+
+	const bool bGameplayMode = LocalInputMode == EHeistInputMode::Gameplay;
+	const bool bCursorContract = bShowMouseCursor == !bGameplayMode;
+	const AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
+	const bool bGameplayInputBlocked = !bGameplayMode
+		|| (IsValid(HeistPlayerState) && HeistPlayerState->IsArrested());
+	return bCursorContract
+		&& IsMoveInputIgnored() == bGameplayInputBlocked
+		&& IsLookInputIgnored() == bGameplayInputBlocked;
 }
 
 void AHeistPlayerController::UpdateFlashlightAimDirection()
@@ -349,7 +585,8 @@ void AHeistPlayerController::UpdateFlashlightAimDirection()
 
 	UHeistInventoryComponent* InventoryComponent = HeistCharacter->GetInventoryComponent();
 	checkf(IsValid(InventoryComponent), TEXT("HeistPlayerCharacter requires HeistInventoryComponent"));
-	if (InventoryComponent->IsInventoryOpen())
+	if (InventoryComponent->IsInventoryOpen()
+		|| !HeistCharacter->CanPerformGameplayActions())
 	{
 		return;
 	}
@@ -412,6 +649,7 @@ void AHeistPlayerController::HandleInteractPressed()
 		}
 		else
 		{
+			bLocalObservationInputHeld = true;
 			Server_RequestObservation(TargetDisplayCase);
 		}
 		return;
@@ -426,6 +664,12 @@ void AHeistPlayerController::HandleInteractPressed()
 
 void AHeistPlayerController::HandleInteractReleased()
 {
+	if (!bLocalObservationInputHeld)
+	{
+		return;
+	}
+	bLocalObservationInputHeld = false;
+
 	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
 	if (!IsValid(HeistCharacter))
 	{
@@ -437,53 +681,22 @@ void AHeistPlayerController::HandleInteractReleased()
 
 #pragma endregion
 
-#pragma region Networking
-
-void AHeistPlayerController::HandleInventoryOpenStateChanged(const bool bInventoryOpen)
-{
-	if (!IsLocalController())
-	{
-		return;
-	}
-
-	ApplyLocalInputMode(
-		bInventoryOpen
-			? EHeistInputMode::Inventory
-			: EHeistInputMode::Gameplay);
-	if (!bInventoryOpen)
-	{
-		UpdateFlashlightAimDirection();
-		if (AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>())
-		{
-			HeistCharacter->GetInteractionComponent()->RefreshInteractionTarget(true);
-		}
-	}
-}
-
-void AHeistPlayerController::HandleArrestStateChanged(const bool bArrested)
-{
-	if (!IsLocalController())
-	{
-		return;
-	}
-
-	ApplyLocalInputMode(EHeistInputMode::Gameplay);
-	UHeistDebugFunctionLibrary::Message(
-		this,
-		FString::Printf(
-			TEXT("Local arrest input state applied: Arrested=%s InputMode=Gameplay Cursor=false IgnoreMove=%s IgnoreLook=%s"),
-			bArrested ? TEXT("true") : TEXT("false"),
-			IsMoveInputIgnored() ? TEXT("true") : TEXT("false"),
-			IsLookInputIgnored() ? TEXT("true") : TEXT("false")));
-}
-
-EHeistInputMode AHeistPlayerController::GetLocalInputMode() const
-{
-	return LocalInputMode;
-}
+#pragma region GameplayRequests
 
 void AHeistPlayerController::RequestSetInventoryOpen(const bool bInventoryOpen)
 {
+	const AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	const UHeistForgeryComponent* ForgeryComponent = IsValid(HeistCharacter)
+		? HeistCharacter->GetForgeryComponent()
+		: nullptr;
+	if (bInventoryOpen
+		&& IsValid(ForgeryComponent)
+		&& ForgeryComponent->IsSessionActive())
+	{
+		LogInventoryRequestRejected(TEXT("SetOpen"), INDEX_NONE, TEXT("ForgeryActive"));
+		return;
+	}
+
 	const AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
 	if (bInventoryOpen && IsValid(HeistPlayerState) && HeistPlayerState->IsArrested())
 	{
@@ -502,6 +715,11 @@ void AHeistPlayerController::RequestSetInventoryOpen(const bool bInventoryOpen)
 	}
 
 	Server_SetInventoryOpen(bInventoryOpen);
+}
+
+void AHeistPlayerController::RequestCancelForgery()
+{
+	Server_CancelForgery();
 }
 
 void AHeistPlayerController::RequestMoveInventoryItem(
@@ -550,6 +768,12 @@ void AHeistPlayerController::RequestUseQuickSlot(const EHeistQuickSlotType SlotT
 		return;
 	}
 
+	const AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	if (!IsValid(HeistCharacter) || !HeistCharacter->CanPerformGameplayActions())
+	{
+		return;
+	}
+
 	FVector ResolvedTargetWorldLocation = FVector::ZeroVector;
 	if (SlotType == EHeistQuickSlotType::Coin)
 	{
@@ -588,87 +812,6 @@ bool AHeistPlayerController::TryBuildCameraForwardAim(
 
 	OutTargetWorldLocation = OutViewLocation + OutCameraForward * FMath::Max(100.0f, Distance);
 	return true;
-}
-
-void AHeistPlayerController::DebugRequestAddInventoryItem(const FName ItemId)
-{
-	Server_DebugRequestAddInventoryItem(ItemId);
-}
-
-void AHeistPlayerController::DebugRequestThrowCoinAtWorldLocation(const FVector TargetWorldLocation)
-{
-	Server_DebugRequestThrowCoinAtWorldLocation(TargetWorldLocation);
-}
-
-void AHeistPlayerController::DebugRequestSpawnGuard(const float Distance)
-{
-	Server_DebugRequestSpawnGuard(Distance);
-}
-
-void AHeistPlayerController::DebugRequestSetNearestGuardState(
-	const EHeistGuardState GuardState,
-	const float DurationSeconds)
-{
-	Server_DebugRequestSetNearestGuardState(GuardState, DurationSeconds);
-}
-
-void AHeistPlayerController::DebugRequestEvaluateNearestGuardSight()
-{
-	Server_DebugRequestEvaluateNearestGuardSight();
-}
-
-void AHeistPlayerController::DebugRequestSetNearestGuardAutomaticSight(
-	const bool bEnabled)
-{
-	Server_DebugRequestSetNearestGuardAutomaticSight(bEnabled);
-}
-
-void AHeistPlayerController::DebugRequestReportGuardNoise(const float Distance)
-{
-	Server_DebugRequestReportGuardNoise(Distance);
-}
-
-void AHeistPlayerController::DebugRequestDumpDifficultyBaseline()
-{
-	Server_DebugRequestDumpDifficultyBaseline();
-}
-
-void AHeistPlayerController::DebugRequestRebuildResults()
-{
-	Server_DebugRequestRebuildResults();
-}
-
-void AHeistPlayerController::DebugRequestSeedResult(
-	const int32 Score,
-	const bool bEscaped,
-	const float EscapeTimeSeconds)
-{
-	Server_DebugRequestSeedResult(Score, bEscaped, EscapeTimeSeconds);
-}
-
-void AHeistPlayerController::DebugRequestFeedbackTest()
-{
-	Server_DebugRequestFeedbackTest();
-}
-
-void AHeistPlayerController::DebugRequestFillInventoryForFeedback(const FName ItemId)
-{
-	Server_DebugRequestFillInventoryForFeedback(ItemId);
-}
-
-void AHeistPlayerController::DebugRequestSetArrested(const bool bArrested)
-{
-	Server_DebugRequestSetArrested(bArrested);
-}
-
-void AHeistPlayerController::DebugRequestDumpArrestState()
-{
-	Server_DebugRequestDumpArrestState();
-}
-
-void AHeistPlayerController::DebugRequestSetFootstepWeight(const float TotalLootWeight)
-{
-	Server_DebugRequestSetFootstepWeight(TotalLootWeight);
 }
 
 void AHeistPlayerController::Server_RequestLootPickup_Implementation(AHeistLootActor* TargetLootActor)
@@ -1070,6 +1213,41 @@ void AHeistPlayerController::Server_SetInventoryOpen_Implementation(const bool b
 	}
 }
 
+void AHeistPlayerController::Server_CancelForgery_Implementation()
+{
+	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	UHeistForgeryComponent* ForgeryComponent = IsValid(HeistCharacter)
+		? HeistCharacter->GetForgeryComponent()
+		: nullptr;
+	if (!HasAuthority()
+		|| !IsValid(HeistCharacter)
+		|| HeistCharacter->GetController() != this
+		|| !IsValid(ForgeryComponent)
+		|| !ForgeryComponent->IsSessionActive())
+	{
+		UE_LOG(
+			LogHeistNetwork,
+			Warning,
+			TEXT("[%s] Forgery cancel rejected: Character=%s Active=%s Reason=InvalidOrInactiveSession"),
+			*GetName(),
+			*GetNameSafe(HeistCharacter),
+			IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive()
+				? TEXT("true")
+				: TEXT("false"));
+		return;
+	}
+
+	const bool bCancelled = ForgeryComponent->CancelForgerySession(
+		FName(TEXT("InputCancelled")));
+	UE_LOG(
+		LogHeistNetwork,
+		Log,
+		TEXT("[%s] Forgery input cancel: Character=%s Result=%s"),
+		*GetName(),
+		*GetNameSafe(HeistCharacter),
+		bCancelled ? TEXT("PASS") : TEXT("REJECTED"));
+}
+
 void AHeistPlayerController::Server_RequestMoveInventoryItem_Implementation(
 	const int32 InstanceId,
 	const FIntPoint TargetGridPosition)
@@ -1210,7 +1388,7 @@ void AHeistPlayerController::Server_RequestUseQuickSlot_Implementation(
 {
 	if (SlotType != EHeistQuickSlotType::Coin)
 	{
-		LogThrowableUseRejected(SlotType, NAME_None, TEXT("LegacyToolDisabled"));
+		LogThrowableUseRejected(SlotType, NAME_None, TEXT("UnsupportedQuickSlot"));
 		return;
 	}
 
@@ -1235,8 +1413,7 @@ void AHeistPlayerController::Server_RequestUseQuickSlot_Implementation(
 	}
 
 	FName ItemId = NAME_None;
-	int32 SourceInstanceId = INDEX_NONE;
-	if (!TryResolveQuickSlotItem(RequestContext, SlotType, ItemId, SourceInstanceId, RejectReason))
+	if (!TryResolveQuickSlotItem(RequestContext, SlotType, ItemId, RejectReason))
 	{
 		LogThrowableUseRejected(SlotType, ItemId, RejectReason);
 		return;
@@ -1250,38 +1427,23 @@ void AHeistPlayerController::Server_RequestUseQuickSlot_Implementation(
 		return;
 	}
 
-	if (UsableItemDefinition.UseType == EHeistUseType::Throw)
+	if (UsableItemDefinition.UseType != EHeistUseType::Throw)
 	{
-		AHeistThrowableProjectile* SpawnedProjectile = nullptr;
-		if (!TrySpawnThrowableProjectile(
-			RequestContext,
-			ItemId,
-			TargetWorldLocation,
-			false,
-			SpawnedProjectile,
-			RejectReason))
-		{
-			LogThrowableUseRejected(SlotType, ItemId, RejectReason);
-		}
+		LogThrowableUseRejected(SlotType, ItemId, TEXT("UnsupportedUseType"));
 		return;
 	}
 
-	if (UsableItemDefinition.UseType == EHeistUseType::PlaceTrap)
+	AHeistThrowableProjectile* SpawnedProjectile = nullptr;
+	if (!TrySpawnThrowableProjectile(
+		RequestContext,
+		ItemId,
+		TargetWorldLocation,
+		false,
+		SpawnedProjectile,
+		RejectReason))
 	{
-		if (!TryBeginTrapPlacement(
-			RequestContext,
-			ItemId,
-			SourceInstanceId,
-			TargetWorldLocation,
-			false,
-			RejectReason))
-		{
-			LogThrowableUseRejected(SlotType, ItemId, RejectReason);
-		}
-		return;
+		LogThrowableUseRejected(SlotType, ItemId, RejectReason);
 	}
-
-	LogThrowableUseRejected(SlotType, ItemId, TEXT("UnsupportedUseType"));
 }
 
 void AHeistPlayerController::Server_UpdateFlashlightAimDirection_Implementation(
@@ -1302,6 +1464,91 @@ void AHeistPlayerController::Server_UpdateFlashlightAimDirection_Implementation(
 	UHeistVisionComponent* VisionComponent = HeistCharacter->GetVisionComponent();
 	checkf(IsValid(VisionComponent), TEXT("HeistPlayerCharacter requires HeistVisionComponent"));
 	VisionComponent->UpdateFlashlightAimDirection(RequestedDirection);
+}
+
+#pragma endregion
+
+#pragma region Debug
+
+void AHeistPlayerController::DebugRequestAddInventoryItem(const FName ItemId)
+{
+	Server_DebugRequestAddInventoryItem(ItemId);
+}
+
+void AHeistPlayerController::DebugRequestThrowCoinAtWorldLocation(const FVector TargetWorldLocation)
+{
+	Server_DebugRequestThrowCoinAtWorldLocation(TargetWorldLocation);
+}
+
+void AHeistPlayerController::DebugRequestSpawnGuard(const float Distance)
+{
+	Server_DebugRequestSpawnGuard(Distance);
+}
+
+void AHeistPlayerController::DebugRequestSetNearestGuardState(
+	const EHeistGuardState GuardState,
+	const float DurationSeconds)
+{
+	Server_DebugRequestSetNearestGuardState(GuardState, DurationSeconds);
+}
+
+void AHeistPlayerController::DebugRequestEvaluateNearestGuardSight()
+{
+	Server_DebugRequestEvaluateNearestGuardSight();
+}
+
+void AHeistPlayerController::DebugRequestSetNearestGuardAutomaticSight(
+	const bool bEnabled)
+{
+	Server_DebugRequestSetNearestGuardAutomaticSight(bEnabled);
+}
+
+void AHeistPlayerController::DebugRequestReportGuardNoise(const float Distance)
+{
+	Server_DebugRequestReportGuardNoise(Distance);
+}
+
+void AHeistPlayerController::DebugRequestDumpDifficultyBaseline()
+{
+	Server_DebugRequestDumpDifficultyBaseline();
+}
+
+void AHeistPlayerController::DebugRequestRebuildResults()
+{
+	Server_DebugRequestRebuildResults();
+}
+
+void AHeistPlayerController::DebugRequestSeedResult(
+	const int32 Score,
+	const bool bEscaped,
+	const float EscapeTimeSeconds)
+{
+	Server_DebugRequestSeedResult(Score, bEscaped, EscapeTimeSeconds);
+}
+
+void AHeistPlayerController::DebugRequestFeedbackTest()
+{
+	Server_DebugRequestFeedbackTest();
+}
+
+void AHeistPlayerController::DebugRequestFillInventoryForFeedback(const FName ItemId)
+{
+	Server_DebugRequestFillInventoryForFeedback(ItemId);
+}
+
+void AHeistPlayerController::DebugRequestSetArrested(const bool bArrested)
+{
+	Server_DebugRequestSetArrested(bArrested);
+}
+
+void AHeistPlayerController::DebugRequestDumpArrestState()
+{
+	Server_DebugRequestDumpArrestState();
+}
+
+void AHeistPlayerController::DebugRequestSetFootstepWeight(const float TotalLootWeight)
+{
+	Server_DebugRequestSetFootstepWeight(TotalLootWeight);
 }
 
 void AHeistPlayerController::Server_DebugRequestAddInventoryItem_Implementation(const FName ItemId)
@@ -1673,36 +1920,6 @@ void AHeistPlayerController::Server_DebugRequestSetFootstepWeight_Implementation
 #endif
 }
 
-#pragma endregion
-
-#pragma region Feedback
-
-FHeistPopupFeedbackRequested& AHeistPlayerController::GetPopupFeedbackRequestedDelegate()
-{
-	return PopupFeedbackRequestedDelegate;
-}
-
-void AHeistPlayerController::Client_ReceivePopupFeedback_Implementation(
-	const FText& Message,
-	const float DurationSeconds)
-{
-	if (Message.IsEmpty())
-	{
-		return;
-	}
-
-	const float SafeDuration = FMath::Max(0.1f, DurationSeconds);
-	PopupFeedbackRequestedDelegate.Broadcast(Message, SafeDuration);
-	UE_LOG(
-		LogHeistUI,
-		Log,
-		TEXT("[%s] Popup feedback received: Message=%s Duration=%.2f Local=%s"),
-		*GetName(),
-		*Message.ToString(),
-		SafeDuration,
-		IsLocalController() ? TEXT("true") : TEXT("false"));
-}
-
 void AHeistPlayerController::Server_DebugRequestFeedbackTest_Implementation()
 {
 #if !UE_BUILD_SHIPPING
@@ -1739,6 +1956,72 @@ void AHeistPlayerController::Server_DebugRequestFillInventoryForFeedback_Impleme
 
 	LogInventoryRequestRejected(TEXT("FeedbackBagFull"), INDEX_NONE, TEXT("TestLimitReached"));
 #endif
+}
+
+AHeistGuardCharacter* AHeistPlayerController::FindNearestGuard() const
+{
+	if (!IsValid(GetWorld()))
+	{
+		return nullptr;
+	}
+
+	const APawn* ReferencePawn = GetPawn();
+	const FVector ReferenceLocation = IsValid(ReferencePawn)
+		? ReferencePawn->GetActorLocation()
+		: FVector::ZeroVector;
+	AHeistGuardCharacter* NearestGuard = nullptr;
+	float NearestDistanceSquared = TNumericLimits<float>::Max();
+	for (TActorIterator<AHeistGuardCharacter> GuardIterator(GetWorld());
+		GuardIterator;
+		++GuardIterator)
+	{
+		AHeistGuardCharacter* CandidateGuard = *GuardIterator;
+		if (!IsValid(CandidateGuard))
+		{
+			continue;
+		}
+
+		const float DistanceSquared = FVector::DistSquared(
+			ReferenceLocation,
+			CandidateGuard->GetActorLocation());
+		if (DistanceSquared < NearestDistanceSquared)
+		{
+			NearestDistanceSquared = DistanceSquared;
+			NearestGuard = CandidateGuard;
+		}
+	}
+
+	return NearestGuard;
+}
+
+#pragma endregion
+
+#pragma region Feedback
+
+FHeistPopupFeedbackRequested& AHeistPlayerController::GetPopupFeedbackRequestedDelegate()
+{
+	return PopupFeedbackRequestedDelegate;
+}
+
+void AHeistPlayerController::Client_ReceivePopupFeedback_Implementation(
+	const FText& Message,
+	const float DurationSeconds)
+{
+	if (Message.IsEmpty())
+	{
+		return;
+	}
+
+	const float SafeDuration = FMath::Max(0.1f, DurationSeconds);
+	PopupFeedbackRequestedDelegate.Broadcast(Message, SafeDuration);
+	UE_LOG(
+		LogHeistUI,
+		Log,
+		TEXT("[%s] Popup feedback received: Message=%s Duration=%.2f Local=%s"),
+		*GetName(),
+		*Message.ToString(),
+		SafeDuration,
+		IsLocalController() ? TEXT("true") : TEXT("false"));
 }
 
 void AHeistPlayerController::SendPopupFeedback(const FText& Message, const float DurationSeconds)
@@ -1826,42 +2109,6 @@ FText AHeistPlayerController::ResolvePopupFeedbackText(const TCHAR* RequestName,
 
 #pragma region InternalHelpers
 
-AHeistGuardCharacter* AHeistPlayerController::FindNearestGuard() const
-{
-	if (!IsValid(GetWorld()))
-	{
-		return nullptr;
-	}
-
-	const APawn* ReferencePawn = GetPawn();
-	const FVector ReferenceLocation = IsValid(ReferencePawn)
-		? ReferencePawn->GetActorLocation()
-		: FVector::ZeroVector;
-	AHeistGuardCharacter* NearestGuard = nullptr;
-	float NearestDistanceSquared = TNumericLimits<float>::Max();
-	for (TActorIterator<AHeistGuardCharacter> GuardIterator(GetWorld());
-		GuardIterator;
-		++GuardIterator)
-	{
-		AHeistGuardCharacter* CandidateGuard = *GuardIterator;
-		if (!IsValid(CandidateGuard))
-		{
-			continue;
-		}
-
-		const float DistanceSquared = FVector::DistSquared(
-			ReferenceLocation,
-			CandidateGuard->GetActorLocation());
-		if (DistanceSquared < NearestDistanceSquared)
-		{
-			NearestDistanceSquared = DistanceSquared;
-			NearestGuard = CandidateGuard;
-		}
-	}
-
-	return NearestGuard;
-}
-
 bool AHeistPlayerController::TryBuildGameplayRequestContext(
 	FHeistGameplayRequestContext& OutContext,
 	const TCHAR*& OutRejectReason) const
@@ -1898,6 +2145,14 @@ bool AHeistPlayerController::TryBuildGameplayRequestContext(
 	if (HeistPlayerState->IsArrested())
 	{
 		OutRejectReason = TEXT("PlayerArrested");
+		return false;
+	}
+
+	const UHeistForgeryComponent* ForgeryComponent =
+		HeistCharacter->GetForgeryComponent();
+	if (IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive())
+	{
+		OutRejectReason = TEXT("ForgeryActive");
 		return false;
 	}
 
@@ -1942,11 +2197,9 @@ bool AHeistPlayerController::TryResolveQuickSlotItem(
 	const FHeistGameplayRequestContext& RequestContext,
 	const EHeistQuickSlotType SlotType,
 	FName& OutItemId,
-	int32& OutInstanceId,
 	const TCHAR*& OutRejectReason) const
 {
 	OutItemId = NAME_None;
-	OutInstanceId = INDEX_NONE;
 	OutRejectReason = nullptr;
 
 	const FHeistQuickSlotState* QuickSlot = RequestContext.InventoryComponent->GetQuickSlots().FindByPredicate(
@@ -1976,7 +2229,6 @@ bool AHeistPlayerController::TryResolveQuickSlotItem(
 	}
 
 	OutItemId = InventoryItem.ItemId;
-	OutInstanceId = InventoryItem.InstanceId;
 	return true;
 }
 
@@ -1999,7 +2251,7 @@ bool AHeistPlayerController::TrySpawnThrowableProjectile(
 	}
 
 	const bool bIsDebugFallbackThrowable = bDebugBypassInventory
-		&& (ItemId == FName(TEXT("Throwable_Coin")) || ItemId == FName(TEXT("Throwable_Smoke")));
+		&& ItemId == FName(TEXT("Throwable_Coin"));
 
 	FHeistItemDataRow ItemDefinition;
 	if (!HeistGameMode->TryGetItemDefinition(ItemId, ItemDefinition)
@@ -2030,7 +2282,7 @@ bool AHeistPlayerController::TrySpawnThrowableProjectile(
 		UsableItemDefinition.ItemId = ItemId;
 		UsableItemDefinition.UseType = EHeistUseType::Throw;
 		UsableItemDefinition.TargetType = EHeistTargetType::ActorHit;
-		UsableItemDefinition.Duration = ItemId == FName(TEXT("Throwable_Smoke")) ? 5.0f : 3.0f;
+		UsableItemDefinition.Duration = 3.0f;
 		UsableItemDefinition.ProjectileSpeed = 1500.0f;
 	}
 
@@ -2038,10 +2290,6 @@ bool AHeistPlayerController::TrySpawnThrowableProjectile(
 	if (!IsValid(ProjectileClass) && ItemId == FName(TEXT("Throwable_Coin")))
 	{
 		ProjectileClass = AHeistCoinProjectile::StaticClass();
-	}
-	else if (!IsValid(ProjectileClass) && ItemId == FName(TEXT("Throwable_Smoke")))
-	{
-		ProjectileClass = AHeistSmokeProjectile::StaticClass();
 	}
 
 	if (!IsValid(ProjectileClass) || !ProjectileClass->IsChildOf(AHeistThrowableProjectile::StaticClass()))
@@ -2102,103 +2350,12 @@ bool AHeistPlayerController::TrySpawnThrowableProjectile(
 	return true;
 }
 
-bool AHeistPlayerController::TryBeginTrapPlacement(
-	const FHeistGameplayRequestContext& RequestContext,
-	const FName ItemId,
-	const int32 SourceInstanceId,
-	const FVector& TargetWorldLocation,
-	const bool bDebugBypassInventory,
-	const TCHAR*& OutRejectReason) const
-{
-	OutRejectReason = nullptr;
-	if (TargetWorldLocation.ContainsNaN()
-		|| FVector::DistSquared(RequestContext.Character->GetActorLocation(), TargetWorldLocation)
-			> FMath::Square(1200.0f))
-	{
-		OutRejectReason = TEXT("InvalidTrapTarget");
-		return false;
-	}
-
-	AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
-	if (!IsValid(HeistGameMode))
-	{
-		OutRejectReason = TEXT("MissingAuthGameMode");
-		return false;
-	}
-
-	FHeistItemDataRow ItemDefinition;
-	if (!HeistGameMode->TryGetItemDefinition(ItemId, ItemDefinition)
-		|| ItemDefinition.ItemType != EHeistItemType::Trap
-		|| !ItemDefinition.bCanUseQuickSlot)
-	{
-		if (!bDebugBypassInventory || ItemId != FName(TEXT("Trap_Glue")))
-		{
-			OutRejectReason = TEXT("InvalidTrapItem");
-			return false;
-		}
-
-		ItemDefinition.ItemId = ItemId;
-		ItemDefinition.ItemType = EHeistItemType::Trap;
-		ItemDefinition.bCanUseQuickSlot = true;
-	}
-
-	FHeistUsableItemDataRow UsableItemDefinition;
-	if (!HeistGameMode->TryGetUsableItemDefinition(ItemId, UsableItemDefinition)
-		|| UsableItemDefinition.UseType != EHeistUseType::PlaceTrap)
-	{
-		if (!bDebugBypassInventory || ItemId != FName(TEXT("Trap_Glue")))
-		{
-			OutRejectReason = TEXT("InvalidUsableItem");
-			return false;
-		}
-
-		UsableItemDefinition.ItemId = ItemId;
-		UsableItemDefinition.UseType = EHeistUseType::PlaceTrap;
-		UsableItemDefinition.TargetType = EHeistTargetType::WorldLocation;
-		UsableItemDefinition.CastTime = 1.5f;
-		UsableItemDefinition.Duration = 3.0f;
-	}
-
-	UClass* TrapActorClass = UsableItemDefinition.SpawnedActorClass.LoadSynchronous();
-	if (!IsValid(TrapActorClass) && ItemId == FName(TEXT("Trap_Glue")))
-	{
-		TrapActorClass = AHeistGlueTrapActor::StaticClass();
-	}
-
-	if (!IsValid(TrapActorClass) || !TrapActorClass->IsChildOf(AHeistTrapActor::StaticClass()))
-	{
-		OutRejectReason = TEXT("InvalidTrapClass");
-		return false;
-	}
-
-	const float CastTimeSeconds = FMath::Max(0.0f, UsableItemDefinition.CastTime);
-	const float EffectDurationSeconds = FMath::Max(0.0f, UsableItemDefinition.Duration);
-	if (!RequestContext.Character->GetActionComponent()->TryBeginTrapPlacementRequest(
-		ItemId,
-		SourceInstanceId,
-		TargetWorldLocation,
-		CastTimeSeconds,
-		EffectDurationSeconds,
-		TrapActorClass,
-		!bDebugBypassInventory))
-	{
-		OutRejectReason = TEXT("TrapPlacementCastRejected");
-		return false;
-	}
-
-	return true;
-}
-
 FName AHeistPlayerController::GetExpectedQuickSlotItemId(const EHeistQuickSlotType SlotType)
 {
 	switch (SlotType)
 	{
 	case EHeistQuickSlotType::Coin:
 		return FName(TEXT("Throwable_Coin"));
-	case EHeistQuickSlotType::SmokeGrenade:
-		return FName(TEXT("Throwable_Smoke"));
-	case EHeistQuickSlotType::GlueTrap:
-		return FName(TEXT("Trap_Glue"));
 	default:
 		return NAME_None;
 	}

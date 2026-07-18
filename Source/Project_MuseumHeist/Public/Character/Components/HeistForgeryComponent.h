@@ -7,6 +7,7 @@
 
 class AHeistDisplayCaseActor;
 class AHeistPlayerState;
+class UTexture2D;
 
 DECLARE_MULTICAST_DELEGATE(FHeistForgerySessionStateChanged);
 
@@ -35,6 +36,10 @@ public:
 	bool TryBeginForgerySession(
 		AHeistDisplayCaseActor* TargetDisplayCase,
 		float DurationSeconds = -1.0f);
+	bool TryPrepareForgeryTemplate(
+		AHeistDisplayCaseActor* TargetDisplayCase,
+		float& OutObservationDuration);
+	bool ClearPreparedForgeryTemplate(FName Reason);
 	bool TryBeginSubmit();
 	bool CancelForgerySession(FName Reason);
 	bool ForceTimeoutForDebug();
@@ -45,6 +50,17 @@ public:
 	int32 GetSessionRevision() const;
 	AHeistDisplayCaseActor* GetActiveDisplayCase() const;
 	FName GetLastCleanupReason() const;
+	bool HasPreparedForgeryTemplate() const;
+	FName GetActiveArtifactId() const;
+	FName GetActiveTemplateId() const;
+	const TSoftObjectPtr<UTexture2D>& GetReferenceImageAsset() const;
+	const TSoftObjectPtr<UTexture2D>& GetReferenceMaskAsset() const;
+	UTexture2D* LoadReferenceImage() const;
+	UTexture2D* LoadReferenceMask() const;
+	float GetTemplateObservationDuration() const;
+	float GetTemplateForgeryDuration() const;
+	int32 GetTemplateStrokeLimit() const;
+	float GetTemplateBrushSize() const;
 	FHeistForgerySessionStateChanged& GetSessionStateChangedDelegate();
 
 private:
@@ -53,6 +69,7 @@ private:
 	void ClearSession(FName Reason, bool bReleaseCaseLock);
 	void BroadcastSessionSnapshot(const TCHAR* ChangeSource, FName Reason);
 	void UnbindActiveDisplayCase();
+	void ResetPreparedTemplateSnapshot();
 
 	UFUNCTION()
 	void HandleDisplayCaseSessionChanged(
@@ -104,6 +121,78 @@ private:
 	int32 SessionRevision = 0;
 
 	UPROPERTY(
+		Replicated,
+		VisibleInstanceOnly,
+		BlueprintReadOnly,
+		Category = "Heist|Forgery|Template",
+		meta = (AllowPrivateAccess = "true"))
+	bool bTemplatePrepared = false;
+
+	UPROPERTY(
+		Replicated,
+		VisibleInstanceOnly,
+		BlueprintReadOnly,
+		Category = "Heist|Forgery|Template",
+		meta = (AllowPrivateAccess = "true"))
+	FName ActiveArtifactId = NAME_None;
+
+	UPROPERTY(
+		Replicated,
+		VisibleInstanceOnly,
+		BlueprintReadOnly,
+		Category = "Heist|Forgery|Template",
+		meta = (AllowPrivateAccess = "true"))
+	FName ActiveTemplateId = NAME_None;
+
+	UPROPERTY(
+		Replicated,
+		VisibleInstanceOnly,
+		BlueprintReadOnly,
+		Category = "Heist|Forgery|Template",
+		meta = (AllowPrivateAccess = "true"))
+	TSoftObjectPtr<UTexture2D> ReferenceImageAsset;
+
+	UPROPERTY(
+		Replicated,
+		VisibleInstanceOnly,
+		BlueprintReadOnly,
+		Category = "Heist|Forgery|Template",
+		meta = (AllowPrivateAccess = "true"))
+	TSoftObjectPtr<UTexture2D> ReferenceMaskAsset;
+
+	UPROPERTY(
+		Replicated,
+		VisibleInstanceOnly,
+		BlueprintReadOnly,
+		Category = "Heist|Forgery|Template",
+		meta = (AllowPrivateAccess = "true"))
+	float TemplateObservationDuration = 0.0f;
+
+	UPROPERTY(
+		Replicated,
+		VisibleInstanceOnly,
+		BlueprintReadOnly,
+		Category = "Heist|Forgery|Template",
+		meta = (AllowPrivateAccess = "true"))
+	float TemplateForgeryDuration = 0.0f;
+
+	UPROPERTY(
+		Replicated,
+		VisibleInstanceOnly,
+		BlueprintReadOnly,
+		Category = "Heist|Forgery|Template",
+		meta = (AllowPrivateAccess = "true"))
+	int32 TemplateStrokeLimit = 0;
+
+	UPROPERTY(
+		Replicated,
+		VisibleInstanceOnly,
+		BlueprintReadOnly,
+		Category = "Heist|Forgery|Template",
+		meta = (AllowPrivateAccess = "true"))
+	float TemplateBrushSize = 0.0f;
+
+	UPROPERTY(
 		EditDefaultsOnly,
 		BlueprintReadOnly,
 		Category = "Heist|Forgery",
@@ -116,6 +205,7 @@ private:
 	FTimerHandle SessionTimeoutTimerHandle;
 	FHeistForgerySessionStateChanged SessionStateChangedDelegate;
 	bool bHandlingCaseSessionCallback = false;
+	TWeakObjectPtr<AHeistDisplayCaseActor> PreparedDisplayCase;
 
 #pragma endregion
 

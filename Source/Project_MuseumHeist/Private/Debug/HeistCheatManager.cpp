@@ -182,6 +182,22 @@ void UHeistCheatManager::HeistForgeryDump()
 #endif
 }
 
+void UHeistCheatManager::HeistForgeryInputDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugForgeryInputDump(
+		GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistForgeryTemplateDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugForgeryTemplateDump(
+		GetOuterAPlayerController());
+#endif
+}
+
 void UHeistCheatManager::HeistForgeryBegin(const float DurationSeconds)
 {
 #if !UE_BUILD_SHIPPING

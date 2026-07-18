@@ -11,14 +11,12 @@ class AHeistDisplayCaseActor;
 class AHeistGuardCharacter;
 class AHeistLootActor;
 class AHeistPlayerState;
-class AHeistTrapActor;
 class AHeistThrowableProjectile;
 class AHeistVentActor;
+class UHeistForgeryComponent;
 class UHeistInventoryComponent;
 class UInputAction;
 class UInputMappingContext;
-struct FHeistItemDataRow;
-struct FHeistUsableItemDataRow;
 struct FHitResult;
 struct FInputActionValue;
 
@@ -40,6 +38,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void OnPossess(APawn* InPawn) override;
 	virtual void OnRep_Pawn() override;
 	virtual void OnRep_PlayerState() override;
@@ -56,7 +55,11 @@ private:
 	void HandleLookInput(const FInputActionValue& InputValue);
 	void HandleMoveInput(const FInputActionValue& InputValue);
 	void HandleInventoryToggle();
+	void HandleForgeryCancel();
 	void UpdateFlashlightAimDirection();
+	void RefreshLocalForgeryInputBinding();
+	void UnbindLocalForgeryInputState();
+	void HandleForgerySessionStateChanged();
 	void RefreshLocalInputModeFromPawn();
 	void ApplyLocalInputMode(EHeistInputMode NewInputMode);
 
@@ -73,12 +76,28 @@ private:
 	TObjectPtr<UInputAction> InventoryInputAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Input", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UInputAction> ForgeryCancelInputAction;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Input", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInputMappingContext> GameplayInputMappingContext;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Input", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInputMappingContext> InventoryInputMappingContext;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Input", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UInputMappingContext> ForgeryInputMappingContext;
+
+	TWeakObjectPtr<UHeistForgeryComponent> BoundForgeryComponent;
 	EHeistInputMode LocalInputMode = EHeistInputMode::Gameplay;
+	bool bLocalForgerySessionActive = false;
+
+public:
+	void HandleInventoryOpenStateChanged(bool bInventoryOpen);
+	void HandleArrestStateChanged(bool bArrested);
+	EHeistInputMode GetLocalInputMode() const;
+	bool IsLocalInputMappingContextActive(EHeistInputMode InputMode) const;
+	int32 GetActiveHeistInputMappingContextCount() const;
+	bool IsLocalInputModeContractSatisfied() const;
 
 #pragma endregion
 
@@ -87,18 +106,18 @@ private:
 private:
 	void HandleInteractPressed();
 	void HandleInteractReleased();
+	bool bLocalObservationInputHeld = false;
 
 #pragma endregion
 
-#pragma region Networking
+#pragma region GameplayRequests
 
 public:
-	void HandleInventoryOpenStateChanged(bool bInventoryOpen);
-	void HandleArrestStateChanged(bool bArrested);
-	EHeistInputMode GetLocalInputMode() const;
-
 	UFUNCTION(BlueprintCallable, Category = "Heist|Inventory")
 	void RequestSetInventoryOpen(bool bInventoryOpen);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Forgery")
+	void RequestCancelForgery();
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Inventory")
 	void RequestMoveInventoryItem(int32 InstanceId, FIntPoint TargetGridPosition);
@@ -126,22 +145,6 @@ public:
 
 	bool TryBuildCameraForwardAim(float Distance, FVector& OutViewLocation, FVector& OutCameraForward, FVector& OutTargetWorldLocation) const;
 
-	void DebugRequestAddInventoryItem(FName ItemId);
-	void DebugRequestThrowCoinAtWorldLocation(FVector TargetWorldLocation);
-	void DebugRequestSpawnGuard(float Distance);
-	void DebugRequestSetNearestGuardState(EHeistGuardState GuardState, float DurationSeconds);
-	void DebugRequestEvaluateNearestGuardSight();
-	void DebugRequestSetNearestGuardAutomaticSight(bool bEnabled);
-	void DebugRequestReportGuardNoise(float Distance);
-	void DebugRequestRebuildResults();
-	void DebugRequestSeedResult(int32 Score, bool bEscaped, float EscapeTimeSeconds);
-	void DebugRequestFeedbackTest();
-	void DebugRequestFillInventoryForFeedback(FName ItemId);
-	void DebugRequestSetArrested(bool bArrested);
-	void DebugRequestDumpArrestState();
-	void DebugRequestSetFootstepWeight(float TotalLootWeight);
-	void DebugRequestDumpDifficultyBaseline();
-
 private:
 	UFUNCTION(Server, Reliable)
 	void Server_RequestLootPickup(AHeistLootActor* TargetLootActor);
@@ -157,6 +160,9 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void Server_SetInventoryOpen(bool bInventoryOpen);
+
+	UFUNCTION(Server, Reliable)
+	void Server_CancelForgery();
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestMoveInventoryItem(int32 InstanceId, FIntPoint TargetGridPosition);
@@ -185,6 +191,28 @@ private:
 	UFUNCTION(Server, Unreliable)
 	void Server_UpdateFlashlightAimDirection(FVector_NetQuantizeNormal ClientCameraForward);
 
+#pragma endregion
+
+#pragma region Debug
+
+public:
+	void DebugRequestAddInventoryItem(FName ItemId);
+	void DebugRequestThrowCoinAtWorldLocation(FVector TargetWorldLocation);
+	void DebugRequestSpawnGuard(float Distance);
+	void DebugRequestSetNearestGuardState(EHeistGuardState GuardState, float DurationSeconds);
+	void DebugRequestEvaluateNearestGuardSight();
+	void DebugRequestSetNearestGuardAutomaticSight(bool bEnabled);
+	void DebugRequestReportGuardNoise(float Distance);
+	void DebugRequestRebuildResults();
+	void DebugRequestSeedResult(int32 Score, bool bEscaped, float EscapeTimeSeconds);
+	void DebugRequestFeedbackTest();
+	void DebugRequestFillInventoryForFeedback(FName ItemId);
+	void DebugRequestSetArrested(bool bArrested);
+	void DebugRequestDumpArrestState();
+	void DebugRequestSetFootstepWeight(float TotalLootWeight);
+	void DebugRequestDumpDifficultyBaseline();
+
+private:
 	UFUNCTION(Server, Reliable)
 	void Server_DebugRequestAddInventoryItem(FName ItemId);
 
@@ -224,6 +252,12 @@ private:
 	UFUNCTION(Server, Reliable)
 	void Server_DebugRequestDumpDifficultyBaseline();
 
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestFeedbackTest();
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestFillInventoryForFeedback(FName ItemId);
+
 #pragma endregion
 
 #pragma region Feedback
@@ -234,12 +268,6 @@ public:
 private:
 	UFUNCTION(Client, Reliable)
 	void Client_ReceivePopupFeedback(const FText& Message, float DurationSeconds);
-
-	UFUNCTION(Server, Reliable)
-	void Server_DebugRequestFeedbackTest();
-
-	UFUNCTION(Server, Reliable)
-	void Server_DebugRequestFillInventoryForFeedback(FName ItemId);
 
 	void SendPopupFeedback(const FText& Message, float DurationSeconds = 2.0f);
 	void SendPopupFeedbackForRejection(const TCHAR* RequestName, const TCHAR* Reason);
@@ -270,7 +298,6 @@ private:
 		const FHeistGameplayRequestContext& RequestContext,
 		EHeistQuickSlotType SlotType,
 		FName& OutItemId,
-		int32& OutInstanceId,
 		const TCHAR*& OutRejectReason) const;
 	AHeistGuardCharacter* FindNearestGuard() const;
 	bool TrySpawnThrowableProjectile(
@@ -279,13 +306,6 @@ private:
 		const FVector& TargetWorldLocation,
 		bool bDebugBypassInventory,
 		AHeistThrowableProjectile*& OutProjectile,
-		const TCHAR*& OutRejectReason) const;
-	bool TryBeginTrapPlacement(
-		const FHeistGameplayRequestContext& RequestContext,
-		FName ItemId,
-		int32 SourceInstanceId,
-		const FVector& TargetWorldLocation,
-		bool bDebugBypassInventory,
 		const TCHAR*& OutRejectReason) const;
 	static FName GetExpectedQuickSlotItemId(EHeistQuickSlotType SlotType);
 

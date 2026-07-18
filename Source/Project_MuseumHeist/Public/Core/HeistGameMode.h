@@ -12,6 +12,7 @@ class AHeistLootSpawnPoint;
 class AHeistPlayerState;
 struct FHeistItemDataRow;
 struct FHeistArtifactDataRow;
+struct FHeistForgeryTemplateRow;
 struct FHeistLootDataRow;
 struct FHeistUsableItemDataRow;
 struct FHeistGuardDataRow;
@@ -45,8 +46,10 @@ protected:
 public:
 	UDataTable* GetItemDataTable() const;
 	UDataTable* GetArtifactDataTable() const;
+	UDataTable* GetForgeryTemplateDataTable() const;
 	bool TryGetItemDefinition(FName ItemId, FHeistItemDataRow& OutItemDefinition) const;
 	bool TryGetArtifactDefinition(FName ArtifactId, FHeistArtifactDataRow& OutArtifactDefinition) const;
+	bool TryGetForgeryTemplateDefinition(FName TemplateId, FHeistForgeryTemplateRow& OutTemplateDefinition) const;
 	bool TryGetLootDefinition(FName ItemId, FHeistLootDataRow& OutLootDefinition) const;
 	bool TryGetUsableItemDefinition(FName ItemId, FHeistUsableItemDataRow& OutUsableItemDefinition) const;
 	bool TryGetGuardDefinition(FName GuardProfileId, FHeistGuardDataRow& OutGuardDefinition) const;

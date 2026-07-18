@@ -1,6 +1,7 @@
 #include "Character/Components/HeistActionComponent.h"
 
 #include "Character/Components/HeistInventoryComponent.h"
+#include "Character/Components/HeistForgeryComponent.h"
 #include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameMode.h"
 #include "Core/HeistGameState.h"
@@ -291,14 +292,32 @@ bool UHeistActionComponent::TryBeginObservationRequest(AHeistDisplayCaseActor* T
 	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter)
 		? HeistCharacter->GetPlayerState<AHeistPlayerState>()
 		: nullptr;
+	UHeistForgeryComponent* ForgeryComponent = IsValid(HeistCharacter)
+		? HeistCharacter->GetForgeryComponent()
+		: nullptr;
 	if (!IsValid(HeistCharacter)
 		|| !HeistCharacter->HasAuthority()
 		|| !IsValid(HeistPlayerState)
 		|| !IsValid(TargetDisplayCase)
+		|| !IsValid(ForgeryComponent)
 		|| IsGameplayCastActive()
-		|| TargetDisplayCase->GetDisplayCaseState() != EHeistDisplayCaseState::Secured
-		|| !TargetDisplayCase->TryBeginSession(HeistPlayerState))
+		|| TargetDisplayCase->GetDisplayCaseState() != EHeistDisplayCaseState::Secured)
 	{
+		return false;
+	}
+
+	float TemplateObservationDuration = 0.0f;
+	if (!ForgeryComponent->TryPrepareForgeryTemplate(
+			TargetDisplayCase,
+			TemplateObservationDuration))
+	{
+		return false;
+	}
+
+	if (!TargetDisplayCase->TryBeginSession(HeistPlayerState))
+	{
+		ForgeryComponent->ClearPreparedForgeryTemplate(
+			FName(TEXT("ObservationSessionRejected")));
 		return false;
 	}
 
@@ -310,7 +329,9 @@ bool UHeistActionComponent::TryBeginObservationRequest(AHeistDisplayCaseActor* T
 	const float ServerWorldTime = IsValid(HeistGameState)
 		? HeistGameState->GetServerWorldTimeSeconds()
 		: (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
-	const float SafeDurationSeconds = FMath::Max(0.0f, ObservationCastDurationSeconds);
+	const float SafeDurationSeconds = FMath::Max(
+		0.0f,
+		TemplateObservationDuration);
 	ObservationCastEndServerTime = ServerWorldTime + SafeDurationSeconds;
 
 	SetComponentTickEnabled(true);
@@ -685,6 +706,15 @@ void UHeistActionComponent::HandleObservationCastTimerElapsed()
 		return;
 	}
 
+	UHeistForgeryComponent* ForgeryComponent =
+		HeistCharacter->GetForgeryComponent();
+	if (!IsValid(ForgeryComponent)
+		|| !ForgeryComponent->TryBeginForgerySession(TargetDisplayCase))
+	{
+		CancelObservationCast(TEXT("ForgeryHandoffRejected"));
+		return;
+	}
+
 	ClearObservationCastState();
 	UHeistDebugFunctionLibrary::DebugObservationCastCompleted(
 		this,
@@ -736,6 +766,13 @@ void UHeistActionComponent::CancelObservationCast(const TCHAR* Reason)
 	const FString CharacterName = GetNameSafe(HeistCharacter);
 	const FString DisplayCaseName = GetNameSafe(TargetDisplayCase);
 	ClearObservationCastState();
+
+	if (IsValid(HeistCharacter)
+		&& IsValid(HeistCharacter->GetForgeryComponent()))
+	{
+		HeistCharacter->GetForgeryComponent()->ClearPreparedForgeryTemplate(
+			FName(Reason ? Reason : TEXT("ObservationCancelled")));
+	}
 
 	if (IsValid(TargetDisplayCase)
 		&& IsValid(HeistPlayerState)

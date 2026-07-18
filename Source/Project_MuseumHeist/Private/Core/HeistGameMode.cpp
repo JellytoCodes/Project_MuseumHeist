@@ -210,6 +210,15 @@ UDataTable* AHeistGameMode::GetArtifactDataTable() const
 	return ResolvedBalanceData->ArtifactDataTable.LoadSynchronous();
 }
 
+UDataTable* AHeistGameMode::GetForgeryTemplateDataTable() const
+{
+	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset)
+		? GameBalanceDataAsset.Get()
+		: GetDefault<UHeistGameBalanceDataAsset>();
+
+	return ResolvedBalanceData->ForgeryTemplateDataTable.LoadSynchronous();
+}
+
 bool AHeistGameMode::TryGetItemDefinition(
 	const FName ItemId,
 	FHeistItemDataRow& OutItemDefinition) const
@@ -335,6 +344,55 @@ bool AHeistGameMode::TryGetArtifactDefinition(
 	}
 
 	OutArtifactDefinition = *ArtifactDefinition;
+	return true;
+}
+
+bool AHeistGameMode::TryGetForgeryTemplateDefinition(
+	const FName TemplateId,
+	FHeistForgeryTemplateRow& OutTemplateDefinition) const
+{
+	OutTemplateDefinition = FHeistForgeryTemplateRow();
+	if (TemplateId.IsNone())
+	{
+		UE_LOG(LogHeist, Warning, TEXT("Forgery template lookup rejected: Reason=MissingTemplateId"));
+		return false;
+	}
+
+	const UDataTable* TemplateDataTable = GetForgeryTemplateDataTable();
+	if (!IsValid(TemplateDataTable)
+		|| TemplateDataTable->GetRowStruct() != FHeistForgeryTemplateRow::StaticStruct())
+	{
+		UE_LOG(
+			LogHeist,
+			Error,
+			TEXT("Forgery template lookup rejected: TemplateId=%s Reason=MissingOrInvalidTemplateDataTable"),
+			*TemplateId.ToString());
+		return false;
+	}
+
+	const FHeistForgeryTemplateRow* TemplateDefinition =
+		TemplateDataTable->FindRow<FHeistForgeryTemplateRow>(
+			TemplateId,
+			TEXT("AHeistGameMode::TryGetForgeryTemplateDefinition"),
+			false);
+	if (TemplateDefinition == nullptr
+		|| TemplateDefinition->TemplateId != TemplateId
+		|| TemplateDefinition->ReferenceImage.IsNull()
+		|| TemplateDefinition->ReferenceMask.IsNull()
+		|| TemplateDefinition->ObservationDuration < 0.0f
+		|| TemplateDefinition->ForgeryDuration <= 0.0f
+		|| TemplateDefinition->StrokeLimit <= 0
+		|| TemplateDefinition->BrushSize <= 0.0f)
+	{
+		UE_LOG(
+			LogHeist,
+			Error,
+			TEXT("Forgery template lookup rejected: TemplateId=%s Reason=MissingOrInvalidDefinition"),
+			*TemplateId.ToString());
+		return false;
+	}
+
+	OutTemplateDefinition = *TemplateDefinition;
 	return true;
 }
 

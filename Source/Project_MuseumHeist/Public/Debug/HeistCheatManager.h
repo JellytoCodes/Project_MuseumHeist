@@ -241,6 +241,12 @@ public:
 	void HeistForgeryDump();
 
 	UFUNCTION(Exec)
+	void HeistForgeryInputDump();
+
+	UFUNCTION(Exec)
+	void HeistForgeryTemplateDump();
+
+	UFUNCTION(Exec)
 	void HeistForgeryBegin(float DurationSeconds = 60.0f);
 
 	UFUNCTION(Exec)

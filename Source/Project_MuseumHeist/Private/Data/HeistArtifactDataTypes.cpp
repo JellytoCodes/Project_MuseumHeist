@@ -68,5 +68,54 @@ EDataValidationResult FHeistArtifactDataRow::IsDataValid(FDataValidationContext&
 	return Result;
 }
 
+EDataValidationResult FHeistForgeryTemplateRow::IsDataValid(FDataValidationContext& Context) const
+{
+	EDataValidationResult Result = EDataValidationResult::Valid;
+
+	auto AddError = [&Context, &Result](const FText& Message)
+	{
+		Context.AddError(Message);
+		Result = EDataValidationResult::Invalid;
+	};
+
+	if (TemplateId.IsNone())
+	{
+		AddError(LOCTEXT("MissingTemplateId", "TemplateId must not be None."));
+	}
+	if (ReferenceImage.IsNull())
+	{
+		AddError(LOCTEXT("MissingReferenceImage", "ReferenceImage must reference a Texture2D."));
+	}
+	if (ReferenceMask.IsNull())
+	{
+		AddError(LOCTEXT("MissingReferenceMask", "ReferenceMask must reference a Texture2D."));
+	}
+	if (ObservationDuration < 0.0f)
+	{
+		AddError(LOCTEXT("InvalidObservationDuration", "ObservationDuration must be zero or greater."));
+	}
+	if (ForgeryDuration <= 0.0f)
+	{
+		AddError(LOCTEXT("InvalidForgeryDuration", "ForgeryDuration must be greater than zero."));
+	}
+	if (StrokeLimit <= 0)
+	{
+		AddError(LOCTEXT("InvalidStrokeLimit", "StrokeLimit must be greater than zero."));
+	}
+	if (!FMath::IsWithinInclusive(BrushSize, 0.001f, 0.25f))
+	{
+		AddError(LOCTEXT("InvalidBrushSize", "BrushSize must be between 0.001 and 0.25."));
+	}
+	if (!FMath::IsWithinInclusive(CoverageWeight, 0.0f, 1.0f)
+		|| !FMath::IsWithinInclusive(MajorShapeWeight, 0.0f, 1.0f)
+		|| !FMath::IsWithinInclusive(ExtraStrokePenaltyWeight, 0.0f, 1.0f)
+		|| !FMath::IsWithinInclusive(TimeoutPenalty, 0.0f, 1.0f))
+	{
+		AddError(LOCTEXT("InvalidForgeryWeights", "Forgery weights and penalties must be between 0.0 and 1.0."));
+	}
+
+	return Result;
+}
+
 #undef LOCTEXT_NAMESPACE
 #endif

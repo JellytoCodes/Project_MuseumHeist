@@ -206,7 +206,8 @@ bool AHeistPlayerCharacter::CanPerformGameplayActions() const
 	const bool bEscaped = IsValid(HeistPlayerState) && HeistPlayerState->IsEscaped();
 	const bool bArrested = IsValid(HeistPlayerState) && HeistPlayerState->IsArrested();
 	const bool bInventoryOpen = IsValid(InventoryComponent) && InventoryComponent->IsInventoryOpen();
-	return !bEscaped && !bArrested && !bInventoryOpen;
+	const bool bForgeryActive = IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive();
+	return !bEscaped && !bArrested && !bInventoryOpen && !bForgeryActive;
 }
 
 void AHeistPlayerCharacter::HandleInventoryOpenStateChanged(const bool bInventoryOpen)

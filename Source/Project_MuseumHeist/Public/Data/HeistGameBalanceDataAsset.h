@@ -84,6 +84,9 @@ public:
 	TSoftObjectPtr<UDataTable> ArtifactDataTable;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Data Tables")
+	TSoftObjectPtr<UDataTable> ForgeryTemplateDataTable;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Data Tables")
 	TSoftObjectPtr<UDataTable> LootDataTable;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Data Tables")

@@ -1,6 +1,7 @@
 #include "UI/Widgets/HeistForgeryWidget.h"
 
 #include "Components/TextBlock.h"
+#include "Components/Image.h"
 #include "Components/Widget.h"
 #include "Core/HeistLogChannels.h"
 #include "GameFramework/PlayerController.h"
@@ -88,6 +89,7 @@ void UHeistForgeryWidget::RefreshForgeryPresentation()
 	ApplyStateVisibility(DrawingContainer, bDrawing);
 	ApplyStateVisibility(ValidationContainer, bValidation);
 	ApplyStateVisibility(ResultContainer, bResult);
+	ApplyStateVisibility(ReferenceImage, bObservation || bDrawing);
 
 	if (IsValid(StateText))
 	{
@@ -96,6 +98,12 @@ void UHeistForgeryWidget::RefreshForgeryPresentation()
 	if (IsValid(ReferenceText))
 	{
 		ReferenceText->SetText(ForgeryViewModel->GetReferenceText());
+	}
+	if (IsValid(ReferenceImage))
+	{
+		ReferenceImage->SetBrushFromTexture(
+			ForgeryViewModel->GetReferenceImage(),
+			true);
 	}
 	if (IsValid(ResultText))
 	{

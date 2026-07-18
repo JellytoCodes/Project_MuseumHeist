@@ -5,6 +5,7 @@
 #include "Core/HeistGameState.h"
 #include "Core/HeistLogChannels.h"
 #include "Core/HeistTypes.h"
+#include "Engine/Texture2D.h"
 #include "World/Actors/Loot/HeistDisplayCaseActor.h"
 
 namespace
@@ -88,8 +89,10 @@ void UHeistForgeryViewModel::SetupViewModel(
 
 void UHeistForgeryViewModel::RefreshPresentationState()
 {
-	bool bShowObservation = IsValid(ActionComponent)
-		&& ActionComponent->IsObservationCastActive();
+	// Runtime observation uses the main HUD cast progress only. The full-screen
+	// forgery presentation must not cover the world until observation succeeds
+	// and the owner enters the drawing session.
+	bool bShowObservation = false;
 	bool bShowDrawing = IsValid(ForgeryComponent)
 		&& ForgeryComponent->IsSessionActive()
 		&& !ForgeryComponent->IsSubmitPending();
@@ -137,9 +140,35 @@ void UHeistForgeryViewModel::RefreshPresentationState()
 		: (bShowDrawing || bShowValidation) && IsValid(ForgeryComponent)
 			? ForgeryComponent->GetSessionEndServerTime()
 			: 0.0f;
-	const FName NewReferenceArtifactId = bShowAnyState && IsValid(GameState)
-		? GameState->GetActiveTargetArtifactId()
+	const bool bTemplatePrepared = bShowAnyState
+		&& IsValid(ForgeryComponent)
+		&& ForgeryComponent->HasPreparedForgeryTemplate();
+	const FName NewReferenceArtifactId = bTemplatePrepared
+		? ForgeryComponent->GetActiveArtifactId()
+		: bShowAnyState && IsValid(GameState)
+			? GameState->GetActiveTargetArtifactId()
+			: NAME_None;
+	const FName NewReferenceTemplateId = bTemplatePrepared
+		? ForgeryComponent->GetActiveTemplateId()
 		: NAME_None;
+	UTexture2D* NewReferenceImage = bTemplatePrepared
+		? ForgeryComponent->LoadReferenceImage()
+		: nullptr;
+	UTexture2D* NewReferenceMask = bTemplatePrepared
+		? ForgeryComponent->LoadReferenceMask()
+		: nullptr;
+	const float NewObservationDuration = bTemplatePrepared
+		? ForgeryComponent->GetTemplateObservationDuration()
+		: 0.0f;
+	const float NewForgeryDuration = bTemplatePrepared
+		? ForgeryComponent->GetTemplateForgeryDuration()
+		: 0.0f;
+	const int32 NewStrokeLimit = bTemplatePrepared
+		? ForgeryComponent->GetTemplateStrokeLimit()
+		: 0;
+	const float NewBrushSize = bTemplatePrepared
+		? ForgeryComponent->GetTemplateBrushSize()
+		: 0.0f;
 	const AHeistDisplayCaseActor* ActiveDisplayCase =
 		IsValid(ForgeryComponent)
 			? ForgeryComponent->GetActiveDisplayCase()
@@ -185,6 +214,13 @@ void UHeistForgeryViewModel::RefreshPresentationState()
 	UE_MVVM_SET_PROPERTY_VALUE(StateEndServerTime, NewStateEndServerTime);
 	UE_MVVM_SET_PROPERTY_VALUE(ResultScore, NewResultScore);
 	UE_MVVM_SET_PROPERTY_VALUE(ReferenceArtifactId, NewReferenceArtifactId);
+	UE_MVVM_SET_PROPERTY_VALUE(ReferenceTemplateId, NewReferenceTemplateId);
+	UE_MVVM_SET_PROPERTY_VALUE(ReferenceImage, NewReferenceImage);
+	UE_MVVM_SET_PROPERTY_VALUE(ReferenceMask, NewReferenceMask);
+	UE_MVVM_SET_PROPERTY_VALUE(ObservationDuration, NewObservationDuration);
+	UE_MVVM_SET_PROPERTY_VALUE(ForgeryDuration, NewForgeryDuration);
+	UE_MVVM_SET_PROPERTY_VALUE(StrokeLimit, NewStrokeLimit);
+	UE_MVVM_SET_PROPERTY_VALUE(BrushSize, NewBrushSize);
 	UE_MVVM_SET_PROPERTY_VALUE(
 		ActiveDisplayCaseName,
 		NewActiveDisplayCaseName);
@@ -196,13 +232,20 @@ void UHeistForgeryViewModel::RefreshPresentationState()
 	UE_LOG(
 		LogHeistUI,
 		Verbose,
-		TEXT("Forgery presentation refreshed: Visible=%s Observation=%s Drawing=%s Validation=%s Result=%s Artifact=%s Case=%s EndServerTime=%.2f Preview=%s OwnerOnly=true"),
+		TEXT("Forgery presentation refreshed: Visible=%s Observation=%s Drawing=%s Validation=%s Result=%s Artifact=%s Template=%s ReferenceImage=%s ReferenceMask=%s ObservationDuration=%.2f ForgeryDuration=%.2f StrokeLimit=%d Brush=%.4f Case=%s EndServerTime=%.2f Preview=%s OwnerOnly=true"),
 		bPresentationVisible ? TEXT("true") : TEXT("false"),
 		bObservationVisible ? TEXT("true") : TEXT("false"),
 		bDrawingVisible ? TEXT("true") : TEXT("false"),
 		bValidationVisible ? TEXT("true") : TEXT("false"),
 		bResultVisible ? TEXT("true") : TEXT("false"),
 		*ReferenceArtifactId.ToString(),
+		*ReferenceTemplateId.ToString(),
+		*GetNameSafe(ReferenceImage),
+		*GetNameSafe(ReferenceMask),
+		ObservationDuration,
+		ForgeryDuration,
+		StrokeLimit,
+		BrushSize,
 		*ActiveDisplayCaseName.ToString(),
 		StateEndServerTime,
 		DebugPreviewState.IsNone()
@@ -326,6 +369,41 @@ float UHeistForgeryViewModel::GetResultScore() const
 FName UHeistForgeryViewModel::GetReferenceArtifactId() const
 {
 	return ReferenceArtifactId;
+}
+
+FName UHeistForgeryViewModel::GetReferenceTemplateId() const
+{
+	return ReferenceTemplateId;
+}
+
+UTexture2D* UHeistForgeryViewModel::GetReferenceImage() const
+{
+	return ReferenceImage.Get();
+}
+
+UTexture2D* UHeistForgeryViewModel::GetReferenceMask() const
+{
+	return ReferenceMask.Get();
+}
+
+float UHeistForgeryViewModel::GetObservationDuration() const
+{
+	return ObservationDuration;
+}
+
+float UHeistForgeryViewModel::GetForgeryDuration() const
+{
+	return ForgeryDuration;
+}
+
+int32 UHeistForgeryViewModel::GetStrokeLimit() const
+{
+	return StrokeLimit;
+}
+
+float UHeistForgeryViewModel::GetBrushSize() const
+{
+	return BrushSize;
 }
 
 FName UHeistForgeryViewModel::GetActiveDisplayCaseName() const
