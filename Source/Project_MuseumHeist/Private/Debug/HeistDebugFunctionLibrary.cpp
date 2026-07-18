@@ -1426,7 +1426,7 @@ void UHeistDebugFunctionLibrary::DebugForgeryHelp(APlayerController* PlayerContr
 #if !UE_BUILD_SHIPPING
 	Message(
 		PlayerController,
-		TEXT("Forgery commands: HeistCasePhase InGame | HeistCaseSpawn 250 | interact/hold E | HeistForgeryTemplateDump | HeistForgeryDump | HeistForgeryInputDump | HeistForgerySubmit | HeistForgeryCancel | HeistForgeryTimeout | HeistForgeryUIDump | HeistForgeryUIPreview <None|Observation|Drawing|Validation|Result>. Run gameplay mutations in the listen-server window; UI preview is local-only."),
+		TEXT("Forgery commands: HeistCasePhase InGame | HeistCaseSpawn 250 | interact/hold E | HeistForgeryTemplateDump | HeistForgeryStrokeDump | HeistForgeryDump | HeistForgeryInputDump | HeistForgerySubmit | HeistForgeryCancel | HeistForgeryTimeout | HeistForgeryUIDump | HeistForgeryUIPreview <None|Observation|Drawing|Validation|Result>. Run gameplay mutations in the listen-server window; UI preview is local-only."),
 		EHeistDebugLevel::Info,
 		true,
 		12.0f);
@@ -1665,6 +1665,86 @@ void UHeistDebugFunctionLibrary::DebugForgeryTemplateDump(
 					: TEXT("false"),
 			bTemplateContract ? TEXT("PASS") : TEXT("FAIL"),
 			bHandoffContract ? TEXT("PASS") : TEXT("FAIL"),
+			bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bContractPassed
+			? EHeistDebugLevel::Info
+			: EHeistDebugLevel::Warning,
+		true,
+		15.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugForgeryStrokeDump(
+	APlayerController* PlayerController)
+{
+#if !UE_BUILD_SHIPPING
+	AHeistPlayerController* HeistPlayerController =
+		ResolveHeistPlayerController(PlayerController);
+	AHeistHUD* HeistHUD = IsValid(HeistPlayerController)
+		? HeistPlayerController->GetHUD<AHeistHUD>()
+		: nullptr;
+	UHeistForgeryWidget* ForgeryWidget = IsValid(HeistHUD)
+		? HeistHUD->GetForgeryWidget()
+		: nullptr;
+	UHeistForgeryViewModel* ForgeryViewModel = IsValid(HeistHUD)
+		? HeistHUD->GetForgeryViewModel()
+		: nullptr;
+	if (!IsValid(HeistPlayerController)
+		|| !HeistPlayerController->IsLocalController()
+		|| !IsValid(ForgeryWidget)
+		|| !IsValid(ForgeryViewModel))
+	{
+		Message(
+			PlayerController,
+			TEXT("Forgery stroke dump: Result=FAIL Reason=MissingLocalForgeryPresentation"),
+			EHeistDebugLevel::Warning,
+			true);
+		return;
+	}
+
+	const int32 StrokeCount = ForgeryWidget->GetCollectedStrokeCount();
+	const int32 PointCount = ForgeryWidget->GetCollectedPointCount();
+	const int32 SegmentCount = ForgeryWidget->GetCollectedSegmentCount();
+	const int32 ErasedCount = ForgeryWidget->GetErasedStrokeCount();
+	const int32 StrokeLimit = ForgeryWidget->GetConfiguredStrokeLimit();
+	const float BrushSize = ForgeryWidget->GetConfiguredBrushSize();
+	const bool bCanvasReady = ForgeryWidget->IsDrawingSurfaceReady();
+	const bool bDrawingVisible = ForgeryViewModel->IsDrawingVisible();
+	const bool bNormalized = ForgeryWidget->AreCollectedPointsNormalized();
+	const bool bLimitRespected = StrokeLimit > 0
+		&& PointCount <= StrokeLimit;
+	const bool bBrushValid =
+		FMath::IsWithinInclusive(BrushSize, 0.001f, 0.25f);
+	const bool bCollectionReady = StrokeCount > 0
+		&& PointCount > 1
+		&& SegmentCount > 0;
+	const bool bEraseVerified = ErasedCount > 0;
+	const bool bContractPassed = bCanvasReady
+		&& bDrawingVisible
+		&& bNormalized
+		&& bLimitRespected
+		&& bBrushValid
+		&& bCollectionReady
+		&& bEraseVerified;
+
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Forgery stroke dump: DrawingVisible=%s CanvasReady=%s EmptyCanvas=%s Strokes=%d Points=%d Segments=%d ErasedStrokes=%d StrokeLimit=%d LimitRespected=%s Brush=%.4f BrushValid=%s NormalizedPoints=%s Collection=%s Erase=%s Result=%s"),
+			bDrawingVisible ? TEXT("true") : TEXT("false"),
+			bCanvasReady ? TEXT("true") : TEXT("false"),
+			PointCount == 0 ? TEXT("true") : TEXT("false"),
+			StrokeCount,
+			PointCount,
+			SegmentCount,
+			ErasedCount,
+			StrokeLimit,
+			bLimitRespected ? TEXT("true") : TEXT("false"),
+			BrushSize,
+			bBrushValid ? TEXT("true") : TEXT("false"),
+			bNormalized ? TEXT("true") : TEXT("false"),
+			bCollectionReady ? TEXT("PASS") : TEXT("FAIL"),
+			bEraseVerified ? TEXT("PASS") : TEXT("FAIL"),
 			bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
 		bContractPassed
 			? EHeistDebugLevel::Info
