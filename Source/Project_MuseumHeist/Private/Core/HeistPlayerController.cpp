@@ -722,6 +722,46 @@ void AHeistPlayerController::RequestCancelForgery()
 	Server_CancelForgery();
 }
 
+void AHeistPlayerController::RequestSubmitForgeryStrokes(
+	const TArray<FVector2D>& NormalizedPoints,
+	const TArray<int32>& StrokePointCounts,
+	const TArray<uint8>& StrokePaletteIndices,
+	const float ClientBrushSize,
+	const int32 ClientSessionRevision)
+{
+	const AHeistPlayerCharacter* HeistCharacter =
+		GetPawn<AHeistPlayerCharacter>();
+	const UHeistForgeryComponent* ForgeryComponent =
+		IsValid(HeistCharacter)
+			? HeistCharacter->GetForgeryComponent()
+			: nullptr;
+	const int32 ResolvedSessionRevision =
+		ClientSessionRevision == INDEX_NONE
+			&& IsValid(ForgeryComponent)
+			? ForgeryComponent->GetSessionRevision()
+			: ClientSessionRevision;
+
+	UE_LOG(
+		LogHeistNetwork,
+		Log,
+		TEXT("[%s] Forgery stroke submit requested: Character=%s Strokes=%d Points=%d PaletteIndices=%d Brush=%.4f ClientSessionRevision=%d Local=%s Authority=%s RenderTargetSent=false"),
+		*GetName(),
+		*GetNameSafe(HeistCharacter),
+		StrokePointCounts.Num(),
+		NormalizedPoints.Num(),
+		StrokePaletteIndices.Num(),
+		ClientBrushSize,
+		ResolvedSessionRevision,
+		IsLocalController() ? TEXT("true") : TEXT("false"),
+		HasAuthority() ? TEXT("true") : TEXT("false"));
+	Server_SubmitForgeryStrokes(
+		NormalizedPoints,
+		StrokePointCounts,
+		StrokePaletteIndices,
+		ClientBrushSize,
+		ResolvedSessionRevision);
+}
+
 void AHeistPlayerController::RequestMoveInventoryItem(
 	const int32 InstanceId,
 	const FIntPoint TargetGridPosition)
@@ -1248,6 +1288,58 @@ void AHeistPlayerController::Server_CancelForgery_Implementation()
 		bCancelled ? TEXT("PASS") : TEXT("REJECTED"));
 }
 
+void AHeistPlayerController::Server_SubmitForgeryStrokes_Implementation(
+	const TArray<FVector2D>& NormalizedPoints,
+	const TArray<int32>& StrokePointCounts,
+	const TArray<uint8>& StrokePaletteIndices,
+	const float ClientBrushSize,
+	const int32 ClientSessionRevision)
+{
+	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	UHeistForgeryComponent* ForgeryComponent = IsValid(HeistCharacter)
+		? HeistCharacter->GetForgeryComponent()
+		: nullptr;
+	if (!HasAuthority()
+		|| !IsValid(HeistCharacter)
+		|| HeistCharacter->GetController() != this
+		|| !IsValid(ForgeryComponent))
+	{
+		UE_LOG(
+			LogHeistNetwork,
+			Warning,
+			TEXT("[%s] Forgery stroke RPC rejected: Character=%s Reason=InvalidAuthorityContext"),
+			*GetName(),
+			*GetNameSafe(HeistCharacter));
+		return;
+	}
+
+	const bool bAccepted = ForgeryComponent->TrySubmitStrokePayload(
+		NormalizedPoints,
+		StrokePointCounts,
+		StrokePaletteIndices,
+		ClientBrushSize,
+		ClientSessionRevision);
+	const FHeistForgeryResult& ForgeryResult =
+		ForgeryComponent->GetAuthoritativeForgeryResult();
+	UE_LOG(
+		LogHeistNetwork,
+		Log,
+		TEXT("[%s] Forgery stroke RPC processed: Character=%s Strokes=%d Points=%d ClientSessionRevision=%d ServerSessionRevision=%d Accepted=%s HasAuthoritativeScore=%s Score=%.2f ScoreRevision=%d Result=%s"),
+		*GetName(),
+		*GetNameSafe(HeistCharacter),
+		StrokePointCounts.Num(),
+		NormalizedPoints.Num(),
+		ClientSessionRevision,
+		ForgeryComponent->GetSessionRevision(),
+		bAccepted ? TEXT("true") : TEXT("false"),
+		ForgeryComponent->HasAuthoritativeForgeryResult()
+			? TEXT("true")
+			: TEXT("false"),
+		ForgeryResult.SimilarityScore,
+		ForgeryComponent->GetForgeryScoreRevision(),
+		bAccepted ? TEXT("PASS") : TEXT("REJECTED"));
+}
+
 void AHeistPlayerController::Server_RequestMoveInventoryItem_Implementation(
 	const int32 InstanceId,
 	const FIntPoint TargetGridPosition)
@@ -1513,6 +1605,11 @@ void AHeistPlayerController::DebugRequestDumpDifficultyBaseline()
 	Server_DebugRequestDumpDifficultyBaseline();
 }
 
+void AHeistPlayerController::DebugRequestForgeryScoreTest()
+{
+	Server_DebugRequestForgeryScoreTest();
+}
+
 void AHeistPlayerController::DebugRequestRebuildResults()
 {
 	Server_DebugRequestRebuildResults();
@@ -1573,6 +1670,13 @@ void AHeistPlayerController::Server_DebugRequestAddInventoryItem_Implementation(
 			INDEX_NONE,
 			AddRejectReason != nullptr ? AddRejectReason : TEXT("AddRejected"));
 	}
+#endif
+}
+
+void AHeistPlayerController::Server_DebugRequestForgeryScoreTest_Implementation()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugForgeryScoreTest(this);
 #endif
 }
 

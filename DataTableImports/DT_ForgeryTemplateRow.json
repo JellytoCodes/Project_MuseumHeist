@@ -2,8 +2,15 @@
   {
     "Name": "Template_Painting_01",
     "TemplateId": "Template_Painting_01",
-    "ReferenceImage": "Texture2D'/Game/StarterContent/Textures/T_Brick_Clay_New_D.T_Brick_Clay_New_D'",
-    "ReferenceMask": "Texture2D'/Game/StarterContent/Textures/T_Burst_M.T_Burst_M'",
+    "ReferenceImage": "Texture2D'/Game/Data/Forgery/Textures/T_Forgery_SunArchWave.T_Forgery_SunArchWave'",
+    "ReferenceMask": "Texture2D'/Game/Data/Forgery/Textures/T_Forgery_SunArchWave.T_Forgery_SunArchWave'",
+    "BackgroundFilterMode": "Black",
+    "BackgroundColorTolerance": 0.08,
+    "AllowedPalette": [
+      "(R=0.791298,G=0.102242,B=0.078187,A=1.000000)",
+      "(R=0.791298,G=0.479320,B=0.068478,A=1.000000)",
+      "(R=0.072272,G=0.584078,B=0.527115,A=1.000000)"
+    ],
     "ObservationDuration": 1.5,
     "ForgeryDuration": 60.0,
     "StrokeLimit": 2048,
@@ -11,6 +18,10 @@
     "CoverageWeight": 0.45,
     "MajorShapeWeight": 0.55,
     "ExtraStrokePenaltyWeight": 0.15,
-    "TimeoutPenalty": 0.25
+    "TimeoutPenalty": 0.25,
+    "ShapeAccuracyWeight": 0.65,
+    "ColorAccuracyWeight": 0.35,
+    "MaximumPaintToReferenceRatio": 2.5,
+    "OverpaintScoreCap": 20.0
   }
 ]

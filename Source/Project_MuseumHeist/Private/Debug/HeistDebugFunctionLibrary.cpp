@@ -1426,7 +1426,7 @@ void UHeistDebugFunctionLibrary::DebugForgeryHelp(APlayerController* PlayerContr
 #if !UE_BUILD_SHIPPING
 	Message(
 		PlayerController,
-		TEXT("Forgery commands: HeistCasePhase InGame | HeistCaseSpawn 250 | interact/hold E | HeistForgeryTemplateDump | HeistForgeryStrokeDump | HeistForgeryDump | HeistForgeryInputDump | HeistForgerySubmit | HeistForgeryCancel | HeistForgeryTimeout | HeistForgeryUIDump | HeistForgeryUIPreview <None|Observation|Drawing|Validation|Result>. Run gameplay mutations in the listen-server window; UI preview is local-only."),
+		TEXT("Forgery commands: HeistCasePhase InGame | HeistCaseSpawn 250 | interact/hold E | HeistForgeryTemplateDump | HeistForgeryStrokeDump | HeistForgeryTransportDump | HeistForgeryTransportTest <Valid|Bounds|Count|Size|Brush|Revision|Empty|Short|Timeout|Duplicate> | HeistForgeryScoreDump | HeistForgeryScoreTest | HeistForgerySwapDump | HeistForgeryDump | HeistForgeryInputDump | HeistForgerySubmit | HeistForgeryCancel | HeistForgeryTimeout | HeistForgeryUIDump | HeistForgeryUIPreview <None|Observation|Drawing|Validation|Result>. ScoreDump, ScoreTest, and SwapDump may run in the owning client window; ScoreTest routes to server authority. Run SwapDump in every PIE window to verify public case replication. Timeout transport test runs in the listen-server window."),
 		EHeistDebugLevel::Info,
 		true,
 		12.0f);
@@ -1590,7 +1590,7 @@ void UHeistDebugFunctionLibrary::DebugForgeryTemplateDump(
 	APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
-	UHeistForgeryComponent* ForgeryComponent =
+	const UHeistForgeryComponent* ForgeryComponent =
 		ResolveForgeryComponent(PlayerController);
 	AHeistPlayerController* HeistPlayerController =
 		ResolveHeistPlayerController(PlayerController);
@@ -1627,7 +1627,11 @@ void UHeistDebugFunctionLibrary::DebugForgeryTemplateDump(
 		&& ForgeryComponent->GetTemplateObservationDuration() >= 0.0f
 		&& ForgeryComponent->GetTemplateForgeryDuration() > 0.0f
 		&& ForgeryComponent->GetTemplateStrokeLimit() > 0
-		&& ForgeryComponent->GetTemplateBrushSize() > 0.0f;
+		&& ForgeryComponent->GetTemplateBrushSize() > 0.0f
+		&& FMath::IsWithinInclusive(
+			ForgeryComponent->GetTemplateAllowedPalette().Num(),
+			2,
+			8);
 	const bool bHandoffContract =
 		!ForgeryComponent->IsSessionActive()
 		|| (IsValid(ForgeryViewModel)
@@ -1640,7 +1644,7 @@ void UHeistDebugFunctionLibrary::DebugForgeryTemplateDump(
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Forgery template dump: Prepared=%s Artifact=%s Template=%s ReferenceImage=%s ImageLoaded=%s ReferenceMask=%s MaskLoaded=%s Observation=%.2f Forgery=%.2f StrokeLimit=%d Brush=%.4f SessionActive=%s ObservationUI=%s DrawingUI=%s TemplateContract=%s HandoffContract=%s Result=%s"),
+			TEXT("Forgery template dump: Prepared=%s Artifact=%s Template=%s ReferenceImage=%s ImageLoaded=%s ReferenceMask=%s MaskLoaded=%s PaletteColors=%d Observation=%.2f Forgery=%.2f StrokeLimit=%d Brush=%.4f SessionActive=%s ObservationUI=%s DrawingUI=%s TemplateContract=%s HandoffContract=%s Result=%s"),
 			ForgeryComponent->HasPreparedForgeryTemplate()
 				? TEXT("true")
 				: TEXT("false"),
@@ -1650,6 +1654,7 @@ void UHeistDebugFunctionLibrary::DebugForgeryTemplateDump(
 			IsValid(ReferenceImage) ? TEXT("true") : TEXT("false"),
 			*ForgeryComponent->GetReferenceMaskAsset().ToSoftObjectPath().ToString(),
 			IsValid(ReferenceMask) ? TEXT("true") : TEXT("false"),
+			ForgeryComponent->GetTemplateAllowedPalette().Num(),
 			ForgeryComponent->GetTemplateObservationDuration(),
 			ForgeryComponent->GetTemplateForgeryDuration(),
 			ForgeryComponent->GetTemplateStrokeLimit(),
@@ -1754,6 +1759,578 @@ void UHeistDebugFunctionLibrary::DebugForgeryStrokeDump(
 #endif
 }
 
+void UHeistDebugFunctionLibrary::DebugForgeryTransportDump(
+	APlayerController* PlayerController)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistForgeryComponent* ForgeryComponent =
+		ResolveForgeryComponent(PlayerController);
+	if (!IsValid(ForgeryComponent))
+	{
+		Message(
+			PlayerController,
+			TEXT("Forgery transport dump: Result=FAIL Reason=MissingForgeryComponent"),
+			EHeistDebugLevel::Warning,
+			true);
+		return;
+	}
+
+	const bool bAcceptedContract =
+		ForgeryComponent->HasValidatedStrokePayload()
+		&& ForgeryComponent->WasLastStrokeValidationAccepted()
+		&& ForgeryComponent->IsSubmitPending()
+		&& ForgeryComponent->GetValidatedStrokeCount() > 0
+		&& ForgeryComponent->GetValidatedPointCount() > 1
+		&& ForgeryComponent->GetValidatedPointCount()
+			<= ForgeryComponent->GetTemplateStrokeLimit()
+		&& ForgeryComponent->GetValidatedPayloadBytes() > 0
+		&& ForgeryComponent->GetValidatedPayloadBytes() <= 48 * 1024
+		&& FMath::IsNearlyEqual(
+			ForgeryComponent->GetValidatedBrushSize(),
+			ForgeryComponent->GetTemplateBrushSize(),
+			0.0001f);
+	const TCHAR* ResultText = bAcceptedContract
+		? TEXT("PASS")
+		: ForgeryComponent->GetStrokeValidationRevision() > 0
+			? TEXT("REJECTED")
+			: TEXT("NOT_TESTED");
+
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Forgery transport dump: SessionActive=%s SubmitPending=%s HasValidatedPayload=%s LastAccepted=%s LastReason=%s ValidationRevision=%d Strokes=%d Points=%d StrokeLimit=%d PayloadBytes=%d PayloadLimitBytes=%d Brush=%.4f TemplateBrush=%.4f RenderTargetReplicated=false Authority=%s Result=%s"),
+			ForgeryComponent->IsSessionActive() ? TEXT("true") : TEXT("false"),
+			ForgeryComponent->IsSubmitPending() ? TEXT("true") : TEXT("false"),
+			ForgeryComponent->HasValidatedStrokePayload()
+				? TEXT("true")
+				: TEXT("false"),
+			ForgeryComponent->WasLastStrokeValidationAccepted()
+				? TEXT("true")
+				: TEXT("false"),
+			ForgeryComponent->GetLastStrokeValidationReason().IsNone()
+				? TEXT("None")
+				: *ForgeryComponent->GetLastStrokeValidationReason().ToString(),
+			ForgeryComponent->GetStrokeValidationRevision(),
+			ForgeryComponent->GetValidatedStrokeCount(),
+			ForgeryComponent->GetValidatedPointCount(),
+			ForgeryComponent->GetTemplateStrokeLimit(),
+			ForgeryComponent->GetValidatedPayloadBytes(),
+			48 * 1024,
+			ForgeryComponent->GetValidatedBrushSize(),
+			ForgeryComponent->GetTemplateBrushSize(),
+			PlayerController && PlayerController->HasAuthority()
+				? TEXT("true")
+				: TEXT("false"),
+			ResultText),
+		bAcceptedContract
+			? EHeistDebugLevel::Info
+			: EHeistDebugLevel::Warning,
+		true,
+		15.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugForgeryTransportTest(
+	APlayerController* PlayerController,
+	const FString& Scenario)
+{
+#if !UE_BUILD_SHIPPING
+	AHeistPlayerController* HeistPlayerController =
+		ResolveHeistPlayerController(PlayerController);
+	UHeistForgeryComponent* ForgeryComponent =
+		ResolveForgeryComponent(PlayerController);
+	if (!IsValid(HeistPlayerController)
+		|| !HeistPlayerController->IsLocalController()
+		|| !IsValid(ForgeryComponent))
+	{
+		Message(
+			PlayerController,
+			TEXT("Forgery transport test: Result=FAIL Reason=MissingLocalForgeryContext"),
+			EHeistDebugLevel::Warning,
+			true);
+		return;
+	}
+
+	const FString NormalizedScenario = Scenario.TrimStartAndEnd().ToLower();
+	TArray<FVector2D> Points;
+	TArray<int32> StrokePointCounts;
+	float ClientBrushSize = ForgeryComponent->GetTemplateBrushSize();
+	int32 ClientSessionRevision = ForgeryComponent->GetSessionRevision();
+	bool bUseInvalidPaletteIndex = false;
+	const TCHAR* ExpectedResult = TEXT("REJECTED_UNKNOWN");
+
+	if (NormalizedScenario == TEXT("valid")
+		|| NormalizedScenario == TEXT("duplicate"))
+	{
+		Points = {
+			FVector2D(0.1, 0.1),
+			FVector2D(0.2, 0.2),
+			FVector2D(0.3, 0.25)
+		};
+		StrokePointCounts = {3};
+		ExpectedResult = NormalizedScenario == TEXT("valid")
+			? TEXT("PASS")
+			: TEXT("REJECTED_DuplicateSubmit");
+	}
+	else if (NormalizedScenario == TEXT("bounds"))
+	{
+		Points = {
+			FVector2D(0.1, 0.1),
+			FVector2D(1.25, 0.2)
+		};
+		StrokePointCounts = {2};
+		ExpectedResult = TEXT("REJECTED_PointOutOfBounds");
+	}
+	else if (NormalizedScenario == TEXT("count"))
+	{
+		Points = {
+			FVector2D(0.1, 0.1),
+			FVector2D(0.2, 0.2)
+		};
+		StrokePointCounts = {3};
+		ExpectedResult = TEXT("REJECTED_StrokeLayoutMismatch");
+	}
+	else if (NormalizedScenario == TEXT("size"))
+	{
+		const int32 PointCount =
+			FMath::Max(2, ForgeryComponent->GetTemplateStrokeLimit() + 1);
+		Points.Init(FVector2D(0.5, 0.5), PointCount);
+		StrokePointCounts = {PointCount};
+		ExpectedResult = TEXT("REJECTED_PointCountLimit");
+	}
+	else if (NormalizedScenario == TEXT("brush"))
+	{
+		Points = {
+			FVector2D(0.1, 0.1),
+			FVector2D(0.2, 0.2)
+		};
+		StrokePointCounts = {2};
+		ClientBrushSize = FMath::IsNearlyEqual(ClientBrushSize, 0.25f)
+			? 0.001f
+			: FMath::Min(0.25f, ClientBrushSize * 2.0f);
+		ExpectedResult = TEXT("REJECTED_BrushSizeMismatch");
+	}
+	else if (NormalizedScenario == TEXT("revision"))
+	{
+		Points = {
+			FVector2D(0.1, 0.1),
+			FVector2D(0.2, 0.2)
+		};
+		StrokePointCounts = {2};
+		--ClientSessionRevision;
+		ExpectedResult = TEXT("REJECTED_SessionRevisionMismatch");
+	}
+	else if (NormalizedScenario == TEXT("empty"))
+	{
+		ExpectedResult = TEXT("REJECTED_EmptyPayload");
+	}
+	else if (NormalizedScenario == TEXT("short"))
+	{
+		Points = {FVector2D(0.1, 0.1)};
+		StrokePointCounts = {1};
+		ExpectedResult = TEXT("REJECTED_StrokeTooShort");
+	}
+	else if (NormalizedScenario == TEXT("palette"))
+	{
+		Points = {
+			FVector2D(0.1, 0.1),
+			FVector2D(0.2, 0.2)
+		};
+		StrokePointCounts = {2};
+		bUseInvalidPaletteIndex = true;
+		ExpectedResult = TEXT("REJECTED_PaletteIndexOutOfBounds");
+	}
+	else if (NormalizedScenario == TEXT("timeout"))
+	{
+		if (!HeistPlayerController->HasAuthority()
+			|| !ForgeryComponent->ForceExpireSubmissionWindowForDebug())
+		{
+			Message(
+				PlayerController,
+				TEXT("Forgery transport test: Scenario=timeout Result=FAIL Reason=ListenServerAuthorityAndActiveSessionRequired"),
+				EHeistDebugLevel::Warning,
+				true);
+			return;
+		}
+		Points = {
+			FVector2D(0.1, 0.1),
+			FVector2D(0.2, 0.2)
+		};
+		StrokePointCounts = {2};
+		ExpectedResult = TEXT("REJECTED_SessionExpired");
+	}
+	else
+	{
+		Message(
+			PlayerController,
+			TEXT("Forgery transport test: Result=FAIL Reason=UnknownScenario Expected=<Valid|Bounds|Count|Size|Brush|Revision|Empty|Short|Palette|Timeout|Duplicate>"),
+			EHeistDebugLevel::Warning,
+			true);
+		return;
+	}
+
+	TArray<uint8> StrokePaletteIndices;
+	StrokePaletteIndices.Init(0, StrokePointCounts.Num());
+	if (bUseInvalidPaletteIndex && !StrokePaletteIndices.IsEmpty())
+	{
+		StrokePaletteIndices[0] = MAX_uint8;
+	}
+	HeistPlayerController->RequestSubmitForgeryStrokes(
+		Points,
+		StrokePointCounts,
+		StrokePaletteIndices,
+		ClientBrushSize,
+		ClientSessionRevision);
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Forgery transport test requested: Scenario=%s Strokes=%d Points=%d Brush=%.4f ClientSessionRevision=%d Expected=%s Result=REQUESTED"),
+			*NormalizedScenario,
+			StrokePointCounts.Num(),
+			Points.Num(),
+			ClientBrushSize,
+			ClientSessionRevision,
+			ExpectedResult),
+		EHeistDebugLevel::Info,
+		true,
+		12.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugForgeryScoreDump(
+	APlayerController* PlayerController)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistForgeryComponent* ForgeryComponent =
+		ResolveForgeryComponent(PlayerController);
+	if (!IsValid(ForgeryComponent))
+	{
+		Message(
+			PlayerController,
+			TEXT("Forgery score dump: Result=FAIL Reason=MissingForgeryComponent"),
+			EHeistDebugLevel::Warning,
+			true);
+		return;
+	}
+
+	const FHeistForgeryResult& ScoreResult =
+		ForgeryComponent->GetAuthoritativeForgeryResult();
+	const bool bHasScore =
+		ForgeryComponent->HasAuthoritativeForgeryResult();
+	const bool bScoreInRange = FMath::IsWithinInclusive(
+		ScoreResult.SimilarityScore,
+		0.0f,
+		100.0f);
+	const bool bBreakdownValid =
+		ScoreResult.CoverageScore >= 0.0f
+		&& ScoreResult.MajorShapeScore >= 0.0f
+		&& ScoreResult.ColorAccuracyScore >= 0.0f
+		&& ScoreResult.PaintToReferenceRatio >= 0.0f
+		&& ScoreResult.MissingShapePenalty >= 0.0f
+		&& ScoreResult.ExtraStrokePenalty >= 0.0f
+		&& ScoreResult.TimeoutPenalty >= 0.0f;
+	const bool bResolutionValid = FMath::IsWithinInclusive(
+		ForgeryComponent->GetForgeryScoreResolution(),
+		128,
+		256);
+	const bool bMaskCountsValid =
+		ForgeryComponent->GetReferenceMaskPixelCount() > 0
+		&& ForgeryComponent->GetSubmittedMaskPixelCount() > 0;
+	const bool bIdentityValid = !ScoreResult.ArtifactId.IsNone()
+		&& !ScoreResult.TemplateId.IsNone()
+		&& ScoreResult.ForgeryType == EHeistForgeryType::Drawing;
+	const bool bContractPassed = bHasScore
+		&& bScoreInRange
+		&& bBreakdownValid
+		&& bResolutionValid
+		&& bMaskCountsValid
+		&& bIdentityValid
+		&& ScoreResult.bReplicaPlaced;
+
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Forgery score dump: HasScore=%s Artifact=%s Template=%s Score=%.2f Coverage=%.2f MajorShape=%.2f ColorAccuracy=%.2f MissingPenalty=%.2f ExtraPenalty=%.2f TimeoutPenalty=%.2f CompletionTime=%.2f PaintToReference=%.2f AntiFill=%s ReplicaPlaced=%s Resolution=%dx%d ReferencePixels=%d SubmittedPixels=%d ScoreRevision=%d OwnerOnlySummary=true RawStrokeReplicated=false Authority=%s Result=%s"),
+			bHasScore ? TEXT("true") : TEXT("false"),
+			*ScoreResult.ArtifactId.ToString(),
+			*ScoreResult.TemplateId.ToString(),
+			ScoreResult.SimilarityScore,
+			ScoreResult.CoverageScore,
+			ScoreResult.MajorShapeScore,
+			ScoreResult.ColorAccuracyScore,
+			ScoreResult.MissingShapePenalty,
+			ScoreResult.ExtraStrokePenalty,
+			ScoreResult.TimeoutPenalty,
+			ScoreResult.CompletionTime,
+			ScoreResult.PaintToReferenceRatio,
+			ScoreResult.bAntiFillTriggered ? TEXT("true") : TEXT("false"),
+			ScoreResult.bReplicaPlaced ? TEXT("true") : TEXT("false"),
+			ForgeryComponent->GetForgeryScoreResolution(),
+			ForgeryComponent->GetForgeryScoreResolution(),
+			ForgeryComponent->GetReferenceMaskPixelCount(),
+			ForgeryComponent->GetSubmittedMaskPixelCount(),
+			ForgeryComponent->GetForgeryScoreRevision(),
+			PlayerController && PlayerController->HasAuthority()
+				? TEXT("true")
+				: TEXT("false"),
+			bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bContractPassed
+			? EHeistDebugLevel::Info
+			: EHeistDebugLevel::Warning,
+		true,
+		15.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugForgerySwapDump(
+	APlayerController* PlayerController)
+{
+#if !UE_BUILD_SHIPPING
+	AHeistDisplayCaseActor* DisplayCase =
+		ResolveNearestDisplayCase(PlayerController);
+	UHeistForgeryComponent* ForgeryComponent =
+		ResolveForgeryComponent(PlayerController);
+	if (!IsValid(DisplayCase))
+	{
+		Message(
+			PlayerController,
+			TEXT("Forgery swap dump: Result=FAIL Reason=MissingDisplayCase"),
+			EHeistDebugLevel::Warning,
+			true);
+		return;
+	}
+
+	const EHeistDisplayCaseState CaseState =
+		DisplayCase->GetDisplayCaseState();
+	const bool bStateValid =
+		CaseState == EHeistDisplayCaseState::OriginalAvailable
+		|| CaseState == EHeistDisplayCaseState::OriginalRemoved;
+	const bool bHasCommittedResult =
+		DisplayCase->HasCommittedForgeryResult();
+	const FHeistForgeryResult CaseResult =
+		DisplayCase->GetCommittedForgeryResult();
+	const bool bCommittedResultValid = bHasCommittedResult
+		&& CaseResult.ArtifactId == DisplayCase->GetTargetArtifactId()
+		&& !CaseResult.TemplateId.IsNone()
+		&& CaseResult.ForgeryType == EHeistForgeryType::Drawing
+		&& FMath::IsWithinInclusive(
+			CaseResult.SimilarityScore,
+			0.0f,
+			100.0f)
+		&& CaseResult.bReplicaPlaced;
+
+	bool bExpectedOriginalVisible = false;
+	bool bExpectedReplicaVisible = false;
+	int32 OriginalComponentCount = 0;
+	int32 ReplicaComponentCount = 0;
+	bool bVisualComponentsMatch = false;
+	DisplayCase->GetPlaceholderVisualDebugState(
+		bExpectedOriginalVisible,
+		bExpectedReplicaVisible,
+		OriginalComponentCount,
+		ReplicaComponentCount,
+		bVisualComponentsMatch);
+
+	const AHeistPlayerState* OriginalCarrier =
+		DisplayCase->GetOriginalCarrier();
+	const bool bOriginalStateContract =
+		(CaseState == EHeistDisplayCaseState::OriginalAvailable
+			&& !IsValid(OriginalCarrier)
+			&& bExpectedOriginalVisible
+			&& bExpectedReplicaVisible)
+		|| (CaseState == EHeistDisplayCaseState::OriginalRemoved
+			&& IsValid(OriginalCarrier)
+			&& !bExpectedOriginalVisible
+			&& bExpectedReplicaVisible);
+	const bool bLocalSessionInactive =
+		!IsValid(ForgeryComponent)
+		|| !ForgeryComponent->IsSessionActive();
+	const bool bLocalHasScore = IsValid(ForgeryComponent)
+		&& ForgeryComponent->HasAuthoritativeForgeryResult();
+	const bool bLocalScoreRelevant = bLocalHasScore
+		&& ForgeryComponent->GetAuthoritativeForgeryResult().ArtifactId
+			== CaseResult.ArtifactId;
+	const bool bLocalScoreLinked = !bLocalScoreRelevant
+		|| (ForgeryComponent->GetAuthoritativeForgeryResult().TemplateId
+				== CaseResult.TemplateId
+			&& FMath::IsNearlyEqual(
+				ForgeryComponent->GetAuthoritativeForgeryResult().SimilarityScore,
+				CaseResult.SimilarityScore,
+				0.01f)
+			&& ForgeryComponent->GetAuthoritativeForgeryResult().bReplicaPlaced);
+	const bool bContractPassed = bStateValid
+		&& bCommittedResultValid
+		&& !DisplayCase->IsSessionLocked()
+		&& bVisualComponentsMatch
+		&& bOriginalStateContract
+		&& bLocalSessionInactive
+		&& bLocalScoreLinked;
+
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Forgery swap dump: Case=%s CaseId=%s State=%s HasCommittedResult=%s Artifact=%s Template=%s Score=%.2f ReplicaPlaced=%s CaseLocked=%s OriginalCarrier=%s OriginalVisible=%s ReplicaVisible=%s OriginalComponents=%d ReplicaComponents=%d VisualsMatch=%s LocalSessionActive=%s LocalHasScore=%s LocalScoreRelevant=%s LocalScoreLinked=%s Revision=%d Authority=%s Result=%s"),
+			*GetNameSafe(DisplayCase),
+			*DisplayCase->GetDisplayCaseId().ToString(),
+			*UEnum::GetValueAsString(CaseState),
+			bHasCommittedResult ? TEXT("true") : TEXT("false"),
+			*CaseResult.ArtifactId.ToString(),
+			*CaseResult.TemplateId.ToString(),
+			CaseResult.SimilarityScore,
+			CaseResult.bReplicaPlaced ? TEXT("true") : TEXT("false"),
+			DisplayCase->IsSessionLocked() ? TEXT("true") : TEXT("false"),
+			*GetNameSafe(OriginalCarrier),
+			bExpectedOriginalVisible ? TEXT("true") : TEXT("false"),
+			bExpectedReplicaVisible ? TEXT("true") : TEXT("false"),
+			OriginalComponentCount,
+			ReplicaComponentCount,
+			bVisualComponentsMatch ? TEXT("true") : TEXT("false"),
+			IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive()
+				? TEXT("true")
+				: TEXT("false"),
+			bLocalHasScore ? TEXT("true") : TEXT("false"),
+			bLocalScoreRelevant ? TEXT("true") : TEXT("false"),
+			bLocalScoreLinked ? TEXT("true") : TEXT("false"),
+			DisplayCase->GetCommittedForgeryRevision(),
+			PlayerController && PlayerController->HasAuthority()
+				? TEXT("true")
+				: TEXT("false"),
+			bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bContractPassed
+			? EHeistDebugLevel::Info
+			: EHeistDebugLevel::Warning,
+		true,
+		18.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugForgeryScoreTest(
+	APlayerController* PlayerController)
+{
+#if !UE_BUILD_SHIPPING
+	AHeistPlayerController* HeistPlayerController =
+		Cast<AHeistPlayerController>(PlayerController);
+	if (IsValid(HeistPlayerController)
+		&& !HeistPlayerController->HasAuthority())
+	{
+		HeistPlayerController->DebugRequestForgeryScoreTest();
+		Message(
+			PlayerController,
+			TEXT("Forgery score deterministic test: Result=REQUESTED Target=ServerAuthority"),
+			EHeistDebugLevel::Info,
+			true);
+		return;
+	}
+
+	UHeistForgeryComponent* ForgeryComponent =
+		ResolveForgeryComponent(PlayerController);
+	if (!IsValid(PlayerController)
+		|| !PlayerController->HasAuthority()
+		|| !IsValid(ForgeryComponent)
+		|| !ForgeryComponent->HasAuthoritativeForgeryResult())
+	{
+		Message(
+			PlayerController,
+			TEXT("Forgery score deterministic test: Result=FAIL Reason=ServerAuthorityAndCommittedScoreRequired"),
+			EHeistDebugLevel::Warning,
+			true);
+		return;
+	}
+
+	FHeistForgeryResult FirstResult;
+	FHeistForgeryResult SecondResult;
+	int32 FirstReferencePixels = 0;
+	int32 FirstSubmittedPixels = 0;
+	int32 SecondReferencePixels = 0;
+	int32 SecondSubmittedPixels = 0;
+	const bool bFirstCalculated =
+		ForgeryComponent->RecalculateValidatedForgeryScoreForDebug(
+			FirstResult,
+			FirstReferencePixels,
+			FirstSubmittedPixels);
+	const bool bSecondCalculated =
+		ForgeryComponent->RecalculateValidatedForgeryScoreForDebug(
+			SecondResult,
+			SecondReferencePixels,
+			SecondSubmittedPixels);
+	const auto HasSameScoreBreakdown = [](
+		const FHeistForgeryResult& Left,
+		const FHeistForgeryResult& Right)
+	{
+		return Left.ArtifactId == Right.ArtifactId
+			&& Left.TemplateId == Right.TemplateId
+			&& FMath::IsNearlyEqual(
+				Left.SimilarityScore,
+				Right.SimilarityScore,
+				0.001f)
+			&& FMath::IsNearlyEqual(
+				Left.CoverageScore,
+				Right.CoverageScore,
+				0.001f)
+			&& FMath::IsNearlyEqual(
+				Left.MajorShapeScore,
+				Right.MajorShapeScore,
+				0.001f)
+			&& FMath::IsNearlyEqual(
+				Left.ColorAccuracyScore,
+				Right.ColorAccuracyScore,
+				0.001f)
+			&& FMath::IsNearlyEqual(
+				Left.PaintToReferenceRatio,
+				Right.PaintToReferenceRatio,
+				0.001f)
+			&& Left.bAntiFillTriggered == Right.bAntiFillTriggered
+			&& FMath::IsNearlyEqual(
+				Left.MissingShapePenalty,
+				Right.MissingShapePenalty,
+				0.001f)
+			&& FMath::IsNearlyEqual(
+				Left.ExtraStrokePenalty,
+				Right.ExtraStrokePenalty,
+				0.001f)
+			&& FMath::IsNearlyEqual(
+				Left.TimeoutPenalty,
+				Right.TimeoutPenalty,
+				0.001f);
+	};
+	const bool bDeterministic = bFirstCalculated
+		&& bSecondCalculated
+		&& HasSameScoreBreakdown(FirstResult, SecondResult)
+		&& FirstReferencePixels == SecondReferencePixels
+		&& FirstSubmittedPixels == SecondSubmittedPixels;
+	const FHeistForgeryResult& CommittedResult =
+		ForgeryComponent->GetAuthoritativeForgeryResult();
+	const bool bCommittedScoreMatches = bFirstCalculated
+		&& HasSameScoreBreakdown(FirstResult, CommittedResult);
+	const bool bContractPassed =
+		bDeterministic && bCommittedScoreMatches;
+
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Forgery score deterministic test: FirstCalculated=%s SecondCalculated=%s FirstScore=%.2f SecondScore=%.2f CommittedScore=%.2f ReferencePixels=%d/%d SubmittedPixels=%d/%d SameBreakdown=%s CommittedMatches=%s Resolution=%dx%d Result=%s"),
+			bFirstCalculated ? TEXT("true") : TEXT("false"),
+			bSecondCalculated ? TEXT("true") : TEXT("false"),
+			FirstResult.SimilarityScore,
+			SecondResult.SimilarityScore,
+			CommittedResult.SimilarityScore,
+			FirstReferencePixels,
+			SecondReferencePixels,
+			FirstSubmittedPixels,
+			SecondSubmittedPixels,
+			bDeterministic ? TEXT("true") : TEXT("false"),
+			bCommittedScoreMatches ? TEXT("true") : TEXT("false"),
+			ForgeryComponent->GetForgeryScoreResolution(),
+			ForgeryComponent->GetForgeryScoreResolution(),
+			bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bContractPassed
+			? EHeistDebugLevel::Info
+			: EHeistDebugLevel::Warning,
+		true,
+		15.0f);
+#endif
+}
+
 void UHeistDebugFunctionLibrary::DebugForgeryBegin(
 	APlayerController* PlayerController,
 	const float DurationSeconds)
@@ -1805,31 +2382,23 @@ void UHeistDebugFunctionLibrary::DebugForgerySubmit(
 	APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
-	UHeistForgeryComponent* ForgeryComponent =
-		ResolveForgeryComponent(PlayerController);
-	const bool bSubmitted = IsValid(ForgeryComponent)
-		&& ForgeryComponent->TryBeginSubmit();
+	AHeistPlayerController* HeistPlayerController =
+		ResolveHeistPlayerController(PlayerController);
+	AHeistHUD* HeistHUD = IsValid(HeistPlayerController)
+		? HeistPlayerController->GetHUD<AHeistHUD>()
+		: nullptr;
+	UHeistForgeryWidget* ForgeryWidget = IsValid(HeistHUD)
+		? HeistHUD->GetForgeryWidget()
+		: nullptr;
+	const bool bRequested = IsValid(ForgeryWidget)
+		&& ForgeryWidget->RequestSubmitCollectedStrokes();
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Forgery session debug submit: Result=%s Active=%s SubmitPending=%s Case=%s Revision=%d"),
-			bSubmitted ? TEXT("PASS") : TEXT("REJECTED"),
-			IsValid(ForgeryComponent)
-				&& ForgeryComponent->IsSessionActive()
-					? TEXT("true")
-					: TEXT("false"),
-			IsValid(ForgeryComponent)
-				&& ForgeryComponent->IsSubmitPending()
-					? TEXT("true")
-					: TEXT("false"),
-			IsValid(ForgeryComponent)
-				? *GetNameSafe(
-					ForgeryComponent->GetActiveDisplayCase())
-				: TEXT("None"),
-			IsValid(ForgeryComponent)
-				? ForgeryComponent->GetSessionRevision()
-				: INDEX_NONE),
-		bSubmitted
+			TEXT("Forgery stroke debug submit: Widget=%s Result=%s"),
+			*GetNameSafe(ForgeryWidget),
+			bRequested ? TEXT("REQUESTED") : TEXT("REJECTED_LOCAL")),
+		bRequested
 			? EHeistDebugLevel::Info
 			: EHeistDebugLevel::Warning,
 		true,

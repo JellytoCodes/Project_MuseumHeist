@@ -99,9 +99,23 @@ void UHeistForgeryViewModel::RefreshPresentationState()
 	bool bShowValidation = IsValid(ForgeryComponent)
 		&& ForgeryComponent->IsSessionActive()
 		&& ForgeryComponent->IsSubmitPending();
-	bool bShowResult = bResultPresentationActive;
-	float NewResultScore = bShowResult ? PendingResultScore : 0.0f;
-	FText NewResultText = bShowResult ? PendingResultText : FText::GetEmpty();
+	const bool bHasAuthoritativeResult = IsValid(ForgeryComponent)
+		&& ForgeryComponent->IsSessionActive()
+		&& ForgeryComponent->HasAuthoritativeForgeryResult();
+	bool bShowResult = bResultPresentationActive || bHasAuthoritativeResult;
+	float NewResultScore = bHasAuthoritativeResult
+		? ForgeryComponent->GetAuthoritativeForgeryResult().SimilarityScore
+		: bShowResult
+			? PendingResultScore
+			: 0.0f;
+	FText NewResultText = bHasAuthoritativeResult
+		? NSLOCTEXT(
+			"HeistForgery",
+			"AuthoritativeResult",
+			"FORGERY SCORE CONFIRMED")
+		: bShowResult
+			? PendingResultText
+			: FText::GetEmpty();
 
 	if (!DebugPreviewState.IsNone())
 	{
@@ -157,6 +171,9 @@ void UHeistForgeryViewModel::RefreshPresentationState()
 	UTexture2D* NewReferenceMask = bTemplatePrepared
 		? ForgeryComponent->LoadReferenceMask()
 		: nullptr;
+	const TArray<FLinearColor> NewAllowedPalette = bTemplatePrepared
+		? ForgeryComponent->GetTemplateAllowedPalette()
+		: TArray<FLinearColor>();
 	const float NewObservationDuration = bTemplatePrepared
 		? ForgeryComponent->GetTemplateObservationDuration()
 		: 0.0f;
@@ -217,6 +234,7 @@ void UHeistForgeryViewModel::RefreshPresentationState()
 	UE_MVVM_SET_PROPERTY_VALUE(ReferenceTemplateId, NewReferenceTemplateId);
 	UE_MVVM_SET_PROPERTY_VALUE(ReferenceImage, NewReferenceImage);
 	UE_MVVM_SET_PROPERTY_VALUE(ReferenceMask, NewReferenceMask);
+	UE_MVVM_SET_PROPERTY_VALUE(AllowedPalette, NewAllowedPalette);
 	UE_MVVM_SET_PROPERTY_VALUE(ObservationDuration, NewObservationDuration);
 	UE_MVVM_SET_PROPERTY_VALUE(ForgeryDuration, NewForgeryDuration);
 	UE_MVVM_SET_PROPERTY_VALUE(StrokeLimit, NewStrokeLimit);
@@ -384,6 +402,11 @@ UTexture2D* UHeistForgeryViewModel::GetReferenceImage() const
 UTexture2D* UHeistForgeryViewModel::GetReferenceMask() const
 {
 	return ReferenceMask.Get();
+}
+
+const TArray<FLinearColor>& UHeistForgeryViewModel::GetAllowedPalette() const
+{
+	return AllowedPalette;
 }
 
 float UHeistForgeryViewModel::GetObservationDuration() const

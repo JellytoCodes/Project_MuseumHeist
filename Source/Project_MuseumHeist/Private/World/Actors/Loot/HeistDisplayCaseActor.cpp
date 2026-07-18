@@ -339,6 +339,178 @@ void AHeistDisplayCaseActor::RefreshPlaceholderVisualState()
 
 #pragma endregion
 
+#pragma region ReplicaPlacement
+
+bool AHeistDisplayCaseActor::HasCommittedForgeryResult() const
+{
+	return bHasCommittedForgeryResult;
+}
+
+FHeistForgeryResult AHeistDisplayCaseActor::GetCommittedForgeryResult() const
+{
+	return CommittedForgeryResult;
+}
+
+int32 AHeistDisplayCaseActor::GetCommittedForgeryRevision() const
+{
+	return CommittedForgeryRevision;
+}
+
+bool AHeistDisplayCaseActor::TryCommitReplicaPlacement(
+	AHeistPlayerState* RequestingPlayerState,
+	const FHeistForgeryResult& ForgeryResult)
+{
+	if (!HasAuthority())
+	{
+		UE_LOG(
+			LogHeistNetwork,
+			Warning,
+			TEXT("Replica placement rejected: Case=%s Requester=%s Reason=NotAuthority"),
+			*GetNameSafe(this),
+			*GetNameSafe(RequestingPlayerState));
+		return false;
+	}
+
+	FName RejectReason = NAME_None;
+	if (!ValidateReplicaPlacementRequest(
+		RequestingPlayerState,
+		ForgeryResult,
+		RejectReason))
+	{
+		UE_LOG(
+			LogHeistNetwork,
+			Warning,
+			TEXT("Replica placement rejected: Case=%s CaseId=%s Artifact=%s Requester=%s State=%s Locked=%s ExistingResult=%s Reason=%s"),
+			*GetNameSafe(this),
+			*DisplayCaseId.ToString(),
+			*TargetArtifactId.ToString(),
+			*GetNameSafe(RequestingPlayerState),
+			*UEnum::GetValueAsString(DisplayCaseState),
+			bSessionLocked ? TEXT("true") : TEXT("false"),
+			bHasCommittedForgeryResult ? TEXT("true") : TEXT("false"),
+			*RejectReason.ToString());
+		return false;
+	}
+
+	if (!TryTransitionToDisplayCaseState(EHeistDisplayCaseState::ReplicaReady)
+		|| !TryTransitionToDisplayCaseState(EHeistDisplayCaseState::ReplicaPlaced)
+		|| !TryTransitionToDisplayCaseState(EHeistDisplayCaseState::OriginalAvailable))
+	{
+		UE_LOG(
+			LogHeistNetwork,
+			Error,
+			TEXT("Replica placement failed: Case=%s State=%s Reason=StateTransitionFailed"),
+			*GetNameSafe(this),
+			*UEnum::GetValueAsString(DisplayCaseState));
+		return false;
+	}
+
+	CommittedForgeryResult = ForgeryResult;
+	CommittedForgeryResult.bReplicaPlaced = true;
+	bHasCommittedForgeryResult = true;
+	++CommittedForgeryRevision;
+
+	ClearSession(FName(TEXT("ForgeryCompleted")));
+	ForceNetUpdate();
+
+	UE_LOG(
+		LogHeistNetwork,
+		Log,
+		TEXT("Replica placement committed: Case=%s CaseId=%s Artifact=%s Template=%s Requester=%s Score=%.2f ReplicaPlaced=%s State=%s Locked=%s Revision=%d Authority=true Result=PASS"),
+		*GetNameSafe(this),
+		*DisplayCaseId.ToString(),
+		*CommittedForgeryResult.ArtifactId.ToString(),
+		*CommittedForgeryResult.TemplateId.ToString(),
+		*GetNameSafe(RequestingPlayerState),
+		CommittedForgeryResult.SimilarityScore,
+		CommittedForgeryResult.bReplicaPlaced ? TEXT("true") : TEXT("false"),
+		*UEnum::GetValueAsString(DisplayCaseState),
+		bSessionLocked ? TEXT("true") : TEXT("false"),
+		CommittedForgeryRevision);
+	return true;
+}
+
+bool AHeistDisplayCaseActor::ValidateReplicaPlacementRequest(
+	AHeistPlayerState* RequestingPlayerState,
+	const FHeistForgeryResult& ForgeryResult,
+	FName& OutRejectReason) const
+{
+	OutRejectReason = NAME_None;
+	if (!IsValid(RequestingPlayerState))
+	{
+		OutRejectReason = FName(TEXT("MissingPlayerState"));
+		return false;
+	}
+	if (bHasCommittedForgeryResult)
+	{
+		OutRejectReason = FName(TEXT("DuplicateReplicaPlacement"));
+		return false;
+	}
+	if (DisplayCaseState != EHeistDisplayCaseState::ForgeryInProgress)
+	{
+		OutRejectReason = FName(TEXT("CaseStateMismatch"));
+		return false;
+	}
+	if (!bSessionLocked || SessionOwner.Get() != RequestingPlayerState)
+	{
+		OutRejectReason = FName(TEXT("CaseOwnershipMismatch"));
+		return false;
+	}
+	if (ForgeryResult.ArtifactId.IsNone()
+		|| ForgeryResult.ArtifactId != TargetArtifactId
+		|| ForgeryResult.TemplateId.IsNone()
+		|| ForgeryResult.ForgeryType != EHeistForgeryType::Drawing)
+	{
+		OutRejectReason = FName(TEXT("ForgeryIdentityMismatch"));
+		return false;
+	}
+	if (!FMath::IsFinite(ForgeryResult.SimilarityScore)
+		|| !FMath::IsFinite(ForgeryResult.CoverageScore)
+		|| !FMath::IsFinite(ForgeryResult.MajorShapeScore)
+		|| !FMath::IsFinite(ForgeryResult.MissingShapePenalty)
+		|| !FMath::IsFinite(ForgeryResult.ExtraStrokePenalty)
+		|| !FMath::IsFinite(ForgeryResult.TimeoutPenalty)
+		|| !FMath::IsFinite(ForgeryResult.CompletionTime)
+		|| !FMath::IsWithinInclusive(
+			ForgeryResult.SimilarityScore,
+			0.0f,
+			100.0f)
+		|| ForgeryResult.CoverageScore < 0.0f
+		|| ForgeryResult.MajorShapeScore < 0.0f
+		|| ForgeryResult.MissingShapePenalty < 0.0f
+		|| ForgeryResult.ExtraStrokePenalty < 0.0f
+		|| ForgeryResult.TimeoutPenalty < 0.0f
+		|| ForgeryResult.CompletionTime < 0.0f
+		|| ForgeryResult.bReplicaPlaced)
+	{
+		OutRejectReason = FName(TEXT("ForgeryResultInvalid"));
+		return false;
+	}
+	return true;
+}
+
+void AHeistDisplayCaseActor::OnRep_CommittedForgeryRevision()
+{
+	UE_LOG(
+		LogHeistNetwork,
+		Log,
+		TEXT("Replica placement replicated: Case=%s CaseId=%s Artifact=%s Template=%s Score=%.2f ReplicaPlaced=%s State=%s Locked=%s Revision=%d Authority=false Result=%s"),
+		*GetNameSafe(this),
+		*DisplayCaseId.ToString(),
+		*CommittedForgeryResult.ArtifactId.ToString(),
+		*CommittedForgeryResult.TemplateId.ToString(),
+		CommittedForgeryResult.SimilarityScore,
+		CommittedForgeryResult.bReplicaPlaced ? TEXT("true") : TEXT("false"),
+		*UEnum::GetValueAsString(DisplayCaseState),
+		bSessionLocked ? TEXT("true") : TEXT("false"),
+		CommittedForgeryRevision,
+		bHasCommittedForgeryResult && CommittedForgeryResult.bReplicaPlaced
+			? TEXT("PASS")
+			: TEXT("FAIL"));
+}
+
+#pragma endregion
+
 #pragma region OriginalCarry
 
 FName AHeistDisplayCaseActor::GetTargetArtifactId() const
@@ -921,6 +1093,9 @@ void AHeistDisplayCaseActor::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AHeistDisplayCaseActor, DisplayCaseState);
+	DOREPLIFETIME(AHeistDisplayCaseActor, bHasCommittedForgeryResult);
+	DOREPLIFETIME(AHeistDisplayCaseActor, CommittedForgeryResult);
+	DOREPLIFETIME(AHeistDisplayCaseActor, CommittedForgeryRevision);
 	DOREPLIFETIME(AHeistDisplayCaseActor, OriginalCarrier);
 	DOREPLIFETIME(AHeistDisplayCaseActor, OriginalCarryRevision);
 	DOREPLIFETIME(AHeistDisplayCaseActor, SessionOwner);

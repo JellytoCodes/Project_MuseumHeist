@@ -9,6 +9,14 @@
 class AActor;
 class UTexture2D;
 
+UENUM(BlueprintType)
+enum class EHeistForgeryBackgroundFilter : uint8
+{
+	None UMETA(DisplayName = "Use Reference Mask"),
+	Black UMETA(DisplayName = "Filter Black Background"),
+	White UMETA(DisplayName = "Filter White Background")
+};
+
 /** Static definition for an objective artifact shared by objective, display-case, and inventory flows. */
 USTRUCT(BlueprintType)
 struct PROJECT_MUSEUMHEIST_API FHeistArtifactDataRow : public FTableRowBase
@@ -68,6 +76,33 @@ struct PROJECT_MUSEUMHEIST_API FHeistForgeryTemplateRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery")
 	TSoftObjectPtr<UTexture2D> ReferenceMask;
 
+	/**
+	 * None uses ReferenceMask. Black/White derive the foreground directly
+	 * from ReferenceImage by excluding the selected background color.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery")
+	EHeistForgeryBackgroundFilter BackgroundFilterMode =
+		EHeistForgeryBackgroundFilter::None;
+
+	UPROPERTY(
+		EditAnywhere,
+		BlueprintReadOnly,
+		Category = "Heist|Forgery",
+		meta = (ClampMin = "0.0", ClampMax = "0.49"))
+	float BackgroundColorTolerance = 0.08f;
+
+	/**
+	 * Deliberately limited colors available to the player. The server
+	 * quantizes ReferenceImage pixels to these indices before scoring.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery", meta = (EditFixedOrder))
+	TArray<FLinearColor> AllowedPalette = {
+		FLinearColor(0.04f, 0.03f, 0.02f, 1.0f),
+		FLinearColor(0.28f, 0.16f, 0.10f, 1.0f),
+		FLinearColor(0.62f, 0.42f, 0.24f, 1.0f),
+		FLinearColor(0.90f, 0.84f, 0.68f, 1.0f)
+	};
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery", meta = (ClampMin = "0.0", Units = "s"))
 	float ObservationDuration = 1.5f;
 
@@ -91,6 +126,24 @@ struct PROJECT_MUSEUMHEIST_API FHeistForgeryTemplateRow : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float TimeoutPenalty = 0.25f;
+
+	/** Portion of the final score retained by the existing shape score. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float ShapeAccuracyWeight = 0.65f;
+
+	/** Portion of the final score awarded for the correct palette index. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float ColorAccuracyWeight = 0.35f;
+
+	/**
+	 * Submitted painted pixels divided by reference foreground pixels.
+	 * Values above this threshold trigger the anti-fill score cap.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery", meta = (ClampMin = "1.0"))
+	float MaximumPaintToReferenceRatio = 2.5f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery", meta = (ClampMin = "0.0", ClampMax = "100.0"))
+	float OverpaintScoreCap = 20.0f;
 
 #if WITH_EDITOR
 	virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;

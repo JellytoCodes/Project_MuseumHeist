@@ -26,6 +26,7 @@ public class Project_MuseumHeist : ModuleRules
 
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
+			"ImageCore",
 			"SlateCore"
 		});
 		

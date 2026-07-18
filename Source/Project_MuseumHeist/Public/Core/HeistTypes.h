@@ -73,6 +73,99 @@ enum class EHeistDisplayCaseState : uint8
 #pragma region ResultData
 
 USTRUCT(BlueprintType)
+struct PROJECT_MUSEUMHEIST_API FHeistForgeryResult
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Forgery")
+	FName ArtifactId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Forgery")
+	FName TemplateId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Forgery")
+	EHeistForgeryType ForgeryType = EHeistForgeryType::None;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Forgery")
+	float SimilarityScore = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Forgery")
+	float CoverageScore = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Forgery")
+	float MajorShapeScore = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Forgery")
+	float ColorAccuracyScore = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Forgery")
+	float PaintToReferenceRatio = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Forgery")
+	bool bAntiFillTriggered = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Forgery")
+	float MissingShapePenalty = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Forgery")
+	float ExtraStrokePenalty = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Forgery")
+	float TimeoutPenalty = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Forgery")
+	float CompletionTime = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Forgery")
+	bool bReplicaPlaced = false;
+
+	bool operator==(const FHeistForgeryResult& Other) const
+	{
+		return ArtifactId == Other.ArtifactId
+			&& TemplateId == Other.TemplateId
+			&& ForgeryType == Other.ForgeryType
+			&& FMath::IsNearlyEqual(
+				SimilarityScore,
+				Other.SimilarityScore,
+				0.001f)
+			&& FMath::IsNearlyEqual(
+				CoverageScore,
+				Other.CoverageScore,
+				0.001f)
+			&& FMath::IsNearlyEqual(
+				MajorShapeScore,
+				Other.MajorShapeScore,
+				0.001f)
+			&& FMath::IsNearlyEqual(
+				ColorAccuracyScore,
+				Other.ColorAccuracyScore,
+				0.001f)
+			&& FMath::IsNearlyEqual(
+				PaintToReferenceRatio,
+				Other.PaintToReferenceRatio,
+				0.001f)
+			&& bAntiFillTriggered == Other.bAntiFillTriggered
+			&& FMath::IsNearlyEqual(
+				MissingShapePenalty,
+				Other.MissingShapePenalty,
+				0.001f)
+			&& FMath::IsNearlyEqual(
+				ExtraStrokePenalty,
+				Other.ExtraStrokePenalty,
+				0.001f)
+			&& FMath::IsNearlyEqual(
+				TimeoutPenalty,
+				Other.TimeoutPenalty,
+				0.001f)
+			&& FMath::IsNearlyEqual(
+				CompletionTime,
+				Other.CompletionTime,
+				0.001f)
+			&& bReplicaPlaced == Other.bReplicaPlaced;
+	}
+};
+
+USTRUCT(BlueprintType)
 struct PROJECT_MUSEUMHEIST_API FHeistPlayerResult
 {
 	GENERATED_BODY()

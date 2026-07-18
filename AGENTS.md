@@ -194,7 +194,14 @@ Client가 직접 확정할 수 없는 항목:
 ### Stroke Transport
 
 - Client는 정규화된 Stroke Point를 수집한다.
+- Reference Image는 직접 제작한 단순한 이미지와 Template별 2~8색 제한 팔레트를 사용한다.
+- Template은 `None / Black / White` 배경 필터와 허용 오차를 DataTable에서 지정한다.
+- `Black / White`는 Reference Image에서 해당 배경색을 제외하고, `None`은 별도 Reference Mask를 사용한다.
+- 플레이어는 Template 팔레트에서 색을 직접 선택하며, 위치에 맞는 정답 색을 자동 선택하지 않는다.
+- 각 Stroke는 임의 RGB가 아니라 서버가 제공한 `PaletteIndex`를 함께 전송한다.
 - 데이터 크기, 좌표 범위, Stroke Limit를 서버가 검증한다.
+- 서버는 Reference Image를 제한 팔레트로 양자화하고 형태 정확도와 팔레트 색 정확도를 함께 판정한다.
+- Reference 대비 과도한 면적을 칠하면 Anti-Fill Score Cap을 적용한다.
 - Submit 시 또는 제한된 Chunk 단위로 전달한다.
 - Client는 최종 Score를 전송하지 않는다.
 
@@ -364,7 +371,7 @@ W3는 완료됐다. 현재 실행 기준은 W4 단일 범위이며 기간은 202
 4. `TASK-W4-004` Reference Template Load / Observation Handoff
 5. `TASK-W4-005` Drawing Canvas / Stroke Collection
 6. `TASK-W4-006` Stroke Transport / Server Validation
-7. `TASK-W4-007` Reference Mask Forgery Score
+7. `TASK-W4-007` Reference Mask / Palette Forgery Score
 8. `TASK-W4-008` Replica Placement / Original Removal
 9. `TASK-W4-009` Submitted Replica World Visual
 10. `TASK-W4-010` Forgery Recovery Edge Cases

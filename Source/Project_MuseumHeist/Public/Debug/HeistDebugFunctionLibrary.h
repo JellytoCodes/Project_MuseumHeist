@@ -238,6 +238,23 @@ public:
 	static void DebugForgeryStrokeDump(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
+	static void DebugForgeryTransportDump(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
+	static void DebugForgeryTransportTest(
+		APlayerController* PlayerController,
+		const FString& Scenario);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
+	static void DebugForgeryScoreDump(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
+	static void DebugForgeryScoreTest(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
+	static void DebugForgerySwapDump(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
 	static void DebugForgeryBegin(APlayerController* PlayerController, float DurationSeconds);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))

@@ -113,6 +113,57 @@ private:
 
 #pragma endregion
 
+#pragma region ReplicaPlacement
+
+public:
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Replica")
+	bool HasCommittedForgeryResult() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Replica")
+	FHeistForgeryResult GetCommittedForgeryResult() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Replica")
+	int32 GetCommittedForgeryRevision() const;
+
+	bool TryCommitReplicaPlacement(
+		AHeistPlayerState* RequestingPlayerState,
+		const FHeistForgeryResult& ForgeryResult);
+
+private:
+	bool ValidateReplicaPlacementRequest(
+		AHeistPlayerState* RequestingPlayerState,
+		const FHeistForgeryResult& ForgeryResult,
+		FName& OutRejectReason) const;
+
+	UPROPERTY(
+		Replicated,
+		VisibleInstanceOnly,
+		BlueprintReadOnly,
+		Category = "Heist|DisplayCase|Replica",
+		meta = (AllowPrivateAccess = "true"))
+	bool bHasCommittedForgeryResult = false;
+
+	UPROPERTY(
+		Replicated,
+		VisibleInstanceOnly,
+		BlueprintReadOnly,
+		Category = "Heist|DisplayCase|Replica",
+		meta = (AllowPrivateAccess = "true"))
+	FHeistForgeryResult CommittedForgeryResult;
+
+	UPROPERTY(
+		ReplicatedUsing = OnRep_CommittedForgeryRevision,
+		VisibleInstanceOnly,
+		BlueprintReadOnly,
+		Category = "Heist|DisplayCase|Replica",
+		meta = (AllowPrivateAccess = "true"))
+	int32 CommittedForgeryRevision = 0;
+
+	UFUNCTION()
+	void OnRep_CommittedForgeryRevision();
+
+#pragma endregion
+
 #pragma region OriginalCarry
 
 public:

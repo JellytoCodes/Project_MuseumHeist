@@ -1,0 +1,20 @@
+{
+  "asset_name": "T_Forgery_SunArchWave",
+  "source_file": "T_Forgery_SunArchWave.png",
+  "unreal_destination": "/Game/Data/Forgery/Textures",
+  "reference_mask": "self",
+  "background_srgb": "#000000",
+  "background_filter_mode": "Black",
+  "background_color_tolerance": 0.08,
+  "palette_srgb": [
+    "#E65A4F",
+    "#E6B84A",
+    "#4CC9C0"
+  ],
+  "palette_linear": [
+    [0.791298, 0.102242, 0.078187, 1.0],
+    [0.791298, 0.479320, 0.068478, 1.0],
+    [0.072272, 0.584078, 0.527115, 1.0]
+  ],
+  "notes": "The server excludes the pure black background from scoring. ReferenceMask is retained only as a compatible fallback for BackgroundFilterMode=None."
+}

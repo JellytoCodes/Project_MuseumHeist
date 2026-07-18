@@ -84,6 +84,7 @@ public:
 	FName GetReferenceTemplateId() const;
 	UTexture2D* GetReferenceImage() const;
 	UTexture2D* GetReferenceMask() const;
+	const TArray<FLinearColor>& GetAllowedPalette() const;
 	float GetObservationDuration() const;
 	float GetForgeryDuration() const;
 	int32 GetStrokeLimit() const;
@@ -127,6 +128,9 @@ private:
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Forgery", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UTexture2D> ReferenceMask;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Forgery", meta = (AllowPrivateAccess = "true"))
+	TArray<FLinearColor> AllowedPalette;
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Forgery", meta = (AllowPrivateAccess = "true"))
 	float ObservationDuration = 0.0f;

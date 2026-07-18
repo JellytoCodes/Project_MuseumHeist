@@ -119,6 +119,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Heist|Forgery")
 	void RequestCancelForgery();
 
+	void RequestSubmitForgeryStrokes(
+		const TArray<FVector2D>& NormalizedPoints,
+		const TArray<int32>& StrokePointCounts,
+		const TArray<uint8>& StrokePaletteIndices,
+		float ClientBrushSize,
+		int32 ClientSessionRevision = INDEX_NONE);
+
 	UFUNCTION(BlueprintCallable, Category = "Heist|Inventory")
 	void RequestMoveInventoryItem(int32 InstanceId, FIntPoint TargetGridPosition);
 
@@ -163,6 +170,14 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void Server_CancelForgery();
+
+	UFUNCTION(Server, Reliable)
+	void Server_SubmitForgeryStrokes(
+		const TArray<FVector2D>& NormalizedPoints,
+		const TArray<int32>& StrokePointCounts,
+		const TArray<uint8>& StrokePaletteIndices,
+		float ClientBrushSize,
+		int32 ClientSessionRevision);
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestMoveInventoryItem(int32 InstanceId, FIntPoint TargetGridPosition);
@@ -211,6 +226,7 @@ public:
 	void DebugRequestDumpArrestState();
 	void DebugRequestSetFootstepWeight(float TotalLootWeight);
 	void DebugRequestDumpDifficultyBaseline();
+	void DebugRequestForgeryScoreTest();
 
 private:
 	UFUNCTION(Server, Reliable)
@@ -257,6 +273,9 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void Server_DebugRequestFillInventoryForFeedback(FName ItemId);
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestForgeryScoreTest();
 
 #pragma endregion
 

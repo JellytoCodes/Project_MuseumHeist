@@ -79,7 +79,13 @@ FHeistForgeryResult
 - ForgeryType
 - SimilarityScore
 - CoverageScore
+- MajorShapeScore
+- ColorAccuracyScore
+- PaintToReferenceRatio
+- bAntiFillTriggered
+- MissingShapePenalty
 - ExtraStrokePenalty
+- TimeoutPenalty
 - CompletionTime
 - bReplicaPlaced
 
@@ -209,6 +215,9 @@ FHeistForgeryTemplateRow
 - TemplateId
 - ReferenceImage
 - ReferenceMask
+- BackgroundFilterMode (None / Black / White)
+- BackgroundColorTolerance
+- AllowedPalette (2~8 colors)
 - ObservationDuration
 - ForgeryDuration
 - StrokeLimit
@@ -217,6 +226,10 @@ FHeistForgeryTemplateRow
 - MajorShapeWeight
 - ExtraStrokePenaltyWeight
 - TimeoutPenalty
+- ShapeAccuracyWeight
+- ColorAccuracyWeight
+- MaximumPaintToReferenceRatio
+- OverpaintScoreCap
 ```
 
 ## `Data/HeistGameBalanceDataAsset.*`

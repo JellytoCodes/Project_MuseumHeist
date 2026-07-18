@@ -4,6 +4,7 @@
 #include "Components/TextBlock.h"
 #include "Components/Widget.h"
 #include "Core/HeistLogChannels.h"
+#include "Core/HeistPlayerController.h"
 #include "GameFramework/PlayerController.h"
 #include "Input/Events.h"
 #include "InputCoreTypes.h"
@@ -19,13 +20,13 @@ namespace
 	constexpr float MinimumNormalizedPointSpacing = 0.004f;
 	constexpr float BrushRelativePointSpacing = 0.75f;
 	constexpr float MinimumNormalizedEraseRadius = 0.015f;
-	const FLinearColor StrokePreviewColor(0.04f, 0.03f, 0.02f, 1.0f);
 }
 
 UHeistForgeryWidget::UHeistForgeryWidget(
 	const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
+	SetIsFocusable(true);
 }
 
 void UHeistForgeryWidget::NativeDestruct()
@@ -137,16 +138,16 @@ int32 UHeistForgeryWidget::NativePaint(
 		bPendingDrawCoordinateLog = false;
 	}
 
-	for (const TArray<FVector2D>& Stroke : LocalStrokes)
+	for (const FHeistLocalForgeryStroke& Stroke : LocalStrokes)
 	{
-		if (Stroke.IsEmpty())
+		if (Stroke.Points.IsEmpty())
 		{
 			continue;
 		}
 
 		TArray<FVector2d> DrawPoints;
-		DrawPoints.Reserve(FMath::Max(2, Stroke.Num()));
-		for (const FVector2D& NormalizedPoint : Stroke)
+		DrawPoints.Reserve(FMath::Max(2, Stroke.Points.Num()));
+		for (const FVector2D& NormalizedPoint : Stroke.Points)
 		{
 			const FVector2D SurfaceLocalPoint(
 				NormalizedPoint.X * SurfaceLocalSize.X,
@@ -161,13 +162,19 @@ int32 UHeistForgeryWidget::NativePaint(
 			DrawPoints.Add(DrawPoints[0] + FVector2d(0.01, 0.01));
 		}
 
+		const TArray<FLinearColor>& Palette =
+			ForgeryViewModel->GetAllowedPalette();
+		const FLinearColor StrokeColor =
+			Palette.IsValidIndex(Stroke.PaletteIndex)
+				? Palette[Stroke.PaletteIndex]
+				: FLinearColor::Black;
 		FSlateDrawElement::MakeLines(
 			OutDrawElements,
 			StrokeLayer,
 			AllottedGeometry.ToPaintGeometry(),
 			MoveTemp(DrawPoints),
 			ESlateDrawEffect::None,
-			StrokePreviewColor,
+			StrokeColor,
 			true,
 			StrokeThickness);
 	}
@@ -355,6 +362,42 @@ FReply UHeistForgeryWidget::NativeOnMouseMove(
 	return Super::NativeOnMouseMove(InGeometry, InMouseEvent);
 }
 
+FReply UHeistForgeryWidget::NativeOnKeyDown(
+	const FGeometry& InGeometry,
+	const FKeyEvent& InKeyEvent)
+{
+	const FKey PressedKey = InKeyEvent.GetKey();
+	const FKey PaletteKeys[] = {
+		EKeys::One,
+		EKeys::Two,
+		EKeys::Three,
+		EKeys::Four,
+		EKeys::Five,
+		EKeys::Six,
+		EKeys::Seven,
+		EKeys::Eight
+	};
+	for (int32 PaletteIndex = 0;
+		PaletteIndex < UE_ARRAY_COUNT(PaletteKeys);
+		++PaletteIndex)
+	{
+		if (PressedKey == PaletteKeys[PaletteIndex]
+			&& SelectPaletteIndex(PaletteIndex))
+		{
+			return FReply::Handled();
+		}
+	}
+
+	if (PressedKey == EKeys::Enter
+		&& IsDrawingInputEnabled())
+	{
+		RequestSubmitCollectedStrokes();
+		return FReply::Handled();
+	}
+
+	return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
+}
+
 void UHeistForgeryWidget::NativeOnMouseCaptureLost(
 	const FCaptureLostEvent& CaptureLostEvent)
 {
@@ -414,9 +457,9 @@ bool UHeistForgeryWidget::IsDrawingSurfaceReady() const
 
 bool UHeistForgeryWidget::AreCollectedPointsNormalized() const
 {
-	for (const TArray<FVector2D>& Stroke : LocalStrokes)
+	for (const FHeistLocalForgeryStroke& Stroke : LocalStrokes)
 	{
-		for (const FVector2D& Point : Stroke)
+		for (const FVector2D& Point : Stroke.Points)
 		{
 			if (!FMath::IsFinite(Point.X)
 				|| !FMath::IsFinite(Point.Y)
@@ -438,9 +481,9 @@ int32 UHeistForgeryWidget::GetCollectedStrokeCount() const
 int32 UHeistForgeryWidget::GetCollectedPointCount() const
 {
 	int32 PointCount = 0;
-	for (const TArray<FVector2D>& Stroke : LocalStrokes)
+	for (const FHeistLocalForgeryStroke& Stroke : LocalStrokes)
 	{
-		PointCount += Stroke.Num();
+		PointCount += Stroke.Points.Num();
 	}
 	return PointCount;
 }
@@ -448,9 +491,9 @@ int32 UHeistForgeryWidget::GetCollectedPointCount() const
 int32 UHeistForgeryWidget::GetCollectedSegmentCount() const
 {
 	int32 SegmentCount = 0;
-	for (const TArray<FVector2D>& Stroke : LocalStrokes)
+	for (const FHeistLocalForgeryStroke& Stroke : LocalStrokes)
 	{
-		SegmentCount += FMath::Max(0, Stroke.Num() - 1);
+		SegmentCount += FMath::Max(0, Stroke.Points.Num() - 1);
 	}
 	return SegmentCount;
 }
@@ -472,6 +515,118 @@ float UHeistForgeryWidget::GetConfiguredBrushSize() const
 	return IsValid(ForgeryViewModel)
 		? ForgeryViewModel->GetBrushSize()
 		: 0.0f;
+}
+
+int32 UHeistForgeryWidget::GetActivePaletteIndex() const
+{
+	return ActivePaletteIndex;
+}
+
+FLinearColor UHeistForgeryWidget::GetActivePaletteColor() const
+{
+	if (!IsValid(ForgeryViewModel))
+	{
+		return FLinearColor::Black;
+	}
+
+	const TArray<FLinearColor>& Palette =
+		ForgeryViewModel->GetAllowedPalette();
+	return Palette.IsValidIndex(ActivePaletteIndex)
+		? Palette[ActivePaletteIndex]
+		: FLinearColor::Black;
+}
+
+bool UHeistForgeryWidget::SelectPaletteIndex(const int32 PaletteIndex)
+{
+	if (!IsValid(ForgeryViewModel)
+		|| !ForgeryViewModel->GetAllowedPalette().IsValidIndex(PaletteIndex))
+	{
+		return false;
+	}
+
+	FinishPointerInteraction();
+	ActivePaletteIndex = PaletteIndex;
+	BP_RefreshForgeryPalette(
+		ForgeryViewModel->GetAllowedPalette(),
+		ActivePaletteIndex);
+	RefreshDrawingFeedback();
+	InvalidateLayoutAndVolatility();
+	return true;
+}
+
+bool UHeistForgeryWidget::RequestSubmitCollectedStrokes()
+{
+	if (!IsDrawingInputEnabled())
+	{
+		UE_LOG(
+			LogHeistUI,
+			Warning,
+			TEXT("[%s] Forgery stroke submit skipped: Reason=DrawingInputDisabled"),
+			*GetName());
+		return false;
+	}
+
+	FinishPointerInteraction();
+	TArray<FVector2D> NormalizedPoints;
+	TArray<int32> StrokePointCounts;
+	TArray<uint8> StrokePaletteIndices;
+	NormalizedPoints.Reserve(GetCollectedPointCount());
+	StrokePointCounts.Reserve(LocalStrokes.Num());
+	StrokePaletteIndices.Reserve(LocalStrokes.Num());
+	int32 IgnoredShortStrokeCount = 0;
+	for (const FHeistLocalForgeryStroke& Stroke : LocalStrokes)
+	{
+		if (Stroke.Points.Num() < 2)
+		{
+			++IgnoredShortStrokeCount;
+			continue;
+		}
+
+		StrokePointCounts.Add(Stroke.Points.Num());
+		StrokePaletteIndices.Add(Stroke.PaletteIndex);
+		NormalizedPoints.Append(Stroke.Points);
+	}
+
+	if (StrokePointCounts.IsEmpty() || NormalizedPoints.IsEmpty())
+	{
+		UE_LOG(
+			LogHeistUI,
+			Warning,
+			TEXT("[%s] Forgery stroke submit skipped: Strokes=%d Points=%d IgnoredShortStrokes=%d Reason=EmptyDrawablePayload"),
+			*GetName(),
+			StrokePointCounts.Num(),
+			NormalizedPoints.Num(),
+			IgnoredShortStrokeCount);
+		return false;
+	}
+
+	AHeistPlayerController* HeistPlayerController =
+		Cast<AHeistPlayerController>(GetOwningPlayer());
+	if (!IsValid(HeistPlayerController))
+	{
+		UE_LOG(
+			LogHeistUI,
+			Warning,
+			TEXT("[%s] Forgery stroke submit skipped: Reason=MissingOwningHeistController"),
+			*GetName());
+		return false;
+	}
+
+	HeistPlayerController->RequestSubmitForgeryStrokes(
+		NormalizedPoints,
+		StrokePointCounts,
+		StrokePaletteIndices,
+		GetConfiguredBrushSize());
+	UE_LOG(
+		LogHeistUI,
+		Log,
+		TEXT("[%s] Forgery stroke payload queued: Strokes=%d Points=%d Brush=%.4f IgnoredShortStrokes=%d RenderTargetSent=false Result=REQUESTED"),
+		*GetName(),
+		StrokePointCounts.Num(),
+		NormalizedPoints.Num(),
+		GetConfiguredBrushSize(),
+		IgnoredShortStrokeCount);
+	return true;
 }
 
 void UHeistForgeryWidget::RefreshForgeryPresentation()
@@ -500,6 +655,7 @@ void UHeistForgeryWidget::RefreshForgeryPresentation()
 	if (bDrawing && !bWasDrawingVisible)
 	{
 		ResetLocalStrokePreview();
+		SetKeyboardFocus();
 	}
 	else if (!bDrawing && bWasDrawingVisible)
 	{
@@ -513,6 +669,16 @@ void UHeistForgeryWidget::RefreshForgeryPresentation()
 	ApplyStateVisibility(ResultContainer, bResult);
 	ApplyStateVisibility(ReferenceImage, bObservation || bDrawing);
 	RefreshDrawingFeedback();
+	if (IsValid(ForgeryViewModel))
+	{
+		const TArray<FLinearColor>& Palette =
+			ForgeryViewModel->GetAllowedPalette();
+		if (!Palette.IsValidIndex(ActivePaletteIndex))
+		{
+			ActivePaletteIndex = 0;
+		}
+		BP_RefreshForgeryPalette(Palette, ActivePaletteIndex);
+	}
 
 	if (IsValid(StateText))
 	{
@@ -573,6 +739,10 @@ bool UHeistForgeryWidget::IsDrawingInputEnabled() const
 		&& ForgeryViewModel->IsDrawingVisible()
 		&& IsWidgetPresentationVisible()
 		&& IsValid(DrawingSurface)
+		&& FMath::IsWithinInclusive(
+			ForgeryViewModel->GetAllowedPalette().Num(),
+			2,
+			8)
 		&& GetConfiguredStrokeLimit() > 0
 		&& FMath::IsWithinInclusive(
 			GetConfiguredBrushSize(),
@@ -626,7 +796,9 @@ bool UHeistForgeryWidget::BeginLocalStroke(
 
 	FinishPointerInteraction();
 	ActiveStrokeIndex = LocalStrokes.AddDefaulted();
-	LocalStrokes[ActiveStrokeIndex].Add(NormalizedPoint);
+	LocalStrokes[ActiveStrokeIndex].PaletteIndex =
+		static_cast<uint8>(ActivePaletteIndex);
+	LocalStrokes[ActiveStrokeIndex].Points.Add(NormalizedPoint);
 	RefreshDrawingFeedback();
 	InvalidateLayoutAndVolatility();
 	return true;
@@ -646,7 +818,8 @@ bool UHeistForgeryWidget::AppendLocalStrokePoint(
 		CompactLocalStrokesForPointBudget();
 	}
 
-	TArray<FVector2D>& ActiveStroke = LocalStrokes[ActiveStrokeIndex];
+	TArray<FVector2D>& ActiveStroke =
+		LocalStrokes[ActiveStrokeIndex].Points;
 	if (ActiveStroke.IsEmpty())
 	{
 		return false;
@@ -725,8 +898,9 @@ bool UHeistForgeryWidget::CompactLocalStrokesForPointBudget()
 		return false;
 	}
 
-	for (TArray<FVector2D>& Stroke : LocalStrokes)
+	for (FHeistLocalForgeryStroke& StrokeData : LocalStrokes)
 	{
+		TArray<FVector2D>& Stroke = StrokeData.Points;
 		if (Stroke.Num() <= 2)
 		{
 			continue;
@@ -791,12 +965,13 @@ bool UHeistForgeryWidget::EraseLocalStrokeSegments(
 		NormalizedPoint * CanvasAspectScale;
 	const double EraseRadiusSquared =
 		FMath::Square(GetNormalizedEraseRadius());
-	TArray<TArray<FVector2D>> UpdatedStrokes;
+	TArray<FHeistLocalForgeryStroke> UpdatedStrokes;
 	UpdatedStrokes.Reserve(LocalStrokes.Num());
 	int32 AffectedStrokeCount = 0;
 
-	for (const TArray<FVector2D>& Stroke : LocalStrokes)
+	for (const FHeistLocalForgeryStroke& StrokeData : LocalStrokes)
 	{
+		const TArray<FVector2D>& Stroke = StrokeData.Points;
 		if (Stroke.IsEmpty())
 		{
 			continue;
@@ -815,7 +990,7 @@ bool UHeistForgeryWidget::EraseLocalStrokeSegments(
 			}
 			else
 			{
-				UpdatedStrokes.Add(Stroke);
+				UpdatedStrokes.Add(StrokeData);
 			}
 			continue;
 		}
@@ -823,6 +998,20 @@ bool UHeistForgeryWidget::EraseLocalStrokeSegments(
 		TArray<FVector2D> CurrentFragment;
 		CurrentFragment.Reserve(Stroke.Num());
 		bool bStrokeAffected = false;
+		const auto CommitFragment =
+			[&UpdatedStrokes, &CurrentFragment, &StrokeData]()
+			{
+				if (CurrentFragment.IsEmpty())
+				{
+					return;
+				}
+
+				FHeistLocalForgeryStroke Fragment;
+				Fragment.PaletteIndex = StrokeData.PaletteIndex;
+				Fragment.Points = MoveTemp(CurrentFragment);
+				UpdatedStrokes.Add(MoveTemp(Fragment));
+				CurrentFragment.Reset();
+			};
 
 		const FVector2D FirstEraserSpacePoint =
 			Stroke[0] * CanvasAspectScale;
@@ -865,8 +1054,7 @@ bool UHeistForgeryWidget::EraseLocalStrokeSegments(
 				bStrokeAffected = true;
 				if (!CurrentFragment.IsEmpty())
 				{
-					UpdatedStrokes.Add(MoveTemp(CurrentFragment));
-					CurrentFragment.Reset();
+					CommitFragment();
 				}
 				if (!bEndPointInside)
 				{
@@ -886,15 +1074,14 @@ bool UHeistForgeryWidget::EraseLocalStrokeSegments(
 				bStrokeAffected = true;
 				if (!CurrentFragment.IsEmpty())
 				{
-					UpdatedStrokes.Add(MoveTemp(CurrentFragment));
-					CurrentFragment.Reset();
+					CommitFragment();
 				}
 			}
 		}
 
 		if (!CurrentFragment.IsEmpty())
 		{
-			UpdatedStrokes.Add(MoveTemp(CurrentFragment));
+			CommitFragment();
 		}
 		if (bStrokeAffected)
 		{
@@ -957,7 +1144,8 @@ void UHeistForgeryWidget::RefreshDrawingFeedback()
 				NSLOCTEXT(
 					"HeistForgery",
 					"DrawingCanvasHint",
-					"LMB DRAW  /  RMB ERASE    POINTS {0}/{1}"),
+					"LMB DRAW  /  RMB ERASE  /  1-8 COLOR    COLOR {0}    POINTS {1}/{2}"),
+				FText::AsNumber(ActivePaletteIndex + 1),
 				FText::AsNumber(PointCount),
 				FText::AsNumber(GetConfiguredStrokeLimit())));
 	}

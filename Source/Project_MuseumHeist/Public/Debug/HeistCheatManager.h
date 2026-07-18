@@ -250,6 +250,21 @@ public:
 	void HeistForgeryStrokeDump();
 
 	UFUNCTION(Exec)
+	void HeistForgeryTransportDump();
+
+	UFUNCTION(Exec)
+	void HeistForgeryTransportTest(FString Scenario);
+
+	UFUNCTION(Exec)
+	void HeistForgeryScoreDump();
+
+	UFUNCTION(Exec)
+	void HeistForgeryScoreTest();
+
+	UFUNCTION(Exec)
+	void HeistForgerySwapDump();
+
+	UFUNCTION(Exec)
 	void HeistForgeryBegin(float DurationSeconds = 60.0f);
 
 	UFUNCTION(Exec)

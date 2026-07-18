@@ -9,6 +9,12 @@ class UTextBlock;
 class UWidget;
 class UImage;
 
+struct FHeistLocalForgeryStroke
+{
+	TArray<FVector2D> Points;
+	uint8 PaletteIndex = 0;
+};
+
 UCLASS(Blueprintable)
 class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 {
@@ -42,6 +48,9 @@ protected:
 	virtual FReply NativeOnMouseMove(
 		const FGeometry& InGeometry,
 		const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnKeyDown(
+		const FGeometry& InGeometry,
+		const FKeyEvent& InKeyEvent) override;
 	virtual void NativeOnMouseCaptureLost(
 		const FCaptureLostEvent& CaptureLostEvent) override;
 
@@ -61,6 +70,13 @@ public:
 	int32 GetErasedStrokeCount() const;
 	int32 GetConfiguredStrokeLimit() const;
 	float GetConfiguredBrushSize() const;
+	UFUNCTION(BlueprintPure, Category = "Heist|Forgery|Palette")
+	int32 GetActivePaletteIndex() const;
+	UFUNCTION(BlueprintPure, Category = "Heist|Forgery|Palette")
+	FLinearColor GetActivePaletteColor() const;
+	UFUNCTION(BlueprintCallable, Category = "Heist|Forgery|Palette")
+	bool SelectPaletteIndex(int32 PaletteIndex);
+	bool RequestSubmitCollectedStrokes();
 
 private:
 	void RefreshForgeryPresentation();
@@ -92,6 +108,14 @@ protected:
 		float StateEndServerTime,
 		float ResultScore);
 
+	UFUNCTION(
+		BlueprintImplementableEvent,
+		Category = "Heist|Forgery|Palette",
+		meta = (DisplayName = "Refresh Forgery Palette"))
+	void BP_RefreshForgeryPalette(
+		const TArray<FLinearColor>& AllowedPalette,
+		int32 InActivePaletteIndex);
+
 #pragma endregion
 
 #pragma region DrawingCanvas
@@ -114,8 +138,9 @@ private:
 		const FVector2D& SegmentStart,
 		const FVector2D& SegmentEnd);
 
-	TArray<TArray<FVector2D>> LocalStrokes;
+	TArray<FHeistLocalForgeryStroke> LocalStrokes;
 	int32 ActiveStrokeIndex = INDEX_NONE;
+	int32 ActivePaletteIndex = 0;
 	int32 ErasedStrokeCount = 0;
 	bool bErasePointerActive = false;
 	bool bWasDrawingVisible = false;

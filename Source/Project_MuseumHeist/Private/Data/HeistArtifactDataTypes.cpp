@@ -86,9 +86,32 @@ EDataValidationResult FHeistForgeryTemplateRow::IsDataValid(FDataValidationConte
 	{
 		AddError(LOCTEXT("MissingReferenceImage", "ReferenceImage must reference a Texture2D."));
 	}
-	if (ReferenceMask.IsNull())
+	if (BackgroundFilterMode == EHeistForgeryBackgroundFilter::None
+		&& ReferenceMask.IsNull())
 	{
-		AddError(LOCTEXT("MissingReferenceMask", "ReferenceMask must reference a Texture2D."));
+		AddError(LOCTEXT("MissingReferenceMask", "ReferenceMask must reference a Texture2D when BackgroundFilterMode is None."));
+	}
+	if (!FMath::IsWithinInclusive(
+			BackgroundColorTolerance,
+			0.0f,
+			0.49f))
+	{
+		AddError(LOCTEXT("InvalidBackgroundColorTolerance", "BackgroundColorTolerance must be between 0.0 and 0.49."));
+	}
+	if (!FMath::IsWithinInclusive(AllowedPalette.Num(), 2, 8))
+	{
+		AddError(LOCTEXT("InvalidAllowedPaletteCount", "AllowedPalette must contain between 2 and 8 colors."));
+	}
+	for (const FLinearColor& PaletteColor : AllowedPalette)
+	{
+		if (!FMath::IsFinite(PaletteColor.R)
+			|| !FMath::IsFinite(PaletteColor.G)
+			|| !FMath::IsFinite(PaletteColor.B)
+			|| !FMath::IsFinite(PaletteColor.A))
+		{
+			AddError(LOCTEXT("InvalidAllowedPaletteColor", "AllowedPalette colors must contain finite RGBA values."));
+			break;
+		}
 	}
 	if (ObservationDuration < 0.0f)
 	{
@@ -109,9 +132,27 @@ EDataValidationResult FHeistForgeryTemplateRow::IsDataValid(FDataValidationConte
 	if (!FMath::IsWithinInclusive(CoverageWeight, 0.0f, 1.0f)
 		|| !FMath::IsWithinInclusive(MajorShapeWeight, 0.0f, 1.0f)
 		|| !FMath::IsWithinInclusive(ExtraStrokePenaltyWeight, 0.0f, 1.0f)
-		|| !FMath::IsWithinInclusive(TimeoutPenalty, 0.0f, 1.0f))
+		|| !FMath::IsWithinInclusive(TimeoutPenalty, 0.0f, 1.0f)
+		|| !FMath::IsWithinInclusive(ShapeAccuracyWeight, 0.0f, 1.0f)
+		|| !FMath::IsWithinInclusive(ColorAccuracyWeight, 0.0f, 1.0f))
 	{
 		AddError(LOCTEXT("InvalidForgeryWeights", "Forgery weights and penalties must be between 0.0 and 1.0."));
+	}
+	if (CoverageWeight + MajorShapeWeight <= 0.0f)
+	{
+		AddError(LOCTEXT("MissingPositiveForgeryScoreWeight", "CoverageWeight and MajorShapeWeight cannot both be zero."));
+	}
+	if (ShapeAccuracyWeight + ColorAccuracyWeight <= 0.0f)
+	{
+		AddError(LOCTEXT("MissingPositiveAccuracyWeight", "ShapeAccuracyWeight and ColorAccuracyWeight cannot both be zero."));
+	}
+	if (MaximumPaintToReferenceRatio < 1.0f)
+	{
+		AddError(LOCTEXT("InvalidMaximumPaintRatio", "MaximumPaintToReferenceRatio must be 1.0 or greater."));
+	}
+	if (!FMath::IsWithinInclusive(OverpaintScoreCap, 0.0f, 100.0f))
+	{
+		AddError(LOCTEXT("InvalidOverpaintScoreCap", "OverpaintScoreCap must be between 0.0 and 100.0."));
 	}
 
 	return Result;
