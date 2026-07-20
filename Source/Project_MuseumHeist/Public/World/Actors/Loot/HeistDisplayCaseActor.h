@@ -8,7 +8,32 @@
 
 class AHeistGameState;
 class AHeistPlayerState;
+class UMaterialInstanceDynamic;
+class UMaterialInterface;
 class UStaticMeshComponent;
+class UTexture2D;
+
+USTRUCT(BlueprintType)
+struct PROJECT_MUSEUMHEIST_API FHeistReplicaPaintingData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|DisplayCase|Replica|Painting")
+	int32 Resolution = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|DisplayCase|Replica|Painting")
+	TArray<FColor> Palette;
+
+	/**
+	 * Two 4-bit indices per byte. Index 0 is the canvas background and
+	 * indices 1~8 address Palette[0~7].
+	 */
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|DisplayCase|Replica|Painting")
+	TArray<uint8> PackedPaletteIndices;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|DisplayCase|Replica|Painting")
+	int32 Revision = 0;
+};
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(
 	FHeistDisplayCaseStateChangedSignature,
@@ -125,15 +150,81 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Replica")
 	int32 GetCommittedForgeryRevision() const;
 
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Replica|Visual")
+	int32 GetReplicaVisualTier() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Replica|Visual")
+	FName GetReplicaVisualTierName() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Replica|Visual")
+	bool IsReplicaWorldVisualReady() const;
+
+	void GetReplicaWorldVisualDebugState(
+		bool& OutReplicaExpectedVisible,
+		bool& OutHasReplicaMesh,
+		int32& OutExpectedTier,
+		int32& OutAppliedTier,
+		FName& OutTierName,
+		bool& OutUsingTierMaterial,
+		bool& OutUsingTransformFallback,
+		bool& OutCustomPrimitiveDataApplied,
+		bool& OutContractPassed) const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Replica|Painting")
+	bool HasReplicaPaintingData() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Replica|Painting")
+	int32 GetReplicaPaintingRevision() const;
+
+	void GetReplicaPaintingDebugState(
+		int32& OutResolution,
+		int32& OutPaletteColorCount,
+		int32& OutPackedByteCount,
+		int32& OutPaintingRevision,
+		bool& OutTextureBuilt,
+		bool& OutDynamicMaterialBuilt,
+		bool& OutTextureParameterApplied,
+		bool& OutContractPassed) const;
+
 	bool TryCommitReplicaPlacement(
 		AHeistPlayerState* RequestingPlayerState,
-		const FHeistForgeryResult& ForgeryResult);
+		const FHeistForgeryResult& ForgeryResult,
+		const FHeistReplicaPaintingData& PaintingData);
+
+protected:
+	/**
+	 * Optional Blueprint presentation hook. Gameplay state and tier selection
+	 * remain C++; Blueprint may only add visual polish.
+	 */
+	UFUNCTION(
+		BlueprintImplementableEvent,
+		Category = "Heist|DisplayCase|Replica|Visual",
+		meta = (DisplayName = "Apply Replica World Visual"))
+	void BP_ApplyReplicaWorldVisual(
+		int32 VisualTier,
+		FName VisualTierName,
+		float SimilarityScore,
+		float CoverageScore,
+		float ColorAccuracyScore,
+		FName TemplateId,
+		bool bUsingAssignedTierMaterial);
 
 private:
 	bool ValidateReplicaPlacementRequest(
 		AHeistPlayerState* RequestingPlayerState,
 		const FHeistForgeryResult& ForgeryResult,
 		FName& OutRejectReason) const;
+	bool ValidateReplicaPaintingData(
+		const FHeistReplicaPaintingData& PaintingData,
+		FName& OutRejectReason) const;
+	void CaptureReplicaVisualBaseline();
+	void RefreshReplicaWorldVisual();
+	void RefreshReplicaPaintingTexture();
+	UTexture2D* BuildReplicaPaintingTexture() const;
+	void ResetReplicaPaintingResources();
+	UMaterialInterface* ResolveReplicaTierMaterial(int32 VisualTier) const;
+	static int32 ResolveReplicaVisualTier(float SimilarityScore);
+	static FName ResolveReplicaVisualTierName(int32 VisualTier);
 
 	UPROPERTY(
 		Replicated,
@@ -159,8 +250,87 @@ private:
 		meta = (AllowPrivateAccess = "true"))
 	int32 CommittedForgeryRevision = 0;
 
+	UPROPERTY(
+		ReplicatedUsing = OnRep_ReplicaPaintingData,
+		VisibleInstanceOnly,
+		BlueprintReadOnly,
+		Category = "Heist|DisplayCase|Replica|Painting",
+		meta = (AllowPrivateAccess = "true"))
+	FHeistReplicaPaintingData ReplicaPaintingData;
+
+	UPROPERTY(
+		EditDefaultsOnly,
+		BlueprintReadOnly,
+		Category = "Heist|DisplayCase|Replica|Painting",
+		meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UMaterialInterface> ReplicaPaintingMaterial;
+
+	UPROPERTY(
+		EditDefaultsOnly,
+		BlueprintReadOnly,
+		Category = "Heist|DisplayCase|Replica|Painting",
+		meta = (AllowPrivateAccess = "true"))
+	FName ReplicaPaintingTextureParameter = TEXT("PaintingTexture");
+
+	UPROPERTY(
+		EditDefaultsOnly,
+		BlueprintReadOnly,
+		Category = "Heist|DisplayCase|Replica|Painting",
+		meta = (AllowPrivateAccess = "true"))
+	FLinearColor ReplicaPaintingBackgroundColor =
+		FLinearColor(0.94f, 0.92f, 0.84f, 1.0f);
+
+	UPROPERTY(
+		EditDefaultsOnly,
+		BlueprintReadOnly,
+		Category = "Heist|DisplayCase|Replica|Visual",
+		meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UMaterialInterface> ReplicaPoorMaterial;
+
+	UPROPERTY(
+		EditDefaultsOnly,
+		BlueprintReadOnly,
+		Category = "Heist|DisplayCase|Replica|Visual",
+		meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UMaterialInterface> ReplicaFairMaterial;
+
+	UPROPERTY(
+		EditDefaultsOnly,
+		BlueprintReadOnly,
+		Category = "Heist|DisplayCase|Replica|Visual",
+		meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UMaterialInterface> ReplicaGoodMaterial;
+
+	UPROPERTY(
+		EditDefaultsOnly,
+		BlueprintReadOnly,
+		Category = "Heist|DisplayCase|Replica|Visual",
+		meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UMaterialInterface> ReplicaExcellentMaterial;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInterface> ReplicaBaselineMaterial;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> ReplicaPaintingTexture;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> ReplicaPaintingDynamicMaterial;
+
+	FTransform ReplicaBaselineRelativeTransform = FTransform::Identity;
+	int32 AppliedReplicaVisualTier = INDEX_NONE;
+	int32 AppliedReplicaPaintingRevision = 0;
+	bool bReplicaVisualBaselineCaptured = false;
+	bool bUsingReplicaTierMaterial = false;
+	bool bUsingReplicaTransformFallback = false;
+	bool bReplicaVisualCustomPrimitiveDataApplied = false;
+	bool bReplicaPaintingTextureParameterApplied = false;
+
 	UFUNCTION()
 	void OnRep_CommittedForgeryRevision();
+
+	UFUNCTION()
+	void OnRep_ReplicaPaintingData();
 
 #pragma endregion
 

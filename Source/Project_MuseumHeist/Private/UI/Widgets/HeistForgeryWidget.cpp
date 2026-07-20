@@ -1,5 +1,6 @@
 #include "UI/Widgets/HeistForgeryWidget.h"
 
+#include "Components/Button.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "Components/Widget.h"
@@ -20,6 +21,8 @@ namespace
 	constexpr float MinimumNormalizedPointSpacing = 0.004f;
 	constexpr float BrushRelativePointSpacing = 0.75f;
 	constexpr float MinimumNormalizedEraseRadius = 0.015f;
+	constexpr float PreviewScoreUpdateIntervalSeconds = 0.20f;
+	constexpr float DrawingSurfaceSizeSlateUnits = 400.0f;
 }
 
 UHeistForgeryWidget::UHeistForgeryWidget(
@@ -27,6 +30,14 @@ UHeistForgeryWidget::UHeistForgeryWidget(
 	: Super(ObjectInitializer)
 {
 	SetIsFocusable(true);
+}
+
+void UHeistForgeryWidget::NativeConstruct()
+{
+	Super::NativeConstruct();
+	BindPaletteButtons();
+	RefreshPaletteButtons();
+	MarkPreviewScoreDirty();
 }
 
 void UHeistForgeryWidget::NativeDestruct()
@@ -40,6 +51,27 @@ void UHeistForgeryWidget::NativeDestruct()
 	}
 
 	Super::NativeDestruct();
+}
+
+void UHeistForgeryWidget::NativeTick(
+	const FGeometry& MyGeometry,
+	const float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+
+	if (!bPreviewScoreDirty || !IsDrawingInputEnabled())
+	{
+		return;
+	}
+
+	PreviewScoreUpdateAccumulator += InDeltaTime;
+	if (PreviewScoreUpdateAccumulator
+		< PreviewScoreUpdateIntervalSeconds)
+	{
+		return;
+	}
+
+	RefreshLocalPreviewScore();
 }
 
 int32 UHeistForgeryWidget::NativePaint(
@@ -445,14 +477,22 @@ bool UHeistForgeryWidget::IsWidgetPresentationVisible() const
 
 bool UHeistForgeryWidget::IsDrawingSurfaceReady() const
 {
-	if (!IsValid(DrawingSurface))
-	{
-		return false;
-	}
+	const FVector2D SurfaceSize = GetDrawingSurfaceSize();
+	return FMath::IsNearlyEqual(
+			SurfaceSize.X,
+			DrawingSurfaceSizeSlateUnits,
+			1.0)
+		&& FMath::IsNearlyEqual(
+			SurfaceSize.Y,
+			DrawingSurfaceSizeSlateUnits,
+			1.0);
+}
 
-	const FVector2D SurfaceSize =
-		DrawingSurface->GetCachedGeometry().GetLocalSize();
-	return SurfaceSize.X > 0.0f && SurfaceSize.Y > 0.0f;
+FVector2D UHeistForgeryWidget::GetDrawingSurfaceSize() const
+{
+	return IsValid(DrawingSurface)
+		? DrawingSurface->GetCachedGeometry().GetLocalSize()
+		: FVector2D::ZeroVector;
 }
 
 bool UHeistForgeryWidget::AreCollectedPointsNormalized() const
@@ -503,6 +543,37 @@ int32 UHeistForgeryWidget::GetErasedStrokeCount() const
 	return ErasedStrokeCount;
 }
 
+int32 UHeistForgeryWidget::GetVisiblePaletteButtonCount() const
+{
+	const UButton* Buttons[] = {
+		PaletteButton1.Get(),
+		PaletteButton2.Get(),
+		PaletteButton3.Get(),
+		PaletteButton4.Get(),
+		PaletteButton5.Get(),
+		PaletteButton6.Get(),
+		PaletteButton7.Get(),
+		PaletteButton8.Get()
+	};
+	int32 VisibleButtonCount = 0;
+	for (const UButton* Button : Buttons)
+	{
+		VisibleButtonCount += IsValid(Button)
+			&& Button->GetVisibility() != ESlateVisibility::Collapsed
+			&& Button->GetVisibility() != ESlateVisibility::Hidden
+				? 1
+				: 0;
+	}
+	return VisibleButtonCount;
+}
+
+FString UHeistForgeryWidget::GetPreviewScoreText() const
+{
+	return IsValid(PreviewScoreText)
+		? PreviewScoreText->GetText().ToString()
+		: FString();
+}
+
 int32 UHeistForgeryWidget::GetConfiguredStrokeLimit() const
 {
 	return IsValid(ForgeryViewModel)
@@ -549,6 +620,7 @@ bool UHeistForgeryWidget::SelectPaletteIndex(const int32 PaletteIndex)
 	BP_RefreshForgeryPalette(
 		ForgeryViewModel->GetAllowedPalette(),
 		ActivePaletteIndex);
+	RefreshPaletteButtons();
 	RefreshDrawingFeedback();
 	InvalidateLayoutAndVolatility();
 	return true;
@@ -570,24 +642,12 @@ bool UHeistForgeryWidget::RequestSubmitCollectedStrokes()
 	TArray<FVector2D> NormalizedPoints;
 	TArray<int32> StrokePointCounts;
 	TArray<uint8> StrokePaletteIndices;
-	NormalizedPoints.Reserve(GetCollectedPointCount());
-	StrokePointCounts.Reserve(LocalStrokes.Num());
-	StrokePaletteIndices.Reserve(LocalStrokes.Num());
 	int32 IgnoredShortStrokeCount = 0;
-	for (const FHeistLocalForgeryStroke& Stroke : LocalStrokes)
-	{
-		if (Stroke.Points.Num() < 2)
-		{
-			++IgnoredShortStrokeCount;
-			continue;
-		}
-
-		StrokePointCounts.Add(Stroke.Points.Num());
-		StrokePaletteIndices.Add(Stroke.PaletteIndex);
-		NormalizedPoints.Append(Stroke.Points);
-	}
-
-	if (StrokePointCounts.IsEmpty() || NormalizedPoints.IsEmpty())
+	if (!BuildDrawableStrokePayload(
+			NormalizedPoints,
+			StrokePointCounts,
+			StrokePaletteIndices,
+			IgnoredShortStrokeCount))
 	{
 		UE_LOG(
 			LogHeistUI,
@@ -679,6 +739,8 @@ void UHeistForgeryWidget::RefreshForgeryPresentation()
 		}
 		BP_RefreshForgeryPalette(Palette, ActivePaletteIndex);
 	}
+	RefreshPaletteButtons();
+	MarkPreviewScoreDirty();
 
 	if (IsValid(StateText))
 	{
@@ -799,6 +861,7 @@ bool UHeistForgeryWidget::BeginLocalStroke(
 	LocalStrokes[ActiveStrokeIndex].PaletteIndex =
 		static_cast<uint8>(ActivePaletteIndex);
 	LocalStrokes[ActiveStrokeIndex].Points.Add(NormalizedPoint);
+	MarkPreviewScoreDirty();
 	RefreshDrawingFeedback();
 	InvalidateLayoutAndVolatility();
 	return true;
@@ -879,12 +942,14 @@ bool UHeistForgeryWidget::AppendLocalStrokePoint(
 			}
 
 			ActiveStroke.Last() = NormalizedPoint;
+			MarkPreviewScoreDirty();
 			InvalidateLayoutAndVolatility();
 			return true;
 		}
 	}
 
 	ActiveStroke.Add(NormalizedPoint);
+	MarkPreviewScoreDirty();
 	RefreshDrawingFeedback();
 	InvalidateLayoutAndVolatility();
 	return true;
@@ -936,6 +1001,7 @@ bool UHeistForgeryWidget::CompactLocalStrokesForPointBudget()
 		PreviousPointCount,
 		CompactedPointCount,
 		GetConfiguredStrokeLimit());
+	MarkPreviewScoreDirty();
 	RefreshDrawingFeedback();
 	InvalidateLayoutAndVolatility();
 	return true;
@@ -1096,9 +1162,285 @@ bool UHeistForgeryWidget::EraseLocalStrokeSegments(
 
 	LocalStrokes = MoveTemp(UpdatedStrokes);
 	ErasedStrokeCount += AffectedStrokeCount;
+	MarkPreviewScoreDirty();
 	RefreshDrawingFeedback();
 	InvalidateLayoutAndVolatility();
 	return true;
+}
+
+bool UHeistForgeryWidget::BuildDrawableStrokePayload(
+	TArray<FVector2D>& OutNormalizedPoints,
+	TArray<int32>& OutStrokePointCounts,
+	TArray<uint8>& OutStrokePaletteIndices,
+	int32& OutIgnoredShortStrokeCount) const
+{
+	OutNormalizedPoints.Reset();
+	OutStrokePointCounts.Reset();
+	OutStrokePaletteIndices.Reset();
+	OutIgnoredShortStrokeCount = 0;
+	OutNormalizedPoints.Reserve(GetCollectedPointCount());
+	OutStrokePointCounts.Reserve(LocalStrokes.Num());
+	OutStrokePaletteIndices.Reserve(LocalStrokes.Num());
+
+	for (const FHeistLocalForgeryStroke& Stroke : LocalStrokes)
+	{
+		if (Stroke.Points.Num() < 2)
+		{
+			++OutIgnoredShortStrokeCount;
+			continue;
+		}
+
+		OutStrokePointCounts.Add(Stroke.Points.Num());
+		OutStrokePaletteIndices.Add(Stroke.PaletteIndex);
+		OutNormalizedPoints.Append(Stroke.Points);
+	}
+
+	return !OutStrokePointCounts.IsEmpty()
+		&& !OutNormalizedPoints.IsEmpty();
+}
+
+void UHeistForgeryWidget::MarkPreviewScoreDirty()
+{
+	bPreviewScoreDirty = true;
+}
+
+void UHeistForgeryWidget::RefreshLocalPreviewScore()
+{
+	PreviewScoreUpdateAccumulator = 0.0f;
+	TArray<FVector2D> NormalizedPoints;
+	TArray<int32> StrokePointCounts;
+	TArray<uint8> StrokePaletteIndices;
+	int32 IgnoredShortStrokeCount = 0;
+	if (!BuildDrawableStrokePayload(
+			NormalizedPoints,
+			StrokePointCounts,
+			StrokePaletteIndices,
+			IgnoredShortStrokeCount))
+	{
+		bPreviewScoreDirty = false;
+		if (IsValid(PreviewScoreText))
+		{
+			PreviewScoreText->SetText(
+				NSLOCTEXT(
+					"HeistForgery",
+					"EmptyPreviewScore",
+					"PREVIEW SCORE  --"));
+		}
+		return;
+	}
+
+	FHeistForgeryResult PreviewResult;
+	int32 ReferenceMaskPixels = 0;
+	int32 SubmittedMaskPixels = 0;
+	if (!IsValid(ForgeryViewModel)
+		|| !ForgeryViewModel->CalculatePreviewScore(
+			NormalizedPoints,
+			StrokePointCounts,
+			StrokePaletteIndices,
+			GetConfiguredBrushSize(),
+			PreviewResult,
+			ReferenceMaskPixels,
+			SubmittedMaskPixels))
+	{
+		// Owner-only template score settings may arrive one replication
+		// update after the drawing state. The next presentation refresh or
+		// stroke change retries without generating RPC or log traffic.
+		bPreviewScoreDirty = false;
+		if (IsValid(PreviewScoreText))
+		{
+			PreviewScoreText->SetText(
+				NSLOCTEXT(
+					"HeistForgery",
+					"PendingPreviewScore",
+					"PREVIEW SCORE  ..."));
+		}
+		return;
+	}
+
+	bPreviewScoreDirty = false;
+	if (IsValid(PreviewScoreText))
+	{
+		PreviewScoreText->SetText(
+			FText::Format(
+				NSLOCTEXT(
+					"HeistForgery",
+					"PreviewScoreFormat",
+					"PREVIEW SCORE  {0}"),
+				FText::AsNumber(
+					FMath::RoundToInt(
+						PreviewResult.SimilarityScore))));
+	}
+}
+
+void UHeistForgeryWidget::BindPaletteButtons()
+{
+	if (IsValid(PaletteButton1))
+	{
+		PaletteButton1->OnClicked.RemoveAll(this);
+		PaletteButton1->OnClicked.AddDynamic(
+			this,
+			&UHeistForgeryWidget::HandlePaletteButton1Clicked);
+	}
+	if (IsValid(PaletteButton2))
+	{
+		PaletteButton2->OnClicked.RemoveAll(this);
+		PaletteButton2->OnClicked.AddDynamic(
+			this,
+			&UHeistForgeryWidget::HandlePaletteButton2Clicked);
+	}
+	if (IsValid(PaletteButton3))
+	{
+		PaletteButton3->OnClicked.RemoveAll(this);
+		PaletteButton3->OnClicked.AddDynamic(
+			this,
+			&UHeistForgeryWidget::HandlePaletteButton3Clicked);
+	}
+	if (IsValid(PaletteButton4))
+	{
+		PaletteButton4->OnClicked.RemoveAll(this);
+		PaletteButton4->OnClicked.AddDynamic(
+			this,
+			&UHeistForgeryWidget::HandlePaletteButton4Clicked);
+	}
+	if (IsValid(PaletteButton5))
+	{
+		PaletteButton5->OnClicked.RemoveAll(this);
+		PaletteButton5->OnClicked.AddDynamic(
+			this,
+			&UHeistForgeryWidget::HandlePaletteButton5Clicked);
+	}
+	if (IsValid(PaletteButton6))
+	{
+		PaletteButton6->OnClicked.RemoveAll(this);
+		PaletteButton6->OnClicked.AddDynamic(
+			this,
+			&UHeistForgeryWidget::HandlePaletteButton6Clicked);
+	}
+	if (IsValid(PaletteButton7))
+	{
+		PaletteButton7->OnClicked.RemoveAll(this);
+		PaletteButton7->OnClicked.AddDynamic(
+			this,
+			&UHeistForgeryWidget::HandlePaletteButton7Clicked);
+	}
+	if (IsValid(PaletteButton8))
+	{
+		PaletteButton8->OnClicked.RemoveAll(this);
+		PaletteButton8->OnClicked.AddDynamic(
+			this,
+			&UHeistForgeryWidget::HandlePaletteButton8Clicked);
+	}
+}
+
+void UHeistForgeryWidget::RefreshPaletteButtons()
+{
+	UButton* Buttons[] = {
+		PaletteButton1.Get(),
+		PaletteButton2.Get(),
+		PaletteButton3.Get(),
+		PaletteButton4.Get(),
+		PaletteButton5.Get(),
+		PaletteButton6.Get(),
+		PaletteButton7.Get(),
+		PaletteButton8.Get()
+	};
+	UTextBlock* Labels[] = {
+		PaletteButtonText1.Get(),
+		PaletteButtonText2.Get(),
+		PaletteButtonText3.Get(),
+		PaletteButtonText4.Get(),
+		PaletteButtonText5.Get(),
+		PaletteButtonText6.Get(),
+		PaletteButtonText7.Get(),
+		PaletteButtonText8.Get()
+	};
+	const TArray<FLinearColor>* Palette = IsValid(ForgeryViewModel)
+		? &ForgeryViewModel->GetAllowedPalette()
+		: nullptr;
+
+	for (int32 PaletteIndex = 0;
+		PaletteIndex < UE_ARRAY_COUNT(Buttons);
+		++PaletteIndex)
+	{
+		UButton* Button = Buttons[PaletteIndex];
+		UTextBlock* Label = Labels[PaletteIndex];
+		const bool bAvailable = Palette != nullptr
+			&& Palette->IsValidIndex(PaletteIndex);
+		if (IsValid(Button))
+		{
+			Button->SetVisibility(
+				bAvailable
+					? ESlateVisibility::Visible
+					: ESlateVisibility::Collapsed);
+			if (bAvailable)
+			{
+				const bool bSelected =
+					PaletteIndex == ActivePaletteIndex;
+				Button->SetBackgroundColor((*Palette)[PaletteIndex]);
+				Button->SetRenderOpacity(bSelected ? 1.0f : 0.65f);
+				Button->SetRenderScale(
+					bSelected
+						? FVector2D(1.10, 1.10)
+						: FVector2D(1.0, 1.0));
+			}
+		}
+		if (IsValid(Label))
+		{
+			Label->SetText(FText::AsNumber(PaletteIndex + 1));
+			if (bAvailable)
+			{
+				const FLinearColor& Color = (*Palette)[PaletteIndex];
+				const float Luminance =
+					Color.R * 0.2126f
+					+ Color.G * 0.7152f
+					+ Color.B * 0.0722f;
+				Label->SetColorAndOpacity(
+					Luminance > 0.45f
+						? FSlateColor(FLinearColor::Black)
+						: FSlateColor(FLinearColor::White));
+			}
+		}
+	}
+}
+
+void UHeistForgeryWidget::HandlePaletteButton1Clicked()
+{
+	SelectPaletteIndex(0);
+}
+
+void UHeistForgeryWidget::HandlePaletteButton2Clicked()
+{
+	SelectPaletteIndex(1);
+}
+
+void UHeistForgeryWidget::HandlePaletteButton3Clicked()
+{
+	SelectPaletteIndex(2);
+}
+
+void UHeistForgeryWidget::HandlePaletteButton4Clicked()
+{
+	SelectPaletteIndex(3);
+}
+
+void UHeistForgeryWidget::HandlePaletteButton5Clicked()
+{
+	SelectPaletteIndex(4);
+}
+
+void UHeistForgeryWidget::HandlePaletteButton6Clicked()
+{
+	SelectPaletteIndex(5);
+}
+
+void UHeistForgeryWidget::HandlePaletteButton7Clicked()
+{
+	SelectPaletteIndex(6);
+}
+
+void UHeistForgeryWidget::HandlePaletteButton8Clicked()
+{
+	SelectPaletteIndex(7);
 }
 
 void UHeistForgeryWidget::FinishPointerInteraction()
@@ -1116,6 +1458,7 @@ void UHeistForgeryWidget::ResetLocalStrokePreview()
 	PendingDrawMouseScreen = FVector2D::ZeroVector;
 	PendingDrawNormalizedPoint = FVector2D::ZeroVector;
 	DrawingInputWidgetGeometry.Reset();
+	MarkPreviewScoreDirty();
 	RefreshDrawingFeedback();
 	InvalidateLayoutAndVolatility();
 }
@@ -1144,10 +1487,17 @@ void UHeistForgeryWidget::RefreshDrawingFeedback()
 				NSLOCTEXT(
 					"HeistForgery",
 					"DrawingCanvasHint",
-					"LMB DRAW  /  RMB ERASE  /  1-8 COLOR    COLOR {0}    POINTS {1}/{2}"),
+					"LMB DRAW  /  RMB ERASE  /  ENTER SUBMIT    COLOR {0}    POINTS {1}/{2}"),
 				FText::AsNumber(ActivePaletteIndex + 1),
 				FText::AsNumber(PointCount),
 				FText::AsNumber(GetConfiguredStrokeLimit())));
+	}
+	if (IsValid(PreviewScoreText))
+	{
+		PreviewScoreText->SetVisibility(
+			bDrawingVisible
+				? ESlateVisibility::HitTestInvisible
+				: ESlateVisibility::Collapsed);
 	}
 }
 

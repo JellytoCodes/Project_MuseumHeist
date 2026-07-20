@@ -70,6 +70,10 @@ EHeistObjectiveState
 - Failed
 ```
 
+- `ReplicaPlaced`부터 액자 표면에는 Replica만 표시하며 Original 평면은 숨긴다.
+- `OriginalAvailable`은 Original이 액자에서 분리되어 회수 대기 중인 서버 상태다. 평면은 숨겨도 Display Case 상호작용으로 회수할 수 있다.
+- 제출 그림용 Material이 지정된 Replica는 Score Tier에 따른 Roll/Scale 변형을 적용하지 않고 Blueprint 기준 Transform을 유지한다.
+
 ## 신규 Struct — Add
 
 ```cpp
@@ -232,6 +236,13 @@ FHeistForgeryTemplateRow
 - OverpaintScoreCap
 ```
 
+### Forgery UI Runtime Contract
+
+- Reference Image / Drawing Canvas display area: 400×400 square
+- Palette: 2~8 DataTable colors, mouse button selection and number keys 1~8
+- Preview Score: throttled owner-local estimate using the shared C++ evaluator
+- Final Score: server-authoritative result only
+
 ## `Data/HeistGameBalanceDataAsset.*`
 `UHeistGameBalanceDataAsset` — Modify
 
@@ -258,6 +269,29 @@ FHeistForgeryTemplateRow
 | `AHeistLootSpawnPoint` | Keep | Loose Loot Spawn |
 | `AHeistPlayerStart` | Keep | Spawn |
 | `AHeistGuardWaypoint` | Keep | Patrol |
+
+### Replica World Visual Contract
+
+- `AHeistDisplayCaseActor`는 서버에서 확정·복제된 `FHeistForgeryResult`를 4단계 Score Tier로 변환한다.
+- Tier 선택과 적용 상태는 C++가 소유하며 Blueprint는 Tier Material 지정 또는 `BP_ApplyReplicaWorldVisual` 시각 연출만 담당한다.
+- 별도 Tier Material이 없으면 Replica Mesh의 상대 회전·크기 변형을 대체 비주얼로 사용한다.
+- Score, Coverage, Color Accuracy, Tier는 Replica Mesh Custom Primitive Data 0~3에 기록한다.
+- 최종 제출 Stroke는 서버 Score와 동일한 `128×128` Palette Raster로 변환하고 Background를 0, Palette 색을 1~8로 매핑한 4-bit Index Data로 패킹한다.
+- `AHeistDisplayCaseActor`는 확정된 Palette와 Packed Index Data를 제출 시 한 번만 복제한다.
+- 각 Client는 RepNotify에서 동일한 Transient `UTexture2D`를 재구성하고 `ReplicaVisualComponent`의 Dynamic Material `PaintingTexture` Parameter에 적용한다.
+- 늦게 참가하거나 Actor Relevancy가 복구된 Client도 복제된 확정 Data로 동일한 그림을 재구성한다.
+- Blueprint는 `AHeistDisplayCaseActor` 기반의 재사용 가능한 Painting Frame Shell, Frame Mesh, UV가 정규화된 Original/Replica Plane, `PaintingTexture` Parameter Material을 담당한다.
+- Render Target 또는 전체 Stroke Payload를 World Visual 목적으로 추가 복제하지 않는다.
+
+### Forgery Recovery Contract
+
+- Cancel/Submit 및 Timeout/Submit 경합은 서버 RPC 처리 순서에서 하나의 종료 결과만 확정한다.
+- Arrest, Disconnect, Match Phase 변경, Owner/Case EndPlay는 활성 Forgery Session과 Display Case Lock을 함께 정리한다.
+- Disconnect는 `UHeistForgeryComponent`를 먼저 정리하고 Display Case 전체 Sweep을 안전망으로 수행한다.
+- 복구 뒤 Forgery Widget은 숨겨지고 단일 인스턴스만 유지하며 입력 모드는 Forgery가 아닌 유효한 단일 Context로 복원한다.
+- `HeistForgeryRecoveryDump`는 Local Session/UI/Input과 서버의 Orphan Case Lock/Session을 함께 검증한다.
+- `HeistForgeryRecoveryRace <CancelSubmit|SubmitCancel>`는 Owning Client에서 두 요청을 연속 전송해 서버 직렬화 결과를 검증한다.
+- `HeistForgeryTransportTest NearTimeout`은 서버 만료 직전 유효 Payload가 확정되고, `Timeout`은 만료 이후 Payload가 거부·정리되는 경계를 검증한다.
 
 금지:
 

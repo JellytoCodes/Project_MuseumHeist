@@ -3,13 +3,14 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Core/HeistTypes.h"
+#include "Data/HeistArtifactDataTypes.h"
 
 #include "HeistForgeryComponent.generated.h"
 
 class AHeistDisplayCaseActor;
 class AHeistPlayerState;
 class UTexture2D;
-enum class EHeistForgeryBackgroundFilter : uint8;
+struct FHeistReplicaPaintingData;
 
 DECLARE_MULTICAST_DELEGATE(FHeistForgerySessionStateChanged);
 
@@ -52,6 +53,7 @@ public:
 	bool CancelForgerySession(FName Reason);
 	bool ForceTimeoutForDebug();
 	bool ForceExpireSubmissionWindowForDebug();
+	bool ForceNearExpirySubmissionWindowForDebug();
 
 	bool IsSessionActive() const;
 	bool IsSubmitPending() const;
@@ -92,6 +94,14 @@ public:
 		FHeistForgeryResult& OutResult,
 		int32& OutReferenceMaskPixels,
 		int32& OutSubmittedMaskPixels) const;
+	bool CalculateLocalForgeryPreview(
+		const TArray<FVector2D>& NormalizedPoints,
+		const TArray<int32>& StrokePointCounts,
+		const TArray<uint8>& StrokePaletteIndices,
+		float BrushSize,
+		FHeistForgeryResult& OutResult,
+		int32& OutReferenceMaskPixels,
+		int32& OutSubmittedMaskPixels) const;
 	FHeistForgerySessionStateChanged& GetSessionStateChangedDelegate();
 
 private:
@@ -107,6 +117,8 @@ private:
 	void RecordStrokeValidationResult(bool bAccepted, FName Reason);
 	void ResetStrokeTransportState(bool bResetLastValidation);
 	bool TryCalculateAndCommitForgeryScore();
+	bool BuildReplicaPaintingData(
+		FHeistReplicaPaintingData& OutPaintingData) const;
 	bool CalculateForgeryScore(
 		const TArray<FVector2D>& NormalizedPoints,
 		const TArray<int32>& StrokePointCounts,
@@ -115,6 +127,8 @@ private:
 		FHeistForgeryResult& OutResult,
 		int32& OutReferenceMaskPixels,
 		int32& OutSubmittedMaskPixels) const;
+	bool BuildScoringReferenceCache() const;
+	void ResetScoringReferenceCache() const;
 	void ResetForgeryScoreState();
 	void CompleteSuccessfulForgerySession();
 	void HandleSessionTimeout();
@@ -384,17 +398,41 @@ private:
 		meta = (AllowPrivateAccess = "true"))
 	int32 SubmittedMaskPixelCount = 0;
 
+	UPROPERTY(Replicated)
 	float TemplateCoverageWeight = 0.0f;
+
+	UPROPERTY(Replicated)
 	float TemplateMajorShapeWeight = 0.0f;
+
+	UPROPERTY(Replicated)
 	float TemplateExtraStrokePenaltyWeight = 0.0f;
+
+	UPROPERTY(Replicated)
 	float TemplateTimeoutPenalty = 0.0f;
-	EHeistForgeryBackgroundFilter TemplateBackgroundFilterMode{};
+
+	UPROPERTY(Replicated)
+	EHeistForgeryBackgroundFilter TemplateBackgroundFilterMode =
+		EHeistForgeryBackgroundFilter::None;
+
+	UPROPERTY(Replicated)
 	float TemplateBackgroundColorTolerance = 0.0f;
+
+	UPROPERTY(Replicated)
 	float TemplateShapeAccuracyWeight = 0.0f;
+
+	UPROPERTY(Replicated)
 	float TemplateColorAccuracyWeight = 0.0f;
+
+	UPROPERTY(Replicated)
 	float TemplateMaximumPaintToReferenceRatio = 0.0f;
+
+	UPROPERTY(Replicated)
 	float TemplateOverpaintScoreCap = 0.0f;
 	float ActiveSessionDurationSeconds = 0.0f;
+
+	mutable FName CachedScoringTemplateId = NAME_None;
+	mutable TArray<uint8> CachedReferenceMask;
+	mutable TArray<uint8> CachedReferencePaletteMap;
 
 	FTimerHandle SessionTimeoutTimerHandle;
 	FHeistForgerySessionStateChanged SessionStateChangedDelegate;

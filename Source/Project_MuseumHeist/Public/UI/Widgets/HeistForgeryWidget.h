@@ -8,6 +8,7 @@
 class UTextBlock;
 class UWidget;
 class UImage;
+class UButton;
 
 struct FHeistLocalForgeryStroke
 {
@@ -30,7 +31,11 @@ public:
 #pragma region Lifecycle
 
 protected:
+	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
+	virtual void NativeTick(
+		const FGeometry& MyGeometry,
+		float InDeltaTime) override;
 	virtual int32 NativePaint(
 		const FPaintArgs& Args,
 		const FGeometry& AllottedGeometry,
@@ -63,11 +68,14 @@ public:
 	bool IsOwnerOnlyContractSatisfied() const;
 	bool IsWidgetPresentationVisible() const;
 	bool IsDrawingSurfaceReady() const;
+	FVector2D GetDrawingSurfaceSize() const;
 	bool AreCollectedPointsNormalized() const;
 	int32 GetCollectedStrokeCount() const;
 	int32 GetCollectedPointCount() const;
 	int32 GetCollectedSegmentCount() const;
 	int32 GetErasedStrokeCount() const;
+	int32 GetVisiblePaletteButtonCount() const;
+	FString GetPreviewScoreText() const;
 	int32 GetConfiguredStrokeLimit() const;
 	float GetConfiguredBrushSize() const;
 	UFUNCTION(BlueprintPure, Category = "Heist|Forgery|Palette")
@@ -129,9 +137,18 @@ private:
 	bool AppendLocalStrokePoint(const FVector2D& NormalizedPoint);
 	bool CompactLocalStrokesForPointBudget();
 	bool EraseLocalStrokeSegments(const FVector2D& NormalizedPoint);
+	bool BuildDrawableStrokePayload(
+		TArray<FVector2D>& OutNormalizedPoints,
+		TArray<int32>& OutStrokePointCounts,
+		TArray<uint8>& OutStrokePaletteIndices,
+		int32& OutIgnoredShortStrokeCount) const;
 	void FinishPointerInteraction();
 	void ResetLocalStrokePreview();
 	void RefreshDrawingFeedback();
+	void MarkPreviewScoreDirty();
+	void RefreshLocalPreviewScore();
+	void BindPaletteButtons();
+	void RefreshPaletteButtons();
 	float GetNormalizedEraseRadius() const;
 	static float GetPointToSegmentDistanceSquared(
 		const FVector2D& Point,
@@ -148,6 +165,32 @@ private:
 	mutable bool bPendingDrawCoordinateLog = false;
 	mutable FVector2D PendingDrawMouseScreen = FVector2D::ZeroVector;
 	mutable FVector2D PendingDrawNormalizedPoint = FVector2D::ZeroVector;
+	float PreviewScoreUpdateAccumulator = 0.0f;
+	bool bPreviewScoreDirty = true;
+
+	UFUNCTION()
+	void HandlePaletteButton1Clicked();
+
+	UFUNCTION()
+	void HandlePaletteButton2Clicked();
+
+	UFUNCTION()
+	void HandlePaletteButton3Clicked();
+
+	UFUNCTION()
+	void HandlePaletteButton4Clicked();
+
+	UFUNCTION()
+	void HandlePaletteButton5Clicked();
+
+	UFUNCTION()
+	void HandlePaletteButton6Clicked();
+
+	UFUNCTION()
+	void HandlePaletteButton7Clicked();
+
+	UFUNCTION()
+	void HandlePaletteButton8Clicked();
 
 #pragma endregion
 
@@ -168,6 +211,57 @@ private:
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> DrawingHint;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> PreviewScoreText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UButton> PaletteButton1;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UButton> PaletteButton2;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UButton> PaletteButton3;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UButton> PaletteButton4;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UButton> PaletteButton5;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UButton> PaletteButton6;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UButton> PaletteButton7;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UButton> PaletteButton8;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> PaletteButtonText1;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> PaletteButtonText2;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> PaletteButtonText3;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> PaletteButtonText4;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> PaletteButtonText5;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> PaletteButtonText6;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> PaletteButtonText7;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> PaletteButtonText8;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UWidget> ValidationContainer;

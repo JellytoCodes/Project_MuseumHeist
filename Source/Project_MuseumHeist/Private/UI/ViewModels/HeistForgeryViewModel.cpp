@@ -429,6 +429,26 @@ float UHeistForgeryViewModel::GetBrushSize() const
 	return BrushSize;
 }
 
+bool UHeistForgeryViewModel::CalculatePreviewScore(
+	const TArray<FVector2D>& NormalizedPoints,
+	const TArray<int32>& StrokePointCounts,
+	const TArray<uint8>& StrokePaletteIndices,
+	const float InBrushSize,
+	FHeistForgeryResult& OutResult,
+	int32& OutReferenceMaskPixels,
+	int32& OutSubmittedMaskPixels) const
+{
+	return IsValid(ForgeryComponent)
+		&& ForgeryComponent->CalculateLocalForgeryPreview(
+			NormalizedPoints,
+			StrokePointCounts,
+			StrokePaletteIndices,
+			InBrushSize,
+			OutResult,
+			OutReferenceMaskPixels,
+			OutSubmittedMaskPixels);
+}
+
 FName UHeistForgeryViewModel::GetActiveDisplayCaseName() const
 {
 	return ActiveDisplayCaseName;

@@ -247,6 +247,22 @@ void UHeistCheatManager::HeistForgerySwapDump()
 #endif
 }
 
+void UHeistCheatManager::HeistForgeryVisualDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugForgeryVisualDump(
+		GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistForgeryPaintingDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugForgeryPaintingDump(
+		GetOuterAPlayerController());
+#endif
+}
+
 void UHeistCheatManager::HeistForgeryBegin(const float DurationSeconds)
 {
 #if !UE_BUILD_SHIPPING
@@ -274,6 +290,23 @@ void UHeistCheatManager::HeistForgeryTimeout()
 {
 #if !UE_BUILD_SHIPPING
 	UHeistDebugFunctionLibrary::DebugForgeryTimeout(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistForgeryRecoveryDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugForgeryRecoveryDump(
+		GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistForgeryRecoveryRace(FString Order)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugForgeryRecoveryRace(
+		GetOuterAPlayerController(),
+		Order);
 #endif
 }
 

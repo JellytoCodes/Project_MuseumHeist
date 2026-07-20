@@ -202,6 +202,8 @@ Client가 직접 확정할 수 없는 항목:
 - 데이터 크기, 좌표 범위, Stroke Limit를 서버가 검증한다.
 - 서버는 Reference Image를 제한 팔레트로 양자화하고 형태 정확도와 팔레트 색 정확도를 함께 판정한다.
 - Reference 대비 과도한 면적을 칠하면 Anti-Fill Score Cap을 적용한다.
+- Reference Image와 Drawing Canvas는 동일한 정사각형 표시 영역과 정규화 좌표계를 사용한다.
+- 위조 중 표시되는 Preview Score는 로컬 읽기 전용 참고값이며, RPC를 발생시키거나 서버 최종 Score를 대체하지 않는다.
 - Submit 시 또는 제한된 Chunk 단위로 전달한다.
 - Client는 최종 Score를 전송하지 않는다.
 
@@ -375,7 +377,7 @@ W3는 완료됐다. 현재 실행 기준은 W4 단일 범위이며 기간은 202
 8. `TASK-W4-008` Replica Placement / Original Removal
 9. `TASK-W4-009` Submitted Replica World Visual
 10. `TASK-W4-010` Forgery Recovery Edge Cases
-11. `TASK-W4-011` W4 3-Map Forgery Gate
+11. `TASK-W4-011` Painting Frame / Submitted Texture Projection
 
 #### Detection / Alert / Lockdown
 
@@ -388,12 +390,13 @@ W3는 완료됐다. 현재 실행 기준은 W4 단일 범위이며 기간은 202
 18. `TASK-W4-018` Alert HUD / Audio Layers
 19. `TASK-W4-019` Duplicate Inspection / Timer Protection
 20. `TASK-W4-020` M01 / M02 / M03 Alert Profiles
-21. `TASK-W4-021` W4 Detection Loop Gate
 
 ### W4 Execution Rules
 
-- 활성 구현 범위는 `TASK-W4-001~021`이다.
+- 활성 구현 범위는 `TASK-W4-001~020`이다.
 - Forgery Session, Score, Replica/Original 확정, Alert, Lockdown은 서버 권한 C++ 경로를 유지한다.
+- 최종 위조 그림은 서버 Score용 Palette Raster에서 생성한 고정 해상도 Index Data를 제출 시 한 번만 복제하고, 각 Client가 Transient Texture로 재구성한다.
+- Render Target 또는 전체 Stroke Payload를 World Visual 목적으로 복제하지 않는다.
 - Owner-only UI, Input Restore, Case Lock Cleanup, Duplicate 방지, Timer 정리는 Critical Gate 조건이다.
 - 멀티플레이·Ownership·Replication·Recovery 주장은 사용자 PIE와 DebugLibrary/Cheat Command 로그가 있을 때만 PASS 처리한다.
 - 이미 증명된 동일 흐름을 같은 조건으로 반복하는 중복 Gate는 만들지 않는다. 새로운 위험을 검증할 때만 별도 Gate를 추가한다.

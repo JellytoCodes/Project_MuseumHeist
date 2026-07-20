@@ -9,7 +9,25 @@
 #include "Core/HeistGameState.h"
 #include "Core/HeistPlayerState.h"
 #include "Data/HeistArtifactDataTypes.h"
+#include "Engine/Texture2D.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "Materials/MaterialInterface.h"
 #include "Net/UnrealNetwork.h"
+
+namespace
+{
+	constexpr int32 ReplicaTierPoor = 0;
+	constexpr int32 ReplicaTierFair = 1;
+	constexpr int32 ReplicaTierGood = 2;
+	constexpr int32 ReplicaTierExcellent = 3;
+	constexpr int32 ReplicaPaintingResolution = 128;
+	constexpr int32 ReplicaPaintingMaximumPaletteColors = 8;
+
+	constexpr int32 ReplicaScorePrimitiveDataIndex = 0;
+	constexpr int32 ReplicaCoveragePrimitiveDataIndex = 1;
+	constexpr int32 ReplicaColorAccuracyPrimitiveDataIndex = 2;
+	constexpr int32 ReplicaTierPrimitiveDataIndex = 3;
+}
 
 const FName AHeistDisplayCaseActor::OriginalVisualComponentTag(TEXT("OriginalVisual"));
 const FName AHeistDisplayCaseActor::ReplicaVisualComponentTag(TEXT("ReplicaVisual"));
@@ -40,7 +58,9 @@ void AHeistDisplayCaseActor::BeginPlay()
 {
 	Super::BeginPlay();
 
+	CaptureReplicaVisualBaseline();
 	RefreshPlaceholderVisualState();
+	RefreshReplicaWorldVisual();
 
 	if (HasAuthority())
 	{
@@ -69,6 +89,7 @@ void AHeistDisplayCaseActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	}
 	MatchPhaseChangedHandle.Reset();
 	BoundGameState.Reset();
+	ResetReplicaPaintingResources();
 
 	Super::EndPlay(EndPlayReason);
 }
@@ -249,8 +270,6 @@ bool AHeistDisplayCaseActor::ShouldDisplayOriginalPlaceholderForState(const EHei
 	case EHeistDisplayCaseState::Observed:
 	case EHeistDisplayCaseState::ForgeryInProgress:
 	case EHeistDisplayCaseState::ReplicaReady:
-	case EHeistDisplayCaseState::ReplicaPlaced:
-	case EHeistDisplayCaseState::OriginalAvailable:
 		return true;
 	default:
 		return false;
@@ -356,9 +375,464 @@ int32 AHeistDisplayCaseActor::GetCommittedForgeryRevision() const
 	return CommittedForgeryRevision;
 }
 
+int32 AHeistDisplayCaseActor::GetReplicaVisualTier() const
+{
+	return bHasCommittedForgeryResult
+		? ResolveReplicaVisualTier(CommittedForgeryResult.SimilarityScore)
+		: INDEX_NONE;
+}
+
+FName AHeistDisplayCaseActor::GetReplicaVisualTierName() const
+{
+	return ResolveReplicaVisualTierName(GetReplicaVisualTier());
+}
+
+bool AHeistDisplayCaseActor::IsReplicaWorldVisualReady() const
+{
+	bool bReplicaExpectedVisible = false;
+	bool bHasReplicaMesh = false;
+	int32 ExpectedTier = INDEX_NONE;
+	int32 AppliedTier = INDEX_NONE;
+	FName TierName = NAME_None;
+	bool bUsingTierMaterial = false;
+	bool bUsingTransformFallback = false;
+	bool bCustomPrimitiveDataApplied = false;
+	bool bContractPassed = false;
+	GetReplicaWorldVisualDebugState(
+		bReplicaExpectedVisible,
+		bHasReplicaMesh,
+		ExpectedTier,
+		AppliedTier,
+		TierName,
+		bUsingTierMaterial,
+		bUsingTransformFallback,
+		bCustomPrimitiveDataApplied,
+		bContractPassed);
+	return bContractPassed;
+}
+
+void AHeistDisplayCaseActor::GetReplicaWorldVisualDebugState(
+	bool& OutReplicaExpectedVisible,
+	bool& OutHasReplicaMesh,
+	int32& OutExpectedTier,
+	int32& OutAppliedTier,
+	FName& OutTierName,
+	bool& OutUsingTierMaterial,
+	bool& OutUsingTransformFallback,
+	bool& OutCustomPrimitiveDataApplied,
+	bool& OutContractPassed) const
+{
+	OutReplicaExpectedVisible = ShouldDisplayReplicaPlaceholder();
+	OutHasReplicaMesh = IsValid(ReplicaVisualComponent)
+		&& IsValid(ReplicaVisualComponent->GetStaticMesh());
+	OutExpectedTier = GetReplicaVisualTier();
+	OutAppliedTier = AppliedReplicaVisualTier;
+	OutTierName = ResolveReplicaVisualTierName(OutExpectedTier);
+	OutUsingTierMaterial = bUsingReplicaTierMaterial;
+	OutUsingTransformFallback = bUsingReplicaTransformFallback;
+	OutCustomPrimitiveDataApplied =
+		bReplicaVisualCustomPrimitiveDataApplied;
+
+	const bool bCommittedResultValid = bHasCommittedForgeryResult
+		&& CommittedForgeryResult.bReplicaPlaced
+		&& FMath::IsWithinInclusive(
+			CommittedForgeryResult.SimilarityScore,
+			0.0f,
+			100.0f);
+	const bool bTierValid =
+		FMath::IsWithinInclusive(OutExpectedTier, ReplicaTierPoor, ReplicaTierExcellent)
+		&& OutAppliedTier == OutExpectedTier
+		&& !OutTierName.IsNone();
+	const bool bVisibleStateMatches = IsValid(ReplicaVisualComponent)
+		&& ReplicaVisualComponent->IsVisible() == OutReplicaExpectedVisible
+		&& (!ReplicaVisualComponent->bHiddenInGame)
+			== OutReplicaExpectedVisible;
+	const bool bPresentationPathValid =
+		IsValid(ReplicaPaintingMaterial)
+			? bReplicaPaintingTextureParameterApplied
+			: OutUsingTierMaterial || OutUsingTransformFallback;
+
+	OutContractPassed = bCommittedResultValid
+		&& OutReplicaExpectedVisible
+		&& OutHasReplicaMesh
+		&& bTierValid
+		&& bVisibleStateMatches
+		&& bPresentationPathValid
+		&& OutCustomPrimitiveDataApplied;
+}
+
+bool AHeistDisplayCaseActor::HasReplicaPaintingData() const
+{
+	FName RejectReason = NAME_None;
+	return ValidateReplicaPaintingData(ReplicaPaintingData, RejectReason)
+		&& ReplicaPaintingData.Revision == CommittedForgeryRevision;
+}
+
+int32 AHeistDisplayCaseActor::GetReplicaPaintingRevision() const
+{
+	return ReplicaPaintingData.Revision;
+}
+
+void AHeistDisplayCaseActor::GetReplicaPaintingDebugState(
+	int32& OutResolution,
+	int32& OutPaletteColorCount,
+	int32& OutPackedByteCount,
+	int32& OutPaintingRevision,
+	bool& OutTextureBuilt,
+	bool& OutDynamicMaterialBuilt,
+	bool& OutTextureParameterApplied,
+	bool& OutContractPassed) const
+{
+	OutResolution = ReplicaPaintingData.Resolution;
+	OutPaletteColorCount = ReplicaPaintingData.Palette.Num();
+	OutPackedByteCount =
+		ReplicaPaintingData.PackedPaletteIndices.Num();
+	OutPaintingRevision = ReplicaPaintingData.Revision;
+	OutTextureBuilt = IsValid(ReplicaPaintingTexture);
+	OutDynamicMaterialBuilt =
+		IsValid(ReplicaPaintingDynamicMaterial);
+	OutTextureParameterApplied =
+		bReplicaPaintingTextureParameterApplied;
+
+	FName RejectReason = NAME_None;
+	const bool bDataValid =
+		ValidateReplicaPaintingData(ReplicaPaintingData, RejectReason);
+	OutContractPassed = bHasCommittedForgeryResult
+		&& CommittedForgeryResult.bReplicaPlaced
+		&& bDataValid
+		&& OutPaintingRevision == CommittedForgeryRevision
+		&& AppliedReplicaPaintingRevision == OutPaintingRevision
+		&& OutTextureBuilt
+		&& OutDynamicMaterialBuilt
+		&& OutTextureParameterApplied;
+}
+
+void AHeistDisplayCaseActor::CaptureReplicaVisualBaseline()
+{
+	if (bReplicaVisualBaselineCaptured || !IsValid(ReplicaVisualComponent))
+	{
+		return;
+	}
+
+	ReplicaBaselineRelativeTransform =
+		ReplicaVisualComponent->GetRelativeTransform();
+	ReplicaBaselineMaterial = ReplicaVisualComponent->GetMaterial(0);
+	bReplicaVisualBaselineCaptured = true;
+}
+
+void AHeistDisplayCaseActor::RefreshReplicaWorldVisual()
+{
+	if (!IsValid(ReplicaVisualComponent))
+	{
+		return;
+	}
+
+	CaptureReplicaVisualBaseline();
+	AppliedReplicaVisualTier = INDEX_NONE;
+	bUsingReplicaTierMaterial = false;
+	bUsingReplicaTransformFallback = false;
+	bReplicaVisualCustomPrimitiveDataApplied = false;
+	bReplicaPaintingTextureParameterApplied = false;
+
+	if (!bHasCommittedForgeryResult
+		|| !CommittedForgeryResult.bReplicaPlaced)
+	{
+		ResetReplicaPaintingResources();
+		if (bReplicaVisualBaselineCaptured)
+		{
+			ReplicaVisualComponent->SetRelativeTransform(
+				ReplicaBaselineRelativeTransform);
+			ReplicaVisualComponent->SetMaterial(0, ReplicaBaselineMaterial.Get());
+		}
+		return;
+	}
+
+	AppliedReplicaVisualTier =
+		ResolveReplicaVisualTier(CommittedForgeryResult.SimilarityScore);
+	UMaterialInterface* TierMaterial =
+		ResolveReplicaTierMaterial(AppliedReplicaVisualTier);
+	const bool bHasPaintingMaterial =
+		IsValid(ReplicaPaintingMaterial);
+	bUsingReplicaTierMaterial =
+		!bHasPaintingMaterial && IsValid(TierMaterial);
+	bUsingReplicaTransformFallback =
+		!bHasPaintingMaterial && !bUsingReplicaTierMaterial;
+
+	if (bHasPaintingMaterial)
+	{
+		ReplicaVisualComponent->SetMaterial(
+			0,
+			ReplicaPaintingMaterial.Get());
+		ReplicaVisualComponent->SetRelativeTransform(
+			ReplicaBaselineRelativeTransform);
+	}
+	else if (bUsingReplicaTierMaterial)
+	{
+		ReplicaVisualComponent->SetMaterial(0, TierMaterial);
+		ReplicaVisualComponent->SetRelativeTransform(
+			ReplicaBaselineRelativeTransform);
+	}
+	else
+	{
+		ReplicaVisualComponent->SetMaterial(
+			0,
+			ReplicaBaselineMaterial.Get());
+
+		float RollOffset = 0.0f;
+		float UniformScaleMultiplier = 1.0f;
+		switch (AppliedReplicaVisualTier)
+		{
+		case ReplicaTierPoor:
+			RollOffset = -12.0f;
+			UniformScaleMultiplier = 0.88f;
+			break;
+		case ReplicaTierFair:
+			RollOffset = 8.0f;
+			UniformScaleMultiplier = 0.94f;
+			break;
+		case ReplicaTierGood:
+			RollOffset = -5.0f;
+			UniformScaleMultiplier = 0.97f;
+			break;
+		default:
+			break;
+		}
+
+		FTransform TierTransform = ReplicaBaselineRelativeTransform;
+		FRotator TierRotation = TierTransform.Rotator();
+		TierRotation.Roll += RollOffset;
+		TierTransform.SetRotation(TierRotation.Quaternion());
+		TierTransform.SetScale3D(
+			ReplicaBaselineRelativeTransform.GetScale3D()
+			* UniformScaleMultiplier);
+		ReplicaVisualComponent->SetRelativeTransform(TierTransform);
+	}
+
+	ReplicaVisualComponent->SetCustomPrimitiveDataFloat(
+		ReplicaScorePrimitiveDataIndex,
+		FMath::Clamp(CommittedForgeryResult.SimilarityScore / 100.0f, 0.0f, 1.0f));
+	ReplicaVisualComponent->SetCustomPrimitiveDataFloat(
+		ReplicaCoveragePrimitiveDataIndex,
+		FMath::Clamp(CommittedForgeryResult.CoverageScore / 100.0f, 0.0f, 1.0f));
+	ReplicaVisualComponent->SetCustomPrimitiveDataFloat(
+		ReplicaColorAccuracyPrimitiveDataIndex,
+		FMath::Clamp(CommittedForgeryResult.ColorAccuracyScore / 100.0f, 0.0f, 1.0f));
+	ReplicaVisualComponent->SetCustomPrimitiveDataFloat(
+		ReplicaTierPrimitiveDataIndex,
+		static_cast<float>(AppliedReplicaVisualTier));
+	bReplicaVisualCustomPrimitiveDataApplied = true;
+
+	const FName TierName =
+		ResolveReplicaVisualTierName(AppliedReplicaVisualTier);
+	BP_ApplyReplicaWorldVisual(
+		AppliedReplicaVisualTier,
+		TierName,
+		CommittedForgeryResult.SimilarityScore,
+		CommittedForgeryResult.CoverageScore,
+		CommittedForgeryResult.ColorAccuracyScore,
+		CommittedForgeryResult.TemplateId,
+		bUsingReplicaTierMaterial);
+	// Blueprint may add frame polish or replace a presentation material.
+	// Apply the authoritative painting texture last so the submitted image
+	// remains the final material on the replica surface.
+	RefreshReplicaPaintingTexture();
+
+	UE_LOG(
+		LogHeistNetwork,
+		Log,
+		TEXT("Replica world visual applied: Case=%s Template=%s Score=%.2f Coverage=%.2f ColorAccuracy=%.2f Tier=%d TierName=%s TierMaterial=%s TransformFallback=%s CustomPrimitiveData=true PaintingResolution=%d PaintingPalette=%d PaintingBytes=%d PaintingRevision=%d PaintingTexture=%s PaintingMID=%s PaintingParameter=%s Authority=%s Result=PASS"),
+		*GetNameSafe(this),
+		*CommittedForgeryResult.TemplateId.ToString(),
+		CommittedForgeryResult.SimilarityScore,
+		CommittedForgeryResult.CoverageScore,
+		CommittedForgeryResult.ColorAccuracyScore,
+		AppliedReplicaVisualTier,
+		*TierName.ToString(),
+		bUsingReplicaTierMaterial ? TEXT("true") : TEXT("false"),
+		bUsingReplicaTransformFallback ? TEXT("true") : TEXT("false"),
+		ReplicaPaintingData.Resolution,
+		ReplicaPaintingData.Palette.Num(),
+		ReplicaPaintingData.PackedPaletteIndices.Num(),
+		ReplicaPaintingData.Revision,
+		IsValid(ReplicaPaintingTexture) ? TEXT("true") : TEXT("false"),
+		IsValid(ReplicaPaintingDynamicMaterial) ? TEXT("true") : TEXT("false"),
+		bReplicaPaintingTextureParameterApplied
+			? TEXT("true")
+			: TEXT("false"),
+		HasAuthority() ? TEXT("true") : TEXT("false"));
+}
+
+void AHeistDisplayCaseActor::RefreshReplicaPaintingTexture()
+{
+	if (!IsValid(ReplicaVisualComponent)
+		|| !IsValid(ReplicaPaintingMaterial)
+		|| !HasReplicaPaintingData())
+	{
+		return;
+	}
+
+	if (!IsValid(ReplicaPaintingTexture)
+		|| AppliedReplicaPaintingRevision
+			!= ReplicaPaintingData.Revision)
+	{
+		ResetReplicaPaintingResources();
+		ReplicaPaintingTexture = BuildReplicaPaintingTexture();
+	}
+	if (!IsValid(ReplicaPaintingTexture))
+	{
+		return;
+	}
+
+	ReplicaPaintingDynamicMaterial =
+		UMaterialInstanceDynamic::Create(
+			ReplicaPaintingMaterial,
+			this);
+	if (!IsValid(ReplicaPaintingDynamicMaterial))
+	{
+		return;
+	}
+
+	ReplicaPaintingDynamicMaterial->SetTextureParameterValue(
+		ReplicaPaintingTextureParameter,
+		ReplicaPaintingTexture);
+	bReplicaPaintingTextureParameterApplied =
+		ReplicaPaintingDynamicMaterial->K2_GetTextureParameterValue(
+			ReplicaPaintingTextureParameter)
+		== ReplicaPaintingTexture;
+	ReplicaVisualComponent->SetMaterial(
+		0,
+		ReplicaPaintingDynamicMaterial);
+	AppliedReplicaPaintingRevision =
+		ReplicaPaintingData.Revision;
+}
+
+UTexture2D* AHeistDisplayCaseActor::BuildReplicaPaintingTexture() const
+{
+	FName RejectReason = NAME_None;
+	if (!ValidateReplicaPaintingData(
+		ReplicaPaintingData,
+		RejectReason))
+	{
+		return nullptr;
+	}
+
+	const int32 PixelCount =
+		ReplicaPaintingData.Resolution
+		* ReplicaPaintingData.Resolution;
+	TArray64<uint8> TextureBytes;
+	TextureBytes.SetNumUninitialized(
+		static_cast<int64>(PixelCount) * 4);
+	FColor BackgroundColor =
+		ReplicaPaintingBackgroundColor.ToFColorSRGB();
+	BackgroundColor.A = 255;
+
+	for (int32 PixelIndex = 0;
+		PixelIndex < PixelCount;
+		++PixelIndex)
+	{
+		const uint8 PackedByte =
+			ReplicaPaintingData.PackedPaletteIndices[
+				PixelIndex / 2];
+		const uint8 PaletteValue = (PixelIndex & 1) == 0
+			? PackedByte & 0x0f
+			: PackedByte >> 4;
+		const FColor PixelColor = PaletteValue == 0
+			? BackgroundColor
+			: ReplicaPaintingData.Palette[PaletteValue - 1];
+		const int64 ByteOffset =
+			static_cast<int64>(PixelIndex) * 4;
+		TextureBytes[ByteOffset] = PixelColor.B;
+		TextureBytes[ByteOffset + 1] = PixelColor.G;
+		TextureBytes[ByteOffset + 2] = PixelColor.R;
+		TextureBytes[ByteOffset + 3] = PixelColor.A;
+	}
+
+	UTexture2D* NewTexture = UTexture2D::CreateTransient(
+		ReplicaPaintingData.Resolution,
+		ReplicaPaintingData.Resolution,
+		PF_B8G8R8A8,
+		NAME_None,
+		TextureBytes);
+	if (!IsValid(NewTexture))
+	{
+		return nullptr;
+	}
+
+	NewTexture->SRGB = true;
+	NewTexture->Filter = TF_Bilinear;
+	NewTexture->AddressX = TA_Clamp;
+	NewTexture->AddressY = TA_Clamp;
+	NewTexture->NeverStream = true;
+	NewTexture->UpdateResource();
+	return NewTexture;
+}
+
+void AHeistDisplayCaseActor::ResetReplicaPaintingResources()
+{
+	ReplicaPaintingDynamicMaterial = nullptr;
+	ReplicaPaintingTexture = nullptr;
+	AppliedReplicaPaintingRevision = 0;
+	bReplicaPaintingTextureParameterApplied = false;
+}
+
+UMaterialInterface* AHeistDisplayCaseActor::ResolveReplicaTierMaterial(
+	const int32 VisualTier) const
+{
+	switch (VisualTier)
+	{
+	case ReplicaTierPoor:
+		return ReplicaPoorMaterial.Get();
+	case ReplicaTierFair:
+		return ReplicaFairMaterial.Get();
+	case ReplicaTierGood:
+		return ReplicaGoodMaterial.Get();
+	case ReplicaTierExcellent:
+		return ReplicaExcellentMaterial.Get();
+	default:
+		return nullptr;
+	}
+}
+
+int32 AHeistDisplayCaseActor::ResolveReplicaVisualTier(
+	const float SimilarityScore)
+{
+	if (SimilarityScore < 25.0f)
+	{
+		return ReplicaTierPoor;
+	}
+	if (SimilarityScore < 50.0f)
+	{
+		return ReplicaTierFair;
+	}
+	if (SimilarityScore < 75.0f)
+	{
+		return ReplicaTierGood;
+	}
+	return ReplicaTierExcellent;
+}
+
+FName AHeistDisplayCaseActor::ResolveReplicaVisualTierName(
+	const int32 VisualTier)
+{
+	switch (VisualTier)
+	{
+	case ReplicaTierPoor:
+		return FName(TEXT("Poor"));
+	case ReplicaTierFair:
+		return FName(TEXT("Fair"));
+	case ReplicaTierGood:
+		return FName(TEXT("Good"));
+	case ReplicaTierExcellent:
+		return FName(TEXT("Excellent"));
+	default:
+		return NAME_None;
+	}
+}
+
 bool AHeistDisplayCaseActor::TryCommitReplicaPlacement(
 	AHeistPlayerState* RequestingPlayerState,
-	const FHeistForgeryResult& ForgeryResult)
+	const FHeistForgeryResult& ForgeryResult,
+	const FHeistReplicaPaintingData& PaintingData)
 {
 	if (!HasAuthority())
 	{
@@ -375,7 +849,10 @@ bool AHeistDisplayCaseActor::TryCommitReplicaPlacement(
 	if (!ValidateReplicaPlacementRequest(
 		RequestingPlayerState,
 		ForgeryResult,
-		RejectReason))
+		RejectReason)
+		|| !ValidateReplicaPaintingData(
+			PaintingData,
+			RejectReason))
 	{
 		UE_LOG(
 			LogHeistNetwork,
@@ -409,6 +886,10 @@ bool AHeistDisplayCaseActor::TryCommitReplicaPlacement(
 	CommittedForgeryResult.bReplicaPlaced = true;
 	bHasCommittedForgeryResult = true;
 	++CommittedForgeryRevision;
+	ReplicaPaintingData = PaintingData;
+	ReplicaPaintingData.Revision =
+		CommittedForgeryRevision;
+	RefreshReplicaWorldVisual();
 
 	ClearSession(FName(TEXT("ForgeryCompleted")));
 	ForceNetUpdate();
@@ -416,7 +897,7 @@ bool AHeistDisplayCaseActor::TryCommitReplicaPlacement(
 	UE_LOG(
 		LogHeistNetwork,
 		Log,
-		TEXT("Replica placement committed: Case=%s CaseId=%s Artifact=%s Template=%s Requester=%s Score=%.2f ReplicaPlaced=%s State=%s Locked=%s Revision=%d Authority=true Result=PASS"),
+		TEXT("Replica placement committed: Case=%s CaseId=%s Artifact=%s Template=%s Requester=%s Score=%.2f ReplicaPlaced=%s State=%s Locked=%s Revision=%d PaintingResolution=%d PaintingPalette=%d PaintingBytes=%d PaintingRevision=%d Authority=true Result=PASS"),
 		*GetNameSafe(this),
 		*DisplayCaseId.ToString(),
 		*CommittedForgeryResult.ArtifactId.ToString(),
@@ -426,7 +907,11 @@ bool AHeistDisplayCaseActor::TryCommitReplicaPlacement(
 		CommittedForgeryResult.bReplicaPlaced ? TEXT("true") : TEXT("false"),
 		*UEnum::GetValueAsString(DisplayCaseState),
 		bSessionLocked ? TEXT("true") : TEXT("false"),
-		CommittedForgeryRevision);
+		CommittedForgeryRevision,
+		ReplicaPaintingData.Resolution,
+		ReplicaPaintingData.Palette.Num(),
+		ReplicaPaintingData.PackedPaletteIndices.Num(),
+		ReplicaPaintingData.Revision);
 	return true;
 }
 
@@ -489,8 +974,64 @@ bool AHeistDisplayCaseActor::ValidateReplicaPlacementRequest(
 	return true;
 }
 
+bool AHeistDisplayCaseActor::ValidateReplicaPaintingData(
+	const FHeistReplicaPaintingData& PaintingData,
+	FName& OutRejectReason) const
+{
+	OutRejectReason = NAME_None;
+	if (PaintingData.Resolution != ReplicaPaintingResolution)
+	{
+		OutRejectReason =
+			FName(TEXT("PaintingResolutionMismatch"));
+		return false;
+	}
+	if (!FMath::IsWithinInclusive(
+		PaintingData.Palette.Num(),
+		2,
+		ReplicaPaintingMaximumPaletteColors))
+	{
+		OutRejectReason =
+			FName(TEXT("PaintingPaletteInvalid"));
+		return false;
+	}
+
+	const int32 PixelCount =
+		PaintingData.Resolution * PaintingData.Resolution;
+	const int32 ExpectedPackedByteCount =
+		FMath::DivideAndRoundUp(PixelCount, 2);
+	if (PaintingData.PackedPaletteIndices.Num()
+		!= ExpectedPackedByteCount)
+	{
+		OutRejectReason =
+			FName(TEXT("PaintingPackedSizeMismatch"));
+		return false;
+	}
+
+	for (int32 PixelIndex = 0;
+		PixelIndex < PixelCount;
+		++PixelIndex)
+	{
+		const uint8 PackedByte =
+			PaintingData.PackedPaletteIndices[
+				PixelIndex / 2];
+		const uint8 PaletteValue = (PixelIndex & 1) == 0
+			? PackedByte & 0x0f
+			: PackedByte >> 4;
+		if (PaletteValue
+			> PaintingData.Palette.Num())
+		{
+			OutRejectReason =
+				FName(TEXT("PaintingPaletteIndexOutOfBounds"));
+			return false;
+		}
+	}
+	return true;
+}
+
 void AHeistDisplayCaseActor::OnRep_CommittedForgeryRevision()
 {
+	RefreshReplicaWorldVisual();
+
 	UE_LOG(
 		LogHeistNetwork,
 		Log,
@@ -507,6 +1048,44 @@ void AHeistDisplayCaseActor::OnRep_CommittedForgeryRevision()
 		bHasCommittedForgeryResult && CommittedForgeryResult.bReplicaPlaced
 			? TEXT("PASS")
 			: TEXT("FAIL"));
+}
+
+void AHeistDisplayCaseActor::OnRep_ReplicaPaintingData()
+{
+	RefreshReplicaWorldVisual();
+
+	bool bTextureBuilt = false;
+	bool bDynamicMaterialBuilt = false;
+	bool bTextureParameterApplied = false;
+	bool bContractPassed = false;
+	int32 Resolution = 0;
+	int32 PaletteColorCount = 0;
+	int32 PackedByteCount = 0;
+	int32 PaintingRevision = 0;
+	GetReplicaPaintingDebugState(
+		Resolution,
+		PaletteColorCount,
+		PackedByteCount,
+		PaintingRevision,
+		bTextureBuilt,
+		bDynamicMaterialBuilt,
+		bTextureParameterApplied,
+		bContractPassed);
+
+	UE_LOG(
+		LogHeistNetwork,
+		Log,
+		TEXT("Replica painting data replicated: Case=%s Resolution=%d Palette=%d PackedBytes=%d PaintingRevision=%d CommittedRevision=%d Texture=%s MID=%s Parameter=%s Authority=false Result=%s"),
+		*GetNameSafe(this),
+		Resolution,
+		PaletteColorCount,
+		PackedByteCount,
+		PaintingRevision,
+		CommittedForgeryRevision,
+		bTextureBuilt ? TEXT("true") : TEXT("false"),
+		bDynamicMaterialBuilt ? TEXT("true") : TEXT("false"),
+		bTextureParameterApplied ? TEXT("true") : TEXT("false"),
+		bContractPassed ? TEXT("PASS") : TEXT("PENDING_OR_FAIL"));
 }
 
 #pragma endregion
@@ -1096,6 +1675,7 @@ void AHeistDisplayCaseActor::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 	DOREPLIFETIME(AHeistDisplayCaseActor, bHasCommittedForgeryResult);
 	DOREPLIFETIME(AHeistDisplayCaseActor, CommittedForgeryResult);
 	DOREPLIFETIME(AHeistDisplayCaseActor, CommittedForgeryRevision);
+	DOREPLIFETIME(AHeistDisplayCaseActor, ReplicaPaintingData);
 	DOREPLIFETIME(AHeistDisplayCaseActor, OriginalCarrier);
 	DOREPLIFETIME(AHeistDisplayCaseActor, OriginalCarryRevision);
 	DOREPLIFETIME(AHeistDisplayCaseActor, SessionOwner);

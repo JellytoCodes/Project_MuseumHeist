@@ -1,6 +1,7 @@
 #include "Core/HeistGameMode.h"
 
 #include "Character/HeistPlayerCharacter.h"
+#include "Character/Components/HeistForgeryComponent.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistHUD.h"
 #include "Core/HeistLogChannels.h"
@@ -82,6 +83,20 @@ void AHeistGameMode::Logout(AController* Exiting)
 		: nullptr;
 	if (HasAuthority() && IsValid(ExitingPlayerState))
 	{
+		AHeistPlayerCharacter* ExitingCharacter =
+			Cast<AHeistPlayerCharacter>(Exiting->GetPawn());
+		UHeistForgeryComponent* ForgeryComponent =
+			IsValid(ExitingCharacter)
+				? ExitingCharacter->GetForgeryComponent()
+				: nullptr;
+		if (IsValid(ForgeryComponent))
+		{
+			ForgeryComponent->CancelForgerySession(
+				FName(TEXT("OwnerDisconnected")));
+		}
+
+		// Keep the case sweep as a safety net for pawn-less disconnects and
+		// partially torn-down ownership state.
 		for (TActorIterator<AHeistDisplayCaseActor> DisplayCaseIterator(GetWorld()); DisplayCaseIterator; ++DisplayCaseIterator)
 		{
 			if (AHeistDisplayCaseActor* DisplayCase = *DisplayCaseIterator; IsValid(DisplayCase))

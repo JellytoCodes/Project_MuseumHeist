@@ -265,6 +265,12 @@ public:
 	void HeistForgerySwapDump();
 
 	UFUNCTION(Exec)
+	void HeistForgeryVisualDump();
+
+	UFUNCTION(Exec)
+	void HeistForgeryPaintingDump();
+
+	UFUNCTION(Exec)
 	void HeistForgeryBegin(float DurationSeconds = 60.0f);
 
 	UFUNCTION(Exec)
@@ -275,6 +281,12 @@ public:
 
 	UFUNCTION(Exec)
 	void HeistForgeryTimeout();
+
+	UFUNCTION(Exec)
+	void HeistForgeryRecoveryDump();
+
+	UFUNCTION(Exec)
+	void HeistForgeryRecoveryRace(FString Order);
 
 	UFUNCTION(Exec)
 	void HeistForgeryUIDump();

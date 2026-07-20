@@ -255,6 +255,12 @@ public:
 	static void DebugForgerySwapDump(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
+	static void DebugForgeryVisualDump(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
+	static void DebugForgeryPaintingDump(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
 	static void DebugForgeryBegin(APlayerController* PlayerController, float DurationSeconds);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
@@ -265,6 +271,14 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
 	static void DebugForgeryTimeout(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
+	static void DebugForgeryRecoveryDump(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
+	static void DebugForgeryRecoveryRace(
+		APlayerController* PlayerController,
+		const FString& Order);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
 	static void DebugForgeryUIDump(APlayerController* PlayerController);

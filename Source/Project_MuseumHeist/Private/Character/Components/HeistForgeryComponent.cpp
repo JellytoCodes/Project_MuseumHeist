@@ -1406,6 +1406,41 @@ bool UHeistForgeryComponent::ForceExpireSubmissionWindowForDebug()
 	return false;
 }
 
+bool UHeistForgeryComponent::ForceNearExpirySubmissionWindowForDebug()
+{
+#if !UE_BUILD_SHIPPING
+	if (!GetOwner()
+		|| !GetOwner()->HasAuthority()
+		|| !bSessionActive
+		|| bSubmitPending)
+	{
+		return false;
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		constexpr float NearExpiryWindowSeconds = 0.01f;
+		World->GetTimerManager().ClearTimer(SessionTimeoutTimerHandle);
+		const AHeistGameState* HeistGameState =
+			World->GetGameState<AHeistGameState>();
+		const float ServerWorldTime = IsValid(HeistGameState)
+			? HeistGameState->GetServerWorldTimeSeconds()
+			: World->GetTimeSeconds();
+		SessionEndServerTime =
+			ServerWorldTime + NearExpiryWindowSeconds;
+		World->GetTimerManager().SetTimer(
+			SessionTimeoutTimerHandle,
+			this,
+			&UHeistForgeryComponent::HandleSessionTimeout,
+			NearExpiryWindowSeconds,
+			false);
+		GetOwner()->ForceNetUpdate();
+		return true;
+	}
+#endif
+	return false;
+}
+
 bool UHeistForgeryComponent::IsSessionActive() const
 {
 	return bSessionActive;
@@ -1611,6 +1646,30 @@ bool UHeistForgeryComponent::RecalculateValidatedForgeryScoreForDebug(
 #else
 	return false;
 #endif
+}
+
+bool UHeistForgeryComponent::CalculateLocalForgeryPreview(
+	const TArray<FVector2D>& NormalizedPoints,
+	const TArray<int32>& StrokePointCounts,
+	const TArray<uint8>& StrokePaletteIndices,
+	const float BrushSize,
+	FHeistForgeryResult& OutResult,
+	int32& OutReferenceMaskPixels,
+	int32& OutSubmittedMaskPixels) const
+{
+	if (!bSessionActive || bSubmitPending)
+	{
+		return false;
+	}
+
+	return CalculateForgeryScore(
+		NormalizedPoints,
+		StrokePointCounts,
+		StrokePaletteIndices,
+		BrushSize,
+		OutResult,
+		OutReferenceMaskPixels,
+		OutSubmittedMaskPixels);
 }
 
 FHeistForgerySessionStateChanged& UHeistForgeryComponent::GetSessionStateChangedDelegate()
@@ -1835,6 +1894,19 @@ bool UHeistForgeryComponent::TryCalculateAndCommitForgeryScore()
 		return false;
 	}
 
+	FHeistReplicaPaintingData PaintingData;
+	if (!BuildReplicaPaintingData(PaintingData))
+	{
+		UE_LOG(
+			LogHeistNetwork,
+			Error,
+			TEXT("Forgery painting data build rejected: Character=%s Case=%s Template=%s Reason=PaletteRasterPackingFailed"),
+			*GetNameSafe(GetOwner()),
+			*GetNameSafe(ActiveDisplayCase.Get()),
+			*ActiveTemplateId.ToString());
+		return false;
+	}
+
 	AHeistPlayerCharacter* HeistCharacter =
 		Cast<AHeistPlayerCharacter>(GetOwner());
 	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter)
@@ -1856,7 +1928,8 @@ bool UHeistForgeryComponent::TryCalculateAndCommitForgeryScore()
 	const bool bReplicaCommitted =
 		TargetDisplayCase->TryCommitReplicaPlacement(
 			HeistPlayerState,
-			CalculatedResult);
+			CalculatedResult,
+			PaintingData);
 	bHandlingCaseSessionCallback = false;
 	if (!bReplicaCommitted)
 	{
@@ -1914,51 +1987,88 @@ bool UHeistForgeryComponent::TryCalculateAndCommitForgeryScore()
 	return true;
 }
 
-bool UHeistForgeryComponent::CalculateForgeryScore(
-	const TArray<FVector2D>& NormalizedPoints,
-	const TArray<int32>& StrokePointCounts,
-	const TArray<uint8>& StrokePaletteIndices,
-	const float BrushSize,
-	FHeistForgeryResult& OutResult,
-	int32& OutReferenceMaskPixels,
-	int32& OutSubmittedMaskPixels) const
+bool UHeistForgeryComponent::BuildReplicaPaintingData(
+	FHeistReplicaPaintingData& OutPaintingData) const
 {
-	OutResult = FHeistForgeryResult();
-	OutReferenceMaskPixels = 0;
-	OutSubmittedMaskPixels = 0;
-	if (!GetOwner()
-		|| !GetOwner()->HasAuthority()
-		|| ActiveArtifactId.IsNone()
-		|| ActiveTemplateId.IsNone()
-		|| ReferenceImageAsset.IsNull()
-		|| (TemplateBackgroundFilterMode
-				== EHeistForgeryBackgroundFilter::None
-			&& ReferenceMaskAsset.IsNull())
-		|| NormalizedPoints.IsEmpty()
-		|| StrokePointCounts.IsEmpty()
-		|| StrokePaletteIndices.Num() != StrokePointCounts.Num()
+	OutPaintingData = FHeistReplicaPaintingData();
+	if (ValidatedStrokePoints.IsEmpty()
+		|| ValidatedStrokePointCounts.IsEmpty()
+		|| ValidatedStrokePaletteIndices.Num()
+			!= ValidatedStrokePointCounts.Num()
 		|| !FMath::IsWithinInclusive(TemplateAllowedPalette.Num(), 2, 8)
-		|| BrushSize <= 0.0f
-		|| TemplateCoverageWeight < 0.0f
-		|| TemplateMajorShapeWeight < 0.0f
-		|| TemplateExtraStrokePenaltyWeight < 0.0f
-		|| TemplateTimeoutPenalty < 0.0f
-		|| TemplateShapeAccuracyWeight < 0.0f
-		|| TemplateColorAccuracyWeight < 0.0f
-		|| TemplateShapeAccuracyWeight + TemplateColorAccuracyWeight <= 0.0f
-		|| !FMath::IsWithinInclusive(
-			TemplateBackgroundColorTolerance,
-			0.0f,
-			0.49f)
-		|| TemplateMaximumPaintToReferenceRatio < 1.0f
-		|| !FMath::IsWithinInclusive(
-			TemplateOverpaintScoreCap,
-			0.0f,
-			100.0f))
+		|| ValidatedBrushSize <= 0.0f)
 	{
 		return false;
 	}
 
+	TArray<uint8> SubmittedPaletteMap;
+	RasterizeForgeryPaletteStrokes(
+		ValidatedStrokePoints,
+		ValidatedStrokePointCounts,
+		ValidatedStrokePaletteIndices,
+		ValidatedBrushSize,
+		SubmittedPaletteMap);
+
+	const int32 ExpectedPixelCount =
+		ForgeryScoreGridResolution * ForgeryScoreGridResolution;
+	if (SubmittedPaletteMap.Num() != ExpectedPixelCount)
+	{
+		return false;
+	}
+
+	OutPaintingData.Resolution = ForgeryScoreGridResolution;
+	OutPaintingData.Palette.Reserve(TemplateAllowedPalette.Num());
+	for (const FLinearColor& PaletteColor : TemplateAllowedPalette)
+	{
+		FColor SrgbColor = PaletteColor.ToFColorSRGB();
+		SrgbColor.A = 255;
+		OutPaintingData.Palette.Add(SrgbColor);
+	}
+
+	OutPaintingData.PackedPaletteIndices.SetNumZeroed(
+		FMath::DivideAndRoundUp(ExpectedPixelCount, 2));
+	for (int32 PixelIndex = 0;
+		PixelIndex < SubmittedPaletteMap.Num();
+		++PixelIndex)
+	{
+		const uint8 SourcePaletteIndex = SubmittedPaletteMap[PixelIndex];
+		if (SourcePaletteIndex != EmptyPaletteIndex
+			&& !OutPaintingData.Palette.IsValidIndex(SourcePaletteIndex))
+		{
+			OutPaintingData = FHeistReplicaPaintingData();
+			return false;
+		}
+
+		const uint8 PackedIndex = SourcePaletteIndex == EmptyPaletteIndex
+			? 0
+			: static_cast<uint8>(SourcePaletteIndex + 1);
+		uint8& PackedByte =
+			OutPaintingData.PackedPaletteIndices[PixelIndex / 2];
+		if ((PixelIndex & 1) == 0)
+		{
+			PackedByte = PackedIndex;
+		}
+		else
+		{
+			PackedByte |= static_cast<uint8>(PackedIndex << 4);
+		}
+	}
+
+	return true;
+}
+
+bool UHeistForgeryComponent::BuildScoringReferenceCache() const
+{
+	const int32 ExpectedPixelCount =
+		ForgeryScoreGridResolution * ForgeryScoreGridResolution;
+	if (CachedScoringTemplateId == ActiveTemplateId
+		&& CachedReferenceMask.Num() == ExpectedPixelCount
+		&& CachedReferencePaletteMap.Num() == ExpectedPixelCount)
+	{
+		return true;
+	}
+
+	ResetScoringReferenceCache();
 	TArray<uint8> SourceIntensity;
 	int32 SourceWidth = 0;
 	int32 SourceHeight = 0;
@@ -2013,9 +2123,6 @@ bool UHeistForgeryComponent::CalculateForgeryScore(
 		return false;
 	}
 
-	TArray<uint8> ReferenceMask;
-	TArray<uint8> ReferencePaletteMap;
-	TArray<uint8> SubmittedPaletteMap;
 	if (TemplateBackgroundFilterMode
 		== EHeistForgeryBackgroundFilter::None)
 	{
@@ -2023,7 +2130,7 @@ bool UHeistForgeryComponent::CalculateForgeryScore(
 			SourceIntensity,
 			SourceWidth,
 			SourceHeight,
-			ReferenceMask);
+			CachedReferenceMask);
 	}
 	else
 	{
@@ -2033,15 +2140,80 @@ bool UHeistForgeryComponent::CalculateForgeryScore(
 			ImageHeight,
 			TemplateBackgroundFilterMode,
 			TemplateBackgroundColorTolerance,
-			ReferenceMask);
+			CachedReferenceMask);
 	}
 	BuildLowResolutionReferencePaletteMap(
 		SourceColors,
 		ImageWidth,
 		ImageHeight,
-		ReferenceMask,
+		CachedReferenceMask,
 		TemplateAllowedPalette,
-		ReferencePaletteMap);
+		CachedReferencePaletteMap);
+	CachedScoringTemplateId = ActiveTemplateId;
+	return CachedReferenceMask.Num() == ExpectedPixelCount
+		&& CachedReferencePaletteMap.Num() == ExpectedPixelCount;
+}
+
+void UHeistForgeryComponent::ResetScoringReferenceCache() const
+{
+	CachedScoringTemplateId = NAME_None;
+	CachedReferenceMask.Reset();
+	CachedReferencePaletteMap.Reset();
+}
+
+bool UHeistForgeryComponent::CalculateForgeryScore(
+	const TArray<FVector2D>& NormalizedPoints,
+	const TArray<int32>& StrokePointCounts,
+	const TArray<uint8>& StrokePaletteIndices,
+	const float BrushSize,
+	FHeistForgeryResult& OutResult,
+	int32& OutReferenceMaskPixels,
+	int32& OutSubmittedMaskPixels) const
+{
+	OutResult = FHeistForgeryResult();
+	OutReferenceMaskPixels = 0;
+	OutSubmittedMaskPixels = 0;
+	if (!GetOwner()
+		|| ActiveArtifactId.IsNone()
+		|| ActiveTemplateId.IsNone()
+		|| ReferenceImageAsset.IsNull()
+		|| (TemplateBackgroundFilterMode
+				== EHeistForgeryBackgroundFilter::None
+			&& ReferenceMaskAsset.IsNull())
+		|| NormalizedPoints.IsEmpty()
+		|| StrokePointCounts.IsEmpty()
+		|| StrokePaletteIndices.Num() != StrokePointCounts.Num()
+		|| !FMath::IsWithinInclusive(TemplateAllowedPalette.Num(), 2, 8)
+		|| BrushSize <= 0.0f
+		|| TemplateCoverageWeight < 0.0f
+		|| TemplateMajorShapeWeight < 0.0f
+		|| TemplateExtraStrokePenaltyWeight < 0.0f
+		|| TemplateTimeoutPenalty < 0.0f
+		|| TemplateShapeAccuracyWeight < 0.0f
+		|| TemplateColorAccuracyWeight < 0.0f
+		|| TemplateShapeAccuracyWeight + TemplateColorAccuracyWeight <= 0.0f
+		|| !FMath::IsWithinInclusive(
+			TemplateBackgroundColorTolerance,
+			0.0f,
+			0.49f)
+		|| TemplateMaximumPaintToReferenceRatio < 1.0f
+		|| !FMath::IsWithinInclusive(
+			TemplateOverpaintScoreCap,
+			0.0f,
+			100.0f))
+	{
+		return false;
+	}
+
+	if (!BuildScoringReferenceCache())
+	{
+		return false;
+	}
+
+	const TArray<uint8>& ReferenceMask = CachedReferenceMask;
+	const TArray<uint8>& ReferencePaletteMap =
+		CachedReferencePaletteMap;
+	TArray<uint8> SubmittedPaletteMap;
 	RasterizeForgeryPaletteStrokes(
 		NormalizedPoints,
 		StrokePointCounts,
@@ -2430,6 +2602,7 @@ void UHeistForgeryComponent::BroadcastSessionSnapshot(
 
 void UHeistForgeryComponent::ResetPreparedTemplateSnapshot()
 {
+	ResetScoringReferenceCache();
 	PreparedDisplayCase.Reset();
 	bTemplatePrepared = false;
 	ActiveArtifactId = NAME_None;
@@ -2490,6 +2663,7 @@ void UHeistForgeryComponent::HandleDisplayCaseSessionChanged(
 
 void UHeistForgeryComponent::OnRep_SessionRevision()
 {
+	ResetScoringReferenceCache();
 	BroadcastSessionSnapshot(TEXT("Replicated"), NAME_None);
 }
 
@@ -2608,6 +2782,46 @@ void UHeistForgeryComponent::GetLifetimeReplicatedProps(
 	DOREPLIFETIME_CONDITION(
 		UHeistForgeryComponent,
 		TemplateAllowedPalette,
+		COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(
+		UHeistForgeryComponent,
+		TemplateCoverageWeight,
+		COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(
+		UHeistForgeryComponent,
+		TemplateMajorShapeWeight,
+		COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(
+		UHeistForgeryComponent,
+		TemplateExtraStrokePenaltyWeight,
+		COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(
+		UHeistForgeryComponent,
+		TemplateTimeoutPenalty,
+		COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(
+		UHeistForgeryComponent,
+		TemplateBackgroundFilterMode,
+		COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(
+		UHeistForgeryComponent,
+		TemplateBackgroundColorTolerance,
+		COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(
+		UHeistForgeryComponent,
+		TemplateShapeAccuracyWeight,
+		COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(
+		UHeistForgeryComponent,
+		TemplateColorAccuracyWeight,
+		COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(
+		UHeistForgeryComponent,
+		TemplateMaximumPaintToReferenceRatio,
+		COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(
+		UHeistForgeryComponent,
+		TemplateOverpaintScoreCap,
 		COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(
 		UHeistForgeryComponent,

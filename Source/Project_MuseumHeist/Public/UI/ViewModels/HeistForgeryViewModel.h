@@ -89,6 +89,14 @@ public:
 	float GetForgeryDuration() const;
 	int32 GetStrokeLimit() const;
 	float GetBrushSize() const;
+	bool CalculatePreviewScore(
+		const TArray<FVector2D>& NormalizedPoints,
+		const TArray<int32>& StrokePointCounts,
+		const TArray<uint8>& StrokePaletteIndices,
+		float BrushSize,
+		FHeistForgeryResult& OutResult,
+		int32& OutReferenceMaskPixels,
+		int32& OutSubmittedMaskPixels) const;
 	FName GetActiveDisplayCaseName() const;
 	const FText& GetStateText() const;
 	const FText& GetReferenceText() const;
