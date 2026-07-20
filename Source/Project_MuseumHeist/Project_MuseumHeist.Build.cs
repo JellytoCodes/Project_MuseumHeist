@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 using UnrealBuildTool;
 
@@ -21,7 +21,9 @@ public class Project_MuseumHeist : ModuleRules
 			"ModelViewViewModel",
 			"AIModule",
 			"GameplayStateTreeModule",
-			"StateTreeModule"
+			"StateTreeModule",
+			"OpenCV",
+			"OpenCVHelper"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[]

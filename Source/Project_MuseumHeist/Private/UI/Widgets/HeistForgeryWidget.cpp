@@ -1229,7 +1229,7 @@ void UHeistForgeryWidget::RefreshLocalPreviewScore()
 		return;
 	}
 
-	FHeistForgeryResult PreviewResult;
+	FHeistForgeryResult ForgeryPreviewResult;
 	int32 ReferenceMaskPixels = 0;
 	int32 SubmittedMaskPixels = 0;
 	if (!IsValid(ForgeryViewModel)
@@ -1238,7 +1238,7 @@ void UHeistForgeryWidget::RefreshLocalPreviewScore()
 			StrokePointCounts,
 			StrokePaletteIndices,
 			GetConfiguredBrushSize(),
-			PreviewResult,
+			ForgeryPreviewResult,
 			ReferenceMaskPixels,
 			SubmittedMaskPixels))
 	{
@@ -1268,7 +1268,7 @@ void UHeistForgeryWidget::RefreshLocalPreviewScore()
 					"PREVIEW SCORE  {0}"),
 				FText::AsNumber(
 					FMath::RoundToInt(
-						PreviewResult.SimilarityScore))));
+						ForgeryPreviewResult.SimilarityScore))));
 	}
 }
 
