@@ -94,6 +94,7 @@ public:
 		FHeistForgeryResult& OutResult,
 		int32& OutReferenceMaskPixels,
 		int32& OutSubmittedMaskPixels) const;
+	bool RunOpenCVScoringSelfTestForDebug(FString& OutSummary) const;
 	bool CalculateLocalForgeryPreview(
 		const TArray<FVector2D>& NormalizedPoints,
 		const TArray<int32>& StrokePointCounts,
@@ -433,6 +434,9 @@ private:
 	mutable FName CachedScoringTemplateId = NAME_None;
 	mutable TArray<uint8> CachedReferenceMask;
 	mutable TArray<uint8> CachedReferencePaletteMap;
+	mutable bool bLastScoringReferenceCacheHit = false;
+	mutable double LastScoringReferenceMilliseconds = 0.0;
+	mutable double LastOpenCVScoringMilliseconds = 0.0;
 
 	FTimerHandle SessionTimeoutTimerHandle;
 	FHeistForgerySessionStateChanged SessionStateChangedDelegate;

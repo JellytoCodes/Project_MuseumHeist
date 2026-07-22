@@ -1,5 +1,5 @@
 # Project_MuseumHeist — Class Manifest
-## Rev 4: W4 Forgery And Detection Baseline
+## Rev 5: W4 OpenCV Forgery Similarity Baseline
 
 상태:
 
@@ -242,6 +242,18 @@ FHeistForgeryTemplateRow
 - Palette: 2~8 DataTable colors, mouse button selection and number keys 1~8
 - Preview Score: throttled owner-local estimate using the shared C++ evaluator
 - Final Score: server-authoritative result only
+
+### OpenCV Forgery Score Contract
+
+- UE 5.8 Runtime OpenCV 4.5.5의 `core`, `imgproc`, `quality` 모듈을 사용한다.
+- Stroke 수집과 Palette Raster 생성은 기존 C++ 경로를 유지하고 최종 유사도 평가만 OpenCV가 담당한다.
+- Shape는 3×3 Morphology Close 후 Reference→Submitted, Submitted→Reference 양방향 Distance Transform으로 평가한다.
+- Color는 고정 Canvas의 비교 ROI를 Lab으로 변환한 SSIM과 Palette 분포 Histogram 유사도를 조합한다.
+- 완전 일치는 그대로 유지하고 중간 품질만 보수적으로 환산하는 Shape 1.15 / Color 1.10 응답 곡선을 사용한다.
+- SSIM 평균은 Foreground Union으로 제한하며, 제출/Reference 면적 비율에 0.65 지수 완성도 계수를 적용해 점·짧은 선의 기본 점수를 차단한다.
+- Coverage, Missing, Extra는 정확한 픽셀 일치 개수가 아니라 Distance Similarity의 Recall/Precision에서 계산한다.
+- Anti-Fill은 실제 제출/Reference Foreground 면적 비율로 별도 적용한다.
+- Local Preview와 Server Final은 동일한 OpenCV Evaluator를 사용하며 서버 결과만 확정값이다.
 
 ## `Data/HeistGameBalanceDataAsset.*`
 `UHeistGameBalanceDataAsset` — Modify

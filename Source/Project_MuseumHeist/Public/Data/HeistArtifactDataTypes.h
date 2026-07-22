@@ -127,11 +127,11 @@ struct PROJECT_MUSEUMHEIST_API FHeistForgeryTemplateRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float TimeoutPenalty = 0.25f;
 
-	/** Portion of the final score retained by the existing shape score. */
+	/** Portion awarded by OpenCV distance-based shape similarity. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float ShapeAccuracyWeight = 0.65f;
 
-	/** Portion of the final score awarded for the correct palette index. */
+	/** Portion awarded by OpenCV Lab SSIM and palette-distribution similarity. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float ColorAccuracyWeight = 0.35f;
 

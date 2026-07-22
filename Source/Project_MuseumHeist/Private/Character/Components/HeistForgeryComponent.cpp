@@ -9,11 +9,24 @@
 #include "Data/HeistArtifactDataTypes.h"
 #include "Engine/Texture2D.h"
 #include "Engine/World.h"
+#include "HAL/PlatformTime.h"
 #include "ImageCore.h"
 #include "ImageUtils.h"
 #include "Net/UnrealNetwork.h"
 #include "TimerManager.h"
 #include "World/Actors/Loot/HeistDisplayCaseActor.h"
+
+#include <vector>
+
+#if WITH_OPENCV
+// IWYU pragma: begin_keep
+#include "PreOpenCVHeaders.h"
+#include "opencv2/core.hpp"
+#include "opencv2/imgproc.hpp"
+#include "opencv2/quality/qualityssim.hpp"
+#include "PostOpenCVHeaders.h"
+// IWYU pragma: end_keep
+#endif
 
 namespace
 {
@@ -25,6 +38,25 @@ namespace
 	constexpr uint8 EmptyPaletteIndex = MAX_uint8;
 	constexpr float SubmissionTimeoutToleranceSeconds = 0.05f;
 	constexpr float BrushSizeValidationTolerance = 0.0001f;
+	constexpr int32 OpenCVMorphologyKernelSize = 3;
+	constexpr float OpenCVDistanceTolerancePixels = 10.0f;
+	constexpr float OpenCVStructuralColorWeight = 0.75f;
+	constexpr float OpenCVHistogramColorWeight = 0.25f;
+	constexpr float OpenCVShapeScoreExponent = 1.15f;
+	constexpr float OpenCVColorScoreExponent = 1.10f;
+	constexpr float PaintCompletenessExponent = 0.65f;
+
+	struct FOpenCVForgeryMetrics
+	{
+		float ReferenceCoverage = 0.0f;
+		float SubmittedPrecision = 0.0f;
+		float BidirectionalShapeSimilarity = 0.0f;
+		float StructuralColorSimilarity = 0.0f;
+		float HistogramColorSimilarity = 0.0f;
+		float ColorSimilarity = 0.0f;
+		int32 ReferencePixelCount = 0;
+		int32 SubmittedPixelCount = 0;
+	};
 
 	uint8 ColorLuminance(const FColor& Color)
 	{
@@ -298,6 +330,16 @@ namespace
 		int32& OutHeight,
 		EPixelFormat& OutPixelFormat)
 	{
+		if (DecodePlatformTextureIntensity(
+			Texture,
+			OutIntensity,
+			OutWidth,
+			OutHeight,
+			OutPixelFormat))
+		{
+			return true;
+		}
+
 #if WITH_EDITORONLY_DATA
 		FImage SourceImage;
 		if (IsValid(Texture)
@@ -322,12 +364,7 @@ namespace
 			return true;
 		}
 #endif
-		return DecodePlatformTextureIntensity(
-			Texture,
-			OutIntensity,
-			OutWidth,
-			OutHeight,
-			OutPixelFormat);
+		return false;
 	}
 
 	bool DecodePlatformTextureColors(
@@ -518,6 +555,16 @@ namespace
 		int32& OutHeight,
 		EPixelFormat& OutPixelFormat)
 	{
+		if (DecodePlatformTextureColors(
+			Texture,
+			OutColors,
+			OutWidth,
+			OutHeight,
+			OutPixelFormat))
+		{
+			return true;
+		}
+
 #if WITH_EDITORONLY_DATA
 		FImage SourceImage;
 		if (IsValid(Texture)
@@ -542,12 +589,7 @@ namespace
 			return true;
 		}
 #endif
-		return DecodePlatformTextureColors(
-			Texture,
-			OutColors,
-			OutWidth,
-			OutHeight,
-			OutPixelFormat);
+		return false;
 	}
 
 	void BuildLowResolutionReferenceMask(
@@ -845,6 +887,330 @@ namespace
 			PointOffset += StrokePointCount;
 		}
 	}
+
+#if WITH_OPENCV
+	bool BuildOpenCVBinaryMasks(
+		const TArray<uint8>& ReferenceMask,
+		const TArray<uint8>& SubmittedPaletteMap,
+		cv::Mat& OutReferenceMask,
+		cv::Mat& OutSubmittedMask)
+	{
+		const int32 ExpectedPixelCount =
+			ForgeryScoreGridResolution * ForgeryScoreGridResolution;
+		if (ReferenceMask.Num() != ExpectedPixelCount
+			|| SubmittedPaletteMap.Num() != ExpectedPixelCount)
+		{
+			return false;
+		}
+
+		OutReferenceMask = cv::Mat::zeros(
+			ForgeryScoreGridResolution,
+			ForgeryScoreGridResolution,
+			CV_8UC1);
+		OutSubmittedMask = cv::Mat::zeros(
+			ForgeryScoreGridResolution,
+			ForgeryScoreGridResolution,
+			CV_8UC1);
+		for (int32 PixelIndex = 0;
+			PixelIndex < ExpectedPixelCount;
+			++PixelIndex)
+		{
+			OutReferenceMask.data[PixelIndex] =
+				ReferenceMask[PixelIndex] != 0 ? 255 : 0;
+			OutSubmittedMask.data[PixelIndex] =
+				SubmittedPaletteMap[PixelIndex] != EmptyPaletteIndex
+					? 255
+					: 0;
+		}
+		return true;
+	}
+
+	bool BuildOpenCVPaletteImages(
+		const TArray<uint8>& ReferencePaletteMap,
+		const TArray<uint8>& SubmittedPaletteMap,
+		const TArray<FLinearColor>& Palette,
+		cv::Mat& OutReferenceBgr,
+		cv::Mat& OutSubmittedBgr,
+		cv::Mat& OutReferenceHistogram,
+		cv::Mat& OutSubmittedHistogram)
+	{
+		const int32 ExpectedPixelCount =
+			ForgeryScoreGridResolution * ForgeryScoreGridResolution;
+		if (ReferencePaletteMap.Num() != ExpectedPixelCount
+			|| SubmittedPaletteMap.Num() != ExpectedPixelCount
+			|| !FMath::IsWithinInclusive(Palette.Num(), 2, 8))
+		{
+			return false;
+		}
+
+		const cv::Scalar NeutralBackground(127, 127, 127);
+		OutReferenceBgr = cv::Mat(
+			ForgeryScoreGridResolution,
+			ForgeryScoreGridResolution,
+			CV_8UC3,
+			NeutralBackground);
+		OutSubmittedBgr = cv::Mat(
+			ForgeryScoreGridResolution,
+			ForgeryScoreGridResolution,
+			CV_8UC3,
+			NeutralBackground);
+		OutReferenceHistogram = cv::Mat::zeros(
+			1,
+			Palette.Num(),
+			CV_32F);
+		OutSubmittedHistogram = cv::Mat::zeros(
+			1,
+			Palette.Num(),
+			CV_32F);
+
+		for (int32 PixelIndex = 0;
+			PixelIndex < ExpectedPixelCount;
+			++PixelIndex)
+		{
+			const uint8 ReferencePaletteIndex =
+				ReferencePaletteMap[PixelIndex];
+			const uint8 SubmittedPaletteIndex =
+				SubmittedPaletteMap[PixelIndex];
+			if (ReferencePaletteIndex != EmptyPaletteIndex)
+			{
+				if (!Palette.IsValidIndex(ReferencePaletteIndex))
+				{
+					return false;
+				}
+				const FColor Color =
+					Palette[ReferencePaletteIndex].ToFColorSRGB();
+				OutReferenceBgr.at<cv::Vec3b>(
+					PixelIndex / ForgeryScoreGridResolution,
+					PixelIndex % ForgeryScoreGridResolution) =
+					cv::Vec3b(Color.B, Color.G, Color.R);
+				OutReferenceHistogram.at<float>(
+					0,
+					ReferencePaletteIndex) += 1.0f;
+			}
+
+			if (SubmittedPaletteIndex != EmptyPaletteIndex)
+			{
+				if (!Palette.IsValidIndex(SubmittedPaletteIndex))
+				{
+					return false;
+				}
+				const FColor Color =
+					Palette[SubmittedPaletteIndex].ToFColorSRGB();
+				OutSubmittedBgr.at<cv::Vec3b>(
+					PixelIndex / ForgeryScoreGridResolution,
+					PixelIndex % ForgeryScoreGridResolution) =
+					cv::Vec3b(Color.B, Color.G, Color.R);
+				OutSubmittedHistogram.at<float>(
+					0,
+					SubmittedPaletteIndex) += 1.0f;
+			}
+		}
+
+		cv::normalize(
+			OutReferenceHistogram,
+			OutReferenceHistogram,
+			1.0,
+			0.0,
+			cv::NORM_L1);
+		cv::normalize(
+			OutSubmittedHistogram,
+			OutSubmittedHistogram,
+			1.0,
+			0.0,
+			cv::NORM_L1);
+		return true;
+	}
+
+	float CalculateOpenCVDistanceSimilarity(
+		const cv::Mat& SourceMask,
+		const cv::Mat& TargetMask)
+	{
+		cv::Mat InvertedTargetMask;
+		cv::bitwise_not(TargetMask, InvertedTargetMask);
+		cv::Mat DistanceMap;
+		cv::distanceTransform(
+			InvertedTargetMask,
+			DistanceMap,
+			cv::DIST_L2,
+			cv::DIST_MASK_5);
+
+		double SimilarityTotal = 0.0;
+		int32 SampleCount = 0;
+		for (int32 Y = 0; Y < SourceMask.rows; ++Y)
+		{
+			const uint8* SourceRow = SourceMask.ptr<uint8>(Y);
+			const float* DistanceRow = DistanceMap.ptr<float>(Y);
+			for (int32 X = 0; X < SourceMask.cols; ++X)
+			{
+				if (SourceRow[X] == 0)
+				{
+					continue;
+				}
+
+				const float NormalizedDistance =
+					DistanceRow[X] / OpenCVDistanceTolerancePixels;
+				SimilarityTotal += 1.0
+					/ (1.0 + NormalizedDistance * NormalizedDistance);
+				++SampleCount;
+			}
+		}
+		return SampleCount > 0
+			? static_cast<float>(SimilarityTotal / SampleCount)
+			: 0.0f;
+	}
+
+	bool CalculateOpenCVForgeryMetrics(
+		const TArray<uint8>& ReferenceMask,
+		const TArray<uint8>& ReferencePaletteMap,
+		const TArray<uint8>& SubmittedPaletteMap,
+		const TArray<FLinearColor>& Palette,
+		FOpenCVForgeryMetrics& OutMetrics)
+	{
+		OutMetrics = FOpenCVForgeryMetrics();
+		cv::Mat ReferenceBinaryMask;
+		cv::Mat SubmittedBinaryMask;
+		if (!BuildOpenCVBinaryMasks(
+			ReferenceMask,
+			SubmittedPaletteMap,
+			ReferenceBinaryMask,
+			SubmittedBinaryMask))
+		{
+			return false;
+		}
+
+		OutMetrics.ReferencePixelCount =
+			cv::countNonZero(ReferenceBinaryMask);
+		OutMetrics.SubmittedPixelCount =
+			cv::countNonZero(SubmittedBinaryMask);
+		if (OutMetrics.ReferencePixelCount <= 0
+			|| OutMetrics.SubmittedPixelCount <= 0)
+		{
+			return false;
+		}
+
+		const cv::Mat MorphologyKernel = cv::getStructuringElement(
+			cv::MORPH_ELLIPSE,
+			cv::Size(
+				OpenCVMorphologyKernelSize,
+				OpenCVMorphologyKernelSize));
+		cv::Mat ReferenceShapeMask;
+		cv::Mat SubmittedShapeMask;
+		cv::morphologyEx(
+			ReferenceBinaryMask,
+			ReferenceShapeMask,
+			cv::MORPH_CLOSE,
+			MorphologyKernel);
+		cv::morphologyEx(
+			SubmittedBinaryMask,
+			SubmittedShapeMask,
+			cv::MORPH_CLOSE,
+			MorphologyKernel);
+
+		OutMetrics.ReferenceCoverage =
+			CalculateOpenCVDistanceSimilarity(
+				ReferenceShapeMask,
+				SubmittedShapeMask);
+		OutMetrics.SubmittedPrecision =
+			CalculateOpenCVDistanceSimilarity(
+				SubmittedShapeMask,
+				ReferenceShapeMask);
+		const float ShapeSimilarityTotal =
+			OutMetrics.ReferenceCoverage
+			+ OutMetrics.SubmittedPrecision;
+		OutMetrics.BidirectionalShapeSimilarity =
+			ShapeSimilarityTotal > UE_SMALL_NUMBER
+				? 2.0f
+					* OutMetrics.ReferenceCoverage
+					* OutMetrics.SubmittedPrecision
+					/ ShapeSimilarityTotal
+				: 0.0f;
+
+		cv::Mat ReferenceBgr;
+		cv::Mat SubmittedBgr;
+		cv::Mat ReferenceHistogram;
+		cv::Mat SubmittedHistogram;
+		if (!BuildOpenCVPaletteImages(
+			ReferencePaletteMap,
+			SubmittedPaletteMap,
+			Palette,
+			ReferenceBgr,
+			SubmittedBgr,
+			ReferenceHistogram,
+			SubmittedHistogram))
+		{
+			return false;
+		}
+
+		cv::Mat UnionMask;
+		cv::bitwise_or(
+			ReferenceShapeMask,
+			SubmittedShapeMask,
+			UnionMask);
+		std::vector<cv::Point> ForegroundPoints;
+		cv::findNonZero(UnionMask, ForegroundPoints);
+		if (ForegroundPoints.empty())
+		{
+			return false;
+		}
+
+		cv::Rect ComparisonBounds = cv::boundingRect(ForegroundPoints);
+		constexpr int32 ComparisonPaddingPixels = 4;
+		ComparisonBounds.x = FMath::Max(
+			0,
+			ComparisonBounds.x - ComparisonPaddingPixels);
+		ComparisonBounds.y = FMath::Max(
+			0,
+			ComparisonBounds.y - ComparisonPaddingPixels);
+		ComparisonBounds.width = FMath::Min(
+			ForgeryScoreGridResolution - ComparisonBounds.x,
+			ComparisonBounds.width + ComparisonPaddingPixels * 2);
+		ComparisonBounds.height = FMath::Min(
+			ForgeryScoreGridResolution - ComparisonBounds.y,
+			ComparisonBounds.height + ComparisonPaddingPixels * 2);
+
+		cv::Mat ReferenceLab;
+		cv::Mat SubmittedLab;
+		cv::cvtColor(
+			ReferenceBgr(ComparisonBounds),
+			ReferenceLab,
+			cv::COLOR_BGR2Lab);
+		cv::cvtColor(
+			SubmittedBgr(ComparisonBounds),
+			SubmittedLab,
+			cv::COLOR_BGR2Lab);
+		cv::Mat StructuralSimilarityMap;
+		cv::quality::QualitySSIM::compute(
+			ReferenceLab,
+			SubmittedLab,
+			StructuralSimilarityMap);
+		const cv::Scalar StructuralSimilarity = cv::mean(
+			StructuralSimilarityMap,
+			UnionMask(ComparisonBounds));
+		OutMetrics.StructuralColorSimilarity = FMath::Clamp(
+			static_cast<float>(
+				(StructuralSimilarity[0]
+					+ StructuralSimilarity[1]
+					+ StructuralSimilarity[2])
+				/ 3.0),
+			0.0f,
+			1.0f);
+		OutMetrics.HistogramColorSimilarity = FMath::Clamp(
+			1.0f - static_cast<float>(cv::compareHist(
+				ReferenceHistogram,
+				SubmittedHistogram,
+				cv::HISTCMP_BHATTACHARYYA)),
+			0.0f,
+			1.0f);
+		OutMetrics.ColorSimilarity = FMath::Clamp(
+			OutMetrics.StructuralColorSimilarity
+				* OpenCVStructuralColorWeight
+				+ OutMetrics.HistogramColorSimilarity
+					* OpenCVHistogramColorWeight,
+			0.0f,
+			1.0f);
+		return true;
+	}
+#endif
 
 }
 
@@ -1873,6 +2239,7 @@ bool UHeistForgeryComponent::TryCalculateAndCommitForgeryScore()
 	FHeistForgeryResult CalculatedResult;
 	int32 CalculatedReferenceMaskPixels = 0;
 	int32 CalculatedSubmittedMaskPixels = 0;
+	const double ScoreCalculationStartSeconds = FPlatformTime::Seconds();
 	if (!CalculateForgeryScore(
 		ValidatedStrokePoints,
 		ValidatedStrokePointCounts,
@@ -1893,6 +2260,8 @@ bool UHeistForgeryComponent::TryCalculateAndCommitForgeryScore()
 			*ReferenceMaskAsset.ToSoftObjectPath().ToString());
 		return false;
 	}
+	const double ScoreCalculationMilliseconds =
+		(FPlatformTime::Seconds() - ScoreCalculationStartSeconds) * 1000.0;
 
 	FHeistReplicaPaintingData PaintingData;
 	if (!BuildReplicaPaintingData(PaintingData))
@@ -1959,7 +2328,7 @@ bool UHeistForgeryComponent::TryCalculateAndCommitForgeryScore()
 	UE_LOG(
 		LogHeistNetwork,
 		Log,
-		TEXT("Forgery score committed: Character=%s Case=%s Artifact=%s Template=%s Score=%.2f Coverage=%.2f MajorShape=%.2f ColorAccuracy=%.2f MissingPenalty=%.2f ExtraPenalty=%.2f TimeoutPenalty=%.2f CompletionTime=%.2f PaintToReference=%.2f AntiFill=%s Resolution=%dx%d ReferencePixels=%d SubmittedPixels=%d ReferenceRatio=%.4f SubmittedRatio=%.4f ScoreRevision=%d Authority=true Deterministic=true Result=PASS"),
+		TEXT("Forgery score committed: Character=%s Case=%s Artifact=%s Template=%s Backend=OpenCV ShapeMetric=BidirectionalDistance ColorMetric=LabSSIMHistogram ScoreCurve=Shape1.15Color1.10 PaintCompletenessExponent=0.65 Score=%.2f Coverage=%.2f MajorShape=%.2f ColorAccuracy=%.2f MissingPenalty=%.2f ExtraPenalty=%.2f TimeoutPenalty=%.2f CompletionTime=%.2f PaintToReference=%.2f PaintCompleteness=%.3f AntiFill=%s Resolution=%dx%d ReferencePixels=%d SubmittedPixels=%d ReferenceRatio=%.4f SubmittedRatio=%.4f Cache=%s ReferenceMs=%.3f OpenCVMs=%.3f TotalMs=%.3f ScoreRevision=%d Authority=true Deterministic=true Result=PASS"),
 		*GetNameSafe(GetOwner()),
 		*GetNameSafe(ActiveDisplayCase.Get()),
 		*AuthoritativeForgeryResult.ArtifactId.ToString(),
@@ -1973,6 +2342,12 @@ bool UHeistForgeryComponent::TryCalculateAndCommitForgeryScore()
 		AuthoritativeForgeryResult.TimeoutPenalty,
 		AuthoritativeForgeryResult.CompletionTime,
 		AuthoritativeForgeryResult.PaintToReferenceRatio,
+		FMath::Pow(
+			FMath::Clamp(
+				AuthoritativeForgeryResult.PaintToReferenceRatio,
+				0.0f,
+				1.0f),
+			PaintCompletenessExponent),
 		AuthoritativeForgeryResult.bAntiFillTriggered
 			? TEXT("true")
 			: TEXT("false"),
@@ -1982,6 +2357,10 @@ bool UHeistForgeryComponent::TryCalculateAndCommitForgeryScore()
 		SubmittedMaskPixelCount,
 		static_cast<float>(ReferenceMaskPixelCount) / TotalScorePixels,
 		static_cast<float>(SubmittedMaskPixelCount) / TotalScorePixels,
+		bLastScoringReferenceCacheHit ? TEXT("Hit") : TEXT("Miss"),
+		LastScoringReferenceMilliseconds,
+		LastOpenCVScoringMilliseconds,
+		ScoreCalculationMilliseconds,
 		ForgeryScoreRevision);
 	SessionStateChangedDelegate.Broadcast();
 	return true;
@@ -2205,10 +2584,24 @@ bool UHeistForgeryComponent::CalculateForgeryScore(
 		return false;
 	}
 
+	const int32 ExpectedScorePixelCount =
+		ForgeryScoreGridResolution * ForgeryScoreGridResolution;
+	bLastScoringReferenceCacheHit =
+		CachedScoringTemplateId == ActiveTemplateId
+		&& CachedReferenceMask.Num() == ExpectedScorePixelCount
+		&& CachedReferencePaletteMap.Num() == ExpectedScorePixelCount;
+	LastOpenCVScoringMilliseconds = 0.0;
+	const double ReferenceScoringStartSeconds = FPlatformTime::Seconds();
 	if (!BuildScoringReferenceCache())
 	{
+		LastScoringReferenceMilliseconds =
+			(FPlatformTime::Seconds() - ReferenceScoringStartSeconds)
+			* 1000.0;
 		return false;
 	}
+	LastScoringReferenceMilliseconds =
+		(FPlatformTime::Seconds() - ReferenceScoringStartSeconds)
+		* 1000.0;
 
 	const TArray<uint8>& ReferenceMask = CachedReferenceMask;
 	const TArray<uint8>& ReferencePaletteMap =
@@ -2221,32 +2614,35 @@ bool UHeistForgeryComponent::CalculateForgeryScore(
 		BrushSize,
 		SubmittedPaletteMap);
 
-	int32 IntersectionPixelCount = 0;
-	int32 ExtraPixelCount = 0;
-	int32 MissingPixelCount = 0;
-	int32 UnionPixelCount = 0;
-	int32 CorrectColorPixelCount = 0;
-	for (int32 PixelIndex = 0;
-		PixelIndex < ReferenceMask.Num();
-		++PixelIndex)
+#if WITH_OPENCV
+	FOpenCVForgeryMetrics OpenCVMetrics;
+	const double OpenCVScoringStartSeconds = FPlatformTime::Seconds();
+	if (!CalculateOpenCVForgeryMetrics(
+		ReferenceMask,
+		ReferencePaletteMap,
+		SubmittedPaletteMap,
+		TemplateAllowedPalette,
+		OpenCVMetrics))
 	{
-		const bool bReference = ReferenceMask[PixelIndex] != 0;
-		const bool bSubmitted =
-			SubmittedPaletteMap[PixelIndex] != EmptyPaletteIndex;
-		OutReferenceMaskPixels += bReference ? 1 : 0;
-		OutSubmittedMaskPixels += bSubmitted ? 1 : 0;
-		IntersectionPixelCount += bReference && bSubmitted ? 1 : 0;
-		ExtraPixelCount += !bReference && bSubmitted ? 1 : 0;
-		MissingPixelCount += bReference && !bSubmitted ? 1 : 0;
-		UnionPixelCount += bReference || bSubmitted ? 1 : 0;
-		CorrectColorPixelCount +=
-			bReference
-			&& bSubmitted
-			&& ReferencePaletteMap[PixelIndex]
-				== SubmittedPaletteMap[PixelIndex]
-				? 1
-				: 0;
+		LastOpenCVScoringMilliseconds =
+			(FPlatformTime::Seconds() - OpenCVScoringStartSeconds)
+			* 1000.0;
+		return false;
 	}
+	LastOpenCVScoringMilliseconds =
+		(FPlatformTime::Seconds() - OpenCVScoringStartSeconds)
+		* 1000.0;
+	OutReferenceMaskPixels = OpenCVMetrics.ReferencePixelCount;
+	OutSubmittedMaskPixels = OpenCVMetrics.SubmittedPixelCount;
+#else
+	UE_LOG(
+		LogHeistNetwork,
+		Error,
+		TEXT("Forgery score calculation rejected: Character=%s Template=%s Reason=OpenCVUnavailable"),
+		*GetNameSafe(GetOwner()),
+		*ActiveTemplateId.ToString());
+	return false;
+#endif
 
 	const int32 TotalPixelCount =
 		ForgeryScoreGridResolution * ForgeryScoreGridResolution;
@@ -2269,30 +2665,27 @@ bool UHeistForgeryComponent::CalculateForgeryScore(
 		return false;
 	}
 
-	const float CoverageRatio =
-		static_cast<float>(IntersectionPixelCount)
-		/ OutReferenceMaskPixels;
-	const float MissingShapeRatio =
-		static_cast<float>(MissingPixelCount)
-		/ OutReferenceMaskPixels;
-	const float ExtraStrokeRatio = OutSubmittedMaskPixels > 0
-		? static_cast<float>(ExtraPixelCount) / OutSubmittedMaskPixels
-		: 0.0f;
-	const float MajorShapeRatio = UnionPixelCount > 0
-		? static_cast<float>(IntersectionPixelCount) / UnionPixelCount
-		: 0.0f;
-	const float ColorRecallRatio =
-		static_cast<float>(CorrectColorPixelCount)
-		/ OutReferenceMaskPixels;
-	const float ColorPrecisionRatio = OutSubmittedMaskPixels > 0
-		? static_cast<float>(CorrectColorPixelCount)
-			/ OutSubmittedMaskPixels
-		: 0.0f;
-	const float ColorF1Ratio =
-		ColorRecallRatio + ColorPrecisionRatio > 0.0f
-			? 2.0f * ColorRecallRatio * ColorPrecisionRatio
-				/ (ColorRecallRatio + ColorPrecisionRatio)
-			: 0.0f;
+	float CoverageRatio = 0.0f;
+	float MissingShapeRatio = 0.0f;
+	float ExtraStrokeRatio = 0.0f;
+	float MajorShapeRatio = 0.0f;
+	float ColorSimilarityRatio = 0.0f;
+#if WITH_OPENCV
+	CoverageRatio = FMath::Pow(
+		FMath::Clamp(OpenCVMetrics.ReferenceCoverage, 0.0f, 1.0f),
+		OpenCVShapeScoreExponent);
+	MissingShapeRatio = 1.0f - OpenCVMetrics.ReferenceCoverage;
+	ExtraStrokeRatio = 1.0f - OpenCVMetrics.SubmittedPrecision;
+	MajorShapeRatio = FMath::Pow(
+		FMath::Clamp(
+			OpenCVMetrics.BidirectionalShapeSimilarity,
+			0.0f,
+			1.0f),
+		OpenCVShapeScoreExponent);
+	ColorSimilarityRatio = FMath::Pow(
+		FMath::Clamp(OpenCVMetrics.ColorSimilarity, 0.0f, 1.0f),
+		OpenCVColorScoreExponent);
+#endif
 
 	const float CoveragePoints =
 		CoverageRatio * TemplateCoverageWeight * 100.0f;
@@ -2310,7 +2703,8 @@ bool UHeistForgeryComponent::CalculateForgeryScore(
 			- ExtraStrokePenaltyPoints,
 		0.0f,
 		100.0f);
-	const float ColorAccuracyScore = ColorF1Ratio * 100.0f;
+	const float ColorAccuracyScore =
+		ColorSimilarityRatio * 100.0f;
 	const float AccuracyWeightTotal =
 		TemplateShapeAccuracyWeight + TemplateColorAccuracyWeight;
 	float FinalScore = FMath::Clamp(
@@ -2326,6 +2720,10 @@ bool UHeistForgeryComponent::CalculateForgeryScore(
 	const float PaintToReferenceRatio =
 		static_cast<float>(OutSubmittedMaskPixels)
 		/ OutReferenceMaskPixels;
+	const float PaintCompletenessFactor = FMath::Pow(
+		FMath::Clamp(PaintToReferenceRatio, 0.0f, 1.0f),
+		PaintCompletenessExponent);
+	FinalScore *= PaintCompletenessFactor;
 	const bool bAntiFillTriggered =
 		PaintToReferenceRatio > TemplateMaximumPaintToReferenceRatio;
 	if (bAntiFillTriggered)
@@ -2368,6 +2766,120 @@ bool UHeistForgeryComponent::CalculateForgeryScore(
 	OutResult.CompletionTime = RoundScore(CompletionTime);
 	OutResult.bReplicaPlaced = false;
 	return true;
+}
+
+bool UHeistForgeryComponent::RunOpenCVScoringSelfTestForDebug(
+	FString& OutSummary) const
+{
+#if WITH_OPENCV
+	const int32 PixelCount =
+		ForgeryScoreGridResolution * ForgeryScoreGridResolution;
+	TArray<uint8> ReferenceMask;
+	TArray<uint8> ReferencePaletteMap;
+	TArray<uint8> ExactPaletteMap;
+	TArray<uint8> ShiftedPaletteMap;
+	TArray<uint8> WrongColorPaletteMap;
+	TArray<uint8> FilledPaletteMap;
+	ReferenceMask.Init(0, PixelCount);
+	ReferencePaletteMap.Init(EmptyPaletteIndex, PixelCount);
+	ExactPaletteMap.Init(EmptyPaletteIndex, PixelCount);
+	ShiftedPaletteMap.Init(EmptyPaletteIndex, PixelCount);
+	WrongColorPaletteMap.Init(EmptyPaletteIndex, PixelCount);
+	FilledPaletteMap.Init(0, PixelCount);
+
+	constexpr int32 ShapeMinimum = 32;
+	constexpr int32 ShapeMaximum = 95;
+	constexpr int32 ShiftPixels = 5;
+	for (int32 Y = ShapeMinimum; Y <= ShapeMaximum; ++Y)
+	{
+		for (int32 X = ShapeMinimum; X <= ShapeMaximum; ++X)
+		{
+			const int32 PixelIndex =
+				Y * ForgeryScoreGridResolution + X;
+			const uint8 PaletteIndex =
+				X < ForgeryScoreGridResolution / 2 ? 0 : 1;
+			ReferenceMask[PixelIndex] = 1;
+			ReferencePaletteMap[PixelIndex] = PaletteIndex;
+			ExactPaletteMap[PixelIndex] = PaletteIndex;
+			WrongColorPaletteMap[PixelIndex] =
+				PaletteIndex == 0 ? 1 : 0;
+
+			const int32 ShiftedX = X + ShiftPixels;
+			if (ShiftedX < ForgeryScoreGridResolution)
+			{
+				ShiftedPaletteMap[
+					Y * ForgeryScoreGridResolution + ShiftedX] =
+					PaletteIndex;
+			}
+		}
+	}
+
+	const TArray<FLinearColor> TestPalette = {
+		FLinearColor(0.95f, 0.08f, 0.05f, 1.0f),
+		FLinearColor(0.04f, 0.15f, 0.95f, 1.0f)
+	};
+	FOpenCVForgeryMetrics ExactMetrics;
+	FOpenCVForgeryMetrics ShiftedMetrics;
+	FOpenCVForgeryMetrics WrongColorMetrics;
+	FOpenCVForgeryMetrics FilledMetrics;
+	const bool bCalculated =
+		CalculateOpenCVForgeryMetrics(
+			ReferenceMask,
+			ReferencePaletteMap,
+			ExactPaletteMap,
+			TestPalette,
+			ExactMetrics)
+		&& CalculateOpenCVForgeryMetrics(
+			ReferenceMask,
+			ReferencePaletteMap,
+			ShiftedPaletteMap,
+			TestPalette,
+			ShiftedMetrics)
+		&& CalculateOpenCVForgeryMetrics(
+			ReferenceMask,
+			ReferencePaletteMap,
+			WrongColorPaletteMap,
+			TestPalette,
+			WrongColorMetrics)
+		&& CalculateOpenCVForgeryMetrics(
+			ReferenceMask,
+			ReferencePaletteMap,
+			FilledPaletteMap,
+			TestPalette,
+			FilledMetrics);
+	const float FilledAreaRatio = bCalculated
+		? static_cast<float>(FilledMetrics.SubmittedPixelCount)
+			/ ExactMetrics.ReferencePixelCount
+		: 0.0f;
+	const bool bContractPassed = bCalculated
+		&& ExactMetrics.BidirectionalShapeSimilarity >= 0.999f
+		&& ExactMetrics.ColorSimilarity >= 0.999f
+		&& ShiftedMetrics.BidirectionalShapeSimilarity
+			< ExactMetrics.BidirectionalShapeSimilarity
+		&& ShiftedMetrics.BidirectionalShapeSimilarity > 0.0f
+		&& WrongColorMetrics.BidirectionalShapeSimilarity >= 0.999f
+		&& WrongColorMetrics.ColorSimilarity
+			< ExactMetrics.ColorSimilarity
+		&& FilledMetrics.SubmittedPrecision
+			< ExactMetrics.SubmittedPrecision
+		&& FilledAreaRatio > 1.0f;
+
+	OutSummary = FString::Printf(
+		TEXT("Calculated=%s ExactShape=%.4f ExactColor=%.4f ShiftedShape=%.4f WrongColorShape=%.4f WrongColor=%.4f FillPrecision=%.4f FillAreaRatio=%.2f Contract=%s"),
+		bCalculated ? TEXT("true") : TEXT("false"),
+		ExactMetrics.BidirectionalShapeSimilarity,
+		ExactMetrics.ColorSimilarity,
+		ShiftedMetrics.BidirectionalShapeSimilarity,
+		WrongColorMetrics.BidirectionalShapeSimilarity,
+		WrongColorMetrics.ColorSimilarity,
+		FilledMetrics.SubmittedPrecision,
+		FilledAreaRatio,
+		bContractPassed ? TEXT("PASS") : TEXT("FAIL"));
+	return bContractPassed;
+#else
+	OutSummary = TEXT("Calculated=false Reason=OpenCVUnavailable Contract=FAIL");
+	return false;
+#endif
 }
 
 void UHeistForgeryComponent::ResetForgeryScoreState()

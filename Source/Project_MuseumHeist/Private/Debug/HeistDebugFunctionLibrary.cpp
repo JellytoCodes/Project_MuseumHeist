@@ -75,6 +75,58 @@ namespace
 			: nullptr;
 	}
 
+	UHeistForgeryComponent* ResolveScoredForgeryComponent(
+		APlayerController* PlayerController,
+		bool& bOutUsedAuthorityFallback)
+	{
+		bOutUsedAuthorityFallback = false;
+		UHeistForgeryComponent* DirectComponent =
+			ResolveForgeryComponent(PlayerController);
+		if (IsValid(DirectComponent)
+			&& DirectComponent->HasAuthoritativeForgeryResult())
+		{
+			return DirectComponent;
+		}
+
+		if (!IsValid(PlayerController)
+			|| !PlayerController->HasAuthority()
+			|| !IsValid(PlayerController->GetWorld()))
+		{
+			return DirectComponent;
+		}
+
+		UHeistForgeryComponent* LatestScoredComponent = nullptr;
+		int32 LatestScoreRevision = INDEX_NONE;
+		for (TActorIterator<AHeistPlayerCharacter> CharacterIterator(
+				PlayerController->GetWorld());
+			CharacterIterator;
+			++CharacterIterator)
+		{
+			AHeistPlayerCharacter* CandidateCharacter = *CharacterIterator;
+			UHeistForgeryComponent* CandidateComponent =
+				IsValid(CandidateCharacter)
+				? CandidateCharacter->GetForgeryComponent()
+				: nullptr;
+			if (!IsValid(CandidateComponent)
+				|| !CandidateComponent->HasAuthoritativeForgeryResult()
+				|| CandidateComponent->GetForgeryScoreRevision()
+					< LatestScoreRevision)
+			{
+				continue;
+			}
+
+			LatestScoredComponent = CandidateComponent;
+			LatestScoreRevision =
+				CandidateComponent->GetForgeryScoreRevision();
+		}
+
+		bOutUsedAuthorityFallback = IsValid(LatestScoredComponent)
+			&& LatestScoredComponent != DirectComponent;
+		return IsValid(LatestScoredComponent)
+			? LatestScoredComponent
+			: DirectComponent;
+	}
+
 	AHeistGuardCharacter* ResolveNearestGuard(APlayerController* PlayerController)
 	{
 		if (!IsValid(PlayerController) || !IsValid(PlayerController->GetWorld()))
@@ -2045,8 +2097,11 @@ void UHeistDebugFunctionLibrary::DebugForgeryScoreDump(
 	APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
+	bool bUsedAuthorityFallback = false;
 	UHeistForgeryComponent* ForgeryComponent =
-		ResolveForgeryComponent(PlayerController);
+		ResolveScoredForgeryComponent(
+			PlayerController,
+			bUsedAuthorityFallback);
 	if (!IsValid(ForgeryComponent))
 	{
 		Message(
@@ -2094,7 +2149,11 @@ void UHeistDebugFunctionLibrary::DebugForgeryScoreDump(
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Forgery score dump: HasScore=%s Artifact=%s Template=%s Score=%.2f Coverage=%.2f MajorShape=%.2f ColorAccuracy=%.2f MissingPenalty=%.2f ExtraPenalty=%.2f TimeoutPenalty=%.2f CompletionTime=%.2f PaintToReference=%.2f AntiFill=%s ReplicaPlaced=%s Resolution=%dx%d ReferencePixels=%d SubmittedPixels=%d ScoreRevision=%d OwnerOnlySummary=true RawStrokeReplicated=false Authority=%s Result=%s"),
+			TEXT("Forgery score dump: Backend=OpenCV ShapeMetric=BidirectionalDistance ColorMetric=LabSSIMHistogram ScoreCurve=Shape1.15Color1.10 PaintCompletenessExponent=0.65 TargetCharacter=%s TargetSelection=%s HasScore=%s Artifact=%s Template=%s Score=%.2f Coverage=%.2f MajorShape=%.2f ColorAccuracy=%.2f MissingPenalty=%.2f ExtraPenalty=%.2f TimeoutPenalty=%.2f CompletionTime=%.2f PaintToReference=%.2f PaintCompleteness=%.3f AntiFill=%s ReplicaPlaced=%s Resolution=%dx%d ReferencePixels=%d SubmittedPixels=%d ScoreRevision=%d OwnerOnlySummary=true RawStrokeReplicated=false Authority=%s Result=%s"),
+			*GetNameSafe(ForgeryComponent->GetOwner()),
+			bUsedAuthorityFallback
+				? TEXT("AuthorityScoredFallback")
+				: TEXT("OwningPlayer"),
 			bHasScore ? TEXT("true") : TEXT("false"),
 			*ScoreResult.ArtifactId.ToString(),
 			*ScoreResult.TemplateId.ToString(),
@@ -2107,6 +2166,12 @@ void UHeistDebugFunctionLibrary::DebugForgeryScoreDump(
 			ScoreResult.TimeoutPenalty,
 			ScoreResult.CompletionTime,
 			ScoreResult.PaintToReferenceRatio,
+			FMath::Pow(
+				FMath::Clamp(
+					ScoreResult.PaintToReferenceRatio,
+					0.0f,
+					1.0f),
+				0.65f),
 			ScoreResult.bAntiFillTriggered ? TEXT("true") : TEXT("false"),
 			ScoreResult.bReplicaPlaced ? TEXT("true") : TEXT("false"),
 			ForgeryComponent->GetForgeryScoreResolution(),
@@ -2410,8 +2475,11 @@ void UHeistDebugFunctionLibrary::DebugForgeryScoreTest(
 		return;
 	}
 
+	bool bUsedAuthorityFallback = false;
 	UHeistForgeryComponent* ForgeryComponent =
-		ResolveForgeryComponent(PlayerController);
+		ResolveScoredForgeryComponent(
+			PlayerController,
+			bUsedAuthorityFallback);
 	if (!IsValid(PlayerController)
 		|| !PlayerController->HasAuthority()
 		|| !IsValid(ForgeryComponent)
@@ -2490,13 +2558,23 @@ void UHeistDebugFunctionLibrary::DebugForgeryScoreTest(
 		ForgeryComponent->GetAuthoritativeForgeryResult();
 	const bool bCommittedScoreMatches = bFirstCalculated
 		&& HasSameScoreBreakdown(FirstResult, CommittedResult);
+	FString OpenCVSelfTestSummary;
+	const bool bOpenCVContractPassed =
+		ForgeryComponent->RunOpenCVScoringSelfTestForDebug(
+			OpenCVSelfTestSummary);
 	const bool bContractPassed =
-		bDeterministic && bCommittedScoreMatches;
+		bDeterministic
+		&& bCommittedScoreMatches
+		&& bOpenCVContractPassed;
 
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Forgery score deterministic test: FirstCalculated=%s SecondCalculated=%s FirstScore=%.2f SecondScore=%.2f CommittedScore=%.2f ReferencePixels=%d/%d SubmittedPixels=%d/%d SameBreakdown=%s CommittedMatches=%s Resolution=%dx%d Result=%s"),
+			TEXT("Forgery score deterministic test: Backend=OpenCV ScoreCurve=Shape1.15Color1.10 PaintCompletenessExponent=0.65 TargetCharacter=%s TargetSelection=%s FirstCalculated=%s SecondCalculated=%s FirstScore=%.2f SecondScore=%.2f CommittedScore=%.2f ReferencePixels=%d/%d SubmittedPixels=%d/%d SameBreakdown=%s CommittedMatches=%s SelfTest={%s} Resolution=%dx%d Result=%s"),
+			*GetNameSafe(ForgeryComponent->GetOwner()),
+			bUsedAuthorityFallback
+				? TEXT("AuthorityScoredFallback")
+				: TEXT("OwningPlayer"),
 			bFirstCalculated ? TEXT("true") : TEXT("false"),
 			bSecondCalculated ? TEXT("true") : TEXT("false"),
 			FirstResult.SimilarityScore,
@@ -2508,6 +2586,7 @@ void UHeistDebugFunctionLibrary::DebugForgeryScoreTest(
 			SecondSubmittedPixels,
 			bDeterministic ? TEXT("true") : TEXT("false"),
 			bCommittedScoreMatches ? TEXT("true") : TEXT("false"),
+			*OpenCVSelfTestSummary,
 			ForgeryComponent->GetForgeryScoreResolution(),
 			ForgeryComponent->GetForgeryScoreResolution(),
 			bContractPassed ? TEXT("PASS") : TEXT("FAIL")),

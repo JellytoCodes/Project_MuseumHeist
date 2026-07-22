@@ -1,7 +1,7 @@
 # Project_MuseumHeist — Codex Instructions
-## Rev 4: W4 Forgery And Detection Baseline
+## Rev 5: W4 OpenCV Forgery Similarity Baseline
 
-기준일: 2026-07-17
+기준일: 2026-07-22
 엔진: Unreal Engine 5.8  
 현재 목표: 2026-09-20 W12 Final RC / 프로젝트 마무리
 
@@ -200,7 +200,13 @@ Client가 직접 확정할 수 없는 항목:
 - 플레이어는 Template 팔레트에서 색을 직접 선택하며, 위치에 맞는 정답 색을 자동 선택하지 않는다.
 - 각 Stroke는 임의 RGB가 아니라 서버가 제공한 `PaletteIndex`를 함께 전송한다.
 - 데이터 크기, 좌표 범위, Stroke Limit를 서버가 검증한다.
-- 서버는 Reference Image를 제한 팔레트로 양자화하고 형태 정확도와 팔레트 색 정확도를 함께 판정한다.
+- 서버는 Reference Image와 제출 그림을 동일한 고정 해상도 Palette Raster로 구성한 뒤 OpenCV로 유사도를 판정한다.
+- Shape Score는 3×3 Morphology Close와 양방향 Distance Transform을 사용해 미세한 위치·선 굵기·끊김 오차를 연속 감점한다.
+- Color Score는 Lab SSIM과 Palette 분포 유사도를 조합하며 완전한 동일 RGB 픽셀만 정답으로 요구하지 않는다.
+- 완전 일치는 100점을 유지하되 중간 품질을 과대평가하지 않도록 Shape 1.15, Color 1.10의 완만한 응답 곡선을 적용한다.
+- Color SSIM은 비교 ROI의 Foreground Union만 평균내며 일치하는 빈 배경으로 점수를 얻을 수 없다.
+- 실제 제출 Foreground 면적이 Reference보다 작으면 `min(제출/Reference, 1)^0.65` 완성도 계수를 최종 점수에 적용해 점·짧은 선 제출을 억제한다.
+- 정확한 픽셀 위치/PaletteIndex 일치 개수만으로 최종 점수를 계산하지 않는다.
 - Reference 대비 과도한 면적을 칠하면 Anti-Fill Score Cap을 적용한다.
 - Reference Image와 Drawing Canvas는 동일한 정사각형 표시 영역과 정규화 좌표계를 사용한다.
 - 위조 중 표시되는 Preview Score는 로컬 읽기 전용 참고값이며, RPC를 발생시키거나 서버 최종 Score를 대체하지 않는다.
@@ -373,7 +379,7 @@ W3는 완료됐다. 현재 실행 기준은 W4 단일 범위이며 기간은 202
 4. `TASK-W4-004` Reference Template Load / Observation Handoff
 5. `TASK-W4-005` Drawing Canvas / Stroke Collection
 6. `TASK-W4-006` Stroke Transport / Server Validation
-7. `TASK-W4-007` Reference Mask / Palette Forgery Score
+7. `TASK-W4-007` OpenCV Reference Similarity Forgery Score
 8. `TASK-W4-008` Replica Placement / Original Removal
 9. `TASK-W4-009` Submitted Replica World Visual
 10. `TASK-W4-010` Forgery Recovery Edge Cases
