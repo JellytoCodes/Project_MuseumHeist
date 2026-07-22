@@ -28,7 +28,7 @@
 #include "Inventory/HeistInventoryTypes.h"
 #include "Inventory/HeistItemDataTypes.h"
 #include "World/Actors/Escape/HeistVentActor.h"
-#include "World/Actors/Loot/HeistDisplayCaseActor.h"
+#include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 #include "World/Actors/Loot/HeistLootActor.h"
 #include "World/Actors/Projectile/HeistCoinProjectile.h"
 #include "World/Actors/Projectile/HeistThrowableProjectile.h"
@@ -638,7 +638,7 @@ void AHeistPlayerController::HandleInteractPressed()
 		return;
 	}
 
-	AHeistDisplayCaseActor* TargetDisplayCase = Cast<AHeistDisplayCaseActor>(
+	AHeistPaintingDisplayCaseActor* TargetDisplayCase = Cast<AHeistPaintingDisplayCaseActor>(
 		InteractionComponent->GetCurrentInteractionTarget());
 	if (TargetDisplayCase != nullptr)
 	{
@@ -779,7 +779,7 @@ void AHeistPlayerController::RequestDropInventoryItem(const int32 InstanceId)
 	Server_RequestDropInventoryItem(InstanceId);
 }
 
-void AHeistPlayerController::RequestTakeOriginal(AHeistDisplayCaseActor* TargetDisplayCase)
+void AHeistPlayerController::RequestTakeOriginal(AHeistPaintingDisplayCaseActor* TargetDisplayCase)
 {
 	Server_RequestTakeOriginal(TargetDisplayCase);
 }
@@ -943,7 +943,7 @@ void AHeistPlayerController::Server_RequestLootPickup_Implementation(AHeistLootA
 		Distance);
 }
 
-void AHeistPlayerController::Server_RequestObservation_Implementation(AHeistDisplayCaseActor* TargetDisplayCase)
+void AHeistPlayerController::Server_RequestObservation_Implementation(AHeistPaintingDisplayCaseActor* TargetDisplayCase)
 {
 	FHeistGameplayRequestContext RequestContext;
 	const TCHAR* RejectReason = nullptr;
@@ -1020,7 +1020,7 @@ void AHeistPlayerController::Server_CancelObservation_Implementation()
 }
 
 void AHeistPlayerController::Server_RequestTakeOriginal_Implementation(
-	AHeistDisplayCaseActor* TargetDisplayCase)
+	AHeistPaintingDisplayCaseActor* TargetDisplayCase)
 {
 	FHeistGameplayRequestContext RequestContext;
 	const TCHAR* RejectReason = nullptr;
@@ -1119,7 +1119,7 @@ void AHeistPlayerController::Server_RequestDropCarriedOriginal_Implementation()
 
 	const FHeistOriginalCarryEntry CarryEntry =
 		RequestContext.InventoryComponent->GetOriginalCarryEntry();
-	AHeistDisplayCaseActor* SourceDisplayCase = CarryEntry.SourceDisplayCase.Get();
+	AHeistPaintingDisplayCaseActor* SourceDisplayCase = CarryEntry.SourceDisplayCase.Get();
 	if (!CarryEntry.IsValid() || !IsValid(SourceDisplayCase))
 	{
 		UHeistDebugFunctionLibrary::Message(

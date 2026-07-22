@@ -7,7 +7,7 @@
 
 #include "HeistForgeryComponent.generated.h"
 
-class AHeistDisplayCaseActor;
+class AHeistPaintingDisplayCaseActor;
 class AHeistPlayerState;
 class UTexture2D;
 struct FHeistReplicaPaintingData;
@@ -37,10 +37,10 @@ protected:
 
 public:
 	bool TryBeginForgerySession(
-		AHeistDisplayCaseActor* TargetDisplayCase,
+		AHeistPaintingDisplayCaseActor* TargetDisplayCase,
 		float DurationSeconds = -1.0f);
 	bool TryPrepareForgeryTemplate(
-		AHeistDisplayCaseActor* TargetDisplayCase,
+		AHeistPaintingDisplayCaseActor* TargetDisplayCase,
 		float& OutObservationDuration);
 	bool ClearPreparedForgeryTemplate(FName Reason);
 	bool TryBeginSubmit();
@@ -59,7 +59,7 @@ public:
 	bool IsSubmitPending() const;
 	float GetSessionEndServerTime() const;
 	int32 GetSessionRevision() const;
-	AHeistDisplayCaseActor* GetActiveDisplayCase() const;
+	AHeistPaintingDisplayCaseActor* GetActiveDisplayCase() const;
 	FName GetLastCleanupReason() const;
 	bool HasPreparedForgeryTemplate() const;
 	FName GetActiveArtifactId() const;
@@ -159,7 +159,7 @@ private:
 		BlueprintReadOnly,
 		Category = "Heist|Forgery",
 		meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<AHeistDisplayCaseActor> ActiveDisplayCase;
+	TObjectPtr<AHeistPaintingDisplayCaseActor> ActiveDisplayCase;
 
 	UPROPERTY(
 		Replicated,
@@ -441,7 +441,7 @@ private:
 	FTimerHandle SessionTimeoutTimerHandle;
 	FHeistForgerySessionStateChanged SessionStateChangedDelegate;
 	bool bHandlingCaseSessionCallback = false;
-	TWeakObjectPtr<AHeistDisplayCaseActor> PreparedDisplayCase;
+	TWeakObjectPtr<AHeistPaintingDisplayCaseActor> PreparedDisplayCase;
 
 #pragma endregion
 

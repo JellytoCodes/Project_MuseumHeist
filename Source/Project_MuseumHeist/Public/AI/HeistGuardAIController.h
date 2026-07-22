@@ -10,6 +10,7 @@
 class UAIPerceptionComponent;
 class UAISenseConfig_Sight;
 class UStateTreeAIComponent;
+class AHeistPaintingDisplayCaseActor;
 struct FHeistGuardDataRow;
 
 UCLASS()
@@ -87,6 +88,22 @@ private:
 	TWeakObjectPtr<AActor> PendingSightTarget;
 	FTimerHandle DetectionGraceTimerHandle;
 	FTimerHandle SightValidationTimerHandle;
+
+#pragma endregion
+
+#pragma region InspectionTarget
+
+public:
+	bool TrySelectInspectionTarget();
+	AHeistPaintingDisplayCaseActor* GetInspectionTarget() const;
+	bool IsInspectionTargetValid() const;
+	int32 GetInspectionTargetSelectionRevision() const;
+
+private:
+	AHeistPaintingDisplayCaseActor* FindBestInspectionTarget() const;
+
+	TWeakObjectPtr<AHeistPaintingDisplayCaseActor> InspectionTarget;
+	int32 InspectionTargetSelectionRevision = 0;
 
 #pragma endregion
 

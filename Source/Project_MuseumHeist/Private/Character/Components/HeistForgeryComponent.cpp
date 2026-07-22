@@ -14,7 +14,7 @@
 #include "ImageUtils.h"
 #include "Net/UnrealNetwork.h"
 #include "TimerManager.h"
-#include "World/Actors/Loot/HeistDisplayCaseActor.h"
+#include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 
 #include <vector>
 
@@ -1239,7 +1239,7 @@ void UHeistForgeryComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 }
 
 bool UHeistForgeryComponent::TryBeginForgerySession(
-	AHeistDisplayCaseActor* TargetDisplayCase,
+	AHeistPaintingDisplayCaseActor* TargetDisplayCase,
 	const float DurationSeconds)
 {
 	AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
@@ -1403,7 +1403,7 @@ bool UHeistForgeryComponent::TryBeginForgerySession(
 }
 
 bool UHeistForgeryComponent::TryPrepareForgeryTemplate(
-	AHeistDisplayCaseActor* TargetDisplayCase,
+	AHeistPaintingDisplayCaseActor* TargetDisplayCase,
 	float& OutObservationDuration)
 {
 	OutObservationDuration = 0.0f;
@@ -1701,7 +1701,7 @@ bool UHeistForgeryComponent::TrySubmitStrokePayload(
 		return false;
 	}
 
-	AHeistDisplayCaseActor* SubmittedDisplayCase = ActiveDisplayCase.Get();
+	AHeistPaintingDisplayCaseActor* SubmittedDisplayCase = ActiveDisplayCase.Get();
 	UE_LOG(
 		LogHeistNetwork,
 		Log,
@@ -1827,7 +1827,7 @@ int32 UHeistForgeryComponent::GetSessionRevision() const
 	return SessionRevision;
 }
 
-AHeistDisplayCaseActor* UHeistForgeryComponent::GetActiveDisplayCase() const
+AHeistPaintingDisplayCaseActor* UHeistForgeryComponent::GetActiveDisplayCase() const
 {
 	return ActiveDisplayCase.Get();
 }
@@ -2281,7 +2281,7 @@ bool UHeistForgeryComponent::TryCalculateAndCommitForgeryScore()
 	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter)
 		? HeistCharacter->GetPlayerState<AHeistPlayerState>()
 		: nullptr;
-	AHeistDisplayCaseActor* TargetDisplayCase = ActiveDisplayCase.Get();
+	AHeistPaintingDisplayCaseActor* TargetDisplayCase = ActiveDisplayCase.Get();
 	if (!IsValid(HeistPlayerState) || !IsValid(TargetDisplayCase))
 	{
 		UE_LOG(
@@ -2893,7 +2893,7 @@ void UHeistForgeryComponent::ResetForgeryScoreState()
 
 void UHeistForgeryComponent::CompleteSuccessfulForgerySession()
 {
-	AHeistDisplayCaseActor* PreviousDisplayCase = ActiveDisplayCase.Get();
+	AHeistPaintingDisplayCaseActor* PreviousDisplayCase = ActiveDisplayCase.Get();
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().ClearTimer(SessionTimeoutTimerHandle);
@@ -2940,7 +2940,7 @@ bool UHeistForgeryComponent::ValidateActiveSession(FName& OutRejectReason) const
 	const AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter)
 		? HeistCharacter->GetPlayerState<AHeistPlayerState>()
 		: nullptr;
-	const AHeistDisplayCaseActor* TargetDisplayCase = ActiveDisplayCase.Get();
+	const AHeistPaintingDisplayCaseActor* TargetDisplayCase = ActiveDisplayCase.Get();
 
 	if (!bSessionActive)
 	{
@@ -3032,7 +3032,7 @@ void UHeistForgeryComponent::ClearSession(
 	const FName Reason,
 	const bool bReleaseCaseLock)
 {
-	AHeistDisplayCaseActor* PreviousDisplayCase = ActiveDisplayCase.Get();
+	AHeistPaintingDisplayCaseActor* PreviousDisplayCase = ActiveDisplayCase.Get();
 	AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
 	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter)
 		? HeistCharacter->GetPlayerState<AHeistPlayerState>()

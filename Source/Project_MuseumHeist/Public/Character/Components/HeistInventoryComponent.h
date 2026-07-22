@@ -9,7 +9,7 @@
 DECLARE_MULTICAST_DELEGATE(FHeistInventoryChanged);
 
 struct FHeistItemDataRow;
-class AHeistDisplayCaseActor;
+class AHeistPaintingDisplayCaseActor;
 class AHeistPlayerState;
 
 UCLASS(ClassGroup = (Heist), meta = (BlueprintSpawnableComponent))
@@ -63,10 +63,10 @@ public:
 		AHeistPlayerState* CarryingPlayerState,
 		FName ArtifactId,
 		float Weight,
-		AHeistDisplayCaseActor* SourceDisplayCase);
+		AHeistPaintingDisplayCaseActor* SourceDisplayCase);
 	bool TryEndOriginalCarry(
 		AHeistPlayerState* CarryingPlayerState,
-		AHeistDisplayCaseActor* ExpectedSourceDisplayCase,
+		AHeistPaintingDisplayCaseActor* ExpectedSourceDisplayCase,
 		FHeistOriginalCarryEntry& OutReleasedEntry);
 
 private:

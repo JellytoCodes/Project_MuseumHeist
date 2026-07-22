@@ -7,6 +7,7 @@
 .agents/
 .codex/
 .codex-doc-review/
+.codex-mcp-*.json
 
 # Compiled Object files
 *.slo

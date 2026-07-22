@@ -6,7 +6,7 @@
 #include "Core/HeistLogChannels.h"
 #include "Core/HeistTypes.h"
 #include "Engine/Texture2D.h"
-#include "World/Actors/Loot/HeistDisplayCaseActor.h"
+#include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 
 namespace
 {
@@ -186,7 +186,7 @@ void UHeistForgeryViewModel::RefreshPresentationState()
 	const float NewBrushSize = bTemplatePrepared
 		? ForgeryComponent->GetTemplateBrushSize()
 		: 0.0f;
-	const AHeistDisplayCaseActor* ActiveDisplayCase =
+	const AHeistPaintingDisplayCaseActor* ActiveDisplayCase =
 		IsValid(ForgeryComponent)
 			? ForgeryComponent->GetActiveDisplayCase()
 			: nullptr;

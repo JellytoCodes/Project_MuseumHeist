@@ -13,7 +13,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 #include "TimerManager.h"
-#include "World/Actors/Loot/HeistDisplayCaseActor.h"
+#include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 #include "World/Actors/Escape/HeistVentActor.h"
 #include "World/Actors/Trap/HeistTrapActor.h"
 
@@ -103,7 +103,7 @@ void UHeistActionComponent::TickComponent(
 
 	if (bObservationCastActive)
 	{
-		AHeistDisplayCaseActor* TargetDisplayCase = PendingObservationDisplayCase.Get();
+		AHeistPaintingDisplayCaseActor* TargetDisplayCase = PendingObservationDisplayCase.Get();
 		const AHeistPlayerState* HeistPlayerState = HeistCharacter->GetPlayerState<AHeistPlayerState>();
 		if (!IsValid(TargetDisplayCase)
 			|| !IsValid(HeistPlayerState)
@@ -286,7 +286,7 @@ void UHeistActionComponent::HandleOwnerTakeAnyDamage(
 
 #pragma region ObservationCast
 
-bool UHeistActionComponent::TryBeginObservationRequest(AHeistDisplayCaseActor* TargetDisplayCase)
+bool UHeistActionComponent::TryBeginObservationRequest(AHeistPaintingDisplayCaseActor* TargetDisplayCase)
 {
 	AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
 	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter)
@@ -384,7 +384,7 @@ float UHeistActionComponent::GetObservationCastEndServerTime() const
 	return ObservationCastEndServerTime;
 }
 
-AHeistDisplayCaseActor* UHeistActionComponent::GetPendingObservationDisplayCase() const
+AHeistPaintingDisplayCaseActor* UHeistActionComponent::GetPendingObservationDisplayCase() const
 {
 	return PendingObservationDisplayCase.Get();
 }
@@ -686,7 +686,7 @@ void UHeistActionComponent::HandleObservationCastTimerElapsed()
 	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter)
 		? HeistCharacter->GetPlayerState<AHeistPlayerState>()
 		: nullptr;
-	AHeistDisplayCaseActor* TargetDisplayCase = PendingObservationDisplayCase.Get();
+	AHeistPaintingDisplayCaseActor* TargetDisplayCase = PendingObservationDisplayCase.Get();
 	if (!bObservationCastActive
 		|| !IsValid(HeistCharacter)
 		|| !IsValid(HeistPlayerState)
@@ -758,7 +758,7 @@ void UHeistActionComponent::CancelObservationCast(const TCHAR* Reason)
 		return;
 	}
 
-	AHeistDisplayCaseActor* TargetDisplayCase = PendingObservationDisplayCase.Get();
+	AHeistPaintingDisplayCaseActor* TargetDisplayCase = PendingObservationDisplayCase.Get();
 	AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
 	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter)
 		? HeistCharacter->GetPlayerState<AHeistPlayerState>()

@@ -8,6 +8,7 @@
 #include "Core/HeistPlayerState.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "Components/PrimitiveComponent.h"
+#include "Core/HeistGameState.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "Inventory/HeistItemDataTypes.h"
@@ -15,7 +16,7 @@
 #include "Perception/AISenseConfig_Sight.h"
 #include "Perception/AISense_Sight.h"
 #include "TimerManager.h"
-#include "World/Actors/Loot/HeistDisplayCaseActor.h"
+#include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 
 #pragma region Construction
 
@@ -416,7 +417,7 @@ bool AHeistGuardAIController::IsChaseTargetOccluded(
 	{
 		AActor* HitActor = HitResult.GetActor();
 		if (IsValid(HitActor)
-			&& HitActor->IsA<AHeistDisplayCaseActor>())
+			&& HitActor->IsA<AHeistPaintingDisplayCaseActor>())
 		{
 			if (!bDisplayCasesBlockSight)
 			{
@@ -803,6 +804,136 @@ void AHeistGuardAIController::ClearSightValidationTimer()
 	{
 		World->GetTimerManager().ClearTimer(SightValidationTimerHandle);
 	}
+}
+
+#pragma endregion
+
+#pragma region InspectionTarget
+
+bool AHeistGuardAIController::TrySelectInspectionTarget()
+{
+	if (!HasAuthority() || !IsValid(GetPawn()) || !IsValid(GetWorld()))
+	{
+		UE_LOG(
+			LogHeistNetwork,
+			Warning,
+			TEXT("Inspection target selection rejected: Controller=%s Guard=%s Reason=InvalidAuthorityContext"),
+			*GetNameSafe(this),
+			*GetNameSafe(GetPawn()));
+		return false;
+	}
+
+	const AHeistGameState* HeistGameState =
+		GetWorld()->GetGameState<AHeistGameState>();
+	if (!IsValid(HeistGameState)
+		|| HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame)
+	{
+		UE_LOG(
+			LogHeistNetwork,
+			Warning,
+			TEXT("Inspection target selection rejected: Controller=%s Guard=%s MatchPhase=%s Reason=MatchNotInGame"),
+			*GetNameSafe(this),
+			*GetNameSafe(GetPawn()),
+			IsValid(HeistGameState)
+				? *UEnum::GetValueAsString(HeistGameState->GetMatchPhase())
+				: TEXT("MissingGameState"));
+		return false;
+	}
+
+	AHeistPaintingDisplayCaseActor* BestTarget = FindBestInspectionTarget();
+	if (InspectionTarget.Get() != BestTarget)
+	{
+		InspectionTarget = BestTarget;
+		++InspectionTargetSelectionRevision;
+	}
+
+	const bool bSelectedValidTarget = IsValid(BestTarget)
+		&& BestTarget->IsValidInspectionCandidate();
+	UE_LOG(
+		LogHeistNetwork,
+		bSelectedValidTarget ? Log : Warning,
+		TEXT("Inspection target selected: Controller=%s Guard=%s Case=%s CaseId=%s Distance=%.1f SelectionRevision=%d Authority=true Result=%s"),
+		*GetNameSafe(this),
+		*GetNameSafe(GetPawn()),
+		*GetNameSafe(BestTarget),
+		IsValid(BestTarget)
+			? *BestTarget->GetDisplayCaseId().ToString()
+			: TEXT("None"),
+		IsValid(BestTarget)
+			? FVector::Dist(GetPawn()->GetActorLocation(), BestTarget->GetActorLocation())
+			: -1.0f,
+		InspectionTargetSelectionRevision,
+		bSelectedValidTarget ? TEXT("PASS") : TEXT("NO_VALID_TARGET"));
+	return bSelectedValidTarget;
+}
+
+AHeistPaintingDisplayCaseActor* AHeistGuardAIController::GetInspectionTarget() const
+{
+	return InspectionTarget.Get();
+}
+
+bool AHeistGuardAIController::IsInspectionTargetValid() const
+{
+	const AHeistGameState* HeistGameState = IsValid(GetWorld())
+		? GetWorld()->GetGameState<AHeistGameState>()
+		: nullptr;
+	return HasAuthority()
+		&& IsValid(GetPawn())
+		&& IsValid(HeistGameState)
+		&& HeistGameState->GetMatchPhase() == EHeistMatchPhase::InGame
+		&& InspectionTarget.IsValid()
+		&& InspectionTarget->IsValidInspectionCandidate();
+}
+
+int32 AHeistGuardAIController::GetInspectionTargetSelectionRevision() const
+{
+	return InspectionTargetSelectionRevision;
+}
+
+AHeistPaintingDisplayCaseActor*
+AHeistGuardAIController::FindBestInspectionTarget() const
+{
+	if (!HasAuthority() || !IsValid(GetPawn()) || !IsValid(GetWorld()))
+	{
+		return nullptr;
+	}
+
+	AHeistPaintingDisplayCaseActor* BestTarget = nullptr;
+	float BestDistanceSquared = TNumericLimits<float>::Max();
+	for (TActorIterator<AHeistPaintingDisplayCaseActor> It(GetWorld()); It; ++It)
+	{
+		AHeistPaintingDisplayCaseActor* Candidate = *It;
+		if (!IsValid(Candidate) || !Candidate->IsValidInspectionCandidate())
+		{
+			continue;
+		}
+
+		const float CandidateDistanceSquared = FVector::DistSquared(
+			GetPawn()->GetActorLocation(),
+			Candidate->GetActorLocation());
+		const bool bCloser = CandidateDistanceSquared < BestDistanceSquared
+			&& !FMath::IsNearlyEqual(
+				CandidateDistanceSquared,
+				BestDistanceSquared);
+		const bool bEqualDistance = FMath::IsNearlyEqual(
+			CandidateDistanceSquared,
+			BestDistanceSquared);
+		const bool bStableTieBreak = bEqualDistance
+			&& (!IsValid(BestTarget)
+				|| Candidate->GetDisplayCaseId().ToString()
+					< BestTarget->GetDisplayCaseId().ToString()
+				|| (Candidate->GetDisplayCaseId()
+						== BestTarget->GetDisplayCaseId()
+					&& Candidate->GetFName().LexicalLess(
+						BestTarget->GetFName())));
+		if (bCloser || bStableTieBreak)
+		{
+			BestTarget = Candidate;
+			BestDistanceSquared = CandidateDistanceSquared;
+		}
+	}
+
+	return BestTarget;
 }
 
 #pragma endregion

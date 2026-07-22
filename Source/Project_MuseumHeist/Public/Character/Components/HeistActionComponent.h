@@ -6,7 +6,7 @@
 #include "HeistActionComponent.generated.h"
 
 class AHeistPlayerCharacter;
-class AHeistDisplayCaseActor;
+class AHeistPaintingDisplayCaseActor;
 class AHeistTrapActor;
 class AHeistVentActor;
 class UDamageType;
@@ -24,7 +24,7 @@ DECLARE_MULTICAST_DELEGATE_TwoParams(
 DECLARE_MULTICAST_DELEGATE_TwoParams(
 	FHeistObservationCastCompleted,
 	AHeistPlayerCharacter*,
-	AHeistDisplayCaseActor*);
+	AHeistPaintingDisplayCaseActor*);
 
 DECLARE_MULTICAST_DELEGATE(FHeistActionStateChanged);
 
@@ -43,16 +43,16 @@ public:
 #pragma region ObservationCast
 
 public:
-	bool TryBeginObservationRequest(AHeistDisplayCaseActor* TargetDisplayCase);
+	bool TryBeginObservationRequest(AHeistPaintingDisplayCaseActor* TargetDisplayCase);
 	void CancelObservationRequest(const TCHAR* Reason);
 	bool IsObservationCastActive() const;
 	float GetObservationCastEndServerTime() const;
-	AHeistDisplayCaseActor* GetPendingObservationDisplayCase() const;
+	AHeistPaintingDisplayCaseActor* GetPendingObservationDisplayCase() const;
 	FHeistObservationCastCompleted& GetObservationCastCompletedDelegate();
 
 private:
 	UPROPERTY(Transient)
-	TWeakObjectPtr<AHeistDisplayCaseActor> PendingObservationDisplayCase;
+	TWeakObjectPtr<AHeistPaintingDisplayCaseActor> PendingObservationDisplayCase;
 
 	UPROPERTY(ReplicatedUsing = OnRep_ObservationCastActive, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Observation", meta = (AllowPrivateAccess = "true"))
 	bool bObservationCastActive = false;

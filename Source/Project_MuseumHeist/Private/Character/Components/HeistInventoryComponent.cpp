@@ -10,7 +10,7 @@
 #include "GameFramework/Controller.h"
 #include "Inventory/HeistItemDataTypes.h"
 #include "Net/UnrealNetwork.h"
-#include "World/Actors/Loot/HeistDisplayCaseActor.h"
+#include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 #include "World/Actors/Loot/HeistLootActor.h"
 
 #pragma region InternalConstants
@@ -414,7 +414,7 @@ bool UHeistInventoryComponent::TryBeginOriginalCarry(
 	AHeistPlayerState* CarryingPlayerState,
 	const FName ArtifactId,
 	const float Weight,
-	AHeistDisplayCaseActor* SourceDisplayCase)
+	AHeistPaintingDisplayCaseActor* SourceDisplayCase)
 {
 	AHeistPlayerCharacter* OwnerCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
 	const TCHAR* RejectReason = nullptr;
@@ -485,7 +485,7 @@ bool UHeistInventoryComponent::TryBeginOriginalCarry(
 
 bool UHeistInventoryComponent::TryEndOriginalCarry(
 	AHeistPlayerState* CarryingPlayerState,
-	AHeistDisplayCaseActor* ExpectedSourceDisplayCase,
+	AHeistPaintingDisplayCaseActor* ExpectedSourceDisplayCase,
 	FHeistOriginalCarryEntry& OutReleasedEntry)
 {
 	OutReleasedEntry = FHeistOriginalCarryEntry();

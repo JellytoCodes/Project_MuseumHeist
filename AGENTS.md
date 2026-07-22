@@ -1,5 +1,5 @@
 # Project_MuseumHeist — Codex Instructions
-## Rev 5: W4 OpenCV Forgery Similarity Baseline
+## Rev 6: W4 OpenCV / Exhibit Case Isolation Handoff
 
 기준일: 2026-07-22
 엔진: Unreal Engine 5.8  
@@ -69,7 +69,7 @@ Lobby
 - `Lobby → ReadyCountdown → InGame → End`
 - Painting Target Artifact 1개
 - Painting Template 3~5개
-- Display Case State Machine
+- Painting Display Case State Machine
 - Observation + Full-Screen Drawing Forgery
 - 서버 권한 Forgery Score
 - Replica / Original Swap
@@ -121,6 +121,9 @@ Lobby
 - `.umap`은 사용자가 명시적으로 요청한 경우에만 수정한다.
 - 불필요한 Manager, Service, Factory, Processor, Subsystem을 추가하지 않는다.
 - Painting마다 Actor Class를 만들지 않는다.
+- Painting 전시품은 `AHeistPaintingDisplayCaseActor`, 조각 전시품은 `AHeistSculptureDisplayCaseActor`로 분리하며 서로의 Replica Data, Visual 적용, State Machine을 공유하지 않는다.
+- `AHeistDisplayCaseActor`는 Legacy serialized/C++ reference 호환 전용 Deprecated Painting Alias이며 신규 에셋의 부모로 사용하지 않는다. 기존 `BP_DisplayCase`는 새 Painting 부모로 이전됐다.
+- Sculpture Actor Shell은 배치·시각 구성만 허용하고 Sculpture Assembly가 Stretch Gate를 통과하기 전에는 상호작용·위조 Gameplay를 활성화하지 않는다.
 - 외부 AI API로 Forgery Score를 계산하지 않는다.
 - Render Target 전체를 매 프레임 복제하지 않는다.
 - Manifest에 없는 타입을 활성 Task에서 임의 생성하지 않는다.
@@ -179,7 +182,7 @@ Client가 직접 확정할 수 없는 항목:
 
 ### Session Ownership
 
-- 한 Display Case는 동시에 한 명만 위조할 수 있다.
+- 한 Painting Display Case는 동시에 한 명만 위조할 수 있다.
 - 서버가 Session Owner, 거리, Match Phase, Player State, Case State를 검증한다.
 - Disconnect, Arrest, Cancel, Timeout, Match End 시 Session Lock을 해제한다.
 
@@ -217,7 +220,7 @@ Client가 직접 확정할 수 없는 항목:
 
 중단 시 반드시 복원한다.
 
-- Display Case Lock
+- Painting Display Case Lock
 - Forgery Owner
 - Movement / Look / Interaction
 - Cursor / Mouse Capture
@@ -250,7 +253,7 @@ Context 전환 시 기존 Context를 명시적으로 제거하고 새 Context를
 | Widget Blueprint | Layout, Binding, Animation, Presentation |
 | ViewModel/C++ Widget | UI State Exposure, Request Routing |
 | DataTable/DataAsset | Artifact, Template, Guard, Balance, Scaling Data |
-| Map | Display Case, Guard Route, Loot, Exit, Lighting, Navigation |
+| Map | Painting/Sculpture Case, Guard Route, Loot, Exit, Lighting, Navigation |
 
 Blueprint Graph 금지 항목:
 
@@ -278,7 +281,7 @@ Codex가 담당한다.
 
 - C++ Gameplay Rule, Authority, Validation, Replication 구현과 수정
 - Repository 코드, Config, Data Import JSON의 분석과 필요한 범위의 수정
-- C++ 빌드와 정적 검증
+- C++ 정적 검증과 사용자가 제출한 Build 오류 수정
 - Task 판정에 필요한 `UHeistDebugFunctionLibrary` 로그와 Debug/Cheat Command 구현
 - 사용자가 제출한 PIE Output Log를 근거로 `PASS`, `FAIL`, `BLOCKED` 판정
 
@@ -288,8 +291,11 @@ Codex가 담당한다.
 - DataTable / DataAsset 편집
 - Map 배치, Scale, Collision, Lighting, Navigation 수정
 - Asset Assignment와 Component Assembly
+- C++ Development/Editor Build 실행과 Build Log 제출
 - Blueprint Compile / Save
 - PIE 실행과 Debug Command 실행
+
+Codex는 Unreal C++ Build를 직접 실행하지 않는다. 사용자가 Build를 실행하고 오류가 발생하면 전체 오류 위치와 메시지를 전달하며, Codex는 해당 로그를 근거로 코드를 수정한다.
 
 Codex는 사용자가 명시적으로 직접 조작을 요청하지 않는 한 다음을 수행하지 않는다.
 
@@ -407,4 +413,14 @@ W3는 완료됐다. 현재 실행 기준은 W4 단일 범위이며 기간은 202
 - 멀티플레이·Ownership·Replication·Recovery 주장은 사용자 PIE와 DebugLibrary/Cheat Command 로그가 있을 때만 PASS 처리한다.
 - 이미 증명된 동일 흐름을 같은 조건으로 반복하는 중복 Gate는 만들지 않는다. 새로운 위험을 검증할 때만 별도 Gate를 추가한다.
 
-세부 설계와 주차별 Task 정의는 `Museum_Heist_GDD.docx` Rev.9를 기준으로 Repository에서 확인한다.
+### W4 Current Handoff
+
+- `TASK-W4-001~010`: 완료. 정식 완료 상태와 테스트 로그 번호는 Notion 기록을 Source of Truth로 사용한다.
+- `TASK-W4-011`: 현재 활성 Task. Painting Frame / Submitted Texture Projection과 OpenCV 점수 전환을 다룬다.
+- OpenCV 유사도 판정, 제한 Palette, Local Preview / Server Final 공통 Evaluator, 제출 그림 Palette Index Data 복제는 구현돼 있다.
+- Painting과 Sculpture Case C++ 타입은 분리돼 있다. `BP_DisplayCase`의 부모는 `AHeistPaintingDisplayCaseActor`, `BP_SculptureDisplayCase`의 부모는 `AHeistSculptureDisplayCaseActor`다.
+- Sculpture Case는 시각 Shell만 존재하며 v1.0 Gameplay에는 사용하지 않는다.
+- `TASK-W4-011`의 남은 Gate는 사용자 PIE에서 Original 비주얼 제거, Replica Transform/Material 투영, Listen Server Client 동기화, 기존 Forgery/Recovery 회귀를 확인하는 것이다.
+- `TASK-W4-011` PASS 전에는 `TASK-W4-012`를 시작하지 않는다.
+
+세부 설계와 주차별 Task 정의는 `Museum_Heist_GDD.docx` Rev.10을 기준으로 Repository에서 확인한다.

@@ -7,7 +7,7 @@
 #include "HeistPlayerController.generated.h"
 
 class AHeistPlayerCharacter;
-class AHeistDisplayCaseActor;
+class AHeistPaintingDisplayCaseActor;
 class AHeistGuardCharacter;
 class AHeistLootActor;
 class AHeistPlayerState;
@@ -136,7 +136,7 @@ public:
 	void RequestDropInventoryItem(int32 InstanceId);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Objective")
-	void RequestTakeOriginal(AHeistDisplayCaseActor* TargetDisplayCase);
+	void RequestTakeOriginal(AHeistPaintingDisplayCaseActor* TargetDisplayCase);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Objective")
 	void RequestDropCarriedOriginal();
@@ -160,7 +160,7 @@ private:
 	void Server_RequestEscape(AHeistVentActor* TargetVentActor);
 
 	UFUNCTION(Server, Reliable)
-	void Server_RequestObservation(AHeistDisplayCaseActor* TargetDisplayCase);
+	void Server_RequestObservation(AHeistPaintingDisplayCaseActor* TargetDisplayCase);
 
 	UFUNCTION(Server, Reliable)
 	void Server_CancelObservation();
@@ -189,7 +189,7 @@ private:
 	void Server_RequestDropInventoryItem(int32 InstanceId);
 
 	UFUNCTION(Server, Reliable)
-	void Server_RequestTakeOriginal(AHeistDisplayCaseActor* TargetDisplayCase);
+	void Server_RequestTakeOriginal(AHeistPaintingDisplayCaseActor* TargetDisplayCase);
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestDropCarriedOriginal();

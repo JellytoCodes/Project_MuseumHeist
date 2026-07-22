@@ -28,7 +28,7 @@
 #include "GameplayTagContainer.h"
 #include "Inventory/HeistInventoryTypes.h"
 #include "World/Actors/Escape/HeistVentActor.h"
-#include "World/Actors/Loot/HeistDisplayCaseActor.h"
+#include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 #include "World/AI/HeistGuardWaypoint.h"
 #include "World/Spawn/HeistLootSpawnPoint.h"
 #include "UI/ViewModels/HeistLobbyViewModel.h"
@@ -261,7 +261,7 @@ namespace
 			PlayerResult.EscapeTimeSeconds);
 	}
 
-	AHeistDisplayCaseActor* ResolveNearestDisplayCase(APlayerController* PlayerController)
+	AHeistPaintingDisplayCaseActor* ResolveNearestPaintingDisplayCase(APlayerController* PlayerController)
 	{
 		if (!IsValid(PlayerController) || !IsValid(PlayerController->GetWorld()))
 		{
@@ -272,13 +272,13 @@ namespace
 		const FVector ReferenceLocation = IsValid(ReferencePawn)
 			? ReferencePawn->GetActorLocation()
 			: FVector::ZeroVector;
-		AHeistDisplayCaseActor* NearestDisplayCase = nullptr;
+		AHeistPaintingDisplayCaseActor* NearestDisplayCase = nullptr;
 		float NearestDistanceSquared = TNumericLimits<float>::Max();
-		for (TActorIterator<AHeistDisplayCaseActor> DisplayCaseIterator(PlayerController->GetWorld());
+		for (TActorIterator<AHeistPaintingDisplayCaseActor> DisplayCaseIterator(PlayerController->GetWorld());
 			DisplayCaseIterator;
 			++DisplayCaseIterator)
 		{
-			AHeistDisplayCaseActor* CandidateDisplayCase = *DisplayCaseIterator;
+			AHeistPaintingDisplayCaseActor* CandidateDisplayCase = *DisplayCaseIterator;
 			if (!IsValid(CandidateDisplayCase))
 			{
 				continue;
@@ -518,12 +518,12 @@ void UHeistDebugFunctionLibrary::DebugM01ObjectivePlacementDump(APlayerControlle
 	const FName ExpectedCaseId = HeistGameState->GetActiveTargetCaseId().IsNone()
 		? FName(TEXT("Case_M01_Target"))
 		: HeistGameState->GetActiveTargetCaseId();
-	TArray<AHeistDisplayCaseActor*> MatchingTargetCases;
-	for (TActorIterator<AHeistDisplayCaseActor> DisplayCaseIterator(World);
+	TArray<AHeistPaintingDisplayCaseActor*> MatchingTargetCases;
+	for (TActorIterator<AHeistPaintingDisplayCaseActor> DisplayCaseIterator(World);
 		DisplayCaseIterator;
 		++DisplayCaseIterator)
 	{
-		AHeistDisplayCaseActor* DisplayCase = *DisplayCaseIterator;
+		AHeistPaintingDisplayCaseActor* DisplayCase = *DisplayCaseIterator;
 		if (IsValid(DisplayCase) && DisplayCase->GetDisplayCaseId() == ExpectedCaseId)
 		{
 			MatchingTargetCases.Add(DisplayCase);
@@ -552,7 +552,7 @@ void UHeistDebugFunctionLibrary::DebugM01ObjectivePlacementDump(APlayerControlle
 		}
 	}
 
-	AHeistDisplayCaseActor* TargetDisplayCase =
+	AHeistPaintingDisplayCaseActor* TargetDisplayCase =
 		MatchingTargetCases.Num() == 1 ? MatchingTargetCases[0] : nullptr;
 	APlayerStart* NearestEntry = nullptr;
 	AHeistGuardCharacter* NearestGuard = nullptr;
@@ -739,10 +739,10 @@ void UHeistDebugFunctionLibrary::DebugCoreGrayboxDump(
 		}
 	}
 
-	TArray<AHeistDisplayCaseActor*> MatchingTargetCases;
-	for (TActorIterator<AHeistDisplayCaseActor> It(World); It; ++It)
+	TArray<AHeistPaintingDisplayCaseActor*> MatchingTargetCases;
+	for (TActorIterator<AHeistPaintingDisplayCaseActor> It(World); It; ++It)
 	{
-		AHeistDisplayCaseActor* DisplayCase = *It;
+		AHeistPaintingDisplayCaseActor* DisplayCase = *It;
 		if (IsValid(DisplayCase) && DisplayCase->GetDisplayCaseId() == ExpectedCaseId)
 		{
 			MatchingTargetCases.Add(DisplayCase);
@@ -793,7 +793,7 @@ void UHeistDebugFunctionLibrary::DebugCoreGrayboxDump(
 		}
 	}
 
-	AHeistDisplayCaseActor* TargetDisplayCase =
+	AHeistPaintingDisplayCaseActor* TargetDisplayCase =
 		MatchingTargetCases.Num() == 1 ? MatchingTargetCases[0] : nullptr;
 	APlayerStart* NearestEntry = nullptr;
 	AHeistGuardCharacter* NearestGuard = nullptr;
@@ -1067,8 +1067,8 @@ void UHeistDebugFunctionLibrary::DebugDisplayCaseSpawnFor(
 		+ TargetPawn->GetActorForwardVector() * FMath::Max(100.0f, Distance);
 	FActorSpawnParameters SpawnParameters;
 	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	AHeistDisplayCaseActor* DisplayCase = PlayerController->GetWorld()->SpawnActor<AHeistDisplayCaseActor>(
-		AHeistDisplayCaseActor::StaticClass(),
+	AHeistPaintingDisplayCaseActor* DisplayCase = PlayerController->GetWorld()->SpawnActor<AHeistPaintingDisplayCaseActor>(
+		AHeistPaintingDisplayCaseActor::StaticClass(),
 		SpawnLocation,
 		FRotator::ZeroRotator,
 		SpawnParameters);
@@ -1103,8 +1103,8 @@ void UHeistDebugFunctionLibrary::DebugDisplayCaseSpawn(APlayerController* Player
 
 	FActorSpawnParameters SpawnParameters;
 	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	AHeistDisplayCaseActor* DisplayCase = PlayerController->GetWorld()->SpawnActor<AHeistDisplayCaseActor>(
-		AHeistDisplayCaseActor::StaticClass(),
+	AHeistPaintingDisplayCaseActor* DisplayCase = PlayerController->GetWorld()->SpawnActor<AHeistPaintingDisplayCaseActor>(
+		AHeistPaintingDisplayCaseActor::StaticClass(),
 		SpawnLocation,
 		FRotator::ZeroRotator,
 		SpawnParameters);
@@ -1126,7 +1126,7 @@ void UHeistDebugFunctionLibrary::DebugDisplayCaseSpawn(APlayerController* Player
 void UHeistDebugFunctionLibrary::DebugDisplayCaseDump(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
-	const AHeistDisplayCaseActor* DisplayCase = ResolveNearestDisplayCase(PlayerController);
+	const AHeistPaintingDisplayCaseActor* DisplayCase = ResolveNearestPaintingDisplayCase(PlayerController);
 	if (!IsValid(DisplayCase))
 	{
 		Message(PlayerController, TEXT("Display case dump failed: Reason=MissingDisplayCase"), EHeistDebugLevel::Warning, true);
@@ -1191,7 +1191,7 @@ void UHeistDebugFunctionLibrary::DebugDisplayCaseDump(APlayerController* PlayerC
 void UHeistDebugFunctionLibrary::DebugDisplayCaseBegin(APlayerController* PlayerController, const int32 PlayerId)
 {
 #if !UE_BUILD_SHIPPING
-	AHeistDisplayCaseActor* DisplayCase = ResolveNearestDisplayCase(PlayerController);
+	AHeistPaintingDisplayCaseActor* DisplayCase = ResolveNearestPaintingDisplayCase(PlayerController);
 	AHeistPlayerState* RequestingPlayerState = ResolveHeistPlayerStateById(PlayerController, PlayerId);
 	if (!IsValid(DisplayCase))
 	{
@@ -1222,7 +1222,7 @@ void UHeistDebugFunctionLibrary::DebugDisplayCaseBegin(APlayerController* Player
 void UHeistDebugFunctionLibrary::DebugDisplayCaseCancel(APlayerController* PlayerController, const int32 PlayerId)
 {
 #if !UE_BUILD_SHIPPING
-	AHeistDisplayCaseActor* DisplayCase = ResolveNearestDisplayCase(PlayerController);
+	AHeistPaintingDisplayCaseActor* DisplayCase = ResolveNearestPaintingDisplayCase(PlayerController);
 	AHeistPlayerState* RequestingPlayerState = ResolveHeistPlayerStateById(PlayerController, PlayerId);
 	if (!IsValid(DisplayCase) || !IsValid(RequestingPlayerState))
 	{
@@ -1284,7 +1284,7 @@ void UHeistDebugFunctionLibrary::DebugDisplayCasePhase(APlayerController* Player
 void UHeistDebugFunctionLibrary::DebugDisplayCaseAdvance(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
-	AHeistDisplayCaseActor* DisplayCase = ResolveNearestDisplayCase(PlayerController);
+	AHeistPaintingDisplayCaseActor* DisplayCase = ResolveNearestPaintingDisplayCase(PlayerController);
 	if (!IsValid(DisplayCase))
 	{
 		Message(PlayerController, TEXT("Display case advance failed: Reason=MissingDisplayCase"), EHeistDebugLevel::Warning, true);
@@ -1309,7 +1309,7 @@ void UHeistDebugFunctionLibrary::DebugDisplayCaseAdvance(APlayerController* Play
 void UHeistDebugFunctionLibrary::DebugDisplayCaseSet(APlayerController* PlayerController, const FString& StateName)
 {
 #if !UE_BUILD_SHIPPING
-	AHeistDisplayCaseActor* DisplayCase = ResolveNearestDisplayCase(PlayerController);
+	AHeistPaintingDisplayCaseActor* DisplayCase = ResolveNearestPaintingDisplayCase(PlayerController);
 	if (!IsValid(DisplayCase))
 	{
 		Message(PlayerController, TEXT("Display case set failed: Reason=MissingDisplayCase"), EHeistDebugLevel::Warning, true);
@@ -1369,7 +1369,7 @@ void UHeistDebugFunctionLibrary::DebugOriginalDump(APlayerController* PlayerCont
 	const UHeistInventoryComponent* InventoryComponent = IsValid(PlayerCharacter)
 		? PlayerCharacter->GetInventoryComponent()
 		: nullptr;
-	const AHeistDisplayCaseActor* DisplayCase = ResolveNearestDisplayCase(PlayerController);
+	const AHeistPaintingDisplayCaseActor* DisplayCase = ResolveNearestPaintingDisplayCase(PlayerController);
 	if (!IsValid(HeistPlayerState) || !IsValid(InventoryComponent))
 	{
 		Message(
@@ -1424,7 +1424,7 @@ void UHeistDebugFunctionLibrary::DebugOriginalTake(APlayerController* PlayerCont
 #if !UE_BUILD_SHIPPING
 	AHeistPlayerController* HeistPlayerController =
 		Cast<AHeistPlayerController>(PlayerController);
-	AHeistDisplayCaseActor* DisplayCase = ResolveNearestDisplayCase(PlayerController);
+	AHeistPaintingDisplayCaseActor* DisplayCase = ResolveNearestPaintingDisplayCase(PlayerController);
 	if (!IsValid(HeistPlayerController) || !IsValid(DisplayCase))
 	{
 		Message(
@@ -1511,7 +1511,7 @@ void UHeistDebugFunctionLibrary::DebugForgeryDump(
 		return;
 	}
 
-	const AHeistDisplayCaseActor* DisplayCase =
+	const AHeistPaintingDisplayCaseActor* DisplayCase =
 		ForgeryComponent->GetActiveDisplayCase();
 	const bool bSessionActive = ForgeryComponent->IsSessionActive();
 	const bool bInactiveSnapshotClean = !bSessionActive
@@ -2195,8 +2195,8 @@ void UHeistDebugFunctionLibrary::DebugForgerySwapDump(
 	APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
-	AHeistDisplayCaseActor* DisplayCase =
-		ResolveNearestDisplayCase(PlayerController);
+	AHeistPaintingDisplayCaseActor* DisplayCase =
+		ResolveNearestPaintingDisplayCase(PlayerController);
 	UHeistForgeryComponent* ForgeryComponent =
 		ResolveForgeryComponent(PlayerController);
 	if (!IsValid(DisplayCase))
@@ -2317,8 +2317,8 @@ void UHeistDebugFunctionLibrary::DebugForgeryVisualDump(
 	APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
-	AHeistDisplayCaseActor* DisplayCase =
-		ResolveNearestDisplayCase(PlayerController);
+	AHeistPaintingDisplayCaseActor* DisplayCase =
+		ResolveNearestPaintingDisplayCase(PlayerController);
 	if (!IsValid(DisplayCase))
 	{
 		Message(
@@ -2390,8 +2390,8 @@ void UHeistDebugFunctionLibrary::DebugForgeryPaintingDump(
 	APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
-	AHeistDisplayCaseActor* DisplayCase =
-		ResolveNearestDisplayCase(PlayerController);
+	AHeistPaintingDisplayCaseActor* DisplayCase =
+		ResolveNearestPaintingDisplayCase(PlayerController);
 	if (!IsValid(DisplayCase))
 	{
 		Message(
@@ -2605,8 +2605,8 @@ void UHeistDebugFunctionLibrary::DebugForgeryBegin(
 #if !UE_BUILD_SHIPPING
 	UHeistForgeryComponent* ForgeryComponent =
 		ResolveForgeryComponent(PlayerController);
-	AHeistDisplayCaseActor* DisplayCase =
-		ResolveNearestDisplayCase(PlayerController);
+	AHeistPaintingDisplayCaseActor* DisplayCase =
+		ResolveNearestPaintingDisplayCase(PlayerController);
 	if (!IsValid(PlayerController)
 		|| !PlayerController->HasAuthority()
 		|| !IsValid(ForgeryComponent)
@@ -2807,7 +2807,7 @@ void UHeistDebugFunctionLibrary::DebugForgeryRecoveryDump(
 
 	const bool bAuthority = HeistPlayerController->HasAuthority();
 	const bool bSessionActive = ForgeryComponent->IsSessionActive();
-	const AHeistDisplayCaseActor* ActiveDisplayCase =
+	const AHeistPaintingDisplayCaseActor* ActiveDisplayCase =
 		ForgeryComponent->GetActiveDisplayCase();
 	int32 LockedCases = 0;
 	int32 LocalOwnedLocks = 0;
@@ -2820,12 +2820,12 @@ void UHeistDebugFunctionLibrary::DebugForgeryRecoveryDump(
 				->GetGameState<AHeistGameState>()
 			: nullptr;
 
-	for (TActorIterator<AHeistDisplayCaseActor> CaseIterator(
+	for (TActorIterator<AHeistPaintingDisplayCaseActor> CaseIterator(
 			HeistPlayerController->GetWorld());
 		CaseIterator;
 		++CaseIterator)
 	{
-		const AHeistDisplayCaseActor* DisplayCase = *CaseIterator;
+		const AHeistPaintingDisplayCaseActor* DisplayCase = *CaseIterator;
 		if (!IsValid(DisplayCase) || !DisplayCase->IsSessionLocked())
 		{
 			continue;
@@ -2890,7 +2890,7 @@ void UHeistDebugFunctionLibrary::DebugForgeryRecoveryDump(
 			}
 
 			++ActiveSessions;
-			const AHeistDisplayCaseActor* CandidateCase =
+			const AHeistPaintingDisplayCaseActor* CandidateCase =
 				CandidateComponent->GetActiveDisplayCase();
 			const AHeistPlayerState* CandidatePlayerState =
 				CandidateCharacter

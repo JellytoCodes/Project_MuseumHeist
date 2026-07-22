@@ -18,7 +18,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
 #include "World/Actors/Loot/HeistLootActor.h"
-#include "World/Actors/Loot/HeistDisplayCaseActor.h"
+#include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 #include "World/Spawn/HeistLootSpawnPoint.h"
 
 #pragma region InternalHelpers
@@ -97,9 +97,9 @@ void AHeistGameMode::Logout(AController* Exiting)
 
 		// Keep the case sweep as a safety net for pawn-less disconnects and
 		// partially torn-down ownership state.
-		for (TActorIterator<AHeistDisplayCaseActor> DisplayCaseIterator(GetWorld()); DisplayCaseIterator; ++DisplayCaseIterator)
+		for (TActorIterator<AHeistPaintingDisplayCaseActor> DisplayCaseIterator(GetWorld()); DisplayCaseIterator; ++DisplayCaseIterator)
 		{
-			if (AHeistDisplayCaseActor* DisplayCase = *DisplayCaseIterator; IsValid(DisplayCase))
+			if (AHeistPaintingDisplayCaseActor* DisplayCase = *DisplayCaseIterator; IsValid(DisplayCase))
 			{
 				DisplayCase->CancelSessionForOwner(ExitingPlayerState, FName(TEXT("OwnerDisconnected")));
 				DisplayCase->ReleaseOriginalForCarrier(
@@ -134,12 +134,12 @@ void AHeistGameMode::InitializeObjectiveFromPlacedTargetCase()
 		return;
 	}
 
-	TArray<AHeistDisplayCaseActor*> MatchingTargetCases;
-	for (TActorIterator<AHeistDisplayCaseActor> DisplayCaseIterator(GetWorld());
+	TArray<AHeistPaintingDisplayCaseActor*> MatchingTargetCases;
+	for (TActorIterator<AHeistPaintingDisplayCaseActor> DisplayCaseIterator(GetWorld());
 		DisplayCaseIterator;
 		++DisplayCaseIterator)
 	{
-		AHeistDisplayCaseActor* DisplayCase = *DisplayCaseIterator;
+		AHeistPaintingDisplayCaseActor* DisplayCase = *DisplayCaseIterator;
 		if (!IsValid(DisplayCase))
 		{
 			continue;
@@ -168,7 +168,7 @@ void AHeistGameMode::InitializeObjectiveFromPlacedTargetCase()
 		return;
 	}
 
-	AHeistDisplayCaseActor* TargetDisplayCase = MatchingTargetCases[0];
+	AHeistPaintingDisplayCaseActor* TargetDisplayCase = MatchingTargetCases[0];
 	const FName TargetArtifactId = TargetDisplayCase->GetTargetArtifactId();
 	FHeistArtifactDataRow ArtifactDefinition;
 	const bool bArtifactValid = TryGetArtifactDefinition(TargetArtifactId, ArtifactDefinition);

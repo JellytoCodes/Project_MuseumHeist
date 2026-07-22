@@ -1,5 +1,5 @@
 # Project_MuseumHeist — Class Manifest
-## Rev 5: W4 OpenCV Forgery Similarity Baseline
+## Rev 6: W4 OpenCV / Exhibit Case Isolation Handoff
 
 상태:
 
@@ -9,7 +9,7 @@
 - **Deprecate**: 신규 흐름에서 미사용, 즉시 삭제 금지
 - **Deferred**: v1.0 범위 밖, 현재 생성 금지
 
-Design Reference: `Museum_Heist_GDD.docx` Rev.9
+Design Reference: `Museum_Heist_GDD.docx` Rev.10
 
 ---
 
@@ -92,6 +92,12 @@ FHeistForgeryResult
 - TimeoutPenalty
 - CompletionTime
 - bReplicaPlaced
+
+FHeistReplicaPaintingData
+- Resolution
+- Palette
+- PackedPaletteIndices
+- ScoreRevision
 
 FHeistTeamResult
 - bMissionSuccess
@@ -272,7 +278,9 @@ FHeistForgeryTemplateRow
 | `IHeistInteractable` | Keep | 공통 인터랙션 |
 | `AHeistInteractableActor` | Keep | 공통 기반 |
 | `AHeistLootActor` | Keep | Loose Loot |
-| `AHeistDisplayCaseActor` | Modify | Target Artifact, Session Lock, Replica/Original, Inspection State |
+| `AHeistPaintingDisplayCaseActor` | Modify | Painting Target, Session Lock, Palette Texture Replica/Original, Inspection State |
+| `AHeistDisplayCaseActor` | Deprecate | Legacy serialized/C++ reference 호환용 Painting Alias. `BP_DisplayCase`는 새 부모로 이전 완료 |
+| `AHeistSculptureDisplayCaseActor` | Add | Sculpture 전용 배치/시각 Shell, Gameplay Interaction은 Stretch Gate 전까지 차단 |
 | `AHeistVentActor` | Modify | Shared Extraction |
 | `AHeistCoinProjectile` | Modify | Guard Distraction |
 | `AHeistSmokeProjectile` / `AHeistSmokeCloudActor` | Legacy | 신규 PvE 호출 차단, 회귀 기준으로만 보존 |
@@ -284,16 +292,31 @@ FHeistForgeryTemplateRow
 
 ### Replica World Visual Contract
 
-- `AHeistDisplayCaseActor`는 서버에서 확정·복제된 `FHeistForgeryResult`를 4단계 Score Tier로 변환한다.
+- `AHeistPaintingDisplayCaseActor`는 서버에서 확정·복제된 `FHeistForgeryResult`를 4단계 Score Tier로 변환한다.
 - Tier 선택과 적용 상태는 C++가 소유하며 Blueprint는 Tier Material 지정 또는 `BP_ApplyReplicaWorldVisual` 시각 연출만 담당한다.
 - 별도 Tier Material이 없으면 Replica Mesh의 상대 회전·크기 변형을 대체 비주얼로 사용한다.
 - Score, Coverage, Color Accuracy, Tier는 Replica Mesh Custom Primitive Data 0~3에 기록한다.
 - 최종 제출 Stroke는 서버 Score와 동일한 `128×128` Palette Raster로 변환하고 Background를 0, Palette 색을 1~8로 매핑한 4-bit Index Data로 패킹한다.
-- `AHeistDisplayCaseActor`는 확정된 Palette와 Packed Index Data를 제출 시 한 번만 복제한다.
+- `AHeistPaintingDisplayCaseActor`는 확정된 Palette와 Packed Index Data를 제출 시 한 번만 복제한다.
 - 각 Client는 RepNotify에서 동일한 Transient `UTexture2D`를 재구성하고 `ReplicaVisualComponent`의 Dynamic Material `PaintingTexture` Parameter에 적용한다.
 - 늦게 참가하거나 Actor Relevancy가 복구된 Client도 복제된 확정 Data로 동일한 그림을 재구성한다.
-- Blueprint는 `AHeistDisplayCaseActor` 기반의 재사용 가능한 Painting Frame Shell, Frame Mesh, UV가 정규화된 Original/Replica Plane, `PaintingTexture` Parameter Material을 담당한다.
+- Blueprint는 `AHeistPaintingDisplayCaseActor` 기반의 재사용 가능한 Painting Frame Shell, Frame Mesh, UV가 정규화된 Original/Replica Plane, `PaintingTexture` Parameter Material을 담당한다.
 - Render Target 또는 전체 Stroke Payload를 World Visual 목적으로 추가 복제하지 않는다.
+
+### Exhibit Case Isolation Contract
+
+- Painting과 Sculpture Case는 형제 기능으로 취급하며 한 Actor의 enum/switch 분기로 관리하지 않는다.
+- Painting Case만 Drawing Forgery, Palette Raster, Submitted Texture, Frame Plane, Original Carry 흐름을 소유한다.
+- Sculpture Case는 별도 파일과 별도 Actor 타입을 사용하며 Painting의 `FHeistReplicaPaintingData` 및 Display Case State를 상속하지 않는다.
+- `AHeistDisplayCaseActor` 호환 Alias는 기존 Blueprint 로드를 위한 임시 경계이며 신규 C++ Gameplay API는 `AHeistPaintingDisplayCaseActor`만 받는다.
+- Sculpture Assembly, 부품 검증, Replica Mesh 교체, 전용 State/Replication은 Stretch 승인 이후 Sculpture 전용 Task에서만 추가한다.
+
+### Blueprint Asset Contract
+
+- `/Game/Blueprints/World/Actors/Loot/BP_DisplayCase`는 `AHeistPaintingDisplayCaseActor`를 부모로 사용한다.
+- `/Game/Blueprints/World/Actors/Loot/BP_SculptureDisplayCase`는 `AHeistSculptureDisplayCaseActor`를 부모로 사용한다.
+- Painting Blueprint는 Frame, Original/Replica Plane, `PaintingTexture` Material 표현을 담당한다.
+- Sculpture Blueprint는 현재 `InteractionCollision`과 `VisualMeshComponent` 기반 시각 Shell만 담당하며 Painting Graph/State/Data를 참조하지 않는다.
 
 ### Forgery Recovery Contract
 
@@ -371,7 +394,7 @@ StateTree Asset는 Editor 작업이며 사용자가 소유한다.
 
 # 10. Module Dependencies
 
-기존 의존성 유지:
+현재 의존성:
 
 - Core
 - CoreUObject
@@ -385,8 +408,13 @@ StateTree Asset는 Editor 작업이며 사용자가 소유한다.
 - SlateCore
 - ModelViewViewModel
 - AIModule
+- GameplayStateTreeModule
+- StateTreeModule
+- OpenCV
+- OpenCVHelper
+- ImageCore
 
-Drawing 방식이 UMG Custom Widget + Stroke Data로 해결되면 신규 모듈은 필요 없다. Render Target 또는 Image Processing 모듈이 필요해질 경우 활성 Task에서 Manifest를 먼저 수정한다.
+OpenCV는 최종 Forgery 유사도 평가에만 사용한다. Stroke 수집, Palette Raster, Authority, Replication 계약은 프로젝트 C++ 경로가 계속 소유한다.
 
 ---
 

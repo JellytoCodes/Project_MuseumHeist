@@ -30,11 +30,11 @@ protected:
 
 #pragma region Components
 
-private:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Interaction", meta = (AllowPrivateAccess = "true"))
+protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Interaction")
 	TObjectPtr<USphereComponent> InteractionCollision;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Visual", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Visual")
 	TObjectPtr<UStaticMeshComponent> VisualMeshComponent;
 
 #pragma endregion
