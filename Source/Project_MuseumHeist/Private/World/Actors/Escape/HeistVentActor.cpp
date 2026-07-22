@@ -60,9 +60,7 @@ void AHeistVentActor::RefreshVentActiveState()
 	}
 
 	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
-	const bool bEscapeRequirementMet =
-		!bRequiresEscapePhase
-		|| (IsValid(HeistGameState) && HeistGameState->IsEscapePhaseOpen());
+	const bool bEscapeRequirementMet = !bRequiresEscapePhase || (IsValid(HeistGameState) && HeistGameState->IsEscapePhaseOpen());
 	const bool bShouldBeActive = bVentManuallyEnabled && bEscapeRequirementMet;
 
 	if (bVentActive == bShouldBeActive)
@@ -73,24 +71,13 @@ void AHeistVentActor::RefreshVentActiveState()
 	bVentActive = bShouldBeActive;
 	ForceNetUpdate();
 
-	UE_LOG(
-		LogHeist,
-		Log,
-		TEXT("Vent active state changed: Vent=%s IsActive=%s RequiresEscapePhase=%s ManuallyEnabled=%s"),
-		*GetNameSafe(this),
-		bVentActive ? TEXT("true") : TEXT("false"),
-		bRequiresEscapePhase ? TEXT("true") : TEXT("false"),
-		bVentManuallyEnabled ? TEXT("true") : TEXT("false"));
+	UE_LOG(LogHeist, Log, TEXT("Vent active state changed: Vent=%s IsActive=%s RequiresEscapePhase=%s ManuallyEnabled=%s"), *GetNameSafe(this), bVentActive ? TEXT("true") : TEXT("false"),
+		   bRequiresEscapePhase ? TEXT("true") : TEXT("false"), bVentManuallyEnabled ? TEXT("true") : TEXT("false"));
 }
 
 void AHeistVentActor::OnRep_VentActive()
 {
-	UE_LOG(
-		LogHeistNetwork,
-		Log,
-		TEXT("Vent active state replicated: Vent=%s IsActive=%s"),
-		*GetNameSafe(this),
-		bVentActive ? TEXT("true") : TEXT("false"));
+	UE_LOG(LogHeistNetwork, Log, TEXT("Vent active state replicated: Vent=%s IsActive=%s"), *GetNameSafe(this), bVentActive ? TEXT("true") : TEXT("false"));
 }
 
 #pragma endregion
@@ -104,11 +91,7 @@ bool AHeistVentActor::CanInteract(const AActor* Interactor) const
 
 bool AHeistVentActor::CanUseVent(const AHeistPlayerCharacter* RequestingCharacter) const
 {
-	return IsValid(this)
-		&& !IsActorBeingDestroyed()
-		&& bVentActive
-		&& IsValid(RequestingCharacter)
-		&& Super::CanInteract(RequestingCharacter);
+	return IsValid(this) && !IsActorBeingDestroyed() && bVentActive && IsValid(RequestingCharacter) && Super::CanInteract(RequestingCharacter);
 }
 
 #pragma endregion
@@ -131,18 +114,12 @@ void AHeistVentActor::BindToEscapePhaseState()
 	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	if (!IsValid(HeistGameState))
 	{
-		UE_LOG(
-			LogHeist,
-			Warning,
-			TEXT("Vent Escape Phase binding skipped: Vent=%s Reason=MissingGameState"),
-			*GetNameSafe(this));
+		UE_LOG(LogHeist, Warning, TEXT("Vent Escape Phase binding skipped: Vent=%s Reason=MissingGameState"), *GetNameSafe(this));
 		return;
 	}
 
 	BoundGameState = HeistGameState;
-	EscapePhaseStateChangedHandle = HeistGameState->GetEscapePhaseStateChangedDelegate().AddUObject(
-		this,
-		&AHeistVentActor::HandleEscapePhaseStateChanged);
+	EscapePhaseStateChangedHandle = HeistGameState->GetEscapePhaseStateChangedDelegate().AddUObject(this, &AHeistVentActor::HandleEscapePhaseStateChanged);
 }
 
 void AHeistVentActor::HandleEscapePhaseStateChanged(bool)

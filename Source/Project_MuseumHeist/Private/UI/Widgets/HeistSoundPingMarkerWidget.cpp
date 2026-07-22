@@ -6,8 +6,7 @@
 
 #pragma region Construction
 
-UHeistSoundPingMarkerWidget::UHeistSoundPingMarkerWidget(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer)
+UHeistSoundPingMarkerWidget::UHeistSoundPingMarkerWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 }
 
@@ -15,14 +14,10 @@ UHeistSoundPingMarkerWidget::UHeistSoundPingMarkerWidget(const FObjectInitialize
 
 #pragma region Presentation
 
-void UHeistSoundPingMarkerWidget::ShowSoundPingMarker(
-	const FHeistSoundPingEvent& SoundPingEvent,
-	const FVector2D& ScreenDirection,
-	const FVector2D& ScreenEdgeTranslation)
+void UHeistSoundPingMarkerWidget::ShowSoundPingMarker(const FHeistSoundPingEvent& SoundPingEvent, const FVector2D& ScreenDirection, const FVector2D& ScreenEdgeTranslation)
 {
 	const FVector2D NormalizedDirection = ScreenDirection.GetSafeNormal();
-	const float DirectionAngleDegrees = FMath::RadiansToDegrees(
-		FMath::Atan2(NormalizedDirection.Y, NormalizedDirection.X));
+	const float DirectionAngleDegrees = FMath::RadiansToDegrees(FMath::Atan2(NormalizedDirection.Y, NormalizedDirection.X));
 
 	SetVisibility(ESlateVisibility::HitTestInvisible);
 	SetRenderTranslation(ScreenEdgeTranslation);
@@ -47,9 +42,7 @@ void UHeistSoundPingMarkerWidget::ShowSoundPingMarker(
 		FNumberFormattingOptions DurationFormatting;
 		DurationFormatting.MinimumFractionalDigits = 1;
 		DurationFormatting.MaximumFractionalDigits = 1;
-		SoundPingDurationText->SetText(FText::Format(
-			NSLOCTEXT("HeistSoundPing", "DurationFormat", "{0}s"),
-			FText::AsNumber(FMath::Max(0.0f, SoundPingEvent.Duration), &DurationFormatting)));
+		SoundPingDurationText->SetText(FText::Format(NSLOCTEXT("HeistSoundPing", "DurationFormat", "{0}s"), FText::AsNumber(FMath::Max(0.0f, SoundPingEvent.Duration), &DurationFormatting)));
 	}
 }
 

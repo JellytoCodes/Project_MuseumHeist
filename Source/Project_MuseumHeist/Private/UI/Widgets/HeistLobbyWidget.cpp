@@ -7,8 +7,7 @@
 
 #pragma region Construction
 
-UHeistLobbyWidget::UHeistLobbyWidget(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer)
+UHeistLobbyWidget::UHeistLobbyWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 }
 
@@ -41,9 +40,7 @@ void UHeistLobbyWidget::SetupLobbyWidget(UHeistLobbyViewModel* InLobbyViewModel)
 
 	LobbyViewModel = InLobbyViewModel;
 	LobbyViewModel->GetSnapshotChangedDelegate().RemoveAll(this);
-	LobbyViewModel->GetSnapshotChangedDelegate().AddUObject(
-		this,
-		&UHeistLobbyWidget::RefreshLobbyPresentation);
+	LobbyViewModel->GetSnapshotChangedDelegate().AddUObject(this, &UHeistLobbyWidget::RefreshLobbyPresentation);
 
 	TScriptInterface<INotifyFieldValueChanged> ViewModelInterface;
 	ViewModelInterface.SetObject(LobbyViewModel);

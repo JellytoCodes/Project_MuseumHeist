@@ -34,9 +34,7 @@ bool AHeistPlayerState::CanAddLootScoreAndWeight(int32 ScoreDelta, float WeightD
 	const int64 NewScore = static_cast<int64>(TotalLootScore) + static_cast<int64>(ScoreDelta);
 	const double NewWeight = static_cast<double>(TotalLootWeight) + static_cast<double>(WeightDelta);
 
-	return NewScore <= MAX_int32
-		&& FMath::IsFinite(NewWeight)
-		&& NewWeight <= static_cast<double>(TNumericLimits<float>::Max());
+	return NewScore <= MAX_int32 && FMath::IsFinite(NewWeight) && NewWeight <= static_cast<double>(TNumericLimits<float>::Max());
 }
 
 bool AHeistPlayerState::AddLootScoreAndWeight(int32 ScoreDelta, float WeightDelta)
@@ -61,11 +59,7 @@ bool AHeistPlayerState::AddLootScoreAndWeight(int32 ScoreDelta, float WeightDelt
 
 	if (!CanAddLootScoreAndWeight(ScoreDelta, WeightDelta))
 	{
-		UHeistDebugFunctionLibrary::DebugLootScoreWeightRejected(
-			this,
-			TEXT("InvalidLootValues"),
-			ScoreDelta,
-			WeightDelta);
+		UHeistDebugFunctionLibrary::DebugLootScoreWeightRejected(this, TEXT("InvalidLootValues"), ScoreDelta, WeightDelta);
 		return false;
 	}
 
@@ -83,26 +77,15 @@ bool AHeistPlayerState::AddLootScoreAndWeight(int32 ScoreDelta, float WeightDelt
 		UHeistDebugFunctionLibrary::DebugWeightMovementSkipped(this, TEXT("MissingCharacter"));
 	}
 
-	UHeistDebugFunctionLibrary::DebugLootScoreWeightApplied(
-		this,
-		ScoreDelta,
-		WeightDelta,
-		TotalLootScore,
-		TotalLootWeight);
+	UHeistDebugFunctionLibrary::DebugLootScoreWeightApplied(this, ScoreDelta, WeightDelta, TotalLootScore, TotalLootWeight);
 
 	return true;
 }
 
 bool AHeistPlayerState::CanRemoveLootScoreAndWeight(const int32 ScoreDelta, const float WeightDelta) const
 {
-	return HasAuthority()
-		&& !bEscaped
-		&& !bArrested
-		&& ScoreDelta >= 0
-		&& WeightDelta >= 0.0f
-		&& FMath::IsFinite(WeightDelta)
-		&& ScoreDelta <= TotalLootScore
-		&& WeightDelta <= TotalLootWeight + KINDA_SMALL_NUMBER;
+	return HasAuthority() && !bEscaped && !bArrested && ScoreDelta >= 0 && WeightDelta >= 0.0f && FMath::IsFinite(WeightDelta) && ScoreDelta <= TotalLootScore &&
+		   WeightDelta <= TotalLootWeight + KINDA_SMALL_NUMBER;
 }
 
 bool AHeistPlayerState::RemoveLootScoreAndWeight(const int32 ScoreDelta, const float WeightDelta)
@@ -122,21 +105,13 @@ bool AHeistPlayerState::RemoveLootScoreAndWeight(const int32 ScoreDelta, const f
 		HeistPlayerCharacter->RefreshMovementSpeedFromWeight();
 	}
 
-	UHeistDebugFunctionLibrary::DebugLootScoreWeightRemoved(
-		this,
-		ScoreDelta,
-		WeightDelta,
-		TotalLootScore,
-		TotalLootWeight);
+	UHeistDebugFunctionLibrary::DebugLootScoreWeightRemoved(this, ScoreDelta, WeightDelta, TotalLootScore, TotalLootWeight);
 	return true;
 }
 
 bool AHeistPlayerState::RemoveCarriedOriginalWeight(const float WeightDelta)
 {
-	if (!HasAuthority()
-		|| !FMath::IsFinite(WeightDelta)
-		|| WeightDelta < 0.0f
-		|| WeightDelta > TotalLootWeight + KINDA_SMALL_NUMBER)
+	if (!HasAuthority() || !FMath::IsFinite(WeightDelta) || WeightDelta < 0.0f || WeightDelta > TotalLootWeight + KINDA_SMALL_NUMBER)
 	{
 		return false;
 	}
@@ -150,12 +125,7 @@ bool AHeistPlayerState::RemoveCarriedOriginalWeight(const float WeightDelta)
 		HeistPlayerCharacter->RefreshMovementSpeedFromWeight();
 	}
 
-	UHeistDebugFunctionLibrary::DebugLootScoreWeightRemoved(
-		this,
-		0,
-		WeightDelta,
-		TotalLootScore,
-		TotalLootWeight);
+	UHeistDebugFunctionLibrary::DebugLootScoreWeightRemoved(this, 0, WeightDelta, TotalLootScore, TotalLootWeight);
 	return true;
 }
 
@@ -196,9 +166,7 @@ bool AHeistPlayerState::MarkEscaped()
 	bEscaped = true;
 	FinalScore = TotalLootScore;
 	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
-	EscapeTimeSeconds = IsValid(HeistGameState)
-		? HeistGameState->GetServerWorldTimeSeconds()
-		: (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
+	EscapeTimeSeconds = IsValid(HeistGameState) ? HeistGameState->GetServerWorldTimeSeconds() : (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
 
 	if (AHeistPlayerCharacter* HeistPlayerCharacter = Cast<AHeistPlayerCharacter>(GetPawn()))
 	{
@@ -213,11 +181,7 @@ bool AHeistPlayerState::MarkEscaped()
 	ForceNetUpdate();
 	EscapeStateChangedDelegate.Broadcast(bEscaped);
 
-	UHeistDebugFunctionLibrary::DebugPlayerEscapeStateCommitted(
-		this,
-		HeistPlayerId,
-		FinalScore,
-		EscapeTimeSeconds);
+	UHeistDebugFunctionLibrary::DebugPlayerEscapeStateCommitted(this, HeistPlayerId, FinalScore, EscapeTimeSeconds);
 
 	return true;
 }
@@ -289,10 +253,8 @@ bool AHeistPlayerState::SetArrestedInternal(const bool bNewArrested, AActor* Arr
 
 	if (bArrested == bNewArrested)
 	{
-		UHeistDebugFunctionLibrary::Message(
-			this,
-			FString::Printf(TEXT("Player arrest state rejected: Reason=NoStateChange Arrested=%s"), bArrested ? TEXT("true") : TEXT("false")),
-			EHeistDebugLevel::Warning);
+		UHeistDebugFunctionLibrary::Message(this, FString::Printf(TEXT("Player arrest state rejected: Reason=NoStateChange Arrested=%s"), bArrested ? TEXT("true") : TEXT("false")),
+											EHeistDebugLevel::Warning);
 		return false;
 	}
 
@@ -306,8 +268,7 @@ bool AHeistPlayerState::SetArrestedInternal(const bool bNewArrested, AActor* Arr
 			{
 				ActionComponent->CancelGameplayActions(TEXT("PlayerArrested"));
 			}
-			if (UHeistInventoryComponent* InventoryComponent = HeistPlayerCharacter->GetInventoryComponent();
-				IsValid(InventoryComponent) && InventoryComponent->IsInventoryOpen())
+			if (UHeistInventoryComponent* InventoryComponent = HeistPlayerCharacter->GetInventoryComponent(); IsValid(InventoryComponent) && InventoryComponent->IsInventoryOpen())
 			{
 				InventoryComponent->TrySetInventoryOpen(false);
 			}
@@ -323,13 +284,8 @@ bool AHeistPlayerState::SetArrestedInternal(const bool bNewArrested, AActor* Arr
 
 	ForceNetUpdate();
 	ArrestStateChangedDelegate.Broadcast(bArrested);
-	UHeistDebugFunctionLibrary::Message(
-		this,
-		FString::Printf(
-			TEXT("Player arrest state committed: PlayerId=%d Arrested=%s Guard=%s Authority=true"),
-			HeistPlayerId,
-			bArrested ? TEXT("true") : TEXT("false"),
-			*GetNameSafe(ArrestingGuard)));
+	UHeistDebugFunctionLibrary::Message(this, FString::Printf(TEXT("Player arrest state committed: PlayerId=%d Arrested=%s Guard=%s Authority=true"), HeistPlayerId,
+															  bArrested ? TEXT("true") : TEXT("false"), *GetNameSafe(ArrestingGuard)));
 	return true;
 }
 
@@ -341,12 +297,7 @@ void AHeistPlayerState::OnRep_Arrested()
 	}
 
 	ArrestStateChangedDelegate.Broadcast(bArrested);
-	UHeistDebugFunctionLibrary::Message(
-		this,
-		FString::Printf(
-			TEXT("Player arrest state replicated: PlayerId=%d Arrested=%s"),
-			HeistPlayerId,
-			bArrested ? TEXT("true") : TEXT("false")));
+	UHeistDebugFunctionLibrary::Message(this, FString::Printf(TEXT("Player arrest state replicated: PlayerId=%d Arrested=%s"), HeistPlayerId, bArrested ? TEXT("true") : TEXT("false")));
 }
 
 #pragma endregion
@@ -412,16 +363,11 @@ void AHeistPlayerState::DebugSetTotalLootWeight(const float InWeight)
 	{
 		HeistPlayerCharacter->RefreshMovementSpeedFromWeight();
 	}
-	UHeistDebugFunctionLibrary::Message(
-		this,
-		FString::Printf(TEXT("Footstep debug weight committed: PlayerId=%d TotalLootWeight=%.1f Authority=true"), HeistPlayerId, TotalLootWeight));
+	UHeistDebugFunctionLibrary::Message(this, FString::Printf(TEXT("Footstep debug weight committed: PlayerId=%d TotalLootWeight=%.1f Authority=true"), HeistPlayerId, TotalLootWeight));
 #endif
 }
 
-void AHeistPlayerState::DebugSetResultState(
-	const int32 InScore,
-	const bool bInEscaped,
-	const float InEscapeTimeSeconds)
+void AHeistPlayerState::DebugSetResultState(const int32 InScore, const bool bInEscaped, const float InEscapeTimeSeconds)
 {
 #if !UE_BUILD_SHIPPING
 	if (!HasAuthority())
@@ -437,14 +383,8 @@ void AHeistPlayerState::DebugSetResultState(
 	BroadcastLootTotalsChanged();
 	EscapeStateChangedDelegate.Broadcast(bEscaped);
 
-	UHeistDebugFunctionLibrary::Message(
-		this,
-		FString::Printf(
-			TEXT("Result debug state seeded: PlayerId=%d Escaped=%s FinalScore=%d EscapeTime=%.2f"),
-			HeistPlayerId,
-			bEscaped ? TEXT("true") : TEXT("false"),
-			FinalScore,
-			EscapeTimeSeconds));
+	UHeistDebugFunctionLibrary::Message(this, FString::Printf(TEXT("Result debug state seeded: PlayerId=%d Escaped=%s FinalScore=%d EscapeTime=%.2f"), HeistPlayerId,
+															  bEscaped ? TEXT("true") : TEXT("false"), FinalScore, EscapeTimeSeconds));
 #endif
 }
 

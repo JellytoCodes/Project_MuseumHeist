@@ -23,28 +23,28 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter
 
 #pragma region Construction
 
-public:
+  public:
 	AHeistPlayerCharacter();
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void BeginPlay() override;
 
 #pragma endregion
 
 #pragma region Movement
 
-public:
+  public:
 	void MoveOnGameplayPlane(const FVector2D& MovementInput);
 	void RefreshMovementSpeedFromWeight();
 
-protected:
+  protected:
 	virtual void PossessedBy(AController* NewController) override;
 
-private:
+  private:
 	float CalculateMoveSpeedFromWeight(float InTotalWeight) const;
 	void ApplyCurrentMoveSpeed();
 
@@ -67,27 +67,27 @@ private:
 
 #pragma region EscapeState
 
-public:
+  public:
 	bool CanPerformGameplayActions() const;
 	void ApplyPlayerStateGameplayRestrictions();
 	void ApplyEscapedGameplayRestrictions();
 	void HandleInventoryOpenStateChanged(bool bInventoryOpen);
 
-protected:
+  protected:
 	virtual void OnRep_PlayerState() override;
 
 #pragma endregion
 
 #pragma region Replication
 
-public:
+  public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 #pragma endregion
 
 #pragma region Camera
 
-private:
+  private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Camera", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UCameraComponent> FirstPersonCamera;
 
@@ -101,7 +101,7 @@ private:
 
 #pragma region GameplayComponents
 
-private:
+  private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistTagComponent> TagComponent;
 
@@ -129,7 +129,7 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistNoiseEmitterComponent> NoiseEmitterComponent;
 
-public:
+  public:
 	UHeistTagComponent* GetTagComponent() const;
 	UHeistStatusComponent* GetStatusComponent() const;
 	UHeistInventoryComponent* GetInventoryComponent() const;

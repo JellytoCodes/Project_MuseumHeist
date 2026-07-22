@@ -33,12 +33,8 @@ struct PROJECT_MUSEUMHEIST_API FHeistQuickSlotPresentation
 
 	bool operator==(const FHeistQuickSlotPresentation& Other) const
 	{
-		return SlotType == Other.SlotType
-			&& KeyLabel.EqualTo(Other.KeyLabel)
-			&& bAssigned == Other.bAssigned
-			&& ItemInstanceId == Other.ItemInstanceId
-			&& ItemId == Other.ItemId
-			&& Quantity == Other.Quantity;
+		return SlotType == Other.SlotType && KeyLabel.EqualTo(Other.KeyLabel) && bAssigned == Other.bAssigned && ItemInstanceId == Other.ItemInstanceId && ItemId == Other.ItemId &&
+			   Quantity == Other.Quantity;
 	}
 };
 
@@ -49,28 +45,28 @@ class PROJECT_MUSEUMHEIST_API UHeistQuickSlotViewModel : public UMVVMViewModelBa
 
 #pragma region Construction
 
-public:
+  public:
 	UHeistQuickSlotViewModel(const FObjectInitializer& ObjectInitializer);
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void BeginDestroy() override;
 
 #pragma endregion
 
 #pragma region Setup
 
-public:
+  public:
 	void SetupViewModel(class UHeistInventoryComponent* InInventoryComponent);
 	void RefreshConfirmedSnapshot();
 	const TArray<FHeistQuickSlotState>& GetQuickSlots() const;
 	const TArray<FHeistQuickSlotPresentation>& GetQuickSlotPresentations() const;
 	FHeistQuickSlotSnapshotChanged& GetSnapshotChangedDelegate();
 
-private:
+  private:
 	static FText GetKeyLabel(EHeistQuickSlotType SlotType);
 
 	UPROPERTY(Transient)

@@ -43,8 +43,7 @@ bool UHeistInteractionComponent::RefreshInteractionTarget(const bool bForceRefre
 	}
 
 	const float CurrentWorldTime = World->GetTimeSeconds();
-	if (!bForceRefresh
-		&& CurrentWorldTime - LastInteractionTraceTime < InteractionScanInterval)
+	if (!bForceRefresh && CurrentWorldTime - LastInteractionTraceTime < InteractionScanInterval)
 	{
 		return HasValidInteractionTarget();
 	}
@@ -60,44 +59,25 @@ bool UHeistInteractionComponent::RefreshInteractionTarget(const bool bForceRefre
 
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(HeistCenterInteractionTrace), false, OwnerCharacter);
 	FHitResult HitResult;
-	const bool bHit = World->LineTraceSingleByChannel(
-		HitResult,
-		TraceStart,
-		TraceEnd,
-		HeistCollisionChannels::InteractionTrace,
-		QueryParams);
+	const bool bHit = World->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, HeistCollisionChannels::InteractionTrace, QueryParams);
 	AActor* HitActor = bHit ? HitResult.GetActor() : nullptr;
 	CurrentTraceHitActor = HitActor;
 
 	const UPrimitiveComponent* HitComponent = bHit ? HitResult.GetComponent() : nullptr;
-	const bool bHitInteractableChannel = IsValid(HitComponent)
-		&& HitComponent->GetCollisionObjectType() == HeistCollisionChannels::Interactable;
-	IHeistInteractable* Interactable = bHitInteractableChannel
-		? Cast<IHeistInteractable>(HitActor)
-		: nullptr;
+	const bool bHitInteractableChannel = IsValid(HitComponent) && HitComponent->GetCollisionObjectType() == HeistCollisionChannels::Interactable;
+	IHeistInteractable* Interactable = bHitInteractableChannel ? Cast<IHeistInteractable>(HitActor) : nullptr;
 	const bool bWithinRange = IsActorWithinInteractionRange(HitActor);
-	const bool bAvailable = Interactable != nullptr
-		&& bWithinRange
-		&& Interactable->CanInteract(OwnerCharacter);
+	const bool bAvailable = Interactable != nullptr && bWithinRange && Interactable->CanInteract(OwnerCharacter);
 	AActor* CenterTarget = bAvailable ? HitActor : nullptr;
 
 	CurrentInteractionTarget = CenterTarget;
 	bCurrentTargetAvailable = bAvailable;
 	if (PreviousTraceHitActor != HitActor || PreviousTarget != CenterTarget)
 	{
-		UE_LOG(
-			LogHeistUI,
-			Verbose,
-			TEXT("[%s] Center interaction trace: Channel=HeistInteractionTrace Start=%s End=%s Hit=%s InteractableChannel=%s WithinRange=%s Target=%s Available=%s Distance=%.1f Key=E"),
-			*GetNameSafe(OwnerCharacter),
-			*TraceStart.ToCompactString(),
-			*TraceEnd.ToCompactString(),
-			*GetNameSafe(HitActor),
-			bHitInteractableChannel ? TEXT("true") : TEXT("false"),
-			bWithinRange ? TEXT("true") : TEXT("false"),
-			*GetNameSafe(CenterTarget),
-			bAvailable ? TEXT("true") : TEXT("false"),
-			bHit ? HitResult.Distance : InteractionRange);
+		UE_LOG(LogHeistUI, Verbose,
+			   TEXT("[%s] Center interaction trace: Channel=HeistInteractionTrace Start=%s End=%s Hit=%s InteractableChannel=%s WithinRange=%s Target=%s Available=%s Distance=%.1f Key=E"),
+			   *GetNameSafe(OwnerCharacter), *TraceStart.ToCompactString(), *TraceEnd.ToCompactString(), *GetNameSafe(HitActor), bHitInteractableChannel ? TEXT("true") : TEXT("false"),
+			   bWithinRange ? TEXT("true") : TEXT("false"), *GetNameSafe(CenterTarget), bAvailable ? TEXT("true") : TEXT("false"), bHit ? HitResult.Distance : InteractionRange);
 	}
 
 	if (PreviousTarget != CenterTarget)
@@ -136,8 +116,7 @@ bool UHeistInteractionComponent::IsActorWithinInteractionRange(const AActor* Tar
 		return false;
 	}
 
-	return FVector::DistSquared(OwnerCharacter->GetActorLocation(), TargetActor->GetActorLocation())
-		<= FMath::Square(InteractionRange);
+	return FVector::DistSquared(OwnerCharacter->GetActorLocation(), TargetActor->GetActorLocation()) <= FMath::Square(InteractionRange);
 }
 
 FHeistInteractionTargetChanged& UHeistInteractionComponent::GetInteractionTargetChangedDelegate()
@@ -176,14 +155,8 @@ void UHeistInteractionComponent::ClearInteractionTarget(const TCHAR* Reason)
 
 	if (IsValid(PreviousTarget) || IsValid(PreviousTraceHitActor))
 	{
-		UE_LOG(
-			LogHeistUI,
-			Verbose,
-			TEXT("[%s] Center interaction target cleared: PreviousTarget=%s PreviousHit=%s Reason=%s"),
-			*GetNameSafe(GetOwner()),
-			*GetNameSafe(PreviousTarget),
-			*GetNameSafe(PreviousTraceHitActor),
-			Reason);
+		UE_LOG(LogHeistUI, Verbose, TEXT("[%s] Center interaction target cleared: PreviousTarget=%s PreviousHit=%s Reason=%s"), *GetNameSafe(GetOwner()), *GetNameSafe(PreviousTarget),
+			   *GetNameSafe(PreviousTraceHitActor), Reason);
 	}
 
 	if (IsValid(PreviousTarget))

@@ -16,26 +16,26 @@ class PROJECT_MUSEUMHEIST_API UHeistResultViewModel : public UMVVMViewModelBase
 
 #pragma region Construction
 
-public:
+  public:
 	UHeistResultViewModel(const FObjectInitializer& ObjectInitializer);
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void BeginDestroy() override;
 
 #pragma endregion
 
 #pragma region Setup
 
-public:
+  public:
 	void SetupViewModel(class AHeistGameState* InGameState, class AHeistPlayerState* InLocalPlayerState);
 	void RefreshResultData();
 	FHeistResultSnapshotChanged& GetSnapshotChangedDelegate();
 
-private:
+  private:
 	UPROPERTY(Transient)
 	TObjectPtr<AHeistGameState> GameState;
 
@@ -48,7 +48,7 @@ private:
 
 #pragma region ResultData
 
-public:
+  public:
 	const TArray<FHeistPlayerResult>& GetPlayerResults() const;
 	int32 GetMyFinalScore() const;
 	bool IsEscaped() const;
@@ -63,7 +63,7 @@ public:
 	ESlateVisibility GetResultRow3Visibility() const;
 	ESlateVisibility GetResultRow4Visibility() const;
 
-private:
+  private:
 	FText BuildResultRowText(int32 ResultIndex) const;
 	ESlateVisibility BuildResultRowVisibility(int32 ResultIndex) const;
 	void RefreshResultRows();

@@ -18,26 +18,26 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardCharacter : public ACharacter
 
 #pragma region Construction
 
-public:
+  public:
 	AHeistGuardCharacter();
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void BeginPlay() override;
 
 #pragma endregion
 
 #pragma region GameplayComponents
 
-public:
+  public:
 	UHeistGuardStateComponent* GetGuardStateComponent() const;
 	UHeistPatrolPathComponent* GetPatrolPathComponent() const;
 	UHeistGuardNoiseReactionComponent* GetNoiseReactionComponent() const;
 
-private:
+  private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|AI", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistGuardStateComponent> GuardStateComponent;
 
@@ -51,12 +51,12 @@ private:
 
 #pragma region GuardProfile
 
-public:
+  public:
 	FName GetGuardProfileId() const;
 	bool HasResolvedGuardProfile() const;
 	const FHeistGuardDataRow& GetGuardProfile() const;
 
-private:
+  private:
 	void ResolveGuardProfile();
 	void HandleGuardStateChanged(EHeistGuardState PreviousState, EHeistGuardState NewState);
 

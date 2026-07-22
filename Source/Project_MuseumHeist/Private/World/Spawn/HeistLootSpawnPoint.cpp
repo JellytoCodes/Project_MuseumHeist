@@ -19,9 +19,7 @@ AHeistLootSpawnPoint::AHeistLootSpawnPoint()
 
 bool AHeistLootSpawnPoint::CanSpawnCategory(const EHeistSpawnCategory RequestedCategory) const
 {
-	return bSpawnEnabled
-		&& SpawnCategory == RequestedCategory
-		&& !IsOccupied();
+	return bSpawnEnabled && SpawnCategory == RequestedCategory && !IsOccupied();
 }
 
 bool AHeistLootSpawnPoint::IsOccupied() const
@@ -36,9 +34,7 @@ bool AHeistLootSpawnPoint::IsOccupied() const
 	for (TActorIterator<AHeistLootActor> It(World); It; ++It)
 	{
 		const AHeistLootActor* LootActor = *It;
-		if (IsValid(LootActor)
-			&& LootActor->IsLootAvailable()
-			&& FVector::DistSquared(GetActorLocation(), LootActor->GetActorLocation()) <= OccupancyRadiusSquared)
+		if (IsValid(LootActor) && LootActor->IsLootAvailable() && FVector::DistSquared(GetActorLocation(), LootActor->GetActorLocation()) <= OccupancyRadiusSquared)
 		{
 			return true;
 		}

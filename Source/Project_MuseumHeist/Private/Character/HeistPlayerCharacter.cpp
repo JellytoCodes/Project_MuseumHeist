@@ -73,46 +73,28 @@ void AHeistPlayerCharacter::BeginPlay()
 	const bool bCameraSocketResolved = GetMesh()->DoesSocketExist(FirstPersonCameraSocketName);
 	if (bCameraSocketResolved)
 	{
-		FirstPersonCamera->AttachToComponent(
-			GetMesh(),
-			FAttachmentTransformRules::SnapToTargetNotIncludingScale,
-			FirstPersonCameraSocketName);
+		FirstPersonCamera->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FirstPersonCameraSocketName);
 		FirstPersonCamera->SetRelativeLocation(FirstPersonCameraSocketOffset);
 	}
 	else
 	{
-		FirstPersonCamera->AttachToComponent(
-			GetCapsuleComponent(),
-			FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+		FirstPersonCamera->AttachToComponent(GetCapsuleComponent(), FAttachmentTransformRules::SnapToTargetNotIncludingScale);
 		FirstPersonCamera->SetRelativeLocation(FVector(0.0f, 0.0f, 64.0f));
 
-		UE_LOG(
-			LogHeist,
-			Warning,
-			TEXT("[%s] First-person camera socket setup failed: RequestedSocket=%s Reason=MissingSocket Fallback=CapsuleEyeHeight"),
-			*GetName(),
-			*FirstPersonCameraSocketName.ToString());
+		UE_LOG(LogHeist, Warning, TEXT("[%s] First-person camera socket setup failed: RequestedSocket=%s Reason=MissingSocket Fallback=CapsuleEyeHeight"), *GetName(),
+			   *FirstPersonCameraSocketName.ToString());
 	}
 
 	GetMesh()->SetCastShadow(true);
 
 	UE_LOG(
-		LogHeist,
-		Log,
-		TEXT("[%s] First-person camera contract: Camera=%s RequestedSocket=%s SocketResolved=%s Parent=%s AttachedSocket=%s RelativeLocation=%s FOV=%.1f UsePawnControlRotation=%s UseControllerYaw=%s OrientRotationToMovement=%s FullBodyVisible=%s HeadHidden=false CastShadow=%s"),
-		*GetName(),
-		*GetNameSafe(FirstPersonCamera),
-		*FirstPersonCameraSocketName.ToString(),
-		bCameraSocketResolved ? TEXT("true") : TEXT("false"),
-		*GetNameSafe(FirstPersonCamera->GetAttachParent()),
-		*FirstPersonCamera->GetAttachSocketName().ToString(),
-		*FirstPersonCamera->GetRelativeLocation().ToCompactString(),
-		FirstPersonCamera->FieldOfView,
-		FirstPersonCamera->bUsePawnControlRotation ? TEXT("true") : TEXT("false"),
-		bUseControllerRotationYaw ? TEXT("true") : TEXT("false"),
-		GetCharacterMovement()->bOrientRotationToMovement ? TEXT("true") : TEXT("false"),
-		GetMesh()->IsVisible() ? TEXT("true") : TEXT("false"),
-		GetMesh()->CastShadow ? TEXT("true") : TEXT("false"));
+		LogHeist, Log,
+		TEXT(
+			"[%s] First-person camera contract: Camera=%s RequestedSocket=%s SocketResolved=%s Parent=%s AttachedSocket=%s RelativeLocation=%s FOV=%.1f UsePawnControlRotation=%s UseControllerYaw=%s OrientRotationToMovement=%s FullBodyVisible=%s HeadHidden=false CastShadow=%s"),
+		*GetName(), *GetNameSafe(FirstPersonCamera), *FirstPersonCameraSocketName.ToString(), bCameraSocketResolved ? TEXT("true") : TEXT("false"), *GetNameSafe(FirstPersonCamera->GetAttachParent()),
+		*FirstPersonCamera->GetAttachSocketName().ToString(), *FirstPersonCamera->GetRelativeLocation().ToCompactString(), FirstPersonCamera->FieldOfView,
+		FirstPersonCamera->bUsePawnControlRotation ? TEXT("true") : TEXT("false"), bUseControllerRotationYaw ? TEXT("true") : TEXT("false"),
+		GetCharacterMovement()->bOrientRotationToMovement ? TEXT("true") : TEXT("false"), GetMesh()->IsVisible() ? TEXT("true") : TEXT("false"), GetMesh()->CastShadow ? TEXT("true") : TEXT("false"));
 }
 
 #pragma endregion
@@ -154,11 +136,7 @@ void AHeistPlayerCharacter::RefreshMovementSpeedFromWeight()
 	ApplyCurrentMoveSpeed();
 	ForceNetUpdate();
 
-	UHeistDebugFunctionLibrary::DebugWeightMovementSpeedApplied(
-		this,
-		TotalLootWeight,
-		BaseMoveSpeed,
-		CurrentMoveSpeed);
+	UHeistDebugFunctionLibrary::DebugWeightMovementSpeedApplied(this, TotalLootWeight, BaseMoveSpeed, CurrentMoveSpeed);
 }
 
 void AHeistPlayerCharacter::PossessedBy(AController* NewController)
@@ -261,13 +239,8 @@ void AHeistPlayerCharacter::ApplyPlayerStateGameplayRestrictions()
 	}
 	else
 	{
-		UHeistDebugFunctionLibrary::Message(
-			this,
-			FString::Printf(
-				TEXT("Player arrest restrictions applied: Character=%s Arrested=%s MovementDisabled=%s Visible=true Collision=true"),
-				*GetName(),
-				bArrested ? TEXT("true") : TEXT("false"),
-				bArrested ? TEXT("true") : TEXT("false")));
+		UHeistDebugFunctionLibrary::Message(this, FString::Printf(TEXT("Player arrest restrictions applied: Character=%s Arrested=%s MovementDisabled=%s Visible=true Collision=true"), *GetName(),
+																  bArrested ? TEXT("true") : TEXT("false"), bArrested ? TEXT("true") : TEXT("false")));
 	}
 
 	if (AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(GetController()))

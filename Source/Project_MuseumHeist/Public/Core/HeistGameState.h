@@ -14,12 +14,7 @@ DECLARE_MULTICAST_DELEGATE_OneParam(FHeistSoundPingEventReported, const FHeistSo
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistRareLootEventStateChanged, const FHeistRareLootEventState&);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerConnectionsChanged, int32);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistMatchPhaseChanged, EHeistMatchPhase, EHeistMatchPhase);
-DECLARE_MULTICAST_DELEGATE_FourParams(
-	FHeistObjectiveStateChanged,
-	FName,
-	FName,
-	EHeistObjectiveState,
-	AHeistPlayerState*);
+DECLARE_MULTICAST_DELEGATE_FourParams(FHeistObjectiveStateChanged, FName, FName, EHeistObjectiveState, AHeistPlayerState*);
 
 UCLASS()
 class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
@@ -28,28 +23,27 @@ class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
 
 #pragma region Construction
 
-public:
+  public:
 	AHeistGameState();
-
 
 #pragma endregion
 
 #pragma region PlayerConnections
 
-public:
+  public:
 	virtual void AddPlayerState(APlayerState* PlayerState) override;
 	virtual void RemovePlayerState(APlayerState* PlayerState) override;
 	int32 GetConnectedPlayerCount() const;
 	FHeistPlayerConnectionsChanged& GetPlayerConnectionsChangedDelegate();
 
-private:
+  private:
 	FHeistPlayerConnectionsChanged PlayerConnectionsChangedDelegate;
 
 #pragma endregion
 
 #pragma region MatchPhase
 
-public:
+  public:
 	UFUNCTION(BlueprintPure, Category = "Heist|Match")
 	EHeistMatchPhase GetMatchPhase() const;
 
@@ -58,7 +52,7 @@ public:
 
 	FHeistMatchPhaseChanged& GetMatchPhaseChangedDelegate();
 
-private:
+  private:
 	UPROPERTY(ReplicatedUsing = OnRep_MatchPhase, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Match", meta = (AllowPrivateAccess = "true"))
 	EHeistMatchPhase MatchPhase = EHeistMatchPhase::None;
 
@@ -73,20 +67,16 @@ private:
 
 #pragma region Objective
 
-public:
+  public:
 	FName GetActiveTargetArtifactId() const;
 	FName GetActiveTargetCaseId() const;
 	EHeistObjectiveState GetObjectiveState() const;
 	AHeistPlayerState* GetOriginalCarrierCandidate() const;
 	int32 GetObjectiveRevision() const;
-	bool SetObjectiveSnapshot(
-		FName InActiveTargetArtifactId,
-		FName InActiveTargetCaseId,
-		EHeistObjectiveState InObjectiveState,
-		AHeistPlayerState* InOriginalCarrierCandidate);
+	bool SetObjectiveSnapshot(FName InActiveTargetArtifactId, FName InActiveTargetCaseId, EHeistObjectiveState InObjectiveState, AHeistPlayerState* InOriginalCarrierCandidate);
 	FHeistObjectiveStateChanged& GetObjectiveStateChangedDelegate();
 
-private:
+  private:
 	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Objective", meta = (AllowPrivateAccess = "true"))
 	FName ActiveTargetArtifactId = NAME_None;
 
@@ -113,7 +103,7 @@ private:
 
 #pragma region EscapePhase
 
-public:
+  public:
 	bool IsEscapePhaseOpen() const;
 	float GetEscapePhaseDelaySeconds() const;
 	float GetEscapePhaseOpenTimeSeconds() const;
@@ -121,7 +111,7 @@ public:
 	void OpenEscapePhase();
 	FHeistEscapePhaseStateChanged& GetEscapePhaseStateChangedDelegate();
 
-private:
+  private:
 	UPROPERTY(ReplicatedUsing = OnRep_EscapePhaseOpen, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Escape", meta = (AllowPrivateAccess = "true"))
 	bool bEscapePhaseOpen = false;
 
@@ -140,14 +130,14 @@ private:
 
 #pragma region RareLootEvent
 
-public:
+  public:
 	const FHeistRareLootEventState& GetRareLootEventState() const;
 	void BeginRareLootWarning(int32 EventIndex, FName ItemId, float SpawnServerTime);
 	void ActivateRareLootMarker(int32 EventIndex, FName ItemId, const FVector& WorldLocation);
 	void DeactivateRareLootMarker(int32 EventIndex);
 	FHeistRareLootEventStateChanged& GetRareLootEventStateChangedDelegate();
 
-private:
+  private:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Legacy", meta = (AllowPrivateAccess = "true"))
 	FHeistRareLootEventState RareLootEventState;
 
@@ -162,12 +152,12 @@ private:
 
 #pragma region SoundPing
 
-public:
+  public:
 	void ReportSoundPing(const FHeistSoundPingEvent& SoundPingEvent);
 	const FHeistSoundPingEvent& GetLastSoundPingEvent() const;
 	FHeistSoundPingEventReported& GetSoundPingEventReportedDelegate();
 
-private:
+  private:
 	UPROPERTY(ReplicatedUsing = OnRep_LastSoundPingEvent, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|SoundPing", meta = (AllowPrivateAccess = "true"))
 	FHeistSoundPingEvent LastSoundPingEvent;
 
@@ -183,12 +173,12 @@ private:
 
 #pragma region ResultData
 
-public:
+  public:
 	void RebuildPlayerResults();
 	const TArray<FHeistPlayerResult>& GetPlayerResults() const;
 	FHeistPlayerResultsChanged& GetPlayerResultsChangedDelegate();
 
-private:
+  private:
 	UPROPERTY(ReplicatedUsing = OnRep_PlayerResults, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
 	TArray<FHeistPlayerResult> PlayerResults;
 
@@ -201,7 +191,7 @@ private:
 
 #pragma region Replication
 
-public:
+  public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 #pragma endregion

@@ -20,14 +20,14 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryItemWidget : public UHeistUserWidge
 
 #pragma region Construction
 
-public:
+  public:
 	UHeistInventoryItemWidget(const FObjectInitializer& ObjectInitializer);
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
 
@@ -35,24 +35,17 @@ protected:
 
 #pragma region Presentation
 
-public:
-	void SetupItem(
-		const FHeistInventoryItem& InConfirmedItem,
-		const FIntPoint& InPlacedSize,
-		UTexture2D* InIcon,
-		UHeistInventoryWidget* InInventoryWidget);
+  public:
+	void SetupItem(const FHeistInventoryItem& InConfirmedItem, const FIntPoint& InPlacedSize, UTexture2D* InIcon, UHeistInventoryWidget* InInventoryWidget);
 
 	UFUNCTION(BlueprintPure, Category = "Heist|Inventory")
 	int32 GetInstanceId() const;
 
-protected:
+  protected:
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
-	virtual void NativeOnDragDetected(
-		const FGeometry& InGeometry,
-		const FPointerEvent& InMouseEvent,
-		UDragDropOperation*& OutOperation) override;
+	virtual void NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation) override;
 
-private:
+  private:
 	void RefreshPresentation();
 
 	UFUNCTION()

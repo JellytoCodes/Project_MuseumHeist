@@ -10,12 +10,12 @@ class PROJECT_MUSEUMHEIST_API AHeistCoinProjectile : public AHeistThrowableProje
 {
 	GENERATED_BODY()
 
-public:
+  public:
 	AHeistCoinProjectile();
 
 #pragma region Projectile
 
-protected:
+  protected:
 	virtual void HandleAuthorityImpact(const FHitResult& Hit) override;
 
 #pragma endregion

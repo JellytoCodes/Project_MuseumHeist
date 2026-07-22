@@ -15,25 +15,25 @@ class PROJECT_MUSEUMHEIST_API UHeistResultWidget : public UHeistUserWidgetBase
 
 #pragma region Construction
 
-public:
+  public:
 	UHeistResultWidget(const FObjectInitializer& ObjectInitializer);
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void NativeDestruct() override;
 
 #pragma endregion
 
 #pragma region ViewModel
 
-public:
+  public:
 	void SetupResultWidget(class UHeistResultViewModel* InResultViewModel);
 	UHeistResultViewModel* GetResultViewModel() const;
 
-private:
+  private:
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistResultViewModel> ResultViewModel;
 
@@ -41,7 +41,7 @@ private:
 
 #pragma region Presentation
 
-private:
+  private:
 	void RefreshResultPresentation();
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))

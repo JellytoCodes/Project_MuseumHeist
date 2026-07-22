@@ -18,8 +18,7 @@
 #include "UI/Widgets/HeistInventorySlotWidget.h"
 #include "View/MVVMView.h"
 
-UHeistInventoryWidget::UHeistInventoryWidget(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer)
+UHeistInventoryWidget::UHeistInventoryWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 }
 
@@ -53,16 +52,11 @@ void UHeistInventoryWidget::NativeDestruct()
 	Super::NativeDestruct();
 }
 
-bool UHeistInventoryWidget::NativeOnDragOver(
-	const FGeometry& InGeometry,
-	const FDragDropEvent& InDragDropEvent,
-	UDragDropOperation* InOperation)
+bool UHeistInventoryWidget::NativeOnDragOver(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
 {
-	const UHeistInventoryDragDropOperation* InventoryOperation =
-		Cast<UHeistInventoryDragDropOperation>(InOperation);
+	const UHeistInventoryDragDropOperation* InventoryOperation = Cast<UHeistInventoryDragDropOperation>(InOperation);
 	FIntPoint TargetGridPosition(-1, -1);
-	if (IsValid(InventoryOperation)
-		&& TryGetDropTargetGridPosition(InDragDropEvent, TargetGridPosition))
+	if (IsValid(InventoryOperation) && TryGetDropTargetGridPosition(InDragDropEvent, TargetGridPosition))
 	{
 		UpdateDropPreview(InventoryOperation->InstanceId, TargetGridPosition);
 		return true;
@@ -72,24 +66,17 @@ bool UHeistInventoryWidget::NativeOnDragOver(
 	return Super::NativeOnDragOver(InGeometry, InDragDropEvent, InOperation);
 }
 
-void UHeistInventoryWidget::NativeOnDragLeave(
-	const FDragDropEvent& InDragDropEvent,
-	UDragDropOperation* InOperation)
+void UHeistInventoryWidget::NativeOnDragLeave(const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
 {
 	ClearDropPreview();
 	Super::NativeOnDragLeave(InDragDropEvent, InOperation);
 }
 
-bool UHeistInventoryWidget::NativeOnDrop(
-	const FGeometry& InGeometry,
-	const FDragDropEvent& InDragDropEvent,
-	UDragDropOperation* InOperation)
+bool UHeistInventoryWidget::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
 {
-	const UHeistInventoryDragDropOperation* InventoryOperation =
-		Cast<UHeistInventoryDragDropOperation>(InOperation);
+	const UHeistInventoryDragDropOperation* InventoryOperation = Cast<UHeistInventoryDragDropOperation>(InOperation);
 	FIntPoint TargetGridPosition(-1, -1);
-	const bool bHandled = IsValid(InventoryOperation)
-		&& TryGetDropTargetGridPosition(InDragDropEvent, TargetGridPosition);
+	const bool bHandled = IsValid(InventoryOperation) && TryGetDropTargetGridPosition(InDragDropEvent, TargetGridPosition);
 	if (bHandled)
 	{
 		RequestMoveItem(InventoryOperation->InstanceId, TargetGridPosition);
@@ -99,10 +86,7 @@ bool UHeistInventoryWidget::NativeOnDrop(
 	return bHandled || Super::NativeOnDrop(InGeometry, InDragDropEvent, InOperation);
 }
 
-void UHeistInventoryWidget::SetupInventoryWidget(
-	UHeistInventoryViewModel* InInventoryViewModel,
-	UHeistQuickSlotViewModel* InQuickSlotViewModel,
-	AHeistPlayerController* InPlayerController)
+void UHeistInventoryWidget::SetupInventoryWidget(UHeistInventoryViewModel* InInventoryViewModel, UHeistQuickSlotViewModel* InQuickSlotViewModel, AHeistPlayerController* InPlayerController)
 {
 	checkf(IsValid(InInventoryViewModel), TEXT("HeistInventoryWidget requires a valid InventoryViewModel"));
 	checkf(IsValid(InQuickSlotViewModel), TEXT("HeistInventoryWidget requires a valid QuickSlotViewModel"));
@@ -112,13 +96,9 @@ void UHeistInventoryWidget::SetupInventoryWidget(
 	QuickSlotViewModel = InQuickSlotViewModel;
 	PlayerController = InPlayerController;
 	InventoryViewModel->GetSnapshotChangedDelegate().RemoveAll(this);
-	InventoryViewModel->GetSnapshotChangedDelegate().AddUObject(
-		this,
-		&UHeistInventoryWidget::RefreshVisibilityFromConfirmedSnapshot);
+	InventoryViewModel->GetSnapshotChangedDelegate().AddUObject(this, &UHeistInventoryWidget::RefreshVisibilityFromConfirmedSnapshot);
 	QuickSlotViewModel->GetSnapshotChangedDelegate().RemoveAll(this);
-	QuickSlotViewModel->GetSnapshotChangedDelegate().AddUObject(
-		this,
-		&UHeistInventoryWidget::RefreshQuickSlotPresentation);
+	QuickSlotViewModel->GetSnapshotChangedDelegate().AddUObject(this, &UHeistInventoryWidget::RefreshQuickSlotPresentation);
 
 	TScriptInterface<INotifyFieldValueChanged> InventoryViewModelInterface;
 	InventoryViewModelInterface.SetObject(InventoryViewModel);
@@ -140,10 +120,7 @@ void UHeistInventoryWidget::SetupInventoryWidget(
 
 void UHeistInventoryWidget::RefreshVisibilityFromConfirmedSnapshot()
 {
-	SetVisibility(
-		IsValid(InventoryViewModel) && InventoryViewModel->IsInventoryOpen()
-			? ESlateVisibility::Visible
-			: ESlateVisibility::Collapsed);
+	SetVisibility(IsValid(InventoryViewModel) && InventoryViewModel->IsInventoryOpen() ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	if (IsValid(InventoryViewModel))
 	{
 		const TArray<FHeistInventoryItem>& ConfirmedItems = InventoryViewModel->GetItems();
@@ -151,21 +128,12 @@ void UHeistInventoryWidget::RefreshVisibilityFromConfirmedSnapshot()
 		const int32 GridRows = InventoryViewModel->GetGridRowCount();
 		if (IsValid(InventorySummaryText))
 		{
-			InventorySummaryText->SetText(FText::Format(
-				NSLOCTEXT("HeistInventory", "InventorySummaryFormat", "INVENTORY  {0} ITEMS  |  GRID {1}x{2}"),
-				FText::AsNumber(ConfirmedItems.Num()),
-				FText::AsNumber(GridColumns),
-				FText::AsNumber(GridRows)));
+			InventorySummaryText->SetText(FText::Format(NSLOCTEXT("HeistInventory", "InventorySummaryFormat", "INVENTORY  {0} ITEMS  |  GRID {1}x{2}"), FText::AsNumber(ConfirmedItems.Num()),
+														FText::AsNumber(GridColumns), FText::AsNumber(GridRows)));
 		}
 
-		BP_RefreshConfirmedInventory(
-			ConfirmedItems,
-			GridColumns,
-			GridRows);
-		RebuildConfirmedInventory(
-			ConfirmedItems,
-			GridColumns,
-			GridRows);
+		BP_RefreshConfirmedInventory(ConfirmedItems, GridColumns, GridRows);
+		RebuildConfirmedInventory(ConfirmedItems, GridColumns, GridRows);
 	}
 }
 
@@ -184,10 +152,8 @@ void UHeistInventoryWidget::RefreshQuickSlotPresentation()
 		}
 		if (IsValid(QuickSlotSummaryText))
 		{
-			QuickSlotSummaryText->SetText(FText::Format(
-				NSLOCTEXT("HeistInventory", "QuickSlotSummaryFormat", "QUICK SLOTS  {0}/{1} ASSIGNED"),
-				FText::AsNumber(AssignedQuickSlotCount),
-				FText::AsNumber(ConfirmedQuickSlots.Num())));
+			QuickSlotSummaryText->SetText(FText::Format(NSLOCTEXT("HeistInventory", "QuickSlotSummaryFormat", "QUICK SLOTS  {0}/{1} ASSIGNED"), FText::AsNumber(AssignedQuickSlotCount),
+														FText::AsNumber(ConfirmedQuickSlots.Num())));
 		}
 
 		BP_RefreshConfirmedQuickSlots(ConfirmedQuickSlots);
@@ -227,9 +193,7 @@ void UHeistInventoryWidget::RequestDropItem(const int32 InstanceId)
 	}
 }
 
-void UHeistInventoryWidget::RequestAssignQuickSlot(
-	const EHeistQuickSlotType SlotType,
-	const int32 InstanceId)
+void UHeistInventoryWidget::RequestAssignQuickSlot(const EHeistQuickSlotType SlotType, const int32 InstanceId)
 {
 	if (IsValid(PlayerController))
 	{
@@ -245,15 +209,9 @@ void UHeistInventoryWidget::RequestClearQuickSlot(const EHeistQuickSlotType Slot
 	}
 }
 
-bool UHeistInventoryWidget::CanPreviewItemDrop(
-	const int32 InstanceId,
-	const FIntPoint& TargetGridPosition) const
+bool UHeistInventoryWidget::CanPreviewItemDrop(const int32 InstanceId, const FIntPoint& TargetGridPosition) const
 {
-	const FHeistInventoryItem* SourceItem = ConfirmedInventoryItems.FindByPredicate(
-		[InstanceId](const FHeistInventoryItem& InventoryItem)
-		{
-			return InventoryItem.InstanceId == InstanceId;
-		});
+	const FHeistInventoryItem* SourceItem = ConfirmedInventoryItems.FindByPredicate([InstanceId](const FHeistInventoryItem& InventoryItem) { return InventoryItem.InstanceId == InstanceId; });
 	if (SourceItem == nullptr)
 	{
 		return false;
@@ -262,10 +220,7 @@ bool UHeistInventoryWidget::CanPreviewItemDrop(
 	FIntPoint PlacedSize;
 	UTexture2D* Icon = nullptr;
 	TryResolveItemPresentation(*SourceItem, PlacedSize, Icon);
-	if (TargetGridPosition.X < 0
-		|| TargetGridPosition.Y < 0
-		|| TargetGridPosition.X + PlacedSize.X > ConfirmedGridColumns
-		|| TargetGridPosition.Y + PlacedSize.Y > ConfirmedGridRows)
+	if (TargetGridPosition.X < 0 || TargetGridPosition.Y < 0 || TargetGridPosition.X + PlacedSize.X > ConfirmedGridColumns || TargetGridPosition.Y + PlacedSize.Y > ConfirmedGridRows)
 	{
 		return false;
 	}
@@ -284,10 +239,7 @@ bool UHeistInventoryWidget::CanPreviewItemDrop(
 	return true;
 }
 
-void UHeistInventoryWidget::RebuildConfirmedInventory(
-	const TArray<FHeistInventoryItem>& ConfirmedItems,
-	const int32 GridColumns,
-	const int32 GridRows)
+void UHeistInventoryWidget::RebuildConfirmedInventory(const TArray<FHeistInventoryItem>& ConfirmedItems, const int32 GridColumns, const int32 GridRows)
 {
 	ConfirmedInventoryItems = ConfirmedItems;
 	ConfirmedGridColumns = GridColumns;
@@ -303,18 +255,14 @@ void UHeistInventoryWidget::RebuildConfirmedInventory(
 			{
 				for (int32 Column = 0; Column < GridColumns; ++Column)
 				{
-					UHeistInventorySlotWidget* SlotWidget =
-						CreateWidget<UHeistInventorySlotWidget>(GetOwningPlayer(), InventorySlotWidgetClass);
+					UHeistInventorySlotWidget* SlotWidget = CreateWidget<UHeistInventorySlotWidget>(GetOwningPlayer(), InventorySlotWidgetClass);
 					if (!IsValid(SlotWidget))
 					{
 						continue;
 					}
 
 					const FIntPoint GridCoordinate(Column, Row);
-					SlotWidget->SetupSlot(
-						GridCoordinate,	
-						IsGridCoordinateOccupied(GridCoordinate),
-						this);
+					SlotWidget->SetupSlot(GridCoordinate, IsGridCoordinateOccupied(GridCoordinate), this);
 					UUniformGridSlot* GridSlot = InventoryGrid->AddChildToUniformGrid(SlotWidget, Row, Column);
 					if (IsValid(GridSlot))
 					{
@@ -345,8 +293,7 @@ void UHeistInventoryWidget::RebuildConfirmedInventory(
 		UTexture2D* Icon = nullptr;
 		TryResolveItemPresentation(ConfirmedItem, PlacedSize, Icon);
 
-		UHeistInventoryItemWidget* ItemWidget =
-			CreateWidget<UHeistInventoryItemWidget>(GetOwningPlayer(), InventoryItemWidgetClass);
+		UHeistInventoryItemWidget* ItemWidget = CreateWidget<UHeistInventoryItemWidget>(GetOwningPlayer(), InventoryItemWidgetClass);
 		if (!IsValid(ItemWidget))
 		{
 			continue;
@@ -354,19 +301,14 @@ void UHeistInventoryWidget::RebuildConfirmedInventory(
 
 		ItemWidget->SetupItem(ConfirmedItem, PlacedSize, Icon, this);
 		UCanvasPanelSlot* CanvasSlot = ItemOverlay->AddChildToCanvas(ItemWidget);
-		CanvasSlot->SetPosition(FVector2D(
-			ConfirmedItem.GridPosition.X * InventoryCellSize.X,
-			ConfirmedItem.GridPosition.Y * InventoryCellSize.Y));
-		CanvasSlot->SetSize(FVector2D(
-			PlacedSize.X * InventoryCellSize.X,
-			PlacedSize.Y * InventoryCellSize.Y));
+		CanvasSlot->SetPosition(FVector2D(ConfirmedItem.GridPosition.X * InventoryCellSize.X, ConfirmedItem.GridPosition.Y * InventoryCellSize.Y));
+		CanvasSlot->SetSize(FVector2D(PlacedSize.X * InventoryCellSize.X, PlacedSize.Y * InventoryCellSize.Y));
 		CanvasSlot->SetZOrder(10);
 		InventoryItemWidgets.Add(ItemWidget);
 	}
 }
 
-void UHeistInventoryWidget::RebuildConfirmedQuickSlots(
-	const TArray<FHeistQuickSlotPresentation>& ConfirmedQuickSlots)
+void UHeistInventoryWidget::RebuildConfirmedQuickSlots(const TArray<FHeistQuickSlotPresentation>& ConfirmedQuickSlots)
 {
 	QuickSlotWidgets.Reset();
 	if (!IsValid(QuickSlotPanel))
@@ -383,17 +325,13 @@ void UHeistInventoryWidget::RebuildConfirmedQuickSlots(
 	for (int32 SlotIndex = 0; SlotIndex < ConfirmedQuickSlots.Num(); ++SlotIndex)
 	{
 		const FHeistQuickSlotPresentation& ConfirmedQuickSlot = ConfirmedQuickSlots[SlotIndex];
-		UHeistQuickSlotWidget* QuickSlotWidget =
-			CreateWidget<UHeistQuickSlotWidget>(GetOwningPlayer(), QuickSlotWidgetClass);
+		UHeistQuickSlotWidget* QuickSlotWidget = CreateWidget<UHeistQuickSlotWidget>(GetOwningPlayer(), QuickSlotWidgetClass);
 		if (!IsValid(QuickSlotWidget))
 		{
 			continue;
 		}
 
-		QuickSlotWidget->SetupQuickSlot(
-			ConfirmedQuickSlot,
-			ResolveQuickSlotIcon(ConfirmedQuickSlot.ItemId),
-			this);
+		QuickSlotWidget->SetupQuickSlot(ConfirmedQuickSlot, ResolveQuickSlotIcon(ConfirmedQuickSlot.ItemId), this);
 		UUniformGridSlot* GridSlot = QuickSlotPanel->AddChildToUniformGrid(QuickSlotWidget, 0, SlotIndex);
 		GridSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Fill);
 		GridSlot->SetVerticalAlignment(EVerticalAlignment::VAlign_Fill);
@@ -401,83 +339,53 @@ void UHeistInventoryWidget::RebuildConfirmedQuickSlots(
 	}
 }
 
-bool UHeistInventoryWidget::TryResolveItemPresentation(
-	const FHeistInventoryItem& InventoryItem,
-	FIntPoint& OutPlacedSize,
-	UTexture2D*& OutIcon) const
+bool UHeistInventoryWidget::TryResolveItemPresentation(const FHeistInventoryItem& InventoryItem, FIntPoint& OutPlacedSize, UTexture2D*& OutIcon) const
 {
 	OutPlacedSize = FIntPoint(1, 1);
 	OutIcon = nullptr;
-	if (!IsValid(ItemDataTable)
-		|| ItemDataTable->GetRowStruct() != FHeistItemDataRow::StaticStruct())
+	if (!IsValid(ItemDataTable) || ItemDataTable->GetRowStruct() != FHeistItemDataRow::StaticStruct())
 	{
 		return false;
 	}
 
-	const FHeistItemDataRow* ItemDefinition = ItemDataTable->FindRow<FHeistItemDataRow>(
-		InventoryItem.ItemId,
-		TEXT("UHeistInventoryWidget::TryResolveItemPresentation"),
-		false);
+	const FHeistItemDataRow* ItemDefinition = ItemDataTable->FindRow<FHeistItemDataRow>(InventoryItem.ItemId, TEXT("UHeistInventoryWidget::TryResolveItemPresentation"), false);
 	if (ItemDefinition == nullptr)
 	{
 		return false;
 	}
 
-	OutPlacedSize = InventoryItem.bRotated
-		? FIntPoint(ItemDefinition->GridSize.Y, ItemDefinition->GridSize.X)
-		: ItemDefinition->GridSize;
+	OutPlacedSize = InventoryItem.bRotated ? FIntPoint(ItemDefinition->GridSize.Y, ItemDefinition->GridSize.X) : ItemDefinition->GridSize;
 	OutIcon = ItemDefinition->Icon.LoadSynchronous();
 	return true;
 }
 
 UTexture2D* UHeistInventoryWidget::ResolveQuickSlotIcon(const FName ItemId) const
 {
-	if (ItemId.IsNone()
-		|| !IsValid(ItemDataTable)
-		|| ItemDataTable->GetRowStruct() != FHeistItemDataRow::StaticStruct())
+	if (ItemId.IsNone() || !IsValid(ItemDataTable) || ItemDataTable->GetRowStruct() != FHeistItemDataRow::StaticStruct())
 	{
 		return nullptr;
 	}
 
-	const FHeistItemDataRow* ItemDefinition = ItemDataTable->FindRow<FHeistItemDataRow>(
-		ItemId,
-		TEXT("UHeistInventoryWidget::ResolveQuickSlotIcon"),
-		false);
+	const FHeistItemDataRow* ItemDefinition = ItemDataTable->FindRow<FHeistItemDataRow>(ItemId, TEXT("UHeistInventoryWidget::ResolveQuickSlotIcon"), false);
 	return ItemDefinition ? ItemDefinition->Icon.LoadSynchronous() : nullptr;
 }
 
-bool UHeistInventoryWidget::TryGetDropTargetGridPosition(
-	const FDragDropEvent& DragDropEvent,
-	FIntPoint& OutGridPosition) const
+bool UHeistInventoryWidget::TryGetDropTargetGridPosition(const FDragDropEvent& DragDropEvent, FIntPoint& OutGridPosition) const
 {
 	OutGridPosition = FIntPoint(-1, -1);
-	if (!IsValid(InventoryGrid)
-		|| InventoryCellSize.X <= 0.0
-		|| InventoryCellSize.Y <= 0.0)
+	if (!IsValid(InventoryGrid) || InventoryCellSize.X <= 0.0 || InventoryCellSize.Y <= 0.0)
 	{
 		return false;
 	}
 
-	const FVector2D LocalPosition =
-		InventoryGrid->GetCachedGeometry().AbsoluteToLocal(DragDropEvent.GetScreenSpacePosition());
-	OutGridPosition = FIntPoint(
-		FMath::FloorToInt(LocalPosition.X / InventoryCellSize.X),
-		FMath::FloorToInt(LocalPosition.Y / InventoryCellSize.Y));
-	return OutGridPosition.X >= 0
-		&& OutGridPosition.Y >= 0
-		&& OutGridPosition.X < ConfirmedGridColumns
-		&& OutGridPosition.Y < ConfirmedGridRows;
+	const FVector2D LocalPosition = InventoryGrid->GetCachedGeometry().AbsoluteToLocal(DragDropEvent.GetScreenSpacePosition());
+	OutGridPosition = FIntPoint(FMath::FloorToInt(LocalPosition.X / InventoryCellSize.X), FMath::FloorToInt(LocalPosition.Y / InventoryCellSize.Y));
+	return OutGridPosition.X >= 0 && OutGridPosition.Y >= 0 && OutGridPosition.X < ConfirmedGridColumns && OutGridPosition.Y < ConfirmedGridRows;
 }
 
-void UHeistInventoryWidget::UpdateDropPreview(
-	const int32 InstanceId,
-	const FIntPoint& TargetGridPosition)
+void UHeistInventoryWidget::UpdateDropPreview(const int32 InstanceId, const FIntPoint& TargetGridPosition)
 {
-	const FHeistInventoryItem* SourceItem = ConfirmedInventoryItems.FindByPredicate(
-		[InstanceId](const FHeistInventoryItem& InventoryItem)
-		{
-			return InventoryItem.InstanceId == InstanceId;
-		});
+	const FHeistInventoryItem* SourceItem = ConfirmedInventoryItems.FindByPredicate([InstanceId](const FHeistInventoryItem& InventoryItem) { return InventoryItem.InstanceId == InstanceId; });
 	if (SourceItem == nullptr)
 	{
 		ClearDropPreview();
@@ -497,10 +405,7 @@ void UHeistInventoryWidget::UpdateDropPreview(
 
 		const FIntPoint Coordinate = SlotWidget->GetGridCoordinate();
 		const bool bInsidePreview =
-			Coordinate.X >= TargetGridPosition.X
-			&& Coordinate.Y >= TargetGridPosition.Y
-			&& Coordinate.X < TargetGridPosition.X + PlacedSize.X
-			&& Coordinate.Y < TargetGridPosition.Y + PlacedSize.Y;
+			Coordinate.X >= TargetGridPosition.X && Coordinate.Y >= TargetGridPosition.Y && Coordinate.X < TargetGridPosition.X + PlacedSize.X && Coordinate.Y < TargetGridPosition.Y + PlacedSize.Y;
 		SlotWidget->SetDropPreview(bInsidePreview, bValid);
 	}
 }
@@ -516,9 +421,7 @@ void UHeistInventoryWidget::ClearDropPreview()
 	}
 }
 
-bool UHeistInventoryWidget::IsGridCoordinateOccupied(
-	const FIntPoint& GridCoordinate,
-	const int32 ExcludedInstanceId) const
+bool UHeistInventoryWidget::IsGridCoordinateOccupied(const FIntPoint& GridCoordinate, const int32 ExcludedInstanceId) const
 {
 	for (const FHeistInventoryItem& InventoryItem : ConfirmedInventoryItems)
 	{
@@ -530,10 +433,8 @@ bool UHeistInventoryWidget::IsGridCoordinateOccupied(
 		FIntPoint PlacedSize;
 		UTexture2D* Icon = nullptr;
 		TryResolveItemPresentation(InventoryItem, PlacedSize, Icon);
-		if (GridCoordinate.X >= InventoryItem.GridPosition.X
-			&& GridCoordinate.Y >= InventoryItem.GridPosition.Y
-			&& GridCoordinate.X < InventoryItem.GridPosition.X + PlacedSize.X
-			&& GridCoordinate.Y < InventoryItem.GridPosition.Y + PlacedSize.Y)
+		if (GridCoordinate.X >= InventoryItem.GridPosition.X && GridCoordinate.Y >= InventoryItem.GridPosition.Y && GridCoordinate.X < InventoryItem.GridPosition.X + PlacedSize.X &&
+			GridCoordinate.Y < InventoryItem.GridPosition.Y + PlacedSize.Y)
 		{
 			return true;
 		}

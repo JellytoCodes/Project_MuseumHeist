@@ -21,28 +21,25 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 
 #pragma region Construction
 
-public:
+  public:
 	UHeistHUDWidget(const FObjectInitializer& ObjectInitializer);
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void NativeDestruct() override;
 
 #pragma endregion
 
 #pragma region ViewModels
 
-public:
-	void SetupHUDWidget(
-		class UHeistHUDViewModel* InHUDViewModel,
-		class UHeistInventoryViewModel* InInventoryViewModel,
-		class UHeistQuickSlotViewModel* InQuickSlotViewModel,
-		class UHeistInteractionComponent* InInteractionComponent);
+  public:
+	void SetupHUDWidget(class UHeistHUDViewModel* InHUDViewModel, class UHeistInventoryViewModel* InInventoryViewModel, class UHeistQuickSlotViewModel* InQuickSlotViewModel,
+						class UHeistInteractionComponent* InInteractionComponent);
 
-private:
+  private:
 	void RefreshHUDPresentation();
 	void SetupPopupFeedbackPresentation();
 	void SetupSoundPingPresentation();
@@ -50,9 +47,7 @@ private:
 	void ResolveCrosshairWidgets();
 	void RefreshCrosshairPresentation(AActor* TargetActor, bool bAvailable);
 	void RefreshToolPresentation();
-	UHeistInteractionPromptWidget* ResolveInteractionChildWidget(
-		FName WidgetName,
-		UHeistInteractionPromptWidget* ExistingWidget) const;
+	UHeistInteractionPromptWidget* ResolveInteractionChildWidget(FName WidgetName, UHeistInteractionPromptWidget* ExistingWidget) const;
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Heist|HUD", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistHUDViewModel> HUDViewModel;
@@ -66,27 +61,19 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UHeistInteractionComponent> InteractionComponent;
 
-protected:
+  protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|HUD", meta = (DisplayName = "HUD Sources Ready"))
 	void BP_OnHUDSourcesReady();
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|HUD", meta = (DisplayName = "Refresh HUD Presentation"))
-	void BP_RefreshHUDPresentation(
-		int32 LocalLootScore,
-		float LocalLootWeight,
-		int32 ConnectedPlayerCount,
-		bool bLocalPlayerEscaped,
-		bool bEscapePhaseOpen,
-		bool bEscapeCastActive,
-		float EscapeCastEndServerTime,
-		bool bTrapPlacementCastActive,
-		float TrapPlacementCastEndServerTime);
+	void BP_RefreshHUDPresentation(int32 LocalLootScore, float LocalLootWeight, int32 ConnectedPlayerCount, bool bLocalPlayerEscaped, bool bEscapePhaseOpen, bool bEscapeCastActive,
+								   float EscapeCastEndServerTime, bool bTrapPlacementCastActive, float TrapPlacementCastEndServerTime);
 
 #pragma endregion
 
 #pragma region Debug
 
-public:
+  public:
 	void DebugDumpFirstPersonHUDState() const;
 	void DebugDumpFeedbackState() const;
 	void DebugDumpSoundPingMarkers() const;
@@ -96,7 +83,7 @@ public:
 
 #pragma region Presentation
 
-private:
+  private:
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> ScoreText;
 

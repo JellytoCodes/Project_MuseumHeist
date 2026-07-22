@@ -12,8 +12,7 @@
 
 #pragma region Construction
 
-UHeistSoundPingWidgetPool::UHeistSoundPingWidgetPool(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer)
+UHeistSoundPingWidgetPool::UHeistSoundPingWidgetPool(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 }
 
@@ -21,39 +20,21 @@ UHeistSoundPingWidgetPool::UHeistSoundPingWidgetPool(const FObjectInitializer& O
 
 #pragma region Lifecycle
 
-void UHeistSoundPingWidgetPool::SetupPool(
-	APlayerController* InOwningPlayerController,
-	AHeistGameState* InGameState,
-	UPanelWidget* InMarkerLayer,
-	TSubclassOf<UHeistSoundPingMarkerWidget> InMarkerWidgetClass,
-	const float InScreenMarginPixels)
+void UHeistSoundPingWidgetPool::SetupPool(APlayerController* InOwningPlayerController, AHeistGameState* InGameState, UPanelWidget* InMarkerLayer,
+										  TSubclassOf<UHeistSoundPingMarkerWidget> InMarkerWidgetClass, const float InScreenMarginPixels)
 {
-	if (bInitialized
-		&& OwningPlayerController == InOwningPlayerController
-		&& GameState == InGameState
-		&& MarkerLayer == InMarkerLayer
-		&& MarkerWidgetClass == InMarkerWidgetClass
-		&& FMath::IsNearlyEqual(ScreenMarginPixels, InScreenMarginPixels))
+	if (bInitialized && OwningPlayerController == InOwningPlayerController && GameState == InGameState && MarkerLayer == InMarkerLayer && MarkerWidgetClass == InMarkerWidgetClass &&
+		FMath::IsNearlyEqual(ScreenMarginPixels, InScreenMarginPixels))
 	{
 		return;
 	}
 
 	ShutdownPool();
 
-	if (!IsValid(InOwningPlayerController)
-		|| !InOwningPlayerController->IsLocalController()
-		|| !IsValid(InGameState)
-		|| !IsValid(InMarkerLayer)
-		|| !InMarkerWidgetClass)
+	if (!IsValid(InOwningPlayerController) || !InOwningPlayerController->IsLocalController() || !IsValid(InGameState) || !IsValid(InMarkerLayer) || !InMarkerWidgetClass)
 	{
-		UE_LOG(
-			LogHeistUI,
-			Warning,
-			TEXT("Sound Ping pool setup rejected: Controller=%s GameState=%s MarkerLayer=%s MarkerClass=%s"),
-			*GetNameSafe(InOwningPlayerController),
-			*GetNameSafe(InGameState),
-			*GetNameSafe(InMarkerLayer),
-			*GetNameSafe(InMarkerWidgetClass.Get()));
+		UE_LOG(LogHeistUI, Warning, TEXT("Sound Ping pool setup rejected: Controller=%s GameState=%s MarkerLayer=%s MarkerClass=%s"), *GetNameSafe(InOwningPlayerController), *GetNameSafe(InGameState),
+			   *GetNameSafe(InMarkerLayer), *GetNameSafe(InMarkerWidgetClass.Get()));
 		return;
 	}
 
@@ -65,9 +46,7 @@ void UHeistSoundPingWidgetPool::SetupPool(
 
 	for (int32 MarkerIndex = 0; MarkerIndex < MaxActiveMarkerCount; ++MarkerIndex)
 	{
-		UHeistSoundPingMarkerWidget* MarkerWidget = CreateWidget<UHeistSoundPingMarkerWidget>(
-			OwningPlayerController,
-			MarkerWidgetClass);
+		UHeistSoundPingMarkerWidget* MarkerWidget = CreateWidget<UHeistSoundPingMarkerWidget>(OwningPlayerController, MarkerWidgetClass);
 		if (!IsValid(MarkerWidget))
 		{
 			continue;
@@ -95,26 +74,14 @@ void UHeistSoundPingWidgetPool::SetupPool(
 	}
 
 	GameState->GetSoundPingEventReportedDelegate().RemoveAll(this);
-	GameState->GetSoundPingEventReportedDelegate().AddUObject(
-		this,
-		&UHeistSoundPingWidgetPool::HandleSoundPingReported);
+	GameState->GetSoundPingEventReportedDelegate().AddUObject(this, &UHeistSoundPingWidgetPool::HandleSoundPingReported);
 	bInitialized = true;
 
-	UE_LOG(
-		LogHeistUI,
-		Verbose,
-		TEXT("Sound Ping pool setup: Controller=%s MarkerLayer=%s MarkerClass=%s Capacity=%d MergeAngle=%.1f MergeWindow=%.2f ScreenMargin=%.1f"),
-		*GetNameSafe(OwningPlayerController),
-		*GetNameSafe(MarkerLayer),
-		*GetNameSafe(MarkerWidgetClass.Get()),
-		AllMarkerWidgets.Num(),
-		MergeAngleDegrees,
-		MergeWindowSeconds,
-		ScreenMarginPixels);
+	UE_LOG(LogHeistUI, Verbose, TEXT("Sound Ping pool setup: Controller=%s MarkerLayer=%s MarkerClass=%s Capacity=%d MergeAngle=%.1f MergeWindow=%.2f ScreenMargin=%.1f"),
+		   *GetNameSafe(OwningPlayerController), *GetNameSafe(MarkerLayer), *GetNameSafe(MarkerWidgetClass.Get()), AllMarkerWidgets.Num(), MergeAngleDegrees, MergeWindowSeconds, ScreenMarginPixels);
 
 	const FHeistSoundPingEvent& ExistingEvent = GameState->GetLastSoundPingEvent();
-	if (ExistingEvent.SequenceId > 0
-		&& ExistingEvent.ServerTimeSeconds + ExistingEvent.Duration > GetServerTimeSeconds())
+	if (ExistingEvent.SequenceId > 0 && ExistingEvent.ServerTimeSeconds + ExistingEvent.Duration > GetServerTimeSeconds())
 	{
 		HandleSoundPingReported(ExistingEvent);
 	}
@@ -156,29 +123,14 @@ void UHeistSoundPingWidgetPool::ShutdownPool()
 
 void UHeistSoundPingWidgetPool::DebugDumpState() const
 {
-	UE_LOG(
-		LogHeistUI,
-		Log,
-		TEXT("Sound Ping pool dump: Initialized=%s Active=%d Available=%d Capacity=%d"),
-		bInitialized ? TEXT("true") : TEXT("false"),
-		ActiveMarkers.Num(),
-		AvailableMarkerWidgets.Num(),
-		AllMarkerWidgets.Num());
+	UE_LOG(LogHeistUI, Log, TEXT("Sound Ping pool dump: Initialized=%s Active=%d Available=%d Capacity=%d"), bInitialized ? TEXT("true") : TEXT("false"), ActiveMarkers.Num(),
+		   AvailableMarkerWidgets.Num(), AllMarkerWidgets.Num());
 
 	for (int32 MarkerIndex = 0; MarkerIndex < ActiveMarkers.Num(); ++MarkerIndex)
 	{
 		const FActiveSoundPingMarker& Marker = ActiveMarkers[MarkerIndex];
-		UE_LOG(
-			LogHeistUI,
-			Log,
-			TEXT("Sound Ping pool entry: Slot=%d SequenceId=%d Type=%d Priority=%d Angle=%.1f EndServerTime=%.2f Widget=%s"),
-			MarkerIndex,
-			Marker.Event.SequenceId,
-			static_cast<int32>(Marker.Event.PingType),
-			Marker.Priority,
-			ResolveDirectionAngleDegrees(Marker.ScreenDirection),
-			Marker.EndServerTime,
-			*GetNameSafe(Marker.Widget));
+		UE_LOG(LogHeistUI, Log, TEXT("Sound Ping pool entry: Slot=%d SequenceId=%d Type=%d Priority=%d Angle=%.1f EndServerTime=%.2f Widget=%s"), MarkerIndex, Marker.Event.SequenceId,
+			   static_cast<int32>(Marker.Event.PingType), Marker.Priority, ResolveDirectionAngleDegrees(Marker.ScreenDirection), Marker.EndServerTime, *GetNameSafe(Marker.Widget));
 	}
 }
 
@@ -194,11 +146,7 @@ void UHeistSoundPingWidgetPool::DebugRunPresentationTest()
 	const FVector Origin = OwningPlayerController->GetPawn()->GetActorLocation();
 	const float BaseServerTime = GetServerTimeSeconds();
 
-	const auto InjectEvent = [this, Origin, BaseServerTime](
-		const int32 SequenceId,
-		const EHeistSoundPingType PingType,
-		const float WorldAngleDegrees,
-		const float TimeOffset)
+	const auto InjectEvent = [this, Origin, BaseServerTime](const int32 SequenceId, const EHeistSoundPingType PingType, const float WorldAngleDegrees, const float TimeOffset)
 	{
 		const float Radians = FMath::DegreesToRadians(WorldAngleDegrees);
 		FHeistSoundPingEvent Event;
@@ -229,10 +177,7 @@ void UHeistSoundPingWidgetPool::DebugRunPresentationTest()
 
 void UHeistSoundPingWidgetPool::HandleSoundPingReported(const FHeistSoundPingEvent& SoundPingEvent)
 {
-	if (!bInitialized
-		|| !SoundPingEvent.bAffectsPlayers
-		|| SoundPingEvent.PingType == EHeistSoundPingType::None
-		|| SoundPingEvent.Duration <= 0.0f)
+	if (!bInitialized || !SoundPingEvent.bAffectsPlayers || SoundPingEvent.PingType == EHeistSoundPingType::None || SoundPingEvent.Duration <= 0.0f)
 	{
 		return;
 	}
@@ -240,11 +185,7 @@ void UHeistSoundPingWidgetPool::HandleSoundPingReported(const FHeistSoundPingEve
 	FVector2D ScreenDirection;
 	if (!ComputeScreenDirection(SoundPingEvent.WorldLocation, ScreenDirection))
 	{
-		UE_LOG(
-			LogHeistUI,
-			Warning,
-			TEXT("Sound Ping marker rejected: SequenceId=%d Reason=DirectionProjectionFailed"),
-			SoundPingEvent.SequenceId);
+		UE_LOG(LogHeistUI, Warning, TEXT("Sound Ping marker rejected: SequenceId=%d Reason=DirectionProjectionFailed"), SoundPingEvent.SequenceId);
 		return;
 	}
 
@@ -252,13 +193,8 @@ void UHeistSoundPingWidgetPool::HandleSoundPingReported(const FHeistSoundPingEve
 	const float EndServerTime = SoundPingEvent.ServerTimeSeconds + SoundPingEvent.Duration;
 	if (EndServerTime <= CurrentServerTime)
 	{
-		UE_LOG(
-			LogHeistUI,
-			Verbose,
-			TEXT("Sound Ping marker rejected: SequenceId=%d Reason=Expired EndServerTime=%.2f CurrentServerTime=%.2f"),
-			SoundPingEvent.SequenceId,
-			EndServerTime,
-			CurrentServerTime);
+		UE_LOG(LogHeistUI, Verbose, TEXT("Sound Ping marker rejected: SequenceId=%d Reason=Expired EndServerTime=%.2f CurrentServerTime=%.2f"), SoundPingEvent.SequenceId, EndServerTime,
+			   CurrentServerTime);
 		return;
 	}
 
@@ -284,23 +220,11 @@ void UHeistSoundPingWidgetPool::HandleSoundPingReported(const FHeistSoundPingEve
 			ActiveMarker.Priority = Priority;
 			ActiveMarker.EndServerTime = EndServerTime;
 			ActiveMarker.LastEventServerTime = SoundPingEvent.ServerTimeSeconds;
-			ActiveMarker.Widget->ShowSoundPingMarker(
-				ActiveMarker.Event,
-				ActiveMarker.ScreenDirection,
-				ComputeScreenEdgeTranslation(ActiveMarker.ScreenDirection));
+			ActiveMarker.Widget->ShowSoundPingMarker(ActiveMarker.Event, ActiveMarker.ScreenDirection, ComputeScreenEdgeTranslation(ActiveMarker.ScreenDirection));
 		}
 
-		UE_LOG(
-			LogHeistUI,
-			Verbose,
-			TEXT("Sound Ping marker merged: IncomingSequenceId=%d ActiveSequenceId=%d IncomingPriority=%d ActivePriority=%d AngleDelta=%.1f TimeDelta=%.2f IncomingWins=%s"),
-			SoundPingEvent.SequenceId,
-			PreviousSequenceId,
-			Priority,
-			PreviousPriority,
-			AngleDelta,
-			TimeDelta,
-			bIncomingWins ? TEXT("true") : TEXT("false"));
+		UE_LOG(LogHeistUI, Verbose, TEXT("Sound Ping marker merged: IncomingSequenceId=%d ActiveSequenceId=%d IncomingPriority=%d ActivePriority=%d AngleDelta=%.1f TimeDelta=%.2f IncomingWins=%s"),
+			   SoundPingEvent.SequenceId, PreviousSequenceId, Priority, PreviousPriority, AngleDelta, TimeDelta, bIncomingWins ? TEXT("true") : TEXT("false"));
 		RefreshExpirationTimer();
 		return;
 	}
@@ -308,10 +232,7 @@ void UHeistSoundPingWidgetPool::HandleSoundPingReported(const FHeistSoundPingEve
 	ActivateMarker(SoundPingEvent, ScreenDirection, Priority);
 }
 
-void UHeistSoundPingWidgetPool::ActivateMarker(
-	const FHeistSoundPingEvent& SoundPingEvent,
-	const FVector2D& ScreenDirection,
-	const int32 Priority)
+void UHeistSoundPingWidgetPool::ActivateMarker(const FHeistSoundPingEvent& SoundPingEvent, const FVector2D& ScreenDirection, const int32 Priority)
 {
 	int32 ReplacementIndex = INDEX_NONE;
 	if (ActiveMarkers.Num() >= MaxActiveMarkerCount)
@@ -321,8 +242,7 @@ void UHeistSoundPingWidgetPool::ActivateMarker(
 		for (int32 MarkerIndex = 0; MarkerIndex < ActiveMarkers.Num(); ++MarkerIndex)
 		{
 			const FActiveSoundPingMarker& ActiveMarker = ActiveMarkers[MarkerIndex];
-			if (ActiveMarker.Priority > LowestPriority
-				|| (ActiveMarker.Priority == LowestPriority && ActiveMarker.EndServerTime < EarliestEndServerTime))
+			if (ActiveMarker.Priority > LowestPriority || (ActiveMarker.Priority == LowestPriority && ActiveMarker.EndServerTime < EarliestEndServerTime))
 			{
 				LowestPriority = ActiveMarker.Priority;
 				EarliestEndServerTime = ActiveMarker.EndServerTime;
@@ -332,13 +252,7 @@ void UHeistSoundPingWidgetPool::ActivateMarker(
 
 		if (ReplacementIndex == INDEX_NONE || Priority >= ActiveMarkers[ReplacementIndex].Priority)
 		{
-			UE_LOG(
-				LogHeistUI,
-				Verbose,
-				TEXT("Sound Ping marker suppressed: SequenceId=%d Priority=%d Reason=PoolFull Active=%d"),
-				SoundPingEvent.SequenceId,
-				Priority,
-				ActiveMarkers.Num());
+			UE_LOG(LogHeistUI, Verbose, TEXT("Sound Ping marker suppressed: SequenceId=%d Priority=%d Reason=PoolFull Active=%d"), SoundPingEvent.SequenceId, Priority, ActiveMarkers.Num());
 			return;
 		}
 	}
@@ -347,14 +261,8 @@ void UHeistSoundPingWidgetPool::ActivateMarker(
 	if (ReplacementIndex != INDEX_NONE)
 	{
 		MarkerWidget = ActiveMarkers[ReplacementIndex].Widget;
-		UE_LOG(
-			LogHeistUI,
-			Verbose,
-			TEXT("Sound Ping marker replaced: RemovedSequenceId=%d RemovedPriority=%d IncomingSequenceId=%d IncomingPriority=%d"),
-			ActiveMarkers[ReplacementIndex].Event.SequenceId,
-			ActiveMarkers[ReplacementIndex].Priority,
-			SoundPingEvent.SequenceId,
-			Priority);
+		UE_LOG(LogHeistUI, Verbose, TEXT("Sound Ping marker replaced: RemovedSequenceId=%d RemovedPriority=%d IncomingSequenceId=%d IncomingPriority=%d"),
+			   ActiveMarkers[ReplacementIndex].Event.SequenceId, ActiveMarkers[ReplacementIndex].Priority, SoundPingEvent.SequenceId, Priority);
 		ActiveMarkers.RemoveAt(ReplacementIndex);
 	}
 	else
@@ -375,21 +283,10 @@ void UHeistSoundPingWidgetPool::ActivateMarker(
 	NewMarker.Priority = Priority;
 	NewMarker.EndServerTime = SoundPingEvent.ServerTimeSeconds + SoundPingEvent.Duration;
 	NewMarker.LastEventServerTime = SoundPingEvent.ServerTimeSeconds;
-	MarkerWidget->ShowSoundPingMarker(
-		SoundPingEvent,
-		ScreenDirection,
-		ComputeScreenEdgeTranslation(ScreenDirection));
+	MarkerWidget->ShowSoundPingMarker(SoundPingEvent, ScreenDirection, ComputeScreenEdgeTranslation(ScreenDirection));
 
-	UE_LOG(
-		LogHeistUI,
-		Verbose,
-		TEXT("Sound Ping marker activated: SequenceId=%d Type=%d Priority=%d Angle=%.1f Duration=%.2f Active=%d"),
-		SoundPingEvent.SequenceId,
-		static_cast<int32>(SoundPingEvent.PingType),
-		Priority,
-		ResolveDirectionAngleDegrees(ScreenDirection),
-		SoundPingEvent.Duration,
-		ActiveMarkers.Num());
+	UE_LOG(LogHeistUI, Verbose, TEXT("Sound Ping marker activated: SequenceId=%d Type=%d Priority=%d Angle=%.1f Duration=%.2f Active=%d"), SoundPingEvent.SequenceId,
+		   static_cast<int32>(SoundPingEvent.PingType), Priority, ResolveDirectionAngleDegrees(ScreenDirection), SoundPingEvent.Duration, ActiveMarkers.Num());
 	RefreshExpirationTimer();
 }
 
@@ -407,13 +304,7 @@ void UHeistSoundPingWidgetPool::ReleaseMarkerAt(const int32 ActiveMarkerIndex, c
 		AvailableMarkerWidgets.AddUnique(Marker.Widget);
 	}
 
-	UE_LOG(
-		LogHeistUI,
-		Verbose,
-		TEXT("Sound Ping marker released: SequenceId=%d Reason=%s ActiveAfter=%d"),
-		Marker.Event.SequenceId,
-		Reason,
-		ActiveMarkers.Num() - 1);
+	UE_LOG(LogHeistUI, Verbose, TEXT("Sound Ping marker released: SequenceId=%d Reason=%s ActiveAfter=%d"), Marker.Event.SequenceId, Reason, ActiveMarkers.Num() - 1);
 	ActiveMarkers.RemoveAt(ActiveMarkerIndex);
 }
 
@@ -438,9 +329,7 @@ UHeistSoundPingMarkerWidget* UHeistSoundPingWidgetPool::AcquireMarkerWidget()
 	return nullptr;
 }
 
-bool UHeistSoundPingWidgetPool::ComputeScreenDirection(
-	const FVector& WorldLocation,
-	FVector2D& OutScreenDirection) const
+bool UHeistSoundPingWidgetPool::ComputeScreenDirection(const FVector& WorldLocation, FVector2D& OutScreenDirection) const
 {
 	OutScreenDirection = FVector2D::ZeroVector;
 	if (!IsValid(OwningPlayerController) || !IsValid(OwningPlayerController->GetPawn()))
@@ -451,8 +340,8 @@ bool UHeistSoundPingWidgetPool::ComputeScreenDirection(
 	FVector2D OriginScreenPosition;
 	FVector2D TargetScreenPosition;
 	const FVector OriginWorldLocation = OwningPlayerController->GetPawn()->GetActorLocation();
-	if (!OwningPlayerController->ProjectWorldLocationToScreen(OriginWorldLocation, OriginScreenPosition, true)
-		|| !OwningPlayerController->ProjectWorldLocationToScreen(WorldLocation, TargetScreenPosition, true))
+	if (!OwningPlayerController->ProjectWorldLocationToScreen(OriginWorldLocation, OriginScreenPosition, true) ||
+		!OwningPlayerController->ProjectWorldLocationToScreen(WorldLocation, TargetScreenPosition, true))
 	{
 		return false;
 	}
@@ -476,22 +365,12 @@ FVector2D UHeistSoundPingWidgetPool::ComputeScreenEdgeTranslation(const FVector2
 		return FVector2D::ZeroVector;
 	}
 
-	const float ViewportScale = FMath::Max(
-		KINDA_SMALL_NUMBER,
-		UWidgetLayoutLibrary::GetViewportScale(OwningPlayerController));
+	const float ViewportScale = FMath::Max(KINDA_SMALL_NUMBER, UWidgetLayoutLibrary::GetViewportScale(OwningPlayerController));
 	const FVector2D Direction = ScreenDirection.GetSafeNormal();
-	const float HorizontalExtent = FMath::Max(
-		0.0f,
-		ViewportWidth / ViewportScale * 0.5f - ScreenMarginPixels);
-	const float VerticalExtent = FMath::Max(
-		0.0f,
-		ViewportHeight / ViewportScale * 0.5f - ScreenMarginPixels);
-	const float HorizontalScale = FMath::Abs(Direction.X) > KINDA_SMALL_NUMBER
-		? HorizontalExtent / FMath::Abs(Direction.X)
-		: MAX_flt;
-	const float VerticalScale = FMath::Abs(Direction.Y) > KINDA_SMALL_NUMBER
-		? VerticalExtent / FMath::Abs(Direction.Y)
-		: MAX_flt;
+	const float HorizontalExtent = FMath::Max(0.0f, ViewportWidth / ViewportScale * 0.5f - ScreenMarginPixels);
+	const float VerticalExtent = FMath::Max(0.0f, ViewportHeight / ViewportScale * 0.5f - ScreenMarginPixels);
+	const float HorizontalScale = FMath::Abs(Direction.X) > KINDA_SMALL_NUMBER ? HorizontalExtent / FMath::Abs(Direction.X) : MAX_flt;
+	const float VerticalScale = FMath::Abs(Direction.Y) > KINDA_SMALL_NUMBER ? VerticalExtent / FMath::Abs(Direction.Y) : MAX_flt;
 	return Direction * FMath::Min(HorizontalScale, VerticalScale);
 }
 
@@ -515,12 +394,7 @@ void UHeistSoundPingWidgetPool::RefreshExpirationTimer()
 		EarliestEndServerTime = FMath::Min(EarliestEndServerTime, Marker.EndServerTime);
 	}
 
-	TimerManager.SetTimer(
-		ExpirationTimerHandle,
-		this,
-		&UHeistSoundPingWidgetPool::HandleExpirationTimer,
-		FMath::Max(0.01f, EarliestEndServerTime - GetServerTimeSeconds()),
-		false);
+	TimerManager.SetTimer(ExpirationTimerHandle, this, &UHeistSoundPingWidgetPool::HandleExpirationTimer, FMath::Max(0.01f, EarliestEndServerTime - GetServerTimeSeconds()), false);
 }
 
 void UHeistSoundPingWidgetPool::HandleExpirationTimer()

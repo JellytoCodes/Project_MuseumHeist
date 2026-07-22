@@ -17,31 +17,31 @@ class PROJECT_MUSEUMHEIST_API AHeistThrowableProjectile : public AActor
 
 #pragma region Construction
 
-public:
+  public:
 	AHeistThrowableProjectile();
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void BeginPlay() override;
 
 #pragma endregion
 
 #pragma region Projectile
 
-public:
+  public:
 	void InitializeThrowable(AHeistPlayerCharacter* InThrowerCharacter, FName InSourceItemId, const FVector& InLaunchDirection, float InProjectileSpeed, float InEffectDurationSeconds);
 
 	AHeistPlayerCharacter* GetThrowerCharacter() const;
 	FName GetSourceItemId() const;
 	float GetEffectDurationSeconds() const;
 
-protected:
+  protected:
 	virtual void HandleAuthorityImpact(const FHitResult& Hit);
 
-private:
+  private:
 	UFUNCTION()
 	void HandleProjectileHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 
@@ -67,7 +67,7 @@ private:
 
 #pragma region Replication
 
-public:
+  public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 #pragma endregion

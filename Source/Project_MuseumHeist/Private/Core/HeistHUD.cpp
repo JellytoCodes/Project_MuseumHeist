@@ -98,18 +98,10 @@ void AHeistHUD::InitializeMainHUDPresentation()
 
 	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	AHeistPlayerState* HeistPlayerState = HeistPlayerController->GetPlayerState<AHeistPlayerState>();
-	AHeistPlayerCharacter* HeistPlayerCharacter =
-		HeistPlayerController->GetPawn<AHeistPlayerCharacter>();
-	UHeistActionComponent* ActionComponent = IsValid(HeistPlayerCharacter)
-		? HeistPlayerCharacter->GetActionComponent()
-		: nullptr;
-	UHeistInteractionComponent* InteractionComponent = IsValid(HeistPlayerCharacter)
-		? HeistPlayerCharacter->GetInteractionComponent()
-		: nullptr;
-	HUDViewModel->SetupViewModel(
-		HeistGameState,
-		HeistPlayerState,
-		ActionComponent);
+	AHeistPlayerCharacter* HeistPlayerCharacter = HeistPlayerController->GetPawn<AHeistPlayerCharacter>();
+	UHeistActionComponent* ActionComponent = IsValid(HeistPlayerCharacter) ? HeistPlayerCharacter->GetActionComponent() : nullptr;
+	UHeistInteractionComponent* InteractionComponent = IsValid(HeistPlayerCharacter) ? HeistPlayerCharacter->GetInteractionComponent() : nullptr;
+	HUDViewModel->SetupViewModel(HeistGameState, HeistPlayerState, ActionComponent);
 
 	if (!MainHUDWidgetClass)
 	{
@@ -118,9 +110,7 @@ void AHeistHUD::InitializeMainHUDPresentation()
 
 	if (!IsValid(MainHUDWidget))
 	{
-		MainHUDWidget = CreateWidget<UHeistHUDWidget>(
-			HeistPlayerController,
-			MainHUDWidgetClass);
+		MainHUDWidget = CreateWidget<UHeistHUDWidget>(HeistPlayerController, MainHUDWidgetClass);
 		if (!IsValid(MainHUDWidget))
 		{
 			return;
@@ -129,11 +119,7 @@ void AHeistHUD::InitializeMainHUDPresentation()
 		MainHUDWidget->AddToViewport();
 	}
 
-	MainHUDWidget->SetupHUDWidget(
-		HUDViewModel,
-		InventoryViewModel,
-		QuickSlotViewModel,
-		InteractionComponent);
+	MainHUDWidget->SetupHUDWidget(HUDViewModel, InventoryViewModel, QuickSlotViewModel, InteractionComponent);
 }
 
 #pragma endregion
@@ -147,13 +133,7 @@ bool AHeistHUD::ShowLobbyScreen()
 	if (!IsValid(LobbyViewModel) || !LobbyWidgetClass)
 	{
 #if !UE_BUILD_SHIPPING
-		UE_LOG(
-			LogHeistUI,
-			Warning,
-			TEXT("Lobby screen show skipped: HUD=%s ViewModel=%s WidgetClass=%s"),
-			*GetNameSafe(this),
-			*GetNameSafe(LobbyViewModel),
-			*GetNameSafe(LobbyWidgetClass));
+		UE_LOG(LogHeistUI, Warning, TEXT("Lobby screen show skipped: HUD=%s ViewModel=%s WidgetClass=%s"), *GetNameSafe(this), *GetNameSafe(LobbyViewModel), *GetNameSafe(LobbyWidgetClass));
 #endif
 		return false;
 	}
@@ -223,10 +203,7 @@ bool AHeistHUD::ShowInventoryScreen()
 {
 	InitializeInventoryPresentation();
 	AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(GetOwningPlayerController());
-	if (!IsValid(HeistPlayerController)
-		|| !IsValid(InventoryViewModel)
-		|| !IsValid(QuickSlotViewModel)
-		|| !InventoryWidgetClass)
+	if (!IsValid(HeistPlayerController) || !IsValid(InventoryViewModel) || !IsValid(QuickSlotViewModel) || !InventoryWidgetClass)
 	{
 		return false;
 	}
@@ -275,9 +252,7 @@ void AHeistHUD::InitializeInventoryPresentation()
 	}
 
 	AHeistPlayerCharacter* HeistPlayerCharacter = HeistPlayerController->GetPawn<AHeistPlayerCharacter>();
-	UHeistInventoryComponent* InventoryComponent = IsValid(HeistPlayerCharacter)
-		? HeistPlayerCharacter->GetInventoryComponent()
-		: nullptr;
+	UHeistInventoryComponent* InventoryComponent = IsValid(HeistPlayerCharacter) ? HeistPlayerCharacter->GetInventoryComponent() : nullptr;
 	InventoryViewModel->SetupViewModel(InventoryComponent);
 	QuickSlotViewModel->SetupViewModel(InventoryComponent);
 }
@@ -298,10 +273,8 @@ UHeistForgeryWidget* AHeistHUD::GetForgeryWidget() const
 
 void AHeistHUD::InitializeForgeryPresentation()
 {
-	AHeistPlayerController* HeistPlayerController =
-		Cast<AHeistPlayerController>(GetOwningPlayerController());
-	if (!IsValid(HeistPlayerController)
-		|| !HeistPlayerController->IsLocalController())
+	AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(GetOwningPlayerController());
+	if (!IsValid(HeistPlayerController) || !HeistPlayerController->IsLocalController())
 	{
 		return;
 	}
@@ -311,20 +284,11 @@ void AHeistHUD::InitializeForgeryPresentation()
 		ForgeryViewModel = NewObject<UHeistForgeryViewModel>(this);
 	}
 
-	AHeistGameState* HeistGameState =
-		GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
-	AHeistPlayerCharacter* HeistPlayerCharacter =
-		HeistPlayerController->GetPawn<AHeistPlayerCharacter>();
-	UHeistActionComponent* ActionComponent = IsValid(HeistPlayerCharacter)
-		? HeistPlayerCharacter->GetActionComponent()
-		: nullptr;
-	UHeistForgeryComponent* ForgeryComponent = IsValid(HeistPlayerCharacter)
-		? HeistPlayerCharacter->GetForgeryComponent()
-		: nullptr;
-	ForgeryViewModel->SetupViewModel(
-		HeistGameState,
-		ActionComponent,
-		ForgeryComponent);
+	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	AHeistPlayerCharacter* HeistPlayerCharacter = HeistPlayerController->GetPawn<AHeistPlayerCharacter>();
+	UHeistActionComponent* ActionComponent = IsValid(HeistPlayerCharacter) ? HeistPlayerCharacter->GetActionComponent() : nullptr;
+	UHeistForgeryComponent* ForgeryComponent = IsValid(HeistPlayerCharacter) ? HeistPlayerCharacter->GetForgeryComponent() : nullptr;
+	ForgeryViewModel->SetupViewModel(HeistGameState, ActionComponent, ForgeryComponent);
 
 	if (!ForgeryWidgetClass)
 	{
@@ -333,9 +297,7 @@ void AHeistHUD::InitializeForgeryPresentation()
 
 	if (!IsValid(ForgeryWidget))
 	{
-		ForgeryWidget = CreateWidget<UHeistForgeryWidget>(
-			HeistPlayerController,
-			ForgeryWidgetClass);
+		ForgeryWidget = CreateWidget<UHeistForgeryWidget>(HeistPlayerController, ForgeryWidgetClass);
 		if (!IsValid(ForgeryWidget))
 		{
 			return;
@@ -358,13 +320,7 @@ bool AHeistHUD::ShowResultScreen()
 	if (!IsValid(ResultViewModel) || !ResultWidgetClass)
 	{
 #if !UE_BUILD_SHIPPING
-		UE_LOG(
-			LogHeistUI,
-			Warning,
-			TEXT("Result screen show skipped: HUD=%s ViewModel=%s WidgetClass=%s"),
-			*GetNameSafe(this),
-			*GetNameSafe(ResultViewModel),
-			*GetNameSafe(ResultWidgetClass));
+		UE_LOG(LogHeistUI, Warning, TEXT("Result screen show skipped: HUD=%s ViewModel=%s WidgetClass=%s"), *GetNameSafe(this), *GetNameSafe(ResultViewModel), *GetNameSafe(ResultWidgetClass));
 #endif
 		return false;
 	}

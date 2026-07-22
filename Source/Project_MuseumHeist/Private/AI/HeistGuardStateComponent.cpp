@@ -52,16 +52,9 @@ bool UHeistGuardStateComponent::EnterPatrol()
 bool UHeistGuardStateComponent::EnterChasePlayer(AActor* TargetActor)
 {
 	AActor* OwnerActor = GetOwner();
-	if (!IsValid(OwnerActor)
-		|| !OwnerActor->HasAuthority()
-		|| !IsValid(TargetActor)
-		|| TargetActor == OwnerActor)
+	if (!IsValid(OwnerActor) || !OwnerActor->HasAuthority() || !IsValid(TargetActor) || TargetActor == OwnerActor)
 	{
-		UHeistDebugFunctionLibrary::DebugGuardStateRequestRejected(
-			this,
-			OwnerActor,
-			EHeistGuardState::ChasePlayer,
-			TEXT("InvalidChaseTarget"));
+		UHeistDebugFunctionLibrary::DebugGuardStateRequestRejected(this, OwnerActor, EHeistGuardState::ChasePlayer, TEXT("InvalidChaseTarget"));
 		return false;
 	}
 
@@ -82,10 +75,7 @@ bool UHeistGuardStateComponent::EnterChasePlayer(AActor* TargetActor)
 bool UHeistGuardStateComponent::RefreshChaseTargetLocation()
 {
 	AActor* OwnerActor = GetOwner();
-	if (!IsValid(OwnerActor)
-		|| !OwnerActor->HasAuthority()
-		|| GuardState != EHeistGuardState::ChasePlayer
-		|| !IsValid(ChaseTarget))
+	if (!IsValid(OwnerActor) || !OwnerActor->HasAuthority() || GuardState != EHeistGuardState::ChasePlayer || !IsValid(ChaseTarget))
 	{
 		return false;
 	}
@@ -94,17 +84,11 @@ bool UHeistGuardStateComponent::RefreshChaseTargetLocation()
 	return true;
 }
 
-bool UHeistGuardStateComponent::EnterInvestigateNoise(
-	const FVector& InvestigateLocation,
-	const float DurationSeconds)
+bool UHeistGuardStateComponent::EnterInvestigateNoise(const FVector& InvestigateLocation, const float DurationSeconds)
 {
 	if (InvestigateLocation.ContainsNaN() || DurationSeconds < 0.0f)
 	{
-		UHeistDebugFunctionLibrary::DebugGuardStateRequestRejected(
-			this,
-			GetOwner(),
-			EHeistGuardState::InvestigateNoise,
-			TEXT("InvalidInvestigateRequest"));
+		UHeistDebugFunctionLibrary::DebugGuardStateRequestRejected(this, GetOwner(), EHeistGuardState::InvestigateNoise, TEXT("InvalidInvestigateRequest"));
 		return false;
 	}
 
@@ -128,32 +112,20 @@ bool UHeistGuardStateComponent::EnterInvestigateNoise(
 bool UHeistGuardStateComponent::StartInvestigateConfirmationTimer()
 {
 	AActor* OwnerActor = GetOwner();
-	if (!IsValid(OwnerActor)
-		|| !OwnerActor->HasAuthority()
-		|| GuardState != EHeistGuardState::InvestigateNoise
-		|| PendingInvestigateDuration <= 0.0f)
+	if (!IsValid(OwnerActor) || !OwnerActor->HasAuthority() || GuardState != EHeistGuardState::InvestigateNoise || PendingInvestigateDuration <= 0.0f)
 	{
-		UHeistDebugFunctionLibrary::DebugGuardStateRequestRejected(
-			this,
-			OwnerActor,
-			EHeistGuardState::InvestigateNoise,
-			TEXT("InvalidConfirmationTimer"));
+		UHeistDebugFunctionLibrary::DebugGuardStateRequestRejected(this, OwnerActor, EHeistGuardState::InvestigateNoise, TEXT("InvalidConfirmationTimer"));
 		return false;
 	}
 
 	return StartStateTimer(PendingInvestigateDuration);
 }
 
-bool UHeistGuardStateComponent::EnterInspectExhibit(
-	const FVector& ExhibitLocation)
+bool UHeistGuardStateComponent::EnterInspectExhibit(const FVector& ExhibitLocation)
 {
 	if (ExhibitLocation.ContainsNaN())
 	{
-		UHeistDebugFunctionLibrary::DebugGuardStateRequestRejected(
-			this,
-			GetOwner(),
-			EHeistGuardState::InspectExhibit,
-			TEXT("InvalidExhibitLocation"));
+		UHeistDebugFunctionLibrary::DebugGuardStateRequestRejected(this, GetOwner(), EHeistGuardState::InspectExhibit, TEXT("InvalidExhibitLocation"));
 		return false;
 	}
 
@@ -171,20 +143,12 @@ bool UHeistGuardStateComponent::EnterInspectExhibit(
 	return false;
 }
 
-bool UHeistGuardStateComponent::StartInspectExhibitCast(
-	const float DurationSeconds)
+bool UHeistGuardStateComponent::StartInspectExhibitCast(const float DurationSeconds)
 {
 	AActor* OwnerActor = GetOwner();
-	if (!IsValid(OwnerActor)
-		|| !OwnerActor->HasAuthority()
-		|| GuardState != EHeistGuardState::InspectExhibit
-		|| DurationSeconds <= 0.0f)
+	if (!IsValid(OwnerActor) || !OwnerActor->HasAuthority() || GuardState != EHeistGuardState::InspectExhibit || DurationSeconds <= 0.0f)
 	{
-		UHeistDebugFunctionLibrary::DebugGuardStateRequestRejected(
-			this,
-			OwnerActor,
-			EHeistGuardState::InspectExhibit,
-			TEXT("InvalidInspectionCast"));
+		UHeistDebugFunctionLibrary::DebugGuardStateRequestRejected(this, OwnerActor, EHeistGuardState::InspectExhibit, TEXT("InvalidInspectionCast"));
 		return false;
 	}
 
@@ -195,11 +159,7 @@ bool UHeistGuardStateComponent::EnterSearchLastKnownLocation(const FVector& Sear
 {
 	if (SearchLocation.ContainsNaN())
 	{
-		UHeistDebugFunctionLibrary::DebugGuardStateRequestRejected(
-			this,
-			GetOwner(),
-			EHeistGuardState::SearchLastKnownLocation,
-			TEXT("InvalidSearchLocation"));
+		UHeistDebugFunctionLibrary::DebugGuardStateRequestRejected(this, GetOwner(), EHeistGuardState::SearchLastKnownLocation, TEXT("InvalidSearchLocation"));
 		return false;
 	}
 
@@ -220,16 +180,9 @@ bool UHeistGuardStateComponent::EnterSearchLastKnownLocation(const FVector& Sear
 bool UHeistGuardStateComponent::StartSearchTimer()
 {
 	AActor* OwnerActor = GetOwner();
-	if (!IsValid(OwnerActor)
-		|| !OwnerActor->HasAuthority()
-		|| GuardState != EHeistGuardState::SearchLastKnownLocation
-		|| SearchDuration <= 0.0f)
+	if (!IsValid(OwnerActor) || !OwnerActor->HasAuthority() || GuardState != EHeistGuardState::SearchLastKnownLocation || SearchDuration <= 0.0f)
 	{
-		UHeistDebugFunctionLibrary::DebugGuardStateRequestRejected(
-			this,
-			OwnerActor,
-			EHeistGuardState::SearchLastKnownLocation,
-			TEXT("InvalidSearchTimer"));
+		UHeistDebugFunctionLibrary::DebugGuardStateRequestRejected(this, OwnerActor, EHeistGuardState::SearchLastKnownLocation, TEXT("InvalidSearchTimer"));
 		return false;
 	}
 
@@ -271,11 +224,7 @@ bool UHeistGuardStateComponent::ApplyStun(const float DurationSeconds)
 	AActor* OwnerActor = GetOwner();
 	if (!IsValid(OwnerActor) || !OwnerActor->HasAuthority() || DurationSeconds <= 0.0f)
 	{
-		UHeistDebugFunctionLibrary::DebugGuardStateRequestRejected(
-			this,
-			OwnerActor,
-			EHeistGuardState::Stunned,
-			TEXT("InvalidStunRequest"));
+		UHeistDebugFunctionLibrary::DebugGuardStateRequestRejected(this, OwnerActor, EHeistGuardState::Stunned, TEXT("InvalidStunRequest"));
 		return false;
 	}
 
@@ -329,8 +278,7 @@ FHeistGuardStateChanged& UHeistGuardStateComponent::GetGuardStateChangedDelegate
 	return GuardStateChangedDelegate;
 }
 
-UHeistGuardStateComponent::FHeistInspectExhibitCastExpired&
-UHeistGuardStateComponent::GetInspectExhibitCastExpiredDelegate()
+UHeistGuardStateComponent::FHeistInspectExhibitCastExpired& UHeistGuardStateComponent::GetInspectExhibitCastExpiredDelegate()
 {
 	return InspectExhibitCastExpiredDelegate;
 }
@@ -341,29 +289,18 @@ void UHeistGuardStateComponent::ConfigureGuardProfile(const FHeistGuardDataRow& 
 	SearchDuration = FMath::Max(0.0f, GuardData.SearchDuration);
 }
 
-bool UHeistGuardStateComponent::CommitState(
-	const EHeistGuardState NewState,
-	const float DurationSeconds,
-	const bool bBypassPriority)
+bool UHeistGuardStateComponent::CommitState(const EHeistGuardState NewState, const float DurationSeconds, const bool bBypassPriority)
 {
 	AActor* OwnerActor = GetOwner();
 	if (!IsValid(OwnerActor) || !OwnerActor->HasAuthority())
 	{
-		UHeistDebugFunctionLibrary::DebugGuardStateRequestRejected(
-			this,
-			OwnerActor,
-			NewState,
-			TEXT("NotAuthority"));
+		UHeistDebugFunctionLibrary::DebugGuardStateRequestRejected(this, OwnerActor, NewState, TEXT("NotAuthority"));
 		return false;
 	}
 
 	if (!bBypassPriority && !CanEnterState(NewState))
 	{
-		UHeistDebugFunctionLibrary::DebugGuardStateRequestRejected(
-			this,
-			OwnerActor,
-			NewState,
-			TEXT("TransitionPriority"));
+		UHeistDebugFunctionLibrary::DebugGuardStateRequestRejected(this, OwnerActor, NewState, TEXT("TransitionPriority"));
 		return false;
 	}
 
@@ -380,12 +317,7 @@ bool UHeistGuardStateComponent::CommitState(
 
 	OwnerActor->ForceNetUpdate();
 	GuardStateChangedDelegate.Broadcast(PreviousState, GuardState);
-	UHeistDebugFunctionLibrary::DebugGuardStateChanged(
-		this,
-		OwnerActor,
-		PreviousState,
-		GuardState,
-		StateEndServerTime);
+	UHeistDebugFunctionLibrary::DebugGuardStateChanged(this, OwnerActor, PreviousState, GuardState, StateEndServerTime);
 	return true;
 }
 
@@ -394,24 +326,14 @@ bool UHeistGuardStateComponent::StartStateTimer(const float DurationSeconds)
 	AActor* OwnerActor = GetOwner();
 	UWorld* World = GetWorld();
 	const float SafeDuration = FMath::Max(0.0f, DurationSeconds);
-	if (!IsValid(OwnerActor)
-		|| !OwnerActor->HasAuthority()
-		|| !IsValid(World)
-		|| SafeDuration <= 0.0f)
+	if (!IsValid(OwnerActor) || !OwnerActor->HasAuthority() || !IsValid(World) || SafeDuration <= 0.0f)
 	{
 		return false;
 	}
 
 	ClearStateTimer();
-	StateEndServerTime = World->GetGameState()
-		? World->GetGameState()->GetServerWorldTimeSeconds() + SafeDuration
-		: World->GetTimeSeconds() + SafeDuration;
-	World->GetTimerManager().SetTimer(
-		StateTimerHandle,
-		this,
-		&UHeistGuardStateComponent::HandleTimedStateExpired,
-		SafeDuration,
-		false);
+	StateEndServerTime = World->GetGameState() ? World->GetGameState()->GetServerWorldTimeSeconds() + SafeDuration : World->GetTimeSeconds() + SafeDuration;
+	World->GetTimerManager().SetTimer(StateTimerHandle, this, &UHeistGuardStateComponent::HandleTimedStateExpired, SafeDuration, false);
 	OwnerActor->ForceNetUpdate();
 	return true;
 }
@@ -433,15 +355,12 @@ bool UHeistGuardStateComponent::CanEnterState(const EHeistGuardState NewState) c
 		return false;
 	}
 
-	if (GuardState == EHeistGuardState::ChasePlayer
-		&& (NewState == EHeistGuardState::InvestigateNoise
-			|| NewState == EHeistGuardState::InspectExhibit))
+	if (GuardState == EHeistGuardState::ChasePlayer && (NewState == EHeistGuardState::InvestigateNoise || NewState == EHeistGuardState::InspectExhibit))
 	{
 		return false;
 	}
 
-	if (GuardState == EHeistGuardState::InspectExhibit
-		&& NewState == EHeistGuardState::InvestigateNoise)
+	if (GuardState == EHeistGuardState::InspectExhibit && NewState == EHeistGuardState::InvestigateNoise)
 	{
 		return false;
 	}
@@ -461,10 +380,7 @@ void UHeistGuardStateComponent::HandleTimedStateExpired()
 	if (ExpiredState == EHeistGuardState::Stunned)
 	{
 		PendingInvestigateDuration = InvestigateDuration;
-		CommitState(
-			EHeistGuardState::InvestigateNoise,
-			0.0f,
-			true);
+		CommitState(EHeistGuardState::InvestigateNoise, 0.0f, true);
 		UHeistDebugFunctionLibrary::DebugGuardStunCleared(this, OwnerActor, GuardState);
 		return;
 	}
@@ -506,8 +422,7 @@ void UHeistGuardStateComponent::OnRep_GuardState(const EHeistGuardState Previous
 
 #pragma region Replication
 
-void UHeistGuardStateComponent::GetLifetimeReplicatedProps(
-	TArray<FLifetimeProperty>& OutLifetimeProps) const
+void UHeistGuardStateComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 

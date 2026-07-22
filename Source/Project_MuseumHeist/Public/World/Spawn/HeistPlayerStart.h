@@ -10,6 +10,6 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerStart : public APlayerStart
 {
 	GENERATED_BODY()
 
-public:
+  public:
 	AHeistPlayerStart(const FObjectInitializer& ObjectInitializer);
 };

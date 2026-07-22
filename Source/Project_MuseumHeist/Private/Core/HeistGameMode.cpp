@@ -25,13 +25,7 @@
 
 namespace
 {
-	const FLinearColor VerificationPlayerColors[] =
-	{
-		FLinearColor::Red,
-		FLinearColor::Green,
-		FLinearColor::Blue,
-		FLinearColor::Yellow
-	};
+const FLinearColor VerificationPlayerColors[] = {FLinearColor::Red, FLinearColor::Green, FLinearColor::Blue, FLinearColor::Yellow};
 }
 
 #pragma endregion
@@ -78,21 +72,14 @@ void AHeistGameMode::RestartPlayer(AController* NewPlayer)
 
 void AHeistGameMode::Logout(AController* Exiting)
 {
-	AHeistPlayerState* ExitingPlayerState = IsValid(Exiting)
-		? Exiting->GetPlayerState<AHeistPlayerState>()
-		: nullptr;
+	AHeistPlayerState* ExitingPlayerState = IsValid(Exiting) ? Exiting->GetPlayerState<AHeistPlayerState>() : nullptr;
 	if (HasAuthority() && IsValid(ExitingPlayerState))
 	{
-		AHeistPlayerCharacter* ExitingCharacter =
-			Cast<AHeistPlayerCharacter>(Exiting->GetPawn());
-		UHeistForgeryComponent* ForgeryComponent =
-			IsValid(ExitingCharacter)
-				? ExitingCharacter->GetForgeryComponent()
-				: nullptr;
+		AHeistPlayerCharacter* ExitingCharacter = Cast<AHeistPlayerCharacter>(Exiting->GetPawn());
+		UHeistForgeryComponent* ForgeryComponent = IsValid(ExitingCharacter) ? ExitingCharacter->GetForgeryComponent() : nullptr;
 		if (IsValid(ForgeryComponent))
 		{
-			ForgeryComponent->CancelForgerySession(
-				FName(TEXT("OwnerDisconnected")));
+			ForgeryComponent->CancelForgerySession(FName(TEXT("OwnerDisconnected")));
 		}
 
 		// Keep the case sweep as a safety net for pawn-less disconnects and
@@ -102,9 +89,7 @@ void AHeistGameMode::Logout(AController* Exiting)
 			if (AHeistPaintingDisplayCaseActor* DisplayCase = *DisplayCaseIterator; IsValid(DisplayCase))
 			{
 				DisplayCase->CancelSessionForOwner(ExitingPlayerState, FName(TEXT("OwnerDisconnected")));
-				DisplayCase->ReleaseOriginalForCarrier(
-					ExitingPlayerState,
-					FName(TEXT("OwnerDisconnected")));
+				DisplayCase->ReleaseOriginalForCarrier(ExitingPlayerState, FName(TEXT("OwnerDisconnected")));
 			}
 		}
 	}
@@ -126,18 +111,12 @@ void AHeistGameMode::InitializeObjectiveFromPlacedTargetCase()
 	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
 	if (!IsValid(HeistGameState))
 	{
-		UE_LOG(
-			LogHeist,
-			Error,
-			TEXT("Objective initialization: ConfiguredTargetCaseId=%s Result=FAIL Reason=MissingGameState"),
-			*ObjectiveTargetCaseId.ToString());
+		UE_LOG(LogHeist, Error, TEXT("Objective initialization: ConfiguredTargetCaseId=%s Result=FAIL Reason=MissingGameState"), *ObjectiveTargetCaseId.ToString());
 		return;
 	}
 
 	TArray<AHeistPaintingDisplayCaseActor*> MatchingTargetCases;
-	for (TActorIterator<AHeistPaintingDisplayCaseActor> DisplayCaseIterator(GetWorld());
-		DisplayCaseIterator;
-		++DisplayCaseIterator)
+	for (TActorIterator<AHeistPaintingDisplayCaseActor> DisplayCaseIterator(GetWorld()); DisplayCaseIterator; ++DisplayCaseIterator)
 	{
 		AHeistPaintingDisplayCaseActor* DisplayCase = *DisplayCaseIterator;
 		if (!IsValid(DisplayCase))
@@ -146,10 +125,8 @@ void AHeistGameMode::InitializeObjectiveFromPlacedTargetCase()
 		}
 
 		const FName DisplayCaseId = DisplayCase->GetDisplayCaseId();
-		const bool bMatchesConfiguredId = !ObjectiveTargetCaseId.IsNone()
-			&& DisplayCaseId == ObjectiveTargetCaseId;
-		const bool bMatchesMapTargetConvention = ObjectiveTargetCaseId.IsNone()
-			&& DisplayCaseId.ToString().EndsWith(TEXT("_Target"), ESearchCase::IgnoreCase);
+		const bool bMatchesConfiguredId = !ObjectiveTargetCaseId.IsNone() && DisplayCaseId == ObjectiveTargetCaseId;
+		const bool bMatchesMapTargetConvention = ObjectiveTargetCaseId.IsNone() && DisplayCaseId.ToString().EndsWith(TEXT("_Target"), ESearchCase::IgnoreCase);
 		if (bMatchesConfiguredId || bMatchesMapTargetConvention)
 		{
 			MatchingTargetCases.Add(DisplayCase);
@@ -158,13 +135,8 @@ void AHeistGameMode::InitializeObjectiveFromPlacedTargetCase()
 
 	if (MatchingTargetCases.Num() != 1)
 	{
-		UE_LOG(
-			LogHeist,
-			Error,
-			TEXT("Objective initialization: ConfiguredTargetCaseId=%s MatchingCases=%d Result=FAIL Reason=%s"),
-			*ObjectiveTargetCaseId.ToString(),
-			MatchingTargetCases.Num(),
-			MatchingTargetCases.IsEmpty() ? TEXT("MissingTargetCase") : TEXT("DuplicateTargetCaseId"));
+		UE_LOG(LogHeist, Error, TEXT("Objective initialization: ConfiguredTargetCaseId=%s MatchingCases=%d Result=FAIL Reason=%s"), *ObjectiveTargetCaseId.ToString(), MatchingTargetCases.Num(),
+			   MatchingTargetCases.IsEmpty() ? TEXT("MissingTargetCase") : TEXT("DuplicateTargetCaseId"));
 		return;
 	}
 
@@ -172,27 +144,15 @@ void AHeistGameMode::InitializeObjectiveFromPlacedTargetCase()
 	const FName TargetArtifactId = TargetDisplayCase->GetTargetArtifactId();
 	FHeistArtifactDataRow ArtifactDefinition;
 	const bool bArtifactValid = TryGetArtifactDefinition(TargetArtifactId, ArtifactDefinition);
-	const bool bCaseStateValid =
-		TargetDisplayCase->GetDisplayCaseState() == EHeistDisplayCaseState::Secured;
-	const bool bObjectiveInitialized = bArtifactValid
-		&& bCaseStateValid
-		&& HeistGameState->SetObjectiveSnapshot(
-			TargetArtifactId,
-			TargetDisplayCase->GetDisplayCaseId(),
-			EHeistObjectiveState::Available,
-			nullptr);
+	const bool bCaseStateValid = TargetDisplayCase->GetDisplayCaseState() == EHeistDisplayCaseState::Secured;
+	const bool bObjectiveInitialized =
+		bArtifactValid && bCaseStateValid && HeistGameState->SetObjectiveSnapshot(TargetArtifactId, TargetDisplayCase->GetDisplayCaseId(), EHeistObjectiveState::Available, nullptr);
 
-	const FString InitializationMessage = FString::Printf(
-		TEXT("Objective initialization: TargetCase=%s CaseId=%s ArtifactId=%s Location=%s CaseState=%s CaseStateValid=%s ArtifactValid=%s ObjectiveState=%s Result=%s"),
-		*GetNameSafe(TargetDisplayCase),
-		*TargetDisplayCase->GetDisplayCaseId().ToString(),
-		*TargetArtifactId.ToString(),
-		*TargetDisplayCase->GetActorLocation().ToCompactString(),
-		*UEnum::GetValueAsString(TargetDisplayCase->GetDisplayCaseState()),
-		bCaseStateValid ? TEXT("true") : TEXT("false"),
-		bArtifactValid ? TEXT("true") : TEXT("false"),
-		*UEnum::GetValueAsString(HeistGameState->GetObjectiveState()),
-		bObjectiveInitialized ? TEXT("PASS") : TEXT("FAIL"));
+	const FString InitializationMessage =
+		FString::Printf(TEXT("Objective initialization: TargetCase=%s CaseId=%s ArtifactId=%s Location=%s CaseState=%s CaseStateValid=%s ArtifactValid=%s ObjectiveState=%s Result=%s"),
+						*GetNameSafe(TargetDisplayCase), *TargetDisplayCase->GetDisplayCaseId().ToString(), *TargetArtifactId.ToString(), *TargetDisplayCase->GetActorLocation().ToCompactString(),
+						*UEnum::GetValueAsString(TargetDisplayCase->GetDisplayCaseState()), bCaseStateValid ? TEXT("true") : TEXT("false"), bArtifactValid ? TEXT("true") : TEXT("false"),
+						*UEnum::GetValueAsString(HeistGameState->GetObjectiveState()), bObjectiveInitialized ? TEXT("PASS") : TEXT("FAIL"));
 	if (bObjectiveInitialized)
 	{
 		UE_LOG(LogHeist, Log, TEXT("%s"), *InitializationMessage);
@@ -209,34 +169,26 @@ void AHeistGameMode::InitializeObjectiveFromPlacedTargetCase()
 
 UDataTable* AHeistGameMode::GetItemDataTable() const
 {
-	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset)
-		? GameBalanceDataAsset.Get()
-		: GetDefault<UHeistGameBalanceDataAsset>();
+	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset) ? GameBalanceDataAsset.Get() : GetDefault<UHeistGameBalanceDataAsset>();
 
 	return ResolvedBalanceData->ItemDataTable.LoadSynchronous();
 }
 
 UDataTable* AHeistGameMode::GetArtifactDataTable() const
 {
-	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset)
-		? GameBalanceDataAsset.Get()
-		: GetDefault<UHeistGameBalanceDataAsset>();
+	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset) ? GameBalanceDataAsset.Get() : GetDefault<UHeistGameBalanceDataAsset>();
 
 	return ResolvedBalanceData->ArtifactDataTable.LoadSynchronous();
 }
 
 UDataTable* AHeistGameMode::GetForgeryTemplateDataTable() const
 {
-	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset)
-		? GameBalanceDataAsset.Get()
-		: GetDefault<UHeistGameBalanceDataAsset>();
+	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset) ? GameBalanceDataAsset.Get() : GetDefault<UHeistGameBalanceDataAsset>();
 
 	return ResolvedBalanceData->ForgeryTemplateDataTable.LoadSynchronous();
 }
 
-bool AHeistGameMode::TryGetItemDefinition(
-	const FName ItemId,
-	FHeistItemDataRow& OutItemDefinition) const
+bool AHeistGameMode::TryGetItemDefinition(const FName ItemId, FHeistItemDataRow& OutItemDefinition) const
 {
 	OutItemDefinition = FHeistItemDataRow();
 
@@ -249,66 +201,34 @@ bool AHeistGameMode::TryGetItemDefinition(
 	const UDataTable* ItemDataTable = GetItemDataTable();
 	if (!IsValid(ItemDataTable))
 	{
-		UE_LOG(
-			LogHeistInventory,
-			Warning,
-			TEXT("Item definition lookup rejected: ItemId=%s Reason=MissingItemDataTable"),
-			*ItemId.ToString());
+		UE_LOG(LogHeistInventory, Warning, TEXT("Item definition lookup rejected: ItemId=%s Reason=MissingItemDataTable"), *ItemId.ToString());
 		return false;
 	}
 
 	if (ItemDataTable->GetRowStruct() != FHeistItemDataRow::StaticStruct())
 	{
-		UE_LOG(
-			LogHeistInventory,
-			Error,
-			TEXT("Item definition lookup rejected: ItemId=%s Reason=InvalidRowStruct Table=%s RowStruct=%s"),
-			*ItemId.ToString(),
-			*GetNameSafe(ItemDataTable),
-			*GetNameSafe(ItemDataTable->GetRowStruct()));
+		UE_LOG(LogHeistInventory, Error, TEXT("Item definition lookup rejected: ItemId=%s Reason=InvalidRowStruct Table=%s RowStruct=%s"), *ItemId.ToString(), *GetNameSafe(ItemDataTable),
+			   *GetNameSafe(ItemDataTable->GetRowStruct()));
 		return false;
 	}
 
-	const FHeistItemDataRow* ItemDefinition = ItemDataTable->FindRow<FHeistItemDataRow>(
-		ItemId,
-		TEXT("AHeistGameMode::TryGetItemDefinition"),
-		false);
+	const FHeistItemDataRow* ItemDefinition = ItemDataTable->FindRow<FHeistItemDataRow>(ItemId, TEXT("AHeistGameMode::TryGetItemDefinition"), false);
 	if (!ItemDefinition)
 	{
-		UE_LOG(
-			LogHeistInventory,
-			Warning,
-			TEXT("Item definition lookup rejected: ItemId=%s Reason=MissingRow Table=%s"),
-			*ItemId.ToString(),
-			*GetNameSafe(ItemDataTable));
+		UE_LOG(LogHeistInventory, Warning, TEXT("Item definition lookup rejected: ItemId=%s Reason=MissingRow Table=%s"), *ItemId.ToString(), *GetNameSafe(ItemDataTable));
 		return false;
 	}
 
 	if (ItemDefinition->ItemId != ItemId)
 	{
-		UE_LOG(
-			LogHeistInventory,
-			Error,
-			TEXT("Item definition lookup rejected: RowName=%s RowItemId=%s Reason=RowNameItemIdMismatch"),
-			*ItemId.ToString(),
-			*ItemDefinition->ItemId.ToString());
+		UE_LOG(LogHeistInventory, Error, TEXT("Item definition lookup rejected: RowName=%s RowItemId=%s Reason=RowNameItemIdMismatch"), *ItemId.ToString(), *ItemDefinition->ItemId.ToString());
 		return false;
 	}
 
-	if (ItemDefinition->ItemType == EHeistItemType::None
-		|| ItemDefinition->GridSize.X <= 0
-		|| ItemDefinition->GridSize.Y <= 0
-		|| ItemDefinition->Weight < 0.0f)
+	if (ItemDefinition->ItemType == EHeistItemType::None || ItemDefinition->GridSize.X <= 0 || ItemDefinition->GridSize.Y <= 0 || ItemDefinition->Weight < 0.0f)
 	{
-		UE_LOG(
-			LogHeistInventory,
-			Error,
-			TEXT("Item definition lookup rejected: ItemId=%s Reason=InvalidDefinition Type=%d Grid=%dx%d Weight=%.2f"),
-			*ItemId.ToString(),
-			static_cast<int32>(ItemDefinition->ItemType),
-			ItemDefinition->GridSize.X,
-			ItemDefinition->GridSize.Y,
-			ItemDefinition->Weight);
+		UE_LOG(LogHeistInventory, Error, TEXT("Item definition lookup rejected: ItemId=%s Reason=InvalidDefinition Type=%d Grid=%dx%d Weight=%.2f"), *ItemId.ToString(),
+			   static_cast<int32>(ItemDefinition->ItemType), ItemDefinition->GridSize.X, ItemDefinition->GridSize.Y, ItemDefinition->Weight);
 		return false;
 	}
 
@@ -316,9 +236,7 @@ bool AHeistGameMode::TryGetItemDefinition(
 	return true;
 }
 
-bool AHeistGameMode::TryGetArtifactDefinition(
-	const FName ArtifactId,
-	FHeistArtifactDataRow& OutArtifactDefinition) const
+bool AHeistGameMode::TryGetArtifactDefinition(const FName ArtifactId, FHeistArtifactDataRow& OutArtifactDefinition) const
 {
 	OutArtifactDefinition = FHeistArtifactDataRow();
 	if (ArtifactId.IsNone())
@@ -328,33 +246,17 @@ bool AHeistGameMode::TryGetArtifactDefinition(
 	}
 
 	const UDataTable* ArtifactDataTable = GetArtifactDataTable();
-	if (!IsValid(ArtifactDataTable)
-		|| ArtifactDataTable->GetRowStruct() != FHeistArtifactDataRow::StaticStruct())
+	if (!IsValid(ArtifactDataTable) || ArtifactDataTable->GetRowStruct() != FHeistArtifactDataRow::StaticStruct())
 	{
-		UE_LOG(
-			LogHeist,
-			Error,
-			TEXT("Artifact definition lookup rejected: ArtifactId=%s Reason=MissingOrInvalidArtifactDataTable"),
-			*ArtifactId.ToString());
+		UE_LOG(LogHeist, Error, TEXT("Artifact definition lookup rejected: ArtifactId=%s Reason=MissingOrInvalidArtifactDataTable"), *ArtifactId.ToString());
 		return false;
 	}
 
-	const FHeistArtifactDataRow* ArtifactDefinition =
-		ArtifactDataTable->FindRow<FHeistArtifactDataRow>(
-			ArtifactId,
-			TEXT("AHeistGameMode::TryGetArtifactDefinition"),
-			false);
-	if (ArtifactDefinition == nullptr
-		|| ArtifactDefinition->ArtifactId != ArtifactId
-		|| ArtifactDefinition->ArtifactValue < 0
-		|| !FMath::IsFinite(ArtifactDefinition->Weight)
-		|| ArtifactDefinition->Weight < 0.0f)
+	const FHeistArtifactDataRow* ArtifactDefinition = ArtifactDataTable->FindRow<FHeistArtifactDataRow>(ArtifactId, TEXT("AHeistGameMode::TryGetArtifactDefinition"), false);
+	if (ArtifactDefinition == nullptr || ArtifactDefinition->ArtifactId != ArtifactId || ArtifactDefinition->ArtifactValue < 0 || !FMath::IsFinite(ArtifactDefinition->Weight) ||
+		ArtifactDefinition->Weight < 0.0f)
 	{
-		UE_LOG(
-			LogHeist,
-			Error,
-			TEXT("Artifact definition lookup rejected: ArtifactId=%s Reason=MissingOrInvalidDefinition"),
-			*ArtifactId.ToString());
+		UE_LOG(LogHeist, Error, TEXT("Artifact definition lookup rejected: ArtifactId=%s Reason=MissingOrInvalidDefinition"), *ArtifactId.ToString());
 		return false;
 	}
 
@@ -362,9 +264,7 @@ bool AHeistGameMode::TryGetArtifactDefinition(
 	return true;
 }
 
-bool AHeistGameMode::TryGetForgeryTemplateDefinition(
-	const FName TemplateId,
-	FHeistForgeryTemplateRow& OutTemplateDefinition) const
+bool AHeistGameMode::TryGetForgeryTemplateDefinition(const FName TemplateId, FHeistForgeryTemplateRow& OutTemplateDefinition) const
 {
 	OutTemplateDefinition = FHeistForgeryTemplateRow();
 	if (TemplateId.IsNone())
@@ -374,36 +274,17 @@ bool AHeistGameMode::TryGetForgeryTemplateDefinition(
 	}
 
 	const UDataTable* TemplateDataTable = GetForgeryTemplateDataTable();
-	if (!IsValid(TemplateDataTable)
-		|| TemplateDataTable->GetRowStruct() != FHeistForgeryTemplateRow::StaticStruct())
+	if (!IsValid(TemplateDataTable) || TemplateDataTable->GetRowStruct() != FHeistForgeryTemplateRow::StaticStruct())
 	{
-		UE_LOG(
-			LogHeist,
-			Error,
-			TEXT("Forgery template lookup rejected: TemplateId=%s Reason=MissingOrInvalidTemplateDataTable"),
-			*TemplateId.ToString());
+		UE_LOG(LogHeist, Error, TEXT("Forgery template lookup rejected: TemplateId=%s Reason=MissingOrInvalidTemplateDataTable"), *TemplateId.ToString());
 		return false;
 	}
 
-	const FHeistForgeryTemplateRow* TemplateDefinition =
-		TemplateDataTable->FindRow<FHeistForgeryTemplateRow>(
-			TemplateId,
-			TEXT("AHeistGameMode::TryGetForgeryTemplateDefinition"),
-			false);
-	if (TemplateDefinition == nullptr
-		|| TemplateDefinition->TemplateId != TemplateId
-		|| TemplateDefinition->ReferenceImage.IsNull()
-		|| TemplateDefinition->ReferenceMask.IsNull()
-		|| TemplateDefinition->ObservationDuration < 0.0f
-		|| TemplateDefinition->ForgeryDuration <= 0.0f
-		|| TemplateDefinition->StrokeLimit <= 0
-		|| TemplateDefinition->BrushSize <= 0.0f)
+	const FHeistForgeryTemplateRow* TemplateDefinition = TemplateDataTable->FindRow<FHeistForgeryTemplateRow>(TemplateId, TEXT("AHeistGameMode::TryGetForgeryTemplateDefinition"), false);
+	if (TemplateDefinition == nullptr || TemplateDefinition->TemplateId != TemplateId || TemplateDefinition->ReferenceImage.IsNull() || TemplateDefinition->ReferenceMask.IsNull() ||
+		TemplateDefinition->ObservationDuration < 0.0f || TemplateDefinition->ForgeryDuration <= 0.0f || TemplateDefinition->StrokeLimit <= 0 || TemplateDefinition->BrushSize <= 0.0f)
 	{
-		UE_LOG(
-			LogHeist,
-			Error,
-			TEXT("Forgery template lookup rejected: TemplateId=%s Reason=MissingOrInvalidDefinition"),
-			*TemplateId.ToString());
+		UE_LOG(LogHeist, Error, TEXT("Forgery template lookup rejected: TemplateId=%s Reason=MissingOrInvalidDefinition"), *TemplateId.ToString());
 		return false;
 	}
 
@@ -411,9 +292,7 @@ bool AHeistGameMode::TryGetForgeryTemplateDefinition(
 	return true;
 }
 
-bool AHeistGameMode::TryGetLootDefinition(
-	const FName ItemId,
-	FHeistLootDataRow& OutLootDefinition) const
+bool AHeistGameMode::TryGetLootDefinition(const FName ItemId, FHeistLootDataRow& OutLootDefinition) const
 {
 	OutLootDefinition = FHeistLootDataRow();
 	if (ItemId.IsNone())
@@ -422,31 +301,21 @@ bool AHeistGameMode::TryGetLootDefinition(
 	}
 
 	FHeistItemDataRow ItemDefinition;
-	if (!TryGetItemDefinition(ItemId, ItemDefinition)
-		|| ItemDefinition.ItemType != EHeistItemType::Loot)
+	if (!TryGetItemDefinition(ItemId, ItemDefinition) || ItemDefinition.ItemType != EHeistItemType::Loot)
 	{
 		return false;
 	}
 
-	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset)
-		? GameBalanceDataAsset.Get()
-		: GetDefault<UHeistGameBalanceDataAsset>();
+	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset) ? GameBalanceDataAsset.Get() : GetDefault<UHeistGameBalanceDataAsset>();
 	const UDataTable* LootDataTable = ResolvedBalanceData->LootDataTable.LoadSynchronous();
 	if (!IsValid(LootDataTable) || LootDataTable->GetRowStruct() != FHeistLootDataRow::StaticStruct())
 	{
 		return false;
 	}
 
-	const FHeistLootDataRow* LootDefinition = LootDataTable->FindRow<FHeistLootDataRow>(
-		ItemId,
-		TEXT("AHeistGameMode::TryGetLootDefinition"),
-		false);
-	if (LootDefinition == nullptr
-		|| LootDefinition->ItemId != ItemId
-		|| LootDefinition->ScoreValue < 0
-		|| LootDefinition->SpawnCategory == EHeistSpawnCategory::None
-		|| LootDefinition->SpawnWeight < 0.0f
-		|| (ItemDefinition.bAvailableInV1 && LootDefinition->WorldLootActorClass.IsNull()))
+	const FHeistLootDataRow* LootDefinition = LootDataTable->FindRow<FHeistLootDataRow>(ItemId, TEXT("AHeistGameMode::TryGetLootDefinition"), false);
+	if (LootDefinition == nullptr || LootDefinition->ItemId != ItemId || LootDefinition->ScoreValue < 0 || LootDefinition->SpawnCategory == EHeistSpawnCategory::None ||
+		LootDefinition->SpawnWeight < 0.0f || (ItemDefinition.bAvailableInV1 && LootDefinition->WorldLootActorClass.IsNull()))
 	{
 		return false;
 	}
@@ -455,9 +324,7 @@ bool AHeistGameMode::TryGetLootDefinition(
 	return true;
 }
 
-bool AHeistGameMode::TryGetUsableItemDefinition(
-	const FName ItemId,
-	FHeistUsableItemDataRow& OutUsableItemDefinition) const
+bool AHeistGameMode::TryGetUsableItemDefinition(const FName ItemId, FHeistUsableItemDataRow& OutUsableItemDefinition) const
 {
 	OutUsableItemDefinition = FHeistUsableItemDataRow();
 	if (ItemId.IsNone())
@@ -466,40 +333,24 @@ bool AHeistGameMode::TryGetUsableItemDefinition(
 	}
 
 	FHeistItemDataRow ItemDefinition;
-	if (!TryGetItemDefinition(ItemId, ItemDefinition)
-		|| (ItemDefinition.ItemType != EHeistItemType::Trap
-			&& ItemDefinition.ItemType != EHeistItemType::Throwable))
+	if (!TryGetItemDefinition(ItemId, ItemDefinition) || (ItemDefinition.ItemType != EHeistItemType::Trap && ItemDefinition.ItemType != EHeistItemType::Throwable))
 	{
 		return false;
 	}
 
-	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset)
-		? GameBalanceDataAsset.Get()
-		: GetDefault<UHeistGameBalanceDataAsset>();
+	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset) ? GameBalanceDataAsset.Get() : GetDefault<UHeistGameBalanceDataAsset>();
 	const UDataTable* UsableItemDataTable = ResolvedBalanceData->UsableItemDataTable.LoadSynchronous();
 	if (!IsValid(UsableItemDataTable) || UsableItemDataTable->GetRowStruct() != FHeistUsableItemDataRow::StaticStruct())
 	{
 		return false;
 	}
 
-	const FHeistUsableItemDataRow* UsableItemDefinition = UsableItemDataTable->FindRow<FHeistUsableItemDataRow>(
-		ItemId,
-		TEXT("AHeistGameMode::TryGetUsableItemDefinition"),
-		false);
-	const bool bUseTypeMatchesItemType = UsableItemDefinition != nullptr
-		&& ((ItemDefinition.ItemType == EHeistItemType::Throwable
-				&& UsableItemDefinition->UseType == EHeistUseType::Throw)
-			|| (ItemDefinition.ItemType == EHeistItemType::Trap
-				&& UsableItemDefinition->UseType == EHeistUseType::PlaceTrap));
-	if (UsableItemDefinition == nullptr
-		|| UsableItemDefinition->ItemId != ItemId
-		|| !bUseTypeMatchesItemType
-		|| UsableItemDefinition->TargetType == EHeistTargetType::None
-		|| UsableItemDefinition->Cooldown < 0.0f
-		|| UsableItemDefinition->CastTime < 0.0f
-		|| UsableItemDefinition->Duration < 0.0f
-		|| UsableItemDefinition->ProjectileSpeed < 0.0f
-		|| (ItemDefinition.bAvailableInV1 && UsableItemDefinition->SpawnedActorClass.IsNull()))
+	const FHeistUsableItemDataRow* UsableItemDefinition = UsableItemDataTable->FindRow<FHeistUsableItemDataRow>(ItemId, TEXT("AHeistGameMode::TryGetUsableItemDefinition"), false);
+	const bool bUseTypeMatchesItemType = UsableItemDefinition != nullptr && ((ItemDefinition.ItemType == EHeistItemType::Throwable && UsableItemDefinition->UseType == EHeistUseType::Throw) ||
+																			 (ItemDefinition.ItemType == EHeistItemType::Trap && UsableItemDefinition->UseType == EHeistUseType::PlaceTrap));
+	if (UsableItemDefinition == nullptr || UsableItemDefinition->ItemId != ItemId || !bUseTypeMatchesItemType || UsableItemDefinition->TargetType == EHeistTargetType::None ||
+		UsableItemDefinition->Cooldown < 0.0f || UsableItemDefinition->CastTime < 0.0f || UsableItemDefinition->Duration < 0.0f || UsableItemDefinition->ProjectileSpeed < 0.0f ||
+		(ItemDefinition.bAvailableInV1 && UsableItemDefinition->SpawnedActorClass.IsNull()))
 	{
 		return false;
 	}
@@ -508,9 +359,7 @@ bool AHeistGameMode::TryGetUsableItemDefinition(
 	return true;
 }
 
-bool AHeistGameMode::TryGetGuardDefinition(
-	const FName GuardProfileId,
-	FHeistGuardDataRow& OutGuardDefinition) const
+bool AHeistGameMode::TryGetGuardDefinition(const FName GuardProfileId, FHeistGuardDataRow& OutGuardDefinition) const
 {
 	OutGuardDefinition = FHeistGuardDataRow();
 	if (GuardProfileId.IsNone())
@@ -518,23 +367,15 @@ bool AHeistGameMode::TryGetGuardDefinition(
 		return false;
 	}
 
-	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset)
-		? GameBalanceDataAsset.Get()
-		: GetDefault<UHeistGameBalanceDataAsset>();
+	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset) ? GameBalanceDataAsset.Get() : GetDefault<UHeistGameBalanceDataAsset>();
 	const UDataTable* GuardDataTable = ResolvedBalanceData->GuardDataTable.LoadSynchronous();
-	if (!IsValid(GuardDataTable)
-		|| GuardDataTable->GetRowStruct() != FHeistGuardDataRow::StaticStruct())
+	if (!IsValid(GuardDataTable) || GuardDataTable->GetRowStruct() != FHeistGuardDataRow::StaticStruct())
 	{
 		return false;
 	}
 
-	const FHeistGuardDataRow* GuardDefinition =
-		GuardDataTable->FindRow<FHeistGuardDataRow>(
-			GuardProfileId,
-			TEXT("AHeistGameMode::TryGetGuardDefinition"),
-			false);
-	if (GuardDefinition == nullptr
-		|| GuardDefinition->GuardProfileId != GuardProfileId)
+	const FHeistGuardDataRow* GuardDefinition = GuardDataTable->FindRow<FHeistGuardDataRow>(GuardProfileId, TEXT("AHeistGameMode::TryGetGuardDefinition"), false);
+	if (GuardDefinition == nullptr || GuardDefinition->GuardProfileId != GuardProfileId)
 	{
 		return false;
 	}
@@ -543,9 +384,7 @@ bool AHeistGameMode::TryGetGuardDefinition(
 	return true;
 }
 
-bool AHeistGameMode::TryGetSoundPingDefinition(
-	const FName SoundPingId,
-	FHeistSoundPingDataRow& OutSoundPingDefinition) const
+bool AHeistGameMode::TryGetSoundPingDefinition(const FName SoundPingId, FHeistSoundPingDataRow& OutSoundPingDefinition) const
 {
 	OutSoundPingDefinition = FHeistSoundPingDataRow();
 	if (SoundPingId.IsNone())
@@ -553,24 +392,15 @@ bool AHeistGameMode::TryGetSoundPingDefinition(
 		return false;
 	}
 
-	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset)
-		? GameBalanceDataAsset.Get()
-		: GetDefault<UHeistGameBalanceDataAsset>();
-	const UDataTable* SoundPingDataTable =
-		ResolvedBalanceData->SoundPingDataTable.LoadSynchronous();
-	if (!IsValid(SoundPingDataTable)
-		|| SoundPingDataTable->GetRowStruct() != FHeistSoundPingDataRow::StaticStruct())
+	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset) ? GameBalanceDataAsset.Get() : GetDefault<UHeistGameBalanceDataAsset>();
+	const UDataTable* SoundPingDataTable = ResolvedBalanceData->SoundPingDataTable.LoadSynchronous();
+	if (!IsValid(SoundPingDataTable) || SoundPingDataTable->GetRowStruct() != FHeistSoundPingDataRow::StaticStruct())
 	{
 		return false;
 	}
 
-	const FHeistSoundPingDataRow* SoundPingDefinition =
-		SoundPingDataTable->FindRow<FHeistSoundPingDataRow>(
-			SoundPingId,
-			TEXT("AHeistGameMode::TryGetSoundPingDefinition"),
-			false);
-	if (SoundPingDefinition == nullptr
-		|| SoundPingDefinition->SoundPingId != SoundPingId)
+	const FHeistSoundPingDataRow* SoundPingDefinition = SoundPingDataTable->FindRow<FHeistSoundPingDataRow>(SoundPingId, TEXT("AHeistGameMode::TryGetSoundPingDefinition"), false);
+	if (SoundPingDefinition == nullptr || SoundPingDefinition->SoundPingId != SoundPingId)
 	{
 		return false;
 	}
@@ -579,13 +409,10 @@ bool AHeistGameMode::TryGetSoundPingDefinition(
 	return true;
 }
 
-bool AHeistGameMode::TryGetPlayerCountDifficultyBaseline(
-	const int32 PlayerCount,
-	FHeistPlayerCountDifficultyBaseline& OutBaseline) const
+bool AHeistGameMode::TryGetPlayerCountDifficultyBaseline(const int32 PlayerCount, FHeistPlayerCountDifficultyBaseline& OutBaseline) const
 {
 	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
-	return IsValid(BalanceData)
-		&& BalanceData->TryGetPlayerCountDifficultyBaseline(PlayerCount, OutBaseline);
+	return IsValid(BalanceData) && BalanceData->TryGetPlayerCountDifficultyBaseline(PlayerCount, OutBaseline);
 }
 
 void AHeistGameMode::DebugDumpPlayerCountDifficultyBaseline() const
@@ -599,49 +426,27 @@ void AHeistGameMode::DebugDumpPlayerCountDifficultyBaseline() const
 		return;
 	}
 
-	bool bValid = BalanceData->bAllowSoloProgression
-		&& BalanceData->PlayerCountDifficultyBaselines.Num() == 4;
+	bool bValid = BalanceData->bAllowSoloProgression && BalanceData->PlayerCountDifficultyBaselines.Num() == 4;
 	TSet<int32> SeenPlayerCounts;
 	for (const FHeistPlayerCountDifficultyBaseline& Baseline : BalanceData->PlayerCountDifficultyBaselines)
 	{
-		const bool bRowValid = Baseline.PlayerCount >= 1
-			&& Baseline.PlayerCount <= 4
-			&& !SeenPlayerCounts.Contains(Baseline.PlayerCount)
-			&& FMath::IsFinite(Baseline.GuardCountMultiplier)
-			&& Baseline.GuardCountMultiplier > 0.0f
-			&& FMath::IsFinite(Baseline.DetectionMultiplier)
-			&& Baseline.DetectionMultiplier > 0.0f
-			&& FMath::IsFinite(Baseline.InspectionDurationMultiplier)
-			&& Baseline.InspectionDurationMultiplier > 0.0f;
+		const bool bRowValid = Baseline.PlayerCount >= 1 && Baseline.PlayerCount <= 4 && !SeenPlayerCounts.Contains(Baseline.PlayerCount) && FMath::IsFinite(Baseline.GuardCountMultiplier) &&
+							   Baseline.GuardCountMultiplier > 0.0f && FMath::IsFinite(Baseline.DetectionMultiplier) && Baseline.DetectionMultiplier > 0.0f &&
+							   FMath::IsFinite(Baseline.InspectionDurationMultiplier) && Baseline.InspectionDurationMultiplier > 0.0f;
 		SeenPlayerCounts.Add(Baseline.PlayerCount);
 		bValid = bValid && bRowValid;
-		UE_LOG(
-			LogHeist,
-			Log,
-			TEXT("Difficulty baseline row: Players=%d GuardCount=%.2f Detection=%.2f InspectionDuration=%.2f Valid=%s"),
-			Baseline.PlayerCount,
-			Baseline.GuardCountMultiplier,
-			Baseline.DetectionMultiplier,
-			Baseline.InspectionDurationMultiplier,
-			bRowValid ? TEXT("true") : TEXT("false"));
+		UE_LOG(LogHeist, Log, TEXT("Difficulty baseline row: Players=%d GuardCount=%.2f Detection=%.2f InspectionDuration=%.2f Valid=%s"), Baseline.PlayerCount, Baseline.GuardCountMultiplier,
+			   Baseline.DetectionMultiplier, Baseline.InspectionDurationMultiplier, bRowValid ? TEXT("true") : TEXT("false"));
 	}
 
 	const int32 ConnectedPlayerCount = HeistGameState->GetConnectedPlayerCount();
 	FHeistPlayerCountDifficultyBaseline ResolvedBaseline;
-	const bool bResolved = TryGetPlayerCountDifficultyBaseline(
-		ConnectedPlayerCount,
-		ResolvedBaseline);
+	const bool bResolved = TryGetPlayerCountDifficultyBaseline(ConnectedPlayerCount, ResolvedBaseline);
 	bValid = bValid && SeenPlayerCounts.Num() == 4 && bResolved;
 	const FString Summary = FString::Printf(
 		TEXT("Difficulty baseline dump: ConnectedPlayers=%d ResolvedPlayers=%d GuardCount=%.2f Detection=%.2f InspectionDuration=%.2f SoloAllowed=%s MandatoryPlayers=1 Rows=%d Result=%s"),
-		ConnectedPlayerCount,
-		ResolvedBaseline.PlayerCount,
-		ResolvedBaseline.GuardCountMultiplier,
-		ResolvedBaseline.DetectionMultiplier,
-		ResolvedBaseline.InspectionDurationMultiplier,
-		BalanceData->bAllowSoloProgression ? TEXT("true") : TEXT("false"),
-		BalanceData->PlayerCountDifficultyBaselines.Num(),
-		bValid ? TEXT("PASS") : TEXT("FAIL"));
+		ConnectedPlayerCount, ResolvedBaseline.PlayerCount, ResolvedBaseline.GuardCountMultiplier, ResolvedBaseline.DetectionMultiplier, ResolvedBaseline.InspectionDurationMultiplier,
+		BalanceData->bAllowSoloProgression ? TEXT("true") : TEXT("false"), BalanceData->PlayerCountDifficultyBaselines.Num(), bValid ? TEXT("PASS") : TEXT("FAIL"));
 	if (bValid)
 	{
 		UE_LOG(LogHeist, Log, TEXT("%s"), *Summary);
@@ -653,9 +458,7 @@ void AHeistGameMode::DebugDumpPlayerCountDifficultyBaseline() const
 #endif
 }
 
-bool AHeistGameMode::TrySpawnDroppedLoot(
-	const FHeistLootDropRequest& DropRequest,
-	AHeistLootActor*& OutDroppedLootActor) const
+bool AHeistGameMode::TrySpawnDroppedLoot(const FHeistLootDropRequest& DropRequest, AHeistLootActor*& OutDroppedLootActor) const
 {
 	OutDroppedLootActor = nullptr;
 	if (!HasAuthority() || DropRequest.ItemId.IsNone() || !IsValid(DropRequest.DroppedBy))
@@ -665,9 +468,7 @@ bool AHeistGameMode::TrySpawnDroppedLoot(
 
 	FHeistItemDataRow ItemDefinition;
 	FHeistLootDataRow LootDefinition;
-	if (!TryGetItemDefinition(DropRequest.ItemId, ItemDefinition)
-		|| ItemDefinition.ItemType != EHeistItemType::Loot
-		|| !TryGetLootDefinition(DropRequest.ItemId, LootDefinition))
+	if (!TryGetItemDefinition(DropRequest.ItemId, ItemDefinition) || ItemDefinition.ItemType != EHeistItemType::Loot || !TryGetLootDefinition(DropRequest.ItemId, LootDefinition))
 	{
 		return false;
 	}
@@ -678,17 +479,11 @@ bool AHeistGameMode::TrySpawnDroppedLoot(
 		return false;
 	}
 
-	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset)
-		? GameBalanceDataAsset.Get()
-		: GetDefault<UHeistGameBalanceDataAsset>();
+	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset) ? GameBalanceDataAsset.Get() : GetDefault<UHeistGameBalanceDataAsset>();
 	UDataTable* LootDataTable = ResolvedBalanceData->LootDataTable.LoadSynchronous();
 	const FTransform SpawnTransform(FRotator::ZeroRotator, FVector(DropRequest.DropOrigin));
-	AHeistLootActor* DroppedLootActor = GetWorld()->SpawnActorDeferred<AHeistLootActor>(
-		LootActorClass,
-		SpawnTransform,
-		nullptr,
-		nullptr,
-		ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
+	AHeistLootActor* DroppedLootActor =
+		GetWorld()->SpawnActorDeferred<AHeistLootActor>(LootActorClass, SpawnTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
 	if (!IsValid(DroppedLootActor))
 	{
 		return false;
@@ -714,36 +509,20 @@ void AHeistGameMode::ValidateItemDataTables() const
 	}
 
 	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
-	const UDataTable* LootDataTable = IsValid(BalanceData)
-		? BalanceData->LootDataTable.LoadSynchronous()
-		: nullptr;
-	const UDataTable* UsableItemDataTable = IsValid(BalanceData)
-		? BalanceData->UsableItemDataTable.LoadSynchronous()
-		: nullptr;
-	if (ItemDataTable->GetRowStruct() != FHeistItemDataRow::StaticStruct()
-		|| !IsValid(LootDataTable)
-		|| LootDataTable->GetRowStruct() != FHeistLootDataRow::StaticStruct()
-		|| !IsValid(UsableItemDataTable)
-		|| UsableItemDataTable->GetRowStruct() != FHeistUsableItemDataRow::StaticStruct())
+	const UDataTable* LootDataTable = IsValid(BalanceData) ? BalanceData->LootDataTable.LoadSynchronous() : nullptr;
+	const UDataTable* UsableItemDataTable = IsValid(BalanceData) ? BalanceData->UsableItemDataTable.LoadSynchronous() : nullptr;
+	if (ItemDataTable->GetRowStruct() != FHeistItemDataRow::StaticStruct() || !IsValid(LootDataTable) || LootDataTable->GetRowStruct() != FHeistLootDataRow::StaticStruct() ||
+		!IsValid(UsableItemDataTable) || UsableItemDataTable->GetRowStruct() != FHeistUsableItemDataRow::StaticStruct())
 	{
-		UE_LOG(
-			LogHeistInventory,
-			Error,
-			TEXT("Item data validation completed: Result=FAIL Reason=MissingOrInvalidTableSchema ItemTable=%s LootTable=%s UsableTable=%s"),
-			*GetNameSafe(ItemDataTable),
-			*GetNameSafe(LootDataTable),
-			*GetNameSafe(UsableItemDataTable));
+		UE_LOG(LogHeistInventory, Error, TEXT("Item data validation completed: Result=FAIL Reason=MissingOrInvalidTableSchema ItemTable=%s LootTable=%s UsableTable=%s"), *GetNameSafe(ItemDataTable),
+			   *GetNameSafe(LootDataTable), *GetNameSafe(UsableItemDataTable));
 		return;
 	}
 
 	const TArray<FName> RowNames = ItemDataTable->GetRowNames();
 	if (RowNames.IsEmpty())
 	{
-		UE_LOG(
-			LogHeistInventory,
-			Error,
-			TEXT("Item data validation completed: Table=%s TotalRows=0 ValidRows=0 InvalidRows=0 Result=FAIL Reason=EmptyTable"),
-			*GetNameSafe(ItemDataTable));
+		UE_LOG(LogHeistInventory, Error, TEXT("Item data validation completed: Table=%s TotalRows=0 ValidRows=0 InvalidRows=0 Result=FAIL Reason=EmptyTable"), *GetNameSafe(ItemDataTable));
 		return;
 	}
 
@@ -762,17 +541,12 @@ void AHeistGameMode::ValidateItemDataTables() const
 		if (ItemDefinition.ItemType == EHeistItemType::Loot)
 		{
 			FHeistLootDataRow LootDefinition;
-			bValidExtension = bHasLootExtension
-				&& !bHasUsableExtension
-				&& TryGetLootDefinition(RowName, LootDefinition);
+			bValidExtension = bHasLootExtension && !bHasUsableExtension && TryGetLootDefinition(RowName, LootDefinition);
 		}
-		else if (ItemDefinition.ItemType == EHeistItemType::Trap
-			|| ItemDefinition.ItemType == EHeistItemType::Throwable)
+		else if (ItemDefinition.ItemType == EHeistItemType::Trap || ItemDefinition.ItemType == EHeistItemType::Throwable)
 		{
 			FHeistUsableItemDataRow UsableItemDefinition;
-			bValidExtension = !bHasLootExtension
-				&& bHasUsableExtension
-				&& TryGetUsableItemDefinition(RowName, UsableItemDefinition);
+			bValidExtension = !bHasLootExtension && bHasUsableExtension && TryGetUsableItemDefinition(RowName, UsableItemDefinition);
 		}
 
 		if (bValidExtension)
@@ -781,14 +555,8 @@ void AHeistGameMode::ValidateItemDataTables() const
 		}
 		else
 		{
-			UE_LOG(
-				LogHeistInventory,
-				Error,
-				TEXT("Item data validation rejected row: ItemId=%s Type=%d HasLootExtension=%s HasUsableExtension=%s"),
-				*RowName.ToString(),
-				static_cast<int32>(ItemDefinition.ItemType),
-				bHasLootExtension ? TEXT("true") : TEXT("false"),
-				bHasUsableExtension ? TEXT("true") : TEXT("false"));
+			UE_LOG(LogHeistInventory, Error, TEXT("Item data validation rejected row: ItemId=%s Type=%d HasLootExtension=%s HasUsableExtension=%s"), *RowName.ToString(),
+				   static_cast<int32>(ItemDefinition.ItemType), bHasLootExtension ? TEXT("true") : TEXT("false"), bHasUsableExtension ? TEXT("true") : TEXT("false"));
 		}
 	}
 
@@ -798,11 +566,7 @@ void AHeistGameMode::ValidateItemDataTables() const
 		if (!RowNames.Contains(RowName))
 		{
 			++OrphanExtensionCount;
-			UE_LOG(
-				LogHeistInventory,
-				Error,
-				TEXT("Item data validation rejected orphan Loot row: ItemId=%s"),
-				*RowName.ToString());
+			UE_LOG(LogHeistInventory, Error, TEXT("Item data validation rejected orphan Loot row: ItemId=%s"), *RowName.ToString());
 		}
 	}
 	for (const FName RowName : UsableItemDataTable->GetRowNames())
@@ -810,40 +574,20 @@ void AHeistGameMode::ValidateItemDataTables() const
 		if (!RowNames.Contains(RowName))
 		{
 			++OrphanExtensionCount;
-			UE_LOG(
-				LogHeistInventory,
-				Error,
-				TEXT("Item data validation rejected orphan Usable row: ItemId=%s"),
-				*RowName.ToString());
+			UE_LOG(LogHeistInventory, Error, TEXT("Item data validation rejected orphan Usable row: ItemId=%s"), *RowName.ToString());
 		}
 	}
 
 	const int32 InvalidRowCount = RowNames.Num() - ValidRowCount + OrphanExtensionCount;
 	if (InvalidRowCount > 0)
 	{
-		UE_LOG(
-			LogHeistInventory,
-			Error,
-			TEXT("Item data validation completed: ItemTable=%s LootTable=%s UsableTable=%s TotalItems=%d ValidItems=%d InvalidRows=%d OrphanExtensions=%d Result=FAIL"),
-			*GetNameSafe(ItemDataTable),
-			*GetNameSafe(LootDataTable),
-			*GetNameSafe(UsableItemDataTable),
-			RowNames.Num(),
-			ValidRowCount,
-			InvalidRowCount,
-			OrphanExtensionCount);
+		UE_LOG(LogHeistInventory, Error, TEXT("Item data validation completed: ItemTable=%s LootTable=%s UsableTable=%s TotalItems=%d ValidItems=%d InvalidRows=%d OrphanExtensions=%d Result=FAIL"),
+			   *GetNameSafe(ItemDataTable), *GetNameSafe(LootDataTable), *GetNameSafe(UsableItemDataTable), RowNames.Num(), ValidRowCount, InvalidRowCount, OrphanExtensionCount);
 		return;
 	}
 
-	UE_LOG(
-		LogHeistInventory,
-		Log,
-		TEXT("Item data validation completed: ItemTable=%s LootTable=%s UsableTable=%s TotalItems=%d ValidItems=%d InvalidRows=0 OrphanExtensions=0 Result=PASS"),
-		*GetNameSafe(ItemDataTable),
-		*GetNameSafe(LootDataTable),
-		*GetNameSafe(UsableItemDataTable),
-		RowNames.Num(),
-		ValidRowCount);
+	UE_LOG(LogHeistInventory, Log, TEXT("Item data validation completed: ItemTable=%s LootTable=%s UsableTable=%s TotalItems=%d ValidItems=%d InvalidRows=0 OrphanExtensions=0 Result=PASS"),
+		   *GetNameSafe(ItemDataTable), *GetNameSafe(LootDataTable), *GetNameSafe(UsableItemDataTable), RowNames.Num(), ValidRowCount);
 }
 
 #pragma endregion
@@ -866,9 +610,7 @@ void AHeistGameMode::ForceRareLootEvent(const float WarningDelaySeconds)
 	const int32 EventIndex = NextForcedRareLootEventIndex;
 	const float SafeWarningDelay = FMath::Max(0.0f, WarningDelaySeconds);
 	const AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
-	const float SpawnServerTime = IsValid(HeistGameState)
-		? HeistGameState->GetServerWorldTimeSeconds() + SafeWarningDelay
-		: GetWorld()->GetTimeSeconds() + SafeWarningDelay;
+	const float SpawnServerTime = IsValid(HeistGameState) ? HeistGameState->GetServerWorldTimeSeconds() + SafeWarningDelay : GetWorld()->GetTimeSeconds() + SafeWarningDelay;
 	BeginRareLootWarning(EventIndex, SpawnServerTime);
 
 	if (SafeWarningDelay <= 0.0f)
@@ -909,11 +651,7 @@ void AHeistGameMode::StartRareLootEventTimers()
 
 		FTimerHandle& WarningTimerHandle = RareLootWarningTimerHandles.AddDefaulted_GetRef();
 		FTimerDelegate WarningDelegate;
-		WarningDelegate.BindUObject(
-			this,
-			&AHeistGameMode::BeginRareLootWarning,
-			EventIndex,
-			ScheduledSpawnServerTime);
+		WarningDelegate.BindUObject(this, &AHeistGameMode::BeginRareLootWarning, EventIndex, ScheduledSpawnServerTime);
 		GetWorldTimerManager().SetTimer(WarningTimerHandle, WarningDelegate, WarningDelay, false);
 
 		FTimerHandle& SpawnTimerHandle = RareLootSpawnTimerHandles.AddDefaulted_GetRef();
@@ -922,10 +660,7 @@ void AHeistGameMode::StartRareLootEventTimers()
 		GetWorldTimerManager().SetTimer(SpawnTimerHandle, SpawnDelegate, SpawnDelay, false);
 	}
 
-	UHeistDebugFunctionLibrary::DebugRareLootTimersStarted(
-		this,
-		BalanceData->RareLootEventTimes,
-		WarningLeadTime);
+	UHeistDebugFunctionLibrary::DebugRareLootTimersStarted(this, BalanceData->RareLootEventTimes, WarningLeadTime);
 }
 
 void AHeistGameMode::BeginRareLootWarning(const int32 EventIndex, const float ScheduledSpawnTime)
@@ -944,11 +679,7 @@ void AHeistGameMode::BeginRareLootWarning(const int32 EventIndex, const float Sc
 	}
 
 	HeistGameState->BeginRareLootWarning(EventIndex, BalanceData->RareLootItemId, ScheduledSpawnTime);
-	UHeistDebugFunctionLibrary::DebugRareLootWarningStarted(
-		this,
-		EventIndex,
-		BalanceData->RareLootItemId,
-		ScheduledSpawnTime);
+	UHeistDebugFunctionLibrary::DebugRareLootWarningStarted(this, EventIndex, BalanceData->RareLootItemId, ScheduledSpawnTime);
 }
 
 void AHeistGameMode::TriggerRareLootEvent(const int32 EventIndex)
@@ -972,31 +703,17 @@ void AHeistGameMode::TriggerRareLootEvent(const int32 EventIndex)
 	TriggeredRareLootEventIndices.Add(EventIndex);
 	ActiveRareLootEventIndices.Add(RareLootActor, EventIndex);
 	NextForcedRareLootEventIndex = FMath::Max(NextForcedRareLootEventIndex, EventIndex + 1);
-	RareLootActor->GetLootPickupCommittedDelegate().AddUObject(
-		this,
-		&AHeistGameMode::HandleRareLootPickedUp);
+	RareLootActor->GetLootPickupCommittedDelegate().AddUObject(this, &AHeistGameMode::HandleRareLootPickedUp);
 
 	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
 	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
 	checkf(IsValid(HeistGameState), TEXT("Rare Loot event requires AHeistGameState."));
 	checkf(IsValid(BalanceData), TEXT("Rare Loot event requires balance data."));
-	HeistGameState->ActivateRareLootMarker(
-		EventIndex,
-		BalanceData->RareLootItemId,
-		RareLootActor->GetActorLocation());
-	UHeistDebugFunctionLibrary::DebugRareLootSpawned(
-		this,
-		EventIndex,
-		RareLootActor,
-		SpawnPoint,
-		BalanceData->RareLootItemId,
-		RareLootActor->GetActorLocation());
+	HeistGameState->ActivateRareLootMarker(EventIndex, BalanceData->RareLootItemId, RareLootActor->GetActorLocation());
+	UHeistDebugFunctionLibrary::DebugRareLootSpawned(this, EventIndex, RareLootActor, SpawnPoint, BalanceData->RareLootItemId, RareLootActor->GetActorLocation());
 }
 
-bool AHeistGameMode::TrySpawnRareLoot(
-	const int32 EventIndex,
-	AHeistLootActor*& OutRareLootActor,
-	AHeistLootSpawnPoint*& OutSpawnPoint)
+bool AHeistGameMode::TrySpawnRareLoot(const int32 EventIndex, AHeistLootActor*& OutRareLootActor, AHeistLootSpawnPoint*& OutSpawnPoint)
 {
 	OutRareLootActor = nullptr;
 	OutSpawnPoint = nullptr;
@@ -1010,10 +727,8 @@ bool AHeistGameMode::TrySpawnRareLoot(
 
 	FHeistItemDataRow ItemDefinition;
 	FHeistLootDataRow LootDefinition;
-	if (!TryGetItemDefinition(BalanceData->RareLootItemId, ItemDefinition)
-		|| ItemDefinition.ItemType != EHeistItemType::Loot
-		|| !TryGetLootDefinition(BalanceData->RareLootItemId, LootDefinition)
-		|| LootDefinition.SpawnCategory != EHeistSpawnCategory::RareEvent)
+	if (!TryGetItemDefinition(BalanceData->RareLootItemId, ItemDefinition) || ItemDefinition.ItemType != EHeistItemType::Loot || !TryGetLootDefinition(BalanceData->RareLootItemId, LootDefinition) ||
+		LootDefinition.SpawnCategory != EHeistSpawnCategory::RareEvent)
 	{
 		UHeistDebugFunctionLibrary::DebugRareLootEventFailed(this, EventIndex, TEXT("InvalidRareLootData"));
 		return false;
@@ -1050,12 +765,8 @@ bool AHeistGameMode::TrySpawnRareLoot(
 	}
 
 	const FTransform SpawnTransform = OutSpawnPoint->GetActorTransform();
-	AHeistLootActor* DeferredLootActor = GetWorld()->SpawnActorDeferred<AHeistLootActor>(
-		LootActorClass,
-		SpawnTransform,
-		nullptr,
-		nullptr,
-		ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
+	AHeistLootActor* DeferredLootActor =
+		GetWorld()->SpawnActorDeferred<AHeistLootActor>(LootActorClass, SpawnTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
 	if (!IsValid(DeferredLootActor))
 	{
 		UHeistDebugFunctionLibrary::DebugRareLootEventFailed(this, EventIndex, TEXT("DeferredSpawnFailed"));
@@ -1063,8 +774,7 @@ bool AHeistGameMode::TrySpawnRareLoot(
 	}
 
 	DeferredLootActor->InitializeLootData(LootDataTable, BalanceData->RareLootItemId);
-	OutRareLootActor = Cast<AHeistLootActor>(
-		UGameplayStatics::FinishSpawningActor(DeferredLootActor, SpawnTransform));
+	OutRareLootActor = Cast<AHeistLootActor>(UGameplayStatics::FinishSpawningActor(DeferredLootActor, SpawnTransform));
 	if (!IsValid(OutRareLootActor))
 	{
 		UHeistDebugFunctionLibrary::DebugRareLootEventFailed(this, EventIndex, TEXT("FinishSpawnFailed"));
@@ -1100,19 +810,12 @@ void AHeistGameMode::HandleRareLootPickedUp(AHeistLootActor* LootActor, AActor* 
 	}
 	ActiveRareLootEventIndices.Remove(LootActor);
 	LootActor->GetLootPickupCommittedDelegate().RemoveAll(this);
-	UHeistDebugFunctionLibrary::DebugRareLootPickedUp(
-		this,
-		EventIndex,
-		LootActor,
-		Requester,
-		LootActor->GetLootRowId());
+	UHeistDebugFunctionLibrary::DebugRareLootPickedUp(this, EventIndex, LootActor, Requester, LootActor->GetLootRowId());
 }
 
 const UHeistGameBalanceDataAsset* AHeistGameMode::ResolveGameBalanceData() const
 {
-	return IsValid(GameBalanceDataAsset)
-		? GameBalanceDataAsset.Get()
-		: GetDefault<UHeistGameBalanceDataAsset>();
+	return IsValid(GameBalanceDataAsset) ? GameBalanceDataAsset.Get() : GetDefault<UHeistGameBalanceDataAsset>();
 }
 
 #pragma endregion
@@ -1121,9 +824,7 @@ const UHeistGameBalanceDataAsset* AHeistGameMode::ResolveGameBalanceData() const
 
 float AHeistGameMode::GetEscapeCastTimeSeconds() const
 {
-	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset)
-		? GameBalanceDataAsset.Get()
-		: GetDefault<UHeistGameBalanceDataAsset>();
+	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset) ? GameBalanceDataAsset.Get() : GetDefault<UHeistGameBalanceDataAsset>();
 
 	return FMath::Max(0.0f, ResolvedBalanceData->EscapeCastTime);
 }
@@ -1157,19 +858,9 @@ void AHeistGameMode::StartEscapePhaseTimer()
 		return;
 	}
 
-	TimerManager.SetTimer(
-		EscapePhaseTimerHandle,
-		this,
-		&AHeistGameMode::HandleEscapePhaseTimerElapsed,
-		EscapePhaseDelaySeconds,
-		false);
+	TimerManager.SetTimer(EscapePhaseTimerHandle, this, &AHeistGameMode::HandleEscapePhaseTimerElapsed, EscapePhaseDelaySeconds, false);
 
-	UE_LOG(
-		LogHeist,
-		Log,
-		TEXT("Escape phase timer started: Delay=%.2f BalanceData=%s"),
-		EscapePhaseDelaySeconds,
-		*GetNameSafe(GameBalanceDataAsset));
+	UE_LOG(LogHeist, Log, TEXT("Escape phase timer started: Delay=%.2f BalanceData=%s"), EscapePhaseDelaySeconds, *GetNameSafe(GameBalanceDataAsset));
 }
 
 void AHeistGameMode::HandleEscapePhaseTimerElapsed()
@@ -1186,9 +877,7 @@ void AHeistGameMode::HandleEscapePhaseTimerElapsed()
 
 float AHeistGameMode::ResolveEscapePhaseDelaySeconds() const
 {
-	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset)
-		? GameBalanceDataAsset.Get()
-		: GetDefault<UHeistGameBalanceDataAsset>();
+	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset) ? GameBalanceDataAsset.Get() : GetDefault<UHeistGameBalanceDataAsset>();
 
 	return FMath::Max(0.0f, ResolvedBalanceData->VentUnlockTime);
 }

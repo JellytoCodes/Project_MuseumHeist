@@ -5,8 +5,7 @@
 
 #pragma region Construction
 
-UHeistCheatManager::UHeistCheatManager(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer)
+UHeistCheatManager::UHeistCheatManager(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 }
 
@@ -53,19 +52,10 @@ void UHeistCheatManager::HeistGrayboxDump(const FString& MapId)
 #endif
 }
 
-void UHeistCheatManager::HeistObjectiveSet(
-	const FString& ArtifactId,
-	const FString& CaseId,
-	const FString& StateName,
-	const int32 UseLocalPlayerAsCarrier)
+void UHeistCheatManager::HeistObjectiveSet(const FString& ArtifactId, const FString& CaseId, const FString& StateName, const int32 UseLocalPlayerAsCarrier)
 {
 #if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugObjectiveSet(
-		GetOuterAPlayerController(),
-		FName(*ArtifactId),
-		FName(*CaseId),
-		StateName,
-		UseLocalPlayerAsCarrier != 0);
+	UHeistDebugFunctionLibrary::DebugObjectiveSet(GetOuterAPlayerController(), FName(*ArtifactId), FName(*CaseId), StateName, UseLocalPlayerAsCarrier != 0);
 #endif
 }
 
@@ -185,90 +175,77 @@ void UHeistCheatManager::HeistForgeryDump()
 void UHeistCheatManager::HeistForgeryInputDump()
 {
 #if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugForgeryInputDump(
-		GetOuterAPlayerController());
+	UHeistDebugFunctionLibrary::DebugForgeryInputDump(GetOuterAPlayerController());
 #endif
 }
 
 void UHeistCheatManager::HeistForgeryTemplateDump()
 {
 #if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugForgeryTemplateDump(
-		GetOuterAPlayerController());
+	UHeistDebugFunctionLibrary::DebugForgeryTemplateDump(GetOuterAPlayerController());
 #endif
 }
 
 void UHeistCheatManager::HeistForgeryStrokeDump()
 {
 #if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugForgeryStrokeDump(
-		GetOuterAPlayerController());
+	UHeistDebugFunctionLibrary::DebugForgeryStrokeDump(GetOuterAPlayerController());
 #endif
 }
 
 void UHeistCheatManager::HeistForgeryTransportDump()
 {
 #if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugForgeryTransportDump(
-		GetOuterAPlayerController());
+	UHeistDebugFunctionLibrary::DebugForgeryTransportDump(GetOuterAPlayerController());
 #endif
 }
 
 void UHeistCheatManager::HeistForgeryTransportTest(FString Scenario)
 {
 #if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugForgeryTransportTest(
-		GetOuterAPlayerController(),
-		Scenario);
+	UHeistDebugFunctionLibrary::DebugForgeryTransportTest(GetOuterAPlayerController(), Scenario);
 #endif
 }
 
 void UHeistCheatManager::HeistForgeryScoreDump()
 {
 #if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugForgeryScoreDump(
-		GetOuterAPlayerController());
+	UHeistDebugFunctionLibrary::DebugForgeryScoreDump(GetOuterAPlayerController());
 #endif
 }
 
 void UHeistCheatManager::HeistForgeryScoreTest()
 {
 #if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugForgeryScoreTest(
-		GetOuterAPlayerController());
+	UHeistDebugFunctionLibrary::DebugForgeryScoreTest(GetOuterAPlayerController());
 #endif
 }
 
 void UHeistCheatManager::HeistForgerySwapDump()
 {
 #if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugForgerySwapDump(
-		GetOuterAPlayerController());
+	UHeistDebugFunctionLibrary::DebugForgerySwapDump(GetOuterAPlayerController());
 #endif
 }
 
 void UHeistCheatManager::HeistForgeryVisualDump()
 {
 #if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugForgeryVisualDump(
-		GetOuterAPlayerController());
+	UHeistDebugFunctionLibrary::DebugForgeryVisualDump(GetOuterAPlayerController());
 #endif
 }
 
 void UHeistCheatManager::HeistForgeryPaintingDump()
 {
 #if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugForgeryPaintingDump(
-		GetOuterAPlayerController());
+	UHeistDebugFunctionLibrary::DebugForgeryPaintingDump(GetOuterAPlayerController());
 #endif
 }
 
 void UHeistCheatManager::HeistForgeryBegin(const float DurationSeconds)
 {
 #if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugForgeryBegin(
-		GetOuterAPlayerController(),
-		DurationSeconds);
+	UHeistDebugFunctionLibrary::DebugForgeryBegin(GetOuterAPlayerController(), DurationSeconds);
 #endif
 }
 
@@ -296,17 +273,14 @@ void UHeistCheatManager::HeistForgeryTimeout()
 void UHeistCheatManager::HeistForgeryRecoveryDump()
 {
 #if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugForgeryRecoveryDump(
-		GetOuterAPlayerController());
+	UHeistDebugFunctionLibrary::DebugForgeryRecoveryDump(GetOuterAPlayerController());
 #endif
 }
 
 void UHeistCheatManager::HeistForgeryRecoveryRace(FString Order)
 {
 #if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugForgeryRecoveryRace(
-		GetOuterAPlayerController(),
-		Order);
+	UHeistDebugFunctionLibrary::DebugForgeryRecoveryRace(GetOuterAPlayerController(), Order);
 #endif
 }
 
@@ -320,9 +294,7 @@ void UHeistCheatManager::HeistForgeryUIDump()
 void UHeistCheatManager::HeistForgeryUIPreview(FString State)
 {
 #if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugForgeryUIPreview(
-		GetOuterAPlayerController(),
-		State);
+	UHeistDebugFunctionLibrary::DebugForgeryUIPreview(GetOuterAPlayerController(), State);
 #endif
 }
 
@@ -333,9 +305,7 @@ void UHeistCheatManager::HeistForgeryUIPreview(FString State)
 void UHeistCheatManager::HeistFirstPersonScaleCheck(const float ForwardDistance)
 {
 #if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugFirstPersonScaleCheck(
-		GetOuterAPlayerController(),
-		ForwardDistance);
+	UHeistDebugFunctionLibrary::DebugFirstPersonScaleCheck(GetOuterAPlayerController(), ForwardDistance);
 #endif
 }
 
@@ -374,70 +344,56 @@ void UHeistCheatManager::HeistGuardDump()
 void UHeistCheatManager::HeistInspectionTargetSelect()
 {
 #if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugInspectionTargetSelect(
-		GetOuterAPlayerController());
+	UHeistDebugFunctionLibrary::DebugInspectionTargetSelect(GetOuterAPlayerController());
 #endif
 }
 
 void UHeistCheatManager::HeistInspectionTargetDump()
 {
 #if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugInspectionTargetDump(
-		GetOuterAPlayerController());
+	UHeistDebugFunctionLibrary::DebugInspectionTargetDump(GetOuterAPlayerController());
 #endif
 }
 
 void UHeistCheatManager::HeistInspectionBegin()
 {
 #if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugInspectionBegin(
-		GetOuterAPlayerController());
+	UHeistDebugFunctionLibrary::DebugInspectionBegin(GetOuterAPlayerController());
 #endif
 }
 
 void UHeistCheatManager::HeistInspectionStateDump()
 {
 #if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugInspectionStateDump(
-		GetOuterAPlayerController());
+	UHeistDebugFunctionLibrary::DebugInspectionStateDump(GetOuterAPlayerController());
 #endif
 }
 
-void UHeistCheatManager::HeistGuardState(
-	const FString& StateName,
-	const float DurationSeconds)
+void UHeistCheatManager::HeistGuardState(const FString& StateName, const float DurationSeconds)
 {
 #if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugGuardSetState(
-		GetOuterAPlayerController(),
-		StateName,
-		DurationSeconds);
+	UHeistDebugFunctionLibrary::DebugGuardSetState(GetOuterAPlayerController(), StateName, DurationSeconds);
 #endif
 }
 
 void UHeistCheatManager::HeistGuardSightCheck()
 {
 #if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugGuardSightCheck(
-		GetOuterAPlayerController());
+	UHeistDebugFunctionLibrary::DebugGuardSightCheck(GetOuterAPlayerController());
 #endif
 }
 
 void UHeistCheatManager::HeistGuardSightAuto(const int32 Enabled)
 {
 #if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugGuardAutomaticSight(
-		GetOuterAPlayerController(),
-		Enabled != 0);
+	UHeistDebugFunctionLibrary::DebugGuardAutomaticSight(GetOuterAPlayerController(), Enabled != 0);
 #endif
 }
 
 void UHeistCheatManager::HeistGuardNoise(const float Distance)
 {
 #if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugGuardNoise(
-		GetOuterAPlayerController(),
-		Distance);
+	UHeistDebugFunctionLibrary::DebugGuardNoise(GetOuterAPlayerController(), Distance);
 #endif
 }
 
@@ -714,17 +670,10 @@ void UHeistCheatManager::HeistResultRebuild()
 #endif
 }
 
-void UHeistCheatManager::HeistResultSeed(
-	const int32 Score,
-	const bool bEscaped,
-	const float EscapeTimeSeconds)
+void UHeistCheatManager::HeistResultSeed(const int32 Score, const bool bEscaped, const float EscapeTimeSeconds)
 {
 #if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugResultSeed(
-		GetOuterAPlayerController(),
-		Score,
-		bEscaped,
-		EscapeTimeSeconds);
+	UHeistDebugFunctionLibrary::DebugResultSeed(GetOuterAPlayerController(), Score, bEscaped, EscapeTimeSeconds);
 #endif
 }
 

@@ -34,11 +34,7 @@ struct PROJECT_MUSEUMHEIST_API FHeistInventoryItem
 
 	bool operator==(const FHeistInventoryItem& Other) const
 	{
-		return InstanceId == Other.InstanceId
-			&& ItemId == Other.ItemId
-			&& GridPosition == Other.GridPosition
-			&& Quantity == Other.Quantity
-			&& bRotated == Other.bRotated;
+		return InstanceId == Other.InstanceId && ItemId == Other.ItemId && GridPosition == Other.GridPosition && Quantity == Other.Quantity && bRotated == Other.bRotated;
 	}
 };
 
@@ -62,10 +58,7 @@ struct PROJECT_MUSEUMHEIST_API FHeistOriginalCarryEntry
 
 	bool IsValid() const
 	{
-		return !ArtifactId.IsNone()
-			&& FMath::IsFinite(Weight)
-			&& Weight >= 0.0f
-			&& SourceDisplayCase != nullptr;
+		return !ArtifactId.IsNone() && FMath::IsFinite(Weight) && Weight >= 0.0f && SourceDisplayCase != nullptr;
 	}
 };
 
@@ -120,12 +113,11 @@ struct PROJECT_MUSEUMHEIST_API FHeistReplicatedInventory : public FFastArraySeri
 	void SetOwnerComponent(UHeistInventoryComponent* InOwnerComponent);
 	void PostReplicatedReceive(const FFastArraySerializer::FPostReplicatedReceiveParameters& Parameters);
 
-private:
+  private:
 	TWeakObjectPtr<UHeistInventoryComponent> OwnerComponent;
 };
 
-template<>
-struct TStructOpsTypeTraits<FHeistReplicatedInventory> : public TStructOpsTypeTraitsBase2<FHeistReplicatedInventory>
+template <> struct TStructOpsTypeTraits<FHeistReplicatedInventory> : public TStructOpsTypeTraitsBase2<FHeistReplicatedInventory>
 {
 	enum
 	{

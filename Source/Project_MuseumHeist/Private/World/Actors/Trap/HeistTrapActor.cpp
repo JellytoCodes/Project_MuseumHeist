@@ -47,10 +47,7 @@ void AHeistTrapActor::BeginPlay()
 
 #pragma region Trap
 
-void AHeistTrapActor::InitializeTrap(
-	AHeistPlayerCharacter* InOwningCharacter,
-	const FName InSourceItemId,
-	const float InEffectDurationSeconds)
+void AHeistTrapActor::InitializeTrap(AHeistPlayerCharacter* InOwningCharacter, const FName InSourceItemId, const float InEffectDurationSeconds)
 {
 	checkf(HasAuthority(), TEXT("Trap initialization requires authority."));
 
@@ -82,13 +79,7 @@ float AHeistTrapActor::GetEffectDurationSeconds() const
 	return EffectDurationSeconds;
 }
 
-void AHeistTrapActor::HandleTrapOverlap(
-	UPrimitiveComponent*,
-	AActor* OtherActor,
-	UPrimitiveComponent*,
-	int32,
-	bool,
-	const FHitResult&)
+void AHeistTrapActor::HandleTrapOverlap(UPrimitiveComponent*, AActor* OtherActor, UPrimitiveComponent*, int32, bool, const FHitResult&)
 {
 	if (!HasAuthority() || bTriggered || !IsValid(OtherActor) || OtherActor == this || OtherActor == OwningCharacter)
 	{

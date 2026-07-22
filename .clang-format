@@ -1,0 +1,52 @@
+BasedOnStyle: Microsoft
+Language: Cpp
+
+# Unreal uses tabs for indentation and Allman braces. A wider column limit keeps
+# reflection macros and short call sites compact without turning genuinely long
+# expressions into unreadable single lines.
+UseTab: Always
+IndentWidth: 4
+TabWidth: 4
+ContinuationIndentWidth: 4
+ColumnLimit: 200
+BreakBeforeBraces: Allman
+
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: None
+AlignConsecutiveDeclarations: None
+AlignOperands: Align
+
+BinPackArguments: true
+BinPackParameters: true
+AllowAllArgumentsOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: true
+AllowShortBlocksOnASingleLine: Never
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+
+BreakConstructorInitializers: BeforeColon
+ConstructorInitializerIndentWidth: 4
+BreakStringLiterals: false
+ReflowComments: false
+FixNamespaceComments: false
+SkipMacroDefinitionBody: true
+PointerAlignment: Left
+ReferenceAlignment: Pointer
+SortIncludes: Never
+
+# Treat Unreal reflection/declaration helpers as complete statements so the
+# formatter does not merge them with the declaration that follows.
+StatementMacros:
+  - UPROPERTY
+  - UFUNCTION
+  - UCLASS
+  - USTRUCT
+  - UENUM
+  - UINTERFACE
+  - GENERATED_BODY
+  - GENERATED_UCLASS_BODY
+  - GENERATED_USTRUCT_BODY
+  - UE_LOG
+  - DOREPLIFETIME
+  - DOREPLIFETIME_CONDITION

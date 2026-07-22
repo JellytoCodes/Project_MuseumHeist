@@ -10,8 +10,7 @@
 #include "UI/DragDrop/HeistInventoryDragDropOperation.h"
 #include "UI/Widgets/HeistInventoryWidget.h"
 
-UHeistInventoryItemWidget::UHeistInventoryItemWidget(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer)
+UHeistInventoryItemWidget::UHeistInventoryItemWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 }
 
@@ -36,11 +35,7 @@ void UHeistInventoryItemWidget::NativeDestruct()
 	Super::NativeDestruct();
 }
 
-void UHeistInventoryItemWidget::SetupItem(
-	const FHeistInventoryItem& InConfirmedItem,
-	const FIntPoint& InPlacedSize,
-	UTexture2D* InIcon,
-	UHeistInventoryWidget* InInventoryWidget)
+void UHeistInventoryItemWidget::SetupItem(const FHeistInventoryItem& InConfirmedItem, const FIntPoint& InPlacedSize, UTexture2D* InIcon, UHeistInventoryWidget* InInventoryWidget)
 {
 	ConfirmedItem = InConfirmedItem;
 	PlacedSize = InPlacedSize;
@@ -59,13 +54,9 @@ int32 UHeistInventoryItemWidget::GetInstanceId() const
 	return ConfirmedItem.InstanceId;
 }
 
-FReply UHeistInventoryItemWidget::NativeOnMouseButtonDown(
-	const FGeometry& InGeometry,
-	const FPointerEvent& InMouseEvent)
+FReply UHeistInventoryItemWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
-	if (InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton
-		&& IsValid(InventoryWidget)
-		&& ConfirmedItem.InstanceId != INDEX_NONE)
+	if (InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton && IsValid(InventoryWidget) && ConfirmedItem.InstanceId != INDEX_NONE)
 	{
 		InventoryWidget->RequestRotateItem(ConfirmedItem.InstanceId);
 		return FReply::Handled();
@@ -73,19 +64,13 @@ FReply UHeistInventoryItemWidget::NativeOnMouseButtonDown(
 
 	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
 	{
-		return UWidgetBlueprintLibrary::DetectDragIfPressed(
-			InMouseEvent,
-			this,
-			EKeys::LeftMouseButton).NativeReply;
+		return UWidgetBlueprintLibrary::DetectDragIfPressed(InMouseEvent, this, EKeys::LeftMouseButton).NativeReply;
 	}
 
 	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
 }
 
-void UHeistInventoryItemWidget::NativeOnDragDetected(
-	const FGeometry& InGeometry,
-	const FPointerEvent& InMouseEvent,
-	UDragDropOperation*& OutOperation)
+void UHeistInventoryItemWidget::NativeOnDragDetected(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, UDragDropOperation*& OutOperation)
 {
 	Super::NativeOnDragDetected(InGeometry, InMouseEvent, OutOperation);
 
@@ -94,11 +79,8 @@ void UHeistInventoryItemWidget::NativeOnDragDetected(
 		return;
 	}
 
-	UHeistInventoryDragDropOperation* InventoryOperation =
-		NewObject<UHeistInventoryDragDropOperation>(this);
-	InventoryOperation->SetupDragOperation(
-		ConfirmedItem.InstanceId,
-		ConfirmedItem.GridPosition);
+	UHeistInventoryDragDropOperation* InventoryOperation = NewObject<UHeistInventoryDragDropOperation>(this);
+	InventoryOperation->SetupDragOperation(ConfirmedItem.InstanceId, ConfirmedItem.GridPosition);
 	InventoryOperation->Pivot = EDragPivot::CenterCenter;
 	OutOperation = InventoryOperation;
 }
@@ -112,22 +94,14 @@ void UHeistInventoryItemWidget::RefreshPresentation()
 
 	if (IsValid(InstanceIdText))
 	{
-		InstanceIdText->SetText(FText::Format(
-			NSLOCTEXT("HeistInventory", "ItemInstanceFormat", "#{0}"),
-			FText::AsNumber(ConfirmedItem.InstanceId)));
+		InstanceIdText->SetText(FText::Format(NSLOCTEXT("HeistInventory", "ItemInstanceFormat", "#{0}"), FText::AsNumber(ConfirmedItem.InstanceId)));
 	}
 
 	if (IsValid(ItemDetailsText))
 	{
-		ItemDetailsText->SetText(FText::Format(
-			NSLOCTEXT("HeistInventory", "ItemDetailsFormat", "{0}x{1}  Grid {2},{3}  {4}"),
-			FText::AsNumber(PlacedSize.X),
-			FText::AsNumber(PlacedSize.Y),
-			FText::AsNumber(ConfirmedItem.GridPosition.X),
-			FText::AsNumber(ConfirmedItem.GridPosition.Y),
-			ConfirmedItem.bRotated
-				? NSLOCTEXT("HeistInventory", "ItemRotated", "ROT")
-				: NSLOCTEXT("HeistInventory", "ItemNotRotated", "BASE")));
+		ItemDetailsText->SetText(FText::Format(NSLOCTEXT("HeistInventory", "ItemDetailsFormat", "{0}x{1}  Grid {2},{3}  {4}"), FText::AsNumber(PlacedSize.X), FText::AsNumber(PlacedSize.Y),
+											   FText::AsNumber(ConfirmedItem.GridPosition.X), FText::AsNumber(ConfirmedItem.GridPosition.Y),
+											   ConfirmedItem.bRotated ? NSLOCTEXT("HeistInventory", "ItemRotated", "ROT") : NSLOCTEXT("HeistInventory", "ItemNotRotated", "BASE")));
 	}
 
 	if (IsValid(ItemBackground))

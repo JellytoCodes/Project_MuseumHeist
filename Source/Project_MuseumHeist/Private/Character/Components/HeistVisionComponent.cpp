@@ -19,23 +19,18 @@ void UHeistVisionComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 void UHeistVisionComponent::UpdateFlashlightAimDirection(const FVector& InWorldDirection)
 {
 	const FVector NewAimDirection = InWorldDirection.GetSafeNormal();
-	if (NewAimDirection.IsNearlyZero()
-		|| FlashlightAimDirection.Equals(NewAimDirection, 0.001f))
+	if (NewAimDirection.IsNearlyZero() || FlashlightAimDirection.Equals(NewAimDirection, 0.001f))
 	{
 		return;
 	}
 
 	FlashlightAimDirection = NewAimDirection;
-	FlashlightAimDirectionChanged.Broadcast(
-		FlashlightAimDirection,
-		GetFlashlightAimYawDegrees());
+	FlashlightAimDirectionChanged.Broadcast(FlashlightAimDirection, GetFlashlightAimYawDegrees());
 }
 
 void UHeistVisionComponent::OnRep_FlashlightAimDirection()
 {
-	FlashlightAimDirectionChanged.Broadcast(
-		FlashlightAimDirection,
-		GetFlashlightAimYawDegrees());
+	FlashlightAimDirectionChanged.Broadcast(FlashlightAimDirection, GetFlashlightAimYawDegrees());
 }
 
 FVector UHeistVisionComponent::GetFlashlightAimDirection() const

@@ -86,15 +86,11 @@ EDataValidationResult FHeistForgeryTemplateRow::IsDataValid(FDataValidationConte
 	{
 		AddError(LOCTEXT("MissingReferenceImage", "ReferenceImage must reference a Texture2D."));
 	}
-	if (BackgroundFilterMode == EHeistForgeryBackgroundFilter::None
-		&& ReferenceMask.IsNull())
+	if (BackgroundFilterMode == EHeistForgeryBackgroundFilter::None && ReferenceMask.IsNull())
 	{
 		AddError(LOCTEXT("MissingReferenceMask", "ReferenceMask must reference a Texture2D when BackgroundFilterMode is None."));
 	}
-	if (!FMath::IsWithinInclusive(
-			BackgroundColorTolerance,
-			0.0f,
-			0.49f))
+	if (!FMath::IsWithinInclusive(BackgroundColorTolerance, 0.0f, 0.49f))
 	{
 		AddError(LOCTEXT("InvalidBackgroundColorTolerance", "BackgroundColorTolerance must be between 0.0 and 0.49."));
 	}
@@ -104,10 +100,7 @@ EDataValidationResult FHeistForgeryTemplateRow::IsDataValid(FDataValidationConte
 	}
 	for (const FLinearColor& PaletteColor : AllowedPalette)
 	{
-		if (!FMath::IsFinite(PaletteColor.R)
-			|| !FMath::IsFinite(PaletteColor.G)
-			|| !FMath::IsFinite(PaletteColor.B)
-			|| !FMath::IsFinite(PaletteColor.A))
+		if (!FMath::IsFinite(PaletteColor.R) || !FMath::IsFinite(PaletteColor.G) || !FMath::IsFinite(PaletteColor.B) || !FMath::IsFinite(PaletteColor.A))
 		{
 			AddError(LOCTEXT("InvalidAllowedPaletteColor", "AllowedPalette colors must contain finite RGBA values."));
 			break;
@@ -129,12 +122,8 @@ EDataValidationResult FHeistForgeryTemplateRow::IsDataValid(FDataValidationConte
 	{
 		AddError(LOCTEXT("InvalidBrushSize", "BrushSize must be between 0.001 and 0.25."));
 	}
-	if (!FMath::IsWithinInclusive(CoverageWeight, 0.0f, 1.0f)
-		|| !FMath::IsWithinInclusive(MajorShapeWeight, 0.0f, 1.0f)
-		|| !FMath::IsWithinInclusive(ExtraStrokePenaltyWeight, 0.0f, 1.0f)
-		|| !FMath::IsWithinInclusive(TimeoutPenalty, 0.0f, 1.0f)
-		|| !FMath::IsWithinInclusive(ShapeAccuracyWeight, 0.0f, 1.0f)
-		|| !FMath::IsWithinInclusive(ColorAccuracyWeight, 0.0f, 1.0f))
+	if (!FMath::IsWithinInclusive(CoverageWeight, 0.0f, 1.0f) || !FMath::IsWithinInclusive(MajorShapeWeight, 0.0f, 1.0f) || !FMath::IsWithinInclusive(ExtraStrokePenaltyWeight, 0.0f, 1.0f) ||
+		!FMath::IsWithinInclusive(TimeoutPenalty, 0.0f, 1.0f) || !FMath::IsWithinInclusive(ShapeAccuracyWeight, 0.0f, 1.0f) || !FMath::IsWithinInclusive(ColorAccuracyWeight, 0.0f, 1.0f))
 	{
 		AddError(LOCTEXT("InvalidForgeryWeights", "Forgery weights and penalties must be between 0.0 and 1.0."));
 	}

@@ -9,8 +9,7 @@
 
 #pragma region Construction
 
-UHeistRareLootAlertWidget::UHeistRareLootAlertWidget(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer)
+UHeistRareLootAlertWidget::UHeistRareLootAlertWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 }
 
@@ -58,9 +57,7 @@ void UHeistRareLootAlertWidget::SetupRareLootAlertWidget(UHeistHUDViewModel* InV
 
 	ViewModel = InViewModel;
 	ViewModel->GetRareLootPresentationChangedDelegate().RemoveAll(this);
-	ViewModel->GetRareLootPresentationChangedDelegate().AddUObject(
-		this,
-		&UHeistRareLootAlertWidget::RefreshRareLootPresentation);
+	ViewModel->GetRareLootPresentationChangedDelegate().AddUObject(this, &UHeistRareLootAlertWidget::RefreshRareLootPresentation);
 
 	RefreshRareLootPresentation();
 }
@@ -79,53 +76,33 @@ void UHeistRareLootAlertWidget::RefreshRareLootPresentation()
 
 	if (IsValid(IncomingWarningContainer))
 	{
-		IncomingWarningContainer->SetVisibility(
-			bShowIncomingWarning && bIncoming
-				? ESlateVisibility::HitTestInvisible
-				: ESlateVisibility::Collapsed);
+		IncomingWarningContainer->SetVisibility(bShowIncomingWarning && bIncoming ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	}
 
 	if (IsValid(DirectionMarkerContainer))
 	{
-		DirectionMarkerContainer->SetVisibility(
-			bShowDirectionMarker && bMarkerActive
-				? ESlateVisibility::HitTestInvisible
-				: ESlateVisibility::Collapsed);
+		DirectionMarkerContainer->SetVisibility(bShowDirectionMarker && bMarkerActive ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	}
 
 	if (IsValid(RareLootItemText))
 	{
-		RareLootItemText->SetText(
-			IsValid(ViewModel)
-				? FText::FromName(ViewModel->GetRareLootItemId())
-				: NSLOCTEXT("HeistRareLootAlert", "NoRareLootItem", "None"));
+		RareLootItemText->SetText(IsValid(ViewModel) ? FText::FromName(ViewModel->GetRareLootItemId()) : NSLOCTEXT("HeistRareLootAlert", "NoRareLootItem", "None"));
 	}
 
 	if (IsValid(RareLootStatusText))
 	{
-		RareLootStatusText->SetText(
-			bIncoming
-				? NSLOCTEXT("HeistRareLootAlert", "IncomingStatus", "RARE LOOT INCOMING")
-				: bMarkerActive
-					? NSLOCTEXT("HeistRareLootAlert", "MarkerStatus", "RARE LOOT MARKED")
-					: NSLOCTEXT("HeistRareLootAlert", "InactiveStatus", "RARE LOOT INACTIVE"));
+		RareLootStatusText->SetText(bIncoming		? NSLOCTEXT("HeistRareLootAlert", "IncomingStatus", "RARE LOOT INCOMING")
+									: bMarkerActive ? NSLOCTEXT("HeistRareLootAlert", "MarkerStatus", "RARE LOOT MARKED")
+													: NSLOCTEXT("HeistRareLootAlert", "InactiveStatus", "RARE LOOT INACTIVE"));
 	}
 
 	RefreshWarningCountdownText();
 	RefreshDirectionMarkerPresentation();
 
-	UE_LOG(
-		LogHeistUI,
-		Verbose,
-		TEXT("[%s] Rare Loot alert presentation refreshed: Incoming=%s MarkerActive=%s ShowIncoming=%s ShowMarker=%s EventIndex=%d ItemId=%s Visibility=%s"),
-		*GetNameSafe(this),
-		bIncoming ? TEXT("true") : TEXT("false"),
-		bMarkerActive ? TEXT("true") : TEXT("false"),
-		bShowIncomingWarning ? TEXT("true") : TEXT("false"),
-		bShowDirectionMarker ? TEXT("true") : TEXT("false"),
-		IsValid(ViewModel) ? ViewModel->GetRareLootEventIndex() : 0,
-		IsValid(ViewModel) ? *ViewModel->GetRareLootItemId().ToString() : TEXT("None"),
-		*UEnum::GetValueAsString(GetVisibility()));
+	UE_LOG(LogHeistUI, Verbose, TEXT("[%s] Rare Loot alert presentation refreshed: Incoming=%s MarkerActive=%s ShowIncoming=%s ShowMarker=%s EventIndex=%d ItemId=%s Visibility=%s"),
+		   *GetNameSafe(this), bIncoming ? TEXT("true") : TEXT("false"), bMarkerActive ? TEXT("true") : TEXT("false"), bShowIncomingWarning ? TEXT("true") : TEXT("false"),
+		   bShowDirectionMarker ? TEXT("true") : TEXT("false"), IsValid(ViewModel) ? ViewModel->GetRareLootEventIndex() : 0,
+		   IsValid(ViewModel) ? *ViewModel->GetRareLootItemId().ToString() : TEXT("None"), *UEnum::GetValueAsString(GetVisibility()));
 }
 
 void UHeistRareLootAlertWidget::RefreshWarningCountdownText()
@@ -141,10 +118,7 @@ void UHeistRareLootAlertWidget::RefreshWarningCountdownText()
 		return;
 	}
 
-	RareLootCountdownText->SetText(
-		FText::Format(
-			NSLOCTEXT("HeistRareLootAlert", "CountdownFormat", "SPAWNS IN {0}s"),
-			FText::AsNumber(GetRareLootWarningRemainingSeconds())));
+	RareLootCountdownText->SetText(FText::Format(NSLOCTEXT("HeistRareLootAlert", "CountdownFormat", "SPAWNS IN {0}s"), FText::AsNumber(GetRareLootWarningRemainingSeconds())));
 }
 
 void UHeistRareLootAlertWidget::RefreshDirectionMarkerPresentation()
@@ -175,10 +149,7 @@ void UHeistRareLootAlertWidget::RefreshDirectionMarkerPresentation()
 
 	if (IsValid(DirectionMarkerText))
 	{
-		DirectionMarkerText->SetText(
-			FText::Format(
-				NSLOCTEXT("HeistRareLootAlert", "DirectionFormat", "DIRECTION {0} DEG"),
-				FText::AsNumber(FMath::RoundToInt(AngleDegrees))));
+		DirectionMarkerText->SetText(FText::Format(NSLOCTEXT("HeistRareLootAlert", "DirectionFormat", "DIRECTION {0} DEG"), FText::AsNumber(FMath::RoundToInt(AngleDegrees))));
 	}
 }
 
@@ -191,9 +162,7 @@ float UHeistRareLootAlertWidget::GetRareLootWarningRemainingSeconds() const
 
 	const UWorld* World = GetWorld();
 	const AGameStateBase* GameState = IsValid(World) ? World->GetGameState() : nullptr;
-	const float ServerTimeSeconds = IsValid(GameState)
-		? GameState->GetServerWorldTimeSeconds()
-		: (IsValid(World) ? World->GetTimeSeconds() : 0.0f);
+	const float ServerTimeSeconds = IsValid(GameState) ? GameState->GetServerWorldTimeSeconds() : (IsValid(World) ? World->GetTimeSeconds() : 0.0f);
 
 	return FMath::Max(0.0f, ViewModel->GetRareLootSpawnServerTime() - ServerTimeSeconds);
 }

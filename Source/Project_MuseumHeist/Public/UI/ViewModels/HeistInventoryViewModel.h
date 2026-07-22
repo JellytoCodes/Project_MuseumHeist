@@ -15,26 +15,26 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryViewModel : public UMVVMViewModelBa
 
 #pragma region Construction
 
-public:
+  public:
 	UHeistInventoryViewModel(const FObjectInitializer& ObjectInitializer);
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void BeginDestroy() override;
 
 #pragma endregion
 
 #pragma region Setup
 
-public:
+  public:
 	void SetupViewModel(class UHeistInventoryComponent* InInventoryComponent);
 	void RefreshConfirmedSnapshot();
 	FHeistInventorySnapshotChanged& GetSnapshotChangedDelegate();
 
-private:
+  private:
 	UPROPERTY(Transient)
 	TObjectPtr<UHeistInventoryComponent> InventoryComponent;
 
@@ -44,13 +44,13 @@ private:
 
 #pragma region Snapshot
 
-public:
+  public:
 	const TArray<FHeistInventoryItem>& GetItems() const;
 	bool IsInventoryOpen() const;
 	int32 GetGridColumnCount() const;
 	int32 GetGridRowCount() const;
 
-private:
+  private:
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Inventory", meta = (AllowPrivateAccess = "true"))
 	TArray<FHeistInventoryItem> Items;
 

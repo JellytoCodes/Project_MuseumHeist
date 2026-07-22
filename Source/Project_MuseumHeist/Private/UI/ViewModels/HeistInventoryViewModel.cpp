@@ -2,8 +2,7 @@
 
 #include "Character/Components/HeistInventoryComponent.h"
 
-UHeistInventoryViewModel::UHeistInventoryViewModel(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer)
+UHeistInventoryViewModel::UHeistInventoryViewModel(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 }
 
@@ -28,9 +27,7 @@ void UHeistInventoryViewModel::SetupViewModel(UHeistInventoryComponent* InInvent
 	if (IsValid(InventoryComponent))
 	{
 		InventoryComponent->GetInventoryChangedDelegate().RemoveAll(this);
-		InventoryComponent->GetInventoryChangedDelegate().AddUObject(
-			this,
-			&UHeistInventoryViewModel::RefreshConfirmedSnapshot);
+		InventoryComponent->GetInventoryChangedDelegate().AddUObject(this, &UHeistInventoryViewModel::RefreshConfirmedSnapshot);
 	}
 
 	RefreshConfirmedSnapshot();
@@ -41,8 +38,7 @@ void UHeistInventoryViewModel::RefreshConfirmedSnapshot()
 	TArray<FHeistInventoryItem> ConfirmedItems;
 	if (IsValid(InventoryComponent))
 	{
-		const TArray<FHeistInventoryFastArrayItem>& ReplicatedItems =
-			InventoryComponent->GetReplicatedInventory().Items;
+		const TArray<FHeistInventoryFastArrayItem>& ReplicatedItems = InventoryComponent->GetReplicatedInventory().Items;
 		ConfirmedItems.Reserve(ReplicatedItems.Num());
 		for (const FHeistInventoryFastArrayItem& ReplicatedItem : ReplicatedItems)
 		{
@@ -51,9 +47,7 @@ void UHeistInventoryViewModel::RefreshConfirmedSnapshot()
 	}
 
 	UE_MVVM_SET_PROPERTY_VALUE(Items, ConfirmedItems);
-	UE_MVVM_SET_PROPERTY_VALUE(
-		bInventoryOpen,
-		IsValid(InventoryComponent) && InventoryComponent->IsInventoryOpen());
+	UE_MVVM_SET_PROPERTY_VALUE(bInventoryOpen, IsValid(InventoryComponent) && InventoryComponent->IsInventoryOpen());
 
 	GridColumnCount = UHeistInventoryComponent::GridColumnCount;
 	GridRowCount = UHeistInventoryComponent::GridRowCount;

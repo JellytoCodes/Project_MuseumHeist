@@ -49,15 +49,9 @@ struct PROJECT_MUSEUMHEIST_API FHeistGuardStateTreeTask : public FStateTreeAIAct
 		return FInstanceDataType::StaticStruct();
 	}
 
-	virtual EStateTreeRunStatus EnterState(
-		FStateTreeExecutionContext& Context,
-		const FStateTreeTransitionResult& Transition) const override;
-	virtual EStateTreeRunStatus Tick(
-		FStateTreeExecutionContext& Context,
-		float DeltaTime) const override;
-	virtual void ExitState(
-		FStateTreeExecutionContext& Context,
-		const FStateTreeTransitionResult& Transition) const override;
+	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
+	virtual EStateTreeRunStatus Tick(FStateTreeExecutionContext& Context, float DeltaTime) const override;
+	virtual void ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
 
 	UPROPERTY(EditAnywhere, Category = "State")
 	EHeistGuardState GuardState = EHeistGuardState::Patrol;

@@ -10,12 +10,12 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 {
 	GENERATED_BODY()
 
-public:
+  public:
 	UHeistCheatManager(const FObjectInitializer& ObjectInitializer);
 
 #pragma region FirstPersonScaleDebug
 
-public:
+  public:
 	UFUNCTION(Exec)
 	void HeistFirstPersonScaleCheck(float ForwardDistance = 200.0f);
 
@@ -23,7 +23,7 @@ public:
 
 #pragma region HUDDebug
 
-public:
+  public:
 	UFUNCTION(Exec)
 	void HeistHUDDump();
 
@@ -31,7 +31,7 @@ public:
 
 #pragma region InventoryDebug
 
-public:
+  public:
 	UFUNCTION(Exec)
 	void HeistInvHelp();
 
@@ -66,7 +66,7 @@ public:
 
 #pragma region StatusDebug
 
-public:
+  public:
 	UFUNCTION(Exec)
 	void HeistStatusHelp();
 
@@ -77,7 +77,7 @@ public:
 
 #pragma region FeedbackDebug
 
-public:
+  public:
 	UFUNCTION(Exec)
 	void HeistFeedbackHelp();
 
@@ -94,7 +94,7 @@ public:
 
 #pragma region ThrowableDebug
 
-public:
+  public:
 	UFUNCTION(Exec)
 	void HeistThrowHelp();
 
@@ -108,7 +108,7 @@ public:
 
 #pragma region SoundPingDebug
 
-public:
+  public:
 	UFUNCTION(Exec)
 	void HeistSoundPingHelp();
 
@@ -125,7 +125,7 @@ public:
 
 #pragma region LobbyDebug
 
-public:
+  public:
 	UFUNCTION(Exec)
 	void HeistLobbyHelp();
 
@@ -142,7 +142,7 @@ public:
 
 #pragma region ResultDebug
 
-public:
+  public:
 	UFUNCTION(Exec)
 	void HeistResultHelp();
 
@@ -165,7 +165,7 @@ public:
 
 #pragma region ObjectiveDebug
 
-public:
+  public:
 	UFUNCTION(Exec)
 	void HeistObjectiveHelp();
 
@@ -179,17 +179,13 @@ public:
 	void HeistGrayboxDump(const FString& MapId);
 
 	UFUNCTION(Exec)
-	void HeistObjectiveSet(
-		const FString& ArtifactId,
-		const FString& CaseId,
-		const FString& StateName,
-		int32 UseLocalPlayerAsCarrier = 0);
+	void HeistObjectiveSet(const FString& ArtifactId, const FString& CaseId, const FString& StateName, int32 UseLocalPlayerAsCarrier = 0);
 
 #pragma endregion
 
 #pragma region DisplayCaseDebug
 
-public:
+  public:
 	UFUNCTION(Exec)
 	void HeistCaseHelp();
 
@@ -233,7 +229,7 @@ public:
 
 #pragma region ForgeryDebug
 
-public:
+  public:
 	UFUNCTION(Exec)
 	void HeistForgeryHelp();
 
@@ -298,7 +294,7 @@ public:
 
 #pragma region GuardDebug
 
-public:
+  public:
 	UFUNCTION(Exec)
 	void HeistGuardHelp();
 

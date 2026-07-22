@@ -81,14 +81,9 @@ struct PROJECT_MUSEUMHEIST_API FHeistForgeryTemplateRow : public FTableRowBase
 	 * from ReferenceImage by excluding the selected background color.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery")
-	EHeistForgeryBackgroundFilter BackgroundFilterMode =
-		EHeistForgeryBackgroundFilter::None;
+	EHeistForgeryBackgroundFilter BackgroundFilterMode = EHeistForgeryBackgroundFilter::None;
 
-	UPROPERTY(
-		EditAnywhere,
-		BlueprintReadOnly,
-		Category = "Heist|Forgery",
-		meta = (ClampMin = "0.0", ClampMax = "0.49"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery", meta = (ClampMin = "0.0", ClampMax = "0.49"))
 	float BackgroundColorTolerance = 0.08f;
 
 	/**
@@ -96,12 +91,8 @@ struct PROJECT_MUSEUMHEIST_API FHeistForgeryTemplateRow : public FTableRowBase
 	 * quantizes ReferenceImage pixels to these indices before scoring.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery", meta = (EditFixedOrder))
-	TArray<FLinearColor> AllowedPalette = {
-		FLinearColor(0.04f, 0.03f, 0.02f, 1.0f),
-		FLinearColor(0.28f, 0.16f, 0.10f, 1.0f),
-		FLinearColor(0.62f, 0.42f, 0.24f, 1.0f),
-		FLinearColor(0.90f, 0.84f, 0.68f, 1.0f)
-	};
+	TArray<FLinearColor> AllowedPalette = {FLinearColor(0.04f, 0.03f, 0.02f, 1.0f), FLinearColor(0.28f, 0.16f, 0.10f, 1.0f), FLinearColor(0.62f, 0.42f, 0.24f, 1.0f),
+										   FLinearColor(0.90f, 0.84f, 0.68f, 1.0f)};
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery", meta = (ClampMin = "0.0", Units = "s"))
 	float ObservationDuration = 1.5f;

@@ -12,34 +12,29 @@ class PROJECT_MUSEUMHEIST_API UHeistPopupWidgetPool : public UObject
 
 #pragma region Construction
 
-public:
+  public:
 	UHeistPopupWidgetPool(const FObjectInitializer& ObjectInitializer);
-
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-public:
-	void SetupPool(
-		class AHeistPlayerController* InPlayerController,
-		class UPanelWidget* InPopupLayer,
-		TSubclassOf<class UHeistUserWidgetBase> InPopupWidgetClass,
-		int32 InCapacity);
+  public:
+	void SetupPool(class AHeistPlayerController* InPlayerController, class UPanelWidget* InPopupLayer, TSubclassOf<class UHeistUserWidgetBase> InPopupWidgetClass, int32 InCapacity);
 	void ShutdownPool();
 
 #pragma endregion
 
 #pragma region Debug
 
-public:
+  public:
 	void DebugDumpState() const;
 
 #pragma endregion
 
 #pragma region Pool
 
-private:
+  private:
 	struct FActivePopup
 	{
 		UHeistUserWidgetBase* Widget = nullptr;

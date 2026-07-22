@@ -23,47 +23,30 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 
 #pragma region Construction
 
-public:
+  public:
 	UHeistForgeryWidget(const FObjectInitializer& ObjectInitializer);
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
-	virtual void NativeTick(
-		const FGeometry& MyGeometry,
-		float InDeltaTime) override;
-	virtual int32 NativePaint(
-		const FPaintArgs& Args,
-		const FGeometry& AllottedGeometry,
-		const FSlateRect& MyCullingRect,
-		FSlateWindowElementList& OutDrawElements,
-		int32 LayerId,
-		const FWidgetStyle& InWidgetStyle,
-		bool bParentEnabled) const override;
-	virtual FReply NativeOnMouseButtonDown(
-		const FGeometry& InGeometry,
-		const FPointerEvent& InMouseEvent) override;
-	virtual FReply NativeOnMouseButtonUp(
-		const FGeometry& InGeometry,
-		const FPointerEvent& InMouseEvent) override;
-	virtual FReply NativeOnMouseMove(
-		const FGeometry& InGeometry,
-		const FPointerEvent& InMouseEvent) override;
-	virtual FReply NativeOnKeyDown(
-		const FGeometry& InGeometry,
-		const FKeyEvent& InKeyEvent) override;
-	virtual void NativeOnMouseCaptureLost(
-		const FCaptureLostEvent& CaptureLostEvent) override;
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+	virtual int32 NativePaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry, const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, int32 LayerId,
+							  const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const override;
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnMouseMove(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
+	virtual void NativeOnMouseCaptureLost(const FCaptureLostEvent& CaptureLostEvent) override;
 
 #pragma endregion
 
 #pragma region Setup
 
-public:
+  public:
 	void SetupForgeryWidget(class UHeistForgeryViewModel* InForgeryViewModel);
 	bool IsOwnerOnlyContractSatisfied() const;
 	bool IsWidgetPresentationVisible() const;
@@ -86,62 +69,35 @@ public:
 	bool SelectPaletteIndex(int32 PaletteIndex);
 	bool RequestSubmitCollectedStrokes();
 
-private:
+  private:
 	void RefreshForgeryPresentation();
 	void ApplyStateVisibility(UWidget* TargetWidget, bool bVisible) const;
 
-	UPROPERTY(
-		Transient,
-		BlueprintReadOnly,
-		Category = "Heist|Forgery",
-		meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Heist|Forgery", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistForgeryViewModel> ForgeryViewModel;
 
-protected:
-	UFUNCTION(
-		BlueprintImplementableEvent,
-		Category = "Heist|Forgery",
-		meta = (DisplayName = "Forgery Sources Ready"))
+  protected:
+	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|Forgery", meta = (DisplayName = "Forgery Sources Ready"))
 	void BP_OnForgerySourcesReady();
 
-	UFUNCTION(
-		BlueprintImplementableEvent,
-		Category = "Heist|Forgery",
-		meta = (DisplayName = "Refresh Forgery Presentation"))
-	void BP_RefreshForgeryPresentation(
-		bool bObservation,
-		bool bDrawing,
-		bool bValidation,
-		bool bResult,
-		float StateEndServerTime,
-		float ResultScore);
+	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|Forgery", meta = (DisplayName = "Refresh Forgery Presentation"))
+	void BP_RefreshForgeryPresentation(bool bObservation, bool bDrawing, bool bValidation, bool bResult, float StateEndServerTime, float ResultScore);
 
-	UFUNCTION(
-		BlueprintImplementableEvent,
-		Category = "Heist|Forgery|Palette",
-		meta = (DisplayName = "Refresh Forgery Palette"))
-	void BP_RefreshForgeryPalette(
-		const TArray<FLinearColor>& AllowedPalette,
-		int32 InActivePaletteIndex);
+	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|Forgery|Palette", meta = (DisplayName = "Refresh Forgery Palette"))
+	void BP_RefreshForgeryPalette(const TArray<FLinearColor>& AllowedPalette, int32 InActivePaletteIndex);
 
 #pragma endregion
 
 #pragma region DrawingCanvas
 
-private:
+  private:
 	bool IsDrawingInputEnabled() const;
-	bool TryResolveNormalizedDrawingPoint(
-		const FPointerEvent& PointerEvent,
-		FVector2D& OutNormalizedPoint) const;
+	bool TryResolveNormalizedDrawingPoint(const FPointerEvent& PointerEvent, FVector2D& OutNormalizedPoint) const;
 	bool BeginLocalStroke(const FVector2D& NormalizedPoint);
 	bool AppendLocalStrokePoint(const FVector2D& NormalizedPoint);
 	bool CompactLocalStrokesForPointBudget();
 	bool EraseLocalStrokeSegments(const FVector2D& NormalizedPoint);
-	bool BuildDrawableStrokePayload(
-		TArray<FVector2D>& OutNormalizedPoints,
-		TArray<int32>& OutStrokePointCounts,
-		TArray<uint8>& OutStrokePaletteIndices,
-		int32& OutIgnoredShortStrokeCount) const;
+	bool BuildDrawableStrokePayload(TArray<FVector2D>& OutNormalizedPoints, TArray<int32>& OutStrokePointCounts, TArray<uint8>& OutStrokePaletteIndices, int32& OutIgnoredShortStrokeCount) const;
 	void FinishPointerInteraction();
 	void ResetLocalStrokePreview();
 	void RefreshDrawingFeedback();
@@ -150,10 +106,7 @@ private:
 	void BindPaletteButtons();
 	void RefreshPaletteButtons();
 	float GetNormalizedEraseRadius() const;
-	static float GetPointToSegmentDistanceSquared(
-		const FVector2D& Point,
-		const FVector2D& SegmentStart,
-		const FVector2D& SegmentEnd);
+	static float GetPointToSegmentDistanceSquared(const FVector2D& Point, const FVector2D& SegmentStart, const FVector2D& SegmentEnd);
 
 	TArray<FHeistLocalForgeryStroke> LocalStrokes;
 	int32 ActiveStrokeIndex = INDEX_NONE;
@@ -196,7 +149,7 @@ private:
 
 #pragma region Presentation
 
-private:
+  private:
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UWidget> ObservationContainer;
 

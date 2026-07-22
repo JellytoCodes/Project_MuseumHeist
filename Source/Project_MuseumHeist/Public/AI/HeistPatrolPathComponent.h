@@ -12,7 +12,7 @@ class PROJECT_MUSEUMHEIST_API UHeistPatrolPathComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
-public:
+  public:
 	UHeistPatrolPathComponent();
 
 	bool ResolvePatrolPath();
@@ -24,7 +24,7 @@ public:
 	float GetAcceptanceRadius() const;
 	float GetWaypointWaitDuration() const;
 
-private:
+  private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|AI|Patrol", meta = (AllowPrivateAccess = "true"))
 	FName PatrolRouteId = FName(TEXT("Default"));
 

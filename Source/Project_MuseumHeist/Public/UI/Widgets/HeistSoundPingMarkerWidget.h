@@ -16,21 +16,18 @@ class PROJECT_MUSEUMHEIST_API UHeistSoundPingMarkerWidget : public UHeistUserWid
 
 #pragma region Construction
 
-public:
+  public:
 	UHeistSoundPingMarkerWidget(const FObjectInitializer& ObjectInitializer);
 
 #pragma endregion
 
 #pragma region Presentation
 
-public:
-	void ShowSoundPingMarker(
-		const FHeistSoundPingEvent& SoundPingEvent,
-		const FVector2D& ScreenDirection,
-		const FVector2D& ScreenEdgeTranslation);
+  public:
+	void ShowSoundPingMarker(const FHeistSoundPingEvent& SoundPingEvent, const FVector2D& ScreenDirection, const FVector2D& ScreenEdgeTranslation);
 	void ReleaseSoundPingMarker();
 
-private:
+  private:
 	static FText GetPingTypeText(const FHeistSoundPingEvent& SoundPingEvent);
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))

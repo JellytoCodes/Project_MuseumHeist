@@ -10,8 +10,7 @@
 
 #pragma region Construction
 
-UHeistQuickSlotWidget::UHeistQuickSlotWidget(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer)
+UHeistQuickSlotWidget::UHeistQuickSlotWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 }
 
@@ -40,40 +39,26 @@ void UHeistQuickSlotWidget::NativeDestruct()
 	Super::NativeDestruct();
 }
 
-bool UHeistQuickSlotWidget::NativeOnDragOver(
-	const FGeometry& InGeometry,
-	const FDragDropEvent& InDragDropEvent,
-	UDragDropOperation* InOperation)
+bool UHeistQuickSlotWidget::NativeOnDragOver(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
 {
-	const bool bCanAssign = IsValid(Cast<UHeistInventoryDragDropOperation>(InOperation))
-		&& ConfirmedPresentation.SlotType != EHeistQuickSlotType::None;
+	const bool bCanAssign = IsValid(Cast<UHeistInventoryDragDropOperation>(InOperation)) && ConfirmedPresentation.SlotType != EHeistQuickSlotType::None;
 	SetDropPreview(bCanAssign);
 	return bCanAssign || Super::NativeOnDragOver(InGeometry, InDragDropEvent, InOperation);
 }
 
-void UHeistQuickSlotWidget::NativeOnDragLeave(
-	const FDragDropEvent& InDragDropEvent,
-	UDragDropOperation* InOperation)
+void UHeistQuickSlotWidget::NativeOnDragLeave(const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
 {
 	SetDropPreview(false);
 	Super::NativeOnDragLeave(InDragDropEvent, InOperation);
 }
 
-bool UHeistQuickSlotWidget::NativeOnDrop(
-	const FGeometry& InGeometry,
-	const FDragDropEvent& InDragDropEvent,
-	UDragDropOperation* InOperation)
+bool UHeistQuickSlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
 {
-	const UHeistInventoryDragDropOperation* InventoryOperation =
-		Cast<UHeistInventoryDragDropOperation>(InOperation);
-	const bool bHandled = IsValid(InventoryOperation)
-		&& IsValid(InventoryWidget)
-		&& ConfirmedPresentation.SlotType != EHeistQuickSlotType::None;
+	const UHeistInventoryDragDropOperation* InventoryOperation = Cast<UHeistInventoryDragDropOperation>(InOperation);
+	const bool bHandled = IsValid(InventoryOperation) && IsValid(InventoryWidget) && ConfirmedPresentation.SlotType != EHeistQuickSlotType::None;
 	if (bHandled)
 	{
-		InventoryWidget->RequestAssignQuickSlot(
-			ConfirmedPresentation.SlotType,
-			InventoryOperation->InstanceId);
+		InventoryWidget->RequestAssignQuickSlot(ConfirmedPresentation.SlotType, InventoryOperation->InstanceId);
 	}
 
 	SetDropPreview(false);
@@ -84,10 +69,7 @@ bool UHeistQuickSlotWidget::NativeOnDrop(
 
 #pragma region Presentation
 
-void UHeistQuickSlotWidget::SetupQuickSlot(
-	const FHeistQuickSlotPresentation& InConfirmedPresentation,
-	UTexture2D* InIcon,
-	UHeistInventoryWidget* InInventoryWidget)
+void UHeistQuickSlotWidget::SetupQuickSlot(const FHeistQuickSlotPresentation& InConfirmedPresentation, UTexture2D* InIcon, UHeistInventoryWidget* InInventoryWidget)
 {
 	ConfirmedPresentation = InConfirmedPresentation;
 	InventoryWidget = InInventoryWidget;
@@ -112,27 +94,16 @@ void UHeistQuickSlotWidget::RefreshPresentation()
 	}
 	if (IsValid(ItemIdText))
 	{
-		ItemIdText->SetText(
-			ConfirmedPresentation.bAssigned
-				? FText::FromName(ConfirmedPresentation.ItemId)
-				: NSLOCTEXT("HeistQuickSlot", "EmptyItem", "EMPTY"));
+		ItemIdText->SetText(ConfirmedPresentation.bAssigned ? FText::FromName(ConfirmedPresentation.ItemId) : NSLOCTEXT("HeistQuickSlot", "EmptyItem", "EMPTY"));
 	}
 	if (IsValid(CountText))
 	{
-		CountText->SetText(FText::Format(
-			NSLOCTEXT("HeistQuickSlot", "CountFormat", "x{0}"),
-			FText::AsNumber(ConfirmedPresentation.Quantity)));
-		CountText->SetVisibility(
-			ConfirmedPresentation.bAssigned
-				? ESlateVisibility::HitTestInvisible
-				: ESlateVisibility::Collapsed);
+		CountText->SetText(FText::Format(NSLOCTEXT("HeistQuickSlot", "CountFormat", "x{0}"), FText::AsNumber(ConfirmedPresentation.Quantity)));
+		CountText->SetVisibility(ConfirmedPresentation.bAssigned ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	}
 	if (IsValid(AssignmentStateText))
 	{
-		AssignmentStateText->SetText(
-			ConfirmedPresentation.bAssigned
-				? NSLOCTEXT("HeistQuickSlot", "Assigned", "ASSIGNED")
-				: NSLOCTEXT("HeistQuickSlot", "Empty", "DROP ITEM"));
+		AssignmentStateText->SetText(ConfirmedPresentation.bAssigned ? NSLOCTEXT("HeistQuickSlot", "Assigned", "ASSIGNED") : NSLOCTEXT("HeistQuickSlot", "Empty", "DROP ITEM"));
 	}
 	if (IsValid(ClearButton))
 	{
@@ -140,10 +111,7 @@ void UHeistQuickSlotWidget::RefreshPresentation()
 	}
 	if (IsValid(SlotBackground))
 	{
-		SlotBackground->SetBrushColor(
-			ConfirmedPresentation.bAssigned
-				? FLinearColor(0.08f, 0.24f, 0.32f, 0.96f)
-				: FLinearColor(0.05f, 0.07f, 0.09f, 0.88f));
+		SlotBackground->SetBrushColor(ConfirmedPresentation.bAssigned ? FLinearColor(0.08f, 0.24f, 0.32f, 0.96f) : FLinearColor(0.05f, 0.07f, 0.09f, 0.88f));
 	}
 }
 
@@ -151,20 +119,14 @@ void UHeistQuickSlotWidget::SetDropPreview(const bool bInDropPreview)
 {
 	if (IsValid(SlotBackground))
 	{
-		SlotBackground->SetBrushColor(
-			bInDropPreview
-				? FLinearColor(0.15f, 0.70f, 0.78f, 1.0f)
-				: (ConfirmedPresentation.bAssigned
-					? FLinearColor(0.08f, 0.24f, 0.32f, 0.96f)
-					: FLinearColor(0.05f, 0.07f, 0.09f, 0.88f)));
+		SlotBackground->SetBrushColor(bInDropPreview ? FLinearColor(0.15f, 0.70f, 0.78f, 1.0f)
+													 : (ConfirmedPresentation.bAssigned ? FLinearColor(0.08f, 0.24f, 0.32f, 0.96f) : FLinearColor(0.05f, 0.07f, 0.09f, 0.88f)));
 	}
 }
 
 void UHeistQuickSlotWidget::HandleClearButtonClicked()
 {
-	if (IsValid(InventoryWidget)
-		&& ConfirmedPresentation.bAssigned
-		&& ConfirmedPresentation.SlotType != EHeistQuickSlotType::None)
+	if (IsValid(InventoryWidget) && ConfirmedPresentation.bAssigned && ConfirmedPresentation.SlotType != EHeistQuickSlotType::None)
 	{
 		InventoryWidget->RequestClearQuickSlot(ConfirmedPresentation.SlotType);
 	}

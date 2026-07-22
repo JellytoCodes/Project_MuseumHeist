@@ -17,21 +17,21 @@ class PROJECT_MUSEUMHEIST_API UHeistInteractionComponent : public UActorComponen
 
 #pragma region Construction
 
-public:
+  public:
 	UHeistInteractionComponent();
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void BeginPlay() override;
 
 #pragma endregion
 
 #pragma region Interaction
 
-public:
+  public:
 	bool RefreshInteractionTarget(bool bForceRefresh = false);
 	AActor* GetCurrentInteractionTarget() const;
 	bool HasValidInteractionTarget() const;
@@ -39,7 +39,7 @@ public:
 	bool IsActorWithinInteractionRange(const AActor* TargetActor) const;
 	FHeistInteractionTargetChanged& GetInteractionTargetChangedDelegate();
 
-private:
+  private:
 	bool CanOwnerInteract() const;
 	bool ResolveCenterScreenTrace(FVector& OutTraceStart, FVector& OutTraceEnd) const;
 	void ClearInteractionTarget(const TCHAR* Reason);

@@ -16,8 +16,7 @@ FName AHeistSculptureDisplayCaseActor::GetTargetArtifactId() const
 	return TargetArtifactId;
 }
 
-bool AHeistSculptureDisplayCaseActor::CanInteract(
-	const AActor* /*Interactor*/) const
+bool AHeistSculptureDisplayCaseActor::CanInteract(const AActor* /*Interactor*/) const
 {
 	// Sculpture assembly is explicitly deferred. Keeping this false prevents
 	// the painting observation/forgery flow from reaching sculpture exhibits.

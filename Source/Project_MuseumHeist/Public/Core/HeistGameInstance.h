@@ -10,6 +10,6 @@ class PROJECT_MUSEUMHEIST_API UHeistGameInstance : public UGameInstance
 {
 	GENERATED_BODY()
 
-public:
+  public:
 	UHeistGameInstance();
 };

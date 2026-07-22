@@ -9,19 +9,10 @@ namespace
 #if !UE_BUILD_SHIPPING
 void LogSoundPingEvent(const TCHAR* Phase, const FHeistSoundPingEvent& SoundPingEvent)
 {
-	const FString Message = FString::Printf(
-		TEXT("Sound ping %s: SequenceId=%d Type=%d Tag=%s Location=(%.1f,%.1f,%.1f) Radius=%.1f Duration=%.2f AffectsGuards=%s ServerTime=%.2f"),
-		Phase,
-		SoundPingEvent.SequenceId,
-		static_cast<int32>(SoundPingEvent.PingType),
-		*SoundPingEvent.SoundPingTag.ToString(),
-		SoundPingEvent.WorldLocation.X,
-		SoundPingEvent.WorldLocation.Y,
-		SoundPingEvent.WorldLocation.Z,
-		SoundPingEvent.Radius,
-		SoundPingEvent.Duration,
-		SoundPingEvent.bAffectsGuards ? TEXT("true") : TEXT("false"),
-		SoundPingEvent.ServerTimeSeconds);
+	const FString Message =
+		FString::Printf(TEXT("Sound ping %s: SequenceId=%d Type=%d Tag=%s Location=(%.1f,%.1f,%.1f) Radius=%.1f Duration=%.2f AffectsGuards=%s ServerTime=%.2f"), Phase, SoundPingEvent.SequenceId,
+						static_cast<int32>(SoundPingEvent.PingType), *SoundPingEvent.SoundPingTag.ToString(), SoundPingEvent.WorldLocation.X, SoundPingEvent.WorldLocation.Y,
+						SoundPingEvent.WorldLocation.Z, SoundPingEvent.Radius, SoundPingEvent.Duration, SoundPingEvent.bAffectsGuards ? TEXT("true") : TEXT("false"), SoundPingEvent.ServerTimeSeconds);
 
 	if (SoundPingEvent.PingType == EHeistSoundPingType::Footstep)
 	{
@@ -105,19 +96,11 @@ void AHeistGameState::OnRep_MatchPhase(const EHeistMatchPhase PreviousMatchPhase
 	BroadcastMatchPhaseChanged(PreviousMatchPhase, TEXT("Replicated"));
 }
 
-void AHeistGameState::BroadcastMatchPhaseChanged(
-	const EHeistMatchPhase PreviousMatchPhase,
-	const TCHAR* ChangeSource)
+void AHeistGameState::BroadcastMatchPhaseChanged(const EHeistMatchPhase PreviousMatchPhase, const TCHAR* ChangeSource)
 {
 	MatchPhaseChangedDelegate.Broadcast(PreviousMatchPhase, MatchPhase);
-	UE_LOG(
-		LogHeistNetwork,
-		Log,
-		TEXT("Match phase %s: Previous=%s New=%s Authority=%s"),
-		ChangeSource,
-		*UEnum::GetValueAsString(PreviousMatchPhase),
-		*UEnum::GetValueAsString(MatchPhase),
-		HasAuthority() ? TEXT("true") : TEXT("false"));
+	UE_LOG(LogHeistNetwork, Log, TEXT("Match phase %s: Previous=%s New=%s Authority=%s"), ChangeSource, *UEnum::GetValueAsString(PreviousMatchPhase), *UEnum::GetValueAsString(MatchPhase),
+		   HasAuthority() ? TEXT("true") : TEXT("false"));
 }
 
 #pragma endregion
@@ -149,43 +132,25 @@ int32 AHeistGameState::GetObjectiveRevision() const
 	return ObjectiveRevision;
 }
 
-bool AHeistGameState::SetObjectiveSnapshot(
-	const FName InActiveTargetArtifactId,
-	const FName InActiveTargetCaseId,
-	const EHeistObjectiveState InObjectiveState,
-	AHeistPlayerState* InOriginalCarrierCandidate)
+bool AHeistGameState::SetObjectiveSnapshot(const FName InActiveTargetArtifactId, const FName InActiveTargetCaseId, const EHeistObjectiveState InObjectiveState,
+										   AHeistPlayerState* InOriginalCarrierCandidate)
 {
 	if (!HasAuthority())
 	{
-		UE_LOG(
-			LogHeistNetwork,
-			Warning,
-			TEXT("Objective state change rejected: GameState=%s Reason=NotAuthority"),
-			*GetNameSafe(this));
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Objective state change rejected: GameState=%s Reason=NotAuthority"), *GetNameSafe(this));
 		return false;
 	}
 
-	const bool bCarrierBelongsToMatch = !IsValid(InOriginalCarrierCandidate)
-		|| PlayerArray.ContainsByPredicate(
-			[InOriginalCarrierCandidate](const TObjectPtr<APlayerState>& CandidatePlayerState)
-			{
-				return CandidatePlayerState.Get() == InOriginalCarrierCandidate;
-			});
+	const bool bCarrierBelongsToMatch = !IsValid(InOriginalCarrierCandidate) || PlayerArray.ContainsByPredicate([InOriginalCarrierCandidate](const TObjectPtr<APlayerState>& CandidatePlayerState)
+																												{ return CandidatePlayerState.Get() == InOriginalCarrierCandidate; });
 	if (!bCarrierBelongsToMatch)
 	{
-		UE_LOG(
-			LogHeistNetwork,
-			Warning,
-			TEXT("Objective state change rejected: GameState=%s Carrier=%s Reason=CarrierNotInPlayerArray"),
-			*GetNameSafe(this),
-			*GetNameSafe(InOriginalCarrierCandidate));
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Objective state change rejected: GameState=%s Carrier=%s Reason=CarrierNotInPlayerArray"), *GetNameSafe(this), *GetNameSafe(InOriginalCarrierCandidate));
 		return false;
 	}
 
-	if (ActiveTargetArtifactId == InActiveTargetArtifactId
-		&& ActiveTargetCaseId == InActiveTargetCaseId
-		&& ObjectiveState == InObjectiveState
-		&& OriginalCarrierCandidate.Get() == InOriginalCarrierCandidate)
+	if (ActiveTargetArtifactId == InActiveTargetArtifactId && ActiveTargetCaseId == InActiveTargetCaseId && ObjectiveState == InObjectiveState &&
+		OriginalCarrierCandidate.Get() == InOriginalCarrierCandidate)
 	{
 		return true;
 	}
@@ -212,24 +177,11 @@ void AHeistGameState::OnRep_ObjectiveRevision()
 
 void AHeistGameState::BroadcastObjectiveState(const TCHAR* ChangeSource)
 {
-	ObjectiveStateChangedDelegate.Broadcast(
-		ActiveTargetArtifactId,
-		ActiveTargetCaseId,
-		ObjectiveState,
-		OriginalCarrierCandidate.Get());
+	ObjectiveStateChangedDelegate.Broadcast(ActiveTargetArtifactId, ActiveTargetCaseId, ObjectiveState, OriginalCarrierCandidate.Get());
 
-	UE_LOG(
-		LogHeistNetwork,
-		Log,
-		TEXT("Objective state %s: GameState=%s Target=%s CaseId=%s State=%s CarrierCandidate=%s Revision=%d Authority=%s"),
-		ChangeSource,
-		*GetNameSafe(this),
-		*ActiveTargetArtifactId.ToString(),
-		*ActiveTargetCaseId.ToString(),
-		*UEnum::GetValueAsString(ObjectiveState),
-		*GetNameSafe(OriginalCarrierCandidate.Get()),
-		ObjectiveRevision,
-		HasAuthority() ? TEXT("true") : TEXT("false"));
+	UE_LOG(LogHeistNetwork, Log, TEXT("Objective state %s: GameState=%s Target=%s CaseId=%s State=%s CarrierCandidate=%s Revision=%d Authority=%s"), ChangeSource, *GetNameSafe(this),
+		   *ActiveTargetArtifactId.ToString(), *ActiveTargetCaseId.ToString(), *UEnum::GetValueAsString(ObjectiveState), *GetNameSafe(OriginalCarrierCandidate.Get()), ObjectiveRevision,
+		   HasAuthority() ? TEXT("true") : TEXT("false"));
 }
 
 #pragma endregion
@@ -255,11 +207,7 @@ void AHeistGameState::InitializeEscapePhase(float InDelaySeconds)
 {
 	if (!HasAuthority())
 	{
-		UE_LOG(
-			LogHeistNetwork,
-			Warning,
-			TEXT("Escape phase initialization rejected: GameState=%s Reason=NotAuthority"),
-			*GetNameSafe(this));
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Escape phase initialization rejected: GameState=%s Reason=NotAuthority"), *GetNameSafe(this));
 		return;
 	}
 
@@ -279,11 +227,7 @@ void AHeistGameState::OpenEscapePhase()
 {
 	if (!HasAuthority())
 	{
-		UE_LOG(
-			LogHeistNetwork,
-			Warning,
-			TEXT("Escape phase open rejected: GameState=%s Reason=NotAuthority"),
-			*GetNameSafe(this));
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Escape phase open rejected: GameState=%s Reason=NotAuthority"), *GetNameSafe(this));
 		return;
 	}
 
@@ -297,13 +241,7 @@ void AHeistGameState::OpenEscapePhase()
 	ForceNetUpdate();
 	EscapePhaseStateChangedDelegate.Broadcast(true);
 
-	UE_LOG(
-		LogHeist,
-		Log,
-		TEXT("Escape phase opened: GameState=%s ServerTime=%.2f Delay=%.2f"),
-		*GetNameSafe(this),
-		EscapePhaseOpenTimeSeconds,
-		EscapePhaseDelaySeconds);
+	UE_LOG(LogHeist, Log, TEXT("Escape phase opened: GameState=%s ServerTime=%.2f Delay=%.2f"), *GetNameSafe(this), EscapePhaseOpenTimeSeconds, EscapePhaseDelaySeconds);
 }
 
 FHeistEscapePhaseStateChanged& AHeistGameState::GetEscapePhaseStateChangedDelegate()
@@ -315,14 +253,8 @@ void AHeistGameState::OnRep_EscapePhaseOpen()
 {
 	EscapePhaseStateChangedDelegate.Broadcast(bEscapePhaseOpen);
 
-	UE_LOG(
-		LogHeistNetwork,
-		Log,
-		TEXT("Escape phase replicated: GameState=%s IsOpen=%s OpenTime=%.2f Delay=%.2f"),
-		*GetNameSafe(this),
-		bEscapePhaseOpen ? TEXT("true") : TEXT("false"),
-		EscapePhaseOpenTimeSeconds,
-		EscapePhaseDelaySeconds);
+	UE_LOG(LogHeistNetwork, Log, TEXT("Escape phase replicated: GameState=%s IsOpen=%s OpenTime=%.2f Delay=%.2f"), *GetNameSafe(this), bEscapePhaseOpen ? TEXT("true") : TEXT("false"),
+		   EscapePhaseOpenTimeSeconds, EscapePhaseDelaySeconds);
 }
 
 #pragma endregion
@@ -334,10 +266,7 @@ const FHeistRareLootEventState& AHeistGameState::GetRareLootEventState() const
 	return RareLootEventState;
 }
 
-void AHeistGameState::BeginRareLootWarning(
-	const int32 EventIndex,
-	const FName ItemId,
-	const float SpawnServerTime)
+void AHeistGameState::BeginRareLootWarning(const int32 EventIndex, const FName ItemId, const float SpawnServerTime)
 {
 	if (!HasAuthority())
 	{
@@ -354,10 +283,7 @@ void AHeistGameState::BeginRareLootWarning(
 	BroadcastRareLootEventState();
 }
 
-void AHeistGameState::ActivateRareLootMarker(
-	const int32 EventIndex,
-	const FName ItemId,
-	const FVector& WorldLocation)
+void AHeistGameState::ActivateRareLootMarker(const int32 EventIndex, const FName ItemId, const FVector& WorldLocation)
 {
 	if (!HasAuthority())
 	{
@@ -396,18 +322,9 @@ void AHeistGameState::OnRep_RareLootEventState()
 {
 	BroadcastRareLootEventState();
 #if !UE_BUILD_SHIPPING
-	UE_LOG(
-		LogHeistNetwork,
-		Log,
-		TEXT("Rare Loot state replicated: EventIndex=%d ItemId=%s Incoming=%s MarkerActive=%s SpawnServerTime=%.2f Location=(%.1f,%.1f,%.1f)"),
-		RareLootEventState.EventIndex,
-		*RareLootEventState.ItemId.ToString(),
-		RareLootEventState.bIncomingWarningActive ? TEXT("true") : TEXT("false"),
-		RareLootEventState.bDirectionMarkerActive ? TEXT("true") : TEXT("false"),
-		RareLootEventState.SpawnServerTime,
-		RareLootEventState.WorldLocation.X,
-		RareLootEventState.WorldLocation.Y,
-		RareLootEventState.WorldLocation.Z);
+	UE_LOG(LogHeistNetwork, Log, TEXT("Rare Loot state replicated: EventIndex=%d ItemId=%s Incoming=%s MarkerActive=%s SpawnServerTime=%.2f Location=(%.1f,%.1f,%.1f)"), RareLootEventState.EventIndex,
+		   *RareLootEventState.ItemId.ToString(), RareLootEventState.bIncomingWarningActive ? TEXT("true") : TEXT("false"), RareLootEventState.bDirectionMarkerActive ? TEXT("true") : TEXT("false"),
+		   RareLootEventState.SpawnServerTime, RareLootEventState.WorldLocation.X, RareLootEventState.WorldLocation.Y, RareLootEventState.WorldLocation.Z);
 #endif
 }
 
@@ -489,10 +406,7 @@ void AHeistGameState::RebuildPlayerResults()
 		PlayerResult.bArrested = HeistPlayerState->IsArrested();
 	}
 
-	NewPlayerResults.Sort([](const FHeistPlayerResult& Left, const FHeistPlayerResult& Right)
-	{
-		return Left.PlayerId < Right.PlayerId;
-	});
+	NewPlayerResults.Sort([](const FHeistPlayerResult& Left, const FHeistPlayerResult& Right) { return Left.PlayerId < Right.PlayerId; });
 
 	PlayerResults = MoveTemp(NewPlayerResults);
 	ForceNetUpdate();
@@ -500,17 +414,9 @@ void AHeistGameState::RebuildPlayerResults()
 
 	for (const FHeistPlayerResult& PlayerResult : PlayerResults)
 	{
-		UE_LOG(
-			LogHeist,
-			Log,
-			TEXT("Player contribution result: PlayerId=%d Escaped=%s Arrested=%s LootScore=%d FinalScore=%d LootWeight=%.2f EscapeTime=%.2f"),
-			PlayerResult.PlayerId,
-			PlayerResult.bEscaped ? TEXT("true") : TEXT("false"),
-			PlayerResult.bArrested ? TEXT("true") : TEXT("false"),
-			PlayerResult.LootScore,
-			PlayerResult.FinalScore,
-			PlayerResult.LootWeight,
-			PlayerResult.EscapeTimeSeconds);
+		UE_LOG(LogHeist, Log, TEXT("Player contribution result: PlayerId=%d Escaped=%s Arrested=%s LootScore=%d FinalScore=%d LootWeight=%.2f EscapeTime=%.2f"), PlayerResult.PlayerId,
+			   PlayerResult.bEscaped ? TEXT("true") : TEXT("false"), PlayerResult.bArrested ? TEXT("true") : TEXT("false"), PlayerResult.LootScore, PlayerResult.FinalScore, PlayerResult.LootWeight,
+			   PlayerResult.EscapeTimeSeconds);
 	}
 
 	int32 ArrestedPlayerCount = 0;
@@ -522,23 +428,10 @@ void AHeistGameState::RebuildPlayerResults()
 	}
 	const int32 ActivePlayerCount = PlayerResults.Num() - ArrestedPlayerCount - EscapedPlayerCount;
 	const bool bAllPlayersArrested = PlayerResults.Num() > 0 && ArrestedPlayerCount == PlayerResults.Num();
-	UE_LOG(
-		LogHeist,
-		Log,
-		TEXT("Team arrest state: Players=%d Arrested=%d Escaped=%d Active=%d AllArrested=%s FailureEligible=%s"),
-		PlayerResults.Num(),
-		ArrestedPlayerCount,
-		EscapedPlayerCount,
-		ActivePlayerCount,
-		bAllPlayersArrested ? TEXT("true") : TEXT("false"),
-		bAllPlayersArrested ? TEXT("true") : TEXT("false"));
+	UE_LOG(LogHeist, Log, TEXT("Team arrest state: Players=%d Arrested=%d Escaped=%d Active=%d AllArrested=%s FailureEligible=%s"), PlayerResults.Num(), ArrestedPlayerCount, EscapedPlayerCount,
+		   ActivePlayerCount, bAllPlayersArrested ? TEXT("true") : TEXT("false"), bAllPlayersArrested ? TEXT("true") : TEXT("false"));
 
-	UE_LOG(
-		LogHeist,
-		Log,
-		TEXT("Player contribution results rebuilt: GameState=%s PlayerCount=%d"),
-		*GetNameSafe(this),
-		PlayerResults.Num());
+	UE_LOG(LogHeist, Log, TEXT("Player contribution results rebuilt: GameState=%s PlayerCount=%d"), *GetNameSafe(this), PlayerResults.Num());
 }
 
 const TArray<FHeistPlayerResult>& AHeistGameState::GetPlayerResults() const
@@ -557,25 +450,12 @@ void AHeistGameState::OnRep_PlayerResults()
 
 	for (const FHeistPlayerResult& PlayerResult : PlayerResults)
 	{
-		UE_LOG(
-			LogHeistNetwork,
-			Log,
-			TEXT("Player contribution result replicated: PlayerId=%d Escaped=%s Arrested=%s LootScore=%d FinalScore=%d LootWeight=%.2f EscapeTime=%.2f"),
-			PlayerResult.PlayerId,
-			PlayerResult.bEscaped ? TEXT("true") : TEXT("false"),
-			PlayerResult.bArrested ? TEXT("true") : TEXT("false"),
-			PlayerResult.LootScore,
-			PlayerResult.FinalScore,
-			PlayerResult.LootWeight,
-			PlayerResult.EscapeTimeSeconds);
+		UE_LOG(LogHeistNetwork, Log, TEXT("Player contribution result replicated: PlayerId=%d Escaped=%s Arrested=%s LootScore=%d FinalScore=%d LootWeight=%.2f EscapeTime=%.2f"),
+			   PlayerResult.PlayerId, PlayerResult.bEscaped ? TEXT("true") : TEXT("false"), PlayerResult.bArrested ? TEXT("true") : TEXT("false"), PlayerResult.LootScore, PlayerResult.FinalScore,
+			   PlayerResult.LootWeight, PlayerResult.EscapeTimeSeconds);
 	}
 
-	UE_LOG(
-		LogHeistNetwork,
-		Log,
-		TEXT("Player contribution results replicated: GameState=%s PlayerCount=%d"),
-		*GetNameSafe(this),
-		PlayerResults.Num());
+	UE_LOG(LogHeistNetwork, Log, TEXT("Player contribution results replicated: GameState=%s PlayerCount=%d"), *GetNameSafe(this), PlayerResults.Num());
 }
 
 #pragma endregion

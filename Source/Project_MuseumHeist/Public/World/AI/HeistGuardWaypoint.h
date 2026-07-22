@@ -12,13 +12,13 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardWaypoint : public AActor
 {
 	GENERATED_BODY()
 
-public:
+  public:
 	AHeistGuardWaypoint();
 
 	FName GetPatrolRouteId() const;
 	int32 GetPatrolOrder() const;
 
-private:
+  private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|AI|Patrol", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<USceneComponent> SceneRoot;
 

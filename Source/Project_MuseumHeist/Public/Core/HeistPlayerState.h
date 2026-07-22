@@ -17,7 +17,7 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerState : public APlayerState
 
 #pragma region ScoreAndWeight
 
-public:
+  public:
 	int32 GetTotalLootScore() const;
 	float GetTotalLootWeight() const;
 	FHeistLootTotalsChanged& GetLootTotalsChangedDelegate();
@@ -27,7 +27,7 @@ public:
 	bool RemoveLootScoreAndWeight(int32 ScoreDelta, float WeightDelta);
 	bool RemoveCarriedOriginalWeight(float WeightDelta);
 
-private:
+  private:
 	void BroadcastLootTotalsChanged();
 
 	UPROPERTY(ReplicatedUsing = OnRep_TotalLootScore, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Score", meta = (AllowPrivateAccess = "true"))
@@ -42,13 +42,13 @@ private:
 
 #pragma region ArrestState
 
-public:
+  public:
 	bool IsArrested() const;
 	bool MarkArrested(AActor* ArrestingGuard);
 	bool ClearArrested();
 	FHeistPlayerArrestStateChanged& GetArrestStateChangedDelegate();
 
-private:
+  private:
 	bool SetArrestedInternal(bool bNewArrested, AActor* ArrestingGuard);
 
 	UPROPERTY(ReplicatedUsing = OnRep_Arrested, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Arrest", meta = (AllowPrivateAccess = "true"))
@@ -63,14 +63,14 @@ private:
 
 #pragma region EscapeState
 
-public:
+  public:
 	bool IsEscaped() const;
 	bool MarkEscaped();
 	int32 GetFinalScore() const;
 	float GetEscapeTimeSeconds() const;
 	FHeistPlayerEscapeStateChanged& GetEscapeStateChangedDelegate();
 
-private:
+  private:
 	UPROPERTY(ReplicatedUsing = OnRep_Escaped, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Escape", meta = (AllowPrivateAccess = "true"))
 	bool bEscaped = false;
 
@@ -89,10 +89,10 @@ private:
 
 #pragma region Replication
 
-public:
+  public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-private:
+  private:
 	UFUNCTION()
 	void OnRep_TotalLootScore();
 
@@ -103,7 +103,7 @@ private:
 
 #pragma region Debug
 
-public:
+  public:
 	void DebugSetTotalLootScore(int32 InScore);
 	void DebugSetTotalLootWeight(float InWeight);
 	void DebugSetResultState(int32 InScore, bool bInEscaped, float InEscapeTimeSeconds);
@@ -112,7 +112,7 @@ public:
 
 #pragma region Verification
 
-public:
+  public:
 	void InitializeVerificationIdentity(int32 InHeistPlayerId, const FLinearColor& InPlayerColor);
 	FHeistPlayerIdentityChanged& GetPlayerIdentityChangedDelegate();
 
@@ -122,7 +122,7 @@ public:
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Verification")
 	FLinearColor PlayerColor = FLinearColor::White;
 
-private:
+  private:
 	UFUNCTION()
 	void OnRep_HeistPlayerId();
 

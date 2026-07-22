@@ -10,17 +10,14 @@ class PROJECT_MUSEUMHEIST_API UHeistNoiseEmitterComponent : public UActorCompone
 {
 	GENERATED_BODY()
 
-public:
+  public:
 	virtual void BeginPlay() override;
-	virtual void TickComponent(
-		float DeltaTime,
-		ELevelTick TickType,
-		FActorComponentTickFunction* ThisTickFunction) override;
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-public:
+  public:
 	UHeistNoiseEmitterComponent();
 
-private:
+  private:
 	bool TryEmitFootstepNoise();
 	float ResolveLootWeightBonus(float TotalLootWeight) const;
 

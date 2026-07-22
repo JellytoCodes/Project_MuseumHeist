@@ -13,27 +13,23 @@ class PROJECT_MUSEUMHEIST_API UHeistSoundPingWidgetPool : public UObject
 
 #pragma region Construction
 
-public:
+  public:
 	UHeistSoundPingWidgetPool(const FObjectInitializer& ObjectInitializer);
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-public:
-	void SetupPool(
-		class APlayerController* InOwningPlayerController,
-		class AHeistGameState* InGameState,
-		class UPanelWidget* InMarkerLayer,
-		TSubclassOf<class UHeistSoundPingMarkerWidget> InMarkerWidgetClass,
-		float InScreenMarginPixels);
+  public:
+	void SetupPool(class APlayerController* InOwningPlayerController, class AHeistGameState* InGameState, class UPanelWidget* InMarkerLayer,
+				   TSubclassOf<class UHeistSoundPingMarkerWidget> InMarkerWidgetClass, float InScreenMarginPixels);
 	void ShutdownPool();
 
 #pragma endregion
 
 #pragma region Debug
 
-public:
+  public:
 	void DebugDumpState() const;
 	void DebugRunPresentationTest();
 
@@ -41,7 +37,7 @@ public:
 
 #pragma region Pool
 
-private:
+  private:
 	struct FActiveSoundPingMarker
 	{
 		UHeistSoundPingMarkerWidget* Widget = nullptr;

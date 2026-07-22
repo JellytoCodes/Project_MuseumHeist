@@ -12,7 +12,7 @@ class PROJECT_MUSEUMHEIST_API AHeistNoiseTrapActor : public AHeistTrapActor
 
 #pragma region Construction
 
-public:
+  public:
 	AHeistNoiseTrapActor();
 
 #pragma endregion

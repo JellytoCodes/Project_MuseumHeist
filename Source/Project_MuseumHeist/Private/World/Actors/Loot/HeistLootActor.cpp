@@ -138,20 +138,14 @@ FHeistLootPickupCommitted& AHeistLootActor::GetLootPickupCommittedDelegate()
 
 void AHeistLootActor::ResolveLootData()
 {
-	const FHeistLootDataRow* ResolvedRow =
-		LootDataRow.GetRow<FHeistLootDataRow>(TEXT("AHeistLootActor::ResolveLootData"));
+	const FHeistLootDataRow* ResolvedRow = LootDataRow.GetRow<FHeistLootDataRow>(TEXT("AHeistLootActor::ResolveLootData"));
 
 	if (ResolvedRow != nullptr)
 	{
-		const FName ResolvedItemId = ResolvedRow->ItemId.IsNone()
-			? LootDataRow.RowName
-			: ResolvedRow->ItemId;
-		const AHeistGameMode* HeistGameMode =
-			GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+		const FName ResolvedItemId = ResolvedRow->ItemId.IsNone() ? LootDataRow.RowName : ResolvedRow->ItemId;
+		const AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
 		FHeistItemDataRow ItemDefinition;
-		if (IsValid(HeistGameMode)
-			&& HeistGameMode->TryGetItemDefinition(ResolvedItemId, ItemDefinition)
-			&& ItemDefinition.ItemType == EHeistItemType::Loot)
+		if (IsValid(HeistGameMode) && HeistGameMode->TryGetItemDefinition(ResolvedItemId, ItemDefinition) && ItemDefinition.ItemType == EHeistItemType::Loot)
 		{
 			LootRowId = ResolvedItemId;
 			LootGrade = ResolvedRow->LootGrade;
@@ -164,11 +158,7 @@ void AHeistLootActor::ResolveLootData()
 
 	ApplyFallbackLootData();
 #if !UE_BUILD_SHIPPING
-	UE_LOG(
-		LogHeistInventory,
-		Warning,
-		TEXT("LootDataRow '%s' was not found. Fallback values are active."),
-		*LootDataRow.RowName.ToString());
+	UE_LOG(LogHeistInventory, Warning, TEXT("LootDataRow '%s' was not found. Fallback values are active."), *LootDataRow.RowName.ToString());
 #endif
 }
 

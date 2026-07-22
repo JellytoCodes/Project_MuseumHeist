@@ -24,10 +24,7 @@ void UHeistNoiseEmitterComponent::BeginPlay()
 	SetComponentTickEnabled(IsValid(OwnerActor) && OwnerActor->HasAuthority());
 }
 
-void UHeistNoiseEmitterComponent::TickComponent(
-	const float DeltaTime,
-	const ELevelTick TickType,
-	FActorComponentTickFunction* ThisTickFunction)
+void UHeistNoiseEmitterComponent::TickComponent(const float DeltaTime, const ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	TryEmitFootstepNoise();
@@ -42,12 +39,8 @@ bool UHeistNoiseEmitterComponent::TryEmitFootstepNoise()
 	}
 
 	const UCharacterMovementComponent* MovementComponent = Character->GetCharacterMovement();
-	const float HorizontalSpeed = IsValid(MovementComponent)
-		? MovementComponent->Velocity.Size2D()
-		: 0.0f;
-	if (!IsValid(MovementComponent)
-		|| !MovementComponent->IsMovingOnGround()
-		|| HorizontalSpeed < MinimumFootstepSpeed)
+	const float HorizontalSpeed = IsValid(MovementComponent) ? MovementComponent->Velocity.Size2D() : 0.0f;
+	if (!IsValid(MovementComponent) || !MovementComponent->IsMovingOnGround() || HorizontalSpeed < MinimumFootstepSpeed)
 	{
 		return false;
 	}
@@ -62,9 +55,7 @@ bool UHeistNoiseEmitterComponent::TryEmitFootstepNoise()
 
 	const float MaximumSpeed = FMath::Max(MinimumFootstepSpeed, MovementComponent->GetMaxSpeed());
 	const bool bRunning = HorizontalSpeed >= MaximumSpeed * FMath::Clamp(RunSpeedThresholdRatio, 0.0f, 1.0f);
-	const FName SoundPingId = bRunning
-		? FName(TEXT("Ping_Footstep_Run"))
-		: FName(TEXT("Ping_Footstep_Walk"));
+	const FName SoundPingId = bRunning ? FName(TEXT("Ping_Footstep_Run")) : FName(TEXT("Ping_Footstep_Walk"));
 	FHeistSoundPingDataRow SoundPingDefinition;
 	if (!HeistGameMode->TryGetSoundPingDefinition(SoundPingId, SoundPingDefinition))
 	{
@@ -74,8 +65,7 @@ bool UHeistNoiseEmitterComponent::TryEmitFootstepNoise()
 
 	const float ServerTime = HeistGameState->GetServerWorldTimeSeconds();
 	const float RefreshInterval = FMath::Max(0.0f, SoundPingDefinition.RefreshInterval);
-	if (LastFootstepServerTime >= 0.0f
-		&& ServerTime - LastFootstepServerTime < RefreshInterval)
+	if (LastFootstepServerTime >= 0.0f && ServerTime - LastFootstepServerTime < RefreshInterval)
 	{
 		return false;
 	}
@@ -94,19 +84,10 @@ bool UHeistNoiseEmitterComponent::TryEmitFootstepNoise()
 	LastFootstepServerTime = ServerTime;
 
 #if !UE_BUILD_SHIPPING
-	UE_LOG(
-		LogHeist,
-		Verbose,
-		TEXT("Footstep noise emitted: PlayerId=%d Mode=%s Speed=%.1f MaxSpeed=%.1f Weight=%.1f BaseRadius=%.1f WeightBonus=%.1f FinalRadius=%.1f RefreshInterval=%.2f Authority=true"),
-		HeistPlayerState->HeistPlayerId,
-		bRunning ? TEXT("Run") : TEXT("Walk"),
-		HorizontalSpeed,
-		MaximumSpeed,
-		TotalLootWeight,
-		SoundPingDefinition.Radius,
-		WeightRadiusBonus,
-		SoundPingEvent.Radius,
-		RefreshInterval);
+	UE_LOG(LogHeist, Verbose,
+		   TEXT("Footstep noise emitted: PlayerId=%d Mode=%s Speed=%.1f MaxSpeed=%.1f Weight=%.1f BaseRadius=%.1f WeightBonus=%.1f FinalRadius=%.1f RefreshInterval=%.2f Authority=true"),
+		   HeistPlayerState->HeistPlayerId, bRunning ? TEXT("Run") : TEXT("Walk"), HorizontalSpeed, MaximumSpeed, TotalLootWeight, SoundPingDefinition.Radius, WeightRadiusBonus, SoundPingEvent.Radius,
+		   RefreshInterval);
 #endif
 	return true;
 }

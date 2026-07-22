@@ -121,47 +121,12 @@ struct PROJECT_MUSEUMHEIST_API FHeistForgeryResult
 
 	bool operator==(const FHeistForgeryResult& Other) const
 	{
-		return ArtifactId == Other.ArtifactId
-			&& TemplateId == Other.TemplateId
-			&& ForgeryType == Other.ForgeryType
-			&& FMath::IsNearlyEqual(
-				SimilarityScore,
-				Other.SimilarityScore,
-				0.001f)
-			&& FMath::IsNearlyEqual(
-				CoverageScore,
-				Other.CoverageScore,
-				0.001f)
-			&& FMath::IsNearlyEqual(
-				MajorShapeScore,
-				Other.MajorShapeScore,
-				0.001f)
-			&& FMath::IsNearlyEqual(
-				ColorAccuracyScore,
-				Other.ColorAccuracyScore,
-				0.001f)
-			&& FMath::IsNearlyEqual(
-				PaintToReferenceRatio,
-				Other.PaintToReferenceRatio,
-				0.001f)
-			&& bAntiFillTriggered == Other.bAntiFillTriggered
-			&& FMath::IsNearlyEqual(
-				MissingShapePenalty,
-				Other.MissingShapePenalty,
-				0.001f)
-			&& FMath::IsNearlyEqual(
-				ExtraStrokePenalty,
-				Other.ExtraStrokePenalty,
-				0.001f)
-			&& FMath::IsNearlyEqual(
-				TimeoutPenalty,
-				Other.TimeoutPenalty,
-				0.001f)
-			&& FMath::IsNearlyEqual(
-				CompletionTime,
-				Other.CompletionTime,
-				0.001f)
-			&& bReplicaPlaced == Other.bReplicaPlaced;
+		return ArtifactId == Other.ArtifactId && TemplateId == Other.TemplateId && ForgeryType == Other.ForgeryType && FMath::IsNearlyEqual(SimilarityScore, Other.SimilarityScore, 0.001f) &&
+			   FMath::IsNearlyEqual(CoverageScore, Other.CoverageScore, 0.001f) && FMath::IsNearlyEqual(MajorShapeScore, Other.MajorShapeScore, 0.001f) &&
+			   FMath::IsNearlyEqual(ColorAccuracyScore, Other.ColorAccuracyScore, 0.001f) && FMath::IsNearlyEqual(PaintToReferenceRatio, Other.PaintToReferenceRatio, 0.001f) &&
+			   bAntiFillTriggered == Other.bAntiFillTriggered && FMath::IsNearlyEqual(MissingShapePenalty, Other.MissingShapePenalty, 0.001f) &&
+			   FMath::IsNearlyEqual(ExtraStrokePenalty, Other.ExtraStrokePenalty, 0.001f) && FMath::IsNearlyEqual(TimeoutPenalty, Other.TimeoutPenalty, 0.001f) &&
+			   FMath::IsNearlyEqual(CompletionTime, Other.CompletionTime, 0.001f) && bReplicaPlaced == Other.bReplicaPlaced;
 	}
 };
 
@@ -193,13 +158,8 @@ struct PROJECT_MUSEUMHEIST_API FHeistPlayerResult
 
 	bool operator==(const FHeistPlayerResult& Other) const
 	{
-		return PlayerId == Other.PlayerId
-			&& LootScore == Other.LootScore
-			&& FinalScore == Other.FinalScore
-			&& LootWeight == Other.LootWeight
-			&& EscapeTimeSeconds == Other.EscapeTimeSeconds
-			&& bEscaped == Other.bEscaped
-			&& bArrested == Other.bArrested;
+		return PlayerId == Other.PlayerId && LootScore == Other.LootScore && FinalScore == Other.FinalScore && LootWeight == Other.LootWeight && EscapeTimeSeconds == Other.EscapeTimeSeconds &&
+			   bEscaped == Other.bEscaped && bArrested == Other.bArrested;
 	}
 };
 
@@ -220,8 +180,7 @@ struct PROJECT_MUSEUMHEIST_API FHeistTimedTagState
 
 	bool operator==(const FHeistTimedTagState& Other) const
 	{
-		return StateTag == Other.StateTag
-			&& FMath::IsNearlyEqual(EndServerTime, Other.EndServerTime);
+		return StateTag == Other.StateTag && FMath::IsNearlyEqual(EndServerTime, Other.EndServerTime);
 	}
 };
 
@@ -339,12 +298,8 @@ struct PROJECT_MUSEUMHEIST_API FHeistRareLootEventState
 
 	bool operator==(const FHeistRareLootEventState& Other) const
 	{
-		return EventIndex == Other.EventIndex
-			&& ItemId == Other.ItemId
-			&& WorldLocation.Equals(Other.WorldLocation)
-			&& FMath::IsNearlyEqual(SpawnServerTime, Other.SpawnServerTime)
-			&& bIncomingWarningActive == Other.bIncomingWarningActive
-			&& bDirectionMarkerActive == Other.bDirectionMarkerActive;
+		return EventIndex == Other.EventIndex && ItemId == Other.ItemId && WorldLocation.Equals(Other.WorldLocation) && FMath::IsNearlyEqual(SpawnServerTime, Other.SpawnServerTime) &&
+			   bIncomingWarningActive == Other.bIncomingWarningActive && bDirectionMarkerActive == Other.bDirectionMarkerActive;
 	}
 };
 
@@ -382,15 +337,9 @@ struct PROJECT_MUSEUMHEIST_API FHeistSoundPingEvent
 
 	bool operator==(const FHeistSoundPingEvent& Other) const
 	{
-		return SequenceId == Other.SequenceId
-			&& SoundPingTag == Other.SoundPingTag
-			&& PingType == Other.PingType
-			&& WorldLocation.Equals(Other.WorldLocation)
-			&& FMath::IsNearlyEqual(Radius, Other.Radius)
-			&& FMath::IsNearlyEqual(Duration, Other.Duration)
-			&& bAffectsGuards == Other.bAffectsGuards
-			&& bAffectsPlayers == Other.bAffectsPlayers
-			&& FMath::IsNearlyEqual(ServerTimeSeconds, Other.ServerTimeSeconds);
+		return SequenceId == Other.SequenceId && SoundPingTag == Other.SoundPingTag && PingType == Other.PingType && WorldLocation.Equals(Other.WorldLocation) &&
+			   FMath::IsNearlyEqual(Radius, Other.Radius) && FMath::IsNearlyEqual(Duration, Other.Duration) && bAffectsGuards == Other.bAffectsGuards && bAffectsPlayers == Other.bAffectsPlayers &&
+			   FMath::IsNearlyEqual(ServerTimeSeconds, Other.ServerTimeSeconds);
 	}
 };
 

@@ -12,17 +12,17 @@ class PROJECT_MUSEUMHEIST_API AHeistSmokeProjectile : public AHeistThrowableProj
 
 #pragma region Construction
 
-public:
+  public:
 	AHeistSmokeProjectile();
 
 #pragma endregion
 
 #pragma region Projectile
 
-protected:
+  protected:
 	virtual void HandleAuthorityImpact(const FHitResult& Hit) override;
 
-private:
+  private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Smoke", meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<class AHeistSmokeCloudActor> SmokeCloudActorClass;
 

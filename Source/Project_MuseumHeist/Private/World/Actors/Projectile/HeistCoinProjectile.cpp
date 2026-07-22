@@ -21,44 +21,28 @@ AHeistCoinProjectile::AHeistCoinProjectile()
 void AHeistCoinProjectile::HandleAuthorityImpact(const FHitResult& Hit)
 {
 	const FName SoundPingId(TEXT("Ping_CoinImpact"));
-	AHeistGameState* HeistGameState =
-		GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	if (!IsValid(HeistGameState))
 	{
-		UHeistDebugFunctionLibrary::DebugSoundPingDefinitionRejected(
-			this,
-			SoundPingId,
-			TEXT("MissingGameState"));
+		UHeistDebugFunctionLibrary::DebugSoundPingDefinitionRejected(this, SoundPingId, TEXT("MissingGameState"));
 		Super::HandleAuthorityImpact(Hit);
 		return;
 	}
 
-	const AHeistGameMode* HeistGameMode =
-		GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	const AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
 	FHeistSoundPingDataRow SoundPingDefinition;
-	if (!IsValid(HeistGameMode)
-		|| !HeistGameMode->TryGetSoundPingDefinition(
-			SoundPingId,
-			SoundPingDefinition))
+	if (!IsValid(HeistGameMode) || !HeistGameMode->TryGetSoundPingDefinition(SoundPingId, SoundPingDefinition))
 	{
-		UHeistDebugFunctionLibrary::DebugSoundPingDefinitionRejected(
-			this,
-			SoundPingId,
-			TEXT("MissingSoundPingDataRow"));
+		UHeistDebugFunctionLibrary::DebugSoundPingDefinitionRejected(this, SoundPingId, TEXT("MissingSoundPingDataRow"));
 		Super::HandleAuthorityImpact(Hit);
 		return;
 	}
 
 	const FHeistGameplayTags& GameplayTags = FHeistGameplayTags::Get();
-	if (SoundPingDefinition.PingType != EHeistSoundPingType::CoinImpact
-		|| SoundPingDefinition.SoundPingTag != GameplayTags.Event_SoundPing_CoinImpact
-		|| !SoundPingDefinition.bAffectsGuards
-		|| SoundPingDefinition.Radius <= 0.0f)
+	if (SoundPingDefinition.PingType != EHeistSoundPingType::CoinImpact || SoundPingDefinition.SoundPingTag != GameplayTags.Event_SoundPing_CoinImpact || !SoundPingDefinition.bAffectsGuards ||
+		SoundPingDefinition.Radius <= 0.0f)
 	{
-		UHeistDebugFunctionLibrary::DebugSoundPingDefinitionRejected(
-			this,
-			SoundPingId,
-			TEXT("InvalidGuardDistractionDefinition"));
+		UHeistDebugFunctionLibrary::DebugSoundPingDefinitionRejected(this, SoundPingId, TEXT("InvalidGuardDistractionDefinition"));
 		Super::HandleAuthorityImpact(Hit);
 		return;
 	}

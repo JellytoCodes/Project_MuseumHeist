@@ -16,21 +16,21 @@ class PROJECT_MUSEUMHEIST_API AHeistInteractableActor : public AActor, public IH
 
 #pragma region Construction
 
-public:
+  public:
 	AHeistInteractableActor();
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void BeginPlay() override;
 
 #pragma endregion
 
 #pragma region Components
 
-protected:
+  protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Interaction")
 	TObjectPtr<USphereComponent> InteractionCollision;
 
@@ -41,7 +41,7 @@ protected:
 
 #pragma region Interaction
 
-public:
+  public:
 	virtual bool CanInteract(const AActor* Interactor) const override;
 	virtual void Interact(AActor* Interactor) override;
 

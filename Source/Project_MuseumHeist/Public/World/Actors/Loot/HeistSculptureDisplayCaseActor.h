@@ -14,12 +14,11 @@
  * replica placement behavior.
  */
 UCLASS()
-class PROJECT_MUSEUMHEIST_API AHeistSculptureDisplayCaseActor
-	: public AHeistInteractableActor
+class PROJECT_MUSEUMHEIST_API AHeistSculptureDisplayCaseActor : public AHeistInteractableActor
 {
 	GENERATED_BODY()
 
-public:
+  public:
 	AHeistSculptureDisplayCaseActor();
 
 	UFUNCTION(BlueprintPure, Category = "Heist|SculptureCase")
@@ -28,21 +27,13 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Heist|SculptureCase")
 	FName GetTargetArtifactId() const;
 
-protected:
+  protected:
 	virtual bool CanInteract(const AActor* Interactor) const override;
 
-private:
-	UPROPERTY(
-		EditInstanceOnly,
-		BlueprintReadOnly,
-		Category = "Heist|SculptureCase",
-		meta = (AllowPrivateAccess = "true"))
+  private:
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Heist|SculptureCase", meta = (AllowPrivateAccess = "true"))
 	FName SculptureCaseId = TEXT("SculptureCase_Unassigned");
 
-	UPROPERTY(
-		EditInstanceOnly,
-		BlueprintReadOnly,
-		Category = "Heist|SculptureCase",
-		meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Heist|SculptureCase", meta = (AllowPrivateAccess = "true"))
 	FName TargetArtifactId = NAME_None;
 };

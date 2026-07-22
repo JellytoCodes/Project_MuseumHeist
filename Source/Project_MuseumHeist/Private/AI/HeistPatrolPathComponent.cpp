@@ -43,9 +43,7 @@ bool UHeistPatrolPathComponent::ResolvePatrolPath()
 
 AHeistGuardWaypoint* UHeistPatrolPathComponent::GetCurrentWaypoint() const
 {
-	return ResolvedWaypoints.IsValidIndex(CurrentWaypointIndex)
-		? ResolvedWaypoints[CurrentWaypointIndex].Get()
-		: nullptr;
+	return ResolvedWaypoints.IsValidIndex(CurrentWaypointIndex) ? ResolvedWaypoints[CurrentWaypointIndex].Get() : nullptr;
 }
 
 AHeistGuardWaypoint* UHeistPatrolPathComponent::AdvanceWaypoint()

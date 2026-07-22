@@ -27,14 +27,14 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 
 #pragma region Construction
 
-public:
+  public:
 	AHeistGameMode();
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void StartPlay() override;
 	virtual void RestartPlayer(AController* NewPlayer) override;
 	virtual void Logout(AController* Exiting) override;
@@ -43,7 +43,7 @@ protected:
 
 #pragma region Balance
 
-public:
+  public:
 	UDataTable* GetItemDataTable() const;
 	UDataTable* GetArtifactDataTable() const;
 	UDataTable* GetForgeryTemplateDataTable() const;
@@ -58,17 +58,17 @@ public:
 	void DebugDumpPlayerCountDifficultyBaseline() const;
 	bool TrySpawnDroppedLoot(const FHeistLootDropRequest& DropRequest, AHeistLootActor*& OutDroppedLootActor) const;
 
-private:
+  private:
 	void ValidateItemDataTables() const;
 
 #pragma endregion
 
 #pragma region RareLootEvent
 
-public:
+  public:
 	void ForceRareLootEvent(float WarningDelaySeconds = 5.0f);
 
-private:
+  private:
 	void StartRareLootEventTimers();
 	void BeginRareLootWarning(int32 EventIndex, float ScheduledSpawnTime);
 	void TriggerRareLootEvent(int32 EventIndex);
@@ -86,10 +86,10 @@ private:
 
 #pragma region EscapePhase
 
-public:
+  public:
 	float GetEscapeCastTimeSeconds() const;
 
-private:
+  private:
 	void StartEscapePhaseTimer();
 	void HandleEscapePhaseTimerElapsed();
 	float ResolveEscapePhaseDelaySeconds() const;
@@ -103,16 +103,11 @@ private:
 
 #pragma region RuntimeState
 
-private:
+  private:
 	void InitializeObjectiveFromPlacedTargetCase();
 
-	UPROPERTY(
-		EditDefaultsOnly,
-		BlueprintReadOnly,
-		Category = "Heist|Objective",
-		meta = (
-			AllowPrivateAccess = "true",
-			ToolTip = "Optional explicit target case id. When None, the map's single DisplayCaseId ending in _Target is selected."))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Objective",
+			  meta = (AllowPrivateAccess = "true", ToolTip = "Optional explicit target case id. When None, the map's single DisplayCaseId ending in _Target is selected."))
 	FName ObjectiveTargetCaseId = NAME_None;
 
 	int32 NextHeistPlayerId = 1;

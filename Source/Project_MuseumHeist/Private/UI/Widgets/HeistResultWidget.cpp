@@ -7,8 +7,7 @@
 
 #pragma region Construction
 
-UHeistResultWidget::UHeistResultWidget(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer)
+UHeistResultWidget::UHeistResultWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 }
 
@@ -41,9 +40,7 @@ void UHeistResultWidget::SetupResultWidget(UHeistResultViewModel* InResultViewMo
 
 	ResultViewModel = InResultViewModel;
 	ResultViewModel->GetSnapshotChangedDelegate().RemoveAll(this);
-	ResultViewModel->GetSnapshotChangedDelegate().AddUObject(
-		this,
-		&UHeistResultWidget::RefreshResultPresentation);
+	ResultViewModel->GetSnapshotChangedDelegate().AddUObject(this, &UHeistResultWidget::RefreshResultPresentation);
 
 	TScriptInterface<INotifyFieldValueChanged> ViewModelInterface;
 	ViewModelInterface.SetObject(ResultViewModel);

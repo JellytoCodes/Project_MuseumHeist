@@ -6,8 +6,7 @@
 
 #pragma region Construction
 
-UHeistLobbyViewModel::UHeistLobbyViewModel(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer)
+UHeistLobbyViewModel::UHeistLobbyViewModel(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 }
 
@@ -29,9 +28,7 @@ void UHeistLobbyViewModel::BeginDestroy()
 
 #pragma region Setup
 
-void UHeistLobbyViewModel::SetupViewModel(
-	AHeistGameState* InGameState,
-	AHeistPlayerState* InLocalPlayerState)
+void UHeistLobbyViewModel::SetupViewModel(AHeistGameState* InGameState, AHeistPlayerState* InLocalPlayerState)
 {
 	if (GameState != InGameState && IsValid(GameState))
 	{
@@ -44,9 +41,7 @@ void UHeistLobbyViewModel::SetupViewModel(
 	if (IsValid(GameState))
 	{
 		GameState->GetPlayerConnectionsChangedDelegate().RemoveAll(this);
-		GameState->GetPlayerConnectionsChangedDelegate().AddUObject(
-			this,
-			&UHeistLobbyViewModel::HandlePlayerConnectionsChanged);
+		GameState->GetPlayerConnectionsChangedDelegate().AddUObject(this, &UHeistLobbyViewModel::HandlePlayerConnectionsChanged);
 	}
 
 	RefreshLobbyData();
@@ -54,41 +49,19 @@ void UHeistLobbyViewModel::SetupViewModel(
 
 void UHeistLobbyViewModel::RefreshLobbyData()
 {
-	const int32 NewConnectedPlayerCount = IsValid(GameState)
-		? GameState->GetConnectedPlayerCount()
-		: 0;
+	const int32 NewConnectedPlayerCount = IsValid(GameState) ? GameState->GetConnectedPlayerCount() : 0;
 	UE_MVVM_SET_PROPERTY_VALUE(ConnectedPlayerCount, NewConnectedPlayerCount);
 
-	const int32 NewLocalPlayerId = IsValid(LocalPlayerState)
-		? LocalPlayerState->HeistPlayerId
-		: INDEX_NONE;
+	const int32 NewLocalPlayerId = IsValid(LocalPlayerState) ? LocalPlayerState->HeistPlayerId : INDEX_NONE;
 	UE_MVVM_SET_PROPERTY_VALUE(LocalPlayerId, NewLocalPlayerId);
 
 	UE_MVVM_SET_PROPERTY_VALUE(PhaseText, NSLOCTEXT("HeistLobby", "PhaseLobbyPlaceholder", "PHASE  LOBBY"));
-	UE_MVVM_SET_PROPERTY_VALUE(
-		PlayerCountText,
-		FText::Format(
-			NSLOCTEXT("HeistLobby", "PlayerCountFormat", "PLAYERS  {0}/4"),
-			FText::AsNumber(ConnectedPlayerCount)));
-	UE_MVVM_SET_PROPERTY_VALUE(
-		LocalPlayerText,
-		LocalPlayerId != INDEX_NONE
-			? FText::Format(
-				NSLOCTEXT("HeistLobby", "LocalPlayerFormat", "LOCAL PLAYER  P{0}"),
-				FText::AsNumber(LocalPlayerId))
-			: NSLOCTEXT("HeistLobby", "LocalPlayerPending", "LOCAL PLAYER  --"));
-	UE_MVVM_SET_PROPERTY_VALUE(
-		ReadyCountdownText,
-		NSLOCTEXT("HeistLobby", "ReadyCountdownPlaceholder", "READY COUNTDOWN  --"));
-	UE_MVVM_SET_PROPERTY_VALUE(
-		DefaultLoadoutText,
-		NSLOCTEXT("HeistLobby", "DefaultLoadout", "DEFAULT LOADOUT  [Q] COIN"));
-	UE_MVVM_SET_PROPERTY_VALUE(
-		AuthorityBlockerText,
-		NSLOCTEXT(
-			"HeistLobby",
-			"AuthorityBlocker",
-			"READY / MATCH PHASE AUTHORITY SOURCE PENDING"));
+	UE_MVVM_SET_PROPERTY_VALUE(PlayerCountText, FText::Format(NSLOCTEXT("HeistLobby", "PlayerCountFormat", "PLAYERS  {0}/4"), FText::AsNumber(ConnectedPlayerCount)));
+	UE_MVVM_SET_PROPERTY_VALUE(LocalPlayerText, LocalPlayerId != INDEX_NONE ? FText::Format(NSLOCTEXT("HeistLobby", "LocalPlayerFormat", "LOCAL PLAYER  P{0}"), FText::AsNumber(LocalPlayerId))
+																			: NSLOCTEXT("HeistLobby", "LocalPlayerPending", "LOCAL PLAYER  --"));
+	UE_MVVM_SET_PROPERTY_VALUE(ReadyCountdownText, NSLOCTEXT("HeistLobby", "ReadyCountdownPlaceholder", "READY COUNTDOWN  --"));
+	UE_MVVM_SET_PROPERTY_VALUE(DefaultLoadoutText, NSLOCTEXT("HeistLobby", "DefaultLoadout", "DEFAULT LOADOUT  [Q] COIN"));
+	UE_MVVM_SET_PROPERTY_VALUE(AuthorityBlockerText, NSLOCTEXT("HeistLobby", "AuthorityBlocker", "READY / MATCH PHASE AUTHORITY SOURCE PENDING"));
 	UE_MVVM_SET_PROPERTY_VALUE(AuthorityBlockerVisibility, ESlateVisibility::Visible);
 
 	RefreshPlayerSlots();
@@ -199,23 +172,16 @@ FText UHeistLobbyViewModel::BuildPlayerSlotText(const int32 SlotIndex) const
 		}
 	}
 
-	const FText SlotLabel = FText::Format(
-		NSLOCTEXT("HeistLobby", "SlotLabel", "SLOT {0}"),
-		FText::AsNumber(SlotIndex + 1));
+	const FText SlotLabel = FText::Format(NSLOCTEXT("HeistLobby", "SlotLabel", "SLOT {0}"), FText::AsNumber(SlotIndex + 1));
 	if (!IsValid(SlotPlayerState))
 	{
-		return FText::Format(
-			NSLOCTEXT("HeistLobby", "EmptySlotFormat", "{0}  EMPTY"),
-			SlotLabel);
+		return FText::Format(NSLOCTEXT("HeistLobby", "EmptySlotFormat", "{0}  EMPTY"), SlotLabel);
 	}
 
 	const int32 PlayerId = SlotPlayerState->HeistPlayerId;
 	const bool bIsLocalPlayer = PlayerId == LocalPlayerId;
-	return FText::Format(
-		NSLOCTEXT("HeistLobby", "PlayerSlotFormat", "{0}  P{1}  READY --  LOADOUT DEFAULT{2}"),
-		SlotLabel,
-		FText::AsNumber(PlayerId),
-		bIsLocalPlayer ? FText::FromString(TEXT("  LOCAL")) : FText::GetEmpty());
+	return FText::Format(NSLOCTEXT("HeistLobby", "PlayerSlotFormat", "{0}  P{1}  READY --  LOADOUT DEFAULT{2}"), SlotLabel, FText::AsNumber(PlayerId),
+						 bIsLocalPlayer ? FText::FromString(TEXT("  LOCAL")) : FText::GetEmpty());
 }
 
 void UHeistLobbyViewModel::RefreshPlayerSlots()

@@ -61,10 +61,7 @@ void UHeistActionComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	Super::EndPlay(EndPlayReason);
 }
 
-void UHeistActionComponent::TickComponent(
-	float DeltaTime,
-	ELevelTick TickType,
-	FActorComponentTickFunction* ThisTickFunction)
+void UHeistActionComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
@@ -105,10 +102,7 @@ void UHeistActionComponent::TickComponent(
 	{
 		AHeistPaintingDisplayCaseActor* TargetDisplayCase = PendingObservationDisplayCase.Get();
 		const AHeistPlayerState* HeistPlayerState = HeistCharacter->GetPlayerState<AHeistPlayerState>();
-		if (!IsValid(TargetDisplayCase)
-			|| !IsValid(HeistPlayerState)
-			|| !TargetDisplayCase->IsSessionLocked()
-			|| TargetDisplayCase->GetSessionOwner() != HeistPlayerState)
+		if (!IsValid(TargetDisplayCase) || !IsValid(HeistPlayerState) || !TargetDisplayCase->IsSessionLocked() || TargetDisplayCase->GetSessionOwner() != HeistPlayerState)
 		{
 			CancelObservationCast(TEXT("SessionInvalid"));
 			return;
@@ -135,16 +129,9 @@ bool UHeistActionComponent::TryBeginEscapeRequest(AHeistVentActor* TargetVentAct
 {
 	AActor* OwnerActor = GetOwner();
 	const AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(OwnerActor);
-	const AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter)
-		? HeistCharacter->GetPlayerState<AHeistPlayerState>()
-		: nullptr;
-	if (!IsValid(OwnerActor)
-		|| !OwnerActor->HasAuthority()
-		|| !IsValid(HeistPlayerState)
-		|| HeistPlayerState->IsEscaped()
-		|| !IsValid(TargetVentActor)
-		|| bEscapeCastActive
-		|| PendingEscapeVent.IsValid())
+	const AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter) ? HeistCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
+	if (!IsValid(OwnerActor) || !OwnerActor->HasAuthority() || !IsValid(HeistPlayerState) || HeistPlayerState->IsEscaped() || !IsValid(TargetVentActor) || bEscapeCastActive ||
+		PendingEscapeVent.IsValid())
 	{
 		return false;
 	}
@@ -155,21 +142,14 @@ bool UHeistActionComponent::TryBeginEscapeRequest(AHeistVentActor* TargetVentAct
 
 	const float EscapeCastDurationSeconds = ResolveEscapeCastDurationSeconds();
 	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
-	const float ServerWorldTime = IsValid(HeistGameState)
-		? HeistGameState->GetServerWorldTimeSeconds()
-		: (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
+	const float ServerWorldTime = IsValid(HeistGameState) ? HeistGameState->GetServerWorldTimeSeconds() : (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
 	EscapeCastEndServerTime = ServerWorldTime + EscapeCastDurationSeconds;
 
 	SetComponentTickEnabled(true);
 	OwnerActor->ForceNetUpdate();
 	ActionStateChangedDelegate.Broadcast();
 
-	UHeistDebugFunctionLibrary::DebugEscapeCastStarted(
-		this,
-		OwnerActor,
-		TargetVentActor,
-		EscapeCastDurationSeconds,
-		EscapeCastEndServerTime);
+	UHeistDebugFunctionLibrary::DebugEscapeCastStarted(this, OwnerActor, TargetVentActor, EscapeCastDurationSeconds, EscapeCastEndServerTime);
 
 	if (EscapeCastDurationSeconds <= 0.0f)
 	{
@@ -177,12 +157,7 @@ bool UHeistActionComponent::TryBeginEscapeRequest(AHeistVentActor* TargetVentAct
 	}
 	else if (UWorld* World = GetWorld())
 	{
-		World->GetTimerManager().SetTimer(
-			EscapeCastTimerHandle,
-			this,
-			&UHeistActionComponent::HandleEscapeCastTimerElapsed,
-			EscapeCastDurationSeconds,
-			false);
+		World->GetTimerManager().SetTimer(EscapeCastTimerHandle, this, &UHeistActionComponent::HandleEscapeCastTimerElapsed, EscapeCastDurationSeconds, false);
 	}
 	else
 	{
@@ -252,19 +227,10 @@ FHeistActionStateChanged& UHeistActionComponent::GetActionStateChangedDelegate()
 void UHeistActionComponent::OnRep_EscapeCastActive()
 {
 	ActionStateChangedDelegate.Broadcast();
-	UHeistDebugFunctionLibrary::DebugEscapeCastStateReplicated(
-		this,
-		GetOwner(),
-		bEscapeCastActive,
-		EscapeCastEndServerTime);
+	UHeistDebugFunctionLibrary::DebugEscapeCastStateReplicated(this, GetOwner(), bEscapeCastActive, EscapeCastEndServerTime);
 }
 
-void UHeistActionComponent::HandleOwnerTakeAnyDamage(
-	AActor*,
-	float Damage,
-	const UDamageType*,
-	AController*,
-	AActor*)
+void UHeistActionComponent::HandleOwnerTakeAnyDamage(AActor*, float Damage, const UDamageType*, AController*, AActor*)
 {
 	if (bEscapeCastActive && Damage > 0.0f)
 	{
@@ -289,35 +255,23 @@ void UHeistActionComponent::HandleOwnerTakeAnyDamage(
 bool UHeistActionComponent::TryBeginObservationRequest(AHeistPaintingDisplayCaseActor* TargetDisplayCase)
 {
 	AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
-	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter)
-		? HeistCharacter->GetPlayerState<AHeistPlayerState>()
-		: nullptr;
-	UHeistForgeryComponent* ForgeryComponent = IsValid(HeistCharacter)
-		? HeistCharacter->GetForgeryComponent()
-		: nullptr;
-	if (!IsValid(HeistCharacter)
-		|| !HeistCharacter->HasAuthority()
-		|| !IsValid(HeistPlayerState)
-		|| !IsValid(TargetDisplayCase)
-		|| !IsValid(ForgeryComponent)
-		|| IsGameplayCastActive()
-		|| TargetDisplayCase->GetDisplayCaseState() != EHeistDisplayCaseState::Secured)
+	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter) ? HeistCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
+	UHeistForgeryComponent* ForgeryComponent = IsValid(HeistCharacter) ? HeistCharacter->GetForgeryComponent() : nullptr;
+	if (!IsValid(HeistCharacter) || !HeistCharacter->HasAuthority() || !IsValid(HeistPlayerState) || !IsValid(TargetDisplayCase) || !IsValid(ForgeryComponent) || IsGameplayCastActive() ||
+		TargetDisplayCase->GetDisplayCaseState() != EHeistDisplayCaseState::Secured)
 	{
 		return false;
 	}
 
 	float TemplateObservationDuration = 0.0f;
-	if (!ForgeryComponent->TryPrepareForgeryTemplate(
-			TargetDisplayCase,
-			TemplateObservationDuration))
+	if (!ForgeryComponent->TryPrepareForgeryTemplate(TargetDisplayCase, TemplateObservationDuration))
 	{
 		return false;
 	}
 
 	if (!TargetDisplayCase->TryBeginSession(HeistPlayerState))
 	{
-		ForgeryComponent->ClearPreparedForgeryTemplate(
-			FName(TEXT("ObservationSessionRejected")));
+		ForgeryComponent->ClearPreparedForgeryTemplate(FName(TEXT("ObservationSessionRejected")));
 		return false;
 	}
 
@@ -326,23 +280,14 @@ bool UHeistActionComponent::TryBeginObservationRequest(AHeistPaintingDisplayCase
 	ObservationCastStartLocation = HeistCharacter->GetActorLocation();
 
 	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
-	const float ServerWorldTime = IsValid(HeistGameState)
-		? HeistGameState->GetServerWorldTimeSeconds()
-		: (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
-	const float SafeDurationSeconds = FMath::Max(
-		0.0f,
-		TemplateObservationDuration);
+	const float ServerWorldTime = IsValid(HeistGameState) ? HeistGameState->GetServerWorldTimeSeconds() : (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
+	const float SafeDurationSeconds = FMath::Max(0.0f, TemplateObservationDuration);
 	ObservationCastEndServerTime = ServerWorldTime + SafeDurationSeconds;
 
 	SetComponentTickEnabled(true);
 	HeistCharacter->ForceNetUpdate();
 	ActionStateChangedDelegate.Broadcast();
-	UHeistDebugFunctionLibrary::DebugObservationCastStarted(
-		this,
-		HeistCharacter,
-		TargetDisplayCase,
-		SafeDurationSeconds,
-		ObservationCastEndServerTime);
+	UHeistDebugFunctionLibrary::DebugObservationCastStarted(this, HeistCharacter, TargetDisplayCase, SafeDurationSeconds, ObservationCastEndServerTime);
 
 	if (SafeDurationSeconds <= 0.0f)
 	{
@@ -350,12 +295,7 @@ bool UHeistActionComponent::TryBeginObservationRequest(AHeistPaintingDisplayCase
 	}
 	else if (UWorld* World = GetWorld())
 	{
-		World->GetTimerManager().SetTimer(
-			ObservationCastTimerHandle,
-			this,
-			&UHeistActionComponent::HandleObservationCastTimerElapsed,
-			SafeDurationSeconds,
-			false);
+		World->GetTimerManager().SetTimer(ObservationCastTimerHandle, this, &UHeistActionComponent::HandleObservationCastTimerElapsed, SafeDurationSeconds, false);
 	}
 	else
 	{
@@ -397,40 +337,21 @@ FHeistObservationCastCompleted& UHeistActionComponent::GetObservationCastComplet
 void UHeistActionComponent::OnRep_ObservationCastActive()
 {
 	ActionStateChangedDelegate.Broadcast();
-	UHeistDebugFunctionLibrary::DebugObservationCastStateReplicated(
-		this,
-		GetOwner(),
-		bObservationCastActive,
-		ObservationCastEndServerTime);
+	UHeistDebugFunctionLibrary::DebugObservationCastStateReplicated(this, GetOwner(), bObservationCastActive, ObservationCastEndServerTime);
 }
 
 #pragma endregion
 
 #pragma region TrapPlacementCast
 
-bool UHeistActionComponent::TryBeginTrapPlacementRequest(
-	const FName SourceItemId,
-	const int32 SourceInstanceId,
-	const FVector& TargetWorldLocation,
-	const float CastDurationSeconds,
-	const float EffectDurationSeconds,
-	const TSubclassOf<AHeistTrapActor> TrapActorClass,
-	const bool bConsumeSourceItem)
+bool UHeistActionComponent::TryBeginTrapPlacementRequest(const FName SourceItemId, const int32 SourceInstanceId, const FVector& TargetWorldLocation, const float CastDurationSeconds,
+														 const float EffectDurationSeconds, const TSubclassOf<AHeistTrapActor> TrapActorClass, const bool bConsumeSourceItem)
 {
 	AActor* OwnerActor = GetOwner();
 	const AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(OwnerActor);
-	const AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter)
-		? HeistCharacter->GetPlayerState<AHeistPlayerState>()
-		: nullptr;
-	if (!IsValid(OwnerActor)
-		|| !OwnerActor->HasAuthority()
-		|| !IsValid(HeistPlayerState)
-		|| HeistPlayerState->IsEscaped()
-		|| SourceItemId.IsNone()
-		|| !IsValid(TrapActorClass)
-		|| EffectDurationSeconds <= 0.0f
-		|| bEscapeCastActive
-		|| bTrapPlacementCastActive)
+	const AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter) ? HeistCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
+	if (!IsValid(OwnerActor) || !OwnerActor->HasAuthority() || !IsValid(HeistPlayerState) || HeistPlayerState->IsEscaped() || SourceItemId.IsNone() || !IsValid(TrapActorClass) ||
+		EffectDurationSeconds <= 0.0f || bEscapeCastActive || bTrapPlacementCastActive)
 	{
 		return false;
 	}
@@ -446,22 +367,14 @@ bool UHeistActionComponent::TryBeginTrapPlacementRequest(
 
 	const float SafeCastDurationSeconds = FMath::Max(0.0f, CastDurationSeconds);
 	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
-	const float ServerWorldTime = IsValid(HeistGameState)
-		? HeistGameState->GetServerWorldTimeSeconds()
-		: (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
+	const float ServerWorldTime = IsValid(HeistGameState) ? HeistGameState->GetServerWorldTimeSeconds() : (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
 	TrapPlacementCastEndServerTime = ServerWorldTime + SafeCastDurationSeconds;
 
 	SetComponentTickEnabled(true);
 	OwnerActor->ForceNetUpdate();
 	ActionStateChangedDelegate.Broadcast();
 
-	UHeistDebugFunctionLibrary::DebugTrapPlacementCastStarted(
-		this,
-		OwnerActor,
-		SourceItemId,
-		TargetWorldLocation,
-		SafeCastDurationSeconds,
-		TrapPlacementCastEndServerTime);
+	UHeistDebugFunctionLibrary::DebugTrapPlacementCastStarted(this, OwnerActor, SourceItemId, TargetWorldLocation, SafeCastDurationSeconds, TrapPlacementCastEndServerTime);
 
 	if (SafeCastDurationSeconds <= 0.0f)
 	{
@@ -469,12 +382,7 @@ bool UHeistActionComponent::TryBeginTrapPlacementRequest(
 	}
 	else if (UWorld* World = GetWorld())
 	{
-		World->GetTimerManager().SetTimer(
-			TrapPlacementCastTimerHandle,
-			this,
-			&UHeistActionComponent::HandleTrapPlacementCastTimerElapsed,
-			SafeCastDurationSeconds,
-			false);
+		World->GetTimerManager().SetTimer(TrapPlacementCastTimerHandle, this, &UHeistActionComponent::HandleTrapPlacementCastTimerElapsed, SafeCastDurationSeconds, false);
 	}
 	else
 	{
@@ -503,11 +411,7 @@ FHeistTrapPlacementCastCompleted& UHeistActionComponent::GetTrapPlacementCastCom
 void UHeistActionComponent::OnRep_TrapPlacementCastActive()
 {
 	ActionStateChangedDelegate.Broadcast();
-	UHeistDebugFunctionLibrary::DebugTrapPlacementCastStateReplicated(
-		this,
-		GetOwner(),
-		bTrapPlacementCastActive,
-		TrapPlacementCastEndServerTime);
+	UHeistDebugFunctionLibrary::DebugTrapPlacementCastStateReplicated(this, GetOwner(), bTrapPlacementCastActive, TrapPlacementCastEndServerTime);
 }
 
 #pragma endregion
@@ -550,8 +454,7 @@ bool UHeistActionComponent::HasMovedBeyondEscapeCastTolerance() const
 		return true;
 	}
 
-	return FVector::DistSquared2D(OwnerActor->GetActorLocation(), EscapeCastStartLocation)
-		> FMath::Square(EscapeCastMovementCancelDistance);
+	return FVector::DistSquared2D(OwnerActor->GetActorLocation(), EscapeCastStartLocation) > FMath::Square(EscapeCastMovementCancelDistance);
 }
 
 bool UHeistActionComponent::HasMovedBeyondTrapPlacementCastTolerance() const
@@ -562,31 +465,22 @@ bool UHeistActionComponent::HasMovedBeyondTrapPlacementCastTolerance() const
 		return true;
 	}
 
-	return FVector::DistSquared2D(OwnerActor->GetActorLocation(), TrapPlacementCastStartLocation)
-		> FMath::Square(TrapPlacementMovementCancelDistance);
+	return FVector::DistSquared2D(OwnerActor->GetActorLocation(), TrapPlacementCastStartLocation) > FMath::Square(TrapPlacementMovementCancelDistance);
 }
 
 bool UHeistActionComponent::HasMovedBeyondObservationCastTolerance() const
 {
 	const AActor* OwnerActor = GetOwner();
-	return !IsValid(OwnerActor)
-		|| FVector::DistSquared2D(OwnerActor->GetActorLocation(), ObservationCastStartLocation)
-			> FMath::Square(ObservationCastMovementCancelDistance);
+	return !IsValid(OwnerActor) || FVector::DistSquared2D(OwnerActor->GetActorLocation(), ObservationCastStartLocation) > FMath::Square(ObservationCastMovementCancelDistance);
 }
 
 void UHeistActionComponent::HandleEscapeCastTimerElapsed()
 {
 	AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
 	AHeistVentActor* TargetVentActor = PendingEscapeVent.Get();
-	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter)
-		? HeistCharacter->GetPlayerState<AHeistPlayerState>()
-		: nullptr;
-	if (!bEscapeCastActive
-		|| !IsValid(HeistCharacter)
-		|| !IsValid(HeistPlayerState)
-		|| !IsValid(TargetVentActor)
-		|| HasMovedBeyondEscapeCastTolerance()
-		|| !TargetVentActor->CanUseVent(HeistCharacter))
+	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter) ? HeistCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
+	if (!bEscapeCastActive || !IsValid(HeistCharacter) || !IsValid(HeistPlayerState) || !IsValid(TargetVentActor) || HasMovedBeyondEscapeCastTolerance() ||
+		!TargetVentActor->CanUseVent(HeistCharacter))
 	{
 		CancelEscapeCast(TEXT("CompletionValidationFailed"));
 		return;
@@ -608,15 +502,9 @@ void UHeistActionComponent::HandleEscapeCastTimerElapsed()
 void UHeistActionComponent::HandleTrapPlacementCastTimerElapsed()
 {
 	AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
-	UHeistInventoryComponent* InventoryComponent = IsValid(HeistCharacter)
-		? HeistCharacter->GetInventoryComponent()
-		: nullptr;
-	if (!bTrapPlacementCastActive
-		|| !IsValid(HeistCharacter)
-		|| !IsValid(InventoryComponent)
-		|| PendingTrapItemId.IsNone()
-		|| !IsValid(PendingTrapActorClass)
-		|| HasMovedBeyondTrapPlacementCastTolerance())
+	UHeistInventoryComponent* InventoryComponent = IsValid(HeistCharacter) ? HeistCharacter->GetInventoryComponent() : nullptr;
+	if (!bTrapPlacementCastActive || !IsValid(HeistCharacter) || !IsValid(InventoryComponent) || PendingTrapItemId.IsNone() || !IsValid(PendingTrapActorClass) ||
+		HasMovedBeyondTrapPlacementCastTolerance())
 	{
 		CancelTrapPlacementCast(TEXT("CompletionValidationFailed"));
 		return;
@@ -625,9 +513,7 @@ void UHeistActionComponent::HandleTrapPlacementCastTimerElapsed()
 	if (bPendingTrapConsumesSourceItem)
 	{
 		FHeistInventoryItem SourceItem;
-		if (PendingTrapSourceInstanceId == INDEX_NONE
-			|| !InventoryComponent->TryGetItem(PendingTrapSourceInstanceId, SourceItem)
-			|| SourceItem.ItemId != PendingTrapItemId)
+		if (PendingTrapSourceInstanceId == INDEX_NONE || !InventoryComponent->TryGetItem(PendingTrapSourceInstanceId, SourceItem) || SourceItem.ItemId != PendingTrapItemId)
 		{
 			CancelTrapPlacementCast(TEXT("SourceItemInvalid"));
 			return;
@@ -635,12 +521,8 @@ void UHeistActionComponent::HandleTrapPlacementCastTimerElapsed()
 	}
 
 	const FTransform SpawnTransform(FRotator::ZeroRotator, PendingTrapTargetWorldLocation);
-	AHeistTrapActor* TrapActor = GetWorld()->SpawnActorDeferred<AHeistTrapActor>(
-		PendingTrapActorClass,
-		SpawnTransform,
-		HeistCharacter,
-		HeistCharacter,
-		ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
+	AHeistTrapActor* TrapActor =
+		GetWorld()->SpawnActorDeferred<AHeistTrapActor>(PendingTrapActorClass, SpawnTransform, HeistCharacter, HeistCharacter, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
 	if (!IsValid(TrapActor))
 	{
 		CancelTrapPlacementCast(TEXT("TrapSpawnFailed"));
@@ -658,8 +540,7 @@ void UHeistActionComponent::HandleTrapPlacementCastTimerElapsed()
 	if (bPendingTrapConsumesSourceItem)
 	{
 		FHeistInventoryItem RemovedItem;
-		if (!InventoryComponent->TryRemoveItem(PendingTrapSourceInstanceId, RemovedItem)
-			|| RemovedItem.ItemId != PendingTrapItemId)
+		if (!InventoryComponent->TryRemoveItem(PendingTrapSourceInstanceId, RemovedItem) || RemovedItem.ItemId != PendingTrapItemId)
 		{
 			SpawnedTrap->Destroy();
 			CancelTrapPlacementCast(TEXT("SourceItemRemoveFailed"));
@@ -670,12 +551,7 @@ void UHeistActionComponent::HandleTrapPlacementCastTimerElapsed()
 	const FName CompletedItemId = PendingTrapItemId;
 	ClearTrapPlacementCastState();
 
-	UHeistDebugFunctionLibrary::DebugTrapPlaced(
-		this,
-		HeistCharacter,
-		SpawnedTrap,
-		CompletedItemId,
-		SpawnedTrap->GetActorLocation());
+	UHeistDebugFunctionLibrary::DebugTrapPlaced(this, HeistCharacter, SpawnedTrap, CompletedItemId, SpawnedTrap->GetActorLocation());
 
 	TrapPlacementCastCompletedDelegate.Broadcast(HeistCharacter, SpawnedTrap);
 }
@@ -683,18 +559,10 @@ void UHeistActionComponent::HandleTrapPlacementCastTimerElapsed()
 void UHeistActionComponent::HandleObservationCastTimerElapsed()
 {
 	AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
-	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter)
-		? HeistCharacter->GetPlayerState<AHeistPlayerState>()
-		: nullptr;
+	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter) ? HeistCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
 	AHeistPaintingDisplayCaseActor* TargetDisplayCase = PendingObservationDisplayCase.Get();
-	if (!bObservationCastActive
-		|| !IsValid(HeistCharacter)
-		|| !IsValid(HeistPlayerState)
-		|| !IsValid(TargetDisplayCase)
-		|| HasMovedBeyondObservationCastTolerance()
-		|| !TargetDisplayCase->IsSessionLocked()
-		|| TargetDisplayCase->GetSessionOwner() != HeistPlayerState
-		|| TargetDisplayCase->GetDisplayCaseState() != EHeistDisplayCaseState::Secured)
+	if (!bObservationCastActive || !IsValid(HeistCharacter) || !IsValid(HeistPlayerState) || !IsValid(TargetDisplayCase) || HasMovedBeyondObservationCastTolerance() ||
+		!TargetDisplayCase->IsSessionLocked() || TargetDisplayCase->GetSessionOwner() != HeistPlayerState || TargetDisplayCase->GetDisplayCaseState() != EHeistDisplayCaseState::Secured)
 	{
 		CancelObservationCast(TEXT("CompletionValidationFailed"));
 		return;
@@ -706,20 +574,15 @@ void UHeistActionComponent::HandleObservationCastTimerElapsed()
 		return;
 	}
 
-	UHeistForgeryComponent* ForgeryComponent =
-		HeistCharacter->GetForgeryComponent();
-	if (!IsValid(ForgeryComponent)
-		|| !ForgeryComponent->TryBeginForgerySession(TargetDisplayCase))
+	UHeistForgeryComponent* ForgeryComponent = HeistCharacter->GetForgeryComponent();
+	if (!IsValid(ForgeryComponent) || !ForgeryComponent->TryBeginForgerySession(TargetDisplayCase))
 	{
 		CancelObservationCast(TEXT("ForgeryHandoffRejected"));
 		return;
 	}
 
 	ClearObservationCastState();
-	UHeistDebugFunctionLibrary::DebugObservationCastCompleted(
-		this,
-		HeistCharacter,
-		TargetDisplayCase);
+	UHeistDebugFunctionLibrary::DebugObservationCastCompleted(this, HeistCharacter, TargetDisplayCase);
 	ObservationCastCompletedDelegate.Broadcast(HeistCharacter, TargetDisplayCase);
 }
 
@@ -760,32 +623,22 @@ void UHeistActionComponent::CancelObservationCast(const TCHAR* Reason)
 
 	AHeistPaintingDisplayCaseActor* TargetDisplayCase = PendingObservationDisplayCase.Get();
 	AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
-	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter)
-		? HeistCharacter->GetPlayerState<AHeistPlayerState>()
-		: nullptr;
+	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter) ? HeistCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
 	const FString CharacterName = GetNameSafe(HeistCharacter);
 	const FString DisplayCaseName = GetNameSafe(TargetDisplayCase);
 	ClearObservationCastState();
 
-	if (IsValid(HeistCharacter)
-		&& IsValid(HeistCharacter->GetForgeryComponent()))
+	if (IsValid(HeistCharacter) && IsValid(HeistCharacter->GetForgeryComponent()))
 	{
-		HeistCharacter->GetForgeryComponent()->ClearPreparedForgeryTemplate(
-			FName(Reason ? Reason : TEXT("ObservationCancelled")));
+		HeistCharacter->GetForgeryComponent()->ClearPreparedForgeryTemplate(FName(Reason ? Reason : TEXT("ObservationCancelled")));
 	}
 
-	if (IsValid(TargetDisplayCase)
-		&& IsValid(HeistPlayerState)
-		&& TargetDisplayCase->GetSessionOwner() == HeistPlayerState)
+	if (IsValid(TargetDisplayCase) && IsValid(HeistPlayerState) && TargetDisplayCase->GetSessionOwner() == HeistPlayerState)
 	{
 		TargetDisplayCase->TryCancelSession(HeistPlayerState);
 	}
 
-	UHeistDebugFunctionLibrary::DebugObservationCastCancelled(
-		this,
-		CharacterName,
-		DisplayCaseName,
-		Reason);
+	UHeistDebugFunctionLibrary::DebugObservationCastCancelled(this, CharacterName, DisplayCaseName, Reason);
 }
 
 void UHeistActionComponent::ClearEscapeCastState()

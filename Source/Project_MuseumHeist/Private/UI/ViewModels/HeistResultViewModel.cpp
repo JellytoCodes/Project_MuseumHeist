@@ -5,8 +5,7 @@
 
 #pragma region Construction
 
-UHeistResultViewModel::UHeistResultViewModel(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer)
+UHeistResultViewModel::UHeistResultViewModel(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 }
 
@@ -49,20 +48,12 @@ void UHeistResultViewModel::SetupViewModel(AHeistGameState* InGameState, AHeistP
 
 void UHeistResultViewModel::RefreshResultData()
 {
-	const TArray<FHeistPlayerResult> NewPlayerResults = IsValid(GameState)
-		? GameState->GetPlayerResults()
-		: TArray<FHeistPlayerResult>();
+	const TArray<FHeistPlayerResult> NewPlayerResults = IsValid(GameState) ? GameState->GetPlayerResults() : TArray<FHeistPlayerResult>();
 
 	UE_MVVM_SET_PROPERTY_VALUE(PlayerResults, NewPlayerResults);
 
-	const int32 LocalPlayerId = IsValid(LocalPlayerState)
-		? LocalPlayerState->HeistPlayerId
-		: INDEX_NONE;
-	const FHeistPlayerResult* LocalResult = PlayerResults.FindByPredicate(
-		[LocalPlayerId](const FHeistPlayerResult& PlayerResult)
-		{
-			return PlayerResult.PlayerId == LocalPlayerId;
-		});
+	const int32 LocalPlayerId = IsValid(LocalPlayerState) ? LocalPlayerState->HeistPlayerId : INDEX_NONE;
+	const FHeistPlayerResult* LocalResult = PlayerResults.FindByPredicate([LocalPlayerId](const FHeistPlayerResult& PlayerResult) { return PlayerResult.PlayerId == LocalPlayerId; });
 
 	const int32 NewMyFinalScore = LocalResult ? LocalResult->FinalScore : 0;
 	UE_MVVM_SET_PROPERTY_VALUE(MyFinalScore, NewMyFinalScore);
@@ -70,9 +61,7 @@ void UHeistResultViewModel::RefreshResultData()
 
 	const bool bNewEscaped = LocalResult ? LocalResult->bEscaped : false;
 	UE_MVVM_SET_PROPERTY_VALUE(bEscaped, bNewEscaped);
-	UE_MVVM_SET_PROPERTY_VALUE(
-		EscapedVisibility,
-		bNewEscaped ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	UE_MVVM_SET_PROPERTY_VALUE(EscapedVisibility, bNewEscaped ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 
 	RefreshResultRows();
 	SnapshotChangedDelegate.Broadcast();
@@ -160,25 +149,14 @@ FText UHeistResultViewModel::BuildResultRowText(const int32 ResultIndex) const
 	}
 
 	const FHeistPlayerResult& PlayerResult = PlayerResults[ResultIndex];
-	const FText EscapeStateText = PlayerResult.bEscaped
-		? FText::FromString(TEXT("ESCAPED"))
-		: FText::FromString(TEXT("CAUGHT"));
-	return FText::Format(
-		NSLOCTEXT(
-			"HeistResult",
-			"ResultRowFormat",
-			"P{0} \n Loot {1} \n Weight {2} \n {3}"),
-		FText::AsNumber(PlayerResult.PlayerId),
-		FText::AsNumber(PlayerResult.FinalScore),
-		FText::AsNumber(FMath::RoundToInt(PlayerResult.LootWeight)),
-		EscapeStateText);
+	const FText EscapeStateText = PlayerResult.bEscaped ? FText::FromString(TEXT("ESCAPED")) : FText::FromString(TEXT("CAUGHT"));
+	return FText::Format(NSLOCTEXT("HeistResult", "ResultRowFormat", "P{0} \n Loot {1} \n Weight {2} \n {3}"), FText::AsNumber(PlayerResult.PlayerId), FText::AsNumber(PlayerResult.FinalScore),
+						 FText::AsNumber(FMath::RoundToInt(PlayerResult.LootWeight)), EscapeStateText);
 }
 
 ESlateVisibility UHeistResultViewModel::BuildResultRowVisibility(const int32 ResultIndex) const
 {
-	return PlayerResults.IsValidIndex(ResultIndex)
-		? ESlateVisibility::Visible
-		: ESlateVisibility::Collapsed;
+	return PlayerResults.IsValidIndex(ResultIndex) ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
 }
 
 void UHeistResultViewModel::RefreshResultRows()

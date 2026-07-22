@@ -2,8 +2,7 @@
 
 #include "Character/Components/HeistInventoryComponent.h"
 
-UHeistQuickSlotViewModel::UHeistQuickSlotViewModel(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer)
+UHeistQuickSlotViewModel::UHeistQuickSlotViewModel(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 }
 
@@ -28,9 +27,7 @@ void UHeistQuickSlotViewModel::SetupViewModel(UHeistInventoryComponent* InInvent
 	if (IsValid(InventoryComponent))
 	{
 		InventoryComponent->GetInventoryChangedDelegate().RemoveAll(this);
-		InventoryComponent->GetInventoryChangedDelegate().AddUObject(
-			this,
-			&UHeistQuickSlotViewModel::RefreshConfirmedSnapshot);
+		InventoryComponent->GetInventoryChangedDelegate().AddUObject(this, &UHeistQuickSlotViewModel::RefreshConfirmedSnapshot);
 	}
 
 	RefreshConfirmedSnapshot();
@@ -38,9 +35,7 @@ void UHeistQuickSlotViewModel::SetupViewModel(UHeistInventoryComponent* InInvent
 
 void UHeistQuickSlotViewModel::RefreshConfirmedSnapshot()
 {
-	const TArray<FHeistQuickSlotState> ConfirmedQuickSlots = IsValid(InventoryComponent)
-		? InventoryComponent->GetQuickSlots()
-		: TArray<FHeistQuickSlotState>();
+	const TArray<FHeistQuickSlotState> ConfirmedQuickSlots = IsValid(InventoryComponent) ? InventoryComponent->GetQuickSlots() : TArray<FHeistQuickSlotState>();
 
 	TArray<FHeistQuickSlotPresentation> ConfirmedPresentations;
 	ConfirmedPresentations.Reserve(ConfirmedQuickSlots.Num());
@@ -52,9 +47,7 @@ void UHeistQuickSlotViewModel::RefreshConfirmedSnapshot()
 		Presentation.ItemInstanceId = QuickSlot.ItemInstanceId;
 
 		FHeistInventoryItem InventoryItem;
-		if (QuickSlot.ItemInstanceId != INDEX_NONE
-			&& IsValid(InventoryComponent)
-			&& InventoryComponent->TryGetItem(QuickSlot.ItemInstanceId, InventoryItem))
+		if (QuickSlot.ItemInstanceId != INDEX_NONE && IsValid(InventoryComponent) && InventoryComponent->TryGetItem(QuickSlot.ItemInstanceId, InventoryItem))
 		{
 			Presentation.bAssigned = true;
 			Presentation.ItemId = InventoryItem.ItemId;

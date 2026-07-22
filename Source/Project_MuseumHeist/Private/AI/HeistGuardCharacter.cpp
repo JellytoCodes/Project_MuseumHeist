@@ -40,29 +40,21 @@ void AHeistGuardCharacter::BeginPlay()
 	GuardCapsule->SetCollisionResponseToChannel(HeistCollisionChannels::Player, ECR_Block);
 	GuardCapsule->SetCollisionResponseToChannel(HeistCollisionChannels::Interactable, ECR_Ignore);
 	GuardCapsule->SetCollisionResponseToChannel(HeistCollisionChannels::InteractionTrace, ECR_Ignore);
-	UE_LOG(
-		LogHeist,
-		Log,
-		TEXT("[%s] Guard collision channels configured: Capsule=%s ObjectType=HeistGuard InteractionTrace=Ignore Player=Block Interactable=Ignore"),
-		*GetName(),
-		*GetNameSafe(GuardCapsule));
+	UE_LOG(LogHeist, Log, TEXT("[%s] Guard collision channels configured: Capsule=%s ObjectType=HeistGuard InteractionTrace=Ignore Player=Block Interactable=Ignore"), *GetName(),
+		   *GetNameSafe(GuardCapsule));
 
 	checkf(IsValid(GuardStateComponent), TEXT("HeistGuardCharacter requires GuardStateComponent."));
 	checkf(IsValid(PatrolPathComponent), TEXT("HeistGuardCharacter requires PatrolPathComponent."));
 	checkf(IsValid(NoiseReactionComponent), TEXT("HeistGuardCharacter requires NoiseReactionComponent."));
 
-	GuardStateComponent->GetGuardStateChangedDelegate().AddUObject(
-		this,
-		&AHeistGuardCharacter::HandleGuardStateChanged);
+	GuardStateComponent->GetGuardStateChangedDelegate().AddUObject(this, &AHeistGuardCharacter::HandleGuardStateChanged);
 
 	if (HasAuthority())
 	{
 		ResolveGuardProfile();
 	}
 
-	HandleGuardStateChanged(
-		GuardStateComponent->GetGuardState(),
-		GuardStateComponent->GetGuardState());
+	HandleGuardStateChanged(GuardStateComponent->GetGuardState(), GuardStateComponent->GetGuardState());
 }
 
 #pragma endregion
@@ -90,18 +82,11 @@ UHeistGuardNoiseReactionComponent* AHeistGuardCharacter::GetNoiseReactionCompone
 
 void AHeistGuardCharacter::ResolveGuardProfile()
 {
-	const AHeistGameMode* HeistGameMode =
-		GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
-	if (!IsValid(HeistGameMode)
-		|| !HeistGameMode->TryGetGuardDefinition(GuardProfileId, GuardProfile))
+	const AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	if (!IsValid(HeistGameMode) || !HeistGameMode->TryGetGuardDefinition(GuardProfileId, GuardProfile))
 	{
 #if !UE_BUILD_SHIPPING
-		UE_LOG(
-			LogHeistAI,
-			Warning,
-			TEXT("Guard profile rejected: Guard=%s Profile=%s Reason=MissingGuardDataRow"),
-			*GetNameSafe(this),
-			*GuardProfileId.ToString());
+		UE_LOG(LogHeistAI, Warning, TEXT("Guard profile rejected: Guard=%s Profile=%s Reason=MissingGuardDataRow"), *GetNameSafe(this), *GuardProfileId.ToString());
 #endif
 		return;
 	}
@@ -110,20 +95,13 @@ void AHeistGuardCharacter::ResolveGuardProfile()
 	bHasResolvedGuardProfile = true;
 	GuardStateComponent->ConfigureGuardProfile(GuardProfile);
 	NoiseReactionComponent->ConfigureGuardProfile(GuardProfile);
-	if (AHeistGuardAIController* GuardAIController =
-		Cast<AHeistGuardAIController>(GetController()))
+	if (AHeistGuardAIController* GuardAIController = Cast<AHeistGuardAIController>(GetController()))
 	{
 		GuardAIController->ConfigurePerceptionFromGuardProfile(GuardProfile);
 	}
 #if !UE_BUILD_SHIPPING
-	UE_LOG(
-		LogHeistAI,
-		Log,
-		TEXT("Guard profile resolved: Guard=%s Profile=%s PatrolSpeed=%.1f ChaseSpeed=%.1f"),
-		*GetNameSafe(this),
-		*GuardProfileId.ToString(),
-		GuardProfile.PatrolSpeed,
-		GuardProfile.ChaseSpeed);
+	UE_LOG(LogHeistAI, Log, TEXT("Guard profile resolved: Guard=%s Profile=%s PatrolSpeed=%.1f ChaseSpeed=%.1f"), *GetNameSafe(this), *GuardProfileId.ToString(), GuardProfile.PatrolSpeed,
+		   GuardProfile.ChaseSpeed);
 #endif
 }
 
@@ -142,15 +120,12 @@ const FHeistGuardDataRow& AHeistGuardCharacter::GetGuardProfile() const
 	return GuardProfile;
 }
 
-void AHeistGuardCharacter::HandleGuardStateChanged(
-	const EHeistGuardState,
-	const EHeistGuardState NewState)
+void AHeistGuardCharacter::HandleGuardStateChanged(const EHeistGuardState, const EHeistGuardState NewState)
 {
 	UCharacterMovementComponent* MovementComponent = GetCharacterMovement();
 	checkf(IsValid(MovementComponent), TEXT("HeistGuardCharacter requires CharacterMovementComponent."));
 
-	if (NewState == EHeistGuardState::Disabled
-		|| NewState == EHeistGuardState::Stunned)
+	if (NewState == EHeistGuardState::Disabled || NewState == EHeistGuardState::Stunned)
 	{
 		MovementComponent->MaxWalkSpeed = 0.0f;
 		if (HasAuthority() && IsValid(GetController()))
@@ -165,10 +140,7 @@ void AHeistGuardCharacter::HandleGuardStateChanged(
 		return;
 	}
 
-	MovementComponent->MaxWalkSpeed =
-		NewState == EHeistGuardState::ChasePlayer
-			? FMath::Max(0.0f, GuardProfile.ChaseSpeed)
-			: FMath::Max(0.0f, GuardProfile.PatrolSpeed);
+	MovementComponent->MaxWalkSpeed = NewState == EHeistGuardState::ChasePlayer ? FMath::Max(0.0f, GuardProfile.ChaseSpeed) : FMath::Max(0.0f, GuardProfile.PatrolSpeed);
 }
 
 #pragma endregion

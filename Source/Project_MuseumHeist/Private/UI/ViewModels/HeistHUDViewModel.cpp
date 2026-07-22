@@ -7,8 +7,7 @@
 
 #pragma region Construction
 
-UHeistHUDViewModel::UHeistHUDViewModel(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer)
+UHeistHUDViewModel::UHeistHUDViewModel(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 }
 
@@ -45,10 +44,7 @@ void UHeistHUDViewModel::BeginDestroy()
 
 #pragma region Setup
 
-void UHeistHUDViewModel::SetupViewModel(
-	AHeistGameState* InGameState,
-	AHeistPlayerState* InLocalPlayerState,
-	UHeistActionComponent* InActionComponent)
+void UHeistHUDViewModel::SetupViewModel(AHeistGameState* InGameState, AHeistPlayerState* InLocalPlayerState, UHeistActionComponent* InActionComponent)
 {
 	if (GameState != InGameState && IsValid(GameState))
 	{
@@ -77,45 +73,29 @@ void UHeistHUDViewModel::SetupViewModel(
 	if (IsValid(GameState))
 	{
 		GameState->GetPlayerConnectionsChangedDelegate().RemoveAll(this);
-		GameState->GetPlayerConnectionsChangedDelegate().AddUObject(
-			this,
-			&UHeistHUDViewModel::HandlePlayerConnectionsChanged);
+		GameState->GetPlayerConnectionsChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandlePlayerConnectionsChanged);
 		GameState->GetEscapePhaseStateChangedDelegate().RemoveAll(this);
-		GameState->GetEscapePhaseStateChangedDelegate().AddUObject(
-			this,
-			&UHeistHUDViewModel::HandleEscapePhaseStateChanged);
+		GameState->GetEscapePhaseStateChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandleEscapePhaseStateChanged);
 		GameState->GetRareLootEventStateChangedDelegate().RemoveAll(this);
-		GameState->GetRareLootEventStateChangedDelegate().AddUObject(
-			this,
-			&UHeistHUDViewModel::HandleRareLootEventStateChanged);
+		GameState->GetRareLootEventStateChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandleRareLootEventStateChanged);
 		GameState->GetObjectiveStateChangedDelegate().RemoveAll(this);
-		GameState->GetObjectiveStateChangedDelegate().AddUObject(
-			this,
-			&UHeistHUDViewModel::HandleObjectiveStateChanged);
+		GameState->GetObjectiveStateChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandleObjectiveStateChanged);
 	}
 
 	if (IsValid(LocalPlayerState))
 	{
 		LocalPlayerState->GetPlayerIdentityChangedDelegate().RemoveAll(this);
-		LocalPlayerState->GetPlayerIdentityChangedDelegate().AddUObject(
-			this,
-			&UHeistHUDViewModel::HandlePlayerIdentityChanged);
+		LocalPlayerState->GetPlayerIdentityChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandlePlayerIdentityChanged);
 		LocalPlayerState->GetLootTotalsChangedDelegate().RemoveAll(this);
-		LocalPlayerState->GetLootTotalsChangedDelegate().AddUObject(
-			this,
-			&UHeistHUDViewModel::HandleLootTotalsChanged);
+		LocalPlayerState->GetLootTotalsChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandleLootTotalsChanged);
 		LocalPlayerState->GetEscapeStateChangedDelegate().RemoveAll(this);
-		LocalPlayerState->GetEscapeStateChangedDelegate().AddUObject(
-			this,
-			&UHeistHUDViewModel::HandleEscapeStateChanged);
+		LocalPlayerState->GetEscapeStateChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandleEscapeStateChanged);
 	}
 
 	if (IsValid(ActionComponent))
 	{
 		ActionComponent->GetActionStateChangedDelegate().RemoveAll(this);
-		ActionComponent->GetActionStateChangedDelegate().AddUObject(
-			this,
-			&UHeistHUDViewModel::HandleActionStateChanged);
+		ActionComponent->GetActionStateChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandleActionStateChanged);
 	}
 
 	RefreshPresentationState();
@@ -124,78 +104,34 @@ void UHeistHUDViewModel::SetupViewModel(
 
 void UHeistHUDViewModel::RefreshPresentationState()
 {
-	UE_MVVM_SET_PROPERTY_VALUE(
-		LocalLootScore,
-		IsValid(LocalPlayerState) ? LocalPlayerState->GetTotalLootScore() : 0);
-	UE_MVVM_SET_PROPERTY_VALUE(
-		LocalLootWeight,
-		IsValid(LocalPlayerState) ? LocalPlayerState->GetTotalLootWeight() : 0.0f);
-	UE_MVVM_SET_PROPERTY_VALUE(
-		LocalPlayerId,
-		IsValid(LocalPlayerState) ? LocalPlayerState->HeistPlayerId : INDEX_NONE);
-	UE_MVVM_SET_PROPERTY_VALUE(
-		ConnectedPlayerCount,
-		IsValid(GameState) ? GameState->GetConnectedPlayerCount() : 0);
-	UE_MVVM_SET_PROPERTY_VALUE(
-		bLocalPlayerEscaped,
-		IsValid(LocalPlayerState) && LocalPlayerState->IsEscaped());
-	UE_MVVM_SET_PROPERTY_VALUE(
-		bEscapePhaseOpen,
-		IsValid(GameState) && GameState->IsEscapePhaseOpen());
-	UE_MVVM_SET_PROPERTY_VALUE(
-		bEscapeCastActive,
-		IsValid(ActionComponent) && ActionComponent->IsEscapeCastActive());
-	UE_MVVM_SET_PROPERTY_VALUE(
-		EscapeCastEndServerTime,
-		IsValid(ActionComponent)
-			? ActionComponent->GetEscapeCastEndServerTime()
-			: 0.0f);
-	UE_MVVM_SET_PROPERTY_VALUE(
-		bTrapPlacementCastActive,
-		IsValid(ActionComponent) && ActionComponent->IsTrapPlacementCastActive());
-	UE_MVVM_SET_PROPERTY_VALUE(
-		TrapPlacementCastEndServerTime,
-		IsValid(ActionComponent)
-			? ActionComponent->GetTrapPlacementCastEndServerTime()
-			: 0.0f);
-	const bool bLocalObservationCastActive = IsValid(ActionComponent)
-		&& ActionComponent->IsObservationCastActive();
-	const FName ActiveObjectiveArtifactId = IsValid(GameState)
-		? GameState->GetActiveTargetArtifactId()
-		: NAME_None;
-	const FName ActiveObjectiveCaseId = IsValid(GameState)
-		? GameState->GetActiveTargetCaseId()
-		: NAME_None;
-	const EHeistObjectiveState ActiveObjectiveState = IsValid(GameState)
-		? GameState->GetObjectiveState()
-		: EHeistObjectiveState::Inactive;
+	UE_MVVM_SET_PROPERTY_VALUE(LocalLootScore, IsValid(LocalPlayerState) ? LocalPlayerState->GetTotalLootScore() : 0);
+	UE_MVVM_SET_PROPERTY_VALUE(LocalLootWeight, IsValid(LocalPlayerState) ? LocalPlayerState->GetTotalLootWeight() : 0.0f);
+	UE_MVVM_SET_PROPERTY_VALUE(LocalPlayerId, IsValid(LocalPlayerState) ? LocalPlayerState->HeistPlayerId : INDEX_NONE);
+	UE_MVVM_SET_PROPERTY_VALUE(ConnectedPlayerCount, IsValid(GameState) ? GameState->GetConnectedPlayerCount() : 0);
+	UE_MVVM_SET_PROPERTY_VALUE(bLocalPlayerEscaped, IsValid(LocalPlayerState) && LocalPlayerState->IsEscaped());
+	UE_MVVM_SET_PROPERTY_VALUE(bEscapePhaseOpen, IsValid(GameState) && GameState->IsEscapePhaseOpen());
+	UE_MVVM_SET_PROPERTY_VALUE(bEscapeCastActive, IsValid(ActionComponent) && ActionComponent->IsEscapeCastActive());
+	UE_MVVM_SET_PROPERTY_VALUE(EscapeCastEndServerTime, IsValid(ActionComponent) ? ActionComponent->GetEscapeCastEndServerTime() : 0.0f);
+	UE_MVVM_SET_PROPERTY_VALUE(bTrapPlacementCastActive, IsValid(ActionComponent) && ActionComponent->IsTrapPlacementCastActive());
+	UE_MVVM_SET_PROPERTY_VALUE(TrapPlacementCastEndServerTime, IsValid(ActionComponent) ? ActionComponent->GetTrapPlacementCastEndServerTime() : 0.0f);
+	const bool bLocalObservationCastActive = IsValid(ActionComponent) && ActionComponent->IsObservationCastActive();
+	const FName ActiveObjectiveArtifactId = IsValid(GameState) ? GameState->GetActiveTargetArtifactId() : NAME_None;
+	const FName ActiveObjectiveCaseId = IsValid(GameState) ? GameState->GetActiveTargetCaseId() : NAME_None;
+	const EHeistObjectiveState ActiveObjectiveState = IsValid(GameState) ? GameState->GetObjectiveState() : EHeistObjectiveState::Inactive;
 
 	UE_MVVM_SET_PROPERTY_VALUE(bObservationCastActive, bLocalObservationCastActive);
-	UE_MVVM_SET_PROPERTY_VALUE(
-		ObservationCastEndServerTime,
-		bLocalObservationCastActive
-			? ActionComponent->GetObservationCastEndServerTime()
-			: 0.0f);
+	UE_MVVM_SET_PROPERTY_VALUE(ObservationCastEndServerTime, bLocalObservationCastActive ? ActionComponent->GetObservationCastEndServerTime() : 0.0f);
 	// This ViewModel is constructed from the locally owned PlayerState and ActionComponent.
 	// Remote players can replicate the cast state, but their HUD never consumes this instance.
 	UE_MVVM_SET_PROPERTY_VALUE(bObservationReferenceVisible, bLocalObservationCastActive);
-	UE_MVVM_SET_PROPERTY_VALUE(
-		ObservationReferenceArtifactId,
-		bLocalObservationCastActive ? ActiveObjectiveArtifactId : NAME_None);
+	UE_MVVM_SET_PROPERTY_VALUE(ObservationReferenceArtifactId, bLocalObservationCastActive ? ActiveObjectiveArtifactId : NAME_None);
 	UE_MVVM_SET_PROPERTY_VALUE(ObjectiveArtifactId, ActiveObjectiveArtifactId);
 	UE_MVVM_SET_PROPERTY_VALUE(ObjectiveCaseId, ActiveObjectiveCaseId);
 	UE_MVVM_SET_PROPERTY_VALUE(ObjectiveState, ActiveObjectiveState);
 
-	const FText ArtifactLabel = ActiveObjectiveArtifactId.IsNone()
-		? NSLOCTEXT("HeistHUD", "UnknownObjectiveArtifact", "TARGET ARTIFACT")
-		: FText::FromName(ActiveObjectiveArtifactId);
-	UE_MVVM_SET_PROPERTY_VALUE(
-		ObservationReferenceText,
-		bLocalObservationCastActive
-			? FText::Format(
-				NSLOCTEXT("HeistHUD", "ObservationReferenceFormat", "REFERENCE  {0}"),
-				ArtifactLabel)
-			: FText::GetEmpty());
+	const FText ArtifactLabel = ActiveObjectiveArtifactId.IsNone() ? NSLOCTEXT("HeistHUD", "UnknownObjectiveArtifact", "TARGET ARTIFACT") : FText::FromName(ActiveObjectiveArtifactId);
+	UE_MVVM_SET_PROPERTY_VALUE(ObservationReferenceText,
+							   bLocalObservationCastActive ? FText::Format(NSLOCTEXT("HeistHUD", "ObservationReferenceFormat", "REFERENCE  {0}"), ArtifactLabel) : FText::GetEmpty());
 
 	FText ObjectiveStateLabel;
 	switch (ActiveObjectiveState)
@@ -217,21 +153,14 @@ void UHeistHUDViewModel::RefreshPresentationState()
 		ObjectiveStateLabel = NSLOCTEXT("HeistHUD", "ObjectiveInactive", "INACTIVE");
 		break;
 	}
-	UE_MVVM_SET_PROPERTY_VALUE(
-		ObjectiveStateText,
-		FText::Format(
-			NSLOCTEXT("HeistHUD", "ObjectiveStateFormat", "OBJECTIVE  {0}  |  {1}"),
-			ArtifactLabel,
-			ObjectiveStateLabel));
+	UE_MVVM_SET_PROPERTY_VALUE(ObjectiveStateText, FText::Format(NSLOCTEXT("HeistHUD", "ObjectiveStateFormat", "OBJECTIVE  {0}  |  {1}"), ArtifactLabel, ObjectiveStateLabel));
 
 	PresentationChangedDelegate.Broadcast();
 }
 
 void UHeistHUDViewModel::RefreshRareLootState()
 {
-	const FHeistRareLootEventState State = IsValid(GameState)
-		? GameState->GetRareLootEventState()
-		: FHeistRareLootEventState();
+	const FHeistRareLootEventState State = IsValid(GameState) ? GameState->GetRareLootEventState() : FHeistRareLootEventState();
 
 	UE_MVVM_SET_PROPERTY_VALUE(bRareLootIncoming, State.bIncomingWarningActive);
 	UE_MVVM_SET_PROPERTY_VALUE(bRareLootDirectionMarkerVisible, State.bDirectionMarkerActive);
@@ -257,11 +186,7 @@ void UHeistHUDViewModel::HandlePlayerIdentityChanged(const int32)
 	RefreshPresentationState();
 }
 
-void UHeistHUDViewModel::HandleObjectiveStateChanged(
-	const FName,
-	const FName,
-	const EHeistObjectiveState,
-	AHeistPlayerState*)
+void UHeistHUDViewModel::HandleObjectiveStateChanged(const FName, const FName, const EHeistObjectiveState, AHeistPlayerState*)
 {
 	RefreshPresentationState();
 }
@@ -284,17 +209,9 @@ void UHeistHUDViewModel::HandleEscapeStateChanged(const bool)
 void UHeistHUDViewModel::HandleActionStateChanged()
 {
 	RefreshPresentationState();
-	UE_LOG(
-		LogHeistUI,
-		Verbose,
-		TEXT("[%s] Observation presentation refreshed: LocalPlayerId=%d Active=%s ReferenceVisible=%s Artifact=%s EndServerTime=%.2f ObjectiveState=%d OwnerOnly=true"),
-		*GetName(),
-		LocalPlayerId,
-		bObservationCastActive ? TEXT("true") : TEXT("false"),
-		bObservationReferenceVisible ? TEXT("true") : TEXT("false"),
-		*ObservationReferenceArtifactId.ToString(),
-		ObservationCastEndServerTime,
-		static_cast<int32>(ObjectiveState));
+	UE_LOG(LogHeistUI, Verbose, TEXT("[%s] Observation presentation refreshed: LocalPlayerId=%d Active=%s ReferenceVisible=%s Artifact=%s EndServerTime=%.2f ObjectiveState=%d OwnerOnly=true"),
+		   *GetName(), LocalPlayerId, bObservationCastActive ? TEXT("true") : TEXT("false"), bObservationReferenceVisible ? TEXT("true") : TEXT("false"), *ObservationReferenceArtifactId.ToString(),
+		   ObservationCastEndServerTime, static_cast<int32>(ObjectiveState));
 }
 
 FHeistHUDPresentationChanged& UHeistHUDViewModel::GetPresentationChangedDelegate()

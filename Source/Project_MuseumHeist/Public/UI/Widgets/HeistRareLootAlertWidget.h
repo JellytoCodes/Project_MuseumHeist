@@ -12,14 +12,14 @@ class PROJECT_MUSEUMHEIST_API UHeistRareLootAlertWidget : public UHeistUserWidge
 
 #pragma region Construction
 
-public:
+  public:
 	UHeistRareLootAlertWidget(const FObjectInitializer& ObjectInitializer);
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void NativeDestruct() override;
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
@@ -27,11 +27,11 @@ protected:
 
 #pragma region ViewModel
 
-public:
+  public:
 	void SetupRareLootAlertWidget(class UHeistHUDViewModel* InViewModel);
 	class UHeistHUDViewModel* GetHUDViewModel() const;
 
-private:
+  private:
 	void RefreshRareLootPresentation();
 	void RefreshWarningCountdownText();
 	void RefreshDirectionMarkerPresentation();
@@ -50,7 +50,7 @@ private:
 
 #pragma region BindWidgets
 
-private:
+  private:
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<class UWidget> IncomingWarningContainer;
 

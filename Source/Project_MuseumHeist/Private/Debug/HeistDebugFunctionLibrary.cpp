@@ -41,405 +41,348 @@
 
 namespace
 {
-	AHeistPlayerController* ResolveHeistPlayerController(APlayerController* PlayerController)
+AHeistPlayerController* ResolveHeistPlayerController(APlayerController* PlayerController)
+{
+	return Cast<AHeistPlayerController>(PlayerController);
+}
+
+UHeistInventoryComponent* ResolveInventoryComponent(APlayerController* PlayerController)
+{
+	const AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	const AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController) ? HeistPlayerController->GetPawn<AHeistPlayerCharacter>() : nullptr;
+	return IsValid(HeistCharacter) ? HeistCharacter->GetInventoryComponent() : nullptr;
+}
+
+UHeistStatusComponent* ResolveStatusComponent(APlayerController* PlayerController)
+{
+	const AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	const AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController) ? HeistPlayerController->GetPawn<AHeistPlayerCharacter>() : nullptr;
+	return IsValid(HeistCharacter) ? HeistCharacter->GetStatusComponent() : nullptr;
+}
+
+UHeistForgeryComponent* ResolveForgeryComponent(APlayerController* PlayerController)
+{
+	const AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	const AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController) ? HeistPlayerController->GetPawn<AHeistPlayerCharacter>() : nullptr;
+	return IsValid(HeistCharacter) ? HeistCharacter->GetForgeryComponent() : nullptr;
+}
+
+UHeistForgeryComponent* ResolveScoredForgeryComponent(APlayerController* PlayerController, bool& bOutUsedAuthorityFallback)
+{
+	bOutUsedAuthorityFallback = false;
+	UHeistForgeryComponent* DirectComponent = ResolveForgeryComponent(PlayerController);
+	if (IsValid(DirectComponent) && DirectComponent->HasAuthoritativeForgeryResult())
 	{
-		return Cast<AHeistPlayerController>(PlayerController);
+		return DirectComponent;
 	}
 
-	UHeistInventoryComponent* ResolveInventoryComponent(APlayerController* PlayerController)
+	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(PlayerController->GetWorld()))
 	{
-		const AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
-		const AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController)
-			? HeistPlayerController->GetPawn<AHeistPlayerCharacter>()
-			: nullptr;
-		return IsValid(HeistCharacter) ? HeistCharacter->GetInventoryComponent() : nullptr;
+		return DirectComponent;
 	}
 
-	UHeistStatusComponent* ResolveStatusComponent(APlayerController* PlayerController)
+	UHeistForgeryComponent* LatestScoredComponent = nullptr;
+	int32 LatestScoreRevision = INDEX_NONE;
+	for (TActorIterator<AHeistPlayerCharacter> CharacterIterator(PlayerController->GetWorld()); CharacterIterator; ++CharacterIterator)
 	{
-		const AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
-		const AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController)
-			? HeistPlayerController->GetPawn<AHeistPlayerCharacter>()
-			: nullptr;
-		return IsValid(HeistCharacter) ? HeistCharacter->GetStatusComponent() : nullptr;
+		AHeistPlayerCharacter* CandidateCharacter = *CharacterIterator;
+		UHeistForgeryComponent* CandidateComponent = IsValid(CandidateCharacter) ? CandidateCharacter->GetForgeryComponent() : nullptr;
+		if (!IsValid(CandidateComponent) || !CandidateComponent->HasAuthoritativeForgeryResult() || CandidateComponent->GetForgeryScoreRevision() < LatestScoreRevision)
+		{
+			continue;
+		}
+
+		LatestScoredComponent = CandidateComponent;
+		LatestScoreRevision = CandidateComponent->GetForgeryScoreRevision();
 	}
 
-	UHeistForgeryComponent* ResolveForgeryComponent(APlayerController* PlayerController)
+	bOutUsedAuthorityFallback = IsValid(LatestScoredComponent) && LatestScoredComponent != DirectComponent;
+	return IsValid(LatestScoredComponent) ? LatestScoredComponent : DirectComponent;
+}
+
+AHeistGuardCharacter* ResolveNearestGuard(APlayerController* PlayerController)
+{
+	if (!IsValid(PlayerController) || !IsValid(PlayerController->GetWorld()))
 	{
-		const AHeistPlayerController* HeistPlayerController =
-			ResolveHeistPlayerController(PlayerController);
-		const AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController)
-			? HeistPlayerController->GetPawn<AHeistPlayerCharacter>()
-			: nullptr;
-		return IsValid(HeistCharacter)
-			? HeistCharacter->GetForgeryComponent()
-			: nullptr;
-	}
-
-	UHeistForgeryComponent* ResolveScoredForgeryComponent(
-		APlayerController* PlayerController,
-		bool& bOutUsedAuthorityFallback)
-	{
-		bOutUsedAuthorityFallback = false;
-		UHeistForgeryComponent* DirectComponent =
-			ResolveForgeryComponent(PlayerController);
-		if (IsValid(DirectComponent)
-			&& DirectComponent->HasAuthoritativeForgeryResult())
-		{
-			return DirectComponent;
-		}
-
-		if (!IsValid(PlayerController)
-			|| !PlayerController->HasAuthority()
-			|| !IsValid(PlayerController->GetWorld()))
-		{
-			return DirectComponent;
-		}
-
-		UHeistForgeryComponent* LatestScoredComponent = nullptr;
-		int32 LatestScoreRevision = INDEX_NONE;
-		for (TActorIterator<AHeistPlayerCharacter> CharacterIterator(
-				PlayerController->GetWorld());
-			CharacterIterator;
-			++CharacterIterator)
-		{
-			AHeistPlayerCharacter* CandidateCharacter = *CharacterIterator;
-			UHeistForgeryComponent* CandidateComponent =
-				IsValid(CandidateCharacter)
-				? CandidateCharacter->GetForgeryComponent()
-				: nullptr;
-			if (!IsValid(CandidateComponent)
-				|| !CandidateComponent->HasAuthoritativeForgeryResult()
-				|| CandidateComponent->GetForgeryScoreRevision()
-					< LatestScoreRevision)
-			{
-				continue;
-			}
-
-			LatestScoredComponent = CandidateComponent;
-			LatestScoreRevision =
-				CandidateComponent->GetForgeryScoreRevision();
-		}
-
-		bOutUsedAuthorityFallback = IsValid(LatestScoredComponent)
-			&& LatestScoredComponent != DirectComponent;
-		return IsValid(LatestScoredComponent)
-			? LatestScoredComponent
-			: DirectComponent;
-	}
-
-	AHeistGuardCharacter* ResolveNearestGuard(APlayerController* PlayerController)
-	{
-		if (!IsValid(PlayerController) || !IsValid(PlayerController->GetWorld()))
-		{
-			return nullptr;
-		}
-
-		const APawn* ReferencePawn = PlayerController->GetPawn();
-		const FVector ReferenceLocation = IsValid(ReferencePawn)
-			? ReferencePawn->GetActorLocation()
-			: FVector::ZeroVector;
-		AHeistGuardCharacter* NearestGuard = nullptr;
-		float NearestDistanceSquared = TNumericLimits<float>::Max();
-		for (TActorIterator<AHeistGuardCharacter> GuardIterator(PlayerController->GetWorld());
-			GuardIterator;
-			++GuardIterator)
-		{
-			AHeistGuardCharacter* CandidateGuard = *GuardIterator;
-			if (!IsValid(CandidateGuard))
-			{
-				continue;
-			}
-
-			const float DistanceSquared = FVector::DistSquared(
-				ReferenceLocation,
-				CandidateGuard->GetActorLocation());
-			if (DistanceSquared < NearestDistanceSquared)
-			{
-				NearestDistanceSquared = DistanceSquared;
-				NearestGuard = CandidateGuard;
-			}
-		}
-
-		return NearestGuard;
-	}
-
-	const TCHAR* ToQuickSlotText(const EHeistQuickSlotType SlotType)
-	{
-		switch (SlotType)
-		{
-		case EHeistQuickSlotType::Coin:
-			return TEXT("Coin");
-		case EHeistQuickSlotType::SmokeGrenade:
-			return TEXT("SmokeGrenade");
-		case EHeistQuickSlotType::GlueTrap:
-			return TEXT("GlueTrap");
-		default:
-			return TEXT("None");
-		}
-	}
-
-	const TCHAR* ToInputModeText(const EHeistInputMode InputMode)
-	{
-		switch (InputMode)
-		{
-		case EHeistInputMode::Gameplay:
-			return TEXT("Gameplay");
-		case EHeistInputMode::Inventory:
-			return TEXT("Inventory");
-		case EHeistInputMode::Forgery:
-			return TEXT("Forgery");
-		default:
-			return TEXT("Unknown");
-		}
-	}
-
-	bool TryParseQuickSlotName(const FString& SlotName, EHeistQuickSlotType& OutSlotType)
-	{
-		const FString NormalizedSlotName = SlotName.TrimStartAndEnd().ToLower();
-		if (NormalizedSlotName == TEXT("coin") || NormalizedSlotName == TEXT("q"))
-		{
-			OutSlotType = EHeistQuickSlotType::Coin;
-			return true;
-		}
-
-		if (NormalizedSlotName == TEXT("smoke")
-			|| NormalizedSlotName == TEXT("smokegrenade")
-			|| NormalizedSlotName == TEXT("e"))
-		{
-			OutSlotType = EHeistQuickSlotType::SmokeGrenade;
-			return true;
-		}
-
-		if (NormalizedSlotName == TEXT("glue")
-			|| NormalizedSlotName == TEXT("gluetrap")
-			|| NormalizedSlotName == TEXT("r"))
-		{
-			OutSlotType = EHeistQuickSlotType::GlueTrap;
-			return true;
-		}
-
-		OutSlotType = EHeistQuickSlotType::None;
-		return false;
-	}
-
-	FString FormatOptionalDistance(const float Distance)
-	{
-		return Distance >= 0.0f
-			? FString::Printf(TEXT(" Distance=%.1f"), Distance)
-			: FString();
-	}
-
-	FString FormatStatusTags(const TArray<FHeistTimedTagState>& StatusTags)
-	{
-		if (StatusTags.IsEmpty())
-		{
-			return TEXT("None");
-		}
-
-		TArray<FString> Entries;
-		Entries.Reserve(StatusTags.Num());
-		for (const FHeistTimedTagState& StatusTagState : StatusTags)
-		{
-			Entries.Add(FString::Printf(
-				TEXT("%s@%.2f"),
-				*StatusTagState.StateTag.ToString(),
-				StatusTagState.EndServerTime));
-		}
-
-		return FString::Join(Entries, TEXT(", "));
-	}
-
-	FString FormatResultEntry(const FHeistPlayerResult& PlayerResult)
-	{
-		return FString::Printf(
-			TEXT("PlayerId=%d Escaped=%s LootScore=%d FinalScore=%d LootWeight=%.2f EscapeTime=%.2f"),
-			PlayerResult.PlayerId,
-			PlayerResult.bEscaped ? TEXT("true") : TEXT("false"),
-			PlayerResult.LootScore,
-			PlayerResult.FinalScore,
-			PlayerResult.LootWeight,
-			PlayerResult.EscapeTimeSeconds);
-	}
-
-	AHeistPaintingDisplayCaseActor* ResolveNearestPaintingDisplayCase(APlayerController* PlayerController)
-	{
-		if (!IsValid(PlayerController) || !IsValid(PlayerController->GetWorld()))
-		{
-			return nullptr;
-		}
-
-		const APawn* ReferencePawn = PlayerController->GetPawn();
-		const FVector ReferenceLocation = IsValid(ReferencePawn)
-			? ReferencePawn->GetActorLocation()
-			: FVector::ZeroVector;
-		AHeistPaintingDisplayCaseActor* NearestDisplayCase = nullptr;
-		float NearestDistanceSquared = TNumericLimits<float>::Max();
-		for (TActorIterator<AHeistPaintingDisplayCaseActor> DisplayCaseIterator(PlayerController->GetWorld());
-			DisplayCaseIterator;
-			++DisplayCaseIterator)
-		{
-			AHeistPaintingDisplayCaseActor* CandidateDisplayCase = *DisplayCaseIterator;
-			if (!IsValid(CandidateDisplayCase))
-			{
-				continue;
-			}
-
-			const float DistanceSquared = FVector::DistSquared(
-				ReferenceLocation,
-				CandidateDisplayCase->GetActorLocation());
-			if (DistanceSquared < NearestDistanceSquared)
-			{
-				NearestDisplayCase = CandidateDisplayCase;
-				NearestDistanceSquared = DistanceSquared;
-			}
-		}
-
-		return NearestDisplayCase;
-	}
-
-	AHeistPlayerState* ResolveHeistPlayerStateById(APlayerController* PlayerController, const int32 PlayerId)
-	{
-		if (!IsValid(PlayerController))
-		{
-			return nullptr;
-		}
-
-		if (PlayerId == INDEX_NONE)
-		{
-			return PlayerController->GetPlayerState<AHeistPlayerState>();
-		}
-
-		const AHeistGameState* HeistGameState = IsValid(PlayerController->GetWorld())
-			? PlayerController->GetWorld()->GetGameState<AHeistGameState>()
-			: nullptr;
-		if (!IsValid(HeistGameState))
-		{
-			return nullptr;
-		}
-
-		for (APlayerState* CandidatePlayerState : HeistGameState->PlayerArray)
-		{
-			AHeistPlayerState* HeistPlayerState = Cast<AHeistPlayerState>(CandidatePlayerState);
-			if (IsValid(HeistPlayerState) && HeistPlayerState->HeistPlayerId == PlayerId)
-			{
-				return HeistPlayerState;
-			}
-		}
-
 		return nullptr;
 	}
 
-	bool TryParseObjectiveState(const FString& StateName, EHeistObjectiveState& OutState)
+	const APawn* ReferencePawn = PlayerController->GetPawn();
+	const FVector ReferenceLocation = IsValid(ReferencePawn) ? ReferencePawn->GetActorLocation() : FVector::ZeroVector;
+	AHeistGuardCharacter* NearestGuard = nullptr;
+	float NearestDistanceSquared = TNumericLimits<float>::Max();
+	for (TActorIterator<AHeistGuardCharacter> GuardIterator(PlayerController->GetWorld()); GuardIterator; ++GuardIterator)
 	{
-		const FString NormalizedStateName = StateName.TrimStartAndEnd().ToLower();
-		if (NormalizedStateName == TEXT("inactive"))
+		AHeistGuardCharacter* CandidateGuard = *GuardIterator;
+		if (!IsValid(CandidateGuard))
 		{
-			OutState = EHeistObjectiveState::Inactive;
-			return true;
-		}
-		if (NormalizedStateName == TEXT("available"))
-		{
-			OutState = EHeistObjectiveState::Available;
-			return true;
-		}
-		if (NormalizedStateName == TEXT("inprogress") || NormalizedStateName == TEXT("progress"))
-		{
-			OutState = EHeistObjectiveState::InProgress;
-			return true;
-		}
-		if (NormalizedStateName == TEXT("completed") || NormalizedStateName == TEXT("complete"))
-		{
-			OutState = EHeistObjectiveState::Completed;
-			return true;
-		}
-		if (NormalizedStateName == TEXT("failed") || NormalizedStateName == TEXT("fail"))
-		{
-			OutState = EHeistObjectiveState::Failed;
-			return true;
+			continue;
 		}
 
-		return false;
+		const float DistanceSquared = FVector::DistSquared(ReferenceLocation, CandidateGuard->GetActorLocation());
+		if (DistanceSquared < NearestDistanceSquared)
+		{
+			NearestDistanceSquared = DistanceSquared;
+			NearestGuard = CandidateGuard;
+		}
 	}
 
-	bool TryParseDisplayCaseState(const FString& StateName, EHeistDisplayCaseState& OutState)
-	{
-		const FString NormalizedStateName = StateName.TrimStartAndEnd().ToLower();
-		if (NormalizedStateName == TEXT("secured"))
-		{
-			OutState = EHeistDisplayCaseState::Secured;
-			return true;
-		}
-		if (NormalizedStateName == TEXT("observed"))
-		{
-			OutState = EHeistDisplayCaseState::Observed;
-			return true;
-		}
-		if (NormalizedStateName == TEXT("forgeryinprogress") || NormalizedStateName == TEXT("forgery"))
-		{
-			OutState = EHeistDisplayCaseState::ForgeryInProgress;
-			return true;
-		}
-		if (NormalizedStateName == TEXT("replicaready"))
-		{
-			OutState = EHeistDisplayCaseState::ReplicaReady;
-			return true;
-		}
-		if (NormalizedStateName == TEXT("replicaplaced"))
-		{
-			OutState = EHeistDisplayCaseState::ReplicaPlaced;
-			return true;
-		}
-		if (NormalizedStateName == TEXT("originalavailable"))
-		{
-			OutState = EHeistDisplayCaseState::OriginalAvailable;
-			return true;
-		}
-		if (NormalizedStateName == TEXT("originalremoved"))
-		{
-			OutState = EHeistDisplayCaseState::OriginalRemoved;
-			return true;
-		}
+	return NearestGuard;
+}
 
-		return false;
+const TCHAR* ToQuickSlotText(const EHeistQuickSlotType SlotType)
+{
+	switch (SlotType)
+	{
+	case EHeistQuickSlotType::Coin:
+		return TEXT("Coin");
+	case EHeistQuickSlotType::SmokeGrenade:
+		return TEXT("SmokeGrenade");
+	case EHeistQuickSlotType::GlueTrap:
+		return TEXT("GlueTrap");
+	default:
+		return TEXT("None");
+	}
+}
+
+const TCHAR* ToInputModeText(const EHeistInputMode InputMode)
+{
+	switch (InputMode)
+	{
+	case EHeistInputMode::Gameplay:
+		return TEXT("Gameplay");
+	case EHeistInputMode::Inventory:
+		return TEXT("Inventory");
+	case EHeistInputMode::Forgery:
+		return TEXT("Forgery");
+	default:
+		return TEXT("Unknown");
+	}
+}
+
+bool TryParseQuickSlotName(const FString& SlotName, EHeistQuickSlotType& OutSlotType)
+{
+	const FString NormalizedSlotName = SlotName.TrimStartAndEnd().ToLower();
+	if (NormalizedSlotName == TEXT("coin") || NormalizedSlotName == TEXT("q"))
+	{
+		OutSlotType = EHeistQuickSlotType::Coin;
+		return true;
 	}
 
-	bool TryParseMatchPhase(const FString& PhaseName, EHeistMatchPhase& OutPhase)
+	if (NormalizedSlotName == TEXT("smoke") || NormalizedSlotName == TEXT("smokegrenade") || NormalizedSlotName == TEXT("e"))
 	{
-		const FString NormalizedPhaseName = PhaseName.TrimStartAndEnd().ToLower();
-		if (NormalizedPhaseName == TEXT("none"))
+		OutSlotType = EHeistQuickSlotType::SmokeGrenade;
+		return true;
+	}
+
+	if (NormalizedSlotName == TEXT("glue") || NormalizedSlotName == TEXT("gluetrap") || NormalizedSlotName == TEXT("r"))
+	{
+		OutSlotType = EHeistQuickSlotType::GlueTrap;
+		return true;
+	}
+
+	OutSlotType = EHeistQuickSlotType::None;
+	return false;
+}
+
+FString FormatOptionalDistance(const float Distance)
+{
+	return Distance >= 0.0f ? FString::Printf(TEXT(" Distance=%.1f"), Distance) : FString();
+}
+
+FString FormatStatusTags(const TArray<FHeistTimedTagState>& StatusTags)
+{
+	if (StatusTags.IsEmpty())
+	{
+		return TEXT("None");
+	}
+
+	TArray<FString> Entries;
+	Entries.Reserve(StatusTags.Num());
+	for (const FHeistTimedTagState& StatusTagState : StatusTags)
+	{
+		Entries.Add(FString::Printf(TEXT("%s@%.2f"), *StatusTagState.StateTag.ToString(), StatusTagState.EndServerTime));
+	}
+
+	return FString::Join(Entries, TEXT(", "));
+}
+
+FString FormatResultEntry(const FHeistPlayerResult& PlayerResult)
+{
+	return FString::Printf(TEXT("PlayerId=%d Escaped=%s LootScore=%d FinalScore=%d LootWeight=%.2f EscapeTime=%.2f"), PlayerResult.PlayerId, PlayerResult.bEscaped ? TEXT("true") : TEXT("false"),
+						   PlayerResult.LootScore, PlayerResult.FinalScore, PlayerResult.LootWeight, PlayerResult.EscapeTimeSeconds);
+}
+
+AHeistPaintingDisplayCaseActor* ResolveNearestPaintingDisplayCase(APlayerController* PlayerController)
+{
+	if (!IsValid(PlayerController) || !IsValid(PlayerController->GetWorld()))
+	{
+		return nullptr;
+	}
+
+	const APawn* ReferencePawn = PlayerController->GetPawn();
+	const FVector ReferenceLocation = IsValid(ReferencePawn) ? ReferencePawn->GetActorLocation() : FVector::ZeroVector;
+	AHeistPaintingDisplayCaseActor* NearestDisplayCase = nullptr;
+	float NearestDistanceSquared = TNumericLimits<float>::Max();
+	for (TActorIterator<AHeistPaintingDisplayCaseActor> DisplayCaseIterator(PlayerController->GetWorld()); DisplayCaseIterator; ++DisplayCaseIterator)
+	{
+		AHeistPaintingDisplayCaseActor* CandidateDisplayCase = *DisplayCaseIterator;
+		if (!IsValid(CandidateDisplayCase))
 		{
-			OutPhase = EHeistMatchPhase::None;
-			return true;
-		}
-		if (NormalizedPhaseName == TEXT("lobby"))
-		{
-			OutPhase = EHeistMatchPhase::Lobby;
-			return true;
-		}
-		if (NormalizedPhaseName == TEXT("loadout"))
-		{
-			OutPhase = EHeistMatchPhase::Loadout;
-			return true;
-		}
-		if (NormalizedPhaseName == TEXT("readycountdown") || NormalizedPhaseName == TEXT("ready"))
-		{
-			OutPhase = EHeistMatchPhase::ReadyCountdown;
-			return true;
-		}
-		if (NormalizedPhaseName == TEXT("ingame") || NormalizedPhaseName == TEXT("game"))
-		{
-			OutPhase = EHeistMatchPhase::InGame;
-			return true;
-		}
-		if (NormalizedPhaseName == TEXT("end"))
-		{
-			OutPhase = EHeistMatchPhase::End;
-			return true;
+			continue;
 		}
 
-		return false;
+		const float DistanceSquared = FVector::DistSquared(ReferenceLocation, CandidateDisplayCase->GetActorLocation());
+		if (DistanceSquared < NearestDistanceSquared)
+		{
+			NearestDisplayCase = CandidateDisplayCase;
+			NearestDistanceSquared = DistanceSquared;
+		}
 	}
+
+	return NearestDisplayCase;
+}
+
+AHeistPlayerState* ResolveHeistPlayerStateById(APlayerController* PlayerController, const int32 PlayerId)
+{
+	if (!IsValid(PlayerController))
+	{
+		return nullptr;
+	}
+
+	if (PlayerId == INDEX_NONE)
+	{
+		return PlayerController->GetPlayerState<AHeistPlayerState>();
+	}
+
+	const AHeistGameState* HeistGameState = IsValid(PlayerController->GetWorld()) ? PlayerController->GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	if (!IsValid(HeistGameState))
+	{
+		return nullptr;
+	}
+
+	for (APlayerState* CandidatePlayerState : HeistGameState->PlayerArray)
+	{
+		AHeistPlayerState* HeistPlayerState = Cast<AHeistPlayerState>(CandidatePlayerState);
+		if (IsValid(HeistPlayerState) && HeistPlayerState->HeistPlayerId == PlayerId)
+		{
+			return HeistPlayerState;
+		}
+	}
+
+	return nullptr;
+}
+
+bool TryParseObjectiveState(const FString& StateName, EHeistObjectiveState& OutState)
+{
+	const FString NormalizedStateName = StateName.TrimStartAndEnd().ToLower();
+	if (NormalizedStateName == TEXT("inactive"))
+	{
+		OutState = EHeistObjectiveState::Inactive;
+		return true;
+	}
+	if (NormalizedStateName == TEXT("available"))
+	{
+		OutState = EHeistObjectiveState::Available;
+		return true;
+	}
+	if (NormalizedStateName == TEXT("inprogress") || NormalizedStateName == TEXT("progress"))
+	{
+		OutState = EHeistObjectiveState::InProgress;
+		return true;
+	}
+	if (NormalizedStateName == TEXT("completed") || NormalizedStateName == TEXT("complete"))
+	{
+		OutState = EHeistObjectiveState::Completed;
+		return true;
+	}
+	if (NormalizedStateName == TEXT("failed") || NormalizedStateName == TEXT("fail"))
+	{
+		OutState = EHeistObjectiveState::Failed;
+		return true;
+	}
+
+	return false;
+}
+
+bool TryParseDisplayCaseState(const FString& StateName, EHeistDisplayCaseState& OutState)
+{
+	const FString NormalizedStateName = StateName.TrimStartAndEnd().ToLower();
+	if (NormalizedStateName == TEXT("secured"))
+	{
+		OutState = EHeistDisplayCaseState::Secured;
+		return true;
+	}
+	if (NormalizedStateName == TEXT("observed"))
+	{
+		OutState = EHeistDisplayCaseState::Observed;
+		return true;
+	}
+	if (NormalizedStateName == TEXT("forgeryinprogress") || NormalizedStateName == TEXT("forgery"))
+	{
+		OutState = EHeistDisplayCaseState::ForgeryInProgress;
+		return true;
+	}
+	if (NormalizedStateName == TEXT("replicaready"))
+	{
+		OutState = EHeistDisplayCaseState::ReplicaReady;
+		return true;
+	}
+	if (NormalizedStateName == TEXT("replicaplaced"))
+	{
+		OutState = EHeistDisplayCaseState::ReplicaPlaced;
+		return true;
+	}
+	if (NormalizedStateName == TEXT("originalavailable"))
+	{
+		OutState = EHeistDisplayCaseState::OriginalAvailable;
+		return true;
+	}
+	if (NormalizedStateName == TEXT("originalremoved"))
+	{
+		OutState = EHeistDisplayCaseState::OriginalRemoved;
+		return true;
+	}
+
+	return false;
+}
+
+bool TryParseMatchPhase(const FString& PhaseName, EHeistMatchPhase& OutPhase)
+{
+	const FString NormalizedPhaseName = PhaseName.TrimStartAndEnd().ToLower();
+	if (NormalizedPhaseName == TEXT("none"))
+	{
+		OutPhase = EHeistMatchPhase::None;
+		return true;
+	}
+	if (NormalizedPhaseName == TEXT("lobby"))
+	{
+		OutPhase = EHeistMatchPhase::Lobby;
+		return true;
+	}
+	if (NormalizedPhaseName == TEXT("loadout"))
+	{
+		OutPhase = EHeistMatchPhase::Loadout;
+		return true;
+	}
+	if (NormalizedPhaseName == TEXT("readycountdown") || NormalizedPhaseName == TEXT("ready"))
+	{
+		OutPhase = EHeistMatchPhase::ReadyCountdown;
+		return true;
+	}
+	if (NormalizedPhaseName == TEXT("ingame") || NormalizedPhaseName == TEXT("game"))
+	{
+		OutPhase = EHeistMatchPhase::InGame;
+		return true;
+	}
+	if (NormalizedPhaseName == TEXT("end"))
+	{
+		OutPhase = EHeistMatchPhase::End;
+		return true;
+	}
+
+	return false;
+}
 }
 
 #pragma endregion
@@ -451,19 +394,16 @@ void UHeistDebugFunctionLibrary::DebugObjectiveHelp(APlayerController* PlayerCon
 #if !UE_BUILD_SHIPPING
 	Message(
 		PlayerController,
-		TEXT("Objective debug commands: HeistObjectiveDump | HeistM01ObjectiveDump | HeistGrayboxDump <M02|M03> | HeistObjectiveSet <ArtifactId> <CaseId> <Inactive|Available|InProgress|Completed|Failed> <UseLocalPlayerAsCarrier 0|1>. Run placement dump and Set in the listen-server window."),
-		EHeistDebugLevel::Info,
-		true,
-		10.0f);
+		TEXT(
+			"Objective debug commands: HeistObjectiveDump | HeistM01ObjectiveDump | HeistGrayboxDump <M02|M03> | HeistObjectiveSet <ArtifactId> <CaseId> <Inactive|Available|InProgress|Completed|Failed> <UseLocalPlayerAsCarrier 0|1>. Run placement dump and Set in the listen-server window."),
+		EHeistDebugLevel::Info, true, 10.0f);
 #endif
 }
 
 void UHeistDebugFunctionLibrary::DebugObjectiveDump(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
-	const AHeistGameState* HeistGameState = IsValid(PlayerController) && IsValid(PlayerController->GetWorld())
-		? PlayerController->GetWorld()->GetGameState<AHeistGameState>()
-		: nullptr;
+	const AHeistGameState* HeistGameState = IsValid(PlayerController) && IsValid(PlayerController->GetWorld()) ? PlayerController->GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	if (!IsValid(HeistGameState))
 	{
 		Message(PlayerController, TEXT("Objective dump failed: missing Heist GameState."), EHeistDebugLevel::Warning, true);
@@ -471,20 +411,12 @@ void UHeistDebugFunctionLibrary::DebugObjectiveDump(APlayerController* PlayerCon
 	}
 
 	const AHeistPlayerState* CarrierCandidate = HeistGameState->GetOriginalCarrierCandidate();
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Objective dump: Target=%s CaseId=%s State=%s CarrierCandidate=%s CarrierPlayerId=%d Revision=%d Authority=%s"),
-			*HeistGameState->GetActiveTargetArtifactId().ToString(),
-			*HeistGameState->GetActiveTargetCaseId().ToString(),
-			*UEnum::GetValueAsString(HeistGameState->GetObjectiveState()),
-			*GetNameSafe(CarrierCandidate),
-			IsValid(CarrierCandidate) ? CarrierCandidate->HeistPlayerId : INDEX_NONE,
-			HeistGameState->GetObjectiveRevision(),
-			HeistGameState->HasAuthority() ? TEXT("true") : TEXT("false")),
-		EHeistDebugLevel::Info,
-		true,
-		10.0f);
+	Message(PlayerController,
+			FString::Printf(TEXT("Objective dump: Target=%s CaseId=%s State=%s CarrierCandidate=%s CarrierPlayerId=%d Revision=%d Authority=%s"),
+							*HeistGameState->GetActiveTargetArtifactId().ToString(), *HeistGameState->GetActiveTargetCaseId().ToString(), *UEnum::GetValueAsString(HeistGameState->GetObjectiveState()),
+							*GetNameSafe(CarrierCandidate), IsValid(CarrierCandidate) ? CarrierCandidate->HeistPlayerId : INDEX_NONE, HeistGameState->GetObjectiveRevision(),
+							HeistGameState->HasAuthority() ? TEXT("true") : TEXT("false")),
+			EHeistDebugLevel::Info, true, 10.0f);
 #endif
 }
 
@@ -492,23 +424,15 @@ void UHeistDebugFunctionLibrary::DebugM01ObjectivePlacementDump(APlayerControlle
 {
 #if !UE_BUILD_SHIPPING
 	UWorld* World = IsValid(PlayerController) ? PlayerController->GetWorld() : nullptr;
-	const AHeistGameState* HeistGameState = IsValid(World)
-		? World->GetGameState<AHeistGameState>()
-		: nullptr;
+	const AHeistGameState* HeistGameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
 	if (!IsValid(World) || !IsValid(HeistGameState))
 	{
-		Message(
-			PlayerController,
-			TEXT("M01 objective placement: Result=FAIL Reason=MissingWorldOrGameState"),
-			EHeistDebugLevel::Error,
-			true);
+		Message(PlayerController, TEXT("M01 objective placement: Result=FAIL Reason=MissingWorldOrGameState"), EHeistDebugLevel::Error, true);
 		return;
 	}
 
 	TArray<APlayerStart*> EntryCandidates;
-	for (TActorIterator<APlayerStart> PlayerStartIterator(World);
-		PlayerStartIterator;
-		++PlayerStartIterator)
+	for (TActorIterator<APlayerStart> PlayerStartIterator(World); PlayerStartIterator; ++PlayerStartIterator)
 	{
 		if (APlayerStart* PlayerStart = *PlayerStartIterator; IsValid(PlayerStart))
 		{
@@ -516,13 +440,9 @@ void UHeistDebugFunctionLibrary::DebugM01ObjectivePlacementDump(APlayerControlle
 		}
 	}
 
-	const FName ExpectedCaseId = HeistGameState->GetActiveTargetCaseId().IsNone()
-		? FName(TEXT("Case_M01_Target"))
-		: HeistGameState->GetActiveTargetCaseId();
+	const FName ExpectedCaseId = HeistGameState->GetActiveTargetCaseId().IsNone() ? FName(TEXT("Case_M01_Target")) : HeistGameState->GetActiveTargetCaseId();
 	TArray<AHeistPaintingDisplayCaseActor*> MatchingTargetCases;
-	for (TActorIterator<AHeistPaintingDisplayCaseActor> DisplayCaseIterator(World);
-		DisplayCaseIterator;
-		++DisplayCaseIterator)
+	for (TActorIterator<AHeistPaintingDisplayCaseActor> DisplayCaseIterator(World); DisplayCaseIterator; ++DisplayCaseIterator)
 	{
 		AHeistPaintingDisplayCaseActor* DisplayCase = *DisplayCaseIterator;
 		if (IsValid(DisplayCase) && DisplayCase->GetDisplayCaseId() == ExpectedCaseId)
@@ -532,9 +452,7 @@ void UHeistDebugFunctionLibrary::DebugM01ObjectivePlacementDump(APlayerControlle
 	}
 
 	TArray<AHeistGuardCharacter*> GuardCandidates;
-	for (TActorIterator<AHeistGuardCharacter> GuardIterator(World);
-		GuardIterator;
-		++GuardIterator)
+	for (TActorIterator<AHeistGuardCharacter> GuardIterator(World); GuardIterator; ++GuardIterator)
 	{
 		if (AHeistGuardCharacter* Guard = *GuardIterator; IsValid(Guard))
 		{
@@ -543,9 +461,7 @@ void UHeistDebugFunctionLibrary::DebugM01ObjectivePlacementDump(APlayerControlle
 	}
 
 	TArray<AHeistVentActor*> ExitCandidates;
-	for (TActorIterator<AHeistVentActor> VentIterator(World);
-		VentIterator;
-		++VentIterator)
+	for (TActorIterator<AHeistVentActor> VentIterator(World); VentIterator; ++VentIterator)
 	{
 		if (AHeistVentActor* Vent = *VentIterator; IsValid(Vent))
 		{
@@ -553,8 +469,7 @@ void UHeistDebugFunctionLibrary::DebugM01ObjectivePlacementDump(APlayerControlle
 		}
 	}
 
-	AHeistPaintingDisplayCaseActor* TargetDisplayCase =
-		MatchingTargetCases.Num() == 1 ? MatchingTargetCases[0] : nullptr;
+	AHeistPaintingDisplayCaseActor* TargetDisplayCase = MatchingTargetCases.Num() == 1 ? MatchingTargetCases[0] : nullptr;
 	APlayerStart* NearestEntry = nullptr;
 	AHeistGuardCharacter* NearestGuard = nullptr;
 	AHeistVentActor* NearestExit = nullptr;
@@ -566,9 +481,7 @@ void UHeistDebugFunctionLibrary::DebugM01ObjectivePlacementDump(APlayerControlle
 	{
 		for (APlayerStart* EntryCandidate : EntryCandidates)
 		{
-			const float CandidateDistance = FVector::Dist(
-				EntryCandidate->GetActorLocation(),
-				TargetDisplayCase->GetActorLocation());
+			const float CandidateDistance = FVector::Dist(EntryCandidate->GetActorLocation(), TargetDisplayCase->GetActorLocation());
 			if (!IsValid(NearestEntry) || CandidateDistance < EntryToCaseDistance)
 			{
 				NearestEntry = EntryCandidate;
@@ -578,9 +491,7 @@ void UHeistDebugFunctionLibrary::DebugM01ObjectivePlacementDump(APlayerControlle
 
 		for (AHeistGuardCharacter* GuardCandidate : GuardCandidates)
 		{
-			const float CandidateDistance = FVector::Dist(
-				GuardCandidate->GetActorLocation(),
-				TargetDisplayCase->GetActorLocation());
+			const float CandidateDistance = FVector::Dist(GuardCandidate->GetActorLocation(), TargetDisplayCase->GetActorLocation());
 			if (!IsValid(NearestGuard) || CandidateDistance < GuardToCaseDistance)
 			{
 				NearestGuard = GuardCandidate;
@@ -590,9 +501,7 @@ void UHeistDebugFunctionLibrary::DebugM01ObjectivePlacementDump(APlayerControlle
 
 		for (AHeistVentActor* ExitCandidate : ExitCandidates)
 		{
-			const float CandidateDistance = FVector::Dist(
-				TargetDisplayCase->GetActorLocation(),
-				ExitCandidate->GetActorLocation());
+			const float CandidateDistance = FVector::Dist(TargetDisplayCase->GetActorLocation(), ExitCandidate->GetActorLocation());
 			if (!IsValid(NearestExit) || CandidateDistance < CaseToExitDistance)
 			{
 				NearestExit = ExitCandidate;
@@ -601,26 +510,13 @@ void UHeistDebugFunctionLibrary::DebugM01ObjectivePlacementDump(APlayerControlle
 		}
 	}
 
-	const bool bObjectiveSnapshotReady = IsValid(TargetDisplayCase)
-		&& HeistGameState->GetActiveTargetArtifactId() == TargetDisplayCase->GetTargetArtifactId()
-		&& HeistGameState->GetActiveTargetCaseId() == TargetDisplayCase->GetDisplayCaseId()
-		&& HeistGameState->GetObjectiveState() != EHeistObjectiveState::Inactive;
-	const bool bTargetCaseReady = IsValid(TargetDisplayCase)
-		&& TargetDisplayCase->GetDisplayCaseState() == EHeistDisplayCaseState::Secured
-		&& !TargetDisplayCase->GetTargetArtifactId().IsNone();
-	const bool bRouteCandidatesReady = IsValid(NearestEntry)
-		&& IsValid(NearestGuard)
-		&& IsValid(NearestExit)
-		&& EntryToCaseDistance > KINDA_SMALL_NUMBER
-		&& GuardToCaseDistance > KINDA_SMALL_NUMBER
-		&& CaseToExitDistance > KINDA_SMALL_NUMBER;
-	const bool bPlacementContractPass = EntryCandidates.Num() > 0
-		&& MatchingTargetCases.Num() == 1
-		&& GuardCandidates.Num() > 0
-		&& ExitCandidates.Num() > 0
-		&& bObjectiveSnapshotReady
-		&& bTargetCaseReady
-		&& bRouteCandidatesReady;
+	const bool bObjectiveSnapshotReady = IsValid(TargetDisplayCase) && HeistGameState->GetActiveTargetArtifactId() == TargetDisplayCase->GetTargetArtifactId() &&
+										 HeistGameState->GetActiveTargetCaseId() == TargetDisplayCase->GetDisplayCaseId() && HeistGameState->GetObjectiveState() != EHeistObjectiveState::Inactive;
+	const bool bTargetCaseReady = IsValid(TargetDisplayCase) && TargetDisplayCase->GetDisplayCaseState() == EHeistDisplayCaseState::Secured && !TargetDisplayCase->GetTargetArtifactId().IsNone();
+	const bool bRouteCandidatesReady = IsValid(NearestEntry) && IsValid(NearestGuard) && IsValid(NearestExit) && EntryToCaseDistance > KINDA_SMALL_NUMBER && GuardToCaseDistance > KINDA_SMALL_NUMBER &&
+									   CaseToExitDistance > KINDA_SMALL_NUMBER;
+	const bool bPlacementContractPass =
+		EntryCandidates.Num() > 0 && MatchingTargetCases.Num() == 1 && GuardCandidates.Num() > 0 && ExitCandidates.Num() > 0 && bObjectiveSnapshotReady && bTargetCaseReady && bRouteCandidatesReady;
 
 	if (IsValid(TargetDisplayCase))
 	{
@@ -628,89 +524,40 @@ void UHeistDebugFunctionLibrary::DebugM01ObjectivePlacementDump(APlayerControlle
 		DrawDebugSphere(World, CaseLocation, 75.0f, 16, FColor::Yellow, false, 20.0f, 0, 3.0f);
 		if (IsValid(NearestEntry))
 		{
-			DrawDebugLine(
-				World,
-				NearestEntry->GetActorLocation(),
-				CaseLocation,
-				FColor::Cyan,
-				false,
-				20.0f,
-				0,
-				5.0f);
+			DrawDebugLine(World, NearestEntry->GetActorLocation(), CaseLocation, FColor::Cyan, false, 20.0f, 0, 5.0f);
 		}
 		if (IsValid(NearestExit))
 		{
-			DrawDebugLine(
-				World,
-				CaseLocation,
-				NearestExit->GetActorLocation(),
-				FColor::Green,
-				false,
-				20.0f,
-				0,
-				5.0f);
+			DrawDebugLine(World, CaseLocation, NearestExit->GetActorLocation(), FColor::Green, false, 20.0f, 0, 5.0f);
 		}
 		if (IsValid(NearestGuard))
 		{
-			DrawDebugLine(
-				World,
-				NearestGuard->GetActorLocation(),
-				CaseLocation,
-				FColor::Orange,
-				false,
-				20.0f,
-				0,
-				5.0f);
+			DrawDebugLine(World, NearestGuard->GetActorLocation(), CaseLocation, FColor::Orange, false, 20.0f, 0, 5.0f);
 		}
 	}
 
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("M01 objective placement: Map=%s Entries=%d TargetCaseId=%s MatchingTargetCases=%d TargetCaseState=%s TargetCaseReady=%s Guards=%d ExitCandidates=%d ObjectiveTarget=%s ObjectiveState=%s ObjectiveSnapshotReady=%s RouteCandidatesReady=%s Entry=%s EntryToCase=%.1f Guard=%s GuardToCase=%.1f Exit=%s CaseToExit=%.1f Result=%s"),
-			*World->GetMapName(),
-			EntryCandidates.Num(),
-			*ExpectedCaseId.ToString(),
-			MatchingTargetCases.Num(),
-			IsValid(TargetDisplayCase)
-				? *UEnum::GetValueAsString(TargetDisplayCase->GetDisplayCaseState())
-				: TEXT("Missing"),
-			bTargetCaseReady ? TEXT("true") : TEXT("false"),
-			GuardCandidates.Num(),
-			ExitCandidates.Num(),
-			*HeistGameState->GetActiveTargetArtifactId().ToString(),
-			*UEnum::GetValueAsString(HeistGameState->GetObjectiveState()),
-			bObjectiveSnapshotReady ? TEXT("true") : TEXT("false"),
-			bRouteCandidatesReady ? TEXT("true") : TEXT("false"),
-			*GetNameSafe(NearestEntry),
-			EntryToCaseDistance,
-			*GetNameSafe(NearestGuard),
-			GuardToCaseDistance,
-			*GetNameSafe(NearestExit),
-			CaseToExitDistance,
-			bPlacementContractPass ? TEXT("PASS") : TEXT("FAIL")),
-		bPlacementContractPass ? EHeistDebugLevel::Info : EHeistDebugLevel::Error,
-		true,
-		12.0f);
+			TEXT(
+				"M01 objective placement: Map=%s Entries=%d TargetCaseId=%s MatchingTargetCases=%d TargetCaseState=%s TargetCaseReady=%s Guards=%d ExitCandidates=%d ObjectiveTarget=%s ObjectiveState=%s ObjectiveSnapshotReady=%s RouteCandidatesReady=%s Entry=%s EntryToCase=%.1f Guard=%s GuardToCase=%.1f Exit=%s CaseToExit=%.1f Result=%s"),
+			*World->GetMapName(), EntryCandidates.Num(), *ExpectedCaseId.ToString(), MatchingTargetCases.Num(),
+			IsValid(TargetDisplayCase) ? *UEnum::GetValueAsString(TargetDisplayCase->GetDisplayCaseState()) : TEXT("Missing"), bTargetCaseReady ? TEXT("true") : TEXT("false"), GuardCandidates.Num(),
+			ExitCandidates.Num(), *HeistGameState->GetActiveTargetArtifactId().ToString(), *UEnum::GetValueAsString(HeistGameState->GetObjectiveState()),
+			bObjectiveSnapshotReady ? TEXT("true") : TEXT("false"), bRouteCandidatesReady ? TEXT("true") : TEXT("false"), *GetNameSafe(NearestEntry), EntryToCaseDistance, *GetNameSafe(NearestGuard),
+			GuardToCaseDistance, *GetNameSafe(NearestExit), CaseToExitDistance, bPlacementContractPass ? TEXT("PASS") : TEXT("FAIL")),
+		bPlacementContractPass ? EHeistDebugLevel::Info : EHeistDebugLevel::Error, true, 12.0f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugCoreGrayboxDump(
-	APlayerController* PlayerController,
-	const FString& MapId)
+void UHeistDebugFunctionLibrary::DebugCoreGrayboxDump(APlayerController* PlayerController, const FString& MapId)
 {
 #if !UE_BUILD_SHIPPING
 	UWorld* World = IsValid(PlayerController) ? PlayerController->GetWorld() : nullptr;
-	const AHeistGameState* HeistGameState = IsValid(World)
-		? World->GetGameState<AHeistGameState>()
-		: nullptr;
+	const AHeistGameState* HeistGameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
 	if (!IsValid(World) || !IsValid(HeistGameState))
 	{
-		Message(
-			PlayerController,
-			TEXT("Core graybox: Result=FAIL Reason=MissingWorldOrGameState"),
-			EHeistDebugLevel::Error,
-			true);
+		Message(PlayerController, TEXT("Core graybox: Result=FAIL Reason=MissingWorldOrGameState"), EHeistDebugLevel::Error, true);
 		return;
 	}
 
@@ -718,18 +565,11 @@ void UHeistDebugFunctionLibrary::DebugCoreGrayboxDump(
 	NormalizedMapId.ToUpperInline();
 	if (NormalizedMapId != TEXT("M02") && NormalizedMapId != TEXT("M03"))
 	{
-		Message(
-			PlayerController,
-			FString::Printf(
-				TEXT("Core graybox: RequestedMapId=%s Result=FAIL Reason=ExpectedM02OrM03"),
-				*MapId),
-			EHeistDebugLevel::Error,
-			true);
+		Message(PlayerController, FString::Printf(TEXT("Core graybox: RequestedMapId=%s Result=FAIL Reason=ExpectedM02OrM03"), *MapId), EHeistDebugLevel::Error, true);
 		return;
 	}
 
-	const FName ExpectedCaseId(
-		*FString::Printf(TEXT("Case_%s_Target"), *NormalizedMapId));
+	const FName ExpectedCaseId(*FString::Printf(TEXT("Case_%s_Target"), *NormalizedMapId));
 
 	TArray<APlayerStart*> EntryCandidates;
 	for (TActorIterator<APlayerStart> It(World); It; ++It)
@@ -778,8 +618,7 @@ void UHeistDebugFunctionLibrary::DebugCoreGrayboxDump(
 		}
 
 		const EHeistSpawnCategory SpawnCategory = SpawnPoint->GetSpawnCategory();
-		if (SpawnCategory == EHeistSpawnCategory::VaultFixed
-			|| SpawnCategory == EHeistSpawnCategory::ExhibitionRoom)
+		if (SpawnCategory == EHeistSpawnCategory::VaultFixed || SpawnCategory == EHeistSpawnCategory::ExhibitionRoom)
 		{
 			LooseLootCandidates.Add(SpawnPoint);
 		}
@@ -794,8 +633,7 @@ void UHeistDebugFunctionLibrary::DebugCoreGrayboxDump(
 		}
 	}
 
-	AHeistPaintingDisplayCaseActor* TargetDisplayCase =
-		MatchingTargetCases.Num() == 1 ? MatchingTargetCases[0] : nullptr;
+	AHeistPaintingDisplayCaseActor* TargetDisplayCase = MatchingTargetCases.Num() == 1 ? MatchingTargetCases[0] : nullptr;
 	APlayerStart* NearestEntry = nullptr;
 	AHeistGuardCharacter* NearestGuard = nullptr;
 	AHeistLootSpawnPoint* NearestLoot = nullptr;
@@ -810,8 +648,7 @@ void UHeistDebugFunctionLibrary::DebugCoreGrayboxDump(
 		const FVector CaseLocation = TargetDisplayCase->GetActorLocation();
 		for (APlayerStart* EntryCandidate : EntryCandidates)
 		{
-			const float CandidateDistance =
-				FVector::Dist(EntryCandidate->GetActorLocation(), CaseLocation);
+			const float CandidateDistance = FVector::Dist(EntryCandidate->GetActorLocation(), CaseLocation);
 			if (!IsValid(NearestEntry) || CandidateDistance < EntryToCaseDistance)
 			{
 				NearestEntry = EntryCandidate;
@@ -821,8 +658,7 @@ void UHeistDebugFunctionLibrary::DebugCoreGrayboxDump(
 
 		for (AHeistGuardCharacter* GuardCandidate : GuardCandidates)
 		{
-			const float CandidateDistance =
-				FVector::Dist(GuardCandidate->GetActorLocation(), CaseLocation);
+			const float CandidateDistance = FVector::Dist(GuardCandidate->GetActorLocation(), CaseLocation);
 			if (!IsValid(NearestGuard) || CandidateDistance < GuardToCaseDistance)
 			{
 				NearestGuard = GuardCandidate;
@@ -832,8 +668,7 @@ void UHeistDebugFunctionLibrary::DebugCoreGrayboxDump(
 
 		for (AHeistLootSpawnPoint* LootCandidate : LooseLootCandidates)
 		{
-			const float CandidateDistance =
-				FVector::Dist(LootCandidate->GetActorLocation(), CaseLocation);
+			const float CandidateDistance = FVector::Dist(LootCandidate->GetActorLocation(), CaseLocation);
 			if (!IsValid(NearestLoot) || CandidateDistance < CaseToLootDistance)
 			{
 				NearestLoot = LootCandidate;
@@ -843,8 +678,7 @@ void UHeistDebugFunctionLibrary::DebugCoreGrayboxDump(
 
 		for (AHeistVentActor* ExitCandidate : ExitCandidates)
 		{
-			const float CandidateDistance =
-				FVector::Dist(ExitCandidate->GetActorLocation(), CaseLocation);
+			const float CandidateDistance = FVector::Dist(ExitCandidate->GetActorLocation(), CaseLocation);
 			if (!IsValid(NearestExit) || CandidateDistance < CaseToExitDistance)
 			{
 				NearestExit = ExitCandidate;
@@ -858,8 +692,7 @@ void UHeistDebugFunctionLibrary::DebugCoreGrayboxDump(
 	int32 FirstReadyRouteWaypointCount = 0;
 	for (const AHeistGuardCharacter* GuardCandidate : GuardCandidates)
 	{
-		const UHeistPatrolPathComponent* PatrolPath =
-			IsValid(GuardCandidate) ? GuardCandidate->GetPatrolPathComponent() : nullptr;
+		const UHeistPatrolPathComponent* PatrolPath = IsValid(GuardCandidate) ? GuardCandidate->GetPatrolPathComponent() : nullptr;
 		if (!IsValid(PatrolPath) || PatrolPath->GetPatrolRouteId().IsNone())
 		{
 			continue;
@@ -868,8 +701,7 @@ void UHeistDebugFunctionLibrary::DebugCoreGrayboxDump(
 		TSet<int32> UniquePatrolOrders;
 		for (const AHeistGuardWaypoint* WaypointCandidate : WaypointCandidates)
 		{
-			if (IsValid(WaypointCandidate)
-				&& WaypointCandidate->GetPatrolRouteId() == PatrolPath->GetPatrolRouteId())
+			if (IsValid(WaypointCandidate) && WaypointCandidate->GetPatrolRouteId() == PatrolPath->GetPatrolRouteId())
 			{
 				UniquePatrolOrders.Add(WaypointCandidate->GetPatrolOrder());
 			}
@@ -886,21 +718,12 @@ void UHeistDebugFunctionLibrary::DebugCoreGrayboxDump(
 		}
 	}
 
-	const bool bTargetCaseReady = IsValid(TargetDisplayCase)
-		&& TargetDisplayCase->GetDisplayCaseState() == EHeistDisplayCaseState::Secured
-		&& !TargetDisplayCase->GetTargetArtifactId().IsNone();
-	const bool bObjectiveSnapshotReady = IsValid(TargetDisplayCase)
-		&& HeistGameState->GetActiveTargetCaseId() == ExpectedCaseId
-		&& HeistGameState->GetActiveTargetArtifactId() == TargetDisplayCase->GetTargetArtifactId()
-		&& HeistGameState->GetObjectiveState() != EHeistObjectiveState::Inactive;
-	const bool bLayoutContractPass = EntryCandidates.Num() > 0
-		&& MatchingTargetCases.Num() == 1
-		&& bTargetCaseReady
-		&& GuardCandidates.Num() > 0
-		&& ReadyGuardRoutes > 0
-		&& !LooseLootCandidates.IsEmpty()
-		&& !ExitCandidates.IsEmpty()
-		&& bObjectiveSnapshotReady;
+	const bool bTargetCaseReady = IsValid(TargetDisplayCase) && TargetDisplayCase->GetDisplayCaseState() == EHeistDisplayCaseState::Secured && !TargetDisplayCase->GetTargetArtifactId().IsNone();
+	const bool bObjectiveSnapshotReady = IsValid(TargetDisplayCase) && HeistGameState->GetActiveTargetCaseId() == ExpectedCaseId &&
+										 HeistGameState->GetActiveTargetArtifactId() == TargetDisplayCase->GetTargetArtifactId() &&
+										 HeistGameState->GetObjectiveState() != EHeistObjectiveState::Inactive;
+	const bool bLayoutContractPass = EntryCandidates.Num() > 0 && MatchingTargetCases.Num() == 1 && bTargetCaseReady && GuardCandidates.Num() > 0 && ReadyGuardRoutes > 0 &&
+									 !LooseLootCandidates.IsEmpty() && !ExitCandidates.IsEmpty() && bObjectiveSnapshotReady;
 
 	if (IsValid(TargetDisplayCase))
 	{
@@ -908,81 +731,35 @@ void UHeistDebugFunctionLibrary::DebugCoreGrayboxDump(
 		DrawDebugSphere(World, CaseLocation, 75.0f, 16, FColor::Yellow, false, 20.0f, 0, 3.0f);
 		if (IsValid(NearestEntry))
 		{
-			DrawDebugLine(
-				World,
-				NearestEntry->GetActorLocation(),
-				CaseLocation,
-				FColor::Cyan,
-				false,
-				20.0f,
-				0,
-				5.0f);
+			DrawDebugLine(World, NearestEntry->GetActorLocation(), CaseLocation, FColor::Cyan, false, 20.0f, 0, 5.0f);
 		}
 		if (IsValid(NearestLoot))
 		{
-			DrawDebugLine(
-				World,
-				CaseLocation,
-				NearestLoot->GetActorLocation(),
-				FColor::Magenta,
-				false,
-				20.0f,
-				0,
-				5.0f);
+			DrawDebugLine(World, CaseLocation, NearestLoot->GetActorLocation(), FColor::Magenta, false, 20.0f, 0, 5.0f);
 		}
 		if (IsValid(NearestExit))
 		{
-			DrawDebugLine(
-				World,
-				CaseLocation,
-				NearestExit->GetActorLocation(),
-				FColor::Green,
-				false,
-				20.0f,
-				0,
-				5.0f);
+			DrawDebugLine(World, CaseLocation, NearestExit->GetActorLocation(), FColor::Green, false, 20.0f, 0, 5.0f);
 		}
 	}
 
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Core graybox: RequestedMapId=%s RuntimeMap=%s Entries=%d TargetCaseId=%s MatchingTargetCases=%d TargetCaseReady=%s Guards=%d GuardRoutesReady=%d FirstRoute=%s RouteWaypoints=%d LooseLootCandidates=%d ExitCandidates=%d ObjectiveSnapshotReady=%s EntryToCase=%.1f GuardToCase=%.1f CaseToLoot=%.1f CaseToExit=%.1f LayoutResult=%s Traversal=USER_CHECK"),
-			*NormalizedMapId,
-			*World->GetMapName(),
-			EntryCandidates.Num(),
-			*ExpectedCaseId.ToString(),
-			MatchingTargetCases.Num(),
-			bTargetCaseReady ? TEXT("true") : TEXT("false"),
-			GuardCandidates.Num(),
-			ReadyGuardRoutes,
-			*FirstReadyRouteId.ToString(),
-			FirstReadyRouteWaypointCount,
-			LooseLootCandidates.Num(),
-			ExitCandidates.Num(),
-			bObjectiveSnapshotReady ? TEXT("true") : TEXT("false"),
-			EntryToCaseDistance,
-			GuardToCaseDistance,
-			CaseToLootDistance,
-			CaseToExitDistance,
+			TEXT(
+				"Core graybox: RequestedMapId=%s RuntimeMap=%s Entries=%d TargetCaseId=%s MatchingTargetCases=%d TargetCaseReady=%s Guards=%d GuardRoutesReady=%d FirstRoute=%s RouteWaypoints=%d LooseLootCandidates=%d ExitCandidates=%d ObjectiveSnapshotReady=%s EntryToCase=%.1f GuardToCase=%.1f CaseToLoot=%.1f CaseToExit=%.1f LayoutResult=%s Traversal=USER_CHECK"),
+			*NormalizedMapId, *World->GetMapName(), EntryCandidates.Num(), *ExpectedCaseId.ToString(), MatchingTargetCases.Num(), bTargetCaseReady ? TEXT("true") : TEXT("false"),
+			GuardCandidates.Num(), ReadyGuardRoutes, *FirstReadyRouteId.ToString(), FirstReadyRouteWaypointCount, LooseLootCandidates.Num(), ExitCandidates.Num(),
+			bObjectiveSnapshotReady ? TEXT("true") : TEXT("false"), EntryToCaseDistance, GuardToCaseDistance, CaseToLootDistance, CaseToExitDistance,
 			bLayoutContractPass ? TEXT("PASS") : TEXT("FAIL")),
-		bLayoutContractPass ? EHeistDebugLevel::Info : EHeistDebugLevel::Error,
-		true,
-		15.0f);
+		bLayoutContractPass ? EHeistDebugLevel::Info : EHeistDebugLevel::Error, true, 15.0f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugObjectiveSet(
-	APlayerController* PlayerController,
-	const FName ArtifactId,
-	const FName CaseId,
-	const FString& StateName,
-	const bool bUseLocalPlayerAsCarrier)
+void UHeistDebugFunctionLibrary::DebugObjectiveSet(APlayerController* PlayerController, const FName ArtifactId, const FName CaseId, const FString& StateName, const bool bUseLocalPlayerAsCarrier)
 {
 #if !UE_BUILD_SHIPPING
-	AHeistGameState* HeistGameState = IsValid(PlayerController) && IsValid(PlayerController->GetWorld())
-		? PlayerController->GetWorld()->GetGameState<AHeistGameState>()
-		: nullptr;
+	AHeistGameState* HeistGameState = IsValid(PlayerController) && IsValid(PlayerController->GetWorld()) ? PlayerController->GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	if (!IsValid(HeistGameState))
 	{
 		Message(PlayerController, TEXT("Objective set failed: missing Heist GameState."), EHeistDebugLevel::Warning, true);
@@ -992,35 +769,17 @@ void UHeistDebugFunctionLibrary::DebugObjectiveSet(
 	EHeistObjectiveState ParsedState = EHeistObjectiveState::Inactive;
 	if (!TryParseObjectiveState(StateName, ParsedState))
 	{
-		Message(
-			PlayerController,
-			FString::Printf(TEXT("Objective set failed: invalid state '%s'."), *StateName),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, FString::Printf(TEXT("Objective set failed: invalid state '%s'."), *StateName), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
-	AHeistPlayerState* CarrierCandidate = bUseLocalPlayerAsCarrier && IsValid(PlayerController)
-		? PlayerController->GetPlayerState<AHeistPlayerState>()
-		: nullptr;
-	const bool bChanged = HeistGameState->SetObjectiveSnapshot(
-		ArtifactId,
-		CaseId,
-		ParsedState,
-		CarrierCandidate);
+	AHeistPlayerState* CarrierCandidate = bUseLocalPlayerAsCarrier && IsValid(PlayerController) ? PlayerController->GetPlayerState<AHeistPlayerState>() : nullptr;
+	const bool bChanged = HeistGameState->SetObjectiveSnapshot(ArtifactId, CaseId, ParsedState, CarrierCandidate);
 
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Objective debug set: Result=%s Target=%s CaseId=%s State=%s CarrierCandidate=%s"),
-			bChanged ? TEXT("PASS") : TEXT("REJECTED"),
-			*ArtifactId.ToString(),
-			*CaseId.ToString(),
-			*UEnum::GetValueAsString(ParsedState),
-			*GetNameSafe(CarrierCandidate)),
-		bChanged ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
-		true,
-		10.0f);
+	Message(PlayerController,
+			FString::Printf(TEXT("Objective debug set: Result=%s Target=%s CaseId=%s State=%s CarrierCandidate=%s"), bChanged ? TEXT("PASS") : TEXT("REJECTED"), *ArtifactId.ToString(),
+							*CaseId.ToString(), *UEnum::GetValueAsString(ParsedState), *GetNameSafe(CarrierCandidate)),
+			bChanged ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
 #endif
 }
 
@@ -1033,17 +792,13 @@ void UHeistDebugFunctionLibrary::DebugDisplayCaseHelp(APlayerController* PlayerC
 #if !UE_BUILD_SHIPPING
 	Message(
 		PlayerController,
-		TEXT("Display case commands: HeistCaseSpawn <Distance> | HeistCaseSpawnFor <PlayerId> <Distance> | HeistCaseDump | HeistCaseBegin <PlayerId|-1> | HeistCaseCancel <PlayerId|-1> | HeistCasePhase <Phase> | HeistCaseAdvance | HeistCaseSet <State>. Run mutating commands in the listen-server window."),
-		EHeistDebugLevel::Info,
-		true,
-		10.0f);
+		TEXT(
+			"Display case commands: HeistCaseSpawn <Distance> | HeistCaseSpawnFor <PlayerId> <Distance> | HeistCaseDump | HeistCaseBegin <PlayerId|-1> | HeistCaseCancel <PlayerId|-1> | HeistCasePhase <Phase> | HeistCaseAdvance | HeistCaseSet <State>. Run mutating commands in the listen-server window."),
+		EHeistDebugLevel::Info, true, 10.0f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugDisplayCaseSpawnFor(
-	APlayerController* PlayerController,
-	const int32 PlayerId,
-	const float Distance)
+void UHeistDebugFunctionLibrary::DebugDisplayCaseSpawnFor(APlayerController* PlayerController, const int32 PlayerId, const float Distance)
 {
 #if !UE_BUILD_SHIPPING
 	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(PlayerController->GetWorld()))
@@ -1056,35 +811,20 @@ void UHeistDebugFunctionLibrary::DebugDisplayCaseSpawnFor(
 	APawn* TargetPawn = IsValid(TargetPlayerState) ? TargetPlayerState->GetPawn() : nullptr;
 	if (!IsValid(TargetPlayerState) || !IsValid(TargetPawn))
 	{
-		Message(
-			PlayerController,
-			FString::Printf(TEXT("Display case spawn-for rejected: PlayerId=%d Reason=MissingPlayerStateOrPawn"), PlayerId),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, FString::Printf(TEXT("Display case spawn-for rejected: PlayerId=%d Reason=MissingPlayerStateOrPawn"), PlayerId), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
-	const FVector SpawnLocation = TargetPawn->GetActorLocation()
-		+ TargetPawn->GetActorForwardVector() * FMath::Max(100.0f, Distance);
+	const FVector SpawnLocation = TargetPawn->GetActorLocation() + TargetPawn->GetActorForwardVector() * FMath::Max(100.0f, Distance);
 	FActorSpawnParameters SpawnParameters;
 	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	AHeistPaintingDisplayCaseActor* DisplayCase = PlayerController->GetWorld()->SpawnActor<AHeistPaintingDisplayCaseActor>(
-		AHeistPaintingDisplayCaseActor::StaticClass(),
-		SpawnLocation,
-		FRotator::ZeroRotator,
-		SpawnParameters);
+	AHeistPaintingDisplayCaseActor* DisplayCase =
+		PlayerController->GetWorld()->SpawnActor<AHeistPaintingDisplayCaseActor>(AHeistPaintingDisplayCaseActor::StaticClass(), SpawnLocation, FRotator::ZeroRotator, SpawnParameters);
 
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Display case debug spawn-for: Result=%s Case=%s PlayerId=%d Distance=%.1f"),
-			IsValid(DisplayCase) ? TEXT("PASS") : TEXT("FAIL"),
-			*GetNameSafe(DisplayCase),
-			PlayerId,
-			FVector::Distance(TargetPawn->GetActorLocation(), SpawnLocation)),
-		IsValid(DisplayCase) ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
-		true,
-		10.0f);
+	Message(PlayerController,
+			FString::Printf(TEXT("Display case debug spawn-for: Result=%s Case=%s PlayerId=%d Distance=%.1f"), IsValid(DisplayCase) ? TEXT("PASS") : TEXT("FAIL"), *GetNameSafe(DisplayCase), PlayerId,
+							FVector::Distance(TargetPawn->GetActorLocation(), SpawnLocation)),
+			IsValid(DisplayCase) ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
 #endif
 }
 
@@ -1104,23 +844,14 @@ void UHeistDebugFunctionLibrary::DebugDisplayCaseSpawn(APlayerController* Player
 
 	FActorSpawnParameters SpawnParameters;
 	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	AHeistPaintingDisplayCaseActor* DisplayCase = PlayerController->GetWorld()->SpawnActor<AHeistPaintingDisplayCaseActor>(
-		AHeistPaintingDisplayCaseActor::StaticClass(),
-		SpawnLocation,
-		FRotator::ZeroRotator,
-		SpawnParameters);
+	AHeistPaintingDisplayCaseActor* DisplayCase =
+		PlayerController->GetWorld()->SpawnActor<AHeistPaintingDisplayCaseActor>(AHeistPaintingDisplayCaseActor::StaticClass(), SpawnLocation, FRotator::ZeroRotator, SpawnParameters);
 
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Display case debug spawn: Result=%s Case=%s State=%s Authority=%s"),
-			IsValid(DisplayCase) ? TEXT("PASS") : TEXT("FAIL"),
-			*GetNameSafe(DisplayCase),
-			IsValid(DisplayCase) ? *UEnum::GetValueAsString(DisplayCase->GetDisplayCaseState()) : TEXT("None"),
-			IsValid(DisplayCase) && DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false")),
-		IsValid(DisplayCase) ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
-		true,
-		10.0f);
+	Message(PlayerController,
+			FString::Printf(TEXT("Display case debug spawn: Result=%s Case=%s State=%s Authority=%s"), IsValid(DisplayCase) ? TEXT("PASS") : TEXT("FAIL"), *GetNameSafe(DisplayCase),
+							IsValid(DisplayCase) ? *UEnum::GetValueAsString(DisplayCase->GetDisplayCaseState()) : TEXT("None"),
+							IsValid(DisplayCase) && DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false")),
+			IsValid(DisplayCase) ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
 #endif
 }
 
@@ -1134,58 +865,33 @@ void UHeistDebugFunctionLibrary::DebugDisplayCaseDump(APlayerController* PlayerC
 		return;
 	}
 
-	const AHeistGameState* HeistGameState = IsValid(PlayerController) && IsValid(PlayerController->GetWorld())
-		? PlayerController->GetWorld()->GetGameState<AHeistGameState>()
-		: nullptr;
+	const AHeistGameState* HeistGameState = IsValid(PlayerController) && IsValid(PlayerController->GetWorld()) ? PlayerController->GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	const AHeistPlayerState* SessionOwner = DisplayCase->GetSessionOwner();
 	bool bExpectedOriginalVisible = false;
 	bool bExpectedReplicaVisible = false;
 	int32 OriginalComponentCount = 0;
 	int32 ReplicaComponentCount = 0;
 	bool bVisualComponentsMatchExpectedState = false;
-	DisplayCase->GetPlaceholderVisualDebugState(
-		bExpectedOriginalVisible,
-		bExpectedReplicaVisible,
-		OriginalComponentCount,
-		ReplicaComponentCount,
-		bVisualComponentsMatchExpectedState);
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Display case dump: Case=%s State=%s Owner=%s OwnerPlayerId=%d Locked=%s Revision=%d MaxDistance=%.1f MatchPhase=%s Authority=%s Replicates=%s"),
-			*GetNameSafe(DisplayCase),
-			*UEnum::GetValueAsString(DisplayCase->GetDisplayCaseState()),
-			*GetNameSafe(SessionOwner),
-			IsValid(SessionOwner) ? SessionOwner->HeistPlayerId : INDEX_NONE,
-			DisplayCase->IsSessionLocked() ? TEXT("true") : TEXT("false"),
-			DisplayCase->GetSessionRevision(),
-			DisplayCase->GetMaximumSessionDistance(),
-			IsValid(HeistGameState) ? *UEnum::GetValueAsString(HeistGameState->GetMatchPhase()) : TEXT("MissingGameState"),
-			DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false"),
-			DisplayCase->GetIsReplicated() ? TEXT("true") : TEXT("false")),
-		EHeistDebugLevel::Info,
-		true,
-		10.0f);
+	DisplayCase->GetPlaceholderVisualDebugState(bExpectedOriginalVisible, bExpectedReplicaVisible, OriginalComponentCount, ReplicaComponentCount, bVisualComponentsMatchExpectedState);
+	Message(PlayerController,
+			FString::Printf(TEXT("Display case dump: Case=%s State=%s Owner=%s OwnerPlayerId=%d Locked=%s Revision=%d MaxDistance=%.1f MatchPhase=%s Authority=%s Replicates=%s"),
+							*GetNameSafe(DisplayCase), *UEnum::GetValueAsString(DisplayCase->GetDisplayCaseState()), *GetNameSafe(SessionOwner),
+							IsValid(SessionOwner) ? SessionOwner->HeistPlayerId : INDEX_NONE, DisplayCase->IsSessionLocked() ? TEXT("true") : TEXT("false"), DisplayCase->GetSessionRevision(),
+							DisplayCase->GetMaximumSessionDistance(), IsValid(HeistGameState) ? *UEnum::GetValueAsString(HeistGameState->GetMatchPhase()) : TEXT("MissingGameState"),
+							DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false"), DisplayCase->GetIsReplicated() ? TEXT("true") : TEXT("false")),
+			EHeistDebugLevel::Info, true, 10.0f);
 
 	const bool bHasRequiredVisualComponents = OriginalComponentCount > 0 && ReplicaComponentCount > 0;
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Display case placeholder visual: Case=%s State=%s OriginalVisible=%s ReplicaVisible=%s OriginalComponents=%d ReplicaComponents=%d ComponentsMatch=%s Authority=%s Result=%s"),
-			*GetNameSafe(DisplayCase),
-			*UEnum::GetValueAsString(DisplayCase->GetDisplayCaseState()),
-			bExpectedOriginalVisible ? TEXT("true") : TEXT("false"),
-			bExpectedReplicaVisible ? TEXT("true") : TEXT("false"),
-			OriginalComponentCount,
-			ReplicaComponentCount,
-			bVisualComponentsMatchExpectedState ? TEXT("true") : TEXT("false"),
-			DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false"),
-			!bHasRequiredVisualComponents
-				? TEXT("MISSING_COMPONENTS")
-				: bVisualComponentsMatchExpectedState ? TEXT("PASS") : TEXT("FAIL")),
-		bVisualComponentsMatchExpectedState ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
-		true,
-		10.0f);
+	Message(PlayerController,
+			FString::Printf(
+				TEXT("Display case placeholder visual: Case=%s State=%s OriginalVisible=%s ReplicaVisible=%s OriginalComponents=%d ReplicaComponents=%d ComponentsMatch=%s Authority=%s Result=%s"),
+				*GetNameSafe(DisplayCase), *UEnum::GetValueAsString(DisplayCase->GetDisplayCaseState()), bExpectedOriginalVisible ? TEXT("true") : TEXT("false"),
+				bExpectedReplicaVisible ? TEXT("true") : TEXT("false"), OriginalComponentCount, ReplicaComponentCount, bVisualComponentsMatchExpectedState ? TEXT("true") : TEXT("false"),
+				DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false"),
+				!bHasRequiredVisualComponents		  ? TEXT("MISSING_COMPONENTS")
+				: bVisualComponentsMatchExpectedState ? TEXT("PASS")
+													  : TEXT("FAIL")),
+			bVisualComponentsMatchExpectedState ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
 #endif
 }
 
@@ -1196,27 +902,17 @@ void UHeistDebugFunctionLibrary::DebugDisplayCaseBegin(APlayerController* Player
 	AHeistPlayerState* RequestingPlayerState = ResolveHeistPlayerStateById(PlayerController, PlayerId);
 	if (!IsValid(DisplayCase))
 	{
-		Message(
-			PlayerController,
-			FString::Printf(TEXT("Display case debug begin: Result=REJECTED PlayerId=%d Reason=MissingDisplayCase"), PlayerId),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, FString::Printf(TEXT("Display case debug begin: Result=REJECTED PlayerId=%d Reason=MissingDisplayCase"), PlayerId), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
 	const bool bBegan = DisplayCase->TryBeginSession(RequestingPlayerState);
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Display case debug begin: Result=%s PlayerId=%d OwnerPlayerId=%d Locked=%s Revision=%d"),
-			bBegan ? TEXT("PASS") : TEXT("REJECTED"),
-			IsValid(RequestingPlayerState) ? RequestingPlayerState->HeistPlayerId : PlayerId,
-			IsValid(DisplayCase->GetSessionOwner()) ? DisplayCase->GetSessionOwner()->HeistPlayerId : INDEX_NONE,
-			DisplayCase->IsSessionLocked() ? TEXT("true") : TEXT("false"),
-			DisplayCase->GetSessionRevision()),
-		bBegan ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
-		true,
-		10.0f);
+	Message(PlayerController,
+			FString::Printf(TEXT("Display case debug begin: Result=%s PlayerId=%d OwnerPlayerId=%d Locked=%s Revision=%d"), bBegan ? TEXT("PASS") : TEXT("REJECTED"),
+							IsValid(RequestingPlayerState) ? RequestingPlayerState->HeistPlayerId : PlayerId,
+							IsValid(DisplayCase->GetSessionOwner()) ? DisplayCase->GetSessionOwner()->HeistPlayerId : INDEX_NONE, DisplayCase->IsSessionLocked() ? TEXT("true") : TEXT("false"),
+							DisplayCase->GetSessionRevision()),
+			bBegan ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
 #endif
 }
 
@@ -1227,58 +923,35 @@ void UHeistDebugFunctionLibrary::DebugDisplayCaseCancel(APlayerController* Playe
 	AHeistPlayerState* RequestingPlayerState = ResolveHeistPlayerStateById(PlayerController, PlayerId);
 	if (!IsValid(DisplayCase) || !IsValid(RequestingPlayerState))
 	{
-		Message(
-			PlayerController,
-			FString::Printf(TEXT("Display case debug cancel: Result=REJECTED PlayerId=%d Reason=MissingCaseOrPlayerState"), PlayerId),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, FString::Printf(TEXT("Display case debug cancel: Result=REJECTED PlayerId=%d Reason=MissingCaseOrPlayerState"), PlayerId), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
 	const bool bCancelled = DisplayCase->TryCancelSession(RequestingPlayerState);
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Display case debug cancel: Result=%s PlayerId=%d Locked=%s Revision=%d"),
-			bCancelled ? TEXT("PASS") : TEXT("REJECTED"),
-			RequestingPlayerState->HeistPlayerId,
-			DisplayCase->IsSessionLocked() ? TEXT("true") : TEXT("false"),
-			DisplayCase->GetSessionRevision()),
-		bCancelled ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
-		true,
-		10.0f);
+	Message(PlayerController,
+			FString::Printf(TEXT("Display case debug cancel: Result=%s PlayerId=%d Locked=%s Revision=%d"), bCancelled ? TEXT("PASS") : TEXT("REJECTED"), RequestingPlayerState->HeistPlayerId,
+							DisplayCase->IsSessionLocked() ? TEXT("true") : TEXT("false"), DisplayCase->GetSessionRevision()),
+			bCancelled ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
 #endif
 }
 
 void UHeistDebugFunctionLibrary::DebugDisplayCasePhase(APlayerController* PlayerController, const FString& PhaseName)
 {
 #if !UE_BUILD_SHIPPING
-	AHeistGameState* HeistGameState = IsValid(PlayerController) && IsValid(PlayerController->GetWorld())
-		? PlayerController->GetWorld()->GetGameState<AHeistGameState>()
-		: nullptr;
+	AHeistGameState* HeistGameState = IsValid(PlayerController) && IsValid(PlayerController->GetWorld()) ? PlayerController->GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	EHeistMatchPhase ParsedPhase = EHeistMatchPhase::None;
 	if (!IsValid(HeistGameState) || !TryParseMatchPhase(PhaseName, ParsedPhase))
 	{
-		Message(
-			PlayerController,
-			FString::Printf(TEXT("Display case debug phase: Result=REJECTED Phase='%s' Reason=MissingGameStateOrInvalidPhase"), *PhaseName),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, FString::Printf(TEXT("Display case debug phase: Result=REJECTED Phase='%s' Reason=MissingGameStateOrInvalidPhase"), *PhaseName), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
 	const EHeistMatchPhase PreviousPhase = HeistGameState->GetMatchPhase();
 	const bool bChanged = HeistGameState->SetMatchPhase(ParsedPhase);
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Display case debug phase: Result=%s Previous=%s New=%s"),
-			bChanged ? TEXT("PASS") : TEXT("REJECTED"),
-			*UEnum::GetValueAsString(PreviousPhase),
-			*UEnum::GetValueAsString(HeistGameState->GetMatchPhase())),
-		bChanged ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
-		true,
-		10.0f);
+	Message(PlayerController,
+			FString::Printf(TEXT("Display case debug phase: Result=%s Previous=%s New=%s"), bChanged ? TEXT("PASS") : TEXT("REJECTED"), *UEnum::GetValueAsString(PreviousPhase),
+							*UEnum::GetValueAsString(HeistGameState->GetMatchPhase())),
+			bChanged ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
 #endif
 }
 
@@ -1294,16 +967,10 @@ void UHeistDebugFunctionLibrary::DebugDisplayCaseAdvance(APlayerController* Play
 
 	const EHeistDisplayCaseState PreviousState = DisplayCase->GetDisplayCaseState();
 	const bool bChanged = DisplayCase->TryAdvanceDisplayCaseState();
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Display case debug advance: Result=%s Previous=%s New=%s"),
-			bChanged ? TEXT("PASS") : TEXT("REJECTED"),
-			*UEnum::GetValueAsString(PreviousState),
-			*UEnum::GetValueAsString(DisplayCase->GetDisplayCaseState())),
-		bChanged ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
-		true,
-		10.0f);
+	Message(PlayerController,
+			FString::Printf(TEXT("Display case debug advance: Result=%s Previous=%s New=%s"), bChanged ? TEXT("PASS") : TEXT("REJECTED"), *UEnum::GetValueAsString(PreviousState),
+							*UEnum::GetValueAsString(DisplayCase->GetDisplayCaseState())),
+			bChanged ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
 #endif
 }
 
@@ -1320,155 +987,90 @@ void UHeistDebugFunctionLibrary::DebugDisplayCaseSet(APlayerController* PlayerCo
 	EHeistDisplayCaseState ParsedState = EHeistDisplayCaseState::Secured;
 	if (!TryParseDisplayCaseState(StateName, ParsedState))
 	{
-		Message(
-			PlayerController,
-			FString::Printf(TEXT("Display case set failed: invalid state '%s'."), *StateName),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, FString::Printf(TEXT("Display case set failed: invalid state '%s'."), *StateName), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
 	const EHeistDisplayCaseState PreviousState = DisplayCase->GetDisplayCaseState();
 	const bool bChanged = DisplayCase->TryTransitionToDisplayCaseState(ParsedState);
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Display case debug set: Result=%s Previous=%s Requested=%s Current=%s"),
-			bChanged ? TEXT("PASS") : TEXT("REJECTED"),
-			*UEnum::GetValueAsString(PreviousState),
-			*UEnum::GetValueAsString(ParsedState),
-			*UEnum::GetValueAsString(DisplayCase->GetDisplayCaseState())),
-		bChanged ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
-		true,
-		10.0f);
+	Message(PlayerController,
+			FString::Printf(TEXT("Display case debug set: Result=%s Previous=%s Requested=%s Current=%s"), bChanged ? TEXT("PASS") : TEXT("REJECTED"), *UEnum::GetValueAsString(PreviousState),
+							*UEnum::GetValueAsString(ParsedState), *UEnum::GetValueAsString(DisplayCase->GetDisplayCaseState())),
+			bChanged ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
 #endif
 }
 
 void UHeistDebugFunctionLibrary::DebugOriginalHelp(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
-	Message(
-		PlayerController,
-		TEXT("Original carry commands: HeistOriginalDump | HeistOriginalTake | HeistOriginalDrop. Prepare nearest case in OriginalAvailable. Drop policy returns the Original to its source case."),
-		EHeistDebugLevel::Info,
-		true,
-		10.0f);
+	Message(PlayerController,
+			TEXT("Original carry commands: HeistOriginalDump | HeistOriginalTake | HeistOriginalDrop. Prepare nearest case in OriginalAvailable. Drop policy returns the Original to its source case."),
+			EHeistDebugLevel::Info, true, 10.0f);
 #endif
 }
 
 void UHeistDebugFunctionLibrary::DebugOriginalDump(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
-	const AHeistPlayerController* HeistPlayerController =
-		Cast<AHeistPlayerController>(PlayerController);
-	const AHeistPlayerCharacter* PlayerCharacter = IsValid(HeistPlayerController)
-		? HeistPlayerController->GetPawn<AHeistPlayerCharacter>()
-		: nullptr;
-	const AHeistPlayerState* HeistPlayerState = IsValid(HeistPlayerController)
-		? HeistPlayerController->GetPlayerState<AHeistPlayerState>()
-		: nullptr;
-	const UHeistInventoryComponent* InventoryComponent = IsValid(PlayerCharacter)
-		? PlayerCharacter->GetInventoryComponent()
-		: nullptr;
+	const AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(PlayerController);
+	const AHeistPlayerCharacter* PlayerCharacter = IsValid(HeistPlayerController) ? HeistPlayerController->GetPawn<AHeistPlayerCharacter>() : nullptr;
+	const AHeistPlayerState* HeistPlayerState = IsValid(HeistPlayerController) ? HeistPlayerController->GetPlayerState<AHeistPlayerState>() : nullptr;
+	const UHeistInventoryComponent* InventoryComponent = IsValid(PlayerCharacter) ? PlayerCharacter->GetInventoryComponent() : nullptr;
 	const AHeistPaintingDisplayCaseActor* DisplayCase = ResolveNearestPaintingDisplayCase(PlayerController);
 	if (!IsValid(HeistPlayerState) || !IsValid(InventoryComponent))
 	{
-		Message(
-			PlayerController,
-			TEXT("Original carry dump: Result=FAIL Reason=MissingPlayerStateOrInventory"),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, TEXT("Original carry dump: Result=FAIL Reason=MissingPlayerStateOrInventory"), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
-	const FHeistOriginalCarryEntry& CarryEntry =
-		InventoryComponent->GetOriginalCarryEntry();
-	const AHeistPlayerState* CaseCarrier = IsValid(DisplayCase)
-		? DisplayCase->GetOriginalCarrier()
-		: nullptr;
+	const FHeistOriginalCarryEntry& CarryEntry = InventoryComponent->GetOriginalCarryEntry();
+	const AHeistPlayerState* CaseCarrier = IsValid(DisplayCase) ? DisplayCase->GetOriginalCarrier() : nullptr;
 	const bool bCarryContractConsistent =
-		(!CarryEntry.IsValid() && !IsValid(CaseCarrier))
-		|| (CarryEntry.IsValid()
-			&& IsValid(DisplayCase)
-			&& CarryEntry.SourceDisplayCase == DisplayCase
-			&& CaseCarrier == HeistPlayerState
-			&& DisplayCase->GetDisplayCaseState()
-				== EHeistDisplayCaseState::OriginalRemoved);
+		(!CarryEntry.IsValid() && !IsValid(CaseCarrier)) || (CarryEntry.IsValid() && IsValid(DisplayCase) && CarryEntry.SourceDisplayCase == DisplayCase && CaseCarrier == HeistPlayerState &&
+															 DisplayCase->GetDisplayCaseState() == EHeistDisplayCaseState::OriginalRemoved);
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Original carry dump: PlayerId=%d CarryActive=%s Artifact=%s CarryWeight=%.1f TotalWeight=%.1f SourceCase=%s NearestCase=%s CaseId=%s CaseState=%s CaseCarrierPlayerId=%d CarryRevision=%d ContractConsistent=%s Authority=%s Result=%s"),
-			HeistPlayerState->HeistPlayerId,
-			CarryEntry.IsValid() ? TEXT("true") : TEXT("false"),
-			*CarryEntry.ArtifactId.ToString(),
-			CarryEntry.Weight,
-			HeistPlayerState->GetTotalLootWeight(),
-			*GetNameSafe(CarryEntry.SourceDisplayCase.Get()),
-			*GetNameSafe(DisplayCase),
-			IsValid(DisplayCase) ? *DisplayCase->GetDisplayCaseId().ToString() : TEXT("None"),
-			IsValid(DisplayCase)
-				? *UEnum::GetValueAsString(DisplayCase->GetDisplayCaseState())
-				: TEXT("MissingCase"),
-			IsValid(CaseCarrier) ? CaseCarrier->HeistPlayerId : INDEX_NONE,
-			IsValid(DisplayCase) ? DisplayCase->GetOriginalCarryRevision() : INDEX_NONE,
-			bCarryContractConsistent ? TEXT("true") : TEXT("false"),
-			HeistPlayerController->HasAuthority() ? TEXT("true") : TEXT("false"),
-			bCarryContractConsistent ? TEXT("PASS") : TEXT("FAIL")),
-		bCarryContractConsistent ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
-		true,
-		10.0f);
+			TEXT(
+				"Original carry dump: PlayerId=%d CarryActive=%s Artifact=%s CarryWeight=%.1f TotalWeight=%.1f SourceCase=%s NearestCase=%s CaseId=%s CaseState=%s CaseCarrierPlayerId=%d CarryRevision=%d ContractConsistent=%s Authority=%s Result=%s"),
+			HeistPlayerState->HeistPlayerId, CarryEntry.IsValid() ? TEXT("true") : TEXT("false"), *CarryEntry.ArtifactId.ToString(), CarryEntry.Weight, HeistPlayerState->GetTotalLootWeight(),
+			*GetNameSafe(CarryEntry.SourceDisplayCase.Get()), *GetNameSafe(DisplayCase), IsValid(DisplayCase) ? *DisplayCase->GetDisplayCaseId().ToString() : TEXT("None"),
+			IsValid(DisplayCase) ? *UEnum::GetValueAsString(DisplayCase->GetDisplayCaseState()) : TEXT("MissingCase"), IsValid(CaseCarrier) ? CaseCarrier->HeistPlayerId : INDEX_NONE,
+			IsValid(DisplayCase) ? DisplayCase->GetOriginalCarryRevision() : INDEX_NONE, bCarryContractConsistent ? TEXT("true") : TEXT("false"),
+			HeistPlayerController->HasAuthority() ? TEXT("true") : TEXT("false"), bCarryContractConsistent ? TEXT("PASS") : TEXT("FAIL")),
+		bCarryContractConsistent ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
 #endif
 }
 
 void UHeistDebugFunctionLibrary::DebugOriginalTake(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
-	AHeistPlayerController* HeistPlayerController =
-		Cast<AHeistPlayerController>(PlayerController);
+	AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(PlayerController);
 	AHeistPaintingDisplayCaseActor* DisplayCase = ResolveNearestPaintingDisplayCase(PlayerController);
 	if (!IsValid(HeistPlayerController) || !IsValid(DisplayCase))
 	{
-		Message(
-			PlayerController,
-			TEXT("Original carry debug take: Result=REJECTED Reason=MissingControllerOrDisplayCase"),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, TEXT("Original carry debug take: Result=REJECTED Reason=MissingControllerOrDisplayCase"), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
 	HeistPlayerController->RequestTakeOriginal(DisplayCase);
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Original carry debug take requested: Case=%s Artifact=%s"),
-			*GetNameSafe(DisplayCase),
-			*DisplayCase->GetTargetArtifactId().ToString()),
-		EHeistDebugLevel::Info,
-		true);
+	Message(PlayerController, FString::Printf(TEXT("Original carry debug take requested: Case=%s Artifact=%s"), *GetNameSafe(DisplayCase), *DisplayCase->GetTargetArtifactId().ToString()),
+			EHeistDebugLevel::Info, true);
 #endif
 }
 
 void UHeistDebugFunctionLibrary::DebugOriginalDrop(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
-	AHeistPlayerController* HeistPlayerController =
-		Cast<AHeistPlayerController>(PlayerController);
+	AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(PlayerController);
 	if (!IsValid(HeistPlayerController))
 	{
-		Message(
-			PlayerController,
-			TEXT("Original carry debug drop: Result=REJECTED Reason=MissingController"),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, TEXT("Original carry debug drop: Result=REJECTED Reason=MissingController"), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
 	HeistPlayerController->RequestDropCarriedOriginal();
-	Message(
-		PlayerController,
-		TEXT("Original carry debug drop requested."),
-		EHeistDebugLevel::Info,
-		true);
+	Message(PlayerController, TEXT("Original carry debug drop requested."), EHeistDebugLevel::Info, true);
 #endif
 }
 
@@ -1481,284 +1083,133 @@ void UHeistDebugFunctionLibrary::DebugForgeryHelp(APlayerController* PlayerContr
 #if !UE_BUILD_SHIPPING
 	Message(
 		PlayerController,
-		TEXT("Forgery commands: HeistCasePhase InGame | HeistCaseSpawn 250 | interact/hold E | HeistForgeryTemplateDump | HeistForgeryStrokeDump | HeistForgeryTransportDump | HeistForgeryTransportTest <Valid|Bounds|Count|Size|Brush|Revision|Empty|Short|Palette|Timeout|NearTimeout|Duplicate> | HeistForgeryScoreDump | HeistForgeryScoreTest | HeistForgerySwapDump | HeistForgeryVisualDump | HeistForgeryPaintingDump | HeistForgeryDump | HeistForgeryInputDump | HeistForgerySubmit | HeistForgeryCancel | HeistForgeryTimeout | HeistForgeryRecoveryDump | HeistForgeryRecoveryRace <CancelSubmit|SubmitCancel> | HeistForgeryUIDump | HeistForgeryUIPreview <None|Observation|Drawing|Validation|Result>. Run RecoveryRace in the owning client after drawing, then run RecoveryDump after replication settles. Timeout and NearTimeout transport tests run in the listen-server window. Run RecoveryDump in the listen server after client disconnect to detect orphan locks."),
-		EHeistDebugLevel::Info,
-		true,
-		12.0f);
+		TEXT(
+			"Forgery commands: HeistCasePhase InGame | HeistCaseSpawn 250 | interact/hold E | HeistForgeryTemplateDump | HeistForgeryStrokeDump | HeistForgeryTransportDump | HeistForgeryTransportTest <Valid|Bounds|Count|Size|Brush|Revision|Empty|Short|Palette|Timeout|NearTimeout|Duplicate> | HeistForgeryScoreDump | HeistForgeryScoreTest | HeistForgerySwapDump | HeistForgeryVisualDump | HeistForgeryPaintingDump | HeistForgeryDump | HeistForgeryInputDump | HeistForgerySubmit | HeistForgeryCancel | HeistForgeryTimeout | HeistForgeryRecoveryDump | HeistForgeryRecoveryRace <CancelSubmit|SubmitCancel> | HeistForgeryUIDump | HeistForgeryUIPreview <None|Observation|Drawing|Validation|Result>. Run RecoveryRace in the owning client after drawing, then run RecoveryDump after replication settles. Timeout and NearTimeout transport tests run in the listen-server window. Run RecoveryDump in the listen server after client disconnect to detect orphan locks."),
+		EHeistDebugLevel::Info, true, 12.0f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugForgeryDump(
-	APlayerController* PlayerController)
+void UHeistDebugFunctionLibrary::DebugForgeryDump(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
-	const AHeistPlayerController* HeistPlayerController =
-		ResolveHeistPlayerController(PlayerController);
-	const AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController)
-		? HeistPlayerController->GetPawn<AHeistPlayerCharacter>()
-		: nullptr;
-	const AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter)
-		? HeistCharacter->GetPlayerState<AHeistPlayerState>()
-		: nullptr;
-	const UHeistForgeryComponent* ForgeryComponent =
-		ResolveForgeryComponent(PlayerController);
+	const AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	const AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController) ? HeistPlayerController->GetPawn<AHeistPlayerCharacter>() : nullptr;
+	const AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter) ? HeistCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
+	const UHeistForgeryComponent* ForgeryComponent = ResolveForgeryComponent(PlayerController);
 	if (!IsValid(ForgeryComponent))
 	{
-		Message(
-			PlayerController,
-			TEXT("Forgery session dump: Result=FAIL Reason=MissingForgeryComponent"),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, TEXT("Forgery session dump: Result=FAIL Reason=MissingForgeryComponent"), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
-	const AHeistPaintingDisplayCaseActor* DisplayCase =
-		ForgeryComponent->GetActiveDisplayCase();
+	const AHeistPaintingDisplayCaseActor* DisplayCase = ForgeryComponent->GetActiveDisplayCase();
 	const bool bSessionActive = ForgeryComponent->IsSessionActive();
-	const bool bInactiveSnapshotClean = !bSessionActive
-		&& !ForgeryComponent->IsSubmitPending()
-		&& !IsValid(DisplayCase)
-		&& FMath::IsNearlyZero(
-			ForgeryComponent->GetSessionEndServerTime());
-	const bool bActiveSnapshotConsistent = bSessionActive
-		&& IsValid(DisplayCase)
-		&& DisplayCase->IsSessionLocked()
-		&& DisplayCase->GetSessionOwner() == HeistPlayerState
-		&& DisplayCase->GetDisplayCaseState()
-			== EHeistDisplayCaseState::ForgeryInProgress
-		&& ForgeryComponent->GetSessionEndServerTime() > 0.0f;
-	const bool bContractConsistent =
-		bInactiveSnapshotClean || bActiveSnapshotConsistent;
+	const bool bInactiveSnapshotClean = !bSessionActive && !ForgeryComponent->IsSubmitPending() && !IsValid(DisplayCase) && FMath::IsNearlyZero(ForgeryComponent->GetSessionEndServerTime());
+	const bool bActiveSnapshotConsistent = bSessionActive && IsValid(DisplayCase) && DisplayCase->IsSessionLocked() && DisplayCase->GetSessionOwner() == HeistPlayerState &&
+										   DisplayCase->GetDisplayCaseState() == EHeistDisplayCaseState::ForgeryInProgress && ForgeryComponent->GetSessionEndServerTime() > 0.0f;
+	const bool bContractConsistent = bInactiveSnapshotClean || bActiveSnapshotConsistent;
 
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Forgery session dump: Character=%s PlayerId=%d Active=%s SubmitPending=%s Case=%s CaseState=%s CaseOwnerPlayerId=%d CaseLocked=%s EndServerTime=%.2f Revision=%d LastCleanup=%s ContractConsistent=%s Authority=%s Result=%s"),
-			*GetNameSafe(HeistCharacter),
-			IsValid(HeistPlayerState)
-				? HeistPlayerState->HeistPlayerId
-				: INDEX_NONE,
-			bSessionActive ? TEXT("true") : TEXT("false"),
-			ForgeryComponent->IsSubmitPending()
-				? TEXT("true")
-				: TEXT("false"),
-			*GetNameSafe(DisplayCase),
-			IsValid(DisplayCase)
-				? *UEnum::GetValueAsString(
-					DisplayCase->GetDisplayCaseState())
-				: TEXT("None"),
-			IsValid(DisplayCase)
-				&& IsValid(DisplayCase->GetSessionOwner())
-					? DisplayCase->GetSessionOwner()->HeistPlayerId
-					: INDEX_NONE,
-			IsValid(DisplayCase) && DisplayCase->IsSessionLocked()
-				? TEXT("true")
-				: TEXT("false"),
-			ForgeryComponent->GetSessionEndServerTime(),
-			ForgeryComponent->GetSessionRevision(),
-			ForgeryComponent->GetLastCleanupReason().IsNone()
-				? TEXT("None")
-				: *ForgeryComponent->GetLastCleanupReason().ToString(),
-			bContractConsistent ? TEXT("true") : TEXT("false"),
-			IsValid(HeistPlayerController)
-				&& HeistPlayerController->HasAuthority()
-					? TEXT("true")
-					: TEXT("false"),
-			bContractConsistent ? TEXT("PASS") : TEXT("FAIL")),
-		bContractConsistent
-			? EHeistDebugLevel::Info
-			: EHeistDebugLevel::Warning,
-		true,
-		12.0f);
+			TEXT(
+				"Forgery session dump: Character=%s PlayerId=%d Active=%s SubmitPending=%s Case=%s CaseState=%s CaseOwnerPlayerId=%d CaseLocked=%s EndServerTime=%.2f Revision=%d LastCleanup=%s ContractConsistent=%s Authority=%s Result=%s"),
+			*GetNameSafe(HeistCharacter), IsValid(HeistPlayerState) ? HeistPlayerState->HeistPlayerId : INDEX_NONE, bSessionActive ? TEXT("true") : TEXT("false"),
+			ForgeryComponent->IsSubmitPending() ? TEXT("true") : TEXT("false"), *GetNameSafe(DisplayCase),
+			IsValid(DisplayCase) ? *UEnum::GetValueAsString(DisplayCase->GetDisplayCaseState()) : TEXT("None"),
+			IsValid(DisplayCase) && IsValid(DisplayCase->GetSessionOwner()) ? DisplayCase->GetSessionOwner()->HeistPlayerId : INDEX_NONE,
+			IsValid(DisplayCase) && DisplayCase->IsSessionLocked() ? TEXT("true") : TEXT("false"), ForgeryComponent->GetSessionEndServerTime(), ForgeryComponent->GetSessionRevision(),
+			ForgeryComponent->GetLastCleanupReason().IsNone() ? TEXT("None") : *ForgeryComponent->GetLastCleanupReason().ToString(), bContractConsistent ? TEXT("true") : TEXT("false"),
+			IsValid(HeistPlayerController) && HeistPlayerController->HasAuthority() ? TEXT("true") : TEXT("false"), bContractConsistent ? TEXT("PASS") : TEXT("FAIL")),
+		bContractConsistent ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 12.0f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugForgeryInputDump(
-	APlayerController* PlayerController)
+void UHeistDebugFunctionLibrary::DebugForgeryInputDump(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
-	const AHeistPlayerController* HeistPlayerController =
-		ResolveHeistPlayerController(PlayerController);
-	const AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController)
-		? HeistPlayerController->GetPawn<AHeistPlayerCharacter>()
-		: nullptr;
-	const UHeistForgeryComponent* ForgeryComponent = IsValid(HeistCharacter)
-		? HeistCharacter->GetForgeryComponent()
-		: nullptr;
-	const UHeistInventoryComponent* InventoryComponent = IsValid(HeistCharacter)
-		? HeistCharacter->GetInventoryComponent()
-		: nullptr;
-	if (!IsValid(HeistPlayerController)
-		|| !HeistPlayerController->IsLocalController()
-		|| !IsValid(HeistCharacter)
-		|| !IsValid(ForgeryComponent)
-		|| !IsValid(InventoryComponent))
+	const AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	const AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController) ? HeistPlayerController->GetPawn<AHeistPlayerCharacter>() : nullptr;
+	const UHeistForgeryComponent* ForgeryComponent = IsValid(HeistCharacter) ? HeistCharacter->GetForgeryComponent() : nullptr;
+	const UHeistInventoryComponent* InventoryComponent = IsValid(HeistCharacter) ? HeistCharacter->GetInventoryComponent() : nullptr;
+	if (!IsValid(HeistPlayerController) || !HeistPlayerController->IsLocalController() || !IsValid(HeistCharacter) || !IsValid(ForgeryComponent) || !IsValid(InventoryComponent))
 	{
-		Message(
-			PlayerController,
-			TEXT("Forgery input dump: Result=FAIL Reason=MissingLocalInputContext"),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, TEXT("Forgery input dump: Result=FAIL Reason=MissingLocalInputContext"), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
-	const bool bGameplayContext =
-		HeistPlayerController->IsLocalInputMappingContextActive(
-			EHeistInputMode::Gameplay);
-	const bool bInventoryContext =
-		HeistPlayerController->IsLocalInputMappingContextActive(
-			EHeistInputMode::Inventory);
-	const bool bForgeryContext =
-		HeistPlayerController->IsLocalInputMappingContextActive(
-			EHeistInputMode::Forgery);
-	const bool bContractPassed =
-		HeistPlayerController->IsLocalInputModeContractSatisfied();
+	const bool bGameplayContext = HeistPlayerController->IsLocalInputMappingContextActive(EHeistInputMode::Gameplay);
+	const bool bInventoryContext = HeistPlayerController->IsLocalInputMappingContextActive(EHeistInputMode::Inventory);
+	const bool bForgeryContext = HeistPlayerController->IsLocalInputMappingContextActive(EHeistInputMode::Forgery);
+	const bool bContractPassed = HeistPlayerController->IsLocalInputModeContractSatisfied();
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Forgery input dump: Controller=%s Mode=%s SessionActive=%s InventoryOpen=%s GameplayContext=%s InventoryContext=%s ForgeryContext=%s ActiveContexts=%d Cursor=%s IgnoreMove=%s IgnoreLook=%s GameplayActionsAllowed=%s Contract=%s Result=%s"),
-			*GetNameSafe(HeistPlayerController),
-			ToInputModeText(HeistPlayerController->GetLocalInputMode()),
-			ForgeryComponent->IsSessionActive() ? TEXT("true") : TEXT("false"),
-			InventoryComponent->IsInventoryOpen() ? TEXT("true") : TEXT("false"),
-			bGameplayContext ? TEXT("true") : TEXT("false"),
-			bInventoryContext ? TEXT("true") : TEXT("false"),
-			bForgeryContext ? TEXT("true") : TEXT("false"),
-			HeistPlayerController->GetActiveHeistInputMappingContextCount(),
-			HeistPlayerController->bShowMouseCursor ? TEXT("true") : TEXT("false"),
-			HeistPlayerController->IsMoveInputIgnored() ? TEXT("true") : TEXT("false"),
-			HeistPlayerController->IsLookInputIgnored() ? TEXT("true") : TEXT("false"),
-			HeistCharacter->CanPerformGameplayActions()
-				? TEXT("true")
-				: TEXT("false"),
-			bContractPassed ? TEXT("PASS") : TEXT("FAIL"),
-			bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
-		bContractPassed
-			? EHeistDebugLevel::Info
-			: EHeistDebugLevel::Warning,
-		true,
-		12.0f);
+			TEXT(
+				"Forgery input dump: Controller=%s Mode=%s SessionActive=%s InventoryOpen=%s GameplayContext=%s InventoryContext=%s ForgeryContext=%s ActiveContexts=%d Cursor=%s IgnoreMove=%s IgnoreLook=%s GameplayActionsAllowed=%s Contract=%s Result=%s"),
+			*GetNameSafe(HeistPlayerController), ToInputModeText(HeistPlayerController->GetLocalInputMode()), ForgeryComponent->IsSessionActive() ? TEXT("true") : TEXT("false"),
+			InventoryComponent->IsInventoryOpen() ? TEXT("true") : TEXT("false"), bGameplayContext ? TEXT("true") : TEXT("false"), bInventoryContext ? TEXT("true") : TEXT("false"),
+			bForgeryContext ? TEXT("true") : TEXT("false"), HeistPlayerController->GetActiveHeistInputMappingContextCount(), HeistPlayerController->bShowMouseCursor ? TEXT("true") : TEXT("false"),
+			HeistPlayerController->IsMoveInputIgnored() ? TEXT("true") : TEXT("false"), HeistPlayerController->IsLookInputIgnored() ? TEXT("true") : TEXT("false"),
+			HeistCharacter->CanPerformGameplayActions() ? TEXT("true") : TEXT("false"), bContractPassed ? TEXT("PASS") : TEXT("FAIL"), bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bContractPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 12.0f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugForgeryTemplateDump(
-	APlayerController* PlayerController)
+void UHeistDebugFunctionLibrary::DebugForgeryTemplateDump(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
-	const UHeistForgeryComponent* ForgeryComponent =
-		ResolveForgeryComponent(PlayerController);
-	AHeistPlayerController* HeistPlayerController =
-		ResolveHeistPlayerController(PlayerController);
-	AHeistHUD* HeistHUD = IsValid(HeistPlayerController)
-		? HeistPlayerController->GetHUD<AHeistHUD>()
-		: nullptr;
+	const UHeistForgeryComponent* ForgeryComponent = ResolveForgeryComponent(PlayerController);
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	AHeistHUD* HeistHUD = IsValid(HeistPlayerController) ? HeistPlayerController->GetHUD<AHeistHUD>() : nullptr;
 	if (IsValid(HeistHUD))
 	{
 		HeistHUD->RefreshPresentationSources();
 	}
-	const UHeistForgeryViewModel* ForgeryViewModel = IsValid(HeistHUD)
-		? HeistHUD->GetForgeryViewModel()
-		: nullptr;
+	const UHeistForgeryViewModel* ForgeryViewModel = IsValid(HeistHUD) ? HeistHUD->GetForgeryViewModel() : nullptr;
 	if (!IsValid(ForgeryComponent))
 	{
-		Message(
-			PlayerController,
-			TEXT("Forgery template dump: Result=FAIL Reason=MissingForgeryComponent"),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, TEXT("Forgery template dump: Result=FAIL Reason=MissingForgeryComponent"), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
 	UTexture2D* ReferenceImage = ForgeryComponent->LoadReferenceImage();
 	UTexture2D* ReferenceMask = ForgeryComponent->LoadReferenceMask();
-	const bool bTemplateContract =
-		ForgeryComponent->HasPreparedForgeryTemplate()
-		&& !ForgeryComponent->GetActiveArtifactId().IsNone()
-		&& !ForgeryComponent->GetActiveTemplateId().IsNone()
-		&& ForgeryComponent->GetReferenceImageAsset().ToSoftObjectPath().IsValid()
-		&& ForgeryComponent->GetReferenceMaskAsset().ToSoftObjectPath().IsValid()
-		&& IsValid(ReferenceImage)
-		&& IsValid(ReferenceMask)
-		&& ForgeryComponent->GetTemplateObservationDuration() >= 0.0f
-		&& ForgeryComponent->GetTemplateForgeryDuration() > 0.0f
-		&& ForgeryComponent->GetTemplateStrokeLimit() > 0
-		&& ForgeryComponent->GetTemplateBrushSize() > 0.0f
-		&& FMath::IsWithinInclusive(
-			ForgeryComponent->GetTemplateAllowedPalette().Num(),
-			2,
-			8);
-	const bool bHandoffContract =
-		!ForgeryComponent->IsSessionActive()
-		|| (IsValid(ForgeryViewModel)
-			&& ForgeryViewModel->IsDrawingVisible()
-			&& !ForgeryViewModel->IsObservationVisible()
-			&& ForgeryViewModel->GetReferenceTemplateId()
-				== ForgeryComponent->GetActiveTemplateId());
+	const bool bTemplateContract = ForgeryComponent->HasPreparedForgeryTemplate() && !ForgeryComponent->GetActiveArtifactId().IsNone() && !ForgeryComponent->GetActiveTemplateId().IsNone() &&
+								   ForgeryComponent->GetReferenceImageAsset().ToSoftObjectPath().IsValid() && ForgeryComponent->GetReferenceMaskAsset().ToSoftObjectPath().IsValid() &&
+								   IsValid(ReferenceImage) && IsValid(ReferenceMask) && ForgeryComponent->GetTemplateObservationDuration() >= 0.0f &&
+								   ForgeryComponent->GetTemplateForgeryDuration() > 0.0f && ForgeryComponent->GetTemplateStrokeLimit() > 0 && ForgeryComponent->GetTemplateBrushSize() > 0.0f &&
+								   FMath::IsWithinInclusive(ForgeryComponent->GetTemplateAllowedPalette().Num(), 2, 8);
+	const bool bHandoffContract = !ForgeryComponent->IsSessionActive() || (IsValid(ForgeryViewModel) && ForgeryViewModel->IsDrawingVisible() && !ForgeryViewModel->IsObservationVisible() &&
+																		   ForgeryViewModel->GetReferenceTemplateId() == ForgeryComponent->GetActiveTemplateId());
 	const bool bContractPassed = bTemplateContract && bHandoffContract;
 
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Forgery template dump: Prepared=%s Artifact=%s Template=%s ReferenceImage=%s ImageLoaded=%s ReferenceMask=%s MaskLoaded=%s PaletteColors=%d Observation=%.2f Forgery=%.2f StrokeLimit=%d Brush=%.4f SessionActive=%s ObservationUI=%s DrawingUI=%s TemplateContract=%s HandoffContract=%s Result=%s"),
-			ForgeryComponent->HasPreparedForgeryTemplate()
-				? TEXT("true")
-				: TEXT("false"),
-			*ForgeryComponent->GetActiveArtifactId().ToString(),
-			*ForgeryComponent->GetActiveTemplateId().ToString(),
-			*ForgeryComponent->GetReferenceImageAsset().ToSoftObjectPath().ToString(),
-			IsValid(ReferenceImage) ? TEXT("true") : TEXT("false"),
-			*ForgeryComponent->GetReferenceMaskAsset().ToSoftObjectPath().ToString(),
-			IsValid(ReferenceMask) ? TEXT("true") : TEXT("false"),
-			ForgeryComponent->GetTemplateAllowedPalette().Num(),
-			ForgeryComponent->GetTemplateObservationDuration(),
-			ForgeryComponent->GetTemplateForgeryDuration(),
-			ForgeryComponent->GetTemplateStrokeLimit(),
-			ForgeryComponent->GetTemplateBrushSize(),
-			ForgeryComponent->IsSessionActive() ? TEXT("true") : TEXT("false"),
-			IsValid(ForgeryViewModel)
-				&& ForgeryViewModel->IsObservationVisible()
-					? TEXT("true")
-					: TEXT("false"),
-			IsValid(ForgeryViewModel)
-				&& ForgeryViewModel->IsDrawingVisible()
-					? TEXT("true")
-					: TEXT("false"),
-			bTemplateContract ? TEXT("PASS") : TEXT("FAIL"),
-			bHandoffContract ? TEXT("PASS") : TEXT("FAIL"),
-			bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
-		bContractPassed
-			? EHeistDebugLevel::Info
-			: EHeistDebugLevel::Warning,
-		true,
-		15.0f);
+			TEXT(
+				"Forgery template dump: Prepared=%s Artifact=%s Template=%s ReferenceImage=%s ImageLoaded=%s ReferenceMask=%s MaskLoaded=%s PaletteColors=%d Observation=%.2f Forgery=%.2f StrokeLimit=%d Brush=%.4f SessionActive=%s ObservationUI=%s DrawingUI=%s TemplateContract=%s HandoffContract=%s Result=%s"),
+			ForgeryComponent->HasPreparedForgeryTemplate() ? TEXT("true") : TEXT("false"), *ForgeryComponent->GetActiveArtifactId().ToString(), *ForgeryComponent->GetActiveTemplateId().ToString(),
+			*ForgeryComponent->GetReferenceImageAsset().ToSoftObjectPath().ToString(), IsValid(ReferenceImage) ? TEXT("true") : TEXT("false"),
+			*ForgeryComponent->GetReferenceMaskAsset().ToSoftObjectPath().ToString(), IsValid(ReferenceMask) ? TEXT("true") : TEXT("false"), ForgeryComponent->GetTemplateAllowedPalette().Num(),
+			ForgeryComponent->GetTemplateObservationDuration(), ForgeryComponent->GetTemplateForgeryDuration(), ForgeryComponent->GetTemplateStrokeLimit(), ForgeryComponent->GetTemplateBrushSize(),
+			ForgeryComponent->IsSessionActive() ? TEXT("true") : TEXT("false"), IsValid(ForgeryViewModel) && ForgeryViewModel->IsObservationVisible() ? TEXT("true") : TEXT("false"),
+			IsValid(ForgeryViewModel) && ForgeryViewModel->IsDrawingVisible() ? TEXT("true") : TEXT("false"), bTemplateContract ? TEXT("PASS") : TEXT("FAIL"),
+			bHandoffContract ? TEXT("PASS") : TEXT("FAIL"), bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bContractPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugForgeryStrokeDump(
-	APlayerController* PlayerController)
+void UHeistDebugFunctionLibrary::DebugForgeryStrokeDump(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
-	AHeistPlayerController* HeistPlayerController =
-		ResolveHeistPlayerController(PlayerController);
-	AHeistHUD* HeistHUD = IsValid(HeistPlayerController)
-		? HeistPlayerController->GetHUD<AHeistHUD>()
-		: nullptr;
-	UHeistForgeryWidget* ForgeryWidget = IsValid(HeistHUD)
-		? HeistHUD->GetForgeryWidget()
-		: nullptr;
-	UHeistForgeryViewModel* ForgeryViewModel = IsValid(HeistHUD)
-		? HeistHUD->GetForgeryViewModel()
-		: nullptr;
-	if (!IsValid(HeistPlayerController)
-		|| !HeistPlayerController->IsLocalController()
-		|| !IsValid(ForgeryWidget)
-		|| !IsValid(ForgeryViewModel))
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	AHeistHUD* HeistHUD = IsValid(HeistPlayerController) ? HeistPlayerController->GetHUD<AHeistHUD>() : nullptr;
+	UHeistForgeryWidget* ForgeryWidget = IsValid(HeistHUD) ? HeistHUD->GetForgeryWidget() : nullptr;
+	UHeistForgeryViewModel* ForgeryViewModel = IsValid(HeistHUD) ? HeistHUD->GetForgeryViewModel() : nullptr;
+	if (!IsValid(HeistPlayerController) || !HeistPlayerController->IsLocalController() || !IsValid(ForgeryWidget) || !IsValid(ForgeryViewModel))
 	{
-		Message(
-			PlayerController,
-			TEXT("Forgery stroke dump: Result=FAIL Reason=MissingLocalForgeryPresentation"),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, TEXT("Forgery stroke dump: Result=FAIL Reason=MissingLocalForgeryPresentation"), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
@@ -1772,159 +1223,70 @@ void UHeistDebugFunctionLibrary::DebugForgeryStrokeDump(
 	const bool bCanvasReady = ForgeryWidget->IsDrawingSurfaceReady();
 	const bool bDrawingVisible = ForgeryViewModel->IsDrawingVisible();
 	const bool bNormalized = ForgeryWidget->AreCollectedPointsNormalized();
-	const int32 PaletteColorCount =
-		ForgeryViewModel->GetAllowedPalette().Num();
-	const int32 VisiblePaletteButtonCount =
-		ForgeryWidget->GetVisiblePaletteButtonCount();
-	const int32 ActivePaletteIndex =
-		ForgeryWidget->GetActivePaletteIndex();
+	const int32 PaletteColorCount = ForgeryViewModel->GetAllowedPalette().Num();
+	const int32 VisiblePaletteButtonCount = ForgeryWidget->GetVisiblePaletteButtonCount();
+	const int32 ActivePaletteIndex = ForgeryWidget->GetActivePaletteIndex();
 	const bool bPaletteControlsReady =
-		FMath::IsWithinInclusive(PaletteColorCount, 2, 8)
-		&& VisiblePaletteButtonCount == PaletteColorCount
-		&& FMath::IsWithinInclusive(
-			ActivePaletteIndex,
-			0,
-			PaletteColorCount - 1);
-	const bool bLimitRespected = StrokeLimit > 0
-		&& PointCount <= StrokeLimit;
-	const bool bBrushValid =
-		FMath::IsWithinInclusive(BrushSize, 0.001f, 0.25f);
-	const bool bCollectionReady = StrokeCount > 0
-		&& PointCount > 1
-		&& SegmentCount > 0;
+		FMath::IsWithinInclusive(PaletteColorCount, 2, 8) && VisiblePaletteButtonCount == PaletteColorCount && FMath::IsWithinInclusive(ActivePaletteIndex, 0, PaletteColorCount - 1);
+	const bool bLimitRespected = StrokeLimit > 0 && PointCount <= StrokeLimit;
+	const bool bBrushValid = FMath::IsWithinInclusive(BrushSize, 0.001f, 0.25f);
+	const bool bCollectionReady = StrokeCount > 0 && PointCount > 1 && SegmentCount > 0;
 	const bool bEraseVerified = ErasedCount > 0;
-	const bool bContractPassed = bCanvasReady
-		&& bDrawingVisible
-		&& bPaletteControlsReady
-		&& bNormalized
-		&& bLimitRespected
-		&& bBrushValid
-		&& bCollectionReady
-		&& bEraseVerified;
+	const bool bContractPassed = bCanvasReady && bDrawingVisible && bPaletteControlsReady && bNormalized && bLimitRespected && bBrushValid && bCollectionReady && bEraseVerified;
 
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Forgery stroke dump: DrawingVisible=%s CanvasReady=%s CanvasSize=(%.1f,%.1f) EmptyCanvas=%s PaletteColors=%d PaletteButtons=%d ActivePalette=%d PaletteControls=%s Preview='%s' Strokes=%d Points=%d Segments=%d ErasedStrokes=%d StrokeLimit=%d LimitRespected=%s Brush=%.4f BrushValid=%s NormalizedPoints=%s Collection=%s Erase=%s Result=%s"),
-			bDrawingVisible ? TEXT("true") : TEXT("false"),
-			bCanvasReady ? TEXT("true") : TEXT("false"),
-			CanvasSize.X,
-			CanvasSize.Y,
-			PointCount == 0 ? TEXT("true") : TEXT("false"),
-			PaletteColorCount,
-			VisiblePaletteButtonCount,
-			ActivePaletteIndex + 1,
-			bPaletteControlsReady ? TEXT("PASS") : TEXT("FAIL"),
-			*ForgeryWidget->GetPreviewScoreText(),
-			StrokeCount,
-			PointCount,
-			SegmentCount,
-			ErasedCount,
-			StrokeLimit,
-			bLimitRespected ? TEXT("true") : TEXT("false"),
-			BrushSize,
-			bBrushValid ? TEXT("true") : TEXT("false"),
-			bNormalized ? TEXT("true") : TEXT("false"),
-			bCollectionReady ? TEXT("PASS") : TEXT("FAIL"),
-			bEraseVerified ? TEXT("PASS") : TEXT("FAIL"),
-			bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
-		bContractPassed
-			? EHeistDebugLevel::Info
-			: EHeistDebugLevel::Warning,
-		true,
-		15.0f);
+			TEXT(
+				"Forgery stroke dump: DrawingVisible=%s CanvasReady=%s CanvasSize=(%.1f,%.1f) EmptyCanvas=%s PaletteColors=%d PaletteButtons=%d ActivePalette=%d PaletteControls=%s Preview='%s' Strokes=%d Points=%d Segments=%d ErasedStrokes=%d StrokeLimit=%d LimitRespected=%s Brush=%.4f BrushValid=%s NormalizedPoints=%s Collection=%s Erase=%s Result=%s"),
+			bDrawingVisible ? TEXT("true") : TEXT("false"), bCanvasReady ? TEXT("true") : TEXT("false"), CanvasSize.X, CanvasSize.Y, PointCount == 0 ? TEXT("true") : TEXT("false"), PaletteColorCount,
+			VisiblePaletteButtonCount, ActivePaletteIndex + 1, bPaletteControlsReady ? TEXT("PASS") : TEXT("FAIL"), *ForgeryWidget->GetPreviewScoreText(), StrokeCount, PointCount, SegmentCount,
+			ErasedCount, StrokeLimit, bLimitRespected ? TEXT("true") : TEXT("false"), BrushSize, bBrushValid ? TEXT("true") : TEXT("false"), bNormalized ? TEXT("true") : TEXT("false"),
+			bCollectionReady ? TEXT("PASS") : TEXT("FAIL"), bEraseVerified ? TEXT("PASS") : TEXT("FAIL"), bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bContractPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugForgeryTransportDump(
-	APlayerController* PlayerController)
+void UHeistDebugFunctionLibrary::DebugForgeryTransportDump(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
-	UHeistForgeryComponent* ForgeryComponent =
-		ResolveForgeryComponent(PlayerController);
+	UHeistForgeryComponent* ForgeryComponent = ResolveForgeryComponent(PlayerController);
 	if (!IsValid(ForgeryComponent))
 	{
-		Message(
-			PlayerController,
-			TEXT("Forgery transport dump: Result=FAIL Reason=MissingForgeryComponent"),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, TEXT("Forgery transport dump: Result=FAIL Reason=MissingForgeryComponent"), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
-	const bool bAcceptedContract =
-		ForgeryComponent->HasValidatedStrokePayload()
-		&& ForgeryComponent->WasLastStrokeValidationAccepted()
-		&& ForgeryComponent->IsSubmitPending()
-		&& ForgeryComponent->GetValidatedStrokeCount() > 0
-		&& ForgeryComponent->GetValidatedPointCount() > 1
-		&& ForgeryComponent->GetValidatedPointCount()
-			<= ForgeryComponent->GetTemplateStrokeLimit()
-		&& ForgeryComponent->GetValidatedPayloadBytes() > 0
-		&& ForgeryComponent->GetValidatedPayloadBytes() <= 48 * 1024
-		&& FMath::IsNearlyEqual(
-			ForgeryComponent->GetValidatedBrushSize(),
-			ForgeryComponent->GetTemplateBrushSize(),
-			0.0001f);
-	const TCHAR* ResultText = bAcceptedContract
-		? TEXT("PASS")
-		: ForgeryComponent->GetStrokeValidationRevision() > 0
-			? TEXT("REJECTED")
-			: TEXT("NOT_TESTED");
+	const bool bAcceptedContract = ForgeryComponent->HasValidatedStrokePayload() && ForgeryComponent->WasLastStrokeValidationAccepted() && ForgeryComponent->IsSubmitPending() &&
+								   ForgeryComponent->GetValidatedStrokeCount() > 0 && ForgeryComponent->GetValidatedPointCount() > 1 &&
+								   ForgeryComponent->GetValidatedPointCount() <= ForgeryComponent->GetTemplateStrokeLimit() && ForgeryComponent->GetValidatedPayloadBytes() > 0 &&
+								   ForgeryComponent->GetValidatedPayloadBytes() <= 48 * 1024 &&
+								   FMath::IsNearlyEqual(ForgeryComponent->GetValidatedBrushSize(), ForgeryComponent->GetTemplateBrushSize(), 0.0001f);
+	const TCHAR* ResultText = bAcceptedContract ? TEXT("PASS") : ForgeryComponent->GetStrokeValidationRevision() > 0 ? TEXT("REJECTED") : TEXT("NOT_TESTED");
 
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Forgery transport dump: SessionActive=%s SubmitPending=%s HasValidatedPayload=%s LastAccepted=%s LastReason=%s ValidationRevision=%d Strokes=%d Points=%d StrokeLimit=%d PayloadBytes=%d PayloadLimitBytes=%d Brush=%.4f TemplateBrush=%.4f RenderTargetReplicated=false Authority=%s Result=%s"),
-			ForgeryComponent->IsSessionActive() ? TEXT("true") : TEXT("false"),
-			ForgeryComponent->IsSubmitPending() ? TEXT("true") : TEXT("false"),
-			ForgeryComponent->HasValidatedStrokePayload()
-				? TEXT("true")
-				: TEXT("false"),
-			ForgeryComponent->WasLastStrokeValidationAccepted()
-				? TEXT("true")
-				: TEXT("false"),
-			ForgeryComponent->GetLastStrokeValidationReason().IsNone()
-				? TEXT("None")
-				: *ForgeryComponent->GetLastStrokeValidationReason().ToString(),
-			ForgeryComponent->GetStrokeValidationRevision(),
-			ForgeryComponent->GetValidatedStrokeCount(),
-			ForgeryComponent->GetValidatedPointCount(),
-			ForgeryComponent->GetTemplateStrokeLimit(),
-			ForgeryComponent->GetValidatedPayloadBytes(),
-			48 * 1024,
-			ForgeryComponent->GetValidatedBrushSize(),
-			ForgeryComponent->GetTemplateBrushSize(),
-			PlayerController && PlayerController->HasAuthority()
-				? TEXT("true")
-				: TEXT("false"),
+			TEXT(
+				"Forgery transport dump: SessionActive=%s SubmitPending=%s HasValidatedPayload=%s LastAccepted=%s LastReason=%s ValidationRevision=%d Strokes=%d Points=%d StrokeLimit=%d PayloadBytes=%d PayloadLimitBytes=%d Brush=%.4f TemplateBrush=%.4f RenderTargetReplicated=false Authority=%s Result=%s"),
+			ForgeryComponent->IsSessionActive() ? TEXT("true") : TEXT("false"), ForgeryComponent->IsSubmitPending() ? TEXT("true") : TEXT("false"),
+			ForgeryComponent->HasValidatedStrokePayload() ? TEXT("true") : TEXT("false"), ForgeryComponent->WasLastStrokeValidationAccepted() ? TEXT("true") : TEXT("false"),
+			ForgeryComponent->GetLastStrokeValidationReason().IsNone() ? TEXT("None") : *ForgeryComponent->GetLastStrokeValidationReason().ToString(), ForgeryComponent->GetStrokeValidationRevision(),
+			ForgeryComponent->GetValidatedStrokeCount(), ForgeryComponent->GetValidatedPointCount(), ForgeryComponent->GetTemplateStrokeLimit(), ForgeryComponent->GetValidatedPayloadBytes(),
+			48 * 1024, ForgeryComponent->GetValidatedBrushSize(), ForgeryComponent->GetTemplateBrushSize(), PlayerController && PlayerController->HasAuthority() ? TEXT("true") : TEXT("false"),
 			ResultText),
-		bAcceptedContract
-			? EHeistDebugLevel::Info
-			: EHeistDebugLevel::Warning,
-		true,
-		15.0f);
+		bAcceptedContract ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugForgeryTransportTest(
-	APlayerController* PlayerController,
-	const FString& Scenario)
+void UHeistDebugFunctionLibrary::DebugForgeryTransportTest(APlayerController* PlayerController, const FString& Scenario)
 {
 #if !UE_BUILD_SHIPPING
-	AHeistPlayerController* HeistPlayerController =
-		ResolveHeistPlayerController(PlayerController);
-	UHeistForgeryComponent* ForgeryComponent =
-		ResolveForgeryComponent(PlayerController);
-	if (!IsValid(HeistPlayerController)
-		|| !HeistPlayerController->IsLocalController()
-		|| !IsValid(ForgeryComponent))
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	UHeistForgeryComponent* ForgeryComponent = ResolveForgeryComponent(PlayerController);
+	if (!IsValid(HeistPlayerController) || !HeistPlayerController->IsLocalController() || !IsValid(ForgeryComponent))
 	{
-		Message(
-			PlayerController,
-			TEXT("Forgery transport test: Result=FAIL Reason=MissingLocalForgeryContext"),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, TEXT("Forgery transport test: Result=FAIL Reason=MissingLocalForgeryContext"), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
@@ -1936,63 +1298,41 @@ void UHeistDebugFunctionLibrary::DebugForgeryTransportTest(
 	bool bUseInvalidPaletteIndex = false;
 	const TCHAR* ExpectedResult = TEXT("REJECTED_UNKNOWN");
 
-	if (NormalizedScenario == TEXT("valid")
-		|| NormalizedScenario == TEXT("duplicate"))
+	if (NormalizedScenario == TEXT("valid") || NormalizedScenario == TEXT("duplicate"))
 	{
-		Points = {
-			FVector2D(0.1, 0.1),
-			FVector2D(0.2, 0.2),
-			FVector2D(0.3, 0.25)
-		};
+		Points = {FVector2D(0.1, 0.1), FVector2D(0.2, 0.2), FVector2D(0.3, 0.25)};
 		StrokePointCounts = {3};
-		ExpectedResult = NormalizedScenario == TEXT("valid")
-			? TEXT("PASS")
-			: TEXT("REJECTED_DuplicateSubmit");
+		ExpectedResult = NormalizedScenario == TEXT("valid") ? TEXT("PASS") : TEXT("REJECTED_DuplicateSubmit");
 	}
 	else if (NormalizedScenario == TEXT("bounds"))
 	{
-		Points = {
-			FVector2D(0.1, 0.1),
-			FVector2D(1.25, 0.2)
-		};
+		Points = {FVector2D(0.1, 0.1), FVector2D(1.25, 0.2)};
 		StrokePointCounts = {2};
 		ExpectedResult = TEXT("REJECTED_PointOutOfBounds");
 	}
 	else if (NormalizedScenario == TEXT("count"))
 	{
-		Points = {
-			FVector2D(0.1, 0.1),
-			FVector2D(0.2, 0.2)
-		};
+		Points = {FVector2D(0.1, 0.1), FVector2D(0.2, 0.2)};
 		StrokePointCounts = {3};
 		ExpectedResult = TEXT("REJECTED_StrokeLayoutMismatch");
 	}
 	else if (NormalizedScenario == TEXT("size"))
 	{
-		const int32 PointCount =
-			FMath::Max(2, ForgeryComponent->GetTemplateStrokeLimit() + 1);
+		const int32 PointCount = FMath::Max(2, ForgeryComponent->GetTemplateStrokeLimit() + 1);
 		Points.Init(FVector2D(0.5, 0.5), PointCount);
 		StrokePointCounts = {PointCount};
 		ExpectedResult = TEXT("REJECTED_PointCountLimit");
 	}
 	else if (NormalizedScenario == TEXT("brush"))
 	{
-		Points = {
-			FVector2D(0.1, 0.1),
-			FVector2D(0.2, 0.2)
-		};
+		Points = {FVector2D(0.1, 0.1), FVector2D(0.2, 0.2)};
 		StrokePointCounts = {2};
-		ClientBrushSize = FMath::IsNearlyEqual(ClientBrushSize, 0.25f)
-			? 0.001f
-			: FMath::Min(0.25f, ClientBrushSize * 2.0f);
+		ClientBrushSize = FMath::IsNearlyEqual(ClientBrushSize, 0.25f) ? 0.001f : FMath::Min(0.25f, ClientBrushSize * 2.0f);
 		ExpectedResult = TEXT("REJECTED_BrushSizeMismatch");
 	}
 	else if (NormalizedScenario == TEXT("revision"))
 	{
-		Points = {
-			FVector2D(0.1, 0.1),
-			FVector2D(0.2, 0.2)
-		};
+		Points = {FVector2D(0.1, 0.1), FVector2D(0.2, 0.2)};
 		StrokePointCounts = {2};
 		--ClientSessionRevision;
 		ExpectedResult = TEXT("REJECTED_SessionRevisionMismatch");
@@ -2009,60 +1349,38 @@ void UHeistDebugFunctionLibrary::DebugForgeryTransportTest(
 	}
 	else if (NormalizedScenario == TEXT("palette"))
 	{
-		Points = {
-			FVector2D(0.1, 0.1),
-			FVector2D(0.2, 0.2)
-		};
+		Points = {FVector2D(0.1, 0.1), FVector2D(0.2, 0.2)};
 		StrokePointCounts = {2};
 		bUseInvalidPaletteIndex = true;
 		ExpectedResult = TEXT("REJECTED_PaletteIndexOutOfBounds");
 	}
 	else if (NormalizedScenario == TEXT("timeout"))
 	{
-		if (!HeistPlayerController->HasAuthority()
-			|| !ForgeryComponent->ForceExpireSubmissionWindowForDebug())
+		if (!HeistPlayerController->HasAuthority() || !ForgeryComponent->ForceExpireSubmissionWindowForDebug())
 		{
-			Message(
-				PlayerController,
-				TEXT("Forgery transport test: Scenario=timeout Result=FAIL Reason=ListenServerAuthorityAndActiveSessionRequired"),
-				EHeistDebugLevel::Warning,
-				true);
+			Message(PlayerController, TEXT("Forgery transport test: Scenario=timeout Result=FAIL Reason=ListenServerAuthorityAndActiveSessionRequired"), EHeistDebugLevel::Warning, true);
 			return;
 		}
-		Points = {
-			FVector2D(0.1, 0.1),
-			FVector2D(0.2, 0.2)
-		};
+		Points = {FVector2D(0.1, 0.1), FVector2D(0.2, 0.2)};
 		StrokePointCounts = {2};
 		ExpectedResult = TEXT("REJECTED_SessionExpired");
 	}
 	else if (NormalizedScenario == TEXT("neartimeout"))
 	{
-		if (!HeistPlayerController->HasAuthority()
-			|| !ForgeryComponent
-				->ForceNearExpirySubmissionWindowForDebug())
+		if (!HeistPlayerController->HasAuthority() || !ForgeryComponent->ForceNearExpirySubmissionWindowForDebug())
 		{
-			Message(
-				PlayerController,
-				TEXT("Forgery transport test: Scenario=neartimeout Result=FAIL Reason=ListenServerAuthorityAndActiveSessionRequired"),
-				EHeistDebugLevel::Warning,
-				true);
+			Message(PlayerController, TEXT("Forgery transport test: Scenario=neartimeout Result=FAIL Reason=ListenServerAuthorityAndActiveSessionRequired"), EHeistDebugLevel::Warning, true);
 			return;
 		}
-		Points = {
-			FVector2D(0.1, 0.1),
-			FVector2D(0.2, 0.2)
-		};
+		Points = {FVector2D(0.1, 0.1), FVector2D(0.2, 0.2)};
 		StrokePointCounts = {2};
 		ExpectedResult = TEXT("PASS_NearTimeoutAccepted");
 	}
 	else
 	{
-		Message(
-			PlayerController,
-			TEXT("Forgery transport test: Result=FAIL Reason=UnknownScenario Expected=<Valid|Bounds|Count|Size|Brush|Revision|Empty|Short|Palette|Timeout|NearTimeout|Duplicate>"),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController,
+				TEXT("Forgery transport test: Result=FAIL Reason=UnknownScenario Expected=<Valid|Bounds|Count|Size|Brush|Revision|Empty|Short|Palette|Timeout|NearTimeout|Duplicate>"),
+				EHeistDebugLevel::Warning, true);
 		return;
 	}
 
@@ -2072,261 +1390,111 @@ void UHeistDebugFunctionLibrary::DebugForgeryTransportTest(
 	{
 		StrokePaletteIndices[0] = MAX_uint8;
 	}
-	HeistPlayerController->RequestSubmitForgeryStrokes(
-		Points,
-		StrokePointCounts,
-		StrokePaletteIndices,
-		ClientBrushSize,
-		ClientSessionRevision);
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Forgery transport test requested: Scenario=%s Strokes=%d Points=%d Brush=%.4f ClientSessionRevision=%d Expected=%s Result=REQUESTED"),
-			*NormalizedScenario,
-			StrokePointCounts.Num(),
-			Points.Num(),
-			ClientBrushSize,
-			ClientSessionRevision,
-			ExpectedResult),
-		EHeistDebugLevel::Info,
-		true,
-		12.0f);
+	HeistPlayerController->RequestSubmitForgeryStrokes(Points, StrokePointCounts, StrokePaletteIndices, ClientBrushSize, ClientSessionRevision);
+	Message(PlayerController,
+			FString::Printf(TEXT("Forgery transport test requested: Scenario=%s Strokes=%d Points=%d Brush=%.4f ClientSessionRevision=%d Expected=%s Result=REQUESTED"), *NormalizedScenario,
+							StrokePointCounts.Num(), Points.Num(), ClientBrushSize, ClientSessionRevision, ExpectedResult),
+			EHeistDebugLevel::Info, true, 12.0f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugForgeryScoreDump(
-	APlayerController* PlayerController)
+void UHeistDebugFunctionLibrary::DebugForgeryScoreDump(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
 	bool bUsedAuthorityFallback = false;
-	UHeistForgeryComponent* ForgeryComponent =
-		ResolveScoredForgeryComponent(
-			PlayerController,
-			bUsedAuthorityFallback);
+	UHeistForgeryComponent* ForgeryComponent = ResolveScoredForgeryComponent(PlayerController, bUsedAuthorityFallback);
 	if (!IsValid(ForgeryComponent))
 	{
-		Message(
-			PlayerController,
-			TEXT("Forgery score dump: Result=FAIL Reason=MissingForgeryComponent"),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, TEXT("Forgery score dump: Result=FAIL Reason=MissingForgeryComponent"), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
-	const FHeistForgeryResult& ScoreResult =
-		ForgeryComponent->GetAuthoritativeForgeryResult();
-	const bool bHasScore =
-		ForgeryComponent->HasAuthoritativeForgeryResult();
-	const bool bScoreInRange = FMath::IsWithinInclusive(
-		ScoreResult.SimilarityScore,
-		0.0f,
-		100.0f);
-	const bool bBreakdownValid =
-		ScoreResult.CoverageScore >= 0.0f
-		&& ScoreResult.MajorShapeScore >= 0.0f
-		&& ScoreResult.ColorAccuracyScore >= 0.0f
-		&& ScoreResult.PaintToReferenceRatio >= 0.0f
-		&& ScoreResult.MissingShapePenalty >= 0.0f
-		&& ScoreResult.ExtraStrokePenalty >= 0.0f
-		&& ScoreResult.TimeoutPenalty >= 0.0f;
-	const bool bResolutionValid = FMath::IsWithinInclusive(
-		ForgeryComponent->GetForgeryScoreResolution(),
-		128,
-		256);
-	const bool bMaskCountsValid =
-		ForgeryComponent->GetReferenceMaskPixelCount() > 0
-		&& ForgeryComponent->GetSubmittedMaskPixelCount() > 0;
-	const bool bIdentityValid = !ScoreResult.ArtifactId.IsNone()
-		&& !ScoreResult.TemplateId.IsNone()
-		&& ScoreResult.ForgeryType == EHeistForgeryType::Drawing;
-	const bool bContractPassed = bHasScore
-		&& bScoreInRange
-		&& bBreakdownValid
-		&& bResolutionValid
-		&& bMaskCountsValid
-		&& bIdentityValid
-		&& ScoreResult.bReplicaPlaced;
+	const FHeistForgeryResult& ScoreResult = ForgeryComponent->GetAuthoritativeForgeryResult();
+	const bool bHasScore = ForgeryComponent->HasAuthoritativeForgeryResult();
+	const bool bScoreInRange = FMath::IsWithinInclusive(ScoreResult.SimilarityScore, 0.0f, 100.0f);
+	const bool bBreakdownValid = ScoreResult.CoverageScore >= 0.0f && ScoreResult.MajorShapeScore >= 0.0f && ScoreResult.ColorAccuracyScore >= 0.0f && ScoreResult.PaintToReferenceRatio >= 0.0f &&
+								 ScoreResult.MissingShapePenalty >= 0.0f && ScoreResult.ExtraStrokePenalty >= 0.0f && ScoreResult.TimeoutPenalty >= 0.0f;
+	const bool bResolutionValid = FMath::IsWithinInclusive(ForgeryComponent->GetForgeryScoreResolution(), 128, 256);
+	const bool bMaskCountsValid = ForgeryComponent->GetReferenceMaskPixelCount() > 0 && ForgeryComponent->GetSubmittedMaskPixelCount() > 0;
+	const bool bIdentityValid = !ScoreResult.ArtifactId.IsNone() && !ScoreResult.TemplateId.IsNone() && ScoreResult.ForgeryType == EHeistForgeryType::Drawing;
+	const bool bContractPassed = bHasScore && bScoreInRange && bBreakdownValid && bResolutionValid && bMaskCountsValid && bIdentityValid && ScoreResult.bReplicaPlaced;
 
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Forgery score dump: Backend=OpenCV ShapeMetric=DistanceDiceGeometric ColorMetric=LabSSIMHistogramGeometric Fusion=WeightedGeometricBottleneck Calibration=OpenCVHistogramBonus0.75x3 ScoreCurve=Shape1.15Color1.10 PaintCompletenessExponent=0.65 TargetCharacter=%s TargetSelection=%s HasScore=%s Artifact=%s Template=%s Score=%.2f Coverage=%.2f MajorShape=%.2f ColorAccuracy=%.2f MissingPenalty=%.2f ExtraPenalty=%.2f TimeoutPenalty=%.2f CompletionTime=%.2f PaintToReference=%.2f PaintCompleteness=%.3f AntiFill=%s ReplicaPlaced=%s Resolution=%dx%d ReferencePixels=%d SubmittedPixels=%d ScoreRevision=%d OwnerOnlySummary=true RawStrokeReplicated=false Authority=%s Result=%s"),
-			*GetNameSafe(ForgeryComponent->GetOwner()),
-			bUsedAuthorityFallback
-				? TEXT("AuthorityScoredFallback")
-				: TEXT("OwningPlayer"),
-			bHasScore ? TEXT("true") : TEXT("false"),
-			*ScoreResult.ArtifactId.ToString(),
-			*ScoreResult.TemplateId.ToString(),
-			ScoreResult.SimilarityScore,
-			ScoreResult.CoverageScore,
-			ScoreResult.MajorShapeScore,
-			ScoreResult.ColorAccuracyScore,
-			ScoreResult.MissingShapePenalty,
-			ScoreResult.ExtraStrokePenalty,
-			ScoreResult.TimeoutPenalty,
-			ScoreResult.CompletionTime,
-			ScoreResult.PaintToReferenceRatio,
-			FMath::Pow(
-				FMath::Clamp(
-					ScoreResult.PaintToReferenceRatio,
-					0.0f,
-					1.0f),
-				0.65f),
-			ScoreResult.bAntiFillTriggered ? TEXT("true") : TEXT("false"),
-			ScoreResult.bReplicaPlaced ? TEXT("true") : TEXT("false"),
-			ForgeryComponent->GetForgeryScoreResolution(),
-			ForgeryComponent->GetForgeryScoreResolution(),
-			ForgeryComponent->GetReferenceMaskPixelCount(),
-			ForgeryComponent->GetSubmittedMaskPixelCount(),
-			ForgeryComponent->GetForgeryScoreRevision(),
-			PlayerController && PlayerController->HasAuthority()
-				? TEXT("true")
-				: TEXT("false"),
-			bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
-		bContractPassed
-			? EHeistDebugLevel::Info
-			: EHeistDebugLevel::Warning,
-		true,
-		15.0f);
+			TEXT(
+				"Forgery score dump: Backend=OpenCV ShapeMetric=DistanceDiceGeometric ColorMetric=LabSSIMHistogramGeometric Fusion=WeightedGeometricBottleneck Calibration=OpenCVHistogramBonus0.75x3 ScoreCurve=Shape1.15Color1.10 PaintCompletenessExponent=0.65 TargetCharacter=%s TargetSelection=%s HasScore=%s Artifact=%s Template=%s Score=%.2f Coverage=%.2f MajorShape=%.2f ColorAccuracy=%.2f MissingPenalty=%.2f ExtraPenalty=%.2f TimeoutPenalty=%.2f CompletionTime=%.2f PaintToReference=%.2f PaintCompleteness=%.3f AntiFill=%s ReplicaPlaced=%s Resolution=%dx%d ReferencePixels=%d SubmittedPixels=%d ScoreRevision=%d OwnerOnlySummary=true RawStrokeReplicated=false Authority=%s Result=%s"),
+			*GetNameSafe(ForgeryComponent->GetOwner()), bUsedAuthorityFallback ? TEXT("AuthorityScoredFallback") : TEXT("OwningPlayer"), bHasScore ? TEXT("true") : TEXT("false"),
+			*ScoreResult.ArtifactId.ToString(), *ScoreResult.TemplateId.ToString(), ScoreResult.SimilarityScore, ScoreResult.CoverageScore, ScoreResult.MajorShapeScore, ScoreResult.ColorAccuracyScore,
+			ScoreResult.MissingShapePenalty, ScoreResult.ExtraStrokePenalty, ScoreResult.TimeoutPenalty, ScoreResult.CompletionTime, ScoreResult.PaintToReferenceRatio,
+			FMath::Pow(FMath::Clamp(ScoreResult.PaintToReferenceRatio, 0.0f, 1.0f), 0.65f), ScoreResult.bAntiFillTriggered ? TEXT("true") : TEXT("false"),
+			ScoreResult.bReplicaPlaced ? TEXT("true") : TEXT("false"), ForgeryComponent->GetForgeryScoreResolution(), ForgeryComponent->GetForgeryScoreResolution(),
+			ForgeryComponent->GetReferenceMaskPixelCount(), ForgeryComponent->GetSubmittedMaskPixelCount(), ForgeryComponent->GetForgeryScoreRevision(),
+			PlayerController && PlayerController->HasAuthority() ? TEXT("true") : TEXT("false"), bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bContractPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugForgerySwapDump(
-	APlayerController* PlayerController)
+void UHeistDebugFunctionLibrary::DebugForgerySwapDump(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
-	AHeistPaintingDisplayCaseActor* DisplayCase =
-		ResolveNearestPaintingDisplayCase(PlayerController);
-	UHeistForgeryComponent* ForgeryComponent =
-		ResolveForgeryComponent(PlayerController);
+	AHeistPaintingDisplayCaseActor* DisplayCase = ResolveNearestPaintingDisplayCase(PlayerController);
+	UHeistForgeryComponent* ForgeryComponent = ResolveForgeryComponent(PlayerController);
 	if (!IsValid(DisplayCase))
 	{
-		Message(
-			PlayerController,
-			TEXT("Forgery swap dump: Result=FAIL Reason=MissingDisplayCase"),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, TEXT("Forgery swap dump: Result=FAIL Reason=MissingDisplayCase"), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
-	const EHeistDisplayCaseState CaseState =
-		DisplayCase->GetDisplayCaseState();
-	const bool bStateValid =
-		CaseState == EHeistDisplayCaseState::OriginalAvailable
-		|| CaseState == EHeistDisplayCaseState::OriginalRemoved;
-	const bool bHasCommittedResult =
-		DisplayCase->HasCommittedForgeryResult();
-	const FHeistForgeryResult CaseResult =
-		DisplayCase->GetCommittedForgeryResult();
-	const bool bCommittedResultValid = bHasCommittedResult
-		&& CaseResult.ArtifactId == DisplayCase->GetTargetArtifactId()
-		&& !CaseResult.TemplateId.IsNone()
-		&& CaseResult.ForgeryType == EHeistForgeryType::Drawing
-		&& FMath::IsWithinInclusive(
-			CaseResult.SimilarityScore,
-			0.0f,
-			100.0f)
-		&& CaseResult.bReplicaPlaced;
+	const EHeistDisplayCaseState CaseState = DisplayCase->GetDisplayCaseState();
+	const bool bStateValid = CaseState == EHeistDisplayCaseState::OriginalAvailable || CaseState == EHeistDisplayCaseState::OriginalRemoved;
+	const bool bHasCommittedResult = DisplayCase->HasCommittedForgeryResult();
+	const FHeistForgeryResult CaseResult = DisplayCase->GetCommittedForgeryResult();
+	const bool bCommittedResultValid = bHasCommittedResult && CaseResult.ArtifactId == DisplayCase->GetTargetArtifactId() && !CaseResult.TemplateId.IsNone() &&
+									   CaseResult.ForgeryType == EHeistForgeryType::Drawing && FMath::IsWithinInclusive(CaseResult.SimilarityScore, 0.0f, 100.0f) && CaseResult.bReplicaPlaced;
 
 	bool bExpectedOriginalVisible = false;
 	bool bExpectedReplicaVisible = false;
 	int32 OriginalComponentCount = 0;
 	int32 ReplicaComponentCount = 0;
 	bool bVisualComponentsMatch = false;
-	DisplayCase->GetPlaceholderVisualDebugState(
-		bExpectedOriginalVisible,
-		bExpectedReplicaVisible,
-		OriginalComponentCount,
-		ReplicaComponentCount,
-		bVisualComponentsMatch);
+	DisplayCase->GetPlaceholderVisualDebugState(bExpectedOriginalVisible, bExpectedReplicaVisible, OriginalComponentCount, ReplicaComponentCount, bVisualComponentsMatch);
 
-	const AHeistPlayerState* OriginalCarrier =
-		DisplayCase->GetOriginalCarrier();
-	const bool bOriginalStateContract =
-		(CaseState == EHeistDisplayCaseState::OriginalAvailable
-			&& !IsValid(OriginalCarrier)
-			&& !bExpectedOriginalVisible
-			&& bExpectedReplicaVisible)
-		|| (CaseState == EHeistDisplayCaseState::OriginalRemoved
-			&& IsValid(OriginalCarrier)
-			&& !bExpectedOriginalVisible
-			&& bExpectedReplicaVisible);
-	const bool bLocalSessionInactive =
-		!IsValid(ForgeryComponent)
-		|| !ForgeryComponent->IsSessionActive();
-	const bool bLocalHasScore = IsValid(ForgeryComponent)
-		&& ForgeryComponent->HasAuthoritativeForgeryResult();
-	const bool bLocalScoreRelevant = bLocalHasScore
-		&& ForgeryComponent->GetAuthoritativeForgeryResult().ArtifactId
-			== CaseResult.ArtifactId;
-	const bool bLocalScoreLinked = !bLocalScoreRelevant
-		|| (ForgeryComponent->GetAuthoritativeForgeryResult().TemplateId
-				== CaseResult.TemplateId
-			&& FMath::IsNearlyEqual(
-				ForgeryComponent->GetAuthoritativeForgeryResult().SimilarityScore,
-				CaseResult.SimilarityScore,
-				0.01f)
-			&& ForgeryComponent->GetAuthoritativeForgeryResult().bReplicaPlaced);
-	const bool bContractPassed = bStateValid
-		&& bCommittedResultValid
-		&& !DisplayCase->IsSessionLocked()
-		&& bVisualComponentsMatch
-		&& bOriginalStateContract
-		&& bLocalSessionInactive
-		&& bLocalScoreLinked;
+	const AHeistPlayerState* OriginalCarrier = DisplayCase->GetOriginalCarrier();
+	const bool bOriginalStateContract = (CaseState == EHeistDisplayCaseState::OriginalAvailable && !IsValid(OriginalCarrier) && !bExpectedOriginalVisible && bExpectedReplicaVisible) ||
+										(CaseState == EHeistDisplayCaseState::OriginalRemoved && IsValid(OriginalCarrier) && !bExpectedOriginalVisible && bExpectedReplicaVisible);
+	const bool bLocalSessionInactive = !IsValid(ForgeryComponent) || !ForgeryComponent->IsSessionActive();
+	const bool bLocalHasScore = IsValid(ForgeryComponent) && ForgeryComponent->HasAuthoritativeForgeryResult();
+	const bool bLocalScoreRelevant = bLocalHasScore && ForgeryComponent->GetAuthoritativeForgeryResult().ArtifactId == CaseResult.ArtifactId;
+	const bool bLocalScoreLinked = !bLocalScoreRelevant || (ForgeryComponent->GetAuthoritativeForgeryResult().TemplateId == CaseResult.TemplateId &&
+															FMath::IsNearlyEqual(ForgeryComponent->GetAuthoritativeForgeryResult().SimilarityScore, CaseResult.SimilarityScore, 0.01f) &&
+															ForgeryComponent->GetAuthoritativeForgeryResult().bReplicaPlaced);
+	const bool bContractPassed =
+		bStateValid && bCommittedResultValid && !DisplayCase->IsSessionLocked() && bVisualComponentsMatch && bOriginalStateContract && bLocalSessionInactive && bLocalScoreLinked;
 
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Forgery swap dump: Case=%s CaseId=%s State=%s HasCommittedResult=%s Artifact=%s Template=%s Score=%.2f ReplicaPlaced=%s CaseLocked=%s OriginalCarrier=%s OriginalVisible=%s ReplicaVisible=%s OriginalComponents=%d ReplicaComponents=%d VisualsMatch=%s LocalSessionActive=%s LocalHasScore=%s LocalScoreRelevant=%s LocalScoreLinked=%s Revision=%d Authority=%s Result=%s"),
-			*GetNameSafe(DisplayCase),
-			*DisplayCase->GetDisplayCaseId().ToString(),
-			*UEnum::GetValueAsString(CaseState),
-			bHasCommittedResult ? TEXT("true") : TEXT("false"),
-			*CaseResult.ArtifactId.ToString(),
-			*CaseResult.TemplateId.ToString(),
-			CaseResult.SimilarityScore,
-			CaseResult.bReplicaPlaced ? TEXT("true") : TEXT("false"),
-			DisplayCase->IsSessionLocked() ? TEXT("true") : TEXT("false"),
-			*GetNameSafe(OriginalCarrier),
-			bExpectedOriginalVisible ? TEXT("true") : TEXT("false"),
-			bExpectedReplicaVisible ? TEXT("true") : TEXT("false"),
-			OriginalComponentCount,
-			ReplicaComponentCount,
-			bVisualComponentsMatch ? TEXT("true") : TEXT("false"),
-			IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive()
-				? TEXT("true")
-				: TEXT("false"),
-			bLocalHasScore ? TEXT("true") : TEXT("false"),
-			bLocalScoreRelevant ? TEXT("true") : TEXT("false"),
-			bLocalScoreLinked ? TEXT("true") : TEXT("false"),
-			DisplayCase->GetCommittedForgeryRevision(),
-			PlayerController && PlayerController->HasAuthority()
-				? TEXT("true")
-				: TEXT("false"),
-			bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
-		bContractPassed
-			? EHeistDebugLevel::Info
-			: EHeistDebugLevel::Warning,
-		true,
-		18.0f);
+			TEXT(
+				"Forgery swap dump: Case=%s CaseId=%s State=%s HasCommittedResult=%s Artifact=%s Template=%s Score=%.2f ReplicaPlaced=%s CaseLocked=%s OriginalCarrier=%s OriginalVisible=%s ReplicaVisible=%s OriginalComponents=%d ReplicaComponents=%d VisualsMatch=%s LocalSessionActive=%s LocalHasScore=%s LocalScoreRelevant=%s LocalScoreLinked=%s Revision=%d Authority=%s Result=%s"),
+			*GetNameSafe(DisplayCase), *DisplayCase->GetDisplayCaseId().ToString(), *UEnum::GetValueAsString(CaseState), bHasCommittedResult ? TEXT("true") : TEXT("false"),
+			*CaseResult.ArtifactId.ToString(), *CaseResult.TemplateId.ToString(), CaseResult.SimilarityScore, CaseResult.bReplicaPlaced ? TEXT("true") : TEXT("false"),
+			DisplayCase->IsSessionLocked() ? TEXT("true") : TEXT("false"), *GetNameSafe(OriginalCarrier), bExpectedOriginalVisible ? TEXT("true") : TEXT("false"),
+			bExpectedReplicaVisible ? TEXT("true") : TEXT("false"), OriginalComponentCount, ReplicaComponentCount, bVisualComponentsMatch ? TEXT("true") : TEXT("false"),
+			IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive() ? TEXT("true") : TEXT("false"), bLocalHasScore ? TEXT("true") : TEXT("false"),
+			bLocalScoreRelevant ? TEXT("true") : TEXT("false"), bLocalScoreLinked ? TEXT("true") : TEXT("false"), DisplayCase->GetCommittedForgeryRevision(),
+			PlayerController && PlayerController->HasAuthority() ? TEXT("true") : TEXT("false"), bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bContractPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 18.0f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugForgeryVisualDump(
-	APlayerController* PlayerController)
+void UHeistDebugFunctionLibrary::DebugForgeryVisualDump(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
-	AHeistPaintingDisplayCaseActor* DisplayCase =
-		ResolveNearestPaintingDisplayCase(PlayerController);
+	AHeistPaintingDisplayCaseActor* DisplayCase = ResolveNearestPaintingDisplayCase(PlayerController);
 	if (!IsValid(DisplayCase))
 	{
-		Message(
-			PlayerController,
-			TEXT("Forgery visual dump: Result=FAIL Reason=MissingDisplayCase"),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, TEXT("Forgery visual dump: Result=FAIL Reason=MissingDisplayCase"), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
@@ -2339,67 +1507,32 @@ void UHeistDebugFunctionLibrary::DebugForgeryVisualDump(
 	bool bUsingTransformFallback = false;
 	bool bCustomPrimitiveDataApplied = false;
 	bool bContractPassed = false;
-	DisplayCase->GetReplicaWorldVisualDebugState(
-		bReplicaExpectedVisible,
-		bHasReplicaMesh,
-		ExpectedTier,
-		AppliedTier,
-		TierName,
-		bUsingTierMaterial,
-		bUsingTransformFallback,
-		bCustomPrimitiveDataApplied,
-		bContractPassed);
+	DisplayCase->GetReplicaWorldVisualDebugState(bReplicaExpectedVisible, bHasReplicaMesh, ExpectedTier, AppliedTier, TierName, bUsingTierMaterial, bUsingTransformFallback,
+												 bCustomPrimitiveDataApplied, bContractPassed);
 
-	const FHeistForgeryResult CaseResult =
-		DisplayCase->GetCommittedForgeryResult();
+	const FHeistForgeryResult CaseResult = DisplayCase->GetCommittedForgeryResult();
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Forgery visual dump: Case=%s CaseId=%s State=%s HasCommittedResult=%s Template=%s Score=%.2f Coverage=%.2f ColorAccuracy=%.2f ReplicaExpectedVisible=%s HasReplicaMesh=%s ExpectedTier=%d AppliedTier=%d TierName=%s TierMaterial=%s TransformFallback=%s CustomPrimitiveData=%s Revision=%d Authority=%s Result=%s"),
-			*GetNameSafe(DisplayCase),
-			*DisplayCase->GetDisplayCaseId().ToString(),
-			*UEnum::GetValueAsString(DisplayCase->GetDisplayCaseState()),
-			DisplayCase->HasCommittedForgeryResult()
-				? TEXT("true")
-				: TEXT("false"),
-			*CaseResult.TemplateId.ToString(),
-			CaseResult.SimilarityScore,
-			CaseResult.CoverageScore,
-			CaseResult.ColorAccuracyScore,
-			bReplicaExpectedVisible ? TEXT("true") : TEXT("false"),
-			bHasReplicaMesh ? TEXT("true") : TEXT("false"),
-			ExpectedTier,
-			AppliedTier,
-			TierName.IsNone() ? TEXT("None") : *TierName.ToString(),
-			bUsingTierMaterial ? TEXT("true") : TEXT("false"),
-			bUsingTransformFallback ? TEXT("true") : TEXT("false"),
-			bCustomPrimitiveDataApplied ? TEXT("true") : TEXT("false"),
-			DisplayCase->GetCommittedForgeryRevision(),
-			PlayerController && PlayerController->HasAuthority()
-				? TEXT("true")
-				: TEXT("false"),
+			TEXT(
+				"Forgery visual dump: Case=%s CaseId=%s State=%s HasCommittedResult=%s Template=%s Score=%.2f Coverage=%.2f ColorAccuracy=%.2f ReplicaExpectedVisible=%s HasReplicaMesh=%s ExpectedTier=%d AppliedTier=%d TierName=%s TierMaterial=%s TransformFallback=%s CustomPrimitiveData=%s Revision=%d Authority=%s Result=%s"),
+			*GetNameSafe(DisplayCase), *DisplayCase->GetDisplayCaseId().ToString(), *UEnum::GetValueAsString(DisplayCase->GetDisplayCaseState()),
+			DisplayCase->HasCommittedForgeryResult() ? TEXT("true") : TEXT("false"), *CaseResult.TemplateId.ToString(), CaseResult.SimilarityScore, CaseResult.CoverageScore,
+			CaseResult.ColorAccuracyScore, bReplicaExpectedVisible ? TEXT("true") : TEXT("false"), bHasReplicaMesh ? TEXT("true") : TEXT("false"), ExpectedTier, AppliedTier,
+			TierName.IsNone() ? TEXT("None") : *TierName.ToString(), bUsingTierMaterial ? TEXT("true") : TEXT("false"), bUsingTransformFallback ? TEXT("true") : TEXT("false"),
+			bCustomPrimitiveDataApplied ? TEXT("true") : TEXT("false"), DisplayCase->GetCommittedForgeryRevision(), PlayerController && PlayerController->HasAuthority() ? TEXT("true") : TEXT("false"),
 			bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
-		bContractPassed
-			? EHeistDebugLevel::Info
-			: EHeistDebugLevel::Warning,
-		true,
-		18.0f);
+		bContractPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 18.0f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugForgeryPaintingDump(
-	APlayerController* PlayerController)
+void UHeistDebugFunctionLibrary::DebugForgeryPaintingDump(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
-	AHeistPaintingDisplayCaseActor* DisplayCase =
-		ResolveNearestPaintingDisplayCase(PlayerController);
+	AHeistPaintingDisplayCaseActor* DisplayCase = ResolveNearestPaintingDisplayCase(PlayerController);
 	if (!IsValid(DisplayCase))
 	{
-		Message(
-			PlayerController,
-			TEXT("Forgery painting dump: Result=FAIL Reason=MissingDisplayCase"),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, TEXT("Forgery painting dump: Result=FAIL Reason=MissingDisplayCase"), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
@@ -2411,86 +1544,38 @@ void UHeistDebugFunctionLibrary::DebugForgeryPaintingDump(
 	bool bDynamicMaterialBuilt = false;
 	bool bTextureParameterApplied = false;
 	bool bContractPassed = false;
-	DisplayCase->GetReplicaPaintingDebugState(
-		Resolution,
-		PaletteColorCount,
-		PackedByteCount,
-		PaintingRevision,
-		bTextureBuilt,
-		bDynamicMaterialBuilt,
-		bTextureParameterApplied,
-		bContractPassed);
+	DisplayCase->GetReplicaPaintingDebugState(Resolution, PaletteColorCount, PackedByteCount, PaintingRevision, bTextureBuilt, bDynamicMaterialBuilt, bTextureParameterApplied, bContractPassed);
 
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Forgery painting dump: Case=%s CaseId=%s State=%s HasCommittedResult=%s HasPaintingData=%s Resolution=%d PaletteColors=%d PackedBytes=%d PaintingRevision=%d CommittedRevision=%d TextureBuilt=%s DynamicMaterialBuilt=%s TextureParameterApplied=%s ReplicaVisible=%s Authority=%s Result=%s"),
-			*GetNameSafe(DisplayCase),
-			*DisplayCase->GetDisplayCaseId().ToString(),
-			*UEnum::GetValueAsString(
-				DisplayCase->GetDisplayCaseState()),
-			DisplayCase->HasCommittedForgeryResult()
-				? TEXT("true")
-				: TEXT("false"),
-			DisplayCase->HasReplicaPaintingData()
-				? TEXT("true")
-				: TEXT("false"),
-			Resolution,
-			PaletteColorCount,
-			PackedByteCount,
-			PaintingRevision,
-			DisplayCase->GetCommittedForgeryRevision(),
-			bTextureBuilt ? TEXT("true") : TEXT("false"),
-			bDynamicMaterialBuilt ? TEXT("true") : TEXT("false"),
-			bTextureParameterApplied ? TEXT("true") : TEXT("false"),
-			DisplayCase->ShouldDisplayReplicaPlaceholder()
-				? TEXT("true")
-				: TEXT("false"),
-			PlayerController && PlayerController->HasAuthority()
-				? TEXT("true")
-				: TEXT("false"),
-			bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
-		bContractPassed
-			? EHeistDebugLevel::Info
-			: EHeistDebugLevel::Warning,
-		true,
-		18.0f);
+			TEXT(
+				"Forgery painting dump: Case=%s CaseId=%s State=%s HasCommittedResult=%s HasPaintingData=%s Resolution=%d PaletteColors=%d PackedBytes=%d PaintingRevision=%d CommittedRevision=%d TextureBuilt=%s DynamicMaterialBuilt=%s TextureParameterApplied=%s ReplicaVisible=%s Authority=%s Result=%s"),
+			*GetNameSafe(DisplayCase), *DisplayCase->GetDisplayCaseId().ToString(), *UEnum::GetValueAsString(DisplayCase->GetDisplayCaseState()),
+			DisplayCase->HasCommittedForgeryResult() ? TEXT("true") : TEXT("false"), DisplayCase->HasReplicaPaintingData() ? TEXT("true") : TEXT("false"), Resolution, PaletteColorCount,
+			PackedByteCount, PaintingRevision, DisplayCase->GetCommittedForgeryRevision(), bTextureBuilt ? TEXT("true") : TEXT("false"), bDynamicMaterialBuilt ? TEXT("true") : TEXT("false"),
+			bTextureParameterApplied ? TEXT("true") : TEXT("false"), DisplayCase->ShouldDisplayReplicaPlaceholder() ? TEXT("true") : TEXT("false"),
+			PlayerController && PlayerController->HasAuthority() ? TEXT("true") : TEXT("false"), bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bContractPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 18.0f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugForgeryScoreTest(
-	APlayerController* PlayerController)
+void UHeistDebugFunctionLibrary::DebugForgeryScoreTest(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
-	AHeistPlayerController* HeistPlayerController =
-		Cast<AHeistPlayerController>(PlayerController);
-	if (IsValid(HeistPlayerController)
-		&& !HeistPlayerController->HasAuthority())
+	AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(PlayerController);
+	if (IsValid(HeistPlayerController) && !HeistPlayerController->HasAuthority())
 	{
 		HeistPlayerController->DebugRequestForgeryScoreTest();
-		Message(
-			PlayerController,
-			TEXT("Forgery score deterministic test: Result=REQUESTED Target=ServerAuthority"),
-			EHeistDebugLevel::Info,
-			true);
+		Message(PlayerController, TEXT("Forgery score deterministic test: Result=REQUESTED Target=ServerAuthority"), EHeistDebugLevel::Info, true);
 		return;
 	}
 
 	bool bUsedAuthorityFallback = false;
-	UHeistForgeryComponent* ForgeryComponent =
-		ResolveScoredForgeryComponent(
-			PlayerController,
-			bUsedAuthorityFallback);
-	if (!IsValid(PlayerController)
-		|| !PlayerController->HasAuthority()
-		|| !IsValid(ForgeryComponent)
-		|| !ForgeryComponent->HasAuthoritativeForgeryResult())
+	UHeistForgeryComponent* ForgeryComponent = ResolveScoredForgeryComponent(PlayerController, bUsedAuthorityFallback);
+	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(ForgeryComponent) || !ForgeryComponent->HasAuthoritativeForgeryResult())
 	{
-		Message(
-			PlayerController,
-			TEXT("Forgery score deterministic test: Result=FAIL Reason=ServerAuthorityAndCommittedScoreRequired"),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, TEXT("Forgery score deterministic test: Result=FAIL Reason=ServerAuthorityAndCommittedScoreRequired"), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
@@ -2500,331 +1585,134 @@ void UHeistDebugFunctionLibrary::DebugForgeryScoreTest(
 	int32 FirstSubmittedPixels = 0;
 	int32 SecondReferencePixels = 0;
 	int32 SecondSubmittedPixels = 0;
-	const bool bFirstCalculated =
-		ForgeryComponent->RecalculateValidatedForgeryScoreForDebug(
-			FirstResult,
-			FirstReferencePixels,
-			FirstSubmittedPixels);
-	const bool bSecondCalculated =
-		ForgeryComponent->RecalculateValidatedForgeryScoreForDebug(
-			SecondResult,
-			SecondReferencePixels,
-			SecondSubmittedPixels);
-	const auto HasSameScoreBreakdown = [](
-		const FHeistForgeryResult& Left,
-		const FHeistForgeryResult& Right)
+	const bool bFirstCalculated = ForgeryComponent->RecalculateValidatedForgeryScoreForDebug(FirstResult, FirstReferencePixels, FirstSubmittedPixels);
+	const bool bSecondCalculated = ForgeryComponent->RecalculateValidatedForgeryScoreForDebug(SecondResult, SecondReferencePixels, SecondSubmittedPixels);
+	const auto HasSameScoreBreakdown = [](const FHeistForgeryResult& Left, const FHeistForgeryResult& Right)
 	{
-		return Left.ArtifactId == Right.ArtifactId
-			&& Left.TemplateId == Right.TemplateId
-			&& FMath::IsNearlyEqual(
-				Left.SimilarityScore,
-				Right.SimilarityScore,
-				0.001f)
-			&& FMath::IsNearlyEqual(
-				Left.CoverageScore,
-				Right.CoverageScore,
-				0.001f)
-			&& FMath::IsNearlyEqual(
-				Left.MajorShapeScore,
-				Right.MajorShapeScore,
-				0.001f)
-			&& FMath::IsNearlyEqual(
-				Left.ColorAccuracyScore,
-				Right.ColorAccuracyScore,
-				0.001f)
-			&& FMath::IsNearlyEqual(
-				Left.PaintToReferenceRatio,
-				Right.PaintToReferenceRatio,
-				0.001f)
-			&& Left.bAntiFillTriggered == Right.bAntiFillTriggered
-			&& FMath::IsNearlyEqual(
-				Left.MissingShapePenalty,
-				Right.MissingShapePenalty,
-				0.001f)
-			&& FMath::IsNearlyEqual(
-				Left.ExtraStrokePenalty,
-				Right.ExtraStrokePenalty,
-				0.001f)
-			&& FMath::IsNearlyEqual(
-				Left.TimeoutPenalty,
-				Right.TimeoutPenalty,
-				0.001f);
+		return Left.ArtifactId == Right.ArtifactId && Left.TemplateId == Right.TemplateId && FMath::IsNearlyEqual(Left.SimilarityScore, Right.SimilarityScore, 0.001f) &&
+			   FMath::IsNearlyEqual(Left.CoverageScore, Right.CoverageScore, 0.001f) && FMath::IsNearlyEqual(Left.MajorShapeScore, Right.MajorShapeScore, 0.001f) &&
+			   FMath::IsNearlyEqual(Left.ColorAccuracyScore, Right.ColorAccuracyScore, 0.001f) && FMath::IsNearlyEqual(Left.PaintToReferenceRatio, Right.PaintToReferenceRatio, 0.001f) &&
+			   Left.bAntiFillTriggered == Right.bAntiFillTriggered && FMath::IsNearlyEqual(Left.MissingShapePenalty, Right.MissingShapePenalty, 0.001f) &&
+			   FMath::IsNearlyEqual(Left.ExtraStrokePenalty, Right.ExtraStrokePenalty, 0.001f) && FMath::IsNearlyEqual(Left.TimeoutPenalty, Right.TimeoutPenalty, 0.001f);
 	};
-	const bool bDeterministic = bFirstCalculated
-		&& bSecondCalculated
-		&& HasSameScoreBreakdown(FirstResult, SecondResult)
-		&& FirstReferencePixels == SecondReferencePixels
-		&& FirstSubmittedPixels == SecondSubmittedPixels;
-	const FHeistForgeryResult& CommittedResult =
-		ForgeryComponent->GetAuthoritativeForgeryResult();
-	const bool bCommittedScoreMatches = bFirstCalculated
-		&& HasSameScoreBreakdown(FirstResult, CommittedResult);
+	const bool bDeterministic =
+		bFirstCalculated && bSecondCalculated && HasSameScoreBreakdown(FirstResult, SecondResult) && FirstReferencePixels == SecondReferencePixels && FirstSubmittedPixels == SecondSubmittedPixels;
+	const FHeistForgeryResult& CommittedResult = ForgeryComponent->GetAuthoritativeForgeryResult();
+	const bool bCommittedScoreMatches = bFirstCalculated && HasSameScoreBreakdown(FirstResult, CommittedResult);
 	FString OpenCVSelfTestSummary;
-	const bool bOpenCVContractPassed =
-		ForgeryComponent->RunOpenCVScoringSelfTestForDebug(
-			OpenCVSelfTestSummary);
-	const bool bContractPassed =
-		bDeterministic
-		&& bCommittedScoreMatches
-		&& bOpenCVContractPassed;
+	const bool bOpenCVContractPassed = ForgeryComponent->RunOpenCVScoringSelfTestForDebug(OpenCVSelfTestSummary);
+	const bool bContractPassed = bDeterministic && bCommittedScoreMatches && bOpenCVContractPassed;
 
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Forgery score deterministic test: Backend=OpenCV ShapeMetric=DistanceDiceGeometric ColorMetric=LabSSIMHistogramGeometric Fusion=WeightedGeometricBottleneck Calibration=OpenCVHistogramBonus0.75x3 ScoreCurve=Shape1.15Color1.10 TargetCharacter=%s TargetSelection=%s FirstCalculated=%s SecondCalculated=%s FirstScore=%.2f SecondScore=%.2f CommittedScore=%.2f ReferencePixels=%d/%d SubmittedPixels=%d/%d SameBreakdown=%s CommittedMatches=%s SelfTest={%s} Resolution=%dx%d Result=%s"),
-			*GetNameSafe(ForgeryComponent->GetOwner()),
-			bUsedAuthorityFallback
-				? TEXT("AuthorityScoredFallback")
-				: TEXT("OwningPlayer"),
-			bFirstCalculated ? TEXT("true") : TEXT("false"),
-			bSecondCalculated ? TEXT("true") : TEXT("false"),
-			FirstResult.SimilarityScore,
-			SecondResult.SimilarityScore,
-			CommittedResult.SimilarityScore,
-			FirstReferencePixels,
-			SecondReferencePixels,
-			FirstSubmittedPixels,
-			SecondSubmittedPixels,
-			bDeterministic ? TEXT("true") : TEXT("false"),
-			bCommittedScoreMatches ? TEXT("true") : TEXT("false"),
-			*OpenCVSelfTestSummary,
-			ForgeryComponent->GetForgeryScoreResolution(),
-			ForgeryComponent->GetForgeryScoreResolution(),
-			bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
-		bContractPassed
-			? EHeistDebugLevel::Info
-			: EHeistDebugLevel::Warning,
-		true,
-		15.0f);
+			TEXT(
+				"Forgery score deterministic test: Backend=OpenCV ShapeMetric=DistanceDiceGeometric ColorMetric=LabSSIMHistogramGeometric Fusion=WeightedGeometricBottleneck Calibration=OpenCVHistogramBonus0.75x3 ScoreCurve=Shape1.15Color1.10 TargetCharacter=%s TargetSelection=%s FirstCalculated=%s SecondCalculated=%s FirstScore=%.2f SecondScore=%.2f CommittedScore=%.2f ReferencePixels=%d/%d SubmittedPixels=%d/%d SameBreakdown=%s CommittedMatches=%s SelfTest={%s} Resolution=%dx%d Result=%s"),
+			*GetNameSafe(ForgeryComponent->GetOwner()), bUsedAuthorityFallback ? TEXT("AuthorityScoredFallback") : TEXT("OwningPlayer"), bFirstCalculated ? TEXT("true") : TEXT("false"),
+			bSecondCalculated ? TEXT("true") : TEXT("false"), FirstResult.SimilarityScore, SecondResult.SimilarityScore, CommittedResult.SimilarityScore, FirstReferencePixels, SecondReferencePixels,
+			FirstSubmittedPixels, SecondSubmittedPixels, bDeterministic ? TEXT("true") : TEXT("false"), bCommittedScoreMatches ? TEXT("true") : TEXT("false"), *OpenCVSelfTestSummary,
+			ForgeryComponent->GetForgeryScoreResolution(), ForgeryComponent->GetForgeryScoreResolution(), bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bContractPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugForgeryBegin(
-	APlayerController* PlayerController,
-	const float DurationSeconds)
+void UHeistDebugFunctionLibrary::DebugForgeryBegin(APlayerController* PlayerController, const float DurationSeconds)
 {
 #if !UE_BUILD_SHIPPING
-	UHeistForgeryComponent* ForgeryComponent =
-		ResolveForgeryComponent(PlayerController);
-	AHeistPaintingDisplayCaseActor* DisplayCase =
-		ResolveNearestPaintingDisplayCase(PlayerController);
-	if (!IsValid(PlayerController)
-		|| !PlayerController->HasAuthority()
-		|| !IsValid(ForgeryComponent)
-		|| !IsValid(DisplayCase))
+	UHeistForgeryComponent* ForgeryComponent = ResolveForgeryComponent(PlayerController);
+	AHeistPaintingDisplayCaseActor* DisplayCase = ResolveNearestPaintingDisplayCase(PlayerController);
+	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(ForgeryComponent) || !IsValid(DisplayCase))
 	{
-		Message(
-			PlayerController,
-			TEXT("Forgery session debug begin: Result=REJECTED Reason=MissingAuthorityComponentOrCase"),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, TEXT("Forgery session debug begin: Result=REJECTED Reason=MissingAuthorityComponentOrCase"), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
-	const bool bBegan = ForgeryComponent->TryBeginForgerySession(
-		DisplayCase,
-		DurationSeconds);
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Forgery session debug begin: Result=%s Case=%s CaseState=%s Active=%s SubmitPending=%s EndServerTime=%.2f Revision=%d"),
-			bBegan ? TEXT("PASS") : TEXT("REJECTED"),
-			*GetNameSafe(DisplayCase),
-			*UEnum::GetValueAsString(
-				DisplayCase->GetDisplayCaseState()),
-			ForgeryComponent->IsSessionActive()
-				? TEXT("true")
-				: TEXT("false"),
-			ForgeryComponent->IsSubmitPending()
-				? TEXT("true")
-				: TEXT("false"),
-			ForgeryComponent->GetSessionEndServerTime(),
-			ForgeryComponent->GetSessionRevision()),
-		bBegan ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
-		true,
-		12.0f);
+	const bool bBegan = ForgeryComponent->TryBeginForgerySession(DisplayCase, DurationSeconds);
+	Message(PlayerController,
+			FString::Printf(TEXT("Forgery session debug begin: Result=%s Case=%s CaseState=%s Active=%s SubmitPending=%s EndServerTime=%.2f Revision=%d"), bBegan ? TEXT("PASS") : TEXT("REJECTED"),
+							*GetNameSafe(DisplayCase), *UEnum::GetValueAsString(DisplayCase->GetDisplayCaseState()), ForgeryComponent->IsSessionActive() ? TEXT("true") : TEXT("false"),
+							ForgeryComponent->IsSubmitPending() ? TEXT("true") : TEXT("false"), ForgeryComponent->GetSessionEndServerTime(), ForgeryComponent->GetSessionRevision()),
+			bBegan ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 12.0f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugForgerySubmit(
-	APlayerController* PlayerController)
+void UHeistDebugFunctionLibrary::DebugForgerySubmit(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
-	AHeistPlayerController* HeistPlayerController =
-		ResolveHeistPlayerController(PlayerController);
-	AHeistHUD* HeistHUD = IsValid(HeistPlayerController)
-		? HeistPlayerController->GetHUD<AHeistHUD>()
-		: nullptr;
-	UHeistForgeryWidget* ForgeryWidget = IsValid(HeistHUD)
-		? HeistHUD->GetForgeryWidget()
-		: nullptr;
-	const bool bRequested = IsValid(ForgeryWidget)
-		&& ForgeryWidget->RequestSubmitCollectedStrokes();
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Forgery stroke debug submit: Widget=%s Result=%s"),
-			*GetNameSafe(ForgeryWidget),
-			bRequested ? TEXT("REQUESTED") : TEXT("REJECTED_LOCAL")),
-		bRequested
-			? EHeistDebugLevel::Info
-			: EHeistDebugLevel::Warning,
-		true,
-		12.0f);
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	AHeistHUD* HeistHUD = IsValid(HeistPlayerController) ? HeistPlayerController->GetHUD<AHeistHUD>() : nullptr;
+	UHeistForgeryWidget* ForgeryWidget = IsValid(HeistHUD) ? HeistHUD->GetForgeryWidget() : nullptr;
+	const bool bRequested = IsValid(ForgeryWidget) && ForgeryWidget->RequestSubmitCollectedStrokes();
+	Message(PlayerController, FString::Printf(TEXT("Forgery stroke debug submit: Widget=%s Result=%s"), *GetNameSafe(ForgeryWidget), bRequested ? TEXT("REQUESTED") : TEXT("REJECTED_LOCAL")),
+			bRequested ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 12.0f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugForgeryCancel(
-	APlayerController* PlayerController)
+void UHeistDebugFunctionLibrary::DebugForgeryCancel(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
-	UHeistForgeryComponent* ForgeryComponent =
-		ResolveForgeryComponent(PlayerController);
-	const bool bCancelled = IsValid(ForgeryComponent)
-		&& ForgeryComponent->CancelForgerySession(
-			FName(TEXT("DebugCancelled")));
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Forgery session debug cancel: Result=%s Active=%s SubmitPending=%s Case=%s Revision=%d LastCleanup=%s"),
-			bCancelled ? TEXT("PASS") : TEXT("REJECTED"),
-			IsValid(ForgeryComponent)
-				&& ForgeryComponent->IsSessionActive()
-					? TEXT("true")
-					: TEXT("false"),
-			IsValid(ForgeryComponent)
-				&& ForgeryComponent->IsSubmitPending()
-					? TEXT("true")
-					: TEXT("false"),
-			IsValid(ForgeryComponent)
-				? *GetNameSafe(
-					ForgeryComponent->GetActiveDisplayCase())
-				: TEXT("None"),
-			IsValid(ForgeryComponent)
-				? ForgeryComponent->GetSessionRevision()
-				: INDEX_NONE,
-			IsValid(ForgeryComponent)
-				&& !ForgeryComponent->GetLastCleanupReason().IsNone()
-					? *ForgeryComponent->GetLastCleanupReason().ToString()
-					: TEXT("None")),
-		bCancelled
-			? EHeistDebugLevel::Info
-			: EHeistDebugLevel::Warning,
-		true,
-		12.0f);
+	UHeistForgeryComponent* ForgeryComponent = ResolveForgeryComponent(PlayerController);
+	const bool bCancelled = IsValid(ForgeryComponent) && ForgeryComponent->CancelForgerySession(FName(TEXT("DebugCancelled")));
+	Message(PlayerController,
+			FString::Printf(TEXT("Forgery session debug cancel: Result=%s Active=%s SubmitPending=%s Case=%s Revision=%d LastCleanup=%s"), bCancelled ? TEXT("PASS") : TEXT("REJECTED"),
+							IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive() ? TEXT("true") : TEXT("false"),
+							IsValid(ForgeryComponent) && ForgeryComponent->IsSubmitPending() ? TEXT("true") : TEXT("false"),
+							IsValid(ForgeryComponent) ? *GetNameSafe(ForgeryComponent->GetActiveDisplayCase()) : TEXT("None"),
+							IsValid(ForgeryComponent) ? ForgeryComponent->GetSessionRevision() : INDEX_NONE,
+							IsValid(ForgeryComponent) && !ForgeryComponent->GetLastCleanupReason().IsNone() ? *ForgeryComponent->GetLastCleanupReason().ToString() : TEXT("None")),
+			bCancelled ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 12.0f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugForgeryTimeout(
-	APlayerController* PlayerController)
+void UHeistDebugFunctionLibrary::DebugForgeryTimeout(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
-	UHeistForgeryComponent* ForgeryComponent =
-		ResolveForgeryComponent(PlayerController);
-	const bool bTimedOut = IsValid(ForgeryComponent)
-		&& ForgeryComponent->ForceTimeoutForDebug();
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Forgery session debug timeout: Result=%s Active=%s SubmitPending=%s Case=%s Revision=%d LastCleanup=%s"),
-			bTimedOut ? TEXT("PASS") : TEXT("REJECTED"),
-			IsValid(ForgeryComponent)
-				&& ForgeryComponent->IsSessionActive()
-					? TEXT("true")
-					: TEXT("false"),
-			IsValid(ForgeryComponent)
-				&& ForgeryComponent->IsSubmitPending()
-					? TEXT("true")
-					: TEXT("false"),
-			IsValid(ForgeryComponent)
-				? *GetNameSafe(
-					ForgeryComponent->GetActiveDisplayCase())
-				: TEXT("None"),
-			IsValid(ForgeryComponent)
-				? ForgeryComponent->GetSessionRevision()
-				: INDEX_NONE,
-			IsValid(ForgeryComponent)
-				&& !ForgeryComponent->GetLastCleanupReason().IsNone()
-					? *ForgeryComponent->GetLastCleanupReason().ToString()
-					: TEXT("None")),
-		bTimedOut
-			? EHeistDebugLevel::Info
-			: EHeistDebugLevel::Warning,
-		true,
-		12.0f);
+	UHeistForgeryComponent* ForgeryComponent = ResolveForgeryComponent(PlayerController);
+	const bool bTimedOut = IsValid(ForgeryComponent) && ForgeryComponent->ForceTimeoutForDebug();
+	Message(PlayerController,
+			FString::Printf(TEXT("Forgery session debug timeout: Result=%s Active=%s SubmitPending=%s Case=%s Revision=%d LastCleanup=%s"), bTimedOut ? TEXT("PASS") : TEXT("REJECTED"),
+							IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive() ? TEXT("true") : TEXT("false"),
+							IsValid(ForgeryComponent) && ForgeryComponent->IsSubmitPending() ? TEXT("true") : TEXT("false"),
+							IsValid(ForgeryComponent) ? *GetNameSafe(ForgeryComponent->GetActiveDisplayCase()) : TEXT("None"),
+							IsValid(ForgeryComponent) ? ForgeryComponent->GetSessionRevision() : INDEX_NONE,
+							IsValid(ForgeryComponent) && !ForgeryComponent->GetLastCleanupReason().IsNone() ? *ForgeryComponent->GetLastCleanupReason().ToString() : TEXT("None")),
+			bTimedOut ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 12.0f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugForgeryRecoveryDump(
-	APlayerController* PlayerController)
+void UHeistDebugFunctionLibrary::DebugForgeryRecoveryDump(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
-	AHeistPlayerController* HeistPlayerController =
-		ResolveHeistPlayerController(PlayerController);
-	AHeistPlayerCharacter* HeistCharacter =
-		IsValid(HeistPlayerController)
-			? HeistPlayerController->GetPawn<AHeistPlayerCharacter>()
-			: nullptr;
-	AHeistPlayerState* HeistPlayerState =
-		IsValid(HeistCharacter)
-			? HeistCharacter->GetPlayerState<AHeistPlayerState>()
-			: nullptr;
-	UHeistForgeryComponent* ForgeryComponent =
-		IsValid(HeistCharacter)
-			? HeistCharacter->GetForgeryComponent()
-			: nullptr;
-	AHeistHUD* HeistHUD = IsValid(HeistPlayerController)
-		? HeistPlayerController->GetHUD<AHeistHUD>()
-		: nullptr;
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController) ? HeistPlayerController->GetPawn<AHeistPlayerCharacter>() : nullptr;
+	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter) ? HeistCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
+	UHeistForgeryComponent* ForgeryComponent = IsValid(HeistCharacter) ? HeistCharacter->GetForgeryComponent() : nullptr;
+	AHeistHUD* HeistHUD = IsValid(HeistPlayerController) ? HeistPlayerController->GetHUD<AHeistHUD>() : nullptr;
 	if (IsValid(HeistHUD))
 	{
 		HeistHUD->RefreshPresentationSources();
 	}
 
-	const UHeistForgeryViewModel* ForgeryViewModel =
-		IsValid(HeistHUD)
-			? HeistHUD->GetForgeryViewModel()
-			: nullptr;
-	const UHeistForgeryWidget* ForgeryWidget =
-		IsValid(HeistHUD)
-			? HeistHUD->GetForgeryWidget()
-			: nullptr;
-	if (!IsValid(HeistPlayerController)
-		|| !HeistPlayerController->IsLocalController()
-		|| !IsValid(HeistCharacter)
-		|| !IsValid(HeistPlayerState)
-		|| !IsValid(ForgeryComponent)
-		|| !IsValid(ForgeryViewModel)
-		|| !IsValid(ForgeryWidget))
+	const UHeistForgeryViewModel* ForgeryViewModel = IsValid(HeistHUD) ? HeistHUD->GetForgeryViewModel() : nullptr;
+	const UHeistForgeryWidget* ForgeryWidget = IsValid(HeistHUD) ? HeistHUD->GetForgeryWidget() : nullptr;
+	if (!IsValid(HeistPlayerController) || !HeistPlayerController->IsLocalController() || !IsValid(HeistCharacter) || !IsValid(HeistPlayerState) || !IsValid(ForgeryComponent) ||
+		!IsValid(ForgeryViewModel) || !IsValid(ForgeryWidget))
 	{
-		Message(
-			PlayerController,
-			TEXT("Forgery recovery dump: Result=FAIL Reason=MissingLocalRecoveryContext"),
-			EHeistDebugLevel::Warning,
-			true,
-			15.0f);
+		Message(PlayerController, TEXT("Forgery recovery dump: Result=FAIL Reason=MissingLocalRecoveryContext"), EHeistDebugLevel::Warning, true, 15.0f);
 		return;
 	}
 
 	const bool bAuthority = HeistPlayerController->HasAuthority();
 	const bool bSessionActive = ForgeryComponent->IsSessionActive();
-	const AHeistPaintingDisplayCaseActor* ActiveDisplayCase =
-		ForgeryComponent->GetActiveDisplayCase();
+	const AHeistPaintingDisplayCaseActor* ActiveDisplayCase = ForgeryComponent->GetActiveDisplayCase();
 	int32 LockedCases = 0;
 	int32 LocalOwnedLocks = 0;
 	int32 OrphanLocks = 0;
 	int32 ActiveSessions = 0;
 	int32 OrphanSessions = 0;
-	AHeistGameState* HeistGameState =
-		HeistPlayerController->GetWorld()
-			? HeistPlayerController->GetWorld()
-				->GetGameState<AHeistGameState>()
-			: nullptr;
+	AHeistGameState* HeistGameState = HeistPlayerController->GetWorld() ? HeistPlayerController->GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 
-	for (TActorIterator<AHeistPaintingDisplayCaseActor> CaseIterator(
-			HeistPlayerController->GetWorld());
-		CaseIterator;
-		++CaseIterator)
+	for (TActorIterator<AHeistPaintingDisplayCaseActor> CaseIterator(HeistPlayerController->GetWorld()); CaseIterator; ++CaseIterator)
 	{
 		const AHeistPaintingDisplayCaseActor* DisplayCase = *CaseIterator;
 		if (!IsValid(DisplayCase) || !DisplayCase->IsSessionLocked())
@@ -2833,8 +1721,7 @@ void UHeistDebugFunctionLibrary::DebugForgeryRecoveryDump(
 		}
 
 		++LockedCases;
-		AHeistPlayerState* SessionOwner =
-			DisplayCase->GetSessionOwner();
+		AHeistPlayerState* SessionOwner = DisplayCase->GetSessionOwner();
 		if (SessionOwner == HeistPlayerState)
 		{
 			++LocalOwnedLocks;
@@ -2842,28 +1729,11 @@ void UHeistDebugFunctionLibrary::DebugForgeryRecoveryDump(
 
 		if (bAuthority)
 		{
-			const bool bOwnerInMatch = IsValid(SessionOwner)
-				&& IsValid(HeistGameState)
-				&& HeistGameState->PlayerArray.ContainsByPredicate(
-					[SessionOwner](
-						const TObjectPtr<APlayerState>& Candidate)
-					{
-						return Candidate.Get() == SessionOwner;
-					});
-			const AHeistPlayerCharacter* SessionCharacter =
-				IsValid(SessionOwner)
-					? Cast<AHeistPlayerCharacter>(
-						SessionOwner->GetPawn())
-					: nullptr;
-			const UHeistForgeryComponent* SessionComponent =
-				IsValid(SessionCharacter)
-					? SessionCharacter->GetForgeryComponent()
-					: nullptr;
-			const bool bBackedByActiveSession =
-				IsValid(SessionComponent)
-				&& SessionComponent->IsSessionActive()
-				&& SessionComponent->GetActiveDisplayCase()
-					== DisplayCase;
+			const bool bOwnerInMatch = IsValid(SessionOwner) && IsValid(HeistGameState) &&
+									   HeistGameState->PlayerArray.ContainsByPredicate([SessionOwner](const TObjectPtr<APlayerState>& Candidate) { return Candidate.Get() == SessionOwner; });
+			const AHeistPlayerCharacter* SessionCharacter = IsValid(SessionOwner) ? Cast<AHeistPlayerCharacter>(SessionOwner->GetPawn()) : nullptr;
+			const UHeistForgeryComponent* SessionComponent = IsValid(SessionCharacter) ? SessionCharacter->GetForgeryComponent() : nullptr;
+			const bool bBackedByActiveSession = IsValid(SessionComponent) && SessionComponent->IsSessionActive() && SessionComponent->GetActiveDisplayCase() == DisplayCase;
 			if (!bOwnerInMatch || !bBackedByActiveSession)
 			{
 				++OrphanLocks;
@@ -2873,33 +1743,19 @@ void UHeistDebugFunctionLibrary::DebugForgeryRecoveryDump(
 
 	if (bAuthority)
 	{
-		for (TActorIterator<AHeistPlayerCharacter> CharacterIterator(
-				HeistPlayerController->GetWorld());
-			CharacterIterator;
-			++CharacterIterator)
+		for (TActorIterator<AHeistPlayerCharacter> CharacterIterator(HeistPlayerController->GetWorld()); CharacterIterator; ++CharacterIterator)
 		{
-			const AHeistPlayerCharacter* CandidateCharacter =
-				*CharacterIterator;
-			const UHeistForgeryComponent* CandidateComponent =
-				IsValid(CandidateCharacter)
-					? CandidateCharacter->GetForgeryComponent()
-					: nullptr;
-			if (!IsValid(CandidateComponent)
-				|| !CandidateComponent->IsSessionActive())
+			const AHeistPlayerCharacter* CandidateCharacter = *CharacterIterator;
+			const UHeistForgeryComponent* CandidateComponent = IsValid(CandidateCharacter) ? CandidateCharacter->GetForgeryComponent() : nullptr;
+			if (!IsValid(CandidateComponent) || !CandidateComponent->IsSessionActive())
 			{
 				continue;
 			}
 
 			++ActiveSessions;
-			const AHeistPaintingDisplayCaseActor* CandidateCase =
-				CandidateComponent->GetActiveDisplayCase();
-			const AHeistPlayerState* CandidatePlayerState =
-				CandidateCharacter
-					->GetPlayerState<AHeistPlayerState>();
-			if (!IsValid(CandidateCase)
-				|| !CandidateCase->IsSessionLocked()
-				|| CandidateCase->GetSessionOwner()
-					!= CandidatePlayerState)
+			const AHeistPaintingDisplayCaseActor* CandidateCase = CandidateComponent->GetActiveDisplayCase();
+			const AHeistPlayerState* CandidatePlayerState = CandidateCharacter->GetPlayerState<AHeistPlayerState>();
+			if (!IsValid(CandidateCase) || !CandidateCase->IsSessionLocked() || CandidateCase->GetSessionOwner() != CandidatePlayerState)
 			{
 				++OrphanSessions;
 			}
@@ -2907,140 +1763,57 @@ void UHeistDebugFunctionLibrary::DebugForgeryRecoveryDump(
 	}
 
 	TArray<UUserWidget*> ForgeryWidgets;
-	UWidgetBlueprintLibrary::GetAllWidgetsOfClass(
-		HeistPlayerController,
-		ForgeryWidgets,
-		ForgeryWidget->GetClass(),
-		true);
+	UWidgetBlueprintLibrary::GetAllWidgetsOfClass(HeistPlayerController, ForgeryWidgets, ForgeryWidget->GetClass(), true);
 	const int32 LocalForgeryWidgetCount =
-		ForgeryWidgets.FilterByPredicate(
-			[HeistPlayerController](const UUserWidget* CandidateWidget)
-			{
-				return IsValid(CandidateWidget)
-					&& CandidateWidget->GetOwningPlayer()
-						== HeistPlayerController;
-			}).Num();
+		ForgeryWidgets
+			.FilterByPredicate([HeistPlayerController](const UUserWidget* CandidateWidget) { return IsValid(CandidateWidget) && CandidateWidget->GetOwningPlayer() == HeistPlayerController; })
+			.Num();
 
-	const bool bInactiveSnapshotClean = !bSessionActive
-		&& !ForgeryComponent->IsSubmitPending()
-		&& !IsValid(ActiveDisplayCase)
-		&& FMath::IsNearlyZero(
-			ForgeryComponent->GetSessionEndServerTime())
-		&& LocalOwnedLocks == 0;
-	const bool bActiveSnapshotConsistent = bSessionActive
-		&& !ForgeryComponent->IsSubmitPending()
-		&& IsValid(ActiveDisplayCase)
-		&& ActiveDisplayCase->IsSessionLocked()
-		&& ActiveDisplayCase->GetSessionOwner()
-			== HeistPlayerState
-		&& LocalOwnedLocks == 1;
-	const bool bSessionContract =
-		bInactiveSnapshotClean || bActiveSnapshotConsistent;
+	const bool bInactiveSnapshotClean =
+		!bSessionActive && !ForgeryComponent->IsSubmitPending() && !IsValid(ActiveDisplayCase) && FMath::IsNearlyZero(ForgeryComponent->GetSessionEndServerTime()) && LocalOwnedLocks == 0;
+	const bool bActiveSnapshotConsistent = bSessionActive && !ForgeryComponent->IsSubmitPending() && IsValid(ActiveDisplayCase) && ActiveDisplayCase->IsSessionLocked() &&
+										   ActiveDisplayCase->GetSessionOwner() == HeistPlayerState && LocalOwnedLocks == 1;
+	const bool bSessionContract = bInactiveSnapshotClean || bActiveSnapshotConsistent;
 	const bool bExpectedPresentationVisible = bSessionActive;
-	const bool bUIContract =
-		ForgeryViewModel->IsPresentationVisible()
-			== bExpectedPresentationVisible
-		&& ForgeryWidget->IsWidgetPresentationVisible()
-			== bExpectedPresentationVisible
-		&& ForgeryViewModel->GetVisibleStateCount()
-			== (bExpectedPresentationVisible ? 1 : 0)
-		&& ForgeryWidget->IsOwnerOnlyContractSatisfied()
-		&& LocalForgeryWidgetCount == 1;
-	const bool bInputContract =
-		HeistPlayerController->IsLocalInputModeContractSatisfied()
-		&& (bSessionActive
-			? HeistPlayerController->GetLocalInputMode()
-				== EHeistInputMode::Forgery
-			: HeistPlayerController->GetLocalInputMode()
-				!= EHeistInputMode::Forgery);
-	const bool bGlobalContract = !bAuthority
-		|| (OrphanLocks == 0
-			&& OrphanSessions == 0
-			&& LockedCases == ActiveSessions);
-	const bool bContractPassed =
-		bSessionContract
-		&& bUIContract
-		&& bInputContract
-		&& bGlobalContract;
+	const bool bUIContract = ForgeryViewModel->IsPresentationVisible() == bExpectedPresentationVisible && ForgeryWidget->IsWidgetPresentationVisible() == bExpectedPresentationVisible &&
+							 ForgeryViewModel->GetVisibleStateCount() == (bExpectedPresentationVisible ? 1 : 0) && ForgeryWidget->IsOwnerOnlyContractSatisfied() && LocalForgeryWidgetCount == 1;
+	const bool bInputContract = HeistPlayerController->IsLocalInputModeContractSatisfied() &&
+								(bSessionActive ? HeistPlayerController->GetLocalInputMode() == EHeistInputMode::Forgery : HeistPlayerController->GetLocalInputMode() != EHeistInputMode::Forgery);
+	const bool bGlobalContract = !bAuthority || (OrphanLocks == 0 && OrphanSessions == 0 && LockedCases == ActiveSessions);
+	const bool bContractPassed = bSessionContract && bUIContract && bInputContract && bGlobalContract;
 
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Forgery recovery dump: Active=%s SubmitPending=%s ActiveCase=%s LastCleanup=%s LocalOwnedLocks=%d LockedCases=%d ActiveSessions=%d OrphanLocks=%d OrphanSessions=%d WidgetInstances=%d UIVisible=%s InputMode=%s ActiveContexts=%d SessionContract=%s UIContract=%s InputContract=%s GlobalContract=%s Authority=%s Result=%s"),
-			bSessionActive ? TEXT("true") : TEXT("false"),
-			ForgeryComponent->IsSubmitPending()
-				? TEXT("true")
-				: TEXT("false"),
-			*GetNameSafe(ActiveDisplayCase),
-			ForgeryComponent->GetLastCleanupReason().IsNone()
-				? TEXT("None")
-				: *ForgeryComponent->GetLastCleanupReason().ToString(),
-			LocalOwnedLocks,
-			LockedCases,
-			bAuthority ? ActiveSessions : INDEX_NONE,
-			bAuthority ? OrphanLocks : INDEX_NONE,
-			bAuthority ? OrphanSessions : INDEX_NONE,
-			LocalForgeryWidgetCount,
-			ForgeryWidget->IsWidgetPresentationVisible()
-				? TEXT("true")
-				: TEXT("false"),
-			HeistPlayerController->GetLocalInputMode()
-				== EHeistInputMode::Gameplay
-					? TEXT("Gameplay")
-					: HeistPlayerController->GetLocalInputMode()
-						== EHeistInputMode::Inventory
-							? TEXT("Inventory")
-							: TEXT("Forgery"),
-			HeistPlayerController
-				->GetActiveHeistInputMappingContextCount(),
-			bSessionContract ? TEXT("true") : TEXT("false"),
-			bUIContract ? TEXT("true") : TEXT("false"),
-			bInputContract ? TEXT("true") : TEXT("false"),
-			bGlobalContract ? TEXT("true") : TEXT("false"),
-			bAuthority ? TEXT("true") : TEXT("false"),
-			bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
-		bContractPassed
-			? EHeistDebugLevel::Info
-			: EHeistDebugLevel::Warning,
-		true,
-		20.0f);
+			TEXT(
+				"Forgery recovery dump: Active=%s SubmitPending=%s ActiveCase=%s LastCleanup=%s LocalOwnedLocks=%d LockedCases=%d ActiveSessions=%d OrphanLocks=%d OrphanSessions=%d WidgetInstances=%d UIVisible=%s InputMode=%s ActiveContexts=%d SessionContract=%s UIContract=%s InputContract=%s GlobalContract=%s Authority=%s Result=%s"),
+			bSessionActive ? TEXT("true") : TEXT("false"), ForgeryComponent->IsSubmitPending() ? TEXT("true") : TEXT("false"), *GetNameSafe(ActiveDisplayCase),
+			ForgeryComponent->GetLastCleanupReason().IsNone() ? TEXT("None") : *ForgeryComponent->GetLastCleanupReason().ToString(), LocalOwnedLocks, LockedCases,
+			bAuthority ? ActiveSessions : INDEX_NONE, bAuthority ? OrphanLocks : INDEX_NONE, bAuthority ? OrphanSessions : INDEX_NONE, LocalForgeryWidgetCount,
+			ForgeryWidget->IsWidgetPresentationVisible() ? TEXT("true") : TEXT("false"),
+			HeistPlayerController->GetLocalInputMode() == EHeistInputMode::Gameplay	   ? TEXT("Gameplay")
+			: HeistPlayerController->GetLocalInputMode() == EHeistInputMode::Inventory ? TEXT("Inventory")
+																					   : TEXT("Forgery"),
+			HeistPlayerController->GetActiveHeistInputMappingContextCount(), bSessionContract ? TEXT("true") : TEXT("false"), bUIContract ? TEXT("true") : TEXT("false"),
+			bInputContract ? TEXT("true") : TEXT("false"), bGlobalContract ? TEXT("true") : TEXT("false"), bAuthority ? TEXT("true") : TEXT("false"), bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bContractPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 20.0f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugForgeryRecoveryRace(
-	APlayerController* PlayerController,
-	const FString& Order)
+void UHeistDebugFunctionLibrary::DebugForgeryRecoveryRace(APlayerController* PlayerController, const FString& Order)
 {
 #if !UE_BUILD_SHIPPING
-	AHeistPlayerController* HeistPlayerController =
-		ResolveHeistPlayerController(PlayerController);
-	AHeistHUD* HeistHUD = IsValid(HeistPlayerController)
-		? HeistPlayerController->GetHUD<AHeistHUD>()
-		: nullptr;
-	UHeistForgeryWidget* ForgeryWidget = IsValid(HeistHUD)
-		? HeistHUD->GetForgeryWidget()
-		: nullptr;
-	UHeistForgeryComponent* ForgeryComponent =
-		ResolveForgeryComponent(PlayerController);
-	const bool bCancelFirst =
-		Order.Equals(TEXT("CancelSubmit"), ESearchCase::IgnoreCase);
-	const bool bSubmitFirst =
-		Order.Equals(TEXT("SubmitCancel"), ESearchCase::IgnoreCase);
-	if (!IsValid(HeistPlayerController)
-		|| !HeistPlayerController->IsLocalController()
-		|| !IsValid(ForgeryWidget)
-		|| !IsValid(ForgeryComponent)
-		|| !ForgeryComponent->IsSessionActive()
-		|| (!bCancelFirst && !bSubmitFirst))
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	AHeistHUD* HeistHUD = IsValid(HeistPlayerController) ? HeistPlayerController->GetHUD<AHeistHUD>() : nullptr;
+	UHeistForgeryWidget* ForgeryWidget = IsValid(HeistHUD) ? HeistHUD->GetForgeryWidget() : nullptr;
+	UHeistForgeryComponent* ForgeryComponent = ResolveForgeryComponent(PlayerController);
+	const bool bCancelFirst = Order.Equals(TEXT("CancelSubmit"), ESearchCase::IgnoreCase);
+	const bool bSubmitFirst = Order.Equals(TEXT("SubmitCancel"), ESearchCase::IgnoreCase);
+	if (!IsValid(HeistPlayerController) || !HeistPlayerController->IsLocalController() || !IsValid(ForgeryWidget) || !IsValid(ForgeryComponent) || !ForgeryComponent->IsSessionActive() ||
+		(!bCancelFirst && !bSubmitFirst))
 	{
-		Message(
-			PlayerController,
-			FString::Printf(
-				TEXT("Forgery recovery race: Order=%s Result=FAIL Reason=InvalidLocalActiveSessionOrOrder Expected=<CancelSubmit|SubmitCancel>"),
-				*Order),
-			EHeistDebugLevel::Warning,
-			true,
-			15.0f);
+		Message(PlayerController, FString::Printf(TEXT("Forgery recovery race: Order=%s Result=FAIL Reason=InvalidLocalActiveSessionOrOrder Expected=<CancelSubmit|SubmitCancel>"), *Order),
+				EHeistDebugLevel::Warning, true, 15.0f);
 		return;
 	}
 
@@ -3048,147 +1821,72 @@ void UHeistDebugFunctionLibrary::DebugForgeryRecoveryRace(
 	if (bCancelFirst)
 	{
 		HeistPlayerController->RequestCancelForgery();
-		bSubmitRequested =
-			ForgeryWidget->RequestSubmitCollectedStrokes();
+		bSubmitRequested = ForgeryWidget->RequestSubmitCollectedStrokes();
 	}
 	else
 	{
-		bSubmitRequested =
-			ForgeryWidget->RequestSubmitCollectedStrokes();
+		bSubmitRequested = ForgeryWidget->RequestSubmitCollectedStrokes();
 		HeistPlayerController->RequestCancelForgery();
 	}
 
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Forgery recovery race: Order=%s SubmitRequested=%s CancelRequested=true ClientSessionRevision=%d Result=REQUESTED"),
-			bCancelFirst ? TEXT("CancelSubmit") : TEXT("SubmitCancel"),
-			bSubmitRequested ? TEXT("true") : TEXT("false"),
-			ForgeryComponent->GetSessionRevision()),
-		EHeistDebugLevel::Info,
-		true,
-		15.0f);
+	Message(PlayerController,
+			FString::Printf(TEXT("Forgery recovery race: Order=%s SubmitRequested=%s CancelRequested=true ClientSessionRevision=%d Result=REQUESTED"),
+							bCancelFirst ? TEXT("CancelSubmit") : TEXT("SubmitCancel"), bSubmitRequested ? TEXT("true") : TEXT("false"), ForgeryComponent->GetSessionRevision()),
+			EHeistDebugLevel::Info, true, 15.0f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugForgeryUIDump(
-	APlayerController* PlayerController)
+void UHeistDebugFunctionLibrary::DebugForgeryUIDump(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
-	AHeistPlayerController* HeistPlayerController =
-		ResolveHeistPlayerController(PlayerController);
-	AHeistHUD* HeistHUD = IsValid(HeistPlayerController)
-		? HeistPlayerController->GetHUD<AHeistHUD>()
-		: nullptr;
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	AHeistHUD* HeistHUD = IsValid(HeistPlayerController) ? HeistPlayerController->GetHUD<AHeistHUD>() : nullptr;
 	if (IsValid(HeistHUD))
 	{
 		HeistHUD->RefreshPresentationSources();
 	}
 
-	const UHeistForgeryViewModel* ForgeryViewModel = IsValid(HeistHUD)
-		? HeistHUD->GetForgeryViewModel()
-		: nullptr;
-	const UHeistForgeryWidget* ForgeryWidget = IsValid(HeistHUD)
-		? HeistHUD->GetForgeryWidget()
-		: nullptr;
-	const bool bLocalController = IsValid(HeistPlayerController)
-		&& HeistPlayerController->IsLocalController();
+	const UHeistForgeryViewModel* ForgeryViewModel = IsValid(HeistHUD) ? HeistHUD->GetForgeryViewModel() : nullptr;
+	const UHeistForgeryWidget* ForgeryWidget = IsValid(HeistHUD) ? HeistHUD->GetForgeryWidget() : nullptr;
+	const bool bLocalController = IsValid(HeistPlayerController) && HeistPlayerController->IsLocalController();
 	const bool bViewModelReady = IsValid(ForgeryViewModel);
 	const bool bWidgetReady = IsValid(ForgeryWidget);
-	const bool bExpectedVisible = bViewModelReady
-		&& ForgeryViewModel->IsPresentationVisible();
-	const bool bWidgetVisible = bWidgetReady
-		&& ForgeryWidget->IsWidgetPresentationVisible();
-	const int32 VisibleStateCount = bViewModelReady
-		? ForgeryViewModel->GetVisibleStateCount()
-		: 0;
-	const bool bExclusiveStateContract =
-		(!bExpectedVisible && VisibleStateCount == 0)
-		|| (bExpectedVisible && VisibleStateCount == 1);
-	const bool bOwnerOnlyContract = bWidgetReady
-		&& ForgeryWidget->IsOwnerOnlyContractSatisfied();
+	const bool bExpectedVisible = bViewModelReady && ForgeryViewModel->IsPresentationVisible();
+	const bool bWidgetVisible = bWidgetReady && ForgeryWidget->IsWidgetPresentationVisible();
+	const int32 VisibleStateCount = bViewModelReady ? ForgeryViewModel->GetVisibleStateCount() : 0;
+	const bool bExclusiveStateContract = (!bExpectedVisible && VisibleStateCount == 0) || (bExpectedVisible && VisibleStateCount == 1);
+	const bool bOwnerOnlyContract = bWidgetReady && ForgeryWidget->IsOwnerOnlyContractSatisfied();
 	const bool bVisibilityContract = bExpectedVisible == bWidgetVisible;
-	const bool bContractPassed = bLocalController
-		&& bViewModelReady
-		&& bWidgetReady
-		&& bOwnerOnlyContract
-		&& bExclusiveStateContract
-		&& bVisibilityContract;
+	const bool bContractPassed = bLocalController && bViewModelReady && bWidgetReady && bOwnerOnlyContract && bExclusiveStateContract && bVisibilityContract;
 
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Forgery UI dump: Controller=%s Local=%s HUD=%s ViewModel=%s Widget=%s Preview=%s Visible=%s WidgetVisible=%s Observation=%s Drawing=%s Validation=%s Result=%s StateCount=%d Exclusive=%s OwnerOnly=%s VisibilityMatch=%s Artifact=%s Case=%s EndServerTime=%.2f ResultScore=%.0f Result=%s"),
-			*GetNameSafe(HeistPlayerController),
-			bLocalController ? TEXT("true") : TEXT("false"),
-			*GetNameSafe(HeistHUD),
-			*GetNameSafe(ForgeryViewModel),
-			*GetNameSafe(ForgeryWidget),
-			bViewModelReady
-				? *ForgeryViewModel->GetDebugPreviewState().ToString()
-				: TEXT("None"),
-			bExpectedVisible ? TEXT("true") : TEXT("false"),
-			bWidgetVisible ? TEXT("true") : TEXT("false"),
-			bViewModelReady && ForgeryViewModel->IsObservationVisible()
-				? TEXT("true")
-				: TEXT("false"),
-			bViewModelReady && ForgeryViewModel->IsDrawingVisible()
-				? TEXT("true")
-				: TEXT("false"),
-			bViewModelReady && ForgeryViewModel->IsValidationVisible()
-				? TEXT("true")
-				: TEXT("false"),
-			bViewModelReady && ForgeryViewModel->IsResultVisible()
-				? TEXT("true")
-				: TEXT("false"),
-			VisibleStateCount,
-			bExclusiveStateContract ? TEXT("true") : TEXT("false"),
-			bOwnerOnlyContract ? TEXT("true") : TEXT("false"),
-			bVisibilityContract ? TEXT("true") : TEXT("false"),
-			bViewModelReady
-				? *ForgeryViewModel->GetReferenceArtifactId().ToString()
-				: TEXT("None"),
-			bViewModelReady
-				? *ForgeryViewModel->GetActiveDisplayCaseName().ToString()
-				: TEXT("None"),
-			bViewModelReady
-				? ForgeryViewModel->GetStateEndServerTime()
-				: 0.0f,
-			bViewModelReady
-				? ForgeryViewModel->GetResultScore()
-				: 0.0f,
-			bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
-		bContractPassed
-			? EHeistDebugLevel::Info
-			: EHeistDebugLevel::Warning,
-		true,
-		15.0f);
+			TEXT(
+				"Forgery UI dump: Controller=%s Local=%s HUD=%s ViewModel=%s Widget=%s Preview=%s Visible=%s WidgetVisible=%s Observation=%s Drawing=%s Validation=%s Result=%s StateCount=%d Exclusive=%s OwnerOnly=%s VisibilityMatch=%s Artifact=%s Case=%s EndServerTime=%.2f ResultScore=%.0f Result=%s"),
+			*GetNameSafe(HeistPlayerController), bLocalController ? TEXT("true") : TEXT("false"), *GetNameSafe(HeistHUD), *GetNameSafe(ForgeryViewModel), *GetNameSafe(ForgeryWidget),
+			bViewModelReady ? *ForgeryViewModel->GetDebugPreviewState().ToString() : TEXT("None"), bExpectedVisible ? TEXT("true") : TEXT("false"), bWidgetVisible ? TEXT("true") : TEXT("false"),
+			bViewModelReady && ForgeryViewModel->IsObservationVisible() ? TEXT("true") : TEXT("false"), bViewModelReady && ForgeryViewModel->IsDrawingVisible() ? TEXT("true") : TEXT("false"),
+			bViewModelReady && ForgeryViewModel->IsValidationVisible() ? TEXT("true") : TEXT("false"), bViewModelReady && ForgeryViewModel->IsResultVisible() ? TEXT("true") : TEXT("false"),
+			VisibleStateCount, bExclusiveStateContract ? TEXT("true") : TEXT("false"), bOwnerOnlyContract ? TEXT("true") : TEXT("false"), bVisibilityContract ? TEXT("true") : TEXT("false"),
+			bViewModelReady ? *ForgeryViewModel->GetReferenceArtifactId().ToString() : TEXT("None"), bViewModelReady ? *ForgeryViewModel->GetActiveDisplayCaseName().ToString() : TEXT("None"),
+			bViewModelReady ? ForgeryViewModel->GetStateEndServerTime() : 0.0f, bViewModelReady ? ForgeryViewModel->GetResultScore() : 0.0f, bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bContractPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugForgeryUIPreview(
-	APlayerController* PlayerController,
-	const FString& State)
+void UHeistDebugFunctionLibrary::DebugForgeryUIPreview(APlayerController* PlayerController, const FString& State)
 {
 #if !UE_BUILD_SHIPPING
-	AHeistPlayerController* HeistPlayerController =
-		ResolveHeistPlayerController(PlayerController);
-	AHeistHUD* HeistHUD = IsValid(HeistPlayerController)
-		? HeistPlayerController->GetHUD<AHeistHUD>()
-		: nullptr;
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	AHeistHUD* HeistHUD = IsValid(HeistPlayerController) ? HeistPlayerController->GetHUD<AHeistHUD>() : nullptr;
 	if (IsValid(HeistHUD))
 	{
 		HeistHUD->RefreshPresentationSources();
 	}
 
-	UHeistForgeryViewModel* ForgeryViewModel = IsValid(HeistHUD)
-		? HeistHUD->GetForgeryViewModel()
-		: nullptr;
-	FName PreviewState = State.IsEmpty() || State.Equals(
-		TEXT("None"),
-		ESearchCase::IgnoreCase)
-			? NAME_None
-			: FName(*State);
+	UHeistForgeryViewModel* ForgeryViewModel = IsValid(HeistHUD) ? HeistHUD->GetForgeryViewModel() : nullptr;
+	FName PreviewState = State.IsEmpty() || State.Equals(TEXT("None"), ESearchCase::IgnoreCase) ? NAME_None : FName(*State);
 	if (PreviewState == FName(TEXT("Observation")))
 	{
 		PreviewState = FName(TEXT("Observation"));
@@ -3206,20 +1904,11 @@ void UHeistDebugFunctionLibrary::DebugForgeryUIPreview(
 		PreviewState = FName(TEXT("Result"));
 	}
 
-	const bool bApplied = IsValid(ForgeryViewModel)
-		&& ForgeryViewModel->SetDebugPreviewState(PreviewState);
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Forgery UI preview: Requested=%s Applied=%s LocalOnly=true Result=%s"),
-			PreviewState.IsNone() ? TEXT("None") : *PreviewState.ToString(),
-			bApplied ? TEXT("true") : TEXT("false"),
-			bApplied ? TEXT("PASS") : TEXT("REJECTED")),
-		bApplied
-			? EHeistDebugLevel::Info
-			: EHeistDebugLevel::Warning,
-		true,
-		10.0f);
+	const bool bApplied = IsValid(ForgeryViewModel) && ForgeryViewModel->SetDebugPreviewState(PreviewState);
+	Message(PlayerController,
+			FString::Printf(TEXT("Forgery UI preview: Requested=%s Applied=%s LocalOnly=true Result=%s"), PreviewState.IsNone() ? TEXT("None") : *PreviewState.ToString(),
+							bApplied ? TEXT("true") : TEXT("false"), bApplied ? TEXT("PASS") : TEXT("REJECTED")),
+			bApplied ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
 	if (bApplied)
 	{
 		DebugForgeryUIDump(PlayerController);
@@ -3236,12 +1925,8 @@ void UHeistDebugFunctionLibrary::DebugSoundPingHelp(APlayerController* PlayerCon
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		PlayerController,
-		TEXT("Sound Ping debug commands: HeistSoundPingDump | HeistSoundPingTest | HeistFootstepWeight <Weight> | HeistCoinThrow <Distance>"),
-		EHeistDebugLevel::Info,
-		true,
-		8.0f);
+	Message(PlayerController, TEXT("Sound Ping debug commands: HeistSoundPingDump | HeistSoundPingTest | HeistFootstepWeight <Weight> | HeistCoinThrow <Distance>"), EHeistDebugLevel::Info, true,
+			8.0f);
 #endif
 }
 
@@ -3292,10 +1977,9 @@ void UHeistDebugFunctionLibrary::DebugGuardHelp(APlayerController* PlayerControl
 #else
 	Message(
 		PlayerController,
-		TEXT("Guard debug commands: HeistDifficultyDump | HeistGuardSpawn <Distance> | HeistGuardDump | HeistInspectionTargetSelect | HeistInspectionTargetDump | HeistInspectionBegin | HeistInspectionStateDump | HeistGuardState <Disabled|Patrol|Investigate|Chase|Search|Return> <Duration> | HeistGuardSightCheck | HeistGuardSightAuto <0|1> | HeistGuardNoise <Distance> | HeistArrest | HeistRelease | HeistArrestDump"),
-		EHeistDebugLevel::Info,
-		true,
-		10.0f);
+		TEXT(
+			"Guard debug commands: HeistDifficultyDump | HeistGuardSpawn <Distance> | HeistGuardDump | HeistInspectionTargetSelect | HeistInspectionTargetDump | HeistInspectionBegin | HeistInspectionStateDump | HeistGuardState <Disabled|Patrol|Investigate|Chase|Search|Return> <Duration> | HeistGuardSightCheck | HeistGuardSightAuto <0|1> | HeistGuardNoise <Distance> | HeistArrest | HeistRelease | HeistArrestDump"),
+		EHeistDebugLevel::Info, true, 10.0f);
 #endif
 }
 
@@ -3307,51 +1991,30 @@ void UHeistDebugFunctionLibrary::DebugDifficultyDump(APlayerController* PlayerCo
 	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
 	if (!IsValid(HeistPlayerController))
 	{
-		Message(
-			PlayerController,
-			TEXT("Difficulty baseline dump failed: invalid Heist player controller."),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, TEXT("Difficulty baseline dump failed: invalid Heist player controller."), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
 	HeistPlayerController->DebugRequestDumpDifficultyBaseline();
-	Message(
-		PlayerController,
-		TEXT("Difficulty baseline dump requested."),
-		EHeistDebugLevel::Info,
-		true);
+	Message(PlayerController, TEXT("Difficulty baseline dump requested."), EHeistDebugLevel::Info, true);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugGuardSpawn(
-	APlayerController* PlayerController,
-	const float Distance)
+void UHeistDebugFunctionLibrary::DebugGuardSpawn(APlayerController* PlayerController, const float Distance)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	AHeistPlayerController* HeistPlayerController =
-		ResolveHeistPlayerController(PlayerController);
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
 	if (!IsValid(HeistPlayerController))
 	{
-		Message(
-			PlayerController,
-			TEXT("Guard debug spawn failed: invalid Heist player controller."),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, TEXT("Guard debug spawn failed: invalid Heist player controller."), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
 	const float SafeDistance = FMath::Clamp(Distance, 100.0f, 3000.0f);
 	HeistPlayerController->DebugRequestSpawnGuard(SafeDistance);
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Guard debug spawn requested: Distance=%.1f"),
-			SafeDistance),
-		EHeistDebugLevel::Info,
-		true);
+	Message(PlayerController, FString::Printf(TEXT("Guard debug spawn requested: Distance=%.1f"), SafeDistance), EHeistDebugLevel::Info, true);
 #endif
 }
 
@@ -3360,84 +2023,43 @@ void UHeistDebugFunctionLibrary::DebugGuardDump(APlayerController* PlayerControl
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	const AHeistGuardCharacter* GuardCharacter =
-		ResolveNearestGuard(PlayerController);
-	const UHeistGuardStateComponent* GuardStateComponent =
-		IsValid(GuardCharacter)
-			? GuardCharacter->GetGuardStateComponent()
-			: nullptr;
-	const UHeistPatrolPathComponent* PatrolPathComponent =
-		IsValid(GuardCharacter)
-			? GuardCharacter->GetPatrolPathComponent()
-			: nullptr;
+	const AHeistGuardCharacter* GuardCharacter = ResolveNearestGuard(PlayerController);
+	const UHeistGuardStateComponent* GuardStateComponent = IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
+	const UHeistPatrolPathComponent* PatrolPathComponent = IsValid(GuardCharacter) ? GuardCharacter->GetPatrolPathComponent() : nullptr;
 	if (!IsValid(GuardCharacter) || !IsValid(GuardStateComponent))
 	{
-		Message(
-			PlayerController,
-			TEXT("Guard dump failed: no replicated Guard exists."),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, TEXT("Guard dump failed: no replicated Guard exists."), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
-	const float ServerTime = PlayerController->GetWorld()
-		&& PlayerController->GetWorld()->GetGameState()
-			? PlayerController->GetWorld()->GetGameState()->GetServerWorldTimeSeconds()
-			: 0.0f;
-	const float RemainingSeconds = FMath::Max(
-		0.0f,
-		GuardStateComponent->GetStateEndServerTime() - ServerTime);
+	const float ServerTime = PlayerController->GetWorld() && PlayerController->GetWorld()->GetGameState() ? PlayerController->GetWorld()->GetGameState()->GetServerWorldTimeSeconds() : 0.0f;
+	const float RemainingSeconds = FMath::Max(0.0f, GuardStateComponent->GetStateEndServerTime() - ServerTime);
 	const FVector FocusLocation = GuardStateComponent->GetStateFocusLocation();
 	const FVector GuardLocation = GuardCharacter->GetActorLocation();
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Guard dump: Guard=%s State=%s Remaining=%.2f Location=(%.1f,%.1f,%.1f) Focus=(%.1f,%.1f,%.1f) RouteId=%s Waypoint=%d/%d Authority=%s"),
-			*GetNameSafe(GuardCharacter),
-			*UEnum::GetValueAsString(GuardStateComponent->GetGuardState()),
-			RemainingSeconds,
-			GuardLocation.X,
-			GuardLocation.Y,
-			GuardLocation.Z,
-			FocusLocation.X,
-			FocusLocation.Y,
-			FocusLocation.Z,
-			IsValid(PatrolPathComponent)
-				? *PatrolPathComponent->GetPatrolRouteId().ToString()
-				: TEXT("None"),
-			IsValid(PatrolPathComponent) ? PatrolPathComponent->GetCurrentWaypointIndex() : INDEX_NONE,
-			IsValid(PatrolPathComponent) ? PatrolPathComponent->GetWaypointCount() : 0,
-			GuardCharacter->HasAuthority() ? TEXT("true") : TEXT("false")),
-		EHeistDebugLevel::Info,
-		true,
-		8.0f);
+	Message(PlayerController,
+			FString::Printf(TEXT("Guard dump: Guard=%s State=%s Remaining=%.2f Location=(%.1f,%.1f,%.1f) Focus=(%.1f,%.1f,%.1f) RouteId=%s Waypoint=%d/%d Authority=%s"), *GetNameSafe(GuardCharacter),
+							*UEnum::GetValueAsString(GuardStateComponent->GetGuardState()), RemainingSeconds, GuardLocation.X, GuardLocation.Y, GuardLocation.Z, FocusLocation.X, FocusLocation.Y,
+							FocusLocation.Z, IsValid(PatrolPathComponent) ? *PatrolPathComponent->GetPatrolRouteId().ToString() : TEXT("None"),
+							IsValid(PatrolPathComponent) ? PatrolPathComponent->GetCurrentWaypointIndex() : INDEX_NONE, IsValid(PatrolPathComponent) ? PatrolPathComponent->GetWaypointCount() : 0,
+							GuardCharacter->HasAuthority() ? TEXT("true") : TEXT("false")),
+			EHeistDebugLevel::Info, true, 8.0f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugInspectionTargetSelect(
-	APlayerController* PlayerController)
+void UHeistDebugFunctionLibrary::DebugInspectionTargetSelect(APlayerController* PlayerController)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	if (!IsValid(PlayerController)
-		|| !PlayerController->HasAuthority()
-		|| !IsValid(PlayerController->GetWorld()))
+	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(PlayerController->GetWorld()))
 	{
-		Message(
-			PlayerController,
-			TEXT("Inspection target select: Authority=false Result=FAIL Reason=ServerOnly"),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, TEXT("Inspection target select: Authority=false Result=FAIL Reason=ServerOnly"), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
 	int32 GuardCount = 0;
 	int32 SelectedCount = 0;
-	for (TActorIterator<AHeistGuardAIController> It(
-			PlayerController->GetWorld());
-		It;
-		++It)
+	for (TActorIterator<AHeistGuardAIController> It(PlayerController->GetWorld()); It; ++It)
 	{
 		AHeistGuardAIController* GuardController = *It;
 		if (!IsValid(GuardController) || !IsValid(GuardController->GetPawn()))
@@ -3450,21 +2072,12 @@ void UHeistDebugFunctionLibrary::DebugInspectionTargetSelect(
 	}
 
 	const bool bPassed = GuardCount > 0 && SelectedCount == GuardCount;
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Inspection target select: Guards=%d Selected=%d Authority=true Result=%s"),
-			GuardCount,
-			SelectedCount,
-			bPassed ? TEXT("PASS") : TEXT("FAIL")),
-		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
-		true,
-		12.0f);
+	Message(PlayerController, FString::Printf(TEXT("Inspection target select: Guards=%d Selected=%d Authority=true Result=%s"), GuardCount, SelectedCount, bPassed ? TEXT("PASS") : TEXT("FAIL")),
+			bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 12.0f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugInspectionTargetDump(
-	APlayerController* PlayerController)
+void UHeistDebugFunctionLibrary::DebugInspectionTargetDump(APlayerController* PlayerController)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -3481,10 +2094,7 @@ void UHeistDebugFunctionLibrary::DebugInspectionTargetDump(
 	int32 PendingDelayCount = 0;
 	int32 MaximumRegistrationRevision = 0;
 	FString ScheduleSummary;
-	for (TActorIterator<AHeistPaintingDisplayCaseActor> It(
-			PlayerController->GetWorld());
-		It;
-		++It)
+	for (TActorIterator<AHeistPaintingDisplayCaseActor> It(PlayerController->GetWorld()); It; ++It)
 	{
 		const AHeistPaintingDisplayCaseActor* DisplayCase = *It;
 		if (!IsValid(DisplayCase))
@@ -3496,38 +2106,25 @@ void UHeistDebugFunctionLibrary::DebugInspectionTargetDump(
 		RegisteredCount += DisplayCase->IsRegisteredForInspection() ? 1 : 0;
 		ValidCandidateCount += DisplayCase->IsValidInspectionCandidate() ? 1 : 0;
 		ScheduledCount += DisplayCase->GetInspectionScheduleRevision() > 0 ? 1 : 0;
-		PendingDelayCount += DisplayCase->GetInspectionDelayRemaining()
-			> KINDA_SMALL_NUMBER ? 1 : 0;
-		MaximumRegistrationRevision = FMath::Max(
-			MaximumRegistrationRevision,
-			DisplayCase->GetInspectionRegistrationRevision());
+		PendingDelayCount += DisplayCase->GetInspectionDelayRemaining() > KINDA_SMALL_NUMBER ? 1 : 0;
+		MaximumRegistrationRevision = FMath::Max(MaximumRegistrationRevision, DisplayCase->GetInspectionRegistrationRevision());
 		if (DisplayCase->GetInspectionScheduleRevision() > 0)
 		{
 			if (!ScheduleSummary.IsEmpty())
 			{
 				ScheduleSummary += TEXT(",");
 			}
-			ScheduleSummary += FString::Printf(
-				TEXT("%s:Score=%.2f,Band=%s,Delay=%.2f,Remaining=%.2f,Case=%s,Alert=%s,Rev=%d"),
-				*GetNameSafe(DisplayCase),
-				DisplayCase->GetCommittedForgeryResult().SimilarityScore,
-				*DisplayCase->GetInspectionScoreBand().ToString(),
-				DisplayCase->GetResolvedInspectionDelay(),
-				DisplayCase->GetInspectionDelayRemaining(),
-				*UEnum::GetValueAsString(
-					DisplayCase->GetResolvedInspectionCaseOutcome()),
-				*DisplayCase->GetResolvedInspectionAlertOutcome().ToString(),
-				DisplayCase->GetInspectionScheduleRevision());
+			ScheduleSummary += FString::Printf(TEXT("%s:Score=%.2f,Band=%s,Delay=%.2f,Remaining=%.2f,Case=%s,Alert=%s,Rev=%d"), *GetNameSafe(DisplayCase),
+											   DisplayCase->GetCommittedForgeryResult().SimilarityScore, *DisplayCase->GetInspectionScoreBand().ToString(), DisplayCase->GetResolvedInspectionDelay(),
+											   DisplayCase->GetInspectionDelayRemaining(), *UEnum::GetValueAsString(DisplayCase->GetResolvedInspectionCaseOutcome()),
+											   *DisplayCase->GetResolvedInspectionAlertOutcome().ToString(), DisplayCase->GetInspectionScheduleRevision());
 		}
 	}
 
 	int32 GuardCount = 0;
 	int32 ValidSelectionCount = 0;
 	FString SelectionSummary;
-	for (TActorIterator<AHeistGuardAIController> It(
-			PlayerController->GetWorld());
-		It;
-		++It)
+	for (TActorIterator<AHeistGuardAIController> It(PlayerController->GetWorld()); It; ++It)
 	{
 		const AHeistGuardAIController* GuardController = *It;
 		if (!IsValid(GuardController) || !IsValid(GuardController->GetPawn()))
@@ -3542,35 +2139,18 @@ void UHeistDebugFunctionLibrary::DebugInspectionTargetDump(
 		{
 			SelectionSummary += TEXT(",");
 		}
-		SelectionSummary += FString::Printf(
-			TEXT("%s->%s@%d"),
-			*GetNameSafe(GuardController->GetPawn()),
-			*GetNameSafe(GuardController->GetInspectionTarget()),
-			GuardController->GetInspectionTargetSelectionRevision());
+		SelectionSummary +=
+			FString::Printf(TEXT("%s->%s@%d"), *GetNameSafe(GuardController->GetPawn()), *GetNameSafe(GuardController->GetInspectionTarget()), GuardController->GetInspectionTargetSelectionRevision());
 	}
 
 	const bool bAuthority = PlayerController->HasAuthority();
 	FString MappingSummary;
 	const float TestScores[] = {95.0f, 80.0f, 60.0f, 40.0f, 20.0f};
 	const float ExpectedDelays[] = {32.0f, 16.0f, 8.0f, 4.0f, 0.0f};
-	const FName ExpectedBands[] = {
-		FName(TEXT("90-100")),
-		FName(TEXT("70-89")),
-		FName(TEXT("50-69")),
-		FName(TEXT("30-49")),
-		FName(TEXT("0-29"))};
-	const FName ExpectedAlertOutcomes[] = {
-		FName(TEXT("Quiet")),
-		FName(TEXT("Suspicious")),
-		FName(TEXT("Searching")),
-		FName(TEXT("Alarmed")),
-		FName(TEXT("Alarmed"))};
-	const EHeistDisplayCaseState ExpectedCaseOutcomes[] = {
-		EHeistDisplayCaseState::Completed,
-		EHeistDisplayCaseState::Suspected,
-		EHeistDisplayCaseState::Suspected,
-		EHeistDisplayCaseState::Alarmed,
-		EHeistDisplayCaseState::Alarmed};
+	const FName ExpectedBands[] = {FName(TEXT("90-100")), FName(TEXT("70-89")), FName(TEXT("50-69")), FName(TEXT("30-49")), FName(TEXT("0-29"))};
+	const FName ExpectedAlertOutcomes[] = {FName(TEXT("Quiet")), FName(TEXT("Suspicious")), FName(TEXT("Searching")), FName(TEXT("Alarmed")), FName(TEXT("Alarmed"))};
+	const EHeistDisplayCaseState ExpectedCaseOutcomes[] = {EHeistDisplayCaseState::Completed, EHeistDisplayCaseState::Suspected, EHeistDisplayCaseState::Suspected, EHeistDisplayCaseState::Alarmed,
+														   EHeistDisplayCaseState::Alarmed};
 	bool bMappingPassed = true;
 	for (int32 Index = 0; Index < UE_ARRAY_COUNT(TestScores); ++Index)
 	{
@@ -3578,89 +2158,44 @@ void UHeistDebugFunctionLibrary::DebugInspectionTargetDump(
 		FName Band;
 		FName AlertOutcome;
 		EHeistDisplayCaseState CaseOutcome = EHeistDisplayCaseState::Failed;
-		const bool bMapped =
-			AHeistPaintingDisplayCaseActor::CalculateInspectionSchedule(
-				TestScores[Index],
-				8.0f,
-				Delay,
-				Band,
-				AlertOutcome,
-				CaseOutcome);
-		bMappingPassed = bMappingPassed
-			&& bMapped
-			&& FMath::IsNearlyEqual(Delay, ExpectedDelays[Index])
-			&& Band == ExpectedBands[Index]
-			&& AlertOutcome == ExpectedAlertOutcomes[Index]
-			&& CaseOutcome == ExpectedCaseOutcomes[Index];
+		const bool bMapped = AHeistPaintingDisplayCaseActor::CalculateInspectionSchedule(TestScores[Index], 8.0f, Delay, Band, AlertOutcome, CaseOutcome);
+		bMappingPassed = bMappingPassed && bMapped && FMath::IsNearlyEqual(Delay, ExpectedDelays[Index]) && Band == ExpectedBands[Index] && AlertOutcome == ExpectedAlertOutcomes[Index] &&
+						 CaseOutcome == ExpectedCaseOutcomes[Index];
 		if (!MappingSummary.IsEmpty())
 		{
 			MappingSummary += TEXT(",");
 		}
-		MappingSummary += FString::Printf(
-			TEXT("%.0f:%s/%.0f/%s/%s"),
-			TestScores[Index],
-			*Band.ToString(),
-			Delay,
-			*UEnum::GetValueAsString(CaseOutcome),
-			*AlertOutcome.ToString());
+		MappingSummary += FString::Printf(TEXT("%.0f:%s/%.0f/%s/%s"), TestScores[Index], *Band.ToString(), Delay, *UEnum::GetValueAsString(CaseOutcome), *AlertOutcome.ToString());
 	}
 
-	const bool bRuntimeScheduleValid = ScheduledCount > 0
-		&& ValidCandidateCount <= RegisteredCount
-		&& PendingDelayCount + RegisteredCount <= CaseCount;
-	const bool bPassed = bAuthority
-		&& CaseCount > 0
-		&& GuardCount > 0
-		&& bMappingPassed
-		&& bRuntimeScheduleValid;
+	const bool bRuntimeScheduleValid = ScheduledCount > 0 && ValidCandidateCount <= RegisteredCount && PendingDelayCount + RegisteredCount <= CaseCount;
+	const bool bPassed = bAuthority && CaseCount > 0 && GuardCount > 0 && bMappingPassed && bRuntimeScheduleValid;
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Inspection target dump: Cases=%d Registered=%d ValidCandidates=%d Scheduled=%d PendingDelay=%d RegistrationRevision=%d Guards=%d ValidSelections=%d Selections=%s Schedules=%s MappingBase8={%s} Mapping=%s Authority=%s Result=%s"),
-			CaseCount,
-			RegisteredCount,
-			ValidCandidateCount,
-			ScheduledCount,
-			PendingDelayCount,
-			MaximumRegistrationRevision,
-			GuardCount,
-			ValidSelectionCount,
-			SelectionSummary.IsEmpty() ? TEXT("None") : *SelectionSummary,
-			ScheduleSummary.IsEmpty() ? TEXT("None") : *ScheduleSummary,
-			*MappingSummary,
-			bMappingPassed ? TEXT("PASS") : TEXT("FAIL"),
-			bAuthority ? TEXT("true") : TEXT("false"),
-			bPassed ? TEXT("PASS") : TEXT("FAIL")),
-		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
-		true,
-		15.0f);
+			TEXT(
+				"Inspection target dump: Cases=%d Registered=%d ValidCandidates=%d Scheduled=%d PendingDelay=%d RegistrationRevision=%d Guards=%d ValidSelections=%d Selections=%s Schedules=%s MappingBase8={%s} Mapping=%s Authority=%s Result=%s"),
+			CaseCount, RegisteredCount, ValidCandidateCount, ScheduledCount, PendingDelayCount, MaximumRegistrationRevision, GuardCount, ValidSelectionCount,
+			SelectionSummary.IsEmpty() ? TEXT("None") : *SelectionSummary, ScheduleSummary.IsEmpty() ? TEXT("None") : *ScheduleSummary, *MappingSummary, bMappingPassed ? TEXT("PASS") : TEXT("FAIL"),
+			bAuthority ? TEXT("true") : TEXT("false"), bPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugInspectionBegin(
-	APlayerController* PlayerController)
+void UHeistDebugFunctionLibrary::DebugInspectionBegin(APlayerController* PlayerController)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	if (!IsValid(PlayerController)
-		|| !PlayerController->HasAuthority()
-		|| !IsValid(PlayerController->GetWorld()))
+	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(PlayerController->GetWorld()))
 	{
-		Message(
-			PlayerController,
-			TEXT("Inspection begin: Authority=false Result=FAIL Reason=ServerOnly"),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, TEXT("Inspection begin: Authority=false Result=FAIL Reason=ServerOnly"), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
 	int32 GuardCount = 0;
 	int32 StartedCount = 0;
-	for (TActorIterator<AHeistGuardAIController> It(
-		PlayerController->GetWorld());
-		It;
-		++It)
+	for (TActorIterator<AHeistGuardAIController> It(PlayerController->GetWorld()); It; ++It)
 	{
 		AHeistGuardAIController* GuardController = *It;
 		if (!IsValid(GuardController) || !IsValid(GuardController->GetPawn()))
@@ -3673,21 +2208,12 @@ void UHeistDebugFunctionLibrary::DebugInspectionBegin(
 	}
 
 	const bool bPassed = GuardCount > 0 && StartedCount > 0;
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Inspection begin: Guards=%d Started=%d Authority=true Result=%s"),
-			GuardCount,
-			StartedCount,
-			bPassed ? TEXT("PASS") : TEXT("FAIL")),
-		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
-		true,
-		12.0f);
+	Message(PlayerController, FString::Printf(TEXT("Inspection begin: Guards=%d Started=%d Authority=true Result=%s"), GuardCount, StartedCount, bPassed ? TEXT("PASS") : TEXT("FAIL")),
+			bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 12.0f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugInspectionStateDump(
-	APlayerController* PlayerController)
+void UHeistDebugFunctionLibrary::DebugInspectionStateDump(APlayerController* PlayerController)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -3701,89 +2227,53 @@ void UHeistDebugFunctionLibrary::DebugInspectionStateDump(
 	int32 InspectingGuardCount = 0;
 	int32 SuspectedCaseCount = 0;
 	FString GuardSummary;
-	for (TActorIterator<AHeistGuardAIController> It(
-		PlayerController->GetWorld());
-		It;
-		++It)
+	for (TActorIterator<AHeistGuardAIController> It(PlayerController->GetWorld()); It; ++It)
 	{
 		const AHeistGuardAIController* GuardController = *It;
-		const AHeistGuardCharacter* GuardCharacter = IsValid(GuardController)
-			? Cast<AHeistGuardCharacter>(GuardController->GetPawn())
-			: nullptr;
-		const UHeistGuardStateComponent* GuardStateComponent =
-			IsValid(GuardCharacter)
-				? GuardCharacter->GetGuardStateComponent()
-				: nullptr;
+		const AHeistGuardCharacter* GuardCharacter = IsValid(GuardController) ? Cast<AHeistGuardCharacter>(GuardController->GetPawn()) : nullptr;
+		const UHeistGuardStateComponent* GuardStateComponent = IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
 		if (!IsValid(GuardStateComponent))
 		{
 			continue;
 		}
 
 		++GuardCount;
-		InspectingGuardCount += GuardStateComponent->GetGuardState()
-			== EHeistGuardState::InspectExhibit ? 1 : 0;
+		InspectingGuardCount += GuardStateComponent->GetGuardState() == EHeistGuardState::InspectExhibit ? 1 : 0;
 		if (!GuardSummary.IsEmpty())
 		{
 			GuardSummary += TEXT(",");
 		}
-		GuardSummary += FString::Printf(
-			TEXT("%s:%s->%s"),
-			*GetNameSafe(GuardCharacter),
-			*UEnum::GetValueAsString(GuardStateComponent->GetGuardState()),
-			*GetNameSafe(GuardController->GetInspectionTarget()));
+		GuardSummary +=
+			FString::Printf(TEXT("%s:%s->%s"), *GetNameSafe(GuardCharacter), *UEnum::GetValueAsString(GuardStateComponent->GetGuardState()), *GetNameSafe(GuardController->GetInspectionTarget()));
 	}
 
-	for (TActorIterator<AHeistPaintingDisplayCaseActor> It(
-		PlayerController->GetWorld());
-		It;
-		++It)
+	for (TActorIterator<AHeistPaintingDisplayCaseActor> It(PlayerController->GetWorld()); It; ++It)
 	{
 		const AHeistPaintingDisplayCaseActor* DisplayCase = *It;
-		if (IsValid(DisplayCase)
-			&& DisplayCase->GetDisplayCaseState()
-				== EHeistDisplayCaseState::Suspected)
+		if (IsValid(DisplayCase) && DisplayCase->GetDisplayCaseState() == EHeistDisplayCaseState::Suspected)
 		{
 			++SuspectedCaseCount;
 		}
 	}
 
 	const bool bAuthority = PlayerController->HasAuthority();
-	const bool bPassed = bAuthority
-		&& GuardCount > 0
-		&& (InspectingGuardCount > 0 || SuspectedCaseCount > 0);
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Inspection state dump: Guards=%d Inspecting=%d SuspectedCases=%d GuardStates=%s Authority=%s Result=%s"),
-			GuardCount,
-			InspectingGuardCount,
-			SuspectedCaseCount,
-			GuardSummary.IsEmpty() ? TEXT("None") : *GuardSummary,
-			bAuthority ? TEXT("true") : TEXT("false"),
-			bPassed ? TEXT("PASS") : TEXT("FAIL")),
-		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
-		true,
-		15.0f);
+	const bool bPassed = bAuthority && GuardCount > 0 && (InspectingGuardCount > 0 || SuspectedCaseCount > 0);
+	Message(PlayerController,
+			FString::Printf(TEXT("Inspection state dump: Guards=%d Inspecting=%d SuspectedCases=%d GuardStates=%s Authority=%s Result=%s"), GuardCount, InspectingGuardCount, SuspectedCaseCount,
+							GuardSummary.IsEmpty() ? TEXT("None") : *GuardSummary, bAuthority ? TEXT("true") : TEXT("false"), bPassed ? TEXT("PASS") : TEXT("FAIL")),
+			bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugGuardSetState(
-	APlayerController* PlayerController,
-	const FString& StateName,
-	const float DurationSeconds)
+void UHeistDebugFunctionLibrary::DebugGuardSetState(APlayerController* PlayerController, const FString& StateName, const float DurationSeconds)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	AHeistPlayerController* HeistPlayerController =
-		ResolveHeistPlayerController(PlayerController);
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
 	if (!IsValid(HeistPlayerController))
 	{
-		Message(
-			PlayerController,
-			TEXT("Guard state debug failed: invalid Heist player controller."),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, TEXT("Guard state debug failed: invalid Heist player controller."), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
@@ -3797,23 +2287,19 @@ void UHeistDebugFunctionLibrary::DebugGuardSetState(
 	{
 		RequestedState = EHeistGuardState::Patrol;
 	}
-	else if (StateName.Equals(TEXT("Investigate"), ESearchCase::IgnoreCase)
-		|| StateName.Equals(TEXT("InvestigateNoise"), ESearchCase::IgnoreCase))
+	else if (StateName.Equals(TEXT("Investigate"), ESearchCase::IgnoreCase) || StateName.Equals(TEXT("InvestigateNoise"), ESearchCase::IgnoreCase))
 	{
 		RequestedState = EHeistGuardState::InvestigateNoise;
 	}
-	else if (StateName.Equals(TEXT("Chase"), ESearchCase::IgnoreCase)
-		|| StateName.Equals(TEXT("ChasePlayer"), ESearchCase::IgnoreCase))
+	else if (StateName.Equals(TEXT("Chase"), ESearchCase::IgnoreCase) || StateName.Equals(TEXT("ChasePlayer"), ESearchCase::IgnoreCase))
 	{
 		RequestedState = EHeistGuardState::ChasePlayer;
 	}
-	else if (StateName.Equals(TEXT("Search"), ESearchCase::IgnoreCase)
-		|| StateName.Equals(TEXT("SearchLastKnownLocation"), ESearchCase::IgnoreCase))
+	else if (StateName.Equals(TEXT("Search"), ESearchCase::IgnoreCase) || StateName.Equals(TEXT("SearchLastKnownLocation"), ESearchCase::IgnoreCase))
 	{
 		RequestedState = EHeistGuardState::SearchLastKnownLocation;
 	}
-	else if (StateName.Equals(TEXT("Return"), ESearchCase::IgnoreCase)
-		|| StateName.Equals(TEXT("ReturnToPatrol"), ESearchCase::IgnoreCase))
+	else if (StateName.Equals(TEXT("Return"), ESearchCase::IgnoreCase) || StateName.Equals(TEXT("ReturnToPatrol"), ESearchCase::IgnoreCase))
 	{
 		RequestedState = EHeistGuardState::ReturnToPatrol;
 	}
@@ -3824,122 +2310,69 @@ void UHeistDebugFunctionLibrary::DebugGuardSetState(
 
 	if (!bValidStateName)
 	{
-		Message(
-			PlayerController,
-			FString::Printf(
-				TEXT("Guard state debug failed: unknown state '%s'. Run HeistGuardHelp."),
-				*StateName),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, FString::Printf(TEXT("Guard state debug failed: unknown state '%s'. Run HeistGuardHelp."), *StateName), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
 	const float SafeDuration = FMath::Max(0.0f, DurationSeconds);
-	HeistPlayerController->DebugRequestSetNearestGuardState(
-		RequestedState,
-		SafeDuration);
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Guard state debug requested: State=%s Duration=%.2f"),
-			*UEnum::GetValueAsString(RequestedState),
-			SafeDuration),
-		EHeistDebugLevel::Info,
-		true);
+	HeistPlayerController->DebugRequestSetNearestGuardState(RequestedState, SafeDuration);
+	Message(PlayerController, FString::Printf(TEXT("Guard state debug requested: State=%s Duration=%.2f"), *UEnum::GetValueAsString(RequestedState), SafeDuration), EHeistDebugLevel::Info, true);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugGuardSightCheck(
-	APlayerController* PlayerController)
+void UHeistDebugFunctionLibrary::DebugGuardSightCheck(APlayerController* PlayerController)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	AHeistPlayerController* HeistPlayerController =
-		ResolveHeistPlayerController(PlayerController);
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
 	if (!IsValid(HeistPlayerController))
 	{
-		Message(
-			PlayerController,
-			TEXT("Guard sight debug failed: invalid Heist player controller."),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, TEXT("Guard sight debug failed: invalid Heist player controller."), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
 	HeistPlayerController->DebugRequestEvaluateNearestGuardSight();
-	Message(
-		PlayerController,
-		TEXT("Guard sight debug requested against nearest Guard."),
-		EHeistDebugLevel::Info,
-		true);
+	Message(PlayerController, TEXT("Guard sight debug requested against nearest Guard."), EHeistDebugLevel::Info, true);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugGuardAutomaticSight(
-	APlayerController* PlayerController,
-	const bool bEnabled)
+void UHeistDebugFunctionLibrary::DebugGuardAutomaticSight(APlayerController* PlayerController, const bool bEnabled)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	AHeistPlayerController* HeistPlayerController =
-		ResolveHeistPlayerController(PlayerController);
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
 	if (!IsValid(HeistPlayerController))
 	{
-		Message(
-			PlayerController,
-			TEXT("Guard automatic sight debug failed: invalid Heist player controller."),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, TEXT("Guard automatic sight debug failed: invalid Heist player controller."), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
 	HeistPlayerController->DebugRequestSetNearestGuardAutomaticSight(bEnabled);
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Guard automatic sight debug requested: Enabled=%s"),
-			bEnabled ? TEXT("true") : TEXT("false")),
-		EHeistDebugLevel::Info,
-		true);
+	Message(PlayerController, FString::Printf(TEXT("Guard automatic sight debug requested: Enabled=%s"), bEnabled ? TEXT("true") : TEXT("false")), EHeistDebugLevel::Info, true);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugGuardNoise(
-	APlayerController* PlayerController,
-	const float Distance)
+void UHeistDebugFunctionLibrary::DebugGuardNoise(APlayerController* PlayerController, const float Distance)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	AHeistPlayerController* HeistPlayerController =
-		ResolveHeistPlayerController(PlayerController);
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
 	if (!IsValid(HeistPlayerController))
 	{
-		Message(
-			PlayerController,
-			TEXT("Guard noise debug failed: invalid Heist player controller."),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, TEXT("Guard noise debug failed: invalid Heist player controller."), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
 	const float SafeDistance = FMath::Clamp(Distance, 0.0f, 5000.0f);
 	HeistPlayerController->DebugRequestReportGuardNoise(SafeDistance);
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Guard CoinImpact noise debug requested: Distance=%.1f"),
-			SafeDistance),
-		EHeistDebugLevel::Info,
-		true);
+	Message(PlayerController, FString::Printf(TEXT("Guard CoinImpact noise debug requested: Distance=%.1f"), SafeDistance), EHeistDebugLevel::Info, true);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugSetPlayerArrested(
-	APlayerController* PlayerController,
-	const bool bArrested)
+void UHeistDebugFunctionLibrary::DebugSetPlayerArrested(APlayerController* PlayerController, const bool bArrested)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -3952,11 +2385,7 @@ void UHeistDebugFunctionLibrary::DebugSetPlayerArrested(
 	}
 
 	HeistPlayerController->DebugRequestSetArrested(bArrested);
-	Message(
-		PlayerController,
-		FString::Printf(TEXT("Player arrest debug requested: Arrested=%s"), bArrested ? TEXT("true") : TEXT("false")),
-		EHeistDebugLevel::Info,
-		true);
+	Message(PlayerController, FString::Printf(TEXT("Player arrest debug requested: Arrested=%s"), bArrested ? TEXT("true") : TEXT("false")), EHeistDebugLevel::Info, true);
 #endif
 }
 
@@ -3966,12 +2395,8 @@ void UHeistDebugFunctionLibrary::DebugArrestDump(APlayerController* PlayerContro
 	return;
 #else
 	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
-	const AHeistPlayerState* HeistPlayerState = IsValid(HeistPlayerController)
-		? HeistPlayerController->GetPlayerState<AHeistPlayerState>()
-		: nullptr;
-	const AHeistPlayerCharacter* Character = IsValid(HeistPlayerController)
-		? HeistPlayerController->GetPawn<AHeistPlayerCharacter>()
-		: nullptr;
+	const AHeistPlayerState* HeistPlayerState = IsValid(HeistPlayerController) ? HeistPlayerController->GetPlayerState<AHeistPlayerState>() : nullptr;
+	const AHeistPlayerCharacter* Character = IsValid(HeistPlayerController) ? HeistPlayerController->GetPawn<AHeistPlayerCharacter>() : nullptr;
 	if (!IsValid(HeistPlayerController) || !IsValid(HeistPlayerState) || !IsValid(Character))
 	{
 		Message(PlayerController, TEXT("Arrest dump failed: missing local Heist player state or character."), EHeistDebugLevel::Warning, true);
@@ -3979,30 +2404,20 @@ void UHeistDebugFunctionLibrary::DebugArrestDump(APlayerController* PlayerContro
 	}
 
 	const UCharacterMovementComponent* MovementComponent = Character->GetCharacterMovement();
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Player arrest dump: PlayerId=%d Arrested=%s Escaped=%s MovementDisabled=%s Visible=%s Collision=%s InputMode=%s Cursor=%s IgnoreMove=%s IgnoreLook=%s"),
-			HeistPlayerState->HeistPlayerId,
-			HeistPlayerState->IsArrested() ? TEXT("true") : TEXT("false"),
-			HeistPlayerState->IsEscaped() ? TEXT("true") : TEXT("false"),
-			IsValid(MovementComponent) && MovementComponent->MovementMode == MOVE_None ? TEXT("true") : TEXT("false"),
-			Character->IsHidden() ? TEXT("false") : TEXT("true"),
-			Character->GetActorEnableCollision() ? TEXT("true") : TEXT("false"),
-			HeistPlayerController->GetLocalInputMode() == EHeistInputMode::Gameplay ? TEXT("Gameplay") : TEXT("NonGameplay"),
-			HeistPlayerController->bShowMouseCursor ? TEXT("true") : TEXT("false"),
-			HeistPlayerController->IsMoveInputIgnored() ? TEXT("true") : TEXT("false"),
-			HeistPlayerController->IsLookInputIgnored() ? TEXT("true") : TEXT("false")),
-		EHeistDebugLevel::Info,
-		true,
-		8.0f);
+	Message(PlayerController,
+			FString::Printf(TEXT("Player arrest dump: PlayerId=%d Arrested=%s Escaped=%s MovementDisabled=%s Visible=%s Collision=%s InputMode=%s Cursor=%s IgnoreMove=%s IgnoreLook=%s"),
+							HeistPlayerState->HeistPlayerId, HeistPlayerState->IsArrested() ? TEXT("true") : TEXT("false"), HeistPlayerState->IsEscaped() ? TEXT("true") : TEXT("false"),
+							IsValid(MovementComponent) && MovementComponent->MovementMode == MOVE_None ? TEXT("true") : TEXT("false"), Character->IsHidden() ? TEXT("false") : TEXT("true"),
+							Character->GetActorEnableCollision() ? TEXT("true") : TEXT("false"),
+							HeistPlayerController->GetLocalInputMode() == EHeistInputMode::Gameplay ? TEXT("Gameplay") : TEXT("NonGameplay"),
+							HeistPlayerController->bShowMouseCursor ? TEXT("true") : TEXT("false"), HeistPlayerController->IsMoveInputIgnored() ? TEXT("true") : TEXT("false"),
+							HeistPlayerController->IsLookInputIgnored() ? TEXT("true") : TEXT("false")),
+			EHeistDebugLevel::Info, true, 8.0f);
 	HeistPlayerController->DebugRequestDumpArrestState();
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugFootstepWeight(
-	APlayerController* PlayerController,
-	const float TotalLootWeight)
+void UHeistDebugFunctionLibrary::DebugFootstepWeight(APlayerController* PlayerController, const float TotalLootWeight)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -4016,11 +2431,7 @@ void UHeistDebugFunctionLibrary::DebugFootstepWeight(
 
 	const float SafeWeight = FMath::IsFinite(TotalLootWeight) ? FMath::Max(0.0f, TotalLootWeight) : 0.0f;
 	HeistPlayerController->DebugRequestSetFootstepWeight(SafeWeight);
-	Message(
-		PlayerController,
-		FString::Printf(TEXT("Footstep weight debug requested: TotalLootWeight=%.1f"), SafeWeight),
-		EHeistDebugLevel::Info,
-		true);
+	Message(PlayerController, FString::Printf(TEXT("Footstep weight debug requested: TotalLootWeight=%.1f"), SafeWeight), EHeistDebugLevel::Info, true);
 #endif
 }
 
@@ -4031,12 +2442,8 @@ void UHeistDebugFunctionLibrary::DebugFootstepWeight(
 void UHeistDebugFunctionLibrary::DebugFirstPersonHUDDump(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
-	AHeistHUD* HeistHUD = IsValid(PlayerController)
-		? Cast<AHeistHUD>(PlayerController->GetHUD())
-		: nullptr;
-	UHeistHUDWidget* HUDWidget = IsValid(HeistHUD)
-		? HeistHUD->GetMainHUDWidget()
-		: nullptr;
+	AHeistHUD* HeistHUD = IsValid(PlayerController) ? Cast<AHeistHUD>(PlayerController->GetHUD()) : nullptr;
+	UHeistHUDWidget* HUDWidget = IsValid(HeistHUD) ? HeistHUD->GetMainHUDWidget() : nullptr;
 	if (!IsValid(HUDWidget))
 	{
 		Message(PlayerController, TEXT("First-person HUD dump failed: missing local Heist HUD widget."), EHeistDebugLevel::Error, true);
@@ -4052,9 +2459,7 @@ void UHeistDebugFunctionLibrary::DebugFirstPersonHUDDump(APlayerController* Play
 
 #pragma region FirstPersonScaleDebug
 
-void UHeistDebugFunctionLibrary::DebugFirstPersonScaleCheck(
-	APlayerController* PlayerController,
-	const float ForwardDistance)
+void UHeistDebugFunctionLibrary::DebugFirstPersonScaleCheck(APlayerController* PlayerController, const float ForwardDistance)
 {
 #if !UE_BUILD_SHIPPING
 	if (!IsValid(PlayerController))
@@ -4064,9 +2469,7 @@ void UHeistDebugFunctionLibrary::DebugFirstPersonScaleCheck(
 	}
 
 	AHeistPlayerCharacter* HeistCharacter = PlayerController->GetPawn<AHeistPlayerCharacter>();
-	UCapsuleComponent* CapsuleComponent = IsValid(HeistCharacter)
-		? HeistCharacter->GetCapsuleComponent()
-		: nullptr;
+	UCapsuleComponent* CapsuleComponent = IsValid(HeistCharacter) ? HeistCharacter->GetCapsuleComponent() : nullptr;
 	UWorld* World = PlayerController->GetWorld();
 	if (!IsValid(HeistCharacter) || !IsValid(CapsuleComponent) || !IsValid(World))
 	{
@@ -4086,65 +2489,35 @@ void UHeistDebugFunctionLibrary::DebugFirstPersonScaleCheck(
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(HeistFirstPersonScaleCheck), false, HeistCharacter);
 
 	FHitResult CameraHit;
-	const bool bCameraObstructed = World->LineTraceSingleByChannel(
-		CameraHit,
-		CapsuleLocation,
-		CameraLocation,
-		ECC_Visibility,
-		QueryParams);
+	const bool bCameraObstructed = World->LineTraceSingleByChannel(CameraHit, CapsuleLocation, CameraLocation, ECC_Visibility, QueryParams);
 
 	constexpr float CeilingProbeDistance = 200.0f;
 	constexpr float MinimumCeilingClearance = 10.0f;
 	const FVector CapsuleTop = CapsuleLocation + FVector::UpVector * CapsuleHalfHeight;
 	FHitResult CeilingHit;
-	const bool bCeilingHit = World->LineTraceSingleByChannel(
-		CeilingHit,
-		CapsuleTop + FVector::UpVector,
-		CapsuleTop + FVector::UpVector * CeilingProbeDistance,
-		ECC_Visibility,
-		QueryParams);
-	const float CeilingClearance = bCeilingHit
-		? FVector::Distance(CapsuleTop, CeilingHit.ImpactPoint)
-		: CeilingProbeDistance;
+	const bool bCeilingHit = World->LineTraceSingleByChannel(CeilingHit, CapsuleTop + FVector::UpVector, CapsuleTop + FVector::UpVector * CeilingProbeDistance, ECC_Visibility, QueryParams);
+	const float CeilingClearance = bCeilingHit ? FVector::Distance(CapsuleTop, CeilingHit.ImpactPoint) : CeilingProbeDistance;
 
 	FVector ForwardDirection = CameraRotation.Vector();
 	ForwardDirection.Z = 0.0f;
 	ForwardDirection = ForwardDirection.GetSafeNormal();
 	const FVector ForwardEnd = CapsuleLocation + ForwardDirection * CheckedForwardDistance;
 	FHitResult ForwardHit;
-	const bool bForwardBlocked = CheckedForwardDistance > 0.0f && !ForwardDirection.IsNearlyZero()
-		&& World->SweepSingleByChannel(
-			ForwardHit,
-			CapsuleLocation,
-			ForwardEnd,
-			FQuat::Identity,
-			ECC_Pawn,
-			FCollisionShape::MakeCapsule(CapsuleRadius, CapsuleHalfHeight),
-			QueryParams);
+	const bool bForwardBlocked =
+		CheckedForwardDistance > 0.0f && !ForwardDirection.IsNearlyZero() &&
+		World->SweepSingleByChannel(ForwardHit, CapsuleLocation, ForwardEnd, FQuat::Identity, ECC_Pawn, FCollisionShape::MakeCapsule(CapsuleRadius, CapsuleHalfHeight), QueryParams);
 
-	const bool bAutomaticPass = !bCameraObstructed
-		&& (!bCeilingHit || CeilingClearance >= MinimumCeilingClearance);
+	const bool bAutomaticPass = !bCameraObstructed && (!bCeilingHit || CeilingClearance >= MinimumCeilingClearance);
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("First-person scale check: Character=%s Location=%s Camera=%s CapsuleRadius=%.1f CapsuleHalfHeight=%.1f CameraObstructed=%s CameraBlocker=%s CeilingHit=%s CeilingClearance=%.1f CeilingBlocker=%s ForwardDistance=%.1f ForwardBlocked=%s ForwardBlocker=%s AutoResult=%s"),
-			*GetNameSafe(HeistCharacter),
-			*CapsuleLocation.ToCompactString(),
-			*CameraLocation.ToCompactString(),
-			CapsuleRadius,
-			CapsuleHalfHeight,
-			bCameraObstructed ? TEXT("true") : TEXT("false"),
-			bCameraObstructed ? *GetNameSafe(CameraHit.GetActor()) : TEXT("None"),
-			bCeilingHit ? TEXT("true") : TEXT("false"),
-			CeilingClearance,
-			bCeilingHit ? *GetNameSafe(CeilingHit.GetActor()) : TEXT("None"),
-			CheckedForwardDistance,
-			bForwardBlocked ? TEXT("true") : TEXT("false"),
-			bForwardBlocked ? *GetNameSafe(ForwardHit.GetActor()) : TEXT("None"),
-			bAutomaticPass ? TEXT("PASS") : TEXT("FAIL")),
-		bAutomaticPass ? EHeistDebugLevel::Info : EHeistDebugLevel::Error,
-		true,
-		8.0f);
+			TEXT(
+				"First-person scale check: Character=%s Location=%s Camera=%s CapsuleRadius=%.1f CapsuleHalfHeight=%.1f CameraObstructed=%s CameraBlocker=%s CeilingHit=%s CeilingClearance=%.1f CeilingBlocker=%s ForwardDistance=%.1f ForwardBlocked=%s ForwardBlocker=%s AutoResult=%s"),
+			*GetNameSafe(HeistCharacter), *CapsuleLocation.ToCompactString(), *CameraLocation.ToCompactString(), CapsuleRadius, CapsuleHalfHeight, bCameraObstructed ? TEXT("true") : TEXT("false"),
+			bCameraObstructed ? *GetNameSafe(CameraHit.GetActor()) : TEXT("None"), bCeilingHit ? TEXT("true") : TEXT("false"), CeilingClearance,
+			bCeilingHit ? *GetNameSafe(CeilingHit.GetActor()) : TEXT("None"), CheckedForwardDistance, bForwardBlocked ? TEXT("true") : TEXT("false"),
+			bForwardBlocked ? *GetNameSafe(ForwardHit.GetActor()) : TEXT("None"), bAutomaticPass ? TEXT("PASS") : TEXT("FAIL")),
+		bAutomaticPass ? EHeistDebugLevel::Info : EHeistDebugLevel::Error, true, 8.0f);
 #endif
 }
 
@@ -4188,11 +2561,7 @@ void UHeistDebugFunctionLibrary::Message(const UObject* WorldContextObject, cons
 		MessageColor = FColor::Red;
 	}
 
-	GEngine->AddOnScreenDebugMessage(
-		INDEX_NONE,
-		FMath::Max(0.0f, Duration),
-		MessageColor,
-		FormattedMessage);
+	GEngine->AddOnScreenDebugMessage(INDEX_NONE, FMath::Max(0.0f, Duration), MessageColor, FormattedMessage);
 #endif
 }
 
@@ -4200,10 +2569,7 @@ void UHeistDebugFunctionLibrary::Message(const UObject* WorldContextObject, cons
 
 #pragma region RareLootLogging
 
-void UHeistDebugFunctionLibrary::DebugRareLootTimersStarted(
-	const UObject* WorldContextObject,
-	const TArray<float>& EventTimes,
-	const float WarningLeadTime)
+void UHeistDebugFunctionLibrary::DebugRareLootTimersStarted(const UObject* WorldContextObject, const TArray<float>& EventTimes, const float WarningLeadTime)
 {
 #if !UE_BUILD_SHIPPING
 	TArray<FString> TimeEntries;
@@ -4213,87 +2579,38 @@ void UHeistDebugFunctionLibrary::DebugRareLootTimersStarted(
 		TimeEntries.Add(FString::Printf(TEXT("%.2f"), EventTime));
 	}
 
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Rare Loot timers started: EventTimes=[%s] WarningLeadTime=%.2f"),
-			*FString::Join(TimeEntries, TEXT(",")),
-			WarningLeadTime));
+	Message(WorldContextObject, FString::Printf(TEXT("Rare Loot timers started: EventTimes=[%s] WarningLeadTime=%.2f"), *FString::Join(TimeEntries, TEXT(",")), WarningLeadTime));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugRareLootWarningStarted(
-	const UObject* WorldContextObject,
-	const int32 EventIndex,
-	const FName ItemId,
-	const float SpawnServerTime)
+void UHeistDebugFunctionLibrary::DebugRareLootWarningStarted(const UObject* WorldContextObject, const int32 EventIndex, const FName ItemId, const float SpawnServerTime)
 {
 #if !UE_BUILD_SHIPPING
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Rare Loot warning started: EventIndex=%d ItemId=%s SpawnServerTime=%.2f"),
-			EventIndex,
-			*ItemId.ToString(),
-			SpawnServerTime));
+	Message(WorldContextObject, FString::Printf(TEXT("Rare Loot warning started: EventIndex=%d ItemId=%s SpawnServerTime=%.2f"), EventIndex, *ItemId.ToString(), SpawnServerTime));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugRareLootSpawned(
-	const UObject* WorldContextObject,
-	const int32 EventIndex,
-	const UObject* LootActor,
-	const UObject* SpawnPoint,
-	const FName ItemId,
-	const FVector& WorldLocation)
+void UHeistDebugFunctionLibrary::DebugRareLootSpawned(const UObject* WorldContextObject, const int32 EventIndex, const UObject* LootActor, const UObject* SpawnPoint, const FName ItemId,
+													  const FVector& WorldLocation)
 {
 #if !UE_BUILD_SHIPPING
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Rare Loot spawned: EventIndex=%d LootActor=%s SpawnPoint=%s ItemId=%s Location=(%.1f,%.1f,%.1f)"),
-			EventIndex,
-			*GetNameSafe(LootActor),
-			*GetNameSafe(SpawnPoint),
-			*ItemId.ToString(),
-			WorldLocation.X,
-			WorldLocation.Y,
-			WorldLocation.Z));
+	Message(WorldContextObject, FString::Printf(TEXT("Rare Loot spawned: EventIndex=%d LootActor=%s SpawnPoint=%s ItemId=%s Location=(%.1f,%.1f,%.1f)"), EventIndex, *GetNameSafe(LootActor),
+												*GetNameSafe(SpawnPoint), *ItemId.ToString(), WorldLocation.X, WorldLocation.Y, WorldLocation.Z));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugRareLootEventFailed(
-	const UObject* WorldContextObject,
-	const int32 EventIndex,
-	const TCHAR* Reason)
+void UHeistDebugFunctionLibrary::DebugRareLootEventFailed(const UObject* WorldContextObject, const int32 EventIndex, const TCHAR* Reason)
 {
 #if !UE_BUILD_SHIPPING
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Rare Loot event failed: EventIndex=%d Reason=%s"),
-			EventIndex,
-			Reason),
-		EHeistDebugLevel::Warning);
+	Message(WorldContextObject, FString::Printf(TEXT("Rare Loot event failed: EventIndex=%d Reason=%s"), EventIndex, Reason), EHeistDebugLevel::Warning);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugRareLootPickedUp(
-	const UObject* WorldContextObject,
-	const int32 EventIndex,
-	const UObject* LootActor,
-	const UObject* Requester,
-	const FName ItemId)
+void UHeistDebugFunctionLibrary::DebugRareLootPickedUp(const UObject* WorldContextObject, const int32 EventIndex, const UObject* LootActor, const UObject* Requester, const FName ItemId)
 {
 #if !UE_BUILD_SHIPPING
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Rare Loot picked up: EventIndex=%d LootActor=%s Requester=%s ItemId=%s MarkerActive=false"),
-			EventIndex,
-			*GetNameSafe(LootActor),
-			*GetNameSafe(Requester),
-			*ItemId.ToString()));
+	Message(WorldContextObject, FString::Printf(TEXT("Rare Loot picked up: EventIndex=%d LootActor=%s Requester=%s ItemId=%s MarkerActive=false"), EventIndex, *GetNameSafe(LootActor),
+												*GetNameSafe(Requester), *ItemId.ToString()));
 #endif
 }
 
@@ -4306,10 +2623,7 @@ void UHeistDebugFunctionLibrary::DebugMissingInputAsset(const UObject* WorldCont
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(TEXT("%s is not assigned in the PlayerController Blueprint."), AssetName),
-		EHeistDebugLevel::Warning);
+	Message(WorldContextObject, FString::Printf(TEXT("%s is not assigned in the PlayerController Blueprint."), AssetName), EHeistDebugLevel::Warning);
 #endif
 }
 
@@ -4318,47 +2632,27 @@ void UHeistDebugFunctionLibrary::DebugInventoryOpenSkipped(const UObject* WorldC
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		TEXT("Inventory open request skipped: Inventory Widget/ViewModel setup is incomplete."),
-		EHeistDebugLevel::Warning);
+	Message(WorldContextObject, TEXT("Inventory open request skipped: Inventory Widget/ViewModel setup is incomplete."), EHeistDebugLevel::Warning);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugInventoryRequestRejected(
-	const UObject* WorldContextObject,
-	const TCHAR* RequestName,
-	const int32 InstanceId,
-	const TCHAR* Reason)
+void UHeistDebugFunctionLibrary::DebugInventoryRequestRejected(const UObject* WorldContextObject, const TCHAR* RequestName, const int32 InstanceId, const TCHAR* Reason)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Inventory request rejected: Request=%s InstanceId=%d Reason=%s"),
-			RequestName,
-			InstanceId,
-			Reason),
-		EHeistDebugLevel::Warning);
+	Message(WorldContextObject, FString::Printf(TEXT("Inventory request rejected: Request=%s InstanceId=%d Reason=%s"), RequestName, InstanceId, Reason), EHeistDebugLevel::Warning);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugInventoryDropAccepted(const UObject* WorldContextObject, const UObject* Character, const FName ItemId, const int32 InstanceId, const UObject* DroppedLootActor, const FVector& DropOrigin)
+void UHeistDebugFunctionLibrary::DebugInventoryDropAccepted(const UObject* WorldContextObject, const UObject* Character, const FName ItemId, const int32 InstanceId, const UObject* DroppedLootActor,
+															const FVector& DropOrigin)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Inventory drop accepted: Character=%s ItemId=%s InstanceId=%d WorldLoot=%s DropOrigin=%s"),
-			*GetNameSafe(Character),
-			*ItemId.ToString(),
-			InstanceId,
-			*GetNameSafe(DroppedLootActor),
-			*DropOrigin.ToCompactString()));
+	Message(WorldContextObject, FString::Printf(TEXT("Inventory drop accepted: Character=%s ItemId=%s InstanceId=%d WorldLoot=%s DropOrigin=%s"), *GetNameSafe(Character), *ItemId.ToString(),
+												InstanceId, *GetNameSafe(DroppedLootActor), *DropOrigin.ToCompactString()));
 #endif
 }
 
@@ -4367,12 +2661,7 @@ void UHeistDebugFunctionLibrary::DebugInventoryItemDefinitionLookupRejected(cons
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	UE_LOG(
-		LogHeistInventory,
-		Warning,
-		TEXT("Item definition lookup rejected: ItemId=%s Reason=%s"),
-		*ItemId.ToString(),
-		Reason);
+	UE_LOG(LogHeistInventory, Warning, TEXT("Item definition lookup rejected: ItemId=%s Reason=%s"), *ItemId.ToString(), Reason);
 #endif
 }
 
@@ -4383,46 +2672,23 @@ void UHeistDebugFunctionLibrary::DebugInventoryAddRejected(const UObject* OwnerA
 #else
 	if (GridColumnCount != INDEX_NONE && GridRowCount != INDEX_NONE)
 	{
-		UE_LOG(
-			LogHeistInventory,
-			Warning,
-			TEXT("Inventory add rejected: Owner=%s ItemId=%s Reason=%s Grid=%dx%d"),
-			*GetNameSafe(OwnerActor),
-			*ItemId.ToString(),
-			Reason,
-			GridColumnCount,
-			GridRowCount);
+		UE_LOG(LogHeistInventory, Warning, TEXT("Inventory add rejected: Owner=%s ItemId=%s Reason=%s Grid=%dx%d"), *GetNameSafe(OwnerActor), *ItemId.ToString(), Reason, GridColumnCount,
+			   GridRowCount);
 		return;
 	}
 
-	UE_LOG(
-		LogHeistInventory,
-		Warning,
-		TEXT("Inventory add rejected: Owner=%s ItemId=%s Reason=%s"),
-		*GetNameSafe(OwnerActor),
-		*ItemId.ToString(),
-		Reason);
+	UE_LOG(LogHeistInventory, Warning, TEXT("Inventory add rejected: Owner=%s ItemId=%s Reason=%s"), *GetNameSafe(OwnerActor), *ItemId.ToString(), Reason);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugInventoryItemAdded(const UObject* OwnerActor, const FName ItemId, const int32 InstanceId, const FIntPoint& GridPosition, const FIntPoint& PlacedSize, const bool bRotated, const int32 ItemCount)
+void UHeistDebugFunctionLibrary::DebugInventoryItemAdded(const UObject* OwnerActor, const FName ItemId, const int32 InstanceId, const FIntPoint& GridPosition, const FIntPoint& PlacedSize,
+														 const bool bRotated, const int32 ItemCount)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	UE_LOG(
-		LogHeistInventory,
-		Log,
-		TEXT("Inventory item added: Owner=%s ItemId=%s InstanceId=%d Grid=(%d,%d) Size=%dx%d Rotated=%s ItemCount=%d"),
-		*GetNameSafe(OwnerActor),
-		*ItemId.ToString(),
-		InstanceId,
-		GridPosition.X,
-		GridPosition.Y,
-		PlacedSize.X,
-		PlacedSize.Y,
-		bRotated ? TEXT("true") : TEXT("false"),
-		ItemCount);
+	UE_LOG(LogHeistInventory, Log, TEXT("Inventory item added: Owner=%s ItemId=%s InstanceId=%d Grid=(%d,%d) Size=%dx%d Rotated=%s ItemCount=%d"), *GetNameSafe(OwnerActor), *ItemId.ToString(),
+		   InstanceId, GridPosition.X, GridPosition.Y, PlacedSize.X, PlacedSize.Y, bRotated ? TEXT("true") : TEXT("false"), ItemCount);
 #endif
 }
 
@@ -4431,14 +2697,7 @@ void UHeistDebugFunctionLibrary::DebugInventoryItemMoved(const UObject* OwnerAct
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	UE_LOG(
-		LogHeistInventory,
-		Log,
-		TEXT("Inventory item moved: Owner=%s InstanceId=%d Grid=(%d,%d)"),
-		*GetNameSafe(OwnerActor),
-		InstanceId,
-		GridPosition.X,
-		GridPosition.Y);
+	UE_LOG(LogHeistInventory, Log, TEXT("Inventory item moved: Owner=%s InstanceId=%d Grid=(%d,%d)"), *GetNameSafe(OwnerActor), InstanceId, GridPosition.X, GridPosition.Y);
 #endif
 }
 
@@ -4447,13 +2706,7 @@ void UHeistDebugFunctionLibrary::DebugInventoryItemRotated(const UObject* OwnerA
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	UE_LOG(
-		LogHeistInventory,
-		Log,
-		TEXT("Inventory item rotated: Owner=%s InstanceId=%d Rotated=%s"),
-		*GetNameSafe(OwnerActor),
-		InstanceId,
-		bRotated ? TEXT("true") : TEXT("false"));
+	UE_LOG(LogHeistInventory, Log, TEXT("Inventory item rotated: Owner=%s InstanceId=%d Rotated=%s"), *GetNameSafe(OwnerActor), InstanceId, bRotated ? TEXT("true") : TEXT("false"));
 #endif
 }
 
@@ -4462,14 +2715,7 @@ void UHeistDebugFunctionLibrary::DebugInventoryItemRemoved(const UObject* OwnerA
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	UE_LOG(
-		LogHeistInventory,
-		Log,
-		TEXT("Inventory item removed: Owner=%s ItemId=%s InstanceId=%d ItemCount=%d"),
-		*GetNameSafe(OwnerActor),
-		*ItemId.ToString(),
-		InstanceId,
-		ItemCount);
+	UE_LOG(LogHeistInventory, Log, TEXT("Inventory item removed: Owner=%s ItemId=%s InstanceId=%d ItemCount=%d"), *GetNameSafe(OwnerActor), *ItemId.ToString(), InstanceId, ItemCount);
 #endif
 }
 
@@ -4478,14 +2724,7 @@ void UHeistDebugFunctionLibrary::DebugQuickSlotAssigned(const UObject* OwnerActo
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	UE_LOG(
-		LogHeistInventory,
-		Log,
-		TEXT("QuickSlot assigned: Owner=%s Slot=%d InstanceId=%d ItemId=%s"),
-		*GetNameSafe(OwnerActor),
-		SlotTypeValue,
-		InstanceId,
-		*ItemId.ToString());
+	UE_LOG(LogHeistInventory, Log, TEXT("QuickSlot assigned: Owner=%s Slot=%d InstanceId=%d ItemId=%s"), *GetNameSafe(OwnerActor), SlotTypeValue, InstanceId, *ItemId.ToString());
 #endif
 }
 
@@ -4496,27 +2735,12 @@ void UHeistDebugFunctionLibrary::DebugInventoryOccupancyInvalid(const int32 Inst
 #else
 	if (ItemSize != FIntPoint::ZeroValue)
 	{
-		UE_LOG(
-			LogHeistInventory,
-			Error,
-			TEXT("Inventory occupancy invalid: InstanceId=%d ItemId=%s Grid=(%d,%d) Size=%dx%d Reason=%s"),
-			InstanceId,
-			*ItemId.ToString(),
-			GridPosition.X,
-			GridPosition.Y,
-			ItemSize.X,
-			ItemSize.Y,
-			Reason);
+		UE_LOG(LogHeistInventory, Error, TEXT("Inventory occupancy invalid: InstanceId=%d ItemId=%s Grid=(%d,%d) Size=%dx%d Reason=%s"), InstanceId, *ItemId.ToString(), GridPosition.X, GridPosition.Y,
+			   ItemSize.X, ItemSize.Y, Reason);
 		return;
 	}
 
-	UE_LOG(
-		LogHeistInventory,
-		Error,
-		TEXT("Inventory occupancy invalid: InstanceId=%d ItemId=%s Reason=%s"),
-		InstanceId,
-		*ItemId.ToString(),
-		Reason);
+	UE_LOG(LogHeistInventory, Error, TEXT("Inventory occupancy invalid: InstanceId=%d ItemId=%s Reason=%s"), InstanceId, *ItemId.ToString(), Reason);
 #endif
 }
 
@@ -4525,12 +2749,7 @@ void UHeistDebugFunctionLibrary::DebugLootPickupRequestReceived(const UObject* W
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Loot pickup request received: Character=%s Target=%s"),
-			*GetNameSafe(Character),
-			*GetNameSafe(TargetLootActor)));
+	Message(WorldContextObject, FString::Printf(TEXT("Loot pickup request received: Character=%s Target=%s"), *GetNameSafe(Character), *GetNameSafe(TargetLootActor)));
 #endif
 }
 
@@ -4539,14 +2758,8 @@ void UHeistDebugFunctionLibrary::DebugLootPickupRequestRejected(const UObject* W
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Loot pickup request rejected: Target=%s Reason=%s%s"),
-			*GetNameSafe(TargetLootActor),
-			Reason,
-			*FormatOptionalDistance(Distance)),
-		EHeistDebugLevel::Warning);
+	Message(WorldContextObject, FString::Printf(TEXT("Loot pickup request rejected: Target=%s Reason=%s%s"), *GetNameSafe(TargetLootActor), Reason, *FormatOptionalDistance(Distance)),
+			EHeistDebugLevel::Warning);
 #endif
 }
 
@@ -4555,34 +2768,18 @@ void UHeistDebugFunctionLibrary::DebugLootPickupRequestAccepted(const UObject* W
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Loot pickup request accepted: Target=%s ItemId=%s InstanceId=%d Distance=%.1f InventoryCommitted=true"),
-			*GetNameSafe(TargetLootActor),
-			*ItemId.ToString(),
-			InstanceId,
-			Distance));
+	Message(WorldContextObject, FString::Printf(TEXT("Loot pickup request accepted: Target=%s ItemId=%s InstanceId=%d Distance=%.1f InventoryCommitted=true"), *GetNameSafe(TargetLootActor),
+												*ItemId.ToString(), InstanceId, Distance));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugEscapeRequestRejected(
-	const UObject* WorldContextObject,
-	const UObject* TargetVentActor,
-	const TCHAR* Reason,
-	const float Distance)
+void UHeistDebugFunctionLibrary::DebugEscapeRequestRejected(const UObject* WorldContextObject, const UObject* TargetVentActor, const TCHAR* Reason, const float Distance)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Escape request rejected: Vent=%s Reason=%s%s"),
-			*GetNameSafe(TargetVentActor),
-			Reason,
-			*FormatOptionalDistance(Distance)),
-		EHeistDebugLevel::Warning);
+	Message(WorldContextObject, FString::Printf(TEXT("Escape request rejected: Vent=%s Reason=%s%s"), *GetNameSafe(TargetVentActor), Reason, *FormatOptionalDistance(Distance)),
+			EHeistDebugLevel::Warning);
 #endif
 }
 
@@ -4591,29 +2788,18 @@ void UHeistDebugFunctionLibrary::DebugEscapeRequestAccepted(const UObject* World
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Escape request accepted: Character=%s Vent=%s Distance=%.1f State=Casting"),
-			*GetNameSafe(Character),
-			*GetNameSafe(TargetVentActor),
-			Distance));
+	Message(WorldContextObject, FString::Printf(TEXT("Escape request accepted: Character=%s Vent=%s Distance=%.1f State=Casting"), *GetNameSafe(Character), *GetNameSafe(TargetVentActor), Distance));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugEscapeCastStarted(const UObject* WorldContextObject, const UObject* Character, const UObject* TargetVentActor, const float DurationSeconds, const float EndServerTime)
+void UHeistDebugFunctionLibrary::DebugEscapeCastStarted(const UObject* WorldContextObject, const UObject* Character, const UObject* TargetVentActor, const float DurationSeconds,
+														const float EndServerTime)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Escape cast started: Character=%s Vent=%s Duration=%.2f EndServerTime=%.2f"),
-			*GetNameSafe(Character),
-			*GetNameSafe(TargetVentActor),
-			DurationSeconds,
-			EndServerTime));
+	Message(WorldContextObject, FString::Printf(TEXT("Escape cast started: Character=%s Vent=%s Duration=%.2f EndServerTime=%.2f"), *GetNameSafe(Character), *GetNameSafe(TargetVentActor),
+												DurationSeconds, EndServerTime));
 #endif
 }
 
@@ -4622,13 +2808,8 @@ void UHeistDebugFunctionLibrary::DebugEscapeCastStateReplicated(const UObject* W
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Escape cast state replicated: Character=%s IsActive=%s EndServerTime=%.2f"),
-			*GetNameSafe(Character),
-			bIsActive ? TEXT("true") : TEXT("false"),
-			EndServerTime));
+	Message(WorldContextObject,
+			FString::Printf(TEXT("Escape cast state replicated: Character=%s IsActive=%s EndServerTime=%.2f"), *GetNameSafe(Character), bIsActive ? TEXT("true") : TEXT("false"), EndServerTime));
 #endif
 }
 
@@ -4637,12 +2818,7 @@ void UHeistDebugFunctionLibrary::DebugEscapeCastCompleted(const UObject* WorldCo
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Escape cast completed: Character=%s Vent=%s Result=Escaped"),
-			*GetNameSafe(Character),
-			*GetNameSafe(TargetVentActor)));
+	Message(WorldContextObject, FString::Printf(TEXT("Escape cast completed: Character=%s Vent=%s Result=Escaped"), *GetNameSafe(Character), *GetNameSafe(TargetVentActor)));
 #endif
 }
 
@@ -4651,109 +2827,57 @@ void UHeistDebugFunctionLibrary::DebugEscapeCastCancelled(const UObject* WorldCo
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Escape cast cancelled: Character=%s Vent=%s Reason=%s"),
-			*CharacterName,
-			*VentName,
-			Reason));
+	Message(WorldContextObject, FString::Printf(TEXT("Escape cast cancelled: Character=%s Vent=%s Reason=%s"), *CharacterName, *VentName, Reason));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugObservationRequestRejected(
-	const UObject* WorldContextObject,
-	const UObject* TargetDisplayCase,
-	const TCHAR* Reason,
-	const float Distance)
+void UHeistDebugFunctionLibrary::DebugObservationRequestRejected(const UObject* WorldContextObject, const UObject* TargetDisplayCase, const TCHAR* Reason, const float Distance)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Observation request rejected: Case=%s Reason=%s Distance=%s"),
-			*GetNameSafe(TargetDisplayCase),
-			Reason,
-			*FormatOptionalDistance(Distance)),
-		EHeistDebugLevel::Warning);
+	Message(WorldContextObject, FString::Printf(TEXT("Observation request rejected: Case=%s Reason=%s Distance=%s"), *GetNameSafe(TargetDisplayCase), Reason, *FormatOptionalDistance(Distance)),
+			EHeistDebugLevel::Warning);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugObservationCastStarted(
-	const UObject* WorldContextObject,
-	const UObject* Character,
-	const UObject* TargetDisplayCase,
-	const float DurationSeconds,
-	const float EndServerTime)
+void UHeistDebugFunctionLibrary::DebugObservationCastStarted(const UObject* WorldContextObject, const UObject* Character, const UObject* TargetDisplayCase, const float DurationSeconds,
+															 const float EndServerTime)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Observation cast started: Character=%s Case=%s Duration=%.2f EndServerTime=%.2f ServerApproved=true"),
-			*GetNameSafe(Character),
-			*GetNameSafe(TargetDisplayCase),
-			DurationSeconds,
-			EndServerTime));
+	Message(WorldContextObject, FString::Printf(TEXT("Observation cast started: Character=%s Case=%s Duration=%.2f EndServerTime=%.2f ServerApproved=true"), *GetNameSafe(Character),
+												*GetNameSafe(TargetDisplayCase), DurationSeconds, EndServerTime));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugObservationCastStateReplicated(
-	const UObject* WorldContextObject,
-	const UObject* Character,
-	const bool bIsActive,
-	const float EndServerTime)
+void UHeistDebugFunctionLibrary::DebugObservationCastStateReplicated(const UObject* WorldContextObject, const UObject* Character, const bool bIsActive, const float EndServerTime)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Observation cast state replicated: Character=%s IsActive=%s EndServerTime=%.2f"),
-			*GetNameSafe(Character),
-			bIsActive ? TEXT("true") : TEXT("false"),
-			EndServerTime));
+	Message(WorldContextObject,
+			FString::Printf(TEXT("Observation cast state replicated: Character=%s IsActive=%s EndServerTime=%.2f"), *GetNameSafe(Character), bIsActive ? TEXT("true") : TEXT("false"), EndServerTime));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugObservationCastCompleted(
-	const UObject* WorldContextObject,
-	const UObject* Character,
-	const UObject* TargetDisplayCase)
+void UHeistDebugFunctionLibrary::DebugObservationCastCompleted(const UObject* WorldContextObject, const UObject* Character, const UObject* TargetDisplayCase)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Observation cast completed: Character=%s Case=%s Result=Observed SessionRetained=true"),
-			*GetNameSafe(Character),
-			*GetNameSafe(TargetDisplayCase)));
+	Message(WorldContextObject,
+			FString::Printf(TEXT("Observation cast completed: Character=%s Case=%s Result=Observed SessionRetained=true"), *GetNameSafe(Character), *GetNameSafe(TargetDisplayCase)));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugObservationCastCancelled(
-	const UObject* WorldContextObject,
-	const FString& CharacterName,
-	const FString& DisplayCaseName,
-	const TCHAR* Reason)
+void UHeistDebugFunctionLibrary::DebugObservationCastCancelled(const UObject* WorldContextObject, const FString& CharacterName, const FString& DisplayCaseName, const TCHAR* Reason)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Observation cast cancelled: Character=%s Case=%s Reason=%s SessionReleased=true"),
-			*CharacterName,
-			*DisplayCaseName,
-			Reason));
+	Message(WorldContextObject, FString::Printf(TEXT("Observation cast cancelled: Character=%s Case=%s Reason=%s SessionReleased=true"), *CharacterName, *DisplayCaseName, Reason));
 #endif
 }
 
@@ -4763,20 +2887,11 @@ void UHeistDebugFunctionLibrary::DebugLootScoreWeightRejected(const UObject* Wor
 	return;
 #else
 	const bool bHasDeltaContext = ScoreDelta != INDEX_NONE || WeightDelta >= 0.0f;
-	Message(
-		WorldContextObject,
-		bHasDeltaContext
-			? FString::Printf(
-				TEXT("Loot score/weight rejected: PlayerState=%s Reason=%s ScoreDelta=%d WeightDelta=%.2f"),
-				*GetNameSafe(WorldContextObject),
-				Reason,
-				ScoreDelta,
-				WeightDelta)
-			: FString::Printf(
-				TEXT("Loot score/weight rejected: PlayerState=%s Reason=%s"),
-				*GetNameSafe(WorldContextObject),
-				Reason),
-		EHeistDebugLevel::Warning);
+	Message(WorldContextObject,
+			bHasDeltaContext
+				? FString::Printf(TEXT("Loot score/weight rejected: PlayerState=%s Reason=%s ScoreDelta=%d WeightDelta=%.2f"), *GetNameSafe(WorldContextObject), Reason, ScoreDelta, WeightDelta)
+				: FString::Printf(TEXT("Loot score/weight rejected: PlayerState=%s Reason=%s"), *GetNameSafe(WorldContextObject), Reason),
+			EHeistDebugLevel::Warning);
 #endif
 }
 
@@ -4785,15 +2900,8 @@ void UHeistDebugFunctionLibrary::DebugLootScoreWeightApplied(const UObject* Worl
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Loot score/weight applied: PlayerState=%s ScoreDelta=%d WeightDelta=%.2f TotalScore=%d TotalWeight=%.2f"),
-			*GetNameSafe(WorldContextObject),
-			ScoreDelta,
-			WeightDelta,
-			TotalScore,
-			TotalWeight));
+	Message(WorldContextObject, FString::Printf(TEXT("Loot score/weight applied: PlayerState=%s ScoreDelta=%d WeightDelta=%.2f TotalScore=%d TotalWeight=%.2f"), *GetNameSafe(WorldContextObject),
+												ScoreDelta, WeightDelta, TotalScore, TotalWeight));
 #endif
 }
 
@@ -4802,15 +2910,8 @@ void UHeistDebugFunctionLibrary::DebugLootScoreWeightRemoved(const UObject* Worl
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Loot score/weight removed: PlayerState=%s ScoreDelta=%d WeightDelta=%.2f TotalScore=%d TotalWeight=%.2f"),
-			*GetNameSafe(WorldContextObject),
-			ScoreDelta,
-			WeightDelta,
-			TotalScore,
-			TotalWeight));
+	Message(WorldContextObject, FString::Printf(TEXT("Loot score/weight removed: PlayerState=%s ScoreDelta=%d WeightDelta=%.2f TotalScore=%d TotalWeight=%.2f"), *GetNameSafe(WorldContextObject),
+												ScoreDelta, WeightDelta, TotalScore, TotalWeight));
 #endif
 }
 
@@ -4819,13 +2920,7 @@ void UHeistDebugFunctionLibrary::DebugPlayerEscapeStateRejected(const UObject* W
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Player escape state rejected: PlayerState=%s Reason=%s"),
-			*GetNameSafe(WorldContextObject),
-			Reason),
-		EHeistDebugLevel::Warning);
+	Message(WorldContextObject, FString::Printf(TEXT("Player escape state rejected: PlayerState=%s Reason=%s"), *GetNameSafe(WorldContextObject), Reason), EHeistDebugLevel::Warning);
 #endif
 }
 
@@ -4834,14 +2929,8 @@ void UHeistDebugFunctionLibrary::DebugPlayerEscapeStateCommitted(const UObject* 
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Player escape state committed: PlayerState=%s HeistPlayerId=%d IsEscaped=true FinalScore=%d EscapeTime=%.2f ScoreFrozen=true"),
-			*GetNameSafe(WorldContextObject),
-			HeistPlayerId,
-			FinalScore,
-			EscapeTimeSeconds));
+	Message(WorldContextObject, FString::Printf(TEXT("Player escape state committed: PlayerState=%s HeistPlayerId=%d IsEscaped=true FinalScore=%d EscapeTime=%.2f ScoreFrozen=true"),
+												*GetNameSafe(WorldContextObject), HeistPlayerId, FinalScore, EscapeTimeSeconds));
 #endif
 }
 
@@ -4850,13 +2939,8 @@ void UHeistDebugFunctionLibrary::DebugPlayerEscapeStateReplicated(const UObject*
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Player escape state replicated: PlayerState=%s HeistPlayerId=%d IsEscaped=%s"),
-			*GetNameSafe(WorldContextObject),
-			HeistPlayerId,
-			bEscaped ? TEXT("true") : TEXT("false")));
+	Message(WorldContextObject, FString::Printf(TEXT("Player escape state replicated: PlayerState=%s HeistPlayerId=%d IsEscaped=%s"), *GetNameSafe(WorldContextObject), HeistPlayerId,
+												bEscaped ? TEXT("true") : TEXT("false")));
 #endif
 }
 
@@ -4865,12 +2949,7 @@ void UHeistDebugFunctionLibrary::DebugPlayerStateScoreReplicated(const UObject* 
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("PlayerState score replicated: PlayerState=%s TotalLootScore=%d"),
-			*GetNameSafe(WorldContextObject),
-			TotalLootScore));
+	Message(WorldContextObject, FString::Printf(TEXT("PlayerState score replicated: PlayerState=%s TotalLootScore=%d"), *GetNameSafe(WorldContextObject), TotalLootScore));
 #endif
 }
 
@@ -4879,12 +2958,7 @@ void UHeistDebugFunctionLibrary::DebugPlayerStateWeightReplicated(const UObject*
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("PlayerState weight replicated: PlayerState=%s TotalLootWeight=%.2f"),
-			*GetNameSafe(WorldContextObject),
-			TotalLootWeight));
+	Message(WorldContextObject, FString::Printf(TEXT("PlayerState weight replicated: PlayerState=%s TotalLootWeight=%.2f"), *GetNameSafe(WorldContextObject), TotalLootWeight));
 #endif
 }
 
@@ -4893,14 +2967,10 @@ void UHeistDebugFunctionLibrary::DebugWeightMovementSkipped(const UObject* World
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Weight movement speed skipped: %s=%s Reason=%s"),
-			WorldContextObject && WorldContextObject->IsA<APlayerState>() ? TEXT("PlayerState") : TEXT("Character"),
-			*GetNameSafe(WorldContextObject),
-			Reason),
-		EHeistDebugLevel::Warning);
+	Message(WorldContextObject,
+			FString::Printf(TEXT("Weight movement speed skipped: %s=%s Reason=%s"), WorldContextObject && WorldContextObject->IsA<APlayerState>() ? TEXT("PlayerState") : TEXT("Character"),
+							*GetNameSafe(WorldContextObject), Reason),
+			EHeistDebugLevel::Warning);
 #endif
 }
 
@@ -4909,14 +2979,8 @@ void UHeistDebugFunctionLibrary::DebugWeightMovementSpeedApplied(const UObject* 
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Weight movement speed applied: Character=%s TotalWeight=%.2f BaseSpeed=%.2f FinalSpeed=%.2f"),
-			*GetNameSafe(WorldContextObject),
-			TotalWeight,
-			BaseSpeed,
-			FinalSpeed));
+	Message(WorldContextObject,
+			FString::Printf(TEXT("Weight movement speed applied: Character=%s TotalWeight=%.2f BaseSpeed=%.2f FinalSpeed=%.2f"), *GetNameSafe(WorldContextObject), TotalWeight, BaseSpeed, FinalSpeed));
 #endif
 }
 
@@ -4925,252 +2989,124 @@ void UHeistDebugFunctionLibrary::DebugThrowableUseRejected(const UObject* WorldC
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Throwable use rejected: Slot=%s ItemId=%s Reason=%s"),
-			ToQuickSlotText(SlotType),
-			*ItemId.ToString(),
-			Reason),
-		EHeistDebugLevel::Warning);
+	Message(WorldContextObject, FString::Printf(TEXT("Throwable use rejected: Slot=%s ItemId=%s Reason=%s"), ToQuickSlotText(SlotType), *ItemId.ToString(), Reason), EHeistDebugLevel::Warning);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugThrowableProjectileSpawned(const UObject* WorldContextObject, const UObject* Character, const UObject* Projectile, const FName ItemId, const FVector& TargetWorldLocation, const FVector& LaunchDirection, const float ProjectileSpeed, const bool bDebugBypassInventory)
+void UHeistDebugFunctionLibrary::DebugThrowableProjectileSpawned(const UObject* WorldContextObject, const UObject* Character, const UObject* Projectile, const FName ItemId,
+																 const FVector& TargetWorldLocation, const FVector& LaunchDirection, const float ProjectileSpeed, const bool bDebugBypassInventory)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
 	Message(
 		WorldContextObject,
-		FString::Printf(
-			TEXT("Throwable projectile spawned: Character=%s Projectile=%s ItemId=%s CrosshairTarget=(%.1f,%.1f,%.1f) LaunchDirection=(%.3f,%.3f,%.3f) Speed=%.1f DebugBypassInventory=%s"),
-			*GetNameSafe(Character),
-			*GetNameSafe(Projectile),
-			*ItemId.ToString(),
-			TargetWorldLocation.X,
-			TargetWorldLocation.Y,
-			TargetWorldLocation.Z,
-			LaunchDirection.X,
-			LaunchDirection.Y,
-			LaunchDirection.Z,
-			ProjectileSpeed,
-			bDebugBypassInventory ? TEXT("true") : TEXT("false")));
+		FString::Printf(TEXT("Throwable projectile spawned: Character=%s Projectile=%s ItemId=%s CrosshairTarget=(%.1f,%.1f,%.1f) LaunchDirection=(%.3f,%.3f,%.3f) Speed=%.1f DebugBypassInventory=%s"),
+						*GetNameSafe(Character), *GetNameSafe(Projectile), *ItemId.ToString(), TargetWorldLocation.X, TargetWorldLocation.Y, TargetWorldLocation.Z, LaunchDirection.X,
+						LaunchDirection.Y, LaunchDirection.Z, ProjectileSpeed, bDebugBypassInventory ? TEXT("true") : TEXT("false")));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugThrowableProjectileImpact(const UObject* WorldContextObject, const UObject* Projectile, const UObject* OtherActor, const FName ItemId, const FVector& ImpactLocation)
+void UHeistDebugFunctionLibrary::DebugThrowableProjectileImpact(const UObject* WorldContextObject, const UObject* Projectile, const UObject* OtherActor, const FName ItemId,
+																const FVector& ImpactLocation)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Throwable projectile impact: Projectile=%s OtherActor=%s ItemId=%s Location=(%.1f,%.1f,%.1f)"),
-			*GetNameSafe(Projectile),
-			*GetNameSafe(OtherActor),
-			*ItemId.ToString(),
-			ImpactLocation.X,
-			ImpactLocation.Y,
-			ImpactLocation.Z));
+	Message(WorldContextObject, FString::Printf(TEXT("Throwable projectile impact: Projectile=%s OtherActor=%s ItemId=%s Location=(%.1f,%.1f,%.1f)"), *GetNameSafe(Projectile),
+												*GetNameSafe(OtherActor), *ItemId.ToString(), ImpactLocation.X, ImpactLocation.Y, ImpactLocation.Z));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugSmokeCloudSpawned(
-	const UObject* WorldContextObject,
-	const UObject* Projectile,
-	const UObject* SmokeCloud,
-	const FName ItemId,
-	const FVector& WorldLocation,
-	const float Radius,
-	const float DurationSeconds)
+void UHeistDebugFunctionLibrary::DebugSmokeCloudSpawned(const UObject* WorldContextObject, const UObject* Projectile, const UObject* SmokeCloud, const FName ItemId, const FVector& WorldLocation,
+														const float Radius, const float DurationSeconds)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Smoke cloud spawned: Projectile=%s SmokeCloud=%s ItemId=%s Location=(%.1f,%.1f,%.1f) Radius=%.1f Duration=%.2f BlocksAISight=true"),
-			*GetNameSafe(Projectile),
-			*GetNameSafe(SmokeCloud),
-			*ItemId.ToString(),
-			WorldLocation.X,
-			WorldLocation.Y,
-			WorldLocation.Z,
-			Radius,
-			DurationSeconds));
+	Message(WorldContextObject, FString::Printf(TEXT("Smoke cloud spawned: Projectile=%s SmokeCloud=%s ItemId=%s Location=(%.1f,%.1f,%.1f) Radius=%.1f Duration=%.2f BlocksAISight=true"),
+												*GetNameSafe(Projectile), *GetNameSafe(SmokeCloud), *ItemId.ToString(), WorldLocation.X, WorldLocation.Y, WorldLocation.Z, Radius, DurationSeconds));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugSmokeCloudStateReplicated(
-	const UObject* WorldContextObject,
-	const UObject* SmokeCloud,
-	const float Radius,
-	const float EndServerTime,
-	const bool bBlocksAISight)
+void UHeistDebugFunctionLibrary::DebugSmokeCloudStateReplicated(const UObject* WorldContextObject, const UObject* SmokeCloud, const float Radius, const float EndServerTime, const bool bBlocksAISight)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Smoke cloud state replicated: SmokeCloud=%s Radius=%.1f EndServerTime=%.2f BlocksAISight=%s"),
-			*GetNameSafe(SmokeCloud),
-			Radius,
-			EndServerTime,
-			bBlocksAISight ? TEXT("true") : TEXT("false")));
+	Message(WorldContextObject, FString::Printf(TEXT("Smoke cloud state replicated: SmokeCloud=%s Radius=%.1f EndServerTime=%.2f BlocksAISight=%s"), *GetNameSafe(SmokeCloud), Radius, EndServerTime,
+												bBlocksAISight ? TEXT("true") : TEXT("false")));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugSmokeCloudOverlapChanged(
-	const UObject* WorldContextObject,
-	const UObject* SmokeCloud,
-	const UObject* Actor,
-	const bool bInsideSmoke,
-	const float RemainingSeconds)
+void UHeistDebugFunctionLibrary::DebugSmokeCloudOverlapChanged(const UObject* WorldContextObject, const UObject* SmokeCloud, const UObject* Actor, const bool bInsideSmoke,
+															   const float RemainingSeconds)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Smoke cloud overlap changed: SmokeCloud=%s Actor=%s InSmoke=%s Remaining=%.2f"),
-			*GetNameSafe(SmokeCloud),
-			*GetNameSafe(Actor),
-			bInsideSmoke ? TEXT("true") : TEXT("false"),
-			RemainingSeconds));
+	Message(WorldContextObject, FString::Printf(TEXT("Smoke cloud overlap changed: SmokeCloud=%s Actor=%s InSmoke=%s Remaining=%.2f"), *GetNameSafe(SmokeCloud), *GetNameSafe(Actor),
+												bInsideSmoke ? TEXT("true") : TEXT("false"), RemainingSeconds));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugTrapPlacementCastStarted(
-	const UObject* WorldContextObject,
-	const UObject* Character,
-	const FName ItemId,
-	const FVector& TargetWorldLocation,
-	const float DurationSeconds,
-	const float EndServerTime)
+void UHeistDebugFunctionLibrary::DebugTrapPlacementCastStarted(const UObject* WorldContextObject, const UObject* Character, const FName ItemId, const FVector& TargetWorldLocation,
+															   const float DurationSeconds, const float EndServerTime)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Trap placement cast started: Character=%s ItemId=%s Target=(%.1f,%.1f,%.1f) Duration=%.2f EndServerTime=%.2f"),
-			*GetNameSafe(Character),
-			*ItemId.ToString(),
-			TargetWorldLocation.X,
-			TargetWorldLocation.Y,
-			TargetWorldLocation.Z,
-			DurationSeconds,
-			EndServerTime));
+	Message(WorldContextObject, FString::Printf(TEXT("Trap placement cast started: Character=%s ItemId=%s Target=(%.1f,%.1f,%.1f) Duration=%.2f EndServerTime=%.2f"), *GetNameSafe(Character),
+												*ItemId.ToString(), TargetWorldLocation.X, TargetWorldLocation.Y, TargetWorldLocation.Z, DurationSeconds, EndServerTime));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugTrapPlacementCastStateReplicated(
-	const UObject* WorldContextObject,
-	const UObject* Character,
-	const bool bIsActive,
-	const float EndServerTime)
+void UHeistDebugFunctionLibrary::DebugTrapPlacementCastStateReplicated(const UObject* WorldContextObject, const UObject* Character, const bool bIsActive, const float EndServerTime)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Trap placement cast state replicated: Character=%s IsActive=%s EndServerTime=%.2f"),
-			*GetNameSafe(Character),
-			bIsActive ? TEXT("true") : TEXT("false"),
-			EndServerTime));
+	Message(WorldContextObject, FString::Printf(TEXT("Trap placement cast state replicated: Character=%s IsActive=%s EndServerTime=%.2f"), *GetNameSafe(Character),
+												bIsActive ? TEXT("true") : TEXT("false"), EndServerTime));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugTrapPlacementCastCancelled(
-	const UObject* WorldContextObject,
-	const FString& CharacterName,
-	const FName ItemId,
-	const TCHAR* Reason)
+void UHeistDebugFunctionLibrary::DebugTrapPlacementCastCancelled(const UObject* WorldContextObject, const FString& CharacterName, const FName ItemId, const TCHAR* Reason)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Trap placement cast cancelled: Character=%s ItemId=%s Reason=%s"),
-			*CharacterName,
-			*ItemId.ToString(),
-			Reason),
-		EHeistDebugLevel::Warning);
+	Message(WorldContextObject, FString::Printf(TEXT("Trap placement cast cancelled: Character=%s ItemId=%s Reason=%s"), *CharacterName, *ItemId.ToString(), Reason), EHeistDebugLevel::Warning);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugTrapPlaced(
-	const UObject* WorldContextObject,
-	const UObject* Character,
-	const UObject* TrapActor,
-	const FName ItemId,
-	const FVector& WorldLocation)
+void UHeistDebugFunctionLibrary::DebugTrapPlaced(const UObject* WorldContextObject, const UObject* Character, const UObject* TrapActor, const FName ItemId, const FVector& WorldLocation)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Trap placed: Character=%s Trap=%s ItemId=%s Location=(%.1f,%.1f,%.1f)"),
-			*GetNameSafe(Character),
-			*GetNameSafe(TrapActor),
-			*ItemId.ToString(),
-			WorldLocation.X,
-			WorldLocation.Y,
-			WorldLocation.Z));
+	Message(WorldContextObject, FString::Printf(TEXT("Trap placed: Character=%s Trap=%s ItemId=%s Location=(%.1f,%.1f,%.1f)"), *GetNameSafe(Character), *GetNameSafe(TrapActor), *ItemId.ToString(),
+												WorldLocation.X, WorldLocation.Y, WorldLocation.Z));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugTrapTriggered(
-	const UObject* WorldContextObject,
-	const UObject* TrapActor,
-	const UObject* TriggeringActor,
-	const FName ItemId,
-	const float DurationSeconds)
+void UHeistDebugFunctionLibrary::DebugTrapTriggered(const UObject* WorldContextObject, const UObject* TrapActor, const UObject* TriggeringActor, const FName ItemId, const float DurationSeconds)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Trap triggered: Trap=%s TriggeringActor=%s ItemId=%s Duration=%.2f"),
-			*GetNameSafe(TrapActor),
-			*GetNameSafe(TriggeringActor),
-			*ItemId.ToString(),
-			DurationSeconds));
+	Message(WorldContextObject,
+			FString::Printf(TEXT("Trap triggered: Trap=%s TriggeringActor=%s ItemId=%s Duration=%.2f"), *GetNameSafe(TrapActor), *GetNameSafe(TriggeringActor), *ItemId.ToString(), DurationSeconds));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugTrapTriggerRejected(
-	const UObject* WorldContextObject,
-	const UObject* TrapActor,
-	const UObject* TriggeringActor,
-	const TCHAR* Reason)
+void UHeistDebugFunctionLibrary::DebugTrapTriggerRejected(const UObject* WorldContextObject, const UObject* TrapActor, const UObject* TriggeringActor, const TCHAR* Reason)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Trap trigger rejected: Trap=%s TriggeringActor=%s Reason=%s"),
-			*GetNameSafe(TrapActor),
-			*GetNameSafe(TriggeringActor),
-			Reason),
-		EHeistDebugLevel::Warning);
+	Message(WorldContextObject, FString::Printf(TEXT("Trap trigger rejected: Trap=%s TriggeringActor=%s Reason=%s"), *GetNameSafe(TrapActor), *GetNameSafe(TriggeringActor), Reason),
+			EHeistDebugLevel::Warning);
 #endif
 }
 
@@ -5179,12 +3115,7 @@ void UHeistDebugFunctionLibrary::DebugGuardStunApplied(const UObject* WorldConte
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Guard stun applied: Guard=%s Duration=%.2f"),
-			*GetNameSafe(GuardActor),
-			DurationSeconds));
+	Message(WorldContextObject, FString::Printf(TEXT("Guard stun applied: Guard=%s Duration=%.2f"), *GetNameSafe(GuardActor), DurationSeconds));
 #endif
 }
 
@@ -5193,53 +3124,28 @@ void UHeistDebugFunctionLibrary::DebugGuardStunCleared(const UObject* WorldConte
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Guard stun cleared: Guard=%s NewState=%s"),
-			*GetNameSafe(GuardActor),
-			*UEnum::GetValueAsString(NewState)));
+	Message(WorldContextObject, FString::Printf(TEXT("Guard stun cleared: Guard=%s NewState=%s"), *GetNameSafe(GuardActor), *UEnum::GetValueAsString(NewState)));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugGuardStateChanged(
-	const UObject* WorldContextObject,
-	const UObject* GuardActor,
-	const EHeistGuardState PreviousState,
-	const EHeistGuardState NewState,
-	const float StateEndServerTime)
+void UHeistDebugFunctionLibrary::DebugGuardStateChanged(const UObject* WorldContextObject, const UObject* GuardActor, const EHeistGuardState PreviousState, const EHeistGuardState NewState,
+														const float StateEndServerTime)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Guard state changed: Guard=%s Previous=%s New=%s EndServerTime=%.2f"),
-			*GetNameSafe(GuardActor),
-			*UEnum::GetValueAsString(PreviousState),
-			*UEnum::GetValueAsString(NewState),
-			StateEndServerTime));
+	Message(WorldContextObject, FString::Printf(TEXT("Guard state changed: Guard=%s Previous=%s New=%s EndServerTime=%.2f"), *GetNameSafe(GuardActor), *UEnum::GetValueAsString(PreviousState),
+												*UEnum::GetValueAsString(NewState), StateEndServerTime));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugGuardStateRequestRejected(
-	const UObject* WorldContextObject,
-	const UObject* GuardActor,
-	const EHeistGuardState RequestedState,
-	const TCHAR* Reason)
+void UHeistDebugFunctionLibrary::DebugGuardStateRequestRejected(const UObject* WorldContextObject, const UObject* GuardActor, const EHeistGuardState RequestedState, const TCHAR* Reason)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Guard state request rejected: Guard=%s Requested=%s Reason=%s"),
-			*GetNameSafe(GuardActor),
-			*UEnum::GetValueAsString(RequestedState),
-			Reason),
-		EHeistDebugLevel::Warning);
+	Message(WorldContextObject, FString::Printf(TEXT("Guard state request rejected: Guard=%s Requested=%s Reason=%s"), *GetNameSafe(GuardActor), *UEnum::GetValueAsString(RequestedState), Reason),
+			EHeistDebugLevel::Warning);
 #endif
 }
 
@@ -5248,79 +3154,45 @@ void UHeistDebugFunctionLibrary::DebugGuardStateReplicated(const UObject* WorldC
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Guard state replicated: Guard=%s State=%s"),
-			*GetNameSafe(GuardActor),
-			*UEnum::GetValueAsString(NewState)));
+	Message(WorldContextObject, FString::Printf(TEXT("Guard state replicated: Guard=%s State=%s"), *GetNameSafe(GuardActor), *UEnum::GetValueAsString(NewState)));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugDrawGuardSpawnMarker(
-	const UObject* WorldContextObject,
-	UObject* GuardActor)
+void UHeistDebugFunctionLibrary::DebugDrawGuardSpawnMarker(const UObject* WorldContextObject, UObject* GuardActor)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	AHeistGuardCharacter* GuardCharacter =
-		Cast<AHeistGuardCharacter>(GuardActor);
-	const UCapsuleComponent* CapsuleComponent =
-		IsValid(GuardCharacter)
-			? GuardCharacter->GetCapsuleComponent()
-			: nullptr;
-	UWorld* World = IsValid(WorldContextObject)
-		? WorldContextObject->GetWorld()
-		: nullptr;
+	AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GuardActor);
+	const UCapsuleComponent* CapsuleComponent = IsValid(GuardCharacter) ? GuardCharacter->GetCapsuleComponent() : nullptr;
+	UWorld* World = IsValid(WorldContextObject) ? WorldContextObject->GetWorld() : nullptr;
 	if (!IsValid(World) || !IsValid(CapsuleComponent))
 	{
 		return;
 	}
 
 	const FVector CapsuleLocation = CapsuleComponent->GetComponentLocation();
-	const float CapsuleHalfHeight =
-		CapsuleComponent->GetScaledCapsuleHalfHeight();
-	DrawDebugCapsule(
-		World,
-		CapsuleLocation,
-		CapsuleHalfHeight,
-		CapsuleComponent->GetScaledCapsuleRadius(),
-		CapsuleComponent->GetComponentQuat(),
-		FColor::Green,
-		true,
-		-1.0f,
-		0,
-		3.0f);
+	const float CapsuleHalfHeight = CapsuleComponent->GetScaledCapsuleHalfHeight();
+	DrawDebugCapsule(World, CapsuleLocation, CapsuleHalfHeight, CapsuleComponent->GetScaledCapsuleRadius(), CapsuleComponent->GetComponentQuat(), FColor::Green, true, -1.0f, 0, 3.0f);
 
-	const FVector ArrowStart =
-		CapsuleLocation + FVector::UpVector * CapsuleHalfHeight;
-	DrawDebugDirectionalArrow(
-		World,
-		ArrowStart,
-		ArrowStart + GuardCharacter->GetActorForwardVector() * 150.0f,
-		40.0f,
-		FColor::Yellow,
-		true,
-		-1.0f,
-		0,
-		3.0f);
-	DrawDebugString(
-		World,
-		FVector::UpVector * 30.0f,
-		TEXT("DEBUG GUARD"),
-		GuardCharacter,
-		FColor::Green,
-		0.0f,
-		true,
-		1.2f);
+	const FVector ArrowStart = CapsuleLocation + FVector::UpVector * CapsuleHalfHeight;
+	DrawDebugDirectionalArrow(World, ArrowStart, ArrowStart + GuardCharacter->GetActorForwardVector() * 150.0f, 40.0f, FColor::Yellow, true, -1.0f, 0, 3.0f);
+	DrawDebugString(World, FVector::UpVector * 30.0f, TEXT("DEBUG GUARD"), GuardCharacter, FColor::Green, 0.0f, true, 1.2f);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugGuardStateTreeEvent(
-	const UObject* WorldContextObject,
-	const UObject* GuardActor,
-	const FGameplayTag& StateEventTag)
+void UHeistDebugFunctionLibrary::DebugGuardStateTreeEvent(const UObject* WorldContextObject, const UObject* GuardActor, const FGameplayTag& StateEventTag)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(WorldContextObject, FString::Printf(TEXT("Guard StateTree event sent: Guard=%s Event=%s"), *GetNameSafe(GuardActor), *StateEventTag.ToString()));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardPerceptionConfigured(const UObject* WorldContextObject, const UObject* GuardActor, const float SightRadius, const float AggroResetDistance,
+																const float SightAngle, const float InvestigateSightAngle, const float EyeHeight, const float DetectionGrace,
+																const bool bDoorsBlockSight, const bool bDisplayCasesBlockSight, const FName DoorOccluderTag, const float UpdateInterval)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -5328,178 +3200,78 @@ void UHeistDebugFunctionLibrary::DebugGuardStateTreeEvent(
 	Message(
 		WorldContextObject,
 		FString::Printf(
-			TEXT("Guard StateTree event sent: Guard=%s Event=%s"),
-			*GetNameSafe(GuardActor),
-			*StateEventTag.ToString()));
+			TEXT(
+				"Guard perception configured: Guard=%s SightRadius=%.1f AggroReset=%.1f SightAngle=%.1f InvestigateAngle=%.1f EyeHeight=%.1f DetectionGrace=%.2f DoorsBlockSight=%s DisplayCasesBlockSight=%s DoorTag=%s UpdateInterval=%.2f"),
+			*GetNameSafe(GuardActor), SightRadius, AggroResetDistance, SightAngle, InvestigateSightAngle, EyeHeight, DetectionGrace, bDoorsBlockSight ? TEXT("true") : TEXT("false"),
+			bDisplayCasesBlockSight ? TEXT("true") : TEXT("false"), *DoorOccluderTag.ToString(), UpdateInterval));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugGuardPerceptionConfigured(
-	const UObject* WorldContextObject,
-	const UObject* GuardActor,
-	const float SightRadius,
-	const float AggroResetDistance,
-	const float SightAngle,
-	const float InvestigateSightAngle,
-	const float EyeHeight,
-	const float DetectionGrace,
-	const bool bDoorsBlockSight,
-	const bool bDisplayCasesBlockSight,
-	const FName DoorOccluderTag,
-	const float UpdateInterval)
+void UHeistDebugFunctionLibrary::DebugGuardSightEvaluated(const UObject* WorldContextObject, const UObject* GuardActor, const UObject* TargetActor, const bool bCanSeeTarget, const TCHAR* Reason,
+														  const UObject* BlockingActor)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Guard perception configured: Guard=%s SightRadius=%.1f AggroReset=%.1f SightAngle=%.1f InvestigateAngle=%.1f EyeHeight=%.1f DetectionGrace=%.2f DoorsBlockSight=%s DisplayCasesBlockSight=%s DoorTag=%s UpdateInterval=%.2f"),
-			*GetNameSafe(GuardActor),
-			SightRadius,
-			AggroResetDistance,
-			SightAngle,
-			InvestigateSightAngle,
-			EyeHeight,
-			DetectionGrace,
-			bDoorsBlockSight ? TEXT("true") : TEXT("false"),
-			bDisplayCasesBlockSight ? TEXT("true") : TEXT("false"),
-			*DoorOccluderTag.ToString(),
-			UpdateInterval));
+	Message(WorldContextObject,
+			FString::Printf(TEXT("Guard sight evaluated: Guard=%s Target=%s Visible=%s Reason=%s BlockingActor=%s"), *GetNameSafe(GuardActor), *GetNameSafe(TargetActor),
+							bCanSeeTarget ? TEXT("true") : TEXT("false"), Reason ? Reason : TEXT("None"), *GetNameSafe(BlockingActor)),
+			bCanSeeTarget ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugGuardSightEvaluated(
-	const UObject* WorldContextObject,
-	const UObject* GuardActor,
-	const UObject* TargetActor,
-	const bool bCanSeeTarget,
-	const TCHAR* Reason,
-	const UObject* BlockingActor)
+void UHeistDebugFunctionLibrary::DebugGuardDetectionGraceStarted(const UObject* WorldContextObject, const UObject* GuardActor, const UObject* TargetActor, const float DurationSeconds)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Guard sight evaluated: Guard=%s Target=%s Visible=%s Reason=%s BlockingActor=%s"),
-			*GetNameSafe(GuardActor),
-			*GetNameSafe(TargetActor),
-			bCanSeeTarget ? TEXT("true") : TEXT("false"),
-			Reason ? Reason : TEXT("None"),
-			*GetNameSafe(BlockingActor)),
-		bCanSeeTarget ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning);
+	Message(WorldContextObject, FString::Printf(TEXT("Guard detection grace started: Guard=%s Target=%s Duration=%.2f"), *GetNameSafe(GuardActor), *GetNameSafe(TargetActor), DurationSeconds));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugGuardDetectionGraceStarted(
-	const UObject* WorldContextObject,
-	const UObject* GuardActor,
-	const UObject* TargetActor,
-	const float DurationSeconds)
+void UHeistDebugFunctionLibrary::DebugGuardDetectionGraceCancelled(const UObject* WorldContextObject, const UObject* GuardActor, const UObject* TargetActor, const TCHAR* Reason)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Guard detection grace started: Guard=%s Target=%s Duration=%.2f"),
-			*GetNameSafe(GuardActor),
-			*GetNameSafe(TargetActor),
-			DurationSeconds));
+	Message(WorldContextObject,
+			FString::Printf(TEXT("Guard detection grace cancelled: Guard=%s Target=%s Reason=%s"), *GetNameSafe(GuardActor), *GetNameSafe(TargetActor), Reason ? Reason : TEXT("None")));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugGuardDetectionGraceCancelled(
-	const UObject* WorldContextObject,
-	const UObject* GuardActor,
-	const UObject* TargetActor,
-	const TCHAR* Reason)
+void UHeistDebugFunctionLibrary::DebugGuardSightTargetAcquired(const UObject* WorldContextObject, const UObject* GuardActor, const UObject* TargetActor)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Guard detection grace cancelled: Guard=%s Target=%s Reason=%s"),
-			*GetNameSafe(GuardActor),
-			*GetNameSafe(TargetActor),
-			Reason ? Reason : TEXT("None")));
+	Message(WorldContextObject, FString::Printf(TEXT("Guard sight target acquired: Guard=%s Target=%s"), *GetNameSafe(GuardActor), *GetNameSafe(TargetActor)));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugGuardSightTargetAcquired(
-	const UObject* WorldContextObject,
-	const UObject* GuardActor,
-	const UObject* TargetActor)
+void UHeistDebugFunctionLibrary::DebugGuardSightTargetLost(const UObject* WorldContextObject, const UObject* GuardActor, const UObject* TargetActor, const FVector& LastKnownLocation,
+														   const TCHAR* Reason)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Guard sight target acquired: Guard=%s Target=%s"),
-			*GetNameSafe(GuardActor),
-			*GetNameSafe(TargetActor)));
+	Message(WorldContextObject, FString::Printf(TEXT("Guard sight target lost: Guard=%s Target=%s LastKnown=(%.1f,%.1f,%.1f) Reason=%s"), *GetNameSafe(GuardActor), *GetNameSafe(TargetActor),
+												LastKnownLocation.X, LastKnownLocation.Y, LastKnownLocation.Z, Reason ? Reason : TEXT("None")));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugGuardSightTargetLost(
-	const UObject* WorldContextObject,
-	const UObject* GuardActor,
-	const UObject* TargetActor,
-	const FVector& LastKnownLocation,
-	const TCHAR* Reason)
+void UHeistDebugFunctionLibrary::DebugGuardNoiseReactionAccepted(const UObject* WorldContextObject, const UObject* GuardActor, const FHeistSoundPingEvent& SoundPingEvent, const float Distance,
+																 const float InvestigateDuration)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Guard sight target lost: Guard=%s Target=%s LastKnown=(%.1f,%.1f,%.1f) Reason=%s"),
-			*GetNameSafe(GuardActor),
-			*GetNameSafe(TargetActor),
-			LastKnownLocation.X,
-			LastKnownLocation.Y,
-			LastKnownLocation.Z,
-			Reason ? Reason : TEXT("None")));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugGuardNoiseReactionAccepted(
-	const UObject* WorldContextObject,
-	const UObject* GuardActor,
-	const FHeistSoundPingEvent& SoundPingEvent,
-	const float Distance,
-	const float InvestigateDuration)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	const FString MessageText = FString::Printf(
-		TEXT("Guard noise reaction accepted: Candidate=Selected Guard=%s SequenceId=%d Type=%d Distance=%.1f Radius=%.1f InvestigateDuration=%.2f Location=(%.1f,%.1f,%.1f)"),
-		*GetNameSafe(GuardActor),
-		SoundPingEvent.SequenceId,
-		static_cast<int32>(SoundPingEvent.PingType),
-		Distance,
-		SoundPingEvent.Radius,
-		InvestigateDuration,
-		SoundPingEvent.WorldLocation.X,
-		SoundPingEvent.WorldLocation.Y,
-		SoundPingEvent.WorldLocation.Z);
+	const FString MessageText =
+		FString::Printf(TEXT("Guard noise reaction accepted: Candidate=Selected Guard=%s SequenceId=%d Type=%d Distance=%.1f Radius=%.1f InvestigateDuration=%.2f Location=(%.1f,%.1f,%.1f)"),
+						*GetNameSafe(GuardActor), SoundPingEvent.SequenceId, static_cast<int32>(SoundPingEvent.PingType), Distance, SoundPingEvent.Radius, InvestigateDuration,
+						SoundPingEvent.WorldLocation.X, SoundPingEvent.WorldLocation.Y, SoundPingEvent.WorldLocation.Z);
 	if (SoundPingEvent.PingType == EHeistSoundPingType::Footstep)
 	{
-		UE_LOG(
-			LogHeistAI,
-			Verbose,
-			TEXT("[%s] %s"),
-			*GetNameSafe(WorldContextObject),
-			*MessageText);
+		UE_LOG(LogHeistAI, Verbose, TEXT("[%s] %s"), *GetNameSafe(WorldContextObject), *MessageText);
 		return;
 	}
 
@@ -5507,32 +3279,17 @@ void UHeistDebugFunctionLibrary::DebugGuardNoiseReactionAccepted(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugGuardNoiseReactionRejected(
-	const UObject* WorldContextObject,
-	const UObject* GuardActor,
-	const FHeistSoundPingEvent& SoundPingEvent,
-	const TCHAR* Reason,
-	const float Distance)
+void UHeistDebugFunctionLibrary::DebugGuardNoiseReactionRejected(const UObject* WorldContextObject, const UObject* GuardActor, const FHeistSoundPingEvent& SoundPingEvent, const TCHAR* Reason,
+																 const float Distance)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	const FString MessageText = FString::Printf(
-		TEXT("Guard noise reaction rejected: Guard=%s SequenceId=%d Type=%d Distance=%.1f Radius=%.1f Reason=%s"),
-		*GetNameSafe(GuardActor),
-		SoundPingEvent.SequenceId,
-		static_cast<int32>(SoundPingEvent.PingType),
-		Distance,
-		SoundPingEvent.Radius,
-		Reason ? Reason : TEXT("None"));
+	const FString MessageText = FString::Printf(TEXT("Guard noise reaction rejected: Guard=%s SequenceId=%d Type=%d Distance=%.1f Radius=%.1f Reason=%s"), *GetNameSafe(GuardActor),
+												SoundPingEvent.SequenceId, static_cast<int32>(SoundPingEvent.PingType), Distance, SoundPingEvent.Radius, Reason ? Reason : TEXT("None"));
 	if (SoundPingEvent.PingType == EHeistSoundPingType::Footstep)
 	{
-		UE_LOG(
-			LogHeistAI,
-			Verbose,
-			TEXT("[%s] %s"),
-			*GetNameSafe(WorldContextObject),
-			*MessageText);
+		UE_LOG(LogHeistAI, Verbose, TEXT("[%s] %s"), *GetNameSafe(WorldContextObject), *MessageText);
 		return;
 	}
 
@@ -5540,155 +3297,74 @@ void UHeistDebugFunctionLibrary::DebugGuardNoiseReactionRejected(
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugCoinDistractionDecision(
-	const UObject* WorldContextObject,
-	const UObject* GuardActor,
-	const FHeistSoundPingEvent& SoundPingEvent,
-	const EHeistGuardState GuardState,
-	const TCHAR* Decision,
-	const TCHAR* Rule,
-	const int32 CoinPriority,
-	const EHeistSoundPingType PreviousCandidateType,
-	const int32 PreviousCandidatePriority)
+void UHeistDebugFunctionLibrary::DebugCoinDistractionDecision(const UObject* WorldContextObject, const UObject* GuardActor, const FHeistSoundPingEvent& SoundPingEvent,
+															  const EHeistGuardState GuardState, const TCHAR* Decision, const TCHAR* Rule, const int32 CoinPriority,
+															  const EHeistSoundPingType PreviousCandidateType, const int32 PreviousCandidatePriority)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Coin distraction decision: Guard=%s Decision=%s Rule=%s GuardState=%d SequenceId=%d CoinPriority=%d PreviousType=%d PreviousPriority=%d Focus=(%.1f,%.1f,%.1f) Radius=%.1f"),
-			*GetNameSafe(GuardActor),
-			Decision ? Decision : TEXT("Unknown"),
-			Rule ? Rule : TEXT("None"),
-			static_cast<int32>(GuardState),
-			SoundPingEvent.SequenceId,
-			CoinPriority,
-			static_cast<int32>(PreviousCandidateType),
-			PreviousCandidatePriority,
-			SoundPingEvent.WorldLocation.X,
-			SoundPingEvent.WorldLocation.Y,
-			SoundPingEvent.WorldLocation.Z,
-			SoundPingEvent.Radius),
-		Decision && FCString::Stricmp(Decision, TEXT("ACCEPT")) == 0
-			? EHeistDebugLevel::Info
-			: EHeistDebugLevel::Warning);
+	Message(WorldContextObject,
+			FString::Printf(
+				TEXT("Coin distraction decision: Guard=%s Decision=%s Rule=%s GuardState=%d SequenceId=%d CoinPriority=%d PreviousType=%d PreviousPriority=%d Focus=(%.1f,%.1f,%.1f) Radius=%.1f"),
+				*GetNameSafe(GuardActor), Decision ? Decision : TEXT("Unknown"), Rule ? Rule : TEXT("None"), static_cast<int32>(GuardState), SoundPingEvent.SequenceId, CoinPriority,
+				static_cast<int32>(PreviousCandidateType), PreviousCandidatePriority, SoundPingEvent.WorldLocation.X, SoundPingEvent.WorldLocation.Y, SoundPingEvent.WorldLocation.Z,
+				SoundPingEvent.Radius),
+			Decision && FCString::Stricmp(Decision, TEXT("ACCEPT")) == 0 ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugGuardPatrolPathResolved(
-	const UObject* WorldContextObject,
-	const UObject* GuardActor,
-	const FName RouteId,
-	const int32 WaypointCount)
+void UHeistDebugFunctionLibrary::DebugGuardPatrolPathResolved(const UObject* WorldContextObject, const UObject* GuardActor, const FName RouteId, const int32 WaypointCount)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	const AActor* GuardActorAsActor =
-		IsValid(GuardActor) && GuardActor->IsA<AActor>()
-			? static_cast<const AActor*>(GuardActor)
-			: nullptr;
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Guard patrol path resolved: Guard=%s RouteId=%s Waypoints=%d Authority=%s"),
-			*GetNameSafe(GuardActor),
-			*RouteId.ToString(),
-			WaypointCount,
-			IsValid(GuardActorAsActor) && GuardActorAsActor->HasAuthority()
-				? TEXT("true")
-				: TEXT("false")),
-		WaypointCount > 0 ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning);
+	const AActor* GuardActorAsActor = IsValid(GuardActor) && GuardActor->IsA<AActor>() ? static_cast<const AActor*>(GuardActor) : nullptr;
+	Message(WorldContextObject,
+			FString::Printf(TEXT("Guard patrol path resolved: Guard=%s RouteId=%s Waypoints=%d Authority=%s"), *GetNameSafe(GuardActor), *RouteId.ToString(), WaypointCount,
+							IsValid(GuardActorAsActor) && GuardActorAsActor->HasAuthority() ? TEXT("true") : TEXT("false")),
+			WaypointCount > 0 ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugGuardMovement(
-	const UObject* WorldContextObject,
-	const UObject* GuardActor,
-	const EHeistGuardState State,
-	const TCHAR* Phase,
-	const FVector& TargetLocation,
-	const int32 WaypointIndex,
-	const int32 WaypointCount,
-	const TCHAR* Result)
+void UHeistDebugFunctionLibrary::DebugGuardMovement(const UObject* WorldContextObject, const UObject* GuardActor, const EHeistGuardState State, const TCHAR* Phase, const FVector& TargetLocation,
+													const int32 WaypointIndex, const int32 WaypointCount, const TCHAR* Result)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Guard movement: Guard=%s State=%s Phase=%s Target=(%.1f,%.1f,%.1f) Waypoint=%d/%d Result=%s"),
-			*GetNameSafe(GuardActor),
-			*UEnum::GetValueAsString(State),
-			Phase ? Phase : TEXT("None"),
-			TargetLocation.X,
-			TargetLocation.Y,
-			TargetLocation.Z,
-			WaypointIndex,
-			WaypointCount,
-			Result ? Result : TEXT("None")));
+	Message(WorldContextObject,
+			FString::Printf(TEXT("Guard movement: Guard=%s State=%s Phase=%s Target=(%.1f,%.1f,%.1f) Waypoint=%d/%d Result=%s"), *GetNameSafe(GuardActor), *UEnum::GetValueAsString(State),
+							Phase ? Phase : TEXT("None"), TargetLocation.X, TargetLocation.Y, TargetLocation.Z, WaypointIndex, WaypointCount, Result ? Result : TEXT("None")));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugGuardInvestigateConfirmationStarted(
-	const UObject* WorldContextObject,
-	const UObject* GuardActor,
-	const FVector& InvestigateLocation,
-	const float DurationSeconds)
+void UHeistDebugFunctionLibrary::DebugGuardInvestigateConfirmationStarted(const UObject* WorldContextObject, const UObject* GuardActor, const FVector& InvestigateLocation, const float DurationSeconds)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Guard investigate confirmation started: Guard=%s Location=(%.1f,%.1f,%.1f) Duration=%.2f"),
-			*GetNameSafe(GuardActor),
-			InvestigateLocation.X,
-			InvestigateLocation.Y,
-			InvestigateLocation.Z,
-			DurationSeconds));
+	Message(WorldContextObject, FString::Printf(TEXT("Guard investigate confirmation started: Guard=%s Location=(%.1f,%.1f,%.1f) Duration=%.2f"), *GetNameSafe(GuardActor), InvestigateLocation.X,
+												InvestigateLocation.Y, InvestigateLocation.Z, DurationSeconds));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugGuardSearchTimerStarted(
-	const UObject* WorldContextObject,
-	const UObject* GuardActor,
-	const FVector& SearchLocation,
-	const float DurationSeconds)
+void UHeistDebugFunctionLibrary::DebugGuardSearchTimerStarted(const UObject* WorldContextObject, const UObject* GuardActor, const FVector& SearchLocation, const float DurationSeconds)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Guard search timer started: Guard=%s LastKnown=(%.1f,%.1f,%.1f) Duration=%.2f"),
-			*GetNameSafe(GuardActor),
-			SearchLocation.X,
-			SearchLocation.Y,
-			SearchLocation.Z,
-			DurationSeconds));
+	Message(WorldContextObject, FString::Printf(TEXT("Guard search timer started: Guard=%s LastKnown=(%.1f,%.1f,%.1f) Duration=%.2f"), *GetNameSafe(GuardActor), SearchLocation.X, SearchLocation.Y,
+												SearchLocation.Z, DurationSeconds));
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugSoundPingDefinitionRejected(
-	const UObject* WorldContextObject,
-	const FName SoundPingId,
-	const TCHAR* Reason)
+void UHeistDebugFunctionLibrary::DebugSoundPingDefinitionRejected(const UObject* WorldContextObject, const FName SoundPingId, const TCHAR* Reason)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Sound Ping definition rejected: SoundPingId=%s Reason=%s"),
-			*SoundPingId.ToString(),
-			Reason),
-		EHeistDebugLevel::Warning);
+	Message(WorldContextObject, FString::Printf(TEXT("Sound Ping definition rejected: SoundPingId=%s Reason=%s"), *SoundPingId.ToString(), Reason), EHeistDebugLevel::Warning);
 #endif
 }
 
@@ -5697,11 +3373,8 @@ void UHeistDebugFunctionLibrary::DebugEscapedPlayerRestrictionsApplied(const UOb
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		WorldContextObject,
-		FString::Printf(
-			TEXT("Escaped player restrictions applied: Character=%s MovementDisabled=true InteractionDisabled=true CollisionDisabled=true Hidden=true"),
-			*GetNameSafe(WorldContextObject)));
+	Message(WorldContextObject, FString::Printf(TEXT("Escaped player restrictions applied: Character=%s MovementDisabled=true InteractionDisabled=true CollisionDisabled=true Hidden=true"),
+												*GetNameSafe(WorldContextObject)));
 #endif
 }
 
@@ -5714,12 +3387,7 @@ void UHeistDebugFunctionLibrary::DebugLobbyHelp(APlayerController* PlayerControl
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		PlayerController,
-		TEXT("Lobby debug commands: HeistLobbyShow | HeistLobbyHide | HeistLobbyDump"),
-		EHeistDebugLevel::Info,
-		true,
-		8.0f);
+	Message(PlayerController, TEXT("Lobby debug commands: HeistLobbyShow | HeistLobbyHide | HeistLobbyDump"), EHeistDebugLevel::Info, true, 8.0f);
 #endif
 }
 
@@ -5729,9 +3397,7 @@ void UHeistDebugFunctionLibrary::DebugLobbyShow(APlayerController* PlayerControl
 	return;
 #else
 	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
-	AHeistHUD* HeistHUD = IsValid(HeistPlayerController)
-		? Cast<AHeistHUD>(HeistPlayerController->GetHUD())
-		: nullptr;
+	AHeistHUD* HeistHUD = IsValid(HeistPlayerController) ? Cast<AHeistHUD>(HeistPlayerController->GetHUD()) : nullptr;
 	if (!IsValid(HeistHUD))
 	{
 		Message(PlayerController, TEXT("Lobby debug show failed: missing Heist HUD."), EHeistDebugLevel::Warning, true);
@@ -5739,11 +3405,7 @@ void UHeistDebugFunctionLibrary::DebugLobbyShow(APlayerController* PlayerControl
 	}
 
 	const bool bShown = HeistHUD->ShowLobbyScreen();
-	Message(
-		PlayerController,
-		FString::Printf(TEXT("Lobby debug show requested: Shown=%s"), bShown ? TEXT("true") : TEXT("false")),
-		bShown ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
-		true);
+	Message(PlayerController, FString::Printf(TEXT("Lobby debug show requested: Shown=%s"), bShown ? TEXT("true") : TEXT("false")), bShown ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true);
 #endif
 }
 
@@ -5753,9 +3415,7 @@ void UHeistDebugFunctionLibrary::DebugLobbyHide(APlayerController* PlayerControl
 	return;
 #else
 	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
-	AHeistHUD* HeistHUD = IsValid(HeistPlayerController)
-		? Cast<AHeistHUD>(HeistPlayerController->GetHUD())
-		: nullptr;
+	AHeistHUD* HeistHUD = IsValid(HeistPlayerController) ? Cast<AHeistHUD>(HeistPlayerController->GetHUD()) : nullptr;
 	if (!IsValid(HeistHUD))
 	{
 		Message(PlayerController, TEXT("Lobby debug hide failed: missing Heist HUD."), EHeistDebugLevel::Warning, true);
@@ -5773,12 +3433,8 @@ void UHeistDebugFunctionLibrary::DebugLobbyDump(APlayerController* PlayerControl
 	return;
 #else
 	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
-	AHeistHUD* HeistHUD = IsValid(HeistPlayerController)
-		? Cast<AHeistHUD>(HeistPlayerController->GetHUD())
-		: nullptr;
-	UHeistLobbyViewModel* LobbyViewModel = IsValid(HeistHUD)
-		? HeistHUD->GetLobbyViewModel()
-		: nullptr;
+	AHeistHUD* HeistHUD = IsValid(HeistPlayerController) ? Cast<AHeistHUD>(HeistPlayerController->GetHUD()) : nullptr;
+	UHeistLobbyViewModel* LobbyViewModel = IsValid(HeistHUD) ? HeistHUD->GetLobbyViewModel() : nullptr;
 	if (!IsValid(LobbyViewModel))
 	{
 		Message(PlayerController, TEXT("Lobby debug dump failed: missing Lobby ViewModel."), EHeistDebugLevel::Warning, true);
@@ -5786,19 +3442,11 @@ void UHeistDebugFunctionLibrary::DebugLobbyDump(APlayerController* PlayerControl
 	}
 
 	LobbyViewModel->RefreshLobbyData();
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Lobby dump: Connected=%d LocalPlayerId=%d Phase=%s Countdown=%s Loadout=%s Blocker=%s"),
-			LobbyViewModel->GetConnectedPlayerCount(),
-			LobbyViewModel->GetLocalPlayerId(),
-			*LobbyViewModel->GetPhaseText().ToString(),
-			*LobbyViewModel->GetReadyCountdownText().ToString(),
-			*LobbyViewModel->GetDefaultLoadoutText().ToString(),
-			*LobbyViewModel->GetAuthorityBlockerText().ToString()),
-		EHeistDebugLevel::Info,
-		true,
-		8.0f);
+	Message(PlayerController,
+			FString::Printf(TEXT("Lobby dump: Connected=%d LocalPlayerId=%d Phase=%s Countdown=%s Loadout=%s Blocker=%s"), LobbyViewModel->GetConnectedPlayerCount(),
+							LobbyViewModel->GetLocalPlayerId(), *LobbyViewModel->GetPhaseText().ToString(), *LobbyViewModel->GetReadyCountdownText().ToString(),
+							*LobbyViewModel->GetDefaultLoadoutText().ToString(), *LobbyViewModel->GetAuthorityBlockerText().ToString()),
+			EHeistDebugLevel::Info, true, 8.0f);
 	Message(PlayerController, FString::Printf(TEXT("Lobby slot: %s"), *LobbyViewModel->GetPlayerSlot1Text().ToString()), EHeistDebugLevel::Info, false);
 	Message(PlayerController, FString::Printf(TEXT("Lobby slot: %s"), *LobbyViewModel->GetPlayerSlot2Text().ToString()), EHeistDebugLevel::Info, false);
 	Message(PlayerController, FString::Printf(TEXT("Lobby slot: %s"), *LobbyViewModel->GetPlayerSlot3Text().ToString()), EHeistDebugLevel::Info, false);
@@ -5815,12 +3463,8 @@ void UHeistDebugFunctionLibrary::DebugResultHelp(APlayerController* PlayerContro
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		PlayerController,
-		TEXT("Result debug commands: HeistResultShow | HeistResultHide | HeistResultDump | HeistResultRebuild | HeistResultSeed <Score> <Escaped 1/0> <EscapeTime>"),
-		EHeistDebugLevel::Info,
-		true,
-		8.0f);
+	Message(PlayerController, TEXT("Result debug commands: HeistResultShow | HeistResultHide | HeistResultDump | HeistResultRebuild | HeistResultSeed <Score> <Escaped 1/0> <EscapeTime>"),
+			EHeistDebugLevel::Info, true, 8.0f);
 #endif
 }
 
@@ -5830,9 +3474,7 @@ void UHeistDebugFunctionLibrary::DebugResultShow(APlayerController* PlayerContro
 	return;
 #else
 	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
-	AHeistHUD* HeistHUD = IsValid(HeistPlayerController)
-		? Cast<AHeistHUD>(HeistPlayerController->GetHUD())
-		: nullptr;
+	AHeistHUD* HeistHUD = IsValid(HeistPlayerController) ? Cast<AHeistHUD>(HeistPlayerController->GetHUD()) : nullptr;
 	if (!IsValid(HeistHUD))
 	{
 		Message(PlayerController, TEXT("Result debug show failed: missing Heist HUD."), EHeistDebugLevel::Warning, true);
@@ -5840,11 +3482,7 @@ void UHeistDebugFunctionLibrary::DebugResultShow(APlayerController* PlayerContro
 	}
 
 	const bool bShown = HeistHUD->ShowResultScreen();
-	Message(
-		PlayerController,
-		FString::Printf(TEXT("Result debug show requested: Shown=%s"), bShown ? TEXT("true") : TEXT("false")),
-		bShown ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
-		true);
+	Message(PlayerController, FString::Printf(TEXT("Result debug show requested: Shown=%s"), bShown ? TEXT("true") : TEXT("false")), bShown ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true);
 #endif
 }
 
@@ -5854,9 +3492,7 @@ void UHeistDebugFunctionLibrary::DebugResultHide(APlayerController* PlayerContro
 	return;
 #else
 	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
-	AHeistHUD* HeistHUD = IsValid(HeistPlayerController)
-		? Cast<AHeistHUD>(HeistPlayerController->GetHUD())
-		: nullptr;
+	AHeistHUD* HeistHUD = IsValid(HeistPlayerController) ? Cast<AHeistHUD>(HeistPlayerController->GetHUD()) : nullptr;
 	if (!IsValid(HeistHUD))
 	{
 		Message(PlayerController, TEXT("Result debug hide failed: missing Heist HUD."), EHeistDebugLevel::Warning, true);
@@ -5873,9 +3509,7 @@ void UHeistDebugFunctionLibrary::DebugResultDump(APlayerController* PlayerContro
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	const AHeistGameState* HeistGameState = IsValid(PlayerController) && IsValid(PlayerController->GetWorld())
-		? PlayerController->GetWorld()->GetGameState<AHeistGameState>()
-		: nullptr;
+	const AHeistGameState* HeistGameState = IsValid(PlayerController) && IsValid(PlayerController->GetWorld()) ? PlayerController->GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	if (!IsValid(HeistGameState))
 	{
 		Message(PlayerController, TEXT("Result debug dump failed: missing Heist GameState."), EHeistDebugLevel::Warning, true);
@@ -5883,22 +3517,11 @@ void UHeistDebugFunctionLibrary::DebugResultDump(APlayerController* PlayerContro
 	}
 
 	const TArray<FHeistPlayerResult>& PlayerResults = HeistGameState->GetPlayerResults();
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Contribution result dump: PlayerCount=%d"),
-			PlayerResults.Num()),
-		EHeistDebugLevel::Info,
-		true,
-		6.0f);
+	Message(PlayerController, FString::Printf(TEXT("Contribution result dump: PlayerCount=%d"), PlayerResults.Num()), EHeistDebugLevel::Info, true, 6.0f);
 
 	for (const FHeistPlayerResult& PlayerResult : PlayerResults)
 	{
-		Message(
-			PlayerController,
-			FString::Printf(TEXT("Result entry: %s"), *FormatResultEntry(PlayerResult)),
-			EHeistDebugLevel::Info,
-			false);
+		Message(PlayerController, FString::Printf(TEXT("Result entry: %s"), *FormatResultEntry(PlayerResult)), EHeistDebugLevel::Info, false);
 	}
 #endif
 }
@@ -5920,11 +3543,7 @@ void UHeistDebugFunctionLibrary::DebugResultRebuild(APlayerController* PlayerCon
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugResultSeed(
-	APlayerController* PlayerController,
-	const int32 Score,
-	const bool bEscaped,
-	const float EscapeTimeSeconds)
+void UHeistDebugFunctionLibrary::DebugResultSeed(APlayerController* PlayerController, const int32 Score, const bool bEscaped, const float EscapeTimeSeconds)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -5939,15 +3558,8 @@ void UHeistDebugFunctionLibrary::DebugResultSeed(
 	const int32 SafeScore = FMath::Max(0, Score);
 	const float SafeEscapeTimeSeconds = FMath::Max(0.0f, EscapeTimeSeconds);
 	HeistPlayerController->DebugRequestSeedResult(SafeScore, bEscaped, SafeEscapeTimeSeconds);
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Result debug seed requested: Score=%d Escaped=%s EscapeTime=%.2f"),
-			SafeScore,
-			bEscaped ? TEXT("true") : TEXT("false"),
-			SafeEscapeTimeSeconds),
-		EHeistDebugLevel::Info,
-		true);
+	Message(PlayerController, FString::Printf(TEXT("Result debug seed requested: Score=%d Escaped=%s EscapeTime=%.2f"), SafeScore, bEscaped ? TEXT("true") : TEXT("false"), SafeEscapeTimeSeconds),
+			EHeistDebugLevel::Info, true);
 #endif
 }
 
@@ -5962,10 +3574,9 @@ void UHeistDebugFunctionLibrary::DebugInventoryHelp(APlayerController* PlayerCon
 #else
 	Message(
 		PlayerController,
-		TEXT("Inventory debug commands: HeistInvDump | HeistInvOpen 1/0 | HeistInvAdd <ItemId> | HeistInvMove <InstanceId> <X> <Y> | HeistInvRotate <InstanceId> | HeistInvDrop <InstanceId> | HeistInvAssign <Q|Coin> <InstanceId> | HeistInvClear <Q|Coin> | HeistInvInvalidMove <InstanceId>"),
-		EHeistDebugLevel::Info,
-		true,
-		8.0f);
+		TEXT(
+			"Inventory debug commands: HeistInvDump | HeistInvOpen 1/0 | HeistInvAdd <ItemId> | HeistInvMove <InstanceId> <X> <Y> | HeistInvRotate <InstanceId> | HeistInvDrop <InstanceId> | HeistInvAssign <Q|Coin> <InstanceId> | HeistInvClear <Q|Coin> | HeistInvInvalidMove <InstanceId>"),
+		EHeistDebugLevel::Info, true, 8.0f);
 #endif
 }
 
@@ -5977,60 +3588,34 @@ void UHeistDebugFunctionLibrary::DebugInventoryDump(APlayerController* PlayerCon
 	const UHeistInventoryComponent* InventoryComponent = ResolveInventoryComponent(PlayerController);
 	if (!IsValid(InventoryComponent))
 	{
-		Message(
-			PlayerController,
-			TEXT("Inventory debug dump failed: missing local Heist inventory component."),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, TEXT("Inventory debug dump failed: missing local Heist inventory component."), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
 	const FHeistReplicatedInventory& ReplicatedInventory = InventoryComponent->GetReplicatedInventory();
 	const AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Inventory dump: Open=%s InputMode=%s Cursor=%s IgnoreMove=%s IgnoreLook=%s Grid=%dx%d Items=%d QuickSlots=%d"),
-			InventoryComponent->IsInventoryOpen() ? TEXT("true") : TEXT("false"),
-			IsValid(HeistPlayerController) ? ToInputModeText(HeistPlayerController->GetLocalInputMode()) : TEXT("Unknown"),
-			IsValid(HeistPlayerController) && HeistPlayerController->bShowMouseCursor ? TEXT("true") : TEXT("false"),
-			IsValid(HeistPlayerController) && HeistPlayerController->IsMoveInputIgnored() ? TEXT("true") : TEXT("false"),
-			IsValid(HeistPlayerController) && HeistPlayerController->IsLookInputIgnored() ? TEXT("true") : TEXT("false"),
-			InventoryComponent->GetGridColumnCount(),
-			InventoryComponent->GetGridRowCount(),
-			ReplicatedInventory.Items.Num(),
-			InventoryComponent->GetQuickSlots().Num()),
-		EHeistDebugLevel::Info,
-		true,
-		6.0f);
+	Message(PlayerController,
+			FString::Printf(TEXT("Inventory dump: Open=%s InputMode=%s Cursor=%s IgnoreMove=%s IgnoreLook=%s Grid=%dx%d Items=%d QuickSlots=%d"),
+							InventoryComponent->IsInventoryOpen() ? TEXT("true") : TEXT("false"),
+							IsValid(HeistPlayerController) ? ToInputModeText(HeistPlayerController->GetLocalInputMode()) : TEXT("Unknown"),
+							IsValid(HeistPlayerController) && HeistPlayerController->bShowMouseCursor ? TEXT("true") : TEXT("false"),
+							IsValid(HeistPlayerController) && HeistPlayerController->IsMoveInputIgnored() ? TEXT("true") : TEXT("false"),
+							IsValid(HeistPlayerController) && HeistPlayerController->IsLookInputIgnored() ? TEXT("true") : TEXT("false"), InventoryComponent->GetGridColumnCount(),
+							InventoryComponent->GetGridRowCount(), ReplicatedInventory.Items.Num(), InventoryComponent->GetQuickSlots().Num()),
+			EHeistDebugLevel::Info, true, 6.0f);
 
 	for (const FHeistInventoryFastArrayItem& ItemEntry : ReplicatedInventory.Items)
 	{
 		const FHeistInventoryItem& Item = ItemEntry.InventoryItem;
-		Message(
-			PlayerController,
-			FString::Printf(
-				TEXT("Inventory item: InstanceId=%d ItemId=%s Grid=(%d,%d) Quantity=%d Rotated=%s"),
-				Item.InstanceId,
-				*Item.ItemId.ToString(),
-				Item.GridPosition.X,
-				Item.GridPosition.Y,
-				Item.Quantity,
-				Item.bRotated ? TEXT("true") : TEXT("false")),
-			EHeistDebugLevel::Info,
-			false);
+		Message(PlayerController,
+				FString::Printf(TEXT("Inventory item: InstanceId=%d ItemId=%s Grid=(%d,%d) Quantity=%d Rotated=%s"), Item.InstanceId, *Item.ItemId.ToString(), Item.GridPosition.X, Item.GridPosition.Y,
+								Item.Quantity, Item.bRotated ? TEXT("true") : TEXT("false")),
+				EHeistDebugLevel::Info, false);
 	}
 
 	for (const FHeistQuickSlotState& QuickSlot : InventoryComponent->GetQuickSlots())
 	{
-		Message(
-			PlayerController,
-			FString::Printf(
-				TEXT("QuickSlot: Slot=%s InstanceId=%d"),
-				ToQuickSlotText(QuickSlot.SlotType),
-				QuickSlot.ItemInstanceId),
-			EHeistDebugLevel::Info,
-			false);
+		Message(PlayerController, FString::Printf(TEXT("QuickSlot: Slot=%s InstanceId=%d"), ToQuickSlotText(QuickSlot.SlotType), QuickSlot.ItemInstanceId), EHeistDebugLevel::Info, false);
 	}
 #endif
 }
@@ -6048,11 +3633,7 @@ void UHeistDebugFunctionLibrary::DebugInventoryOpen(APlayerController* PlayerCon
 	}
 
 	HeistPlayerController->RequestSetInventoryOpen(bOpen);
-	Message(
-		PlayerController,
-		FString::Printf(TEXT("Inventory debug open requested: Open=%s"), bOpen ? TEXT("true") : TEXT("false")),
-		EHeistDebugLevel::Info,
-		true);
+	Message(PlayerController, FString::Printf(TEXT("Inventory debug open requested: Open=%s"), bOpen ? TEXT("true") : TEXT("false")), EHeistDebugLevel::Info, true);
 #endif
 }
 
@@ -6064,28 +3645,16 @@ void UHeistDebugFunctionLibrary::DebugInventoryAdd(APlayerController* PlayerCont
 	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
 	if (!IsValid(HeistPlayerController) || ItemId.IsNone())
 	{
-		Message(
-			PlayerController,
-			TEXT("Inventory debug add failed: invalid Heist player controller or ItemId."),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, TEXT("Inventory debug add failed: invalid Heist player controller or ItemId."), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
 	HeistPlayerController->DebugRequestAddInventoryItem(ItemId);
-	Message(
-		PlayerController,
-		FString::Printf(TEXT("Inventory debug add requested: ItemId=%s"), *ItemId.ToString()),
-		EHeistDebugLevel::Info,
-		true);
+	Message(PlayerController, FString::Printf(TEXT("Inventory debug add requested: ItemId=%s"), *ItemId.ToString()), EHeistDebugLevel::Info, true);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugInventoryMove(
-	APlayerController* PlayerController,
-	const int32 InstanceId,
-	const int32 GridX,
-	const int32 GridY)
+void UHeistDebugFunctionLibrary::DebugInventoryMove(APlayerController* PlayerController, const int32 InstanceId, const int32 GridX, const int32 GridY)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -6098,11 +3667,7 @@ void UHeistDebugFunctionLibrary::DebugInventoryMove(
 	}
 
 	HeistPlayerController->RequestMoveInventoryItem(InstanceId, FIntPoint(GridX, GridY));
-	Message(
-		PlayerController,
-		FString::Printf(TEXT("Inventory debug move requested: InstanceId=%d Grid=(%d,%d)"), InstanceId, GridX, GridY),
-		EHeistDebugLevel::Info,
-		true);
+	Message(PlayerController, FString::Printf(TEXT("Inventory debug move requested: InstanceId=%d Grid=(%d,%d)"), InstanceId, GridX, GridY), EHeistDebugLevel::Info, true);
 #endif
 }
 
@@ -6119,11 +3684,7 @@ void UHeistDebugFunctionLibrary::DebugInventoryRotate(APlayerController* PlayerC
 	}
 
 	HeistPlayerController->RequestRotateInventoryItem(InstanceId);
-	Message(
-		PlayerController,
-		FString::Printf(TEXT("Inventory debug rotate requested: InstanceId=%d"), InstanceId),
-		EHeistDebugLevel::Info,
-		true);
+	Message(PlayerController, FString::Printf(TEXT("Inventory debug rotate requested: InstanceId=%d"), InstanceId), EHeistDebugLevel::Info, true);
 #endif
 }
 
@@ -6140,18 +3701,11 @@ void UHeistDebugFunctionLibrary::DebugInventoryDrop(APlayerController* PlayerCon
 	}
 
 	HeistPlayerController->RequestDropInventoryItem(InstanceId);
-	Message(
-		PlayerController,
-		FString::Printf(TEXT("Inventory debug drop requested: InstanceId=%d"), InstanceId),
-		EHeistDebugLevel::Info,
-		true);
+	Message(PlayerController, FString::Printf(TEXT("Inventory debug drop requested: InstanceId=%d"), InstanceId), EHeistDebugLevel::Info, true);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugInventoryAssignQuickSlot(
-	APlayerController* PlayerController,
-	const FString& SlotName,
-	const int32 InstanceId)
+void UHeistDebugFunctionLibrary::DebugInventoryAssignQuickSlot(APlayerController* PlayerController, const FString& SlotName, const int32 InstanceId)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -6166,23 +3720,12 @@ void UHeistDebugFunctionLibrary::DebugInventoryAssignQuickSlot(
 	EHeistQuickSlotType SlotType = EHeistQuickSlotType::None;
 	if (!TryParseQuickSlotName(SlotName, SlotType))
 	{
-		Message(
-			PlayerController,
-			FString::Printf(TEXT("Inventory debug assign failed: invalid slot '%s'. Use Q/Coin, E/Smoke, or R/Glue."), *SlotName),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, FString::Printf(TEXT("Inventory debug assign failed: invalid slot '%s'. Use Q/Coin, E/Smoke, or R/Glue."), *SlotName), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
 	HeistPlayerController->RequestAssignQuickSlot(SlotType, InstanceId);
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Inventory debug assign requested: Slot=%s InstanceId=%d"),
-			ToQuickSlotText(SlotType),
-			InstanceId),
-		EHeistDebugLevel::Info,
-		true);
+	Message(PlayerController, FString::Printf(TEXT("Inventory debug assign requested: Slot=%s InstanceId=%d"), ToQuickSlotText(SlotType), InstanceId), EHeistDebugLevel::Info, true);
 #endif
 }
 
@@ -6201,20 +3744,12 @@ void UHeistDebugFunctionLibrary::DebugInventoryClearQuickSlot(APlayerController*
 	EHeistQuickSlotType SlotType = EHeistQuickSlotType::None;
 	if (!TryParseQuickSlotName(SlotName, SlotType))
 	{
-		Message(
-			PlayerController,
-			FString::Printf(TEXT("Inventory debug clear failed: invalid slot '%s'. Use Q/Coin, E/Smoke, or R/Glue."), *SlotName),
-			EHeistDebugLevel::Warning,
-			true);
+		Message(PlayerController, FString::Printf(TEXT("Inventory debug clear failed: invalid slot '%s'. Use Q/Coin, E/Smoke, or R/Glue."), *SlotName), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
 	HeistPlayerController->RequestClearQuickSlot(SlotType);
-	Message(
-		PlayerController,
-		FString::Printf(TEXT("Inventory debug clear requested: Slot=%s"), ToQuickSlotText(SlotType)),
-		EHeistDebugLevel::Info,
-		true);
+	Message(PlayerController, FString::Printf(TEXT("Inventory debug clear requested: Slot=%s"), ToQuickSlotText(SlotType)), EHeistDebugLevel::Info, true);
 #endif
 }
 
@@ -6231,11 +3766,7 @@ void UHeistDebugFunctionLibrary::DebugInventoryInvalidMove(APlayerController* Pl
 	}
 
 	HeistPlayerController->RequestMoveInventoryItem(InstanceId, FIntPoint(-1, -1));
-	Message(
-		PlayerController,
-		FString::Printf(TEXT("Inventory debug invalid move requested: InstanceId=%d Grid=(-1,-1)"), InstanceId),
-		EHeistDebugLevel::Info,
-		true);
+	Message(PlayerController, FString::Printf(TEXT("Inventory debug invalid move requested: InstanceId=%d Grid=(-1,-1)"), InstanceId), EHeistDebugLevel::Info, true);
 #endif
 }
 
@@ -6248,12 +3779,7 @@ void UHeistDebugFunctionLibrary::DebugStatusHelp(APlayerController* PlayerContro
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		PlayerController,
-		TEXT("Status debug commands: HeistStatusDump"),
-		EHeistDebugLevel::Info,
-		true,
-		8.0f);
+	Message(PlayerController, TEXT("Status debug commands: HeistStatusDump"), EHeistDebugLevel::Info, true, 8.0f);
 #endif
 }
 
@@ -6269,14 +3795,7 @@ void UHeistDebugFunctionLibrary::DebugStatusDump(APlayerController* PlayerContro
 		return;
 	}
 
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Status dump: Tags=[%s]"),
-			*FormatStatusTags(StatusComponent->GetStatusTags())),
-		EHeistDebugLevel::Info,
-		true,
-		6.0f);
+	Message(PlayerController, FString::Printf(TEXT("Status dump: Tags=[%s]"), *FormatStatusTags(StatusComponent->GetStatusTags())), EHeistDebugLevel::Info, true, 6.0f);
 #endif
 }
 
@@ -6289,12 +3808,7 @@ void UHeistDebugFunctionLibrary::DebugFeedbackHelp(APlayerController* PlayerCont
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		PlayerController,
-		TEXT("Feedback debug commands: HeistFeedbackTest | HeistFeedbackBagFull | HeistFeedbackDump"),
-		EHeistDebugLevel::Info,
-		true,
-		8.0f);
+	Message(PlayerController, TEXT("Feedback debug commands: HeistFeedbackTest | HeistFeedbackBagFull | HeistFeedbackDump"), EHeistDebugLevel::Info, true, 8.0f);
 #endif
 }
 
@@ -6359,12 +3873,7 @@ void UHeistDebugFunctionLibrary::DebugThrowableHelp(APlayerController* PlayerCon
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(
-		PlayerController,
-		TEXT("Throwable debug commands: HeistCoinThrow <Distance> | HeistCoinThrowAt <X> <Y> <Z>"),
-		EHeistDebugLevel::Info,
-		true,
-		8.0f);
+	Message(PlayerController, TEXT("Throwable debug commands: HeistCoinThrow <Distance> | HeistCoinThrowAt <X> <Y> <Z>"), EHeistDebugLevel::Info, true, 8.0f);
 #endif
 }
 
@@ -6390,19 +3899,12 @@ void UHeistDebugFunctionLibrary::DebugCoinThrow(APlayerController* PlayerControl
 		return;
 	}
 	HeistPlayerController->DebugRequestThrowCoinAtWorldLocation(TargetWorldLocation);
-	Message(
-		PlayerController,
-		FString::Printf(TEXT("Coin debug throw requested: Distance=%.1f CameraForward=(%.3f,%.3f,%.3f)"), ClampedDistance, CameraForward.X, CameraForward.Y, CameraForward.Z),
-		EHeistDebugLevel::Info,
-		true);
+	Message(PlayerController, FString::Printf(TEXT("Coin debug throw requested: Distance=%.1f CameraForward=(%.3f,%.3f,%.3f)"), ClampedDistance, CameraForward.X, CameraForward.Y, CameraForward.Z),
+			EHeistDebugLevel::Info, true);
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugCoinThrowAt(
-	APlayerController* PlayerController,
-	const float TargetX,
-	const float TargetY,
-	const float TargetZ)
+void UHeistDebugFunctionLibrary::DebugCoinThrowAt(APlayerController* PlayerController, const float TargetX, const float TargetY, const float TargetZ)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -6416,15 +3918,7 @@ void UHeistDebugFunctionLibrary::DebugCoinThrowAt(
 
 	const FVector TargetWorldLocation(TargetX, TargetY, TargetZ);
 	HeistPlayerController->DebugRequestThrowCoinAtWorldLocation(TargetWorldLocation);
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT("Coin debug throw-at requested: Target=(%.1f,%.1f,%.1f)"),
-			TargetX,
-			TargetY,
-			TargetZ),
-		EHeistDebugLevel::Info,
-		true);
+	Message(PlayerController, FString::Printf(TEXT("Coin debug throw-at requested: Target=(%.1f,%.1f,%.1f)"), TargetX, TargetY, TargetZ), EHeistDebugLevel::Info, true);
 #endif
 }
 

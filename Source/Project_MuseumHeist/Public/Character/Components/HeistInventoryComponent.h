@@ -19,21 +19,21 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryComponent : public UActorComponent
 
 #pragma region Construction
 
-public:
+  public:
 	UHeistInventoryComponent();
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void BeginPlay() override;
 
 #pragma endregion
 
 #pragma region InventoryContract
 
-public:
+  public:
 	static constexpr int32 GridColumnCount = 4;
 	static constexpr int32 GridRowCount = 5;
 
@@ -59,21 +59,11 @@ public:
 	bool TrySetInventoryOpen(bool bInInventoryOpen);
 	bool IsCarryingOriginal() const;
 	const FHeistOriginalCarryEntry& GetOriginalCarryEntry() const;
-	bool TryBeginOriginalCarry(
-		AHeistPlayerState* CarryingPlayerState,
-		FName ArtifactId,
-		float Weight,
-		AHeistPaintingDisplayCaseActor* SourceDisplayCase);
-	bool TryEndOriginalCarry(
-		AHeistPlayerState* CarryingPlayerState,
-		AHeistPaintingDisplayCaseActor* ExpectedSourceDisplayCase,
-		FHeistOriginalCarryEntry& OutReleasedEntry);
+	bool TryBeginOriginalCarry(AHeistPlayerState* CarryingPlayerState, FName ArtifactId, float Weight, AHeistPaintingDisplayCaseActor* SourceDisplayCase);
+	bool TryEndOriginalCarry(AHeistPlayerState* CarryingPlayerState, AHeistPaintingDisplayCaseActor* ExpectedSourceDisplayCase, FHeistOriginalCarryEntry& OutReleasedEntry);
 
-private:
-	bool TryFindAutoPlacement(
-		const FHeistItemDataRow& ItemDefinition,
-		FIntPoint& OutGridPosition,
-		bool& bOutRotated) const;
+  private:
+	bool TryFindAutoPlacement(const FHeistItemDataRow& ItemDefinition, FIntPoint& OutGridPosition, bool& bOutRotated) const;
 	bool TryBuildOccupiedCells(TArray<bool>& OutOccupiedCells) const;
 	bool TryBuildOccupiedCellsExcluding(int32 ExcludedInstanceId, TArray<bool>& OutOccupiedCells) const;
 	FHeistInventoryFastArrayItem* FindItemEntry(int32 InstanceId);
@@ -82,10 +72,7 @@ private:
 	const FHeistQuickSlotState* FindQuickSlot(EHeistQuickSlotType SlotType) const;
 	EHeistQuickSlotType ResolveQuickSlotType(FName ItemId) const;
 	void ClearQuickSlotReferences(int32 InstanceId);
-	static bool CanPlaceAt(
-		const TArray<bool>& OccupiedCells,
-		const FIntPoint& GridPosition,
-		const FIntPoint& ItemSize);
+	static bool CanPlaceAt(const TArray<bool>& OccupiedCells, const FIntPoint& GridPosition, const FIntPoint& ItemSize);
 	int32 AllocateNextInstanceId();
 	void NotifyInventoryChanged();
 
@@ -116,10 +103,10 @@ private:
 
 #pragma region Replication
 
-public:
+  public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-private:
+  private:
 	friend struct FHeistReplicatedInventory;
 
 	UPROPERTY(Replicated)

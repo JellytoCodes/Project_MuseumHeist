@@ -15,26 +15,26 @@ class PROJECT_MUSEUMHEIST_API UHeistLobbyViewModel : public UMVVMViewModelBase
 
 #pragma region Construction
 
-public:
+  public:
 	UHeistLobbyViewModel(const FObjectInitializer& ObjectInitializer);
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void BeginDestroy() override;
 
 #pragma endregion
 
 #pragma region Setup
 
-public:
+  public:
 	void SetupViewModel(class AHeistGameState* InGameState, class AHeistPlayerState* InLocalPlayerState);
 	void RefreshLobbyData();
 	FHeistLobbySnapshotChanged& GetSnapshotChangedDelegate();
 
-private:
+  private:
 	void HandlePlayerConnectionsChanged(int32 NewConnectedPlayerCount);
 
 	UPROPERTY(Transient)
@@ -49,7 +49,7 @@ private:
 
 #pragma region LobbyData
 
-public:
+  public:
 	int32 GetConnectedPlayerCount() const;
 	int32 GetLocalPlayerId() const;
 	const FText& GetPhaseText() const;
@@ -64,7 +64,7 @@ public:
 	const FText& GetPlayerSlot4Text() const;
 	ESlateVisibility GetAuthorityBlockerVisibility() const;
 
-private:
+  private:
 	FText BuildPlayerSlotText(int32 SlotIndex) const;
 	void RefreshPlayerSlots();
 

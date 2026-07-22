@@ -17,36 +17,27 @@ class PROJECT_MUSEUMHEIST_API UHeistInventorySlotWidget : public UHeistUserWidge
 
 #pragma region Construction
 
-public:
+  public:
 	UHeistInventorySlotWidget(const FObjectInitializer& ObjectInitializer);
 
 #pragma endregion
 
 #pragma region Presentation
 
-public:
-	void SetupSlot(
-		const FIntPoint& InGridCoordinate,
-		bool bInOccupied,
-		UHeistInventoryWidget* InInventoryWidget);
+  public:
+	void SetupSlot(const FIntPoint& InGridCoordinate, bool bInOccupied, UHeistInventoryWidget* InInventoryWidget);
 	void SetOccupied(bool bInOccupied);
 	void SetDropPreview(bool bVisible, bool bValid);
 
 	UFUNCTION(BlueprintPure, Category = "Heist|Inventory")
 	FIntPoint GetGridCoordinate() const;
 
-protected:
-	virtual void NativeOnDragEnter(
-		const FGeometry& InGeometry,
-		const FDragDropEvent& InDragDropEvent,
-		UDragDropOperation* InOperation) override;
+  protected:
+	virtual void NativeOnDragEnter(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 	virtual void NativeOnDragLeave(const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
-	virtual bool NativeOnDrop(
-		const FGeometry& InGeometry,
-		const FDragDropEvent& InDragDropEvent,
-		UDragDropOperation* InOperation) override;
+	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 
-private:
+  private:
 	void RefreshPresentation();
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Heist|Inventory", meta = (AllowPrivateAccess = "true"))

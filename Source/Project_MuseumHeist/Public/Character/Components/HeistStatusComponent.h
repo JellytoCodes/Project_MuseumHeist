@@ -13,12 +13,12 @@ class PROJECT_MUSEUMHEIST_API UHeistStatusComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
-public:
+  public:
 	UHeistStatusComponent();
 
 #pragma region StatusQueries
 
-public:
+  public:
 	bool HasStatusTag(FGameplayTag StateTag) const;
 	const TArray<FHeistTimedTagState>& GetStatusTags() const;
 	FHeistStatusTagsChanged& GetStatusTagsChangedDelegate();
@@ -27,14 +27,14 @@ public:
 
 #pragma region StatusMutation
 
-public:
+  public:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Heist|Status", meta = (ClampMin = "0.0", Units = "s"))
 	bool ApplyTimedStatusTag(FGameplayTag StateTag, float DurationSeconds);
 
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Heist|Status")
 	bool ClearStatusTag(FGameplayTag StateTag);
 
-private:
+  private:
 	FHeistTimedTagState* FindMutableStatusTag(FGameplayTag StateTag);
 	const FHeistTimedTagState* FindStatusTag(FGameplayTag StateTag) const;
 	void RefreshStatusTagTimer(const FHeistTimedTagState& StatusTagState);
@@ -53,10 +53,10 @@ private:
 
 #pragma region Replication
 
-public:
+  public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-private:
+  private:
 	UFUNCTION()
 	void OnRep_StatusTags();
 

@@ -19,12 +19,7 @@ AHeistSmokeProjectile::AHeistSmokeProjectile()
 
 void AHeistSmokeProjectile::HandleAuthorityImpact(const FHitResult& Hit)
 {
-	UHeistDebugFunctionLibrary::DebugThrowableProjectileImpact(
-		this,
-		this,
-		Hit.GetActor(),
-		GetSourceItemId(),
-		Hit.ImpactPoint);
+	UHeistDebugFunctionLibrary::DebugThrowableProjectileImpact(this, this, Hit.GetActor(), GetSourceItemId(), Hit.ImpactPoint);
 
 	if (!HasAuthority())
 	{
@@ -37,36 +32,19 @@ void AHeistSmokeProjectile::HandleAuthorityImpact(const FHitResult& Hit)
 		ResolvedSmokeCloudClass = AHeistSmokeCloudActor::StaticClass();
 	}
 
-	const FVector SmokeLocation = !Hit.ImpactPoint.IsNearlyZero()
-		? FVector(Hit.ImpactPoint)
-		: GetActorLocation();
+	const FVector SmokeLocation = !Hit.ImpactPoint.IsNearlyZero() ? FVector(Hit.ImpactPoint) : GetActorLocation();
 	const FTransform SpawnTransform(FRotator::ZeroRotator, SmokeLocation);
-	AHeistSmokeCloudActor* SmokeCloud = GetWorld()->SpawnActorDeferred<AHeistSmokeCloudActor>(
-		ResolvedSmokeCloudClass,
-		SpawnTransform,
-		GetThrowerCharacter(),
-		GetThrowerCharacter(),
-		ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
+	AHeistSmokeCloudActor* SmokeCloud = GetWorld()->SpawnActorDeferred<AHeistSmokeCloudActor>(ResolvedSmokeCloudClass, SpawnTransform, GetThrowerCharacter(), GetThrowerCharacter(),
+																							  ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
 	if (IsValid(SmokeCloud))
 	{
-		SmokeCloud->InitializeSmokeCloud(
-			GetThrowerCharacter(),
-			GetSourceItemId(),
-			GetEffectDurationSeconds(),
-			SmokeRadius);
+		SmokeCloud->InitializeSmokeCloud(GetThrowerCharacter(), GetSourceItemId(), GetEffectDurationSeconds(), SmokeRadius);
 		SmokeCloud = Cast<AHeistSmokeCloudActor>(UGameplayStatics::FinishSpawningActor(SmokeCloud, SpawnTransform));
 	}
 
 	if (IsValid(SmokeCloud))
 	{
-		UHeistDebugFunctionLibrary::DebugSmokeCloudSpawned(
-			this,
-			this,
-			SmokeCloud,
-			GetSourceItemId(),
-			SmokeLocation,
-			SmokeRadius,
-			GetEffectDurationSeconds());
+		UHeistDebugFunctionLibrary::DebugSmokeCloudSpawned(this, this, SmokeCloud, GetSourceItemId(), SmokeLocation, SmokeRadius, GetEffectDurationSeconds());
 	}
 	else
 	{

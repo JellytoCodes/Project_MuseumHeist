@@ -35,47 +35,28 @@ struct PROJECT_MUSEUMHEIST_API FHeistReplicaPaintingData
 	int32 Revision = 0;
 };
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(
-	FHeistDisplayCaseStateChangedSignature,
-	EHeistDisplayCaseState,
-	PreviousState,
-	EHeistDisplayCaseState,
-	NewState);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FHeistDisplayCaseStateChangedSignature, EHeistDisplayCaseState, PreviousState, EHeistDisplayCaseState, NewState);
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(
-	FHeistDisplayCaseSessionChangedSignature,
-	AHeistPlayerState*,
-	SessionOwner,
-	bool,
-	bLocked,
-	int32,
-	Revision);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FHeistDisplayCaseSessionChangedSignature, AHeistPlayerState*, SessionOwner, bool, bLocked, int32, Revision);
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(
-	FHeistOriginalCarryChangedSignature,
-	AHeistPlayerState*,
-	Carrier,
-	FName,
-	ArtifactId,
-	int32,
-	Revision);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FHeistOriginalCarryChangedSignature, AHeistPlayerState*, Carrier, FName, ArtifactId, int32, Revision);
 
 UCLASS()
 class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInteractableActor
 {
 	GENERATED_BODY()
 
-public:
+  public:
 	AHeistPaintingDisplayCaseActor();
 
-protected:
+  protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual bool CanInteract(const AActor* Interactor) const override;
 
 #pragma region StateMachine
 
-public:
+  public:
 	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase")
 	EHeistDisplayCaseState GetDisplayCaseState() const;
 
@@ -85,12 +66,8 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Visual")
 	bool ShouldDisplayReplicaPlaceholder() const;
 
-	void GetPlaceholderVisualDebugState(
-		bool& OutExpectedOriginalVisible,
-		bool& OutExpectedReplicaVisible,
-		int32& OutOriginalComponentCount,
-		int32& OutReplicaComponentCount,
-		bool& OutComponentsMatchExpectedState) const;
+	void GetPlaceholderVisualDebugState(bool& OutExpectedOriginalVisible, bool& OutExpectedReplicaVisible, int32& OutOriginalComponentCount, int32& OutReplicaComponentCount,
+										bool& OutComponentsMatchExpectedState) const;
 
 	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase")
 	bool CanTransitionToDisplayCaseState(EHeistDisplayCaseState NewState) const;
@@ -106,14 +83,11 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Heist|DisplayCase")
 	FHeistDisplayCaseStateChangedSignature OnDisplayCaseStateChanged;
 
-protected:
+  protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|DisplayCase|Visual", meta = (DisplayName = "Apply Placeholder Visual State"))
-	void BP_ApplyPlaceholderVisualState(
-		EHeistDisplayCaseState NewState,
-		bool bOriginalVisible,
-		bool bReplicaVisible);
+	void BP_ApplyPlaceholderVisualState(EHeistDisplayCaseState NewState, bool bOriginalVisible, bool bReplicaVisible);
 
-private:
+  private:
 	UPROPERTY(ReplicatedUsing = OnRep_DisplayCaseState, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase", meta = (AllowPrivateAccess = "true"))
 	EHeistDisplayCaseState DisplayCaseState = EHeistDisplayCaseState::Secured;
 
@@ -140,7 +114,7 @@ private:
 
 #pragma region ReplicaPlacement
 
-public:
+  public:
 	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Replica")
 	bool HasCommittedForgeryResult() const;
 
@@ -159,16 +133,8 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Replica|Visual")
 	bool IsReplicaWorldVisualReady() const;
 
-	void GetReplicaWorldVisualDebugState(
-		bool& OutReplicaExpectedVisible,
-		bool& OutHasReplicaMesh,
-		int32& OutExpectedTier,
-		int32& OutAppliedTier,
-		FName& OutTierName,
-		bool& OutUsingTierMaterial,
-		bool& OutUsingTransformFallback,
-		bool& OutCustomPrimitiveDataApplied,
-		bool& OutContractPassed) const;
+	void GetReplicaWorldVisualDebugState(bool& OutReplicaExpectedVisible, bool& OutHasReplicaMesh, int32& OutExpectedTier, int32& OutAppliedTier, FName& OutTierName, bool& OutUsingTierMaterial,
+										 bool& OutUsingTransformFallback, bool& OutCustomPrimitiveDataApplied, bool& OutContractPassed) const;
 
 	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Replica|Painting")
 	bool HasReplicaPaintingData() const;
@@ -176,47 +142,22 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Replica|Painting")
 	int32 GetReplicaPaintingRevision() const;
 
-	void GetReplicaPaintingDebugState(
-		int32& OutResolution,
-		int32& OutPaletteColorCount,
-		int32& OutPackedByteCount,
-		int32& OutPaintingRevision,
-		bool& OutTextureBuilt,
-		bool& OutDynamicMaterialBuilt,
-		bool& OutTextureParameterApplied,
-		bool& OutContractPassed) const;
+	void GetReplicaPaintingDebugState(int32& OutResolution, int32& OutPaletteColorCount, int32& OutPackedByteCount, int32& OutPaintingRevision, bool& OutTextureBuilt, bool& OutDynamicMaterialBuilt,
+									  bool& OutTextureParameterApplied, bool& OutContractPassed) const;
 
-	bool TryCommitReplicaPlacement(
-		AHeistPlayerState* RequestingPlayerState,
-		const FHeistForgeryResult& ForgeryResult,
-		const FHeistReplicaPaintingData& PaintingData);
+	bool TryCommitReplicaPlacement(AHeistPlayerState* RequestingPlayerState, const FHeistForgeryResult& ForgeryResult, const FHeistReplicaPaintingData& PaintingData);
 
-protected:
+  protected:
 	/**
 	 * Optional Blueprint presentation hook. Gameplay state and tier selection
 	 * remain C++; Blueprint may only add visual polish.
 	 */
-	UFUNCTION(
-		BlueprintImplementableEvent,
-		Category = "Heist|DisplayCase|Replica|Visual",
-		meta = (DisplayName = "Apply Replica World Visual"))
-	void BP_ApplyReplicaWorldVisual(
-		int32 VisualTier,
-		FName VisualTierName,
-		float SimilarityScore,
-		float CoverageScore,
-		float ColorAccuracyScore,
-		FName TemplateId,
-		bool bUsingAssignedTierMaterial);
+	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|DisplayCase|Replica|Visual", meta = (DisplayName = "Apply Replica World Visual"))
+	void BP_ApplyReplicaWorldVisual(int32 VisualTier, FName VisualTierName, float SimilarityScore, float CoverageScore, float ColorAccuracyScore, FName TemplateId, bool bUsingAssignedTierMaterial);
 
-private:
-	bool ValidateReplicaPlacementRequest(
-		AHeistPlayerState* RequestingPlayerState,
-		const FHeistForgeryResult& ForgeryResult,
-		FName& OutRejectReason) const;
-	bool ValidateReplicaPaintingData(
-		const FHeistReplicaPaintingData& PaintingData,
-		FName& OutRejectReason) const;
+  private:
+	bool ValidateReplicaPlacementRequest(AHeistPlayerState* RequestingPlayerState, const FHeistForgeryResult& ForgeryResult, FName& OutRejectReason) const;
+	bool ValidateReplicaPaintingData(const FHeistReplicaPaintingData& PaintingData, FName& OutRejectReason) const;
 	void CaptureReplicaVisualBaseline();
 	void RefreshReplicaWorldVisual();
 	void RefreshReplicaPaintingTexture();
@@ -226,86 +167,37 @@ private:
 	static int32 ResolveReplicaVisualTier(float SimilarityScore);
 	static FName ResolveReplicaVisualTierName(int32 VisualTier);
 
-	UPROPERTY(
-		Replicated,
-		VisibleInstanceOnly,
-		BlueprintReadOnly,
-		Category = "Heist|DisplayCase|Replica",
-		meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Replica", meta = (AllowPrivateAccess = "true"))
 	bool bHasCommittedForgeryResult = false;
 
-	UPROPERTY(
-		Replicated,
-		VisibleInstanceOnly,
-		BlueprintReadOnly,
-		Category = "Heist|DisplayCase|Replica",
-		meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Replica", meta = (AllowPrivateAccess = "true"))
 	FHeistForgeryResult CommittedForgeryResult;
 
-	UPROPERTY(
-		ReplicatedUsing = OnRep_CommittedForgeryRevision,
-		VisibleInstanceOnly,
-		BlueprintReadOnly,
-		Category = "Heist|DisplayCase|Replica",
-		meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(ReplicatedUsing = OnRep_CommittedForgeryRevision, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Replica", meta = (AllowPrivateAccess = "true"))
 	int32 CommittedForgeryRevision = 0;
 
-	UPROPERTY(
-		ReplicatedUsing = OnRep_ReplicaPaintingData,
-		VisibleInstanceOnly,
-		BlueprintReadOnly,
-		Category = "Heist|DisplayCase|Replica|Painting",
-		meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(ReplicatedUsing = OnRep_ReplicaPaintingData, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Replica|Painting", meta = (AllowPrivateAccess = "true"))
 	FHeistReplicaPaintingData ReplicaPaintingData;
 
-	UPROPERTY(
-		EditDefaultsOnly,
-		BlueprintReadOnly,
-		Category = "Heist|DisplayCase|Replica|Painting",
-		meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Replica|Painting", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UMaterialInterface> ReplicaPaintingMaterial;
 
-	UPROPERTY(
-		EditDefaultsOnly,
-		BlueprintReadOnly,
-		Category = "Heist|DisplayCase|Replica|Painting",
-		meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Replica|Painting", meta = (AllowPrivateAccess = "true"))
 	FName ReplicaPaintingTextureParameter = TEXT("PaintingTexture");
 
-	UPROPERTY(
-		EditDefaultsOnly,
-		BlueprintReadOnly,
-		Category = "Heist|DisplayCase|Replica|Painting",
-		meta = (AllowPrivateAccess = "true"))
-	FLinearColor ReplicaPaintingBackgroundColor =
-		FLinearColor(0.94f, 0.92f, 0.84f, 1.0f);
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Replica|Painting", meta = (AllowPrivateAccess = "true"))
+	FLinearColor ReplicaPaintingBackgroundColor = FLinearColor(0.94f, 0.92f, 0.84f, 1.0f);
 
-	UPROPERTY(
-		EditDefaultsOnly,
-		BlueprintReadOnly,
-		Category = "Heist|DisplayCase|Replica|Visual",
-		meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Replica|Visual", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UMaterialInterface> ReplicaPoorMaterial;
 
-	UPROPERTY(
-		EditDefaultsOnly,
-		BlueprintReadOnly,
-		Category = "Heist|DisplayCase|Replica|Visual",
-		meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Replica|Visual", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UMaterialInterface> ReplicaFairMaterial;
 
-	UPROPERTY(
-		EditDefaultsOnly,
-		BlueprintReadOnly,
-		Category = "Heist|DisplayCase|Replica|Visual",
-		meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Replica|Visual", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UMaterialInterface> ReplicaGoodMaterial;
 
-	UPROPERTY(
-		EditDefaultsOnly,
-		BlueprintReadOnly,
-		Category = "Heist|DisplayCase|Replica|Visual",
-		meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Replica|Visual", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UMaterialInterface> ReplicaExcellentMaterial;
 
 	UPROPERTY(Transient)
@@ -336,7 +228,7 @@ private:
 
 #pragma region InspectionTarget
 
-public:
+  public:
 	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Inspection")
 	bool IsRegisteredForInspection() const;
 
@@ -367,23 +259,15 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Inspection")
 	int32 GetInspectionScheduleRevision() const;
 
-	static bool CalculateInspectionSchedule(
-		float SimilarityScore,
-		float BaseInspectionDelay,
-		float& OutDelay,
-		FName& OutScoreBand,
-		FName& OutAlertOutcome,
-		EHeistDisplayCaseState& OutCaseOutcome);
+	static bool CalculateInspectionSchedule(float SimilarityScore, float BaseInspectionDelay, float& OutDelay, FName& OutScoreBand, FName& OutAlertOutcome, EHeistDisplayCaseState& OutCaseOutcome);
 
 	bool TryBeginInspection(AActor* InspectingGuard);
 	bool InterruptInspection(AActor* InspectingGuard, FName Reason);
 	bool ApplyInspectionResult(AActor* InspectingGuard);
 	bool IsInspectionOwnedBy(const AActor* InspectingGuard) const;
 
-private:
-	bool ResolveInspectionSchedule(
-		const FHeistForgeryResult& ForgeryResult,
-		FName& OutRejectReason);
+  private:
+	bool ResolveInspectionSchedule(const FHeistForgeryResult& ForgeryResult, FName& OutRejectReason);
 	void StartInspectionDelayTimer();
 	void ClearInspectionDelayTimer();
 	void HandleInspectionDelayExpired();
@@ -393,18 +277,10 @@ private:
 	UFUNCTION()
 	void OnRep_InspectionScheduleRevision();
 
-	UPROPERTY(
-		VisibleInstanceOnly,
-		BlueprintReadOnly,
-		Category = "Heist|DisplayCase|Inspection",
-		meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Inspection", meta = (AllowPrivateAccess = "true"))
 	bool bRegisteredForInspection = false;
 
-	UPROPERTY(
-		VisibleInstanceOnly,
-		BlueprintReadOnly,
-		Category = "Heist|DisplayCase|Inspection",
-		meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Inspection", meta = (AllowPrivateAccess = "true"))
 	int32 InspectionRegistrationRevision = 0;
 
 	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Inspection", meta = (AllowPrivateAccess = "true"))
@@ -433,7 +309,7 @@ private:
 
 #pragma region OriginalCarry
 
-public:
+  public:
 	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Original")
 	FName GetTargetArtifactId() const;
 
@@ -454,44 +330,23 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Heist|DisplayCase|Original")
 	FHeistOriginalCarryChangedSignature OnOriginalCarryChanged;
 
-private:
-	bool ValidateOriginalTakeRequest(
-		AHeistPlayerState* RequestingPlayerState,
-		float& OutArtifactWeight,
-		FName& OutRejectReason) const;
+  private:
+	bool ValidateOriginalTakeRequest(AHeistPlayerState* RequestingPlayerState, float& OutArtifactWeight, FName& OutRejectReason) const;
 	void SyncObjectiveCarrierCandidate(AHeistPlayerState* Carrier);
 	void UnbindOriginalCarrierDelegate();
 	void BroadcastOriginalCarrySnapshot(const TCHAR* ChangeSource, FName Reason);
 	void HandleOriginalCarrierArrestStateChanged(bool bArrested);
 
-	UPROPERTY(
-		EditInstanceOnly,
-		BlueprintReadOnly,
-		Category = "Heist|DisplayCase|Original",
-		meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Original", meta = (AllowPrivateAccess = "true"))
 	FName TargetArtifactId = TEXT("Artifact_Painting_M01");
 
-	UPROPERTY(
-		EditInstanceOnly,
-		BlueprintReadOnly,
-		Category = "Heist|DisplayCase|Original",
-		meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Original", meta = (AllowPrivateAccess = "true"))
 	FName DisplayCaseId = TEXT("Case_M01_Target");
 
-	UPROPERTY(
-		Replicated,
-		VisibleInstanceOnly,
-		BlueprintReadOnly,
-		Category = "Heist|DisplayCase|Original",
-		meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Original", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<AHeistPlayerState> OriginalCarrier;
 
-	UPROPERTY(
-		ReplicatedUsing = OnRep_OriginalCarryRevision,
-		VisibleInstanceOnly,
-		BlueprintReadOnly,
-		Category = "Heist|DisplayCase|Original",
-		meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(ReplicatedUsing = OnRep_OriginalCarryRevision, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Original", meta = (AllowPrivateAccess = "true"))
 	int32 OriginalCarryRevision = 0;
 
 	UFUNCTION()
@@ -503,7 +358,7 @@ private:
 
 #pragma region Session
 
-public:
+  public:
 	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Session")
 	AHeistPlayerState* GetSessionOwner() const;
 
@@ -527,7 +382,7 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Heist|DisplayCase|Session")
 	FHeistDisplayCaseSessionChangedSignature OnDisplayCaseSessionChanged;
 
-private:
+  private:
 	bool ValidateSessionRequest(AHeistPlayerState* RequestingPlayerState, FName& OutRejectReason) const;
 	void ClearSession(FName Reason);
 	void UnbindSessionOwnerDelegate();
@@ -559,7 +414,7 @@ private:
 
 #pragma region Replication
 
-public:
+  public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 #pragma endregion

@@ -5,12 +5,7 @@
 
 #include "HeistVisionComponent.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(
-	FHeistFlashlightAimDirectionChanged,
-	FVector,
-	AimDirection,
-	float,
-	AimYawDegrees);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FHeistFlashlightAimDirectionChanged, FVector, AimDirection, float, AimYawDegrees);
 
 UCLASS(ClassGroup = (Heist), meta = (BlueprintSpawnableComponent))
 class PROJECT_MUSEUMHEIST_API UHeistVisionComponent : public UActorComponent
@@ -19,7 +14,7 @@ class PROJECT_MUSEUMHEIST_API UHeistVisionComponent : public UActorComponent
 
 #pragma region Construction
 
-public:
+  public:
 	UHeistVisionComponent();
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
@@ -27,7 +22,7 @@ public:
 
 #pragma region Flashlight
 
-public:
+  public:
 	void UpdateFlashlightAimDirection(const FVector& InWorldDirection);
 
 	UFUNCTION(BlueprintPure, Category = "Heist|Vision")
@@ -39,7 +34,7 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Heist|Vision")
 	FHeistFlashlightAimDirectionChanged FlashlightAimDirectionChanged;
 
-private:
+  private:
 	UFUNCTION()
 	void OnRep_FlashlightAimDirection();
 

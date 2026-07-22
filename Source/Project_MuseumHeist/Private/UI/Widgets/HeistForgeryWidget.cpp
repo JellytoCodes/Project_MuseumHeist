@@ -14,20 +14,18 @@
 
 namespace
 {
-	// Slate's thick polyline renderer develops visible joint spikes when
-	// adjacent points are much closer than the brush width. Keep committed
-	// points far enough apart to absorb one-pixel mouse jitter while the live
-	// endpoint still follows every pointer event.
-	constexpr float MinimumNormalizedPointSpacing = 0.004f;
-	constexpr float BrushRelativePointSpacing = 0.75f;
-	constexpr float MinimumNormalizedEraseRadius = 0.015f;
-	constexpr float PreviewScoreUpdateIntervalSeconds = 0.20f;
-	constexpr float DrawingSurfaceSizeSlateUnits = 400.0f;
+// Slate's thick polyline renderer develops visible joint spikes when
+// adjacent points are much closer than the brush width. Keep committed
+// points far enough apart to absorb one-pixel mouse jitter while the live
+// endpoint still follows every pointer event.
+constexpr float MinimumNormalizedPointSpacing = 0.004f;
+constexpr float BrushRelativePointSpacing = 0.75f;
+constexpr float MinimumNormalizedEraseRadius = 0.015f;
+constexpr float PreviewScoreUpdateIntervalSeconds = 0.20f;
+constexpr float DrawingSurfaceSizeSlateUnits = 400.0f;
 }
 
-UHeistForgeryWidget::UHeistForgeryWidget(
-	const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer)
+UHeistForgeryWidget::UHeistForgeryWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 	SetIsFocusable(true);
 }
@@ -53,9 +51,7 @@ void UHeistForgeryWidget::NativeDestruct()
 	Super::NativeDestruct();
 }
 
-void UHeistForgeryWidget::NativeTick(
-	const FGeometry& MyGeometry,
-	const float InDeltaTime)
+void UHeistForgeryWidget::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
 
@@ -65,8 +61,7 @@ void UHeistForgeryWidget::NativeTick(
 	}
 
 	PreviewScoreUpdateAccumulator += InDeltaTime;
-	if (PreviewScoreUpdateAccumulator
-		< PreviewScoreUpdateIntervalSeconds)
+	if (PreviewScoreUpdateAccumulator < PreviewScoreUpdateIntervalSeconds)
 	{
 		return;
 	}
@@ -74,23 +69,10 @@ void UHeistForgeryWidget::NativeTick(
 	RefreshLocalPreviewScore();
 }
 
-int32 UHeistForgeryWidget::NativePaint(
-	const FPaintArgs& Args,
-	const FGeometry& AllottedGeometry,
-	const FSlateRect& MyCullingRect,
-	FSlateWindowElementList& OutDrawElements,
-	const int32 LayerId,
-	const FWidgetStyle& InWidgetStyle,
-	const bool bParentEnabled) const
+int32 UHeistForgeryWidget::NativePaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry, const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, const int32 LayerId,
+									   const FWidgetStyle& InWidgetStyle, const bool bParentEnabled) const
 {
-	const int32 SuperLayer = Super::NativePaint(
-		Args,
-		AllottedGeometry,
-		MyCullingRect,
-		OutDrawElements,
-		LayerId,
-		InWidgetStyle,
-		bParentEnabled);
+	const int32 SuperLayer = Super::NativePaint(Args, AllottedGeometry, MyCullingRect, OutDrawElements, LayerId, InWidgetStyle, bParentEnabled);
 	if (!IsDrawingInputEnabled() || LocalStrokes.IsEmpty())
 	{
 		return SuperLayer;
@@ -105,68 +87,34 @@ int32 UHeistForgeryWidget::NativePaint(
 	// Windowed PIE reports pointer/child geometry in desktop space, while
 	// NativePaint's AllottedGeometry is rooted in the PIE window. Convert
 	// through the input-event geometry so DrawPoints remain widget-local.
-	const FGeometry& WidgetGeometry =
-		DrawingInputWidgetGeometry.GetValue();
+	const FGeometry& WidgetGeometry = DrawingInputWidgetGeometry.GetValue();
 	const FVector2D SurfaceLocalSize = SurfaceGeometry.GetLocalSize();
 	const FVector2D WidgetLocalSize = WidgetGeometry.GetLocalSize();
-	if (SurfaceLocalSize.X <= 0.0f
-		|| SurfaceLocalSize.Y <= 0.0f
-		|| WidgetLocalSize.X <= 0.0f
-		|| WidgetLocalSize.Y <= 0.0f)
+	if (SurfaceLocalSize.X <= 0.0f || SurfaceLocalSize.Y <= 0.0f || WidgetLocalSize.X <= 0.0f || WidgetLocalSize.Y <= 0.0f)
 	{
 		return SuperLayer;
 	}
 
-	const float StrokeThickness = FMath::Max(
-		1.0f,
-		GetConfiguredBrushSize()
-			* FMath::Min(SurfaceLocalSize.X, SurfaceLocalSize.Y));
+	const float StrokeThickness = FMath::Max(1.0f, GetConfiguredBrushSize() * FMath::Min(SurfaceLocalSize.X, SurfaceLocalSize.Y));
 	const int32 StrokeLayer = SuperLayer + 1;
 
 	if (bPendingDrawCoordinateLog)
 	{
-		const FVector2D SurfaceLocal(
-			PendingDrawNormalizedPoint.X * SurfaceLocalSize.X,
-			PendingDrawNormalizedPoint.Y * SurfaceLocalSize.Y);
-		const FVector2D PaintScreen =
-			SurfaceGeometry.LocalToAbsolute(SurfaceLocal);
-		const FVector2D PaintWidgetLocal =
-			WidgetGeometry.AbsoluteToLocal(PaintScreen);
-		const FVector2D ReprojectedPaintScreen =
-			WidgetGeometry.LocalToAbsolute(PaintWidgetLocal);
-		const FVector2D MouseToPaintDelta =
-			ReprojectedPaintScreen - PendingDrawMouseScreen;
-		const FVector2D SurfaceScreenTopLeft =
-			SurfaceGeometry.LocalToAbsolute(FVector2D::ZeroVector);
-		const FVector2D SurfaceScreenBottomRight =
-			SurfaceGeometry.LocalToAbsolute(SurfaceLocalSize);
+		const FVector2D SurfaceLocal(PendingDrawNormalizedPoint.X * SurfaceLocalSize.X, PendingDrawNormalizedPoint.Y * SurfaceLocalSize.Y);
+		const FVector2D PaintScreen = SurfaceGeometry.LocalToAbsolute(SurfaceLocal);
+		const FVector2D PaintWidgetLocal = WidgetGeometry.AbsoluteToLocal(PaintScreen);
+		const FVector2D ReprojectedPaintScreen = WidgetGeometry.LocalToAbsolute(PaintWidgetLocal);
+		const FVector2D MouseToPaintDelta = ReprojectedPaintScreen - PendingDrawMouseScreen;
+		const FVector2D SurfaceScreenTopLeft = SurfaceGeometry.LocalToAbsolute(FVector2D::ZeroVector);
+		const FVector2D SurfaceScreenBottomRight = SurfaceGeometry.LocalToAbsolute(SurfaceLocalSize);
 
 		UE_LOG(
-			LogHeistUI,
-			Log,
-			TEXT("[%s] Forgery draw paint coordinate: MouseScreen=(%.2f,%.2f) Normalized=(%.6f,%.6f) SurfaceLocal=(%.2f,%.2f) PaintWidgetLocal=(%.2f,%.2f) PaintScreen=(%.2f,%.2f) MouseToPaintDelta=(%.2f,%.2f) SurfaceScreen=[(%.2f,%.2f)->(%.2f,%.2f)] SurfaceLocalSize=(%.2f,%.2f) Result=%s"),
-			*GetName(),
-			PendingDrawMouseScreen.X,
-			PendingDrawMouseScreen.Y,
-			PendingDrawNormalizedPoint.X,
-			PendingDrawNormalizedPoint.Y,
-			SurfaceLocal.X,
-			SurfaceLocal.Y,
-			PaintWidgetLocal.X,
-			PaintWidgetLocal.Y,
-			ReprojectedPaintScreen.X,
-			ReprojectedPaintScreen.Y,
-			MouseToPaintDelta.X,
-			MouseToPaintDelta.Y,
-			SurfaceScreenTopLeft.X,
-			SurfaceScreenTopLeft.Y,
-			SurfaceScreenBottomRight.X,
-			SurfaceScreenBottomRight.Y,
-			SurfaceLocalSize.X,
-			SurfaceLocalSize.Y,
-			MouseToPaintDelta.IsNearlyZero(0.5)
-				? TEXT("MATCH")
-				: TEXT("MISMATCH"));
+			LogHeistUI, Log,
+			TEXT(
+				"[%s] Forgery draw paint coordinate: MouseScreen=(%.2f,%.2f) Normalized=(%.6f,%.6f) SurfaceLocal=(%.2f,%.2f) PaintWidgetLocal=(%.2f,%.2f) PaintScreen=(%.2f,%.2f) MouseToPaintDelta=(%.2f,%.2f) SurfaceScreen=[(%.2f,%.2f)->(%.2f,%.2f)] SurfaceLocalSize=(%.2f,%.2f) Result=%s"),
+			*GetName(), PendingDrawMouseScreen.X, PendingDrawMouseScreen.Y, PendingDrawNormalizedPoint.X, PendingDrawNormalizedPoint.Y, SurfaceLocal.X, SurfaceLocal.Y, PaintWidgetLocal.X,
+			PaintWidgetLocal.Y, ReprojectedPaintScreen.X, ReprojectedPaintScreen.Y, MouseToPaintDelta.X, MouseToPaintDelta.Y, SurfaceScreenTopLeft.X, SurfaceScreenTopLeft.Y,
+			SurfaceScreenBottomRight.X, SurfaceScreenBottomRight.Y, SurfaceLocalSize.X, SurfaceLocalSize.Y, MouseToPaintDelta.IsNearlyZero(0.5) ? TEXT("MATCH") : TEXT("MISMATCH"));
 		bPendingDrawCoordinateLog = false;
 	}
 
@@ -181,42 +129,24 @@ int32 UHeistForgeryWidget::NativePaint(
 		DrawPoints.Reserve(FMath::Max(2, Stroke.Points.Num()));
 		for (const FVector2D& NormalizedPoint : Stroke.Points)
 		{
-			const FVector2D SurfaceLocalPoint(
-				NormalizedPoint.X * SurfaceLocalSize.X,
-				NormalizedPoint.Y * SurfaceLocalSize.Y);
-			const FVector2D ScreenPoint =
-				SurfaceGeometry.LocalToAbsolute(SurfaceLocalPoint);
-			DrawPoints.Add(
-				WidgetGeometry.AbsoluteToLocal(ScreenPoint));
+			const FVector2D SurfaceLocalPoint(NormalizedPoint.X * SurfaceLocalSize.X, NormalizedPoint.Y * SurfaceLocalSize.Y);
+			const FVector2D ScreenPoint = SurfaceGeometry.LocalToAbsolute(SurfaceLocalPoint);
+			DrawPoints.Add(WidgetGeometry.AbsoluteToLocal(ScreenPoint));
 		}
 		if (DrawPoints.Num() == 1)
 		{
 			DrawPoints.Add(DrawPoints[0] + FVector2d(0.01, 0.01));
 		}
 
-		const TArray<FLinearColor>& Palette =
-			ForgeryViewModel->GetAllowedPalette();
-		const FLinearColor StrokeColor =
-			Palette.IsValidIndex(Stroke.PaletteIndex)
-				? Palette[Stroke.PaletteIndex]
-				: FLinearColor::Black;
-		FSlateDrawElement::MakeLines(
-			OutDrawElements,
-			StrokeLayer,
-			AllottedGeometry.ToPaintGeometry(),
-			MoveTemp(DrawPoints),
-			ESlateDrawEffect::None,
-			StrokeColor,
-			true,
-			StrokeThickness);
+		const TArray<FLinearColor>& Palette = ForgeryViewModel->GetAllowedPalette();
+		const FLinearColor StrokeColor = Palette.IsValidIndex(Stroke.PaletteIndex) ? Palette[Stroke.PaletteIndex] : FLinearColor::Black;
+		FSlateDrawElement::MakeLines(OutDrawElements, StrokeLayer, AllottedGeometry.ToPaintGeometry(), MoveTemp(DrawPoints), ESlateDrawEffect::None, StrokeColor, true, StrokeThickness);
 	}
 
 	return StrokeLayer;
 }
 
-FReply UHeistForgeryWidget::NativeOnMouseButtonDown(
-	const FGeometry& InGeometry,
-	const FPointerEvent& InMouseEvent)
+FReply UHeistForgeryWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
 	if (!IsDrawingInputEnabled())
 	{
@@ -225,37 +155,24 @@ FReply UHeistForgeryWidget::NativeOnMouseButtonDown(
 
 	DrawingInputWidgetGeometry.Emplace(InGeometry);
 
-	const bool bDrawAttempt =
-		InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton;
+	const bool bDrawAttempt = InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton;
 	const FGeometry SurfaceGeometry = DrawingSurface->GetCachedGeometry();
 	const FVector2D SurfaceLocalSize = SurfaceGeometry.GetLocalSize();
 	const FVector2D MouseScreen = InMouseEvent.GetScreenSpacePosition();
-	const FVector2D RawSurfaceLocal =
-		SurfaceGeometry.AbsoluteToLocal(MouseScreen);
+	const FVector2D RawSurfaceLocal = SurfaceGeometry.AbsoluteToLocal(MouseScreen);
 	FVector2D NormalizedPoint = FVector2D::ZeroVector;
 	if (!TryResolveNormalizedDrawingPoint(InMouseEvent, NormalizedPoint))
 	{
 		if (bDrawAttempt)
 		{
-			const FVector2D SurfaceScreenTopLeft =
-				SurfaceGeometry.LocalToAbsolute(FVector2D::ZeroVector);
-			const FVector2D SurfaceScreenBottomRight =
-				SurfaceGeometry.LocalToAbsolute(SurfaceLocalSize);
+			const FVector2D SurfaceScreenTopLeft = SurfaceGeometry.LocalToAbsolute(FVector2D::ZeroVector);
+			const FVector2D SurfaceScreenBottomRight = SurfaceGeometry.LocalToAbsolute(SurfaceLocalSize);
 			UE_LOG(
-				LogHeistUI,
-				Warning,
-				TEXT("[%s] Forgery draw input coordinate: MouseScreen=(%.2f,%.2f) SurfaceLocal=(%.2f,%.2f) SurfaceLocalSize=(%.2f,%.2f) SurfaceScreen=[(%.2f,%.2f)->(%.2f,%.2f)] Inside=false Result=REJECTED_OUTSIDE"),
-				*GetName(),
-				MouseScreen.X,
-				MouseScreen.Y,
-				RawSurfaceLocal.X,
-				RawSurfaceLocal.Y,
-				SurfaceLocalSize.X,
-				SurfaceLocalSize.Y,
-				SurfaceScreenTopLeft.X,
-				SurfaceScreenTopLeft.Y,
-				SurfaceScreenBottomRight.X,
-				SurfaceScreenBottomRight.Y);
+				LogHeistUI, Warning,
+				TEXT(
+					"[%s] Forgery draw input coordinate: MouseScreen=(%.2f,%.2f) SurfaceLocal=(%.2f,%.2f) SurfaceLocalSize=(%.2f,%.2f) SurfaceScreen=[(%.2f,%.2f)->(%.2f,%.2f)] Inside=false Result=REJECTED_OUTSIDE"),
+				*GetName(), MouseScreen.X, MouseScreen.Y, RawSurfaceLocal.X, RawSurfaceLocal.Y, SurfaceLocalSize.X, SurfaceLocalSize.Y, SurfaceScreenTopLeft.X, SurfaceScreenTopLeft.Y,
+				SurfaceScreenBottomRight.X, SurfaceScreenBottomRight.Y);
 		}
 		return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
 	}
@@ -265,34 +182,15 @@ FReply UHeistForgeryWidget::NativeOnMouseButtonDown(
 		float ViewportMouseX = 0.0f;
 		float ViewportMouseY = 0.0f;
 		const APlayerController* OwningPlayerController = GetOwningPlayer();
-		const bool bHasViewportMouse = IsValid(OwningPlayerController)
-			&& OwningPlayerController->GetMousePosition(
-				ViewportMouseX,
-				ViewportMouseY);
+		const bool bHasViewportMouse = IsValid(OwningPlayerController) && OwningPlayerController->GetMousePosition(ViewportMouseX, ViewportMouseY);
 		const bool bStrokeBegan = BeginLocalStroke(NormalizedPoint);
 		UE_LOG(
-			LogHeistUI,
-			Log,
-			TEXT("[%s] Forgery draw input coordinate: MouseScreen=(%.2f,%.2f) ViewportMouse=(%.2f,%.2f) HasViewportMouse=%s SurfaceLocal=(%.2f,%.2f) SurfaceLocalSize=(%.2f,%.2f) Normalized=(%.6f,%.6f) WidgetScreenTopLeft=(%.2f,%.2f) WidgetLocalSize=(%.2f,%.2f) Inside=true PointCount=%d StrokeLimit=%d Result=%s"),
-			*GetName(),
-			MouseScreen.X,
-			MouseScreen.Y,
-			ViewportMouseX,
-			ViewportMouseY,
-			bHasViewportMouse ? TEXT("true") : TEXT("false"),
-			RawSurfaceLocal.X,
-			RawSurfaceLocal.Y,
-			SurfaceLocalSize.X,
-			SurfaceLocalSize.Y,
-			NormalizedPoint.X,
-			NormalizedPoint.Y,
-			InGeometry.LocalToAbsolute(FVector2D::ZeroVector).X,
-			InGeometry.LocalToAbsolute(FVector2D::ZeroVector).Y,
-			InGeometry.GetLocalSize().X,
-			InGeometry.GetLocalSize().Y,
-			GetCollectedPointCount(),
-			GetConfiguredStrokeLimit(),
-			bStrokeBegan ? TEXT("ACCEPTED") : TEXT("REJECTED_LIMIT"));
+			LogHeistUI, Log,
+			TEXT(
+				"[%s] Forgery draw input coordinate: MouseScreen=(%.2f,%.2f) ViewportMouse=(%.2f,%.2f) HasViewportMouse=%s SurfaceLocal=(%.2f,%.2f) SurfaceLocalSize=(%.2f,%.2f) Normalized=(%.6f,%.6f) WidgetScreenTopLeft=(%.2f,%.2f) WidgetLocalSize=(%.2f,%.2f) Inside=true PointCount=%d StrokeLimit=%d Result=%s"),
+			*GetName(), MouseScreen.X, MouseScreen.Y, ViewportMouseX, ViewportMouseY, bHasViewportMouse ? TEXT("true") : TEXT("false"), RawSurfaceLocal.X, RawSurfaceLocal.Y, SurfaceLocalSize.X,
+			SurfaceLocalSize.Y, NormalizedPoint.X, NormalizedPoint.Y, InGeometry.LocalToAbsolute(FVector2D::ZeroVector).X, InGeometry.LocalToAbsolute(FVector2D::ZeroVector).Y,
+			InGeometry.GetLocalSize().X, InGeometry.GetLocalSize().Y, GetCollectedPointCount(), GetConfiguredStrokeLimit(), bStrokeBegan ? TEXT("ACCEPTED") : TEXT("REJECTED_LIMIT"));
 
 		if (bStrokeBegan)
 		{
@@ -314,15 +212,10 @@ FReply UHeistForgeryWidget::NativeOnMouseButtonDown(
 	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
 }
 
-FReply UHeistForgeryWidget::NativeOnMouseButtonUp(
-	const FGeometry& InGeometry,
-	const FPointerEvent& InMouseEvent)
+FReply UHeistForgeryWidget::NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
 	const FKey ReleasedButton = InMouseEvent.GetEffectingButton();
-	if ((ReleasedButton == EKeys::LeftMouseButton
-			&& ActiveStrokeIndex != INDEX_NONE)
-		|| (ReleasedButton == EKeys::RightMouseButton
-			&& bErasePointerActive))
+	if ((ReleasedButton == EKeys::LeftMouseButton && ActiveStrokeIndex != INDEX_NONE) || (ReleasedButton == EKeys::RightMouseButton && bErasePointerActive))
 	{
 		FinishPointerInteraction();
 		return FReply::Handled().ReleaseMouseCapture();
@@ -331,9 +224,7 @@ FReply UHeistForgeryWidget::NativeOnMouseButtonUp(
 	return Super::NativeOnMouseButtonUp(InGeometry, InMouseEvent);
 }
 
-FReply UHeistForgeryWidget::NativeOnMouseMove(
-	const FGeometry& InGeometry,
-	const FPointerEvent& InMouseEvent)
+FReply UHeistForgeryWidget::NativeOnMouseMove(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
 	if (!IsDrawingInputEnabled())
 	{
@@ -355,10 +246,8 @@ FReply UHeistForgeryWidget::NativeOnMouseMove(
 		return Super::NativeOnMouseMove(InGeometry, InMouseEvent);
 	}
 
-	const bool bLeftMouseDown =
-		InMouseEvent.IsMouseButtonDown(EKeys::LeftMouseButton);
-	const bool bRightMouseDown =
-		InMouseEvent.IsMouseButtonDown(EKeys::RightMouseButton);
+	const bool bLeftMouseDown = InMouseEvent.IsMouseButtonDown(EKeys::LeftMouseButton);
+	const bool bRightMouseDown = InMouseEvent.IsMouseButtonDown(EKeys::RightMouseButton);
 
 	if (bLeftMouseDown)
 	{
@@ -372,9 +261,7 @@ FReply UHeistForgeryWidget::NativeOnMouseMove(
 		}
 
 		AppendLocalStrokePoint(NormalizedPoint);
-		return ActiveStrokeIndex != INDEX_NONE
-			? FReply::Handled().CaptureMouse(TakeWidget())
-			: FReply::Handled().ReleaseMouseCapture();
+		return ActiveStrokeIndex != INDEX_NONE ? FReply::Handled().CaptureMouse(TakeWidget()) : FReply::Handled().ReleaseMouseCapture();
 	}
 
 	if (bRightMouseDown)
@@ -394,34 +281,19 @@ FReply UHeistForgeryWidget::NativeOnMouseMove(
 	return Super::NativeOnMouseMove(InGeometry, InMouseEvent);
 }
 
-FReply UHeistForgeryWidget::NativeOnKeyDown(
-	const FGeometry& InGeometry,
-	const FKeyEvent& InKeyEvent)
+FReply UHeistForgeryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
 {
 	const FKey PressedKey = InKeyEvent.GetKey();
-	const FKey PaletteKeys[] = {
-		EKeys::One,
-		EKeys::Two,
-		EKeys::Three,
-		EKeys::Four,
-		EKeys::Five,
-		EKeys::Six,
-		EKeys::Seven,
-		EKeys::Eight
-	};
-	for (int32 PaletteIndex = 0;
-		PaletteIndex < UE_ARRAY_COUNT(PaletteKeys);
-		++PaletteIndex)
+	const FKey PaletteKeys[] = {EKeys::One, EKeys::Two, EKeys::Three, EKeys::Four, EKeys::Five, EKeys::Six, EKeys::Seven, EKeys::Eight};
+	for (int32 PaletteIndex = 0; PaletteIndex < UE_ARRAY_COUNT(PaletteKeys); ++PaletteIndex)
 	{
-		if (PressedKey == PaletteKeys[PaletteIndex]
-			&& SelectPaletteIndex(PaletteIndex))
+		if (PressedKey == PaletteKeys[PaletteIndex] && SelectPaletteIndex(PaletteIndex))
 		{
 			return FReply::Handled();
 		}
 	}
 
-	if (PressedKey == EKeys::Enter
-		&& IsDrawingInputEnabled())
+	if (PressedKey == EKeys::Enter && IsDrawingInputEnabled())
 	{
 		RequestSubmitCollectedStrokes();
 		return FReply::Handled();
@@ -430,30 +302,23 @@ FReply UHeistForgeryWidget::NativeOnKeyDown(
 	return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
 }
 
-void UHeistForgeryWidget::NativeOnMouseCaptureLost(
-	const FCaptureLostEvent& CaptureLostEvent)
+void UHeistForgeryWidget::NativeOnMouseCaptureLost(const FCaptureLostEvent& CaptureLostEvent)
 {
 	Super::NativeOnMouseCaptureLost(CaptureLostEvent);
 }
 
-void UHeistForgeryWidget::SetupForgeryWidget(
-	UHeistForgeryViewModel* InForgeryViewModel)
+void UHeistForgeryWidget::SetupForgeryWidget(UHeistForgeryViewModel* InForgeryViewModel)
 {
-	checkf(
-		IsValid(InForgeryViewModel),
-		TEXT("HeistForgeryWidget requires a valid Forgery ViewModel."));
+	checkf(IsValid(InForgeryViewModel), TEXT("HeistForgeryWidget requires a valid Forgery ViewModel."));
 
-	if (ForgeryViewModel != InForgeryViewModel
-		&& IsValid(ForgeryViewModel))
+	if (ForgeryViewModel != InForgeryViewModel && IsValid(ForgeryViewModel))
 	{
 		ForgeryViewModel->GetPresentationChangedDelegate().RemoveAll(this);
 	}
 
 	ForgeryViewModel = InForgeryViewModel;
 	ForgeryViewModel->GetPresentationChangedDelegate().RemoveAll(this);
-	ForgeryViewModel->GetPresentationChangedDelegate().AddUObject(
-		this,
-		&UHeistForgeryWidget::RefreshForgeryPresentation);
+	ForgeryViewModel->GetPresentationChangedDelegate().AddUObject(this, &UHeistForgeryWidget::RefreshForgeryPresentation);
 
 	BP_OnForgerySourcesReady();
 	RefreshForgeryPresentation();
@@ -462,37 +327,24 @@ void UHeistForgeryWidget::SetupForgeryWidget(
 bool UHeistForgeryWidget::IsOwnerOnlyContractSatisfied() const
 {
 	const APlayerController* OwningPlayerController = GetOwningPlayer();
-	return IsValid(OwningPlayerController)
-		&& OwningPlayerController->IsLocalController()
-		&& IsValid(ForgeryViewModel)
-		&& (!ForgeryViewModel->IsPresentationVisible()
-			|| ForgeryViewModel->GetVisibleStateCount() == 1);
+	return IsValid(OwningPlayerController) && OwningPlayerController->IsLocalController() && IsValid(ForgeryViewModel) &&
+		   (!ForgeryViewModel->IsPresentationVisible() || ForgeryViewModel->GetVisibleStateCount() == 1);
 }
 
 bool UHeistForgeryWidget::IsWidgetPresentationVisible() const
 {
-	return GetVisibility() != ESlateVisibility::Collapsed
-		&& GetVisibility() != ESlateVisibility::Hidden;
+	return GetVisibility() != ESlateVisibility::Collapsed && GetVisibility() != ESlateVisibility::Hidden;
 }
 
 bool UHeistForgeryWidget::IsDrawingSurfaceReady() const
 {
 	const FVector2D SurfaceSize = GetDrawingSurfaceSize();
-	return FMath::IsNearlyEqual(
-			SurfaceSize.X,
-			DrawingSurfaceSizeSlateUnits,
-			1.0)
-		&& FMath::IsNearlyEqual(
-			SurfaceSize.Y,
-			DrawingSurfaceSizeSlateUnits,
-			1.0);
+	return FMath::IsNearlyEqual(SurfaceSize.X, DrawingSurfaceSizeSlateUnits, 1.0) && FMath::IsNearlyEqual(SurfaceSize.Y, DrawingSurfaceSizeSlateUnits, 1.0);
 }
 
 FVector2D UHeistForgeryWidget::GetDrawingSurfaceSize() const
 {
-	return IsValid(DrawingSurface)
-		? DrawingSurface->GetCachedGeometry().GetLocalSize()
-		: FVector2D::ZeroVector;
+	return IsValid(DrawingSurface) ? DrawingSurface->GetCachedGeometry().GetLocalSize() : FVector2D::ZeroVector;
 }
 
 bool UHeistForgeryWidget::AreCollectedPointsNormalized() const
@@ -501,10 +353,7 @@ bool UHeistForgeryWidget::AreCollectedPointsNormalized() const
 	{
 		for (const FVector2D& Point : Stroke.Points)
 		{
-			if (!FMath::IsFinite(Point.X)
-				|| !FMath::IsFinite(Point.Y)
-				|| !FMath::IsWithinInclusive(Point.X, 0.0, 1.0)
-				|| !FMath::IsWithinInclusive(Point.Y, 0.0, 1.0))
+			if (!FMath::IsFinite(Point.X) || !FMath::IsFinite(Point.Y) || !FMath::IsWithinInclusive(Point.X, 0.0, 1.0) || !FMath::IsWithinInclusive(Point.Y, 0.0, 1.0))
 			{
 				return false;
 			}
@@ -545,47 +394,29 @@ int32 UHeistForgeryWidget::GetErasedStrokeCount() const
 
 int32 UHeistForgeryWidget::GetVisiblePaletteButtonCount() const
 {
-	const UButton* Buttons[] = {
-		PaletteButton1.Get(),
-		PaletteButton2.Get(),
-		PaletteButton3.Get(),
-		PaletteButton4.Get(),
-		PaletteButton5.Get(),
-		PaletteButton6.Get(),
-		PaletteButton7.Get(),
-		PaletteButton8.Get()
-	};
+	const UButton* Buttons[] = {PaletteButton1.Get(), PaletteButton2.Get(), PaletteButton3.Get(), PaletteButton4.Get(),
+								PaletteButton5.Get(), PaletteButton6.Get(), PaletteButton7.Get(), PaletteButton8.Get()};
 	int32 VisibleButtonCount = 0;
 	for (const UButton* Button : Buttons)
 	{
-		VisibleButtonCount += IsValid(Button)
-			&& Button->GetVisibility() != ESlateVisibility::Collapsed
-			&& Button->GetVisibility() != ESlateVisibility::Hidden
-				? 1
-				: 0;
+		VisibleButtonCount += IsValid(Button) && Button->GetVisibility() != ESlateVisibility::Collapsed && Button->GetVisibility() != ESlateVisibility::Hidden ? 1 : 0;
 	}
 	return VisibleButtonCount;
 }
 
 FString UHeistForgeryWidget::GetPreviewScoreText() const
 {
-	return IsValid(PreviewScoreText)
-		? PreviewScoreText->GetText().ToString()
-		: FString();
+	return IsValid(PreviewScoreText) ? PreviewScoreText->GetText().ToString() : FString();
 }
 
 int32 UHeistForgeryWidget::GetConfiguredStrokeLimit() const
 {
-	return IsValid(ForgeryViewModel)
-		? ForgeryViewModel->GetStrokeLimit()
-		: 0;
+	return IsValid(ForgeryViewModel) ? ForgeryViewModel->GetStrokeLimit() : 0;
 }
 
 float UHeistForgeryWidget::GetConfiguredBrushSize() const
 {
-	return IsValid(ForgeryViewModel)
-		? ForgeryViewModel->GetBrushSize()
-		: 0.0f;
+	return IsValid(ForgeryViewModel) ? ForgeryViewModel->GetBrushSize() : 0.0f;
 }
 
 int32 UHeistForgeryWidget::GetActivePaletteIndex() const
@@ -600,26 +431,20 @@ FLinearColor UHeistForgeryWidget::GetActivePaletteColor() const
 		return FLinearColor::Black;
 	}
 
-	const TArray<FLinearColor>& Palette =
-		ForgeryViewModel->GetAllowedPalette();
-	return Palette.IsValidIndex(ActivePaletteIndex)
-		? Palette[ActivePaletteIndex]
-		: FLinearColor::Black;
+	const TArray<FLinearColor>& Palette = ForgeryViewModel->GetAllowedPalette();
+	return Palette.IsValidIndex(ActivePaletteIndex) ? Palette[ActivePaletteIndex] : FLinearColor::Black;
 }
 
 bool UHeistForgeryWidget::SelectPaletteIndex(const int32 PaletteIndex)
 {
-	if (!IsValid(ForgeryViewModel)
-		|| !ForgeryViewModel->GetAllowedPalette().IsValidIndex(PaletteIndex))
+	if (!IsValid(ForgeryViewModel) || !ForgeryViewModel->GetAllowedPalette().IsValidIndex(PaletteIndex))
 	{
 		return false;
 	}
 
 	FinishPointerInteraction();
 	ActivePaletteIndex = PaletteIndex;
-	BP_RefreshForgeryPalette(
-		ForgeryViewModel->GetAllowedPalette(),
-		ActivePaletteIndex);
+	BP_RefreshForgeryPalette(ForgeryViewModel->GetAllowedPalette(), ActivePaletteIndex);
 	RefreshPaletteButtons();
 	RefreshDrawingFeedback();
 	InvalidateLayoutAndVolatility();
@@ -630,11 +455,7 @@ bool UHeistForgeryWidget::RequestSubmitCollectedStrokes()
 {
 	if (!IsDrawingInputEnabled())
 	{
-		UE_LOG(
-			LogHeistUI,
-			Warning,
-			TEXT("[%s] Forgery stroke submit skipped: Reason=DrawingInputDisabled"),
-			*GetName());
+		UE_LOG(LogHeistUI, Warning, TEXT("[%s] Forgery stroke submit skipped: Reason=DrawingInputDisabled"), *GetName());
 		return false;
 	}
 
@@ -643,74 +464,38 @@ bool UHeistForgeryWidget::RequestSubmitCollectedStrokes()
 	TArray<int32> StrokePointCounts;
 	TArray<uint8> StrokePaletteIndices;
 	int32 IgnoredShortStrokeCount = 0;
-	if (!BuildDrawableStrokePayload(
-			NormalizedPoints,
-			StrokePointCounts,
-			StrokePaletteIndices,
-			IgnoredShortStrokeCount))
+	if (!BuildDrawableStrokePayload(NormalizedPoints, StrokePointCounts, StrokePaletteIndices, IgnoredShortStrokeCount))
 	{
-		UE_LOG(
-			LogHeistUI,
-			Warning,
-			TEXT("[%s] Forgery stroke submit skipped: Strokes=%d Points=%d IgnoredShortStrokes=%d Reason=EmptyDrawablePayload"),
-			*GetName(),
-			StrokePointCounts.Num(),
-			NormalizedPoints.Num(),
-			IgnoredShortStrokeCount);
+		UE_LOG(LogHeistUI, Warning, TEXT("[%s] Forgery stroke submit skipped: Strokes=%d Points=%d IgnoredShortStrokes=%d Reason=EmptyDrawablePayload"), *GetName(), StrokePointCounts.Num(),
+			   NormalizedPoints.Num(), IgnoredShortStrokeCount);
 		return false;
 	}
 
-	AHeistPlayerController* HeistPlayerController =
-		Cast<AHeistPlayerController>(GetOwningPlayer());
+	AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(GetOwningPlayer());
 	if (!IsValid(HeistPlayerController))
 	{
-		UE_LOG(
-			LogHeistUI,
-			Warning,
-			TEXT("[%s] Forgery stroke submit skipped: Reason=MissingOwningHeistController"),
-			*GetName());
+		UE_LOG(LogHeistUI, Warning, TEXT("[%s] Forgery stroke submit skipped: Reason=MissingOwningHeistController"), *GetName());
 		return false;
 	}
 
-	HeistPlayerController->RequestSubmitForgeryStrokes(
-		NormalizedPoints,
-		StrokePointCounts,
-		StrokePaletteIndices,
-		GetConfiguredBrushSize());
-	UE_LOG(
-		LogHeistUI,
-		Log,
-		TEXT("[%s] Forgery stroke payload queued: Strokes=%d Points=%d Brush=%.4f IgnoredShortStrokes=%d RenderTargetSent=false Result=REQUESTED"),
-		*GetName(),
-		StrokePointCounts.Num(),
-		NormalizedPoints.Num(),
-		GetConfiguredBrushSize(),
-		IgnoredShortStrokeCount);
+	HeistPlayerController->RequestSubmitForgeryStrokes(NormalizedPoints, StrokePointCounts, StrokePaletteIndices, GetConfiguredBrushSize());
+	UE_LOG(LogHeistUI, Log, TEXT("[%s] Forgery stroke payload queued: Strokes=%d Points=%d Brush=%.4f IgnoredShortStrokes=%d RenderTargetSent=false Result=REQUESTED"), *GetName(),
+		   StrokePointCounts.Num(), NormalizedPoints.Num(), GetConfiguredBrushSize(), IgnoredShortStrokeCount);
 	return true;
 }
 
 void UHeistForgeryWidget::RefreshForgeryPresentation()
 {
 	const APlayerController* OwningPlayerController = GetOwningPlayer();
-	const bool bOwnerLocal = IsValid(OwningPlayerController)
-		&& OwningPlayerController->IsLocalController();
-	const bool bPresentationVisible = bOwnerLocal
-		&& IsValid(ForgeryViewModel)
-		&& ForgeryViewModel->IsPresentationVisible();
+	const bool bOwnerLocal = IsValid(OwningPlayerController) && OwningPlayerController->IsLocalController();
+	const bool bPresentationVisible = bOwnerLocal && IsValid(ForgeryViewModel) && ForgeryViewModel->IsPresentationVisible();
 
-	SetVisibility(
-		bPresentationVisible
-			? ESlateVisibility::Visible
-			: ESlateVisibility::Collapsed);
+	SetVisibility(bPresentationVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 
-	const bool bObservation = bPresentationVisible
-		&& ForgeryViewModel->IsObservationVisible();
-	const bool bDrawing = bPresentationVisible
-		&& ForgeryViewModel->IsDrawingVisible();
-	const bool bValidation = bPresentationVisible
-		&& ForgeryViewModel->IsValidationVisible();
-	const bool bResult = bPresentationVisible
-		&& ForgeryViewModel->IsResultVisible();
+	const bool bObservation = bPresentationVisible && ForgeryViewModel->IsObservationVisible();
+	const bool bDrawing = bPresentationVisible && ForgeryViewModel->IsDrawingVisible();
+	const bool bValidation = bPresentationVisible && ForgeryViewModel->IsValidationVisible();
+	const bool bResult = bPresentationVisible && ForgeryViewModel->IsResultVisible();
 
 	if (bDrawing && !bWasDrawingVisible)
 	{
@@ -731,8 +516,7 @@ void UHeistForgeryWidget::RefreshForgeryPresentation()
 	RefreshDrawingFeedback();
 	if (IsValid(ForgeryViewModel))
 	{
-		const TArray<FLinearColor>& Palette =
-			ForgeryViewModel->GetAllowedPalette();
+		const TArray<FLinearColor>& Palette = ForgeryViewModel->GetAllowedPalette();
 		if (!Palette.IsValidIndex(ActivePaletteIndex))
 		{
 			ActivePaletteIndex = 0;
@@ -752,9 +536,7 @@ void UHeistForgeryWidget::RefreshForgeryPresentation()
 	}
 	if (IsValid(ReferenceImage))
 	{
-		ReferenceImage->SetBrushFromTexture(
-			ForgeryViewModel->GetReferenceImage(),
-			true);
+		ReferenceImage->SetBrushFromTexture(ForgeryViewModel->GetReferenceImage(), true);
 	}
 	if (IsValid(ResultText))
 	{
@@ -762,59 +544,25 @@ void UHeistForgeryWidget::RefreshForgeryPresentation()
 	}
 	if (IsValid(ResultScoreText))
 	{
-		ResultScoreText->SetText(
-			FText::AsNumber(FMath::RoundToInt(ForgeryViewModel->GetResultScore())));
+		ResultScoreText->SetText(FText::AsNumber(FMath::RoundToInt(ForgeryViewModel->GetResultScore())));
 	}
 
-	BP_RefreshForgeryPresentation(
-		bObservation,
-		bDrawing,
-		bValidation,
-		bResult,
-		IsValid(ForgeryViewModel)
-			? ForgeryViewModel->GetStateEndServerTime()
-			: 0.0f,
-		IsValid(ForgeryViewModel)
-			? ForgeryViewModel->GetResultScore()
-			: 0.0f);
+	BP_RefreshForgeryPresentation(bObservation, bDrawing, bValidation, bResult, IsValid(ForgeryViewModel) ? ForgeryViewModel->GetStateEndServerTime() : 0.0f,
+								  IsValid(ForgeryViewModel) ? ForgeryViewModel->GetResultScore() : 0.0f);
 
-	UE_LOG(
-		LogHeistUI,
-		Verbose,
-		TEXT("[%s] Forgery widget refreshed: LocalOwner=%s Visible=%s Observation=%s Drawing=%s Validation=%s Result=%s StateCount=%d Contract=%s"),
-		*GetName(),
-		bOwnerLocal ? TEXT("true") : TEXT("false"),
-		bPresentationVisible ? TEXT("true") : TEXT("false"),
-		bObservation ? TEXT("true") : TEXT("false"),
-		bDrawing ? TEXT("true") : TEXT("false"),
-		bValidation ? TEXT("true") : TEXT("false"),
-		bResult ? TEXT("true") : TEXT("false"),
-		IsValid(ForgeryViewModel)
-			? ForgeryViewModel->GetVisibleStateCount()
-			: 0,
-		IsOwnerOnlyContractSatisfied() ? TEXT("PASS") : TEXT("FAIL"));
+	UE_LOG(LogHeistUI, Verbose, TEXT("[%s] Forgery widget refreshed: LocalOwner=%s Visible=%s Observation=%s Drawing=%s Validation=%s Result=%s StateCount=%d Contract=%s"), *GetName(),
+		   bOwnerLocal ? TEXT("true") : TEXT("false"), bPresentationVisible ? TEXT("true") : TEXT("false"), bObservation ? TEXT("true") : TEXT("false"), bDrawing ? TEXT("true") : TEXT("false"),
+		   bValidation ? TEXT("true") : TEXT("false"), bResult ? TEXT("true") : TEXT("false"), IsValid(ForgeryViewModel) ? ForgeryViewModel->GetVisibleStateCount() : 0,
+		   IsOwnerOnlyContractSatisfied() ? TEXT("PASS") : TEXT("FAIL"));
 }
 
 bool UHeistForgeryWidget::IsDrawingInputEnabled() const
 {
-	return IsValid(ForgeryViewModel)
-		&& ForgeryViewModel->IsDrawingVisible()
-		&& IsWidgetPresentationVisible()
-		&& IsValid(DrawingSurface)
-		&& FMath::IsWithinInclusive(
-			ForgeryViewModel->GetAllowedPalette().Num(),
-			2,
-			8)
-		&& GetConfiguredStrokeLimit() > 0
-		&& FMath::IsWithinInclusive(
-			GetConfiguredBrushSize(),
-			0.001f,
-			0.25f);
+	return IsValid(ForgeryViewModel) && ForgeryViewModel->IsDrawingVisible() && IsWidgetPresentationVisible() && IsValid(DrawingSurface) &&
+		   FMath::IsWithinInclusive(ForgeryViewModel->GetAllowedPalette().Num(), 2, 8) && GetConfiguredStrokeLimit() > 0 && FMath::IsWithinInclusive(GetConfiguredBrushSize(), 0.001f, 0.25f);
 }
 
-bool UHeistForgeryWidget::TryResolveNormalizedDrawingPoint(
-	const FPointerEvent& PointerEvent,
-	FVector2D& OutNormalizedPoint) const
+bool UHeistForgeryWidget::TryResolveNormalizedDrawingPoint(const FPointerEvent& PointerEvent, FVector2D& OutNormalizedPoint) const
 {
 	if (!IsValid(DrawingSurface))
 	{
@@ -828,24 +576,17 @@ bool UHeistForgeryWidget::TryResolveNormalizedDrawingPoint(
 		return false;
 	}
 
-	const FVector2D SurfacePoint = SurfaceGeometry.AbsoluteToLocal(
-		PointerEvent.GetScreenSpacePosition());
-	if (SurfacePoint.X < 0.0f
-		|| SurfacePoint.Y < 0.0f
-		|| SurfacePoint.X > SurfaceSize.X
-		|| SurfacePoint.Y > SurfaceSize.Y)
+	const FVector2D SurfacePoint = SurfaceGeometry.AbsoluteToLocal(PointerEvent.GetScreenSpacePosition());
+	if (SurfacePoint.X < 0.0f || SurfacePoint.Y < 0.0f || SurfacePoint.X > SurfaceSize.X || SurfacePoint.Y > SurfaceSize.Y)
 	{
 		return false;
 	}
 
-	OutNormalizedPoint = FVector2D(
-		FMath::Clamp(SurfacePoint.X / SurfaceSize.X, 0.0, 1.0),
-		FMath::Clamp(SurfacePoint.Y / SurfaceSize.Y, 0.0, 1.0));
+	OutNormalizedPoint = FVector2D(FMath::Clamp(SurfacePoint.X / SurfaceSize.X, 0.0, 1.0), FMath::Clamp(SurfacePoint.Y / SurfaceSize.Y, 0.0, 1.0));
 	return true;
 }
 
-bool UHeistForgeryWidget::BeginLocalStroke(
-	const FVector2D& NormalizedPoint)
+bool UHeistForgeryWidget::BeginLocalStroke(const FVector2D& NormalizedPoint)
 {
 	if (GetCollectedPointCount() >= GetConfiguredStrokeLimit())
 	{
@@ -858,8 +599,7 @@ bool UHeistForgeryWidget::BeginLocalStroke(
 
 	FinishPointerInteraction();
 	ActiveStrokeIndex = LocalStrokes.AddDefaulted();
-	LocalStrokes[ActiveStrokeIndex].PaletteIndex =
-		static_cast<uint8>(ActivePaletteIndex);
+	LocalStrokes[ActiveStrokeIndex].PaletteIndex = static_cast<uint8>(ActivePaletteIndex);
 	LocalStrokes[ActiveStrokeIndex].Points.Add(NormalizedPoint);
 	MarkPreviewScoreDirty();
 	RefreshDrawingFeedback();
@@ -867,8 +607,7 @@ bool UHeistForgeryWidget::BeginLocalStroke(
 	return true;
 }
 
-bool UHeistForgeryWidget::AppendLocalStrokePoint(
-	const FVector2D& NormalizedPoint)
+bool UHeistForgeryWidget::AppendLocalStrokePoint(const FVector2D& NormalizedPoint)
 {
 	if (!LocalStrokes.IsValidIndex(ActiveStrokeIndex))
 	{
@@ -881,8 +620,7 @@ bool UHeistForgeryWidget::AppendLocalStrokePoint(
 		CompactLocalStrokesForPointBudget();
 	}
 
-	TArray<FVector2D>& ActiveStroke =
-		LocalStrokes[ActiveStrokeIndex].Points;
+	TArray<FVector2D>& ActiveStroke = LocalStrokes[ActiveStrokeIndex].Points;
 	if (ActiveStroke.IsEmpty())
 	{
 		return false;
@@ -891,23 +629,16 @@ bool UHeistForgeryWidget::AppendLocalStrokePoint(
 	FVector2D CanvasAspectScale(1.0, 1.0);
 	if (IsValid(DrawingSurface))
 	{
-		const FVector2D SurfaceSize =
-			DrawingSurface->GetCachedGeometry().GetLocalSize();
-		const double MinimumSurfaceDimension =
-			FMath::Min(SurfaceSize.X, SurfaceSize.Y);
+		const FVector2D SurfaceSize = DrawingSurface->GetCachedGeometry().GetLocalSize();
+		const double MinimumSurfaceDimension = FMath::Min(SurfaceSize.X, SurfaceSize.Y);
 		if (MinimumSurfaceDimension > UE_DOUBLE_SMALL_NUMBER)
 		{
-			CanvasAspectScale = FVector2D(
-				SurfaceSize.X / MinimumSurfaceDimension,
-				SurfaceSize.Y / MinimumSurfaceDimension);
+			CanvasAspectScale = FVector2D(SurfaceSize.X / MinimumSurfaceDimension, SurfaceSize.Y / MinimumSurfaceDimension);
 		}
 	}
 
-	const float MinimumSpacing = FMath::Max(
-		MinimumNormalizedPointSpacing,
-		GetConfiguredBrushSize() * BrushRelativePointSpacing);
-	const bool bPointBudgetFull =
-		GetCollectedPointCount() >= GetConfiguredStrokeLimit();
+	const float MinimumSpacing = FMath::Max(MinimumNormalizedPointSpacing, GetConfiguredBrushSize() * BrushRelativePointSpacing);
+	const bool bPointBudgetFull = GetCollectedPointCount() >= GetConfiguredStrokeLimit();
 	if (ActiveStroke.Num() == 1)
 	{
 		if (bPointBudgetFull)
@@ -915,8 +646,7 @@ bool UHeistForgeryWidget::AppendLocalStrokePoint(
 			return false;
 		}
 
-		const FVector2D InitialDelta =
-			(NormalizedPoint - ActiveStroke[0]) * CanvasAspectScale;
+		const FVector2D InitialDelta = (NormalizedPoint - ActiveStroke[0]) * CanvasAspectScale;
 		if (InitialDelta.IsNearlyZero())
 		{
 			return false;
@@ -927,16 +657,10 @@ bool UHeistForgeryWidget::AppendLocalStrokePoint(
 		// Keep the last point live so slow turns follow the cursor every
 		// event, then commit another point once the pending segment is long
 		// enough in aspect-corrected canvas space.
-		const FVector2D PendingSegment =
-			(NormalizedPoint - ActiveStroke[ActiveStroke.Num() - 2])
-			* CanvasAspectScale;
-		if (PendingSegment.SizeSquared()
-				< FMath::Square(MinimumSpacing)
-			|| bPointBudgetFull)
+		const FVector2D PendingSegment = (NormalizedPoint - ActiveStroke[ActiveStroke.Num() - 2]) * CanvasAspectScale;
+		if (PendingSegment.SizeSquared() < FMath::Square(MinimumSpacing) || bPointBudgetFull)
 		{
-			if (ActiveStroke.Last().Equals(
-					NormalizedPoint,
-					UE_DOUBLE_SMALL_NUMBER))
+			if (ActiveStroke.Last().Equals(NormalizedPoint, UE_DOUBLE_SMALL_NUMBER))
 			{
 				return false;
 			}
@@ -974,9 +698,7 @@ bool UHeistForgeryWidget::CompactLocalStrokesForPointBudget()
 		TArray<FVector2D> CompactedStroke;
 		CompactedStroke.Reserve(Stroke.Num() / 2 + 2);
 		CompactedStroke.Add(Stroke[0]);
-		for (int32 PointIndex = 2;
-			PointIndex < Stroke.Num() - 1;
-			PointIndex += 2)
+		for (int32 PointIndex = 2; PointIndex < Stroke.Num() - 1; PointIndex += 2)
 		{
 			CompactedStroke.Add(Stroke[PointIndex]);
 		}
@@ -993,44 +715,30 @@ bool UHeistForgeryWidget::CompactLocalStrokesForPointBudget()
 		return false;
 	}
 
-	UE_LOG(
-		LogHeistUI,
-		Log,
-		TEXT("[%s] Forgery stroke points compacted: Previous=%d Current=%d Limit=%d Result=PASS"),
-		*GetName(),
-		PreviousPointCount,
-		CompactedPointCount,
-		GetConfiguredStrokeLimit());
+	UE_LOG(LogHeistUI, Log, TEXT("[%s] Forgery stroke points compacted: Previous=%d Current=%d Limit=%d Result=PASS"), *GetName(), PreviousPointCount, CompactedPointCount, GetConfiguredStrokeLimit());
 	MarkPreviewScoreDirty();
 	RefreshDrawingFeedback();
 	InvalidateLayoutAndVolatility();
 	return true;
 }
 
-bool UHeistForgeryWidget::EraseLocalStrokeSegments(
-	const FVector2D& NormalizedPoint)
+bool UHeistForgeryWidget::EraseLocalStrokeSegments(const FVector2D& NormalizedPoint)
 {
 	if (!IsValid(DrawingSurface) || LocalStrokes.IsEmpty())
 	{
 		return false;
 	}
 
-	const FVector2D SurfaceSize =
-		DrawingSurface->GetCachedGeometry().GetLocalSize();
-	const double MinimumSurfaceDimension =
-		FMath::Min(SurfaceSize.X, SurfaceSize.Y);
+	const FVector2D SurfaceSize = DrawingSurface->GetCachedGeometry().GetLocalSize();
+	const double MinimumSurfaceDimension = FMath::Min(SurfaceSize.X, SurfaceSize.Y);
 	if (MinimumSurfaceDimension <= UE_DOUBLE_SMALL_NUMBER)
 	{
 		return false;
 	}
 
-	const FVector2D CanvasAspectScale(
-		SurfaceSize.X / MinimumSurfaceDimension,
-		SurfaceSize.Y / MinimumSurfaceDimension);
-	const FVector2D EraserPoint =
-		NormalizedPoint * CanvasAspectScale;
-	const double EraseRadiusSquared =
-		FMath::Square(GetNormalizedEraseRadius());
+	const FVector2D CanvasAspectScale(SurfaceSize.X / MinimumSurfaceDimension, SurfaceSize.Y / MinimumSurfaceDimension);
+	const FVector2D EraserPoint = NormalizedPoint * CanvasAspectScale;
+	const double EraseRadiusSquared = FMath::Square(GetNormalizedEraseRadius());
 	TArray<FHeistLocalForgeryStroke> UpdatedStrokes;
 	UpdatedStrokes.Reserve(LocalStrokes.Num());
 	int32 AffectedStrokeCount = 0;
@@ -1045,12 +753,8 @@ bool UHeistForgeryWidget::EraseLocalStrokeSegments(
 
 		if (Stroke.Num() == 1)
 		{
-			const FVector2D EraserSpacePoint =
-				Stroke[0] * CanvasAspectScale;
-			if (FVector2D::DistSquared(
-					EraserPoint,
-					EraserSpacePoint)
-				<= EraseRadiusSquared)
+			const FVector2D EraserSpacePoint = Stroke[0] * CanvasAspectScale;
+			if (FVector2D::DistSquared(EraserPoint, EraserSpacePoint) <= EraseRadiusSquared)
 			{
 				++AffectedStrokeCount;
 			}
@@ -1064,28 +768,22 @@ bool UHeistForgeryWidget::EraseLocalStrokeSegments(
 		TArray<FVector2D> CurrentFragment;
 		CurrentFragment.Reserve(Stroke.Num());
 		bool bStrokeAffected = false;
-		const auto CommitFragment =
-			[&UpdatedStrokes, &CurrentFragment, &StrokeData]()
+		const auto CommitFragment = [&UpdatedStrokes, &CurrentFragment, &StrokeData]()
+		{
+			if (CurrentFragment.IsEmpty())
 			{
-				if (CurrentFragment.IsEmpty())
-				{
-					return;
-				}
+				return;
+			}
 
-				FHeistLocalForgeryStroke Fragment;
-				Fragment.PaletteIndex = StrokeData.PaletteIndex;
-				Fragment.Points = MoveTemp(CurrentFragment);
-				UpdatedStrokes.Add(MoveTemp(Fragment));
-				CurrentFragment.Reset();
-			};
+			FHeistLocalForgeryStroke Fragment;
+			Fragment.PaletteIndex = StrokeData.PaletteIndex;
+			Fragment.Points = MoveTemp(CurrentFragment);
+			UpdatedStrokes.Add(MoveTemp(Fragment));
+			CurrentFragment.Reset();
+		};
 
-		const FVector2D FirstEraserSpacePoint =
-			Stroke[0] * CanvasAspectScale;
-		const bool bFirstPointInside =
-			FVector2D::DistSquared(
-				EraserPoint,
-				FirstEraserSpacePoint)
-			<= EraseRadiusSquared;
+		const FVector2D FirstEraserSpacePoint = Stroke[0] * CanvasAspectScale;
+		const bool bFirstPointInside = FVector2D::DistSquared(EraserPoint, FirstEraserSpacePoint) <= EraseRadiusSquared;
 		if (bFirstPointInside)
 		{
 			bStrokeAffected = true;
@@ -1095,25 +793,12 @@ bool UHeistForgeryWidget::EraseLocalStrokeSegments(
 			CurrentFragment.Add(Stroke[0]);
 		}
 
-		for (int32 PointIndex = 1;
-			PointIndex < Stroke.Num();
-			++PointIndex)
+		for (int32 PointIndex = 1; PointIndex < Stroke.Num(); ++PointIndex)
 		{
-			const FVector2D SegmentStart =
-				Stroke[PointIndex - 1] * CanvasAspectScale;
-			const FVector2D SegmentEnd =
-				Stroke[PointIndex] * CanvasAspectScale;
-			const bool bSegmentIntersectsEraser =
-				GetPointToSegmentDistanceSquared(
-					EraserPoint,
-					SegmentStart,
-					SegmentEnd)
-				<= EraseRadiusSquared;
-			const bool bEndPointInside =
-				FVector2D::DistSquared(
-					EraserPoint,
-					SegmentEnd)
-				<= EraseRadiusSquared;
+			const FVector2D SegmentStart = Stroke[PointIndex - 1] * CanvasAspectScale;
+			const FVector2D SegmentEnd = Stroke[PointIndex] * CanvasAspectScale;
+			const bool bSegmentIntersectsEraser = GetPointToSegmentDistanceSquared(EraserPoint, SegmentStart, SegmentEnd) <= EraseRadiusSquared;
+			const bool bEndPointInside = FVector2D::DistSquared(EraserPoint, SegmentEnd) <= EraseRadiusSquared;
 
 			if (bSegmentIntersectsEraser)
 			{
@@ -1168,11 +853,8 @@ bool UHeistForgeryWidget::EraseLocalStrokeSegments(
 	return true;
 }
 
-bool UHeistForgeryWidget::BuildDrawableStrokePayload(
-	TArray<FVector2D>& OutNormalizedPoints,
-	TArray<int32>& OutStrokePointCounts,
-	TArray<uint8>& OutStrokePaletteIndices,
-	int32& OutIgnoredShortStrokeCount) const
+bool UHeistForgeryWidget::BuildDrawableStrokePayload(TArray<FVector2D>& OutNormalizedPoints, TArray<int32>& OutStrokePointCounts, TArray<uint8>& OutStrokePaletteIndices,
+													 int32& OutIgnoredShortStrokeCount) const
 {
 	OutNormalizedPoints.Reset();
 	OutStrokePointCounts.Reset();
@@ -1195,8 +877,7 @@ bool UHeistForgeryWidget::BuildDrawableStrokePayload(
 		OutNormalizedPoints.Append(Stroke.Points);
 	}
 
-	return !OutStrokePointCounts.IsEmpty()
-		&& !OutNormalizedPoints.IsEmpty();
+	return !OutStrokePointCounts.IsEmpty() && !OutNormalizedPoints.IsEmpty();
 }
 
 void UHeistForgeryWidget::MarkPreviewScoreDirty()
@@ -1211,20 +892,12 @@ void UHeistForgeryWidget::RefreshLocalPreviewScore()
 	TArray<int32> StrokePointCounts;
 	TArray<uint8> StrokePaletteIndices;
 	int32 IgnoredShortStrokeCount = 0;
-	if (!BuildDrawableStrokePayload(
-			NormalizedPoints,
-			StrokePointCounts,
-			StrokePaletteIndices,
-			IgnoredShortStrokeCount))
+	if (!BuildDrawableStrokePayload(NormalizedPoints, StrokePointCounts, StrokePaletteIndices, IgnoredShortStrokeCount))
 	{
 		bPreviewScoreDirty = false;
 		if (IsValid(PreviewScoreText))
 		{
-			PreviewScoreText->SetText(
-				NSLOCTEXT(
-					"HeistForgery",
-					"EmptyPreviewScore",
-					"PREVIEW SCORE  --"));
+			PreviewScoreText->SetText(NSLOCTEXT("HeistForgery", "EmptyPreviewScore", "PREVIEW SCORE  --"));
 		}
 		return;
 	}
@@ -1232,15 +905,8 @@ void UHeistForgeryWidget::RefreshLocalPreviewScore()
 	FHeistForgeryResult ForgeryPreviewResult;
 	int32 ReferenceMaskPixels = 0;
 	int32 SubmittedMaskPixels = 0;
-	if (!IsValid(ForgeryViewModel)
-		|| !ForgeryViewModel->CalculatePreviewScore(
-			NormalizedPoints,
-			StrokePointCounts,
-			StrokePaletteIndices,
-			GetConfiguredBrushSize(),
-			ForgeryPreviewResult,
-			ReferenceMaskPixels,
-			SubmittedMaskPixels))
+	if (!IsValid(ForgeryViewModel) ||
+		!ForgeryViewModel->CalculatePreviewScore(NormalizedPoints, StrokePointCounts, StrokePaletteIndices, GetConfiguredBrushSize(), ForgeryPreviewResult, ReferenceMaskPixels, SubmittedMaskPixels))
 	{
 		// Owner-only template score settings may arrive one replication
 		// update after the drawing state. The next presentation refresh or
@@ -1248,11 +914,7 @@ void UHeistForgeryWidget::RefreshLocalPreviewScore()
 		bPreviewScoreDirty = false;
 		if (IsValid(PreviewScoreText))
 		{
-			PreviewScoreText->SetText(
-				NSLOCTEXT(
-					"HeistForgery",
-					"PendingPreviewScore",
-					"PREVIEW SCORE  ..."));
+			PreviewScoreText->SetText(NSLOCTEXT("HeistForgery", "PendingPreviewScore", "PREVIEW SCORE  ..."));
 		}
 		return;
 	}
@@ -1260,15 +922,7 @@ void UHeistForgeryWidget::RefreshLocalPreviewScore()
 	bPreviewScoreDirty = false;
 	if (IsValid(PreviewScoreText))
 	{
-		PreviewScoreText->SetText(
-			FText::Format(
-				NSLOCTEXT(
-					"HeistForgery",
-					"PreviewScoreFormat",
-					"PREVIEW SCORE  {0}"),
-				FText::AsNumber(
-					FMath::RoundToInt(
-						ForgeryPreviewResult.SimilarityScore))));
+		PreviewScoreText->SetText(FText::Format(NSLOCTEXT("HeistForgery", "PreviewScoreFormat", "PREVIEW SCORE  {0}"), FText::AsNumber(FMath::RoundToInt(ForgeryPreviewResult.SimilarityScore))));
 	}
 }
 
@@ -1277,111 +931,67 @@ void UHeistForgeryWidget::BindPaletteButtons()
 	if (IsValid(PaletteButton1))
 	{
 		PaletteButton1->OnClicked.RemoveAll(this);
-		PaletteButton1->OnClicked.AddDynamic(
-			this,
-			&UHeistForgeryWidget::HandlePaletteButton1Clicked);
+		PaletteButton1->OnClicked.AddDynamic(this, &UHeistForgeryWidget::HandlePaletteButton1Clicked);
 	}
 	if (IsValid(PaletteButton2))
 	{
 		PaletteButton2->OnClicked.RemoveAll(this);
-		PaletteButton2->OnClicked.AddDynamic(
-			this,
-			&UHeistForgeryWidget::HandlePaletteButton2Clicked);
+		PaletteButton2->OnClicked.AddDynamic(this, &UHeistForgeryWidget::HandlePaletteButton2Clicked);
 	}
 	if (IsValid(PaletteButton3))
 	{
 		PaletteButton3->OnClicked.RemoveAll(this);
-		PaletteButton3->OnClicked.AddDynamic(
-			this,
-			&UHeistForgeryWidget::HandlePaletteButton3Clicked);
+		PaletteButton3->OnClicked.AddDynamic(this, &UHeistForgeryWidget::HandlePaletteButton3Clicked);
 	}
 	if (IsValid(PaletteButton4))
 	{
 		PaletteButton4->OnClicked.RemoveAll(this);
-		PaletteButton4->OnClicked.AddDynamic(
-			this,
-			&UHeistForgeryWidget::HandlePaletteButton4Clicked);
+		PaletteButton4->OnClicked.AddDynamic(this, &UHeistForgeryWidget::HandlePaletteButton4Clicked);
 	}
 	if (IsValid(PaletteButton5))
 	{
 		PaletteButton5->OnClicked.RemoveAll(this);
-		PaletteButton5->OnClicked.AddDynamic(
-			this,
-			&UHeistForgeryWidget::HandlePaletteButton5Clicked);
+		PaletteButton5->OnClicked.AddDynamic(this, &UHeistForgeryWidget::HandlePaletteButton5Clicked);
 	}
 	if (IsValid(PaletteButton6))
 	{
 		PaletteButton6->OnClicked.RemoveAll(this);
-		PaletteButton6->OnClicked.AddDynamic(
-			this,
-			&UHeistForgeryWidget::HandlePaletteButton6Clicked);
+		PaletteButton6->OnClicked.AddDynamic(this, &UHeistForgeryWidget::HandlePaletteButton6Clicked);
 	}
 	if (IsValid(PaletteButton7))
 	{
 		PaletteButton7->OnClicked.RemoveAll(this);
-		PaletteButton7->OnClicked.AddDynamic(
-			this,
-			&UHeistForgeryWidget::HandlePaletteButton7Clicked);
+		PaletteButton7->OnClicked.AddDynamic(this, &UHeistForgeryWidget::HandlePaletteButton7Clicked);
 	}
 	if (IsValid(PaletteButton8))
 	{
 		PaletteButton8->OnClicked.RemoveAll(this);
-		PaletteButton8->OnClicked.AddDynamic(
-			this,
-			&UHeistForgeryWidget::HandlePaletteButton8Clicked);
+		PaletteButton8->OnClicked.AddDynamic(this, &UHeistForgeryWidget::HandlePaletteButton8Clicked);
 	}
 }
 
 void UHeistForgeryWidget::RefreshPaletteButtons()
 {
-	UButton* Buttons[] = {
-		PaletteButton1.Get(),
-		PaletteButton2.Get(),
-		PaletteButton3.Get(),
-		PaletteButton4.Get(),
-		PaletteButton5.Get(),
-		PaletteButton6.Get(),
-		PaletteButton7.Get(),
-		PaletteButton8.Get()
-	};
-	UTextBlock* Labels[] = {
-		PaletteButtonText1.Get(),
-		PaletteButtonText2.Get(),
-		PaletteButtonText3.Get(),
-		PaletteButtonText4.Get(),
-		PaletteButtonText5.Get(),
-		PaletteButtonText6.Get(),
-		PaletteButtonText7.Get(),
-		PaletteButtonText8.Get()
-	};
-	const TArray<FLinearColor>* Palette = IsValid(ForgeryViewModel)
-		? &ForgeryViewModel->GetAllowedPalette()
-		: nullptr;
+	UButton* Buttons[] = {PaletteButton1.Get(), PaletteButton2.Get(), PaletteButton3.Get(), PaletteButton4.Get(),
+						  PaletteButton5.Get(), PaletteButton6.Get(), PaletteButton7.Get(), PaletteButton8.Get()};
+	UTextBlock* Labels[] = {PaletteButtonText1.Get(), PaletteButtonText2.Get(), PaletteButtonText3.Get(), PaletteButtonText4.Get(),
+							PaletteButtonText5.Get(), PaletteButtonText6.Get(), PaletteButtonText7.Get(), PaletteButtonText8.Get()};
+	const TArray<FLinearColor>* Palette = IsValid(ForgeryViewModel) ? &ForgeryViewModel->GetAllowedPalette() : nullptr;
 
-	for (int32 PaletteIndex = 0;
-		PaletteIndex < UE_ARRAY_COUNT(Buttons);
-		++PaletteIndex)
+	for (int32 PaletteIndex = 0; PaletteIndex < UE_ARRAY_COUNT(Buttons); ++PaletteIndex)
 	{
 		UButton* Button = Buttons[PaletteIndex];
 		UTextBlock* Label = Labels[PaletteIndex];
-		const bool bAvailable = Palette != nullptr
-			&& Palette->IsValidIndex(PaletteIndex);
+		const bool bAvailable = Palette != nullptr && Palette->IsValidIndex(PaletteIndex);
 		if (IsValid(Button))
 		{
-			Button->SetVisibility(
-				bAvailable
-					? ESlateVisibility::Visible
-					: ESlateVisibility::Collapsed);
+			Button->SetVisibility(bAvailable ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 			if (bAvailable)
 			{
-				const bool bSelected =
-					PaletteIndex == ActivePaletteIndex;
+				const bool bSelected = PaletteIndex == ActivePaletteIndex;
 				Button->SetBackgroundColor((*Palette)[PaletteIndex]);
 				Button->SetRenderOpacity(bSelected ? 1.0f : 0.65f);
-				Button->SetRenderScale(
-					bSelected
-						? FVector2D(1.10, 1.10)
-						: FVector2D(1.0, 1.0));
+				Button->SetRenderScale(bSelected ? FVector2D(1.10, 1.10) : FVector2D(1.0, 1.0));
 			}
 		}
 		if (IsValid(Label))
@@ -1390,14 +1000,8 @@ void UHeistForgeryWidget::RefreshPaletteButtons()
 			if (bAvailable)
 			{
 				const FLinearColor& Color = (*Palette)[PaletteIndex];
-				const float Luminance =
-					Color.R * 0.2126f
-					+ Color.G * 0.7152f
-					+ Color.B * 0.0722f;
-				Label->SetColorAndOpacity(
-					Luminance > 0.45f
-						? FSlateColor(FLinearColor::Black)
-						: FSlateColor(FLinearColor::White));
+				const float Luminance = Color.R * 0.2126f + Color.G * 0.7152f + Color.B * 0.0722f;
+				Label->SetColorAndOpacity(Luminance > 0.45f ? FSlateColor(FLinearColor::Black) : FSlateColor(FLinearColor::White));
 			}
 		}
 	}
@@ -1465,53 +1069,30 @@ void UHeistForgeryWidget::ResetLocalStrokePreview()
 
 void UHeistForgeryWidget::RefreshDrawingFeedback()
 {
-	const bool bDrawingVisible = IsValid(ForgeryViewModel)
-		&& ForgeryViewModel->IsDrawingVisible();
+	const bool bDrawingVisible = IsValid(ForgeryViewModel) && ForgeryViewModel->IsDrawingVisible();
 	const int32 PointCount = GetCollectedPointCount();
 	if (IsValid(DrawingPlaceholder))
 	{
-		DrawingPlaceholder->SetVisibility(
-			bDrawingVisible && PointCount == 0
-				? ESlateVisibility::HitTestInvisible
-				: ESlateVisibility::Collapsed);
-		DrawingPlaceholder->SetText(
-			NSLOCTEXT(
-				"HeistForgery",
-				"EmptyDrawingCanvas",
-				"EMPTY CANVAS"));
+		DrawingPlaceholder->SetVisibility(bDrawingVisible && PointCount == 0 ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		DrawingPlaceholder->SetText(NSLOCTEXT("HeistForgery", "EmptyDrawingCanvas", "EMPTY CANVAS"));
 	}
 	if (IsValid(DrawingHint) && bDrawingVisible)
 	{
-		DrawingHint->SetText(
-			FText::Format(
-				NSLOCTEXT(
-					"HeistForgery",
-					"DrawingCanvasHint",
-					"LMB DRAW  /  RMB ERASE  /  ENTER SUBMIT    COLOR {0}    POINTS {1}/{2}"),
-				FText::AsNumber(ActivePaletteIndex + 1),
-				FText::AsNumber(PointCount),
-				FText::AsNumber(GetConfiguredStrokeLimit())));
+		DrawingHint->SetText(FText::Format(NSLOCTEXT("HeistForgery", "DrawingCanvasHint", "LMB DRAW  /  RMB ERASE  /  ENTER SUBMIT    COLOR {0}    POINTS {1}/{2}"),
+										   FText::AsNumber(ActivePaletteIndex + 1), FText::AsNumber(PointCount), FText::AsNumber(GetConfiguredStrokeLimit())));
 	}
 	if (IsValid(PreviewScoreText))
 	{
-		PreviewScoreText->SetVisibility(
-			bDrawingVisible
-				? ESlateVisibility::HitTestInvisible
-				: ESlateVisibility::Collapsed);
+		PreviewScoreText->SetVisibility(bDrawingVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	}
 }
 
 float UHeistForgeryWidget::GetNormalizedEraseRadius() const
 {
-	return FMath::Max(
-		MinimumNormalizedEraseRadius,
-		GetConfiguredBrushSize() * 1.5f);
+	return FMath::Max(MinimumNormalizedEraseRadius, GetConfiguredBrushSize() * 1.5f);
 }
 
-float UHeistForgeryWidget::GetPointToSegmentDistanceSquared(
-	const FVector2D& Point,
-	const FVector2D& SegmentStart,
-	const FVector2D& SegmentEnd)
+float UHeistForgeryWidget::GetPointToSegmentDistanceSquared(const FVector2D& Point, const FVector2D& SegmentStart, const FVector2D& SegmentEnd)
 {
 	const FVector2D Segment = SegmentEnd - SegmentStart;
 	const double SegmentLengthSquared = Segment.SizeSquared();
@@ -1520,24 +1101,15 @@ float UHeistForgeryWidget::GetPointToSegmentDistanceSquared(
 		return FVector2D::DistSquared(Point, SegmentStart);
 	}
 
-	const double Projection = FMath::Clamp(
-		FVector2D::DotProduct(Point - SegmentStart, Segment)
-			/ SegmentLengthSquared,
-		0.0,
-		1.0);
+	const double Projection = FMath::Clamp(FVector2D::DotProduct(Point - SegmentStart, Segment) / SegmentLengthSquared, 0.0, 1.0);
 	const FVector2D ClosestPoint = SegmentStart + Segment * Projection;
 	return FVector2D::DistSquared(Point, ClosestPoint);
 }
 
-void UHeistForgeryWidget::ApplyStateVisibility(
-	UWidget* TargetWidget,
-	const bool bVisible) const
+void UHeistForgeryWidget::ApplyStateVisibility(UWidget* TargetWidget, const bool bVisible) const
 {
 	if (IsValid(TargetWidget))
 	{
-		TargetWidget->SetVisibility(
-			bVisible
-				? ESlateVisibility::Visible
-				: ESlateVisibility::Collapsed);
+		TargetWidget->SetVisibility(bVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	}
 }

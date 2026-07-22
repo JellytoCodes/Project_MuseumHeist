@@ -11,20 +11,11 @@ class AHeistTrapActor;
 class AHeistVentActor;
 class UDamageType;
 
-DECLARE_MULTICAST_DELEGATE_TwoParams(
-	FHeistEscapeCastCompleted,
-	AHeistPlayerCharacter*,
-	AHeistVentActor*);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistEscapeCastCompleted, AHeistPlayerCharacter*, AHeistVentActor*);
 
-DECLARE_MULTICAST_DELEGATE_TwoParams(
-	FHeistTrapPlacementCastCompleted,
-	AHeistPlayerCharacter*,
-	AHeistTrapActor*);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistTrapPlacementCastCompleted, AHeistPlayerCharacter*, AHeistTrapActor*);
 
-DECLARE_MULTICAST_DELEGATE_TwoParams(
-	FHeistObservationCastCompleted,
-	AHeistPlayerCharacter*,
-	AHeistPaintingDisplayCaseActor*);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistObservationCastCompleted, AHeistPlayerCharacter*, AHeistPaintingDisplayCaseActor*);
 
 DECLARE_MULTICAST_DELEGATE(FHeistActionStateChanged);
 
@@ -35,14 +26,14 @@ class PROJECT_MUSEUMHEIST_API UHeistActionComponent : public UActorComponent
 
 #pragma region Construction
 
-public:
+  public:
 	UHeistActionComponent();
 
 #pragma endregion
 
 #pragma region ObservationCast
 
-public:
+  public:
 	bool TryBeginObservationRequest(AHeistPaintingDisplayCaseActor* TargetDisplayCase);
 	void CancelObservationRequest(const TCHAR* Reason);
 	bool IsObservationCastActive() const;
@@ -50,7 +41,7 @@ public:
 	AHeistPaintingDisplayCaseActor* GetPendingObservationDisplayCase() const;
 	FHeistObservationCastCompleted& GetObservationCastCompletedDelegate();
 
-private:
+  private:
 	UPROPERTY(Transient)
 	TWeakObjectPtr<AHeistPaintingDisplayCaseActor> PendingObservationDisplayCase;
 
@@ -79,19 +70,16 @@ private:
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-	virtual void TickComponent(
-		float DeltaTime,
-		ELevelTick TickType,
-		FActorComponentTickFunction* ThisTickFunction) override;
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 #pragma endregion
 
 #pragma region EscapeCast
 
-public:
+  public:
 	bool TryBeginEscapeRequest(AHeistVentActor* TargetVentActor);
 	bool IsGameplayCastActive() const;
 	void CancelGameplayActions(const TCHAR* Reason);
@@ -103,7 +91,7 @@ public:
 	FHeistEscapeCastCompleted& GetEscapeCastCompletedDelegate();
 	FHeistActionStateChanged& GetActionStateChangedDelegate();
 
-private:
+  private:
 	UPROPERTY(Transient)
 	TWeakObjectPtr<AHeistVentActor> PendingEscapeVent;
 
@@ -127,31 +115,20 @@ private:
 	void OnRep_EscapeCastActive();
 
 	UFUNCTION()
-	void HandleOwnerTakeAnyDamage(
-		AActor* DamagedActor,
-		float Damage,
-		const UDamageType* DamageType,
-		AController* InstigatedBy,
-		AActor* DamageCauser);
+	void HandleOwnerTakeAnyDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser);
 
 #pragma endregion
 
 #pragma region TrapPlacementCast
 
-public:
-	bool TryBeginTrapPlacementRequest(
-		FName SourceItemId,
-		int32 SourceInstanceId,
-		const FVector& TargetWorldLocation,
-		float CastDurationSeconds,
-		float EffectDurationSeconds,
-		TSubclassOf<AHeistTrapActor> TrapActorClass,
-		bool bConsumeSourceItem);
+  public:
+	bool TryBeginTrapPlacementRequest(FName SourceItemId, int32 SourceInstanceId, const FVector& TargetWorldLocation, float CastDurationSeconds, float EffectDurationSeconds,
+									  TSubclassOf<AHeistTrapActor> TrapActorClass, bool bConsumeSourceItem);
 	bool IsTrapPlacementCastActive() const;
 	float GetTrapPlacementCastEndServerTime() const;
 	FHeistTrapPlacementCastCompleted& GetTrapPlacementCastCompletedDelegate();
 
-private:
+  private:
 	UPROPERTY(ReplicatedUsing = OnRep_TrapPlacementCastActive, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Trap", meta = (AllowPrivateAccess = "true"))
 	bool bTrapPlacementCastActive = false;
 
@@ -192,14 +169,14 @@ private:
 
 #pragma region Replication
 
-public:
+  public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 #pragma endregion
 
 #pragma region InternalHelpers
 
-private:
+  private:
 	float ResolveEscapeCastDurationSeconds() const;
 	bool HasMovedBeyondEscapeCastTolerance() const;
 	bool HasMovedBeyondTrapPlacementCastTolerance() const;

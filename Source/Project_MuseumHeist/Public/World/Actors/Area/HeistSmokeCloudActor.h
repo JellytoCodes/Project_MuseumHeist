@@ -16,14 +16,14 @@ class PROJECT_MUSEUMHEIST_API AHeistSmokeCloudActor : public AActor
 
 #pragma region Construction
 
-public:
+  public:
 	AHeistSmokeCloudActor();
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
@@ -31,7 +31,7 @@ protected:
 
 #pragma region Smoke
 
-public:
+  public:
 	void InitializeSmokeCloud(AHeistPlayerCharacter* InOwningCharacter, FName InSourceItemId, float InDurationSeconds, float InSmokeRadius = 300.0f);
 	bool IsActorInsideSmoke(const AActor* Actor) const;
 	bool IsLocationInsideSmoke(const FVector& WorldLocation) const;
@@ -40,22 +40,12 @@ public:
 
 	static bool IsAISightBlockedBySmoke(const UObject* WorldContextObject, const FVector& FromLocation, const FVector& ToLocation, AHeistSmokeCloudActor*& OutBlockingSmokeCloud);
 
-private:
+  private:
 	UFUNCTION()
-	void HandleSmokeOverlapBegin(
-		UPrimitiveComponent* OverlappedComponent,
-		AActor* OtherActor,
-		UPrimitiveComponent* OtherComp,
-		int32 OtherBodyIndex,
-		bool bFromSweep,
-		const FHitResult& SweepResult);
+	void HandleSmokeOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 	UFUNCTION()
-	void HandleSmokeOverlapEnd(
-		UPrimitiveComponent* OverlappedComponent,
-		AActor* OtherActor,
-		UPrimitiveComponent* OtherComp,
-		int32 OtherBodyIndex);
+	void HandleSmokeOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
 	void ApplySmokeToActor(AActor* Actor);
 	void ClearSmokeFromActorIfUncovered(AActor* Actor);
@@ -91,7 +81,7 @@ private:
 
 #pragma region Replication
 
-public:
+  public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 #pragma endregion

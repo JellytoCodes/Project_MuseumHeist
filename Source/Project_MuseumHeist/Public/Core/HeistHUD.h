@@ -12,28 +12,28 @@ class PROJECT_MUSEUMHEIST_API AHeistHUD : public AHUD
 
 #pragma region Construction
 
-public:
+  public:
 	AHeistHUD();
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void BeginPlay() override;
 
 #pragma endregion
 
 #pragma region MainHUDPresentation
 
-public:
+  public:
 	bool ShowMainHUD();
 	void HideMainHUD();
 	void RefreshPresentationSources();
 	class UHeistHUDViewModel* GetHUDViewModel() const;
 	class UHeistHUDWidget* GetMainHUDWidget() const;
 
-private:
+  private:
 	void InitializeMainHUDPresentation();
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|UI", meta = (AllowPrivateAccess = "true"))
@@ -49,12 +49,12 @@ private:
 
 #pragma region LobbyPresentation
 
-public:
+  public:
 	bool ShowLobbyScreen();
 	void HideLobbyScreen();
 	class UHeistLobbyViewModel* GetLobbyViewModel() const;
 
-private:
+  private:
 	void InitializeLobbyPresentation();
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|UI", meta = (AllowPrivateAccess = "true"))
@@ -70,12 +70,12 @@ private:
 
 #pragma region InventoryPresentation
 
-public:
+  public:
 	bool ShowInventoryScreen();
 	class UHeistInventoryViewModel* GetInventoryViewModel() const;
 	class UHeistQuickSlotViewModel* GetQuickSlotViewModel() const;
 
-private:
+  private:
 	void InitializeInventoryPresentation();
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|UI", meta = (AllowPrivateAccess = "true"))
@@ -94,11 +94,11 @@ private:
 
 #pragma region ForgeryPresentation
 
-public:
+  public:
 	class UHeistForgeryViewModel* GetForgeryViewModel() const;
 	class UHeistForgeryWidget* GetForgeryWidget() const;
 
-private:
+  private:
 	void InitializeForgeryPresentation();
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|UI", meta = (AllowPrivateAccess = "true"))
@@ -114,12 +114,12 @@ private:
 
 #pragma region ResultPresentation
 
-public:
+  public:
 	bool ShowResultScreen();
 	void HideResultScreen();
 	class UHeistResultViewModel* GetResultViewModel() const;
 
-private:
+  private:
 	void InitializeResultPresentation();
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|UI", meta = (AllowPrivateAccess = "true"))

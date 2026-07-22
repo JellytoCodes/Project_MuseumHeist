@@ -15,14 +15,14 @@ class PROJECT_MUSEUMHEIST_API AHeistVentActor : public AHeistInteractableActor
 
 #pragma region Construction
 
-public:
+  public:
 	AHeistVentActor();
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
@@ -30,11 +30,11 @@ protected:
 
 #pragma region VentState
 
-public:
+  public:
 	bool IsVentActive() const;
 	void RefreshVentActiveState();
 
-private:
+  private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Vent", meta = (AllowPrivateAccess = "true"))
 	bool bRequiresEscapePhase = true;
 
@@ -51,7 +51,7 @@ private:
 
 #pragma region Interaction
 
-public:
+  public:
 	virtual bool CanInteract(const AActor* Interactor) const override;
 	bool CanUseVent(const AHeistPlayerCharacter* RequestingCharacter) const;
 
@@ -59,14 +59,14 @@ public:
 
 #pragma region Replication
 
-public:
+  public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 #pragma endregion
 
 #pragma region InternalHelpers
 
-private:
+  private:
 	void BindToEscapePhaseState();
 	void HandleEscapePhaseStateChanged(bool bIsEscapePhaseOpen);
 

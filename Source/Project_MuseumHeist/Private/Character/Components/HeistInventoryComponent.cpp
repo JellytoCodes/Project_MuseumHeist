@@ -17,9 +17,9 @@
 
 namespace
 {
-	const FName CoinItemId(TEXT("Throwable_Coin"));
-	const FName SmokeItemId(TEXT("Throwable_Smoke"));
-	const FName GlueTrapItemId(TEXT("Trap_Glue"));
+const FName CoinItemId(TEXT("Throwable_Coin"));
+const FName SmokeItemId(TEXT("Throwable_Smoke"));
+const FName GlueTrapItemId(TEXT("Trap_Glue"));
 }
 
 #pragma endregion
@@ -31,8 +31,7 @@ void FHeistReplicatedInventory::SetOwnerComponent(UHeistInventoryComponent* InOw
 	OwnerComponent = InOwnerComponent;
 }
 
-void FHeistReplicatedInventory::PostReplicatedReceive(
-	const FFastArraySerializer::FPostReplicatedReceiveParameters& Parameters)
+void FHeistReplicatedInventory::PostReplicatedReceive(const FFastArraySerializer::FPostReplicatedReceiveParameters& Parameters)
 {
 	(void)Parameters;
 
@@ -95,9 +94,7 @@ FHeistInventoryChanged& UHeistInventoryComponent::GetInventoryChangedDelegate()
 	return InventoryChangedDelegate;
 }
 
-bool UHeistInventoryComponent::TryGetItemDefinition(
-	const FName ItemId,
-	FHeistItemDataRow& OutItemDefinition) const
+bool UHeistInventoryComponent::TryGetItemDefinition(const FName ItemId, FHeistItemDataRow& OutItemDefinition) const
 {
 	OutItemDefinition = FHeistItemDataRow();
 
@@ -125,10 +122,7 @@ bool UHeistInventoryComponent::TryAddItem(const FName ItemId, int32& OutInstance
 	return TryAddItem(ItemId, OutInstanceId, RejectReason);
 }
 
-bool UHeistInventoryComponent::TryAddItem(
-	const FName ItemId,
-	int32& OutInstanceId,
-	const TCHAR*& OutRejectReason)
+bool UHeistInventoryComponent::TryAddItem(const FName ItemId, int32& OutInstanceId, const TCHAR*& OutRejectReason)
 {
 	OutInstanceId = INDEX_NONE;
 	OutRejectReason = nullptr;
@@ -154,12 +148,7 @@ bool UHeistInventoryComponent::TryAddItem(
 	if (!TryFindAutoPlacement(ItemDefinition, GridPosition, bRotated))
 	{
 		OutRejectReason = TEXT("InventoryFull");
-		UHeistDebugFunctionLibrary::DebugInventoryAddRejected(
-			OwnerActor,
-			ItemId,
-			TEXT("InventoryFull"),
-			GridColumnCount,
-			GridRowCount);
+		UHeistDebugFunctionLibrary::DebugInventoryAddRejected(OwnerActor, ItemId, TEXT("InventoryFull"), GridColumnCount, GridRowCount);
 		return false;
 	}
 
@@ -174,25 +163,14 @@ bool UHeistInventoryComponent::TryAddItem(
 	NotifyInventoryChanged();
 
 	OutInstanceId = AddedEntry.InventoryItem.InstanceId;
-	const FIntPoint PlacedSize = bRotated
-		? FIntPoint(ItemDefinition.GridSize.Y, ItemDefinition.GridSize.X)
-		: ItemDefinition.GridSize;
+	const FIntPoint PlacedSize = bRotated ? FIntPoint(ItemDefinition.GridSize.Y, ItemDefinition.GridSize.X) : ItemDefinition.GridSize;
 
-	UHeistDebugFunctionLibrary::DebugInventoryItemAdded(
-		OwnerActor,
-		ItemId,
-		OutInstanceId,
-		GridPosition,
-		PlacedSize,
-		bRotated,
-		ReplicatedInventory.Items.Num());
+	UHeistDebugFunctionLibrary::DebugInventoryItemAdded(OwnerActor, ItemId, OutInstanceId, GridPosition, PlacedSize, bRotated, ReplicatedInventory.Items.Num());
 
 	return true;
 }
 
-bool UHeistInventoryComponent::TryGetItem(
-	const int32 InstanceId,
-	FHeistInventoryItem& OutInventoryItem) const
+bool UHeistInventoryComponent::TryGetItem(const int32 InstanceId, FHeistInventoryItem& OutInventoryItem) const
 {
 	OutInventoryItem = FHeistInventoryItem();
 	const FHeistInventoryFastArrayItem* ItemEntry = FindItemEntry(InstanceId);
@@ -231,9 +209,7 @@ bool UHeistInventoryComponent::TryMoveItem(const int32 InstanceId, const FIntPoi
 		return false;
 	}
 
-	const FIntPoint ItemSize = ItemEntry->InventoryItem.bRotated
-		? FIntPoint(ItemDefinition.GridSize.Y, ItemDefinition.GridSize.X)
-		: ItemDefinition.GridSize;
+	const FIntPoint ItemSize = ItemEntry->InventoryItem.bRotated ? FIntPoint(ItemDefinition.GridSize.Y, ItemDefinition.GridSize.X) : ItemDefinition.GridSize;
 	if (!CanPlaceAt(OccupiedCells, TargetGridPosition, ItemSize))
 	{
 		return false;
@@ -262,8 +238,7 @@ bool UHeistInventoryComponent::TryRotateItem(const int32 InstanceId)
 	}
 
 	FHeistItemDataRow ItemDefinition;
-	if (!TryGetItemDefinition(ItemEntry->InventoryItem.ItemId, ItemDefinition)
-		|| !ItemDefinition.bCanRotate)
+	if (!TryGetItemDefinition(ItemEntry->InventoryItem.ItemId, ItemDefinition) || !ItemDefinition.bCanRotate)
 	{
 		return false;
 	}
@@ -274,9 +249,7 @@ bool UHeistInventoryComponent::TryRotateItem(const int32 InstanceId)
 		return false;
 	}
 
-	const FIntPoint RotatedSize = ItemEntry->InventoryItem.bRotated
-		? ItemDefinition.GridSize
-		: FIntPoint(ItemDefinition.GridSize.Y, ItemDefinition.GridSize.X);
+	const FIntPoint RotatedSize = ItemEntry->InventoryItem.bRotated ? ItemDefinition.GridSize : FIntPoint(ItemDefinition.GridSize.Y, ItemDefinition.GridSize.X);
 	if (!CanPlaceAt(OccupiedCells, ItemEntry->InventoryItem.GridPosition, RotatedSize))
 	{
 		return false;
@@ -286,16 +259,11 @@ bool UHeistInventoryComponent::TryRotateItem(const int32 InstanceId)
 	ReplicatedInventory.MarkItemDirty(*ItemEntry);
 	OwnerActor->ForceNetUpdate();
 	NotifyInventoryChanged();
-	UHeistDebugFunctionLibrary::DebugInventoryItemRotated(
-		OwnerActor,
-		InstanceId,
-		ItemEntry->InventoryItem.bRotated);
+	UHeistDebugFunctionLibrary::DebugInventoryItemRotated(OwnerActor, InstanceId, ItemEntry->InventoryItem.bRotated);
 	return true;
 }
 
-bool UHeistInventoryComponent::TryRemoveItem(
-	const int32 InstanceId,
-	FHeistInventoryItem& OutRemovedItem)
+bool UHeistInventoryComponent::TryRemoveItem(const int32 InstanceId, FHeistInventoryItem& OutRemovedItem)
 {
 	OutRemovedItem = FHeistInventoryItem();
 	AActor* OwnerActor = GetOwner();
@@ -304,11 +272,7 @@ bool UHeistInventoryComponent::TryRemoveItem(
 		return false;
 	}
 
-	const int32 ItemIndex = ReplicatedInventory.Items.IndexOfByPredicate(
-		[InstanceId](const FHeistInventoryFastArrayItem& Entry)
-		{
-			return Entry.InventoryItem.InstanceId == InstanceId;
-		});
+	const int32 ItemIndex = ReplicatedInventory.Items.IndexOfByPredicate([InstanceId](const FHeistInventoryFastArrayItem& Entry) { return Entry.InventoryItem.InstanceId == InstanceId; });
 	if (!ReplicatedInventory.Items.IsValidIndex(ItemIndex))
 	{
 		return false;
@@ -321,17 +285,11 @@ bool UHeistInventoryComponent::TryRemoveItem(
 	OwnerActor->ForceNetUpdate();
 	NotifyInventoryChanged();
 
-	UHeistDebugFunctionLibrary::DebugInventoryItemRemoved(
-		OwnerActor,
-		OutRemovedItem.ItemId,
-		InstanceId,
-		ReplicatedInventory.Items.Num());
+	UHeistDebugFunctionLibrary::DebugInventoryItemRemoved(OwnerActor, OutRemovedItem.ItemId, InstanceId, ReplicatedInventory.Items.Num());
 	return true;
 }
 
-bool UHeistInventoryComponent::TryAssignQuickSlot(
-	const EHeistQuickSlotType SlotType,
-	const int32 InstanceId)
+bool UHeistInventoryComponent::TryAssignQuickSlot(const EHeistQuickSlotType SlotType, const int32 InstanceId)
 {
 	AActor* OwnerActor = GetOwner();
 	if (!IsValid(OwnerActor) || !OwnerActor->HasAuthority())
@@ -342,11 +300,8 @@ bool UHeistInventoryComponent::TryAssignQuickSlot(
 	FHeistInventoryItem InventoryItem;
 	FHeistItemDataRow ItemDefinition;
 	FHeistQuickSlotState* QuickSlot = FindQuickSlot(SlotType);
-	if (QuickSlot == nullptr
-		|| !TryGetItem(InstanceId, InventoryItem)
-		|| !TryGetItemDefinition(InventoryItem.ItemId, ItemDefinition)
-		|| !ItemDefinition.bCanUseQuickSlot
-		|| ResolveQuickSlotType(InventoryItem.ItemId) != SlotType)
+	if (QuickSlot == nullptr || !TryGetItem(InstanceId, InventoryItem) || !TryGetItemDefinition(InventoryItem.ItemId, ItemDefinition) || !ItemDefinition.bCanUseQuickSlot ||
+		ResolveQuickSlotType(InventoryItem.ItemId) != SlotType)
 	{
 		return false;
 	}
@@ -354,11 +309,7 @@ bool UHeistInventoryComponent::TryAssignQuickSlot(
 	QuickSlot->ItemInstanceId = InstanceId;
 	OwnerActor->ForceNetUpdate();
 	NotifyInventoryChanged();
-	UHeistDebugFunctionLibrary::DebugQuickSlotAssigned(
-		OwnerActor,
-		static_cast<int32>(SlotType),
-		InstanceId,
-		InventoryItem.ItemId);
+	UHeistDebugFunctionLibrary::DebugQuickSlotAssigned(OwnerActor, static_cast<int32>(SlotType), InstanceId, InventoryItem.ItemId);
 	return true;
 }
 
@@ -410,11 +361,7 @@ const FHeistOriginalCarryEntry& UHeistInventoryComponent::GetOriginalCarryEntry(
 	return OriginalCarryEntry;
 }
 
-bool UHeistInventoryComponent::TryBeginOriginalCarry(
-	AHeistPlayerState* CarryingPlayerState,
-	const FName ArtifactId,
-	const float Weight,
-	AHeistPaintingDisplayCaseActor* SourceDisplayCase)
+bool UHeistInventoryComponent::TryBeginOriginalCarry(AHeistPlayerState* CarryingPlayerState, const FName ArtifactId, const float Weight, AHeistPaintingDisplayCaseActor* SourceDisplayCase)
 {
 	AHeistPlayerCharacter* OwnerCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
 	const TCHAR* RejectReason = nullptr;
@@ -426,15 +373,11 @@ bool UHeistInventoryComponent::TryBeginOriginalCarry(
 	{
 		RejectReason = TEXT("NotAuthority");
 	}
-	else if (!IsValid(CarryingPlayerState)
-		|| CarryingPlayerState->GetPawn() != OwnerCharacter)
+	else if (!IsValid(CarryingPlayerState) || CarryingPlayerState->GetPawn() != OwnerCharacter)
 	{
 		RejectReason = TEXT("PlayerStatePawnMismatch");
 	}
-	else if (ArtifactId.IsNone()
-		|| !FMath::IsFinite(Weight)
-		|| Weight < 0.0f
-		|| !IsValid(SourceDisplayCase))
+	else if (ArtifactId.IsNone() || !FMath::IsFinite(Weight) || Weight < 0.0f || !IsValid(SourceDisplayCase))
 	{
 		RejectReason = TEXT("InvalidCarryDefinition");
 	}
@@ -449,29 +392,15 @@ bool UHeistInventoryComponent::TryBeginOriginalCarry(
 
 	if (RejectReason != nullptr)
 	{
-		UE_LOG(
-			LogHeistInventory,
-			Warning,
-			TEXT("Original carry entry begin rejected: Owner=%s PlayerState=%s Artifact=%s Weight=%.1f SourceCase=%s Reason=%s"),
-			*GetNameSafe(OwnerCharacter),
-			*GetNameSafe(CarryingPlayerState),
-			*ArtifactId.ToString(),
-			Weight,
-			*GetNameSafe(SourceDisplayCase),
-			RejectReason);
+		UE_LOG(LogHeistInventory, Warning, TEXT("Original carry entry begin rejected: Owner=%s PlayerState=%s Artifact=%s Weight=%.1f SourceCase=%s Reason=%s"), *GetNameSafe(OwnerCharacter),
+			   *GetNameSafe(CarryingPlayerState), *ArtifactId.ToString(), Weight, *GetNameSafe(SourceDisplayCase), RejectReason);
 		return false;
 	}
 
 	if (!CarryingPlayerState->AddLootScoreAndWeight(0, Weight))
 	{
-		UE_LOG(
-			LogHeistInventory,
-			Warning,
-			TEXT("Original carry entry begin rejected: Owner=%s PlayerState=%s Artifact=%s Weight=%.1f Reason=WeightCommitFailed"),
-			*GetNameSafe(OwnerCharacter),
-			*GetNameSafe(CarryingPlayerState),
-			*ArtifactId.ToString(),
-			Weight);
+		UE_LOG(LogHeistInventory, Warning, TEXT("Original carry entry begin rejected: Owner=%s PlayerState=%s Artifact=%s Weight=%.1f Reason=WeightCommitFailed"), *GetNameSafe(OwnerCharacter),
+			   *GetNameSafe(CarryingPlayerState), *ArtifactId.ToString(), Weight);
 		return false;
 	}
 
@@ -483,21 +412,12 @@ bool UHeistInventoryComponent::TryBeginOriginalCarry(
 	return true;
 }
 
-bool UHeistInventoryComponent::TryEndOriginalCarry(
-	AHeistPlayerState* CarryingPlayerState,
-	AHeistPaintingDisplayCaseActor* ExpectedSourceDisplayCase,
-	FHeistOriginalCarryEntry& OutReleasedEntry)
+bool UHeistInventoryComponent::TryEndOriginalCarry(AHeistPlayerState* CarryingPlayerState, AHeistPaintingDisplayCaseActor* ExpectedSourceDisplayCase, FHeistOriginalCarryEntry& OutReleasedEntry)
 {
 	OutReleasedEntry = FHeistOriginalCarryEntry();
 	AHeistPlayerCharacter* OwnerCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
-	if (!IsValid(OwnerCharacter)
-		|| !OwnerCharacter->HasAuthority()
-		|| !IsValid(CarryingPlayerState)
-		|| CarryingPlayerState->GetPawn() != OwnerCharacter
-		|| !OriginalCarryEntry.IsValid()
-		|| (IsValid(ExpectedSourceDisplayCase)
-			&& OriginalCarryEntry.SourceDisplayCase != ExpectedSourceDisplayCase)
-		|| !CarryingPlayerState->RemoveCarriedOriginalWeight(OriginalCarryEntry.Weight))
+	if (!IsValid(OwnerCharacter) || !OwnerCharacter->HasAuthority() || !IsValid(CarryingPlayerState) || CarryingPlayerState->GetPawn() != OwnerCharacter || !OriginalCarryEntry.IsValid() ||
+		(IsValid(ExpectedSourceDisplayCase) && OriginalCarryEntry.SourceDisplayCase != ExpectedSourceDisplayCase) || !CarryingPlayerState->RemoveCarriedOriginalWeight(OriginalCarryEntry.Weight))
 	{
 		return false;
 	}
@@ -509,10 +429,7 @@ bool UHeistInventoryComponent::TryEndOriginalCarry(
 	return true;
 }
 
-bool UHeistInventoryComponent::TryFindAutoPlacement(
-	const FHeistItemDataRow& ItemDefinition,
-	FIntPoint& OutGridPosition,
-	bool& bOutRotated) const
+bool UHeistInventoryComponent::TryFindAutoPlacement(const FHeistItemDataRow& ItemDefinition, FIntPoint& OutGridPosition, bool& bOutRotated) const
 {
 	OutGridPosition = FIntPoint(-1, -1);
 	bOutRotated = false;
@@ -561,9 +478,7 @@ bool UHeistInventoryComponent::TryBuildOccupiedCells(TArray<bool>& OutOccupiedCe
 	return TryBuildOccupiedCellsExcluding(INDEX_NONE, OutOccupiedCells);
 }
 
-bool UHeistInventoryComponent::TryBuildOccupiedCellsExcluding(
-	const int32 ExcludedInstanceId,
-	TArray<bool>& OutOccupiedCells) const
+bool UHeistInventoryComponent::TryBuildOccupiedCellsExcluding(const int32 ExcludedInstanceId, TArray<bool>& OutOccupiedCells) const
 {
 	OutOccupiedCells.Init(false, GridColumnCount * GridRowCount);
 
@@ -577,25 +492,15 @@ bool UHeistInventoryComponent::TryBuildOccupiedCellsExcluding(
 		FHeistItemDataRow ExistingDefinition;
 		if (!TryGetItemDefinition(ExistingItem.ItemId, ExistingDefinition))
 		{
-			UHeistDebugFunctionLibrary::DebugInventoryOccupancyInvalid(
-				ExistingItem.InstanceId,
-				ExistingItem.ItemId,
-				TEXT("InvalidItemDefinition"));
+			UHeistDebugFunctionLibrary::DebugInventoryOccupancyInvalid(ExistingItem.InstanceId, ExistingItem.ItemId, TEXT("InvalidItemDefinition"));
 			return false;
 		}
 
-		const FIntPoint ExistingSize = ExistingItem.bRotated
-			? FIntPoint(ExistingDefinition.GridSize.Y, ExistingDefinition.GridSize.X)
-			: ExistingDefinition.GridSize;
+		const FIntPoint ExistingSize = ExistingItem.bRotated ? FIntPoint(ExistingDefinition.GridSize.Y, ExistingDefinition.GridSize.X) : ExistingDefinition.GridSize;
 
 		if (!CanPlaceAt(OutOccupiedCells, ExistingItem.GridPosition, ExistingSize))
 		{
-			UHeistDebugFunctionLibrary::DebugInventoryOccupancyInvalid(
-				ExistingItem.InstanceId,
-				ExistingItem.ItemId,
-				TEXT("OutOfBoundsOrOverlap"),
-				ExistingItem.GridPosition,
-				ExistingSize);
+			UHeistDebugFunctionLibrary::DebugInventoryOccupancyInvalid(ExistingItem.InstanceId, ExistingItem.ItemId, TEXT("OutOfBoundsOrOverlap"), ExistingItem.GridPosition, ExistingSize);
 			return false;
 		}
 
@@ -613,38 +518,22 @@ bool UHeistInventoryComponent::TryBuildOccupiedCellsExcluding(
 
 FHeistInventoryFastArrayItem* UHeistInventoryComponent::FindItemEntry(const int32 InstanceId)
 {
-	return ReplicatedInventory.Items.FindByPredicate(
-		[InstanceId](const FHeistInventoryFastArrayItem& Entry)
-		{
-			return Entry.InventoryItem.InstanceId == InstanceId;
-		});
+	return ReplicatedInventory.Items.FindByPredicate([InstanceId](const FHeistInventoryFastArrayItem& Entry) { return Entry.InventoryItem.InstanceId == InstanceId; });
 }
 
 const FHeistInventoryFastArrayItem* UHeistInventoryComponent::FindItemEntry(const int32 InstanceId) const
 {
-	return ReplicatedInventory.Items.FindByPredicate(
-		[InstanceId](const FHeistInventoryFastArrayItem& Entry)
-		{
-			return Entry.InventoryItem.InstanceId == InstanceId;
-		});
+	return ReplicatedInventory.Items.FindByPredicate([InstanceId](const FHeistInventoryFastArrayItem& Entry) { return Entry.InventoryItem.InstanceId == InstanceId; });
 }
 
 FHeistQuickSlotState* UHeistInventoryComponent::FindQuickSlot(const EHeistQuickSlotType SlotType)
 {
-	return QuickSlots.FindByPredicate(
-		[SlotType](const FHeistQuickSlotState& QuickSlot)
-		{
-			return QuickSlot.SlotType == SlotType;
-		});
+	return QuickSlots.FindByPredicate([SlotType](const FHeistQuickSlotState& QuickSlot) { return QuickSlot.SlotType == SlotType; });
 }
 
 const FHeistQuickSlotState* UHeistInventoryComponent::FindQuickSlot(const EHeistQuickSlotType SlotType) const
 {
-	return QuickSlots.FindByPredicate(
-		[SlotType](const FHeistQuickSlotState& QuickSlot)
-		{
-			return QuickSlot.SlotType == SlotType;
-		});
+	return QuickSlots.FindByPredicate([SlotType](const FHeistQuickSlotState& QuickSlot) { return QuickSlot.SlotType == SlotType; });
 }
 
 EHeistQuickSlotType UHeistInventoryComponent::ResolveQuickSlotType(const FName ItemId) const
@@ -697,18 +586,10 @@ void UHeistInventoryComponent::OnRep_OriginalCarryEntry()
 	NotifyInventoryChanged();
 }
 
-bool UHeistInventoryComponent::CanPlaceAt(
-	const TArray<bool>& OccupiedCells,
-	const FIntPoint& GridPosition,
-	const FIntPoint& ItemSize)
+bool UHeistInventoryComponent::CanPlaceAt(const TArray<bool>& OccupiedCells, const FIntPoint& GridPosition, const FIntPoint& ItemSize)
 {
-	if (GridPosition.X < 0
-		|| GridPosition.Y < 0
-		|| ItemSize.X <= 0
-		|| ItemSize.Y <= 0
-		|| GridPosition.X + ItemSize.X > GridColumnCount
-		|| GridPosition.Y + ItemSize.Y > GridRowCount
-		|| OccupiedCells.Num() != GridColumnCount * GridRowCount)
+	if (GridPosition.X < 0 || GridPosition.Y < 0 || ItemSize.X <= 0 || ItemSize.Y <= 0 || GridPosition.X + ItemSize.X > GridColumnCount || GridPosition.Y + ItemSize.Y > GridRowCount ||
+		OccupiedCells.Num() != GridColumnCount * GridRowCount)
 	{
 		return false;
 	}
@@ -730,9 +611,7 @@ bool UHeistInventoryComponent::CanPlaceAt(
 int32 UHeistInventoryComponent::AllocateNextInstanceId()
 {
 	const AActor* OwnerActor = GetOwner();
-	checkf(
-		IsValid(OwnerActor) && OwnerActor->HasAuthority(),
-		TEXT("Inventory InstanceId allocation requires an authoritative owner."));
+	checkf(IsValid(OwnerActor) && OwnerActor->HasAuthority(), TEXT("Inventory InstanceId allocation requires an authoritative owner."));
 	checkf(NextInstanceId > 0 && NextInstanceId < MAX_int32, TEXT("Inventory InstanceId counter exhausted."));
 
 	return NextInstanceId++;

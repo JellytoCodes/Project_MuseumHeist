@@ -20,14 +20,14 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardAIController : public AAIController
 
 #pragma region Construction
 
-public:
+  public:
 	AHeistGuardAIController();
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void OnPossess(APawn* InPawn) override;
 	virtual void OnUnPossess() override;
 
@@ -35,25 +35,19 @@ protected:
 
 #pragma region Perception
 
-public:
+  public:
 	void ConfigurePerceptionFromGuardProfile(const FHeistGuardDataRow& GuardData);
 	bool DebugEvaluateSightTarget(AActor* TargetActor);
 	void SetAutomaticSightEnabled(bool bEnabled);
 	bool IsAutomaticSightEnabled() const;
 	bool TryArrestChaseTarget();
 
-private:
+  private:
 	UFUNCTION()
 	void HandleTargetPerceptionUpdated(AActor* TargetActor, FAIStimulus Stimulus);
 
-	bool CanInitiallySeeTarget(
-		const AActor* TargetActor,
-		const TCHAR*& OutRejectReason,
-		AActor*& OutBlockingActor) const;
-	bool IsChaseTargetOccluded(
-		const AActor* TargetActor,
-		const TCHAR*& OutRejectReason,
-		AActor*& OutBlockingActor) const;
+	bool CanInitiallySeeTarget(const AActor* TargetActor, const TCHAR*& OutRejectReason, AActor*& OutBlockingActor) const;
+	bool IsChaseTargetOccluded(const AActor* TargetActor, const TCHAR*& OutRejectReason, AActor*& OutBlockingActor) const;
 	FVector GetTargetSightLocation(const AActor* TargetActor) const;
 	bool IsDoorOccluder(const FHitResult& HitResult) const;
 	void TryAcquireSightTarget();
@@ -93,7 +87,7 @@ private:
 
 #pragma region InspectionTarget
 
-public:
+  public:
 	bool TrySelectInspectionTarget();
 	bool TryBeginInspection();
 	bool StartInspectionCast();
@@ -103,7 +97,7 @@ public:
 	int32 GetInspectionTargetSelectionRevision() const;
 	float GetInspectionAcceptanceRadius() const;
 
-private:
+  private:
 	AHeistPaintingDisplayCaseActor* FindBestInspectionTarget() const;
 	void HandleInspectionCastExpired();
 
@@ -120,10 +114,10 @@ private:
 
 #pragma region StateTree
 
-public:
+  public:
 	UStateTreeAIComponent* GetGuardStateTreeComponent() const;
 
-private:
+  private:
 	void HandleGuardStateChanged(EHeistGuardState PreviousState, EHeistGuardState NewState);
 	void SendGuardStateTreeEvent(EHeistGuardState NewState);
 

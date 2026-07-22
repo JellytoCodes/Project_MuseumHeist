@@ -29,14 +29,14 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 
 #pragma region Construction
 
-public:
+  public:
 	AHeistPlayerController();
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void OnPossess(APawn* InPawn) override;
@@ -44,14 +44,14 @@ protected:
 	virtual void OnRep_PlayerState() override;
 	virtual void SetupInputComponent() override;
 
-private:
+  private:
 	void RefreshLocalHUDPresentation();
 
 #pragma endregion
 
 #pragma region Input
 
-private:
+  private:
 	void HandleLookInput(const FInputActionValue& InputValue);
 	void HandleMoveInput(const FInputActionValue& InputValue);
 	void HandleInventoryToggle();
@@ -91,7 +91,7 @@ private:
 	EHeistInputMode LocalInputMode = EHeistInputMode::Gameplay;
 	bool bLocalForgerySessionActive = false;
 
-public:
+  public:
 	void HandleInventoryOpenStateChanged(bool bInventoryOpen);
 	void HandleArrestStateChanged(bool bArrested);
 	EHeistInputMode GetLocalInputMode() const;
@@ -103,7 +103,7 @@ public:
 
 #pragma region Interaction
 
-private:
+  private:
 	void HandleInteractPressed();
 	void HandleInteractReleased();
 	bool bLocalObservationInputHeld = false;
@@ -112,19 +112,15 @@ private:
 
 #pragma region GameplayRequests
 
-public:
+  public:
 	UFUNCTION(BlueprintCallable, Category = "Heist|Inventory")
 	void RequestSetInventoryOpen(bool bInventoryOpen);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Forgery")
 	void RequestCancelForgery();
 
-	void RequestSubmitForgeryStrokes(
-		const TArray<FVector2D>& NormalizedPoints,
-		const TArray<int32>& StrokePointCounts,
-		const TArray<uint8>& StrokePaletteIndices,
-		float ClientBrushSize,
-		int32 ClientSessionRevision = INDEX_NONE);
+	void RequestSubmitForgeryStrokes(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices, float ClientBrushSize,
+									 int32 ClientSessionRevision = INDEX_NONE);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Inventory")
 	void RequestMoveInventoryItem(int32 InstanceId, FIntPoint TargetGridPosition);
@@ -152,7 +148,7 @@ public:
 
 	bool TryBuildCameraForwardAim(float Distance, FVector& OutViewLocation, FVector& OutCameraForward, FVector& OutTargetWorldLocation) const;
 
-private:
+  private:
 	UFUNCTION(Server, Reliable)
 	void Server_RequestLootPickup(AHeistLootActor* TargetLootActor);
 
@@ -172,12 +168,8 @@ private:
 	void Server_CancelForgery();
 
 	UFUNCTION(Server, Reliable)
-	void Server_SubmitForgeryStrokes(
-		const TArray<FVector2D>& NormalizedPoints,
-		const TArray<int32>& StrokePointCounts,
-		const TArray<uint8>& StrokePaletteIndices,
-		float ClientBrushSize,
-		int32 ClientSessionRevision);
+	void Server_SubmitForgeryStrokes(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices, float ClientBrushSize,
+									 int32 ClientSessionRevision);
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestMoveInventoryItem(int32 InstanceId, FIntPoint TargetGridPosition);
@@ -210,7 +202,7 @@ private:
 
 #pragma region Debug
 
-public:
+  public:
 	void DebugRequestAddInventoryItem(FName ItemId);
 	void DebugRequestThrowCoinAtWorldLocation(FVector TargetWorldLocation);
 	void DebugRequestSpawnGuard(float Distance);
@@ -228,7 +220,7 @@ public:
 	void DebugRequestDumpDifficultyBaseline();
 	void DebugRequestForgeryScoreTest();
 
-private:
+  private:
 	UFUNCTION(Server, Reliable)
 	void Server_DebugRequestAddInventoryItem(FName ItemId);
 
@@ -281,10 +273,10 @@ private:
 
 #pragma region Feedback
 
-public:
+  public:
 	FHeistPopupFeedbackRequested& GetPopupFeedbackRequestedDelegate();
 
-private:
+  private:
 	UFUNCTION(Client, Reliable)
 	void Client_ReceivePopupFeedback(const FText& Message, float DurationSeconds);
 
@@ -298,7 +290,7 @@ private:
 
 #pragma region InternalHelpers
 
-private:
+  private:
 	struct FHeistGameplayRequestContext
 	{
 		AHeistPlayerCharacter* Character = nullptr;
@@ -306,26 +298,13 @@ private:
 		UHeistInventoryComponent* InventoryComponent = nullptr;
 	};
 
-	bool TryBuildGameplayRequestContext(
-		FHeistGameplayRequestContext& OutContext,
-		const TCHAR*& OutRejectReason) const;
-	bool TryBuildInventoryMutationRequestContext(
-		FHeistGameplayRequestContext& OutContext,
-		const TCHAR*& OutRejectReason) const;
+	bool TryBuildGameplayRequestContext(FHeistGameplayRequestContext& OutContext, const TCHAR*& OutRejectReason) const;
+	bool TryBuildInventoryMutationRequestContext(FHeistGameplayRequestContext& OutContext, const TCHAR*& OutRejectReason) const;
 
-	bool TryResolveQuickSlotItem(
-		const FHeistGameplayRequestContext& RequestContext,
-		EHeistQuickSlotType SlotType,
-		FName& OutItemId,
-		const TCHAR*& OutRejectReason) const;
+	bool TryResolveQuickSlotItem(const FHeistGameplayRequestContext& RequestContext, EHeistQuickSlotType SlotType, FName& OutItemId, const TCHAR*& OutRejectReason) const;
 	AHeistGuardCharacter* FindNearestGuard() const;
-	bool TrySpawnThrowableProjectile(
-		const FHeistGameplayRequestContext& RequestContext,
-		FName ItemId,
-		const FVector& TargetWorldLocation,
-		bool bDebugBypassInventory,
-		AHeistThrowableProjectile*& OutProjectile,
-		const TCHAR*& OutRejectReason) const;
+	bool TrySpawnThrowableProjectile(const FHeistGameplayRequestContext& RequestContext, FName ItemId, const FVector& TargetWorldLocation, bool bDebugBypassInventory,
+									 AHeistThrowableProjectile*& OutProjectile, const TCHAR*& OutRejectReason) const;
 	static FName GetExpectedQuickSlotItemId(EHeistQuickSlotType SlotType);
 
 	void LogLootPickupRejected(const AHeistLootActor* TargetLootActor, const TCHAR* Reason, float Distance = -1.0f);
@@ -334,5 +313,4 @@ private:
 	void LogThrowableUseRejected(EHeistQuickSlotType SlotType, FName ItemId, const TCHAR* Reason);
 
 #pragma endregion
-
 };

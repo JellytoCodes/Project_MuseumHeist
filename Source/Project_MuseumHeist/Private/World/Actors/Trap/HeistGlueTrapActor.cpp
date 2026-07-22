@@ -27,12 +27,7 @@ bool AHeistGlueTrapActor::HandleAuthorityTrigger(AActor* TriggeringActor)
 		UHeistGuardStateComponent* GuardStateComponent = TriggeringGuard->GetGuardStateComponent();
 		if (IsValid(GuardStateComponent) && GuardStateComponent->ApplyStun(GetEffectDurationSeconds()))
 		{
-			UHeistDebugFunctionLibrary::DebugTrapTriggered(
-				this,
-				this,
-				TriggeringGuard,
-				GetSourceItemId(),
-				GetEffectDurationSeconds());
+			UHeistDebugFunctionLibrary::DebugTrapTriggered(this, this, TriggeringGuard, GetSourceItemId(), GetEffectDurationSeconds());
 			return true;
 		}
 

@@ -8,10 +8,7 @@
 
 struct FHeistGuardDataRow;
 
-DECLARE_MULTICAST_DELEGATE_TwoParams(
-	FHeistGuardStateChanged,
-	EHeistGuardState,
-	EHeistGuardState);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistGuardStateChanged, EHeistGuardState, EHeistGuardState);
 
 UCLASS(ClassGroup = (Heist), meta = (BlueprintSpawnableComponent))
 class PROJECT_MUSEUMHEIST_API UHeistGuardStateComponent : public UActorComponent
@@ -20,21 +17,21 @@ class PROJECT_MUSEUMHEIST_API UHeistGuardStateComponent : public UActorComponent
 
 #pragma region Construction
 
-public:
+  public:
 	UHeistGuardStateComponent();
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 #pragma endregion
 
 #pragma region State
 
-public:
+  public:
 	bool EnterPatrol();
 	bool EnterChasePlayer(AActor* TargetActor);
 	bool RefreshChaseTargetLocation();
@@ -67,11 +64,8 @@ public:
 	FHeistInspectExhibitCastExpired& GetInspectExhibitCastExpiredDelegate();
 	void ConfigureGuardProfile(const FHeistGuardDataRow& GuardData);
 
-private:
-	bool CommitState(
-		EHeistGuardState NewState,
-		float DurationSeconds = 0.0f,
-		bool bBypassPriority = false);
+  private:
+	bool CommitState(EHeistGuardState NewState, float DurationSeconds = 0.0f, bool bBypassPriority = false);
 	bool CanEnterState(EHeistGuardState NewState) const;
 	bool StartStateTimer(float DurationSeconds);
 	void HandleTimedStateExpired();
@@ -103,7 +97,7 @@ private:
 
 #pragma region Replication
 
-public:
+  public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 #pragma endregion

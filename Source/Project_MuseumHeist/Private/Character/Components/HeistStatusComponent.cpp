@@ -55,13 +55,7 @@ bool UHeistStatusComponent::ApplyTimedStatusTag(const FGameplayTag StateTag, con
 	StatusTagsChangedDelegate.Broadcast(StatusTags);
 
 #if !UE_BUILD_SHIPPING
-	UE_LOG(
-		LogHeist,
-		Log,
-		TEXT("Status tag applied: Owner=%s Tag=%s EndServerTime=%.2f"),
-		*GetNameSafe(GetOwner()),
-		*StateTag.ToString(),
-		ExistingState->EndServerTime);
+	UE_LOG(LogHeist, Log, TEXT("Status tag applied: Owner=%s Tag=%s EndServerTime=%.2f"), *GetNameSafe(GetOwner()), *StateTag.ToString(), ExistingState->EndServerTime);
 #endif
 	return true;
 }
@@ -73,11 +67,7 @@ bool UHeistStatusComponent::ClearStatusTag(const FGameplayTag StateTag)
 		return false;
 	}
 
-	const int32 RemovedCount = StatusTags.RemoveAll(
-		[StateTag](const FHeistTimedTagState& StatusTagState)
-		{
-			return StatusTagState.StateTag == StateTag;
-		});
+	const int32 RemovedCount = StatusTags.RemoveAll([StateTag](const FHeistTimedTagState& StatusTagState) { return StatusTagState.StateTag == StateTag; });
 
 	if (RemovedCount <= 0)
 	{
@@ -89,32 +79,19 @@ bool UHeistStatusComponent::ClearStatusTag(const FGameplayTag StateTag)
 	StatusTagsChangedDelegate.Broadcast(StatusTags);
 
 #if !UE_BUILD_SHIPPING
-	UE_LOG(
-		LogHeist,
-		Log,
-		TEXT("Status tag cleared: Owner=%s Tag=%s"),
-		*GetNameSafe(GetOwner()),
-		*StateTag.ToString());
+	UE_LOG(LogHeist, Log, TEXT("Status tag cleared: Owner=%s Tag=%s"), *GetNameSafe(GetOwner()), *StateTag.ToString());
 #endif
 	return true;
 }
 
 FHeistTimedTagState* UHeistStatusComponent::FindMutableStatusTag(const FGameplayTag StateTag)
 {
-	return StatusTags.FindByPredicate(
-		[StateTag](const FHeistTimedTagState& StatusTagState)
-		{
-			return StatusTagState.StateTag == StateTag;
-		});
+	return StatusTags.FindByPredicate([StateTag](const FHeistTimedTagState& StatusTagState) { return StatusTagState.StateTag == StateTag; });
 }
 
 const FHeistTimedTagState* UHeistStatusComponent::FindStatusTag(const FGameplayTag StateTag) const
 {
-	return StatusTags.FindByPredicate(
-		[StateTag](const FHeistTimedTagState& StatusTagState)
-		{
-			return StatusTagState.StateTag == StateTag;
-		});
+	return StatusTags.FindByPredicate([StateTag](const FHeistTimedTagState& StatusTagState) { return StatusTagState.StateTag == StateTag; });
 }
 
 void UHeistStatusComponent::RefreshStatusTagTimer(const FHeistTimedTagState& StatusTagState)
@@ -135,10 +112,7 @@ void UHeistStatusComponent::RefreshStatusTagTimer(const FHeistTimedTagState& Sta
 	}
 
 	FTimerHandle& TimerHandle = StatusTagTimers.FindOrAdd(StatusTagState.StateTag);
-	FTimerDelegate TimerDelegate = FTimerDelegate::CreateUObject(
-		this,
-		&UHeistStatusComponent::ExpireStatusTag,
-		StatusTagState.StateTag);
+	FTimerDelegate TimerDelegate = FTimerDelegate::CreateUObject(this, &UHeistStatusComponent::ExpireStatusTag, StatusTagState.StateTag);
 	World->GetTimerManager().SetTimer(TimerHandle, TimerDelegate, RemainingSeconds, false);
 }
 
@@ -183,12 +157,7 @@ void UHeistStatusComponent::OnRep_StatusTags()
 {
 	StatusTagsChangedDelegate.Broadcast(StatusTags);
 #if !UE_BUILD_SHIPPING
-	UE_LOG(
-		LogHeistNetwork,
-		Log,
-		TEXT("Status tags replicated: Owner=%s TagCount=%d"),
-		*GetNameSafe(GetOwner()),
-		StatusTags.Num());
+	UE_LOG(LogHeistNetwork, Log, TEXT("Status tags replicated: Owner=%s TagCount=%d"), *GetNameSafe(GetOwner()), StatusTags.Num());
 #endif
 }
 

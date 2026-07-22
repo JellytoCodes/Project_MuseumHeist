@@ -85,6 +85,6 @@ struct PROJECT_MUSEUMHEIST_API FHeistGameplayTags
 	FGameplayTag UI_Warning_RareLootIncoming;
 	FGameplayTag UI_Indicator_SoundPing;
 
-private:
+  private:
 	static FHeistGameplayTags GameplayTags;
 };

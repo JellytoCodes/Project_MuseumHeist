@@ -10,6 +10,6 @@ class PROJECT_MUSEUMHEIST_API UHeistTagComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
-public:
+  public:
 	UHeistTagComponent();
 };

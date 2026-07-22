@@ -16,39 +16,32 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
 
 #pragma region Construction
 
-public:
+  public:
 	UHeistHUDViewModel(const FObjectInitializer& ObjectInitializer);
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void BeginDestroy() override;
 
 #pragma endregion
 
 #pragma region Setup
 
-public:
-	void SetupViewModel(
-		class AHeistGameState* InGameState,
-		class AHeistPlayerState* InLocalPlayerState,
-		class UHeistActionComponent* InActionComponent);
+  public:
+	void SetupViewModel(class AHeistGameState* InGameState, class AHeistPlayerState* InLocalPlayerState, class UHeistActionComponent* InActionComponent);
 	void RefreshPresentationState();
 	void RefreshRareLootState();
 	FHeistHUDPresentationChanged& GetPresentationChangedDelegate();
 	FHeistRareLootPresentationChanged& GetRareLootPresentationChangedDelegate();
 
-private:
+  private:
 	void HandleRareLootEventStateChanged(const FHeistRareLootEventState& EventState);
 	void HandlePlayerConnectionsChanged(int32 ConnectedPlayers);
 	void HandlePlayerIdentityChanged(int32 PlayerId);
-	void HandleObjectiveStateChanged(
-		FName ArtifactId,
-		FName CaseId,
-		EHeistObjectiveState ObjectiveState,
-		class AHeistPlayerState* CarrierCandidate);
+	void HandleObjectiveStateChanged(FName ArtifactId, FName CaseId, EHeistObjectiveState ObjectiveState, class AHeistPlayerState* CarrierCandidate);
 	void HandleEscapePhaseStateChanged(bool bEscapePhaseOpen);
 	void HandleLootTotalsChanged(int32 TotalLootScore, float TotalLootWeight);
 	void HandleEscapeStateChanged(bool bEscaped);
@@ -70,7 +63,7 @@ private:
 
 #pragma region GeneralPresentation
 
-public:
+  public:
 	int32 GetLocalLootScore() const;
 	float GetLocalLootWeight() const;
 	int32 GetLocalPlayerId() const;
@@ -91,7 +84,7 @@ public:
 	const FText& GetObservationReferenceText() const;
 	const FText& GetObjectiveStateText() const;
 
-private:
+  private:
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|HUD", meta = (AllowPrivateAccess = "true"))
 	int32 LocalLootScore = 0;
 
@@ -153,7 +146,7 @@ private:
 
 #pragma region RareLootPresentation
 
-public:
+  public:
 	bool IsRareLootIncoming() const;
 	bool IsRareLootDirectionMarkerVisible() const;
 	int32 GetRareLootEventIndex() const;
@@ -161,7 +154,7 @@ public:
 	FVector GetRareLootWorldLocation() const;
 	float GetRareLootSpawnServerTime() const;
 
-private:
+  private:
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|RareLoot", meta = (AllowPrivateAccess = "true"))
 	bool bRareLootIncoming = false;
 

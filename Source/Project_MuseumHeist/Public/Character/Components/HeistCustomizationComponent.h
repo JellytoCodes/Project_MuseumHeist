@@ -10,6 +10,6 @@ class PROJECT_MUSEUMHEIST_API UHeistCustomizationComponent : public UActorCompon
 {
 	GENERATED_BODY()
 
-public:
+  public:
 	UHeistCustomizationComponent();
 };

@@ -16,39 +16,33 @@ class PROJECT_MUSEUMHEIST_API AHeistTrapActor : public AActor
 
 #pragma region Construction
 
-public:
+  public:
 	AHeistTrapActor();
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void BeginPlay() override;
 
 #pragma endregion
 
 #pragma region Trap
 
-public:
+  public:
 	void InitializeTrap(AHeistPlayerCharacter* InOwningCharacter, FName InSourceItemId, float InEffectDurationSeconds);
 
-protected:
+  protected:
 	virtual bool HandleAuthorityTrigger(AActor* TriggeringActor);
 
 	AHeistPlayerCharacter* GetOwningCharacter() const;
 	FName GetSourceItemId() const;
 	float GetEffectDurationSeconds() const;
 
-private:
+  private:
 	UFUNCTION()
-	void HandleTrapOverlap(
-		UPrimitiveComponent* OverlappedComponent,
-		AActor* OtherActor,
-		UPrimitiveComponent* OtherComp,
-		int32 OtherBodyIndex,
-		bool bFromSweep,
-		const FHitResult& SweepResult);
+	void HandleTrapOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Trap", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<USphereComponent> TriggerComponent;
@@ -72,7 +66,7 @@ private:
 
 #pragma region Replication
 
-public:
+  public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 #pragma endregion

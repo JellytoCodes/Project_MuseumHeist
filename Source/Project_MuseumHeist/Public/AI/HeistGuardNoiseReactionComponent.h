@@ -15,14 +15,14 @@ class PROJECT_MUSEUMHEIST_API UHeistGuardNoiseReactionComponent : public UActorC
 
 #pragma region Construction
 
-public:
+  public:
 	UHeistGuardNoiseReactionComponent();
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
@@ -30,11 +30,11 @@ protected:
 
 #pragma region NoiseReaction
 
-public:
+  public:
 	void ConfigureGuardProfile(const FHeistGuardDataRow& GuardData);
 	bool ReactToSoundPing(const FHeistSoundPingEvent& SoundPingEvent);
 
-private:
+  private:
 	void HandleSoundPingReported(const FHeistSoundPingEvent& SoundPingEvent);
 	void HandleGuardStateChanged(EHeistGuardState PreviousState, EHeistGuardState NewState);
 	static int32 ResolveCandidatePriority(EHeistSoundPingType PingType);

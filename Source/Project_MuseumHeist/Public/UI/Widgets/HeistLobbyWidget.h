@@ -15,25 +15,25 @@ class PROJECT_MUSEUMHEIST_API UHeistLobbyWidget : public UHeistUserWidgetBase
 
 #pragma region Construction
 
-public:
+  public:
 	UHeistLobbyWidget(const FObjectInitializer& ObjectInitializer);
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void NativeDestruct() override;
 
 #pragma endregion
 
 #pragma region ViewModel
 
-public:
+  public:
 	void SetupLobbyWidget(class UHeistLobbyViewModel* InLobbyViewModel);
 	UHeistLobbyViewModel* GetLobbyViewModel() const;
 
-private:
+  private:
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistLobbyViewModel> LobbyViewModel;
 
@@ -41,7 +41,7 @@ private:
 
 #pragma region Presentation
 
-private:
+  private:
 	void RefreshLobbyPresentation();
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))

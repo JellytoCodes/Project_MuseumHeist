@@ -10,8 +10,7 @@
 
 #pragma region Construction
 
-UHeistPopupWidgetPool::UHeistPopupWidgetPool(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer)
+UHeistPopupWidgetPool::UHeistPopupWidgetPool(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 }
 
@@ -19,35 +18,19 @@ UHeistPopupWidgetPool::UHeistPopupWidgetPool(const FObjectInitializer& ObjectIni
 
 #pragma region Lifecycle
 
-void UHeistPopupWidgetPool::SetupPool(
-	AHeistPlayerController* InPlayerController,
-	UPanelWidget* InPopupLayer,
-	TSubclassOf<UHeistUserWidgetBase> InPopupWidgetClass,
-	const int32 InCapacity)
+void UHeistPopupWidgetPool::SetupPool(AHeistPlayerController* InPlayerController, UPanelWidget* InPopupLayer, TSubclassOf<UHeistUserWidgetBase> InPopupWidgetClass, const int32 InCapacity)
 {
 	const int32 SafeCapacity = FMath::Clamp(InCapacity, 1, 5);
-	if (bInitialized
-		&& PlayerController == InPlayerController
-		&& PopupLayer == InPopupLayer
-		&& PopupWidgetClass == InPopupWidgetClass
-		&& Capacity == SafeCapacity)
+	if (bInitialized && PlayerController == InPlayerController && PopupLayer == InPopupLayer && PopupWidgetClass == InPopupWidgetClass && Capacity == SafeCapacity)
 	{
 		return;
 	}
 
 	ShutdownPool();
-	if (!IsValid(InPlayerController)
-		|| !InPlayerController->IsLocalController()
-		|| !IsValid(InPopupLayer)
-		|| !InPopupWidgetClass)
+	if (!IsValid(InPlayerController) || !InPlayerController->IsLocalController() || !IsValid(InPopupLayer) || !InPopupWidgetClass)
 	{
-		UE_LOG(
-			LogHeistUI,
-			Warning,
-			TEXT("Popup feedback pool setup rejected: Controller=%s Layer=%s Class=%s"),
-			*GetNameSafe(InPlayerController),
-			*GetNameSafe(InPopupLayer),
-			*GetNameSafe(InPopupWidgetClass.Get()));
+		UE_LOG(LogHeistUI, Warning, TEXT("Popup feedback pool setup rejected: Controller=%s Layer=%s Class=%s"), *GetNameSafe(InPlayerController), *GetNameSafe(InPopupLayer),
+			   *GetNameSafe(InPopupWidgetClass.Get()));
 		return;
 	}
 
@@ -58,9 +41,7 @@ void UHeistPopupWidgetPool::SetupPool(
 
 	for (int32 PopupIndex = 0; PopupIndex < Capacity; ++PopupIndex)
 	{
-		UHeistUserWidgetBase* PopupWidget = CreateWidget<UHeistUserWidgetBase>(
-			PlayerController,
-			PopupWidgetClass);
+		UHeistUserWidgetBase* PopupWidget = CreateWidget<UHeistUserWidgetBase>(PlayerController, PopupWidgetClass);
 		if (!IsValid(PopupWidget))
 		{
 			continue;
@@ -80,19 +61,11 @@ void UHeistPopupWidgetPool::SetupPool(
 	}
 
 	PlayerController->GetPopupFeedbackRequestedDelegate().RemoveAll(this);
-	PlayerController->GetPopupFeedbackRequestedDelegate().AddUObject(
-		this,
-		&UHeistPopupWidgetPool::HandlePopupFeedbackRequested);
+	PlayerController->GetPopupFeedbackRequestedDelegate().AddUObject(this, &UHeistPopupWidgetPool::HandlePopupFeedbackRequested);
 	bInitialized = true;
 
-	UE_LOG(
-		LogHeistUI,
-		Verbose,
-		TEXT("Popup feedback pool setup: Controller=%s Layer=%s Class=%s Capacity=%d"),
-		*GetNameSafe(PlayerController),
-		*GetNameSafe(PopupLayer),
-		*GetNameSafe(PopupWidgetClass.Get()),
-		AllPopupWidgets.Num());
+	UE_LOG(LogHeistUI, Verbose, TEXT("Popup feedback pool setup: Controller=%s Layer=%s Class=%s Capacity=%d"), *GetNameSafe(PlayerController), *GetNameSafe(PopupLayer),
+		   *GetNameSafe(PopupWidgetClass.Get()), AllPopupWidgets.Num());
 }
 
 void UHeistPopupWidgetPool::ShutdownPool()
@@ -131,27 +104,14 @@ void UHeistPopupWidgetPool::ShutdownPool()
 
 void UHeistPopupWidgetPool::DebugDumpState() const
 {
-	UE_LOG(
-		LogHeistUI,
-		Log,
-		TEXT("Popup feedback pool dump: Initialized=%s Active=%d Available=%d Capacity=%d"),
-		bInitialized ? TEXT("true") : TEXT("false"),
-		ActivePopups.Num(),
-		AvailablePopupWidgets.Num(),
-		AllPopupWidgets.Num());
+	UE_LOG(LogHeistUI, Log, TEXT("Popup feedback pool dump: Initialized=%s Active=%d Available=%d Capacity=%d"), bInitialized ? TEXT("true") : TEXT("false"), ActivePopups.Num(),
+		   AvailablePopupWidgets.Num(), AllPopupWidgets.Num());
 
 	for (int32 PopupIndex = 0; PopupIndex < ActivePopups.Num(); ++PopupIndex)
 	{
 		const FActivePopup& Popup = ActivePopups[PopupIndex];
-		UE_LOG(
-			LogHeistUI,
-			Log,
-			TEXT("Popup feedback pool entry: Slot=%d SequenceId=%d Message=%s EndWorldTime=%.2f Widget=%s"),
-			PopupIndex,
-			Popup.SequenceId,
-			*Popup.Message.ToString(),
-			Popup.EndWorldTime,
-			*GetNameSafe(Popup.Widget));
+		UE_LOG(LogHeistUI, Log, TEXT("Popup feedback pool entry: Slot=%d SequenceId=%d Message=%s EndWorldTime=%.2f Widget=%s"), PopupIndex, Popup.SequenceId, *Popup.Message.ToString(),
+			   Popup.EndWorldTime, *GetNameSafe(Popup.Widget));
 	}
 }
 
@@ -159,9 +119,7 @@ void UHeistPopupWidgetPool::DebugDumpState() const
 
 #pragma region Pool
 
-void UHeistPopupWidgetPool::HandlePopupFeedbackRequested(
-	const FText& Message,
-	const float DurationSeconds)
+void UHeistPopupWidgetPool::HandlePopupFeedbackRequested(const FText& Message, const float DurationSeconds)
 {
 	if (!bInitialized || Message.IsEmpty() || !IsValid(PlayerController) || !PlayerController->GetWorld())
 	{
@@ -181,12 +139,7 @@ void UHeistPopupWidgetPool::HandlePopupFeedbackRequested(
 		}
 
 		PopupWidget = ActivePopups[OldestPopupIndex].Widget;
-		UE_LOG(
-			LogHeistUI,
-			Verbose,
-			TEXT("Popup feedback replaced: RemovedSequenceId=%d IncomingSequenceId=%d"),
-			ActivePopups[OldestPopupIndex].SequenceId,
-			NextSequenceId);
+		UE_LOG(LogHeistUI, Verbose, TEXT("Popup feedback replaced: RemovedSequenceId=%d IncomingSequenceId=%d"), ActivePopups[OldestPopupIndex].SequenceId, NextSequenceId);
 		ActivePopups.RemoveAt(OldestPopupIndex);
 	}
 
@@ -203,20 +156,12 @@ void UHeistPopupWidgetPool::HandlePopupFeedbackRequested(
 	NewPopup.SequenceId = NextSequenceId++;
 	ShowPopupWidget(PopupWidget, Message);
 
-	UE_LOG(
-		LogHeistUI,
-		Verbose,
-		TEXT("Popup feedback activated: SequenceId=%d Message=%s Duration=%.2f Active=%d"),
-		NewPopup.SequenceId,
-		*Message.ToString(),
-		FMath::Max(0.1f, DurationSeconds),
-		ActivePopups.Num());
+	UE_LOG(LogHeistUI, Verbose, TEXT("Popup feedback activated: SequenceId=%d Message=%s Duration=%.2f Active=%d"), NewPopup.SequenceId, *Message.ToString(), FMath::Max(0.1f, DurationSeconds),
+		   ActivePopups.Num());
 	RefreshExpirationTimer();
 }
 
-void UHeistPopupWidgetPool::ShowPopupWidget(
-	UHeistUserWidgetBase* PopupWidget,
-	const FText& Message) const
+void UHeistPopupWidgetPool::ShowPopupWidget(UHeistUserWidgetBase* PopupWidget, const FText& Message) const
 {
 	if (!IsValid(PopupWidget))
 	{
@@ -248,13 +193,7 @@ void UHeistPopupWidgetPool::ReleasePopupAt(const int32 ActivePopupIndex, const T
 		AvailablePopupWidgets.AddUnique(Popup.Widget);
 	}
 
-	UE_LOG(
-		LogHeistUI,
-		Verbose,
-		TEXT("Popup feedback released: SequenceId=%d Reason=%s ActiveAfter=%d"),
-		Popup.SequenceId,
-		Reason,
-		ActivePopups.Num() - 1);
+	UE_LOG(LogHeistUI, Verbose, TEXT("Popup feedback released: SequenceId=%d Reason=%s ActiveAfter=%d"), Popup.SequenceId, Reason, ActivePopups.Num() - 1);
 	ActivePopups.RemoveAt(ActivePopupIndex);
 }
 
@@ -299,12 +238,7 @@ void UHeistPopupWidgetPool::RefreshExpirationTimer()
 		EarliestEndWorldTime = FMath::Min(EarliestEndWorldTime, Popup.EndWorldTime);
 	}
 
-	TimerManager.SetTimer(
-		ExpirationTimerHandle,
-		this,
-		&UHeistPopupWidgetPool::HandleExpirationTimer,
-		FMath::Max(0.01f, EarliestEndWorldTime - PlayerController->GetWorld()->GetTimeSeconds()),
-		false);
+	TimerManager.SetTimer(ExpirationTimerHandle, this, &UHeistPopupWidgetPool::HandleExpirationTimer, FMath::Max(0.01f, EarliestEndWorldTime - PlayerController->GetWorld()->GetTimeSeconds()), false);
 }
 
 void UHeistPopupWidgetPool::HandleExpirationTimer()

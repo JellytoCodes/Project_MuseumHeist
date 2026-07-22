@@ -24,7 +24,7 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 
 #pragma region Logging
 
-public:
+  public:
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug", meta = (DevelopmentOnly, WorldContext = "WorldContextObject", AdvancedDisplay = "bPrintToScreen,Duration"))
 	static void Message(const UObject* WorldContextObject, const FString& Message, EHeistDebugLevel Level = EHeistDebugLevel::Info, bool bPrintToScreen = false, float Duration = 3.0f);
 
@@ -32,7 +32,7 @@ public:
 
 #pragma region GameplayDebug
 
-public:
+  public:
 	static void DebugMissingInputAsset(const UObject* WorldContextObject, const TCHAR* AssetName);
 	static void DebugInventoryOpenSkipped(const UObject* WorldContextObject);
 	static void DebugInventoryRequestRejected(const UObject* WorldContextObject, const TCHAR* RequestName, int32 InstanceId, const TCHAR* Reason);
@@ -43,7 +43,8 @@ public:
 	static void DebugInventoryItemMoved(const UObject* OwnerActor, int32 InstanceId, const FIntPoint& GridPosition);
 	static void DebugInventoryItemRotated(const UObject* OwnerActor, int32 InstanceId, bool bRotated);
 	static void DebugInventoryItemRemoved(const UObject* OwnerActor, FName ItemId, int32 InstanceId, int32 ItemCount);
-	static void DebugInventoryOccupancyInvalid(int32 InstanceId, FName ItemId, const TCHAR* Reason, const FIntPoint& GridPosition = FIntPoint::ZeroValue, const FIntPoint& ItemSize = FIntPoint::ZeroValue);
+	static void DebugInventoryOccupancyInvalid(int32 InstanceId, FName ItemId, const TCHAR* Reason, const FIntPoint& GridPosition = FIntPoint::ZeroValue,
+											   const FIntPoint& ItemSize = FIntPoint::ZeroValue);
 	static void DebugQuickSlotAssigned(const UObject* OwnerActor, int32 SlotTypeValue, int32 InstanceId, FName ItemId);
 
 	static void DebugLootPickupRequestReceived(const UObject* WorldContextObject, const UObject* Character, const UObject* TargetLootActor);
@@ -74,9 +75,11 @@ public:
 	static void DebugWeightMovementSkipped(const UObject* WorldContextObject, const TCHAR* Reason);
 	static void DebugWeightMovementSpeedApplied(const UObject* WorldContextObject, float TotalWeight, float BaseSpeed, float FinalSpeed);
 	static void DebugThrowableUseRejected(const UObject* WorldContextObject, EHeistQuickSlotType SlotType, FName ItemId, const TCHAR* Reason);
-	static void DebugThrowableProjectileSpawned(const UObject* WorldContextObject, const UObject* Character, const UObject* Projectile, FName ItemId, const FVector& TargetWorldLocation, const FVector& LaunchDirection, float ProjectileSpeed, bool bDebugBypassInventory);
+	static void DebugThrowableProjectileSpawned(const UObject* WorldContextObject, const UObject* Character, const UObject* Projectile, FName ItemId, const FVector& TargetWorldLocation,
+												const FVector& LaunchDirection, float ProjectileSpeed, bool bDebugBypassInventory);
 	static void DebugThrowableProjectileImpact(const UObject* WorldContextObject, const UObject* Projectile, const UObject* OtherActor, FName ItemId, const FVector& ImpactLocation);
-	static void DebugSmokeCloudSpawned(const UObject* WorldContextObject, const UObject* Projectile, const UObject* SmokeCloud, FName ItemId, const FVector& WorldLocation, float Radius, float DurationSeconds);
+	static void DebugSmokeCloudSpawned(const UObject* WorldContextObject, const UObject* Projectile, const UObject* SmokeCloud, FName ItemId, const FVector& WorldLocation, float Radius,
+									   float DurationSeconds);
 	static void DebugSmokeCloudStateReplicated(const UObject* WorldContextObject, const UObject* SmokeCloud, float Radius, float EndServerTime, bool bBlocksAISight);
 	static void DebugSmokeCloudOverlapChanged(const UObject* WorldContextObject, const UObject* SmokeCloud, const UObject* Actor, bool bInsideSmoke, float RemainingSeconds);
 	static void DebugRareLootTimersStarted(const UObject* WorldContextObject, const TArray<float>& EventTimes, float WarningLeadTime);
@@ -84,7 +87,8 @@ public:
 	static void DebugRareLootSpawned(const UObject* WorldContextObject, int32 EventIndex, const UObject* LootActor, const UObject* SpawnPoint, FName ItemId, const FVector& WorldLocation);
 	static void DebugRareLootEventFailed(const UObject* WorldContextObject, int32 EventIndex, const TCHAR* Reason);
 	static void DebugRareLootPickedUp(const UObject* WorldContextObject, int32 EventIndex, const UObject* LootActor, const UObject* Requester, FName ItemId);
-	static void DebugTrapPlacementCastStarted(const UObject* WorldContextObject, const UObject* Character, FName ItemId, const FVector& TargetWorldLocation, float DurationSeconds, float EndServerTime);
+	static void DebugTrapPlacementCastStarted(const UObject* WorldContextObject, const UObject* Character, FName ItemId, const FVector& TargetWorldLocation, float DurationSeconds,
+											  float EndServerTime);
 	static void DebugTrapPlacementCastStateReplicated(const UObject* WorldContextObject, const UObject* Character, bool bIsActive, float EndServerTime);
 	static void DebugTrapPlacementCastCancelled(const UObject* WorldContextObject, const FString& CharacterName, FName ItemId, const TCHAR* Reason);
 	static void DebugTrapPlaced(const UObject* WorldContextObject, const UObject* Character, const UObject* TrapActor, FName ItemId, const FVector& WorldLocation);
@@ -97,17 +101,21 @@ public:
 	static void DebugGuardStateReplicated(const UObject* WorldContextObject, const UObject* GuardActor, EHeistGuardState NewState);
 	static void DebugDrawGuardSpawnMarker(const UObject* WorldContextObject, UObject* GuardActor);
 	static void DebugGuardStateTreeEvent(const UObject* WorldContextObject, const UObject* GuardActor, const FGameplayTag& StateEventTag);
-	static void DebugGuardPerceptionConfigured(const UObject* WorldContextObject, const UObject* GuardActor, float SightRadius, float AggroResetDistance, float SightAngle, float InvestigateSightAngle, float EyeHeight, float DetectionGrace, bool bDoorsBlockSight, bool bDisplayCasesBlockSight, FName DoorOccluderTag, float UpdateInterval);
-	static void DebugGuardSightEvaluated(const UObject* WorldContextObject, const UObject* GuardActor, const UObject* TargetActor, bool bCanSeeTarget, const TCHAR* Reason, const UObject* BlockingActor);
+	static void DebugGuardPerceptionConfigured(const UObject* WorldContextObject, const UObject* GuardActor, float SightRadius, float AggroResetDistance, float SightAngle, float InvestigateSightAngle,
+											   float EyeHeight, float DetectionGrace, bool bDoorsBlockSight, bool bDisplayCasesBlockSight, FName DoorOccluderTag, float UpdateInterval);
+	static void DebugGuardSightEvaluated(const UObject* WorldContextObject, const UObject* GuardActor, const UObject* TargetActor, bool bCanSeeTarget, const TCHAR* Reason,
+										 const UObject* BlockingActor);
 	static void DebugGuardDetectionGraceStarted(const UObject* WorldContextObject, const UObject* GuardActor, const UObject* TargetActor, float DurationSeconds);
 	static void DebugGuardDetectionGraceCancelled(const UObject* WorldContextObject, const UObject* GuardActor, const UObject* TargetActor, const TCHAR* Reason);
 	static void DebugGuardSightTargetAcquired(const UObject* WorldContextObject, const UObject* GuardActor, const UObject* TargetActor);
 	static void DebugGuardSightTargetLost(const UObject* WorldContextObject, const UObject* GuardActor, const UObject* TargetActor, const FVector& LastKnownLocation, const TCHAR* Reason);
 	static void DebugGuardNoiseReactionAccepted(const UObject* WorldContextObject, const UObject* GuardActor, const FHeistSoundPingEvent& SoundPingEvent, float Distance, float InvestigateDuration);
 	static void DebugGuardNoiseReactionRejected(const UObject* WorldContextObject, const UObject* GuardActor, const FHeistSoundPingEvent& SoundPingEvent, const TCHAR* Reason, float Distance = -1.0f);
-	static void DebugCoinDistractionDecision(const UObject* WorldContextObject, const UObject* GuardActor, const FHeistSoundPingEvent& SoundPingEvent, EHeistGuardState GuardState, const TCHAR* Decision, const TCHAR* Rule, int32 CoinPriority, EHeistSoundPingType PreviousCandidateType, int32 PreviousCandidatePriority);
+	static void DebugCoinDistractionDecision(const UObject* WorldContextObject, const UObject* GuardActor, const FHeistSoundPingEvent& SoundPingEvent, EHeistGuardState GuardState,
+											 const TCHAR* Decision, const TCHAR* Rule, int32 CoinPriority, EHeistSoundPingType PreviousCandidateType, int32 PreviousCandidatePriority);
 	static void DebugGuardPatrolPathResolved(const UObject* WorldContextObject, const UObject* GuardActor, FName RouteId, int32 WaypointCount);
-	static void DebugGuardMovement(const UObject* WorldContextObject, const UObject* GuardActor, EHeistGuardState State, const TCHAR* Phase, const FVector& TargetLocation, int32 WaypointIndex, int32 WaypointCount, const TCHAR* Result);
+	static void DebugGuardMovement(const UObject* WorldContextObject, const UObject* GuardActor, EHeistGuardState State, const TCHAR* Phase, const FVector& TargetLocation, int32 WaypointIndex,
+								   int32 WaypointCount, const TCHAR* Result);
 	static void DebugGuardInvestigateConfirmationStarted(const UObject* WorldContextObject, const UObject* GuardActor, const FVector& InvestigateLocation, float DurationSeconds);
 	static void DebugGuardSearchTimerStarted(const UObject* WorldContextObject, const UObject* GuardActor, const FVector& SearchLocation, float DurationSeconds);
 	static void DebugSoundPingDefinitionRejected(const UObject* WorldContextObject, FName SoundPingId, const TCHAR* Reason);
@@ -117,7 +125,7 @@ public:
 
 #pragma region LobbyDebug
 
-public:
+  public:
 	static void DebugLobbyHelp(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Lobby", meta = (DevelopmentOnly))
@@ -133,7 +141,7 @@ public:
 
 #pragma region ResultDebug
 
-public:
+  public:
 	static void DebugResultHelp(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Result", meta = (DevelopmentOnly))
@@ -155,7 +163,7 @@ public:
 
 #pragma region ObjectiveDebug
 
-public:
+  public:
 	static void DebugObjectiveHelp(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Objective", meta = (DevelopmentOnly))
@@ -168,18 +176,13 @@ public:
 	static void DebugCoreGrayboxDump(APlayerController* PlayerController, const FString& MapId);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Objective", meta = (DevelopmentOnly))
-	static void DebugObjectiveSet(
-		APlayerController* PlayerController,
-		FName ArtifactId,
-		FName CaseId,
-		const FString& StateName,
-		bool bUseLocalPlayerAsCarrier);
+	static void DebugObjectiveSet(APlayerController* PlayerController, FName ArtifactId, FName CaseId, const FString& StateName, bool bUseLocalPlayerAsCarrier);
 
 #pragma endregion
 
 #pragma region DisplayCaseDebug
 
-public:
+  public:
 	static void DebugDisplayCaseHelp(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|DisplayCase", meta = (DevelopmentOnly))
@@ -222,7 +225,7 @@ public:
 
 #pragma region ForgeryDebug
 
-public:
+  public:
 	static void DebugForgeryHelp(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
@@ -241,9 +244,7 @@ public:
 	static void DebugForgeryTransportDump(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
-	static void DebugForgeryTransportTest(
-		APlayerController* PlayerController,
-		const FString& Scenario);
+	static void DebugForgeryTransportTest(APlayerController* PlayerController, const FString& Scenario);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
 	static void DebugForgeryScoreDump(APlayerController* PlayerController);
@@ -276,23 +277,19 @@ public:
 	static void DebugForgeryRecoveryDump(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
-	static void DebugForgeryRecoveryRace(
-		APlayerController* PlayerController,
-		const FString& Order);
+	static void DebugForgeryRecoveryRace(APlayerController* PlayerController, const FString& Order);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
 	static void DebugForgeryUIDump(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
-	static void DebugForgeryUIPreview(
-		APlayerController* PlayerController,
-		const FString& State);
+	static void DebugForgeryUIPreview(APlayerController* PlayerController, const FString& State);
 
 #pragma endregion
 
 #pragma region InventoryDebug
 
-public:
+  public:
 	static void DebugInventoryHelp(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Inventory", meta = (DevelopmentOnly))
@@ -326,7 +323,7 @@ public:
 
 #pragma region StatusDebug
 
-public:
+  public:
 	static void DebugStatusHelp(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Status", meta = (DevelopmentOnly))
@@ -336,7 +333,7 @@ public:
 
 #pragma region FeedbackDebug
 
-public:
+  public:
 	static void DebugFeedbackHelp(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Feedback", meta = (DevelopmentOnly))
@@ -352,7 +349,7 @@ public:
 
 #pragma region ThrowableDebug
 
-public:
+  public:
 	static void DebugThrowableHelp(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Throwable", meta = (DevelopmentOnly))
@@ -365,7 +362,7 @@ public:
 
 #pragma region SoundPingDebug
 
-public:
+  public:
 	static void DebugSoundPingHelp(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|SoundPing", meta = (DevelopmentOnly))
@@ -381,7 +378,7 @@ public:
 
 #pragma region HUDDebug
 
-public:
+  public:
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|HUD", meta = (DevelopmentOnly))
 	static void DebugFirstPersonHUDDump(APlayerController* PlayerController);
 
@@ -389,7 +386,7 @@ public:
 
 #pragma region FirstPersonScaleDebug
 
-public:
+  public:
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|FirstPerson", meta = (DevelopmentOnly, ClampMin = "0.0", Units = "cm"))
 	static void DebugFirstPersonScaleCheck(APlayerController* PlayerController, float ForwardDistance = 200.0f);
 
@@ -397,7 +394,7 @@ public:
 
 #pragma region GuardDebug
 
-public:
+  public:
 	static void DebugGuardHelp(APlayerController* PlayerController);
 	static void DebugDifficultyDump(APlayerController* PlayerController);
 

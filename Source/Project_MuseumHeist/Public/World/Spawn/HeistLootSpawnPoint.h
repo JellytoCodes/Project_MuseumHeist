@@ -13,20 +13,20 @@ class PROJECT_MUSEUMHEIST_API AHeistLootSpawnPoint : public AActor
 
 #pragma region Construction
 
-public:
+  public:
 	AHeistLootSpawnPoint();
 
 #pragma endregion
 
 #pragma region SpawnAvailability
 
-public:
+  public:
 	bool CanSpawnCategory(EHeistSpawnCategory RequestedCategory) const;
 	bool IsOccupied() const;
 	EHeistSpawnCategory GetSpawnCategory() const;
 	bool IsSpawnEnabled() const;
 
-private:
+  private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Spawn", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class USceneComponent> SceneRoot;
 

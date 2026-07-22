@@ -18,26 +18,24 @@ class PROJECT_MUSEUMHEIST_API UHeistInteractionPromptWidget : public UHeistUserW
 
 #pragma region Construction
 
-public:
+  public:
 	UHeistInteractionPromptWidget(const FObjectInitializer& ObjectInitializer);
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void NativeDestruct() override;
 
 #pragma endregion
 
 #pragma region Presentation
 
-public:
-	void SetupInteractionPresentation(
-		UHeistInteractionComponent* InInteractionComponent,
-		UHeistHUDViewModel* InHUDViewModel);
+  public:
+	void SetupInteractionPresentation(UHeistInteractionComponent* InInteractionComponent, UHeistHUDViewModel* InHUDViewModel);
 
-private:
+  private:
 	void RefreshPresentation();
 	void RefreshInteractionPrompt(bool bActionActive);
 	void RefreshActionProgress();

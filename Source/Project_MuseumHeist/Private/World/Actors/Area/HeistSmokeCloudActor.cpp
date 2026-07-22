@@ -72,11 +72,7 @@ void AHeistSmokeCloudActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 #pragma region Smoke
 
-void AHeistSmokeCloudActor::InitializeSmokeCloud(
-	AHeistPlayerCharacter* InOwningCharacter,
-	const FName InSourceItemId,
-	const float InDurationSeconds,
-	const float InSmokeRadius)
+void AHeistSmokeCloudActor::InitializeSmokeCloud(AHeistPlayerCharacter* InOwningCharacter, const FName InSourceItemId, const float InDurationSeconds, const float InSmokeRadius)
 {
 	checkf(HasAuthority(), TEXT("Smoke cloud initialization requires authority."));
 
@@ -120,11 +116,7 @@ float AHeistSmokeCloudActor::GetRemainingLifetimeSeconds() const
 	return FMath::Max(0.0f, EndServerTime - World->GetTimeSeconds());
 }
 
-bool AHeistSmokeCloudActor::IsAISightBlockedBySmoke(
-	const UObject* WorldContextObject,
-	const FVector& FromLocation,
-	const FVector& ToLocation,
-	AHeistSmokeCloudActor*& OutBlockingSmokeCloud)
+bool AHeistSmokeCloudActor::IsAISightBlockedBySmoke(const UObject* WorldContextObject, const FVector& FromLocation, const FVector& ToLocation, AHeistSmokeCloudActor*& OutBlockingSmokeCloud)
 {
 	OutBlockingSmokeCloud = nullptr;
 
@@ -142,10 +134,7 @@ bool AHeistSmokeCloudActor::IsAISightBlockedBySmoke(
 			continue;
 		}
 
-		const float DistanceToSightSegment = FMath::PointDistToSegment(
-			SmokeCloud->GetActorLocation(),
-			FromLocation,
-			ToLocation);
+		const float DistanceToSightSegment = FMath::PointDistToSegment(SmokeCloud->GetActorLocation(), FromLocation, ToLocation);
 		if (DistanceToSightSegment <= SmokeCloud->SmokeRadius)
 		{
 			OutBlockingSmokeCloud = SmokeCloud;
@@ -156,22 +145,12 @@ bool AHeistSmokeCloudActor::IsAISightBlockedBySmoke(
 	return false;
 }
 
-void AHeistSmokeCloudActor::HandleSmokeOverlapBegin(
-	UPrimitiveComponent*,
-	AActor* OtherActor,
-	UPrimitiveComponent*,
-	int32,
-	bool,
-	const FHitResult&)
+void AHeistSmokeCloudActor::HandleSmokeOverlapBegin(UPrimitiveComponent*, AActor* OtherActor, UPrimitiveComponent*, int32, bool, const FHitResult&)
 {
 	ApplySmokeToActor(OtherActor);
 }
 
-void AHeistSmokeCloudActor::HandleSmokeOverlapEnd(
-	UPrimitiveComponent*,
-	AActor* OtherActor,
-	UPrimitiveComponent*,
-	int32)
+void AHeistSmokeCloudActor::HandleSmokeOverlapEnd(UPrimitiveComponent*, AActor* OtherActor, UPrimitiveComponent*, int32)
 {
 	ClearSmokeFromActorIfUncovered(OtherActor);
 }
@@ -184,9 +163,7 @@ void AHeistSmokeCloudActor::ApplySmokeToActor(AActor* Actor)
 	}
 
 	AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(Actor);
-	UHeistStatusComponent* StatusComponent = IsValid(HeistCharacter)
-		? HeistCharacter->GetStatusComponent()
-		: nullptr;
+	UHeistStatusComponent* StatusComponent = IsValid(HeistCharacter) ? HeistCharacter->GetStatusComponent() : nullptr;
 	if (!IsValid(StatusComponent))
 	{
 		return;
@@ -212,9 +189,7 @@ void AHeistSmokeCloudActor::ClearSmokeFromActorIfUncovered(AActor* Actor)
 	}
 
 	AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(Actor);
-	UHeistStatusComponent* StatusComponent = IsValid(HeistCharacter)
-		? HeistCharacter->GetStatusComponent()
-		: nullptr;
+	UHeistStatusComponent* StatusComponent = IsValid(HeistCharacter) ? HeistCharacter->GetStatusComponent() : nullptr;
 	if (!IsValid(StatusComponent) || HasOtherSmokeCloudCoveringActor(HeistCharacter))
 	{
 		return;
@@ -252,10 +227,7 @@ bool AHeistSmokeCloudActor::HasOtherSmokeCloudCoveringActor(const AActor* Actor)
 	for (TActorIterator<AHeistSmokeCloudActor> It(World); It; ++It)
 	{
 		const AHeistSmokeCloudActor* SmokeCloud = *It;
-		if (!IsValid(SmokeCloud)
-			|| SmokeCloud == this
-			|| SmokeCloud->IsActorBeingDestroyed()
-			|| SmokeCloud->GetRemainingLifetimeSeconds() <= 0.0f)
+		if (!IsValid(SmokeCloud) || SmokeCloud == this || SmokeCloud->IsActorBeingDestroyed() || SmokeCloud->GetRemainingLifetimeSeconds() <= 0.0f)
 		{
 			continue;
 		}

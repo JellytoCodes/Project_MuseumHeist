@@ -17,7 +17,7 @@ class PROJECT_MUSEUMHEIST_API IHeistInteractable
 {
 	GENERATED_BODY()
 
-public:
+  public:
 	virtual bool CanInteract(const AActor* Interactor) const = 0;
 	virtual void Interact(AActor* Interactor) = 0;
 };

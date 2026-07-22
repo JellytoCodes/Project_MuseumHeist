@@ -18,21 +18,21 @@ class PROJECT_MUSEUMHEIST_API AHeistLootActor : public AHeistInteractableActor
 
 #pragma region Construction
 
-public:
+  public:
 	AHeistLootActor();
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void BeginPlay() override;
 
 #pragma endregion
 
 #pragma region LootData
 
-public:
+  public:
 	FName GetLootRowId() const;
 	void InitializeLootData(UDataTable* InLootDataTable, FName InLootRowId);
 	int32 GetScoreValue() const;
@@ -40,7 +40,7 @@ public:
 	EHeistLootGrade GetLootGrade() const;
 	bool IsLootAvailable() const;
 
-private:
+  private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Loot", meta = (AllowPrivateAccess = "true"))
 	FDataTableRowHandle LootDataRow;
 
@@ -63,27 +63,27 @@ private:
 
 #pragma region Interaction
 
-public:
+  public:
 	virtual bool CanInteract(const AActor* Interactor) const override;
 
 #pragma endregion
 
 #pragma region Replication
 
-public:
+  public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 #pragma endregion
 
 #pragma region LootPickup
 
-public:
+  public:
 	bool TryReserveForPickup(AActor* Requester);
 	bool CommitPickupReservation(AActor* Requester);
 	void ReleasePickupReservation(AActor* Requester);
 	FHeistLootPickupCommitted& GetLootPickupCommittedDelegate();
 
-private:
+  private:
 	TWeakObjectPtr<AActor> PickupReservationOwner;
 	FHeistLootPickupCommitted LootPickupCommittedDelegate;
 
@@ -91,7 +91,7 @@ private:
 
 #pragma region InternalHelpers
 
-private:
+  private:
 	void ResolveLootData();
 	void ApplyFallbackLootData();
 

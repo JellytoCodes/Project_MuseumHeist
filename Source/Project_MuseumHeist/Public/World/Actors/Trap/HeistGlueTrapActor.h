@@ -12,14 +12,14 @@ class PROJECT_MUSEUMHEIST_API AHeistGlueTrapActor : public AHeistTrapActor
 
 #pragma region Construction
 
-public:
+  public:
 	AHeistGlueTrapActor();
 
 #pragma endregion
 
 #pragma region Trap
 
-protected:
+  protected:
 	virtual bool HandleAuthorityTrigger(AActor* TriggeringActor) override;
 
 #pragma endregion

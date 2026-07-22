@@ -6,7 +6,7 @@
 
 class FProjectMuseumHeistModule final : public FDefaultGameModuleImpl
 {
-public:
+  public:
 	virtual void StartupModule() override
 	{
 		FDefaultGameModuleImpl::StartupModule();

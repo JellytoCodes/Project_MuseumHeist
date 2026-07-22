@@ -13,15 +13,8 @@ struct PROJECT_MUSEUMHEIST_API FHeistPlayerCountDifficultyBaseline
 	GENERATED_BODY()
 
 	FHeistPlayerCountDifficultyBaseline() = default;
-	FHeistPlayerCountDifficultyBaseline(
-		int32 InPlayerCount,
-		float InGuardCountMultiplier,
-		float InDetectionMultiplier,
-		float InInspectionDurationMultiplier)
-		: PlayerCount(InPlayerCount)
-		, GuardCountMultiplier(InGuardCountMultiplier)
-		, DetectionMultiplier(InDetectionMultiplier)
-		, InspectionDurationMultiplier(InInspectionDurationMultiplier)
+	FHeistPlayerCountDifficultyBaseline(int32 InPlayerCount, float InGuardCountMultiplier, float InDetectionMultiplier, float InInspectionDurationMultiplier)
+		: PlayerCount(InPlayerCount), GuardCountMultiplier(InGuardCountMultiplier), DetectionMultiplier(InDetectionMultiplier), InspectionDurationMultiplier(InInspectionDurationMultiplier)
 	{
 	}
 
@@ -45,17 +38,15 @@ class PROJECT_MUSEUMHEIST_API UHeistGameBalanceDataAsset : public UDataAsset
 
 #pragma region Construction
 
-public:
+  public:
 	UHeistGameBalanceDataAsset();
-	bool TryGetPlayerCountDifficultyBaseline(
-		int32 PlayerCount,
-		FHeistPlayerCountDifficultyBaseline& OutBaseline) const;
+	bool TryGetPlayerCountDifficultyBaseline(int32 PlayerCount, FHeistPlayerCountDifficultyBaseline& OutBaseline) const;
 
 #pragma endregion
 
 #pragma region Config
 
-public:
+  public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Difficulty")
 	bool bAllowSoloProgression = true;
 
@@ -66,7 +57,7 @@ public:
 	float VentUnlockTime = 180.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Rare Loot")
-	TArray<float> RareLootEventTimes = { 90.0f, 225.0f };
+	TArray<float> RareLootEventTimes = {90.0f, 225.0f};
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Rare Loot", meta = (ClampMin = "0.0", Units = "s"))
 	float RareLootWarningLeadTime = 5.0f;

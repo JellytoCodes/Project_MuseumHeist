@@ -24,37 +24,28 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryWidget : public UHeistUserWidgetBas
 
 #pragma region Construction
 
-public:
+  public:
 	UHeistInventoryWidget(const FObjectInitializer& ObjectInitializer);
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
-	virtual bool NativeOnDragOver(
-		const FGeometry& InGeometry,
-		const FDragDropEvent& InDragDropEvent,
-		UDragDropOperation* InOperation) override;
+	virtual bool NativeOnDragOver(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 	virtual void NativeOnDragLeave(const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
-	virtual bool NativeOnDrop(
-		const FGeometry& InGeometry,
-		const FDragDropEvent& InDragDropEvent,
-		UDragDropOperation* InOperation) override;
+	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 
 #pragma endregion
 
 #pragma region ViewModels
 
-public:
-	void SetupInventoryWidget(
-		class UHeistInventoryViewModel* InInventoryViewModel,
-		class UHeistQuickSlotViewModel* InQuickSlotViewModel,
-		class AHeistPlayerController* InPlayerController);
+  public:
+	void SetupInventoryWidget(class UHeistInventoryViewModel* InInventoryViewModel, class UHeistQuickSlotViewModel* InQuickSlotViewModel, class AHeistPlayerController* InPlayerController);
 
-private:
+  private:
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Heist|Inventory", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistInventoryViewModel> InventoryViewModel;
 
@@ -67,12 +58,9 @@ private:
 	void RefreshVisibilityFromConfirmedSnapshot();
 	void RefreshQuickSlotPresentation();
 
-protected:
+  protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|Inventory", meta = (DisplayName = "Refresh Confirmed Inventory"))
-	void BP_RefreshConfirmedInventory(
-		const TArray<FHeistInventoryItem>& ConfirmedItems,
-		int32 GridColumns,
-		int32 GridRows);
+	void BP_RefreshConfirmedInventory(const TArray<FHeistInventoryItem>& ConfirmedItems, int32 GridColumns, int32 GridRows);
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|Inventory", meta = (DisplayName = "Refresh Confirmed QuickSlots"))
 	void BP_RefreshConfirmedQuickSlots(const TArray<FHeistQuickSlotState>& ConfirmedQuickSlots);
@@ -81,7 +69,7 @@ protected:
 
 #pragma region Requests
 
-public:
+  public:
 	UFUNCTION(BlueprintCallable, Category = "Heist|Inventory")
 	void RequestCloseInventory();
 
@@ -104,29 +92,18 @@ public:
 
 #pragma region DragDropPresentation
 
-public:
+  public:
 	bool CanPreviewItemDrop(int32 InstanceId, const FIntPoint& TargetGridPosition) const;
 
-private:
-	void RebuildConfirmedInventory(
-		const TArray<FHeistInventoryItem>& ConfirmedItems,
-		int32 GridColumns,
-		int32 GridRows);
-	void RebuildConfirmedQuickSlots(
-		const TArray<struct FHeistQuickSlotPresentation>& ConfirmedQuickSlots);
-	bool TryResolveItemPresentation(
-		const FHeistInventoryItem& InventoryItem,
-		FIntPoint& OutPlacedSize,
-		UTexture2D*& OutIcon) const;
+  private:
+	void RebuildConfirmedInventory(const TArray<FHeistInventoryItem>& ConfirmedItems, int32 GridColumns, int32 GridRows);
+	void RebuildConfirmedQuickSlots(const TArray<struct FHeistQuickSlotPresentation>& ConfirmedQuickSlots);
+	bool TryResolveItemPresentation(const FHeistInventoryItem& InventoryItem, FIntPoint& OutPlacedSize, UTexture2D*& OutIcon) const;
 	UTexture2D* ResolveQuickSlotIcon(FName ItemId) const;
-	bool TryGetDropTargetGridPosition(
-		const FDragDropEvent& DragDropEvent,
-		FIntPoint& OutGridPosition) const;
+	bool TryGetDropTargetGridPosition(const FDragDropEvent& DragDropEvent, FIntPoint& OutGridPosition) const;
 	void UpdateDropPreview(int32 InstanceId, const FIntPoint& TargetGridPosition);
 	void ClearDropPreview();
-	bool IsGridCoordinateOccupied(
-		const FIntPoint& GridCoordinate,
-		int32 ExcludedInstanceId = INDEX_NONE) const;
+	bool IsGridCoordinateOccupied(const FIntPoint& GridCoordinate, int32 ExcludedInstanceId = INDEX_NONE) const;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Inventory|Presentation", meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<UHeistInventorySlotWidget> InventorySlotWidgetClass;
@@ -165,7 +142,7 @@ private:
 
 #pragma region Presentation
 
-private:
+  private:
 	UFUNCTION()
 	void HandleCloseButtonClicked();
 

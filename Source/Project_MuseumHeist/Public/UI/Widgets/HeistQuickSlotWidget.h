@@ -20,39 +20,28 @@ class PROJECT_MUSEUMHEIST_API UHeistQuickSlotWidget : public UHeistUserWidgetBas
 
 #pragma region Construction
 
-public:
+  public:
 	UHeistQuickSlotWidget(const FObjectInitializer& ObjectInitializer);
 
 #pragma endregion
 
 #pragma region Lifecycle
 
-protected:
+  protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
-	virtual bool NativeOnDragOver(
-		const FGeometry& InGeometry,
-		const FDragDropEvent& InDragDropEvent,
-		UDragDropOperation* InOperation) override;
-	virtual void NativeOnDragLeave(
-		const FDragDropEvent& InDragDropEvent,
-		UDragDropOperation* InOperation) override;
-	virtual bool NativeOnDrop(
-		const FGeometry& InGeometry,
-		const FDragDropEvent& InDragDropEvent,
-		UDragDropOperation* InOperation) override;
+	virtual bool NativeOnDragOver(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
+	virtual void NativeOnDragLeave(const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
+	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 
 #pragma endregion
 
 #pragma region Presentation
 
-public:
-	void SetupQuickSlot(
-		const FHeistQuickSlotPresentation& InConfirmedPresentation,
-		UTexture2D* InIcon,
-		UHeistInventoryWidget* InInventoryWidget);
+  public:
+	void SetupQuickSlot(const FHeistQuickSlotPresentation& InConfirmedPresentation, UTexture2D* InIcon, UHeistInventoryWidget* InInventoryWidget);
 
-private:
+  private:
 	void RefreshPresentation();
 	void SetDropPreview(bool bInDropPreview);
 
