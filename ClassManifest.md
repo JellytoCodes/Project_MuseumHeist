@@ -350,6 +350,25 @@ FHeistForgeryTemplateRow
 | `UHeistGuardNoiseReactionComponent` | Keep | Coin/Footstep/Alarm |
 | `UHeistPatrolPathComponent` | Keep | Patrol |
 
+### Inspection Target Registration Contract
+
+- `AHeistPaintingDisplayCaseActor`는 서버에서 Replica가 확정되고 Case가 `ReplicaPlaced`, `OriginalAvailable`, `OriginalRemoved` 중 하나일 때만 Inspection 후보로 등록한다.
+- Case가 후보 State를 벗어나거나 EndPlay되면 등록을 해제한다.
+- `AHeistGuardAIController`는 서버에서만 등록된 유효 Painting Case를 선택한다.
+- 선택은 Guard와 Case 사이 거리 우선이며 동일 거리에서는 `DisplayCaseId`, Actor Name 순서로 결정론적으로 고정한다.
+- 등록 상태는 서버 AI 의사결정용이며 Client가 검사 대상을 확정하지 않는다.
+- Guard 이동, 정렬, Inspect Cast, 검사 결과 적용은 `TASK-W4-013` 범위다.
+- 별도 Inspection Manager, Service, Subsystem은 추가하지 않는다.
+
+### Guard InspectExhibit Contract
+
+- `EHeistGuardState::InspectExhibit`와 `AI.State.InspectExhibit` StateTree Event를 사용한다.
+- Patrol은 등록된 Painting Case를 선점하면 `InspectExhibit`에 양보하고, Noise Investigate는 검사 중 상태를 선점하지 못한다.
+- Guard는 Case까지 이동한 뒤 Case 방향으로 정렬하고 서버 고정 Cast를 시작한다.
+- Chase는 검사보다 우선하며, 중단된 Case는 검사 전 State와 등록 상태를 복원한다.
+- Chase 이후 Patrol로 돌아오면 보존된 Case를 우선 재개한다.
+- Cast 완료 결과는 서버에서 Case `Suspected`로 적용한다. Score별 검사 지연은 `TASK-W4-014` 범위다.
+
 StateTree Asset는 Editor 작업이며 사용자가 소유한다.
 
 ---

@@ -346,8 +346,52 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Inspection")
 	int32 GetInspectionRegistrationRevision() const;
 
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Inspection")
+	float GetResolvedInspectionDelay() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Inspection")
+	float GetInspectionReadyServerTime() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Inspection")
+	float GetInspectionDelayRemaining() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Inspection")
+	FName GetInspectionScoreBand() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Inspection")
+	FName GetResolvedInspectionAlertOutcome() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Inspection")
+	EHeistDisplayCaseState GetResolvedInspectionCaseOutcome() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Inspection")
+	int32 GetInspectionScheduleRevision() const;
+
+	static bool CalculateInspectionSchedule(
+		float SimilarityScore,
+		float BaseInspectionDelay,
+		float& OutDelay,
+		FName& OutScoreBand,
+		FName& OutAlertOutcome,
+		EHeistDisplayCaseState& OutCaseOutcome);
+
+	bool TryBeginInspection(AActor* InspectingGuard);
+	bool InterruptInspection(AActor* InspectingGuard, FName Reason);
+	bool ApplyInspectionResult(AActor* InspectingGuard);
+	bool IsInspectionOwnedBy(const AActor* InspectingGuard) const;
+
 private:
+	bool ResolveInspectionSchedule(
+		const FHeistForgeryResult& ForgeryResult,
+		FName& OutRejectReason);
+	void StartInspectionDelayTimer();
+	void ClearInspectionDelayTimer();
+	void HandleInspectionDelayExpired();
+	bool HasInspectionDelayElapsed() const;
 	void RefreshInspectionRegistration();
+
+	UFUNCTION()
+	void OnRep_InspectionScheduleRevision();
 
 	UPROPERTY(
 		VisibleInstanceOnly,
@@ -362,6 +406,28 @@ private:
 		Category = "Heist|DisplayCase|Inspection",
 		meta = (AllowPrivateAccess = "true"))
 	int32 InspectionRegistrationRevision = 0;
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Inspection", meta = (AllowPrivateAccess = "true"))
+	float ResolvedInspectionDelay = 0.0f;
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Inspection", meta = (AllowPrivateAccess = "true"))
+	float InspectionReadyServerTime = 0.0f;
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Inspection", meta = (AllowPrivateAccess = "true"))
+	FName InspectionScoreBand = NAME_None;
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Inspection", meta = (AllowPrivateAccess = "true"))
+	FName ResolvedInspectionAlertOutcome = NAME_None;
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Inspection", meta = (AllowPrivateAccess = "true"))
+	EHeistDisplayCaseState ResolvedInspectionCaseOutcome = EHeistDisplayCaseState::Suspected;
+
+	UPROPERTY(ReplicatedUsing = OnRep_InspectionScheduleRevision, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Inspection", meta = (AllowPrivateAccess = "true"))
+	int32 InspectionScheduleRevision = 0;
+
+	TWeakObjectPtr<AActor> InspectingGuardActor;
+	EHeistDisplayCaseState PreInspectionState = EHeistDisplayCaseState::OriginalAvailable;
+	FTimerHandle InspectionDelayTimerHandle;
 
 #pragma endregion
 

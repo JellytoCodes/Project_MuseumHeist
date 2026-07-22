@@ -40,6 +40,8 @@ public:
 	bool RefreshChaseTargetLocation();
 	bool EnterInvestigateNoise(const FVector& InvestigateLocation, float DurationSeconds);
 	bool StartInvestigateConfirmationTimer();
+	bool EnterInspectExhibit(const FVector& ExhibitLocation);
+	bool StartInspectExhibitCast(float DurationSeconds);
 	bool EnterSearchLastKnownLocation(const FVector& SearchLocation);
 	bool StartSearchTimer();
 	bool EnterReturnToPatrol();
@@ -61,6 +63,8 @@ public:
 	float GetSearchDuration() const;
 
 	FHeistGuardStateChanged& GetGuardStateChangedDelegate();
+	DECLARE_MULTICAST_DELEGATE(FHeistInspectExhibitCastExpired);
+	FHeistInspectExhibitCastExpired& GetInspectExhibitCastExpiredDelegate();
 	void ConfigureGuardProfile(const FHeistGuardDataRow& GuardData);
 
 private:
@@ -93,6 +97,7 @@ private:
 	float PendingInvestigateDuration = 0.0f;
 	FTimerHandle StateTimerHandle;
 	FHeistGuardStateChanged GuardStateChangedDelegate;
+	FHeistInspectExhibitCastExpired InspectExhibitCastExpiredDelegate;
 
 #pragma endregion
 

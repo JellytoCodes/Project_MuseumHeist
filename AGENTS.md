@@ -415,12 +415,13 @@ W3는 완료됐다. 현재 실행 기준은 W4 단일 범위이며 기간은 202
 
 ### W4 Current Handoff
 
-- `TASK-W4-001~010`: 완료. 정식 완료 상태와 테스트 로그 번호는 Notion 기록을 Source of Truth로 사용한다.
-- `TASK-W4-011`: 현재 활성 Task. Painting Frame / Submitted Texture Projection과 OpenCV 점수 전환을 다룬다.
+- `TASK-W4-001~012`: 완료. 정식 완료 상태와 테스트 로그 번호는 Notion 기록을 Source of Truth로 사용한다.
+- `TASK-W4-013`: 현재 활성 Task. Guard InspectExhibit State의 C++ 구현은 완료됐고 StateTree Editor 연결 및 사용자 PIE 검증이 남아 있다.
 - OpenCV 유사도 판정, 제한 Palette, Local Preview / Server Final 공통 Evaluator, 제출 그림 Palette Index Data 복제는 구현돼 있다.
 - Painting과 Sculpture Case C++ 타입은 분리돼 있다. `BP_DisplayCase`의 부모는 `AHeistPaintingDisplayCaseActor`, `BP_SculptureDisplayCase`의 부모는 `AHeistSculptureDisplayCaseActor`다.
 - Sculpture Case는 시각 Shell만 존재하며 v1.0 Gameplay에는 사용하지 않는다.
-- `TASK-W4-011`의 남은 Gate는 사용자 PIE에서 Original 비주얼 제거, Replica Transform/Material 투영, Listen Server Client 동기화, 기존 Forgery/Recovery 회귀를 확인하는 것이다.
-- `TASK-W4-011` PASS 전에는 `TASK-W4-012`를 시작하지 않는다.
+- `TASK-W4-012`는 `TEST-W4-013`에서 서버 후보 등록, Guard 결정론적 선택, Client 권한 차단이 PASS했다.
+- `TASK-W4-013`은 Patrol 후보 선점, Case 이동/정렬, 고정 Inspect Cast, Chase 중단과 Patrol 재개, `Suspected` 결과 적용을 C++에 연결했다.
+- `TASK-W4-014`의 Score → Inspection Delay Mapping은 선행 구현하지 않았다.
 
 세부 설계와 주차별 Task 정의는 `Museum_Heist_GDD.docx` Rev.10을 기준으로 Repository에서 확인한다.

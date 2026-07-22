@@ -312,6 +312,18 @@ public:
 	void HeistGuardDump();
 
 	UFUNCTION(Exec)
+	void HeistInspectionTargetSelect();
+
+	UFUNCTION(Exec)
+	void HeistInspectionTargetDump();
+
+	UFUNCTION(Exec)
+	void HeistInspectionBegin();
+
+	UFUNCTION(Exec)
+	void HeistInspectionStateDump();
+
+	UFUNCTION(Exec)
 	void HeistGuardState(const FString& StateName, float DurationSeconds = 5.0f);
 
 	UFUNCTION(Exec)

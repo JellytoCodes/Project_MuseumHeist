@@ -60,6 +60,7 @@ struct PROJECT_MUSEUMHEIST_API FHeistGameplayTags
 	FGameplayTag AI_State_Stunned;
 	FGameplayTag AI_State_Patrol;
 	FGameplayTag AI_State_InvestigateNoise;
+	FGameplayTag AI_State_InspectExhibit;
 	FGameplayTag AI_State_ChasePlayer;
 	FGameplayTag AI_State_SearchLastKnownLocation;
 	FGameplayTag AI_State_ReturnToPatrol;

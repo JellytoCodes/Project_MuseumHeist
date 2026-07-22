@@ -9,6 +9,7 @@
 #include "Navigation/PathFollowingComponent.h"
 #include "StateTreeExecutionContext.h"
 #include "World/AI/HeistGuardWaypoint.h"
+#include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(HeistGuardStateTreeTask)
 
@@ -259,6 +260,31 @@ namespace
 		return bMoveStarted;
 	}
 
+	bool StartInspectionMove(
+		FHeistGuardStateTreeTaskInstanceData& InstanceData,
+		AHeistGuardAIController& Controller)
+	{
+		AHeistPaintingDisplayCaseActor* Target =
+			Controller.GetInspectionTarget();
+		if (!IsValid(Target))
+		{
+			return false;
+		}
+
+		const bool bMoveStarted = StartMove(
+			InstanceData,
+			Controller,
+			Target,
+			Target->GetActorLocation(),
+			Controller.GetInspectionAcceptanceRadius());
+		DebugMoveRequest(
+			Controller,
+			EHeistGuardState::InspectExhibit,
+			Target->GetActorLocation(),
+			InstanceData);
+		return bMoveStarted;
+	}
+
 	bool StartReturnMove(
 		FHeistGuardStateTreeTaskInstanceData& InstanceData,
 		AHeistGuardAIController& Controller)
@@ -359,6 +385,11 @@ EStateTreeRunStatus FHeistGuardStateTreeTask::EnterState(
 	switch (GuardState)
 	{
 	case EHeistGuardState::Patrol:
+		if (Controller->TryBeginInspection())
+		{
+			AwaitAuthoritativeStateChange(InstanceData);
+			break;
+		}
 		if (!StartPatrolMove(InstanceData, *Controller))
 		{
 			BeginPatrolWait(
@@ -372,6 +403,14 @@ EStateTreeRunStatus FHeistGuardStateTreeTask::EnterState(
 			*Controller,
 			EHeistGuardState::InvestigateNoise))
 		{
+			GuardStateComponent->EnterPatrol();
+			AwaitAuthoritativeStateChange(InstanceData);
+		}
+		break;
+	case EHeistGuardState::InspectExhibit:
+		if (!StartInspectionMove(InstanceData, *Controller))
+		{
+			Controller->AbortInspection(FName(TEXT("InspectionMoveRejected")));
 			GuardStateComponent->EnterPatrol();
 			AwaitAuthoritativeStateChange(InstanceData);
 		}
@@ -451,6 +490,12 @@ EStateTreeRunStatus FHeistGuardStateTreeTask::Tick(
 		if (InstanceData.WaitRemaining <= 0.0f)
 		{
 			if (GuardState == EHeistGuardState::Patrol
+				&& Controller->TryBeginInspection())
+			{
+				AwaitAuthoritativeStateChange(InstanceData);
+				return EStateTreeRunStatus::Running;
+			}
+			if (GuardState == EHeistGuardState::Patrol
 				&& IsValid(PatrolPath)
 				&& IsValid(PatrolPath->AdvanceWaypoint()))
 			{
@@ -511,7 +556,14 @@ EStateTreeRunStatus FHeistGuardStateTreeTask::Tick(
 	switch (GuardState)
 	{
 	case EHeistGuardState::Patrol:
-		BeginPatrolWait(InstanceData, PatrolPath);
+		if (Controller->TryBeginInspection())
+		{
+			AwaitAuthoritativeStateChange(InstanceData);
+		}
+		else
+		{
+			BeginPatrolWait(InstanceData, PatrolPath);
+		}
 		break;
 	case EHeistGuardState::InvestigateNoise:
 		if (bMoveSucceeded
@@ -525,6 +577,14 @@ EStateTreeRunStatus FHeistGuardStateTreeTask::Tick(
 		}
 		else
 		{
+			GuardStateComponent->EnterPatrol();
+		}
+		AwaitAuthoritativeStateChange(InstanceData);
+		break;
+	case EHeistGuardState::InspectExhibit:
+		if (!bMoveSucceeded || !Controller->StartInspectionCast())
+		{
+			Controller->AbortInspection(FName(TEXT("InspectionMoveFailed")));
 			GuardStateComponent->EnterPatrol();
 		}
 		AwaitAuthoritativeStateChange(InstanceData);

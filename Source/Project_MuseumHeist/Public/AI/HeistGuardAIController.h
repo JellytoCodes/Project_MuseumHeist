@@ -95,15 +95,26 @@ private:
 
 public:
 	bool TrySelectInspectionTarget();
+	bool TryBeginInspection();
+	bool StartInspectionCast();
+	void AbortInspection(FName Reason);
 	AHeistPaintingDisplayCaseActor* GetInspectionTarget() const;
 	bool IsInspectionTargetValid() const;
 	int32 GetInspectionTargetSelectionRevision() const;
+	float GetInspectionAcceptanceRadius() const;
 
 private:
 	AHeistPaintingDisplayCaseActor* FindBestInspectionTarget() const;
+	void HandleInspectionCastExpired();
 
 	TWeakObjectPtr<AHeistPaintingDisplayCaseActor> InspectionTarget;
 	int32 InspectionTargetSelectionRevision = 0;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|AI|Inspection", meta = (AllowPrivateAccess = "true", ClampMin = "0.1", Units = "s"))
+	float InspectionCastDuration = 2.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|AI|Inspection", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "cm"))
+	float InspectionAcceptanceRadius = 100.0f;
 
 #pragma endregion
 

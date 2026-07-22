@@ -13,6 +13,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 #include "Net/UnrealNetwork.h"
+#include "TimerManager.h"
 
 namespace
 {
@@ -27,6 +28,10 @@ namespace
 	constexpr int32 ReplicaCoveragePrimitiveDataIndex = 1;
 	constexpr int32 ReplicaColorAccuracyPrimitiveDataIndex = 2;
 	constexpr int32 ReplicaTierPrimitiveDataIndex = 3;
+	constexpr float InspectionDelayExcellentMultiplier = 4.0f;
+	constexpr float InspectionDelayGoodMultiplier = 2.0f;
+	constexpr float InspectionDelayFairMultiplier = 1.0f;
+	constexpr float InspectionDelayPoorMultiplier = 0.5f;
 }
 
 const FName AHeistPaintingDisplayCaseActor::OriginalVisualComponentTag(TEXT("OriginalVisual"));
@@ -60,6 +65,7 @@ void AHeistPaintingDisplayCaseActor::BeginPlay()
 
 	CaptureReplicaVisualBaseline();
 	RefreshPlaceholderVisualState();
+	RefreshInspectionRegistration();
 	RefreshReplicaWorldVisual();
 
 	if (HasAuthority())
@@ -76,6 +82,7 @@ void AHeistPaintingDisplayCaseActor::BeginPlay()
 
 void AHeistPaintingDisplayCaseActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	ClearInspectionDelayTimer();
 	if (HasAuthority() && bRegisteredForInspection)
 	{
 		bRegisteredForInspection = false;
@@ -894,6 +901,19 @@ bool AHeistPaintingDisplayCaseActor::TryCommitReplicaPlacement(
 			*RejectReason.ToString());
 		return false;
 	}
+	if (!ResolveInspectionSchedule(ForgeryResult, RejectReason))
+	{
+		UE_LOG(
+			LogHeistNetwork,
+			Error,
+			TEXT("Replica placement rejected: Case=%s CaseId=%s Artifact=%s Score=%.2f Reason=%s"),
+			*GetNameSafe(this),
+			*DisplayCaseId.ToString(),
+			*TargetArtifactId.ToString(),
+			ForgeryResult.SimilarityScore,
+			*RejectReason.ToString());
+		return false;
+	}
 
 	if (!TryTransitionToDisplayCaseState(EHeistDisplayCaseState::ReplicaReady)
 		|| !TryTransitionToDisplayCaseState(EHeistDisplayCaseState::ReplicaPlaced)
@@ -915,6 +935,7 @@ bool AHeistPaintingDisplayCaseActor::TryCommitReplicaPlacement(
 	ReplicaPaintingData = PaintingData;
 	ReplicaPaintingData.Revision =
 		CommittedForgeryRevision;
+	StartInspectionDelayTimer();
 	RefreshInspectionRegistration();
 	RefreshReplicaWorldVisual();
 
@@ -1119,6 +1140,179 @@ void AHeistPaintingDisplayCaseActor::OnRep_ReplicaPaintingData()
 
 #pragma region InspectionTarget
 
+bool AHeistPaintingDisplayCaseActor::CalculateInspectionSchedule(
+	const float SimilarityScore,
+	const float BaseInspectionDelay,
+	float& OutDelay,
+	FName& OutScoreBand,
+	FName& OutAlertOutcome,
+	EHeistDisplayCaseState& OutCaseOutcome)
+{
+	OutDelay = 0.0f;
+	OutScoreBand = NAME_None;
+	OutAlertOutcome = NAME_None;
+	OutCaseOutcome = EHeistDisplayCaseState::Suspected;
+	if (!FMath::IsFinite(SimilarityScore)
+		|| !FMath::IsFinite(BaseInspectionDelay)
+		|| !FMath::IsWithinInclusive(SimilarityScore, 0.0f, 100.0f)
+		|| BaseInspectionDelay < 0.0f)
+	{
+		return false;
+	}
+
+	float DelayMultiplier = 0.0f;
+	if (SimilarityScore >= 90.0f)
+	{
+		OutScoreBand = FName(TEXT("90-100"));
+		OutAlertOutcome = FName(TEXT("Quiet"));
+		OutCaseOutcome = EHeistDisplayCaseState::Completed;
+		DelayMultiplier = InspectionDelayExcellentMultiplier;
+	}
+	else if (SimilarityScore >= 70.0f)
+	{
+		OutScoreBand = FName(TEXT("70-89"));
+		OutAlertOutcome = FName(TEXT("Suspicious"));
+		OutCaseOutcome = EHeistDisplayCaseState::Suspected;
+		DelayMultiplier = InspectionDelayGoodMultiplier;
+	}
+	else if (SimilarityScore >= 50.0f)
+	{
+		OutScoreBand = FName(TEXT("50-69"));
+		OutAlertOutcome = FName(TEXT("Searching"));
+		OutCaseOutcome = EHeistDisplayCaseState::Suspected;
+		DelayMultiplier = InspectionDelayFairMultiplier;
+	}
+	else if (SimilarityScore >= 30.0f)
+	{
+		OutScoreBand = FName(TEXT("30-49"));
+		OutAlertOutcome = FName(TEXT("Alarmed"));
+		OutCaseOutcome = EHeistDisplayCaseState::Alarmed;
+		DelayMultiplier = InspectionDelayPoorMultiplier;
+	}
+	else
+	{
+		OutScoreBand = FName(TEXT("0-29"));
+		OutAlertOutcome = FName(TEXT("Alarmed"));
+		OutCaseOutcome = EHeistDisplayCaseState::Alarmed;
+	}
+	OutDelay = BaseInspectionDelay * DelayMultiplier;
+	return FMath::IsFinite(OutDelay) && OutDelay >= 0.0f;
+}
+
+bool AHeistPaintingDisplayCaseActor::ResolveInspectionSchedule(
+	const FHeistForgeryResult& ForgeryResult,
+	FName& OutRejectReason)
+{
+	OutRejectReason = NAME_None;
+	const AHeistGameMode* HeistGameMode =
+		GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	FHeistArtifactDataRow ArtifactDefinition;
+	if (!HasAuthority()
+		|| !IsValid(HeistGameMode)
+		|| !HeistGameMode->TryGetArtifactDefinition(
+			TargetArtifactId,
+			ArtifactDefinition)
+		|| !FMath::IsFinite(ArtifactDefinition.BaseInspectionDelay)
+		|| ArtifactDefinition.BaseInspectionDelay < 0.0f)
+	{
+		OutRejectReason = FName(TEXT("InvalidInspectionDelayData"));
+		return false;
+	}
+
+	const float Score = ForgeryResult.SimilarityScore;
+	if (!CalculateInspectionSchedule(
+		Score,
+		ArtifactDefinition.BaseInspectionDelay,
+		ResolvedInspectionDelay,
+		InspectionScoreBand,
+		ResolvedInspectionAlertOutcome,
+		ResolvedInspectionCaseOutcome))
+	{
+		OutRejectReason = FName(TEXT("InspectionScheduleMappingFailed"));
+		return false;
+	}
+	const float DelayMultiplier = ArtifactDefinition.BaseInspectionDelay
+		> KINDA_SMALL_NUMBER
+		? ResolvedInspectionDelay / ArtifactDefinition.BaseInspectionDelay
+		: 0.0f;
+	const AHeistGameState* HeistGameState =
+		GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	const float ServerTime = IsValid(HeistGameState)
+		? HeistGameState->GetServerWorldTimeSeconds()
+		: (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
+	InspectionReadyServerTime = ServerTime + ResolvedInspectionDelay;
+	++InspectionScheduleRevision;
+
+	UE_LOG(
+		LogHeistNetwork,
+		Log,
+		TEXT("Inspection schedule resolved: Case=%s CaseId=%s Artifact=%s Score=%.2f Band=%s BaseDelay=%.2f Multiplier=%.2f Delay=%.2f ReadyServerTime=%.2f CaseOutcome=%s AlertOutcome=%s ScheduleRevision=%d Authority=true Result=PASS"),
+		*GetNameSafe(this),
+		*DisplayCaseId.ToString(),
+		*TargetArtifactId.ToString(),
+		Score,
+		*InspectionScoreBand.ToString(),
+		ArtifactDefinition.BaseInspectionDelay,
+		DelayMultiplier,
+		ResolvedInspectionDelay,
+		InspectionReadyServerTime,
+		*UEnum::GetValueAsString(ResolvedInspectionCaseOutcome),
+		*ResolvedInspectionAlertOutcome.ToString(),
+		InspectionScheduleRevision);
+	return true;
+}
+
+void AHeistPaintingDisplayCaseActor::StartInspectionDelayTimer()
+{
+	ClearInspectionDelayTimer();
+	if (!HasAuthority()
+		|| !IsValid(GetWorld())
+		|| ResolvedInspectionDelay <= KINDA_SMALL_NUMBER)
+	{
+		return;
+	}
+	GetWorld()->GetTimerManager().SetTimer(
+		InspectionDelayTimerHandle,
+		this,
+		&AHeistPaintingDisplayCaseActor::HandleInspectionDelayExpired,
+		ResolvedInspectionDelay,
+		false);
+}
+
+void AHeistPaintingDisplayCaseActor::ClearInspectionDelayTimer()
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(InspectionDelayTimerHandle);
+	}
+}
+
+void AHeistPaintingDisplayCaseActor::HandleInspectionDelayExpired()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	RefreshInspectionRegistration();
+	UE_LOG(
+		LogHeistNetwork,
+		Log,
+		TEXT("Inspection delay expired: Case=%s CaseId=%s Score=%.2f Band=%s Delay=%.2f Registered=%s ScheduleRevision=%d Authority=true Result=%s"),
+		*GetNameSafe(this),
+		*DisplayCaseId.ToString(),
+		CommittedForgeryResult.SimilarityScore,
+		*InspectionScoreBand.ToString(),
+		ResolvedInspectionDelay,
+		bRegisteredForInspection ? TEXT("true") : TEXT("false"),
+		InspectionScheduleRevision,
+		bRegisteredForInspection ? TEXT("PASS") : TEXT("INELIGIBLE"));
+}
+
+bool AHeistPaintingDisplayCaseActor::HasInspectionDelayElapsed() const
+{
+	return GetInspectionDelayRemaining() <= KINDA_SMALL_NUMBER;
+}
+
 bool AHeistPaintingDisplayCaseActor::IsRegisteredForInspection() const
 {
 	return bRegisteredForInspection;
@@ -1133,12 +1327,162 @@ bool AHeistPaintingDisplayCaseActor::IsValidInspectionCandidate() const
 	return bRegisteredForInspection
 		&& bHasCommittedForgeryResult
 		&& CommittedForgeryResult.bReplicaPlaced
-		&& bEligibleState;
+		&& bEligibleState
+		&& HasInspectionDelayElapsed();
 }
 
 int32 AHeistPaintingDisplayCaseActor::GetInspectionRegistrationRevision() const
 {
 	return InspectionRegistrationRevision;
+}
+
+float AHeistPaintingDisplayCaseActor::GetResolvedInspectionDelay() const
+{
+	return ResolvedInspectionDelay;
+}
+
+float AHeistPaintingDisplayCaseActor::GetInspectionReadyServerTime() const
+{
+	return InspectionReadyServerTime;
+}
+
+float AHeistPaintingDisplayCaseActor::GetInspectionDelayRemaining() const
+{
+	if (InspectionReadyServerTime <= 0.0f)
+	{
+		return 0.0f;
+	}
+	const AHeistGameState* HeistGameState =
+		GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	const float ServerTime = IsValid(HeistGameState)
+		? HeistGameState->GetServerWorldTimeSeconds()
+		: (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
+	return FMath::Max(0.0f, InspectionReadyServerTime - ServerTime);
+}
+
+FName AHeistPaintingDisplayCaseActor::GetInspectionScoreBand() const
+{
+	return InspectionScoreBand;
+}
+
+FName AHeistPaintingDisplayCaseActor::GetResolvedInspectionAlertOutcome() const
+{
+	return ResolvedInspectionAlertOutcome;
+}
+
+EHeistDisplayCaseState
+AHeistPaintingDisplayCaseActor::GetResolvedInspectionCaseOutcome() const
+{
+	return ResolvedInspectionCaseOutcome;
+}
+
+int32 AHeistPaintingDisplayCaseActor::GetInspectionScheduleRevision() const
+{
+	return InspectionScheduleRevision;
+}
+
+bool AHeistPaintingDisplayCaseActor::TryBeginInspection(AActor* InspectingGuard)
+{
+	if (!HasAuthority()
+		|| !IsValid(InspectingGuard)
+		|| !IsValidInspectionCandidate())
+	{
+		UE_LOG(
+			LogHeistNetwork,
+			Warning,
+			TEXT("Exhibit inspection begin rejected: Case=%s Guard=%s State=%s Authority=%s ValidCandidate=%s"),
+			*GetNameSafe(this),
+			*GetNameSafe(InspectingGuard),
+			*UEnum::GetValueAsString(DisplayCaseState),
+			HasAuthority() ? TEXT("true") : TEXT("false"),
+			IsValidInspectionCandidate() ? TEXT("true") : TEXT("false"));
+		return false;
+	}
+
+	PreInspectionState = DisplayCaseState;
+	InspectingGuardActor = InspectingGuard;
+	const EHeistDisplayCaseState PreviousState = DisplayCaseState;
+	DisplayCaseState = EHeistDisplayCaseState::Inspecting;
+	HandleDisplayCaseStateChanged(PreviousState);
+	ForceNetUpdate();
+
+	UE_LOG(
+		LogHeistNetwork,
+		Log,
+		TEXT("Exhibit inspection begun: Case=%s CaseId=%s Guard=%s PreviousState=%s NewState=%s Authority=true Result=PASS"),
+		*GetNameSafe(this),
+		*DisplayCaseId.ToString(),
+		*GetNameSafe(InspectingGuard),
+		*UEnum::GetValueAsString(PreviousState),
+		*UEnum::GetValueAsString(DisplayCaseState));
+	return true;
+}
+
+bool AHeistPaintingDisplayCaseActor::InterruptInspection(
+	AActor* InspectingGuard,
+	const FName Reason)
+{
+	if (!HasAuthority()
+		|| DisplayCaseState != EHeistDisplayCaseState::Inspecting
+		|| !IsInspectionOwnedBy(InspectingGuard))
+	{
+		return false;
+	}
+
+	const EHeistDisplayCaseState PreviousState = DisplayCaseState;
+	DisplayCaseState = PreInspectionState;
+	InspectingGuardActor.Reset();
+	HandleDisplayCaseStateChanged(PreviousState);
+	ForceNetUpdate();
+
+	UE_LOG(
+		LogHeistNetwork,
+		Log,
+		TEXT("Exhibit inspection interrupted: Case=%s CaseId=%s Guard=%s RestoredState=%s Reason=%s Authority=true Result=PASS"),
+		*GetNameSafe(this),
+		*DisplayCaseId.ToString(),
+		*GetNameSafe(InspectingGuard),
+		*UEnum::GetValueAsString(DisplayCaseState),
+		*Reason.ToString());
+	return true;
+}
+
+bool AHeistPaintingDisplayCaseActor::ApplyInspectionResult(
+	AActor* InspectingGuard)
+{
+	if (!HasAuthority()
+		|| DisplayCaseState != EHeistDisplayCaseState::Inspecting
+		|| !IsInspectionOwnedBy(InspectingGuard))
+	{
+		return false;
+	}
+
+	const EHeistDisplayCaseState PreviousState = DisplayCaseState;
+	DisplayCaseState = ResolvedInspectionCaseOutcome;
+	InspectingGuardActor.Reset();
+	HandleDisplayCaseStateChanged(PreviousState);
+	ForceNetUpdate();
+
+	UE_LOG(
+		LogHeistNetwork,
+		Log,
+		TEXT("Exhibit inspection result applied: Case=%s CaseId=%s Guard=%s Score=%.2f Band=%s CaseOutcome=%s AlertOutcome=%s NewState=%s Authority=true Result=PASS"),
+		*GetNameSafe(this),
+		*DisplayCaseId.ToString(),
+		*GetNameSafe(InspectingGuard),
+		CommittedForgeryResult.SimilarityScore,
+		*InspectionScoreBand.ToString(),
+		*UEnum::GetValueAsString(ResolvedInspectionCaseOutcome),
+		*ResolvedInspectionAlertOutcome.ToString(),
+		*UEnum::GetValueAsString(DisplayCaseState));
+	return true;
+}
+
+bool AHeistPaintingDisplayCaseActor::IsInspectionOwnedBy(
+	const AActor* InspectingGuard) const
+{
+	return IsValid(InspectingGuard)
+		&& InspectingGuardActor.Get() == InspectingGuard;
 }
 
 void AHeistPaintingDisplayCaseActor::RefreshInspectionRegistration()
@@ -1152,9 +1496,15 @@ void AHeistPaintingDisplayCaseActor::RefreshInspectionRegistration()
 		DisplayCaseState == EHeistDisplayCaseState::ReplicaPlaced
 		|| DisplayCaseState == EHeistDisplayCaseState::OriginalAvailable
 		|| DisplayCaseState == EHeistDisplayCaseState::OriginalRemoved;
-	const bool bShouldRegister = bHasCommittedForgeryResult
+	const AHeistGameState* HeistGameState =
+		GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	const bool bMatchInGame = IsValid(HeistGameState)
+		&& HeistGameState->GetMatchPhase() == EHeistMatchPhase::InGame;
+	const bool bShouldRegister = bMatchInGame
+		&& bHasCommittedForgeryResult
 		&& CommittedForgeryResult.bReplicaPlaced
-		&& bEligibleState;
+		&& bEligibleState
+		&& HasInspectionDelayElapsed();
 	if (bRegisteredForInspection == bShouldRegister)
 	{
 		return;
@@ -1172,6 +1522,24 @@ void AHeistPaintingDisplayCaseActor::RefreshInspectionRegistration()
 		*UEnum::GetValueAsString(DisplayCaseState),
 		CommittedForgeryResult.SimilarityScore,
 		InspectionRegistrationRevision);
+}
+
+void AHeistPaintingDisplayCaseActor::OnRep_InspectionScheduleRevision()
+{
+	UE_LOG(
+		LogHeistNetwork,
+		Log,
+		TEXT("Inspection schedule replicated: Case=%s CaseId=%s Score=%.2f Band=%s Delay=%.2f ReadyServerTime=%.2f Remaining=%.2f CaseOutcome=%s AlertOutcome=%s ScheduleRevision=%d Authority=false Result=PASS"),
+		*GetNameSafe(this),
+		*DisplayCaseId.ToString(),
+		CommittedForgeryResult.SimilarityScore,
+		*InspectionScoreBand.ToString(),
+		ResolvedInspectionDelay,
+		InspectionReadyServerTime,
+		GetInspectionDelayRemaining(),
+		*UEnum::GetValueAsString(ResolvedInspectionCaseOutcome),
+		*ResolvedInspectionAlertOutcome.ToString(),
+		InspectionScheduleRevision);
 }
 
 #pragma endregion
@@ -1747,6 +2115,14 @@ void AHeistPaintingDisplayCaseActor::HandleMatchPhaseChanged(
 	{
 		ClearSession(FName(TEXT("MatchPhaseChanged")));
 	}
+	if (HasAuthority() && PreviousMatchPhase != NewMatchPhase)
+	{
+		if (NewMatchPhase != EHeistMatchPhase::InGame)
+		{
+			ClearInspectionDelayTimer();
+		}
+		RefreshInspectionRegistration();
+	}
 }
 
 #pragma endregion
@@ -1767,6 +2143,12 @@ void AHeistPaintingDisplayCaseActor::GetLifetimeReplicatedProps(TArray<FLifetime
 	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, SessionOwner);
 	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, bSessionLocked);
 	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, SessionRevision);
+	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, ResolvedInspectionDelay);
+	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, InspectionReadyServerTime);
+	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, InspectionScoreBand);
+	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, ResolvedInspectionAlertOutcome);
+	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, ResolvedInspectionCaseOutcome);
+	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, InspectionScheduleRevision);
 }
 
 #pragma endregion

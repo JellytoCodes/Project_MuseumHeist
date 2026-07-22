@@ -144,6 +144,53 @@ bool UHeistGuardStateComponent::StartInvestigateConfirmationTimer()
 	return StartStateTimer(PendingInvestigateDuration);
 }
 
+bool UHeistGuardStateComponent::EnterInspectExhibit(
+	const FVector& ExhibitLocation)
+{
+	if (ExhibitLocation.ContainsNaN())
+	{
+		UHeistDebugFunctionLibrary::DebugGuardStateRequestRejected(
+			this,
+			GetOwner(),
+			EHeistGuardState::InspectExhibit,
+			TEXT("InvalidExhibitLocation"));
+		return false;
+	}
+
+	const TObjectPtr<AActor> PreviousTarget = ChaseTarget;
+	const FVector PreviousFocusLocation = StateFocusLocation;
+	ChaseTarget = nullptr;
+	StateFocusLocation = ExhibitLocation;
+	if (CommitState(EHeistGuardState::InspectExhibit))
+	{
+		return true;
+	}
+
+	ChaseTarget = PreviousTarget;
+	StateFocusLocation = PreviousFocusLocation;
+	return false;
+}
+
+bool UHeistGuardStateComponent::StartInspectExhibitCast(
+	const float DurationSeconds)
+{
+	AActor* OwnerActor = GetOwner();
+	if (!IsValid(OwnerActor)
+		|| !OwnerActor->HasAuthority()
+		|| GuardState != EHeistGuardState::InspectExhibit
+		|| DurationSeconds <= 0.0f)
+	{
+		UHeistDebugFunctionLibrary::DebugGuardStateRequestRejected(
+			this,
+			OwnerActor,
+			EHeistGuardState::InspectExhibit,
+			TEXT("InvalidInspectionCast"));
+		return false;
+	}
+
+	return StartStateTimer(DurationSeconds);
+}
+
 bool UHeistGuardStateComponent::EnterSearchLastKnownLocation(const FVector& SearchLocation)
 {
 	if (SearchLocation.ContainsNaN())
@@ -282,6 +329,12 @@ FHeistGuardStateChanged& UHeistGuardStateComponent::GetGuardStateChangedDelegate
 	return GuardStateChangedDelegate;
 }
 
+UHeistGuardStateComponent::FHeistInspectExhibitCastExpired&
+UHeistGuardStateComponent::GetInspectExhibitCastExpiredDelegate()
+{
+	return InspectExhibitCastExpiredDelegate;
+}
+
 void UHeistGuardStateComponent::ConfigureGuardProfile(const FHeistGuardDataRow& GuardData)
 {
 	InvestigateDuration = FMath::Max(0.0f, GuardData.InvestigateDuration);
@@ -381,6 +434,13 @@ bool UHeistGuardStateComponent::CanEnterState(const EHeistGuardState NewState) c
 	}
 
 	if (GuardState == EHeistGuardState::ChasePlayer
+		&& (NewState == EHeistGuardState::InvestigateNoise
+			|| NewState == EHeistGuardState::InspectExhibit))
+	{
+		return false;
+	}
+
+	if (GuardState == EHeistGuardState::InspectExhibit
 		&& NewState == EHeistGuardState::InvestigateNoise)
 	{
 		return false;
@@ -412,6 +472,13 @@ void UHeistGuardStateComponent::HandleTimedStateExpired()
 	if (ExpiredState == EHeistGuardState::InvestigateNoise)
 	{
 		EnterPatrol();
+		return;
+	}
+
+	if (ExpiredState == EHeistGuardState::InspectExhibit)
+	{
+		StateEndServerTime = 0.0f;
+		InspectExhibitCastExpiredDelegate.Broadcast();
 		return;
 	}
 

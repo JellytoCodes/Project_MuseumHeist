@@ -285,7 +285,8 @@ enum class EHeistGuardState : uint8
 	InvestigateNoise,
 	ChasePlayer,
 	SearchLastKnownLocation,
-	ReturnToPatrol
+	ReturnToPatrol,
+	InspectExhibit
 };
 
 #pragma endregion

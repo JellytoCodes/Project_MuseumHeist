@@ -1,6 +1,7 @@
 #include "Debug/HeistDebugFunctionLibrary.h"
 
 #include "AI/HeistGuardCharacter.h"
+#include "AI/HeistGuardAIController.h"
 #include "AI/HeistPatrolPathComponent.h"
 #include "AI/HeistGuardStateComponent.h"
 #include "Blueprint/UserWidget.h"
@@ -2149,7 +2150,7 @@ void UHeistDebugFunctionLibrary::DebugForgeryScoreDump(
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Forgery score dump: Backend=OpenCV ShapeMetric=BidirectionalDistance ColorMetric=LabSSIMHistogram ScoreCurve=Shape1.15Color1.10 PaintCompletenessExponent=0.65 TargetCharacter=%s TargetSelection=%s HasScore=%s Artifact=%s Template=%s Score=%.2f Coverage=%.2f MajorShape=%.2f ColorAccuracy=%.2f MissingPenalty=%.2f ExtraPenalty=%.2f TimeoutPenalty=%.2f CompletionTime=%.2f PaintToReference=%.2f PaintCompleteness=%.3f AntiFill=%s ReplicaPlaced=%s Resolution=%dx%d ReferencePixels=%d SubmittedPixels=%d ScoreRevision=%d OwnerOnlySummary=true RawStrokeReplicated=false Authority=%s Result=%s"),
+			TEXT("Forgery score dump: Backend=OpenCV ShapeMetric=DistanceDiceGeometric ColorMetric=LabSSIMHistogramGeometric Fusion=WeightedGeometricBottleneck Calibration=OpenCVHistogramBonus0.75x3 ScoreCurve=Shape1.15Color1.10 PaintCompletenessExponent=0.65 TargetCharacter=%s TargetSelection=%s HasScore=%s Artifact=%s Template=%s Score=%.2f Coverage=%.2f MajorShape=%.2f ColorAccuracy=%.2f MissingPenalty=%.2f ExtraPenalty=%.2f TimeoutPenalty=%.2f CompletionTime=%.2f PaintToReference=%.2f PaintCompleteness=%.3f AntiFill=%s ReplicaPlaced=%s Resolution=%dx%d ReferencePixels=%d SubmittedPixels=%d ScoreRevision=%d OwnerOnlySummary=true RawStrokeReplicated=false Authority=%s Result=%s"),
 			*GetNameSafe(ForgeryComponent->GetOwner()),
 			bUsedAuthorityFallback
 				? TEXT("AuthorityScoredFallback")
@@ -2570,7 +2571,7 @@ void UHeistDebugFunctionLibrary::DebugForgeryScoreTest(
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Forgery score deterministic test: Backend=OpenCV ScoreCurve=Shape1.15Color1.10 PaintCompletenessExponent=0.65 TargetCharacter=%s TargetSelection=%s FirstCalculated=%s SecondCalculated=%s FirstScore=%.2f SecondScore=%.2f CommittedScore=%.2f ReferencePixels=%d/%d SubmittedPixels=%d/%d SameBreakdown=%s CommittedMatches=%s SelfTest={%s} Resolution=%dx%d Result=%s"),
+			TEXT("Forgery score deterministic test: Backend=OpenCV ShapeMetric=DistanceDiceGeometric ColorMetric=LabSSIMHistogramGeometric Fusion=WeightedGeometricBottleneck Calibration=OpenCVHistogramBonus0.75x3 ScoreCurve=Shape1.15Color1.10 TargetCharacter=%s TargetSelection=%s FirstCalculated=%s SecondCalculated=%s FirstScore=%.2f SecondScore=%.2f CommittedScore=%.2f ReferencePixels=%d/%d SubmittedPixels=%d/%d SameBreakdown=%s CommittedMatches=%s SelfTest={%s} Resolution=%dx%d Result=%s"),
 			*GetNameSafe(ForgeryComponent->GetOwner()),
 			bUsedAuthorityFallback
 				? TEXT("AuthorityScoredFallback")
@@ -3291,7 +3292,7 @@ void UHeistDebugFunctionLibrary::DebugGuardHelp(APlayerController* PlayerControl
 #else
 	Message(
 		PlayerController,
-		TEXT("Guard debug commands: HeistDifficultyDump | HeistGuardSpawn <Distance> | HeistGuardDump | HeistGuardState <Disabled|Patrol|Investigate|Chase|Search|Return> <Duration> | HeistGuardSightCheck | HeistGuardSightAuto <0|1> | HeistGuardNoise <Distance> | HeistArrest | HeistRelease | HeistArrestDump"),
+		TEXT("Guard debug commands: HeistDifficultyDump | HeistGuardSpawn <Distance> | HeistGuardDump | HeistInspectionTargetSelect | HeistInspectionTargetDump | HeistInspectionBegin | HeistInspectionStateDump | HeistGuardState <Disabled|Patrol|Investigate|Chase|Search|Return> <Duration> | HeistGuardSightCheck | HeistGuardSightAuto <0|1> | HeistGuardNoise <Distance> | HeistArrest | HeistRelease | HeistArrestDump"),
 		EHeistDebugLevel::Info,
 		true,
 		10.0f);
@@ -3410,6 +3411,359 @@ void UHeistDebugFunctionLibrary::DebugGuardDump(APlayerController* PlayerControl
 		EHeistDebugLevel::Info,
 		true,
 		8.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugInspectionTargetSelect(
+	APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	if (!IsValid(PlayerController)
+		|| !PlayerController->HasAuthority()
+		|| !IsValid(PlayerController->GetWorld()))
+	{
+		Message(
+			PlayerController,
+			TEXT("Inspection target select: Authority=false Result=FAIL Reason=ServerOnly"),
+			EHeistDebugLevel::Warning,
+			true);
+		return;
+	}
+
+	int32 GuardCount = 0;
+	int32 SelectedCount = 0;
+	for (TActorIterator<AHeistGuardAIController> It(
+			PlayerController->GetWorld());
+		It;
+		++It)
+	{
+		AHeistGuardAIController* GuardController = *It;
+		if (!IsValid(GuardController) || !IsValid(GuardController->GetPawn()))
+		{
+			continue;
+		}
+
+		++GuardCount;
+		SelectedCount += GuardController->TrySelectInspectionTarget() ? 1 : 0;
+	}
+
+	const bool bPassed = GuardCount > 0 && SelectedCount == GuardCount;
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Inspection target select: Guards=%d Selected=%d Authority=true Result=%s"),
+			GuardCount,
+			SelectedCount,
+			bPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+		true,
+		12.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugInspectionTargetDump(
+	APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	if (!IsValid(PlayerController) || !IsValid(PlayerController->GetWorld()))
+	{
+		return;
+	}
+
+	int32 CaseCount = 0;
+	int32 RegisteredCount = 0;
+	int32 ValidCandidateCount = 0;
+	int32 ScheduledCount = 0;
+	int32 PendingDelayCount = 0;
+	int32 MaximumRegistrationRevision = 0;
+	FString ScheduleSummary;
+	for (TActorIterator<AHeistPaintingDisplayCaseActor> It(
+			PlayerController->GetWorld());
+		It;
+		++It)
+	{
+		const AHeistPaintingDisplayCaseActor* DisplayCase = *It;
+		if (!IsValid(DisplayCase))
+		{
+			continue;
+		}
+
+		++CaseCount;
+		RegisteredCount += DisplayCase->IsRegisteredForInspection() ? 1 : 0;
+		ValidCandidateCount += DisplayCase->IsValidInspectionCandidate() ? 1 : 0;
+		ScheduledCount += DisplayCase->GetInspectionScheduleRevision() > 0 ? 1 : 0;
+		PendingDelayCount += DisplayCase->GetInspectionDelayRemaining()
+			> KINDA_SMALL_NUMBER ? 1 : 0;
+		MaximumRegistrationRevision = FMath::Max(
+			MaximumRegistrationRevision,
+			DisplayCase->GetInspectionRegistrationRevision());
+		if (DisplayCase->GetInspectionScheduleRevision() > 0)
+		{
+			if (!ScheduleSummary.IsEmpty())
+			{
+				ScheduleSummary += TEXT(",");
+			}
+			ScheduleSummary += FString::Printf(
+				TEXT("%s:Score=%.2f,Band=%s,Delay=%.2f,Remaining=%.2f,Case=%s,Alert=%s,Rev=%d"),
+				*GetNameSafe(DisplayCase),
+				DisplayCase->GetCommittedForgeryResult().SimilarityScore,
+				*DisplayCase->GetInspectionScoreBand().ToString(),
+				DisplayCase->GetResolvedInspectionDelay(),
+				DisplayCase->GetInspectionDelayRemaining(),
+				*UEnum::GetValueAsString(
+					DisplayCase->GetResolvedInspectionCaseOutcome()),
+				*DisplayCase->GetResolvedInspectionAlertOutcome().ToString(),
+				DisplayCase->GetInspectionScheduleRevision());
+		}
+	}
+
+	int32 GuardCount = 0;
+	int32 ValidSelectionCount = 0;
+	FString SelectionSummary;
+	for (TActorIterator<AHeistGuardAIController> It(
+			PlayerController->GetWorld());
+		It;
+		++It)
+	{
+		const AHeistGuardAIController* GuardController = *It;
+		if (!IsValid(GuardController) || !IsValid(GuardController->GetPawn()))
+		{
+			continue;
+		}
+
+		++GuardCount;
+		const bool bSelectionValid = GuardController->IsInspectionTargetValid();
+		ValidSelectionCount += bSelectionValid ? 1 : 0;
+		if (!SelectionSummary.IsEmpty())
+		{
+			SelectionSummary += TEXT(",");
+		}
+		SelectionSummary += FString::Printf(
+			TEXT("%s->%s@%d"),
+			*GetNameSafe(GuardController->GetPawn()),
+			*GetNameSafe(GuardController->GetInspectionTarget()),
+			GuardController->GetInspectionTargetSelectionRevision());
+	}
+
+	const bool bAuthority = PlayerController->HasAuthority();
+	FString MappingSummary;
+	const float TestScores[] = {95.0f, 80.0f, 60.0f, 40.0f, 20.0f};
+	const float ExpectedDelays[] = {32.0f, 16.0f, 8.0f, 4.0f, 0.0f};
+	const FName ExpectedBands[] = {
+		FName(TEXT("90-100")),
+		FName(TEXT("70-89")),
+		FName(TEXT("50-69")),
+		FName(TEXT("30-49")),
+		FName(TEXT("0-29"))};
+	const FName ExpectedAlertOutcomes[] = {
+		FName(TEXT("Quiet")),
+		FName(TEXT("Suspicious")),
+		FName(TEXT("Searching")),
+		FName(TEXT("Alarmed")),
+		FName(TEXT("Alarmed"))};
+	const EHeistDisplayCaseState ExpectedCaseOutcomes[] = {
+		EHeistDisplayCaseState::Completed,
+		EHeistDisplayCaseState::Suspected,
+		EHeistDisplayCaseState::Suspected,
+		EHeistDisplayCaseState::Alarmed,
+		EHeistDisplayCaseState::Alarmed};
+	bool bMappingPassed = true;
+	for (int32 Index = 0; Index < UE_ARRAY_COUNT(TestScores); ++Index)
+	{
+		float Delay = 0.0f;
+		FName Band;
+		FName AlertOutcome;
+		EHeistDisplayCaseState CaseOutcome = EHeistDisplayCaseState::Failed;
+		const bool bMapped =
+			AHeistPaintingDisplayCaseActor::CalculateInspectionSchedule(
+				TestScores[Index],
+				8.0f,
+				Delay,
+				Band,
+				AlertOutcome,
+				CaseOutcome);
+		bMappingPassed = bMappingPassed
+			&& bMapped
+			&& FMath::IsNearlyEqual(Delay, ExpectedDelays[Index])
+			&& Band == ExpectedBands[Index]
+			&& AlertOutcome == ExpectedAlertOutcomes[Index]
+			&& CaseOutcome == ExpectedCaseOutcomes[Index];
+		if (!MappingSummary.IsEmpty())
+		{
+			MappingSummary += TEXT(",");
+		}
+		MappingSummary += FString::Printf(
+			TEXT("%.0f:%s/%.0f/%s/%s"),
+			TestScores[Index],
+			*Band.ToString(),
+			Delay,
+			*UEnum::GetValueAsString(CaseOutcome),
+			*AlertOutcome.ToString());
+	}
+
+	const bool bRuntimeScheduleValid = ScheduledCount > 0
+		&& ValidCandidateCount <= RegisteredCount
+		&& PendingDelayCount + RegisteredCount <= CaseCount;
+	const bool bPassed = bAuthority
+		&& CaseCount > 0
+		&& GuardCount > 0
+		&& bMappingPassed
+		&& bRuntimeScheduleValid;
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Inspection target dump: Cases=%d Registered=%d ValidCandidates=%d Scheduled=%d PendingDelay=%d RegistrationRevision=%d Guards=%d ValidSelections=%d Selections=%s Schedules=%s MappingBase8={%s} Mapping=%s Authority=%s Result=%s"),
+			CaseCount,
+			RegisteredCount,
+			ValidCandidateCount,
+			ScheduledCount,
+			PendingDelayCount,
+			MaximumRegistrationRevision,
+			GuardCount,
+			ValidSelectionCount,
+			SelectionSummary.IsEmpty() ? TEXT("None") : *SelectionSummary,
+			ScheduleSummary.IsEmpty() ? TEXT("None") : *ScheduleSummary,
+			*MappingSummary,
+			bMappingPassed ? TEXT("PASS") : TEXT("FAIL"),
+			bAuthority ? TEXT("true") : TEXT("false"),
+			bPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+		true,
+		15.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugInspectionBegin(
+	APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	if (!IsValid(PlayerController)
+		|| !PlayerController->HasAuthority()
+		|| !IsValid(PlayerController->GetWorld()))
+	{
+		Message(
+			PlayerController,
+			TEXT("Inspection begin: Authority=false Result=FAIL Reason=ServerOnly"),
+			EHeistDebugLevel::Warning,
+			true);
+		return;
+	}
+
+	int32 GuardCount = 0;
+	int32 StartedCount = 0;
+	for (TActorIterator<AHeistGuardAIController> It(
+		PlayerController->GetWorld());
+		It;
+		++It)
+	{
+		AHeistGuardAIController* GuardController = *It;
+		if (!IsValid(GuardController) || !IsValid(GuardController->GetPawn()))
+		{
+			continue;
+		}
+
+		++GuardCount;
+		StartedCount += GuardController->TryBeginInspection() ? 1 : 0;
+	}
+
+	const bool bPassed = GuardCount > 0 && StartedCount > 0;
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Inspection begin: Guards=%d Started=%d Authority=true Result=%s"),
+			GuardCount,
+			StartedCount,
+			bPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+		true,
+		12.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugInspectionStateDump(
+	APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	if (!IsValid(PlayerController) || !IsValid(PlayerController->GetWorld()))
+	{
+		return;
+	}
+
+	int32 GuardCount = 0;
+	int32 InspectingGuardCount = 0;
+	int32 SuspectedCaseCount = 0;
+	FString GuardSummary;
+	for (TActorIterator<AHeistGuardAIController> It(
+		PlayerController->GetWorld());
+		It;
+		++It)
+	{
+		const AHeistGuardAIController* GuardController = *It;
+		const AHeistGuardCharacter* GuardCharacter = IsValid(GuardController)
+			? Cast<AHeistGuardCharacter>(GuardController->GetPawn())
+			: nullptr;
+		const UHeistGuardStateComponent* GuardStateComponent =
+			IsValid(GuardCharacter)
+				? GuardCharacter->GetGuardStateComponent()
+				: nullptr;
+		if (!IsValid(GuardStateComponent))
+		{
+			continue;
+		}
+
+		++GuardCount;
+		InspectingGuardCount += GuardStateComponent->GetGuardState()
+			== EHeistGuardState::InspectExhibit ? 1 : 0;
+		if (!GuardSummary.IsEmpty())
+		{
+			GuardSummary += TEXT(",");
+		}
+		GuardSummary += FString::Printf(
+			TEXT("%s:%s->%s"),
+			*GetNameSafe(GuardCharacter),
+			*UEnum::GetValueAsString(GuardStateComponent->GetGuardState()),
+			*GetNameSafe(GuardController->GetInspectionTarget()));
+	}
+
+	for (TActorIterator<AHeistPaintingDisplayCaseActor> It(
+		PlayerController->GetWorld());
+		It;
+		++It)
+	{
+		const AHeistPaintingDisplayCaseActor* DisplayCase = *It;
+		if (IsValid(DisplayCase)
+			&& DisplayCase->GetDisplayCaseState()
+				== EHeistDisplayCaseState::Suspected)
+		{
+			++SuspectedCaseCount;
+		}
+	}
+
+	const bool bAuthority = PlayerController->HasAuthority();
+	const bool bPassed = bAuthority
+		&& GuardCount > 0
+		&& (InspectingGuardCount > 0 || SuspectedCaseCount > 0);
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Inspection state dump: Guards=%d Inspecting=%d SuspectedCases=%d GuardStates=%s Authority=%s Result=%s"),
+			GuardCount,
+			InspectingGuardCount,
+			SuspectedCaseCount,
+			GuardSummary.IsEmpty() ? TEXT("None") : *GuardSummary,
+			bAuthority ? TEXT("true") : TEXT("false"),
+			bPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+		true,
+		15.0f);
 #endif
 }
 

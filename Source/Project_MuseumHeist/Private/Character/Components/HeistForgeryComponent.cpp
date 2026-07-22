@@ -40,17 +40,23 @@ namespace
 	constexpr float BrushSizeValidationTolerance = 0.0001f;
 	constexpr int32 OpenCVMorphologyKernelSize = 3;
 	constexpr float OpenCVDistanceTolerancePixels = 10.0f;
-	constexpr float OpenCVStructuralColorWeight = 0.75f;
-	constexpr float OpenCVHistogramColorWeight = 0.25f;
+	constexpr float OpenCVStructuralColorWeight = 0.65f;
+	constexpr float OpenCVHistogramColorWeight = 0.35f;
 	constexpr float OpenCVShapeScoreExponent = 1.15f;
 	constexpr float OpenCVColorScoreExponent = 1.10f;
 	constexpr float PaintCompletenessExponent = 0.65f;
+	constexpr float OpenCVPaletteFidelityBonusWeight = 0.75f;
+	constexpr float OpenCVPaletteFidelityBonusExponent = 3.0f;
 
 	struct FOpenCVForgeryMetrics
 	{
 		float ReferenceCoverage = 0.0f;
 		float SubmittedPrecision = 0.0f;
 		float BidirectionalShapeSimilarity = 0.0f;
+		float MaskPrecision = 0.0f;
+		float MaskRecall = 0.0f;
+		float MaskIntersectionOverUnion = 0.0f;
+		float MaskDiceSimilarity = 0.0f;
 		float StructuralColorSimilarity = 0.0f;
 		float HistogramColorSimilarity = 0.0f;
 		float ColorSimilarity = 0.0f;
@@ -1125,6 +1131,40 @@ namespace
 					/ ShapeSimilarityTotal
 				: 0.0f;
 
+		cv::Mat IntersectionMask;
+		cv::Mat UnionMask;
+		cv::bitwise_and(
+			ReferenceShapeMask,
+			SubmittedShapeMask,
+			IntersectionMask);
+		cv::bitwise_or(
+			ReferenceShapeMask,
+			SubmittedShapeMask,
+			UnionMask);
+		const int32 ReferenceShapePixels =
+			cv::countNonZero(ReferenceShapeMask);
+		const int32 SubmittedShapePixels =
+			cv::countNonZero(SubmittedShapeMask);
+		const int32 IntersectionPixels =
+			cv::countNonZero(IntersectionMask);
+		const int32 UnionPixels = cv::countNonZero(UnionMask);
+		OutMetrics.MaskPrecision = SubmittedShapePixels > 0
+			? static_cast<float>(IntersectionPixels)
+				/ SubmittedShapePixels
+			: 0.0f;
+		OutMetrics.MaskRecall = ReferenceShapePixels > 0
+			? static_cast<float>(IntersectionPixels)
+				/ ReferenceShapePixels
+			: 0.0f;
+		OutMetrics.MaskIntersectionOverUnion = UnionPixels > 0
+			? static_cast<float>(IntersectionPixels) / UnionPixels
+			: 0.0f;
+		const int32 ShapePixelTotal =
+			ReferenceShapePixels + SubmittedShapePixels;
+		OutMetrics.MaskDiceSimilarity = ShapePixelTotal > 0
+			? 2.0f * IntersectionPixels / ShapePixelTotal
+			: 0.0f;
+
 		cv::Mat ReferenceBgr;
 		cv::Mat SubmittedBgr;
 		cv::Mat ReferenceHistogram;
@@ -1141,11 +1181,6 @@ namespace
 			return false;
 		}
 
-		cv::Mat UnionMask;
-		cv::bitwise_or(
-			ReferenceShapeMask,
-			SubmittedShapeMask,
-			UnionMask);
 		std::vector<cv::Point> ForegroundPoints;
 		cv::findNonZero(UnionMask, ForegroundPoints);
 		if (ForegroundPoints.empty())
@@ -1202,10 +1237,12 @@ namespace
 			0.0f,
 			1.0f);
 		OutMetrics.ColorSimilarity = FMath::Clamp(
-			OutMetrics.StructuralColorSimilarity
-				* OpenCVStructuralColorWeight
-				+ OutMetrics.HistogramColorSimilarity
-					* OpenCVHistogramColorWeight,
+			FMath::Pow(
+				OutMetrics.StructuralColorSimilarity,
+				OpenCVStructuralColorWeight)
+				* FMath::Pow(
+					OutMetrics.HistogramColorSimilarity,
+					OpenCVHistogramColorWeight),
 			0.0f,
 			1.0f);
 		return true;
@@ -2328,7 +2365,7 @@ bool UHeistForgeryComponent::TryCalculateAndCommitForgeryScore()
 	UE_LOG(
 		LogHeistNetwork,
 		Log,
-		TEXT("Forgery score committed: Character=%s Case=%s Artifact=%s Template=%s Backend=OpenCV ShapeMetric=BidirectionalDistance ColorMetric=LabSSIMHistogram ScoreCurve=Shape1.15Color1.10 PaintCompletenessExponent=0.65 Score=%.2f Coverage=%.2f MajorShape=%.2f ColorAccuracy=%.2f MissingPenalty=%.2f ExtraPenalty=%.2f TimeoutPenalty=%.2f CompletionTime=%.2f PaintToReference=%.2f PaintCompleteness=%.3f AntiFill=%s Resolution=%dx%d ReferencePixels=%d SubmittedPixels=%d ReferenceRatio=%.4f SubmittedRatio=%.4f Cache=%s ReferenceMs=%.3f OpenCVMs=%.3f TotalMs=%.3f ScoreRevision=%d Authority=true Deterministic=true Result=PASS"),
+		TEXT("Forgery score committed: Character=%s Case=%s Artifact=%s Template=%s Backend=OpenCV ShapeMetric=DistanceDiceGeometric ColorMetric=LabSSIMHistogramGeometric Fusion=WeightedGeometricBottleneck Calibration=OpenCVHistogramBonus0.75x3 ScoreCurve=Shape1.15Color1.10 PaintCompletenessExponent=0.65 Score=%.2f Coverage=%.2f MajorShape=%.2f ColorAccuracy=%.2f MissingPenalty=%.2f ExtraPenalty=%.2f TimeoutPenalty=%.2f CompletionTime=%.2f PaintToReference=%.2f PaintCompleteness=%.3f AntiFill=%s Resolution=%dx%d ReferencePixels=%d SubmittedPixels=%d ReferenceRatio=%.4f SubmittedRatio=%.4f Cache=%s ReferenceMs=%.3f OpenCVMs=%.3f TotalMs=%.3f ScoreRevision=%d Authority=true Deterministic=true Result=PASS"),
 		*GetNameSafe(GetOwner()),
 		*GetNameSafe(ActiveDisplayCase.Get()),
 		*AuthoritativeForgeryResult.ArtifactId.ToString(),
@@ -2634,6 +2671,29 @@ bool UHeistForgeryComponent::CalculateForgeryScore(
 		* 1000.0;
 	OutReferenceMaskPixels = OpenCVMetrics.ReferencePixelCount;
 	OutSubmittedMaskPixels = OpenCVMetrics.SubmittedPixelCount;
+	if (GetOwner()->HasAuthority())
+	{
+		UE_LOG(
+			LogHeistNetwork,
+			Log,
+			TEXT("Forgery OpenCV metrics: Character=%s Template=%s DistanceRecall=%.4f DistancePrecision=%.4f BidirectionalDistance=%.4f MaskPrecision=%.4f MaskRecall=%.4f MaskIoU=%.4f MaskDice=%.4f LabSSIM=%.4f PaletteHistogram=%.4f ColorGeometric=%.4f PaletteBonus=%.4f Result=PASS"),
+			*GetNameSafe(GetOwner()),
+			*ActiveTemplateId.ToString(),
+			OpenCVMetrics.ReferenceCoverage,
+			OpenCVMetrics.SubmittedPrecision,
+			OpenCVMetrics.BidirectionalShapeSimilarity,
+			OpenCVMetrics.MaskPrecision,
+			OpenCVMetrics.MaskRecall,
+			OpenCVMetrics.MaskIntersectionOverUnion,
+			OpenCVMetrics.MaskDiceSimilarity,
+			OpenCVMetrics.StructuralColorSimilarity,
+			OpenCVMetrics.HistogramColorSimilarity,
+			OpenCVMetrics.ColorSimilarity,
+			OpenCVPaletteFidelityBonusWeight
+				* FMath::Pow(
+					OpenCVMetrics.HistogramColorSimilarity,
+					OpenCVPaletteFidelityBonusExponent));
+	}
 #else
 	UE_LOG(
 		LogHeistNetwork,
@@ -2671,16 +2731,28 @@ bool UHeistForgeryComponent::CalculateForgeryScore(
 	float MajorShapeRatio = 0.0f;
 	float ColorSimilarityRatio = 0.0f;
 #if WITH_OPENCV
+	const float ShapeMetricWeightTotal =
+		TemplateCoverageWeight + TemplateMajorShapeWeight;
+	const float RawShapeSimilarity =
+		FMath::Pow(
+			FMath::Clamp(
+				OpenCVMetrics.MaskDiceSimilarity,
+				0.0f,
+				1.0f),
+			TemplateCoverageWeight / ShapeMetricWeightTotal)
+		* FMath::Pow(
+			FMath::Clamp(
+				OpenCVMetrics.BidirectionalShapeSimilarity,
+				0.0f,
+				1.0f),
+			TemplateMajorShapeWeight / ShapeMetricWeightTotal);
 	CoverageRatio = FMath::Pow(
-		FMath::Clamp(OpenCVMetrics.ReferenceCoverage, 0.0f, 1.0f),
+		FMath::Clamp(OpenCVMetrics.MaskRecall, 0.0f, 1.0f),
 		OpenCVShapeScoreExponent);
-	MissingShapeRatio = 1.0f - OpenCVMetrics.ReferenceCoverage;
-	ExtraStrokeRatio = 1.0f - OpenCVMetrics.SubmittedPrecision;
+	MissingShapeRatio = 1.0f - OpenCVMetrics.MaskRecall;
+	ExtraStrokeRatio = 1.0f - OpenCVMetrics.MaskPrecision;
 	MajorShapeRatio = FMath::Pow(
-		FMath::Clamp(
-			OpenCVMetrics.BidirectionalShapeSimilarity,
-			0.0f,
-			1.0f),
+		FMath::Clamp(RawShapeSimilarity, 0.0f, 1.0f),
 		OpenCVShapeScoreExponent);
 	ColorSimilarityRatio = FMath::Pow(
 		FMath::Clamp(OpenCVMetrics.ColorSimilarity, 0.0f, 1.0f),
@@ -2696,24 +2768,22 @@ bool UHeistForgeryComponent::CalculateForgeryScore(
 	const float ExtraStrokePenaltyPoints =
 		ExtraStrokeRatio * TemplateExtraStrokePenaltyWeight * 100.0f;
 	const float TimeoutPenaltyPoints = 0.0f;
-	const float ShapeAccuracyScore = FMath::Clamp(
-		CoveragePoints
-			+ MajorShapePoints
-			- MissingShapePenaltyPoints
-			- ExtraStrokePenaltyPoints,
-		0.0f,
-		100.0f);
 	const float ColorAccuracyScore =
 		ColorSimilarityRatio * 100.0f;
 	const float AccuracyWeightTotal =
 		TemplateShapeAccuracyWeight + TemplateColorAccuracyWeight;
+	const float WeightedGeometricAccuracy =
+		FMath::Pow(
+			MajorShapeRatio,
+			TemplateShapeAccuracyWeight / AccuracyWeightTotal)
+		* FMath::Pow(
+			ColorSimilarityRatio,
+			TemplateColorAccuracyWeight / AccuracyWeightTotal);
+	const float BottleneckSimilarity = FMath::Min(
+		MajorShapeRatio,
+		ColorSimilarityRatio);
 	float FinalScore = FMath::Clamp(
-		ShapeAccuracyScore
-			* TemplateShapeAccuracyWeight
-			/ AccuracyWeightTotal
-			+ ColorAccuracyScore
-			* TemplateColorAccuracyWeight
-			/ AccuracyWeightTotal
+		WeightedGeometricAccuracy * BottleneckSimilarity * 100.0f
 			- TimeoutPenaltyPoints,
 		0.0f,
 		100.0f);
@@ -2724,6 +2794,20 @@ bool UHeistForgeryComponent::CalculateForgeryScore(
 		FMath::Clamp(PaintToReferenceRatio, 0.0f, 1.0f),
 		PaintCompletenessExponent);
 	FinalScore *= PaintCompletenessFactor;
+#if WITH_OPENCV
+	const float PaletteFidelityBonus =
+		OpenCVPaletteFidelityBonusWeight
+		* FMath::Pow(
+			FMath::Clamp(
+				OpenCVMetrics.HistogramColorSimilarity,
+				0.0f,
+				1.0f),
+			OpenCVPaletteFidelityBonusExponent);
+	FinalScore = FMath::Lerp(
+		FinalScore,
+		100.0f,
+		PaletteFidelityBonus);
+#endif
 	const bool bAntiFillTriggered =
 		PaintToReferenceRatio > TemplateMaximumPaintToReferenceRatio;
 	if (bAntiFillTriggered)
@@ -2779,12 +2863,14 @@ bool UHeistForgeryComponent::RunOpenCVScoringSelfTestForDebug(
 	TArray<uint8> ExactPaletteMap;
 	TArray<uint8> ShiftedPaletteMap;
 	TArray<uint8> WrongColorPaletteMap;
+	TArray<uint8> SingleColorPaletteMap;
 	TArray<uint8> FilledPaletteMap;
 	ReferenceMask.Init(0, PixelCount);
 	ReferencePaletteMap.Init(EmptyPaletteIndex, PixelCount);
 	ExactPaletteMap.Init(EmptyPaletteIndex, PixelCount);
 	ShiftedPaletteMap.Init(EmptyPaletteIndex, PixelCount);
 	WrongColorPaletteMap.Init(EmptyPaletteIndex, PixelCount);
+	SingleColorPaletteMap.Init(EmptyPaletteIndex, PixelCount);
 	FilledPaletteMap.Init(0, PixelCount);
 
 	constexpr int32 ShapeMinimum = 32;
@@ -2803,6 +2889,7 @@ bool UHeistForgeryComponent::RunOpenCVScoringSelfTestForDebug(
 			ExactPaletteMap[PixelIndex] = PaletteIndex;
 			WrongColorPaletteMap[PixelIndex] =
 				PaletteIndex == 0 ? 1 : 0;
+			SingleColorPaletteMap[PixelIndex] = 0;
 
 			const int32 ShiftedX = X + ShiftPixels;
 			if (ShiftedX < ForgeryScoreGridResolution)
@@ -2821,6 +2908,7 @@ bool UHeistForgeryComponent::RunOpenCVScoringSelfTestForDebug(
 	FOpenCVForgeryMetrics ExactMetrics;
 	FOpenCVForgeryMetrics ShiftedMetrics;
 	FOpenCVForgeryMetrics WrongColorMetrics;
+	FOpenCVForgeryMetrics SingleColorMetrics;
 	FOpenCVForgeryMetrics FilledMetrics;
 	const bool bCalculated =
 		CalculateOpenCVForgeryMetrics(
@@ -2844,6 +2932,12 @@ bool UHeistForgeryComponent::RunOpenCVScoringSelfTestForDebug(
 		&& CalculateOpenCVForgeryMetrics(
 			ReferenceMask,
 			ReferencePaletteMap,
+			SingleColorPaletteMap,
+			TestPalette,
+			SingleColorMetrics)
+		&& CalculateOpenCVForgeryMetrics(
+			ReferenceMask,
+			ReferencePaletteMap,
 			FilledPaletteMap,
 			TestPalette,
 			FilledMetrics);
@@ -2851,29 +2945,101 @@ bool UHeistForgeryComponent::RunOpenCVScoringSelfTestForDebug(
 		? static_cast<float>(FilledMetrics.SubmittedPixelCount)
 			/ ExactMetrics.ReferencePixelCount
 		: 0.0f;
+	const auto CalculateOpenCVOnlyScore = [](
+		const FOpenCVForgeryMetrics& Metrics)
+	{
+		constexpr float CoverageWeight = 0.45f;
+		constexpr float DistanceWeight = 0.55f;
+		constexpr float ShapeWeight = 0.65f;
+		constexpr float ColorWeight = 0.35f;
+		const float RawShape =
+			FMath::Pow(Metrics.MaskDiceSimilarity, CoverageWeight)
+			* FMath::Pow(
+				Metrics.BidirectionalShapeSimilarity,
+				DistanceWeight);
+		const float Shape = FMath::Pow(
+			RawShape,
+			OpenCVShapeScoreExponent);
+		const float Color = FMath::Pow(
+			Metrics.ColorSimilarity,
+			OpenCVColorScoreExponent);
+		const float WeightedGeometric =
+			FMath::Pow(Shape, ShapeWeight)
+			* FMath::Pow(Color, ColorWeight);
+		const float BaseScore = 100.0f
+			* WeightedGeometric
+			* FMath::Min(Shape, Color);
+		const float PaletteFidelityBonus =
+			OpenCVPaletteFidelityBonusWeight
+			* FMath::Pow(
+				Metrics.HistogramColorSimilarity,
+				OpenCVPaletteFidelityBonusExponent);
+		return FMath::Lerp(
+			BaseScore,
+			100.0f,
+			PaletteFidelityBonus);
+	};
+	const float ExactScore = bCalculated
+		? CalculateOpenCVOnlyScore(ExactMetrics)
+		: 0.0f;
+	const float ShiftedScore = bCalculated
+		? CalculateOpenCVOnlyScore(ShiftedMetrics)
+		: 100.0f;
+	const float WrongColorScore = bCalculated
+		? CalculateOpenCVOnlyScore(WrongColorMetrics)
+		: 100.0f;
+	const float SingleColorScore = bCalculated
+		? CalculateOpenCVOnlyScore(SingleColorMetrics)
+		: 100.0f;
+	const float FilledScore = bCalculated
+		? FMath::Min(
+			CalculateOpenCVOnlyScore(FilledMetrics),
+			20.0f)
+		: 100.0f;
 	const bool bContractPassed = bCalculated
 		&& ExactMetrics.BidirectionalShapeSimilarity >= 0.999f
+		&& ExactMetrics.MaskDiceSimilarity >= 0.999f
 		&& ExactMetrics.ColorSimilarity >= 0.999f
+		&& ExactScore >= 99.9f
 		&& ShiftedMetrics.BidirectionalShapeSimilarity
 			< ExactMetrics.BidirectionalShapeSimilarity
 		&& ShiftedMetrics.BidirectionalShapeSimilarity > 0.0f
+		&& ShiftedMetrics.MaskDiceSimilarity
+			< ExactMetrics.MaskDiceSimilarity
+		&& ShiftedScore < ExactScore
 		&& WrongColorMetrics.BidirectionalShapeSimilarity >= 0.999f
 		&& WrongColorMetrics.ColorSimilarity
 			< ExactMetrics.ColorSimilarity
-		&& FilledMetrics.SubmittedPrecision
-			< ExactMetrics.SubmittedPrecision
-		&& FilledAreaRatio > 1.0f;
+		&& WrongColorScore < ExactScore
+		&& SingleColorMetrics.HistogramColorSimilarity
+			< ExactMetrics.HistogramColorSimilarity
+		&& SingleColorScore < 60.0f
+		&& FilledMetrics.MaskPrecision
+			< ExactMetrics.MaskPrecision
+		&& FilledMetrics.MaskDiceSimilarity
+			< ExactMetrics.MaskDiceSimilarity
+		&& FilledAreaRatio > 1.0f
+		&& FilledScore <= 30.0f;
 
 	OutSummary = FString::Printf(
-		TEXT("Calculated=%s ExactShape=%.4f ExactColor=%.4f ShiftedShape=%.4f WrongColorShape=%.4f WrongColor=%.4f FillPrecision=%.4f FillAreaRatio=%.2f Contract=%s"),
+		TEXT("Calculated=%s ExactDistance=%.4f ExactDice=%.4f ExactColor=%.4f ExactScore=%.2f ShiftedDistance=%.4f ShiftedDice=%.4f ShiftedScore=%.2f WrongColor=%.4f WrongColorScore=%.2f SingleHistogram=%.4f SingleColor=%.4f SingleScore=%.2f FillPrecision=%.4f FillDice=%.4f FillAreaRatio=%.2f FillScore=%.2f Contract=%s"),
 		bCalculated ? TEXT("true") : TEXT("false"),
 		ExactMetrics.BidirectionalShapeSimilarity,
+		ExactMetrics.MaskDiceSimilarity,
 		ExactMetrics.ColorSimilarity,
+		ExactScore,
 		ShiftedMetrics.BidirectionalShapeSimilarity,
-		WrongColorMetrics.BidirectionalShapeSimilarity,
+		ShiftedMetrics.MaskDiceSimilarity,
+		ShiftedScore,
 		WrongColorMetrics.ColorSimilarity,
-		FilledMetrics.SubmittedPrecision,
+		WrongColorScore,
+		SingleColorMetrics.HistogramColorSimilarity,
+		SingleColorMetrics.ColorSimilarity,
+		SingleColorScore,
+		FilledMetrics.MaskPrecision,
+		FilledMetrics.MaskDiceSimilarity,
 		FilledAreaRatio,
+		FilledScore,
 		bContractPassed ? TEXT("PASS") : TEXT("FAIL"));
 	return bContractPassed;
 #else
