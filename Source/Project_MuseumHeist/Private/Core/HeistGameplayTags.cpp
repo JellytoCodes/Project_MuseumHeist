@@ -39,12 +39,8 @@ void FHeistGameplayTags::InitializeNativeGameplayTags()
 	HEIST_ADD_NATIVE_TAG(Item_Loot_AncientSword, "Item.Loot.AncientSword", "Ancient Sword loot.");
 	HEIST_ADD_NATIVE_TAG(Item_Loot_GoldenVase, "Item.Loot.GoldenVase", "Deferred Golden Vase loot.");
 	HEIST_ADD_NATIVE_TAG(Item_Loot_JewelNecklace, "Item.Loot.JewelNecklace", "Deferred Jewel Necklace loot.");
-	HEIST_ADD_NATIVE_TAG(Item_Trap, "Item.Trap", "Trap item category.");
-	HEIST_ADD_NATIVE_TAG(Item_Trap_Glue, "Item.Trap.Glue", "Glue Trap item.");
-	HEIST_ADD_NATIVE_TAG(Item_Trap_Noise, "Item.Trap.Noise", "Deferred Noise Trap item.");
 	HEIST_ADD_NATIVE_TAG(Item_Throwable, "Item.Throwable", "Throwable item category.");
 	HEIST_ADD_NATIVE_TAG(Item_Throwable_Coin, "Item.Throwable.Coin", "Coin throwable item.");
-	HEIST_ADD_NATIVE_TAG(Item_Throwable_Smoke, "Item.Throwable.Smoke", "Smoke throwable item.");
 
 	HEIST_ADD_NATIVE_TAG(Event_Loot_PickedUp, "Event.Loot.PickedUp", "Loot pickup completed.");
 	HEIST_ADD_NATIVE_TAG(Event_Loot_Dropped, "Event.Loot.Dropped", "Loot was dropped.");

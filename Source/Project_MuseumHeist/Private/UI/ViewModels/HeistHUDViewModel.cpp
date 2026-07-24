@@ -112,8 +112,6 @@ void UHeistHUDViewModel::RefreshPresentationState()
 	UE_MVVM_SET_PROPERTY_VALUE(bEscapePhaseOpen, IsValid(GameState) && GameState->IsEscapePhaseOpen());
 	UE_MVVM_SET_PROPERTY_VALUE(bEscapeCastActive, IsValid(ActionComponent) && ActionComponent->IsEscapeCastActive());
 	UE_MVVM_SET_PROPERTY_VALUE(EscapeCastEndServerTime, IsValid(ActionComponent) ? ActionComponent->GetEscapeCastEndServerTime() : 0.0f);
-	UE_MVVM_SET_PROPERTY_VALUE(bTrapPlacementCastActive, IsValid(ActionComponent) && ActionComponent->IsTrapPlacementCastActive());
-	UE_MVVM_SET_PROPERTY_VALUE(TrapPlacementCastEndServerTime, IsValid(ActionComponent) ? ActionComponent->GetTrapPlacementCastEndServerTime() : 0.0f);
 	const bool bLocalObservationCastActive = IsValid(ActionComponent) && ActionComponent->IsObservationCastActive();
 	const FName ActiveObjectiveArtifactId = IsValid(GameState) ? GameState->GetActiveTargetArtifactId() : NAME_None;
 	const FName ActiveObjectiveCaseId = IsValid(GameState) ? GameState->GetActiveTargetCaseId() : NAME_None;

@@ -18,8 +18,6 @@
 namespace
 {
 const FName CoinItemId(TEXT("Throwable_Coin"));
-const FName SmokeItemId(TEXT("Throwable_Smoke"));
-const FName GlueTrapItemId(TEXT("Trap_Glue"));
 }
 
 #pragma endregion
@@ -541,16 +539,6 @@ EHeistQuickSlotType UHeistInventoryComponent::ResolveQuickSlotType(const FName I
 	if (ItemId == CoinItemId)
 	{
 		return EHeistQuickSlotType::Coin;
-	}
-
-	if (ItemId == SmokeItemId)
-	{
-		return EHeistQuickSlotType::SmokeGrenade;
-	}
-
-	if (ItemId == GlueTrapItemId)
-	{
-		return EHeistQuickSlotType::GlueTrap;
 	}
 
 	return EHeistQuickSlotType::None;

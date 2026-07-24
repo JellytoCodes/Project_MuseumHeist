@@ -503,7 +503,7 @@ bool AHeistGameMode::TryGetUsableItemDefinition(const FName ItemId, FHeistUsable
 	}
 
 	FHeistItemDataRow ItemDefinition;
-	if (!TryGetItemDefinition(ItemId, ItemDefinition) || (ItemDefinition.ItemType != EHeistItemType::Trap && ItemDefinition.ItemType != EHeistItemType::Throwable))
+	if (!TryGetItemDefinition(ItemId, ItemDefinition) || (ItemDefinition.ItemType != EHeistItemType::Throwable))
 	{
 		return false;
 	}
@@ -516,8 +516,7 @@ bool AHeistGameMode::TryGetUsableItemDefinition(const FName ItemId, FHeistUsable
 	}
 
 	const FHeistUsableItemDataRow* UsableItemDefinition = UsableItemDataTable->FindRow<FHeistUsableItemDataRow>(ItemId, TEXT("AHeistGameMode::TryGetUsableItemDefinition"), false);
-	const bool bUseTypeMatchesItemType = UsableItemDefinition != nullptr && ((ItemDefinition.ItemType == EHeistItemType::Throwable && UsableItemDefinition->UseType == EHeistUseType::Throw) ||
-																			 (ItemDefinition.ItemType == EHeistItemType::Trap && UsableItemDefinition->UseType == EHeistUseType::PlaceTrap));
+	const bool bUseTypeMatchesItemType = UsableItemDefinition != nullptr && ((ItemDefinition.ItemType == EHeistItemType::Throwable && UsableItemDefinition->UseType == EHeistUseType::Throw));
 	if (UsableItemDefinition == nullptr || UsableItemDefinition->ItemId != ItemId || !bUseTypeMatchesItemType || UsableItemDefinition->TargetType == EHeistTargetType::None ||
 		UsableItemDefinition->Cooldown < 0.0f || UsableItemDefinition->CastTime < 0.0f || UsableItemDefinition->Duration < 0.0f || UsableItemDefinition->ProjectileSpeed < 0.0f ||
 		(ItemDefinition.bAvailableInV1 && UsableItemDefinition->SpawnedActorClass.IsNull()))
@@ -713,7 +712,7 @@ void AHeistGameMode::ValidateItemDataTables() const
 			FHeistLootDataRow LootDefinition;
 			bValidExtension = bHasLootExtension && !bHasUsableExtension && TryGetLootDefinition(RowName, LootDefinition);
 		}
-		else if (ItemDefinition.ItemType == EHeistItemType::Trap || ItemDefinition.ItemType == EHeistItemType::Throwable)
+		else if (ItemDefinition.ItemType == EHeistItemType::Throwable)
 		{
 			FHeistUsableItemDataRow UsableItemDefinition;
 			bValidExtension = !bHasLootExtension && bHasUsableExtension && TryGetUsableItemDefinition(RowName, UsableItemDefinition);

@@ -81,10 +81,6 @@ FText UHeistQuickSlotViewModel::GetKeyLabel(const EHeistQuickSlotType SlotType)
 	{
 	case EHeistQuickSlotType::Coin:
 		return NSLOCTEXT("HeistQuickSlot", "CoinKey", "Q");
-	case EHeistQuickSlotType::SmokeGrenade:
-		return NSLOCTEXT("HeistQuickSlot", "SmokeKey", "E");
-	case EHeistQuickSlotType::GlueTrap:
-		return NSLOCTEXT("HeistQuickSlot", "GlueKey", "R");
 	default:
 		return FText::GetEmpty();
 	}

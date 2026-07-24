@@ -5,6 +5,7 @@
 
 #include "HeistActionComponent.generated.h"
 
+class AController;
 class AHeistPlayerCharacter;
 class AHeistPaintingDisplayCaseActor;
 class AHeistTrapActor;
@@ -119,54 +120,6 @@ class PROJECT_MUSEUMHEIST_API UHeistActionComponent : public UActorComponent
 
 #pragma endregion
 
-#pragma region TrapPlacementCast
-
-  public:
-	bool TryBeginTrapPlacementRequest(FName SourceItemId, int32 SourceInstanceId, const FVector& TargetWorldLocation, float CastDurationSeconds, float EffectDurationSeconds,
-									  TSubclassOf<AHeistTrapActor> TrapActorClass, bool bConsumeSourceItem);
-	bool IsTrapPlacementCastActive() const;
-	float GetTrapPlacementCastEndServerTime() const;
-	FHeistTrapPlacementCastCompleted& GetTrapPlacementCastCompletedDelegate();
-
-  private:
-	UPROPERTY(ReplicatedUsing = OnRep_TrapPlacementCastActive, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Trap", meta = (AllowPrivateAccess = "true"))
-	bool bTrapPlacementCastActive = false;
-
-	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Trap", meta = (AllowPrivateAccess = "true"))
-	float TrapPlacementCastEndServerTime = 0.0f;
-
-	UPROPERTY(Transient)
-	FName PendingTrapItemId = NAME_None;
-
-	UPROPERTY(Transient)
-	int32 PendingTrapSourceInstanceId = INDEX_NONE;
-
-	UPROPERTY(Transient)
-	FVector PendingTrapTargetWorldLocation = FVector::ZeroVector;
-
-	UPROPERTY(Transient)
-	float PendingTrapEffectDurationSeconds = 0.0f;
-
-	UPROPERTY(Transient)
-	TSubclassOf<AHeistTrapActor> PendingTrapActorClass;
-
-	UPROPERTY(Transient)
-	bool bPendingTrapConsumesSourceItem = false;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Trap", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "cm"))
-	float TrapPlacementMovementCancelDistance = 5.0f;
-
-	UPROPERTY(Transient)
-	FVector TrapPlacementCastStartLocation = FVector::ZeroVector;
-
-	FTimerHandle TrapPlacementCastTimerHandle;
-	FHeistTrapPlacementCastCompleted TrapPlacementCastCompletedDelegate;
-
-	UFUNCTION()
-	void OnRep_TrapPlacementCastActive();
-
-#pragma endregion
-
 #pragma region Replication
 
   public:
@@ -179,16 +132,12 @@ class PROJECT_MUSEUMHEIST_API UHeistActionComponent : public UActorComponent
   private:
 	float ResolveEscapeCastDurationSeconds() const;
 	bool HasMovedBeyondEscapeCastTolerance() const;
-	bool HasMovedBeyondTrapPlacementCastTolerance() const;
 	bool HasMovedBeyondObservationCastTolerance() const;
 	void HandleEscapeCastTimerElapsed();
-	void HandleTrapPlacementCastTimerElapsed();
 	void HandleObservationCastTimerElapsed();
 	void CancelEscapeCast(const TCHAR* Reason);
-	void CancelTrapPlacementCast(const TCHAR* Reason);
 	void CancelObservationCast(const TCHAR* Reason);
 	void ClearEscapeCastState();
-	void ClearTrapPlacementCastState();
 	void ClearObservationCastState();
 
 #pragma endregion

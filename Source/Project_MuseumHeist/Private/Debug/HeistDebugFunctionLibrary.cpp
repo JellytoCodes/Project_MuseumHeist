@@ -138,10 +138,6 @@ const TCHAR* ToQuickSlotText(const EHeistQuickSlotType SlotType)
 	{
 	case EHeistQuickSlotType::Coin:
 		return TEXT("Coin");
-	case EHeistQuickSlotType::SmokeGrenade:
-		return TEXT("SmokeGrenade");
-	case EHeistQuickSlotType::GlueTrap:
-		return TEXT("GlueTrap");
 	default:
 		return TEXT("None");
 	}
@@ -168,18 +164,6 @@ bool TryParseQuickSlotName(const FString& SlotName, EHeistQuickSlotType& OutSlot
 	if (NormalizedSlotName == TEXT("coin") || NormalizedSlotName == TEXT("q"))
 	{
 		OutSlotType = EHeistQuickSlotType::Coin;
-		return true;
-	}
-
-	if (NormalizedSlotName == TEXT("smoke") || NormalizedSlotName == TEXT("smokegrenade") || NormalizedSlotName == TEXT("e"))
-	{
-		OutSlotType = EHeistQuickSlotType::SmokeGrenade;
-		return true;
-	}
-
-	if (NormalizedSlotName == TEXT("glue") || NormalizedSlotName == TEXT("gluetrap") || NormalizedSlotName == TEXT("r"))
-	{
-		OutSlotType = EHeistQuickSlotType::GlueTrap;
 		return true;
 	}
 
@@ -3149,98 +3133,6 @@ void UHeistDebugFunctionLibrary::DebugThrowableProjectileImpact(const UObject* W
 #else
 	Message(WorldContextObject, FString::Printf(TEXT("Throwable projectile impact: Projectile=%s OtherActor=%s ItemId=%s Location=(%.1f,%.1f,%.1f)"), *GetNameSafe(Projectile),
 												*GetNameSafe(OtherActor), *ItemId.ToString(), ImpactLocation.X, ImpactLocation.Y, ImpactLocation.Z));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugSmokeCloudSpawned(const UObject* WorldContextObject, const UObject* Projectile, const UObject* SmokeCloud, const FName ItemId, const FVector& WorldLocation,
-														const float Radius, const float DurationSeconds)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(WorldContextObject, FString::Printf(TEXT("Smoke cloud spawned: Projectile=%s SmokeCloud=%s ItemId=%s Location=(%.1f,%.1f,%.1f) Radius=%.1f Duration=%.2f BlocksAISight=true"),
-												*GetNameSafe(Projectile), *GetNameSafe(SmokeCloud), *ItemId.ToString(), WorldLocation.X, WorldLocation.Y, WorldLocation.Z, Radius, DurationSeconds));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugSmokeCloudStateReplicated(const UObject* WorldContextObject, const UObject* SmokeCloud, const float Radius, const float EndServerTime, const bool bBlocksAISight)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(WorldContextObject, FString::Printf(TEXT("Smoke cloud state replicated: SmokeCloud=%s Radius=%.1f EndServerTime=%.2f BlocksAISight=%s"), *GetNameSafe(SmokeCloud), Radius, EndServerTime,
-												bBlocksAISight ? TEXT("true") : TEXT("false")));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugSmokeCloudOverlapChanged(const UObject* WorldContextObject, const UObject* SmokeCloud, const UObject* Actor, const bool bInsideSmoke,
-															   const float RemainingSeconds)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(WorldContextObject, FString::Printf(TEXT("Smoke cloud overlap changed: SmokeCloud=%s Actor=%s InSmoke=%s Remaining=%.2f"), *GetNameSafe(SmokeCloud), *GetNameSafe(Actor),
-												bInsideSmoke ? TEXT("true") : TEXT("false"), RemainingSeconds));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugTrapPlacementCastStarted(const UObject* WorldContextObject, const UObject* Character, const FName ItemId, const FVector& TargetWorldLocation,
-															   const float DurationSeconds, const float EndServerTime)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(WorldContextObject, FString::Printf(TEXT("Trap placement cast started: Character=%s ItemId=%s Target=(%.1f,%.1f,%.1f) Duration=%.2f EndServerTime=%.2f"), *GetNameSafe(Character),
-												*ItemId.ToString(), TargetWorldLocation.X, TargetWorldLocation.Y, TargetWorldLocation.Z, DurationSeconds, EndServerTime));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugTrapPlacementCastStateReplicated(const UObject* WorldContextObject, const UObject* Character, const bool bIsActive, const float EndServerTime)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(WorldContextObject, FString::Printf(TEXT("Trap placement cast state replicated: Character=%s IsActive=%s EndServerTime=%.2f"), *GetNameSafe(Character),
-												bIsActive ? TEXT("true") : TEXT("false"), EndServerTime));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugTrapPlacementCastCancelled(const UObject* WorldContextObject, const FString& CharacterName, const FName ItemId, const TCHAR* Reason)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(WorldContextObject, FString::Printf(TEXT("Trap placement cast cancelled: Character=%s ItemId=%s Reason=%s"), *CharacterName, *ItemId.ToString(), Reason), EHeistDebugLevel::Warning);
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugTrapPlaced(const UObject* WorldContextObject, const UObject* Character, const UObject* TrapActor, const FName ItemId, const FVector& WorldLocation)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(WorldContextObject, FString::Printf(TEXT("Trap placed: Character=%s Trap=%s ItemId=%s Location=(%.1f,%.1f,%.1f)"), *GetNameSafe(Character), *GetNameSafe(TrapActor), *ItemId.ToString(),
-												WorldLocation.X, WorldLocation.Y, WorldLocation.Z));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugTrapTriggered(const UObject* WorldContextObject, const UObject* TrapActor, const UObject* TriggeringActor, const FName ItemId, const float DurationSeconds)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(WorldContextObject,
-			FString::Printf(TEXT("Trap triggered: Trap=%s TriggeringActor=%s ItemId=%s Duration=%.2f"), *GetNameSafe(TrapActor), *GetNameSafe(TriggeringActor), *ItemId.ToString(), DurationSeconds));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugTrapTriggerRejected(const UObject* WorldContextObject, const UObject* TrapActor, const UObject* TriggeringActor, const TCHAR* Reason)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(WorldContextObject, FString::Printf(TEXT("Trap trigger rejected: Trap=%s TriggeringActor=%s Reason=%s"), *GetNameSafe(TrapActor), *GetNameSafe(TriggeringActor), Reason),
-			EHeistDebugLevel::Warning);
 #endif
 }
 

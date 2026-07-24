@@ -78,22 +78,13 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 	static void DebugThrowableProjectileSpawned(const UObject* WorldContextObject, const UObject* Character, const UObject* Projectile, FName ItemId, const FVector& TargetWorldLocation,
 												const FVector& LaunchDirection, float ProjectileSpeed, bool bDebugBypassInventory);
 	static void DebugThrowableProjectileImpact(const UObject* WorldContextObject, const UObject* Projectile, const UObject* OtherActor, FName ItemId, const FVector& ImpactLocation);
-	static void DebugSmokeCloudSpawned(const UObject* WorldContextObject, const UObject* Projectile, const UObject* SmokeCloud, FName ItemId, const FVector& WorldLocation, float Radius,
-									   float DurationSeconds);
-	static void DebugSmokeCloudStateReplicated(const UObject* WorldContextObject, const UObject* SmokeCloud, float Radius, float EndServerTime, bool bBlocksAISight);
-	static void DebugSmokeCloudOverlapChanged(const UObject* WorldContextObject, const UObject* SmokeCloud, const UObject* Actor, bool bInsideSmoke, float RemainingSeconds);
+
 	static void DebugRareLootTimersStarted(const UObject* WorldContextObject, const TArray<float>& EventTimes, float WarningLeadTime);
 	static void DebugRareLootWarningStarted(const UObject* WorldContextObject, int32 EventIndex, FName ItemId, float SpawnServerTime);
 	static void DebugRareLootSpawned(const UObject* WorldContextObject, int32 EventIndex, const UObject* LootActor, const UObject* SpawnPoint, FName ItemId, const FVector& WorldLocation);
 	static void DebugRareLootEventFailed(const UObject* WorldContextObject, int32 EventIndex, const TCHAR* Reason);
 	static void DebugRareLootPickedUp(const UObject* WorldContextObject, int32 EventIndex, const UObject* LootActor, const UObject* Requester, FName ItemId);
-	static void DebugTrapPlacementCastStarted(const UObject* WorldContextObject, const UObject* Character, FName ItemId, const FVector& TargetWorldLocation, float DurationSeconds,
-											  float EndServerTime);
-	static void DebugTrapPlacementCastStateReplicated(const UObject* WorldContextObject, const UObject* Character, bool bIsActive, float EndServerTime);
-	static void DebugTrapPlacementCastCancelled(const UObject* WorldContextObject, const FString& CharacterName, FName ItemId, const TCHAR* Reason);
-	static void DebugTrapPlaced(const UObject* WorldContextObject, const UObject* Character, const UObject* TrapActor, FName ItemId, const FVector& WorldLocation);
-	static void DebugTrapTriggered(const UObject* WorldContextObject, const UObject* TrapActor, const UObject* TriggeringActor, FName ItemId, float DurationSeconds);
-	static void DebugTrapTriggerRejected(const UObject* WorldContextObject, const UObject* TrapActor, const UObject* TriggeringActor, const TCHAR* Reason);
+
 	static void DebugGuardStunApplied(const UObject* WorldContextObject, const UObject* GuardActor, float DurationSeconds);
 	static void DebugGuardStunCleared(const UObject* WorldContextObject, const UObject* GuardActor, EHeistGuardState NewState);
 	static void DebugGuardStateChanged(const UObject* WorldContextObject, const UObject* GuardActor, EHeistGuardState PreviousState, EHeistGuardState NewState, float StateEndServerTime);

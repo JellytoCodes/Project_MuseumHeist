@@ -31,12 +31,8 @@ struct PROJECT_MUSEUMHEIST_API FHeistGameplayTags
 	FGameplayTag Item_Loot_AncientSword;
 	FGameplayTag Item_Loot_GoldenVase;
 	FGameplayTag Item_Loot_JewelNecklace;
-	FGameplayTag Item_Trap;
-	FGameplayTag Item_Trap_Glue;
-	FGameplayTag Item_Trap_Noise;
 	FGameplayTag Item_Throwable;
 	FGameplayTag Item_Throwable_Coin;
-	FGameplayTag Item_Throwable_Smoke;
 
 	FGameplayTag Event_Loot_PickedUp;
 	FGameplayTag Event_Loot_Dropped;

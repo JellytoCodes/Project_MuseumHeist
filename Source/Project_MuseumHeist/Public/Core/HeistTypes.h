@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
+#include "Engine/NetSerialization.h"
 
 #include "HeistTypes.generated.h"
 
@@ -203,7 +204,6 @@ enum class EHeistItemType : uint8
 {
 	None,
 	Loot,
-	Trap,
 	Throwable,
 	KeyItem
 };
@@ -226,7 +226,6 @@ enum class EHeistUseType : uint8
 {
 	None,
 	Throw,
-	PlaceTrap,
 	DeployArea,
 	Consume
 };
@@ -367,6 +366,7 @@ UENUM(BlueprintType)
 enum class EHeistZoneId : uint8
 {
 	None,
+
 	ZoneA,
 	ZoneB,
 	ZoneC,
@@ -381,9 +381,8 @@ UENUM(BlueprintType)
 enum class EHeistQuickSlotType : uint8
 {
 	None,
-	Coin,
-	SmokeGrenade,
-	GlueTrap
+
+	Coin
 };
 
 #pragma endregion
