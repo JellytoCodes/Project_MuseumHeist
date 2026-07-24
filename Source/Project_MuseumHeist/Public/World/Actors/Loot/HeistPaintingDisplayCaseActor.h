@@ -251,7 +251,7 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 	FName GetInspectionScoreBand() const;
 
 	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Inspection")
-	FName GetResolvedInspectionAlertOutcome() const;
+	EHeistAlertLevel GetResolvedInspectionAlertOutcome() const;
 
 	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Inspection")
 	EHeistDisplayCaseState GetResolvedInspectionCaseOutcome() const;
@@ -259,7 +259,8 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Inspection")
 	int32 GetInspectionScheduleRevision() const;
 
-	static bool CalculateInspectionSchedule(float SimilarityScore, float BaseInspectionDelay, float& OutDelay, FName& OutScoreBand, FName& OutAlertOutcome, EHeistDisplayCaseState& OutCaseOutcome);
+	static bool CalculateInspectionSchedule(float SimilarityScore, float BaseInspectionDelay, float& OutDelay, FName& OutScoreBand, EHeistAlertLevel& OutAlertOutcome,
+											EHeistDisplayCaseState& OutCaseOutcome);
 
 	bool TryBeginInspection(AActor* InspectingGuard);
 	bool InterruptInspection(AActor* InspectingGuard, FName Reason);
@@ -293,7 +294,7 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 	FName InspectionScoreBand = NAME_None;
 
 	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Inspection", meta = (AllowPrivateAccess = "true"))
-	FName ResolvedInspectionAlertOutcome = NAME_None;
+	EHeistAlertLevel ResolvedInspectionAlertOutcome = EHeistAlertLevel::Quiet;
 
 	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Inspection", meta = (AllowPrivateAccess = "true"))
 	EHeistDisplayCaseState ResolvedInspectionCaseOutcome = EHeistDisplayCaseState::Suspected;

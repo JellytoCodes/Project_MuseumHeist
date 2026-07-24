@@ -53,20 +53,6 @@ void ResetMove(FHeistGuardStateTreeTaskInstanceData& InstanceData)
 	InstanceData.bMoveSucceeded = false;
 }
 
-const TCHAR* GetMoveRequestResultText(const FHeistGuardStateTreeTaskInstanceData& InstanceData)
-{
-	switch (static_cast<EPathFollowingRequestResult::Type>(InstanceData.RequestResult))
-	{
-	case EPathFollowingRequestResult::RequestSuccessful:
-		return TEXT("RequestSuccessful");
-	case EPathFollowingRequestResult::AlreadyAtGoal:
-		return TEXT("AlreadyAtGoal");
-	case EPathFollowingRequestResult::Failed:
-	default:
-		return TEXT("Failed");
-	}
-}
-
 bool StartMove(FHeistGuardStateTreeTaskInstanceData& InstanceData, AHeistGuardAIController& Controller, AActor* TargetActor, const FVector& Destination, const float AcceptanceRadius)
 {
 	Controller.StopMovement();
@@ -106,18 +92,23 @@ bool StartMove(FHeistGuardStateTreeTaskInstanceData& InstanceData, AHeistGuardAI
 	return MoveResult.Code != EPathFollowingRequestResult::Failed;
 }
 
-void DebugMoveRequest(AHeistGuardAIController& Controller, const EHeistGuardState GuardState, const FVector& Destination, const FHeistGuardStateTreeTaskInstanceData& InstanceData,
-					  const int32 WaypointIndex = INDEX_NONE, const int32 WaypointCount = 0)
-{
-	UHeistDebugFunctionLibrary::DebugGuardMovement(&Controller, ResolveGuardCharacter(&Controller), GuardState, TEXT("StateTreeRequested"), Destination, WaypointIndex, WaypointCount,
-												   GetMoveRequestResultText(InstanceData));
-}
-
 bool StartPatrolMove(FHeistGuardStateTreeTaskInstanceData& InstanceData, AHeistGuardAIController& Controller)
 {
 	AHeistGuardCharacter* GuardCharacter = ResolveGuardCharacter(&Controller);
+	if (!IsValid(GuardCharacter))
+	{
+		return false;
+	}
+
+	AActor* ExitSurveillanceTarget = nullptr;
+	float ExitSurveillanceAcceptanceRadius = 0.0f;
+	if (Controller.TryGetAlertExitSurveillanceTarget(ExitSurveillanceTarget, ExitSurveillanceAcceptanceRadius))
+	{
+		return StartMove(InstanceData, Controller, ExitSurveillanceTarget, ExitSurveillanceTarget->GetActorLocation(), ExitSurveillanceAcceptanceRadius);
+	}
+
 	UHeistPatrolPathComponent* PatrolPath = ResolvePatrolPath(&Controller);
-	if (!IsValid(GuardCharacter) || !IsValid(PatrolPath))
+	if (!IsValid(PatrolPath))
 	{
 		return false;
 	}
@@ -130,12 +121,10 @@ bool StartPatrolMove(FHeistGuardStateTreeTaskInstanceData& InstanceData, AHeistG
 
 	AHeistGuardWaypoint* Waypoint = PatrolPath->GetCurrentWaypoint();
 	const bool bMoveStarted = IsValid(Waypoint) && StartMove(InstanceData, Controller, Waypoint, Waypoint->GetActorLocation(), PatrolPath->GetAcceptanceRadius());
-	DebugMoveRequest(Controller, EHeistGuardState::Patrol, IsValid(Waypoint) ? Waypoint->GetActorLocation() : GuardCharacter->GetActorLocation(), InstanceData, PatrolPath->GetCurrentWaypointIndex(),
-					 PatrolPath->GetWaypointCount());
 	return bMoveStarted;
 }
 
-bool StartFocusMove(FHeistGuardStateTreeTaskInstanceData& InstanceData, AHeistGuardAIController& Controller, const EHeistGuardState GuardState)
+bool StartFocusMove(FHeistGuardStateTreeTaskInstanceData& InstanceData, AHeistGuardAIController& Controller)
 {
 	UHeistGuardStateComponent* GuardStateComponent = ResolveGuardStateComponent(&Controller);
 	const UHeistPatrolPathComponent* PatrolPath = ResolvePatrolPath(&Controller);
@@ -146,9 +135,7 @@ bool StartFocusMove(FHeistGuardStateTreeTaskInstanceData& InstanceData, AHeistGu
 
 	const FVector Destination = GuardStateComponent->GetStateFocusLocation();
 	const float AcceptanceRadius = IsValid(PatrolPath) ? PatrolPath->GetAcceptanceRadius() : 75.0f;
-	const bool bMoveStarted = StartMove(InstanceData, Controller, nullptr, Destination, AcceptanceRadius);
-	DebugMoveRequest(Controller, GuardState, Destination, InstanceData);
-	return bMoveStarted;
+	return StartMove(InstanceData, Controller, nullptr, Destination, AcceptanceRadius);
 }
 
 bool StartChaseMove(FHeistGuardStateTreeTaskInstanceData& InstanceData, AHeistGuardAIController& Controller)
@@ -162,9 +149,7 @@ bool StartChaseMove(FHeistGuardStateTreeTaskInstanceData& InstanceData, AHeistGu
 	}
 
 	const float AcceptanceRadius = IsValid(PatrolPath) ? PatrolPath->GetAcceptanceRadius() : 75.0f;
-	const bool bMoveStarted = StartMove(InstanceData, Controller, ChaseTarget, ChaseTarget->GetActorLocation(), AcceptanceRadius);
-	DebugMoveRequest(Controller, EHeistGuardState::ChasePlayer, ChaseTarget->GetActorLocation(), InstanceData);
-	return bMoveStarted;
+	return StartMove(InstanceData, Controller, ChaseTarget, ChaseTarget->GetActorLocation(), AcceptanceRadius);
 }
 
 bool StartInspectionMove(FHeistGuardStateTreeTaskInstanceData& InstanceData, AHeistGuardAIController& Controller)
@@ -175,9 +160,7 @@ bool StartInspectionMove(FHeistGuardStateTreeTaskInstanceData& InstanceData, AHe
 		return false;
 	}
 
-	const bool bMoveStarted = StartMove(InstanceData, Controller, Target, Target->GetActorLocation(), Controller.GetInspectionAcceptanceRadius());
-	DebugMoveRequest(Controller, EHeistGuardState::InspectExhibit, Target->GetActorLocation(), InstanceData);
-	return bMoveStarted;
+	return StartMove(InstanceData, Controller, Target, Target->GetActorLocation(), Controller.GetInspectionAcceptanceRadius());
 }
 
 bool StartReturnMove(FHeistGuardStateTreeTaskInstanceData& InstanceData, AHeistGuardAIController& Controller)
@@ -196,13 +179,10 @@ bool StartReturnMove(FHeistGuardStateTreeTaskInstanceData& InstanceData, AHeistG
 	AHeistGuardWaypoint* Waypoint = PatrolPath->GetCurrentWaypoint();
 	if (!IsValid(Waypoint))
 	{
-		DebugMoveRequest(Controller, EHeistGuardState::ReturnToPatrol, GuardCharacter->GetActorLocation(), InstanceData, INDEX_NONE, PatrolPath->GetWaypointCount());
 		return false;
 	}
 
-	const bool bMoveStarted = StartMove(InstanceData, Controller, Waypoint, Waypoint->GetActorLocation(), PatrolPath->GetAcceptanceRadius());
-	DebugMoveRequest(Controller, EHeistGuardState::ReturnToPatrol, Waypoint->GetActorLocation(), InstanceData, PatrolPath->GetCurrentWaypointIndex(), PatrolPath->GetWaypointCount());
-	return bMoveStarted;
+	return StartMove(InstanceData, Controller, Waypoint, Waypoint->GetActorLocation(), PatrolPath->GetAcceptanceRadius());
 }
 
 void AwaitAuthoritativeStateChange(FHeistGuardStateTreeTaskInstanceData& InstanceData)
@@ -257,7 +237,7 @@ EStateTreeRunStatus FHeistGuardStateTreeTask::EnterState(FStateTreeExecutionCont
 		}
 		break;
 	case EHeistGuardState::InvestigateNoise:
-		if (!StartFocusMove(InstanceData, *Controller, EHeistGuardState::InvestigateNoise))
+		if (!StartFocusMove(InstanceData, *Controller))
 		{
 			GuardStateComponent->EnterPatrol();
 			AwaitAuthoritativeStateChange(InstanceData);
@@ -279,7 +259,7 @@ EStateTreeRunStatus FHeistGuardStateTreeTask::EnterState(FStateTreeExecutionCont
 		}
 		break;
 	case EHeistGuardState::SearchLastKnownLocation:
-		if (!StartFocusMove(InstanceData, *Controller, EHeistGuardState::SearchLastKnownLocation))
+		if (!StartFocusMove(InstanceData, *Controller))
 		{
 			GuardStateComponent->EnterReturnToPatrol();
 			AwaitAuthoritativeStateChange(InstanceData);
@@ -336,7 +316,14 @@ EStateTreeRunStatus FHeistGuardStateTreeTask::Tick(FStateTreeExecutionContext& C
 				AwaitAuthoritativeStateChange(InstanceData);
 				return EStateTreeRunStatus::Running;
 			}
-			if (GuardState == EHeistGuardState::Patrol && IsValid(PatrolPath) && IsValid(PatrolPath->AdvanceWaypoint()))
+			if (GuardState == EHeistGuardState::Patrol && Controller->IsAlertExitSurveillanceActive())
+			{
+				if (!StartPatrolMove(InstanceData, *Controller))
+				{
+					BeginPatrolWait(InstanceData, PatrolPath);
+				}
+			}
+			else if (GuardState == EHeistGuardState::Patrol && IsValid(PatrolPath) && IsValid(PatrolPath->AdvanceWaypoint()))
 			{
 				if (!StartPatrolMove(InstanceData, *Controller))
 				{
@@ -372,9 +359,6 @@ EStateTreeRunStatus FHeistGuardStateTreeTask::Tick(FStateTreeExecutionContext& C
 
 	const bool bMoveSucceeded = InstanceData.bMoveSucceeded;
 	ResetMove(InstanceData);
-	UHeistDebugFunctionLibrary::DebugGuardMovement(Controller, GuardCharacter, GuardState, TEXT("StateTreeCompleted"), GuardStateComponent->GetStateFocusLocation(),
-												   IsValid(PatrolPath) ? PatrolPath->GetCurrentWaypointIndex() : INDEX_NONE, IsValid(PatrolPath) ? PatrolPath->GetWaypointCount() : 0,
-												   bMoveSucceeded ? TEXT("Success") : TEXT("Failed"));
 
 	switch (GuardState)
 	{

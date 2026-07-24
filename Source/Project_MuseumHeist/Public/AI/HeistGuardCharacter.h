@@ -55,6 +55,9 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardCharacter : public ACharacter
 	FName GetGuardProfileId() const;
 	bool HasResolvedGuardProfile() const;
 	const FHeistGuardDataRow& GetGuardProfile() const;
+	void SetAlertPatrolSpeedMultiplier(float Multiplier);
+	float GetAlertPatrolSpeedMultiplier() const;
+	float GetEffectivePatrolSpeed() const;
 
   private:
 	void ResolveGuardProfile();
@@ -67,6 +70,7 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardCharacter : public ACharacter
 	FHeistGuardDataRow GuardProfile;
 
 	bool bHasResolvedGuardProfile = false;
+	float AlertPatrolSpeedMultiplier = 1.0f;
 
 #pragma endregion
 };

@@ -273,6 +273,22 @@ float UHeistGuardStateComponent::GetSearchDuration() const
 	return SearchDuration;
 }
 
+void UHeistGuardStateComponent::SetAlertSearchDurationMultiplier(const float Multiplier)
+{
+	AlertSearchDurationMultiplier = FMath::Max(0.0f, FMath::IsFinite(Multiplier) ? Multiplier : 1.0f);
+	SearchDuration = BaseSearchDuration * AlertSearchDurationMultiplier;
+	AActor* OwnerActor = GetOwner();
+	if (IsValid(OwnerActor) && OwnerActor->HasAuthority() && GuardState == EHeistGuardState::SearchLastKnownLocation && GetWorld() && GetWorld()->GetTimerManager().IsTimerActive(StateTimerHandle))
+	{
+		StartStateTimer(SearchDuration);
+	}
+}
+
+float UHeistGuardStateComponent::GetAlertSearchDurationMultiplier() const
+{
+	return AlertSearchDurationMultiplier;
+}
+
 FHeistGuardStateChanged& UHeistGuardStateComponent::GetGuardStateChangedDelegate()
 {
 	return GuardStateChangedDelegate;
@@ -286,7 +302,8 @@ UHeistGuardStateComponent::FHeistInspectExhibitCastExpired& UHeistGuardStateComp
 void UHeistGuardStateComponent::ConfigureGuardProfile(const FHeistGuardDataRow& GuardData)
 {
 	InvestigateDuration = FMath::Max(0.0f, GuardData.InvestigateDuration);
-	SearchDuration = FMath::Max(0.0f, GuardData.SearchDuration);
+	BaseSearchDuration = FMath::Max(0.0f, GuardData.SearchDuration);
+	SearchDuration = BaseSearchDuration * AlertSearchDurationMultiplier;
 }
 
 bool UHeistGuardStateComponent::CommitState(const EHeistGuardState NewState, const float DurationSeconds, const bool bBypassPriority)

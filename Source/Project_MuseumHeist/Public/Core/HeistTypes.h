@@ -68,6 +68,16 @@ enum class EHeistDisplayCaseState : uint8
 	Failed
 };
 
+UENUM(BlueprintType)
+enum class EHeistAlertLevel : uint8
+{
+	Quiet,
+	Suspicious,
+	Searching,
+	Alarmed,
+	Lockdown
+};
+
 #pragma endregion
 
 #pragma region ResultData

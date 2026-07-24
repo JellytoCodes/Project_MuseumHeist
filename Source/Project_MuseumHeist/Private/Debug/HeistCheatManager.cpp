@@ -369,6 +369,27 @@ void UHeistCheatManager::HeistInspectionStateDump()
 #endif
 }
 
+void UHeistCheatManager::HeistAlertDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugAlertDump(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistGuardAlertModifiersDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugGuardAlertModifiersDump(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistAlertRequest(const FString& LevelName)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugAlertRequest(GetOuterAPlayerController(), LevelName);
+#endif
+}
+
 void UHeistCheatManager::HeistGuardState(const FString& StateName, const float DurationSeconds)
 {
 #if !UE_BUILD_SHIPPING

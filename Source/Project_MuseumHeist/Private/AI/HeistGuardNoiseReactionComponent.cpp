@@ -68,6 +68,16 @@ void UHeistGuardNoiseReactionComponent::ConfigureGuardProfile(const FHeistGuardD
 	InvestigateDuration = FMath::Max(0.0f, GuardData.InvestigateDuration);
 }
 
+void UHeistGuardNoiseReactionComponent::SetAlertNoiseRadiusMultiplier(const float Multiplier)
+{
+	AlertNoiseRadiusMultiplier = FMath::Max(0.0f, FMath::IsFinite(Multiplier) ? Multiplier : 1.0f);
+}
+
+float UHeistGuardNoiseReactionComponent::GetAlertNoiseRadiusMultiplier() const
+{
+	return AlertNoiseRadiusMultiplier;
+}
+
 bool UHeistGuardNoiseReactionComponent::ReactToSoundPing(const FHeistSoundPingEvent& SoundPingEvent)
 {
 	AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetOwner());
@@ -78,7 +88,8 @@ bool UHeistGuardNoiseReactionComponent::ReactToSoundPing(const FHeistSoundPingEv
 	}
 
 	const float Distance = FVector::Dist(GuardCharacter->GetActorLocation(), SoundPingEvent.WorldLocation);
-	if (Distance > SoundPingEvent.Radius)
+	const float EffectiveNoiseRadius = SoundPingEvent.Radius * AlertNoiseRadiusMultiplier;
+	if (Distance > EffectiveNoiseRadius)
 	{
 		UHeistDebugFunctionLibrary::DebugGuardNoiseReactionRejected(this, GuardCharacter, SoundPingEvent, TEXT("OutsideRadius"), Distance);
 		return false;

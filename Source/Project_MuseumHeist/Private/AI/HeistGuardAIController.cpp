@@ -1,6 +1,7 @@
 #include "AI/HeistGuardAIController.h"
 
 #include "AI/HeistGuardCharacter.h"
+#include "AI/HeistGuardNoiseReactionComponent.h"
 #include "AI/HeistGuardStateComponent.h"
 #include "Character/HeistPlayerCharacter.h"
 #include "Components/StateTreeAIComponent.h"
@@ -18,6 +19,35 @@
 #include "Perception/AISense_Sight.h"
 #include "TimerManager.h"
 #include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
+#include "World/Actors/Escape/HeistVentActor.h"
+
+namespace
+{
+float ResolveAlertMultiplier(const FVector4& Multipliers, const EHeistAlertLevel AlertLevel)
+{
+	float Multiplier = 1.0f;
+	switch (AlertLevel)
+	{
+	case EHeistAlertLevel::Suspicious:
+		Multiplier = Multipliers.X;
+		break;
+	case EHeistAlertLevel::Searching:
+		Multiplier = Multipliers.Y;
+		break;
+	case EHeistAlertLevel::Alarmed:
+		Multiplier = Multipliers.Z;
+		break;
+	case EHeistAlertLevel::Lockdown:
+		Multiplier = Multipliers.W;
+		break;
+	case EHeistAlertLevel::Quiet:
+	default:
+		break;
+	}
+
+	return FMath::Max(0.0f, FMath::IsFinite(Multiplier) ? Multiplier : 1.0f);
+}
+}
 
 #pragma region Construction
 
@@ -52,6 +82,13 @@ void AHeistGuardAIController::OnPossess(APawn* InPawn)
 	GuardStateComponent->GetGuardStateChangedDelegate().AddUObject(this, &AHeistGuardAIController::HandleGuardStateChanged);
 	GuardStateComponent->GetInspectExhibitCastExpiredDelegate().AddUObject(this, &AHeistGuardAIController::HandleInspectionCastExpired);
 	GuardPerceptionComponent->OnTargetPerceptionUpdated.AddUniqueDynamic(this, &AHeistGuardAIController::HandleTargetPerceptionUpdated);
+	if (HasAuthority())
+	{
+		if (AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr)
+		{
+			HeistGameState->GetAlertStateChangedDelegate().AddUObject(this, &AHeistGuardAIController::HandleAlertStateChanged);
+		}
+	}
 
 	if (GuardCharacter->HasResolvedGuardProfile())
 	{
@@ -69,6 +106,11 @@ void AHeistGuardAIController::OnPossess(APawn* InPawn)
 
 void AHeistGuardAIController::OnUnPossess()
 {
+	if (AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr)
+	{
+		HeistGameState->GetAlertStateChangedDelegate().RemoveAll(this);
+	}
+
 	StopMovement();
 	AbortInspection(FName(TEXT("GuardUnpossessed")));
 	if (InspectionTarget.IsValid())
@@ -114,6 +156,8 @@ void AHeistGuardAIController::ConfigurePerceptionFromGuardProfile(const FHeistGu
 
 	SightRadius = FMath::Max(0.0f, GuardData.SightRadius);
 	AggroResetDistance = FMath::Max(SightRadius, GuardData.AggroResetDistance);
+	ActiveSightRadius = SightRadius;
+	ActiveAggroResetDistance = AggroResetDistance;
 	DefaultSightHalfAngle = FMath::Clamp(GuardData.SightAngle * 0.5f, 0.0f, 180.0f);
 	InvestigateSightHalfAngle = FMath::Clamp(GuardData.InvestigateSightAngle * 0.5f, 0.0f, 180.0f);
 	EyeHeight = FMath::Max(0.0f, GuardData.EyeHeight);
@@ -123,8 +167,8 @@ void AHeistGuardAIController::ConfigurePerceptionFromGuardProfile(const FHeistGu
 	bDisplayCasesBlockSight = GuardData.bDisplayCasesBlockSight;
 	DoorOccluderTag = GuardData.DoorOccluderTag;
 
-	GuardSightConfig->SightRadius = SightRadius;
-	GuardSightConfig->LoseSightRadius = AggroResetDistance;
+	GuardSightConfig->SightRadius = ActiveSightRadius;
+	GuardSightConfig->LoseSightRadius = ActiveAggroResetDistance;
 	GuardSightConfig->PeripheralVisionAngleDegrees = DefaultSightHalfAngle;
 	GuardSightConfig->DetectionByAffiliation.bDetectEnemies = true;
 	GuardSightConfig->DetectionByAffiliation.bDetectFriendlies = true;
@@ -132,13 +176,15 @@ void AHeistGuardAIController::ConfigurePerceptionFromGuardProfile(const FHeistGu
 	GuardPerceptionComponent->ConfigureSense(*GuardSightConfig);
 	GuardPerceptionComponent->SetDominantSense(GuardSightConfig->GetSenseImplementation());
 	bPerceptionConfigured = SightRadius > 0.0f;
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	ApplyAlertModifiers(IsValid(HeistGameState) ? HeistGameState->GetAlertLevel() : EHeistAlertLevel::Quiet);
 
 	const AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn());
 	const UHeistGuardStateComponent* GuardStateComponent = IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
 	UpdateSightForGuardState(IsValid(GuardStateComponent) ? GuardStateComponent->GetGuardState() : EHeistGuardState::Patrol);
 	StartSightValidationTimer();
 
-	UHeistDebugFunctionLibrary::DebugGuardPerceptionConfigured(this, GuardCharacter, SightRadius, AggroResetDistance, DefaultSightHalfAngle * 2.0f, InvestigateSightHalfAngle * 2.0f, EyeHeight,
+	UHeistDebugFunctionLibrary::DebugGuardPerceptionConfigured(this, GuardCharacter, ActiveSightRadius, ActiveAggroResetDistance, DefaultSightHalfAngle * 2.0f, InvestigateSightHalfAngle * 2.0f, EyeHeight,
 															   DetectionGrace, bDoorsBlockSight, bDisplayCasesBlockSight, DoorOccluderTag, SightUpdateInterval);
 }
 
@@ -271,7 +317,7 @@ bool AHeistGuardAIController::CanInitiallySeeTarget(const AActor* TargetActor, c
 	GuardCharacter->GetActorEyesViewPoint(EyeLocation, EyeRotation);
 	const FVector ToTarget = GetTargetSightLocation(TargetActor) - EyeLocation;
 	const float Distance = ToTarget.Size();
-	if (Distance > SightRadius)
+	if (Distance > ActiveSightRadius)
 	{
 		OutRejectReason = TEXT("OutsideSightRadius");
 		return false;
@@ -511,7 +557,7 @@ void AHeistGuardAIController::ValidateCurrentChaseTarget()
 	{
 		return;
 	}
-	if (Distance > AggroResetDistance)
+	if (Distance > ActiveAggroResetDistance)
 	{
 		const FVector LastKnownLocation = GuardStateComponent->GetStateFocusLocation();
 		GuardStateComponent->EnterSearchLastKnownLocation(LastKnownLocation);
@@ -562,6 +608,109 @@ bool AHeistGuardAIController::TryArrestChaseTarget()
 	return true;
 }
 
+bool AHeistGuardAIController::TryGetAlertExitSurveillanceTarget(AActor*& OutTargetActor, float& OutAcceptanceRadius) const
+{
+	OutTargetActor = nullptr;
+	OutAcceptanceRadius = FMath::Max(0.0f, AlertExitSurveillanceAcceptanceRadius);
+	if (!HasAuthority() || !bAlertExitSurveillanceActive || !IsValid(GetPawn()) || !IsValid(GetWorld()))
+	{
+		return false;
+	}
+
+	float BestDistanceSquared = TNumericLimits<float>::Max();
+	for (TActorIterator<AHeistVentActor> It(GetWorld()); It; ++It)
+	{
+		AHeistVentActor* Candidate = *It;
+		if (!IsValid(Candidate) || Candidate->IsActorBeingDestroyed())
+		{
+			continue;
+		}
+
+		const float CandidateDistanceSquared = FVector::DistSquared(GetPawn()->GetActorLocation(), Candidate->GetActorLocation());
+		const bool bCloser = CandidateDistanceSquared < BestDistanceSquared && !FMath::IsNearlyEqual(CandidateDistanceSquared, BestDistanceSquared);
+		const bool bStableTieBreak = FMath::IsNearlyEqual(CandidateDistanceSquared, BestDistanceSquared) &&
+			(!IsValid(OutTargetActor) || Candidate->GetFName().LexicalLess(OutTargetActor->GetFName()));
+		if (bCloser || bStableTieBreak)
+		{
+			OutTargetActor = Candidate;
+			BestDistanceSquared = CandidateDistanceSquared;
+		}
+	}
+
+	return IsValid(OutTargetActor);
+}
+
+bool AHeistGuardAIController::IsAlertExitSurveillanceActive() const
+{
+	return bAlertExitSurveillanceActive;
+}
+
+EHeistAlertLevel AHeistGuardAIController::GetAppliedAlertLevel() const
+{
+	return AppliedAlertLevel;
+}
+
+float AHeistGuardAIController::GetActiveSightRadius() const
+{
+	return ActiveSightRadius;
+}
+
+float AHeistGuardAIController::GetAlertSightRadiusMultiplier() const
+{
+	return AlertSightRadiusMultiplier;
+}
+
+void AHeistGuardAIController::HandleAlertStateChanged(const EHeistAlertLevel, const EHeistAlertLevel NewLevel, const int32, const FName)
+{
+	ApplyAlertModifiers(NewLevel);
+
+	const AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn());
+	const UHeistGuardStateComponent* GuardStateComponent = IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
+	if (IsValid(GuardStateComponent) && GuardStateComponent->GetGuardState() == EHeistGuardState::Patrol)
+	{
+		StopMovement();
+		SendGuardStateTreeEvent(EHeistGuardState::Patrol);
+	}
+}
+
+void AHeistGuardAIController::ApplyAlertModifiers(const EHeistAlertLevel NewLevel)
+{
+	AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn());
+	if (!HasAuthority() || !IsValid(GuardCharacter) || !GuardCharacter->HasResolvedGuardProfile())
+	{
+		return;
+	}
+
+	const FHeistGuardDataRow& GuardProfile = GuardCharacter->GetGuardProfile();
+	AppliedAlertLevel = NewLevel;
+	const float PatrolSpeedMultiplier = ResolveAlertMultiplier(GuardProfile.AlertPatrolSpeedMultipliers, NewLevel);
+	const float NoiseRadiusMultiplier = ResolveAlertMultiplier(GuardProfile.AlertNoiseRadiusMultipliers, NewLevel);
+	AlertSightRadiusMultiplier = ResolveAlertMultiplier(GuardProfile.AlertSightRadiusMultipliers, NewLevel);
+	const float SearchDurationMultiplier = ResolveAlertMultiplier(GuardProfile.AlertSearchDurationMultipliers, NewLevel);
+	ActiveSightRadius = SightRadius * AlertSightRadiusMultiplier;
+	ActiveAggroResetDistance = FMath::Max(ActiveSightRadius, AggroResetDistance * AlertSightRadiusMultiplier);
+	AlertExitSurveillanceAcceptanceRadius = FMath::Max(0.0f, GuardProfile.ExitSurveillanceAcceptanceRadius);
+	bAlertExitSurveillanceActive = GuardProfile.bEnableExitSurveillance && static_cast<uint8>(NewLevel) >= static_cast<uint8>(GuardProfile.ExitSurveillanceAlertLevel);
+
+	GuardCharacter->SetAlertPatrolSpeedMultiplier(PatrolSpeedMultiplier);
+	if (UHeistGuardNoiseReactionComponent* NoiseReactionComponent = GuardCharacter->GetNoiseReactionComponent())
+	{
+		NoiseReactionComponent->SetAlertNoiseRadiusMultiplier(NoiseRadiusMultiplier);
+	}
+	if (UHeistGuardStateComponent* GuardStateComponent = GuardCharacter->GetGuardStateComponent())
+	{
+		GuardStateComponent->SetAlertSearchDurationMultiplier(SearchDurationMultiplier);
+	}
+
+	if (IsValid(GuardSightConfig) && IsValid(GuardPerceptionComponent))
+	{
+		GuardSightConfig->SightRadius = ActiveSightRadius;
+		GuardSightConfig->LoseSightRadius = ActiveAggroResetDistance;
+		UpdateSightForGuardState(GuardCharacter->GetGuardStateComponent()->GetGuardState());
+	}
+
+}
+
 void AHeistGuardAIController::UpdateSightForGuardState(const EHeistGuardState NewState)
 {
 	if (!bPerceptionConfigured || !IsValid(GuardPerceptionComponent))
@@ -580,6 +729,8 @@ void AHeistGuardAIController::UpdateSightForGuardState(const EHeistGuardState Ne
 
 	GuardSightConfig->PeripheralVisionAngleDegrees =
 		NewState == EHeistGuardState::InvestigateNoise || NewState == EHeistGuardState::SearchLastKnownLocation ? InvestigateSightHalfAngle : DefaultSightHalfAngle;
+	GuardSightConfig->SightRadius = ActiveSightRadius;
+	GuardSightConfig->LoseSightRadius = ActiveAggroResetDistance;
 	GuardPerceptionComponent->ConfigureSense(*GuardSightConfig);
 	GuardPerceptionComponent->RequestStimuliListenerUpdate();
 }
@@ -632,10 +783,12 @@ bool AHeistGuardAIController::TrySelectInspectionTarget()
 	}
 
 	const bool bSelectedValidTarget = IsValid(BestTarget) && BestTarget->IsValidInspectionCandidate();
-	UE_LOG(LogHeistNetwork, Log, TEXT("Inspection target selected: Controller=%s Guard=%s Case=%s CaseId=%s Distance=%.1f SelectionRevision=%d Authority=true Result=%s"), *GetNameSafe(this),
-		   *GetNameSafe(GetPawn()), *GetNameSafe(BestTarget), IsValid(BestTarget) ? *BestTarget->GetDisplayCaseId().ToString() : TEXT("None"),
-		   IsValid(BestTarget) ? FVector::Dist(GetPawn()->GetActorLocation(), BestTarget->GetActorLocation()) : -1.0f, InspectionTargetSelectionRevision,
-		   bSelectedValidTarget ? TEXT("PASS") : TEXT("NO_VALID_TARGET"));
+	if (bSelectedValidTarget)
+	{
+		UE_LOG(LogHeistNetwork, Log, TEXT("Inspection target selected: Controller=%s Guard=%s Case=%s CaseId=%s Distance=%.1f SelectionRevision=%d Authority=true Result=PASS"), *GetNameSafe(this),
+			   *GetNameSafe(GetPawn()), *GetNameSafe(BestTarget), *BestTarget->GetDisplayCaseId().ToString(), FVector::Dist(GetPawn()->GetActorLocation(), BestTarget->GetActorLocation()),
+			   InspectionTargetSelectionRevision);
+	}
 	return bSelectedValidTarget;
 }
 

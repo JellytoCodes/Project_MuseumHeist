@@ -41,6 +41,11 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardAIController : public AAIController
 	void SetAutomaticSightEnabled(bool bEnabled);
 	bool IsAutomaticSightEnabled() const;
 	bool TryArrestChaseTarget();
+	bool TryGetAlertExitSurveillanceTarget(AActor*& OutTargetActor, float& OutAcceptanceRadius) const;
+	bool IsAlertExitSurveillanceActive() const;
+	EHeistAlertLevel GetAppliedAlertLevel() const;
+	float GetActiveSightRadius() const;
+	float GetAlertSightRadiusMultiplier() const;
 
   private:
 	UFUNCTION()
@@ -58,6 +63,8 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardAIController : public AAIController
 	void UpdateSightForGuardState(EHeistGuardState NewState);
 	void StartSightValidationTimer();
 	void ClearSightValidationTimer();
+	void HandleAlertStateChanged(EHeistAlertLevel PreviousLevel, EHeistAlertLevel NewLevel, int32 Revision, FName TriggerId);
+	void ApplyAlertModifiers(EHeistAlertLevel NewLevel);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|AI|Perception", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UAIPerceptionComponent> GuardPerceptionComponent;
@@ -67,6 +74,8 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardAIController : public AAIController
 
 	float SightRadius = 0.0f;
 	float AggroResetDistance = 0.0f;
+	float ActiveSightRadius = 0.0f;
+	float ActiveAggroResetDistance = 0.0f;
 	float DefaultSightHalfAngle = 0.0f;
 	float InvestigateSightHalfAngle = 0.0f;
 	float EyeHeight = 0.0f;
@@ -76,6 +85,10 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardAIController : public AAIController
 	bool bDisplayCasesBlockSight = true;
 	bool bPerceptionConfigured = false;
 	bool bAutomaticSightEnabled = true;
+	bool bAlertExitSurveillanceActive = false;
+	EHeistAlertLevel AppliedAlertLevel = EHeistAlertLevel::Quiet;
+	float AlertSightRadiusMultiplier = 1.0f;
+	float AlertExitSurveillanceAcceptanceRadius = 175.0f;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|AI|Arrest", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "cm"))
 	float ArrestDistance = 125.0f;
 	FName DoorOccluderTag = FName(TEXT("HeistDoorOccluder"));

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Core/HeistTypes.h"
 #include "GameFramework/GameModeBase.h"
 
 #include "HeistGameMode.generated.h"
@@ -36,8 +37,30 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 
   protected:
 	virtual void StartPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void RestartPlayer(AController* NewPlayer) override;
 	virtual void Logout(AController* Exiting) override;
+
+#pragma endregion
+
+#pragma region Alert
+
+  public:
+	bool RequestAlertEscalation(EHeistAlertLevel RequestedAlertLevel, FName TriggerId);
+	bool IsAlertTransitionTimerActive() const;
+	int32 GetProcessedAlertTriggerCount() const;
+
+  private:
+	void InitializeAlertState();
+	bool ApplyAlertLevel(EHeistAlertLevel NewAlertLevel, FName TriggerId);
+	void HandleAlertTransitionTimerElapsed();
+	EHeistAlertLevel GetNextAlertLevel(EHeistAlertLevel CurrentAlertLevel) const;
+	float ResolveAlertTransitionDelay(EHeistAlertLevel CurrentAlertLevel) const;
+
+	FTimerHandle AlertTransitionTimerHandle;
+	TSet<FName> ProcessedAlertTriggerIds;
+	EHeistAlertLevel ScheduledAlertSourceLevel = EHeistAlertLevel::Quiet;
+	int32 ScheduledAlertRevision = 0;
 
 #pragma endregion
 

@@ -320,6 +320,15 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 	void HeistInspectionStateDump();
 
 	UFUNCTION(Exec)
+	void HeistAlertDump();
+
+	UFUNCTION(Exec)
+	void HeistGuardAlertModifiersDump();
+
+	UFUNCTION(Exec)
+	void HeistAlertRequest(const FString& LevelName);
+
+	UFUNCTION(Exec)
 	void HeistGuardState(const FString& StateName, float DurationSeconds = 5.0f);
 
 	UFUNCTION(Exec)

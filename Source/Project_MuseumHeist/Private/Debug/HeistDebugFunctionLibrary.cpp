@@ -2,6 +2,7 @@
 
 #include "AI/HeistGuardCharacter.h"
 #include "AI/HeistGuardAIController.h"
+#include "AI/HeistGuardNoiseReactionComponent.h"
 #include "AI/HeistPatrolPathComponent.h"
 #include "AI/HeistGuardStateComponent.h"
 #include "Blueprint/UserWidget.h"
@@ -11,6 +12,7 @@
 #include "Character/Components/HeistStatusComponent.h"
 #include "Character/HeistPlayerCharacter.h"
 #include "Components/CapsuleComponent.h"
+#include "Core/HeistGameMode.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistHUD.h"
 #include "Core/HeistTypes.h"
@@ -1978,7 +1980,7 @@ void UHeistDebugFunctionLibrary::DebugGuardHelp(APlayerController* PlayerControl
 	Message(
 		PlayerController,
 		TEXT(
-			"Guard debug commands: HeistDifficultyDump | HeistGuardSpawn <Distance> | HeistGuardDump | HeistInspectionTargetSelect | HeistInspectionTargetDump | HeistInspectionBegin | HeistInspectionStateDump | HeistGuardState <Disabled|Patrol|Investigate|Chase|Search|Return> <Duration> | HeistGuardSightCheck | HeistGuardSightAuto <0|1> | HeistGuardNoise <Distance> | HeistArrest | HeistRelease | HeistArrestDump"),
+			"Guard debug commands: HeistDifficultyDump | HeistGuardSpawn <Distance> | HeistGuardDump | HeistInspectionTargetSelect | HeistInspectionTargetDump | HeistInspectionBegin | HeistInspectionStateDump | HeistAlertDump | HeistGuardAlertModifiersDump | HeistAlertRequest <Quiet|Suspicious|Searching|Alarmed|Lockdown> | HeistGuardState <Disabled|Patrol|Investigate|Chase|Search|Return> <Duration> | HeistGuardSightCheck | HeistGuardSightAuto <0|1> | HeistGuardNoise <Distance> | HeistArrest | HeistRelease | HeistArrestDump"),
 		EHeistDebugLevel::Info, true, 10.0f);
 #endif
 }
@@ -2117,7 +2119,7 @@ void UHeistDebugFunctionLibrary::DebugInspectionTargetDump(APlayerController* Pl
 			ScheduleSummary += FString::Printf(TEXT("%s:Score=%.2f,Band=%s,Delay=%.2f,Remaining=%.2f,Case=%s,Alert=%s,Rev=%d"), *GetNameSafe(DisplayCase),
 											   DisplayCase->GetCommittedForgeryResult().SimilarityScore, *DisplayCase->GetInspectionScoreBand().ToString(), DisplayCase->GetResolvedInspectionDelay(),
 											   DisplayCase->GetInspectionDelayRemaining(), *UEnum::GetValueAsString(DisplayCase->GetResolvedInspectionCaseOutcome()),
-											   *DisplayCase->GetResolvedInspectionAlertOutcome().ToString(), DisplayCase->GetInspectionScheduleRevision());
+											   *UEnum::GetValueAsString(DisplayCase->GetResolvedInspectionAlertOutcome()), DisplayCase->GetInspectionScheduleRevision());
 		}
 	}
 
@@ -2148,7 +2150,7 @@ void UHeistDebugFunctionLibrary::DebugInspectionTargetDump(APlayerController* Pl
 	const float TestScores[] = {95.0f, 80.0f, 60.0f, 40.0f, 20.0f};
 	const float ExpectedDelays[] = {32.0f, 16.0f, 8.0f, 4.0f, 0.0f};
 	const FName ExpectedBands[] = {FName(TEXT("90-100")), FName(TEXT("70-89")), FName(TEXT("50-69")), FName(TEXT("30-49")), FName(TEXT("0-29"))};
-	const FName ExpectedAlertOutcomes[] = {FName(TEXT("Quiet")), FName(TEXT("Suspicious")), FName(TEXT("Searching")), FName(TEXT("Alarmed")), FName(TEXT("Alarmed"))};
+	const EHeistAlertLevel ExpectedAlertOutcomes[] = {EHeistAlertLevel::Quiet, EHeistAlertLevel::Suspicious, EHeistAlertLevel::Searching, EHeistAlertLevel::Alarmed, EHeistAlertLevel::Alarmed};
 	const EHeistDisplayCaseState ExpectedCaseOutcomes[] = {EHeistDisplayCaseState::Completed, EHeistDisplayCaseState::Suspected, EHeistDisplayCaseState::Suspected, EHeistDisplayCaseState::Alarmed,
 														   EHeistDisplayCaseState::Alarmed};
 	bool bMappingPassed = true;
@@ -2156,7 +2158,7 @@ void UHeistDebugFunctionLibrary::DebugInspectionTargetDump(APlayerController* Pl
 	{
 		float Delay = 0.0f;
 		FName Band;
-		FName AlertOutcome;
+		EHeistAlertLevel AlertOutcome = EHeistAlertLevel::Quiet;
 		EHeistDisplayCaseState CaseOutcome = EHeistDisplayCaseState::Failed;
 		const bool bMapped = AHeistPaintingDisplayCaseActor::CalculateInspectionSchedule(TestScores[Index], 8.0f, Delay, Band, AlertOutcome, CaseOutcome);
 		bMappingPassed = bMappingPassed && bMapped && FMath::IsNearlyEqual(Delay, ExpectedDelays[Index]) && Band == ExpectedBands[Index] && AlertOutcome == ExpectedAlertOutcomes[Index] &&
@@ -2165,7 +2167,7 @@ void UHeistDebugFunctionLibrary::DebugInspectionTargetDump(APlayerController* Pl
 		{
 			MappingSummary += TEXT(",");
 		}
-		MappingSummary += FString::Printf(TEXT("%.0f:%s/%.0f/%s/%s"), TestScores[Index], *Band.ToString(), Delay, *UEnum::GetValueAsString(CaseOutcome), *AlertOutcome.ToString());
+		MappingSummary += FString::Printf(TEXT("%.0f:%s/%.0f/%s/%s"), TestScores[Index], *Band.ToString(), Delay, *UEnum::GetValueAsString(CaseOutcome), *UEnum::GetValueAsString(AlertOutcome));
 	}
 
 	const bool bRuntimeScheduleValid = ScheduledCount > 0 && ValidCandidateCount <= RegisteredCount && PendingDelayCount + RegisteredCount <= CaseCount;
@@ -2262,6 +2264,138 @@ void UHeistDebugFunctionLibrary::DebugInspectionStateDump(APlayerController* Pla
 			FString::Printf(TEXT("Inspection state dump: Guards=%d Inspecting=%d SuspectedCases=%d GuardStates=%s Authority=%s Result=%s"), GuardCount, InspectingGuardCount, SuspectedCaseCount,
 							GuardSummary.IsEmpty() ? TEXT("None") : *GuardSummary, bAuthority ? TEXT("true") : TEXT("false"), bPassed ? TEXT("PASS") : TEXT("FAIL")),
 			bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugAlertDump(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	if (!IsValid(PlayerController) || !IsValid(PlayerController->GetWorld()))
+	{
+		return;
+	}
+
+	const AHeistGameState* HeistGameState = PlayerController->GetWorld()->GetGameState<AHeistGameState>();
+	const AHeistGameMode* HeistGameMode = PlayerController->GetWorld()->GetAuthGameMode<AHeistGameMode>();
+	if (!IsValid(HeistGameState))
+	{
+		Message(PlayerController, TEXT("Global alert dump: Result=FAIL Reason=MissingGameState"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const EHeistAlertLevel AlertLevel = HeistGameState->GetAlertLevel();
+	const bool bTransitionExpected = AlertLevel == EHeistAlertLevel::Suspicious || AlertLevel == EHeistAlertLevel::Searching || AlertLevel == EHeistAlertLevel::Alarmed;
+	const bool bSnapshotValid = bTransitionExpected ? HeistGameState->GetAlertNextTransitionServerTime() > 0.0f : HeistGameState->GetAlertNextTransitionServerTime() <= 0.0f;
+	const bool bAuthority = PlayerController->HasAuthority();
+	const bool bTimerValid = !bAuthority || !bTransitionExpected || (IsValid(HeistGameMode) && HeistGameMode->IsAlertTransitionTimerActive());
+	const bool bPassed = bSnapshotValid && bTimerValid;
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT(
+				"Global alert dump: Level=%s NextTransitionServerTime=%.2f Remaining=%.2f Revision=%d LastTrigger=%s TimerActive=%s ProcessedTriggers=%d Chain=Quiet>Suspicious>Searching>Alarmed>Lockdown Snapshot=%s Authority=%s Result=%s"),
+			*UEnum::GetValueAsString(AlertLevel), HeistGameState->GetAlertNextTransitionServerTime(), HeistGameState->GetAlertTransitionRemainingSeconds(), HeistGameState->GetAlertRevision(),
+			*HeistGameState->GetLastAlertTriggerId().ToString(), IsValid(HeistGameMode) && HeistGameMode->IsAlertTransitionTimerActive() ? TEXT("true") : TEXT("false"),
+			IsValid(HeistGameMode) ? HeistGameMode->GetProcessedAlertTriggerCount() : INDEX_NONE, bSnapshotValid ? TEXT("PASS") : TEXT("FAIL"), bAuthority ? TEXT("true") : TEXT("false"),
+			bPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugGuardAlertModifiersDump(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistGuardCharacter* GuardCharacter = ResolveNearestGuard(PlayerController);
+	AHeistGuardAIController* GuardController = IsValid(GuardCharacter) ? Cast<AHeistGuardAIController>(GuardCharacter->GetController()) : nullptr;
+	const UHeistGuardStateComponent* GuardStateComponent = IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
+	const UHeistGuardNoiseReactionComponent* NoiseReactionComponent = IsValid(GuardCharacter) ? GuardCharacter->GetNoiseReactionComponent() : nullptr;
+	const AHeistGameState* HeistGameState = IsValid(PlayerController) && IsValid(PlayerController->GetWorld()) ? PlayerController->GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	if (!IsValid(GuardCharacter) || !IsValid(GuardController) || !IsValid(GuardStateComponent) || !IsValid(NoiseReactionComponent) || !IsValid(HeistGameState))
+	{
+		Message(PlayerController, TEXT("Guard alert modifiers dump: Result=FAIL Reason=MissingGuardContext"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	AActor* ExitTarget = nullptr;
+	float ExitAcceptanceRadius = 0.0f;
+	const bool bExitTargetResolved = GuardController->TryGetAlertExitSurveillanceTarget(ExitTarget, ExitAcceptanceRadius);
+	const bool bExitSurveillanceValid = !GuardController->IsAlertExitSurveillanceActive() || bExitTargetResolved;
+	const bool bValuesValid = GuardCharacter->GetAlertPatrolSpeedMultiplier() > 0.0f && GuardCharacter->GetEffectivePatrolSpeed() > 0.0f &&
+		NoiseReactionComponent->GetAlertNoiseRadiusMultiplier() > 0.0f && GuardController->GetAlertSightRadiusMultiplier() > 0.0f && GuardController->GetActiveSightRadius() > 0.0f &&
+		GuardStateComponent->GetAlertSearchDurationMultiplier() > 0.0f && GuardStateComponent->GetSearchDuration() > 0.0f;
+	const bool bPassed = PlayerController->HasAuthority() && GuardCharacter->HasAuthority() && GuardCharacter->HasResolvedGuardProfile() &&
+		GuardController->GetAppliedAlertLevel() == HeistGameState->GetAlertLevel() && bValuesValid && bExitSurveillanceValid;
+
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Guard alert modifiers dump: Guard=%s Profile=%s Alert=%s AppliedAlert=%s PatrolMultiplier=%.2f PatrolSpeed=%.1f NoiseMultiplier=%.2f SightMultiplier=%.2f SightRadius=%.1f SearchMultiplier=%.2f SearchDuration=%.2f ExitSurveillance=%s ExitTarget=%s ExitAcceptance=%.1f Authority=%s Result=%s"),
+			*GetNameSafe(GuardCharacter), *GuardCharacter->GetGuardProfileId().ToString(), *UEnum::GetValueAsString(HeistGameState->GetAlertLevel()),
+			*UEnum::GetValueAsString(GuardController->GetAppliedAlertLevel()), GuardCharacter->GetAlertPatrolSpeedMultiplier(), GuardCharacter->GetEffectivePatrolSpeed(),
+			NoiseReactionComponent->GetAlertNoiseRadiusMultiplier(), GuardController->GetAlertSightRadiusMultiplier(), GuardController->GetActiveSightRadius(),
+			GuardStateComponent->GetAlertSearchDurationMultiplier(), GuardStateComponent->GetSearchDuration(), GuardController->IsAlertExitSurveillanceActive() ? TEXT("true") : TEXT("false"),
+			*GetNameSafe(ExitTarget), ExitAcceptanceRadius, PlayerController->HasAuthority() ? TEXT("true") : TEXT("false"), bPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugAlertRequest(APlayerController* PlayerController, const FString& LevelName)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(PlayerController->GetWorld()))
+	{
+		Message(PlayerController, TEXT("Global alert request: Authority=false Result=FAIL Reason=ServerOnly"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	EHeistAlertLevel RequestedAlertLevel = EHeistAlertLevel::Quiet;
+	bool bValidLevel = true;
+	if (LevelName.Equals(TEXT("Quiet"), ESearchCase::IgnoreCase))
+	{
+		RequestedAlertLevel = EHeistAlertLevel::Quiet;
+	}
+	else if (LevelName.Equals(TEXT("Suspicious"), ESearchCase::IgnoreCase))
+	{
+		RequestedAlertLevel = EHeistAlertLevel::Suspicious;
+	}
+	else if (LevelName.Equals(TEXT("Searching"), ESearchCase::IgnoreCase))
+	{
+		RequestedAlertLevel = EHeistAlertLevel::Searching;
+	}
+	else if (LevelName.Equals(TEXT("Alarmed"), ESearchCase::IgnoreCase))
+	{
+		RequestedAlertLevel = EHeistAlertLevel::Alarmed;
+	}
+	else if (LevelName.Equals(TEXT("Lockdown"), ESearchCase::IgnoreCase))
+	{
+		RequestedAlertLevel = EHeistAlertLevel::Lockdown;
+	}
+	else
+	{
+		bValidLevel = false;
+	}
+
+	AHeistGameMode* HeistGameMode = PlayerController->GetWorld()->GetAuthGameMode<AHeistGameMode>();
+	if (!bValidLevel || !IsValid(HeistGameMode))
+	{
+		Message(PlayerController,
+				FString::Printf(TEXT("Global alert request: Level=%s Authority=true Result=FAIL Reason=%s"), *LevelName, bValidLevel ? TEXT("MissingGameMode") : TEXT("UnknownLevel")),
+				EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const FName TriggerId(*FString::Printf(TEXT("ManualAlert_%s"), *UEnum::GetValueAsString(RequestedAlertLevel)));
+	const bool bAccepted = HeistGameMode->RequestAlertEscalation(RequestedAlertLevel, TriggerId);
+	Message(PlayerController,
+			FString::Printf(TEXT("Global alert request: Requested=%s Trigger=%s ProcessedTriggers=%d Authority=true Result=%s"), *UEnum::GetValueAsString(RequestedAlertLevel), *TriggerId.ToString(),
+							HeistGameMode->GetProcessedAlertTriggerCount(), bAccepted ? TEXT("PASS") : TEXT("FAIL")),
+			bAccepted ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 12.0f);
 #endif
 }
 
@@ -3324,18 +3458,6 @@ void UHeistDebugFunctionLibrary::DebugGuardPatrolPathResolved(const UObject* Wor
 			FString::Printf(TEXT("Guard patrol path resolved: Guard=%s RouteId=%s Waypoints=%d Authority=%s"), *GetNameSafe(GuardActor), *RouteId.ToString(), WaypointCount,
 							IsValid(GuardActorAsActor) && GuardActorAsActor->HasAuthority() ? TEXT("true") : TEXT("false")),
 			WaypointCount > 0 ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning);
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugGuardMovement(const UObject* WorldContextObject, const UObject* GuardActor, const EHeistGuardState State, const TCHAR* Phase, const FVector& TargetLocation,
-													const int32 WaypointIndex, const int32 WaypointCount, const TCHAR* Result)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	Message(WorldContextObject,
-			FString::Printf(TEXT("Guard movement: Guard=%s State=%s Phase=%s Target=(%.1f,%.1f,%.1f) Waypoint=%d/%d Result=%s"), *GetNameSafe(GuardActor), *UEnum::GetValueAsString(State),
-							Phase ? Phase : TEXT("None"), TargetLocation.X, TargetLocation.Y, TargetLocation.Z, WaypointIndex, WaypointCount, Result ? Result : TEXT("None")));
 #endif
 }
 

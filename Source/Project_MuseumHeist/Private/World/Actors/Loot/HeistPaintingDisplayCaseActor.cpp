@@ -823,12 +823,12 @@ void AHeistPaintingDisplayCaseActor::OnRep_ReplicaPaintingData()
 
 #pragma region InspectionTarget
 
-bool AHeistPaintingDisplayCaseActor::CalculateInspectionSchedule(const float SimilarityScore, const float BaseInspectionDelay, float& OutDelay, FName& OutScoreBand, FName& OutAlertOutcome,
+bool AHeistPaintingDisplayCaseActor::CalculateInspectionSchedule(const float SimilarityScore, const float BaseInspectionDelay, float& OutDelay, FName& OutScoreBand, EHeistAlertLevel& OutAlertOutcome,
 																 EHeistDisplayCaseState& OutCaseOutcome)
 {
 	OutDelay = 0.0f;
 	OutScoreBand = NAME_None;
-	OutAlertOutcome = NAME_None;
+	OutAlertOutcome = EHeistAlertLevel::Quiet;
 	OutCaseOutcome = EHeistDisplayCaseState::Suspected;
 	if (!FMath::IsFinite(SimilarityScore) || !FMath::IsFinite(BaseInspectionDelay) || !FMath::IsWithinInclusive(SimilarityScore, 0.0f, 100.0f) || BaseInspectionDelay < 0.0f)
 	{
@@ -839,35 +839,35 @@ bool AHeistPaintingDisplayCaseActor::CalculateInspectionSchedule(const float Sim
 	if (SimilarityScore >= 90.0f)
 	{
 		OutScoreBand = FName(TEXT("90-100"));
-		OutAlertOutcome = FName(TEXT("Quiet"));
+		OutAlertOutcome = EHeistAlertLevel::Quiet;
 		OutCaseOutcome = EHeistDisplayCaseState::Completed;
 		DelayMultiplier = InspectionDelayExcellentMultiplier;
 	}
 	else if (SimilarityScore >= 70.0f)
 	{
 		OutScoreBand = FName(TEXT("70-89"));
-		OutAlertOutcome = FName(TEXT("Suspicious"));
+		OutAlertOutcome = EHeistAlertLevel::Suspicious;
 		OutCaseOutcome = EHeistDisplayCaseState::Suspected;
 		DelayMultiplier = InspectionDelayGoodMultiplier;
 	}
 	else if (SimilarityScore >= 50.0f)
 	{
 		OutScoreBand = FName(TEXT("50-69"));
-		OutAlertOutcome = FName(TEXT("Searching"));
+		OutAlertOutcome = EHeistAlertLevel::Searching;
 		OutCaseOutcome = EHeistDisplayCaseState::Suspected;
 		DelayMultiplier = InspectionDelayFairMultiplier;
 	}
 	else if (SimilarityScore >= 30.0f)
 	{
 		OutScoreBand = FName(TEXT("30-49"));
-		OutAlertOutcome = FName(TEXT("Alarmed"));
+		OutAlertOutcome = EHeistAlertLevel::Alarmed;
 		OutCaseOutcome = EHeistDisplayCaseState::Alarmed;
 		DelayMultiplier = InspectionDelayPoorMultiplier;
 	}
 	else
 	{
 		OutScoreBand = FName(TEXT("0-29"));
-		OutAlertOutcome = FName(TEXT("Alarmed"));
+		OutAlertOutcome = EHeistAlertLevel::Alarmed;
 		OutCaseOutcome = EHeistDisplayCaseState::Alarmed;
 	}
 	OutDelay = BaseInspectionDelay * DelayMultiplier;
@@ -903,7 +903,8 @@ bool AHeistPaintingDisplayCaseActor::ResolveInspectionSchedule(const FHeistForge
 		TEXT(
 			"Inspection schedule resolved: Case=%s CaseId=%s Artifact=%s Score=%.2f Band=%s BaseDelay=%.2f Multiplier=%.2f Delay=%.2f ReadyServerTime=%.2f CaseOutcome=%s AlertOutcome=%s ScheduleRevision=%d Authority=true Result=PASS"),
 		*GetNameSafe(this), *DisplayCaseId.ToString(), *TargetArtifactId.ToString(), Score, *InspectionScoreBand.ToString(), ArtifactDefinition.BaseInspectionDelay, DelayMultiplier,
-		ResolvedInspectionDelay, InspectionReadyServerTime, *UEnum::GetValueAsString(ResolvedInspectionCaseOutcome), *ResolvedInspectionAlertOutcome.ToString(), InspectionScheduleRevision);
+		ResolvedInspectionDelay, InspectionReadyServerTime, *UEnum::GetValueAsString(ResolvedInspectionCaseOutcome), *UEnum::GetValueAsString(ResolvedInspectionAlertOutcome),
+		InspectionScheduleRevision);
 	return true;
 }
 
@@ -985,7 +986,7 @@ FName AHeistPaintingDisplayCaseActor::GetInspectionScoreBand() const
 	return InspectionScoreBand;
 }
 
-FName AHeistPaintingDisplayCaseActor::GetResolvedInspectionAlertOutcome() const
+EHeistAlertLevel AHeistPaintingDisplayCaseActor::GetResolvedInspectionAlertOutcome() const
 {
 	return ResolvedInspectionAlertOutcome;
 }
@@ -1046,6 +1047,15 @@ bool AHeistPaintingDisplayCaseActor::ApplyInspectionResult(AActor* InspectingGua
 		return false;
 	}
 
+	AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	const FName AlertTriggerId(*FString::Printf(TEXT("Inspection_%s_%d"), *DisplayCaseId.ToString(), InspectionScheduleRevision));
+	if (!IsValid(HeistGameMode) || !HeistGameMode->RequestAlertEscalation(ResolvedInspectionAlertOutcome, AlertTriggerId))
+	{
+		UE_LOG(LogHeistNetwork, Error, TEXT("Exhibit inspection result rejected: Case=%s CaseId=%s Guard=%s Alert=%s Trigger=%s Authority=true Result=FAIL Reason=AlertRequestRejected"),
+			   *GetNameSafe(this), *DisplayCaseId.ToString(), *GetNameSafe(InspectingGuard), *UEnum::GetValueAsString(ResolvedInspectionAlertOutcome), *AlertTriggerId.ToString());
+		return false;
+	}
+
 	const EHeistDisplayCaseState PreviousState = DisplayCaseState;
 	DisplayCaseState = ResolvedInspectionCaseOutcome;
 	InspectingGuardActor.Reset();
@@ -1054,7 +1064,7 @@ bool AHeistPaintingDisplayCaseActor::ApplyInspectionResult(AActor* InspectingGua
 
 	UE_LOG(LogHeistNetwork, Log, TEXT("Exhibit inspection result applied: Case=%s CaseId=%s Guard=%s Score=%.2f Band=%s CaseOutcome=%s AlertOutcome=%s NewState=%s Authority=true Result=PASS"),
 		   *GetNameSafe(this), *DisplayCaseId.ToString(), *GetNameSafe(InspectingGuard), CommittedForgeryResult.SimilarityScore, *InspectionScoreBand.ToString(),
-		   *UEnum::GetValueAsString(ResolvedInspectionCaseOutcome), *ResolvedInspectionAlertOutcome.ToString(), *UEnum::GetValueAsString(DisplayCaseState));
+		   *UEnum::GetValueAsString(ResolvedInspectionCaseOutcome), *UEnum::GetValueAsString(ResolvedInspectionAlertOutcome), *UEnum::GetValueAsString(DisplayCaseState));
 	return true;
 }
 
@@ -1094,7 +1104,7 @@ void AHeistPaintingDisplayCaseActor::OnRep_InspectionScheduleRevision()
 		TEXT(
 			"Inspection schedule replicated: Case=%s CaseId=%s Score=%.2f Band=%s Delay=%.2f ReadyServerTime=%.2f Remaining=%.2f CaseOutcome=%s AlertOutcome=%s ScheduleRevision=%d Authority=false Result=PASS"),
 		*GetNameSafe(this), *DisplayCaseId.ToString(), CommittedForgeryResult.SimilarityScore, *InspectionScoreBand.ToString(), ResolvedInspectionDelay, InspectionReadyServerTime,
-		GetInspectionDelayRemaining(), *UEnum::GetValueAsString(ResolvedInspectionCaseOutcome), *ResolvedInspectionAlertOutcome.ToString(), InspectionScheduleRevision);
+		GetInspectionDelayRemaining(), *UEnum::GetValueAsString(ResolvedInspectionCaseOutcome), *UEnum::GetValueAsString(ResolvedInspectionAlertOutcome), InspectionScheduleRevision);
 }
 
 #pragma endregion

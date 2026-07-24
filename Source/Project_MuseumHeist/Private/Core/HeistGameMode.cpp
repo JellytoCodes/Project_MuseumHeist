@@ -52,9 +52,17 @@ void AHeistGameMode::StartPlay()
 	{
 		HeistGameState->SetMatchPhase(EHeistMatchPhase::InGame);
 	}
+	InitializeAlertState();
 	InitializeObjectiveFromPlacedTargetCase();
 	ValidateItemDataTables();
 	StartEscapePhaseTimer();
+}
+
+void AHeistGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	GetWorldTimerManager().ClearTimer(AlertTransitionTimerHandle);
+	ProcessedAlertTriggerIds.Reset();
+	Super::EndPlay(EndPlayReason);
 }
 
 void AHeistGameMode::RestartPlayer(AController* NewPlayer)
@@ -160,6 +168,168 @@ void AHeistGameMode::InitializeObjectiveFromPlacedTargetCase()
 	else
 	{
 		UE_LOG(LogHeist, Error, TEXT("%s"), *InitializationMessage);
+	}
+}
+
+#pragma endregion
+
+#pragma region Alert
+
+bool AHeistGameMode::RequestAlertEscalation(const EHeistAlertLevel RequestedAlertLevel, const FName TriggerId)
+{
+	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	const UEnum* AlertLevelEnum = StaticEnum<EHeistAlertLevel>();
+	if (!HasAuthority() || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame || TriggerId.IsNone() || !IsValid(AlertLevelEnum) ||
+		!AlertLevelEnum->IsValidEnumValue(static_cast<int64>(RequestedAlertLevel)))
+	{
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Global alert trigger rejected: Requested=%s Trigger=%s Authority=%s MatchPhase=%s Result=FAIL Reason=InvalidRequest"),
+			   *UEnum::GetValueAsString(RequestedAlertLevel), *TriggerId.ToString(), HasAuthority() ? TEXT("true") : TEXT("false"),
+			   IsValid(HeistGameState) ? *UEnum::GetValueAsString(HeistGameState->GetMatchPhase()) : TEXT("MissingGameState"));
+		return false;
+	}
+
+	if (ProcessedAlertTriggerIds.Contains(TriggerId))
+	{
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Global alert trigger blocked: Current=%s Requested=%s Trigger=%s ProcessedTriggers=%d Authority=true Result=PASS Reason=DuplicateTrigger"),
+			   *UEnum::GetValueAsString(HeistGameState->GetAlertLevel()), *UEnum::GetValueAsString(RequestedAlertLevel), *TriggerId.ToString(), ProcessedAlertTriggerIds.Num());
+		return true;
+	}
+
+	ProcessedAlertTriggerIds.Add(TriggerId);
+	const EHeistAlertLevel CurrentAlertLevel = HeistGameState->GetAlertLevel();
+	if (static_cast<uint8>(RequestedAlertLevel) <= static_cast<uint8>(CurrentAlertLevel))
+	{
+		UE_LOG(LogHeistNetwork, Log, TEXT("Global alert trigger consumed: Current=%s Requested=%s Trigger=%s ProcessedTriggers=%d Authority=true Result=PASS Reason=NoDowngradeOrDuplicateLevel"),
+			   *UEnum::GetValueAsString(CurrentAlertLevel), *UEnum::GetValueAsString(RequestedAlertLevel), *TriggerId.ToString(), ProcessedAlertTriggerIds.Num());
+		return true;
+	}
+
+	if (ApplyAlertLevel(RequestedAlertLevel, TriggerId))
+	{
+		return true;
+	}
+
+	ProcessedAlertTriggerIds.Remove(TriggerId);
+	return false;
+}
+
+bool AHeistGameMode::IsAlertTransitionTimerActive() const
+{
+	return GetWorldTimerManager().IsTimerActive(AlertTransitionTimerHandle);
+}
+
+int32 AHeistGameMode::GetProcessedAlertTriggerCount() const
+{
+	return ProcessedAlertTriggerIds.Num();
+}
+
+void AHeistGameMode::InitializeAlertState()
+{
+	GetWorldTimerManager().ClearTimer(AlertTransitionTimerHandle);
+	ProcessedAlertTriggerIds.Reset();
+	ScheduledAlertSourceLevel = EHeistAlertLevel::Quiet;
+	ScheduledAlertRevision = 0;
+	if (AHeistGameState* HeistGameState = GetGameState<AHeistGameState>())
+	{
+		HeistGameState->SetAlertSnapshot(EHeistAlertLevel::Quiet, 0.0f, FName(TEXT("MatchStart")));
+	}
+}
+
+bool AHeistGameMode::ApplyAlertLevel(const EHeistAlertLevel NewAlertLevel, const FName TriggerId)
+{
+	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	if (!HasAuthority() || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame)
+	{
+		return false;
+	}
+
+	GetWorldTimerManager().ClearTimer(AlertTransitionTimerHandle);
+	const EHeistAlertLevel NextAlertLevel = GetNextAlertLevel(NewAlertLevel);
+	const float TransitionDelay = ResolveAlertTransitionDelay(NewAlertLevel);
+	const bool bHasNextTransition = NextAlertLevel != NewAlertLevel;
+	const float NextTransitionServerTime = bHasNextTransition ? HeistGameState->GetServerWorldTimeSeconds() + TransitionDelay : 0.0f;
+	if (!HeistGameState->SetAlertSnapshot(NewAlertLevel, NextTransitionServerTime, TriggerId))
+	{
+		return false;
+	}
+
+	ScheduledAlertSourceLevel = NewAlertLevel;
+	ScheduledAlertRevision = HeistGameState->GetAlertRevision();
+	if (!bHasNextTransition)
+	{
+		UE_LOG(LogHeistNetwork, Log, TEXT("Global alert terminal level reached: Level=%s Trigger=%s Revision=%d Authority=true Result=PASS"), *UEnum::GetValueAsString(NewAlertLevel),
+			   *TriggerId.ToString(), ScheduledAlertRevision);
+		return true;
+	}
+
+	if (TransitionDelay <= KINDA_SMALL_NUMBER)
+	{
+		HandleAlertTransitionTimerElapsed();
+		return true;
+	}
+
+	GetWorldTimerManager().SetTimer(AlertTransitionTimerHandle, this, &AHeistGameMode::HandleAlertTransitionTimerElapsed, TransitionDelay, false);
+	UE_LOG(LogHeistNetwork, Log, TEXT("Global alert timer started: Current=%s Next=%s Delay=%.2f NextTransitionServerTime=%.2f Trigger=%s Revision=%d Authority=true Result=PASS"),
+		   *UEnum::GetValueAsString(NewAlertLevel), *UEnum::GetValueAsString(NextAlertLevel), TransitionDelay, NextTransitionServerTime, *TriggerId.ToString(), ScheduledAlertRevision);
+	return true;
+}
+
+void AHeistGameMode::HandleAlertTransitionTimerElapsed()
+{
+	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	if (!HasAuthority() || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame || HeistGameState->GetAlertLevel() != ScheduledAlertSourceLevel ||
+		HeistGameState->GetAlertRevision() != ScheduledAlertRevision)
+	{
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Global alert timer blocked: ScheduledSource=%s ScheduledRevision=%d Current=%s CurrentRevision=%d Authority=%s Result=PASS Reason=StaleOrMatchEnded"),
+			   *UEnum::GetValueAsString(ScheduledAlertSourceLevel), ScheduledAlertRevision,
+			   IsValid(HeistGameState) ? *UEnum::GetValueAsString(HeistGameState->GetAlertLevel()) : TEXT("MissingGameState"),
+			   IsValid(HeistGameState) ? HeistGameState->GetAlertRevision() : INDEX_NONE, HasAuthority() ? TEXT("true") : TEXT("false"));
+		return;
+	}
+
+	const EHeistAlertLevel NextAlertLevel = GetNextAlertLevel(ScheduledAlertSourceLevel);
+	const FName TimerTriggerId(*FString::Printf(TEXT("AlertTimer_%s_%d"), *UEnum::GetValueAsString(ScheduledAlertSourceLevel), ScheduledAlertRevision));
+	ApplyAlertLevel(NextAlertLevel, TimerTriggerId);
+}
+
+EHeistAlertLevel AHeistGameMode::GetNextAlertLevel(const EHeistAlertLevel CurrentAlertLevel) const
+{
+	switch (CurrentAlertLevel)
+	{
+	case EHeistAlertLevel::Quiet:
+		return EHeistAlertLevel::Suspicious;
+	case EHeistAlertLevel::Suspicious:
+		return EHeistAlertLevel::Searching;
+	case EHeistAlertLevel::Searching:
+		return EHeistAlertLevel::Alarmed;
+	case EHeistAlertLevel::Alarmed:
+		return EHeistAlertLevel::Lockdown;
+	case EHeistAlertLevel::Lockdown:
+	default:
+		return EHeistAlertLevel::Lockdown;
+	}
+}
+
+float AHeistGameMode::ResolveAlertTransitionDelay(const EHeistAlertLevel CurrentAlertLevel) const
+{
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	if (!IsValid(BalanceData))
+	{
+		return 0.0f;
+	}
+
+	switch (CurrentAlertLevel)
+	{
+	case EHeistAlertLevel::Suspicious:
+		return FMath::Max(0.0f, BalanceData->SuspiciousToSearchingDelay);
+	case EHeistAlertLevel::Searching:
+		return FMath::Max(0.0f, BalanceData->SearchingToAlarmedDelay);
+	case EHeistAlertLevel::Alarmed:
+		return FMath::Max(0.0f, BalanceData->AlarmedToLockdownDelay);
+	case EHeistAlertLevel::Quiet:
+	case EHeistAlertLevel::Lockdown:
+	default:
+		return 0.0f;
 	}
 }
 

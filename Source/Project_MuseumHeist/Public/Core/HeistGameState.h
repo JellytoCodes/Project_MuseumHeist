@@ -15,6 +15,7 @@ DECLARE_MULTICAST_DELEGATE_OneParam(FHeistRareLootEventStateChanged, const FHeis
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerConnectionsChanged, int32);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistMatchPhaseChanged, EHeistMatchPhase, EHeistMatchPhase);
 DECLARE_MULTICAST_DELEGATE_FourParams(FHeistObjectiveStateChanged, FName, FName, EHeistObjectiveState, AHeistPlayerState*);
+DECLARE_MULTICAST_DELEGATE_FourParams(FHeistAlertStateChanged, EHeistAlertLevel, EHeistAlertLevel, int32, FName);
 
 UCLASS()
 class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
@@ -62,6 +63,50 @@ class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
 	void BroadcastMatchPhaseChanged(EHeistMatchPhase PreviousMatchPhase, const TCHAR* ChangeSource);
 
 	FHeistMatchPhaseChanged MatchPhaseChangedDelegate;
+
+#pragma endregion
+
+#pragma region Alert
+
+  public:
+	UFUNCTION(BlueprintPure, Category = "Heist|Alert")
+	EHeistAlertLevel GetAlertLevel() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Alert")
+	float GetAlertNextTransitionServerTime() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Alert")
+	float GetAlertTransitionRemainingSeconds() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Alert")
+	int32 GetAlertRevision() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Alert")
+	FName GetLastAlertTriggerId() const;
+
+	bool SetAlertSnapshot(EHeistAlertLevel NewAlertLevel, float NewNextTransitionServerTime, FName TriggerId);
+	FHeistAlertStateChanged& GetAlertStateChangedDelegate();
+
+  private:
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
+	EHeistAlertLevel AlertLevel = EHeistAlertLevel::Quiet;
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
+	float AlertNextTransitionServerTime = 0.0f;
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
+	FName LastAlertTriggerId = NAME_None;
+
+	UPROPERTY(ReplicatedUsing = OnRep_AlertRevision, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
+	int32 AlertRevision = 0;
+
+	UFUNCTION()
+	void OnRep_AlertRevision();
+
+	void BroadcastAlertState(EHeistAlertLevel PreviousAlertLevel, const TCHAR* ChangeSource);
+
+	FHeistAlertStateChanged AlertStateChangedDelegate;
+	EHeistAlertLevel LastBroadcastAlertLevel = EHeistAlertLevel::Quiet;
 
 #pragma endregion
 

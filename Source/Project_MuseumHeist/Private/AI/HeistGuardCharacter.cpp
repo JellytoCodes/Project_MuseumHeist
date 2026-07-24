@@ -120,6 +120,27 @@ const FHeistGuardDataRow& AHeistGuardCharacter::GetGuardProfile() const
 	return GuardProfile;
 }
 
+void AHeistGuardCharacter::SetAlertPatrolSpeedMultiplier(const float Multiplier)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	AlertPatrolSpeedMultiplier = FMath::Max(0.0f, FMath::IsFinite(Multiplier) ? Multiplier : 1.0f);
+	HandleGuardStateChanged(GuardStateComponent->GetGuardState(), GuardStateComponent->GetGuardState());
+}
+
+float AHeistGuardCharacter::GetAlertPatrolSpeedMultiplier() const
+{
+	return AlertPatrolSpeedMultiplier;
+}
+
+float AHeistGuardCharacter::GetEffectivePatrolSpeed() const
+{
+	return bHasResolvedGuardProfile ? FMath::Max(0.0f, GuardProfile.PatrolSpeed * AlertPatrolSpeedMultiplier) : 0.0f;
+}
+
 void AHeistGuardCharacter::HandleGuardStateChanged(const EHeistGuardState, const EHeistGuardState NewState)
 {
 	UCharacterMovementComponent* MovementComponent = GetCharacterMovement();
@@ -140,7 +161,7 @@ void AHeistGuardCharacter::HandleGuardStateChanged(const EHeistGuardState, const
 		return;
 	}
 
-	MovementComponent->MaxWalkSpeed = NewState == EHeistGuardState::ChasePlayer ? FMath::Max(0.0f, GuardProfile.ChaseSpeed) : FMath::Max(0.0f, GuardProfile.PatrolSpeed);
+	MovementComponent->MaxWalkSpeed = NewState == EHeistGuardState::ChasePlayer ? FMath::Max(0.0f, GuardProfile.ChaseSpeed) : GetEffectivePatrolSpeed();
 }
 
 #pragma endregion

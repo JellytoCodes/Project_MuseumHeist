@@ -1,9 +1,9 @@
 # Project_MuseumHeist — Codex Instructions
-## Rev 6: W4 OpenCV / Exhibit Case Isolation Handoff
+## Rev 7: W4 Handoff / W5~W8 Compressed Roadmap
 
-기준일: 2026-07-22
+기준일: 2026-07-23
 엔진: Unreal Engine 5.8  
-현재 목표: 2026-09-20 W12 Final RC / 프로젝트 마무리
+현재 목표: 2026-09-20 W8 Final RC / 프로젝트 마무리
 
 이 문서는 프로젝트 엔지니어링 정책의 최상위 Source of Truth다. 기존 경쟁형 Top-Down 버전은 Legacy로 보존한다.
 
@@ -424,4 +424,19 @@ W3는 완료됐다. 현재 실행 기준은 W4 단일 범위이며 기간은 202
 - `TASK-W4-013`은 Patrol 후보 선점, Case 이동/정렬, 고정 Inspect Cast, Chase 중단과 Patrol 재개, `Suspected` 결과 적용을 C++에 연결했다.
 - `TASK-W4-014`의 Score → Inspection Delay Mapping은 선행 구현하지 않았다.
 
-세부 설계와 주차별 Task 정의는 `Museum_Heist_GDD.docx` Rev.10을 기준으로 Repository에서 확인한다.
+### Post-W4 Compressed Roadmap
+
+- `W5 (2026-08-17~08-30)`: 기존 W10의 Steam Online Subsystem / Session / Travel / Packaging 구현과 기존 W9의 Painting Template, Loose Loot, Tutorial 콘텐츠 구현을 병합한다. Steam Session 구현을 먼저 진행한다.
+- `W6 (2026-08-31~09-06)`: 기존 W8의 Shared Extraction / Team Result 전체를 이동한다.
+- `W7 (2026-09-07)`: 고정 Task가 없는 검토 체크포인트다. W4~W6 결과와 잔여 위험을 검토한 뒤 필요한 경우에만 새 `TASK-W7-###`을 생성한다.
+- `W8 (2026-09-08~09-20)`: 레벨 디자인, 라이팅, 이펙트, 오디오, HUD/Result Polish와 3-Map Balance를 구현 완료 후 수행하고, 이어서 기존 W11 Feature Lock / RC1 QA와 기존 W12 Final RC / Public Release를 진행한다.
+
+### Post-W4 Execution Priority
+
+- Gameplay, Authority, Replication, Online Session, Extraction, Result 구현을 먼저 완료한다.
+- Level Design, Lighting, VFX, Ambient/Gameplay Audio, HUD/Result Polish는 W5/W6 필수 구현과 W7 검토가 끝나기 전에는 착수하지 않는다.
+- 미래 주차 번호는 `W5~W8`만 사용한다. 기존 `W9~W12` 번호는 Rev.10 이전 이력 참조에만 사용하며 신규 Task를 생성하지 않는다.
+- W7 Task는 사전 생성하지 않는다. 검토 시점의 실제 Gap과 Risk를 근거로 생성한다.
+- Public Release 목표일 `2026-09-20`은 유지한다.
+
+세부 설계와 주차별 Task 정의는 `Museum_Heist_GDD.docx` Rev.11을 기준으로 Repository에서 확인한다.

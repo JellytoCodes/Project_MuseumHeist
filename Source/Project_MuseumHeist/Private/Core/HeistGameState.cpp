@@ -105,6 +105,80 @@ void AHeistGameState::BroadcastMatchPhaseChanged(const EHeistMatchPhase Previous
 
 #pragma endregion
 
+#pragma region Alert
+
+EHeistAlertLevel AHeistGameState::GetAlertLevel() const
+{
+	return AlertLevel;
+}
+
+float AHeistGameState::GetAlertNextTransitionServerTime() const
+{
+	return AlertNextTransitionServerTime;
+}
+
+float AHeistGameState::GetAlertTransitionRemainingSeconds() const
+{
+	return AlertNextTransitionServerTime > 0.0f ? FMath::Max(0.0f, AlertNextTransitionServerTime - GetServerWorldTimeSeconds()) : 0.0f;
+}
+
+int32 AHeistGameState::GetAlertRevision() const
+{
+	return AlertRevision;
+}
+
+FName AHeistGameState::GetLastAlertTriggerId() const
+{
+	return LastAlertTriggerId;
+}
+
+bool AHeistGameState::SetAlertSnapshot(const EHeistAlertLevel NewAlertLevel, const float NewNextTransitionServerTime, const FName TriggerId)
+{
+	const UEnum* AlertLevelEnum = StaticEnum<EHeistAlertLevel>();
+	if (!HasAuthority() || !IsValid(AlertLevelEnum) || !AlertLevelEnum->IsValidEnumValue(static_cast<int64>(NewAlertLevel)) || !FMath::IsFinite(NewNextTransitionServerTime) ||
+		NewNextTransitionServerTime < 0.0f)
+	{
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Alert snapshot rejected: GameState=%s Level=%s NextTransitionServerTime=%.2f Trigger=%s Authority=%s Result=FAIL"), *GetNameSafe(this),
+			   *UEnum::GetValueAsString(NewAlertLevel), NewNextTransitionServerTime, *TriggerId.ToString(), HasAuthority() ? TEXT("true") : TEXT("false"));
+		return false;
+	}
+
+	if (AlertLevel == NewAlertLevel && FMath::IsNearlyEqual(AlertNextTransitionServerTime, NewNextTransitionServerTime, KINDA_SMALL_NUMBER) && LastAlertTriggerId == TriggerId)
+	{
+		return true;
+	}
+
+	const EHeistAlertLevel PreviousAlertLevel = AlertLevel;
+	AlertLevel = NewAlertLevel;
+	AlertNextTransitionServerTime = NewNextTransitionServerTime;
+	LastAlertTriggerId = TriggerId;
+	++AlertRevision;
+	ForceNetUpdate();
+	BroadcastAlertState(PreviousAlertLevel, TEXT("Server"));
+	return true;
+}
+
+FHeistAlertStateChanged& AHeistGameState::GetAlertStateChangedDelegate()
+{
+	return AlertStateChangedDelegate;
+}
+
+void AHeistGameState::OnRep_AlertRevision()
+{
+	BroadcastAlertState(LastBroadcastAlertLevel, TEXT("Replicated"));
+}
+
+void AHeistGameState::BroadcastAlertState(const EHeistAlertLevel PreviousAlertLevel, const TCHAR* ChangeSource)
+{
+	LastBroadcastAlertLevel = AlertLevel;
+	AlertStateChangedDelegate.Broadcast(PreviousAlertLevel, AlertLevel, AlertRevision, LastAlertTriggerId);
+	UE_LOG(LogHeistNetwork, Log, TEXT("Global alert state %s: GameState=%s Previous=%s New=%s NextTransitionServerTime=%.2f Remaining=%.2f Trigger=%s Revision=%d Authority=%s Result=PASS"),
+		   ChangeSource, *GetNameSafe(this), *UEnum::GetValueAsString(PreviousAlertLevel), *UEnum::GetValueAsString(AlertLevel), AlertNextTransitionServerTime, GetAlertTransitionRemainingSeconds(),
+		   *LastAlertTriggerId.ToString(), AlertRevision, HasAuthority() ? TEXT("true") : TEXT("false"));
+}
+
+#pragma endregion
+
 #pragma region Objective
 
 FName AHeistGameState::GetActiveTargetArtifactId() const
@@ -466,6 +540,10 @@ void AHeistGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AHeistGameState, MatchPhase);
+	DOREPLIFETIME(AHeistGameState, AlertLevel);
+	DOREPLIFETIME(AHeistGameState, AlertNextTransitionServerTime);
+	DOREPLIFETIME(AHeistGameState, LastAlertTriggerId);
+	DOREPLIFETIME(AHeistGameState, AlertRevision);
 
 	DOREPLIFETIME(AHeistGameState, bEscapePhaseOpen);
 	DOREPLIFETIME(AHeistGameState, ActiveTargetArtifactId);

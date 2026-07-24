@@ -58,6 +58,8 @@ class PROJECT_MUSEUMHEIST_API UHeistGuardStateComponent : public UActorComponent
 	AActor* GetChaseTarget() const;
 	float GetInvestigateConfirmationDuration() const;
 	float GetSearchDuration() const;
+	void SetAlertSearchDurationMultiplier(float Multiplier);
+	float GetAlertSearchDurationMultiplier() const;
 
 	FHeistGuardStateChanged& GetGuardStateChangedDelegate();
 	DECLARE_MULTICAST_DELEGATE(FHeistInspectExhibitCastExpired);
@@ -88,6 +90,8 @@ class PROJECT_MUSEUMHEIST_API UHeistGuardStateComponent : public UActorComponent
 
 	float InvestigateDuration = 0.0f;
 	float SearchDuration = 0.0f;
+	float BaseSearchDuration = 0.0f;
+	float AlertSearchDurationMultiplier = 1.0f;
 	float PendingInvestigateDuration = 0.0f;
 	FTimerHandle StateTimerHandle;
 	FHeistGuardStateChanged GuardStateChangedDelegate;

@@ -18,7 +18,14 @@
     "InvestigateDuration": 5.0,
     "SearchDuration": 5.0,
     "AggroResetDistance": 3000.0,
-    "SightUpdateInterval": 0.1
+    "SightUpdateInterval": 0.1,
+    "AlertPatrolSpeedMultipliers": "(X=1.05,Y=1.10,Z=1.20,W=1.30)",
+    "AlertNoiseRadiusMultipliers": "(X=1.05,Y=1.15,Z=1.30,W=1.45)",
+    "AlertSightRadiusMultipliers": "(X=1.05,Y=1.10,Z=1.20,W=1.30)",
+    "AlertSearchDurationMultipliers": "(X=1.10,Y=1.25,Z=1.50,W=1.75)",
+    "bEnableExitSurveillance": true,
+    "ExitSurveillanceAlertLevel": "Alarmed",
+    "ExitSurveillanceAcceptanceRadius": 175.0
   },
   {
     "Name": "Guard_Vault",
@@ -39,7 +46,14 @@
     "InvestigateDuration": 5.0,
     "SearchDuration": 5.0,
     "AggroResetDistance": 2500.0,
-    "SightUpdateInterval": 0.1
+    "SightUpdateInterval": 0.1,
+    "AlertPatrolSpeedMultipliers": "(X=1.03,Y=1.08,Z=1.15,W=1.25)",
+    "AlertNoiseRadiusMultipliers": "(X=1.05,Y=1.15,Z=1.30,W=1.45)",
+    "AlertSightRadiusMultipliers": "(X=1.05,Y=1.10,Z=1.20,W=1.30)",
+    "AlertSearchDurationMultipliers": "(X=1.10,Y=1.25,Z=1.50,W=1.75)",
+    "bEnableExitSurveillance": true,
+    "ExitSurveillanceAlertLevel": "Searching",
+    "ExitSurveillanceAcceptanceRadius": 150.0
   },
   {
     "Name": "Guard_SecurityRoom",
@@ -60,6 +74,13 @@
     "InvestigateDuration": 5.0,
     "SearchDuration": 5.0,
     "AggroResetDistance": 3000.0,
-    "SightUpdateInterval": 0.1
+    "SightUpdateInterval": 0.1,
+    "AlertPatrolSpeedMultipliers": "(X=1.05,Y=1.10,Z=1.20,W=1.30)",
+    "AlertNoiseRadiusMultipliers": "(X=1.05,Y=1.15,Z=1.30,W=1.45)",
+    "AlertSightRadiusMultipliers": "(X=1.05,Y=1.10,Z=1.20,W=1.30)",
+    "AlertSearchDurationMultipliers": "(X=1.10,Y=1.25,Z=1.50,W=1.75)",
+    "bEnableExitSurveillance": false,
+    "ExitSurveillanceAlertLevel": "Lockdown",
+    "ExitSurveillanceAcceptanceRadius": 175.0
   }
 ]

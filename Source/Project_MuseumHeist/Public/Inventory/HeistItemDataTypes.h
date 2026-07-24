@@ -209,6 +209,27 @@ struct PROJECT_MUSEUMHEIST_API FHeistGuardDataRow : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.01", Units = "s"))
 	float SightUpdateInterval = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Alert Modifiers", meta = (ToolTip = "X=Suspicious, Y=Searching, Z=Alarmed, W=Lockdown"))
+	FVector4 AlertPatrolSpeedMultipliers = FVector4(1.05, 1.10, 1.20, 1.30);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Alert Modifiers", meta = (ToolTip = "X=Suspicious, Y=Searching, Z=Alarmed, W=Lockdown"))
+	FVector4 AlertNoiseRadiusMultipliers = FVector4(1.05, 1.15, 1.30, 1.45);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Alert Modifiers", meta = (ToolTip = "X=Suspicious, Y=Searching, Z=Alarmed, W=Lockdown"))
+	FVector4 AlertSightRadiusMultipliers = FVector4(1.05, 1.10, 1.20, 1.30);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Alert Modifiers", meta = (ToolTip = "X=Suspicious, Y=Searching, Z=Alarmed, W=Lockdown"))
+	FVector4 AlertSearchDurationMultipliers = FVector4(1.10, 1.25, 1.50, 1.75);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Alert Modifiers")
+	bool bEnableExitSurveillance = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Alert Modifiers")
+	EHeistAlertLevel ExitSurveillanceAlertLevel = EHeistAlertLevel::Alarmed;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Alert Modifiers", meta = (ClampMin = "0.0", Units = "cm"))
+	float ExitSurveillanceAcceptanceRadius = 175.0f;
 };
 
 #pragma endregion
