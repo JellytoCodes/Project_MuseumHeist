@@ -122,6 +122,26 @@ float AHeistGameState::GetAlertTransitionRemainingSeconds() const
 	return AlertNextTransitionServerTime > 0.0f ? FMath::Max(0.0f, AlertNextTransitionServerTime - GetServerWorldTimeSeconds()) : 0.0f;
 }
 
+bool AHeistGameState::IsLockdownCountdownActive() const
+{
+	return AlertLevel == EHeistAlertLevel::Alarmed && GetAlertTransitionRemainingSeconds() > 0.0f;
+}
+
+float AHeistGameState::GetLockdownCountdownRemainingSeconds() const
+{
+	return IsLockdownCountdownActive() ? GetAlertTransitionRemainingSeconds() : 0.0f;
+}
+
+bool AHeistGameState::IsLockdownActive() const
+{
+	return AlertLevel == EHeistAlertLevel::Lockdown;
+}
+
+bool AHeistGameState::AreWorldInteractionsRestricted() const
+{
+	return IsLockdownActive() || MatchPhase == EHeistMatchPhase::End;
+}
+
 int32 AHeistGameState::GetAlertRevision() const
 {
 	return AlertRevision;
@@ -419,32 +439,18 @@ void AHeistGameState::ReportSoundPing(const FHeistSoundPingEvent& SoundPingEvent
 		return;
 	}
 
-	LastSoundPingEvent = SoundPingEvent;
-	LastSoundPingEvent.SequenceId = NextSoundPingSequenceId++;
-	LastSoundPingEvent.ServerTimeSeconds = GetServerWorldTimeSeconds();
-	ForceNetUpdate();
-	SoundPingEventReportedDelegate.Broadcast(LastSoundPingEvent);
+	FHeistSoundPingEvent ReportedEvent = SoundPingEvent;
+	ReportedEvent.SequenceId = NextSoundPingSequenceId++;
+	ReportedEvent.ServerTimeSeconds = GetServerWorldTimeSeconds();
+	SoundPingEventReportedDelegate.Broadcast(ReportedEvent);
 #if !UE_BUILD_SHIPPING
-	LogSoundPingEvent(TEXT("reported"), LastSoundPingEvent);
+	LogSoundPingEvent(TEXT("reported"), ReportedEvent);
 #endif
-}
-
-const FHeistSoundPingEvent& AHeistGameState::GetLastSoundPingEvent() const
-{
-	return LastSoundPingEvent;
 }
 
 FHeistSoundPingEventReported& AHeistGameState::GetSoundPingEventReportedDelegate()
 {
 	return SoundPingEventReportedDelegate;
-}
-
-void AHeistGameState::OnRep_LastSoundPingEvent()
-{
-	SoundPingEventReportedDelegate.Broadcast(LastSoundPingEvent);
-#if !UE_BUILD_SHIPPING
-	LogSoundPingEvent(TEXT("replicated"), LastSoundPingEvent);
-#endif
 }
 
 #pragma endregion
@@ -553,7 +559,6 @@ void AHeistGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(AHeistGameState, ObjectiveRevision);
 	DOREPLIFETIME(AHeistGameState, EscapePhaseDelaySeconds);
 	DOREPLIFETIME(AHeistGameState, EscapePhaseOpenTimeSeconds);
-	DOREPLIFETIME(AHeistGameState, LastSoundPingEvent);
 	DOREPLIFETIME(AHeistGameState, PlayerResults);
 }
 

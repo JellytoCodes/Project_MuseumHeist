@@ -1,7 +1,9 @@
 #include "Core/HeistGameMode.h"
 
-#include "Character/HeistPlayerCharacter.h"
+#include "Character/Components/HeistActionComponent.h"
 #include "Character/Components/HeistForgeryComponent.h"
+#include "Character/Components/HeistInventoryComponent.h"
+#include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistHUD.h"
 #include "Core/HeistLogChannels.h"
@@ -13,6 +15,7 @@
 #include "Engine/DataTable.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Inventory/HeistItemDataTypes.h"
 #include "Inventory/HeistInventoryTypes.h"
 #include "Kismet/GameplayStatics.h"
@@ -61,7 +64,9 @@ void AHeistGameMode::StartPlay()
 void AHeistGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	GetWorldTimerManager().ClearTimer(AlertTransitionTimerHandle);
+	GetWorldTimerManager().ClearTimer(EscapePhaseTimerHandle);
 	ProcessedAlertTriggerIds.Reset();
+	bLockdownWorldRestrictionsApplied = false;
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -229,6 +234,7 @@ void AHeistGameMode::InitializeAlertState()
 	ProcessedAlertTriggerIds.Reset();
 	ScheduledAlertSourceLevel = EHeistAlertLevel::Quiet;
 	ScheduledAlertRevision = 0;
+	bLockdownWorldRestrictionsApplied = false;
 	if (AHeistGameState* HeistGameState = GetGameState<AHeistGameState>())
 	{
 		HeistGameState->SetAlertSnapshot(EHeistAlertLevel::Quiet, 0.0f, FName(TEXT("MatchStart")));
@@ -257,9 +263,10 @@ bool AHeistGameMode::ApplyAlertLevel(const EHeistAlertLevel NewAlertLevel, const
 	ScheduledAlertRevision = HeistGameState->GetAlertRevision();
 	if (!bHasNextTransition)
 	{
-		UE_LOG(LogHeistNetwork, Log, TEXT("Global alert terminal level reached: Level=%s Trigger=%s Revision=%d Authority=true Result=PASS"), *UEnum::GetValueAsString(NewAlertLevel),
-			   *TriggerId.ToString(), ScheduledAlertRevision);
-		return true;
+		const bool bRestrictionsApplied = NewAlertLevel != EHeistAlertLevel::Lockdown || ApplyLockdownWorldRestrictions(TriggerId);
+		UE_LOG(LogHeistNetwork, Log, TEXT("Global alert terminal level reached: Level=%s Trigger=%s Revision=%d Authority=true Result=%s"), *UEnum::GetValueAsString(NewAlertLevel),
+			   *TriggerId.ToString(), ScheduledAlertRevision, bRestrictionsApplied ? TEXT("PASS") : TEXT("FAIL"));
+		return bRestrictionsApplied;
 	}
 
 	if (TransitionDelay <= KINDA_SMALL_NUMBER)
@@ -272,6 +279,85 @@ bool AHeistGameMode::ApplyAlertLevel(const EHeistAlertLevel NewAlertLevel, const
 	UE_LOG(LogHeistNetwork, Log, TEXT("Global alert timer started: Current=%s Next=%s Delay=%.2f NextTransitionServerTime=%.2f Trigger=%s Revision=%d Authority=true Result=PASS"),
 		   *UEnum::GetValueAsString(NewAlertLevel), *UEnum::GetValueAsString(NextAlertLevel), TransitionDelay, NextTransitionServerTime, *TriggerId.ToString(), ScheduledAlertRevision);
 	return true;
+}
+
+bool AHeistGameMode::ApplyLockdownWorldRestrictions(const FName TriggerId)
+{
+	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	if (!HasAuthority() || !IsValid(HeistGameState) || !HeistGameState->IsLockdownActive())
+	{
+		UE_LOG(LogHeistNetwork, Error, TEXT("Lockdown world restriction rejected: Trigger=%s Authority=%s Alert=%s Result=FAIL Reason=InvalidAuthorityState"), *TriggerId.ToString(),
+			   HasAuthority() ? TEXT("true") : TEXT("false"), IsValid(HeistGameState) ? *UEnum::GetValueAsString(HeistGameState->GetAlertLevel()) : TEXT("MissingGameState"));
+		return false;
+	}
+
+	if (bLockdownWorldRestrictionsApplied)
+	{
+		const bool bStateValid = HeistGameState->GetMatchPhase() == EHeistMatchPhase::End && HeistGameState->GetObjectiveState() == EHeistObjectiveState::Failed;
+		UE_LOG(LogHeistNetwork, Log, TEXT("Lockdown world restriction duplicate blocked: Trigger=%s MatchPhase=%s Objective=%s Authority=true Result=%s Reason=AlreadyApplied"),
+			   *TriggerId.ToString(), *UEnum::GetValueAsString(HeistGameState->GetMatchPhase()), *UEnum::GetValueAsString(HeistGameState->GetObjectiveState()),
+			   bStateValid ? TEXT("PASS") : TEXT("FAIL"));
+		return bStateValid;
+	}
+
+	int32 PlayerCount = 0;
+	int32 CancelledActionCount = 0;
+	int32 CancelledForgeryCount = 0;
+	int32 ClosedInventoryCount = 0;
+	int32 DisabledMovementCount = 0;
+	GetWorldTimerManager().ClearTimer(EscapePhaseTimerHandle);
+	HeistGameState->InitializeEscapePhase(HeistGameState->GetEscapePhaseDelaySeconds());
+
+	for (TActorIterator<AHeistPlayerCharacter> PlayerIterator(GetWorld()); PlayerIterator; ++PlayerIterator)
+	{
+		AHeistPlayerCharacter* PlayerCharacter = *PlayerIterator;
+		if (!IsValid(PlayerCharacter))
+		{
+			continue;
+		}
+
+		++PlayerCount;
+		if (UHeistActionComponent* ActionComponent = PlayerCharacter->GetActionComponent(); IsValid(ActionComponent) && ActionComponent->IsGameplayCastActive())
+		{
+			ActionComponent->CancelGameplayActions(TEXT("Lockdown"));
+			++CancelledActionCount;
+		}
+
+		if (UHeistForgeryComponent* ForgeryComponent = PlayerCharacter->GetForgeryComponent(); IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive())
+		{
+			if (ForgeryComponent->CancelForgerySession(FName(TEXT("Lockdown"))))
+			{
+				++CancelledForgeryCount;
+			}
+		}
+
+		if (UHeistInventoryComponent* InventoryComponent = PlayerCharacter->GetInventoryComponent(); IsValid(InventoryComponent) && InventoryComponent->IsInventoryOpen())
+		{
+			if (InventoryComponent->TrySetInventoryOpen(false))
+			{
+				++ClosedInventoryCount;
+			}
+		}
+
+		if (UCharacterMovementComponent* MovementComponent = PlayerCharacter->GetCharacterMovement(); IsValid(MovementComponent))
+		{
+			MovementComponent->StopMovementImmediately();
+			MovementComponent->DisableMovement();
+			++DisabledMovementCount;
+		}
+	}
+
+	const bool bObjectiveFailed =
+		HeistGameState->SetObjectiveSnapshot(HeistGameState->GetActiveTargetArtifactId(), HeistGameState->GetActiveTargetCaseId(), EHeistObjectiveState::Failed, nullptr);
+	const bool bMatchEnded = HeistGameState->SetMatchPhase(EHeistMatchPhase::End);
+	bLockdownWorldRestrictionsApplied = bObjectiveFailed && bMatchEnded;
+
+	UE_LOG(LogHeistNetwork, Log,
+		   TEXT(
+			   "Lockdown world restriction applied: Trigger=%s Players=%d ActionsCancelled=%d ForgeriesCancelled=%d InventoriesClosed=%d MovementsDisabled=%d Objective=%s MatchPhase=%s Authority=true Result=%s"),
+		   *TriggerId.ToString(), PlayerCount, CancelledActionCount, CancelledForgeryCount, ClosedInventoryCount, DisabledMovementCount,
+		   *UEnum::GetValueAsString(HeistGameState->GetObjectiveState()), *UEnum::GetValueAsString(HeistGameState->GetMatchPhase()), bLockdownWorldRestrictionsApplied ? TEXT("PASS") : TEXT("FAIL"));
+	return bLockdownWorldRestrictionsApplied;
 }
 
 void AHeistGameMode::HandleAlertTransitionTimerElapsed()

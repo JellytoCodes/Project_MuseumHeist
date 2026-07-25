@@ -354,12 +354,6 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
   public:
 	static void DebugSoundPingHelp(APlayerController* PlayerController);
 
-	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|SoundPing", meta = (DevelopmentOnly))
-	static void DebugSoundPingPoolDump(APlayerController* PlayerController);
-
-	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|SoundPing", meta = (DevelopmentOnly))
-	static void DebugSoundPingPoolTest(APlayerController* PlayerController);
-
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|SoundPing", meta = (DevelopmentOnly, ClampMin = "0.0"))
 	static void DebugFootstepWeight(APlayerController* PlayerController, float TotalLootWeight);
 
@@ -407,6 +401,9 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Alert", meta = (DevelopmentOnly))
 	static void DebugAlertDump(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Alert", meta = (DevelopmentOnly))
+	static void DebugLockdownDump(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Alert", meta = (DevelopmentOnly))
 	static void DebugGuardAlertModifiersDump(APlayerController* PlayerController);

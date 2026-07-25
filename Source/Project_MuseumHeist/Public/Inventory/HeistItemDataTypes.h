@@ -136,19 +136,10 @@ struct PROJECT_MUSEUMHEIST_API FHeistSoundPingDataRow : public FTableRowBase
 	float RefreshInterval = 0.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	bool bShowDirectionOnly = true;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	bool bAffectsGuards = true;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	bool bAffectsPlayers = true;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TSoftObjectPtr<USoundBase> Sound;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TSoftObjectPtr<UTexture2D> MarkerIcon;
 };
 
 USTRUCT(BlueprintType)

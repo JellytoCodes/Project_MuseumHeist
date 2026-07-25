@@ -7,6 +7,7 @@
 #include "AI/HeistGuardStateComponent.h"
 #include "Blueprint/UserWidget.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
+#include "Character/Components/HeistActionComponent.h"
 #include "Character/Components/HeistForgeryComponent.h"
 #include "Character/Components/HeistInventoryComponent.h"
 #include "Character/Components/HeistStatusComponent.h"
@@ -33,6 +34,7 @@
 #include "World/Actors/Escape/HeistVentActor.h"
 #include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 #include "World/AI/HeistGuardWaypoint.h"
+#include "World/Interaction/HeistInteractableActor.h"
 #include "World/Spawn/HeistLootSpawnPoint.h"
 #include "UI/ViewModels/HeistLobbyViewModel.h"
 #include "UI/ViewModels/HeistForgeryViewModel.h"
@@ -1911,44 +1913,8 @@ void UHeistDebugFunctionLibrary::DebugSoundPingHelp(APlayerController* PlayerCon
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(PlayerController, TEXT("Sound Ping debug commands: HeistSoundPingDump | HeistSoundPingTest | HeistFootstepWeight <Weight> | HeistCoinThrow <Distance>"), EHeistDebugLevel::Info, true,
-			8.0f);
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugSoundPingPoolDump(APlayerController* PlayerController)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	AHeistHUD* HeistHUD = IsValid(PlayerController) ? Cast<AHeistHUD>(PlayerController->GetHUD()) : nullptr;
-	UHeistHUDWidget* HUDWidget = IsValid(HeistHUD) ? HeistHUD->GetMainHUDWidget() : nullptr;
-	if (!IsValid(HUDWidget))
-	{
-		Message(PlayerController, TEXT("Sound Ping pool dump failed: missing local Heist HUD widget."), EHeistDebugLevel::Warning, true);
-		return;
-	}
-
-	HUDWidget->DebugDumpSoundPingMarkers();
-	Message(PlayerController, TEXT("Sound Ping pool dump requested."), EHeistDebugLevel::Info, true);
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugSoundPingPoolTest(APlayerController* PlayerController)
-{
-#if UE_BUILD_SHIPPING
-	return;
-#else
-	AHeistHUD* HeistHUD = IsValid(PlayerController) ? Cast<AHeistHUD>(PlayerController->GetHUD()) : nullptr;
-	UHeistHUDWidget* HUDWidget = IsValid(HeistHUD) ? HeistHUD->GetMainHUDWidget() : nullptr;
-	if (!IsValid(HUDWidget))
-	{
-		Message(PlayerController, TEXT("Sound Ping pool test failed: missing local Heist HUD widget."), EHeistDebugLevel::Warning, true);
-		return;
-	}
-
-	HUDWidget->DebugRunSoundPingPoolTest();
-	Message(PlayerController, TEXT("Sound Ping deterministic pool test requested."), EHeistDebugLevel::Info, true, 8.0f);
+	Message(PlayerController, TEXT("Sound Ping gameplay debug commands: HeistFootstepWeight <Weight> | HeistCoinThrow <Distance>. Player-facing SoundPing markers are removed."),
+			EHeistDebugLevel::Info, true, 8.0f);
 #endif
 }
 
@@ -1964,7 +1930,7 @@ void UHeistDebugFunctionLibrary::DebugGuardHelp(APlayerController* PlayerControl
 	Message(
 		PlayerController,
 		TEXT(
-			"Guard debug commands: HeistDifficultyDump | HeistGuardSpawn <Distance> | HeistGuardDump | HeistInspectionTargetSelect | HeistInspectionTargetDump | HeistInspectionBegin | HeistInspectionStateDump | HeistAlertDump | HeistGuardAlertModifiersDump | HeistAlertRequest <Quiet|Suspicious|Searching|Alarmed|Lockdown> | HeistGuardState <Disabled|Patrol|Investigate|Chase|Search|Return> <Duration> | HeistGuardSightCheck | HeistGuardSightAuto <0|1> | HeistGuardNoise <Distance> | HeistArrest | HeistRelease | HeistArrestDump"),
+			"Guard debug commands: HeistDifficultyDump | HeistGuardSpawn <Distance> | HeistGuardDump | HeistInspectionTargetSelect | HeistInspectionTargetDump | HeistInspectionBegin | HeistInspectionStateDump | HeistAlertDump | HeistLockdownDump | HeistGuardAlertModifiersDump | HeistAlertRequest <Quiet|Suspicious|Searching|Alarmed|Lockdown> | HeistGuardState <Disabled|Patrol|Investigate|Chase|Search|Return> <Duration> | HeistGuardSightCheck | HeistGuardSightAuto <0|1> | HeistGuardNoise <Distance> | HeistArrest | HeistRelease | HeistArrestDump"),
 		EHeistDebugLevel::Info, true, 10.0f);
 #endif
 }
@@ -2284,6 +2250,97 @@ void UHeistDebugFunctionLibrary::DebugAlertDump(APlayerController* PlayerControl
 			*HeistGameState->GetLastAlertTriggerId().ToString(), IsValid(HeistGameMode) && HeistGameMode->IsAlertTransitionTimerActive() ? TEXT("true") : TEXT("false"),
 			IsValid(HeistGameMode) ? HeistGameMode->GetProcessedAlertTriggerCount() : INDEX_NONE, bSnapshotValid ? TEXT("PASS") : TEXT("FAIL"), bAuthority ? TEXT("true") : TEXT("false"),
 			bPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugLockdownDump(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	if (!IsValid(PlayerController) || !IsValid(PlayerController->GetWorld()))
+	{
+		return;
+	}
+
+	const AHeistGameState* HeistGameState = PlayerController->GetWorld()->GetGameState<AHeistGameState>();
+	if (!IsValid(HeistGameState))
+	{
+		Message(PlayerController, TEXT("Lockdown dump: Result=FAIL Reason=MissingGameState"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	int32 PlayerCount = 0;
+	int32 ActiveActionCount = 0;
+	int32 ActiveForgeryCount = 0;
+	int32 OpenInventoryCount = 0;
+	int32 MovementEnabledCount = 0;
+	for (TActorIterator<AHeistPlayerCharacter> PlayerIterator(PlayerController->GetWorld()); PlayerIterator; ++PlayerIterator)
+	{
+		const AHeistPlayerCharacter* PlayerCharacter = *PlayerIterator;
+		if (!IsValid(PlayerCharacter))
+		{
+			continue;
+		}
+
+		++PlayerCount;
+		const UHeistActionComponent* ActionComponent = PlayerCharacter->GetActionComponent();
+		const UHeistForgeryComponent* ForgeryComponent = PlayerCharacter->GetForgeryComponent();
+		const UHeistInventoryComponent* InventoryComponent = PlayerCharacter->GetInventoryComponent();
+		const UCharacterMovementComponent* MovementComponent = PlayerCharacter->GetCharacterMovement();
+		ActiveActionCount += IsValid(ActionComponent) && ActionComponent->IsGameplayCastActive() ? 1 : 0;
+		ActiveForgeryCount += IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive() ? 1 : 0;
+		OpenInventoryCount += IsValid(InventoryComponent) && InventoryComponent->IsInventoryOpen() ? 1 : 0;
+		MovementEnabledCount += IsValid(MovementComponent) && MovementComponent->MovementMode != MOVE_None ? 1 : 0;
+	}
+
+	int32 VentCount = 0;
+	int32 ActiveVentCount = 0;
+	for (TActorIterator<AHeistVentActor> VentIterator(PlayerController->GetWorld()); VentIterator; ++VentIterator)
+	{
+		const AHeistVentActor* VentActor = *VentIterator;
+		if (IsValid(VentActor))
+		{
+			++VentCount;
+			ActiveVentCount += VentActor->IsVentActive() ? 1 : 0;
+		}
+	}
+
+	int32 InteractableCount = 0;
+	int32 AvailableInteractionCount = 0;
+	const AActor* RequestingActor = PlayerController->GetPawn();
+	for (TActorIterator<AHeistInteractableActor> InteractableIterator(PlayerController->GetWorld()); InteractableIterator; ++InteractableIterator)
+	{
+		const AHeistInteractableActor* InteractableActor = *InteractableIterator;
+		if (IsValid(InteractableActor))
+		{
+			++InteractableCount;
+			AvailableInteractionCount += InteractableActor->CanInteract(RequestingActor) ? 1 : 0;
+		}
+	}
+
+	const EHeistAlertLevel AlertLevel = HeistGameState->GetAlertLevel();
+	const bool bCountdownActive = HeistGameState->IsLockdownCountdownActive();
+	const bool bWorldRestricted = HeistGameState->AreWorldInteractionsRestricted();
+	const bool bAlarmedStateValid = AlertLevel == EHeistAlertLevel::Alarmed && bCountdownActive && !bWorldRestricted && HeistGameState->GetMatchPhase() == EHeistMatchPhase::InGame &&
+		HeistGameState->GetObjectiveState() != EHeistObjectiveState::Failed;
+	const bool bLockdownStateValid =
+		AlertLevel == EHeistAlertLevel::Lockdown && !bCountdownActive && bWorldRestricted && HeistGameState->GetMatchPhase() == EHeistMatchPhase::End &&
+		HeistGameState->GetObjectiveState() == EHeistObjectiveState::Failed && PlayerCount > 0 && ActiveActionCount == 0 && ActiveForgeryCount == 0 && OpenInventoryCount == 0 &&
+		MovementEnabledCount == 0 && !HeistGameState->IsEscapePhaseOpen() && VentCount > 0 && ActiveVentCount == 0 && AvailableInteractionCount == 0;
+	const bool bPassed = PlayerController->HasAuthority() && (bAlarmedStateValid || bLockdownStateValid);
+
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT(
+				"Lockdown dump: Alert=%s CountdownActive=%s Remaining=%.2f LockdownActive=%s WorldRestricted=%s MatchPhase=%s Objective=%s EscapeOpen=%s Players=%d ActiveActions=%d ActiveForgeries=%d OpenInventories=%d MovementEnabled=%d Vents=%d ActiveVents=%d Interactables=%d AvailableInteractions=%d Authority=%s Result=%s"),
+			*UEnum::GetValueAsString(AlertLevel), bCountdownActive ? TEXT("true") : TEXT("false"), HeistGameState->GetLockdownCountdownRemainingSeconds(),
+			HeistGameState->IsLockdownActive() ? TEXT("true") : TEXT("false"), bWorldRestricted ? TEXT("true") : TEXT("false"),
+			*UEnum::GetValueAsString(HeistGameState->GetMatchPhase()), *UEnum::GetValueAsString(HeistGameState->GetObjectiveState()),
+			HeistGameState->IsEscapePhaseOpen() ? TEXT("true") : TEXT("false"), PlayerCount, ActiveActionCount, ActiveForgeryCount, OpenInventoryCount, MovementEnabledCount, VentCount,
+			ActiveVentCount, InteractableCount, AvailableInteractionCount, PlayerController->HasAuthority() ? TEXT("true") : TEXT("false"), bPassed ? TEXT("PASS") : TEXT("FAIL")),
 		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
 #endif
 }
@@ -3734,7 +3791,7 @@ void UHeistDebugFunctionLibrary::DebugInventoryAssignQuickSlot(APlayerController
 	EHeistQuickSlotType SlotType = EHeistQuickSlotType::None;
 	if (!TryParseQuickSlotName(SlotName, SlotType))
 	{
-		Message(PlayerController, FString::Printf(TEXT("Inventory debug assign failed: invalid slot '%s'. Use Q/Coin, E/Smoke, or R/Glue."), *SlotName), EHeistDebugLevel::Warning, true);
+		Message(PlayerController, FString::Printf(TEXT("Inventory debug assign failed: invalid slot '%s'. Use Q or Coin."), *SlotName), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
@@ -3758,7 +3815,7 @@ void UHeistDebugFunctionLibrary::DebugInventoryClearQuickSlot(APlayerController*
 	EHeistQuickSlotType SlotType = EHeistQuickSlotType::None;
 	if (!TryParseQuickSlotName(SlotName, SlotType))
 	{
-		Message(PlayerController, FString::Printf(TEXT("Inventory debug clear failed: invalid slot '%s'. Use Q/Coin, E/Smoke, or R/Glue."), *SlotName), EHeistDebugLevel::Warning, true);
+		Message(PlayerController, FString::Printf(TEXT("Inventory debug clear failed: invalid slot '%s'. Use Q or Coin."), *SlotName), EHeistDebugLevel::Warning, true);
 		return;
 	}
 

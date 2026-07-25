@@ -9,12 +9,10 @@
 #include "Core/HeistPlayerController.h"
 #include "GameFramework/PlayerController.h"
 #include "UI/Pool/HeistPopupWidgetPool.h"
-#include "UI/Pool/HeistSoundPingWidgetPool.h"
 #include "UI/ViewModels/HeistHUDViewModel.h"
 #include "UI/ViewModels/HeistInventoryViewModel.h"
 #include "UI/ViewModels/HeistQuickSlotViewModel.h"
 #include "UI/Widgets/HeistInteractionPromptWidget.h"
-#include "UI/Widgets/HeistSoundPingMarkerWidget.h"
 
 #pragma region Construction
 
@@ -35,10 +33,6 @@ void UHeistHUDWidget::NativeDestruct()
 	if (IsValid(PopupWidgetPool))
 	{
 		PopupWidgetPool->ShutdownPool();
-	}
-	if (IsValid(SoundPingWidgetPool))
-	{
-		SoundPingWidgetPool->ShutdownPool();
 	}
 	if (IsValid(HUDViewModel))
 	{
@@ -111,7 +105,6 @@ void UHeistHUDWidget::SetupHUDWidget(UHeistHUDViewModel* InHUDViewModel, UHeistI
 	RefreshCrosshairPresentation(IsValid(InteractionComponent) ? InteractionComponent->GetCurrentInteractionTarget() : nullptr,
 								 IsValid(InteractionComponent) && InteractionComponent->HasValidInteractionTarget());
 	SetupPopupFeedbackPresentation();
-	SetupSoundPingPresentation();
 	RefreshToolPresentation();
 	RefreshHUDPresentation();
 }
@@ -141,35 +134,6 @@ void UHeistHUDWidget::SetupPopupFeedbackPresentation()
 		PopupWidgetPool = NewObject<UHeistPopupWidgetPool>(this);
 	}
 	PopupWidgetPool->SetupPool(OwningPlayerController, PopupFeedbackLayer, PopupFeedbackWidgetClass, PopupFeedbackCapacity);
-}
-
-void UHeistHUDWidget::SetupSoundPingPresentation()
-{
-	APlayerController* OwningPlayerController = GetOwningPlayer();
-	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
-	if (!IsValid(OwningPlayerController))
-	{
-		UE_LOG(LogHeistUI, Warning, TEXT("[%s] Sound Ping presentation setup rejected: Reason=MissingController"), *GetName());
-		return;
-	}
-	if (!IsValid(HeistGameState))
-	{
-		UE_LOG(LogHeistUI, Verbose, TEXT("[%s] Sound Ping presentation setup deferred: Reason=GameStateNotReady"), *GetName());
-		return;
-	}
-	if (!IsValid(SoundPingMarkerLayer) || !SoundPingMarkerWidgetClass)
-	{
-		UE_LOG(LogHeistUI, Warning, TEXT("[%s] Sound Ping presentation setup rejected: MarkerLayer=%s MarkerClass=%s"), *GetName(), *GetNameSafe(SoundPingMarkerLayer),
-			   *GetNameSafe(SoundPingMarkerWidgetClass.Get()));
-		return;
-	}
-
-	if (!IsValid(SoundPingWidgetPool))
-	{
-		SoundPingWidgetPool = NewObject<UHeistSoundPingWidgetPool>(this);
-	}
-
-	SoundPingWidgetPool->SetupPool(OwningPlayerController, HeistGameState, SoundPingMarkerLayer, SoundPingMarkerWidgetClass, SoundPingMarkerScreenMarginPixels);
 }
 
 void UHeistHUDWidget::ResolveInteractionChildWidgets()
@@ -400,30 +364,6 @@ void UHeistHUDWidget::DebugDumpFeedbackState() const
 	else
 	{
 		UE_LOG(LogHeistUI, Warning, TEXT("[%s] Popup feedback pool dump failed: Reason=MissingPool"), *GetName());
-	}
-}
-
-void UHeistHUDWidget::DebugDumpSoundPingMarkers() const
-{
-	if (IsValid(SoundPingWidgetPool))
-	{
-		SoundPingWidgetPool->DebugDumpState();
-	}
-	else
-	{
-		UE_LOG(LogHeistUI, Warning, TEXT("[%s] Sound Ping pool dump failed: Reason=MissingPool"), *GetName());
-	}
-}
-
-void UHeistHUDWidget::DebugRunSoundPingPoolTest()
-{
-	if (IsValid(SoundPingWidgetPool))
-	{
-		SoundPingWidgetPool->DebugRunPresentationTest();
-	}
-	else
-	{
-		UE_LOG(LogHeistUI, Warning, TEXT("[%s] Sound Ping pool test failed: Reason=MissingPool"), *GetName());
 	}
 }
 

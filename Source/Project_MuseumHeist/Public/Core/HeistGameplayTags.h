@@ -15,7 +15,6 @@ struct PROJECT_MUSEUMHEIST_API FHeistGameplayTags
 	FGameplayTag State_MovementLocked;
 	FGameplayTag State_CarryingLoot;
 	FGameplayTag State_Revealed;
-	FGameplayTag State_InSmoke;
 
 	FGameplayTag Action_Looting;
 	FGameplayTag Action_Escaping;
@@ -74,7 +73,6 @@ struct PROJECT_MUSEUMHEIST_API FHeistGameplayTags
 	FGameplayTag UI_Warning_InventoryFull;
 	FGameplayTag UI_Warning_Revealed;
 	FGameplayTag UI_Warning_RareLootIncoming;
-	FGameplayTag UI_Indicator_SoundPing;
 
   private:
 	static FHeistGameplayTags GameplayTags;

@@ -1547,7 +1547,6 @@ void AHeistPlayerController::Server_DebugRequestReportGuardNoise_Implementation(
 	SoundPingEvent.Radius = FMath::Max(0.0f, SoundPingDefinition.Radius);
 	SoundPingEvent.Duration = FMath::Max(0.0f, SoundPingDefinition.Duration);
 	SoundPingEvent.bAffectsGuards = SoundPingDefinition.bAffectsGuards;
-	SoundPingEvent.bAffectsPlayers = SoundPingDefinition.bAffectsPlayers;
 	HeistGameState->ReportSoundPing(SoundPingEvent);
 #endif
 }
@@ -1787,6 +1786,14 @@ FText AHeistPlayerController::ResolvePopupFeedbackText(const TCHAR* RequestName,
 	{
 		return NSLOCTEXT("HeistFeedback", "EscapeClosed", "ESCAPE NOT AVAILABLE");
 	}
+	if (Rejection == TEXT("Lockdown"))
+	{
+		return NSLOCTEXT("HeistFeedback", "Lockdown", "LOCKDOWN: ACTION BLOCKED");
+	}
+	if (Rejection == TEXT("MatchNotInGame"))
+	{
+		return NSLOCTEXT("HeistFeedback", "MatchEnded", "MATCH IS NOT ACTIVE");
+	}
 	if (Request.Contains(TEXT("Loot")))
 	{
 		return NSLOCTEXT("HeistFeedback", "LootRejected", "LOOT REQUEST REJECTED");
@@ -1828,6 +1835,25 @@ bool AHeistPlayerController::TryBuildGameplayRequestContext(FHeistGameplayReques
 	if (!IsValid(HeistPlayerState))
 	{
 		OutRejectReason = TEXT("InvalidPlayerState");
+		return false;
+	}
+
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	if (!IsValid(HeistGameState))
+	{
+		OutRejectReason = TEXT("MatchNotInGame");
+		return false;
+	}
+
+	if (HeistGameState->IsLockdownActive())
+	{
+		OutRejectReason = TEXT("Lockdown");
+		return false;
+	}
+
+	if (HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame)
+	{
+		OutRejectReason = TEXT("MatchNotInGame");
 		return false;
 	}
 

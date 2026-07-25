@@ -79,6 +79,18 @@ class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
 	float GetAlertTransitionRemainingSeconds() const;
 
 	UFUNCTION(BlueprintPure, Category = "Heist|Alert")
+	bool IsLockdownCountdownActive() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Alert")
+	float GetLockdownCountdownRemainingSeconds() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Alert")
+	bool IsLockdownActive() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Alert")
+	bool AreWorldInteractionsRestricted() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Alert")
 	int32 GetAlertRevision() const;
 
 	UFUNCTION(BlueprintPure, Category = "Heist|Alert")
@@ -199,18 +211,11 @@ class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
 
   public:
 	void ReportSoundPing(const FHeistSoundPingEvent& SoundPingEvent);
-	const FHeistSoundPingEvent& GetLastSoundPingEvent() const;
 	FHeistSoundPingEventReported& GetSoundPingEventReportedDelegate();
 
   private:
-	UPROPERTY(ReplicatedUsing = OnRep_LastSoundPingEvent, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|SoundPing", meta = (AllowPrivateAccess = "true"))
-	FHeistSoundPingEvent LastSoundPingEvent;
-
 	UPROPERTY(Transient)
 	int32 NextSoundPingSequenceId = 1;
-
-	UFUNCTION()
-	void OnRep_LastSoundPingEvent();
 
 	FHeistSoundPingEventReported SoundPingEventReportedDelegate;
 

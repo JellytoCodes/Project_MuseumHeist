@@ -53,6 +53,7 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
   private:
 	void InitializeAlertState();
 	bool ApplyAlertLevel(EHeistAlertLevel NewAlertLevel, FName TriggerId);
+	bool ApplyLockdownWorldRestrictions(FName TriggerId);
 	void HandleAlertTransitionTimerElapsed();
 	EHeistAlertLevel GetNextAlertLevel(EHeistAlertLevel CurrentAlertLevel) const;
 	float ResolveAlertTransitionDelay(EHeistAlertLevel CurrentAlertLevel) const;
@@ -61,6 +62,7 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 	TSet<FName> ProcessedAlertTriggerIds;
 	EHeistAlertLevel ScheduledAlertSourceLevel = EHeistAlertLevel::Quiet;
 	int32 ScheduledAlertRevision = 0;
+	bool bLockdownWorldRestrictionsApplied = false;
 
 #pragma endregion
 

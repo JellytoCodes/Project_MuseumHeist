@@ -8,8 +8,6 @@
 class UTextBlock;
 class UHeistInteractionPromptWidget;
 class UHeistPopupWidgetPool;
-class UHeistSoundPingMarkerWidget;
-class UHeistSoundPingWidgetPool;
 class UHeistUserWidgetBase;
 class UPanelWidget;
 class UWidget;
@@ -42,7 +40,6 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
   private:
 	void RefreshHUDPresentation();
 	void SetupPopupFeedbackPresentation();
-	void SetupSoundPingPresentation();
 	void ResolveInteractionChildWidgets();
 	void ResolveCrosshairWidgets();
 	void RefreshCrosshairPresentation(AActor* TargetActor, bool bAvailable);
@@ -76,8 +73,6 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
   public:
 	void DebugDumpFirstPersonHUDState() const;
 	void DebugDumpFeedbackState() const;
-	void DebugDumpSoundPingMarkers() const;
-	void DebugRunSoundPingPoolTest();
 
 #pragma endregion
 
@@ -131,18 +126,6 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 
 	UPROPERTY(Transient)
 	TObjectPtr<UHeistPopupWidgetPool> PopupWidgetPool;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UPanelWidget> SoundPingMarkerLayer;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|SoundPing", meta = (AllowPrivateAccess = "true"))
-	TSubclassOf<UHeistSoundPingMarkerWidget> SoundPingMarkerWidgetClass;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|SoundPing", meta = (ClampMin = "0.0", AllowPrivateAccess = "true"))
-	float SoundPingMarkerScreenMarginPixels = 80.0f;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UHeistSoundPingWidgetPool> SoundPingWidgetPool;
 
 #pragma endregion
 };

@@ -113,12 +113,6 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 	void HeistSoundPingHelp();
 
 	UFUNCTION(Exec)
-	void HeistSoundPingDump();
-
-	UFUNCTION(Exec)
-	void HeistSoundPingTest();
-
-	UFUNCTION(Exec)
 	void HeistFootstepWeight(float TotalLootWeight = 0.0f);
 
 #pragma endregion
@@ -321,6 +315,9 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 
 	UFUNCTION(Exec)
 	void HeistAlertDump();
+
+	UFUNCTION(Exec)
+	void HeistLockdownDump();
 
 	UFUNCTION(Exec)
 	void HeistGuardAlertModifiersDump();

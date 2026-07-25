@@ -8,11 +8,8 @@
     "Radius": 500.0,
     "Duration": 0.8,
     "RefreshInterval": 0.8,
-    "bShowDirectionOnly": true,
     "bAffectsGuards": true,
-    "bAffectsPlayers": true,
-    "Sound": "",
-    "MarkerIcon": ""
+    "Sound": ""
   },
   {
     "Name": "Ping_Footstep_Run",
@@ -23,11 +20,8 @@
     "Radius": 1000.0,
     "Duration": 0.5,
     "RefreshInterval": 0.5,
-    "bShowDirectionOnly": true,
     "bAffectsGuards": true,
-    "bAffectsPlayers": true,
-    "Sound": "",
-    "MarkerIcon": ""
+    "Sound": ""
   },
   {
     "Name": "Ping_GlassBreak",
@@ -38,11 +32,8 @@
     "Radius": 1500.0,
     "Duration": 1.0,
     "RefreshInterval": 0.0,
-    "bShowDirectionOnly": true,
     "bAffectsGuards": true,
-    "bAffectsPlayers": true,
-    "Sound": "",
-    "MarkerIcon": ""
+    "Sound": ""
   },
   {
     "Name": "Ping_CoinImpact",
@@ -53,26 +44,8 @@
     "Radius": 1000.0,
     "Duration": 1.0,
     "RefreshInterval": 0.0,
-    "bShowDirectionOnly": true,
     "bAffectsGuards": true,
-    "bAffectsPlayers": true,
-    "Sound": "",
-    "MarkerIcon": ""
-  },
-  {
-    "Name": "Ping_NoiseTrap",
-    "SoundPingId": "Ping_NoiseTrap",
-    "DisplayName": "Noise Trap",
-    "SoundPingTag": "Event.SoundPing.NoiseTrap",
-    "PingType": "NoiseTrap",
-    "Radius": 2000.0,
-    "Duration": 3.0,
-    "RefreshInterval": 0.5,
-    "bShowDirectionOnly": true,
-    "bAffectsGuards": true,
-    "bAffectsPlayers": true,
-    "Sound": "",
-    "MarkerIcon": ""
+    "Sound": ""
   },
   {
     "Name": "Ping_StunHit",
@@ -83,10 +56,7 @@
     "Radius": 1200.0,
     "Duration": 1.0,
     "RefreshInterval": 0.0,
-    "bShowDirectionOnly": true,
     "bAffectsGuards": true,
-    "bAffectsPlayers": true,
-    "Sound": "",
-    "MarkerIcon": ""
+    "Sound": ""
   }
 ]

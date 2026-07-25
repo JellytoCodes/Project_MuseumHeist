@@ -1,15 +1,28 @@
 # Project_MuseumHeist — Class Manifest
-## Rev 6: W4 OpenCV / Exhibit Case Isolation Handoff
 
-상태:
+## Rev 7: Smoke / Trap Removal And W4 Runtime Contract
 
-- **Keep**: 기존 책임 유지
-- **Modify**: 기존 타입을 새 방향에 맞게 수정
-- **Add**: 현재 Manifest에서 신규 생성 허용
-- **Deprecate**: 신규 흐름에서 미사용, 즉시 삭제 금지
-- **Deferred**: v1.0 범위 밖, 현재 생성 금지
+Design Reference:
 
-Design Reference: `Museum_Heist_GDD.docx` Rev.10
+- `AGENTS.md` Rev 8
+- `Museum_Heist_GDD.docx` 최신 Revision
+- Notion W4 Task 기록
+
+---
+
+# 0. Status Definitions
+
+| 상태 | 의미 |
+|---|---|
+| **Keep** | 기존 책임을 유지한다. |
+| **Modify** | 현재 방향에 맞게 책임 또는 계약을 수정한다. |
+| **Add** | 활성 Task 범위 안에서 신규 생성이 허용된다. |
+| **Deprecate** | 기존 Asset 또는 직렬화 호환을 위해 임시 유지한다. |
+| **Deferred** | 현재 생성하지 않지만 확정된 미래 범위다. |
+| **Remove** | 현재 프로젝트에서 제거됐으며 신규 참조를 금지한다. |
+| **Excluded** | 현재 프로젝트 방향에 포함하지 않는다. |
+
+Smoke 및 플레이어 설치형 Trap은 `Deferred` 또는 `Legacy`가 아니라 `Remove / Excluded`다.
 
 ---
 
@@ -19,429 +32,1023 @@ Design Reference: `Museum_Heist_GDD.docx` Rev.10
 
 | 타입 | 상태 | 현재 책임 |
 |---|---|---|
-| `EHeistMatchPhase` | Modify | Enum 호환성은 유지하고 v1.0 흐름은 Lobby/ReadyCountdown/InGame/End만 사용 |
-| `EHeistInputMode` | Add | Gameplay/Inventory/Forgery 상호 배타 로컬 입력 상태 |
-| `FHeistPlayerResult` | Deprecate | 기존 결과 호환용. 신규 결과는 TeamResult/Contribution 사용 |
-| `FHeistRareLootEventState` | Deferred | Optional Objective 검토 전까지 비활성 |
-| `EHeistItemType` | Keep | Loose Loot, Throwable, Trap, KeyItem 분류 |
+| `EHeistMatchPhase` | Modify | Lobby / ReadyCountdown / InGame / End 중심 Match Flow |
+| `EHeistInputMode` | Keep | Gameplay / Inventory / Forgery 로컬 입력 상태 |
+| `EHeistObjectiveState` | Keep | Objective 진행 상태 |
+| `EHeistForgeryType` | Keep | Drawing Forgery 타입 |
+| `EHeistDisplayCaseState` | Keep | Painting Display Case 상태 |
+| `EHeistAlertLevel` | Keep | Global Alert / Lockdown |
+| `FHeistForgeryResult` | Keep | 서버 확정 Forgery 결과 |
+| `FHeistPlayerResult` | Deprecate | 기존 결과 호환용 |
+| `FHeistRareLootEventState` | Deferred | Optional Rare Artifact 승인 전 비활성 |
+| `EHeistItemType` | Modify | None / Loot / Throwable / KeyItem |
 | `EHeistLootGrade` | Keep | Loose Loot 등급 |
-| `EHeistUseType` | Keep | Coin 사용, Smoke는 Legacy |
+| `EHeistUseType` | Modify | None / Throw / DeployArea / Consume |
 | `EHeistTargetType` | Keep | 사용 대상 분류 |
-| `EHeistSpawnCategory` | Keep | Loose Loot Spawn |
-| `EHeistSoundPingType` | Modify | Alarm, Teammate Ping 확장 가능 |
-| `EHeistGuardState` | Modify | `InspectExhibit` 추가 |
-| `EHeistCustomizationType` | Keep | 변경 없음 |
-| `EHeistZoneId` | Keep | 변경 없음 |
-| `EHeistQuickSlotType` | Keep | Coin만 v1 활성, Smoke는 Legacy, Glue는 Stretch |
+| `EHeistSpawnCategory` | Keep | Loose Loot Spawn 분류 |
+| `EHeistSoundPingType` | Modify | 활성 환경 소음과 Coin 분류 |
+| `EHeistGuardState` | Keep | Patrol / Investigate / Chase / Search / InspectExhibit |
+| `EHeistCustomizationType` | Keep | 외형 타입 |
+| `EHeistZoneId` | Keep | Zone 식별 |
+| `EHeistQuickSlotType` | Modify | None / Coin |
 
-## 신규 Enum — Add
+## Removed Enum Values
 
-```cpp
-EHeistForgeryType
-- None
-- Drawing
-
-EHeistDisplayCaseState
-- Secured
-- Observed
-- ForgeryInProgress
-- ReplicaReady
-- ReplicaPlaced
-- OriginalAvailable
-- OriginalRemoved
-- Inspecting
-- Completed
-- Suspected
-- Alarmed
-- Failed
-
-EHeistAlertLevel
-- Quiet
-- Suspicious
-- Searching
-- Alarmed
-- Lockdown
-
-EHeistObjectiveState
-- Inactive
-- Available
-- InProgress
-- Completed
-- Failed
+```text
+EHeistItemType::Trap
+EHeistUseType::PlaceTrap
+EHeistQuickSlotType::SmokeGrenade
+EHeistQuickSlotType::GlueTrap
+EHeistSoundPingType::NoiseTrap
 ```
 
-- `ReplicaPlaced`부터 액자 표면에는 Replica만 표시하며 Original 평면은 숨긴다.
-- `OriginalAvailable`은 Original이 액자에서 분리되어 회수 대기 중인 서버 상태다. 평면은 숨겨도 Display Case 상호작용으로 회수할 수 있다.
-- 제출 그림용 Material이 지정된 Replica는 Score Tier에 따른 Roll/Scale 변형을 적용하지 않고 Blueprint 기준 Transform을 유지한다.
+## `FHeistForgeryResult` — Keep
 
-## 신규 Struct — Add
+필드:
 
-```cpp
-FHeistForgeryResult
-- ArtifactId
-- TemplateId
-- ForgeryType
-- SimilarityScore
-- CoverageScore
-- MajorShapeScore
-- ColorAccuracyScore
-- PaintToReferenceRatio
-- bAntiFillTriggered
-- MissingShapePenalty
-- ExtraStrokePenalty
-- TimeoutPenalty
-- CompletionTime
-- bReplicaPlaced
+```text
+ArtifactId
+TemplateId
+ForgeryType
+SimilarityScore
+CoverageScore
+MajorShapeScore
+ColorAccuracyScore
+PaintToReferenceRatio
+bAntiFillTriggered
+MissingShapePenalty
+ExtraStrokePenalty
+TimeoutPenalty
+CompletionTime
+bReplicaPlaced
+```
 
-FHeistReplicaPaintingData
-- Resolution
-- Palette
-- PackedPaletteIndices
-- ScoreRevision
+`MissingShapePenalty`, `ExtraStrokePenalty`, `TimeoutPenalty`가 진단용 값인지 Final Score 직접 차감값인지 구현과 문서에서 동일하게 정의한다.
 
+## `FHeistReplicaPaintingData` — Keep
+
+필드:
+
+```text
+Resolution
+Palette
+PackedPaletteIndices
+ScoreRevision
+```
+
+## Team Result Types
+
+```text
 FHeistTeamResult
-- bMissionSuccess
-- bPartialSuccess
-- TargetArtifactValue
-- LooseLootValue
-- AverageForgeryScore
-- FinalAlertLevel
-- ExtractedPlayerCount
-- ArrestedPlayerCount
-- FinalTeamReward
-
 FHeistPlayerContribution
-- PlayerId
-- LooseLootValueCarried
-- ForgeriesCompleted
-- BestForgeryScore
-- GuardsDistracted
-- TeammatesRescued
-- AlarmsTriggered
-- bEscaped
-- bArrested
 ```
+
+상태: Add 또는 Modify
+
+현재 W6 범위에서 최종 구현한다.
 
 ---
 
 # 2. Core Framework
 
-| 파일 / 클래스 | 상태 | 책임 |
+| 파일 / 클래스 | 상태 | 현재 책임 |
 |---|---|---|
-| `Core/HeistGameplayTags.*` / `FHeistGameplayTags` | Keep + Extend | Forgery/Objective/Alert 태그 등록 |
-| `Core/HeistLogChannels.*` | Keep | 기존 로그 채널 유지 |
-| `Core/HeistGameMode.*` / `AHeistGameMode` | Modify | Match Phase, Objective, Alert/Lockdown 전이 판정, Team Result 확정 |
-| `Core/HeistGameState.*` / `AHeistGameState` | Modify | Replicated Objective, Alert, Lockdown, Team Result |
-| `Core/HeistPlayerState.*` / `AHeistPlayerState` | Modify | Contribution, Escape/Arrest, Carry Value. Rank 필드는 Legacy 미사용 |
-| `Core/HeistPlayerController.*` / `AHeistPlayerController` | Modify | Input Mode, Center Interaction, Forgery Request RPC |
-| `Core/HeistHUD.*` / `AHeistHUD` | Keep + Extend | HUD/Forgery/Result ViewModel 생성 |
-| `Core/HeistGameInstance.*` / `UHeistGameInstance` | Keep | Session/global settings placeholder |
+| `Core/HeistGameplayTags.*` / `FHeistGameplayTags` | Modify | 실제 활성 Gameplay Tag 등록 |
+| `Core/HeistLogChannels.*` | Keep | 로그 채널 |
+| `Core/HeistGameMode.*` / `AHeistGameMode` | Modify | Match, Objective, Data Validation, Alert, Result |
+| `Core/HeistGameState.*` / `AHeistGameState` | Modify | Replicated Objective / Alert / Team State, Server-only SoundPing Dispatch |
+| `Core/HeistPlayerState.*` / `AHeistPlayerState` | Modify | Contribution, Escape, Arrest, Carry Value |
+| `Core/HeistPlayerController.*` / `AHeistPlayerController` | Modify | Input Mode, Server RPC, Coin Use, Forgery Request |
+| `Core/HeistHUD.*` / `AHeistHUD` | Keep + Extend | HUD / Inventory / QuickSlot / Forgery / Result ViewModel 생성 |
+| `Core/HeistGameInstance.*` / `UHeistGameInstance` | Keep | Session 및 Global Setting Placeholder |
 
-Authority:
+## Authority
 
-- GameMode: Server only
-- GameState/PlayerState: Server mutation + Replication
-- PlayerController: Local input + Server RPC entry
-- HUD: Local presentation
+```text
+GameMode
+- Server only
+- Match Rule
+- Data Validation
+- Objective
+- Alert / Lockdown
+- Team Result
+
+GameState / PlayerState
+- Server Mutation
+- Replication
+- Client Read
+
+PlayerController
+- Local Input
+- Server RPC Entry
+- Request Routing
+
+HUD
+- Local Presentation
+```
+
+## GameplayTag Removal
+
+다음 Tag Field 및 Native Tag 등록을 제거한다.
+
+```text
+State.InSmoke
+Action.PlacingTrap
+Event.Trap.Placed
+Event.Trap.Triggered
+Event.SoundPing.NoiseTrap
+AI.Stimulus.Trap
+```
+
+DataTable 및 Blueprint에서 다음 Category Tag를 사용하지 않는다.
+
+```text
+Item.Trap
+Item.Trap.Glue
+Item.Trap.Noise
+Item.Throwable.Smoke
+```
 
 ---
 
 # 3. Character
 
 ## `Character/HeistPlayerCharacter.*`
+
 `AHeistPlayerCharacter : public ACharacter` — Modify
+
+현재 책임:
 
 - First-Person Camera Component 소유
 - Controller Yaw 기반 Rotation
-- Head-Socket True First-Person Camera Contract
+- Head Socket 기반 Full Body First-Person Camera
+- Gameplay Component 기본 Subobject 생성
+- Input Mode에 따른 Movement / Look 제한
 - Forgery Movement Lock 반영
 - Full Body Mesh 유지
-- 기존 Gameplay Component 유지
-- SpringArm은 참조 감사 후 Deprecate
+- Owning Client와 Remote Client 표현 유지
+
+SpringArm Gameplay Camera는 신규 흐름에서 사용하지 않는다.
+
+기존 Top-Down Camera 참조는 별도 Cleanup 전까지 직렬화 호환 여부를 확인한다.
 
 ---
 
 # 4. Character Components
 
-Folder: `Character/Components/`
+Folder:
 
-| 클래스 | 상태 | 책임 |
+```text
+Source/Project_MuseumHeist/Public/Character/Components
+Source/Project_MuseumHeist/Private/Character/Components
+```
+
+| 클래스 | 상태 | 현재 책임 |
 |---|---|---|
 | `UHeistTagComponent` | Keep | Gameplay Tag 상태 |
-| `UHeistStatusComponent` | Modify | 일반 Timed Status만 유지. Player PvP Stun/Immunity 제거 |
-| `UHeistInventoryComponent` | Keep + Extend | Grid/FastArray 유지, Original Carry Entry 연결 |
+| `UHeistStatusComponent` | Modify | 일반 Timed Status |
+| `UHeistInventoryComponent` | Keep + Extend | Grid, FastArray, Coin QuickSlot, Original Carry |
 | `UHeistInteractionComponent` | Modify | Center Screen Trace, Target Filter, Prompt Snapshot |
-| `UHeistActionComponent` | Modify | Action Lock, Forgery Cast/Cancel, Submit 중복 방지 |
-| `UHeistVisionComponent` | Modify | Camera Forward Flashlight |
+| `UHeistActionComponent` | Modify | Observation Cast, Escape Cast, Action Lock |
+| `UHeistVisionComponent` | Modify | First-Person Flashlight |
 | `UHeistCustomizationComponent` | Keep | 외형 |
-| `UHeistNoiseEmitterComponent` | Keep | Footstep/Coin/Alarm Noise |
-| `UHeistForgeryComponent` | Add | Session, Stroke, Timeout, Submit/Cancel, 서버 판정, Cleanup |
+| `UHeistNoiseEmitterComponent` | Keep | Footstep, Coin, 환경 소음 |
+| `UHeistForgeryComponent` | Keep | Session, Stroke, Timeout, Submit, OpenCV Score, Cleanup |
 
-`UHeistForgeryComponent`는 Player Character에 기본 Subobject로 생성한다. 별도 Manager를 만들지 않는다.
+## `UHeistInventoryComponent`
+
+현재 책임:
+
+- 4×5 Inventory Grid
+- FastArray Replication
+- Server-authoritative Add
+- Move
+- Rotate
+- Remove
+- Coin QuickSlot
+- Inventory Open State
+- Original Carry Entry
+- Owner-only Inventory State Replication
+- Inventory Changed Delegate
+
+현재 QuickSlot:
+
+```text
+None
+Coin
+```
+
+삭제된 QuickSlot:
+
+```text
+SmokeGrenade
+GlueTrap
+```
+
+## `UHeistActionComponent`
+
+현재 활성 Cast:
+
+```text
+Observation Cast
+Escape Cast
+```
+
+제거된 Cast:
+
+```text
+Trap Placement Cast
+```
+
+삭제 대상 API:
+
+```text
+TryBeginTrapPlacementRequest
+IsTrapPlacementCastActive
+GetTrapPlacementCastEndServerTime
+GetTrapPlacementCastCompletedDelegate
+CancelTrapPlacementCast
+ClearTrapPlacementCastState
+HandleTrapPlacementCastTimerElapsed
+HasMovedBeyondTrapPlacementCastTolerance
+```
+
+삭제 대상 Delegate:
+
+```text
+FHeistTrapPlacementCastCompleted
+```
+
+삭제 대상 Forward Declaration:
+
+```text
+AHeistTrapActor
+```
+
+삭제 대상 상태:
+
+```text
+bTrapPlacementCastActive
+TrapPlacementCastEndServerTime
+PendingTrapItemId
+PendingTrapSourceInstanceId
+PendingTrapTargetWorldLocation
+PendingTrapEffectDurationSeconds
+PendingTrapActorClass
+bPendingTrapConsumesSourceItem
+TrapPlacementCastTimerHandle
+TrapPlacementCastStartLocation
+```
+
+Observation과 Escape는 상호 배타적으로 시작돼야 한다.
+
+`ClearEscapeCastState()`와 `ClearObservationCastState()`는 다른 활성 Cast가 없을 때만 Component Tick을 끈다.
+
+## `UHeistForgeryComponent`
+
+현재 책임:
+
+- Template Prepare
+- Observation Handoff
+- Session Begin
+- Session Revision
+- Owner Validation
+- Stroke Payload Validation
+- Palette Validation
+- Brush Validation
+- Reference Cache
+- Player Stroke Raster
+- OpenCV Metric
+- Local Preview
+- Server Final
+- Replica Painting Data Build
+- Display Case Commit
+- Timeout
+- Cancel
+- Disconnect Cleanup
+- Arrest Cleanup
+- EndPlay Cleanup
+
+별도 Forgery Manager를 만들지 않는다.
 
 ---
 
-# 5. Inventory And Data
+# 5. Inventory And Data Types
 
-기존 Inventory/FastArray 타입은 Keep한다.
+유지 타입:
 
-- `FHeistInventoryItem`
-- `FHeistInventoryFastArrayItem`
-- `FHeistReplicatedInventory`
-- `FHeistQuickSlotState`
-- `FHeistItemDataRow`
-- `FHeistLootDataRow`
-- `FHeistUsableItemDataRow`
-- `FHeistSoundPingDataRow`
-- `FHeistGuardDataRow`
-- `FHeistLootSpawnRow`
-- `FHeistVentDataRow`
-- `FHeistCustomizationRow`
-- `FHeistUITextRow`
+```text
+FHeistInventoryItem
+FHeistInventoryFastArrayItem
+FHeistReplicatedInventory
+FHeistQuickSlotState
+FHeistOriginalCarryEntry
+FHeistItemDataRow
+FHeistLootDataRow
+FHeistUsableItemDataRow
+FHeistSoundPingDataRow
+FHeistGuardDataRow
+FHeistLootSpawnRow
+FHeistVentDataRow
+FHeistCustomizationRow
+FHeistUITextRow
+```
 
-변경:
+## Item Contract
 
-- `FHeistLootDataRow`는 Loose Loot 데이터로 사용한다.
-- `FHeistGuardDataRow`에 Inspect/Alert 튜닝을 추가한다.
-- `FHeistVentDataRow`는 Shared Extraction 설정으로 재해석한다.
+현재 지원 Item Type:
 
-## 신규 Data Row — Add
+```text
+Loot
+Throwable
+KeyItem
+```
 
-```cpp
-FHeistArtifactDataRow
-- ArtifactId
-- DisplayName
-- ArtifactValue
+현재 활성 Throwable:
+
+```text
+Throwable_Coin
+```
+
+현재 QuickSlot:
+
+```text
+Coin
+```
+
+삭제 Row:
+
+```text
+Trap_Glue
+Trap_Noise
+Throwable_Smoke
+```
+
+## `FHeistItemDataRow`
+
+필드:
+
+```text
+ItemId
+DisplayName
+CategoryTag
+ItemType
+GridSize
+Weight
+bCanRotate
+bCanUseQuickSlot
+bAvailableInV1
+Icon
+```
+
+## `FHeistLootDataRow`
+
+Loose Loot 확장 데이터로 사용한다.
+
+## `FHeistUsableItemDataRow`
+
+현재 활성 Runtime Use:
+
+```text
+Throwable_Coin
+UseType=Throw
+```
+
+삭제된 Use:
+
+```text
+PlaceTrap
+```
+
+삭제된 Row에서 삭제된 C++ Class나 Blueprint Class를 참조하면 안 된다.
+
+## Data Validation
+
+`AHeistGameMode::ValidateItemDataTables()`는 다음을 검증한다.
+
+- Item Row Struct
+- Loot Row Struct
+- Usable Row Struct
+- Row Name과 ItemId 일치
+- Item Type 유효성
+- Grid Size
 - Weight
-- GridWidth
-- GridHeight
-- ForgeryType
-- ForgeryTemplateId
-- MinimumForgeryScore
-- BaseInspectionDelay
-- VisualActorClass
+- Loot Extension 정합성
+- Throwable Extension 정합성
+- Orphan Extension
+- Spawned Actor Class
 
-FHeistForgeryTemplateRow
+PASS 조건:
+
+```text
+InvalidRows=0
+OrphanExtensions=0
+Result=PASS
+```
+
+---
+
+# 6. Artifact And Forgery Data
+
+## `FHeistArtifactDataRow` — Keep
+
+필드:
+
+```text
+ArtifactId
+DisplayName
+ArtifactValue
+Weight
+GridWidth
+GridHeight
+ForgeryType
+ForgeryTemplateId
+MinimumForgeryScore
+BaseInspectionDelay
+VisualActorClass
+```
+
+## `FHeistForgeryTemplateRow` — Keep
+
+필드:
+
+```text
+TemplateId
+ReferenceImage
+ReferenceMask
+BackgroundFilterMode
+BackgroundColorTolerance
+AllowedPalette
+ObservationDuration
+ForgeryDuration
+StrokeLimit
+BrushSize
+CoverageWeight
+MajorShapeWeight
+ExtraStrokePenaltyWeight
+TimeoutPenalty
+ShapeAccuracyWeight
+ColorAccuracyWeight
+MaximumPaintToReferenceRatio
+OverpaintScoreCap
+```
+
+## Template Validation
+
+다음을 검증한다.
+
 - TemplateId
 - ReferenceImage
-- ReferenceMask
-- BackgroundFilterMode (None / Black / White)
-- BackgroundColorTolerance
-- AllowedPalette (2~8 colors)
+- BackgroundFilterMode
+- ReferenceMask 조건
+- AllowedPalette 개수
 - ObservationDuration
 - ForgeryDuration
 - StrokeLimit
 - BrushSize
 - CoverageWeight
 - MajorShapeWeight
-- ExtraStrokePenaltyWeight
-- TimeoutPenalty
 - ShapeAccuracyWeight
 - ColorAccuracyWeight
 - MaximumPaintToReferenceRatio
 - OverpaintScoreCap
+
+필수 Weight 합:
+
+```text
+CoverageWeight + MajorShapeWeight > 0
+ShapeAccuracyWeight + ColorAccuracyWeight > 0
 ```
 
-### Forgery UI Runtime Contract
+`ReferenceMask`는 `BackgroundFilterMode == None`일 때 필수다.
 
-- Reference Image / Drawing Canvas display area: 400×400 square
-- Palette: 2~8 DataTable colors, mouse button selection and number keys 1~8
-- Preview Score: throttled owner-local estimate using the shared C++ evaluator
-- Final Score: server-authoritative result only
-
-### OpenCV Forgery Score Contract
-
-- UE 5.8 Runtime OpenCV 4.5.5의 `core`, `imgproc`, `quality` 모듈을 사용한다.
-- Stroke 수집과 Palette Raster 생성은 기존 C++ 경로를 유지하고 최종 유사도 평가만 OpenCV가 담당한다.
-- Shape는 3×3 Morphology Close 후 Reference→Submitted, Submitted→Reference 양방향 Distance Transform으로 평가한다.
-- Color는 고정 Canvas의 비교 ROI를 Lab으로 변환한 SSIM과 Palette 분포 Histogram 유사도를 조합한다.
-- 완전 일치는 그대로 유지하고 중간 품질만 보수적으로 환산하는 Shape 1.15 / Color 1.10 응답 곡선을 사용한다.
-- SSIM 평균은 Foreground Union으로 제한하며, 제출/Reference 면적 비율에 0.65 지수 완성도 계수를 적용해 점·짧은 선의 기본 점수를 차단한다.
-- Coverage, Missing, Extra는 정확한 픽셀 일치 개수가 아니라 Distance Similarity의 Recall/Precision에서 계산한다.
-- Anti-Fill은 실제 제출/Reference Foreground 면적 비율로 별도 적용한다.
-- Local Preview와 Server Final은 동일한 OpenCV Evaluator를 사용하며 서버 결과만 확정값이다.
-
-## `Data/HeistGameBalanceDataAsset.*`
-`UHeistGameBalanceDataAsset` — Modify
-
-- Alert/Lockdown 기본값
-- Player Count Scaling
-- Legacy Gap/PvP 값은 미사용 처리
-- Painting별 Observation/Forgery 값은 Template Row가 우선
+`Black / White` Filter에서는 Reference Image에서 Foreground Mask를 생성할 수 있으므로 별도 ReferenceMask를 강제하지 않는다.
 
 ---
 
-# 6. World And Interactable
+# 7. OpenCV Forgery Contract
+
+UE 5.8 Runtime OpenCV의 다음 모듈을 사용한다.
+
+```text
+core
+imgproc
+quality
+```
+
+Stroke 수집과 Palette Raster 생성은 프로젝트 C++ 경로가 소유한다.
+
+OpenCV는 최종 유사도 측정을 담당한다.
+
+## Shape
+
+```text
+Binary Foreground Mask
+→ 3×3 Morphology Close
+→ Reference→Submitted Distance Transform
+→ Submitted→Reference Distance Transform
+→ Bidirectional Distance Similarity
+→ Mask Precision / Recall / Dice / IoU
+```
+
+## Color
+
+```text
+Palette Raster
+→ Foreground Union ROI
+→ BGR
+→ Lab
+→ SSIM
+→ Palette Histogram
+→ Bhattacharyya Similarity
+```
+
+## Final Score Layer
+
+```text
+Shape Response Curve
+Color Response Curve
+Weighted Geometric Mean
+Bottleneck
+Paint Completeness
+Palette Fidelity
+Anti-Fill Score Cap
+```
+
+Local Preview와 Server Final은 동일한 Evaluator를 사용한다.
+
+서버 결과만 확정값이다.
+
+Render Target 또는 전체 Stroke Payload를 World Visual 목적으로 추가 복제하지 않는다.
+
+---
+
+# 8. World And Interactable
 
 | 클래스 | 상태 | 현재 책임 |
 |---|---|---|
-| `IHeistInteractable` | Keep | 공통 인터랙션 |
-| `AHeistInteractableActor` | Keep | 공통 기반 |
+| `IHeistInteractable` | Keep | 공통 상호작용 Interface |
+| `AHeistInteractableActor` | Keep | 공통 Interactable 기반 |
 | `AHeistLootActor` | Keep | Loose Loot |
-| `AHeistPaintingDisplayCaseActor` | Modify | Painting Target, Session Lock, Palette Texture Replica/Original, Inspection State |
-| `AHeistDisplayCaseActor` | Deprecate | Legacy serialized/C++ reference 호환용 Painting Alias. `BP_DisplayCase`는 새 부모로 이전 완료 |
-| `AHeistSculptureDisplayCaseActor` | Add | Sculpture 전용 배치/시각 Shell, Gameplay Interaction은 Stretch Gate 전까지 차단 |
+| `AHeistPaintingDisplayCaseActor` | Modify | Painting Target, Session, Replica, Original, Inspection |
+| `AHeistDisplayCaseActor` | Deprecate | 기존 Painting Asset 호환 Alias |
+| `AHeistSculptureDisplayCaseActor` | Deferred | Sculpture Visual Shell |
 | `AHeistVentActor` | Modify | Shared Extraction |
-| `AHeistCoinProjectile` | Modify | Guard Distraction |
-| `AHeistSmokeProjectile` / `AHeistSmokeCloudActor` | Legacy | 신규 PvE 호출 차단, 회귀 기준으로만 보존 |
-| `AHeistGlueTrapActor` | Deferred | Guard 전용 Stretch |
-| `AHeistNoiseTrapActor` | Deferred | Post-v1.0 |
+| `AHeistThrowableProjectile` | Keep | Throwable 공통 기반 |
+| `AHeistCoinProjectile` | Keep | Guard Distraction |
 | `AHeistLootSpawnPoint` | Keep | Loose Loot Spawn |
 | `AHeistPlayerStart` | Keep | Spawn |
 | `AHeistGuardWaypoint` | Keep | Patrol |
 
-### Replica World Visual Contract
+## Removed World Classes
 
-- `AHeistPaintingDisplayCaseActor`는 서버에서 확정·복제된 `FHeistForgeryResult`를 4단계 Score Tier로 변환한다.
-- Tier 선택과 적용 상태는 C++가 소유하며 Blueprint는 Tier Material 지정 또는 `BP_ApplyReplicaWorldVisual` 시각 연출만 담당한다.
-- 별도 Tier Material이 없으면 Replica Mesh의 상대 회전·크기 변형을 대체 비주얼로 사용한다.
-- Score, Coverage, Color Accuracy, Tier는 Replica Mesh Custom Primitive Data 0~3에 기록한다.
-- 최종 제출 Stroke는 서버 Score와 동일한 `128×128` Palette Raster로 변환하고 Background를 0, Palette 색을 1~8로 매핑한 4-bit Index Data로 패킹한다.
-- `AHeistPaintingDisplayCaseActor`는 확정된 Palette와 Packed Index Data를 제출 시 한 번만 복제한다.
-- 각 Client는 RepNotify에서 동일한 Transient `UTexture2D`를 재구성하고 `ReplicaVisualComponent`의 Dynamic Material `PaintingTexture` Parameter에 적용한다.
-- 늦게 참가하거나 Actor Relevancy가 복구된 Client도 복제된 확정 Data로 동일한 그림을 재구성한다.
-- Blueprint는 `AHeistPaintingDisplayCaseActor` 기반의 재사용 가능한 Painting Frame Shell, Frame Mesh, UV가 정규화된 Original/Replica Plane, `PaintingTexture` Parameter Material을 담당한다.
-- Render Target 또는 전체 Stroke Payload를 World Visual 목적으로 추가 복제하지 않는다.
+```text
+AHeistSmokeProjectile
+AHeistSmokeCloudActor
+AHeistTrapActor
+AHeistGlueTrapActor
+AHeistNoiseTrapActor
+```
 
-### Exhibit Case Isolation Contract
+삭제된 클래스의 다음 참조를 남기지 않는다.
 
-- Painting과 Sculpture Case는 형제 기능으로 취급하며 한 Actor의 enum/switch 분기로 관리하지 않는다.
-- Painting Case만 Drawing Forgery, Palette Raster, Submitted Texture, Frame Plane, Original Carry 흐름을 소유한다.
-- Sculpture Case는 별도 파일과 별도 Actor 타입을 사용하며 Painting의 `FHeistReplicaPaintingData` 및 Display Case State를 상속하지 않는다.
-- `AHeistDisplayCaseActor` 호환 Alias는 기존 Blueprint 로드를 위한 임시 경계이며 신규 C++ Gameplay API는 `AHeistPaintingDisplayCaseActor`만 받는다.
-- Sculpture Assembly, 부품 검증, Replica Mesh 교체, 전용 State/Replication은 Stretch 승인 이후 Sculpture 전용 Task에서만 추가한다.
-
-### Blueprint Asset Contract
-
-- `/Game/Blueprints/World/Actors/Loot/BP_DisplayCase`는 `AHeistPaintingDisplayCaseActor`를 부모로 사용한다.
-- `/Game/Blueprints/World/Actors/Loot/BP_SculptureDisplayCase`는 `AHeistSculptureDisplayCaseActor`를 부모로 사용한다.
-- Painting Blueprint는 Frame, Original/Replica Plane, `PaintingTexture` Material 표현을 담당한다.
-- Sculpture Blueprint는 현재 `InteractionCollision`과 `VisualMeshComponent` 기반 시각 Shell만 담당하며 Painting Graph/State/Data를 참조하지 않는다.
-
-### Forgery Recovery Contract
-
-- Cancel/Submit 및 Timeout/Submit 경합은 서버 RPC 처리 순서에서 하나의 종료 결과만 확정한다.
-- Arrest, Disconnect, Match Phase 변경, Owner/Case EndPlay는 활성 Forgery Session과 Display Case Lock을 함께 정리한다.
-- Disconnect는 `UHeistForgeryComponent`를 먼저 정리하고 Display Case 전체 Sweep을 안전망으로 수행한다.
-- 복구 뒤 Forgery Widget은 숨겨지고 단일 인스턴스만 유지하며 입력 모드는 Forgery가 아닌 유효한 단일 Context로 복원한다.
-- `HeistForgeryRecoveryDump`는 Local Session/UI/Input과 서버의 Orphan Case Lock/Session을 함께 검증한다.
-- `HeistForgeryRecoveryRace <CancelSubmit|SubmitCancel>`는 Owning Client에서 두 요청을 연속 전송해 서버 직렬화 결과를 검증한다.
-- `HeistForgeryTransportTest NearTimeout`은 서버 만료 직전 유효 Payload가 확정되고, `Timeout`은 만료 이후 Payload가 거부·정리되는 경계를 검증한다.
-
-금지:
-
-- Painting별 `AActor` 파생 클래스
-- `ForgeryManager`
-- `ReplicaManager`
-- `ArtifactFactory`
-- `ObjectiveService`
-- 신규 Camera Manager
+- Header Include
+- Forward Declaration
+- Delegate Parameter
+- UPROPERTY Class
+- SpawnedActorClass
+- DataTable Row
+- Blueprint Parent
+- Blueprint Variable Type
+- GameplayTag
+- Debug Function
+- Documentation Active Scope
 
 ---
 
-# 7. AI
+# 9. Painting Display Case Contract
 
-| 클래스 | 상태 | 책임 |
+`AHeistPaintingDisplayCaseActor`는 다음 책임을 가진다.
+
+- Target Artifact 식별
+- Session Lock
+- Session Owner
+- Observation State
+- Forgery State
+- Replica Ready
+- Replica Placement
+- Original Availability
+- Original Removal
+- Inspection Candidate Registration
+- Inspection Result
+- Replica Painting Data Replication
+- Runtime Texture Reconstruction
+- Original / Replica Plane Visibility
+- Original Carry Handoff
+
+## State
+
+```text
+Secured
+Observed
+ForgeryInProgress
+ReplicaReady
+ReplicaPlaced
+OriginalAvailable
+OriginalRemoved
+Inspecting
+Completed
+Suspected
+Alarmed
+Failed
+```
+
+Painting과 Sculpture State를 하나의 enum switch로 통합하지 않는다.
+
+---
+
+# 10. Replica World Visual Contract
+
+- 서버에서 확정된 `FHeistForgeryResult`를 사용한다.
+- 제출 Stroke를 Score와 동일한 Palette Raster로 변환한다.
+- Background는 0으로 저장한다.
+- Palette 색은 1~8로 저장한다.
+- Pixel 두 개를 한 Byte에 4-bit Index로 패킹한다.
+- 제출 시 한 번만 복제한다.
+- Client는 RepNotify에서 Transient `UTexture2D`를 생성한다.
+- Dynamic Material의 `PaintingTexture` Parameter에 적용한다.
+- 늦게 참가한 Client도 동일한 그림을 재구성한다.
+- Render Target을 복제하지 않는다.
+- 전체 Stroke Payload를 World Actor에 복제하지 않는다.
+
+Blueprint는 다음을 담당한다.
+
+- Frame Mesh
+- Original Plane
+- Replica Plane
+- Material
+- UV
+- Visual Animation
+
+---
+
+# 11. AI
+
+| 클래스 | 상태 | 현재 책임 |
 |---|---|---|
-| `AHeistGuardCharacter` | Keep + Extend | First-Person 감지 튜닝 |
-| `AHeistGuardAIController` | Keep + Extend | Inspect Target 선택 |
-| `FHeistGuardStateTreeTask` | Add | StateTree-owned guard movement, wait, and authoritative state handoff |
-| `UHeistGuardStateComponent` | Modify | InspectExhibit, Alert 반응 |
-| `UHeistGuardNoiseReactionComponent` | Keep | Coin/Footstep/Alarm |
-| `UHeistPatrolPathComponent` | Keep | Patrol |
+| `AHeistGuardCharacter` | Keep + Extend | Guard Pawn |
+| `AHeistGuardAIController` | Keep + Extend | StateTree, Inspection Target |
+| `FHeistGuardStateTreeTask` | Add | StateTree 이동과 상태 Handoff |
+| `UHeistGuardStateComponent` | Modify | Guard State |
+| `UHeistGuardNoiseReactionComponent` | Modify | Footstep, GlassBreak, Coin 반응 |
+| `UHeistPatrolPathComponent` | Keep | Patrol Path |
 
-### Inspection Target Registration Contract
+## Guard States
 
-- `AHeistPaintingDisplayCaseActor`는 서버에서 Replica가 확정되고 Case가 `ReplicaPlaced`, `OriginalAvailable`, `OriginalRemoved` 중 하나일 때만 Inspection 후보로 등록한다.
-- Case가 후보 State를 벗어나거나 EndPlay되면 등록을 해제한다.
-- `AHeistGuardAIController`는 서버에서만 등록된 유효 Painting Case를 선택한다.
-- 선택은 Guard와 Case 사이 거리 우선이며 동일 거리에서는 `DisplayCaseId`, Actor Name 순서로 결정론적으로 고정한다.
-- 등록 상태는 서버 AI 의사결정용이며 Client가 검사 대상을 확정하지 않는다.
-- Guard 이동, 정렬, Inspect Cast, 검사 결과 적용은 `TASK-W4-013` 범위다.
-- 별도 Inspection Manager, Service, Subsystem은 추가하지 않는다.
+```text
+Disabled
+Stunned
+Patrol
+InvestigateNoise
+ChasePlayer
+SearchLastKnownLocation
+ReturnToPatrol
+InspectExhibit
+```
 
-### Guard InspectExhibit Contract
+## Inspection Target Registration
 
-- `EHeistGuardState::InspectExhibit`와 `AI.State.InspectExhibit` StateTree Event를 사용한다.
-- Patrol은 등록된 Painting Case를 선점하면 `InspectExhibit`에 양보하고, Noise Investigate는 검사 중 상태를 선점하지 못한다.
-- Guard는 Case까지 이동한 뒤 Case 방향으로 정렬하고 서버 고정 Cast를 시작한다.
-- Chase는 검사보다 우선하며, 중단된 Case는 검사 전 State와 등록 상태를 복원한다.
-- Chase 이후 Patrol로 돌아오면 보존된 Case를 우선 재개한다.
-- Cast 완료 결과는 서버에서 Case `Suspected`로 적용한다. Score별 검사 지연은 `TASK-W4-014` 범위다.
+- Painting Case만 검사 후보가 된다.
+- `ReplicaPlaced`, `OriginalAvailable`, `OriginalRemoved` 상태에서만 후보 등록이 가능하다.
+- 유효 State를 벗어나면 등록 해제한다.
+- EndPlay 시 등록 해제한다.
+- 서버에서만 후보를 결정한다.
+- Guard와 Case 거리 우선
+- 동일 거리에서는 DisplayCaseId
+- 다음 Actor Name
+- 결정론적 순서를 유지한다.
+- 별도 Inspection Manager를 추가하지 않는다.
+- 별도 Objective Service를 추가하지 않는다.
 
-StateTree Asset는 Editor 작업이며 사용자가 소유한다.
+## Guard InspectExhibit
+
+- Patrol은 유효 후보를 선점한다.
+- Guard는 Case까지 이동한다.
+- Case 방향으로 정렬한다.
+- 서버 고정 Cast를 시작한다.
+- Chase는 Inspect보다 우선한다.
+- 중단된 Case는 재개 가능 상태를 보존한다.
+- Patrol 복귀 후 보존된 Case를 우선 재개한다.
+- Cast 완료 결과는 서버가 적용한다.
+- Score별 검사 지연은 `TASK-W4-014` 범위다.
+
+## Noise Reaction
+
+현재 활성 SoundPing:
+
+```text
+Footstep
+GlassBreak
+CoinImpact
+StunHit
+```
+
+제거된 SoundPing:
+
+```text
+NoiseTrap
+```
+
+Guard Priority Switch에서 `NoiseTrap` case를 제거한다.
 
 ---
 
-# 8. UI
+SoundPing은 Guard Noise Reaction을 위한 서버 전용 Event Dispatch다.
+
+Client HUD Snapshot 복제, Direction Marker, Marker Pool 및 SoundPing Widget을 사용하지 않는다.
+
+# 12. SoundPing
+
+## `FHeistSoundPingDataRow`
+
+필드:
+
+```text
+SoundPingId
+DisplayName
+SoundPingTag
+PingType
+Radius
+Duration
+RefreshInterval
+bAffectsGuards
+Sound
+```
+
+## Active Rows
+
+```text
+Ping_Footstep_Walk
+Ping_Footstep_Run
+Ping_GlassBreak
+Ping_CoinImpact
+Ping_StunHit
+```
+
+`Ping_StunHit`은 현재 Gameplay 사용 여부를 점검한다.
+
+## Removed Rows
+
+```text
+Ping_NoiseTrap
+```
+
+---
+
+# 13. UI
 
 ## Widget Classes
 
-| 클래스 | 상태 | 책임 |
+| 클래스 | 상태 | 현재 책임 |
 |---|---|---|
 | `UHeistHUDWidget` | Modify | Crosshair, Objective, Alert, Team Status |
 | `UHeistInventoryWidget` | Keep | Inventory |
-| `UHeistInventorySlotWidget` | Keep | Slot |
-| `UHeistInventoryItemWidget` | Keep | Item |
-| `UHeistQuickSlotWidget` | Keep | QuickSlot |
-| `UHeistInteractionPromptWidget` | Modify | Center Screen Prompt |
+| `UHeistInventorySlotWidget` | Keep | Inventory Slot |
+| `UHeistInventoryItemWidget` | Keep | Inventory Item |
+| `UHeistQuickSlotWidget` | Modify | Coin QuickSlot |
+| `UHeistInteractionPromptWidget` | Modify | Interaction, Observation, Escape Progress |
 | `UHeistResultWidget` | Modify | Team Result / Contribution |
-| `UHeistRareLootAlertWidget` | Remove | Rare Loot 제거 후 Blueprint 참조 정리 |
-| `UHeistForgeryWidget` | Add | Owner-only Full-Screen Forgery Presentation |
+| `UHeistForgeryWidget` | Keep | Owner-only Forgery UI |
+| `UHeistRareLootAlertWidget` | Remove 또는 Deferred Review | Rare Loot 범위 결정 전 신규 사용 금지 |
 
 ## ViewModels
 
-| 클래스 | 상태 | 책임 |
+| 클래스 | 상태 | 현재 책임 |
 |---|---|---|
-| `UHeistHUDViewModel` | Modify | Objective, Alert, Lockdown, Carrier, Team Status |
+| `UHeistHUDViewModel` | Modify | Objective, Alert, Escape, Observation |
 | `UHeistInventoryViewModel` | Keep | Inventory Snapshot |
-| `UHeistQuickSlotViewModel` | Keep | QuickSlot |
+| `UHeistQuickSlotViewModel` | Modify | Coin QuickSlot Snapshot |
 | `UHeistResultViewModel` | Modify | Team Result / Contribution |
-| `UHeistLobbyViewModel` | Keep | 1~4인 Lobby |
-| `UHeistForgeryViewModel` | Add | Forgery UI 상태만 노출, 판정 없음 |
+| `UHeistLobbyViewModel` | Keep | Lobby |
+| `UHeistForgeryViewModel` | Keep | Forgery UI State |
+
+## Removed UI Contract
+
+```text
+UHeistSoundPingMarkerWidget
+UHeistSoundPingWidgetPool
+WBP_SoundPingMarker
+SoundPingMarkerLayer
+SoundPingMarkerWidgetClass
+UI.Indicator.SoundPing
+IsTrapPlacementCastActive
+GetTrapPlacementCastEndServerTime
+bTrapPlacementCastActive
+TrapPlacementCastEndServerTime
+ACTION PLACING TRAP
+PLACING TRAP
+MOVE TO CANCEL
+TrapPlacement ActionType
+```
+
+`BP_RefreshHUDPresentation`에는 Trap 상태 인수를 전달하지 않는다.
+
+Interaction Action Progress 우선순위:
+
+```text
+Observation
+→ Escape
+→ None
+```
 
 ---
 
-# 9. Debug
+# 14. Debug
 
-- `UHeistCheatManager` — Keep
-- `UHeistDebugFunctionLibrary` — Keep
+| 클래스 | 상태 | 현재 책임 |
+|---|---|---|
+| `UHeistCheatManager` | Keep | Development Command |
+| `UHeistDebugFunctionLibrary` | Keep | Debug Log, Runtime Test |
+| Trap 관련 Debug Function | Remove | 삭제 기능 참조 제거 |
+| Smoke 관련 Debug Function | Remove | 삭제 기능 참조 제거 |
 
-활성 Task에서 필요한 Forgery/Case/Alert Debug Command만 추가한다.
-
----
-
-# 10. Module Dependencies
-
-현재 의존성:
-
-- Core
-- CoreUObject
-- Engine
-- InputCore
-- EnhancedInput
-- NetCore
-- GameplayTags
-- UMG
-- Slate
-- SlateCore
-- ModelViewViewModel
-- AIModule
-- GameplayStateTreeModule
-- StateTreeModule
-- OpenCV
-- OpenCVHelper
-- ImageCore
-
-OpenCV는 최종 Forgery 유사도 평가에만 사용한다. Stroke 수집, Palette Raster, Authority, Replication 계약은 프로젝트 C++ 경로가 계속 소유한다.
+활성 Task에서 필요한 Forgery, Case, Guard, Alert, Lockdown Debug만 추가한다.
 
 ---
 
-# 11. Implementation Boundary
+# 15. Module Dependencies
 
-Manifest에 Add로 승인된 타입이라도 활성 Task 이전에 전체 로직을 구현하지 않는다.
+현재 주요 의존성:
 
-Legacy 타입이나 필드를 물리적으로 삭제하기 전에:
+```text
+Core
+CoreUObject
+Engine
+InputCore
+EnhancedInput
+NetCore
+GameplayTags
+UMG
+Slate
+SlateCore
+ModelViewViewModel
+AIModule
+GameplayStateTreeModule
+StateTreeModule
+OpenCV
+OpenCVHelper
+ImageCore
+```
+
+OpenCV는 Forgery 유사도 평가에 사용한다.
+
+Stroke 수집, Palette Raster, Authority, Validation, Replication은 프로젝트 C++가 계속 소유한다.
+
+---
+
+# 16. Forbidden Architecture
+
+다음을 추가하지 않는다.
+
+```text
+ForgeryManager
+ReplicaManager
+ArtifactFactory
+ObjectiveService
+InspectionManager
+TrapManager
+SmokeManager
+신규 Camera Manager
+Painting별 Actor Class
+```
+
+현재 컴포넌트와 Actor 경계 안에서 책임을 배치한다.
+
+---
+
+# 17. Blueprint Asset Contract
+
+## Painting
+
+```text
+/Game/Blueprints/World/Actors/Loot/BP_DisplayCase
+Parent: AHeistPaintingDisplayCaseActor
+```
+
+## Sculpture
+
+```text
+/Game/Blueprints/World/Actors/Loot/BP_SculptureDisplayCase
+Parent: AHeistSculptureDisplayCaseActor
+```
+
+## Coin
+
+```text
+/Game/Blueprints/World/Actors/Projectile/BP_HeistCoinProjectile
+Parent: AHeistCoinProjectile
+```
+
+## Removed Blueprint Assets
+
+```text
+BP_HeistSmokeProjectile
+BP_HeistSmokeCloud
+BP_HeistGlueTrap
+BP_HeistNoiseTrap
+```
+
+삭제 전 Reference Viewer를 확인한다.
+
+삭제 후 Fix Up Redirectors를 실행한다.
+
+---
+
+# 18. Data Import Contract
+
+## Item Data
+
+허용 Row 예시:
+
+```text
+Loot_RoyalCrown
+Loot_Painting
+Loot_AncientSword
+Throwable_Coin
+```
+
+삭제 Row:
+
+```text
+Trap_Glue
+Trap_Noise
+Throwable_Smoke
+```
+
+## Usable Item Data
+
+현재 활성 Row:
+
+```text
+Throwable_Coin
+```
+
+삭제 Row:
+
+```text
+Trap_Glue
+Trap_Noise
+Throwable_Smoke
+```
+
+## SoundPing Data
+
+삭제 Row:
+
+```text
+Ping_NoiseTrap
+```
+
+`DataTableImports/*.json`이 Source of Truth다.
+
+삭제 Row를 JSON에서 제거한 뒤 실제 UE DataTable을 Reimport한다.
+
+JSON 기반 DataTable의 Row를 `.uasset`에서 직접 삭제하는 방식은 사용하지 않는다.
+
+---
+
+# 19. Cleanup Verification
+
+삭제 작업 완료 조건:
+
+1. Development Editor Build 성공
+2. 삭제 타입 이름에 대한 C++ 활성 참조 0
+3. Data Import JSON의 삭제 Row 0
+4. 실제 UE DataTable의 삭제 Row 0
+5. 삭제 Blueprint Reference Viewer 0 참조
+6. Widget Blueprint Refresh All Nodes 완료
+7. Widget Blueprint Compile 성공
+8. Fix Up Redirectors 완료
+9. Missing Parent Class 없음
+10. Invalid Enum 없음
+11. Failed Import 없음
+12. `ValidateItemDataTables()` PASS
+13. Coin QuickSlot 정상
+14. Coin Throw 정상
+15. Coin Guard Distraction 정상
+16. Observation Progress 정상
+17. Escape Progress 정상
+18. Trap UI 문구 없음
+19. NoiseTrap SoundPing 없음
+20. Smoke 관련 Runtime Tag 없음
+
+---
+
+# 20. Implementation Boundary
+
+Manifest에 `Add`로 승인된 타입이라도 활성 Task 이전에 전체 로직을 구현하지 않는다.
+
+Legacy 또는 Deprecated 타입을 물리적으로 삭제하기 전:
 
 1. 신규 경로 구현
 2. C++ Compile
@@ -449,6 +1056,6 @@ Legacy 타입이나 필드를 물리적으로 삭제하기 전에:
 4. Blueprint Compile
 5. PIE
 6. Reference Viewer 0 참조
-7. Cleanup Task 승인
+7. Cleanup 승인
 
-을 거친다.
+현재 `Remove`로 확정된 Smoke와 Trap 계열은 신규 경로 교체 대상이 아니다. 참조 정리 후 물리적으로 제거한다.

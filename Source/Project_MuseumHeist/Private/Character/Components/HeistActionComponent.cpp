@@ -76,6 +76,14 @@ void UHeistActionComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 		return;
 	}
 
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	if (!IsValid(HeistGameState) || HeistGameState->AreWorldInteractionsRestricted())
+	{
+		CancelEscapeCast(TEXT("WorldRestricted"));
+		CancelObservationCast(TEXT("WorldRestricted"));
+		return;
+	}
+
 	if (bEscapeCastActive && !PendingEscapeVent.IsValid())
 	{
 		CancelEscapeCast(TEXT("InvalidCastState"));
@@ -120,8 +128,10 @@ bool UHeistActionComponent::TryBeginEscapeRequest(AHeistVentActor* TargetVentAct
 	AActor* OwnerActor = GetOwner();
 	const AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(OwnerActor);
 	const AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter) ? HeistCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	if (!IsValid(OwnerActor) || !OwnerActor->HasAuthority() || !IsValid(HeistPlayerState) || HeistPlayerState->IsEscaped() || !IsValid(TargetVentActor) || bEscapeCastActive ||
-		IsGameplayCastActive() || PendingEscapeVent.IsValid())
+		IsGameplayCastActive() || PendingEscapeVent.IsValid() || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame ||
+		HeistGameState->AreWorldInteractionsRestricted())
 	{
 		return false;
 	}
@@ -131,7 +141,6 @@ bool UHeistActionComponent::TryBeginEscapeRequest(AHeistVentActor* TargetVentAct
 	EscapeCastStartLocation = OwnerActor->GetActorLocation();
 
 	const float EscapeCastDurationSeconds = ResolveEscapeCastDurationSeconds();
-	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	const float ServerWorldTime = IsValid(HeistGameState) ? HeistGameState->GetServerWorldTimeSeconds() : (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
 	EscapeCastEndServerTime = ServerWorldTime + EscapeCastDurationSeconds;
 
@@ -241,8 +250,10 @@ bool UHeistActionComponent::TryBeginObservationRequest(AHeistPaintingDisplayCase
 	AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
 	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter) ? HeistCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
 	UHeistForgeryComponent* ForgeryComponent = IsValid(HeistCharacter) ? HeistCharacter->GetForgeryComponent() : nullptr;
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	if (!IsValid(HeistCharacter) || !HeistCharacter->HasAuthority() || !IsValid(HeistPlayerState) || !IsValid(TargetDisplayCase) || !IsValid(ForgeryComponent) || IsGameplayCastActive() ||
-		TargetDisplayCase->GetDisplayCaseState() != EHeistDisplayCaseState::Secured)
+		TargetDisplayCase->GetDisplayCaseState() != EHeistDisplayCaseState::Secured || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame ||
+		HeistGameState->AreWorldInteractionsRestricted())
 	{
 		return false;
 	}
@@ -263,7 +274,6 @@ bool UHeistActionComponent::TryBeginObservationRequest(AHeistPaintingDisplayCase
 	bObservationCastActive = true;
 	ObservationCastStartLocation = HeistCharacter->GetActorLocation();
 
-	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	const float ServerWorldTime = IsValid(HeistGameState) ? HeistGameState->GetServerWorldTimeSeconds() : (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
 	const float SafeDurationSeconds = FMath::Max(0.0f, TemplateObservationDuration);
 	ObservationCastEndServerTime = ServerWorldTime + SafeDurationSeconds;

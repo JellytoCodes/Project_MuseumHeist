@@ -338,15 +338,12 @@ struct PROJECT_MUSEUMHEIST_API FHeistSoundPingEvent
 	bool bAffectsGuards = false;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|SoundPing")
-	bool bAffectsPlayers = false;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Heist|SoundPing")
 	float ServerTimeSeconds = 0.0f;
 
 	bool operator==(const FHeistSoundPingEvent& Other) const
 	{
 		return SequenceId == Other.SequenceId && SoundPingTag == Other.SoundPingTag && PingType == Other.PingType && WorldLocation.Equals(Other.WorldLocation) &&
-			   FMath::IsNearlyEqual(Radius, Other.Radius) && FMath::IsNearlyEqual(Duration, Other.Duration) && bAffectsGuards == Other.bAffectsGuards && bAffectsPlayers == Other.bAffectsPlayers &&
+			   FMath::IsNearlyEqual(Radius, Other.Radius) && FMath::IsNearlyEqual(Duration, Other.Duration) && bAffectsGuards == Other.bAffectsGuards &&
 			   FMath::IsNearlyEqual(ServerTimeSeconds, Other.ServerTimeSeconds);
 	}
 };

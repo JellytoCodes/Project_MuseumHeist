@@ -79,7 +79,6 @@ bool UHeistNoiseEmitterComponent::TryEmitFootstepNoise()
 	SoundPingEvent.Radius = FMath::Max(0.0f, SoundPingDefinition.Radius + WeightRadiusBonus);
 	SoundPingEvent.Duration = FMath::Max(0.0f, SoundPingDefinition.Duration);
 	SoundPingEvent.bAffectsGuards = SoundPingDefinition.bAffectsGuards;
-	SoundPingEvent.bAffectsPlayers = SoundPingDefinition.bAffectsPlayers;
 	HeistGameState->ReportSoundPing(SoundPingEvent);
 	LastFootstepServerTime = ServerTime;
 

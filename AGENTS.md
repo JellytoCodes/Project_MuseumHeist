@@ -1,32 +1,69 @@
 # Project_MuseumHeist — Codex Instructions
-## Rev 7: W4 Handoff / W5~W8 Compressed Roadmap
 
-기준일: 2026-07-23
+## Rev 8: Smoke / Trap Removal And W4 Handoff
+
+기준일: 2026-07-25  
 엔진: Unreal Engine 5.8  
 현재 목표: 2026-09-20 W8 Final RC / 프로젝트 마무리
 
-이 문서는 프로젝트 엔지니어링 정책의 최상위 Source of Truth다. 기존 경쟁형 Top-Down 버전은 Legacy로 보존한다.
+이 문서는 프로젝트 엔지니어링 정책의 최상위 Source of Truth다.
+
+현재 프로젝트는 기존 경쟁형 Top-Down 구조에서 **1~4인 온라인 협동 1인칭 잠입·유물 위조 하이스트 게임**으로 전환됐다.
+
+기존 경쟁형 Top-Down 구현은 아직 참조가 남아 있는 범위에서만 Legacy로 취급한다. 현재 기획에서 명시적으로 제거된 Smoke 및 플레이어 설치형 Trap 기능은 Legacy, Deferred, Stretch 또는 회귀 기준으로 유지하지 않는다.
 
 ---
 
-## 1. Project Overview
+# 1. Project Overview
 
-Project_MuseumHeist는 Unreal Engine 5.8 C++ 기반 **1~4인 온라인 협동 1인칭 잠입·유물 위조 하이스트 게임**이다.
+Project_MuseumHeist는 Unreal Engine 5.8 C++ 기반의 **1~4인 온라인 협동 1인칭 잠입·유물 위조 하이스트 게임**이다.
 
-플레이어들은 박물관에 침입해 목표 유물을 관찰하고, 현장에서 Replica를 제작해 Original과 바꿔치기한 뒤, Guard가 위조품을 발견해 Lockdown을 완료하기 전에 Original과 Loose Loot을 가지고 탈출한다.
+플레이어들은 박물관에 침입해 목표 유물을 관찰하고, 현장에서 Replica를 제작해 Original과 바꿔치기한 뒤, Guard가 위조품을 발견하고 Lockdown을 완료하기 전에 Original과 Loose Loot을 가지고 탈출한다.
 
-신규 방향에서 사용하지 않는 요소:
+## Core Fantasy
 
-- 플레이어 간 공격·기절·전리품 강탈
+```text
+박물관 침입
+→ 목표 그림 탐색
+→ 그림 관찰
+→ 제한된 시간 안에 위조 그림 제작
+→ 서버 OpenCV 유사도 판정
+→ Replica와 Original 교체
+→ Guard 검사 및 Alert 상승
+→ Original과 Loot을 들고 공동 탈출
+```
+
+## 현재 방향에서 사용하지 않는 요소
+
+- 플레이어 간 공격
+- 플레이어 간 기절
+- 플레이어 간 전리품 강탈
 - Piñata Drop
-- 개인 Score 경쟁, Winner, Rank
-- Gap Tracker와 Leader Reveal
+- 개인 Score 경쟁
+- Winner
+- Rank
+- Gap Tracker
+- Leader Reveal
 - 선착순 Zero-Sum Extraction
-- Top-Down Camera와 Cursor Aim
+- Top-Down Gameplay Camera
+- Cursor World Aim
+- Smoke Grenade
+- Smoke Projectile
+- Smoke Cloud
+- Smoke Sight Blocking
+- Glue Trap
+- Noise Trap
+- 플레이어 설치형 Trap
+- Trap Placement Cast
+- Trap 전용 QuickSlot
+- Player-facing SoundPing Marker
+- SoundPing Direction Widget
 
 ---
 
-## 2. Design Source And Scope Priority
+# 2. Design Source And Scope Priority
+
+프로젝트 설계 문서의 우선순위는 다음과 같다.
 
 1. `AGENTS.md`
 2. `ClassManifest.md`
@@ -37,30 +74,36 @@ Project_MuseumHeist는 Unreal Engine 5.8 C++ 기반 **1~4인 온라인 협동 1�
    - Appendix C: Pivot Migration Plan
    - Appendix D: Execution Roadmap
    - Appendix E: Blueprint / Widget Shell Plan
+4. `Docs/W2_BlueprintShellPlan.md`
 
 하위 문서가 상위 문서와 충돌하면 구현 전에 상위 문서를 먼저 수정한다.
 
+Notion Task 기록은 개별 Task 상태와 테스트 로그 번호의 Source of Truth로 사용한다. 단, 아키텍처와 구현 정책은 Repository의 `AGENTS.md`와 `ClassManifest.md`를 우선한다.
+
 ---
 
-## 3. Core Loop
+# 3. Core Loop
 
 ```text
 Lobby
+→ Ready Countdown
 → First-Person Infiltration
 → Target Artifact 탐색
 → Painting Observation
 → Owner-only Full-Screen Forgery
 → 서버 Forgery Score 판정
-→ Replica 배치 / Original 회수
+→ Replica 배치
+→ Original 회수
 → Loose Loot 추가 루팅
-→ Guard Inspection / Alert / Lockdown
+→ Guard Inspection
+→ Alert / Lockdown
 → Shared Extraction
 → Team Result / Player Contribution
 ```
 
 ---
 
-## 4. v1.0 Required Scope
+# 4. v1.0 Required Scope
 
 - 1~4인 Listen Server
 - Full First-Person
@@ -70,77 +113,155 @@ Lobby
 - Painting Target Artifact 1개
 - Painting Template 3~5개
 - Painting Display Case State Machine
-- Observation + Full-Screen Drawing Forgery
+- Observation Cast
+- Owner-only Full-Screen Drawing Forgery
 - 서버 권한 Forgery Score
-- Replica / Original Swap
-- Guard Patrol / Investigate / Chase / Search / InspectExhibit
-- Alert Level / Lockdown
-- Loose Loot + 4×5 Grid Inventory + Weight Penalty
+- Replica Placement
+- Original Removal
+- Guard Patrol
+- Guard Investigate
+- Guard Chase
+- Guard Search
+- Guard InspectExhibit
+- Alert Level
+- Lockdown
+- Loose Loot
+- 4×5 Grid Inventory
+- Weight Penalty
 - Coin Guard Distraction
 - Shared Extraction
-- Team Success / Partial Success / Failure
-- Team Result / Player Contribution
-- 1인 및 2~4인 완주
+- Team Success
+- Partial Success
+- Failure
+- Team Result
+- Player Contribution
+- 1인 완주
+- 2~4인 멀티플레이 완주
 - Development Build 패키징
 
-### Excluded
+## Excluded
 
-- 조각상·도자기·보석·문서·화석 복제
+다음 기능은 현재 프로젝트 범위에 포함하지 않는다.
+
+- 조각상·도자기·보석·문서·화석 복제 Gameplay
 - 외부 AI 이미지 판정
-- Steam Voice, PCG, Security Room, Cinematic
-- 추가 맵, 고급 Loadout, Progression
-- PvP, 배신, 경쟁 랭킹
-- 전용 서버, Skill Matchmaking
-- Perspective Toggle, Third-Person
-- 별도 First-Person Arms와 복잡한 Hand Interaction
-- Smoke Throwable / Smoke Sight Blocking
+- Smoke Grenade
+- Smoke Projectile
+- Smoke Cloud
+- Smoke Sight Blocking
+- Glue Trap
+- Noise Trap
+- 플레이어 설치형 Trap
+- Trap Placement Cast
+- Steam Voice
+- PCG
+- Security Room
+- Cinematic
+- 추가 맵
+- 고급 Loadout
+- Progression
+- PvP
+- 배신
+- 경쟁 랭킹
+- 전용 서버
+- Skill Matchmaking
+- Perspective Toggle
+- Third-Person Gameplay
+- 별도 First-Person Arms
+- 복잡한 Hand Interaction
 
-### Stretch
+## Stretch
 
-필수 기능과 멀티플레이 Gate가 모두 PASS한 뒤에만 진행한다.
+필수 기능과 멀티플레이 Gate가 모두 PASS한 뒤에만 검토한다.
 
 - Sculpture Assembly Forgery
-- Glue Trap PvE
 - Optional Rare Artifact
 - Steam Session
 - First-Person Hand Animation
-- 추가 Painting Template / Loose Loot
+- 추가 Painting Template
+- 추가 Loose Loot
+
+Smoke 및 Trap 계열 기능은 Stretch 목록에 포함하지 않는다.
+
+필요성이 다시 확정될 경우 기존 삭제 코드를 복구하지 않고, 당시의 기획과 현재 아키텍처를 기준으로 신규 Task를 작성한다.
 
 ---
 
-## 5. Hard Rules
+# 5. Hard Rules
 
 - Unreal Engine 5.8을 유지한다.
-- `Heist` 접두사와 `PROJECT_MUSEUMHEIST_API`를 유지한다.
-- Gameplay Rule, Authority, Validation, Replication은 C++가 소유한다.
-- Blueprint는 Asset Assignment, Component Assembly, Visual Presentation만 담당한다.
+- `Heist` 접두사를 유지한다.
+- Export 대상 타입에는 `PROJECT_MUSEUMHEIST_API`를 유지한다.
+- Gameplay Rule은 C++가 소유한다.
+- Authority는 C++가 소유한다.
+- Validation은 C++가 소유한다.
+- Replication은 C++가 소유한다.
+- Stable Gameplay API는 C++가 소유한다.
+- Blueprint는 Asset Assignment를 담당한다.
+- Blueprint는 Component Assembly를 담당한다.
+- Blueprint는 Mesh, Material, Animation, Audio, Visual Hook을 담당한다.
 - Widget Blueprint는 Layout, Animation, Color, Icon, Binding만 담당한다.
-- DataTable/DataAsset는 반복 데이터와 밸런스 값을 담당한다.
-- Map은 배치와 공간 구성을 담당한다.
-- `.uasset`은 Unreal Editor/MCP로만 수정한다.
+- DataTable과 DataAsset은 반복 데이터와 밸런스 값을 담당한다.
+- Map은 Actor 배치, 공간 구성, Lighting, Navigation을 담당한다.
+- `.uasset`은 Unreal Editor 또는 명시적으로 승인된 MCP 경로로만 수정한다.
 - `.umap`은 사용자가 명시적으로 요청한 경우에만 수정한다.
 - 불필요한 Manager, Service, Factory, Processor, Subsystem을 추가하지 않는다.
-- Painting마다 Actor Class를 만들지 않는다.
-- Painting 전시품은 `AHeistPaintingDisplayCaseActor`, 조각 전시품은 `AHeistSculptureDisplayCaseActor`로 분리하며 서로의 Replica Data, Visual 적용, State Machine을 공유하지 않는다.
-- `AHeistDisplayCaseActor`는 Legacy serialized/C++ reference 호환 전용 Deprecated Painting Alias이며 신규 에셋의 부모로 사용하지 않는다. 기존 `BP_DisplayCase`는 새 Painting 부모로 이전됐다.
-- Sculpture Actor Shell은 배치·시각 구성만 허용하고 Sculpture Assembly가 Stretch Gate를 통과하기 전에는 상호작용·위조 Gameplay를 활성화하지 않는다.
-- 외부 AI API로 Forgery Score를 계산하지 않는다.
-- Render Target 전체를 매 프레임 복제하지 않는다.
+- Painting마다 별도 Actor Class를 만들지 않는다.
 - Manifest에 없는 타입을 활성 Task에서 임의 생성하지 않는다.
 - 미래 주차의 전체 시스템을 선행 구현하지 않는다.
+- 현재 기획에서 삭제된 기능을 호환성 명목으로 다시 추가하지 않는다.
+
+## Painting / Sculpture Boundary
+
+- Painting 전시품은 `AHeistPaintingDisplayCaseActor`가 담당한다.
+- Sculpture 전시품은 `AHeistSculptureDisplayCaseActor`가 담당한다.
+- Painting과 Sculpture는 서로의 Replica Data를 공유하지 않는다.
+- Painting과 Sculpture는 서로의 State Machine을 공유하지 않는다.
+- `AHeistDisplayCaseActor`는 기존 Asset 호환 전용 Deprecated Painting Alias다.
+- 신규 Asset은 `AHeistDisplayCaseActor`를 부모로 사용하지 않는다.
+- 기존 `BP_DisplayCase`는 `AHeistPaintingDisplayCaseActor`를 부모로 사용한다.
+- Sculpture Actor Shell은 배치·시각 구성만 허용한다.
+- Sculpture Assembly가 승인되기 전에는 Sculpture Gameplay Interaction을 활성화하지 않는다.
+
+## Removed Feature Boundary
+
+다음 기능은 프로젝트에서 제거됐다.
+
+```text
+AHeistSmokeProjectile
+AHeistSmokeCloudActor
+AHeistTrapActor
+AHeistGlueTrapActor
+AHeistNoiseTrapActor
+Trap Placement Cast
+Smoke QuickSlot
+Glue Trap QuickSlot
+Noise Trap SoundPing
+```
+
+이 기능들은 다음 상태로 남기지 않는다.
+
+- Legacy
+- Deferred
+- Stretch
+- Regression Baseline
+- Post-v1.0
+- Placeholder
 
 ---
 
-## 6. Server Authority Flow
+# 6. Server Authority Flow
 
 ```text
 Local Input / Widget Request
 → AHeistPlayerController Server RPC
-→ C++ Component Validation
+→ C++ Request Context Validation
+→ Server Component Validation
 → Server State Mutation
-→ Replicated State / Owner Client Response
+→ Replicated State 또는 Owner Client Response
 → ViewModel
-→ Widget Presentation
+→ C++ Widget
+→ Widget Blueprint Presentation
 ```
 
 Client가 직접 확정할 수 없는 항목:
@@ -156,177 +277,551 @@ Client가 직접 확정할 수 없는 항목:
 - Extraction Result
 - Team Result
 - Player Contribution 확정값
+- Inventory Item Mutation
+- QuickSlot Assignment
+- Coin 사용 결과
+
+Client Preview는 확정값으로 취급하지 않는다.
 
 ---
 
-## 7. First-Person Camera Rules
+# 7. First-Person Camera Rules
 
 - Camera는 머리 높이에 배치한다.
-- Controller Yaw/Pitch가 시점을 제어한다.
+- Controller Yaw와 Pitch가 시점을 제어한다.
 - Character Yaw는 Controller Yaw를 따른다.
 - Interaction은 Center Screen Line Trace를 사용한다.
-- Flashlight와 Throw Direction은 Camera Forward를 기준으로 한다.
-- Top-Down Camera, SpringArm Gameplay Camera, Cursor World Aim은 사용하지 않는다.
-- First-Person Camera는 Full Body Mesh의 Head Bone/Socket에 부착한다.
-- Camera 위치 오프셋은 Blueprint에서 캐릭터 Mesh에 맞게 조정한다.
-- Owning Player와 다른 플레이어 모두 Full Body Mesh와 자연스러운 그림자를 유지한다.
-- Local Head를 자동으로 숨기지 않으며, 얼굴 클리핑은 Camera Socket Offset으로 해결한다.
-- FOV 기본값은 90이다.
-- Head Bob, Camera Roll, Sprint Camera Effect는 v1.0에서 사용하지 않는다.
-- Inventory/Forgery 진입 시 Cursor와 UI Input Mode를 활성화한다.
+- Flashlight Direction은 Camera Forward를 기준으로 한다.
+- Coin Throw Direction은 Camera Forward 또는 검증된 Camera Target을 기준으로 한다.
+- Top-Down Gameplay Camera를 사용하지 않는다.
+- SpringArm Gameplay Camera를 사용하지 않는다.
+- Cursor World Aim을 사용하지 않는다.
+- First-Person Camera는 Full Body Mesh의 Head Bone 또는 Socket에 부착한다.
+- Camera 위치 Offset은 Blueprint에서 Character Mesh에 맞게 조정한다.
+- Owning Player와 다른 플레이어 모두 Full Body Mesh를 유지한다.
+- 자연스러운 Character Shadow를 유지한다.
+- Local Head를 자동으로 숨기지 않는다.
+- 얼굴 Clipping은 Camera Socket Offset으로 해결한다.
+- 기본 FOV는 90이다.
+- Head Bob은 v1.0에서 사용하지 않는다.
+- Camera Roll은 v1.0에서 사용하지 않는다.
+- Sprint Camera Effect는 v1.0에서 사용하지 않는다.
+- Inventory와 Forgery 진입 시 Cursor와 UI Input Mode를 활성화한다.
 - UI 종료 시 Mouse Capture, Look, Movement, Interaction Context를 복원한다.
 
 ---
 
-## 8. Forgery Rules
+# 8. Gameplay Item Rules
 
-### Session Ownership
+## Item Types
+
+현재 지원하는 `EHeistItemType`:
+
+```text
+None
+Loot
+Throwable
+KeyItem
+```
+
+현재 지원하지 않는 Item Type:
+
+```text
+Trap
+```
+
+## Use Types
+
+현재 `EHeistUseType`은 다음 값을 유지한다.
+
+```text
+None
+Throw
+DeployArea
+Consume
+```
+
+단, 현재 v1.0 활성 Gameplay Item은 Coin Throw뿐이다.
+
+`DeployArea`와 `Consume`은 범용 Enum 값으로 남을 수 있지만, 승인된 Item Row와 Gameplay 실행 경로가 없으면 사용하지 않는다.
+
+삭제된 Use Type:
+
+```text
+PlaceTrap
+```
+
+## QuickSlot
+
+현재 QuickSlot은 Coin 하나만 지원한다.
+
+```text
+EHeistQuickSlotType::None
+EHeistQuickSlotType::Coin
+```
+
+현재 QuickSlot Item:
+
+```text
+Slot: Coin
+Input: Q
+ItemId: Throwable_Coin
+UseType: Throw
+```
+
+다음 QuickSlot은 존재하지 않는다.
+
+- Smoke Grenade
+- Glue Trap
+- Noise Trap
+- E Key Smoke Slot
+- R Key Trap Slot
+
+## DataTable Rules
+
+다음 Row는 Item 및 UsableItem DataTable에 존재해서는 안 된다.
+
+```text
+Trap_Glue
+Trap_Noise
+Throwable_Smoke
+```
+
+삭제된 C++ 또는 Blueprint Class를 참조하는 Soft Class Reference를 남기지 않는다.
+
+`AHeistGameMode::ValidateItemDataTables()`는 다음 조건을 만족해야 한다.
+
+```text
+Result=PASS
+InvalidRows=0
+OrphanExtensions=0
+```
+
+---
+
+# 9. Action Component Rules
+
+`UHeistActionComponent`가 현재 관리하는 Gameplay Cast:
+
+- Observation Cast
+- Escape Cast
+
+제거된 Gameplay Cast:
+
+- Trap Placement Cast
+
+## Mutual Exclusion
+
+Gameplay Cast는 상호 배타적이어야 한다.
+
+```text
+Observation 활성 중 Escape 시작 금지
+Escape 활성 중 Observation 시작 금지
+Forgery 활성 중 Observation / Escape 시작 금지
+Inventory 활성 중 허용되지 않은 Cast 시작 금지
+```
+
+`IsGameplayCastActive()`는 현재 활성 Cast 전체를 나타내야 한다.
+
+Cast 종료 시 Component Tick은 다른 활성 Cast가 없는 경우에만 비활성화한다.
+
+## Cancellation
+
+Observation 취소 조건:
+
+- Input Release
+- Movement
+- Damage
+- Arrest
+- Session Invalid
+- Display Case Invalid
+- Match Phase 변경
+- Owner EndPlay
+- Disconnect
+
+Escape 취소 조건:
+
+- Movement
+- Damage
+- Arrest
+- Vent Invalid
+- Escape Phase 종료
+- Match Phase 변경
+- Owner EndPlay
+- Disconnect
+
+---
+
+# 10. Forgery Rules
+
+## Session Ownership
 
 - 한 Painting Display Case는 동시에 한 명만 위조할 수 있다.
-- 서버가 Session Owner, 거리, Match Phase, Player State, Case State를 검증한다.
-- Disconnect, Arrest, Cancel, Timeout, Match End 시 Session Lock을 해제한다.
+- 서버가 Session Owner를 확정한다.
+- 서버가 거리, Match Phase, Player State, Case State를 검증한다.
+- Disconnect 시 Session Lock을 해제한다.
+- Arrest 시 Session Lock을 해제한다.
+- Cancel 시 Session Lock을 해제한다.
+- Timeout 시 Session Lock을 해제한다.
+- Match End 시 Session Lock을 해제한다.
+- Owner 또는 Display Case EndPlay 시 Session을 정리한다.
 
-### Owner-only Full-Screen Mode
+## Owner-only Full-Screen Mode
 
 - Forgery Widget은 Owning Player에게만 표시한다.
 - Forgery 중 World View는 완전히 가린다.
 - World Audio와 팀 통신은 유지한다.
-- Move, Look, Jump, Sprint, Throw, QuickSlot, Inventory, Loot, 다른 Interaction을 차단한다.
-- Draw, Erase, Submit, Cancel, Push-To-Talk, Pause만 허용한다.
+- Move를 차단한다.
+- Look을 차단한다.
+- Jump를 차단한다.
+- Sprint를 차단한다.
+- Throw를 차단한다.
+- QuickSlot을 차단한다.
+- Inventory를 차단한다.
+- Loot를 차단한다.
+- 다른 Interaction을 차단한다.
+- Draw를 허용한다.
+- Erase를 허용한다.
+- Submit을 허용한다.
+- Cancel을 허용한다.
+- Push-To-Talk를 허용한다.
+- Pause를 허용한다.
 
-### Stroke Transport
+## Stroke Transport
 
 - Client는 정규화된 Stroke Point를 수집한다.
-- Reference Image는 직접 제작한 단순한 이미지와 Template별 2~8색 제한 팔레트를 사용한다.
-- Template은 `None / Black / White` 배경 필터와 허용 오차를 DataTable에서 지정한다.
-- `Black / White`는 Reference Image에서 해당 배경색을 제외하고, `None`은 별도 Reference Mask를 사용한다.
-- 플레이어는 Template 팔레트에서 색을 직접 선택하며, 위치에 맞는 정답 색을 자동 선택하지 않는다.
-- 각 Stroke는 임의 RGB가 아니라 서버가 제공한 `PaletteIndex`를 함께 전송한다.
-- 데이터 크기, 좌표 범위, Stroke Limit를 서버가 검증한다.
-- 서버는 Reference Image와 제출 그림을 동일한 고정 해상도 Palette Raster로 구성한 뒤 OpenCV로 유사도를 판정한다.
-- Shape Score는 3×3 Morphology Close와 양방향 Distance Transform을 사용해 미세한 위치·선 굵기·끊김 오차를 연속 감점한다.
-- Color Score는 Lab SSIM과 Palette 분포 유사도를 조합하며 완전한 동일 RGB 픽셀만 정답으로 요구하지 않는다.
-- 완전 일치는 100점을 유지하되 중간 품질을 과대평가하지 않도록 Shape 1.15, Color 1.10의 완만한 응답 곡선을 적용한다.
-- Color SSIM은 비교 ROI의 Foreground Union만 평균내며 일치하는 빈 배경으로 점수를 얻을 수 없다.
-- 실제 제출 Foreground 면적이 Reference보다 작으면 `min(제출/Reference, 1)^0.65` 완성도 계수를 최종 점수에 적용해 점·짧은 선 제출을 억제한다.
-- 정확한 픽셀 위치/PaletteIndex 일치 개수만으로 최종 점수를 계산하지 않는다.
-- Reference 대비 과도한 면적을 칠하면 Anti-Fill Score Cap을 적용한다.
-- Reference Image와 Drawing Canvas는 동일한 정사각형 표시 영역과 정규화 좌표계를 사용한다.
-- 위조 중 표시되는 Preview Score는 로컬 읽기 전용 참고값이며, RPC를 발생시키거나 서버 최종 Score를 대체하지 않는다.
-- Submit 시 또는 제한된 Chunk 단위로 전달한다.
+- Client는 Stroke별 Point Count를 수집한다.
+- Client는 Stroke별 Palette Index를 수집한다.
+- Client는 Template에서 승인된 Brush Size를 사용한다.
+- Reference Image는 직접 제작한 단순한 이미지를 사용한다.
+- Template별 Palette는 2~8색으로 제한한다.
+- Template은 `None / Black / White` 배경 필터를 사용한다.
+- `Black / White`는 Reference Image에서 해당 배경색을 제거한다.
+- `None`은 별도 Reference Mask를 사용한다.
+- 플레이어는 Template Palette에서 색을 직접 선택한다.
+- 위치에 맞는 정답 색을 자동 선택하지 않는다.
+- Stroke는 임의 RGB가 아니라 `PaletteIndex`를 전송한다.
+- 서버는 Payload 크기를 검증한다.
+- 서버는 좌표 범위를 검증한다.
+- 서버는 Stroke Count를 검증한다.
+- 서버는 Point Count를 검증한다.
+- 서버는 Palette Index를 검증한다.
+- 서버는 Brush Size를 검증한다.
+- 서버는 Session Revision을 검증한다.
 - Client는 최종 Score를 전송하지 않는다.
 
-### Cleanup
+## OpenCV Score
 
-중단 시 반드시 복원한다.
+서버와 Local Preview는 동일한 C++ Evaluator를 사용한다.
+
+최종 확정값은 서버 결과뿐이다.
+
+OpenCV 평가 구성:
+
+```text
+Reference 전처리
+→ Player Stroke Palette Raster
+→ Binary Foreground Mask
+→ 3×3 Morphology Close
+→ 양방향 Distance Transform
+→ Mask Precision / Recall / Dice / IoU
+→ Lab SSIM
+→ Palette Histogram Similarity
+→ Shape / Color 결합
+→ Completeness
+→ Anti-Fill
+→ Final Score
+```
+
+Shape Score:
+
+- Reference → Submitted 거리 기반 Coverage
+- Submitted → Reference 거리 기반 Precision
+- 양방향 Harmonic Mean
+- Dice Similarity
+- Response Curve 1.15
+
+Color Score:
+
+- Foreground Union ROI
+- Lab SSIM
+- Palette Histogram Similarity
+- Response Curve 1.10
+
+Completeness:
+
+```text
+min(SubmittedForeground / ReferenceForeground, 1)^0.65
+```
+
+Anti-Fill:
+
+- Reference 대비 과도한 면적을 칠하면 Score Cap을 적용한다.
+- 빈 배경 일치로 점수를 얻을 수 없도록 한다.
+
+## Score Data Contract
+
+Template Weight는 유효한 합계를 가져야 한다.
+
+```text
+CoverageWeight + MajorShapeWeight > 0
+ShapeAccuracyWeight + ColorAccuracyWeight > 0
+```
+
+0으로 나누거나 NaN Score를 생성할 수 있는 Template Row를 허용하지 않는다.
+
+Penalty 또는 Diagnostic Field가 Final Score에 직접 적용되지 않는 경우 문서와 필드 이름에서 그 사실을 명확히 한다.
+
+## Cleanup
+
+Forgery 종료 시 반드시 복원한다.
 
 - Painting Display Case Lock
 - Forgery Owner
-- Movement / Look / Interaction
-- Cursor / Mouse Capture
+- Movement
+- Look
+- Interaction
+- Cursor
+- Mouse Capture
 - Input Mapping Context
-- HUD / QuickSlot / Inventory 접근
+- HUD 접근
+- QuickSlot 접근
+- Inventory 접근
 - Forgery Widget Instance
 
 중간 Drawing 진행도는 v1.0에서 저장하지 않는다.
 
 ---
 
-## 9. Input Mode Rules
+# 11. SoundPing Rules
 
-입력 모드는 상호 배타적으로 관리한다.
+현재 SoundPing 시스템은 Guard가 서버에서 소음에 반응하기 위한 Gameplay Event로 사용한다.
 
-- `Gameplay`
-- `Inventory`
-- `Forgery`
+- Footstep
+- Glass Break
+- Coin Impact
+- 현재 기획에 포함된 환경 소음
 
-Context 전환 시 기존 Context를 명시적으로 제거하고 새 Context를 추가한다. 중복 Widget 생성과 Input Context 누적을 허용하지 않는다.
+현재 제거된 SoundPing:
+
+- Noise Trap
+- Trap Trigger
+- Smoke 관련 SoundPing
+
+다음 값은 사용하지 않는다.
+
+```text
+EHeistSoundPingType::NoiseTrap
+Event.SoundPing.NoiseTrap
+AI.Stimulus.Trap
+Ping_NoiseTrap
+```
+
+Guard Noise Reaction은 현재 활성 SoundPing Type만 처리한다.
+
+Player-facing SoundPing Marker, Direction Widget 및 HUD Layer는 사용하지 않는다.
+
+플레이어는 1인칭 공간 음향과 실제 Sound Cue에 의존해 소리 방향을 판단한다.
+
+SoundPing Event는 Client HUD 표시를 위해 복제하지 않는다.
+
+StunHit은 현재 PvE 기획에서 실제 사용 여부를 별도 점검한다. 미사용이 확정되면 관련 Enum, Tag, Data Row, UI 분기를 제거한다.
 
 ---
 
-## 10. C++ / Blueprint / Data / Map Responsibility
+# 12. GameplayTag Rules
+
+현재 GameplayTag는 실제 Runtime Rule, DataTable, UI 또는 AI에서 사용하는 값만 등록한다.
+
+제거 대상 Tag:
+
+```text
+State.InSmoke
+Action.PlacingTrap
+Event.Trap.Placed
+Event.Trap.Triggered
+Event.SoundPing.NoiseTrap
+AI.Stimulus.Trap
+Item.Trap
+Item.Trap.Glue
+Item.Trap.Noise
+Item.Throwable.Smoke
+```
+
+삭제 기능의 Tag를 향후 호환성 용도로 남기지 않는다.
+
+GameplayTag를 삭제하기 전에 관련 DataTable, Blueprint, Config 참조를 확인한다.
+
+---
+
+# 13. Input Mode Rules
+
+입력 모드는 상호 배타적으로 관리한다.
+
+```text
+Gameplay
+Inventory
+Forgery
+```
+
+Context 전환 시:
+
+1. 기존 Context를 명시적으로 제거한다.
+2. 새 Context를 추가한다.
+3. 중복 Widget을 생성하지 않는다.
+4. Input Context를 누적하지 않는다.
+5. Cursor와 Mouse Capture를 현재 Mode에 맞게 설정한다.
+6. 종료 시 이전 Gameplay Context를 복원한다.
+
+---
+
+# 14. C++ / Blueprint / Data / Map Responsibility
 
 | 영역 | 책임 |
 |---|---|
 | C++ | Rule, State, Authority, Validation, Replication, Stable API |
 | Blueprint | Mesh, Material, Camera Position, Component Assembly, Visual Hook |
 | Widget Blueprint | Layout, Binding, Animation, Presentation |
-| ViewModel/C++ Widget | UI State Exposure, Request Routing |
-| DataTable/DataAsset | Artifact, Template, Guard, Balance, Scaling Data |
+| ViewModel / C++ Widget | UI State Exposure, Request Routing |
+| DataTable / DataAsset | Artifact, Template, Guard, Balance, Scaling Data |
 | Map | Painting/Sculpture Case, Guard Route, Loot, Exit, Lighting, Navigation |
 
-Blueprint Graph 금지 항목:
+## Blueprint Graph 금지 항목
 
-- Score 계산
-- Original/Replica 확정
-- Alert/Lockdown 변경
+- Forgery Score 계산
+- Original 확정
+- Replica 확정
+- Alert 변경
+- Lockdown 변경
 - Extraction 성공 판정
 - Team Result 확정
 - 신규 Server RPC
 - Replicated Gameplay State 직접 변경
+- Inventory 확정 Mutation
+- QuickSlot 확정 Mutation
 
 ---
 
-## 11. Numbered Task Boundary
+# 15. Blueprint And Asset Cleanup Rules
 
-- 활성 `TASK-Wn-###`만 구현한다. PvE 피벗 이후에도 기존 프로젝트 주차 번호를 연속 사용하며 별도 `F` 태스크 체계를 만들지 않는다.
+C++ 타입을 삭제한 경우 다음 순서로 Asset 정리를 완료한다.
+
+1. 관련 C++ 참조 제거
+2. Development Editor Build
+3. 관련 Blueprint 열기
+4. `Refresh All Nodes`
+5. 삭제된 Enum Pin과 Class Pin 제거
+6. Blueprint Compile
+7. Blueprint Save
+8. JSON 기반 DataTable은 Import JSON 수정 후 재Import
+9. 삭제 Class Reference Viewer 확인
+10. Fix Up Redirectors
+11. PIE 실행
+12. Missing Class Log 확인
+13. Invalid Enum Log 확인
+14. Failed Import Log 확인
+
+Smoke 및 Trap 관련 Blueprint와 C++ Class는 신규 Asset의 부모 또는 DataTable Class Reference로 사용하지 않는다.
+
+`DataTableImports/*.json`을 Import Source로 사용하는 DataTable은 JSON을 Source of Truth로 취급한다.
+
+이 DataTable의 Row를 정리할 때는 `.uasset`에서 직접 삭제하지 않고 JSON을 수정한 뒤 Unreal Editor에서 Reimport한다.
+
+---
+
+# 16. Numbered Task Boundary
+
+- 활성 `TASK-Wn-###`만 구현한다.
+- PvE 피벗 이후에도 기존 프로젝트 주차 번호를 연속 사용한다.
+- 별도 `F` Task 체계를 만들지 않는다.
 - Task 시작 전 관련 문서와 Manifest 상태를 확인한다.
-- Editor 작업이 필요하면 사용자용 Blueprint/Data/Map 작업 절차를 현재 대화에서 바로 제공한다. 사용자가 명시적으로 요청하지 않는 한 별도 `.md` 파일을 만들지 않는다.
-- C++ 빌드만 성공했다고 Editor 작업 포함 Task를 완료 처리하지 않는다.
-- 멀티플레이·Ownership·Replication 주장은 사용자 실행 PIE 증거가 있을 때만 PASS 처리한다.
+- Editor 작업이 필요하면 사용자용 Blueprint/Data/Map 절차를 현재 대화에서 제공한다.
+- 사용자가 명시적으로 요청하지 않는 한 별도 작업용 `.md` 파일을 추가하지 않는다.
+- C++ Build만 성공했다고 Editor 작업 포함 Task를 완료 처리하지 않는다.
+- 멀티플레이, Ownership, Replication 주장은 사용자 PIE 증거가 있을 때만 PASS 처리한다.
 
-### Codex / Unreal Editor Work Ownership
+## Codex 담당
 
-Codex가 담당한다.
+- C++ Gameplay Rule 구현
+- C++ Authority 구현
+- C++ Validation 구현
+- C++ Replication 구현
+- Repository 코드 분석
+- Config 분석
+- Data Import JSON 분석
+- 승인된 범위의 코드 수정
+- 사용자가 제출한 Build 오류 수정
+- Task 판정용 최소 Debug Log 추가
+- Debug 또는 Cheat Command 구현
+- 사용자가 제출한 PIE Log 기반 PASS / FAIL / BLOCKED 판정
 
-- C++ Gameplay Rule, Authority, Validation, Replication 구현과 수정
-- Repository 코드, Config, Data Import JSON의 분석과 필요한 범위의 수정
-- C++ 정적 검증과 사용자가 제출한 Build 오류 수정
-- Task 판정에 필요한 `UHeistDebugFunctionLibrary` 로그와 Debug/Cheat Command 구현
-- 사용자가 제출한 PIE Output Log를 근거로 `PASS`, `FAIL`, `BLOCKED` 판정
+## 사용자 Unreal Editor 담당
 
-사용자가 Unreal Editor에서 담당한다.
+- Blueprint 구성
+- Widget Blueprint 구성
+- DataTable 편집
+- DataAsset 편집
+- Map 배치
+- Scale
+- Collision
+- Lighting
+- Navigation
+- Asset Assignment
+- Component Assembly
+- Development Editor Build
+- Build Log 제출
+- Blueprint Compile
+- Save
+- PIE 실행
+- Debug Command 실행
+- Output Log 제출
 
-- Blueprint / Widget Blueprint 구성과 수정
-- DataTable / DataAsset 편집
-- Map 배치, Scale, Collision, Lighting, Navigation 수정
-- Asset Assignment와 Component Assembly
-- C++ Development/Editor Build 실행과 Build Log 제출
-- Blueprint Compile / Save
-- PIE 실행과 Debug Command 실행
+Codex는 Unreal C++ Build를 직접 실행하지 않는다.
 
-Codex는 Unreal C++ Build를 직접 실행하지 않는다. 사용자가 Build를 실행하고 오류가 발생하면 전체 오류 위치와 메시지를 전달하며, Codex는 해당 로그를 근거로 코드를 수정한다.
+사용자가 Build를 실행하고 오류가 발생하면 전체 오류 위치와 메시지를 전달한다. Codex는 해당 로그를 근거로 코드를 수정한다.
 
-Codex는 사용자가 명시적으로 직접 조작을 요청하지 않는 한 다음을 수행하지 않는다.
+Codex는 사용자가 명시적으로 요청하지 않는 한 다음을 수행하지 않는다.
 
-- Unreal Editor 실행 또는 종료
+- Unreal Editor 실행
+- Unreal Editor 종료
 - Unreal Editor UI 직접 조작
-- Unreal MCP 연결, 재연결, 복구 또는 직접 호출
-- `.uasset` / `.umap` 직접 수정
+- Unreal MCP 연결
+- Unreal MCP 재연결
+- Unreal MCP 복구
+- `.uasset` 직접 수정
+- `.umap` 직접 수정
 
-Editor 작업 절차는 현재 대화에서 다음 항목만 간결하게 제공한다.
+## Editor 작업 절차 형식
 
-- 열 Asset / Map
-- 선택할 Actor / Component
+Editor 작업 안내에는 다음만 포함한다.
+
+- 열 Asset 또는 Map
+- 선택할 Actor 또는 Component
 - 변경할 Property와 값
 - Compile / Save 순서
-- PIE Mode와 Player 수
+- PIE Mode
+- Player 수
 - 실행할 Debug Command
 - 제출할 Output Log
 
-### Runtime Test And Log Handoff
+---
 
-- Runtime Task는 기존 `UHeistDebugFunctionLibrary`와 `UHeistCheatManager` 경로를 우선 사용한다.
-- 완료 조건을 판정할 로그가 부족하면 Codex가 활성 Task 범위 안에서 최소 DebugLibrary 로그 또는 Debug/Cheat Command를 C++로 추가한다.
-- 사용자는 Unreal Editor PIE에서 안내된 Debug Command를 실행하고 관련 Output Log를 Codex에게 제출한다.
-- 화면 동작이 완료 조건에 포함된 경우 사용자는 관찰 결과도 함께 전달한다.
-- Codex는 제출된 로그와 관찰 결과를 Task 완료 조건에 직접 대조해 `PASS`, `FAIL`, `BLOCKED`를 판정한다.
-- 빌드 성공만으로 Runtime Task를 PASS 처리하지 않는다.
-- 개별 Task PASS와 Weekly Gate / Formal Test PASS를 분리한다.
+# 17. Runtime Test And Log Handoff
+
+- Runtime Task는 기존 `UHeistDebugFunctionLibrary`와 `UHeistCheatManager`를 우선 사용한다.
+- 완료 판정용 로그가 부족하면 활성 Task 범위 안에서 최소 Debug Log를 추가한다.
+- 사용자는 Unreal Editor PIE에서 Debug Command를 실행한다.
+- 사용자는 관련 Output Log를 제출한다.
+- 화면 동작이 완료 조건이면 관찰 결과도 제출한다.
+- 제출된 로그와 관찰 결과를 Task 완료 조건에 대조한다.
+- 결과는 `PASS`, `FAIL`, `BLOCKED`로 판정한다.
+- Build 성공만으로 Runtime Task를 PASS 처리하지 않는다.
+- 개별 Task PASS와 Weekly Gate PASS를 분리한다.
+- Formal Test PASS를 별도로 관리한다.
 
 ---
 
-## 12. Verification Standard
+# 18. Verification Standard
 
 각 Task 결과는 다음을 구분한다.
 
@@ -339,45 +834,85 @@ Editor 작업 절차는 현재 대화에서 다음 항목만 간결하게 제공
 
 PIE가 필요한 Task는 다음을 명시한다.
 
-- PIE Mode와 Player 수
+- PIE Mode
+- Player 수
 - 실행할 Window
-- 입력 또는 Debug Command
+- 입력
+- Debug Command
 - 기대 화면 동작
 - 기대 Log
-- PASS / FAIL 신호
-- Task Test인지 Weekly Gate인지
+- PASS 신호
+- FAIL 신호
+- Task Test 또는 Weekly Gate 구분
 
-Known Warning은 숨기지 않는다. Critical Replication, Ownership, Duplicate Artifact, Input Restore 문제는 Weekly Gate를 차단한다.
+Known Warning은 숨기지 않는다.
+
+다음 문제는 Weekly Gate를 차단한다.
+
+- Critical Replication
+- Ownership 위반
+- Duplicate Artifact
+- Input Restore 실패
+- Orphan Session Lock
+- Missing Parent Class
+- Invalid DataTable Enum
+- Removed Class Soft Reference
+- Forgery Score NaN
+- Client-side Authoritative Mutation
 
 ---
 
-## 13. Legacy Preservation
+# 19. Legacy Preservation
 
-다음 구현은 즉시 삭제하지 않는다.
+다음 구현은 아직 참조 감사가 끝나지 않은 경우에만 Legacy로 보존할 수 있다.
 
 - Top-Down Camera 관련 Blueprint
 - Cursor Aim 관련 입력
 
-새 흐름에서 호출하지 않고, Reference Viewer와 회귀 확인 후 별도 Cleanup Task에서 제거한다.
+새 흐름에서는 호출하지 않는다.
 
-기존 검증 기록은 재사용 가능한 Regression Baseline으로 보존한다.
+Reference Viewer와 회귀 확인 후 별도 Cleanup Task에서 제거한다.
+
+기존 검증 기록은 재사용 가능한 Regression Baseline으로 보존할 수 있다.
+
+다음 기능은 Legacy Preservation 대상이 아니다.
+
+- Smoke Grenade
+- Smoke Projectile
+- Smoke Cloud
+- Glue Trap
+- Noise Trap
+- Trap Placement Cast
+- Smoke / Trap QuickSlot
+- Trap 전용 GameplayTag
+- NoiseTrap SoundPing
 
 ---
 
-## 14. Current Phase
+# 20. Current Phase
 
-W3는 완료됐다. 현재 실행 기준은 W4 단일 범위이며 기간은 2026-08-03부터 2026-08-16까지다.
+W3는 완료됐다.
 
-### W3 Closeout
+현재 실행 기준은 W4 단일 범위이며 기간은 2026-08-03부터 2026-08-16까지다.
+
+## W3 Closeout
 
 - `TASK-W3-001~015`, `TASK-W3-017~028`: 완료
-- `TASK-W3-016`: v1.0 Excluded / 취소. Smoke는 Legacy로만 보존하며 활성 기능이나 Gate 조건으로 사용하지 않는다.
-- `TASK-W3-029`: 앞선 개별 검증과 중복되는 통합 Gate였으므로 제거했다.
-- 테스트 로그는 Task 번호와 독립된 연속 번호를 사용하며 현재 `TEST-W3-001~027`이 PASS다.
+- `TASK-W3-016`: 취소
+- Smoke Gameplay는 프로젝트에서 물리적으로 제거됐다.
+- Glue Trap Gameplay는 프로젝트에서 물리적으로 제거됐다.
+- Noise Trap Gameplay는 프로젝트에서 물리적으로 제거됐다.
+- Trap Placement Cast는 프로젝트에서 제거됐다.
+- QuickSlot은 Coin 전용으로 축소됐다.
+- `TASK-W3-029`: 앞선 개별 검증과 중복되는 통합 Gate였으므로 제거
+- 테스트 로그는 Task 번호와 독립된 연속 번호를 사용
+- 기존 `TEST-W3-001~027`은 과거 검증 기록으로 유지
 
-### W4 Scope
+Smoke와 Trap은 W4 이후의 Gate, Regression Baseline, Stretch 또는 Deferred Scope로 사용하지 않는다.
 
-#### Forgery Vertical Slice
+## W4 Scope
+
+### Forgery Vertical Slice
 
 1. `TASK-W4-001` Forgery Session Lifecycle
 2. `TASK-W4-002` Owner-only Full-Screen Forgery UI
@@ -391,7 +926,7 @@ W3는 완료됐다. 현재 실행 기준은 W4 단일 범위이며 기간은 202
 10. `TASK-W4-010` Forgery Recovery Edge Cases
 11. `TASK-W4-011` Painting Frame / Submitted Texture Projection
 
-#### Detection / Alert / Lockdown
+### Detection / Alert / Lockdown
 
 12. `TASK-W4-012` Inspection Target Registration
 13. `TASK-W4-013` Guard InspectExhibit State
@@ -403,40 +938,99 @@ W3는 완료됐다. 현재 실행 기준은 W4 단일 범위이며 기간은 202
 19. `TASK-W4-019` Duplicate Inspection / Timer Protection
 20. `TASK-W4-020` M01 / M02 / M03 Alert Profiles
 
-### W4 Execution Rules
+## W4 Execution Rules
 
 - 활성 구현 범위는 `TASK-W4-001~020`이다.
-- Forgery Session, Score, Replica/Original 확정, Alert, Lockdown은 서버 권한 C++ 경로를 유지한다.
-- 최종 위조 그림은 서버 Score용 Palette Raster에서 생성한 고정 해상도 Index Data를 제출 시 한 번만 복제하고, 각 Client가 Transient Texture로 재구성한다.
-- Render Target 또는 전체 Stroke Payload를 World Visual 목적으로 복제하지 않는다.
-- Owner-only UI, Input Restore, Case Lock Cleanup, Duplicate 방지, Timer 정리는 Critical Gate 조건이다.
-- 멀티플레이·Ownership·Replication·Recovery 주장은 사용자 PIE와 DebugLibrary/Cheat Command 로그가 있을 때만 PASS 처리한다.
-- 이미 증명된 동일 흐름을 같은 조건으로 반복하는 중복 Gate는 만들지 않는다. 새로운 위험을 검증할 때만 별도 Gate를 추가한다.
+- Forgery Session은 서버 권한을 유지한다.
+- Forgery Score는 서버 권한을 유지한다.
+- Replica 확정은 서버 권한을 유지한다.
+- Original 확정은 서버 권한을 유지한다.
+- Alert는 서버 권한을 유지한다.
+- Lockdown은 서버 권한을 유지한다.
+- 최종 위조 그림은 서버 Score용 Palette Raster에서 생성한다.
+- 고정 해상도 Palette Index Data는 제출 시 한 번만 복제한다.
+- 각 Client는 복제된 Index Data로 Transient Texture를 재구성한다.
+- Render Target을 World Visual 목적으로 복제하지 않는다.
+- 전체 Stroke Payload를 World Visual 목적으로 추가 복제하지 않는다.
+- Owner-only UI는 Critical Gate다.
+- Input Restore는 Critical Gate다.
+- Case Lock Cleanup은 Critical Gate다.
+- Duplicate 방지는 Critical Gate다.
+- Timer 정리는 Critical Gate다.
+- 멀티플레이, Ownership, Replication, Recovery 주장은 사용자 PIE와 Debug Log가 있을 때만 PASS 처리한다.
+- 이미 증명된 동일 흐름을 같은 조건으로 반복하는 중복 Gate를 만들지 않는다.
 
-### W4 Current Handoff
+## W4 Current Handoff
 
-- `TASK-W4-001~012`: 완료. 정식 완료 상태와 테스트 로그 번호는 Notion 기록을 Source of Truth로 사용한다.
-- `TASK-W4-013`: 현재 활성 Task. Guard InspectExhibit State의 C++ 구현은 완료됐고 StateTree Editor 연결 및 사용자 PIE 검증이 남아 있다.
-- OpenCV 유사도 판정, 제한 Palette, Local Preview / Server Final 공통 Evaluator, 제출 그림 Palette Index Data 복제는 구현돼 있다.
-- Painting과 Sculpture Case C++ 타입은 분리돼 있다. `BP_DisplayCase`의 부모는 `AHeistPaintingDisplayCaseActor`, `BP_SculptureDisplayCase`의 부모는 `AHeistSculptureDisplayCaseActor`다.
-- Sculpture Case는 시각 Shell만 존재하며 v1.0 Gameplay에는 사용하지 않는다.
-- `TASK-W4-012`는 `TEST-W4-013`에서 서버 후보 등록, Guard 결정론적 선택, Client 권한 차단이 PASS했다.
-- `TASK-W4-013`은 Patrol 후보 선점, Case 이동/정렬, 고정 Inspect Cast, Chase 중단과 Patrol 재개, `Suspected` 결과 적용을 C++에 연결했다.
-- `TASK-W4-014`의 Score → Inspection Delay Mapping은 선행 구현하지 않았다.
+- `TASK-W4-001~012`: 완료
+- 정식 완료 상태와 테스트 로그 번호는 Notion 기록을 Source of Truth로 사용
+- `TASK-W4-013`: 현재 활성 Task
+- Guard InspectExhibit State의 C++ 구현은 완료
+- StateTree Editor 연결과 사용자 PIE 검증이 남아 있음
+- OpenCV 유사도 판정 구현 완료
+- 제한 Palette 구현 완료
+- Local Preview와 Server Final 공통 Evaluator 구현 완료
+- 제출 그림 Palette Index Data 복제 구현 완료
+- Painting과 Sculpture Case C++ 타입 분리 완료
+- `BP_DisplayCase` 부모는 `AHeistPaintingDisplayCaseActor`
+- `BP_SculptureDisplayCase` 부모는 `AHeistSculptureDisplayCaseActor`
+- Sculpture Case는 시각 Shell만 존재
+- Sculpture Case는 v1.0 Gameplay에 사용하지 않음
+- `TASK-W4-012`는 서버 후보 등록, Guard 결정론적 선택, Client 권한 차단 검증 완료
+- `TASK-W4-013`은 Patrol 후보 선점, Case 이동, 정렬, 고정 Inspect Cast, Chase 중단, Patrol 재개, `Suspected` 결과 적용을 C++에 연결
+- `TASK-W4-014`의 Score → Inspection Delay Mapping은 선행 구현하지 않음
 
-### Post-W4 Compressed Roadmap
+## Post-W4 Compressed Roadmap
 
-- `W5 (2026-08-17~08-30)`: 기존 W10의 Steam Online Subsystem / Session / Travel / Packaging 구현과 기존 W9의 Painting Template, Loose Loot, Tutorial 콘텐츠 구현을 병합한다. Steam Session 구현을 먼저 진행한다.
-- `W6 (2026-08-31~09-06)`: 기존 W8의 Shared Extraction / Team Result 전체를 이동한다.
-- `W7 (2026-09-07)`: 고정 Task가 없는 검토 체크포인트다. W4~W6 결과와 잔여 위험을 검토한 뒤 필요한 경우에만 새 `TASK-W7-###`을 생성한다.
-- `W8 (2026-09-08~09-20)`: 레벨 디자인, 라이팅, 이펙트, 오디오, HUD/Result Polish와 3-Map Balance를 구현 완료 후 수행하고, 이어서 기존 W11 Feature Lock / RC1 QA와 기존 W12 Final RC / Public Release를 진행한다.
+### W5 — 2026-08-17 ~ 2026-08-30
 
-### Post-W4 Execution Priority
+- Steam Online Subsystem
+- Session
+- Travel
+- Packaging
+- Painting Template 콘텐츠
+- Loose Loot 콘텐츠
+- Tutorial 콘텐츠
+- Steam Session을 먼저 진행
 
-- Gameplay, Authority, Replication, Online Session, Extraction, Result 구현을 먼저 완료한다.
-- Level Design, Lighting, VFX, Ambient/Gameplay Audio, HUD/Result Polish는 W5/W6 필수 구현과 W7 검토가 끝나기 전에는 착수하지 않는다.
-- 미래 주차 번호는 `W5~W8`만 사용한다. 기존 `W9~W12` 번호는 Rev.10 이전 이력 참조에만 사용하며 신규 Task를 생성하지 않는다.
-- W7 Task는 사전 생성하지 않는다. 검토 시점의 실제 Gap과 Risk를 근거로 생성한다.
-- Public Release 목표일 `2026-09-20`은 유지한다.
+### W6 — 2026-08-31 ~ 2026-09-06
 
-세부 설계와 주차별 Task 정의는 `Museum_Heist_GDD.docx` Rev.11을 기준으로 Repository에서 확인한다.
+- Shared Extraction
+- Team Result
+- Player Contribution
+
+### W7 — 2026-09-07
+
+고정 Task가 없는 검토 체크포인트다.
+
+W4~W6 결과와 실제 잔여 위험을 검토한 뒤 필요한 경우에만 `TASK-W7-###`을 생성한다.
+
+### W8 — 2026-09-08 ~ 2026-09-20
+
+- 레벨 디자인
+- 라이팅
+- 이펙트
+- 오디오
+- HUD Polish
+- Result Polish
+- Map Balance
+- Feature Lock
+- RC1 QA
+- Final RC
+- Public Release 준비
+
+## Post-W4 Execution Priority
+
+- Gameplay 구현 우선
+- Authority 구현 우선
+- Replication 구현 우선
+- Online Session 구현 우선
+- Extraction 구현 우선
+- Result 구현 우선
+- Level Design과 Polish는 W5/W6 필수 구현 이후 진행
+- 미래 주차 번호는 `W5~W8`만 사용
+- 기존 `W9~W12` 번호는 Rev.10 이전 이력 참조에만 사용
+- W7 Task는 사전 생성하지 않음
+- Public Release 목표일 `2026-09-20` 유지
+
+세부 설계와 주차별 Task 정의는 `Museum_Heist_GDD.docx` 최신 Revision과 Notion Task 기록을 함께 확인한다.

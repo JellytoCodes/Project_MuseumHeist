@@ -23,7 +23,6 @@ void FHeistGameplayTags::InitializeNativeGameplayTags()
 	HEIST_ADD_NATIVE_TAG(State_MovementLocked, "State.MovementLocked", "Player movement is locked.");
 	HEIST_ADD_NATIVE_TAG(State_CarryingLoot, "State.CarryingLoot", "Player carries at least one loot item.");
 	HEIST_ADD_NATIVE_TAG(State_Revealed, "State.Revealed", "Player direction is revealed.");
-	HEIST_ADD_NATIVE_TAG(State_InSmoke, "State.InSmoke", "Player is inside smoke.");
 
 	HEIST_ADD_NATIVE_TAG(Action_Looting, "Action.Looting", "Loot interaction cast is active.");
 	HEIST_ADD_NATIVE_TAG(Action_Escaping, "Action.Escaping", "Vent escape cast is active.");
@@ -80,7 +79,6 @@ void FHeistGameplayTags::InitializeNativeGameplayTags()
 	HEIST_ADD_NATIVE_TAG(UI_Warning_InventoryFull, "UI.Warning.InventoryFull", "Inventory full warning.");
 	HEIST_ADD_NATIVE_TAG(UI_Warning_Revealed, "UI.Warning.Revealed", "Player revealed warning.");
 	HEIST_ADD_NATIVE_TAG(UI_Warning_RareLootIncoming, "UI.Warning.RareLootIncoming", "Rare loot incoming warning.");
-	HEIST_ADD_NATIVE_TAG(UI_Indicator_SoundPing, "UI.Indicator.SoundPing", "Sound Ping indicator.");
 
 #undef HEIST_ADD_NATIVE_TAG
 }

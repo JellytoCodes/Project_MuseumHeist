@@ -7,6 +7,7 @@
 
 class AHeistGameState;
 class AHeistPlayerCharacter;
+enum class EHeistAlertLevel : uint8;
 
 UCLASS()
 class PROJECT_MUSEUMHEIST_API AHeistVentActor : public AHeistInteractableActor
@@ -67,11 +68,13 @@ class PROJECT_MUSEUMHEIST_API AHeistVentActor : public AHeistInteractableActor
 #pragma region InternalHelpers
 
   private:
-	void BindToEscapePhaseState();
+	void BindToGameState();
 	void HandleEscapePhaseStateChanged(bool bIsEscapePhaseOpen);
+	void HandleAlertStateChanged(EHeistAlertLevel PreviousAlertLevel, EHeistAlertLevel NewAlertLevel, int32 AlertRevision, FName TriggerId);
 
 	TWeakObjectPtr<AHeistGameState> BoundGameState;
 	FDelegateHandle EscapePhaseStateChangedHandle;
+	FDelegateHandle AlertStateChangedHandle;
 
 #pragma endregion
 };

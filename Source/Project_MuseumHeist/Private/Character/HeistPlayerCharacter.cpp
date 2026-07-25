@@ -13,6 +13,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Core/HeistCollisionChannels.h"
+#include "Core/HeistGameState.h"
 #include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
@@ -185,7 +186,9 @@ bool AHeistPlayerCharacter::CanPerformGameplayActions() const
 	const bool bArrested = IsValid(HeistPlayerState) && HeistPlayerState->IsArrested();
 	const bool bInventoryOpen = IsValid(InventoryComponent) && InventoryComponent->IsInventoryOpen();
 	const bool bForgeryActive = IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive();
-	return !bEscaped && !bArrested && !bInventoryOpen && !bForgeryActive;
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	const bool bWorldRestricted = IsValid(HeistGameState) && HeistGameState->AreWorldInteractionsRestricted();
+	return !bEscaped && !bArrested && !bInventoryOpen && !bForgeryActive && !bWorldRestricted;
 }
 
 void AHeistPlayerCharacter::HandleInventoryOpenStateChanged(const bool bInventoryOpen)

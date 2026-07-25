@@ -3,6 +3,7 @@
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Core/HeistCollisionChannels.h"
+#include "Core/HeistGameState.h"
 
 #pragma region Construction
 
@@ -43,7 +44,8 @@ void AHeistInteractableActor::BeginPlay()
 
 bool AHeistInteractableActor::CanInteract(const AActor* Interactor) const
 {
-	return IsValid(Interactor);
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	return IsValid(Interactor) && (!IsValid(HeistGameState) || !HeistGameState->AreWorldInteractionsRestricted());
 }
 
 void AHeistInteractableActor::Interact(AActor* Interactor)

@@ -376,6 +376,13 @@ void UHeistCheatManager::HeistAlertDump()
 #endif
 }
 
+void UHeistCheatManager::HeistLockdownDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugLockdownDump(GetOuterAPlayerController());
+#endif
+}
+
 void UHeistCheatManager::HeistGuardAlertModifiersDump()
 {
 #if !UE_BUILD_SHIPPING
@@ -603,20 +610,6 @@ void UHeistCheatManager::HeistSoundPingHelp()
 {
 #if !UE_BUILD_SHIPPING
 	UHeistDebugFunctionLibrary::DebugSoundPingHelp(GetOuterAPlayerController());
-#endif
-}
-
-void UHeistCheatManager::HeistSoundPingDump()
-{
-#if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugSoundPingPoolDump(GetOuterAPlayerController());
-#endif
-}
-
-void UHeistCheatManager::HeistSoundPingTest()
-{
-#if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugSoundPingPoolTest(GetOuterAPlayerController());
 #endif
 }
 

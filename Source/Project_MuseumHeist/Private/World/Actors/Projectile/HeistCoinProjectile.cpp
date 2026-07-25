@@ -54,7 +54,6 @@ void AHeistCoinProjectile::HandleAuthorityImpact(const FHitResult& Hit)
 	SoundPingEvent.Radius = SoundPingDefinition.Radius;
 	SoundPingEvent.Duration = FMath::Max(0.0f, SoundPingDefinition.Duration);
 	SoundPingEvent.bAffectsGuards = true;
-	SoundPingEvent.bAffectsPlayers = SoundPingDefinition.bAffectsPlayers;
 	HeistGameState->ReportSoundPing(SoundPingEvent);
 
 	Super::HandleAuthorityImpact(Hit);
