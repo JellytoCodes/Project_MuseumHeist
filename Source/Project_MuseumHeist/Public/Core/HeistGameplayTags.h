@@ -19,7 +19,6 @@ struct PROJECT_MUSEUMHEIST_API FHeistGameplayTags
 
 	FGameplayTag Action_Looting;
 	FGameplayTag Action_Escaping;
-	FGameplayTag Action_PlacingTrap;
 	FGameplayTag Action_Throwing;
 	FGameplayTag Action_UsingItem;
 	FGameplayTag Action_OpeningInventory;
@@ -40,12 +39,9 @@ struct PROJECT_MUSEUMHEIST_API FHeistGameplayTags
 	FGameplayTag Event_Player_Stunned;
 	FGameplayTag Event_Player_Escaped;
 	FGameplayTag Event_Player_Interrupted;
-	FGameplayTag Event_Trap_Placed;
-	FGameplayTag Event_Trap_Triggered;
 	FGameplayTag Event_SoundPing_Footstep;
 	FGameplayTag Event_SoundPing_GlassBreak;
 	FGameplayTag Event_SoundPing_CoinImpact;
-	FGameplayTag Event_SoundPing_NoiseTrap;
 	FGameplayTag Event_SoundPing_StunHit;
 	FGameplayTag Event_Vent_Opened;
 	FGameplayTag Event_Vent_Used;
@@ -64,7 +60,6 @@ struct PROJECT_MUSEUMHEIST_API FHeistGameplayTags
 	FGameplayTag AI_Stimulus_Noise;
 	FGameplayTag AI_Stimulus_Coin;
 	FGameplayTag AI_Stimulus_GlassBreak;
-	FGameplayTag AI_Stimulus_Trap;
 
 	FGameplayTag Vent_Locked;
 	FGameplayTag Vent_Active;

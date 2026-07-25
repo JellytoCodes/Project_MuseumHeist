@@ -266,16 +266,6 @@ float UHeistHUDViewModel::GetEscapeCastEndServerTime() const
 	return EscapeCastEndServerTime;
 }
 
-bool UHeistHUDViewModel::IsTrapPlacementCastActive() const
-{
-	return bTrapPlacementCastActive;
-}
-
-float UHeistHUDViewModel::GetTrapPlacementCastEndServerTime() const
-{
-	return TrapPlacementCastEndServerTime;
-}
-
 bool UHeistHUDViewModel::IsObservationCastActive() const
 {
 	return bObservationCastActive;

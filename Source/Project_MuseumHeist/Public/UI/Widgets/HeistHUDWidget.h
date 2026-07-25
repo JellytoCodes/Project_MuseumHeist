@@ -67,7 +67,7 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|HUD", meta = (DisplayName = "Refresh HUD Presentation"))
 	void BP_RefreshHUDPresentation(int32 LocalLootScore, float LocalLootWeight, int32 ConnectedPlayerCount, bool bLocalPlayerEscaped, bool bEscapePhaseOpen, bool bEscapeCastActive,
-								   float EscapeCastEndServerTime, bool bTrapPlacementCastActive, float TrapPlacementCastEndServerTime);
+								   float EscapeCastEndServerTime);
 
 #pragma endregion
 

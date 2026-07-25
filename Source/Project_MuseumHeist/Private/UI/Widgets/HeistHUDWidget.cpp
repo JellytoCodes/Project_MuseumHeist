@@ -298,8 +298,6 @@ void UHeistHUDWidget::RefreshHUDPresentation()
 	const bool bEscapePhaseOpen = HUDViewModel->IsEscapePhaseOpen();
 	const bool bEscapeCastActive = HUDViewModel->IsEscapeCastActive();
 	const float EscapeCastEndServerTime = HUDViewModel->GetEscapeCastEndServerTime();
-	const bool bTrapPlacementCastActive = HUDViewModel->IsTrapPlacementCastActive();
-	const float TrapPlacementCastEndServerTime = HUDViewModel->GetTrapPlacementCastEndServerTime();
 	const bool bObservationCastActive = HUDViewModel->IsObservationCastActive();
 
 	if (IsValid(ScoreText))
@@ -318,9 +316,7 @@ void UHeistHUDWidget::RefreshHUDPresentation()
 	if (IsValid(ActionText))
 	{
 		const FText ActionLabel = bObservationCastActive ? NSLOCTEXT("HeistHUD", "ObservationCastAction", "ACTION  OBSERVING")
-														 : (bEscapeCastActive		   ? NSLOCTEXT("HeistHUD", "EscapeCastAction", "ACTION  ESCAPING")
-															: bTrapPlacementCastActive ? NSLOCTEXT("HeistHUD", "TrapCastAction", "ACTION  PLACING TRAP")
-																					   : NSLOCTEXT("HeistHUD", "ReadyAction", "ACTION  READY"));
+														 : (bEscapeCastActive ? NSLOCTEXT("HeistHUD", "EscapeCastAction", "ACTION  ESCAPING") : NSLOCTEXT("HeistHUD", "ReadyAction", "ACTION  READY"));
 		ActionText->SetText(ActionLabel);
 	}
 
@@ -344,8 +340,7 @@ void UHeistHUDWidget::RefreshHUDPresentation()
 										 PlayerIdText, FText::AsNumber(ConnectedPlayerCount)));
 	}
 
-	BP_RefreshHUDPresentation(LocalLootScore, LocalLootWeight, ConnectedPlayerCount, bLocalPlayerEscaped, bEscapePhaseOpen, bEscapeCastActive, EscapeCastEndServerTime, bTrapPlacementCastActive,
-							  TrapPlacementCastEndServerTime);
+	BP_RefreshHUDPresentation(LocalLootScore, LocalLootWeight, ConnectedPlayerCount, bLocalPlayerEscaped, bEscapePhaseOpen, bEscapeCastActive, EscapeCastEndServerTime);
 	RefreshToolPresentation();
 }
 

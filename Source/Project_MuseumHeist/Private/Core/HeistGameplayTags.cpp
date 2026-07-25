@@ -27,7 +27,6 @@ void FHeistGameplayTags::InitializeNativeGameplayTags()
 
 	HEIST_ADD_NATIVE_TAG(Action_Looting, "Action.Looting", "Loot interaction cast is active.");
 	HEIST_ADD_NATIVE_TAG(Action_Escaping, "Action.Escaping", "Vent escape cast is active.");
-	HEIST_ADD_NATIVE_TAG(Action_PlacingTrap, "Action.PlacingTrap", "Trap placement cast is active.");
 	HEIST_ADD_NATIVE_TAG(Action_Throwing, "Action.Throwing", "Throwable action is active.");
 	HEIST_ADD_NATIVE_TAG(Action_UsingItem, "Action.UsingItem", "QuickSlot item use is active.");
 	HEIST_ADD_NATIVE_TAG(Action_OpeningInventory, "Action.OpeningInventory", "Inventory opening action is active.");
@@ -48,12 +47,9 @@ void FHeistGameplayTags::InitializeNativeGameplayTags()
 	HEIST_ADD_NATIVE_TAG(Event_Player_Stunned, "Event.Player.Stunned", "Player stun was confirmed.");
 	HEIST_ADD_NATIVE_TAG(Event_Player_Escaped, "Event.Player.Escaped", "Player escape completed.");
 	HEIST_ADD_NATIVE_TAG(Event_Player_Interrupted, "Event.Player.Interrupted", "Player cast was interrupted.");
-	HEIST_ADD_NATIVE_TAG(Event_Trap_Placed, "Event.Trap.Placed", "Trap placement completed.");
-	HEIST_ADD_NATIVE_TAG(Event_Trap_Triggered, "Event.Trap.Triggered", "Trap was triggered.");
 	HEIST_ADD_NATIVE_TAG(Event_SoundPing_Footstep, "Event.SoundPing.Footstep", "Footstep sound ping.");
 	HEIST_ADD_NATIVE_TAG(Event_SoundPing_GlassBreak, "Event.SoundPing.GlassBreak", "Glass break sound ping.");
 	HEIST_ADD_NATIVE_TAG(Event_SoundPing_CoinImpact, "Event.SoundPing.CoinImpact", "Coin impact sound ping.");
-	HEIST_ADD_NATIVE_TAG(Event_SoundPing_NoiseTrap, "Event.SoundPing.NoiseTrap", "Deferred Noise Trap sound ping.");
 	HEIST_ADD_NATIVE_TAG(Event_SoundPing_StunHit, "Event.SoundPing.StunHit", "Stun hit sound ping.");
 	HEIST_ADD_NATIVE_TAG(Event_Vent_Opened, "Event.Vent.Opened", "Vent extraction phase opened.");
 	HEIST_ADD_NATIVE_TAG(Event_Vent_Used, "Event.Vent.Used", "Vent escape completed.");
@@ -72,7 +68,6 @@ void FHeistGameplayTags::InitializeNativeGameplayTags()
 	HEIST_ADD_NATIVE_TAG(AI_Stimulus_Noise, "AI.Stimulus.Noise", "Guard noise stimulus.");
 	HEIST_ADD_NATIVE_TAG(AI_Stimulus_Coin, "AI.Stimulus.Coin", "Guard coin stimulus.");
 	HEIST_ADD_NATIVE_TAG(AI_Stimulus_GlassBreak, "AI.Stimulus.GlassBreak", "Guard glass break stimulus.");
-	HEIST_ADD_NATIVE_TAG(AI_Stimulus_Trap, "AI.Stimulus.Trap", "Guard trap stimulus.");
 
 	HEIST_ADD_NATIVE_TAG(Vent_Locked, "Vent.Locked", "Vent is locked.");
 	HEIST_ADD_NATIVE_TAG(Vent_Active, "Vent.Active", "Vent is active.");

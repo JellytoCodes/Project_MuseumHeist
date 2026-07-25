@@ -67,8 +67,6 @@ FText UHeistSoundPingMarkerWidget::GetPingTypeText(const FHeistSoundPingEvent& S
 		return NSLOCTEXT("HeistSoundPing", "GlassBreak", "GLASS BREAK");
 	case EHeistSoundPingType::CoinImpact:
 		return NSLOCTEXT("HeistSoundPing", "CoinImpact", "COIN IMPACT");
-	case EHeistSoundPingType::NoiseTrap:
-		return NSLOCTEXT("HeistSoundPing", "NoiseTrap", "NOISE TRAP");
 	case EHeistSoundPingType::StunHit:
 		return NSLOCTEXT("HeistSoundPing", "StunHit", "STUN HIT");
 	default:

@@ -8,13 +8,10 @@
 class AController;
 class AHeistPlayerCharacter;
 class AHeistPaintingDisplayCaseActor;
-class AHeistTrapActor;
 class AHeistVentActor;
 class UDamageType;
 
 DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistEscapeCastCompleted, AHeistPlayerCharacter*, AHeistVentActor*);
-
-DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistTrapPlacementCastCompleted, AHeistPlayerCharacter*, AHeistTrapActor*);
 
 DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistObservationCastCompleted, AHeistPlayerCharacter*, AHeistPaintingDisplayCaseActor*);
 

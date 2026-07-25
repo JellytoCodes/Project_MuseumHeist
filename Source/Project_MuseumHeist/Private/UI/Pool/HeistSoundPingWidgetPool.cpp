@@ -422,7 +422,6 @@ int32 UHeistSoundPingWidgetPool::ResolvePriority(const EHeistSoundPingType PingT
 	case EHeistSoundPingType::StunHit:
 		return 2;
 	case EHeistSoundPingType::GlassBreak:
-	case EHeistSoundPingType::NoiseTrap:
 		return 3;
 	case EHeistSoundPingType::CoinImpact:
 		return 4;

@@ -278,7 +278,6 @@ enum class EHeistSoundPingType : uint8
 	Footstep,
 	GlassBreak,
 	CoinImpact,
-	NoiseTrap,
 	StunHit
 };
 

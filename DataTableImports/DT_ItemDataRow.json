@@ -39,32 +39,6 @@
     "Icon": ""
   },
   {
-    "Name": "Trap_Glue",
-    "ItemId": "Trap_Glue",
-    "DisplayName": "Glue Trap",
-    "CategoryTag": "Item.Trap.Glue",
-    "ItemType": "Trap",
-    "GridSize": "(X=2,Y=1)",
-    "Weight": 2.0,
-    "bCanRotate": true,
-    "bCanUseQuickSlot": true,
-    "bAvailableInV1": true,
-    "Icon": ""
-  },
-  {
-    "Name": "Trap_Noise",
-    "ItemId": "Trap_Noise",
-    "DisplayName": "Noise Trap",
-    "CategoryTag": "Item.Trap.Noise",
-    "ItemType": "Trap",
-    "GridSize": "(X=1,Y=1)",
-    "Weight": 1.0,
-    "bCanRotate": false,
-    "bCanUseQuickSlot": true,
-    "bAvailableInV1": false,
-    "Icon": ""
-  },
-  {
     "Name": "Throwable_Coin",
     "ItemId": "Throwable_Coin",
     "DisplayName": "Coin",

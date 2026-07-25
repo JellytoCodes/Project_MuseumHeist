@@ -9,27 +9,5 @@
     "Duration": 3.0,
     "ProjectileSpeed": 1500.0,
     "SpawnedActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Projectile/BP_HeistCoinProjectile.BP_HeistCoinProjectile_C'"
-  },
-  {
-    "Name": "Trap_Glue",
-    "ItemId": "Trap_Glue",
-    "UseType": "PlaceTrap",
-    "TargetType": "WorldLocation",
-    "Cooldown": 0.0,
-    "CastTime": 1.5,
-    "Duration": 3.0,
-    "ProjectileSpeed": 0.0,
-    "SpawnedActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Trap/BP_HeistGlueTrap.BP_HeistGlueTrap_C'"
-  },
-  {
-    "Name": "Trap_Noise",
-    "ItemId": "Trap_Noise",
-    "UseType": "PlaceTrap",
-    "TargetType": "WorldLocation",
-    "Cooldown": 0.0,
-    "CastTime": 1.5,
-    "Duration": 3.0,
-    "ProjectileSpeed": 0.0,
-    "SpawnedActorClass": "Class'/Script/Project_MuseumHeist.HeistNoiseTrapActor'"
   }
 ]

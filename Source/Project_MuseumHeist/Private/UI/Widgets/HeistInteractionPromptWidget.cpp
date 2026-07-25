@@ -86,7 +86,7 @@ void UHeistInteractionPromptWidget::SetupInteractionPresentation(UHeistInteracti
 
 void UHeistInteractionPromptWidget::RefreshPresentation()
 {
-	const bool bActionActive = IsValid(HUDViewModel) && (HUDViewModel->IsObservationCastActive() || HUDViewModel->IsEscapeCastActive() || HUDViewModel->IsTrapPlacementCastActive());
+	const bool bActionActive = IsValid(HUDViewModel) && (HUDViewModel->IsObservationCastActive() || HUDViewModel->IsEscapeCastActive());
 
 	RefreshInteractionPrompt(bActionActive);
 	RefreshActionProgress();
@@ -135,11 +135,9 @@ void UHeistInteractionPromptWidget::RefreshActionProgress()
 {
 	const bool bObservationActive = IsValid(HUDViewModel) && HUDViewModel->IsObservationCastActive();
 	const bool bEscapeActive = IsValid(HUDViewModel) && HUDViewModel->IsEscapeCastActive();
-	const bool bTrapActive = IsValid(HUDViewModel) && HUDViewModel->IsTrapPlacementCastActive();
-	const bool bActionActive = bObservationActive || bEscapeActive || bTrapActive;
-	const FName ActionType = bObservationActive ? FName(TEXT("Observation")) : (bEscapeActive ? FName(TEXT("Escape")) : (bTrapActive ? FName(TEXT("TrapPlacement")) : NAME_None));
-	const float EndServerTime = bObservationActive ? HUDViewModel->GetObservationCastEndServerTime()
-												   : (bEscapeActive ? HUDViewModel->GetEscapeCastEndServerTime() : (bTrapActive ? HUDViewModel->GetTrapPlacementCastEndServerTime() : 0.0f));
+	const bool bActionActive = bObservationActive || bEscapeActive;
+	const FName ActionType = bObservationActive ? FName(TEXT("Observation")) : (bEscapeActive ? FName(TEXT("Escape")) : NAME_None);
+	const float EndServerTime = bObservationActive ? HUDViewModel->GetObservationCastEndServerTime() : (bEscapeActive ? HUDViewModel->GetEscapeCastEndServerTime() : 0.0f);
 	const float ServerTime = GetServerWorldTimeSeconds();
 
 	if (bActionActive && (TrackedActionType != ActionType || !FMath::IsNearlyEqual(TrackedActionEndServerTime, EndServerTime)))
@@ -174,9 +172,7 @@ void UHeistInteractionPromptWidget::RefreshActionProgress()
 	}
 	if (IsValid(ActionTypeText))
 	{
-		ActionTypeText->SetText(bObservationActive ? NSLOCTEXT("HeistInteraction", "ObservationAction", "OBSERVING")
-												   : (bEscapeActive ? NSLOCTEXT("HeistInteraction", "EscapeAction", "ESCAPING")
-																	: (bTrapActive ? NSLOCTEXT("HeistInteraction", "TrapAction", "PLACING TRAP") : FText::GetEmpty())));
+		ActionTypeText->SetText(bObservationActive ? NSLOCTEXT("HeistInteraction", "ObservationAction", "OBSERVING") : (bEscapeActive ? NSLOCTEXT("HeistInteraction", "EscapeAction", "ESCAPING") : FText::GetEmpty()));
 	}
 	if (IsValid(ActionProgressBar))
 	{
@@ -192,8 +188,7 @@ void UHeistInteractionPromptWidget::RefreshActionProgress()
 	if (IsValid(CancelHintText))
 	{
 		CancelHintText->SetText(bObservationActive ? NSLOCTEXT("HeistInteraction", "ObservationCancelHint", "RELEASE E, MOVE, TAKE DAMAGE OR ARREST TO CANCEL")
-												   : (bEscapeActive ? NSLOCTEXT("HeistInteraction", "EscapeCancelHint", "MOVE OR TAKE DAMAGE TO CANCEL")
-																	: (bTrapActive ? NSLOCTEXT("HeistInteraction", "TrapCancelHint", "MOVE TO CANCEL") : FText::GetEmpty())));
+												   : (bEscapeActive ? NSLOCTEXT("HeistInteraction", "EscapeCancelHint", "MOVE OR TAKE DAMAGE TO CANCEL") : FText::GetEmpty()));
 	}
 
 	const bool bReferenceVisible = bObservationActive && HUDViewModel->IsObservationReferenceVisible();

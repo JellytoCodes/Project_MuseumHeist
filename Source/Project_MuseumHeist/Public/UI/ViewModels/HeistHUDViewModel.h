@@ -72,8 +72,6 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
 	bool IsEscapePhaseOpen() const;
 	bool IsEscapeCastActive() const;
 	float GetEscapeCastEndServerTime() const;
-	bool IsTrapPlacementCastActive() const;
-	float GetTrapPlacementCastEndServerTime() const;
 	bool IsObservationCastActive() const;
 	float GetObservationCastEndServerTime() const;
 	bool IsObservationReferenceVisible() const;
@@ -108,12 +106,6 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Action", meta = (AllowPrivateAccess = "true"))
 	float EscapeCastEndServerTime = 0.0f;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Action", meta = (AllowPrivateAccess = "true"))
-	bool bTrapPlacementCastActive = false;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Action", meta = (AllowPrivateAccess = "true"))
-	float TrapPlacementCastEndServerTime = 0.0f;
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Observation", meta = (AllowPrivateAccess = "true"))
 	bool bObservationCastActive = false;

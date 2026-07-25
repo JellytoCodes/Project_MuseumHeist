@@ -9,7 +9,6 @@
 #include "Data/HeistGameBalanceDataAsset.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "Engine/World.h"
-#include "Inventory/HeistInventoryTypes.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 #include "TimerManager.h"
@@ -122,7 +121,7 @@ bool UHeistActionComponent::TryBeginEscapeRequest(AHeistVentActor* TargetVentAct
 	const AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(OwnerActor);
 	const AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter) ? HeistCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
 	if (!IsValid(OwnerActor) || !OwnerActor->HasAuthority() || !IsValid(HeistPlayerState) || HeistPlayerState->IsEscaped() || !IsValid(TargetVentActor) || bEscapeCastActive ||
-		PendingEscapeVent.IsValid())
+		IsGameplayCastActive() || PendingEscapeVent.IsValid())
 	{
 		return false;
 	}
@@ -161,7 +160,7 @@ bool UHeistActionComponent::TryBeginEscapeRequest(AHeistVentActor* TargetVentAct
 
 bool UHeistActionComponent::IsGameplayCastActive() const
 {
-	return bEscapeCastActive ||bObservationCastActive;
+	return bEscapeCastActive || bObservationCastActive;
 }
 
 void UHeistActionComponent::CancelGameplayActions(const TCHAR* Reason)
@@ -478,7 +477,11 @@ void UHeistActionComponent::ClearEscapeCastState()
 	PendingEscapeVent.Reset();
 	bEscapeCastActive = false;
 	EscapeCastEndServerTime = 0.0f;
-	SetComponentTickEnabled(false);
+
+	if (!bObservationCastActive)
+	{
+		SetComponentTickEnabled(false);	
+	}
 
 	if (AActor* OwnerActor = GetOwner())
 	{
