@@ -1,7 +1,6 @@
 #include "UI/Widgets/HeistLobbyWidget.h"
 
 #include "Components/Button.h"
-#include "Components/EditableTextBox.h"
 #include "Components/TextBlock.h"
 #include "Components/Widget.h"
 #include "UI/ViewModels/HeistLobbyViewModel.h"
@@ -21,13 +20,25 @@ void UHeistLobbyWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	if (IsValid(HostSessionButton))
+	if (IsValid(LeaveSessionButton))
 	{
-		HostSessionButton->OnClicked.AddUniqueDynamic(this, &UHeistLobbyWidget::HandleHostSessionClicked);
+		LeaveSessionButton->OnClicked.AddUniqueDynamic(this, &UHeistLobbyWidget::HandleLeaveSessionClicked);
 	}
-	if (IsValid(JoinSessionButton))
+	if (IsValid(MapM01Button))
 	{
-		JoinSessionButton->OnClicked.AddUniqueDynamic(this, &UHeistLobbyWidget::HandleJoinSessionClicked);
+		MapM01Button->OnClicked.AddUniqueDynamic(this, &UHeistLobbyWidget::HandleMapM01Clicked);
+	}
+	if (IsValid(MapM02Button))
+	{
+		MapM02Button->OnClicked.AddUniqueDynamic(this, &UHeistLobbyWidget::HandleMapM02Clicked);
+	}
+	if (IsValid(MapM03Button))
+	{
+		MapM03Button->OnClicked.AddUniqueDynamic(this, &UHeistLobbyWidget::HandleMapM03Clicked);
+	}
+	if (IsValid(MapRandomButton))
+	{
+		MapRandomButton->OnClicked.AddUniqueDynamic(this, &UHeistLobbyWidget::HandleMapRandomClicked);
 	}
 }
 
@@ -37,13 +48,25 @@ void UHeistLobbyWidget::NativeDestruct()
 	{
 		LobbyViewModel->GetSnapshotChangedDelegate().RemoveAll(this);
 	}
-	if (IsValid(HostSessionButton))
+	if (IsValid(LeaveSessionButton))
 	{
-		HostSessionButton->OnClicked.RemoveDynamic(this, &UHeistLobbyWidget::HandleHostSessionClicked);
+		LeaveSessionButton->OnClicked.RemoveDynamic(this, &UHeistLobbyWidget::HandleLeaveSessionClicked);
 	}
-	if (IsValid(JoinSessionButton))
+	if (IsValid(MapM01Button))
 	{
-		JoinSessionButton->OnClicked.RemoveDynamic(this, &UHeistLobbyWidget::HandleJoinSessionClicked);
+		MapM01Button->OnClicked.RemoveDynamic(this, &UHeistLobbyWidget::HandleMapM01Clicked);
+	}
+	if (IsValid(MapM02Button))
+	{
+		MapM02Button->OnClicked.RemoveDynamic(this, &UHeistLobbyWidget::HandleMapM02Clicked);
+	}
+	if (IsValid(MapM03Button))
+	{
+		MapM03Button->OnClicked.RemoveDynamic(this, &UHeistLobbyWidget::HandleMapM03Clicked);
+	}
+	if (IsValid(MapRandomButton))
+	{
+		MapRandomButton->OnClicked.RemoveDynamic(this, &UHeistLobbyWidget::HandleMapRandomClicked);
 	}
 
 	Super::NativeDestruct();
@@ -86,19 +109,43 @@ UHeistLobbyViewModel* UHeistLobbyWidget::GetLobbyViewModel() const
 
 #pragma region Presentation
 
-void UHeistLobbyWidget::HandleHostSessionClicked()
+void UHeistLobbyWidget::HandleLeaveSessionClicked()
 {
 	if (IsValid(LobbyViewModel))
 	{
-		LobbyViewModel->RequestHostSession();
+		LobbyViewModel->RequestLeaveSession();
 	}
 }
 
-void UHeistLobbyWidget::HandleJoinSessionClicked()
+void UHeistLobbyWidget::HandleMapM01Clicked()
 {
-	if (IsValid(LobbyViewModel) && IsValid(JoinCodeInput))
+	if (IsValid(LobbyViewModel))
 	{
-		LobbyViewModel->RequestJoinSessionByCode(JoinCodeInput->GetText().ToString());
+		LobbyViewModel->RequestSelectMap(FName(TEXT("M01")));
+	}
+}
+
+void UHeistLobbyWidget::HandleMapM02Clicked()
+{
+	if (IsValid(LobbyViewModel))
+	{
+		LobbyViewModel->RequestSelectMap(FName(TEXT("M02")));
+	}
+}
+
+void UHeistLobbyWidget::HandleMapM03Clicked()
+{
+	if (IsValid(LobbyViewModel))
+	{
+		LobbyViewModel->RequestSelectMap(FName(TEXT("M03")));
+	}
+}
+
+void UHeistLobbyWidget::HandleMapRandomClicked()
+{
+	if (IsValid(LobbyViewModel))
+	{
+		LobbyViewModel->RequestSelectMap(FName(TEXT("Random")));
 	}
 }
 
@@ -109,13 +156,26 @@ void UHeistLobbyWidget::RefreshLobbyPresentation()
 		return;
 	}
 
-	if (IsValid(HostSessionButton))
+	if (IsValid(LeaveSessionButton))
 	{
-		HostSessionButton->SetIsEnabled(LobbyViewModel->CanRequestHostSession());
+		LeaveSessionButton->SetIsEnabled(LobbyViewModel->CanRequestLeaveSession());
 	}
-	if (IsValid(JoinSessionButton))
+	const bool bCanSelectMap = LobbyViewModel->CanSelectMap();
+	if (IsValid(MapM01Button))
 	{
-		JoinSessionButton->SetIsEnabled(LobbyViewModel->CanRequestJoinSession());
+		MapM01Button->SetIsEnabled(bCanSelectMap);
+	}
+	if (IsValid(MapM02Button))
+	{
+		MapM02Button->SetIsEnabled(bCanSelectMap);
+	}
+	if (IsValid(MapM03Button))
+	{
+		MapM03Button->SetIsEnabled(bCanSelectMap);
+	}
+	if (IsValid(MapRandomButton))
+	{
+		MapRandomButton->SetIsEnabled(bCanSelectMap);
 	}
 	if (IsValid(JoinCodeText))
 	{
@@ -130,6 +190,14 @@ void UHeistLobbyWidget::RefreshLobbyPresentation()
 	{
 		SessionErrorText->SetText(LobbyViewModel->GetSessionErrorText());
 		SessionErrorText->SetVisibility(LobbyViewModel->GetSessionErrorVisibility());
+	}
+	if (IsValid(SelectedMapText))
+	{
+		SelectedMapText->SetText(LobbyViewModel->GetSelectedMapText());
+	}
+	if (IsValid(MapSelectionStatusText))
+	{
+		MapSelectionStatusText->SetText(LobbyViewModel->GetMapSelectionStatusText());
 	}
 	if (IsValid(PhaseText))
 	{

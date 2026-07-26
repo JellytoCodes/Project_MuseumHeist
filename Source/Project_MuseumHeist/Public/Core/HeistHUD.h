@@ -47,6 +47,27 @@ class PROJECT_MUSEUMHEIST_API AHeistHUD : public AHUD
 
 #pragma endregion
 
+#pragma region TitleMenuPresentation
+
+  public:
+	bool ShowTitleMenuScreen();
+	void HideTitleMenuScreen();
+	class UHeistTitleMenuViewModel* GetTitleMenuViewModel() const;
+
+  private:
+	void InitializeTitleMenuPresentation();
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|UI", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<class UHeistTitleMenuWidget> TitleMenuWidgetClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHeistTitleMenuViewModel> TitleMenuViewModel;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHeistTitleMenuWidget> TitleMenuWidget;
+
+#pragma endregion
+
 #pragma region LobbyPresentation
 
   public:

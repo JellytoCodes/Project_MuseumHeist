@@ -819,6 +819,8 @@ Ping_NoiseTrap
 | `UHeistInteractionPromptWidget` | Modify | Interaction, Observation, Escape Progress |
 | `UHeistResultWidget` | Modify | Team Result / Contribution |
 | `UHeistForgeryWidget` | Keep | Owner-only Forgery UI, Local Canvas Reset, Drawing/Lockdown Remaining Time, Alert Warning |
+| `UHeistTitleMenuWidget` | Add | Host Session, Join Code 입력, Online Session 요청 상태와 오류 표시 |
+| `UHeistLobbyWidget` | Modify | Session 내부 Player Slot, 참가 코드 표시, Map 선택, Ready / Start, Leave |
 | `UHeistRareLootAlertWidget` | Remove 또는 Deferred Review | Rare Loot 범위 결정 전 신규 사용 금지 |
 
 ## ViewModels
@@ -829,7 +831,8 @@ Ping_NoiseTrap
 | `UHeistInventoryViewModel` | Keep | Inventory Snapshot |
 | `UHeistQuickSlotViewModel` | Modify | Coin QuickSlot Snapshot |
 | `UHeistResultViewModel` | Modify | Team Result / Contribution |
-| `UHeistLobbyViewModel` | Modify | Lobby Player Snapshot, Online Session 상태, 참가 코드, Host/Join 요청 |
+| `UHeistTitleMenuViewModel` | Add | Online Session 상태, Host 요청, Join Code 요청, 진입 오류 |
+| `UHeistLobbyViewModel` | Modify | Lobby Player Snapshot, 참가 코드 표시, Map 선택, Ready / Start, Leave |
 | `UHeistForgeryViewModel` | Keep | Forgery UI State, Alert Warning, Lockdown Countdown |
 
 ## Removed UI Contract

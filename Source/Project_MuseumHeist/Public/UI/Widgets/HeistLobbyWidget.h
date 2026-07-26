@@ -6,7 +6,6 @@
 #include "HeistLobbyWidget.generated.h"
 
 class UButton;
-class UEditableTextBox;
 class UTextBlock;
 class UWidget;
 
@@ -46,21 +45,36 @@ class PROJECT_MUSEUMHEIST_API UHeistLobbyWidget : public UHeistUserWidgetBase
 
   private:
 	UFUNCTION()
-	void HandleHostSessionClicked();
+	void HandleLeaveSessionClicked();
 
 	UFUNCTION()
-	void HandleJoinSessionClicked();
+	void HandleMapM01Clicked();
+
+	UFUNCTION()
+	void HandleMapM02Clicked();
+
+	UFUNCTION()
+	void HandleMapM03Clicked();
+
+	UFUNCTION()
+	void HandleMapRandomClicked();
 
 	void RefreshLobbyPresentation();
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UButton> HostSessionButton;
+	TObjectPtr<UButton> LeaveSessionButton;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UButton> JoinSessionButton;
+	TObjectPtr<UButton> MapM01Button;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UEditableTextBox> JoinCodeInput;
+	TObjectPtr<UButton> MapM02Button;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UButton> MapM03Button;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UButton> MapRandomButton;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> JoinCodeText;
@@ -70,6 +84,12 @@ class PROJECT_MUSEUMHEIST_API UHeistLobbyWidget : public UHeistUserWidgetBase
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> SessionErrorText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> SelectedMapText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> MapSelectionStatusText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> PhaseText;

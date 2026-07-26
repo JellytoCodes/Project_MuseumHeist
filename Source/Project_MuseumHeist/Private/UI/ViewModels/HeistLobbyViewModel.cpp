@@ -2,6 +2,7 @@
 
 #include "Core/HeistGameInstance.h"
 #include "Core/HeistGameState.h"
+#include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
 #include "GameFramework/PlayerState.h"
 
@@ -17,9 +18,11 @@ UHeistLobbyViewModel::UHeistLobbyViewModel(const FObjectInitializer& ObjectIniti
 
 void UHeistLobbyViewModel::BeginDestroy()
 {
+	UnbindPlayerIdentityDelegates();
 	if (IsValid(GameState))
 	{
 		GameState->GetPlayerConnectionsChangedDelegate().RemoveAll(this);
+		GameState->GetLobbyMapSelectionChangedDelegate().RemoveAll(this);
 	}
 	if (IsValid(GameInstance))
 	{
@@ -33,11 +36,14 @@ void UHeistLobbyViewModel::BeginDestroy()
 
 #pragma region Setup
 
-void UHeistLobbyViewModel::SetupViewModel(AHeistGameState* InGameState, AHeistPlayerState* InLocalPlayerState, UHeistGameInstance* InGameInstance)
+void UHeistLobbyViewModel::SetupViewModel(AHeistGameState* InGameState, AHeistPlayerState* InLocalPlayerState, UHeistGameInstance* InGameInstance,
+										 AHeistPlayerController* InPlayerController)
 {
+	UnbindPlayerIdentityDelegates();
 	if (GameState != InGameState && IsValid(GameState))
 	{
 		GameState->GetPlayerConnectionsChangedDelegate().RemoveAll(this);
+		GameState->GetLobbyMapSelectionChangedDelegate().RemoveAll(this);
 	}
 	if (GameInstance != InGameInstance && IsValid(GameInstance))
 	{
@@ -47,11 +53,14 @@ void UHeistLobbyViewModel::SetupViewModel(AHeistGameState* InGameState, AHeistPl
 	GameState = InGameState;
 	LocalPlayerState = InLocalPlayerState;
 	GameInstance = InGameInstance;
+	PlayerController = InPlayerController;
 
 	if (IsValid(GameState))
 	{
 		GameState->GetPlayerConnectionsChangedDelegate().RemoveAll(this);
 		GameState->GetPlayerConnectionsChangedDelegate().AddUObject(this, &UHeistLobbyViewModel::HandlePlayerConnectionsChanged);
+		GameState->GetLobbyMapSelectionChangedDelegate().RemoveAll(this);
+		GameState->GetLobbyMapSelectionChangedDelegate().AddUObject(this, &UHeistLobbyViewModel::HandleLobbyMapSelectionChanged);
 	}
 	if (IsValid(GameInstance))
 	{
@@ -59,6 +68,7 @@ void UHeistLobbyViewModel::SetupViewModel(AHeistGameState* InGameState, AHeistPl
 		GameInstance->GetOnlineSessionStateChangedDelegate().AddUObject(this, &UHeistLobbyViewModel::HandleOnlineSessionStateChanged);
 	}
 
+	RebindPlayerIdentityDelegates();
 	RefreshLobbyData();
 }
 
@@ -89,14 +99,27 @@ void UHeistLobbyViewModel::RefreshLobbyData()
 	const bool bHasJoinCode = !ActiveCode.IsEmpty();
 	const bool bOperationPending = IsValid(GameInstance) && GameInstance->IsOnlineSessionOperationPending();
 	const bool bSessionActive = IsValid(GameInstance) && (GameInstance->IsHostingOnlineSession() || GameInstance->IsJoinedOnlineSession());
+	const bool bLocalHost = IsValid(PlayerController) && PlayerController->HasAuthority() && IsValid(GameInstance) && GameInstance->IsHostingOnlineSession();
+	const FName SelectedMapId = IsValid(GameState) ? GameState->GetSelectedLobbyMapId() : (IsValid(GameInstance) ? GameInstance->GetSelectedMapId() : NAME_None);
+	const bool bRandomSelection = IsValid(GameState) ? GameState->IsRandomLobbyMapSelection() : (IsValid(GameInstance) && GameInstance->IsRandomMapSelection());
+	const bool bMapSelectionPending = IsValid(GameInstance) && GameInstance->IsMapSelectionUpdatePending();
 	UE_MVVM_SET_PROPERTY_VALUE(SessionStatusText, NewSessionStatusText);
 	UE_MVVM_SET_PROPERTY_VALUE(SessionErrorText, NewSessionErrorText);
 	UE_MVVM_SET_PROPERTY_VALUE(JoinCodeText,
 							   bHasJoinCode ? FText::Format(NSLOCTEXT("HeistLobby", "JoinCodeFormat", "JOIN CODE  {0}"), FText::FromString(ActiveCode)) : FText::GetEmpty());
 	UE_MVVM_SET_PROPERTY_VALUE(SessionErrorVisibility, NewSessionErrorText.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
 	UE_MVVM_SET_PROPERTY_VALUE(JoinCodeVisibility, bHasJoinCode ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-	UE_MVVM_SET_PROPERTY_VALUE(bCanRequestHostSession, IsValid(GameInstance) && !bOperationPending && !bSessionActive);
-	UE_MVVM_SET_PROPERTY_VALUE(bCanRequestJoinSession, IsValid(GameInstance) && !bOperationPending && !bSessionActive);
+	UE_MVVM_SET_PROPERTY_VALUE(bCanRequestLeaveSession, IsValid(GameInstance) && !bOperationPending && bSessionActive);
+	UE_MVVM_SET_PROPERTY_VALUE(bCanSelectMap, bLocalHost && !bOperationPending && IsValid(GameState) && GameState->GetMatchPhase() == EHeistMatchPhase::Lobby);
+	UE_MVVM_SET_PROPERTY_VALUE(SelectedMapText,
+							   bRandomSelection
+								   ? FText::Format(NSLOCTEXT("HeistLobby", "RandomMapFormat", "MAP  RANDOM → {0}"), FText::FromName(SelectedMapId))
+								   : FText::Format(NSLOCTEXT("HeistLobby", "SelectedMapFormat", "MAP  {0}"), FText::FromName(SelectedMapId)));
+	UE_MVVM_SET_PROPERTY_VALUE(MapSelectionStatusText,
+							   bMapSelectionPending
+								   ? NSLOCTEXT("HeistLobby", "MapSelectionUpdating", "UPDATING THE MUSEUM MAP...")
+								   : (bLocalHost ? NSLOCTEXT("HeistLobby", "MapSelectionHost", "SELECT THE MUSEUM MAP BEFORE STARTING.")
+												 : NSLOCTEXT("HeistLobby", "MapSelectionClient", "THE HOST SELECTS THE MUSEUM MAP.")));
 
 	RefreshPlayerSlots();
 	SnapshotChangedDelegate.Broadcast();
@@ -109,6 +132,12 @@ FHeistLobbySnapshotChanged& UHeistLobbyViewModel::GetSnapshotChangedDelegate()
 
 void UHeistLobbyViewModel::HandlePlayerConnectionsChanged(const int32)
 {
+	RebindPlayerIdentityDelegates();
+	RefreshLobbyData();
+}
+
+void UHeistLobbyViewModel::HandlePlayerIdentityChanged(const int32)
+{
 	RefreshLobbyData();
 }
 
@@ -117,14 +146,59 @@ void UHeistLobbyViewModel::HandleOnlineSessionStateChanged()
 	RefreshLobbyData();
 }
 
-bool UHeistLobbyViewModel::RequestHostSession()
+void UHeistLobbyViewModel::HandleLobbyMapSelectionChanged(const FName, const bool, const int32)
 {
-	return IsValid(GameInstance) && bCanRequestHostSession && GameInstance->RequestHostSession();
+	RefreshLobbyData();
 }
 
-bool UHeistLobbyViewModel::RequestJoinSessionByCode(const FString& JoinCode)
+void UHeistLobbyViewModel::RebindPlayerIdentityDelegates()
 {
-	return IsValid(GameInstance) && bCanRequestJoinSession && GameInstance->RequestJoinSessionByCode(JoinCode);
+	UnbindPlayerIdentityDelegates();
+	if (!IsValid(GameState))
+	{
+		return;
+	}
+
+	for (APlayerState* PlayerState : GameState->PlayerArray)
+	{
+		AHeistPlayerState* HeistPlayerState = Cast<AHeistPlayerState>(PlayerState);
+		if (!IsValid(HeistPlayerState))
+		{
+			continue;
+		}
+
+		HeistPlayerState->GetPlayerIdentityChangedDelegate().RemoveAll(this);
+		HeistPlayerState->GetPlayerIdentityChangedDelegate().AddUObject(this, &UHeistLobbyViewModel::HandlePlayerIdentityChanged);
+		BoundPlayerStates.Add(HeistPlayerState);
+	}
+}
+
+void UHeistLobbyViewModel::UnbindPlayerIdentityDelegates()
+{
+	for (const TWeakObjectPtr<AHeistPlayerState>& BoundPlayerState : BoundPlayerStates)
+	{
+		if (AHeistPlayerState* HeistPlayerState = BoundPlayerState.Get(); IsValid(HeistPlayerState))
+		{
+			HeistPlayerState->GetPlayerIdentityChangedDelegate().RemoveAll(this);
+		}
+	}
+	BoundPlayerStates.Reset();
+}
+
+void UHeistLobbyViewModel::RequestLeaveSession()
+{
+	if (IsValid(PlayerController) && bCanRequestLeaveSession)
+	{
+		PlayerController->RequestLeaveOnlineSession();
+	}
+}
+
+void UHeistLobbyViewModel::RequestSelectMap(const FName RequestedMapId)
+{
+	if (IsValid(PlayerController) && bCanSelectMap)
+	{
+		PlayerController->RequestSetLobbyMapSelection(RequestedMapId);
+	}
 }
 
 #pragma endregion
@@ -186,6 +260,16 @@ const FText& UHeistLobbyViewModel::GetJoinCodeText() const
 	return JoinCodeText;
 }
 
+const FText& UHeistLobbyViewModel::GetSelectedMapText() const
+{
+	return SelectedMapText;
+}
+
+const FText& UHeistLobbyViewModel::GetMapSelectionStatusText() const
+{
+	return MapSelectionStatusText;
+}
+
 const FText& UHeistLobbyViewModel::GetPlayerSlot1Text() const
 {
 	return PlayerSlot1Text;
@@ -221,14 +305,14 @@ ESlateVisibility UHeistLobbyViewModel::GetJoinCodeVisibility() const
 	return JoinCodeVisibility;
 }
 
-bool UHeistLobbyViewModel::CanRequestHostSession() const
+bool UHeistLobbyViewModel::CanRequestLeaveSession() const
 {
-	return bCanRequestHostSession;
+	return bCanRequestLeaveSession;
 }
 
-bool UHeistLobbyViewModel::CanRequestJoinSession() const
+bool UHeistLobbyViewModel::CanSelectMap() const
 {
-	return bCanRequestJoinSession;
+	return bCanSelectMap;
 }
 
 FText UHeistLobbyViewModel::ResolveOnlineSessionStatusText() const
@@ -259,11 +343,15 @@ FText UHeistLobbyViewModel::ResolveOnlineSessionStatusText() const
 	{
 		return NSLOCTEXT("HeistLobby", "JoinedSession", "CONNECTED. WAITING FOR THE HOST.");
 	}
+	if (State == FName(TEXT("Leaving")))
+	{
+		return NSLOCTEXT("HeistLobby", "LeavingSession", "LEAVING THE LOBBY AND RETURNING TO THE TITLE MENU...");
+	}
 	if (State == FName(TEXT("Failed")))
 	{
 		return NSLOCTEXT("HeistLobby", "SessionFailed", "THE SESSION REQUEST FAILED.");
 	}
-	return NSLOCTEXT("HeistLobby", "SessionIdle", "CREATE A SESSION OR ENTER A JOIN CODE.");
+	return NSLOCTEXT("HeistLobby", "SessionIdle", "NO ONLINE LOBBY IS ACTIVE.");
 }
 
 FText UHeistLobbyViewModel::ResolveOnlineSessionFailureText() const
@@ -301,6 +389,31 @@ FText UHeistLobbyViewModel::ResolveOnlineSessionFailureText() const
 	if (Failure == FName(TEXT("SessionAlreadyExists")))
 	{
 		return NSLOCTEXT("HeistLobby", "ExistingSession", "LEAVE THE CURRENT SESSION BEFORE STARTING ANOTHER.");
+	}
+	if (Failure == FName(TEXT("HostQuit")))
+	{
+		return NSLOCTEXT("HeistLobby", "HostQuit", "THE HOST CLOSED THE SESSION. RETURNING TO THE TITLE MENU.");
+	}
+	if (Failure == FName(TEXT("DestroySessionFailed")) || Failure == FName(TEXT("LeaveRequestRejected")))
+	{
+		return NSLOCTEXT("HeistLobby", "LeaveFailed", "THE SESSION COULD NOT BE CLOSED. TRY LEAVING AGAIN.");
+	}
+	if (Failure == FName(TEXT("MapSelectionUpdateFailed")) || Failure == FName(TEXT("MapSelectionUpdateRejected"))
+		|| Failure == FName(TEXT("MapSelectionCommitFailed")))
+	{
+		return NSLOCTEXT("HeistLobby", "MapSelectionFailed", "THE MUSEUM MAP COULD NOT BE UPDATED.");
+	}
+	if (Failure == FName(TEXT("NotHost")) || Failure == FName(TEXT("HostOnly")) || Failure == FName(TEXT("SessionNotHosting")))
+	{
+		return NSLOCTEXT("HeistLobby", "MapSelectionHostOnly", "ONLY THE HOST CAN CHANGE THE MUSEUM MAP.");
+	}
+	if (Failure == FName(TEXT("InvalidMapSelection")))
+	{
+		return NSLOCTEXT("HeistLobby", "InvalidMapSelection", "SELECT M01, M02, M03, OR RANDOM.");
+	}
+	if (Failure == FName(TEXT("LobbyNotReady")))
+	{
+		return NSLOCTEXT("HeistLobby", "LobbyMapSelectionLocked", "THE MUSEUM MAP CAN ONLY BE CHANGED IN THE LOBBY.");
 	}
 	return FText::Format(NSLOCTEXT("HeistLobby", "SessionErrorFormat", "SESSION ERROR: {0}"), FText::FromName(Failure));
 }

@@ -30,6 +30,38 @@
 namespace
 {
 const FLinearColor VerificationPlayerColors[] = {FLinearColor::Red, FLinearColor::Green, FLinearColor::Blue, FLinearColor::Yellow};
+
+int32 FindLowestAvailableHeistPlayerId(const AHeistGameState* HeistGameState, const int32 MaxPlayerSlots)
+{
+	bool bOccupiedSlots[UE_ARRAY_COUNT(VerificationPlayerColors)] = {};
+	const int32 ClampedMaxPlayerSlots = FMath::Clamp(MaxPlayerSlots, 1, UE_ARRAY_COUNT(VerificationPlayerColors));
+
+	if (IsValid(HeistGameState))
+	{
+		for (const APlayerState* PlayerState : HeistGameState->PlayerArray)
+		{
+			const AHeistPlayerState* HeistPlayerState = Cast<AHeistPlayerState>(PlayerState);
+			if (!IsValid(HeistPlayerState)
+				|| HeistPlayerState->HeistPlayerId < 1
+				|| HeistPlayerState->HeistPlayerId > ClampedMaxPlayerSlots)
+			{
+				continue;
+			}
+
+			bOccupiedSlots[HeistPlayerState->HeistPlayerId - 1] = true;
+		}
+	}
+
+	for (int32 SlotIndex = 0; SlotIndex < ClampedMaxPlayerSlots; ++SlotIndex)
+	{
+		if (!bOccupiedSlots[SlotIndex])
+		{
+			return SlotIndex + 1;
+		}
+	}
+
+	return INDEX_NONE;
+}
 }
 
 #pragma endregion
@@ -53,16 +85,27 @@ void AHeistGameMode::StartPlay()
 {
 	Super::StartPlay();
 	const UHeistGameInstance* HeistGameInstance = Cast<UHeistGameInstance>(GetGameInstance());
-	bool bStartAsOnlineLobby = UGameplayStatics::HasOption(OptionsString, TEXT("HeistLobby"))
-							   || (IsValid(HeistGameInstance) && (HeistGameInstance->IsHostingOnlineSession() || HeistGameInstance->IsJoinedOnlineSession()));
-#if !WITH_EDITOR
-	bStartAsOnlineLobby = bStartAsOnlineLobby || !UGameplayStatics::HasOption(OptionsString, TEXT("HeistGameplay"));
-#endif
+	const bool bStartAsTitleMenu = IsValid(HeistGameInstance) && HeistGameInstance->IsCurrentWorldTitleMenu();
+	const bool bStartAsOnlineLobby =
+		!bStartAsTitleMenu
+		&& (UGameplayStatics::HasOption(OptionsString, TEXT("HeistLobby"))
+			|| (IsValid(HeistGameInstance)
+				&& (HeistGameInstance->IsCurrentWorldLobby() || HeistGameInstance->IsHostingOnlineSession() || HeistGameInstance->IsJoinedOnlineSession())));
 	if (AHeistGameState* HeistGameState = GetGameState<AHeistGameState>())
 	{
 		HeistGameState->GetMatchPhaseChangedDelegate().RemoveAll(this);
 		HeistGameState->GetMatchPhaseChangedDelegate().AddUObject(this, &AHeistGameMode::HandleMatchPhaseChanged);
-		HeistGameState->SetMatchPhase(bStartAsOnlineLobby ? EHeistMatchPhase::Lobby : EHeistMatchPhase::InGame);
+		HeistGameState->SetMatchPhase(bStartAsTitleMenu ? EHeistMatchPhase::None
+													  : (bStartAsOnlineLobby ? EHeistMatchPhase::Lobby : EHeistMatchPhase::InGame));
+		if (bStartAsOnlineLobby && IsValid(HeistGameInstance))
+		{
+			HeistGameState->SetLobbyMapSelection(HeistGameInstance->GetSelectedMapId(), HeistGameInstance->IsRandomMapSelection());
+		}
+	}
+
+	if (bStartAsTitleMenu)
+	{
+		return;
 	}
 
 	ValidateItemDataTables();
@@ -86,6 +129,17 @@ void AHeistGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	ProcessedAlertTriggerIds.Reset();
 	bLockdownWorldRestrictionsApplied = false;
 	Super::EndPlay(EndPlayReason);
+}
+
+APawn* AHeistGameMode::SpawnDefaultPawnFor_Implementation(AController* NewPlayer, AActor* StartSpot)
+{
+	const UHeistGameInstance* HeistGameInstance = Cast<UHeistGameInstance>(GetGameInstance());
+	if (IsValid(HeistGameInstance) && HeistGameInstance->IsCurrentWorldTitleMenu())
+	{
+		return nullptr;
+	}
+
+	return Super::SpawnDefaultPawnFor_Implementation(NewPlayer, StartSpot);
 }
 
 void AHeistGameMode::HandleMatchPhaseChanged(const EHeistMatchPhase PreviousMatchPhase, const EHeistMatchPhase NewMatchPhase)
@@ -134,12 +188,22 @@ int32 AHeistGameMode::ClearMatchScopedTimers()
 
 void AHeistGameMode::RestartPlayer(AController* NewPlayer)
 {
+	const UHeistGameInstance* HeistGameInstance = Cast<UHeistGameInstance>(GetGameInstance());
+	if (IsValid(HeistGameInstance) && HeistGameInstance->IsCurrentWorldTitleMenu())
+	{
+		return;
+	}
+
 	AHeistPlayerState* HeistPlayerState = NewPlayer ? NewPlayer->GetPlayerState<AHeistPlayerState>() : nullptr;
 	if (HeistPlayerState && HeistPlayerState->HeistPlayerId == INDEX_NONE)
 	{
-		const int32 AssignedPlayerId = NextHeistPlayerId++;
-		const int32 ColorIndex = (AssignedPlayerId - 1) % UE_ARRAY_COUNT(VerificationPlayerColors);
-		HeistPlayerState->InitializeVerificationIdentity(AssignedPlayerId, VerificationPlayerColors[ColorIndex]);
+		const int32 MaxPlayerSlots =
+			IsValid(HeistGameInstance) ? HeistGameInstance->GetMaxPublicConnections() : UE_ARRAY_COUNT(VerificationPlayerColors);
+		const int32 AssignedPlayerId = FindLowestAvailableHeistPlayerId(GetGameState<AHeistGameState>(), MaxPlayerSlots);
+		if (AssignedPlayerId != INDEX_NONE)
+		{
+			HeistPlayerState->InitializeVerificationIdentity(AssignedPlayerId, VerificationPlayerColors[AssignedPlayerId - 1]);
+		}
 	}
 
 	Super::RestartPlayer(NewPlayer);
@@ -150,11 +214,27 @@ void AHeistGameMode::Logout(AController* Exiting)
 	AHeistPlayerState* ExitingPlayerState = IsValid(Exiting) ? Exiting->GetPlayerState<AHeistPlayerState>() : nullptr;
 	if (HasAuthority() && IsValid(ExitingPlayerState))
 	{
+		int32 CancelledActionCount = 0;
+		int32 CancelledForgeryCount = 0;
+		int32 ClosedInventoryCount = 0;
+		int32 ReleasedOriginalCount = 0;
+		int32 ClearedCaseLockCount = 0;
 		AHeistPlayerCharacter* ExitingCharacter = Cast<AHeistPlayerCharacter>(Exiting->GetPawn());
+		UHeistActionComponent* ActionComponent = IsValid(ExitingCharacter) ? ExitingCharacter->GetActionComponent() : nullptr;
 		UHeistForgeryComponent* ForgeryComponent = IsValid(ExitingCharacter) ? ExitingCharacter->GetForgeryComponent() : nullptr;
-		if (IsValid(ForgeryComponent))
+		UHeistInventoryComponent* InventoryComponent = IsValid(ExitingCharacter) ? ExitingCharacter->GetInventoryComponent() : nullptr;
+		if (IsValid(ActionComponent) && ActionComponent->IsGameplayCastActive())
 		{
-			ForgeryComponent->CancelForgerySession(FName(TEXT("OwnerDisconnected")));
+			ActionComponent->CancelGameplayActions(TEXT("OwnerDisconnected"));
+			++CancelledActionCount;
+		}
+		if (IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive() && ForgeryComponent->CancelForgerySession(FName(TEXT("OwnerDisconnected"))))
+		{
+			++CancelledForgeryCount;
+		}
+		if (IsValid(InventoryComponent) && InventoryComponent->IsInventoryOpen() && InventoryComponent->TrySetInventoryOpen(false))
+		{
+			++ClosedInventoryCount;
 		}
 
 		// Keep the case sweep as a safety net for pawn-less disconnects and
@@ -163,13 +243,80 @@ void AHeistGameMode::Logout(AController* Exiting)
 		{
 			if (AHeistPaintingDisplayCaseActor* DisplayCase = *DisplayCaseIterator; IsValid(DisplayCase))
 			{
-				DisplayCase->CancelSessionForOwner(ExitingPlayerState, FName(TEXT("OwnerDisconnected")));
-				DisplayCase->ReleaseOriginalForCarrier(ExitingPlayerState, FName(TEXT("OwnerDisconnected")));
+				ClearedCaseLockCount += DisplayCase->CancelSessionForOwner(ExitingPlayerState, FName(TEXT("OwnerDisconnected"))) ? 1 : 0;
+				ReleasedOriginalCount += DisplayCase->ReleaseOriginalForCarrier(ExitingPlayerState, FName(TEXT("OwnerDisconnected"))) ? 1 : 0;
 			}
 		}
+		UHeistDebugFunctionLibrary::DebugOnlineSessionShutdownCleanup(this, FName(TEXT("OwnerDisconnected")), CancelledActionCount, CancelledForgeryCount, ClosedInventoryCount,
+																	 ReleasedOriginalCount, ClearedCaseLockCount, 0, true);
 	}
 
 	Super::Logout(Exiting);
+}
+
+void AHeistGameMode::PrepareForOnlineSessionShutdown(const FName Reason)
+{
+	if (!HasAuthority())
+	{
+		UHeistDebugFunctionLibrary::DebugOnlineSessionShutdownCleanup(this, Reason, 0, 0, 0, 0, 0, 0, false);
+		return;
+	}
+
+	int32 ActiveCaseLockCount = 0;
+	int32 ActiveCaseTimerCount = 0;
+	int32 ReleasedOriginalCount = 0;
+	for (TActorIterator<AHeistPaintingDisplayCaseActor> DisplayCaseIterator(GetWorld()); DisplayCaseIterator; ++DisplayCaseIterator)
+	{
+		AHeistPaintingDisplayCaseActor* DisplayCase = *DisplayCaseIterator;
+		if (!IsValid(DisplayCase))
+		{
+			continue;
+		}
+
+		ActiveCaseLockCount += DisplayCase->IsSessionLocked() ? 1 : 0;
+		ActiveCaseTimerCount += DisplayCase->IsInspectionDelayTimerActive() || DisplayCase->IsInspectionClaimActive() ? 1 : 0;
+		if (AHeistPlayerState* OriginalCarrier = DisplayCase->GetOriginalCarrier(); IsValid(OriginalCarrier)
+			&& DisplayCase->ReleaseOriginalForCarrier(OriginalCarrier, Reason))
+		{
+			++ReleasedOriginalCount;
+		}
+	}
+
+	int32 CancelledActionCount = 0;
+	int32 CancelledForgeryCount = 0;
+	int32 ClosedInventoryCount = 0;
+	for (TActorIterator<AHeistPlayerCharacter> CharacterIterator(GetWorld()); CharacterIterator; ++CharacterIterator)
+	{
+		AHeistPlayerCharacter* PlayerCharacter = *CharacterIterator;
+		if (!IsValid(PlayerCharacter))
+		{
+			continue;
+		}
+
+		if (UHeistActionComponent* ActionComponent = PlayerCharacter->GetActionComponent(); IsValid(ActionComponent) && ActionComponent->IsGameplayCastActive())
+		{
+			ActionComponent->CancelGameplayActions(TEXT("OnlineSessionShutdown"));
+			++CancelledActionCount;
+		}
+		if (UHeistForgeryComponent* ForgeryComponent = PlayerCharacter->GetForgeryComponent(); IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive()
+			&& ForgeryComponent->CancelForgerySession(Reason))
+		{
+			++CancelledForgeryCount;
+		}
+		if (UHeistInventoryComponent* InventoryComponent = PlayerCharacter->GetInventoryComponent(); IsValid(InventoryComponent) && InventoryComponent->IsInventoryOpen()
+			&& InventoryComponent->TrySetInventoryOpen(false))
+		{
+			++ClosedInventoryCount;
+		}
+	}
+
+	const int32 ClearedMatchTimerCount = ClearMatchScopedTimers();
+	if (AHeistGameState* HeistGameState = GetGameState<AHeistGameState>())
+	{
+		HeistGameState->SetMatchPhase(EHeistMatchPhase::End);
+	}
+	UHeistDebugFunctionLibrary::DebugOnlineSessionShutdownCleanup(this, Reason, CancelledActionCount, CancelledForgeryCount, ClosedInventoryCount, ReleasedOriginalCount,
+																 ActiveCaseLockCount, ActiveCaseTimerCount + ClearedMatchTimerCount, true);
 }
 
 #pragma endregion

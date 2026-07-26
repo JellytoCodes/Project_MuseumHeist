@@ -38,12 +38,16 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
   protected:
 	virtual void StartPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	virtual APawn* SpawnDefaultPawnFor_Implementation(AController* NewPlayer, AActor* StartSpot) override;
 	virtual void RestartPlayer(AController* NewPlayer) override;
 	virtual void Logout(AController* Exiting) override;
 
   private:
 	void HandleMatchPhaseChanged(EHeistMatchPhase PreviousMatchPhase, EHeistMatchPhase NewMatchPhase);
 	int32 ClearMatchScopedTimers();
+
+  public:
+	void PrepareForOnlineSessionShutdown(FName Reason);
 
 #pragma endregion
 
@@ -139,8 +143,6 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Objective",
 			  meta = (AllowPrivateAccess = "true", ToolTip = "Optional explicit target case id. When None, the map's single DisplayCaseId ending in _Target is selected."))
 	FName ObjectiveTargetCaseId = NAME_None;
-
-	int32 NextHeistPlayerId = 1;
 
 #pragma endregion
 };

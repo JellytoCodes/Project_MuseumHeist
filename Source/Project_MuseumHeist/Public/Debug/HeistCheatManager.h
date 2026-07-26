@@ -139,6 +139,12 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 	void HeistSessionJoin(const FString& JoinCode);
 
 	UFUNCTION(Exec)
+	void HeistSessionLeave();
+
+	UFUNCTION(Exec)
+	void HeistSessionMap(const FString& MapId);
+
+	UFUNCTION(Exec)
 	void HeistSessionDump();
 
 #pragma endregion

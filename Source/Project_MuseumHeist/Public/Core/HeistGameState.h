@@ -14,6 +14,7 @@ DECLARE_MULTICAST_DELEGATE_OneParam(FHeistSoundPingEventReported, const FHeistSo
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistRareLootEventStateChanged, const FHeistRareLootEventState&);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerConnectionsChanged, int32);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistMatchPhaseChanged, EHeistMatchPhase, EHeistMatchPhase);
+DECLARE_MULTICAST_DELEGATE_ThreeParams(FHeistLobbyMapSelectionChanged, FName, bool, int32);
 DECLARE_MULTICAST_DELEGATE_FourParams(FHeistObjectiveStateChanged, FName, FName, EHeistObjectiveState, AHeistPlayerState*);
 DECLARE_MULTICAST_DELEGATE_FourParams(FHeistAlertStateChanged, EHeistAlertLevel, EHeistAlertLevel, int32, FName);
 
@@ -63,6 +64,39 @@ class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
 	void BroadcastMatchPhaseChanged(EHeistMatchPhase PreviousMatchPhase, const TCHAR* ChangeSource);
 
 	FHeistMatchPhaseChanged MatchPhaseChangedDelegate;
+
+#pragma endregion
+
+#pragma region LobbyMapSelection
+
+  public:
+	UFUNCTION(BlueprintPure, Category = "Heist|Lobby")
+	FName GetSelectedLobbyMapId() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Lobby")
+	bool IsRandomLobbyMapSelection() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Lobby")
+	int32 GetLobbyMapSelectionRevision() const;
+
+	bool SetLobbyMapSelection(FName NewSelectedMapId, bool bNewRandomSelection);
+	FHeistLobbyMapSelectionChanged& GetLobbyMapSelectionChangedDelegate();
+
+  private:
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
+	FName SelectedLobbyMapId = FName(TEXT("M01"));
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
+	bool bRandomLobbyMapSelection = false;
+
+	UPROPERTY(ReplicatedUsing = OnRep_LobbyMapSelectionRevision, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
+	int32 LobbyMapSelectionRevision = 0;
+
+	UFUNCTION()
+	void OnRep_LobbyMapSelectionRevision();
+
+	void BroadcastLobbyMapSelection(const TCHAR* ChangeSource);
+	FHeistLobbyMapSelectionChanged LobbyMapSelectionChangedDelegate;
 
 #pragma endregion
 

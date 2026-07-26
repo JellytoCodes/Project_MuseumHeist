@@ -4195,7 +4195,8 @@ void UHeistDebugFunctionLibrary::DebugLobbyHelp(APlayerController* PlayerControl
 	return;
 #else
 	Message(PlayerController,
-			TEXT("Lobby debug commands: HeistLobbyShow | HeistLobbyHide | HeistLobbyDump | HeistSessionHost | HeistSessionJoin <6-character code> | HeistSessionDump"),
+			TEXT("Lobby debug commands: HeistLobbyShow | HeistLobbyHide | HeistLobbyDump | HeistSessionHost | HeistSessionJoin <6-character code> | HeistSessionLeave | "
+				 "HeistSessionMap <M01|M02|M03|Random> | HeistSessionDump"),
 			EHeistDebugLevel::Info, true, 8.0f);
 #endif
 }
@@ -4252,9 +4253,12 @@ void UHeistDebugFunctionLibrary::DebugLobbyDump(APlayerController* PlayerControl
 
 	LobbyViewModel->RefreshLobbyData();
 	Message(PlayerController,
-			FString::Printf(TEXT("Lobby dump: Connected=%d LocalPlayerId=%d Phase=%s Countdown=%s Loadout=%s Blocker=%s"), LobbyViewModel->GetConnectedPlayerCount(),
+			FString::Printf(TEXT("Lobby dump: Connected=%d LocalPlayerId=%d Phase=%s Countdown=%s Loadout=%s Map=%s MapStatus=%s CanLeave=%s CanSelectMap=%s Blocker=%s"),
+							LobbyViewModel->GetConnectedPlayerCount(),
 							LobbyViewModel->GetLocalPlayerId(), *LobbyViewModel->GetPhaseText().ToString(), *LobbyViewModel->GetReadyCountdownText().ToString(),
-							*LobbyViewModel->GetDefaultLoadoutText().ToString(), *LobbyViewModel->GetAuthorityBlockerText().ToString()),
+							*LobbyViewModel->GetDefaultLoadoutText().ToString(), *LobbyViewModel->GetSelectedMapText().ToString(),
+							*LobbyViewModel->GetMapSelectionStatusText().ToString(), LobbyViewModel->CanRequestLeaveSession() ? TEXT("true") : TEXT("false"),
+							LobbyViewModel->CanSelectMap() ? TEXT("true") : TEXT("false"), *LobbyViewModel->GetAuthorityBlockerText().ToString()),
 			EHeistDebugLevel::Info, true, 8.0f);
 	Message(PlayerController, FString::Printf(TEXT("Lobby slot: %s"), *LobbyViewModel->GetPlayerSlot1Text().ToString()), EHeistDebugLevel::Info, false);
 	Message(PlayerController, FString::Printf(TEXT("Lobby slot: %s"), *LobbyViewModel->GetPlayerSlot2Text().ToString()), EHeistDebugLevel::Info, false);
@@ -4313,6 +4317,37 @@ void UHeistDebugFunctionLibrary::DebugOnlineSessionJoin(APlayerController* Playe
 #endif
 }
 
+void UHeistDebugFunctionLibrary::DebugOnlineSessionLeave(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		Message(PlayerController, TEXT("Session leave failed: missing Heist PlayerController."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+	HeistPlayerController->RequestLeaveOnlineSession();
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugOnlineSessionMap(APlayerController* PlayerController, const FString& MapId)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		Message(PlayerController, TEXT("Session map selection failed: missing Heist PlayerController."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+	HeistPlayerController->RequestSetLobbyMapSelection(FName(*MapId));
+	Message(PlayerController, FString::Printf(TEXT("Session map selection requested: Map=%s"), MapId.IsEmpty() ? TEXT("None") : *MapId), EHeistDebugLevel::Info, true);
+#endif
+}
+
 void UHeistDebugFunctionLibrary::DebugOnlineSessionDump(APlayerController* PlayerController)
 {
 #if UE_BUILD_SHIPPING
@@ -4326,20 +4361,104 @@ void UHeistDebugFunctionLibrary::DebugOnlineSessionDump(APlayerController* Playe
 		return;
 	}
 
-	const bool bConfigurationValid = !HeistGameInstance->GetActiveOnlineSubsystemName().IsNone() && HeistGameInstance->GetSelectedMapId() == FName(TEXT("M01"))
-									 && !HeistGameInstance->GetLobbyMapPath().IsEmpty();
+	const AHeistGameState* HeistGameState = HeistPlayerController->GetWorld() ? HeistPlayerController->GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	const FName SelectedMapId = HeistGameInstance->GetSelectedMapId();
+	const bool bValidMapId = SelectedMapId == FName(TEXT("M01")) || SelectedMapId == FName(TEXT("M02")) || SelectedMapId == FName(TEXT("M03"));
+	const bool bGameStateMapMatches = !IsValid(HeistGameState) || HeistGameState->GetSelectedLobbyMapId() == SelectedMapId;
+	const TCHAR* CurrentScreen =
+		HeistGameInstance->IsCurrentWorldTitleMenu() ? TEXT("TitleMenu") : (HeistGameInstance->IsCurrentWorldLobby() ? TEXT("Lobby") : TEXT("Gameplay"));
+	constexpr int32 MaxLobbySlots = 4;
+	int32 OccupiedPlayerIds[MaxLobbySlots] = {INDEX_NONE, INDEX_NONE, INDEX_NONE, INDEX_NONE};
+	int32 IdentifiedPlayerCount = 0;
+	int32 PendingIdentityCount = 0;
+	int32 DuplicateIdentityCount = 0;
+	if (IsValid(HeistGameState))
+	{
+		for (const APlayerState* PlayerState : HeistGameState->PlayerArray)
+		{
+			const AHeistPlayerState* HeistPlayerState = Cast<AHeistPlayerState>(PlayerState);
+			if (!IsValid(HeistPlayerState) || HeistPlayerState->HeistPlayerId < 1 || HeistPlayerState->HeistPlayerId > MaxLobbySlots)
+			{
+				++PendingIdentityCount;
+				continue;
+			}
+
+			const int32 SlotIndex = HeistPlayerState->HeistPlayerId - 1;
+			if (OccupiedPlayerIds[SlotIndex] != INDEX_NONE)
+			{
+				++DuplicateIdentityCount;
+				continue;
+			}
+
+			OccupiedPlayerIds[SlotIndex] = HeistPlayerState->HeistPlayerId;
+			++IdentifiedPlayerCount;
+		}
+	}
+
+	TArray<FString> PlayerSlotEntries;
+	PlayerSlotEntries.Reserve(MaxLobbySlots);
+	for (int32 SlotIndex = 0; SlotIndex < MaxLobbySlots; ++SlotIndex)
+	{
+		const FString OccupantLabel =
+			OccupiedPlayerIds[SlotIndex] == INDEX_NONE ? TEXT("Empty") : FString::Printf(TEXT("P%d"), OccupiedPlayerIds[SlotIndex]);
+		PlayerSlotEntries.Add(FString::Printf(TEXT("%d:%s"), SlotIndex + 1, *OccupantLabel));
+	}
+	const FString PlayerSlotSummary = FString::Join(PlayerSlotEntries, TEXT("|"));
+	const int32 ConnectedPlayerCount = IsValid(HeistGameState) ? HeistGameState->GetConnectedPlayerCount() : 0;
+	const AHeistPlayerState* LocalPlayerState = IsValid(HeistPlayerController) ? HeistPlayerController->GetPlayerState<AHeistPlayerState>() : nullptr;
+	const int32 LocalPlayerId = IsValid(LocalPlayerState) ? LocalPlayerState->HeistPlayerId : INDEX_NONE;
+	const AHeistHUD* HeistHUD = IsValid(HeistPlayerController) ? Cast<AHeistHUD>(HeistPlayerController->GetHUD()) : nullptr;
+	const UHeistLobbyViewModel* LobbyViewModel = IsValid(HeistHUD) ? HeistHUD->GetLobbyViewModel() : nullptr;
+	const int32 UIConnectedPlayerCount = IsValid(LobbyViewModel) ? LobbyViewModel->GetConnectedPlayerCount() : INDEX_NONE;
+	const int32 UILocalPlayerId = IsValid(LobbyViewModel) ? LobbyViewModel->GetLocalPlayerId() : INDEX_NONE;
+	const bool bLobbyRosterValid =
+		!HeistGameInstance->IsCurrentWorldLobby()
+		|| (IsValid(HeistGameState)
+			&& ConnectedPlayerCount >= 1
+			&& ConnectedPlayerCount <= HeistGameInstance->GetMaxPublicConnections()
+			&& IdentifiedPlayerCount == ConnectedPlayerCount
+			&& PendingIdentityCount == 0
+			&& DuplicateIdentityCount == 0);
+	const bool bLobbyUIValid =
+		!HeistGameInstance->IsCurrentWorldLobby()
+		|| (IsValid(LobbyViewModel) && UIConnectedPlayerCount == ConnectedPlayerCount && UILocalPlayerId == LocalPlayerId);
+	const bool bConfigurationValid =
+		!HeistGameInstance->GetActiveOnlineSubsystemName().IsNone() && bValidMapId && bGameStateMapMatches && !HeistGameInstance->GetTitleMenuMapPath().IsEmpty()
+		&& !HeistGameInstance->GetLobbyMapPath().IsEmpty() && bLobbyRosterValid && bLobbyUIValid;
 	Message(PlayerController,
-			FString::Printf(TEXT("Online session dump: Subsystem=%s State=%s Failure=%s ActiveCode=%s PendingCode=%s MaxPublic=%d Map=%s MapPath=%s Build=%d Pending=%s Hosting=%s Joined=%s Result=%s"),
+			FString::Printf(TEXT("Online session dump: Screen=%s Subsystem=%s State=%s Failure=%s ActiveCode=%s PendingCode=%s MaxPublic=%d Map=%s MapMode=%s "
+								 "ReplicatedMap=%s MapRevision=%d Players=%d Identified=%d PendingIdentities=%d DuplicateIdentities=%d LocalPlayerId=%d Slots=%s "
+								 "Roster=%s UIPlayers=%d UILocalPlayerId=%d UI=%s TitleMapPath=%s LobbyMapPath=%s Build=%d Pending=%s MapUpdatePending=%s "
+								 "Hosting=%s Joined=%s Result=%s"),
+							CurrentScreen,
 							*HeistGameInstance->GetActiveOnlineSubsystemName().ToString(), *HeistGameInstance->GetOnlineSessionState().ToString(),
 							HeistGameInstance->GetLastOnlineSessionFailure().IsNone() ? TEXT("None") : *HeistGameInstance->GetLastOnlineSessionFailure().ToString(),
 							HeistGameInstance->GetActiveJoinCode().IsEmpty() ? TEXT("None") : *HeistGameInstance->GetActiveJoinCode(),
 							HeistGameInstance->GetPendingJoinCode().IsEmpty() ? TEXT("None") : *HeistGameInstance->GetPendingJoinCode(),
-							HeistGameInstance->GetMaxPublicConnections(), *HeistGameInstance->GetSelectedMapId().ToString(), *HeistGameInstance->GetLobbyMapPath(),
+							HeistGameInstance->GetMaxPublicConnections(), *SelectedMapId.ToString(), HeistGameInstance->IsRandomMapSelection() ? TEXT("Random") : TEXT("Fixed"),
+							IsValid(HeistGameState) ? *HeistGameState->GetSelectedLobbyMapId().ToString() : TEXT("None"),
+							IsValid(HeistGameState) ? HeistGameState->GetLobbyMapSelectionRevision() : INDEX_NONE, ConnectedPlayerCount, IdentifiedPlayerCount,
+							PendingIdentityCount, DuplicateIdentityCount, LocalPlayerId, *PlayerSlotSummary,
+							HeistGameInstance->IsCurrentWorldLobby() ? (bLobbyRosterValid ? TEXT("PASS") : TEXT("FAIL")) : TEXT("N/A"),
+							UIConnectedPlayerCount, UILocalPlayerId,
+							HeistGameInstance->IsCurrentWorldLobby() ? (bLobbyUIValid ? TEXT("PASS") : TEXT("FAIL")) : TEXT("N/A"),
+							*HeistGameInstance->GetTitleMenuMapPath(), *HeistGameInstance->GetLobbyMapPath(),
 							HeistGameInstance->GetSessionBuildUniqueId(),
 							HeistGameInstance->IsOnlineSessionOperationPending() ? TEXT("true") : TEXT("false"),
+							HeistGameInstance->IsMapSelectionUpdatePending() ? TEXT("true") : TEXT("false"),
 							HeistGameInstance->IsHostingOnlineSession() ? TEXT("true") : TEXT("false"),
 							HeistGameInstance->IsJoinedOnlineSession() ? TEXT("true") : TEXT("false"), bConfigurationValid ? TEXT("PASS") : TEXT("FAIL")),
 			bConfigurationValid ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugOnlineSessionControllerRequest(const UObject* WorldContextObject, const TCHAR* Request, const bool bAccepted, const FName FailureReason)
+{
+#if !UE_BUILD_SHIPPING
+	LogMessage(EHeistDebugChannel::Network, bAccepted ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+			   FString::Printf(TEXT("Online session controller request: Controller=%s Request=%s Accepted=%s Failure=%s"), *GetNameSafe(WorldContextObject),
+							   Request != nullptr ? Request : TEXT("Unknown"), bAccepted ? TEXT("true") : TEXT("false"),
+							   FailureReason.IsNone() ? TEXT("None") : *FailureReason.ToString()));
 #endif
 }
 
@@ -4394,6 +4513,82 @@ void UHeistDebugFunctionLibrary::DebugOnlineSessionJoinComplete(const UHeistGame
 							   *GetNameSafe(GameInstance), *SessionName.ToString(), JoinCode.IsEmpty() ? TEXT("None") : *JoinCode, JoinResult,
 							   bAddressResolved ? TEXT("true") : TEXT("false"), bTravelRequested ? TEXT("true") : TEXT("false"),
 							   FailureReason.IsNone() ? TEXT("None") : *FailureReason.ToString(), bPass ? TEXT("PASS") : TEXT("FAIL")));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugOnlineSessionLeaveRequest(const UHeistGameInstance* GameInstance, const bool bWasHosting, const FName State, const bool bAccepted,
+																const FName FailureReason)
+{
+#if !UE_BUILD_SHIPPING
+	LogMessage(EHeistDebugChannel::Network, bAccepted ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+			   FString::Printf(TEXT("Online session leave request: GameInstance=%s Role=%s State=%s Accepted=%s Failure=%s"), *GetNameSafe(GameInstance),
+							   bWasHosting ? TEXT("Host") : TEXT("Client"), *State.ToString(), bAccepted ? TEXT("true") : TEXT("false"),
+							   FailureReason.IsNone() ? TEXT("None") : *FailureReason.ToString()));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugOnlineSessionDestroyComplete(const UHeistGameInstance* GameInstance, const FName SessionName, const bool bWasHosting, const bool bDestroyed,
+																   const bool bReturnedToTitleMenu, const FName LeaveReason, const FName FailureReason)
+{
+#if !UE_BUILD_SHIPPING
+	const bool bPass = bDestroyed && bReturnedToTitleMenu;
+	LogMessage(EHeistDebugChannel::Network, bPass ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+			   FString::Printf(TEXT("Online session destroy complete: GameInstance=%s Session=%s Role=%s Reason=%s Destroyed=%s ReturnedToTitleMenu=%s Failure=%s Result=%s"),
+							   *GetNameSafe(GameInstance), *SessionName.ToString(), bWasHosting ? TEXT("Host") : TEXT("Client"),
+							   LeaveReason.IsNone() ? TEXT("None") : *LeaveReason.ToString(), bDestroyed ? TEXT("true") : TEXT("false"),
+							   bReturnedToTitleMenu ? TEXT("true") : TEXT("false"), FailureReason.IsNone() ? TEXT("None") : *FailureReason.ToString(),
+							   bPass ? TEXT("PASS") : TEXT("FAIL")));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugOnlineSessionRemoteEnded(const UHeistGameInstance* GameInstance, const FName Reason, const bool bLeaveStarted)
+{
+#if !UE_BUILD_SHIPPING
+	LogMessage(EHeistDebugChannel::Network, bLeaveStarted ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+			   FString::Printf(TEXT("Online session remote end received: GameInstance=%s Reason=%s LeaveStarted=%s"), *GetNameSafe(GameInstance),
+							   Reason.IsNone() ? TEXT("None") : *Reason.ToString(), bLeaveStarted ? TEXT("true") : TEXT("false")));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugOnlineSessionMapSelection(const UHeistGameInstance* GameInstance, const FName RequestedMapId, const FName ResolvedMapId,
+																const bool bRandomSelection, const bool bOnlineUpdateRequested, const bool bAccepted,
+																const FName FailureReason)
+{
+#if !UE_BUILD_SHIPPING
+	LogMessage(EHeistDebugChannel::Network, bAccepted ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+			   FString::Printf(TEXT("Online session map selection: GameInstance=%s Requested=%s Resolved=%s Mode=%s OnlineUpdateRequested=%s Accepted=%s Failure=%s"),
+							   *GetNameSafe(GameInstance), RequestedMapId.IsNone() ? TEXT("None") : *RequestedMapId.ToString(),
+							   ResolvedMapId.IsNone() ? TEXT("None") : *ResolvedMapId.ToString(), bRandomSelection ? TEXT("Random") : TEXT("Fixed"),
+							   bOnlineUpdateRequested ? TEXT("true") : TEXT("false"), bAccepted ? TEXT("true") : TEXT("false"),
+							   FailureReason.IsNone() ? TEXT("None") : *FailureReason.ToString()));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugLobbyMapSelectionState(const UObject* WorldContextObject, const TCHAR* ChangeSource, const FName SelectedMapId,
+															 const bool bRandomSelection, const int32 Revision, const bool bAccepted)
+{
+#if !UE_BUILD_SHIPPING
+	LogMessage(EHeistDebugChannel::Network, bAccepted ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+			   FString::Printf(TEXT("Lobby map selection %s: GameState=%s Map=%s Mode=%s Revision=%d Authority=%s Result=%s"),
+							   ChangeSource != nullptr ? ChangeSource : TEXT("Unknown"), *GetNameSafe(WorldContextObject),
+							   SelectedMapId.IsNone() ? TEXT("None") : *SelectedMapId.ToString(), bRandomSelection ? TEXT("Random") : TEXT("Fixed"), Revision,
+							   IsValid(WorldContextObject) && WorldContextObject->GetWorld() && WorldContextObject->GetWorld()->GetNetMode() != NM_Client ? TEXT("true") : TEXT("false"),
+							   bAccepted ? TEXT("PASS") : TEXT("REJECTED")));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugOnlineSessionShutdownCleanup(const UObject* WorldContextObject, const FName Reason, const int32 CancelledActionCount,
+																   const int32 CancelledForgeryCount, const int32 ClosedInventoryCount,
+																   const int32 ReleasedOriginalCount, const int32 ClearedCaseLockCount,
+																   const int32 ClearedTimerCount, const bool bAuthority)
+{
+#if !UE_BUILD_SHIPPING
+	LogMessage(EHeistDebugChannel::Network, bAuthority ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+			   FString::Printf(TEXT("Online session shutdown cleanup: GameMode=%s Reason=%s Actions=%d Forgeries=%d Inventories=%d Originals=%d CaseLocks=%d Timers=%d "
+									"Authority=%s Result=%s"),
+							   *GetNameSafe(WorldContextObject), Reason.IsNone() ? TEXT("None") : *Reason.ToString(), CancelledActionCount, CancelledForgeryCount,
+							   ClosedInventoryCount, ReleasedOriginalCount, ClearedCaseLockCount, ClearedTimerCount, bAuthority ? TEXT("true") : TEXT("false"),
+							   bAuthority ? TEXT("PASS") : TEXT("FAIL")));
 #endif
 }
 

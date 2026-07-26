@@ -181,8 +181,15 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 	static void DebugOnlineSessionJoin(APlayerController* PlayerController, const FString& JoinCode);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Lobby", meta = (DevelopmentOnly))
+	static void DebugOnlineSessionLeave(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Lobby", meta = (DevelopmentOnly))
+	static void DebugOnlineSessionMap(APlayerController* PlayerController, const FString& MapId);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Lobby", meta = (DevelopmentOnly))
 	static void DebugOnlineSessionDump(APlayerController* PlayerController);
 
+	static void DebugOnlineSessionControllerRequest(const UObject* WorldContextObject, const TCHAR* Request, bool bAccepted, FName FailureReason);
 	static void DebugOnlineSessionRequest(const UHeistGameInstance* GameInstance, const TCHAR* Request, FName SubsystemName, const FString& JoinCode, FName State, bool bAccepted,
 										  const TCHAR* Reason);
 	static void DebugOnlineSessionCreateComplete(const UHeistGameInstance* GameInstance, FName SessionName, FName SubsystemName, const FString& JoinCode, bool bCreated,
@@ -191,6 +198,15 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 											   int32 VersionMismatchCount, FName SelectedSessionId, bool bJoinRequestAccepted, FName FailureReason);
 	static void DebugOnlineSessionJoinComplete(const UHeistGameInstance* GameInstance, FName SessionName, const FString& JoinCode, int32 JoinResult, bool bAddressResolved,
 											   bool bTravelRequested, FName FailureReason);
+	static void DebugOnlineSessionLeaveRequest(const UHeistGameInstance* GameInstance, bool bWasHosting, FName State, bool bAccepted, FName FailureReason);
+	static void DebugOnlineSessionDestroyComplete(const UHeistGameInstance* GameInstance, FName SessionName, bool bWasHosting, bool bDestroyed, bool bReturnedToTitleMenu,
+												  FName LeaveReason, FName FailureReason);
+	static void DebugOnlineSessionRemoteEnded(const UHeistGameInstance* GameInstance, FName Reason, bool bLeaveStarted);
+	static void DebugOnlineSessionMapSelection(const UHeistGameInstance* GameInstance, FName RequestedMapId, FName ResolvedMapId, bool bRandomSelection, bool bOnlineUpdateRequested,
+											   bool bAccepted, FName FailureReason);
+	static void DebugLobbyMapSelectionState(const UObject* WorldContextObject, const TCHAR* ChangeSource, FName SelectedMapId, bool bRandomSelection, int32 Revision, bool bAccepted);
+	static void DebugOnlineSessionShutdownCleanup(const UObject* WorldContextObject, FName Reason, int32 CancelledActionCount, int32 CancelledForgeryCount, int32 ClosedInventoryCount,
+												  int32 ReleasedOriginalCount, int32 ClearedCaseLockCount, int32 ClearedTimerCount, bool bAuthority);
 
 #pragma endregion
 

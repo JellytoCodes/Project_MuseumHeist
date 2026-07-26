@@ -9,6 +9,7 @@
 #include "Character/Components/HeistInventoryComponent.h"
 #include "Character/Components/HeistVisionComponent.h"
 #include "Character/HeistPlayerCharacter.h"
+#include "Core/HeistGameInstance.h"
 #include "Core/HeistGameMode.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistHUD.h"
@@ -170,14 +171,23 @@ void AHeistPlayerController::RefreshLocalHUDPresentation()
 	if (AHeistHUD* HeistHUD = GetHUD<AHeistHUD>())
 	{
 		HeistHUD->RefreshPresentationSources();
+		const UHeistGameInstance* HeistGameInstance = Cast<UHeistGameInstance>(GetGameInstance());
 		const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
-		if (IsValid(HeistGameState) && HeistGameState->GetMatchPhase() == EHeistMatchPhase::Lobby)
+		if (IsValid(HeistGameInstance) && HeistGameInstance->IsCurrentWorldTitleMenu())
 		{
 			HeistHUD->HideMainHUD();
+			HeistHUD->HideLobbyScreen();
+			HeistHUD->ShowTitleMenuScreen();
+		}
+		else if (IsValid(HeistGameState) && HeistGameState->GetMatchPhase() == EHeistMatchPhase::Lobby)
+		{
+			HeistHUD->HideMainHUD();
+			HeistHUD->HideTitleMenuScreen();
 			HeistHUD->ShowLobbyScreen();
 		}
 		else
 		{
+			HeistHUD->HideTitleMenuScreen();
 			HeistHUD->HideLobbyScreen();
 			HeistHUD->ShowMainHUD();
 		}
@@ -644,6 +654,32 @@ void AHeistPlayerController::HandleInteractReleased()
 
 #pragma region GameplayRequests
 
+void AHeistPlayerController::RequestLeaveOnlineSession()
+{
+	UHeistGameInstance* HeistGameInstance = Cast<UHeistGameInstance>(GetGameInstance());
+	const bool bAccepted = IsLocalController() && IsValid(HeistGameInstance) && HeistGameInstance->RequestLeaveSession();
+	UHeistDebugFunctionLibrary::DebugOnlineSessionControllerRequest(this, TEXT("Leave"), bAccepted, bAccepted ? NAME_None : FName(TEXT("RequestRejected")));
+}
+
+void AHeistPlayerController::RequestSetLobbyMapSelection(const FName RequestedMapId)
+{
+	if (!IsLocalController())
+	{
+		UHeistDebugFunctionLibrary::DebugOnlineSessionControllerRequest(this, TEXT("SetMap"), false, FName(TEXT("NotLocalController")));
+		return;
+	}
+
+	Server_RequestSetLobbyMapSelection(RequestedMapId);
+}
+
+void AHeistPlayerController::Client_NotifyOnlineSessionEnded_Implementation(const FName Reason)
+{
+	if (UHeistGameInstance* HeistGameInstance = Cast<UHeistGameInstance>(GetGameInstance()))
+	{
+		HeistGameInstance->HandleHostSessionEnded(Reason);
+	}
+}
+
 void AHeistPlayerController::RequestSetInventoryOpen(const bool bInventoryOpen)
 {
 	const AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
@@ -1076,6 +1112,14 @@ void AHeistPlayerController::Server_SetInventoryOpen_Implementation(const bool b
 	{
 		LogInventoryRequestRejected(TEXT("SetOpen"), INDEX_NONE, TEXT("MutationRejected"));
 	}
+}
+
+void AHeistPlayerController::Server_RequestSetLobbyMapSelection_Implementation(const FName RequestedMapId)
+{
+	UHeistGameInstance* HeistGameInstance = Cast<UHeistGameInstance>(GetGameInstance());
+	const bool bAccepted = HasAuthority() && IsLocalController() && IsValid(HeistGameInstance) && HeistGameInstance->RequestSetLobbyMapSelection(RequestedMapId);
+	UHeistDebugFunctionLibrary::DebugOnlineSessionControllerRequest(this, TEXT("SetMap"), bAccepted,
+																   bAccepted ? NAME_None : FName(IsLocalController() ? TEXT("AuthorityOrSessionRejected") : TEXT("HostOnly")));
 }
 
 void AHeistPlayerController::Server_CancelForgery_Implementation()

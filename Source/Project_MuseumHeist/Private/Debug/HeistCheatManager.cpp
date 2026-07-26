@@ -673,6 +673,20 @@ void UHeistCheatManager::HeistSessionJoin(const FString& JoinCode)
 #endif
 }
 
+void UHeistCheatManager::HeistSessionLeave()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugOnlineSessionLeave(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistSessionMap(const FString& MapId)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugOnlineSessionMap(GetOuterAPlayerController(), MapId);
+#endif
+}
+
 void UHeistCheatManager::HeistSessionDump()
 {
 #if !UE_BUILD_SHIPPING

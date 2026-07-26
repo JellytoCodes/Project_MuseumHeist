@@ -117,6 +117,15 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 #pragma region GameplayRequests
 
   public:
+	UFUNCTION(BlueprintCallable, Category = "Heist|Online")
+	void RequestLeaveOnlineSession();
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Lobby")
+	void RequestSetLobbyMapSelection(FName RequestedMapId);
+
+	UFUNCTION(Client, Reliable)
+	void Client_NotifyOnlineSessionEnded(FName Reason);
+
 	UFUNCTION(BlueprintCallable, Category = "Heist|Inventory")
 	void RequestSetInventoryOpen(bool bInventoryOpen);
 
@@ -153,6 +162,9 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	bool TryBuildCameraForwardAim(float Distance, FVector& OutViewLocation, FVector& OutCameraForward, FVector& OutTargetWorldLocation) const;
 
   private:
+	UFUNCTION(Server, Reliable)
+	void Server_RequestSetLobbyMapSelection(FName RequestedMapId);
+
 	UFUNCTION(Server, Reliable)
 	void Server_RequestLootPickup(AHeistLootActor* TargetLootActor);
 

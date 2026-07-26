@@ -1,24 +1,32 @@
 #include "Core/HeistGameInstance.h"
 
+#include "Core/HeistGameMode.h"
 #include "Core/HeistGameState.h"
+#include "Core/HeistPlayerController.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
+#include "Misc/PackageName.h"
 #include "Online/OnlineSessionNames.h"
 #include "OnlineSubsystem.h"
 #include "OnlineSubsystemNames.h"
 #include "OnlineSubsystemUtils.h"
 #include "OnlineSessionSettings.h"
+#include "TimerManager.h"
 
 namespace HeistOnlineSession
 {
 	const FName SessionName(TEXT("HeistSession"));
 	const FName JoinCodeSetting(TEXT("HEIST_JOIN_CODE"));
 	const FName MapIdSetting(TEXT("HEIST_MAP_ID"));
+	const FName MapSelectionModeSetting(TEXT("HEIST_MAP_MODE"));
 	const FName ProductSetting(TEXT("HEIST_PRODUCT"));
 	const FString ProductId(TEXT("MUSEUM_HEIST"));
 	const FString JoinCodeAlphabet(TEXT("ABCDEFGHJKLMNPQRSTUVWXYZ23456789"));
+	const FName RandomMapSelection(TEXT("RANDOM"));
+	const FString FixedMapSelectionMode(TEXT("FIXED"));
+	const FString RandomMapSelectionMode(TEXT("RANDOM"));
 
 	const FName StateIdle(TEXT("Idle"));
 	const FName StateCreating(TEXT("Creating"));
@@ -26,6 +34,7 @@ namespace HeistOnlineSession
 	const FName StateSearching(TEXT("Searching"));
 	const FName StateJoining(TEXT("Joining"));
 	const FName StateJoined(TEXT("Joined"));
+	const FName StateLeaving(TEXT("Leaving"));
 	const FName StateFailed(TEXT("Failed"));
 }
 
@@ -42,11 +51,16 @@ UHeistGameInstance::UHeistGameInstance()
 void UHeistGameInstance::Init()
 {
 	Super::Init();
+	DefaultSelectedMapId = SelectedMapId;
 	RefreshOnlineSessionInterface();
 }
 
 void UHeistGameInstance::Shutdown()
 {
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(HostLeaveGraceTimerHandle);
+	}
 	ClearOnlineDelegates();
 	ActiveSessionSearch.Reset();
 	OnlineSessionInterface.Reset();
@@ -69,6 +83,12 @@ bool UHeistGameInstance::RequestHostSession()
 	{
 		SetOnlineSessionState(OnlineSessionState, FName(TEXT("SessionAlreadyExists")));
 		UHeistDebugFunctionLibrary::DebugOnlineSessionRequest(this, TEXT("Host"), ActiveOnlineSubsystemName, ActiveJoinCode, OnlineSessionState, false, TEXT("SessionAlreadyExists"));
+		return false;
+	}
+	if (!IsCurrentWorldTitleMenu())
+	{
+		FailOnlineSessionRequest(FName(TEXT("TitleMenuOnly")));
+		UHeistDebugFunctionLibrary::DebugOnlineSessionRequest(this, TEXT("Host"), ActiveOnlineSubsystemName, ActiveJoinCode, OnlineSessionState, false, TEXT("TitleMenuOnly"));
 		return false;
 	}
 
@@ -134,6 +154,12 @@ bool UHeistGameInstance::RequestJoinSessionByCode(const FString& JoinCode)
 															 TEXT("SessionAlreadyExists"));
 		return false;
 	}
+	if (!IsCurrentWorldTitleMenu())
+	{
+		FailOnlineSessionRequest(FName(TEXT("TitleMenuOnly")));
+		UHeistDebugFunctionLibrary::DebugOnlineSessionRequest(this, TEXT("JoinByCode"), ActiveOnlineSubsystemName, NormalizedJoinCode, OnlineSessionState, false, TEXT("TitleMenuOnly"));
+		return false;
+	}
 
 	if (!IsJoinCodeValid(NormalizedJoinCode))
 	{
@@ -196,6 +222,162 @@ bool UHeistGameInstance::RequestJoinSessionByCode(const FString& JoinCode)
 	return true;
 }
 
+bool UHeistGameInstance::RequestLeaveSession()
+{
+	if (IsOnlineSessionOperationPending())
+	{
+		UHeistDebugFunctionLibrary::DebugOnlineSessionLeaveRequest(this, IsHostingOnlineSession(), OnlineSessionState, false, FName(TEXT("OperationPending")));
+		return false;
+	}
+	if (!IsHostingOnlineSession() && !IsJoinedOnlineSession())
+	{
+		UHeistDebugFunctionLibrary::DebugOnlineSessionLeaveRequest(this, false, OnlineSessionState, false, FName(TEXT("SessionNotActive")));
+		return false;
+	}
+	if (!RefreshOnlineSessionInterface())
+	{
+		FailOnlineSessionRequest(FName(TEXT("OnlineSessionUnavailable")));
+		UHeistDebugFunctionLibrary::DebugOnlineSessionLeaveRequest(this, IsHostingOnlineSession(), OnlineSessionState, false, LastOnlineSessionFailure);
+		return false;
+	}
+
+	const bool bWasHosting = IsHostingOnlineSession();
+	const FName LeaveReason = bWasHosting ? FName(TEXT("HostLeave")) : FName(TEXT("ClientLeave"));
+	bool bAccepted = false;
+	if (bWasHosting)
+	{
+		if (AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr)
+		{
+			HeistGameMode->PrepareForOnlineSessionShutdown(LeaveReason);
+		}
+		NotifyRemoteClientsSessionEnded(FName(TEXT("HostQuit")));
+
+		if (UWorld* World = GetWorld())
+		{
+			bLeaveWasHosting = true;
+			PendingLeaveReason = LeaveReason;
+			SetOnlineSessionState(HeistOnlineSession::StateLeaving);
+			World->GetTimerManager().SetTimer(HostLeaveGraceTimerHandle, this, &UHeistGameInstance::HandleHostLeaveGracePeriodElapsed,
+											 FMath::Clamp(HostLeaveGraceSeconds, 0.25f, 3.0f), false);
+			bAccepted = true;
+		}
+		else
+		{
+			bAccepted = BeginDestroySession(LeaveReason, true);
+		}
+	}
+	else
+	{
+		bAccepted = BeginDestroySession(LeaveReason, false);
+	}
+
+	UHeistDebugFunctionLibrary::DebugOnlineSessionLeaveRequest(this, bWasHosting, OnlineSessionState, bAccepted,
+															  bAccepted ? NAME_None : LastOnlineSessionFailure);
+	return bAccepted;
+}
+
+bool UHeistGameInstance::RequestSetLobbyMapSelection(const FName RequestedMapId)
+{
+	UWorld* World = GetWorld();
+	AHeistGameState* HeistGameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
+	FName ResolvedMapId = NAME_None;
+	bool bResolvedRandomSelection = false;
+	FName RejectReason = NAME_None;
+
+	if (!IsValid(World) || World->GetNetMode() == NM_Client)
+	{
+		RejectReason = FName(TEXT("NotHost"));
+	}
+	else if (!IsHostingOnlineSession())
+	{
+		RejectReason = FName(TEXT("SessionNotHosting"));
+	}
+	else if (IsOnlineSessionOperationPending())
+	{
+		RejectReason = FName(TEXT("OperationPending"));
+	}
+	else if (!IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::Lobby)
+	{
+		RejectReason = FName(TEXT("LobbyNotReady"));
+	}
+	else if (!ResolveRequestedMapSelection(RequestedMapId, ResolvedMapId, bResolvedRandomSelection))
+	{
+		RejectReason = FName(TEXT("InvalidMapSelection"));
+	}
+
+	if (!RejectReason.IsNone())
+	{
+		SetOnlineSessionState(OnlineSessionState, RejectReason);
+		UHeistDebugFunctionLibrary::DebugOnlineSessionMapSelection(this, RequestedMapId, ResolvedMapId, bResolvedRandomSelection, false, false, RejectReason);
+		return false;
+	}
+	if (SelectedMapId == ResolvedMapId && bRandomMapSelection == bResolvedRandomSelection)
+	{
+		SetOnlineSessionState(HeistOnlineSession::StateHosting);
+		UHeistDebugFunctionLibrary::DebugOnlineSessionMapSelection(this, RequestedMapId, ResolvedMapId, bResolvedRandomSelection, false, true, NAME_None);
+		return true;
+	}
+	if (!RefreshOnlineSessionInterface())
+	{
+		SetOnlineSessionState(OnlineSessionState, FName(TEXT("OnlineSessionUnavailable")));
+		UHeistDebugFunctionLibrary::DebugOnlineSessionMapSelection(this, RequestedMapId, ResolvedMapId, bResolvedRandomSelection, false, false,
+																 LastOnlineSessionFailure);
+		return false;
+	}
+
+	FNamedOnlineSession* NamedSession = OnlineSessionInterface->GetNamedSession(HeistOnlineSession::SessionName);
+	if (NamedSession == nullptr)
+	{
+		SetOnlineSessionState(OnlineSessionState, FName(TEXT("SessionNotFound")));
+		UHeistDebugFunctionLibrary::DebugOnlineSessionMapSelection(this, RequestedMapId, ResolvedMapId, bResolvedRandomSelection, false, false,
+																 LastOnlineSessionFailure);
+		return false;
+	}
+
+	FOnlineSessionSettings UpdatedSettings = NamedSession->SessionSettings;
+	UpdatedSettings.Set(HeistOnlineSession::MapIdSetting, ResolvedMapId.ToString(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+	UpdatedSettings.Set(HeistOnlineSession::MapSelectionModeSetting,
+						bResolvedRandomSelection ? HeistOnlineSession::RandomMapSelectionMode : HeistOnlineSession::FixedMapSelectionMode,
+						EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+
+	PendingSelectedMapId = ResolvedMapId;
+	bPendingRandomMapSelection = bResolvedRandomSelection;
+	bMapSelectionUpdatePending = true;
+	LastOnlineSessionFailure = NAME_None;
+	UpdateSessionDelegateHandle =
+		OnlineSessionInterface->AddOnUpdateSessionCompleteDelegate_Handle(FOnUpdateSessionCompleteDelegate::CreateUObject(this, &UHeistGameInstance::HandleUpdateSessionComplete));
+	OnlineSessionStateChangedDelegate.Broadcast();
+
+	const bool bUpdateRequested = OnlineSessionInterface->UpdateSession(HeistOnlineSession::SessionName, UpdatedSettings, true);
+	if (!bUpdateRequested)
+	{
+		OnlineSessionInterface->ClearOnUpdateSessionCompleteDelegate_Handle(UpdateSessionDelegateHandle);
+		UpdateSessionDelegateHandle.Reset();
+		bMapSelectionUpdatePending = false;
+		PendingSelectedMapId = NAME_None;
+		bPendingRandomMapSelection = false;
+		SetOnlineSessionState(HeistOnlineSession::StateHosting, FName(TEXT("MapSelectionUpdateRejected")));
+	}
+	UHeistDebugFunctionLibrary::DebugOnlineSessionMapSelection(this, RequestedMapId, ResolvedMapId, bResolvedRandomSelection, bUpdateRequested, bUpdateRequested,
+															  bUpdateRequested ? NAME_None : LastOnlineSessionFailure);
+	return bUpdateRequested;
+}
+
+void UHeistGameInstance::HandleHostSessionEnded(const FName Reason)
+{
+	const FName ResolvedReason = Reason.IsNone() ? FName(TEXT("HostQuit")) : Reason;
+	if (!IsJoinedOnlineSession())
+	{
+		ResetOnlineSessionRuntimeState();
+		ReturnToTitleMenu(ResolvedReason);
+		UHeistDebugFunctionLibrary::DebugOnlineSessionRemoteEnded(this, ResolvedReason, false);
+		return;
+	}
+
+	const bool bLeaveStarted = BeginDestroySession(ResolvedReason, false);
+	UHeistDebugFunctionLibrary::DebugOnlineSessionRemoteEnded(this, ResolvedReason, bLeaveStarted);
+}
+
 FName UHeistGameInstance::GetOnlineSessionState() const
 {
 	return OnlineSessionState;
@@ -223,7 +405,8 @@ FString UHeistGameInstance::GetPendingJoinCode() const
 
 bool UHeistGameInstance::IsOnlineSessionOperationPending() const
 {
-	return OnlineSessionState == HeistOnlineSession::StateCreating || OnlineSessionState == HeistOnlineSession::StateSearching || OnlineSessionState == HeistOnlineSession::StateJoining;
+	return OnlineSessionState == HeistOnlineSession::StateCreating || OnlineSessionState == HeistOnlineSession::StateSearching || OnlineSessionState == HeistOnlineSession::StateJoining
+		|| OnlineSessionState == HeistOnlineSession::StateLeaving || bMapSelectionUpdatePending;
 }
 
 bool UHeistGameInstance::IsHostingOnlineSession() const
@@ -251,9 +434,34 @@ FName UHeistGameInstance::GetSelectedMapId() const
 	return SelectedMapId;
 }
 
+bool UHeistGameInstance::IsRandomMapSelection() const
+{
+	return bRandomMapSelection;
+}
+
+bool UHeistGameInstance::IsMapSelectionUpdatePending() const
+{
+	return bMapSelectionUpdatePending;
+}
+
 FString UHeistGameInstance::GetLobbyMapPath() const
 {
 	return LobbyMapPath;
+}
+
+FString UHeistGameInstance::GetTitleMenuMapPath() const
+{
+	return TitleMenuMapPath;
+}
+
+bool UHeistGameInstance::IsCurrentWorldTitleMenu() const
+{
+	return IsCurrentWorldMap(TitleMenuMapPath, TEXT("HeistTitleMenu"));
+}
+
+bool UHeistGameInstance::IsCurrentWorldLobby() const
+{
+	return IsCurrentWorldMap(LobbyMapPath, TEXT("HeistLobby"));
 }
 
 FHeistOnlineSessionStateChanged& UHeistGameInstance::GetOnlineSessionStateChangedDelegate()
@@ -317,6 +525,9 @@ bool UHeistGameInstance::BeginCreateSession()
 	SessionSettings.BuildUniqueId = GetBuildUniqueId();
 	SessionSettings.Set(HeistOnlineSession::JoinCodeSetting, ActiveJoinCode, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	SessionSettings.Set(HeistOnlineSession::MapIdSetting, SelectedMapId.ToString(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+	SessionSettings.Set(HeistOnlineSession::MapSelectionModeSetting,
+						bRandomMapSelection ? HeistOnlineSession::RandomMapSelectionMode : HeistOnlineSession::FixedMapSelectionMode,
+						EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	SessionSettings.Set(HeistOnlineSession::ProductSetting, HeistOnlineSession::ProductId, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	SessionSettings.Set(SETTING_MAPNAME, LobbyMapPath, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
@@ -329,6 +540,54 @@ bool UHeistGameInstance::BeginCreateSession()
 		CreateSessionDelegateHandle.Reset();
 	}
 	return bRequestAccepted;
+}
+
+bool UHeistGameInstance::BeginDestroySession(const FName LeaveReason, const bool bWasHosting)
+{
+	if (!OnlineSessionInterface.IsValid() && !RefreshOnlineSessionInterface())
+	{
+		FailOnlineSessionRequest(FName(TEXT("OnlineSessionUnavailable")));
+		return false;
+	}
+
+	bLeaveWasHosting = bWasHosting;
+	PendingLeaveReason = LeaveReason;
+	SetOnlineSessionState(HeistOnlineSession::StateLeaving);
+
+	if (OnlineSessionInterface->GetNamedSession(HeistOnlineSession::SessionName) == nullptr)
+	{
+		HandleDestroySessionComplete(HeistOnlineSession::SessionName, true);
+		return true;
+	}
+
+	DestroySessionDelegateHandle =
+		OnlineSessionInterface->AddOnDestroySessionCompleteDelegate_Handle(FOnDestroySessionCompleteDelegate::CreateUObject(this, &UHeistGameInstance::HandleDestroySessionComplete));
+	if (OnlineSessionInterface->DestroySession(HeistOnlineSession::SessionName))
+	{
+		return true;
+	}
+
+	OnlineSessionInterface->ClearOnDestroySessionCompleteDelegate_Handle(DestroySessionDelegateHandle);
+	DestroySessionDelegateHandle.Reset();
+	SetOnlineSessionState(bLeaveWasHosting ? HeistOnlineSession::StateHosting : HeistOnlineSession::StateJoined, FName(TEXT("LeaveRequestRejected")));
+	PendingLeaveReason = NAME_None;
+	bLeaveWasHosting = false;
+	return false;
+}
+
+void UHeistGameInstance::HandleHostLeaveGracePeriodElapsed()
+{
+	HostLeaveGraceTimerHandle.Invalidate();
+	if (OnlineSessionState != HeistOnlineSession::StateLeaving || !bLeaveWasHosting || PendingLeaveReason.IsNone())
+	{
+		return;
+	}
+
+	const FName LeaveReason = PendingLeaveReason;
+	if (!BeginDestroySession(LeaveReason, true))
+	{
+		UHeistDebugFunctionLibrary::DebugOnlineSessionLeaveRequest(this, true, OnlineSessionState, false, LastOnlineSessionFailure);
+	}
 }
 
 bool UHeistGameInstance::TravelHostToLobby()
@@ -344,6 +603,7 @@ bool UHeistGameInstance::TravelHostToLobby()
 		if (AHeistGameState* HeistGameState = World->GetGameState<AHeistGameState>())
 		{
 			HeistGameState->SetMatchPhase(EHeistMatchPhase::Lobby);
+			HeistGameState->SetLobbyMapSelection(SelectedMapId, bRandomMapSelection);
 		}
 		return true;
 	}
@@ -356,6 +616,109 @@ bool UHeistGameInstance::TravelHostToLobby()
 	const FString TravelOptions = ActiveOnlineSubsystemName == NULL_SUBSYSTEM ? TEXT("listen?HeistLobby=1?bIsLanMatch=1") : TEXT("listen?HeistLobby=1");
 	UGameplayStatics::OpenLevel(this, FName(*LobbyMapPath), true, TravelOptions);
 	return true;
+}
+
+bool UHeistGameInstance::ReturnToTitleMenu(const FName)
+{
+	if (TitleMenuMapPath.IsEmpty())
+	{
+		return false;
+	}
+
+	UGameplayStatics::OpenLevel(this, FName(*TitleMenuMapPath), true, TEXT("HeistTitleMenu=1"));
+	return true;
+}
+
+bool UHeistGameInstance::IsCurrentWorldMap(const FString& MapPath, const TCHAR* TravelOption) const
+{
+	const UWorld* World = GetWorld();
+	if (!IsValid(World))
+	{
+		return false;
+	}
+
+	if (TravelOption != nullptr && World->URL.HasOption(TravelOption))
+	{
+		return true;
+	}
+
+	const FString ExpectedMapName = FPackageName::GetShortName(MapPath);
+	return !ExpectedMapName.IsEmpty() && UGameplayStatics::GetCurrentLevelName(this, true).Equals(ExpectedMapName, ESearchCase::IgnoreCase);
+}
+
+bool UHeistGameInstance::ResolveRequestedMapSelection(const FName RequestedMapId, FName& OutSelectedMapId, bool& bOutRandomSelection) const
+{
+	FString NormalizedMapId = RequestedMapId.ToString();
+	NormalizedMapId.TrimStartAndEndInline();
+	NormalizedMapId.ToUpperInline();
+	const FName NormalizedName(*NormalizedMapId);
+	bOutRandomSelection = NormalizedName == HeistOnlineSession::RandomMapSelection;
+	if (bOutRandomSelection)
+	{
+		const FName AvailableMapIds[] = {FName(TEXT("M01")), FName(TEXT("M02")), FName(TEXT("M03"))};
+		OutSelectedMapId = AvailableMapIds[FMath::RandRange(0, UE_ARRAY_COUNT(AvailableMapIds) - 1)];
+		return true;
+	}
+
+	if (NormalizedName == FName(TEXT("M01")) || NormalizedName == FName(TEXT("M02")) || NormalizedName == FName(TEXT("M03")))
+	{
+		OutSelectedMapId = NormalizedName;
+		return true;
+	}
+
+	OutSelectedMapId = NAME_None;
+	return false;
+}
+
+bool UHeistGameInstance::CommitLobbyMapSelection(const FName NewSelectedMapId, const bool bNewRandomSelection)
+{
+	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	if (!IsValid(HeistGameState) || !HeistGameState->SetLobbyMapSelection(NewSelectedMapId, bNewRandomSelection))
+	{
+		return false;
+	}
+
+	SelectedMapId = NewSelectedMapId;
+	bRandomMapSelection = bNewRandomSelection;
+	return true;
+}
+
+void UHeistGameInstance::NotifyRemoteClientsSessionEnded(const FName Reason) const
+{
+	UWorld* World = GetWorld();
+	if (!IsValid(World))
+	{
+		return;
+	}
+
+	for (FConstPlayerControllerIterator PlayerControllerIterator = World->GetPlayerControllerIterator(); PlayerControllerIterator; ++PlayerControllerIterator)
+	{
+		AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(PlayerControllerIterator->Get());
+		if (IsValid(HeistPlayerController) && !HeistPlayerController->IsLocalController())
+		{
+			HeistPlayerController->Client_NotifyOnlineSessionEnded(Reason);
+		}
+	}
+}
+
+void UHeistGameInstance::ResetOnlineSessionRuntimeState(const FName PreservedFailure)
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(HostLeaveGraceTimerHandle);
+	}
+	HostLeaveGraceTimerHandle.Invalidate();
+	ActiveSessionSearch.Reset();
+	ActiveJoinCode.Reset();
+	PendingJoinCode.Reset();
+	PendingSelectedMapId = NAME_None;
+	bPendingRandomMapSelection = false;
+	SelectedMapId = DefaultSelectedMapId;
+	bRandomMapSelection = false;
+	bMapSelectionUpdatePending = false;
+	bLeaveWasHosting = false;
+	PendingLeaveReason = NAME_None;
+	SetOnlineSessionState(HeistOnlineSession::StateIdle, PreservedFailure);
 }
 
 void UHeistGameInstance::ClearOnlineDelegates()
@@ -379,6 +742,16 @@ void UHeistGameInstance::ClearOnlineDelegates()
 	{
 		OnlineSessionInterface->ClearOnJoinSessionCompleteDelegate_Handle(JoinSessionDelegateHandle);
 		JoinSessionDelegateHandle.Reset();
+	}
+	if (UpdateSessionDelegateHandle.IsValid())
+	{
+		OnlineSessionInterface->ClearOnUpdateSessionCompleteDelegate_Handle(UpdateSessionDelegateHandle);
+		UpdateSessionDelegateHandle.Reset();
+	}
+	if (DestroySessionDelegateHandle.IsValid())
+	{
+		OnlineSessionInterface->ClearOnDestroySessionCompleteDelegate_Handle(DestroySessionDelegateHandle);
+		DestroySessionDelegateHandle.Reset();
 	}
 }
 
@@ -438,6 +811,8 @@ void UHeistGameInstance::HandleFindSessionsComplete(const bool bWasSuccessful)
 	if (!bWasSuccessful || !ActiveSessionSearch.IsValid())
 	{
 		ActiveSessionSearch.Reset();
+		PendingSelectedMapId = NAME_None;
+		bPendingRandomMapSelection = false;
 		FailOnlineSessionRequest(FName(TEXT("FindFailed")));
 		UHeistDebugFunctionLibrary::DebugOnlineSessionFindComplete(this, PendingJoinCode, ResultCount, 0, 0, 0, NAME_None, false, LastOnlineSessionFailure);
 		return;
@@ -485,7 +860,26 @@ void UHeistGameInstance::HandleFindSessionsComplete(const bool bWasSuccessful)
 		UHeistDebugFunctionLibrary::DebugOnlineSessionFindComplete(this, PendingJoinCode, ResultCount, MatchingCodeCount, FullMatchCount, VersionMismatchCount, NAME_None, false,
 																 LastOnlineSessionFailure);
 		ActiveSessionSearch.Reset();
+		PendingSelectedMapId = NAME_None;
+		bPendingRandomMapSelection = false;
 		return;
+	}
+
+	FString ResultMapId;
+	FString ResultMapSelectionMode;
+	BestResult->Session.SessionSettings.Get(HeistOnlineSession::MapIdSetting, ResultMapId);
+	BestResult->Session.SessionSettings.Get(HeistOnlineSession::MapSelectionModeSetting, ResultMapSelectionMode);
+	FName ResolvedJoinMapId = NAME_None;
+	bool bIgnoredRandomSelection = false;
+	if (ResolveRequestedMapSelection(FName(*ResultMapId), ResolvedJoinMapId, bIgnoredRandomSelection))
+	{
+		PendingSelectedMapId = ResolvedJoinMapId;
+		bPendingRandomMapSelection = ResultMapSelectionMode.Equals(HeistOnlineSession::RandomMapSelectionMode, ESearchCase::IgnoreCase);
+	}
+	else
+	{
+		PendingSelectedMapId = FName(TEXT("M01"));
+		bPendingRandomMapSelection = false;
 	}
 
 	const FName SelectedSessionId(*BestResult->GetSessionIdStr());
@@ -500,6 +894,8 @@ void UHeistGameInstance::HandleFindSessionsComplete(const bool bWasSuccessful)
 		OnlineSessionInterface->ClearOnJoinSessionCompleteDelegate_Handle(JoinSessionDelegateHandle);
 		JoinSessionDelegateHandle.Reset();
 		ActiveSessionSearch.Reset();
+		PendingSelectedMapId = NAME_None;
+		bPendingRandomMapSelection = false;
 		FailOnlineSessionRequest(FName(TEXT("JoinRequestRejected")));
 	}
 }
@@ -525,15 +921,69 @@ void UHeistGameInstance::HandleJoinSessionComplete(const FName SessionName, cons
 		UHeistDebugFunctionLibrary::DebugOnlineSessionJoinComplete(this, SessionName, PendingJoinCode, static_cast<int32>(JoinResult), bConnectStringResolved, false,
 																  LastOnlineSessionFailure);
 		ActiveSessionSearch.Reset();
+		PendingSelectedMapId = NAME_None;
+		bPendingRandomMapSelection = false;
 		return;
 	}
 
 	ActiveJoinCode = PendingJoinCode;
 	PendingJoinCode.Reset();
+	if (!PendingSelectedMapId.IsNone())
+	{
+		SelectedMapId = PendingSelectedMapId;
+		bRandomMapSelection = bPendingRandomMapSelection;
+	}
+	PendingSelectedMapId = NAME_None;
+	bPendingRandomMapSelection = false;
 	SetOnlineSessionState(HeistOnlineSession::StateJoined);
 	UHeistDebugFunctionLibrary::DebugOnlineSessionJoinComplete(this, SessionName, ActiveJoinCode, static_cast<int32>(JoinResult), true, true, NAME_None);
 	ActiveSessionSearch.Reset();
 	LocalPlayerController->ClientTravel(ConnectString, TRAVEL_Absolute);
+}
+
+void UHeistGameInstance::HandleUpdateSessionComplete(const FName SessionName, const bool bWasSuccessful)
+{
+	if (OnlineSessionInterface.IsValid() && UpdateSessionDelegateHandle.IsValid())
+	{
+		OnlineSessionInterface->ClearOnUpdateSessionCompleteDelegate_Handle(UpdateSessionDelegateHandle);
+		UpdateSessionDelegateHandle.Reset();
+	}
+
+	const FName RequestedMapId = PendingSelectedMapId;
+	const bool bRequestedRandomSelection = bPendingRandomMapSelection;
+	bMapSelectionUpdatePending = false;
+	PendingSelectedMapId = NAME_None;
+	bPendingRandomMapSelection = false;
+
+	const bool bCorrectSession = SessionName == HeistOnlineSession::SessionName;
+	const bool bCommitted = bWasSuccessful && bCorrectSession && CommitLobbyMapSelection(RequestedMapId, bRequestedRandomSelection);
+	SetOnlineSessionState(HeistOnlineSession::StateHosting,
+						  bCommitted ? NAME_None : FName(bWasSuccessful && bCorrectSession ? TEXT("MapSelectionCommitFailed") : TEXT("MapSelectionUpdateFailed")));
+	UHeistDebugFunctionLibrary::DebugOnlineSessionMapSelection(this, bRequestedRandomSelection ? HeistOnlineSession::RandomMapSelection : RequestedMapId, RequestedMapId,
+															  bRequestedRandomSelection, true, bCommitted, LastOnlineSessionFailure);
+}
+
+void UHeistGameInstance::HandleDestroySessionComplete(const FName SessionName, const bool bWasSuccessful)
+{
+	if (OnlineSessionInterface.IsValid() && DestroySessionDelegateHandle.IsValid())
+	{
+		OnlineSessionInterface->ClearOnDestroySessionCompleteDelegate_Handle(DestroySessionDelegateHandle);
+		DestroySessionDelegateHandle.Reset();
+	}
+
+	const bool bCorrectSession = SessionName == HeistOnlineSession::SessionName;
+	const bool bDestroySucceeded = bWasSuccessful && bCorrectSession;
+	const bool bWasHost = bLeaveWasHosting;
+	const FName LeaveReason = PendingLeaveReason;
+	const FName PreservedFailure = bDestroySucceeded ? NAME_None : FName(TEXT("DestroySessionFailed"));
+	ResetOnlineSessionRuntimeState(PreservedFailure);
+	const bool bReturnedToTitleMenu = ReturnToTitleMenu(PreservedFailure);
+	if (!bDestroySucceeded)
+	{
+		SetOnlineSessionState(HeistOnlineSession::StateFailed, FName(TEXT("DestroySessionFailed")));
+	}
+	UHeistDebugFunctionLibrary::DebugOnlineSessionDestroyComplete(this, SessionName, bWasHost, bDestroySucceeded, bReturnedToTitleMenu, LeaveReason,
+																 LastOnlineSessionFailure);
 }
 
 FString UHeistGameInstance::NormalizeJoinCode(const FString& JoinCode)

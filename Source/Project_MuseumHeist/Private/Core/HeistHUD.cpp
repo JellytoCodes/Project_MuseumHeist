@@ -16,11 +16,13 @@
 #include "UI/ViewModels/HeistLobbyViewModel.h"
 #include "UI/ViewModels/HeistQuickSlotViewModel.h"
 #include "UI/ViewModels/HeistResultViewModel.h"
+#include "UI/ViewModels/HeistTitleMenuViewModel.h"
 #include "UI/Widgets/HeistHUDWidget.h"
 #include "UI/Widgets/HeistForgeryWidget.h"
 #include "UI/Widgets/HeistInventoryWidget.h"
 #include "UI/Widgets/HeistLobbyWidget.h"
 #include "UI/Widgets/HeistResultWidget.h"
+#include "UI/Widgets/HeistTitleMenuWidget.h"
 
 #pragma region Construction
 
@@ -71,6 +73,7 @@ void AHeistHUD::RefreshPresentationSources()
 	InitializeMainHUDPresentation();
 	InitializeForgeryPresentation();
 	InitializeResultPresentation();
+	InitializeTitleMenuPresentation();
 	InitializeLobbyPresentation();
 }
 
@@ -121,6 +124,86 @@ void AHeistHUD::InitializeMainHUDPresentation()
 	}
 
 	MainHUDWidget->SetupHUDWidget(HUDViewModel, InventoryViewModel, QuickSlotViewModel, InteractionComponent);
+}
+
+#pragma endregion
+
+#pragma region TitleMenuPresentation
+
+bool AHeistHUD::ShowTitleMenuScreen()
+{
+	InitializeTitleMenuPresentation();
+
+	if (!IsValid(TitleMenuViewModel) || !TitleMenuWidgetClass)
+	{
+		return false;
+	}
+
+	if (!IsValid(TitleMenuWidget))
+	{
+		APlayerController* OwningPlayerController = GetOwningPlayerController();
+		if (!IsValid(OwningPlayerController))
+		{
+			return false;
+		}
+
+		TitleMenuWidget = CreateWidget<UHeistTitleMenuWidget>(OwningPlayerController, TitleMenuWidgetClass);
+		if (!IsValid(TitleMenuWidget))
+		{
+			return false;
+		}
+
+		TitleMenuWidget->SetupTitleMenuWidget(TitleMenuViewModel);
+		TitleMenuWidget->AddToViewport();
+	}
+	else
+	{
+		TitleMenuWidget->SetVisibility(ESlateVisibility::Visible);
+	}
+
+	TitleMenuViewModel->RefreshTitleMenuData();
+	APlayerController* OwningPlayerController = GetOwningPlayerController();
+	if (IsValid(OwningPlayerController))
+	{
+		FInputModeUIOnly InputMode;
+		if (TitleMenuWidget->IsFocusable())
+		{
+			InputMode.SetWidgetToFocus(TitleMenuWidget->TakeWidget());
+		}
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		OwningPlayerController->SetInputMode(InputMode);
+		OwningPlayerController->SetShowMouseCursor(true);
+	}
+	return true;
+}
+
+void AHeistHUD::HideTitleMenuScreen()
+{
+	if (IsValid(TitleMenuWidget))
+	{
+		TitleMenuWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+UHeistTitleMenuViewModel* AHeistHUD::GetTitleMenuViewModel() const
+{
+	return TitleMenuViewModel;
+}
+
+void AHeistHUD::InitializeTitleMenuPresentation()
+{
+	APlayerController* OwningPlayerController = GetOwningPlayerController();
+	if (!IsValid(OwningPlayerController) || !OwningPlayerController->IsLocalController())
+	{
+		return;
+	}
+
+	if (!IsValid(TitleMenuViewModel))
+	{
+		TitleMenuViewModel = NewObject<UHeistTitleMenuViewModel>(this);
+	}
+
+	TitleMenuViewModel->SetupViewModel(Cast<UHeistGameInstance>(GetGameInstance()));
 }
 
 #pragma endregion
@@ -212,7 +295,7 @@ void AHeistHUD::InitializeLobbyPresentation()
 	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	AHeistPlayerState* HeistPlayerState = OwningPlayerController->GetPlayerState<AHeistPlayerState>();
 	UHeistGameInstance* HeistGameInstance = Cast<UHeistGameInstance>(GetGameInstance());
-	LobbyViewModel->SetupViewModel(HeistGameState, HeistPlayerState, HeistGameInstance);
+	LobbyViewModel->SetupViewModel(HeistGameState, HeistPlayerState, HeistGameInstance, Cast<AHeistPlayerController>(OwningPlayerController));
 }
 
 #pragma endregion

@@ -2,6 +2,7 @@
 #include "Core/HeistLogChannels.h"
 
 #include "Core/HeistPlayerState.h"
+#include "Debug/HeistDebugFunctionLibrary.h"
 #include "Net/UnrealNetwork.h"
 
 namespace
@@ -101,6 +102,63 @@ void AHeistGameState::BroadcastMatchPhaseChanged(const EHeistMatchPhase Previous
 	MatchPhaseChangedDelegate.Broadcast(PreviousMatchPhase, MatchPhase);
 	UE_LOG(LogHeistNetwork, Log, TEXT("Match phase %s: Previous=%s New=%s Authority=%s"), ChangeSource, *UEnum::GetValueAsString(PreviousMatchPhase), *UEnum::GetValueAsString(MatchPhase),
 		   HasAuthority() ? TEXT("true") : TEXT("false"));
+}
+
+#pragma endregion
+
+#pragma region LobbyMapSelection
+
+FName AHeistGameState::GetSelectedLobbyMapId() const
+{
+	return SelectedLobbyMapId;
+}
+
+bool AHeistGameState::IsRandomLobbyMapSelection() const
+{
+	return bRandomLobbyMapSelection;
+}
+
+int32 AHeistGameState::GetLobbyMapSelectionRevision() const
+{
+	return LobbyMapSelectionRevision;
+}
+
+bool AHeistGameState::SetLobbyMapSelection(const FName NewSelectedMapId, const bool bNewRandomSelection)
+{
+	const bool bValidMapId = NewSelectedMapId == FName(TEXT("M01")) || NewSelectedMapId == FName(TEXT("M02")) || NewSelectedMapId == FName(TEXT("M03"));
+	if (!HasAuthority() || MatchPhase != EHeistMatchPhase::Lobby || !bValidMapId)
+	{
+		UHeistDebugFunctionLibrary::DebugLobbyMapSelectionState(this, TEXT("ServerRejected"), NewSelectedMapId, bNewRandomSelection, LobbyMapSelectionRevision, false);
+		return false;
+	}
+
+	if (SelectedLobbyMapId == NewSelectedMapId && bRandomLobbyMapSelection == bNewRandomSelection)
+	{
+		return true;
+	}
+
+	SelectedLobbyMapId = NewSelectedMapId;
+	bRandomLobbyMapSelection = bNewRandomSelection;
+	++LobbyMapSelectionRevision;
+	ForceNetUpdate();
+	BroadcastLobbyMapSelection(TEXT("Server"));
+	return true;
+}
+
+FHeistLobbyMapSelectionChanged& AHeistGameState::GetLobbyMapSelectionChangedDelegate()
+{
+	return LobbyMapSelectionChangedDelegate;
+}
+
+void AHeistGameState::OnRep_LobbyMapSelectionRevision()
+{
+	BroadcastLobbyMapSelection(TEXT("Replicated"));
+}
+
+void AHeistGameState::BroadcastLobbyMapSelection(const TCHAR* ChangeSource)
+{
+	LobbyMapSelectionChangedDelegate.Broadcast(SelectedLobbyMapId, bRandomLobbyMapSelection, LobbyMapSelectionRevision);
+	UHeistDebugFunctionLibrary::DebugLobbyMapSelectionState(this, ChangeSource, SelectedLobbyMapId, bRandomLobbyMapSelection, LobbyMapSelectionRevision, true);
 }
 
 #pragma endregion
@@ -546,6 +604,9 @@ void AHeistGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AHeistGameState, MatchPhase);
+	DOREPLIFETIME(AHeistGameState, SelectedLobbyMapId);
+	DOREPLIFETIME(AHeistGameState, bRandomLobbyMapSelection);
+	DOREPLIFETIME(AHeistGameState, LobbyMapSelectionRevision);
 	DOREPLIFETIME(AHeistGameState, AlertLevel);
 	DOREPLIFETIME(AHeistGameState, AlertNextTransitionServerTime);
 	DOREPLIFETIME(AHeistGameState, LastAlertTriggerId);

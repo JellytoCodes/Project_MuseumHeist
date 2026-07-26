@@ -85,7 +85,9 @@ Notion Task 기록은 개별 Task 상태와 테스트 로그 번호의 Source of
 # 3. Core Loop
 
 ```text
-Lobby
+Title Menu
+→ Host Session 또는 Join Code 입력
+→ Lobby
 → Ready Countdown
 → First-Person Infiltration
 → Target Artifact 탐색
@@ -106,10 +108,12 @@ Lobby
 # 4. v1.0 Required Scope
 
 - 1~4인 Listen Server
+- 별도 Title Menu Level
+- 별도 Online Lobby Level
 - Full First-Person
 - 고정 박물관 맵 1개
 - 고정 계약 1개
-- `Lobby → ReadyCountdown → InGame → End`
+- `TitleMenu → Lobby → ReadyCountdown → InGame → End`
 - Painting Target Artifact 1개
 - Painting Template 3~5개
 - Painting Display Case State Machine
@@ -1082,11 +1086,16 @@ W4~W6 결과와 실제 잔여 위험을 검토한 뒤 필요한 경우에만 `TA
 
 ## W5 Current Handoff
 
-- 현재 활성 묶음은 `TASK-W5-001~003`이다.
+- `TASK-W5-001~005`의 Editor OnlineSubsystemNull 검증은 완료됐다.
 - `UHeistGameInstance`가 Online Subsystem 선택과 Create / Find / Join / Travel 상태를 단독 소유한다.
 - Editor PIE는 로컬 다중 인스턴스 검증을 위해 `OnlineSubsystemNull`을 사용한다.
 - 비 Editor 실행과 패키지 빌드는 기본 `OnlineSubsystemSteam`을 사용한다.
-- 비 Editor 실행은 기본적으로 Lobby Phase에서 시작하고, Editor 직접 PIE는 기존 Gameplay 회귀 검증을 위해 InGame 시작을 유지한다.
+- 비 Editor 실행은 별도 Title Menu Level에서 시작한다.
+- Title Menu는 Host Session과 Join Code 입력만 소유한다.
+- Session 생성 또는 참가 성공 시 별도 Lobby Level로 이동한다.
+- Lobby는 참가 코드 표시, Player Slot, Map 선택, Ready / Start, Leave만 소유한다.
+- Session Leave 또는 Host Quit 시 Title Menu Level로 복귀한다.
+- Editor 직접 Gameplay Map PIE는 기존 Gameplay 회귀 검증을 위해 InGame 시작을 유지한다.
 - Session은 1~4인 Listen Server, Presence, Lobby, Join In Progress를 사용한다.
 - Online Session의 로컬 이름은 PIE가 선점하는 `GameSession`과 분리된 `HeistSession`을 사용한다.
 - Host는 혼동 문자를 제외한 6자리 참가 코드를 생성하고 Session Setting에 게시한다.
