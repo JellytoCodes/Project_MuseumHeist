@@ -71,12 +71,13 @@ void UHeistInventorySlotWidget::RefreshPresentation()
 {
 	if (IsValid(CoordinateText))
 	{
-		CoordinateText->SetText(FText::Format(NSLOCTEXT("HeistInventory", "SlotCoordinateFormat", "{0},{1}"), FText::AsNumber(GridCoordinate.X), FText::AsNumber(GridCoordinate.Y)));
+		CoordinateText->SetText(FText::Format(NSLOCTEXT("HeistInventory", "SlotCoordinateFormat", "GRID CELL {0}, {1}"),
+											 FText::AsNumber(GridCoordinate.X), FText::AsNumber(GridCoordinate.Y)));
 	}
 
 	if (IsValid(OccupancyText))
 	{
-		OccupancyText->SetText(bOccupied ? NSLOCTEXT("HeistInventory", "SlotOccupied", "OCC") : FText::GetEmpty());
+		OccupancyText->SetText(bOccupied ? NSLOCTEXT("HeistInventory", "SlotOccupied", "OCCUPIED") : FText::GetEmpty());
 	}
 
 	if (IsValid(SlotBackground))

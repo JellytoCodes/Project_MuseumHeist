@@ -5,6 +5,7 @@
 #include "Character/Components/HeistInventoryComponent.h"
 #include "Character/Components/HeistInteractionComponent.h"
 #include "Character/HeistPlayerCharacter.h"
+#include "Core/HeistGameInstance.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
@@ -161,6 +162,18 @@ bool AHeistHUD::ShowLobbyScreen()
 	}
 
 	LobbyViewModel->RefreshLobbyData();
+	APlayerController* OwningPlayerController = GetOwningPlayerController();
+	if (IsValid(OwningPlayerController))
+	{
+		FInputModeUIOnly InputMode;
+		if (LobbyWidget->IsFocusable())
+		{
+			InputMode.SetWidgetToFocus(LobbyWidget->TakeWidget());
+		}
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		OwningPlayerController->SetInputMode(InputMode);
+		OwningPlayerController->SetShowMouseCursor(true);
+	}
 	return true;
 }
 
@@ -169,6 +182,12 @@ void AHeistHUD::HideLobbyScreen()
 	if (IsValid(LobbyWidget))
 	{
 		LobbyWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	APlayerController* OwningPlayerController = GetOwningPlayerController();
+	if (IsValid(OwningPlayerController))
+	{
+		OwningPlayerController->SetInputMode(FInputModeGameOnly());
+		OwningPlayerController->SetShowMouseCursor(false);
 	}
 }
 
@@ -192,7 +211,8 @@ void AHeistHUD::InitializeLobbyPresentation()
 
 	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	AHeistPlayerState* HeistPlayerState = OwningPlayerController->GetPlayerState<AHeistPlayerState>();
-	LobbyViewModel->SetupViewModel(HeistGameState, HeistPlayerState);
+	UHeistGameInstance* HeistGameInstance = Cast<UHeistGameInstance>(GetGameInstance());
+	LobbyViewModel->SetupViewModel(HeistGameState, HeistPlayerState, HeistGameInstance);
 }
 
 #pragma endregion

@@ -1,13 +1,17 @@
 #include "UI/Widgets/HeistHUDWidget.h"
 
 #include "Character/Components/HeistInteractionComponent.h"
+#include "Components/AudioComponent.h"
 #include "Components/PanelWidget.h"
 #include "Components/TextBlock.h"
 #include "Components/Widget.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerController.h"
+#include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerController.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sound/SoundBase.h"
 #include "UI/Pool/HeistPopupWidgetPool.h"
 #include "UI/ViewModels/HeistHUDViewModel.h"
 #include "UI/ViewModels/HeistInventoryViewModel.h"
@@ -23,6 +27,12 @@ UHeistHUDWidget::UHeistHUDWidget(const FObjectInitializer& ObjectInitializer) : 
 #pragma endregion
 
 #pragma region Lifecycle
+
+void UHeistHUDWidget::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+	RefreshLockdownCountdown();
+}
 
 void UHeistHUDWidget::NativeDestruct()
 {
@@ -42,6 +52,7 @@ void UHeistHUDWidget::NativeDestruct()
 	{
 		QuickSlotViewModel->GetSnapshotChangedDelegate().RemoveAll(this);
 	}
+	StopAlertAudioLayers();
 	Super::NativeDestruct();
 }
 
@@ -233,15 +244,16 @@ void UHeistHUDWidget::RefreshToolPresentation()
 
 	if (CoinPresentation == nullptr)
 	{
-		ToolText->SetText(NSLOCTEXT("HeistHUD", "ToolUnavailable", "TOOL  --"));
+		ToolText->SetText(NSLOCTEXT("HeistHUD", "ToolUnavailable", "COIN  --"));
 	}
 	else if (!CoinPresentation->bAssigned)
 	{
-		ToolText->SetText(FText::Format(NSLOCTEXT("HeistHUD", "ToolEmptyFormat", "TOOL  {0}  EMPTY"), CoinPresentation->KeyLabel));
+		ToolText->SetText(FText::Format(NSLOCTEXT("HeistHUD", "ToolEmptyFormat", "COIN  0  [{0}]"), CoinPresentation->KeyLabel));
 	}
 	else
 	{
-		ToolText->SetText(FText::Format(NSLOCTEXT("HeistHUD", "CoinToolFormat", "TOOL  {0}  COIN  x{1}"), CoinPresentation->KeyLabel, FText::AsNumber(CoinPresentation->Quantity)));
+		ToolText->SetText(FText::Format(NSLOCTEXT("HeistHUD", "CoinToolFormat", "COIN  x{1}  [{0}]"), CoinPresentation->KeyLabel,
+									   FText::AsNumber(CoinPresentation->Quantity)));
 	}
 
 	ToolText->SetVisibility(ESlateVisibility::HitTestInvisible);
@@ -256,7 +268,6 @@ void UHeistHUDWidget::RefreshHUDPresentation()
 
 	const int32 LocalLootScore = HUDViewModel->GetLocalLootScore();
 	const float LocalLootWeight = HUDViewModel->GetLocalLootWeight();
-	const int32 LocalPlayerId = HUDViewModel->GetLocalPlayerId();
 	const int32 ConnectedPlayerCount = HUDViewModel->GetConnectedPlayerCount();
 	const bool bLocalPlayerEscaped = HUDViewModel->IsLocalPlayerEscaped();
 	const bool bEscapePhaseOpen = HUDViewModel->IsEscapePhaseOpen();
@@ -279,8 +290,9 @@ void UHeistHUDWidget::RefreshHUDPresentation()
 
 	if (IsValid(ActionText))
 	{
-		const FText ActionLabel = bObservationCastActive ? NSLOCTEXT("HeistHUD", "ObservationCastAction", "ACTION  OBSERVING")
-														 : (bEscapeCastActive ? NSLOCTEXT("HeistHUD", "EscapeCastAction", "ACTION  ESCAPING") : NSLOCTEXT("HeistHUD", "ReadyAction", "ACTION  READY"));
+		const FText ActionLabel =
+			bObservationCastActive ? NSLOCTEXT("HeistHUD", "ObservationCastAction", "OBSERVING")
+								   : (bEscapeCastActive ? NSLOCTEXT("HeistHUD", "EscapeCastAction", "ESCAPING") : NSLOCTEXT("HeistHUD", "ReadyAction", "READY"));
 		ActionText->SetText(ActionLabel);
 	}
 
@@ -292,20 +304,143 @@ void UHeistHUDWidget::RefreshHUDPresentation()
 
 	if (IsValid(StatusText))
 	{
-		const FText StatusLabel = bLocalPlayerEscaped ? NSLOCTEXT("HeistHUD", "EscapedStatus", "STATUS  ESCAPED") : NSLOCTEXT("HeistHUD", "NormalStatus", "STATUS  NORMAL");
+		const FText StatusLabel =
+			bLocalPlayerEscaped ? NSLOCTEXT("HeistHUD", "EscapedStatus", "ESCAPED") : NSLOCTEXT("HeistHUD", "NormalStatus", "INSIDE");
 		StatusText->SetText(StatusLabel);
 	}
 
 	if (IsValid(AlertText))
 	{
-		const FText PlayerIdText = LocalPlayerId > 0 ? FText::AsNumber(LocalPlayerId) : NSLOCTEXT("HeistHUD", "UnknownPlayerId", "?");
-		AlertText->SetText(FText::Format(bEscapePhaseOpen ? NSLOCTEXT("HeistHUD", "EscapeOpenAlertFormat", "ALERT  ESCAPE OPEN  |  PLAYER {0}  |  PLAYERS {1}/4")
-														  : NSLOCTEXT("HeistHUD", "PlayerIdentityCountAlertFormat", "PLAYER {0}  |  PLAYERS {1}/4"),
-										 PlayerIdText, FText::AsNumber(ConnectedPlayerCount)));
+		AlertText->SetText(HUDViewModel->GetAlertBannerText());
+		AlertText->SetColorAndOpacity(HUDViewModel->GetAlertColor());
+		AlertText->SetVisibility(ESlateVisibility::HitTestInvisible);
 	}
 
+	RefreshAlertPresentation();
 	BP_RefreshHUDPresentation(LocalLootScore, LocalLootWeight, ConnectedPlayerCount, bLocalPlayerEscaped, bEscapePhaseOpen, bEscapeCastActive, EscapeCastEndServerTime);
 	RefreshToolPresentation();
+}
+
+void UHeistHUDWidget::RefreshAlertPresentation()
+{
+	if (!IsValid(HUDViewModel))
+	{
+		return;
+	}
+
+	ApplyAlertAudioLayers();
+	LastDisplayedLockdownSeconds = INDEX_NONE;
+	RefreshLockdownCountdown();
+}
+
+void UHeistHUDWidget::RefreshLockdownCountdown()
+{
+	const bool bCountdownVisible = IsValid(HUDViewModel) && HUDViewModel->IsLockdownCountdownVisible();
+	if (IsValid(LockdownCountdownText))
+	{
+		LockdownCountdownText->SetVisibility(bCountdownVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		LockdownCountdownText->SetColorAndOpacity(IsValid(HUDViewModel) ? HUDViewModel->GetAlertColor() : FLinearColor::White);
+	}
+	if (!bCountdownVisible)
+	{
+		LastDisplayedLockdownSeconds = INDEX_NONE;
+		return;
+	}
+
+	const UWorld* World = GetWorld();
+	const AGameStateBase* WorldGameState = IsValid(World) ? World->GetGameState() : nullptr;
+	const float CountdownEndServerTime = HUDViewModel->GetLockdownCountdownEndServerTime();
+	const int32 RemainingSeconds = IsValid(WorldGameState) && CountdownEndServerTime > 0.0f
+										   ? FMath::Max(0, FMath::CeilToInt(CountdownEndServerTime - static_cast<float>(WorldGameState->GetServerWorldTimeSeconds())))
+										   : INDEX_NONE;
+	if (RemainingSeconds == LastDisplayedLockdownSeconds)
+	{
+		return;
+	}
+	LastDisplayedLockdownSeconds = RemainingSeconds;
+
+	if (!IsValid(LockdownCountdownText))
+	{
+		return;
+	}
+	if (RemainingSeconds == INDEX_NONE)
+	{
+		LockdownCountdownText->SetText(NSLOCTEXT("HeistHUD", "LockdownTimePending", "LOCKDOWN IN --:--  —  ESCAPE ROUTES WILL BE RESTRICTED"));
+		return;
+	}
+
+	const FText TimeText = FText::FromString(FString::Printf(TEXT("%02d:%02d"), RemainingSeconds / 60, RemainingSeconds % 60));
+	LockdownCountdownText->SetText(FText::Format(NSLOCTEXT("HeistHUD", "LockdownTimeFormat", "LOCKDOWN IN {0}  —  ESCAPE ROUTES WILL BE RESTRICTED"), TimeText));
+}
+
+void UHeistHUDWidget::ApplyAlertAudioLayers()
+{
+	if (!IsValid(HUDViewModel))
+	{
+		return;
+	}
+
+	const EHeistAlertLevel NewAlertLevel = HUDViewModel->GetAlertLevel();
+	if (bAlertAudioInitialized && LastAppliedAudioAlertLevel == NewAlertLevel)
+	{
+		return;
+	}
+
+	const bool bPlaySuspense = HUDViewModel->IsSuspenseMusicActive();
+	const bool bPlayAlarm = HUDViewModel->IsAlarmMusicActive();
+	if (bPlaySuspense && IsValid(SuspenseMusic) && !IsValid(SuspenseMusicComponent))
+	{
+		SuspenseMusicComponent = UGameplayStatics::SpawnSound2D(this, SuspenseMusic, 0.0f, 1.0f, 0.0f, nullptr, false, false);
+	}
+	if (bPlayAlarm && IsValid(AlarmMusic) && !IsValid(AlarmMusicComponent))
+	{
+		AlarmMusicComponent = UGameplayStatics::SpawnSound2D(this, AlarmMusic, 0.0f, 1.0f, 0.0f, nullptr, false, false);
+	}
+
+	if (IsValid(SuspenseMusicComponent))
+	{
+		if (bPlaySuspense)
+		{
+			SuspenseMusicComponent->FadeIn(AlertMusicFadeSeconds, SuspenseMusicVolume);
+		}
+		else if (SuspenseMusicComponent->IsPlaying())
+		{
+			SuspenseMusicComponent->FadeOut(AlertMusicFadeSeconds, 0.0f);
+		}
+	}
+	if (IsValid(AlarmMusicComponent))
+	{
+		if (bPlayAlarm)
+		{
+			AlarmMusicComponent->FadeIn(AlertMusicFadeSeconds, AlarmMusicVolume);
+		}
+		else if (AlarmMusicComponent->IsPlaying())
+		{
+			AlarmMusicComponent->FadeOut(AlertMusicFadeSeconds, 0.0f);
+		}
+	}
+
+	LastAppliedAudioAlertLevel = NewAlertLevel;
+	bAlertAudioInitialized = true;
+	UE_LOG(LogHeistUI, Log, TEXT("[%s] Alert audio layers applied: Level=%s Suspense=%s Alarm=%s SuspenseAsset=%s AlarmAsset=%s"), *GetName(), *UEnum::GetValueAsString(NewAlertLevel),
+		   bPlaySuspense ? TEXT("active") : TEXT("inactive"), bPlayAlarm ? TEXT("active") : TEXT("inactive"), *GetNameSafe(SuspenseMusic.Get()), *GetNameSafe(AlarmMusic.Get()));
+}
+
+void UHeistHUDWidget::StopAlertAudioLayers()
+{
+	if (IsValid(SuspenseMusicComponent))
+	{
+		SuspenseMusicComponent->Stop();
+		SuspenseMusicComponent->DestroyComponent();
+		SuspenseMusicComponent = nullptr;
+	}
+	if (IsValid(AlarmMusicComponent))
+	{
+		AlarmMusicComponent->Stop();
+		AlarmMusicComponent->DestroyComponent();
+		AlarmMusicComponent = nullptr;
+	}
+	bAlertAudioInitialized = false;
 }
 
 #pragma endregion
@@ -344,8 +479,7 @@ void UHeistHUDWidget::DebugDumpFirstPersonHUDState() const
 
 	if (IsValid(HUDViewModel))
 	{
-		UE_LOG(
-			LogHeistUI, Log,
+		UE_LOG(LogHeistUI, Log,
 			TEXT(
 				"[%s] Observation presentation: Active=%s ReferenceVisible=%s ReferenceArtifact=%s EndServerTime=%.2f ObjectiveArtifact=%s ObjectiveCase=%s ObjectiveState=%d ObjectiveText='%s' OwnerOnly=true ObjectiveWidget=%s"),
 			*GetName(), HUDViewModel->IsObservationCastActive() ? TEXT("true") : TEXT("false"), HUDViewModel->IsObservationReferenceVisible() ? TEXT("true") : TEXT("false"),
@@ -364,6 +498,54 @@ void UHeistHUDWidget::DebugDumpFeedbackState() const
 	else
 	{
 		UE_LOG(LogHeistUI, Warning, TEXT("[%s] Popup feedback pool dump failed: Reason=MissingPool"), *GetName());
+	}
+}
+
+bool UHeistHUDWidget::IsAlertPresentationContractSatisfied() const
+{
+	if (!IsValid(HUDViewModel) || !IsValid(AlertText) || !IsValid(LockdownCountdownText) || !IsValid(SuspenseMusic) || !IsValid(AlarmMusic))
+	{
+		return false;
+	}
+
+	const bool bCountdownVisibilityMatches =
+		HUDViewModel->IsLockdownCountdownVisible() == (LockdownCountdownText->GetVisibility() != ESlateVisibility::Collapsed && LockdownCountdownText->GetVisibility() != ESlateVisibility::Hidden);
+	const bool bAudioModeMatches = HUDViewModel->IsSuspenseMusicActive() != HUDViewModel->IsAlarmMusicActive() ||
+								   (!HUDViewModel->IsSuspenseMusicActive() && !HUDViewModel->IsAlarmMusicActive());
+	const bool bSuspensePlaybackMatches =
+		!HUDViewModel->IsSuspenseMusicActive() || (IsValid(SuspenseMusicComponent) && SuspenseMusicComponent->IsPlaying());
+	const bool bAlarmPlaybackMatches = !HUDViewModel->IsAlarmMusicActive() || (IsValid(AlarmMusicComponent) && AlarmMusicComponent->IsPlaying());
+	const bool bCountdownTextValid = !HUDViewModel->IsLockdownCountdownVisible() || !LockdownCountdownText->GetText().IsEmpty();
+	const FString SecurityLevelFraction = FString::Printf(TEXT("%d/4"), HUDViewModel->GetSecurityLevel());
+	const bool bSecurityLevelMatches = AlertText->GetText().ToString().Contains(SecurityLevelFraction);
+	return bSecurityLevelMatches && bCountdownVisibilityMatches && bCountdownTextValid && bAudioModeMatches && bSuspensePlaybackMatches && bAlarmPlaybackMatches && bAlertAudioInitialized &&
+		   LastAppliedAudioAlertLevel == HUDViewModel->GetAlertLevel();
+}
+
+void UHeistHUDWidget::DebugDumpAlertPresentationState() const
+{
+	const bool bPassed = IsAlertPresentationContractSatisfied();
+	const FString Message = FString::Printf(
+		TEXT("[%s] Alert HUD presentation: Level=%s SecurityLevel=%d/4 Banner='%s' BannerWidget=%s CountdownVisible=%s CountdownText='%s' SuspenseRequested=%s SuspensePlaying=%s AlarmRequested=%s "
+			 "AlarmPlaying=%s SuspenseAsset=%s AlarmAsset=%s AudioApplied=%s Result=%s"),
+		*GetName(), IsValid(HUDViewModel) ? *UEnum::GetValueAsString(HUDViewModel->GetAlertLevel()) : TEXT("None"),
+		IsValid(HUDViewModel) ? HUDViewModel->GetSecurityLevel() : INDEX_NONE, IsValid(AlertText) ? *AlertText->GetText().ToString() : TEXT("None"), IsValid(AlertText) ? TEXT("true") : TEXT("false"),
+		IsValid(LockdownCountdownText) && LockdownCountdownText->GetVisibility() != ESlateVisibility::Collapsed && LockdownCountdownText->GetVisibility() != ESlateVisibility::Hidden
+			? TEXT("true")
+			: TEXT("false"),
+		IsValid(LockdownCountdownText) ? *LockdownCountdownText->GetText().ToString() : TEXT("None"),
+		IsValid(HUDViewModel) && HUDViewModel->IsSuspenseMusicActive() ? TEXT("true") : TEXT("false"),
+		IsValid(SuspenseMusicComponent) && SuspenseMusicComponent->IsPlaying() ? TEXT("true") : TEXT("false"),
+		IsValid(HUDViewModel) && HUDViewModel->IsAlarmMusicActive() ? TEXT("true") : TEXT("false"),
+		IsValid(AlarmMusicComponent) && AlarmMusicComponent->IsPlaying() ? TEXT("true") : TEXT("false"), *GetNameSafe(SuspenseMusic.Get()), *GetNameSafe(AlarmMusic.Get()),
+		bAlertAudioInitialized ? TEXT("true") : TEXT("false"), bPassed ? TEXT("PASS") : TEXT("FAIL"));
+	if (bPassed)
+	{
+		UE_LOG(LogHeistUI, Log, TEXT("%s"), *Message);
+	}
+	else
+	{
+		UE_LOG(LogHeistUI, Error, TEXT("%s"), *Message);
 	}
 }
 

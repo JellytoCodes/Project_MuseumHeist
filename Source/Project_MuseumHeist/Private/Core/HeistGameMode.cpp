@@ -4,6 +4,7 @@
 #include "Character/Components/HeistForgeryComponent.h"
 #include "Character/Components/HeistInventoryComponent.h"
 #include "Character/HeistPlayerCharacter.h"
+#include "Core/HeistGameInstance.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistHUD.h"
 #include "Core/HeistLogChannels.h"
@@ -51,23 +52,84 @@ AHeistGameMode::AHeistGameMode()
 void AHeistGameMode::StartPlay()
 {
 	Super::StartPlay();
+	const UHeistGameInstance* HeistGameInstance = Cast<UHeistGameInstance>(GetGameInstance());
+	bool bStartAsOnlineLobby = UGameplayStatics::HasOption(OptionsString, TEXT("HeistLobby"))
+							   || (IsValid(HeistGameInstance) && (HeistGameInstance->IsHostingOnlineSession() || HeistGameInstance->IsJoinedOnlineSession()));
+#if !WITH_EDITOR
+	bStartAsOnlineLobby = bStartAsOnlineLobby || !UGameplayStatics::HasOption(OptionsString, TEXT("HeistGameplay"));
+#endif
 	if (AHeistGameState* HeistGameState = GetGameState<AHeistGameState>())
 	{
-		HeistGameState->SetMatchPhase(EHeistMatchPhase::InGame);
+		HeistGameState->GetMatchPhaseChangedDelegate().RemoveAll(this);
+		HeistGameState->GetMatchPhaseChangedDelegate().AddUObject(this, &AHeistGameMode::HandleMatchPhaseChanged);
+		HeistGameState->SetMatchPhase(bStartAsOnlineLobby ? EHeistMatchPhase::Lobby : EHeistMatchPhase::InGame);
 	}
+
+	ValidateItemDataTables();
+	if (bStartAsOnlineLobby)
+	{
+		return;
+	}
+
 	InitializeAlertState();
 	InitializeObjectiveFromPlacedTargetCase();
-	ValidateItemDataTables();
 	StartEscapePhaseTimer();
 }
 
 void AHeistGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	GetWorldTimerManager().ClearTimer(AlertTransitionTimerHandle);
-	GetWorldTimerManager().ClearTimer(EscapePhaseTimerHandle);
+	if (AHeistGameState* HeistGameState = GetGameState<AHeistGameState>())
+	{
+		HeistGameState->GetMatchPhaseChangedDelegate().RemoveAll(this);
+	}
+	ClearMatchScopedTimers();
 	ProcessedAlertTriggerIds.Reset();
 	bLockdownWorldRestrictionsApplied = false;
 	Super::EndPlay(EndPlayReason);
+}
+
+void AHeistGameMode::HandleMatchPhaseChanged(const EHeistMatchPhase PreviousMatchPhase, const EHeistMatchPhase NewMatchPhase)
+{
+	if (!HasAuthority() || PreviousMatchPhase == NewMatchPhase || NewMatchPhase == EHeistMatchPhase::InGame)
+	{
+		return;
+	}
+
+	const int32 ClearedTimerCount = ClearMatchScopedTimers();
+	ScheduledAlertSourceLevel = EHeistAlertLevel::Quiet;
+	ScheduledAlertRevision = 0;
+	UE_LOG(LogHeistNetwork, Log, TEXT("Match timer cleanup: PreviousPhase=%s NewPhase=%s ClearedTimers=%d RemainingTimers=%d Authority=true Result=%s"),
+		   *UEnum::GetValueAsString(PreviousMatchPhase), *UEnum::GetValueAsString(NewMatchPhase), ClearedTimerCount, GetActiveMatchTimerCount(),
+		   GetActiveMatchTimerCount() == 0 ? TEXT("PASS") : TEXT("FAIL"));
+}
+
+int32 AHeistGameMode::ClearMatchScopedTimers()
+{
+	FTimerManager& TimerManager = GetWorldTimerManager();
+	int32 ClearedTimerCount = 0;
+	const auto ClearTimer = [&TimerManager, &ClearedTimerCount](FTimerHandle& TimerHandle)
+	{
+		if (TimerManager.TimerExists(TimerHandle))
+		{
+			++ClearedTimerCount;
+		}
+		TimerManager.ClearTimer(TimerHandle);
+		TimerHandle.Invalidate();
+	};
+
+	ClearTimer(AlertTransitionTimerHandle);
+	ClearTimer(EscapePhaseTimerHandle);
+	for (FTimerHandle& TimerHandle : RareLootWarningTimerHandles)
+	{
+		ClearTimer(TimerHandle);
+	}
+	for (FTimerHandle& TimerHandle : RareLootSpawnTimerHandles)
+	{
+		ClearTimer(TimerHandle);
+	}
+	RareLootWarningTimerHandles.Reset();
+	RareLootSpawnTimerHandles.Reset();
+	return ClearedTimerCount;
 }
 
 void AHeistGameMode::RestartPlayer(AController* NewPlayer)
@@ -226,6 +288,22 @@ bool AHeistGameMode::IsAlertTransitionTimerActive() const
 int32 AHeistGameMode::GetProcessedAlertTriggerCount() const
 {
 	return ProcessedAlertTriggerIds.Num();
+}
+
+int32 AHeistGameMode::GetActiveMatchTimerCount() const
+{
+	const FTimerManager& TimerManager = GetWorldTimerManager();
+	int32 ActiveTimerCount = TimerManager.TimerExists(AlertTransitionTimerHandle) ? 1 : 0;
+	ActiveTimerCount += TimerManager.TimerExists(EscapePhaseTimerHandle) ? 1 : 0;
+	for (const FTimerHandle& TimerHandle : RareLootWarningTimerHandles)
+	{
+		ActiveTimerCount += TimerManager.TimerExists(TimerHandle) ? 1 : 0;
+	}
+	for (const FTimerHandle& TimerHandle : RareLootSpawnTimerHandles)
+	{
+		ActiveTimerCount += TimerManager.TimerExists(TimerHandle) ? 1 : 0;
+	}
+	return ActiveTimerCount;
 }
 
 void AHeistGameMode::InitializeAlertState()

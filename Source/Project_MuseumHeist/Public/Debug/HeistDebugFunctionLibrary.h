@@ -2,19 +2,33 @@
 
 #include "CoreMinimal.h"
 #include "Core/HeistTypes.h"
+#include "Data/HeistArtifactDataTypes.h"
 #include "GameplayTagContainer.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 
 #include "HeistDebugFunctionLibrary.generated.h"
 
+class AHeistPaintingDisplayCaseActor;
 class APlayerController;
+class UHeistForgeryComponent;
+class UHeistGameInstance;
 
 UENUM(BlueprintType)
 enum class EHeistDebugLevel : uint8
 {
 	Info,
 	Warning,
-	Error
+	Error,
+	Verbose
+};
+
+enum class EHeistDebugChannel : uint8
+{
+	Core,
+	Inventory,
+	Network,
+	UI,
+	AI
 };
 
 UCLASS()
@@ -27,6 +41,9 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
   public:
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug", meta = (DevelopmentOnly, WorldContext = "WorldContextObject", AdvancedDisplay = "bPrintToScreen,Duration"))
 	static void Message(const UObject* WorldContextObject, const FString& Message, EHeistDebugLevel Level = EHeistDebugLevel::Info, bool bPrintToScreen = false, float Duration = 3.0f);
+
+  private:
+	static void LogMessage(EHeistDebugChannel Channel, EHeistDebugLevel Level, const FString& Message);
 
 #pragma endregion
 
@@ -62,6 +79,35 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 	static void DebugObservationCastStateReplicated(const UObject* WorldContextObject, const UObject* Character, bool bIsActive, float EndServerTime);
 	static void DebugObservationCastCompleted(const UObject* WorldContextObject, const UObject* Character, const UObject* TargetDisplayCase);
 	static void DebugObservationCastCancelled(const UObject* WorldContextObject, const FString& CharacterName, const FString& DisplayCaseName, const TCHAR* Reason);
+
+	static void DebugForgerySessionBeginRejected(const UHeistForgeryComponent* ForgeryComponent, const AHeistPaintingDisplayCaseActor* TargetDisplayCase, FName Reason);
+	static void DebugForgeryTemplatePreparationRejected(const UHeistForgeryComponent* ForgeryComponent, const AHeistPaintingDisplayCaseActor* TargetDisplayCase, FName ArtifactId,
+														const FHeistForgeryTemplateRow* TemplateDefinition, FName Reason);
+	static void DebugForgeryTemplatePrepared(const UHeistForgeryComponent* ForgeryComponent, const AHeistPaintingDisplayCaseActor* TargetDisplayCase,
+											 const FHeistForgeryTemplateRow& TemplateDefinition);
+	static void DebugForgerySubmitRejected(const UHeistForgeryComponent* ForgeryComponent, FName Reason);
+	static void DebugForgeryStrokePayloadRejected(const UHeistForgeryComponent* ForgeryComponent, int32 StrokeCount, int32 PointCount, int32 PayloadBytes, float ClientBrushSize,
+												  int32 ClientSessionRevision, FName Reason);
+	static void DebugForgeryStrokePayloadAccepted(const UHeistForgeryComponent* ForgeryComponent, const AHeistPaintingDisplayCaseActor* SubmittedDisplayCase,
+												  int32 ValidatedSessionRevision);
+	static void DebugForgeryStrokeValidationResult(const UHeistForgeryComponent* ForgeryComponent, bool bAccepted, FName Reason);
+	static void DebugForgeryScoreCalculationRejected(const UHeistForgeryComponent* ForgeryComponent, FName Reason);
+	static void DebugForgeryPaintingDataBuildRejected(const UHeistForgeryComponent* ForgeryComponent, FName Reason);
+	static void DebugForgeryScoreCommitRejected(const UHeistForgeryComponent* ForgeryComponent, const AHeistPaintingDisplayCaseActor* TargetDisplayCase, FName Reason);
+	static void DebugForgeryReferenceDecodeFailed(const UHeistForgeryComponent* ForgeryComponent, const UObject* Texture, FName SourceKind, int32 PixelFormat, int32 SourceWidth,
+												  int32 SourceHeight);
+	static void DebugForgeryOpenCVMetrics(const UHeistForgeryComponent* ForgeryComponent, float DistanceRecall, float DistancePrecision, float BidirectionalDistance,
+										 float MaskPrecision, float MaskRecall, float MaskIoU, float MaskDice, float LabSSIM, float PaletteHistogram, float ColorGeometric,
+										 float PaletteBonus);
+	static void DebugForgeryReferenceMaskRejected(const UHeistForgeryComponent* ForgeryComponent, bool bUseReferenceMask, int32 ReferencePixels, int32 TotalPixels);
+	static void DebugForgeryScoreCommitted(const UHeistForgeryComponent* ForgeryComponent, const AHeistPaintingDisplayCaseActor* TargetDisplayCase, int32 TotalScorePixels,
+										   float PaintCompletenessExponent, bool bReferenceCacheHit, double ReferenceMilliseconds, double OpenCVMilliseconds,
+										   double TotalMilliseconds);
+	static void DebugForgerySessionCompleted(const UHeistForgeryComponent* ForgeryComponent, const AHeistPaintingDisplayCaseActor* PreviousDisplayCase);
+	static void DebugForgerySessionCleared(const UHeistForgeryComponent* ForgeryComponent, const AHeistPaintingDisplayCaseActor* PreviousDisplayCase, FName Reason);
+	static void DebugForgerySessionSnapshot(const UHeistForgeryComponent* ForgeryComponent, const TCHAR* ChangeSource, FName Reason);
+	static void DebugForgeryStrokeValidationReplicated(const UHeistForgeryComponent* ForgeryComponent);
+	static void DebugForgeryScoreReplicated(const UHeistForgeryComponent* ForgeryComponent);
 
 	static void DebugLootScoreWeightRejected(const UObject* WorldContextObject, const TCHAR* Reason, int32 ScoreDelta = INDEX_NONE, float WeightDelta = -1.0f);
 	static void DebugLootScoreWeightApplied(const UObject* WorldContextObject, int32 ScoreDelta, float WeightDelta, int32 TotalScore, float TotalWeight);
@@ -105,6 +151,8 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 	static void DebugCoinDistractionDecision(const UObject* WorldContextObject, const UObject* GuardActor, const FHeistSoundPingEvent& SoundPingEvent, EHeistGuardState GuardState,
 											 const TCHAR* Decision, const TCHAR* Rule, int32 CoinPriority, EHeistSoundPingType PreviousCandidateType, int32 PreviousCandidatePriority);
 	static void DebugGuardPatrolPathResolved(const UObject* WorldContextObject, const UObject* GuardActor, FName RouteId, int32 WaypointCount);
+	static void DebugGuardMoveStalled(const UObject* WorldContextObject, const UObject* GuardActor, EHeistGuardState GuardState, const FVector& Destination, float NoProgressSeconds,
+									  uint8 RetryCount);
 	static void DebugGuardInvestigateConfirmationStarted(const UObject* WorldContextObject, const UObject* GuardActor, const FVector& InvestigateLocation, float DurationSeconds);
 	static void DebugGuardSearchTimerStarted(const UObject* WorldContextObject, const UObject* GuardActor, const FVector& SearchLocation, float DurationSeconds);
 	static void DebugSoundPingDefinitionRejected(const UObject* WorldContextObject, FName SoundPingId, const TCHAR* Reason);
@@ -125,6 +173,24 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Lobby", meta = (DevelopmentOnly))
 	static void DebugLobbyDump(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Lobby", meta = (DevelopmentOnly))
+	static void DebugOnlineSessionHost(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Lobby", meta = (DevelopmentOnly))
+	static void DebugOnlineSessionJoin(APlayerController* PlayerController, const FString& JoinCode);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Lobby", meta = (DevelopmentOnly))
+	static void DebugOnlineSessionDump(APlayerController* PlayerController);
+
+	static void DebugOnlineSessionRequest(const UHeistGameInstance* GameInstance, const TCHAR* Request, FName SubsystemName, const FString& JoinCode, FName State, bool bAccepted,
+										  const TCHAR* Reason);
+	static void DebugOnlineSessionCreateComplete(const UHeistGameInstance* GameInstance, FName SessionName, FName SubsystemName, const FString& JoinCode, bool bCreated,
+												 bool bTravelAccepted, FName FailureReason);
+	static void DebugOnlineSessionFindComplete(const UHeistGameInstance* GameInstance, const FString& JoinCode, int32 ResultCount, int32 MatchingCodeCount, int32 FullMatchCount,
+											   int32 VersionMismatchCount, FName SelectedSessionId, bool bJoinRequestAccepted, FName FailureReason);
+	static void DebugOnlineSessionJoinComplete(const UHeistGameInstance* GameInstance, FName SessionName, const FString& JoinCode, int32 JoinResult, bool bAddressResolved,
+											   bool bTravelRequested, FName FailureReason);
 
 #pragma endregion
 
@@ -398,6 +464,12 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Guard", meta = (DevelopmentOnly))
 	static void DebugInspectionStateDump(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Guard", meta = (DevelopmentOnly))
+	static void DebugInspectionProtectionDump(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Guard", meta = (DevelopmentOnly))
+	static void DebugInspectionTimerProtectionTest(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Alert", meta = (DevelopmentOnly))
 	static void DebugAlertDump(APlayerController* PlayerController);

@@ -44,7 +44,6 @@ class PROJECT_MUSEUMHEIST_API UHeistGuardNoiseReactionComponent : public UActorC
 	float InvestigateDuration = 0.0f;
 	float AlertNoiseRadiusMultiplier = 1.0f;
 	FHeistSoundPingEvent CurrentCandidate;
-	float CurrentCandidateDistance = TNumericLimits<float>::Max();
 	bool bHasCurrentCandidate = false;
 
 #pragma endregion

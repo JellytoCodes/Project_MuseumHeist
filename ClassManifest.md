@@ -120,7 +120,7 @@ FHeistPlayerContribution
 | `Core/HeistPlayerState.*` / `AHeistPlayerState` | Modify | Contribution, Escape, Arrest, Carry Value |
 | `Core/HeistPlayerController.*` / `AHeistPlayerController` | Modify | Input Mode, Server RPC, Coin Use, Forgery Request |
 | `Core/HeistHUD.*` / `AHeistHUD` | Keep + Extend | HUD / Inventory / QuickSlot / Forgery / Result ViewModel 생성 |
-| `Core/HeistGameInstance.*` / `UHeistGameInstance` | Keep | Session 및 Global Setting Placeholder |
+| `Core/HeistGameInstance.*` / `UHeistGameInstance` | Modify | Online Subsystem 선택, Host/Find/Join, 6자리 참가 코드, Lobby Travel |
 
 ## Authority
 
@@ -811,26 +811,26 @@ Ping_NoiseTrap
 
 | 클래스 | 상태 | 현재 책임 |
 |---|---|---|
-| `UHeistHUDWidget` | Modify | Crosshair, Objective, Alert, Team Status |
+| `UHeistHUDWidget` | Modify | Crosshair, Objective, Alert Banner/Color, Lockdown Countdown, Suspense/Alarm Music Layer, Team Status |
 | `UHeistInventoryWidget` | Keep | Inventory |
 | `UHeistInventorySlotWidget` | Keep | Inventory Slot |
 | `UHeistInventoryItemWidget` | Keep | Inventory Item |
 | `UHeistQuickSlotWidget` | Modify | Coin QuickSlot |
 | `UHeistInteractionPromptWidget` | Modify | Interaction, Observation, Escape Progress |
 | `UHeistResultWidget` | Modify | Team Result / Contribution |
-| `UHeistForgeryWidget` | Keep | Owner-only Forgery UI |
+| `UHeistForgeryWidget` | Keep | Owner-only Forgery UI, Local Canvas Reset, Drawing/Lockdown Remaining Time, Alert Warning |
 | `UHeistRareLootAlertWidget` | Remove 또는 Deferred Review | Rare Loot 범위 결정 전 신규 사용 금지 |
 
 ## ViewModels
 
 | 클래스 | 상태 | 현재 책임 |
 |---|---|---|
-| `UHeistHUDViewModel` | Modify | Objective, Alert, Escape, Observation |
+| `UHeistHUDViewModel` | Modify | Objective, Alert Banner/Color, Lockdown Countdown, Audio Layer State, Escape, Observation |
 | `UHeistInventoryViewModel` | Keep | Inventory Snapshot |
 | `UHeistQuickSlotViewModel` | Modify | Coin QuickSlot Snapshot |
 | `UHeistResultViewModel` | Modify | Team Result / Contribution |
-| `UHeistLobbyViewModel` | Keep | Lobby |
-| `UHeistForgeryViewModel` | Keep | Forgery UI State |
+| `UHeistLobbyViewModel` | Modify | Lobby Player Snapshot, Online Session 상태, 참가 코드, Host/Join 요청 |
+| `UHeistForgeryViewModel` | Keep | Forgery UI State, Alert Warning, Lockdown Countdown |
 
 ## Removed UI Contract
 

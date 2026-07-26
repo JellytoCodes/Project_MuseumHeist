@@ -86,14 +86,17 @@ void UHeistRareLootAlertWidget::RefreshRareLootPresentation()
 
 	if (IsValid(RareLootItemText))
 	{
-		RareLootItemText->SetText(IsValid(ViewModel) ? FText::FromName(ViewModel->GetRareLootItemId()) : NSLOCTEXT("HeistRareLootAlert", "NoRareLootItem", "None"));
+		FString RareLootDisplayName = IsValid(ViewModel) ? ViewModel->GetRareLootItemId().ToString() : FString();
+		RareLootDisplayName.ReplaceInline(TEXT("_"), TEXT(" "));
+		RareLootItemText->SetText(IsValid(ViewModel) ? FText::Format(NSLOCTEXT("HeistRareLootAlert", "RareLootItemFormat", "RARE LOOT  {0}"),
+																   FText::FromString(RareLootDisplayName))
+													: FText::GetEmpty());
 	}
 
 	if (IsValid(RareLootStatusText))
 	{
-		RareLootStatusText->SetText(bIncoming		? NSLOCTEXT("HeistRareLootAlert", "IncomingStatus", "RARE LOOT INCOMING")
-									: bMarkerActive ? NSLOCTEXT("HeistRareLootAlert", "MarkerStatus", "RARE LOOT MARKED")
-													: NSLOCTEXT("HeistRareLootAlert", "InactiveStatus", "RARE LOOT INACTIVE"));
+		RareLootStatusText->SetText(bIncoming		? NSLOCTEXT("HeistRareLootAlert", "IncomingStatus", "INCOMING")
+									: bMarkerActive ? NSLOCTEXT("HeistRareLootAlert", "MarkerStatus", "LOCATION MARKED") : FText::GetEmpty());
 	}
 
 	RefreshWarningCountdownText();
@@ -114,11 +117,12 @@ void UHeistRareLootAlertWidget::RefreshWarningCountdownText()
 
 	if (!IsValid(ViewModel) || !ViewModel->IsRareLootIncoming())
 	{
-		RareLootCountdownText->SetText(NSLOCTEXT("HeistRareLootAlert", "CountdownInactive", "SPAWNS IN --"));
+		RareLootCountdownText->SetText(FText::GetEmpty());
 		return;
 	}
 
-	RareLootCountdownText->SetText(FText::Format(NSLOCTEXT("HeistRareLootAlert", "CountdownFormat", "SPAWNS IN {0}s"), FText::AsNumber(GetRareLootWarningRemainingSeconds())));
+	RareLootCountdownText->SetText(FText::Format(NSLOCTEXT("HeistRareLootAlert", "CountdownFormat", "APPEARS IN  {0}s"),
+												FText::AsNumber(FMath::CeilToInt(GetRareLootWarningRemainingSeconds()))));
 }
 
 void UHeistRareLootAlertWidget::RefreshDirectionMarkerPresentation()
@@ -127,7 +131,7 @@ void UHeistRareLootAlertWidget::RefreshDirectionMarkerPresentation()
 	{
 		if (IsValid(DirectionMarkerText))
 		{
-			DirectionMarkerText->SetText(NSLOCTEXT("HeistRareLootAlert", "DirectionInactive", "DIRECTION --"));
+			DirectionMarkerText->SetText(FText::GetEmpty());
 		}
 		return;
 	}
@@ -149,7 +153,8 @@ void UHeistRareLootAlertWidget::RefreshDirectionMarkerPresentation()
 
 	if (IsValid(DirectionMarkerText))
 	{
-		DirectionMarkerText->SetText(FText::Format(NSLOCTEXT("HeistRareLootAlert", "DirectionFormat", "DIRECTION {0} DEG"), FText::AsNumber(FMath::RoundToInt(AngleDegrees))));
+		DirectionMarkerText->SetText(FText::Format(NSLOCTEXT("HeistRareLootAlert", "DirectionFormat", "TURN  {0}°"),
+												 FText::AsNumber(FMath::RoundToInt(AngleDegrees))));
 	}
 }
 

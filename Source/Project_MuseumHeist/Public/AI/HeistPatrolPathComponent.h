@@ -23,18 +23,32 @@ class PROJECT_MUSEUMHEIST_API UHeistPatrolPathComponent : public UActorComponent
 	FName GetPatrolRouteId() const;
 	float GetAcceptanceRadius() const;
 	float GetWaypointWaitDuration() const;
+	bool ShouldLookAroundAtWaypoints() const;
+	float GetLookAroundYawAngle() const;
+	float GetLookAroundTurnRate() const;
 
   private:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|AI|Patrol", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Guard Patrol Route", meta = (AllowPrivateAccess = "true"))
 	FName PatrolRouteId = FName(TEXT("Default"));
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|AI|Patrol", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "cm"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Guard Patrol Route", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "cm"))
 	float AcceptanceRadius = 75.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|AI|Patrol", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "s"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Guard Patrol Route", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "s"))
 	float WaypointWaitDuration = 1.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|AI|Patrol", meta = (AllowPrivateAccess = "true", DisplayName = "Ping Pong Patrol"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Guard Patrol Route", meta = (AllowPrivateAccess = "true"))
+	bool bLookAroundAtWaypoints = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Guard Patrol Route",
+			  meta = (AllowPrivateAccess = "true", ClampMin = "0.0", ClampMax = "90.0", Units = "deg"))
+	float LookAroundYawAngle = 45.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Guard Patrol Route",
+			  meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "deg/s"))
+	float LookAroundTurnRate = 270.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Guard Patrol Route", meta = (AllowPrivateAccess = "true", DisplayName = "Ping Pong Patrol"))
 	bool bLoopPatrol = true;
 
 	UPROPERTY(Transient)

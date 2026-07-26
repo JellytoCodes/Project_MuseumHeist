@@ -25,6 +25,7 @@ void UHeistForgeryViewModel::BeginDestroy()
 	if (IsValid(GameState))
 	{
 		GameState->GetObjectiveStateChangedDelegate().RemoveAll(this);
+		GameState->GetAlertStateChangedDelegate().RemoveAll(this);
 	}
 	if (IsValid(ActionComponent))
 	{
@@ -43,6 +44,7 @@ void UHeistForgeryViewModel::SetupViewModel(AHeistGameState* InGameState, UHeist
 	if (GameState != InGameState && IsValid(GameState))
 	{
 		GameState->GetObjectiveStateChangedDelegate().RemoveAll(this);
+		GameState->GetAlertStateChangedDelegate().RemoveAll(this);
 	}
 	if (ActionComponent != InActionComponent && IsValid(ActionComponent))
 	{
@@ -61,6 +63,8 @@ void UHeistForgeryViewModel::SetupViewModel(AHeistGameState* InGameState, UHeist
 	{
 		GameState->GetObjectiveStateChangedDelegate().RemoveAll(this);
 		GameState->GetObjectiveStateChangedDelegate().AddUObject(this, &UHeistForgeryViewModel::HandleObjectiveStateChanged);
+		GameState->GetAlertStateChangedDelegate().RemoveAll(this);
+		GameState->GetAlertStateChangedDelegate().AddUObject(this, &UHeistForgeryViewModel::HandleAlertStateChanged);
 	}
 	if (IsValid(ActionComponent))
 	{
@@ -87,7 +91,7 @@ void UHeistForgeryViewModel::RefreshPresentationState()
 	const bool bHasAuthoritativeResult = IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive() && ForgeryComponent->HasAuthoritativeForgeryResult();
 	bool bShowResult = bResultPresentationActive || bHasAuthoritativeResult;
 	float NewResultScore = bHasAuthoritativeResult ? ForgeryComponent->GetAuthoritativeForgeryResult().SimilarityScore : bShowResult ? PendingResultScore : 0.0f;
-	FText NewResultText = bHasAuthoritativeResult ? NSLOCTEXT("HeistForgery", "AuthoritativeResult", "FORGERY SCORE CONFIRMED") : bShowResult ? PendingResultText : FText::GetEmpty();
+	FText NewResultText = bHasAuthoritativeResult ? NSLOCTEXT("HeistForgery", "AuthoritativeResult", "SCORE") : bShowResult ? PendingResultText : FText::GetEmpty();
 
 	if (!DebugPreviewState.IsNone())
 	{
@@ -96,7 +100,7 @@ void UHeistForgeryViewModel::RefreshPresentationState()
 		bShowValidation = DebugPreviewState == PreviewValidation;
 		bShowResult = DebugPreviewState == PreviewResult;
 		NewResultScore = bShowResult ? 87.0f : 0.0f;
-		NewResultText = bShowResult ? NSLOCTEXT("HeistForgery", "DebugResult", "FORGERY ACCEPTED") : FText::GetEmpty();
+		NewResultText = bShowResult ? NSLOCTEXT("HeistForgery", "DebugResult", "SCORE") : FText::GetEmpty();
 	}
 
 	if (bShowResult)
@@ -143,19 +147,59 @@ void UHeistForgeryViewModel::RefreshPresentationState()
 	}
 	else if (bShowValidation)
 	{
-		NewStateText = NSLOCTEXT("HeistForgery", "ValidationState", "VALIDATING");
+		NewStateText = NSLOCTEXT("HeistForgery", "ValidationState", "EVALUATING");
 	}
 	else if (bShowDrawing)
 	{
-		NewStateText = NSLOCTEXT("HeistForgery", "DrawingState", "DRAWING");
+		NewStateText = NSLOCTEXT("HeistForgery", "DrawingState", "FORGERY");
 	}
 	else if (bShowObservation)
 	{
 		NewStateText = NSLOCTEXT("HeistForgery", "ObservationState", "OBSERVATION");
 	}
 
-	const FText NewReferenceText =
-		NewReferenceArtifactId.IsNone() ? FText::GetEmpty() : FText::Format(NSLOCTEXT("HeistForgery", "ReferenceFormat", "REFERENCE  {0}"), FText::FromName(NewReferenceArtifactId));
+	FString ReferenceDisplayName = NewReferenceArtifactId.ToString();
+	ReferenceDisplayName.ReplaceInline(TEXT("_"), TEXT(" "));
+	const FText NewReferenceText = NewReferenceArtifactId.IsNone()
+									   ? FText::GetEmpty()
+									   : FText::Format(NSLOCTEXT("HeistForgery", "ReferenceFormat", "REFERENCE  {0}"), FText::FromString(ReferenceDisplayName));
+	const EHeistAlertLevel NewAlertLevel = IsValid(GameState) ? GameState->GetAlertLevel() : EHeistAlertLevel::Quiet;
+	const bool bShowDangerWarning = bShowAnyState && NewAlertLevel != EHeistAlertLevel::Quiet;
+	FText NewDangerWarningText;
+	FLinearColor NewDangerWarningColor = FLinearColor::White;
+	if (bShowDangerWarning)
+	{
+		const int32 SecurityLevel = FMath::Clamp(static_cast<int32>(NewAlertLevel), 0, 4);
+		FString SecurityLevelStars;
+		for (int32 Index = 0; Index < 4; ++Index)
+		{
+			if (Index > 0)
+			{
+				SecurityLevelStars += TEXT(" ");
+			}
+			SecurityLevelStars += Index < SecurityLevel ? TEXT("\u2605") : TEXT("\u2606");
+		}
+		NewDangerWarningText =
+			FText::Format(NSLOCTEXT("HeistForgery", "SecurityLevelFormat", "SECURITY LEVEL {0}/4  {1}"), FText::AsNumber(SecurityLevel), FText::FromString(SecurityLevelStars));
+	}
+	switch (NewAlertLevel)
+	{
+	case EHeistAlertLevel::Suspicious:
+		NewDangerWarningColor = FLinearColor(1.0f, 0.68f, 0.12f);
+		break;
+	case EHeistAlertLevel::Searching:
+		NewDangerWarningColor = FLinearColor(1.0f, 0.30f, 0.05f);
+		break;
+	case EHeistAlertLevel::Alarmed:
+		NewDangerWarningColor = FLinearColor(1.0f, 0.04f, 0.02f);
+		break;
+	case EHeistAlertLevel::Lockdown:
+		NewDangerWarningColor = FLinearColor(0.72f, 0.0f, 0.0f);
+		break;
+	case EHeistAlertLevel::Quiet:
+	default:
+		break;
+	}
 
 	UE_MVVM_SET_PROPERTY_VALUE(bPresentationVisible, bShowAnyState);
 	UE_MVVM_SET_PROPERTY_VALUE(bObservationVisible, bShowObservation);
@@ -177,10 +221,16 @@ void UHeistForgeryViewModel::RefreshPresentationState()
 	UE_MVVM_SET_PROPERTY_VALUE(StateText, NewStateText);
 	UE_MVVM_SET_PROPERTY_VALUE(ReferenceText, NewReferenceText);
 	UE_MVVM_SET_PROPERTY_VALUE(ResultText, NewResultText);
+	const bool bLockdownCountdownActive = bShowAnyState && IsValid(GameState) && GameState->IsLockdownCountdownActive();
+	UE_MVVM_SET_PROPERTY_VALUE(AlertLevel, NewAlertLevel);
+	UE_MVVM_SET_PROPERTY_VALUE(bDangerWarningVisible, bShowDangerWarning);
+	UE_MVVM_SET_PROPERTY_VALUE(DangerWarningText, NewDangerWarningText);
+	UE_MVVM_SET_PROPERTY_VALUE(DangerWarningColor, NewDangerWarningColor);
+	UE_MVVM_SET_PROPERTY_VALUE(bLockdownCountdownVisible, bLockdownCountdownActive);
+	UE_MVVM_SET_PROPERTY_VALUE(LockdownCountdownEndServerTime, bLockdownCountdownActive ? GameState->GetAlertNextTransitionServerTime() : 0.0f);
 
 	PresentationChangedDelegate.Broadcast();
-	UE_LOG(
-		LogHeistUI, Verbose,
+	UE_LOG(LogHeistUI, Verbose,
 		TEXT(
 			"Forgery presentation refreshed: Visible=%s Observation=%s Drawing=%s Validation=%s Result=%s Artifact=%s Template=%s ReferenceImage=%s ReferenceMask=%s ObservationDuration=%.2f ForgeryDuration=%.2f StrokeLimit=%d Brush=%.4f Case=%s EndServerTime=%.2f Preview=%s OwnerOnly=true"),
 		bPresentationVisible ? TEXT("true") : TEXT("false"), bObservationVisible ? TEXT("true") : TEXT("false"), bDrawingVisible ? TEXT("true") : TEXT("false"),
@@ -248,6 +298,11 @@ void UHeistForgeryViewModel::HandleForgerySessionStateChanged()
 	{
 		bResultPresentationActive = false;
 	}
+	RefreshPresentationState();
+}
+
+void UHeistForgeryViewModel::HandleAlertStateChanged(const EHeistAlertLevel, const EHeistAlertLevel, const int32, const FName)
+{
 	RefreshPresentationState();
 }
 
@@ -361,6 +416,36 @@ const FText& UHeistForgeryViewModel::GetReferenceText() const
 const FText& UHeistForgeryViewModel::GetResultText() const
 {
 	return ResultText;
+}
+
+EHeistAlertLevel UHeistForgeryViewModel::GetAlertLevel() const
+{
+	return AlertLevel;
+}
+
+bool UHeistForgeryViewModel::IsDangerWarningVisible() const
+{
+	return bDangerWarningVisible;
+}
+
+const FText& UHeistForgeryViewModel::GetDangerWarningText() const
+{
+	return DangerWarningText;
+}
+
+FLinearColor UHeistForgeryViewModel::GetDangerWarningColor() const
+{
+	return DangerWarningColor;
+}
+
+bool UHeistForgeryViewModel::IsLockdownCountdownVisible() const
+{
+	return bLockdownCountdownVisible;
+}
+
+float UHeistForgeryViewModel::GetLockdownCountdownEndServerTime() const
+{
+	return LockdownCountdownEndServerTime;
 }
 
 int32 UHeistForgeryViewModel::GetVisibleStateCount() const

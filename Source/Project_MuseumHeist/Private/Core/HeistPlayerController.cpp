@@ -66,6 +66,11 @@ void AHeistPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	bLocalObservationInputHeld = false;
 	UnbindLocalForgeryInputState();
+	if (BoundMatchPhaseGameState.IsValid())
+	{
+		BoundMatchPhaseGameState->GetMatchPhaseChangedDelegate().RemoveAll(this);
+		BoundMatchPhaseGameState.Reset();
+	}
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -161,10 +166,46 @@ void AHeistPlayerController::RefreshLocalHUDPresentation()
 		return;
 	}
 
+	RefreshMatchPhasePresentationBinding();
 	if (AHeistHUD* HeistHUD = GetHUD<AHeistHUD>())
 	{
 		HeistHUD->RefreshPresentationSources();
+		const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+		if (IsValid(HeistGameState) && HeistGameState->GetMatchPhase() == EHeistMatchPhase::Lobby)
+		{
+			HeistHUD->HideMainHUD();
+			HeistHUD->ShowLobbyScreen();
+		}
+		else
+		{
+			HeistHUD->HideLobbyScreen();
+			HeistHUD->ShowMainHUD();
+		}
 	}
+}
+
+void AHeistPlayerController::RefreshMatchPhasePresentationBinding()
+{
+	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	if (BoundMatchPhaseGameState.Get() == HeistGameState)
+	{
+		return;
+	}
+
+	if (BoundMatchPhaseGameState.IsValid())
+	{
+		BoundMatchPhaseGameState->GetMatchPhaseChangedDelegate().RemoveAll(this);
+	}
+	BoundMatchPhaseGameState = HeistGameState;
+	if (IsValid(HeistGameState))
+	{
+		HeistGameState->GetMatchPhaseChangedDelegate().AddUObject(this, &AHeistPlayerController::HandleMatchPhasePresentationChanged);
+	}
+}
+
+void AHeistPlayerController::HandleMatchPhasePresentationChanged(const EHeistMatchPhase, const EHeistMatchPhase)
+{
+	RefreshLocalHUDPresentation();
 }
 
 #pragma endregion
@@ -1065,8 +1106,7 @@ void AHeistPlayerController::Server_SubmitForgeryStrokes_Implementation(const TA
 
 	const bool bAccepted = ForgeryComponent->TrySubmitStrokePayload(NormalizedPoints, StrokePointCounts, StrokePaletteIndices, ClientBrushSize, ClientSessionRevision);
 	const FHeistForgeryResult& ForgeryResult = ForgeryComponent->GetAuthoritativeForgeryResult();
-	UE_LOG(
-		LogHeistNetwork, Log,
+	UE_LOG(LogHeistNetwork, Log,
 		TEXT(
 			"[%s] Forgery stroke RPC processed: Character=%s Strokes=%d Points=%d ClientSessionRevision=%d ServerSessionRevision=%d Accepted=%s HasAuthoritativeScore=%s Score=%.2f ScoreRevision=%d Result=%s"),
 		*GetName(), *GetNameSafe(HeistCharacter), StrokePointCounts.Num(), NormalizedPoints.Num(), ClientSessionRevision, ForgeryComponent->GetSessionRevision(),

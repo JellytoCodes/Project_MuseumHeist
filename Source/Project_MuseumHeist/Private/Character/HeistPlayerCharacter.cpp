@@ -88,8 +88,7 @@ void AHeistPlayerCharacter::BeginPlay()
 
 	GetMesh()->SetCastShadow(true);
 
-	UE_LOG(
-		LogHeist, Log,
+	UE_LOG(LogHeist, Log,
 		TEXT(
 			"[%s] First-person camera contract: Camera=%s RequestedSocket=%s SocketResolved=%s Parent=%s AttachedSocket=%s RelativeLocation=%s FOV=%.1f UsePawnControlRotation=%s UseControllerYaw=%s OrientRotationToMovement=%s FullBodyVisible=%s HeadHidden=false CastShadow=%s"),
 		*GetName(), *GetNameSafe(FirstPersonCamera), *FirstPersonCameraSocketName.ToString(), bCameraSocketResolved ? TEXT("true") : TEXT("false"), *GetNameSafe(FirstPersonCamera->GetAttachParent()),

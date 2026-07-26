@@ -135,6 +135,70 @@ NoiseTrap SoundPing
 - 신규 Server RPC
 - Replicated State 직접 수정
 
+## Widget UI Design System
+
+기준 해상도는 `1920×1080`, UMG Designer DPI Scale은 `1.0`으로 통일한다.
+
+### 4px Base Grid
+
+- Margin, Padding, Gap, 고정 Width/Height는 기본적으로 4의 배수를 사용한다.
+- 기본 간격 Token은 `4 / 8 / 12 / 16 / 24 / 32`다.
+- 1px Border, 글꼴 자체 Metric, 정사각형 Aspect Ratio, Runtime 동적 크기는 예외다.
+- 4px Grid는 모든 값을 기계적으로 반올림하는 규칙이 아니라 Layout 간격과 크기 체계를 일관되게 만드는 기준이다.
+
+### Typography
+
+1080p PC 기준:
+
+```text
+Compact Metadata: 16
+Body / HUD:       20
+Subheading/Timer: 24
+Primary Score:    32
+Screen Title:     32
+```
+
+- 위 값은 Widget Designer의 `72 DPI equivalent` 표시값을 기준으로 한다.
+- Unreal Slate가 직렬화하는 96 DPI Point 값은 각각 `12 / 15 / 18 / 24`이며, Designer에서는 `16 / 20 / 24 / 32`로 표시된다.
+- 따라서 Asset 원시 속성값이 아니라 Designer Details Panel에 표시되는 크기를 UI Token의 Source of Truth로 사용한다.
+- 핵심 지시, 상호작용 Prompt, 본문은 기본 `20`을 사용한다.
+- `16`은 Item ID, 좌표, 보조 Key Guide처럼 중요도가 낮은 한 줄 정보에만 사용한다.
+- 중요한 Score와 Timer는 독립된 시각 요소로 유지하되, HUD Timer는 `24`, 최종 결과 Score는 `32`를 기본으로 한다.
+- Font Size 값은 4의 배수를 사용하되, 실제 가독성은 1080p PIE 캡처의 Ascender-to-Descender 높이로 확인한다.
+- Full Sentence는 행동 결과나 취소 조건을 설명해야 할 때만 사용한다.
+- 맥락만으로 이해 가능한 상태와 수치는 `LABEL  VALUE` 형식으로 표시한다.
+
+### Number Formatting
+
+- Forgery Score: 반올림된 정수 `n/100`
+- Countdown: `MM:SS` 또는 정수 초
+- Weight: 소수점 한 자리
+- 일반 Player-facing UI에는 두 자리 이상 소수점을 표시하지 않는다.
+- 정밀한 소수점 값은 Debug Log에서만 유지한다.
+
+### Forgery Score Color
+
+검사 판정 구간과 동일한 구간을 사용한다.
+
+```text
+90–100: Green
+70–89:  Lime
+50–69:  Amber
+30–49:  Orange
+0–29:   Red
+Pending: Neutral Gray
+```
+
+색상만으로 의미를 전달하지 않고 항상 `n/100` Text를 함께 표시한다.
+
+### User UI Scale
+
+- v1 설정 범위 목표는 `80%~130%`다.
+- `100%`를 기본값으로 유지하고, Layout은 최소 `130%`에서 잘림 없이 동작해야 한다.
+- 이 범위는 사용자 취향과 시청 거리 대응에는 유효하지만 완전한 접근성 목표는 아니다.
+- 접근성 인증 수준에서는 최소 기준 대비 `200%` 확대와 Reflow까지 별도로 검증해야 한다.
+- UI Scale은 Widget별 Render Transform이 아니라 전체 Layout Scale 또는 Custom DPI Scaling Rule로 적용한다.
+
 ---
 
 # 4. Player Character Blueprint
@@ -261,13 +325,18 @@ Parent: UHeistHUDWidget
 - Objective
 - Player Status
 - Alert
+- Lockdown Countdown
 - Popup Feedback Layer
 
-## Optional Widget Names
+## Widget Names
 
-C++ `BindWidgetOptional` 또는 이름 탐색 계약을 유지한다.
+C++ `BindWidget` 또는 `BindWidgetOptional` 이름 계약을 유지한다.
 
 ```text
+Required:
+LockdownCountdownText
+
+Optional:
 ScoreText
 ToolText
 WeightText
@@ -282,6 +351,17 @@ CrosshairIdleIndicator
 CrosshairFocusIndicator
 PopupFeedbackLayer
 ```
+
+`LockdownCountdownText`는 중앙 상단 `AlertText` 바로 아래에 독립 배치한다.
+
+`WBP_HeistHUD` Class Default의 Alert Audio에는 다음 두 Slot을 지정한다.
+
+```text
+SuspenseMusic
+AlarmMusic
+```
+
+Suspicious/Searching은 SuspenseMusic, Alarmed/Lockdown은 AlarmMusic을 재생한다. 실제 음원 교체 전에는 별도 두 Placeholder Sound를 사용해 Layer 전환을 검증할 수 있다.
 
 경쟁형 Score UI는 숨기거나 제거한다.
 
@@ -574,6 +654,8 @@ Parent: UHeistForgeryWidget
 - Submit
 - Cancel
 - Server Result
+- Alert Warning
+- Lockdown Countdown
 
 ## Layout
 
@@ -601,6 +683,11 @@ Reference Image와 Drawing Canvas는 동일한 정사각형 영역을 사용한�
 - Mouse Move로 Point 추가
 - Mouse Up으로 Stroke 종료
 - Eraser는 별도 Drawing Mode 또는 Background Index 처리
+- `R` 입력은 현재 Local Stroke, Erase 상태, Preview Score를 빈 Canvas 상태로 초기화
+- Remaining Time은 Owner에게 복제된 서버 `SessionEndServerTime` 기준 `MM:SS` 표시
+- `DrawingTimeRemainingText`는 Drawing Title 아래에 독립 배치하고 키 가이드와 결합하지 않음
+- `ForgeryAlertWarningText`는 상단 Header와 겹치지 않는 독립 Warning 영역에 배치
+- `ForgeryLockdownCountdownText`는 Warning 아래에 독립 배치
 - Payload에는 정규화 좌표 사용
 - Local Preview는 Throttle 적용 가능
 - Local Preview는 Server RPC를 발생시키지 않음
@@ -610,6 +697,10 @@ Reference Image와 Drawing Canvas는 동일한 정사각형 영역을 사용한�
 - Preview Score는 참고값
 - Final Score는 Server Result만 표시
 - Client 계산값을 서버 확정값처럼 표시하지 않음
+- Preview와 Final 모두 반올림된 정수 `SCORE  n/100` 형식 사용
+- `90 / 70 / 50 / 30` 경계를 기준으로 Text Color 변경
+- Score 설명 문장은 표시하지 않음
+- Pending 상태는 `SCORE  --/100`과 Neutral Gray 사용
 
 ---
 

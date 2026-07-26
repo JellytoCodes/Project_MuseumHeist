@@ -132,6 +132,15 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 	UFUNCTION(Exec)
 	void HeistLobbyDump();
 
+	UFUNCTION(Exec)
+	void HeistSessionHost();
+
+	UFUNCTION(Exec)
+	void HeistSessionJoin(const FString& JoinCode);
+
+	UFUNCTION(Exec)
+	void HeistSessionDump();
+
 #pragma endregion
 
 #pragma region ResultDebug
@@ -312,6 +321,12 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 
 	UFUNCTION(Exec)
 	void HeistInspectionStateDump();
+
+	UFUNCTION(Exec)
+	void HeistInspectionProtectionDump();
+
+	UFUNCTION(Exec)
+	void HeistInspectionTimerProtectionTest();
 
 	UFUNCTION(Exec)
 	void HeistAlertDump();

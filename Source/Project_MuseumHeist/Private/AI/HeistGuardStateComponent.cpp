@@ -289,6 +289,12 @@ float UHeistGuardStateComponent::GetAlertSearchDurationMultiplier() const
 	return AlertSearchDurationMultiplier;
 }
 
+bool UHeistGuardStateComponent::IsStateTimerActive() const
+{
+	const UWorld* World = GetWorld();
+	return IsValid(World) && World->GetTimerManager().TimerExists(StateTimerHandle);
+}
+
 FHeistGuardStateChanged& UHeistGuardStateComponent::GetGuardStateChangedDelegate()
 {
 	return GuardStateChangedDelegate;
@@ -350,7 +356,9 @@ bool UHeistGuardStateComponent::StartStateTimer(const float DurationSeconds)
 
 	ClearStateTimer();
 	StateEndServerTime = World->GetGameState() ? World->GetGameState()->GetServerWorldTimeSeconds() + SafeDuration : World->GetTimeSeconds() + SafeDuration;
-	World->GetTimerManager().SetTimer(StateTimerHandle, this, &UHeistGuardStateComponent::HandleTimedStateExpired, SafeDuration, false);
+	FTimerDelegate TimerDelegate;
+	TimerDelegate.BindUObject(this, &UHeistGuardStateComponent::HandleTimedStateExpired, StateTimerRevision, GuardState);
+	World->GetTimerManager().SetTimer(StateTimerHandle, TimerDelegate, SafeDuration, false);
 	OwnerActor->ForceNetUpdate();
 	return true;
 }
@@ -385,14 +393,16 @@ bool UHeistGuardStateComponent::CanEnterState(const EHeistGuardState NewState) c
 	return true;
 }
 
-void UHeistGuardStateComponent::HandleTimedStateExpired()
+void UHeistGuardStateComponent::HandleTimedStateExpired(const int32 ExpectedTimerRevision, const EHeistGuardState ExpectedState)
 {
 	AActor* OwnerActor = GetOwner();
-	if (!IsValid(OwnerActor) || !OwnerActor->HasAuthority())
+	if (!IsValid(OwnerActor) || !OwnerActor->HasAuthority() || ExpectedTimerRevision != StateTimerRevision || ExpectedState != GuardState)
 	{
 		return;
 	}
 
+	StateTimerHandle.Invalidate();
+	StateEndServerTime = 0.0f;
 	const EHeistGuardState ExpiredState = GuardState;
 	if (ExpiredState == EHeistGuardState::Stunned)
 	{
@@ -410,7 +420,6 @@ void UHeistGuardStateComponent::HandleTimedStateExpired()
 
 	if (ExpiredState == EHeistGuardState::InspectExhibit)
 	{
-		StateEndServerTime = 0.0f;
 		InspectExhibitCastExpiredDelegate.Broadcast();
 		return;
 	}
@@ -423,10 +432,13 @@ void UHeistGuardStateComponent::HandleTimedStateExpired()
 
 void UHeistGuardStateComponent::ClearStateTimer()
 {
+	++StateTimerRevision;
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().ClearTimer(StateTimerHandle);
 	}
+	StateTimerHandle.Invalidate();
+	StateEndServerTime = 0.0f;
 }
 
 void UHeistGuardStateComponent::OnRep_GuardState(const EHeistGuardState PreviousState)

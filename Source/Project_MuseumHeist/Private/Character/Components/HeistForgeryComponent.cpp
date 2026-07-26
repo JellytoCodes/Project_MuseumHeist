@@ -4,9 +4,9 @@
 #include "Character/Components/HeistInventoryComponent.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistGameMode.h"
-#include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerState.h"
 #include "Data/HeistArtifactDataTypes.h"
+#include "Debug/HeistDebugFunctionLibrary.h"
 #include "Engine/Texture2D.h"
 #include "Engine/World.h"
 #include "HAL/PlatformTime.h"
@@ -841,60 +841,57 @@ bool UHeistForgeryComponent::TryBeginForgerySession(AHeistPaintingDisplayCaseAct
 	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter) ? HeistCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
 	if (!IsValid(HeistCharacter) || !HeistCharacter->HasAuthority() || !IsValid(HeistPlayerState) || !IsValid(TargetDisplayCase))
 	{
-		UE_LOG(LogHeistNetwork, Warning, TEXT("Forgery session begin rejected: Character=%s Case=%s Reason=InvalidAuthorityContext"), *GetNameSafe(HeistCharacter), *GetNameSafe(TargetDisplayCase));
+		UHeistDebugFunctionLibrary::DebugForgerySessionBeginRejected(this, TargetDisplayCase, FName(TEXT("InvalidAuthorityContext")));
 		return false;
 	}
 
 	if (bSessionActive || bSubmitPending || IsValid(ActiveDisplayCase.Get()))
 	{
-		UE_LOG(LogHeistNetwork, Warning, TEXT("Forgery session begin rejected: Character=%s Case=%s ActiveCase=%s Reason=SessionAlreadyActive"), *GetNameSafe(HeistCharacter),
-			   *GetNameSafe(TargetDisplayCase), *GetNameSafe(ActiveDisplayCase.Get()));
+		UHeistDebugFunctionLibrary::DebugForgerySessionBeginRejected(this, TargetDisplayCase, FName(TEXT("SessionAlreadyActive")));
 		return false;
 	}
 
 	float IgnoredObservationDuration = 0.0f;
 	if ((!bTemplatePrepared || PreparedDisplayCase.Get() != TargetDisplayCase) && !TryPrepareForgeryTemplate(TargetDisplayCase, IgnoredObservationDuration))
 	{
-		UE_LOG(LogHeistNetwork, Warning, TEXT("Forgery session begin rejected: Character=%s Case=%s Reason=TemplatePreparationFailed"), *GetNameSafe(HeistCharacter), *GetNameSafe(TargetDisplayCase));
+		UHeistDebugFunctionLibrary::DebugForgerySessionBeginRejected(this, TargetDisplayCase, FName(TEXT("TemplatePreparationFailed")));
 		return false;
 	}
 
 	if (!TargetDisplayCase->IsSessionLocked() || TargetDisplayCase->GetSessionOwner() != HeistPlayerState)
 	{
-		UE_LOG(LogHeistNetwork, Warning, TEXT("Forgery session begin rejected: Character=%s Case=%s CaseOwner=%s Reason=CaseOwnershipMismatch"), *GetNameSafe(HeistCharacter),
-			   *GetNameSafe(TargetDisplayCase), *GetNameSafe(TargetDisplayCase->GetSessionOwner()));
+		UHeistDebugFunctionLibrary::DebugForgerySessionBeginRejected(this, TargetDisplayCase, FName(TEXT("CaseOwnershipMismatch")));
 		return false;
 	}
 
 	if (TargetDisplayCase->GetDisplayCaseState() != EHeistDisplayCaseState::Observed)
 	{
-		UE_LOG(LogHeistNetwork, Warning, TEXT("Forgery session begin rejected: Character=%s Case=%s CaseState=%s Reason=CaseNotObserved"), *GetNameSafe(HeistCharacter),
-			   *GetNameSafe(TargetDisplayCase), *UEnum::GetValueAsString(TargetDisplayCase->GetDisplayCaseState()));
+		UHeistDebugFunctionLibrary::DebugForgerySessionBeginRejected(this, TargetDisplayCase, FName(TEXT("CaseNotObserved")));
 		return false;
 	}
 
 	if (HeistPlayerState->IsArrested() || HeistPlayerState->IsEscaped())
 	{
-		UE_LOG(LogHeistNetwork, Warning, TEXT("Forgery session begin rejected: Character=%s Case=%s Reason=PlayerStateBlocked"), *GetNameSafe(HeistCharacter), *GetNameSafe(TargetDisplayCase));
+		UHeistDebugFunctionLibrary::DebugForgerySessionBeginRejected(this, TargetDisplayCase, FName(TEXT("PlayerStateBlocked")));
 		return false;
 	}
 
 	const UHeistInventoryComponent* InventoryComponent = HeistCharacter->GetInventoryComponent();
 	if (IsValid(InventoryComponent) && InventoryComponent->IsInventoryOpen())
 	{
-		UE_LOG(LogHeistNetwork, Warning, TEXT("Forgery session begin rejected: Character=%s Case=%s Reason=InventoryOpen"), *GetNameSafe(HeistCharacter), *GetNameSafe(TargetDisplayCase));
+		UHeistDebugFunctionLibrary::DebugForgerySessionBeginRejected(this, TargetDisplayCase, FName(TEXT("InventoryOpen")));
 		return false;
 	}
 
 	if (FVector::DistSquared(HeistCharacter->GetActorLocation(), TargetDisplayCase->GetActorLocation()) > FMath::Square(TargetDisplayCase->GetMaximumSessionDistance()))
 	{
-		UE_LOG(LogHeistNetwork, Warning, TEXT("Forgery session begin rejected: Character=%s Case=%s Reason=OutOfRange"), *GetNameSafe(HeistCharacter), *GetNameSafe(TargetDisplayCase));
+		UHeistDebugFunctionLibrary::DebugForgerySessionBeginRejected(this, TargetDisplayCase, FName(TEXT("OutOfRange")));
 		return false;
 	}
 
 	if (!TargetDisplayCase->TryTransitionToDisplayCaseState(EHeistDisplayCaseState::ForgeryInProgress))
 	{
-		UE_LOG(LogHeistNetwork, Warning, TEXT("Forgery session begin rejected: Character=%s Case=%s Reason=CaseTransitionRejected"), *GetNameSafe(HeistCharacter), *GetNameSafe(TargetDisplayCase));
+		UHeistDebugFunctionLibrary::DebugForgerySessionBeginRejected(this, TargetDisplayCase, FName(TEXT("CaseTransitionRejected")));
 		return false;
 	}
 
@@ -945,8 +942,7 @@ bool UHeistForgeryComponent::TryPrepareForgeryTemplate(AHeistPaintingDisplayCase
 	if (!IsValid(HeistGameMode) || !HeistGameMode->TryGetArtifactDefinition(ArtifactId, ArtifactDefinition) || ArtifactDefinition.ForgeryType != EHeistForgeryType::Drawing ||
 		ArtifactDefinition.ForgeryTemplateId.IsNone() || !HeistGameMode->TryGetForgeryTemplateDefinition(ArtifactDefinition.ForgeryTemplateId, TemplateDefinition))
 	{
-		UE_LOG(LogHeist, Error, TEXT("Forgery template preparation rejected: Character=%s Case=%s Artifact=%s Reason=ArtifactOrTemplateLookupFailed"), *GetNameSafe(HeistCharacter),
-			   *GetNameSafe(TargetDisplayCase), *ArtifactId.ToString());
+		UHeistDebugFunctionLibrary::DebugForgeryTemplatePreparationRejected(this, TargetDisplayCase, ArtifactId, nullptr, FName(TEXT("ArtifactOrTemplateLookupFailed")));
 		return false;
 	}
 
@@ -954,8 +950,7 @@ bool UHeistForgeryComponent::TryPrepareForgeryTemplate(AHeistPaintingDisplayCase
 		TemplateDefinition.MaximumPaintToReferenceRatio < 1.0f || !FMath::IsWithinInclusive(TemplateDefinition.BackgroundColorTolerance, 0.0f, 0.49f) ||
 		!FMath::IsWithinInclusive(TemplateDefinition.OverpaintScoreCap, 0.0f, 100.0f))
 	{
-		UE_LOG(LogHeist, Error, TEXT("Forgery template preparation rejected: Character=%s Case=%s Artifact=%s Template=%s PaletteColors=%d Reason=InvalidPaletteScoreContract"),
-			   *GetNameSafe(HeistCharacter), *GetNameSafe(TargetDisplayCase), *ArtifactId.ToString(), *TemplateDefinition.TemplateId.ToString(), TemplateDefinition.AllowedPalette.Num());
+		UHeistDebugFunctionLibrary::DebugForgeryTemplatePreparationRejected(this, TargetDisplayCase, ArtifactId, &TemplateDefinition, FName(TEXT("InvalidPaletteScoreContract")));
 		return false;
 	}
 
@@ -967,9 +962,7 @@ bool UHeistForgeryComponent::TryPrepareForgeryTemplate(AHeistPaintingDisplayCase
 	}
 	if (!IsValid(LoadedReferenceImage) || (TemplateDefinition.BackgroundFilterMode == EHeistForgeryBackgroundFilter::None && !IsValid(LoadedReferenceMask)))
 	{
-		UE_LOG(LogHeist, Error, TEXT("Forgery template preparation rejected: Character=%s Case=%s Artifact=%s Template=%s ReferenceImage=%s ReferenceMask=%s Reason=ReferenceAssetLoadFailed"),
-			   *GetNameSafe(HeistCharacter), *GetNameSafe(TargetDisplayCase), *ArtifactId.ToString(), *TemplateDefinition.TemplateId.ToString(),
-			   *TemplateDefinition.ReferenceImage.ToSoftObjectPath().ToString(), *TemplateDefinition.ReferenceMask.ToSoftObjectPath().ToString());
+		UHeistDebugFunctionLibrary::DebugForgeryTemplatePreparationRejected(this, TargetDisplayCase, ArtifactId, &TemplateDefinition, FName(TEXT("ReferenceAssetLoadFailed")));
 		return false;
 	}
 
@@ -1000,15 +993,7 @@ bool UHeistForgeryComponent::TryPrepareForgeryTemplate(AHeistPaintingDisplayCase
 	++SessionRevision;
 	HeistCharacter->ForceNetUpdate();
 
-	UE_LOG(
-		LogHeist, Log,
-		TEXT(
-			"Forgery template prepared: Character=%s Case=%s Artifact=%s Template=%s ReferenceImage=%s ReferenceMask=%s BackgroundFilter=%s BackgroundTolerance=%.3f PaletteColors=%d Observation=%.2f Forgery=%.2f StrokeLimit=%d Brush=%.4f CoverageWeight=%.3f MajorShapeWeight=%.3f ExtraStrokePenaltyWeight=%.3f TimeoutPenalty=%.3f ShapeWeight=%.3f ColorWeight=%.3f MaxPaintRatio=%.2f OverpaintCap=%.2f Result=PASS"),
-		*GetNameSafe(HeistCharacter), *GetNameSafe(TargetDisplayCase), *ActiveArtifactId.ToString(), *ActiveTemplateId.ToString(), *ReferenceImageAsset.ToSoftObjectPath().ToString(),
-		*ReferenceMaskAsset.ToSoftObjectPath().ToString(), *StaticEnum<EHeistForgeryBackgroundFilter>()->GetNameStringByValue(static_cast<int64>(TemplateBackgroundFilterMode)),
-		TemplateBackgroundColorTolerance, TemplateAllowedPalette.Num(), TemplateObservationDuration, TemplateForgeryDuration, TemplateStrokeLimit, TemplateBrushSize, TemplateCoverageWeight,
-		TemplateMajorShapeWeight, TemplateExtraStrokePenaltyWeight, TemplateTimeoutPenalty, TemplateShapeAccuracyWeight, TemplateColorAccuracyWeight, TemplateMaximumPaintToReferenceRatio,
-		TemplateOverpaintScoreCap);
+	UHeistDebugFunctionLibrary::DebugForgeryTemplatePrepared(this, TargetDisplayCase, TemplateDefinition);
 	BroadcastSessionSnapshot(TEXT("TemplatePrepared"), FName(TEXT("TemplateLoaded")));
 	return true;
 }
@@ -1038,11 +1023,8 @@ bool UHeistForgeryComponent::TryBeginSubmit()
 	FName RejectReason = NAME_None;
 	if (!ValidateActiveSession(RejectReason) || bSubmitPending || !bHasValidatedStrokePayload)
 	{
-		UE_LOG(LogHeistNetwork, Warning, TEXT("Forgery submit rejected: Character=%s Case=%s SubmitPending=%s Reason=%s"), *GetNameSafe(GetOwner()), *GetNameSafe(ActiveDisplayCase.Get()),
-			   bSubmitPending ? TEXT("true") : TEXT("false"),
-			   bSubmitPending				 ? TEXT("DuplicateSubmit")
-			   : !bHasValidatedStrokePayload ? TEXT("MissingValidatedStrokePayload")
-											 : *RejectReason.ToString());
+		const FName Reason = bSubmitPending ? FName(TEXT("DuplicateSubmit")) : !bHasValidatedStrokePayload ? FName(TEXT("MissingValidatedStrokePayload")) : RejectReason;
+		UHeistDebugFunctionLibrary::DebugForgerySubmitRejected(this, Reason);
 		return false;
 	}
 
@@ -1066,12 +1048,7 @@ bool UHeistForgeryComponent::TrySubmitStrokePayload(const TArray<FVector2D>& Nor
 	if (!ValidateStrokePayload(NormalizedPoints, StrokePointCounts, StrokePaletteIndices, ClientBrushSize, ClientSessionRevision, RejectReason, PayloadBytes))
 	{
 		RecordStrokeValidationResult(false, RejectReason);
-		UE_LOG(
-			LogHeistNetwork, Warning,
-			TEXT(
-				"Forgery stroke payload rejected: Character=%s Case=%s Strokes=%d Points=%d PayloadBytes=%d ClientBrush=%.4f ServerBrush=%.4f ClientSessionRevision=%d ServerSessionRevision=%d SubmitPending=%s Reason=%s"),
-			*GetNameSafe(GetOwner()), *GetNameSafe(ActiveDisplayCase.Get()), StrokePointCounts.Num(), NormalizedPoints.Num(), PayloadBytes, ClientBrushSize, TemplateBrushSize, ClientSessionRevision,
-			SessionRevision, bSubmitPending ? TEXT("true") : TEXT("false"), *RejectReason.ToString());
+		UHeistDebugFunctionLibrary::DebugForgeryStrokePayloadRejected(this, StrokePointCounts.Num(), NormalizedPoints.Num(), PayloadBytes, ClientBrushSize, ClientSessionRevision, RejectReason);
 
 		if (RejectReason == FName(TEXT("SessionExpired")))
 		{
@@ -1109,12 +1086,7 @@ bool UHeistForgeryComponent::TrySubmitStrokePayload(const TArray<FVector2D>& Nor
 	}
 
 	AHeistPaintingDisplayCaseActor* SubmittedDisplayCase = ActiveDisplayCase.Get();
-	UE_LOG(
-		LogHeistNetwork, Log,
-		TEXT(
-			"Forgery stroke payload accepted: Character=%s Case=%s Strokes=%d Points=%d PayloadBytes=%d Brush=%.4f ValidatedForSessionRevision=%d SubmitPending=%s RenderTargetReplicated=false Authority=true Result=PASS"),
-		*GetNameSafe(GetOwner()), *GetNameSafe(SubmittedDisplayCase), ValidatedStrokeCount, ValidatedPointCount, ValidatedPayloadBytes, ValidatedBrushSize, ClientSessionRevision,
-		bSubmitPending ? TEXT("true") : TEXT("false"));
+	UHeistDebugFunctionLibrary::DebugForgeryStrokePayloadAccepted(this, SubmittedDisplayCase, ClientSessionRevision);
 	CompleteSuccessfulForgerySession();
 	return true;
 }
@@ -1518,11 +1490,7 @@ void UHeistForgeryComponent::RecordStrokeValidationResult(const bool bAccepted, 
 		GetOwner()->ForceNetUpdate();
 	}
 
-	UE_LOG(LogHeistNetwork, Log,
-		   TEXT("Forgery stroke validation result: Character=%s Accepted=%s HasValidatedPayload=%s Strokes=%d Points=%d PayloadBytes=%d Brush=%.4f Reason=%s ValidationRevision=%d Authority=%s"),
-		   *GetNameSafe(GetOwner()), bAccepted ? TEXT("true") : TEXT("false"), bHasValidatedStrokePayload ? TEXT("true") : TEXT("false"), ValidatedStrokeCount, ValidatedPointCount,
-		   ValidatedPayloadBytes, ValidatedBrushSize, Reason.IsNone() ? TEXT("None") : *Reason.ToString(), StrokeValidationRevision,
-		   GetOwner() && GetOwner()->HasAuthority() ? TEXT("true") : TEXT("false"));
+	UHeistDebugFunctionLibrary::DebugForgeryStrokeValidationResult(this, bAccepted, Reason);
 }
 
 void UHeistForgeryComponent::ResetStrokeTransportState(const bool bResetLastValidation)
@@ -1551,8 +1519,7 @@ bool UHeistForgeryComponent::TryCalculateAndCommitForgeryScore()
 	if (!CalculateForgeryScore(ValidatedStrokePoints, ValidatedStrokePointCounts, ValidatedStrokePaletteIndices, ValidatedBrushSize, CalculatedResult, CalculatedReferenceMaskPixels,
 							   CalculatedSubmittedMaskPixels))
 	{
-		UE_LOG(LogHeistNetwork, Error, TEXT("Forgery score calculation rejected: Character=%s Case=%s Artifact=%s Template=%s ReferenceMask=%s Reason=MaskDecodeOrScoreContractFailed"),
-			   *GetNameSafe(GetOwner()), *GetNameSafe(ActiveDisplayCase.Get()), *ActiveArtifactId.ToString(), *ActiveTemplateId.ToString(), *ReferenceMaskAsset.ToSoftObjectPath().ToString());
+		UHeistDebugFunctionLibrary::DebugForgeryScoreCalculationRejected(this, FName(TEXT("MaskDecodeOrScoreContractFailed")));
 		return false;
 	}
 	const double ScoreCalculationMilliseconds = (FPlatformTime::Seconds() - ScoreCalculationStartSeconds) * 1000.0;
@@ -1560,8 +1527,7 @@ bool UHeistForgeryComponent::TryCalculateAndCommitForgeryScore()
 	FHeistReplicaPaintingData PaintingData;
 	if (!BuildReplicaPaintingData(PaintingData))
 	{
-		UE_LOG(LogHeistNetwork, Error, TEXT("Forgery painting data build rejected: Character=%s Case=%s Template=%s Reason=PaletteRasterPackingFailed"), *GetNameSafe(GetOwner()),
-			   *GetNameSafe(ActiveDisplayCase.Get()), *ActiveTemplateId.ToString());
+		UHeistDebugFunctionLibrary::DebugForgeryPaintingDataBuildRejected(this, FName(TEXT("PaletteRasterPackingFailed")));
 		return false;
 	}
 
@@ -1570,7 +1536,7 @@ bool UHeistForgeryComponent::TryCalculateAndCommitForgeryScore()
 	AHeistPaintingDisplayCaseActor* TargetDisplayCase = ActiveDisplayCase.Get();
 	if (!IsValid(HeistPlayerState) || !IsValid(TargetDisplayCase))
 	{
-		UE_LOG(LogHeistNetwork, Error, TEXT("Forgery score commit rejected: Character=%s Case=%s Reason=MissingOwnerOrDisplayCase"), *GetNameSafe(GetOwner()), *GetNameSafe(TargetDisplayCase));
+		UHeistDebugFunctionLibrary::DebugForgeryScoreCommitRejected(this, TargetDisplayCase, FName(TEXT("MissingOwnerOrDisplayCase")));
 		return false;
 	}
 
@@ -1579,7 +1545,7 @@ bool UHeistForgeryComponent::TryCalculateAndCommitForgeryScore()
 	bHandlingCaseSessionCallback = false;
 	if (!bReplicaCommitted)
 	{
-		UE_LOG(LogHeistNetwork, Error, TEXT("Forgery score commit rejected: Character=%s Case=%s Reason=ReplicaPlacementRejected"), *GetNameSafe(GetOwner()), *GetNameSafe(TargetDisplayCase));
+		UHeistDebugFunctionLibrary::DebugForgeryScoreCommitRejected(this, TargetDisplayCase, FName(TEXT("ReplicaPlacementRejected")));
 		return false;
 	}
 
@@ -1595,17 +1561,8 @@ bool UHeistForgeryComponent::TryCalculateAndCommitForgeryScore()
 	}
 
 	const int32 TotalScorePixels = ForgeryScoreGridResolution * ForgeryScoreGridResolution;
-	UE_LOG(
-		LogHeistNetwork, Log,
-		TEXT(
-			"Forgery score committed: Character=%s Case=%s Artifact=%s Template=%s Backend=OpenCV ShapeMetric=DistanceDiceGeometric ColorMetric=LabSSIMHistogramGeometric Fusion=WeightedGeometricBottleneck Calibration=OpenCVHistogramBonus0.75x3 ScoreCurve=Shape1.15Color1.10 PaintCompletenessExponent=0.65 Score=%.2f Coverage=%.2f MajorShape=%.2f ColorAccuracy=%.2f MissingPenalty=%.2f ExtraPenalty=%.2f TimeoutPenalty=%.2f CompletionTime=%.2f PaintToReference=%.2f PaintCompleteness=%.3f AntiFill=%s Resolution=%dx%d ReferencePixels=%d SubmittedPixels=%d ReferenceRatio=%.4f SubmittedRatio=%.4f Cache=%s ReferenceMs=%.3f OpenCVMs=%.3f TotalMs=%.3f ScoreRevision=%d Authority=true Deterministic=true Result=PASS"),
-		*GetNameSafe(GetOwner()), *GetNameSafe(ActiveDisplayCase.Get()), *AuthoritativeForgeryResult.ArtifactId.ToString(), *AuthoritativeForgeryResult.TemplateId.ToString(),
-		AuthoritativeForgeryResult.SimilarityScore, AuthoritativeForgeryResult.CoverageScore, AuthoritativeForgeryResult.MajorShapeScore, AuthoritativeForgeryResult.ColorAccuracyScore,
-		AuthoritativeForgeryResult.MissingShapePenalty, AuthoritativeForgeryResult.ExtraStrokePenalty, AuthoritativeForgeryResult.TimeoutPenalty, AuthoritativeForgeryResult.CompletionTime,
-		AuthoritativeForgeryResult.PaintToReferenceRatio, FMath::Pow(FMath::Clamp(AuthoritativeForgeryResult.PaintToReferenceRatio, 0.0f, 1.0f), PaintCompletenessExponent),
-		AuthoritativeForgeryResult.bAntiFillTriggered ? TEXT("true") : TEXT("false"), ForgeryScoreResolution, ForgeryScoreResolution, ReferenceMaskPixelCount, SubmittedMaskPixelCount,
-		static_cast<float>(ReferenceMaskPixelCount) / TotalScorePixels, static_cast<float>(SubmittedMaskPixelCount) / TotalScorePixels, bLastScoringReferenceCacheHit ? TEXT("Hit") : TEXT("Miss"),
-		LastScoringReferenceMilliseconds, LastOpenCVScoringMilliseconds, ScoreCalculationMilliseconds, ForgeryScoreRevision);
+	UHeistDebugFunctionLibrary::DebugForgeryScoreCommitted(this, ActiveDisplayCase.Get(), TotalScorePixels, PaintCompletenessExponent, bLastScoringReferenceCacheHit,
+														   LastScoringReferenceMilliseconds, LastOpenCVScoringMilliseconds, ScoreCalculationMilliseconds);
 	SessionStateChangedDelegate.Broadcast();
 	return true;
 }
@@ -1680,8 +1637,7 @@ bool UHeistForgeryComponent::BuildScoringReferenceCache() const
 		UTexture2D* ReferenceMaskTexture = ReferenceMaskAsset.LoadSynchronous();
 		if (!DecodeReferenceMaskIntensity(ReferenceMaskTexture, SourceIntensity, SourceWidth, SourceHeight, SourcePixelFormat))
 		{
-			UE_LOG(LogHeistNetwork, Error, TEXT("Forgery score mask decode failed: Character=%s Texture=%s PixelFormat=%d Source=%dx%d"), *GetNameSafe(GetOwner()), *GetNameSafe(ReferenceMaskTexture),
-				   static_cast<int32>(SourcePixelFormat), SourceWidth, SourceHeight);
+			UHeistDebugFunctionLibrary::DebugForgeryReferenceDecodeFailed(this, ReferenceMaskTexture, FName(TEXT("mask")), static_cast<int32>(SourcePixelFormat), SourceWidth, SourceHeight);
 			return false;
 		}
 	}
@@ -1693,8 +1649,7 @@ bool UHeistForgeryComponent::BuildScoringReferenceCache() const
 	EPixelFormat ImagePixelFormat = PF_Unknown;
 	if (!DecodeReferenceImageColors(ReferenceImageTexture, SourceColors, ImageWidth, ImageHeight, ImagePixelFormat))
 	{
-		UE_LOG(LogHeistNetwork, Error, TEXT("Forgery score image decode failed: Character=%s Texture=%s PixelFormat=%d Source=%dx%d"), *GetNameSafe(GetOwner()), *GetNameSafe(ReferenceImageTexture),
-			   static_cast<int32>(ImagePixelFormat), ImageWidth, ImageHeight);
+		UHeistDebugFunctionLibrary::DebugForgeryReferenceDecodeFailed(this, ReferenceImageTexture, FName(TEXT("image")), static_cast<int32>(ImagePixelFormat), ImageWidth, ImageHeight);
 		return false;
 	}
 
@@ -1763,27 +1718,20 @@ bool UHeistForgeryComponent::CalculateForgeryScore(const TArray<FVector2D>& Norm
 	OutSubmittedMaskPixels = OpenCVMetrics.SubmittedPixelCount;
 	if (GetOwner()->HasAuthority())
 	{
-		UE_LOG(
-			LogHeistNetwork, Log,
-			TEXT(
-				"Forgery OpenCV metrics: Character=%s Template=%s DistanceRecall=%.4f DistancePrecision=%.4f BidirectionalDistance=%.4f MaskPrecision=%.4f MaskRecall=%.4f MaskIoU=%.4f MaskDice=%.4f LabSSIM=%.4f PaletteHistogram=%.4f ColorGeometric=%.4f PaletteBonus=%.4f Result=PASS"),
-			*GetNameSafe(GetOwner()), *ActiveTemplateId.ToString(), OpenCVMetrics.ReferenceCoverage, OpenCVMetrics.SubmittedPrecision, OpenCVMetrics.BidirectionalShapeSimilarity,
-			OpenCVMetrics.MaskPrecision, OpenCVMetrics.MaskRecall, OpenCVMetrics.MaskIntersectionOverUnion, OpenCVMetrics.MaskDiceSimilarity, OpenCVMetrics.StructuralColorSimilarity,
-			OpenCVMetrics.HistogramColorSimilarity, OpenCVMetrics.ColorSimilarity,
-			OpenCVPaletteFidelityBonusWeight * FMath::Pow(OpenCVMetrics.HistogramColorSimilarity, OpenCVPaletteFidelityBonusExponent));
+		UHeistDebugFunctionLibrary::DebugForgeryOpenCVMetrics(
+			this, OpenCVMetrics.ReferenceCoverage, OpenCVMetrics.SubmittedPrecision, OpenCVMetrics.BidirectionalShapeSimilarity, OpenCVMetrics.MaskPrecision, OpenCVMetrics.MaskRecall,
+			OpenCVMetrics.MaskIntersectionOverUnion, OpenCVMetrics.MaskDiceSimilarity, OpenCVMetrics.StructuralColorSimilarity, OpenCVMetrics.HistogramColorSimilarity,
+			OpenCVMetrics.ColorSimilarity, OpenCVPaletteFidelityBonusWeight * FMath::Pow(OpenCVMetrics.HistogramColorSimilarity, OpenCVPaletteFidelityBonusExponent));
 	}
 #else
-	UE_LOG(LogHeistNetwork, Error, TEXT("Forgery score calculation rejected: Character=%s Template=%s Reason=OpenCVUnavailable"), *GetNameSafe(GetOwner()), *ActiveTemplateId.ToString());
+	UHeistDebugFunctionLibrary::DebugForgeryScoreCalculationRejected(this, FName(TEXT("OpenCVUnavailable")));
 	return false;
 #endif
 
 	const int32 TotalPixelCount = ForgeryScoreGridResolution * ForgeryScoreGridResolution;
 	if (OutReferenceMaskPixels <= 0 || OutReferenceMaskPixels >= TotalPixelCount)
 	{
-		const FString MaskSource =
-			TemplateBackgroundFilterMode == EHeistForgeryBackgroundFilter::None ? ReferenceMaskAsset.ToSoftObjectPath().ToString() : ReferenceImageAsset.ToSoftObjectPath().ToString();
-		UE_LOG(LogHeistNetwork, Error, TEXT("Forgery score mask rejected: Character=%s Texture=%s ReferencePixels=%d TotalPixels=%d Reason=DegenerateReferenceMask"), *GetNameSafe(GetOwner()),
-			   *MaskSource, OutReferenceMaskPixels, TotalPixelCount);
+		UHeistDebugFunctionLibrary::DebugForgeryReferenceMaskRejected(this, TemplateBackgroundFilterMode == EHeistForgeryBackgroundFilter::None, OutReferenceMaskPixels, TotalPixelCount);
 		return false;
 	}
 
@@ -1976,10 +1924,7 @@ void UHeistForgeryComponent::CompleteSuccessfulForgerySession()
 		OwnerActor->ForceNetUpdate();
 	}
 
-	UE_LOG(LogHeistNetwork, Log, TEXT("Forgery session completed: Character=%s PreviousCase=%s HasScore=%s Score=%.2f ReplicaPlaced=%s Revision=%d Authority=true Result=%s"), *GetNameSafe(GetOwner()),
-		   *GetNameSafe(PreviousDisplayCase), bHasAuthoritativeForgeryResult ? TEXT("true") : TEXT("false"), AuthoritativeForgeryResult.SimilarityScore,
-		   AuthoritativeForgeryResult.bReplicaPlaced ? TEXT("true") : TEXT("false"), SessionRevision,
-		   bHasAuthoritativeForgeryResult && AuthoritativeForgeryResult.bReplicaPlaced ? TEXT("PASS") : TEXT("FAIL"));
+	UHeistDebugFunctionLibrary::DebugForgerySessionCompleted(this, PreviousDisplayCase);
 	BroadcastSessionSnapshot(TEXT("ServerComplete"), LastCleanupReason);
 }
 
@@ -2087,22 +2032,14 @@ void UHeistForgeryComponent::ClearSession(const FName Reason, const bool bReleas
 		HeistCharacter->ForceNetUpdate();
 	}
 
-	UE_LOG(LogHeistNetwork, Log, TEXT("Forgery session cleared: Character=%s PreviousCase=%s Reason=%s Revision=%d"), *GetNameSafe(HeistCharacter), *GetNameSafe(PreviousDisplayCase),
-		   *Reason.ToString(), SessionRevision);
+	UHeistDebugFunctionLibrary::DebugForgerySessionCleared(this, PreviousDisplayCase, Reason);
 	BroadcastSessionSnapshot(TEXT("ServerClear"), Reason);
 }
 
 void UHeistForgeryComponent::BroadcastSessionSnapshot(const TCHAR* ChangeSource, const FName Reason)
 {
 	SessionStateChangedDelegate.Broadcast();
-	UE_LOG(
-		LogHeistNetwork, Log,
-		TEXT(
-			"Forgery session %s: Character=%s Case=%s Active=%s SubmitPending=%s HasScore=%s Score=%.2f TemplatePrepared=%s Artifact=%s Template=%s EndServerTime=%.2f Revision=%d LastCleanup=%s Reason=%s Authority=%s"),
-		ChangeSource, *GetNameSafe(GetOwner()), *GetNameSafe(ActiveDisplayCase.Get()), bSessionActive ? TEXT("true") : TEXT("false"), bSubmitPending ? TEXT("true") : TEXT("false"),
-		bHasAuthoritativeForgeryResult ? TEXT("true") : TEXT("false"), AuthoritativeForgeryResult.SimilarityScore, bTemplatePrepared ? TEXT("true") : TEXT("false"), *ActiveArtifactId.ToString(),
-		*ActiveTemplateId.ToString(), SessionEndServerTime, SessionRevision, LastCleanupReason.IsNone() ? TEXT("None") : *LastCleanupReason.ToString(),
-		Reason.IsNone() ? TEXT("None") : *Reason.ToString(), GetOwner() && GetOwner()->HasAuthority() ? TEXT("true") : TEXT("false"));
+	UHeistDebugFunctionLibrary::DebugForgerySessionSnapshot(this, ChangeSource, Reason);
 }
 
 void UHeistForgeryComponent::ResetPreparedTemplateSnapshot()
@@ -2162,27 +2099,13 @@ void UHeistForgeryComponent::OnRep_SessionRevision()
 
 void UHeistForgeryComponent::OnRep_StrokeValidationRevision()
 {
-	UE_LOG(
-		LogHeistNetwork, Log,
-		TEXT(
-			"Forgery stroke validation replicated: Character=%s Accepted=%s HasValidatedPayload=%s Strokes=%d Points=%d PayloadBytes=%d Brush=%.4f Reason=%s ValidationRevision=%d Authority=false Result=%s"),
-		*GetNameSafe(GetOwner()), bLastStrokeValidationAccepted ? TEXT("true") : TEXT("false"), bHasValidatedStrokePayload ? TEXT("true") : TEXT("false"), ValidatedStrokeCount, ValidatedPointCount,
-		ValidatedPayloadBytes, ValidatedBrushSize, LastStrokeValidationReason.IsNone() ? TEXT("None") : *LastStrokeValidationReason.ToString(), StrokeValidationRevision,
-		bLastStrokeValidationAccepted ? TEXT("PASS") : TEXT("REJECTED"));
+	UHeistDebugFunctionLibrary::DebugForgeryStrokeValidationReplicated(this);
 }
 
 void UHeistForgeryComponent::OnRep_ForgeryScoreRevision()
 {
 	SessionStateChangedDelegate.Broadcast();
-	UE_LOG(
-		LogHeistNetwork, Log,
-		TEXT(
-			"Forgery score replicated: Character=%s HasScore=%s Artifact=%s Template=%s Score=%.2f Coverage=%.2f MajorShape=%.2f ColorAccuracy=%.2f MissingPenalty=%.2f ExtraPenalty=%.2f TimeoutPenalty=%.2f CompletionTime=%.2f PaintToReference=%.2f AntiFill=%s Resolution=%dx%d ReferencePixels=%d SubmittedPixels=%d ScoreRevision=%d Authority=false Result=%s"),
-		*GetNameSafe(GetOwner()), bHasAuthoritativeForgeryResult ? TEXT("true") : TEXT("false"), *AuthoritativeForgeryResult.ArtifactId.ToString(), *AuthoritativeForgeryResult.TemplateId.ToString(),
-		AuthoritativeForgeryResult.SimilarityScore, AuthoritativeForgeryResult.CoverageScore, AuthoritativeForgeryResult.MajorShapeScore, AuthoritativeForgeryResult.ColorAccuracyScore,
-		AuthoritativeForgeryResult.MissingShapePenalty, AuthoritativeForgeryResult.ExtraStrokePenalty, AuthoritativeForgeryResult.TimeoutPenalty, AuthoritativeForgeryResult.CompletionTime,
-		AuthoritativeForgeryResult.PaintToReferenceRatio, AuthoritativeForgeryResult.bAntiFillTriggered ? TEXT("true") : TEXT("false"), ForgeryScoreResolution, ForgeryScoreResolution,
-		ReferenceMaskPixelCount, SubmittedMaskPixelCount, ForgeryScoreRevision, bHasAuthoritativeForgeryResult ? TEXT("PASS") : TEXT("CLEARED"));
+	UHeistDebugFunctionLibrary::DebugForgeryScoreReplicated(this);
 }
 
 void UHeistForgeryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

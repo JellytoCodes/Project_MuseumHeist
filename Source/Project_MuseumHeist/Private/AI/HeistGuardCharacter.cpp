@@ -20,6 +20,15 @@ AHeistGuardCharacter::AHeistGuardCharacter()
 
 	AIControllerClass = AHeistGuardAIController::StaticClass();
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationYaw = false;
+	bUseControllerRotationRoll = false;
+
+	UCharacterMovementComponent* MovementComponent = GetCharacterMovement();
+	checkf(IsValid(MovementComponent), TEXT("HeistGuardCharacter requires CharacterMovementComponent."));
+	MovementComponent->bOrientRotationToMovement = true;
+	MovementComponent->bUseControllerDesiredRotation = false;
+	MovementComponent->RotationRate = FRotator(0.0f, 360.0f, 0.0f);
 
 	GuardStateComponent = CreateDefaultSubobject<UHeistGuardStateComponent>(TEXT("GuardStateComponent"));
 	PatrolPathComponent = CreateDefaultSubobject<UHeistPatrolPathComponent>(TEXT("PatrolPathComponent"));
@@ -55,6 +64,12 @@ void AHeistGuardCharacter::BeginPlay()
 	}
 
 	HandleGuardStateChanged(GuardStateComponent->GetGuardState(), GuardStateComponent->GetGuardState());
+}
+
+void AHeistGuardCharacter::GetActorEyesViewPoint(FVector& OutLocation, FRotator& OutRotation) const
+{
+	OutLocation = GetPawnViewLocation();
+	OutRotation = GetActorRotation();
 }
 
 #pragma endregion

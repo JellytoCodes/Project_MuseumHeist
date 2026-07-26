@@ -22,6 +22,7 @@ public class Project_MuseumHeist : ModuleRules
 			"AIModule",
 			"GameplayStateTreeModule",
 			"StateTreeModule",
+			"OnlineSubsystem",
 			"OpenCV",
 			"OpenCVHelper"
 		});
@@ -29,12 +30,19 @@ public class Project_MuseumHeist : ModuleRules
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
 			"ImageCore",
+			"OnlineBase",
+			"OnlineSubsystemUtils",
 			"SlateCore"
 		});
-		
-		// Uncomment if you are using online features
-		// PrivateDependencyModuleNames.Add("OnlineSubsystem");
 
-		// To include OnlineSubsystemSteam, add it to the plugins section in your uproject file with the Enabled attribute set to true
+		DynamicallyLoadedModuleNames.AddRange(new string[]
+		{
+			"OnlineSubsystemSteam"
+		});
+
+		if (Target.bBuildEditor)
+		{
+			DynamicallyLoadedModuleNames.Add("OnlineSubsystemNull");
+		}
 	}
 }

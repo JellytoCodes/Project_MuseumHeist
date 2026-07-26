@@ -5,6 +5,7 @@
 #include "AI/HeistGuardStateComponent.h"
 #include "Character/HeistPlayerCharacter.h"
 #include "Components/StateTreeAIComponent.h"
+#include "Core/HeistGameMode.h"
 #include "Core/HeistGameplayTags.h"
 #include "Core/HeistPlayerState.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
@@ -87,6 +88,7 @@ void AHeistGuardAIController::OnPossess(APawn* InPawn)
 		if (AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr)
 		{
 			HeistGameState->GetAlertStateChangedDelegate().AddUObject(this, &AHeistGuardAIController::HandleAlertStateChanged);
+			HeistGameState->GetMatchPhaseChangedDelegate().AddUObject(this, &AHeistGuardAIController::HandleMatchPhaseChanged);
 		}
 	}
 
@@ -109,6 +111,7 @@ void AHeistGuardAIController::OnUnPossess()
 	if (AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr)
 	{
 		HeistGameState->GetAlertStateChangedDelegate().RemoveAll(this);
+		HeistGameState->GetMatchPhaseChangedDelegate().RemoveAll(this);
 	}
 
 	StopMovement();
@@ -506,6 +509,11 @@ void AHeistGuardAIController::CompleteDetectionGrace()
 	UHeistGuardStateComponent* GuardStateComponent = IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
 	if (IsValid(GuardStateComponent) && GuardStateComponent->EnterChasePlayer(TargetActor))
 	{
+		if (AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr)
+		{
+			const FName AlertTriggerId(*FString::Printf(TEXT("GuardSight_%s_%s"), *GuardCharacter->GetFName().ToString(), *TargetActor->GetFName().ToString()));
+			HeistGameMode->RequestAlertEscalation(EHeistAlertLevel::Suspicious, AlertTriggerId);
+		}
 		UHeistDebugFunctionLibrary::DebugGuardSightTargetAcquired(this, GuardCharacter, TargetActor);
 	}
 }
@@ -671,6 +679,43 @@ void AHeistGuardAIController::HandleAlertStateChanged(const EHeistAlertLevel, co
 		StopMovement();
 		SendGuardStateTreeEvent(EHeistGuardState::Patrol);
 	}
+}
+
+void AHeistGuardAIController::HandleMatchPhaseChanged(const EHeistMatchPhase PreviousMatchPhase, const EHeistMatchPhase NewMatchPhase)
+{
+	if (!HasAuthority() || PreviousMatchPhase == NewMatchPhase || NewMatchPhase == EHeistMatchPhase::InGame)
+	{
+		return;
+	}
+
+	AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn());
+	UHeistGuardStateComponent* GuardStateComponent = IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
+	StopMovement();
+	ClearFocus(EAIFocusPriority::Gameplay);
+	AbortInspection(FName(TEXT("MatchEnded")));
+	if (InspectionTarget.IsValid())
+	{
+		InspectionTarget.Reset();
+		++InspectionTargetSelectionRevision;
+	}
+	ClearDetectionGrace(TEXT("MatchEnded"));
+	ClearSightValidationTimer();
+	if (IsValid(GuardStateComponent))
+	{
+		GuardStateComponent->SetDisabled(true);
+	}
+	if (IsValid(GuardStateTreeComponent) && GuardStateTreeComponent->IsRunning())
+	{
+		GuardStateTreeComponent->StopLogic(TEXT("Match ended"));
+	}
+
+	const FTimerManager& TimerManager = GetWorldTimerManager();
+	const bool bTimersCleared = !TimerManager.TimerExists(DetectionGraceTimerHandle) && !TimerManager.TimerExists(SightValidationTimerHandle) &&
+								(!IsValid(GuardStateComponent) || !GuardStateComponent->IsStateTimerActive());
+	UE_LOG(LogHeistNetwork, Log, TEXT("Guard match cleanup: Guard=%s PreviousPhase=%s NewPhase=%s State=%s InspectionTarget=%s TimersCleared=%s Authority=true Result=%s"),
+		   *GetNameSafe(GuardCharacter), *UEnum::GetValueAsString(PreviousMatchPhase), *UEnum::GetValueAsString(NewMatchPhase),
+		   IsValid(GuardStateComponent) ? *UEnum::GetValueAsString(GuardStateComponent->GetGuardState()) : TEXT("MissingStateComponent"), *GetNameSafe(InspectionTarget.Get()),
+		   bTimersCleared ? TEXT("true") : TEXT("false"), bTimersCleared ? TEXT("PASS") : TEXT("FAIL"));
 }
 
 void AHeistGuardAIController::ApplyAlertModifiers(const EHeistAlertLevel NewLevel)

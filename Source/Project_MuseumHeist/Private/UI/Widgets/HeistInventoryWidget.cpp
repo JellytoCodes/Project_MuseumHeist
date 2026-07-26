@@ -128,8 +128,9 @@ void UHeistInventoryWidget::RefreshVisibilityFromConfirmedSnapshot()
 		const int32 GridRows = InventoryViewModel->GetGridRowCount();
 		if (IsValid(InventorySummaryText))
 		{
-			InventorySummaryText->SetText(FText::Format(NSLOCTEXT("HeistInventory", "InventorySummaryFormat", "INVENTORY  {0} ITEMS  |  GRID {1}x{2}"), FText::AsNumber(ConfirmedItems.Num()),
-														FText::AsNumber(GridColumns), FText::AsNumber(GridRows)));
+			InventorySummaryText->SetText(
+				FText::Format(NSLOCTEXT("HeistInventory", "InventorySummaryFormat", "ITEMS  {0}  |  GRID  {1}x{2}"),
+							  FText::AsNumber(ConfirmedItems.Num()), FText::AsNumber(GridColumns), FText::AsNumber(GridRows)));
 		}
 
 		BP_RefreshConfirmedInventory(ConfirmedItems, GridColumns, GridRows);
@@ -152,8 +153,8 @@ void UHeistInventoryWidget::RefreshQuickSlotPresentation()
 		}
 		if (IsValid(QuickSlotSummaryText))
 		{
-			QuickSlotSummaryText->SetText(FText::Format(NSLOCTEXT("HeistInventory", "QuickSlotSummaryFormat", "QUICK SLOTS  {0}/{1} ASSIGNED"), FText::AsNumber(AssignedQuickSlotCount),
-														FText::AsNumber(ConfirmedQuickSlots.Num())));
+			QuickSlotSummaryText->SetText(FText::Format(NSLOCTEXT("HeistInventory", "QuickSlotSummaryFormat", "QUICK SLOTS  {0}/{1}"),
+													   FText::AsNumber(AssignedQuickSlotCount), FText::AsNumber(ConfirmedQuickSlots.Num())));
 		}
 
 		BP_RefreshConfirmedQuickSlots(ConfirmedQuickSlots);

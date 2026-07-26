@@ -67,10 +67,18 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 	FLinearColor GetActivePaletteColor() const;
 	UFUNCTION(BlueprintCallable, Category = "Heist|Forgery|Palette")
 	bool SelectPaletteIndex(int32 PaletteIndex);
+	UFUNCTION(BlueprintCallable, Category = "Heist|Forgery|Drawing")
+	bool ResetDrawingCanvas();
+	UFUNCTION(BlueprintPure, Category = "Heist|Forgery|Drawing")
+	float GetDrawingTimeRemainingSeconds() const;
 	bool RequestSubmitCollectedStrokes();
+	bool IsAlertWarningContractSatisfied() const;
+	void DebugDumpAlertWarningState() const;
 
   private:
 	void RefreshForgeryPresentation();
+	void RefreshAlertWarningPresentation();
+	void RefreshForgeryLockdownCountdown();
 	void ApplyStateVisibility(UWidget* TargetWidget, bool bVisible) const;
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Heist|Forgery", meta = (AllowPrivateAccess = "true"))
@@ -103,6 +111,7 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 	void RefreshDrawingFeedback();
 	void MarkPreviewScoreDirty();
 	void RefreshLocalPreviewScore();
+	void RefreshDrawingTimeRemaining();
 	void BindPaletteButtons();
 	void RefreshPaletteButtons();
 	float GetNormalizedEraseRadius() const;
@@ -120,6 +129,8 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 	mutable FVector2D PendingDrawNormalizedPoint = FVector2D::ZeroVector;
 	float PreviewScoreUpdateAccumulator = 0.0f;
 	bool bPreviewScoreDirty = true;
+	int32 LastDisplayedDrawingTimeSeconds = INDEX_NONE;
+	int32 LastDisplayedLockdownSeconds = INDEX_NONE;
 
 	UFUNCTION()
 	void HandlePaletteButton1Clicked();
@@ -164,6 +175,15 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> DrawingHint;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> DrawingTimeRemainingText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> ForgeryAlertWarningText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> ForgeryLockdownCountdownText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> PreviewScoreText;

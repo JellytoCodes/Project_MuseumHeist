@@ -64,6 +64,7 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardAIController : public AAIController
 	void StartSightValidationTimer();
 	void ClearSightValidationTimer();
 	void HandleAlertStateChanged(EHeistAlertLevel PreviousLevel, EHeistAlertLevel NewLevel, int32 Revision, FName TriggerId);
+	void HandleMatchPhaseChanged(EHeistMatchPhase PreviousMatchPhase, EHeistMatchPhase NewMatchPhase);
 	void ApplyAlertModifiers(EHeistAlertLevel NewLevel);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|AI|Perception", meta = (AllowPrivateAccess = "true"))

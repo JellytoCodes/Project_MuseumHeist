@@ -89,19 +89,22 @@ void UHeistInventoryItemWidget::RefreshPresentation()
 {
 	if (IsValid(ItemIdText))
 	{
-		ItemIdText->SetText(FText::FromName(ConfirmedItem.ItemId));
+		FString ItemDisplayName = ConfirmedItem.ItemId.ToString();
+		ItemDisplayName.ReplaceInline(TEXT("_"), TEXT(" "));
+		ItemIdText->SetText(FText::FromString(ItemDisplayName));
 	}
 
 	if (IsValid(InstanceIdText))
 	{
-		InstanceIdText->SetText(FText::Format(NSLOCTEXT("HeistInventory", "ItemInstanceFormat", "#{0}"), FText::AsNumber(ConfirmedItem.InstanceId)));
+		InstanceIdText->SetText(FText::Format(NSLOCTEXT("HeistInventory", "ItemInstanceFormat", "ID  {0}"), FText::AsNumber(ConfirmedItem.InstanceId)));
 	}
 
 	if (IsValid(ItemDetailsText))
 	{
-		ItemDetailsText->SetText(FText::Format(NSLOCTEXT("HeistInventory", "ItemDetailsFormat", "{0}x{1}  Grid {2},{3}  {4}"), FText::AsNumber(PlacedSize.X), FText::AsNumber(PlacedSize.Y),
-											   FText::AsNumber(ConfirmedItem.GridPosition.X), FText::AsNumber(ConfirmedItem.GridPosition.Y),
-											   ConfirmedItem.bRotated ? NSLOCTEXT("HeistInventory", "ItemRotated", "ROT") : NSLOCTEXT("HeistInventory", "ItemNotRotated", "BASE")));
+		ItemDetailsText->SetText(FText::Format(
+			NSLOCTEXT("HeistInventory", "ItemDetailsFormat", "{0}x{1}  |  CELL {2},{3}  |  {4}"),
+			FText::AsNumber(PlacedSize.X), FText::AsNumber(PlacedSize.Y), FText::AsNumber(ConfirmedItem.GridPosition.X), FText::AsNumber(ConfirmedItem.GridPosition.Y),
+			ConfirmedItem.bRotated ? NSLOCTEXT("HeistInventory", "ItemRotated", "ROTATED") : NSLOCTEXT("HeistInventory", "ItemNotRotated", "DEFAULT")));
 	}
 
 	if (IsValid(ItemBackground))

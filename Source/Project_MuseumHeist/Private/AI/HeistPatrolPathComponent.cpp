@@ -94,3 +94,18 @@ float UHeistPatrolPathComponent::GetWaypointWaitDuration() const
 {
 	return FMath::Max(0.0f, WaypointWaitDuration);
 }
+
+bool UHeistPatrolPathComponent::ShouldLookAroundAtWaypoints() const
+{
+	return bLookAroundAtWaypoints && GetWaypointWaitDuration() > 0.0f && GetLookAroundYawAngle() > 0.0f && GetLookAroundTurnRate() > 0.0f;
+}
+
+float UHeistPatrolPathComponent::GetLookAroundYawAngle() const
+{
+	return FMath::Clamp(LookAroundYawAngle, 0.0f, 90.0f);
+}
+
+float UHeistPatrolPathComponent::GetLookAroundTurnRate() const
+{
+	return FMath::Max(0.0f, LookAroundTurnRate);
+}

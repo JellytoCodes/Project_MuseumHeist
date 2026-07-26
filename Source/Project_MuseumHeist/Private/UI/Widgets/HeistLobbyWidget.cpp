@@ -1,5 +1,7 @@
 #include "UI/Widgets/HeistLobbyWidget.h"
 
+#include "Components/Button.h"
+#include "Components/EditableTextBox.h"
 #include "Components/TextBlock.h"
 #include "Components/Widget.h"
 #include "UI/ViewModels/HeistLobbyViewModel.h"
@@ -15,11 +17,33 @@ UHeistLobbyWidget::UHeistLobbyWidget(const FObjectInitializer& ObjectInitializer
 
 #pragma region Lifecycle
 
+void UHeistLobbyWidget::NativeConstruct()
+{
+	Super::NativeConstruct();
+
+	if (IsValid(HostSessionButton))
+	{
+		HostSessionButton->OnClicked.AddUniqueDynamic(this, &UHeistLobbyWidget::HandleHostSessionClicked);
+	}
+	if (IsValid(JoinSessionButton))
+	{
+		JoinSessionButton->OnClicked.AddUniqueDynamic(this, &UHeistLobbyWidget::HandleJoinSessionClicked);
+	}
+}
+
 void UHeistLobbyWidget::NativeDestruct()
 {
 	if (IsValid(LobbyViewModel))
 	{
 		LobbyViewModel->GetSnapshotChangedDelegate().RemoveAll(this);
+	}
+	if (IsValid(HostSessionButton))
+	{
+		HostSessionButton->OnClicked.RemoveDynamic(this, &UHeistLobbyWidget::HandleHostSessionClicked);
+	}
+	if (IsValid(JoinSessionButton))
+	{
+		JoinSessionButton->OnClicked.RemoveDynamic(this, &UHeistLobbyWidget::HandleJoinSessionClicked);
 	}
 
 	Super::NativeDestruct();
@@ -62,6 +86,22 @@ UHeistLobbyViewModel* UHeistLobbyWidget::GetLobbyViewModel() const
 
 #pragma region Presentation
 
+void UHeistLobbyWidget::HandleHostSessionClicked()
+{
+	if (IsValid(LobbyViewModel))
+	{
+		LobbyViewModel->RequestHostSession();
+	}
+}
+
+void UHeistLobbyWidget::HandleJoinSessionClicked()
+{
+	if (IsValid(LobbyViewModel) && IsValid(JoinCodeInput))
+	{
+		LobbyViewModel->RequestJoinSessionByCode(JoinCodeInput->GetText().ToString());
+	}
+}
+
 void UHeistLobbyWidget::RefreshLobbyPresentation()
 {
 	if (!IsValid(LobbyViewModel))
@@ -69,6 +109,28 @@ void UHeistLobbyWidget::RefreshLobbyPresentation()
 		return;
 	}
 
+	if (IsValid(HostSessionButton))
+	{
+		HostSessionButton->SetIsEnabled(LobbyViewModel->CanRequestHostSession());
+	}
+	if (IsValid(JoinSessionButton))
+	{
+		JoinSessionButton->SetIsEnabled(LobbyViewModel->CanRequestJoinSession());
+	}
+	if (IsValid(JoinCodeText))
+	{
+		JoinCodeText->SetText(LobbyViewModel->GetJoinCodeText());
+		JoinCodeText->SetVisibility(LobbyViewModel->GetJoinCodeVisibility());
+	}
+	if (IsValid(SessionStatusText))
+	{
+		SessionStatusText->SetText(LobbyViewModel->GetSessionStatusText());
+	}
+	if (IsValid(SessionErrorText))
+	{
+		SessionErrorText->SetText(LobbyViewModel->GetSessionErrorText());
+		SessionErrorText->SetVisibility(LobbyViewModel->GetSessionErrorVisibility());
+	}
 	if (IsValid(PhaseText))
 	{
 		PhaseText->SetText(LobbyViewModel->GetPhaseText());

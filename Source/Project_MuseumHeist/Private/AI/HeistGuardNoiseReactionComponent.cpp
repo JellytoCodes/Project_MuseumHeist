@@ -121,13 +121,16 @@ bool UHeistGuardNoiseReactionComponent::ReactToSoundPing(const FHeistSoundPingEv
 
 	if (GuardStateBeforeReaction == EHeistGuardState::InvestigateNoise && bHasCurrentCandidate)
 	{
-		if (NewPriority > PreviousCandidatePriority || (NewPriority == PreviousCandidatePriority && Distance >= CurrentCandidateDistance))
+		if (NewPriority >= PreviousCandidatePriority)
 		{
-			UHeistDebugFunctionLibrary::DebugGuardNoiseReactionRejected(this, GuardCharacter, SoundPingEvent, TEXT("LowerPriorityCandidate"), Distance);
+			UHeistDebugFunctionLibrary::DebugGuardNoiseReactionRejected(
+				this, GuardCharacter, SoundPingEvent, NewPriority == PreviousCandidatePriority ? TEXT("ActiveCandidateInProgress") : TEXT("LowerPriorityCandidate"), Distance);
 			if (SoundPingEvent.PingType == EHeistSoundPingType::CoinImpact)
 			{
-				UHeistDebugFunctionLibrary::DebugCoinDistractionDecision(this, GuardCharacter, SoundPingEvent, GuardStateBeforeReaction, TEXT("REJECT"), TEXT("LowerPriorityCandidate"), NewPriority,
-																		 PreviousCandidateType, PreviousCandidatePriority);
+				UHeistDebugFunctionLibrary::DebugCoinDistractionDecision(
+					this, GuardCharacter, SoundPingEvent, GuardStateBeforeReaction, TEXT("REJECT"),
+					NewPriority == PreviousCandidatePriority ? TEXT("ActiveCandidateInProgress") : TEXT("LowerPriorityCandidate"), NewPriority, PreviousCandidateType,
+					PreviousCandidatePriority);
 			}
 			return false;
 		}
@@ -140,7 +143,6 @@ bool UHeistGuardNoiseReactionComponent::ReactToSoundPing(const FHeistSoundPingEv
 	}
 
 	CurrentCandidate = SoundPingEvent;
-	CurrentCandidateDistance = Distance;
 	bHasCurrentCandidate = true;
 
 	UHeistDebugFunctionLibrary::DebugGuardNoiseReactionAccepted(this, GuardCharacter, SoundPingEvent, Distance, InvestigateDuration);
@@ -170,7 +172,6 @@ void UHeistGuardNoiseReactionComponent::HandleGuardStateChanged(const EHeistGuar
 	}
 
 	CurrentCandidate = FHeistSoundPingEvent();
-	CurrentCandidateDistance = TNumericLimits<float>::Max();
 	bHasCurrentCandidate = false;
 }
 

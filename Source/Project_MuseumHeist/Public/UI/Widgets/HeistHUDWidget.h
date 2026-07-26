@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Core/HeistTypes.h"
 #include "UI/Widgets/HeistUserWidgetBase.h"
 
 #include "HeistHUDWidget.generated.h"
@@ -11,6 +12,8 @@ class UHeistPopupWidgetPool;
 class UHeistUserWidgetBase;
 class UPanelWidget;
 class UWidget;
+class UAudioComponent;
+class USoundBase;
 
 UCLASS(Blueprintable)
 class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
@@ -27,6 +30,7 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 #pragma region Lifecycle
 
   protected:
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	virtual void NativeDestruct() override;
 
 #pragma endregion
@@ -44,6 +48,10 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 	void ResolveCrosshairWidgets();
 	void RefreshCrosshairPresentation(AActor* TargetActor, bool bAvailable);
 	void RefreshToolPresentation();
+	void RefreshAlertPresentation();
+	void RefreshLockdownCountdown();
+	void ApplyAlertAudioLayers();
+	void StopAlertAudioLayers();
 	UHeistInteractionPromptWidget* ResolveInteractionChildWidget(FName WidgetName, UHeistInteractionPromptWidget* ExistingWidget) const;
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Heist|HUD", meta = (AllowPrivateAccess = "true"))
@@ -73,6 +81,8 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
   public:
 	void DebugDumpFirstPersonHUDState() const;
 	void DebugDumpFeedbackState() const;
+	void DebugDumpAlertPresentationState() const;
+	bool IsAlertPresentationContractSatisfied() const;
 
 #pragma endregion
 
@@ -97,8 +107,11 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> StatusText;
 
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> AlertText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> LockdownCountdownText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistInteractionPromptWidget> InteractionPromptWidget;
@@ -126,6 +139,31 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 
 	UPROPERTY(Transient)
 	TObjectPtr<UHeistPopupWidgetPool> PopupWidgetPool;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Alert|Audio", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USoundBase> SuspenseMusic;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Alert|Audio", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USoundBase> AlarmMusic;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Alert|Audio", meta = (ClampMin = "0.0", ClampMax = "1.0", AllowPrivateAccess = "true"))
+	float SuspenseMusicVolume = 0.55f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Alert|Audio", meta = (ClampMin = "0.0", ClampMax = "1.0", AllowPrivateAccess = "true"))
+	float AlarmMusicVolume = 0.75f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Alert|Audio", meta = (ClampMin = "0.0", ClampMax = "5.0", AllowPrivateAccess = "true"))
+	float AlertMusicFadeSeconds = 0.35f;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAudioComponent> SuspenseMusicComponent;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAudioComponent> AlarmMusicComponent;
+
+	EHeistAlertLevel LastAppliedAudioAlertLevel = EHeistAlertLevel::Quiet;
+	bool bAlertAudioInitialized = false;
+	int32 LastDisplayedLockdownSeconds = INDEX_NONE;
 
 #pragma endregion
 };

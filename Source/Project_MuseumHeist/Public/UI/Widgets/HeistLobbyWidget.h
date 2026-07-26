@@ -5,6 +5,8 @@
 
 #include "HeistLobbyWidget.generated.h"
 
+class UButton;
+class UEditableTextBox;
 class UTextBlock;
 class UWidget;
 
@@ -23,6 +25,7 @@ class PROJECT_MUSEUMHEIST_API UHeistLobbyWidget : public UHeistUserWidgetBase
 #pragma region Lifecycle
 
   protected:
+	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
 
 #pragma endregion
@@ -42,7 +45,31 @@ class PROJECT_MUSEUMHEIST_API UHeistLobbyWidget : public UHeistUserWidgetBase
 #pragma region Presentation
 
   private:
+	UFUNCTION()
+	void HandleHostSessionClicked();
+
+	UFUNCTION()
+	void HandleJoinSessionClicked();
+
 	void RefreshLobbyPresentation();
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UButton> HostSessionButton;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UButton> JoinSessionButton;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UEditableTextBox> JoinCodeInput;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> JoinCodeText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> SessionStatusText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> SessionErrorText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> PhaseText;

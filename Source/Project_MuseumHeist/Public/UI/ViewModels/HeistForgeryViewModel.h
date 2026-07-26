@@ -44,6 +44,7 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryViewModel : public UMVVMViewModelBase
   private:
 	void HandleActionStateChanged();
 	void HandleForgerySessionStateChanged();
+	void HandleAlertStateChanged(EHeistAlertLevel PreviousAlertLevel, EHeistAlertLevel NewAlertLevel, int32 AlertRevision, FName TriggerId);
 	void HandleObjectiveStateChanged(FName ArtifactId, FName CaseId, EHeistObjectiveState ObjectiveState, class AHeistPlayerState* CarrierCandidate);
 
 	UPROPERTY(Transient)
@@ -88,6 +89,12 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryViewModel : public UMVVMViewModelBase
 	const FText& GetStateText() const;
 	const FText& GetReferenceText() const;
 	const FText& GetResultText() const;
+	EHeistAlertLevel GetAlertLevel() const;
+	bool IsDangerWarningVisible() const;
+	const FText& GetDangerWarningText() const;
+	FLinearColor GetDangerWarningColor() const;
+	bool IsLockdownCountdownVisible() const;
+	float GetLockdownCountdownEndServerTime() const;
 	int32 GetVisibleStateCount() const;
 
   private:
@@ -150,6 +157,24 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryViewModel : public UMVVMViewModelBase
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Forgery", meta = (AllowPrivateAccess = "true"))
 	FText ResultText;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
+	EHeistAlertLevel AlertLevel = EHeistAlertLevel::Quiet;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
+	bool bDangerWarningVisible = false;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
+	FText DangerWarningText;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
+	FLinearColor DangerWarningColor = FLinearColor::White;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
+	bool bLockdownCountdownVisible = false;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
+	float LockdownCountdownEndServerTime = 0.0f;
 
 #pragma endregion
 };

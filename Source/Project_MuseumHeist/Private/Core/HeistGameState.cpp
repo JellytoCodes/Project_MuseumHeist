@@ -1,6 +1,6 @@
 #include "Core/HeistGameState.h"
-
 #include "Core/HeistLogChannels.h"
+
 #include "Core/HeistPlayerState.h"
 #include "Net/UnrealNetwork.h"
 

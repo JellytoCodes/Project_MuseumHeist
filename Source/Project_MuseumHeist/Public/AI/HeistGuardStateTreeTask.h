@@ -15,6 +15,21 @@ struct FHeistGuardStateTreeTaskInstanceData
 	float WaitRemaining = 0.0f;
 
 	UPROPERTY(Transient)
+	float WaitDuration = 0.0f;
+
+	UPROPERTY(Transient)
+	float PatrolScanBaseYaw = 0.0f;
+
+	UPROPERTY(Transient)
+	float MoveNoProgressSeconds = 0.0f;
+
+	UPROPERTY(Transient)
+	FVector LastMoveProgressLocation = FVector::ZeroVector;
+
+	UPROPERTY(Transient)
+	FVector MoveDestination = FVector::ZeroVector;
+
+	UPROPERTY(Transient)
 	uint32 MoveRequestId = MAX_uint32;
 
 	UPROPERTY(Transient)
@@ -24,10 +39,16 @@ struct FHeistGuardStateTreeTaskInstanceData
 	uint8 RequestResult = 0;
 
 	UPROPERTY(Transient)
+	uint8 MoveRetryCount = 0;
+
+	UPROPERTY(Transient)
 	bool bMoveFinished = false;
 
 	UPROPERTY(Transient)
 	bool bMoveSucceeded = false;
+
+	UPROPERTY(Transient)
+	bool bPatrolScanActive = false;
 };
 
 /**

@@ -482,6 +482,9 @@ Escape 취소 조건:
 - 다른 Interaction을 차단한다.
 - Draw를 허용한다.
 - Erase를 허용한다.
+- `R`은 현재 Client의 Local Stroke와 Preview만 초기화하며 Server RPC를 전송하지 않는다.
+- 남은 Drawing Time은 Owner에게 복제된 `SessionEndServerTime`과 Server World Time의 차이로 표시한다.
+- Drawing Time은 독립된 `DrawingTimeRemainingText`에 표시하며 키 가이드 또는 제목 Text와 결합하지 않는다.
 - Submit을 허용한다.
 - Cancel을 허용한다.
 - Push-To-Talk를 허용한다.
@@ -571,6 +574,21 @@ ShapeAccuracyWeight + ColorAccuracyWeight > 0
 0으로 나누거나 NaN Score를 생성할 수 있는 Template Row를 허용하지 않는다.
 
 Penalty 또는 Diagnostic Field가 Final Score에 직접 적용되지 않는 경우 문서와 필드 이름에서 그 사실을 명확히 한다.
+
+## Alert Presentation
+
+- `UHeistHUDViewModel`과 `UHeistForgeryViewModel`은 `AHeistGameState`의 복제 Alert Snapshot만 읽는다.
+- Main HUD는 Quiet, Suspicious, Searching, Alarmed, Lockdown을 단계별 Text와 Color로 표시한다.
+- 플레이어 표시는 `SECURITY LEVEL 0/4~4/4`와 4칸 별 Indicator를 사용한다.
+- Guard의 확정 발각은 서버에서 최소 Suspicious를 요청하고, Painting 검사 결과는 Score Mapping 결과를 요청한다.
+- Main HUD가 가려지는 Owner-only Forgery 화면에서도 동일한 Security Level Indicator를 표시한다.
+- Alarmed의 Lockdown Countdown은 복제된 `AlertNextTransitionServerTime`과 Server World Time의 차이로 표시한다.
+- HUD Lockdown Countdown은 독립된 `LockdownCountdownText`에 표시한다.
+- Forgery 화면은 Quiet 이외 Alert에서 독립된 `ForgeryAlertWarningText`를 표시한다.
+- Forgery 화면의 Lockdown Countdown은 `ForgeryLockdownCountdownText`에 별도로 표시한다.
+- Suspicious/Searching은 Suspense Music Layer, Alarmed/Lockdown은 Alarm Music Layer를 사용한다.
+- Forgery Full-Screen UI 중에도 Alert Music Layer는 유지한다.
+- 실제 Music Asset 지정은 Widget Blueprint Class Default가 담당한다.
 
 ## Cleanup
 
@@ -685,6 +703,16 @@ Context 전환 시:
 | ViewModel / C++ Widget | UI State Exposure, Request Routing |
 | DataTable / DataAsset | Artifact, Template, Guard, Balance, Scaling Data |
 | Map | Painting/Sculpture Case, Guard Route, Loot, Exit, Lighting, Navigation |
+
+## UI Copy Rules
+
+- v1.0의 Source UI Copy는 영어를 사용한다.
+- 플레이어에게 상태를 전달하는 문구는 대상, 현재 상태, 결과 또는 필요한 행동을 알 수 있는 문장형으로 작성한다.
+- `LOCKDOWN`처럼 의미가 모호할 수 있는 단독 상태명 대신 `THE MUSEUM WILL ENTER LOCKDOWN IN {0}.`처럼 게임 내 대상을 명시한다.
+- Forgery 제출 제한 시간과 Museum Lockdown 제한 시간은 서로 다른 문장으로 구분한다.
+- Raw Enum, Data Row ID, Blueprint Class Name을 그대로 플레이어에게 노출하지 않는다.
+- 화면 제목, 버튼 동사, 키 라벨, 수량처럼 문맥이 이미 분명한 짧은 UI Label은 간결하게 유지할 수 있다.
+- `NSLOCTEXT` Key는 이후 영어 → 한국어 현지화 패치를 위해 안정적으로 유지한다.
 
 ## Blueprint Graph 금지 항목
 
@@ -819,6 +847,19 @@ Editor 작업 안내에는 다음만 포함한다.
 - 개별 Task PASS와 Weekly Gate PASS를 분리한다.
 - Formal Test PASS를 별도로 관리한다.
 
+## Debug Logging Policy
+
+- Gameplay Class와 Component는 진단 및 테스트 목적으로 `UE_LOG`를 직접 호출하지 않는다.
+- 진단 로그는 사건 이름이 드러나는 `UHeistDebugFunctionLibrary::Debug...` 함수로 기록한다.
+- 로그 Category, Severity, 문장, 필드 순서와 `Result` Schema는 `UHeistDebugFunctionLibrary`가 소유한다.
+- 호출부에 Format String을 남기는 범용 Logging Macro를 중앙화의 대체 수단으로 사용하지 않는다.
+- 호출부는 Actor, Component, `FName`, 수치와 Boolean 같은 원시 Context만 전달한다.
+- 문자열 조립, Soft Object Path 변환, 배열 요약과 Enum 문자열 변환은 Debug 함수의 Shipping Guard 내부에서 수행한다.
+- 현재 Target의 기본 Shipping 설정에서는 `Fatal`이 아닌 `UE_LOG`가 자동 제거되므로, 단순 출력 차단만을 위한 호출부 `#if !UE_BUILD_SHIPPING`은 추가하지 않는다.
+- Actor 탐색, 배열 순회, 화면 출력 또는 기타 Debug 전용 연산이 있는 함수는 `#if UE_BUILD_SHIPPING` 조기 반환 또는 동등한 Compile Guard를 유지한다.
+- Runtime State를 변경하는 Debug/Cheat 함수는 로그 설정과 무관하게 Shipping에서 컴파일 경로가 활성화되지 않도록 명시적으로 Guard한다.
+- 실제 Shipping 운영 로그가 필요해질 경우 Debug Log와 섞지 않고 별도 정책과 Task를 먼저 정의한다.
+
 ---
 
 # 18. Verification Standard
@@ -893,7 +934,9 @@ Reference Viewer와 회귀 확인 후 별도 Cleanup Task에서 제거한다.
 
 W3는 완료됐다.
 
-현재 실행 기준은 W4 단일 범위이며 기간은 2026-08-03부터 2026-08-16까지다.
+현재 실행 기준은 W5이며 기간은 2026-08-17부터 2026-08-30까지다.
+
+W4는 `TASK-W4-001~020`까지 완료됐고 아래 W4 범위와 규칙은 완료 이력 및 회귀 기준으로 유지한다.
 
 ## W3 Closeout
 
@@ -936,7 +979,7 @@ Smoke와 Trap은 W4 이후의 Gate, Regression Baseline, Stretch 또는 Deferred
 17. `TASK-W4-017` Lockdown Countdown / World Restriction
 18. `TASK-W4-018` Alert HUD / Audio Layers
 19. `TASK-W4-019` Duplicate Inspection / Timer Protection
-20. `TASK-W4-020` M01 / M02 / M03 Alert Profiles
+20. `TASK-W4-020` Low / Medium / High Guard Profiles / Security Level Indicator
 
 ## W4 Execution Rules
 
@@ -959,14 +1002,19 @@ Smoke와 Trap은 W4 이후의 Gate, Regression Baseline, Stretch 또는 Deferred
 - Timer 정리는 Critical Gate다.
 - 멀티플레이, Ownership, Replication, Recovery 주장은 사용자 PIE와 Debug Log가 있을 때만 PASS 처리한다.
 - 이미 증명된 동일 흐름을 같은 조건으로 반복하는 중복 Gate를 만들지 않는다.
+- Guard Alert Profile은 `DT_GuardData`의 `Guard_Alert_Low / Medium / High` Row를 사용한다.
+- 위치명 기반 `Guard_Default / Guard_Vault / Guard_SecurityRoom` Row는 사용하지 않는다.
+- 신규 Guard의 기본 `GuardProfileId`는 `Guard_Alert_Medium`이다.
+- 실제 맵의 Guard별 등급 배정, Patrol 영역, 공간 압박과 최종 수치 조정은 W8 Level Design / Map Balance에서 수행한다.
 
 ## W4 Current Handoff
 
-- `TASK-W4-001~012`: 완료
+- `TASK-W4-001~020`: 완료
 - 정식 완료 상태와 테스트 로그 번호는 Notion 기록을 Source of Truth로 사용
-- `TASK-W4-013`: 현재 활성 Task
-- Guard InspectExhibit State의 C++ 구현은 완료
-- StateTree Editor 연결과 사용자 PIE 검증이 남아 있음
+- Low / Medium / High Guard Profile Data와 Security Level Indicator 구현 및 2 Player Listen Server PIE 검증 완료
+- SandboxMap에서 세 등급 Guard의 독립 Patrol Route, Alert 반응과 Client Security Level 복제를 확인
+- 실제 맵별 Guard 등급 배치와 Patrol 공간 조정은 W8 Level Design / Map Balance 범위
+- W4 개별 Task는 완료됐으며 Weekly Gate와 Formal Test는 별도 판정
 - OpenCV 유사도 판정 구현 완료
 - 제한 Palette 구현 완료
 - Local Preview와 Server Final 공통 Evaluator 구현 완료
@@ -976,9 +1024,8 @@ Smoke와 Trap은 W4 이후의 Gate, Regression Baseline, Stretch 또는 Deferred
 - `BP_SculptureDisplayCase` 부모는 `AHeistSculptureDisplayCaseActor`
 - Sculpture Case는 시각 Shell만 존재
 - Sculpture Case는 v1.0 Gameplay에 사용하지 않음
-- `TASK-W4-012`는 서버 후보 등록, Guard 결정론적 선택, Client 권한 차단 검증 완료
-- `TASK-W4-013`은 Patrol 후보 선점, Case 이동, 정렬, 고정 Inspect Cast, Chase 중단, Patrol 재개, `Suspected` 결과 적용을 C++에 연결
-- `TASK-W4-014`의 Score → Inspection Delay Mapping은 선행 구현하지 않음
+- `TASK-W4-015~017`은 Global Alert Replication, Guard Modifier, Lockdown Countdown / World Restriction 검증 완료
+- `TASK-W4-018~019`는 Alert HUD / Audio Layer와 Duplicate Inspection / Timer Protection 검증 완료
 
 ## Post-W4 Compressed Roadmap
 
@@ -1032,5 +1079,23 @@ W4~W6 결과와 실제 잔여 위험을 검토한 뒤 필요한 경우에만 `TA
 - 기존 `W9~W12` 번호는 Rev.10 이전 이력 참조에만 사용
 - W7 Task는 사전 생성하지 않음
 - Public Release 목표일 `2026-09-20` 유지
+
+## W5 Current Handoff
+
+- 현재 활성 묶음은 `TASK-W5-001~003`이다.
+- `UHeistGameInstance`가 Online Subsystem 선택과 Create / Find / Join / Travel 상태를 단독 소유한다.
+- Editor PIE는 로컬 다중 인스턴스 검증을 위해 `OnlineSubsystemNull`을 사용한다.
+- 비 Editor 실행과 패키지 빌드는 기본 `OnlineSubsystemSteam`을 사용한다.
+- 비 Editor 실행은 기본적으로 Lobby Phase에서 시작하고, Editor 직접 PIE는 기존 Gameplay 회귀 검증을 위해 InGame 시작을 유지한다.
+- Session은 1~4인 Listen Server, Presence, Lobby, Join In Progress를 사용한다.
+- Online Session의 로컬 이름은 PIE가 선점하는 `GameSession`과 분리된 `HeistSession`을 사용한다.
+- Host는 혼동 문자를 제외한 6자리 참가 코드를 생성하고 Session Setting에 게시한다.
+- Join은 참가 코드, Product Id, Build Unique Id, 공개 슬롯을 검증한 뒤 서버 주소로 이동한다.
+- `TASK-W5-001~003`에서는 고정 `M01` / `/Game/Maps/SandBoxMap`만 사용한다.
+- Map 선택 UI와 Session 종료·재접속 Recovery는 각각 후속 `TASK-W5-005`, `TASK-W5-004` 범위다.
+- Editor `OnlineSubsystemNull` 검증은 구현 검증용이며 Steam 최종 PASS를 대체하지 않는다.
+- Steam 최종 PASS는 서로 다른 Steam 계정 2개와 패키지 Development Build 증거가 있을 때만 처리한다.
+- 최초 패키징 시점은 Host가 Session을 만들고 다른 Player가 참가 코드로 입장하는 흐름까지 Editor 검증한 뒤다.
+- Editor 검증 명령은 `HeistSessionHost`, `HeistSessionJoin <Code>`, `HeistSessionDump`를 사용한다.
 
 세부 설계와 주차별 Task 정의는 `Museum_Heist_GDD.docx` 최신 Revision과 Notion Task 기록을 함께 확인한다.

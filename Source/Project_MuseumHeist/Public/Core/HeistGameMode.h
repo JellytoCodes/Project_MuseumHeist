@@ -41,6 +41,10 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 	virtual void RestartPlayer(AController* NewPlayer) override;
 	virtual void Logout(AController* Exiting) override;
 
+  private:
+	void HandleMatchPhaseChanged(EHeistMatchPhase PreviousMatchPhase, EHeistMatchPhase NewMatchPhase);
+	int32 ClearMatchScopedTimers();
+
 #pragma endregion
 
 #pragma region Alert
@@ -49,6 +53,7 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 	bool RequestAlertEscalation(EHeistAlertLevel RequestedAlertLevel, FName TriggerId);
 	bool IsAlertTransitionTimerActive() const;
 	int32 GetProcessedAlertTriggerCount() const;
+	int32 GetActiveMatchTimerCount() const;
 
   private:
 	void InitializeAlertState();

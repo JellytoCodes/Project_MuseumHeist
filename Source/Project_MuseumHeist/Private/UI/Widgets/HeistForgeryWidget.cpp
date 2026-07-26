@@ -7,6 +7,7 @@
 #include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerController.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/GameStateBase.h"
 #include "Input/Events.h"
 #include "InputCoreTypes.h"
 #include "Rendering/DrawElementTypes.h"
@@ -23,6 +24,51 @@ constexpr float BrushRelativePointSpacing = 0.75f;
 constexpr float MinimumNormalizedEraseRadius = 0.015f;
 constexpr float PreviewScoreUpdateIntervalSeconds = 0.20f;
 constexpr float DrawingSurfaceSizeSlateUnits = 400.0f;
+
+FLinearColor ResolveScoreTextColor(const float Score)
+{
+	if (!FMath::IsFinite(Score))
+	{
+		return FLinearColor(0.72f, 0.76f, 0.82f);
+	}
+	if (Score >= 90.0f)
+	{
+		return FLinearColor(0.25f, 0.95f, 0.42f);
+	}
+	if (Score >= 70.0f)
+	{
+		return FLinearColor(0.65f, 0.90f, 0.25f);
+	}
+	if (Score >= 50.0f)
+	{
+		return FLinearColor(1.0f, 0.75f, 0.15f);
+	}
+	if (Score >= 30.0f)
+	{
+		return FLinearColor(1.0f, 0.40f, 0.10f);
+	}
+	return FLinearColor(1.0f, 0.18f, 0.15f);
+}
+
+void ApplyScorePresentation(UTextBlock* ScoreText, const TOptional<float> Score)
+{
+	if (!IsValid(ScoreText))
+	{
+		return;
+	}
+
+	if (!Score.IsSet() || !FMath::IsFinite(Score.GetValue()))
+	{
+		ScoreText->SetText(NSLOCTEXT("HeistForgery", "UnavailableScore", "SCORE  --/100"));
+		ScoreText->SetColorAndOpacity(FLinearColor(0.72f, 0.76f, 0.82f));
+		return;
+	}
+
+	const float ClampedScore = FMath::Clamp(Score.GetValue(), 0.0f, 100.0f);
+	ScoreText->SetText(
+		FText::Format(NSLOCTEXT("HeistForgery", "ScoreFormat", "SCORE  {0}/100"), FText::AsNumber(FMath::RoundToInt(ClampedScore))));
+	ScoreText->SetColorAndOpacity(ResolveScoreTextColor(ClampedScore));
+}
 }
 
 UHeistForgeryWidget::UHeistForgeryWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
@@ -36,6 +82,7 @@ void UHeistForgeryWidget::NativeConstruct()
 	BindPaletteButtons();
 	RefreshPaletteButtons();
 	MarkPreviewScoreDirty();
+	RefreshDrawingTimeRemaining();
 }
 
 void UHeistForgeryWidget::NativeDestruct()
@@ -54,6 +101,8 @@ void UHeistForgeryWidget::NativeDestruct()
 void UHeistForgeryWidget::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+	RefreshDrawingTimeRemaining();
+	RefreshForgeryLockdownCountdown();
 
 	if (!bPreviewScoreDirty || !IsDrawingInputEnabled())
 	{
@@ -108,8 +157,7 @@ int32 UHeistForgeryWidget::NativePaint(const FPaintArgs& Args, const FGeometry& 
 		const FVector2D SurfaceScreenTopLeft = SurfaceGeometry.LocalToAbsolute(FVector2D::ZeroVector);
 		const FVector2D SurfaceScreenBottomRight = SurfaceGeometry.LocalToAbsolute(SurfaceLocalSize);
 
-		UE_LOG(
-			LogHeistUI, Log,
+		UE_LOG(LogHeistUI, Log,
 			TEXT(
 				"[%s] Forgery draw paint coordinate: MouseScreen=(%.2f,%.2f) Normalized=(%.6f,%.6f) SurfaceLocal=(%.2f,%.2f) PaintWidgetLocal=(%.2f,%.2f) PaintScreen=(%.2f,%.2f) MouseToPaintDelta=(%.2f,%.2f) SurfaceScreen=[(%.2f,%.2f)->(%.2f,%.2f)] SurfaceLocalSize=(%.2f,%.2f) Result=%s"),
 			*GetName(), PendingDrawMouseScreen.X, PendingDrawMouseScreen.Y, PendingDrawNormalizedPoint.X, PendingDrawNormalizedPoint.Y, SurfaceLocal.X, SurfaceLocal.Y, PaintWidgetLocal.X,
@@ -167,8 +215,7 @@ FReply UHeistForgeryWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry,
 		{
 			const FVector2D SurfaceScreenTopLeft = SurfaceGeometry.LocalToAbsolute(FVector2D::ZeroVector);
 			const FVector2D SurfaceScreenBottomRight = SurfaceGeometry.LocalToAbsolute(SurfaceLocalSize);
-			UE_LOG(
-				LogHeistUI, Warning,
+			UE_LOG(LogHeistUI, Warning,
 				TEXT(
 					"[%s] Forgery draw input coordinate: MouseScreen=(%.2f,%.2f) SurfaceLocal=(%.2f,%.2f) SurfaceLocalSize=(%.2f,%.2f) SurfaceScreen=[(%.2f,%.2f)->(%.2f,%.2f)] Inside=false Result=REJECTED_OUTSIDE"),
 				*GetName(), MouseScreen.X, MouseScreen.Y, RawSurfaceLocal.X, RawSurfaceLocal.Y, SurfaceLocalSize.X, SurfaceLocalSize.Y, SurfaceScreenTopLeft.X, SurfaceScreenTopLeft.Y,
@@ -184,8 +231,7 @@ FReply UHeistForgeryWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry,
 		const APlayerController* OwningPlayerController = GetOwningPlayer();
 		const bool bHasViewportMouse = IsValid(OwningPlayerController) && OwningPlayerController->GetMousePosition(ViewportMouseX, ViewportMouseY);
 		const bool bStrokeBegan = BeginLocalStroke(NormalizedPoint);
-		UE_LOG(
-			LogHeistUI, Log,
+		UE_LOG(LogHeistUI, Log,
 			TEXT(
 				"[%s] Forgery draw input coordinate: MouseScreen=(%.2f,%.2f) ViewportMouse=(%.2f,%.2f) HasViewportMouse=%s SurfaceLocal=(%.2f,%.2f) SurfaceLocalSize=(%.2f,%.2f) Normalized=(%.6f,%.6f) WidgetScreenTopLeft=(%.2f,%.2f) WidgetLocalSize=(%.2f,%.2f) Inside=true PointCount=%d StrokeLimit=%d Result=%s"),
 			*GetName(), MouseScreen.X, MouseScreen.Y, ViewportMouseX, ViewportMouseY, bHasViewportMouse ? TEXT("true") : TEXT("false"), RawSurfaceLocal.X, RawSurfaceLocal.Y, SurfaceLocalSize.X,
@@ -296,6 +342,11 @@ FReply UHeistForgeryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const F
 	if (PressedKey == EKeys::Enter && IsDrawingInputEnabled())
 	{
 		RequestSubmitCollectedStrokes();
+		return FReply::Handled();
+	}
+
+	if (PressedKey == EKeys::R && !InKeyEvent.IsRepeat() && ResetDrawingCanvas())
+	{
 		return FReply::Handled();
 	}
 
@@ -451,6 +502,40 @@ bool UHeistForgeryWidget::SelectPaletteIndex(const int32 PaletteIndex)
 	return true;
 }
 
+bool UHeistForgeryWidget::ResetDrawingCanvas()
+{
+	if (!IsDrawingInputEnabled())
+	{
+		return false;
+	}
+
+	const int32 PreviousStrokeCount = GetCollectedStrokeCount();
+	const int32 PreviousPointCount = GetCollectedPointCount();
+	ResetLocalStrokePreview();
+	UE_LOG(LogHeistUI, Log, TEXT("[%s] Forgery drawing canvas reset: StrokesBefore=%d PointsBefore=%d StrokesAfter=0 PointsAfter=0 Result=RESET"), *GetName(), PreviousStrokeCount,
+		   PreviousPointCount);
+	return true;
+}
+
+float UHeistForgeryWidget::GetDrawingTimeRemainingSeconds() const
+{
+	if (!IsValid(ForgeryViewModel) || !ForgeryViewModel->IsDrawingVisible())
+	{
+		return 0.0f;
+	}
+
+	const float StateEndServerTime = ForgeryViewModel->GetStateEndServerTime();
+	const UWorld* World = GetWorld();
+	const AGameStateBase* GameState = IsValid(World) ? World->GetGameState() : nullptr;
+	if (StateEndServerTime <= 0.0f || !IsValid(GameState))
+	{
+		return 0.0f;
+	}
+
+	const float ServerWorldTime = static_cast<float>(GameState->GetServerWorldTimeSeconds());
+	return FMath::Max(0.0f, StateEndServerTime - ServerWorldTime);
+}
+
 bool UHeistForgeryWidget::RequestSubmitCollectedStrokes()
 {
 	if (!IsDrawingInputEnabled())
@@ -525,6 +610,10 @@ void UHeistForgeryWidget::RefreshForgeryPresentation()
 	}
 	RefreshPaletteButtons();
 	MarkPreviewScoreDirty();
+	if (bDrawing)
+	{
+		LastDisplayedDrawingTimeSeconds = INDEX_NONE;
+	}
 
 	if (IsValid(StateText))
 	{
@@ -544,16 +633,117 @@ void UHeistForgeryWidget::RefreshForgeryPresentation()
 	}
 	if (IsValid(ResultScoreText))
 	{
-		ResultScoreText->SetText(FText::AsNumber(FMath::RoundToInt(ForgeryViewModel->GetResultScore())));
+		ApplyScorePresentation(ResultScoreText, TOptional<float>(ForgeryViewModel->GetResultScore()));
 	}
 
 	BP_RefreshForgeryPresentation(bObservation, bDrawing, bValidation, bResult, IsValid(ForgeryViewModel) ? ForgeryViewModel->GetStateEndServerTime() : 0.0f,
 								  IsValid(ForgeryViewModel) ? ForgeryViewModel->GetResultScore() : 0.0f);
+	RefreshDrawingTimeRemaining();
+	RefreshAlertWarningPresentation();
 
 	UE_LOG(LogHeistUI, Verbose, TEXT("[%s] Forgery widget refreshed: LocalOwner=%s Visible=%s Observation=%s Drawing=%s Validation=%s Result=%s StateCount=%d Contract=%s"), *GetName(),
 		   bOwnerLocal ? TEXT("true") : TEXT("false"), bPresentationVisible ? TEXT("true") : TEXT("false"), bObservation ? TEXT("true") : TEXT("false"), bDrawing ? TEXT("true") : TEXT("false"),
 		   bValidation ? TEXT("true") : TEXT("false"), bResult ? TEXT("true") : TEXT("false"), IsValid(ForgeryViewModel) ? ForgeryViewModel->GetVisibleStateCount() : 0,
 		   IsOwnerOnlyContractSatisfied() ? TEXT("PASS") : TEXT("FAIL"));
+}
+
+void UHeistForgeryWidget::RefreshAlertWarningPresentation()
+{
+	const bool bWarningVisible = IsValid(ForgeryViewModel) && ForgeryViewModel->IsDangerWarningVisible() && IsWidgetPresentationVisible();
+	if (IsValid(ForgeryAlertWarningText))
+	{
+		ForgeryAlertWarningText->SetText(bWarningVisible ? ForgeryViewModel->GetDangerWarningText() : FText::GetEmpty());
+		ForgeryAlertWarningText->SetColorAndOpacity(bWarningVisible ? ForgeryViewModel->GetDangerWarningColor() : FLinearColor::White);
+		ForgeryAlertWarningText->SetVisibility(bWarningVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+
+	LastDisplayedLockdownSeconds = INDEX_NONE;
+	RefreshForgeryLockdownCountdown();
+}
+
+void UHeistForgeryWidget::RefreshForgeryLockdownCountdown()
+{
+	const bool bCountdownVisible = IsValid(ForgeryViewModel) && ForgeryViewModel->IsLockdownCountdownVisible() && IsWidgetPresentationVisible();
+	if (IsValid(ForgeryLockdownCountdownText))
+	{
+		ForgeryLockdownCountdownText->SetVisibility(bCountdownVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		ForgeryLockdownCountdownText->SetColorAndOpacity(IsValid(ForgeryViewModel) ? ForgeryViewModel->GetDangerWarningColor() : FLinearColor::White);
+	}
+	if (!bCountdownVisible)
+	{
+		LastDisplayedLockdownSeconds = INDEX_NONE;
+		return;
+	}
+
+	const UWorld* World = GetWorld();
+	const AGameStateBase* WorldGameState = IsValid(World) ? World->GetGameState() : nullptr;
+	const float CountdownEndServerTime = ForgeryViewModel->GetLockdownCountdownEndServerTime();
+	const int32 RemainingSeconds = IsValid(WorldGameState) && CountdownEndServerTime > 0.0f
+										   ? FMath::Max(0, FMath::CeilToInt(CountdownEndServerTime - static_cast<float>(WorldGameState->GetServerWorldTimeSeconds())))
+										   : INDEX_NONE;
+	if (RemainingSeconds == LastDisplayedLockdownSeconds)
+	{
+		return;
+	}
+	LastDisplayedLockdownSeconds = RemainingSeconds;
+
+	if (!IsValid(ForgeryLockdownCountdownText))
+	{
+		return;
+	}
+	if (RemainingSeconds == INDEX_NONE)
+	{
+		ForgeryLockdownCountdownText->SetText(
+			NSLOCTEXT("HeistForgery", "LockdownTimePending", "LOCKDOWN IN --:--  —  ESCAPE ROUTES WILL BE RESTRICTED"));
+		return;
+	}
+
+	const FText TimeText = FText::FromString(FString::Printf(TEXT("%02d:%02d"), RemainingSeconds / 60, RemainingSeconds % 60));
+	ForgeryLockdownCountdownText->SetText(
+		FText::Format(NSLOCTEXT("HeistForgery", "LockdownTimeFormat", "LOCKDOWN IN {0}  —  ESCAPE ROUTES WILL BE RESTRICTED"), TimeText));
+}
+
+bool UHeistForgeryWidget::IsAlertWarningContractSatisfied() const
+{
+	if (!IsValid(ForgeryViewModel) || !IsValid(ForgeryAlertWarningText) || !IsValid(ForgeryLockdownCountdownText))
+	{
+		return false;
+	}
+
+	const bool bWarningVisible = ForgeryAlertWarningText->GetVisibility() != ESlateVisibility::Collapsed && ForgeryAlertWarningText->GetVisibility() != ESlateVisibility::Hidden;
+	const bool bCountdownVisible =
+		ForgeryLockdownCountdownText->GetVisibility() != ESlateVisibility::Collapsed && ForgeryLockdownCountdownText->GetVisibility() != ESlateVisibility::Hidden;
+	return bWarningVisible == ForgeryViewModel->IsDangerWarningVisible() && bCountdownVisible == ForgeryViewModel->IsLockdownCountdownVisible() &&
+		   (!bWarningVisible || !ForgeryAlertWarningText->GetText().IsEmpty());
+}
+
+void UHeistForgeryWidget::DebugDumpAlertWarningState() const
+{
+	const bool bPassed = IsAlertWarningContractSatisfied();
+	const FString Message =
+		FString::Printf(TEXT("[%s] Forgery alert warning: Level=%s PresentationVisible=%s WarningRequested=%s WarningVisible=%s Warning='%s' CountdownRequested=%s CountdownVisible=%s "
+							 "Countdown='%s' Result=%s"),
+						*GetName(), IsValid(ForgeryViewModel) ? *UEnum::GetValueAsString(ForgeryViewModel->GetAlertLevel()) : TEXT("None"),
+						IsWidgetPresentationVisible() ? TEXT("true") : TEXT("false"), IsValid(ForgeryViewModel) && ForgeryViewModel->IsDangerWarningVisible() ? TEXT("true") : TEXT("false"),
+						IsValid(ForgeryAlertWarningText) && ForgeryAlertWarningText->GetVisibility() != ESlateVisibility::Collapsed &&
+								ForgeryAlertWarningText->GetVisibility() != ESlateVisibility::Hidden
+							? TEXT("true")
+							: TEXT("false"),
+						IsValid(ForgeryAlertWarningText) ? *ForgeryAlertWarningText->GetText().ToString() : TEXT("None"),
+						IsValid(ForgeryViewModel) && ForgeryViewModel->IsLockdownCountdownVisible() ? TEXT("true") : TEXT("false"),
+						IsValid(ForgeryLockdownCountdownText) && ForgeryLockdownCountdownText->GetVisibility() != ESlateVisibility::Collapsed &&
+								ForgeryLockdownCountdownText->GetVisibility() != ESlateVisibility::Hidden
+							? TEXT("true")
+							: TEXT("false"),
+						IsValid(ForgeryLockdownCountdownText) ? *ForgeryLockdownCountdownText->GetText().ToString() : TEXT("None"), bPassed ? TEXT("PASS") : TEXT("FAIL"));
+	if (bPassed)
+	{
+		UE_LOG(LogHeistUI, Log, TEXT("%s"), *Message);
+	}
+	else
+	{
+		UE_LOG(LogHeistUI, Error, TEXT("%s"), *Message);
+	}
 }
 
 bool UHeistForgeryWidget::IsDrawingInputEnabled() const
@@ -895,10 +1085,7 @@ void UHeistForgeryWidget::RefreshLocalPreviewScore()
 	if (!BuildDrawableStrokePayload(NormalizedPoints, StrokePointCounts, StrokePaletteIndices, IgnoredShortStrokeCount))
 	{
 		bPreviewScoreDirty = false;
-		if (IsValid(PreviewScoreText))
-		{
-			PreviewScoreText->SetText(NSLOCTEXT("HeistForgery", "EmptyPreviewScore", "PREVIEW SCORE  --"));
-		}
+		ApplyScorePresentation(PreviewScoreText, TOptional<float>());
 		return;
 	}
 
@@ -912,18 +1099,12 @@ void UHeistForgeryWidget::RefreshLocalPreviewScore()
 		// update after the drawing state. The next presentation refresh or
 		// stroke change retries without generating RPC or log traffic.
 		bPreviewScoreDirty = false;
-		if (IsValid(PreviewScoreText))
-		{
-			PreviewScoreText->SetText(NSLOCTEXT("HeistForgery", "PendingPreviewScore", "PREVIEW SCORE  ..."));
-		}
+		ApplyScorePresentation(PreviewScoreText, TOptional<float>());
 		return;
 	}
 
 	bPreviewScoreDirty = false;
-	if (IsValid(PreviewScoreText))
-	{
-		PreviewScoreText->SetText(FText::Format(NSLOCTEXT("HeistForgery", "PreviewScoreFormat", "PREVIEW SCORE  {0}"), FText::AsNumber(FMath::RoundToInt(ForgeryPreviewResult.SimilarityScore))));
-	}
+	ApplyScorePresentation(PreviewScoreText, TOptional<float>(ForgeryPreviewResult.SimilarityScore));
 }
 
 void UHeistForgeryWidget::BindPaletteButtons()
@@ -1062,9 +1243,50 @@ void UHeistForgeryWidget::ResetLocalStrokePreview()
 	PendingDrawMouseScreen = FVector2D::ZeroVector;
 	PendingDrawNormalizedPoint = FVector2D::ZeroVector;
 	DrawingInputWidgetGeometry.Reset();
-	MarkPreviewScoreDirty();
+	PreviewScoreUpdateAccumulator = 0.0f;
+	bPreviewScoreDirty = false;
+	ApplyScorePresentation(PreviewScoreText, TOptional<float>());
 	RefreshDrawingFeedback();
 	InvalidateLayoutAndVolatility();
+}
+
+void UHeistForgeryWidget::RefreshDrawingTimeRemaining()
+{
+	const bool bDrawingVisible = IsValid(ForgeryViewModel) && ForgeryViewModel->IsDrawingVisible();
+	if (IsValid(DrawingTimeRemainingText))
+	{
+		DrawingTimeRemainingText->SetVisibility(bDrawingVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+	if (!bDrawingVisible)
+	{
+		LastDisplayedDrawingTimeSeconds = INDEX_NONE;
+		return;
+	}
+
+	const float StateEndServerTime = ForgeryViewModel->GetStateEndServerTime();
+	const UWorld* World = GetWorld();
+	const AGameStateBase* GameState = IsValid(World) ? World->GetGameState() : nullptr;
+	const bool bHasAuthoritativeTime = StateEndServerTime > 0.0f && IsValid(GameState);
+	const float ServerWorldTime = bHasAuthoritativeTime ? static_cast<float>(GameState->GetServerWorldTimeSeconds()) : 0.0f;
+	const int32 RemainingSeconds = bHasAuthoritativeTime ? FMath::Max(0, FMath::CeilToInt32(StateEndServerTime - ServerWorldTime)) : INDEX_NONE;
+	if (RemainingSeconds == LastDisplayedDrawingTimeSeconds)
+	{
+		return;
+	}
+	LastDisplayedDrawingTimeSeconds = RemainingSeconds;
+
+	if (!IsValid(DrawingTimeRemainingText))
+	{
+		return;
+	}
+	if (RemainingSeconds == INDEX_NONE)
+	{
+		DrawingTimeRemainingText->SetText(NSLOCTEXT("HeistForgery", "DrawingTimePending", "SUBMIT IN --:--"));
+		return;
+	}
+
+	const FText TimeText = FText::FromString(FString::Printf(TEXT("%02d:%02d"), RemainingSeconds / 60, RemainingSeconds % 60));
+	DrawingTimeRemainingText->SetText(FText::Format(NSLOCTEXT("HeistForgery", "DrawingTimeFormat", "SUBMIT IN {0}"), TimeText));
 }
 
 void UHeistForgeryWidget::RefreshDrawingFeedback()
@@ -1074,12 +1296,13 @@ void UHeistForgeryWidget::RefreshDrawingFeedback()
 	if (IsValid(DrawingPlaceholder))
 	{
 		DrawingPlaceholder->SetVisibility(bDrawingVisible && PointCount == 0 ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-		DrawingPlaceholder->SetText(NSLOCTEXT("HeistForgery", "EmptyDrawingCanvas", "EMPTY CANVAS"));
+		DrawingPlaceholder->SetText(NSLOCTEXT("HeistForgery", "EmptyDrawingCanvas", "START DRAWING"));
 	}
 	if (IsValid(DrawingHint) && bDrawingVisible)
 	{
-		DrawingHint->SetText(FText::Format(NSLOCTEXT("HeistForgery", "DrawingCanvasHint", "LMB DRAW  /  RMB ERASE  /  ENTER SUBMIT    COLOR {0}    POINTS {1}/{2}"),
-										   FText::AsNumber(ActivePaletteIndex + 1), FText::AsNumber(PointCount), FText::AsNumber(GetConfiguredStrokeLimit())));
+		DrawingHint->SetText(FText::Format(
+			NSLOCTEXT("HeistForgery", "DrawingCanvasHint", "LMB DRAW  |  RMB ERASE  |  R RESET  |  ENTER SUBMIT  |  COLOR {0}  |  POINTS {1}/{2}"),
+			FText::AsNumber(ActivePaletteIndex + 1), FText::AsNumber(PointCount), FText::AsNumber(GetConfiguredStrokeLimit())));
 	}
 	if (IsValid(PreviewScoreText))
 	{

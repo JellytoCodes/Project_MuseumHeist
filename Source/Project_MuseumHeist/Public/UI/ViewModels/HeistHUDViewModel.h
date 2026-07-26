@@ -41,6 +41,7 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
 	void HandleRareLootEventStateChanged(const FHeistRareLootEventState& EventState);
 	void HandlePlayerConnectionsChanged(int32 ConnectedPlayers);
 	void HandlePlayerIdentityChanged(int32 PlayerId);
+	void HandleAlertStateChanged(EHeistAlertLevel PreviousAlertLevel, EHeistAlertLevel NewAlertLevel, int32 AlertRevision, FName TriggerId);
 	void HandleObjectiveStateChanged(FName ArtifactId, FName CaseId, EHeistObjectiveState ObjectiveState, class AHeistPlayerState* CarrierCandidate);
 	void HandleEscapePhaseStateChanged(bool bEscapePhaseOpen);
 	void HandleLootTotalsChanged(int32 TotalLootScore, float TotalLootWeight);
@@ -81,6 +82,14 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
 	EHeistObjectiveState GetObjectiveState() const;
 	const FText& GetObservationReferenceText() const;
 	const FText& GetObjectiveStateText() const;
+	EHeistAlertLevel GetAlertLevel() const;
+	int32 GetSecurityLevel() const;
+	const FText& GetAlertBannerText() const;
+	FLinearColor GetAlertColor() const;
+	bool IsLockdownCountdownVisible() const;
+	float GetLockdownCountdownEndServerTime() const;
+	bool IsSuspenseMusicActive() const;
+	bool IsAlarmMusicActive() const;
 
   private:
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|HUD", meta = (AllowPrivateAccess = "true"))
@@ -133,6 +142,30 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Objective", meta = (AllowPrivateAccess = "true"))
 	FText ObjectiveStateText;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
+	EHeistAlertLevel AlertLevel = EHeistAlertLevel::Quiet;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
+	int32 SecurityLevel = 0;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
+	FText AlertBannerText;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
+	FLinearColor AlertColor = FLinearColor(0.45f, 0.58f, 0.70f);
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
+	bool bLockdownCountdownVisible = false;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
+	float LockdownCountdownEndServerTime = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Audio", meta = (AllowPrivateAccess = "true"))
+	bool bSuspenseMusicActive = false;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Audio", meta = (AllowPrivateAccess = "true"))
+	bool bAlarmMusicActive = false;
 
 #pragma endregion
 

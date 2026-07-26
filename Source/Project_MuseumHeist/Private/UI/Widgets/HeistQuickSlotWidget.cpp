@@ -94,7 +94,11 @@ void UHeistQuickSlotWidget::RefreshPresentation()
 	}
 	if (IsValid(ItemIdText))
 	{
-		ItemIdText->SetText(ConfirmedPresentation.bAssigned ? FText::FromName(ConfirmedPresentation.ItemId) : NSLOCTEXT("HeistQuickSlot", "EmptyItem", "EMPTY"));
+		FString ItemDisplayName = ConfirmedPresentation.ItemId.ToString();
+		ItemDisplayName.ReplaceInline(TEXT("_"), TEXT(" "));
+		ItemIdText->SetText(ConfirmedPresentation.bAssigned
+								? FText::FromString(ItemDisplayName)
+								: NSLOCTEXT("HeistQuickSlot", "EmptyItem", "EMPTY"));
 	}
 	if (IsValid(CountText))
 	{
@@ -103,7 +107,8 @@ void UHeistQuickSlotWidget::RefreshPresentation()
 	}
 	if (IsValid(AssignmentStateText))
 	{
-		AssignmentStateText->SetText(ConfirmedPresentation.bAssigned ? NSLOCTEXT("HeistQuickSlot", "Assigned", "ASSIGNED") : NSLOCTEXT("HeistQuickSlot", "Empty", "DROP ITEM"));
+		AssignmentStateText->SetText(ConfirmedPresentation.bAssigned ? NSLOCTEXT("HeistQuickSlot", "Assigned", "READY")
+																	: NSLOCTEXT("HeistQuickSlot", "Empty", "DROP COIN HERE"));
 	}
 	if (IsValid(ClearButton))
 	{

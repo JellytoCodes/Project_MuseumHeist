@@ -1,6 +1,6 @@
 #include "Character/Components/HeistStatusComponent.h"
-
 #include "Core/HeistLogChannels.h"
+
 #include "Engine/World.h"
 #include "Net/UnrealNetwork.h"
 

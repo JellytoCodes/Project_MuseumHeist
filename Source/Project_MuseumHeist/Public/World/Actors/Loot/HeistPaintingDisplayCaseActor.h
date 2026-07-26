@@ -266,12 +266,17 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 	bool InterruptInspection(AActor* InspectingGuard, FName Reason);
 	bool ApplyInspectionResult(AActor* InspectingGuard);
 	bool IsInspectionOwnedBy(const AActor* InspectingGuard) const;
+	bool IsInspectionClaimActive() const;
+	AActor* GetInspectingGuard() const;
+	bool IsInspectionDelayTimerActive() const;
+	int32 GetInspectionResultApplicationCount() const;
+	int32 GetInspectionDuplicateBlockCount() const;
 
   private:
 	bool ResolveInspectionSchedule(const FHeistForgeryResult& ForgeryResult, FName& OutRejectReason);
 	void StartInspectionDelayTimer();
 	void ClearInspectionDelayTimer();
-	void HandleInspectionDelayExpired();
+	void HandleInspectionDelayExpired(int32 ExpectedScheduleRevision, int32 ExpectedTimerRevision);
 	bool HasInspectionDelayElapsed() const;
 	void RefreshInspectionRegistration();
 
@@ -305,6 +310,11 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 	TWeakObjectPtr<AActor> InspectingGuardActor;
 	EHeistDisplayCaseState PreInspectionState = EHeistDisplayCaseState::OriginalAvailable;
 	FTimerHandle InspectionDelayTimerHandle;
+	int32 InspectionDelayTimerRevision = 0;
+	int32 ActiveInspectionScheduleRevision = INDEX_NONE;
+	int32 LastAppliedInspectionScheduleRevision = INDEX_NONE;
+	int32 InspectionResultApplicationCount = 0;
+	int32 InspectionDuplicateBlockCount = 0;
 
 #pragma endregion
 

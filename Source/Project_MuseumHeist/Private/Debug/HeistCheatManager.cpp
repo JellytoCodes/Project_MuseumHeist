@@ -369,6 +369,20 @@ void UHeistCheatManager::HeistInspectionStateDump()
 #endif
 }
 
+void UHeistCheatManager::HeistInspectionProtectionDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugInspectionProtectionDump(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistInspectionTimerProtectionTest()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugInspectionTimerProtectionTest(GetOuterAPlayerController());
+#endif
+}
+
 void UHeistCheatManager::HeistAlertDump()
 {
 #if !UE_BUILD_SHIPPING
@@ -642,6 +656,27 @@ void UHeistCheatManager::HeistLobbyDump()
 {
 #if !UE_BUILD_SHIPPING
 	UHeistDebugFunctionLibrary::DebugLobbyDump(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistSessionHost()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugOnlineSessionHost(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistSessionJoin(const FString& JoinCode)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugOnlineSessionJoin(GetOuterAPlayerController(), JoinCode);
+#endif
+}
+
+void UHeistCheatManager::HeistSessionDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugOnlineSessionDump(GetOuterAPlayerController());
 #endif
 }
 

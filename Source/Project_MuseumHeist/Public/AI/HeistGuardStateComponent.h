@@ -45,21 +45,22 @@ class PROJECT_MUSEUMHEIST_API UHeistGuardStateComponent : public UActorComponent
 	bool SetDisabled(bool bDisabled);
 	bool ApplyStun(float DurationSeconds);
 
-	UFUNCTION(BlueprintPure, Category = "Heist|AI")
+	UFUNCTION(BlueprintPure, Category = "Heist|Guard Runtime State")
 	EHeistGuardState GetGuardState() const;
 
-	UFUNCTION(BlueprintPure, Category = "Heist|AI")
+	UFUNCTION(BlueprintPure, Category = "Heist|Guard Runtime State")
 	float GetStateEndServerTime() const;
 
-	UFUNCTION(BlueprintPure, Category = "Heist|AI")
+	UFUNCTION(BlueprintPure, Category = "Heist|Guard Runtime State")
 	FVector GetStateFocusLocation() const;
 
-	UFUNCTION(BlueprintPure, Category = "Heist|AI")
+	UFUNCTION(BlueprintPure, Category = "Heist|Guard Runtime State")
 	AActor* GetChaseTarget() const;
 	float GetInvestigateConfirmationDuration() const;
 	float GetSearchDuration() const;
 	void SetAlertSearchDurationMultiplier(float Multiplier);
 	float GetAlertSearchDurationMultiplier() const;
+	bool IsStateTimerActive() const;
 
 	FHeistGuardStateChanged& GetGuardStateChangedDelegate();
 	DECLARE_MULTICAST_DELEGATE(FHeistInspectExhibitCastExpired);
@@ -70,22 +71,22 @@ class PROJECT_MUSEUMHEIST_API UHeistGuardStateComponent : public UActorComponent
 	bool CommitState(EHeistGuardState NewState, float DurationSeconds = 0.0f, bool bBypassPriority = false);
 	bool CanEnterState(EHeistGuardState NewState) const;
 	bool StartStateTimer(float DurationSeconds);
-	void HandleTimedStateExpired();
+	void HandleTimedStateExpired(int32 ExpectedTimerRevision, EHeistGuardState ExpectedState);
 	void ClearStateTimer();
 
 	UFUNCTION()
 	void OnRep_GuardState(EHeistGuardState PreviousState);
 
-	UPROPERTY(ReplicatedUsing = OnRep_GuardState, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|AI", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(ReplicatedUsing = OnRep_GuardState, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Guard Runtime State", meta = (AllowPrivateAccess = "true"))
 	EHeistGuardState GuardState = EHeistGuardState::Patrol;
 
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|AI", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Guard Runtime State", meta = (AllowPrivateAccess = "true"))
 	float StateEndServerTime = 0.0f;
 
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|AI", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Guard Runtime State", meta = (AllowPrivateAccess = "true"))
 	FVector StateFocusLocation = FVector::ZeroVector;
 
-	UPROPERTY(Transient, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|AI", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Transient, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Guard Runtime State", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<AActor> ChaseTarget;
 
 	float InvestigateDuration = 0.0f;
@@ -94,6 +95,7 @@ class PROJECT_MUSEUMHEIST_API UHeistGuardStateComponent : public UActorComponent
 	float AlertSearchDurationMultiplier = 1.0f;
 	float PendingInvestigateDuration = 0.0f;
 	FTimerHandle StateTimerHandle;
+	int32 StateTimerRevision = 0;
 	FHeistGuardStateChanged GuardStateChangedDelegate;
 	FHeistInspectExhibitCastExpired InspectExhibitCastExpiredDelegate;
 

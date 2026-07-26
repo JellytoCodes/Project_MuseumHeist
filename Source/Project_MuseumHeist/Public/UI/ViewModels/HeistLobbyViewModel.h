@@ -30,18 +30,28 @@ class PROJECT_MUSEUMHEIST_API UHeistLobbyViewModel : public UMVVMViewModelBase
 #pragma region Setup
 
   public:
-	void SetupViewModel(class AHeistGameState* InGameState, class AHeistPlayerState* InLocalPlayerState);
+	void SetupViewModel(class AHeistGameState* InGameState, class AHeistPlayerState* InLocalPlayerState, class UHeistGameInstance* InGameInstance);
 	void RefreshLobbyData();
 	FHeistLobbySnapshotChanged& GetSnapshotChangedDelegate();
 
+	UFUNCTION(BlueprintCallable, Category = "Heist|Lobby")
+	bool RequestHostSession();
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Lobby")
+	bool RequestJoinSessionByCode(const FString& JoinCode);
+
   private:
 	void HandlePlayerConnectionsChanged(int32 NewConnectedPlayerCount);
+	void HandleOnlineSessionStateChanged();
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHeistGameState> GameState;
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHeistPlayerState> LocalPlayerState;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHeistGameInstance> GameInstance;
 
 	FHeistLobbySnapshotChanged SnapshotChangedDelegate;
 
@@ -58,14 +68,23 @@ class PROJECT_MUSEUMHEIST_API UHeistLobbyViewModel : public UMVVMViewModelBase
 	const FText& GetReadyCountdownText() const;
 	const FText& GetDefaultLoadoutText() const;
 	const FText& GetAuthorityBlockerText() const;
+	const FText& GetSessionStatusText() const;
+	const FText& GetSessionErrorText() const;
+	const FText& GetJoinCodeText() const;
 	const FText& GetPlayerSlot1Text() const;
 	const FText& GetPlayerSlot2Text() const;
 	const FText& GetPlayerSlot3Text() const;
 	const FText& GetPlayerSlot4Text() const;
 	ESlateVisibility GetAuthorityBlockerVisibility() const;
+	ESlateVisibility GetSessionErrorVisibility() const;
+	ESlateVisibility GetJoinCodeVisibility() const;
+	bool CanRequestHostSession() const;
+	bool CanRequestJoinSession() const;
 
   private:
 	FText BuildPlayerSlotText(int32 SlotIndex) const;
+	FText ResolveOnlineSessionStatusText() const;
+	FText ResolveOnlineSessionFailureText() const;
 	void RefreshPlayerSlots();
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
@@ -93,6 +112,15 @@ class PROJECT_MUSEUMHEIST_API UHeistLobbyViewModel : public UMVVMViewModelBase
 	FText AuthorityBlockerText;
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
+	FText SessionStatusText;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
+	FText SessionErrorText;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
+	FText JoinCodeText;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
 	FText PlayerSlot1Text;
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
@@ -106,6 +134,18 @@ class PROJECT_MUSEUMHEIST_API UHeistLobbyViewModel : public UMVVMViewModelBase
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
 	ESlateVisibility AuthorityBlockerVisibility = ESlateVisibility::Visible;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
+	ESlateVisibility SessionErrorVisibility = ESlateVisibility::Collapsed;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
+	ESlateVisibility JoinCodeVisibility = ESlateVisibility::Collapsed;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
+	bool bCanRequestHostSession = true;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
+	bool bCanRequestJoinSession = true;
 
 #pragma endregion
 };

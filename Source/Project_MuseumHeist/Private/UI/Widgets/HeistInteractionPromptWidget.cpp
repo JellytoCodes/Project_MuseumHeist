@@ -11,6 +11,7 @@
 #include "UI/ViewModels/HeistHUDViewModel.h"
 #include "World/Actors/Escape/HeistVentActor.h"
 #include "World/Actors/Loot/HeistLootActor.h"
+#include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 
 #pragma region Construction
 
@@ -127,7 +128,8 @@ void UHeistInteractionPromptWidget::RefreshInteractionPrompt(const bool bActionA
 	}
 	if (IsValid(AvailabilityText))
 	{
-		AvailabilityText->SetText(bAvailable ? NSLOCTEXT("HeistInteraction", "Available", "AVAILABLE") : NSLOCTEXT("HeistInteraction", "Unavailable", "UNAVAILABLE"));
+		AvailabilityText->SetText(bAvailable ? NSLOCTEXT("HeistInteraction", "Available", "INTERACT")
+											: NSLOCTEXT("HeistInteraction", "Unavailable", "UNAVAILABLE"));
 	}
 }
 
@@ -172,7 +174,8 @@ void UHeistInteractionPromptWidget::RefreshActionProgress()
 	}
 	if (IsValid(ActionTypeText))
 	{
-		ActionTypeText->SetText(bObservationActive ? NSLOCTEXT("HeistInteraction", "ObservationAction", "OBSERVING") : (bEscapeActive ? NSLOCTEXT("HeistInteraction", "EscapeAction", "ESCAPING") : FText::GetEmpty()));
+		ActionTypeText->SetText(bObservationActive ? NSLOCTEXT("HeistInteraction", "ObservationAction", "OBSERVING")
+												  : (bEscapeActive ? NSLOCTEXT("HeistInteraction", "EscapeAction", "ESCAPING") : FText::GetEmpty()));
 	}
 	if (IsValid(ActionProgressBar))
 	{
@@ -180,15 +183,14 @@ void UHeistInteractionPromptWidget::RefreshActionProgress()
 	}
 	if (IsValid(ActionRemainingText))
 	{
-		FNumberFormattingOptions Formatting;
-		Formatting.MinimumFractionalDigits = 1;
-		Formatting.MaximumFractionalDigits = 1;
-		ActionRemainingText->SetText(FText::Format(NSLOCTEXT("HeistInteraction", "RemainingFormat", "{0}s"), FText::AsNumber(RemainingSeconds, &Formatting)));
+		ActionRemainingText->SetText(FText::Format(NSLOCTEXT("HeistInteraction", "RemainingFormat", "{0}s"),
+												  FText::AsNumber(FMath::CeilToInt(RemainingSeconds))));
 	}
 	if (IsValid(CancelHintText))
 	{
-		CancelHintText->SetText(bObservationActive ? NSLOCTEXT("HeistInteraction", "ObservationCancelHint", "RELEASE E, MOVE, TAKE DAMAGE OR ARREST TO CANCEL")
-												   : (bEscapeActive ? NSLOCTEXT("HeistInteraction", "EscapeCancelHint", "MOVE OR TAKE DAMAGE TO CANCEL") : FText::GetEmpty()));
+		CancelHintText->SetText(
+			bObservationActive ? NSLOCTEXT("HeistInteraction", "ObservationCancelHint", "RELEASING E, MOVING, TAKING DAMAGE, OR BEING ARRESTED WILL CANCEL THE OBSERVATION.")
+							   : (bEscapeActive ? NSLOCTEXT("HeistInteraction", "EscapeCancelHint", "MOVING OR TAKING DAMAGE WILL CANCEL YOUR ESCAPE.") : FText::GetEmpty()));
 	}
 
 	const bool bReferenceVisible = bObservationActive && HUDViewModel->IsObservationReferenceVisible();
@@ -213,15 +215,31 @@ FText UHeistInteractionPromptWidget::ResolveTargetLabel(const AActor* TargetActo
 	if (const AHeistLootActor* LootActor = Cast<AHeistLootActor>(TargetActor))
 	{
 		const FName LootRowId = LootActor->GetLootRowId();
-		return LootRowId.IsNone() ? NSLOCTEXT("HeistInteraction", "LootTarget", "LOOT") : FText::FromName(LootRowId);
+		if (LootRowId.IsNone())
+		{
+			return NSLOCTEXT("HeistInteraction", "LootTarget", "COLLECT");
+		}
+
+		FString LootDisplayName = LootRowId.ToString();
+		LootDisplayName.ReplaceInline(TEXT("_"), TEXT(" "));
+		return FText::Format(NSLOCTEXT("HeistInteraction", "NamedLootTarget", "COLLECT  {0}"), FText::FromString(LootDisplayName));
+	}
+
+	if (Cast<AHeistPaintingDisplayCaseActor>(TargetActor) != nullptr)
+	{
+		return NSLOCTEXT("HeistInteraction", "PaintingTarget", "STUDY PAINTING");
 	}
 
 	if (Cast<AHeistVentActor>(TargetActor) != nullptr)
 	{
-		return NSLOCTEXT("HeistInteraction", "VentTarget", "ESCAPE VENT");
+		return NSLOCTEXT("HeistInteraction", "VentTarget", "ESCAPE");
 	}
 
-	return FText::FromString(TargetActor->GetClass()->GetName());
+	FString TargetDisplayName = TargetActor->GetClass()->GetName();
+	TargetDisplayName.RemoveFromStart(TEXT("BP_"));
+	TargetDisplayName.RemoveFromEnd(TEXT("_C"));
+	TargetDisplayName.ReplaceInline(TEXT("_"), TEXT(" "));
+	return FText::Format(NSLOCTEXT("HeistInteraction", "GenericTarget", "INTERACT  {0}"), FText::FromString(TargetDisplayName));
 }
 
 float UHeistInteractionPromptWidget::GetServerWorldTimeSeconds() const

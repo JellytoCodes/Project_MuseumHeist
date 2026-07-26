@@ -9,6 +9,7 @@
 class AHeistPlayerCharacter;
 class AHeistPaintingDisplayCaseActor;
 class AHeistGuardCharacter;
+class AHeistGameState;
 class AHeistLootActor;
 class AHeistPlayerState;
 class AHeistThrowableProjectile;
@@ -46,6 +47,9 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 
   private:
 	void RefreshLocalHUDPresentation();
+	void RefreshMatchPhasePresentationBinding();
+	void HandleMatchPhasePresentationChanged(EHeistMatchPhase PreviousMatchPhase, EHeistMatchPhase NewMatchPhase);
+	TWeakObjectPtr<AHeistGameState> BoundMatchPhaseGameState;
 
 #pragma endregion
 

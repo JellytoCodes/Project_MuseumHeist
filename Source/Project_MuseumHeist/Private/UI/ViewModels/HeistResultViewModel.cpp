@@ -57,7 +57,7 @@ void UHeistResultViewModel::RefreshResultData()
 
 	const int32 NewMyFinalScore = LocalResult ? LocalResult->FinalScore : 0;
 	UE_MVVM_SET_PROPERTY_VALUE(MyFinalScore, NewMyFinalScore);
-	UE_MVVM_SET_PROPERTY_VALUE(MyFinalScoreText, FText::AsNumber(NewMyFinalScore));
+	UE_MVVM_SET_PROPERTY_VALUE(MyFinalScoreText, FText::Format(NSLOCTEXT("HeistResult", "LocalFinalScoreFormat", "LOOT  {0}"), FText::AsNumber(NewMyFinalScore)));
 
 	const bool bNewEscaped = LocalResult ? LocalResult->bEscaped : false;
 	UE_MVVM_SET_PROPERTY_VALUE(bEscaped, bNewEscaped);
@@ -149,9 +149,11 @@ FText UHeistResultViewModel::BuildResultRowText(const int32 ResultIndex) const
 	}
 
 	const FHeistPlayerResult& PlayerResult = PlayerResults[ResultIndex];
-	const FText EscapeStateText = PlayerResult.bEscaped ? FText::FromString(TEXT("ESCAPED")) : FText::FromString(TEXT("CAUGHT"));
-	return FText::Format(NSLOCTEXT("HeistResult", "ResultRowFormat", "P{0} \n Loot {1} \n Weight {2} \n {3}"), FText::AsNumber(PlayerResult.PlayerId), FText::AsNumber(PlayerResult.FinalScore),
-						 FText::AsNumber(FMath::RoundToInt(PlayerResult.LootWeight)), EscapeStateText);
+	const FText EscapeStateText =
+		PlayerResult.bEscaped ? NSLOCTEXT("HeistResult", "PlayerEscaped", "ESCAPED") : NSLOCTEXT("HeistResult", "PlayerCaught", "CAUGHT");
+	return FText::Format(
+		NSLOCTEXT("HeistResult", "ResultRowFormat", "PLAYER {0}  |  LOOT {1}  |  WEIGHT {2}  |  {3}"), FText::AsNumber(PlayerResult.PlayerId),
+		FText::AsNumber(PlayerResult.FinalScore), FText::AsNumber(FMath::RoundToInt(PlayerResult.LootWeight)), EscapeStateText);
 }
 
 ESlateVisibility UHeistResultViewModel::BuildResultRowVisibility(const int32 ResultIndex) const

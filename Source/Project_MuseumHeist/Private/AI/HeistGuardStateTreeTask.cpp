@@ -23,6 +23,10 @@ enum class EHeistGuardTaskPhase : uint8
 	AwaitingStateChange
 };
 
+constexpr float GuardMoveProgressThreshold = 5.0f;
+constexpr float GuardMoveStallTimeout = 2.0f;
+constexpr uint8 MaximumMoveRetryCount = 1;
+
 AHeistGuardAIController* ResolveController(FStateTreeExecutionContext& Context)
 {
 	return Cast<AHeistGuardAIController>(Context.GetOwner());
@@ -49,6 +53,9 @@ void ResetMove(FHeistGuardStateTreeTaskInstanceData& InstanceData)
 {
 	InstanceData.MoveRequestId = MAX_uint32;
 	InstanceData.RequestResult = static_cast<uint8>(EPathFollowingRequestResult::Failed);
+	InstanceData.MoveNoProgressSeconds = 0.0f;
+	InstanceData.LastMoveProgressLocation = FVector::ZeroVector;
+	InstanceData.MoveDestination = FVector::ZeroVector;
 	InstanceData.bMoveFinished = false;
 	InstanceData.bMoveSucceeded = false;
 }
@@ -57,6 +64,11 @@ bool StartMove(FHeistGuardStateTreeTaskInstanceData& InstanceData, AHeistGuardAI
 {
 	Controller.StopMovement();
 	ResetMove(InstanceData);
+	if (const AHeistGuardCharacter* GuardCharacter = ResolveGuardCharacter(&Controller))
+	{
+		InstanceData.LastMoveProgressLocation = GuardCharacter->GetActorLocation();
+	}
+	InstanceData.MoveDestination = Destination;
 
 	FAIMoveRequest MoveRequest;
 	MoveRequest.SetNavigationFilter(Controller.GetDefaultNavigationFilterClass())
@@ -190,10 +202,67 @@ void AwaitAuthoritativeStateChange(FHeistGuardStateTreeTaskInstanceData& Instanc
 	InstanceData.Phase = static_cast<uint8>(EHeistGuardTaskPhase::AwaitingStateChange);
 }
 
-void BeginPatrolWait(FHeistGuardStateTreeTaskInstanceData& InstanceData, const UHeistPatrolPathComponent* PatrolPath)
+void SetGuardYaw(AHeistGuardAIController& Controller, const float Yaw)
 {
-	InstanceData.WaitRemaining = IsValid(PatrolPath) ? PatrolPath->GetWaypointWaitDuration() : 0.0f;
+	AHeistGuardCharacter* GuardCharacter = ResolveGuardCharacter(&Controller);
+	if (!IsValid(GuardCharacter))
+	{
+		return;
+	}
+
+	const FRotator FacingRotation(0.0f, FRotator::NormalizeAxis(Yaw), 0.0f);
+	GuardCharacter->SetActorRotation(FacingRotation);
+	Controller.SetControlRotation(FacingRotation);
+}
+
+void BeginPatrolWait(FHeistGuardStateTreeTaskInstanceData& InstanceData, const UHeistPatrolPathComponent* PatrolPath, AHeistGuardAIController& Controller, const bool bAllowLookAround)
+{
+	InstanceData.WaitDuration = IsValid(PatrolPath) ? PatrolPath->GetWaypointWaitDuration() : 0.0f;
+	InstanceData.WaitRemaining = InstanceData.WaitDuration;
+	InstanceData.MoveRetryCount = 0;
+	const AHeistGuardCharacter* GuardCharacter = ResolveGuardCharacter(&Controller);
+	InstanceData.PatrolScanBaseYaw = IsValid(GuardCharacter) ? GuardCharacter->GetActorRotation().Yaw : 0.0f;
+	InstanceData.bPatrolScanActive = bAllowLookAround && IsValid(PatrolPath) && PatrolPath->ShouldLookAroundAtWaypoints();
 	InstanceData.Phase = static_cast<uint8>(EHeistGuardTaskPhase::Waiting);
+}
+
+void UpdatePatrolScan(FHeistGuardStateTreeTaskInstanceData& InstanceData, AHeistGuardAIController& Controller, const UHeistPatrolPathComponent* PatrolPath, const float DeltaTime)
+{
+	if (!InstanceData.bPatrolScanActive || !IsValid(PatrolPath) || InstanceData.WaitDuration <= 0.0f)
+	{
+		return;
+	}
+
+	const AHeistGuardCharacter* GuardCharacter = ResolveGuardCharacter(&Controller);
+	if (!IsValid(GuardCharacter))
+	{
+		InstanceData.bPatrolScanActive = false;
+		return;
+	}
+
+	const float ScanProgress = FMath::Clamp(1.0f - InstanceData.WaitRemaining / InstanceData.WaitDuration, 0.0f, 1.0f);
+	const float YawOffset = PatrolPath->GetLookAroundYawAngle();
+	float TargetYaw = InstanceData.PatrolScanBaseYaw;
+	if (ScanProgress < 1.0f / 3.0f)
+	{
+		TargetYaw -= YawOffset;
+	}
+	else if (ScanProgress < 2.0f / 3.0f)
+	{
+		TargetYaw += YawOffset;
+	}
+
+	const float MaximumYawDelta = PatrolPath->GetLookAroundTurnRate() * FMath::Max(0.0f, DeltaTime);
+	SetGuardYaw(Controller, FMath::FixedTurn(GuardCharacter->GetActorRotation().Yaw, TargetYaw, MaximumYawDelta));
+}
+
+void FinishPatrolScan(FHeistGuardStateTreeTaskInstanceData& InstanceData, AHeistGuardAIController& Controller)
+{
+	if (InstanceData.bPatrolScanActive)
+	{
+		SetGuardYaw(Controller, InstanceData.PatrolScanBaseYaw);
+	}
+	InstanceData.bPatrolScanActive = false;
 }
 }
 
@@ -209,6 +278,10 @@ EStateTreeRunStatus FHeistGuardStateTreeTask::EnterState(FStateTreeExecutionCont
 	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 	ResetMove(InstanceData);
 	InstanceData.WaitRemaining = 0.0f;
+	InstanceData.WaitDuration = 0.0f;
+	InstanceData.PatrolScanBaseYaw = 0.0f;
+	InstanceData.MoveRetryCount = 0;
+	InstanceData.bPatrolScanActive = false;
 	InstanceData.Phase = static_cast<uint8>(EHeistGuardTaskPhase::Idle);
 
 	AHeistGuardAIController* Controller = ResolveController(Context);
@@ -233,7 +306,7 @@ EStateTreeRunStatus FHeistGuardStateTreeTask::EnterState(FStateTreeExecutionCont
 		}
 		if (!StartPatrolMove(InstanceData, *Controller))
 		{
-			BeginPatrolWait(InstanceData, ResolvePatrolPath(Controller));
+			BeginPatrolWait(InstanceData, ResolvePatrolPath(Controller), *Controller, false);
 		}
 		break;
 	case EHeistGuardState::InvestigateNoise:
@@ -309,8 +382,10 @@ EStateTreeRunStatus FHeistGuardStateTreeTask::Tick(FStateTreeExecutionContext& C
 	if (Phase == EHeistGuardTaskPhase::Waiting)
 	{
 		InstanceData.WaitRemaining = FMath::Max(0.0f, InstanceData.WaitRemaining - DeltaTime);
+		UpdatePatrolScan(InstanceData, *Controller, PatrolPath, DeltaTime);
 		if (InstanceData.WaitRemaining <= 0.0f)
 		{
+			FinishPatrolScan(InstanceData, *Controller);
 			if (GuardState == EHeistGuardState::Patrol && Controller->TryBeginInspection())
 			{
 				AwaitAuthoritativeStateChange(InstanceData);
@@ -320,19 +395,20 @@ EStateTreeRunStatus FHeistGuardStateTreeTask::Tick(FStateTreeExecutionContext& C
 			{
 				if (!StartPatrolMove(InstanceData, *Controller))
 				{
-					BeginPatrolWait(InstanceData, PatrolPath);
+					BeginPatrolWait(InstanceData, PatrolPath, *Controller, false);
 				}
 			}
 			else if (GuardState == EHeistGuardState::Patrol && IsValid(PatrolPath) && IsValid(PatrolPath->AdvanceWaypoint()))
 			{
+				InstanceData.MoveRetryCount = 0;
 				if (!StartPatrolMove(InstanceData, *Controller))
 				{
-					BeginPatrolWait(InstanceData, PatrolPath);
+					BeginPatrolWait(InstanceData, PatrolPath, *Controller, false);
 				}
 			}
 			else if (GuardState == EHeistGuardState::Patrol)
 			{
-				BeginPatrolWait(InstanceData, PatrolPath);
+				BeginPatrolWait(InstanceData, PatrolPath, *Controller, true);
 			}
 		}
 		return EStateTreeRunStatus::Running;
@@ -350,11 +426,31 @@ EStateTreeRunStatus FHeistGuardStateTreeTask::Tick(FStateTreeExecutionContext& C
 		if (IsValid(PathFollowingComponent) && PathFollowingComponent->GetStatus() != EPathFollowingStatus::Idle &&
 			FAIRequestID(InstanceData.MoveRequestId).IsEquivalent(PathFollowingComponent->GetCurrentRequestId()))
 		{
-			return EStateTreeRunStatus::Running;
-		}
+			const FVector CurrentLocation = GuardCharacter->GetActorLocation();
+			if (FVector::DistSquared2D(CurrentLocation, InstanceData.LastMoveProgressLocation) >= FMath::Square(GuardMoveProgressThreshold))
+			{
+				InstanceData.LastMoveProgressLocation = CurrentLocation;
+				InstanceData.MoveNoProgressSeconds = 0.0f;
+				return EStateTreeRunStatus::Running;
+			}
 
-		InstanceData.bMoveFinished = true;
-		InstanceData.bMoveSucceeded = IsValid(PathFollowingComponent) && PathFollowingComponent->DidMoveReachGoal();
+			InstanceData.MoveNoProgressSeconds += FMath::Max(0.0f, DeltaTime);
+			if (InstanceData.MoveNoProgressSeconds < GuardMoveStallTimeout)
+			{
+				return EStateTreeRunStatus::Running;
+			}
+
+			UHeistDebugFunctionLibrary::DebugGuardMoveStalled(Controller, GuardCharacter, GuardState, InstanceData.MoveDestination, InstanceData.MoveNoProgressSeconds,
+															 InstanceData.MoveRetryCount);
+			Controller->StopMovement();
+			InstanceData.bMoveFinished = true;
+			InstanceData.bMoveSucceeded = false;
+		}
+		else
+		{
+			InstanceData.bMoveFinished = true;
+			InstanceData.bMoveSucceeded = IsValid(PathFollowingComponent) && PathFollowingComponent->DidMoveReachGoal();
+		}
 	}
 
 	const bool bMoveSucceeded = InstanceData.bMoveSucceeded;
@@ -367,9 +463,17 @@ EStateTreeRunStatus FHeistGuardStateTreeTask::Tick(FStateTreeExecutionContext& C
 		{
 			AwaitAuthoritativeStateChange(InstanceData);
 		}
+		else if (!bMoveSucceeded && InstanceData.MoveRetryCount < MaximumMoveRetryCount)
+		{
+			++InstanceData.MoveRetryCount;
+			if (!StartPatrolMove(InstanceData, *Controller))
+			{
+				BeginPatrolWait(InstanceData, PatrolPath, *Controller, false);
+			}
+		}
 		else
 		{
-			BeginPatrolWait(InstanceData, PatrolPath);
+			BeginPatrolWait(InstanceData, PatrolPath, *Controller, bMoveSucceeded);
 		}
 		break;
 	case EHeistGuardState::InvestigateNoise:
@@ -428,9 +532,14 @@ void FHeistGuardStateTreeTask::ExitState(FStateTreeExecutionContext& Context, co
 	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 	if (AHeistGuardAIController* Controller = ResolveController(Context))
 	{
+		FinishPatrolScan(InstanceData, *Controller);
 		Controller->StopMovement();
 	}
 	ResetMove(InstanceData);
 	InstanceData.WaitRemaining = 0.0f;
+	InstanceData.WaitDuration = 0.0f;
+	InstanceData.PatrolScanBaseYaw = 0.0f;
+	InstanceData.MoveRetryCount = 0;
+	InstanceData.bPatrolScanActive = false;
 	InstanceData.Phase = static_cast<uint8>(EHeistGuardTaskPhase::Idle);
 }

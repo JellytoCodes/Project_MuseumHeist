@@ -23,6 +23,7 @@ void UHeistHUDViewModel::BeginDestroy()
 		GameState->GetEscapePhaseStateChangedDelegate().RemoveAll(this);
 		GameState->GetRareLootEventStateChangedDelegate().RemoveAll(this);
 		GameState->GetObjectiveStateChangedDelegate().RemoveAll(this);
+		GameState->GetAlertStateChangedDelegate().RemoveAll(this);
 	}
 
 	if (IsValid(LocalPlayerState))
@@ -52,6 +53,7 @@ void UHeistHUDViewModel::SetupViewModel(AHeistGameState* InGameState, AHeistPlay
 		GameState->GetEscapePhaseStateChangedDelegate().RemoveAll(this);
 		GameState->GetRareLootEventStateChangedDelegate().RemoveAll(this);
 		GameState->GetObjectiveStateChangedDelegate().RemoveAll(this);
+		GameState->GetAlertStateChangedDelegate().RemoveAll(this);
 	}
 
 	if (LocalPlayerState != InLocalPlayerState && IsValid(LocalPlayerState))
@@ -80,6 +82,8 @@ void UHeistHUDViewModel::SetupViewModel(AHeistGameState* InGameState, AHeistPlay
 		GameState->GetRareLootEventStateChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandleRareLootEventStateChanged);
 		GameState->GetObjectiveStateChangedDelegate().RemoveAll(this);
 		GameState->GetObjectiveStateChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandleObjectiveStateChanged);
+		GameState->GetAlertStateChangedDelegate().RemoveAll(this);
+		GameState->GetAlertStateChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandleAlertStateChanged);
 	}
 
 	if (IsValid(LocalPlayerState))
@@ -116,6 +120,7 @@ void UHeistHUDViewModel::RefreshPresentationState()
 	const FName ActiveObjectiveArtifactId = IsValid(GameState) ? GameState->GetActiveTargetArtifactId() : NAME_None;
 	const FName ActiveObjectiveCaseId = IsValid(GameState) ? GameState->GetActiveTargetCaseId() : NAME_None;
 	const EHeistObjectiveState ActiveObjectiveState = IsValid(GameState) ? GameState->GetObjectiveState() : EHeistObjectiveState::Inactive;
+	const EHeistAlertLevel ActiveAlertLevel = IsValid(GameState) ? GameState->GetAlertLevel() : EHeistAlertLevel::Quiet;
 
 	UE_MVVM_SET_PROPERTY_VALUE(bObservationCastActive, bLocalObservationCastActive);
 	UE_MVVM_SET_PROPERTY_VALUE(ObservationCastEndServerTime, bLocalObservationCastActive ? ActionComponent->GetObservationCastEndServerTime() : 0.0f);
@@ -127,31 +132,78 @@ void UHeistHUDViewModel::RefreshPresentationState()
 	UE_MVVM_SET_PROPERTY_VALUE(ObjectiveCaseId, ActiveObjectiveCaseId);
 	UE_MVVM_SET_PROPERTY_VALUE(ObjectiveState, ActiveObjectiveState);
 
-	const FText ArtifactLabel = ActiveObjectiveArtifactId.IsNone() ? NSLOCTEXT("HeistHUD", "UnknownObjectiveArtifact", "TARGET ARTIFACT") : FText::FromName(ActiveObjectiveArtifactId);
-	UE_MVVM_SET_PROPERTY_VALUE(ObservationReferenceText,
-							   bLocalObservationCastActive ? FText::Format(NSLOCTEXT("HeistHUD", "ObservationReferenceFormat", "REFERENCE  {0}"), ArtifactLabel) : FText::GetEmpty());
+	const int32 NewSecurityLevel = FMath::Clamp(static_cast<int32>(ActiveAlertLevel), 0, 4);
+	FString SecurityLevelStars;
+	for (int32 Index = 0; Index < 4; ++Index)
+	{
+		if (Index > 0)
+		{
+			SecurityLevelStars += TEXT(" ");
+		}
+		SecurityLevelStars += Index < NewSecurityLevel ? TEXT("\u2605") : TEXT("\u2606");
+	}
+	const FText NewAlertBannerText =
+		FText::Format(NSLOCTEXT("HeistHUD", "SecurityLevelFormat", "SECURITY LEVEL {0}/4  {1}"), FText::AsNumber(NewSecurityLevel), FText::FromString(SecurityLevelStars));
+	FLinearColor NewAlertColor;
+	switch (ActiveAlertLevel)
+	{
+	case EHeistAlertLevel::Suspicious:
+		NewAlertColor = FLinearColor(1.0f, 0.68f, 0.12f);
+		break;
+	case EHeistAlertLevel::Searching:
+		NewAlertColor = FLinearColor(1.0f, 0.30f, 0.05f);
+		break;
+	case EHeistAlertLevel::Alarmed:
+		NewAlertColor = FLinearColor(1.0f, 0.04f, 0.02f);
+		break;
+	case EHeistAlertLevel::Lockdown:
+		NewAlertColor = FLinearColor(0.72f, 0.0f, 0.0f);
+		break;
+	case EHeistAlertLevel::Quiet:
+	default:
+		NewAlertColor = FLinearColor(0.45f, 0.58f, 0.70f);
+		break;
+	}
 
-	FText ObjectiveStateLabel;
+	const bool bLockdownCountdownActive = IsValid(GameState) && GameState->IsLockdownCountdownActive();
+	UE_MVVM_SET_PROPERTY_VALUE(AlertLevel, ActiveAlertLevel);
+	UE_MVVM_SET_PROPERTY_VALUE(SecurityLevel, NewSecurityLevel);
+	UE_MVVM_SET_PROPERTY_VALUE(AlertBannerText, NewAlertBannerText);
+	UE_MVVM_SET_PROPERTY_VALUE(AlertColor, NewAlertColor);
+	UE_MVVM_SET_PROPERTY_VALUE(bLockdownCountdownVisible, bLockdownCountdownActive);
+	UE_MVVM_SET_PROPERTY_VALUE(LockdownCountdownEndServerTime, bLockdownCountdownActive ? GameState->GetAlertNextTransitionServerTime() : 0.0f);
+	UE_MVVM_SET_PROPERTY_VALUE(bSuspenseMusicActive, ActiveAlertLevel == EHeistAlertLevel::Suspicious || ActiveAlertLevel == EHeistAlertLevel::Searching);
+	UE_MVVM_SET_PROPERTY_VALUE(bAlarmMusicActive, ActiveAlertLevel == EHeistAlertLevel::Alarmed || ActiveAlertLevel == EHeistAlertLevel::Lockdown);
+
+	FString ArtifactDisplayName = ActiveObjectiveArtifactId.ToString();
+	ArtifactDisplayName.ReplaceInline(TEXT("_"), TEXT(" "));
+	const FText ArtifactLabel =
+		ActiveObjectiveArtifactId.IsNone() ? NSLOCTEXT("HeistHUD", "UnknownObjectiveArtifact", "TARGET ARTIFACT") : FText::FromString(ArtifactDisplayName);
+	UE_MVVM_SET_PROPERTY_VALUE(ObservationReferenceText,
+							   bLocalObservationCastActive ? FText::Format(NSLOCTEXT("HeistHUD", "ObservationReferenceFormat", "REFERENCE  {0}"), ArtifactLabel)
+														   : FText::GetEmpty());
+
+	FText NewObjectiveStateText;
 	switch (ActiveObjectiveState)
 	{
 	case EHeistObjectiveState::Available:
-		ObjectiveStateLabel = NSLOCTEXT("HeistHUD", "ObjectiveAvailable", "AVAILABLE");
+		NewObjectiveStateText = FText::Format(NSLOCTEXT("HeistHUD", "ObjectiveAvailable", "OBJECTIVE  STEAL {0}"), ArtifactLabel);
 		break;
 	case EHeistObjectiveState::InProgress:
-		ObjectiveStateLabel = NSLOCTEXT("HeistHUD", "ObjectiveInProgress", "IN PROGRESS");
+		NewObjectiveStateText = FText::Format(NSLOCTEXT("HeistHUD", "ObjectiveInProgress", "OBJECTIVE  {0} IN PROGRESS"), ArtifactLabel);
 		break;
 	case EHeistObjectiveState::Completed:
-		ObjectiveStateLabel = NSLOCTEXT("HeistHUD", "ObjectiveCompleted", "COMPLETED");
+		NewObjectiveStateText = NSLOCTEXT("HeistHUD", "ObjectiveCompleted", "OBJECTIVE COMPLETE");
 		break;
 	case EHeistObjectiveState::Failed:
-		ObjectiveStateLabel = NSLOCTEXT("HeistHUD", "ObjectiveFailed", "FAILED");
+		NewObjectiveStateText = NSLOCTEXT("HeistHUD", "ObjectiveFailed", "OBJECTIVE FAILED");
 		break;
 	case EHeistObjectiveState::Inactive:
 	default:
-		ObjectiveStateLabel = NSLOCTEXT("HeistHUD", "ObjectiveInactive", "INACTIVE");
+		NewObjectiveStateText = FText::GetEmpty();
 		break;
 	}
-	UE_MVVM_SET_PROPERTY_VALUE(ObjectiveStateText, FText::Format(NSLOCTEXT("HeistHUD", "ObjectiveStateFormat", "OBJECTIVE  {0}  |  {1}"), ArtifactLabel, ObjectiveStateLabel));
+	UE_MVVM_SET_PROPERTY_VALUE(ObjectiveStateText, NewObjectiveStateText);
 
 	PresentationChangedDelegate.Broadcast();
 }
@@ -180,6 +232,11 @@ void UHeistHUDViewModel::HandlePlayerConnectionsChanged(const int32)
 }
 
 void UHeistHUDViewModel::HandlePlayerIdentityChanged(const int32)
+{
+	RefreshPresentationState();
+}
+
+void UHeistHUDViewModel::HandleAlertStateChanged(const EHeistAlertLevel, const EHeistAlertLevel, const int32, const FName)
 {
 	RefreshPresentationState();
 }
@@ -309,6 +366,46 @@ const FText& UHeistHUDViewModel::GetObservationReferenceText() const
 const FText& UHeistHUDViewModel::GetObjectiveStateText() const
 {
 	return ObjectiveStateText;
+}
+
+EHeistAlertLevel UHeistHUDViewModel::GetAlertLevel() const
+{
+	return AlertLevel;
+}
+
+int32 UHeistHUDViewModel::GetSecurityLevel() const
+{
+	return SecurityLevel;
+}
+
+const FText& UHeistHUDViewModel::GetAlertBannerText() const
+{
+	return AlertBannerText;
+}
+
+FLinearColor UHeistHUDViewModel::GetAlertColor() const
+{
+	return AlertColor;
+}
+
+bool UHeistHUDViewModel::IsLockdownCountdownVisible() const
+{
+	return bLockdownCountdownVisible;
+}
+
+float UHeistHUDViewModel::GetLockdownCountdownEndServerTime() const
+{
+	return LockdownCountdownEndServerTime;
+}
+
+bool UHeistHUDViewModel::IsSuspenseMusicActive() const
+{
+	return bSuspenseMusicActive;
+}
+
+bool UHeistHUDViewModel::IsAlarmMusicActive() const
+{
+	return bAlarmMusicActive;
 }
 
 #pragma endregion

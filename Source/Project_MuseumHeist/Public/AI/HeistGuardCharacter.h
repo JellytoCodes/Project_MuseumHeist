@@ -28,6 +28,9 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardCharacter : public ACharacter
   protected:
 	virtual void BeginPlay() override;
 
+  public:
+	virtual void GetActorEyesViewPoint(FVector& OutLocation, FRotator& OutRotation) const override;
+
 #pragma endregion
 
 #pragma region GameplayComponents
@@ -38,13 +41,13 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardCharacter : public ACharacter
 	UHeistGuardNoiseReactionComponent* GetNoiseReactionComponent() const;
 
   private:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|AI", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Guard", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistGuardStateComponent> GuardStateComponent;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|AI", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Guard", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistPatrolPathComponent> PatrolPathComponent;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|AI", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Guard", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistGuardNoiseReactionComponent> NoiseReactionComponent;
 
 #pragma endregion
@@ -63,10 +66,10 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardCharacter : public ACharacter
 	void ResolveGuardProfile();
 	void HandleGuardStateChanged(EHeistGuardState PreviousState, EHeistGuardState NewState);
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|AI|Data", meta = (AllowPrivateAccess = "true"))
-	FName GuardProfileId = FName(TEXT("Guard_Default"));
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Guard", meta = (AllowPrivateAccess = "true"))
+	FName GuardProfileId = FName(TEXT("Guard_Alert_Medium"));
 
-	UPROPERTY(Transient, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|AI|Data", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Transient, VisibleInstanceOnly, BlueprintReadOnly, AdvancedDisplay, Category = "Heist|Guard", meta = (AllowPrivateAccess = "true"))
 	FHeistGuardDataRow GuardProfile;
 
 	bool bHasResolvedGuardProfile = false;
