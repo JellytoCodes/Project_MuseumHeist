@@ -12,5 +12,19 @@
     "MinimumForgeryScore": 0.6,
     "BaseInspectionDelay": 8.0,
     "VisualActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_Painting.BP_Painting_C'"
+  },
+  {
+    "Name": "Artifact_Sculpture_Prototype",
+    "ArtifactId": "Artifact_Sculpture_Prototype",
+    "DisplayName": "Prototype Figure",
+    "ArtifactValue": 3000,
+    "Weight": 6.0,
+    "GridWidth": 2,
+    "GridHeight": 4,
+    "ForgeryType": "Assembly",
+    "ForgeryTemplateId": "Template_Sculpture_Prototype_01",
+    "MinimumForgeryScore": 0.6,
+    "BaseInspectionDelay": 8.0,
+    "VisualActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_SculptureDisplayCase.BP_SculptureDisplayCase_C'"
   }
 ]

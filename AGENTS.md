@@ -1229,12 +1229,15 @@ W4~W6 결과와 실제 잔여 위험을 검토한 뒤 필요한 경우에만 `TA
 - `TASK-W5-008`은 FOV, Mouse Sensitivity, Master Volume, Resolution / Window Mode의 로컬 저장과 First-Person 적용을 완료했다.
 - PIE New Editor Window가 저장된 Resolution을 Editor 창 크기로 덮어쓰는 경우 Settings 진단은 `DisplayApply=EDITOR_OVERRIDE`로 구분한다.
 - `TASK-W5-009 Packaging Pipeline`은 Development / Shipping Package 생성·검증·실행 증거로 완료됐다.
-- `TASK-W5-011~013` Surface Forgery Pack과 그 의존 작업인 `TASK-W5-016` Shuffle Bag은 2026-07-27 우선순위 변경으로 보류됐다.
+- 2026-07-27 기능 구현 선행 원칙에 따라 `TASK-W5-011~023`을 재번호화했고 기존 `보류` Task는 모두 `미시작`으로 변경했다.
+- `TASK-W5-011~015`는 Object Assembly Data / State, Session / Score, Owner-only UI, Replica / Inspection / Cleanup과 Primitive Prototype Gate다.
+- `TASK-W5-016`은 Surface Template Pool / Shuffle Bag 서버 기능 Task다.
+- `TASK-W5-017~018`은 Sculpture / Ceramic Object Content Pack과 Object Assembly Two-Player Gate다.
+- `TASK-W5-019~021`은 M01 / M02 / M03 각 12개, 총 36개 Surface Forgery Template Pack이다.
+- `TASK-W5-022~023`은 Shared Loose Loot Content와 Tutorial / Onboarding Flow다.
 - 생성된 M01 Surface Reference 후보, Palette 정규화 결과, Mask와 `Tools/Forgery/QuantizeForgeryReference.ps1`은 WIP로 보존한다.
-- 현재 활성 작업은 `TASK-W5-017 Object Assembly Data / State Contract`다.
-- `TASK-W5-011~013` 재개 시 M01 / M02 / M03 각 12개, 총 36개 Surface Forgery Template을 구현한다.
-- `TASK-W5-016` 재개 시 단일 Artifact→Template 연결을 서버 선택형 Template Pool / Shuffle Bag으로 확장한다.
-- `TASK-W5-017~023`은 Object Assembly Data / State, Session / Score, Owner-only UI, Replica / Inspection, Primitive Prototype, Sculpture / Ceramic Content와 2 Player Gate를 순서대로 구현한다.
+- `TASK-W5-011 Object Assembly Data / State Contract`는 Development Editor Build, Part / Template JSON Import와 Data Validation을 `TEST-W5-008`로 완료했다.
+- 현재 다음 작업은 `TASK-W5-012 Object Assembly Session / Payload / Score`다.
 - Sculpture와 Ceramic의 통합 Gameplay System 명칭은 `Object Assembly Forgery`다.
 - Surface Forgery와 Object Assembly는 Template, State, Payload, Result와 Replica Data를 공유하지 않는다.
 - `TASK-W5-010 External Two-PC Online Gate`는 `TEST-W5-007` 증거로 완료됐다.

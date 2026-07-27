@@ -21,7 +21,9 @@
     "FamilyId": "Sculpture",
     "StaticMesh": "StaticMesh'/Engine/BasicShapes/Sphere.Sphere'",
     "CompatibleSocketIds": [
-      "Head"
+      "Head",
+      "Shoulder_L",
+      "Shoulder_R"
     ],
     "AllowedMaterialIds": [
       "Material_Bronze",
@@ -40,7 +42,9 @@
     "FamilyId": "Sculpture",
     "StaticMesh": "StaticMesh'/Engine/BasicShapes/Cube.Cube'",
     "CompatibleSocketIds": [
-      "Shoulder_L"
+      "Head",
+      "Shoulder_L",
+      "Shoulder_R"
     ],
     "AllowedMaterialIds": [
       "Material_Bronze",
@@ -59,6 +63,8 @@
     "FamilyId": "Sculpture",
     "StaticMesh": "StaticMesh'/Engine/BasicShapes/Cube.Cube'",
     "CompatibleSocketIds": [
+      "Head",
+      "Shoulder_L",
       "Shoulder_R"
     ],
     "AllowedMaterialIds": [
@@ -70,6 +76,40 @@
       4,
       8,
       12
+    ]
+  },
+  {
+    "Name": "Part_Sculpture_Prototype_Decoy",
+    "PartId": "Part_Sculpture_Prototype_Decoy",
+    "FamilyId": "Sculpture",
+    "StaticMesh": "StaticMesh'/Engine/BasicShapes/Cone.Cone'",
+    "CompatibleSocketIds": [
+      "Pedestal"
+    ],
+    "AllowedMaterialIds": [
+      "Material_Bronze",
+      "Material_Marble"
+    ],
+    "AllowedOrientationSteps": [
+      0,
+      4,
+      8,
+      12
+    ]
+  },
+  {
+    "Name": "Part_Ceramic_Test_Handle",
+    "PartId": "Part_Ceramic_Test_Handle",
+    "FamilyId": "Ceramic",
+    "StaticMesh": "StaticMesh'/Engine/BasicShapes/Sphere.Sphere'",
+    "CompatibleSocketIds": [
+      "Handle"
+    ],
+    "AllowedMaterialIds": [
+      "Material_Ceramic"
+    ],
+    "AllowedOrientationSteps": [
+      0
     ]
   }
 ]

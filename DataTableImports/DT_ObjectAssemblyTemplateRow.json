@@ -25,7 +25,9 @@
         "MaterialId": "Material_Bronze"
       }
     ],
-    "DecoyPartIds": [],
+    "DecoyPartIds": [
+      "Part_Sculpture_Prototype_Decoy"
+    ],
     "AssemblyDuration": 60.0,
     "RequiredPartWeight": 0.35,
     "SocketTopologyWeight": 0.3,

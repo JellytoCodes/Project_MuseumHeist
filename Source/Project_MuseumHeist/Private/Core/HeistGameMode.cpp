@@ -3,6 +3,7 @@
 #include "Character/Components/HeistActionComponent.h"
 #include "Character/Components/HeistForgeryComponent.h"
 #include "Character/Components/HeistInventoryComponent.h"
+#include "Character/Components/HeistObjectAssemblyComponent.h"
 #include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameInstance.h"
 #include "Core/HeistGameState.h"
@@ -22,6 +23,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
 #include "World/Actors/Loot/HeistLootActor.h"
+#include "World/Actors/Loot/HeistObjectDisplayCaseActor.h"
 #include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 #include "World/Spawn/HeistLootSpawnPoint.h"
 
@@ -228,6 +230,7 @@ void AHeistGameMode::Logout(AController* Exiting)
 		AHeistPlayerCharacter* ExitingCharacter = Cast<AHeistPlayerCharacter>(Exiting->GetPawn());
 		UHeistActionComponent* ActionComponent = IsValid(ExitingCharacter) ? ExitingCharacter->GetActionComponent() : nullptr;
 		UHeistForgeryComponent* ForgeryComponent = IsValid(ExitingCharacter) ? ExitingCharacter->GetForgeryComponent() : nullptr;
+		UHeistObjectAssemblyComponent* ObjectAssemblyComponent = IsValid(ExitingCharacter) ? ExitingCharacter->GetObjectAssemblyComponent() : nullptr;
 		UHeistInventoryComponent* InventoryComponent = IsValid(ExitingCharacter) ? ExitingCharacter->GetInventoryComponent() : nullptr;
 		if (IsValid(ActionComponent) && ActionComponent->IsGameplayCastActive())
 		{
@@ -235,6 +238,11 @@ void AHeistGameMode::Logout(AController* Exiting)
 			++CancelledActionCount;
 		}
 		if (IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive() && ForgeryComponent->CancelForgerySession(FName(TEXT("OwnerDisconnected"))))
+		{
+			++CancelledForgeryCount;
+		}
+		if (IsValid(ObjectAssemblyComponent) && ObjectAssemblyComponent->IsSessionActive() &&
+			ObjectAssemblyComponent->CancelAssemblySession(FName(TEXT("OwnerDisconnected"))))
 		{
 			++CancelledForgeryCount;
 		}
@@ -251,6 +259,13 @@ void AHeistGameMode::Logout(AController* Exiting)
 			{
 				ClearedCaseLockCount += DisplayCase->CancelSessionForOwner(ExitingPlayerState, FName(TEXT("OwnerDisconnected"))) ? 1 : 0;
 				ReleasedOriginalCount += DisplayCase->ReleaseOriginalForCarrier(ExitingPlayerState, FName(TEXT("OwnerDisconnected"))) ? 1 : 0;
+			}
+		}
+		for (TActorIterator<AHeistObjectDisplayCaseActor> DisplayCaseIterator(GetWorld()); DisplayCaseIterator; ++DisplayCaseIterator)
+		{
+			if (AHeistObjectDisplayCaseActor* DisplayCase = *DisplayCaseIterator; IsValid(DisplayCase))
+			{
+				ClearedCaseLockCount += DisplayCase->CancelSessionForOwner(ExitingPlayerState, FName(TEXT("OwnerDisconnected"))) ? 1 : 0;
 			}
 		}
 		UHeistDebugFunctionLibrary::DebugOnlineSessionShutdownCleanup(this, FName(TEXT("OwnerDisconnected")), CancelledActionCount, CancelledForgeryCount, ClosedInventoryCount,
@@ -287,6 +302,13 @@ void AHeistGameMode::PrepareForOnlineSessionShutdown(const FName Reason)
 			++ReleasedOriginalCount;
 		}
 	}
+	for (TActorIterator<AHeistObjectDisplayCaseActor> DisplayCaseIterator(GetWorld()); DisplayCaseIterator; ++DisplayCaseIterator)
+	{
+		if (const AHeistObjectDisplayCaseActor* DisplayCase = *DisplayCaseIterator; IsValid(DisplayCase))
+		{
+			ActiveCaseLockCount += DisplayCase->IsSessionLocked() ? 1 : 0;
+		}
+	}
 
 	int32 CancelledActionCount = 0;
 	int32 CancelledForgeryCount = 0;
@@ -306,6 +328,11 @@ void AHeistGameMode::PrepareForOnlineSessionShutdown(const FName Reason)
 		}
 		if (UHeistForgeryComponent* ForgeryComponent = PlayerCharacter->GetForgeryComponent(); IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive()
 			&& ForgeryComponent->CancelForgerySession(Reason))
+		{
+			++CancelledForgeryCount;
+		}
+		if (UHeistObjectAssemblyComponent* ObjectAssemblyComponent = PlayerCharacter->GetObjectAssemblyComponent();
+			IsValid(ObjectAssemblyComponent) && ObjectAssemblyComponent->IsSessionActive() && ObjectAssemblyComponent->CancelAssemblySession(Reason))
 		{
 			++CancelledForgeryCount;
 		}
@@ -557,6 +584,14 @@ bool AHeistGameMode::ApplyLockdownWorldRestrictions(const FName TriggerId)
 		if (UHeistForgeryComponent* ForgeryComponent = PlayerCharacter->GetForgeryComponent(); IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive())
 		{
 			if (ForgeryComponent->CancelForgerySession(FName(TEXT("Lockdown"))))
+			{
+				++CancelledForgeryCount;
+			}
+		}
+		if (UHeistObjectAssemblyComponent* ObjectAssemblyComponent = PlayerCharacter->GetObjectAssemblyComponent();
+			IsValid(ObjectAssemblyComponent) && ObjectAssemblyComponent->IsSessionActive())
+		{
+			if (ObjectAssemblyComponent->CancelAssemblySession(FName(TEXT("Lockdown"))))
 			{
 				++CancelledForgeryCount;
 			}

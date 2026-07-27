@@ -9,9 +9,12 @@
 #include "HeistDebugFunctionLibrary.generated.h"
 
 class AHeistPaintingDisplayCaseActor;
+class AHeistObjectDisplayCaseActor;
+class AHeistPlayerState;
 class APlayerController;
 class UHeistForgeryComponent;
 class UHeistGameInstance;
+class UHeistObjectAssemblyComponent;
 
 UENUM(BlueprintType)
 enum class EHeistDebugLevel : uint8
@@ -108,6 +111,15 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 	static void DebugForgerySessionSnapshot(const UHeistForgeryComponent* ForgeryComponent, const TCHAR* ChangeSource, FName Reason);
 	static void DebugForgeryStrokeValidationReplicated(const UHeistForgeryComponent* ForgeryComponent);
 	static void DebugForgeryScoreReplicated(const UHeistForgeryComponent* ForgeryComponent);
+
+	static void DebugObjectAssemblyCaseSnapshot(const AHeistObjectDisplayCaseActor* DisplayCase, FName EventName, FName Reason, bool bResult);
+	static void DebugObjectAssemblyCaseSessionCleared(const AHeistObjectDisplayCaseActor* DisplayCase, const AHeistPlayerState* PreviousOwner, FName Reason);
+	static void DebugObjectAssemblySessionSnapshot(const UHeistObjectAssemblyComponent* ObjectAssemblyComponent, FName EventName, FName Reason, bool bResult);
+	static void DebugObjectAssemblyPayloadValidation(const UHeistObjectAssemblyComponent* ObjectAssemblyComponent, bool bAccepted, FName Reason, int32 EntryCount,
+													 int32 PayloadBytes);
+	static void DebugObjectAssemblyScoreCommitted(const UHeistObjectAssemblyComponent* ObjectAssemblyComponent, const FHeistObjectAssemblyResult& Result);
+	static void DebugObjectAssemblySessionCleared(const UHeistObjectAssemblyComponent* ObjectAssemblyComponent, const AHeistObjectDisplayCaseActor* PreviousDisplayCase,
+												  FName Reason, bool bPreservedResult);
 
 	static void DebugLootScoreWeightRejected(const UObject* WorldContextObject, const TCHAR* Reason, int32 ScoreDelta = INDEX_NONE, float WeightDelta = -1.0f);
 	static void DebugLootScoreWeightApplied(const UObject* WorldContextObject, int32 ScoreDelta, float WeightDelta, int32 TotalScore, float TotalWeight);
@@ -312,6 +324,31 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Original", meta = (DevelopmentOnly))
 	static void DebugOriginalDrop(APlayerController* PlayerController);
+
+#pragma endregion
+
+#pragma region ObjectAssemblyDebug
+
+  public:
+	static void DebugObjectAssemblyHelp(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
+	static void DebugObjectAssemblySpawn(APlayerController* PlayerController, float Distance);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
+	static void DebugObjectAssemblyBegin(APlayerController* PlayerController, float DurationSeconds);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
+	static void DebugObjectAssemblyTest(APlayerController* PlayerController, const FString& Scenario);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
+	static void DebugObjectAssemblyDump(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
+	static void DebugObjectAssemblyCancel(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
+	static void DebugObjectAssemblyTimeout(APlayerController* PlayerController);
 
 #pragma endregion
 

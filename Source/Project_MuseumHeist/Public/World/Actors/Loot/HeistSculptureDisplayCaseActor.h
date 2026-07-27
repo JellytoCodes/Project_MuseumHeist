@@ -9,7 +9,7 @@
  * Deprecated compatibility alias for existing BP_SculptureDisplayCase assets.
  * New Sculpture and Ceramic assets must derive from AHeistObjectDisplayCaseActor.
  */
-UCLASS(Deprecated, meta = (DeprecationMessage = "Use AHeistObjectDisplayCaseActor for new Sculpture and Ceramic assets."))
+UCLASS(meta = (DeprecatedNode, DeprecationMessage = "Use AHeistObjectDisplayCaseActor for new Sculpture and Ceramic assets."))
 class PROJECT_MUSEUMHEIST_API AHeistSculptureDisplayCaseActor : public AHeistObjectDisplayCaseActor
 {
 	GENERATED_BODY()

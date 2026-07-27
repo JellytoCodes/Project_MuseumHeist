@@ -2,6 +2,7 @@
 
 #include "Character/HeistPlayerCharacter.h"
 #include "Character/Components/HeistInventoryComponent.h"
+#include "Character/Components/HeistObjectAssemblyComponent.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistGameMode.h"
 #include "Core/HeistPlayerState.h"
@@ -848,6 +849,12 @@ bool UHeistForgeryComponent::TryBeginForgerySession(AHeistPaintingDisplayCaseAct
 	if (bSessionActive || bSubmitPending || IsValid(ActiveDisplayCase.Get()))
 	{
 		UHeistDebugFunctionLibrary::DebugForgerySessionBeginRejected(this, TargetDisplayCase, FName(TEXT("SessionAlreadyActive")));
+		return false;
+	}
+	if (const UHeistObjectAssemblyComponent* ObjectAssemblyComponent = HeistCharacter->GetObjectAssemblyComponent();
+		IsValid(ObjectAssemblyComponent) && ObjectAssemblyComponent->IsSessionActive())
+	{
+		UHeistDebugFunctionLibrary::DebugForgerySessionBeginRejected(this, TargetDisplayCase, FName(TEXT("ObjectAssemblyActive")));
 		return false;
 	}
 

@@ -10,6 +10,7 @@
 #include "Character/Components/HeistActionComponent.h"
 #include "Character/Components/HeistForgeryComponent.h"
 #include "Character/Components/HeistInventoryComponent.h"
+#include "Character/Components/HeistObjectAssemblyComponent.h"
 #include "Character/Components/HeistStatusComponent.h"
 #include "Character/HeistPlayerCharacter.h"
 #include "Components/CapsuleComponent.h"
@@ -40,6 +41,7 @@
 #include "Misc/Paths.h"
 #include "World/Actors/Escape/HeistVentActor.h"
 #include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
+#include "World/Actors/Loot/HeistObjectDisplayCaseActor.h"
 #include "World/AI/HeistGuardWaypoint.h"
 #include "World/Interaction/HeistInteractableActor.h"
 #include "World/Spawn/HeistLootSpawnPoint.h"
@@ -78,6 +80,13 @@ UHeistForgeryComponent* ResolveForgeryComponent(APlayerController* PlayerControl
 	const AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
 	const AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController) ? HeistPlayerController->GetPawn<AHeistPlayerCharacter>() : nullptr;
 	return IsValid(HeistCharacter) ? HeistCharacter->GetForgeryComponent() : nullptr;
+}
+
+UHeistObjectAssemblyComponent* ResolveObjectAssemblyComponent(APlayerController* PlayerController)
+{
+	const AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	const AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController) ? HeistPlayerController->GetPawn<AHeistPlayerCharacter>() : nullptr;
+	return IsValid(HeistCharacter) ? HeistCharacter->GetObjectAssemblyComponent() : nullptr;
 }
 
 UHeistForgeryComponent* ResolveScoredForgeryComponent(APlayerController* PlayerController, bool& bOutUsedAuthorityFallback)
@@ -234,6 +243,41 @@ AHeistPaintingDisplayCaseActor* ResolveNearestPaintingDisplayCase(APlayerControl
 		{
 			NearestDisplayCase = CandidateDisplayCase;
 			NearestDistanceSquared = DistanceSquared;
+		}
+	}
+
+	return NearestDisplayCase;
+}
+
+AHeistObjectDisplayCaseActor* ResolveNearestObjectDisplayCase(APlayerController* PlayerController)
+{
+	if (!IsValid(PlayerController) || !IsValid(PlayerController->GetWorld()))
+	{
+		return nullptr;
+	}
+
+	const APawn* ReferencePawn = PlayerController->GetPawn();
+	const FVector ReferenceLocation = IsValid(ReferencePawn) ? ReferencePawn->GetActorLocation() : FVector::ZeroVector;
+	AHeistObjectDisplayCaseActor* NearestDisplayCase = nullptr;
+	float NearestDistanceSquared = TNumericLimits<float>::Max();
+	int32 NearestStatePriority = TNumericLimits<int32>::Max();
+	for (TActorIterator<AHeistObjectDisplayCaseActor> DisplayCaseIterator(PlayerController->GetWorld()); DisplayCaseIterator; ++DisplayCaseIterator)
+	{
+		AHeistObjectDisplayCaseActor* CandidateDisplayCase = *DisplayCaseIterator;
+		if (!IsValid(CandidateDisplayCase))
+		{
+			continue;
+		}
+
+		const float DistanceSquared = FVector::DistSquared(ReferenceLocation, CandidateDisplayCase->GetActorLocation());
+		const EHeistObjectAssemblyState CandidateState = CandidateDisplayCase->GetAssemblyState();
+		const int32 CandidateStatePriority =
+			CandidateState == EHeistObjectAssemblyState::Secured || CandidateState == EHeistObjectAssemblyState::Observed || CandidateState == EHeistObjectAssemblyState::AssemblyInProgress ? 0 : 1;
+		if (CandidateStatePriority < NearestStatePriority || (CandidateStatePriority == NearestStatePriority && DistanceSquared < NearestDistanceSquared))
+		{
+			NearestDisplayCase = CandidateDisplayCase;
+			NearestDistanceSquared = DistanceSquared;
+			NearestStatePriority = CandidateStatePriority;
 		}
 	}
 
@@ -1237,6 +1281,239 @@ void UHeistDebugFunctionLibrary::DebugOriginalDrop(APlayerController* PlayerCont
 
 	HeistPlayerController->RequestDropCarriedOriginal();
 	Message(PlayerController, TEXT("Original carry debug drop requested."), EHeistDebugLevel::Info, true);
+#endif
+}
+
+#pragma endregion
+
+#pragma region ObjectAssemblyDebug
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblyHelp(APlayerController* PlayerController)
+{
+#if !UE_BUILD_SHIPPING
+	Message(
+		PlayerController,
+		TEXT(
+			"Object Assembly commands: HeistCasePhase InGame | HeistObjectAssemblySpawn 200 | HeistObjectAssemblyBegin 60 | HeistObjectAssemblyTest <Valid|Missing|Extra|Socket|Orientation|Material|Duplicate|Revision|Family|Empty> | HeistObjectAssemblyDump | HeistObjectAssemblyCancel | HeistObjectAssemblyTimeout. Spawn and Timeout are listen-server commands; Begin/Test/Cancel/Dump may run in the owning client."),
+		EHeistDebugLevel::Info, true, 12.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblySpawn(APlayerController* PlayerController, const float Distance)
+{
+#if !UE_BUILD_SHIPPING
+	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(PlayerController->GetWorld()) || !IsValid(PlayerController->GetPawn()))
+	{
+		Message(PlayerController, TEXT("Object Assembly spawn: Result=REJECTED Reason=ListenServerAuthorityRequired"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const APawn* ReferencePawn = PlayerController->GetPawn();
+	const float SafeDistance = FMath::Clamp(Distance, 100.0f, 250.0f);
+	const FVector SpawnLocation = ReferencePawn->GetActorLocation() + ReferencePawn->GetActorForwardVector() * SafeDistance;
+	FActorSpawnParameters SpawnParameters;
+	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	AHeistObjectDisplayCaseActor* DisplayCase =
+		PlayerController->GetWorld()->SpawnActor<AHeistObjectDisplayCaseActor>(AHeistObjectDisplayCaseActor::StaticClass(), SpawnLocation, ReferencePawn->GetActorRotation(), SpawnParameters);
+	const bool bInitialized = IsValid(DisplayCase) &&
+		DisplayCase->InitializeObjectIdentity(FName(TEXT("ObjectCase_Sculpture_Debug")), FName(TEXT("Artifact_Sculpture_Prototype")), FName(TEXT("Sculpture")));
+	const bool bResult = IsValid(DisplayCase) && bInitialized;
+	Message(
+		PlayerController,
+		FString::Printf(TEXT("Object Assembly spawn: Case=%s CaseId=%s Artifact=%s Family=%s Distance=%.1f Authority=%s Result=%s"),
+						*GetNameSafe(DisplayCase), IsValid(DisplayCase) ? *DisplayCase->GetObjectCaseId().ToString() : TEXT("None"),
+						IsValid(DisplayCase) ? *DisplayCase->GetTargetArtifactId().ToString() : TEXT("None"),
+						IsValid(DisplayCase) ? *DisplayCase->GetObjectFamilyId().ToString() : TEXT("None"), SafeDistance,
+						IsValid(DisplayCase) && DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false"), bResult ? TEXT("PASS") : TEXT("FAIL")),
+		bResult ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblyBegin(APlayerController* PlayerController, const float DurationSeconds)
+{
+#if !UE_BUILD_SHIPPING
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	AHeistObjectDisplayCaseActor* DisplayCase = ResolveNearestObjectDisplayCase(PlayerController);
+	if (!IsValid(HeistPlayerController) || !IsValid(DisplayCase))
+	{
+		Message(PlayerController, TEXT("Object Assembly begin: Result=REJECTED Reason=MissingControllerOrCase"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	HeistPlayerController->RequestBeginObjectAssembly(DisplayCase, FMath::Max(1.0f, DurationSeconds));
+	Message(PlayerController,
+			FString::Printf(TEXT("Object Assembly begin requested: Case=%s Duration=%.2f Local=%s Authority=%s"), *GetNameSafe(DisplayCase),
+							FMath::Max(1.0f, DurationSeconds), HeistPlayerController->IsLocalController() ? TEXT("true") : TEXT("false"),
+							HeistPlayerController->HasAuthority() ? TEXT("true") : TEXT("false")),
+			EHeistDebugLevel::Info, true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblyTest(APlayerController* PlayerController, const FString& Scenario)
+{
+#if !UE_BUILD_SHIPPING
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	const UHeistObjectAssemblyComponent* ObjectAssemblyComponent = ResolveObjectAssemblyComponent(PlayerController);
+	if (!IsValid(HeistPlayerController) || !IsValid(ObjectAssemblyComponent) || !ObjectAssemblyComponent->IsSessionActive())
+	{
+		Message(PlayerController, TEXT("Object Assembly test: Result=REJECTED Reason=InactiveSession"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const auto MakeEntry = [](const TCHAR* PartId, const TCHAR* SocketId, const uint8 Orientation, const TCHAR* MaterialId)
+	{
+		FHeistObjectAssemblyEntry Entry;
+		Entry.PartId = FName(PartId);
+		Entry.SocketId = FName(SocketId);
+		Entry.QuantizedOrientation = Orientation;
+		Entry.MaterialId = FName(MaterialId);
+		return Entry;
+	};
+	TArray<FHeistObjectAssemblyEntry> Entries;
+	Entries.Add(MakeEntry(TEXT("Part_Sculpture_Prototype_Head"), TEXT("Head"), 0, TEXT("Material_Bronze")));
+	Entries.Add(MakeEntry(TEXT("Part_Sculpture_Prototype_ArmLeft"), TEXT("Shoulder_L"), 4, TEXT("Material_Bronze")));
+	Entries.Add(MakeEntry(TEXT("Part_Sculpture_Prototype_ArmRight"), TEXT("Shoulder_R"), 12, TEXT("Material_Bronze")));
+
+	const FString NormalizedScenario = Scenario.TrimStartAndEnd().ToLower();
+	int32 ClientSessionRevision = ObjectAssemblyComponent->GetSessionRevision();
+	bool bKnownScenario = true;
+	bool bExpectedAccepted = true;
+	if (NormalizedScenario == TEXT("valid"))
+	{
+	}
+	else if (NormalizedScenario == TEXT("missing"))
+	{
+		Entries.RemoveAt(Entries.Num() - 1);
+	}
+	else if (NormalizedScenario == TEXT("extra"))
+	{
+		Entries.Add(MakeEntry(TEXT("Part_Sculpture_Prototype_Decoy"), TEXT("Pedestal"), 0, TEXT("Material_Bronze")));
+	}
+	else if (NormalizedScenario == TEXT("socket"))
+	{
+		Swap(Entries[0].SocketId, Entries[1].SocketId);
+	}
+	else if (NormalizedScenario == TEXT("orientation"))
+	{
+		Entries[0].QuantizedOrientation = 4;
+	}
+	else if (NormalizedScenario == TEXT("material"))
+	{
+		Entries[0].MaterialId = FName(TEXT("Material_Marble"));
+	}
+	else if (NormalizedScenario == TEXT("duplicate"))
+	{
+		Entries.Add(Entries[0]);
+		bExpectedAccepted = false;
+	}
+	else if (NormalizedScenario == TEXT("revision"))
+	{
+		++ClientSessionRevision;
+		bExpectedAccepted = false;
+	}
+	else if (NormalizedScenario == TEXT("family"))
+	{
+		Entries[0] = MakeEntry(TEXT("Part_Ceramic_Test_Handle"), TEXT("Handle"), 0, TEXT("Material_Ceramic"));
+		bExpectedAccepted = false;
+	}
+	else if (NormalizedScenario == TEXT("empty"))
+	{
+		Entries.Reset();
+		bExpectedAccepted = false;
+	}
+	else
+	{
+		bKnownScenario = false;
+	}
+
+	if (!bKnownScenario)
+	{
+		Message(PlayerController, FString::Printf(TEXT("Object Assembly test: Scenario=%s Result=REJECTED Reason=UnknownScenario"), *Scenario), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	HeistPlayerController->RequestSubmitObjectAssembly(Entries, ClientSessionRevision);
+	Message(PlayerController,
+			FString::Printf(TEXT("Object Assembly test requested: Scenario=%s Entries=%d ClientSessionRevision=%d Expected=%s"),
+							*Scenario, Entries.Num(), ClientSessionRevision, bExpectedAccepted ? TEXT("ACCEPTED") : TEXT("REJECTED")),
+			EHeistDebugLevel::Info, true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblyDump(APlayerController* PlayerController)
+{
+#if !UE_BUILD_SHIPPING
+	const AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	const AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController) ? HeistPlayerController->GetPawn<AHeistPlayerCharacter>() : nullptr;
+	const AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter) ? HeistCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
+	const UHeistObjectAssemblyComponent* ObjectAssemblyComponent = ResolveObjectAssemblyComponent(PlayerController);
+	const AHeistObjectDisplayCaseActor* ActiveDisplayCase = IsValid(ObjectAssemblyComponent) ? ObjectAssemblyComponent->GetActiveDisplayCase() : nullptr;
+	const AHeistObjectDisplayCaseActor* NearestDisplayCase = ResolveNearestObjectDisplayCase(PlayerController);
+	if (!IsValid(ObjectAssemblyComponent))
+	{
+		Message(PlayerController, TEXT("Object Assembly dump: Result=FAIL Reason=MissingComponent"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const bool bSessionActive = ObjectAssemblyComponent->IsSessionActive();
+	const bool bInactiveSnapshotClean = !bSessionActive && !IsValid(ActiveDisplayCase) && FMath::IsNearlyZero(ObjectAssemblyComponent->GetSessionEndServerTime());
+	const bool bActiveSnapshotConsistent =
+		bSessionActive && IsValid(ActiveDisplayCase) && ActiveDisplayCase->IsSessionLocked() && ActiveDisplayCase->GetSessionOwner() == HeistPlayerState &&
+		ActiveDisplayCase->GetAssemblyState() == EHeistObjectAssemblyState::AssemblyInProgress && ObjectAssemblyComponent->GetSessionEndServerTime() > 0.0f;
+	const bool bSessionContractConsistent = bInactiveSnapshotClean || bActiveSnapshotConsistent;
+	const FHeistObjectAssemblyResult& Result = ObjectAssemblyComponent->GetAuthoritativeResult();
+	const bool bScoreContractConsistent = !ObjectAssemblyComponent->HasAuthoritativeResult() ||
+		(FMath::IsFinite(Result.QualityScore) && FMath::IsWithinInclusive(Result.QualityScore, 0.0f, 100.0f) &&
+		 FMath::IsWithinInclusive(Result.Completeness, 0.0f, 1.0f));
+	const bool bResult = bSessionContractConsistent && bScoreContractConsistent;
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT(
+				"Object Assembly dump: Character=%s PlayerId=%d Active=%s ActiveCase=%s NearestCase=%s CaseState=%s CaseOwnerPlayerId=%d CaseLocked=%s EndServerTime=%.2f SessionRevision=%d Artifact=%s Template=%s Family=%s LastPayloadAccepted=%s LastPayloadReason=%s ValidationRevision=%d HasScore=%s Quality=%.2f Required=%.2f Socket=%.2f Orientation=%.2f Material=%.2f Completeness=%.3f ExtraCap=%s CompletionTime=%.2f ScoreRevision=%d LastCleanup=%s SessionContract=%s ScoreContract=%s Authority=%s Result=%s"),
+			*GetNameSafe(HeistCharacter), IsValid(HeistPlayerState) ? HeistPlayerState->HeistPlayerId : INDEX_NONE, bSessionActive ? TEXT("true") : TEXT("false"),
+			*GetNameSafe(ActiveDisplayCase), *GetNameSafe(NearestDisplayCase),
+			IsValid(NearestDisplayCase) ? *UEnum::GetValueAsString(NearestDisplayCase->GetAssemblyState()) : TEXT("None"),
+			IsValid(NearestDisplayCase) && IsValid(NearestDisplayCase->GetSessionOwner()) ? NearestDisplayCase->GetSessionOwner()->HeistPlayerId : INDEX_NONE,
+			IsValid(NearestDisplayCase) && NearestDisplayCase->IsSessionLocked() ? TEXT("true") : TEXT("false"), ObjectAssemblyComponent->GetSessionEndServerTime(),
+			ObjectAssemblyComponent->GetSessionRevision(), *ObjectAssemblyComponent->GetActiveArtifactId().ToString(), *ObjectAssemblyComponent->GetActiveTemplateId().ToString(),
+			*ObjectAssemblyComponent->GetActiveFamilyId().ToString(), ObjectAssemblyComponent->WasLastPayloadAccepted() ? TEXT("true") : TEXT("false"),
+			*ObjectAssemblyComponent->GetLastPayloadReason().ToString(), ObjectAssemblyComponent->GetPayloadValidationRevision(),
+			ObjectAssemblyComponent->HasAuthoritativeResult() ? TEXT("true") : TEXT("false"), Result.QualityScore, Result.RequiredPartScore, Result.SocketTopologyScore,
+			Result.OrientationScore, Result.MaterialScore, Result.Completeness, Result.bExtraPartCapTriggered ? TEXT("true") : TEXT("false"), Result.CompletionTime,
+			ObjectAssemblyComponent->GetScoreRevision(), *ObjectAssemblyComponent->GetLastCleanupReason().ToString(),
+			bSessionContractConsistent ? TEXT("true") : TEXT("false"), bScoreContractConsistent ? TEXT("true") : TEXT("false"),
+			IsValid(HeistCharacter) && HeistCharacter->HasAuthority() ? TEXT("true") : TEXT("false"), bResult ? TEXT("PASS") : TEXT("FAIL")),
+		bResult ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 12.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblyCancel(APlayerController* PlayerController)
+{
+#if !UE_BUILD_SHIPPING
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		Message(PlayerController, TEXT("Object Assembly cancel: Result=REJECTED Reason=MissingController"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	HeistPlayerController->RequestCancelObjectAssembly();
+	Message(PlayerController, TEXT("Object Assembly cancel requested."), EHeistDebugLevel::Info, true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblyTimeout(APlayerController* PlayerController)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistObjectAssemblyComponent* ObjectAssemblyComponent = ResolveObjectAssemblyComponent(PlayerController);
+	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(ObjectAssemblyComponent) || !ObjectAssemblyComponent->ForceTimeoutForDebug())
+	{
+		Message(PlayerController, TEXT("Object Assembly timeout: Result=REJECTED Reason=ListenServerActiveSessionRequired"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	Message(PlayerController, TEXT("Object Assembly timeout: Result=PASS Reason=ForcedTimeout"), EHeistDebugLevel::Info, true);
 #endif
 }
 
@@ -3952,6 +4229,137 @@ void UHeistDebugFunctionLibrary::DebugForgeryScoreReplicated(const UHeistForgery
 			Resolution, Resolution, IsValid(ForgeryComponent) ? ForgeryComponent->GetReferenceMaskPixelCount() : 0,
 			IsValid(ForgeryComponent) ? ForgeryComponent->GetSubmittedMaskPixelCount() : 0,
 			IsValid(ForgeryComponent) ? ForgeryComponent->GetForgeryScoreRevision() : INDEX_NONE, bHasScore ? TEXT("PASS") : TEXT("CLEARED")));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblyCaseSnapshot(const AHeistObjectDisplayCaseActor* DisplayCase, const FName EventName, const FName Reason, const bool bResult)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	const AHeistPlayerState* SessionOwner = IsValid(DisplayCase) ? DisplayCase->GetSessionOwner() : nullptr;
+	LogMessage(
+		EHeistDebugChannel::Network, bResult ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+		FString::Printf(
+			TEXT(
+				"Object Assembly case snapshot: Event=%s Case=%s CaseId=%s Artifact=%s Family=%s State=%s Locked=%s OwnerPlayerId=%d Revision=%d Authority=%s Result=%s Reason=%s"),
+			*EventName.ToString(), *GetNameSafe(DisplayCase), IsValid(DisplayCase) ? *DisplayCase->GetObjectCaseId().ToString() : TEXT("None"),
+			IsValid(DisplayCase) ? *DisplayCase->GetTargetArtifactId().ToString() : TEXT("None"),
+			IsValid(DisplayCase) ? *DisplayCase->GetObjectFamilyId().ToString() : TEXT("None"),
+			IsValid(DisplayCase) ? *UEnum::GetValueAsString(DisplayCase->GetAssemblyState()) : TEXT("None"),
+			IsValid(DisplayCase) && DisplayCase->IsSessionLocked() ? TEXT("true") : TEXT("false"), IsValid(SessionOwner) ? SessionOwner->HeistPlayerId : INDEX_NONE,
+			IsValid(DisplayCase) ? DisplayCase->GetAssemblyRevision() : INDEX_NONE,
+			IsValid(DisplayCase) && DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false"), bResult ? TEXT("PASS") : TEXT("REJECTED"),
+			Reason.IsNone() ? TEXT("None") : *Reason.ToString()));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblyCaseSessionCleared(const AHeistObjectDisplayCaseActor* DisplayCase, const AHeistPlayerState* PreviousOwner,
+																		const FName Reason)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	const bool bCleared = IsValid(DisplayCase) && !DisplayCase->IsSessionLocked() && !IsValid(DisplayCase->GetSessionOwner()) &&
+		DisplayCase->GetAssemblyState() != EHeistObjectAssemblyState::AssemblyInProgress;
+	LogMessage(
+		EHeistDebugChannel::Network, bCleared ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+		FString::Printf(
+			TEXT("Object Assembly case session cleared: Case=%s PreviousOwnerPlayerId=%d State=%s Locked=%s Revision=%d Reason=%s Authority=%s Result=%s"),
+			*GetNameSafe(DisplayCase), IsValid(PreviousOwner) ? PreviousOwner->HeistPlayerId : INDEX_NONE,
+			IsValid(DisplayCase) ? *UEnum::GetValueAsString(DisplayCase->GetAssemblyState()) : TEXT("None"),
+			IsValid(DisplayCase) && DisplayCase->IsSessionLocked() ? TEXT("true") : TEXT("false"),
+			IsValid(DisplayCase) ? DisplayCase->GetAssemblyRevision() : INDEX_NONE, Reason.IsNone() ? TEXT("None") : *Reason.ToString(),
+			IsValid(DisplayCase) && DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false"), bCleared ? TEXT("PASS") : TEXT("FAIL")));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblySessionSnapshot(const UHeistObjectAssemblyComponent* ObjectAssemblyComponent, const FName EventName, const FName Reason,
+																	const bool bResult)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	const AActor* Character = IsValid(ObjectAssemblyComponent) ? ObjectAssemblyComponent->GetOwner() : nullptr;
+	LogMessage(
+		EHeistDebugChannel::Network, bResult ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+		FString::Printf(
+			TEXT(
+				"Object Assembly session snapshot: Event=%s Character=%s Case=%s Active=%s Artifact=%s Template=%s Family=%s EndServerTime=%.2f Revision=%d LastCleanup=%s Authority=%s Result=%s Reason=%s"),
+			*EventName.ToString(), *GetNameSafe(Character),
+			*GetNameSafe(IsValid(ObjectAssemblyComponent) ? ObjectAssemblyComponent->GetActiveDisplayCase() : nullptr),
+			IsValid(ObjectAssemblyComponent) && ObjectAssemblyComponent->IsSessionActive() ? TEXT("true") : TEXT("false"),
+			*(IsValid(ObjectAssemblyComponent) ? ObjectAssemblyComponent->GetActiveArtifactId() : NAME_None).ToString(),
+			*(IsValid(ObjectAssemblyComponent) ? ObjectAssemblyComponent->GetActiveTemplateId() : NAME_None).ToString(),
+			*(IsValid(ObjectAssemblyComponent) ? ObjectAssemblyComponent->GetActiveFamilyId() : NAME_None).ToString(),
+			IsValid(ObjectAssemblyComponent) ? ObjectAssemblyComponent->GetSessionEndServerTime() : 0.0f,
+			IsValid(ObjectAssemblyComponent) ? ObjectAssemblyComponent->GetSessionRevision() : INDEX_NONE,
+			*(IsValid(ObjectAssemblyComponent) ? ObjectAssemblyComponent->GetLastCleanupReason() : NAME_None).ToString(),
+			IsValid(Character) && Character->HasAuthority() ? TEXT("true") : TEXT("false"), bResult ? TEXT("PASS") : TEXT("REJECTED"),
+			Reason.IsNone() ? TEXT("None") : *Reason.ToString()));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblyPayloadValidation(const UHeistObjectAssemblyComponent* ObjectAssemblyComponent, const bool bAccepted, const FName Reason,
+																	 const int32 EntryCount, const int32 PayloadBytes)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	const AActor* Character = IsValid(ObjectAssemblyComponent) ? ObjectAssemblyComponent->GetOwner() : nullptr;
+	LogMessage(
+		EHeistDebugChannel::Network, bAccepted ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+		FString::Printf(
+			TEXT(
+				"Object Assembly payload validation: Character=%s Entries=%d PayloadBytes=%d ClientData=PartIdSocketIdQuantizedOrientationMaterialId SessionRevision=%d ValidationRevision=%d Accepted=%s Reason=%s Authority=%s Result=%s"),
+			*GetNameSafe(Character), EntryCount, PayloadBytes, IsValid(ObjectAssemblyComponent) ? ObjectAssemblyComponent->GetSessionRevision() : INDEX_NONE,
+			IsValid(ObjectAssemblyComponent) ? ObjectAssemblyComponent->GetPayloadValidationRevision() : INDEX_NONE, bAccepted ? TEXT("true") : TEXT("false"),
+			Reason.IsNone() ? TEXT("None") : *Reason.ToString(), IsValid(Character) && Character->HasAuthority() ? TEXT("true") : TEXT("false"),
+			bAccepted ? TEXT("PASS") : TEXT("REJECTED")));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblyScoreCommitted(const UHeistObjectAssemblyComponent* ObjectAssemblyComponent, const FHeistObjectAssemblyResult& Result)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	const AActor* Character = IsValid(ObjectAssemblyComponent) ? ObjectAssemblyComponent->GetOwner() : nullptr;
+	const bool bScoreValid = IsValid(ObjectAssemblyComponent) && ObjectAssemblyComponent->HasAuthoritativeResult() && FMath::IsFinite(Result.QualityScore) &&
+		FMath::IsWithinInclusive(Result.QualityScore, 0.0f, 100.0f) && FMath::IsWithinInclusive(Result.Completeness, 0.0f, 1.0f);
+	LogMessage(
+		EHeistDebugChannel::Network, bScoreValid ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+		FString::Printf(
+			TEXT(
+				"Object Assembly score committed: Character=%s Artifact=%s Template=%s Quality=%.2f RequiredPart=%.2f SocketTopology=%.2f Orientation=%.2f Material=%.2f Completeness=%.3f ExtraPartCap=%s CompletionTime=%.2f ScoreRevision=%d Authority=%s Deterministic=true Result=%s"),
+			*GetNameSafe(Character), *Result.ArtifactId.ToString(), *Result.TemplateId.ToString(), Result.QualityScore, Result.RequiredPartScore, Result.SocketTopologyScore,
+			Result.OrientationScore, Result.MaterialScore, Result.Completeness, Result.bExtraPartCapTriggered ? TEXT("true") : TEXT("false"), Result.CompletionTime,
+			IsValid(ObjectAssemblyComponent) ? ObjectAssemblyComponent->GetScoreRevision() : INDEX_NONE,
+			IsValid(Character) && Character->HasAuthority() ? TEXT("true") : TEXT("false"), bScoreValid ? TEXT("PASS") : TEXT("FAIL")));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblySessionCleared(const UHeistObjectAssemblyComponent* ObjectAssemblyComponent,
+																   const AHeistObjectDisplayCaseActor* PreviousDisplayCase, const FName Reason,
+																   const bool bPreservedResult)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	const AActor* Character = IsValid(ObjectAssemblyComponent) ? ObjectAssemblyComponent->GetOwner() : nullptr;
+	const bool bCleared = IsValid(ObjectAssemblyComponent) && !ObjectAssemblyComponent->IsSessionActive() && !IsValid(ObjectAssemblyComponent->GetActiveDisplayCase()) &&
+		FMath::IsNearlyZero(ObjectAssemblyComponent->GetSessionEndServerTime());
+	LogMessage(
+		EHeistDebugChannel::Network, bCleared ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+		FString::Printf(
+			TEXT(
+				"Object Assembly session cleared: Character=%s PreviousCase=%s Active=%s HasScore=%s PreservedResult=%s Reason=%s Revision=%d Authority=%s Result=%s"),
+			*GetNameSafe(Character), *GetNameSafe(PreviousDisplayCase),
+			IsValid(ObjectAssemblyComponent) && ObjectAssemblyComponent->IsSessionActive() ? TEXT("true") : TEXT("false"),
+			IsValid(ObjectAssemblyComponent) && ObjectAssemblyComponent->HasAuthoritativeResult() ? TEXT("true") : TEXT("false"),
+			bPreservedResult ? TEXT("true") : TEXT("false"), Reason.IsNone() ? TEXT("None") : *Reason.ToString(),
+			IsValid(ObjectAssemblyComponent) ? ObjectAssemblyComponent->GetSessionRevision() : INDEX_NONE,
+			IsValid(Character) && Character->HasAuthority() ? TEXT("true") : TEXT("false"), bCleared ? TEXT("PASS") : TEXT("FAIL")));
 #endif
 }
 

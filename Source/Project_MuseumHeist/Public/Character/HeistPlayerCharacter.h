@@ -11,6 +11,7 @@ class UHeistForgeryComponent;
 class UHeistInteractionComponent;
 class UHeistInventoryComponent;
 class UHeistNoiseEmitterComponent;
+class UHeistObjectAssemblyComponent;
 class UHeistStatusComponent;
 class UHeistTagComponent;
 class UHeistVisionComponent;
@@ -125,6 +126,9 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter
 	TObjectPtr<UHeistForgeryComponent> ForgeryComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UHeistObjectAssemblyComponent> ObjectAssemblyComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistVisionComponent> VisionComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Components", meta = (AllowPrivateAccess = "true"))
@@ -140,6 +144,7 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter
 	UHeistInteractionComponent* GetInteractionComponent() const;
 	UHeistActionComponent* GetActionComponent() const;
 	UHeistForgeryComponent* GetForgeryComponent() const;
+	UHeistObjectAssemblyComponent* GetObjectAssemblyComponent() const;
 	UHeistVisionComponent* GetVisionComponent() const;
 	UHeistCustomizationComponent* GetCustomizationComponent() const;
 	UHeistNoiseEmitterComponent* GetNoiseEmitterComponent() const;

@@ -282,6 +282,32 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 
 #pragma endregion
 
+#pragma region ObjectAssemblyDebug
+
+  public:
+	UFUNCTION(Exec)
+	void HeistObjectAssemblyHelp();
+
+	UFUNCTION(Exec)
+	void HeistObjectAssemblySpawn(float Distance = 200.0f);
+
+	UFUNCTION(Exec)
+	void HeistObjectAssemblyBegin(float DurationSeconds = 60.0f);
+
+	UFUNCTION(Exec)
+	void HeistObjectAssemblyTest(FString Scenario);
+
+	UFUNCTION(Exec)
+	void HeistObjectAssemblyDump();
+
+	UFUNCTION(Exec)
+	void HeistObjectAssemblyCancel();
+
+	UFUNCTION(Exec)
+	void HeistObjectAssemblyTimeout();
+
+#pragma endregion
+
 #pragma region ForgeryDebug
 
   public:

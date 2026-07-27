@@ -200,6 +200,59 @@ void UHeistCheatManager::HeistOriginalDrop()
 
 #pragma endregion
 
+#pragma region ObjectAssemblyDebug
+
+void UHeistCheatManager::HeistObjectAssemblyHelp()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugObjectAssemblyHelp(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistObjectAssemblySpawn(const float Distance)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugObjectAssemblySpawn(GetOuterAPlayerController(), Distance);
+#endif
+}
+
+void UHeistCheatManager::HeistObjectAssemblyBegin(const float DurationSeconds)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugObjectAssemblyBegin(GetOuterAPlayerController(), DurationSeconds);
+#endif
+}
+
+void UHeistCheatManager::HeistObjectAssemblyTest(const FString Scenario)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugObjectAssemblyTest(GetOuterAPlayerController(), Scenario);
+#endif
+}
+
+void UHeistCheatManager::HeistObjectAssemblyDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugObjectAssemblyDump(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistObjectAssemblyCancel()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugObjectAssemblyCancel(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistObjectAssemblyTimeout()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugObjectAssemblyTimeout(GetOuterAPlayerController());
+#endif
+}
+
+#pragma endregion
+
 #pragma region ForgeryDebug
 
 void UHeistCheatManager::HeistForgeryHelp()

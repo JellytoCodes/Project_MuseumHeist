@@ -7,6 +7,7 @@
 #include "Character/Components/HeistForgeryComponent.h"
 #include "Character/Components/HeistInteractionComponent.h"
 #include "Character/Components/HeistInventoryComponent.h"
+#include "Character/Components/HeistObjectAssemblyComponent.h"
 #include "Character/Components/HeistVisionComponent.h"
 #include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameInstance.h"
@@ -31,6 +32,7 @@
 #include "Inventory/HeistItemDataTypes.h"
 #include "World/Actors/Escape/HeistVentActor.h"
 #include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
+#include "World/Actors/Loot/HeistObjectDisplayCaseActor.h"
 #include "World/Actors/Loot/HeistLootActor.h"
 #include "World/Actors/Projectile/HeistCoinProjectile.h"
 #include "World/Actors/Projectile/HeistThrowableProjectile.h"
@@ -744,9 +746,11 @@ void AHeistPlayerController::RequestSetInventoryOpen(const bool bInventoryOpen)
 {
 	const AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
 	const UHeistForgeryComponent* ForgeryComponent = IsValid(HeistCharacter) ? HeistCharacter->GetForgeryComponent() : nullptr;
-	if (bInventoryOpen && IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive())
+	const UHeistObjectAssemblyComponent* ObjectAssemblyComponent = IsValid(HeistCharacter) ? HeistCharacter->GetObjectAssemblyComponent() : nullptr;
+	if (bInventoryOpen && ((IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive()) ||
+						  (IsValid(ObjectAssemblyComponent) && ObjectAssemblyComponent->IsSessionActive())))
 	{
-		LogInventoryRequestRejected(TEXT("SetOpen"), INDEX_NONE, TEXT("ForgeryActive"));
+		LogInventoryRequestRejected(TEXT("SetOpen"), INDEX_NONE, IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive() ? TEXT("ForgeryActive") : TEXT("ObjectAssemblyActive"));
 		return;
 	}
 
@@ -787,6 +791,25 @@ void AHeistPlayerController::RequestSubmitForgeryStrokes(const TArray<FVector2D>
 		   *GetName(), *GetNameSafe(HeistCharacter), StrokePointCounts.Num(), NormalizedPoints.Num(), StrokePaletteIndices.Num(), ClientBrushSize, ResolvedSessionRevision,
 		   IsLocalController() ? TEXT("true") : TEXT("false"), HasAuthority() ? TEXT("true") : TEXT("false"));
 	Server_SubmitForgeryStrokes(NormalizedPoints, StrokePointCounts, StrokePaletteIndices, ClientBrushSize, ResolvedSessionRevision);
+}
+
+void AHeistPlayerController::RequestBeginObjectAssembly(AHeistObjectDisplayCaseActor* TargetDisplayCase, const float DurationSeconds)
+{
+	Server_RequestBeginObjectAssembly(TargetDisplayCase, DurationSeconds);
+}
+
+void AHeistPlayerController::RequestCancelObjectAssembly()
+{
+	Server_CancelObjectAssembly();
+}
+
+void AHeistPlayerController::RequestSubmitObjectAssembly(const TArray<FHeistObjectAssemblyEntry>& Entries, const int32 ClientSessionRevision)
+{
+	const AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	const UHeistObjectAssemblyComponent* ObjectAssemblyComponent = IsValid(HeistCharacter) ? HeistCharacter->GetObjectAssemblyComponent() : nullptr;
+	const int32 ResolvedSessionRevision =
+		ClientSessionRevision == INDEX_NONE && IsValid(ObjectAssemblyComponent) ? ObjectAssemblyComponent->GetSessionRevision() : ClientSessionRevision;
+	Server_SubmitObjectAssembly(Entries, ResolvedSessionRevision);
 }
 
 void AHeistPlayerController::RequestMoveInventoryItem(const int32 InstanceId, const FIntPoint TargetGridPosition)
@@ -1240,6 +1263,45 @@ void AHeistPlayerController::Server_SubmitForgeryStrokes_Implementation(const TA
 		*GetName(), *GetNameSafe(HeistCharacter), StrokePointCounts.Num(), NormalizedPoints.Num(), ClientSessionRevision, ForgeryComponent->GetSessionRevision(),
 		bAccepted ? TEXT("true") : TEXT("false"), ForgeryComponent->HasAuthoritativeForgeryResult() ? TEXT("true") : TEXT("false"), ForgeryResult.SimilarityScore,
 		ForgeryComponent->GetForgeryScoreRevision(), bAccepted ? TEXT("PASS") : TEXT("REJECTED"));
+}
+
+void AHeistPlayerController::Server_RequestBeginObjectAssembly_Implementation(AHeistObjectDisplayCaseActor* TargetDisplayCase, const float DurationSeconds)
+{
+	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	UHeistObjectAssemblyComponent* ObjectAssemblyComponent = IsValid(HeistCharacter) ? HeistCharacter->GetObjectAssemblyComponent() : nullptr;
+	if (!HasAuthority() || !IsValid(HeistCharacter) || HeistCharacter->GetController() != this || !IsValid(ObjectAssemblyComponent))
+	{
+		UHeistDebugFunctionLibrary::DebugObjectAssemblySessionSnapshot(ObjectAssemblyComponent, FName(TEXT("SessionBeginRPC")), FName(TEXT("InvalidAuthorityContext")), false);
+		return;
+	}
+
+	ObjectAssemblyComponent->TryBeginAssemblySession(TargetDisplayCase, DurationSeconds);
+}
+
+void AHeistPlayerController::Server_CancelObjectAssembly_Implementation()
+{
+	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	UHeistObjectAssemblyComponent* ObjectAssemblyComponent = IsValid(HeistCharacter) ? HeistCharacter->GetObjectAssemblyComponent() : nullptr;
+	if (!HasAuthority() || !IsValid(HeistCharacter) || HeistCharacter->GetController() != this || !IsValid(ObjectAssemblyComponent))
+	{
+		UHeistDebugFunctionLibrary::DebugObjectAssemblySessionSnapshot(ObjectAssemblyComponent, FName(TEXT("SessionCancelRPC")), FName(TEXT("InvalidAuthorityContext")), false);
+		return;
+	}
+
+	ObjectAssemblyComponent->CancelAssemblySession(FName(TEXT("OwnerCancelled")));
+}
+
+void AHeistPlayerController::Server_SubmitObjectAssembly_Implementation(const TArray<FHeistObjectAssemblyEntry>& Entries, const int32 ClientSessionRevision)
+{
+	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	UHeistObjectAssemblyComponent* ObjectAssemblyComponent = IsValid(HeistCharacter) ? HeistCharacter->GetObjectAssemblyComponent() : nullptr;
+	if (!HasAuthority() || !IsValid(HeistCharacter) || HeistCharacter->GetController() != this || !IsValid(ObjectAssemblyComponent))
+	{
+		UHeistDebugFunctionLibrary::DebugObjectAssemblyPayloadValidation(ObjectAssemblyComponent, false, FName(TEXT("InvalidAuthorityContext")), Entries.Num(), 0);
+		return;
+	}
+
+	ObjectAssemblyComponent->TrySubmitAssemblyPayload(Entries, ClientSessionRevision);
 }
 
 void AHeistPlayerController::Server_RequestMoveInventoryItem_Implementation(const int32 InstanceId, const FIntPoint TargetGridPosition)

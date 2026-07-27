@@ -7,6 +7,7 @@
 #include "HeistPlayerController.generated.h"
 
 class AHeistPlayerCharacter;
+class AHeistObjectDisplayCaseActor;
 class AHeistPaintingDisplayCaseActor;
 class AHeistGuardCharacter;
 class AHeistGameState;
@@ -16,6 +17,7 @@ class AHeistThrowableProjectile;
 class AHeistVentActor;
 class UHeistForgeryComponent;
 class UHeistInventoryComponent;
+class UHeistObjectAssemblyComponent;
 class UInputAction;
 class UInputMappingContext;
 struct FHitResult;
@@ -146,6 +148,10 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	void RequestSubmitForgeryStrokes(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices, float ClientBrushSize,
 									 int32 ClientSessionRevision = INDEX_NONE);
 
+	void RequestBeginObjectAssembly(AHeistObjectDisplayCaseActor* TargetDisplayCase, float DurationSeconds = -1.0f);
+	void RequestCancelObjectAssembly();
+	void RequestSubmitObjectAssembly(const TArray<FHeistObjectAssemblyEntry>& Entries, int32 ClientSessionRevision = INDEX_NONE);
+
 	UFUNCTION(BlueprintCallable, Category = "Heist|Inventory")
 	void RequestMoveInventoryItem(int32 InstanceId, FIntPoint TargetGridPosition);
 
@@ -203,6 +209,15 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	UFUNCTION(Server, Reliable)
 	void Server_SubmitForgeryStrokes(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices, float ClientBrushSize,
 									 int32 ClientSessionRevision);
+
+	UFUNCTION(Server, Reliable)
+	void Server_RequestBeginObjectAssembly(AHeistObjectDisplayCaseActor* TargetDisplayCase, float DurationSeconds);
+
+	UFUNCTION(Server, Reliable)
+	void Server_CancelObjectAssembly();
+
+	UFUNCTION(Server, Reliable)
+	void Server_SubmitObjectAssembly(const TArray<FHeistObjectAssemblyEntry>& Entries, int32 ClientSessionRevision);
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestMoveInventoryItem(int32 InstanceId, FIntPoint TargetGridPosition);

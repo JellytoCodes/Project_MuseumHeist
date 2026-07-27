@@ -6,6 +6,7 @@
 #include "Character/Components/HeistInteractionComponent.h"
 #include "Character/Components/HeistInventoryComponent.h"
 #include "Character/Components/HeistNoiseEmitterComponent.h"
+#include "Character/Components/HeistObjectAssemblyComponent.h"
 #include "Character/Components/HeistStatusComponent.h"
 #include "Character/Components/HeistTagComponent.h"
 #include "Character/Components/HeistVisionComponent.h"
@@ -36,6 +37,7 @@ AHeistPlayerCharacter::AHeistPlayerCharacter()
 	InteractionComponent = CreateDefaultSubobject<UHeistInteractionComponent>(TEXT("InteractionComponent"));
 	ActionComponent = CreateDefaultSubobject<UHeistActionComponent>(TEXT("ActionComponent"));
 	ForgeryComponent = CreateDefaultSubobject<UHeistForgeryComponent>(TEXT("ForgeryComponent"));
+	ObjectAssemblyComponent = CreateDefaultSubobject<UHeistObjectAssemblyComponent>(TEXT("ObjectAssemblyComponent"));
 	VisionComponent = CreateDefaultSubobject<UHeistVisionComponent>(TEXT("VisionComponent"));
 	CustomizationComponent = CreateDefaultSubobject<UHeistCustomizationComponent>(TEXT("CustomizationComponent"));
 	NoiseEmitterComponent = CreateDefaultSubobject<UHeistNoiseEmitterComponent>(TEXT("NoiseEmitterComponent"));
@@ -62,6 +64,7 @@ void AHeistPlayerCharacter::BeginPlay()
 	checkf(IsValid(InteractionComponent), TEXT("HeistPlayerCharacter requires HeistInteractionComponent"));
 	checkf(IsValid(ActionComponent), TEXT("HeistPlayerCharacter requires HeistActionComponent"));
 	checkf(IsValid(ForgeryComponent), TEXT("HeistPlayerCharacter requires HeistForgeryComponent"));
+	checkf(IsValid(ObjectAssemblyComponent), TEXT("HeistPlayerCharacter requires HeistObjectAssemblyComponent"));
 	checkf(IsValid(VisionComponent), TEXT("HeistPlayerCharacter requires HeistVisionComponent"));
 	checkf(IsValid(CustomizationComponent), TEXT("HeistPlayerCharacter requires HeistCustomizationComponent"));
 	checkf(IsValid(NoiseEmitterComponent), TEXT("HeistPlayerCharacter requires HeistNoiseEmitterComponent"));
@@ -202,9 +205,10 @@ bool AHeistPlayerCharacter::CanPerformGameplayActions() const
 	const bool bArrested = IsValid(HeistPlayerState) && HeistPlayerState->IsArrested();
 	const bool bInventoryOpen = IsValid(InventoryComponent) && InventoryComponent->IsInventoryOpen();
 	const bool bForgeryActive = IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive();
+	const bool bObjectAssemblyActive = IsValid(ObjectAssemblyComponent) && ObjectAssemblyComponent->IsSessionActive();
 	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	const bool bWorldRestricted = IsValid(HeistGameState) && HeistGameState->AreWorldInteractionsRestricted();
-	return !bEscaped && !bArrested && !bInventoryOpen && !bForgeryActive && !bWorldRestricted;
+	return !bEscaped && !bArrested && !bInventoryOpen && !bForgeryActive && !bObjectAssemblyActive && !bWorldRestricted;
 }
 
 void AHeistPlayerCharacter::HandleInventoryOpenStateChanged(const bool bInventoryOpen)
@@ -322,6 +326,11 @@ UHeistActionComponent* AHeistPlayerCharacter::GetActionComponent() const
 UHeistForgeryComponent* AHeistPlayerCharacter::GetForgeryComponent() const
 {
 	return ForgeryComponent.Get();
+}
+
+UHeistObjectAssemblyComponent* AHeistPlayerCharacter::GetObjectAssemblyComponent() const
+{
+	return ObjectAssemblyComponent.Get();
 }
 
 UHeistVisionComponent* AHeistPlayerCharacter::GetVisionComponent() const
