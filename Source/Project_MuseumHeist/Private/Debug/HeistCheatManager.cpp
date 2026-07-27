@@ -22,6 +22,39 @@ void UHeistCheatManager::HeistHUDDump()
 
 #pragma endregion
 
+#pragma region SettingsDebug
+
+void UHeistCheatManager::HeistSettingsHelp()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugSettingsHelp(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistSettingsDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugSettingsDump(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistSettingsApply(const float FieldOfView, const float MouseSensitivity, const float MasterVolume, const int32 ResolutionWidth,
+											const int32 ResolutionHeight, const FString WindowMode)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugSettingsApply(GetOuterAPlayerController(), FieldOfView, MouseSensitivity, MasterVolume, ResolutionWidth, ResolutionHeight, WindowMode);
+#endif
+}
+
+void UHeistCheatManager::HeistSettingsReset()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugSettingsReset(GetOuterAPlayerController());
+#endif
+}
+
+#pragma endregion
+
 #pragma region ObjectiveDebug
 
 void UHeistCheatManager::HeistObjectiveHelp()
@@ -680,10 +713,52 @@ void UHeistCheatManager::HeistSessionLeave()
 #endif
 }
 
+void UHeistCheatManager::HeistSessionCancel()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugOnlineSessionCancel(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistSessionCancelTest()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugOnlineSessionCancelTest(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistSessionRetry()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugOnlineSessionRetry(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistSessionFailure(const FName FailureReason)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugOnlineSessionFailure(GetOuterAPlayerController(), FailureReason);
+#endif
+}
+
 void UHeistCheatManager::HeistSessionMap(const FString& MapId)
 {
 #if !UE_BUILD_SHIPPING
 	UHeistDebugFunctionLibrary::DebugOnlineSessionMap(GetOuterAPlayerController(), MapId);
+#endif
+}
+
+void UHeistCheatManager::HeistSessionStart()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugOnlineSessionStart(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistSessionReturn()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugOnlineSessionReturn(GetOuterAPlayerController());
 #endif
 }
 

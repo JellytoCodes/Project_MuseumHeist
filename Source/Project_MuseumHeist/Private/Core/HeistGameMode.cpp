@@ -75,6 +75,7 @@ AHeistGameMode::AHeistGameMode()
 	GameStateClass = AHeistGameState::StaticClass();
 	HUDClass = AHeistHUD::StaticClass();
 	DefaultPawnClass = AHeistPlayerCharacter::StaticClass();
+	bUseSeamlessTravel = true;
 }
 
 #pragma endregion
@@ -84,23 +85,28 @@ AHeistGameMode::AHeistGameMode()
 void AHeistGameMode::StartPlay()
 {
 	Super::StartPlay();
-	const UHeistGameInstance* HeistGameInstance = Cast<UHeistGameInstance>(GetGameInstance());
+	UHeistGameInstance* HeistGameInstance = Cast<UHeistGameInstance>(GetGameInstance());
 	const bool bStartAsTitleMenu = IsValid(HeistGameInstance) && HeistGameInstance->IsCurrentWorldTitleMenu();
 	const bool bStartAsOnlineLobby =
 		!bStartAsTitleMenu
 		&& (UGameplayStatics::HasOption(OptionsString, TEXT("HeistLobby"))
-			|| (IsValid(HeistGameInstance)
-				&& (HeistGameInstance->IsCurrentWorldLobby() || HeistGameInstance->IsHostingOnlineSession() || HeistGameInstance->IsJoinedOnlineSession())));
+			|| (IsValid(HeistGameInstance) && HeistGameInstance->IsCurrentWorldLobby()));
+	const bool bOnlineSessionActive =
+		IsValid(HeistGameInstance) && (HeistGameInstance->IsHostingOnlineSession() || HeistGameInstance->IsJoinedOnlineSession());
 	if (AHeistGameState* HeistGameState = GetGameState<AHeistGameState>())
 	{
 		HeistGameState->GetMatchPhaseChangedDelegate().RemoveAll(this);
 		HeistGameState->GetMatchPhaseChangedDelegate().AddUObject(this, &AHeistGameMode::HandleMatchPhaseChanged);
 		HeistGameState->SetMatchPhase(bStartAsTitleMenu ? EHeistMatchPhase::None
 													  : (bStartAsOnlineLobby ? EHeistMatchPhase::Lobby : EHeistMatchPhase::InGame));
-		if (bStartAsOnlineLobby && IsValid(HeistGameInstance))
+		if (!bStartAsTitleMenu && (bStartAsOnlineLobby || bOnlineSessionActive))
 		{
-			HeistGameState->SetLobbyMapSelection(HeistGameInstance->GetSelectedMapId(), HeistGameInstance->IsRandomMapSelection());
+			HeistGameState->InitializeSessionMapSelection(HeistGameInstance->GetSelectedMapId(), HeistGameInstance->IsRandomMapSelection());
 		}
+	}
+	if (bOnlineSessionActive)
+	{
+		HeistGameInstance->NotifySessionWorldReady();
 	}
 
 	if (bStartAsTitleMenu)

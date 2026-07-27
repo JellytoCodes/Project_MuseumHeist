@@ -99,6 +99,23 @@ void AHeistPlayerCharacter::BeginPlay()
 
 #pragma endregion
 
+#pragma region Camera
+
+void AHeistPlayerCharacter::SetFirstPersonFieldOfView(const float NewFieldOfView)
+{
+	if (IsValid(FirstPersonCamera) && FMath::IsFinite(NewFieldOfView))
+	{
+		FirstPersonCamera->SetFieldOfView(NewFieldOfView);
+	}
+}
+
+float AHeistPlayerCharacter::GetFirstPersonFieldOfView() const
+{
+	return IsValid(FirstPersonCamera) ? FirstPersonCamera->FieldOfView : 0.0f;
+}
+
+#pragma endregion
+
 #pragma region Movement
 
 void AHeistPlayerCharacter::MoveOnGameplayPlane(const FVector2D& MovementInput)

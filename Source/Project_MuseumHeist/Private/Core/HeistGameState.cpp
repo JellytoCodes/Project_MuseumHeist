@@ -1,4 +1,5 @@
 #include "Core/HeistGameState.h"
+#include "Core/HeistGameInstance.h"
 #include "Core/HeistLogChannels.h"
 
 #include "Core/HeistPlayerState.h"
@@ -145,6 +146,31 @@ bool AHeistGameState::SetLobbyMapSelection(const FName NewSelectedMapId, const b
 	return true;
 }
 
+bool AHeistGameState::InitializeSessionMapSelection(const FName NewSelectedMapId, const bool bNewRandomSelection)
+{
+	const bool bValidMapId = NewSelectedMapId == FName(TEXT("M01")) || NewSelectedMapId == FName(TEXT("M02")) || NewSelectedMapId == FName(TEXT("M03"));
+	const bool bValidSessionPhase = MatchPhase == EHeistMatchPhase::Lobby || MatchPhase == EHeistMatchPhase::InGame;
+	const bool bWouldReplaceInitializedSelection =
+		LobbyMapSelectionRevision > 0 && (SelectedLobbyMapId != NewSelectedMapId || bRandomLobbyMapSelection != bNewRandomSelection);
+	if (!HasAuthority() || !bValidSessionPhase || !bValidMapId || bWouldReplaceInitializedSelection)
+	{
+		UHeistDebugFunctionLibrary::DebugLobbyMapSelectionState(this, TEXT("SessionTravelInitRejected"), NewSelectedMapId, bNewRandomSelection, LobbyMapSelectionRevision, false);
+		return false;
+	}
+
+	if (SelectedLobbyMapId == NewSelectedMapId && bRandomLobbyMapSelection == bNewRandomSelection)
+	{
+		return true;
+	}
+
+	SelectedLobbyMapId = NewSelectedMapId;
+	bRandomLobbyMapSelection = bNewRandomSelection;
+	++LobbyMapSelectionRevision;
+	ForceNetUpdate();
+	BroadcastLobbyMapSelection(TEXT("SessionTravelInit"));
+	return true;
+}
+
 FHeistLobbyMapSelectionChanged& AHeistGameState::GetLobbyMapSelectionChangedDelegate()
 {
 	return LobbyMapSelectionChangedDelegate;
@@ -157,6 +183,11 @@ void AHeistGameState::OnRep_LobbyMapSelectionRevision()
 
 void AHeistGameState::BroadcastLobbyMapSelection(const TCHAR* ChangeSource)
 {
+	if (UHeistGameInstance* HeistGameInstance = Cast<UHeistGameInstance>(GetGameInstance()))
+	{
+		HeistGameInstance->SynchronizeSessionMapSelection(this, SelectedLobbyMapId, bRandomLobbyMapSelection);
+	}
+
 	LobbyMapSelectionChangedDelegate.Broadcast(SelectedLobbyMapId, bRandomLobbyMapSelection, LobbyMapSelectionRevision);
 	UHeistDebugFunctionLibrary::DebugLobbyMapSelectionState(this, ChangeSource, SelectedLobbyMapId, bRandomLobbyMapSelection, LobbyMapSelectionRevision, true);
 }

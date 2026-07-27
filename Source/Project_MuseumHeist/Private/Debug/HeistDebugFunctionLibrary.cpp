@@ -14,6 +14,7 @@
 #include "Character/HeistPlayerCharacter.h"
 #include "Components/CapsuleComponent.h"
 #include "Core/HeistGameInstance.h"
+#include "Core/HeistGameUserSettings.h"
 #include "Core/HeistGameMode.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistHUD.h"
@@ -37,9 +38,10 @@
 #include "World/AI/HeistGuardWaypoint.h"
 #include "World/Interaction/HeistInteractableActor.h"
 #include "World/Spawn/HeistLootSpawnPoint.h"
-#include "UI/ViewModels/HeistLobbyViewModel.h"
 #include "UI/ViewModels/HeistForgeryViewModel.h"
 #include "UI/ViewModels/HeistHUDViewModel.h"
+#include "UI/ViewModels/HeistLobbyViewModel.h"
+#include "UI/ViewModels/HeistTitleMenuViewModel.h"
 #include "UI/Widgets/HeistForgeryWidget.h"
 #include "UI/Widgets/HeistHUDWidget.h"
 
@@ -373,6 +375,132 @@ bool TryParseMatchPhase(const FString& PhaseName, EHeistMatchPhase& OutPhase)
 
 	return false;
 }
+}
+
+#pragma endregion
+
+#pragma region SettingsDebug
+
+void UHeistDebugFunctionLibrary::DebugSettingsHelp(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(PlayerController,
+			TEXT("Settings debug commands: HeistSettingsDump | HeistSettingsApply <FOV> <MouseSensitivity> <MasterVolume> <Width> <Height> <Fullscreen|Borderless|Windowed> | "
+				 "HeistSettingsReset"),
+			EHeistDebugLevel::Info, true, 10.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugSettingsDump(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	const UHeistGameUserSettings* Settings = UHeistGameUserSettings::GetHeistGameUserSettings();
+	const AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	const AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController) ? HeistPlayerController->GetPawn<AHeistPlayerCharacter>() : nullptr;
+	if (!IsValid(Settings))
+	{
+		Message(PlayerController, TEXT("Settings dump: SettingsClass=INVALID Result=FAIL"), EHeistDebugLevel::Error, true);
+		return;
+	}
+
+	const EWindowMode::Type WindowMode = Settings->GetFullscreenMode();
+	const TCHAR* WindowModeName = WindowMode == EWindowMode::Fullscreen
+									  ? TEXT("Fullscreen")
+									  : WindowMode == EWindowMode::WindowedFullscreen ? TEXT("Borderless") : TEXT("Windowed");
+	const float AppliedFieldOfView = IsValid(HeistCharacter) ? HeistCharacter->GetFirstPersonFieldOfView() : -1.0f;
+	const float AppliedMouseSensitivity = IsValid(HeistPlayerController) ? HeistPlayerController->GetLocalMouseSensitivity() : -1.0f;
+	const bool bPlayerContextAvailable = IsValid(HeistPlayerController) && IsValid(HeistCharacter);
+	const bool bPlayerSettingsApplied = bPlayerContextAvailable && (FMath::IsNearlyEqual(AppliedFieldOfView, Settings->GetFieldOfView(), 0.01f)
+																	&& FMath::IsNearlyEqual(AppliedMouseSensitivity, Settings->GetMouseSensitivity(), 0.001f));
+	const bool bAudioSettingsApplied = Settings->GetInitializedAudioDeviceCount() > 0 || IsRunningDedicatedServer();
+	const FIntPoint Resolution = Settings->GetScreenResolution();
+	const bool bValuesValid = FMath::IsWithinInclusive(Settings->GetFieldOfView(), UHeistGameUserSettings::MinimumFieldOfView, UHeistGameUserSettings::MaximumFieldOfView)
+		&& FMath::IsWithinInclusive(Settings->GetMouseSensitivity(), UHeistGameUserSettings::MinimumMouseSensitivity, UHeistGameUserSettings::MaximumMouseSensitivity)
+		&& FMath::IsWithinInclusive(Settings->GetMasterVolume(), UHeistGameUserSettings::MinimumMasterVolume, UHeistGameUserSettings::MaximumMasterVolume) && Resolution.X > 0
+		&& Resolution.Y > 0;
+	const bool bResolutionApplied = !Settings->IsScreenResolutionDirty();
+	const bool bWindowModeApplied = !Settings->IsFullscreenModeDirty();
+	const bool bDisplaySettingsApplied = bResolutionApplied && bWindowModeApplied;
+	const UWorld* World = IsValid(PlayerController) ? PlayerController->GetWorld() : nullptr;
+	const bool bPlayInEditor = IsValid(World) && World->WorldType == EWorldType::PIE;
+	const bool bDisplayCheckPassed = bDisplaySettingsApplied || bPlayInEditor;
+	const TCHAR* DisplayApplyState = bDisplaySettingsApplied ? TEXT("PASS") : bPlayInEditor ? TEXT("EDITOR_OVERRIDE") : TEXT("FAIL");
+	const bool bResult = bValuesValid && bPlayerSettingsApplied && bAudioSettingsApplied && bDisplayCheckPassed;
+
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT(
+				"Settings dump: Class=%s Runtime=%s FOV=%.1f AppliedFOV=%.1f MouseSensitivity=%.2f AppliedMouseSensitivity=%.2f MasterVolume=%.2f AudioDevices=%d Resolution=%dx%d WindowMode=%s ResolutionDirty=%s WindowModeDirty=%s PlayerApply=%s DisplayApply=%s Result=%s"),
+			*GetNameSafe(Settings), bPlayInEditor ? TEXT("PIE") : TEXT("Game"), Settings->GetFieldOfView(), AppliedFieldOfView, Settings->GetMouseSensitivity(),
+			AppliedMouseSensitivity, Settings->GetMasterVolume(),
+			Settings->GetInitializedAudioDeviceCount(), Resolution.X, Resolution.Y, WindowModeName, bResolutionApplied ? TEXT("false") : TEXT("true"),
+			bWindowModeApplied ? TEXT("false") : TEXT("true"), !bPlayerContextAvailable ? TEXT("NOT_TESTED") : bPlayerSettingsApplied ? TEXT("PASS") : TEXT("FAIL"),
+			DisplayApplyState,
+			bResult ? TEXT("PASS") : TEXT("FAIL")),
+		bResult ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugSettingsApply(APlayerController* PlayerController, const float FieldOfView, const float MouseSensitivity, const float MasterVolume,
+													const int32 ResolutionWidth, const int32 ResolutionHeight, const FString& WindowMode)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	UHeistGameUserSettings* Settings = UHeistGameUserSettings::GetHeistGameUserSettings();
+	if (!IsValid(Settings) || ResolutionWidth <= 0 || ResolutionHeight <= 0)
+	{
+		Message(PlayerController, TEXT("Settings apply: Reason=InvalidSettingsOrResolution Result=FAIL"), EHeistDebugLevel::Error, true);
+		return;
+	}
+
+	EWindowMode::Type ParsedWindowMode = EWindowMode::Windowed;
+	if (WindowMode.Equals(TEXT("Fullscreen"), ESearchCase::IgnoreCase))
+	{
+		ParsedWindowMode = EWindowMode::Fullscreen;
+	}
+	else if (WindowMode.Equals(TEXT("Borderless"), ESearchCase::IgnoreCase) || WindowMode.Equals(TEXT("WindowedFullscreen"), ESearchCase::IgnoreCase))
+	{
+		ParsedWindowMode = EWindowMode::WindowedFullscreen;
+	}
+	else if (!WindowMode.Equals(TEXT("Windowed"), ESearchCase::IgnoreCase))
+	{
+		Message(PlayerController, TEXT("Settings apply: Reason=InvalidWindowMode Expected=Fullscreen|Borderless|Windowed Result=FAIL"), EHeistDebugLevel::Error, true);
+		return;
+	}
+
+	Settings->SetFieldOfView(FieldOfView);
+	Settings->SetMouseSensitivity(MouseSensitivity);
+	Settings->SetMasterVolume(MasterVolume);
+	Settings->SetScreenResolution(FIntPoint(ResolutionWidth, ResolutionHeight));
+	Settings->SetFullscreenMode(ParsedWindowMode);
+	Settings->ApplyHeistSettings(false);
+	Message(PlayerController, TEXT("Settings apply: Save=GameUserSettings.ini Apply=Complete Result=PASS"), EHeistDebugLevel::Info, true);
+	DebugSettingsDump(PlayerController);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugSettingsReset(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	UHeistGameUserSettings* Settings = UHeistGameUserSettings::GetHeistGameUserSettings();
+	if (!IsValid(Settings))
+	{
+		Message(PlayerController, TEXT("Settings reset: SettingsClass=INVALID Result=FAIL"), EHeistDebugLevel::Error, true);
+		return;
+	}
+
+	Settings->RestoreHeistDefaults();
+	Message(PlayerController, TEXT("Settings reset: Defaults=Applied Save=GameUserSettings.ini Result=PASS"), EHeistDebugLevel::Info, true);
+	DebugSettingsDump(PlayerController);
+#endif
 }
 
 #pragma endregion
@@ -4196,7 +4324,9 @@ void UHeistDebugFunctionLibrary::DebugLobbyHelp(APlayerController* PlayerControl
 #else
 	Message(PlayerController,
 			TEXT("Lobby debug commands: HeistLobbyShow | HeistLobbyHide | HeistLobbyDump | HeistSessionHost | HeistSessionJoin <6-character code> | HeistSessionLeave | "
-				 "HeistSessionMap <M01|M02|M03|Random> | HeistSessionDump"),
+				 "HeistSessionCancel | HeistSessionCancelTest | HeistSessionRetry | "
+				 "HeistSessionFailure <CreateTimedOut|FindTimedOut|JoinTimedOut|TravelTimedOut|OperationCancelled|NetworkFailure|TravelFailure> | "
+				 "HeistSessionMap <M01|M02|M03|Random> | HeistSessionStart | HeistSessionReturn | HeistSessionDump"),
 			EHeistDebugLevel::Info, true, 8.0f);
 #endif
 }
@@ -4253,12 +4383,18 @@ void UHeistDebugFunctionLibrary::DebugLobbyDump(APlayerController* PlayerControl
 
 	LobbyViewModel->RefreshLobbyData();
 	Message(PlayerController,
-			FString::Printf(TEXT("Lobby dump: Connected=%d LocalPlayerId=%d Phase=%s Countdown=%s Loadout=%s Map=%s MapStatus=%s CanLeave=%s CanSelectMap=%s Blocker=%s"),
+			FString::Printf(TEXT("Lobby dump: Connected=%d LocalPlayerId=%d Phase=%s Countdown=%s Loadout=%s Map=%s MapStatus=%s SessionStatus=%s SessionError=%s "
+								 "ActionHint=%s Invite=%s CanLeave=%s CanSelectMap=%s CanRetry=%s Blocker=%s"),
 							LobbyViewModel->GetConnectedPlayerCount(),
 							LobbyViewModel->GetLocalPlayerId(), *LobbyViewModel->GetPhaseText().ToString(), *LobbyViewModel->GetReadyCountdownText().ToString(),
 							*LobbyViewModel->GetDefaultLoadoutText().ToString(), *LobbyViewModel->GetSelectedMapText().ToString(),
-							*LobbyViewModel->GetMapSelectionStatusText().ToString(), LobbyViewModel->CanRequestLeaveSession() ? TEXT("true") : TEXT("false"),
-							LobbyViewModel->CanSelectMap() ? TEXT("true") : TEXT("false"), *LobbyViewModel->GetAuthorityBlockerText().ToString()),
+							*LobbyViewModel->GetMapSelectionStatusText().ToString(), *LobbyViewModel->GetSessionStatusText().ToString(),
+							LobbyViewModel->GetSessionErrorText().IsEmpty() ? TEXT("None") : *LobbyViewModel->GetSessionErrorText().ToString(),
+							LobbyViewModel->GetSessionActionHintText().IsEmpty() ? TEXT("None") : *LobbyViewModel->GetSessionActionHintText().ToString(),
+							LobbyViewModel->GetInviteGuidanceText().IsEmpty() ? TEXT("None") : *LobbyViewModel->GetInviteGuidanceText().ToString(),
+							LobbyViewModel->CanRequestLeaveSession() ? TEXT("true") : TEXT("false"),
+							LobbyViewModel->CanSelectMap() ? TEXT("true") : TEXT("false"), LobbyViewModel->CanRetrySessionOperation() ? TEXT("true") : TEXT("false"),
+							*LobbyViewModel->GetAuthorityBlockerText().ToString()),
 			EHeistDebugLevel::Info, true, 8.0f);
 	Message(PlayerController, FString::Printf(TEXT("Lobby slot: %s"), *LobbyViewModel->GetPlayerSlot1Text().ToString()), EHeistDebugLevel::Info, false);
 	Message(PlayerController, FString::Printf(TEXT("Lobby slot: %s"), *LobbyViewModel->GetPlayerSlot2Text().ToString()), EHeistDebugLevel::Info, false);
@@ -4332,6 +4468,107 @@ void UHeistDebugFunctionLibrary::DebugOnlineSessionLeave(APlayerController* Play
 #endif
 }
 
+void UHeistDebugFunctionLibrary::DebugOnlineSessionCancel(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	UHeistGameInstance* HeistGameInstance = IsValid(HeistPlayerController) ? Cast<UHeistGameInstance>(HeistPlayerController->GetGameInstance()) : nullptr;
+	if (!IsValid(HeistGameInstance))
+	{
+		Message(PlayerController, TEXT("Session cancel failed: missing Heist GameInstance."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const FName CancelledOperation = HeistGameInstance->GetActiveOnlineSessionOperation();
+	const bool bAccepted = HeistGameInstance->RequestCancelOnlineSessionOperation();
+	Message(PlayerController,
+			FString::Printf(TEXT("Session cancel request: Operation=%s Accepted=%s Failure=%s Result=%s"),
+							CancelledOperation.IsNone() ? TEXT("None") : *CancelledOperation.ToString(), bAccepted ? TEXT("true") : TEXT("false"),
+							HeistGameInstance->GetLastOnlineSessionFailure().IsNone() ? TEXT("None") : *HeistGameInstance->GetLastOnlineSessionFailure().ToString(),
+							bAccepted ? TEXT("PASS") : TEXT("REJECTED")),
+			bAccepted ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugOnlineSessionCancelTest(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	UHeistGameInstance* HeistGameInstance = IsValid(HeistPlayerController) ? Cast<UHeistGameInstance>(HeistPlayerController->GetGameInstance()) : nullptr;
+	if (!IsValid(HeistGameInstance))
+	{
+		Message(PlayerController, TEXT("Session cancel test failed: missing Heist GameInstance."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const bool bReady = HeistGameInstance->RunOnlineSessionCancelTestForDebug();
+	const bool bPass = bReady && HeistGameInstance->GetOnlineSessionState() == FName(TEXT("Searching"))
+		&& HeistGameInstance->GetActiveOnlineSessionOperation() == FName(TEXT("Find"))
+		&& HeistGameInstance->IsOnlineSessionOperationPending() && HeistGameInstance->CanCancelOnlineSessionOperation();
+	Message(PlayerController,
+			FString::Printf(TEXT("Session cancel test ready: Ready=%s State=%s Operation=%s Pending=%s CanCancel=%s Result=%s"),
+							bReady ? TEXT("true") : TEXT("false"), *HeistGameInstance->GetOnlineSessionState().ToString(),
+							HeistGameInstance->GetActiveOnlineSessionOperation().IsNone() ? TEXT("None") : *HeistGameInstance->GetActiveOnlineSessionOperation().ToString(),
+							HeistGameInstance->IsOnlineSessionOperationPending() ? TEXT("true") : TEXT("false"),
+							HeistGameInstance->CanCancelOnlineSessionOperation() ? TEXT("true") : TEXT("false"),
+							bPass ? TEXT("PASS_READY") : TEXT("FAIL")),
+			bPass ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugOnlineSessionRetry(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	UHeistGameInstance* HeistGameInstance = IsValid(HeistPlayerController) ? Cast<UHeistGameInstance>(HeistPlayerController->GetGameInstance()) : nullptr;
+	if (!IsValid(HeistGameInstance))
+	{
+		Message(PlayerController, TEXT("Session retry failed: missing Heist GameInstance."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const FName RetryRequest = HeistGameInstance->GetLastRetryRequest();
+	const bool bAccepted = HeistGameInstance->RequestRetryLastOnlineSessionOperation();
+	Message(PlayerController,
+			FString::Printf(TEXT("Session retry request: Request=%s Accepted=%s State=%s Failure=%s Result=%s"),
+							RetryRequest.IsNone() ? TEXT("None") : *RetryRequest.ToString(), bAccepted ? TEXT("true") : TEXT("false"),
+							*HeistGameInstance->GetOnlineSessionState().ToString(),
+							HeistGameInstance->GetLastOnlineSessionFailure().IsNone() ? TEXT("None") : *HeistGameInstance->GetLastOnlineSessionFailure().ToString(),
+							bAccepted ? TEXT("PASS") : TEXT("REJECTED")),
+			bAccepted ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugOnlineSessionFailure(APlayerController* PlayerController, const FName FailureReason)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	UHeistGameInstance* HeistGameInstance = IsValid(HeistPlayerController) ? Cast<UHeistGameInstance>(HeistPlayerController->GetGameInstance()) : nullptr;
+	if (!IsValid(HeistGameInstance))
+	{
+		Message(PlayerController, TEXT("Session failure preview failed: missing Heist GameInstance."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const bool bApplied = HeistGameInstance->ForceOnlineSessionFailureForDebug(FailureReason);
+	Message(PlayerController,
+			FString::Printf(TEXT("Session failure preview: Requested=%s Applied=%s State=%s Failure=%s Result=%s"),
+							FailureReason.IsNone() ? TEXT("None") : *FailureReason.ToString(), bApplied ? TEXT("true") : TEXT("false"),
+							*HeistGameInstance->GetOnlineSessionState().ToString(),
+							HeistGameInstance->GetLastOnlineSessionFailure().IsNone() ? TEXT("None") : *HeistGameInstance->GetLastOnlineSessionFailure().ToString(),
+							bApplied ? TEXT("PASS") : TEXT("REJECTED")),
+			bApplied ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true);
+#endif
+}
+
 void UHeistDebugFunctionLibrary::DebugOnlineSessionMap(APlayerController* PlayerController, const FString& MapId)
 {
 #if UE_BUILD_SHIPPING
@@ -4348,6 +4585,40 @@ void UHeistDebugFunctionLibrary::DebugOnlineSessionMap(APlayerController* Player
 #endif
 }
 
+void UHeistDebugFunctionLibrary::DebugOnlineSessionStart(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		Message(PlayerController, TEXT("Session gameplay travel failed: missing Heist PlayerController."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	HeistPlayerController->RequestStartSelectedGameplayMap();
+	Message(PlayerController, TEXT("Session gameplay travel requested. Run HeistSessionDump after the destination map loads."), EHeistDebugLevel::Info, true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugOnlineSessionReturn(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		Message(PlayerController, TEXT("Session lobby return failed: missing Heist PlayerController."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	HeistPlayerController->RequestReturnToLobby();
+	Message(PlayerController, TEXT("Session lobby return requested. Run HeistSessionDump after the lobby loads."), EHeistDebugLevel::Info, true);
+#endif
+}
+
 void UHeistDebugFunctionLibrary::DebugOnlineSessionDump(APlayerController* PlayerController)
 {
 #if UE_BUILD_SHIPPING
@@ -4361,12 +4632,24 @@ void UHeistDebugFunctionLibrary::DebugOnlineSessionDump(APlayerController* Playe
 		return;
 	}
 
-	const AHeistGameState* HeistGameState = HeistPlayerController->GetWorld() ? HeistPlayerController->GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	UWorld* World = HeistPlayerController->GetWorld();
+	const AHeistGameState* HeistGameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
+	const AHeistGameMode* HeistGameMode = IsValid(World) ? World->GetAuthGameMode<AHeistGameMode>() : nullptr;
 	const FName SelectedMapId = HeistGameInstance->GetSelectedMapId();
 	const bool bValidMapId = SelectedMapId == FName(TEXT("M01")) || SelectedMapId == FName(TEXT("M02")) || SelectedMapId == FName(TEXT("M03"));
-	const bool bGameStateMapMatches = !IsValid(HeistGameState) || HeistGameState->GetSelectedLobbyMapId() == SelectedMapId;
-	const TCHAR* CurrentScreen =
-		HeistGameInstance->IsCurrentWorldTitleMenu() ? TEXT("TitleMenu") : (HeistGameInstance->IsCurrentWorldLobby() ? TEXT("Lobby") : TEXT("Gameplay"));
+	const bool bTitleMenuWorld = HeistGameInstance->IsCurrentWorldTitleMenu();
+	const bool bLobbyWorld = HeistGameInstance->IsCurrentWorldLobby();
+	const bool bGameStateMapMatches = bTitleMenuWorld || (IsValid(HeistGameState) && HeistGameState->GetSelectedLobbyMapId() == SelectedMapId);
+	const TCHAR* CurrentScreen = bTitleMenuWorld ? TEXT("TitleMenu") : (bLobbyWorld ? TEXT("Lobby") : TEXT("Gameplay"));
+	const FString RuntimeMap = IsValid(World) ? World->GetMapName() : TEXT("None");
+	const FString SelectedGameplayMapPath = HeistGameInstance->GetSelectedGameplayMapPath();
+	const bool bWorldMapMatches =
+		(bTitleMenuWorld || bLobbyWorld) ? true : HeistGameInstance->IsCurrentWorldSelectedGameplayMap();
+	const EHeistMatchPhase ActualMatchPhase = IsValid(HeistGameState) ? HeistGameState->GetMatchPhase() : EHeistMatchPhase::None;
+	const EHeistMatchPhase ExpectedMatchPhase =
+		bTitleMenuWorld ? EHeistMatchPhase::None : (bLobbyWorld ? EHeistMatchPhase::Lobby : EHeistMatchPhase::InGame);
+	const bool bMatchPhaseValid = IsValid(HeistGameState) && ActualMatchPhase == ExpectedMatchPhase;
+	const bool bClientWorld = IsValid(World) && World->GetNetMode() == NM_Client;
 	constexpr int32 MaxLobbySlots = 4;
 	int32 OccupiedPlayerIds[MaxLobbySlots] = {INDEX_NONE, INDEX_NONE, INDEX_NONE, INDEX_NONE};
 	int32 IdentifiedPlayerCount = 0;
@@ -4408,11 +4691,21 @@ void UHeistDebugFunctionLibrary::DebugOnlineSessionDump(APlayerController* Playe
 	const AHeistPlayerState* LocalPlayerState = IsValid(HeistPlayerController) ? HeistPlayerController->GetPlayerState<AHeistPlayerState>() : nullptr;
 	const int32 LocalPlayerId = IsValid(LocalPlayerState) ? LocalPlayerState->HeistPlayerId : INDEX_NONE;
 	const AHeistHUD* HeistHUD = IsValid(HeistPlayerController) ? Cast<AHeistHUD>(HeistPlayerController->GetHUD()) : nullptr;
-	const UHeistLobbyViewModel* LobbyViewModel = IsValid(HeistHUD) ? HeistHUD->GetLobbyViewModel() : nullptr;
+	const APawn* HeistPawn = IsValid(HeistPlayerController) ? HeistPlayerController->GetPawn() : nullptr;
+	UHeistTitleMenuViewModel* TitleMenuViewModel = IsValid(HeistHUD) ? HeistHUD->GetTitleMenuViewModel() : nullptr;
+	UHeistLobbyViewModel* LobbyViewModel = IsValid(HeistHUD) ? HeistHUD->GetLobbyViewModel() : nullptr;
+	if (bTitleMenuWorld && IsValid(TitleMenuViewModel))
+	{
+		TitleMenuViewModel->RefreshTitleMenuData();
+	}
+	if (bLobbyWorld && IsValid(LobbyViewModel))
+	{
+		LobbyViewModel->RefreshLobbyData();
+	}
 	const int32 UIConnectedPlayerCount = IsValid(LobbyViewModel) ? LobbyViewModel->GetConnectedPlayerCount() : INDEX_NONE;
 	const int32 UILocalPlayerId = IsValid(LobbyViewModel) ? LobbyViewModel->GetLocalPlayerId() : INDEX_NONE;
-	const bool bLobbyRosterValid =
-		!HeistGameInstance->IsCurrentWorldLobby()
+	const bool bRosterValid =
+		bTitleMenuWorld
 		|| (IsValid(HeistGameState)
 			&& ConnectedPlayerCount >= 1
 			&& ConnectedPlayerCount <= HeistGameInstance->GetMaxPublicConnections()
@@ -4420,17 +4713,27 @@ void UHeistDebugFunctionLibrary::DebugOnlineSessionDump(APlayerController* Playe
 			&& PendingIdentityCount == 0
 			&& DuplicateIdentityCount == 0);
 	const bool bLobbyUIValid =
-		!HeistGameInstance->IsCurrentWorldLobby()
+		!bLobbyWorld
 		|| (IsValid(LobbyViewModel) && UIConnectedPlayerCount == ConnectedPlayerCount && UILocalPlayerId == LocalPlayerId);
+	const bool bFrameworkValid =
+		IsValid(HeistHUD)
+		&& (bClientWorld || IsValid(HeistGameMode))
+		&& (bTitleMenuWorld || (IsValid(HeistPawn) && IsValid(LocalPlayerState)))
+		&& bMatchPhaseValid;
+	const bool bSessionStateActive = HeistGameInstance->IsHostingOnlineSession() || HeistGameInstance->IsJoinedOnlineSession();
+	const bool bNamedSessionPresent = HeistGameInstance->HasActiveNamedOnlineSession();
+	const bool bSessionContinuityValid = bSessionStateActive == bNamedSessionPresent;
 	const bool bConfigurationValid =
 		!HeistGameInstance->GetActiveOnlineSubsystemName().IsNone() && bValidMapId && bGameStateMapMatches && !HeistGameInstance->GetTitleMenuMapPath().IsEmpty()
-		&& !HeistGameInstance->GetLobbyMapPath().IsEmpty() && bLobbyRosterValid && bLobbyUIValid;
+		&& !HeistGameInstance->GetLobbyMapPath().IsEmpty() && !SelectedGameplayMapPath.IsEmpty() && bWorldMapMatches && bRosterValid && bLobbyUIValid
+		&& bFrameworkValid && bSessionContinuityValid;
 	Message(PlayerController,
-			FString::Printf(TEXT("Online session dump: Screen=%s Subsystem=%s State=%s Failure=%s ActiveCode=%s PendingCode=%s MaxPublic=%d Map=%s MapMode=%s "
+			FString::Printf(TEXT("Online session dump: Screen=%s RuntimeMap=%s Subsystem=%s State=%s Failure=%s ActiveCode=%s PendingCode=%s MaxPublic=%d Map=%s MapMode=%s "
 								 "ReplicatedMap=%s MapRevision=%d Players=%d Identified=%d PendingIdentities=%d DuplicateIdentities=%d LocalPlayerId=%d Slots=%s "
-								 "Roster=%s UIPlayers=%d UILocalPlayerId=%d UI=%s TitleMapPath=%s LobbyMapPath=%s Build=%d Pending=%s MapUpdatePending=%s "
-								 "Hosting=%s Joined=%s Result=%s"),
-							CurrentScreen,
+								 "Roster=%s UIPlayers=%d UILocalPlayerId=%d UI=%s Phase=%s ExpectedPhase=%s WorldMap=%s SelectedGameplayPath=%s "
+								 "GameMode=%s HUD=%s Pawn=%s PlayerState=%s Framework=%s NamedSession=%s SessionContinuity=%s "
+								 "TitleMapPath=%s LobbyMapPath=%s Build=%d Pending=%s MapUpdatePending=%s Hosting=%s Joined=%s Result=%s"),
+							CurrentScreen, *RuntimeMap,
 							*HeistGameInstance->GetActiveOnlineSubsystemName().ToString(), *HeistGameInstance->GetOnlineSessionState().ToString(),
 							HeistGameInstance->GetLastOnlineSessionFailure().IsNone() ? TEXT("None") : *HeistGameInstance->GetLastOnlineSessionFailure().ToString(),
 							HeistGameInstance->GetActiveJoinCode().IsEmpty() ? TEXT("None") : *HeistGameInstance->GetActiveJoinCode(),
@@ -4439,9 +4742,18 @@ void UHeistDebugFunctionLibrary::DebugOnlineSessionDump(APlayerController* Playe
 							IsValid(HeistGameState) ? *HeistGameState->GetSelectedLobbyMapId().ToString() : TEXT("None"),
 							IsValid(HeistGameState) ? HeistGameState->GetLobbyMapSelectionRevision() : INDEX_NONE, ConnectedPlayerCount, IdentifiedPlayerCount,
 							PendingIdentityCount, DuplicateIdentityCount, LocalPlayerId, *PlayerSlotSummary,
-							HeistGameInstance->IsCurrentWorldLobby() ? (bLobbyRosterValid ? TEXT("PASS") : TEXT("FAIL")) : TEXT("N/A"),
+							bTitleMenuWorld ? TEXT("N/A") : (bRosterValid ? TEXT("PASS") : TEXT("FAIL")),
 							UIConnectedPlayerCount, UILocalPlayerId,
-							HeistGameInstance->IsCurrentWorldLobby() ? (bLobbyUIValid ? TEXT("PASS") : TEXT("FAIL")) : TEXT("N/A"),
+							bLobbyWorld ? (bLobbyUIValid ? TEXT("PASS") : TEXT("FAIL")) : TEXT("N/A"),
+							*UEnum::GetValueAsString(ActualMatchPhase), *UEnum::GetValueAsString(ExpectedMatchPhase),
+							bWorldMapMatches ? TEXT("PASS") : TEXT("FAIL"), *SelectedGameplayMapPath,
+							bClientWorld ? TEXT("N/A") : (IsValid(HeistGameMode) ? *HeistGameMode->GetPathName() : TEXT("None")),
+							IsValid(HeistHUD) ? *HeistHUD->GetPathName() : TEXT("None"),
+							IsValid(HeistPawn) ? *HeistPawn->GetPathName() : TEXT("None"),
+							IsValid(LocalPlayerState) ? *LocalPlayerState->GetPathName() : TEXT("None"),
+							bFrameworkValid ? TEXT("PASS") : TEXT("FAIL"),
+							bNamedSessionPresent ? TEXT("true") : TEXT("false"),
+							bSessionContinuityValid ? TEXT("PASS") : TEXT("FAIL"),
 							*HeistGameInstance->GetTitleMenuMapPath(), *HeistGameInstance->GetLobbyMapPath(),
 							HeistGameInstance->GetSessionBuildUniqueId(),
 							HeistGameInstance->IsOnlineSessionOperationPending() ? TEXT("true") : TEXT("false"),
@@ -4449,6 +4761,42 @@ void UHeistDebugFunctionLibrary::DebugOnlineSessionDump(APlayerController* Playe
 							HeistGameInstance->IsHostingOnlineSession() ? TEXT("true") : TEXT("false"),
 							HeistGameInstance->IsJoinedOnlineSession() ? TEXT("true") : TEXT("false"), bConfigurationValid ? TEXT("PASS") : TEXT("FAIL")),
 			bConfigurationValid ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
+
+	const FText SessionStatusText =
+		bTitleMenuWorld && IsValid(TitleMenuViewModel)
+			? TitleMenuViewModel->GetSessionStatusText()
+			: (bLobbyWorld && IsValid(LobbyViewModel) ? LobbyViewModel->GetSessionStatusText() : FText::GetEmpty());
+	const FText SessionErrorText =
+		bTitleMenuWorld && IsValid(TitleMenuViewModel)
+			? TitleMenuViewModel->GetSessionErrorText()
+			: (bLobbyWorld && IsValid(LobbyViewModel) ? LobbyViewModel->GetSessionErrorText() : FText::GetEmpty());
+	const FText SessionActionHintText =
+		bTitleMenuWorld && IsValid(TitleMenuViewModel)
+			? TitleMenuViewModel->GetSessionActionHintText()
+			: (bLobbyWorld && IsValid(LobbyViewModel) ? LobbyViewModel->GetSessionActionHintText() : FText::GetEmpty());
+	const FText InviteGuidanceText = bLobbyWorld && IsValid(LobbyViewModel) ? LobbyViewModel->GetInviteGuidanceText() : FText::GetEmpty();
+	const bool bCanCancel = bTitleMenuWorld && IsValid(TitleMenuViewModel) && TitleMenuViewModel->CanCancelSessionOperation();
+	const bool bCanRetry = (bTitleMenuWorld && IsValid(TitleMenuViewModel) && TitleMenuViewModel->CanRetrySessionOperation())
+		|| (bLobbyWorld && IsValid(LobbyViewModel) && LobbyViewModel->CanRetrySessionOperation());
+	const bool bInviteGuidanceRequired = bLobbyWorld && !HeistGameInstance->GetActiveJoinCode().IsEmpty();
+	const bool bSessionUXValid = (!bTitleMenuWorld && !bLobbyWorld)
+		|| (!SessionStatusText.IsEmpty() && (!bInviteGuidanceRequired || !InviteGuidanceText.IsEmpty()));
+	Message(PlayerController,
+			FString::Printf(TEXT("Online session UX dump: Screen=%s Operation=%s TimeoutRemaining=%.2f TravelPending=%s Destination=%s CancellationPending=%s "
+								 "RetryRequest=%s Status=%s Error=%s ActionHint=%s Invite=%s CanCancel=%s CanRetry=%s Result=%s"),
+							CurrentScreen,
+							HeistGameInstance->GetActiveOnlineSessionOperation().IsNone() ? TEXT("None") : *HeistGameInstance->GetActiveOnlineSessionOperation().ToString(),
+							HeistGameInstance->GetOnlineSessionOperationTimeoutRemaining(),
+							HeistGameInstance->IsSessionTravelPending() ? TEXT("true") : TEXT("false"),
+							HeistGameInstance->GetPendingTravelDestination().IsNone() ? TEXT("None") : *HeistGameInstance->GetPendingTravelDestination().ToString(),
+							HeistGameInstance->IsOnlineSessionCancellationPending() ? TEXT("true") : TEXT("false"),
+							HeistGameInstance->GetLastRetryRequest().IsNone() ? TEXT("None") : *HeistGameInstance->GetLastRetryRequest().ToString(),
+							SessionStatusText.IsEmpty() ? TEXT("N/A") : *SessionStatusText.ToString(),
+							SessionErrorText.IsEmpty() ? TEXT("None") : *SessionErrorText.ToString(),
+							SessionActionHintText.IsEmpty() ? TEXT("None") : *SessionActionHintText.ToString(),
+							InviteGuidanceText.IsEmpty() ? TEXT("N/A") : *InviteGuidanceText.ToString(), bCanCancel ? TEXT("true") : TEXT("false"),
+							bCanRetry ? TEXT("true") : TEXT("false"), bSessionUXValid ? TEXT("PASS") : TEXT("FAIL")),
+			bSessionUXValid ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
 #endif
 }
 

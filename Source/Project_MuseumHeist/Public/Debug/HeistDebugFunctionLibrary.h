@@ -184,7 +184,25 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 	static void DebugOnlineSessionLeave(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Lobby", meta = (DevelopmentOnly))
+	static void DebugOnlineSessionCancel(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Lobby", meta = (DevelopmentOnly))
+	static void DebugOnlineSessionCancelTest(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Lobby", meta = (DevelopmentOnly))
+	static void DebugOnlineSessionRetry(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Lobby", meta = (DevelopmentOnly))
+	static void DebugOnlineSessionFailure(APlayerController* PlayerController, FName FailureReason);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Lobby", meta = (DevelopmentOnly))
 	static void DebugOnlineSessionMap(APlayerController* PlayerController, const FString& MapId);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Lobby", meta = (DevelopmentOnly))
+	static void DebugOnlineSessionStart(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Lobby", meta = (DevelopmentOnly))
+	static void DebugOnlineSessionReturn(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Lobby", meta = (DevelopmentOnly))
 	static void DebugOnlineSessionDump(APlayerController* PlayerController);
@@ -355,6 +373,23 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
 	static void DebugForgeryUIPreview(APlayerController* PlayerController, const FString& State);
+
+#pragma endregion
+
+#pragma region SettingsDebug
+
+  public:
+	static void DebugSettingsHelp(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Settings", meta = (DevelopmentOnly))
+	static void DebugSettingsDump(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Settings", meta = (DevelopmentOnly))
+	static void DebugSettingsApply(APlayerController* PlayerController, float FieldOfView, float MouseSensitivity, float MasterVolume, int32 ResolutionWidth,
+								   int32 ResolutionHeight, const FString& WindowMode);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Settings", meta = (DevelopmentOnly))
+	static void DebugSettingsReset(APlayerController* PlayerController);
 
 #pragma endregion
 

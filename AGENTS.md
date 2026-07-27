@@ -1,8 +1,8 @@
 # Project_MuseumHeist — Codex Instructions
 
-## Rev 8: Smoke / Trap Removal And W4 Handoff
+## Rev 9: W5 Online Lobby And Travel Handoff
 
-기준일: 2026-07-25  
+기준일: 2026-07-27
 엔진: Unreal Engine 5.8  
 현재 목표: 2026-09-20 W8 Final RC / 프로젝트 마무리
 
@@ -108,6 +108,7 @@ Title Menu
 # 4. v1.0 Required Scope
 
 - 1~4인 Listen Server
+- Steam Online Session
 - 별도 Title Menu Level
 - 별도 Online Lobby Level
 - Full First-Person
@@ -180,7 +181,6 @@ Title Menu
 
 - Sculpture Assembly Forgery
 - Optional Rare Artifact
-- Steam Session
 - First-Person Hand Animation
 - 추가 Painting Template
 - 추가 Loose Loot
@@ -1086,12 +1086,16 @@ W4~W6 결과와 실제 잔여 위험을 검토한 뒤 필요한 경우에만 `TA
 
 ## W5 Current Handoff
 
-- `TASK-W5-001~005`의 Editor OnlineSubsystemNull 검증은 완료됐다.
+- `TASK-W5-001~008`은 완료됐다.
+- `TEST-W5-001`은 2026-07-26 Editor `OnlineSubsystemNull` 2 Player Listen Server PIE에서 Host / Join Code / Find / Join / Lobby Travel을 PASS했다.
+- `TEST-W5-002`는 2026-07-27 Editor `OnlineSubsystemNull` 3 Player Listen Server PIE에서 Client Leave / Rejoin / Empty Slot 재사용 / Host Quit / Title Return / Map Selection / Random / Lobby Roster Refresh를 PASS했다.
+- `TEST-W5-005`는 2026-07-27 Development Editor 1 Player PIE에서 Local Settings 저장과 First-Person 적용을 PASS했다.
+- W5 Weekly Gate와 Steam Formal Test는 아직 PASS하지 않았다.
 - `UHeistGameInstance`가 Online Subsystem 선택과 Create / Find / Join / Travel 상태를 단독 소유한다.
 - Editor PIE는 로컬 다중 인스턴스 검증을 위해 `OnlineSubsystemNull`을 사용한다.
 - 비 Editor 실행과 패키지 빌드는 기본 `OnlineSubsystemSteam`을 사용한다.
 - 비 Editor 실행은 별도 Title Menu Level에서 시작한다.
-- Title Menu는 Host Session과 Join Code 입력만 소유한다.
+- Title Menu는 Host Session, Join Code 입력과 Local Settings를 소유한다.
 - Session 생성 또는 참가 성공 시 별도 Lobby Level로 이동한다.
 - Lobby는 참가 코드 표시, Player Slot, Map 선택, Ready / Start, Leave만 소유한다.
 - Session Leave 또는 Host Quit 시 Title Menu Level로 복귀한다.
@@ -1100,11 +1104,18 @@ W4~W6 결과와 실제 잔여 위험을 검토한 뒤 필요한 경우에만 `TA
 - Online Session의 로컬 이름은 PIE가 선점하는 `GameSession`과 분리된 `HeistSession`을 사용한다.
 - Host는 혼동 문자를 제외한 6자리 참가 코드를 생성하고 Session Setting에 게시한다.
 - Join은 참가 코드, Product Id, Build Unique Id, 공개 슬롯을 검증한 뒤 서버 주소로 이동한다.
-- `TASK-W5-001~003`에서는 고정 `M01` / `/Game/Maps/SandBoxMap`만 사용한다.
-- Map 선택 UI와 Session 종료·재접속 Recovery는 각각 후속 `TASK-W5-005`, `TASK-W5-004` 범위다.
+- Host는 Lobby에서 `M01`, `M02`, `M03`, `Random`을 선택할 수 있고 선택 결과는 `AHeistGameState`를 통해 모든 Client에 복제한다.
+- Lobby Player Id는 현재 `PlayerArray`에서 사용하지 않는 가장 낮은 `1~4` 번호를 할당한다. 퇴장한 Slot은 `EMPTY`가 되고 다음 참가자가 해당 번호를 재사용한다.
+- `UHeistLobbyViewModel`은 Player 추가·제거뿐 아니라 각 `AHeistPlayerState`의 Identity 변경에도 반응해 모든 Client의 Slot 표시를 갱신한다.
+- `TASK-W5-008`은 FOV, Mouse Sensitivity, Master Volume, Resolution / Window Mode의 로컬 저장과 First-Person 적용을 완료했다.
+- PIE New Editor Window가 저장된 Resolution을 Editor 창 크기로 덮어쓰는 경우 Settings 진단은 `DisplayApply=EDITOR_OVERRIDE`로 구분한다.
+- 현재 활성 작업은 `TASK-W5-009 Packaging Pipeline`이다.
 - Editor `OnlineSubsystemNull` 검증은 구현 검증용이며 Steam 최종 PASS를 대체하지 않는다.
-- Steam 최종 PASS는 서로 다른 Steam 계정 2개와 패키지 Development Build 증거가 있을 때만 처리한다.
-- 최초 패키징 시점은 Host가 Session을 만들고 다른 Player가 참가 코드로 입장하는 흐름까지 Editor 검증한 뒤다.
-- Editor 검증 명령은 `HeistSessionHost`, `HeistSessionJoin <Code>`, `HeistSessionDump`를 사용한다.
+- `TASK-W5-001`의 Steam 패키지 2계정 검증은 `TASK-W5-010 External Two-PC Online Gate`로 이관됐으며 `TASK-W5-001`을 다시 열지 않는다.
+- Steam 최종 PASS는 서로 다른 Steam 계정 2개와 Development Package 증거가 있을 때만 처리한다.
+- Packaging Pipeline은 `TASK-W5-009`, Steam 2계정 통합 검증은 `TASK-W5-010`에서 수행한다.
+- Editor 검증 명령은 `HeistSessionHost`, `HeistSessionJoin <Code>`, `HeistSessionLeave`, `HeistSessionMap <M01|M02|M03|Random>`, `HeistSessionDump`를 사용한다.
+- `HeistSessionDump`는 Player / Identity / Slot / Roster / UI Snapshot과 Map Selection이 일치할 때 `Result=PASS`를 출력한다.
+- `aqProf.dll` / VTune 선택적 Profiler 경고와 Title / Lobby 전환 중의 일시적 AI Perception / Recast 경고는 현재 확인된 비차단 Known Warning이다. Crash, Travel 실패 또는 Gameplay Map 회귀가 동반되면 다시 분류한다.
 
 세부 설계와 주차별 Task 정의는 `Museum_Heist_GDD.docx` 최신 Revision과 Notion Task 기록을 함께 확인한다.

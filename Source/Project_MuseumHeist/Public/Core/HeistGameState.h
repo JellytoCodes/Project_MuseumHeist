@@ -80,6 +80,7 @@ class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
 	int32 GetLobbyMapSelectionRevision() const;
 
 	bool SetLobbyMapSelection(FName NewSelectedMapId, bool bNewRandomSelection);
+	bool InitializeSessionMapSelection(FName NewSelectedMapId, bool bNewRandomSelection);
 	FHeistLobbyMapSelectionChanged& GetLobbyMapSelectionChangedDelegate();
 
   private:

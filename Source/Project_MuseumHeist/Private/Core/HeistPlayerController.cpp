@@ -10,6 +10,7 @@
 #include "Character/Components/HeistVisionComponent.h"
 #include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameInstance.h"
+#include "Core/HeistGameUserSettings.h"
 #include "Core/HeistGameMode.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistHUD.h"
@@ -60,6 +61,7 @@ void AHeistPlayerController::BeginPlay()
 
 	RefreshLocalInputModeFromPawn();
 	RefreshLocalHUDPresentation();
+	ApplyLocalUserSettings();
 	UpdateFlashlightAimDirection();
 }
 
@@ -82,6 +84,7 @@ void AHeistPlayerController::OnPossess(APawn* InPawn)
 	Super::OnPossess(InPawn);
 	RefreshLocalInputModeFromPawn();
 	RefreshLocalHUDPresentation();
+	ApplyLocalUserSettings();
 	UpdateFlashlightAimDirection();
 }
 
@@ -91,6 +94,7 @@ void AHeistPlayerController::OnRep_Pawn()
 	bLocalObservationInputHeld = false;
 	RefreshLocalInputModeFromPawn();
 	RefreshLocalHUDPresentation();
+	ApplyLocalUserSettings();
 	UpdateFlashlightAimDirection();
 }
 
@@ -230,7 +234,7 @@ void AHeistPlayerController::HandleLookInput(const FInputActionValue& InputValue
 		return;
 	}
 
-	const FVector2D LookInput = InputValue.Get<FVector2D>();
+	const FVector2D LookInput = InputValue.Get<FVector2D>() * LocalMouseSensitivity;
 	AddYawInput(LookInput.X);
 	AddPitchInput(LookInput.Y);
 	UpdateFlashlightAimDirection();
@@ -473,6 +477,32 @@ void AHeistPlayerController::HandleInventoryOpenStateChanged(const bool bInvento
 	}
 }
 
+void AHeistPlayerController::ApplyLocalUserSettings()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	const UHeistGameUserSettings* Settings = UHeistGameUserSettings::GetHeistGameUserSettings();
+	if (!IsValid(Settings))
+	{
+		LocalMouseSensitivity = UHeistGameUserSettings::DefaultMouseSensitivity;
+		return;
+	}
+
+	LocalMouseSensitivity = Settings->GetMouseSensitivity();
+	if (AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>())
+	{
+		HeistCharacter->SetFirstPersonFieldOfView(Settings->GetFieldOfView());
+	}
+}
+
+float AHeistPlayerController::GetLocalMouseSensitivity() const
+{
+	return LocalMouseSensitivity;
+}
+
 void AHeistPlayerController::HandleArrestStateChanged(const bool bArrested)
 {
 	if (!IsLocalController())
@@ -670,6 +700,28 @@ void AHeistPlayerController::RequestSetLobbyMapSelection(const FName RequestedMa
 	}
 
 	Server_RequestSetLobbyMapSelection(RequestedMapId);
+}
+
+void AHeistPlayerController::RequestStartSelectedGameplayMap()
+{
+	if (!IsLocalController())
+	{
+		UHeistDebugFunctionLibrary::DebugOnlineSessionControllerRequest(this, TEXT("StartGameplay"), false, FName(TEXT("NotLocalController")));
+		return;
+	}
+
+	Server_RequestStartSelectedGameplayMap();
+}
+
+void AHeistPlayerController::RequestReturnToLobby()
+{
+	if (!IsLocalController())
+	{
+		UHeistDebugFunctionLibrary::DebugOnlineSessionControllerRequest(this, TEXT("ReturnLobby"), false, FName(TEXT("NotLocalController")));
+		return;
+	}
+
+	Server_RequestReturnToLobby();
 }
 
 void AHeistPlayerController::Client_NotifyOnlineSessionEnded_Implementation(const FName Reason)
@@ -1120,6 +1172,30 @@ void AHeistPlayerController::Server_RequestSetLobbyMapSelection_Implementation(c
 	const bool bAccepted = HasAuthority() && IsLocalController() && IsValid(HeistGameInstance) && HeistGameInstance->RequestSetLobbyMapSelection(RequestedMapId);
 	UHeistDebugFunctionLibrary::DebugOnlineSessionControllerRequest(this, TEXT("SetMap"), bAccepted,
 																   bAccepted ? NAME_None : FName(IsLocalController() ? TEXT("AuthorityOrSessionRejected") : TEXT("HostOnly")));
+}
+
+void AHeistPlayerController::Server_RequestStartSelectedGameplayMap_Implementation()
+{
+	UHeistGameInstance* HeistGameInstance = Cast<UHeistGameInstance>(GetGameInstance());
+	const bool bAccepted = HasAuthority() && IsLocalController() && IsValid(HeistGameInstance) && HeistGameInstance->RequestStartSelectedGameplayMap();
+	const FName FailureReason =
+		bAccepted ? NAME_None
+				  : (IsValid(HeistGameInstance) && !HeistGameInstance->GetLastOnlineSessionFailure().IsNone()
+						 ? HeistGameInstance->GetLastOnlineSessionFailure()
+						 : FName(IsLocalController() ? TEXT("AuthorityOrSessionRejected") : TEXT("HostOnly")));
+	UHeistDebugFunctionLibrary::DebugOnlineSessionControllerRequest(this, TEXT("StartGameplay"), bAccepted, FailureReason);
+}
+
+void AHeistPlayerController::Server_RequestReturnToLobby_Implementation()
+{
+	UHeistGameInstance* HeistGameInstance = Cast<UHeistGameInstance>(GetGameInstance());
+	const bool bAccepted = HasAuthority() && IsLocalController() && IsValid(HeistGameInstance) && HeistGameInstance->RequestReturnToLobby();
+	const FName FailureReason =
+		bAccepted ? NAME_None
+				  : (IsValid(HeistGameInstance) && !HeistGameInstance->GetLastOnlineSessionFailure().IsNone()
+						 ? HeistGameInstance->GetLastOnlineSessionFailure()
+						 : FName(IsLocalController() ? TEXT("AuthorityOrSessionRejected") : TEXT("HostOnly")));
+	UHeistDebugFunctionLibrary::DebugOnlineSessionControllerRequest(this, TEXT("ReturnLobby"), bAccepted, FailureReason);
 }
 
 void AHeistPlayerController::Server_CancelForgery_Implementation()

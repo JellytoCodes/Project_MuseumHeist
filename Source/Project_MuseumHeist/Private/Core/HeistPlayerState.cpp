@@ -304,6 +304,17 @@ void AHeistPlayerState::OnRep_Arrested()
 
 #pragma region Replication
 
+void AHeistPlayerState::CopyProperties(APlayerState* PlayerState)
+{
+	Super::CopyProperties(PlayerState);
+
+	AHeistPlayerState* NewHeistPlayerState = Cast<AHeistPlayerState>(PlayerState);
+	if (IsValid(NewHeistPlayerState) && HeistPlayerId >= 1 && HeistPlayerId <= 4)
+	{
+		NewHeistPlayerState->InitializeVerificationIdentity(HeistPlayerId, PlayerColor);
+	}
+}
+
 void AHeistPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);

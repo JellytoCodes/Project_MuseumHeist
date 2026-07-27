@@ -46,6 +46,9 @@ class PROJECT_MUSEUMHEIST_API UHeistLobbyViewModel : public UMVVMViewModelBase
 	UFUNCTION(BlueprintCallable, Category = "Heist|Lobby")
 	void RequestSelectMap(FName RequestedMapId);
 
+	UFUNCTION(BlueprintCallable, Category = "Heist|Lobby")
+	void RequestRetrySessionOperation();
+
   private:
 	void HandlePlayerConnectionsChanged(int32 NewConnectedPlayerCount);
 	void HandlePlayerIdentityChanged(int32 PlayerId);
@@ -84,6 +87,8 @@ class PROJECT_MUSEUMHEIST_API UHeistLobbyViewModel : public UMVVMViewModelBase
 	const FText& GetAuthorityBlockerText() const;
 	const FText& GetSessionStatusText() const;
 	const FText& GetSessionErrorText() const;
+	const FText& GetSessionActionHintText() const;
+	const FText& GetInviteGuidanceText() const;
 	const FText& GetJoinCodeText() const;
 	const FText& GetSelectedMapText() const;
 	const FText& GetMapSelectionStatusText() const;
@@ -93,14 +98,19 @@ class PROJECT_MUSEUMHEIST_API UHeistLobbyViewModel : public UMVVMViewModelBase
 	const FText& GetPlayerSlot4Text() const;
 	ESlateVisibility GetAuthorityBlockerVisibility() const;
 	ESlateVisibility GetSessionErrorVisibility() const;
+	ESlateVisibility GetSessionActionHintVisibility() const;
+	ESlateVisibility GetInviteGuidanceVisibility() const;
 	ESlateVisibility GetJoinCodeVisibility() const;
 	bool CanRequestLeaveSession() const;
 	bool CanSelectMap() const;
+	bool CanRetrySessionOperation() const;
 
   private:
 	FText BuildPlayerSlotText(int32 SlotIndex) const;
 	FText ResolveOnlineSessionStatusText() const;
 	FText ResolveOnlineSessionFailureText() const;
+	FText ResolveSessionActionHintText() const;
+	FText ResolveInviteGuidanceText() const;
 	void RefreshPlayerSlots();
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
@@ -134,6 +144,12 @@ class PROJECT_MUSEUMHEIST_API UHeistLobbyViewModel : public UMVVMViewModelBase
 	FText SessionErrorText;
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
+	FText SessionActionHintText;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
+	FText InviteGuidanceText;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
 	FText JoinCodeText;
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
@@ -161,6 +177,12 @@ class PROJECT_MUSEUMHEIST_API UHeistLobbyViewModel : public UMVVMViewModelBase
 	ESlateVisibility SessionErrorVisibility = ESlateVisibility::Collapsed;
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
+	ESlateVisibility SessionActionHintVisibility = ESlateVisibility::Collapsed;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
+	ESlateVisibility InviteGuidanceVisibility = ESlateVisibility::Collapsed;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
 	ESlateVisibility JoinCodeVisibility = ESlateVisibility::Collapsed;
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
@@ -168,6 +190,9 @@ class PROJECT_MUSEUMHEIST_API UHeistLobbyViewModel : public UMVVMViewModelBase
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
 	bool bCanSelectMap = false;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
+	bool bCanRetrySessionOperation = false;
 
 #pragma endregion
 };

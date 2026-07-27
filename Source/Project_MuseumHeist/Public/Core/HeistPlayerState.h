@@ -90,6 +90,7 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerState : public APlayerState
 #pragma region Replication
 
   public:
+	virtual void CopyProperties(APlayerState* PlayerState) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
   private:

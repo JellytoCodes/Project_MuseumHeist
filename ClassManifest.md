@@ -1,12 +1,12 @@
 # Project_MuseumHeist — Class Manifest
 
-## Rev 7: Smoke / Trap Removal And W4 Runtime Contract
+## Rev 8: W5 Online Lobby And Session Runtime Contract
 
 Design Reference:
 
-- `AGENTS.md` Rev 8
+- `AGENTS.md` Rev 9
 - `Museum_Heist_GDD.docx` 최신 Revision
-- Notion W4 Task 기록
+- Notion W5 Task / Test 기록
 
 ---
 
@@ -116,11 +116,12 @@ FHeistPlayerContribution
 | `Core/HeistGameplayTags.*` / `FHeistGameplayTags` | Modify | 실제 활성 Gameplay Tag 등록 |
 | `Core/HeistLogChannels.*` | Keep | 로그 채널 |
 | `Core/HeistGameMode.*` / `AHeistGameMode` | Modify | Match, Objective, Data Validation, Alert, Result |
-| `Core/HeistGameState.*` / `AHeistGameState` | Modify | Replicated Objective / Alert / Team State, Server-only SoundPing Dispatch |
-| `Core/HeistPlayerState.*` / `AHeistPlayerState` | Modify | Contribution, Escape, Arrest, Carry Value |
-| `Core/HeistPlayerController.*` / `AHeistPlayerController` | Modify | Input Mode, Server RPC, Coin Use, Forgery Request |
-| `Core/HeistHUD.*` / `AHeistHUD` | Keep + Extend | HUD / Inventory / QuickSlot / Forgery / Result ViewModel 생성 |
-| `Core/HeistGameInstance.*` / `UHeistGameInstance` | Modify | Online Subsystem 선택, Host/Find/Join, 6자리 참가 코드, Lobby Travel |
+| `Core/HeistGameState.*` / `AHeistGameState` | Modify | Replicated Objective / Alert / Team State, Lobby Map Selection / Player Connection Revision, Server-only SoundPing Dispatch |
+| `Core/HeistPlayerState.*` / `AHeistPlayerState` | Modify | 1~4 Player Identity, Contribution, Escape, Arrest, Carry Value |
+| `Core/HeistPlayerController.*` / `AHeistPlayerController` | Modify | Input Mode, Server RPC, Session Leave / Map Selection Request, Coin Use, Forgery Request |
+| `Core/HeistHUD.*` / `AHeistHUD` | Keep + Extend | Title / Lobby / HUD / Inventory / QuickSlot / Forgery / Result Widget와 ViewModel 생성 |
+| `Core/HeistGameInstance.*` / `UHeistGameInstance` | Modify | Steam/NULL Subsystem 선택, Host/Find/Join/Leave, 6자리 참가 코드, Title/Lobby/Gameplay Travel, Map Selection, Session Timeout/Cancel/Retry와 Network/Travel Failure 수명주기 |
+| `Core/HeistGameUserSettings.*` / `UHeistGameUserSettings` | Add | Local FOV, Mouse Sensitivity, Master Volume, Resolution / Window Mode 저장, 검증 및 적용 |
 
 ## Authority
 
@@ -145,7 +146,31 @@ PlayerController
 
 HUD
 - Local Presentation
+
+GameInstance
+- Online Session State Machine
+- Title / Lobby / Gameplay Travel
+- Session Create / Find / Join / Leave
+
+GameUserSettings
+- Local-only Save / Load
+- FOV / Mouse Sensitivity / Master Volume Validation
+- Resolution / Window Mode Apply
 ```
+
+## Online Session Runtime Contract
+
+- Online Session 로컬 이름은 `HeistSession`이다.
+- Editor PIE는 `OnlineSubsystemNull`, 비 Editor와 Package는 기본 `OnlineSubsystemSteam`을 사용한다.
+- Title Menu는 Host, 6자리 Join Code 입력, Local Settings를 담당한다.
+- Session 성공 후 `/Game/Maps/LobbyMap`으로 이동한다.
+- Lobby는 Join Code, Player Slot, Map Selection, Ready / Start, Leave를 담당한다.
+- Host Quit 또는 Leave 완료 후 `/Game/Maps/TitleMenuMap`으로 복귀한다.
+- Player Id는 현재 접속자가 사용하지 않는 가장 낮은 `1~4` 번호를 서버가 할당한다.
+- PlayerState Identity 복제는 Lobby ViewModel의 Slot Snapshot 갱신을 발생시킨다.
+- Host Map Selection은 `M01`, `M02`, `M03`, `Random`이며 `AHeistGameState`가 복제한다.
+- Lobby → Gameplay → Lobby Travel의 Session / PlayerState 보존 검증은 `TASK-W5-006` 범위다.
+- Steam Package 2계정 최종 검증은 `TASK-W5-010` 범위다.
 
 ## GameplayTag Removal
 
@@ -819,8 +844,8 @@ Ping_NoiseTrap
 | `UHeistInteractionPromptWidget` | Modify | Interaction, Observation, Escape Progress |
 | `UHeistResultWidget` | Modify | Team Result / Contribution |
 | `UHeistForgeryWidget` | Keep | Owner-only Forgery UI, Local Canvas Reset, Drawing/Lockdown Remaining Time, Alert Warning |
-| `UHeistTitleMenuWidget` | Add | Host Session, Join Code 입력, Online Session 요청 상태와 오류 표시 |
-| `UHeistLobbyWidget` | Modify | Session 내부 Player Slot, 참가 코드 표시, Map 선택, Ready / Start, Leave |
+| `UHeistTitleMenuWidget` | Keep + Extend | Host Session, Join Code 입력, Create/Find/Join/Travel 상태와 오류, Cancel/Retry, Settings 표시 |
+| `UHeistLobbyWidget` | Modify | Session 내부 Player Slot, 참가 코드/Invite 안내, Map 선택, Travel 상태/Retry, Ready / Start, Leave |
 | `UHeistRareLootAlertWidget` | Remove 또는 Deferred Review | Rare Loot 범위 결정 전 신규 사용 금지 |
 
 ## ViewModels
@@ -831,8 +856,8 @@ Ping_NoiseTrap
 | `UHeistInventoryViewModel` | Keep | Inventory Snapshot |
 | `UHeistQuickSlotViewModel` | Modify | Coin QuickSlot Snapshot |
 | `UHeistResultViewModel` | Modify | Team Result / Contribution |
-| `UHeistTitleMenuViewModel` | Add | Online Session 상태, Host 요청, Join Code 요청, 진입 오류 |
-| `UHeistLobbyViewModel` | Modify | Lobby Player Snapshot, 참가 코드 표시, Map 선택, Ready / Start, Leave |
+| `UHeistTitleMenuViewModel` | Keep + Extend | Online Session 상태, Host/Join Code 요청, Timeout/Cancel/Retry와 진입 오류, Local Settings Snapshot / Apply / Defaults 요청 |
+| `UHeistLobbyViewModel` | Modify | Lobby Player/Identity Slot Snapshot, 참가 코드/Invite 안내, 복제 Map 선택, Travel Failure/Retry, Ready / Start, Leave |
 | `UHeistForgeryViewModel` | Keep | Forgery UI State, Alert Warning, Lockdown Countdown |
 
 ## Removed UI Contract
@@ -951,6 +976,21 @@ Parent: AHeistSculptureDisplayCaseActor
 /Game/Blueprints/World/Actors/Projectile/BP_HeistCoinProjectile
 Parent: AHeistCoinProjectile
 ```
+
+## Title Menu / Lobby
+
+```text
+/Game/Maps/TitleMenuMap
+/Game/Maps/LobbyMap
+/Game/Blueprints/UI/Title/WBP_TitleMenu
+Parent: UHeistTitleMenuWidget
+/Game/Blueprints/UI/Lobby/WBP_Lobby
+Parent: UHeistLobbyWidget
+```
+
+Title Menu와 Lobby Widget Blueprint는 Layout, Binding, Color, Animation만 소유한다.
+
+Session Rule, Player Slot Identity, Map Selection Authority와 Travel은 C++가 소유한다.
 
 ## Removed Blueprint Assets
 

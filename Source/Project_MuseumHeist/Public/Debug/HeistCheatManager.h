@@ -29,6 +29,23 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 
 #pragma endregion
 
+#pragma region SettingsDebug
+
+  public:
+	UFUNCTION(Exec)
+	void HeistSettingsHelp();
+
+	UFUNCTION(Exec)
+	void HeistSettingsDump();
+
+	UFUNCTION(Exec)
+	void HeistSettingsApply(float FieldOfView, float MouseSensitivity, float MasterVolume, int32 ResolutionWidth, int32 ResolutionHeight, FString WindowMode);
+
+	UFUNCTION(Exec)
+	void HeistSettingsReset();
+
+#pragma endregion
+
 #pragma region InventoryDebug
 
   public:
@@ -142,7 +159,25 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 	void HeistSessionLeave();
 
 	UFUNCTION(Exec)
+	void HeistSessionCancel();
+
+	UFUNCTION(Exec)
+	void HeistSessionCancelTest();
+
+	UFUNCTION(Exec)
+	void HeistSessionRetry();
+
+	UFUNCTION(Exec)
+	void HeistSessionFailure(FName FailureReason);
+
+	UFUNCTION(Exec)
 	void HeistSessionMap(const FString& MapId);
+
+	UFUNCTION(Exec)
+	void HeistSessionStart();
+
+	UFUNCTION(Exec)
+	void HeistSessionReturn();
 
 	UFUNCTION(Exec)
 	void HeistSessionDump();

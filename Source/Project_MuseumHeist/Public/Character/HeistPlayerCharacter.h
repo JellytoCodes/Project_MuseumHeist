@@ -87,6 +87,10 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter
 
 #pragma region Camera
 
+  public:
+	void SetFirstPersonFieldOfView(float NewFieldOfView);
+	float GetFirstPersonFieldOfView() const;
+
   private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Camera", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UCameraComponent> FirstPersonCamera;

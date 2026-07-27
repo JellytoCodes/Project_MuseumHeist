@@ -6,8 +6,11 @@
 #include "HeistTitleMenuWidget.generated.h"
 
 class UButton;
+class UComboBoxString;
 class UEditableTextBox;
+class USlider;
 class UTextBlock;
+class UWidget;
 
 UCLASS(Blueprintable)
 class PROJECT_MUSEUMHEIST_API UHeistTitleMenuWidget : public UHeistUserWidgetBase
@@ -50,13 +53,49 @@ class PROJECT_MUSEUMHEIST_API UHeistTitleMenuWidget : public UHeistUserWidgetBas
 	UFUNCTION()
 	void HandleJoinSessionClicked();
 
+	UFUNCTION()
+	void HandleCancelSessionClicked();
+
+	UFUNCTION()
+	void HandleRetrySessionClicked();
+
+	UFUNCTION()
+	void HandleSettingsClicked();
+
+	UFUNCTION()
+	void HandleSettingsCloseClicked();
+
+	UFUNCTION()
+	void HandleApplySettingsClicked();
+
+	UFUNCTION()
+	void HandleRestoreDefaultSettingsClicked();
+
+	UFUNCTION()
+	void HandleFieldOfViewChanged(float NewValue);
+
+	UFUNCTION()
+	void HandleMouseSensitivityChanged(float NewValue);
+
+	UFUNCTION()
+	void HandleMasterVolumeChanged(float NewValue);
+
 	void RefreshTitleMenuPresentation();
+	void PopulateSettingsOptions();
+	void RefreshSettingsControls();
+	void RefreshSettingsValueTexts();
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UButton> HostSessionButton;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UButton> JoinSessionButton;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UButton> CancelSessionButton;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UButton> RetrySessionButton;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UEditableTextBox> JoinCodeInput;
@@ -66,6 +105,53 @@ class PROJECT_MUSEUMHEIST_API UHeistTitleMenuWidget : public UHeistUserWidgetBas
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> SessionErrorText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> SessionActionHintText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UButton> SettingsButton;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UButton> SettingsCloseButton;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UButton> ApplySettingsButton;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UButton> RestoreDefaultSettingsButton;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UWidget> SettingsPanel;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<USlider> FOVSlider;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<USlider> MouseSensitivitySlider;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<USlider> MasterVolumeSlider;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UComboBoxString> ResolutionComboBox;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UComboBoxString> WindowModeComboBox;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> FOVValueText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> MouseSensitivityValueText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> MasterVolumeValueText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> SettingsStatusText;
+
+	TArray<FIntPoint> SupportedSettingsResolutions;
 
 #pragma endregion
 };

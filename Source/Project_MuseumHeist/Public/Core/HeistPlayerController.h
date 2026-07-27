@@ -98,10 +98,15 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
   public:
 	void HandleInventoryOpenStateChanged(bool bInventoryOpen);
 	void HandleArrestStateChanged(bool bArrested);
+	void ApplyLocalUserSettings();
+	float GetLocalMouseSensitivity() const;
 	EHeistInputMode GetLocalInputMode() const;
 	bool IsLocalInputMappingContextActive(EHeistInputMode InputMode) const;
 	int32 GetActiveHeistInputMappingContextCount() const;
 	bool IsLocalInputModeContractSatisfied() const;
+
+  private:
+	float LocalMouseSensitivity = 1.0f;
 
 #pragma endregion
 
@@ -122,6 +127,12 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Lobby")
 	void RequestSetLobbyMapSelection(FName RequestedMapId);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Lobby")
+	void RequestStartSelectedGameplayMap();
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Online")
+	void RequestReturnToLobby();
 
 	UFUNCTION(Client, Reliable)
 	void Client_NotifyOnlineSessionEnded(FName Reason);
@@ -164,6 +175,12 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
   private:
 	UFUNCTION(Server, Reliable)
 	void Server_RequestSetLobbyMapSelection(FName RequestedMapId);
+
+	UFUNCTION(Server, Reliable)
+	void Server_RequestStartSelectedGameplayMap();
+
+	UFUNCTION(Server, Reliable)
+	void Server_RequestReturnToLobby();
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestLootPickup(AHeistLootActor* TargetLootActor);

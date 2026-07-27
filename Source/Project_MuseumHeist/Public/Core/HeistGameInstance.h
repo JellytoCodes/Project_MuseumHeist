@@ -1,10 +1,16 @@
 #pragma once
 
+#include "Containers/Ticker.h"
 #include "CoreMinimal.h"
+#include "Engine/EngineBaseTypes.h"
 #include "Engine/GameInstance.h"
 #include "Interfaces/OnlineSessionInterface.h"
 
 #include "HeistGameInstance.generated.h"
+
+class AHeistGameState;
+class UNetDriver;
+class UWorld;
 
 DECLARE_MULTICAST_DELEGATE(FHeistOnlineSessionStateChanged);
 
@@ -40,8 +46,18 @@ class PROJECT_MUSEUMHEIST_API UHeistGameInstance : public UGameInstance
 	UFUNCTION(BlueprintCallable, Category = "Heist|Online")
 	bool RequestLeaveSession();
 
+	UFUNCTION(BlueprintCallable, Category = "Heist|Online")
+	bool RequestCancelOnlineSessionOperation();
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Online")
+	bool RequestRetryLastOnlineSessionOperation();
+
+	bool RequestStartSelectedGameplayMap();
+	bool RequestReturnToLobby();
 	bool RequestSetLobbyMapSelection(FName RequestedMapId);
 	void HandleHostSessionEnded(FName Reason);
+	void NotifySessionWorldReady();
+	void SynchronizeSessionMapSelection(const AHeistGameState* SourceGameState, FName NewSelectedMapId, bool bNewRandomSelection);
 
 	UFUNCTION(BlueprintPure, Category = "Heist|Online")
 	FName GetOnlineSessionState() const;
@@ -60,6 +76,30 @@ class PROJECT_MUSEUMHEIST_API UHeistGameInstance : public UGameInstance
 
 	UFUNCTION(BlueprintPure, Category = "Heist|Online")
 	bool IsOnlineSessionOperationPending() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Online")
+	bool CanCancelOnlineSessionOperation() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Online")
+	bool CanRetryLastOnlineSessionOperation() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Online")
+	bool IsOnlineSessionCancellationPending() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Online")
+	bool IsSessionTravelPending() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Online")
+	FName GetActiveOnlineSessionOperation() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Online")
+	FName GetPendingTravelDestination() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Online")
+	FName GetLastRetryRequest() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Online")
+	float GetOnlineSessionOperationTimeoutRemaining() const;
 
 	UFUNCTION(BlueprintPure, Category = "Heist|Online")
 	bool IsHostingOnlineSession() const;
@@ -83,10 +123,16 @@ class PROJECT_MUSEUMHEIST_API UHeistGameInstance : public UGameInstance
 	bool IsMapSelectionUpdatePending() const;
 
 	UFUNCTION(BlueprintPure, Category = "Heist|Online")
+	bool HasActiveNamedOnlineSession() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Online")
 	FString GetLobbyMapPath() const;
 
 	UFUNCTION(BlueprintPure, Category = "Heist|Online")
 	FString GetTitleMenuMapPath() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Online")
+	FString GetSelectedGameplayMapPath() const;
 
 	UFUNCTION(BlueprintPure, Category = "Heist|Online")
 	bool IsCurrentWorldTitleMenu() const;
@@ -94,13 +140,21 @@ class PROJECT_MUSEUMHEIST_API UHeistGameInstance : public UGameInstance
 	UFUNCTION(BlueprintPure, Category = "Heist|Online")
 	bool IsCurrentWorldLobby() const;
 
+	UFUNCTION(BlueprintPure, Category = "Heist|Online")
+	bool IsCurrentWorldSelectedGameplayMap() const;
+
 	FHeistOnlineSessionStateChanged& GetOnlineSessionStateChangedDelegate();
+
+	bool ForceOnlineSessionFailureForDebug(FName FailureReason);
+	bool RunOnlineSessionCancelTestForDebug();
 
   private:
 	bool RefreshOnlineSessionInterface();
 	bool BeginCreateSession();
-	bool BeginDestroySession(FName LeaveReason, bool bWasHosting);
+	bool BeginDestroySession(FName LeaveReason, bool bWasHosting, FName PreservedFailure = NAME_None);
 	bool TravelHostToLobby();
+	bool TravelHostToSelectedGameplayMap();
+	bool BeginHostServerTravel(const FString& MapPath, const TCHAR* TravelOption);
 	bool ReturnToTitleMenu(FName ReturnReason);
 	bool IsCurrentWorldMap(const FString& MapPath, const TCHAR* TravelOption) const;
 	bool ResolveRequestedMapSelection(FName RequestedMapId, FName& OutSelectedMapId, bool& bOutRandomSelection) const;
@@ -109,6 +163,14 @@ class PROJECT_MUSEUMHEIST_API UHeistGameInstance : public UGameInstance
 	void HandleHostLeaveGracePeriodElapsed();
 	void ResetOnlineSessionRuntimeState(FName PreservedFailure = NAME_None);
 	void ClearOnlineDelegates();
+	void BeginOnlineSessionOperation(FName OperationName, float TimeoutSeconds);
+	void CompleteOnlineSessionOperation();
+	void ClearOnlineSessionOperationTimeout();
+	bool HandleOnlineSessionOperationTimeout(float DeltaTime);
+	void HandleEngineNetworkFailure(UWorld* World, UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString);
+	void HandleEngineTravelFailure(UWorld* World, ETravelFailure::Type FailureType, const FString& ErrorString);
+	void HandleAbortedCreateSessionComplete(FName SessionName, bool bWasSuccessful, FName AbortFailure);
+	void HandleAbortedJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type JoinResult, FName AbortFailure);
 	void SetOnlineSessionState(FName NewState, FName FailureReason = NAME_None);
 	void FailOnlineSessionRequest(FName FailureReason);
 	void HandleCreateSessionComplete(FName SessionName, bool bWasSuccessful);
@@ -138,7 +200,22 @@ class PROJECT_MUSEUMHEIST_API UHeistGameInstance : public UGameInstance
 	FString LobbyMapPath = TEXT("/Game/Maps/LobbyMap");
 
 	UPROPERTY(Config)
+	FString M01GameplayMapPath = TEXT("/Game/Maps/M01_ClassicalPrototype");
+
+	UPROPERTY(Config)
+	FString M02GameplayMapPath = TEXT("/Game/Maps/M02_MoonlitPrototype");
+
+	UPROPERTY(Config)
+	FString M03GameplayMapPath = TEXT("/Game/Maps/M03_GlasshousePrototype");
+
+	UPROPERTY(Config)
 	float HostLeaveGraceSeconds = 1.0f;
+
+	UPROPERTY(Config)
+	float OnlineSessionOperationTimeoutSeconds = 20.0f;
+
+	UPROPERTY(Config)
+	float OnlineSessionTravelTimeoutSeconds = 30.0f;
 
 	IOnlineSessionPtr OnlineSessionInterface;
 	TSharedPtr<FOnlineSessionSearch> ActiveSessionSearch;
@@ -150,16 +227,26 @@ class PROJECT_MUSEUMHEIST_API UHeistGameInstance : public UGameInstance
 	FName OnlineSessionState = FName(TEXT("Idle"));
 	FName LastOnlineSessionFailure = NAME_None;
 	FName ActiveOnlineSubsystemName = NAME_None;
+	FName ActiveOnlineSessionOperation = NAME_None;
+	FName LastRetryRequest = NAME_None;
+	FName PendingTravelDestination = NAME_None;
+	FName PendingFailureAfterDestroy = NAME_None;
+	FName PendingOperationAbortFailure = NAME_None;
 	FString ActiveJoinCode;
 	FString PendingJoinCode;
+	FString LastRetryJoinCode;
 	FName PendingSelectedMapId = NAME_None;
 	bool bPendingRandomMapSelection = false;
 	bool bRandomMapSelection = false;
 	bool bMapSelectionUpdatePending = false;
+	bool bSessionTravelPending = false;
+	bool bOnlineSessionCancellationPending = false;
 	bool bLeaveWasHosting = false;
 	FName PendingLeaveReason = NAME_None;
 	FName DefaultSelectedMapId = FName(TEXT("M01"));
+	double OnlineSessionOperationDeadlineSeconds = 0.0;
 	FTimerHandle HostLeaveGraceTimerHandle;
+	FTSTicker::FDelegateHandle OnlineSessionOperationTimeoutHandle;
 	FHeistOnlineSessionStateChanged OnlineSessionStateChangedDelegate;
 
 #pragma endregion

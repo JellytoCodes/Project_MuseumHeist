@@ -1,11 +1,11 @@
 # Project_MuseumHeist — W2 Blueprint Shell Plan
 
-## Rev 4: First-Person PvE And Smoke / Trap Removal
+## Rev 5: W5 Title Menu And Lobby Addendum
 
 기준 문서:
 
-- `AGENTS.md` Rev 8
-- `ClassManifest.md` Rev 7
+- `AGENTS.md` Rev 9
+- `ClassManifest.md` Rev 8
 - `Museum_Heist_GDD.docx` 최신 Revision
 
 이 문서는 Blueprint, Widget Blueprint, DataTable 및 Map에서 구성해야 하는 **Asset Shell과 Presentation Contract**를 정리한다.
@@ -33,7 +33,8 @@ Project_MuseumHeist는 Unreal Engine 5.8 기반의 1~4인 온라인 협동 1인�
 현재 Core Loop:
 
 ```text
-Lobby
+Title Menu
+→ Online Lobby
 → Infiltration
 → Painting Observation
 → Full-Screen Forgery
@@ -1467,10 +1468,10 @@ WBP_HeistInventorySlot
 WBP_HeistInventoryItem
 WBP_HeistQuickSlot
 WBP_HeistForgery
-WBP_SoundPingMarker
 WBP_HeistPopupFeedback
 WBP_HeistResult
-WBP_HeistLobby
+WBP_TitleMenu
+WBP_Lobby
 ```
 
 삭제된 Blueprint Shell:
@@ -1483,3 +1484,56 @@ BP_HeistNoiseTrap
 ```
 
 이 문서의 Active 목록에 없는 Gameplay Blueprint를 신규로 생성하기 전에는 `AGENTS.md`, `ClassManifest.md`, 활성 Task를 먼저 확인한다.
+
+---
+
+# 30. W5 Title Menu And Lobby Addendum
+
+## Active Assets
+
+```text
+/Game/Maps/TitleMenuMap
+/Game/Maps/LobbyMap
+/Game/Blueprints/UI/Title/WBP_TitleMenu
+/Game/Blueprints/UI/Lobby/WBP_Lobby
+```
+
+## Title Menu Contract
+
+- Host Session 버튼
+- 6자리 Join Code 입력
+- Join Session 버튼
+- Create / Find / Join / Travel 진행 상태와 Timeout / Cancel / Retry 오류 표시
+- Cancel Session / Retry Session 버튼
+- Settings 열기 / 닫기 버튼
+- `FOV 70~110`, `Mouse Sensitivity 0.10~3.00`, `Master Volume 0.00~1.00` Slider와 독립 Value Text
+- 지원 Resolution 선택, `Fullscreen / Borderless / Windowed` Window Mode 선택
+- Apply Settings / Restore Defaults 버튼과 저장 결과 Text
+- Settings 값 저장과 적용 요청은 `UHeistTitleMenuViewModel`을 통해 `UHeistGameUserSettings`로 전달
+- Gameplay HUD, Player Slot, Map Selection을 배치하지 않음
+
+## Lobby Contract
+
+- Join Code 표시
+- Join Code 공유와 Steam Invite 안내
+- `SLOT 1~4` Player / Empty 표시
+- Host 전용 `M01 / M02 / M03 / Random` 선택
+- Travel 상태, 오류와 Retry 표시
+- Ready / Start Presentation
+- Leave 버튼
+- 모든 PlayerState Identity 변경과 접속자 추가·제거 시 Slot Snapshot 갱신
+
+## Runtime Ownership
+
+- Session Create / Find / Join / Leave와 Travel은 `UHeistGameInstance`가 소유한다.
+- Player Id는 서버가 현재 비어 있는 가장 낮은 `1~4` Slot을 할당한다.
+- Host Map Selection은 `AHeistGameState`가 복제한다.
+- Widget Blueprint는 Layout, Binding, Color, Animation만 담당한다.
+- `WBP_SoundPingMarker`와 Player-facing SoundPing Layer는 Active Asset이 아니다.
+
+## Current Handoff
+
+- `TASK-W5-001~005` 완료
+- `TEST-W5-001`, `TEST-W5-002` PASS
+- 다음 작업: `TASK-W5-006 Lobby → Map Travel → Return Travel`
+- Steam Development Package 2계정 검증: `TASK-W5-010`

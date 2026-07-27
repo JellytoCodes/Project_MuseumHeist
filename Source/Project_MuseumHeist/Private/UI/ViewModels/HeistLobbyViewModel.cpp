@@ -95,22 +95,30 @@ void UHeistLobbyViewModel::RefreshLobbyData()
 
 	const FText NewSessionStatusText = ResolveOnlineSessionStatusText();
 	const FText NewSessionErrorText = ResolveOnlineSessionFailureText();
+	const FText NewSessionActionHintText = ResolveSessionActionHintText();
+	const FText NewInviteGuidanceText = ResolveInviteGuidanceText();
 	const FString ActiveCode = IsValid(GameInstance) ? GameInstance->GetActiveJoinCode() : FString();
 	const bool bHasJoinCode = !ActiveCode.IsEmpty();
 	const bool bOperationPending = IsValid(GameInstance) && GameInstance->IsOnlineSessionOperationPending();
-	const bool bSessionActive = IsValid(GameInstance) && (GameInstance->IsHostingOnlineSession() || GameInstance->IsJoinedOnlineSession());
+	const bool bSessionActive = IsValid(GameInstance)
+		&& (GameInstance->IsHostingOnlineSession() || GameInstance->IsJoinedOnlineSession() || GameInstance->HasActiveNamedOnlineSession());
 	const bool bLocalHost = IsValid(PlayerController) && PlayerController->HasAuthority() && IsValid(GameInstance) && GameInstance->IsHostingOnlineSession();
 	const FName SelectedMapId = IsValid(GameState) ? GameState->GetSelectedLobbyMapId() : (IsValid(GameInstance) ? GameInstance->GetSelectedMapId() : NAME_None);
 	const bool bRandomSelection = IsValid(GameState) ? GameState->IsRandomLobbyMapSelection() : (IsValid(GameInstance) && GameInstance->IsRandomMapSelection());
 	const bool bMapSelectionPending = IsValid(GameInstance) && GameInstance->IsMapSelectionUpdatePending();
 	UE_MVVM_SET_PROPERTY_VALUE(SessionStatusText, NewSessionStatusText);
 	UE_MVVM_SET_PROPERTY_VALUE(SessionErrorText, NewSessionErrorText);
+	UE_MVVM_SET_PROPERTY_VALUE(SessionActionHintText, NewSessionActionHintText);
+	UE_MVVM_SET_PROPERTY_VALUE(InviteGuidanceText, NewInviteGuidanceText);
 	UE_MVVM_SET_PROPERTY_VALUE(JoinCodeText,
 							   bHasJoinCode ? FText::Format(NSLOCTEXT("HeistLobby", "JoinCodeFormat", "JOIN CODE  {0}"), FText::FromString(ActiveCode)) : FText::GetEmpty());
 	UE_MVVM_SET_PROPERTY_VALUE(SessionErrorVisibility, NewSessionErrorText.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+	UE_MVVM_SET_PROPERTY_VALUE(SessionActionHintVisibility, NewSessionActionHintText.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+	UE_MVVM_SET_PROPERTY_VALUE(InviteGuidanceVisibility, NewInviteGuidanceText.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
 	UE_MVVM_SET_PROPERTY_VALUE(JoinCodeVisibility, bHasJoinCode ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	UE_MVVM_SET_PROPERTY_VALUE(bCanRequestLeaveSession, IsValid(GameInstance) && !bOperationPending && bSessionActive);
 	UE_MVVM_SET_PROPERTY_VALUE(bCanSelectMap, bLocalHost && !bOperationPending && IsValid(GameState) && GameState->GetMatchPhase() == EHeistMatchPhase::Lobby);
+	UE_MVVM_SET_PROPERTY_VALUE(bCanRetrySessionOperation, IsValid(GameInstance) && GameInstance->CanRetryLastOnlineSessionOperation());
 	UE_MVVM_SET_PROPERTY_VALUE(SelectedMapText,
 							   bRandomSelection
 								   ? FText::Format(NSLOCTEXT("HeistLobby", "RandomMapFormat", "MAP  RANDOM → {0}"), FText::FromName(SelectedMapId))
@@ -201,6 +209,14 @@ void UHeistLobbyViewModel::RequestSelectMap(const FName RequestedMapId)
 	}
 }
 
+void UHeistLobbyViewModel::RequestRetrySessionOperation()
+{
+	if (IsValid(GameInstance) && bCanRetrySessionOperation)
+	{
+		GameInstance->RequestRetryLastOnlineSessionOperation();
+	}
+}
+
 #pragma endregion
 
 #pragma region LobbyData
@@ -255,6 +271,16 @@ const FText& UHeistLobbyViewModel::GetSessionErrorText() const
 	return SessionErrorText;
 }
 
+const FText& UHeistLobbyViewModel::GetSessionActionHintText() const
+{
+	return SessionActionHintText;
+}
+
+const FText& UHeistLobbyViewModel::GetInviteGuidanceText() const
+{
+	return InviteGuidanceText;
+}
+
 const FText& UHeistLobbyViewModel::GetJoinCodeText() const
 {
 	return JoinCodeText;
@@ -300,6 +326,16 @@ ESlateVisibility UHeistLobbyViewModel::GetSessionErrorVisibility() const
 	return SessionErrorVisibility;
 }
 
+ESlateVisibility UHeistLobbyViewModel::GetSessionActionHintVisibility() const
+{
+	return SessionActionHintVisibility;
+}
+
+ESlateVisibility UHeistLobbyViewModel::GetInviteGuidanceVisibility() const
+{
+	return InviteGuidanceVisibility;
+}
+
 ESlateVisibility UHeistLobbyViewModel::GetJoinCodeVisibility() const
 {
 	return JoinCodeVisibility;
@@ -315,11 +351,30 @@ bool UHeistLobbyViewModel::CanSelectMap() const
 	return bCanSelectMap;
 }
 
+bool UHeistLobbyViewModel::CanRetrySessionOperation() const
+{
+	return bCanRetrySessionOperation;
+}
+
 FText UHeistLobbyViewModel::ResolveOnlineSessionStatusText() const
 {
 	if (!IsValid(GameInstance))
 	{
 		return NSLOCTEXT("HeistLobby", "OnlineUnavailable", "ONLINE SESSION IS UNAVAILABLE.");
+	}
+
+	if (GameInstance->IsSessionTravelPending())
+	{
+		const FName Destination = GameInstance->GetPendingTravelDestination();
+		if (Destination == FName(TEXT("Gameplay")))
+		{
+			return NSLOCTEXT("HeistLobby", "TravellingToMuseum", "TRAVELLING TO THE SELECTED MUSEUM...");
+		}
+		if (Destination == FName(TEXT("Lobby")))
+		{
+			return NSLOCTEXT("HeistLobby", "TravellingToLobby", "RETURNING THE CREW TO THE ONLINE LOBBY...");
+		}
+		return NSLOCTEXT("HeistLobby", "TravellingToHost", "CONNECTING TO THE HOST'S SESSION...");
 	}
 
 	const FName State = GameInstance->GetOnlineSessionState();
@@ -382,6 +437,23 @@ FText UHeistLobbyViewModel::ResolveOnlineSessionFailureText() const
 	{
 		return NSLOCTEXT("HeistLobby", "AddressFailed", "THE HOST ADDRESS COULD NOT BE RESOLVED.");
 	}
+	if (Failure == FName(TEXT("TravelTimedOut")))
+	{
+		return NSLOCTEXT("HeistLobby", "TravelTimedOut", "TRAVEL TO THE MUSEUM TIMED OUT. SELECT RETRY TO TRY AGAIN.");
+	}
+	if (Failure == FName(TEXT("TravelFailure")) || Failure == FName(TEXT("GameplayTravelRejected"))
+		|| Failure == FName(TEXT("LobbyReturnTravelRejected")) || Failure == FName(TEXT("LobbyTravelRejected")))
+	{
+		return NSLOCTEXT("HeistLobby", "TravelFailure", "THE CREW COULD NOT TRAVEL TO THE REQUESTED MAP. SELECT RETRY TO TRY AGAIN.");
+	}
+	if (Failure == FName(TEXT("NetworkFailure")) || Failure == FName(TEXT("ConnectionLost")))
+	{
+		return NSLOCTEXT("HeistLobby", "NetworkFailure", "THE ONLINE CONNECTION WAS LOST. RETURN TO THE TITLE MENU AND RETRY.");
+	}
+	if (Failure == FName(TEXT("OperationCancelled")))
+	{
+		return NSLOCTEXT("HeistLobby", "OperationCancelled", "THE SESSION REQUEST WAS CANCELLED.");
+	}
 	if (Failure == FName(TEXT("OnlineSessionUnavailable")))
 	{
 		return NSLOCTEXT("HeistLobby", "SubsystemUnavailable", "THE ONLINE SERVICE IS NOT AVAILABLE.");
@@ -415,7 +487,44 @@ FText UHeistLobbyViewModel::ResolveOnlineSessionFailureText() const
 	{
 		return NSLOCTEXT("HeistLobby", "LobbyMapSelectionLocked", "THE MUSEUM MAP CAN ONLY BE CHANGED IN THE LOBBY.");
 	}
-	return FText::Format(NSLOCTEXT("HeistLobby", "SessionErrorFormat", "SESSION ERROR: {0}"), FText::FromName(Failure));
+	if (Failure == FName(TEXT("MapUpdateTimedOut")))
+	{
+		return NSLOCTEXT("HeistLobby", "MapUpdateTimedOut", "THE MUSEUM MAP UPDATE TIMED OUT. SELECT THE MAP AGAIN.");
+	}
+	return NSLOCTEXT("HeistLobby", "GenericSessionFailure", "THE ONLINE SESSION COULD NOT CONTINUE. RETRY THE REQUEST OR RETURN TO THE TITLE MENU.");
+}
+
+FText UHeistLobbyViewModel::ResolveSessionActionHintText() const
+{
+	if (!IsValid(GameInstance))
+	{
+		return FText::GetEmpty();
+	}
+	if (GameInstance->CanRetryLastOnlineSessionOperation())
+	{
+		return NSLOCTEXT("HeistLobby", "RetryAvailableHint", "SELECT RETRY TO REPEAT THE FAILED TRAVEL REQUEST.");
+	}
+	if (GameInstance->IsOnlineSessionOperationPending())
+	{
+		return NSLOCTEXT("HeistLobby", "OperationPendingHint", "SESSION CONTROLS ARE LOCKED UNTIL THIS REQUEST FINISHES OR TIMES OUT.");
+	}
+	return FText::GetEmpty();
+}
+
+FText UHeistLobbyViewModel::ResolveInviteGuidanceText() const
+{
+	if (!IsValid(GameInstance) || GameInstance->GetActiveJoinCode().IsEmpty())
+	{
+		return FText::GetEmpty();
+	}
+
+	if (GameInstance->IsHostingOnlineSession())
+	{
+		return GameInstance->GetActiveOnlineSubsystemName() == FName(TEXT("STEAM"))
+				   ? NSLOCTEXT("HeistLobby", "SteamHostInviteGuidance", "SHARE THE 6-CHARACTER JOIN CODE, OR SEND A STEAM INVITE FROM THE STEAM OVERLAY.")
+				   : NSLOCTEXT("HeistLobby", "HostInviteGuidance", "SHARE THE 6-CHARACTER JOIN CODE. STEAM INVITES ARE AVAILABLE IN A STEAM BUILD.");
+	}
+	return NSLOCTEXT("HeistLobby", "ClientInviteGuidance", "SHARE THE 6-CHARACTER JOIN CODE WITH THE REST OF THE CREW.");
 }
 
 FText UHeistLobbyViewModel::BuildPlayerSlotText(const int32 SlotIndex) const

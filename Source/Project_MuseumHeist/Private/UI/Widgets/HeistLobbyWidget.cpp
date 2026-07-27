@@ -40,6 +40,10 @@ void UHeistLobbyWidget::NativeConstruct()
 	{
 		MapRandomButton->OnClicked.AddUniqueDynamic(this, &UHeistLobbyWidget::HandleMapRandomClicked);
 	}
+	if (IsValid(RetrySessionButton))
+	{
+		RetrySessionButton->OnClicked.AddUniqueDynamic(this, &UHeistLobbyWidget::HandleRetrySessionClicked);
+	}
 }
 
 void UHeistLobbyWidget::NativeDestruct()
@@ -67,6 +71,10 @@ void UHeistLobbyWidget::NativeDestruct()
 	if (IsValid(MapRandomButton))
 	{
 		MapRandomButton->OnClicked.RemoveDynamic(this, &UHeistLobbyWidget::HandleMapRandomClicked);
+	}
+	if (IsValid(RetrySessionButton))
+	{
+		RetrySessionButton->OnClicked.RemoveDynamic(this, &UHeistLobbyWidget::HandleRetrySessionClicked);
 	}
 
 	Super::NativeDestruct();
@@ -149,6 +157,14 @@ void UHeistLobbyWidget::HandleMapRandomClicked()
 	}
 }
 
+void UHeistLobbyWidget::HandleRetrySessionClicked()
+{
+	if (IsValid(LobbyViewModel))
+	{
+		LobbyViewModel->RequestRetrySessionOperation();
+	}
+}
+
 void UHeistLobbyWidget::RefreshLobbyPresentation()
 {
 	if (!IsValid(LobbyViewModel))
@@ -177,6 +193,12 @@ void UHeistLobbyWidget::RefreshLobbyPresentation()
 	{
 		MapRandomButton->SetIsEnabled(bCanSelectMap);
 	}
+	if (IsValid(RetrySessionButton))
+	{
+		const bool bCanRetrySessionOperation = LobbyViewModel->CanRetrySessionOperation();
+		RetrySessionButton->SetIsEnabled(bCanRetrySessionOperation);
+		RetrySessionButton->SetVisibility(bCanRetrySessionOperation ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
 	if (IsValid(JoinCodeText))
 	{
 		JoinCodeText->SetText(LobbyViewModel->GetJoinCodeText());
@@ -190,6 +212,16 @@ void UHeistLobbyWidget::RefreshLobbyPresentation()
 	{
 		SessionErrorText->SetText(LobbyViewModel->GetSessionErrorText());
 		SessionErrorText->SetVisibility(LobbyViewModel->GetSessionErrorVisibility());
+	}
+	if (IsValid(SessionActionHintText))
+	{
+		SessionActionHintText->SetText(LobbyViewModel->GetSessionActionHintText());
+		SessionActionHintText->SetVisibility(LobbyViewModel->GetSessionActionHintVisibility());
+	}
+	if (IsValid(InviteGuidanceText))
+	{
+		InviteGuidanceText->SetText(LobbyViewModel->GetInviteGuidanceText());
+		InviteGuidanceText->SetVisibility(LobbyViewModel->GetInviteGuidanceVisibility());
 	}
 	if (IsValid(SelectedMapText))
 	{
