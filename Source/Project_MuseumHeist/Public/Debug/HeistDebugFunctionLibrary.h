@@ -202,6 +202,9 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 	static void DebugOnlineSessionStart(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Lobby", meta = (DevelopmentOnly))
+	static void DebugOnlineSessionComplete(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Lobby", meta = (DevelopmentOnly))
 	static void DebugOnlineSessionReturn(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Lobby", meta = (DevelopmentOnly))
@@ -373,6 +376,14 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
 	static void DebugForgeryUIPreview(APlayerController* PlayerController, const FString& State);
+
+#pragma endregion
+
+#pragma region BuildDebug
+
+  public:
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Build", meta = (DevelopmentOnly))
+	static void DebugBuildDump(APlayerController* PlayerController);
 
 #pragma endregion
 

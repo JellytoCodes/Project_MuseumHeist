@@ -675,6 +675,20 @@ UDataTable* AHeistGameMode::GetForgeryTemplateDataTable() const
 	return ResolvedBalanceData->ForgeryTemplateDataTable.LoadSynchronous();
 }
 
+UDataTable* AHeistGameMode::GetObjectAssemblyPartDataTable() const
+{
+	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset) ? GameBalanceDataAsset.Get() : GetDefault<UHeistGameBalanceDataAsset>();
+
+	return ResolvedBalanceData->ObjectAssemblyPartDataTable.LoadSynchronous();
+}
+
+UDataTable* AHeistGameMode::GetObjectAssemblyTemplateDataTable() const
+{
+	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset) ? GameBalanceDataAsset.Get() : GetDefault<UHeistGameBalanceDataAsset>();
+
+	return ResolvedBalanceData->ObjectAssemblyTemplateDataTable.LoadSynchronous();
+}
+
 bool AHeistGameMode::TryGetItemDefinition(const FName ItemId, FHeistItemDataRow& OutItemDefinition) const
 {
 	OutItemDefinition = FHeistItemDataRow();
@@ -772,6 +786,63 @@ bool AHeistGameMode::TryGetForgeryTemplateDefinition(const FName TemplateId, FHe
 		TemplateDefinition->ObservationDuration < 0.0f || TemplateDefinition->ForgeryDuration <= 0.0f || TemplateDefinition->StrokeLimit <= 0 || TemplateDefinition->BrushSize <= 0.0f)
 	{
 		UE_LOG(LogHeist, Error, TEXT("Forgery template lookup rejected: TemplateId=%s Reason=MissingOrInvalidDefinition"), *TemplateId.ToString());
+		return false;
+	}
+
+	OutTemplateDefinition = *TemplateDefinition;
+	return true;
+}
+
+bool AHeistGameMode::TryGetObjectAssemblyPartDefinition(const FName PartId, FHeistObjectAssemblyPartRow& OutPartDefinition) const
+{
+	OutPartDefinition = FHeistObjectAssemblyPartRow();
+	if (PartId.IsNone())
+	{
+		return false;
+	}
+
+	const UDataTable* PartDataTable = GetObjectAssemblyPartDataTable();
+	if (!IsValid(PartDataTable) || PartDataTable->GetRowStruct() != FHeistObjectAssemblyPartRow::StaticStruct())
+	{
+		return false;
+	}
+
+	const FHeistObjectAssemblyPartRow* PartDefinition =
+		PartDataTable->FindRow<FHeistObjectAssemblyPartRow>(PartId, TEXT("AHeistGameMode::TryGetObjectAssemblyPartDefinition"), false);
+	if (PartDefinition == nullptr || PartDefinition->PartId != PartId || PartDefinition->FamilyId.IsNone() || PartDefinition->StaticMesh.IsNull() ||
+		PartDefinition->CompatibleSocketIds.IsEmpty() || PartDefinition->AllowedOrientationSteps.IsEmpty())
+	{
+		return false;
+	}
+
+	OutPartDefinition = *PartDefinition;
+	return true;
+}
+
+bool AHeistGameMode::TryGetObjectAssemblyTemplateDefinition(const FName TemplateId, FHeistObjectAssemblyTemplateRow& OutTemplateDefinition) const
+{
+	OutTemplateDefinition = FHeistObjectAssemblyTemplateRow();
+	if (TemplateId.IsNone())
+	{
+		return false;
+	}
+
+	const UDataTable* TemplateDataTable = GetObjectAssemblyTemplateDataTable();
+	if (!IsValid(TemplateDataTable) || TemplateDataTable->GetRowStruct() != FHeistObjectAssemblyTemplateRow::StaticStruct())
+	{
+		return false;
+	}
+
+	const FHeistObjectAssemblyTemplateRow* TemplateDefinition =
+		TemplateDataTable->FindRow<FHeistObjectAssemblyTemplateRow>(TemplateId, TEXT("AHeistGameMode::TryGetObjectAssemblyTemplateDefinition"), false);
+	const float ScoreWeightTotal = TemplateDefinition == nullptr
+									   ? 0.0f
+									   : TemplateDefinition->RequiredPartWeight + TemplateDefinition->SocketTopologyWeight + TemplateDefinition->OrientationWeight +
+											 TemplateDefinition->MaterialWeight;
+	if (TemplateDefinition == nullptr || TemplateDefinition->TemplateId != TemplateId || TemplateDefinition->FamilyId.IsNone() || TemplateDefinition->DisplayName.IsEmpty() ||
+		TemplateDefinition->CorePartId.IsNone() || !FMath::IsWithinInclusive(TemplateDefinition->RequiredParts.Num(), 3, 5) ||
+		!FMath::IsFinite(TemplateDefinition->AssemblyDuration) || TemplateDefinition->AssemblyDuration <= 0.0f || !FMath::IsFinite(ScoreWeightTotal) || ScoreWeightTotal <= 0.0f)
+	{
 		return false;
 	}
 

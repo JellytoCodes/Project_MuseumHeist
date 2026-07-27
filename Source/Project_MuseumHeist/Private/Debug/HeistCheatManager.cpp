@@ -22,6 +22,17 @@ void UHeistCheatManager::HeistHUDDump()
 
 #pragma endregion
 
+#pragma region BuildDebug
+
+void UHeistCheatManager::HeistBuildDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugBuildDump(GetOuterAPlayerController());
+#endif
+}
+
+#pragma endregion
+
 #pragma region SettingsDebug
 
 void UHeistCheatManager::HeistSettingsHelp()
@@ -752,6 +763,13 @@ void UHeistCheatManager::HeistSessionStart()
 {
 #if !UE_BUILD_SHIPPING
 	UHeistDebugFunctionLibrary::DebugOnlineSessionStart(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistSessionComplete()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugOnlineSessionComplete(GetOuterAPlayerController());
 #endif
 }
 

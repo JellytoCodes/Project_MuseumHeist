@@ -1,0 +1,36 @@
+[
+  {
+    "Name": "Template_Sculpture_Prototype_01",
+    "TemplateId": "Template_Sculpture_Prototype_01",
+    "FamilyId": "Sculpture",
+    "DisplayName": "Prototype Figure",
+    "CorePartId": "Part_Sculpture_Prototype_Core",
+    "RequiredParts": [
+      {
+        "PartId": "Part_Sculpture_Prototype_Head",
+        "SocketId": "Head",
+        "QuantizedOrientation": 0,
+        "MaterialId": "Material_Bronze"
+      },
+      {
+        "PartId": "Part_Sculpture_Prototype_ArmLeft",
+        "SocketId": "Shoulder_L",
+        "QuantizedOrientation": 4,
+        "MaterialId": "Material_Bronze"
+      },
+      {
+        "PartId": "Part_Sculpture_Prototype_ArmRight",
+        "SocketId": "Shoulder_R",
+        "QuantizedOrientation": 12,
+        "MaterialId": "Material_Bronze"
+      }
+    ],
+    "DecoyPartIds": [],
+    "AssemblyDuration": 60.0,
+    "RequiredPartWeight": 0.35,
+    "SocketTopologyWeight": 0.3,
+    "OrientationWeight": 0.25,
+    "MaterialWeight": 0.1,
+    "ExtraPartScoreCap": 50.0
+  }
+]

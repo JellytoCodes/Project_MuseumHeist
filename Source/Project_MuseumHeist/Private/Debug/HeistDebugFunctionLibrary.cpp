@@ -32,7 +32,12 @@
 #include "GameFramework/PlayerState.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameplayTagContainer.h"
+#include "HAL/PlatformProperties.h"
+#include "HAL/PlatformProcess.h"
 #include "Inventory/HeistInventoryTypes.h"
+#include "Misc/App.h"
+#include "Misc/ConfigCacheIni.h"
+#include "Misc/Paths.h"
 #include "World/Actors/Escape/HeistVentActor.h"
 #include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 #include "World/AI/HeistGuardWaypoint.h"
@@ -375,6 +380,49 @@ bool TryParseMatchPhase(const FString& PhaseName, EHeistMatchPhase& OutPhase)
 
 	return false;
 }
+}
+
+#pragma endregion
+
+#pragma region BuildDebug
+
+void UHeistDebugFunctionLibrary::DebugBuildDump(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	const UHeistGameInstance* HeistGameInstance = IsValid(PlayerController) ? Cast<UHeistGameInstance>(PlayerController->GetGameInstance()) : nullptr;
+	const UWorld* World = IsValid(PlayerController) ? PlayerController->GetWorld() : nullptr;
+	FString ProjectVersion;
+	if (GConfig != nullptr)
+	{
+		GConfig->GetString(TEXT("/Script/EngineSettings.GeneralProjectSettings"), TEXT("ProjectVersion"), ProjectVersion, GGameIni);
+	}
+	const FString PlatformName(ANSI_TO_TCHAR(FPlatformProperties::PlatformName()));
+#if UE_BUILD_TEST
+	const TCHAR* BuildConfiguration = TEXT("Test");
+#elif UE_BUILD_DEVELOPMENT
+	const TCHAR* BuildConfiguration = TEXT("Development");
+#elif UE_BUILD_DEBUG
+	const TCHAR* BuildConfiguration = TEXT("Debug");
+#else
+	const TCHAR* BuildConfiguration = TEXT("Unknown");
+#endif
+	const bool bPackagedRuntime = FPlatformProperties::RequiresCookedData();
+	const bool bVersionValid = !ProjectVersion.IsEmpty();
+	const bool bOnlineSubsystemValid = IsValid(HeistGameInstance) && !HeistGameInstance->GetActiveOnlineSubsystemName().IsNone();
+	const bool bResult = bPackagedRuntime && bVersionValid && bOnlineSubsystemValid;
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Build dump: Project=%s Version=%s Configuration=%s Platform=%s Packaged=%s BaseDir=%s Map=%s Subsystem=%s SessionBuild=%d Result=%s"),
+			FApp::GetProjectName(), ProjectVersion.IsEmpty() ? TEXT("None") : *ProjectVersion, BuildConfiguration, *PlatformName,
+			bPackagedRuntime ? TEXT("true") : TEXT("false"), *FPaths::ConvertRelativePathToFull(FPlatformProcess::BaseDir()),
+			IsValid(World) ? *World->GetMapName() : TEXT("None"),
+			IsValid(HeistGameInstance) ? *HeistGameInstance->GetActiveOnlineSubsystemName().ToString() : TEXT("None"),
+			IsValid(HeistGameInstance) ? HeistGameInstance->GetSessionBuildUniqueId() : 0, bResult ? TEXT("PASS") : TEXT("FAIL")),
+		bResult ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
+#endif
 }
 
 #pragma endregion
@@ -4326,7 +4374,7 @@ void UHeistDebugFunctionLibrary::DebugLobbyHelp(APlayerController* PlayerControl
 			TEXT("Lobby debug commands: HeistLobbyShow | HeistLobbyHide | HeistLobbyDump | HeistSessionHost | HeistSessionJoin <6-character code> | HeistSessionLeave | "
 				 "HeistSessionCancel | HeistSessionCancelTest | HeistSessionRetry | "
 				 "HeistSessionFailure <CreateTimedOut|FindTimedOut|JoinTimedOut|TravelTimedOut|OperationCancelled|NetworkFailure|TravelFailure> | "
-				 "HeistSessionMap <M01|M02|M03|Random> | HeistSessionStart | HeistSessionReturn | HeistSessionDump"),
+				 "HeistSessionMap <M01|M02|M03|Random> | HeistSessionStart | HeistSessionComplete | HeistSessionReturn | HeistSessionDump"),
 			EHeistDebugLevel::Info, true, 8.0f);
 #endif
 }
@@ -4602,6 +4650,89 @@ void UHeistDebugFunctionLibrary::DebugOnlineSessionStart(APlayerController* Play
 #endif
 }
 
+void UHeistDebugFunctionLibrary::DebugOnlineSessionComplete(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	UHeistGameInstance* HeistGameInstance = IsValid(HeistPlayerController) ? Cast<UHeistGameInstance>(HeistPlayerController->GetGameInstance()) : nullptr;
+	UWorld* World = IsValid(HeistPlayerController) ? HeistPlayerController->GetWorld() : nullptr;
+	AHeistGameState* HeistGameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
+	FName RejectReason = NAME_None;
+
+	if (!IsValid(HeistPlayerController) || !IsValid(HeistGameInstance) || !IsValid(World) || !IsValid(HeistGameState))
+	{
+		RejectReason = FName(TEXT("MissingFramework"));
+	}
+	else if (World->GetNetMode() == NM_Client)
+	{
+		RejectReason = FName(TEXT("NotHost"));
+	}
+	else if (!HeistGameInstance->IsHostingOnlineSession() || !HeistGameInstance->HasActiveNamedOnlineSession())
+	{
+		RejectReason = FName(TEXT("SessionNotHosting"));
+	}
+	else if (!HeistGameInstance->IsCurrentWorldSelectedGameplayMap() || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame)
+	{
+		RejectReason = FName(TEXT("GameplayNotReady"));
+	}
+
+	int32 ValidPlayerCount = 0;
+	if (RejectReason.IsNone())
+	{
+		for (const APlayerState* PlayerState : HeistGameState->PlayerArray)
+		{
+			ValidPlayerCount += IsValid(Cast<AHeistPlayerState>(PlayerState)) ? 1 : 0;
+		}
+		if (ValidPlayerCount < 2)
+		{
+			RejectReason = FName(TEXT("TwoPlayersRequired"));
+		}
+	}
+
+	if (!RejectReason.IsNone())
+	{
+		Message(
+			PlayerController,
+			FString::Printf(
+				TEXT("Online session completion: Subsystem=%s State=%s Players=%d Phase=%s NamedSession=%s Authority=%s Failure=%s Result=REJECTED"),
+				IsValid(HeistGameInstance) ? *HeistGameInstance->GetActiveOnlineSubsystemName().ToString() : TEXT("None"),
+				IsValid(HeistGameInstance) ? *HeistGameInstance->GetOnlineSessionState().ToString() : TEXT("None"), ValidPlayerCount,
+				IsValid(HeistGameState) ? *UEnum::GetValueAsString(HeistGameState->GetMatchPhase()) : TEXT("MissingGameState"),
+				IsValid(HeistGameInstance) && HeistGameInstance->HasActiveNamedOnlineSession() ? TEXT("true") : TEXT("false"),
+				IsValid(World) && World->GetNetMode() != NM_Client ? TEXT("true") : TEXT("false"), *RejectReason.ToString()),
+			EHeistDebugLevel::Warning, true, 10.0f);
+		return;
+	}
+
+	int32 EscapedPlayerCount = 0;
+	for (APlayerState* PlayerState : HeistGameState->PlayerArray)
+	{
+		AHeistPlayerState* HeistPlayerState = Cast<AHeistPlayerState>(PlayerState);
+		if (IsValid(HeistPlayerState) && (HeistPlayerState->IsEscaped() || HeistPlayerState->MarkEscaped()))
+		{
+			++EscapedPlayerCount;
+		}
+	}
+
+	const bool bMatchEnded = HeistGameState->SetMatchPhase(EHeistMatchPhase::End);
+	HeistGameState->RebuildPlayerResults();
+	const bool bPassed = bMatchEnded && EscapedPlayerCount == ValidPlayerCount
+		&& HeistGameState->GetPlayerResults().Num() == ValidPlayerCount
+		&& HeistGameInstance->HasActiveNamedOnlineSession();
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Online session completion: Subsystem=%s State=%s Players=%d Escaped=%d Results=%d Phase=%s NamedSession=%s Authority=true Failure=%s Result=%s"),
+			*HeistGameInstance->GetActiveOnlineSubsystemName().ToString(), *HeistGameInstance->GetOnlineSessionState().ToString(), ValidPlayerCount,
+			EscapedPlayerCount, HeistGameState->GetPlayerResults().Num(), *UEnum::GetValueAsString(HeistGameState->GetMatchPhase()),
+			HeistGameInstance->HasActiveNamedOnlineSession() ? TEXT("true") : TEXT("false"), bPassed ? TEXT("None") : TEXT("CompletionCommitFailed"),
+			bPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
+#endif
+}
+
 void UHeistDebugFunctionLibrary::DebugOnlineSessionReturn(APlayerController* PlayerController)
 {
 #if UE_BUILD_SHIPPING
@@ -4646,9 +4777,13 @@ void UHeistDebugFunctionLibrary::DebugOnlineSessionDump(APlayerController* Playe
 	const bool bWorldMapMatches =
 		(bTitleMenuWorld || bLobbyWorld) ? true : HeistGameInstance->IsCurrentWorldSelectedGameplayMap();
 	const EHeistMatchPhase ActualMatchPhase = IsValid(HeistGameState) ? HeistGameState->GetMatchPhase() : EHeistMatchPhase::None;
-	const EHeistMatchPhase ExpectedMatchPhase =
-		bTitleMenuWorld ? EHeistMatchPhase::None : (bLobbyWorld ? EHeistMatchPhase::Lobby : EHeistMatchPhase::InGame);
-	const bool bMatchPhaseValid = IsValid(HeistGameState) && ActualMatchPhase == ExpectedMatchPhase;
+	const TCHAR* ExpectedMatchPhase =
+		bTitleMenuWorld ? TEXT("EHeistMatchPhase::None") : (bLobbyWorld ? TEXT("EHeistMatchPhase::Lobby") : TEXT("EHeistMatchPhase::InGame|EHeistMatchPhase::End"));
+	const bool bMatchPhaseValid = IsValid(HeistGameState)
+		&& (bTitleMenuWorld
+				? ActualMatchPhase == EHeistMatchPhase::None
+				: (bLobbyWorld ? ActualMatchPhase == EHeistMatchPhase::Lobby
+							   : (ActualMatchPhase == EHeistMatchPhase::InGame || ActualMatchPhase == EHeistMatchPhase::End)));
 	const bool bClientWorld = IsValid(World) && World->GetNetMode() == NM_Client;
 	constexpr int32 MaxLobbySlots = 4;
 	int32 OccupiedPlayerIds[MaxLobbySlots] = {INDEX_NONE, INDEX_NONE, INDEX_NONE, INDEX_NONE};
@@ -4745,7 +4880,7 @@ void UHeistDebugFunctionLibrary::DebugOnlineSessionDump(APlayerController* Playe
 							bTitleMenuWorld ? TEXT("N/A") : (bRosterValid ? TEXT("PASS") : TEXT("FAIL")),
 							UIConnectedPlayerCount, UILocalPlayerId,
 							bLobbyWorld ? (bLobbyUIValid ? TEXT("PASS") : TEXT("FAIL")) : TEXT("N/A"),
-							*UEnum::GetValueAsString(ActualMatchPhase), *UEnum::GetValueAsString(ExpectedMatchPhase),
+							*UEnum::GetValueAsString(ActualMatchPhase), ExpectedMatchPhase,
 							bWorldMapMatches ? TEXT("PASS") : TEXT("FAIL"), *SelectedGameplayMapPath,
 							bClientWorld ? TEXT("N/A") : (IsValid(HeistGameMode) ? *HeistGameMode->GetPathName() : TEXT("None")),
 							IsValid(HeistHUD) ? *HeistHUD->GetPathName() : TEXT("None"),

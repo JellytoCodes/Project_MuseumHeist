@@ -1,0 +1,14 @@
+"appbuild"
+{
+	"appid" "__APP_ID__"
+	"desc" "Museum Heist __VERSION__ __CONFIGURATION__"
+	"buildoutput" "..\output"
+	"contentroot" "..\content"
+	"setlive" ""
+	"preview" "1"
+	"depots"
+	{
+		"__DEPOT_ID__" "depot_build_windows.vdf"
+	}
+}
+

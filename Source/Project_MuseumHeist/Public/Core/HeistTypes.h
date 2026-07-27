@@ -49,7 +49,8 @@ UENUM(BlueprintType)
 enum class EHeistForgeryType : uint8
 {
 	None,
-	Drawing
+	Drawing,
+	Assembly
 };
 
 UENUM(BlueprintType)
@@ -58,6 +59,23 @@ enum class EHeistDisplayCaseState : uint8
 	Secured,
 	Observed,
 	ForgeryInProgress,
+	ReplicaReady,
+	ReplicaPlaced,
+	OriginalAvailable,
+	OriginalRemoved,
+	Inspecting,
+	Completed,
+	Suspected,
+	Alarmed,
+	Failed
+};
+
+UENUM(BlueprintType)
+enum class EHeistObjectAssemblyState : uint8
+{
+	Secured,
+	Observed,
+	AssemblyInProgress,
 	ReplicaReady,
 	ReplicaPlaced,
 	OriginalAvailable,
@@ -82,6 +100,101 @@ enum class EHeistAlertLevel : uint8
 #pragma endregion
 
 #pragma region ResultData
+
+/**
+ * Compact Object Assembly submission unit.
+ * Clients submit stable data identifiers only; meshes, arbitrary transforms,
+ * preview actors, and physics state are never part of the network contract.
+ */
+USTRUCT(BlueprintType)
+struct PROJECT_MUSEUMHEIST_API FHeistObjectAssemblyEntry
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Heist|Object Assembly")
+	FName PartId = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Heist|Object Assembly")
+	FName SocketId = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Heist|Object Assembly")
+	uint8 QuantizedOrientation = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Heist|Object Assembly")
+	FName MaterialId = NAME_None;
+
+	bool operator==(const FHeistObjectAssemblyEntry& Other) const
+	{
+		return PartId == Other.PartId && SocketId == Other.SocketId && QuantizedOrientation == Other.QuantizedOrientation && MaterialId == Other.MaterialId;
+	}
+};
+
+/** Server-authoritative deterministic score for Object Assembly Forgery. */
+USTRUCT(BlueprintType)
+struct PROJECT_MUSEUMHEIST_API FHeistObjectAssemblyResult
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Object Assembly")
+	FName ArtifactId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Object Assembly")
+	FName TemplateId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Object Assembly")
+	float QualityScore = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Object Assembly")
+	float RequiredPartScore = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Object Assembly")
+	float SocketTopologyScore = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Object Assembly")
+	float OrientationScore = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Object Assembly")
+	float MaterialScore = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Object Assembly")
+	float Completeness = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Object Assembly")
+	bool bExtraPartCapTriggered = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Object Assembly")
+	float CompletionTime = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Object Assembly")
+	bool bReplicaPlaced = false;
+
+	bool operator==(const FHeistObjectAssemblyResult& Other) const
+	{
+		return ArtifactId == Other.ArtifactId && TemplateId == Other.TemplateId && FMath::IsNearlyEqual(QualityScore, Other.QualityScore, 0.001f) &&
+			   FMath::IsNearlyEqual(RequiredPartScore, Other.RequiredPartScore, 0.001f) && FMath::IsNearlyEqual(SocketTopologyScore, Other.SocketTopologyScore, 0.001f) &&
+			   FMath::IsNearlyEqual(OrientationScore, Other.OrientationScore, 0.001f) && FMath::IsNearlyEqual(MaterialScore, Other.MaterialScore, 0.001f) &&
+			   FMath::IsNearlyEqual(Completeness, Other.Completeness, 0.001f) && bExtraPartCapTriggered == Other.bExtraPartCapTriggered &&
+			   FMath::IsNearlyEqual(CompletionTime, Other.CompletionTime, 0.001f) && bReplicaPlaced == Other.bReplicaPlaced;
+	}
+};
+
+/** Replicated final assembly state used by clients to rebuild the replica locally. */
+USTRUCT(BlueprintType)
+struct PROJECT_MUSEUMHEIST_API FHeistObjectAssemblyReplicaData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Object Assembly")
+	TArray<FHeistObjectAssemblyEntry> Entries;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Object Assembly")
+	int32 Revision = 0;
+
+	bool operator==(const FHeistObjectAssemblyReplicaData& Other) const
+	{
+		return Entries == Other.Entries && Revision == Other.Revision;
+	}
+};
 
 USTRUCT(BlueprintType)
 struct PROJECT_MUSEUMHEIST_API FHeistForgeryResult

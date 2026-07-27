@@ -59,6 +59,14 @@ void AHeistPlayerController::BeginPlay()
 	}
 #endif
 
+	if (IsLocalController())
+	{
+		if (UHeistGameInstance* HeistGameInstance = Cast<UHeistGameInstance>(GetGameInstance()))
+		{
+			HeistGameInstance->NotifySessionWorldReady();
+		}
+	}
+
 	RefreshLocalInputModeFromPawn();
 	RefreshLocalHUDPresentation();
 	ApplyLocalUserSettings();

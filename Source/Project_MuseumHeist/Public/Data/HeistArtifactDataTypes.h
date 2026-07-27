@@ -7,6 +7,7 @@
 #include "HeistArtifactDataTypes.generated.h"
 
 class AActor;
+class UStaticMesh;
 class UTexture2D;
 
 UENUM(BlueprintType)
@@ -135,6 +136,84 @@ struct PROJECT_MUSEUMHEIST_API FHeistForgeryTemplateRow : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery", meta = (ClampMin = "0.0", ClampMax = "100.0"))
 	float OverpaintScoreCap = 20.0f;
+
+#if WITH_EDITOR
+	virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;
+#endif
+};
+
+/** Reusable modular mesh definition for Sculpture and Ceramic assembly kits. */
+USTRUCT(BlueprintType)
+struct PROJECT_MUSEUMHEIST_API FHeistObjectAssemblyPartRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly")
+	FName PartId = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly")
+	FName FamilyId = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly")
+	TSoftObjectPtr<UStaticMesh> StaticMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly", meta = (EditFixedOrder))
+	TArray<FName> CompatibleSocketIds;
+
+	/** Empty means that the part has no player-selectable material variant. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly", meta = (EditFixedOrder))
+	TArray<FName> AllowedMaterialIds;
+
+	/** Template-approved orientation indices. v1.0 supports indices 0 through 15. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly", meta = (EditFixedOrder))
+	TArray<uint8> AllowedOrientationSteps;
+
+#if WITH_EDITOR
+	virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;
+#endif
+};
+
+/** Deterministic target layout and score weights for one Object Assembly variant. */
+USTRUCT(BlueprintType)
+struct PROJECT_MUSEUMHEIST_API FHeistObjectAssemblyTemplateRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly")
+	FName TemplateId = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly")
+	FName FamilyId = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly")
+	FText DisplayName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly")
+	FName CorePartId = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly", meta = (EditFixedOrder))
+	TArray<FHeistObjectAssemblyEntry> RequiredParts;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly", meta = (EditFixedOrder))
+	TArray<FName> DecoyPartIds;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly", meta = (ClampMin = "1.0", Units = "s"))
+	float AssemblyDuration = 60.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly|Score", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float RequiredPartWeight = 0.35f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly|Score", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float SocketTopologyWeight = 0.30f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly|Score", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float OrientationWeight = 0.25f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly|Score", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float MaterialWeight = 0.10f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly|Score", meta = (ClampMin = "0.0", ClampMax = "100.0"))
+	float ExtraPartScoreCap = 50.0f;
 
 #if WITH_EDITOR
 	virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;

@@ -1,10 +1,10 @@
 # Project_MuseumHeist — Class Manifest
 
-## Rev 8: W5 Online Lobby And Session Runtime Contract
+## Rev 9: W5 Surface And Object Forgery Contract
 
 Design Reference:
 
-- `AGENTS.md` Rev 9
+- `AGENTS.md` Rev 10
 - `Museum_Heist_GDD.docx` 최신 Revision
 - Notion W5 Task / Test 기록
 
@@ -35,10 +35,14 @@ Smoke 및 플레이어 설치형 Trap은 `Deferred` 또는 `Legacy`가 아니라
 | `EHeistMatchPhase` | Modify | Lobby / ReadyCountdown / InGame / End 중심 Match Flow |
 | `EHeistInputMode` | Keep | Gameplay / Inventory / Forgery 로컬 입력 상태 |
 | `EHeistObjectiveState` | Keep | Objective 진행 상태 |
-| `EHeistForgeryType` | Keep | Drawing Forgery 타입 |
+| `EHeistForgeryType` | Modify | Drawing / Assembly Forgery 타입 |
 | `EHeistDisplayCaseState` | Keep | Painting Display Case 상태 |
+| `EHeistObjectAssemblyState` | Add | Object Assembly 전용 상태 |
 | `EHeistAlertLevel` | Keep | Global Alert / Lockdown |
-| `FHeistForgeryResult` | Keep | 서버 확정 Forgery 결과 |
+| `FHeistForgeryResult` | Keep | 서버 확정 Surface Forgery 결과 |
+| `FHeistObjectAssemblyEntry` | Add | Part / Socket / Orientation / Material 제출 단위 |
+| `FHeistObjectAssemblyResult` | Add | 서버 확정 Object Assembly 결과 |
+| `FHeistObjectAssemblyReplicaData` | Add | 확정 Assembly Entry와 Revision 복제 데이터 |
 | `FHeistPlayerResult` | Deprecate | 기존 결과 호환용 |
 | `FHeistRareLootEventState` | Deferred | Optional Rare Artifact 승인 전 비활성 |
 | `EHeistItemType` | Modify | None / Loot / Throwable / KeyItem |
@@ -64,6 +68,8 @@ EHeistSoundPingType::NoiseTrap
 
 ## `FHeistForgeryResult` — Keep
 
+기존 이름을 유지하지만 Surface Forgery 전용 결과다. Object Assembly 상세 지표를 이 Struct에 추가하지 않는다.
+
 필드:
 
 ```text
@@ -84,6 +90,48 @@ bReplicaPlaced
 ```
 
 `MissingShapePenalty`, `ExtraStrokePenalty`, `TimeoutPenalty`가 진단용 값인지 Final Score 직접 차감값인지 구현과 문서에서 동일하게 정의한다.
+
+## `FHeistObjectAssemblyEntry` — Add
+
+필드:
+
+```text
+PartId
+SocketId
+QuantizedOrientation
+MaterialId
+```
+
+Client가 Mesh, 임의 Transform 또는 Physics State를 전송하지 않도록 하는 compact final payload다.
+
+## `FHeistObjectAssemblyResult` — Add
+
+필드:
+
+```text
+ArtifactId
+TemplateId
+QualityScore
+RequiredPartScore
+SocketTopologyScore
+OrientationScore
+MaterialScore
+Completeness
+bExtraPartCapTriggered
+CompletionTime
+bReplicaPlaced
+```
+
+## `FHeistObjectAssemblyReplicaData` — Add
+
+필드:
+
+```text
+Entries
+Revision
+```
+
+서버에서 확정한 compact `FHeistObjectAssemblyEntry` 배열만 복제하며 Mesh, 임의 Transform, Physics State 또는 Preview Actor를 포함하지 않는다.
 
 ## `FHeistReplicaPaintingData` — Keep
 
@@ -118,8 +166,8 @@ FHeistPlayerContribution
 | `Core/HeistGameMode.*` / `AHeistGameMode` | Modify | Match, Objective, Data Validation, Alert, Result |
 | `Core/HeistGameState.*` / `AHeistGameState` | Modify | Replicated Objective / Alert / Team State, Lobby Map Selection / Player Connection Revision, Server-only SoundPing Dispatch |
 | `Core/HeistPlayerState.*` / `AHeistPlayerState` | Modify | 1~4 Player Identity, Contribution, Escape, Arrest, Carry Value |
-| `Core/HeistPlayerController.*` / `AHeistPlayerController` | Modify | Input Mode, Server RPC, Session Leave / Map Selection Request, Coin Use, Forgery Request |
-| `Core/HeistHUD.*` / `AHeistHUD` | Keep + Extend | Title / Lobby / HUD / Inventory / QuickSlot / Forgery / Result Widget와 ViewModel 생성 |
+| `Core/HeistPlayerController.*` / `AHeistPlayerController` | Modify | Input Mode, Server RPC, Session Leave / Map Selection Request, Coin Use, Surface Forgery / Object Assembly Request |
+| `Core/HeistHUD.*` / `AHeistHUD` | Keep + Extend | Title / Lobby / HUD / Inventory / QuickSlot / Surface Forgery / Object Assembly / Result Widget와 ViewModel 생성 |
 | `Core/HeistGameInstance.*` / `UHeistGameInstance` | Modify | Steam/NULL Subsystem 선택, Host/Find/Join/Leave, 6자리 참가 코드, Title/Lobby/Gameplay Travel, Map Selection, Session Timeout/Cancel/Retry와 Network/Travel Failure 수명주기 |
 | `Core/HeistGameUserSettings.*` / `UHeistGameUserSettings` | Add | Local FOV, Mouse Sensitivity, Master Volume, Resolution / Window Mode 저장, 검증 및 적용 |
 
@@ -171,6 +219,30 @@ GameUserSettings
 - Host Map Selection은 `M01`, `M02`, `M03`, `Random`이며 `AHeistGameState`가 복제한다.
 - Lobby → Gameplay → Lobby Travel의 Session / PlayerState 보존 검증은 `TASK-W5-006` 범위다.
 - Steam Package 2계정 최종 검증은 `TASK-W5-010` 범위다.
+- `HeistSessionComplete`는 Development 전용 2 Player External Gate 명령이다.
+- 이 명령은 Listen Server, 활성 Named Session, 선택 Gameplay Map과 `InGame` Phase를 검증한 뒤 현재 Player를 Escaped로 확정하고 Result를 재구성해 `End` Phase로 전환한다.
+- `HeistSessionDump`는 선택 Gameplay Map의 `InGame`과 정상 완료 후 `End`를 모두 유효한 Phase로 판정한다.
+- Package Client는 로컬 `AHeistPlayerController::BeginPlay()`에서 `UHeistGameInstance::NotifySessionWorldReady()`를 호출해 완료된 `TravelJoin` 감시 타이머를 해제한다.
+- `TASK-W5-010` PASS에는 서로 다른 PC와 Steam 계정 2개, 동일 Development Package, `Subsystem=STEAM`, Host / Joined Session, 동일 Join Code / Build Id, 2 Player Roster, Gameplay / End / Lobby 연속성과 양쪽 Leave 증거가 필요하다.
+
+## Packaging Runtime Contract
+
+- Project Version의 Source of Truth는 `Config/DefaultGame.ini`의 `ProjectVersion`이다.
+- Release Cook Map은 `TitleMenuMap`, `LobbyMap`, `M01_ClassicalPrototype`, `M02_MoonlitPrototype`, `M03_GlasshousePrototype`이다.
+- `SandBoxMap`은 Release Cook Map에 포함하지 않는다.
+- MCP / Toolset / Preview Plugin은 Editor Target에서만 활성화한다.
+- 미사용 기본 `ChaosCloth` Plugin은 비활성화해 `Buoyancy → Water → Landmass`의 Editor Content가 Cook에 유입되지 않도록 한다.
+- 재현 가능한 Win64 Package Entry는 `Tools/Packaging/PackageProject.ps1`이다.
+- Package 출력은 `Build/Packages/MuseumHeist-<Version>-<Configuration>-Win64`을 사용한다.
+- Package 완료 시 실행 파일 옆에 `BuildInfo.json`을 생성한다.
+- Development Package에만 로컬 실행용 `steam_appid.txt`를 생성할 수 있다.
+- Shipping Package와 Steam Depot 후보에는 `steam_appid.txt`를 포함하지 않는다.
+- Package 검증은 `Tools/Packaging/ValidatePackage.ps1`가 EXE, Pak, IoStore, Steam, OpenCV, Prerequisite와 BuildInfo를 확인한다.
+- UE 5.8 Prerequisite는 설치 엔진 구성에 따라 `UEPrereqSetup_x64.exe` 또는 `vc_redist.x64.exe`를 허용한다.
+- Development / Shipping Runtime 실행 파일이 같은 Package Root에 섞이면 검증 실패로 처리한다.
+- Steam Depot 후보는 `Tools/Packaging/PrepareSteamDepot.ps1`로 생성한다.
+- 생성된 VDF는 `preview=1`, 빈 `setlive`를 유지하며 자동 Upload를 실행하지 않는다.
+- 실제 App / Depot Id 확정, Steam Upload와 2계정 검증은 `TASK-W5-010` 범위다.
 
 ## GameplayTag Removal
 
@@ -355,6 +427,24 @@ Observation과 Escape는 상호 배타적으로 시작돼야 한다.
 - EndPlay Cleanup
 
 별도 Forgery Manager를 만들지 않는다.
+
+`UHeistForgeryComponent`는 Surface Forgery 전용으로 유지한다.
+
+## `UHeistObjectAssemblyComponent` — Add
+
+현재 승인 책임:
+
+- Object Template Prepare
+- Owner-only Session Begin / Revision / Timeout
+- Part / Socket / Orientation / Material Payload Validation
+- Server Deterministic Score
+- Local Preview Request Routing
+- Object Display Case Commit
+- Cancel / Disconnect / Arrest / EndPlay Cleanup
+
+Surface Forgery의 Stroke, Palette, OpenCV Cache와 Replica Painting Data를 소유하지 않는다.
+
+별도 Object Assembly Manager 또는 Subsystem을 만들지 않는다.
 
 ---
 
@@ -549,6 +639,48 @@ ShapeAccuracyWeight + ColorAccuracyWeight > 0
 
 `Black / White` Filter에서는 Reference Image에서 Foreground Mask를 생성할 수 있으므로 별도 ReferenceMask를 강제하지 않는다.
 
+## `FHeistObjectAssemblyPartRow` — Add
+
+필드:
+
+```text
+PartId
+FamilyId
+StaticMesh
+CompatibleSocketIds
+AllowedMaterialIds
+AllowedOrientationSteps
+```
+
+## `FHeistObjectAssemblyTemplateRow` — Add
+
+필드:
+
+```text
+TemplateId
+FamilyId
+DisplayName
+CorePartId
+RequiredParts
+DecoyPartIds
+AssemblyDuration
+RequiredPartWeight
+SocketTopologyWeight
+OrientationWeight
+MaterialWeight
+ExtraPartScoreCap
+```
+
+Sculpture와 Ceramic은 같은 Object Assembly Row 계약을 사용한다.
+
+Part 및 Template DataTable은 Surface Forgery DataTable과 분리한다.
+
+필수 Weight 합:
+
+```text
+RequiredPartWeight + SocketTopologyWeight + OrientationWeight + MaterialWeight > 0
+```
+
 ---
 
 # 7. OpenCV Forgery Contract
@@ -617,7 +749,8 @@ Render Target 또는 전체 Stroke Payload를 World Visual 목적으로 추가 �
 | `AHeistLootActor` | Keep | Loose Loot |
 | `AHeistPaintingDisplayCaseActor` | Modify | Painting Target, Session, Replica, Original, Inspection |
 | `AHeistDisplayCaseActor` | Deprecate | 기존 Painting Asset 호환 Alias |
-| `AHeistSculptureDisplayCaseActor` | Deferred | Sculpture Visual Shell |
+| `AHeistObjectDisplayCaseActor` | Add | Sculpture / Ceramic Object Assembly Session, Replica, Original, Inspection |
+| `AHeistSculptureDisplayCaseActor` | Deprecate | 기존 Sculpture Visual Shell Asset 호환 Alias |
 | `AHeistVentActor` | Modify | Shared Extraction |
 | `AHeistThrowableProjectile` | Keep | Throwable 공통 기반 |
 | `AHeistCoinProjectile` | Keep | Guard Distraction |
@@ -688,7 +821,42 @@ Alarmed
 Failed
 ```
 
-Painting과 Sculpture State를 하나의 enum switch로 통합하지 않는다.
+Surface Forgery와 Object Assembly State를 하나의 enum switch로 통합하지 않는다.
+
+---
+
+# 9A. Object Display Case Contract
+
+`AHeistObjectDisplayCaseActor`는 다음 책임을 가진다.
+
+- Object Family / Target Artifact 식별
+- Assembly Session Lock / Owner / Revision / Timeout
+- Template 확정
+- Replica Ready / Placement
+- Original Availability / Removal
+- Inspection Candidate 등록과 결과 Handoff
+- Compact Assembly Replica Data 복제
+- Client Static Mesh Component 재구성
+- Disconnect / Arrest / EndPlay Cleanup
+
+## State
+
+```text
+Secured
+Observed
+AssemblyInProgress
+ReplicaReady
+ReplicaPlaced
+OriginalAvailable
+OriginalRemoved
+Inspecting
+Completed
+Suspected
+Alarmed
+Failed
+```
+
+Object Assembly Actor는 Painting Palette Raster, Transient Painting Texture 또는 Painting State를 사용하지 않는다.
 
 ---
 
@@ -844,6 +1012,7 @@ Ping_NoiseTrap
 | `UHeistInteractionPromptWidget` | Modify | Interaction, Observation, Escape Progress |
 | `UHeistResultWidget` | Modify | Team Result / Contribution |
 | `UHeistForgeryWidget` | Keep | Owner-only Forgery UI, Local Canvas Reset, Drawing/Lockdown Remaining Time, Alert Warning |
+| `UHeistObjectAssemblyWidget` | Add | Owner-only Part / Socket / Orientation Assembly UI |
 | `UHeistTitleMenuWidget` | Keep + Extend | Host Session, Join Code 입력, Create/Find/Join/Travel 상태와 오류, Cancel/Retry, Settings 표시 |
 | `UHeistLobbyWidget` | Modify | Session 내부 Player Slot, 참가 코드/Invite 안내, Map 선택, Travel 상태/Retry, Ready / Start, Leave |
 | `UHeistRareLootAlertWidget` | Remove 또는 Deferred Review | Rare Loot 범위 결정 전 신규 사용 금지 |
@@ -859,6 +1028,7 @@ Ping_NoiseTrap
 | `UHeistTitleMenuViewModel` | Keep + Extend | Online Session 상태, Host/Join Code 요청, Timeout/Cancel/Retry와 진입 오류, Local Settings Snapshot / Apply / Defaults 요청 |
 | `UHeistLobbyViewModel` | Modify | Lobby Player/Identity Slot Snapshot, 참가 코드/Invite 안내, 복제 Map 선택, Travel Failure/Retry, Ready / Start, Leave |
 | `UHeistForgeryViewModel` | Keep | Forgery UI State, Alert Warning, Lockdown Countdown |
+| `UHeistObjectAssemblyViewModel` | Add | Assembly Session, Template, Part Candidate, Socket, Orientation, Remaining Time, Alert Snapshot |
 
 ## Removed UI Contract
 
@@ -967,7 +1137,14 @@ Parent: AHeistPaintingDisplayCaseActor
 
 ```text
 /Game/Blueprints/World/Actors/Loot/BP_SculptureDisplayCase
-Parent: AHeistSculptureDisplayCaseActor
+Parent: AHeistObjectDisplayCaseActor
+```
+
+## Ceramic
+
+```text
+/Game/Blueprints/World/Actors/Loot/BP_CeramicDisplayCase
+Parent: AHeistObjectDisplayCaseActor
 ```
 
 ## Coin

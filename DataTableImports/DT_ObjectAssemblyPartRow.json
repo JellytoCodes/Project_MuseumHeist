@@ -1,0 +1,75 @@
+[
+  {
+    "Name": "Part_Sculpture_Prototype_Core",
+    "PartId": "Part_Sculpture_Prototype_Core",
+    "FamilyId": "Sculpture",
+    "StaticMesh": "StaticMesh'/Engine/BasicShapes/Cylinder.Cylinder'",
+    "CompatibleSocketIds": [
+      "Root"
+    ],
+    "AllowedMaterialIds": [
+      "Material_Bronze",
+      "Material_Marble"
+    ],
+    "AllowedOrientationSteps": [
+      0
+    ]
+  },
+  {
+    "Name": "Part_Sculpture_Prototype_Head",
+    "PartId": "Part_Sculpture_Prototype_Head",
+    "FamilyId": "Sculpture",
+    "StaticMesh": "StaticMesh'/Engine/BasicShapes/Sphere.Sphere'",
+    "CompatibleSocketIds": [
+      "Head"
+    ],
+    "AllowedMaterialIds": [
+      "Material_Bronze",
+      "Material_Marble"
+    ],
+    "AllowedOrientationSteps": [
+      0,
+      4,
+      8,
+      12
+    ]
+  },
+  {
+    "Name": "Part_Sculpture_Prototype_ArmLeft",
+    "PartId": "Part_Sculpture_Prototype_ArmLeft",
+    "FamilyId": "Sculpture",
+    "StaticMesh": "StaticMesh'/Engine/BasicShapes/Cube.Cube'",
+    "CompatibleSocketIds": [
+      "Shoulder_L"
+    ],
+    "AllowedMaterialIds": [
+      "Material_Bronze",
+      "Material_Marble"
+    ],
+    "AllowedOrientationSteps": [
+      0,
+      4,
+      8,
+      12
+    ]
+  },
+  {
+    "Name": "Part_Sculpture_Prototype_ArmRight",
+    "PartId": "Part_Sculpture_Prototype_ArmRight",
+    "FamilyId": "Sculpture",
+    "StaticMesh": "StaticMesh'/Engine/BasicShapes/Cube.Cube'",
+    "CompatibleSocketIds": [
+      "Shoulder_R"
+    ],
+    "AllowedMaterialIds": [
+      "Material_Bronze",
+      "Material_Marble"
+    ],
+    "AllowedOrientationSteps": [
+      0,
+      4,
+      8,
+      12
+    ]
+  }
+]

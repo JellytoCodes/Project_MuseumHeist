@@ -29,6 +29,14 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 
 #pragma endregion
 
+#pragma region BuildDebug
+
+  public:
+	UFUNCTION(Exec)
+	void HeistBuildDump();
+
+#pragma endregion
+
 #pragma region SettingsDebug
 
   public:
@@ -175,6 +183,9 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 
 	UFUNCTION(Exec)
 	void HeistSessionStart();
+
+	UFUNCTION(Exec)
+	void HeistSessionComplete();
 
 	UFUNCTION(Exec)
 	void HeistSessionReturn();

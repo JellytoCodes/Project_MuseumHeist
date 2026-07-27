@@ -147,5 +147,192 @@ EDataValidationResult FHeistForgeryTemplateRow::IsDataValid(FDataValidationConte
 	return Result;
 }
 
+EDataValidationResult FHeistObjectAssemblyPartRow::IsDataValid(FDataValidationContext& Context) const
+{
+	EDataValidationResult Result = EDataValidationResult::Valid;
+
+	auto AddError = [&Context, &Result](const FText& Message)
+	{
+		Context.AddError(Message);
+		Result = EDataValidationResult::Invalid;
+	};
+
+	if (PartId.IsNone())
+	{
+		AddError(LOCTEXT("MissingObjectAssemblyPartId", "Object Assembly PartId must not be None."));
+	}
+	if (FamilyId.IsNone())
+	{
+		AddError(LOCTEXT("MissingObjectAssemblyPartFamilyId", "Object Assembly part FamilyId must not be None."));
+	}
+	if (StaticMesh.IsNull())
+	{
+		AddError(LOCTEXT("MissingObjectAssemblyStaticMesh", "Object Assembly StaticMesh must reference a Static Mesh."));
+	}
+	if (CompatibleSocketIds.IsEmpty())
+	{
+		AddError(LOCTEXT("MissingObjectAssemblyCompatibleSockets", "CompatibleSocketIds must contain at least one socket."));
+	}
+
+	TSet<FName> UniqueSocketIds;
+	for (const FName SocketId : CompatibleSocketIds)
+	{
+		if (SocketId.IsNone())
+		{
+			AddError(LOCTEXT("InvalidObjectAssemblyCompatibleSocket", "CompatibleSocketIds must not contain None."));
+			continue;
+		}
+		if (UniqueSocketIds.Contains(SocketId))
+		{
+			AddError(LOCTEXT("DuplicateObjectAssemblyCompatibleSocket", "CompatibleSocketIds must not contain duplicates."));
+		}
+		UniqueSocketIds.Add(SocketId);
+	}
+
+	TSet<FName> UniqueMaterialIds;
+	for (const FName MaterialId : AllowedMaterialIds)
+	{
+		if (MaterialId.IsNone())
+		{
+			AddError(LOCTEXT("InvalidObjectAssemblyMaterialId", "AllowedMaterialIds must not contain None."));
+			continue;
+		}
+		if (UniqueMaterialIds.Contains(MaterialId))
+		{
+			AddError(LOCTEXT("DuplicateObjectAssemblyMaterialId", "AllowedMaterialIds must not contain duplicates."));
+		}
+		UniqueMaterialIds.Add(MaterialId);
+	}
+
+	if (AllowedOrientationSteps.IsEmpty())
+	{
+		AddError(LOCTEXT("MissingObjectAssemblyOrientation", "AllowedOrientationSteps must contain at least one orientation index."));
+	}
+
+	TSet<uint8> UniqueOrientationSteps;
+	for (const uint8 OrientationStep : AllowedOrientationSteps)
+	{
+		if (OrientationStep > 15)
+		{
+			AddError(LOCTEXT("InvalidObjectAssemblyOrientation", "AllowedOrientationSteps must use indices from 0 through 15."));
+		}
+		if (UniqueOrientationSteps.Contains(OrientationStep))
+		{
+			AddError(LOCTEXT("DuplicateObjectAssemblyOrientation", "AllowedOrientationSteps must not contain duplicates."));
+		}
+		UniqueOrientationSteps.Add(OrientationStep);
+	}
+
+	return Result;
+}
+
+EDataValidationResult FHeistObjectAssemblyTemplateRow::IsDataValid(FDataValidationContext& Context) const
+{
+	EDataValidationResult Result = EDataValidationResult::Valid;
+
+	auto AddError = [&Context, &Result](const FText& Message)
+	{
+		Context.AddError(Message);
+		Result = EDataValidationResult::Invalid;
+	};
+
+	if (TemplateId.IsNone())
+	{
+		AddError(LOCTEXT("MissingObjectAssemblyTemplateId", "Object Assembly TemplateId must not be None."));
+	}
+	if (FamilyId.IsNone())
+	{
+		AddError(LOCTEXT("MissingObjectAssemblyTemplateFamilyId", "Object Assembly template FamilyId must not be None."));
+	}
+	if (DisplayName.IsEmpty())
+	{
+		AddError(LOCTEXT("MissingObjectAssemblyDisplayName", "Object Assembly DisplayName must not be empty."));
+	}
+	if (CorePartId.IsNone())
+	{
+		AddError(LOCTEXT("MissingObjectAssemblyCorePartId", "Object Assembly CorePartId must not be None."));
+	}
+	if (!FMath::IsWithinInclusive(RequiredParts.Num(), 3, 5))
+	{
+		AddError(LOCTEXT("InvalidObjectAssemblyRequiredPartCount", "RequiredParts must contain between 3 and 5 manipulable parts."));
+	}
+
+	TSet<FName> UniqueRequiredPartIds;
+	TSet<FName> UniqueRequiredSocketIds;
+	for (const FHeistObjectAssemblyEntry& RequiredPart : RequiredParts)
+	{
+		if (RequiredPart.PartId.IsNone() || RequiredPart.SocketId.IsNone())
+		{
+			AddError(LOCTEXT("InvalidObjectAssemblyRequiredPartIdentity", "Every RequiredParts entry must provide a PartId and SocketId."));
+		}
+		if (RequiredPart.PartId == CorePartId)
+		{
+			AddError(LOCTEXT("ObjectAssemblyCoreRepeatedAsRequiredPart", "CorePartId must not also appear in RequiredParts."));
+		}
+		if (!RequiredPart.PartId.IsNone() && UniqueRequiredPartIds.Contains(RequiredPart.PartId))
+		{
+			AddError(LOCTEXT("DuplicateObjectAssemblyRequiredPart", "RequiredParts must not contain duplicate PartId values."));
+		}
+		if (!RequiredPart.PartId.IsNone())
+		{
+			UniqueRequiredPartIds.Add(RequiredPart.PartId);
+		}
+		if (!RequiredPart.SocketId.IsNone() && UniqueRequiredSocketIds.Contains(RequiredPart.SocketId))
+		{
+			AddError(LOCTEXT("DuplicateObjectAssemblyRequiredSocket", "RequiredParts must not contain duplicate SocketId values."));
+		}
+		if (!RequiredPart.SocketId.IsNone())
+		{
+			UniqueRequiredSocketIds.Add(RequiredPart.SocketId);
+		}
+		if (RequiredPart.QuantizedOrientation > 15)
+		{
+			AddError(LOCTEXT("InvalidObjectAssemblyRequiredOrientation", "RequiredParts QuantizedOrientation must use an index from 0 through 15."));
+		}
+	}
+
+	TSet<FName> UniqueDecoyPartIds;
+	for (const FName DecoyPartId : DecoyPartIds)
+	{
+		if (DecoyPartId.IsNone())
+		{
+			AddError(LOCTEXT("InvalidObjectAssemblyDecoyPart", "DecoyPartIds must not contain None."));
+			continue;
+		}
+		if (DecoyPartId == CorePartId || UniqueRequiredPartIds.Contains(DecoyPartId))
+		{
+			AddError(LOCTEXT("ConflictingObjectAssemblyDecoyPart", "A decoy PartId must not be the core or a required part."));
+		}
+		if (UniqueDecoyPartIds.Contains(DecoyPartId))
+		{
+			AddError(LOCTEXT("DuplicateObjectAssemblyDecoyPart", "DecoyPartIds must not contain duplicates."));
+		}
+		UniqueDecoyPartIds.Add(DecoyPartId);
+	}
+
+	if (!FMath::IsFinite(AssemblyDuration) || AssemblyDuration <= 0.0f)
+	{
+		AddError(LOCTEXT("InvalidObjectAssemblyDuration", "AssemblyDuration must be finite and greater than zero."));
+	}
+
+	const bool bWeightsValid = FMath::IsWithinInclusive(RequiredPartWeight, 0.0f, 1.0f) && FMath::IsWithinInclusive(SocketTopologyWeight, 0.0f, 1.0f) &&
+							   FMath::IsWithinInclusive(OrientationWeight, 0.0f, 1.0f) && FMath::IsWithinInclusive(MaterialWeight, 0.0f, 1.0f);
+	if (!bWeightsValid)
+	{
+		AddError(LOCTEXT("InvalidObjectAssemblyWeights", "Object Assembly score weights must be finite values between 0.0 and 1.0."));
+	}
+	if (!FMath::IsFinite(RequiredPartWeight + SocketTopologyWeight + OrientationWeight + MaterialWeight) ||
+		RequiredPartWeight + SocketTopologyWeight + OrientationWeight + MaterialWeight <= 0.0f)
+	{
+		AddError(LOCTEXT("MissingObjectAssemblyScoreWeight", "At least one Object Assembly score weight must be greater than zero."));
+	}
+	if (!FMath::IsWithinInclusive(ExtraPartScoreCap, 0.0f, 100.0f))
+	{
+		AddError(LOCTEXT("InvalidObjectAssemblyExtraPartScoreCap", "ExtraPartScoreCap must be a finite value between 0.0 and 100.0."));
+	}
+
+	return Result;
+}
+
 #undef LOCTEXT_NAMESPACE
 #endif

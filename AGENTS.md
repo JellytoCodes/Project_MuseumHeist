@@ -1,6 +1,6 @@
 # Project_MuseumHeist — Codex Instructions
 
-## Rev 9: W5 Online Lobby And Travel Handoff
+## Rev 10: W5 Surface And Object Forgery Expansion
 
 기준일: 2026-07-27
 엔진: Unreal Engine 5.8  
@@ -9,6 +9,16 @@
 이 문서는 프로젝트 엔지니어링 정책의 최상위 Source of Truth다.
 
 현재 프로젝트는 기존 경쟁형 Top-Down 구조에서 **1~4인 온라인 협동 1인칭 잠입·유물 위조 하이스트 게임**으로 전환됐다.
+
+Forgery Gameplay는 다음 두 축으로 구분한다.
+
+```text
+Surface Forgery
+- Painting 중심 2D Reference / Stroke / Palette / OpenCV 판정
+
+Object Assembly Forgery
+- Sculpture / Ceramic 중심 3D Modular Part / Socket / Orientation 판정
+```
 
 기존 경쟁형 Top-Down 구현은 아직 참조가 남아 있는 범위에서만 Legacy로 취급한다. 현재 기획에서 명시적으로 제거된 Smoke 및 플레이어 설치형 Trap 기능은 Legacy, Deferred, Stretch 또는 회귀 기준으로 유지하지 않는다.
 
@@ -115,12 +125,19 @@ Title Menu
 - 고정 박물관 맵 1개
 - 고정 계약 1개
 - `TitleMenu → Lobby → ReadyCountdown → InGame → End`
-- Painting Target Artifact 1개
-- Painting Template 3~5개
+- Painting Target Artifact
+- Surface Forgery Template 36개
+  - M01 / M02 / M03 각 12개
+- Server-selected Surface Template Pool / Shuffle Bag
 - Painting Display Case State Machine
 - Observation Cast
 - Owner-only Full-Screen Drawing Forgery
 - 서버 권한 Forgery Score
+- Object Assembly Forgery Vertical Slice
+- Sculpture / Ceramic Modular Kit 최소 2종
+- Object Assembly Template 최소 12개
+- Owner-only Full-Screen Object Assembly
+- 서버 권한 Part / Socket / Orientation Score
 - Replica Placement
 - Original Removal
 - Guard Patrol
@@ -148,7 +165,7 @@ Title Menu
 
 다음 기능은 현재 프로젝트 범위에 포함하지 않는다.
 
-- 조각상·도자기·보석·문서·화석 복제 Gameplay
+- 보석·문서·화석 복제 Gameplay
 - 외부 AI 이미지 판정
 - Smoke Grenade
 - Smoke Projectile
@@ -179,10 +196,10 @@ Title Menu
 
 필수 기능과 멀티플레이 Gate가 모두 PASS한 뒤에만 검토한다.
 
-- Sculpture Assembly Forgery
 - Optional Rare Artifact
 - First-Person Hand Animation
-- 추가 Painting Template
+- 추가 Surface Forgery Template
+- 추가 Object Assembly Kit / Template
 - 추가 Loose Loot
 
 Smoke 및 Trap 계열 기능은 Stretch 목록에 포함하지 않는다.
@@ -215,17 +232,20 @@ Smoke 및 Trap 계열 기능은 Stretch 목록에 포함하지 않는다.
 - 미래 주차의 전체 시스템을 선행 구현하지 않는다.
 - 현재 기획에서 삭제된 기능을 호환성 명목으로 다시 추가하지 않는다.
 
-## Painting / Sculpture Boundary
+## Surface Forgery / Object Assembly Boundary
 
-- Painting 전시품은 `AHeistPaintingDisplayCaseActor`가 담당한다.
-- Sculpture 전시품은 `AHeistSculptureDisplayCaseActor`가 담당한다.
-- Painting과 Sculpture는 서로의 Replica Data를 공유하지 않는다.
-- Painting과 Sculpture는 서로의 State Machine을 공유하지 않는다.
+- Painting 전시품과 Surface Forgery는 `AHeistPaintingDisplayCaseActor`가 담당한다.
+- Sculpture와 Ceramic을 포함한 3D 조립 전시품은 `AHeistObjectDisplayCaseActor`가 담당한다.
+- `Object Assembly Forgery`는 Sculpture / Ceramic을 포괄하는 Gameplay System 명칭이다.
+- Surface Forgery와 Object Assembly는 서로의 Template Row를 공유하지 않는다.
+- Surface Forgery와 Object Assembly는 서로의 제출 Payload와 Replica Data를 공유하지 않는다.
+- Surface Forgery와 Object Assembly는 서로의 State Machine과 상세 Result를 공유하지 않는다.
+- 두 방식은 Owner-only Input Mode 원칙과 서버가 확정한 최종 0~100 Quality Score의 Guard Inspection Handoff만 공유할 수 있다.
 - `AHeistDisplayCaseActor`는 기존 Asset 호환 전용 Deprecated Painting Alias다.
 - 신규 Asset은 `AHeistDisplayCaseActor`를 부모로 사용하지 않는다.
 - 기존 `BP_DisplayCase`는 `AHeistPaintingDisplayCaseActor`를 부모로 사용한다.
-- Sculpture Actor Shell은 배치·시각 구성만 허용한다.
-- Sculpture Assembly가 승인되기 전에는 Sculpture Gameplay Interaction을 활성화하지 않는다.
+- `AHeistSculptureDisplayCaseActor`는 기존 `BP_SculptureDisplayCase` 호환 전용 Deprecated Alias로 전환한다.
+- 신규 Sculpture / Ceramic Asset은 `AHeistObjectDisplayCaseActor`를 부모로 사용한다.
 
 ## Removed Feature Boundary
 
@@ -456,7 +476,7 @@ Escape 취소 조건:
 
 ---
 
-# 10. Forgery Rules
+# 10. Surface Forgery Rules
 
 ## Session Ownership
 
@@ -612,6 +632,101 @@ Forgery 종료 시 반드시 복원한다.
 - Forgery Widget Instance
 
 중간 Drawing 진행도는 v1.0에서 저장하지 않는다.
+
+---
+
+# 10A. Object Assembly Forgery Rules
+
+## Supported Artifact Families
+
+현재 Object Assembly Forgery의 활성 Family:
+
+```text
+Sculpture
+Ceramic
+```
+
+Jewelry, Fossil 및 기타 Family는 별도 Numbered Task 승인 전 활성화하지 않는다.
+
+## Modular Kit
+
+- 하나의 Object를 Voxel 또는 파편 단위로 분해하지 않는다.
+- 하나의 Template은 고정 Core와 조작 가능한 Part 3~5개를 기본으로 한다.
+- 한 번의 조립에서 사용하는 전체 Static Mesh Component는 일반적으로 4~6개다.
+- Part는 Family 안에서 여러 Template이 재사용할 수 있다.
+- Core Mesh는 승인된 Socket을 소유한다.
+- Part Pivot은 연결 지점을 기준으로 제작한다.
+- Runtime Mesh Cutting, Geometry Collection, 자유 물리 조립을 사용하지 않는다.
+- v1.0 조립은 Socket Snap과 승인된 회전 단계만 사용한다.
+- Scale 자유 조절은 v1.0에서 사용하지 않는다.
+
+## Owner-only Assembly Mode
+
+- Object Assembly Widget은 Owning Player에게만 표시한다.
+- Assembly 중 World View는 완전히 가린다.
+- Move, Look, Jump, Sprint, Throw, QuickSlot, Inventory와 다른 Interaction을 차단한다.
+- Part 선택, Socket 선택, 승인된 회전, Submit, Cancel, Push-To-Talk와 Pause를 허용한다.
+- 조립 화면은 로컬 Preview Component를 사용하며 World Actor를 직접 변경하지 않는다.
+- Session 종료 시 Gameplay Input Mode와 HUD 접근을 Surface Forgery와 동일한 원칙으로 복원한다.
+
+## Server Authority And Payload
+
+- 서버가 Object Assembly Session Owner, Revision, End Server Time과 선택 Template을 확정한다.
+- Client는 Part Mesh 또는 임의 Transform을 전송하지 않는다.
+- Client 최종 Payload는 승인된 `PartId`, `SocketId`, Quantized Orientation과 Material Id만 포함한다.
+- 서버는 Session Revision, Part Count, 중복 Part, Part Family, Socket 호환, Orientation 범위, Material 범위와 Payload 크기를 검증한다.
+- 중간 Drag 또는 Preview Transform은 복제하지 않는다.
+- Submit 시 검증된 최종 Assembly Payload를 한 번만 확정한다.
+
+## Deterministic Score
+
+Object Assembly는 OpenCV를 사용하지 않는다.
+
+```text
+Required Part Match
+→ Socket / Topology Match
+→ Orientation Accuracy
+→ Material Match
+→ Completeness
+→ Extra Part Score Cap
+→ Final Quality Score
+```
+
+기본 Weight:
+
+```text
+Required Part Match: 35%
+Socket / Topology Match: 30%
+Orientation Accuracy: 25%
+Material Match: 10%
+```
+
+- 누락 Part는 Completeness를 낮춘다.
+- 불필요한 Part를 과도하게 추가하면 Final Score Cap을 적용한다.
+- Client Preview는 확정값이 아니다.
+- 최종 Quality Score는 서버만 확정한다.
+- Guard Inspection은 서버가 확정한 0~100 Quality Score만 공통 입력으로 사용한다.
+
+## Replica Data
+
+- Object Assembly Replica는 Surface Forgery의 Palette Raster를 사용하지 않는다.
+- Object Assembly Replica는 승인된 Part Id, Socket Id, Quantized Orientation, Material Id와 Revision만 복제한다.
+- Client는 로컬 Template Data에서 Static Mesh와 Material을 해석해 Replica Component를 재구성한다.
+- 전체 Mesh Data, Render Target, Physics State 또는 Preview Actor를 복제하지 않는다.
+- 늦게 참가한 Client도 동일한 Assembly Replica를 재구성해야 한다.
+
+## Cleanup
+
+Session 종료, Cancel, Timeout, Arrest, Disconnect, Match End, Owner EndPlay 또는 Display Case EndPlay에서 다음을 정리한다.
+
+- Object Display Case Lock
+- Assembly Owner
+- Assembly Session Revision / Timer
+- Local Preview Components
+- Assembly Widget
+- Movement / Look / Interaction Block
+- Cursor / Mouse Capture / Input Mapping Context
+- QuickSlot / Inventory / HUD 접근
 
 ---
 
@@ -1039,7 +1154,10 @@ Smoke와 Trap은 W4 이후의 Gate, Regression Baseline, Stretch 또는 Deferred
 - Session
 - Travel
 - Packaging
-- Painting Template 콘텐츠
+- Surface Forgery Template 36개
+- Surface Template Pool / Shuffle Bag
+- Object Assembly Forgery
+- Sculpture / Ceramic Modular Kit과 Template
 - Loose Loot 콘텐츠
 - Tutorial 콘텐츠
 - Steam Session을 먼저 진행
@@ -1086,11 +1204,12 @@ W4~W6 결과와 실제 잔여 위험을 검토한 뒤 필요한 경우에만 `TA
 
 ## W5 Current Handoff
 
-- `TASK-W5-001~008`은 완료됐다.
+- `TASK-W5-001~010`은 완료됐다.
 - `TEST-W5-001`은 2026-07-26 Editor `OnlineSubsystemNull` 2 Player Listen Server PIE에서 Host / Join Code / Find / Join / Lobby Travel을 PASS했다.
 - `TEST-W5-002`는 2026-07-27 Editor `OnlineSubsystemNull` 3 Player Listen Server PIE에서 Client Leave / Rejoin / Empty Slot 재사용 / Host Quit / Title Return / Map Selection / Random / Lobby Roster Refresh를 PASS했다.
 - `TEST-W5-005`는 2026-07-27 Development Editor 1 Player PIE에서 Local Settings 저장과 First-Person 적용을 PASS했다.
-- W5 Weekly Gate와 Steam Formal Test는 아직 PASS하지 않았다.
+- `TEST-W5-007`은 2026-07-27 별도 PC·Steam 계정 2개 Development Package에서 Steam Host / Join / Lobby / M02 Travel / End / Lobby Return / Client Leave / Host Leave를 PASS했다.
+- W5 Weekly Gate는 후속 필수 콘텐츠 작업 때문에 아직 PASS하지 않았다.
 - `UHeistGameInstance`가 Online Subsystem 선택과 Create / Find / Join / Travel 상태를 단독 소유한다.
 - Editor PIE는 로컬 다중 인스턴스 검증을 위해 `OnlineSubsystemNull`을 사용한다.
 - 비 Editor 실행과 패키지 빌드는 기본 `OnlineSubsystemSteam`을 사용한다.
@@ -1109,13 +1228,36 @@ W4~W6 결과와 실제 잔여 위험을 검토한 뒤 필요한 경우에만 `TA
 - `UHeistLobbyViewModel`은 Player 추가·제거뿐 아니라 각 `AHeistPlayerState`의 Identity 변경에도 반응해 모든 Client의 Slot 표시를 갱신한다.
 - `TASK-W5-008`은 FOV, Mouse Sensitivity, Master Volume, Resolution / Window Mode의 로컬 저장과 First-Person 적용을 완료했다.
 - PIE New Editor Window가 저장된 Resolution을 Editor 창 크기로 덮어쓰는 경우 Settings 진단은 `DisplayApply=EDITOR_OVERRIDE`로 구분한다.
-- 현재 활성 작업은 `TASK-W5-009 Packaging Pipeline`이다.
+- `TASK-W5-009 Packaging Pipeline`은 Development / Shipping Package 생성·검증·실행 증거로 완료됐다.
+- `TASK-W5-011~013` Surface Forgery Pack과 그 의존 작업인 `TASK-W5-016` Shuffle Bag은 2026-07-27 우선순위 변경으로 보류됐다.
+- 생성된 M01 Surface Reference 후보, Palette 정규화 결과, Mask와 `Tools/Forgery/QuantizeForgeryReference.ps1`은 WIP로 보존한다.
+- 현재 활성 작업은 `TASK-W5-017 Object Assembly Data / State Contract`다.
+- `TASK-W5-011~013` 재개 시 M01 / M02 / M03 각 12개, 총 36개 Surface Forgery Template을 구현한다.
+- `TASK-W5-016` 재개 시 단일 Artifact→Template 연결을 서버 선택형 Template Pool / Shuffle Bag으로 확장한다.
+- `TASK-W5-017~023`은 Object Assembly Data / State, Session / Score, Owner-only UI, Replica / Inspection, Primitive Prototype, Sculpture / Ceramic Content와 2 Player Gate를 순서대로 구현한다.
+- Sculpture와 Ceramic의 통합 Gameplay System 명칭은 `Object Assembly Forgery`다.
+- Surface Forgery와 Object Assembly는 Template, State, Payload, Result와 Replica Data를 공유하지 않는다.
+- `TASK-W5-010 External Two-PC Online Gate`는 `TEST-W5-007` 증거로 완료됐다.
+- `TASK-W5-009`의 Project Version Source of Truth는 `Config/DefaultGame.ini`의 `ProjectVersion`이다.
+- Win64 Development / Shipping Package는 `Tools/Packaging/PackageProject.ps1`로 생성한다.
+- Package 출력은 `Build/Packages`, Steam Depot 후보는 `Build/SteamCandidate` 아래에 생성한다.
+- 프로젝트에서 사용하지 않는 기본 `ChaosCloth` Plugin은 비활성화하며, 그 의존성인 `Buoyancy`, `Water`, `Landmass`의 Editor Content를 Release Cook에 포함하지 않는다.
+- `HeistBuildDump`는 Development Package에서 Version, Configuration, Platform, Cooked Runtime, Online Subsystem과 Session Build Id를 검증한다.
+- `TASK-W5-009` 증거는 Development Package의 `HeistBuildDump Result=PASS`와 정상 종료, Shipping UAT `BUILD SUCCESSFUL / ExitCode=0`, 깨끗한 Shipping Stage 구성 및 두 Configuration 실행 화면이다.
+- Editor Archive Directory를 Development와 Shipping에 재사용해 이전 Runtime Binary 또는 Log가 섞인 폴더는 Steam Depot 후보로 사용하지 않는다.
+- `ValidatePackage.ps1`는 Development / Shipping Runtime Binary 혼합을 실패 처리하고 UE 5.8 Prerequisite의 `UEPrereqSetup_x64.exe` 또는 `vc_redist.x64.exe`를 허용한다.
+- Steam Depot VDF는 `preview=1` 후보만 생성하며 Upload와 SetLive는 자동 수행하지 않는다.
 - Editor `OnlineSubsystemNull` 검증은 구현 검증용이며 Steam 최종 PASS를 대체하지 않는다.
 - `TASK-W5-001`의 Steam 패키지 2계정 검증은 `TASK-W5-010 External Two-PC Online Gate`로 이관됐으며 `TASK-W5-001`을 다시 열지 않는다.
 - Steam 최종 PASS는 서로 다른 Steam 계정 2개와 Development Package 증거가 있을 때만 처리한다.
 - Packaging Pipeline은 `TASK-W5-009`, Steam 2계정 통합 검증은 `TASK-W5-010`에서 수행한다.
-- Editor 검증 명령은 `HeistSessionHost`, `HeistSessionJoin <Code>`, `HeistSessionLeave`, `HeistSessionMap <M01|M02|M03|Random>`, `HeistSessionDump`를 사용한다.
-- `HeistSessionDump`는 Player / Identity / Slot / Roster / UI Snapshot과 Map Selection이 일치할 때 `Result=PASS`를 출력한다.
+- Development 검증 명령은 `HeistSessionHost`, `HeistSessionJoin <Code>`, `HeistSessionLeave`, `HeistSessionMap <M01|M02|M03|Random>`, `HeistSessionStart`, `HeistSessionComplete`, `HeistSessionReturn`, `HeistSessionDump`를 사용한다.
+- `HeistSessionComplete`는 Listen Server의 활성 Steam Session과 2명 이상의 Player를 요구하며 현재 Player를 Escaped로 확정하고 Result를 재구성한 뒤 Match Phase를 `End`로 전환한다.
+- `HeistSessionDump`는 Player / Identity / Slot / Roster / UI Snapshot과 Map Selection이 일치하고 Gameplay Phase가 `InGame` 또는 `End`일 때 `Result=PASS`를 출력한다.
+- Package Client는 로컬 PlayerController `BeginPlay`에서 Session World Ready를 통지해 성공한 `TravelJoin`의 Pending 상태와 30초 감시 타이머를 해제한다.
+- `TASK-W5-010` PASS에는 Host / Client 양쪽에서 `Subsystem=STEAM`, 동일 Join Code와 Build Id, `Players=2`, `Roster=PASS`, `Framework=PASS`, `NamedSession=true`, `SessionContinuity=PASS`, Gameplay / End / Lobby `Result=PASS`, Client와 Host의 Leave / Title Return 증거가 필요하다.
+- `TEST-W5-007`에서 Client는 `Pending=false`, `Operation=None`, `TravelPending=false`를 유지했고 90초 이상 접속해 기존 30초 `TravelJoin` Timeout이 재발하지 않았다.
+- Shipping은 Debug / Cheat Command가 제거되므로 `TASK-W5-010` Formal Test에 사용하지 않는다.
 - `aqProf.dll` / VTune 선택적 Profiler 경고와 Title / Lobby 전환 중의 일시적 AI Perception / Recast 경고는 현재 확인된 비차단 Known Warning이다. Crash, Travel 실패 또는 Gameplay Map 회귀가 동반되면 다시 분류한다.
 
 세부 설계와 주차별 Task 정의는 `Museum_Heist_GDD.docx` 최신 Revision과 Notion Task 기록을 함께 확인한다.

@@ -1,0 +1,27 @@
+{
+  "asset_name": "T_Forgery_M01_Landscape_01",
+  "source_file": "M01_Landscape_01.png",
+  "mask_asset_name": "T_Forgery_M01_Landscape_01_Mask",
+  "mask_source_file": "M01_Landscape_01_Mask.png",
+  "unreal_destination": "/Game/Data/Forgery/Textures/M01",
+  "template_id": "Template_M01_Landscape_01",
+  "category": "Landscape",
+  "difficulty": "Easy",
+  "background_srgb": "#000000",
+  "background_filter_mode": "Black",
+  "background_color_tolerance": 0.08,
+  "palette_srgb": [
+    "#7A7B35",
+    "#B95432",
+    "#D9A62E",
+    "#3E77A8"
+  ],
+  "palette_linear": [
+    [0.194618, 0.198069, 0.035601, 1.0],
+    [0.485150, 0.088656, 0.031896, 1.0],
+    [0.693872, 0.381326, 0.027321, 1.0],
+    [0.048172, 0.184475, 0.391572, 1.0]
+  ],
+  "foreground_ratio": 0.3392,
+  "notes": "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

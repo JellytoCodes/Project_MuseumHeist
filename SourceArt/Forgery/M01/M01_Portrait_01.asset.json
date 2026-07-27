@@ -1,0 +1,27 @@
+{
+  "asset_name": "T_Forgery_M01_Portrait_01",
+  "source_file": "M01_Portrait_01.png",
+  "mask_asset_name": "T_Forgery_M01_Portrait_01_Mask",
+  "mask_source_file": "M01_Portrait_01_Mask.png",
+  "unreal_destination": "/Game/Data/Forgery/Textures/M01",
+  "template_id": "Template_M01_Portrait_01",
+  "category": "Portrait",
+  "difficulty": "Easy",
+  "background_srgb": "#000000",
+  "background_filter_mode": "Black",
+  "background_color_tolerance": 0.08,
+  "palette_srgb": [
+    "#F2D8A7",
+    "#7A2330",
+    "#D9A62E",
+    "#2B9C98"
+  ],
+  "palette_linear": [
+    [0.887923, 0.686685, 0.386429, 1.0],
+    [0.194618, 0.016807, 0.029557, 1.0],
+    [0.693872, 0.381326, 0.027321, 1.0],
+    [0.024158, 0.332452, 0.313989, 1.0]
+  ],
+  "foreground_ratio": 0.3689,
+  "notes": "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}
