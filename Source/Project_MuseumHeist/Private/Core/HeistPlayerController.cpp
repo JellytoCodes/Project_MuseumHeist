@@ -79,6 +79,7 @@ void AHeistPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	bLocalObservationInputHeld = false;
 	UnbindLocalForgeryInputState();
+	UnbindLocalObjectAssemblyInputState();
 	if (BoundMatchPhaseGameState.IsValid())
 	{
 		BoundMatchPhaseGameState->GetMatchPhaseChangedDelegate().RemoveAll(this);
@@ -91,6 +92,7 @@ void AHeistPlayerController::OnPossess(APawn* InPawn)
 {
 	bLocalObservationInputHeld = false;
 	UnbindLocalForgeryInputState();
+	UnbindLocalObjectAssemblyInputState();
 	Super::OnPossess(InPawn);
 	RefreshLocalInputModeFromPawn();
 	RefreshLocalHUDPresentation();
@@ -288,7 +290,17 @@ void AHeistPlayerController::HandleForgeryCancel()
 {
 	if (LocalInputMode == EHeistInputMode::Forgery)
 	{
-		RequestCancelForgery();
+		const AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+		const UHeistObjectAssemblyComponent* ObjectAssemblyComponent =
+			IsValid(HeistCharacter) ? HeistCharacter->GetObjectAssemblyComponent() : nullptr;
+		if (IsValid(ObjectAssemblyComponent) && ObjectAssemblyComponent->IsSessionActive())
+		{
+			RequestCancelObjectAssembly();
+		}
+		else
+		{
+			RequestCancelForgery();
+		}
 	}
 }
 
@@ -352,6 +364,68 @@ void AHeistPlayerController::HandleForgerySessionStateChanged()
 	}
 }
 
+void AHeistPlayerController::RefreshLocalObjectAssemblyInputBinding()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	UHeistObjectAssemblyComponent* ObjectAssemblyComponent =
+		IsValid(HeistCharacter) ? HeistCharacter->GetObjectAssemblyComponent() : nullptr;
+	if (BoundObjectAssemblyComponent.Get() == ObjectAssemblyComponent)
+	{
+		return;
+	}
+
+	UnbindLocalObjectAssemblyInputState();
+	if (IsValid(ObjectAssemblyComponent))
+	{
+		BoundObjectAssemblyComponent = ObjectAssemblyComponent;
+		bLocalObjectAssemblySessionActive = ObjectAssemblyComponent->IsSessionActive();
+		ObjectAssemblyComponent->GetSessionStateChangedDelegate().AddUObject(this, &AHeistPlayerController::HandleObjectAssemblySessionStateChanged);
+	}
+}
+
+void AHeistPlayerController::UnbindLocalObjectAssemblyInputState()
+{
+	if (UHeistObjectAssemblyComponent* ObjectAssemblyComponent = BoundObjectAssemblyComponent.Get())
+	{
+		ObjectAssemblyComponent->GetSessionStateChangedDelegate().RemoveAll(this);
+	}
+	BoundObjectAssemblyComponent.Reset();
+	bLocalObjectAssemblySessionActive = false;
+}
+
+void AHeistPlayerController::HandleObjectAssemblySessionStateChanged()
+{
+	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	const UHeistObjectAssemblyComponent* ObjectAssemblyComponent =
+		IsValid(HeistCharacter) ? HeistCharacter->GetObjectAssemblyComponent() : nullptr;
+	const bool bObjectAssemblyActive = IsValid(ObjectAssemblyComponent) && ObjectAssemblyComponent->IsSessionActive();
+	if (bObjectAssemblyActive == bLocalObjectAssemblySessionActive)
+	{
+		return;
+	}
+	bLocalObjectAssemblySessionActive = bObjectAssemblyActive;
+
+	if (bObjectAssemblyActive && IsValid(HeistCharacter->GetCharacterMovement()))
+	{
+		HeistCharacter->GetCharacterMovement()->StopMovementImmediately();
+	}
+
+	RefreshLocalInputModeFromPawn();
+	if (!bObjectAssemblyActive && LocalInputMode == EHeistInputMode::Gameplay)
+	{
+		UpdateFlashlightAimDirection();
+		if (IsValid(HeistCharacter))
+		{
+			HeistCharacter->GetInteractionComponent()->RefreshInteractionTarget(true);
+		}
+	}
+}
+
 void AHeistPlayerController::RefreshLocalInputModeFromPawn()
 {
 	if (!IsLocalController())
@@ -360,10 +434,15 @@ void AHeistPlayerController::RefreshLocalInputModeFromPawn()
 	}
 
 	RefreshLocalForgeryInputBinding();
+	RefreshLocalObjectAssemblyInputBinding();
 	const AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
 	const UHeistForgeryComponent* ForgeryComponent = IsValid(HeistCharacter) ? HeistCharacter->GetForgeryComponent() : nullptr;
+	const UHeistObjectAssemblyComponent* ObjectAssemblyComponent =
+		IsValid(HeistCharacter) ? HeistCharacter->GetObjectAssemblyComponent() : nullptr;
 	const UHeistInventoryComponent* InventoryComponent = IsValid(HeistCharacter) ? HeistCharacter->GetInventoryComponent() : nullptr;
-	ApplyLocalInputMode(IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive()	   ? EHeistInputMode::Forgery
+	ApplyLocalInputMode((IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive()) ||
+								(IsValid(ObjectAssemblyComponent) && ObjectAssemblyComponent->IsSessionActive())
+							? EHeistInputMode::Forgery
 						: IsValid(InventoryComponent) && InventoryComponent->IsInventoryOpen() ? EHeistInputMode::Inventory
 																							   : EHeistInputMode::Gameplay);
 }
@@ -663,6 +742,13 @@ void AHeistPlayerController::HandleInteractPressed()
 			bLocalObservationInputHeld = true;
 			Server_RequestObservation(TargetDisplayCase);
 		}
+		return;
+	}
+
+	AHeistObjectDisplayCaseActor* TargetObjectDisplayCase = Cast<AHeistObjectDisplayCaseActor>(InteractionComponent->GetCurrentInteractionTarget());
+	if (TargetObjectDisplayCase != nullptr)
+	{
+		RequestBeginObjectAssembly(TargetObjectDisplayCase);
 		return;
 	}
 
@@ -2103,6 +2189,12 @@ bool AHeistPlayerController::TryBuildGameplayRequestContext(FHeistGameplayReques
 	if (IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive())
 	{
 		OutRejectReason = TEXT("ForgeryActive");
+		return false;
+	}
+	const UHeistObjectAssemblyComponent* ObjectAssemblyComponent = HeistCharacter->GetObjectAssemblyComponent();
+	if (IsValid(ObjectAssemblyComponent) && ObjectAssemblyComponent->IsSessionActive())
+	{
+		OutRejectReason = TEXT("ObjectAssemblyActive");
 		return false;
 	}
 

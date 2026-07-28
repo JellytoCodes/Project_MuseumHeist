@@ -31,6 +31,7 @@
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerStart.h"
 #include "GameFramework/PlayerState.h"
+#include "GameFramework/GameSession.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameplayTagContainer.h"
 #include "HAL/PlatformProperties.h"
@@ -48,9 +49,11 @@
 #include "UI/ViewModels/HeistForgeryViewModel.h"
 #include "UI/ViewModels/HeistHUDViewModel.h"
 #include "UI/ViewModels/HeistLobbyViewModel.h"
+#include "UI/ViewModels/HeistObjectAssemblyViewModel.h"
 #include "UI/ViewModels/HeistTitleMenuViewModel.h"
 #include "UI/Widgets/HeistForgeryWidget.h"
 #include "UI/Widgets/HeistHUDWidget.h"
+#include "UI/Widgets/HeistObjectAssemblyWidget.h"
 
 #pragma region InternalHelpers
 
@@ -1294,7 +1297,7 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyHelp(APlayerController* Play
 	Message(
 		PlayerController,
 		TEXT(
-			"Object Assembly commands: HeistCasePhase InGame | HeistObjectAssemblySpawn 200 | HeistObjectAssemblyBegin 60 | HeistObjectAssemblyTest <Valid|Missing|Extra|Socket|Orientation|Material|Duplicate|Revision|Family|Empty> | HeistObjectAssemblyDump | HeistObjectAssemblyCancel | HeistObjectAssemblyTimeout. Spawn and Timeout are listen-server commands; Begin/Test/Cancel/Dump may run in the owning client."),
+			"Object Assembly commands: HeistCasePhase InGame | HeistObjectAssemblySpawn 200 | HeistObjectAssemblySpawnFor <PlayerId> <Distance> | HeistObjectAssemblyKickPlayer <PlayerId> | HeistObjectAssemblyBegin 60 | HeistObjectAssemblyTest <Valid|Missing|Extra|Socket|Orientation|Material|Duplicate|Revision|Family|Empty> | HeistObjectAssemblyDump | HeistObjectAssemblyUIDump | HeistObjectAssemblyCancel | HeistObjectAssemblyTimeout. Spawn, SpawnFor, KickPlayer, and Timeout are listen-server commands; Begin/Test/Cancel/Dump/UIDump may run in the owning client."),
 		EHeistDebugLevel::Info, true, 12.0f);
 #endif
 }
@@ -1326,6 +1329,72 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblySpawn(APlayerController* Pla
 						IsValid(DisplayCase) ? *DisplayCase->GetObjectFamilyId().ToString() : TEXT("None"), SafeDistance,
 						IsValid(DisplayCase) && DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false"), bResult ? TEXT("PASS") : TEXT("FAIL")),
 		bResult ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblySpawnFor(APlayerController* PlayerController, const int32 PlayerId, const float Distance)
+{
+#if !UE_BUILD_SHIPPING
+	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(PlayerController->GetWorld()))
+	{
+		Message(PlayerController, TEXT("Object Assembly spawn-for: Result=REJECTED Reason=ListenServerAuthorityRequired"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	AHeistPlayerState* TargetPlayerState = ResolveHeistPlayerStateById(PlayerController, PlayerId);
+	APawn* TargetPawn = IsValid(TargetPlayerState) ? TargetPlayerState->GetPawn() : nullptr;
+	if (!IsValid(TargetPlayerState) || !IsValid(TargetPawn))
+	{
+		Message(PlayerController, FString::Printf(TEXT("Object Assembly spawn-for: PlayerId=%d Result=REJECTED Reason=MissingPlayerStateOrPawn"), PlayerId),
+				EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const float SafeDistance = FMath::Clamp(Distance, 100.0f, 250.0f);
+	const FVector SpawnLocation = TargetPawn->GetActorLocation() + TargetPawn->GetActorForwardVector() * SafeDistance;
+	FActorSpawnParameters SpawnParameters;
+	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	AHeistObjectDisplayCaseActor* DisplayCase =
+		PlayerController->GetWorld()->SpawnActor<AHeistObjectDisplayCaseActor>(AHeistObjectDisplayCaseActor::StaticClass(), SpawnLocation, TargetPawn->GetActorRotation(), SpawnParameters);
+	const FName CaseId(*FString::Printf(TEXT("ObjectCase_Sculpture_Debug_P%d"), PlayerId));
+	const bool bInitialized = IsValid(DisplayCase) &&
+		DisplayCase->InitializeObjectIdentity(CaseId, FName(TEXT("Artifact_Sculpture_Prototype")), FName(TEXT("Sculpture")));
+	const bool bResult = IsValid(DisplayCase) && bInitialized;
+	Message(
+		PlayerController,
+		FString::Printf(TEXT("Object Assembly spawn-for: Case=%s CaseId=%s TargetPlayerId=%d Distance=%.1f Authority=%s Result=%s"),
+						*GetNameSafe(DisplayCase), IsValid(DisplayCase) ? *DisplayCase->GetObjectCaseId().ToString() : TEXT("None"), PlayerId, SafeDistance,
+						IsValid(DisplayCase) && DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false"), bResult ? TEXT("PASS") : TEXT("FAIL")),
+		bResult ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblyKickPlayer(APlayerController* PlayerController, const int32 PlayerId)
+{
+#if !UE_BUILD_SHIPPING
+	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(PlayerController->GetWorld()))
+	{
+		Message(PlayerController, TEXT("Object Assembly kick player: Result=REJECTED Reason=ListenServerAuthorityRequired"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	AHeistPlayerState* TargetPlayerState = ResolveHeistPlayerStateById(PlayerController, PlayerId);
+	APlayerController* TargetPlayerController = IsValid(TargetPlayerState) ? TargetPlayerState->GetPlayerController() : nullptr;
+	AHeistGameMode* HeistGameMode = PlayerController->GetWorld()->GetAuthGameMode<AHeistGameMode>();
+	AGameSession* GameSession = IsValid(HeistGameMode) ? HeistGameMode->GameSession : nullptr;
+	if (!IsValid(TargetPlayerState) || !IsValid(TargetPlayerController) || TargetPlayerController == PlayerController || !IsValid(GameSession))
+	{
+		Message(PlayerController,
+				FString::Printf(TEXT("Object Assembly kick player: PlayerId=%d Result=REJECTED Reason=MissingRemotePlayerOrGameSession"), PlayerId),
+				EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const bool bResult = GameSession->KickPlayer(
+		TargetPlayerController, NSLOCTEXT("HeistDebug", "ObjectAssemblyDisconnectTest", "Object Assembly disconnect cleanup test."));
+	Message(PlayerController,
+			FString::Printf(TEXT("Object Assembly kick player: PlayerId=%d Authority=true Result=%s"), PlayerId, bResult ? TEXT("PASS") : TEXT("FAIL")),
+			bResult ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
 #endif
 }
 
@@ -1403,7 +1472,8 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyTest(APlayerController* Play
 	}
 	else if (NormalizedScenario == TEXT("duplicate"))
 	{
-		Entries.Add(Entries[0]);
+		const FHeistObjectAssemblyEntry DuplicateEntry = Entries[0];
+		Entries.Add(DuplicateEntry);
 		bExpectedAccepted = false;
 	}
 	else if (NormalizedScenario == TEXT("revision"))
@@ -1485,6 +1555,66 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyDump(APlayerController* Play
 			bSessionContractConsistent ? TEXT("true") : TEXT("false"), bScoreContractConsistent ? TEXT("true") : TEXT("false"),
 			IsValid(HeistCharacter) && HeistCharacter->HasAuthority() ? TEXT("true") : TEXT("false"), bResult ? TEXT("PASS") : TEXT("FAIL")),
 		bResult ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 12.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblyUIDump(APlayerController* PlayerController)
+{
+#if !UE_BUILD_SHIPPING
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	AHeistHUD* HeistHUD = IsValid(HeistPlayerController) ? HeistPlayerController->GetHUD<AHeistHUD>() : nullptr;
+	if (IsValid(HeistHUD))
+	{
+		HeistHUD->RefreshPresentationSources();
+	}
+
+	const UHeistObjectAssemblyViewModel* ViewModel = IsValid(HeistHUD) ? HeistHUD->GetObjectAssemblyViewModel() : nullptr;
+	const UHeistObjectAssemblyWidget* Widget = IsValid(HeistHUD) ? HeistHUD->GetObjectAssemblyWidget() : nullptr;
+	const bool bLocalController = IsValid(HeistPlayerController) && HeistPlayerController->IsLocalController();
+	const bool bViewModelReady = IsValid(ViewModel);
+	const bool bWidgetReady = IsValid(Widget);
+	const bool bSessionActive = bViewModelReady && ViewModel->IsPresentationVisible();
+	const bool bWidgetVisible = bWidgetReady && Widget->IsWidgetPresentationVisible();
+	const bool bVisibilityContract = bSessionActive == bWidgetVisible;
+	const bool bOwnerOnlyContract = bWidgetReady && Widget->IsOwnerOnlyContractSatisfied();
+	const bool bInputContract =
+		IsValid(HeistPlayerController) && HeistPlayerController->IsLocalInputModeContractSatisfied() &&
+		(bSessionActive ? HeistPlayerController->GetLocalInputMode() == EHeistInputMode::Forgery
+						: HeistPlayerController->GetLocalInputMode() != EHeistInputMode::Forgery);
+	const bool bDataContract =
+		bSessionActive ? bViewModelReady && ViewModel->IsDataReady() && ViewModel->GetCandidatePartCount() > 0 && ViewModel->GetSessionEndServerTime() > 0.0f
+					   : bViewModelReady && !ViewModel->IsDataReady();
+	const bool bPreviewContract =
+		bSessionActive ? bWidgetReady && Widget->IsPreviewReady() && Widget->GetPreviewComponentCount() >= 1
+					   : bWidgetReady && !Widget->IsPreviewReady() && Widget->GetPreviewComponentCount() == 0;
+	const bool bContractPassed =
+		bLocalController && bViewModelReady && bWidgetReady && bOwnerOnlyContract && bVisibilityContract && bInputContract && bDataContract && bPreviewContract;
+
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT(
+				"Object Assembly UI dump: Controller=%s Local=%s HUD=%s ViewModel=%s Widget=%s SessionActive=%s WidgetVisible=%s OwnerOnly=%s VisibilityMatch=%s DataReady=%s CandidateParts=%d PlacedParts=%d RequiredParts=%d PreviewReady=%s PreviewComponents=%d PreviewFallbackSockets=%d InputMode=%s InputContextActive=%s ActiveContexts=%d Cursor=%s IgnoreMove=%s IgnoreLook=%s InputContract=%s SessionRevision=%d EndServerTime=%.2f Artifact=%s Template=%s Family=%s Result=%s"),
+			*GetNameSafe(HeistPlayerController), bLocalController ? TEXT("true") : TEXT("false"), *GetNameSafe(HeistHUD), *GetNameSafe(ViewModel), *GetNameSafe(Widget),
+			bSessionActive ? TEXT("true") : TEXT("false"), bWidgetVisible ? TEXT("true") : TEXT("false"), bOwnerOnlyContract ? TEXT("true") : TEXT("false"),
+			bVisibilityContract ? TEXT("true") : TEXT("false"), bViewModelReady && ViewModel->IsDataReady() ? TEXT("true") : TEXT("false"),
+			bViewModelReady ? ViewModel->GetCandidatePartCount() : 0, bViewModelReady ? ViewModel->GetPlacedPartCount() : 0,
+			bViewModelReady ? ViewModel->GetRequiredPartCount() : 0, bWidgetReady && Widget->IsPreviewReady() ? TEXT("true") : TEXT("false"),
+			bWidgetReady ? Widget->GetPreviewComponentCount() : 0, bWidgetReady ? Widget->GetUnresolvedPreviewSocketCount() : 0,
+			IsValid(HeistPlayerController)
+				? (HeistPlayerController->GetLocalInputMode() == EHeistInputMode::Gameplay
+					   ? TEXT("Gameplay")
+					   : HeistPlayerController->GetLocalInputMode() == EHeistInputMode::Inventory ? TEXT("Inventory") : TEXT("Forgery"))
+				: TEXT("None"),
+			IsValid(HeistPlayerController) && HeistPlayerController->IsLocalInputMappingContextActive(HeistPlayerController->GetLocalInputMode()) ? TEXT("true") : TEXT("false"),
+			IsValid(HeistPlayerController) ? HeistPlayerController->GetActiveHeistInputMappingContextCount() : 0,
+			IsValid(HeistPlayerController) && HeistPlayerController->bShowMouseCursor ? TEXT("true") : TEXT("false"),
+			IsValid(HeistPlayerController) && HeistPlayerController->IsMoveInputIgnored() ? TEXT("true") : TEXT("false"),
+			IsValid(HeistPlayerController) && HeistPlayerController->IsLookInputIgnored() ? TEXT("true") : TEXT("false"), bInputContract ? TEXT("true") : TEXT("false"),
+			bViewModelReady ? ViewModel->GetSessionRevision() : INDEX_NONE, bViewModelReady ? ViewModel->GetSessionEndServerTime() : 0.0f,
+			bViewModelReady ? *ViewModel->GetActiveArtifactId().ToString() : TEXT("None"), bViewModelReady ? *ViewModel->GetActiveTemplateId().ToString() : TEXT("None"),
+			bViewModelReady ? *ViewModel->GetActiveFamilyId().ToString() : TEXT("None"), bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bContractPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
 #endif
 }
 

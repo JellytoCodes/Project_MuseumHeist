@@ -292,6 +292,12 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 	void HeistObjectAssemblySpawn(float Distance = 200.0f);
 
 	UFUNCTION(Exec)
+	void HeistObjectAssemblySpawnFor(int32 PlayerId, float Distance = 100.0f);
+
+	UFUNCTION(Exec)
+	void HeistObjectAssemblyKickPlayer(int32 PlayerId);
+
+	UFUNCTION(Exec)
 	void HeistObjectAssemblyBegin(float DurationSeconds = 60.0f);
 
 	UFUNCTION(Exec)
@@ -299,6 +305,9 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 
 	UFUNCTION(Exec)
 	void HeistObjectAssemblyDump();
+
+	UFUNCTION(Exec)
+	void HeistObjectAssemblyUIDump();
 
 	UFUNCTION(Exec)
 	void HeistObjectAssemblyCancel();

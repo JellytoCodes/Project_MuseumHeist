@@ -133,6 +133,26 @@ class PROJECT_MUSEUMHEIST_API AHeistHUD : public AHUD
 
 #pragma endregion
 
+#pragma region ObjectAssemblyPresentation
+
+  public:
+	class UHeistObjectAssemblyViewModel* GetObjectAssemblyViewModel() const;
+	class UHeistObjectAssemblyWidget* GetObjectAssemblyWidget() const;
+
+  private:
+	void InitializeObjectAssemblyPresentation();
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|UI", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<class UHeistObjectAssemblyWidget> ObjectAssemblyWidgetClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHeistObjectAssemblyViewModel> ObjectAssemblyViewModel;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHeistObjectAssemblyWidget> ObjectAssemblyWidget;
+
+#pragma endregion
+
 #pragma region ResultPresentation
 
   public:

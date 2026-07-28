@@ -4,6 +4,7 @@
 #include "Character/Components/HeistForgeryComponent.h"
 #include "Character/Components/HeistInventoryComponent.h"
 #include "Character/Components/HeistInteractionComponent.h"
+#include "Character/Components/HeistObjectAssemblyComponent.h"
 #include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameInstance.h"
 #include "Core/HeistGameState.h"
@@ -14,6 +15,7 @@
 #include "UI/ViewModels/HeistForgeryViewModel.h"
 #include "UI/ViewModels/HeistInventoryViewModel.h"
 #include "UI/ViewModels/HeistLobbyViewModel.h"
+#include "UI/ViewModels/HeistObjectAssemblyViewModel.h"
 #include "UI/ViewModels/HeistQuickSlotViewModel.h"
 #include "UI/ViewModels/HeistResultViewModel.h"
 #include "UI/ViewModels/HeistTitleMenuViewModel.h"
@@ -21,6 +23,7 @@
 #include "UI/Widgets/HeistForgeryWidget.h"
 #include "UI/Widgets/HeistInventoryWidget.h"
 #include "UI/Widgets/HeistLobbyWidget.h"
+#include "UI/Widgets/HeistObjectAssemblyWidget.h"
 #include "UI/Widgets/HeistResultWidget.h"
 #include "UI/Widgets/HeistTitleMenuWidget.h"
 
@@ -49,6 +52,7 @@ bool AHeistHUD::ShowMainHUD()
 	InitializeInventoryPresentation();
 	InitializeMainHUDPresentation();
 	InitializeForgeryPresentation();
+	InitializeObjectAssemblyPresentation();
 
 	if (!IsValid(MainHUDWidget))
 	{
@@ -72,6 +76,7 @@ void AHeistHUD::RefreshPresentationSources()
 	InitializeInventoryPresentation();
 	InitializeMainHUDPresentation();
 	InitializeForgeryPresentation();
+	InitializeObjectAssemblyPresentation();
 	InitializeResultPresentation();
 	InitializeTitleMenuPresentation();
 	InitializeLobbyPresentation();
@@ -410,6 +415,58 @@ void AHeistHUD::InitializeForgeryPresentation()
 	}
 
 	ForgeryWidget->SetupForgeryWidget(ForgeryViewModel);
+}
+
+#pragma endregion
+
+#pragma region ObjectAssemblyPresentation
+
+UHeistObjectAssemblyViewModel* AHeistHUD::GetObjectAssemblyViewModel() const
+{
+	return ObjectAssemblyViewModel;
+}
+
+UHeistObjectAssemblyWidget* AHeistHUD::GetObjectAssemblyWidget() const
+{
+	return ObjectAssemblyWidget;
+}
+
+void AHeistHUD::InitializeObjectAssemblyPresentation()
+{
+	AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(GetOwningPlayerController());
+	if (!IsValid(HeistPlayerController) || !HeistPlayerController->IsLocalController())
+	{
+		return;
+	}
+
+	if (!IsValid(ObjectAssemblyViewModel))
+	{
+		ObjectAssemblyViewModel = NewObject<UHeistObjectAssemblyViewModel>(this);
+	}
+
+	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	AHeistPlayerCharacter* HeistPlayerCharacter = HeistPlayerController->GetPawn<AHeistPlayerCharacter>();
+	UHeistObjectAssemblyComponent* ObjectAssemblyComponent =
+		IsValid(HeistPlayerCharacter) ? HeistPlayerCharacter->GetObjectAssemblyComponent() : nullptr;
+	ObjectAssemblyViewModel->SetupViewModel(HeistGameState, ObjectAssemblyComponent, HeistPlayerController);
+
+	if (!ObjectAssemblyWidgetClass)
+	{
+		return;
+	}
+
+	if (!IsValid(ObjectAssemblyWidget))
+	{
+		ObjectAssemblyWidget = CreateWidget<UHeistObjectAssemblyWidget>(HeistPlayerController, ObjectAssemblyWidgetClass);
+		if (!IsValid(ObjectAssemblyWidget))
+		{
+			return;
+		}
+
+		ObjectAssemblyWidget->AddToViewport(110);
+	}
+
+	ObjectAssemblyWidget->SetupObjectAssemblyWidget(ObjectAssemblyViewModel, HeistPlayerController);
 }
 
 #pragma endregion

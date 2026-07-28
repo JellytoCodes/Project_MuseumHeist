@@ -158,11 +158,18 @@ bool AHeistObjectDisplayCaseActor::CancelSessionForOwner(AHeistPlayerState* Expe
 	return true;
 }
 
-bool AHeistObjectDisplayCaseActor::CanInteract(const AActor* /*Interactor*/) const
+bool AHeistObjectDisplayCaseActor::CanInteract(const AActor* Interactor) const
 {
-	// TASK-W5-013 binds the owner-only UI request. Until then, validated
-	// session entry is exposed through C++ and development debug commands.
-	return false;
+	const APawn* RequestingPawn = Cast<APawn>(Interactor);
+	const AHeistPlayerState* RequestingPlayerState = IsValid(RequestingPawn) ? RequestingPawn->GetPlayerState<AHeistPlayerState>() : nullptr;
+	const bool bStateAllowsAssembly =
+		AssemblyState == EHeistObjectAssemblyState::Secured || AssemblyState == EHeistObjectAssemblyState::Observed;
+	const bool bIdentityReady = !ObjectCaseId.IsNone() && !TargetObjectArtifactId.IsNone() && !ObjectFamilyId.IsNone();
+	const bool bPlayerReady = IsValid(RequestingPlayerState) && !RequestingPlayerState->IsArrested() && !RequestingPlayerState->IsEscaped();
+	const bool bWithinSessionDistance =
+		IsValid(RequestingPawn) && FVector::DistSquared(RequestingPawn->GetActorLocation(), GetActorLocation()) <= FMath::Square(MaximumSessionDistance);
+	return Super::CanInteract(Interactor) && bIdentityReady && bStateAllowsAssembly && !bSessionLocked && !IsValid(SessionOwner.Get()) && bPlayerReady &&
+		   bWithinSessionDistance;
 }
 
 void AHeistObjectDisplayCaseActor::SetObjectIdentityForLegacyMigration(const FName InObjectCaseId, const FName InTargetArtifactId, const FName InObjectFamilyId)

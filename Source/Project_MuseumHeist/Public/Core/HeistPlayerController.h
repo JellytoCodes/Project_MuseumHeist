@@ -66,6 +66,9 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	void RefreshLocalForgeryInputBinding();
 	void UnbindLocalForgeryInputState();
 	void HandleForgerySessionStateChanged();
+	void RefreshLocalObjectAssemblyInputBinding();
+	void UnbindLocalObjectAssemblyInputState();
+	void HandleObjectAssemblySessionStateChanged();
 	void RefreshLocalInputModeFromPawn();
 	void ApplyLocalInputMode(EHeistInputMode NewInputMode);
 
@@ -94,8 +97,10 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	TObjectPtr<UInputMappingContext> ForgeryInputMappingContext;
 
 	TWeakObjectPtr<UHeistForgeryComponent> BoundForgeryComponent;
+	TWeakObjectPtr<UHeistObjectAssemblyComponent> BoundObjectAssemblyComponent;
 	EHeistInputMode LocalInputMode = EHeistInputMode::Gameplay;
 	bool bLocalForgerySessionActive = false;
+	bool bLocalObjectAssemblySessionActive = false;
 
   public:
 	void HandleInventoryOpenStateChanged(bool bInventoryOpen);

@@ -336,6 +336,12 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 	static void DebugObjectAssemblySpawn(APlayerController* PlayerController, float Distance);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
+	static void DebugObjectAssemblySpawnFor(APlayerController* PlayerController, int32 PlayerId, float Distance);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
+	static void DebugObjectAssemblyKickPlayer(APlayerController* PlayerController, int32 PlayerId);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
 	static void DebugObjectAssemblyBegin(APlayerController* PlayerController, float DurationSeconds);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
@@ -343,6 +349,9 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
 	static void DebugObjectAssemblyDump(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
+	static void DebugObjectAssemblyUIDump(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
 	static void DebugObjectAssemblyCancel(APlayerController* PlayerController);
