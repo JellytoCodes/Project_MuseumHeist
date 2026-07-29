@@ -298,6 +298,9 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 	void HeistObjectAssemblyContentSpawn(FString Family, int32 Variant = 1, float Distance = 200.0f);
 
 	UFUNCTION(Exec)
+	void HeistObjectAssemblyContentSpawnFor(int32 PlayerId, FString Family, int32 Variant = 1, float Distance = 100.0f);
+
+	UFUNCTION(Exec)
 	void HeistObjectAssemblyKickPlayer(int32 PlayerId);
 
 	UFUNCTION(Exec)
@@ -335,6 +338,12 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 
 	UFUNCTION(Exec)
 	void HeistObjectAssemblyInspectionReady();
+
+	UFUNCTION(Exec)
+	void HeistObjectAssemblyInspectionGate();
+
+	UFUNCTION(Exec)
+	void HeistObjectAssemblyTestIsolation(int32 Enabled = 1);
 
 #pragma endregion
 

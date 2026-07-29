@@ -1330,7 +1330,7 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyHelp(APlayerController* Play
 	Message(
 		PlayerController,
 		TEXT(
-			"Object Assembly commands: HeistCasePhase InGame | HeistObjectAssemblySpawn 200 | HeistObjectAssemblySpawnFor <PlayerId> <Distance> | HeistObjectAssemblyContentSpawn <Sculpture|Ceramic> <1-6> <Distance> | HeistObjectAssemblyKickPlayer <PlayerId> | HeistObjectAssemblyBegin 60 | HeistObjectAssemblyTest <Valid|Missing|Extra|Socket|Orientation|Material|Duplicate|Revision|Family|Empty> | HeistObjectAssemblyDump | HeistObjectAssemblyUIDump | HeistObjectAssemblyCancel | HeistObjectAssemblyTimeout | HeistObjectAssemblyReplicaDump | HeistObjectAssemblyPrototypeGate | HeistObjectAssemblyContentValidate | HeistObjectAssemblyReplicaRebuild | HeistObjectAssemblyTakeOriginal | HeistObjectAssemblyInspectionReady. Spawn, SpawnFor, ContentSpawn, ContentValidate, KickPlayer, Timeout, and InspectionReady are listen-server commands; Begin/Test/Cancel/Dump/UIDump/ReplicaDump/PrototypeGate/ReplicaRebuild/TakeOriginal may run in the owning client."),
+			"Object Assembly commands: HeistCasePhase InGame | HeistObjectAssemblySpawn 200 | HeistObjectAssemblySpawnFor <PlayerId> <Distance> | HeistObjectAssemblyContentSpawn <Sculpture|Ceramic> <1-6> <Distance> | HeistObjectAssemblyContentSpawnFor <PlayerId> <Sculpture|Ceramic> <1-6> <Distance> | HeistObjectAssemblyKickPlayer <PlayerId> | HeistObjectAssemblyTestIsolation <0|1> | HeistObjectAssemblyBegin 60 | HeistObjectAssemblyTest <Valid|Missing|Extra|Socket|Orientation|Material|Duplicate|Revision|Family|Empty> | HeistObjectAssemblyDump | HeistObjectAssemblyUIDump | HeistObjectAssemblyCancel | HeistObjectAssemblyTimeout | HeistObjectAssemblyReplicaDump | HeistObjectAssemblyPrototypeGate | HeistObjectAssemblyContentValidate | HeistObjectAssemblyReplicaRebuild | HeistObjectAssemblyTakeOriginal | HeistObjectAssemblyInspectionReady | HeistObjectAssemblyInspectionGate. Spawn, SpawnFor, ContentSpawn, ContentSpawnFor, ContentValidate, KickPlayer, TestIsolation, Timeout, InspectionReady, and InspectionGate are listen-server commands; Begin/Test/Cancel/Dump/UIDump/ReplicaDump/PrototypeGate/ReplicaRebuild/TakeOriginal may run in the owning client."),
 		EHeistDebugLevel::Info, true, 12.0f);
 #endif
 }
@@ -1458,6 +1458,68 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyContentSpawn(APlayerControll
 #endif
 }
 
+void UHeistDebugFunctionLibrary::DebugObjectAssemblyContentSpawnFor(APlayerController* PlayerController, const int32 PlayerId, const FString& Family,
+																	const int32 Variant, const float Distance)
+{
+#if !UE_BUILD_SHIPPING
+	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(PlayerController->GetWorld()))
+	{
+		Message(PlayerController, TEXT("Object Assembly content spawn-for: Result=REJECTED Reason=ListenServerAuthorityRequired"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const bool bSculpture = Family.Equals(TEXT("Sculpture"), ESearchCase::IgnoreCase);
+	const bool bCeramic = Family.Equals(TEXT("Ceramic"), ESearchCase::IgnoreCase);
+	if ((!bSculpture && !bCeramic) || !FMath::IsWithinInclusive(Variant, 1, 6))
+	{
+		Message(
+			PlayerController,
+			FString::Printf(
+				TEXT("Object Assembly content spawn-for: PlayerId=%d Family=%s Variant=%d Result=REJECTED Reason=ExpectedSculptureOrCeramicVariant1Through6"),
+				PlayerId, *Family, Variant),
+			EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	AHeistPlayerState* TargetPlayerState = ResolveHeistPlayerStateById(PlayerController, PlayerId);
+	APawn* TargetPawn = IsValid(TargetPlayerState) ? TargetPlayerState->GetPawn() : nullptr;
+	if (!IsValid(TargetPlayerState) || !IsValid(TargetPawn))
+	{
+		Message(
+			PlayerController,
+			FString::Printf(TEXT("Object Assembly content spawn-for: PlayerId=%d Result=REJECTED Reason=MissingPlayerStateOrPawn"), PlayerId),
+			EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const FString CanonicalFamily = bSculpture ? TEXT("Sculpture") : TEXT("Ceramic");
+	const FName FamilyId(*CanonicalFamily);
+	const FName ArtifactId(*FString::Printf(TEXT("Artifact_%s_Gallery_%02d"), *CanonicalFamily, Variant));
+	const FName CaseId(*FString::Printf(TEXT("ObjectCase_%s_Gallery_%02d_Debug_P%d"), *CanonicalFamily, Variant, PlayerId));
+	const float SafeDistance = FMath::Clamp(Distance, 100.0f, 250.0f);
+	const FVector SpawnLocation = TargetPawn->GetActorLocation() + TargetPawn->GetActorForwardVector() * SafeDistance;
+	FActorSpawnParameters SpawnParameters;
+	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	AHeistObjectDisplayCaseActor* DisplayCase =
+		PlayerController->GetWorld()->SpawnActor<AHeistObjectDisplayCaseActor>(AHeistObjectDisplayCaseActor::StaticClass(), SpawnLocation, TargetPawn->GetActorRotation(), SpawnParameters);
+	const bool bInitialized = IsValid(DisplayCase) && DisplayCase->InitializeObjectIdentity(CaseId, ArtifactId, FamilyId);
+	AHeistGameState* HeistGameState = PlayerController->GetWorld()->GetGameState<AHeistGameState>();
+	const bool bObjectiveSet =
+		bInitialized && IsValid(HeistGameState) &&
+		HeistGameState->SetObjectiveSnapshot(DisplayCase->GetTargetArtifactId(), DisplayCase->GetObjectCaseId(), EHeistObjectiveState::InProgress, nullptr);
+	const bool bResult = bInitialized && bObjectiveSet;
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT(
+				"Object Assembly content spawn-for: Case=%s CaseId=%s Artifact=%s Family=%s Variant=%d TargetPlayerId=%d Distance=%.1f ObjectiveSet=%s Authority=%s Result=%s"),
+			*GetNameSafe(DisplayCase), *CaseId.ToString(), *ArtifactId.ToString(), *FamilyId.ToString(), Variant, PlayerId, SafeDistance,
+			bObjectiveSet ? TEXT("true") : TEXT("false"), IsValid(DisplayCase) && DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false"),
+			bResult ? TEXT("PASS") : TEXT("FAIL")),
+		bResult ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
+#endif
+}
+
 void UHeistDebugFunctionLibrary::DebugObjectAssemblyKickPlayer(APlayerController* PlayerController, const int32 PlayerId)
 {
 #if !UE_BUILD_SHIPPING
@@ -1536,18 +1598,45 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyTest(APlayerController* Play
 	int32 ClientSessionRevision = ObjectAssemblyComponent->GetSessionRevision();
 	bool bKnownScenario = true;
 	bool bExpectedAccepted = true;
+	FString TemplateSource = TEXT("ScenarioFixture");
 	if (NormalizedScenario == TEXT("valid"))
 	{
-		const FHeistObjectAssemblyTemplateRow* PreparedTemplate = ObjectAssemblyComponent->GetPreparedTemplateForDebug();
-		if (PreparedTemplate == nullptr || PreparedTemplate->RequiredParts.IsEmpty())
+		const FHeistObjectAssemblyTemplateRow* ResolvedTemplate = ObjectAssemblyComponent->GetPreparedTemplateForDebug();
+		if (ResolvedTemplate != nullptr)
+		{
+			TemplateSource = TEXT("ServerPrepared");
+		}
+		else
+		{
+			AHeistHUD* HeistHUD = HeistPlayerController->GetHUD<AHeistHUD>();
+			if (IsValid(HeistHUD))
+			{
+				HeistHUD->RefreshPresentationSources();
+			}
+
+			const UHeistObjectAssemblyViewModel* ViewModel =
+				IsValid(HeistHUD) ? HeistHUD->GetObjectAssemblyViewModel() : nullptr;
+			if (IsValid(ViewModel) && ViewModel->IsDataReady())
+			{
+				const FHeistObjectAssemblyTemplateRow& LocalTemplate = ViewModel->GetActiveTemplate();
+				if (ViewModel->GetActiveTemplateId() == ObjectAssemblyComponent->GetActiveTemplateId() &&
+					LocalTemplate.TemplateId == ObjectAssemblyComponent->GetActiveTemplateId())
+				{
+					ResolvedTemplate = &LocalTemplate;
+					TemplateSource = TEXT("ClientViewModel");
+				}
+			}
+		}
+
+		if (ResolvedTemplate == nullptr || ResolvedTemplate->RequiredParts.IsEmpty())
 		{
 			Message(
 				PlayerController,
-				TEXT("Object Assembly test: Scenario=Valid Result=REJECTED Reason=MissingPreparedTemplate"),
+				TEXT("Object Assembly test: Scenario=Valid Result=REJECTED Reason=MissingServerOrLocalTemplate"),
 				EHeistDebugLevel::Warning, true);
 			return;
 		}
-		Entries = PreparedTemplate->RequiredParts;
+		Entries = ResolvedTemplate->RequiredParts;
 	}
 	else if (NormalizedScenario == TEXT("missing"))
 	{
@@ -1604,8 +1693,8 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyTest(APlayerController* Play
 	const FName SubmittedTemplateId = ObjectAssemblyComponent->GetActiveTemplateId();
 	HeistPlayerController->RequestSubmitObjectAssembly(Entries, ClientSessionRevision);
 	Message(PlayerController,
-			FString::Printf(TEXT("Object Assembly test requested: Scenario=%s Template=%s Entries=%d ClientSessionRevision=%d Expected=%s"),
-							*Scenario, *SubmittedTemplateId.ToString(), Entries.Num(), ClientSessionRevision,
+			FString::Printf(TEXT("Object Assembly test requested: Scenario=%s Template=%s TemplateSource=%s Entries=%d ClientSessionRevision=%d Expected=%s"),
+							*Scenario, *SubmittedTemplateId.ToString(), *TemplateSource, Entries.Num(), ClientSessionRevision,
 							bExpectedAccepted ? TEXT("ACCEPTED") : TEXT("REJECTED")),
 			EHeistDebugLevel::Info, true);
 #endif
@@ -2158,6 +2247,115 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyInspectionReady(APlayerContr
 						DisplayCase->IsRegisteredForInspection() ? TEXT("true") : TEXT("false"), DisplayCase->IsInspectionClaimActive() ? TEXT("true") : TEXT("false"),
 						bAlreadyInspecting ? TEXT("AlreadyInspecting") : TEXT("ForcedReady"), DisplayCase->GetInspectionScheduleRevision(),
 						bPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblyInspectionGate(APlayerController* PlayerController)
+{
+#if !UE_BUILD_SHIPPING
+	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(PlayerController->GetWorld()))
+	{
+		Message(PlayerController, TEXT("Object Assembly inspection gate: Result=REJECTED Reason=ListenServerAuthorityRequired"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	AHeistObjectDisplayCaseActor* DisplayCase = ResolveNearestReplicaObjectDisplayCase(PlayerController);
+	AHeistGuardCharacter* InspectionGuard = ResolveNearestGuard(PlayerController);
+	if (!IsValid(DisplayCase) || !IsValid(InspectionGuard) || !DisplayCase->HasCommittedAssemblyResult())
+	{
+		Message(
+			PlayerController,
+			FString::Printf(TEXT("Object Assembly inspection gate: Case=%s Guard=%s Result=REJECTED Reason=MissingReplicaCaseGuardOrCommittedResult"),
+							*GetNameSafe(DisplayCase), *GetNameSafe(InspectionGuard)),
+			EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const bool bAlreadyApplied = DisplayCase->GetInspectionResultApplicationCount() == 1 &&
+		DisplayCase->GetAssemblyState() == DisplayCase->GetResolvedInspectionCaseOutcome() && !DisplayCase->IsInspectionClaimActive();
+	bool bForcedReady = false;
+	bool bClaimStarted = false;
+	bool bResultApplied = false;
+	if (!bAlreadyApplied)
+	{
+		if (!DisplayCase->IsValidInspectionCandidate() && !DisplayCase->IsInspectionClaimActive())
+		{
+			bForcedReady = DisplayCase->ForceInspectionReadyForDebug();
+		}
+
+		if (DisplayCase->IsInspectionClaimActive())
+		{
+			InspectionGuard = Cast<AHeistGuardCharacter>(DisplayCase->GetInspectingGuard());
+		}
+		else
+		{
+			bClaimStarted = DisplayCase->TryBeginInspection(InspectionGuard);
+		}
+
+		bResultApplied = IsValid(InspectionGuard) && DisplayCase->ApplyInspectionResult(InspectionGuard);
+	}
+
+	const FHeistObjectAssemblyResult CommittedResult = DisplayCase->GetCommittedAssemblyResult();
+	const bool bScheduleContract =
+		FMath::IsFinite(CommittedResult.QualityScore) && FMath::IsWithinInclusive(CommittedResult.QualityScore, 0.0f, 100.0f) &&
+		!DisplayCase->GetInspectionScoreBand().IsNone() && DisplayCase->GetInspectionScheduleRevision() > 0;
+	const bool bApplicationContract = DisplayCase->GetInspectionResultApplicationCount() == 1 &&
+		DisplayCase->GetAssemblyState() == DisplayCase->GetResolvedInspectionCaseOutcome() && !DisplayCase->IsInspectionClaimActive() &&
+		DisplayCase->GetInspectionDuplicateBlockCount() == 0;
+	const bool bPassed = bScheduleContract && bApplicationContract && (bAlreadyApplied || bResultApplied);
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT(
+				"Object Assembly inspection gate: Case=%s CaseId=%s Guard=%s Quality=%.2f Band=%s Delay=%.2f Alert=%s ExpectedState=%s ActualState=%s ForcedReady=%s ClaimStarted=%s Applied=%s Applications=%d DuplicateBlocks=%d Authority=true Result=%s"),
+			*GetNameSafe(DisplayCase), *DisplayCase->GetObjectCaseId().ToString(), *GetNameSafe(InspectionGuard), CommittedResult.QualityScore,
+			*DisplayCase->GetInspectionScoreBand().ToString(), DisplayCase->GetResolvedInspectionDelay(),
+			*UEnum::GetValueAsString(DisplayCase->GetResolvedInspectionAlertOutcome()),
+			*UEnum::GetValueAsString(DisplayCase->GetResolvedInspectionCaseOutcome()), *UEnum::GetValueAsString(DisplayCase->GetAssemblyState()),
+			bForcedReady ? TEXT("true") : TEXT("false"), bClaimStarted ? TEXT("true") : TEXT("false"),
+			(bAlreadyApplied || bResultApplied) ? TEXT("true") : TEXT("false"), DisplayCase->GetInspectionResultApplicationCount(),
+			DisplayCase->GetInspectionDuplicateBlockCount(), bPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblyTestIsolation(APlayerController* PlayerController, const bool bEnabled)
+{
+#if !UE_BUILD_SHIPPING
+	UWorld* World = IsValid(PlayerController) ? PlayerController->GetWorld() : nullptr;
+	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(World))
+	{
+		Message(PlayerController, TEXT("Object Assembly test isolation: Result=REJECTED Reason=ListenServerAuthorityRequired"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	int32 GuardCount = 0;
+	int32 AppliedCount = 0;
+	int32 MatchingStateCount = 0;
+	for (TActorIterator<AHeistGuardCharacter> GuardIterator(World); GuardIterator; ++GuardIterator)
+	{
+		AHeistGuardCharacter* GuardCharacter = *GuardIterator;
+		UHeistGuardStateComponent* GuardStateComponent = IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
+		if (!IsValid(GuardStateComponent))
+		{
+			continue;
+		}
+
+		++GuardCount;
+		AppliedCount += GuardStateComponent->SetDisabled(bEnabled) ? 1 : 0;
+		const bool bStateMatches = bEnabled
+			? GuardStateComponent->GetGuardState() == EHeistGuardState::Disabled
+			: GuardStateComponent->GetGuardState() != EHeistGuardState::Disabled;
+		MatchingStateCount += bStateMatches ? 1 : 0;
+	}
+
+	const bool bPassed = GuardCount > 0 && AppliedCount == GuardCount && MatchingStateCount == GuardCount;
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Object Assembly test isolation: Enabled=%s Guards=%d Applied=%d MatchingState=%d Authority=true Result=%s"),
+			bEnabled ? TEXT("true") : TEXT("false"), GuardCount, AppliedCount, MatchingStateCount, bPassed ? TEXT("PASS") : TEXT("FAIL")),
 		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
 #endif
 }
@@ -5312,15 +5510,18 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyInspection(const AHeistObjec
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	const FHeistObjectAssemblyResult Result =
-		IsValid(DisplayCase) && DisplayCase->HasCommittedAssemblyResult() ? DisplayCase->GetCommittedAssemblyResult() : FHeistObjectAssemblyResult();
+	const bool bAuthority = IsValid(DisplayCase) && DisplayCase->HasAuthority();
+	const bool bHasAuthoritativeQuality = bAuthority && DisplayCase->HasCommittedAssemblyResult();
+	const FHeistObjectAssemblyResult Result = bHasAuthoritativeQuality ? DisplayCase->GetCommittedAssemblyResult() : FHeistObjectAssemblyResult();
+	const float LoggedQuality = bHasAuthoritativeQuality ? Result.QualityScore : -1.0f;
 	LogMessage(
 		EHeistDebugChannel::AI, bResult ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
 		FString::Printf(
 			TEXT(
-				"Object Assembly inspection: Event=%s Case=%s CaseId=%s Guard=%s State=%s Quality=%.2f DelayRemaining=%.2f Registered=%s ClaimActive=%s ScheduleRevision=%d RegistrationRevision=%d Applications=%d DuplicateBlocks=%d Authority=%s Result=%s Reason=%s"),
+				"Object Assembly inspection: Event=%s Case=%s CaseId=%s Guard=%s State=%s Quality=%.2f QualitySource=%s DelayRemaining=%.2f Registered=%s ClaimActive=%s ScheduleRevision=%d RegistrationRevision=%d Applications=%d DuplicateBlocks=%d Authority=%s Result=%s Reason=%s"),
 			*EventName.ToString(), *GetNameSafe(DisplayCase), IsValid(DisplayCase) ? *DisplayCase->GetObjectCaseId().ToString() : TEXT("None"),
-			*GetNameSafe(InspectingGuard), IsValid(DisplayCase) ? *UEnum::GetValueAsString(DisplayCase->GetAssemblyState()) : TEXT("None"), Result.QualityScore,
+			*GetNameSafe(InspectingGuard), IsValid(DisplayCase) ? *UEnum::GetValueAsString(DisplayCase->GetAssemblyState()) : TEXT("None"), LoggedQuality,
+			bHasAuthoritativeQuality ? TEXT("ServerCommitted") : TEXT("ServerOnlyNotReplicated"),
 			IsValid(DisplayCase) ? DisplayCase->GetInspectionDelayRemaining() : 0.0f,
 			IsValid(DisplayCase) && DisplayCase->IsRegisteredForInspection() ? TEXT("true") : TEXT("false"),
 			IsValid(DisplayCase) && DisplayCase->IsInspectionClaimActive() ? TEXT("true") : TEXT("false"),
@@ -5328,7 +5529,7 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyInspection(const AHeistObjec
 			IsValid(DisplayCase) ? DisplayCase->GetInspectionRegistrationRevision() : INDEX_NONE,
 			IsValid(DisplayCase) ? DisplayCase->GetInspectionResultApplicationCount() : 0,
 			IsValid(DisplayCase) ? DisplayCase->GetInspectionDuplicateBlockCount() : 0,
-			IsValid(DisplayCase) && DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false"), bResult ? TEXT("PASS") : TEXT("REJECTED"),
+			bAuthority ? TEXT("true") : TEXT("false"), bResult ? TEXT("PASS") : TEXT("REJECTED"),
 			Reason.IsNone() ? TEXT("None") : *Reason.ToString()));
 #endif
 }

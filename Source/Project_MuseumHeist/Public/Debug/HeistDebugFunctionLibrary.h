@@ -351,6 +351,9 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 	static void DebugObjectAssemblyContentSpawn(APlayerController* PlayerController, const FString& Family, int32 Variant, float Distance);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
+	static void DebugObjectAssemblyContentSpawnFor(APlayerController* PlayerController, int32 PlayerId, const FString& Family, int32 Variant, float Distance);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
 	static void DebugObjectAssemblyKickPlayer(APlayerController* PlayerController, int32 PlayerId);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
@@ -388,6 +391,12 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
 	static void DebugObjectAssemblyInspectionReady(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
+	static void DebugObjectAssemblyInspectionGate(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
+	static void DebugObjectAssemblyTestIsolation(APlayerController* PlayerController, bool bEnabled);
 
 #pragma endregion
 

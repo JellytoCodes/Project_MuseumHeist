@@ -230,6 +230,13 @@ void UHeistCheatManager::HeistObjectAssemblyContentSpawn(const FString Family, c
 #endif
 }
 
+void UHeistCheatManager::HeistObjectAssemblyContentSpawnFor(const int32 PlayerId, const FString Family, const int32 Variant, const float Distance)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugObjectAssemblyContentSpawnFor(GetOuterAPlayerController(), PlayerId, Family, Variant, Distance);
+#endif
+}
+
 void UHeistCheatManager::HeistObjectAssemblyKickPlayer(const int32 PlayerId)
 {
 #if !UE_BUILD_SHIPPING
@@ -318,6 +325,20 @@ void UHeistCheatManager::HeistObjectAssemblyInspectionReady()
 {
 #if !UE_BUILD_SHIPPING
 	UHeistDebugFunctionLibrary::DebugObjectAssemblyInspectionReady(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistObjectAssemblyInspectionGate()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugObjectAssemblyInspectionGate(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistObjectAssemblyTestIsolation(const int32 Enabled)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugObjectAssemblyTestIsolation(GetOuterAPlayerController(), Enabled != 0);
 #endif
 }
 

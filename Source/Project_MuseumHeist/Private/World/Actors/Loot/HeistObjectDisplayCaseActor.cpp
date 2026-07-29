@@ -250,6 +250,7 @@ bool AHeistObjectDisplayCaseActor::TryCommitAssemblyReplica(AHeistPlayerState* R
 
 	StartInspectionDelayTimer();
 	RefreshInspectionRegistration();
+	UHeistDebugFunctionLibrary::DebugObjectAssemblyInspection(this, nullptr, FName(TEXT("Schedule")), FName(TEXT("Accepted")), true);
 	RebuildReplicaComponents();
 	ClearSession(FName(TEXT("AssemblyCompleted")));
 	ForceNetUpdate();
@@ -1205,7 +1206,6 @@ bool AHeistObjectDisplayCaseActor::ResolveInspectionSchedule(const FHeistObjectA
 	const float ServerTime = IsValid(HeistGameState) ? HeistGameState->GetServerWorldTimeSeconds() : (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
 	InspectionReadyServerTime = ServerTime + ResolvedInspectionDelay;
 	++InspectionScheduleRevision;
-	UHeistDebugFunctionLibrary::DebugObjectAssemblyInspection(this, nullptr, FName(TEXT("Schedule")), FName(TEXT("Accepted")), true);
 	return true;
 }
 
