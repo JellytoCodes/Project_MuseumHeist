@@ -1,0 +1,60 @@
+{
+    "asset_name":  "T_Forgery_M02_InkWash_05",
+    "source_file":  "M02_InkWash_05.png",
+    "mask_asset_name":  "T_Forgery_M02_InkWash_05_Mask",
+    "mask_source_file":  "M02_InkWash_05_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M02",
+    "template_id":  "Template_M02_InkWash_05",
+    "category":  "InkWash",
+    "difficulty":  "Medium",
+    "source_artwork":  "Autumn Landscape",
+    "source_artist":  "Hidaka Tetsuo",
+    "source_manifest":  "M02_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M02_InkWash_05_AutumnLandscape_source.png",
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#F2E5D0",
+                         "#CDBA9D",
+                         "#9D8870",
+                         "#5A5148",
+                         "#303030"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.887923,
+                               0.783538,
+                               0.630757,
+                               1
+                           ],
+                           [
+                               0.610496,
+                               0.491021,
+                               0.337164,
+                               1
+                           ],
+                           [
+                               0.337164,
+                               0.246201,
+                               0.162029,
+                               1
+                           ],
+                           [
+                               0.102242,
+                               0.082283,
+                               0.064803,
+                               1
+                           ],
+                           [
+                               0.029557,
+                               0.029557,
+                               0.029557,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.2661,
+    "quantize_cleanup_radius":  3,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

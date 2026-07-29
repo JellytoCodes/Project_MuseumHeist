@@ -58,6 +58,10 @@
 #include "UI/Widgets/HeistHUDWidget.h"
 #include "UI/Widgets/HeistObjectAssemblyWidget.h"
 
+#if WITH_EDITOR
+#include "TextureCompiler.h"
+#endif
+
 #pragma region InternalHelpers
 
 namespace
@@ -2370,7 +2374,7 @@ void UHeistDebugFunctionLibrary::DebugForgeryHelp(APlayerController* PlayerContr
 	Message(
 		PlayerController,
 		TEXT(
-			"Forgery commands: HeistSurfaceTemplateDump | HeistSurfaceTemplatePoolTest 12 | HeistCasePhase InGame | HeistCaseSpawn 250 | interact/hold E | HeistForgeryTemplateDump | HeistForgeryStrokeDump | HeistForgeryTransportDump | HeistForgeryTransportTest <Valid|Bounds|Count|Size|Brush|Revision|Empty|Short|Palette|Timeout|NearTimeout|Duplicate> | HeistForgeryScoreDump | HeistForgeryScoreTest | HeistForgerySwapDump | HeistForgeryVisualDump | HeistForgeryPaintingDump | HeistForgeryDump | HeistForgeryInputDump | HeistForgerySubmit | HeistForgeryCancel | HeistForgeryTimeout | HeistForgeryRecoveryDump | HeistForgeryRecoveryRace <CancelSubmit|SubmitCancel> | HeistForgeryUIDump | HeistForgeryUIPreview <None|Observation|Drawing|Validation|Result>. SurfaceTemplateDump runs in every server/client window; PoolTest 12 runs in the listen server. Run RecoveryRace in the owning client after drawing, then run RecoveryDump after replication settles. Timeout and NearTimeout transport tests run in the listen-server window. Run RecoveryDump in the listen server after client disconnect to detect orphan locks."),
+			"Forgery commands: HeistSurfaceTemplateDump | HeistSurfaceTemplatePoolTest 12 | HeistSurfaceTemplateContentValidate <M01|M02|M03> | HeistCasePhase InGame | HeistCaseSpawn 250 | interact/hold E | HeistForgeryTemplateDump | HeistForgeryStrokeDump | HeistForgeryTransportDump | HeistForgeryTransportTest <Valid|Bounds|Count|Size|Brush|Revision|Empty|Short|Palette|Timeout|NearTimeout|Duplicate> | HeistForgeryScoreDump | HeistForgeryScoreTest | HeistForgerySwapDump | HeistForgeryVisualDump | HeistForgeryPaintingDump | HeistForgeryDump | HeistForgeryInputDump | HeistForgerySubmit | HeistForgeryCancel | HeistForgeryTimeout | HeistForgeryRecoveryDump | HeistForgeryRecoveryRace <CancelSubmit|SubmitCancel> | HeistForgeryUIDump | HeistForgeryUIPreview <None|Observation|Drawing|Validation|Result>. SurfaceTemplateDump runs in every server/client window; PoolTest 12 and ContentValidate run in the listen server. Run RecoveryRace in the owning client after drawing, then run RecoveryDump after replication settles. Timeout and NearTimeout transport tests run in the listen-server window. Run RecoveryDump in the listen server after client disconnect to detect orphan locks."),
 		EHeistDebugLevel::Info, true, 12.0f);
 #endif
 }
@@ -2509,17 +2513,41 @@ void UHeistDebugFunctionLibrary::DebugSurfaceTemplateDump(APlayerController* Pla
 								SelectionRevision > 0;
 	const bool bPreparedTemplateAligned =
 		!IsValid(ForgeryComponent) || !ForgeryComponent->HasPreparedForgeryTemplate() || ForgeryComponent->GetActiveTemplateId() == TemplateId;
-	const bool bContractPassed = bSnapshotValid && bPreparedTemplateAligned;
+	int32 OriginalCaseCount = 0;
+	int32 OriginalVisualReadyCount = 0;
+	FName OriginalVisualTemplateId = NAME_None;
+	int32 OriginalVisualRevision = 0;
+	const FName ActiveTargetCaseId = HeistGameState->GetActiveTargetCaseId();
+	for (TActorIterator<AHeistPaintingDisplayCaseActor> CaseIterator(HeistPlayerController->GetWorld()); CaseIterator; ++CaseIterator)
+	{
+		const AHeistPaintingDisplayCaseActor* DisplayCase = *CaseIterator;
+		if (!IsValid(DisplayCase) || DisplayCase->GetDisplayCaseId() != ActiveTargetCaseId)
+		{
+			continue;
+		}
+
+		++OriginalCaseCount;
+		bool bReferenceLoaded = false;
+		bool bDynamicMaterialBuilt = false;
+		bool bTextureParameterApplied = false;
+		bool bOriginalVisualContractPassed = false;
+		DisplayCase->GetOriginalPaintingVisualDebugState(OriginalVisualTemplateId, OriginalVisualRevision, bReferenceLoaded, bDynamicMaterialBuilt,
+														 bTextureParameterApplied, bOriginalVisualContractPassed);
+		OriginalVisualReadyCount += bOriginalVisualContractPassed ? 1 : 0;
+	}
+	const bool bOriginalVisualAligned = !ActiveTargetCaseId.IsNone() && OriginalCaseCount == 1 && OriginalVisualReadyCount == 1;
+	const bool bContractPassed = bSnapshotValid && bPreparedTemplateAligned && bOriginalVisualAligned;
 	const bool bContentCardinalityReady = PoolSize == 12;
 	const FName PreparedTemplateId = IsValid(ForgeryComponent) ? ForgeryComponent->GetActiveTemplateId() : NAME_None;
 	Message(
 		PlayerController,
 		FString::Printf(
 			TEXT(
-				"Surface template dump: Pool=%s Template=%s PoolSize=%d ExpectedPoolSize=12 ContentCardinality=%s BagCycle=%d Remaining=%d Revision=%d PreparedTemplate=%s PreparedAligned=%s Authority=%s Snapshot=%s Result=%s"),
+				"Surface template dump: Pool=%s Template=%s PoolSize=%d ExpectedPoolSize=12 ContentCardinality=%s BagCycle=%d Remaining=%d Revision=%d PreparedTemplate=%s PreparedAligned=%s ActiveTargetCase=%s TargetCaseMatches=%d OriginalVisualReady=%d OriginalVisualTemplate=%s OriginalVisualRevision=%d OriginalVisualContract=%s Authority=%s Snapshot=%s Result=%s"),
 			*PoolId.ToString(), *TemplateId.ToString(), PoolSize, bContentCardinalityReady ? TEXT("READY") : TEXT("PENDING_W5_019_021"), BagCycle, RemainingCount,
-			SelectionRevision, *PreparedTemplateId.ToString(),
-			bPreparedTemplateAligned ? TEXT("true") : TEXT("false"), HeistPlayerController->HasAuthority() ? TEXT("true") : TEXT("false"),
+			SelectionRevision, *PreparedTemplateId.ToString(), bPreparedTemplateAligned ? TEXT("true") : TEXT("false"), *ActiveTargetCaseId.ToString(), OriginalCaseCount,
+			OriginalVisualReadyCount, *OriginalVisualTemplateId.ToString(), OriginalVisualRevision, bOriginalVisualAligned ? TEXT("PASS") : TEXT("FAIL"),
+			HeistPlayerController->HasAuthority() ? TEXT("true") : TEXT("false"),
 			bSnapshotValid ? TEXT("PASS") : TEXT("FAIL"), bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
 		bContractPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
 #endif
@@ -2551,6 +2579,234 @@ void UHeistDebugFunctionLibrary::DebugSurfaceTemplatePoolTest(APlayerController*
 			PoolSize, DrawCount, PoolSize * 2, FirstCycleUniqueCount, SecondCycleUniqueCount, RecentProtectionCheckCount, RecentProtectionPassCount,
 			FirstCycleUniqueCount == PoolSize && SecondCycleUniqueCount == PoolSize ? TEXT("PASS") : TEXT("FAIL"),
 			RecentProtectionCheckCount > 0 && RecentProtectionCheckCount == RecentProtectionPassCount ? TEXT("PASS") : TEXT("FAIL"), bPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugSurfaceTemplateContentValidate(APlayerController* PlayerController, const FString& RequestedPoolId)
+{
+#if !UE_BUILD_SHIPPING
+	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(PlayerController->GetWorld()))
+	{
+		Message(PlayerController, TEXT("Surface template content validation: Result=REJECTED Reason=ListenServerAuthorityRequired"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const AHeistGameMode* HeistGameMode = PlayerController->GetWorld()->GetAuthGameMode<AHeistGameMode>();
+	const UDataTable* TemplateTable = IsValid(HeistGameMode) ? HeistGameMode->GetForgeryTemplateDataTable() : nullptr;
+	const UDataTable* ArtifactTable = IsValid(HeistGameMode) ? HeistGameMode->GetArtifactDataTable() : nullptr;
+	if (!IsValid(TemplateTable) || TemplateTable->GetRowStruct() != FHeistForgeryTemplateRow::StaticStruct() ||
+		!IsValid(ArtifactTable) || ArtifactTable->GetRowStruct() != FHeistArtifactDataRow::StaticStruct())
+	{
+		Message(PlayerController, TEXT("Surface template content validation: Result=FAIL Reason=MissingOrInvalidDataTables"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	FString NormalizedPoolId = RequestedPoolId.TrimStartAndEnd().ToUpper();
+	if (NormalizedPoolId.IsEmpty())
+	{
+		NormalizedPoolId = TEXT("M01");
+	}
+
+	FString FirstCategoryName;
+	FString SecondCategoryName;
+	if (NormalizedPoolId == TEXT("M01"))
+	{
+		FirstCategoryName = TEXT("Portrait");
+		SecondCategoryName = TEXT("Landscape");
+	}
+	else if (NormalizedPoolId == TEXT("M02"))
+	{
+		FirstCategoryName = TEXT("InkWash");
+		SecondCategoryName = TEXT("FoldingScreen");
+	}
+	else if (NormalizedPoolId == TEXT("M03"))
+	{
+		FirstCategoryName = TEXT("GeometricAbstract");
+		SecondCategoryName = TEXT("Poster");
+	}
+	else
+	{
+		Message(
+			PlayerController,
+			FString::Printf(
+				TEXT("Surface template content validation: Pool=%s Result=REJECTED Reason=UnsupportedPool Expected=M01|M02|M03"),
+				*NormalizedPoolId),
+			EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const FName PoolId(*NormalizedPoolId);
+	const FString ExpectedAssetPathPrefix =
+		FString::Printf(TEXT("/Game/Data/Forgery/Textures/%s/T_Forgery_%s_"), *NormalizedPoolId, *NormalizedPoolId);
+	const FString FirstTemplatePrefix =
+		FString::Printf(TEXT("Template_%s_%s_"), *NormalizedPoolId, *FirstCategoryName);
+	const FString SecondTemplatePrefix =
+		FString::Printf(TEXT("Template_%s_%s_"), *NormalizedPoolId, *SecondCategoryName);
+	TSet<FName> TemplateIds;
+	TSet<FString> UniqueReferencePaths;
+	TSet<FString> UniqueMaskPaths;
+	int32 TemplateCount = 0;
+	int32 FirstCategoryCount = 0;
+	int32 SecondCategoryCount = 0;
+	int32 EasyCount = 0;
+	int32 MediumCount = 0;
+	int32 HardCount = 0;
+	int32 LoadedReferenceCount = 0;
+	int32 LoadedMaskCount = 0;
+	int32 AntiFillConfigurationCount = 0;
+	int32 InvalidTemplateCount = 0;
+	TArray<FString> InvalidTemplateDetails;
+
+	for (const TPair<FName, uint8*>& RowPair : TemplateTable->GetRowMap())
+	{
+		const FHeistForgeryTemplateRow* Template = reinterpret_cast<const FHeistForgeryTemplateRow*>(RowPair.Value);
+		if (Template == nullptr || Template->SurfacePoolId != PoolId)
+		{
+			continue;
+		}
+
+		++TemplateCount;
+		TemplateIds.Add(Template->TemplateId);
+		const FString TemplateIdString = Template->TemplateId.ToString();
+		const bool bFirstCategoryTemplate = TemplateIdString.StartsWith(FirstTemplatePrefix);
+		const bool bSecondCategoryTemplate = TemplateIdString.StartsWith(SecondTemplatePrefix);
+		FirstCategoryCount += bFirstCategoryTemplate ? 1 : 0;
+		SecondCategoryCount += bSecondCategoryTemplate ? 1 : 0;
+
+		const FString ReferencePath = Template->ReferenceImage.ToSoftObjectPath().ToString();
+		const FString MaskPath = Template->ReferenceMask.ToSoftObjectPath().ToString();
+		UTexture2D* ReferenceImage = Template->ReferenceImage.LoadSynchronous();
+		UTexture2D* ReferenceMask = Template->ReferenceMask.LoadSynchronous();
+#if WITH_EDITOR
+		TArray<UTexture*> SurfaceTexturesToFinish;
+		if (IsValid(ReferenceImage))
+		{
+			SurfaceTexturesToFinish.Add(ReferenceImage);
+		}
+		if (IsValid(ReferenceMask))
+		{
+			SurfaceTexturesToFinish.Add(ReferenceMask);
+		}
+		if (!SurfaceTexturesToFinish.IsEmpty())
+		{
+			FTextureCompilingManager::Get().FinishCompilation(SurfaceTexturesToFinish);
+		}
+#endif
+		const bool bReferenceValid =
+			IsValid(ReferenceImage) && ReferencePath.StartsWith(ExpectedAssetPathPrefix) &&
+			ReferenceImage->GetSizeX() > 0 && ReferenceImage->GetSizeY() > 0;
+		const bool bMaskValid =
+			IsValid(ReferenceMask) && MaskPath.StartsWith(ExpectedAssetPathPrefix) &&
+			IsValid(ReferenceImage) && ReferenceMask->GetSizeX() == ReferenceImage->GetSizeX() &&
+			ReferenceMask->GetSizeY() == ReferenceImage->GetSizeY();
+		LoadedReferenceCount += bReferenceValid ? 1 : 0;
+		LoadedMaskCount += bMaskValid ? 1 : 0;
+		if (bReferenceValid)
+		{
+			UniqueReferencePaths.Add(ReferencePath);
+		}
+		if (bMaskValid)
+		{
+			UniqueMaskPaths.Add(MaskPath);
+		}
+
+		bool bDifficultyValid = false;
+		switch (Template->AllowedPalette.Num())
+		{
+		case 4:
+			++EasyCount;
+			bDifficultyValid =
+				FMath::IsNearlyEqual(Template->ForgeryDuration, 60.0f) &&
+				Template->StrokeLimit == 1536 &&
+				FMath::IsNearlyEqual(Template->BrushSize, 0.025f);
+			break;
+		case 5:
+			++MediumCount;
+			bDifficultyValid =
+				FMath::IsNearlyEqual(Template->ForgeryDuration, 75.0f) &&
+				Template->StrokeLimit == 2048 &&
+				FMath::IsNearlyEqual(Template->BrushSize, 0.02f);
+			break;
+		case 6:
+			++HardCount;
+			bDifficultyValid =
+				FMath::IsNearlyEqual(Template->ForgeryDuration, 90.0f) &&
+				Template->StrokeLimit == 3072 &&
+				FMath::IsNearlyEqual(Template->BrushSize, 0.018f);
+			break;
+		default:
+			break;
+		}
+
+		const bool bAntiFillConfigurationValid =
+			Template->MaximumPaintToReferenceRatio > 1.0f &&
+			Template->OverpaintScoreCap >= 0.0f &&
+			Template->OverpaintScoreCap <= 20.0f;
+		AntiFillConfigurationCount += bAntiFillConfigurationValid ? 1 : 0;
+		const bool bTemplateValid =
+			RowPair.Key == Template->TemplateId &&
+			(bFirstCategoryTemplate != bSecondCategoryTemplate) &&
+			Template->BackgroundFilterMode == EHeistForgeryBackgroundFilter::Black &&
+			FMath::IsNearlyEqual(Template->BackgroundColorTolerance, 0.08f) &&
+			bReferenceValid && bMaskValid && bDifficultyValid &&
+			Template->CoverageWeight + Template->MajorShapeWeight > 0.0f &&
+			Template->ShapeAccuracyWeight + Template->ColorAccuracyWeight > 0.0f &&
+			bAntiFillConfigurationValid;
+		InvalidTemplateCount += bTemplateValid ? 0 : 1;
+		if (!bTemplateValid)
+		{
+			InvalidTemplateDetails.Add(FString::Printf(
+				TEXT("%s[RowId=%s Category=%s Ref=%s RefSize=%dx%d RefPath=%s Mask=%s MaskSize=%dx%d MaskPath=%s Difficulty=%s AntiFillConfig=%s]"),
+				*Template->TemplateId.ToString(),
+				RowPair.Key == Template->TemplateId ? TEXT("PASS") : TEXT("FAIL"),
+				bFirstCategoryTemplate != bSecondCategoryTemplate ? TEXT("PASS") : TEXT("FAIL"),
+				IsValid(ReferenceImage) ? TEXT("LOADED") : TEXT("MISSING"),
+				IsValid(ReferenceImage) ? ReferenceImage->GetSizeX() : 0,
+				IsValid(ReferenceImage) ? ReferenceImage->GetSizeY() : 0,
+				ReferencePath.StartsWith(ExpectedAssetPathPrefix) ? TEXT("PASS") : TEXT("FAIL"),
+				IsValid(ReferenceMask) ? TEXT("LOADED") : TEXT("MISSING"),
+				IsValid(ReferenceMask) ? ReferenceMask->GetSizeX() : 0,
+				IsValid(ReferenceMask) ? ReferenceMask->GetSizeY() : 0,
+				MaskPath.StartsWith(ExpectedAssetPathPrefix) ? TEXT("PASS") : TEXT("FAIL"),
+				bDifficultyValid ? TEXT("PASS") : TEXT("FAIL"),
+				bAntiFillConfigurationValid ? TEXT("PASS") : TEXT("FAIL")));
+		}
+	}
+
+	bool bArtifactDefaultValid = true;
+	FString ArtifactDefaultResult = TEXT("NOT_REQUIRED");
+	if (PoolId == FName(TEXT("M01")))
+	{
+		const FHeistArtifactDataRow* PaintingArtifact =
+			ArtifactTable->FindRow<FHeistArtifactDataRow>(FName(TEXT("Artifact_Painting_M01")), TEXT("DebugSurfaceTemplateContentValidate"), false);
+		bArtifactDefaultValid =
+			PaintingArtifact != nullptr && PaintingArtifact->ArtifactId == FName(TEXT("Artifact_Painting_M01")) &&
+			PaintingArtifact->ForgeryType == EHeistForgeryType::Drawing &&
+			TemplateIds.Contains(PaintingArtifact->ForgeryTemplateId);
+		ArtifactDefaultResult = bArtifactDefaultValid ? TEXT("PASS") : TEXT("FAIL");
+	}
+	const bool bAntiFillConfigurationRequired = PoolId == FName(TEXT("M03"));
+	const bool bAntiFillConfigurationValid = !bAntiFillConfigurationRequired || AntiFillConfigurationCount == 12;
+	const bool bPassed =
+		TemplateCount == 12 && FirstCategoryCount == 6 && SecondCategoryCount == 6 &&
+		EasyCount == 4 && MediumCount == 5 && HardCount == 3 &&
+		LoadedReferenceCount == 12 && LoadedMaskCount == 12 &&
+		UniqueReferencePaths.Num() == 12 && UniqueMaskPaths.Num() == 12 &&
+		InvalidTemplateCount == 0 && bArtifactDefaultValid && bAntiFillConfigurationValid;
+	const FString InvalidTemplateDetailsString =
+		InvalidTemplateDetails.IsEmpty() ? TEXT("None") : FString::Join(InvalidTemplateDetails, TEXT(","));
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT(
+				"Surface template content validation: Pool=%s Templates=%d CategoryA=%s CategoryACount=%d CategoryB=%s CategoryBCount=%d Easy=%d Medium=%d Hard=%d ReferencesLoaded=%d MasksLoaded=%d UniqueReferences=%d UniqueMasks=%d AntiFillConfiguration=%s AntiFillConfiguredRows=%d ArtifactDefault=%s InvalidTemplates=%d InvalidDetails=%s DifficultyRule=Palette4Easy5Medium6Hard Authority=true Result=%s"),
+			*NormalizedPoolId, TemplateCount, *FirstCategoryName, FirstCategoryCount, *SecondCategoryName, SecondCategoryCount, EasyCount, MediumCount, HardCount,
+			LoadedReferenceCount, LoadedMaskCount, UniqueReferencePaths.Num(), UniqueMaskPaths.Num(),
+			bAntiFillConfigurationRequired ? (bAntiFillConfigurationValid ? TEXT("PASS") : TEXT("FAIL")) : TEXT("NOT_REQUIRED"),
+			AntiFillConfigurationCount, *ArtifactDefaultResult, InvalidTemplateCount,
+			*InvalidTemplateDetailsString,
+			bPassed ? TEXT("PASS") : TEXT("FAIL")),
 		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
 #endif
 }

@@ -1,0 +1,53 @@
+{
+    "asset_name":  "T_Forgery_M03_GeometricAbstract_02",
+    "source_file":  "M03_GeometricAbstract_02.png",
+    "mask_asset_name":  "T_Forgery_M03_GeometricAbstract_02_Mask",
+    "mask_source_file":  "M03_GeometricAbstract_02_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M03",
+    "template_id":  "Template_M03_GeometricAbstract_02",
+    "category":  "GeometricAbstract",
+    "difficulty":  "Easy",
+    "source_artwork":  "Simultaneous Composition",
+    "source_artist":  "Theo van Doesburg",
+    "source_manifest":  "M03_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M03_GeometricAbstract_02_DoesburgSimultaneous_source.png",
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#EEE8D8",
+                         "#1C1C1C",
+                         "#3E6FA6",
+                         "#D4A62A"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.854993,
+                               0.806952,
+                               0.686685,
+                               1
+                           ],
+                           [
+                               0.011612,
+                               0.011612,
+                               0.011612,
+                               1
+                           ],
+                           [
+                               0.048172,
+                               0.158961,
+                               0.381326,
+                               1
+                           ],
+                           [
+                               0.658375,
+                               0.381326,
+                               0.023153,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.222,
+    "quantize_cleanup_radius":  4,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

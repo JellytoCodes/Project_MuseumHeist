@@ -1,0 +1,28 @@
+{
+  "asset_name": "T_Forgery_M01_Portrait_04",
+  "source_file": "M01_Portrait_04.png",
+  "mask_asset_name": "T_Forgery_M01_Portrait_04_Mask",
+  "mask_source_file": "M01_Portrait_04_Mask.png",
+  "unreal_destination": "/Game/Data/Forgery/Textures/M01",
+  "template_id": "Template_M01_Portrait_04",
+  "category": "Portrait",
+  "difficulty": "Medium",
+  "source_artwork": "Lady with an Ermine",
+  "source_artist": "Leonardo da Vinci",
+  "source_manifest": "M01_SourceManifest.json",
+  "candidate_source_file": "Candidates/M01_Portrait_04_LadyErmine_source.png",
+  "background_srgb": "#000000",
+  "background_filter_mode": "Black",
+  "background_color_tolerance": 0.08,
+  "palette_srgb": ["#EAB06C", "#452B19", "#6B1D23", "#B48C2F", "#F5F0DE"],
+  "palette_linear": [
+    [0.822786, 0.434154, 0.149960, 1.0],
+    [0.059511, 0.024158, 0.009721, 1.0],
+    [0.147027, 0.012286, 0.016807, 1.0],
+    [0.456411, 0.262251, 0.028426, 1.0],
+    [0.913099, 0.871367, 0.730461, 1.0]
+  ],
+  "foreground_ratio": 0.3653,
+  "quantize_cleanup_radius": 4,
+  "notes": "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

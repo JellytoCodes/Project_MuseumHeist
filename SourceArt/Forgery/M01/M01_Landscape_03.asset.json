@@ -1,0 +1,28 @@
+{
+  "asset_name": "T_Forgery_M01_Landscape_03",
+  "source_file": "M01_Landscape_03.png",
+  "mask_asset_name": "T_Forgery_M01_Landscape_03_Mask",
+  "mask_source_file": "M01_Landscape_03_Mask.png",
+  "unreal_destination": "/Game/Data/Forgery/Textures/M01",
+  "template_id": "Template_M01_Landscape_03",
+  "category": "Landscape",
+  "difficulty": "Medium",
+  "source_artwork": "Wanderer above the Sea of Fog",
+  "source_artist": "Caspar David Friedrich",
+  "source_manifest": "M01_SourceManifest.json",
+  "candidate_source_file": "Candidates/M01_Landscape_03_Wanderer_source.png",
+  "background_srgb": "#000000",
+  "background_filter_mode": "Black",
+  "background_color_tolerance": 0.08,
+  "palette_srgb": ["#1B2E21", "#BEC0BD", "#59432B", "#738A9E", "#233F4B"],
+  "palette_linear": [
+    [0.010960, 0.027321, 0.015209, 1.0],
+    [0.514918, 0.527115, 0.508881, 1.0],
+    [0.099899, 0.056128, 0.024158, 1.0],
+    [0.171441, 0.254152, 0.341914, 1.0],
+    [0.016807, 0.049707, 0.070360, 1.0]
+  ],
+  "foreground_ratio": 0.6331,
+  "quantize_cleanup_radius": 4,
+  "notes": "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

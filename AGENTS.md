@@ -478,6 +478,16 @@ Escape 취소 조건:
 
 # 10. Surface Forgery Rules
 
+## Match Template Selection
+
+- 서버는 현재 Map Pool의 Surface Template을 매치당 하나만 확정한다.
+- 선택은 Pool별 Shuffle Bag을 사용하며, 한 Cycle 안에서 같은 Template을 다시 선택하지 않는다.
+- 재충전 시 직전 Cycle의 최근 3개 Template을 첫 선택 후보에서 제외한다.
+- 선택된 Template Snapshot은 모든 Client에 복제한다.
+- 선택된 Reference Image는 활성 Objective Target Painting Case의 Original World Visual에만 적용한다.
+- 비목표 Painting Case의 Original World Visual을 현재 계약 Template으로 덮어쓰지 않는다.
+- Lobby 복귀 또는 Selection Clear 시 Original World Visual은 Blueprint가 지정한 기준 Material로 복원한다.
+
 ## Session Ownership
 
 - 한 Painting Display Case는 동시에 한 명만 위조할 수 있다.
@@ -1243,7 +1253,7 @@ W4~W6 결과와 실제 잔여 위험을 검토한 뒤 필요한 경우에만 `TA
 - 생성된 M01 Surface Reference 후보, Palette 정규화 결과, Mask와 `Tools/Forgery/QuantizeForgeryReference.ps1`은 WIP로 보존한다.
 - `TASK-W5-011~015 Object Assembly Vertical Slice`는 Data / State, Session / Payload / Score, Owner-only UI, Replica / Inspection / Cleanup과 Primitive Prototype Gate까지 완료했다.
 - `TASK-W5-016 Surface Template Pool / Shuffle Bag`은 `TEST-W5-010`으로 완료했다. 12-slot Shuffle Bag 2회전, 최근 3개 반복 방지, Server/Client Match Selection 복제와 서버 권한 Kick 이후 Snapshot 유지가 PASS했다.
-- 현재 활성 작업은 `TASK-W5-018 Object Assembly Two-Player Gate`다.
+- 현재 활성 작업은 `TASK-W5-019 M01 Painting Template Pack`이다.
 - Sculpture와 Ceramic의 통합 Gameplay System 명칭은 `Object Assembly Forgery`다.
 - Surface Forgery와 Object Assembly는 Template, State, Payload, Result와 Replica Data를 공유하지 않는다.
 - `TASK-W5-010 External Two-PC Online Gate`는 `TEST-W5-007` 증거로 완료됐다.

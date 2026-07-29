@@ -369,6 +369,9 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 	void HeistSurfaceTemplatePoolTest(int32 PoolSize = 12);
 
 	UFUNCTION(Exec)
+	void HeistSurfaceTemplateContentValidate(FString PoolId);
+
+	UFUNCTION(Exec)
 	void HeistForgeryStrokeDump();
 
 	UFUNCTION(Exec)

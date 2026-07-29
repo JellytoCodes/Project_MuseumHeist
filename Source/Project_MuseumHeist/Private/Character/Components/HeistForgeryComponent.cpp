@@ -1835,6 +1835,7 @@ bool UHeistForgeryComponent::RunOpenCVScoringSelfTestForDebug(FString& OutSummar
 	TArray<uint8> WrongColorPaletteMap;
 	TArray<uint8> SingleColorPaletteMap;
 	TArray<uint8> FilledPaletteMap;
+	TArray<uint8> EmptyPaletteMap;
 	ReferenceMask.Init(0, PixelCount);
 	ReferencePaletteMap.Init(EmptyPaletteIndex, PixelCount);
 	ExactPaletteMap.Init(EmptyPaletteIndex, PixelCount);
@@ -1842,6 +1843,7 @@ bool UHeistForgeryComponent::RunOpenCVScoringSelfTestForDebug(FString& OutSummar
 	WrongColorPaletteMap.Init(EmptyPaletteIndex, PixelCount);
 	SingleColorPaletteMap.Init(EmptyPaletteIndex, PixelCount);
 	FilledPaletteMap.Init(0, PixelCount);
+	EmptyPaletteMap.Init(EmptyPaletteIndex, PixelCount);
 
 	constexpr int32 ShapeMinimum = 32;
 	constexpr int32 ShapeMaximum = 95;
@@ -1872,6 +1874,10 @@ bool UHeistForgeryComponent::RunOpenCVScoringSelfTestForDebug(FString& OutSummar
 	FOpenCVForgeryMetrics WrongColorMetrics;
 	FOpenCVForgeryMetrics SingleColorMetrics;
 	FOpenCVForgeryMetrics FilledMetrics;
+	FOpenCVForgeryMetrics EmptyMetrics;
+	const bool bEmptyCalculated = CalculateOpenCVForgeryMetrics(ReferenceMask, ReferencePaletteMap, EmptyPaletteMap, TestPalette, EmptyMetrics);
+	const bool bEmptyRejected =
+		!bEmptyCalculated && EmptyMetrics.ReferencePixelCount > 0 && EmptyMetrics.SubmittedPixelCount == 0;
 	const bool bCalculated = CalculateOpenCVForgeryMetrics(ReferenceMask, ReferencePaletteMap, ExactPaletteMap, TestPalette, ExactMetrics) &&
 							 CalculateOpenCVForgeryMetrics(ReferenceMask, ReferencePaletteMap, ShiftedPaletteMap, TestPalette, ShiftedMetrics) &&
 							 CalculateOpenCVForgeryMetrics(ReferenceMask, ReferencePaletteMap, WrongColorPaletteMap, TestPalette, WrongColorMetrics) &&
@@ -1896,21 +1902,27 @@ bool UHeistForgeryComponent::RunOpenCVScoringSelfTestForDebug(FString& OutSummar
 	const float ShiftedScore = bCalculated ? CalculateOpenCVOnlyScore(ShiftedMetrics) : 100.0f;
 	const float WrongColorScore = bCalculated ? CalculateOpenCVOnlyScore(WrongColorMetrics) : 100.0f;
 	const float SingleColorScore = bCalculated ? CalculateOpenCVOnlyScore(SingleColorMetrics) : 100.0f;
-	const float FilledScore = bCalculated ? FMath::Min(CalculateOpenCVOnlyScore(FilledMetrics), 20.0f) : 100.0f;
-	const bool bContractPassed = bCalculated && ExactMetrics.BidirectionalShapeSimilarity >= 0.999f && ExactMetrics.MaskDiceSimilarity >= 0.999f && ExactMetrics.ColorSimilarity >= 0.999f &&
+	constexpr float TestMaximumPaintToReferenceRatio = 2.5f;
+	constexpr float TestOverpaintScoreCap = 20.0f;
+	const bool bFullFillAntiFillTriggered = bCalculated && FilledAreaRatio > TestMaximumPaintToReferenceRatio;
+	const float FilledUncappedScore = bCalculated ? CalculateOpenCVOnlyScore(FilledMetrics) : 100.0f;
+	const float FilledScore = bFullFillAntiFillTriggered ? FMath::Min(FilledUncappedScore, TestOverpaintScoreCap) : FilledUncappedScore;
+	const bool bContractPassed = bEmptyRejected && bCalculated && ExactMetrics.BidirectionalShapeSimilarity >= 0.999f && ExactMetrics.MaskDiceSimilarity >= 0.999f && ExactMetrics.ColorSimilarity >= 0.999f &&
 								 ExactScore >= 99.9f && ShiftedMetrics.BidirectionalShapeSimilarity < ExactMetrics.BidirectionalShapeSimilarity && ShiftedMetrics.BidirectionalShapeSimilarity > 0.0f &&
 								 ShiftedMetrics.MaskDiceSimilarity < ExactMetrics.MaskDiceSimilarity && ShiftedScore < ExactScore && WrongColorMetrics.BidirectionalShapeSimilarity >= 0.999f &&
 								 WrongColorMetrics.ColorSimilarity < ExactMetrics.ColorSimilarity && WrongColorScore < ExactScore &&
 								 SingleColorMetrics.HistogramColorSimilarity < ExactMetrics.HistogramColorSimilarity && SingleColorScore < 60.0f &&
 								 FilledMetrics.MaskPrecision < ExactMetrics.MaskPrecision && FilledMetrics.MaskDiceSimilarity < ExactMetrics.MaskDiceSimilarity && FilledAreaRatio > 1.0f &&
-								 FilledScore <= 30.0f;
+								 bFullFillAntiFillTriggered && FilledScore <= TestOverpaintScoreCap;
 
 	OutSummary = FString::Printf(
 		TEXT(
-			"Calculated=%s ExactDistance=%.4f ExactDice=%.4f ExactColor=%.4f ExactScore=%.2f ShiftedDistance=%.4f ShiftedDice=%.4f ShiftedScore=%.2f WrongColor=%.4f WrongColorScore=%.2f SingleHistogram=%.4f SingleColor=%.4f SingleScore=%.2f FillPrecision=%.4f FillDice=%.4f FillAreaRatio=%.2f FillScore=%.2f Contract=%s"),
-		bCalculated ? TEXT("true") : TEXT("false"), ExactMetrics.BidirectionalShapeSimilarity, ExactMetrics.MaskDiceSimilarity, ExactMetrics.ColorSimilarity, ExactScore,
+			"Calculated=%s EmptyRejected=%s EmptySubmittedPixels=%d ExactDistance=%.4f ExactDice=%.4f ExactColor=%.4f ExactScore=%.2f ShiftedDistance=%.4f ShiftedDice=%.4f ShiftedScore=%.2f WrongColor=%.4f WrongColorScore=%.2f SingleHistogram=%.4f SingleColor=%.4f SingleScore=%.2f FillPrecision=%.4f FillDice=%.4f FillAreaRatio=%.2f FullFillAntiFill=%s FillScore=%.2f Contract=%s"),
+		bCalculated ? TEXT("true") : TEXT("false"), bEmptyRejected ? TEXT("true") : TEXT("false"), EmptyMetrics.SubmittedPixelCount,
+		ExactMetrics.BidirectionalShapeSimilarity, ExactMetrics.MaskDiceSimilarity, ExactMetrics.ColorSimilarity, ExactScore,
 		ShiftedMetrics.BidirectionalShapeSimilarity, ShiftedMetrics.MaskDiceSimilarity, ShiftedScore, WrongColorMetrics.ColorSimilarity, WrongColorScore, SingleColorMetrics.HistogramColorSimilarity,
-		SingleColorMetrics.ColorSimilarity, SingleColorScore, FilledMetrics.MaskPrecision, FilledMetrics.MaskDiceSimilarity, FilledAreaRatio, FilledScore,
+		SingleColorMetrics.ColorSimilarity, SingleColorScore, FilledMetrics.MaskPrecision, FilledMetrics.MaskDiceSimilarity, FilledAreaRatio,
+		bFullFillAntiFillTriggered ? TEXT("true") : TEXT("false"), FilledScore,
 		bContractPassed ? TEXT("PASS") : TEXT("FAIL"));
 	return bContractPassed;
 #else

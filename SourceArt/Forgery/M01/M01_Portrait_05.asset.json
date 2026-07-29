@@ -1,0 +1,28 @@
+{
+  "asset_name": "T_Forgery_M01_Portrait_05",
+  "source_file": "M01_Portrait_05.png",
+  "mask_asset_name": "T_Forgery_M01_Portrait_05_Mask",
+  "mask_source_file": "M01_Portrait_05_Mask.png",
+  "unreal_destination": "/Game/Data/Forgery/Textures/M01",
+  "template_id": "Template_M01_Portrait_05",
+  "category": "Portrait",
+  "difficulty": "Medium",
+  "source_artwork": "Portrait of Adele Bloch-Bauer I",
+  "source_artist": "Gustav Klimt",
+  "source_manifest": "M01_SourceManifest.json",
+  "candidate_source_file": "Candidates/M01_Portrait_05_Adele_source.png",
+  "background_srgb": "#000000",
+  "background_filter_mode": "Black",
+  "background_color_tolerance": 0.08,
+  "palette_srgb": ["#F8D59B", "#C98C13", "#BD5405", "#32271D", "#325D58"],
+  "palette_linear": [
+    [0.938686, 0.665387, 0.327778, 1.0],
+    [0.584078, 0.262251, 0.006512, 1.0],
+    [0.508881, 0.088656, 0.001518, 1.0],
+    [0.031896, 0.020289, 0.012286, 1.0],
+    [0.031896, 0.109462, 0.097587, 1.0]
+  ],
+  "foreground_ratio": 0.5059,
+  "quantize_cleanup_radius": 4,
+  "notes": "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

@@ -64,14 +64,24 @@ void AHeistPaintingDisplayCaseActor::BeginPlay()
 	Super::BeginPlay();
 
 	CaptureReplicaVisualBaseline();
+	OriginalPaintingBaselineMaterial = IsValid(OriginalVisualComponent) ? OriginalVisualComponent->GetMaterial(0) : nullptr;
 	RefreshPlaceholderVisualState();
 	RefreshInspectionRegistration();
 	RefreshReplicaWorldVisual();
 
-	if (HasAuthority())
+	BoundGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	if (BoundGameState.IsValid())
 	{
-		BoundGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
-		if (BoundGameState.IsValid())
+		SurfaceTemplateSelectionChangedHandle =
+			BoundGameState->GetSurfaceTemplateSelectionChangedDelegate().AddUObject(this, &AHeistPaintingDisplayCaseActor::HandleSurfaceTemplateSelectionChanged);
+		ObjectiveStateChangedHandle =
+			BoundGameState->GetObjectiveStateChangedDelegate().AddUObject(this, &AHeistPaintingDisplayCaseActor::HandleObjectiveStateChanged);
+		if (BoundGameState->GetSurfaceTemplateSelectionRevision() > 0)
+		{
+			HandleSurfaceTemplateSelectionChanged(BoundGameState->GetSurfaceTemplatePoolId(), BoundGameState->GetSelectedSurfaceTemplateId(),
+												 BoundGameState->GetSurfaceTemplateSelectionRevision());
+		}
+		if (HasAuthority())
 		{
 			MatchPhaseChangedHandle = BoundGameState->GetMatchPhaseChangedDelegate().AddUObject(this, &AHeistPaintingDisplayCaseActor::HandleMatchPhaseChanged);
 		}
@@ -100,8 +110,20 @@ void AHeistPaintingDisplayCaseActor::EndPlay(const EEndPlayReason::Type EndPlayR
 	{
 		BoundGameState->GetMatchPhaseChangedDelegate().Remove(MatchPhaseChangedHandle);
 	}
+	if (BoundGameState.IsValid() && SurfaceTemplateSelectionChangedHandle.IsValid())
+	{
+		BoundGameState->GetSurfaceTemplateSelectionChangedDelegate().Remove(SurfaceTemplateSelectionChangedHandle);
+	}
+	if (BoundGameState.IsValid() && ObjectiveStateChangedHandle.IsValid())
+	{
+		BoundGameState->GetObjectiveStateChangedDelegate().Remove(ObjectiveStateChangedHandle);
+	}
 	MatchPhaseChangedHandle.Reset();
+	SurfaceTemplateSelectionChangedHandle.Reset();
+	ObjectiveStateChangedHandle.Reset();
 	BoundGameState.Reset();
+	OriginalPaintingDynamicMaterial = nullptr;
+	OriginalPaintingBaselineMaterial = nullptr;
 	ResetReplicaPaintingResources();
 
 	Super::EndPlay(EndPlayReason);
@@ -325,6 +347,163 @@ void AHeistPaintingDisplayCaseActor::RefreshPlaceholderVisualState()
 		   TEXT("Display case placeholder visual applied: Case=%s State=%s OriginalVisible=%s ReplicaVisible=%s OriginalComponents=%d ReplicaComponents=%d Authority=%s Result=%s"), *GetNameSafe(this),
 		   *UEnum::GetValueAsString(DisplayCaseState), bOriginalVisible ? TEXT("true") : TEXT("false"), bReplicaVisible ? TEXT("true") : TEXT("false"), OriginalComponentCount, ReplicaComponentCount,
 		   HasAuthority() ? TEXT("true") : TEXT("false"), OriginalComponentCount == 1 && ReplicaComponentCount == 1 ? TEXT("PASS") : TEXT("INVALID_COMPONENT_COUNT"));
+}
+
+#pragma endregion
+
+#pragma region OriginalPaintingVisual
+
+FName AHeistPaintingDisplayCaseActor::GetOriginalVisualTemplateId() const
+{
+	return OriginalVisualTemplateId;
+}
+
+int32 AHeistPaintingDisplayCaseActor::GetOriginalVisualRevision() const
+{
+	return OriginalVisualRevision;
+}
+
+void AHeistPaintingDisplayCaseActor::GetOriginalPaintingVisualDebugState(FName& OutTemplateId, int32& OutRevision, bool& OutReferenceLoaded, bool& OutDynamicMaterialBuilt,
+																		 bool& OutTextureParameterApplied, bool& OutContractPassed) const
+{
+	OutTemplateId = OriginalVisualTemplateId;
+	OutRevision = OriginalVisualRevision;
+	OutReferenceLoaded = OriginalReferenceImage.IsValid();
+	OutDynamicMaterialBuilt = IsValid(OriginalPaintingDynamicMaterial);
+	OutTextureParameterApplied = bOriginalPaintingTextureParameterApplied;
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	OutContractPassed =
+		IsActiveObjectiveTargetCase() && IsValid(HeistGameState) && !OutTemplateId.IsNone() && OutTemplateId == HeistGameState->GetSelectedSurfaceTemplateId() &&
+		OutRevision > 0 && OutRevision == HeistGameState->GetSurfaceTemplateSelectionRevision() && AppliedOriginalVisualRevision == OutRevision &&
+		OutReferenceLoaded && OutDynamicMaterialBuilt && OutTextureParameterApplied;
+}
+
+void AHeistPaintingDisplayCaseActor::HandleSurfaceTemplateSelectionChanged(const FName PoolId, const FName TemplateId, const int32 SelectionRevision)
+{
+	if (PoolId.IsNone() || TemplateId.IsNone() || SelectionRevision <= 0)
+	{
+		if (HasAuthority())
+		{
+			OriginalVisualTemplateId = NAME_None;
+			OriginalReferenceImage.Reset();
+			OriginalVisualRevision = 0;
+			ForceNetUpdate();
+		}
+		ResetOriginalPaintingVisual();
+		return;
+	}
+
+	if (!IsActiveObjectiveTargetCase())
+	{
+		if (HasAuthority() && (!OriginalVisualTemplateId.IsNone() || !OriginalReferenceImage.IsNull() || OriginalVisualRevision > 0))
+		{
+			OriginalVisualTemplateId = NAME_None;
+			OriginalReferenceImage.Reset();
+			OriginalVisualRevision = 0;
+			ForceNetUpdate();
+		}
+		ResetOriginalPaintingVisual();
+		return;
+	}
+
+	if (HasAuthority())
+	{
+		const AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+		FHeistForgeryTemplateRow TemplateDefinition;
+		if (!IsValid(HeistGameMode) || !HeistGameMode->TryGetForgeryTemplateDefinition(TemplateId, TemplateDefinition) ||
+			(!TemplateDefinition.SurfacePoolId.IsNone() && TemplateDefinition.SurfacePoolId != PoolId) || TemplateDefinition.ReferenceImage.IsNull())
+		{
+			return;
+		}
+
+		OriginalVisualTemplateId = TemplateId;
+		OriginalReferenceImage = TemplateDefinition.ReferenceImage;
+		OriginalVisualRevision = SelectionRevision;
+		ForceNetUpdate();
+	}
+
+	RefreshOriginalPaintingVisual();
+}
+
+void AHeistPaintingDisplayCaseActor::HandleObjectiveStateChanged(const FName ActiveTargetArtifactId, const FName ActiveTargetCaseId, const EHeistObjectiveState,
+																AHeistPlayerState*)
+{
+	if (ActiveTargetCaseId == DisplayCaseId && (ActiveTargetArtifactId.IsNone() || ActiveTargetArtifactId == TargetArtifactId) && BoundGameState.IsValid())
+	{
+		HandleSurfaceTemplateSelectionChanged(BoundGameState->GetSurfaceTemplatePoolId(), BoundGameState->GetSelectedSurfaceTemplateId(),
+											 BoundGameState->GetSurfaceTemplateSelectionRevision());
+		return;
+	}
+
+	HandleSurfaceTemplateSelectionChanged(NAME_None, NAME_None, 0);
+}
+
+bool AHeistPaintingDisplayCaseActor::IsActiveObjectiveTargetCase() const
+{
+	const AHeistGameState* HeistGameState = BoundGameState.IsValid() ? BoundGameState.Get() : (GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr);
+	return IsValid(HeistGameState) && HeistGameState->GetActiveTargetCaseId() == DisplayCaseId &&
+		   (HeistGameState->GetActiveTargetArtifactId().IsNone() || HeistGameState->GetActiveTargetArtifactId() == TargetArtifactId);
+}
+
+void AHeistPaintingDisplayCaseActor::RefreshOriginalPaintingVisual()
+{
+	if (!IsActiveObjectiveTargetCase() || !IsValid(OriginalVisualComponent) || OriginalVisualTemplateId.IsNone() || OriginalVisualRevision <= 0 || OriginalReferenceImage.IsNull())
+	{
+		ResetOriginalPaintingVisual();
+		return;
+	}
+	if (AppliedOriginalVisualRevision == OriginalVisualRevision && IsValid(OriginalPaintingDynamicMaterial) && bOriginalPaintingTextureParameterApplied)
+	{
+		return;
+	}
+	bOriginalPaintingTextureParameterApplied = false;
+
+	UTexture2D* ReferenceTexture = OriginalReferenceImage.LoadSynchronous();
+	UMaterialInterface* MaterialSource = IsValid(OriginalPaintingMaterial) ? OriginalPaintingMaterial.Get()
+																		 : (IsValid(ReplicaPaintingMaterial) ? ReplicaPaintingMaterial.Get() : OriginalPaintingBaselineMaterial.Get());
+	if (!IsValid(ReferenceTexture) || !IsValid(MaterialSource))
+	{
+		return;
+	}
+
+	OriginalPaintingDynamicMaterial = UMaterialInstanceDynamic::Create(MaterialSource, this);
+	if (!IsValid(OriginalPaintingDynamicMaterial))
+	{
+		return;
+	}
+
+	OriginalPaintingDynamicMaterial->SetTextureParameterValue(OriginalPaintingTextureParameter, ReferenceTexture);
+	bOriginalPaintingTextureParameterApplied = OriginalPaintingDynamicMaterial->K2_GetTextureParameterValue(OriginalPaintingTextureParameter) == ReferenceTexture;
+	if (bOriginalPaintingTextureParameterApplied)
+	{
+		OriginalVisualComponent->SetMaterial(0, OriginalPaintingDynamicMaterial);
+		AppliedOriginalVisualRevision = OriginalVisualRevision;
+	}
+	BP_ApplyOriginalPaintingVisual(OriginalVisualTemplateId, ReferenceTexture, bOriginalPaintingTextureParameterApplied);
+}
+
+void AHeistPaintingDisplayCaseActor::ResetOriginalPaintingVisual()
+{
+	bOriginalPaintingTextureParameterApplied = false;
+	AppliedOriginalVisualRevision = 0;
+	OriginalPaintingDynamicMaterial = nullptr;
+	if (IsValid(OriginalVisualComponent) && IsValid(OriginalPaintingBaselineMaterial))
+	{
+		OriginalVisualComponent->SetMaterial(0, OriginalPaintingBaselineMaterial.Get());
+	}
+	BP_ApplyOriginalPaintingVisual(NAME_None, nullptr, false);
+}
+
+void AHeistPaintingDisplayCaseActor::OnRep_OriginalVisualRevision()
+{
+	if (OriginalVisualRevision > 0)
+	{
+		RefreshOriginalPaintingVisual();
+	}
+	else
+	{
+		ResetOriginalPaintingVisual();
+	}
 }
 
 #pragma endregion
@@ -1649,6 +1828,9 @@ void AHeistPaintingDisplayCaseActor::GetLifetimeReplicatedProps(TArray<FLifetime
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, DisplayCaseState);
+	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, OriginalVisualTemplateId);
+	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, OriginalReferenceImage);
+	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, OriginalVisualRevision);
 	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, bHasCommittedForgeryResult);
 	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, CommittedForgeryResult);
 	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, CommittedForgeryRevision);

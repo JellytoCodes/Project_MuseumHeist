@@ -13,7 +13,13 @@ param(
     [string[]]$PaletteHex,
 
     [ValidateRange(0, 255)]
-    [int]$BackgroundThreshold = 24
+    [int]$BackgroundThreshold = 24,
+
+    [ValidateRange(0, 4)]
+    [int]$CleanupRadius = 2,
+
+    [ValidateRange(0, 4096)]
+    [int]$OutputSize = 0
 )
 
 $ErrorActionPreference = "Stop"
@@ -25,6 +31,7 @@ if (-not ([System.Management.Automation.PSTypeName]"HeistForgeryReferenceQuantiz
     Add-Type -ReferencedAssemblies "System.Drawing" -TypeDefinition @'
 using System;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
@@ -61,7 +68,9 @@ public static class HeistForgeryReferenceQuantizer
         string maskOutputPath,
         string backgroundHex,
         string[] paletteHex,
-        int backgroundThreshold)
+        int backgroundThreshold,
+        int cleanupRadius,
+        int outputSize)
     {
         if (paletteHex == null || paletteHex.Length < 2 || paletteHex.Length > 8)
         {
@@ -76,10 +85,15 @@ public static class HeistForgeryReferenceQuantizer
         }
 
         using (Bitmap source = new Bitmap(inputPath))
-        using (Bitmap output = new Bitmap(source.Width, source.Height, PixelFormat.Format32bppArgb))
+        using (Bitmap output = new Bitmap(
+            outputSize > 0 ? outputSize : source.Width,
+            outputSize > 0 ? outputSize : source.Height,
+            PixelFormat.Format32bppArgb))
         using (Graphics graphics = Graphics.FromImage(output))
         {
-            graphics.DrawImageUnscaled(source, 0, 0);
+            graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            graphics.DrawImage(source, new Rectangle(0, 0, output.Width, output.Height));
 
             Rectangle bounds = new Rectangle(0, 0, output.Width, output.Height);
             BitmapData outputData = output.LockBits(bounds, ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
@@ -88,43 +102,116 @@ public static class HeistForgeryReferenceQuantizer
             Marshal.Copy(outputData.Scan0, pixels, 0, pixels.Length);
 
             byte[] maskPixels = new byte[byteCount];
+            byte[] paletteIndices = new byte[output.Width * output.Height];
+            bool[] foregroundMask = new bool[output.Width * output.Height];
             int thresholdSquared = backgroundThreshold * backgroundThreshold * 3;
             int foregroundPixels = 0;
 
-            for (int offset = 0; offset < pixels.Length; offset += 4)
+            for (int y = 0; y < output.Height; ++y)
             {
-                byte blue = pixels[offset];
-                byte green = pixels[offset + 1];
-                byte red = pixels[offset + 2];
-                bool isBackground = DistanceSquared(red, green, blue, background) <= thresholdSquared;
-                Color result = background;
-
-                if (!isBackground)
+                for (int x = 0; x < output.Width; ++x)
                 {
+                    int pixelIndex = y * output.Width + x;
+                    int offset = y * outputData.Stride + x * 4;
+                    byte blue = pixels[offset];
+                    byte green = pixels[offset + 1];
+                    byte red = pixels[offset + 2];
+                    bool isBackground = DistanceSquared(red, green, blue, background) <= thresholdSquared;
+
+                    if (isBackground)
+                    {
+                        continue;
+                    }
+
                     int bestDistance = int.MaxValue;
+                    int bestPaletteIndex = 0;
                     for (int paletteIndex = 0; paletteIndex < palette.Length; ++paletteIndex)
                     {
                         int candidateDistance = DistanceSquared(red, green, blue, palette[paletteIndex]);
                         if (candidateDistance < bestDistance)
                         {
                             bestDistance = candidateDistance;
-                            result = palette[paletteIndex];
+                            bestPaletteIndex = paletteIndex;
                         }
                     }
 
+                    foregroundMask[pixelIndex] = true;
+                    paletteIndices[pixelIndex] = (byte)bestPaletteIndex;
                     ++foregroundPixels;
                 }
+            }
 
-                pixels[offset] = result.B;
-                pixels[offset + 1] = result.G;
-                pixels[offset + 2] = result.R;
-                pixels[offset + 3] = 255;
+            if (cleanupRadius > 0)
+            {
+                byte[] cleanedPaletteIndices = (byte[])paletteIndices.Clone();
+                int[] counts = new int[palette.Length];
 
-                byte maskValue = isBackground ? (byte)0 : (byte)255;
-                maskPixels[offset] = maskValue;
-                maskPixels[offset + 1] = maskValue;
-                maskPixels[offset + 2] = maskValue;
-                maskPixels[offset + 3] = 255;
+                for (int y = 0; y < output.Height; ++y)
+                {
+                    for (int x = 0; x < output.Width; ++x)
+                    {
+                        int pixelIndex = y * output.Width + x;
+                        if (!foregroundMask[pixelIndex])
+                        {
+                            continue;
+                        }
+
+                        Array.Clear(counts, 0, counts.Length);
+                        int minY = Math.Max(0, y - cleanupRadius);
+                        int maxY = Math.Min(output.Height - 1, y + cleanupRadius);
+                        int minX = Math.Max(0, x - cleanupRadius);
+                        int maxX = Math.Min(output.Width - 1, x + cleanupRadius);
+
+                        for (int neighborY = minY; neighborY <= maxY; ++neighborY)
+                        {
+                            for (int neighborX = minX; neighborX <= maxX; ++neighborX)
+                            {
+                                int neighborIndex = neighborY * output.Width + neighborX;
+                                if (foregroundMask[neighborIndex])
+                                {
+                                    ++counts[paletteIndices[neighborIndex]];
+                                }
+                            }
+                        }
+
+                        int bestPaletteIndex = paletteIndices[pixelIndex];
+                        int bestCount = counts[bestPaletteIndex];
+                        for (int paletteIndex = 0; paletteIndex < counts.Length; ++paletteIndex)
+                        {
+                            if (counts[paletteIndex] > bestCount)
+                            {
+                                bestPaletteIndex = paletteIndex;
+                                bestCount = counts[paletteIndex];
+                            }
+                        }
+
+                        cleanedPaletteIndices[pixelIndex] = (byte)bestPaletteIndex;
+                    }
+                }
+
+                paletteIndices = cleanedPaletteIndices;
+            }
+
+            for (int y = 0; y < output.Height; ++y)
+            {
+                for (int x = 0; x < output.Width; ++x)
+                {
+                    int pixelIndex = y * output.Width + x;
+                    int offset = y * outputData.Stride + x * 4;
+                    bool isForeground = foregroundMask[pixelIndex];
+                    Color result = isForeground ? palette[paletteIndices[pixelIndex]] : background;
+
+                    pixels[offset] = result.B;
+                    pixels[offset + 1] = result.G;
+                    pixels[offset + 2] = result.R;
+                    pixels[offset + 3] = 255;
+
+                    byte maskValue = isForeground ? (byte)255 : (byte)0;
+                    maskPixels[offset] = maskValue;
+                    maskPixels[offset + 1] = maskValue;
+                    maskPixels[offset + 2] = maskValue;
+                    maskPixels[offset + 3] = 255;
+                }
             }
 
             Marshal.Copy(pixels, 0, outputData.Scan0, pixels.Length);
@@ -151,11 +238,12 @@ public static class HeistForgeryReferenceQuantizer
             double foregroundRatio = (double)foregroundPixels / (output.Width * output.Height);
             return String.Format(
                 CultureInfo.InvariantCulture,
-                "Width={0} Height={1} Palette={2} ForegroundRatio={3:F4} Result=PASS",
+                "Width={0} Height={1} Palette={2} ForegroundRatio={3:F4} CleanupRadius={4} Result=PASS",
                 output.Width,
                 output.Height,
                 palette.Length,
-                foregroundRatio);
+                foregroundRatio,
+                cleanupRadius);
         }
     }
 }
@@ -179,6 +267,8 @@ $result = [HeistForgeryReferenceQuantizer]::Quantize(
     $resolvedMaskOutputPath,
     $BackgroundHex,
     $PaletteHex,
-    $BackgroundThreshold)
+    $BackgroundThreshold,
+    $CleanupRadius,
+    $OutputSize)
 
 Write-Output "Forgery reference quantization: Input=$resolvedInputPath Output=$resolvedOutputPath Mask=$resolvedMaskOutputPath $result"

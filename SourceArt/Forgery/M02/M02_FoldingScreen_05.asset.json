@@ -1,0 +1,67 @@
+{
+    "asset_name":  "T_Forgery_M02_FoldingScreen_05",
+    "source_file":  "M02_FoldingScreen_05.png",
+    "mask_asset_name":  "T_Forgery_M02_FoldingScreen_05_Mask",
+    "mask_source_file":  "M02_FoldingScreen_05_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M02",
+    "template_id":  "Template_M02_FoldingScreen_05",
+    "category":  "FoldingScreen",
+    "difficulty":  "Hard",
+    "source_artwork":  "Irises at Yatsuhashi (Eight Bridges)",
+    "source_artist":  "Ogata Kōrin",
+    "source_manifest":  "M02_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M02_FoldingScreen_05_IrisesYatsuhashi_source.png",
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#D6AD3A",
+                         "#243B95",
+                         "#5542A6",
+                         "#3F772E",
+                         "#1F4A28",
+                         "#4B2F22"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.672443,
+                               0.417885,
+                               0.042311,
+                               1
+                           ],
+                           [
+                               0.017642,
+                               0.043735,
+                               0.300544,
+                               1
+                           ],
+                           [
+                               0.090842,
+                               0.05448,
+                               0.381326,
+                               1
+                           ],
+                           [
+                               0.049707,
+                               0.184475,
+                               0.027321,
+                               1
+                           ],
+                           [
+                               0.013702,
+                               0.068478,
+                               0.021219,
+                               1
+                           ],
+                           [
+                               0.07036,
+                               0.028426,
+                               0.015996,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.2588,
+    "quantize_cleanup_radius":  2,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

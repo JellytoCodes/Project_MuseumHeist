@@ -1,0 +1,67 @@
+{
+    "asset_name":  "T_Forgery_M02_InkWash_06",
+    "source_file":  "M02_InkWash_06.png",
+    "mask_asset_name":  "T_Forgery_M02_InkWash_06_Mask",
+    "mask_source_file":  "M02_InkWash_06_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M02",
+    "template_id":  "Template_M02_InkWash_06",
+    "category":  "InkWash",
+    "difficulty":  "Hard",
+    "source_artwork":  "Geese and Reeds",
+    "source_artist":  "Unidentified Japanese artist",
+    "source_manifest":  "M02_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M02_InkWash_06_GeeseReeds_source.png",
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#F3EAD9",
+                         "#D9CFBD",
+                         "#B6AB98",
+                         "#857C70",
+                         "#4C4741",
+                         "#303030"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.896269,
+                               0.822786,
+                               0.693872,
+                               1
+                           ],
+                           [
+                               0.693872,
+                               0.62396,
+                               0.508881,
+                               1
+                           ],
+                           [
+                               0.467784,
+                               0.40724,
+                               0.313989,
+                               1
+                           ],
+                           [
+                               0.234551,
+                               0.201556,
+                               0.162029,
+                               1
+                           ],
+                           [
+                               0.072272,
+                               0.06301,
+                               0.052861,
+                               1
+                           ],
+                           [
+                               0.029557,
+                               0.029557,
+                               0.029557,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.225,
+    "quantize_cleanup_radius":  2,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

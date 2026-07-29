@@ -1,0 +1,167 @@
+{
+  "task_id": "TASK-W5-019",
+  "pool_id": "M01",
+  "art_direction": {
+    "basis": "Public-domain real artworks",
+    "goal": "Preserve the iconic composition, silhouette, and representative colors while simplifying the image into large drawable regions for timed Surface Forgery gameplay.",
+    "canvas": "Square 1:1 with black background",
+    "constraints": [
+      "No readable text, signature, frame, watermark, or museum label",
+      "No gradients, photorealistic texture, fine brushwork, or tiny isolated highlights",
+      "Use 4 foreground colors for Easy, 5 for Medium, and 6 for Hard",
+      "Keep important shapes contiguous and large enough to reproduce with the approved brush sizes",
+      "Reference is an original gameplay reinterpretation, not a facsimile of the museum image"
+    ]
+  },
+  "difficulty_distribution": {
+    "Easy": 4,
+    "Medium": 5,
+    "Hard": 3
+  },
+  "templates": [
+    {
+      "slot": "M01_Portrait_01",
+      "template_id": "Template_M01_Portrait_01",
+      "category": "Portrait",
+      "difficulty": "Easy",
+      "artwork": "Girl with a Pearl Earring",
+      "artist": "Johannes Vermeer",
+      "year": "c. 1665",
+      "source_url": "https://www.mauritshuis.nl/en/our-collection/artworks/670-girl-with-a-pearl-earring",
+      "palette_srgb": ["#E6B78B", "#2A70B8", "#D4A62A", "#F3F0DB"],
+      "iconic_features": ["three-quarter head silhouette", "blue and yellow turban", "single large pearl", "turned gaze"]
+    },
+    {
+      "slot": "M01_Portrait_02",
+      "template_id": "Template_M01_Portrait_02",
+      "category": "Portrait",
+      "difficulty": "Easy",
+      "artwork": "Self-Portrait with a Straw Hat",
+      "artist": "Vincent van Gogh",
+      "year": "1887",
+      "source_url": "https://www.metmuseum.org/art/collection/search/436532",
+      "palette_srgb": ["#F0AC3E", "#ECA41C", "#2F7B74", "#9A472E"],
+      "iconic_features": ["straw hat", "rust beard", "teal work jacket", "frontal bust"]
+    },
+    {
+      "slot": "M01_Portrait_03",
+      "template_id": "Template_M01_Portrait_03",
+      "category": "Portrait",
+      "difficulty": "Medium",
+      "artwork": "Mona Lisa",
+      "artist": "Leonardo da Vinci",
+      "year": "c. 1503-1519",
+      "source_url": "https://collections.louvre.fr/en/ark:/53355/cl010062370",
+      "palette_srgb": ["#D2A37B", "#4C2B21", "#263F32", "#547B79", "#9E8A50"],
+      "iconic_features": ["folded hands", "dark hair and dress", "three-quarter seated pose", "two-level distant landscape"]
+    },
+    {
+      "slot": "M01_Portrait_04",
+      "template_id": "Template_M01_Portrait_04",
+      "category": "Portrait",
+      "difficulty": "Medium",
+      "artwork": "Lady with an Ermine",
+      "artist": "Leonardo da Vinci",
+      "year": "c. 1489-1491",
+      "source_url": "https://mnk.pl/en/branches/czartoryski-museum/",
+      "palette_srgb": ["#EAB06C", "#452B19", "#6B1D23", "#B48C2F", "#F5F0DE"],
+      "iconic_features": ["turned female bust", "white ermine across the arms", "burgundy dress", "gold necklace"]
+    },
+    {
+      "slot": "M01_Portrait_05",
+      "template_id": "Template_M01_Portrait_05",
+      "category": "Portrait",
+      "difficulty": "Medium",
+      "artwork": "Portrait of Adele Bloch-Bauer I",
+      "artist": "Gustav Klimt",
+      "year": "1907",
+      "source_url": "https://www.neuegalerie.org/exhibitions/austrianmasterworks",
+      "palette_srgb": ["#F8D59B", "#C98C13", "#BD5405", "#32271D", "#325D58"],
+      "iconic_features": ["pale face and clasped hands", "gold triangular gown", "orange and teal geometric field", "dark hair"]
+    },
+    {
+      "slot": "M01_Portrait_06",
+      "template_id": "Template_M01_Portrait_06",
+      "category": "Portrait",
+      "difficulty": "Hard",
+      "artwork": "The Arnolfini Portrait",
+      "artist": "Jan van Eyck",
+      "year": "1434",
+      "source_url": "https://www.nationalgallery.org.uk/paintings/jan-van-eyck-the-arnolfini-portrait",
+      "palette_srgb": ["#E6A058", "#365D38", "#853016", "#573318", "#F4F0E5", "#C28930"],
+      "iconic_features": ["two standing figures", "large green dress", "raised hand", "round mirror and chandelier"]
+    },
+    {
+      "slot": "M01_Landscape_01",
+      "template_id": "Template_M01_Landscape_01",
+      "category": "Landscape",
+      "difficulty": "Easy",
+      "artwork": "Impression, Sunrise",
+      "artist": "Claude Monet",
+      "year": "1872",
+      "source_url": "https://www.marmottan.fr/notice/4014/",
+      "palette_srgb": ["#4B74A1", "#E46925", "#B2BFCE", "#0D1E35"],
+      "iconic_features": ["single orange sun", "orange reflection path", "small foreground boat", "misty harbor bars"]
+    },
+    {
+      "slot": "M01_Landscape_02",
+      "template_id": "Template_M01_Landscape_02",
+      "category": "Landscape",
+      "difficulty": "Easy",
+      "artwork": "The Great Wave off Kanagawa",
+      "artist": "Katsushika Hokusai",
+      "year": "c. 1830-1832",
+      "source_url": "https://www.metmuseum.org/art/collection/search/56353",
+      "palette_srgb": ["#174E89", "#5C9CC6", "#E7D8B7", "#7C8791"],
+      "iconic_features": ["large curling wave", "cream foam claws", "three boat arcs", "small Mount Fuji"]
+    },
+    {
+      "slot": "M01_Landscape_03",
+      "template_id": "Template_M01_Landscape_03",
+      "category": "Landscape",
+      "difficulty": "Medium",
+      "artwork": "Wanderer above the Sea of Fog",
+      "artist": "Caspar David Friedrich",
+      "year": "c. 1818",
+      "source_url": "https://www.hamburger-kunsthalle.net/en/nineteenth-century",
+      "palette_srgb": ["#1B2E21", "#BEC0BD", "#59432B", "#738A9E", "#233F4B"],
+      "iconic_features": ["central back-facing figure", "walking cane", "foreground rock triangle", "layered fog and mountain ridges"]
+    },
+    {
+      "slot": "M01_Landscape_04",
+      "template_id": "Template_M01_Landscape_04",
+      "category": "Landscape",
+      "difficulty": "Medium",
+      "artwork": "The Starry Night",
+      "artist": "Vincent van Gogh",
+      "year": "1889",
+      "source_url": "https://www.moma.org/collection/works/79802",
+      "palette_srgb": ["#011E4D", "#1C55C4", "#FED02D", "#0A1D13", "#CCC976"],
+      "iconic_features": ["large cypress flame", "moon and star discs", "two broad sky spirals", "low village silhouette"]
+    },
+    {
+      "slot": "M01_Landscape_05",
+      "template_id": "Template_M01_Landscape_05",
+      "category": "Landscape",
+      "difficulty": "Hard",
+      "artwork": "The Fighting Temeraire",
+      "artist": "J. M. W. Turner",
+      "year": "1839",
+      "source_url": "https://www.nationalgallery.org.uk/paintings/joseph-mallord-william-turner-the-fighting-temeraire",
+      "palette_srgb": ["#F7D499", "#D78926", "#D45B0C", "#465A66", "#15383A", "#2C2315"],
+      "iconic_features": ["large pale sailing ship", "small dark steam tug", "orange setting sun", "long water reflection bands"]
+    },
+    {
+      "slot": "M01_Landscape_06",
+      "template_id": "Template_M01_Landscape_06",
+      "category": "Landscape",
+      "difficulty": "Hard",
+      "artwork": "Water Lilies and Japanese Bridge",
+      "artist": "Claude Monet",
+      "year": "1899",
+      "source_url": "https://artmuseum.princeton.edu/art/collections/objects/31852",
+      "palette_srgb": ["#608E4F", "#19442B", "#1D5F9E", "#78A9B1", "#F2A3AD", "#FBDFAC"],
+      "iconic_features": ["arched green bridge", "dark foliage banks", "layered blue-green water", "large pink and cream lily clusters"]
+    }
+  ]
+}

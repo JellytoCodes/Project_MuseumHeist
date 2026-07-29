@@ -1,0 +1,53 @@
+{
+    "asset_name":  "T_Forgery_M02_FoldingScreen_01",
+    "source_file":  "M02_FoldingScreen_01.png",
+    "mask_asset_name":  "T_Forgery_M02_FoldingScreen_01_Mask",
+    "mask_source_file":  "M02_FoldingScreen_01_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M02",
+    "template_id":  "Template_M02_FoldingScreen_01",
+    "category":  "FoldingScreen",
+    "difficulty":  "Easy",
+    "source_artwork":  "Egrets and Crows",
+    "source_artist":  "Shibata Zeshin",
+    "source_manifest":  "M02_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M02_FoldingScreen_01_EgretsCrows_source.png",
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#D5AC3E",
+                         "#F1ECDD",
+                         "#4D3324",
+                         "#303030"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.665387,
+                               0.412543,
+                               0.048172,
+                               1
+                           ],
+                           [
+                               0.879622,
+                               0.838799,
+                               0.723055,
+                               1
+                           ],
+                           [
+                               0.074214,
+                               0.033105,
+                               0.017642,
+                               1
+                           ],
+                           [
+                               0.029557,
+                               0.029557,
+                               0.029557,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.1444,
+    "quantize_cleanup_radius":  4,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

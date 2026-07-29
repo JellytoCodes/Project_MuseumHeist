@@ -112,6 +112,58 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 
 #pragma endregion
 
+#pragma region OriginalPaintingVisual
+
+  public:
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Original|Visual")
+	FName GetOriginalVisualTemplateId() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Original|Visual")
+	int32 GetOriginalVisualRevision() const;
+
+	void GetOriginalPaintingVisualDebugState(FName& OutTemplateId, int32& OutRevision, bool& OutReferenceLoaded, bool& OutDynamicMaterialBuilt,
+											 bool& OutTextureParameterApplied, bool& OutContractPassed) const;
+
+  protected:
+	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|DisplayCase|Original|Visual", meta = (DisplayName = "Apply Original Painting Visual"))
+	void BP_ApplyOriginalPaintingVisual(FName TemplateId, UTexture2D* ReferenceImage, bool bTextureParameterApplied);
+
+  private:
+	void HandleSurfaceTemplateSelectionChanged(FName PoolId, FName TemplateId, int32 SelectionRevision);
+	void HandleObjectiveStateChanged(FName ActiveTargetArtifactId, FName ActiveTargetCaseId, EHeistObjectiveState ObjectiveState, AHeistPlayerState* OriginalCarrierCandidate);
+	bool IsActiveObjectiveTargetCase() const;
+	void RefreshOriginalPaintingVisual();
+	void ResetOriginalPaintingVisual();
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Original|Visual", meta = (AllowPrivateAccess = "true"))
+	FName OriginalVisualTemplateId = NAME_None;
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Original|Visual", meta = (AllowPrivateAccess = "true"))
+	TSoftObjectPtr<UTexture2D> OriginalReferenceImage;
+
+	UPROPERTY(ReplicatedUsing = OnRep_OriginalVisualRevision, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Original|Visual", meta = (AllowPrivateAccess = "true"))
+	int32 OriginalVisualRevision = 0;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Original|Visual", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UMaterialInterface> OriginalPaintingMaterial;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Original|Visual", meta = (AllowPrivateAccess = "true"))
+	FName OriginalPaintingTextureParameter = TEXT("PaintingTexture");
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> OriginalPaintingDynamicMaterial;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInterface> OriginalPaintingBaselineMaterial;
+
+	int32 AppliedOriginalVisualRevision = 0;
+	bool bOriginalPaintingTextureParameterApplied = false;
+
+	UFUNCTION()
+	void OnRep_OriginalVisualRevision();
+
+#pragma endregion
+
 #pragma region ReplicaPlacement
 
   public:
@@ -419,6 +471,8 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 
 	TWeakObjectPtr<AHeistGameState> BoundGameState;
 	FDelegateHandle MatchPhaseChangedHandle;
+	FDelegateHandle SurfaceTemplateSelectionChangedHandle;
+	FDelegateHandle ObjectiveStateChangedHandle;
 	FDelegateHandle SessionOwnerArrestChangedHandle;
 
 #pragma endregion

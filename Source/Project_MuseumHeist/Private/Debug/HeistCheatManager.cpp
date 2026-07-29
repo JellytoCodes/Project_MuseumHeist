@@ -388,6 +388,13 @@ void UHeistCheatManager::HeistSurfaceTemplatePoolTest(const int32 PoolSize)
 #endif
 }
 
+void UHeistCheatManager::HeistSurfaceTemplateContentValidate(FString PoolId)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugSurfaceTemplateContentValidate(GetOuterAPlayerController(), PoolId);
+#endif
+}
+
 void UHeistCheatManager::HeistForgeryStrokeDump()
 {
 #if !UE_BUILD_SHIPPING

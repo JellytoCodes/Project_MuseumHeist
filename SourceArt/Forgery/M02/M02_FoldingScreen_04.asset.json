@@ -1,0 +1,60 @@
+{
+    "asset_name":  "T_Forgery_M02_FoldingScreen_04",
+    "source_file":  "M02_FoldingScreen_04.png",
+    "mask_asset_name":  "T_Forgery_M02_FoldingScreen_04_Mask",
+    "mask_source_file":  "M02_FoldingScreen_04_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M02",
+    "template_id":  "Template_M02_FoldingScreen_04",
+    "category":  "FoldingScreen",
+    "difficulty":  "Medium",
+    "source_artwork":  "Bamboo Grove",
+    "source_artist":  "Unidentified Japanese artist",
+    "source_manifest":  "M02_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M02_FoldingScreen_04_BambooGrove_source.png",
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#D5AE45",
+                         "#E7D3A2",
+                         "#78935B",
+                         "#344E32",
+                         "#1A2319"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.665387,
+                               0.423268,
+                               0.059511,
+                               1
+                           ],
+                           [
+                               0.799103,
+                               0.651406,
+                               0.361307,
+                               1
+                           ],
+                           [
+                               0.187821,
+                               0.291771,
+                               0.104616,
+                               1
+                           ],
+                           [
+                               0.03434,
+                               0.076185,
+                               0.031896,
+                               1
+                           ],
+                           [
+                               0.01033,
+                               0.016807,
+                               0.009721,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.2862,
+    "quantize_cleanup_radius":  3,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

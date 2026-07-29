@@ -1,0 +1,53 @@
+{
+    "asset_name":  "T_Forgery_M03_GeometricAbstract_03",
+    "source_file":  "M03_GeometricAbstract_03.png",
+    "mask_asset_name":  "T_Forgery_M03_GeometricAbstract_03_Mask",
+    "mask_source_file":  "M03_GeometricAbstract_03_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M03",
+    "template_id":  "Template_M03_GeometricAbstract_03",
+    "category":  "GeometricAbstract",
+    "difficulty":  "Easy",
+    "source_artwork":  "Sunrise III",
+    "source_artist":  "Arthur Dove",
+    "source_manifest":  "M03_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M03_GeometricAbstract_03_DoveSunriseIII_source.png",
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#F1C84B",
+                         "#3F78AF",
+                         "#705085",
+                         "#264F4B"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.879622,
+                               0.57758,
+                               0.07036,
+                               1
+                           ],
+                           [
+                               0.049707,
+                               0.187821,
+                               0.42869,
+                               1
+                           ],
+                           [
+                               0.162029,
+                               0.08022,
+                               0.234551,
+                               1
+                           ],
+                           [
+                               0.019382,
+                               0.078187,
+                               0.07036,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.1468,
+    "quantize_cleanup_radius":  4,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

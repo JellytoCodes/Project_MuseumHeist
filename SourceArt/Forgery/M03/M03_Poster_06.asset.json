@@ -1,0 +1,67 @@
+{
+    "asset_name":  "T_Forgery_M03_Poster_06",
+    "source_file":  "M03_Poster_06.png",
+    "mask_asset_name":  "T_Forgery_M03_Poster_06_Mask",
+    "mask_source_file":  "M03_Poster_06_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M03",
+    "template_id":  "Template_M03_Poster_06",
+    "category":  "Poster",
+    "difficulty":  "Hard",
+    "source_artwork":  "Jane Avril",
+    "source_artist":  "Henri de Toulouse-Lautrec",
+    "source_manifest":  "M03_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M03_Poster_06_JaneAvril_source.png",
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#D7BC85",
+                         "#272421",
+                         "#D96A2F",
+                         "#F2E4C9",
+                         "#7A6A3C",
+                         "#9E3E32"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.679542,
+                               0.502886,
+                               0.234551,
+                               1
+                           ],
+                           [
+                               0.020289,
+                               0.017642,
+                               0.015209,
+                               1
+                           ],
+                           [
+                               0.693872,
+                               0.144128,
+                               0.028426,
+                               1
+                           ],
+                           [
+                               0.887923,
+                               0.775822,
+                               0.584078,
+                               1
+                           ],
+                           [
+                               0.194618,
+                               0.144128,
+                               0.045186,
+                               1
+                           ],
+                           [
+                               0.341914,
+                               0.048172,
+                               0.031896,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.1579,
+    "quantize_cleanup_radius":  2,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

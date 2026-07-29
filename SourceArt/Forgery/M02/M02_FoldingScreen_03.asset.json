@@ -1,0 +1,60 @@
+{
+    "asset_name":  "T_Forgery_M02_FoldingScreen_03",
+    "source_file":  "M02_FoldingScreen_03.png",
+    "mask_asset_name":  "T_Forgery_M02_FoldingScreen_03_Mask",
+    "mask_source_file":  "M02_FoldingScreen_03_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M02",
+    "template_id":  "Template_M02_FoldingScreen_03",
+    "category":  "FoldingScreen",
+    "difficulty":  "Medium",
+    "source_artwork":  "Morning Glories",
+    "source_artist":  "Suzuki Kiitsu",
+    "source_manifest":  "M02_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M02_FoldingScreen_03_MorningGlories_source.png",
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#D6AE3C",
+                         "#173A8A",
+                         "#3455B5",
+                         "#497B37",
+                         "#173E28"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.672443,
+                               0.423268,
+                               0.045186,
+                               1
+                           ],
+                           [
+                               0.008568,
+                               0.042311,
+                               0.254152,
+                               1
+                           ],
+                           [
+                               0.03434,
+                               0.090842,
+                               0.462077,
+                               1
+                           ],
+                           [
+                               0.066626,
+                               0.198069,
+                               0.038204,
+                               1
+                           ],
+                           [
+                               0.008568,
+                               0.048172,
+                               0.021219,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.267,
+    "quantize_cleanup_radius":  3,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

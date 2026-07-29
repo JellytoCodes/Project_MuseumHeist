@@ -1,0 +1,53 @@
+{
+    "asset_name":  "T_Forgery_M03_Poster_01",
+    "source_file":  "M03_Poster_01.png",
+    "mask_asset_name":  "T_Forgery_M03_Poster_01_Mask",
+    "mask_source_file":  "M03_Poster_01_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M03",
+    "template_id":  "Template_M03_Poster_01",
+    "category":  "Poster",
+    "difficulty":  "Easy",
+    "source_artwork":  "Tournée du Chat Noir",
+    "source_artist":  "Théophile-Alexandre Steinlen",
+    "source_manifest":  "M03_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M03_Poster_01_ChatNoir_source.png",
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#F0D6A2",
+                         "#303030",
+                         "#B63B32",
+                         "#D1A83F"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.871367,
+                               0.672443,
+                               0.361307,
+                               1
+                           ],
+                           [
+                               0.029557,
+                               0.029557,
+                               0.029557,
+                               1
+                           ],
+                           [
+                               0.467784,
+                               0.043735,
+                               0.031896,
+                               1
+                           ],
+                           [
+                               0.637597,
+                               0.391572,
+                               0.049707,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.1302,
+    "quantize_cleanup_radius":  4,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

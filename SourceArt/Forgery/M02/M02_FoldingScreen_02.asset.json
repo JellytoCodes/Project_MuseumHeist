@@ -1,0 +1,53 @@
+{
+    "asset_name":  "T_Forgery_M02_FoldingScreen_02",
+    "source_file":  "M02_FoldingScreen_02.png",
+    "mask_asset_name":  "T_Forgery_M02_FoldingScreen_02_Mask",
+    "mask_source_file":  "M02_FoldingScreen_02_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M02",
+    "template_id":  "Template_M02_FoldingScreen_02",
+    "category":  "FoldingScreen",
+    "difficulty":  "Easy",
+    "source_artwork":  "Rough Waves",
+    "source_artist":  "Ogata Kōrin",
+    "source_manifest":  "M02_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M02_FoldingScreen_02_RoughWaves_source.png",
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#D8B54A",
+                         "#EFE7D5",
+                         "#60717A",
+                         "#182126"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.686685,
+                               0.462077,
+                               0.068478,
+                               1
+                           ],
+                           [
+                               0.863157,
+                               0.799103,
+                               0.665387,
+                               1
+                           ],
+                           [
+                               0.116971,
+                               0.165132,
+                               0.194618,
+                               1
+                           ],
+                           [
+                               0.009134,
+                               0.015209,
+                               0.019382,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.2412,
+    "quantize_cleanup_radius":  4,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

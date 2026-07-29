@@ -15,6 +15,7 @@ DECLARE_MULTICAST_DELEGATE_OneParam(FHeistRareLootEventStateChanged, const FHeis
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerConnectionsChanged, int32);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistMatchPhaseChanged, EHeistMatchPhase, EHeistMatchPhase);
 DECLARE_MULTICAST_DELEGATE_ThreeParams(FHeistLobbyMapSelectionChanged, FName, bool, int32);
+DECLARE_MULTICAST_DELEGATE_ThreeParams(FHeistSurfaceTemplateSelectionChanged, FName, FName, int32);
 DECLARE_MULTICAST_DELEGATE_FourParams(FHeistObjectiveStateChanged, FName, FName, EHeistObjectiveState, AHeistPlayerState*);
 DECLARE_MULTICAST_DELEGATE_FourParams(FHeistAlertStateChanged, EHeistAlertLevel, EHeistAlertLevel, int32, FName);
 
@@ -123,6 +124,7 @@ class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
 	int32 GetSurfaceTemplateSelectionRevision() const;
 
 	bool InitializeSurfaceTemplateSelection(FName PoolId, FName TemplateId, int32 PoolSize, int32 BagCycle, int32 RemainingCount, int32 SelectionRevision);
+	FHeistSurfaceTemplateSelectionChanged& GetSurfaceTemplateSelectionChangedDelegate();
 
   private:
 	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Forgery", meta = (AllowPrivateAccess = "true"))
@@ -147,6 +149,7 @@ class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
 	void OnRep_SurfaceTemplateSelectionRevision();
 
 	void BroadcastSurfaceTemplateSelection(const TCHAR* ChangeSource, bool bAccepted);
+	FHeistSurfaceTemplateSelectionChanged SurfaceTemplateSelectionChangedDelegate;
 
 #pragma endregion
 

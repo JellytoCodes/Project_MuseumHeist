@@ -8,7 +8,7 @@
     "GridWidth": 2,
     "GridHeight": 3,
     "ForgeryType": "Drawing",
-    "ForgeryTemplateId": "Template_Painting_01",
+    "ForgeryTemplateId": "Template_M01_Portrait_01",
     "MinimumForgeryScore": 0.6,
     "BaseInspectionDelay": 8.0,
     "VisualActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_Painting.BP_Painting_C'"

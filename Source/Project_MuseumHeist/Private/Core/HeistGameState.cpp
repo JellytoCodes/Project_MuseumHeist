@@ -91,6 +91,7 @@ bool AHeistGameState::SetMatchPhase(const EHeistMatchPhase NewMatchPhase)
 		SurfaceTemplateBagCycle = 0;
 		SurfaceTemplateRemainingCount = 0;
 		SurfaceTemplateSelectionRevision = 0;
+		BroadcastSurfaceTemplateSelection(TEXT("ServerCleared"), true);
 	}
 	ForceNetUpdate();
 	BroadcastMatchPhaseChanged(PreviousMatchPhase, TEXT("Server"));
@@ -235,6 +236,11 @@ int32 AHeistGameState::GetSurfaceTemplateSelectionRevision() const
 	return SurfaceTemplateSelectionRevision;
 }
 
+FHeistSurfaceTemplateSelectionChanged& AHeistGameState::GetSurfaceTemplateSelectionChangedDelegate()
+{
+	return SurfaceTemplateSelectionChangedDelegate;
+}
+
 bool AHeistGameState::InitializeSurfaceTemplateSelection(const FName PoolId, const FName TemplateId, const int32 PoolSize, const int32 BagCycle, const int32 RemainingCount,
 														 const int32 SelectionRevision)
 {
@@ -268,14 +274,15 @@ bool AHeistGameState::InitializeSurfaceTemplateSelection(const FName PoolId, con
 
 void AHeistGameState::OnRep_SurfaceTemplateSelectionRevision()
 {
-	if (SurfaceTemplateSelectionRevision > 0)
-	{
-		BroadcastSurfaceTemplateSelection(TEXT("Replicated"), true);
-	}
+	BroadcastSurfaceTemplateSelection(SurfaceTemplateSelectionRevision > 0 ? TEXT("Replicated") : TEXT("ReplicatedClear"), true);
 }
 
 void AHeistGameState::BroadcastSurfaceTemplateSelection(const TCHAR* ChangeSource, const bool bAccepted)
 {
+	if (bAccepted)
+	{
+		SurfaceTemplateSelectionChangedDelegate.Broadcast(SurfaceTemplatePoolId, SelectedSurfaceTemplateId, SurfaceTemplateSelectionRevision);
+	}
 	UHeistDebugFunctionLibrary::DebugSurfaceTemplateSelectionState(this, ChangeSource, SurfaceTemplatePoolId, SelectedSurfaceTemplateId, SurfaceTemplatePoolSize,
 																  SurfaceTemplateBagCycle, SurfaceTemplateRemainingCount, SurfaceTemplateSelectionRevision, bAccepted);
 }
