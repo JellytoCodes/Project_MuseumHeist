@@ -122,6 +122,7 @@ void AHeistGameMode::StartPlay()
 		return;
 	}
 
+	InitializeSurfaceTemplateSelection();
 	InitializeAlertState();
 	InitializeObjectiveFromPlacedTargetCase();
 	StartEscapePhaseTimer();
@@ -833,6 +834,87 @@ bool AHeistGameMode::TryGetForgeryTemplateDefinition(const FName TemplateId, FHe
 
 	OutTemplateDefinition = *TemplateDefinition;
 	return true;
+}
+
+void AHeistGameMode::InitializeSurfaceTemplateSelection()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	UHeistGameInstance* HeistGameInstance = Cast<UHeistGameInstance>(GetGameInstance());
+	if (IsValid(HeistGameState) && HeistGameState->GetSurfaceTemplateSelectionRevision() > 0)
+	{
+		return;
+	}
+	const FName PoolId = IsValid(HeistGameState) && !HeistGameState->GetSelectedLobbyMapId().IsNone()
+							 ? HeistGameState->GetSelectedLobbyMapId()
+							 : (IsValid(HeistGameInstance) ? HeistGameInstance->GetSelectedMapId() : NAME_None);
+	TArray<FName> CandidateTemplateIds;
+	if (!IsValid(HeistGameState) || !IsValid(HeistGameInstance) || !GatherSurfaceTemplatePool(PoolId, CandidateTemplateIds))
+	{
+		UHeistDebugFunctionLibrary::DebugSurfaceTemplateSelectionState(this, TEXT("ServerPoolRejected"), PoolId, NAME_None, CandidateTemplateIds.Num(), 0, 0, 0, false);
+		return;
+	}
+
+	FName SelectedTemplateId = NAME_None;
+	int32 SelectionRevision = 0;
+	int32 BagCycle = 0;
+	int32 RemainingTemplateCount = 0;
+	if (!HeistGameInstance->SelectSurfaceTemplateForMatch(PoolId, CandidateTemplateIds, SelectedTemplateId, SelectionRevision, BagCycle, RemainingTemplateCount) ||
+		!HeistGameState->InitializeSurfaceTemplateSelection(PoolId, SelectedTemplateId, CandidateTemplateIds.Num(), BagCycle, RemainingTemplateCount, SelectionRevision))
+	{
+		UHeistDebugFunctionLibrary::DebugSurfaceTemplateSelectionState(this, TEXT("ServerSelectionRejected"), PoolId, SelectedTemplateId, CandidateTemplateIds.Num(), BagCycle,
+																	  RemainingTemplateCount, SelectionRevision, false);
+	}
+}
+
+bool AHeistGameMode::GatherSurfaceTemplatePool(const FName PoolId, TArray<FName>& OutTemplateIds) const
+{
+	OutTemplateIds.Reset();
+	const bool bValidPoolId = PoolId == FName(TEXT("M01")) || PoolId == FName(TEXT("M02")) || PoolId == FName(TEXT("M03"));
+	const UDataTable* TemplateDataTable = GetForgeryTemplateDataTable();
+	if (!bValidPoolId || !IsValid(TemplateDataTable) || TemplateDataTable->GetRowStruct() != FHeistForgeryTemplateRow::StaticStruct())
+	{
+		return false;
+	}
+
+	TSet<FName> UniqueTemplateIds;
+	TArray<FName> LegacyM01TemplateIds;
+	for (const FName RowName : TemplateDataTable->GetRowNames())
+	{
+		const FHeistForgeryTemplateRow* TemplateDefinition =
+			TemplateDataTable->FindRow<FHeistForgeryTemplateRow>(RowName, TEXT("AHeistGameMode::GatherSurfaceTemplatePool"), false);
+		if (TemplateDefinition == nullptr || TemplateDefinition->TemplateId.IsNone() || TemplateDefinition->TemplateId != RowName || TemplateDefinition->ReferenceImage.IsNull() ||
+			(TemplateDefinition->BackgroundFilterMode == EHeistForgeryBackgroundFilter::None && TemplateDefinition->ReferenceMask.IsNull()))
+		{
+			continue;
+		}
+
+		if (TemplateDefinition->SurfacePoolId == PoolId && !UniqueTemplateIds.Contains(TemplateDefinition->TemplateId))
+		{
+			UniqueTemplateIds.Add(TemplateDefinition->TemplateId);
+			OutTemplateIds.Add(TemplateDefinition->TemplateId);
+		}
+		else if (PoolId == FName(TEXT("M01")) && TemplateDefinition->SurfacePoolId.IsNone())
+		{
+			LegacyM01TemplateIds.AddUnique(TemplateDefinition->TemplateId);
+		}
+	}
+
+	// Keeps the pre-W5 prototype usable until its JSON source is reimported with SurfacePoolId=M01.
+	if (OutTemplateIds.IsEmpty())
+	{
+		OutTemplateIds = MoveTemp(LegacyM01TemplateIds);
+	}
+	OutTemplateIds.Sort(
+		[](const FName Left, const FName Right)
+		{
+			return Left.ToString() < Right.ToString();
+		});
+	return !OutTemplateIds.IsEmpty();
 }
 
 bool AHeistGameMode::TryGetObjectAssemblyPartDefinition(const FName PartId, FHeistObjectAssemblyPartRow& OutPartDefinition) const

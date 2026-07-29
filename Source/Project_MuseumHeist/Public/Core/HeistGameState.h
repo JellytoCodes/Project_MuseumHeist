@@ -101,6 +101,55 @@ class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
 
 #pragma endregion
 
+#pragma region SurfaceTemplateSelection
+
+  public:
+	UFUNCTION(BlueprintPure, Category = "Heist|Forgery")
+	FName GetSurfaceTemplatePoolId() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Forgery")
+	FName GetSelectedSurfaceTemplateId() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Forgery")
+	int32 GetSurfaceTemplatePoolSize() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Forgery")
+	int32 GetSurfaceTemplateBagCycle() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Forgery")
+	int32 GetSurfaceTemplateRemainingCount() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Forgery")
+	int32 GetSurfaceTemplateSelectionRevision() const;
+
+	bool InitializeSurfaceTemplateSelection(FName PoolId, FName TemplateId, int32 PoolSize, int32 BagCycle, int32 RemainingCount, int32 SelectionRevision);
+
+  private:
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Forgery", meta = (AllowPrivateAccess = "true"))
+	FName SurfaceTemplatePoolId = NAME_None;
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Forgery", meta = (AllowPrivateAccess = "true"))
+	FName SelectedSurfaceTemplateId = NAME_None;
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Forgery", meta = (AllowPrivateAccess = "true"))
+	int32 SurfaceTemplatePoolSize = 0;
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Forgery", meta = (AllowPrivateAccess = "true"))
+	int32 SurfaceTemplateBagCycle = 0;
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Forgery", meta = (AllowPrivateAccess = "true"))
+	int32 SurfaceTemplateRemainingCount = 0;
+
+	UPROPERTY(ReplicatedUsing = OnRep_SurfaceTemplateSelectionRevision, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Forgery", meta = (AllowPrivateAccess = "true"))
+	int32 SurfaceTemplateSelectionRevision = 0;
+
+	UFUNCTION()
+	void OnRep_SurfaceTemplateSelectionRevision();
+
+	void BroadcastSurfaceTemplateSelection(const TCHAR* ChangeSource, bool bAccepted);
+
+#pragma endregion
+
 #pragma region Alert
 
   public:

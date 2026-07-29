@@ -71,6 +71,10 @@ struct PROJECT_MUSEUMHEIST_API FHeistForgeryTemplateRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery")
 	FName TemplateId = NAME_None;
 
+	/** Surface Template Pool that owns this template. Active values are M01, M02, and M03. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery")
+	FName SurfacePoolId = NAME_None;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery")
 	TSoftObjectPtr<UTexture2D> ReferenceImage;
 

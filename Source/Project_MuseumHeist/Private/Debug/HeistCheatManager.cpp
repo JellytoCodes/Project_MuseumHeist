@@ -223,6 +223,13 @@ void UHeistCheatManager::HeistObjectAssemblySpawnFor(const int32 PlayerId, const
 #endif
 }
 
+void UHeistCheatManager::HeistObjectAssemblyContentSpawn(const FString Family, const int32 Variant, const float Distance)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugObjectAssemblyContentSpawn(GetOuterAPlayerController(), Family, Variant, Distance);
+#endif
+}
+
 void UHeistCheatManager::HeistObjectAssemblyKickPlayer(const int32 PlayerId)
 {
 #if !UE_BUILD_SHIPPING
@@ -286,6 +293,13 @@ void UHeistCheatManager::HeistObjectAssemblyPrototypeGate()
 #endif
 }
 
+void UHeistCheatManager::HeistObjectAssemblyContentValidate()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugObjectAssemblyContentValidate(GetOuterAPlayerController());
+#endif
+}
+
 void UHeistCheatManager::HeistObjectAssemblyReplicaRebuild()
 {
 #if !UE_BUILD_SHIPPING
@@ -336,6 +350,20 @@ void UHeistCheatManager::HeistForgeryTemplateDump()
 {
 #if !UE_BUILD_SHIPPING
 	UHeistDebugFunctionLibrary::DebugForgeryTemplateDump(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistSurfaceTemplateDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugSurfaceTemplateDump(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistSurfaceTemplatePoolTest(const int32 PoolSize)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugSurfaceTemplatePoolTest(GetOuterAPlayerController(), PoolSize);
 #endif
 }
 

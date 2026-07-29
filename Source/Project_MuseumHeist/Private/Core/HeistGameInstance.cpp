@@ -59,6 +59,84 @@ namespace HeistOnlineSession
 	const FName DestinationJoinedSession(TEXT("JoinedSession"));
 }
 
+namespace HeistSurfaceTemplate
+{
+constexpr int32 RecentHistoryLimit = 3;
+
+TArray<FName> NormalizeCandidateIds(const TArray<FName>& CandidateTemplateIds)
+{
+	TArray<FName> NormalizedIds;
+	TSet<FName> UniqueIds;
+	for (const FName TemplateId : CandidateTemplateIds)
+	{
+		if (!TemplateId.IsNone() && !UniqueIds.Contains(TemplateId))
+		{
+			UniqueIds.Add(TemplateId);
+			NormalizedIds.Add(TemplateId);
+		}
+	}
+
+	NormalizedIds.Sort(
+		[](const FName Left, const FName Right)
+		{
+			return Left.ToString() < Right.ToString();
+		});
+	return NormalizedIds;
+}
+
+bool DrawFromShuffleBag(const TArray<FName>& CandidateTemplateIds, TArray<FName>& RemainingTemplateIds, TArray<FName>& RecentTemplateIds, int32& BagCycle,
+						FRandomStream& RandomStream, FName& OutTemplateId)
+{
+	OutTemplateId = NAME_None;
+	if (CandidateTemplateIds.IsEmpty())
+	{
+		return false;
+	}
+
+	TSet<FName> CandidateSet;
+	for (const FName TemplateId : CandidateTemplateIds)
+	{
+		CandidateSet.Add(TemplateId);
+	}
+	RemainingTemplateIds.RemoveAll(
+		[&CandidateSet](const FName TemplateId)
+		{
+			return TemplateId.IsNone() || !CandidateSet.Contains(TemplateId);
+		});
+	RecentTemplateIds.RemoveAll(
+		[&CandidateSet](const FName TemplateId)
+		{
+			return TemplateId.IsNone() || !CandidateSet.Contains(TemplateId);
+		});
+
+	if (RemainingTemplateIds.IsEmpty())
+	{
+		RemainingTemplateIds = CandidateTemplateIds;
+		++BagCycle;
+	}
+
+	TArray<int32> EligibleIndices;
+	for (int32 TemplateIndex = 0; TemplateIndex < RemainingTemplateIds.Num(); ++TemplateIndex)
+	{
+		if (!RecentTemplateIds.Contains(RemainingTemplateIds[TemplateIndex]))
+		{
+			EligibleIndices.Add(TemplateIndex);
+		}
+	}
+
+	const int32 SelectedIndex = EligibleIndices.IsEmpty() ? RandomStream.RandRange(0, RemainingTemplateIds.Num() - 1)
+														 : EligibleIndices[RandomStream.RandRange(0, EligibleIndices.Num() - 1)];
+	OutTemplateId = RemainingTemplateIds[SelectedIndex];
+	RemainingTemplateIds.RemoveAtSwap(SelectedIndex, 1, EAllowShrinking::No);
+	RecentTemplateIds.Add(OutTemplateId);
+	if (RecentTemplateIds.Num() > RecentHistoryLimit)
+	{
+		RecentTemplateIds.RemoveAt(0, RecentTemplateIds.Num() - RecentHistoryLimit, EAllowShrinking::No);
+	}
+	return true;
+}
+}
+
 #pragma region Construction
 
 UHeistGameInstance::UHeistGameInstance()
@@ -77,6 +155,7 @@ void UHeistGameInstance::Init()
 		Settings->ApplyMasterVolumeToActiveAudioDevices();
 	}
 	DefaultSelectedMapId = SelectedMapId;
+	SurfaceTemplateRandomStream.GenerateNewSeed();
 	RefreshOnlineSessionInterface();
 	if (GEngine != nullptr)
 	{
@@ -101,6 +180,123 @@ void UHeistGameInstance::Shutdown()
 	ActiveSessionSearch.Reset();
 	OnlineSessionInterface.Reset();
 	Super::Shutdown();
+}
+
+#pragma endregion
+
+#pragma region SurfaceTemplateSelection
+
+bool UHeistGameInstance::SelectSurfaceTemplateForMatch(const FName PoolId, const TArray<FName>& CandidateTemplateIds, FName& OutTemplateId, int32& OutSelectionRevision,
+													   int32& OutBagCycle, int32& OutRemainingTemplateCount)
+{
+	OutTemplateId = NAME_None;
+	OutSelectionRevision = 0;
+	OutBagCycle = 0;
+	OutRemainingTemplateCount = 0;
+	UWorld* World = GetWorld();
+	const TArray<FName> NormalizedCandidateIds = HeistSurfaceTemplate::NormalizeCandidateIds(CandidateTemplateIds);
+	if (PoolId.IsNone() || NormalizedCandidateIds.IsEmpty() || !IsValid(World) || World->GetNetMode() == NM_Client)
+	{
+		return false;
+	}
+
+	TArray<FName>& Catalog = SurfaceTemplateCatalogByPool.FindOrAdd(PoolId);
+	TArray<FName>& RemainingIds = RemainingSurfaceTemplateIdsByPool.FindOrAdd(PoolId);
+	TArray<FName>& RecentIds = RecentSurfaceTemplateIdsByPool.FindOrAdd(PoolId);
+	int32& BagCycle = SurfaceTemplateBagCycleByPool.FindOrAdd(PoolId);
+	if (Catalog != NormalizedCandidateIds)
+	{
+		Catalog = NormalizedCandidateIds;
+		RemainingIds.Reset();
+		RecentIds.Reset();
+		BagCycle = 0;
+	}
+
+	if (!HeistSurfaceTemplate::DrawFromShuffleBag(Catalog, RemainingIds, RecentIds, BagCycle, SurfaceTemplateRandomStream, OutTemplateId))
+	{
+		return false;
+	}
+
+	++SurfaceTemplateSelectionRevision;
+	OutSelectionRevision = SurfaceTemplateSelectionRevision;
+	OutBagCycle = BagCycle;
+	OutRemainingTemplateCount = RemainingIds.Num();
+	return true;
+}
+
+bool UHeistGameInstance::RunSurfaceTemplateShuffleBagSelfTestForDebug(const int32 PoolSize, int32& OutDrawCount, int32& OutFirstCycleUniqueCount,
+																	  int32& OutSecondCycleUniqueCount, int32& OutRecentProtectionCheckCount,
+																	  int32& OutRecentProtectionPassCount) const
+{
+	OutDrawCount = 0;
+	OutFirstCycleUniqueCount = 0;
+	OutSecondCycleUniqueCount = 0;
+	OutRecentProtectionCheckCount = 0;
+	OutRecentProtectionPassCount = 0;
+#if UE_BUILD_SHIPPING
+	return false;
+#else
+	if (PoolSize < 4 || PoolSize > 64)
+	{
+		return false;
+	}
+
+	TArray<FName> Candidates;
+	Candidates.Reserve(PoolSize);
+	for (int32 TemplateIndex = 0; TemplateIndex < PoolSize; ++TemplateIndex)
+	{
+		Candidates.Add(FName(*FString::Printf(TEXT("SelfTest_Surface_%02d"), TemplateIndex + 1)));
+	}
+
+	TArray<FName> RemainingIds;
+	TArray<FName> RecentIds;
+	TSet<FName> FirstCycleIds;
+	TSet<FName> SecondCycleIds;
+	int32 BagCycle = 0;
+	FRandomStream TestRandomStream(160516);
+	for (int32 DrawIndex = 0; DrawIndex < PoolSize * 2; ++DrawIndex)
+	{
+		const TArray<FName> RecentBeforeDraw = RecentIds;
+		FName SelectedTemplateId = NAME_None;
+		if (!HeistSurfaceTemplate::DrawFromShuffleBag(Candidates, RemainingIds, RecentIds, BagCycle, TestRandomStream, SelectedTemplateId))
+		{
+			return false;
+		}
+
+		if (RecentBeforeDraw.Num() == HeistSurfaceTemplate::RecentHistoryLimit)
+		{
+			++OutRecentProtectionCheckCount;
+			if (!RecentBeforeDraw.Contains(SelectedTemplateId))
+			{
+				++OutRecentProtectionPassCount;
+			}
+		}
+		if (DrawIndex < PoolSize)
+		{
+			FirstCycleIds.Add(SelectedTemplateId);
+		}
+		else
+		{
+			SecondCycleIds.Add(SelectedTemplateId);
+		}
+		++OutDrawCount;
+	}
+
+	OutFirstCycleUniqueCount = FirstCycleIds.Num();
+	OutSecondCycleUniqueCount = SecondCycleIds.Num();
+	return OutDrawCount == PoolSize * 2 && OutFirstCycleUniqueCount == PoolSize && OutSecondCycleUniqueCount == PoolSize &&
+		   OutRecentProtectionCheckCount > 0 && OutRecentProtectionPassCount == OutRecentProtectionCheckCount;
+#endif
+}
+
+void UHeistGameInstance::ResetSurfaceTemplateShuffleState()
+{
+	SurfaceTemplateCatalogByPool.Reset();
+	RemainingSurfaceTemplateIdsByPool.Reset();
+	RecentSurfaceTemplateIdsByPool.Reset();
+	SurfaceTemplateBagCycleByPool.Reset();
+	SurfaceTemplateSelectionRevision = 0;
+	SurfaceTemplateRandomStream.GenerateNewSeed();
 }
 
 #pragma endregion
@@ -1122,6 +1318,7 @@ void UHeistGameInstance::ResetOnlineSessionRuntimeState(const FName PreservedFai
 	bLeaveWasHosting = false;
 	PendingLeaveReason = NAME_None;
 	PendingFailureAfterDestroy = NAME_None;
+	ResetSurfaceTemplateShuffleState();
 	SetOnlineSessionState(HeistOnlineSession::StateIdle, PreservedFailure);
 }
 

@@ -100,6 +100,8 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 
   private:
 	void ValidateItemDataTables() const;
+	void InitializeSurfaceTemplateSelection();
+	bool GatherSurfaceTemplatePool(FName PoolId, TArray<FName>& OutTemplateIds) const;
 
 #pragma endregion
 

@@ -958,6 +958,11 @@ Editor 작업 안내에는 다음만 포함한다.
 - Runtime Task는 기존 `UHeistDebugFunctionLibrary`와 `UHeistCheatManager`를 우선 사용한다.
 - 완료 판정용 로그가 부족하면 활성 Task 범위 안에서 최소 Debug Log를 추가한다.
 - 사용자는 Unreal Editor PIE에서 Debug Command를 실행한다.
+- PIE의 Disconnect, Session Cleanup, Owner EndPlay 또는 재접속 연속성 검증에서 Client 콘솔 `disconnect`를 사용하지 않는다.
+- PIE Client를 종료하기 위해 `ESC`를 사용하지 않는다.
+- 위 검증에서 원격 Client 연결 종료가 필요하면 Listen Server가 서버 권한 `KickPlayer` Debug Command로 대상 Player를 제거한다.
+- 현재 공용 Kick 경로는 `HeistObjectAssemblyKickPlayer <PlayerId>`이며, 이름과 관계없이 `AGameSession::KickPlayer()`를 호출하는 서버 권한 진단 명령으로 사용한다.
+- 테스트 안내에서 `disconnect`가 필요한 것처럼 보이는 경우에도 항상 위 Listen Server Kick 절차로 대체한다.
 - 사용자는 관련 Output Log를 제출한다.
 - 화면 동작이 완료 조건이면 관찰 결과도 제출한다.
 - 제출된 로그와 관찰 결과를 Task 완료 조건에 대조한다.
@@ -1236,8 +1241,9 @@ W4~W6 결과와 실제 잔여 위험을 검토한 뒤 필요한 경우에만 `TA
 - `TASK-W5-019~021`은 M01 / M02 / M03 각 12개, 총 36개 Surface Forgery Template Pack이다.
 - `TASK-W5-022~023`은 Shared Loose Loot Content와 Tutorial / Onboarding Flow다.
 - 생성된 M01 Surface Reference 후보, Palette 정규화 결과, Mask와 `Tools/Forgery/QuantizeForgeryReference.ps1`은 WIP로 보존한다.
-- `TASK-W5-011 Object Assembly Data / State Contract`는 Development Editor Build, Part / Template JSON Import와 Data Validation을 `TEST-W5-008`로 완료했다.
-- 현재 다음 작업은 `TASK-W5-012 Object Assembly Session / Payload / Score`다.
+- `TASK-W5-011~015 Object Assembly Vertical Slice`는 Data / State, Session / Payload / Score, Owner-only UI, Replica / Inspection / Cleanup과 Primitive Prototype Gate까지 완료했다.
+- `TASK-W5-016 Surface Template Pool / Shuffle Bag`은 `TEST-W5-010`으로 완료했다. 12-slot Shuffle Bag 2회전, 최근 3개 반복 방지, Server/Client Match Selection 복제와 서버 권한 Kick 이후 Snapshot 유지가 PASS했다.
+- 현재 활성 작업은 `TASK-W5-017 Sculpture / Ceramic Object Content Pack`이다.
 - Sculpture와 Ceramic의 통합 Gameplay System 명칭은 `Object Assembly Forgery`다.
 - Surface Forgery와 Object Assembly는 Template, State, Payload, Result와 Replica Data를 공유하지 않는다.
 - `TASK-W5-010 External Two-PC Online Gate`는 `TEST-W5-007` 증거로 완료됐다.

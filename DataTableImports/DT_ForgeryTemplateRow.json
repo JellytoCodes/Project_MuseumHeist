@@ -2,6 +2,7 @@
   {
     "Name": "Template_Painting_01",
     "TemplateId": "Template_Painting_01",
+    "SurfacePoolId": "M01",
     "ReferenceImage": "Texture2D'/Game/Data/Forgery/Textures/T_Forgery_SunArchWave.T_Forgery_SunArchWave'",
     "ReferenceMask": "Texture2D'/Game/Data/Forgery/Textures/T_Forgery_SunArchWave.T_Forgery_SunArchWave'",
     "BackgroundFilterMode": "Black",

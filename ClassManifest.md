@@ -163,12 +163,12 @@ FHeistPlayerContribution
 |---|---|---|
 | `Core/HeistGameplayTags.*` / `FHeistGameplayTags` | Modify | 실제 활성 Gameplay Tag 등록 |
 | `Core/HeistLogChannels.*` | Keep | 로그 채널 |
-| `Core/HeistGameMode.*` / `AHeistGameMode` | Modify | Match, Objective, Data Validation, Alert, Result |
-| `Core/HeistGameState.*` / `AHeistGameState` | Modify | Replicated Objective / Alert / Team State, Lobby Map Selection / Player Connection Revision, Server-only SoundPing Dispatch |
+| `Core/HeistGameMode.*` / `AHeistGameMode` | Modify | Match, Objective, Data Validation, Surface Template Pool Match Initialization, Alert, Result |
+| `Core/HeistGameState.*` / `AHeistGameState` | Modify | Replicated Objective / Alert / Team State, Lobby Map Selection / Surface Template Selection / Player Connection Revision, Server-only SoundPing Dispatch |
 | `Core/HeistPlayerState.*` / `AHeistPlayerState` | Modify | 1~4 Player Identity, Contribution, Escape, Arrest, Carry Value |
 | `Core/HeistPlayerController.*` / `AHeistPlayerController` | Modify | Input Mode, Server RPC, Session Leave / Map Selection Request, Coin Use, Surface Forgery / Object Assembly Request |
 | `Core/HeistHUD.*` / `AHeistHUD` | Keep + Extend | Title / Lobby / HUD / Inventory / QuickSlot / Surface Forgery / Object Assembly / Result Widget와 ViewModel 생성 |
-| `Core/HeistGameInstance.*` / `UHeistGameInstance` | Modify | Steam/NULL Subsystem 선택, Host/Find/Join/Leave, 6자리 참가 코드, Title/Lobby/Gameplay Travel, Map Selection, Session Timeout/Cancel/Retry와 Network/Travel Failure 수명주기 |
+| `Core/HeistGameInstance.*` / `UHeistGameInstance` | Modify | Steam/NULL Subsystem 선택, Host/Find/Join/Leave, 6자리 참가 코드, Title/Lobby/Gameplay Travel, Map Selection, Server Surface Template Shuffle Bag, Session Timeout/Cancel/Retry와 Network/Travel Failure 수명주기 |
 | `Core/HeistGameUserSettings.*` / `UHeistGameUserSettings` | Add | Local FOV, Mouse Sensitivity, Master Volume, Resolution / Window Mode 저장, 검증 및 적용 |
 
 ## Authority
@@ -589,6 +589,7 @@ VisualActorClass
 
 ```text
 TemplateId
+SurfacePoolId
 ReferenceImage
 ReferenceMask
 BackgroundFilterMode
@@ -613,6 +614,7 @@ OverpaintScoreCap
 다음을 검증한다.
 
 - TemplateId
+- SurfacePoolId
 - ReferenceImage
 - BackgroundFilterMode
 - ReferenceMask 조건

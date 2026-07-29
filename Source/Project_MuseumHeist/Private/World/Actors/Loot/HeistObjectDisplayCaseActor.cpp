@@ -21,10 +21,10 @@
 namespace
 {
 constexpr int32 MaximumReplicaEntryCount = 8;
-constexpr float InspectionDelayExcellentMultiplier = 4.0f;
-constexpr float InspectionDelayGoodMultiplier = 2.0f;
-constexpr float InspectionDelayFairMultiplier = 1.0f;
-constexpr float InspectionDelayPoorMultiplier = 0.5f;
+constexpr float ObjectInspectionDelayExcellentMultiplier = 4.0f;
+constexpr float ObjectInspectionDelayGoodMultiplier = 2.0f;
+constexpr float ObjectInspectionDelayFairMultiplier = 1.0f;
+constexpr float ObjectInspectionDelayPoorMultiplier = 0.5f;
 
 bool ResolveReplicaDefinitions(const FName ArtifactId, const FName FamilyId, FHeistArtifactDataRow& OutArtifact, FHeistObjectAssemblyTemplateRow& OutTemplate,
 							   TMap<FName, FHeistObjectAssemblyPartRow>& OutParts, FName& OutRejectReason)
@@ -644,28 +644,28 @@ bool AHeistObjectDisplayCaseActor::CalculateInspectionSchedule(const float Quali
 		OutScoreBand = FName(TEXT("90-100"));
 		OutAlertOutcome = EHeistAlertLevel::Quiet;
 		OutCaseOutcome = EHeistObjectAssemblyState::Completed;
-		DelayMultiplier = InspectionDelayExcellentMultiplier;
+		DelayMultiplier = ObjectInspectionDelayExcellentMultiplier;
 	}
 	else if (QualityScore >= 70.0f)
 	{
 		OutScoreBand = FName(TEXT("70-89"));
 		OutAlertOutcome = EHeistAlertLevel::Suspicious;
 		OutCaseOutcome = EHeistObjectAssemblyState::Suspected;
-		DelayMultiplier = InspectionDelayGoodMultiplier;
+		DelayMultiplier = ObjectInspectionDelayGoodMultiplier;
 	}
 	else if (QualityScore >= 50.0f)
 	{
 		OutScoreBand = FName(TEXT("50-69"));
 		OutAlertOutcome = EHeistAlertLevel::Searching;
 		OutCaseOutcome = EHeistObjectAssemblyState::Suspected;
-		DelayMultiplier = InspectionDelayFairMultiplier;
+		DelayMultiplier = ObjectInspectionDelayFairMultiplier;
 	}
 	else if (QualityScore >= 30.0f)
 	{
 		OutScoreBand = FName(TEXT("30-49"));
 		OutAlertOutcome = EHeistAlertLevel::Alarmed;
 		OutCaseOutcome = EHeistObjectAssemblyState::Alarmed;
-		DelayMultiplier = InspectionDelayPoorMultiplier;
+		DelayMultiplier = ObjectInspectionDelayPoorMultiplier;
 	}
 	else
 	{

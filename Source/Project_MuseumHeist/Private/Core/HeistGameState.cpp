@@ -83,6 +83,15 @@ bool AHeistGameState::SetMatchPhase(const EHeistMatchPhase NewMatchPhase)
 
 	const EHeistMatchPhase PreviousMatchPhase = MatchPhase;
 	MatchPhase = NewMatchPhase;
+	if (NewMatchPhase == EHeistMatchPhase::Lobby)
+	{
+		SurfaceTemplatePoolId = NAME_None;
+		SelectedSurfaceTemplateId = NAME_None;
+		SurfaceTemplatePoolSize = 0;
+		SurfaceTemplateBagCycle = 0;
+		SurfaceTemplateRemainingCount = 0;
+		SurfaceTemplateSelectionRevision = 0;
+	}
 	ForceNetUpdate();
 	BroadcastMatchPhaseChanged(PreviousMatchPhase, TEXT("Server"));
 	return true;
@@ -190,6 +199,85 @@ void AHeistGameState::BroadcastLobbyMapSelection(const TCHAR* ChangeSource)
 
 	LobbyMapSelectionChangedDelegate.Broadcast(SelectedLobbyMapId, bRandomLobbyMapSelection, LobbyMapSelectionRevision);
 	UHeistDebugFunctionLibrary::DebugLobbyMapSelectionState(this, ChangeSource, SelectedLobbyMapId, bRandomLobbyMapSelection, LobbyMapSelectionRevision, true);
+}
+
+#pragma endregion
+
+#pragma region SurfaceTemplateSelection
+
+FName AHeistGameState::GetSurfaceTemplatePoolId() const
+{
+	return SurfaceTemplatePoolId;
+}
+
+FName AHeistGameState::GetSelectedSurfaceTemplateId() const
+{
+	return SelectedSurfaceTemplateId;
+}
+
+int32 AHeistGameState::GetSurfaceTemplatePoolSize() const
+{
+	return SurfaceTemplatePoolSize;
+}
+
+int32 AHeistGameState::GetSurfaceTemplateBagCycle() const
+{
+	return SurfaceTemplateBagCycle;
+}
+
+int32 AHeistGameState::GetSurfaceTemplateRemainingCount() const
+{
+	return SurfaceTemplateRemainingCount;
+}
+
+int32 AHeistGameState::GetSurfaceTemplateSelectionRevision() const
+{
+	return SurfaceTemplateSelectionRevision;
+}
+
+bool AHeistGameState::InitializeSurfaceTemplateSelection(const FName PoolId, const FName TemplateId, const int32 PoolSize, const int32 BagCycle, const int32 RemainingCount,
+														 const int32 SelectionRevision)
+{
+	const bool bValidPoolId = PoolId == FName(TEXT("M01")) || PoolId == FName(TEXT("M02")) || PoolId == FName(TEXT("M03"));
+	const bool bValidSnapshot = bValidPoolId && !TemplateId.IsNone() && PoolSize > 0 && BagCycle > 0 && FMath::IsWithinInclusive(RemainingCount, 0, PoolSize - 1) &&
+								SelectionRevision > 0;
+	const bool bMatchesInitializedSnapshot =
+		SurfaceTemplateSelectionRevision > 0 && SurfaceTemplatePoolId == PoolId && SelectedSurfaceTemplateId == TemplateId && SurfaceTemplatePoolSize == PoolSize &&
+		SurfaceTemplateBagCycle == BagCycle && SurfaceTemplateRemainingCount == RemainingCount && SurfaceTemplateSelectionRevision == SelectionRevision;
+	if (!HasAuthority() || MatchPhase != EHeistMatchPhase::InGame || !bValidSnapshot || (SurfaceTemplateSelectionRevision > 0 && !bMatchesInitializedSnapshot))
+	{
+		UHeistDebugFunctionLibrary::DebugSurfaceTemplateSelectionState(this, TEXT("ServerInitRejected"), PoolId, TemplateId, PoolSize, BagCycle, RemainingCount,
+																	  SelectionRevision, false);
+		return false;
+	}
+	if (bMatchesInitializedSnapshot)
+	{
+		return true;
+	}
+
+	SurfaceTemplatePoolId = PoolId;
+	SelectedSurfaceTemplateId = TemplateId;
+	SurfaceTemplatePoolSize = PoolSize;
+	SurfaceTemplateBagCycle = BagCycle;
+	SurfaceTemplateRemainingCount = RemainingCount;
+	SurfaceTemplateSelectionRevision = SelectionRevision;
+	ForceNetUpdate();
+	BroadcastSurfaceTemplateSelection(TEXT("ServerInitialized"), true);
+	return true;
+}
+
+void AHeistGameState::OnRep_SurfaceTemplateSelectionRevision()
+{
+	if (SurfaceTemplateSelectionRevision > 0)
+	{
+		BroadcastSurfaceTemplateSelection(TEXT("Replicated"), true);
+	}
+}
+
+void AHeistGameState::BroadcastSurfaceTemplateSelection(const TCHAR* ChangeSource, const bool bAccepted)
+{
+	UHeistDebugFunctionLibrary::DebugSurfaceTemplateSelectionState(this, ChangeSource, SurfaceTemplatePoolId, SelectedSurfaceTemplateId, SurfaceTemplatePoolSize,
+																  SurfaceTemplateBagCycle, SurfaceTemplateRemainingCount, SurfaceTemplateSelectionRevision, bAccepted);
 }
 
 #pragma endregion
@@ -638,6 +726,12 @@ void AHeistGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(AHeistGameState, SelectedLobbyMapId);
 	DOREPLIFETIME(AHeistGameState, bRandomLobbyMapSelection);
 	DOREPLIFETIME(AHeistGameState, LobbyMapSelectionRevision);
+	DOREPLIFETIME(AHeistGameState, SurfaceTemplatePoolId);
+	DOREPLIFETIME(AHeistGameState, SelectedSurfaceTemplateId);
+	DOREPLIFETIME(AHeistGameState, SurfaceTemplatePoolSize);
+	DOREPLIFETIME(AHeistGameState, SurfaceTemplateBagCycle);
+	DOREPLIFETIME(AHeistGameState, SurfaceTemplateRemainingCount);
+	DOREPLIFETIME(AHeistGameState, SurfaceTemplateSelectionRevision);
 	DOREPLIFETIME(AHeistGameState, AlertLevel);
 	DOREPLIFETIME(AHeistGameState, AlertNextTransitionServerTime);
 	DOREPLIFETIME(AHeistGameState, LastAlertTriggerId);

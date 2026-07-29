@@ -34,5 +34,503 @@
     "OrientationWeight": 0.25,
     "MaterialWeight": 0.1,
     "ExtraPartScoreCap": 50.0
+  },
+  {
+    "Name": "Template_Sculpture_Gallery_01",
+    "TemplateId": "Template_Sculpture_Gallery_01",
+    "FamilyId": "Sculpture",
+    "DisplayName": "Winged Curator I",
+    "CorePartId": "Part_Sculpture_Gallery_Core",
+    "RequiredParts": [
+      {
+        "PartId": "Part_Sculpture_Gallery_Head",
+        "SocketId": "Head",
+        "QuantizedOrientation": 0,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Sculpture_Gallery_ArmLeft",
+        "SocketId": "Shoulder_L",
+        "QuantizedOrientation": 4,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Sculpture_Gallery_ArmRight",
+        "SocketId": "Shoulder_R",
+        "QuantizedOrientation": 12,
+        "MaterialId": "None"
+      }
+    ],
+    "DecoyPartIds": [
+      "Part_Sculpture_Gallery_Decoy"
+    ],
+    "AssemblyDuration": 60.0,
+    "RequiredPartWeight": 0.35,
+    "SocketTopologyWeight": 0.3,
+    "OrientationWeight": 0.25,
+    "MaterialWeight": 0.1,
+    "ExtraPartScoreCap": 50.0
+  },
+  {
+    "Name": "Template_Sculpture_Gallery_02",
+    "TemplateId": "Template_Sculpture_Gallery_02",
+    "FamilyId": "Sculpture",
+    "DisplayName": "Winged Curator II",
+    "CorePartId": "Part_Sculpture_Gallery_Core",
+    "RequiredParts": [
+      {
+        "PartId": "Part_Sculpture_Gallery_Head",
+        "SocketId": "Head",
+        "QuantizedOrientation": 8,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Sculpture_Gallery_Crest",
+        "SocketId": "Crest",
+        "QuantizedOrientation": 0,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Sculpture_Gallery_Pedestal",
+        "SocketId": "Pedestal",
+        "QuantizedOrientation": 0,
+        "MaterialId": "None"
+      }
+    ],
+    "DecoyPartIds": [
+      "Part_Sculpture_Gallery_Decoy"
+    ],
+    "AssemblyDuration": 60.0,
+    "RequiredPartWeight": 0.35,
+    "SocketTopologyWeight": 0.3,
+    "OrientationWeight": 0.25,
+    "MaterialWeight": 0.1,
+    "ExtraPartScoreCap": 50.0
+  },
+  {
+    "Name": "Template_Sculpture_Gallery_03",
+    "TemplateId": "Template_Sculpture_Gallery_03",
+    "FamilyId": "Sculpture",
+    "DisplayName": "Winged Curator III",
+    "CorePartId": "Part_Sculpture_Gallery_Core",
+    "RequiredParts": [
+      {
+        "PartId": "Part_Sculpture_Gallery_Head",
+        "SocketId": "Head",
+        "QuantizedOrientation": 0,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Sculpture_Gallery_ArmLeft",
+        "SocketId": "Shoulder_L",
+        "QuantizedOrientation": 4,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Sculpture_Gallery_ArmRight",
+        "SocketId": "Shoulder_R",
+        "QuantizedOrientation": 12,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Sculpture_Gallery_Crest",
+        "SocketId": "Crest",
+        "QuantizedOrientation": 8,
+        "MaterialId": "None"
+      }
+    ],
+    "DecoyPartIds": [
+      "Part_Sculpture_Gallery_Decoy"
+    ],
+    "AssemblyDuration": 75.0,
+    "RequiredPartWeight": 0.35,
+    "SocketTopologyWeight": 0.3,
+    "OrientationWeight": 0.25,
+    "MaterialWeight": 0.1,
+    "ExtraPartScoreCap": 50.0
+  },
+  {
+    "Name": "Template_Sculpture_Gallery_04",
+    "TemplateId": "Template_Sculpture_Gallery_04",
+    "FamilyId": "Sculpture",
+    "DisplayName": "Winged Curator IV",
+    "CorePartId": "Part_Sculpture_Gallery_Core",
+    "RequiredParts": [
+      {
+        "PartId": "Part_Sculpture_Gallery_Head",
+        "SocketId": "Head",
+        "QuantizedOrientation": 8,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Sculpture_Gallery_ArmLeft",
+        "SocketId": "Shoulder_L",
+        "QuantizedOrientation": 0,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Sculpture_Gallery_Crest",
+        "SocketId": "Crest",
+        "QuantizedOrientation": 4,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Sculpture_Gallery_Pedestal",
+        "SocketId": "Pedestal",
+        "QuantizedOrientation": 12,
+        "MaterialId": "None"
+      }
+    ],
+    "DecoyPartIds": [
+      "Part_Sculpture_Gallery_Decoy"
+    ],
+    "AssemblyDuration": 75.0,
+    "RequiredPartWeight": 0.35,
+    "SocketTopologyWeight": 0.3,
+    "OrientationWeight": 0.25,
+    "MaterialWeight": 0.1,
+    "ExtraPartScoreCap": 50.0
+  },
+  {
+    "Name": "Template_Sculpture_Gallery_05",
+    "TemplateId": "Template_Sculpture_Gallery_05",
+    "FamilyId": "Sculpture",
+    "DisplayName": "Winged Curator V",
+    "CorePartId": "Part_Sculpture_Gallery_Core",
+    "RequiredParts": [
+      {
+        "PartId": "Part_Sculpture_Gallery_Head",
+        "SocketId": "Head",
+        "QuantizedOrientation": 0,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Sculpture_Gallery_ArmLeft",
+        "SocketId": "Shoulder_L",
+        "QuantizedOrientation": 4,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Sculpture_Gallery_ArmRight",
+        "SocketId": "Shoulder_R",
+        "QuantizedOrientation": 12,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Sculpture_Gallery_Crest",
+        "SocketId": "Crest",
+        "QuantizedOrientation": 8,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Sculpture_Gallery_Pedestal",
+        "SocketId": "Pedestal",
+        "QuantizedOrientation": 0,
+        "MaterialId": "None"
+      }
+    ],
+    "DecoyPartIds": [
+      "Part_Sculpture_Gallery_Decoy"
+    ],
+    "AssemblyDuration": 90.0,
+    "RequiredPartWeight": 0.35,
+    "SocketTopologyWeight": 0.3,
+    "OrientationWeight": 0.25,
+    "MaterialWeight": 0.1,
+    "ExtraPartScoreCap": 50.0
+  },
+  {
+    "Name": "Template_Sculpture_Gallery_06",
+    "TemplateId": "Template_Sculpture_Gallery_06",
+    "FamilyId": "Sculpture",
+    "DisplayName": "Winged Curator VI",
+    "CorePartId": "Part_Sculpture_Gallery_Core",
+    "RequiredParts": [
+      {
+        "PartId": "Part_Sculpture_Gallery_Head",
+        "SocketId": "Head",
+        "QuantizedOrientation": 8,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Sculpture_Gallery_ArmLeft",
+        "SocketId": "Shoulder_L",
+        "QuantizedOrientation": 12,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Sculpture_Gallery_ArmRight",
+        "SocketId": "Shoulder_R",
+        "QuantizedOrientation": 4,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Sculpture_Gallery_Crest",
+        "SocketId": "Crest",
+        "QuantizedOrientation": 0,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Sculpture_Gallery_Pedestal",
+        "SocketId": "Pedestal",
+        "QuantizedOrientation": 12,
+        "MaterialId": "None"
+      }
+    ],
+    "DecoyPartIds": [
+      "Part_Sculpture_Gallery_Decoy"
+    ],
+    "AssemblyDuration": 90.0,
+    "RequiredPartWeight": 0.35,
+    "SocketTopologyWeight": 0.3,
+    "OrientationWeight": 0.25,
+    "MaterialWeight": 0.1,
+    "ExtraPartScoreCap": 50.0
+  },
+  {
+    "Name": "Template_Ceramic_Gallery_01",
+    "TemplateId": "Template_Ceramic_Gallery_01",
+    "FamilyId": "Ceramic",
+    "DisplayName": "Moonlit Vessel I",
+    "CorePartId": "Part_Ceramic_Gallery_Core",
+    "RequiredParts": [
+      {
+        "PartId": "Part_Ceramic_Gallery_Lid",
+        "SocketId": "Lid",
+        "QuantizedOrientation": 0,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Ceramic_Gallery_HandleLeft",
+        "SocketId": "Handle_L",
+        "QuantizedOrientation": 4,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Ceramic_Gallery_HandleRight",
+        "SocketId": "Handle_R",
+        "QuantizedOrientation": 12,
+        "MaterialId": "None"
+      }
+    ],
+    "DecoyPartIds": [
+      "Part_Ceramic_Gallery_Decoy"
+    ],
+    "AssemblyDuration": 60.0,
+    "RequiredPartWeight": 0.35,
+    "SocketTopologyWeight": 0.3,
+    "OrientationWeight": 0.25,
+    "MaterialWeight": 0.1,
+    "ExtraPartScoreCap": 50.0
+  },
+  {
+    "Name": "Template_Ceramic_Gallery_02",
+    "TemplateId": "Template_Ceramic_Gallery_02",
+    "FamilyId": "Ceramic",
+    "DisplayName": "Moonlit Vessel II",
+    "CorePartId": "Part_Ceramic_Gallery_Core",
+    "RequiredParts": [
+      {
+        "PartId": "Part_Ceramic_Gallery_Lid",
+        "SocketId": "Lid",
+        "QuantizedOrientation": 8,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Ceramic_Gallery_Spout",
+        "SocketId": "Spout",
+        "QuantizedOrientation": 4,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Ceramic_Gallery_Foot",
+        "SocketId": "Foot",
+        "QuantizedOrientation": 0,
+        "MaterialId": "None"
+      }
+    ],
+    "DecoyPartIds": [
+      "Part_Ceramic_Gallery_Decoy"
+    ],
+    "AssemblyDuration": 60.0,
+    "RequiredPartWeight": 0.35,
+    "SocketTopologyWeight": 0.3,
+    "OrientationWeight": 0.25,
+    "MaterialWeight": 0.1,
+    "ExtraPartScoreCap": 50.0
+  },
+  {
+    "Name": "Template_Ceramic_Gallery_03",
+    "TemplateId": "Template_Ceramic_Gallery_03",
+    "FamilyId": "Ceramic",
+    "DisplayName": "Moonlit Vessel III",
+    "CorePartId": "Part_Ceramic_Gallery_Core",
+    "RequiredParts": [
+      {
+        "PartId": "Part_Ceramic_Gallery_Lid",
+        "SocketId": "Lid",
+        "QuantizedOrientation": 0,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Ceramic_Gallery_HandleLeft",
+        "SocketId": "Handle_L",
+        "QuantizedOrientation": 4,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Ceramic_Gallery_HandleRight",
+        "SocketId": "Handle_R",
+        "QuantizedOrientation": 12,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Ceramic_Gallery_Foot",
+        "SocketId": "Foot",
+        "QuantizedOrientation": 0,
+        "MaterialId": "None"
+      }
+    ],
+    "DecoyPartIds": [
+      "Part_Ceramic_Gallery_Decoy"
+    ],
+    "AssemblyDuration": 75.0,
+    "RequiredPartWeight": 0.35,
+    "SocketTopologyWeight": 0.3,
+    "OrientationWeight": 0.25,
+    "MaterialWeight": 0.1,
+    "ExtraPartScoreCap": 50.0
+  },
+  {
+    "Name": "Template_Ceramic_Gallery_04",
+    "TemplateId": "Template_Ceramic_Gallery_04",
+    "FamilyId": "Ceramic",
+    "DisplayName": "Moonlit Vessel IV",
+    "CorePartId": "Part_Ceramic_Gallery_Core",
+    "RequiredParts": [
+      {
+        "PartId": "Part_Ceramic_Gallery_Lid",
+        "SocketId": "Lid",
+        "QuantizedOrientation": 8,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Ceramic_Gallery_HandleLeft",
+        "SocketId": "Handle_L",
+        "QuantizedOrientation": 0,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Ceramic_Gallery_Spout",
+        "SocketId": "Spout",
+        "QuantizedOrientation": 4,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Ceramic_Gallery_Foot",
+        "SocketId": "Foot",
+        "QuantizedOrientation": 12,
+        "MaterialId": "None"
+      }
+    ],
+    "DecoyPartIds": [
+      "Part_Ceramic_Gallery_Decoy"
+    ],
+    "AssemblyDuration": 75.0,
+    "RequiredPartWeight": 0.35,
+    "SocketTopologyWeight": 0.3,
+    "OrientationWeight": 0.25,
+    "MaterialWeight": 0.1,
+    "ExtraPartScoreCap": 50.0
+  },
+  {
+    "Name": "Template_Ceramic_Gallery_05",
+    "TemplateId": "Template_Ceramic_Gallery_05",
+    "FamilyId": "Ceramic",
+    "DisplayName": "Moonlit Vessel V",
+    "CorePartId": "Part_Ceramic_Gallery_Core",
+    "RequiredParts": [
+      {
+        "PartId": "Part_Ceramic_Gallery_Lid",
+        "SocketId": "Lid",
+        "QuantizedOrientation": 0,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Ceramic_Gallery_HandleRight",
+        "SocketId": "Handle_R",
+        "QuantizedOrientation": 8,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Ceramic_Gallery_Spout",
+        "SocketId": "Spout",
+        "QuantizedOrientation": 12,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Ceramic_Gallery_Foot",
+        "SocketId": "Foot",
+        "QuantizedOrientation": 4,
+        "MaterialId": "None"
+      }
+    ],
+    "DecoyPartIds": [
+      "Part_Ceramic_Gallery_Decoy"
+    ],
+    "AssemblyDuration": 75.0,
+    "RequiredPartWeight": 0.35,
+    "SocketTopologyWeight": 0.3,
+    "OrientationWeight": 0.25,
+    "MaterialWeight": 0.1,
+    "ExtraPartScoreCap": 50.0
+  },
+  {
+    "Name": "Template_Ceramic_Gallery_06",
+    "TemplateId": "Template_Ceramic_Gallery_06",
+    "FamilyId": "Ceramic",
+    "DisplayName": "Moonlit Vessel VI",
+    "CorePartId": "Part_Ceramic_Gallery_Core",
+    "RequiredParts": [
+      {
+        "PartId": "Part_Ceramic_Gallery_Lid",
+        "SocketId": "Lid",
+        "QuantizedOrientation": 8,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Ceramic_Gallery_HandleLeft",
+        "SocketId": "Handle_L",
+        "QuantizedOrientation": 12,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Ceramic_Gallery_HandleRight",
+        "SocketId": "Handle_R",
+        "QuantizedOrientation": 4,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Ceramic_Gallery_Spout",
+        "SocketId": "Spout",
+        "QuantizedOrientation": 0,
+        "MaterialId": "None"
+      },
+      {
+        "PartId": "Part_Ceramic_Gallery_Foot",
+        "SocketId": "Foot",
+        "QuantizedOrientation": 12,
+        "MaterialId": "None"
+      }
+    ],
+    "DecoyPartIds": [
+      "Part_Ceramic_Gallery_Decoy"
+    ],
+    "AssemblyDuration": 90.0,
+    "RequiredPartWeight": 0.35,
+    "SocketTopologyWeight": 0.3,
+    "OrientationWeight": 0.25,
+    "MaterialWeight": 0.1,
+    "ExtraPartScoreCap": 50.0
   }
 ]

@@ -82,6 +82,10 @@ EDataValidationResult FHeistForgeryTemplateRow::IsDataValid(FDataValidationConte
 	{
 		AddError(LOCTEXT("MissingTemplateId", "TemplateId must not be None."));
 	}
+	if (SurfacePoolId != FName(TEXT("M01")) && SurfacePoolId != FName(TEXT("M02")) && SurfacePoolId != FName(TEXT("M03")))
+	{
+		AddError(LOCTEXT("InvalidSurfacePoolId", "SurfacePoolId must be M01, M02, or M03."));
+	}
 	if (ReferenceImage.IsNull())
 	{
 		AddError(LOCTEXT("MissingReferenceImage", "ReferenceImage must reference a Texture2D."));

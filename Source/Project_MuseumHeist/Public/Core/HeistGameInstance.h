@@ -34,6 +34,26 @@ class PROJECT_MUSEUMHEIST_API UHeistGameInstance : public UGameInstance
 
 #pragma endregion
 
+#pragma region SurfaceTemplateSelection
+
+  public:
+	bool SelectSurfaceTemplateForMatch(FName PoolId, const TArray<FName>& CandidateTemplateIds, FName& OutTemplateId, int32& OutSelectionRevision, int32& OutBagCycle,
+									   int32& OutRemainingTemplateCount);
+	bool RunSurfaceTemplateShuffleBagSelfTestForDebug(int32 PoolSize, int32& OutDrawCount, int32& OutFirstCycleUniqueCount, int32& OutSecondCycleUniqueCount,
+													  int32& OutRecentProtectionCheckCount, int32& OutRecentProtectionPassCount) const;
+
+  private:
+	void ResetSurfaceTemplateShuffleState();
+
+	TMap<FName, TArray<FName>> SurfaceTemplateCatalogByPool;
+	TMap<FName, TArray<FName>> RemainingSurfaceTemplateIdsByPool;
+	TMap<FName, TArray<FName>> RecentSurfaceTemplateIdsByPool;
+	TMap<FName, int32> SurfaceTemplateBagCycleByPool;
+	int32 SurfaceTemplateSelectionRevision = 0;
+	FRandomStream SurfaceTemplateRandomStream;
+
+#pragma endregion
+
 #pragma region OnlineSession
 
   public:

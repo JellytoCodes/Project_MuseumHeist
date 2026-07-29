@@ -25,6 +25,7 @@
 #include "Core/HeistLogChannels.h"
 #include "Data/HeistArtifactDataTypes.h"
 #include "DrawDebugHelpers.h"
+#include "Engine/DataTable.h"
 #include "Engine/Engine.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/Texture2D.h"
@@ -1329,7 +1330,7 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyHelp(APlayerController* Play
 	Message(
 		PlayerController,
 		TEXT(
-			"Object Assembly commands: HeistCasePhase InGame | HeistObjectAssemblySpawn 200 | HeistObjectAssemblySpawnFor <PlayerId> <Distance> | HeistObjectAssemblyKickPlayer <PlayerId> | HeistObjectAssemblyBegin 60 | HeistObjectAssemblyTest <Valid|Missing|Extra|Socket|Orientation|Material|Duplicate|Revision|Family|Empty> | HeistObjectAssemblyDump | HeistObjectAssemblyUIDump | HeistObjectAssemblyCancel | HeistObjectAssemblyTimeout | HeistObjectAssemblyReplicaDump | HeistObjectAssemblyPrototypeGate | HeistObjectAssemblyReplicaRebuild | HeistObjectAssemblyTakeOriginal | HeistObjectAssemblyInspectionReady. Spawn, SpawnFor, KickPlayer, Timeout, and InspectionReady are listen-server commands; Begin/Test/Cancel/Dump/UIDump/ReplicaDump/PrototypeGate/ReplicaRebuild/TakeOriginal may run in the owning client."),
+			"Object Assembly commands: HeistCasePhase InGame | HeistObjectAssemblySpawn 200 | HeistObjectAssemblySpawnFor <PlayerId> <Distance> | HeistObjectAssemblyContentSpawn <Sculpture|Ceramic> <1-6> <Distance> | HeistObjectAssemblyKickPlayer <PlayerId> | HeistObjectAssemblyBegin 60 | HeistObjectAssemblyTest <Valid|Missing|Extra|Socket|Orientation|Material|Duplicate|Revision|Family|Empty> | HeistObjectAssemblyDump | HeistObjectAssemblyUIDump | HeistObjectAssemblyCancel | HeistObjectAssemblyTimeout | HeistObjectAssemblyReplicaDump | HeistObjectAssemblyPrototypeGate | HeistObjectAssemblyContentValidate | HeistObjectAssemblyReplicaRebuild | HeistObjectAssemblyTakeOriginal | HeistObjectAssemblyInspectionReady. Spawn, SpawnFor, ContentSpawn, ContentValidate, KickPlayer, Timeout, and InspectionReady are listen-server commands; Begin/Test/Cancel/Dump/UIDump/ReplicaDump/PrototypeGate/ReplicaRebuild/TakeOriginal may run in the owning client."),
 		EHeistDebugLevel::Info, true, 12.0f);
 #endif
 }
@@ -1406,6 +1407,53 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblySpawnFor(APlayerController* 
 						*GetNameSafe(DisplayCase), IsValid(DisplayCase) ? *DisplayCase->GetObjectCaseId().ToString() : TEXT("None"), PlayerId, SafeDistance,
 						bObjectiveSet ? TEXT("true") : TEXT("false"), IsValid(DisplayCase) && DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false"),
 						bResult ? TEXT("PASS") : TEXT("FAIL")),
+		bResult ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblyContentSpawn(APlayerController* PlayerController, const FString& Family, const int32 Variant, const float Distance)
+{
+#if !UE_BUILD_SHIPPING
+	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(PlayerController->GetWorld()) || !IsValid(PlayerController->GetPawn()))
+	{
+		Message(PlayerController, TEXT("Object Assembly content spawn: Result=REJECTED Reason=ListenServerAuthorityRequired"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const bool bSculpture = Family.Equals(TEXT("Sculpture"), ESearchCase::IgnoreCase);
+	const bool bCeramic = Family.Equals(TEXT("Ceramic"), ESearchCase::IgnoreCase);
+	if ((!bSculpture && !bCeramic) || !FMath::IsWithinInclusive(Variant, 1, 6))
+	{
+		Message(
+			PlayerController,
+			FString::Printf(TEXT("Object Assembly content spawn: Family=%s Variant=%d Result=REJECTED Reason=ExpectedSculptureOrCeramicVariant1Through6"), *Family, Variant),
+			EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const FString CanonicalFamily = bSculpture ? TEXT("Sculpture") : TEXT("Ceramic");
+	const FName FamilyId(*CanonicalFamily);
+	const FName ArtifactId(*FString::Printf(TEXT("Artifact_%s_Gallery_%02d"), *CanonicalFamily, Variant));
+	const FName CaseId(*FString::Printf(TEXT("ObjectCase_%s_Gallery_%02d_Debug"), *CanonicalFamily, Variant));
+	const APawn* ReferencePawn = PlayerController->GetPawn();
+	const float SafeDistance = FMath::Clamp(Distance, 100.0f, 250.0f);
+	const FVector SpawnLocation = ReferencePawn->GetActorLocation() + ReferencePawn->GetActorForwardVector() * SafeDistance;
+	FActorSpawnParameters SpawnParameters;
+	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	AHeistObjectDisplayCaseActor* DisplayCase =
+		PlayerController->GetWorld()->SpawnActor<AHeistObjectDisplayCaseActor>(AHeistObjectDisplayCaseActor::StaticClass(), SpawnLocation, ReferencePawn->GetActorRotation(), SpawnParameters);
+	const bool bInitialized = IsValid(DisplayCase) && DisplayCase->InitializeObjectIdentity(CaseId, ArtifactId, FamilyId);
+	AHeistGameState* HeistGameState = PlayerController->GetWorld()->GetGameState<AHeistGameState>();
+	const bool bObjectiveSet =
+		bInitialized && IsValid(HeistGameState) &&
+		HeistGameState->SetObjectiveSnapshot(DisplayCase->GetTargetArtifactId(), DisplayCase->GetObjectCaseId(), EHeistObjectiveState::InProgress, nullptr);
+	const bool bResult = bInitialized && bObjectiveSet;
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Object Assembly content spawn: Case=%s CaseId=%s Artifact=%s Family=%s Variant=%d Distance=%.1f ObjectiveSet=%s Authority=%s Result=%s"),
+			*GetNameSafe(DisplayCase), *CaseId.ToString(), *ArtifactId.ToString(), *FamilyId.ToString(), Variant, SafeDistance, bObjectiveSet ? TEXT("true") : TEXT("false"),
+			IsValid(DisplayCase) && DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false"), bResult ? TEXT("PASS") : TEXT("FAIL")),
 		bResult ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
 #endif
 }
@@ -1490,6 +1538,16 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyTest(APlayerController* Play
 	bool bExpectedAccepted = true;
 	if (NormalizedScenario == TEXT("valid"))
 	{
+		const FHeistObjectAssemblyTemplateRow* PreparedTemplate = ObjectAssemblyComponent->GetPreparedTemplateForDebug();
+		if (PreparedTemplate == nullptr || PreparedTemplate->RequiredParts.IsEmpty())
+		{
+			Message(
+				PlayerController,
+				TEXT("Object Assembly test: Scenario=Valid Result=REJECTED Reason=MissingPreparedTemplate"),
+				EHeistDebugLevel::Warning, true);
+			return;
+		}
+		Entries = PreparedTemplate->RequiredParts;
 	}
 	else if (NormalizedScenario == TEXT("missing"))
 	{
@@ -1543,10 +1601,12 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyTest(APlayerController* Play
 		return;
 	}
 
+	const FName SubmittedTemplateId = ObjectAssemblyComponent->GetActiveTemplateId();
 	HeistPlayerController->RequestSubmitObjectAssembly(Entries, ClientSessionRevision);
 	Message(PlayerController,
-			FString::Printf(TEXT("Object Assembly test requested: Scenario=%s Entries=%d ClientSessionRevision=%d Expected=%s"),
-							*Scenario, Entries.Num(), ClientSessionRevision, bExpectedAccepted ? TEXT("ACCEPTED") : TEXT("REJECTED")),
+			FString::Printf(TEXT("Object Assembly test requested: Scenario=%s Template=%s Entries=%d ClientSessionRevision=%d Expected=%s"),
+							*Scenario, *SubmittedTemplateId.ToString(), Entries.Num(), ClientSessionRevision,
+							bExpectedAccepted ? TEXT("ACCEPTED") : TEXT("REJECTED")),
 			EHeistDebugLevel::Info, true);
 #endif
 }
@@ -1876,6 +1936,177 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyPrototypeGate(APlayerControl
 #endif
 }
 
+void UHeistDebugFunctionLibrary::DebugObjectAssemblyContentValidate(APlayerController* PlayerController)
+{
+#if !UE_BUILD_SHIPPING
+	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(PlayerController->GetWorld()))
+	{
+		Message(PlayerController, TEXT("Object Assembly content validation: Result=REJECTED Reason=ListenServerAuthorityRequired"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const AHeistGameMode* HeistGameMode = PlayerController->GetWorld()->GetAuthGameMode<AHeistGameMode>();
+	const UDataTable* ArtifactTable = IsValid(HeistGameMode) ? HeistGameMode->GetArtifactDataTable() : nullptr;
+	const UDataTable* PartTable = IsValid(HeistGameMode) ? HeistGameMode->GetObjectAssemblyPartDataTable() : nullptr;
+	const UDataTable* TemplateTable = IsValid(HeistGameMode) ? HeistGameMode->GetObjectAssemblyTemplateDataTable() : nullptr;
+	const bool bTablesReady =
+		IsValid(ArtifactTable) && ArtifactTable->GetRowStruct() == FHeistArtifactDataRow::StaticStruct() &&
+		IsValid(PartTable) && PartTable->GetRowStruct() == FHeistObjectAssemblyPartRow::StaticStruct() &&
+		IsValid(TemplateTable) && TemplateTable->GetRowStruct() == FHeistObjectAssemblyTemplateRow::StaticStruct();
+	if (!bTablesReady)
+	{
+		Message(PlayerController, TEXT("Object Assembly content validation: Result=FAIL Reason=MissingOrInvalidDataTables"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const FName SculptureFamilyId(TEXT("Sculpture"));
+	const FName CeramicFamilyId(TEXT("Ceramic"));
+	TSet<FName> CorePartIds;
+	TSet<FName> ReferencedPartIds;
+	TSet<FString> ProjectLocalMeshPaths;
+	int32 TemplateCount = 0;
+	int32 SculptureTemplateCount = 0;
+	int32 CeramicTemplateCount = 0;
+	int32 ArtifactCount = 0;
+	int32 EasyTemplateCount = 0;
+	int32 MediumTemplateCount = 0;
+	int32 HardTemplateCount = 0;
+	int32 InvalidTemplateCount = 0;
+	int32 MissingMeshCount = 0;
+	int32 MissingSocketCount = 0;
+
+	for (const TPair<FName, uint8*>& TemplatePair : TemplateTable->GetRowMap())
+	{
+		const FHeistObjectAssemblyTemplateRow* Template = reinterpret_cast<const FHeistObjectAssemblyTemplateRow*>(TemplatePair.Value);
+		if (Template == nullptr || (Template->FamilyId != SculptureFamilyId && Template->FamilyId != CeramicFamilyId) ||
+			Template->TemplateId.ToString().Contains(TEXT("_Prototype_")))
+		{
+			continue;
+		}
+
+		++TemplateCount;
+		Template->FamilyId == SculptureFamilyId ? ++SculptureTemplateCount : ++CeramicTemplateCount;
+		switch (Template->RequiredParts.Num())
+		{
+		case 3:
+			++EasyTemplateCount;
+			break;
+		case 4:
+			++MediumTemplateCount;
+			break;
+		case 5:
+			++HardTemplateCount;
+			break;
+		default:
+			break;
+		}
+
+		bool bTemplateValid = TemplatePair.Key == Template->TemplateId && !Template->DisplayName.IsEmpty() &&
+			FMath::IsWithinInclusive(Template->RequiredParts.Num(), 3, 5);
+		const FString ExpectedTemplatePrefix = FString::Printf(TEXT("Template_%s_Gallery_"), *Template->FamilyId.ToString());
+		bTemplateValid = bTemplateValid && Template->TemplateId.ToString().StartsWith(ExpectedTemplatePrefix);
+
+		const FHeistObjectAssemblyPartRow* CorePart =
+			PartTable->FindRow<FHeistObjectAssemblyPartRow>(Template->CorePartId, TEXT("DebugObjectAssemblyContentValidateCore"), false);
+		UStaticMesh* CoreMesh = CorePart != nullptr ? CorePart->StaticMesh.LoadSynchronous() : nullptr;
+		const FString CoreMeshPath = CorePart != nullptr ? CorePart->StaticMesh.ToSoftObjectPath().ToString() : FString();
+		const bool bCoreValid =
+			CorePart != nullptr && CorePart->PartId == Template->CorePartId && CorePart->FamilyId == Template->FamilyId &&
+			IsValid(CoreMesh) && CoreMeshPath.StartsWith(TEXT("/Game/"));
+		bTemplateValid = bTemplateValid && bCoreValid;
+		CorePartIds.Add(Template->CorePartId);
+		ReferencedPartIds.Add(Template->CorePartId);
+		if (bCoreValid)
+		{
+			ProjectLocalMeshPaths.Add(CoreMeshPath);
+		}
+		else
+		{
+			++MissingMeshCount;
+		}
+
+		for (const FHeistObjectAssemblyEntry& RequiredPartEntry : Template->RequiredParts)
+		{
+			const FHeistObjectAssemblyPartRow* Part =
+				PartTable->FindRow<FHeistObjectAssemblyPartRow>(RequiredPartEntry.PartId, TEXT("DebugObjectAssemblyContentValidateRequiredPart"), false);
+			UStaticMesh* PartMesh = Part != nullptr ? Part->StaticMesh.LoadSynchronous() : nullptr;
+			const FString PartMeshPath = Part != nullptr ? Part->StaticMesh.ToSoftObjectPath().ToString() : FString();
+			const bool bMaterialValid =
+				Part != nullptr && (RequiredPartEntry.MaterialId.IsNone()
+									   ? Part->AllowedMaterialIds.IsEmpty()
+									   : Part->AllowedMaterialIds.Contains(RequiredPartEntry.MaterialId));
+			const bool bPartValid =
+				Part != nullptr && Part->PartId == RequiredPartEntry.PartId && Part->FamilyId == Template->FamilyId &&
+				Part->CompatibleSocketIds.Contains(RequiredPartEntry.SocketId) &&
+				Part->AllowedOrientationSteps.Contains(RequiredPartEntry.QuantizedOrientation) && bMaterialValid &&
+				IsValid(PartMesh) && PartMeshPath.StartsWith(TEXT("/Game/"));
+			bTemplateValid = bTemplateValid && bPartValid;
+			ReferencedPartIds.Add(RequiredPartEntry.PartId);
+			if (bPartValid)
+			{
+				ProjectLocalMeshPaths.Add(PartMeshPath);
+			}
+			else
+			{
+				++MissingMeshCount;
+			}
+
+			const bool bSocketValid = IsValid(CoreMesh) && CoreMesh->FindSocket(RequiredPartEntry.SocketId) != nullptr;
+			bTemplateValid = bTemplateValid && bSocketValid;
+			MissingSocketCount += bSocketValid ? 0 : 1;
+		}
+
+		for (const FName DecoyPartId : Template->DecoyPartIds)
+		{
+			const FHeistObjectAssemblyPartRow* DecoyPart =
+				PartTable->FindRow<FHeistObjectAssemblyPartRow>(DecoyPartId, TEXT("DebugObjectAssemblyContentValidateDecoyPart"), false);
+			UStaticMesh* DecoyMesh = DecoyPart != nullptr ? DecoyPart->StaticMesh.LoadSynchronous() : nullptr;
+			const FString DecoyMeshPath = DecoyPart != nullptr ? DecoyPart->StaticMesh.ToSoftObjectPath().ToString() : FString();
+			const bool bDecoyValid =
+				DecoyPart != nullptr && DecoyPart->PartId == DecoyPartId && DecoyPart->FamilyId == Template->FamilyId &&
+				IsValid(DecoyMesh) && DecoyMeshPath.StartsWith(TEXT("/Game/"));
+			bTemplateValid = bTemplateValid && bDecoyValid;
+			ReferencedPartIds.Add(DecoyPartId);
+			if (bDecoyValid)
+			{
+				ProjectLocalMeshPaths.Add(DecoyMeshPath);
+			}
+			else
+			{
+				++MissingMeshCount;
+			}
+		}
+
+		const FString ArtifactIdString = Template->TemplateId.ToString().Replace(TEXT("Template_"), TEXT("Artifact_"));
+		const FName ArtifactId(*ArtifactIdString);
+		const FHeistArtifactDataRow* Artifact =
+			ArtifactTable->FindRow<FHeistArtifactDataRow>(ArtifactId, TEXT("DebugObjectAssemblyContentValidateArtifact"), false);
+		UClass* VisualActorClass = Artifact != nullptr ? Artifact->VisualActorClass.LoadSynchronous() : nullptr;
+		const bool bArtifactValid =
+			Artifact != nullptr && Artifact->ArtifactId == ArtifactId && Artifact->ForgeryType == EHeistForgeryType::Assembly &&
+			Artifact->ForgeryTemplateId == Template->TemplateId && IsValid(VisualActorClass) &&
+			VisualActorClass->IsChildOf(AHeistObjectDisplayCaseActor::StaticClass());
+		ArtifactCount += bArtifactValid ? 1 : 0;
+		bTemplateValid = bTemplateValid && bArtifactValid;
+		InvalidTemplateCount += bTemplateValid ? 0 : 1;
+	}
+
+	const bool bPassed =
+		TemplateCount == 12 && SculptureTemplateCount == 6 && CeramicTemplateCount == 6 && CorePartIds.Num() == 2 &&
+		EasyTemplateCount == 4 && MediumTemplateCount == 5 && HardTemplateCount == 3 && ArtifactCount == 12 &&
+		ReferencedPartIds.Num() == 14 && ProjectLocalMeshPaths.Num() == 14 && InvalidTemplateCount == 0 &&
+		MissingMeshCount == 0 && MissingSocketCount == 0;
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT(
+				"Object Assembly content validation: Templates=%d Sculpture=%d Ceramic=%d Kits=%d Easy=%d Medium=%d Hard=%d Artifacts=%d ReferencedParts=%d ProjectLocalMeshes=%d MissingMeshes=%d MissingSockets=%d InvalidTemplates=%d DifficultyRule=RequiredParts3Easy4Medium5Hard Authority=true Result=%s"),
+			TemplateCount, SculptureTemplateCount, CeramicTemplateCount, CorePartIds.Num(), EasyTemplateCount, MediumTemplateCount, HardTemplateCount, ArtifactCount,
+			ReferencedPartIds.Num(), ProjectLocalMeshPaths.Num(), MissingMeshCount, MissingSocketCount, InvalidTemplateCount, bPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
+#endif
+}
+
 void UHeistDebugFunctionLibrary::DebugObjectAssemblyReplicaRebuild(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
@@ -1941,7 +2172,7 @@ void UHeistDebugFunctionLibrary::DebugForgeryHelp(APlayerController* PlayerContr
 	Message(
 		PlayerController,
 		TEXT(
-			"Forgery commands: HeistCasePhase InGame | HeistCaseSpawn 250 | interact/hold E | HeistForgeryTemplateDump | HeistForgeryStrokeDump | HeistForgeryTransportDump | HeistForgeryTransportTest <Valid|Bounds|Count|Size|Brush|Revision|Empty|Short|Palette|Timeout|NearTimeout|Duplicate> | HeistForgeryScoreDump | HeistForgeryScoreTest | HeistForgerySwapDump | HeistForgeryVisualDump | HeistForgeryPaintingDump | HeistForgeryDump | HeistForgeryInputDump | HeistForgerySubmit | HeistForgeryCancel | HeistForgeryTimeout | HeistForgeryRecoveryDump | HeistForgeryRecoveryRace <CancelSubmit|SubmitCancel> | HeistForgeryUIDump | HeistForgeryUIPreview <None|Observation|Drawing|Validation|Result>. Run RecoveryRace in the owning client after drawing, then run RecoveryDump after replication settles. Timeout and NearTimeout transport tests run in the listen-server window. Run RecoveryDump in the listen server after client disconnect to detect orphan locks."),
+			"Forgery commands: HeistSurfaceTemplateDump | HeistSurfaceTemplatePoolTest 12 | HeistCasePhase InGame | HeistCaseSpawn 250 | interact/hold E | HeistForgeryTemplateDump | HeistForgeryStrokeDump | HeistForgeryTransportDump | HeistForgeryTransportTest <Valid|Bounds|Count|Size|Brush|Revision|Empty|Short|Palette|Timeout|NearTimeout|Duplicate> | HeistForgeryScoreDump | HeistForgeryScoreTest | HeistForgerySwapDump | HeistForgeryVisualDump | HeistForgeryPaintingDump | HeistForgeryDump | HeistForgeryInputDump | HeistForgerySubmit | HeistForgeryCancel | HeistForgeryTimeout | HeistForgeryRecoveryDump | HeistForgeryRecoveryRace <CancelSubmit|SubmitCancel> | HeistForgeryUIDump | HeistForgeryUIPreview <None|Observation|Drawing|Validation|Result>. SurfaceTemplateDump runs in every server/client window; PoolTest 12 runs in the listen server. Run RecoveryRace in the owning client after drawing, then run RecoveryDump after replication settles. Timeout and NearTimeout transport tests run in the listen-server window. Run RecoveryDump in the listen server after client disconnect to detect orphan locks."),
 		EHeistDebugLevel::Info, true, 12.0f);
 #endif
 }
@@ -2054,6 +2285,75 @@ void UHeistDebugFunctionLibrary::DebugForgeryTemplateDump(APlayerController* Pla
 			IsValid(ForgeryViewModel) && ForgeryViewModel->IsDrawingVisible() ? TEXT("true") : TEXT("false"), bTemplateContract ? TEXT("PASS") : TEXT("FAIL"),
 			bHandoffContract ? TEXT("PASS") : TEXT("FAIL"), bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
 		bContractPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugSurfaceTemplateDump(APlayerController* PlayerController)
+{
+#if !UE_BUILD_SHIPPING
+	const AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	const AHeistGameState* HeistGameState =
+		IsValid(HeistPlayerController) && IsValid(HeistPlayerController->GetWorld()) ? HeistPlayerController->GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	const UHeistForgeryComponent* ForgeryComponent = ResolveForgeryComponent(PlayerController);
+	if (!IsValid(HeistPlayerController) || !IsValid(HeistGameState))
+	{
+		Message(PlayerController, TEXT("Surface template dump: Result=FAIL Reason=MissingGameState"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const FName PoolId = HeistGameState->GetSurfaceTemplatePoolId();
+	const FName TemplateId = HeistGameState->GetSelectedSurfaceTemplateId();
+	const int32 PoolSize = HeistGameState->GetSurfaceTemplatePoolSize();
+	const int32 RemainingCount = HeistGameState->GetSurfaceTemplateRemainingCount();
+	const int32 BagCycle = HeistGameState->GetSurfaceTemplateBagCycle();
+	const int32 SelectionRevision = HeistGameState->GetSurfaceTemplateSelectionRevision();
+	const bool bSnapshotValid = !PoolId.IsNone() && !TemplateId.IsNone() && PoolSize > 0 && BagCycle > 0 && FMath::IsWithinInclusive(RemainingCount, 0, PoolSize - 1) &&
+								SelectionRevision > 0;
+	const bool bPreparedTemplateAligned =
+		!IsValid(ForgeryComponent) || !ForgeryComponent->HasPreparedForgeryTemplate() || ForgeryComponent->GetActiveTemplateId() == TemplateId;
+	const bool bContractPassed = bSnapshotValid && bPreparedTemplateAligned;
+	const bool bContentCardinalityReady = PoolSize == 12;
+	const FName PreparedTemplateId = IsValid(ForgeryComponent) ? ForgeryComponent->GetActiveTemplateId() : NAME_None;
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT(
+				"Surface template dump: Pool=%s Template=%s PoolSize=%d ExpectedPoolSize=12 ContentCardinality=%s BagCycle=%d Remaining=%d Revision=%d PreparedTemplate=%s PreparedAligned=%s Authority=%s Snapshot=%s Result=%s"),
+			*PoolId.ToString(), *TemplateId.ToString(), PoolSize, bContentCardinalityReady ? TEXT("READY") : TEXT("PENDING_W5_019_021"), BagCycle, RemainingCount,
+			SelectionRevision, *PreparedTemplateId.ToString(),
+			bPreparedTemplateAligned ? TEXT("true") : TEXT("false"), HeistPlayerController->HasAuthority() ? TEXT("true") : TEXT("false"),
+			bSnapshotValid ? TEXT("PASS") : TEXT("FAIL"), bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bContractPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugSurfaceTemplatePoolTest(APlayerController* PlayerController, const int32 PoolSize)
+{
+#if !UE_BUILD_SHIPPING
+	const AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	UHeistGameInstance* HeistGameInstance = IsValid(HeistPlayerController) ? Cast<UHeistGameInstance>(HeistPlayerController->GetGameInstance()) : nullptr;
+	if (!IsValid(HeistPlayerController) || !HeistPlayerController->HasAuthority() || !IsValid(HeistGameInstance))
+	{
+		Message(PlayerController, TEXT("Surface template pool test: Result=FAIL Reason=ListenServerOnly"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	int32 DrawCount = 0;
+	int32 FirstCycleUniqueCount = 0;
+	int32 SecondCycleUniqueCount = 0;
+	int32 RecentProtectionCheckCount = 0;
+	int32 RecentProtectionPassCount = 0;
+	const bool bPassed = HeistGameInstance->RunSurfaceTemplateShuffleBagSelfTestForDebug(PoolSize, DrawCount, FirstCycleUniqueCount, SecondCycleUniqueCount,
+																						RecentProtectionCheckCount, RecentProtectionPassCount);
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT(
+				"Surface template pool test: PoolSize=%d Draws=%d ExpectedDraws=%d FirstCycleUnique=%d SecondCycleUnique=%d Recent3Checks=%d Recent3Passes=%d BagExhaustion=%s ImmediateRepeatProtection=%s ProductionStateMutated=false Result=%s"),
+			PoolSize, DrawCount, PoolSize * 2, FirstCycleUniqueCount, SecondCycleUniqueCount, RecentProtectionCheckCount, RecentProtectionPassCount,
+			FirstCycleUniqueCount == PoolSize && SecondCycleUniqueCount == PoolSize ? TEXT("PASS") : TEXT("FAIL"),
+			RecentProtectionCheckCount > 0 && RecentProtectionCheckCount == RecentProtectionPassCount ? TEXT("PASS") : TEXT("FAIL"), bPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
 #endif
 }
 
@@ -4508,6 +4808,22 @@ void UHeistDebugFunctionLibrary::DebugForgeryTemplatePrepared(const UHeistForger
 			TemplateDefinition.StrokeLimit, TemplateDefinition.BrushSize, TemplateDefinition.CoverageWeight, TemplateDefinition.MajorShapeWeight,
 			TemplateDefinition.ExtraStrokePenaltyWeight, TemplateDefinition.TimeoutPenalty, TemplateDefinition.ShapeAccuracyWeight, TemplateDefinition.ColorAccuracyWeight,
 			TemplateDefinition.MaximumPaintToReferenceRatio, TemplateDefinition.OverpaintScoreCap));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugSurfaceTemplateSelectionState(const UObject* WorldContextObject, const TCHAR* ChangeSource, const FName PoolId,
+																	const FName TemplateId, const int32 PoolSize, const int32 BagCycle, const int32 RemainingCount,
+																	const int32 SelectionRevision, const bool bAccepted)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	LogMessage(
+		EHeistDebugChannel::Network, bAccepted ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+		FString::Printf(
+			TEXT("Surface template selection %s: Context=%s Pool=%s Template=%s PoolSize=%d BagCycle=%d Remaining=%d Revision=%d Accepted=%s Result=%s"),
+			ChangeSource, *GetNameSafe(WorldContextObject), *PoolId.ToString(), *TemplateId.ToString(), PoolSize, BagCycle, RemainingCount, SelectionRevision,
+			bAccepted ? TEXT("true") : TEXT("false"), bAccepted ? TEXT("PASS") : TEXT("FAIL")));
 #endif
 }
 

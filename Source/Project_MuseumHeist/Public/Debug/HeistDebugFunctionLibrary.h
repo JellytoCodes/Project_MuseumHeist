@@ -88,6 +88,8 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 														const FHeistForgeryTemplateRow* TemplateDefinition, FName Reason);
 	static void DebugForgeryTemplatePrepared(const UHeistForgeryComponent* ForgeryComponent, const AHeistPaintingDisplayCaseActor* TargetDisplayCase,
 											 const FHeistForgeryTemplateRow& TemplateDefinition);
+	static void DebugSurfaceTemplateSelectionState(const UObject* WorldContextObject, const TCHAR* ChangeSource, FName PoolId, FName TemplateId, int32 PoolSize,
+												   int32 BagCycle, int32 RemainingCount, int32 SelectionRevision, bool bAccepted);
 	static void DebugForgerySubmitRejected(const UHeistForgeryComponent* ForgeryComponent, FName Reason);
 	static void DebugForgeryStrokePayloadRejected(const UHeistForgeryComponent* ForgeryComponent, int32 StrokeCount, int32 PointCount, int32 PayloadBytes, float ClientBrushSize,
 												  int32 ClientSessionRevision, FName Reason);
@@ -346,6 +348,9 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 	static void DebugObjectAssemblySpawnFor(APlayerController* PlayerController, int32 PlayerId, float Distance);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
+	static void DebugObjectAssemblyContentSpawn(APlayerController* PlayerController, const FString& Family, int32 Variant, float Distance);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
 	static void DebugObjectAssemblyKickPlayer(APlayerController* PlayerController, int32 PlayerId);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
@@ -373,6 +378,9 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 	static void DebugObjectAssemblyPrototypeGate(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
+	static void DebugObjectAssemblyContentValidate(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
 	static void DebugObjectAssemblyReplicaRebuild(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
@@ -396,6 +404,12 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
 	static void DebugForgeryTemplateDump(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
+	static void DebugSurfaceTemplateDump(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
+	static void DebugSurfaceTemplatePoolTest(APlayerController* PlayerController, int32 PoolSize = 12);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
 	static void DebugForgeryStrokeDump(APlayerController* PlayerController);

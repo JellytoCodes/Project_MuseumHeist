@@ -28,10 +28,10 @@ constexpr int32 ReplicaScorePrimitiveDataIndex = 0;
 constexpr int32 ReplicaCoveragePrimitiveDataIndex = 1;
 constexpr int32 ReplicaColorAccuracyPrimitiveDataIndex = 2;
 constexpr int32 ReplicaTierPrimitiveDataIndex = 3;
-constexpr float InspectionDelayExcellentMultiplier = 4.0f;
-constexpr float InspectionDelayGoodMultiplier = 2.0f;
-constexpr float InspectionDelayFairMultiplier = 1.0f;
-constexpr float InspectionDelayPoorMultiplier = 0.5f;
+constexpr float PaintingInspectionDelayExcellentMultiplier = 4.0f;
+constexpr float PaintingInspectionDelayGoodMultiplier = 2.0f;
+constexpr float PaintingInspectionDelayFairMultiplier = 1.0f;
+constexpr float PaintingInspectionDelayPoorMultiplier = 0.5f;
 }
 
 const FName AHeistPaintingDisplayCaseActor::OriginalVisualComponentTag(TEXT("OriginalVisual"));
@@ -839,28 +839,28 @@ bool AHeistPaintingDisplayCaseActor::CalculateInspectionSchedule(const float Sim
 		OutScoreBand = FName(TEXT("90-100"));
 		OutAlertOutcome = EHeistAlertLevel::Quiet;
 		OutCaseOutcome = EHeistDisplayCaseState::Completed;
-		DelayMultiplier = InspectionDelayExcellentMultiplier;
+		DelayMultiplier = PaintingInspectionDelayExcellentMultiplier;
 	}
 	else if (SimilarityScore >= 70.0f)
 	{
 		OutScoreBand = FName(TEXT("70-89"));
 		OutAlertOutcome = EHeistAlertLevel::Suspicious;
 		OutCaseOutcome = EHeistDisplayCaseState::Suspected;
-		DelayMultiplier = InspectionDelayGoodMultiplier;
+		DelayMultiplier = PaintingInspectionDelayGoodMultiplier;
 	}
 	else if (SimilarityScore >= 50.0f)
 	{
 		OutScoreBand = FName(TEXT("50-69"));
 		OutAlertOutcome = EHeistAlertLevel::Searching;
 		OutCaseOutcome = EHeistDisplayCaseState::Suspected;
-		DelayMultiplier = InspectionDelayFairMultiplier;
+		DelayMultiplier = PaintingInspectionDelayFairMultiplier;
 	}
 	else if (SimilarityScore >= 30.0f)
 	{
 		OutScoreBand = FName(TEXT("30-49"));
 		OutAlertOutcome = EHeistAlertLevel::Alarmed;
 		OutCaseOutcome = EHeistDisplayCaseState::Alarmed;
-		DelayMultiplier = InspectionDelayPoorMultiplier;
+		DelayMultiplier = PaintingInspectionDelayPoorMultiplier;
 	}
 	else
 	{

@@ -96,5 +96,231 @@
     "AllowedOrientationSteps": [
       0
     ]
+  },
+  {
+    "Name": "Part_Sculpture_Gallery_Core",
+    "PartId": "Part_Sculpture_Gallery_Core",
+    "FamilyId": "Sculpture",
+    "StaticMesh": "StaticMesh'/Game/Art/ObjectAssembly/Sculpture/SM_SculptureGallery_Core.SM_SculptureGallery_Core'",
+    "CompatibleSocketIds": [
+      "Root"
+    ],
+    "AllowedMaterialIds": [],
+    "AllowedOrientationSteps": [
+      0
+    ]
+  },
+  {
+    "Name": "Part_Sculpture_Gallery_Head",
+    "PartId": "Part_Sculpture_Gallery_Head",
+    "FamilyId": "Sculpture",
+    "StaticMesh": "StaticMesh'/Game/Art/ObjectAssembly/Sculpture/SM_SculptureGallery_Head.SM_SculptureGallery_Head'",
+    "CompatibleSocketIds": [
+      "Head"
+    ],
+    "AllowedMaterialIds": [],
+    "AllowedOrientationSteps": [
+      0,
+      4,
+      8,
+      12
+    ]
+  },
+  {
+    "Name": "Part_Sculpture_Gallery_ArmLeft",
+    "PartId": "Part_Sculpture_Gallery_ArmLeft",
+    "FamilyId": "Sculpture",
+    "StaticMesh": "StaticMesh'/Game/Art/ObjectAssembly/Sculpture/SM_SculptureGallery_ArmLeft.SM_SculptureGallery_ArmLeft'",
+    "CompatibleSocketIds": [
+      "Shoulder_L"
+    ],
+    "AllowedMaterialIds": [],
+    "AllowedOrientationSteps": [
+      0,
+      4,
+      8,
+      12
+    ]
+  },
+  {
+    "Name": "Part_Sculpture_Gallery_ArmRight",
+    "PartId": "Part_Sculpture_Gallery_ArmRight",
+    "FamilyId": "Sculpture",
+    "StaticMesh": "StaticMesh'/Game/Art/ObjectAssembly/Sculpture/SM_SculptureGallery_ArmRight.SM_SculptureGallery_ArmRight'",
+    "CompatibleSocketIds": [
+      "Shoulder_R"
+    ],
+    "AllowedMaterialIds": [],
+    "AllowedOrientationSteps": [
+      0,
+      4,
+      8,
+      12
+    ]
+  },
+  {
+    "Name": "Part_Sculpture_Gallery_Crest",
+    "PartId": "Part_Sculpture_Gallery_Crest",
+    "FamilyId": "Sculpture",
+    "StaticMesh": "StaticMesh'/Game/Art/ObjectAssembly/Sculpture/SM_SculptureGallery_Crest.SM_SculptureGallery_Crest'",
+    "CompatibleSocketIds": [
+      "Crest"
+    ],
+    "AllowedMaterialIds": [],
+    "AllowedOrientationSteps": [
+      0,
+      4,
+      8,
+      12
+    ]
+  },
+  {
+    "Name": "Part_Sculpture_Gallery_Pedestal",
+    "PartId": "Part_Sculpture_Gallery_Pedestal",
+    "FamilyId": "Sculpture",
+    "StaticMesh": "StaticMesh'/Game/Art/ObjectAssembly/Sculpture/SM_SculptureGallery_Pedestal.SM_SculptureGallery_Pedestal'",
+    "CompatibleSocketIds": [
+      "Pedestal"
+    ],
+    "AllowedMaterialIds": [],
+    "AllowedOrientationSteps": [
+      0,
+      4,
+      8,
+      12
+    ]
+  },
+  {
+    "Name": "Part_Sculpture_Gallery_Decoy",
+    "PartId": "Part_Sculpture_Gallery_Decoy",
+    "FamilyId": "Sculpture",
+    "StaticMesh": "StaticMesh'/Game/Art/ObjectAssembly/Sculpture/SM_SculptureGallery_Decoy.SM_SculptureGallery_Decoy'",
+    "CompatibleSocketIds": [
+      "Head",
+      "Shoulder_L",
+      "Shoulder_R",
+      "Crest",
+      "Pedestal"
+    ],
+    "AllowedMaterialIds": [],
+    "AllowedOrientationSteps": [
+      0,
+      4,
+      8,
+      12
+    ]
+  },
+  {
+    "Name": "Part_Ceramic_Gallery_Core",
+    "PartId": "Part_Ceramic_Gallery_Core",
+    "FamilyId": "Ceramic",
+    "StaticMesh": "StaticMesh'/Game/Art/ObjectAssembly/Ceramic/SM_CeramicGallery_Core.SM_CeramicGallery_Core'",
+    "CompatibleSocketIds": [
+      "Root"
+    ],
+    "AllowedMaterialIds": [],
+    "AllowedOrientationSteps": [
+      0
+    ]
+  },
+  {
+    "Name": "Part_Ceramic_Gallery_Lid",
+    "PartId": "Part_Ceramic_Gallery_Lid",
+    "FamilyId": "Ceramic",
+    "StaticMesh": "StaticMesh'/Game/Art/ObjectAssembly/Ceramic/SM_CeramicGallery_Lid.SM_CeramicGallery_Lid'",
+    "CompatibleSocketIds": [
+      "Lid"
+    ],
+    "AllowedMaterialIds": [],
+    "AllowedOrientationSteps": [
+      0,
+      4,
+      8,
+      12
+    ]
+  },
+  {
+    "Name": "Part_Ceramic_Gallery_HandleLeft",
+    "PartId": "Part_Ceramic_Gallery_HandleLeft",
+    "FamilyId": "Ceramic",
+    "StaticMesh": "StaticMesh'/Game/Art/ObjectAssembly/Ceramic/SM_CeramicGallery_HandleLeft.SM_CeramicGallery_HandleLeft'",
+    "CompatibleSocketIds": [
+      "Handle_L"
+    ],
+    "AllowedMaterialIds": [],
+    "AllowedOrientationSteps": [
+      0,
+      4,
+      8,
+      12
+    ]
+  },
+  {
+    "Name": "Part_Ceramic_Gallery_HandleRight",
+    "PartId": "Part_Ceramic_Gallery_HandleRight",
+    "FamilyId": "Ceramic",
+    "StaticMesh": "StaticMesh'/Game/Art/ObjectAssembly/Ceramic/SM_CeramicGallery_HandleRight.SM_CeramicGallery_HandleRight'",
+    "CompatibleSocketIds": [
+      "Handle_R"
+    ],
+    "AllowedMaterialIds": [],
+    "AllowedOrientationSteps": [
+      0,
+      4,
+      8,
+      12
+    ]
+  },
+  {
+    "Name": "Part_Ceramic_Gallery_Spout",
+    "PartId": "Part_Ceramic_Gallery_Spout",
+    "FamilyId": "Ceramic",
+    "StaticMesh": "StaticMesh'/Game/Art/ObjectAssembly/Ceramic/SM_CeramicGallery_Spout.SM_CeramicGallery_Spout'",
+    "CompatibleSocketIds": [
+      "Spout"
+    ],
+    "AllowedMaterialIds": [],
+    "AllowedOrientationSteps": [
+      0,
+      4,
+      8,
+      12
+    ]
+  },
+  {
+    "Name": "Part_Ceramic_Gallery_Foot",
+    "PartId": "Part_Ceramic_Gallery_Foot",
+    "FamilyId": "Ceramic",
+    "StaticMesh": "StaticMesh'/Game/Art/ObjectAssembly/Ceramic/SM_CeramicGallery_Foot.SM_CeramicGallery_Foot'",
+    "CompatibleSocketIds": [
+      "Foot"
+    ],
+    "AllowedMaterialIds": [],
+    "AllowedOrientationSteps": [
+      0,
+      4,
+      8,
+      12
+    ]
+  },
+  {
+    "Name": "Part_Ceramic_Gallery_Decoy",
+    "PartId": "Part_Ceramic_Gallery_Decoy",
+    "FamilyId": "Ceramic",
+    "StaticMesh": "StaticMesh'/Game/Art/ObjectAssembly/Ceramic/SM_CeramicGallery_Decoy.SM_CeramicGallery_Decoy'",
+    "CompatibleSocketIds": [
+      "Lid",
+      "Handle_L",
+      "Handle_R",
+      "Spout",
+      "Foot"
+    ],
+    "AllowedMaterialIds": [],
+    "AllowedOrientationSteps": [
+      0,
+      4,
+      8,
+      12
+    ]
   }
 ]

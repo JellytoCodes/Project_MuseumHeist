@@ -943,13 +943,32 @@ bool UHeistForgeryComponent::TryPrepareForgeryTemplate(AHeistPaintingDisplayCase
 	}
 
 	AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	FHeistArtifactDataRow ArtifactDefinition;
 	FHeistForgeryTemplateRow TemplateDefinition;
 	const FName ArtifactId = TargetDisplayCase->GetTargetArtifactId();
 	if (!IsValid(HeistGameMode) || !HeistGameMode->TryGetArtifactDefinition(ArtifactId, ArtifactDefinition) || ArtifactDefinition.ForgeryType != EHeistForgeryType::Drawing ||
-		ArtifactDefinition.ForgeryTemplateId.IsNone() || !HeistGameMode->TryGetForgeryTemplateDefinition(ArtifactDefinition.ForgeryTemplateId, TemplateDefinition))
+		ArtifactDefinition.ForgeryTemplateId.IsNone())
 	{
 		UHeistDebugFunctionLibrary::DebugForgeryTemplatePreparationRejected(this, TargetDisplayCase, ArtifactId, nullptr, FName(TEXT("ArtifactOrTemplateLookupFailed")));
+		return false;
+	}
+
+	if (!IsValid(HeistGameState) || HeistGameState->GetSurfaceTemplateSelectionRevision() <= 0 || HeistGameState->GetSelectedSurfaceTemplateId().IsNone())
+	{
+		UHeistDebugFunctionLibrary::DebugForgeryTemplatePreparationRejected(this, TargetDisplayCase, ArtifactId, nullptr, FName(TEXT("MissingMatchTemplateSelection")));
+		return false;
+	}
+
+	const FName SelectedTemplateId = HeistGameState->GetSelectedSurfaceTemplateId();
+	if (!HeistGameMode->TryGetForgeryTemplateDefinition(SelectedTemplateId, TemplateDefinition))
+	{
+		UHeistDebugFunctionLibrary::DebugForgeryTemplatePreparationRejected(this, TargetDisplayCase, ArtifactId, nullptr, FName(TEXT("SelectedTemplateLookupFailed")));
+		return false;
+	}
+	if (!TemplateDefinition.SurfacePoolId.IsNone() && TemplateDefinition.SurfacePoolId != HeistGameState->GetSurfaceTemplatePoolId())
+	{
+		UHeistDebugFunctionLibrary::DebugForgeryTemplatePreparationRejected(this, TargetDisplayCase, ArtifactId, &TemplateDefinition, FName(TEXT("SelectedTemplatePoolMismatch")));
 		return false;
 	}
 
