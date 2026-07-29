@@ -19,8 +19,9 @@
 #include "Perception/AISenseConfig_Sight.h"
 #include "Perception/AISense_Sight.h"
 #include "TimerManager.h"
-#include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 #include "World/Actors/Escape/HeistVentActor.h"
+#include "World/Actors/Loot/HeistObjectDisplayCaseActor.h"
+#include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 
 namespace
 {
@@ -47,6 +48,84 @@ float ResolveAlertMultiplier(const FVector4& Multipliers, const EHeistAlertLevel
 	}
 
 	return FMath::Max(0.0f, FMath::IsFinite(Multiplier) ? Multiplier : 1.0f);
+}
+
+bool IsValidInspectionCandidate(const AActor* Candidate)
+{
+	if (const AHeistPaintingDisplayCaseActor* PaintingCase = Cast<AHeistPaintingDisplayCaseActor>(Candidate))
+	{
+		return PaintingCase->IsValidInspectionCandidate();
+	}
+	if (const AHeistObjectDisplayCaseActor* ObjectCase = Cast<AHeistObjectDisplayCaseActor>(Candidate))
+	{
+		return ObjectCase->IsValidInspectionCandidate();
+	}
+	return false;
+}
+
+FName GetInspectionCaseId(const AActor* Candidate)
+{
+	if (const AHeistPaintingDisplayCaseActor* PaintingCase = Cast<AHeistPaintingDisplayCaseActor>(Candidate))
+	{
+		return PaintingCase->GetDisplayCaseId();
+	}
+	if (const AHeistObjectDisplayCaseActor* ObjectCase = Cast<AHeistObjectDisplayCaseActor>(Candidate))
+	{
+		return ObjectCase->GetObjectCaseId();
+	}
+	return NAME_None;
+}
+
+bool TryBeginCaseInspection(AActor* Candidate, AActor* InspectingGuard)
+{
+	if (AHeistPaintingDisplayCaseActor* PaintingCase = Cast<AHeistPaintingDisplayCaseActor>(Candidate))
+	{
+		return PaintingCase->TryBeginInspection(InspectingGuard);
+	}
+	if (AHeistObjectDisplayCaseActor* ObjectCase = Cast<AHeistObjectDisplayCaseActor>(Candidate))
+	{
+		return ObjectCase->TryBeginInspection(InspectingGuard);
+	}
+	return false;
+}
+
+bool IsCaseInspectionOwnedBy(const AActor* Candidate, const AActor* InspectingGuard)
+{
+	if (const AHeistPaintingDisplayCaseActor* PaintingCase = Cast<AHeistPaintingDisplayCaseActor>(Candidate))
+	{
+		return PaintingCase->IsInspectionOwnedBy(InspectingGuard);
+	}
+	if (const AHeistObjectDisplayCaseActor* ObjectCase = Cast<AHeistObjectDisplayCaseActor>(Candidate))
+	{
+		return ObjectCase->IsInspectionOwnedBy(InspectingGuard);
+	}
+	return false;
+}
+
+bool InterruptCaseInspection(AActor* Candidate, AActor* InspectingGuard, const FName Reason)
+{
+	if (AHeistPaintingDisplayCaseActor* PaintingCase = Cast<AHeistPaintingDisplayCaseActor>(Candidate))
+	{
+		return PaintingCase->InterruptInspection(InspectingGuard, Reason);
+	}
+	if (AHeistObjectDisplayCaseActor* ObjectCase = Cast<AHeistObjectDisplayCaseActor>(Candidate))
+	{
+		return ObjectCase->InterruptInspection(InspectingGuard, Reason);
+	}
+	return false;
+}
+
+bool ApplyCaseInspectionResult(AActor* Candidate, AActor* InspectingGuard)
+{
+	if (AHeistPaintingDisplayCaseActor* PaintingCase = Cast<AHeistPaintingDisplayCaseActor>(Candidate))
+	{
+		return PaintingCase->ApplyInspectionResult(InspectingGuard);
+	}
+	if (AHeistObjectDisplayCaseActor* ObjectCase = Cast<AHeistObjectDisplayCaseActor>(Candidate))
+	{
+		return ObjectCase->ApplyInspectionResult(InspectingGuard);
+	}
+	return false;
 }
 }
 
@@ -806,7 +885,9 @@ void AHeistGuardAIController::ClearSightValidationTimer()
 
 bool AHeistGuardAIController::TrySelectInspectionTarget()
 {
-	if (!HasAuthority() || !IsValid(GetPawn()) || !IsValid(GetWorld()))
+	AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn());
+	UHeistGuardStateComponent* GuardStateComponent = IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
+	if (!HasAuthority() || !IsValid(GuardCharacter) || !IsValid(GuardStateComponent) || !IsValid(GetWorld()))
 	{
 		UE_LOG(LogHeistNetwork, Warning, TEXT("Inspection target selection rejected: Controller=%s Guard=%s Reason=InvalidAuthorityContext"), *GetNameSafe(this), *GetNameSafe(GetPawn()));
 		return false;
@@ -820,18 +901,28 @@ bool AHeistGuardAIController::TrySelectInspectionTarget()
 		return false;
 	}
 
-	AHeistPaintingDisplayCaseActor* BestTarget = FindBestInspectionTarget();
+	AActor* CurrentTarget = InspectionTarget.Get();
+	if (GuardStateComponent->GetGuardState() == EHeistGuardState::InspectExhibit && IsValid(CurrentTarget) && IsCaseInspectionOwnedBy(CurrentTarget, GuardCharacter))
+	{
+		return true;
+	}
+	if (GuardStateComponent->GetGuardState() != EHeistGuardState::Patrol)
+	{
+		return false;
+	}
+
+	AActor* BestTarget = FindBestInspectionTarget();
 	if (InspectionTarget.Get() != BestTarget)
 	{
 		InspectionTarget = BestTarget;
 		++InspectionTargetSelectionRevision;
 	}
 
-	const bool bSelectedValidTarget = IsValid(BestTarget) && BestTarget->IsValidInspectionCandidate();
+	const bool bSelectedValidTarget = IsValidInspectionCandidate(BestTarget);
 	if (bSelectedValidTarget)
 	{
 		UE_LOG(LogHeistNetwork, Log, TEXT("Inspection target selected: Controller=%s Guard=%s Case=%s CaseId=%s Distance=%.1f SelectionRevision=%d Authority=true Result=PASS"), *GetNameSafe(this),
-			   *GetNameSafe(GetPawn()), *GetNameSafe(BestTarget), *BestTarget->GetDisplayCaseId().ToString(), FVector::Dist(GetPawn()->GetActorLocation(), BestTarget->GetActorLocation()),
+			   *GetNameSafe(GetPawn()), *GetNameSafe(BestTarget), *GetInspectionCaseId(BestTarget).ToString(), FVector::Dist(GetPawn()->GetActorLocation(), BestTarget->GetActorLocation()),
 			   InspectionTargetSelectionRevision);
 	}
 	return bSelectedValidTarget;
@@ -846,8 +937,8 @@ bool AHeistGuardAIController::TryBeginInspection()
 		return false;
 	}
 
-	AHeistPaintingDisplayCaseActor* Target = InspectionTarget.Get();
-	if (!IsValid(Target) || !Target->IsValidInspectionCandidate())
+	AActor* Target = InspectionTarget.Get();
+	if (!IsValidInspectionCandidate(Target))
 	{
 		if (!TrySelectInspectionTarget())
 		{
@@ -856,19 +947,19 @@ bool AHeistGuardAIController::TryBeginInspection()
 		Target = InspectionTarget.Get();
 	}
 
-	if (!IsValid(Target) || !Target->TryBeginInspection(GuardCharacter))
+	if (!IsValid(Target) || !TryBeginCaseInspection(Target, GuardCharacter))
 	{
 		return false;
 	}
 
 	if (!GuardStateComponent->EnterInspectExhibit(Target->GetActorLocation()))
 	{
-		Target->InterruptInspection(GuardCharacter, FName(TEXT("GuardStateRejected")));
+		InterruptCaseInspection(Target, GuardCharacter, FName(TEXT("GuardStateRejected")));
 		return false;
 	}
 
 	UE_LOG(LogHeistNetwork, Log, TEXT("Guard inspection state entered: Controller=%s Guard=%s Case=%s CaseId=%s State=InspectExhibit Authority=true Result=PASS"), *GetNameSafe(this),
-		   *GetNameSafe(GuardCharacter), *GetNameSafe(Target), *Target->GetDisplayCaseId().ToString());
+		   *GetNameSafe(GuardCharacter), *GetNameSafe(Target), *GetInspectionCaseId(Target).ToString());
 	return true;
 }
 
@@ -876,9 +967,9 @@ bool AHeistGuardAIController::StartInspectionCast()
 {
 	AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn());
 	UHeistGuardStateComponent* GuardStateComponent = IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
-	AHeistPaintingDisplayCaseActor* Target = InspectionTarget.Get();
+	AActor* Target = InspectionTarget.Get();
 	if (!HasAuthority() || !IsValid(GuardCharacter) || !IsValid(GuardStateComponent) || GuardStateComponent->GetGuardState() != EHeistGuardState::InspectExhibit || !IsValid(Target) ||
-		!Target->IsInspectionOwnedBy(GuardCharacter))
+		!IsCaseInspectionOwnedBy(Target, GuardCharacter))
 	{
 		return false;
 	}
@@ -900,7 +991,7 @@ bool AHeistGuardAIController::StartInspectionCast()
 	}
 
 	UE_LOG(LogHeistNetwork, Log, TEXT("Guard inspection cast started: Controller=%s Guard=%s Case=%s CaseId=%s Duration=%.2f FacingYaw=%.2f Authority=true Result=PASS"), *GetNameSafe(this),
-		   *GetNameSafe(GuardCharacter), *GetNameSafe(Target), *Target->GetDisplayCaseId().ToString(), SafeCastDuration, GuardCharacter->GetActorRotation().Yaw);
+		   *GetNameSafe(GuardCharacter), *GetNameSafe(Target), *GetInspectionCaseId(Target).ToString(), SafeCastDuration, GuardCharacter->GetActorRotation().Yaw);
 	return true;
 }
 
@@ -908,10 +999,36 @@ void AHeistGuardAIController::AbortInspection(const FName Reason)
 {
 	ClearFocus(EAIFocusPriority::Gameplay);
 	AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn());
-	AHeistPaintingDisplayCaseActor* Target = InspectionTarget.Get();
+	AActor* Target = InspectionTarget.Get();
+	bool bInterruptedClaim = false;
 	if (HasAuthority() && IsValid(GuardCharacter) && IsValid(Target))
 	{
-		Target->InterruptInspection(GuardCharacter, Reason);
+		bInterruptedClaim = InterruptCaseInspection(Target, GuardCharacter, Reason);
+	}
+	if (HasAuthority() && IsValid(GuardCharacter) && !bInterruptedClaim && IsValid(GetWorld()))
+	{
+		for (TActorIterator<AHeistPaintingDisplayCaseActor> It(GetWorld()); It; ++It)
+		{
+			AHeistPaintingDisplayCaseActor* PaintingCase = *It;
+			if (IsValid(PaintingCase) && PaintingCase->IsInspectionOwnedBy(GuardCharacter))
+			{
+				bInterruptedClaim = PaintingCase->InterruptInspection(GuardCharacter, Reason);
+				break;
+			}
+		}
+		for (TActorIterator<AHeistObjectDisplayCaseActor> It(GetWorld()); It && !bInterruptedClaim; ++It)
+		{
+			AHeistObjectDisplayCaseActor* ObjectCase = *It;
+			if (IsValid(ObjectCase) && ObjectCase->IsInspectionOwnedBy(GuardCharacter))
+			{
+				bInterruptedClaim = ObjectCase->InterruptInspection(GuardCharacter, Reason);
+			}
+		}
+	}
+	if (IsValid(Target))
+	{
+		InspectionTarget.Reset();
+		++InspectionTargetSelectionRevision;
 	}
 }
 
@@ -919,11 +1036,11 @@ void AHeistGuardAIController::HandleInspectionCastExpired()
 {
 	AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn());
 	UHeistGuardStateComponent* GuardStateComponent = IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
-	AHeistPaintingDisplayCaseActor* Target = InspectionTarget.Get();
+	AActor* Target = InspectionTarget.Get();
 	ClearFocus(EAIFocusPriority::Gameplay);
 
 	const bool bResultApplied = HasAuthority() && IsValid(GuardCharacter) && IsValid(GuardStateComponent) && GuardStateComponent->GetGuardState() == EHeistGuardState::InspectExhibit &&
-								IsValid(Target) && Target->ApplyInspectionResult(GuardCharacter);
+								IsValid(Target) && ApplyCaseInspectionResult(Target, GuardCharacter);
 	if (bResultApplied)
 	{
 		InspectionTarget.Reset();
@@ -939,7 +1056,7 @@ void AHeistGuardAIController::HandleInspectionCastExpired()
 	}
 }
 
-AHeistPaintingDisplayCaseActor* AHeistGuardAIController::GetInspectionTarget() const
+AActor* AHeistGuardAIController::GetInspectionTarget() const
 {
 	return InspectionTarget.Get();
 }
@@ -947,8 +1064,17 @@ AHeistPaintingDisplayCaseActor* AHeistGuardAIController::GetInspectionTarget() c
 bool AHeistGuardAIController::IsInspectionTargetValid() const
 {
 	const AHeistGameState* HeistGameState = IsValid(GetWorld()) ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
-	return HasAuthority() && IsValid(GetPawn()) && IsValid(HeistGameState) && HeistGameState->GetMatchPhase() == EHeistMatchPhase::InGame && InspectionTarget.IsValid() &&
-		   InspectionTarget->IsValidInspectionCandidate();
+	const AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn());
+	const UHeistGuardStateComponent* GuardStateComponent = IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
+	AActor* Target = InspectionTarget.Get();
+	if (!HasAuthority() || !IsValid(GuardCharacter) || !IsValid(GuardStateComponent) || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame ||
+		!IsValid(Target))
+	{
+		return false;
+	}
+
+	return IsValidInspectionCandidate(Target) ||
+		   (GuardStateComponent->GetGuardState() == EHeistGuardState::InspectExhibit && IsCaseInspectionOwnedBy(Target, GuardCharacter));
 }
 
 int32 AHeistGuardAIController::GetInspectionTargetSelectionRevision() const
@@ -961,33 +1087,42 @@ float AHeistGuardAIController::GetInspectionAcceptanceRadius() const
 	return FMath::Max(0.0f, InspectionAcceptanceRadius);
 }
 
-AHeistPaintingDisplayCaseActor* AHeistGuardAIController::FindBestInspectionTarget() const
+AActor* AHeistGuardAIController::FindBestInspectionTarget() const
 {
 	if (!HasAuthority() || !IsValid(GetPawn()) || !IsValid(GetWorld()))
 	{
 		return nullptr;
 	}
 
-	AHeistPaintingDisplayCaseActor* BestTarget = nullptr;
+	AActor* BestTarget = nullptr;
 	float BestDistanceSquared = TNumericLimits<float>::Max();
-	for (TActorIterator<AHeistPaintingDisplayCaseActor> It(GetWorld()); It; ++It)
+	auto ConsiderCandidate = [this, &BestTarget, &BestDistanceSquared](AActor* Candidate)
 	{
-		AHeistPaintingDisplayCaseActor* Candidate = *It;
-		if (!IsValid(Candidate) || !Candidate->IsValidInspectionCandidate())
+		if (!IsValidInspectionCandidate(Candidate))
 		{
-			continue;
+			return;
 		}
 
 		const float CandidateDistanceSquared = FVector::DistSquared(GetPawn()->GetActorLocation(), Candidate->GetActorLocation());
 		const bool bCloser = CandidateDistanceSquared < BestDistanceSquared && !FMath::IsNearlyEqual(CandidateDistanceSquared, BestDistanceSquared);
 		const bool bEqualDistance = FMath::IsNearlyEqual(CandidateDistanceSquared, BestDistanceSquared);
-		const bool bStableTieBreak = bEqualDistance && (!IsValid(BestTarget) || Candidate->GetDisplayCaseId().ToString() < BestTarget->GetDisplayCaseId().ToString() ||
-														(Candidate->GetDisplayCaseId() == BestTarget->GetDisplayCaseId() && Candidate->GetFName().LexicalLess(BestTarget->GetFName())));
+		const FName CandidateCaseId = GetInspectionCaseId(Candidate);
+		const FName BestCaseId = GetInspectionCaseId(BestTarget);
+		const bool bStableTieBreak = bEqualDistance && (!IsValid(BestTarget) || CandidateCaseId.ToString() < BestCaseId.ToString() ||
+														(CandidateCaseId == BestCaseId && Candidate->GetFName().LexicalLess(BestTarget->GetFName())));
 		if (bCloser || bStableTieBreak)
 		{
 			BestTarget = Candidate;
 			BestDistanceSquared = CandidateDistanceSquared;
 		}
+	};
+	for (TActorIterator<AHeistPaintingDisplayCaseActor> It(GetWorld()); It; ++It)
+	{
+		ConsiderCandidate(*It);
+	}
+	for (TActorIterator<AHeistObjectDisplayCaseActor> It(GetWorld()); It; ++It)
+	{
+		ConsiderCandidate(*It);
 	}
 
 	return BestTarget;

@@ -315,6 +315,21 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 	UFUNCTION(Exec)
 	void HeistObjectAssemblyTimeout();
 
+	UFUNCTION(Exec)
+	void HeistObjectAssemblyReplicaDump();
+
+	UFUNCTION(Exec)
+	void HeistObjectAssemblyPrototypeGate();
+
+	UFUNCTION(Exec)
+	void HeistObjectAssemblyReplicaRebuild();
+
+	UFUNCTION(Exec)
+	void HeistObjectAssemblyTakeOriginal();
+
+	UFUNCTION(Exec)
+	void HeistObjectAssemblyInspectionReady();
+
 #pragma endregion
 
 #pragma region ForgeryDebug

@@ -144,13 +144,20 @@ bool UHeistObjectAssemblyComponent::TrySubmitAssemblyPayload(const TArray<FHeist
 	ValidatedEntries = Entries;
 	RecordPayloadValidation(true, FName(TEXT("Accepted")), Entries.Num(), PayloadBytes);
 
-	if (!IsValid(ActiveDisplayCase.Get()) || !ActiveDisplayCase->TryTransitionToAssemblyState(EHeistObjectAssemblyState::ReplicaReady))
+	AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
+	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter) ? HeistCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
+	AHeistObjectDisplayCaseActor* SubmittedDisplayCase = ActiveDisplayCase.Get();
+	bHandlingCaseSessionCallback = true;
+	const bool bReplicaCommitted =
+		IsValid(SubmittedDisplayCase) && IsValid(HeistPlayerState) && SubmittedDisplayCase->TryCommitAssemblyReplica(HeistPlayerState, CalculatedResult, Entries);
+	bHandlingCaseSessionCallback = false;
+	if (!bReplicaCommitted)
 	{
-		RecordPayloadValidation(false, FName(TEXT("ReplicaReadyTransitionFailed")), Entries.Num(), PayloadBytes);
+		RecordPayloadValidation(false, FName(TEXT("ReplicaPlacementRejected")), Entries.Num(), PayloadBytes);
 		return false;
 	}
 
-	AuthoritativeResult = CalculatedResult;
+	AuthoritativeResult = SubmittedDisplayCase->GetCommittedAssemblyResult();
 	bHasAuthoritativeResult = true;
 	++ScoreRevision;
 	GetOwner()->ForceNetUpdate();

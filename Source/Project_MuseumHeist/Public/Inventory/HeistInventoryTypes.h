@@ -8,7 +8,6 @@
 
 class UHeistInventoryComponent;
 class AActor;
-class AHeistPaintingDisplayCaseActor;
 
 #pragma region Inventory
 
@@ -54,7 +53,7 @@ struct PROJECT_MUSEUMHEIST_API FHeistOriginalCarryEntry
 	float Weight = 0.0f;
 
 	UPROPERTY(BlueprintReadOnly)
-	TObjectPtr<AHeistPaintingDisplayCaseActor> SourceDisplayCase;
+	TObjectPtr<AActor> SourceDisplayCase;
 
 	bool IsValid() const
 	{

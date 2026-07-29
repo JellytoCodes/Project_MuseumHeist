@@ -23,8 +23,10 @@
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
 #include "Core/HeistLogChannels.h"
+#include "Data/HeistArtifactDataTypes.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/Engine.h"
+#include "Engine/StaticMesh.h"
 #include "Engine/Texture2D.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -281,6 +283,36 @@ AHeistObjectDisplayCaseActor* ResolveNearestObjectDisplayCase(APlayerController*
 			NearestDisplayCase = CandidateDisplayCase;
 			NearestDistanceSquared = DistanceSquared;
 			NearestStatePriority = CandidateStatePriority;
+		}
+	}
+
+	return NearestDisplayCase;
+}
+
+AHeistObjectDisplayCaseActor* ResolveNearestReplicaObjectDisplayCase(APlayerController* PlayerController)
+{
+	if (!IsValid(PlayerController) || !IsValid(PlayerController->GetWorld()))
+	{
+		return nullptr;
+	}
+
+	const APawn* ReferencePawn = PlayerController->GetPawn();
+	const FVector ReferenceLocation = IsValid(ReferencePawn) ? ReferencePawn->GetActorLocation() : FVector::ZeroVector;
+	AHeistObjectDisplayCaseActor* NearestDisplayCase = nullptr;
+	float NearestDistanceSquared = TNumericLimits<float>::Max();
+	for (TActorIterator<AHeistObjectDisplayCaseActor> DisplayCaseIterator(PlayerController->GetWorld()); DisplayCaseIterator; ++DisplayCaseIterator)
+	{
+		AHeistObjectDisplayCaseActor* CandidateDisplayCase = *DisplayCaseIterator;
+		if (!IsValid(CandidateDisplayCase) || CandidateDisplayCase->GetAssemblyReplicaData().Revision <= 0)
+		{
+			continue;
+		}
+
+		const float DistanceSquared = FVector::DistSquared(ReferenceLocation, CandidateDisplayCase->GetActorLocation());
+		if (DistanceSquared < NearestDistanceSquared)
+		{
+			NearestDisplayCase = CandidateDisplayCase;
+			NearestDistanceSquared = DistanceSquared;
 		}
 	}
 
@@ -1297,7 +1329,7 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyHelp(APlayerController* Play
 	Message(
 		PlayerController,
 		TEXT(
-			"Object Assembly commands: HeistCasePhase InGame | HeistObjectAssemblySpawn 200 | HeistObjectAssemblySpawnFor <PlayerId> <Distance> | HeistObjectAssemblyKickPlayer <PlayerId> | HeistObjectAssemblyBegin 60 | HeistObjectAssemblyTest <Valid|Missing|Extra|Socket|Orientation|Material|Duplicate|Revision|Family|Empty> | HeistObjectAssemblyDump | HeistObjectAssemblyUIDump | HeistObjectAssemblyCancel | HeistObjectAssemblyTimeout. Spawn, SpawnFor, KickPlayer, and Timeout are listen-server commands; Begin/Test/Cancel/Dump/UIDump may run in the owning client."),
+			"Object Assembly commands: HeistCasePhase InGame | HeistObjectAssemblySpawn 200 | HeistObjectAssemblySpawnFor <PlayerId> <Distance> | HeistObjectAssemblyKickPlayer <PlayerId> | HeistObjectAssemblyBegin 60 | HeistObjectAssemblyTest <Valid|Missing|Extra|Socket|Orientation|Material|Duplicate|Revision|Family|Empty> | HeistObjectAssemblyDump | HeistObjectAssemblyUIDump | HeistObjectAssemblyCancel | HeistObjectAssemblyTimeout | HeistObjectAssemblyReplicaDump | HeistObjectAssemblyPrototypeGate | HeistObjectAssemblyReplicaRebuild | HeistObjectAssemblyTakeOriginal | HeistObjectAssemblyInspectionReady. Spawn, SpawnFor, KickPlayer, Timeout, and InspectionReady are listen-server commands; Begin/Test/Cancel/Dump/UIDump/ReplicaDump/PrototypeGate/ReplicaRebuild/TakeOriginal may run in the owning client."),
 		EHeistDebugLevel::Info, true, 12.0f);
 #endif
 }
@@ -1320,13 +1352,17 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblySpawn(APlayerController* Pla
 		PlayerController->GetWorld()->SpawnActor<AHeistObjectDisplayCaseActor>(AHeistObjectDisplayCaseActor::StaticClass(), SpawnLocation, ReferencePawn->GetActorRotation(), SpawnParameters);
 	const bool bInitialized = IsValid(DisplayCase) &&
 		DisplayCase->InitializeObjectIdentity(FName(TEXT("ObjectCase_Sculpture_Debug")), FName(TEXT("Artifact_Sculpture_Prototype")), FName(TEXT("Sculpture")));
-	const bool bResult = IsValid(DisplayCase) && bInitialized;
+	AHeistGameState* HeistGameState = PlayerController->GetWorld()->GetGameState<AHeistGameState>();
+	const bool bObjectiveSet =
+		bInitialized && IsValid(HeistGameState) &&
+		HeistGameState->SetObjectiveSnapshot(DisplayCase->GetTargetArtifactId(), DisplayCase->GetObjectCaseId(), EHeistObjectiveState::InProgress, nullptr);
+	const bool bResult = IsValid(DisplayCase) && bInitialized && bObjectiveSet;
 	Message(
 		PlayerController,
-		FString::Printf(TEXT("Object Assembly spawn: Case=%s CaseId=%s Artifact=%s Family=%s Distance=%.1f Authority=%s Result=%s"),
+		FString::Printf(TEXT("Object Assembly spawn: Case=%s CaseId=%s Artifact=%s Family=%s Distance=%.1f ObjectiveSet=%s Authority=%s Result=%s"),
 						*GetNameSafe(DisplayCase), IsValid(DisplayCase) ? *DisplayCase->GetObjectCaseId().ToString() : TEXT("None"),
 						IsValid(DisplayCase) ? *DisplayCase->GetTargetArtifactId().ToString() : TEXT("None"),
-						IsValid(DisplayCase) ? *DisplayCase->GetObjectFamilyId().ToString() : TEXT("None"), SafeDistance,
+						IsValid(DisplayCase) ? *DisplayCase->GetObjectFamilyId().ToString() : TEXT("None"), SafeDistance, bObjectiveSet ? TEXT("true") : TEXT("false"),
 						IsValid(DisplayCase) && DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false"), bResult ? TEXT("PASS") : TEXT("FAIL")),
 		bResult ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
 #endif
@@ -1359,12 +1395,17 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblySpawnFor(APlayerController* 
 	const FName CaseId(*FString::Printf(TEXT("ObjectCase_Sculpture_Debug_P%d"), PlayerId));
 	const bool bInitialized = IsValid(DisplayCase) &&
 		DisplayCase->InitializeObjectIdentity(CaseId, FName(TEXT("Artifact_Sculpture_Prototype")), FName(TEXT("Sculpture")));
-	const bool bResult = IsValid(DisplayCase) && bInitialized;
+	AHeistGameState* HeistGameState = PlayerController->GetWorld()->GetGameState<AHeistGameState>();
+	const bool bObjectiveSet =
+		bInitialized && IsValid(HeistGameState) &&
+		HeistGameState->SetObjectiveSnapshot(DisplayCase->GetTargetArtifactId(), DisplayCase->GetObjectCaseId(), EHeistObjectiveState::InProgress, nullptr);
+	const bool bResult = IsValid(DisplayCase) && bInitialized && bObjectiveSet;
 	Message(
 		PlayerController,
-		FString::Printf(TEXT("Object Assembly spawn-for: Case=%s CaseId=%s TargetPlayerId=%d Distance=%.1f Authority=%s Result=%s"),
+		FString::Printf(TEXT("Object Assembly spawn-for: Case=%s CaseId=%s TargetPlayerId=%d Distance=%.1f ObjectiveSet=%s Authority=%s Result=%s"),
 						*GetNameSafe(DisplayCase), IsValid(DisplayCase) ? *DisplayCase->GetObjectCaseId().ToString() : TEXT("None"), PlayerId, SafeDistance,
-						IsValid(DisplayCase) && DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false"), bResult ? TEXT("PASS") : TEXT("FAIL")),
+						bObjectiveSet ? TEXT("true") : TEXT("false"), IsValid(DisplayCase) && DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false"),
+						bResult ? TEXT("PASS") : TEXT("FAIL")),
 		bResult ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
 #endif
 }
@@ -1439,9 +1480,9 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyTest(APlayerController* Play
 		return Entry;
 	};
 	TArray<FHeistObjectAssemblyEntry> Entries;
-	Entries.Add(MakeEntry(TEXT("Part_Sculpture_Prototype_Head"), TEXT("Head"), 0, TEXT("Material_Bronze")));
-	Entries.Add(MakeEntry(TEXT("Part_Sculpture_Prototype_ArmLeft"), TEXT("Shoulder_L"), 4, TEXT("Material_Bronze")));
-	Entries.Add(MakeEntry(TEXT("Part_Sculpture_Prototype_ArmRight"), TEXT("Shoulder_R"), 12, TEXT("Material_Bronze")));
+	Entries.Add(MakeEntry(TEXT("Part_Sculpture_Prototype_Head"), TEXT("Head"), 0, TEXT("None")));
+	Entries.Add(MakeEntry(TEXT("Part_Sculpture_Prototype_ArmLeft"), TEXT("Shoulder_L"), 4, TEXT("None")));
+	Entries.Add(MakeEntry(TEXT("Part_Sculpture_Prototype_ArmRight"), TEXT("Shoulder_R"), 12, TEXT("None")));
 
 	const FString NormalizedScenario = Scenario.TrimStartAndEnd().ToLower();
 	int32 ClientSessionRevision = ObjectAssemblyComponent->GetSessionRevision();
@@ -1456,7 +1497,7 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyTest(APlayerController* Play
 	}
 	else if (NormalizedScenario == TEXT("extra"))
 	{
-		Entries.Add(MakeEntry(TEXT("Part_Sculpture_Prototype_Decoy"), TEXT("Pedestal"), 0, TEXT("Material_Bronze")));
+		Entries.Add(MakeEntry(TEXT("Part_Sculpture_Prototype_Decoy"), TEXT("Pedestal"), 0, TEXT("None")));
 	}
 	else if (NormalizedScenario == TEXT("socket"))
 	{
@@ -1468,7 +1509,7 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyTest(APlayerController* Play
 	}
 	else if (NormalizedScenario == TEXT("material"))
 	{
-		Entries[0].MaterialId = FName(TEXT("Material_Marble"));
+		Entries[0].MaterialId = FName(TEXT("Material_Bronze"));
 	}
 	else if (NormalizedScenario == TEXT("duplicate"))
 	{
@@ -1644,6 +1685,249 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyTimeout(APlayerController* P
 	}
 
 	Message(PlayerController, TEXT("Object Assembly timeout: Result=PASS Reason=ForcedTimeout"), EHeistDebugLevel::Info, true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblyReplicaDump(APlayerController* PlayerController)
+{
+#if !UE_BUILD_SHIPPING
+	const AHeistObjectDisplayCaseActor* DisplayCase = ResolveNearestReplicaObjectDisplayCase(PlayerController);
+	if (!IsValid(DisplayCase))
+	{
+		Message(PlayerController, TEXT("Object Assembly replica dump: Result=FAIL Reason=MissingReplicatedReplicaCase"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const FHeistObjectAssemblyReplicaData ReplicaData = DisplayCase->GetAssemblyReplicaData();
+	int32 ReplicaRevision = 0;
+	int32 ExpectedEntryCount = 0;
+	int32 BuiltPartCount = 0;
+	int32 UnresolvedSocketCount = 0;
+	bool bCoreReady = false;
+	bool bComponentContractPassed = false;
+	DisplayCase->GetReplicaComponentDebugState(ReplicaRevision, ExpectedEntryCount, BuiltPartCount, UnresolvedSocketCount, bCoreReady, bComponentContractPassed);
+
+	TSet<FName> PartIds;
+	TSet<FName> SocketIds;
+	bool bCompactPayloadValid = ReplicaData.Revision > 0 && !ReplicaData.Entries.IsEmpty();
+	FString EntrySummary;
+	for (const FHeistObjectAssemblyEntry& Entry : ReplicaData.Entries)
+	{
+		bCompactPayloadValid = bCompactPayloadValid && !Entry.PartId.IsNone() && !Entry.SocketId.IsNone() && !PartIds.Contains(Entry.PartId) && !SocketIds.Contains(Entry.SocketId);
+		PartIds.Add(Entry.PartId);
+		SocketIds.Add(Entry.SocketId);
+		if (!EntrySummary.IsEmpty())
+		{
+			EntrySummary += TEXT(",");
+		}
+		EntrySummary += FString::Printf(TEXT("%s>%s@%u:%s"), *Entry.PartId.ToString(), *Entry.SocketId.ToString(), Entry.QuantizedOrientation, *Entry.MaterialId.ToString());
+	}
+
+	const bool bPassed = bCompactPayloadValid && bComponentContractPassed;
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT(
+				"Object Assembly replica dump: Case=%s CaseId=%s Artifact=%s Family=%s State=%s ReplicaRevision=%d PayloadFields=PartIdSocketIdQuantizedOrientationMaterialId Entries=%d BuiltParts=%d CoreReady=%s UnresolvedSockets=%d EntriesData={%s} CompactPayload=%s Reconstruction=%s Authority=%s Result=%s"),
+			*GetNameSafe(DisplayCase), *DisplayCase->GetObjectCaseId().ToString(), *DisplayCase->GetTargetArtifactId().ToString(), *DisplayCase->GetObjectFamilyId().ToString(),
+			*UEnum::GetValueAsString(DisplayCase->GetAssemblyState()), ReplicaRevision, ExpectedEntryCount, BuiltPartCount, bCoreReady ? TEXT("true") : TEXT("false"),
+			UnresolvedSocketCount, EntrySummary.IsEmpty() ? TEXT("None") : *EntrySummary, bCompactPayloadValid ? TEXT("PASS") : TEXT("FAIL"),
+			bComponentContractPassed ? TEXT("PASS") : TEXT("FAIL"), DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false"), bPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblyPrototypeGate(APlayerController* PlayerController)
+{
+#if !UE_BUILD_SHIPPING
+	struct FPrototypePartContract
+	{
+		FName PartId;
+		FName SocketId;
+		uint8 Orientation = 0;
+	};
+
+	const FName PrototypeArtifactId(TEXT("Artifact_Sculpture_Prototype"));
+	const FName PrototypeTemplateId(TEXT("Template_Sculpture_Prototype_01"));
+	const FName PrototypeCorePartId(TEXT("Part_Sculpture_Prototype_Core"));
+	const FName PrototypeFamilyId(TEXT("Sculpture"));
+	const TArray<FPrototypePartContract> ExpectedParts = {
+		{FName(TEXT("Part_Sculpture_Prototype_Head")), FName(TEXT("Head")), 0},
+		{FName(TEXT("Part_Sculpture_Prototype_ArmLeft")), FName(TEXT("Shoulder_L")), 4},
+		{FName(TEXT("Part_Sculpture_Prototype_ArmRight")), FName(TEXT("Shoulder_R")), 12}};
+	const TArray<uint8> ExpectedOrientationSteps = {0, 4, 8, 12};
+
+	const AHeistObjectDisplayCaseActor* DisplayCase = ResolveNearestReplicaObjectDisplayCase(PlayerController);
+	if (!IsValid(DisplayCase))
+	{
+		Message(PlayerController, TEXT("Object Assembly prototype gate: Result=FAIL Reason=MissingReplicatedReplicaCase"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const FHeistObjectAssemblyReplicaData ReplicaData = DisplayCase->GetAssemblyReplicaData();
+	int32 ReplicaRevision = 0;
+	int32 ExpectedEntryCount = 0;
+	int32 BuiltPartCount = 0;
+	int32 UnresolvedSocketCount = 0;
+	bool bCoreReady = false;
+	bool bComponentContractPassed = false;
+	DisplayCase->GetReplicaComponentDebugState(ReplicaRevision, ExpectedEntryCount, BuiltPartCount, UnresolvedSocketCount, bCoreReady, bComponentContractPassed);
+
+	bool bRuntimePayloadContract = ReplicaData.Revision > 0 && ReplicaRevision == ReplicaData.Revision && ReplicaData.Entries.Num() == ExpectedParts.Num();
+	for (const FPrototypePartContract& ExpectedPart : ExpectedParts)
+	{
+		const FHeistObjectAssemblyEntry* RuntimeEntry = ReplicaData.Entries.FindByPredicate(
+			[&ExpectedPart](const FHeistObjectAssemblyEntry& Entry) { return Entry.PartId == ExpectedPart.PartId; });
+		bRuntimePayloadContract =
+			bRuntimePayloadContract && RuntimeEntry != nullptr && RuntimeEntry->SocketId == ExpectedPart.SocketId &&
+			RuntimeEntry->QuantizedOrientation == ExpectedPart.Orientation && RuntimeEntry->MaterialId.IsNone();
+	}
+
+	const bool bRuntimeContractPassed =
+		DisplayCase->GetTargetArtifactId() == PrototypeArtifactId && DisplayCase->GetObjectFamilyId() == PrototypeFamilyId &&
+		ExpectedEntryCount == ExpectedParts.Num() && BuiltPartCount == ExpectedParts.Num() && bCoreReady && UnresolvedSocketCount == 0 &&
+		bComponentContractPassed && bRuntimePayloadContract;
+
+	const bool bAuthority = IsValid(PlayerController) && PlayerController->HasAuthority();
+	bool bDataContractChecked = false;
+	bool bDataContractPassed = true;
+	bool bCoreMeshProjectLocal = false;
+	int32 CoreSocketCount = 0;
+	bool bOrientationStepContract = false;
+	bool bNoMaterialSelectionContract = false;
+
+	if (bAuthority)
+	{
+		bDataContractChecked = true;
+		bDataContractPassed = false;
+
+		const AHeistGameMode* HeistGameMode = PlayerController->GetWorld() ? PlayerController->GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+		FHeistArtifactDataRow ArtifactDefinition;
+		FHeistObjectAssemblyTemplateRow TemplateDefinition;
+		FHeistObjectAssemblyPartRow CoreDefinition;
+		const bool bBaseDataReady =
+			IsValid(HeistGameMode) && HeistGameMode->TryGetArtifactDefinition(PrototypeArtifactId, ArtifactDefinition) &&
+			HeistGameMode->TryGetObjectAssemblyTemplateDefinition(PrototypeTemplateId, TemplateDefinition) &&
+			HeistGameMode->TryGetObjectAssemblyPartDefinition(PrototypeCorePartId, CoreDefinition);
+
+		bool bRequiredPartContract = bBaseDataReady && TemplateDefinition.RequiredParts.Num() == ExpectedParts.Num();
+		bOrientationStepContract = bRequiredPartContract;
+		bNoMaterialSelectionContract = bRequiredPartContract && CoreDefinition.AllowedMaterialIds.IsEmpty();
+		UStaticMesh* CoreMesh = bBaseDataReady ? CoreDefinition.StaticMesh.LoadSynchronous() : nullptr;
+		const FString CoreMeshPath = bBaseDataReady ? CoreDefinition.StaticMesh.ToSoftObjectPath().ToString() : FString();
+		bCoreMeshProjectLocal = IsValid(CoreMesh) && CoreMeshPath.StartsWith(TEXT("/Game/"));
+
+		for (const FPrototypePartContract& ExpectedPart : ExpectedParts)
+		{
+			const FHeistObjectAssemblyEntry* RequiredEntry = TemplateDefinition.RequiredParts.FindByPredicate(
+				[&ExpectedPart](const FHeistObjectAssemblyEntry& Entry) { return Entry.PartId == ExpectedPart.PartId; });
+			FHeistObjectAssemblyPartRow PartDefinition;
+			const bool bPartDefinitionReady =
+				bBaseDataReady && HeistGameMode->TryGetObjectAssemblyPartDefinition(ExpectedPart.PartId, PartDefinition);
+			const bool bRequiredEntryValid =
+				RequiredEntry != nullptr && RequiredEntry->SocketId == ExpectedPart.SocketId &&
+				RequiredEntry->QuantizedOrientation == ExpectedPart.Orientation && RequiredEntry->MaterialId.IsNone();
+			bool bOrientationStepsValid =
+				bPartDefinitionReady && PartDefinition.AllowedOrientationSteps.Num() == ExpectedOrientationSteps.Num();
+			for (const uint8 ExpectedStep : ExpectedOrientationSteps)
+			{
+				bOrientationStepsValid = bOrientationStepsValid && PartDefinition.AllowedOrientationSteps.Contains(ExpectedStep);
+			}
+			const bool bPartContract =
+				bPartDefinitionReady && PartDefinition.FamilyId == PrototypeFamilyId &&
+				PartDefinition.CompatibleSocketIds.Contains(ExpectedPart.SocketId) && bRequiredEntryValid;
+
+			bRequiredPartContract = bRequiredPartContract && bPartContract;
+			bOrientationStepContract = bOrientationStepContract && bOrientationStepsValid;
+			bNoMaterialSelectionContract = bNoMaterialSelectionContract && bPartDefinitionReady && PartDefinition.AllowedMaterialIds.IsEmpty();
+			CoreSocketCount += IsValid(CoreMesh) && CoreMesh->FindSocket(ExpectedPart.SocketId) != nullptr ? 1 : 0;
+		}
+
+		const bool bArtifactContract =
+			bBaseDataReady && ArtifactDefinition.ArtifactId == PrototypeArtifactId && ArtifactDefinition.ForgeryType == EHeistForgeryType::Assembly &&
+			ArtifactDefinition.ForgeryTemplateId == PrototypeTemplateId;
+		const bool bTemplateContract =
+			bBaseDataReady && TemplateDefinition.TemplateId == PrototypeTemplateId && TemplateDefinition.FamilyId == PrototypeFamilyId &&
+			TemplateDefinition.CorePartId == PrototypeCorePartId && TemplateDefinition.RequiredParts.Num() == ExpectedParts.Num();
+		const bool bCoreSocketContract = bCoreMeshProjectLocal && CoreSocketCount == ExpectedParts.Num();
+		bDataContractPassed =
+			bArtifactContract && bTemplateContract && bRequiredPartContract && bCoreSocketContract &&
+			bOrientationStepContract && bNoMaterialSelectionContract;
+	}
+
+	const bool bPassed = bRuntimeContractPassed && (!bDataContractChecked || bDataContractPassed);
+	const TCHAR* DataContractText = bDataContractChecked ? (bDataContractPassed ? TEXT("PASS") : TEXT("FAIL")) : TEXT("SKIPPED_CLIENT");
+	const TCHAR* DataFlagNotApplicable = TEXT("N/A");
+	const FString CoreAssetSocketText =
+		bDataContractChecked ? FString::Printf(TEXT("%d/%d"), CoreSocketCount, ExpectedParts.Num()) : FString(DataFlagNotApplicable);
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT(
+				"Object Assembly prototype gate: Case=%s Artifact=%s Family=%s Core=1 RequiredParts=%d SocketCount=%d OrientationSteps=0|4|8|12 NoMaterialSelection=%s CoreMeshProjectLocal=%s CoreAssetSockets=%s DataContract=%s ReplicaRevision=%d Entries=%d BuiltParts=%d CoreReady=%s UnresolvedSockets=%d RuntimePayload=%s Reconstruction=%s Authority=%s Result=%s"),
+			*GetNameSafe(DisplayCase), *DisplayCase->GetTargetArtifactId().ToString(), *DisplayCase->GetObjectFamilyId().ToString(), ExpectedParts.Num(),
+			ExpectedParts.Num(), bDataContractChecked ? (bNoMaterialSelectionContract ? TEXT("true") : TEXT("false")) : DataFlagNotApplicable,
+			bDataContractChecked ? (bCoreMeshProjectLocal ? TEXT("true") : TEXT("false")) : DataFlagNotApplicable,
+			*CoreAssetSocketText, DataContractText,
+			ReplicaRevision, ReplicaData.Entries.Num(), BuiltPartCount, bCoreReady ? TEXT("true") : TEXT("false"), UnresolvedSocketCount,
+			bRuntimePayloadContract ? TEXT("PASS") : TEXT("FAIL"), bComponentContractPassed ? TEXT("PASS") : TEXT("FAIL"),
+			bAuthority ? TEXT("true") : TEXT("false"), bPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblyReplicaRebuild(APlayerController* PlayerController)
+{
+#if !UE_BUILD_SHIPPING
+	AHeistObjectDisplayCaseActor* DisplayCase = ResolveNearestReplicaObjectDisplayCase(PlayerController);
+	const bool bPassed = IsValid(DisplayCase) && DisplayCase->ForceReplicaRebuildForDebug();
+	Message(
+		PlayerController,
+		FString::Printf(TEXT("Object Assembly replica rebuild: Case=%s ReplicaRevision=%d Authority=%s Result=%s"), *GetNameSafe(DisplayCase),
+						IsValid(DisplayCase) ? DisplayCase->GetAssemblyReplicaData().Revision : 0,
+						IsValid(DisplayCase) && DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false"), bPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblyTakeOriginal(APlayerController* PlayerController)
+{
+#if !UE_BUILD_SHIPPING
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	AHeistObjectDisplayCaseActor* DisplayCase = ResolveNearestReplicaObjectDisplayCase(PlayerController);
+	if (!IsValid(HeistPlayerController) || !IsValid(DisplayCase))
+	{
+		Message(PlayerController, TEXT("Object Assembly original take: Result=REJECTED Reason=MissingControllerOrReplicaCase"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	HeistPlayerController->RequestTakeObjectOriginal(DisplayCase);
+	Message(PlayerController, FString::Printf(TEXT("Object Assembly original take requested: Case=%s"), *GetNameSafe(DisplayCase)), EHeistDebugLevel::Info, true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblyInspectionReady(APlayerController* PlayerController)
+{
+#if !UE_BUILD_SHIPPING
+	AHeistObjectDisplayCaseActor* DisplayCase = ResolveNearestReplicaObjectDisplayCase(PlayerController);
+	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(DisplayCase))
+	{
+		Message(PlayerController, TEXT("Object Assembly inspection ready: Result=REJECTED Reason=ListenServerReplicaCaseRequired"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const bool bAlreadyInspecting = DisplayCase->GetAssemblyState() == EHeistObjectAssemblyState::Inspecting && DisplayCase->IsInspectionClaimActive() &&
+									IsValid(DisplayCase->GetInspectingGuard());
+	const bool bForcedReady = !bAlreadyInspecting && DisplayCase->ForceInspectionReadyForDebug();
+	const bool bPassed = bForcedReady || bAlreadyInspecting;
+	Message(
+		PlayerController,
+		FString::Printf(TEXT("Object Assembly inspection ready: Case=%s State=%s Registered=%s ClaimActive=%s Mode=%s ScheduleRevision=%d Authority=true Result=%s"),
+						*GetNameSafe(DisplayCase), *UEnum::GetValueAsString(DisplayCase->GetAssemblyState()),
+						DisplayCase->IsRegisteredForInspection() ? TEXT("true") : TEXT("false"), DisplayCase->IsInspectionClaimActive() ? TEXT("true") : TEXT("false"),
+						bAlreadyInspecting ? TEXT("AlreadyInspecting") : TEXT("ForcedReady"), DisplayCase->GetInspectionScheduleRevision(),
+						bPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
 #endif
 }
 
@@ -2631,21 +2915,53 @@ void UHeistDebugFunctionLibrary::DebugInspectionTargetSelect(APlayerController* 
 	}
 
 	int32 GuardCount = 0;
+	int32 PatrolGuardCount = 0;
+	int32 InspectingGuardCount = 0;
+	int32 OwnedInspectionCount = 0;
 	int32 SelectedCount = 0;
 	for (TActorIterator<AHeistGuardAIController> It(PlayerController->GetWorld()); It; ++It)
 	{
 		AHeistGuardAIController* GuardController = *It;
-		if (!IsValid(GuardController) || !IsValid(GuardController->GetPawn()))
+		const AHeistGuardCharacter* GuardCharacter = IsValid(GuardController) ? Cast<AHeistGuardCharacter>(GuardController->GetPawn()) : nullptr;
+		const UHeistGuardStateComponent* GuardStateComponent = IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
+		if (!IsValid(GuardController) || !IsValid(GuardCharacter) || !IsValid(GuardStateComponent))
 		{
 			continue;
 		}
 
 		++GuardCount;
-		SelectedCount += GuardController->TrySelectInspectionTarget() ? 1 : 0;
+		if (GuardStateComponent->GetGuardState() == EHeistGuardState::InspectExhibit)
+		{
+			++InspectingGuardCount;
+			OwnedInspectionCount += GuardController->IsInspectionTargetValid() ? 1 : 0;
+		}
+		else if (GuardStateComponent->GetGuardState() == EHeistGuardState::Patrol)
+		{
+			++PatrolGuardCount;
+		}
 	}
 
-	const bool bPassed = GuardCount > 0 && SelectedCount == GuardCount;
-	Message(PlayerController, FString::Printf(TEXT("Inspection target select: Guards=%d Selected=%d Authority=true Result=%s"), GuardCount, SelectedCount, bPassed ? TEXT("PASS") : TEXT("FAIL")),
+	if (InspectingGuardCount == 0)
+	{
+		for (TActorIterator<AHeistGuardAIController> It(PlayerController->GetWorld()); It; ++It)
+		{
+			AHeistGuardAIController* GuardController = *It;
+			const AHeistGuardCharacter* GuardCharacter = IsValid(GuardController) ? Cast<AHeistGuardCharacter>(GuardController->GetPawn()) : nullptr;
+			const UHeistGuardStateComponent* GuardStateComponent = IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
+			if (IsValid(GuardController) && IsValid(GuardStateComponent) && GuardStateComponent->GetGuardState() == EHeistGuardState::Patrol)
+			{
+				SelectedCount += GuardController->TrySelectInspectionTarget() ? 1 : 0;
+			}
+		}
+	}
+
+	const bool bActiveInspectionValid = InspectingGuardCount > 0 && OwnedInspectionCount == InspectingGuardCount;
+	const bool bNewSelectionValid = InspectingGuardCount == 0 && PatrolGuardCount > 0 && SelectedCount == PatrolGuardCount;
+	const bool bPassed = GuardCount > 0 && (bActiveInspectionValid || bNewSelectionValid);
+	Message(PlayerController,
+			FString::Printf(TEXT("Inspection target select: Guards=%d PatrolGuards=%d InspectingGuards=%d OwnedInspections=%d Selected=%d Mode=%s Authority=true Result=%s"), GuardCount,
+							PatrolGuardCount, InspectingGuardCount, OwnedInspectionCount, SelectedCount, InspectingGuardCount > 0 ? TEXT("PreserveActive") : TEXT("SelectAvailable"),
+							bPassed ? TEXT("PASS") : TEXT("FAIL")),
 			bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 12.0f);
 #endif
 }
@@ -2693,6 +3009,34 @@ void UHeistDebugFunctionLibrary::DebugInspectionTargetDump(APlayerController* Pl
 											   *UEnum::GetValueAsString(DisplayCase->GetResolvedInspectionAlertOutcome()), DisplayCase->GetInspectionScheduleRevision());
 		}
 	}
+	for (TActorIterator<AHeistObjectDisplayCaseActor> It(PlayerController->GetWorld()); It; ++It)
+	{
+		const AHeistObjectDisplayCaseActor* DisplayCase = *It;
+		if (!IsValid(DisplayCase))
+		{
+			continue;
+		}
+
+		++CaseCount;
+		RegisteredCount += DisplayCase->IsRegisteredForInspection() ? 1 : 0;
+		ValidCandidateCount += DisplayCase->IsValidInspectionCandidate() ? 1 : 0;
+		ScheduledCount += DisplayCase->GetInspectionScheduleRevision() > 0 ? 1 : 0;
+		PendingDelayCount += DisplayCase->GetInspectionDelayRemaining() > KINDA_SMALL_NUMBER ? 1 : 0;
+		MaximumRegistrationRevision = FMath::Max(MaximumRegistrationRevision, DisplayCase->GetInspectionRegistrationRevision());
+		if (DisplayCase->GetInspectionScheduleRevision() > 0)
+		{
+			if (!ScheduleSummary.IsEmpty())
+			{
+				ScheduleSummary += TEXT(",");
+			}
+			const FHeistObjectAssemblyResult AssemblyResult = DisplayCase->GetCommittedAssemblyResult();
+			ScheduleSummary +=
+				FString::Printf(TEXT("%s:ObjectScore=%.2f,Band=%s,Delay=%.2f,Remaining=%.2f,Case=%s,Alert=%s,Rev=%d"), *GetNameSafe(DisplayCase),
+								AssemblyResult.QualityScore, *DisplayCase->GetInspectionScoreBand().ToString(), DisplayCase->GetResolvedInspectionDelay(),
+								DisplayCase->GetInspectionDelayRemaining(), *UEnum::GetValueAsString(DisplayCase->GetResolvedInspectionCaseOutcome()),
+								*UEnum::GetValueAsString(DisplayCase->GetResolvedInspectionAlertOutcome()), DisplayCase->GetInspectionScheduleRevision());
+		}
+	}
 
 	int32 GuardCount = 0;
 	int32 ValidSelectionCount = 0;
@@ -2724,16 +3068,26 @@ void UHeistDebugFunctionLibrary::DebugInspectionTargetDump(APlayerController* Pl
 	const EHeistAlertLevel ExpectedAlertOutcomes[] = {EHeistAlertLevel::Quiet, EHeistAlertLevel::Suspicious, EHeistAlertLevel::Searching, EHeistAlertLevel::Alarmed, EHeistAlertLevel::Alarmed};
 	const EHeistDisplayCaseState ExpectedCaseOutcomes[] = {EHeistDisplayCaseState::Completed, EHeistDisplayCaseState::Suspected, EHeistDisplayCaseState::Suspected, EHeistDisplayCaseState::Alarmed,
 														   EHeistDisplayCaseState::Alarmed};
+	const EHeistObjectAssemblyState ExpectedObjectCaseOutcomes[] = {
+		EHeistObjectAssemblyState::Completed, EHeistObjectAssemblyState::Suspected, EHeistObjectAssemblyState::Suspected, EHeistObjectAssemblyState::Alarmed,
+		EHeistObjectAssemblyState::Alarmed};
 	bool bMappingPassed = true;
 	for (int32 Index = 0; Index < UE_ARRAY_COUNT(TestScores); ++Index)
 	{
 		float Delay = 0.0f;
+		float ObjectDelay = 0.0f;
 		FName Band;
+		FName ObjectBand;
 		EHeistAlertLevel AlertOutcome = EHeistAlertLevel::Quiet;
+		EHeistAlertLevel ObjectAlertOutcome = EHeistAlertLevel::Quiet;
 		EHeistDisplayCaseState CaseOutcome = EHeistDisplayCaseState::Failed;
+		EHeistObjectAssemblyState ObjectCaseOutcome = EHeistObjectAssemblyState::Failed;
 		const bool bMapped = AHeistPaintingDisplayCaseActor::CalculateInspectionSchedule(TestScores[Index], 8.0f, Delay, Band, AlertOutcome, CaseOutcome);
+		const bool bObjectMapped =
+			AHeistObjectDisplayCaseActor::CalculateInspectionSchedule(TestScores[Index], 8.0f, ObjectDelay, ObjectBand, ObjectAlertOutcome, ObjectCaseOutcome);
 		bMappingPassed = bMappingPassed && bMapped && FMath::IsNearlyEqual(Delay, ExpectedDelays[Index]) && Band == ExpectedBands[Index] && AlertOutcome == ExpectedAlertOutcomes[Index] &&
-						 CaseOutcome == ExpectedCaseOutcomes[Index];
+						 CaseOutcome == ExpectedCaseOutcomes[Index] && bObjectMapped && FMath::IsNearlyEqual(ObjectDelay, ExpectedDelays[Index]) &&
+						 ObjectBand == ExpectedBands[Index] && ObjectAlertOutcome == ExpectedAlertOutcomes[Index] && ObjectCaseOutcome == ExpectedObjectCaseOutcomes[Index];
 		if (!MappingSummary.IsEmpty())
 		{
 			MappingSummary += TEXT(",");
@@ -2772,9 +3126,15 @@ void UHeistDebugFunctionLibrary::DebugInspectionBegin(APlayerController* PlayerC
 	{
 		EligibleCaseCount += IsValid(*It) && It->IsValidInspectionCandidate() ? 1 : 0;
 	}
+	for (TActorIterator<AHeistObjectDisplayCaseActor> It(PlayerController->GetWorld()); It; ++It)
+	{
+		EligibleCaseCount += IsValid(*It) && It->IsValidInspectionCandidate() ? 1 : 0;
+	}
 
 	int32 GuardCount = 0;
 	int32 EligibleGuardCount = 0;
+	int32 InspectingGuardCount = 0;
+	int32 OwnedInspectionCount = 0;
 	int32 StartedCount = 0;
 	for (TActorIterator<AHeistGuardAIController> It(PlayerController->GetWorld()); It; ++It)
 	{
@@ -2787,21 +3147,46 @@ void UHeistDebugFunctionLibrary::DebugInspectionBegin(APlayerController* PlayerC
 		}
 
 		++GuardCount;
+		if (GuardStateComponent->GetGuardState() == EHeistGuardState::InspectExhibit)
+		{
+			++InspectingGuardCount;
+			OwnedInspectionCount += GuardController->IsInspectionTargetValid() ? 1 : 0;
+			continue;
+		}
 		if (GuardStateComponent->GetGuardState() != EHeistGuardState::Patrol)
 		{
 			continue;
 		}
 
 		++EligibleGuardCount;
-		StartedCount += GuardController->TryBeginInspection() ? 1 : 0;
+	}
+
+	if (InspectingGuardCount == 0)
+	{
+		for (TActorIterator<AHeistGuardAIController> It(PlayerController->GetWorld()); It; ++It)
+		{
+			AHeistGuardAIController* GuardController = *It;
+			const AHeistGuardCharacter* GuardCharacter = IsValid(GuardController) ? Cast<AHeistGuardCharacter>(GuardController->GetPawn()) : nullptr;
+			const UHeistGuardStateComponent* GuardStateComponent = IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
+			if (IsValid(GuardController) && IsValid(GuardStateComponent) && GuardStateComponent->GetGuardState() == EHeistGuardState::Patrol)
+			{
+				StartedCount += GuardController->TryBeginInspection() ? 1 : 0;
+			}
+		}
 	}
 
 	const int32 ExpectedStartedCount = FMath::Min(EligibleGuardCount, EligibleCaseCount);
 	const int32 DuplicateClaimsBlocked = FMath::Max(0, EligibleGuardCount - StartedCount);
-	const bool bPassed = EligibleGuardCount >= 2 && EligibleCaseCount == 1 && StartedCount == 1 && ExpectedStartedCount == 1 && DuplicateClaimsBlocked >= 1;
+	const bool bAlreadyActivePassed = InspectingGuardCount > 0 && OwnedInspectionCount == InspectingGuardCount;
+	const bool bNewBeginPassed =
+		InspectingGuardCount == 0 && EligibleGuardCount >= 2 && EligibleCaseCount == 1 && StartedCount == 1 && ExpectedStartedCount == 1 && DuplicateClaimsBlocked >= 1;
+	const bool bPassed = bAlreadyActivePassed || bNewBeginPassed;
 	Message(PlayerController,
-			FString::Printf(TEXT("Inspection begin: Guards=%d EligibleGuards=%d EligibleCases=%d Started=%d ExpectedStarted=%d DuplicateClaimsBlocked=%d Authority=true Result=%s"),
-							GuardCount, EligibleGuardCount, EligibleCaseCount, StartedCount, ExpectedStartedCount, DuplicateClaimsBlocked, bPassed ? TEXT("PASS") : TEXT("FAIL")),
+			FString::Printf(
+				TEXT(
+					"Inspection begin: Guards=%d EligibleGuards=%d EligibleCases=%d InspectingGuards=%d OwnedInspections=%d Started=%d ExpectedStarted=%d DuplicateClaimsBlocked=%d Mode=%s Authority=true Result=%s"),
+				GuardCount, EligibleGuardCount, EligibleCaseCount, InspectingGuardCount, OwnedInspectionCount, StartedCount, ExpectedStartedCount, DuplicateClaimsBlocked,
+				InspectingGuardCount > 0 ? TEXT("AlreadyActive") : TEXT("BeginAvailable"), bPassed ? TEXT("PASS") : TEXT("FAIL")),
 			bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 12.0f);
 #endif
 }
@@ -2819,6 +3204,7 @@ void UHeistDebugFunctionLibrary::DebugInspectionStateDump(APlayerController* Pla
 	int32 GuardCount = 0;
 	int32 InspectingGuardCount = 0;
 	int32 SuspectedCaseCount = 0;
+	int32 AppliedCaseCount = 0;
 	FString GuardSummary;
 	for (TActorIterator<AHeistGuardAIController> It(PlayerController->GetWorld()); It; ++It)
 	{
@@ -2847,13 +3233,24 @@ void UHeistDebugFunctionLibrary::DebugInspectionStateDump(APlayerController* Pla
 		{
 			++SuspectedCaseCount;
 		}
+		AppliedCaseCount += IsValid(DisplayCase) && DisplayCase->GetInspectionResultApplicationCount() > 0 ? 1 : 0;
+	}
+	for (TActorIterator<AHeistObjectDisplayCaseActor> It(PlayerController->GetWorld()); It; ++It)
+	{
+		const AHeistObjectDisplayCaseActor* DisplayCase = *It;
+		if (IsValid(DisplayCase) && DisplayCase->GetAssemblyState() == EHeistObjectAssemblyState::Suspected)
+		{
+			++SuspectedCaseCount;
+		}
+		AppliedCaseCount += IsValid(DisplayCase) && DisplayCase->GetInspectionResultApplicationCount() > 0 ? 1 : 0;
 	}
 
 	const bool bAuthority = PlayerController->HasAuthority();
-	const bool bPassed = bAuthority && GuardCount > 0 && (InspectingGuardCount > 0 || SuspectedCaseCount > 0);
+	const bool bPassed = bAuthority && GuardCount > 0 && (InspectingGuardCount > 0 || AppliedCaseCount > 0);
 	Message(PlayerController,
-			FString::Printf(TEXT("Inspection state dump: Guards=%d Inspecting=%d SuspectedCases=%d GuardStates=%s Authority=%s Result=%s"), GuardCount, InspectingGuardCount, SuspectedCaseCount,
-							GuardSummary.IsEmpty() ? TEXT("None") : *GuardSummary, bAuthority ? TEXT("true") : TEXT("false"), bPassed ? TEXT("PASS") : TEXT("FAIL")),
+			FString::Printf(TEXT("Inspection state dump: Guards=%d Inspecting=%d SuspectedCases=%d AppliedCases=%d GuardStates=%s Authority=%s Result=%s"), GuardCount,
+							InspectingGuardCount, SuspectedCaseCount, AppliedCaseCount, GuardSummary.IsEmpty() ? TEXT("None") : *GuardSummary, bAuthority ? TEXT("true") : TEXT("false"),
+							bPassed ? TEXT("PASS") : TEXT("FAIL")),
 			bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
 #endif
 }
@@ -2877,8 +3274,8 @@ void UHeistDebugFunctionLibrary::DebugInspectionProtectionDump(APlayerController
 		return;
 	}
 
-	TMap<const AHeistPaintingDisplayCaseActor*, int32> InspectingGuardsByCase;
-	TSet<const AHeistPaintingDisplayCaseActor*> OwnerMatchedCases;
+	TMap<const AActor*, int32> InspectingGuardsByCase;
+	TSet<const AActor*> OwnerMatchedCases;
 	int32 GuardCount = 0;
 	int32 InspectingGuardCount = 0;
 	int32 GuardStateTimerCount = 0;
@@ -2901,7 +3298,7 @@ void UHeistDebugFunctionLibrary::DebugInspectionProtectionDump(APlayerController
 		}
 
 		++InspectingGuardCount;
-		const AHeistPaintingDisplayCaseActor* Target = GuardController->GetInspectionTarget();
+		const AActor* Target = GuardController->GetInspectionTarget();
 		if (!IsValid(Target))
 		{
 			++OrphanInspectingGuardCount;
@@ -2909,7 +3306,11 @@ void UHeistDebugFunctionLibrary::DebugInspectionProtectionDump(APlayerController
 		}
 
 		++InspectingGuardsByCase.FindOrAdd(Target);
-		if (Target->GetInspectingGuard() == GuardCharacter)
+		const AHeistPaintingDisplayCaseActor* PaintingTarget = Cast<AHeistPaintingDisplayCaseActor>(Target);
+		const AHeistObjectDisplayCaseActor* ObjectTarget = Cast<AHeistObjectDisplayCaseActor>(Target);
+		const bool bOwnerMatches = (IsValid(PaintingTarget) && PaintingTarget->GetInspectingGuard() == GuardCharacter) ||
+			(IsValid(ObjectTarget) && ObjectTarget->GetInspectingGuard() == GuardCharacter);
+		if (bOwnerMatches)
 		{
 			OwnerMatchedCases.Add(Target);
 		}
@@ -2924,24 +3325,24 @@ void UHeistDebugFunctionLibrary::DebugInspectionProtectionDump(APlayerController
 	int32 ResultApplicationCount = 0;
 	int32 DuplicateResultBlockCount = 0;
 	int32 MaximumInspectingGuardsPerCase = 0;
-	for (TActorIterator<AHeistPaintingDisplayCaseActor> It(World); It; ++It)
+	auto AccumulateInspectionCase = [&](const AActor* DisplayCase, const int32 ScheduleRevision, const bool bDelayTimerActive, const int32 ApplicationCount,
+										const int32 DuplicateBlockCount, const bool bClaimActive)
 	{
-		const AHeistPaintingDisplayCaseActor* DisplayCase = *It;
 		if (!IsValid(DisplayCase))
 		{
-			continue;
+			return;
 		}
 
 		++CaseCount;
-		ScheduledCaseCount += DisplayCase->GetInspectionScheduleRevision() > 0 ? 1 : 0;
-		InspectionDelayTimerCount += DisplayCase->IsInspectionDelayTimerActive() ? 1 : 0;
-		ResultApplicationCount += DisplayCase->GetInspectionResultApplicationCount();
-		DuplicateResultBlockCount += DisplayCase->GetInspectionDuplicateBlockCount();
-		ResultViolationCount += DisplayCase->GetInspectionResultApplicationCount() > 1 ? 1 : 0;
+		ScheduledCaseCount += ScheduleRevision > 0 ? 1 : 0;
+		InspectionDelayTimerCount += bDelayTimerActive ? 1 : 0;
+		ResultApplicationCount += ApplicationCount;
+		DuplicateResultBlockCount += DuplicateBlockCount;
+		ResultViolationCount += ApplicationCount > 1 ? 1 : 0;
 
 		const int32 AssignedGuardCount = InspectingGuardsByCase.FindRef(DisplayCase);
 		MaximumInspectingGuardsPerCase = FMath::Max(MaximumInspectingGuardsPerCase, AssignedGuardCount);
-		if (DisplayCase->IsInspectionClaimActive())
+		if (bClaimActive)
 		{
 			++ActiveClaimCount;
 			if (AssignedGuardCount != 1 || !OwnerMatchedCases.Contains(DisplayCase))
@@ -2953,6 +3354,24 @@ void UHeistDebugFunctionLibrary::DebugInspectionProtectionDump(APlayerController
 		{
 			++ClaimViolationCount;
 		}
+	};
+	for (TActorIterator<AHeistPaintingDisplayCaseActor> It(World); It; ++It)
+	{
+		const AHeistPaintingDisplayCaseActor* DisplayCase = *It;
+		AccumulateInspectionCase(DisplayCase, IsValid(DisplayCase) ? DisplayCase->GetInspectionScheduleRevision() : 0,
+								 IsValid(DisplayCase) && DisplayCase->IsInspectionDelayTimerActive(),
+								 IsValid(DisplayCase) ? DisplayCase->GetInspectionResultApplicationCount() : 0,
+								 IsValid(DisplayCase) ? DisplayCase->GetInspectionDuplicateBlockCount() : 0,
+								 IsValid(DisplayCase) && DisplayCase->IsInspectionClaimActive());
+	}
+	for (TActorIterator<AHeistObjectDisplayCaseActor> It(World); It; ++It)
+	{
+		const AHeistObjectDisplayCaseActor* DisplayCase = *It;
+		AccumulateInspectionCase(DisplayCase, IsValid(DisplayCase) ? DisplayCase->GetInspectionScheduleRevision() : 0,
+								 IsValid(DisplayCase) && DisplayCase->IsInspectionDelayTimerActive(),
+								 IsValid(DisplayCase) ? DisplayCase->GetInspectionResultApplicationCount() : 0,
+								 IsValid(DisplayCase) ? DisplayCase->GetInspectionDuplicateBlockCount() : 0,
+								 IsValid(DisplayCase) && DisplayCase->IsInspectionClaimActive());
 	}
 
 	const int32 MatchTimerCount = IsValid(HeistGameMode) ? HeistGameMode->GetActiveMatchTimerCount() : 0;
@@ -3029,6 +3448,10 @@ void UHeistDebugFunctionLibrary::DebugInspectionTimerProtectionTest(APlayerContr
 	{
 		ActiveClaimCountBefore += IsValid(*It) && It->IsInspectionClaimActive() ? 1 : 0;
 	}
+	for (TActorIterator<AHeistObjectDisplayCaseActor> It(World); It; ++It)
+	{
+		ActiveClaimCountBefore += IsValid(*It) && It->IsInspectionClaimActive() ? 1 : 0;
+	}
 	const int32 MatchTimerCountBefore = HeistGameMode->GetActiveMatchTimerCount();
 	const bool bPreconditionsValid =
 		GuardCount >= 2 && InspectingGuardCountBefore == 1 && ActiveClaimCountBefore == 1 && GuardStateTimerCountBefore == 1;
@@ -3064,6 +3487,17 @@ void UHeistDebugFunctionLibrary::DebugInspectionTimerProtectionTest(APlayerContr
 	for (TActorIterator<AHeistPaintingDisplayCaseActor> It(World); It; ++It)
 	{
 		const AHeistPaintingDisplayCaseActor* DisplayCase = *It;
+		if (!IsValid(DisplayCase))
+		{
+			continue;
+		}
+
+		ActiveClaimCountAfter += DisplayCase->IsInspectionClaimActive() ? 1 : 0;
+		InspectionDelayTimerCountAfter += DisplayCase->IsInspectionDelayTimerActive() ? 1 : 0;
+	}
+	for (TActorIterator<AHeistObjectDisplayCaseActor> It(World); It; ++It)
+	{
+		const AHeistObjectDisplayCaseActor* DisplayCase = *It;
 		if (!IsValid(DisplayCase))
 		{
 			continue;
@@ -4490,6 +4924,96 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblySessionCleared(const UHeistO
 			bPreservedResult ? TEXT("true") : TEXT("false"), Reason.IsNone() ? TEXT("None") : *Reason.ToString(),
 			IsValid(ObjectAssemblyComponent) ? ObjectAssemblyComponent->GetSessionRevision() : INDEX_NONE,
 			IsValid(Character) && Character->HasAuthority() ? TEXT("true") : TEXT("false"), bCleared ? TEXT("PASS") : TEXT("FAIL")));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblyReplicaCommit(const AHeistObjectDisplayCaseActor* DisplayCase, const AHeistPlayerState* RequestingPlayerState,
+																  const FHeistObjectAssemblyResult& Result, const int32 EntryCount, const FName Reason,
+																  const bool bResult)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	const FHeistObjectAssemblyReplicaData ReplicaData = IsValid(DisplayCase) ? DisplayCase->GetAssemblyReplicaData() : FHeistObjectAssemblyReplicaData();
+	const bool bContractPassed = bResult && IsValid(DisplayCase) && DisplayCase->HasCommittedAssemblyResult() && Result.bReplicaPlaced &&
+		ReplicaData.Revision > 0 && ReplicaData.Entries.Num() == EntryCount && FMath::IsWithinInclusive(Result.QualityScore, 0.0f, 100.0f);
+	LogMessage(
+		EHeistDebugChannel::Network, bContractPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+		FString::Printf(
+			TEXT(
+				"Object Assembly replica commit: Case=%s CaseId=%s Artifact=%s Template=%s RequesterPlayerId=%d Entries=%d ReplicaRevision=%d Quality=%.2f State=%s ReplicaPlaced=%s Authority=%s Result=%s Reason=%s"),
+			*GetNameSafe(DisplayCase), IsValid(DisplayCase) ? *DisplayCase->GetObjectCaseId().ToString() : TEXT("None"),
+			IsValid(DisplayCase) ? *DisplayCase->GetTargetArtifactId().ToString() : TEXT("None"), *Result.TemplateId.ToString(),
+			IsValid(RequestingPlayerState) ? RequestingPlayerState->HeistPlayerId : INDEX_NONE, EntryCount, ReplicaData.Revision, Result.QualityScore,
+			IsValid(DisplayCase) ? *UEnum::GetValueAsString(DisplayCase->GetAssemblyState()) : TEXT("None"), Result.bReplicaPlaced ? TEXT("true") : TEXT("false"),
+			IsValid(DisplayCase) && DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false"), bContractPassed ? TEXT("PASS") : (bResult ? TEXT("FAIL") : TEXT("REJECTED")),
+			Reason.IsNone() ? TEXT("None") : *Reason.ToString()));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblyReplicaRebuildEvent(const AHeistObjectDisplayCaseActor* DisplayCase, const int32 ExpectedEntryCount,
+																		const int32 BuiltPartCount, const int32 UnresolvedSocketCount,
+																		const bool bCoreReady, const int32 ReplicaRevision, const bool bResult)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	LogMessage(
+		EHeistDebugChannel::Network, bResult ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+		FString::Printf(
+			TEXT(
+				"Object Assembly replica rebuilt: Case=%s CaseId=%s Artifact=%s ExpectedParts=%d BuiltParts=%d CoreReady=%s UnresolvedSockets=%d ReplicaRevision=%d Authority=%s Result=%s"),
+			*GetNameSafe(DisplayCase), IsValid(DisplayCase) ? *DisplayCase->GetObjectCaseId().ToString() : TEXT("None"),
+			IsValid(DisplayCase) ? *DisplayCase->GetTargetArtifactId().ToString() : TEXT("None"), ExpectedEntryCount, BuiltPartCount,
+			bCoreReady ? TEXT("true") : TEXT("false"), UnresolvedSocketCount, ReplicaRevision,
+			IsValid(DisplayCase) && DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false"), bResult ? TEXT("PASS") : TEXT("FAIL")));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblyOriginalCarry(const AHeistObjectDisplayCaseActor* DisplayCase, const AHeistPlayerState* Carrier,
+																  const FName EventName, const FName Reason, const bool bResult)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	LogMessage(
+		EHeistDebugChannel::Network, bResult ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+		FString::Printf(
+			TEXT(
+				"Object Assembly original carry: Event=%s Case=%s CaseId=%s Artifact=%s CarrierPlayerId=%d State=%s CarryRevision=%d Authority=%s Result=%s Reason=%s"),
+			*EventName.ToString(), *GetNameSafe(DisplayCase), IsValid(DisplayCase) ? *DisplayCase->GetObjectCaseId().ToString() : TEXT("None"),
+			IsValid(DisplayCase) ? *DisplayCase->GetTargetArtifactId().ToString() : TEXT("None"), IsValid(Carrier) ? Carrier->HeistPlayerId : INDEX_NONE,
+			IsValid(DisplayCase) ? *UEnum::GetValueAsString(DisplayCase->GetAssemblyState()) : TEXT("None"),
+			IsValid(DisplayCase) ? DisplayCase->GetOriginalCarryRevision() : INDEX_NONE,
+			IsValid(DisplayCase) && DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false"), bResult ? TEXT("PASS") : TEXT("REJECTED"),
+			Reason.IsNone() ? TEXT("None") : *Reason.ToString()));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugObjectAssemblyInspection(const AHeistObjectDisplayCaseActor* DisplayCase, const AActor* InspectingGuard,
+															   const FName EventName, const FName Reason, const bool bResult)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	const FHeistObjectAssemblyResult Result =
+		IsValid(DisplayCase) && DisplayCase->HasCommittedAssemblyResult() ? DisplayCase->GetCommittedAssemblyResult() : FHeistObjectAssemblyResult();
+	LogMessage(
+		EHeistDebugChannel::AI, bResult ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+		FString::Printf(
+			TEXT(
+				"Object Assembly inspection: Event=%s Case=%s CaseId=%s Guard=%s State=%s Quality=%.2f DelayRemaining=%.2f Registered=%s ClaimActive=%s ScheduleRevision=%d RegistrationRevision=%d Applications=%d DuplicateBlocks=%d Authority=%s Result=%s Reason=%s"),
+			*EventName.ToString(), *GetNameSafe(DisplayCase), IsValid(DisplayCase) ? *DisplayCase->GetObjectCaseId().ToString() : TEXT("None"),
+			*GetNameSafe(InspectingGuard), IsValid(DisplayCase) ? *UEnum::GetValueAsString(DisplayCase->GetAssemblyState()) : TEXT("None"), Result.QualityScore,
+			IsValid(DisplayCase) ? DisplayCase->GetInspectionDelayRemaining() : 0.0f,
+			IsValid(DisplayCase) && DisplayCase->IsRegisteredForInspection() ? TEXT("true") : TEXT("false"),
+			IsValid(DisplayCase) && DisplayCase->IsInspectionClaimActive() ? TEXT("true") : TEXT("false"),
+			IsValid(DisplayCase) ? DisplayCase->GetInspectionScheduleRevision() : INDEX_NONE,
+			IsValid(DisplayCase) ? DisplayCase->GetInspectionRegistrationRevision() : INDEX_NONE,
+			IsValid(DisplayCase) ? DisplayCase->GetInspectionResultApplicationCount() : 0,
+			IsValid(DisplayCase) ? DisplayCase->GetInspectionDuplicateBlockCount() : 0,
+			IsValid(DisplayCase) && DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false"), bResult ? TEXT("PASS") : TEXT("REJECTED"),
+			Reason.IsNone() ? TEXT("None") : *Reason.ToString()));
 #endif
 }
 

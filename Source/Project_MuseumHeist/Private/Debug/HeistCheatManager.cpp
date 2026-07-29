@@ -272,6 +272,41 @@ void UHeistCheatManager::HeistObjectAssemblyTimeout()
 #endif
 }
 
+void UHeistCheatManager::HeistObjectAssemblyReplicaDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugObjectAssemblyReplicaDump(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistObjectAssemblyPrototypeGate()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugObjectAssemblyPrototypeGate(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistObjectAssemblyReplicaRebuild()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugObjectAssemblyReplicaRebuild(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistObjectAssemblyTakeOriginal()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugObjectAssemblyTakeOriginal(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistObjectAssemblyInspectionReady()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugObjectAssemblyInspectionReady(GetOuterAPlayerController());
+#endif
+}
+
 #pragma endregion
 
 #pragma region ForgeryDebug

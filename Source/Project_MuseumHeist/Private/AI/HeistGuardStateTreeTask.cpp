@@ -9,7 +9,6 @@
 #include "Navigation/PathFollowingComponent.h"
 #include "StateTreeExecutionContext.h"
 #include "World/AI/HeistGuardWaypoint.h"
-#include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(HeistGuardStateTreeTask)
 
@@ -166,7 +165,7 @@ bool StartChaseMove(FHeistGuardStateTreeTaskInstanceData& InstanceData, AHeistGu
 
 bool StartInspectionMove(FHeistGuardStateTreeTaskInstanceData& InstanceData, AHeistGuardAIController& Controller)
 {
-	AHeistPaintingDisplayCaseActor* Target = Controller.GetInspectionTarget();
+	AActor* Target = Controller.GetInspectionTarget();
 	if (!IsValid(Target))
 	{
 		return false;

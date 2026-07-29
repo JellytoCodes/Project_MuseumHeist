@@ -266,6 +266,7 @@ void AHeistGameMode::Logout(AController* Exiting)
 			if (AHeistObjectDisplayCaseActor* DisplayCase = *DisplayCaseIterator; IsValid(DisplayCase))
 			{
 				ClearedCaseLockCount += DisplayCase->CancelSessionForOwner(ExitingPlayerState, FName(TEXT("OwnerDisconnected"))) ? 1 : 0;
+				ReleasedOriginalCount += DisplayCase->ReleaseOriginalForCarrier(ExitingPlayerState, FName(TEXT("OwnerDisconnected"))) ? 1 : 0;
 			}
 		}
 		UHeistDebugFunctionLibrary::DebugOnlineSessionShutdownCleanup(this, FName(TEXT("OwnerDisconnected")), CancelledActionCount, CancelledForgeryCount, ClosedInventoryCount,
@@ -304,9 +305,15 @@ void AHeistGameMode::PrepareForOnlineSessionShutdown(const FName Reason)
 	}
 	for (TActorIterator<AHeistObjectDisplayCaseActor> DisplayCaseIterator(GetWorld()); DisplayCaseIterator; ++DisplayCaseIterator)
 	{
-		if (const AHeistObjectDisplayCaseActor* DisplayCase = *DisplayCaseIterator; IsValid(DisplayCase))
+		if (AHeistObjectDisplayCaseActor* DisplayCase = *DisplayCaseIterator; IsValid(DisplayCase))
 		{
 			ActiveCaseLockCount += DisplayCase->IsSessionLocked() ? 1 : 0;
+			ActiveCaseTimerCount += DisplayCase->IsInspectionDelayTimerActive() || DisplayCase->IsInspectionClaimActive() ? 1 : 0;
+			if (AHeistPlayerState* OriginalCarrier = DisplayCase->GetOriginalCarrier();
+				IsValid(OriginalCarrier) && DisplayCase->ReleaseOriginalForCarrier(OriginalCarrier, Reason))
+			{
+				++ReleasedOriginalCount;
+			}
 		}
 	}
 

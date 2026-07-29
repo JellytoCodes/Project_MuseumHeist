@@ -911,7 +911,8 @@ InspectExhibit
 
 ## Inspection Target Registration
 
-- Painting Case만 검사 후보가 된다.
+- Painting Case와 Object Assembly Case가 검사 후보가 된다.
+- Guard Inspection은 두 Case의 상세 Replica Data를 공유하지 않고 서버가 확정한 최종 0~100 Quality Score만 공통 입력으로 사용한다.
 - `ReplicaPlaced`, `OriginalAvailable`, `OriginalRemoved` 상태에서만 후보 등록이 가능하다.
 - 유효 State를 벗어나면 등록 해제한다.
 - EndPlay 시 등록 해제한다.

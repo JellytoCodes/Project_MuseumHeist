@@ -10,7 +10,6 @@
 class UAIPerceptionComponent;
 class UAISenseConfig_Sight;
 class UStateTreeAIComponent;
-class AHeistPaintingDisplayCaseActor;
 struct FHeistGuardDataRow;
 
 UCLASS()
@@ -106,16 +105,16 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardAIController : public AAIController
 	bool TryBeginInspection();
 	bool StartInspectionCast();
 	void AbortInspection(FName Reason);
-	AHeistPaintingDisplayCaseActor* GetInspectionTarget() const;
+	AActor* GetInspectionTarget() const;
 	bool IsInspectionTargetValid() const;
 	int32 GetInspectionTargetSelectionRevision() const;
 	float GetInspectionAcceptanceRadius() const;
 
   private:
-	AHeistPaintingDisplayCaseActor* FindBestInspectionTarget() const;
+	AActor* FindBestInspectionTarget() const;
 	void HandleInspectionCastExpired();
 
-	TWeakObjectPtr<AHeistPaintingDisplayCaseActor> InspectionTarget;
+	TWeakObjectPtr<AActor> InspectionTarget;
 	int32 InspectionTargetSelectionRevision = 0;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|AI|Inspection", meta = (AllowPrivateAccess = "true", ClampMin = "0.1", Units = "s"))

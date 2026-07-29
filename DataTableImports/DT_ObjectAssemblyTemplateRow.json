@@ -10,19 +10,19 @@
         "PartId": "Part_Sculpture_Prototype_Head",
         "SocketId": "Head",
         "QuantizedOrientation": 0,
-        "MaterialId": "Material_Bronze"
+        "MaterialId": "None"
       },
       {
         "PartId": "Part_Sculpture_Prototype_ArmLeft",
         "SocketId": "Shoulder_L",
         "QuantizedOrientation": 4,
-        "MaterialId": "Material_Bronze"
+        "MaterialId": "None"
       },
       {
         "PartId": "Part_Sculpture_Prototype_ArmRight",
         "SocketId": "Shoulder_R",
         "QuantizedOrientation": 12,
-        "MaterialId": "Material_Bronze"
+        "MaterialId": "None"
       }
     ],
     "DecoyPartIds": [

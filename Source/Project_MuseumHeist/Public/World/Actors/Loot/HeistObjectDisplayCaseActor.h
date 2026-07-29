@@ -8,8 +8,11 @@
 
 class AHeistGameState;
 class AHeistPlayerState;
+class USceneComponent;
+class UStaticMeshComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FHeistObjectAssemblySessionChangedSignature, AHeistPlayerState*, SessionOwner, bool, bLocked, int32, Revision);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FHeistObjectOriginalCarryChangedSignature, AHeistPlayerState*, Carrier, FName, ArtifactId, int32, Revision);
 
 /**
  * Generic display-case contract for Sculpture and Ceramic Object Assembly.
@@ -47,6 +50,19 @@ class PROJECT_MUSEUMHEIST_API AHeistObjectDisplayCaseActor : public AHeistIntera
 	UFUNCTION(BlueprintPure, Category = "Heist|Object Assembly")
 	FHeistObjectAssemblyReplicaData GetAssemblyReplicaData() const;
 
+	UFUNCTION(BlueprintPure, Category = "Heist|Object Assembly|Replica")
+	bool HasCommittedAssemblyResult() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Object Assembly|Replica")
+	FHeistObjectAssemblyResult GetCommittedAssemblyResult() const;
+
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Heist|Object Assembly|Replica")
+	bool TryCommitAssemblyReplica(AHeistPlayerState* RequestingPlayerState, const FHeistObjectAssemblyResult& AssemblyResult, const TArray<FHeistObjectAssemblyEntry>& Entries);
+
+	void GetReplicaComponentDebugState(int32& OutReplicaRevision, int32& OutExpectedEntryCount, int32& OutBuiltPartCount, int32& OutUnresolvedSocketCount, bool& OutCoreReady,
+									   bool& OutContractPassed) const;
+	bool ForceReplicaRebuildForDebug();
+
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Heist|Object Assembly")
 	bool InitializeObjectIdentity(FName InObjectCaseId, FName InTargetArtifactId, FName InObjectFamilyId);
 
@@ -70,6 +86,65 @@ class PROJECT_MUSEUMHEIST_API AHeistObjectDisplayCaseActor : public AHeistIntera
 	UPROPERTY(BlueprintAssignable, Category = "Heist|Object Assembly|Session")
 	FHeistObjectAssemblySessionChangedSignature OnObjectAssemblySessionChanged;
 
+	UFUNCTION(BlueprintPure, Category = "Heist|Object Assembly|Original")
+	AHeistPlayerState* GetOriginalCarrier() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Object Assembly|Original")
+	int32 GetOriginalCarryRevision() const;
+
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Heist|Object Assembly|Original")
+	bool TryTakeOriginal(AHeistPlayerState* RequestingPlayerState);
+
+	bool ReleaseOriginalForCarrier(AHeistPlayerState* ExpectedCarrier, FName Reason);
+
+	UPROPERTY(BlueprintAssignable, Category = "Heist|Object Assembly|Original")
+	FHeistObjectOriginalCarryChangedSignature OnObjectOriginalCarryChanged;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Object Assembly|Inspection")
+	bool IsRegisteredForInspection() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Object Assembly|Inspection")
+	bool IsValidInspectionCandidate() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Object Assembly|Inspection")
+	float GetInspectionDelayRemaining() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Object Assembly|Inspection")
+	float GetResolvedInspectionDelay() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Object Assembly|Inspection")
+	FName GetInspectionScoreBand() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Object Assembly|Inspection")
+	EHeistAlertLevel GetResolvedInspectionAlertOutcome() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Object Assembly|Inspection")
+	EHeistObjectAssemblyState GetResolvedInspectionCaseOutcome() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Object Assembly|Inspection")
+	int32 GetInspectionScheduleRevision() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Object Assembly|Inspection")
+	int32 GetInspectionRegistrationRevision() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Object Assembly|Inspection")
+	int32 GetInspectionResultApplicationCount() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Object Assembly|Inspection")
+	int32 GetInspectionDuplicateBlockCount() const;
+
+	bool TryBeginInspection(AActor* InspectingGuard);
+	bool InterruptInspection(AActor* InspectingGuard, FName Reason);
+	bool ApplyInspectionResult(AActor* InspectingGuard);
+	bool IsInspectionOwnedBy(const AActor* InspectingGuard) const;
+	bool IsInspectionClaimActive() const;
+	bool IsInspectionDelayTimerActive() const;
+	AActor* GetInspectingGuard() const;
+	bool ForceInspectionReadyForDebug();
+
+	static bool CalculateInspectionSchedule(float QualityScore, float BaseInspectionDelay, float& OutDelay, FName& OutScoreBand, EHeistAlertLevel& OutAlertOutcome,
+											EHeistObjectAssemblyState& OutCaseOutcome);
+
   protected:
 	virtual bool CanInteract(const AActor* Interactor) const override;
 
@@ -80,6 +155,9 @@ class PROJECT_MUSEUMHEIST_API AHeistObjectDisplayCaseActor : public AHeistIntera
 	void OnRep_AssemblyState();
 
 	UFUNCTION()
+	void OnRep_ObjectIdentity();
+
+	UFUNCTION()
 	void OnRep_AssemblyRevision();
 
 	UFUNCTION()
@@ -88,25 +166,55 @@ class PROJECT_MUSEUMHEIST_API AHeistObjectDisplayCaseActor : public AHeistIntera
 	UFUNCTION()
 	void OnRep_SessionSnapshot();
 
+	UFUNCTION()
+	void OnRep_OriginalCarryRevision();
+
+	UFUNCTION()
+	void OnRep_InspectionScheduleRevision();
+
 	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|Object Assembly", meta = (DisplayName = "Object Assembly Snapshot Changed"))
 	void BP_ObjectAssemblySnapshotChanged();
 
+	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|Object Assembly|Replica", meta = (DisplayName = "Apply Object Replica Part Material"))
+	void BP_ApplyObjectReplicaPartMaterial(UStaticMeshComponent* PartComponent, FName PartId, FName MaterialId);
+
   private:
 	bool ValidateSessionRequest(AHeistPlayerState* RequestingPlayerState, FName& OutRejectReason) const;
+	bool ValidateReplicaCommit(AHeistPlayerState* RequestingPlayerState, const FHeistObjectAssemblyResult& AssemblyResult, const TArray<FHeistObjectAssemblyEntry>& Entries,
+							   FName& OutRejectReason) const;
+	void RefreshObjectVisualState();
+	void RebuildReplicaComponents();
+	void DestroyReplicaComponents();
+	FTransform ResolveFallbackPartTransform(FName SocketId, int32 PlacementIndex, uint8 QuantizedOrientation) const;
+	bool ShouldDisplayOriginalVisual() const;
+	bool ShouldDisplayReplicaVisual() const;
 	bool IsAssemblyStateTransitionAllowed(EHeistObjectAssemblyState NewState) const;
 	void ClearSession(FName Reason);
 	void UnbindSessionOwnerDelegate();
 	void BroadcastAssemblySnapshot(FName EventName, FName Reason, bool bResult);
+	bool ValidateOriginalTakeRequest(AHeistPlayerState* RequestingPlayerState, float& OutArtifactWeight, FName& OutRejectReason) const;
+	void SyncObjectiveCarrierCandidate(AHeistPlayerState* Carrier);
+	void UnbindOriginalCarrierDelegate();
+	void BroadcastOriginalCarrySnapshot(FName EventName, FName Reason, bool bResult);
+	bool ResolveInspectionSchedule(const FHeistObjectAssemblyResult& AssemblyResult, FName& OutRejectReason);
+	void StartInspectionDelayTimer();
+	void ClearInspectionDelayTimer();
+	void HandleInspectionDelayExpired(int32 ExpectedScheduleRevision, int32 ExpectedTimerRevision);
+	bool HasInspectionDelayElapsed() const;
+	void RefreshInspectionRegistration();
+	void ClearInspectionStateForMatchEnd();
 	void HandleSessionOwnerArrestStateChanged(bool bArrested);
+	void HandleOriginalCarrierArrestStateChanged(bool bArrested);
 	void HandleMatchPhaseChanged(EHeistMatchPhase PreviousMatchPhase, EHeistMatchPhase NewMatchPhase);
 
-	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(ReplicatedUsing = OnRep_ObjectIdentity, EditInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly", meta = (AllowPrivateAccess = "true"))
 	FName ObjectCaseId = TEXT("ObjectCase_Unassigned");
 
-	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly", meta = (AllowPrivateAccess = "true", DisplayName = "Target Artifact Id"))
+	UPROPERTY(ReplicatedUsing = OnRep_ObjectIdentity, EditInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly",
+			  meta = (AllowPrivateAccess = "true", DisplayName = "Target Artifact Id"))
 	FName TargetObjectArtifactId = NAME_None;
 
-	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(ReplicatedUsing = OnRep_ObjectIdentity, EditInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly", meta = (AllowPrivateAccess = "true"))
 	FName ObjectFamilyId = NAME_None;
 
 	UPROPERTY(ReplicatedUsing = OnRep_AssemblyState, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly", meta = (AllowPrivateAccess = "true"))
@@ -118,6 +226,24 @@ class PROJECT_MUSEUMHEIST_API AHeistObjectDisplayCaseActor : public AHeistIntera
 	UPROPERTY(ReplicatedUsing = OnRep_AssemblyReplicaData, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly", meta = (AllowPrivateAccess = "true"))
 	FHeistObjectAssemblyReplicaData AssemblyReplicaData;
 
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly|Replica", meta = (AllowPrivateAccess = "true"))
+	bool bHasCommittedAssemblyResult = false;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly|Replica", meta = (AllowPrivateAccess = "true"))
+	FHeistObjectAssemblyResult CommittedAssemblyResult;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly|Replica", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USceneComponent> ReplicaRootComponent;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UStaticMeshComponent> ReplicaCoreComponent;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UStaticMeshComponent>> ReplicaPartComponents;
+
+	int32 AppliedReplicaRevision = 0;
+	int32 UnresolvedReplicaSocketCount = 0;
+
 	UPROPERTY(ReplicatedUsing = OnRep_SessionSnapshot, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly|Session", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<AHeistPlayerState> SessionOwner;
 
@@ -127,7 +253,46 @@ class PROJECT_MUSEUMHEIST_API AHeistObjectDisplayCaseActor : public AHeistIntera
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Object Assembly|Session", meta = (AllowPrivateAccess = "true", ClampMin = "100.0"))
 	float MaximumSessionDistance = 300.0f;
 
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly|Original", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<AHeistPlayerState> OriginalCarrier;
+
+	UPROPERTY(ReplicatedUsing = OnRep_OriginalCarryRevision, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly|Original", meta = (AllowPrivateAccess = "true"))
+	int32 OriginalCarryRevision = 0;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly|Inspection", meta = (AllowPrivateAccess = "true"))
+	bool bRegisteredForInspection = false;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly|Inspection", meta = (AllowPrivateAccess = "true"))
+	int32 InspectionRegistrationRevision = 0;
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly|Inspection", meta = (AllowPrivateAccess = "true"))
+	float ResolvedInspectionDelay = 0.0f;
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly|Inspection", meta = (AllowPrivateAccess = "true"))
+	float InspectionReadyServerTime = 0.0f;
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly|Inspection", meta = (AllowPrivateAccess = "true"))
+	FName InspectionScoreBand = NAME_None;
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly|Inspection", meta = (AllowPrivateAccess = "true"))
+	EHeistAlertLevel ResolvedInspectionAlertOutcome = EHeistAlertLevel::Quiet;
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly|Inspection", meta = (AllowPrivateAccess = "true"))
+	EHeistObjectAssemblyState ResolvedInspectionCaseOutcome = EHeistObjectAssemblyState::Suspected;
+
+	UPROPERTY(ReplicatedUsing = OnRep_InspectionScheduleRevision, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly|Inspection", meta = (AllowPrivateAccess = "true"))
+	int32 InspectionScheduleRevision = 0;
+
 	TWeakObjectPtr<AHeistGameState> BoundGameState;
+	TWeakObjectPtr<AActor> InspectingGuardActor;
 	FDelegateHandle MatchPhaseChangedHandle;
 	FDelegateHandle SessionOwnerArrestChangedHandle;
+	FDelegateHandle OriginalCarrierArrestChangedHandle;
+	FTimerHandle InspectionDelayTimerHandle;
+	int32 InspectionDelayTimerRevision = 0;
+	int32 ActiveInspectionScheduleRevision = INDEX_NONE;
+	int32 LastAppliedInspectionScheduleRevision = INDEX_NONE;
+	int32 InspectionResultApplicationCount = 0;
+	int32 InspectionDuplicateBlockCount = 0;
+	EHeistObjectAssemblyState PreInspectionState = EHeistObjectAssemblyState::OriginalAvailable;
 };

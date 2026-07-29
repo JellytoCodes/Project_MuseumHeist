@@ -170,6 +170,9 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	void RequestTakeOriginal(AHeistPaintingDisplayCaseActor* TargetDisplayCase);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Objective")
+	void RequestTakeObjectOriginal(AHeistObjectDisplayCaseActor* TargetDisplayCase);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Objective")
 	void RequestDropCarriedOriginal();
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Inventory")
@@ -235,6 +238,9 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestTakeOriginal(AHeistPaintingDisplayCaseActor* TargetDisplayCase);
+
+	UFUNCTION(Server, Reliable)
+	void Server_RequestTakeObjectOriginal(AHeistObjectDisplayCaseActor* TargetDisplayCase);
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestDropCarriedOriginal();

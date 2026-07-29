@@ -3,14 +3,11 @@
     "Name": "Part_Sculpture_Prototype_Core",
     "PartId": "Part_Sculpture_Prototype_Core",
     "FamilyId": "Sculpture",
-    "StaticMesh": "StaticMesh'/Engine/BasicShapes/Cylinder.Cylinder'",
+    "StaticMesh": "StaticMesh'/Game/Art/Prototype/ObjectAssembly/SM_ObjectAssembly_Prototype_Core.SM_ObjectAssembly_Prototype_Core'",
     "CompatibleSocketIds": [
       "Root"
     ],
-    "AllowedMaterialIds": [
-      "Material_Bronze",
-      "Material_Marble"
-    ],
+    "AllowedMaterialIds": [],
     "AllowedOrientationSteps": [
       0
     ]
@@ -25,10 +22,7 @@
       "Shoulder_L",
       "Shoulder_R"
     ],
-    "AllowedMaterialIds": [
-      "Material_Bronze",
-      "Material_Marble"
-    ],
+    "AllowedMaterialIds": [],
     "AllowedOrientationSteps": [
       0,
       4,
@@ -46,10 +40,7 @@
       "Shoulder_L",
       "Shoulder_R"
     ],
-    "AllowedMaterialIds": [
-      "Material_Bronze",
-      "Material_Marble"
-    ],
+    "AllowedMaterialIds": [],
     "AllowedOrientationSteps": [
       0,
       4,
@@ -67,10 +58,7 @@
       "Shoulder_L",
       "Shoulder_R"
     ],
-    "AllowedMaterialIds": [
-      "Material_Bronze",
-      "Material_Marble"
-    ],
+    "AllowedMaterialIds": [],
     "AllowedOrientationSteps": [
       0,
       4,
@@ -86,10 +74,7 @@
     "CompatibleSocketIds": [
       "Pedestal"
     ],
-    "AllowedMaterialIds": [
-      "Material_Bronze",
-      "Material_Marble"
-    ],
+    "AllowedMaterialIds": [],
     "AllowedOrientationSteps": [
       0,
       4,

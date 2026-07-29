@@ -9,7 +9,7 @@
 DECLARE_MULTICAST_DELEGATE(FHeistInventoryChanged);
 
 struct FHeistItemDataRow;
-class AHeistPaintingDisplayCaseActor;
+class AActor;
 class AHeistPlayerState;
 
 UCLASS(ClassGroup = (Heist), meta = (BlueprintSpawnableComponent))
@@ -59,8 +59,8 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryComponent : public UActorComponent
 	bool TrySetInventoryOpen(bool bInInventoryOpen);
 	bool IsCarryingOriginal() const;
 	const FHeistOriginalCarryEntry& GetOriginalCarryEntry() const;
-	bool TryBeginOriginalCarry(AHeistPlayerState* CarryingPlayerState, FName ArtifactId, float Weight, AHeistPaintingDisplayCaseActor* SourceDisplayCase);
-	bool TryEndOriginalCarry(AHeistPlayerState* CarryingPlayerState, AHeistPaintingDisplayCaseActor* ExpectedSourceDisplayCase, FHeistOriginalCarryEntry& OutReleasedEntry);
+	bool TryBeginOriginalCarry(AHeistPlayerState* CarryingPlayerState, FName ArtifactId, float Weight, AActor* SourceDisplayCase);
+	bool TryEndOriginalCarry(AHeistPlayerState* CarryingPlayerState, AActor* ExpectedSourceDisplayCase, FHeistOriginalCarryEntry& OutReleasedEntry);
 
   private:
 	bool TryFindAutoPlacement(const FHeistItemDataRow& ItemDefinition, FIntPoint& OutGridPosition, bool& bOutRotated) const;

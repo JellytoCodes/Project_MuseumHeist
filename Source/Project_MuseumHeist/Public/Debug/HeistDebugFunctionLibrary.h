@@ -120,6 +120,13 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 	static void DebugObjectAssemblyScoreCommitted(const UHeistObjectAssemblyComponent* ObjectAssemblyComponent, const FHeistObjectAssemblyResult& Result);
 	static void DebugObjectAssemblySessionCleared(const UHeistObjectAssemblyComponent* ObjectAssemblyComponent, const AHeistObjectDisplayCaseActor* PreviousDisplayCase,
 												  FName Reason, bool bPreservedResult);
+	static void DebugObjectAssemblyReplicaCommit(const AHeistObjectDisplayCaseActor* DisplayCase, const AHeistPlayerState* RequestingPlayerState,
+												 const FHeistObjectAssemblyResult& Result, int32 EntryCount, FName Reason, bool bResult);
+	static void DebugObjectAssemblyReplicaRebuildEvent(const AHeistObjectDisplayCaseActor* DisplayCase, int32 ExpectedEntryCount, int32 BuiltPartCount,
+													   int32 UnresolvedSocketCount, bool bCoreReady, int32 ReplicaRevision, bool bResult);
+	static void DebugObjectAssemblyOriginalCarry(const AHeistObjectDisplayCaseActor* DisplayCase, const AHeistPlayerState* Carrier, FName EventName, FName Reason,
+												 bool bResult);
+	static void DebugObjectAssemblyInspection(const AHeistObjectDisplayCaseActor* DisplayCase, const AActor* InspectingGuard, FName EventName, FName Reason, bool bResult);
 
 	static void DebugLootScoreWeightRejected(const UObject* WorldContextObject, const TCHAR* Reason, int32 ScoreDelta = INDEX_NONE, float WeightDelta = -1.0f);
 	static void DebugLootScoreWeightApplied(const UObject* WorldContextObject, int32 ScoreDelta, float WeightDelta, int32 TotalScore, float TotalWeight);
@@ -358,6 +365,21 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
 	static void DebugObjectAssemblyTimeout(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
+	static void DebugObjectAssemblyReplicaDump(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
+	static void DebugObjectAssemblyPrototypeGate(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
+	static void DebugObjectAssemblyReplicaRebuild(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
+	static void DebugObjectAssemblyTakeOriginal(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
+	static void DebugObjectAssemblyInspectionReady(APlayerController* PlayerController);
 
 #pragma endregion
 
