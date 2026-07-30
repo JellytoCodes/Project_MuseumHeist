@@ -2,7 +2,7 @@
 
 ## Rev 11: Contract Run And Player Experience Foundation
 
-기준일: 2026-07-30
+기준일: 2026-07-31 (문서 구조 정리 반영)
 엔진: Unreal Engine 5.8  
 현재 목표: 2026-09-20 W8 Final RC / 프로젝트 마무리
 
@@ -95,17 +95,29 @@ Project_MuseumHeist는 Unreal Engine 5.8 C++ 기반의 **1~4인 온라인 협동
 프로젝트 설계 문서의 우선순위는 다음과 같다.
 
 1. `AGENTS.md`
-2. `ClassManifest.md`
-3. `Museum_Heist_GDD.docx`
+2. `Museum_Heist_GDD.docx`
    - Part I Section 1~20: 제품 방향, 범위, 기존 주차와 Release 운영
    - Part II Section 21~42: Character, Inventory, Level Design, AI, Forgery, Network, UI, Audio, DataTable, QA 상세
    - Part III Section 43~55: Contract Run, Player Experience, Level/Data 상세와 W6~W8 Execution
    - Appendix A~C: Terminology, Removed / Excluded / Stretch, Comprehensive Definition of Done
-4. `Docs/W2_BlueprintShellPlan.md`
+3. Notion Task/Test 기록 (상태, 테스트 로그 번호, 증적 링크)
 
 하위 문서가 상위 문서와 충돌하면 구현 전에 상위 문서를 먼저 수정한다.
 
-Notion Task 기록은 개별 Task 상태와 테스트 로그 번호의 Source of Truth로 사용한다. 단, 아키텍처와 구현 정책은 Repository의 `AGENTS.md`와 `ClassManifest.md`를 우선한다.
+Notion Task 기록은 개별 Task 상태와 테스트 로그 번호의 Source of Truth다. 단, 아키텍처와 구현 정책은 Repository의 `AGENTS.md`를 최우선으로 따른다.
+`ClassManifest.md`와 `Docs/W2_BlueprintShellPlan.md`는 더 이상 별도 거점 문서로 운영하지 않으며 AGENTS로 통합한다.
+게임플레이 규칙, 데이터 계약, Shell/Presentation 경계, 구현 우선순위 변경은 AGENTS 본문에서 직접 관리한다.
+
+## 2A. Blueprint / Presentation Rule Integration (W2 병합 반영)
+
+Blueprint Shell/Presentation 운용은 별도 문서로 분리하지 않고 아래 규칙을 AGENTS 본문 규칙으로 통합해 적용한다.
+
+- `WBP_` 계열 UI는 Layout, Animation, Color, Icon, Binding 중심으로 운영하고, 상태/값 확정은 C++ ViewModel과 게임 규칙이 소유한다.
+- Nameplate는 Remote Player에 한해 항상 표시하며, 동일 Map에 대한 상태 아이콘은 Team Status 상태값(`Active`, `Forging`, `Assembling`, `CarryingOriginal`, `Heavy`, `Stunned`, `Arrested`, `Escaped`)과 동기화한다.
+- Floor Plan Map은 Owner-only Full-Screen으로 운영한다. Guard 위치, 시야 Cone, SoundPing, 미탐색 Loose Loot/숨겨진 Spawn은 기본 표시하지 않는다.
+- Move/Look/Mouse Capture 전환은 Owner-only Forgery, Assembly, Inventory, Map 진입 시 각각 입력 정책이 일치해야 한다.
+- 2D Painting Forgery 타이머는 기본 40초(최소 20초/최대 45초), Object Assembly는 기본 30초(최소 25초/최대 35초)로 운영한다.
+- Walk / Sprint / Weight / Footstep Noise는 동일한 수치 계약으로 C++ Authority와 Blueprint UI에서 일치시킨다.
 
 ---
 
@@ -281,6 +293,7 @@ Smoke 및 Trap 계열 기능은 Stretch 목록에 포함하지 않는다.
 - 기존 `BP_DisplayCase`는 `AHeistPaintingDisplayCaseActor`를 부모로 사용한다.
 - `AHeistSculptureDisplayCaseActor`는 기존 `BP_SculptureDisplayCase` 호환 전용 Deprecated Alias로 전환한다.
 - 신규 Sculpture / Ceramic Asset은 `AHeistObjectDisplayCaseActor`를 부모로 사용한다.
+- `AHeistSculptureDisplayCaseActor`(Deprecated) Case는 시각 Shell만 유지하며 v1.0 Gameplay에 사용하지 않는다.
 
 ## Removed Feature Boundary
 
@@ -347,6 +360,37 @@ Client가 직접 확정할 수 없는 항목:
 - Player Escape Deposit
 
 Client Preview는 확정값으로 취급하지 않는다.
+
+---
+
+# 6A. Online Session And Level Architecture
+
+- `UHeistGameInstance`가 Online Subsystem 선택과 Create / Find / Join / Travel 상태를 단독 소유한다.
+- Editor PIE는 로컬 다중 인스턴스 검증을 위해 `OnlineSubsystemNull`을 사용한다.
+- 비 Editor 실행과 패키지 빌드는 기본 `OnlineSubsystemSteam`을 사용한다.
+- Editor `OnlineSubsystemNull` 검증은 구현 검증용이며 Steam 최종 PASS를 대체하지 않는다.
+- Online Session의 로컬 이름은 PIE가 선점하는 `GameSession`과 분리된 `HeistSession`을 사용한다.
+- Session은 1~4인 Listen Server, Presence, Lobby, Join In Progress를 사용한다.
+
+## Level Flow
+
+- 비 Editor 실행은 별도 Title Menu Level에서 시작한다.
+- Title Menu는 Host Session, Join Code 입력과 Local Settings(FOV, Mouse Sensitivity, Master Volume, Resolution / Window Mode)를 소유하며 이 값들은 First-Person 적용과 함께 로컬에 저장한다.
+- Session 생성 또는 참가 성공 시 별도 Lobby Level로 이동한다.
+- Lobby는 참가 코드 표시, Player Slot, Map 선택, Ready / Start, Leave만 소유한다.
+- Session Leave 또는 Host Quit 시 Title Menu Level로 복귀한다.
+- Editor 직접 Gameplay Map PIE는 기존 Gameplay 회귀 검증을 위해 InGame 시작을 유지한다.
+- PIE New Editor Window가 저장된 Resolution을 Editor 창 크기로 덮어쓰는 경우 Settings 진단은 `DisplayApply=EDITOR_OVERRIDE`로 구분한다.
+
+## Session / Lobby Contract
+
+- Host는 혼동 문자를 제외한 6자리 참가 코드를 생성하고 Session Setting에 게시한다.
+- Join은 참가 코드, Product Id, Build Unique Id, 공개 슬롯을 검증한 뒤 서버 주소로 이동한다.
+- Host는 Lobby에서 `M01`, `M02`, `M03`, `Random`을 선택할 수 있고 선택 결과는 `AHeistGameState`를 통해 모든 Client에 복제한다.
+- Lobby Player Id는 현재 `PlayerArray`에서 사용하지 않는 가장 낮은 `1~4` 번호를 할당한다. 퇴장한 Slot은 `EMPTY`가 되고 다음 참가자가 해당 번호를 재사용한다.
+- `UHeistLobbyViewModel`은 Player 추가·제거뿐 아니라 각 `AHeistPlayerState`의 Identity 변경에도 반응해 모든 Client의 Slot 표시를 갱신한다.
+- Package Client는 로컬 PlayerController `BeginPlay`에서 Session World Ready를 통지해 성공한 `TravelJoin`의 Pending 상태와 30초 감시 타이머를 해제한다.
+- Steam 최종 PASS는 서로 다른 Steam 계정 2개와 Development Package 증거가 있을 때만 처리한다.
 
 ---
 
@@ -535,6 +579,13 @@ InvalidRows=0
 OrphanExtensions=0
 ```
 
+## Guard Alert Profile Data Rule
+
+- Guard Alert Profile은 `DT_GuardData`의 `Guard_Alert_Low / Medium / High` Row를 사용한다.
+- 위치명 기반 `Guard_Default / Guard_Vault / Guard_SecurityRoom` Row는 사용하지 않는다.
+- 신규 Guard의 기본 `GuardProfileId`는 `Guard_Alert_Medium`이다.
+- 실제 맵의 Guard별 등급 배정, Patrol 영역, 공간 압박과 최종 수치 조정은 W8 Level Design / Map Balance에서 수행한다.
+
 ---
 
 # 9. Action Component Rules
@@ -676,6 +727,14 @@ Escape 취소 조건:
 - 서버는 Brush Size를 검증한다.
 - 서버는 Session Revision을 검증한다.
 - Client는 최종 Score를 전송하지 않는다.
+
+## Submitted Texture Replication
+
+- 최종 위조 그림은 서버 Score용 Palette Raster에서 생성한다.
+- 고정 해상도 Palette Index Data는 제출 시 한 번만 복제한다.
+- 각 Client는 복제된 Index Data로 Transient Texture를 재구성한다.
+- Render Target을 World Visual 목적으로 복제하지 않는다.
+- 전체 Stroke Payload를 World Visual 목적으로 추가 복제하지 않는다.
 
 ## OpenCV Score
 
@@ -1175,6 +1234,13 @@ Editor 작업 안내에는 다음만 포함한다.
 - 위 검증에서 원격 Client 연결 종료가 필요하면 Listen Server가 서버 권한 `KickPlayer` Debug Command로 대상 Player를 제거한다.
 - 현재 공용 Kick 경로는 `HeistObjectAssemblyKickPlayer <PlayerId>`이며, 이름과 관계없이 `AGameSession::KickPlayer()`를 호출하는 서버 권한 진단 명령으로 사용한다.
 - 테스트 안내에서 `disconnect`가 필요한 것처럼 보이는 경우에도 항상 위 Listen Server Kick 절차로 대체한다.
+
+## Session Debug Commands
+
+- Development 검증 명령은 `HeistSessionHost`, `HeistSessionJoin <Code>`, `HeistSessionLeave`, `HeistSessionMap <M01|M02|M03|Random>`, `HeistSessionStart`, `HeistSessionComplete`, `HeistSessionReturn`, `HeistSessionDump`를 사용한다.
+- `HeistSessionComplete`는 Listen Server의 활성 Steam Session과 2명 이상의 Player를 요구하며 현재 Player를 Escaped로 확정하고 Result를 재구성한 뒤 Match Phase를 `End`로 전환한다.
+- `HeistSessionDump`는 Player / Identity / Slot / Roster / UI Snapshot과 Map Selection이 일치하고 Gameplay Phase가 `InGame` 또는 `End`일 때 `Result=PASS`를 출력한다.
+- Shipping은 Debug / Cheat Command가 제거되므로 위 명령 기반 Formal Test에 사용하지 않는다.
 - 사용자는 관련 Output Log를 제출한다.
 - 화면 동작이 완료 조건이면 관찰 결과도 제출한다.
 - 제출된 로그와 관찰 결과를 Task 완료 조건에 대조한다.
@@ -1195,6 +1261,19 @@ Editor 작업 안내에는 다음만 포함한다.
 - Actor 탐색, 배열 순회, 화면 출력 또는 기타 Debug 전용 연산이 있는 함수는 `#if UE_BUILD_SHIPPING` 조기 반환 또는 동등한 Compile Guard를 유지한다.
 - Runtime State를 변경하는 Debug/Cheat 함수는 로그 설정과 무관하게 Shipping에서 컴파일 경로가 활성화되지 않도록 명시적으로 Guard한다.
 - 실제 Shipping 운영 로그가 필요해질 경우 Debug Log와 섞지 않고 별도 정책과 Task를 먼저 정의한다.
+
+---
+
+# 17A. Packaging Pipeline
+
+- Project Version Source of Truth는 `Config/DefaultGame.ini`의 `ProjectVersion`이다.
+- Win64 Development / Shipping Package는 `Tools/Packaging/PackageProject.ps1`로 생성한다.
+- Package 출력은 `Build/Packages`, Steam Depot 후보는 `Build/SteamCandidate` 아래에 생성한다.
+- 프로젝트에서 사용하지 않는 기본 `ChaosCloth` Plugin은 비활성화하며, 그 의존성인 `Buoyancy`, `Water`, `Landmass`의 Editor Content를 Release Cook에 포함하지 않는다.
+- `HeistBuildDump`는 Development Package에서 Version, Configuration, Platform, Cooked Runtime, Online Subsystem과 Session Build Id를 검증한다.
+- Editor Archive Directory를 Development와 Shipping에 재사용해 이전 Runtime Binary 또는 Log가 섞인 폴더는 Steam Depot 후보로 사용하지 않는다.
+- `ValidatePackage.ps1`는 Development / Shipping Runtime Binary 혼합을 실패 처리하고 UE 5.8 Prerequisite의 `UEPrereqSetup_x64.exe` 또는 `vc_redist.x64.exe`를 허용한다.
+- Steam Depot VDF는 `preview=1` 후보만 생성하며 Upload와 SetLive는 자동 수행하지 않는다.
 
 ---
 
@@ -1223,6 +1302,11 @@ PIE가 필요한 Task는 다음을 명시한다.
 - Task Test 또는 Weekly Gate 구분
 
 Known Warning은 숨기지 않는다.
+
+## Known Non-blocking Warnings
+
+- `aqProf.dll` / VTune 선택적 Profiler 경고와 Title / Lobby 전환 중의 일시적 AI Perception / Recast 경고는 현재 확인된 비차단 Known Warning이다.
+- Crash, Travel 실패 또는 Gameplay Map 회귀가 동반되면 다시 분류한다.
 
 다음 문제는 Weekly Gate를 차단한다.
 
@@ -1268,100 +1352,9 @@ Reference Viewer와 회귀 확인 후 별도 Cleanup Task에서 제거한다.
 
 # 20. Current Phase
 
-W3~W5는 완료됐다.
+W1~W5는 완료됐다. 개별 Task 상태와 테스트 로그 번호는 Notion Task 기록을 Source of Truth로 사용한다.
 
-현재 실행 기준은 Rev 11 문서 정합성 확정 후 시작하는 W6다.
-
-W4는 `TASK-W4-001~020`까지 완료됐고 아래 W4 범위와 규칙은 완료 이력 및 회귀 기준으로 유지한다.
-
-## W3 Closeout
-
-- `TASK-W3-001~015`, `TASK-W3-017~028`: 완료
-- `TASK-W3-016`: 취소
-- Smoke Gameplay는 프로젝트에서 물리적으로 제거됐다.
-- Glue Trap Gameplay는 프로젝트에서 물리적으로 제거됐다.
-- Noise Trap Gameplay는 프로젝트에서 물리적으로 제거됐다.
-- Trap Placement Cast는 프로젝트에서 제거됐다.
-- QuickSlot은 Coin 전용으로 축소됐다.
-- `TASK-W3-029`: 앞선 개별 검증과 중복되는 통합 Gate였으므로 제거
-- 테스트 로그는 Task 번호와 독립된 연속 번호를 사용
-- 기존 `TEST-W3-001~027`은 과거 검증 기록으로 유지
-
-Smoke와 Trap은 W4 이후의 Gate, Regression Baseline, Stretch 또는 Deferred Scope로 사용하지 않는다.
-
-## W4 Scope
-
-### Forgery Vertical Slice
-
-1. `TASK-W4-001` Forgery Session Lifecycle
-2. `TASK-W4-002` Owner-only Full-Screen Forgery UI
-3. `TASK-W4-003` Forgery Input Mode / Restore
-4. `TASK-W4-004` Reference Template Load / Observation Handoff
-5. `TASK-W4-005` Drawing Canvas / Stroke Collection
-6. `TASK-W4-006` Stroke Transport / Server Validation
-7. `TASK-W4-007` OpenCV Reference Similarity Forgery Score
-8. `TASK-W4-008` Replica Placement / Original Removal
-9. `TASK-W4-009` Submitted Replica World Visual
-10. `TASK-W4-010` Forgery Recovery Edge Cases
-11. `TASK-W4-011` Painting Frame / Submitted Texture Projection
-
-### Detection / Alert / Lockdown
-
-12. `TASK-W4-012` Inspection Target Registration
-13. `TASK-W4-013` Guard InspectExhibit State
-14. `TASK-W4-014` Score → Inspection Delay Mapping
-15. `TASK-W4-015` Global Alert State Replication
-16. `TASK-W4-016` Alert-driven Guard Modifiers
-17. `TASK-W4-017` Lockdown Countdown / World Restriction
-18. `TASK-W4-018` Alert HUD / Audio Layers
-19. `TASK-W4-019` Duplicate Inspection / Timer Protection
-20. `TASK-W4-020` Low / Medium / High Guard Profiles / Security Level Indicator
-
-## W4 Execution Rules
-
-- 활성 구현 범위는 `TASK-W4-001~020`이다.
-- Forgery Session은 서버 권한을 유지한다.
-- Forgery Score는 서버 권한을 유지한다.
-- Replica 확정은 서버 권한을 유지한다.
-- Original 확정은 서버 권한을 유지한다.
-- Alert는 서버 권한을 유지한다.
-- Lockdown은 서버 권한을 유지한다.
-- 최종 위조 그림은 서버 Score용 Palette Raster에서 생성한다.
-- 고정 해상도 Palette Index Data는 제출 시 한 번만 복제한다.
-- 각 Client는 복제된 Index Data로 Transient Texture를 재구성한다.
-- Render Target을 World Visual 목적으로 복제하지 않는다.
-- 전체 Stroke Payload를 World Visual 목적으로 추가 복제하지 않는다.
-- Owner-only UI는 Critical Gate다.
-- Input Restore는 Critical Gate다.
-- Case Lock Cleanup은 Critical Gate다.
-- Duplicate 방지는 Critical Gate다.
-- Timer 정리는 Critical Gate다.
-- 멀티플레이, Ownership, Replication, Recovery 주장은 사용자 PIE와 Debug Log가 있을 때만 PASS 처리한다.
-- 이미 증명된 동일 흐름을 같은 조건으로 반복하는 중복 Gate를 만들지 않는다.
-- Guard Alert Profile은 `DT_GuardData`의 `Guard_Alert_Low / Medium / High` Row를 사용한다.
-- 위치명 기반 `Guard_Default / Guard_Vault / Guard_SecurityRoom` Row는 사용하지 않는다.
-- 신규 Guard의 기본 `GuardProfileId`는 `Guard_Alert_Medium`이다.
-- 실제 맵의 Guard별 등급 배정, Patrol 영역, 공간 압박과 최종 수치 조정은 W8 Level Design / Map Balance에서 수행한다.
-
-## W4 Current Handoff
-
-- `TASK-W4-001~020`: 완료
-- 정식 완료 상태와 테스트 로그 번호는 Notion 기록을 Source of Truth로 사용
-- Low / Medium / High Guard Profile Data와 Security Level Indicator 구현 및 2 Player Listen Server PIE 검증 완료
-- SandboxMap에서 세 등급 Guard의 독립 Patrol Route, Alert 반응과 Client Security Level 복제를 확인
-- 실제 맵별 Guard 등급 배치와 Patrol 공간 조정은 W8 Level Design / Map Balance 범위
-- W4 개별 Task는 완료됐으며 Weekly Gate와 Formal Test는 별도 판정
-- OpenCV 유사도 판정 구현 완료
-- 제한 Palette 구현 완료
-- Local Preview와 Server Final 공통 Evaluator 구현 완료
-- 제출 그림 Palette Index Data 복제 구현 완료
-- Painting과 Sculpture Case C++ 타입 분리 완료
-- `BP_DisplayCase` 부모는 `AHeistPaintingDisplayCaseActor`
-- `BP_SculptureDisplayCase` 부모는 `AHeistSculptureDisplayCaseActor`
-- Sculpture Case는 시각 Shell만 존재
-- Sculpture Case는 v1.0 Gameplay에 사용하지 않음
-- `TASK-W4-015~017`은 Global Alert Replication, Guard Modifier, Lockdown Countdown / World Restriction 검증 완료
-- `TASK-W4-018~019`는 Alert HUD / Audio Layer와 Duplicate Inspection / Timer Protection 검증 완료
+현재 실행 기준은 Rev 11 W6 — Contract Run / Player Experience Foundation이다.
 
 ## Rev 11 Execution Roadmap
 
@@ -1418,70 +1411,5 @@ Smoke와 Trap은 W4 이후의 Gate, Regression Baseline, Stretch 또는 Deferred
 - W8 Feature Lock 이후 신규 Gameplay Feature를 추가하지 않는다.
 - 기존 `W9~W12` 번호는 Rev 11 이전 이력 참조에만 사용한다.
 - Public Release 목표일 `2026-09-20`을 유지하되 RC Gate가 실패하면 품질을 숨기지 않는다.
-
-## W5 Closeout / W6 Handoff
-
-- `TASK-W5-001~010`은 완료됐다.
-- `TEST-W5-001`은 2026-07-26 Editor `OnlineSubsystemNull` 2 Player Listen Server PIE에서 Host / Join Code / Find / Join / Lobby Travel을 PASS했다.
-- `TEST-W5-002`는 2026-07-27 Editor `OnlineSubsystemNull` 3 Player Listen Server PIE에서 Client Leave / Rejoin / Empty Slot 재사용 / Host Quit / Title Return / Map Selection / Random / Lobby Roster Refresh를 PASS했다.
-- `TEST-W5-005`는 2026-07-27 Development Editor 1 Player PIE에서 Local Settings 저장과 First-Person 적용을 PASS했다.
-- `TEST-W5-007`은 2026-07-27 별도 PC·Steam 계정 2개 Development Package에서 Steam Host / Join / Lobby / M02 Travel / End / Lobby Return / Client Leave / Host Leave를 PASS했다.
-- W5 기능 구현 범위는 종료됐다. Weekly Gate와 Formal Test 판정은 Notion 기록을 별도로 따른다.
-- `UHeistGameInstance`가 Online Subsystem 선택과 Create / Find / Join / Travel 상태를 단독 소유한다.
-- Editor PIE는 로컬 다중 인스턴스 검증을 위해 `OnlineSubsystemNull`을 사용한다.
-- 비 Editor 실행과 패키지 빌드는 기본 `OnlineSubsystemSteam`을 사용한다.
-- 비 Editor 실행은 별도 Title Menu Level에서 시작한다.
-- Title Menu는 Host Session, Join Code 입력과 Local Settings를 소유한다.
-- Session 생성 또는 참가 성공 시 별도 Lobby Level로 이동한다.
-- Lobby는 참가 코드 표시, Player Slot, Map 선택, Ready / Start, Leave만 소유한다.
-- Session Leave 또는 Host Quit 시 Title Menu Level로 복귀한다.
-- Editor 직접 Gameplay Map PIE는 기존 Gameplay 회귀 검증을 위해 InGame 시작을 유지한다.
-- Session은 1~4인 Listen Server, Presence, Lobby, Join In Progress를 사용한다.
-- Online Session의 로컬 이름은 PIE가 선점하는 `GameSession`과 분리된 `HeistSession`을 사용한다.
-- Host는 혼동 문자를 제외한 6자리 참가 코드를 생성하고 Session Setting에 게시한다.
-- Join은 참가 코드, Product Id, Build Unique Id, 공개 슬롯을 검증한 뒤 서버 주소로 이동한다.
-- Host는 Lobby에서 `M01`, `M02`, `M03`, `Random`을 선택할 수 있고 선택 결과는 `AHeistGameState`를 통해 모든 Client에 복제한다.
-- Lobby Player Id는 현재 `PlayerArray`에서 사용하지 않는 가장 낮은 `1~4` 번호를 할당한다. 퇴장한 Slot은 `EMPTY`가 되고 다음 참가자가 해당 번호를 재사용한다.
-- `UHeistLobbyViewModel`은 Player 추가·제거뿐 아니라 각 `AHeistPlayerState`의 Identity 변경에도 반응해 모든 Client의 Slot 표시를 갱신한다.
-- `TASK-W5-008`은 FOV, Mouse Sensitivity, Master Volume, Resolution / Window Mode의 로컬 저장과 First-Person 적용을 완료했다.
-- PIE New Editor Window가 저장된 Resolution을 Editor 창 크기로 덮어쓰는 경우 Settings 진단은 `DisplayApply=EDITOR_OVERRIDE`로 구분한다.
-- `TASK-W5-009 Packaging Pipeline`은 Development / Shipping Package 생성·검증·실행 증거로 완료됐다.
-- 2026-07-27 기능 구현 선행 원칙에 따라 `TASK-W5-011~023`을 재번호화했고 기존 `보류` Task는 모두 `미시작`으로 변경했다.
-- `TASK-W5-011~015`는 Object Assembly Data / State, Session / Score, Owner-only UI, Replica / Inspection / Cleanup과 Primitive Prototype Gate다.
-- `TASK-W5-016`은 Surface Template Pool / Shuffle Bag 서버 기능 Task다.
-- `TASK-W5-017~018`은 Sculpture / Ceramic Object Content Pack과 Object Assembly Two-Player Gate다.
-- `TASK-W5-019~021`은 M01 / M02 / M03 각 12개, 총 36개 Surface Forgery Template Pack이다.
-- 기존 `TASK-W5-022 Shared Loose Loot Content`는 Rev 11의 `TASK-W7-007`로 이동했다.
-- `TASK-W5-023 Tutorial / Onboarding Flow`는 W5 범위에서 완료됐다. Rev 11의 `TASK-W7-006`은 단일 목표 설명이 아니라 Contract Run 전체를 설명하도록 확장하는 후속 Task다.
-- 생성된 M01 Surface Reference 후보, Palette 정규화 결과, Mask와 `Tools/Forgery/QuantizeForgeryReference.ps1`은 WIP로 보존한다.
-- `TASK-W5-011~015 Object Assembly Vertical Slice`는 Data / State, Session / Payload / Score, Owner-only UI, Replica / Inspection / Cleanup과 Primitive Prototype Gate까지 완료했다.
-- `TASK-W5-016 Surface Template Pool / Shuffle Bag`은 `TEST-W5-010`으로 완료했다. 12-slot Shuffle Bag 2회전, 최근 3개 반복 방지, Server/Client Match Selection 복제와 서버 권한 Kick 이후 Snapshot 유지가 PASS했다.
-- `TASK-W5-019~021`의 M01 / M02 / M03 Surface Template Pack은 완료됐다.
-- 현재 활성 W5 Task는 없다.
-- Sculpture와 Ceramic의 통합 Gameplay System 명칭은 `Object Assembly Forgery`다.
-- Surface Forgery와 Object Assembly는 Template, State, Payload, Result와 Replica Data를 공유하지 않는다.
-- `TASK-W5-010 External Two-PC Online Gate`는 `TEST-W5-007` 증거로 완료됐다.
-- `TASK-W5-009`의 Project Version Source of Truth는 `Config/DefaultGame.ini`의 `ProjectVersion`이다.
-- Win64 Development / Shipping Package는 `Tools/Packaging/PackageProject.ps1`로 생성한다.
-- Package 출력은 `Build/Packages`, Steam Depot 후보는 `Build/SteamCandidate` 아래에 생성한다.
-- 프로젝트에서 사용하지 않는 기본 `ChaosCloth` Plugin은 비활성화하며, 그 의존성인 `Buoyancy`, `Water`, `Landmass`의 Editor Content를 Release Cook에 포함하지 않는다.
-- `HeistBuildDump`는 Development Package에서 Version, Configuration, Platform, Cooked Runtime, Online Subsystem과 Session Build Id를 검증한다.
-- `TASK-W5-009` 증거는 Development Package의 `HeistBuildDump Result=PASS`와 정상 종료, Shipping UAT `BUILD SUCCESSFUL / ExitCode=0`, 깨끗한 Shipping Stage 구성 및 두 Configuration 실행 화면이다.
-- Editor Archive Directory를 Development와 Shipping에 재사용해 이전 Runtime Binary 또는 Log가 섞인 폴더는 Steam Depot 후보로 사용하지 않는다.
-- `ValidatePackage.ps1`는 Development / Shipping Runtime Binary 혼합을 실패 처리하고 UE 5.8 Prerequisite의 `UEPrereqSetup_x64.exe` 또는 `vc_redist.x64.exe`를 허용한다.
-- Steam Depot VDF는 `preview=1` 후보만 생성하며 Upload와 SetLive는 자동 수행하지 않는다.
-- Editor `OnlineSubsystemNull` 검증은 구현 검증용이며 Steam 최종 PASS를 대체하지 않는다.
-- `TASK-W5-001`의 Steam 패키지 2계정 검증은 `TASK-W5-010 External Two-PC Online Gate`로 이관됐으며 `TASK-W5-001`을 다시 열지 않는다.
-- Steam 최종 PASS는 서로 다른 Steam 계정 2개와 Development Package 증거가 있을 때만 처리한다.
-- Packaging Pipeline은 `TASK-W5-009`, Steam 2계정 통합 검증은 `TASK-W5-010`에서 수행한다.
-- Development 검증 명령은 `HeistSessionHost`, `HeistSessionJoin <Code>`, `HeistSessionLeave`, `HeistSessionMap <M01|M02|M03|Random>`, `HeistSessionStart`, `HeistSessionComplete`, `HeistSessionReturn`, `HeistSessionDump`를 사용한다.
-- `HeistSessionComplete`는 Listen Server의 활성 Steam Session과 2명 이상의 Player를 요구하며 현재 Player를 Escaped로 확정하고 Result를 재구성한 뒤 Match Phase를 `End`로 전환한다.
-- `HeistSessionDump`는 Player / Identity / Slot / Roster / UI Snapshot과 Map Selection이 일치하고 Gameplay Phase가 `InGame` 또는 `End`일 때 `Result=PASS`를 출력한다.
-- Package Client는 로컬 PlayerController `BeginPlay`에서 Session World Ready를 통지해 성공한 `TravelJoin`의 Pending 상태와 30초 감시 타이머를 해제한다.
-- `TASK-W5-010` PASS에는 Host / Client 양쪽에서 `Subsystem=STEAM`, 동일 Join Code와 Build Id, `Players=2`, `Roster=PASS`, `Framework=PASS`, `NamedSession=true`, `SessionContinuity=PASS`, Gameplay / End / Lobby `Result=PASS`, Client와 Host의 Leave / Title Return 증거가 필요하다.
-- `TEST-W5-007`에서 Client는 `Pending=false`, `Operation=None`, `TravelPending=false`를 유지했고 90초 이상 접속해 기존 30초 `TravelJoin` Timeout이 재발하지 않았다.
-- Shipping은 Debug / Cheat Command가 제거되므로 `TASK-W5-010` Formal Test에 사용하지 않는다.
-- `aqProf.dll` / VTune 선택적 Profiler 경고와 Title / Lobby 전환 중의 일시적 AI Perception / Recast 경고는 현재 확인된 비차단 Known Warning이다. Crash, Travel 실패 또는 Gameplay Map 회귀가 동반되면 다시 분류한다.
-- W6 시작 전 Required Target + Loot Value Quota, 반복 Exhibit Assignment, Walk / Sprint, Player Nameplate / Team Status, Map과 Status Feedback을 Rev 11 문서 계약으로 고정한다.
 
 세부 설계와 주차별 Task 정의는 `Museum_Heist_GDD.docx` 최신 Revision과 Notion Task 기록을 함께 확인한다.
