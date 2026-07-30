@@ -52,6 +52,10 @@ void UHeistHUDWidget::NativeDestruct()
 	{
 		QuickSlotViewModel->GetSnapshotChangedDelegate().RemoveAll(this);
 	}
+	if (IsValid(TutorialPlayerController))
+	{
+		TutorialPlayerController->GetTutorialPresentationChangedDelegate().RemoveAll(this);
+	}
 	StopAlertAudioLayers();
 	Super::NativeDestruct();
 }
@@ -116,8 +120,50 @@ void UHeistHUDWidget::SetupHUDWidget(UHeistHUDViewModel* InHUDViewModel, UHeistI
 	RefreshCrosshairPresentation(IsValid(InteractionComponent) ? InteractionComponent->GetCurrentInteractionTarget() : nullptr,
 								 IsValid(InteractionComponent) && InteractionComponent->HasValidInteractionTarget());
 	SetupPopupFeedbackPresentation();
+	SetupTutorialPresentation();
 	RefreshToolPresentation();
 	RefreshHUDPresentation();
+}
+
+void UHeistHUDWidget::SetupTutorialPresentation()
+{
+	AHeistPlayerController* OwningPlayerController = Cast<AHeistPlayerController>(GetOwningPlayer());
+	if (TutorialPlayerController != OwningPlayerController && IsValid(TutorialPlayerController))
+	{
+		TutorialPlayerController->GetTutorialPresentationChangedDelegate().RemoveAll(this);
+	}
+	TutorialPlayerController = OwningPlayerController;
+	if (IsValid(TutorialPlayerController))
+	{
+		TutorialPlayerController->GetTutorialPresentationChangedDelegate().RemoveAll(this);
+		TutorialPlayerController->GetTutorialPresentationChangedDelegate().AddUObject(this, &UHeistHUDWidget::RefreshTutorialPresentation);
+	}
+	RefreshTutorialPresentation();
+}
+
+void UHeistHUDWidget::RefreshTutorialPresentation()
+{
+	const bool bTutorialActive = IsValid(TutorialPlayerController) && TutorialPlayerController->IsLocalTutorialActive();
+	if (IsValid(TutorialCardContainer))
+	{
+		TutorialCardContainer->SetVisibility(bTutorialActive ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+	if (IsValid(TutorialTitleText))
+	{
+		TutorialTitleText->SetText(bTutorialActive ? TutorialPlayerController->GetLocalTutorialTitleText() : FText::GetEmpty());
+	}
+	if (IsValid(TutorialBodyText))
+	{
+		TutorialBodyText->SetText(bTutorialActive ? TutorialPlayerController->GetLocalTutorialBodyText() : FText::GetEmpty());
+	}
+	if (IsValid(TutorialProgressText))
+	{
+		TutorialProgressText->SetText(
+			bTutorialActive
+				? FText::Format(NSLOCTEXT("HeistTutorial", "ProgressFormat", "STEP {0}/{1}"), FText::AsNumber(TutorialPlayerController->GetLocalTutorialStepIndex() + 1),
+								FText::AsNumber(TutorialPlayerController->GetLocalTutorialStepCount()))
+				: FText::GetEmpty());
+	}
 }
 
 void UHeistHUDWidget::SetupPopupFeedbackPresentation()
@@ -498,6 +544,50 @@ void UHeistHUDWidget::DebugDumpFeedbackState() const
 	else
 	{
 		UE_LOG(LogHeistUI, Warning, TEXT("[%s] Popup feedback pool dump failed: Reason=MissingPool"), *GetName());
+	}
+}
+
+bool UHeistHUDWidget::IsTutorialPresentationContractSatisfied() const
+{
+	const bool bWidgetsReady = IsValid(TutorialCardContainer) && IsValid(TutorialTitleText) && IsValid(TutorialBodyText) && IsValid(TutorialProgressText);
+	if (!bWidgetsReady || !IsValid(TutorialPlayerController))
+	{
+		return false;
+	}
+
+	const bool bTutorialActive = TutorialPlayerController->IsLocalTutorialActive();
+	const bool bCardVisible = TutorialCardContainer->GetVisibility() != ESlateVisibility::Collapsed && TutorialCardContainer->GetVisibility() != ESlateVisibility::Hidden;
+	const bool bVisibilityMatches = bTutorialActive == bCardVisible;
+	const bool bInputTransparent = TutorialCardContainer->GetVisibility() != ESlateVisibility::Visible;
+	const bool bCopyReady = !bTutorialActive || (!TutorialTitleText->GetText().IsEmpty() && !TutorialBodyText->GetText().IsEmpty() && !TutorialProgressText->GetText().IsEmpty());
+	return bVisibilityMatches && bInputTransparent && bCopyReady;
+}
+
+void UHeistHUDWidget::DebugDumpTutorialPresentationState() const
+{
+	const bool bPassed = IsTutorialPresentationContractSatisfied();
+	const FString Message = FString::Printf(
+		TEXT("[%s] Tutorial presentation: Active=%s Completed=%s Step=%s StepIndex=%d StepCount=%d CardWidget=%s CardVisible=%s TitleWidget=%s BodyWidget=%s ProgressWidget=%s "
+			 "Title='%s' Body='%s' Progress='%s' InputTransparent=%s Result=%s"),
+		*GetName(), IsValid(TutorialPlayerController) && TutorialPlayerController->IsLocalTutorialActive() ? TEXT("true") : TEXT("false"),
+		IsValid(TutorialPlayerController) && TutorialPlayerController->HasCompletedLocalTutorial() ? TEXT("true") : TEXT("false"),
+		IsValid(TutorialPlayerController) ? *TutorialPlayerController->GetLocalTutorialStepId().ToString() : TEXT("None"),
+		IsValid(TutorialPlayerController) ? TutorialPlayerController->GetLocalTutorialStepIndex() : INDEX_NONE,
+		IsValid(TutorialPlayerController) ? TutorialPlayerController->GetLocalTutorialStepCount() : 0, IsValid(TutorialCardContainer) ? TEXT("true") : TEXT("false"),
+		IsValid(TutorialCardContainer) && TutorialCardContainer->GetVisibility() != ESlateVisibility::Collapsed && TutorialCardContainer->GetVisibility() != ESlateVisibility::Hidden
+			? TEXT("true")
+			: TEXT("false"),
+		IsValid(TutorialTitleText) ? TEXT("true") : TEXT("false"), IsValid(TutorialBodyText) ? TEXT("true") : TEXT("false"),
+		IsValid(TutorialProgressText) ? TEXT("true") : TEXT("false"), IsValid(TutorialTitleText) ? *TutorialTitleText->GetText().ToString() : TEXT("None"),
+		IsValid(TutorialBodyText) ? *TutorialBodyText->GetText().ToString() : TEXT("None"), IsValid(TutorialProgressText) ? *TutorialProgressText->GetText().ToString() : TEXT("None"),
+		IsValid(TutorialCardContainer) && TutorialCardContainer->GetVisibility() != ESlateVisibility::Visible ? TEXT("true") : TEXT("false"), bPassed ? TEXT("PASS") : TEXT("FAIL"));
+	if (bPassed)
+	{
+		UE_LOG(LogHeistUI, Log, TEXT("%s"), *Message);
+	}
+	else
+	{
+		UE_LOG(LogHeistUI, Error, TEXT("%s"), *Message);
 	}
 }
 

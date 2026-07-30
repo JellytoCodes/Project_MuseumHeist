@@ -10,6 +10,7 @@
 
 class AHeistPaintingDisplayCaseActor;
 class AHeistObjectDisplayCaseActor;
+class AHeistPlayerController;
 class AHeistPlayerState;
 class APlayerController;
 class UHeistForgeryComponent;
@@ -586,6 +587,18 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
   public:
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|HUD", meta = (DevelopmentOnly))
 	static void DebugFirstPersonHUDDump(APlayerController* PlayerController);
+
+#pragma endregion
+
+#pragma region TutorialDebug
+
+  public:
+	static void DebugTutorialHelp(APlayerController* PlayerController);
+	static void DebugTutorialDump(APlayerController* PlayerController);
+	static void DebugTutorialReset(APlayerController* PlayerController);
+	static void DebugTutorialAdvance(APlayerController* PlayerController);
+	static void DebugTutorialSkip(APlayerController* PlayerController);
+	static void DebugTutorialTransition(APlayerController* PlayerController, FName EventId, FName StepId, int32 StepIndex, int32 StepCount, bool bActive, bool bCompleted, bool bResult);
 
 #pragma endregion
 

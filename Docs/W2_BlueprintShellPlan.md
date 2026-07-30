@@ -1,1539 +1,757 @@
-# Project_MuseumHeist — W2 Blueprint Shell Plan
+# Project_MuseumHeist — Blueprint Shell And Presentation Plan
 
-## Rev 5: W5 Title Menu And Lobby Addendum
+## Rev 6: Contract Run And Player Experience Foundation
+
+기준일: 2026-07-30
 
 기준 문서:
 
-- `AGENTS.md` Rev 9
-- `ClassManifest.md` Rev 8
-- `Museum_Heist_GDD.docx` 최신 Revision
+- `AGENTS.md` Rev 11
+- `ClassManifest.md` Rev 10
+- `Museum_Heist_GDD.docx` Rev 14
 
-이 문서는 Blueprint, Widget Blueprint, DataTable 및 Map에서 구성해야 하는 **Asset Shell과 Presentation Contract**를 정리한다.
+이 문서는 W2에서 시작된 Blueprint Shell 계획을 현재 게임 방향에 맞게 통합한 Presentation Contract다.
 
-Gameplay Rule, Authority, Validation, Replication은 C++가 소유한다.
+Gameplay Rule, Authority, Validation과 Replication은 C++가 소유한다.
 
-Blueprint는 다음만 담당한다.
+Blueprint와 Widget Blueprint는 다음을 담당한다.
 
-- Asset Assignment
+- Mesh / Material / Texture / Icon Assignment
 - Component Assembly
-- Mesh
-- Material
-- Camera Offset
-- Animation
-- Audio
-- Widget Layout
-- Visual Hook
+- First-Person Camera Socket Offset
+- Animation / Pose
+- Audio / VFX / Post Process
+- Widget Layout / Color / Binding / Transition
+- Map별 Actor Placement / Floor Plan Texture / World Bounds
 
 ---
 
-# 1. Current Project Direction
-
-Project_MuseumHeist는 Unreal Engine 5.8 기반의 1~4인 온라인 협동 1인칭 잠입·유물 위조 하이스트 게임이다.
-
-현재 Core Loop:
+# 1. Current Game Flow
 
 ```text
 Title Menu
 → Online Lobby
-→ Infiltration
-→ Painting Observation
-→ Full-Screen Forgery
-→ OpenCV Score
-→ Replica / Original Swap
-→ Guard Inspection
-→ Alert / Lockdown
-→ Shared Extraction
+→ Required Target / Loot Value Quota 확인
+→ First-Person Infiltration
+→ Walk / Sprint / Coin / Map으로 탐색
+→ 여러 Painting / Object Exhibit 반복 위조
+→ Original / Loose Loot 운반
+→ Guard Inspection / Alert / Lockdown
+→ 더 훔치기 또는 탈출 결정
+→ Shared Extraction Deposit
+→ Contract Outcome / Replica Recap
 ```
+
+한 매치는 15~25분을 목표로 한다.
+
+Surface Forgery는 20~45초, 기본 40초의 Speed Painting이다.
+
+Object Assembly는 25~35초, 기본 30초의 빠른 조립이다.
 
 ---
 
-# 2. Scope Removal Notice
+# 2. Presentation Is Required Gameplay
 
-기획 변경에 따라 Smoke Grenade와 플레이어 설치형 Trap 기능은 프로젝트 범위에서 제거됐다.
+다음 항목은 W8 Polish가 아니라 v1.0 Required Gameplay다.
 
-다음 C++ Class와 Blueprint 계획은 더 이상 유효하지 않다.
+- Walk / Sprint Animation과 Footstep 차이
+- Remote Player Display Name
+- Player Color / Crew Status / Original Carrier 표시
+- Team Status HUD
+- Owner-only Full-Screen Floor Plan Map
+- Required Target / Quota / Carried / Secured Value HUD
+- Guard Detection Warning
+- Stun / Arrest / Heavy / Carry / Escape Feedback
+- Forgery / Assembly 중 Remote Player Pose 또는 Icon
+- Shared Extraction과 Deposit Feedback
+- 실제 Replica를 보여주는 Result Recap
 
-```text
-AHeistSmokeProjectile
-AHeistSmokeCloudActor
-AHeistTrapActor
-AHeistGlueTrapActor
-AHeistNoiseTrapActor
-
-BP_HeistSmokeProjectile
-BP_HeistSmokeCloud
-BP_HeistGlueTrap
-BP_HeistNoiseTrap
-```
-
-다음 Gameplay 기능도 제거됐다.
+중요 상태는 다음 중 최소 두 채널로 표현한다.
 
 ```text
-Smoke Grenade
-Smoke Sight Blocking
-Glue Trap
-Noise Trap
-Trap Placement Cast
-Smoke QuickSlot
-Trap QuickSlot
-NoiseTrap SoundPing
+Local HUD / Screen Effect
+World Animation / Nameplate / Material
+Audio
 ```
 
-이 항목은 다음 상태로 간주하지 않는다.
-
-- Legacy
-- Deferred
-- Stretch
-- Post-v1.0
-- Regression Baseline
-
-향후 필요성이 다시 확정되면 신규 기획과 신규 Task로 재설계한다.
+로그만 출력되는 Player State는 완료로 취급하지 않는다.
 
 ---
 
-# 3. Blueprint Responsibility Rules
+# 3. Ownership Boundary
 
 ## C++가 소유
 
-- Gameplay Rule
-- Authority
-- Validation
-- Replication
-- Server RPC
-- State Machine
-- Score 계산
-- Inventory 확정 상태
-- QuickSlot 확정 상태
-- Display Case 확정 상태
-- Alert
-- Lockdown
-- Extraction Result
-- Team Result
+- Contract Assignment
+- Required Target
+- Loot Value Quota
+- Carried / Secured Value
+- Exhibit Assignment
+- Walk / Sprint 요청 검증
+- Status / Arrest / Escape State
+- Forgery / Assembly Score
+- Alert / Lockdown
+- Extraction Deposit
+- Team Result / Contribution
+- Widget 생성과 ViewModel Source
 
 ## Blueprint가 소유
 
-- Mesh Assignment
-- Material Assignment
-- Component Assembly
-- Camera Socket Offset
-- Widget Layout
-- Animation
-- Color
-- Icon
-- Sound
-- VFX
-- Presentation Hook
+- Skeleton / Animation Blueprint / Blend Space
+- Nameplate Widget Component 배치
+- Floor Plan Texture와 Marker Icon
+- Detection / Stun / Arrest / Carry VFX
+- Post Process Material
+- Audio Cue / MetaSound / Sound Class
+- Widget Layout, Binding, Color, Icon과 Animation
 
 ## Blueprint Graph에서 금지
 
-- Forgery Score 계산
-- Server Authority 판정
-- Original / Replica 확정
-- Inventory Mutation
-- Alert 변경
-- Lockdown 변경
-- Extraction 성공 판정
+- Contract Target 또는 Quota 확정
+- Secured Value 증가
+- Player Escape / Arrest 확정
+- Forgery Quality Score 계산
+- Guard Detection 또는 Alert 확정
+- Map에서 Guard / Loot 위치 탐색
 - 신규 Server RPC
-- Replicated State 직접 수정
-
-## Widget UI Design System
-
-기준 해상도는 `1920×1080`, UMG Designer DPI Scale은 `1.0`으로 통일한다.
-
-### 4px Base Grid
-
-- Margin, Padding, Gap, 고정 Width/Height는 기본적으로 4의 배수를 사용한다.
-- 기본 간격 Token은 `4 / 8 / 12 / 16 / 24 / 32`다.
-- 1px Border, 글꼴 자체 Metric, 정사각형 Aspect Ratio, Runtime 동적 크기는 예외다.
-- 4px Grid는 모든 값을 기계적으로 반올림하는 규칙이 아니라 Layout 간격과 크기 체계를 일관되게 만드는 기준이다.
-
-### Typography
-
-1080p PC 기준:
-
-```text
-Compact Metadata: 16
-Body / HUD:       20
-Subheading/Timer: 24
-Primary Score:    32
-Screen Title:     32
-```
-
-- 위 값은 Widget Designer의 `72 DPI equivalent` 표시값을 기준으로 한다.
-- Unreal Slate가 직렬화하는 96 DPI Point 값은 각각 `12 / 15 / 18 / 24`이며, Designer에서는 `16 / 20 / 24 / 32`로 표시된다.
-- 따라서 Asset 원시 속성값이 아니라 Designer Details Panel에 표시되는 크기를 UI Token의 Source of Truth로 사용한다.
-- 핵심 지시, 상호작용 Prompt, 본문은 기본 `20`을 사용한다.
-- `16`은 Item ID, 좌표, 보조 Key Guide처럼 중요도가 낮은 한 줄 정보에만 사용한다.
-- 중요한 Score와 Timer는 독립된 시각 요소로 유지하되, HUD Timer는 `24`, 최종 결과 Score는 `32`를 기본으로 한다.
-- Font Size 값은 4의 배수를 사용하되, 실제 가독성은 1080p PIE 캡처의 Ascender-to-Descender 높이로 확인한다.
-- Full Sentence는 행동 결과나 취소 조건을 설명해야 할 때만 사용한다.
-- 맥락만으로 이해 가능한 상태와 수치는 `LABEL  VALUE` 형식으로 표시한다.
-
-### Number Formatting
-
-- Forgery Score: 반올림된 정수 `n/100`
-- Countdown: `MM:SS` 또는 정수 초
-- Weight: 소수점 한 자리
-- 일반 Player-facing UI에는 두 자리 이상 소수점을 표시하지 않는다.
-- 정밀한 소수점 값은 Debug Log에서만 유지한다.
-
-### Forgery Score Color
-
-검사 판정 구간과 동일한 구간을 사용한다.
-
-```text
-90–100: Green
-70–89:  Lime
-50–69:  Amber
-30–49:  Orange
-0–29:   Red
-Pending: Neutral Gray
-```
-
-색상만으로 의미를 전달하지 않고 항상 `n/100` Text를 함께 표시한다.
-
-### User UI Scale
-
-- v1 설정 범위 목표는 `80%~130%`다.
-- `100%`를 기본값으로 유지하고, Layout은 최소 `130%`에서 잘림 없이 동작해야 한다.
-- 이 범위는 사용자 취향과 시청 거리 대응에는 유효하지만 완전한 접근성 목표는 아니다.
-- 접근성 인증 수준에서는 최소 기준 대비 `200%` 확대와 Reflow까지 별도로 검증해야 한다.
-- UI Scale은 Widget별 Render Transform이 아니라 전체 Layout Scale 또는 Custom DPI Scaling Rule로 적용한다.
+- Replicated State 직접 Mutation
 
 ---
 
 # 4. Player Character Blueprint
 
-## 권장 Asset
+권장 Asset:
 
 ```text
-BP_HeistPlayerCharacter
+/Game/Blueprints/Character/BP_HeistPlayerCharacter
 Parent: AHeistPlayerCharacter
 ```
 
-## Required Components
+Required Components:
 
-C++ 기본 Subobject를 유지한다.
-
-- Capsule Component
-- Character Movement
+- Capsule
 - Full Body Skeletal Mesh
-- First-Person Camera
-- Inventory Component
-- Interaction Component
-- Action Component
-- Forgery Component
-- Vision Component
-- Noise Emitter Component
-- Status Component
-- Tag Component
-- Customization Component
+- FirstPersonCamera
+- Character Movement
+- Tag / Status / Inventory / Interaction / Action
+- Forgery / Object Assembly
+- Vision / Customization / Noise Emitter
+- Remote Player Nameplate Widget Component
 
-Blueprint에서 동일한 Gameplay Component를 중복 생성하지 않는다.
+## First-Person
 
-## Camera
-
-- First-Person Camera는 Full Body Mesh Head Bone 또는 Socket에 부착한다.
-- Camera Offset은 실제 Character Mesh에 맞게 조정한다.
-- 기본 FOV는 90이다.
-- 별도 First-Person Arms는 사용하지 않는다.
+- Camera는 `FirstPersonCameraSocket`에 부착한다.
+- Owning Player와 Remote Player 모두 Full Body Mesh를 유지한다.
+- 얼굴 Clipping은 Socket Offset으로 해결한다.
 - Local Head를 자동으로 숨기지 않는다.
-- 얼굴 Clipping은 Camera Offset으로 해결한다.
-- SpringArm Gameplay Camera를 사용하지 않는다.
-- Top-Down Camera를 활성화하지 않는다.
+- Head Bob, Camera Roll과 Sprint FOV Kick을 사용하지 않는다.
 
-## Mesh
+## Walk / Sprint
 
-- Owning Player에서도 Full Body Mesh를 유지한다.
-- Remote Player에서도 동일한 Character Mesh가 보여야 한다.
-- 자연스러운 Shadow가 유지돼야 한다.
-- First-Person Camera가 Head 내부로 들어가지 않도록 Socket 위치를 조정한다.
+- Walk Base 목표: `300 cm/s`
+- Sprint Base 목표: `600 cm/s`
+- Sprint 기본 입력: `Left Shift` Hold
+- Stamina Bar 없음
+- Walk / Sprint Animation Blend를 Velocity로 표현한다.
+- Weight가 증가할수록 이동 속도, 호흡과 Footstep이 무거워진다.
+- Sprint 중 Footstep은 Walk보다 크고 자주 발생한다.
+- Inventory / Map / Forgery / Stun / Arrest / Escape 완료 중 Sprint Pose로 남지 않는다.
 
-## Compile Check
+## Required Remote Poses
 
-- Missing Component 없음
-- 중복 Camera 없음
-- 중복 Gameplay Component 없음
-- Parent Class 정상
-- Compile
-- Save
+- Idle / Walk / Sprint
+- Carrying Original
+- Heavy Carry
+- Forging
+- Assembling
+- Stunned
+- Arrested
+- Escaped 또는 Hidden
+
+Pose는 Gameplay State를 결정하지 않고 복제된 상태를 표현한다.
 
 ---
 
-# 5. Player Controller And Input
+# 5. Player Nameplate
 
-## Input Modes
+권장 Asset:
+
+```text
+/Game/Blueprints/UI/HUD/WBP_HeistPlayerNameplate
+Parent: UHeistPlayerNameplateWidget
+```
+
+Required Presentation:
+
+- Player Display Name
+- Player Color
+- 거리
+- Crew Status Icon
+- Required Target Carrier Icon
+
+Fallback Display Name:
+
+```text
+PLAYER {HeistPlayerId}
+```
+
+상태 후보:
+
+```text
+FORGING
+ASSEMBLING
+CARRYING
+HEAVY
+STUNNED
+ARRESTED
+ESCAPED
+```
+
+규칙:
+
+- Local Owning Player의 Nameplate는 표시하지 않는다.
+- Remote Player만 표시한다.
+- 기본 표시 범위는 `2~2,500 cm`다.
+- 원거리에서 Fade한다.
+- Guard, SoundPing, Loot에 같은 Nameplate 체계를 재사용하지 않는다.
+- 이름표가 벽을 통해 Guard 또는 Loot 위치를 노출하지 않도록 한다.
+
+---
+
+# 6. Main HUD
+
+권장 Asset:
+
+```text
+/Game/Blueprints/UI/HUD/WBP_HeistHUD
+Parent: UHeistHUDWidget
+```
+
+## P0 Layout
+
+```text
+Top Left
+- Required Target
+- Secured Value / Required Quota
+- Team Carried Value
+
+Top Center
+- Security Level
+- Lockdown Countdown
+
+Left or Right Team Rail
+- Player Name / Color / Crew Status
+- Original Carrier
+- Escaped / Arrested
+
+Center
+- Crosshair
+- Interaction Prompt
+- Detection Warning
+
+Bottom
+- Weight
+- Coin QuickSlot
+- Context Action / Temporary Feedback
+```
+
+## Contract Copy
+
+Raw Row Name 또는 Enum을 노출하지 않는다.
+
+예시:
+
+```text
+STEAL THE REQUIRED PAINTING.
+SECURE $8,500 / $12,000.
+THE CREW IS CARRYING $3,200.
+THE REQUIRED TARGET HAS BEEN SECURED.
+```
+
+## Team Status
+
+Forgery / Assembly Full-Screen 중에도 최소 다음은 유지한다.
+
+- Player Name
+- Arrested / Escaped
+- Required Target Carrier
+- Security Level
+
+---
+
+# 7. Floor Plan Map
+
+권장 Asset:
+
+```text
+/Game/Blueprints/UI/Map/WBP_HeistMap
+Parent: UHeistMapWidget
+```
+
+기본 입력:
+
+```text
+M
+```
+
+Map Mode에서 Move, Look, Interaction, Throw와 다른 UI 진입을 차단한다.
+
+Required Areas:
+
+- Map Title / Zone
+- Floor Plan Image
+- Local Player Marker
+- Teammate Marker와 Name / Color
+- Entrance / Extraction
+- Contract Target Gallery 또는 발견된 Required Target
+- Dropped Required Target
+- Arrested / Escaped Teammate State
+- Close Guide
+
+표시하지 않는 정보:
+
+- Guard 위치
+- Guard 시야 Cone
+- SoundPing
+- 미발견 Loose Loot
+- 비공개 Spawn 후보
+
+Map별 Data:
+
+```text
+FloorPlanTexture
+WorldMin
+WorldMax
+ZoneLabels
+DefaultExitMarkers
+```
+
+Map은 Navigation 도구이며 Gameplay Sensor가 아니다.
+
+---
+
+# 8. Status And Screen Feedback
+
+## Guard Detection
+
+- Crosshair 주변 또는 화면 가장자리의 Detection Build-up
+- Guard Notice Audio
+- Confirmed Detection 시 짧은 Alert Transition
+- 강한 Camera Shake 금지
+
+## Stun
+
+- 낮은 Desaturation
+- 짧은 Vignette
+- Audio Low-pass 또는 Ring
+- 남은 시간 또는 상태 Label
+- Remote Stunned Pose / Nameplate Icon
+- 상태 종료 후 Post Process와 Audio Filter 정리
+
+Player Stun은 Guard 또는 승인된 Environment Source만 사용한다.
+
+## Arrest
+
+- Stun과 구분되는 Cuffed / Disabled 화면
+- `YOU ARE ARRESTED` 또는 Rescue 가능 상태
+- Team HUD와 Nameplate에 `ARRESTED`
+- Forgery / Inventory / Map / Movement Context 정리
+
+## Carry / Heavy
+
+- Original Carrier Icon
+- Weight Gauge
+- 무거운 호흡 / Footstep
+- Remote Carry Pose
+- Drop / Pickup Audio와 Popup
+
+## Extraction
+
+- Cast Progress
+- Deposit Value 증가
+- Player `ESCAPED` 전환
+- 남은 Crew Team Rail 유지
+- Match End 전까지 Result 화면을 강제하지 않는다.
+
+색상 하나에만 의존하지 않고 Text / Icon / Audio를 함께 사용한다.
+
+---
+
+# 9. Input Modes
 
 ```text
 Gameplay
 Inventory
+Map
 Forgery
 ```
 
-## Gameplay Mode
+## Gameplay
 
-- Mouse Cursor 비활성
-- Game Input
-- Movement 활성
-- Look 활성
-- Interaction 활성
-- QuickSlot 활성
+- Cursor 숨김
+- Mouse Capture
+- Move / Look / Walk / Sprint
+- Interaction / Coin / Flashlight
 
-## Inventory Mode
+## Inventory
 
-- Mouse Cursor 활성
-- Game And UI 또는 UI 중심 입력
-- Look 제한
-- Inventory Widget 표시
-- Forgery Widget 숨김
+- Cursor 표시
+- Move / Look / Sprint 차단
+- Inventory Input Context만 활성
 
-## Forgery Mode
+## Map
 
-- Mouse Cursor 활성
-- Forgery Widget 표시
-- World View 완전 차단
-- Movement 차단
-- Look 차단
-- Jump 차단
-- Sprint 차단
-- Coin Throw 차단
-- Inventory 차단
-- World Interaction 차단
-- Draw / Erase / Submit / Cancel 허용
+- Cursor 또는 Map Navigation 입력 활성
+- Move / Look / Sprint 차단
+- Map Context만 활성
 
-Input Context를 중복 추가하지 않는다.
+## Forgery
 
-Mode 전환 시 기존 Context를 명시적으로 제거한다.
+- Cursor 표시
+- Move / Look / Sprint / Interaction / Coin 차단
+- Surface 또는 Object Forgery Context만 활성
+
+Mode 종료 시 다음을 복원한다.
+
+- Cursor
+- Mouse Capture
+- Movement / Look
+- Gameplay Mapping Context
+- HUD / QuickSlot 접근
 
 ---
 
-# 6. HUD Blueprint
+# 10. Surface Forgery Presentation
 
-## 권장 Asset
-
-```text
-WBP_HeistHUD
-Parent: UHeistHUDWidget
-```
-
-## Required Presentation
-
-- Crosshair
-- Interaction Prompt
-- Action Progress
-- Tool / QuickSlot
-- Weight
-- Objective
-- Player Status
-- Alert
-- Lockdown Countdown
-- Popup Feedback Layer
-
-## Widget Names
-
-C++ `BindWidget` 또는 `BindWidgetOptional` 이름 계약을 유지한다.
+권장 Asset:
 
 ```text
-Required:
-LockdownCountdownText
-
-Optional:
-ScoreText
-ToolText
-WeightText
-ActionText
-ObjectiveText
-StatusText
-AlertText
-InteractionPromptWidget
-ActionProgressWidget
-CrosshairContainer
-CrosshairIdleIndicator
-CrosshairFocusIndicator
-PopupFeedbackLayer
-```
-
-`LockdownCountdownText`는 중앙 상단 `AlertText` 바로 아래에 독립 배치한다.
-
-`WBP_HeistHUD` Class Default의 Alert Audio에는 다음 두 Slot을 지정한다.
-
-```text
-SuspenseMusic
-AlarmMusic
-```
-
-Suspicious/Searching은 SuspenseMusic, Alarmed/Lockdown은 AlarmMusic을 재생한다. 실제 음원 교체 전에는 별도 두 Placeholder Sound를 사용해 Layer 전환을 검증할 수 있다.
-
-경쟁형 Score UI는 숨기거나 제거한다.
-
-```text
-GapTracker
-RankText
-WinnerText
-```
-
-## HUD Action Presentation
-
-현재 Action Progress는 다음 두 Cast만 표시한다.
-
-```text
-Observation
-Escape
-```
-
-표시 예시:
-
-```text
-OBSERVING
-ESCAPING
-```
-
-삭제된 표시:
-
-```text
-PLACING TRAP
-ACTION PLACING TRAP
-MOVE TO CANCEL
-TrapPlacement
-```
-
-## `BP_RefreshHUDPresentation`
-
-Trap 상태 Parameter를 사용하지 않는다.
-
-현재 HUD Blueprint Event는 C++ 최신 시그니처에 맞춰 Refresh한다.
-
-C++ 시그니처 변경 후:
-
-1. WBP 열기
-2. Event Graph 이동
-3. `Refresh All Nodes`
-4. 삭제 Pin 제거
-5. Trap 분기 제거
-6. Compile
-7. Save
-
----
-
-# 7. Interaction Prompt Widget
-
-## 권장 Asset
-
-```text
-WBP_HeistInteractionPrompt
-Parent: UHeistInteractionPromptWidget
-```
-
-## Prompt Presentation
-
-- Target Label
-- Interaction Key
-- Available / Unavailable
-- Action Type
-- Progress Bar
-- Remaining Time
-- Cancel Hint
-- Observation Reference 표시
-
-## Suggested Bindings
-
-```text
-InteractionPromptContainer
-ActionProgressContainer
-TargetText
-KeyText
-AvailabilityText
-ActionTypeText
-ActionProgressBar
-ActionRemainingText
-CancelHintText
-ObservationReferenceContainer
-ObservationReferenceText
-```
-
-## Action Priority
-
-```text
-Observation
-→ Escape
-→ None
-```
-
-Trap Placement 분기는 존재하지 않는다.
-
-## Observation
-
-표시:
-
-```text
-OBSERVING
-```
-
-취소 Hint 예시:
-
-```text
-RELEASE E, MOVE, TAKE DAMAGE OR ARREST TO CANCEL
-```
-
-## Escape
-
-표시:
-
-```text
-ESCAPING
-```
-
-취소 Hint 예시:
-
-```text
-MOVE OR TAKE DAMAGE TO CANCEL
-```
-
-## Removed
-
-```text
-PLACING TRAP
-MOVE TO CANCEL
-TrapPlacement
-```
-
----
-
-# 8. Inventory Widget
-
-## 권장 Asset
-
-```text
-WBP_HeistInventory
-Parent: UHeistInventoryWidget
-```
-
-## Inventory Contract
-
-- 4×5 Grid
-- Slot Widget
-- Item Widget
-- Drag And Drop
-- Rotation
-- Valid Placement Preview
-- Invalid Placement Preview
-- Drop Request
-- QuickSlot Assignment
-- Server Confirmed Snapshot 표시
-
-Widget은 InventoryComponent를 직접 Mutation하지 않는다.
-
-Widget 요청 흐름:
-
-```text
-Widget
-→ AHeistPlayerController Request
-→ Server RPC
-→ UHeistInventoryComponent
-→ Replication
-→ ViewModel
-→ Widget Refresh
-```
-
-## Grid
-
-```text
-Columns: 4
-Rows: 5
-```
-
-## Item Presentation
-
-- Display Name
-- Icon
-- Quantity
-- Grid Size
-- Rotation
-- Drag Preview
-
-DataTable의 삭제된 Trap Row를 표시하는 Widget 분기를 남기지 않는다.
-
----
-
-# 9. QuickSlot Widget
-
-## 권장 Asset
-
-```text
-WBP_HeistQuickSlot
-Parent: UHeistQuickSlotWidget
-```
-
-## Current Contract
-
-QuickSlot은 Coin 하나만 지원한다.
-
-```text
-SlotType: Coin
-Input: Q
-ItemId: Throwable_Coin
-```
-
-표시 상태:
-
-```text
-Coin Assigned
-Coin Empty
-Coin Quantity
-```
-
-표시 예시:
-
-```text
-Q
-COIN
-x3
-```
-
-## Removed Slots
-
-```text
-Smoke Grenade
-Glue Trap
-Noise Trap
-E Key Smoke Slot
-R Key Trap Slot
-```
-
-Blueprint에서 다음을 제거한다.
-
-- Smoke Enum Switch
-- GlueTrap Enum Switch
-- Smoke Icon
-- Trap Icon
-- E Slot Container
-- R Slot Container
-- Trap Assignment Animation
-
-C++ Enum 변경 후:
-
-1. Blueprint 열기
-2. `Refresh All Nodes`
-3. 깨진 Enum Pin 제거
-4. Coin 분기만 유지
-5. Compile
-6. Save
-
----
-
-# 10. Forgery Widget
-
-## 권장 Asset
-
-```text
-WBP_HeistForgery
+/Game/Blueprints/UI/Forgery/WBP_HeistForgery
 Parent: UHeistForgeryWidget
 ```
 
-## Full-Screen Contract
+Required:
 
-- Owning Player에게만 표시
-- World View 완전 차단
-- 하나의 Widget Instance만 유지
-- Session 종료 시 숨김
-- Input Mode 복원
-- Mouse Capture 복원
-- HUD 복원
-- Inventory 접근 복원
-- QuickSlot 접근 복원
-
-## Required Areas
-
-- Reference Image
+- Reference
 - Drawing Canvas
 - Palette
-- Selected Color
-- Brush Preview
-- Eraser
+- Brush / Erase / Reset
 - Remaining Time
-- Local Preview Score
-- Submit
-- Cancel
-- Server Result
-- Alert Warning
-- Lockdown Countdown
+- Submit / Cancel
+- Security Level / Team Status
+- Validation Pending
+- Local Preview
 
-## Layout
+Pacing:
 
-Reference Image와 Drawing Canvas는 동일한 정사각형 영역을 사용한다.
+- 기본 40초
+- 20~45초 Data 범위
+- 언제든 조기 Submit
+- 유효 Stroke가 있으면 Timeout Auto Submit
+- 유효 Stroke가 없으면 Timeout Cancel
 
-권장 표시 크기:
+Reference Image:
 
-```text
-400×400
-```
+- Public Domain 또는 권리 확인 Source
+- 실제 작품을 15초에도 핵심 형태가 보이도록 직접 단순화
+- 일반적으로 3~5색
+- 못 그린 결과도 World Replica에 그대로 표시
 
-중요한 것은 실제 픽셀 크기보다 두 영역이 동일한 Aspect Ratio와 정규화 좌표계를 사용하는 것이다.
-
-## Palette
-
-- Template DataTable에서 2~8색 로드
-- Mouse Click 선택
-- Number Key 1~8 선택 가능
-- 임의 RGB Picker 사용 금지
-- Stroke마다 Palette Index 저장
-
-## Drawing
-
-- Mouse Down으로 Stroke 시작
-- Mouse Move로 Point 추가
-- Mouse Up으로 Stroke 종료
-- Eraser는 별도 Drawing Mode 또는 Background Index 처리
-- `R` 입력은 현재 Local Stroke, Erase 상태, Preview Score를 빈 Canvas 상태로 초기화
-- Remaining Time은 Owner에게 복제된 서버 `SessionEndServerTime` 기준 `MM:SS` 표시
-- `DrawingTimeRemainingText`는 Drawing Title 아래에 독립 배치하고 키 가이드와 결합하지 않음
-- `ForgeryAlertWarningText`는 상단 Header와 겹치지 않는 독립 Warning 영역에 배치
-- `ForgeryLockdownCountdownText`는 Warning 아래에 독립 배치
-- Payload에는 정규화 좌표 사용
-- Local Preview는 Throttle 적용 가능
-- Local Preview는 Server RPC를 발생시키지 않음
-
-## Score Presentation
-
-- Preview Score는 참고값
-- Final Score는 Server Result만 표시
-- Client 계산값을 서버 확정값처럼 표시하지 않음
-- Preview와 Final 모두 반올림된 정수 `SCORE  n/100` 형식 사용
-- `90 / 70 / 50 / 30` 경계를 기준으로 Text Color 변경
-- Score 설명 문장은 표시하지 않음
-- Pending 상태는 `SCORE  --/100`과 Neutral Gray 사용
+Quality Score는 Contract Value가 아니라 Guard Inspection Delay에 영향을 준다.
 
 ---
 
-# 11. Painting Display Case Blueprint
+# 11. Object Assembly Presentation
 
-## 권장 Asset
-
-```text
-BP_DisplayCase
-Parent: AHeistPaintingDisplayCaseActor
-```
-
-## Components
-
-권장 구성:
-
-- Root
-- Interaction Collision
-- Frame Mesh
-- Original Plane
-- Replica Plane
-- Optional Glass Mesh
-- Optional Highlight Mesh
-- Optional Audio Component
-
-## Original Plane
-
-- Reference Painting Texture 표시
-- 초기 상태에서 Visible
-- Replica 배치 이후 State에 맞게 숨김
-- Original이 World Actor로 따로 Spawn되지 않더라도 상호작용 상태는 C++ State로 관리
-
-## Replica Plane
-
-- 초기 Hidden
-- Replica 확정 이후 Visible
-- Dynamic Material 사용
-- Material Parameter:
+권장 Asset:
 
 ```text
-PaintingTexture
+/Game/Blueprints/UI/Forgery/WBP_HeistObjectAssembly
+Parent: UHeistObjectAssemblyWidget
 ```
 
-## UV
+Required:
 
-Original Plane과 Replica Plane의 UV는 0~1 정규화 상태여야 한다.
+- Core Preview
+- Part Tray
+- Socket Target
+- Orientation Step
+- Material 선택
+- Remaining Time
+- Submit / Cancel
+- Security Level / Team Status
 
-제출된 Runtime Texture가 왜곡되지 않아야 한다.
+Pacing:
 
-## Material
-
-권장 Material:
-
-```text
-M_HeistPaintingReplica
-```
-
-Parameter:
-
-```text
-PaintingTexture
-```
-
-필요하면 추가 Parameter:
-
-```text
-Score
-Coverage
-ColorAccuracy
-Tier
-```
-
-C++ Custom Primitive Data와 Material Parameter 계약이 중복되지 않도록 한다.
-
-## State Visual
-
-C++가 State를 확정한다.
-
-Blueprint는 State 변경 시 Visual만 적용한다.
-
-예:
-
-```text
-Secured
-- Original Visible
-- Replica Hidden
-
-ReplicaPlaced
-- Original Hidden
-- Replica Visible
-
-OriginalRemoved
-- Original Hidden
-- Replica Visible
-
-Suspected
-- Replica Visible
-- 경고 Visual 가능
-
-Alarmed
-- 경고 Light 또는 Material 가능
-```
-
-Blueprint에서 State를 직접 변경하지 않는다.
+- 기본 30초
+- 25~35초 Data 범위
+- 유효 Entry가 있으면 Timeout Auto Submit
+- World Actor를 Preview로 직접 변경하지 않음
 
 ---
 
-# 12. Sculpture Display Case Blueprint
+# 12. Exhibit And Loot World Readability
 
-## 권장 Asset
+Painting / Object Case:
 
-```text
-BP_SculptureDisplayCase
-Parent: AHeistSculptureDisplayCaseActor
-```
+- Required Target
+- Optional Active Exhibit
+- In Use
+- Replica Placed
+- Original Removed
+- Inspected / Suspected
 
-현재는 Visual Shell만 담당한다.
+상태 차이는 Material, Light, Icon, Animation 또는 Audio Hook으로 표현한다.
 
-허용:
+Required Target은 모든 Case를 동일한 HUD Marker로 덮지 않는다.
 
-- Interaction Collision 구성
-- Display Mesh
-- Pedestal Mesh
-- Glass Mesh
-- Material
-- Lighting
-- Scale
+Contract가 제공하는 정보 수준에 따라 Gallery / Zone 또는 발견 후 Exact Case만 표시한다.
 
-금지:
+Loose Loot:
 
-- Painting Forgery Graph 참조
-- `FHeistReplicaPaintingData` 참조
-- Painting Display Case State 참조
-- Drawing Widget 호출
-- Replica Texture 적용
-- Original Carry Gameplay
-- Gameplay Interaction 활성화
-
-Sculpture Assembly가 별도 Stretch Gate를 통과하기 전에는 Gameplay를 추가하지 않는다.
+- Interaction 가능 여부가 Grade보다 먼저 읽혀야 한다.
+- Value / Weight는 Focus Prompt 또는 Pickup Feedback에서 표시한다.
+- Random Spawn은 Map의 승인된 Spawn Point만 사용한다.
 
 ---
 
-# 13. Loot Actor Blueprint
+# 13. Guard Presentation
 
-## 권장 Asset
-
-```text
-BP_HeistLoot
-Parent: AHeistLootActor
-```
-
-또는 Loot 종류별 Visual Child Blueprint를 사용할 수 있다.
-
-Gameplay Rule은 C++와 DataTable이 소유한다.
-
-Blueprint는 다음을 담당한다.
-
-- Mesh
-- Material
-- Collision Shape
-- Pickup Visual
-- Highlight Visual
-- Optional Audio
-
-Painting마다 별도 Loot Gameplay Class를 만들지 않는다.
-
----
-
-# 14. Coin Projectile Blueprint
-
-## 권장 Asset
+권장 Asset:
 
 ```text
-BP_HeistCoinProjectile
-Parent: AHeistCoinProjectile
-```
-
-## Blueprint Responsibility
-
-- Coin Mesh
-- Collision
-- Trail
-- Impact Effect
-- Impact Sound
-- Visual Rotation
-
-## C++ Responsibility
-
-- Server Spawn
-- Owner
-- Instigator
-- Launch Direction
-- Projectile Speed
-- Impact Validation
-- SoundPing Report
-- Guard Distraction
-- Lifetime
-
-현재 Coin은 유일한 QuickSlot Gameplay Item이다.
-
----
-
-# 15. Vent Blueprint
-
-## 권장 Asset
-
-```text
-BP_HeistVent
-Parent: AHeistVentActor
-```
-
-## Components
-
-- Interaction Collision
-- Vent Mesh
-- Optional Door Mesh
-- Optional Indicator Light
-- Optional Audio
-
-## State Presentation
-
-- Locked
-- Active
-- Casting
-- Used
-
-C++가 Escape 가능 여부와 성공을 확정한다.
-
-Blueprint는 Visual과 Audio만 처리한다.
-
----
-
-# 16. Guard Blueprint
-
-## 권장 Asset
-
-```text
-BP_HeistGuard
+/Game/Blueprints/AI/BP_HeistGuardCharacter
 Parent: AHeistGuardCharacter
 ```
 
-## Components
+Required State Presentation:
 
-- Character Mesh
-- Collision
-- AI Perception 또는 C++ 구성 요소
-- Guard State Component
-- Noise Reaction Component
-- Patrol Path Component
-- Optional Indicator Widget
-- Optional Audio
+- Patrol
+- Investigate
+- Notice / Detection
+- Chase
+- Search
+- Inspect Exhibit
+- Stunned
+- Arrest
 
-## Blueprint Responsibility
+Guard는 코미디 캐릭터로 연기하지 않는다.
 
-- Mesh
-- Animation Blueprint
-- Material
+낮은 품질 Replica에 대한 진지한 반응이 Player가 만든 결과와 대비되어 자연스러운 코미디를 만든다.
+
+Player-facing Guard Radar 또는 SoundPing Marker는 만들지 않는다.
+
+---
+
+# 14. Shared Extraction
+
+권장 Asset:
+
+```text
+/Game/Blueprints/World/Actors/BP_HeistVent
+Parent: AHeistVentActor
+```
+
+Required Components:
+
+- Interaction Volume
+- Cast / Deposit Visual
+- Exit Light
 - Audio
-- Visual Indicator
-- StateTree Asset Assignment
+- Optional Map Marker Hook
 
-## C++ Responsibility
+Required Presentation:
 
-- State
-- Authority
-- Detection
-- Noise Reaction
-- Candidate Priority
-- Inspection Target
-- Alert Modifier
-- Movement Rule
-- StateTree Event
+- 사용 가능 / 사용 중 / Lockdown 제한
+- Player Deposit Value
+- Required Target Deposit
+- Individual Player Escaped
+- 남은 Crew
 
-## StateTree
-
-StateTree Editor 연결은 사용자가 담당한다.
-
-주요 State:
-
-```text
-Patrol
-InvestigateNoise
-ChasePlayer
-SearchLastKnownLocation
-ReturnToPatrol
-InspectExhibit
-```
-
-NoiseTrap 분기를 만들지 않는다.
+Blueprint는 Contract Outcome 또는 Secured Value를 직접 확정하지 않는다.
 
 ---
 
-# 17. Guard Waypoint And Patrol
+# 15. Result / Match Story
 
-## 권장 Asset
-
-```text
-BP_HeistGuardWaypoint
-Parent: AHeistGuardWaypoint
-```
-
-Map에서 Patrol Route를 구성한다.
-
-확인:
-
-- Route ID
-- 순서
-- 연결
-- Navigation
-- Guard Spawn과 접근 가능성
-
-Patrol Path Gameplay Rule은 C++가 소유한다.
-
----
-
-# 18. SoundPing UI Removal
-
-## 권장 Asset
+권장 Asset:
 
 ```text
-WBP_SoundPingMarker
-Parent C++ Class removed. Delete this asset in Unreal Editor.
-```
-
-## Required Presentation
-
-- Player-facing direction marker 없음
-- SoundPing HUD Layer 없음
-- Guard의 서버 소음 반응과 실제 공간 음향만 유지
-
-현재 표시 가능한 Type:
-
-```text
-Player-facing SoundPing Type 없음
-```
-
-삭제된 표시:
-
-```text
-NOISE TRAP
-```
-
-`Ping_NoiseTrap` Data Row와 UI 분기를 제거한다.
-
----
-
-# 19. Popup Feedback Widget
-
-## 권장 Asset
-
-```text
-WBP_HeistPopupFeedback
-Parent: UHeistUserWidgetBase
-```
-
-사용 예:
-
-- Inventory Full
-- Too Far Away
-- Action Blocked
-- Invalid Placement
-- QuickSlot Empty
-- Escape Not Available
-- Loot Request Rejected
-
-삭제 기능 관련 문구를 추가하지 않는다.
-
-```text
-Cannot Place Trap
-Trap Cooldown
-Smoke Unavailable
-```
-
----
-
-# 20. Result Widget
-
-## 권장 Asset
-
-```text
-WBP_HeistResult
+/Game/Blueprints/UI/Result/WBP_HeistResult
 Parent: UHeistResultWidget
 ```
 
-W6 기준으로 다음 정보를 표시한다.
+Required:
 
-## Team Result
+- Contract Success / Partial Haul / Contract Failed
+- Required Target Secured 여부
+- Secured Value / Quota
+- Extra Value
+- Escaped / Arrested Crew
+- Alert / Lockdown
+- Player Contribution
+- 실제 Surface Replica Texture
+- 실제 Object Assembly Replica
 
-- Mission Success
-- Partial Success
-- Failure
-- Target Artifact Value
-- Loose Loot Value
-- Average Forgery Score
-- Final Alert Level
-- Extracted Player Count
-- Arrested Player Count
-- Final Team Reward
+Funny Recap Label 예시:
 
-## Player Contribution
+```text
+MASTERPIECE
+CONVINCING ENOUGH
+QUESTIONABLE
+AN INCIDENT
+```
 
-- Player ID
-- Loose Loot Value
-- Forgeries Completed
-- Best Forgery Score
-- Guards Distracted
-- Teammates Rescued
-- Alarms Triggered
-- Escaped
-- Arrested
+Winner, Rank와 개인 Score 경쟁을 만들지 않는다.
 
-개인 경쟁 Rank나 Winner를 표시하지 않는다.
+Result는 실제 Match에서 생긴 사건과 Player가 만든 Replica를 보여준다.
 
 ---
 
-# 21. DataTable Import Contract
+# 16. Audio / VFX / Animation Minimum
 
-## `DT_ItemDataRow`
+## Player
 
-허용 예시:
+- Walk / Sprint Footstep
+- Heavy Footstep / Breathing
+- Pickup / Drop / Original Carry
+- Detection / Stun / Arrest / Escape
 
-```text
-Loot_RoyalCrown
-Loot_Painting
-Loot_AncientSword
-Throwable_Coin
-```
+## Forgery
 
-삭제 Row:
+- Observe
+- Brush / Erase / Submit / Timeout
+- Assembly Part / Socket / Rotation
+- Score Reaction
 
-```text
-Trap_Glue
-Trap_Noise
-Throwable_Smoke
-```
+## Guard
 
-## `DT_UsableItemDataRow`
+- Notice
+- Investigate
+- Chase
+- Inspect
+- Arrest
 
-현재 활성 Row:
+## Contract
 
-```text
-Throwable_Coin
-```
+- Target Assigned
+- Quota Progress
+- Required Target Secured
+- Quota Met
+- Deposit
+- Success / Partial / Failure
 
-삭제 Row:
+## Map / UI
 
-```text
-Trap_Glue
-Trap_Noise
-Throwable_Smoke
-```
+- Map Open / Close
+- Invalid Action
+- State Transition
 
-삭제 Class Reference:
-
-```text
-/Game/Blueprints/World/Actors/Trap/BP_HeistGlueTrap
-/Script/Project_MuseumHeist.HeistNoiseTrapActor
-/Game/Blueprints/World/Actors/Projectile/BP_HeistSmokeProjectile
-```
-
-## `DT_SoundPingDataRow`
-
-UI 전용 `bShowDirectionOnly`, `bAffectsPlayers`, `MarkerIcon` 필드는 제거한다.
-
-삭제 Row:
-
-```text
-Ping_NoiseTrap
-```
-
-## Unreal Editor DataTable Update
-
-`DataTableImports/*.json`이 Source of Truth다.
-
-JSON에서 Row를 제거한 뒤 실제 `.uasset` DataTable을 Reimport한다.
-
-JSON 기반 DataTable의 Row를 Editor에서 직접 삭제하지 않는다.
-
-순서:
-
-1. `DataTableImports/DT_ItemDataRow.json`에서 삭제 Row가 없는지 확인
-2. `DT_ItemData` 열기
-3. Reimport
-4. Save
-5. `DataTableImports/DT_UsableItemDataRow.json`에서 삭제 Row가 없는지 확인
-6. `DT_UsableItemData` 열기
-7. Reimport
-8. Save
-9. `DataTableImports/DT_SoundPingDataRow.json`에서 `Ping_NoiseTrap`이 없는지 확인
-10. `DT_SoundPingData` 열기
-11. Reimport
-12. Save
-13. Data Validation 실행
+Audio Asset 지정은 Blueprint 또는 Data가 담당한다.
 
 ---
 
-# 22. GameplayTag Cleanup
-
-다음 GameplayTag를 Blueprint 또는 DataTable에서 사용하지 않는다.
-
-```text
-State.InSmoke
-Action.PlacingTrap
-Event.Trap.Placed
-Event.Trap.Triggered
-Event.SoundPing.NoiseTrap
-AI.Stimulus.Trap
-Item.Trap
-Item.Trap.Glue
-Item.Trap.Noise
-Item.Throwable.Smoke
-```
-
-정리 순서:
-
-1. C++ Native Tag Field 제거
-2. Native Tag 등록 제거
-3. DataTable Category Tag 제거
-4. Blueprint GameplayTag Variable 확인
-5. GameplayTag Query 확인
-6. Compile
-7. Save
-8. PIE Log 확인
-
----
-
-# 23. Removed Blueprint Asset Cleanup
-
-Smoke 또는 Trap Blueprint가 Content Browser에 남아 있다면 다음 순서로 처리한다.
-
-1. Reference Viewer 실행
-2. 참조 Asset 목록 확인
-3. DataTable Soft Class Reference 제거
-4. Widget Enum 분기 제거
-5. Blueprint Variable Type 제거
-6. Spawn Class Property 제거
-7. Compile
-8. Save
-9. 삭제 대상 Blueprint 제거
-10. Folder에서 Fix Up Redirectors
-11. Save All
-
-C++ Parent가 먼저 삭제된 Blueprint는 다음 상태가 될 수 있다.
-
-- Parent Class None
-- Missing Class
-- Load Error
-- Broken Generated Class
-
-Reference Viewer와 Output Log를 반드시 확인한다.
-
----
-
-# 24. HUD And Widget Migration Checklist
-
-## HUD
-
-- Trap 상태 Pin 없음
-- `ACTION PLACING TRAP` 없음
-- Smoke 상태 없음
-- Coin Tool만 표시
-- Observation 표시 정상
-- Escape 표시 정상
-
-## Interaction Prompt
-
-- Observation Progress 정상
-- Escape Progress 정상
-- Trap Progress 없음
-- Prompt와 Progress Container Visibility 정상
-
-## QuickSlot
-
-- Coin Slot 1개
-- Q Key
-- Quantity 표시
-- Smoke / Trap Slot 없음
-
-## SoundPing
-
-- Player-facing Marker / Direction Widget 없음
-- Footstep / Glass Break / Coin Impact는 Guard 반응과 실제 공간 음향에만 사용
-- Noise Trap 없음
-
----
-
-# 25. Map Placement Contract
+# 17. Map Placement Contract
 
 Map은 다음을 담당한다.
 
-- Painting Display Case 배치
-- Sculpture Visual Shell 배치
-- Guard Spawn
-- Guard Route
-- Loot Spawn
-- Vent
-- Lighting
-- Navigation
-- Collision
+- Eligible Painting / Object Exhibit Case
+- Loot Spawn Point
+- Player Start
+- Guard Spawn / Waypoint / Patrol
+- Shared Extraction
+- Zone Label 기준
+- Floor Plan Texture와 World Bounds
+- Signage / Lighting / Navigation
 - Audio Volume
 
-Map에 삭제된 Trap Actor 또는 Smoke Actor를 배치하지 않는다.
+Map별 최소 검증:
 
-검색 대상:
+- Floor Plan Marker와 World 위치가 일치
+- Required Target Gallery가 오해를 만들지 않음
+- Walk / Sprint 동선과 Guard Noise 반응이 구분됨
+- Original Carrier가 Exit까지 이동 가능
+- 1~4 Player Spawn Collision 없음
+- Guard Nav와 Exhibit Inspection 접근 가능
 
-```text
-BP_HeistGlueTrap
-BP_HeistNoiseTrap
-BP_HeistSmokeProjectile
-BP_HeistSmokeCloud
-```
-
-World Outliner와 Reference Viewer에서 참조를 확인한다.
+삭제된 Smoke / Trap Actor를 배치하지 않는다.
 
 ---
 
-# 26. Build And Compile Sequence
-
-Smoke / Trap 정리 후 권장 순서:
-
-1. Unreal Editor 종료
-2. C++ Development Editor Build
-3. Unreal Editor 실행
-4. Missing Class Log 확인
-5. Item DataTable 정리
-6. UsableItem DataTable 정리
-7. SoundPing DataTable 정리
-8. WBP_HeistHUD 열기
-9. Refresh All Nodes
-10. Compile
-11. Save
-12. WBP_HeistInteractionPrompt 열기
-13. Refresh All Nodes
-14. Compile
-15. Save
-16. WBP_HeistQuickSlot 열기
-17. Refresh All Nodes
-18. Compile
-19. Save
-20. 관련 Blueprint 전체 Compile
-21. Fix Up Redirectors
-22. Save All
-23. PIE
-
----
-
-# 27. PIE Validation
-
-## Mode
-
-```text
-PIE
-2 Players
-Listen Server
-Separate Windows 권장
-```
-
-## Required Checks
-
-### Startup
-
-- Missing Class 없음
-- Invalid Enum 없음
-- Failed Import 없음
-- Item Data Validation PASS
-
-### Inventory
-
-- Inventory Open
-- Inventory Close
-- Item Drag
-- Item Rotation
-- Item Drop
-- Coin QuickSlot Assignment
-
-### Coin
-
-- Q 입력
-- Coin Projectile Spawn
-- Coin Impact
-- SoundPing Report
-- Guard Investigate
-
-### Observation
-
-- Display Case Target
-- Observation 시작
-- Progress 표시
-- 이동 시 취소
-- 완료 시 Forgery 진입
-
-### Forgery
-
-- Owner Client만 Widget 표시
-- Remote Client는 Widget 미표시
-- Draw
-- Palette
-- Preview
-- Submit
-- Server Final
-- Replica Texture 표시
-- Session Cleanup
-
-### Escape
-
-- Escape Phase 확인
-- Vent Interaction
-- Escape Progress
-- Movement Cancel
-- Escape 완료
-
-### Removed Feature Check
-
-- Trap UI 없음
-- Trap Actor 없음
-- Smoke Actor 없음
-- NoiseTrap Marker 없음
-- E / R Trap Slot 없음
-- `PLACING TRAP` 문구 없음
-
----
-
-# 28. PASS Criteria
-
-다음 조건을 모두 만족하면 Blueprint/Data Cleanup을 PASS로 본다.
-
-```text
-Development Editor Build 성공
-Blueprint Compile Error 0
-Missing Parent Class 0
-Invalid Enum 0
-Failed Import 0
-Removed Class Reference 0
-Item Data Validation PASS
-Coin QuickSlot 정상
-Coin Throw 정상
-Guard Coin Distraction 정상
-Observation 정상
-Forgery 정상
-Escape 정상
-Trap UI 없음
-Smoke Runtime 참조 없음
-NoiseTrap SoundPing 없음
-```
-
----
-
-# 29. Final Active Blueprint Shell List
+# 18. Active Asset Shell List
 
 ```text
 BP_HeistPlayerCharacter
 BP_DisplayCase
 BP_SculptureDisplayCase
-BP_HeistLoot
+BP_CeramicDisplayCase
+BP_HeistLootActor
 BP_HeistCoinProjectile
 BP_HeistVent
-BP_HeistGuard
+BP_HeistGuardCharacter
 BP_HeistGuardWaypoint
 
+WBP_TitleMenu
+WBP_Lobby
 WBP_HeistHUD
+WBP_HeistPlayerNameplate
+WBP_HeistMap
 WBP_HeistInteractionPrompt
 WBP_HeistInventory
 WBP_HeistInventorySlot
 WBP_HeistInventoryItem
 WBP_HeistQuickSlot
 WBP_HeistForgery
+WBP_HeistObjectAssembly
 WBP_HeistPopupFeedback
 WBP_HeistResult
-WBP_TitleMenu
-WBP_Lobby
 ```
 
-삭제된 Blueprint Shell:
+Removed:
 
 ```text
+WBP_SoundPingMarker
+SoundPingMarkerLayer
 BP_HeistSmokeProjectile
 BP_HeistSmokeCloud
 BP_HeistGlueTrap
 BP_HeistNoiseTrap
 ```
 
-이 문서의 Active 목록에 없는 Gameplay Blueprint를 신규로 생성하기 전에는 `AGENTS.md`, `ClassManifest.md`, 활성 Task를 먼저 확인한다.
+---
+
+# 19. Editor Build And Compile Order
+
+1. Development Editor Build
+2. `BP_HeistPlayerCharacter` Refresh / Compile / Save
+3. Painting / Object Case Blueprint Refresh / Compile / Save
+4. Guard / Vent / Loot Blueprint Compile / Save
+5. `WBP_HeistPlayerNameplate` Compile / Save
+6. `WBP_HeistMap` Compile / Save
+7. `WBP_HeistHUD` Compile / Save
+8. Forgery / Assembly / Inventory / Result Widget Compile / Save
+9. DataTable Reimport
+10. M01 / M02 / M03 Map Save
+11. Fix Up Redirectors
+12. 1 Player PIE
+13. 2 Player Listen Server PIE
+14. 4 Player Weekly Gate
 
 ---
 
-# 30. W5 Title Menu And Lobby Addendum
+# 20. Presentation PASS Criteria
 
-## Active Assets
-
-```text
-/Game/Maps/TitleMenuMap
-/Game/Maps/LobbyMap
-/Game/Blueprints/UI/Title/WBP_TitleMenu
-/Game/Blueprints/UI/Lobby/WBP_Lobby
-```
-
-## Title Menu Contract
-
-- Host Session 버튼
-- 6자리 Join Code 입력
-- Join Session 버튼
-- Create / Find / Join / Travel 진행 상태와 Timeout / Cancel / Retry 오류 표시
-- Cancel Session / Retry Session 버튼
-- Settings 열기 / 닫기 버튼
-- `FOV 70~110`, `Mouse Sensitivity 0.10~3.00`, `Master Volume 0.00~1.00` Slider와 독립 Value Text
-- 지원 Resolution 선택, `Fullscreen / Borderless / Windowed` Window Mode 선택
-- Apply Settings / Restore Defaults 버튼과 저장 결과 Text
-- Settings 값 저장과 적용 요청은 `UHeistTitleMenuViewModel`을 통해 `UHeistGameUserSettings`로 전달
-- Gameplay HUD, Player Slot, Map Selection을 배치하지 않음
-
-## Lobby Contract
-
-- Join Code 표시
-- Join Code 공유와 Steam Invite 안내
-- `SLOT 1~4` Player / Empty 표시
-- Host 전용 `M01 / M02 / M03 / Random` 선택
-- Travel 상태, 오류와 Retry 표시
-- Ready / Start Presentation
-- Leave 버튼
-- 모든 PlayerState Identity 변경과 접속자 추가·제거 시 Slot Snapshot 갱신
-
-## Runtime Ownership
-
-- Session Create / Find / Join / Leave와 Travel은 `UHeistGameInstance`가 소유한다.
-- Player Id는 서버가 현재 비어 있는 가장 낮은 `1~4` Slot을 할당한다.
-- Host Map Selection은 `AHeistGameState`가 복제한다.
-- Widget Blueprint는 Layout, Binding, Color, Animation만 담당한다.
-- `WBP_SoundPingMarker`와 Player-facing SoundPing Layer는 Active Asset이 아니다.
-
-## Current Handoff
-
-- `TASK-W5-001~005` 완료
-- `TEST-W5-001`, `TEST-W5-002` PASS
-- 다음 작업: `TASK-W5-006 Lobby → Map Travel → Return Travel`
-- Steam Development Package 2계정 검증: `TASK-W5-010`
+- Walk와 Sprint 속도 / Footstep / Animation이 구분된다.
+- Weight가 Walk와 Sprint에 반영된다.
+- Remote Player Name과 Crew Status를 식별할 수 있다.
+- Team HUD와 Nameplate 상태가 일치한다.
+- Map이 세 맵에서 Player / Team / Exit / Contract 위치를 올바르게 표시한다.
+- Map이 Guard / SoundPing / 미발견 Loot를 노출하지 않는다.
+- Detection / Stun / Arrest / Carry / Heavy / Escape가 화면과 Audio 또는 World에서 명확하다.
+- Surface Forgery가 20~45초 Speed Painting으로 동작한다.
+- 서로 다른 Case에서 여러 Player가 별도 Session을 진행할 수 있다.
+- Required Target / Carried / Secured / Quota HUD가 서버 Snapshot과 일치한다.
+- Individual Extraction 후 남은 Crew가 계속 플레이할 수 있다.
+- Result가 실제 Replica와 Contract Outcome을 표시한다.
+- Inventory / Map / Forgery / Arrest 종료 후 Input이 복원된다.
+- Crash, Softlock, Orphan Session Lock, Duplicate Original / Replica가 없다.

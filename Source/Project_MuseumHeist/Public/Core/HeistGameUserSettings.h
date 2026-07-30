@@ -63,6 +63,9 @@ class PROJECT_MUSEUMHEIST_API UHeistGameUserSettings : public UGameUserSettings
 	UFUNCTION(BlueprintCallable, Category = "Heist|Settings")
 	void SetMasterVolume(float NewMasterVolume);
 
+	bool HasCompletedTutorial() const;
+	void SetTutorialCompleted(bool bCompleted);
+
 	UFUNCTION(BlueprintCallable, Category = "Heist|Settings")
 	void ApplyHeistSettings(bool bCheckForCommandLineOverrides = false);
 
@@ -85,6 +88,9 @@ class PROJECT_MUSEUMHEIST_API UHeistGameUserSettings : public UGameUserSettings
 
 	UPROPERTY(Config)
 	float MasterVolume = DefaultMasterVolume;
+
+	UPROPERTY(Config)
+	bool bTutorialCompleted = false;
 
 	UPROPERTY(Transient)
 	TObjectPtr<USoundMix> MasterVolumeSoundMix;

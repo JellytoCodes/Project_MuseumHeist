@@ -1,14 +1,28 @@
 # Project_MuseumHeist — Codex Instructions
 
-## Rev 10: W5 Surface And Object Forgery Expansion
+## Rev 11: Contract Run And Player Experience Foundation
 
-기준일: 2026-07-27
+기준일: 2026-07-30
 엔진: Unreal Engine 5.8  
 현재 목표: 2026-09-20 W8 Final RC / 프로젝트 마무리
 
 이 문서는 프로젝트 엔지니어링 정책의 최상위 Source of Truth다.
 
 현재 프로젝트는 기존 경쟁형 Top-Down 구조에서 **1~4인 온라인 협동 1인칭 잠입·유물 위조 하이스트 게임**으로 전환됐다.
+
+Rev 11부터 한 판은 단일 목표를 한 번 위조하고 끝나는 Vertical Slice가 아니라 다음 두 계약 조건을 만족하는 15~25분 Contract Run으로 정의한다.
+
+```text
+Required Target
+- 매치가 지정한 핵심 작품을 반드시 반출한다.
+
+Loot Value Quota
+- Original과 Loose Loot의 Secured Value 합계로 계약 할당량을 달성한다.
+```
+
+한 매치에서 여러 Painting / Object 전시품을 반복적으로 관찰하고 위조할 수 있다. 플레이어가 언제 더 훔치고 언제 도망칠지 판단하는 Greed Decision이 전체 게임의 중심이다.
+
+플레이어 이름표, Walk / Sprint, Team Status, Floor Plan Map, Guard Detection, Stun / Arrest, Carry / Extraction의 화면·오디오·월드 피드백은 Polish가 아니라 v1.0 Required Gameplay Readability로 취급한다.
 
 Forgery Gameplay는 다음 두 축으로 구분한다.
 
@@ -28,19 +42,21 @@ Object Assembly Forgery
 
 Project_MuseumHeist는 Unreal Engine 5.8 C++ 기반의 **1~4인 온라인 협동 1인칭 잠입·유물 위조 하이스트 게임**이다.
 
-플레이어들은 박물관에 침입해 목표 유물을 관찰하고, 현장에서 Replica를 제작해 Original과 바꿔치기한 뒤, Guard가 위조품을 발견하고 Lockdown을 완료하기 전에 Original과 Loose Loot을 가지고 탈출한다.
+플레이어들은 박물관에 침입해 계약이 지정한 핵심 작품을 찾고, 여러 전시품의 Replica를 현장에서 빠르게 제작해 Original과 바꿔치기한다. Guard가 위조품을 발견하고 Lockdown을 완료하기 전에 Required Target을 반출하고 Loot Value Quota를 채운 뒤, 욕심을 더 낼지 현재 전리품을 확보하고 탈출할지 결정한다.
 
 ## Core Fantasy
 
 ```text
 박물관 침입
-→ 목표 그림 탐색
-→ 그림 관찰
-→ 제한된 시간 안에 위조 그림 제작
-→ 서버 OpenCV 유사도 판정
+→ 계약의 Required Target과 Loot Value Quota 확인
+→ 여러 전시품 탐색
+→ 20~45초 Speed Forgery 또는 Object Assembly
+→ 서버 품질 판정
 → Replica와 Original 교체
+→ 전리품 운반 / Secured Value 누적
 → Guard 검사 및 Alert 상승
-→ Original과 Loot을 들고 공동 탈출
+→ 더 훔치기 또는 탈출 결정
+→ Required Target과 Quota를 반출하고 팀 결과 확인
 ```
 
 ## 현재 방향에서 사용하지 않는 요소
@@ -68,6 +84,9 @@ Project_MuseumHeist는 Unreal Engine 5.8 C++ 기반의 **1~4인 온라인 협동
 - Trap 전용 QuickSlot
 - Player-facing SoundPing Marker
 - SoundPing Direction Widget
+- Guard 위치와 시야를 실시간 표시하는 Minimap / Radar
+- Stamina Bar와 Sprint 소모 자원
+- 고정 역할 또는 Mandatory 2-player Interaction
 
 ---
 
@@ -78,12 +97,10 @@ Project_MuseumHeist는 Unreal Engine 5.8 C++ 기반의 **1~4인 온라인 협동
 1. `AGENTS.md`
 2. `ClassManifest.md`
 3. `Museum_Heist_GDD.docx`
-   - 본문: 게임 설계
-   - Appendix A: Current Implementation Baseline
-   - Appendix B: First-Person Conversion Audit
-   - Appendix C: Pivot Migration Plan
-   - Appendix D: Execution Roadmap
-   - Appendix E: Blueprint / Widget Shell Plan
+   - Part I Section 1~20: 제품 방향, 범위, 기존 주차와 Release 운영
+   - Part II Section 21~42: Character, Inventory, Level Design, AI, Forgery, Network, UI, Audio, DataTable, QA 상세
+   - Part III Section 43~55: Contract Run, Player Experience, Level/Data 상세와 W6~W8 Execution
+   - Appendix A~C: Terminology, Removed / Excluded / Stretch, Comprehensive Definition of Done
 4. `Docs/W2_BlueprintShellPlan.md`
 
 하위 문서가 상위 문서와 충돌하면 구현 전에 상위 문서를 먼저 수정한다.
@@ -100,16 +117,13 @@ Title Menu
 → Lobby
 → Ready Countdown
 → First-Person Infiltration
-→ Target Artifact 탐색
-→ Painting Observation
-→ Owner-only Full-Screen Forgery
-→ 서버 Forgery Score 판정
-→ Replica 배치
-→ Original 회수
-→ Loose Loot 추가 루팅
-→ Guard Inspection
-→ Alert / Lockdown
-→ Shared Extraction
+→ Required Target / Loot Value Quota 확인
+→ 전시품과 Loose Loot 탐색
+→ Painting Speed Forgery 또는 Object Assembly
+→ 서버 Quality Score 판정 / Replica 배치 / Original 회수
+→ Carry Value 증가 / Guard Inspection / Alert
+→ 다른 전시품을 반복해서 노리거나 탈출 결정
+→ Shared Extraction에서 전리품 Secured
 → Team Result / Player Contribution
 ```
 
@@ -122,8 +136,13 @@ Title Menu
 - 별도 Title Menu Level
 - 별도 Online Lobby Level
 - Full First-Person
-- 고정 박물관 맵 1개
-- 고정 계약 1개
+- 고정 박물관 맵 3개
+- 고정 Contract Archetype 1개
+- 매치별 Required Target 1개
+- Player Count 기반 Loot Value Quota
+- Server-seeded Exhibit Assignment / Spawn Variation
+- 한 매치에서 Surface / Object Forgery를 여러 번 반복하는 Contract Run
+- 목표 플레이 시간 15~25분
 - `TitleMenu → Lobby → ReadyCountdown → InGame → End`
 - Painting Target Artifact
 - Surface Forgery Template 36개
@@ -150,13 +169,20 @@ Title Menu
 - Loose Loot
 - 4×5 Grid Inventory
 - Weight Penalty
+- Walk / Sprint와 속도별 Footstep Noise
 - Coin Guard Distraction
+- Remote Player Nameplate / Team Status
+- Owner-only Full-Screen Floor Plan Map
+- Guard Detection / Stun / Arrest / Carry / Escape Presentation
+- Contract Target / Carried Value / Secured Value / Quota HUD
 - Shared Extraction
+- Individual Extraction Deposit와 남은 Crew 진행
 - Team Success
 - Partial Success
 - Failure
 - Team Result
 - Player Contribution
+- 실제 Replica Painting / Object를 보여주는 Match Recap
 - 1인 완주
 - 2~4인 멀티플레이 완주
 - Development Build 패키징
@@ -191,6 +217,9 @@ Title Menu
 - Third-Person Gameplay
 - 별도 First-Person Arms
 - 복잡한 Hand Interaction
+- Guard 위치, 시야 Cone 또는 SoundPing을 표시하는 Minimap / Radar
+- Stamina Resource
+- Mandatory Class / Role Lock
 
 ## Stretch
 
@@ -224,6 +253,7 @@ Smoke 및 Trap 계열 기능은 Stretch 목록에 포함하지 않는다.
 - Widget Blueprint는 Layout, Animation, Color, Icon, Binding만 담당한다.
 - DataTable과 DataAsset은 반복 데이터와 밸런스 값을 담당한다.
 - Map은 Actor 배치, 공간 구성, Lighting, Navigation을 담당한다.
+- Map Presentation Data는 Floor Plan Texture, World Bounds, Zone Label, Exit Marker 기준만 담당한다.
 - `.uasset`은 Unreal Editor 또는 명시적으로 승인된 MCP 경로로만 수정한다.
 - `.umap`은 사용자가 명시적으로 요청한 경우에만 수정한다.
 - 불필요한 Manager, Service, Factory, Processor, Subsystem을 추가하지 않는다.
@@ -231,6 +261,11 @@ Smoke 및 Trap 계열 기능은 Stretch 목록에 포함하지 않는다.
 - Manifest에 없는 타입을 활성 Task에서 임의 생성하지 않는다.
 - 미래 주차의 전체 시스템을 선행 구현하지 않는다.
 - 현재 기획에서 삭제된 기능을 호환성 명목으로 다시 추가하지 않는다.
+- 플레이어의 진행 판단에 영향을 주는 Runtime State는 화면, 월드, 오디오 중 최소 두 채널로 피드백한다.
+- Player Name, Crew Status, Contract Progress, Alert, Stun / Arrest, Original Carrier와 Extraction 상태를 로그 전용 또는 숨은 상태로 남기지 않는다.
+- Contract Value와 Forgery Quality Score를 같은 수치로 취급하지 않는다.
+- Required Target / Loot Value Quota / Secured Value / Contract Outcome은 서버가 확정한다.
+- 고정 역할을 만들지 않으며 모든 Player가 Forgery, Assembly, Carry, Loot, Coin, Map과 Extraction을 사용할 수 있다.
 
 ## Surface Forgery / Object Assembly Boundary
 
@@ -304,6 +339,12 @@ Client가 직접 확정할 수 없는 항목:
 - Inventory Item Mutation
 - QuickSlot Assignment
 - Coin 사용 결과
+- Contract Assignment
+- Required Target
+- Loot Value Quota
+- Carried / Secured Value
+- Contract Outcome
+- Player Escape Deposit
 
 Client Preview는 확정값으로 취급하지 않는다.
 
@@ -332,6 +373,79 @@ Client Preview는 확정값으로 취급하지 않는다.
 - Sprint Camera Effect는 v1.0에서 사용하지 않는다.
 - Inventory와 Forgery 진입 시 Cursor와 UI Input Mode를 활성화한다.
 - UI 종료 시 Mouse Capture, Look, Movement, Interaction Context를 복원한다.
+
+---
+
+# 7A. Player Locomotion Rules
+
+- 기본 Gameplay 이동은 Walk와 Sprint 두 Pace를 지원한다.
+- Walk는 잠입과 낮은 Footstep Noise를 위한 기본 Pace다.
+- Sprint는 `Left Shift` Hold 입력을 기본으로 하며 빠른 이동과 큰 Footstep Noise를 발생시킨다.
+- Sprint는 Stamina를 소비하지 않는다. v1.0의 이동 선택 비용은 소음과 Loot Weight다.
+- 기본 목표값은 Walk `300 cm/s`, Sprint `600 cm/s`다.
+- Weight Penalty는 Walk와 Sprint에 각각 적용한다.
+- 기본 목표 공식은 다음과 같다.
+
+```text
+ResolvedWalkSpeed = Clamp(300 - TotalCarryWeight × 7.5, 150, 300)
+ResolvedSprintSpeed = Clamp(600 - TotalCarryWeight × 15, 250, 600)
+```
+
+- 정확한 수치는 Balance Data가 소유하며 플레이 테스트에서 조정한다.
+- Walk Footstep 기본 반경은 `500 cm`, Sprint Footstep 기본 반경은 `1,000 cm`다.
+- Inventory, Map, Surface Forgery, Object Assembly, Stun, Arrest, Escape 완료와 World Restriction 중에는 Sprint를 허용하지 않는다.
+- Sprint 요청과 서버 확정 이동 속도는 Weight, Match Phase와 Player State를 검증한다.
+- Head Bob, Camera Roll, Sprint FOV Kick과 Stamina UI는 v1.0에서 사용하지 않는다.
+
+---
+
+# 7B. Player Identity And Team Readability Rules
+
+- `AHeistPlayerState`가 Platform Display Name, Heist Player Id, Player Color와 Crew Status의 Source of Truth다.
+- Display Name을 사용할 수 없으면 `PLAYER {HeistPlayerId}`를 사용한다.
+- Remote Player는 머리 위 Nameplate를 표시한다.
+- Nameplate는 Player Name, Player Color, 거리와 현재 핵심 상태 Icon을 표시할 수 있다.
+- 핵심 상태는 `Active`, `Forging`, `Assembling`, `CarryingOriginal`, `Heavy`, `Stunned`, `Arrested`, `Escaped`를 구분한다.
+- 이름표는 Local Owning Player 자신에게 표시하지 않는다.
+- 이름표는 일반적으로 `2~2,500 cm` 범위에서 표시하고 원거리에서 Fade한다.
+- 벽을 통과하는 Guard, Loot 또는 SoundPing Marker는 추가하지 않는다.
+- Main HUD Team Status는 연결된 모든 Player의 Name, Color, Crew Status, Original Carrier와 Escape / Arrest 상태를 항상 요약한다.
+- Forgery 또는 Assembly Full-Screen 중에도 최소 Team Status와 Alert Warning을 유지한다.
+
+---
+
+# 7C. Floor Plan Map Rules
+
+- v1.0은 Minimap 대신 Owner-only Full-Screen Floor Plan Map을 사용한다.
+- 기본 입력은 `M` Hold 또는 Toggle이며 별도 `Map` Input Mode로 관리한다.
+- Map은 Local Player, Teammate, 출구, Zone Label, Contract Target Gallery, 발견된 Required Target, Dropped Original과 Extracted / Arrested Teammate를 표시할 수 있다.
+- Contract가 정확한 Case 위치를 제공하지 않는 경우 Target Gallery 또는 Zone만 표시한다.
+- Map은 Guard 위치, Guard 시야 Cone, SoundPing, 미발견 Loose Loot과 비공개 Spawn을 표시하지 않는다.
+- Fixed Map별 Floor Plan Texture와 World Bounds / UV Projection Data를 사용한다.
+- Map 표시 중 Move, Look, Interaction, Throw와 다른 UI 진입을 차단하고 종료 시 Gameplay Input Mode를 복원한다.
+- Map Widget은 Gameplay State를 변경하지 않는다.
+
+---
+
+# 7D. Status And Feedback Rules
+
+- Gameplay 판단에 중요한 상태는 최소 두 개의 Feedback Channel을 사용한다.
+
+```text
+Local Screen / HUD
+World Presentation / Animation / Nameplate
+Audio
+```
+
+- Guard Detection은 Detection Build-up, 방향을 강제하지 않는 화면 Warning과 Notice Audio를 제공한다.
+- Player Stun은 Guard 또는 승인된 Environment Source만 적용할 수 있으며 PvP 공격에서 발생하지 않는다.
+- Stun 중에는 Movement, Look 또는 Action Lock 범위를 서버 상태와 동일하게 적용하고 남은 시간을 HUD에 표시한다.
+- Stun Presentation은 Vignette, 낮은 Desaturation, 짧은 Audio Low-pass 또는 Ring, Remote Pose / Nameplate Icon을 사용한다.
+- 강한 Blur, 지속 Camera Shake와 색상 하나에만 의존하는 경고는 사용하지 않는다.
+- Arrest는 Stun과 구분된 Cuffed / Disabled Presentation, Team Status, Rescue Prompt 또는 Final State를 가진다.
+- Original Carry와 Heavy 상태는 HUD, Nameplate Icon, Movement / Footstep Audio와 Remote Carry Pose로 식별할 수 있어야 한다.
+- Escape 완료 Player는 Team Status에서 `ESCAPED`로 유지하고 남은 Crew 상태를 관찰한다.
+- 상태 해제, Arrest 해제, Match End와 Lobby Return에서 Post Process, Audio Filter, Input Lock과 Widget을 정리한다.
 
 ---
 
@@ -478,15 +592,19 @@ Escape 취소 조건:
 
 # 10. Surface Forgery Rules
 
-## Match Template Selection
+## Match Exhibit / Template Assignment
 
-- 서버는 현재 Map Pool의 Surface Template을 매치당 하나만 확정한다.
-- 선택은 Pool별 Shuffle Bag을 사용하며, 한 Cycle 안에서 같은 Template을 다시 선택하지 않는다.
-- 재충전 시 직전 Cycle의 최근 3개 Template을 첫 선택 후보에서 제외한다.
-- 선택된 Template Snapshot은 모든 Client에 복제한다.
-- 선택된 Reference Image는 활성 Objective Target Painting Case의 Original World Visual에만 적용한다.
-- 비목표 Painting Case의 Original World Visual을 현재 계약 Template으로 덮어쓰지 않는다.
-- Lobby 복귀 또는 Selection Clear 시 Original World Visual은 Blueprint가 지정한 기준 Material로 복원한다.
+- 서버는 현재 Map의 Eligible Exhibit Case와 Contract Definition으로 매치별 Exhibit Assignment를 확정한다.
+- Required Target Case는 반드시 하나 지정한다.
+- Optional Painting / Object Case는 Player Count와 Loot Value Quota가 요구하는 수량만 활성화한다.
+- Surface Template 선택은 Map Pool별 Shuffle Bag을 사용하며 한 Match Assignment 안에서 같은 Template을 중복 사용하지 않는다.
+- Shuffle Bag 재충전 시 직전 Cycle의 최근 3개 Template을 첫 선택 후보에서 제외한다.
+- Object Assembly Template은 별도 Family Pool과 Shuffle Bag을 사용한다.
+- Assignment는 `CaseId`, `ArtifactId`, `ForgeryType`, `TemplateId`, `ArtifactValue`, `bRequiredTarget`을 포함한다.
+- Assignment Snapshot과 Contract Snapshot은 모든 Client에 복제한다.
+- 선택된 Reference Image는 해당 Assignment를 받은 Painting Case의 Original World Visual에만 적용한다.
+- 비활성 Case 또는 다른 Case의 Original World Visual을 현재 Assignment로 덮어쓰지 않는다.
+- Lobby 복귀 또는 Contract Clear 시 Original World Visual은 Blueprint가 지정한 기준 Material로 복원한다.
 
 ## Session Ownership
 
@@ -523,6 +641,18 @@ Escape 취소 조건:
 - Cancel을 허용한다.
 - Push-To-Talk를 허용한다.
 - Pause를 허용한다.
+
+## Speed Painting Pacing
+
+- Surface Forgery의 목표 시간은 `20~45초`, 기본값은 `40초`다.
+- 플레이어는 남은 시간과 관계없이 언제든 현재 Drawing을 Submit할 수 있다.
+- Timeout은 유효 Stroke가 하나 이상 있으면 현재 Drawing을 자동 Submit한다.
+- 유효 Stroke가 없으면 Timeout Cancel로 처리한다.
+- 낮은 Score는 즉시 Match Failure가 아니라 짧은 Guard Inspection Delay와 Alert Escalation으로 이어진다.
+- Reference Image는 약 15초 Drawing으로도 핵심 실루엣을 알아볼 수 있도록 단순화한다.
+- Template Palette는 2~8색을 허용하되 일반적인 Release Template은 3~5색을 목표로 한다.
+- 실제 작품 기반 Reference는 Public Domain 또는 사용 권한이 확인된 Source만 사용하며 직접 단순화한 파생 이미지를 제작한다.
+- Forgery Quality Score는 Loot Value Quota에 직접 더하지 않는다.
 
 ## Stroke Transport
 
@@ -678,6 +808,9 @@ Jewelry, Fossil 및 기타 Family는 별도 Numbered Task 승인 전 활성화�
 - Part 선택, Socket 선택, 승인된 회전, Submit, Cancel, Push-To-Talk와 Pause를 허용한다.
 - 조립 화면은 로컬 Preview Component를 사용하며 World Actor를 직접 변경하지 않는다.
 - Session 종료 시 Gameplay Input Mode와 HUD 접근을 Surface Forgery와 동일한 원칙으로 복원한다.
+- Object Assembly 목표 시간은 `25~35초`, 기본값은 `30초`다.
+- 플레이어는 언제든 현재 Assembly를 Submit할 수 있다.
+- Timeout은 현재 유효 Entry가 하나 이상 있으면 현재 Payload를 자동 Submit하고, 유효 Entry가 없으면 Cancel 처리한다.
 
 ## Server Authority And Payload
 
@@ -740,6 +873,69 @@ Session 종료, Cancel, Timeout, Arrest, Disconnect, Match End, Owner EndPlay �
 
 ---
 
+# 10B. Contract Run Rules
+
+## Contract Definition
+
+- v1.0은 하나의 Contract Archetype을 사용한다.
+- 각 Match는 `Required Target 1개 + Loot Value Quota 1개`를 확정한다.
+- Required Target은 Painting 또는 Object Assembly Exhibit가 될 수 있다.
+- Required Target의 Artifact Value는 Loot Value Quota에 포함된다.
+- Quota는 Required Target만 훔쳐서는 일반적으로 달성할 수 없도록 Data Validation한다.
+- Player Count가 증가하면 Quota와 활성 Optional Exhibit 수를 Data로 조정한다.
+- Forgery Time 자체는 Player Count에 따라 크게 늘리지 않는다.
+
+## Value States
+
+```text
+Carried Value
+- 현재 Active Player가 운반 중인 Original과 Loose Loot의 합계
+
+Secured Value
+- Escape Deposit가 완료되어 Match Result에 보존된 가치
+
+Required Quota
+- Contract Success에 필요한 Secured Value
+```
+
+- Carried Value는 체포, Drop, Disconnect 또는 전원 실패 전에 Secured Value로 간주하지 않는다.
+- Individual Player가 Shared Extraction을 완료하면 그 Player의 유효 전리품을 Secured Value에 Deposit하고 Player를 `Escaped`로 전환한다.
+- 먼저 탈출한 Player는 다시 Match에 복귀하지 않는다.
+- 남은 Crew는 계속 다른 전리품을 확보하거나 탈출할 수 있다.
+- Required Target Original이 Secured되어야 Contract Success가 가능하다.
+
+## Match End And Outcome
+
+- Match는 Active Player가 없거나, Lockdown / Match Timer의 종료 조건이 충족되거나, 서버가 승인한 Team End 조건이 충족될 때 끝난다.
+- Outcome과 Crew Survival은 분리해 표시한다.
+
+```text
+Contract Success
+- Required Target Secured
+- Secured Value >= Required Quota
+
+Partial Haul
+- Required Target Secured
+- Secured Value < Required Quota
+
+Contract Failed
+- Required Target 미반출
+- 전원 체포 또는 다른 Terminal Failure
+```
+
+- 모든 Crew 탈출, 일부 Arrest, Alert Level, 최고 / 최악 Replica와 Extra Value는 별도 Recap으로 표시한다.
+- 낮은 Forgery Score는 Contract Value를 직접 삭제하지 않고 Guard Pressure를 높인다.
+- Result는 경쟁 Rank를 만들지 않으며 팀이 만든 Replica와 발생한 사건을 보여주는 Match Story로 사용한다.
+
+## Failure-forward
+
+- 서툰 Replica와 불완전한 Assembly도 서버 Validation을 통과하면 World에 배치한다.
+- 실수는 가능한 한 즉시 Match Failure가 아니라 Guard Investigation, Alert, Drop, Rescue 또는 급한 탈출 상황을 만든다.
+- Guard와 Museum Presentation은 진지하게 유지하고, 코미디는 Player 행동과 실제 Replica 결과에서 발생하게 한다.
+- 고정 Painter, Lookout, Carrier 역할을 강제하지 않는다.
+
+---
+
 # 11. SoundPing Rules
 
 현재 SoundPing 시스템은 Guard가 서버에서 소음에 반응하기 위한 Gameplay Event로 사용한다.
@@ -772,7 +968,7 @@ Player-facing SoundPing Marker, Direction Widget 및 HUD Layer는 사용하지 �
 
 SoundPing Event는 Client HUD 표시를 위해 복제하지 않는다.
 
-StunHit은 현재 PvE 기획에서 실제 사용 여부를 별도 점검한다. 미사용이 확정되면 관련 Enum, Tag, Data Row, UI 분기를 제거한다.
+StunHit은 Guard 또는 승인된 Environment Source가 Player / Guard에 Stun을 확정했을 때의 서버 전용 Noise Event로만 사용할 수 있다. PvP 공격 Source와 Player-facing Direction Marker에는 사용하지 않는다.
 
 ---
 
@@ -808,6 +1004,7 @@ GameplayTag를 삭제하기 전에 관련 DataTable, Blueprint, Config 참조를
 ```text
 Gameplay
 Inventory
+Map
 Forgery
 ```
 
@@ -820,18 +1017,20 @@ Context 전환 시:
 5. Cursor와 Mouse Capture를 현재 Mode에 맞게 설정한다.
 6. 종료 시 이전 Gameplay Context를 복원한다.
 
+`Map` Mode는 Inventory와 Forgery와 동시에 활성화하지 않는다.
+
 ---
 
 # 14. C++ / Blueprint / Data / Map Responsibility
 
 | 영역 | 책임 |
 |---|---|
-| C++ | Rule, State, Authority, Validation, Replication, Stable API |
-| Blueprint | Mesh, Material, Camera Position, Component Assembly, Visual Hook |
+| C++ | Rule, State, Authority, Validation, Replication, Contract Assignment, Stable API |
+| Blueprint | Mesh, Material, Camera Position, Component Assembly, Animation, Audio, VFX, Visual Hook |
 | Widget Blueprint | Layout, Binding, Animation, Presentation |
-| ViewModel / C++ Widget | UI State Exposure, Request Routing |
-| DataTable / DataAsset | Artifact, Template, Guard, Balance, Scaling Data |
-| Map | Painting/Sculpture Case, Guard Route, Loot, Exit, Lighting, Navigation |
+| ViewModel / C++ Widget | HUD, Nameplate, Map, Status, Result State Exposure와 Request Routing |
+| DataTable / DataAsset | Contract, Artifact, Template, Guard, Balance, Map Presentation, Scaling Data |
+| Map | Painting/Object Case, Guard Route, Loot Spawn, Exit, Zone, Lighting, Navigation |
 
 ## UI Copy Rules
 
@@ -852,6 +1051,9 @@ Context 전환 시:
 - Lockdown 변경
 - Extraction 성공 판정
 - Team Result 확정
+- Contract Assignment / Quota / Secured Value 확정
+- Map에서 Guard / Loot Sensor 정보를 생성
+- Player Status의 서버 확정 State를 Widget Graph에서 변경
 - 신규 Server RPC
 - Replicated Gameplay State 직접 변경
 - Inventory 확정 Mutation
@@ -1066,9 +1268,9 @@ Reference Viewer와 회귀 확인 후 별도 Cleanup Task에서 제거한다.
 
 # 20. Current Phase
 
-W3는 완료됐다.
+W3~W5는 완료됐다.
 
-현재 실행 기준은 W5이며 기간은 2026-08-17부터 2026-08-30까지다.
+현재 실행 기준은 Rev 11 문서 정합성 확정 후 시작하는 W6다.
 
 W4는 `TASK-W4-001~020`까지 완료됐고 아래 W4 범위와 규칙은 완료 이력 및 회귀 기준으로 유지한다.
 
@@ -1161,70 +1363,70 @@ Smoke와 Trap은 W4 이후의 Gate, Regression Baseline, Stretch 또는 Deferred
 - `TASK-W4-015~017`은 Global Alert Replication, Guard Modifier, Lockdown Countdown / World Restriction 검증 완료
 - `TASK-W4-018~019`는 Alert HUD / Audio Layer와 Duplicate Inspection / Timer Protection 검증 완료
 
-## Post-W4 Compressed Roadmap
+## Rev 11 Execution Roadmap
 
-### W5 — 2026-08-17 ~ 2026-08-30
+### W6 — Contract Run / Player Experience Foundation
 
-- Steam Online Subsystem
-- Session
-- Travel
-- Packaging
-- Surface Forgery Template 36개
-- Surface Template Pool / Shuffle Bag
-- Object Assembly Forgery
-- Sculpture / Ceramic Modular Kit과 Template
-- Loose Loot 콘텐츠
-- Tutorial 콘텐츠
-- Steam Session을 먼저 진행
+1. `TASK-W6-001` Contract Definition / Required Target / Loot Value Quota
+2. `TASK-W6-002` Server-seeded Multi-Exhibit Assignment / Spawn Variation
+3. `TASK-W6-003` Repeated Surface / Object Forgery Run / Speed Timer / Auto Submit
+4. `TASK-W6-004` Carried Value / Secured Value / Quota Replication
+5. `TASK-W6-005` Walk / Sprint / Weight / Footstep Noise
+6. `TASK-W6-006` Player Display Name / Nameplate / Team Status
+7. `TASK-W6-007` Full-Screen Floor Plan Map / Navigation
+8. `TASK-W6-008` Detection / Stun / Arrest / Carry / Escape Feedback
+9. `TASK-W6-009` Original Drop / Recovery / Shared Extraction Deposit
+10. `TASK-W6-010` Contract HUD / Outcome / Replica Recap
+11. `TASK-W6-011` End Phase / Lobby Return / 3-Map Exit Continuity
+12. `TASK-W6-012` 1~4 Player Contract Run Gate
 
-### W6 — 2026-08-31 ~ 2026-09-06
+### W7 — Game Experience Integration / Content / Balance
 
-- Shared Extraction
-- Team Result
-- Player Contribution
+1. `TASK-W7-001` Contract Pacing / Quota / Player Count Balance
+2. `TASK-W7-002` Guard Reaction / Failure-forward Presentation
+3. `TASK-W7-003` Player / Guard / Forgery / Contract Audio Pass
+4. `TASK-W7-004` Status / Alert / Extraction VFX Pass
+5. `TASK-W7-005` Interaction / Exhibit / Exit / Signage Readability
+6. `TASK-W7-006` Tutorial / First Contract Onboarding
+7. `TASK-W7-007` Shared Loose Loot Content / Spawn Variety
+8. `TASK-W7-008` M01 / M02 / M03 Contract Placement Variation
+9. `TASK-W7-009` Result Story / Funny Replica Showcase
+10. `TASK-W7-010` External Playtest / Game Experience Gate
 
-### W7 — 2026-09-07
+### W8 — Release Shaping / QA / Final RC
 
-고정 Task가 없는 검토 체크포인트다.
+- M01 / M02 / M03 Layout, Lighting와 Environment Art Final
+- Character Locomotion, Carry, Forgery, Stun / Arrest Animation Final
+- HUD / Map / Nameplate / Result Resolution과 Accessibility Final
+- Audio Mix / VFX / Feedback Final
+- 1~4 Player Balance / Network / Ownership Regression
+- Performance / Memory / Hitch
+- Feature Lock / RC1 / External Test
+- Final Blocker Fix / Final Shipping Build
+- Steam Depot / Store / Credits / Release
+- Launch Verification / Hotfix Readiness
 
-W4~W6 결과와 실제 잔여 위험을 검토한 뒤 필요한 경우에만 `TASK-W7-###`을 생성한다.
+## Rev 11 Execution Priority
 
-### W8 — 2026-09-08 ~ 2026-09-20
+- Player가 이해할 수 없는 숨은 상태를 먼저 제거한다.
+- Contract Run의 Required Target / Quota / Secured Value를 Extraction / Result보다 먼저 확정한다.
+- Walk / Sprint, Nameplate, Team Status, Map과 Status Feedback은 Polish로 미루지 않는다.
+- Gameplay Rule, Authority, Validation과 Replication은 계속 C++가 소유한다.
+- Animation, Audio, VFX와 Layout은 승인된 C++ State Hook을 표현한다.
+- W6에서 한 판의 반복성과 협동 가독성을 먼저 완성한다.
+- W7에서 콘텐츠와 Feedback을 통합하고 실제 외부 플레이로 조정한다.
+- W8 Feature Lock 이후 신규 Gameplay Feature를 추가하지 않는다.
+- 기존 `W9~W12` 번호는 Rev 11 이전 이력 참조에만 사용한다.
+- Public Release 목표일 `2026-09-20`을 유지하되 RC Gate가 실패하면 품질을 숨기지 않는다.
 
-- 레벨 디자인
-- 라이팅
-- 이펙트
-- 오디오
-- HUD Polish
-- Result Polish
-- Map Balance
-- Feature Lock
-- RC1 QA
-- Final RC
-- Public Release 준비
-
-## Post-W4 Execution Priority
-
-- Gameplay 구현 우선
-- Authority 구현 우선
-- Replication 구현 우선
-- Online Session 구현 우선
-- Extraction 구현 우선
-- Result 구현 우선
-- Level Design과 Polish는 W5/W6 필수 구현 이후 진행
-- 미래 주차 번호는 `W5~W8`만 사용
-- 기존 `W9~W12` 번호는 Rev.10 이전 이력 참조에만 사용
-- W7 Task는 사전 생성하지 않음
-- Public Release 목표일 `2026-09-20` 유지
-
-## W5 Current Handoff
+## W5 Closeout / W6 Handoff
 
 - `TASK-W5-001~010`은 완료됐다.
 - `TEST-W5-001`은 2026-07-26 Editor `OnlineSubsystemNull` 2 Player Listen Server PIE에서 Host / Join Code / Find / Join / Lobby Travel을 PASS했다.
 - `TEST-W5-002`는 2026-07-27 Editor `OnlineSubsystemNull` 3 Player Listen Server PIE에서 Client Leave / Rejoin / Empty Slot 재사용 / Host Quit / Title Return / Map Selection / Random / Lobby Roster Refresh를 PASS했다.
 - `TEST-W5-005`는 2026-07-27 Development Editor 1 Player PIE에서 Local Settings 저장과 First-Person 적용을 PASS했다.
 - `TEST-W5-007`은 2026-07-27 별도 PC·Steam 계정 2개 Development Package에서 Steam Host / Join / Lobby / M02 Travel / End / Lobby Return / Client Leave / Host Leave를 PASS했다.
-- W5 Weekly Gate는 후속 필수 콘텐츠 작업 때문에 아직 PASS하지 않았다.
+- W5 기능 구현 범위는 종료됐다. Weekly Gate와 Formal Test 판정은 Notion 기록을 별도로 따른다.
 - `UHeistGameInstance`가 Online Subsystem 선택과 Create / Find / Join / Travel 상태를 단독 소유한다.
 - Editor PIE는 로컬 다중 인스턴스 검증을 위해 `OnlineSubsystemNull`을 사용한다.
 - 비 Editor 실행과 패키지 빌드는 기본 `OnlineSubsystemSteam`을 사용한다.
@@ -1249,11 +1451,13 @@ W4~W6 결과와 실제 잔여 위험을 검토한 뒤 필요한 경우에만 `TA
 - `TASK-W5-016`은 Surface Template Pool / Shuffle Bag 서버 기능 Task다.
 - `TASK-W5-017~018`은 Sculpture / Ceramic Object Content Pack과 Object Assembly Two-Player Gate다.
 - `TASK-W5-019~021`은 M01 / M02 / M03 각 12개, 총 36개 Surface Forgery Template Pack이다.
-- `TASK-W5-022~023`은 Shared Loose Loot Content와 Tutorial / Onboarding Flow다.
+- 기존 `TASK-W5-022 Shared Loose Loot Content`는 Rev 11의 `TASK-W7-007`로 이동했다.
+- `TASK-W5-023 Tutorial / Onboarding Flow`는 W5 범위에서 완료됐다. Rev 11의 `TASK-W7-006`은 단일 목표 설명이 아니라 Contract Run 전체를 설명하도록 확장하는 후속 Task다.
 - 생성된 M01 Surface Reference 후보, Palette 정규화 결과, Mask와 `Tools/Forgery/QuantizeForgeryReference.ps1`은 WIP로 보존한다.
 - `TASK-W5-011~015 Object Assembly Vertical Slice`는 Data / State, Session / Payload / Score, Owner-only UI, Replica / Inspection / Cleanup과 Primitive Prototype Gate까지 완료했다.
 - `TASK-W5-016 Surface Template Pool / Shuffle Bag`은 `TEST-W5-010`으로 완료했다. 12-slot Shuffle Bag 2회전, 최근 3개 반복 방지, Server/Client Match Selection 복제와 서버 권한 Kick 이후 Snapshot 유지가 PASS했다.
-- 현재 활성 작업은 `TASK-W5-019 M01 Painting Template Pack`이다.
+- `TASK-W5-019~021`의 M01 / M02 / M03 Surface Template Pack은 완료됐다.
+- 현재 활성 W5 Task는 없다.
 - Sculpture와 Ceramic의 통합 Gameplay System 명칭은 `Object Assembly Forgery`다.
 - Surface Forgery와 Object Assembly는 Template, State, Payload, Result와 Replica Data를 공유하지 않는다.
 - `TASK-W5-010 External Two-PC Online Gate`는 `TEST-W5-007` 증거로 완료됐다.
@@ -1278,5 +1482,6 @@ W4~W6 결과와 실제 잔여 위험을 검토한 뒤 필요한 경우에만 `TA
 - `TEST-W5-007`에서 Client는 `Pending=false`, `Operation=None`, `TravelPending=false`를 유지했고 90초 이상 접속해 기존 30초 `TravelJoin` Timeout이 재발하지 않았다.
 - Shipping은 Debug / Cheat Command가 제거되므로 `TASK-W5-010` Formal Test에 사용하지 않는다.
 - `aqProf.dll` / VTune 선택적 Profiler 경고와 Title / Lobby 전환 중의 일시적 AI Perception / Recast 경고는 현재 확인된 비차단 Known Warning이다. Crash, Travel 실패 또는 Gameplay Map 회귀가 동반되면 다시 분류한다.
+- W6 시작 전 Required Target + Loot Value Quota, 반복 Exhibit Assignment, Walk / Sprint, Player Nameplate / Team Status, Map과 Status Feedback을 Rev 11 문서 계약으로 고정한다.
 
 세부 설계와 주차별 Task 정의는 `Museum_Heist_GDD.docx` 최신 Revision과 Notion Task 기록을 함께 확인한다.

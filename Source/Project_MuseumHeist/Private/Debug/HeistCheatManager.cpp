@@ -22,6 +22,45 @@ void UHeistCheatManager::HeistHUDDump()
 
 #pragma endregion
 
+#pragma region TutorialDebug
+
+void UHeistCheatManager::HeistTutorialHelp()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugTutorialHelp(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistTutorialDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugTutorialDump(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistTutorialReset()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugTutorialReset(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistTutorialAdvance()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugTutorialAdvance(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistTutorialSkip()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugTutorialSkip(GetOuterAPlayerController());
+#endif
+}
+
+#pragma endregion
+
 #pragma region BuildDebug
 
 void UHeistCheatManager::HeistBuildDump()

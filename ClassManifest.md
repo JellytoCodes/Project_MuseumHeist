@@ -1,12 +1,12 @@
 # Project_MuseumHeist — Class Manifest
 
-## Rev 9: W5 Surface And Object Forgery Contract
+## Rev 10: Contract Run And Player Experience Contract
 
 Design Reference:
 
-- `AGENTS.md` Rev 10
+- `AGENTS.md` Rev 11
 - `Museum_Heist_GDD.docx` 최신 Revision
-- Notion W5 Task / Test 기록
+- Notion Task / Test 기록
 
 ---
 
@@ -33,8 +33,11 @@ Smoke 및 플레이어 설치형 Trap은 `Deferred` 또는 `Legacy`가 아니라
 | 타입 | 상태 | 현재 책임 |
 |---|---|---|
 | `EHeistMatchPhase` | Modify | Lobby / ReadyCountdown / InGame / End 중심 Match Flow |
-| `EHeistInputMode` | Keep | Gameplay / Inventory / Forgery 로컬 입력 상태 |
+| `EHeistInputMode` | Modify | Gameplay / Inventory / Map / Forgery 로컬 입력 상태 |
 | `EHeistObjectiveState` | Keep | Objective 진행 상태 |
+| `EHeistContractOutcome` | Add | None / Success / PartialHaul / Failed |
+| `FHeistExhibitAssignment` | Add | Case / Artifact / Forgery Type / Template / Value / Required Target 확정 단위 |
+| `FHeistContractSnapshot` | Add | Required Target / Quota / Carried / Secured / Outcome 복제 Snapshot |
 | `EHeistForgeryType` | Modify | Drawing / Assembly Forgery 타입 |
 | `EHeistDisplayCaseState` | Keep | Painting Display Case 상태 |
 | `EHeistObjectAssemblyState` | Add | Object Assembly 전용 상태 |
@@ -44,6 +47,8 @@ Smoke 및 플레이어 설치형 Trap은 `Deferred` 또는 `Legacy`가 아니라
 | `FHeistObjectAssemblyResult` | Add | 서버 확정 Object Assembly 결과 |
 | `FHeistObjectAssemblyReplicaData` | Add | 확정 Assembly Entry와 Revision 복제 데이터 |
 | `FHeistPlayerResult` | Deprecate | 기존 결과 호환용 |
+| `FHeistTeamResult` | Add | Contract Outcome, Secured Value, Quota, Target, Crew Outcome, Replica Recap |
+| `FHeistPlayerContribution` | Add | Forgery / Carry / Loot / Distraction / Rescue / Escape / Arrest 비경쟁 기여 |
 | `FHeistRareLootEventState` | Deferred | Optional Rare Artifact 승인 전 비활성 |
 | `EHeistItemType` | Modify | None / Loot / Throwable / KeyItem |
 | `EHeistLootGrade` | Keep | Loose Loot 등급 |
@@ -151,9 +156,39 @@ FHeistTeamResult
 FHeistPlayerContribution
 ```
 
-상태: Add 또는 Modify
+상태: Add
 
-현재 W6 범위에서 최종 구현한다.
+Rev 11 W6 범위에서 Contract Outcome과 Replica Recap을 포함해 최종 구현한다. `FHeistPlayerResult`의 경쟁형 Score 의미를 복사하지 않는다.
+
+## Contract Runtime Types
+
+`FHeistExhibitAssignment` 필드:
+
+```text
+CaseId
+ArtifactId
+ForgeryType
+TemplateId
+ArtifactValue
+bRequiredTarget
+```
+
+`FHeistContractSnapshot` 필드:
+
+```text
+ContractId
+RequiredTargetArtifactId
+RequiredTargetCaseId
+RequiredQuota
+TeamCarriedValue
+SecuredValue
+bRequiredTargetSecured
+Outcome
+MatchEndServerTime
+AssignmentRevision
+```
+
+Client가 Assignment, Value 또는 Outcome을 직접 변경하지 않는다.
 
 ---
 
@@ -163,12 +198,12 @@ FHeistPlayerContribution
 |---|---|---|
 | `Core/HeistGameplayTags.*` / `FHeistGameplayTags` | Modify | 실제 활성 Gameplay Tag 등록 |
 | `Core/HeistLogChannels.*` | Keep | 로그 채널 |
-| `Core/HeistGameMode.*` / `AHeistGameMode` | Modify | Match, Objective, Data Validation, Surface Template Pool Match Initialization, Alert, Result |
-| `Core/HeistGameState.*` / `AHeistGameState` | Modify | Replicated Objective / Alert / Team State, Lobby Map Selection / Surface Template Selection / Player Connection Revision, Server-only SoundPing Dispatch |
-| `Core/HeistPlayerState.*` / `AHeistPlayerState` | Modify | 1~4 Player Identity, Contribution, Escape, Arrest, Carry Value |
-| `Core/HeistPlayerController.*` / `AHeistPlayerController` | Modify | Input Mode, Server RPC, Session Leave / Map Selection Request, Coin Use, Surface Forgery / Object Assembly Request |
-| `Core/HeistHUD.*` / `AHeistHUD` | Keep + Extend | Title / Lobby / HUD / Inventory / QuickSlot / Surface Forgery / Object Assembly / Result Widget와 ViewModel 생성 |
-| `Core/HeistGameInstance.*` / `UHeistGameInstance` | Modify | Steam/NULL Subsystem 선택, Host/Find/Join/Leave, 6자리 참가 코드, Title/Lobby/Gameplay Travel, Map Selection, Server Surface Template Shuffle Bag, Session Timeout/Cancel/Retry와 Network/Travel Failure 수명주기 |
+| `Core/HeistGameMode.*` / `AHeistGameMode` | Modify | Match, Contract Assignment, Quota, Objective, Data Validation, Alert, Extraction Deposit, Result |
+| `Core/HeistGameState.*` / `AHeistGameState` | Modify | Replicated Contract / Exhibit Assignment / Objective / Alert / Team State, Lobby Map Selection / Player Connection Revision, Server-only SoundPing Dispatch |
+| `Core/HeistPlayerState.*` / `AHeistPlayerState` | Modify | 1~4 Player Identity / Display Name / Color, Crew Status, Contribution, Escape, Arrest, Carried / Secured Value |
+| `Core/HeistPlayerController.*` / `AHeistPlayerController` | Modify | Gameplay / Inventory / Map / Forgery Input Mode, Server RPC, Session / Map Selection, Walk / Sprint, Coin, Forgery / Assembly / Extraction Request |
+| `Core/HeistHUD.*` / `AHeistHUD` | Keep + Extend | Title / Lobby / HUD / Nameplate / Map / Inventory / QuickSlot / Surface Forgery / Object Assembly / Result Widget와 ViewModel 생성 |
+| `Core/HeistGameInstance.*` / `UHeistGameInstance` | Modify | Steam/NULL Session, Host/Find/Join/Leave, Join Code, Travel, Map Selection, Session Timeout/Cancel/Retry와 Network/Travel Failure 수명주기 |
 | `Core/HeistGameUserSettings.*` / `UHeistGameUserSettings` | Add | Local FOV, Mouse Sensitivity, Master Volume, Resolution / Window Mode 저장, 검증 및 적용 |
 
 ## Authority
@@ -177,9 +212,12 @@ FHeistPlayerContribution
 GameMode
 - Server only
 - Match Rule
+- Contract / Exhibit Assignment
+- Required Target / Quota / Secured Value
 - Data Validation
 - Objective
 - Alert / Lockdown
+- Extraction Deposit
 - Team Result
 
 GameState / PlayerState
@@ -193,7 +231,7 @@ PlayerController
 - Request Routing
 
 HUD
-- Local Presentation
+- Local HUD / Map / Nameplate / Status / Result Presentation
 
 GameInstance
 - Online Session State Machine
@@ -244,6 +282,21 @@ GameUserSettings
 - 생성된 VDF는 `preview=1`, 빈 `setlive`를 유지하며 자동 Upload를 실행하지 않는다.
 - 실제 App / Depot Id 확정, Steam Upload와 2계정 검증은 `TASK-W5-010` 범위다.
 
+## Contract Run Runtime Contract
+
+- `AHeistGameMode`가 Contract Row, Map, Player Count와 서버 Seed를 검증한다.
+- Map에 배치된 Painting / Object Case는 Eligible Exhibit로 등록되며 별도 Contract Manager를 만들지 않는다.
+- Required Target Case 1개와 Optional Exhibit Case를 선택한다.
+- 각 선택 Case에 `FHeistExhibitAssignment`를 부여한다.
+- Surface와 Object Template은 별도 Shuffle Bag을 사용한다.
+- 같은 Match Assignment 안에서 Surface Template을 중복 사용하지 않는다.
+- 서로 다른 Case에서는 서로 다른 Player가 동시에 Session을 시작할 수 있다.
+- 한 Case에는 기존대로 Session Owner 1명만 허용한다.
+- Required Target Original과 Extracted Loot만 Secured Value를 증가시킨다.
+- Carried Value는 UI 정보이며 Match Outcome의 확정값이 아니다.
+- `AHeistGameState`가 Contract Snapshot과 Assignment Revision을 모든 Client에 복제한다.
+- Match End에서 `FHeistTeamResult`와 `FHeistPlayerContribution`을 서버가 한 번만 확정한다.
+
 ## GameplayTag Removal
 
 다음 Tag Field 및 Native Tag 등록을 제거한다.
@@ -279,15 +332,33 @@ Item.Throwable.Smoke
 - First-Person Camera Component 소유
 - Controller Yaw 기반 Rotation
 - Head Socket 기반 Full Body First-Person Camera
+- Walk / Sprint 입력과 서버 확정 Pace
+- Carry Weight 기반 Walk / Sprint Speed
+- Pace 기반 Footstep Noise Handoff
 - Gameplay Component 기본 Subobject 생성
-- Input Mode에 따른 Movement / Look 제한
+- Gameplay / Inventory / Map / Forgery Input Mode에 따른 Movement / Look 제한
 - Forgery Movement Lock 반영
+- Stun / Arrest / Escape Gameplay Restriction 반영
 - Full Body Mesh 유지
 - Owning Client와 Remote Client 표현 유지
 
 SpringArm Gameplay Camera는 신규 흐름에서 사용하지 않는다.
 
 기존 Top-Down Camera 참조는 별도 Cleanup 전까지 직렬화 호환 여부를 확인한다.
+
+## Movement Contract
+
+```text
+Walk: Base 300 cm/s, Footstep 500 cm
+Sprint: Base 600 cm/s, Footstep 1,000 cm
+Stamina: 없음
+```
+
+`CurrentMoveSpeed` 단일 값은 Rev 11 Task에서 Walk / Sprint 요청과 Carry Weight를 모두 반영하는 Resolved Speed로 수정한다.
+
+Player가 `Inventory`, `Map`, `Forgery`, `Stunned`, `Arrested`, `Escaped` 상태일 때 Sprint를 허용하지 않는다.
+
+Sprint FOV Kick, Head Bob과 Camera Roll은 추가하지 않는다.
 
 ---
 
@@ -303,13 +374,13 @@ Source/Project_MuseumHeist/Private/Character/Components
 | 클래스 | 상태 | 현재 책임 |
 |---|---|---|
 | `UHeistTagComponent` | Keep | Gameplay Tag 상태 |
-| `UHeistStatusComponent` | Modify | 일반 Timed Status |
+| `UHeistStatusComponent` | Modify | 서버 Timed Status, Stun State / EndServerTime, Presentation Delegate |
 | `UHeistInventoryComponent` | Keep + Extend | Grid, FastArray, Coin QuickSlot, Original Carry |
 | `UHeistInteractionComponent` | Modify | Center Screen Trace, Target Filter, Prompt Snapshot |
 | `UHeistActionComponent` | Modify | Observation Cast, Escape Cast, Action Lock |
 | `UHeistVisionComponent` | Modify | First-Person Flashlight |
 | `UHeistCustomizationComponent` | Keep | 외형 |
-| `UHeistNoiseEmitterComponent` | Keep | Footstep, Coin, 환경 소음 |
+| `UHeistNoiseEmitterComponent` | Modify | Walk / Sprint Footstep, Coin, Carry Weight와 환경 소음 |
 | `UHeistForgeryComponent` | Keep | Session, Stroke, Timeout, Submit, OpenCV Score, Cleanup |
 
 ## `UHeistInventoryComponent`
@@ -448,6 +519,32 @@ Surface Forgery의 Stroke, Palette, OpenCV Cache와 Replica Painting Data를 소
 
 ---
 
+# 4A. Player Status / Presentation Contract
+
+`UHeistStatusComponent`가 Timed Gameplay Status의 서버 확정 State와 End Server Time을 복제한다.
+
+Rev 11의 Player-facing 상태:
+
+```text
+Stunned
+Arrested
+CarryingOriginal
+Heavy
+Forging
+Assembling
+Escaped
+```
+
+- `Stunned`는 Guard 또는 승인된 Environment Source만 적용한다.
+- PvP Stun Source를 다시 추가하지 않는다.
+- `Arrested`와 `Escaped`는 `AHeistPlayerState`의 확정 상태를 사용한다.
+- Carry / Forgery / Assembly 상태는 기존 Component와 Display Case Session을 읽어 Presentation Snapshot을 구성한다.
+- Local Screen Effect와 Audio Filter는 Client Presentation이며 권한 상태로 복제하지 않는다.
+- Remote Player Nameplate / Pose는 복제된 상태만 읽는다.
+- 상태 종료 시 Input Lock, Post Process, Audio Filter와 UI를 복원한다.
+
+---
+
 # 5. Inventory And Data Types
 
 유지 타입:
@@ -465,9 +562,13 @@ FHeistSoundPingDataRow
 FHeistGuardDataRow
 FHeistLootSpawnRow
 FHeistVentDataRow
+FHeistContractDataRow
+FHeistMapPresentationRow
 FHeistCustomizationRow
 FHeistUITextRow
 ```
+
+`FHeistContractDataRow`과 `FHeistMapPresentationRow`은 Rev 11 W6 활성 Task에서 Add가 승인된다.
 
 ## Item Contract
 
@@ -519,6 +620,39 @@ Icon
 ## `FHeistLootDataRow`
 
 Loose Loot 확장 데이터로 사용한다.
+
+Artifact Value와 Loose Loot Value는 Contract Quota에 사용하는 Raw Value다. Forgery Quality Score를 같은 필드에 저장하지 않는다.
+
+## `FHeistContractDataRow` — Add
+
+필드:
+
+```text
+ContractId
+DisplayName
+RequiredTargetPoolId
+BaseQuota
+PlayerCountQuotaMultipliers
+MinimumOptionalExhibits
+MaximumOptionalExhibits
+MatchDuration
+ExtractionRuleId
+```
+
+## `FHeistMapPresentationRow` — Add
+
+필드:
+
+```text
+MapId
+FloorPlanTexture
+WorldMin
+WorldMax
+ZoneLabels
+DefaultExitMarkers
+```
+
+Floor Plan은 Guard, SoundPing 또는 미발견 Loot 위치를 제공하지 않는다.
 
 ## `FHeistUsableItemDataRow`
 
@@ -749,16 +883,18 @@ Render Target 또는 전체 Stroke Payload를 World Visual 목적으로 추가 �
 | `IHeistInteractable` | Keep | 공통 상호작용 Interface |
 | `AHeistInteractableActor` | Keep | 공통 Interactable 기반 |
 | `AHeistLootActor` | Keep | Loose Loot |
-| `AHeistPaintingDisplayCaseActor` | Modify | Painting Target, Session, Replica, Original, Inspection |
+| `AHeistPaintingDisplayCaseActor` | Modify | Contract Exhibit Assignment, Painting Session, Replica, Original, Value, Inspection |
 | `AHeistDisplayCaseActor` | Deprecate | 기존 Painting Asset 호환 Alias |
-| `AHeistObjectDisplayCaseActor` | Add | Sculpture / Ceramic Object Assembly Session, Replica, Original, Inspection |
+| `AHeistObjectDisplayCaseActor` | Modify | Contract Exhibit Assignment, Sculpture / Ceramic Assembly Session, Replica, Original, Value, Inspection |
 | `AHeistSculptureDisplayCaseActor` | Deprecate | 기존 Sculpture Visual Shell Asset 호환 Alias |
-| `AHeistVentActor` | Modify | Shared Extraction |
+| `AHeistVentActor` | Modify | Shared Extraction Cast, Individual Loot Deposit, Player Escape |
 | `AHeistThrowableProjectile` | Keep | Throwable 공통 기반 |
 | `AHeistCoinProjectile` | Keep | Guard Distraction |
 | `AHeistLootSpawnPoint` | Keep | Loose Loot Spawn |
 | `AHeistPlayerStart` | Keep | Spawn |
 | `AHeistGuardWaypoint` | Keep | Patrol |
+
+Floor Plan Marker는 새로운 Gameplay Actor를 만들지 않고 Map에 이미 존재하는 Exit, Display Case, PlayerState/Pawn과 `FHeistMapPresentationRow`을 읽어 구성한다.
 
 ## Removed World Classes
 
@@ -790,7 +926,8 @@ AHeistNoiseTrapActor
 
 `AHeistPaintingDisplayCaseActor`는 다음 책임을 가진다.
 
-- Target Artifact 식별
+- Contract Exhibit Assignment / Required Target 식별
+- Artifact Value
 - Session Lock
 - Session Owner
 - Observation State
@@ -805,6 +942,7 @@ AHeistNoiseTrapActor
 - Runtime Texture Reconstruction
 - Original / Replica Plane Visibility
 - Original Carry Handoff
+- Contract Secured Value Handoff
 
 ## State
 
@@ -831,7 +969,7 @@ Surface Forgery와 Object Assembly State를 하나의 enum switch로 통합하�
 
 `AHeistObjectDisplayCaseActor`는 다음 책임을 가진다.
 
-- Object Family / Target Artifact 식별
+- Contract Exhibit Assignment / Required Target / Artifact Value 식별
 - Assembly Session Lock / Owner / Revision / Timeout
 - Template 확정
 - Replica Ready / Placement
@@ -840,6 +978,7 @@ Surface Forgery와 Object Assembly State를 하나의 enum switch로 통합하�
 - Compact Assembly Replica Data 복제
 - Client Static Mesh Component 재구성
 - Disconnect / Arrest / EndPlay Cleanup
+- Contract Secured Value Handoff
 
 ## State
 
@@ -991,7 +1130,7 @@ Ping_CoinImpact
 Ping_StunHit
 ```
 
-`Ping_StunHit`은 현재 Gameplay 사용 여부를 점검한다.
+`Ping_StunHit`은 Guard 또는 승인된 Environment Source가 Stun을 확정했을 때만 사용한다. PvP Source와 Player-facing Marker에는 사용하지 않는다.
 
 ## Removed Rows
 
@@ -1007,13 +1146,15 @@ Ping_NoiseTrap
 
 | 클래스 | 상태 | 현재 책임 |
 |---|---|---|
-| `UHeistHUDWidget` | Modify | Crosshair, Objective, Alert Banner/Color, Lockdown Countdown, Suspense/Alarm Music Layer, Team Status |
+| `UHeistHUDWidget` | Modify | Crosshair, Contract Target / Quota / Carried / Secured Value, Alert, Detection / Status Feedback, Team Status |
+| `UHeistPlayerNameplateWidget` | Add | Remote Player Display Name, Color, Distance, Crew Status Icon |
+| `UHeistMapWidget` | Add | Owner-only Full-Screen Floor Plan, Team / Exit / Contract Marker |
 | `UHeistInventoryWidget` | Keep | Inventory |
 | `UHeistInventorySlotWidget` | Keep | Inventory Slot |
 | `UHeistInventoryItemWidget` | Keep | Inventory Item |
 | `UHeistQuickSlotWidget` | Modify | Coin QuickSlot |
 | `UHeistInteractionPromptWidget` | Modify | Interaction, Observation, Escape Progress |
-| `UHeistResultWidget` | Modify | Team Result / Contribution |
+| `UHeistResultWidget` | Modify | Contract Outcome / Secured Value / Crew Outcome / Contribution / Replica Recap |
 | `UHeistForgeryWidget` | Keep | Owner-only Forgery UI, Local Canvas Reset, Drawing/Lockdown Remaining Time, Alert Warning |
 | `UHeistObjectAssemblyWidget` | Add | Owner-only Part / Socket / Orientation Assembly UI |
 | `UHeistTitleMenuWidget` | Keep + Extend | Host Session, Join Code 입력, Create/Find/Join/Travel 상태와 오류, Cancel/Retry, Settings 표시 |
@@ -1024,14 +1165,40 @@ Ping_NoiseTrap
 
 | 클래스 | 상태 | 현재 책임 |
 |---|---|---|
-| `UHeistHUDViewModel` | Modify | Objective, Alert Banner/Color, Lockdown Countdown, Audio Layer State, Escape, Observation |
+| `UHeistHUDViewModel` | Modify | Contract / Quota / Value, Alert / Detection / Status, Team Member, Escape / Observation |
+| `UHeistPlayerNameplateViewModel` | Add | Display Name / Color / Distance / Crew Status / Visibility |
+| `UHeistMapViewModel` | Add | Map Texture / Map Bounds / Player / Team / Exit / Target / Dropped Original Marker |
 | `UHeistInventoryViewModel` | Keep | Inventory Snapshot |
 | `UHeistQuickSlotViewModel` | Modify | Coin QuickSlot Snapshot |
-| `UHeistResultViewModel` | Modify | Team Result / Contribution |
+| `UHeistResultViewModel` | Modify | Contract Outcome / Reward / Contribution / Replica Recap |
 | `UHeistTitleMenuViewModel` | Keep + Extend | Online Session 상태, Host/Join Code 요청, Timeout/Cancel/Retry와 진입 오류, Local Settings Snapshot / Apply / Defaults 요청 |
 | `UHeistLobbyViewModel` | Modify | Lobby Player/Identity Slot Snapshot, 참가 코드/Invite 안내, 복제 Map 선택, Travel Failure/Retry, Ready / Start, Leave |
 | `UHeistForgeryViewModel` | Keep | Forgery UI State, Alert Warning, Lockdown Countdown |
 | `UHeistObjectAssemblyViewModel` | Add | Assembly Session, Template, Part Candidate, Socket, Orientation, Remaining Time, Alert Snapshot |
+
+## Nameplate Contract
+
+- Local Owning Player의 Nameplate는 표시하지 않는다.
+- Remote Player Nameplate는 `AHeistPlayerState`의 Display Name, Heist Player Id와 Player Color를 읽는다.
+- Display Name이 비어 있으면 `PLAYER {Id}`를 사용한다.
+- Nameplate Widget은 Player State를 변경하지 않는다.
+- Forging / Assembling / CarryingOriginal / Heavy / Stunned / Arrested / Escaped 상태를 Icon 또는 짧은 Label로 표시한다.
+- 일반 표시 범위는 `2~2,500 cm`이며 원거리 Fade는 Presentation Data로 조정한다.
+
+## Map Contract
+
+- `UHeistMapWidget`은 `EHeistInputMode::Map`에서만 표시한다.
+- Map은 Guard, Guard Sight Cone, SoundPing, 미발견 Loot를 표시하지 않는다.
+- Map Marker는 Client가 이미 복제받은 Player / Exit / Contract State를 읽는다.
+- Map의 World-to-UV 변환은 `FHeistMapPresentationRow`의 World Bounds를 사용한다.
+- Map Close, Arrest, Match End, Disconnect와 Travel에서 Widget과 Input Context를 정리한다.
+
+## Status Presentation Contract
+
+- `UHeistHUDWidget`이 Local Detection, Stun, Arrest, Heavy, Carry, Escape Feedback Hook을 제공한다.
+- Screen Vignette / Desaturation / Audio Filter / Camera Feedback Asset은 Blueprint가 지정한다.
+- Gameplay 상태와 End Server Time은 C++ State를 읽는다.
+- 강한 Blur, 지속 Camera Shake 또는 색상 하나에만 의존하는 경고를 사용하지 않는다.
 
 ## Removed UI Contract
 
@@ -1117,6 +1284,8 @@ ReplicaManager
 ArtifactFactory
 ObjectiveService
 InspectionManager
+ContractManager
+MapManager
 TrapManager
 SmokeManager
 신규 Camera Manager
@@ -1171,6 +1340,23 @@ Parent: UHeistLobbyWidget
 Title Menu와 Lobby Widget Blueprint는 Layout, Binding, Color, Animation만 소유한다.
 
 Session Rule, Player Slot Identity, Map Selection Authority와 Travel은 C++가 소유한다.
+
+## Player Experience UI
+
+```text
+/Game/Blueprints/UI/HUD/WBP_HeistHUD
+Parent: UHeistHUDWidget
+/Game/Blueprints/UI/HUD/WBP_HeistPlayerNameplate
+Parent: UHeistPlayerNameplateWidget
+/Game/Blueprints/UI/Map/WBP_HeistMap
+Parent: UHeistMapWidget
+/Game/Blueprints/UI/Result/WBP_HeistResult
+Parent: UHeistResultWidget
+```
+
+Map별 Floor Plan Texture, World Bounds, Zone Label과 Exit Presentation은 Data가 소유한다.
+
+Nameplate / Map / Result Widget Blueprint는 Layout, Binding, Color, Icon과 Animation만 소유한다.
 
 ## Removed Blueprint Assets
 
@@ -1233,6 +1419,22 @@ Ping_NoiseTrap
 ```
 
 `DataTableImports/*.json`이 Source of Truth다.
+
+## Contract Data
+
+```text
+DT_ContractDataRow
+```
+
+Required Target Pool, Base Quota, Player Count Scaling, Optional Exhibit Count와 Match Duration을 소유한다.
+
+## Map Presentation Data
+
+```text
+DT_MapPresentationRow
+```
+
+M01 / M02 / M03 Floor Plan Texture, World Bounds, Zone Label과 Exit Marker 기준을 소유한다.
 
 삭제 Row를 JSON에서 제거한 뒤 실제 UE DataTable을 Reimport한다.
 

@@ -3298,16 +3298,35 @@ void UHeistDebugFunctionLibrary::DebugForgerySubmit(APlayerController* PlayerCon
 void UHeistDebugFunctionLibrary::DebugForgeryCancel(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
 	UHeistForgeryComponent* ForgeryComponent = ResolveForgeryComponent(PlayerController);
-	const bool bCancelled = IsValid(ForgeryComponent) && ForgeryComponent->CancelForgerySession(FName(TEXT("DebugCancelled")));
+	const bool bSessionActive = IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive();
+	const bool bAuthority = IsValid(HeistPlayerController) && HeistPlayerController->HasAuthority();
+	bool bCancelled = false;
+	bool bRequested = false;
+	if (bSessionActive && IsValid(HeistPlayerController))
+	{
+		if (bAuthority)
+		{
+			bCancelled = ForgeryComponent->CancelForgerySession(FName(TEXT("DebugCancelled")));
+		}
+		else
+		{
+			HeistPlayerController->RequestCancelForgery();
+			bRequested = true;
+		}
+	}
+
+	const TCHAR* Result = bCancelled ? TEXT("PASS") : (bRequested ? TEXT("REQUESTED") : TEXT("REJECTED"));
 	Message(PlayerController,
-			FString::Printf(TEXT("Forgery session debug cancel: Result=%s Active=%s SubmitPending=%s Case=%s Revision=%d LastCleanup=%s"), bCancelled ? TEXT("PASS") : TEXT("REJECTED"),
-							IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive() ? TEXT("true") : TEXT("false"),
+			FString::Printf(TEXT("Forgery session debug cancel: Result=%s Active=%s SubmitPending=%s Case=%s Revision=%d LastCleanup=%s Authority=%s"), Result,
+							bSessionActive ? TEXT("true") : TEXT("false"),
 							IsValid(ForgeryComponent) && ForgeryComponent->IsSubmitPending() ? TEXT("true") : TEXT("false"),
 							IsValid(ForgeryComponent) ? *GetNameSafe(ForgeryComponent->GetActiveDisplayCase()) : TEXT("None"),
 							IsValid(ForgeryComponent) ? ForgeryComponent->GetSessionRevision() : INDEX_NONE,
-							IsValid(ForgeryComponent) && !ForgeryComponent->GetLastCleanupReason().IsNone() ? *ForgeryComponent->GetLastCleanupReason().ToString() : TEXT("None")),
-			bCancelled ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 12.0f);
+							IsValid(ForgeryComponent) && !ForgeryComponent->GetLastCleanupReason().IsNone() ? *ForgeryComponent->GetLastCleanupReason().ToString() : TEXT("None"),
+							bAuthority ? TEXT("true") : TEXT("false")),
+			bCancelled || bRequested ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 12.0f);
 #endif
 }
 
@@ -4714,6 +4733,106 @@ void UHeistDebugFunctionLibrary::DebugFirstPersonHUDDump(APlayerController* Play
 
 	HUDWidget->DebugDumpFirstPersonHUDState();
 	Message(PlayerController, TEXT("First-person HUD dump requested."), EHeistDebugLevel::Info, true);
+#endif
+}
+
+#pragma endregion
+
+#pragma region TutorialDebug
+
+void UHeistDebugFunctionLibrary::DebugTutorialHelp(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(PlayerController, TEXT("Tutorial debug commands: HeistTutorialDump | HeistTutorialReset | HeistTutorialAdvance | HeistTutorialSkip"), EHeistDebugLevel::Info, true, 8.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugTutorialDump(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	AHeistHUD* HeistHUD = IsValid(HeistPlayerController) ? Cast<AHeistHUD>(HeistPlayerController->GetHUD()) : nullptr;
+	UHeistHUDWidget* HUDWidget = IsValid(HeistHUD) ? HeistHUD->GetMainHUDWidget() : nullptr;
+	if (!IsValid(HeistPlayerController) || !IsValid(HUDWidget))
+	{
+		Message(PlayerController, TEXT("Tutorial dump failed: missing local Heist player controller or HUD widget."), EHeistDebugLevel::Error, true);
+		return;
+	}
+
+	HUDWidget->DebugDumpTutorialPresentationState();
+	Message(PlayerController,
+			FString::Printf(TEXT("Tutorial state: Active=%s Completed=%s Step=%s StepIndex=%d StepCount=%d PresentationContract=%s Result=%s"),
+							HeistPlayerController->IsLocalTutorialActive() ? TEXT("true") : TEXT("false"),
+							HeistPlayerController->HasCompletedLocalTutorial() ? TEXT("true") : TEXT("false"),
+							*HeistPlayerController->GetLocalTutorialStepId().ToString(), HeistPlayerController->GetLocalTutorialStepIndex(),
+							HeistPlayerController->GetLocalTutorialStepCount(), HUDWidget->IsTutorialPresentationContractSatisfied() ? TEXT("true") : TEXT("false"),
+							HUDWidget->IsTutorialPresentationContractSatisfied() ? TEXT("PASS") : TEXT("FAIL")),
+			HUDWidget->IsTutorialPresentationContractSatisfied() ? EHeistDebugLevel::Info : EHeistDebugLevel::Error, true, 10.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugTutorialReset(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		Message(PlayerController, TEXT("Tutorial reset failed: invalid Heist player controller."), EHeistDebugLevel::Error, true);
+		return;
+	}
+	HeistPlayerController->DebugResetLocalTutorial();
+	DebugTutorialDump(PlayerController);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugTutorialAdvance(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		Message(PlayerController, TEXT("Tutorial advance failed: invalid Heist player controller."), EHeistDebugLevel::Error, true);
+		return;
+	}
+	HeistPlayerController->DebugAdvanceLocalTutorial();
+	DebugTutorialDump(PlayerController);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugTutorialSkip(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		Message(PlayerController, TEXT("Tutorial skip failed: invalid Heist player controller."), EHeistDebugLevel::Error, true);
+		return;
+	}
+	HeistPlayerController->DebugSkipLocalTutorial();
+	DebugTutorialDump(PlayerController);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugTutorialTransition(APlayerController* PlayerController, const FName EventId, const FName StepId, const int32 StepIndex, const int32 StepCount,
+														 const bool bActive, const bool bCompleted, const bool bResult)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(PlayerController,
+			FString::Printf(TEXT("Tutorial transition: Event=%s Step=%s StepIndex=%d StepCount=%d Active=%s Completed=%s Result=%s"), *EventId.ToString(), *StepId.ToString(), StepIndex,
+							StepCount, bActive ? TEXT("true") : TEXT("false"), bCompleted ? TEXT("true") : TEXT("false"), bResult ? TEXT("PASS") : TEXT("FAIL")),
+			bResult ? EHeistDebugLevel::Info : EHeistDebugLevel::Error, false);
 #endif
 }
 

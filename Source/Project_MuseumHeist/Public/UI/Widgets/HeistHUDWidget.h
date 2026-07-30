@@ -14,6 +14,7 @@ class UPanelWidget;
 class UWidget;
 class UAudioComponent;
 class USoundBase;
+class AHeistPlayerController;
 
 UCLASS(Blueprintable)
 class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
@@ -50,6 +51,8 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 	void RefreshToolPresentation();
 	void RefreshAlertPresentation();
 	void RefreshLockdownCountdown();
+	void SetupTutorialPresentation();
+	void RefreshTutorialPresentation();
 	void ApplyAlertAudioLayers();
 	void StopAlertAudioLayers();
 	UHeistInteractionPromptWidget* ResolveInteractionChildWidget(FName WidgetName, UHeistInteractionPromptWidget* ExistingWidget) const;
@@ -65,6 +68,9 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 
 	UPROPERTY(Transient)
 	TObjectPtr<UHeistInteractionComponent> InteractionComponent;
+
+	UPROPERTY(Transient)
+	TObjectPtr<AHeistPlayerController> TutorialPlayerController;
 
   protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|HUD", meta = (DisplayName = "HUD Sources Ready"))
@@ -82,7 +88,9 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 	void DebugDumpFirstPersonHUDState() const;
 	void DebugDumpFeedbackState() const;
 	void DebugDumpAlertPresentationState() const;
+	void DebugDumpTutorialPresentationState() const;
 	bool IsAlertPresentationContractSatisfied() const;
+	bool IsTutorialPresentationContractSatisfied() const;
 
 #pragma endregion
 
@@ -130,6 +138,18 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UPanelWidget> PopupFeedbackLayer;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UWidget> TutorialCardContainer;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> TutorialTitleText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> TutorialBodyText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> TutorialProgressText;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Feedback", meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<UHeistUserWidgetBase> PopupFeedbackWidgetClass;

@@ -26,6 +26,7 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "TimerManager.h"
 #include "InputActionValue.h"
 #include "InputMappingContext.h"
 #include "Inventory/HeistInventoryTypes.h"
@@ -78,11 +79,17 @@ void AHeistPlayerController::BeginPlay()
 void AHeistPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	bLocalObservationInputHeld = false;
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(LocalTutorialStepTimerHandle);
+	}
 	UnbindLocalForgeryInputState();
 	UnbindLocalObjectAssemblyInputState();
 	if (BoundMatchPhaseGameState.IsValid())
 	{
 		BoundMatchPhaseGameState->GetMatchPhaseChangedDelegate().RemoveAll(this);
+		BoundMatchPhaseGameState->GetAlertStateChangedDelegate().RemoveAll(this);
+		BoundMatchPhaseGameState->GetEscapePhaseStateChangedDelegate().RemoveAll(this);
 		BoundMatchPhaseGameState.Reset();
 	}
 	Super::EndPlay(EndPlayReason);
@@ -208,6 +215,7 @@ void AHeistPlayerController::RefreshLocalHUDPresentation()
 			HeistHUD->ShowMainHUD();
 		}
 	}
+	RefreshLocalTutorialFromMatchPhase();
 }
 
 void AHeistPlayerController::RefreshMatchPhasePresentationBinding()
@@ -221,17 +229,37 @@ void AHeistPlayerController::RefreshMatchPhasePresentationBinding()
 	if (BoundMatchPhaseGameState.IsValid())
 	{
 		BoundMatchPhaseGameState->GetMatchPhaseChangedDelegate().RemoveAll(this);
+		BoundMatchPhaseGameState->GetAlertStateChangedDelegate().RemoveAll(this);
+		BoundMatchPhaseGameState->GetEscapePhaseStateChangedDelegate().RemoveAll(this);
 	}
 	BoundMatchPhaseGameState = HeistGameState;
 	if (IsValid(HeistGameState))
 	{
 		HeistGameState->GetMatchPhaseChangedDelegate().AddUObject(this, &AHeistPlayerController::HandleMatchPhasePresentationChanged);
+		HeistGameState->GetAlertStateChangedDelegate().AddUObject(this, &AHeistPlayerController::HandleAlertStatePresentationChanged);
+		HeistGameState->GetEscapePhaseStateChangedDelegate().AddUObject(this, &AHeistPlayerController::HandleEscapePhasePresentationChanged);
 	}
 }
 
 void AHeistPlayerController::HandleMatchPhasePresentationChanged(const EHeistMatchPhase, const EHeistMatchPhase)
 {
 	RefreshLocalHUDPresentation();
+}
+
+void AHeistPlayerController::HandleAlertStatePresentationChanged(const EHeistAlertLevel, const EHeistAlertLevel NewAlertLevel, const int32, const FName)
+{
+	if (NewAlertLevel != EHeistAlertLevel::Quiet)
+	{
+		NotifyLocalTutorialMilestone(TEXT("Alert"), TEXT("AlertRaised"));
+	}
+}
+
+void AHeistPlayerController::HandleEscapePhasePresentationChanged(const bool bEscapePhaseOpen)
+{
+	if (bEscapePhaseOpen)
+	{
+		NotifyLocalTutorialMilestone(TEXT("Extraction"), TEXT("EscapePhaseOpened"));
+	}
 }
 
 #pragma endregion
@@ -354,12 +382,21 @@ void AHeistPlayerController::HandleForgerySessionStateChanged()
 	}
 
 	RefreshLocalInputModeFromPawn();
+	if (bForgeryActive && IsCurrentLocalTutorialStep(TEXT("Forgery")))
+	{
+		bLocalTutorialObservedForgerySession = true;
+	}
 	if (!bForgeryActive)
 	{
 		UpdateFlashlightAimDirection();
 		if (IsValid(HeistCharacter))
 		{
 			HeistCharacter->GetInteractionComponent()->RefreshInteractionTarget(true);
+		}
+		if (bLocalTutorialObservedForgerySession)
+		{
+			bLocalTutorialObservedForgerySession = false;
+			NotifyLocalTutorialMilestone(TEXT("Forgery"), TEXT("ForgerySessionClosed"));
 		}
 	}
 }
@@ -416,12 +453,21 @@ void AHeistPlayerController::HandleObjectAssemblySessionStateChanged()
 	}
 
 	RefreshLocalInputModeFromPawn();
+	if (bObjectAssemblyActive && IsCurrentLocalTutorialStep(TEXT("Forgery")))
+	{
+		bLocalTutorialObservedForgerySession = true;
+	}
 	if (!bObjectAssemblyActive && LocalInputMode == EHeistInputMode::Gameplay)
 	{
 		UpdateFlashlightAimDirection();
 		if (IsValid(HeistCharacter))
 		{
 			HeistCharacter->GetInteractionComponent()->RefreshInteractionTarget(true);
+		}
+		if (bLocalTutorialObservedForgerySession)
+		{
+			bLocalTutorialObservedForgerySession = false;
+			NotifyLocalTutorialMilestone(TEXT("Forgery"), TEXT("ObjectAssemblySessionClosed"));
 		}
 	}
 }
@@ -723,6 +769,8 @@ void AHeistPlayerController::HandleInteractPressed()
 		return;
 	}
 
+	NotifyLocalTutorialMilestone(TEXT("CrosshairInteraction"), TEXT("ValidInteractionInput"));
+
 	AHeistLootActor* TargetLootActor = Cast<AHeistLootActor>(InteractionComponent->GetCurrentInteractionTarget());
 	if (TargetLootActor != nullptr)
 	{
@@ -781,6 +829,269 @@ void AHeistPlayerController::HandleInteractReleased()
 	}
 
 	Server_CancelObservation();
+}
+
+#pragma endregion
+
+#pragma region Tutorial
+
+FHeistTutorialPresentationChanged& AHeistPlayerController::GetTutorialPresentationChangedDelegate()
+{
+	return TutorialPresentationChangedDelegate;
+}
+
+bool AHeistPlayerController::IsLocalTutorialActive() const
+{
+	return bLocalTutorialActive;
+}
+
+bool AHeistPlayerController::HasCompletedLocalTutorial() const
+{
+	const UHeistGameUserSettings* Settings = UHeistGameUserSettings::GetHeistGameUserSettings();
+	return IsValid(Settings) && Settings->HasCompletedTutorial();
+}
+
+int32 AHeistPlayerController::GetLocalTutorialStepIndex() const
+{
+	return LocalTutorialStepIndex;
+}
+
+int32 AHeistPlayerController::GetLocalTutorialStepCount() const
+{
+	return 5;
+}
+
+FName AHeistPlayerController::GetLocalTutorialStepId() const
+{
+	switch (LocalTutorialStepIndex)
+	{
+	case 0:
+		return TEXT("CrosshairInteraction");
+	case 1:
+		return TEXT("Coin");
+	case 2:
+		return TEXT("Forgery");
+	case 3:
+		return TEXT("Alert");
+	case 4:
+		return TEXT("Extraction");
+	default:
+		return NAME_None;
+	}
+}
+
+FText AHeistPlayerController::GetLocalTutorialTitleText() const
+{
+	switch (LocalTutorialStepIndex)
+	{
+	case 0:
+		return NSLOCTEXT("HeistTutorial", "CrosshairInteractionTitle", "STEAL WITH PRECISION");
+	case 1:
+		return NSLOCTEXT("HeistTutorial", "CoinTitle", "CREATE A DISTRACTION");
+	case 2:
+		return NSLOCTEXT("HeistTutorial", "ForgeryTitle", "FORGE THE TARGET");
+	case 3:
+		return NSLOCTEXT("HeistTutorial", "AlertTitle", "WATCH SECURITY");
+	case 4:
+		return NSLOCTEXT("HeistTutorial", "ExtractionTitle", "ESCAPE TOGETHER");
+	default:
+		return FText::GetEmpty();
+	}
+}
+
+FText AHeistPlayerController::GetLocalTutorialBodyText() const
+{
+	switch (LocalTutorialStepIndex)
+	{
+	case 0:
+		return NSLOCTEXT("HeistTutorial", "CrosshairInteractionBody", "AIM THE CROSSHAIR AT AN OBJECT. HOLD [E] WHEN THE PROMPT APPEARS.");
+	case 1:
+		return NSLOCTEXT("HeistTutorial", "CoinBody", "PRESS [Q] TO THROW A COIN. GUARDS WILL INVESTIGATE THE IMPACT.");
+	case 2:
+		return NSLOCTEXT("HeistTutorial", "ForgeryBody", "OBSERVE THE TARGET, THEN CREATE ITS REPLICA BEFORE TIME RUNS OUT.");
+	case 3:
+		return NSLOCTEXT("HeistTutorial", "AlertBody", "SECURITY LEVEL RISES WHEN GUARDS FIND EVIDENCE. ALARMED LEADS TO LOCKDOWN.");
+	case 4:
+		return NSLOCTEXT("HeistTutorial", "ExtractionBody", "TAKE THE ORIGINAL AND REACH AN EXTRACTION POINT BEFORE LOCKDOWN.");
+	default:
+		return FText::GetEmpty();
+	}
+}
+
+void AHeistPlayerController::RefreshLocalTutorialFromMatchPhase()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	if (IsValid(HeistGameState) && HeistGameState->GetMatchPhase() == EHeistMatchPhase::InGame)
+	{
+		TryStartLocalTutorial();
+	}
+	else if (bLocalTutorialActive)
+	{
+		StopLocalTutorial(TEXT("MatchPhaseChanged"));
+	}
+}
+
+void AHeistPlayerController::TryStartLocalTutorial(const bool bForceRestart)
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	if (!IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame)
+	{
+		return;
+	}
+
+	UHeistGameUserSettings* Settings = UHeistGameUserSettings::GetHeistGameUserSettings();
+	if (!bForceRestart && ((IsValid(Settings) && Settings->HasCompletedTutorial()) || bLocalTutorialActive))
+	{
+		return;
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(LocalTutorialStepTimerHandle);
+	}
+	LocalTutorialStepIndex = 0;
+	bLocalTutorialActive = true;
+	bLocalTutorialObservedForgerySession = false;
+	TutorialPresentationChangedDelegate.Broadcast();
+	ScheduleLocalTutorialAutoAdvance();
+	UHeistDebugFunctionLibrary::DebugTutorialTransition(this, TEXT("Started"), GetLocalTutorialStepId(), LocalTutorialStepIndex, GetLocalTutorialStepCount(), true,
+														HasCompletedLocalTutorial(), true);
+}
+
+void AHeistPlayerController::StopLocalTutorial(const FName TriggerId)
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(LocalTutorialStepTimerHandle);
+	}
+	const FName PreviousStepId = GetLocalTutorialStepId();
+	bLocalTutorialActive = false;
+	bLocalTutorialObservedForgerySession = false;
+	LocalTutorialStepIndex = INDEX_NONE;
+	TutorialPresentationChangedDelegate.Broadcast();
+	UHeistDebugFunctionLibrary::DebugTutorialTransition(this, TriggerId, PreviousStepId, INDEX_NONE, GetLocalTutorialStepCount(), false, HasCompletedLocalTutorial(), true);
+}
+
+void AHeistPlayerController::CompleteLocalTutorial(const FName TriggerId)
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(LocalTutorialStepTimerHandle);
+	}
+	UHeistGameUserSettings* Settings = UHeistGameUserSettings::GetHeistGameUserSettings();
+	if (IsValid(Settings))
+	{
+		Settings->SetTutorialCompleted(true);
+		Settings->SaveSettings();
+	}
+	bLocalTutorialActive = false;
+	bLocalTutorialObservedForgerySession = false;
+	TutorialPresentationChangedDelegate.Broadcast();
+	UHeistDebugFunctionLibrary::DebugTutorialTransition(this, TriggerId, GetLocalTutorialStepId(), LocalTutorialStepIndex, GetLocalTutorialStepCount(), false, true, true);
+}
+
+void AHeistPlayerController::AdvanceLocalTutorial(const FName TriggerId)
+{
+	if (!bLocalTutorialActive)
+	{
+		return;
+	}
+
+	if (LocalTutorialStepIndex >= GetLocalTutorialStepCount() - 1)
+	{
+		CompleteLocalTutorial(TriggerId);
+		return;
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(LocalTutorialStepTimerHandle);
+	}
+	++LocalTutorialStepIndex;
+	bLocalTutorialObservedForgerySession = false;
+	TutorialPresentationChangedDelegate.Broadcast();
+	ScheduleLocalTutorialAutoAdvance();
+	UHeistDebugFunctionLibrary::DebugTutorialTransition(this, TriggerId, GetLocalTutorialStepId(), LocalTutorialStepIndex, GetLocalTutorialStepCount(), true, false, true);
+}
+
+void AHeistPlayerController::NotifyLocalTutorialMilestone(const FName StepId, const FName TriggerId)
+{
+	if (IsCurrentLocalTutorialStep(StepId))
+	{
+		AdvanceLocalTutorial(TriggerId);
+	}
+}
+
+void AHeistPlayerController::ScheduleLocalTutorialAutoAdvance(const float OverrideDelaySeconds)
+{
+	UWorld* World = GetWorld();
+	if (!IsValid(World) || !bLocalTutorialActive)
+	{
+		return;
+	}
+
+	const float DelaySeconds = OverrideDelaySeconds > 0.0f ? OverrideDelaySeconds : TutorialCardDurationSeconds;
+	World->GetTimerManager().SetTimer(LocalTutorialStepTimerHandle, this, &AHeistPlayerController::HandleLocalTutorialAutoAdvance, DelaySeconds, false);
+}
+
+void AHeistPlayerController::HandleLocalTutorialAutoAdvance()
+{
+	if (IsCurrentLocalTutorialStep(TEXT("Forgery")) && LocalInputMode == EHeistInputMode::Forgery)
+	{
+		ScheduleLocalTutorialAutoAdvance(1.0f);
+		return;
+	}
+	AdvanceLocalTutorial(TEXT("AutoAdvance"));
+}
+
+bool AHeistPlayerController::IsCurrentLocalTutorialStep(const FName StepId) const
+{
+	return bLocalTutorialActive && GetLocalTutorialStepId() == StepId;
+}
+
+void AHeistPlayerController::DebugResetLocalTutorial()
+{
+	UHeistGameUserSettings* Settings = UHeistGameUserSettings::GetHeistGameUserSettings();
+	if (IsValid(Settings))
+	{
+		Settings->SetTutorialCompleted(false);
+		Settings->SaveSettings();
+	}
+
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	if (IsValid(HeistGameState) && HeistGameState->GetMatchPhase() == EHeistMatchPhase::InGame)
+	{
+		TryStartLocalTutorial(true);
+	}
+	else
+	{
+		StopLocalTutorial(TEXT("DebugResetOutsideMatch"));
+	}
+}
+
+void AHeistPlayerController::DebugAdvanceLocalTutorial()
+{
+	if (!bLocalTutorialActive)
+	{
+		TryStartLocalTutorial(true);
+		return;
+	}
+	AdvanceLocalTutorial(TEXT("DebugAdvance"));
+}
+
+void AHeistPlayerController::DebugSkipLocalTutorial()
+{
+	CompleteLocalTutorial(TEXT("DebugSkip"));
 }
 
 #pragma endregion
@@ -968,6 +1279,7 @@ void AHeistPlayerController::RequestUseQuickSlot(const EHeistQuickSlotType SlotT
 			return;
 		}
 	}
+	NotifyLocalTutorialMilestone(TEXT("Coin"), TEXT("CoinUseRequested"));
 	Server_RequestUseQuickSlot(SlotType, ResolvedTargetWorldLocation);
 }
 

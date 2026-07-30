@@ -24,6 +24,7 @@ struct FHitResult;
 struct FInputActionValue;
 
 DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistPopupFeedbackRequested, const FText&, float);
+DECLARE_MULTICAST_DELEGATE(FHeistTutorialPresentationChanged);
 
 UCLASS()
 class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
@@ -51,6 +52,8 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	void RefreshLocalHUDPresentation();
 	void RefreshMatchPhasePresentationBinding();
 	void HandleMatchPhasePresentationChanged(EHeistMatchPhase PreviousMatchPhase, EHeistMatchPhase NewMatchPhase);
+	void HandleAlertStatePresentationChanged(EHeistAlertLevel PreviousAlertLevel, EHeistAlertLevel NewAlertLevel, int32 Revision, FName TriggerId);
+	void HandleEscapePhasePresentationChanged(bool bEscapePhaseOpen);
 	TWeakObjectPtr<AHeistGameState> BoundMatchPhaseGameState;
 
 #pragma endregion
@@ -123,6 +126,44 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	void HandleInteractPressed();
 	void HandleInteractReleased();
 	bool bLocalObservationInputHeld = false;
+
+#pragma endregion
+
+#pragma region Tutorial
+
+  public:
+	FHeistTutorialPresentationChanged& GetTutorialPresentationChangedDelegate();
+	bool IsLocalTutorialActive() const;
+	bool HasCompletedLocalTutorial() const;
+	int32 GetLocalTutorialStepIndex() const;
+	int32 GetLocalTutorialStepCount() const;
+	FName GetLocalTutorialStepId() const;
+	FText GetLocalTutorialTitleText() const;
+	FText GetLocalTutorialBodyText() const;
+
+	void DebugResetLocalTutorial();
+	void DebugAdvanceLocalTutorial();
+	void DebugSkipLocalTutorial();
+
+  private:
+	void RefreshLocalTutorialFromMatchPhase();
+	void TryStartLocalTutorial(bool bForceRestart = false);
+	void StopLocalTutorial(FName TriggerId);
+	void CompleteLocalTutorial(FName TriggerId);
+	void AdvanceLocalTutorial(FName TriggerId);
+	void NotifyLocalTutorialMilestone(FName StepId, FName TriggerId);
+	void ScheduleLocalTutorialAutoAdvance(float OverrideDelaySeconds = -1.0f);
+	void HandleLocalTutorialAutoAdvance();
+	bool IsCurrentLocalTutorialStep(FName StepId) const;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Heist|Tutorial", meta = (ClampMin = "2.0", ClampMax = "30.0"))
+	float TutorialCardDurationSeconds = 8.0f;
+
+	FHeistTutorialPresentationChanged TutorialPresentationChangedDelegate;
+	FTimerHandle LocalTutorialStepTimerHandle;
+	int32 LocalTutorialStepIndex = INDEX_NONE;
+	bool bLocalTutorialActive = false;
+	bool bLocalTutorialObservedForgerySession = false;
 
 #pragma endregion
 

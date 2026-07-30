@@ -95,6 +95,16 @@ void UHeistGameUserSettings::SetMasterVolume(const float NewMasterVolume)
 	MasterVolume = FMath::IsFinite(NewMasterVolume) ? FMath::Clamp(NewMasterVolume, MinimumMasterVolume, MaximumMasterVolume) : DefaultMasterVolume;
 }
 
+bool UHeistGameUserSettings::HasCompletedTutorial() const
+{
+	return bTutorialCompleted;
+}
+
+void UHeistGameUserSettings::SetTutorialCompleted(const bool bCompleted)
+{
+	bTutorialCompleted = bCompleted;
+}
+
 void UHeistGameUserSettings::ApplyHeistSettings(const bool bCheckForCommandLineOverrides)
 {
 	ApplySettings(bCheckForCommandLineOverrides);
