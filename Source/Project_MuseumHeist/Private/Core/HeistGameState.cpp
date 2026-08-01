@@ -917,17 +917,17 @@ void AHeistGameState::RebuildPlayerResults()
 			   PlayerResult.EscapeTimeSeconds);
 	}
 
-	int32 ArrestedPlayerCount = 0;
+	int32 TotalPlayerCount = 0;
+	int32 ActivePlayerCount = 0;
 	int32 EscapedPlayerCount = 0;
-	for (const FHeistPlayerResult& PlayerResult : PlayerResults)
-	{
-		ArrestedPlayerCount += PlayerResult.bArrested ? 1 : 0;
-		EscapedPlayerCount += PlayerResult.bEscaped ? 1 : 0;
-	}
-	const int32 ActivePlayerCount = PlayerResults.Num() - ArrestedPlayerCount - EscapedPlayerCount;
-	const bool bAllPlayersArrested = PlayerResults.Num() > 0 && ArrestedPlayerCount == PlayerResults.Num();
-	UE_LOG(LogHeist, Log, TEXT("Team arrest state: Players=%d Arrested=%d Escaped=%d Active=%d AllArrested=%s FailureEligible=%s"), PlayerResults.Num(), ArrestedPlayerCount, EscapedPlayerCount,
-		   ActivePlayerCount, bAllPlayersArrested ? TEXT("true") : TEXT("false"), bAllPlayersArrested ? TEXT("true") : TEXT("false"));
+	int32 ArrestedPlayerCount = 0;
+	GetPlayerLifecycleCounts(TotalPlayerCount, ActivePlayerCount, EscapedPlayerCount, ArrestedPlayerCount);
+	const bool bAllResolved = TotalPlayerCount > 0 && ActivePlayerCount == 0;
+	const bool bAllRemainingArrested = bAllResolved && ArrestedPlayerCount > 0;
+	UE_LOG(LogHeist, Log,
+		   TEXT("Team player lifecycle: Players=%d Arrested=%d Escaped=%d Active=%d AllResolved=%s AllRemainingArrested=%s FailureEligible=%s Authority=true"), TotalPlayerCount,
+		   ArrestedPlayerCount, EscapedPlayerCount, ActivePlayerCount, bAllResolved ? TEXT("true") : TEXT("false"), bAllRemainingArrested ? TEXT("true") : TEXT("false"),
+		   bAllRemainingArrested ? TEXT("true") : TEXT("false"));
 
 	UE_LOG(LogHeist, Log, TEXT("Player contribution results rebuilt: GameState=%s PlayerCount=%d"), *GetNameSafe(this), PlayerResults.Num());
 }
@@ -940,6 +940,86 @@ const TArray<FHeistPlayerResult>& AHeistGameState::GetPlayerResults() const
 FHeistPlayerResultsChanged& AHeistGameState::GetPlayerResultsChangedDelegate()
 {
 	return PlayerResultsChangedDelegate;
+}
+
+int32 AHeistGameState::GetActiveCrewCount() const
+{
+	int32 TotalPlayers = 0;
+	int32 ActivePlayers = 0;
+	int32 EscapedPlayers = 0;
+	int32 ArrestedPlayers = 0;
+	GetPlayerLifecycleCounts(TotalPlayers, ActivePlayers, EscapedPlayers, ArrestedPlayers);
+	return ActivePlayers;
+}
+
+int32 AHeistGameState::GetEscapedCrewCount() const
+{
+	int32 TotalPlayers = 0;
+	int32 ActivePlayers = 0;
+	int32 EscapedPlayers = 0;
+	int32 ArrestedPlayers = 0;
+	GetPlayerLifecycleCounts(TotalPlayers, ActivePlayers, EscapedPlayers, ArrestedPlayers);
+	return EscapedPlayers;
+}
+
+int32 AHeistGameState::GetArrestedCrewCount() const
+{
+	int32 TotalPlayers = 0;
+	int32 ActivePlayers = 0;
+	int32 EscapedPlayers = 0;
+	int32 ArrestedPlayers = 0;
+	GetPlayerLifecycleCounts(TotalPlayers, ActivePlayers, EscapedPlayers, ArrestedPlayers);
+	return ArrestedPlayers;
+}
+
+bool AHeistGameState::AreAllCrewMembersResolved() const
+{
+	int32 TotalPlayers = 0;
+	int32 ActivePlayers = 0;
+	int32 EscapedPlayers = 0;
+	int32 ArrestedPlayers = 0;
+	GetPlayerLifecycleCounts(TotalPlayers, ActivePlayers, EscapedPlayers, ArrestedPlayers);
+	return TotalPlayers > 0 && ActivePlayers == 0;
+}
+
+bool AHeistGameState::AreAllRemainingCrewMembersArrested() const
+{
+	int32 TotalPlayers = 0;
+	int32 ActivePlayers = 0;
+	int32 EscapedPlayers = 0;
+	int32 ArrestedPlayers = 0;
+	GetPlayerLifecycleCounts(TotalPlayers, ActivePlayers, EscapedPlayers, ArrestedPlayers);
+	return TotalPlayers > 0 && ActivePlayers == 0 && ArrestedPlayers > 0;
+}
+
+void AHeistGameState::GetPlayerLifecycleCounts(int32& OutTotalPlayers, int32& OutActivePlayers, int32& OutEscapedPlayers, int32& OutArrestedPlayers) const
+{
+	OutTotalPlayers = 0;
+	OutActivePlayers = 0;
+	OutEscapedPlayers = 0;
+	OutArrestedPlayers = 0;
+	for (const APlayerState* PlayerState : PlayerArray)
+	{
+		const AHeistPlayerState* HeistPlayerState = Cast<AHeistPlayerState>(PlayerState);
+		if (!IsValid(HeistPlayerState))
+		{
+			continue;
+		}
+
+		++OutTotalPlayers;
+		if (HeistPlayerState->IsEscaped())
+		{
+			++OutEscapedPlayers;
+		}
+		else if (HeistPlayerState->IsArrested())
+		{
+			++OutArrestedPlayers;
+		}
+		else
+		{
+			++OutActivePlayers;
+		}
+	}
 }
 
 void AHeistGameState::OnRep_PlayerResults()

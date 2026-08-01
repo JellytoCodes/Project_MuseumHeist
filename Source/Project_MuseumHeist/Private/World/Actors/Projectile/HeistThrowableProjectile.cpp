@@ -3,7 +3,6 @@
 #include "Character/HeistPlayerCharacter.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
-#include "Core/HeistCollisionChannels.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Net/UnrealNetwork.h"
@@ -24,7 +23,6 @@ AHeistThrowableProjectile::AHeistThrowableProjectile()
 	CollisionComponent->SetCollisionObjectType(ECC_WorldDynamic);
 	CollisionComponent->SetCollisionResponseToAllChannels(ECR_Block);
 	CollisionComponent->SetCollisionResponseToChannel(ECC_Visibility, ECR_Ignore);
-	CollisionComponent->SetCollisionResponseToChannel(HeistCollisionChannels::InteractionTrace, ECR_Ignore);
 	CollisionComponent->SetNotifyRigidBodyCollision(true);
 
 	VisualMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("VisualMeshComponent"));

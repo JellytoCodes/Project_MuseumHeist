@@ -4839,14 +4839,29 @@ void UHeistDebugFunctionLibrary::DebugArrestDump(APlayerController* PlayerContro
 	}
 
 	const UCharacterMovementComponent* MovementComponent = Character->GetCharacterMovement();
+	const AHeistGameState* HeistGameState = Character->GetWorld() ? Character->GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	const AHeistHUD* HeistHUD = HeistPlayerController->GetHUD<AHeistHUD>();
+	const UHeistHUDViewModel* HUDViewModel = IsValid(HeistHUD) ? HeistHUD->GetHUDViewModel() : nullptr;
+	const bool bMatchInGame = IsValid(HeistGameState) && HeistGameState->GetMatchPhase() == EHeistMatchPhase::InGame;
+	const bool bTerminalState = HeistPlayerState->IsArrested() || HeistPlayerState->IsEscaped();
+	const bool bMovementDisabled = IsValid(MovementComponent) && MovementComponent->MovementMode == MOVE_None;
+	const bool bInputBlocked = HeistPlayerController->IsMoveInputIgnored() && HeistPlayerController->IsLookInputIgnored();
+	const bool bHUDConsistent = IsValid(HUDViewModel) && HUDViewModel->IsLocalPlayerEscaped() == HeistPlayerState->IsEscaped() &&
+		HUDViewModel->IsLocalPlayerArrested() == HeistPlayerState->IsArrested();
+	const bool bPassed = bMovementDisabled == bTerminalState && Character->IsHidden() == HeistPlayerState->IsEscaped() &&
+		Character->GetActorEnableCollision() == !HeistPlayerState->IsEscaped() && Character->IsRescueInteractionAvailable() == HeistPlayerState->IsArrested() &&
+		bInputBlocked == (bMatchInGame && bTerminalState) && HeistPlayerController->IsLocalAwaitingCrew() == (bMatchInGame && HeistPlayerState->IsEscaped()) && bHUDConsistent;
 	Message(PlayerController,
-			FString::Printf(TEXT("Player arrest dump: PlayerId=%d Arrested=%s Escaped=%s MovementDisabled=%s Visible=%s Collision=%s InputMode=%s Cursor=%s IgnoreMove=%s IgnoreLook=%s"),
+			FString::Printf(TEXT("Player lifecycle dump: PlayerId=%d Arrested=%s Escaped=%s MovementDisabled=%s Visible=%s Collision=%s RescueTarget=%s AwaitingCrew=%s SpectateTarget=%s "
+								 "InputMode=%s Cursor=%s IgnoreMove=%s IgnoreLook=%s HUDConsistent=%s MatchPhase=%s Result=%s"),
 							HeistPlayerState->HeistPlayerId, HeistPlayerState->IsArrested() ? TEXT("true") : TEXT("false"), HeistPlayerState->IsEscaped() ? TEXT("true") : TEXT("false"),
-							IsValid(MovementComponent) && MovementComponent->MovementMode == MOVE_None ? TEXT("true") : TEXT("false"), Character->IsHidden() ? TEXT("false") : TEXT("true"),
-							Character->GetActorEnableCollision() ? TEXT("true") : TEXT("false"),
+							bMovementDisabled ? TEXT("true") : TEXT("false"), Character->IsHidden() ? TEXT("false") : TEXT("true"), Character->GetActorEnableCollision() ? TEXT("true") : TEXT("false"),
+							Character->IsRescueInteractionAvailable() ? TEXT("true") : TEXT("false"), HeistPlayerController->IsLocalAwaitingCrew() ? TEXT("true") : TEXT("false"),
+							*GetNameSafe(HeistPlayerController->GetLocalSpectateTarget()),
 							HeistPlayerController->GetLocalInputMode() == EHeistInputMode::Gameplay ? TEXT("Gameplay") : TEXT("NonGameplay"),
 							HeistPlayerController->bShowMouseCursor ? TEXT("true") : TEXT("false"), HeistPlayerController->IsMoveInputIgnored() ? TEXT("true") : TEXT("false"),
-							HeistPlayerController->IsLookInputIgnored() ? TEXT("true") : TEXT("false")),
+							HeistPlayerController->IsLookInputIgnored() ? TEXT("true") : TEXT("false"), bHUDConsistent ? TEXT("true") : TEXT("false"),
+							IsValid(HeistGameState) ? *UEnum::GetValueAsString(HeistGameState->GetMatchPhase()) : TEXT("MissingGameState"), bPassed ? TEXT("PASS") : TEXT("FAIL")),
 			EHeistDebugLevel::Info, true, 8.0f);
 	HeistPlayerController->DebugRequestDumpArrestState();
 #endif

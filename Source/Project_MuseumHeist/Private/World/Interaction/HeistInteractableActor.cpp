@@ -15,7 +15,7 @@ AHeistInteractableActor::AHeistInteractableActor()
 	SetRootComponent(InteractionCollision);
 	InteractionCollision->InitSphereRadius(50.0f);
 	InteractionCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	InteractionCollision->SetGenerateOverlapEvents(false);
+	InteractionCollision->SetGenerateOverlapEvents(true);
 
 	VisualMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("VisualMeshComponent"));
 	VisualMeshComponent->SetupAttachment(InteractionCollision);
@@ -35,7 +35,7 @@ void AHeistInteractableActor::BeginPlay()
 	InteractionCollision->SetCollisionObjectType(HeistCollisionChannels::Interactable);
 	InteractionCollision->SetCollisionResponseToAllChannels(ECR_Ignore);
 	InteractionCollision->SetCollisionResponseToChannel(HeistCollisionChannels::Player, ECR_Overlap);
-	InteractionCollision->SetCollisionResponseToChannel(HeistCollisionChannels::InteractionTrace, ECR_Block);
+	InteractionCollision->SetGenerateOverlapEvents(true);
 }
 
 #pragma endregion

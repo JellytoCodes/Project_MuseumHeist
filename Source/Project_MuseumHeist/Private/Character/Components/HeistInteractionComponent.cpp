@@ -1,11 +1,10 @@
 #include "Character/Components/HeistInteractionComponent.h"
 
 #include "Character/HeistPlayerCharacter.h"
+#include "Components/CapsuleComponent.h"
 #include "Components/PrimitiveComponent.h"
 #include "Core/HeistCollisionChannels.h"
 #include "Core/HeistLogChannels.h"
-#include "Engine/World.h"
-#include "GameFramework/Controller.h"
 #include "World/Interaction/HeistInteractable.h"
 
 #pragma region Construction
@@ -25,67 +24,80 @@ void UHeistInteractionComponent::BeginPlay()
 
 	OwnerCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
 	checkf(IsValid(OwnerCharacter), TEXT("HeistInteractionComponent requires AHeistPlayerCharacter owner."));
+
+	UCapsuleComponent* OwnerCapsule = OwnerCharacter->GetCapsuleComponent();
+	checkf(IsValid(OwnerCapsule), TEXT("HeistInteractionComponent requires an owner CapsuleComponent."));
+	OwnerCapsule->OnComponentBeginOverlap.AddDynamic(this, &UHeistInteractionComponent::HandleInteractionOverlapBegin);
+	OwnerCapsule->OnComponentEndOverlap.AddDynamic(this, &UHeistInteractionComponent::HandleInteractionOverlapEnd);
+
+	TArray<AActor*> InitiallyOverlappingActors;
+	OwnerCapsule->GetOverlappingActors(InitiallyOverlappingActors);
+	for (AActor* OverlappingActor : InitiallyOverlappingActors)
+	{
+		if (IsActorOverlappingInteractionArea(OverlappingActor))
+		{
+			OverlappingInteractionActors.Add(OverlappingActor);
+		}
+	}
+	RefreshInteractionTarget();
 }
 
 #pragma endregion
 
 #pragma region Interaction
 
-bool UHeistInteractionComponent::RefreshInteractionTarget(const bool bForceRefresh)
+bool UHeistInteractionComponent::RefreshInteractionTarget()
 {
 	AActor* PreviousTarget = CurrentInteractionTarget.Get();
-	AActor* PreviousTraceHitActor = CurrentTraceHitActor.Get();
-	UWorld* World = GetWorld();
-	if (!IsValid(OwnerCharacter) || World == nullptr || !CanOwnerInteract())
+	const bool bPreviousTargetAvailable = bCurrentTargetAvailable;
+	if (!IsValid(OwnerCharacter) || !CanOwnerInteract())
 	{
 		ClearInteractionTarget(TEXT("OwnerCannotInteract"));
 		return false;
 	}
 
-	const float CurrentWorldTime = World->GetTimeSeconds();
-	if (!bForceRefresh && CurrentWorldTime - LastInteractionTraceTime < InteractionScanInterval)
+	AActor* BestTarget = nullptr;
+	float BestDistanceSquared = TNumericLimits<float>::Max();
+	TArray<TWeakObjectPtr<AActor>> StaleCandidates;
+	for (const TWeakObjectPtr<AActor>& CandidatePtr : OverlappingInteractionActors)
 	{
-		return HasValidInteractionTarget();
-	}
-	LastInteractionTraceTime = CurrentWorldTime;
+		AActor* Candidate = CandidatePtr.Get();
+		if (!IsActorOverlappingInteractionArea(Candidate))
+		{
+			StaleCandidates.Add(CandidatePtr);
+			continue;
+		}
 
-	FVector TraceStart = FVector::ZeroVector;
-	FVector TraceEnd = FVector::ZeroVector;
-	if (!ResolveCenterScreenTrace(TraceStart, TraceEnd))
-	{
-		ClearInteractionTarget(TEXT("MissingViewpoint"));
-		return false;
-	}
+		IHeistInteractable* Interactable = Cast<IHeistInteractable>(Candidate);
+		if (Interactable == nullptr || !Interactable->CanInteract(OwnerCharacter))
+		{
+			continue;
+		}
 
-	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(HeistCenterInteractionTrace), false, OwnerCharacter);
-	FHitResult HitResult;
-	const bool bHit = World->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, HeistCollisionChannels::InteractionTrace, QueryParams);
-	AActor* HitActor = bHit ? HitResult.GetActor() : nullptr;
-	CurrentTraceHitActor = HitActor;
-
-	const UPrimitiveComponent* HitComponent = bHit ? HitResult.GetComponent() : nullptr;
-	const bool bHitInteractableChannel = IsValid(HitComponent) && HitComponent->GetCollisionObjectType() == HeistCollisionChannels::Interactable;
-	IHeistInteractable* Interactable = bHitInteractableChannel ? Cast<IHeistInteractable>(HitActor) : nullptr;
-	const bool bWithinRange = IsActorWithinInteractionRange(HitActor);
-	const bool bAvailable = Interactable != nullptr && bWithinRange && Interactable->CanInteract(OwnerCharacter);
-	AActor* CenterTarget = bAvailable ? HitActor : nullptr;
-
-	CurrentInteractionTarget = CenterTarget;
-	bCurrentTargetAvailable = bAvailable;
-	if (PreviousTraceHitActor != HitActor || PreviousTarget != CenterTarget)
-	{
-		UE_LOG(LogHeistUI, Verbose,
-			   TEXT("[%s] Center interaction trace: Channel=HeistInteractionTrace Start=%s End=%s Hit=%s InteractableChannel=%s WithinRange=%s Target=%s Available=%s Distance=%.1f Key=E"),
-			   *GetNameSafe(OwnerCharacter), *TraceStart.ToCompactString(), *TraceEnd.ToCompactString(), *GetNameSafe(HitActor), bHitInteractableChannel ? TEXT("true") : TEXT("false"),
-			   bWithinRange ? TEXT("true") : TEXT("false"), *GetNameSafe(CenterTarget), bAvailable ? TEXT("true") : TEXT("false"), bHit ? HitResult.Distance : InteractionRange);
+		const float DistanceSquared = FVector::DistSquared(OwnerCharacter->GetActorLocation(), Candidate->GetActorLocation());
+		if (!IsValid(BestTarget) || DistanceSquared < BestDistanceSquared ||
+			(FMath::IsNearlyEqual(DistanceSquared, BestDistanceSquared) && Candidate->GetName().Compare(BestTarget->GetName()) < 0))
+		{
+			BestTarget = Candidate;
+			BestDistanceSquared = DistanceSquared;
+		}
 	}
 
-	if (PreviousTarget != CenterTarget)
+	for (const TWeakObjectPtr<AActor>& StaleCandidate : StaleCandidates)
 	{
-		InteractionTargetChangedDelegate.Broadcast(CenterTarget, bAvailable);
+		OverlappingInteractionActors.Remove(StaleCandidate);
 	}
 
-	return bAvailable;
+	CurrentInteractionTarget = BestTarget;
+	bCurrentTargetAvailable = IsValid(BestTarget);
+	if (PreviousTarget != BestTarget || bPreviousTargetAvailable != bCurrentTargetAvailable)
+	{
+		UE_LOG(LogHeistUI, Verbose, TEXT("[%s] Overlap interaction target changed: Previous=%s Target=%s Available=%s Candidates=%d Key=E"), *GetNameSafe(OwnerCharacter),
+			   *GetNameSafe(PreviousTarget), *GetNameSafe(BestTarget), bCurrentTargetAvailable ? TEXT("true") : TEXT("false"), OverlappingInteractionActors.Num());
+		InteractionTargetChangedDelegate.Broadcast(BestTarget, bCurrentTargetAvailable);
+	}
+
+	return bCurrentTargetAvailable;
 }
 
 AActor* UHeistInteractionComponent::GetCurrentInteractionTarget() const
@@ -101,22 +113,27 @@ bool UHeistInteractionComponent::HasValidInteractionTarget() const
 	}
 
 	AActor* TargetActor = CurrentInteractionTarget.Get();
-	return IsActorWithinInteractionRange(TargetActor);
+	IHeistInteractable* Interactable = Cast<IHeistInteractable>(TargetActor);
+	return Interactable != nullptr && IsActorOverlappingInteractionArea(TargetActor) && Interactable->CanInteract(OwnerCharacter);
 }
 
-float UHeistInteractionComponent::GetInteractionRange() const
+bool UHeistInteractionComponent::IsActorOverlappingInteractionArea(const AActor* TargetActor) const
 {
-	return InteractionRange;
-}
-
-bool UHeistInteractionComponent::IsActorWithinInteractionRange(const AActor* TargetActor) const
-{
-	if (!IsValid(OwnerCharacter) || !IsValid(TargetActor) || !CanOwnerInteract())
+	if (!IsValid(OwnerCharacter) || !IsValid(TargetActor))
 	{
 		return false;
 	}
 
-	return FVector::DistSquared(OwnerCharacter->GetActorLocation(), TargetActor->GetActorLocation()) <= FMath::Square(InteractionRange);
+	const UCapsuleComponent* OwnerCapsule = OwnerCharacter->GetCapsuleComponent();
+	if (!IsValid(OwnerCapsule))
+	{
+		return false;
+	}
+
+	TArray<UPrimitiveComponent*> OverlappingComponents;
+	OwnerCapsule->GetOverlappingComponents(OverlappingComponents);
+	return OverlappingComponents.ContainsByPredicate(
+		[this, TargetActor](const UPrimitiveComponent* Component) { return IsInteractionCollisionComponent(Component, TargetActor); });
 }
 
 FHeistInteractionTargetChanged& UHeistInteractionComponent::GetInteractionTargetChangedDelegate()
@@ -124,45 +141,52 @@ FHeistInteractionTargetChanged& UHeistInteractionComponent::GetInteractionTarget
 	return InteractionTargetChangedDelegate;
 }
 
-bool UHeistInteractionComponent::ResolveCenterScreenTrace(FVector& OutTraceStart, FVector& OutTraceEnd) const
+bool UHeistInteractionComponent::IsInteractionCollisionComponent(const UPrimitiveComponent* Component, const AActor* ExpectedOwner) const
 {
-	if (!IsValid(OwnerCharacter))
-	{
-		return false;
-	}
-
-	FRotator ViewRotation = OwnerCharacter->GetActorRotation();
-	if (const AController* Controller = OwnerCharacter->GetController())
-	{
-		Controller->GetPlayerViewPoint(OutTraceStart, ViewRotation);
-	}
-	else
-	{
-		OwnerCharacter->GetActorEyesViewPoint(OutTraceStart, ViewRotation);
-	}
-
-	OutTraceEnd = OutTraceStart + (ViewRotation.Vector() * InteractionRange);
-	return true;
+	return IsValid(Component) && IsValid(ExpectedOwner) && Component->GetOwner() == ExpectedOwner &&
+		Component->GetCollisionObjectType() == HeistCollisionChannels::Interactable;
 }
 
 void UHeistInteractionComponent::ClearInteractionTarget(const TCHAR* Reason)
 {
 	AActor* PreviousTarget = CurrentInteractionTarget.Get();
-	AActor* PreviousTraceHitActor = CurrentTraceHitActor.Get();
 	CurrentInteractionTarget.Reset();
-	CurrentTraceHitActor.Reset();
 	bCurrentTargetAvailable = false;
 
-	if (IsValid(PreviousTarget) || IsValid(PreviousTraceHitActor))
+	if (IsValid(PreviousTarget))
 	{
-		UE_LOG(LogHeistUI, Verbose, TEXT("[%s] Center interaction target cleared: PreviousTarget=%s PreviousHit=%s Reason=%s"), *GetNameSafe(GetOwner()), *GetNameSafe(PreviousTarget),
-			   *GetNameSafe(PreviousTraceHitActor), Reason);
+		UE_LOG(LogHeistUI, Verbose, TEXT("[%s] Overlap interaction target cleared: PreviousTarget=%s Reason=%s"), *GetNameSafe(GetOwner()), *GetNameSafe(PreviousTarget), Reason);
 	}
 
 	if (IsValid(PreviousTarget))
 	{
 		InteractionTargetChangedDelegate.Broadcast(nullptr, false);
 	}
+}
+
+void UHeistInteractionComponent::HandleInteractionOverlapBegin(UPrimitiveComponent*, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32, bool, const FHitResult&)
+{
+	if (OtherActor == OwnerCharacter.Get() || !IsInteractionCollisionComponent(OtherComponent, OtherActor) || Cast<IHeistInteractable>(OtherActor) == nullptr)
+	{
+		return;
+	}
+
+	OverlappingInteractionActors.Add(OtherActor);
+	RefreshInteractionTarget();
+}
+
+void UHeistInteractionComponent::HandleInteractionOverlapEnd(UPrimitiveComponent*, AActor* OtherActor, UPrimitiveComponent*, int32)
+{
+	if (IsValid(OtherActor) && IsActorOverlappingInteractionArea(OtherActor))
+	{
+		return;
+	}
+
+	if (IsValid(OtherActor))
+	{
+		OverlappingInteractionActors.Remove(OtherActor);
+	}
+	RefreshInteractionTarget();
 }
 
 bool UHeistInteractionComponent::CanOwnerInteract() const

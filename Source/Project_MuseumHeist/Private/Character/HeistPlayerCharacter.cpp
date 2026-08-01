@@ -13,6 +13,7 @@
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/SphereComponent.h"
 #include "Core/HeistCollisionChannels.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistLogChannels.h"
@@ -41,6 +42,15 @@ AHeistPlayerCharacter::AHeistPlayerCharacter()
 	VisionComponent = CreateDefaultSubobject<UHeistVisionComponent>(TEXT("VisionComponent"));
 	CustomizationComponent = CreateDefaultSubobject<UHeistCustomizationComponent>(TEXT("CustomizationComponent"));
 	NoiseEmitterComponent = CreateDefaultSubobject<UHeistNoiseEmitterComponent>(TEXT("NoiseEmitterComponent"));
+	RescueInteractionTarget = CreateDefaultSubobject<USphereComponent>(TEXT("RescueInteractionTarget"));
+	RescueInteractionTarget->SetupAttachment(GetCapsuleComponent());
+	RescueInteractionTarget->SetSphereRadius(60.0f);
+	RescueInteractionTarget->SetRelativeLocation(FVector(0.0f, 0.0f, 45.0f));
+	RescueInteractionTarget->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	RescueInteractionTarget->SetCollisionObjectType(HeistCollisionChannels::Interactable);
+	RescueInteractionTarget->SetCollisionResponseToAllChannels(ECR_Ignore);
+	RescueInteractionTarget->SetCollisionResponseToChannel(HeistCollisionChannels::Player, ECR_Overlap);
+	RescueInteractionTarget->SetGenerateOverlapEvents(true);
 
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = true;
@@ -68,11 +78,12 @@ void AHeistPlayerCharacter::BeginPlay()
 	checkf(IsValid(VisionComponent), TEXT("HeistPlayerCharacter requires HeistVisionComponent"));
 	checkf(IsValid(CustomizationComponent), TEXT("HeistPlayerCharacter requires HeistCustomizationComponent"));
 	checkf(IsValid(NoiseEmitterComponent), TEXT("HeistPlayerCharacter requires HeistNoiseEmitterComponent"));
+	checkf(IsValid(RescueInteractionTarget), TEXT("HeistPlayerCharacter requires RescueInteractionTarget"));
 	checkf(IsValid(GetMesh()), TEXT("HeistPlayerCharacter requires a Full Body SkeletalMeshComponent"));
 	GetCapsuleComponent()->SetCollisionObjectType(HeistCollisionChannels::Player);
 	GetCapsuleComponent()->SetCollisionResponseToChannel(HeistCollisionChannels::Guard, ECR_Block);
 	GetCapsuleComponent()->SetCollisionResponseToChannel(HeistCollisionChannels::Interactable, ECR_Overlap);
-	GetCapsuleComponent()->SetCollisionResponseToChannel(HeistCollisionChannels::InteractionTrace, ECR_Ignore);
+	GetCapsuleComponent()->SetGenerateOverlapEvents(true);
 
 	const bool bCameraSocketResolved = GetMesh()->DoesSocketExist(FirstPersonCameraSocketName);
 	if (bCameraSocketResolved)
@@ -255,6 +266,10 @@ void AHeistPlayerCharacter::ApplyPlayerStateGameplayRestrictions()
 
 	SetActorEnableCollision(!bEscaped);
 	SetActorHiddenInGame(bEscaped);
+	if (IsValid(RescueInteractionTarget))
+	{
+		RescueInteractionTarget->SetCollisionEnabled(bArrested && !bEscaped ? ECollisionEnabled::QueryOnly : ECollisionEnabled::NoCollision);
+	}
 
 	if (bEscaped)
 	{
@@ -268,7 +283,7 @@ void AHeistPlayerCharacter::ApplyPlayerStateGameplayRestrictions()
 
 	if (AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(GetController()))
 	{
-		HeistPlayerController->HandleArrestStateChanged(bArrested);
+		HeistPlayerController->HandlePlayerTerminalStateChanged(bEscaped, bArrested);
 	}
 }
 
@@ -281,6 +296,41 @@ void AHeistPlayerCharacter::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
 	ApplyPlayerStateGameplayRestrictions();
+}
+
+#pragma endregion
+
+#pragma region RescueInteraction
+
+bool AHeistPlayerCharacter::CanInteract(const AActor* Interactor) const
+{
+	const AHeistPlayerCharacter* RescuingCharacter = Cast<AHeistPlayerCharacter>(Interactor);
+	const AHeistPlayerState* TargetPlayerState = GetPlayerState<AHeistPlayerState>();
+	const AHeistPlayerState* RescuingPlayerState = IsValid(RescuingCharacter) ? RescuingCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	return IsValid(RescuingCharacter) && RescuingCharacter != this && IsValid(TargetPlayerState) && IsValid(RescuingPlayerState) &&
+		TargetPlayerState->IsArrested() && !TargetPlayerState->IsEscaped() && !RescuingPlayerState->IsArrested() && !RescuingPlayerState->IsEscaped() &&
+		IsValid(HeistGameState) && HeistGameState->GetMatchPhase() == EHeistMatchPhase::InGame && !HeistGameState->AreWorldInteractionsRestricted();
+}
+
+void AHeistPlayerCharacter::Interact(AActor* Interactor)
+{
+	if (!HasAuthority() || !CanInteract(Interactor))
+	{
+		return;
+	}
+
+	if (AHeistPlayerState* TargetPlayerState = GetPlayerState<AHeistPlayerState>())
+	{
+		TargetPlayerState->ClearArrested();
+	}
+}
+
+bool AHeistPlayerCharacter::IsRescueInteractionAvailable() const
+{
+	const AHeistPlayerState* TargetPlayerState = GetPlayerState<AHeistPlayerState>();
+	return IsValid(TargetPlayerState) && TargetPlayerState->IsArrested() && !TargetPlayerState->IsEscaped() && IsValid(RescueInteractionTarget) &&
+		RescueInteractionTarget->GetCollisionEnabled() == ECollisionEnabled::QueryOnly;
 }
 
 #pragma endregion

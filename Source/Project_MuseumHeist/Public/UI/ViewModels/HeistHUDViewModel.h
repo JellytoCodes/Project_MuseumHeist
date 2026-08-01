@@ -46,6 +46,7 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
 	void HandleEscapePhaseStateChanged(bool bEscapePhaseOpen);
 	void HandleLootTotalsChanged(int32 TotalLootScore, float TotalLootWeight);
 	void HandleEscapeStateChanged(bool bEscaped);
+	void HandleArrestStateChanged(bool bArrested);
 	void HandleActionStateChanged();
 
 	UPROPERTY(Transient)
@@ -70,6 +71,7 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
 	int32 GetLocalPlayerId() const;
 	int32 GetConnectedPlayerCount() const;
 	bool IsLocalPlayerEscaped() const;
+	bool IsLocalPlayerArrested() const;
 	bool IsEscapePhaseOpen() const;
 	bool IsEscapeCastActive() const;
 	float GetEscapeCastEndServerTime() const;
@@ -106,6 +108,9 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|HUD", meta = (AllowPrivateAccess = "true"))
 	bool bLocalPlayerEscaped = false;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|HUD", meta = (AllowPrivateAccess = "true"))
+	bool bLocalPlayerArrested = false;
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|HUD", meta = (AllowPrivateAccess = "true"))
 	bool bEscapePhaseOpen = false;

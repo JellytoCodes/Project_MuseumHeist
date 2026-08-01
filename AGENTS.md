@@ -4,7 +4,7 @@
 
 기준일: 2026-08-01 (GDD / TDD / Agent Rulebook 분리 반영)
 엔진: Unreal Engine 5.8
-현재 목표: 2026-09-20 W8 Final RC / 프로젝트 마무리
+현재 목표: 2026-09-20 Final RC / 프로젝트 마무리
 
 이 문서는 프로젝트 엔지니어링 정책의 최상위 Source of Truth다.
 
@@ -95,28 +95,24 @@ Project_MuseumHeist는 Unreal Engine 5.8 C++ 기반의 **1~4인 온라인 협동
 프로젝트 문서는 역할에 따라 다음 우선순위를 사용한다.
 
 1. `AGENTS.md`
-   - Codex/Claude 계열 에이전트가 따라야 할 Hard Rule, 범위 경계, 구현 우선순위와 작업 절차
+   - Codex/Claude 계열 에이전트가 따라야 할 Hard Rule, 범위 경계, 작업 절차와 금지 범위
 2. `Museum_Heist_TDD.docx`
    - C++/Blueprint 책임, Network Authority, Runtime State, Data Contract, Validation, QA와 Definition of Done
 3. `Museum_Heist_GDD.docx`
    - 제품 비전, 재미의 근거, Player Experience, Contract Run, Level/Art/Audio 방향과 Balance 의도
-4. Notion Task/Test 기록
-   - 개별 Task 상태, 테스트 로그 번호, 증적 링크와 실제 PASS/FAIL/BLOCKED 결과
 
 하위 문서가 상위 문서와 충돌하면 구현 전에 상위 문서를 먼저 수정한다. 다만 문서의 역할이 다른 경우에는 해당 역할의 Source of Truth를 따른다.
 
 - 제품 방향과 Player-facing 경험을 변경할 때는 GDD를 먼저 갱신하고 TDD와 AGENTS의 파급 범위를 동기화한다.
 - Authority, Replication, Data Schema 또는 Validation을 변경할 때는 TDD를 먼저 갱신하고 AGENTS의 실행 규칙을 동기화한다.
 - Codex 작업 절차와 금지 범위는 AGENTS가 최종 권한을 가진다.
-- Notion Task 기록은 Task ID, 주차 배정, 실행 순서, 상태와 테스트 증적의 Source of Truth다.
-- AGENTS의 Roadmap은 Notion Task를 요약할 수 있지만 기존 Task ID를 다른 의미로 재사용하지 않는다.
-- AGENTS와 Notion의 Task 번호 또는 실행 순서가 충돌하면 구현을 진행하지 않고 Notion을 기준으로 먼저 동기화한다.
-- Notion은 설계 문서를 대체하지 않는다. 제품 방향은 GDD, 구현 계약은 TDD, 실행 추적은 Notion이 담당한다.
+
+Notion Task/Test 기록은 문서 우선순위에 포함하지 않는다. 에이전트는 사용자가 지정한 작업의 범위를 이해하기 위해 관련 항목을 필요할 때 한 번 조회할 수 있지만, Task를 생성·수정·삭제·재배열하거나 상태·진행률·증적을 갱신하지 않는다. Task 운영과 실시간 기록은 사용자가 직접 관리한다.
 
 `ClassManifest.md`와 `Docs/W2_BlueprintShellPlan.md`는 더 이상 별도 거점 문서로 운영하지 않으며 AGENTS로 통합한다.
 게임플레이 규칙, 데이터 계약, Shell/Presentation 경계, 구현 우선순위 변경은 AGENTS 본문에서 직접 관리한다.
 
-## 2A. Blueprint / Presentation Rule Integration (W2 병합 반영)
+## 2A. Blueprint / Presentation Rule Integration
 
 Blueprint Shell/Presentation 운용은 별도 문서로 분리하지 않고 아래 규칙을 AGENTS 본문 규칙으로 통합해 적용한다.
 
@@ -263,7 +259,7 @@ Title Menu
 
 Smoke 및 Trap 계열 기능은 Stretch 목록에 포함하지 않는다.
 
-필요성이 다시 확정될 경우 기존 삭제 코드를 복구하지 않고, 당시의 기획과 현재 아키텍처를 기준으로 신규 Task를 작성한다.
+필요성이 다시 확정될 경우 기존 삭제 코드를 복구하지 않고, 당시의 기획과 현재 아키텍처를 기준으로 설계와 구현 범위를 다시 정의한다.
 
 ---
 
@@ -288,8 +284,8 @@ Smoke 및 Trap 계열 기능은 Stretch 목록에 포함하지 않는다.
 - `.umap`은 사용자가 명시적으로 요청한 경우에만 수정한다.
 - 불필요한 Manager, Service, Factory, Processor, Subsystem을 추가하지 않는다.
 - Painting마다 별도 Actor Class를 만들지 않는다.
-- Manifest에 없는 타입을 활성 Task에서 임의 생성하지 않는다.
-- 미래 주차의 전체 시스템을 선행 구현하지 않는다.
+- Manifest에 없는 타입을 현재 요청 범위에서 임의 생성하지 않는다.
+- 현재 사용자 요청 범위를 벗어난 전체 시스템을 선행 구현하지 않는다.
 - 현재 기획에서 삭제된 기능을 호환성 명목으로 다시 추가하지 않는다.
 - 플레이어의 진행 판단에 영향을 주는 Runtime State는 화면, 월드, 오디오 중 최소 두 채널로 피드백한다.
 - Player Name, Crew Status, Contract Progress, Alert, Stun / Arrest, Original Carrier와 Extraction 상태를 로그 전용 또는 숨은 상태로 남기지 않는다.
@@ -417,7 +413,9 @@ Client Preview는 확정값으로 취급하지 않는다.
 - Camera는 머리 높이에 배치한다.
 - Controller Yaw와 Pitch가 시점을 제어한다.
 - Character Yaw는 Controller Yaw를 따른다.
-- Interaction은 Center Screen Line Trace를 사용한다.
+- Interaction은 Player Capsule과 각 Actor의 Interaction Collision 사이 `BeginOverlap / EndOverlap` 후보 관리로 처리한다.
+- Interaction Target은 현재 Overlap 중이고 `CanInteract`를 만족하는 Actor 가운데 가장 가까운 대상으로 선택한다.
+- Interaction Target 탐색을 위한 실시간 Line Trace 또는 주기적 Trace Scan을 사용하지 않는다.
 - Flashlight Direction은 Camera Forward를 기준으로 한다.
 - Coin Throw Direction은 Camera Forward 또는 검증된 Camera Target을 기준으로 한다.
 - Top-Down Gameplay Camera를 사용하지 않는다.
@@ -602,7 +600,7 @@ OrphanExtensions=0
 - Guard Alert Profile은 `DT_GuardData`의 `Guard_Alert_Low / Medium / High` Row를 사용한다.
 - 위치명 기반 `Guard_Default / Guard_Vault / Guard_SecurityRoom` Row는 사용하지 않는다.
 - 신규 Guard의 기본 `GuardProfileId`는 `Guard_Alert_Medium`이다.
-- 실제 맵의 Guard별 등급 배정, Patrol 영역, 공간 압박과 최종 수치 조정은 W8 Level Design / Map Balance에서 수행한다.
+- 실제 맵의 Guard별 등급 배정, Patrol 영역, 공간 압박과 최종 수치 조정은 Release Level Design / Map Balance에서 수행한다.
 
 ---
 
@@ -863,7 +861,7 @@ Sculpture
 Ceramic
 ```
 
-Jewelry, Fossil 및 기타 Family는 별도 Numbered Task 승인 전 활성화하지 않는다.
+Jewelry, Fossil 및 기타 Family는 명시적인 설계·구현 승인 전 활성화하지 않는다.
 
 ## Modular Kit
 
@@ -1165,31 +1163,27 @@ Smoke 및 Trap 관련 Blueprint와 C++ Class는 신규 Asset의 부모 또는 Da
 
 ---
 
-# 16. Numbered Task Boundary
+# 16. Work Boundary And Handoff
 
-- 활성 `TASK-Wn-###`만 구현한다.
-- PvE 피벗 이후에도 기존 프로젝트 주차 번호를 연속 사용한다.
-- 별도 `F` Task 체계를 만들지 않는다.
-- Task 시작 전 관련 문서와 Manifest 상태를 확인한다.
+아래 절차는 채팅이 새로 생성되거나 이전 대화 Context가 없어도 동일하게 적용한다. 사용자가 작업 규칙을 다시 설명하게 만들지 않는다.
+
+## Task Management Non-interference
+
+- Notion의 Task 목록은 사용자가 지정한 작업 범위를 이해하기 위한 읽기 전용 Context다.
+- 에이전트는 Task ID, 실행 순서, 상태, 진행률, 담당자, 증적 또는 완료 판정을 직접 변경하지 않는다.
+- AGENTS, GDD 또는 TDD에 개별 Task 목록, 실시간 진행 상태나 Roadmap 사본을 유지하지 않는다.
+- Task 기록과 설계·구현 문서가 충돌하면 사용자에게 차이만 보고하며 임의로 어느 쪽도 동기화하지 않는다.
+
+## Work Bootstrap
+
+- 작업 시작 시 `AGENTS.md`와 관련 GDD/TDD 범위, Manifest 상태를 먼저 확인한다.
+- Git 작업 상태와 기존 Asset 경로를 읽기 전용으로 확인하고, 사용자의 기존 변경을 새 작업 결과로 오인하지 않는다.
 - Editor 작업이 필요하면 사용자용 Blueprint/Data/Map 절차를 현재 대화에서 제공한다.
 - 사용자가 명시적으로 요청하지 않는 한 별도 작업용 `.md` 파일을 추가하지 않는다.
-- C++ Build만 성공했다고 Editor 작업 포함 Task를 완료 처리하지 않는다.
-- 멀티플레이, Ownership, Replication 주장은 사용자 PIE 증거가 있을 때만 PASS 처리한다.
 
-## 새 대화 포함 필수 Task 워크플로우
+## 구현 전 Deliverable Audit
 
-아래 절차는 채팅이 새로 생성되거나 이전 대화 Context가 없어도 매번 동일하게 적용한다. 사용자가 작업 규칙을 다시 설명하게 만들지 않는다.
-
-### 1. Task Bootstrap
-
-- 작업 시작 시 `AGENTS.md`, Notion의 해당 주차 페이지와 정확한 `TASK-Wn-###`, 관련 GDD/TDD 범위를 먼저 확인한다.
-- Git 작업 상태와 기존 Asset 경로를 읽기 전용으로 확인하고, 사용자의 기존 변경을 새 작업 결과로 오인하지 않는다.
-- Task ID, 실행 순서, 현재 상태와 증적은 Notion을 기준으로 복구한다. 사용자에게 이전 규칙이나 이미 기록된 진행 상황을 다시 설명해 달라고 요구하지 않는다.
-- AGENTS와 Notion의 Task 번호 또는 범위가 충돌하면 구현보다 동기화를 먼저 한다.
-
-### 2. 구현 전 Deliverable Audit
-
-소스 수정 전에 활성 Task에 필요한 산출물을 다음 범주로 분해한다.
+소스 수정 전에 현재 요청에 필요한 산출물을 다음 범주로 분해한다.
 
 ```text
 C++ Rule / Authority / Validation / Replication
@@ -1200,45 +1194,33 @@ Map Actor Placement / Collision / Navigation / Lighting
 Player-facing Visual / Audio / Interaction Feedback
 Development Editor Build
 PIE Server / Client Runtime Test
-Output Log / Notion Evidence
+Output Log
 ```
 
-- 각 범주를 `Codex 담당`, `사용자 Editor 담당`, `현재 Task 불필요`, `후속 Task 담당` 중 하나로 판정한다.
-- 필요한 Editor 작업은 C++ 구현을 마친 뒤 발견하는 것이 아니라 Task 시작 시 식별한다.
+- 각 범주를 `Codex 담당`, `사용자 Editor 담당`, `현재 요청 불필요`, `현재 요청 범위 밖` 중 하나로 판정한다.
+- 필요한 Editor 작업은 C++ 구현을 마친 뒤 발견하는 것이 아니라 작업 시작 시 식별한다.
 - Editor 작업이 없으면 `Editor 작업 없음`이라고 명시한다. 있으면 Build를 요청하기 전에 Editor Checklist와 실행 순서를 미리 알린다.
 - `.uasset` 파일이 존재한다는 사실은 Blueprint가 올바르게 구성됐거나 화면에 보이거나 Map에 배치됐다는 증거가 아니다.
 - C++ Actor Class가 존재한다는 사실은 Player가 식별하고 상호작용할 수 있는 Presentation Actor가 존재한다는 증거가 아니다.
 - Actor, UI, Data 또는 Map이 완료 조건에 포함되면 관련 Asset의 Parent Class, 필수 Component, Asset Assignment와 실제 Map 배치 여부를 별도로 확인한다.
-- 테스트용 임시 배치와 Release용 영구 배치를 구분하고, 영구 배치가 후속 Task라면 정확한 Task ID를 함께 명시한다.
+- 테스트용 임시 배치와 Release용 영구 배치를 구분한다.
 - 필수 Editor 선행 작업을 안내하고 사용자가 완료하기 전에는 해당 기능의 Runtime Test 단계로 넘어가지 않는다.
 
-### 3. Task 진행 단계와 완료 판정
+## 구현과 검증 경계
 
-대화와 작업 판정에는 다음 진행 단계를 사용한다. 이는 Notion 상태를 대체하지 않는 실행 단계다.
-
-```text
-SCOPED
-→ CODE_READY
-→ USER_BUILD_PASS
-→ EDITOR_READY
-→ PIE_PASS
-→ TASK_PASS
-```
-
-- `CODE_READY`는 C++ 수정과 정적 검사가 끝났다는 뜻일 뿐 Build 성공이나 Task 완료를 뜻하지 않는다.
-- `USER_BUILD_PASS`는 사용자가 해당 코드 Revision을 Build한 뒤 성공을 전달한 경우에만 사용한다.
+- C++ 수정과 정적 검사가 끝났다는 사실은 Build 성공이나 기능 완료를 뜻하지 않는다.
+- Build 성공은 사용자가 해당 코드 Revision을 Build한 뒤 성공을 전달한 경우에만 확인된 것으로 취급한다.
 - Build 성공 뒤 C++를 다시 수정했다면 이전 Build 증거는 현재 코드에 유효하지 않으므로 다시 Build를 요청한다.
-- `EDITOR_READY`는 필요한 Blueprint/Data/Map 작업을 사용자가 완료하고 Compile/Save 또는 임시 테스트 배치를 확인한 상태다.
-- Build 성공만으로 `EDITOR_READY`, `PIE_PASS` 또는 `TASK_PASS` 처리하지 않는다.
-- `PIE_PASS`는 지정한 Server/Client 절차와 Output Log가 완료 조건을 만족할 때만 사용한다.
-- Notion Task는 중간 단계 동안 `진행중`으로 유지한다. `TASK_PASS` 증적이 확보되기 전에는 완료 처리하지 않는다.
+- 필요한 Blueprint/Data/Map 작업은 사용자가 Compile/Save 또는 임시 테스트 배치까지 확인한다.
+- Build 성공만으로 Editor 구성이나 Runtime 동작을 확인한 것으로 취급하지 않는다.
+- 멀티플레이, Ownership, Replication 동작은 사용자가 실행한 Server/Client 절차와 Output Log를 근거로 판정한다.
 - 뒤늦게 Editor 선행 작업 누락을 발견하면 즉시 기존 완료 표현을 철회하고, 누락된 작업·영향받는 테스트·재Build 필요 여부를 명확히 정정한다.
 
-### 4. Editor Handoff Gate
+## Editor Handoff Gate
 
 사용자에게 Build 또는 Editor 작업을 넘길 때 다음을 빠짐없이 제공한다.
 
-- 현재 실행 단계
+- 현재 구현·검증 상황
 - 열어야 할 정확한 Asset 또는 Map 경로
 - 확인하거나 선택할 Actor / Parent Class / Component
 - 변경할 Property와 값
@@ -1247,9 +1229,9 @@ SCOPED
 - C++ 재Build 필요 여부
 - 완료 후 다음 단계가 Editor 작업인지 PIE인지
 
-Editor 작업이 필요한 Task에서 위 Checklist 없이 바로 PIE 명령부터 제공하지 않는다.
+Editor 작업이 필요한 경우 위 Checklist 없이 바로 PIE 명령부터 제공하지 않는다.
 
-### 5. Debug Fixture와 Presentation 규칙
+## Debug Fixture와 Presentation 규칙
 
 - Player가 찾아서 상호작용해야 하는 Actor의 Debug Spawn은 기존 Presentation Blueprint를 우선 생성한다.
 - Static Mesh, Widget, Decal 또는 명확한 Debug Drawing이 없는 순수 C++ 부모 Actor를 시각 상호작용 테스트용으로 생성하지 않는다.
@@ -1257,14 +1239,14 @@ Editor 작업이 필요한 Task에서 위 Checklist 없이 바로 PIE 명령부�
 - Debug Spawn 성공은 Release Map 배치 완료를 의미하지 않는다.
 - 기존 Blueprint를 재사용할 때도 Parent Class, Visual Component, Collision과 상호작용 가능 여부를 Editor Checklist에 포함한다.
 
-### 6. Runtime Test 안내 형식
+## Runtime Test 안내 형식
 
 - 모든 명령은 실행 창을 `SERVER` 또는 `CLIENT`로 명확히 표시한다.
 - 복사할 명령은 한 명령당 하나의 `text` Code Block으로 분리한다.
 - 준비 명령, Player 조작, 판정용 Dump를 섞지 않고 실행 순서대로 안내한다.
 - 모든 중간 명령에 장문의 기대값을 반복하지 않고, 각 Test의 마지막 판정용 Dump와 핵심 관찰 기준만 제공한다.
 - Build와 필수 Editor 선행 작업이 현재 코드 Revision에 대해 확인된 뒤에만 Runtime Test 절차를 제공한다.
-- 테스트 결과를 받으면 PASS / FAIL / BLOCKED와 다음 작업을 먼저 판정하고 Notion 증적을 동기화한다.
+- 테스트 결과를 받으면 관찰 범위의 PASS / FAIL / BLOCKED와 다음 조치를 판정해 사용자에게 보고한다.
 
 ## Codex 담당
 
@@ -1277,9 +1259,9 @@ Editor 작업이 필요한 Task에서 위 Checklist 없이 바로 PIE 명령부�
 - Data Import JSON 분석
 - 승인된 범위의 코드 수정
 - 사용자가 제출한 Build 오류 수정
-- Task 판정용 최소 Debug Log 추가
+- 검증 판정용 최소 Debug Log 추가
 - Debug 또는 Cheat Command 구현
-- 사용자가 제출한 PIE Log 기반 PASS / FAIL / BLOCKED 판정
+- 사용자가 제출한 PIE Log 기반 동작 판정
 
 ## 사용자 Unreal Editor 담당
 
@@ -1334,8 +1316,8 @@ Editor 작업 안내에는 다음만 포함한다.
 
 # 17. Runtime Test And Log Handoff
 
-- Runtime Task는 기존 `UHeistDebugFunctionLibrary`와 `UHeistCheatManager`를 우선 사용한다.
-- 완료 판정용 로그가 부족하면 활성 Task 범위 안에서 최소 Debug Log를 추가한다.
+- Runtime 검증은 기존 `UHeistDebugFunctionLibrary`와 `UHeistCheatManager`를 우선 사용한다.
+- 동작 판정용 로그가 부족하면 현재 사용자 요청 범위 안에서 최소 Debug Log를 추가한다.
 - 사용자는 Unreal Editor PIE에서 Debug Command를 실행한다.
 - PIE의 Disconnect, Session Cleanup, Owner EndPlay 또는 재접속 연속성 검증에서 Client 콘솔 `disconnect`를 사용하지 않는다.
 - PIE Client를 종료하기 위해 `ESC`를 사용하지 않는다.
@@ -1351,11 +1333,9 @@ Editor 작업 안내에는 다음만 포함한다.
 - Shipping은 Debug / Cheat Command가 제거되므로 위 명령 기반 Formal Test에 사용하지 않는다.
 - 사용자는 관련 Output Log를 제출한다.
 - 화면 동작이 완료 조건이면 관찰 결과도 제출한다.
-- 제출된 로그와 관찰 결과를 Task 완료 조건에 대조한다.
+- 제출된 로그와 관찰 결과를 해당 기능의 검증 조건에 대조한다.
 - 결과는 `PASS`, `FAIL`, `BLOCKED`로 판정한다.
-- Build 성공만으로 Runtime Task를 PASS 처리하지 않는다.
-- 개별 Task PASS와 Weekly Gate PASS를 분리한다.
-- Formal Test PASS를 별도로 관리한다.
+- Build 성공만으로 Runtime 동작을 PASS 처리하지 않는다.
 
 ## Debug Logging Policy
 
@@ -1368,7 +1348,7 @@ Editor 작업 안내에는 다음만 포함한다.
 - 현재 Target의 기본 Shipping 설정에서는 `Fatal`이 아닌 `UE_LOG`가 자동 제거되므로, 단순 출력 차단만을 위한 호출부 `#if !UE_BUILD_SHIPPING`은 추가하지 않는다.
 - Actor 탐색, 배열 순회, 화면 출력 또는 기타 Debug 전용 연산이 있는 함수는 `#if UE_BUILD_SHIPPING` 조기 반환 또는 동등한 Compile Guard를 유지한다.
 - Runtime State를 변경하는 Debug/Cheat 함수는 로그 설정과 무관하게 Shipping에서 컴파일 경로가 활성화되지 않도록 명시적으로 Guard한다.
-- 실제 Shipping 운영 로그가 필요해질 경우 Debug Log와 섞지 않고 별도 정책과 Task를 먼저 정의한다.
+- 실제 Shipping 운영 로그가 필요해질 경우 Debug Log와 섞지 않고 별도 정책을 먼저 정의한다.
 
 ---
 
@@ -1387,7 +1367,7 @@ Editor 작업 안내에는 다음만 포함한다.
 
 # 18. Verification Standard
 
-각 Task 결과는 다음을 구분한다.
+각 검증 결과는 다음을 구분한다.
 
 - `Implementation Complete`
 - `Blueprint/Data/Map Pending`
@@ -1396,7 +1376,7 @@ Editor 작업 안내에는 다음만 포함한다.
 - `FAIL`
 - `BLOCKED`
 
-PIE가 필요한 Task는 다음을 명시한다.
+PIE가 필요한 검증은 다음을 명시한다.
 
 - PIE Mode
 - Player 수
@@ -1407,7 +1387,6 @@ PIE가 필요한 Task는 다음을 명시한다.
 - 기대 Log
 - PASS 신호
 - FAIL 신호
-- Task Test 또는 Weekly Gate 구분
 
 Known Warning은 숨기지 않는다.
 
@@ -1416,7 +1395,7 @@ Known Warning은 숨기지 않는다.
 - `aqProf.dll` / VTune 선택적 Profiler 경고와 Title / Lobby 전환 중의 일시적 AI Perception / Recast 경고는 현재 확인된 비차단 Known Warning이다.
 - Crash, Travel 실패 또는 Gameplay Map 회귀가 동반되면 다시 분류한다.
 
-다음 문제는 Weekly Gate를 차단한다.
+다음 문제는 Release 검증을 차단한다.
 
 - Critical Replication
 - Ownership 위반
@@ -1440,7 +1419,7 @@ Known Warning은 숨기지 않는다.
 
 새 흐름에서는 호출하지 않는다.
 
-Reference Viewer와 회귀 확인 후 별도 Cleanup Task에서 제거한다.
+Reference Viewer와 회귀 확인 후 별도 정리 작업에서 제거한다.
 
 기존 검증 기록은 재사용 가능한 Regression Baseline으로 보존할 수 있다.
 
@@ -1528,112 +1507,25 @@ DecisionScore =
 - P0~P6 충돌 시 하나의 Branch만 선택되는지 확인한다.
 - `DecisionScore` 입력이 모두 정의된 정규화 범위를 지키고 NaN/Inf가 없는지 확인한다.
 - Match End에서 선택된 Priority, Score Input과 최종 Branch를 Debug Snapshot으로 재현할 수 있어야 한다.
-- 구현 PASS/FAIL/BLOCKED와 Evidence Link는 Notion Task/Test 기록에 남긴다.
 
 ---
 
-# 20. Current Phase
+# 20. Product Direction
 
-W1~W5는 완료됐다. 개별 Task 상태와 테스트 로그 번호는 Notion Task 기록을 Source of Truth로 사용한다.
+현재 제품 방향은 Rev 11 — Contract Run And Player Experience Foundation이다.
 
-현재 실행 기준은 Rev 11 W6 — Contract Run / Player Experience Foundation이다.
+`Contract 확인 → Forgery/Assembly → Original/Loose Loot Carry → Alert/Chase → Player별 Deposit → Outcome/Result → Lobby Return`의 단일 완주 흐름을 먼저 닫는다. 이후 협동 가독성과 탐욕/퇴각 리듬, 세 맵의 Release Shape, QA와 Release Gate 순서로 완성도를 높인다.
 
-## Rev 11 Execution Roadmap
+## Product Completion Gate
 
-### W6 — Contract Run Feature Complete
-
-0. `TASK-W6-000` Contract Foundation / Required Target / Loot Value Quota
-1. `TASK-W6-001` Original Carrier Validation / Neutral World Drop / Recovery
-2. `TASK-W6-002` Shared Extraction Actor / Player Deposit
-3. `TASK-W6-003` Player Escape / Arrest State
-4. `TASK-W6-004` Full / Partial / Failure Conditions
-5. `TASK-W6-005` Team Reward Formula
-6. `TASK-W6-006` Player Contribution Capture
-7. `TASK-W6-007` Team Result ViewModel / Widget
-8. `TASK-W6-008` End Phase / Lobby Return
-9. `TASK-W6-009` 3-Map Shared Exit Placement
-10. `TASK-W6-010` W6 End-to-End Mission Gate
-11. `TASK-W6-011` Shared Loose Loot Content 5+
-
-### W6-002 / W6-009 Shared Extraction 경계
-
-- `TASK-W6-002`는 `AHeistVentActor`의 서버 권한 Shared Extraction 규칙, Player별 Escape Cast, Original / Loose Loot Deposit과 남은 Crew의 계속 진행을 검증한다.
-- Shared Extraction의 기존 Presentation Shell은 `/Game/Blueprints/World/Actors/Vent/BP_Vent`를 사용한다.
-- `BP_Vent.uasset`의 존재만으로 `TASK-W6-002`를 완료 처리하지 않는다. Parent Class, Visual Mesh, Interaction Collision과 실제 상호작용 가능 상태를 Editor에서 확인해야 한다.
-- W6-002 Formal PIE는 사용자가 현재 Gameplay Map에 `BP_Vent`를 임시 배치하거나, Presentation Blueprint를 생성하는 승인된 Debug Command를 사용한다.
-- W6-002 Debug Spawn은 `/Game/Blueprints/World/Actors/Vent/BP_Vent.BP_Vent_C`를 생성해야 한다. 순수 `AHeistVentActor` Fallback은 시각 테스트 PASS로 인정하지 않는다.
-- M01 / M02 / M03의 최종 위치, 동선, Guard 압박, Collision과 Presentation을 포함한 영구 배치는 `TASK-W6-009` 범위다.
-- W6-002의 임시 배치 또는 Debug Spawn을 W6-009 완료 증거로 재사용하지 않는다.
-- W6-002 완료에는 현재 코드 Revision의 사용자 Build 성공, 보이는 Shared Exit, Server/Client Deposit, 중복 Deposit 방지, 취소 조건, 개별 Escape 후 남은 Crew 진행과 Output Log 증적이 모두 필요하다.
-
-W6는 `Contract 확인 → Forgery/Assembly → Original/Loose Loot Carry → Alert/Chase → Player별 Deposit → Outcome/Result → Lobby Return`의 단일 완주 흐름을 먼저 닫는다. Nameplate, VFX, Audio, Map UX와 세부 Balance를 이유로 Critical Path를 중단하지 않는다.
-
-### W7 — Player Experience Integration
-
-1. `TASK-W7-001` 2~4 Player Contract / Quota / Penalty Balance
-2. `TASK-W7-002` Remote Nameplate / Team Status Synchronization
-3. `TASK-W7-003` Main HUD Team / Carrier / Escape / Arrest Status
-4. `TASK-W7-004` Stun Presentation Package
-5. `TASK-W7-005` Arrest / Rescue / Team End Presentation
-6. `TASK-W7-006` Carry / Heavy Feedback
-7. `TASK-W7-007` Full-Screen Map UX / Input Restore
-8. `TASK-W7-008` Walk / Sprint / Weight / Footstep Risk-Reward
-9. `TASK-W7-009` Detection / Alert / Lockdown Warning
-10. `TASK-W7-010` Escape Loop Decision Rhythm
-11. `TASK-W7-011` Spawn Variation / Contract Target Distribution
-
-### W8 — 3-Map Release Shape / Feature Lock Preparation
-
-1. `TASK-W8-001` M01 Classical Layout / Lighting Final Pass
-2. `TASK-W8-002` M02 Eastern Layout / Lighting Final Pass
-3. `TASK-W8-003` M03 Contemporary Layout / Lighting Final Pass
-4. `TASK-W8-004` Map Guard Route / Profile Finalization
-5. `TASK-W8-005` Map Ambient / Gameplay Audio Pass
-6. `TASK-W8-006` HUD / Result / Feedback Polish
-7. `TASK-W8-007` 3-Map 1~4 Player Balance Gate
-
-### W9 — Feature Lock / QA Sprint 1
-
-1. `TASK-W9-001` Feature Lock / Branch / Version Freeze
-2. `TASK-W9-002` 3-Map Regression Matrix
-3. `TASK-W9-003` Network / Ownership Edge Cases
-4. `TASK-W9-004` Forgery / Display Case Edge Cases
-5. `TASK-W9-005` Performance / Memory / Hitch Pass
-6. `TASK-W9-006` Blocker Fix Sprint A
-7. `TASK-W9-007` Reference / Redirector / License Audit
-
-### W10 — RC1 / Internal Gate
-
-1. `TASK-W10-001` Blocker Fix Sprint B / Regression
-2. `TASK-W10-002` RC1 Package / Store Checklist
-3. `TASK-W10-003` Internal RC1 End-to-End Gate
-
-### W11 — External Test / Final Scope
-
-1. `TASK-W11-001` External Test / RC1 Gate
-2. `TASK-W11-002` Final Scope / Issue Triage
-3. `TASK-W11-003` Final Blocker Fix / Regression
-
-### W12 — Final RC / Release Gate
-
-1. `TASK-W12-001` RC2 / Final Shipping Build
-2. `TASK-W12-002` Final 3-Map / 1~4 Regression
-3. `TASK-W12-003` Steam Depot / Branch / Store Upload
-4. `TASK-W12-004` Store Page / Credits / Changelog Final
-5. `TASK-W12-005` Publish Checklist / Release
-6. `TASK-W12-006` Launch Smoke Test
-7. `TASK-W12-007` Hotfix / Rollback / Post-launch Monitoring
-
-## Game Completion Gate
-
-Task는 다음 네 단계를 모두 만족해야 완료로 판정한다.
+기능은 다음 네 조건을 모두 만족해야 완료된 것으로 설명할 수 있다.
 
 1. **Functional**: C++ Authority, Validation, Replication과 Data Contract가 구현된다.
 2. **Integrated Loop**: Debug Command 없이 실제 게임 흐름에서 진입, 실행, 종료와 상태 원복이 가능하다.
 3. **Player Experience**: 플레이어가 목표, 위험, 실패 원인과 다음 행동을 HUD, World Presentation, Audio 중 최소 두 채널로 이해한다.
-4. **Replay / Evidence**: 동일 세션 또는 Lobby Return 이후 두 번째 판을 Softlock과 잔여 상태 없이 시작하며 사용자 Build/Editor/PIE 증적을 Notion에 남긴다.
+4. **Replay**: 동일 세션 또는 Lobby Return 이후 두 번째 판을 Softlock과 잔여 상태 없이 시작한다.
 
-Build 성공이나 단일 함수 호출 성공만으로 Task를 완료 처리하지 않는다. Asset/Map 배치가 필요한 Task는 C++ 완료와 Gameplay Gate 완료를 분리해 추적한다.
+Build 성공이나 단일 함수 호출 성공만으로 기능 완료를 주장하지 않는다. Asset/Map 배치가 필요한 기능은 C++ 구현과 실제 Gameplay 검증을 구분해 설명한다.
 
 ## Rev 11 Execution Priority
 
@@ -1642,9 +1534,9 @@ Build 성공이나 단일 함수 호출 성공만으로 Task를 완료 처리하
 - Walk / Sprint, Nameplate, Team Status, Map과 Status Feedback은 Polish로 미루지 않는다.
 - Gameplay Rule, Authority, Validation과 Replication은 계속 C++가 소유한다.
 - Animation, Audio, VFX와 Layout은 승인된 C++ State Hook을 표현한다.
-- W6에서 한 판의 완주 가능성을 먼저 닫고, W7에서 협동 가독성과 탐욕/퇴각 리듬을 검증한다.
-- W8에서 세 맵을 Release Shape로 만들고 신규 Gameplay Feature를 잠근다.
-- W9~W10은 QA와 RC1, W11은 외부 테스트, W12는 Final RC와 Release Gate로 사용한다.
-- Public Release 목표일 `2026-09-20`을 유지하되 RC Gate가 실패하면 출시 Task를 `Blocked`로 표시하고 날짜 때문에 통과시키지 않는다.
+- 한 판의 완주 가능성을 먼저 닫고, 이후 협동 가독성과 탐욕/퇴각 리듬을 검증한다.
+- 세 맵을 Release Shape로 만든 뒤 신규 Gameplay Feature를 잠근다.
+- 그다음 QA, RC, 외부 테스트와 Final Release Gate를 진행한다.
+- Public Release 목표일 `2026-09-20`을 유지하되 RC Gate가 실패하면 날짜 때문에 통과시키지 않는다.
 
-제품 경험과 밸런스 의도는 `Museum_Heist_GDD.docx`, 구현 계약은 `Museum_Heist_TDD.docx`, 주차별 Task 상태와 Evidence는 Notion Task/Test 기록을 확인한다.
+제품 경험과 밸런스 의도는 `Museum_Heist_GDD.docx`, 구현 계약은 `Museum_Heist_TDD.docx`를 확인한다.

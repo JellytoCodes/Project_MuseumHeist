@@ -21,7 +21,6 @@ class UHeistInventoryComponent;
 class UHeistObjectAssemblyComponent;
 class UInputAction;
 class UInputMappingContext;
-struct FHitResult;
 struct FInputActionValue;
 
 DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistPopupFeedbackRequested, const FText&, float);
@@ -53,9 +52,16 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	void RefreshLocalHUDPresentation();
 	void RefreshMatchPhasePresentationBinding();
 	void HandleMatchPhasePresentationChanged(EHeistMatchPhase PreviousMatchPhase, EHeistMatchPhase NewMatchPhase);
+	void HandlePlayerResultsPresentationChanged();
 	void HandleAlertStatePresentationChanged(EHeistAlertLevel PreviousAlertLevel, EHeistAlertLevel NewAlertLevel, int32 Revision, FName TriggerId);
 	void HandleEscapePhasePresentationChanged(bool bEscapePhaseOpen);
+	void RefreshLocalPlayerTerminalState();
+	void RefreshLocalSpectateTarget();
+	AActor* FindLocalSpectateTarget() const;
+	bool IsLocalPlayerTerminalInputBlocked() const;
 	TWeakObjectPtr<AHeistGameState> BoundMatchPhaseGameState;
+	TWeakObjectPtr<AActor> LocalSpectateTarget;
+	bool bLocalAwaitingCrew = false;
 
 #pragma endregion
 
@@ -109,12 +115,15 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
   public:
 	void HandleInventoryOpenStateChanged(bool bInventoryOpen);
 	void HandleArrestStateChanged(bool bArrested);
+	void HandlePlayerTerminalStateChanged(bool bEscaped, bool bArrested);
 	void ApplyLocalUserSettings();
 	float GetLocalMouseSensitivity() const;
 	EHeistInputMode GetLocalInputMode() const;
 	bool IsLocalInputMappingContextActive(EHeistInputMode InputMode) const;
 	int32 GetActiveHeistInputMappingContextCount() const;
 	bool IsLocalInputModeContractSatisfied() const;
+	bool IsLocalAwaitingCrew() const;
+	AActor* GetLocalSpectateTarget() const;
 
   private:
 	float LocalMouseSensitivity = 1.0f;
@@ -217,6 +226,9 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	UFUNCTION(BlueprintCallable, Category = "Heist|Objective")
 	void RequestDropCarriedOriginal();
 
+	UFUNCTION(BlueprintCallable, Category = "Heist|Player")
+	void RequestRescuePlayer(AHeistPlayerCharacter* TargetPlayerCharacter);
+
 	UFUNCTION(BlueprintCallable, Category = "Heist|Inventory")
 	void RequestAssignQuickSlot(EHeistQuickSlotType SlotType, int32 InstanceId);
 
@@ -289,6 +301,9 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestDropCarriedOriginal();
+
+	UFUNCTION(Server, Reliable)
+	void Server_RequestRescuePlayer(AHeistPlayerCharacter* TargetPlayerCharacter);
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestAssignQuickSlot(EHeistQuickSlotType SlotType, int32 InstanceId);

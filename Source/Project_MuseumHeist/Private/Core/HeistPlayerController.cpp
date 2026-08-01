@@ -38,6 +38,16 @@
 #include "World/Actors/Loot/HeistLootActor.h"
 #include "World/Actors/Projectile/HeistCoinProjectile.h"
 #include "World/Actors/Projectile/HeistThrowableProjectile.h"
+#include "World/Interaction/HeistInteractable.h"
+
+namespace
+{
+bool CanUseHeistInteraction(AActor* TargetActor, const AActor* Interactor)
+{
+	IHeistInteractable* InteractableTarget = Cast<IHeistInteractable>(TargetActor);
+	return InteractableTarget != nullptr && InteractableTarget->CanInteract(Interactor);
+}
+}
 
 #pragma region Construction
 
@@ -72,6 +82,7 @@ void AHeistPlayerController::BeginPlay()
 	}
 
 	RefreshLocalInputModeFromPawn();
+	RefreshLocalPlayerTerminalState();
 	RefreshLocalHUDPresentation();
 	ApplyLocalUserSettings();
 	UpdateFlashlightAimDirection();
@@ -89,10 +100,22 @@ void AHeistPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	if (BoundMatchPhaseGameState.IsValid())
 	{
 		BoundMatchPhaseGameState->GetMatchPhaseChangedDelegate().RemoveAll(this);
+		BoundMatchPhaseGameState->GetPlayerResultsChangedDelegate().RemoveAll(this);
 		BoundMatchPhaseGameState->GetAlertStateChangedDelegate().RemoveAll(this);
 		BoundMatchPhaseGameState->GetEscapePhaseStateChangedDelegate().RemoveAll(this);
 		BoundMatchPhaseGameState.Reset();
 	}
+	if (IsLocalController())
+	{
+		ResetIgnoreMoveInput();
+		ResetIgnoreLookInput();
+		if (APawn* ControlledPawn = GetPawn())
+		{
+			SetViewTarget(ControlledPawn);
+		}
+	}
+	bLocalAwaitingCrew = false;
+	LocalSpectateTarget.Reset();
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -103,6 +126,7 @@ void AHeistPlayerController::OnPossess(APawn* InPawn)
 	UnbindLocalObjectAssemblyInputState();
 	Super::OnPossess(InPawn);
 	RefreshLocalInputModeFromPawn();
+	RefreshLocalPlayerTerminalState();
 	RefreshLocalHUDPresentation();
 	ApplyLocalUserSettings();
 	UpdateFlashlightAimDirection();
@@ -113,6 +137,7 @@ void AHeistPlayerController::OnRep_Pawn()
 	Super::OnRep_Pawn();
 	bLocalObservationInputHeld = false;
 	RefreshLocalInputModeFromPawn();
+	RefreshLocalPlayerTerminalState();
 	RefreshLocalHUDPresentation();
 	ApplyLocalUserSettings();
 	UpdateFlashlightAimDirection();
@@ -121,6 +146,7 @@ void AHeistPlayerController::OnRep_Pawn()
 void AHeistPlayerController::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
+	RefreshLocalPlayerTerminalState();
 	RefreshLocalHUDPresentation();
 }
 
@@ -230,6 +256,7 @@ void AHeistPlayerController::RefreshMatchPhasePresentationBinding()
 	if (BoundMatchPhaseGameState.IsValid())
 	{
 		BoundMatchPhaseGameState->GetMatchPhaseChangedDelegate().RemoveAll(this);
+		BoundMatchPhaseGameState->GetPlayerResultsChangedDelegate().RemoveAll(this);
 		BoundMatchPhaseGameState->GetAlertStateChangedDelegate().RemoveAll(this);
 		BoundMatchPhaseGameState->GetEscapePhaseStateChangedDelegate().RemoveAll(this);
 	}
@@ -237,6 +264,7 @@ void AHeistPlayerController::RefreshMatchPhasePresentationBinding()
 	if (IsValid(HeistGameState))
 	{
 		HeistGameState->GetMatchPhaseChangedDelegate().AddUObject(this, &AHeistPlayerController::HandleMatchPhasePresentationChanged);
+		HeistGameState->GetPlayerResultsChangedDelegate().AddUObject(this, &AHeistPlayerController::HandlePlayerResultsPresentationChanged);
 		HeistGameState->GetAlertStateChangedDelegate().AddUObject(this, &AHeistPlayerController::HandleAlertStatePresentationChanged);
 		HeistGameState->GetEscapePhaseStateChangedDelegate().AddUObject(this, &AHeistPlayerController::HandleEscapePhasePresentationChanged);
 	}
@@ -244,6 +272,16 @@ void AHeistPlayerController::RefreshMatchPhasePresentationBinding()
 
 void AHeistPlayerController::HandleMatchPhasePresentationChanged(const EHeistMatchPhase, const EHeistMatchPhase)
 {
+	RefreshLocalPlayerTerminalState();
+	RefreshLocalHUDPresentation();
+}
+
+void AHeistPlayerController::HandlePlayerResultsPresentationChanged()
+{
+	if (bLocalAwaitingCrew)
+	{
+		RefreshLocalSpectateTarget();
+	}
 	RefreshLocalHUDPresentation();
 }
 
@@ -257,6 +295,11 @@ void AHeistPlayerController::HandleAlertStatePresentationChanged(const EHeistAle
 
 void AHeistPlayerController::HandleEscapePhasePresentationChanged(const bool bEscapePhaseOpen)
 {
+	if (AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>())
+	{
+		HeistCharacter->GetInteractionComponent()->RefreshInteractionTarget();
+	}
+
 	if (bEscapePhaseOpen)
 	{
 		NotifyLocalTutorialMilestone(TEXT("Extraction"), TEXT("EscapePhaseOpened"));
@@ -279,7 +322,6 @@ void AHeistPlayerController::HandleLookInput(const FInputActionValue& InputValue
 	AddYawInput(LookInput.X);
 	AddPitchInput(LookInput.Y);
 	UpdateFlashlightAimDirection();
-	HeistCharacter->GetInteractionComponent()->RefreshInteractionTarget();
 }
 
 void AHeistPlayerController::HandleMoveInput(const FInputActionValue& InputValue)
@@ -292,7 +334,6 @@ void AHeistPlayerController::HandleMoveInput(const FInputActionValue& InputValue
 
 	const FVector2D MovementInput = InputValue.Get<FVector2D>();
 	HeistCharacter->MoveOnGameplayPlane(MovementInput);
-	HeistCharacter->GetInteractionComponent()->RefreshInteractionTarget();
 }
 
 void AHeistPlayerController::HandleInventoryToggle()
@@ -392,7 +433,7 @@ void AHeistPlayerController::HandleForgerySessionStateChanged()
 		UpdateFlashlightAimDirection();
 		if (IsValid(HeistCharacter))
 		{
-			HeistCharacter->GetInteractionComponent()->RefreshInteractionTarget(true);
+			HeistCharacter->GetInteractionComponent()->RefreshInteractionTarget();
 		}
 		if (bLocalTutorialObservedForgerySession)
 		{
@@ -463,7 +504,7 @@ void AHeistPlayerController::HandleObjectAssemblySessionStateChanged()
 		UpdateFlashlightAimDirection();
 		if (IsValid(HeistCharacter))
 		{
-			HeistCharacter->GetInteractionComponent()->RefreshInteractionTarget(true);
+			HeistCharacter->GetInteractionComponent()->RefreshInteractionTarget();
 		}
 		if (bLocalTutorialObservedForgerySession)
 		{
@@ -578,8 +619,7 @@ void AHeistPlayerController::ApplyLocalInputMode(const EHeistInputMode NewInputM
 		SetInputMode(InputMode);
 	}
 
-	const AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
-	if (IsValid(HeistPlayerState) && HeistPlayerState->IsArrested())
+	if (IsLocalPlayerTerminalInputBlocked())
 	{
 		SetIgnoreMoveInput(true);
 		SetIgnoreLookInput(true);
@@ -608,7 +648,7 @@ void AHeistPlayerController::HandleInventoryOpenStateChanged(const bool bInvento
 		UpdateFlashlightAimDirection();
 		if (AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>())
 		{
-			HeistCharacter->GetInteractionComponent()->RefreshInteractionTarget(true);
+			HeistCharacter->GetInteractionComponent()->RefreshInteractionTarget();
 		}
 	}
 }
@@ -641,18 +681,128 @@ float AHeistPlayerController::GetLocalMouseSensitivity() const
 
 void AHeistPlayerController::HandleArrestStateChanged(const bool bArrested)
 {
+	const AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
+	HandlePlayerTerminalStateChanged(IsValid(HeistPlayerState) && HeistPlayerState->IsEscaped(), bArrested);
+}
+
+void AHeistPlayerController::HandlePlayerTerminalStateChanged(const bool bEscaped, const bool bArrested)
+{
 	if (!IsLocalController())
 	{
 		return;
 	}
 
-	RefreshLocalInputModeFromPawn();
+	RefreshLocalPlayerTerminalState();
 	UHeistDebugFunctionLibrary::Message(
-		this, FString::Printf(TEXT("Local arrest input state applied: Arrested=%s InputMode=%s Cursor=%s IgnoreMove=%s IgnoreLook=%s"), bArrested ? TEXT("true") : TEXT("false"),
+		this, FString::Printf(TEXT("Local player terminal state applied: Escaped=%s Arrested=%s AwaitingCrew=%s SpectateTarget=%s InputMode=%s Cursor=%s IgnoreMove=%s IgnoreLook=%s"),
+							  bEscaped ? TEXT("true") : TEXT("false"), bArrested ? TEXT("true") : TEXT("false"), bLocalAwaitingCrew ? TEXT("true") : TEXT("false"),
+							  *GetNameSafe(LocalSpectateTarget.Get()),
 							  LocalInputMode == EHeistInputMode::Gameplay	 ? TEXT("Gameplay")
 							  : LocalInputMode == EHeistInputMode::Inventory ? TEXT("Inventory")
-																			 : TEXT("Forgery"),
+															 : TEXT("Forgery"),
 							  bShowMouseCursor ? TEXT("true") : TEXT("false"), IsMoveInputIgnored() ? TEXT("true") : TEXT("false"), IsLookInputIgnored() ? TEXT("true") : TEXT("false")));
+}
+
+void AHeistPlayerController::RefreshLocalPlayerTerminalState()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	const AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	const bool bEscaped = IsValid(HeistPlayerState) && HeistPlayerState->IsEscaped();
+	const bool bArrested = IsValid(HeistPlayerState) && HeistPlayerState->IsArrested();
+	const bool bMatchInGame = !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() == EHeistMatchPhase::InGame;
+	const bool bShouldAwaitCrew = bEscaped && bMatchInGame;
+
+	if (bLocalAwaitingCrew != bShouldAwaitCrew)
+	{
+		bLocalAwaitingCrew = bShouldAwaitCrew;
+	}
+
+	RefreshLocalInputModeFromPawn();
+	if (bLocalAwaitingCrew)
+	{
+		RefreshLocalSpectateTarget();
+	}
+	else
+	{
+		LocalSpectateTarget.Reset();
+		if (APawn* ControlledPawn = GetPawn(); IsValid(ControlledPawn) && GetViewTarget() != ControlledPawn)
+		{
+			SetViewTargetWithBlend(ControlledPawn, 0.15f);
+		}
+	}
+
+	UE_LOG(LogHeist, Log,
+		   TEXT("[%s] Local terminal lifecycle: Escaped=%s Arrested=%s MatchPhase=%s AwaitingCrew=%s SpectateTarget=%s InputBlocked=%s"), *GetName(),
+		   bEscaped ? TEXT("true") : TEXT("false"), bArrested ? TEXT("true") : TEXT("false"),
+		   IsValid(HeistGameState) ? *UEnum::GetValueAsString(HeistGameState->GetMatchPhase()) : TEXT("MissingGameState"), bLocalAwaitingCrew ? TEXT("true") : TEXT("false"),
+		   *GetNameSafe(LocalSpectateTarget.Get()), IsLocalPlayerTerminalInputBlocked() ? TEXT("true") : TEXT("false"));
+}
+
+void AHeistPlayerController::RefreshLocalSpectateTarget()
+{
+	if (!IsLocalController() || !bLocalAwaitingCrew)
+	{
+		return;
+	}
+
+	AActor* NewSpectateTarget = FindLocalSpectateTarget();
+	if (LocalSpectateTarget.Get() == NewSpectateTarget)
+	{
+		return;
+	}
+
+	LocalSpectateTarget = NewSpectateTarget;
+	AActor* ResolvedViewTarget = IsValid(NewSpectateTarget) ? NewSpectateTarget : GetPawn();
+	if (IsValid(ResolvedViewTarget) && GetViewTarget() != ResolvedViewTarget)
+	{
+		SetViewTargetWithBlend(ResolvedViewTarget, 0.25f);
+	}
+
+	UE_LOG(LogHeist, Log, TEXT("[%s] Escaped player spectate target refreshed: AwaitingCrew=true Target=%s Authority=%s"), *GetName(), *GetNameSafe(NewSpectateTarget),
+		   HasAuthority() ? TEXT("true") : TEXT("false"));
+}
+
+AActor* AHeistPlayerController::FindLocalSpectateTarget() const
+{
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	const AHeistPlayerState* LocalPlayerState = GetPlayerState<AHeistPlayerState>();
+	AHeistPlayerState* BestPlayerState = nullptr;
+	if (!IsValid(HeistGameState))
+	{
+		return nullptr;
+	}
+
+	for (APlayerState* CandidateBaseState : HeistGameState->PlayerArray)
+	{
+		AHeistPlayerState* CandidateState = Cast<AHeistPlayerState>(CandidateBaseState);
+		if (!IsValid(CandidateState) || CandidateState == LocalPlayerState || CandidateState->IsEscaped() || CandidateState->IsArrested() || !IsValid(CandidateState->GetPawn()))
+		{
+			continue;
+		}
+		if (!IsValid(BestPlayerState) || CandidateState->HeistPlayerId < BestPlayerState->HeistPlayerId)
+		{
+			BestPlayerState = CandidateState;
+		}
+	}
+
+	return IsValid(BestPlayerState) ? BestPlayerState->GetPawn() : nullptr;
+}
+
+bool AHeistPlayerController::IsLocalPlayerTerminalInputBlocked() const
+{
+	const AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
+	if (!IsValid(HeistPlayerState) || (!HeistPlayerState->IsEscaped() && !HeistPlayerState->IsArrested()))
+	{
+		return false;
+	}
+
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	return !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() == EHeistMatchPhase::InGame;
 }
 
 EHeistInputMode AHeistPlayerController::GetLocalInputMode() const
@@ -705,9 +855,18 @@ bool AHeistPlayerController::IsLocalInputModeContractSatisfied() const
 
 	const bool bGameplayMode = LocalInputMode == EHeistInputMode::Gameplay;
 	const bool bCursorContract = bShowMouseCursor == !bGameplayMode;
-	const AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
-	const bool bGameplayInputBlocked = !bGameplayMode || (IsValid(HeistPlayerState) && HeistPlayerState->IsArrested());
+	const bool bGameplayInputBlocked = !bGameplayMode || IsLocalPlayerTerminalInputBlocked();
 	return bCursorContract && IsMoveInputIgnored() == bGameplayInputBlocked && IsLookInputIgnored() == bGameplayInputBlocked;
+}
+
+bool AHeistPlayerController::IsLocalAwaitingCrew() const
+{
+	return bLocalAwaitingCrew;
+}
+
+AActor* AHeistPlayerController::GetLocalSpectateTarget() const
+{
+	return LocalSpectateTarget.Get();
 }
 
 void AHeistPlayerController::UpdateFlashlightAimDirection()
@@ -765,12 +924,19 @@ void AHeistPlayerController::HandleInteractPressed()
 	}
 
 	UHeistInteractionComponent* InteractionComponent = HeistCharacter->GetInteractionComponent();
-	if (!InteractionComponent->RefreshInteractionTarget(true))
+	if (!InteractionComponent->RefreshInteractionTarget())
 	{
 		return;
 	}
 
-	NotifyLocalTutorialMilestone(TEXT("CrosshairInteraction"), TEXT("ValidInteractionInput"));
+	NotifyLocalTutorialMilestone(TEXT("ProximityInteraction"), TEXT("ValidInteractionInput"));
+
+	AHeistPlayerCharacter* TargetPlayerCharacter = Cast<AHeistPlayerCharacter>(InteractionComponent->GetCurrentInteractionTarget());
+	if (TargetPlayerCharacter != nullptr)
+	{
+		RequestRescuePlayer(TargetPlayerCharacter);
+		return;
+	}
 
 	AHeistDroppedOriginalActor* TargetDroppedOriginal = Cast<AHeistDroppedOriginalActor>(InteractionComponent->GetCurrentInteractionTarget());
 	if (TargetDroppedOriginal != nullptr)
@@ -874,7 +1040,7 @@ FName AHeistPlayerController::GetLocalTutorialStepId() const
 	switch (LocalTutorialStepIndex)
 	{
 	case 0:
-		return TEXT("CrosshairInteraction");
+		return TEXT("ProximityInteraction");
 	case 1:
 		return TEXT("Coin");
 	case 2:
@@ -893,7 +1059,7 @@ FText AHeistPlayerController::GetLocalTutorialTitleText() const
 	switch (LocalTutorialStepIndex)
 	{
 	case 0:
-		return NSLOCTEXT("HeistTutorial", "CrosshairInteractionTitle", "STEAL WITH PRECISION");
+		return NSLOCTEXT("HeistTutorial", "ProximityInteractionTitle", "MOVE WITHIN REACH");
 	case 1:
 		return NSLOCTEXT("HeistTutorial", "CoinTitle", "CREATE A DISTRACTION");
 	case 2:
@@ -912,7 +1078,7 @@ FText AHeistPlayerController::GetLocalTutorialBodyText() const
 	switch (LocalTutorialStepIndex)
 	{
 	case 0:
-		return NSLOCTEXT("HeistTutorial", "CrosshairInteractionBody", "AIM THE CROSSHAIR AT AN OBJECT. HOLD [E] WHEN THE PROMPT APPEARS.");
+		return NSLOCTEXT("HeistTutorial", "ProximityInteractionBody", "APPROACH AN OBJECT. HOLD [E] WHEN THE INTERACTION PROMPT APPEARS.");
 	case 1:
 		return NSLOCTEXT("HeistTutorial", "CoinBody", "PRESS [Q] TO THROW A COIN. GUARDS WILL INVESTIGATE THE IMPACT.");
 	case 2:
@@ -1254,6 +1420,15 @@ void AHeistPlayerController::RequestDropCarriedOriginal()
 	Server_RequestDropCarriedOriginal();
 }
 
+void AHeistPlayerController::RequestRescuePlayer(AHeistPlayerCharacter* TargetPlayerCharacter)
+{
+	if (!IsValid(TargetPlayerCharacter))
+	{
+		return;
+	}
+	Server_RequestRescuePlayer(TargetPlayerCharacter);
+}
+
 void AHeistPlayerController::RequestAssignQuickSlot(const EHeistQuickSlotType SlotType, const int32 InstanceId)
 {
 	Server_RequestAssignQuickSlot(SlotType, InstanceId);
@@ -1335,7 +1510,7 @@ void AHeistPlayerController::Server_RequestLootPickup_Implementation(AHeistLootA
 	UHeistInteractionComponent* InteractionComponent = RequestContext.Character->GetInteractionComponent();
 	const float Distance = FVector::Distance(RequestContext.Character->GetActorLocation(), TargetLootActor->GetActorLocation());
 
-	if (!InteractionComponent->IsActorWithinInteractionRange(TargetLootActor))
+	if (!InteractionComponent->IsActorOverlappingInteractionArea(TargetLootActor))
 	{
 		LogLootPickupRejected(TargetLootActor, TEXT("OutOfRange"), Distance);
 		return;
@@ -1347,10 +1522,9 @@ void AHeistPlayerController::Server_RequestLootPickup_Implementation(AHeistLootA
 		return;
 	}
 
-	InteractionComponent->RefreshInteractionTarget(true);
-	if (InteractionComponent->GetCurrentInteractionTarget() != TargetLootActor)
+	if (!CanUseHeistInteraction(TargetLootActor, RequestContext.Character))
 	{
-		LogLootPickupRejected(TargetLootActor, TEXT("NotCurrentTarget"), Distance);
+		LogLootPickupRejected(TargetLootActor, TEXT("InteractionUnavailable"), Distance);
 		return;
 	}
 
@@ -1400,17 +1574,16 @@ void AHeistPlayerController::Server_RequestDroppedOriginalPickup_Implementation(
 
 	UHeistInteractionComponent* InteractionComponent = RequestContext.Character->GetInteractionComponent();
 	const float Distance = FVector::Distance(RequestContext.Character->GetActorLocation(), TargetDroppedOriginal->GetActorLocation());
-	if (!InteractionComponent->IsActorWithinInteractionRange(TargetDroppedOriginal))
+	if (!InteractionComponent->IsActorOverlappingInteractionArea(TargetDroppedOriginal))
 	{
 		UE_LOG(LogHeistNetwork, Warning, TEXT("Dropped Original pickup rejected: Actor=%s PlayerId=%d Distance=%.1f Reason=OutOfRange"),
 			   *GetNameSafe(TargetDroppedOriginal), RequestContext.PlayerState->HeistPlayerId, Distance);
 		return;
 	}
 
-	InteractionComponent->RefreshInteractionTarget(true);
-	if (InteractionComponent->GetCurrentInteractionTarget() != TargetDroppedOriginal || !TargetDroppedOriginal->TryReserveForPickup(RequestContext.Character))
+	if (!CanUseHeistInteraction(TargetDroppedOriginal, RequestContext.Character) || !TargetDroppedOriginal->TryReserveForPickup(RequestContext.Character))
 	{
-		UE_LOG(LogHeistNetwork, Warning, TEXT("Dropped Original pickup rejected: Actor=%s PlayerId=%d Distance=%.1f Reason=NotCurrentOrReserved"),
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Dropped Original pickup rejected: Actor=%s PlayerId=%d Distance=%.1f Reason=UnavailableOrReserved"),
 			   *GetNameSafe(TargetDroppedOriginal), RequestContext.PlayerState->HeistPlayerId, Distance);
 		return;
 	}
@@ -1442,6 +1615,47 @@ void AHeistPlayerController::Server_RequestDroppedOriginalPickup_Implementation(
 	TargetDroppedOriginal->Destroy();
 }
 
+void AHeistPlayerController::Server_RequestRescuePlayer_Implementation(AHeistPlayerCharacter* TargetPlayerCharacter)
+{
+	FHeistGameplayRequestContext RequestContext;
+	const TCHAR* RejectReason = nullptr;
+	if (!TryBuildGameplayRequestContext(RequestContext, RejectReason))
+	{
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Player rescue rejected: Rescuer=%s Target=%s Reason=%s Authority=%s Result=FAIL"), *GetNameSafe(GetPlayerState<AHeistPlayerState>()),
+			   *GetNameSafe(TargetPlayerCharacter), RejectReason != nullptr ? RejectReason : TEXT("InvalidRequestContext"), HasAuthority() ? TEXT("true") : TEXT("false"));
+		return;
+	}
+
+	AHeistPlayerState* TargetPlayerState = IsValid(TargetPlayerCharacter) ? TargetPlayerCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
+	UHeistInteractionComponent* InteractionComponent = RequestContext.Character->GetInteractionComponent();
+	const float Distance = IsValid(TargetPlayerCharacter) ? FVector::Distance(RequestContext.Character->GetActorLocation(), TargetPlayerCharacter->GetActorLocation()) : -1.0f;
+	if (!IsValid(TargetPlayerCharacter) || TargetPlayerCharacter == RequestContext.Character || !IsValid(TargetPlayerState))
+	{
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Player rescue rejected: RescuerId=%d Target=%s Distance=%.1f Reason=InvalidTarget Authority=true Result=FAIL"),
+			   RequestContext.PlayerState->HeistPlayerId, *GetNameSafe(TargetPlayerCharacter), Distance);
+		return;
+	}
+	if (!InteractionComponent->IsActorOverlappingInteractionArea(TargetPlayerCharacter))
+	{
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Player rescue rejected: RescuerId=%d TargetId=%d Distance=%.1f Reason=OutOfRange Authority=true Result=FAIL"),
+			   RequestContext.PlayerState->HeistPlayerId, TargetPlayerState->HeistPlayerId, Distance);
+		return;
+	}
+
+	if (!CanUseHeistInteraction(TargetPlayerCharacter, RequestContext.Character))
+	{
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Player rescue rejected: RescuerId=%d TargetId=%d Distance=%.1f Arrested=%s Reason=NotCurrentRescueTarget Authority=true Result=FAIL"),
+			   RequestContext.PlayerState->HeistPlayerId, TargetPlayerState->HeistPlayerId, Distance, TargetPlayerState->IsArrested() ? TEXT("true") : TEXT("false"));
+		return;
+	}
+
+	TargetPlayerCharacter->Interact(RequestContext.Character);
+	const bool bRescued = !TargetPlayerState->IsArrested();
+	UE_LOG(LogHeistNetwork, Log, TEXT("Player rescue committed: RescuerId=%d TargetId=%d Distance=%.1f TargetArrested=%s TargetMovementRestored=%s Authority=true Result=%s"),
+		   RequestContext.PlayerState->HeistPlayerId, TargetPlayerState->HeistPlayerId, Distance, TargetPlayerState->IsArrested() ? TEXT("true") : TEXT("false"),
+		   bRescued ? TEXT("true") : TEXT("false"), bRescued ? TEXT("PASS") : TEXT("FAIL"));
+}
+
 void AHeistPlayerController::Server_RequestObservation_Implementation(AHeistPaintingDisplayCaseActor* TargetDisplayCase)
 {
 	FHeistGameplayRequestContext RequestContext;
@@ -1460,16 +1674,15 @@ void AHeistPlayerController::Server_RequestObservation_Implementation(AHeistPain
 
 	UHeistInteractionComponent* InteractionComponent = RequestContext.Character->GetInteractionComponent();
 	const float Distance = FVector::Distance(RequestContext.Character->GetActorLocation(), TargetDisplayCase->GetActorLocation());
-	if (!InteractionComponent->IsActorWithinInteractionRange(TargetDisplayCase))
+	if (!InteractionComponent->IsActorOverlappingInteractionArea(TargetDisplayCase))
 	{
 		UHeistDebugFunctionLibrary::DebugObservationRequestRejected(this, TargetDisplayCase, TEXT("OutOfRange"), Distance);
 		return;
 	}
 
-	InteractionComponent->RefreshInteractionTarget(true);
-	if (InteractionComponent->GetCurrentInteractionTarget() != TargetDisplayCase)
+	if (!CanUseHeistInteraction(TargetDisplayCase, RequestContext.Character))
 	{
-		UHeistDebugFunctionLibrary::DebugObservationRequestRejected(this, TargetDisplayCase, TEXT("NotCurrentTarget"), Distance);
+		UHeistDebugFunctionLibrary::DebugObservationRequestRejected(this, TargetDisplayCase, TEXT("InteractionUnavailable"), Distance);
 		return;
 	}
 
@@ -1516,17 +1729,16 @@ void AHeistPlayerController::Server_RequestTakeOriginal_Implementation(AHeistPai
 
 	UHeistInteractionComponent* InteractionComponent = RequestContext.Character->GetInteractionComponent();
 	const float Distance = FVector::Distance(RequestContext.Character->GetActorLocation(), TargetDisplayCase->GetActorLocation());
-	if (!InteractionComponent->IsActorWithinInteractionRange(TargetDisplayCase))
+	if (!InteractionComponent->IsActorOverlappingInteractionArea(TargetDisplayCase))
 	{
 		UHeistDebugFunctionLibrary::Message(this, FString::Printf(TEXT("Original take request rejected: Case=%s Distance=%.1f Reason=OutOfRange"), *GetNameSafe(TargetDisplayCase), Distance),
 											EHeistDebugLevel::Warning);
 		return;
 	}
 
-	InteractionComponent->RefreshInteractionTarget(true);
-	if (InteractionComponent->GetCurrentInteractionTarget() != TargetDisplayCase)
+	if (!CanUseHeistInteraction(TargetDisplayCase, RequestContext.Character))
 	{
-		UHeistDebugFunctionLibrary::Message(this, FString::Printf(TEXT("Original take request rejected: Case=%s Distance=%.1f Reason=NotCurrentTarget"), *GetNameSafe(TargetDisplayCase), Distance),
+		UHeistDebugFunctionLibrary::Message(this, FString::Printf(TEXT("Original take request rejected: Case=%s Distance=%.1f Reason=InteractionUnavailable"), *GetNameSafe(TargetDisplayCase), Distance),
 											EHeistDebugLevel::Warning);
 		return;
 	}
@@ -1569,7 +1781,7 @@ void AHeistPlayerController::Server_RequestTakeObjectOriginal_Implementation(AHe
 
 	UHeistInteractionComponent* InteractionComponent = RequestContext.Character->GetInteractionComponent();
 	const float Distance = FVector::Distance(RequestContext.Character->GetActorLocation(), TargetDisplayCase->GetActorLocation());
-	if (!InteractionComponent->IsActorWithinInteractionRange(TargetDisplayCase))
+	if (!InteractionComponent->IsActorOverlappingInteractionArea(TargetDisplayCase))
 	{
 		UHeistDebugFunctionLibrary::Message(
 			this, FString::Printf(TEXT("Object original take request rejected: Case=%s Distance=%.1f Reason=OutOfRange"), *GetNameSafe(TargetDisplayCase), Distance),
@@ -1577,11 +1789,10 @@ void AHeistPlayerController::Server_RequestTakeObjectOriginal_Implementation(AHe
 		return;
 	}
 
-	InteractionComponent->RefreshInteractionTarget(true);
-	if (InteractionComponent->GetCurrentInteractionTarget() != TargetDisplayCase)
+	if (!CanUseHeistInteraction(TargetDisplayCase, RequestContext.Character))
 	{
 		UHeistDebugFunctionLibrary::Message(
-			this, FString::Printf(TEXT("Object original take request rejected: Case=%s Distance=%.1f Reason=NotCurrentTarget"), *GetNameSafe(TargetDisplayCase), Distance),
+			this, FString::Printf(TEXT("Object original take request rejected: Case=%s Distance=%.1f Reason=InteractionUnavailable"), *GetNameSafe(TargetDisplayCase), Distance),
 			EHeistDebugLevel::Warning);
 		return;
 	}
@@ -1688,7 +1899,7 @@ void AHeistPlayerController::Server_RequestEscape_Implementation(AHeistVentActor
 	UHeistInteractionComponent* InteractionComponent = RequestContext.Character->GetInteractionComponent();
 	const float Distance = FVector::Distance(RequestContext.Character->GetActorLocation(), TargetVentActor->GetActorLocation());
 
-	if (!InteractionComponent->IsActorWithinInteractionRange(TargetVentActor))
+	if (!InteractionComponent->IsActorOverlappingInteractionArea(TargetVentActor))
 	{
 		LogEscapeRequestRejected(TargetVentActor, TEXT("OutOfRange"), Distance);
 		return;
@@ -1697,13 +1908,6 @@ void AHeistPlayerController::Server_RequestEscape_Implementation(AHeistVentActor
 	if (!TargetVentActor->CanUseVent(RequestContext.Character))
 	{
 		LogEscapeRequestRejected(TargetVentActor, TEXT("VentUnavailable"), Distance);
-		return;
-	}
-
-	InteractionComponent->RefreshInteractionTarget(true);
-	if (InteractionComponent->GetCurrentInteractionTarget() != TargetVentActor)
-	{
-		LogEscapeRequestRejected(TargetVentActor, TEXT("NotCurrentTarget"), Distance);
 		return;
 	}
 
@@ -1817,9 +2021,15 @@ void AHeistPlayerController::Server_RequestBeginObjectAssembly_Implementation(AH
 {
 	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
 	UHeistObjectAssemblyComponent* ObjectAssemblyComponent = IsValid(HeistCharacter) ? HeistCharacter->GetObjectAssemblyComponent() : nullptr;
-	if (!HasAuthority() || !IsValid(HeistCharacter) || HeistCharacter->GetController() != this || !IsValid(ObjectAssemblyComponent))
+	UHeistInteractionComponent* InteractionComponent = IsValid(HeistCharacter) ? HeistCharacter->GetInteractionComponent() : nullptr;
+	if (!HasAuthority() || !IsValid(HeistCharacter) || HeistCharacter->GetController() != this || !IsValid(ObjectAssemblyComponent) || !IsValid(InteractionComponent))
 	{
 		UHeistDebugFunctionLibrary::DebugObjectAssemblySessionSnapshot(ObjectAssemblyComponent, FName(TEXT("SessionBeginRPC")), FName(TEXT("InvalidAuthorityContext")), false);
+		return;
+	}
+	if (!IsValid(TargetDisplayCase) || !InteractionComponent->IsActorOverlappingInteractionArea(TargetDisplayCase) || !CanUseHeistInteraction(TargetDisplayCase, HeistCharacter))
+	{
+		UHeistDebugFunctionLibrary::DebugObjectAssemblySessionSnapshot(ObjectAssemblyComponent, FName(TEXT("SessionBeginRPC")), FName(TEXT("InteractionOverlapRequired")), false);
 		return;
 	}
 
@@ -2426,6 +2636,12 @@ void AHeistPlayerController::Server_DebugRequestDumpArrestState_Implementation()
 	if (IsValid(HeistGameState))
 	{
 		HeistGameState->RebuildPlayerResults();
+		UHeistDebugFunctionLibrary::Message(
+			this,
+			FString::Printf(TEXT("Server player lifecycle dump: Active=%d Escaped=%d Arrested=%d AllResolved=%s AllRemainingArrested=%s MatchPhase=%s Authority=true Result=PASS"),
+							HeistGameState->GetActiveCrewCount(), HeistGameState->GetEscapedCrewCount(), HeistGameState->GetArrestedCrewCount(),
+							HeistGameState->AreAllCrewMembersResolved() ? TEXT("true") : TEXT("false"), HeistGameState->AreAllRemainingCrewMembersArrested() ? TEXT("true") : TEXT("false"),
+							*UEnum::GetValueAsString(HeistGameState->GetMatchPhase())));
 	}
 #endif
 }

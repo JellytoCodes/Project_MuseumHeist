@@ -48,8 +48,7 @@ void AHeistGuardCharacter::BeginPlay()
 	GuardCapsule->SetCollisionObjectType(HeistCollisionChannels::Guard);
 	GuardCapsule->SetCollisionResponseToChannel(HeistCollisionChannels::Player, ECR_Block);
 	GuardCapsule->SetCollisionResponseToChannel(HeistCollisionChannels::Interactable, ECR_Ignore);
-	GuardCapsule->SetCollisionResponseToChannel(HeistCollisionChannels::InteractionTrace, ECR_Ignore);
-	UE_LOG(LogHeist, Log, TEXT("[%s] Guard collision channels configured: Capsule=%s ObjectType=HeistGuard InteractionTrace=Ignore Player=Block Interactable=Ignore"), *GetName(),
+	UE_LOG(LogHeist, Log, TEXT("[%s] Guard collision channels configured: Capsule=%s ObjectType=HeistGuard Player=Block Interactable=Ignore"), *GetName(),
 		   *GetNameSafe(GuardCapsule));
 
 	checkf(IsValid(GuardStateComponent), TEXT("HeistGuardCharacter requires GuardStateComponent."));

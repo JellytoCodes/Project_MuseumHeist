@@ -1,10 +1,12 @@
 #include "UI/Widgets/HeistInteractionPromptWidget.h"
 
 #include "Character/Components/HeistInteractionComponent.h"
+#include "Character/HeistPlayerCharacter.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Components/Widget.h"
 #include "Core/HeistLogChannels.h"
+#include "Core/HeistPlayerState.h"
 #include "Engine/World.h"
 #include "GameFramework/GameStateBase.h"
 #include "TimerManager.h"
@@ -79,7 +81,7 @@ void UHeistInteractionPromptWidget::SetupInteractionPresentation(UHeistInteracti
 	}
 	if (IsValid(InteractionComponent))
 	{
-		InteractionComponent->RefreshInteractionTarget(true);
+		InteractionComponent->RefreshInteractionTarget();
 	}
 
 	RefreshPresentation();
@@ -233,6 +235,14 @@ FText UHeistInteractionPromptWidget::ResolveTargetLabel(const AActor* TargetActo
 	if (Cast<AHeistVentActor>(TargetActor) != nullptr)
 	{
 		return NSLOCTEXT("HeistInteraction", "VentTarget", "ESCAPE");
+	}
+
+	if (const AHeistPlayerCharacter* TargetPlayerCharacter = Cast<AHeistPlayerCharacter>(TargetActor))
+	{
+		const AHeistPlayerState* TargetPlayerState = TargetPlayerCharacter->GetPlayerState<AHeistPlayerState>();
+		return IsValid(TargetPlayerState) && TargetPlayerState->HeistPlayerId > 0
+			? FText::Format(NSLOCTEXT("HeistInteraction", "RescueNamedPlayer", "RESCUE  PLAYER {0}"), FText::AsNumber(TargetPlayerState->HeistPlayerId))
+			: NSLOCTEXT("HeistInteraction", "RescuePlayer", "RESCUE TEAMMATE");
 	}
 
 	FString TargetDisplayName = TargetActor->GetClass()->GetName();

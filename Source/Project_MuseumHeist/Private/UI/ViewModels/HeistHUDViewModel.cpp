@@ -31,6 +31,7 @@ void UHeistHUDViewModel::BeginDestroy()
 		LocalPlayerState->GetPlayerIdentityChangedDelegate().RemoveAll(this);
 		LocalPlayerState->GetLootTotalsChangedDelegate().RemoveAll(this);
 		LocalPlayerState->GetEscapeStateChangedDelegate().RemoveAll(this);
+		LocalPlayerState->GetArrestStateChangedDelegate().RemoveAll(this);
 	}
 
 	if (IsValid(ActionComponent))
@@ -61,6 +62,7 @@ void UHeistHUDViewModel::SetupViewModel(AHeistGameState* InGameState, AHeistPlay
 		LocalPlayerState->GetPlayerIdentityChangedDelegate().RemoveAll(this);
 		LocalPlayerState->GetLootTotalsChangedDelegate().RemoveAll(this);
 		LocalPlayerState->GetEscapeStateChangedDelegate().RemoveAll(this);
+		LocalPlayerState->GetArrestStateChangedDelegate().RemoveAll(this);
 	}
 
 	if (ActionComponent != InActionComponent && IsValid(ActionComponent))
@@ -94,6 +96,8 @@ void UHeistHUDViewModel::SetupViewModel(AHeistGameState* InGameState, AHeistPlay
 		LocalPlayerState->GetLootTotalsChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandleLootTotalsChanged);
 		LocalPlayerState->GetEscapeStateChangedDelegate().RemoveAll(this);
 		LocalPlayerState->GetEscapeStateChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandleEscapeStateChanged);
+		LocalPlayerState->GetArrestStateChangedDelegate().RemoveAll(this);
+		LocalPlayerState->GetArrestStateChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandleArrestStateChanged);
 	}
 
 	if (IsValid(ActionComponent))
@@ -113,6 +117,7 @@ void UHeistHUDViewModel::RefreshPresentationState()
 	UE_MVVM_SET_PROPERTY_VALUE(LocalPlayerId, IsValid(LocalPlayerState) ? LocalPlayerState->HeistPlayerId : INDEX_NONE);
 	UE_MVVM_SET_PROPERTY_VALUE(ConnectedPlayerCount, IsValid(GameState) ? GameState->GetConnectedPlayerCount() : 0);
 	UE_MVVM_SET_PROPERTY_VALUE(bLocalPlayerEscaped, IsValid(LocalPlayerState) && LocalPlayerState->IsEscaped());
+	UE_MVVM_SET_PROPERTY_VALUE(bLocalPlayerArrested, IsValid(LocalPlayerState) && LocalPlayerState->IsArrested());
 	UE_MVVM_SET_PROPERTY_VALUE(bEscapePhaseOpen, IsValid(GameState) && GameState->IsEscapePhaseOpen());
 	UE_MVVM_SET_PROPERTY_VALUE(bEscapeCastActive, IsValid(ActionComponent) && ActionComponent->IsEscapeCastActive());
 	UE_MVVM_SET_PROPERTY_VALUE(EscapeCastEndServerTime, IsValid(ActionComponent) ? ActionComponent->GetEscapeCastEndServerTime() : 0.0f);
@@ -261,6 +266,11 @@ void UHeistHUDViewModel::HandleEscapeStateChanged(const bool)
 	RefreshPresentationState();
 }
 
+void UHeistHUDViewModel::HandleArrestStateChanged(const bool)
+{
+	RefreshPresentationState();
+}
+
 void UHeistHUDViewModel::HandleActionStateChanged()
 {
 	RefreshPresentationState();
@@ -306,6 +316,11 @@ int32 UHeistHUDViewModel::GetConnectedPlayerCount() const
 bool UHeistHUDViewModel::IsLocalPlayerEscaped() const
 {
 	return bLocalPlayerEscaped;
+}
+
+bool UHeistHUDViewModel::IsLocalPlayerArrested() const
+{
+	return bLocalPlayerArrested;
 }
 
 bool UHeistHUDViewModel::IsEscapePhaseOpen() const

@@ -316,6 +316,7 @@ void UHeistHUDWidget::RefreshHUDPresentation()
 	const float LocalLootWeight = HUDViewModel->GetLocalLootWeight();
 	const int32 ConnectedPlayerCount = HUDViewModel->GetConnectedPlayerCount();
 	const bool bLocalPlayerEscaped = HUDViewModel->IsLocalPlayerEscaped();
+	const bool bLocalPlayerArrested = HUDViewModel->IsLocalPlayerArrested();
 	const bool bEscapePhaseOpen = HUDViewModel->IsEscapePhaseOpen();
 	const bool bEscapeCastActive = HUDViewModel->IsEscapeCastActive();
 	const float EscapeCastEndServerTime = HUDViewModel->GetEscapeCastEndServerTime();
@@ -350,8 +351,9 @@ void UHeistHUDWidget::RefreshHUDPresentation()
 
 	if (IsValid(StatusText))
 	{
-		const FText StatusLabel =
-			bLocalPlayerEscaped ? NSLOCTEXT("HeistHUD", "EscapedStatus", "ESCAPED") : NSLOCTEXT("HeistHUD", "NormalStatus", "INSIDE");
+		const FText StatusLabel = bLocalPlayerEscaped
+			? NSLOCTEXT("HeistHUD", "EscapedStatus", "ESCAPED")
+			: (bLocalPlayerArrested ? NSLOCTEXT("HeistHUD", "ArrestedStatus", "ARRESTED") : NSLOCTEXT("HeistHUD", "NormalStatus", "INSIDE"));
 		StatusText->SetText(StatusLabel);
 	}
 

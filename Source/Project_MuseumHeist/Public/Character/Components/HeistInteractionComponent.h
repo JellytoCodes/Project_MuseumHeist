@@ -7,6 +7,8 @@
 
 class AActor;
 class AHeistPlayerCharacter;
+class UPrimitiveComponent;
+struct FHitResult;
 
 DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistInteractionTargetChanged, AActor*, bool);
 
@@ -32,23 +34,23 @@ class PROJECT_MUSEUMHEIST_API UHeistInteractionComponent : public UActorComponen
 #pragma region Interaction
 
   public:
-	bool RefreshInteractionTarget(bool bForceRefresh = false);
+	bool RefreshInteractionTarget();
 	AActor* GetCurrentInteractionTarget() const;
 	bool HasValidInteractionTarget() const;
-	float GetInteractionRange() const;
-	bool IsActorWithinInteractionRange(const AActor* TargetActor) const;
+	bool IsActorOverlappingInteractionArea(const AActor* TargetActor) const;
 	FHeistInteractionTargetChanged& GetInteractionTargetChangedDelegate();
 
   private:
 	bool CanOwnerInteract() const;
-	bool ResolveCenterScreenTrace(FVector& OutTraceStart, FVector& OutTraceEnd) const;
+	bool IsInteractionCollisionComponent(const UPrimitiveComponent* Component, const AActor* ExpectedOwner) const;
 	void ClearInteractionTarget(const TCHAR* Reason);
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Interaction", meta = (AllowPrivateAccess = "true"))
-	float InteractionRange = 300.0f;
+	UFUNCTION()
+	void HandleInteractionOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32 OtherBodyIndex,
+								   bool bFromSweep, const FHitResult& SweepResult);
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Interaction", meta = (AllowPrivateAccess = "true", ClampMin = "0.01", Units = "s"))
-	float InteractionScanInterval = 0.05f;
+	UFUNCTION()
+	void HandleInteractionOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32 OtherBodyIndex);
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHeistPlayerCharacter> OwnerCharacter;
@@ -56,11 +58,9 @@ class PROJECT_MUSEUMHEIST_API UHeistInteractionComponent : public UActorComponen
 	UPROPERTY(Transient)
 	TWeakObjectPtr<AActor> CurrentInteractionTarget;
 
-	UPROPERTY(Transient)
-	TWeakObjectPtr<AActor> CurrentTraceHitActor;
+	TSet<TWeakObjectPtr<AActor>> OverlappingInteractionActors;
 
 	bool bCurrentTargetAvailable = false;
-	float LastInteractionTraceTime = -BIG_NUMBER;
 
 	FHeistInteractionTargetChanged InteractionTargetChangedDelegate;
 

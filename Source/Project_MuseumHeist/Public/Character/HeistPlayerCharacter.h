@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "World/Interaction/HeistInteractable.h"
 
 #include "HeistPlayerCharacter.generated.h"
 
@@ -16,9 +17,10 @@ class UHeistStatusComponent;
 class UHeistTagComponent;
 class UHeistVisionComponent;
 class UCameraComponent;
+class USphereComponent;
 
 UCLASS()
-class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter
+class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter, public IHeistInteractable
 {
 	GENERATED_BODY()
 
@@ -76,6 +78,19 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter
 
   protected:
 	virtual void OnRep_PlayerState() override;
+
+#pragma endregion
+
+#pragma region RescueInteraction
+
+  public:
+	virtual bool CanInteract(const AActor* Interactor) const override;
+	virtual void Interact(AActor* Interactor) override;
+	bool IsRescueInteractionAvailable() const;
+
+  private:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Rescue", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USphereComponent> RescueInteractionTarget;
 
 #pragma endregion
 

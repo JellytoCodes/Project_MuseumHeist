@@ -349,8 +349,15 @@ class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
 	void RebuildPlayerResults();
 	const TArray<FHeistPlayerResult>& GetPlayerResults() const;
 	FHeistPlayerResultsChanged& GetPlayerResultsChangedDelegate();
+	int32 GetActiveCrewCount() const;
+	int32 GetEscapedCrewCount() const;
+	int32 GetArrestedCrewCount() const;
+	bool AreAllCrewMembersResolved() const;
+	bool AreAllRemainingCrewMembersArrested() const;
 
   private:
+	void GetPlayerLifecycleCounts(int32& OutTotalPlayers, int32& OutActivePlayers, int32& OutEscapedPlayers, int32& OutArrestedPlayers) const;
+
 	UPROPERTY(ReplicatedUsing = OnRep_PlayerResults, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
 	TArray<FHeistPlayerResult> PlayerResults;
 
