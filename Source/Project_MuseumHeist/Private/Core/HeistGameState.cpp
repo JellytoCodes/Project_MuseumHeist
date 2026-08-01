@@ -2,6 +2,8 @@
 #include "Core/HeistGameInstance.h"
 #include "Core/HeistLogChannels.h"
 
+#include "Character/Components/HeistInventoryComponent.h"
+#include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistPlayerState.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "Net/UnrealNetwork.h"
@@ -47,6 +49,7 @@ void AHeistGameState::RemovePlayerState(APlayerState* PlayerState)
 {
 	Super::RemovePlayerState(PlayerState);
 	PlayerConnectionsChangedDelegate.Broadcast(GetConnectedPlayerCount());
+	RefreshContractCarriedValue();
 }
 
 int32 AHeistGameState::GetConnectedPlayerCount() const
@@ -85,6 +88,7 @@ bool AHeistGameState::SetMatchPhase(const EHeistMatchPhase NewMatchPhase)
 	MatchPhase = NewMatchPhase;
 	if (NewMatchPhase == EHeistMatchPhase::Lobby)
 	{
+		ClearContractSnapshot();
 		SurfaceTemplatePoolId = NAME_None;
 		SelectedSurfaceTemplateId = NAME_None;
 		SurfaceTemplatePoolSize = 0;
@@ -285,6 +289,236 @@ void AHeistGameState::BroadcastSurfaceTemplateSelection(const TCHAR* ChangeSourc
 	}
 	UHeistDebugFunctionLibrary::DebugSurfaceTemplateSelectionState(this, ChangeSource, SurfaceTemplatePoolId, SelectedSurfaceTemplateId, SurfaceTemplatePoolSize,
 																  SurfaceTemplateBagCycle, SurfaceTemplateRemainingCount, SurfaceTemplateSelectionRevision, bAccepted);
+}
+
+#pragma endregion
+
+#pragma region Contract
+
+FHeistContractSnapshot AHeistGameState::GetContractSnapshot() const
+{
+	return ContractSnapshot;
+}
+
+bool AHeistGameState::IsContractInitialized() const
+{
+	return ContractSnapshot.IsInitialized();
+}
+
+bool AHeistGameState::IsContractSuccessConditionMet() const
+{
+	return ContractSnapshot.IsSuccessConditionMet();
+}
+
+bool AHeistGameState::InitializeContractSnapshot(const FName ContractId, const FName MapId, const int32 AssignmentSeed, const FName RequiredTargetArtifactId,
+											 const FName RequiredTargetCaseId, const int32 LootValueQuota)
+{
+	if (!HasAuthority() || MatchPhase != EHeistMatchPhase::InGame || ContractId.IsNone() || MapId.IsNone() || RequiredTargetArtifactId.IsNone() || RequiredTargetCaseId.IsNone() || LootValueQuota <= 0)
+	{
+		UE_LOG(LogHeistNetwork, Error,
+			   TEXT("Contract snapshot initialization rejected: Contract=%s Map=%s Seed=%d TargetArtifact=%s TargetCase=%s Quota=%d MatchPhase=%s Authority=%s Result=FAIL"),
+			   *ContractId.ToString(), *MapId.ToString(), AssignmentSeed, *RequiredTargetArtifactId.ToString(), *RequiredTargetCaseId.ToString(), LootValueQuota,
+			   *UEnum::GetValueAsString(MatchPhase), HasAuthority() ? TEXT("true") : TEXT("false"));
+		return false;
+	}
+
+	const int32 PreviousRevision = ContractSnapshot.Revision;
+	ContractSnapshot = FHeistContractSnapshot();
+	ContractSnapshot.ContractId = ContractId;
+	ContractSnapshot.MapId = MapId;
+	ContractSnapshot.AssignmentSeed = AssignmentSeed;
+	ContractSnapshot.RequiredTargetArtifactId = RequiredTargetArtifactId;
+	ContractSnapshot.RequiredTargetCaseId = RequiredTargetCaseId;
+	ContractSnapshot.LootValueQuota = LootValueQuota;
+	ContractSnapshot.Revision = PreviousRevision == MAX_int32 ? 1 : FMath::Max(1, PreviousRevision + 1);
+
+	ForceNetUpdate();
+	BroadcastContractSnapshot(TEXT("ServerInitialized"));
+	return true;
+}
+
+bool AHeistGameState::SetContractProgress(const int32 CarriedValue, const int32 SecuredValue, const bool bRequiredTargetSecured)
+{
+	if (!HasAuthority() || !ContractSnapshot.IsInitialized() || ContractSnapshot.Outcome != EHeistContractOutcome::None || CarriedValue < 0 || SecuredValue < 0)
+	{
+		UE_LOG(LogHeistNetwork, Warning,
+			   TEXT("Contract progress rejected: Carried=%d Secured=%d RequiredSecured=%s Outcome=%s Initialized=%s Authority=%s Result=FAIL"), CarriedValue, SecuredValue,
+			   bRequiredTargetSecured ? TEXT("true") : TEXT("false"), *UEnum::GetValueAsString(ContractSnapshot.Outcome), ContractSnapshot.IsInitialized() ? TEXT("true") : TEXT("false"),
+			   HasAuthority() ? TEXT("true") : TEXT("false"));
+		return false;
+	}
+
+	if (ContractSnapshot.CarriedValue == CarriedValue && ContractSnapshot.SecuredValue == SecuredValue && ContractSnapshot.bRequiredTargetSecured == bRequiredTargetSecured)
+	{
+		return true;
+	}
+
+	ContractSnapshot.CarriedValue = CarriedValue;
+	ContractSnapshot.SecuredValue = SecuredValue;
+	ContractSnapshot.bRequiredTargetSecured = bRequiredTargetSecured;
+	ContractSnapshot.Revision = ContractSnapshot.Revision == MAX_int32 ? 1 : ContractSnapshot.Revision + 1;
+	ForceNetUpdate();
+	BroadcastContractSnapshot(TEXT("ServerProgress"));
+	return true;
+}
+
+bool AHeistGameState::RefreshContractCarriedValue()
+{
+	if (!HasAuthority() || !ContractSnapshot.IsInitialized() || ContractSnapshot.Outcome != EHeistContractOutcome::None)
+	{
+		return false;
+	}
+
+	int64 ResolvedCarriedValue = 0;
+	for (APlayerState* PlayerState : PlayerArray)
+	{
+		const AHeistPlayerState* HeistPlayerState = Cast<AHeistPlayerState>(PlayerState);
+		if (!IsValid(HeistPlayerState))
+		{
+			continue;
+		}
+
+		ResolvedCarriedValue += static_cast<int64>(HeistPlayerState->GetTotalLootScore());
+		const AHeistPlayerCharacter* PlayerCharacter = Cast<AHeistPlayerCharacter>(HeistPlayerState->GetPawn());
+		const UHeistInventoryComponent* InventoryComponent = IsValid(PlayerCharacter) ? PlayerCharacter->GetInventoryComponent() : nullptr;
+		if (IsValid(InventoryComponent) && InventoryComponent->IsCarryingOriginal())
+		{
+			ResolvedCarriedValue += static_cast<int64>(InventoryComponent->GetOriginalCarryEntry().ArtifactValue);
+		}
+
+		if (ResolvedCarriedValue > MAX_int32)
+		{
+			UE_LOG(LogHeistNetwork, Error, TEXT("Contract carried value refresh rejected: Resolved=%lld Result=FAIL Reason=Overflow"), ResolvedCarriedValue);
+			return false;
+		}
+	}
+
+	return SetContractProgress(static_cast<int32>(ResolvedCarriedValue), ContractSnapshot.SecuredValue, ContractSnapshot.bRequiredTargetSecured);
+}
+
+bool AHeistGameState::CanCommitPlayerDeposit(const AHeistPlayerState* DepositingPlayerState, const int32 DepositValue, const bool bRequiredTargetDeposited,
+											 const TCHAR*& OutRejectReason) const
+{
+	OutRejectReason = nullptr;
+	if (!HasAuthority())
+	{
+		OutRejectReason = TEXT("NotAuthority");
+	}
+	else if (!ContractSnapshot.IsInitialized() || ContractSnapshot.Outcome != EHeistContractOutcome::None)
+	{
+		OutRejectReason = TEXT("InvalidContractState");
+	}
+	else if (!IsValid(DepositingPlayerState) || !PlayerArray.ContainsByPredicate([DepositingPlayerState](const TObjectPtr<APlayerState>& Candidate)
+																								{ return Candidate.Get() == DepositingPlayerState; }))
+	{
+		OutRejectReason = TEXT("PlayerNotInMatch");
+	}
+	else if (DepositingPlayerState->IsArrested() || DepositingPlayerState->IsEscaped())
+	{
+		OutRejectReason = DepositingPlayerState->IsArrested() ? TEXT("PlayerArrested") : TEXT("AlreadyEscaped");
+	}
+	else if (DepositValue <= 0 || DepositValue > ContractSnapshot.CarriedValue)
+	{
+		OutRejectReason = TEXT("InvalidDepositValue");
+	}
+	else if (bRequiredTargetDeposited && ContractSnapshot.bRequiredTargetSecured)
+	{
+		OutRejectReason = TEXT("RequiredTargetAlreadySecured");
+	}
+	else if (static_cast<int64>(ContractSnapshot.SecuredValue) + static_cast<int64>(DepositValue) > MAX_int32)
+	{
+		OutRejectReason = TEXT("SecuredValueOverflow");
+	}
+
+	return OutRejectReason == nullptr;
+}
+
+bool AHeistGameState::CommitPlayerDeposit(AHeistPlayerState* DepositingPlayerState, const int32 DepositValue, const bool bRequiredTargetDeposited)
+{
+	const TCHAR* RejectReason = nullptr;
+	if (!CanCommitPlayerDeposit(DepositingPlayerState, DepositValue, bRequiredTargetDeposited, RejectReason))
+	{
+		UHeistDebugFunctionLibrary::Message(
+			this,
+			FString::Printf(TEXT("Player extraction deposit rejected: PlayerId=%d DepositValue=%d Required=%s Carried=%d Secured=%d Reason=%s Authority=%s Result=FAIL"),
+							IsValid(DepositingPlayerState) ? DepositingPlayerState->HeistPlayerId : INDEX_NONE, DepositValue, bRequiredTargetDeposited ? TEXT("true") : TEXT("false"),
+							ContractSnapshot.CarriedValue, ContractSnapshot.SecuredValue, RejectReason != nullptr ? RejectReason : TEXT("Unknown"), HasAuthority() ? TEXT("true") : TEXT("false")),
+			EHeistDebugLevel::Warning);
+		return false;
+	}
+
+	ContractSnapshot.CarriedValue -= DepositValue;
+	ContractSnapshot.SecuredValue += DepositValue;
+	ContractSnapshot.bRequiredTargetSecured |= bRequiredTargetDeposited;
+	ContractSnapshot.Revision = ContractSnapshot.Revision == MAX_int32 ? 1 : ContractSnapshot.Revision + 1;
+	ForceNetUpdate();
+	BroadcastContractSnapshot(TEXT("ServerDeposit"));
+
+	UHeistDebugFunctionLibrary::Message(
+		this,
+		FString::Printf(TEXT("Player extraction deposit committed: PlayerId=%d DepositValue=%d Required=%s Carried=%d Secured=%d Quota=%d Authority=true Result=PASS"),
+						DepositingPlayerState->HeistPlayerId, DepositValue, bRequiredTargetDeposited ? TEXT("true") : TEXT("false"), ContractSnapshot.CarriedValue,
+						ContractSnapshot.SecuredValue, ContractSnapshot.LootValueQuota));
+	return true;
+}
+
+bool AHeistGameState::CommitContractOutcome(const EHeistContractOutcome Outcome)
+{
+	if (!HasAuthority() || !ContractSnapshot.IsInitialized() || ContractSnapshot.Outcome != EHeistContractOutcome::None || Outcome == EHeistContractOutcome::None)
+	{
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Contract outcome rejected: Requested=%s Current=%s Initialized=%s Authority=%s Result=FAIL Reason=InvalidState"),
+			   *UEnum::GetValueAsString(Outcome), *UEnum::GetValueAsString(ContractSnapshot.Outcome), ContractSnapshot.IsInitialized() ? TEXT("true") : TEXT("false"),
+			   HasAuthority() ? TEXT("true") : TEXT("false"));
+		return false;
+	}
+
+	FHeistContractSnapshot CandidateSnapshot = ContractSnapshot;
+	CandidateSnapshot.Outcome = Outcome;
+	if (!CandidateSnapshot.IsOutcomeConsistent())
+	{
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Contract outcome rejected: Requested=%s RequiredSecured=%s Secured=%d Quota=%d Result=FAIL Reason=OutcomeMismatch"),
+			   *UEnum::GetValueAsString(Outcome), ContractSnapshot.bRequiredTargetSecured ? TEXT("true") : TEXT("false"), ContractSnapshot.SecuredValue, ContractSnapshot.LootValueQuota);
+		return false;
+	}
+
+	ContractSnapshot.Outcome = Outcome;
+	ContractSnapshot.Revision = ContractSnapshot.Revision == MAX_int32 ? 1 : ContractSnapshot.Revision + 1;
+	ForceNetUpdate();
+	BroadcastContractSnapshot(TEXT("ServerOutcome"));
+	return true;
+}
+
+FHeistContractSnapshotChanged& AHeistGameState::GetContractSnapshotChangedDelegate()
+{
+	return ContractSnapshotChangedDelegate;
+}
+
+void AHeistGameState::OnRep_ContractSnapshot()
+{
+	BroadcastContractSnapshot(TEXT("Replicated"));
+}
+
+void AHeistGameState::BroadcastContractSnapshot(const TCHAR* ChangeSource)
+{
+	ContractSnapshotChangedDelegate.Broadcast(ContractSnapshot);
+	UE_LOG(LogHeistNetwork, Log,
+		   TEXT("Contract snapshot %s: Contract=%s Map=%s Seed=%d TargetArtifact=%s TargetCase=%s Quota=%d Carried=%d Secured=%d RequiredSecured=%s Outcome=%s Revision=%d Authority=%s Result=%s"),
+		   ChangeSource, *ContractSnapshot.ContractId.ToString(), *ContractSnapshot.MapId.ToString(), ContractSnapshot.AssignmentSeed,
+		   *ContractSnapshot.RequiredTargetArtifactId.ToString(), *ContractSnapshot.RequiredTargetCaseId.ToString(), ContractSnapshot.LootValueQuota, ContractSnapshot.CarriedValue,
+		   ContractSnapshot.SecuredValue, ContractSnapshot.bRequiredTargetSecured ? TEXT("true") : TEXT("false"), *UEnum::GetValueAsString(ContractSnapshot.Outcome), ContractSnapshot.Revision,
+		   HasAuthority() ? TEXT("true") : TEXT("false"), ContractSnapshot.IsInitialized() && ContractSnapshot.IsProgressValid() && ContractSnapshot.IsOutcomeConsistent() ? TEXT("PASS") : TEXT("PENDING"));
+}
+
+void AHeistGameState::ClearContractSnapshot()
+{
+	if (!ContractSnapshot.IsInitialized() && ContractSnapshot.Revision == 0)
+	{
+		return;
+	}
+
+	ContractSnapshot = FHeistContractSnapshot();
+	ForceNetUpdate();
+	BroadcastContractSnapshot(TEXT("ServerCleared"));
 }
 
 #pragma endregion
@@ -739,6 +973,7 @@ void AHeistGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(AHeistGameState, SurfaceTemplateBagCycle);
 	DOREPLIFETIME(AHeistGameState, SurfaceTemplateRemainingCount);
 	DOREPLIFETIME(AHeistGameState, SurfaceTemplateSelectionRevision);
+	DOREPLIFETIME(AHeistGameState, ContractSnapshot);
 	DOREPLIFETIME(AHeistGameState, AlertLevel);
 	DOREPLIFETIME(AHeistGameState, AlertNextTransitionServerTime);
 	DOREPLIFETIME(AHeistGameState, LastAlertTriggerId);

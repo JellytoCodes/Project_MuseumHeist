@@ -239,6 +239,38 @@ void UHeistCheatManager::HeistOriginalDrop()
 
 #pragma endregion
 
+#pragma region DepositDebug
+
+void UHeistCheatManager::HeistDepositHelp()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugDepositHelp(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistDepositOpen()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugDepositOpen(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistDepositSpawnFor(const int32 PlayerId, const float Distance)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugDepositSpawnFor(GetOuterAPlayerController(), PlayerId, Distance);
+#endif
+}
+
+void UHeistCheatManager::HeistDepositDump(const int32 PlayerId)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugDepositDump(GetOuterAPlayerController(), PlayerId);
+#endif
+}
+
+#pragma endregion
+
 #pragma region ObjectAssemblyDebug
 
 void UHeistCheatManager::HeistObjectAssemblyHelp()

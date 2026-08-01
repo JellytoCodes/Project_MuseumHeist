@@ -8,10 +8,12 @@
 
 class AHeistGameState;
 class AHeistPlayerState;
+class AHeistDroppedOriginalActor;
 class UMaterialInstanceDynamic;
 class UMaterialInterface;
 class UStaticMeshComponent;
 class UTexture2D;
+struct FHeistOriginalCarryEntry;
 
 USTRUCT(BlueprintType)
 struct PROJECT_MUSEUMHEIST_API FHeistReplicaPaintingData
@@ -385,16 +387,23 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Original")
 	int32 GetOriginalCarryRevision() const;
 
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Original")
+	bool IsOriginalSecuredAtExit() const;
+
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Heist|DisplayCase|Original")
 	bool TryTakeOriginal(AHeistPlayerState* RequestingPlayerState);
 
 	bool ReleaseOriginalForCarrier(AHeistPlayerState* ExpectedCarrier, FName Reason);
+	bool DropOriginalForCarrier(AHeistPlayerState* ExpectedCarrier, FName Reason);
+	bool TryClaimDroppedOriginal(AHeistPlayerState* RequestingPlayerState, AHeistDroppedOriginalActor* DroppedOriginal);
+	bool CanCommitOriginalDepositForCarrier(const AHeistPlayerState* ExpectedCarrier, const FHeistOriginalCarryEntry& CarryEntry) const;
+	bool CommitOriginalDepositForCarrier(AHeistPlayerState* ExpectedCarrier, const FHeistOriginalCarryEntry& CarryEntry);
 
 	UPROPERTY(BlueprintAssignable, Category = "Heist|DisplayCase|Original")
 	FHeistOriginalCarryChangedSignature OnOriginalCarryChanged;
 
   private:
-	bool ValidateOriginalTakeRequest(AHeistPlayerState* RequestingPlayerState, float& OutArtifactWeight, FName& OutRejectReason) const;
+	bool ValidateOriginalTakeRequest(AHeistPlayerState* RequestingPlayerState, int32& OutArtifactValue, float& OutArtifactWeight, bool& bOutRequiredTarget, FName& OutRejectReason) const;
 	void SyncObjectiveCarrierCandidate(AHeistPlayerState* Carrier);
 	void UnbindOriginalCarrierDelegate();
 	void BroadcastOriginalCarrySnapshot(const TCHAR* ChangeSource, FName Reason);
@@ -411,6 +420,12 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 
 	UPROPERTY(ReplicatedUsing = OnRep_OriginalCarryRevision, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Original", meta = (AllowPrivateAccess = "true"))
 	int32 OriginalCarryRevision = 0;
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Original", meta = (AllowPrivateAccess = "true"))
+	bool bOriginalSecuredAtExit = false;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Original", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<AHeistDroppedOriginalActor> DroppedOriginalActorClass;
 
 	UFUNCTION()
 	void OnRep_OriginalCarryRevision();

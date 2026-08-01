@@ -12,6 +12,7 @@ class AHeistLootActor;
 class AHeistLootSpawnPoint;
 class AHeistPlayerState;
 struct FHeistItemDataRow;
+struct FHeistContractDataRow;
 struct FHeistArtifactDataRow;
 struct FHeistForgeryTemplateRow;
 struct FHeistObjectAssemblyPartRow;
@@ -81,11 +82,13 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 
   public:
 	UDataTable* GetItemDataTable() const;
+	UDataTable* GetContractDataTable() const;
 	UDataTable* GetArtifactDataTable() const;
 	UDataTable* GetForgeryTemplateDataTable() const;
 	UDataTable* GetObjectAssemblyPartDataTable() const;
 	UDataTable* GetObjectAssemblyTemplateDataTable() const;
 	bool TryGetItemDefinition(FName ItemId, FHeistItemDataRow& OutItemDefinition) const;
+	bool TryGetContractDefinition(FName ContractId, FHeistContractDataRow& OutContractDefinition) const;
 	bool TryGetArtifactDefinition(FName ArtifactId, FHeistArtifactDataRow& OutArtifactDefinition) const;
 	bool TryGetForgeryTemplateDefinition(FName TemplateId, FHeistForgeryTemplateRow& OutTemplateDefinition) const;
 	bool TryGetObjectAssemblyPartDefinition(FName PartId, FHeistObjectAssemblyPartRow& OutPartDefinition) const;
@@ -146,7 +149,7 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 #pragma region RuntimeState
 
   private:
-	void InitializeObjectiveFromPlacedTargetCase();
+	void InitializeContractFromPlacedTargetCase();
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Objective",
 			  meta = (AllowPrivateAccess = "true", ToolTip = "Optional explicit target case id. When None, the map's single DisplayCaseId ending in _Target is selected."))

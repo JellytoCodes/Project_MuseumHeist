@@ -8,8 +8,10 @@
 
 class AHeistGameState;
 class AHeistPlayerState;
+class AHeistDroppedOriginalActor;
 class USceneComponent;
 class UStaticMeshComponent;
+struct FHeistOriginalCarryEntry;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FHeistObjectAssemblySessionChangedSignature, AHeistPlayerState*, SessionOwner, bool, bLocked, int32, Revision);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FHeistObjectOriginalCarryChangedSignature, AHeistPlayerState*, Carrier, FName, ArtifactId, int32, Revision);
@@ -92,10 +94,17 @@ class PROJECT_MUSEUMHEIST_API AHeistObjectDisplayCaseActor : public AHeistIntera
 	UFUNCTION(BlueprintPure, Category = "Heist|Object Assembly|Original")
 	int32 GetOriginalCarryRevision() const;
 
+	UFUNCTION(BlueprintPure, Category = "Heist|Object Assembly|Original")
+	bool IsOriginalSecuredAtExit() const;
+
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Heist|Object Assembly|Original")
 	bool TryTakeOriginal(AHeistPlayerState* RequestingPlayerState);
 
 	bool ReleaseOriginalForCarrier(AHeistPlayerState* ExpectedCarrier, FName Reason);
+	bool DropOriginalForCarrier(AHeistPlayerState* ExpectedCarrier, FName Reason);
+	bool TryClaimDroppedOriginal(AHeistPlayerState* RequestingPlayerState, AHeistDroppedOriginalActor* DroppedOriginal);
+	bool CanCommitOriginalDepositForCarrier(const AHeistPlayerState* ExpectedCarrier, const FHeistOriginalCarryEntry& CarryEntry) const;
+	bool CommitOriginalDepositForCarrier(AHeistPlayerState* ExpectedCarrier, const FHeistOriginalCarryEntry& CarryEntry);
 
 	UPROPERTY(BlueprintAssignable, Category = "Heist|Object Assembly|Original")
 	FHeistObjectOriginalCarryChangedSignature OnObjectOriginalCarryChanged;
@@ -192,7 +201,7 @@ class PROJECT_MUSEUMHEIST_API AHeistObjectDisplayCaseActor : public AHeistIntera
 	void ClearSession(FName Reason);
 	void UnbindSessionOwnerDelegate();
 	void BroadcastAssemblySnapshot(FName EventName, FName Reason, bool bResult);
-	bool ValidateOriginalTakeRequest(AHeistPlayerState* RequestingPlayerState, float& OutArtifactWeight, FName& OutRejectReason) const;
+	bool ValidateOriginalTakeRequest(AHeistPlayerState* RequestingPlayerState, int32& OutArtifactValue, float& OutArtifactWeight, bool& bOutRequiredTarget, FName& OutRejectReason) const;
 	void SyncObjectiveCarrierCandidate(AHeistPlayerState* Carrier);
 	void UnbindOriginalCarrierDelegate();
 	void BroadcastOriginalCarrySnapshot(FName EventName, FName Reason, bool bResult);
@@ -258,6 +267,12 @@ class PROJECT_MUSEUMHEIST_API AHeistObjectDisplayCaseActor : public AHeistIntera
 
 	UPROPERTY(ReplicatedUsing = OnRep_OriginalCarryRevision, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly|Original", meta = (AllowPrivateAccess = "true"))
 	int32 OriginalCarryRevision = 0;
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly|Original", meta = (AllowPrivateAccess = "true"))
+	bool bOriginalSecuredAtExit = false;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Object Assembly|Original", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<AHeistDroppedOriginalActor> DroppedOriginalActorClass;
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly|Inspection", meta = (AllowPrivateAccess = "true"))
 	bool bRegisteredForInspection = false;

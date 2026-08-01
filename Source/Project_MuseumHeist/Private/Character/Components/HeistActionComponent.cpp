@@ -13,6 +13,7 @@
 #include "Net/UnrealNetwork.h"
 #include "TimerManager.h"
 #include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
+#include "World/Actors/Loot/HeistObjectDisplayCaseActor.h"
 #include "World/Actors/Escape/HeistVentActor.h"
 
 #pragma region Construction
@@ -96,6 +97,12 @@ void UHeistActionComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 		return;
 	}
 
+	if (bEscapeCastActive && HeistGameState->GetAlertRevision() != EscapeCastStartAlertRevision)
+	{
+		CancelEscapeCast(TEXT("Alert"));
+		return;
+	}
+
 	if (bObservationCastActive)
 	{
 		AHeistPaintingDisplayCaseActor* TargetDisplayCase = PendingObservationDisplayCase.Get();
@@ -129,9 +136,9 @@ bool UHeistActionComponent::TryBeginEscapeRequest(AHeistVentActor* TargetVentAct
 	const AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(OwnerActor);
 	const AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter) ? HeistCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
 	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
-	if (!IsValid(OwnerActor) || !OwnerActor->HasAuthority() || !IsValid(HeistPlayerState) || HeistPlayerState->IsEscaped() || !IsValid(TargetVentActor) || bEscapeCastActive ||
+	if (!IsValid(OwnerActor) || !OwnerActor->HasAuthority() || !IsValid(HeistPlayerState) || HeistPlayerState->IsEscaped() || HeistPlayerState->IsArrested() || !IsValid(TargetVentActor) || bEscapeCastActive ||
 		IsGameplayCastActive() || PendingEscapeVent.IsValid() || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame ||
-		HeistGameState->AreWorldInteractionsRestricted())
+		!HeistGameState->IsContractInitialized() || HeistGameState->AreWorldInteractionsRestricted())
 	{
 		return false;
 	}
@@ -139,6 +146,7 @@ bool UHeistActionComponent::TryBeginEscapeRequest(AHeistVentActor* TargetVentAct
 	PendingEscapeVent = TargetVentActor;
 	bEscapeCastActive = true;
 	EscapeCastStartLocation = OwnerActor->GetActorLocation();
+	EscapeCastStartAlertRevision = HeistGameState->GetAlertRevision();
 
 	const float EscapeCastDurationSeconds = ResolveEscapeCastDurationSeconds();
 	const float ServerWorldTime = IsValid(HeistGameState) ? HeistGameState->GetServerWorldTimeSeconds() : (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
@@ -386,11 +394,73 @@ void UHeistActionComponent::HandleEscapeCastTimerElapsed()
 	AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
 	AHeistVentActor* TargetVentActor = PendingEscapeVent.Get();
 	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter) ? HeistCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
+	UHeistInventoryComponent* InventoryComponent = IsValid(HeistCharacter) ? HeistCharacter->GetInventoryComponent() : nullptr;
+	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	if (!bEscapeCastActive || !IsValid(HeistCharacter) || !IsValid(HeistPlayerState) || !IsValid(TargetVentActor) || HasMovedBeyondEscapeCastTolerance() ||
-		!TargetVentActor->CanUseVent(HeistCharacter))
+		!IsValid(InventoryComponent) || !IsValid(HeistGameState) || !HeistGameState->IsContractInitialized() ||
+		HeistGameState->GetAlertRevision() != EscapeCastStartAlertRevision || !TargetVentActor->CanUseVent(HeistCharacter))
 	{
 		CancelEscapeCast(TEXT("CompletionValidationFailed"));
 		return;
+	}
+
+	FHeistPlayerDepositPayload DepositPreview;
+	const TCHAR* DepositRejectReason = nullptr;
+	if (!InventoryComponent->TryBuildPlayerDepositPayload(DepositPreview, DepositRejectReason))
+	{
+		CancelEscapeCast(DepositRejectReason != nullptr ? DepositRejectReason : TEXT("DepositPreviewRejected"));
+		return;
+	}
+
+	AHeistPaintingDisplayCaseActor* PaintingSourceCase = nullptr;
+	AHeistObjectDisplayCaseActor* ObjectSourceCase = nullptr;
+	if (DepositPreview.OriginalCarry.IsValid())
+	{
+		AActor* SourceDisplayCase = DepositPreview.OriginalCarry.SourceDisplayCase.Get();
+		PaintingSourceCase = Cast<AHeistPaintingDisplayCaseActor>(SourceDisplayCase);
+		ObjectSourceCase = Cast<AHeistObjectDisplayCaseActor>(SourceDisplayCase);
+		const FHeistContractSnapshot ContractSnapshot = HeistGameState->GetContractSnapshot();
+		const FName SourceCaseId = IsValid(PaintingSourceCase) ? PaintingSourceCase->GetDisplayCaseId()
+													: (IsValid(ObjectSourceCase) ? ObjectSourceCase->GetObjectCaseId() : NAME_None);
+		const bool bMatchesRequiredTarget = DepositPreview.OriginalCarry.ArtifactId == ContractSnapshot.RequiredTargetArtifactId && SourceCaseId == ContractSnapshot.RequiredTargetCaseId;
+		const bool bRequiredFlagConsistent = DepositPreview.OriginalCarry.bRequiredTarget == bMatchesRequiredTarget;
+		const bool bSourceCanCommit =
+			(IsValid(PaintingSourceCase) && PaintingSourceCase->CanCommitOriginalDepositForCarrier(HeistPlayerState, DepositPreview.OriginalCarry)) ||
+			(IsValid(ObjectSourceCase) && ObjectSourceCase->CanCommitOriginalDepositForCarrier(HeistPlayerState, DepositPreview.OriginalCarry));
+		if (!bRequiredFlagConsistent || !bSourceCanCommit)
+		{
+			CancelEscapeCast(!bRequiredFlagConsistent ? TEXT("RequiredTargetDepositMismatch") : TEXT("OriginalDepositSourceRejected"));
+			return;
+		}
+	}
+
+	if (DepositPreview.HasDeposit())
+	{
+		if (!HeistGameState->RefreshContractCarriedValue())
+		{
+			CancelEscapeCast(TEXT("ContractCarriedRefreshRejected"));
+			return;
+		}
+
+		if (!HeistGameState->CanCommitPlayerDeposit(HeistPlayerState, DepositPreview.GetTotalValue(), DepositPreview.OriginalCarry.bRequiredTarget, DepositRejectReason))
+		{
+			CancelEscapeCast(DepositRejectReason != nullptr ? DepositRejectReason : TEXT("ContractDepositRejected"));
+			return;
+		}
+
+		FHeistPlayerDepositPayload CommittedDeposit;
+		if (!InventoryComponent->TryCommitPlayerDeposit(HeistPlayerState, DepositPreview, CommittedDeposit, DepositRejectReason))
+		{
+			CancelEscapeCast(DepositRejectReason != nullptr ? DepositRejectReason : TEXT("InventoryDepositRejected"));
+			return;
+		}
+
+		const bool bOriginalSourceCommitted = !CommittedDeposit.OriginalCarry.IsValid() ||
+			(IsValid(PaintingSourceCase) && PaintingSourceCase->CommitOriginalDepositForCarrier(HeistPlayerState, CommittedDeposit.OriginalCarry)) ||
+			(IsValid(ObjectSourceCase) && ObjectSourceCase->CommitOriginalDepositForCarrier(HeistPlayerState, CommittedDeposit.OriginalCarry));
+		checkf(bOriginalSourceCommitted, TEXT("Validated Original deposit source must commit after inventory deposit."));
+		checkf(HeistGameState->CommitPlayerDeposit(HeistPlayerState, CommittedDeposit.GetTotalValue(), CommittedDeposit.OriginalCarry.bRequiredTarget),
+			   TEXT("Validated Contract deposit must commit after inventory deposit."));
 	}
 
 	if (!HeistPlayerState->MarkEscaped())
@@ -487,6 +557,7 @@ void UHeistActionComponent::ClearEscapeCastState()
 	PendingEscapeVent.Reset();
 	bEscapeCastActive = false;
 	EscapeCastEndServerTime = 0.0f;
+	EscapeCastStartAlertRevision = INDEX_NONE;
 
 	if (!bObservationCastActive)
 	{

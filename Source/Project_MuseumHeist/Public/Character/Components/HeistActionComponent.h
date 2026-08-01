@@ -105,6 +105,9 @@ class PROJECT_MUSEUMHEIST_API UHeistActionComponent : public UActorComponent
 	UPROPERTY(Transient)
 	FVector EscapeCastStartLocation = FVector::ZeroVector;
 
+	UPROPERTY(Transient)
+	int32 EscapeCastStartAlertRevision = INDEX_NONE;
+
 	FTimerHandle EscapeCastTimerHandle;
 	FHeistEscapeCastCompleted EscapeCastCompletedDelegate;
 	FHeistActionStateChanged ActionStateChangedDelegate;

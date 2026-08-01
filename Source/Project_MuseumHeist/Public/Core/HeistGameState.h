@@ -16,6 +16,7 @@ DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerConnectionsChanged, int32);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistMatchPhaseChanged, EHeistMatchPhase, EHeistMatchPhase);
 DECLARE_MULTICAST_DELEGATE_ThreeParams(FHeistLobbyMapSelectionChanged, FName, bool, int32);
 DECLARE_MULTICAST_DELEGATE_ThreeParams(FHeistSurfaceTemplateSelectionChanged, FName, FName, int32);
+DECLARE_MULTICAST_DELEGATE_OneParam(FHeistContractSnapshotChanged, const FHeistContractSnapshot&);
 DECLARE_MULTICAST_DELEGATE_FourParams(FHeistObjectiveStateChanged, FName, FName, EHeistObjectiveState, AHeistPlayerState*);
 DECLARE_MULTICAST_DELEGATE_FourParams(FHeistAlertStateChanged, EHeistAlertLevel, EHeistAlertLevel, int32, FName);
 
@@ -150,6 +151,40 @@ class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
 
 	void BroadcastSurfaceTemplateSelection(const TCHAR* ChangeSource, bool bAccepted);
 	FHeistSurfaceTemplateSelectionChanged SurfaceTemplateSelectionChangedDelegate;
+
+#pragma endregion
+
+#pragma region Contract
+
+  public:
+	UFUNCTION(BlueprintPure, Category = "Heist|Contract")
+	FHeistContractSnapshot GetContractSnapshot() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Contract")
+	bool IsContractInitialized() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Contract")
+	bool IsContractSuccessConditionMet() const;
+
+	bool InitializeContractSnapshot(FName ContractId, FName MapId, int32 AssignmentSeed, FName RequiredTargetArtifactId, FName RequiredTargetCaseId, int32 LootValueQuota);
+	bool SetContractProgress(int32 CarriedValue, int32 SecuredValue, bool bRequiredTargetSecured);
+	bool RefreshContractCarriedValue();
+	bool CanCommitPlayerDeposit(const AHeistPlayerState* DepositingPlayerState, int32 DepositValue, bool bRequiredTargetDeposited, const TCHAR*& OutRejectReason) const;
+	bool CommitPlayerDeposit(AHeistPlayerState* DepositingPlayerState, int32 DepositValue, bool bRequiredTargetDeposited);
+	bool CommitContractOutcome(EHeistContractOutcome Outcome);
+	FHeistContractSnapshotChanged& GetContractSnapshotChangedDelegate();
+
+  private:
+	UPROPERTY(ReplicatedUsing = OnRep_ContractSnapshot, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Contract", meta = (AllowPrivateAccess = "true"))
+	FHeistContractSnapshot ContractSnapshot;
+
+	UFUNCTION()
+	void OnRep_ContractSnapshot();
+
+	void BroadcastContractSnapshot(const TCHAR* ChangeSource);
+	void ClearContractSnapshot();
+
+	FHeistContractSnapshotChanged ContractSnapshotChangedDelegate;
 
 #pragma endregion
 

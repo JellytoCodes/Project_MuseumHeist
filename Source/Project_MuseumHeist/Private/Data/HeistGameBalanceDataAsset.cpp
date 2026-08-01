@@ -4,6 +4,7 @@
 
 UHeistGameBalanceDataAsset::UHeistGameBalanceDataAsset()
 {
+	ContractDataTable = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Game/Data/DataTable/DT_ContractData.DT_ContractData")));
 	ArtifactDataTable = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Game/Data/DataTable/DT_ArtifactData.DT_ArtifactData")));
 	ForgeryTemplateDataTable = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Game/Data/DataTable/DT_ForgeryTemplate.DT_ForgeryTemplate")));
 	ObjectAssemblyPartDataTable = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Game/Data/DataTable/DT_ObjectAssemblyPart.DT_ObjectAssemblyPart")));

@@ -50,14 +50,70 @@ struct PROJECT_MUSEUMHEIST_API FHeistOriginalCarryEntry
 	FName ArtifactId = NAME_None;
 
 	UPROPERTY(BlueprintReadOnly)
+	int32 ArtifactValue = 0;
+
+	UPROPERTY(BlueprintReadOnly)
 	float Weight = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly)
+	bool bRequiredTarget = false;
 
 	UPROPERTY(BlueprintReadOnly)
 	TObjectPtr<AActor> SourceDisplayCase;
 
 	bool IsValid() const
 	{
-		return !ArtifactId.IsNone() && FMath::IsFinite(Weight) && Weight >= 0.0f && SourceDisplayCase != nullptr;
+		return !ArtifactId.IsNone() && ArtifactValue > 0 && FMath::IsFinite(Weight) && Weight >= 0.0f && SourceDisplayCase != nullptr;
+	}
+};
+
+#pragma endregion
+
+#pragma region ExtractionDeposit
+
+/**
+ * Server-only preview/commit payload for one player's Shared Extraction deposit.
+ * Loose Loot and the dedicated Original carry entry remain separate inventory
+ * concepts, but are deposited through one authoritative Contract mutation.
+ */
+struct PROJECT_MUSEUMHEIST_API FHeistPlayerDepositPayload
+{
+	int32 LooseLootItemCount = 0;
+	int32 LooseLootValue = 0;
+	float LooseLootWeight = 0.0f;
+	FHeistOriginalCarryEntry OriginalCarry;
+
+	int32 GetOriginalValue() const
+	{
+		return OriginalCarry.IsValid() ? OriginalCarry.ArtifactValue : 0;
+	}
+
+	float GetOriginalWeight() const
+	{
+		return OriginalCarry.IsValid() ? OriginalCarry.Weight : 0.0f;
+	}
+
+	int32 GetTotalValue() const
+	{
+		return LooseLootValue + GetOriginalValue();
+	}
+
+	float GetTotalWeight() const
+	{
+		return LooseLootWeight + GetOriginalWeight();
+	}
+
+	bool HasDeposit() const
+	{
+		return LooseLootItemCount > 0 || OriginalCarry.IsValid();
+	}
+
+	bool Matches(const FHeistPlayerDepositPayload& Other) const
+	{
+		return LooseLootItemCount == Other.LooseLootItemCount && LooseLootValue == Other.LooseLootValue && FMath::IsNearlyEqual(LooseLootWeight, Other.LooseLootWeight) &&
+			   OriginalCarry.ArtifactId == Other.OriginalCarry.ArtifactId && OriginalCarry.ArtifactValue == Other.OriginalCarry.ArtifactValue &&
+			   FMath::IsNearlyEqual(OriginalCarry.Weight, Other.OriginalCarry.Weight) && OriginalCarry.bRequiredTarget == Other.OriginalCarry.bRequiredTarget &&
+			   OriginalCarry.SourceDisplayCase == Other.OriginalCarry.SourceDisplayCase;
 	}
 };
 

@@ -1,4 +1,5 @@
 #include "World/Actors/Loot/HeistObjectDisplayCaseActor.h"
+#include "World/Actors/Loot/HeistDroppedOriginalActor.h"
 
 #include "Character/Components/HeistInventoryComponent.h"
 #include "Character/HeistPlayerCharacter.h"
@@ -6,6 +7,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Core/HeistGameMode.h"
 #include "Core/HeistGameState.h"
+#include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerState.h"
 #include "Data/HeistArtifactDataTypes.h"
 #include "Data/HeistGameBalanceDataAsset.h"
@@ -167,6 +169,7 @@ void AHeistObjectDisplayCaseActor::GetLifetimeReplicatedProps(TArray<FLifetimePr
 	DOREPLIFETIME(AHeistObjectDisplayCaseActor, bSessionLocked);
 	DOREPLIFETIME(AHeistObjectDisplayCaseActor, OriginalCarrier);
 	DOREPLIFETIME(AHeistObjectDisplayCaseActor, OriginalCarryRevision);
+	DOREPLIFETIME(AHeistObjectDisplayCaseActor, bOriginalSecuredAtExit);
 	DOREPLIFETIME(AHeistObjectDisplayCaseActor, ResolvedInspectionDelay);
 	DOREPLIFETIME(AHeistObjectDisplayCaseActor, InspectionReadyServerTime);
 	DOREPLIFETIME(AHeistObjectDisplayCaseActor, InspectionScoreBand);
@@ -377,11 +380,18 @@ int32 AHeistObjectDisplayCaseActor::GetOriginalCarryRevision() const
 	return OriginalCarryRevision;
 }
 
+bool AHeistObjectDisplayCaseActor::IsOriginalSecuredAtExit() const
+{
+	return bOriginalSecuredAtExit;
+}
+
 bool AHeistObjectDisplayCaseActor::TryTakeOriginal(AHeistPlayerState* RequestingPlayerState)
 {
+	int32 ArtifactValue = 0;
 	float ArtifactWeight = 0.0f;
+	bool bRequiredTarget = false;
 	FName RejectReason = NAME_None;
-	if (!HasAuthority() || !ValidateOriginalTakeRequest(RequestingPlayerState, ArtifactWeight, RejectReason))
+	if (!HasAuthority() || !ValidateOriginalTakeRequest(RequestingPlayerState, ArtifactValue, ArtifactWeight, bRequiredTarget, RejectReason))
 	{
 		BroadcastOriginalCarrySnapshot(FName(TEXT("Take")), RejectReason.IsNone() ? FName(TEXT("NotAuthority")) : RejectReason, false);
 		return false;
@@ -390,7 +400,7 @@ bool AHeistObjectDisplayCaseActor::TryTakeOriginal(AHeistPlayerState* Requesting
 	AHeistPlayerCharacter* PlayerCharacter = Cast<AHeistPlayerCharacter>(RequestingPlayerState->GetPawn());
 	UHeistInventoryComponent* InventoryComponent = IsValid(PlayerCharacter) ? PlayerCharacter->GetInventoryComponent() : nullptr;
 	check(IsValid(InventoryComponent));
-	if (!InventoryComponent->TryBeginOriginalCarry(RequestingPlayerState, TargetObjectArtifactId, ArtifactWeight, this))
+	if (!InventoryComponent->TryBeginOriginalCarry(RequestingPlayerState, TargetObjectArtifactId, ArtifactValue, ArtifactWeight, bRequiredTarget, this))
 	{
 		BroadcastOriginalCarrySnapshot(FName(TEXT("Take")), FName(TEXT("CarryEntryCommitFailed")), false);
 		return false;
@@ -418,8 +428,9 @@ bool AHeistObjectDisplayCaseActor::TryTakeOriginal(AHeistPlayerState* Requesting
 
 bool AHeistObjectDisplayCaseActor::ReleaseOriginalForCarrier(AHeistPlayerState* ExpectedCarrier, const FName Reason)
 {
-	const bool bOriginalCanReturn = AssemblyState == EHeistObjectAssemblyState::OriginalRemoved || AssemblyState == EHeistObjectAssemblyState::Completed ||
-		AssemblyState == EHeistObjectAssemblyState::Suspected || AssemblyState == EHeistObjectAssemblyState::Alarmed;
+	const bool bOriginalCanReturn = AssemblyState == EHeistObjectAssemblyState::OriginalRemoved || AssemblyState == EHeistObjectAssemblyState::Inspecting ||
+		AssemblyState == EHeistObjectAssemblyState::Completed || AssemblyState == EHeistObjectAssemblyState::Suspected || AssemblyState == EHeistObjectAssemblyState::Alarmed ||
+		AssemblyState == EHeistObjectAssemblyState::Failed;
 	if (!HasAuthority() || !bOriginalCanReturn || !IsValid(OriginalCarrier.Get()) || OriginalCarrier.Get() != ExpectedCarrier)
 	{
 		return false;
@@ -447,6 +458,147 @@ bool AHeistObjectDisplayCaseActor::ReleaseOriginalForCarrier(AHeistPlayerState* 
 	RefreshInspectionRegistration();
 	ForceNetUpdate();
 	BroadcastOriginalCarrySnapshot(FName(TEXT("Release")), Reason, true);
+	return true;
+}
+
+bool AHeistObjectDisplayCaseActor::DropOriginalForCarrier(AHeistPlayerState* ExpectedCarrier, const FName Reason)
+{
+	const bool bOriginalOutsideCase = AssemblyState == EHeistObjectAssemblyState::OriginalRemoved || AssemblyState == EHeistObjectAssemblyState::Inspecting ||
+		AssemblyState == EHeistObjectAssemblyState::Completed || AssemblyState == EHeistObjectAssemblyState::Suspected || AssemblyState == EHeistObjectAssemblyState::Alarmed ||
+		AssemblyState == EHeistObjectAssemblyState::Failed;
+	if (!HasAuthority() || !bOriginalOutsideCase || !IsValid(ExpectedCarrier) || OriginalCarrier.Get() != ExpectedCarrier)
+	{
+		return false;
+	}
+
+	AHeistPlayerCharacter* PlayerCharacter = Cast<AHeistPlayerCharacter>(ExpectedCarrier->GetPawn());
+	UHeistInventoryComponent* InventoryComponent = IsValid(PlayerCharacter) ? PlayerCharacter->GetInventoryComponent() : nullptr;
+	FHeistOriginalCarryEntry DropEntry = IsValid(InventoryComponent) ? InventoryComponent->GetOriginalCarryEntry() : FHeistOriginalCarryEntry();
+	const bool bHasCommittedCarryEntry = DropEntry.IsValid();
+	if (!DropEntry.IsValid())
+	{
+		const AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+		FHeistArtifactDataRow ArtifactDefinition;
+		const bool bAllowRecoveryFallback = Reason == FName(TEXT("OwnerDisconnected")) || Reason == FName(TEXT("OwnerArrested"));
+		if (!bAllowRecoveryFallback || !IsValid(HeistGameMode) ||
+			!HeistGameMode->TryGetArtifactDefinition(TargetObjectArtifactId, ArtifactDefinition))
+		{
+			BroadcastOriginalCarrySnapshot(FName(TEXT("WorldDrop")), FName(TEXT("MissingCarryEntry")), false);
+			return false;
+		}
+
+		const AHeistGameState* HeistGameState = GetWorld()->GetGameState<AHeistGameState>();
+		const FHeistContractSnapshot ContractSnapshot = IsValid(HeistGameState) ? HeistGameState->GetContractSnapshot() : FHeistContractSnapshot();
+		DropEntry.ArtifactId = TargetObjectArtifactId;
+		DropEntry.ArtifactValue = ArtifactDefinition.ArtifactValue;
+		DropEntry.Weight = ArtifactDefinition.Weight;
+		DropEntry.bRequiredTarget = ContractSnapshot.IsInitialized() && ContractSnapshot.RequiredTargetArtifactId == TargetObjectArtifactId &&
+			ContractSnapshot.RequiredTargetCaseId == ObjectCaseId;
+		DropEntry.SourceDisplayCase = this;
+	}
+
+	if (DropEntry.SourceDisplayCase != this || DropEntry.ArtifactId != TargetObjectArtifactId)
+	{
+		BroadcastOriginalCarrySnapshot(FName(TEXT("WorldDrop")), FName(TEXT("CarrySourceMismatch")), false);
+		return false;
+	}
+
+	const FVector DropLocation = IsValid(PlayerCharacter)
+		? PlayerCharacter->GetActorLocation() + PlayerCharacter->GetActorForwardVector() * 80.0f + FVector(0.0f, 0.0f, 30.0f)
+		: GetActorLocation() + FVector(0.0f, 0.0f, 75.0f);
+	const FTransform DropTransform(FRotator::ZeroRotator, DropLocation);
+	UClass* SpawnClass = DroppedOriginalActorClass ? DroppedOriginalActorClass.Get() : AHeistDroppedOriginalActor::StaticClass();
+	AHeistDroppedOriginalActor* DroppedOriginal =
+		GetWorld()->SpawnActorDeferred<AHeistDroppedOriginalActor>(SpawnClass, DropTransform, nullptr, PlayerCharacter, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+	if (!IsValid(DroppedOriginal))
+	{
+		BroadcastOriginalCarrySnapshot(FName(TEXT("WorldDrop")), FName(TEXT("SpawnFailed")), false);
+		return false;
+	}
+
+	DroppedOriginal->InitializeDroppedOriginal(DropEntry.ArtifactId, DropEntry.ArtifactValue, DropEntry.Weight, DropEntry.bRequiredTarget, this);
+	DroppedOriginal->FinishSpawning(DropTransform);
+
+	if (bHasCommittedCarryEntry)
+	{
+		check(IsValid(InventoryComponent));
+		FHeistOriginalCarryEntry ReleasedEntry;
+		if (!InventoryComponent->TryEndOriginalCarry(ExpectedCarrier, this, ReleasedEntry))
+		{
+			DroppedOriginal->Destroy();
+			BroadcastOriginalCarrySnapshot(FName(TEXT("WorldDrop")), FName(TEXT("CarryEntryReleaseFailed")), false);
+			return false;
+		}
+	}
+
+	UnbindOriginalCarrierDelegate();
+	OriginalCarrier = nullptr;
+	++OriginalCarryRevision;
+	SyncObjectiveCarrierCandidate(nullptr);
+	ForceNetUpdate();
+	BroadcastOriginalCarrySnapshot(FName(TEXT("WorldDrop")), Reason, true);
+	UE_LOG(LogHeistNetwork, Log,
+		   TEXT("Object original world drop committed: Case=%s CaseId=%s Actor=%s Artifact=%s Value=%d Weight=%.1f Required=%s Reason=%s Revision=%d Authority=true Result=PASS"),
+		   *GetNameSafe(this), *ObjectCaseId.ToString(), *GetNameSafe(DroppedOriginal), *DropEntry.ArtifactId.ToString(), DropEntry.ArtifactValue, DropEntry.Weight,
+		   DropEntry.bRequiredTarget ? TEXT("true") : TEXT("false"), *Reason.ToString(), OriginalCarryRevision);
+	return true;
+}
+
+bool AHeistObjectDisplayCaseActor::TryClaimDroppedOriginal(AHeistPlayerState* RequestingPlayerState, AHeistDroppedOriginalActor* DroppedOriginal)
+{
+	const bool bOriginalOutsideCase = AssemblyState == EHeistObjectAssemblyState::OriginalRemoved || AssemblyState == EHeistObjectAssemblyState::Inspecting ||
+		AssemblyState == EHeistObjectAssemblyState::Completed || AssemblyState == EHeistObjectAssemblyState::Suspected || AssemblyState == EHeistObjectAssemblyState::Alarmed ||
+		AssemblyState == EHeistObjectAssemblyState::Failed;
+	if (!HasAuthority() || !bOriginalOutsideCase || bOriginalSecuredAtExit || IsValid(OriginalCarrier.Get()) || !IsValid(RequestingPlayerState) || RequestingPlayerState->IsArrested() ||
+		RequestingPlayerState->IsEscaped() || !IsValid(DroppedOriginal) || DroppedOriginal->GetSourceDisplayCase() != this ||
+		DroppedOriginal->GetArtifactId() != TargetObjectArtifactId)
+	{
+		return false;
+	}
+
+	AHeistPlayerCharacter* PlayerCharacter = Cast<AHeistPlayerCharacter>(RequestingPlayerState->GetPawn());
+	UHeistInventoryComponent* InventoryComponent = IsValid(PlayerCharacter) ? PlayerCharacter->GetInventoryComponent() : nullptr;
+	if (!IsValid(InventoryComponent) || InventoryComponent->IsCarryingOriginal() ||
+		!InventoryComponent->TryBeginOriginalCarry(RequestingPlayerState, DroppedOriginal->GetArtifactId(), DroppedOriginal->GetArtifactValue(), DroppedOriginal->GetWeight(),
+														 DroppedOriginal->IsRequiredTarget(), this))
+	{
+		return false;
+	}
+
+	OriginalCarrier = RequestingPlayerState;
+	OriginalCarrierArrestChangedHandle =
+		RequestingPlayerState->GetArrestStateChangedDelegate().AddUObject(this, &AHeistObjectDisplayCaseActor::HandleOriginalCarrierArrestStateChanged);
+	++OriginalCarryRevision;
+	SyncObjectiveCarrierCandidate(RequestingPlayerState);
+	ForceNetUpdate();
+	BroadcastOriginalCarrySnapshot(FName(TEXT("WorldPickup")), FName(TEXT("Accepted")), true);
+	return true;
+}
+
+bool AHeistObjectDisplayCaseActor::CanCommitOriginalDepositForCarrier(const AHeistPlayerState* ExpectedCarrier, const FHeistOriginalCarryEntry& CarryEntry) const
+{
+	const bool bOriginalOutsideCase = AssemblyState == EHeistObjectAssemblyState::OriginalRemoved || AssemblyState == EHeistObjectAssemblyState::Inspecting ||
+		AssemblyState == EHeistObjectAssemblyState::Completed || AssemblyState == EHeistObjectAssemblyState::Suspected || AssemblyState == EHeistObjectAssemblyState::Alarmed ||
+		AssemblyState == EHeistObjectAssemblyState::Failed;
+	return HasAuthority() && bOriginalOutsideCase && !bOriginalSecuredAtExit && IsValid(ExpectedCarrier) && OriginalCarrier.Get() == ExpectedCarrier && CarryEntry.IsValid() &&
+		   CarryEntry.SourceDisplayCase == this && CarryEntry.ArtifactId == TargetObjectArtifactId;
+}
+
+bool AHeistObjectDisplayCaseActor::CommitOriginalDepositForCarrier(AHeistPlayerState* ExpectedCarrier, const FHeistOriginalCarryEntry& CarryEntry)
+{
+	if (!CanCommitOriginalDepositForCarrier(ExpectedCarrier, CarryEntry))
+	{
+		BroadcastOriginalCarrySnapshot(FName(TEXT("Deposit")), FName(TEXT("InvalidDepositState")), false);
+		return false;
+	}
+
+	UnbindOriginalCarrierDelegate();
+	OriginalCarrier = nullptr;
+	bOriginalSecuredAtExit = true;
+	++OriginalCarryRevision;
+	SyncObjectiveCarrierCandidate(nullptr);
+	ForceNetUpdate();
+	BroadcastOriginalCarrySnapshot(FName(TEXT("Deposit")), FName(TEXT("DepositedAtSharedExit")), true);
 	return true;
 }
 
@@ -1100,9 +1252,12 @@ void AHeistObjectDisplayCaseActor::BroadcastAssemblySnapshot(const FName EventNa
 	BP_ObjectAssemblySnapshotChanged();
 }
 
-bool AHeistObjectDisplayCaseActor::ValidateOriginalTakeRequest(AHeistPlayerState* RequestingPlayerState, float& OutArtifactWeight, FName& OutRejectReason) const
+bool AHeistObjectDisplayCaseActor::ValidateOriginalTakeRequest(AHeistPlayerState* RequestingPlayerState, int32& OutArtifactValue, float& OutArtifactWeight, bool& bOutRequiredTarget,
+														  FName& OutRejectReason) const
 {
+	OutArtifactValue = 0;
 	OutArtifactWeight = 0.0f;
+	bOutRequiredTarget = false;
 	OutRejectReason = NAME_None;
 	if (!IsValid(RequestingPlayerState) || AssemblyState != EHeistObjectAssemblyState::OriginalAvailable || bSessionLocked || IsValid(OriginalCarrier.Get()))
 	{
@@ -1146,7 +1301,12 @@ bool AHeistObjectDisplayCaseActor::ValidateOriginalTakeRequest(AHeistPlayerState
 		OutRejectReason = FName(TEXT("InvalidArtifactDefinition"));
 		return false;
 	}
+	OutArtifactValue = ArtifactDefinition.ArtifactValue;
 	OutArtifactWeight = ArtifactDefinition.Weight;
+	const FHeistContractSnapshot& ContractSnapshot = HeistGameState->GetContractSnapshot();
+	bOutRequiredTarget = ContractSnapshot.IsInitialized()
+		? ContractSnapshot.RequiredTargetArtifactId == TargetObjectArtifactId && ContractSnapshot.RequiredTargetCaseId == ObjectCaseId
+		: HeistGameState->GetActiveTargetArtifactId() == TargetObjectArtifactId && HeistGameState->GetActiveTargetCaseId() == ObjectCaseId;
 	if (!RequestingPlayerState->CanAddLootScoreAndWeight(0, OutArtifactWeight))
 	{
 		OutRejectReason = FName(TEXT("InvalidCarryWeight"));
@@ -1309,7 +1469,7 @@ void AHeistObjectDisplayCaseActor::HandleOriginalCarrierArrestStateChanged(const
 {
 	if (HasAuthority() && bArrested && IsValid(OriginalCarrier.Get()))
 	{
-		ReleaseOriginalForCarrier(OriginalCarrier.Get(), FName(TEXT("OwnerArrested")));
+		DropOriginalForCarrier(OriginalCarrier.Get(), FName(TEXT("OwnerArrested")));
 	}
 }
 

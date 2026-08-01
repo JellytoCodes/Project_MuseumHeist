@@ -302,6 +302,23 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 
 #pragma endregion
 
+#pragma region DepositDebug
+
+  public:
+	UFUNCTION(Exec)
+	void HeistDepositHelp();
+
+	UFUNCTION(Exec)
+	void HeistDepositOpen();
+
+	UFUNCTION(Exec)
+	void HeistDepositSpawnFor(int32 PlayerId, float Distance = 200.0f);
+
+	UFUNCTION(Exec)
+	void HeistDepositDump(int32 PlayerId = -1);
+
+#pragma endregion
+
 #pragma region ObjectAssemblyDebug
 
   public:

@@ -62,6 +62,9 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryWidget : public UHeistUserWidgetBas
 	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|Inventory", meta = (DisplayName = "Refresh Confirmed Inventory"))
 	void BP_RefreshConfirmedInventory(const TArray<FHeistInventoryItem>& ConfirmedItems, int32 GridColumns, int32 GridRows);
 
+	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|Inventory", meta = (DisplayName = "Refresh Confirmed Original Carry"))
+	void BP_RefreshConfirmedOriginalCarry(bool bCarryActive, FName ArtifactId, int32 ArtifactValue, float CarryWeight, bool bRequiredTarget);
+
 	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|Inventory", meta = (DisplayName = "Refresh Confirmed QuickSlots"))
 	void BP_RefreshConfirmedQuickSlots(const TArray<FHeistQuickSlotState>& ConfirmedQuickSlots);
 
@@ -151,6 +154,9 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryWidget : public UHeistUserWidgetBas
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> InventorySummaryText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> OriginalCarrySummaryText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> QuickSlotSummaryText;

@@ -34,6 +34,7 @@
 #include "World/Actors/Escape/HeistVentActor.h"
 #include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 #include "World/Actors/Loot/HeistObjectDisplayCaseActor.h"
+#include "World/Actors/Loot/HeistDroppedOriginalActor.h"
 #include "World/Actors/Loot/HeistLootActor.h"
 #include "World/Actors/Projectile/HeistCoinProjectile.h"
 #include "World/Actors/Projectile/HeistThrowableProjectile.h"
@@ -771,6 +772,13 @@ void AHeistPlayerController::HandleInteractPressed()
 
 	NotifyLocalTutorialMilestone(TEXT("CrosshairInteraction"), TEXT("ValidInteractionInput"));
 
+	AHeistDroppedOriginalActor* TargetDroppedOriginal = Cast<AHeistDroppedOriginalActor>(InteractionComponent->GetCurrentInteractionTarget());
+	if (TargetDroppedOriginal != nullptr)
+	{
+		Server_RequestDroppedOriginalPickup(TargetDroppedOriginal);
+		return;
+	}
+
 	AHeistLootActor* TargetLootActor = Cast<AHeistLootActor>(InteractionComponent->GetCurrentInteractionTarget());
 	if (TargetLootActor != nullptr)
 	{
@@ -1371,8 +1379,67 @@ void AHeistPlayerController::Server_RequestLootPickup_Implementation(AHeistLootA
 
 	checkf(RequestContext.PlayerState->AddLootScoreAndWeight(ScoreDelta, WeightDelta), TEXT("Validated loot score and weight must apply after inventory commit"));
 	checkf(TargetLootActor->CommitPickupReservation(RequestContext.Character), TEXT("Reserved loot must commit after inventory and score/weight commit"));
+	if (AHeistGameState* MutableHeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr)
+	{
+		MutableHeistGameState->RefreshContractCarriedValue();
+	}
 
 	UHeistDebugFunctionLibrary::DebugLootPickupRequestAccepted(this, TargetLootActor, TargetLootActor->GetLootRowId(), AddedInstanceId, Distance);
+}
+
+void AHeistPlayerController::Server_RequestDroppedOriginalPickup_Implementation(AHeistDroppedOriginalActor* TargetDroppedOriginal)
+{
+	FHeistGameplayRequestContext RequestContext;
+	const TCHAR* RejectReason = nullptr;
+	if (!TryBuildGameplayRequestContext(RequestContext, RejectReason) || !IsValid(TargetDroppedOriginal))
+	{
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Dropped Original pickup rejected: Actor=%s Reason=%s"), *GetNameSafe(TargetDroppedOriginal),
+			   RejectReason != nullptr ? RejectReason : TEXT("InvalidTarget"));
+		return;
+	}
+
+	UHeistInteractionComponent* InteractionComponent = RequestContext.Character->GetInteractionComponent();
+	const float Distance = FVector::Distance(RequestContext.Character->GetActorLocation(), TargetDroppedOriginal->GetActorLocation());
+	if (!InteractionComponent->IsActorWithinInteractionRange(TargetDroppedOriginal))
+	{
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Dropped Original pickup rejected: Actor=%s PlayerId=%d Distance=%.1f Reason=OutOfRange"),
+			   *GetNameSafe(TargetDroppedOriginal), RequestContext.PlayerState->HeistPlayerId, Distance);
+		return;
+	}
+
+	InteractionComponent->RefreshInteractionTarget(true);
+	if (InteractionComponent->GetCurrentInteractionTarget() != TargetDroppedOriginal || !TargetDroppedOriginal->TryReserveForPickup(RequestContext.Character))
+	{
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Dropped Original pickup rejected: Actor=%s PlayerId=%d Distance=%.1f Reason=NotCurrentOrReserved"),
+			   *GetNameSafe(TargetDroppedOriginal), RequestContext.PlayerState->HeistPlayerId, Distance);
+		return;
+	}
+
+	AActor* SourceDisplayCase = TargetDroppedOriginal->GetSourceDisplayCase();
+	bool bClaimed = false;
+	if (AHeistPaintingDisplayCaseActor* PaintingDisplayCase = Cast<AHeistPaintingDisplayCaseActor>(SourceDisplayCase))
+	{
+		bClaimed = PaintingDisplayCase->TryClaimDroppedOriginal(RequestContext.PlayerState, TargetDroppedOriginal);
+	}
+	else if (AHeistObjectDisplayCaseActor* ObjectDisplayCase = Cast<AHeistObjectDisplayCaseActor>(SourceDisplayCase))
+	{
+		bClaimed = ObjectDisplayCase->TryClaimDroppedOriginal(RequestContext.PlayerState, TargetDroppedOriginal);
+	}
+
+	if (!bClaimed)
+	{
+		TargetDroppedOriginal->ReleasePickupReservation(RequestContext.Character);
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Dropped Original pickup rejected: Actor=%s Source=%s PlayerId=%d Reason=SourceClaimRejected"),
+			   *GetNameSafe(TargetDroppedOriginal), *GetNameSafe(SourceDisplayCase), RequestContext.PlayerState->HeistPlayerId);
+		return;
+	}
+
+	checkf(TargetDroppedOriginal->CommitPickupReservation(RequestContext.Character), TEXT("Reserved Dropped Original must commit after source-case claim."));
+	UE_LOG(LogHeistNetwork, Log,
+		   TEXT("Dropped Original pickup committed: Actor=%s Source=%s Artifact=%s Value=%d Weight=%.1f Required=%s PlayerId=%d Distance=%.1f Authority=true Result=PASS"),
+		   *GetNameSafe(TargetDroppedOriginal), *GetNameSafe(SourceDisplayCase), *TargetDroppedOriginal->GetArtifactId().ToString(), TargetDroppedOriginal->GetArtifactValue(),
+		   TargetDroppedOriginal->GetWeight(), TargetDroppedOriginal->IsRequiredTarget() ? TEXT("true") : TEXT("false"), RequestContext.PlayerState->HeistPlayerId, Distance);
+	TargetDroppedOriginal->Destroy();
 }
 
 void AHeistPlayerController::Server_RequestObservation_Implementation(AHeistPaintingDisplayCaseActor* TargetDisplayCase)
@@ -1561,16 +1628,16 @@ void AHeistPlayerController::Server_RequestDropCarriedOriginal_Implementation()
 
 	const float PreviousWeight = RequestContext.PlayerState->GetTotalLootWeight();
 	bool bReleased = false;
-	FString RestoredState = TEXT("UnsupportedSource");
+	FString SourceStateAfterDrop = TEXT("UnsupportedSource");
 	if (AHeistPaintingDisplayCaseActor* PaintingDisplayCase = Cast<AHeistPaintingDisplayCaseActor>(SourceDisplayCase))
 	{
-		bReleased = PaintingDisplayCase->ReleaseOriginalForCarrier(RequestContext.PlayerState, FName(TEXT("OwnerDropped")));
-		RestoredState = UEnum::GetValueAsString(PaintingDisplayCase->GetDisplayCaseState());
+		bReleased = PaintingDisplayCase->DropOriginalForCarrier(RequestContext.PlayerState, FName(TEXT("OwnerDropped")));
+		SourceStateAfterDrop = UEnum::GetValueAsString(PaintingDisplayCase->GetDisplayCaseState());
 	}
 	else if (AHeistObjectDisplayCaseActor* ObjectDisplayCase = Cast<AHeistObjectDisplayCaseActor>(SourceDisplayCase))
 	{
-		bReleased = ObjectDisplayCase->ReleaseOriginalForCarrier(RequestContext.PlayerState, FName(TEXT("OwnerDropped")));
-		RestoredState = UEnum::GetValueAsString(ObjectDisplayCase->GetAssemblyState());
+		bReleased = ObjectDisplayCase->DropOriginalForCarrier(RequestContext.PlayerState, FName(TEXT("OwnerDropped")));
+		SourceStateAfterDrop = UEnum::GetValueAsString(ObjectDisplayCase->GetAssemblyState());
 	}
 	if (!bReleased)
 	{
@@ -1584,9 +1651,9 @@ void AHeistPlayerController::Server_RequestDropCarriedOriginal_Implementation()
 		this,
 		FString::Printf(
 			TEXT(
-				"Original drop request accepted: Case=%s Artifact=%s PlayerId=%d ReleasedWeight=%.1f PreviousWeight=%.1f TotalWeight=%.1f RestoredState=%s Policy=ReturnToSourceCase Authority=true Result=PASS"),
+				"Original drop request accepted: Case=%s Artifact=%s PlayerId=%d ReleasedWeight=%.1f PreviousWeight=%.1f TotalWeight=%.1f SourceStateAfterDrop=%s Policy=NeutralWorldDrop Authority=true Result=PASS"),
 			*GetNameSafe(SourceDisplayCase), *CarryEntry.ArtifactId.ToString(), RequestContext.PlayerState->HeistPlayerId, CarryEntry.Weight, PreviousWeight,
-			RequestContext.PlayerState->GetTotalLootWeight(), *RestoredState));
+			RequestContext.PlayerState->GetTotalLootWeight(), *SourceStateAfterDrop));
 }
 
 void AHeistPlayerController::Server_RequestEscape_Implementation(AHeistVentActor* TargetVentActor)
@@ -1868,6 +1935,10 @@ void AHeistPlayerController::Server_RequestDropInventoryItem_Implementation(cons
 	checkf(RemovedItem.ItemId == DropRequest.ItemId, TEXT("Validated inventory drop item changed during commit."));
 	checkf(RequestContext.PlayerState->RemoveLootScoreAndWeight(LootDefinition.ScoreValue, ItemDefinition.Weight),
 		   TEXT("Validated loot score and weight removal must succeed after inventory commit."));
+	if (AHeistGameState* MutableHeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr)
+	{
+		MutableHeistGameState->RefreshContractCarriedValue();
+	}
 
 	UHeistDebugFunctionLibrary::DebugInventoryDropAccepted(this, RequestContext.Character, DropRequest.ItemId, InstanceId, DroppedLootActor, FVector(DropRequest.DropOrigin));
 }
@@ -2081,6 +2152,27 @@ void AHeistPlayerController::Server_DebugRequestAddInventoryItem_Implementation(
 	if (!RequestContext.InventoryComponent->TryAddItem(ItemId, AddedInstanceId, AddRejectReason))
 	{
 		LogInventoryRequestRejected(TEXT("DebugAddItem"), INDEX_NONE, AddRejectReason != nullptr ? AddRejectReason : TEXT("AddRejected"));
+		return;
+	}
+
+	AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	FHeistItemDataRow ItemDefinition;
+	if (IsValid(HeistGameMode) && HeistGameMode->TryGetItemDefinition(ItemId, ItemDefinition) && ItemDefinition.ItemType == EHeistItemType::Loot)
+	{
+		FHeistLootDataRow LootDefinition;
+		if (!HeistGameMode->TryGetLootDefinition(ItemId, LootDefinition) || !RequestContext.PlayerState->CanAddLootScoreAndWeight(LootDefinition.ScoreValue, ItemDefinition.Weight))
+		{
+			FHeistInventoryItem RolledBackItem;
+			RequestContext.InventoryComponent->TryRemoveItem(AddedInstanceId, RolledBackItem);
+			LogInventoryRequestRejected(TEXT("DebugAddItem"), AddedInstanceId, TEXT("InvalidLootTotals"));
+			return;
+		}
+
+		checkf(RequestContext.PlayerState->AddLootScoreAndWeight(LootDefinition.ScoreValue, ItemDefinition.Weight), TEXT("Validated debug Loot totals must commit."));
+		if (AHeistGameState* HeistGameState = GetWorld()->GetGameState<AHeistGameState>())
+		{
+			HeistGameState->RefreshContractCarriedValue();
+		}
 	}
 #endif
 }

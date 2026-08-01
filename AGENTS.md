@@ -1,75 +1,76 @@
-﻿# Project_MuseumHeist ??Codex Instructions
+# Project_MuseumHeist — Codex Instructions
 
 ## Rev 11: Contract Run And Player Experience Foundation
 
-湲곗??? 2026-07-31 (臾몄꽌 援ъ“ ?뺣━ 諛섏쁺)
-?붿쭊: Unreal Engine 5.8  
-?꾩옱 紐⑺몴: 2026-09-20 Final RC / ?꾨줈?앺듃 留덈Т由?
-??臾몄꽌???꾨줈?앺듃 ?붿??덉뼱留??뺤콉??理쒖긽??Source of Truth??
+기준일: 2026-08-01 (GDD / TDD / Agent Rulebook 분리 반영)
+엔진: Unreal Engine 5.8
+현재 목표: 2026-09-20 W8 Final RC / 프로젝트 마무리
 
-?꾩옱 ?꾨줈?앺듃??湲곗〈 寃쎌웳??Top-Down 援ъ“?먯꽌 **1~4???⑤씪???묐룞 1?몄묶 ?좎엯쨌?좊Ъ ?꾩“ ?섏씠?ㅽ듃 寃뚯엫**?쇰줈 ?꾪솚?먮떎.
+이 문서는 프로젝트 엔지니어링 정책의 최상위 Source of Truth다.
 
-Rev 11遺?????먯? ?⑥씪 紐⑺몴瑜???踰??꾩“?섍퀬 ?앸굹??Vertical Slice媛 ?꾨땲???ㅼ쓬 ??怨꾩빟 議곌굔??留뚯”?섎뒗 15~25遺?Contract Run?쇰줈 ?뺤쓽?쒕떎.
+현재 프로젝트는 기존 경쟁형 Top-Down 구조에서 **1~4인 온라인 협동 1인칭 잠입·유물 위조 하이스트 게임**으로 전환됐다.
+
+Rev 11부터 한 판은 단일 목표를 한 번 위조하고 끝나는 Vertical Slice가 아니라 다음 두 계약 조건을 만족하는 15~25분 Contract Run으로 정의한다.
 
 ```text
 Required Target
-- 留ㅼ튂媛 吏?뺥븳 ?듭떖 ?묓뭹??諛섎뱶??諛섏텧?쒕떎.
+- 매치가 지정한 핵심 작품을 반드시 반출한다.
 
 Loot Value Quota
-- Original怨?Loose Loot??Secured Value ?⑷퀎濡?怨꾩빟 ?좊떦?됱쓣 ?ъ꽦?쒕떎.
+- Original과 Loose Loot의 Secured Value 합계로 계약 할당량을 달성한다.
 ```
 
-??留ㅼ튂?먯꽌 ?щ윭 Painting / Object ?꾩떆?덉쓣 諛섎났?곸쑝濡?愿李고븯怨??꾩“?????덈떎. ?뚮젅?댁뼱媛 ?몄젣 ???붿튂怨??몄젣 ?꾨쭩移좎? ?먮떒?섎뒗 Greed Decision???꾩껜 寃뚯엫??以묒떖?대떎.
+한 매치에서 여러 Painting / Object 전시품을 반복적으로 관찰하고 위조할 수 있다. 플레이어가 언제 더 훔치고 언제 도망칠지 판단하는 Greed Decision이 전체 게임의 중심이다.
 
-?뚮젅?댁뼱 ?대쫫?? Walk / Sprint, Team Status, Floor Plan Map, Guard Detection, Stun / Arrest, Carry / Extraction???붾㈃쨌?ㅻ뵒?ㅒ룹썡???쇰뱶諛깆? Polish媛 ?꾨땲??v1.0 Required Gameplay Readability濡?痍④툒?쒕떎.
+플레이어 이름표, Walk / Sprint, Team Status, Floor Plan Map, Guard Detection, Stun / Arrest, Carry / Extraction의 화면·오디오·월드 피드백은 Polish가 아니라 v1.0 Required Gameplay Readability로 취급한다.
 
-Forgery Gameplay???ㅼ쓬 ??異뺤쑝濡?援щ텇?쒕떎.
+Forgery Gameplay는 다음 두 축으로 구분한다.
 
 ```text
 Surface Forgery
-- Painting 以묒떖 2D Reference / Stroke / Palette / OpenCV ?먯젙
+- Painting 중심 2D Reference / Stroke / Palette / OpenCV 판정
 
 Object Assembly Forgery
-- Sculpture / Ceramic 以묒떖 3D Modular Part / Socket / Orientation ?먯젙
+- Sculpture / Ceramic 중심 3D Modular Part / Socket / Orientation 판정
 ```
 
-湲곗〈 寃쎌웳??Top-Down 援ы쁽? ?꾩쭅 李몄“媛 ?⑥븘 ?덈뒗 踰붿쐞?먯꽌留?Legacy濡?痍④툒?쒕떎. ?꾩옱 湲고쉷?먯꽌 紐낆떆?곸쑝濡??쒓굅??Smoke 諛??뚮젅?댁뼱 ?ㅼ튂??Trap 湲곕뒫? Legacy, Deferred, Stretch ?먮뒗 ?뚭? 湲곗??쇰줈 ?좎??섏? ?딅뒗??
+기존 경쟁형 Top-Down 구현은 아직 참조가 남아 있는 범위에서만 Legacy로 취급한다. 현재 기획에서 명시적으로 제거된 Smoke 및 플레이어 설치형 Trap 기능은 Legacy, Deferred, Stretch 또는 회귀 기준으로 유지하지 않는다.
 
 ---
 
 # 1. Project Overview
 
-Project_MuseumHeist??Unreal Engine 5.8 C++ 湲곕컲??**1~4???⑤씪???묐룞 1?몄묶 ?좎엯쨌?좊Ъ ?꾩“ ?섏씠?ㅽ듃 寃뚯엫**?대떎.
+Project_MuseumHeist는 Unreal Engine 5.8 C++ 기반의 **1~4인 온라인 협동 1인칭 잠입·유물 위조 하이스트 게임**이다.
 
-?뚮젅?댁뼱?ㅼ? 諛뺣Ъ愿??移⑥엯??怨꾩빟??吏?뺥븳 ?듭떖 ?묓뭹??李얘퀬, ?щ윭 ?꾩떆?덉쓽 Replica瑜??꾩옣?먯꽌 鍮좊Ⅴ寃??쒖옉??Original怨?諛붽퓭移섍린?쒕떎. Guard媛 ?꾩“?덉쓣 諛쒓껄?섍퀬 Lockdown???꾨즺?섍린 ?꾩뿉 Required Target??諛섏텧?섍퀬 Loot Value Quota瑜?梨꾩슫 ?? ?뺤떖?????쇱? ?꾩옱 ?꾨━?덉쓣 ?뺣낫?섍퀬 ?덉텧?좎? 寃곗젙?쒕떎.
+플레이어들은 박물관에 침입해 계약이 지정한 핵심 작품을 찾고, 여러 전시품의 Replica를 현장에서 빠르게 제작해 Original과 바꿔치기한다. Guard가 위조품을 발견하고 Lockdown을 완료하기 전에 Required Target을 반출하고 Loot Value Quota를 채운 뒤, 욕심을 더 낼지 현재 전리품을 확보하고 탈출할지 결정한다.
 
 ## Core Fantasy
 
 ```text
-諛뺣Ъ愿 移⑥엯
-??怨꾩빟??Required Target怨?Loot Value Quota ?뺤씤
-???щ윭 ?꾩떆???먯깋
-??20~45珥?Speed Forgery ?먮뒗 Object Assembly
-???쒕쾭 ?덉쭏 ?먯젙
-??Replica? Original 援먯껜
-???꾨━???대컲 / Secured Value ?꾩쟻
-??Guard 寃??諛?Alert ?곸듅
-?????붿튂湲??먮뒗 ?덉텧 寃곗젙
-??Required Target怨?Quota瑜?諛섏텧?섍퀬 ? 寃곌낵 ?뺤씤
+박물관 침입
+→ 계약의 Required Target과 Loot Value Quota 확인
+→ 여러 전시품 탐색
+→ 20~45초 Speed Forgery 또는 Object Assembly
+→ 서버 품질 판정
+→ Replica와 Original 교체
+→ 전리품 운반 / Secured Value 누적
+→ Guard 검사 및 Alert 상승
+→ 더 훔치기 또는 탈출 결정
+→ Required Target과 Quota를 반출하고 팀 결과 확인
 ```
 
-## ?꾩옱 諛⑺뼢?먯꽌 ?ъ슜?섏? ?딅뒗 ?붿냼
+## 현재 방향에서 사용하지 않는 요소
 
-- ?뚮젅?댁뼱 媛?怨듦꺽
-- ?뚮젅?댁뼱 媛?湲곗젅
-- ?뚮젅?댁뼱 媛??꾨━??媛뺥깉
-- Pi챰ata Drop
-- 媛쒖씤 Score 寃쎌웳
+- 플레이어 간 공격
+- 플레이어 간 기절
+- 플레이어 간 전리품 강탈
+- Piñata Drop
+- 개인 Score 경쟁
 - Winner
 - Rank
 - Gap Tracker
 - Leader Reveal
-- ?좎갑??Zero-Sum Extraction
+- 선착순 Zero-Sum Extraction
 - Top-Down Gameplay Camera
 - Cursor World Aim
 - Smoke Grenade
@@ -78,45 +79,63 @@ Project_MuseumHeist??Unreal Engine 5.8 C++ 湲곕컲??**1~4???⑤씪???묐룞 1?
 - Smoke Sight Blocking
 - Glue Trap
 - Noise Trap
-- ?뚮젅?댁뼱 ?ㅼ튂??Trap
+- 플레이어 설치형 Trap
 - Trap Placement Cast
-- Trap ?꾩슜 QuickSlot
+- Trap 전용 QuickSlot
 - Player-facing SoundPing Marker
 - SoundPing Direction Widget
-- Guard ?꾩튂? ?쒖빞瑜??ㅼ떆媛??쒖떆?섎뒗 Minimap / Radar
-- Stamina Bar? Sprint ?뚮え ?먯썝
-- 怨좎젙 ??븷 ?먮뒗 Mandatory 2-player Interaction
+- Guard 위치와 시야를 실시간 표시하는 Minimap / Radar
+- Stamina Bar와 Sprint 소모 자원
+- 고정 역할 또는 Mandatory 2-player Interaction
 
 ---
 
 # 2. Design Source And Scope Priority
 
-?꾨줈?앺듃 ?ㅺ퀎 臾몄꽌???곗꽑?쒖쐞???ㅼ쓬怨?媛숇떎.
+프로젝트 문서는 역할에 따라 다음 우선순위를 사용한다.
 
 1. `AGENTS.md`
-2. `Museum_Heist_GDD.docx`
-   - Part I Section 1~20: ?쒗뭹 諛⑺뼢, 踰붿쐞, 湲곗〈 二쇱감? Release ?댁쁺
-   - Part II Section 21~42: Character, Inventory, Level Design, AI, Forgery, Network, UI, Audio, DataTable, QA ?곸꽭
-   - Part III Section 43~55: Contract Run, Player Experience, Level/Data ?곸꽭? Execution Plan
-   - Appendix A~C: Terminology, Removed / Excluded / Stretch, Comprehensive Definition of Done
-3. Notion Task/Test 湲곕줉 (?곹깭, ?뚯뒪??濡쒓렇 踰덊샇, 利앹쟻 留곹겕)
+   - Codex/Claude 계열 에이전트가 따라야 할 Hard Rule, 범위 경계, 구현 우선순위와 작업 절차
+2. `Museum_Heist_TDD.docx`
+   - C++/Blueprint 책임, Network Authority, Runtime State, Data Contract, Validation, QA와 Definition of Done
+3. `Museum_Heist_GDD.docx`
+   - 제품 비전, 재미의 근거, Player Experience, Contract Run, Level/Art/Audio 방향과 Balance 의도
+4. Notion Task/Test 기록
+   - 개별 Task 상태, 테스트 로그 번호, 증적 링크와 실제 PASS/FAIL/BLOCKED 결과
 
-?섏쐞 臾몄꽌媛 ?곸쐞 臾몄꽌? 異⑸룎?섎㈃ 援ы쁽 ?꾩뿉 ?곸쐞 臾몄꽌瑜?癒쇱? ?섏젙?쒕떎.
+하위 문서가 상위 문서와 충돌하면 구현 전에 상위 문서를 먼저 수정한다. 다만 문서의 역할이 다른 경우에는 해당 역할의 Source of Truth를 따른다.
 
-Notion Task 湲곕줉? 媛쒕퀎 Task ?곹깭? ?뚯뒪??濡쒓렇 踰덊샇??Source of Truth?? ?? ?꾪궎?띿쿂? 援ы쁽 ?뺤콉? Repository??`AGENTS.md`瑜?理쒖슦?좎쑝濡??곕Ⅸ??
-`ClassManifest.md`? `Docs/W2_BlueprintShellPlan.md`?????댁긽 蹂꾨룄 嫄곗젏 臾몄꽌濡??댁쁺?섏? ?딆쑝硫?AGENTS濡??듯빀?쒕떎.
-寃뚯엫?뚮젅??洹쒖튃, ?곗씠??怨꾩빟, Shell/Presentation 寃쎄퀎, 援ы쁽 ?곗꽑?쒖쐞 蹂寃쎌? AGENTS 蹂몃Ц?먯꽌 吏곸젒 愿由ы븳??
+- 제품 방향과 Player-facing 경험을 변경할 때는 GDD를 먼저 갱신하고 TDD와 AGENTS의 파급 범위를 동기화한다.
+- Authority, Replication, Data Schema 또는 Validation을 변경할 때는 TDD를 먼저 갱신하고 AGENTS의 실행 규칙을 동기화한다.
+- Codex 작업 절차와 금지 범위는 AGENTS가 최종 권한을 가진다.
+- Notion Task 기록은 Task ID, 주차 배정, 실행 순서, 상태와 테스트 증적의 Source of Truth다.
+- AGENTS의 Roadmap은 Notion Task를 요약할 수 있지만 기존 Task ID를 다른 의미로 재사용하지 않는다.
+- AGENTS와 Notion의 Task 번호 또는 실행 순서가 충돌하면 구현을 진행하지 않고 Notion을 기준으로 먼저 동기화한다.
+- Notion은 설계 문서를 대체하지 않는다. 제품 방향은 GDD, 구현 계약은 TDD, 실행 추적은 Notion이 담당한다.
 
-## 2A. Blueprint / Presentation Rule Integration (W2 蹂묓빀 諛섏쁺)
+`ClassManifest.md`와 `Docs/W2_BlueprintShellPlan.md`는 더 이상 별도 거점 문서로 운영하지 않으며 AGENTS로 통합한다.
+게임플레이 규칙, 데이터 계약, Shell/Presentation 경계, 구현 우선순위 변경은 AGENTS 본문에서 직접 관리한다.
 
-Blueprint Shell/Presentation ?댁슜? 蹂꾨룄 臾몄꽌濡?遺꾨━?섏? ?딄퀬 ?꾨옒 洹쒖튃??AGENTS 蹂몃Ц 洹쒖튃?쇰줈 ?듯빀???곸슜?쒕떎.
+## 2A. Blueprint / Presentation Rule Integration (W2 병합 반영)
 
-- `WBP_` 怨꾩뿴 UI??Layout, Animation, Color, Icon, Binding 以묒떖?쇰줈 ?댁쁺?섍퀬, ?곹깭/媛??뺤젙? C++ ViewModel怨?寃뚯엫 洹쒖튃???뚯쑀?쒕떎.
-- Nameplate??Remote Player???쒗빐 ??긽 ?쒖떆?섎ŉ, ?숈씪 Map??????곹깭 ?꾩씠肄섏? Team Status ?곹깭媛?`Active`, `Forging`, `Assembling`, `CarryingOriginal`, `Heavy`, `Stunned`, `Arrested`, `Escaped`)怨??숆린?뷀븳??
-- Floor Plan Map? Owner-only Full-Screen?쇰줈 ?댁쁺?쒕떎. Guard ?꾩튂, ?쒖빞 Cone, SoundPing, 誘명깘??Loose Loot/?④꺼吏?Spawn? 湲곕낯 ?쒖떆?섏? ?딅뒗??
-- Move/Look/Mouse Capture ?꾪솚? Owner-only Forgery, Assembly, Inventory, Map 吏꾩엯 ??媛곴컖 ?낅젰 ?뺤콉???쇱튂?댁빞 ?쒕떎.
-- 2D Painting Forgery ??대㉧??湲곕낯 40珥?理쒖냼 20珥?理쒕? 45珥?, Object Assembly??湲곕낯 30珥?理쒖냼 25珥?理쒕? 35珥?濡??댁쁺?쒕떎.
-- Walk / Sprint / Weight / Footstep Noise???숈씪???섏튂 怨꾩빟?쇰줈 C++ Authority? Blueprint UI?먯꽌 ?쇱튂?쒗궓??
+Blueprint Shell/Presentation 운용은 별도 문서로 분리하지 않고 아래 규칙을 AGENTS 본문 규칙으로 통합해 적용한다.
+
+- `WBP_` 계열 UI는 Layout, Animation, Color, Icon, Binding 중심으로 운영하고, 상태/값 확정은 C++ ViewModel과 게임 규칙이 소유한다.
+- Nameplate는 Remote Player에 한해 항상 표시하며, 동일 Map에 대한 상태 아이콘은 Team Status 상태값(`Active`, `Forging`, `Assembling`, `CarryingOriginal`, `Heavy`, `Stunned`, `Arrested`, `Escaped`)과 동기화한다.
+- Floor Plan Map은 Owner-only Full-Screen으로 운영한다. Guard 위치, 시야 Cone, SoundPing, 미탐색 Loose Loot/숨겨진 Spawn은 기본 표시하지 않는다.
+- Move/Look/Mouse Capture 전환은 Owner-only Forgery, Assembly, Inventory, Map 진입 시 각각 입력 정책이 일치해야 한다.
+- 2D Painting Forgery 타이머는 기본 40초(최소 20초/최대 45초), Object Assembly는 기본 30초(최소 25초/최대 35초)로 운영한다.
+- Walk / Sprint / Weight / Footstep Noise는 동일한 수치 계약으로 C++ Authority와 Blueprint UI에서 일치시킨다.
+
+## 2B. Document Boundary And Maintenance Rules
+
+- GDD에 RPC 이름, FastArray 상세, GameplayTag Dictionary, Runtime 구조체 필드와 DataTable Schema를 중복 기재하지 않는다.
+- TDD에 맵의 정서, 재미의 근거, 플레이어 감정선과 아트 무드 설명을 중복 기재하지 않는다.
+- AGENTS는 GDD/TDD 본문을 복제하는 저장소가 아니라 에이전트가 반드시 지켜야 할 실행 계약만 유지한다.
+- 같은 규칙을 여러 문서에 적어야 할 때는 한 문서를 Source of Truth로 지정하고 나머지는 링크와 요약만 남긴다.
+- 문서 Heading은 Word Heading 1/2/3 Style을 사용하며 수동 굵기·크기로 제목을 흉내 내지 않는다.
+- GDD와 TDD의 TOC는 Word Field로 유지하고 구조 변경 후 갱신한다.
+- 깨진 문자, `[확인 필요]`, 임시 Placeholder 문구를 구현 근거로 사용하지 않는다. Git 이력 또는 상위 Source에서 복구한 뒤 반영한다.
 
 ---
 
@@ -124,42 +143,50 @@ Blueprint Shell/Presentation ?댁슜? 蹂꾨룄 臾몄꽌濡?遺꾨━?섏? ?�
 
 ```text
 Title Menu
-??Host Session ?먮뒗 Join Code ?낅젰
-??Lobby
-??Ready Countdown
-??First-Person Infiltration
-??Required Target / Loot Value Quota ?뺤씤
-???꾩떆?덇낵 Loose Loot ?먯깋
-??Painting Speed Forgery ?먮뒗 Object Assembly
-???쒕쾭 Quality Score ?먯젙 / Replica 諛곗튂 / Original ?뚯닔
-??Carry Value 利앷? / Guard Inspection / Alert
-???ㅻⅨ ?꾩떆?덉쓣 諛섎났?댁꽌 ?몃━嫄곕굹 ?덉텧 寃곗젙
-??Shared Extraction?먯꽌 ?꾨━??Secured
-??Team Result / Player Contribution
+→ Host Session 또는 Join Code 입력
+→ Lobby
+→ Ready Countdown
+→ First-Person Infiltration
+→ Required Target / Loot Value Quota 확인
+→ 전시품과 Loose Loot 탐색
+→ Painting Speed Forgery 또는 Object Assembly
+→ 서버 Quality Score 판정 / Replica 배치 / Original 회수
+→ Carry Value 증가 / Guard Inspection / Alert
+→ 다른 전시품을 반복해서 노리거나 탈출 결정
+→ Shared Extraction에서 전리품 Secured
+→ Team Result / Player Contribution
 ```
 
 ---
 
 # 4. v1.0 Required Scope
 
-- 1~4??Listen Server
+- 1~4인 Listen Server
 - Steam Online Session
-- 蹂꾨룄 Title Menu Level
-- 蹂꾨룄 Online Lobby Level
+- 별도 Title Menu Level
+- 별도 Online Lobby Level
 - Full First-Person
-- 怨좎젙 諛뺣Ъ愿 留?3媛?- 怨좎젙 Contract Archetype 1媛?- 留ㅼ튂蹂?Required Target 1媛?- Player Count 湲곕컲 Loot Value Quota
+- 고정 박물관 맵 3개
+- 고정 Contract Archetype 1개
+- 매치별 Required Target 1개
+- Player Count 기반 Loot Value Quota
 - Server-seeded Exhibit Assignment / Spawn Variation
-- ??留ㅼ튂?먯꽌 Surface / Object Forgery瑜??щ윭 踰?諛섎났?섎뒗 Contract Run
-- 紐⑺몴 ?뚮젅???쒓컙 15~25遺?- `TitleMenu ??Lobby ??ReadyCountdown ??InGame ??End`
+- 한 매치에서 Surface / Object Forgery를 여러 번 반복하는 Contract Run
+- 목표 플레이 시간 15~25분
+- `TitleMenu → Lobby → ReadyCountdown → InGame → End`
 - Painting Target Artifact
-- Surface Forgery Template 36媛?  - M01 / M02 / M03 媛?12媛?- Server-selected Surface Template Pool / Shuffle Bag
+- Surface Forgery Template 36개
+  - M01 / M02 / M03 각 12개
+- Server-selected Surface Template Pool / Shuffle Bag
 - Painting Display Case State Machine
 - Observation Cast
 - Owner-only Full-Screen Drawing Forgery
-- ?쒕쾭 沅뚰븳 Forgery Score
+- 서버 권한 Forgery Score
 - Object Assembly Forgery Vertical Slice
-- Sculpture / Ceramic Modular Kit 理쒖냼 2醫?- Object Assembly Template 理쒖냼 12媛?- Owner-only Full-Screen Object Assembly
-- ?쒕쾭 沅뚰븳 Part / Socket / Orientation Score
+- Sculpture / Ceramic Modular Kit 최소 2종
+- Object Assembly Template 최소 12개
+- Owner-only Full-Screen Object Assembly
+- 서버 권한 Part / Socket / Orientation Score
 - Replica Placement
 - Original Removal
 - Guard Patrol
@@ -170,123 +197,125 @@ Title Menu
 - Alert Level
 - Lockdown
 - Loose Loot
-- 4횞5 Grid Inventory
+- 4×5 Grid Inventory
 - Weight Penalty
-- Walk / Sprint? ?띾룄蹂?Footstep Noise
+- Walk / Sprint와 속도별 Footstep Noise
 - Coin Guard Distraction
 - Remote Player Nameplate / Team Status
 - Owner-only Full-Screen Floor Plan Map
 - Guard Detection / Stun / Arrest / Carry / Escape Presentation
 - Contract Target / Carried Value / Secured Value / Quota HUD
 - Shared Extraction
-- Individual Extraction Deposit? ?⑥? Crew 吏꾪뻾
+- Individual Extraction Deposit와 남은 Crew 진행
 - Team Success
 - Partial Success
 - Failure
 - Team Result
 - Player Contribution
-- ?ㅼ젣 Replica Painting / Object瑜?蹂댁뿬二쇰뒗 Match Recap
-- 1???꾩＜
-- 2~4??硫?고뵆?덉씠 ?꾩＜
-- Development Build ?⑦궎吏?
+- 실제 Replica Painting / Object를 보여주는 Match Recap
+- 1인 완주
+- 2~4인 멀티플레이 완주
+- Development Build 패키징
+
 ## Excluded
 
-?ㅼ쓬 湲곕뒫? ?꾩옱 ?꾨줈?앺듃 踰붿쐞???ы븿?섏? ?딅뒗??
+다음 기능은 현재 프로젝트 범위에 포함하지 않는다.
 
-- 蹂댁꽍쨌臾몄꽌쨌?붿꽍 蹂듭젣 Gameplay
-- ?몃? AI ?대?吏 ?먯젙
+- 보석·문서·화석 복제 Gameplay
+- 외부 AI 이미지 판정
 - Smoke Grenade
 - Smoke Projectile
 - Smoke Cloud
 - Smoke Sight Blocking
 - Glue Trap
 - Noise Trap
-- ?뚮젅?댁뼱 ?ㅼ튂??Trap
+- 플레이어 설치형 Trap
 - Trap Placement Cast
 - Steam Voice
 - PCG
 - Security Room
 - Cinematic
-- 異붽? 留?- 怨좉툒 Loadout
+- 추가 맵
+- 고급 Loadout
 - Progression
 - PvP
-- 諛곗떊
-- 寃쎌웳 ??궧
-- ?꾩슜 ?쒕쾭
+- 배신
+- 경쟁 랭킹
+- 전용 서버
 - Skill Matchmaking
 - Perspective Toggle
 - Third-Person Gameplay
-- 蹂꾨룄 First-Person Arms
-- 蹂듭옟??Hand Interaction
-- Guard ?꾩튂, ?쒖빞 Cone ?먮뒗 SoundPing???쒖떆?섎뒗 Minimap / Radar
+- 별도 First-Person Arms
+- 복잡한 Hand Interaction
+- Guard 위치, 시야 Cone 또는 SoundPing을 표시하는 Minimap / Radar
 - Stamina Resource
 - Mandatory Class / Role Lock
 
 ## Stretch
 
-?꾩닔 湲곕뒫怨?硫?고뵆?덉씠 Gate媛 紐⑤몢 PASS???ㅼ뿉留?寃?좏븳??
+필수 기능과 멀티플레이 Gate가 모두 PASS한 뒤에만 검토한다.
 
 - Optional Rare Artifact
 - First-Person Hand Animation
-- 異붽? Surface Forgery Template
-- 異붽? Object Assembly Kit / Template
-- 異붽? Loose Loot
+- 추가 Surface Forgery Template
+- 추가 Object Assembly Kit / Template
+- 추가 Loose Loot
 
-Smoke 諛?Trap 怨꾩뿴 湲곕뒫? Stretch 紐⑸줉???ы븿?섏? ?딅뒗??
+Smoke 및 Trap 계열 기능은 Stretch 목록에 포함하지 않는다.
 
-?꾩슂?깆씠 ?ㅼ떆 ?뺤젙??寃쎌슦 湲곗〈 ??젣 肄붾뱶瑜?蹂듦뎄?섏? ?딄퀬, ?뱀떆??湲고쉷怨??꾩옱 ?꾪궎?띿쿂瑜?湲곗??쇰줈 ?좉퇋 Task瑜??묒꽦?쒕떎.
+필요성이 다시 확정될 경우 기존 삭제 코드를 복구하지 않고, 당시의 기획과 현재 아키텍처를 기준으로 신규 Task를 작성한다.
 
 ---
 
 # 5. Hard Rules
 
-- Unreal Engine 5.8???좎??쒕떎.
-- `Heist` ?묐몢?щ? ?좎??쒕떎.
-- Export ?????낆뿉??`PROJECT_MUSEUMHEIST_API`瑜??좎??쒕떎.
-- Gameplay Rule? C++媛 ?뚯쑀?쒕떎.
-- Authority??C++媛 ?뚯쑀?쒕떎.
-- Validation? C++媛 ?뚯쑀?쒕떎.
-- Replication? C++媛 ?뚯쑀?쒕떎.
-- Stable Gameplay API??C++媛 ?뚯쑀?쒕떎.
-- Blueprint??Asset Assignment瑜??대떦?쒕떎.
-- Blueprint??Component Assembly瑜??대떦?쒕떎.
-- Blueprint??Mesh, Material, Animation, Audio, Visual Hook???대떦?쒕떎.
-- Widget Blueprint??Layout, Animation, Color, Icon, Binding留??대떦?쒕떎.
-- DataTable怨?DataAsset? 諛섎났 ?곗씠?곗? 諛몃윴??媛믪쓣 ?대떦?쒕떎.
-- Map? Actor 諛곗튂, 怨듦컙 援ъ꽦, Lighting, Navigation???대떦?쒕떎.
-- Map Presentation Data??Floor Plan Texture, World Bounds, Zone Label, Exit Marker 湲곗?留??대떦?쒕떎.
-- `.uasset`? Unreal Editor ?먮뒗 紐낆떆?곸쑝濡??뱀씤??MCP 寃쎈줈濡쒕쭔 ?섏젙?쒕떎.
-- `.umap`? ?ъ슜?먭? 紐낆떆?곸쑝濡??붿껌??寃쎌슦?먮쭔 ?섏젙?쒕떎.
-- 遺덊븘?뷀븳 Manager, Service, Factory, Processor, Subsystem??異붽??섏? ?딅뒗??
-- Painting留덈떎 蹂꾨룄 Actor Class瑜?留뚮뱾吏 ?딅뒗??
-- Manifest???녿뒗 ??낆쓣 ?쒖꽦 Task?먯꽌 ?꾩쓽 ?앹꽦?섏? ?딅뒗??
-- 誘몃옒 二쇱감???꾩껜 ?쒖뒪?쒖쓣 ?좏뻾 援ы쁽?섏? ?딅뒗??
-- ?꾩옱 湲고쉷?먯꽌 ??젣??湲곕뒫???명솚??紐낅ぉ?쇰줈 ?ㅼ떆 異붽??섏? ?딅뒗??
-- ?뚮젅?댁뼱??吏꾪뻾 ?먮떒???곹뼢??二쇰뒗 Runtime State???붾㈃, ?붾뱶, ?ㅻ뵒??以?理쒖냼 ??梨꾨꼸濡??쇰뱶諛깊븳??
-- Player Name, Crew Status, Contract Progress, Alert, Stun / Arrest, Original Carrier? Extraction ?곹깭瑜?濡쒓렇 ?꾩슜 ?먮뒗 ?⑥? ?곹깭濡??④린吏 ?딅뒗??
-- Contract Value? Forgery Quality Score瑜?媛숈? ?섏튂濡?痍④툒?섏? ?딅뒗??
-- Required Target / Loot Value Quota / Secured Value / Contract Outcome? ?쒕쾭媛 ?뺤젙?쒕떎.
-- 怨좎젙 ??븷??留뚮뱾吏 ?딆쑝硫?紐⑤뱺 Player媛 Forgery, Assembly, Carry, Loot, Coin, Map怨?Extraction???ъ슜?????덈떎.
+- Unreal Engine 5.8을 유지한다.
+- `Heist` 접두사를 유지한다.
+- Export 대상 타입에는 `PROJECT_MUSEUMHEIST_API`를 유지한다.
+- Gameplay Rule은 C++가 소유한다.
+- Authority는 C++가 소유한다.
+- Validation은 C++가 소유한다.
+- Replication은 C++가 소유한다.
+- Stable Gameplay API는 C++가 소유한다.
+- Blueprint는 Asset Assignment를 담당한다.
+- Blueprint는 Component Assembly를 담당한다.
+- Blueprint는 Mesh, Material, Animation, Audio, Visual Hook을 담당한다.
+- Widget Blueprint는 Layout, Animation, Color, Icon, Binding만 담당한다.
+- DataTable과 DataAsset은 반복 데이터와 밸런스 값을 담당한다.
+- Map은 Actor 배치, 공간 구성, Lighting, Navigation을 담당한다.
+- Map Presentation Data는 Floor Plan Texture, World Bounds, Zone Label, Exit Marker 기준만 담당한다.
+- `.uasset`은 Unreal Editor 또는 명시적으로 승인된 MCP 경로로만 수정한다.
+- `.umap`은 사용자가 명시적으로 요청한 경우에만 수정한다.
+- 불필요한 Manager, Service, Factory, Processor, Subsystem을 추가하지 않는다.
+- Painting마다 별도 Actor Class를 만들지 않는다.
+- Manifest에 없는 타입을 활성 Task에서 임의 생성하지 않는다.
+- 미래 주차의 전체 시스템을 선행 구현하지 않는다.
+- 현재 기획에서 삭제된 기능을 호환성 명목으로 다시 추가하지 않는다.
+- 플레이어의 진행 판단에 영향을 주는 Runtime State는 화면, 월드, 오디오 중 최소 두 채널로 피드백한다.
+- Player Name, Crew Status, Contract Progress, Alert, Stun / Arrest, Original Carrier와 Extraction 상태를 로그 전용 또는 숨은 상태로 남기지 않는다.
+- Contract Value와 Forgery Quality Score를 같은 수치로 취급하지 않는다.
+- Required Target / Loot Value Quota / Secured Value / Contract Outcome은 서버가 확정한다.
+- 고정 역할을 만들지 않으며 모든 Player가 Forgery, Assembly, Carry, Loot, Coin, Map과 Extraction을 사용할 수 있다.
 
 ## Surface Forgery / Object Assembly Boundary
 
-- Painting ?꾩떆?덇낵 Surface Forgery??`AHeistPaintingDisplayCaseActor`媛 ?대떦?쒕떎.
-- Sculpture? Ceramic???ы븿??3D 議곕┰ ?꾩떆?덉? `AHeistObjectDisplayCaseActor`媛 ?대떦?쒕떎.
-- `Object Assembly Forgery`??Sculpture / Ceramic???ш큵?섎뒗 Gameplay System 紐낆묶?대떎.
-- Surface Forgery? Object Assembly???쒕줈??Template Row瑜?怨듭쑀?섏? ?딅뒗??
-- Surface Forgery? Object Assembly???쒕줈???쒖텧 Payload? Replica Data瑜?怨듭쑀?섏? ?딅뒗??
-- Surface Forgery? Object Assembly???쒕줈??State Machine怨??곸꽭 Result瑜?怨듭쑀?섏? ?딅뒗??
-- ??諛⑹떇? Owner-only Input Mode ?먯튃怨??쒕쾭媛 ?뺤젙??理쒖쥌 0~100 Quality Score??Guard Inspection Handoff留?怨듭쑀?????덈떎.
-- `AHeistDisplayCaseActor`??湲곗〈 Asset ?명솚 ?꾩슜 Deprecated Painting Alias??
-- ?좉퇋 Asset? `AHeistDisplayCaseActor`瑜?遺紐⑤줈 ?ъ슜?섏? ?딅뒗??
-- 湲곗〈 `BP_DisplayCase`??`AHeistPaintingDisplayCaseActor`瑜?遺紐⑤줈 ?ъ슜?쒕떎.
-- `AHeistSculptureDisplayCaseActor`??湲곗〈 `BP_SculptureDisplayCase` ?명솚 ?꾩슜 Deprecated Alias濡??꾪솚?쒕떎.
-- ?좉퇋 Sculpture / Ceramic Asset? `AHeistObjectDisplayCaseActor`瑜?遺紐⑤줈 ?ъ슜?쒕떎.
-- `AHeistSculptureDisplayCaseActor`(Deprecated) Case???쒓컖 Shell留??좎??섎ŉ v1.0 Gameplay???ъ슜?섏? ?딅뒗??
+- Painting 전시품과 Surface Forgery는 `AHeistPaintingDisplayCaseActor`가 담당한다.
+- Sculpture와 Ceramic을 포함한 3D 조립 전시품은 `AHeistObjectDisplayCaseActor`가 담당한다.
+- `Object Assembly Forgery`는 Sculpture / Ceramic을 포괄하는 Gameplay System 명칭이다.
+- Surface Forgery와 Object Assembly는 서로의 Template Row를 공유하지 않는다.
+- Surface Forgery와 Object Assembly는 서로의 제출 Payload와 Replica Data를 공유하지 않는다.
+- Surface Forgery와 Object Assembly는 서로의 State Machine과 상세 Result를 공유하지 않는다.
+- 두 방식은 Owner-only Input Mode 원칙과 서버가 확정한 최종 0~100 Quality Score의 Guard Inspection Handoff만 공유할 수 있다.
+- `AHeistDisplayCaseActor`는 기존 Asset 호환 전용 Deprecated Painting Alias다.
+- 신규 Asset은 `AHeistDisplayCaseActor`를 부모로 사용하지 않는다.
+- 기존 `BP_DisplayCase`는 `AHeistPaintingDisplayCaseActor`를 부모로 사용한다.
+- `AHeistSculptureDisplayCaseActor`는 기존 `BP_SculptureDisplayCase` 호환 전용 Deprecated Alias로 전환한다.
+- 신규 Sculpture / Ceramic Asset은 `AHeistObjectDisplayCaseActor`를 부모로 사용한다.
+- `AHeistSculptureDisplayCaseActor`(Deprecated) Case는 시각 Shell만 유지하며 v1.0 Gameplay에 사용하지 않는다.
 
 ## Removed Feature Boundary
 
-?ㅼ쓬 湲곕뒫? ?꾨줈?앺듃?먯꽌 ?쒓굅?먮떎.
+다음 기능은 프로젝트에서 제거됐다.
 
 ```text
 AHeistSmokeProjectile
@@ -300,7 +329,7 @@ Glue Trap QuickSlot
 Noise Trap SoundPing
 ```
 
-??湲곕뒫?ㅼ? ?ㅼ쓬 ?곹깭濡??④린吏 ?딅뒗??
+이 기능들은 다음 상태로 남기지 않는다.
 
 - Legacy
 - Deferred
@@ -315,17 +344,17 @@ Noise Trap SoundPing
 
 ```text
 Local Input / Widget Request
-??AHeistPlayerController Server RPC
-??C++ Request Context Validation
-??Server Component Validation
-??Server State Mutation
-??Replicated State ?먮뒗 Owner Client Response
-??ViewModel
-??C++ Widget
-??Widget Blueprint Presentation
+→ AHeistPlayerController Server RPC
+→ C++ Request Context Validation
+→ Server Component Validation
+→ Server State Mutation
+→ Replicated State 또는 Owner Client Response
+→ ViewModel
+→ C++ Widget
+→ Widget Blueprint Presentation
 ```
 
-Client媛 吏곸젒 ?뺤젙?????녿뒗 ??ぉ:
+Client가 직접 확정할 수 없는 항목:
 
 - Forgery Score
 - Replica Placement
@@ -337,9 +366,10 @@ Client媛 吏곸젒 ?뺤젙?????녿뒗 ??ぉ:
 - Guard Inspection Result
 - Extraction Result
 - Team Result
-- Player Contribution ?뺤젙媛?- Inventory Item Mutation
+- Player Contribution 확정값
+- Inventory Item Mutation
 - QuickSlot Assignment
-- Coin ?ъ슜 寃곌낵
+- Coin 사용 결과
 - Contract Assignment
 - Required Target
 - Loot Value Quota
@@ -347,121 +377,121 @@ Client媛 吏곸젒 ?뺤젙?????녿뒗 ??ぉ:
 - Contract Outcome
 - Player Escape Deposit
 
-Client Preview???뺤젙媛믪쑝濡?痍④툒?섏? ?딅뒗??
+Client Preview는 확정값으로 취급하지 않는다.
 
 ---
 
 # 6A. Online Session And Level Architecture
 
-- `UHeistGameInstance`媛 Online Subsystem ?좏깮怨?Create / Find / Join / Travel ?곹깭瑜??⑤룆 ?뚯쑀?쒕떎.
-- Editor PIE??濡쒖뺄 ?ㅼ쨷 ?몄뒪?댁뒪 寃利앹쓣 ?꾪빐 `OnlineSubsystemNull`???ъ슜?쒕떎.
-- 鍮?Editor ?ㅽ뻾怨??⑦궎吏 鍮뚮뱶??湲곕낯 `OnlineSubsystemSteam`???ъ슜?쒕떎.
-- Editor `OnlineSubsystemNull` 寃利앹? 援ы쁽 寃利앹슜?대ŉ Steam 理쒖쥌 PASS瑜??泥댄븯吏 ?딅뒗??
-- Online Session??濡쒖뺄 ?대쫫? PIE媛 ?좎젏?섎뒗 `GameSession`怨?遺꾨━??`HeistSession`???ъ슜?쒕떎.
-- Session? 1~4??Listen Server, Presence, Lobby, Join In Progress瑜??ъ슜?쒕떎.
+- `UHeistGameInstance`가 Online Subsystem 선택과 Create / Find / Join / Travel 상태를 단독 소유한다.
+- Editor PIE는 로컬 다중 인스턴스 검증을 위해 `OnlineSubsystemNull`을 사용한다.
+- 비 Editor 실행과 패키지 빌드는 기본 `OnlineSubsystemSteam`을 사용한다.
+- Editor `OnlineSubsystemNull` 검증은 구현 검증용이며 Steam 최종 PASS를 대체하지 않는다.
+- Online Session의 로컬 이름은 PIE가 선점하는 `GameSession`과 분리된 `HeistSession`을 사용한다.
+- Session은 1~4인 Listen Server, Presence, Lobby, Join In Progress를 사용한다.
 
 ## Level Flow
 
-- 鍮?Editor ?ㅽ뻾? 蹂꾨룄 Title Menu Level?먯꽌 ?쒖옉?쒕떎.
-- Title Menu??Host Session, Join Code ?낅젰怨?Local Settings(FOV, Mouse Sensitivity, Master Volume, Resolution / Window Mode)瑜??뚯쑀?섎ŉ ??媛믩뱾? First-Person ?곸슜怨??④퍡 濡쒖뺄????ν븳??
-- Session ?앹꽦 ?먮뒗 李멸? ?깃났 ??蹂꾨룄 Lobby Level濡??대룞?쒕떎.
-- Lobby??李멸? 肄붾뱶 ?쒖떆, Player Slot, Map ?좏깮, Ready / Start, Leave留??뚯쑀?쒕떎.
-- Session Leave ?먮뒗 Host Quit ??Title Menu Level濡?蹂듦??쒕떎.
-- Editor 吏곸젒 Gameplay Map PIE??湲곗〈 Gameplay ?뚭? 寃利앹쓣 ?꾪빐 InGame ?쒖옉???좎??쒕떎.
-- PIE New Editor Window媛 ??λ맂 Resolution??Editor 李??ш린濡???뼱?곕뒗 寃쎌슦 Settings 吏꾨떒? `DisplayApply=EDITOR_OVERRIDE`濡?援щ텇?쒕떎.
+- 비 Editor 실행은 별도 Title Menu Level에서 시작한다.
+- Title Menu는 Host Session, Join Code 입력과 Local Settings(FOV, Mouse Sensitivity, Master Volume, Resolution / Window Mode)를 소유하며 이 값들은 First-Person 적용과 함께 로컬에 저장한다.
+- Session 생성 또는 참가 성공 시 별도 Lobby Level로 이동한다.
+- Lobby는 참가 코드 표시, Player Slot, Map 선택, Ready / Start, Leave만 소유한다.
+- Session Leave 또는 Host Quit 시 Title Menu Level로 복귀한다.
+- Editor 직접 Gameplay Map PIE는 기존 Gameplay 회귀 검증을 위해 InGame 시작을 유지한다.
+- PIE New Editor Window가 저장된 Resolution을 Editor 창 크기로 덮어쓰는 경우 Settings 진단은 `DisplayApply=EDITOR_OVERRIDE`로 구분한다.
 
 ## Session / Lobby Contract
 
-- Host???쇰룞 臾몄옄瑜??쒖쇅??6?먮━ 李멸? 肄붾뱶瑜??앹꽦?섍퀬 Session Setting??寃뚯떆?쒕떎.
-- Join? 李멸? 肄붾뱶, Product Id, Build Unique Id, 怨듦컻 ?щ’??寃利앺븳 ???쒕쾭 二쇱냼濡??대룞?쒕떎.
-- Host??Lobby?먯꽌 `M01`, `M02`, `M03`, `Random`???좏깮?????덇퀬 ?좏깮 寃곌낵??`AHeistGameState`瑜??듯빐 紐⑤뱺 Client??蹂듭젣?쒕떎.
-- Lobby Player Id???꾩옱 `PlayerArray`?먯꽌 ?ъ슜?섏? ?딅뒗 媛????? `1~4` 踰덊샇瑜??좊떦?쒕떎. ?댁옣??Slot? `EMPTY`媛 ?섍퀬 ?ㅼ쓬 李멸??먭? ?대떦 踰덊샇瑜??ъ궗?⑺븳??
-- `UHeistLobbyViewModel`? Player 異붽?쨌?쒓굅肉??꾨땲??媛?`AHeistPlayerState`??Identity 蹂寃쎌뿉??諛섏쓳??紐⑤뱺 Client??Slot ?쒖떆瑜?媛깆떊?쒕떎.
-- Package Client??濡쒖뺄 PlayerController `BeginPlay`?먯꽌 Session World Ready瑜??듭????깃났??`TravelJoin`??Pending ?곹깭? 30珥?媛먯떆 ??대㉧瑜??댁젣?쒕떎.
-- Steam 理쒖쥌 PASS???쒕줈 ?ㅻⅨ Steam 怨꾩젙 2媛쒖? Development Package 利앷굅媛 ?덉쓣 ?뚮쭔 泥섎━?쒕떎.
+- Host는 혼동 문자를 제외한 6자리 참가 코드를 생성하고 Session Setting에 게시한다.
+- Join은 참가 코드, Product Id, Build Unique Id, 공개 슬롯을 검증한 뒤 서버 주소로 이동한다.
+- Host는 Lobby에서 `M01`, `M02`, `M03`, `Random`을 선택할 수 있고 선택 결과는 `AHeistGameState`를 통해 모든 Client에 복제한다.
+- Lobby Player Id는 현재 `PlayerArray`에서 사용하지 않는 가장 낮은 `1~4` 번호를 할당한다. 퇴장한 Slot은 `EMPTY`가 되고 다음 참가자가 해당 번호를 재사용한다.
+- `UHeistLobbyViewModel`은 Player 추가·제거뿐 아니라 각 `AHeistPlayerState`의 Identity 변경에도 반응해 모든 Client의 Slot 표시를 갱신한다.
+- Package Client는 로컬 PlayerController `BeginPlay`에서 Session World Ready를 통지해 성공한 `TravelJoin`의 Pending 상태와 30초 감시 타이머를 해제한다.
+- Steam 최종 PASS는 서로 다른 Steam 계정 2개와 Development Package 증거가 있을 때만 처리한다.
 
 ---
 
 # 7. First-Person Camera Rules
 
-- Camera??癒몃━ ?믪씠??諛곗튂?쒕떎.
-- Controller Yaw? Pitch媛 ?쒖젏???쒖뼱?쒕떎.
-- Character Yaw??Controller Yaw瑜??곕Ⅸ??
-- Interaction? Center Screen Line Trace瑜??ъ슜?쒕떎.
-- Flashlight Direction? Camera Forward瑜?湲곗??쇰줈 ?쒕떎.
-- Coin Throw Direction? Camera Forward ?먮뒗 寃利앸맂 Camera Target??湲곗??쇰줈 ?쒕떎.
-- Top-Down Gameplay Camera瑜??ъ슜?섏? ?딅뒗??
-- SpringArm Gameplay Camera瑜??ъ슜?섏? ?딅뒗??
-- Cursor World Aim???ъ슜?섏? ?딅뒗??
-- First-Person Camera??Full Body Mesh??Head Bone ?먮뒗 Socket??遺李⑺븳??
-- Camera ?꾩튂 Offset? Blueprint?먯꽌 Character Mesh??留욊쾶 議곗젙?쒕떎.
-- Owning Player? ?ㅻⅨ ?뚮젅?댁뼱 紐⑤몢 Full Body Mesh瑜??좎??쒕떎.
-- ?먯뿰?ㅻ윭??Character Shadow瑜??좎??쒕떎.
-- Local Head瑜??먮룞?쇰줈 ?④린吏 ?딅뒗??
-- ?쇨뎬 Clipping? Camera Socket Offset?쇰줈 ?닿껐?쒕떎.
-- 湲곕낯 FOV??90?대떎.
-- Head Bob? v1.0?먯꽌 ?ъ슜?섏? ?딅뒗??
-- Camera Roll? v1.0?먯꽌 ?ъ슜?섏? ?딅뒗??
-- Sprint Camera Effect??v1.0?먯꽌 ?ъ슜?섏? ?딅뒗??
-- Inventory? Forgery 吏꾩엯 ??Cursor? UI Input Mode瑜??쒖꽦?뷀븳??
-- UI 醫낅즺 ??Mouse Capture, Look, Movement, Interaction Context瑜?蹂듭썝?쒕떎.
+- Camera는 머리 높이에 배치한다.
+- Controller Yaw와 Pitch가 시점을 제어한다.
+- Character Yaw는 Controller Yaw를 따른다.
+- Interaction은 Center Screen Line Trace를 사용한다.
+- Flashlight Direction은 Camera Forward를 기준으로 한다.
+- Coin Throw Direction은 Camera Forward 또는 검증된 Camera Target을 기준으로 한다.
+- Top-Down Gameplay Camera를 사용하지 않는다.
+- SpringArm Gameplay Camera를 사용하지 않는다.
+- Cursor World Aim을 사용하지 않는다.
+- First-Person Camera는 Full Body Mesh의 Head Bone 또는 Socket에 부착한다.
+- Camera 위치 Offset은 Blueprint에서 Character Mesh에 맞게 조정한다.
+- Owning Player와 다른 플레이어 모두 Full Body Mesh를 유지한다.
+- 자연스러운 Character Shadow를 유지한다.
+- Local Head를 자동으로 숨기지 않는다.
+- 얼굴 Clipping은 Camera Socket Offset으로 해결한다.
+- 기본 FOV는 90이다.
+- Head Bob은 v1.0에서 사용하지 않는다.
+- Camera Roll은 v1.0에서 사용하지 않는다.
+- Sprint Camera Effect는 v1.0에서 사용하지 않는다.
+- Inventory와 Forgery 진입 시 Cursor와 UI Input Mode를 활성화한다.
+- UI 종료 시 Mouse Capture, Look, Movement, Interaction Context를 복원한다.
 
 ---
 
 # 7A. Player Locomotion Rules
 
-- 湲곕낯 Gameplay ?대룞? Walk? Sprint ??Pace瑜?吏?먰븳??
-- Walk???좎엯怨???? Footstep Noise瑜??꾪븳 湲곕낯 Pace??
-- Sprint??`Left Shift` Hold ?낅젰??湲곕낯?쇰줈 ?섎ŉ 鍮좊Ⅸ ?대룞怨???Footstep Noise瑜?諛쒖깮?쒗궓??
-- Sprint??Stamina瑜??뚮퉬?섏? ?딅뒗?? v1.0???대룞 ?좏깮 鍮꾩슜? ?뚯쓬怨?Loot Weight??
-- 湲곕낯 紐⑺몴媛믪? Walk `300 cm/s`, Sprint `600 cm/s`??
-- Weight Penalty??Walk? Sprint??媛곴컖 ?곸슜?쒕떎.
-- 湲곕낯 紐⑺몴 怨듭떇? ?ㅼ쓬怨?媛숇떎.
+- 기본 Gameplay 이동은 Walk와 Sprint 두 Pace를 지원한다.
+- Walk는 잠입과 낮은 Footstep Noise를 위한 기본 Pace다.
+- Sprint는 `Left Shift` Hold 입력을 기본으로 하며 빠른 이동과 큰 Footstep Noise를 발생시킨다.
+- Sprint는 Stamina를 소비하지 않는다. v1.0의 이동 선택 비용은 소음과 Loot Weight다.
+- 기본 목표값은 Walk `300 cm/s`, Sprint `600 cm/s`다.
+- Weight Penalty는 Walk와 Sprint에 각각 적용한다.
+- 기본 목표 공식은 다음과 같다.
 
 ```text
-ResolvedWalkSpeed = Clamp(300 - TotalCarryWeight 횞 7.5, 150, 300)
-ResolvedSprintSpeed = Clamp(600 - TotalCarryWeight 횞 15, 250, 600)
+ResolvedWalkSpeed = Clamp(300 - TotalCarryWeight × 7.5, 150, 300)
+ResolvedSprintSpeed = Clamp(600 - TotalCarryWeight × 15, 250, 600)
 ```
 
-- ?뺥솗???섏튂??Balance Data媛 ?뚯쑀?섎ŉ ?뚮젅???뚯뒪?몄뿉??議곗젙?쒕떎.
-- Walk Footstep 湲곕낯 諛섍꼍? `500 cm`, Sprint Footstep 湲곕낯 諛섍꼍? `1,000 cm`??
-- Inventory, Map, Surface Forgery, Object Assembly, Stun, Arrest, Escape ?꾨즺? World Restriction 以묒뿉??Sprint瑜??덉슜?섏? ?딅뒗??
-- Sprint ?붿껌怨??쒕쾭 ?뺤젙 ?대룞 ?띾룄??Weight, Match Phase? Player State瑜?寃利앺븳??
-- Head Bob, Camera Roll, Sprint FOV Kick怨?Stamina UI??v1.0?먯꽌 ?ъ슜?섏? ?딅뒗??
+- 정확한 수치는 Balance Data가 소유하며 플레이 테스트에서 조정한다.
+- Walk Footstep 기본 반경은 `500 cm`, Sprint Footstep 기본 반경은 `1,000 cm`다.
+- Inventory, Map, Surface Forgery, Object Assembly, Stun, Arrest, Escape 완료와 World Restriction 중에는 Sprint를 허용하지 않는다.
+- Sprint 요청과 서버 확정 이동 속도는 Weight, Match Phase와 Player State를 검증한다.
+- Head Bob, Camera Roll, Sprint FOV Kick과 Stamina UI는 v1.0에서 사용하지 않는다.
 
 ---
 
 # 7B. Player Identity And Team Readability Rules
 
-- `AHeistPlayerState`媛 Platform Display Name, Heist Player Id, Player Color? Crew Status??Source of Truth??
-- Display Name???ъ슜?????놁쑝硫?`PLAYER {HeistPlayerId}`瑜??ъ슜?쒕떎.
-- Remote Player??癒몃━ ??Nameplate瑜??쒖떆?쒕떎.
-- Nameplate??Player Name, Player Color, 嫄곕━? ?꾩옱 ?듭떖 ?곹깭 Icon???쒖떆?????덈떎.
-- ?듭떖 ?곹깭??`Active`, `Forging`, `Assembling`, `CarryingOriginal`, `Heavy`, `Stunned`, `Arrested`, `Escaped`瑜?援щ텇?쒕떎.
-- ?대쫫?쒕뒗 Local Owning Player ?먯떊?먭쾶 ?쒖떆?섏? ?딅뒗??
-- ?대쫫?쒕뒗 ?쇰컲?곸쑝濡?`2~2,500 cm` 踰붿쐞?먯꽌 ?쒖떆?섍퀬 ?먭굅由ъ뿉??Fade?쒕떎.
-- 踰쎌쓣 ?듦낵?섎뒗 Guard, Loot ?먮뒗 SoundPing Marker??異붽??섏? ?딅뒗??
-- Main HUD Team Status???곌껐??紐⑤뱺 Player??Name, Color, Crew Status, Original Carrier? Escape / Arrest ?곹깭瑜???긽 ?붿빟?쒕떎.
-- Forgery ?먮뒗 Assembly Full-Screen 以묒뿉??理쒖냼 Team Status? Alert Warning???좎??쒕떎.
+- `AHeistPlayerState`가 Platform Display Name, Heist Player Id, Player Color와 Crew Status의 Source of Truth다.
+- Display Name을 사용할 수 없으면 `PLAYER {HeistPlayerId}`를 사용한다.
+- Remote Player는 머리 위 Nameplate를 표시한다.
+- Nameplate는 Player Name, Player Color, 거리와 현재 핵심 상태 Icon을 표시할 수 있다.
+- 핵심 상태는 `Active`, `Forging`, `Assembling`, `CarryingOriginal`, `Heavy`, `Stunned`, `Arrested`, `Escaped`를 구분한다.
+- 이름표는 Local Owning Player 자신에게 표시하지 않는다.
+- 이름표는 일반적으로 `2~2,500 cm` 범위에서 표시하고 원거리에서 Fade한다.
+- 벽을 통과하는 Guard, Loot 또는 SoundPing Marker는 추가하지 않는다.
+- Main HUD Team Status는 연결된 모든 Player의 Name, Color, Crew Status, Original Carrier와 Escape / Arrest 상태를 항상 요약한다.
+- Forgery 또는 Assembly Full-Screen 중에도 최소 Team Status와 Alert Warning을 유지한다.
 
 ---
 
 # 7C. Floor Plan Map Rules
 
-- v1.0? Minimap ???Owner-only Full-Screen Floor Plan Map???ъ슜?쒕떎.
-- 湲곕낯 ?낅젰? `M` Hold ?먮뒗 Toggle?대ŉ 蹂꾨룄 `Map` Input Mode濡?愿由ы븳??
-- Map? Local Player, Teammate, 異쒓뎄, Zone Label, Contract Target Gallery, 諛쒓껄??Required Target, Dropped Original怨?Extracted / Arrested Teammate瑜??쒖떆?????덈떎.
-- Contract媛 ?뺥솗??Case ?꾩튂瑜??쒓났?섏? ?딅뒗 寃쎌슦 Target Gallery ?먮뒗 Zone留??쒖떆?쒕떎.
-- Map? Guard ?꾩튂, Guard ?쒖빞 Cone, SoundPing, 誘몃컻寃?Loose Loot怨?鍮꾧났媛?Spawn???쒖떆?섏? ?딅뒗??
-- Fixed Map蹂?Floor Plan Texture? World Bounds / UV Projection Data瑜??ъ슜?쒕떎.
-- Map ?쒖떆 以?Move, Look, Interaction, Throw? ?ㅻⅨ UI 吏꾩엯??李⑤떒?섍퀬 醫낅즺 ??Gameplay Input Mode瑜?蹂듭썝?쒕떎.
-- Map Widget? Gameplay State瑜?蹂寃쏀븯吏 ?딅뒗??
+- v1.0은 Minimap 대신 Owner-only Full-Screen Floor Plan Map을 사용한다.
+- 기본 입력은 `M` Hold 또는 Toggle이며 별도 `Map` Input Mode로 관리한다.
+- Map은 Local Player, Teammate, 출구, Zone Label, Contract Target Gallery, 발견된 Required Target, Dropped Original과 Extracted / Arrested Teammate를 표시할 수 있다.
+- Contract가 정확한 Case 위치를 제공하지 않는 경우 Target Gallery 또는 Zone만 표시한다.
+- Map은 Guard 위치, Guard 시야 Cone, SoundPing, 미발견 Loose Loot과 비공개 Spawn을 표시하지 않는다.
+- Fixed Map별 Floor Plan Texture와 World Bounds / UV Projection Data를 사용한다.
+- Map 표시 중 Move, Look, Interaction, Throw와 다른 UI 진입을 차단하고 종료 시 Gameplay Input Mode를 복원한다.
+- Map Widget은 Gameplay State를 변경하지 않는다.
 
 ---
 
 # 7D. Status And Feedback Rules
 
-- Gameplay ?먮떒??以묒슂???곹깭??理쒖냼 ??媛쒖쓽 Feedback Channel???ъ슜?쒕떎.
+- Gameplay 판단에 중요한 상태는 최소 두 개의 Feedback Channel을 사용한다.
 
 ```text
 Local Screen / HUD
@@ -469,15 +499,15 @@ World Presentation / Animation / Nameplate
 Audio
 ```
 
-- Guard Detection? Detection Build-up, 諛⑺뼢??媛뺤젣?섏? ?딅뒗 ?붾㈃ Warning怨?Notice Audio瑜??쒓났?쒕떎.
-- Player Stun? Guard ?먮뒗 ?뱀씤??Environment Source留??곸슜?????덉쑝硫?PvP 怨듦꺽?먯꽌 諛쒖깮?섏? ?딅뒗??
-- Stun 以묒뿉??Movement, Look ?먮뒗 Action Lock 踰붿쐞瑜??쒕쾭 ?곹깭? ?숈씪?섍쾶 ?곸슜?섍퀬 ?⑥? ?쒓컙??HUD???쒖떆?쒕떎.
-- Stun Presentation? Vignette, ??? Desaturation, 吏㏃? Audio Low-pass ?먮뒗 Ring, Remote Pose / Nameplate Icon???ъ슜?쒕떎.
-- 媛뺥븳 Blur, 吏??Camera Shake? ?됱긽 ?섎굹?먮쭔 ?섏〈?섎뒗 寃쎄퀬???ъ슜?섏? ?딅뒗??
-- Arrest??Stun怨?援щ텇??Cuffed / Disabled Presentation, Team Status, Rescue Prompt ?먮뒗 Final State瑜?媛吏꾨떎.
-- Original Carry? Heavy ?곹깭??HUD, Nameplate Icon, Movement / Footstep Audio? Remote Carry Pose濡??앸퀎?????덉뼱???쒕떎.
-- Escape ?꾨즺 Player??Team Status?먯꽌 `ESCAPED`濡??좎??섍퀬 ?⑥? Crew ?곹깭瑜?愿李고븳??
-- ?곹깭 ?댁젣, Arrest ?댁젣, Match End? Lobby Return?먯꽌 Post Process, Audio Filter, Input Lock怨?Widget???뺣━?쒕떎.
+- Guard Detection은 Detection Build-up, 방향을 강제하지 않는 화면 Warning과 Notice Audio를 제공한다.
+- Player Stun은 Guard 또는 승인된 Environment Source만 적용할 수 있으며 PvP 공격에서 발생하지 않는다.
+- Stun 중에는 Movement, Look 또는 Action Lock 범위를 서버 상태와 동일하게 적용하고 남은 시간을 HUD에 표시한다.
+- Stun Presentation은 Vignette, 낮은 Desaturation, 짧은 Audio Low-pass 또는 Ring, Remote Pose / Nameplate Icon을 사용한다.
+- 강한 Blur, 지속 Camera Shake와 색상 하나에만 의존하는 경고는 사용하지 않는다.
+- Arrest는 Stun과 구분된 Cuffed / Disabled Presentation, Team Status, Rescue Prompt 또는 Final State를 가진다.
+- Original Carry와 Heavy 상태는 HUD, Nameplate Icon, Movement / Footstep Audio와 Remote Carry Pose로 식별할 수 있어야 한다.
+- Escape 완료 Player는 Team Status에서 `ESCAPED`로 유지하고 남은 Crew 상태를 관찰한다.
+- 상태 해제, Arrest 해제, Match End와 Lobby Return에서 Post Process, Audio Filter, Input Lock과 Widget을 정리한다.
 
 ---
 
@@ -485,7 +515,7 @@ Audio
 
 ## Item Types
 
-?꾩옱 吏?먰븯??`EHeistItemType`:
+현재 지원하는 `EHeistItemType`:
 
 ```text
 None
@@ -494,7 +524,7 @@ Throwable
 KeyItem
 ```
 
-?꾩옱 吏?먰븯吏 ?딅뒗 Item Type:
+현재 지원하지 않는 Item Type:
 
 ```text
 Trap
@@ -502,7 +532,7 @@ Trap
 
 ## Use Types
 
-?꾩옱 `EHeistUseType`? ?ㅼ쓬 媛믪쓣 ?좎??쒕떎.
+현재 `EHeistUseType`은 다음 값을 유지한다.
 
 ```text
 None
@@ -511,11 +541,11 @@ DeployArea
 Consume
 ```
 
-?? ?꾩옱 v1.0 ?쒖꽦 Gameplay Item? Coin Throw肉먯씠??
+단, 현재 v1.0 활성 Gameplay Item은 Coin Throw뿐이다.
 
-`DeployArea`? `Consume`? 踰붿슜 Enum 媛믪쑝濡??⑥쓣 ???덉?留? ?뱀씤??Item Row? Gameplay ?ㅽ뻾 寃쎈줈媛 ?놁쑝硫??ъ슜?섏? ?딅뒗??
+`DeployArea`와 `Consume`은 범용 Enum 값으로 남을 수 있지만, 승인된 Item Row와 Gameplay 실행 경로가 없으면 사용하지 않는다.
 
-??젣??Use Type:
+삭제된 Use Type:
 
 ```text
 PlaceTrap
@@ -523,14 +553,14 @@ PlaceTrap
 
 ## QuickSlot
 
-?꾩옱 QuickSlot? Coin ?섎굹留?吏?먰븳??
+현재 QuickSlot은 Coin 하나만 지원한다.
 
 ```text
 EHeistQuickSlotType::None
 EHeistQuickSlotType::Coin
 ```
 
-?꾩옱 QuickSlot Item:
+현재 QuickSlot Item:
 
 ```text
 Slot: Coin
@@ -539,7 +569,7 @@ ItemId: Throwable_Coin
 UseType: Throw
 ```
 
-?ㅼ쓬 QuickSlot? 議댁옱?섏? ?딅뒗??
+다음 QuickSlot은 존재하지 않는다.
 
 - Smoke Grenade
 - Glue Trap
@@ -549,7 +579,7 @@ UseType: Throw
 
 ## DataTable Rules
 
-?ㅼ쓬 Row??Item 諛?UsableItem DataTable??議댁옱?댁꽌?????쒕떎.
+다음 Row는 Item 및 UsableItem DataTable에 존재해서는 안 된다.
 
 ```text
 Trap_Glue
@@ -557,9 +587,9 @@ Trap_Noise
 Throwable_Smoke
 ```
 
-??젣??C++ ?먮뒗 Blueprint Class瑜?李몄“?섎뒗 Soft Class Reference瑜??④린吏 ?딅뒗??
+삭제된 C++ 또는 Blueprint Class를 참조하는 Soft Class Reference를 남기지 않는다.
 
-`AHeistGameMode::ValidateItemDataTables()`???ㅼ쓬 議곌굔??留뚯”?댁빞 ?쒕떎.
+`AHeistGameMode::ValidateItemDataTables()`는 다음 조건을 만족해야 한다.
 
 ```text
 Result=PASS
@@ -569,42 +599,42 @@ OrphanExtensions=0
 
 ## Guard Alert Profile Data Rule
 
-- Guard Alert Profile? `DT_GuardData`??`Guard_Alert_Low / Medium / High` Row瑜??ъ슜?쒕떎.
-- ?꾩튂紐?湲곕컲 `Guard_Default / Guard_Vault / Guard_SecurityRoom` Row???ъ슜?섏? ?딅뒗??
-- ?좉퇋 Guard??湲곕낯 `GuardProfileId`??`Guard_Alert_Medium`?대떎.
-- ?ㅼ젣 留듭쓽 Guard蹂??깃툒 諛곗젙, Patrol ?곸뿭, 怨듦컙 ?뺣컯怨?理쒖쥌 ?섏튂 議곗젙? Level Design / Map Balance ?④퀎?먯꽌 ?섑뻾?쒕떎.
+- Guard Alert Profile은 `DT_GuardData`의 `Guard_Alert_Low / Medium / High` Row를 사용한다.
+- 위치명 기반 `Guard_Default / Guard_Vault / Guard_SecurityRoom` Row는 사용하지 않는다.
+- 신규 Guard의 기본 `GuardProfileId`는 `Guard_Alert_Medium`이다.
+- 실제 맵의 Guard별 등급 배정, Patrol 영역, 공간 압박과 최종 수치 조정은 W8 Level Design / Map Balance에서 수행한다.
 
 ---
 
 # 9. Action Component Rules
 
-`UHeistActionComponent`媛 ?꾩옱 愿由ы븯??Gameplay Cast:
+`UHeistActionComponent`가 현재 관리하는 Gameplay Cast:
 
 - Observation Cast
 - Escape Cast
 
-?쒓굅??Gameplay Cast:
+제거된 Gameplay Cast:
 
 - Trap Placement Cast
 
 ## Mutual Exclusion
 
-Gameplay Cast???곹샇 諛고??곸씠?댁빞 ?쒕떎.
+Gameplay Cast는 상호 배타적이어야 한다.
 
 ```text
-Observation ?쒖꽦 以?Escape ?쒖옉 湲덉?
-Escape ?쒖꽦 以?Observation ?쒖옉 湲덉?
-Forgery ?쒖꽦 以?Observation / Escape ?쒖옉 湲덉?
-Inventory ?쒖꽦 以??덉슜?섏? ?딆? Cast ?쒖옉 湲덉?
+Observation 활성 중 Escape 시작 금지
+Escape 활성 중 Observation 시작 금지
+Forgery 활성 중 Observation / Escape 시작 금지
+Inventory 활성 중 허용되지 않은 Cast 시작 금지
 ```
 
-`IsGameplayCastActive()`???꾩옱 ?쒖꽦 Cast ?꾩껜瑜??섑??댁빞 ?쒕떎.
+`IsGameplayCastActive()`는 현재 활성 Cast 전체를 나타내야 한다.
 
-Cast 醫낅즺 ??Component Tick? ?ㅻⅨ ?쒖꽦 Cast媛 ?녿뒗 寃쎌슦?먮쭔 鍮꾪솢?깊솕?쒕떎.
+Cast 종료 시 Component Tick은 다른 활성 Cast가 없는 경우에만 비활성화한다.
 
 ## Cancellation
 
-Observation 痍⑥냼 議곌굔:
+Observation 취소 조건:
 
 - Input Release
 - Movement
@@ -612,17 +642,19 @@ Observation 痍⑥냼 議곌굔:
 - Arrest
 - Session Invalid
 - Display Case Invalid
-- Match Phase 蹂寃?- Owner EndPlay
+- Match Phase 변경
+- Owner EndPlay
 - Disconnect
 
-Escape 痍⑥냼 議곌굔:
+Escape 취소 조건:
 
 - Movement
 - Damage
 - Arrest
 - Vent Invalid
-- Escape Phase 醫낅즺
-- Match Phase 蹂寃?- Owner EndPlay
+- Escape Phase 종료
+- Match Phase 변경
+- Owner EndPlay
 - Disconnect
 
 ---
@@ -631,124 +663,125 @@ Escape 痍⑥냼 議곌굔:
 
 ## Match Exhibit / Template Assignment
 
-- ?쒕쾭???꾩옱 Map??Eligible Exhibit Case? Contract Definition?쇰줈 留ㅼ튂蹂?Exhibit Assignment瑜??뺤젙?쒕떎.
-- Required Target Case??諛섎뱶???섎굹 吏?뺥븳??
-- Optional Painting / Object Case??Player Count? Loot Value Quota媛 ?붽뎄?섎뒗 ?섎웾留??쒖꽦?뷀븳??
-- Surface Template ?좏깮? Map Pool蹂?Shuffle Bag???ъ슜?섎ŉ ??Match Assignment ?덉뿉??媛숈? Template??以묐났 ?ъ슜?섏? ?딅뒗??
-- Shuffle Bag ?ъ땐????吏곸쟾 Cycle??理쒓렐 3媛?Template??泥??좏깮 ?꾨낫?먯꽌 ?쒖쇅?쒕떎.
-- Object Assembly Template? 蹂꾨룄 Family Pool怨?Shuffle Bag???ъ슜?쒕떎.
-- Assignment??`CaseId`, `ArtifactId`, `ForgeryType`, `TemplateId`, `ArtifactValue`, `bRequiredTarget`???ы븿?쒕떎.
-- Assignment Snapshot怨?Contract Snapshot? 紐⑤뱺 Client??蹂듭젣?쒕떎.
-- ?좏깮??Reference Image???대떦 Assignment瑜?諛쏆? Painting Case??Original World Visual?먮쭔 ?곸슜?쒕떎.
-- 鍮꾪솢??Case ?먮뒗 ?ㅻⅨ Case??Original World Visual???꾩옱 Assignment濡???뼱?곗? ?딅뒗??
-- Lobby 蹂듦? ?먮뒗 Contract Clear ??Original World Visual? Blueprint媛 吏?뺥븳 湲곗? Material濡?蹂듭썝?쒕떎.
+- 서버는 현재 Map의 Eligible Exhibit Case와 Contract Definition으로 매치별 Exhibit Assignment를 확정한다.
+- Required Target Case는 반드시 하나 지정한다.
+- Optional Painting / Object Case는 Player Count와 Loot Value Quota가 요구하는 수량만 활성화한다.
+- Surface Template 선택은 Map Pool별 Shuffle Bag을 사용하며 한 Match Assignment 안에서 같은 Template을 중복 사용하지 않는다.
+- Shuffle Bag 재충전 시 직전 Cycle의 최근 3개 Template을 첫 선택 후보에서 제외한다.
+- Object Assembly Template은 별도 Family Pool과 Shuffle Bag을 사용한다.
+- Assignment는 `CaseId`, `ArtifactId`, `ForgeryType`, `TemplateId`, `ArtifactValue`, `bRequiredTarget`을 포함한다.
+- Assignment Snapshot과 Contract Snapshot은 모든 Client에 복제한다.
+- 선택된 Reference Image는 해당 Assignment를 받은 Painting Case의 Original World Visual에만 적용한다.
+- 비활성 Case 또는 다른 Case의 Original World Visual을 현재 Assignment로 덮어쓰지 않는다.
+- Lobby 복귀 또는 Contract Clear 시 Original World Visual은 Blueprint가 지정한 기준 Material로 복원한다.
 
 ## Session Ownership
 
-- ??Painting Display Case???숈떆????紐낅쭔 ?꾩“?????덈떎.
-- ?쒕쾭媛 Session Owner瑜??뺤젙?쒕떎.
-- ?쒕쾭媛 嫄곕━, Match Phase, Player State, Case State瑜?寃利앺븳??
-- Disconnect ??Session Lock???댁젣?쒕떎.
-- Arrest ??Session Lock???댁젣?쒕떎.
-- Cancel ??Session Lock???댁젣?쒕떎.
-- Timeout ??Session Lock???댁젣?쒕떎.
-- Match End ??Session Lock???댁젣?쒕떎.
-- Owner ?먮뒗 Display Case EndPlay ??Session???뺣━?쒕떎.
+- 한 Painting Display Case는 동시에 한 명만 위조할 수 있다.
+- 서버가 Session Owner를 확정한다.
+- 서버가 거리, Match Phase, Player State, Case State를 검증한다.
+- Disconnect 시 Session Lock을 해제한다.
+- Arrest 시 Session Lock을 해제한다.
+- Cancel 시 Session Lock을 해제한다.
+- Timeout 시 Session Lock을 해제한다.
+- Match End 시 Session Lock을 해제한다.
+- Owner 또는 Display Case EndPlay 시 Session을 정리한다.
 
 ## Owner-only Full-Screen Mode
 
-- Forgery Widget? Owning Player?먭쾶留??쒖떆?쒕떎.
-- Forgery 以?World View???꾩쟾??媛由곕떎.
-- World Audio? ? ?듭떊? ?좎??쒕떎.
-- Move瑜?李⑤떒?쒕떎.
-- Look??李⑤떒?쒕떎.
-- Jump瑜?李⑤떒?쒕떎.
-- Sprint瑜?李⑤떒?쒕떎.
-- Throw瑜?李⑤떒?쒕떎.
-- QuickSlot??李⑤떒?쒕떎.
-- Inventory瑜?李⑤떒?쒕떎.
-- Loot瑜?李⑤떒?쒕떎.
-- ?ㅻⅨ Interaction??李⑤떒?쒕떎.
-- Draw瑜??덉슜?쒕떎.
-- Erase瑜??덉슜?쒕떎.
-- `R`? ?꾩옱 Client??Local Stroke? Preview留?珥덇린?뷀븯硫?Server RPC瑜??꾩넚?섏? ?딅뒗??
-- ?⑥? Drawing Time? Owner?먭쾶 蹂듭젣??`SessionEndServerTime`怨?Server World Time??李⑥씠濡??쒖떆?쒕떎.
-- Drawing Time? ?낅┰??`DrawingTimeRemainingText`???쒖떆?섎ŉ ??媛?대뱶 ?먮뒗 ?쒕ぉ Text? 寃고빀?섏? ?딅뒗??
-- Submit???덉슜?쒕떎.
-- Cancel???덉슜?쒕떎.
-- Push-To-Talk瑜??덉슜?쒕떎.
-- Pause瑜??덉슜?쒕떎.
+- Forgery Widget은 Owning Player에게만 표시한다.
+- Forgery 중 World View는 완전히 가린다.
+- World Audio와 팀 통신은 유지한다.
+- Move를 차단한다.
+- Look을 차단한다.
+- Jump를 차단한다.
+- Sprint를 차단한다.
+- Throw를 차단한다.
+- QuickSlot을 차단한다.
+- Inventory를 차단한다.
+- Loot를 차단한다.
+- 다른 Interaction을 차단한다.
+- Draw를 허용한다.
+- Erase를 허용한다.
+- `R`은 현재 Client의 Local Stroke와 Preview만 초기화하며 Server RPC를 전송하지 않는다.
+- 남은 Drawing Time은 Owner에게 복제된 `SessionEndServerTime`과 Server World Time의 차이로 표시한다.
+- Drawing Time은 독립된 `DrawingTimeRemainingText`에 표시하며 키 가이드 또는 제목 Text와 결합하지 않는다.
+- Submit을 허용한다.
+- Cancel을 허용한다.
+- Push-To-Talk를 허용한다.
+- Pause를 허용한다.
 
 ## Speed Painting Pacing
 
-- Surface Forgery??紐⑺몴 ?쒓컙? `20~45珥?, 湲곕낯媛믪? `40珥???
-- ?뚮젅?댁뼱???⑥? ?쒓컙怨?愿怨꾩뾾???몄젣???꾩옱 Drawing??Submit?????덈떎.
-- Timeout? ?좏슚 Stroke媛 ?섎굹 ?댁긽 ?덉쑝硫??꾩옱 Drawing???먮룞 Submit?쒕떎.
-- ?좏슚 Stroke媛 ?놁쑝硫?Timeout Cancel濡?泥섎━?쒕떎.
-- ??? Score??利됱떆 Match Failure媛 ?꾨땲??吏㏃? Guard Inspection Delay? Alert Escalation?쇰줈 ?댁뼱吏꾨떎.
-- Reference Image????15珥?Drawing?쇰줈???듭떖 ?ㅻ（?ｌ쓣 ?뚯븘蹂????덈룄濡??⑥닚?뷀븳??
-- Template Palette??2~8?됱쓣 ?덉슜?섎릺 ?쇰컲?곸씤 Release Template? 3~5?됱쓣 紐⑺몴濡??쒕떎.
-- ?ㅼ젣 ?묓뭹 湲곕컲 Reference??Public Domain ?먮뒗 ?ъ슜 沅뚰븳???뺤씤??Source留??ъ슜?섎ŉ 吏곸젒 ?⑥닚?뷀븳 ?뚯깮 ?대?吏瑜??쒖옉?쒕떎.
-- Forgery Quality Score??Loot Value Quota??吏곸젒 ?뷀븯吏 ?딅뒗??
+- Surface Forgery의 목표 시간은 `20~45초`, 기본값은 `40초`다.
+- 플레이어는 남은 시간과 관계없이 언제든 현재 Drawing을 Submit할 수 있다.
+- Timeout은 유효 Stroke가 하나 이상 있으면 현재 Drawing을 자동 Submit한다.
+- 유효 Stroke가 없으면 Timeout Cancel로 처리한다.
+- 낮은 Score는 즉시 Match Failure가 아니라 짧은 Guard Inspection Delay와 Alert Escalation으로 이어진다.
+- Reference Image는 약 15초 Drawing으로도 핵심 실루엣을 알아볼 수 있도록 단순화한다.
+- Template Palette는 2~8색을 허용하되 일반적인 Release Template은 3~5색을 목표로 한다.
+- 실제 작품 기반 Reference는 Public Domain 또는 사용 권한이 확인된 Source만 사용하며 직접 단순화한 파생 이미지를 제작한다.
+- Forgery Quality Score는 Loot Value Quota에 직접 더하지 않는다.
 
 ## Stroke Transport
 
-- Client???뺢퇋?붾맂 Stroke Point瑜??섏쭛?쒕떎.
-- Client??Stroke蹂?Point Count瑜??섏쭛?쒕떎.
-- Client??Stroke蹂?Palette Index瑜??섏쭛?쒕떎.
-- Client??Template?먯꽌 ?뱀씤??Brush Size瑜??ъ슜?쒕떎.
-- Reference Image??吏곸젒 ?쒖옉???⑥닚???대?吏瑜??ъ슜?쒕떎.
-- Template蹂?Palette??2~8?됱쑝濡??쒗븳?쒕떎.
-- Template? `None / Black / White` 諛곌꼍 ?꾪꽣瑜??ъ슜?쒕떎.
-- `Black / White`??Reference Image?먯꽌 ?대떦 諛곌꼍?됱쓣 ?쒓굅?쒕떎.
-- `None`? 蹂꾨룄 Reference Mask瑜??ъ슜?쒕떎.
-- ?뚮젅?댁뼱??Template Palette?먯꽌 ?됱쓣 吏곸젒 ?좏깮?쒕떎.
-- ?꾩튂??留욌뒗 ?뺣떟 ?됱쓣 ?먮룞 ?좏깮?섏? ?딅뒗??
-- Stroke???꾩쓽 RGB媛 ?꾨땲??`PaletteIndex`瑜??꾩넚?쒕떎.
-- ?쒕쾭??Payload ?ш린瑜?寃利앺븳??
-- ?쒕쾭??醫뚰몴 踰붿쐞瑜?寃利앺븳??
-- ?쒕쾭??Stroke Count瑜?寃利앺븳??
-- ?쒕쾭??Point Count瑜?寃利앺븳??
-- ?쒕쾭??Palette Index瑜?寃利앺븳??
-- ?쒕쾭??Brush Size瑜?寃利앺븳??
-- ?쒕쾭??Session Revision??寃利앺븳??
-- Client??理쒖쥌 Score瑜??꾩넚?섏? ?딅뒗??
+- Client는 정규화된 Stroke Point를 수집한다.
+- Client는 Stroke별 Point Count를 수집한다.
+- Client는 Stroke별 Palette Index를 수집한다.
+- Client는 Template에서 승인된 Brush Size를 사용한다.
+- Reference Image는 직접 제작한 단순한 이미지를 사용한다.
+- Template별 Palette는 2~8색으로 제한한다.
+- Template은 `None / Black / White` 배경 필터를 사용한다.
+- `Black / White`는 Reference Image에서 해당 배경색을 제거한다.
+- `None`은 별도 Reference Mask를 사용한다.
+- 플레이어는 Template Palette에서 색을 직접 선택한다.
+- 위치에 맞는 정답 색을 자동 선택하지 않는다.
+- Stroke는 임의 RGB가 아니라 `PaletteIndex`를 전송한다.
+- 서버는 Payload 크기를 검증한다.
+- 서버는 좌표 범위를 검증한다.
+- 서버는 Stroke Count를 검증한다.
+- 서버는 Point Count를 검증한다.
+- 서버는 Palette Index를 검증한다.
+- 서버는 Brush Size를 검증한다.
+- 서버는 Session Revision을 검증한다.
+- Client는 최종 Score를 전송하지 않는다.
 
 ## Submitted Texture Replication
 
-- 理쒖쥌 ?꾩“ 洹몃┝? ?쒕쾭 Score??Palette Raster?먯꽌 ?앹꽦?쒕떎.
-- 怨좎젙 ?댁긽??Palette Index Data???쒖텧 ????踰덈쭔 蹂듭젣?쒕떎.
-- 媛?Client??蹂듭젣??Index Data濡?Transient Texture瑜??ш뎄?깊븳??
-- Render Target??World Visual 紐⑹쟻?쇰줈 蹂듭젣?섏? ?딅뒗??
-- ?꾩껜 Stroke Payload瑜?World Visual 紐⑹쟻?쇰줈 異붽? 蹂듭젣?섏? ?딅뒗??
+- 최종 위조 그림은 서버 Score용 Palette Raster에서 생성한다.
+- 고정 해상도 Palette Index Data는 제출 시 한 번만 복제한다.
+- 각 Client는 복제된 Index Data로 Transient Texture를 재구성한다.
+- Render Target을 World Visual 목적으로 복제하지 않는다.
+- 전체 Stroke Payload를 World Visual 목적으로 추가 복제하지 않는다.
 
 ## OpenCV Score
 
-?쒕쾭? Local Preview???숈씪??C++ Evaluator瑜??ъ슜?쒕떎.
+서버와 Local Preview는 동일한 C++ Evaluator를 사용한다.
 
-理쒖쥌 ?뺤젙媛믪? ?쒕쾭 寃곌낵肉먯씠??
+최종 확정값은 서버 결과뿐이다.
 
-OpenCV ?됯? 援ъ꽦:
+OpenCV 평가 구성:
 
 ```text
-Reference ?꾩쿂由???Player Stroke Palette Raster
-??Binary Foreground Mask
-??3횞3 Morphology Close
-???묐갑??Distance Transform
-??Mask Precision / Recall / Dice / IoU
-??Lab SSIM
-??Palette Histogram Similarity
-??Shape / Color 寃고빀
-??Completeness
-??Anti-Fill
-??Final Score
+Reference 전처리
+→ Player Stroke Palette Raster
+→ Binary Foreground Mask
+→ 3×3 Morphology Close
+→ 양방향 Distance Transform
+→ Mask Precision / Recall / Dice / IoU
+→ Lab SSIM
+→ Palette Histogram Similarity
+→ Shape / Color 결합
+→ Completeness
+→ Anti-Fill
+→ Final Score
 ```
 
 Shape Score:
 
-- Reference ??Submitted 嫄곕━ 湲곕컲 Coverage
-- Submitted ??Reference 嫄곕━ 湲곕컲 Precision
-- ?묐갑??Harmonic Mean
+- Reference → Submitted 거리 기반 Coverage
+- Submitted → Reference 거리 기반 Precision
+- 양방향 Harmonic Mean
 - Dice Similarity
 - Response Curve 1.15
 
@@ -767,40 +800,40 @@ min(SubmittedForeground / ReferenceForeground, 1)^0.65
 
 Anti-Fill:
 
-- Reference ?鍮?怨쇰룄??硫댁쟻??移좏븯硫?Score Cap???곸슜?쒕떎.
-- 鍮?諛곌꼍 ?쇱튂濡??먯닔瑜??살쓣 ???녿룄濡??쒕떎.
+- Reference 대비 과도한 면적을 칠하면 Score Cap을 적용한다.
+- 빈 배경 일치로 점수를 얻을 수 없도록 한다.
 
 ## Score Data Contract
 
-Template Weight???좏슚???⑷퀎瑜?媛?몄빞 ?쒕떎.
+Template Weight는 유효한 합계를 가져야 한다.
 
 ```text
 CoverageWeight + MajorShapeWeight > 0
 ShapeAccuracyWeight + ColorAccuracyWeight > 0
 ```
 
-0?쇰줈 ?섎늻嫄곕굹 NaN Score瑜??앹꽦?????덈뒗 Template Row瑜??덉슜?섏? ?딅뒗??
+0으로 나누거나 NaN Score를 생성할 수 있는 Template Row를 허용하지 않는다.
 
-Penalty ?먮뒗 Diagnostic Field媛 Final Score??吏곸젒 ?곸슜?섏? ?딅뒗 寃쎌슦 臾몄꽌? ?꾨뱶 ?대쫫?먯꽌 洹??ъ떎??紐낇솗???쒕떎.
+Penalty 또는 Diagnostic Field가 Final Score에 직접 적용되지 않는 경우 문서와 필드 이름에서 그 사실을 명확히 한다.
 
 ## Alert Presentation
 
-- `UHeistHUDViewModel`怨?`UHeistForgeryViewModel`? `AHeistGameState`??蹂듭젣 Alert Snapshot留??쎈뒗??
-- Main HUD??Quiet, Suspicious, Searching, Alarmed, Lockdown???④퀎蹂?Text? Color濡??쒖떆?쒕떎.
-- ?뚮젅?댁뼱 ?쒖떆??`SECURITY LEVEL 0/4~4/4`? 4移?蹂?Indicator瑜??ъ슜?쒕떎.
-- Guard???뺤젙 諛쒓컖? ?쒕쾭?먯꽌 理쒖냼 Suspicious瑜??붿껌?섍퀬, Painting 寃??寃곌낵??Score Mapping 寃곌낵瑜??붿껌?쒕떎.
-- Main HUD媛 媛?ㅼ???Owner-only Forgery ?붾㈃?먯꽌???숈씪??Security Level Indicator瑜??쒖떆?쒕떎.
-- Alarmed??Lockdown Countdown? 蹂듭젣??`AlertNextTransitionServerTime`怨?Server World Time??李⑥씠濡??쒖떆?쒕떎.
-- HUD Lockdown Countdown? ?낅┰??`LockdownCountdownText`???쒖떆?쒕떎.
-- Forgery ?붾㈃? Quiet ?댁쇅 Alert?먯꽌 ?낅┰??`ForgeryAlertWarningText`瑜??쒖떆?쒕떎.
-- Forgery ?붾㈃??Lockdown Countdown? `ForgeryLockdownCountdownText`??蹂꾨룄濡??쒖떆?쒕떎.
-- Suspicious/Searching? Suspense Music Layer, Alarmed/Lockdown? Alarm Music Layer瑜??ъ슜?쒕떎.
-- Forgery Full-Screen UI 以묒뿉??Alert Music Layer???좎??쒕떎.
-- ?ㅼ젣 Music Asset 吏?뺤? Widget Blueprint Class Default媛 ?대떦?쒕떎.
+- `UHeistHUDViewModel`과 `UHeistForgeryViewModel`은 `AHeistGameState`의 복제 Alert Snapshot만 읽는다.
+- Main HUD는 Quiet, Suspicious, Searching, Alarmed, Lockdown을 단계별 Text와 Color로 표시한다.
+- 플레이어 표시는 `SECURITY LEVEL 0/4~4/4`와 4칸 별 Indicator를 사용한다.
+- Guard의 확정 발각은 서버에서 최소 Suspicious를 요청하고, Painting 검사 결과는 Score Mapping 결과를 요청한다.
+- Main HUD가 가려지는 Owner-only Forgery 화면에서도 동일한 Security Level Indicator를 표시한다.
+- Alarmed의 Lockdown Countdown은 복제된 `AlertNextTransitionServerTime`과 Server World Time의 차이로 표시한다.
+- HUD Lockdown Countdown은 독립된 `LockdownCountdownText`에 표시한다.
+- Forgery 화면은 Quiet 이외 Alert에서 독립된 `ForgeryAlertWarningText`를 표시한다.
+- Forgery 화면의 Lockdown Countdown은 `ForgeryLockdownCountdownText`에 별도로 표시한다.
+- Suspicious/Searching은 Suspense Music Layer, Alarmed/Lockdown은 Alarm Music Layer를 사용한다.
+- Forgery Full-Screen UI 중에도 Alert Music Layer는 유지한다.
+- 실제 Music Asset 지정은 Widget Blueprint Class Default가 담당한다.
 
 ## Cleanup
 
-Forgery 醫낅즺 ??諛섎뱶??蹂듭썝?쒕떎.
+Forgery 종료 시 반드시 복원한다.
 
 - Painting Display Case Lock
 - Forgery Owner
@@ -810,12 +843,12 @@ Forgery 醫낅즺 ??諛섎뱶??蹂듭썝?쒕떎.
 - Cursor
 - Mouse Capture
 - Input Mapping Context
-- HUD ?묎렐
-- QuickSlot ?묎렐
-- Inventory ?묎렐
+- HUD 접근
+- QuickSlot 접근
+- Inventory 접근
 - Forgery Widget Instance
 
-以묎컙 Drawing 吏꾪뻾?꾨뒗 v1.0?먯꽌 ??ν븯吏 ?딅뒗??
+중간 Drawing 진행도는 v1.0에서 저장하지 않는다.
 
 ---
 
@@ -823,63 +856,63 @@ Forgery 醫낅즺 ??諛섎뱶??蹂듭썝?쒕떎.
 
 ## Supported Artifact Families
 
-?꾩옱 Object Assembly Forgery???쒖꽦 Family:
+현재 Object Assembly Forgery의 활성 Family:
 
 ```text
 Sculpture
 Ceramic
 ```
 
-Jewelry, Fossil 諛?湲고? Family??蹂꾨룄 Numbered Task ?뱀씤 ???쒖꽦?뷀븯吏 ?딅뒗??
+Jewelry, Fossil 및 기타 Family는 별도 Numbered Task 승인 전 활성화하지 않는다.
 
 ## Modular Kit
 
-- ?섎굹??Object瑜?Voxel ?먮뒗 ?뚰렪 ?⑥쐞濡?遺꾪빐?섏? ?딅뒗??
-- ?섎굹??Template? 怨좎젙 Core? 議곗옉 媛?ν븳 Part 3~5媛쒕? 湲곕낯?쇰줈 ?쒕떎.
-- ??踰덉쓽 議곕┰?먯꽌 ?ъ슜?섎뒗 ?꾩껜 Static Mesh Component???쇰컲?곸쑝濡?4~6媛쒕떎.
-- Part??Family ?덉뿉???щ윭 Template???ъ궗?⑺븷 ???덈떎.
-- Core Mesh???뱀씤??Socket???뚯쑀?쒕떎.
-- Part Pivot? ?곌껐 吏?먯쓣 湲곗??쇰줈 ?쒖옉?쒕떎.
-- Runtime Mesh Cutting, Geometry Collection, ?먯쑀 臾쇰━ 議곕┰???ъ슜?섏? ?딅뒗??
-- v1.0 議곕┰? Socket Snap怨??뱀씤???뚯쟾 ?④퀎留??ъ슜?쒕떎.
-- Scale ?먯쑀 議곗젅? v1.0?먯꽌 ?ъ슜?섏? ?딅뒗??
+- 하나의 Object를 Voxel 또는 파편 단위로 분해하지 않는다.
+- 하나의 Template은 고정 Core와 조작 가능한 Part 3~5개를 기본으로 한다.
+- 한 번의 조립에서 사용하는 전체 Static Mesh Component는 일반적으로 4~6개다.
+- Part는 Family 안에서 여러 Template이 재사용할 수 있다.
+- Core Mesh는 승인된 Socket을 소유한다.
+- Part Pivot은 연결 지점을 기준으로 제작한다.
+- Runtime Mesh Cutting, Geometry Collection, 자유 물리 조립을 사용하지 않는다.
+- v1.0 조립은 Socket Snap과 승인된 회전 단계만 사용한다.
+- Scale 자유 조절은 v1.0에서 사용하지 않는다.
 
 ## Owner-only Assembly Mode
 
-- Object Assembly Widget? Owning Player?먭쾶留??쒖떆?쒕떎.
-- Assembly 以?World View???꾩쟾??媛由곕떎.
-- Move, Look, Jump, Sprint, Throw, QuickSlot, Inventory? ?ㅻⅨ Interaction??李⑤떒?쒕떎.
-- Part ?좏깮, Socket ?좏깮, ?뱀씤???뚯쟾, Submit, Cancel, Push-To-Talk? Pause瑜??덉슜?쒕떎.
-- 議곕┰ ?붾㈃? 濡쒖뺄 Preview Component瑜??ъ슜?섎ŉ World Actor瑜?吏곸젒 蹂寃쏀븯吏 ?딅뒗??
-- Session 醫낅즺 ??Gameplay Input Mode? HUD ?묎렐??Surface Forgery? ?숈씪???먯튃?쇰줈 蹂듭썝?쒕떎.
-- Object Assembly 紐⑺몴 ?쒓컙? `25~35珥?, 湲곕낯媛믪? `30珥???
-- ?뚮젅?댁뼱???몄젣???꾩옱 Assembly瑜?Submit?????덈떎.
-- Timeout? ?꾩옱 ?좏슚 Entry媛 ?섎굹 ?댁긽 ?덉쑝硫??꾩옱 Payload瑜??먮룞 Submit?섍퀬, ?좏슚 Entry媛 ?놁쑝硫?Cancel 泥섎━?쒕떎.
+- Object Assembly Widget은 Owning Player에게만 표시한다.
+- Assembly 중 World View는 완전히 가린다.
+- Move, Look, Jump, Sprint, Throw, QuickSlot, Inventory와 다른 Interaction을 차단한다.
+- Part 선택, Socket 선택, 승인된 회전, Submit, Cancel, Push-To-Talk와 Pause를 허용한다.
+- 조립 화면은 로컬 Preview Component를 사용하며 World Actor를 직접 변경하지 않는다.
+- Session 종료 시 Gameplay Input Mode와 HUD 접근을 Surface Forgery와 동일한 원칙으로 복원한다.
+- Object Assembly 목표 시간은 `25~35초`, 기본값은 `30초`다.
+- 플레이어는 언제든 현재 Assembly를 Submit할 수 있다.
+- Timeout은 현재 유효 Entry가 하나 이상 있으면 현재 Payload를 자동 Submit하고, 유효 Entry가 없으면 Cancel 처리한다.
 
 ## Server Authority And Payload
 
-- ?쒕쾭媛 Object Assembly Session Owner, Revision, End Server Time怨??좏깮 Template???뺤젙?쒕떎.
-- Client??Part Mesh ?먮뒗 ?꾩쓽 Transform???꾩넚?섏? ?딅뒗??
-- Client 理쒖쥌 Payload???뱀씤??`PartId`, `SocketId`, Quantized Orientation怨?Material Id留??ы븿?쒕떎.
-- ?쒕쾭??Session Revision, Part Count, 以묐났 Part, Part Family, Socket ?명솚, Orientation 踰붿쐞, Material 踰붿쐞? Payload ?ш린瑜?寃利앺븳??
-- 以묎컙 Drag ?먮뒗 Preview Transform? 蹂듭젣?섏? ?딅뒗??
-- Submit ??寃利앸맂 理쒖쥌 Assembly Payload瑜???踰덈쭔 ?뺤젙?쒕떎.
+- 서버가 Object Assembly Session Owner, Revision, End Server Time과 선택 Template을 확정한다.
+- Client는 Part Mesh 또는 임의 Transform을 전송하지 않는다.
+- Client 최종 Payload는 승인된 `PartId`, `SocketId`, Quantized Orientation과 Material Id만 포함한다.
+- 서버는 Session Revision, Part Count, 중복 Part, Part Family, Socket 호환, Orientation 범위, Material 범위와 Payload 크기를 검증한다.
+- 중간 Drag 또는 Preview Transform은 복제하지 않는다.
+- Submit 시 검증된 최종 Assembly Payload를 한 번만 확정한다.
 
 ## Deterministic Score
 
-Object Assembly??OpenCV瑜??ъ슜?섏? ?딅뒗??
+Object Assembly는 OpenCV를 사용하지 않는다.
 
 ```text
 Required Part Match
-??Socket / Topology Match
-??Orientation Accuracy
-??Material Match
-??Completeness
-??Extra Part Score Cap
-??Final Quality Score
+→ Socket / Topology Match
+→ Orientation Accuracy
+→ Material Match
+→ Completeness
+→ Extra Part Score Cap
+→ Final Quality Score
 ```
 
-湲곕낯 Weight:
+기본 Weight:
 
 ```text
 Required Part Match: 35%
@@ -888,23 +921,23 @@ Orientation Accuracy: 25%
 Material Match: 10%
 ```
 
-- ?꾨씫 Part??Completeness瑜???텣??
-- 遺덊븘?뷀븳 Part瑜?怨쇰룄?섍쾶 異붽??섎㈃ Final Score Cap???곸슜?쒕떎.
-- Client Preview???뺤젙媛믪씠 ?꾨땲??
-- 理쒖쥌 Quality Score???쒕쾭留??뺤젙?쒕떎.
-- Guard Inspection? ?쒕쾭媛 ?뺤젙??0~100 Quality Score留?怨듯넻 ?낅젰?쇰줈 ?ъ슜?쒕떎.
+- 누락 Part는 Completeness를 낮춘다.
+- 불필요한 Part를 과도하게 추가하면 Final Score Cap을 적용한다.
+- Client Preview는 확정값이 아니다.
+- 최종 Quality Score는 서버만 확정한다.
+- Guard Inspection은 서버가 확정한 0~100 Quality Score만 공통 입력으로 사용한다.
 
 ## Replica Data
 
-- Object Assembly Replica??Surface Forgery??Palette Raster瑜??ъ슜?섏? ?딅뒗??
-- Object Assembly Replica???뱀씤??Part Id, Socket Id, Quantized Orientation, Material Id? Revision留?蹂듭젣?쒕떎.
-- Client??濡쒖뺄 Template Data?먯꽌 Static Mesh? Material???댁꽍??Replica Component瑜??ш뎄?깊븳??
-- ?꾩껜 Mesh Data, Render Target, Physics State ?먮뒗 Preview Actor瑜?蹂듭젣?섏? ?딅뒗??
-- ??쾶 李멸???Client???숈씪??Assembly Replica瑜??ш뎄?깊빐???쒕떎.
+- Object Assembly Replica는 Surface Forgery의 Palette Raster를 사용하지 않는다.
+- Object Assembly Replica는 승인된 Part Id, Socket Id, Quantized Orientation, Material Id와 Revision만 복제한다.
+- Client는 로컬 Template Data에서 Static Mesh와 Material을 해석해 Replica Component를 재구성한다.
+- 전체 Mesh Data, Render Target, Physics State 또는 Preview Actor를 복제하지 않는다.
+- 늦게 참가한 Client도 동일한 Assembly Replica를 재구성해야 한다.
 
 ## Cleanup
 
-Session 醫낅즺, Cancel, Timeout, Arrest, Disconnect, Match End, Owner EndPlay ?먮뒗 Display Case EndPlay?먯꽌 ?ㅼ쓬???뺣━?쒕떎.
+Session 종료, Cancel, Timeout, Arrest, Disconnect, Match End, Owner EndPlay 또는 Display Case EndPlay에서 다음을 정리한다.
 
 - Object Display Case Lock
 - Assembly Owner
@@ -913,7 +946,7 @@ Session 醫낅즺, Cancel, Timeout, Arrest, Disconnect, Match End, Owner EndPlay
 - Assembly Widget
 - Movement / Look / Interaction Block
 - Cursor / Mouse Capture / Input Mapping Context
-- QuickSlot / Inventory / HUD ?묎렐
+- QuickSlot / Inventory / HUD 접근
 
 ---
 
@@ -921,36 +954,37 @@ Session 醫낅즺, Cancel, Timeout, Arrest, Disconnect, Match End, Owner EndPlay
 
 ## Contract Definition
 
-- v1.0? ?섎굹??Contract Archetype???ъ슜?쒕떎.
-- 媛?Match??`Required Target 1媛?+ Loot Value Quota 1媛?瑜??뺤젙?쒕떎.
-- Required Target? Painting ?먮뒗 Object Assembly Exhibit媛 ?????덈떎.
-- Required Target??Artifact Value??Loot Value Quota???ы븿?쒕떎.
-- Quota??Required Target留??붿퀜?쒕뒗 ?쇰컲?곸쑝濡??ъ꽦?????녿룄濡?Data Validation?쒕떎.
-- Player Count媛 利앷??섎㈃ Quota? ?쒖꽦 Optional Exhibit ?섎? Data濡?議곗젙?쒕떎.
-- Forgery Time ?먯껜??Player Count???곕씪 ?ш쾶 ?섎━吏 ?딅뒗??
+- v1.0은 하나의 Contract Archetype을 사용한다.
+- 각 Match는 `Required Target 1개 + Loot Value Quota 1개`를 확정한다.
+- Required Target은 Painting 또는 Object Assembly Exhibit가 될 수 있다.
+- Required Target의 Artifact Value는 Loot Value Quota에 포함된다.
+- Quota는 Required Target만 훔쳐서는 일반적으로 달성할 수 없도록 Data Validation한다.
+- Player Count가 증가하면 Quota와 활성 Optional Exhibit 수를 Data로 조정한다.
+- Forgery Time 자체는 Player Count에 따라 크게 늘리지 않는다.
 
 ## Value States
 
 ```text
 Carried Value
-- ?꾩옱 Active Player媛 ?대컲 以묒씤 Original怨?Loose Loot???⑷퀎
+- 현재 Active Player가 운반 중인 Original과 Loose Loot의 합계
 
 Secured Value
-- Escape Deposit媛 ?꾨즺?섏뼱 Match Result??蹂댁〈??媛移?
+- Escape Deposit가 완료되어 Match Result에 보존된 가치
+
 Required Quota
-- Contract Success???꾩슂??Secured Value
+- Contract Success에 필요한 Secured Value
 ```
 
-- Carried Value??泥댄룷, Drop, Disconnect ?먮뒗 ?꾩썝 ?ㅽ뙣 ?꾩뿉 Secured Value濡?媛꾩＜?섏? ?딅뒗??
-- Individual Player媛 Shared Extraction???꾨즺?섎㈃ 洹?Player???좏슚 ?꾨━?덉쓣 Secured Value??Deposit?섍퀬 Player瑜?`Escaped`濡??꾪솚?쒕떎.
-- 癒쇱? ?덉텧??Player???ㅼ떆 Match??蹂듦??섏? ?딅뒗??
-- ?⑥? Crew??怨꾩냽 ?ㅻⅨ ?꾨━?덉쓣 ?뺣낫?섍굅???덉텧?????덈떎.
-- Required Target Original??Secured?섏뼱??Contract Success媛 媛?ν븯??
+- Carried Value는 체포, Drop, Disconnect 또는 전원 실패 전에 Secured Value로 간주하지 않는다.
+- Individual Player가 Shared Extraction을 완료하면 그 Player의 유효 전리품을 Secured Value에 Deposit하고 Player를 `Escaped`로 전환한다.
+- 먼저 탈출한 Player는 다시 Match에 복귀하지 않는다.
+- 남은 Crew는 계속 다른 전리품을 확보하거나 탈출할 수 있다.
+- Required Target Original이 Secured되어야 Contract Success가 가능하다.
 
 ## Match End And Outcome
 
-- Match??Active Player媛 ?녾굅?? Lockdown / Match Timer??醫낅즺 議곌굔??異⑹”?섍굅?? ?쒕쾭媛 ?뱀씤??Team End 議곌굔??異⑹”?????앸궃??
-- Outcome怨?Crew Survival? 遺꾨━???쒖떆?쒕떎.
+- Match는 Active Player가 없거나, Lockdown / Match Timer의 종료 조건이 충족되거나, 서버가 승인한 Team End 조건이 충족될 때 끝난다.
+- Outcome과 Crew Survival은 분리해 표시한다.
 
 ```text
 Contract Success
@@ -962,38 +996,39 @@ Partial Haul
 - Secured Value < Required Quota
 
 Contract Failed
-- Required Target 誘몃컲異?- ?꾩썝 泥댄룷 ?먮뒗 ?ㅻⅨ Terminal Failure
+- Required Target 미반출
+- 전원 체포 또는 다른 Terminal Failure
 ```
 
-- 紐⑤뱺 Crew ?덉텧, ?쇰? Arrest, Alert Level, 理쒓퀬 / 理쒖븙 Replica? Extra Value??蹂꾨룄 Recap?쇰줈 ?쒖떆?쒕떎.
-- ??? Forgery Score??Contract Value瑜?吏곸젒 ??젣?섏? ?딄퀬 Guard Pressure瑜??믪씤??
-- Result??寃쎌웳 Rank瑜?留뚮뱾吏 ?딆쑝硫????留뚮뱺 Replica? 諛쒖깮???ш굔??蹂댁뿬二쇰뒗 Match Story濡??ъ슜?쒕떎.
+- 모든 Crew 탈출, 일부 Arrest, Alert Level, 최고 / 최악 Replica와 Extra Value는 별도 Recap으로 표시한다.
+- 낮은 Forgery Score는 Contract Value를 직접 삭제하지 않고 Guard Pressure를 높인다.
+- Result는 경쟁 Rank를 만들지 않으며 팀이 만든 Replica와 발생한 사건을 보여주는 Match Story로 사용한다.
 
 ## Failure-forward
 
-- ?쒗댆 Replica? 遺덉셿?꾪븳 Assembly???쒕쾭 Validation???듦낵?섎㈃ World??諛곗튂?쒕떎.
-- ?ㅼ닔??媛?ν븳 ??利됱떆 Match Failure媛 ?꾨땲??Guard Investigation, Alert, Drop, Rescue ?먮뒗 湲됲븳 ?덉텧 ?곹솴??留뚮뱺??
-- Guard? Museum Presentation? 吏꾩??섍쾶 ?좎??섍퀬, 肄붾??붾뒗 Player ?됰룞怨??ㅼ젣 Replica 寃곌낵?먯꽌 諛쒖깮?섍쾶 ?쒕떎.
-- 怨좎젙 Painter, Lookout, Carrier ??븷??媛뺤젣?섏? ?딅뒗??
+- 서툰 Replica와 불완전한 Assembly도 서버 Validation을 통과하면 World에 배치한다.
+- 실수는 가능한 한 즉시 Match Failure가 아니라 Guard Investigation, Alert, Drop, Rescue 또는 급한 탈출 상황을 만든다.
+- Guard와 Museum Presentation은 진지하게 유지하고, 코미디는 Player 행동과 실제 Replica 결과에서 발생하게 한다.
+- 고정 Painter, Lookout, Carrier 역할을 강제하지 않는다.
 
 ---
 
 # 11. SoundPing Rules
 
-?꾩옱 SoundPing ?쒖뒪?쒖? Guard媛 ?쒕쾭?먯꽌 ?뚯쓬??諛섏쓳?섍린 ?꾪븳 Gameplay Event濡??ъ슜?쒕떎.
+현재 SoundPing 시스템은 Guard가 서버에서 소음에 반응하기 위한 Gameplay Event로 사용한다.
 
 - Footstep
 - Glass Break
 - Coin Impact
-- ?꾩옱 湲고쉷???ы븿???섍꼍 ?뚯쓬
+- 현재 기획에 포함된 환경 소음
 
-?꾩옱 ?쒓굅??SoundPing:
+현재 제거된 SoundPing:
 
 - Noise Trap
 - Trap Trigger
-- Smoke 愿??SoundPing
+- Smoke 관련 SoundPing
 
-?ㅼ쓬 媛믪? ?ъ슜?섏? ?딅뒗??
+다음 값은 사용하지 않는다.
 
 ```text
 EHeistSoundPingType::NoiseTrap
@@ -1002,23 +1037,23 @@ AI.Stimulus.Trap
 Ping_NoiseTrap
 ```
 
-Guard Noise Reaction? ?꾩옱 ?쒖꽦 SoundPing Type留?泥섎━?쒕떎.
+Guard Noise Reaction은 현재 활성 SoundPing Type만 처리한다.
 
-Player-facing SoundPing Marker, Direction Widget 諛?HUD Layer???ъ슜?섏? ?딅뒗??
+Player-facing SoundPing Marker, Direction Widget 및 HUD Layer는 사용하지 않는다.
 
-?뚮젅?댁뼱??1?몄묶 怨듦컙 ?뚰뼢怨??ㅼ젣 Sound Cue???섏〈???뚮━ 諛⑺뼢???먮떒?쒕떎.
+플레이어는 1인칭 공간 음향과 실제 Sound Cue에 의존해 소리 방향을 판단한다.
 
-SoundPing Event??Client HUD ?쒖떆瑜??꾪빐 蹂듭젣?섏? ?딅뒗??
+SoundPing Event는 Client HUD 표시를 위해 복제하지 않는다.
 
-StunHit? Guard ?먮뒗 ?뱀씤??Environment Source媛 Player / Guard??Stun???뺤젙?덉쓣 ?뚯쓽 ?쒕쾭 ?꾩슜 Noise Event濡쒕쭔 ?ъ슜?????덈떎. PvP 怨듦꺽 Source? Player-facing Direction Marker?먮뒗 ?ъ슜?섏? ?딅뒗??
+StunHit은 Guard 또는 승인된 Environment Source가 Player / Guard에 Stun을 확정했을 때의 서버 전용 Noise Event로만 사용할 수 있다. PvP 공격 Source와 Player-facing Direction Marker에는 사용하지 않는다.
 
 ---
 
 # 12. GameplayTag Rules
 
-?꾩옱 GameplayTag???ㅼ젣 Runtime Rule, DataTable, UI ?먮뒗 AI?먯꽌 ?ъ슜?섎뒗 媛믩쭔 ?깅줉?쒕떎.
+현재 GameplayTag는 실제 Runtime Rule, DataTable, UI 또는 AI에서 사용하는 값만 등록한다.
 
-?쒓굅 ???Tag:
+제거 대상 Tag:
 
 ```text
 State.InSmoke
@@ -1033,15 +1068,15 @@ Item.Trap.Noise
 Item.Throwable.Smoke
 ```
 
-??젣 湲곕뒫??Tag瑜??ν썑 ?명솚???⑸룄濡??④린吏 ?딅뒗??
+삭제 기능의 Tag를 향후 호환성 용도로 남기지 않는다.
 
-GameplayTag瑜???젣?섍린 ?꾩뿉 愿??DataTable, Blueprint, Config 李몄“瑜??뺤씤?쒕떎.
+GameplayTag를 삭제하기 전에 관련 DataTable, Blueprint, Config 참조를 확인한다.
 
 ---
 
 # 13. Input Mode Rules
 
-?낅젰 紐⑤뱶???곹샇 諛고??곸쑝濡?愿由ы븳??
+입력 모드는 상호 배타적으로 관리한다.
 
 ```text
 Gameplay
@@ -1050,115 +1085,209 @@ Map
 Forgery
 ```
 
-Context ?꾪솚 ??
+Context 전환 시:
 
-1. 湲곗〈 Context瑜?紐낆떆?곸쑝濡??쒓굅?쒕떎.
-2. ??Context瑜?異붽??쒕떎.
-3. 以묐났 Widget???앹꽦?섏? ?딅뒗??
-4. Input Context瑜??꾩쟻?섏? ?딅뒗??
-5. Cursor? Mouse Capture瑜??꾩옱 Mode??留욊쾶 ?ㅼ젙?쒕떎.
-6. 醫낅즺 ???댁쟾 Gameplay Context瑜?蹂듭썝?쒕떎.
+1. 기존 Context를 명시적으로 제거한다.
+2. 새 Context를 추가한다.
+3. 중복 Widget을 생성하지 않는다.
+4. Input Context를 누적하지 않는다.
+5. Cursor와 Mouse Capture를 현재 Mode에 맞게 설정한다.
+6. 종료 시 이전 Gameplay Context를 복원한다.
 
-`Map` Mode??Inventory? Forgery? ?숈떆???쒖꽦?뷀븯吏 ?딅뒗??
+`Map` Mode는 Inventory와 Forgery와 동시에 활성화하지 않는다.
 
 ---
 
 # 14. C++ / Blueprint / Data / Map Responsibility
 
-| ?곸뿭 | 梨낆엫 |
+| 영역 | 책임 |
 |---|---|
 | C++ | Rule, State, Authority, Validation, Replication, Contract Assignment, Stable API |
 | Blueprint | Mesh, Material, Camera Position, Component Assembly, Animation, Audio, VFX, Visual Hook |
 | Widget Blueprint | Layout, Binding, Animation, Presentation |
-| ViewModel / C++ Widget | HUD, Nameplate, Map, Status, Result State Exposure? Request Routing |
+| ViewModel / C++ Widget | HUD, Nameplate, Map, Status, Result State Exposure와 Request Routing |
 | DataTable / DataAsset | Contract, Artifact, Template, Guard, Balance, Map Presentation, Scaling Data |
 | Map | Painting/Object Case, Guard Route, Loot Spawn, Exit, Zone, Lighting, Navigation |
 
 ## UI Copy Rules
 
-- v1.0??Source UI Copy???곸뼱瑜??ъ슜?쒕떎.
-- ?뚮젅?댁뼱?먭쾶 ?곹깭瑜??꾨떖?섎뒗 臾멸뎄????? ?꾩옱 ?곹깭, 寃곌낵 ?먮뒗 ?꾩슂???됰룞???????덈뒗 臾몄옣?뺤쑝濡??묒꽦?쒕떎.
-- `LOCKDOWN`泥섎읆 ?섎?媛 紐⑦샇?????덈뒗 ?⑤룆 ?곹깭紐????`THE MUSEUM WILL ENTER LOCKDOWN IN {0}.`泥섎읆 寃뚯엫 ????곸쓣 紐낆떆?쒕떎.
-- Forgery ?쒖텧 ?쒗븳 ?쒓컙怨?Museum Lockdown ?쒗븳 ?쒓컙? ?쒕줈 ?ㅻⅨ 臾몄옣?쇰줈 援щ텇?쒕떎.
-- Raw Enum, Data Row ID, Blueprint Class Name??洹몃?濡??뚮젅?댁뼱?먭쾶 ?몄텧?섏? ?딅뒗??
-- ?붾㈃ ?쒕ぉ, 踰꾪듉 ?숈궗, ???쇰꺼, ?섎웾泥섎읆 臾몃㎘???대? 遺꾨챸??吏㏃? UI Label? 媛꾧껐?섍쾶 ?좎??????덈떎.
-- `NSLOCTEXT` Key???댄썑 ?곸뼱 ???쒓뎅???꾩????⑥튂瑜??꾪빐 ?덉젙?곸쑝濡??좎??쒕떎.
+- v1.0의 Source UI Copy는 영어를 사용한다.
+- 플레이어에게 상태를 전달하는 문구는 대상, 현재 상태, 결과 또는 필요한 행동을 알 수 있는 문장형으로 작성한다.
+- `LOCKDOWN`처럼 의미가 모호할 수 있는 단독 상태명 대신 `THE MUSEUM WILL ENTER LOCKDOWN IN {0}.`처럼 게임 내 대상을 명시한다.
+- Forgery 제출 제한 시간과 Museum Lockdown 제한 시간은 서로 다른 문장으로 구분한다.
+- Raw Enum, Data Row ID, Blueprint Class Name을 그대로 플레이어에게 노출하지 않는다.
+- 화면 제목, 버튼 동사, 키 라벨, 수량처럼 문맥이 이미 분명한 짧은 UI Label은 간결하게 유지할 수 있다.
+- `NSLOCTEXT` Key는 이후 영어 → 한국어 현지화 패치를 위해 안정적으로 유지한다.
 
-## Blueprint Graph 湲덉? ??ぉ
+## Blueprint Graph 금지 항목
 
-- Forgery Score 怨꾩궛
-- Original ?뺤젙
-- Replica ?뺤젙
-- Alert 蹂寃?- Lockdown 蹂寃?- Extraction ?깃났 ?먯젙
-- Team Result ?뺤젙
-- Contract Assignment / Quota / Secured Value ?뺤젙
-- Map?먯꽌 Guard / Loot Sensor ?뺣낫瑜??앹꽦
-- Player Status???쒕쾭 ?뺤젙 State瑜?Widget Graph?먯꽌 蹂寃?- ?좉퇋 Server RPC
-- Replicated Gameplay State 吏곸젒 蹂寃?- Inventory ?뺤젙 Mutation
-- QuickSlot ?뺤젙 Mutation
+- Forgery Score 계산
+- Original 확정
+- Replica 확정
+- Alert 변경
+- Lockdown 변경
+- Extraction 성공 판정
+- Team Result 확정
+- Contract Assignment / Quota / Secured Value 확정
+- Map에서 Guard / Loot Sensor 정보를 생성
+- Player Status의 서버 확정 State를 Widget Graph에서 변경
+- 신규 Server RPC
+- Replicated Gameplay State 직접 변경
+- Inventory 확정 Mutation
+- QuickSlot 확정 Mutation
 
 ---
 
 # 15. Blueprint And Asset Cleanup Rules
 
-C++ ??낆쓣 ??젣??寃쎌슦 ?ㅼ쓬 ?쒖꽌濡?Asset ?뺣━瑜??꾨즺?쒕떎.
+C++ 타입을 삭제한 경우 다음 순서로 Asset 정리를 완료한다.
 
-1. 愿??C++ 李몄“ ?쒓굅
+1. 관련 C++ 참조 제거
 2. Development Editor Build
-3. 愿??Blueprint ?닿린
+3. 관련 Blueprint 열기
 4. `Refresh All Nodes`
-5. ??젣??Enum Pin怨?Class Pin ?쒓굅
+5. 삭제된 Enum Pin과 Class Pin 제거
 6. Blueprint Compile
 7. Blueprint Save
-8. JSON 湲곕컲 DataTable? Import JSON ?섏젙 ???촇mport
-9. ??젣 Class Reference Viewer ?뺤씤
+8. JSON 기반 DataTable은 Import JSON 수정 후 재Import
+9. 삭제 Class Reference Viewer 확인
 10. Fix Up Redirectors
-11. PIE ?ㅽ뻾
-12. Missing Class Log ?뺤씤
-13. Invalid Enum Log ?뺤씤
-14. Failed Import Log ?뺤씤
+11. PIE 실행
+12. Missing Class Log 확인
+13. Invalid Enum Log 확인
+14. Failed Import Log 확인
 
-Smoke 諛?Trap 愿??Blueprint? C++ Class???좉퇋 Asset??遺紐??먮뒗 DataTable Class Reference濡??ъ슜?섏? ?딅뒗??
+Smoke 및 Trap 관련 Blueprint와 C++ Class는 신규 Asset의 부모 또는 DataTable Class Reference로 사용하지 않는다.
 
-`DataTableImports/*.json`??Import Source濡??ъ슜?섎뒗 DataTable? JSON??Source of Truth濡?痍④툒?쒕떎.
+`DataTableImports/*.json`을 Import Source로 사용하는 DataTable은 JSON을 Source of Truth로 취급한다.
 
-??DataTable??Row瑜??뺣━???뚮뒗 `.uasset`?먯꽌 吏곸젒 ??젣?섏? ?딄퀬 JSON???섏젙????Unreal Editor?먯꽌 Reimport?쒕떎.
+이 DataTable의 Row를 정리할 때는 `.uasset`에서 직접 삭제하지 않고 JSON을 수정한 뒤 Unreal Editor에서 Reimport한다.
 
 ---
 
 # 16. Numbered Task Boundary
 
-- ?쒖꽦 `TASK-Wn-###`留?援ы쁽?쒕떎.
-- PvE ?쇰쿁 ?댄썑?먮룄 湲곗〈 ?꾨줈?앺듃 二쇱감 踰덊샇瑜??곗냽 ?ъ슜?쒕떎.
-- 蹂꾨룄 `F` Task 泥닿퀎瑜?留뚮뱾吏 ?딅뒗??
-- Task ?쒖옉 ??愿??臾몄꽌? Manifest ?곹깭瑜??뺤씤?쒕떎.
-- Editor ?묒뾽???꾩슂?섎㈃ ?ъ슜?먯슜 Blueprint/Data/Map ?덉감瑜??꾩옱 ??붿뿉???쒓났?쒕떎.
-- ?ъ슜?먭? 紐낆떆?곸쑝濡??붿껌?섏? ?딅뒗 ??蹂꾨룄 ?묒뾽??`.md` ?뚯씪??異붽??섏? ?딅뒗??
-- C++ Build留??깃났?덈떎怨?Editor ?묒뾽 ?ы븿 Task瑜??꾨즺 泥섎━?섏? ?딅뒗??
-- 硫?고뵆?덉씠, Ownership, Replication 二쇱옣? ?ъ슜??PIE 利앷굅媛 ?덉쓣 ?뚮쭔 PASS 泥섎━?쒕떎.
+- 활성 `TASK-Wn-###`만 구현한다.
+- PvE 피벗 이후에도 기존 프로젝트 주차 번호를 연속 사용한다.
+- 별도 `F` Task 체계를 만들지 않는다.
+- Task 시작 전 관련 문서와 Manifest 상태를 확인한다.
+- Editor 작업이 필요하면 사용자용 Blueprint/Data/Map 절차를 현재 대화에서 제공한다.
+- 사용자가 명시적으로 요청하지 않는 한 별도 작업용 `.md` 파일을 추가하지 않는다.
+- C++ Build만 성공했다고 Editor 작업 포함 Task를 완료 처리하지 않는다.
+- 멀티플레이, Ownership, Replication 주장은 사용자 PIE 증거가 있을 때만 PASS 처리한다.
 
-## Codex ?대떦
+## 새 대화 포함 필수 Task 워크플로우
 
-- C++ Gameplay Rule 援ы쁽
-- C++ Authority 援ы쁽
-- C++ Validation 援ы쁽
-- C++ Replication 援ы쁽
-- Repository 肄붾뱶 遺꾩꽍
-- Config 遺꾩꽍
-- Data Import JSON 遺꾩꽍
-- ?뱀씤??踰붿쐞??肄붾뱶 ?섏젙
-- ?ъ슜?먭? ?쒖텧??Build ?ㅻ쪟 ?섏젙
-- Task ?먯젙??理쒖냼 Debug Log 異붽?
-- Debug ?먮뒗 Cheat Command 援ы쁽
-- ?ъ슜?먭? ?쒖텧??PIE Log 湲곕컲 PASS / FAIL / BLOCKED ?먯젙
+아래 절차는 채팅이 새로 생성되거나 이전 대화 Context가 없어도 매번 동일하게 적용한다. 사용자가 작업 규칙을 다시 설명하게 만들지 않는다.
 
-## ?ъ슜??Unreal Editor ?대떦
+### 1. Task Bootstrap
 
-- Blueprint 援ъ꽦
-- Widget Blueprint 援ъ꽦
-- DataTable ?몄쭛
-- DataAsset ?몄쭛
-- Map 諛곗튂
+- 작업 시작 시 `AGENTS.md`, Notion의 해당 주차 페이지와 정확한 `TASK-Wn-###`, 관련 GDD/TDD 범위를 먼저 확인한다.
+- Git 작업 상태와 기존 Asset 경로를 읽기 전용으로 확인하고, 사용자의 기존 변경을 새 작업 결과로 오인하지 않는다.
+- Task ID, 실행 순서, 현재 상태와 증적은 Notion을 기준으로 복구한다. 사용자에게 이전 규칙이나 이미 기록된 진행 상황을 다시 설명해 달라고 요구하지 않는다.
+- AGENTS와 Notion의 Task 번호 또는 범위가 충돌하면 구현보다 동기화를 먼저 한다.
+
+### 2. 구현 전 Deliverable Audit
+
+소스 수정 전에 활성 Task에 필요한 산출물을 다음 범주로 분해한다.
+
+```text
+C++ Rule / Authority / Validation / Replication
+Blueprint Actor / Component Assembly / Asset Assignment
+Widget Blueprint / UI Layout / Animation
+DataTable / DataAsset / Import JSON
+Map Actor Placement / Collision / Navigation / Lighting
+Player-facing Visual / Audio / Interaction Feedback
+Development Editor Build
+PIE Server / Client Runtime Test
+Output Log / Notion Evidence
+```
+
+- 각 범주를 `Codex 담당`, `사용자 Editor 담당`, `현재 Task 불필요`, `후속 Task 담당` 중 하나로 판정한다.
+- 필요한 Editor 작업은 C++ 구현을 마친 뒤 발견하는 것이 아니라 Task 시작 시 식별한다.
+- Editor 작업이 없으면 `Editor 작업 없음`이라고 명시한다. 있으면 Build를 요청하기 전에 Editor Checklist와 실행 순서를 미리 알린다.
+- `.uasset` 파일이 존재한다는 사실은 Blueprint가 올바르게 구성됐거나 화면에 보이거나 Map에 배치됐다는 증거가 아니다.
+- C++ Actor Class가 존재한다는 사실은 Player가 식별하고 상호작용할 수 있는 Presentation Actor가 존재한다는 증거가 아니다.
+- Actor, UI, Data 또는 Map이 완료 조건에 포함되면 관련 Asset의 Parent Class, 필수 Component, Asset Assignment와 실제 Map 배치 여부를 별도로 확인한다.
+- 테스트용 임시 배치와 Release용 영구 배치를 구분하고, 영구 배치가 후속 Task라면 정확한 Task ID를 함께 명시한다.
+- 필수 Editor 선행 작업을 안내하고 사용자가 완료하기 전에는 해당 기능의 Runtime Test 단계로 넘어가지 않는다.
+
+### 3. Task 진행 단계와 완료 판정
+
+대화와 작업 판정에는 다음 진행 단계를 사용한다. 이는 Notion 상태를 대체하지 않는 실행 단계다.
+
+```text
+SCOPED
+→ CODE_READY
+→ USER_BUILD_PASS
+→ EDITOR_READY
+→ PIE_PASS
+→ TASK_PASS
+```
+
+- `CODE_READY`는 C++ 수정과 정적 검사가 끝났다는 뜻일 뿐 Build 성공이나 Task 완료를 뜻하지 않는다.
+- `USER_BUILD_PASS`는 사용자가 해당 코드 Revision을 Build한 뒤 성공을 전달한 경우에만 사용한다.
+- Build 성공 뒤 C++를 다시 수정했다면 이전 Build 증거는 현재 코드에 유효하지 않으므로 다시 Build를 요청한다.
+- `EDITOR_READY`는 필요한 Blueprint/Data/Map 작업을 사용자가 완료하고 Compile/Save 또는 임시 테스트 배치를 확인한 상태다.
+- Build 성공만으로 `EDITOR_READY`, `PIE_PASS` 또는 `TASK_PASS` 처리하지 않는다.
+- `PIE_PASS`는 지정한 Server/Client 절차와 Output Log가 완료 조건을 만족할 때만 사용한다.
+- Notion Task는 중간 단계 동안 `진행중`으로 유지한다. `TASK_PASS` 증적이 확보되기 전에는 완료 처리하지 않는다.
+- 뒤늦게 Editor 선행 작업 누락을 발견하면 즉시 기존 완료 표현을 철회하고, 누락된 작업·영향받는 테스트·재Build 필요 여부를 명확히 정정한다.
+
+### 4. Editor Handoff Gate
+
+사용자에게 Build 또는 Editor 작업을 넘길 때 다음을 빠짐없이 제공한다.
+
+- 현재 실행 단계
+- 열어야 할 정확한 Asset 또는 Map 경로
+- 확인하거나 선택할 Actor / Parent Class / Component
+- 변경할 Property와 값
+- 임시 테스트 배치인지 Release 영구 배치인지
+- Blueprint Compile / Save와 Map Save 여부
+- C++ 재Build 필요 여부
+- 완료 후 다음 단계가 Editor 작업인지 PIE인지
+
+Editor 작업이 필요한 Task에서 위 Checklist 없이 바로 PIE 명령부터 제공하지 않는다.
+
+### 5. Debug Fixture와 Presentation 규칙
+
+- Player가 찾아서 상호작용해야 하는 Actor의 Debug Spawn은 기존 Presentation Blueprint를 우선 생성한다.
+- Static Mesh, Widget, Decal 또는 명확한 Debug Drawing이 없는 순수 C++ 부모 Actor를 시각 상호작용 테스트용으로 생성하지 않는다.
+- Presentation Blueprint Load에 실패해 C++ 부모로 Fallback한 경우 로그를 `Result=FAIL` 또는 `BLOCKED`로 남기고, 보이지 않는 Actor를 사용해 테스트하라고 안내하지 않는다.
+- Debug Spawn 성공은 Release Map 배치 완료를 의미하지 않는다.
+- 기존 Blueprint를 재사용할 때도 Parent Class, Visual Component, Collision과 상호작용 가능 여부를 Editor Checklist에 포함한다.
+
+### 6. Runtime Test 안내 형식
+
+- 모든 명령은 실행 창을 `SERVER` 또는 `CLIENT`로 명확히 표시한다.
+- 복사할 명령은 한 명령당 하나의 `text` Code Block으로 분리한다.
+- 준비 명령, Player 조작, 판정용 Dump를 섞지 않고 실행 순서대로 안내한다.
+- 모든 중간 명령에 장문의 기대값을 반복하지 않고, 각 Test의 마지막 판정용 Dump와 핵심 관찰 기준만 제공한다.
+- Build와 필수 Editor 선행 작업이 현재 코드 Revision에 대해 확인된 뒤에만 Runtime Test 절차를 제공한다.
+- 테스트 결과를 받으면 PASS / FAIL / BLOCKED와 다음 작업을 먼저 판정하고 Notion 증적을 동기화한다.
+
+## Codex 담당
+
+- C++ Gameplay Rule 구현
+- C++ Authority 구현
+- C++ Validation 구현
+- C++ Replication 구현
+- Repository 코드 분석
+- Config 분석
+- Data Import JSON 분석
+- 승인된 범위의 코드 수정
+- 사용자가 제출한 Build 오류 수정
+- Task 판정용 최소 Debug Log 추가
+- Debug 또는 Cheat Command 구현
+- 사용자가 제출한 PIE Log 기반 PASS / FAIL / BLOCKED 판정
+
+## 사용자 Unreal Editor 담당
+
+- Blueprint 구성
+- Widget Blueprint 구성
+- DataTable 편집
+- DataAsset 편집
+- Map 배치
 - Scale
 - Collision
 - Lighting
@@ -1166,96 +1295,99 @@ Smoke 諛?Trap 愿??Blueprint? C++ Class???좉퇋 Asset??遺紐??먮뒗 Da
 - Asset Assignment
 - Component Assembly
 - Development Editor Build
-- Build Log ?쒖텧
+- Build Log 제출
 - Blueprint Compile
 - Save
-- PIE ?ㅽ뻾
-- Debug Command ?ㅽ뻾
-- Output Log ?쒖텧
+- PIE 실행
+- Debug Command 실행
+- Output Log 제출
 
-Codex??Unreal C++ Build瑜?吏곸젒 ?ㅽ뻾?섏? ?딅뒗??
+Codex는 Unreal C++ Build를 직접 실행하지 않는다.
 
-?ъ슜?먭? Build瑜??ㅽ뻾?섍퀬 ?ㅻ쪟媛 諛쒖깮?섎㈃ ?꾩껜 ?ㅻ쪟 ?꾩튂? 硫붿떆吏瑜??꾨떖?쒕떎. Codex???대떦 濡쒓렇瑜?洹쇨굅濡?肄붾뱶瑜??섏젙?쒕떎.
+사용자가 Build를 실행하고 오류가 발생하면 전체 오류 위치와 메시지를 전달한다. Codex는 해당 로그를 근거로 코드를 수정한다.
 
-Codex???ъ슜?먭? 紐낆떆?곸쑝濡??붿껌?섏? ?딅뒗 ???ㅼ쓬???섑뻾?섏? ?딅뒗??
+Codex는 사용자가 명시적으로 요청하지 않는 한 다음을 수행하지 않는다.
 
-- Unreal Editor ?ㅽ뻾
-- Unreal Editor 醫낅즺
-- Unreal Editor UI 吏곸젒 議곗옉
-- Unreal MCP ?곌껐
-- Unreal MCP ?ъ뿰寃?- Unreal MCP 蹂듦뎄
-- `.uasset` 吏곸젒 ?섏젙
-- `.umap` 吏곸젒 ?섏젙
+- Unreal Editor 실행
+- Unreal Editor 종료
+- Unreal Editor UI 직접 조작
+- Unreal MCP 연결
+- Unreal MCP 재연결
+- Unreal MCP 복구
+- `.uasset` 직접 수정
+- `.umap` 직접 수정
 
-## Editor ?묒뾽 ?덉감 ?뺤떇
+## Editor 작업 절차 형식
 
-Editor ?묒뾽 ?덈궡?먮뒗 ?ㅼ쓬留??ы븿?쒕떎.
+Editor 작업 안내에는 다음만 포함한다.
 
-- ??Asset ?먮뒗 Map
-- ?좏깮??Actor ?먮뒗 Component
-- 蹂寃쏀븷 Property? 媛?- Compile / Save ?쒖꽌
+- 열 Asset 또는 Map
+- 선택할 Actor 또는 Component
+- 변경할 Property와 값
+- Compile / Save 순서
 - PIE Mode
-- Player ??- ?ㅽ뻾??Debug Command
-- ?쒖텧??Output Log
+- Player 수
+- 실행할 Debug Command
+- 제출할 Output Log
 
 ---
 
 # 17. Runtime Test And Log Handoff
 
-- Runtime Task??湲곗〈 `UHeistDebugFunctionLibrary`? `UHeistCheatManager`瑜??곗꽑 ?ъ슜?쒕떎.
-- ?꾨즺 ?먯젙??濡쒓렇媛 遺議깊븯硫??쒖꽦 Task 踰붿쐞 ?덉뿉??理쒖냼 Debug Log瑜?異붽??쒕떎.
-- ?ъ슜?먮뒗 Unreal Editor PIE?먯꽌 Debug Command瑜??ㅽ뻾?쒕떎.
-- PIE??Disconnect, Session Cleanup, Owner EndPlay ?먮뒗 ?ъ젒???곗냽??寃利앹뿉??Client 肄섏넄 `disconnect`瑜??ъ슜?섏? ?딅뒗??
-- PIE Client瑜?醫낅즺?섍린 ?꾪빐 `ESC`瑜??ъ슜?섏? ?딅뒗??
-- ??寃利앹뿉???먭꺽 Client ?곌껐 醫낅즺媛 ?꾩슂?섎㈃ Listen Server媛 ?쒕쾭 沅뚰븳 `KickPlayer` Debug Command濡????Player瑜??쒓굅?쒕떎.
-- ?꾩옱 怨듭슜 Kick 寃쎈줈??`HeistObjectAssemblyKickPlayer <PlayerId>`?대ŉ, ?대쫫怨?愿怨꾩뾾??`AGameSession::KickPlayer()`瑜??몄텧?섎뒗 ?쒕쾭 沅뚰븳 吏꾨떒 紐낅졊?쇰줈 ?ъ슜?쒕떎.
-- ?뚯뒪???덈궡?먯꽌 `disconnect`媛 ?꾩슂??寃껋쿂??蹂댁씠??寃쎌슦?먮룄 ??긽 ??Listen Server Kick ?덉감濡??泥댄븳??
+- Runtime Task는 기존 `UHeistDebugFunctionLibrary`와 `UHeistCheatManager`를 우선 사용한다.
+- 완료 판정용 로그가 부족하면 활성 Task 범위 안에서 최소 Debug Log를 추가한다.
+- 사용자는 Unreal Editor PIE에서 Debug Command를 실행한다.
+- PIE의 Disconnect, Session Cleanup, Owner EndPlay 또는 재접속 연속성 검증에서 Client 콘솔 `disconnect`를 사용하지 않는다.
+- PIE Client를 종료하기 위해 `ESC`를 사용하지 않는다.
+- 위 검증에서 원격 Client 연결 종료가 필요하면 Listen Server가 서버 권한 `KickPlayer` Debug Command로 대상 Player를 제거한다.
+- 현재 공용 Kick 경로는 `HeistObjectAssemblyKickPlayer <PlayerId>`이며, 이름과 관계없이 `AGameSession::KickPlayer()`를 호출하는 서버 권한 진단 명령으로 사용한다.
+- 테스트 안내에서 `disconnect`가 필요한 것처럼 보이는 경우에도 항상 위 Listen Server Kick 절차로 대체한다.
 
 ## Session Debug Commands
 
-- Development 寃利?紐낅졊? `HeistSessionHost`, `HeistSessionJoin <Code>`, `HeistSessionLeave`, `HeistSessionMap <M01|M02|M03|Random>`, `HeistSessionStart`, `HeistSessionComplete`, `HeistSessionReturn`, `HeistSessionDump`瑜??ъ슜?쒕떎.
-- `HeistSessionComplete`??Listen Server???쒖꽦 Steam Session怨?2紐??댁긽??Player瑜??붽뎄?섎ŉ ?꾩옱 Player瑜?Escaped濡??뺤젙?섍퀬 Result瑜??ш뎄?깊븳 ??Match Phase瑜?`End`濡??꾪솚?쒕떎.
-- `HeistSessionDump`??Player / Identity / Slot / Roster / UI Snapshot怨?Map Selection???쇱튂?섍퀬 Gameplay Phase媛 `InGame` ?먮뒗 `End`????`Result=PASS`瑜?異쒕젰?쒕떎.
-- Shipping? Debug / Cheat Command媛 ?쒓굅?섎?濡???紐낅졊 湲곕컲 Formal Test???ъ슜?섏? ?딅뒗??
-- ?ъ슜?먮뒗 愿??Output Log瑜??쒖텧?쒕떎.
-- ?붾㈃ ?숈옉???꾨즺 議곌굔?대㈃ 愿李?寃곌낵???쒖텧?쒕떎.
-- ?쒖텧??濡쒓렇? 愿李?寃곌낵瑜?Task ?꾨즺 議곌굔???議고븳??
-- 寃곌낵??`PASS`, `FAIL`, `BLOCKED`濡??먯젙?쒕떎.
-- Build ?깃났留뚯쑝濡?Runtime Task瑜?PASS 泥섎━?섏? ?딅뒗??
-- 媛쒕퀎 Task PASS? Weekly Gate PASS瑜?遺꾨━?쒕떎.
-- Formal Test PASS瑜?蹂꾨룄濡?愿由ы븳??
+- Development 검증 명령은 `HeistSessionHost`, `HeistSessionJoin <Code>`, `HeistSessionLeave`, `HeistSessionMap <M01|M02|M03|Random>`, `HeistSessionStart`, `HeistSessionComplete`, `HeistSessionReturn`, `HeistSessionDump`를 사용한다.
+- `HeistSessionComplete`는 Listen Server의 활성 Steam Session과 2명 이상의 Player를 요구하며 현재 Player를 Escaped로 확정하고 Result를 재구성한 뒤 Match Phase를 `End`로 전환한다.
+- `HeistSessionDump`는 Player / Identity / Slot / Roster / UI Snapshot과 Map Selection이 일치하고 Gameplay Phase가 `InGame` 또는 `End`일 때 `Result=PASS`를 출력한다.
+- Shipping은 Debug / Cheat Command가 제거되므로 위 명령 기반 Formal Test에 사용하지 않는다.
+- 사용자는 관련 Output Log를 제출한다.
+- 화면 동작이 완료 조건이면 관찰 결과도 제출한다.
+- 제출된 로그와 관찰 결과를 Task 완료 조건에 대조한다.
+- 결과는 `PASS`, `FAIL`, `BLOCKED`로 판정한다.
+- Build 성공만으로 Runtime Task를 PASS 처리하지 않는다.
+- 개별 Task PASS와 Weekly Gate PASS를 분리한다.
+- Formal Test PASS를 별도로 관리한다.
 
 ## Debug Logging Policy
 
-- Gameplay Class? Component??吏꾨떒 諛??뚯뒪??紐⑹쟻?쇰줈 `UE_LOG`瑜?吏곸젒 ?몄텧?섏? ?딅뒗??
-- 吏꾨떒 濡쒓렇???ш굔 ?대쫫???쒕윭?섎뒗 `UHeistDebugFunctionLibrary::Debug...` ?⑥닔濡?湲곕줉?쒕떎.
-- 濡쒓렇 Category, Severity, 臾몄옣, ?꾨뱶 ?쒖꽌? `Result` Schema??`UHeistDebugFunctionLibrary`媛 ?뚯쑀?쒕떎.
-- ?몄텧遺??Format String???④린??踰붿슜 Logging Macro瑜?以묒븰?붿쓽 ?泥??섎떒?쇰줈 ?ъ슜?섏? ?딅뒗??
-- ?몄텧遺??Actor, Component, `FName`, ?섏튂? Boolean 媛숈? ?먯떆 Context留??꾨떖?쒕떎.
-- 臾몄옄??議곕┰, Soft Object Path 蹂?? 諛곗뿴 ?붿빟怨?Enum 臾몄옄??蹂?섏? Debug ?⑥닔??Shipping Guard ?대??먯꽌 ?섑뻾?쒕떎.
-- ?꾩옱 Target??湲곕낯 Shipping ?ㅼ젙?먯꽌??`Fatal`???꾨땶 `UE_LOG`媛 ?먮룞 ?쒓굅?섎?濡? ?⑥닚 異쒕젰 李⑤떒留뚯쓣 ?꾪븳 ?몄텧遺 `#if !UE_BUILD_SHIPPING`? 異붽??섏? ?딅뒗??
-- Actor ?먯깋, 諛곗뿴 ?쒗쉶, ?붾㈃ 異쒕젰 ?먮뒗 湲고? Debug ?꾩슜 ?곗궛???덈뒗 ?⑥닔??`#if UE_BUILD_SHIPPING` 議곌린 諛섑솚 ?먮뒗 ?숇벑??Compile Guard瑜??좎??쒕떎.
-- Runtime State瑜?蹂寃쏀븯??Debug/Cheat ?⑥닔??濡쒓렇 ?ㅼ젙怨?臾닿??섍쾶 Shipping?먯꽌 而댄뙆??寃쎈줈媛 ?쒖꽦?붾릺吏 ?딅룄濡?紐낆떆?곸쑝濡?Guard?쒕떎.
-- ?ㅼ젣 Shipping ?댁쁺 濡쒓렇媛 ?꾩슂?댁쭏 寃쎌슦 Debug Log? ?욎? ?딄퀬 蹂꾨룄 ?뺤콉怨?Task瑜?癒쇱? ?뺤쓽?쒕떎.
+- Gameplay Class와 Component는 진단 및 테스트 목적으로 `UE_LOG`를 직접 호출하지 않는다.
+- 진단 로그는 사건 이름이 드러나는 `UHeistDebugFunctionLibrary::Debug...` 함수로 기록한다.
+- 로그 Category, Severity, 문장, 필드 순서와 `Result` Schema는 `UHeistDebugFunctionLibrary`가 소유한다.
+- 호출부에 Format String을 남기는 범용 Logging Macro를 중앙화의 대체 수단으로 사용하지 않는다.
+- 호출부는 Actor, Component, `FName`, 수치와 Boolean 같은 원시 Context만 전달한다.
+- 문자열 조립, Soft Object Path 변환, 배열 요약과 Enum 문자열 변환은 Debug 함수의 Shipping Guard 내부에서 수행한다.
+- 현재 Target의 기본 Shipping 설정에서는 `Fatal`이 아닌 `UE_LOG`가 자동 제거되므로, 단순 출력 차단만을 위한 호출부 `#if !UE_BUILD_SHIPPING`은 추가하지 않는다.
+- Actor 탐색, 배열 순회, 화면 출력 또는 기타 Debug 전용 연산이 있는 함수는 `#if UE_BUILD_SHIPPING` 조기 반환 또는 동등한 Compile Guard를 유지한다.
+- Runtime State를 변경하는 Debug/Cheat 함수는 로그 설정과 무관하게 Shipping에서 컴파일 경로가 활성화되지 않도록 명시적으로 Guard한다.
+- 실제 Shipping 운영 로그가 필요해질 경우 Debug Log와 섞지 않고 별도 정책과 Task를 먼저 정의한다.
 
 ---
 
 # 17A. Packaging Pipeline
 
-- Project Version Source of Truth??`Config/DefaultGame.ini`??`ProjectVersion`?대떎.
-- Win64 Development / Shipping Package??`Tools/Packaging/PackageProject.ps1`濡??앹꽦?쒕떎.
-- Package 異쒕젰? `Build/Packages`, Steam Depot ?꾨낫??`Build/SteamCandidate` ?꾨옒???앹꽦?쒕떎.
-- ?꾨줈?앺듃?먯꽌 ?ъ슜?섏? ?딅뒗 湲곕낯 `ChaosCloth` Plugin? 鍮꾪솢?깊솕?섎ŉ, 洹??섏〈?깆씤 `Buoyancy`, `Water`, `Landmass`??Editor Content瑜?Release Cook???ы븿?섏? ?딅뒗??
-- `HeistBuildDump`??Development Package?먯꽌 Version, Configuration, Platform, Cooked Runtime, Online Subsystem怨?Session Build Id瑜?寃利앺븳??
-- Editor Archive Directory瑜?Development? Shipping???ъ궗?⑺빐 ?댁쟾 Runtime Binary ?먮뒗 Log媛 ?욎씤 ?대뜑??Steam Depot ?꾨낫濡??ъ슜?섏? ?딅뒗??
-- `ValidatePackage.ps1`??Development / Shipping Runtime Binary ?쇳빀???ㅽ뙣 泥섎━?섍퀬 UE 5.8 Prerequisite??`UEPrereqSetup_x64.exe` ?먮뒗 `vc_redist.x64.exe`瑜??덉슜?쒕떎.
-- Steam Depot VDF??`preview=1` ?꾨낫留??앹꽦?섎ŉ Upload? SetLive???먮룞 ?섑뻾?섏? ?딅뒗??
+- Project Version Source of Truth는 `Config/DefaultGame.ini`의 `ProjectVersion`이다.
+- Win64 Development / Shipping Package는 `Tools/Packaging/PackageProject.ps1`로 생성한다.
+- Package 출력은 `Build/Packages`, Steam Depot 후보는 `Build/SteamCandidate` 아래에 생성한다.
+- 프로젝트에서 사용하지 않는 기본 `ChaosCloth` Plugin은 비활성화하며, 그 의존성인 `Buoyancy`, `Water`, `Landmass`의 Editor Content를 Release Cook에 포함하지 않는다.
+- `HeistBuildDump`는 Development Package에서 Version, Configuration, Platform, Cooked Runtime, Online Subsystem과 Session Build Id를 검증한다.
+- Editor Archive Directory를 Development와 Shipping에 재사용해 이전 Runtime Binary 또는 Log가 섞인 폴더는 Steam Depot 후보로 사용하지 않는다.
+- `ValidatePackage.ps1`는 Development / Shipping Runtime Binary 혼합을 실패 처리하고 UE 5.8 Prerequisite의 `UEPrereqSetup_x64.exe` 또는 `vc_redist.x64.exe`를 허용한다.
+- Steam Depot VDF는 `preview=1` 후보만 생성하며 Upload와 SetLive는 자동 수행하지 않는다.
 
 ---
 
 # 18. Verification Standard
 
-媛?Task 寃곌낵???ㅼ쓬??援щ텇?쒕떎.
+각 Task 결과는 다음을 구분한다.
 
 - `Implementation Complete`
 - `Blueprint/Data/Map Pending`
@@ -1264,31 +1396,32 @@ Editor ?묒뾽 ?덈궡?먮뒗 ?ㅼ쓬留??ы븿?쒕떎.
 - `FAIL`
 - `BLOCKED`
 
-PIE媛 ?꾩슂??Task???ㅼ쓬??紐낆떆?쒕떎.
+PIE가 필요한 Task는 다음을 명시한다.
 
 - PIE Mode
-- Player ??- ?ㅽ뻾??Window
-- ?낅젰
+- Player 수
+- 실행할 Window
+- 입력
 - Debug Command
-- 湲곕? ?붾㈃ ?숈옉
-- 湲곕? Log
-- PASS ?좏샇
-- FAIL ?좏샇
-- Task Test ?먮뒗 Weekly Gate 援щ텇
+- 기대 화면 동작
+- 기대 Log
+- PASS 신호
+- FAIL 신호
+- Task Test 또는 Weekly Gate 구분
 
-Known Warning? ?④린吏 ?딅뒗??
+Known Warning은 숨기지 않는다.
 
 ## Known Non-blocking Warnings
 
-- `aqProf.dll` / VTune ?좏깮??Profiler 寃쎄퀬? Title / Lobby ?꾪솚 以묒쓽 ?쇱떆??AI Perception / Recast 寃쎄퀬???꾩옱 ?뺤씤??鍮꾩감??Known Warning?대떎.
-- Crash, Travel ?ㅽ뙣 ?먮뒗 Gameplay Map ?뚭?媛 ?숇컲?섎㈃ ?ㅼ떆 遺꾨쪟?쒕떎.
+- `aqProf.dll` / VTune 선택적 Profiler 경고와 Title / Lobby 전환 중의 일시적 AI Perception / Recast 경고는 현재 확인된 비차단 Known Warning이다.
+- Crash, Travel 실패 또는 Gameplay Map 회귀가 동반되면 다시 분류한다.
 
-?ㅼ쓬 臾몄젣??Weekly Gate瑜?李⑤떒?쒕떎.
+다음 문제는 Weekly Gate를 차단한다.
 
 - Critical Replication
-- Ownership ?꾨컲
+- Ownership 위반
 - Duplicate Artifact
-- Input Restore ?ㅽ뙣
+- Input Restore 실패
 - Orphan Session Lock
 - Missing Parent Class
 - Invalid DataTable Enum
@@ -1300,18 +1433,18 @@ Known Warning? ?④린吏 ?딅뒗??
 
 # 19. Legacy Preservation
 
-?ㅼ쓬 援ы쁽? ?꾩쭅 李몄“ 媛먯궗媛 ?앸굹吏 ?딆? 寃쎌슦?먮쭔 Legacy濡?蹂댁〈?????덈떎.
+다음 구현은 아직 참조 감사가 끝나지 않은 경우에만 Legacy로 보존할 수 있다.
 
-- Top-Down Camera 愿??Blueprint
-- Cursor Aim 愿???낅젰
+- Top-Down Camera 관련 Blueprint
+- Cursor Aim 관련 입력
 
-???먮쫫?먯꽌???몄텧?섏? ?딅뒗??
+새 흐름에서는 호출하지 않는다.
 
-Reference Viewer? ?뚭? ?뺤씤 ??蹂꾨룄 Cleanup Task?먯꽌 ?쒓굅?쒕떎.
+Reference Viewer와 회귀 확인 후 별도 Cleanup Task에서 제거한다.
 
-湲곗〈 寃利?湲곕줉? ?ъ궗??媛?ν븳 Regression Baseline?쇰줈 蹂댁〈?????덈떎.
+기존 검증 기록은 재사용 가능한 Regression Baseline으로 보존할 수 있다.
 
-?ㅼ쓬 湲곕뒫? Legacy Preservation ??곸씠 ?꾨땲??
+다음 기능은 Legacy Preservation 대상이 아니다.
 
 - Smoke Grenade
 - Smoke Projectile
@@ -1320,71 +1453,198 @@ Reference Viewer? ?뚭? ?뺤씤 ??蹂꾨룄 Cleanup Task?먯꽌 ?쒓굅?쒕떎
 - Noise Trap
 - Trap Placement Cast
 - Smoke / Trap QuickSlot
-- Trap ?꾩슜 GameplayTag
+- Trap 전용 GameplayTag
 - NoiseTrap SoundPing
 
 ---
 
-# 20. Execution Roadmap
+# 19A. Greed Decision Framework
 
-This section is driven by the active task roadmap and Notion Task/Test records (Source of Truth), not by weekly phase labels.
+이 규칙은 게임이 플레이어 대신 `더 훔치기 / 탈출`을 자동 선택하도록 만드는 AI가 아니다. Contract Run의 UI, Telemetry, Playtest와 코딩 에이전트가 동일한 판단 근거를 사용하도록 하는 설계·검증 계약이다.
 
-Current scope is Rev 11 Contract Run / Player Experience Foundation.
+한 번의 판단에서는 단일 결과만 허용한다. P0~P6 충돌 시 가장 높은 우선순위의 결과가 다른 분기를 독점하며 중복 실행하지 않는다.
+
+## Decision Trigger
+
+- 상태 전환 직후: 탐색↔작업, Alert 단계 변경, Session Owner 교체
+- 작업 진행 중 10초 간격
+- Lockdown, Arrest, Timeout, Kick, Disconnect 직후
+- 매 Match에서 최소 1회 판단 근거를 Telemetry 또는 Debug Snapshot으로 재현할 수 있어야 한다.
+
+## Decision Input Contract
+
+| 입력 | 정의 | 범위 |
+|---|---|---|
+| `PotentialGain` | 현재 Target에서 기대되는 수익 | 0~1 정규화 |
+| `SurvivalMargin` | 거리, Guard 반응, 이동 안정성 | 0~1 정규화 |
+| `ExtractionProximity` | 거리와 Exit 상태를 반영한 탈출 성공성 | 0~1 정규화 |
+| `AlertPressure` | Quiet~Lockdown 단계 | 0~4 원본, 식에 넣기 전 `AlertStage / 4`로 정규화 |
+| `RecoveryRisk` | 실책 복구 난이도 | 0~1 정규화 |
+| `CarryWeight` | 현재 운반 무게 | P1 우선순위 조건에 사용 |
+| `MatchUrgency` | 경과 시간과 목표 거리 압박 | P0/P4 조건과 Telemetry에 사용 |
+
+```text
+DecisionScore =
+    0.40 × PotentialGain
+  + 0.25 × SurvivalMargin
+  + 0.20 × ExtractionProximity
+  - 0.10 × NormalizedAlertPressure
+  - 0.05 × RecoveryRisk
+```
+
+- `DecisionScore >= 0.55`이면 확장 후보, 미만이면 퇴각 후보로 분류한다.
+- 원문 초안의 `1.0` Threshold는 양수 항의 이론상 최대가 `0.85`라 도달할 수 없으므로 사용하지 않는다.
+- Score는 P0~P6보다 낮은 보조 판단이다. Priority Rule이 발동하면 Score 결과를 무시한다.
+
+## Priority Branch P0~P6
+
+| 순위 | 조건 | 단일 판정 | 실행 결과 |
+|---|---|---|---|
+| P0 | Alert가 Searching 이상 또는 Lockdown 시작 60초 이내 | 퇴각 | 작업 중단 후 탈출 준비 |
+| P1 | CarryWeight가 2.5 이상 또는 현재 속도 210cm/s 미만 | 퇴각 | 저중량 Route로 회귀, Loot Drop 또는 포기 |
+| P2 | 동일 Exhibit 20초 이상 체류, Timeout 1회 누적 또는 Guard 추적 | 퇴각 | 현재 작업 Cancel 또는 즉시 Submit 후 퇴각 |
+| P3 | 최근 1분 Major Incident 0회이고 Quota 미달 | 저위험 확장 | 추가 시도 1회 허용, Sprint 제한 |
+| P4 | Reward Remaining이 평균 Target 기여치의 1.5배 이상, Alert가 Alarmed 이하, MatchTime 80% 이하 | 확장 | 고가 또는 중가 Target 1회 추가 시도 |
+| P5 | QuotaMargin 0.15 이하, Alert가 Suspicious 이하, CarryWeight 2.0 이하, Team 경보 공유 완료 | 퇴각 | 즉시 Extraction Mode 전환, 탐색 1회만 예외 허용 |
+| P6 | Team Alive 2인 이상이고 Current Target 미확인 | 분산 | 탐색과 감시 역할로 분리 |
+| 기본 | 위 규칙 미충족 | 보수적 퇴각 | 안전 Route와 Deposit 우선 |
+
+## State Transition And Feedback
+
+| 현재 상태 | 조건 | 다음 상태 |
+|---|---|---|
+| 탐색 | 확장 후보이며 Target 확인 | 작업: Forgery / Assembly |
+| 작업 | P0/P1/P2 발동 | 탈출 준비 |
+| 작업 | Submit 성공 | 휴대 / 교체 완료 |
+| 탈출 준비 | Exit 승인 | 탈출 실행 |
+| 탈출 실행 | Deposit 성공 | Player 정산 또는 Team Result 대기 |
+| 탈출 실행 | Route 차단 또는 재추적 | 재판단 |
+
+상태 전이는 HUD, Team Status, Map, Audio 중 최소 두 채널에 동기화한다. 판단 근거를 Player-facing 숫자 공식으로 노출하지 않으며, 화면에는 원인과 권장 행동을 자연어·Icon·Audio로 표현한다.
+
+## Verification
+
+- 10초 판단과 상태 전환 판단 Trigger가 중복 실행되지 않는지 확인한다.
+- P0~P6 충돌 시 하나의 Branch만 선택되는지 확인한다.
+- `DecisionScore` 입력이 모두 정의된 정규화 범위를 지키고 NaN/Inf가 없는지 확인한다.
+- Match End에서 선택된 Priority, Score Input과 최종 Branch를 Debug Snapshot으로 재현할 수 있어야 한다.
+- 구현 PASS/FAIL/BLOCKED와 Evidence Link는 Notion Task/Test 기록에 남긴다.
+
+---
+
+# 20. Current Phase
+
+W1~W5는 완료됐다. 개별 Task 상태와 테스트 로그 번호는 Notion Task 기록을 Source of Truth로 사용한다.
+
+현재 실행 기준은 Rev 11 W6 — Contract Run / Player Experience Foundation이다.
 
 ## Rev 11 Execution Roadmap
 
-### Contract Run / Player Experience Foundation
+### W6 — Contract Run Feature Complete
 
-1. `TASK-W6-001` Contract Definition / Required Target / Loot Value Quota
-2. `TASK-W6-002` Server-seeded Multi-Exhibit Assignment / Spawn Variation
-3. `TASK-W6-003` Repeated Surface / Object Forgery Run / Speed Timer / Auto Submit
-4. `TASK-W6-004` Carried Value / Secured Value / Quota Replication
-5. `TASK-W6-005` Walk / Sprint / Weight / Footstep Noise
-6. `TASK-W6-006` Player Display Name / Nameplate / Team Status
-7. `TASK-W6-007` Full-Screen Floor Plan Map / Navigation
-8. `TASK-W6-008` Detection / Stun / Arrest / Carry / Escape Feedback
-9. `TASK-W6-009` Original Drop / Recovery / Shared Extraction Deposit
-10. `TASK-W6-010` Contract HUD / Outcome / Replica Recap
-11. `TASK-W6-011` End Phase / Lobby Return / 3-Map Exit Continuity
-12. `TASK-W6-012` 1~4 Player Contract Run Gate
+0. `TASK-W6-000` Contract Foundation / Required Target / Loot Value Quota
+1. `TASK-W6-001` Original Carrier Validation / Neutral World Drop / Recovery
+2. `TASK-W6-002` Shared Extraction Actor / Player Deposit
+3. `TASK-W6-003` Player Escape / Arrest State
+4. `TASK-W6-004` Full / Partial / Failure Conditions
+5. `TASK-W6-005` Team Reward Formula
+6. `TASK-W6-006` Player Contribution Capture
+7. `TASK-W6-007` Team Result ViewModel / Widget
+8. `TASK-W6-008` End Phase / Lobby Return
+9. `TASK-W6-009` 3-Map Shared Exit Placement
+10. `TASK-W6-010` W6 End-to-End Mission Gate
+11. `TASK-W6-011` Shared Loose Loot Content 5+
 
-### Game Experience Integration / Content / Balance
+### W6-002 / W6-009 Shared Extraction 경계
 
-1. `TASK-W7-001` Contract Pacing / Quota / Player Count Balance
-2. `TASK-W7-002` Guard Reaction / Failure-forward Presentation
-3. `TASK-W7-003` Player / Guard / Forgery / Contract Audio Pass
-4. `TASK-W7-004` Status / Alert / Extraction VFX Pass
-5. `TASK-W7-005` Interaction / Exhibit / Exit / Signage Readability
-6. `TASK-W7-006` Tutorial / First Contract Onboarding
-7. `TASK-W7-007` Shared Loose Loot Content / Spawn Variety
-8. `TASK-W7-008` M01 / M02 / M03 Contract Placement Variation
-9. `TASK-W7-009` Result Story / Funny Replica Showcase
-10. `TASK-W7-010` External Playtest / Game Experience Gate
+- `TASK-W6-002`는 `AHeistVentActor`의 서버 권한 Shared Extraction 규칙, Player별 Escape Cast, Original / Loose Loot Deposit과 남은 Crew의 계속 진행을 검증한다.
+- Shared Extraction의 기존 Presentation Shell은 `/Game/Blueprints/World/Actors/Vent/BP_Vent`를 사용한다.
+- `BP_Vent.uasset`의 존재만으로 `TASK-W6-002`를 완료 처리하지 않는다. Parent Class, Visual Mesh, Interaction Collision과 실제 상호작용 가능 상태를 Editor에서 확인해야 한다.
+- W6-002 Formal PIE는 사용자가 현재 Gameplay Map에 `BP_Vent`를 임시 배치하거나, Presentation Blueprint를 생성하는 승인된 Debug Command를 사용한다.
+- W6-002 Debug Spawn은 `/Game/Blueprints/World/Actors/Vent/BP_Vent.BP_Vent_C`를 생성해야 한다. 순수 `AHeistVentActor` Fallback은 시각 테스트 PASS로 인정하지 않는다.
+- M01 / M02 / M03의 최종 위치, 동선, Guard 압박, Collision과 Presentation을 포함한 영구 배치는 `TASK-W6-009` 범위다.
+- W6-002의 임시 배치 또는 Debug Spawn을 W6-009 완료 증거로 재사용하지 않는다.
+- W6-002 완료에는 현재 코드 Revision의 사용자 Build 성공, 보이는 Shared Exit, Server/Client Deposit, 중복 Deposit 방지, 취소 조건, 개별 Escape 후 남은 Crew 진행과 Output Log 증적이 모두 필요하다.
 
-### Release Shaping / QA / Final RC
+W6는 `Contract 확인 → Forgery/Assembly → Original/Loose Loot Carry → Alert/Chase → Player별 Deposit → Outcome/Result → Lobby Return`의 단일 완주 흐름을 먼저 닫는다. Nameplate, VFX, Audio, Map UX와 세부 Balance를 이유로 Critical Path를 중단하지 않는다.
 
-- M01 / M02 / M03 Layout, Lighting? Environment Art Final
-- Character Locomotion, Carry, Forgery, Stun / Arrest Animation Final
-- HUD / Map / Nameplate / Result Resolution怨?Accessibility Final
-- Audio Mix / VFX / Feedback Final
-- 1~4 Player Balance / Network / Ownership Regression
-- Performance / Memory / Hitch
-- Feature Lock / RC1 / External Test
-- Final Blocker Fix / Final Shipping Build
-- Steam Depot / Store / Credits / Release
-- Launch Verification / Hotfix Readiness
+### W7 — Player Experience Integration
+
+1. `TASK-W7-001` 2~4 Player Contract / Quota / Penalty Balance
+2. `TASK-W7-002` Remote Nameplate / Team Status Synchronization
+3. `TASK-W7-003` Main HUD Team / Carrier / Escape / Arrest Status
+4. `TASK-W7-004` Stun Presentation Package
+5. `TASK-W7-005` Arrest / Rescue / Team End Presentation
+6. `TASK-W7-006` Carry / Heavy Feedback
+7. `TASK-W7-007` Full-Screen Map UX / Input Restore
+8. `TASK-W7-008` Walk / Sprint / Weight / Footstep Risk-Reward
+9. `TASK-W7-009` Detection / Alert / Lockdown Warning
+10. `TASK-W7-010` Escape Loop Decision Rhythm
+11. `TASK-W7-011` Spawn Variation / Contract Target Distribution
+
+### W8 — 3-Map Release Shape / Feature Lock Preparation
+
+1. `TASK-W8-001` M01 Classical Layout / Lighting Final Pass
+2. `TASK-W8-002` M02 Eastern Layout / Lighting Final Pass
+3. `TASK-W8-003` M03 Contemporary Layout / Lighting Final Pass
+4. `TASK-W8-004` Map Guard Route / Profile Finalization
+5. `TASK-W8-005` Map Ambient / Gameplay Audio Pass
+6. `TASK-W8-006` HUD / Result / Feedback Polish
+7. `TASK-W8-007` 3-Map 1~4 Player Balance Gate
+
+### W9 — Feature Lock / QA Sprint 1
+
+1. `TASK-W9-001` Feature Lock / Branch / Version Freeze
+2. `TASK-W9-002` 3-Map Regression Matrix
+3. `TASK-W9-003` Network / Ownership Edge Cases
+4. `TASK-W9-004` Forgery / Display Case Edge Cases
+5. `TASK-W9-005` Performance / Memory / Hitch Pass
+6. `TASK-W9-006` Blocker Fix Sprint A
+7. `TASK-W9-007` Reference / Redirector / License Audit
+
+### W10 — RC1 / Internal Gate
+
+1. `TASK-W10-001` Blocker Fix Sprint B / Regression
+2. `TASK-W10-002` RC1 Package / Store Checklist
+3. `TASK-W10-003` Internal RC1 End-to-End Gate
+
+### W11 — External Test / Final Scope
+
+1. `TASK-W11-001` External Test / RC1 Gate
+2. `TASK-W11-002` Final Scope / Issue Triage
+3. `TASK-W11-003` Final Blocker Fix / Regression
+
+### W12 — Final RC / Release Gate
+
+1. `TASK-W12-001` RC2 / Final Shipping Build
+2. `TASK-W12-002` Final 3-Map / 1~4 Regression
+3. `TASK-W12-003` Steam Depot / Branch / Store Upload
+4. `TASK-W12-004` Store Page / Credits / Changelog Final
+5. `TASK-W12-005` Publish Checklist / Release
+6. `TASK-W12-006` Launch Smoke Test
+7. `TASK-W12-007` Hotfix / Rollback / Post-launch Monitoring
+
+## Game Completion Gate
+
+Task는 다음 네 단계를 모두 만족해야 완료로 판정한다.
+
+1. **Functional**: C++ Authority, Validation, Replication과 Data Contract가 구현된다.
+2. **Integrated Loop**: Debug Command 없이 실제 게임 흐름에서 진입, 실행, 종료와 상태 원복이 가능하다.
+3. **Player Experience**: 플레이어가 목표, 위험, 실패 원인과 다음 행동을 HUD, World Presentation, Audio 중 최소 두 채널로 이해한다.
+4. **Replay / Evidence**: 동일 세션 또는 Lobby Return 이후 두 번째 판을 Softlock과 잔여 상태 없이 시작하며 사용자 Build/Editor/PIE 증적을 Notion에 남긴다.
+
+Build 성공이나 단일 함수 호출 성공만으로 Task를 완료 처리하지 않는다. Asset/Map 배치가 필요한 Task는 C++ 완료와 Gameplay Gate 완료를 분리해 추적한다.
 
 ## Rev 11 Execution Priority
 
-- Player媛 ?댄빐?????녿뒗 ?⑥? ?곹깭瑜?癒쇱? ?쒓굅?쒕떎.
-- Contract Run??Required Target / Quota / Secured Value瑜?Extraction / Result蹂대떎 癒쇱? ?뺤젙?쒕떎.
-- Walk / Sprint, Nameplate, Team Status, Map怨?Status Feedback? Polish濡?誘몃（吏 ?딅뒗??
-- Gameplay Rule, Authority, Validation怨?Replication? 怨꾩냽 C++媛 ?뚯쑀?쒕떎.
-- Animation, Audio, VFX? Layout? ?뱀씤??C++ State Hook???쒗쁽?쒕떎.
-- Contract Run 단계에서 목표/우선순위가 정해진 항목을 먼저 확정한다.
-- Game Experience 단계에서 Feedback이 완료되는 항목을 우선으로 안정화한다.
-- Feature Lock ?댄썑 ?좉퇋 Gameplay Feature瑜?異붽??섏? ?딅뒗??
-- 湲곗〈 怨쇨굅 ?대젰 李몄“ 踰덊샇??Rev 11 ?댁쟾 ??ぉ ?뺤씤?⑹쑝濡쒕쭔 ?ъ슜?쒕떎.
-- Public Release 紐⑺몴??`2026-09-20`???좎??섎릺 RC Gate媛 ?ㅽ뙣?섎㈃ ?덉쭏???④린吏 ?딅뒗??
+- Player가 이해할 수 없는 숨은 상태를 먼저 제거한다.
+- Contract Run의 Required Target / Quota / Secured Value를 Extraction / Result보다 먼저 확정한다.
+- Walk / Sprint, Nameplate, Team Status, Map과 Status Feedback은 Polish로 미루지 않는다.
+- Gameplay Rule, Authority, Validation과 Replication은 계속 C++가 소유한다.
+- Animation, Audio, VFX와 Layout은 승인된 C++ State Hook을 표현한다.
+- W6에서 한 판의 완주 가능성을 먼저 닫고, W7에서 협동 가독성과 탐욕/퇴각 리듬을 검증한다.
+- W8에서 세 맵을 Release Shape로 만들고 신규 Gameplay Feature를 잠근다.
+- W9~W10은 QA와 RC1, W11은 외부 테스트, W12는 Final RC와 Release Gate로 사용한다.
+- Public Release 목표일 `2026-09-20`을 유지하되 RC Gate가 실패하면 출시 Task를 `Blocked`로 표시하고 날짜 때문에 통과시키지 않는다.
 
-?몃? ?ㅺ퀎? 二쇱감蹂?Task ?뺤쓽??`Museum_Heist_GDD.docx` 理쒖떊 Revision怨?Notion Task 湲곕줉???④퍡 ?뺤씤?쒕떎.
+제품 경험과 밸런스 의도는 `Museum_Heist_GDD.docx`, 구현 계약은 `Museum_Heist_TDD.docx`, 주차별 Task 상태와 Evidence는 Notion Task/Test 기록을 확인한다.

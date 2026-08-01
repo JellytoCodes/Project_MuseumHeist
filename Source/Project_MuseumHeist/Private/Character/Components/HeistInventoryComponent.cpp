@@ -2,6 +2,7 @@
 
 #include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameMode.h"
+#include "Core/HeistGameState.h"
 #include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerState.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
@@ -358,7 +359,8 @@ const FHeistOriginalCarryEntry& UHeistInventoryComponent::GetOriginalCarryEntry(
 	return OriginalCarryEntry;
 }
 
-bool UHeistInventoryComponent::TryBeginOriginalCarry(AHeistPlayerState* CarryingPlayerState, const FName ArtifactId, const float Weight, AActor* SourceDisplayCase)
+bool UHeistInventoryComponent::TryBeginOriginalCarry(AHeistPlayerState* CarryingPlayerState, const FName ArtifactId, const int32 ArtifactValue, const float Weight, const bool bRequiredTarget,
+															 AActor* SourceDisplayCase)
 {
 	AHeistPlayerCharacter* OwnerCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
 	const TCHAR* RejectReason = nullptr;
@@ -374,7 +376,7 @@ bool UHeistInventoryComponent::TryBeginOriginalCarry(AHeistPlayerState* Carrying
 	{
 		RejectReason = TEXT("PlayerStatePawnMismatch");
 	}
-	else if (ArtifactId.IsNone() || !FMath::IsFinite(Weight) || Weight < 0.0f || !IsValid(SourceDisplayCase))
+	else if (ArtifactId.IsNone() || ArtifactValue <= 0 || !FMath::IsFinite(Weight) || Weight < 0.0f || !IsValid(SourceDisplayCase))
 	{
 		RejectReason = TEXT("InvalidCarryDefinition");
 	}
@@ -402,10 +404,16 @@ bool UHeistInventoryComponent::TryBeginOriginalCarry(AHeistPlayerState* Carrying
 	}
 
 	OriginalCarryEntry.ArtifactId = ArtifactId;
+	OriginalCarryEntry.ArtifactValue = ArtifactValue;
 	OriginalCarryEntry.Weight = Weight;
+	OriginalCarryEntry.bRequiredTarget = bRequiredTarget;
 	OriginalCarryEntry.SourceDisplayCase = SourceDisplayCase;
 	OwnerCharacter->ForceNetUpdate();
 	NotifyInventoryChanged();
+	if (AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr)
+	{
+		HeistGameState->RefreshContractCarriedValue();
+	}
 	return true;
 }
 
@@ -423,6 +431,139 @@ bool UHeistInventoryComponent::TryEndOriginalCarry(AHeistPlayerState* CarryingPl
 	OriginalCarryEntry = FHeistOriginalCarryEntry();
 	OwnerCharacter->ForceNetUpdate();
 	NotifyInventoryChanged();
+	if (AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr)
+	{
+		HeistGameState->RefreshContractCarriedValue();
+	}
+	return true;
+}
+
+bool UHeistInventoryComponent::TryBuildPlayerDepositPayload(FHeistPlayerDepositPayload& OutPayload, const TCHAR*& OutRejectReason) const
+{
+	OutPayload = FHeistPlayerDepositPayload();
+	OutRejectReason = nullptr;
+
+	const AHeistPlayerCharacter* OwnerCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
+	const AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	if (!IsValid(OwnerCharacter) || !OwnerCharacter->HasAuthority())
+	{
+		OutRejectReason = TEXT("RequiresAuthority");
+		return false;
+	}
+	if (!IsValid(HeistGameMode))
+	{
+		OutRejectReason = TEXT("MissingAuthGameMode");
+		return false;
+	}
+
+	int64 LooseLootValue = 0;
+	double LooseLootWeight = 0.0;
+	for (const FHeistInventoryFastArrayItem& Entry : ReplicatedInventory.Items)
+	{
+		const FHeistInventoryItem& InventoryItem = Entry.InventoryItem;
+		FHeistItemDataRow ItemDefinition;
+		if (!HeistGameMode->TryGetItemDefinition(InventoryItem.ItemId, ItemDefinition))
+		{
+			OutRejectReason = TEXT("InvalidItemDefinition");
+			return false;
+		}
+		if (ItemDefinition.ItemType != EHeistItemType::Loot)
+		{
+			continue;
+		}
+
+		FHeistLootDataRow LootDefinition;
+		if (!HeistGameMode->TryGetLootDefinition(InventoryItem.ItemId, LootDefinition) || InventoryItem.Quantity <= 0)
+		{
+			OutRejectReason = TEXT("InvalidLootDefinition");
+			return false;
+		}
+
+		LooseLootValue += static_cast<int64>(LootDefinition.ScoreValue) * static_cast<int64>(InventoryItem.Quantity);
+		LooseLootWeight += static_cast<double>(ItemDefinition.Weight) * static_cast<double>(InventoryItem.Quantity);
+		OutPayload.LooseLootItemCount += InventoryItem.Quantity;
+		if (LooseLootValue > MAX_int32 || !FMath::IsFinite(LooseLootWeight) || LooseLootWeight > static_cast<double>(TNumericLimits<float>::Max()))
+		{
+			OutRejectReason = TEXT("DepositValueOverflow");
+			return false;
+		}
+	}
+
+	OutPayload.LooseLootValue = static_cast<int32>(LooseLootValue);
+	OutPayload.LooseLootWeight = static_cast<float>(LooseLootWeight);
+	OutPayload.OriginalCarry = OriginalCarryEntry;
+	const int64 TotalValue = static_cast<int64>(OutPayload.LooseLootValue) + static_cast<int64>(OutPayload.GetOriginalValue());
+	if ((OutPayload.HasDeposit() && TotalValue <= 0) || TotalValue > MAX_int32 || !FMath::IsFinite(OutPayload.GetTotalWeight()))
+	{
+		OutRejectReason = TEXT("InvalidDepositTotals");
+		return false;
+	}
+
+	return true;
+}
+
+bool UHeistInventoryComponent::TryCommitPlayerDeposit(AHeistPlayerState* DepositingPlayerState, const FHeistPlayerDepositPayload& ExpectedPayload,
+												  FHeistPlayerDepositPayload& OutCommittedPayload, const TCHAR*& OutRejectReason)
+{
+	OutCommittedPayload = FHeistPlayerDepositPayload();
+	OutRejectReason = nullptr;
+
+	AHeistPlayerCharacter* OwnerCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
+	if (!IsValid(OwnerCharacter) || !OwnerCharacter->HasAuthority() || !IsValid(DepositingPlayerState) || DepositingPlayerState->GetPawn() != OwnerCharacter)
+	{
+		OutRejectReason = TEXT("InvalidDepositOwner");
+		return false;
+	}
+
+	FHeistPlayerDepositPayload CurrentPayload;
+	if (!TryBuildPlayerDepositPayload(CurrentPayload, OutRejectReason) || !CurrentPayload.Matches(ExpectedPayload))
+	{
+		OutRejectReason = OutRejectReason != nullptr ? OutRejectReason : TEXT("DepositPayloadChanged");
+		return false;
+	}
+	if (!DepositingPlayerState->CanRemoveLootScoreAndWeight(CurrentPayload.LooseLootValue, CurrentPayload.LooseLootWeight))
+	{
+		OutRejectReason = TEXT("LooseLootTotalsMismatch");
+		return false;
+	}
+	if (CurrentPayload.OriginalCarry.IsValid() && CurrentPayload.OriginalCarry.Weight > DepositingPlayerState->GetTotalLootWeight() - CurrentPayload.LooseLootWeight + KINDA_SMALL_NUMBER)
+	{
+		OutRejectReason = TEXT("OriginalWeightMismatch");
+		return false;
+	}
+
+	if (CurrentPayload.LooseLootItemCount > 0 && !DepositingPlayerState->RemoveLootScoreAndWeight(CurrentPayload.LooseLootValue, CurrentPayload.LooseLootWeight))
+	{
+		OutRejectReason = TEXT("LooseLootTotalsCommitFailed");
+		return false;
+	}
+	if (CurrentPayload.OriginalCarry.IsValid() && !DepositingPlayerState->RemoveCarriedOriginalWeight(CurrentPayload.OriginalCarry.Weight))
+	{
+		OutRejectReason = TEXT("OriginalWeightCommitFailed");
+		return false;
+	}
+
+	int32 RemovedLooseLootEntryCount = 0;
+	for (int32 ItemIndex = ReplicatedInventory.Items.Num() - 1; ItemIndex >= 0; --ItemIndex)
+	{
+		FHeistItemDataRow ItemDefinition;
+		const FHeistInventoryItem& InventoryItem = ReplicatedInventory.Items[ItemIndex].InventoryItem;
+		if (TryGetItemDefinition(InventoryItem.ItemId, ItemDefinition) && ItemDefinition.ItemType == EHeistItemType::Loot)
+		{
+			ClearQuickSlotReferences(InventoryItem.InstanceId);
+			ReplicatedInventory.Items.RemoveAt(ItemIndex);
+			++RemovedLooseLootEntryCount;
+		}
+	}
+	if (RemovedLooseLootEntryCount > 0)
+	{
+		ReplicatedInventory.MarkArrayDirty();
+	}
+	OriginalCarryEntry = FHeistOriginalCarryEntry();
+
+	OwnerCharacter->ForceNetUpdate();
+	NotifyInventoryChanged();
+	OutCommittedPayload = CurrentPayload;
 	return true;
 }
 

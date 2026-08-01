@@ -97,6 +97,106 @@ enum class EHeistAlertLevel : uint8
 	Lockdown
 };
 
+UENUM(BlueprintType)
+enum class EHeistContractOutcome : uint8
+{
+	None,
+	Success,
+	PartialHaul,
+	Failed
+};
+
+/**
+ * Replicated server-authoritative Contract Run state.
+ * CarriedValue is still at risk; only SecuredValue contributes to outcome.
+ */
+USTRUCT(BlueprintType)
+struct PROJECT_MUSEUMHEIST_API FHeistContractSnapshot
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Contract")
+	FName ContractId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Contract")
+	FName MapId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Contract")
+	int32 AssignmentSeed = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Contract")
+	FName RequiredTargetArtifactId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Contract")
+	FName RequiredTargetCaseId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Contract")
+	int32 LootValueQuota = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Contract")
+	int32 CarriedValue = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Contract")
+	int32 SecuredValue = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Contract")
+	bool bRequiredTargetSecured = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Contract")
+	EHeistContractOutcome Outcome = EHeistContractOutcome::None;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Contract")
+	int32 Revision = 0;
+
+	bool IsInitialized() const
+	{
+		return Revision > 0 && !ContractId.IsNone() && !MapId.IsNone() && !RequiredTargetArtifactId.IsNone() && !RequiredTargetCaseId.IsNone() && LootValueQuota > 0;
+	}
+
+	bool IsProgressValid() const
+	{
+		return CarriedValue >= 0 && SecuredValue >= 0;
+	}
+
+	bool IsSuccessConditionMet() const
+	{
+		return IsInitialized() && bRequiredTargetSecured && SecuredValue >= LootValueQuota;
+	}
+
+	EHeistContractOutcome ResolveTerminalOutcome() const
+	{
+		if (!bRequiredTargetSecured)
+		{
+			return EHeistContractOutcome::Failed;
+		}
+		return SecuredValue >= LootValueQuota ? EHeistContractOutcome::Success : EHeistContractOutcome::PartialHaul;
+	}
+
+	bool IsOutcomeConsistent() const
+	{
+		switch (Outcome)
+		{
+		case EHeistContractOutcome::None:
+			return true;
+		case EHeistContractOutcome::Success:
+			return IsSuccessConditionMet();
+		case EHeistContractOutcome::PartialHaul:
+			return IsInitialized() && bRequiredTargetSecured && SecuredValue < LootValueQuota;
+		case EHeistContractOutcome::Failed:
+			return IsInitialized() && !bRequiredTargetSecured;
+		default:
+			return false;
+		}
+	}
+
+	bool operator==(const FHeistContractSnapshot& Other) const
+	{
+		return ContractId == Other.ContractId && MapId == Other.MapId && AssignmentSeed == Other.AssignmentSeed && RequiredTargetArtifactId == Other.RequiredTargetArtifactId &&
+			   RequiredTargetCaseId == Other.RequiredTargetCaseId && LootValueQuota == Other.LootValueQuota && CarriedValue == Other.CarriedValue && SecuredValue == Other.SecuredValue &&
+			   bRequiredTargetSecured == Other.bRequiredTargetSecured && Outcome == Other.Outcome && Revision == Other.Revision;
+	}
+};
+
 #pragma endregion
 
 #pragma region ResultData

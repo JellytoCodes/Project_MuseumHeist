@@ -12,6 +12,7 @@ class AHeistPaintingDisplayCaseActor;
 class AHeistGuardCharacter;
 class AHeistGameState;
 class AHeistLootActor;
+class AHeistDroppedOriginalActor;
 class AHeistPlayerState;
 class AHeistThrowableProjectile;
 class AHeistVentActor;
@@ -239,6 +240,9 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestLootPickup(AHeistLootActor* TargetLootActor);
+
+	UFUNCTION(Server, Reliable)
+	void Server_RequestDroppedOriginalPickup(AHeistDroppedOriginalActor* TargetDroppedOriginal);
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestEscape(AHeistVentActor* TargetVentActor);

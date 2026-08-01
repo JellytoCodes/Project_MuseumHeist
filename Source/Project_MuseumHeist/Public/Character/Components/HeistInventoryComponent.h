@@ -59,8 +59,11 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryComponent : public UActorComponent
 	bool TrySetInventoryOpen(bool bInInventoryOpen);
 	bool IsCarryingOriginal() const;
 	const FHeistOriginalCarryEntry& GetOriginalCarryEntry() const;
-	bool TryBeginOriginalCarry(AHeistPlayerState* CarryingPlayerState, FName ArtifactId, float Weight, AActor* SourceDisplayCase);
+	bool TryBeginOriginalCarry(AHeistPlayerState* CarryingPlayerState, FName ArtifactId, int32 ArtifactValue, float Weight, bool bRequiredTarget, AActor* SourceDisplayCase);
 	bool TryEndOriginalCarry(AHeistPlayerState* CarryingPlayerState, AActor* ExpectedSourceDisplayCase, FHeistOriginalCarryEntry& OutReleasedEntry);
+	bool TryBuildPlayerDepositPayload(FHeistPlayerDepositPayload& OutPayload, const TCHAR*& OutRejectReason) const;
+	bool TryCommitPlayerDeposit(AHeistPlayerState* DepositingPlayerState, const FHeistPlayerDepositPayload& ExpectedPayload, FHeistPlayerDepositPayload& OutCommittedPayload,
+								const TCHAR*& OutRejectReason);
 
   private:
 	bool TryFindAutoPlacement(const FHeistItemDataRow& ItemDefinition, FIntPoint& OutGridPosition, bool& bOutRotated) const;

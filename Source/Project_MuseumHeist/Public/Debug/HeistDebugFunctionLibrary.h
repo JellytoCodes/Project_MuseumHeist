@@ -337,6 +337,16 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 
 #pragma endregion
 
+#pragma region DepositDebug
+
+  public:
+	static void DebugDepositHelp(APlayerController* PlayerController);
+	static void DebugDepositOpen(APlayerController* PlayerController);
+	static void DebugDepositSpawnFor(APlayerController* PlayerController, int32 PlayerId, float Distance);
+	static void DebugDepositDump(APlayerController* PlayerController, int32 PlayerId);
+
+#pragma endregion
+
 #pragma region ObjectAssemblyDebug
 
   public:

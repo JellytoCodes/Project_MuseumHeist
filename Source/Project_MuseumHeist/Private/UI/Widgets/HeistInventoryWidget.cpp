@@ -126,14 +126,25 @@ void UHeistInventoryWidget::RefreshVisibilityFromConfirmedSnapshot()
 		const TArray<FHeistInventoryItem>& ConfirmedItems = InventoryViewModel->GetItems();
 		const int32 GridColumns = InventoryViewModel->GetGridColumnCount();
 		const int32 GridRows = InventoryViewModel->GetGridRowCount();
+		const bool bCarryingOriginal = InventoryViewModel->IsCarryingOriginal();
+		const FText& OriginalCarrySummary = InventoryViewModel->GetOriginalCarrySummaryText();
 		if (IsValid(InventorySummaryText))
 		{
-			InventorySummaryText->SetText(
-				FText::Format(NSLOCTEXT("HeistInventory", "InventorySummaryFormat", "ITEMS  {0}  |  GRID  {1}x{2}"),
-							  FText::AsNumber(ConfirmedItems.Num()), FText::AsNumber(GridColumns), FText::AsNumber(GridRows)));
+			const FText GridSummary = FText::Format(NSLOCTEXT("HeistInventory", "InventorySummaryFormat", "ITEMS  {0}  |  GRID  {1}x{2}"),
+											 FText::AsNumber(ConfirmedItems.Num()), FText::AsNumber(GridColumns), FText::AsNumber(GridRows));
+			InventorySummaryText->SetText(bCarryingOriginal
+									  ? FText::Format(NSLOCTEXT("HeistInventory", "InventoryWithOriginalSummaryFormat", "{0}  |  {1}"), GridSummary, OriginalCarrySummary)
+									  : GridSummary);
+		}
+		if (IsValid(OriginalCarrySummaryText))
+		{
+			OriginalCarrySummaryText->SetText(OriginalCarrySummary);
+			OriginalCarrySummaryText->SetVisibility(bCarryingOriginal ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 		}
 
 		BP_RefreshConfirmedInventory(ConfirmedItems, GridColumns, GridRows);
+		BP_RefreshConfirmedOriginalCarry(bCarryingOriginal, InventoryViewModel->GetOriginalArtifactId(), InventoryViewModel->GetOriginalArtifactValue(),
+										 InventoryViewModel->GetOriginalCarryWeight(), InventoryViewModel->IsOriginalRequiredTarget());
 		RebuildConfirmedInventory(ConfirmedItems, GridColumns, GridRows);
 	}
 }

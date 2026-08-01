@@ -12,6 +12,7 @@
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
 #include "Data/HeistArtifactDataTypes.h"
+#include "Data/HeistContractDataTypes.h"
 #include "Data/HeistGameBalanceDataAsset.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "Engine/DataTable.h"
@@ -63,6 +64,26 @@ int32 FindLowestAvailableHeistPlayerId(const AHeistGameState* HeistGameState, co
 	}
 
 	return INDEX_NONE;
+}
+
+FName ResolveContractMapId(const UObject* WorldContextObject, const AHeistGameState* HeistGameState)
+{
+	const FString LevelName = UGameplayStatics::GetCurrentLevelName(WorldContextObject, true);
+	if (LevelName.StartsWith(TEXT("M01"), ESearchCase::IgnoreCase))
+	{
+		return FName(TEXT("M01"));
+	}
+	if (LevelName.StartsWith(TEXT("M02"), ESearchCase::IgnoreCase))
+	{
+		return FName(TEXT("M02"));
+	}
+	if (LevelName.StartsWith(TEXT("M03"), ESearchCase::IgnoreCase))
+	{
+		return FName(TEXT("M03"));
+	}
+
+	const FName SelectedMapId = IsValid(HeistGameState) ? HeistGameState->GetSelectedLobbyMapId() : NAME_None;
+	return SelectedMapId == FName(TEXT("M01")) || SelectedMapId == FName(TEXT("M02")) || SelectedMapId == FName(TEXT("M03")) ? SelectedMapId : NAME_None;
 }
 }
 
@@ -124,7 +145,7 @@ void AHeistGameMode::StartPlay()
 
 	InitializeSurfaceTemplateSelection();
 	InitializeAlertState();
-	InitializeObjectiveFromPlacedTargetCase();
+	InitializeContractFromPlacedTargetCase();
 	StartEscapePhaseTimer();
 }
 
@@ -259,7 +280,7 @@ void AHeistGameMode::Logout(AController* Exiting)
 			if (AHeistPaintingDisplayCaseActor* DisplayCase = *DisplayCaseIterator; IsValid(DisplayCase))
 			{
 				ClearedCaseLockCount += DisplayCase->CancelSessionForOwner(ExitingPlayerState, FName(TEXT("OwnerDisconnected"))) ? 1 : 0;
-				ReleasedOriginalCount += DisplayCase->ReleaseOriginalForCarrier(ExitingPlayerState, FName(TEXT("OwnerDisconnected"))) ? 1 : 0;
+				ReleasedOriginalCount += DisplayCase->DropOriginalForCarrier(ExitingPlayerState, FName(TEXT("OwnerDisconnected"))) ? 1 : 0;
 			}
 		}
 		for (TActorIterator<AHeistObjectDisplayCaseActor> DisplayCaseIterator(GetWorld()); DisplayCaseIterator; ++DisplayCaseIterator)
@@ -267,7 +288,7 @@ void AHeistGameMode::Logout(AController* Exiting)
 			if (AHeistObjectDisplayCaseActor* DisplayCase = *DisplayCaseIterator; IsValid(DisplayCase))
 			{
 				ClearedCaseLockCount += DisplayCase->CancelSessionForOwner(ExitingPlayerState, FName(TEXT("OwnerDisconnected"))) ? 1 : 0;
-				ReleasedOriginalCount += DisplayCase->ReleaseOriginalForCarrier(ExitingPlayerState, FName(TEXT("OwnerDisconnected"))) ? 1 : 0;
+				ReleasedOriginalCount += DisplayCase->DropOriginalForCarrier(ExitingPlayerState, FName(TEXT("OwnerDisconnected"))) ? 1 : 0;
 			}
 		}
 		UHeistDebugFunctionLibrary::DebugOnlineSessionShutdownCleanup(this, FName(TEXT("OwnerDisconnected")), CancelledActionCount, CancelledForgeryCount, ClosedInventoryCount,
@@ -362,9 +383,9 @@ void AHeistGameMode::PrepareForOnlineSessionShutdown(const FName Reason)
 
 #pragma endregion
 
-#pragma region Objective
+#pragma region ContractObjective
 
-void AHeistGameMode::InitializeObjectiveFromPlacedTargetCase()
+void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 {
 	if (!HasAuthority())
 	{
@@ -378,22 +399,52 @@ void AHeistGameMode::InitializeObjectiveFromPlacedTargetCase()
 		return;
 	}
 
-	TArray<AHeistPaintingDisplayCaseActor*> MatchingTargetCases;
+	struct FPlacedTargetCase
+	{
+		AActor* Actor = nullptr;
+		FName CaseId = NAME_None;
+		FName ArtifactId = NAME_None;
+		FString CaseState;
+		bool bCaseStateValid = false;
+	};
+
+	TArray<FPlacedTargetCase> MatchingTargetCases;
+	const auto IsConfiguredTargetCase = [this](const FName CaseId)
+	{
+		return (!ObjectiveTargetCaseId.IsNone() && CaseId == ObjectiveTargetCaseId) ||
+			(ObjectiveTargetCaseId.IsNone() && CaseId.ToString().EndsWith(TEXT("_Target"), ESearchCase::IgnoreCase));
+	};
+
 	for (TActorIterator<AHeistPaintingDisplayCaseActor> DisplayCaseIterator(GetWorld()); DisplayCaseIterator; ++DisplayCaseIterator)
 	{
 		AHeistPaintingDisplayCaseActor* DisplayCase = *DisplayCaseIterator;
-		if (!IsValid(DisplayCase))
+		if (!IsValid(DisplayCase) || !IsConfiguredTargetCase(DisplayCase->GetDisplayCaseId()))
 		{
 			continue;
 		}
 
-		const FName DisplayCaseId = DisplayCase->GetDisplayCaseId();
-		const bool bMatchesConfiguredId = !ObjectiveTargetCaseId.IsNone() && DisplayCaseId == ObjectiveTargetCaseId;
-		const bool bMatchesMapTargetConvention = ObjectiveTargetCaseId.IsNone() && DisplayCaseId.ToString().EndsWith(TEXT("_Target"), ESearchCase::IgnoreCase);
-		if (bMatchesConfiguredId || bMatchesMapTargetConvention)
+		FPlacedTargetCase& Candidate = MatchingTargetCases.AddDefaulted_GetRef();
+		Candidate.Actor = DisplayCase;
+		Candidate.CaseId = DisplayCase->GetDisplayCaseId();
+		Candidate.ArtifactId = DisplayCase->GetTargetArtifactId();
+		Candidate.CaseState = UEnum::GetValueAsString(DisplayCase->GetDisplayCaseState());
+		Candidate.bCaseStateValid = DisplayCase->GetDisplayCaseState() == EHeistDisplayCaseState::Secured;
+	}
+
+	for (TActorIterator<AHeistObjectDisplayCaseActor> DisplayCaseIterator(GetWorld()); DisplayCaseIterator; ++DisplayCaseIterator)
+	{
+		AHeistObjectDisplayCaseActor* DisplayCase = *DisplayCaseIterator;
+		if (!IsValid(DisplayCase) || !IsConfiguredTargetCase(DisplayCase->GetObjectCaseId()))
 		{
-			MatchingTargetCases.Add(DisplayCase);
+			continue;
 		}
+
+		FPlacedTargetCase& Candidate = MatchingTargetCases.AddDefaulted_GetRef();
+		Candidate.Actor = DisplayCase;
+		Candidate.CaseId = DisplayCase->GetObjectCaseId();
+		Candidate.ArtifactId = DisplayCase->GetTargetArtifactId();
+		Candidate.CaseState = UEnum::GetValueAsString(DisplayCase->GetAssemblyState());
+		Candidate.bCaseStateValid = DisplayCase->GetAssemblyState() == EHeistObjectAssemblyState::Secured;
 	}
 
 	if (MatchingTargetCases.Num() != 1)
@@ -403,18 +454,35 @@ void AHeistGameMode::InitializeObjectiveFromPlacedTargetCase()
 		return;
 	}
 
-	AHeistPaintingDisplayCaseActor* TargetDisplayCase = MatchingTargetCases[0];
-	const FName TargetArtifactId = TargetDisplayCase->GetTargetArtifactId();
+	const FPlacedTargetCase& TargetDisplayCase = MatchingTargetCases[0];
+	const FName TargetArtifactId = TargetDisplayCase.ArtifactId;
 	FHeistArtifactDataRow ArtifactDefinition;
 	const bool bArtifactValid = TryGetArtifactDefinition(TargetArtifactId, ArtifactDefinition);
-	const bool bCaseStateValid = TargetDisplayCase->GetDisplayCaseState() == EHeistDisplayCaseState::Secured;
-	const bool bObjectiveInitialized =
-		bArtifactValid && bCaseStateValid && HeistGameState->SetObjectiveSnapshot(TargetArtifactId, TargetDisplayCase->GetDisplayCaseId(), EHeistObjectiveState::Available, nullptr);
+	const bool bCaseStateValid = TargetDisplayCase.bCaseStateValid;
+
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	const FName ContractId = IsValid(BalanceData) ? BalanceData->DefaultContractDefinition.ContractId : NAME_None;
+	FHeistContractDataRow ContractDefinition;
+	FString ContractFailureReason;
+	const bool bContractDefinitionValid = TryGetContractDefinition(ContractId, ContractDefinition) && ContractDefinition.IsRuntimeDefinitionValid(&ContractFailureReason);
+	const int32 PlayerCount = FMath::Clamp(HeistGameState->GetConnectedPlayerCount(), 1, 4);
+	const int32 LootValueQuota = bContractDefinitionValid ? ContractDefinition.ResolveLootValueQuota(PlayerCount) : 0;
+	const bool bRequiredTargetNeedsOptionalLoot = bArtifactValid && ArtifactDefinition.ArtifactValue < LootValueQuota;
+	const FName MapId = ResolveContractMapId(this, HeistGameState);
+	const int32 AssignmentSeed = FMath::Rand();
+	const bool bContractInitialized = bArtifactValid && bCaseStateValid && bContractDefinitionValid && bRequiredTargetNeedsOptionalLoot && !MapId.IsNone() &&
+		HeistGameState->InitializeContractSnapshot(ContractDefinition.ContractId, MapId, AssignmentSeed, TargetArtifactId, TargetDisplayCase.CaseId, LootValueQuota);
+	const bool bObjectiveInitialized = bContractInitialized &&
+		HeistGameState->SetObjectiveSnapshot(TargetArtifactId, TargetDisplayCase.CaseId, EHeistObjectiveState::Available, nullptr);
 
 	const FString InitializationMessage =
-		FString::Printf(TEXT("Objective initialization: TargetCase=%s CaseId=%s ArtifactId=%s Location=%s CaseState=%s CaseStateValid=%s ArtifactValid=%s ObjectiveState=%s Result=%s"),
-						*GetNameSafe(TargetDisplayCase), *TargetDisplayCase->GetDisplayCaseId().ToString(), *TargetArtifactId.ToString(), *TargetDisplayCase->GetActorLocation().ToCompactString(),
-						*UEnum::GetValueAsString(TargetDisplayCase->GetDisplayCaseState()), bCaseStateValid ? TEXT("true") : TEXT("false"), bArtifactValid ? TEXT("true") : TEXT("false"),
+		FString::Printf(TEXT("Contract objective initialization: Contract=%s Map=%s Seed=%d Players=%d Quota=%d TargetValue=%d RequiresOptionalLoot=%s TargetCase=%s CaseId=%s ArtifactId=%s Location=%s CaseState=%s CaseStateValid=%s ArtifactValid=%s ContractDefinitionValid=%s ContractFailure=%s ContractInitialized=%s ObjectiveState=%s Result=%s"),
+						*ContractDefinition.ContractId.ToString(), *MapId.ToString(), AssignmentSeed, PlayerCount, LootValueQuota, ArtifactDefinition.ArtifactValue,
+						bRequiredTargetNeedsOptionalLoot ? TEXT("true") : TEXT("false"),
+						*GetNameSafe(TargetDisplayCase.Actor), *TargetDisplayCase.CaseId.ToString(), *TargetArtifactId.ToString(), *TargetDisplayCase.Actor->GetActorLocation().ToCompactString(),
+						*TargetDisplayCase.CaseState, bCaseStateValid ? TEXT("true") : TEXT("false"), bArtifactValid ? TEXT("true") : TEXT("false"),
+						bContractDefinitionValid ? TEXT("true") : TEXT("false"), ContractFailureReason.IsEmpty() ? TEXT("None") : *ContractFailureReason,
+						bContractInitialized ? TEXT("true") : TEXT("false"),
 						*UEnum::GetValueAsString(HeistGameState->GetObjectiveState()), bObjectiveInitialized ? TEXT("PASS") : TEXT("FAIL"));
 	if (bObjectiveInitialized)
 	{
@@ -704,6 +772,12 @@ UDataTable* AHeistGameMode::GetItemDataTable() const
 	return ResolvedBalanceData->ItemDataTable.LoadSynchronous();
 }
 
+UDataTable* AHeistGameMode::GetContractDataTable() const
+{
+	const UHeistGameBalanceDataAsset* ResolvedBalanceData = ResolveGameBalanceData();
+	return IsValid(ResolvedBalanceData) && !ResolvedBalanceData->ContractDataTable.IsNull() ? ResolvedBalanceData->ContractDataTable.LoadSynchronous() : nullptr;
+}
+
 UDataTable* AHeistGameMode::GetArtifactDataTable() const
 {
 	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset) ? GameBalanceDataAsset.Get() : GetDefault<UHeistGameBalanceDataAsset>();
@@ -777,6 +851,58 @@ bool AHeistGameMode::TryGetItemDefinition(const FName ItemId, FHeistItemDataRow&
 	}
 
 	OutItemDefinition = *ItemDefinition;
+	return true;
+}
+
+bool AHeistGameMode::TryGetContractDefinition(const FName ContractId, FHeistContractDataRow& OutContractDefinition) const
+{
+	OutContractDefinition = FHeistContractDataRow();
+	if (ContractId.IsNone())
+	{
+		UE_LOG(LogHeist, Error, TEXT("Contract definition lookup rejected: Reason=MissingContractId"));
+		return false;
+	}
+
+	const UDataTable* ContractDataTable = GetContractDataTable();
+	if (IsValid(ContractDataTable))
+	{
+		if (ContractDataTable->GetRowStruct() != FHeistContractDataRow::StaticStruct())
+		{
+			UE_LOG(LogHeist, Error, TEXT("Contract definition lookup rejected: ContractId=%s Reason=InvalidRowStruct Table=%s RowStruct=%s"), *ContractId.ToString(),
+				   *GetNameSafe(ContractDataTable), *GetNameSafe(ContractDataTable->GetRowStruct()));
+			return false;
+		}
+
+		const FHeistContractDataRow* ContractDefinition =
+			ContractDataTable->FindRow<FHeistContractDataRow>(ContractId, TEXT("AHeistGameMode::TryGetContractDefinition"), false);
+		FString FailureReason;
+		if (ContractDefinition == nullptr || ContractDefinition->ContractId != ContractId || !ContractDefinition->IsRuntimeDefinitionValid(&FailureReason))
+		{
+			UE_LOG(LogHeist, Error, TEXT("Contract definition lookup rejected: ContractId=%s Reason=%s"), *ContractId.ToString(),
+				   ContractDefinition == nullptr ? TEXT("MissingRow") : (FailureReason.IsEmpty() ? TEXT("RowNameContractIdMismatch") : *FailureReason));
+			return false;
+		}
+
+		OutContractDefinition = *ContractDefinition;
+		return true;
+	}
+
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	if (!IsValid(BalanceData) || BalanceData->DefaultContractDefinition.ContractId != ContractId)
+	{
+		UE_LOG(LogHeist, Error, TEXT("Contract definition lookup rejected: ContractId=%s Reason=MissingDataTableAndFallback"), *ContractId.ToString());
+		return false;
+	}
+
+	FString FailureReason;
+	if (!BalanceData->DefaultContractDefinition.IsRuntimeDefinitionValid(&FailureReason))
+	{
+		UE_LOG(LogHeist, Error, TEXT("Contract definition lookup rejected: ContractId=%s Reason=InvalidFallback Detail=%s"), *ContractId.ToString(), *FailureReason);
+		return false;
+	}
+
+	OutContractDefinition = BalanceData->DefaultContractDefinition;
+	UE_LOG(LogHeist, Log, TEXT("Contract definition lookup: ContractId=%s Source=DefaultBalanceFallback Result=PASS"), *ContractId.ToString());
 	return true;
 }
 
