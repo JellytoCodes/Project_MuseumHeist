@@ -14,11 +14,13 @@
 #include "Character/Components/HeistStatusComponent.h"
 #include "Character/HeistPlayerCharacter.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/SphereComponent.h"
 #include "Core/HeistGameInstance.h"
 #include "Core/HeistGameUserSettings.h"
 #include "Core/HeistGameMode.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistHUD.h"
+#include "Core/HeistCollisionChannels.h"
 #include "Core/HeistTypes.h"
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
@@ -226,8 +228,12 @@ FString FormatStatusTags(const TArray<FHeistTimedTagState>& StatusTags)
 
 FString FormatResultEntry(const FHeistPlayerResult& PlayerResult)
 {
-	return FString::Printf(TEXT("PlayerId=%d Escaped=%s LootScore=%d FinalScore=%d LootWeight=%.2f EscapeTime=%.2f"), PlayerResult.PlayerId, PlayerResult.bEscaped ? TEXT("true") : TEXT("false"),
-						   PlayerResult.LootScore, PlayerResult.FinalScore, PlayerResult.LootWeight, PlayerResult.EscapeTimeSeconds);
+	const FHeistPlayerContribution& Contribution = PlayerResult.Contribution;
+	return FString::Printf(
+		TEXT("PlayerId=%d Escaped=%s Arrested=%s Surface=%d BestSurface=%.1f Assembly=%d BestAssembly=%.1f Artifacts=%d CarryTime=%.1f SecuredLoot=%d Distracted=%d Rescued=%d Alarms=%d"),
+		PlayerResult.PlayerId, PlayerResult.bEscaped ? TEXT("true") : TEXT("false"), PlayerResult.bArrested ? TEXT("true") : TEXT("false"), Contribution.SurfaceForgeries,
+		Contribution.BestSurfaceQuality, Contribution.Assemblies, Contribution.BestAssemblyQuality, Contribution.ArtifactsRecovered, Contribution.CarryTimeSeconds,
+		Contribution.SecuredLootValue, Contribution.GuardsDistracted, Contribution.TeammatesRescued, Contribution.AlarmsTriggered);
 }
 
 AHeistPaintingDisplayCaseActor* ResolveNearestPaintingDisplayCase(APlayerController* PlayerController)
@@ -1473,6 +1479,114 @@ void UHeistDebugFunctionLibrary::DebugDepositDump(APlayerController* PlayerContr
 			ContractSnapshot.LootValueQuota, ContractSnapshot.bRequiredTargetSecured ? TEXT("true") : TEXT("false"), SharedExitCount, ActiveSharedExitCount,
 			PayloadRejectReason != nullptr ? PayloadRejectReason : TEXT("None"), bPassed ? TEXT("PASS") : TEXT("FAIL")),
 		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
+#endif
+}
+
+#pragma endregion
+
+#pragma region OutcomeDebug
+
+void UHeistDebugFunctionLibrary::DebugOutcomeHelp(APlayerController* PlayerController)
+{
+#if !UE_BUILD_SHIPPING
+	Message(PlayerController,
+		TEXT("Outcome commands: SERVER HeistOutcomeSeed <SecuredValue> <RequiredTargetSecured 0|1> | SERVER HeistOutcomeResolve <Escaped|Lockdown|MatchTimer|AllArrested|AllDisconnected> | SERVER/CLIENT HeistOutcomeDump. Each resolve ends the current PIE run."),
+		EHeistDebugLevel::Info, true, 12.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugOutcomeSeed(APlayerController* PlayerController, const int32 SecuredValue, const bool bRequiredTargetSecured)
+{
+#if !UE_BUILD_SHIPPING
+	AHeistGameState* HeistGameState = IsValid(PlayerController) && IsValid(PlayerController->GetWorld()) ? PlayerController->GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame || SecuredValue < 0)
+	{
+		Message(PlayerController, TEXT("Outcome seed: Result=REJECTED Reason=ListenServerInGameAndNonNegativeValueRequired"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const bool bSeeded = HeistGameState->SetContractProgress(0, SecuredValue, bRequiredTargetSecured);
+	const FHeistContractSnapshot Snapshot = HeistGameState->GetContractSnapshot();
+	Message(PlayerController,
+		FString::Printf(TEXT("Outcome seed: Secured=%d Quota=%d RequiredSecured=%s Outcome=%s Authority=true Result=%s"), Snapshot.SecuredValue,
+			Snapshot.LootValueQuota, Snapshot.bRequiredTargetSecured ? TEXT("true") : TEXT("false"), *UEnum::GetValueAsString(Snapshot.Outcome),
+			bSeeded ? TEXT("PASS") : TEXT("FAIL")),
+		bSeeded ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 8.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugOutcomeResolve(APlayerController* PlayerController, const FString& TerminalTrigger)
+{
+#if !UE_BUILD_SHIPPING
+	AHeistGameMode* HeistGameMode = IsValid(PlayerController) && IsValid(PlayerController->GetWorld()) ? PlayerController->GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(HeistGameMode))
+	{
+		Message(PlayerController, TEXT("Outcome resolve: Result=REJECTED Reason=ListenServerAuthorityRequired"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	FName ResolvedTrigger = NAME_None;
+	bool bTreatAsCrewEscaped = false;
+	bool bTreatAsAllRemainingCrewArrested = false;
+	bool bTreatAsAllCrewDisconnected = false;
+	if (TerminalTrigger.Equals(TEXT("Escaped"), ESearchCase::IgnoreCase))
+	{
+		ResolvedTrigger = FName(TEXT("PlayerEscaped"));
+		bTreatAsCrewEscaped = true;
+	}
+	else if (TerminalTrigger.Equals(TEXT("Lockdown"), ESearchCase::IgnoreCase))
+	{
+		ResolvedTrigger = FName(TEXT("Lockdown"));
+	}
+	else if (TerminalTrigger.Equals(TEXT("MatchTimer"), ESearchCase::IgnoreCase))
+	{
+		ResolvedTrigger = FName(TEXT("MatchTimerExpired"));
+	}
+	else if (TerminalTrigger.Equals(TEXT("AllArrested"), ESearchCase::IgnoreCase))
+	{
+		ResolvedTrigger = FName(TEXT("PlayerArrested"));
+		bTreatAsAllRemainingCrewArrested = true;
+	}
+	else if (TerminalTrigger.Equals(TEXT("AllDisconnected"), ESearchCase::IgnoreCase))
+	{
+		ResolvedTrigger = FName(TEXT("PlayerDisconnected"));
+		bTreatAsAllCrewDisconnected = true;
+	}
+
+	if (ResolvedTrigger.IsNone())
+	{
+		Message(PlayerController, TEXT("Outcome resolve: Result=REJECTED Reason=ExpectedEscapedLockdownMatchTimerAllArrestedOrAllDisconnected"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const bool bResolved = HeistGameMode->ForceContractOutcomeForDebug(ResolvedTrigger, bTreatAsCrewEscaped, bTreatAsAllRemainingCrewArrested, bTreatAsAllCrewDisconnected);
+	Message(PlayerController, FString::Printf(TEXT("Outcome resolve: Requested=%s ResolvedTrigger=%s Authority=true Result=%s"), *TerminalTrigger, *ResolvedTrigger.ToString(),
+		bResolved ? TEXT("PASS") : TEXT("FAIL")), bResolved ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 8.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugOutcomeDump(APlayerController* PlayerController)
+{
+#if !UE_BUILD_SHIPPING
+	const AHeistGameState* HeistGameState = IsValid(PlayerController) && IsValid(PlayerController->GetWorld()) ? PlayerController->GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	if (!IsValid(PlayerController) || !IsValid(HeistGameState))
+	{
+		Message(PlayerController, TEXT("Outcome dump: Result=FAIL Reason=MissingPlayerControllerOrGameState"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	const FHeistContractSnapshot Snapshot = HeistGameState->GetContractSnapshot();
+	const FString ReasonText = Snapshot.GetOutcomeReasonText().ToString();
+	const bool bPassed = HeistGameState->GetMatchPhase() == EHeistMatchPhase::End && Snapshot.Outcome != EHeistContractOutcome::None &&
+		!Snapshot.OutcomeReasonId.IsNone() && !ReasonText.IsEmpty() && Snapshot.IsOutcomeConsistent();
+	Message(PlayerController,
+		FString::Printf(
+			TEXT("Outcome dump: Phase=%s Outcome=%s ReasonId=%s Reason=\"%s\" RequiredSecured=%s Secured=%d Quota=%d Active=%d Escaped=%d Arrested=%d Revision=%d Authority=%s Result=%s"),
+			*UEnum::GetValueAsString(HeistGameState->GetMatchPhase()), *UEnum::GetValueAsString(Snapshot.Outcome), *Snapshot.OutcomeReasonId.ToString(), *ReasonText,
+			Snapshot.bRequiredTargetSecured ? TEXT("true") : TEXT("false"), Snapshot.SecuredValue, Snapshot.LootValueQuota, HeistGameState->GetActiveCrewCount(),
+			HeistGameState->GetEscapedCrewCount(), HeistGameState->GetArrestedCrewCount(), Snapshot.Revision, PlayerController->HasAuthority() ? TEXT("true") : TEXT("false"),
+			bPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 12.0f);
 #endif
 }
 
@@ -7207,7 +7321,7 @@ void UHeistDebugFunctionLibrary::DebugResultHelp(APlayerController* PlayerContro
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(PlayerController, TEXT("Result debug commands: HeistResultShow | HeistResultHide | HeistResultDump | HeistResultRebuild | HeistResultSeed <Score> <Escaped 1/0> <EscapeTime>"),
+	Message(PlayerController, TEXT("Result debug commands: HeistResultShow | HeistResultHide | HeistResultDump | HeistResultRebuild | HeistResultSeed <Score> <Escaped 1/0> <EscapeTime> | HeistExitPlacementDump | HeistMissionGateDump"),
 			EHeistDebugLevel::Info, true, 8.0f);
 #endif
 }
@@ -7261,12 +7375,203 @@ void UHeistDebugFunctionLibrary::DebugResultDump(APlayerController* PlayerContro
 	}
 
 	const TArray<FHeistPlayerResult>& PlayerResults = HeistGameState->GetPlayerResults();
-	Message(PlayerController, FString::Printf(TEXT("Contribution result dump: PlayerCount=%d"), PlayerResults.Num()), EHeistDebugLevel::Info, true, 6.0f);
+	const FHeistTeamResult& TeamResult = HeistGameState->GetTeamResult();
+	Message(PlayerController,
+		FString::Printf(TEXT("Team result dump: Valid=%s Outcome=%s Reason=%s Secured=%d Quota=%d Extra=%d Reward=%d TargetValue=%d LooseValue=%d Quality=%.1f QualityMultiplier=%.3f StealthMultiplier=%.3f ArrestPenalty=%d Replicas=%d Revision=%d PlayerCount=%d"),
+			TeamResult.IsValid() ? TEXT("true") : TEXT("false"), *UEnum::GetValueAsString(TeamResult.Outcome), *TeamResult.OutcomeReasonId.ToString(), TeamResult.SecuredValue,
+			TeamResult.LootValueQuota, TeamResult.ExtraValue, TeamResult.TeamReward, TeamResult.RequiredTargetValue, TeamResult.SecuredLooseLootValue,
+			TeamResult.RequiredTargetQuality, TeamResult.ForgeryRewardMultiplier, TeamResult.StealthRewardMultiplier, TeamResult.ArrestPenalty,
+			TeamResult.ReplicaRecap.Num(), TeamResult.Revision, PlayerResults.Num()), EHeistDebugLevel::Info, true, 10.0f);
 
 	for (const FHeistPlayerResult& PlayerResult : PlayerResults)
 	{
 		Message(PlayerController, FString::Printf(TEXT("Result entry: %s"), *FormatResultEntry(PlayerResult)), EHeistDebugLevel::Info, false);
 	}
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugExitPlacementDump(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	UWorld* World = IsValid(PlayerController) ? PlayerController->GetWorld() : nullptr;
+	const AHeistGameState* HeistGameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
+	if (!IsValid(World) || !IsValid(HeistGameState))
+	{
+		Message(PlayerController, TEXT("W6-009 exit placement: Result=FAIL Reason=MissingWorldOrGameState"), EHeistDebugLevel::Error, true);
+		return;
+	}
+
+	int32 ExitCount = 0;
+	int32 OverlapReadyExitCount = 0;
+	for (TActorIterator<AHeistVentActor> It(World); It; ++It)
+	{
+		AHeistVentActor* Vent = *It;
+		if (!IsValid(Vent))
+		{
+			continue;
+		}
+		++ExitCount;
+		bool bOverlapReady = false;
+		TInlineComponentArray<USphereComponent*> SphereComponents;
+		Vent->GetComponents(SphereComponents);
+		for (const USphereComponent* SphereComponent : SphereComponents)
+		{
+			if (IsValid(SphereComponent) && SphereComponent->GetCollisionEnabled() == ECollisionEnabled::QueryOnly && SphereComponent->GetGenerateOverlapEvents() &&
+				SphereComponent->GetCollisionResponseToChannel(HeistCollisionChannels::Player) == ECR_Overlap)
+			{
+				bOverlapReady = true;
+				break;
+			}
+		}
+		OverlapReadyExitCount += bOverlapReady ? 1 : 0;
+		Message(PlayerController,
+			FString::Printf(TEXT("W6-009 exit entry: Exit=%s Location=(%.0f,%.0f,%.0f) Active=%s OverlapReady=%s"), *GetNameSafe(Vent), Vent->GetActorLocation().X,
+				Vent->GetActorLocation().Y, Vent->GetActorLocation().Z, Vent->IsVentActive() ? TEXT("true") : TEXT("false"), bOverlapReady ? TEXT("true") : TEXT("false")),
+			bOverlapReady ? EHeistDebugLevel::Info : EHeistDebugLevel::Error, false);
+	}
+
+	int32 PlayerStartCount = 0;
+	for (TActorIterator<APlayerStart> It(World); It; ++It)
+	{
+		PlayerStartCount += IsValid(*It) ? 1 : 0;
+	}
+	int32 NavMeshCount = 0;
+	for (TActorIterator<AActor> It(World); It; ++It)
+	{
+		const AActor* Actor = *It;
+		NavMeshCount += IsValid(Actor) && Actor->GetClass()->GetName().Contains(TEXT("RecastNavMesh"), ESearchCase::IgnoreCase) ? 1 : 0;
+	}
+
+	const FString RuntimeMap = World->GetMapName();
+	const FName ContractMapId = HeistGameState->GetContractSnapshot().MapId;
+	const bool bSupportedMap = RuntimeMap.Contains(TEXT("M01"), ESearchCase::IgnoreCase) || RuntimeMap.Contains(TEXT("M02"), ESearchCase::IgnoreCase) ||
+		RuntimeMap.Contains(TEXT("M03"), ESearchCase::IgnoreCase);
+	const bool bMapMatchesContract = ContractMapId.IsNone() || RuntimeMap.Contains(ContractMapId.ToString(), ESearchCase::IgnoreCase);
+	const bool bPassed = PlayerController->HasAuthority() && bSupportedMap && bMapMatchesContract && ExitCount > 0 && ExitCount == OverlapReadyExitCount && PlayerStartCount > 0 && NavMeshCount > 0;
+	Message(PlayerController,
+		FString::Printf(TEXT("W6-009 exit placement: RuntimeMap=%s ContractMap=%s Exits=%d OverlapReady=%d PlayerStarts=%d RecastNavMesh=%d Authority=%s Result=%s Traversal=USER_CHECK"),
+			*RuntimeMap, *ContractMapId.ToString(), ExitCount, OverlapReadyExitCount, PlayerStartCount, NavMeshCount, PlayerController->HasAuthority() ? TEXT("true") : TEXT("false"),
+			bPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Error, true, 15.0f);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugMissionGateDump(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	UWorld* World = IsValid(PlayerController) ? PlayerController->GetWorld() : nullptr;
+	const AHeistGameState* HeistGameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
+	const AHeistGameMode* HeistGameMode = IsValid(World) ? World->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	if (!IsValid(World) || !IsValid(HeistGameState))
+	{
+		Message(PlayerController, TEXT("W6-010 mission gate: Result=FAIL Reason=MissingWorldOrGameState"), EHeistDebugLevel::Error, true);
+		return;
+	}
+
+	int32 PlayerStartCount = 0;
+	int32 GuardCount = 0;
+	int32 ReadyGuardRouteCount = 0;
+	int32 ExitCount = 0;
+	int32 NavMeshCount = 0;
+	int32 TargetCaseCount = 0;
+	int32 CommittedReplicaCount = 0;
+	int32 ActiveCaseLockCount = 0;
+	int32 ActiveCaseTimerCount = 0;
+	int32 ActiveGameplayActionCount = 0;
+	int32 OpenInventoryCount = 0;
+	int32 OriginalCarryCount = 0;
+	int32 CaseCarrierReferenceCount = 0;
+	int32 DroppedOriginalCount = 0;
+	const FHeistContractSnapshot Contract = HeistGameState->GetContractSnapshot();
+
+	for (TActorIterator<APlayerStart> It(World); It; ++It) { PlayerStartCount += IsValid(*It) ? 1 : 0; }
+	for (TActorIterator<AHeistGuardCharacter> It(World); It; ++It)
+	{
+		const AHeistGuardCharacter* Guard = *It;
+		if (!IsValid(Guard)) { continue; }
+		++GuardCount;
+		const UHeistPatrolPathComponent* PatrolPath = Guard->GetPatrolPathComponent();
+		if (!IsValid(PatrolPath) || PatrolPath->GetPatrolRouteId().IsNone()) { continue; }
+		TSet<int32> RouteOrders;
+		for (TActorIterator<AHeistGuardWaypoint> WaypointIt(World); WaypointIt; ++WaypointIt)
+		{
+			const AHeistGuardWaypoint* Waypoint = *WaypointIt;
+			if (IsValid(Waypoint) && Waypoint->GetPatrolRouteId() == PatrolPath->GetPatrolRouteId())
+			{
+				RouteOrders.Add(Waypoint->GetPatrolOrder());
+			}
+		}
+		ReadyGuardRouteCount += RouteOrders.Num() >= 2 ? 1 : 0;
+	}
+	for (TActorIterator<AHeistVentActor> It(World); It; ++It) { ExitCount += IsValid(*It) ? 1 : 0; }
+	for (TActorIterator<AHeistDroppedOriginalActor> It(World); It; ++It) { DroppedOriginalCount += IsValid(*It) ? 1 : 0; }
+	for (TActorIterator<AActor> It(World); It; ++It)
+	{
+		const AActor* Actor = *It;
+		NavMeshCount += IsValid(Actor) && Actor->GetClass()->GetName().Contains(TEXT("RecastNavMesh"), ESearchCase::IgnoreCase) ? 1 : 0;
+	}
+	for (TActorIterator<AHeistPaintingDisplayCaseActor> It(World); It; ++It)
+	{
+		const AHeistPaintingDisplayCaseActor* DisplayCase = *It;
+		if (!IsValid(DisplayCase)) { continue; }
+		TargetCaseCount += DisplayCase->GetDisplayCaseId() == Contract.RequiredTargetCaseId ? 1 : 0;
+		CommittedReplicaCount += DisplayCase->HasCommittedForgeryResult() ? 1 : 0;
+		ActiveCaseLockCount += DisplayCase->IsSessionLocked() ? 1 : 0;
+		ActiveCaseTimerCount += DisplayCase->IsInspectionDelayTimerActive() || DisplayCase->IsInspectionClaimActive() ? 1 : 0;
+		CaseCarrierReferenceCount += IsValid(DisplayCase->GetOriginalCarrier()) ? 1 : 0;
+	}
+	for (TActorIterator<AHeistObjectDisplayCaseActor> It(World); It; ++It)
+	{
+		const AHeistObjectDisplayCaseActor* DisplayCase = *It;
+		if (!IsValid(DisplayCase)) { continue; }
+		TargetCaseCount += DisplayCase->GetObjectCaseId() == Contract.RequiredTargetCaseId ? 1 : 0;
+		CommittedReplicaCount += DisplayCase->HasCommittedAssemblyResult() ? 1 : 0;
+		ActiveCaseLockCount += DisplayCase->IsSessionLocked() ? 1 : 0;
+		ActiveCaseTimerCount += DisplayCase->IsInspectionDelayTimerActive() || DisplayCase->IsInspectionClaimActive() ? 1 : 0;
+		CaseCarrierReferenceCount += IsValid(DisplayCase->GetOriginalCarrier()) ? 1 : 0;
+	}
+	for (TActorIterator<AHeistPlayerCharacter> It(World); It; ++It)
+	{
+		const AHeistPlayerCharacter* Character = *It;
+		if (!IsValid(Character)) { continue; }
+		const UHeistActionComponent* Action = Character->GetActionComponent();
+		const UHeistForgeryComponent* Forgery = Character->GetForgeryComponent();
+		const UHeistObjectAssemblyComponent* Assembly = Character->GetObjectAssemblyComponent();
+		const UHeistInventoryComponent* Inventory = Character->GetInventoryComponent();
+		ActiveGameplayActionCount += (IsValid(Action) && Action->IsGameplayCastActive()) || (IsValid(Forgery) && Forgery->IsSessionActive()) ||
+			(IsValid(Assembly) && Assembly->IsSessionActive()) ? 1 : 0;
+		OpenInventoryCount += IsValid(Inventory) && Inventory->IsInventoryOpen() ? 1 : 0;
+		OriginalCarryCount += IsValid(Inventory) && Inventory->IsCarryingOriginal() ? 1 : 0;
+	}
+
+	const EHeistMatchPhase Phase = HeistGameState->GetMatchPhase();
+	const FHeistTeamResult& TeamResult = HeistGameState->GetTeamResult();
+	const int32 MatchTimerCount = IsValid(HeistGameMode) ? HeistGameMode->GetActiveMatchTimerCount() : 0;
+	const bool bOriginalRepresentationConsistent = OriginalCarryCount == CaseCarrierReferenceCount;
+	const bool bCommonMapReady = World->GetMapName().Contains(TEXT("M01"), ESearchCase::IgnoreCase) && PlayerStartCount > 0 && GuardCount > 0 &&
+		ReadyGuardRouteCount > 0 && ExitCount > 0 && NavMeshCount > 0;
+	const bool bLobbyClean = Phase == EHeistMatchPhase::Lobby && !Contract.IsInitialized() && !TeamResult.IsValid() && HeistGameState->GetPlayerResults().IsEmpty() &&
+		HeistGameState->GetAlertLevel() == EHeistAlertLevel::Quiet && MatchTimerCount == 0 && ActiveCaseLockCount == 0 && ActiveCaseTimerCount == 0 && ActiveGameplayActionCount == 0 && OpenInventoryCount == 0;
+	const bool bInGameReady = Phase == EHeistMatchPhase::InGame && Contract.IsInitialized() && Contract.Outcome == EHeistContractOutcome::None && TargetCaseCount == 1 &&
+		!TeamResult.IsValid() && bCommonMapReady && bOriginalRepresentationConsistent;
+	const bool bEndComplete = Phase == EHeistMatchPhase::End && Contract.IsOutcomeConsistent() && TeamResult.IsValid() && TeamResult.Revision == 1 &&
+		TeamResult.Outcome == Contract.Outcome && TeamResult.OutcomeReasonId == Contract.OutcomeReasonId && HeistGameState->GetPlayerResults().Num() == HeistGameState->GetConnectedPlayerCount() &&
+		MatchTimerCount == 0 && ActiveCaseLockCount == 0 && ActiveCaseTimerCount == 0 && ActiveGameplayActionCount == 0 && OpenInventoryCount == 0 && bOriginalRepresentationConsistent && bCommonMapReady;
+	const bool bPassed = PlayerController->HasAuthority() && (bLobbyClean || bInGameReady || bEndComplete);
+	const TCHAR* Stage = bLobbyClean ? TEXT("LOBBY_CLEAN") : bInGameReady ? TEXT("INGAME_PREFLIGHT") : bEndComplete ? TEXT("END_COMPLETE") : TEXT("INVALID");
+
+	Message(PlayerController,
+		FString::Printf(TEXT("W6-010 mission gate: Stage=%s Phase=%s RuntimeMap=%s Players=%d PlayerStarts=%d Guards=%d GuardRoutesReady=%d Exits=%d RecastNavMesh=%d ContractInitialized=%s TargetCases=%d CommittedReplicas=%d Secured=%d Quota=%d Outcome=%s TeamResultValid=%s TeamResultRevision=%d PlayerResults=%d CaseLocks=%d CaseTimers=%d ActiveActions=%d OpenInventories=%d OriginalCarries=%d CaseCarrierRefs=%d DroppedOriginals=%d MatchTimers=%d Authority=%s Result=%s"),
+			Stage, *UEnum::GetValueAsString(Phase), *World->GetMapName(), HeistGameState->GetConnectedPlayerCount(), PlayerStartCount, GuardCount, ReadyGuardRouteCount, ExitCount, NavMeshCount,
+			Contract.IsInitialized() ? TEXT("true") : TEXT("false"), TargetCaseCount, CommittedReplicaCount, Contract.SecuredValue, Contract.LootValueQuota,
+			*UEnum::GetValueAsString(Contract.Outcome), TeamResult.IsValid() ? TEXT("true") : TEXT("false"), TeamResult.Revision, HeistGameState->GetPlayerResults().Num(),
+			ActiveCaseLockCount, ActiveCaseTimerCount, ActiveGameplayActionCount, OpenInventoryCount, OriginalCarryCount, CaseCarrierReferenceCount, DroppedOriginalCount, MatchTimerCount,
+			PlayerController->HasAuthority() ? TEXT("true") : TEXT("false"), bPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Error, true, 20.0f);
 #endif
 }
 

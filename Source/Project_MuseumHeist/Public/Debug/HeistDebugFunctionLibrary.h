@@ -273,6 +273,12 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Result", meta = (DevelopmentOnly))
 	static void DebugResultSeed(APlayerController* PlayerController, int32 Score, bool bEscaped, float EscapeTimeSeconds);
 
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Gate", meta = (DevelopmentOnly))
+	static void DebugExitPlacementDump(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Gate", meta = (DevelopmentOnly))
+	static void DebugMissionGateDump(APlayerController* PlayerController);
+
 #pragma endregion
 
 #pragma region ObjectiveDebug
@@ -344,6 +350,16 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 	static void DebugDepositOpen(APlayerController* PlayerController);
 	static void DebugDepositSpawnFor(APlayerController* PlayerController, int32 PlayerId, float Distance);
 	static void DebugDepositDump(APlayerController* PlayerController, int32 PlayerId);
+
+#pragma endregion
+
+#pragma region OutcomeDebug
+
+  public:
+	static void DebugOutcomeHelp(APlayerController* PlayerController);
+	static void DebugOutcomeSeed(APlayerController* PlayerController, int32 SecuredValue, bool bRequiredTargetSecured);
+	static void DebugOutcomeResolve(APlayerController* PlayerController, const FString& TerminalTrigger);
+	static void DebugOutcomeDump(APlayerController* PlayerController);
 
 #pragma endregion
 

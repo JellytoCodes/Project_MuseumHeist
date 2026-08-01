@@ -225,18 +225,29 @@ void AHeistPlayerController::RefreshLocalHUDPresentation()
 		const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 		if (IsValid(HeistGameInstance) && HeistGameInstance->IsCurrentWorldTitleMenu())
 		{
+			HeistHUD->HideResultScreen();
 			HeistHUD->HideMainHUD();
 			HeistHUD->HideLobbyScreen();
 			HeistHUD->ShowTitleMenuScreen();
 		}
 		else if (IsValid(HeistGameState) && HeistGameState->GetMatchPhase() == EHeistMatchPhase::Lobby)
 		{
+			HeistHUD->HideResultScreen();
 			HeistHUD->HideMainHUD();
 			HeistHUD->HideTitleMenuScreen();
 			HeistHUD->ShowLobbyScreen();
 		}
+		else if (IsValid(HeistGameState) && HeistGameState->GetMatchPhase() == EHeistMatchPhase::End)
+		{
+			HeistHUD->HideMainHUD();
+			HeistHUD->HideTitleMenuScreen();
+			HeistHUD->HideLobbyScreen();
+			HeistHUD->ShowResultScreen();
+			ApplyLocalInputMode(EHeistInputMode::Inventory);
+		}
 		else
 		{
+			HeistHUD->HideResultScreen();
 			HeistHUD->HideTitleMenuScreen();
 			HeistHUD->HideLobbyScreen();
 			HeistHUD->ShowMainHUD();
@@ -1651,6 +1662,10 @@ void AHeistPlayerController::Server_RequestRescuePlayer_Implementation(AHeistPla
 
 	TargetPlayerCharacter->Interact(RequestContext.Character);
 	const bool bRescued = !TargetPlayerState->IsArrested();
+	if (bRescued)
+	{
+		RequestContext.PlayerState->RecordTeammateRescueContribution();
+	}
 	UE_LOG(LogHeistNetwork, Log, TEXT("Player rescue committed: RescuerId=%d TargetId=%d Distance=%.1f TargetArrested=%s TargetMovementRestored=%s Authority=true Result=%s"),
 		   RequestContext.PlayerState->HeistPlayerId, TargetPlayerState->HeistPlayerId, Distance, TargetPlayerState->IsArrested() ? TEXT("true") : TEXT("false"),
 		   bRescued ? TEXT("true") : TEXT("false"), bRescued ? TEXT("PASS") : TEXT("FAIL"));

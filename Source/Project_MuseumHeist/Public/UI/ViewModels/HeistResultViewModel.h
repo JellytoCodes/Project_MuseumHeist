@@ -36,6 +36,8 @@ class PROJECT_MUSEUMHEIST_API UHeistResultViewModel : public UMVVMViewModelBase
 	FHeistResultSnapshotChanged& GetSnapshotChangedDelegate();
 
   private:
+	void HandleTeamResultChanged(const FHeistTeamResult& NewTeamResult);
+
 	UPROPERTY(Transient)
 	TObjectPtr<AHeistGameState> GameState;
 
@@ -50,6 +52,8 @@ class PROJECT_MUSEUMHEIST_API UHeistResultViewModel : public UMVVMViewModelBase
 
   public:
 	const TArray<FHeistPlayerResult>& GetPlayerResults() const;
+	const FHeistTeamResult& GetTeamResult() const;
+	const TArray<FHeistReplicaRecapEntry>& GetReplicaRecap() const;
 	int32 GetMyFinalScore() const;
 	bool IsEscaped() const;
 	const FText& GetMyFinalScoreText() const;
@@ -62,6 +66,12 @@ class PROJECT_MUSEUMHEIST_API UHeistResultViewModel : public UMVVMViewModelBase
 	ESlateVisibility GetResultRow2Visibility() const;
 	ESlateVisibility GetResultRow3Visibility() const;
 	ESlateVisibility GetResultRow4Visibility() const;
+	const FText& GetOutcomeText() const;
+	const FText& GetOutcomeReasonText() const;
+	const FText& GetContractProgressText() const;
+	const FText& GetTeamRewardText() const;
+	const FText& GetRewardBreakdownText() const;
+	const FText& GetReplicaRecapText() const;
 
   private:
 	FText BuildResultRowText(int32 ResultIndex) const;
@@ -70,6 +80,27 @@ class PROJECT_MUSEUMHEIST_API UHeistResultViewModel : public UMVVMViewModelBase
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
 	TArray<FHeistPlayerResult> PlayerResults;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
+	FHeistTeamResult TeamResult;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
+	FText OutcomeText;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
+	FText OutcomeReasonText;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
+	FText ContractProgressText;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
+	FText TeamRewardText;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
+	FText RewardBreakdownText;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
+	FText ReplicaRecapText;
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
 	int32 MyFinalScore = 0;

@@ -1,10 +1,14 @@
 #include "World/Actors/Projectile/HeistCoinProjectile.h"
 
+#include "AI/HeistGuardCharacter.h"
+#include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameMode.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistGameplayTags.h"
+#include "Core/HeistPlayerState.h"
 #include "Core/HeistTypes.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
+#include "EngineUtils.h"
 #include "Inventory/HeistItemDataTypes.h"
 
 #pragma region Construction
@@ -55,6 +59,24 @@ void AHeistCoinProjectile::HandleAuthorityImpact(const FHitResult& Hit)
 	SoundPingEvent.Duration = FMath::Max(0.0f, SoundPingDefinition.Duration);
 	SoundPingEvent.bAffectsGuards = true;
 	HeistGameState->ReportSoundPing(SoundPingEvent);
+
+	bool bGuardInDistractionRange = false;
+	for (TActorIterator<AHeistGuardCharacter> GuardIterator(GetWorld()); GuardIterator; ++GuardIterator)
+	{
+		if (IsValid(*GuardIterator) && FVector::DistSquared((*GuardIterator)->GetActorLocation(), Hit.ImpactPoint) <= FMath::Square(SoundPingEvent.Radius))
+		{
+			bGuardInDistractionRange = true;
+			break;
+		}
+	}
+	AHeistPlayerCharacter* Thrower = GetThrowerCharacter();
+	if (bGuardInDistractionRange && IsValid(Thrower))
+	{
+		if (AHeistPlayerState* ThrowerPlayerState = Thrower->GetPlayerState<AHeistPlayerState>())
+		{
+			ThrowerPlayerState->RecordGuardDistractionContribution();
+		}
+	}
 
 	Super::HandleAuthorityImpact(Hit);
 }

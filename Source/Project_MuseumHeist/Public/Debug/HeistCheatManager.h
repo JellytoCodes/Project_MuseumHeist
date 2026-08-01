@@ -236,6 +236,12 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 	UFUNCTION(Exec)
 	void HeistResultSeed(int32 Score = 1000, bool bEscaped = true, float EscapeTimeSeconds = 10.0f);
 
+	UFUNCTION(Exec)
+	void HeistExitPlacementDump();
+
+	UFUNCTION(Exec)
+	void HeistMissionGateDump();
+
 #pragma endregion
 
 #pragma region ObjectiveDebug
@@ -316,6 +322,23 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 
 	UFUNCTION(Exec)
 	void HeistDepositDump(int32 PlayerId = -1);
+
+#pragma endregion
+
+#pragma region OutcomeDebug
+
+  public:
+	UFUNCTION(Exec)
+	void HeistOutcomeHelp();
+
+	UFUNCTION(Exec)
+	void HeistOutcomeSeed(int32 SecuredValue = 0, int32 RequiredTargetSecured = 0);
+
+	UFUNCTION(Exec)
+	void HeistOutcomeResolve(FString TerminalTrigger);
+
+	UFUNCTION(Exec)
+	void HeistOutcomeDump();
 
 #pragma endregion
 

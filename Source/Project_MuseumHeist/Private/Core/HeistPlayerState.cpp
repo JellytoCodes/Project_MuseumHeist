@@ -3,6 +3,7 @@
 #include "Character/HeistPlayerCharacter.h"
 #include "Character/Components/HeistActionComponent.h"
 #include "Character/Components/HeistInventoryComponent.h"
+#include "Core/HeistGameMode.h"
 #include "Core/HeistGameState.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "Net/UnrealNetwork.h"
@@ -136,6 +137,107 @@ void AHeistPlayerState::BroadcastLootTotalsChanged()
 
 #pragma endregion
 
+#pragma region Contribution
+
+const FHeistPlayerContribution& AHeistPlayerState::GetContribution() const
+{
+	return Contribution;
+}
+
+void AHeistPlayerState::RecordSurfaceForgeryContribution(const float QualityScore)
+{
+	if (!HasAuthority() || !FMath::IsFinite(QualityScore))
+	{
+		return;
+	}
+	Contribution.SurfaceForgeries = Contribution.SurfaceForgeries == MAX_int32 ? MAX_int32 : Contribution.SurfaceForgeries + 1;
+	Contribution.BestSurfaceQuality = FMath::Max(Contribution.BestSurfaceQuality, FMath::Clamp(QualityScore, 0.0f, 100.0f));
+	CommitContributionMutation();
+}
+
+void AHeistPlayerState::RecordAssemblyContribution(const float QualityScore)
+{
+	if (!HasAuthority() || !FMath::IsFinite(QualityScore))
+	{
+		return;
+	}
+	Contribution.Assemblies = Contribution.Assemblies == MAX_int32 ? MAX_int32 : Contribution.Assemblies + 1;
+	Contribution.BestAssemblyQuality = FMath::Max(Contribution.BestAssemblyQuality, FMath::Clamp(QualityScore, 0.0f, 100.0f));
+	CommitContributionMutation();
+}
+
+void AHeistPlayerState::BeginOriginalCarryContribution()
+{
+	if (HasAuthority() && OriginalCarryContributionStartServerTime < 0.0f && GetWorld())
+	{
+		OriginalCarryContributionStartServerTime = GetWorld()->GetTimeSeconds();
+	}
+}
+
+void AHeistPlayerState::EndOriginalCarryContribution(const bool bArtifactRecovered)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	if (OriginalCarryContributionStartServerTime >= 0.0f && GetWorld())
+	{
+		Contribution.CarryTimeSeconds += FMath::Max(0.0f, GetWorld()->GetTimeSeconds() - OriginalCarryContributionStartServerTime);
+		OriginalCarryContributionStartServerTime = -1.0f;
+	}
+	if (bArtifactRecovered)
+	{
+		Contribution.ArtifactsRecovered = Contribution.ArtifactsRecovered == MAX_int32 ? MAX_int32 : Contribution.ArtifactsRecovered + 1;
+	}
+	CommitContributionMutation();
+}
+
+void AHeistPlayerState::RecordSecuredLootContribution(const int32 SecuredLootValue)
+{
+	if (!HasAuthority() || SecuredLootValue <= 0)
+	{
+		return;
+	}
+	Contribution.SecuredLootValue = static_cast<int32>(FMath::Min<int64>(MAX_int32, static_cast<int64>(Contribution.SecuredLootValue) + SecuredLootValue));
+	CommitContributionMutation();
+}
+
+void AHeistPlayerState::RecordGuardDistractionContribution()
+{
+	if (HasAuthority())
+	{
+		Contribution.GuardsDistracted = Contribution.GuardsDistracted == MAX_int32 ? MAX_int32 : Contribution.GuardsDistracted + 1;
+		CommitContributionMutation();
+	}
+}
+
+void AHeistPlayerState::RecordTeammateRescueContribution()
+{
+	if (HasAuthority())
+	{
+		Contribution.TeammatesRescued = Contribution.TeammatesRescued == MAX_int32 ? MAX_int32 : Contribution.TeammatesRescued + 1;
+		CommitContributionMutation();
+	}
+}
+
+void AHeistPlayerState::RecordAlarmContribution()
+{
+	if (HasAuthority())
+	{
+		Contribution.AlarmsTriggered = Contribution.AlarmsTriggered == MAX_int32 ? MAX_int32 : Contribution.AlarmsTriggered + 1;
+		CommitContributionMutation();
+	}
+}
+
+void AHeistPlayerState::CommitContributionMutation()
+{
+	Contribution.bEscaped = bEscaped;
+	Contribution.bArrested = bArrested;
+	ForceNetUpdate();
+}
+
+#pragma endregion
+
 #pragma region EscapeState
 
 bool AHeistPlayerState::IsEscaped() const
@@ -164,6 +266,7 @@ bool AHeistPlayerState::MarkEscaped()
 	}
 
 	bEscaped = true;
+	CommitContributionMutation();
 	FinalScore = TotalLootScore;
 	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	EscapeTimeSeconds = IsValid(HeistGameState) ? HeistGameState->GetServerWorldTimeSeconds() : (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
@@ -182,6 +285,10 @@ bool AHeistPlayerState::MarkEscaped()
 	EscapeStateChangedDelegate.Broadcast(bEscaped);
 
 	UHeistDebugFunctionLibrary::DebugPlayerEscapeStateCommitted(this, HeistPlayerId, FinalScore, EscapeTimeSeconds);
+	if (AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr)
+	{
+		HeistGameMode->NotifyPlayerTerminalStateChanged(this, FName(TEXT("PlayerEscaped")));
+	}
 
 	return true;
 }
@@ -259,6 +366,7 @@ bool AHeistPlayerState::SetArrestedInternal(const bool bNewArrested, AActor* Arr
 	}
 
 	bArrested = bNewArrested;
+	CommitContributionMutation();
 	AHeistPlayerCharacter* HeistPlayerCharacter = Cast<AHeistPlayerCharacter>(GetPawn());
 	if (IsValid(HeistPlayerCharacter))
 	{
@@ -285,7 +393,14 @@ bool AHeistPlayerState::SetArrestedInternal(const bool bNewArrested, AActor* Arr
 	ForceNetUpdate();
 	ArrestStateChangedDelegate.Broadcast(bArrested);
 	UHeistDebugFunctionLibrary::Message(this, FString::Printf(TEXT("Player arrest state committed: PlayerId=%d Arrested=%s Guard=%s Authority=true"), HeistPlayerId,
-															  bArrested ? TEXT("true") : TEXT("false"), *GetNameSafe(ArrestingGuard)));
+														  bArrested ? TEXT("true") : TEXT("false"), *GetNameSafe(ArrestingGuard)));
+	if (bArrested)
+	{
+		if (AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr)
+		{
+			HeistGameMode->NotifyPlayerTerminalStateChanged(this, FName(TEXT("PlayerArrested")));
+		}
+	}
 	return true;
 }
 
@@ -327,6 +442,7 @@ void AHeistPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME(AHeistPlayerState, bArrested);
 	DOREPLIFETIME(AHeistPlayerState, FinalScore);
 	DOREPLIFETIME(AHeistPlayerState, EscapeTimeSeconds);
+	DOREPLIFETIME(AHeistPlayerState, Contribution);
 }
 
 void AHeistPlayerState::OnRep_TotalLootScore()
@@ -390,6 +506,7 @@ void AHeistPlayerState::DebugSetResultState(const int32 InScore, const bool bInE
 	FinalScore = TotalLootScore;
 	bEscaped = bInEscaped;
 	EscapeTimeSeconds = bEscaped ? FMath::Max(0.0f, InEscapeTimeSeconds) : -1.0f;
+	CommitContributionMutation();
 	ForceNetUpdate();
 	BroadcastLootTotalsChanged();
 	EscapeStateChangedDelegate.Broadcast(bEscaped);

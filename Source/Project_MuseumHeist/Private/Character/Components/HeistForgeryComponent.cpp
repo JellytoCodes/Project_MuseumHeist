@@ -1577,6 +1577,7 @@ bool UHeistForgeryComponent::TryCalculateAndCommitForgeryScore()
 
 	AuthoritativeForgeryResult = TargetDisplayCase->GetCommittedForgeryResult();
 	bHasAuthoritativeForgeryResult = true;
+	HeistPlayerState->RecordSurfaceForgeryContribution(AuthoritativeForgeryResult.SimilarityScore);
 	ForgeryScoreResolution = ForgeryScoreGridResolution;
 	ReferenceMaskPixelCount = CalculatedReferenceMaskPixels;
 	SubmittedMaskPixelCount = CalculatedSubmittedMaskPixels;

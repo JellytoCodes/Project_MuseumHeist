@@ -591,7 +591,16 @@ void AHeistGuardAIController::CompleteDetectionGrace()
 		if (AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr)
 		{
 			const FName AlertTriggerId(*FString::Printf(TEXT("GuardSight_%s_%s"), *GuardCharacter->GetFName().ToString(), *TargetActor->GetFName().ToString()));
-			HeistGameMode->RequestAlertEscalation(EHeistAlertLevel::Suspicious, AlertTriggerId);
+			if (HeistGameMode->RequestAlertEscalation(EHeistAlertLevel::Suspicious, AlertTriggerId))
+			{
+				if (AHeistPlayerCharacter* DetectedPlayer = Cast<AHeistPlayerCharacter>(TargetActor))
+				{
+					if (AHeistPlayerState* DetectedPlayerState = DetectedPlayer->GetPlayerState<AHeistPlayerState>())
+					{
+						DetectedPlayerState->RecordAlarmContribution();
+					}
+				}
+			}
 		}
 		UHeistDebugFunctionLibrary::DebugGuardSightTargetAcquired(this, GuardCharacter, TargetActor);
 	}

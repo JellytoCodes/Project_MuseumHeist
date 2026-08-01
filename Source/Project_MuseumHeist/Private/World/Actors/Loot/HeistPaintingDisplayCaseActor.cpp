@@ -579,6 +579,11 @@ bool AHeistPaintingDisplayCaseActor::HasReplicaPaintingData() const
 	return ValidateReplicaPaintingData(ReplicaPaintingData, RejectReason) && ReplicaPaintingData.Revision == CommittedForgeryRevision;
 }
 
+FHeistReplicaPaintingData AHeistPaintingDisplayCaseActor::GetReplicaPaintingData() const
+{
+	return ReplicaPaintingData;
+}
+
 int32 AHeistPaintingDisplayCaseActor::GetReplicaPaintingRevision() const
 {
 	return ReplicaPaintingData.Revision;

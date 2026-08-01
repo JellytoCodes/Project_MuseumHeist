@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Core/HeistTypes.h"
 #include "GameFramework/PlayerState.h"
 
 #include "HeistPlayerState.generated.h"
@@ -37,6 +38,29 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerState : public APlayerState
 	float TotalLootWeight = 0.0f;
 
 	FHeistLootTotalsChanged LootTotalsChangedDelegate;
+
+#pragma endregion
+
+#pragma region Contribution
+
+  public:
+	const FHeistPlayerContribution& GetContribution() const;
+	void RecordSurfaceForgeryContribution(float QualityScore);
+	void RecordAssemblyContribution(float QualityScore);
+	void BeginOriginalCarryContribution();
+	void EndOriginalCarryContribution(bool bArtifactRecovered);
+	void RecordSecuredLootContribution(int32 SecuredLootValue);
+	void RecordGuardDistractionContribution();
+	void RecordTeammateRescueContribution();
+	void RecordAlarmContribution();
+
+  private:
+	void CommitContributionMutation();
+
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Contribution", meta = (AllowPrivateAccess = "true"))
+	FHeistPlayerContribution Contribution;
+
+	float OriginalCarryContributionStartServerTime = -1.0f;
 
 #pragma endregion
 

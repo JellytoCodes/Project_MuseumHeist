@@ -1,7 +1,10 @@
 #include "UI/Widgets/HeistResultWidget.h"
 
+#include "Components/Button.h"
 #include "Components/TextBlock.h"
 #include "Components/Widget.h"
+#include "Core/HeistGameInstance.h"
+#include "Core/HeistPlayerController.h"
 #include "UI/ViewModels/HeistResultViewModel.h"
 #include "View/MVVMView.h"
 
@@ -15,8 +18,26 @@ UHeistResultWidget::UHeistResultWidget(const FObjectInitializer& ObjectInitializ
 
 #pragma region Lifecycle
 
+void UHeistResultWidget::NativeConstruct()
+{
+	Super::NativeConstruct();
+	if (IsValid(ReturnToLobbyButton))
+	{
+		ReturnToLobbyButton->OnClicked.RemoveAll(this);
+		ReturnToLobbyButton->OnClicked.AddDynamic(this, &UHeistResultWidget::HandleReturnToLobbyClicked);
+		const APlayerController* OwningPlayerController = GetOwningPlayer();
+		const UHeistGameInstance* HeistGameInstance = IsValid(OwningPlayerController) ? Cast<UHeistGameInstance>(OwningPlayerController->GetGameInstance()) : nullptr;
+		const bool bCanHostReturn = IsValid(OwningPlayerController) && OwningPlayerController->HasAuthority() && IsValid(HeistGameInstance) && HeistGameInstance->IsHostingOnlineSession();
+		ReturnToLobbyButton->SetVisibility(bCanHostReturn ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
+}
+
 void UHeistResultWidget::NativeDestruct()
 {
+	if (IsValid(ReturnToLobbyButton))
+	{
+		ReturnToLobbyButton->OnClicked.RemoveAll(this);
+	}
 	if (IsValid(ResultViewModel))
 	{
 		ResultViewModel->GetSnapshotChangedDelegate().RemoveAll(this);
@@ -74,6 +95,31 @@ void UHeistResultWidget::RefreshResultPresentation()
 	{
 		MyFinalScoreText->SetText(ResultViewModel->GetMyFinalScoreText());
 	}
+	if (IsValid(OutcomeTextBlock))
+	{
+		OutcomeTextBlock->SetText(ResultViewModel->GetOutcomeText());
+	}
+	if (IsValid(OutcomeReasonTextBlock))
+	{
+		OutcomeReasonTextBlock->SetText(ResultViewModel->GetOutcomeReasonText());
+	}
+	if (IsValid(ContractProgressTextBlock))
+	{
+		ContractProgressTextBlock->SetText(ResultViewModel->GetContractProgressText());
+	}
+	if (IsValid(TeamRewardTextBlock))
+	{
+		TeamRewardTextBlock->SetText(ResultViewModel->GetTeamRewardText());
+	}
+	if (IsValid(RewardBreakdownTextBlock))
+	{
+		RewardBreakdownTextBlock->SetText(ResultViewModel->GetRewardBreakdownText());
+	}
+	if (IsValid(ReplicaRecapTextBlock))
+	{
+		ReplicaRecapTextBlock->SetText(ResultViewModel->GetReplicaRecapText());
+	}
+	BP_RefreshReplicaRecap(ResultViewModel->GetReplicaRecap());
 
 	if (IsValid(EscapedBadge))
 	{
@@ -112,6 +158,14 @@ void UHeistResultWidget::RefreshResultPresentation()
 	if (IsValid(ResultRow4TextBlock))
 	{
 		ResultRow4TextBlock->SetText(ResultViewModel->GetResultRow4Text());
+	}
+}
+
+void UHeistResultWidget::HandleReturnToLobbyClicked()
+{
+	if (AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(GetOwningPlayer()))
+	{
+		HeistPlayerController->RequestReturnToLobby();
 	}
 }
 

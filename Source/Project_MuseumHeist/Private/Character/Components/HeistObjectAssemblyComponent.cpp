@@ -159,6 +159,7 @@ bool UHeistObjectAssemblyComponent::TrySubmitAssemblyPayload(const TArray<FHeist
 
 	AuthoritativeResult = SubmittedDisplayCase->GetCommittedAssemblyResult();
 	bHasAuthoritativeResult = true;
+	HeistPlayerState->RecordAssemblyContribution(AuthoritativeResult.QualityScore);
 	++ScoreRevision;
 	GetOwner()->ForceNetUpdate();
 	UHeistDebugFunctionLibrary::DebugObjectAssemblyScoreCommitted(this, AuthoritativeResult);

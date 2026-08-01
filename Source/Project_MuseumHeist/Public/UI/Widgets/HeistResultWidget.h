@@ -1,12 +1,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Core/HeistTypes.h"
 #include "UI/Widgets/HeistUserWidgetBase.h"
 
 #include "HeistResultWidget.generated.h"
 
 class UTextBlock;
 class UWidget;
+class UButton;
 
 UCLASS(Blueprintable)
 class PROJECT_MUSEUMHEIST_API UHeistResultWidget : public UHeistUserWidgetBase
@@ -23,6 +25,7 @@ class PROJECT_MUSEUMHEIST_API UHeistResultWidget : public UHeistUserWidgetBase
 #pragma region Lifecycle
 
   protected:
+	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
 
 #pragma endregion
@@ -43,6 +46,36 @@ class PROJECT_MUSEUMHEIST_API UHeistResultWidget : public UHeistUserWidgetBase
 
   private:
 	void RefreshResultPresentation();
+
+	UFUNCTION()
+	void HandleReturnToLobbyClicked();
+
+	// Blueprint events must remain overridable, so presentation hooks cannot be private.
+  protected:
+	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|Result", meta = (DisplayName = "Refresh Replica Recap"))
+	void BP_RefreshReplicaRecap(const TArray<FHeistReplicaRecapEntry>& ReplicaRecap);
+
+  private:
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> OutcomeTextBlock;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> OutcomeReasonTextBlock;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> ContractProgressTextBlock;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> TeamRewardTextBlock;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> RewardBreakdownTextBlock;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> ReplicaRecapTextBlock;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UButton> ReturnToLobbyButton;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> MyFinalScoreText;

@@ -143,10 +143,14 @@ void AHeistGameMode::StartPlay()
 		return;
 	}
 
+	bAnyPlayerEscapedThisMatch = false;
+	bMatchHadPlayer = IsValid(GetGameState<AHeistGameState>()) && GetGameState<AHeistGameState>()->GetConnectedPlayerCount() > 0;
+
 	InitializeSurfaceTemplateSelection();
 	InitializeAlertState();
 	InitializeContractFromPlacedTargetCase();
 	StartEscapePhaseTimer();
+	StartContractDurationTimer();
 }
 
 void AHeistGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -158,6 +162,8 @@ void AHeistGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	ClearMatchScopedTimers();
 	ProcessedAlertTriggerIds.Reset();
 	bLockdownWorldRestrictionsApplied = false;
+	bAnyPlayerEscapedThisMatch = false;
+	bMatchHadPlayer = false;
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -203,6 +209,7 @@ int32 AHeistGameMode::ClearMatchScopedTimers()
 
 	ClearTimer(AlertTransitionTimerHandle);
 	ClearTimer(EscapePhaseTimerHandle);
+	ClearTimer(ContractDurationTimerHandle);
 	for (FTimerHandle& TimerHandle : RareLootWarningTimerHandles)
 	{
 		ClearTimer(TimerHandle);
@@ -237,11 +244,16 @@ void AHeistGameMode::RestartPlayer(AController* NewPlayer)
 	}
 
 	Super::RestartPlayer(NewPlayer);
+	if (HasAuthority() && IsValid(NewPlayer))
+	{
+		bMatchHadPlayer = true;
+	}
 }
 
 void AHeistGameMode::Logout(AController* Exiting)
 {
 	AHeistPlayerState* ExitingPlayerState = IsValid(Exiting) ? Exiting->GetPlayerState<AHeistPlayerState>() : nullptr;
+	const bool bExitingPlayerEscaped = IsValid(ExitingPlayerState) && ExitingPlayerState->IsEscaped();
 	if (HasAuthority() && IsValid(ExitingPlayerState))
 	{
 		int32 CancelledActionCount = 0;
@@ -296,6 +308,11 @@ void AHeistGameMode::Logout(AController* Exiting)
 	}
 
 	Super::Logout(Exiting);
+	if (HasAuthority())
+	{
+		bAnyPlayerEscapedThisMatch |= bExitingPlayerEscaped;
+		TryResolveContractOutcome(FName(TEXT("PlayerDisconnected")));
+	}
 }
 
 void AHeistGameMode::PrepareForOnlineSessionShutdown(const FName Reason)
@@ -379,6 +396,298 @@ void AHeistGameMode::PrepareForOnlineSessionShutdown(const FName Reason)
 	}
 	UHeistDebugFunctionLibrary::DebugOnlineSessionShutdownCleanup(this, Reason, CancelledActionCount, CancelledForgeryCount, ClosedInventoryCount, ReleasedOriginalCount,
 																 ActiveCaseLockCount, ActiveCaseTimerCount + ClearedMatchTimerCount, true);
+}
+
+#pragma endregion
+
+#pragma region ContractOutcome
+
+void AHeistGameMode::NotifyPlayerTerminalStateChanged(AHeistPlayerState* PlayerState, const FName TerminalTrigger)
+{
+	if (!HasAuthority() || !IsValid(PlayerState) || TerminalTrigger.IsNone())
+	{
+		return;
+	}
+
+	bMatchHadPlayer = true;
+	bAnyPlayerEscapedThisMatch |= PlayerState->IsEscaped();
+	TryResolveContractOutcome(TerminalTrigger);
+}
+
+#if !UE_BUILD_SHIPPING
+bool AHeistGameMode::ForceContractOutcomeForDebug(const FName TerminalTrigger, const bool bTreatAsCrewEscaped,
+	const bool bTreatAsAllRemainingCrewArrested, const bool bTreatAsAllCrewDisconnected)
+{
+	return TryResolveContractOutcome(TerminalTrigger, true, bTreatAsCrewEscaped, bTreatAsAllRemainingCrewArrested, bTreatAsAllCrewDisconnected);
+}
+#endif
+
+void AHeistGameMode::StartContractDurationTimer()
+{
+	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	if (!HasAuthority() || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame || !HeistGameState->IsContractInitialized())
+	{
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Contract duration timer skipped: Authority=%s ContractInitialized=%s Phase=%s Result=PENDING Reason=InvalidRuntimeState"),
+			   HasAuthority() ? TEXT("true") : TEXT("false"), IsValid(HeistGameState) && HeistGameState->IsContractInitialized() ? TEXT("true") : TEXT("false"),
+			   IsValid(HeistGameState) ? *UEnum::GetValueAsString(HeistGameState->GetMatchPhase()) : TEXT("MissingGameState"));
+		return;
+	}
+
+	FHeistContractDataRow ContractDefinition;
+	FString FailureReason;
+	const FName ContractId = HeistGameState->GetContractSnapshot().ContractId;
+	if (!TryGetContractDefinition(ContractId, ContractDefinition) || !ContractDefinition.IsRuntimeDefinitionValid(&FailureReason))
+	{
+		UE_LOG(LogHeistNetwork, Error, TEXT("Contract duration timer skipped: Contract=%s Result=FAIL Reason=%s"), *ContractId.ToString(),
+			   FailureReason.IsEmpty() ? TEXT("MissingContractDefinition") : *FailureReason);
+		return;
+	}
+
+	FTimerManager& TimerManager = GetWorldTimerManager();
+	TimerManager.ClearTimer(ContractDurationTimerHandle);
+	TimerManager.SetTimer(ContractDurationTimerHandle, this, &AHeistGameMode::HandleContractDurationTimerElapsed, ContractDefinition.MatchDurationSeconds, false);
+	UE_LOG(LogHeistNetwork, Log,
+		   TEXT("Contract duration timer started: Contract=%s Duration=%.2f DeadlineServerTime=%.2f Authority=true Priority=CommittedEscapeThenLockdownThenMatchTimer Result=PASS"),
+		   *ContractId.ToString(), ContractDefinition.MatchDurationSeconds, HeistGameState->GetServerWorldTimeSeconds() + ContractDefinition.MatchDurationSeconds);
+}
+
+void AHeistGameMode::HandleContractDurationTimerElapsed()
+{
+	TryResolveContractOutcome(FName(TEXT("MatchTimerExpired")), true);
+}
+
+bool AHeistGameMode::TryResolveContractOutcome(const FName TerminalTrigger, const bool bForceTerminal, const bool bTreatAsCrewEscaped,
+	const bool bTreatAsAllRemainingCrewArrested, const bool bTreatAsAllCrewDisconnected)
+{
+	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	if (!HasAuthority() || !IsValid(HeistGameState) || TerminalTrigger.IsNone() || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame ||
+		!HeistGameState->IsContractInitialized() || HeistGameState->GetContractSnapshot().Outcome != EHeistContractOutcome::None)
+	{
+		return false;
+	}
+
+	const bool bAllCrewResolved = HeistGameState->AreAllCrewMembersResolved();
+	const bool bAllCrewDisconnected = bTreatAsAllCrewDisconnected || (bMatchHadPlayer && HeistGameState->GetConnectedPlayerCount() == 0);
+	const bool bTerminalTrigger = bForceTerminal || TerminalTrigger == FName(TEXT("Lockdown")) || TerminalTrigger == FName(TEXT("MatchTimerExpired"));
+	if (!bTerminalTrigger && !bAllCrewResolved && !bAllCrewDisconnected)
+	{
+		return false;
+	}
+
+	const FHeistContractSnapshot ContractSnapshot = HeistGameState->GetContractSnapshot();
+	const bool bAtLeastOneCrewEscaped = bTreatAsCrewEscaped || bAnyPlayerEscapedThisMatch || HeistGameState->GetEscapedCrewCount() > 0;
+	const bool bAllRemainingCrewArrested = bTreatAsAllRemainingCrewArrested || HeistGameState->AreAllRemainingCrewMembersArrested();
+	const EHeistContractOutcome Outcome = ContractSnapshot.ResolveTerminalOutcome(bAtLeastOneCrewEscaped);
+	const FName OutcomeReasonId = HeistContractOutcomeReasons::Resolve(Outcome, ContractSnapshot.bRequiredTargetSecured, bAtLeastOneCrewEscaped,
+		bAllRemainingCrewArrested, bAllCrewDisconnected, TerminalTrigger);
+
+	UE_LOG(LogHeistNetwork, Log,
+		   TEXT("Contract outcome matrix resolved: Trigger=%s EscapedAtLeastOne=%s AllResolved=%s AllRemainingArrested=%s AllDisconnected=%s RequiredSecured=%s Secured=%d Quota=%d Outcome=%s ReasonId=%s Priority=CommittedEscapeThenLockdownThenMatchTimer Authority=true Result=%s"),
+		   *TerminalTrigger.ToString(), bAtLeastOneCrewEscaped ? TEXT("true") : TEXT("false"), bAllCrewResolved ? TEXT("true") : TEXT("false"),
+		   bAllRemainingCrewArrested ? TEXT("true") : TEXT("false"), bAllCrewDisconnected ? TEXT("true") : TEXT("false"),
+		   ContractSnapshot.bRequiredTargetSecured ? TEXT("true") : TEXT("false"), ContractSnapshot.SecuredValue, ContractSnapshot.LootValueQuota,
+		   *UEnum::GetValueAsString(Outcome), *OutcomeReasonId.ToString(), OutcomeReasonId.IsNone() ? TEXT("FAIL") : TEXT("PASS"));
+
+	return !OutcomeReasonId.IsNone() && FinalizeContractOutcome(Outcome, OutcomeReasonId, TerminalTrigger);
+}
+
+bool AHeistGameMode::FinalizeContractOutcome(const EHeistContractOutcome Outcome, const FName OutcomeReasonId, const FName TerminalTrigger)
+{
+	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	FHeistTeamResult TeamResultSnapshot;
+	if (!HasAuthority() || !IsValid(HeistGameState) || !BuildTeamResultSnapshot(Outcome, OutcomeReasonId, TeamResultSnapshot) ||
+		!HeistGameState->CommitContractOutcome(Outcome, OutcomeReasonId) || !HeistGameState->CommitTeamResult(MoveTemp(TeamResultSnapshot)))
+	{
+		return false;
+	}
+
+	int32 PlayerCount = 0;
+	int32 CancelledActionCount = 0;
+	int32 CancelledForgeryCount = 0;
+	int32 ClosedInventoryCount = 0;
+	int32 DisabledMovementCount = 0;
+	GetWorldTimerManager().ClearTimer(EscapePhaseTimerHandle);
+	HeistGameState->InitializeEscapePhase(HeistGameState->GetEscapePhaseDelaySeconds());
+	const FString CancellationReason = TerminalTrigger.ToString();
+
+	for (TActorIterator<AHeistPlayerCharacter> PlayerIterator(GetWorld()); PlayerIterator; ++PlayerIterator)
+	{
+		AHeistPlayerCharacter* PlayerCharacter = *PlayerIterator;
+		if (!IsValid(PlayerCharacter))
+		{
+			continue;
+		}
+
+		++PlayerCount;
+		if (UHeistActionComponent* ActionComponent = PlayerCharacter->GetActionComponent(); IsValid(ActionComponent) && ActionComponent->IsGameplayCastActive())
+		{
+			ActionComponent->CancelGameplayActions(*CancellationReason);
+			++CancelledActionCount;
+		}
+		if (UHeistForgeryComponent* ForgeryComponent = PlayerCharacter->GetForgeryComponent(); IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive() &&
+			ForgeryComponent->CancelForgerySession(TerminalTrigger))
+		{
+			++CancelledForgeryCount;
+		}
+		if (UHeistObjectAssemblyComponent* ObjectAssemblyComponent = PlayerCharacter->GetObjectAssemblyComponent();
+			IsValid(ObjectAssemblyComponent) && ObjectAssemblyComponent->IsSessionActive() && ObjectAssemblyComponent->CancelAssemblySession(TerminalTrigger))
+		{
+			++CancelledForgeryCount;
+		}
+		if (UHeistInventoryComponent* InventoryComponent = PlayerCharacter->GetInventoryComponent();
+			IsValid(InventoryComponent) && InventoryComponent->IsInventoryOpen() && InventoryComponent->TrySetInventoryOpen(false))
+		{
+			++ClosedInventoryCount;
+		}
+		if (const UHeistInventoryComponent* InventoryComponent = PlayerCharacter->GetInventoryComponent(); IsValid(InventoryComponent) && InventoryComponent->IsCarryingOriginal())
+		{
+			if (AHeistPlayerState* PlayerState = PlayerCharacter->GetPlayerState<AHeistPlayerState>())
+			{
+				PlayerState->EndOriginalCarryContribution(false);
+			}
+		}
+		if (UCharacterMovementComponent* MovementComponent = PlayerCharacter->GetCharacterMovement(); IsValid(MovementComponent))
+		{
+			MovementComponent->StopMovementImmediately();
+			MovementComponent->DisableMovement();
+			++DisabledMovementCount;
+		}
+	}
+
+	const EHeistObjectiveState TerminalObjectiveState = Outcome == EHeistContractOutcome::Failed ? EHeistObjectiveState::Failed : EHeistObjectiveState::Completed;
+	const bool bObjectiveUpdated = HeistGameState->SetObjectiveSnapshot(HeistGameState->GetActiveTargetArtifactId(), HeistGameState->GetActiveTargetCaseId(),
+		TerminalObjectiveState, nullptr);
+	HeistGameState->RebuildPlayerResults();
+	const bool bMatchEnded = HeistGameState->SetMatchPhase(EHeistMatchPhase::End);
+	const bool bFinalized = bObjectiveUpdated && bMatchEnded;
+	if (TerminalTrigger == FName(TEXT("Lockdown")))
+	{
+		bLockdownWorldRestrictionsApplied = bFinalized;
+	}
+
+	UE_LOG(LogHeistNetwork, Log,
+		   TEXT("Contract outcome finalized: Trigger=%s Outcome=%s ReasonId=%s Reason=\"%s\" Players=%d ActionsCancelled=%d ForgeriesCancelled=%d InventoriesClosed=%d MovementsDisabled=%d Objective=%s MatchPhase=%s Authority=true Result=%s"),
+		   *TerminalTrigger.ToString(), *UEnum::GetValueAsString(Outcome), *OutcomeReasonId.ToString(), *HeistGameState->GetContractOutcomeReasonText().ToString(), PlayerCount,
+		   CancelledActionCount, CancelledForgeryCount, ClosedInventoryCount, DisabledMovementCount, *UEnum::GetValueAsString(HeistGameState->GetObjectiveState()),
+		   *UEnum::GetValueAsString(HeistGameState->GetMatchPhase()), bFinalized ? TEXT("PASS") : TEXT("FAIL"));
+	return bFinalized;
+}
+
+bool AHeistGameMode::BuildTeamResultSnapshot(const EHeistContractOutcome Outcome, const FName OutcomeReasonId, FHeistTeamResult& OutTeamResult) const
+{
+	OutTeamResult = FHeistTeamResult();
+	const AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	if (!HasAuthority() || !IsValid(HeistGameState) || !IsValid(BalanceData) || Outcome == EHeistContractOutcome::None || OutcomeReasonId.IsNone())
+	{
+		return false;
+	}
+
+	const FHeistContractSnapshot ContractSnapshot = HeistGameState->GetContractSnapshot();
+	FHeistArtifactDataRow RequiredTargetDefinition;
+	if (!TryGetArtifactDefinition(ContractSnapshot.RequiredTargetArtifactId, RequiredTargetDefinition))
+	{
+		UE_LOG(LogHeistNetwork, Error, TEXT("Team result calculation rejected: TargetArtifact=%s Result=FAIL Reason=MissingArtifactDefinition"),
+			*ContractSnapshot.RequiredTargetArtifactId.ToString());
+		return false;
+	}
+
+	float RequiredTargetQuality = 50.0f;
+	bool bFoundRequiredTargetReplica = false;
+	TArray<FHeistReplicaRecapEntry> ReplicaRecap;
+	for (TActorIterator<AHeistPaintingDisplayCaseActor> DisplayCaseIterator(GetWorld()); DisplayCaseIterator; ++DisplayCaseIterator)
+	{
+		const AHeistPaintingDisplayCaseActor* DisplayCase = *DisplayCaseIterator;
+		if (!IsValid(DisplayCase) || !DisplayCase->HasCommittedForgeryResult())
+		{
+			continue;
+		}
+		const FHeistForgeryResult Result = DisplayCase->GetCommittedForgeryResult();
+		FHeistReplicaRecapEntry& Recap = ReplicaRecap.AddDefaulted_GetRef();
+		Recap.CaseId = DisplayCase->GetDisplayCaseId();
+		Recap.ArtifactId = Result.ArtifactId;
+		Recap.TemplateId = Result.TemplateId;
+		Recap.ForgeryType = Result.ForgeryType == EHeistForgeryType::None ? EHeistForgeryType::Drawing : Result.ForgeryType;
+		Recap.QualityScore = FMath::Clamp(Result.SimilarityScore, 0.0f, 100.0f);
+		Recap.bRequiredTarget = Recap.CaseId == ContractSnapshot.RequiredTargetCaseId && Recap.ArtifactId == ContractSnapshot.RequiredTargetArtifactId;
+		const FHeistReplicaPaintingData PaintingData = DisplayCase->GetReplicaPaintingData();
+		Recap.PaintingResolution = PaintingData.Resolution;
+		Recap.PaintingPalette = PaintingData.Palette;
+		Recap.PaintingPackedPaletteIndices = PaintingData.PackedPaletteIndices;
+		if (Recap.bRequiredTarget)
+		{
+			RequiredTargetQuality = Recap.QualityScore;
+			bFoundRequiredTargetReplica = true;
+		}
+	}
+	for (TActorIterator<AHeistObjectDisplayCaseActor> DisplayCaseIterator(GetWorld()); DisplayCaseIterator; ++DisplayCaseIterator)
+	{
+		const AHeistObjectDisplayCaseActor* DisplayCase = *DisplayCaseIterator;
+		if (!IsValid(DisplayCase) || !DisplayCase->HasCommittedAssemblyResult())
+		{
+			continue;
+		}
+		const FHeistObjectAssemblyResult Result = DisplayCase->GetCommittedAssemblyResult();
+		FHeistReplicaRecapEntry& Recap = ReplicaRecap.AddDefaulted_GetRef();
+		Recap.CaseId = DisplayCase->GetObjectCaseId();
+		Recap.ArtifactId = Result.ArtifactId;
+		Recap.TemplateId = Result.TemplateId;
+		Recap.ForgeryType = EHeistForgeryType::Assembly;
+		Recap.QualityScore = FMath::Clamp(Result.QualityScore, 0.0f, 100.0f);
+		Recap.bRequiredTarget = Recap.CaseId == ContractSnapshot.RequiredTargetCaseId && Recap.ArtifactId == ContractSnapshot.RequiredTargetArtifactId;
+		Recap.AssemblyEntries = DisplayCase->GetAssemblyReplicaData().Entries;
+		if (Recap.bRequiredTarget)
+		{
+			RequiredTargetQuality = Recap.QualityScore;
+			bFoundRequiredTargetReplica = true;
+		}
+	}
+	ReplicaRecap.Sort([](const FHeistReplicaRecapEntry& Left, const FHeistReplicaRecapEntry& Right)
+	{
+		return Left.CaseId.ToString() < Right.CaseId.ToString();
+	});
+
+	const int32 AlertLevelIndex = static_cast<int32>(HeistGameState->GetAlertLevel());
+	const int32 TargetValue = ContractSnapshot.bRequiredTargetSecured ? FMath::Min(ContractSnapshot.SecuredValue, FMath::Max(0, RequiredTargetDefinition.ArtifactValue)) : 0;
+	const int32 LooseLootValue = FMath::Max(0, ContractSnapshot.SecuredValue - TargetValue);
+	const int32 ArrestedCrewCount = HeistGameState->GetArrestedCrewCount();
+	float ForgeryMultiplier = 1.0f;
+	float StealthMultiplier = 1.0f;
+	int32 ArrestPenalty = 0;
+	int32 TeamReward = 0;
+	if (!HeistTeamReward::Calculate(TargetValue, LooseLootValue, RequiredTargetQuality, BalanceData->MinimumForgeryRewardMultiplier,
+		BalanceData->MaximumForgeryRewardMultiplier, AlertLevelIndex, BalanceData->AlertLevelRewardPenalty, BalanceData->MinimumStealthRewardMultiplier,
+		ArrestedCrewCount, BalanceData->ArrestRewardPenaltyPerPlayer, ForgeryMultiplier, StealthMultiplier, ArrestPenalty, TeamReward))
+	{
+		UE_LOG(LogHeistNetwork, Error, TEXT("Team result calculation rejected: Result=FAIL Reason=InvalidRewardBalance"));
+		return false;
+	}
+
+	OutTeamResult.Outcome = Outcome;
+	OutTeamResult.OutcomeReasonId = OutcomeReasonId;
+	OutTeamResult.RequiredTargetArtifactId = ContractSnapshot.RequiredTargetArtifactId;
+	OutTeamResult.bRequiredTargetSecured = ContractSnapshot.bRequiredTargetSecured;
+	OutTeamResult.LootValueQuota = ContractSnapshot.LootValueQuota;
+	OutTeamResult.SecuredValue = ContractSnapshot.SecuredValue;
+	OutTeamResult.ExtraValue = FMath::Max(0, ContractSnapshot.SecuredValue - ContractSnapshot.LootValueQuota);
+	OutTeamResult.RequiredTargetValue = TargetValue;
+	OutTeamResult.SecuredLooseLootValue = LooseLootValue;
+	OutTeamResult.RequiredTargetQuality = RequiredTargetQuality;
+	OutTeamResult.ForgeryRewardMultiplier = ForgeryMultiplier;
+	OutTeamResult.StealthRewardMultiplier = StealthMultiplier;
+	OutTeamResult.ArrestPenalty = ArrestPenalty;
+	OutTeamResult.TeamReward = TeamReward;
+	OutTeamResult.CrewCount = HeistGameState->GetConnectedPlayerCount();
+	OutTeamResult.EscapedCrewCount = HeistGameState->GetEscapedCrewCount();
+	OutTeamResult.ArrestedCrewCount = ArrestedCrewCount;
+	OutTeamResult.ReplicaRecap = MoveTemp(ReplicaRecap);
+
+	UE_LOG(LogHeistNetwork, Log,
+		TEXT("Team reward calculated: TargetValue=%d LooseValue=%d RequiredQuality=%.1f RequiredReplica=%s ForgeryMultiplier=%.3f Alert=%s StealthMultiplier=%.3f Arrested=%d ArrestPenalty=%d Reward=%d QuotaUntouched=%d SecuredUntouched=%d Authority=true Result=PASS"),
+		TargetValue, LooseLootValue, RequiredTargetQuality, bFoundRequiredTargetReplica ? TEXT("true") : TEXT("false"), ForgeryMultiplier,
+		*UEnum::GetValueAsString(HeistGameState->GetAlertLevel()), StealthMultiplier, ArrestedCrewCount, OutTeamResult.ArrestPenalty, OutTeamResult.TeamReward,
+		ContractSnapshot.LootValueQuota, ContractSnapshot.SecuredValue);
+	return true;
 }
 
 #pragma endregion
@@ -551,6 +860,7 @@ int32 AHeistGameMode::GetActiveMatchTimerCount() const
 	const FTimerManager& TimerManager = GetWorldTimerManager();
 	int32 ActiveTimerCount = TimerManager.TimerExists(AlertTransitionTimerHandle) ? 1 : 0;
 	ActiveTimerCount += TimerManager.TimerExists(EscapePhaseTimerHandle) ? 1 : 0;
+	ActiveTimerCount += TimerManager.TimerExists(ContractDurationTimerHandle) ? 1 : 0;
 	for (const FTimerHandle& TimerHandle : RareLootWarningTimerHandles)
 	{
 		ActiveTimerCount += TimerManager.TimerExists(TimerHandle) ? 1 : 0;
@@ -627,79 +937,20 @@ bool AHeistGameMode::ApplyLockdownWorldRestrictions(const FName TriggerId)
 
 	if (bLockdownWorldRestrictionsApplied)
 	{
-		const bool bStateValid = HeistGameState->GetMatchPhase() == EHeistMatchPhase::End && HeistGameState->GetObjectiveState() == EHeistObjectiveState::Failed;
+		const bool bStateValid = HeistGameState->GetMatchPhase() == EHeistMatchPhase::End && HeistGameState->GetContractSnapshot().Outcome != EHeistContractOutcome::None;
 		UE_LOG(LogHeistNetwork, Log, TEXT("Lockdown world restriction duplicate blocked: Trigger=%s MatchPhase=%s Objective=%s Authority=true Result=%s Reason=AlreadyApplied"),
 			   *TriggerId.ToString(), *UEnum::GetValueAsString(HeistGameState->GetMatchPhase()), *UEnum::GetValueAsString(HeistGameState->GetObjectiveState()),
 			   bStateValid ? TEXT("PASS") : TEXT("FAIL"));
 		return bStateValid;
 	}
 
-	int32 PlayerCount = 0;
-	int32 CancelledActionCount = 0;
-	int32 CancelledForgeryCount = 0;
-	int32 ClosedInventoryCount = 0;
-	int32 DisabledMovementCount = 0;
-	GetWorldTimerManager().ClearTimer(EscapePhaseTimerHandle);
-	HeistGameState->InitializeEscapePhase(HeistGameState->GetEscapePhaseDelaySeconds());
-
-	for (TActorIterator<AHeistPlayerCharacter> PlayerIterator(GetWorld()); PlayerIterator; ++PlayerIterator)
-	{
-		AHeistPlayerCharacter* PlayerCharacter = *PlayerIterator;
-		if (!IsValid(PlayerCharacter))
-		{
-			continue;
-		}
-
-		++PlayerCount;
-		if (UHeistActionComponent* ActionComponent = PlayerCharacter->GetActionComponent(); IsValid(ActionComponent) && ActionComponent->IsGameplayCastActive())
-		{
-			ActionComponent->CancelGameplayActions(TEXT("Lockdown"));
-			++CancelledActionCount;
-		}
-
-		if (UHeistForgeryComponent* ForgeryComponent = PlayerCharacter->GetForgeryComponent(); IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive())
-		{
-			if (ForgeryComponent->CancelForgerySession(FName(TEXT("Lockdown"))))
-			{
-				++CancelledForgeryCount;
-			}
-		}
-		if (UHeistObjectAssemblyComponent* ObjectAssemblyComponent = PlayerCharacter->GetObjectAssemblyComponent();
-			IsValid(ObjectAssemblyComponent) && ObjectAssemblyComponent->IsSessionActive())
-		{
-			if (ObjectAssemblyComponent->CancelAssemblySession(FName(TEXT("Lockdown"))))
-			{
-				++CancelledForgeryCount;
-			}
-		}
-
-		if (UHeistInventoryComponent* InventoryComponent = PlayerCharacter->GetInventoryComponent(); IsValid(InventoryComponent) && InventoryComponent->IsInventoryOpen())
-		{
-			if (InventoryComponent->TrySetInventoryOpen(false))
-			{
-				++ClosedInventoryCount;
-			}
-		}
-
-		if (UCharacterMovementComponent* MovementComponent = PlayerCharacter->GetCharacterMovement(); IsValid(MovementComponent))
-		{
-			MovementComponent->StopMovementImmediately();
-			MovementComponent->DisableMovement();
-			++DisabledMovementCount;
-		}
-	}
-
-	const bool bObjectiveFailed =
-		HeistGameState->SetObjectiveSnapshot(HeistGameState->GetActiveTargetArtifactId(), HeistGameState->GetActiveTargetCaseId(), EHeistObjectiveState::Failed, nullptr);
-	const bool bMatchEnded = HeistGameState->SetMatchPhase(EHeistMatchPhase::End);
-	bLockdownWorldRestrictionsApplied = bObjectiveFailed && bMatchEnded;
-
-	UE_LOG(LogHeistNetwork, Log,
-		   TEXT(
-			   "Lockdown world restriction applied: Trigger=%s Players=%d ActionsCancelled=%d ForgeriesCancelled=%d InventoriesClosed=%d MovementsDisabled=%d Objective=%s MatchPhase=%s Authority=true Result=%s"),
-		   *TriggerId.ToString(), PlayerCount, CancelledActionCount, CancelledForgeryCount, ClosedInventoryCount, DisabledMovementCount,
-		   *UEnum::GetValueAsString(HeistGameState->GetObjectiveState()), *UEnum::GetValueAsString(HeistGameState->GetMatchPhase()), bLockdownWorldRestrictionsApplied ? TEXT("PASS") : TEXT("FAIL"));
-	return bLockdownWorldRestrictionsApplied;
+	const bool bOutcomeFinalized = TryResolveContractOutcome(FName(TEXT("Lockdown")), true);
+	bLockdownWorldRestrictionsApplied = bOutcomeFinalized;
+	UE_LOG(LogHeistNetwork, Log, TEXT("Lockdown world restriction applied: SourceTrigger=%s Outcome=%s ReasonId=%s MatchPhase=%s Authority=true Result=%s"),
+		   *TriggerId.ToString(), *UEnum::GetValueAsString(HeistGameState->GetContractSnapshot().Outcome),
+		   *HeistGameState->GetContractSnapshot().OutcomeReasonId.ToString(), *UEnum::GetValueAsString(HeistGameState->GetMatchPhase()),
+		   bOutcomeFinalized ? TEXT("PASS") : TEXT("FAIL"));
+	return bOutcomeFinalized;
 }
 
 void AHeistGameMode::HandleAlertTransitionTimerElapsed()

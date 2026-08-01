@@ -51,6 +51,28 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 
   public:
 	void PrepareForOnlineSessionShutdown(FName Reason);
+	void NotifyPlayerTerminalStateChanged(AHeistPlayerState* PlayerState, FName TerminalTrigger);
+
+#pragma endregion
+
+#pragma region ContractOutcome
+
+  public:
+#if !UE_BUILD_SHIPPING
+	bool ForceContractOutcomeForDebug(FName TerminalTrigger, bool bTreatAsCrewEscaped, bool bTreatAsAllRemainingCrewArrested, bool bTreatAsAllCrewDisconnected);
+#endif
+
+  private:
+	void StartContractDurationTimer();
+	void HandleContractDurationTimerElapsed();
+	bool TryResolveContractOutcome(FName TerminalTrigger, bool bForceTerminal = false, bool bTreatAsCrewEscaped = false,
+		bool bTreatAsAllRemainingCrewArrested = false, bool bTreatAsAllCrewDisconnected = false);
+	bool BuildTeamResultSnapshot(EHeistContractOutcome Outcome, FName OutcomeReasonId, FHeistTeamResult& OutTeamResult) const;
+	bool FinalizeContractOutcome(EHeistContractOutcome Outcome, FName OutcomeReasonId, FName TerminalTrigger);
+
+	FTimerHandle ContractDurationTimerHandle;
+	bool bAnyPlayerEscapedThisMatch = false;
+	bool bMatchHadPlayer = false;
 
 #pragma endregion
 

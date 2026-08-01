@@ -18,6 +18,7 @@ void UHeistResultViewModel::BeginDestroy()
 	if (IsValid(GameState))
 	{
 		GameState->GetPlayerResultsChangedDelegate().RemoveAll(this);
+		GameState->GetTeamResultChangedDelegate().RemoveAll(this);
 	}
 
 	Super::BeginDestroy();
@@ -32,6 +33,7 @@ void UHeistResultViewModel::SetupViewModel(AHeistGameState* InGameState, AHeistP
 	if (GameState != InGameState && IsValid(GameState))
 	{
 		GameState->GetPlayerResultsChangedDelegate().RemoveAll(this);
+		GameState->GetTeamResultChangedDelegate().RemoveAll(this);
 	}
 
 	GameState = InGameState;
@@ -41,16 +43,51 @@ void UHeistResultViewModel::SetupViewModel(AHeistGameState* InGameState, AHeistP
 	{
 		GameState->GetPlayerResultsChangedDelegate().RemoveAll(this);
 		GameState->GetPlayerResultsChangedDelegate().AddUObject(this, &UHeistResultViewModel::RefreshResultData);
+		GameState->GetTeamResultChangedDelegate().RemoveAll(this);
+		GameState->GetTeamResultChangedDelegate().AddUObject(this, &UHeistResultViewModel::HandleTeamResultChanged);
 	}
 
+	RefreshResultData();
+}
+
+void UHeistResultViewModel::HandleTeamResultChanged(const FHeistTeamResult&)
+{
 	RefreshResultData();
 }
 
 void UHeistResultViewModel::RefreshResultData()
 {
 	const TArray<FHeistPlayerResult> NewPlayerResults = IsValid(GameState) ? GameState->GetPlayerResults() : TArray<FHeistPlayerResult>();
+	const FHeistTeamResult NewTeamResult = IsValid(GameState) ? GameState->GetTeamResult() : FHeistTeamResult();
 
 	UE_MVVM_SET_PROPERTY_VALUE(PlayerResults, NewPlayerResults);
+	UE_MVVM_SET_PROPERTY_VALUE(TeamResult, NewTeamResult);
+	const FText NewOutcomeText = TeamResult.Outcome == EHeistContractOutcome::Success ? NSLOCTEXT("HeistResult", "OutcomeSuccess", "CONTRACT COMPLETE")
+		: TeamResult.Outcome == EHeistContractOutcome::PartialHaul ? NSLOCTEXT("HeistResult", "OutcomePartial", "PARTIAL HAUL")
+		: TeamResult.Outcome == EHeistContractOutcome::Failed ? NSLOCTEXT("HeistResult", "OutcomeFailed", "CONTRACT FAILED") : FText::GetEmpty();
+	UE_MVVM_SET_PROPERTY_VALUE(OutcomeText, NewOutcomeText);
+	UE_MVVM_SET_PROPERTY_VALUE(OutcomeReasonText, HeistContractOutcomeReasons::ToDisplayText(TeamResult.OutcomeReasonId));
+	UE_MVVM_SET_PROPERTY_VALUE(ContractProgressText,
+		FText::Format(NSLOCTEXT("HeistResult", "ContractProgressFormat", "SECURED {0} / {1}   EXTRA {2}   TARGET {3}"), FText::AsNumber(TeamResult.SecuredValue),
+			FText::AsNumber(TeamResult.LootValueQuota), FText::AsNumber(TeamResult.ExtraValue),
+			TeamResult.bRequiredTargetSecured ? NSLOCTEXT("HeistResult", "TargetSecured", "SECURED") : NSLOCTEXT("HeistResult", "TargetMissing", "MISSING")));
+	UE_MVVM_SET_PROPERTY_VALUE(TeamRewardText,
+		FText::Format(NSLOCTEXT("HeistResult", "TeamRewardFormat", "TEAM REWARD  {0}"), FText::AsNumber(TeamResult.TeamReward)));
+	UE_MVVM_SET_PROPERTY_VALUE(RewardBreakdownText,
+		FText::Format(NSLOCTEXT("HeistResult", "RewardBreakdownFormat", "TARGET {0} × QUALITY {1} × STEALTH {2}  +  LOOSE {3}  −  ARREST {4}"),
+			FText::AsNumber(TeamResult.RequiredTargetValue), FText::AsNumber(TeamResult.ForgeryRewardMultiplier), FText::AsNumber(TeamResult.StealthRewardMultiplier),
+			FText::AsNumber(TeamResult.SecuredLooseLootValue), FText::AsNumber(TeamResult.ArrestPenalty)));
+	FString RecapLines;
+	for (const FHeistReplicaRecapEntry& Recap : TeamResult.ReplicaRecap)
+	{
+		if (!RecapLines.IsEmpty())
+		{
+			RecapLines += TEXT("\n");
+		}
+		RecapLines += FString::Printf(TEXT("%s%s  |  %s  |  %.0f"), Recap.bRequiredTarget ? TEXT("[TARGET] ") : TEXT(""), *Recap.ArtifactId.ToString(),
+			*UEnum::GetValueAsString(Recap.ForgeryType), Recap.QualityScore);
+	}
+	UE_MVVM_SET_PROPERTY_VALUE(ReplicaRecapText, RecapLines.IsEmpty() ? NSLOCTEXT("HeistResult", "NoReplicaRecap", "NO REPLICA RECORDED") : FText::FromString(RecapLines));
 
 	const int32 LocalPlayerId = IsValid(LocalPlayerState) ? LocalPlayerState->HeistPlayerId : INDEX_NONE;
 	const FHeistPlayerResult* LocalResult = PlayerResults.FindByPredicate([LocalPlayerId](const FHeistPlayerResult& PlayerResult) { return PlayerResult.PlayerId == LocalPlayerId; });
@@ -79,6 +116,16 @@ FHeistResultSnapshotChanged& UHeistResultViewModel::GetSnapshotChangedDelegate()
 const TArray<FHeistPlayerResult>& UHeistResultViewModel::GetPlayerResults() const
 {
 	return PlayerResults;
+}
+
+const FHeistTeamResult& UHeistResultViewModel::GetTeamResult() const
+{
+	return TeamResult;
+}
+
+const TArray<FHeistReplicaRecapEntry>& UHeistResultViewModel::GetReplicaRecap() const
+{
+	return TeamResult.ReplicaRecap;
 }
 
 int32 UHeistResultViewModel::GetMyFinalScore() const
@@ -141,6 +188,13 @@ ESlateVisibility UHeistResultViewModel::GetResultRow4Visibility() const
 	return ResultRow4Visibility;
 }
 
+const FText& UHeistResultViewModel::GetOutcomeText() const { return OutcomeText; }
+const FText& UHeistResultViewModel::GetOutcomeReasonText() const { return OutcomeReasonText; }
+const FText& UHeistResultViewModel::GetContractProgressText() const { return ContractProgressText; }
+const FText& UHeistResultViewModel::GetTeamRewardText() const { return TeamRewardText; }
+const FText& UHeistResultViewModel::GetRewardBreakdownText() const { return RewardBreakdownText; }
+const FText& UHeistResultViewModel::GetReplicaRecapText() const { return ReplicaRecapText; }
+
 FText UHeistResultViewModel::BuildResultRowText(const int32 ResultIndex) const
 {
 	if (!PlayerResults.IsValidIndex(ResultIndex))
@@ -151,9 +205,12 @@ FText UHeistResultViewModel::BuildResultRowText(const int32 ResultIndex) const
 	const FHeistPlayerResult& PlayerResult = PlayerResults[ResultIndex];
 	const FText EscapeStateText =
 		PlayerResult.bEscaped ? NSLOCTEXT("HeistResult", "PlayerEscaped", "ESCAPED") : NSLOCTEXT("HeistResult", "PlayerCaught", "CAUGHT");
+	const FHeistPlayerContribution& Contribution = PlayerResult.Contribution;
 	return FText::Format(
-		NSLOCTEXT("HeistResult", "ResultRowFormat", "PLAYER {0}  |  LOOT {1}  |  WEIGHT {2}  |  {3}"), FText::AsNumber(PlayerResult.PlayerId),
-		FText::AsNumber(PlayerResult.FinalScore), FText::AsNumber(FMath::RoundToInt(PlayerResult.LootWeight)), EscapeStateText);
+		NSLOCTEXT("HeistResult", "ResultRowFormat", "PLAYER {0}  |  {1}  |  FORGERY {2}/{3}  |  RECOVERED {4}  |  SECURED {5}  |  DISTRACT {6}  |  RESCUE {7}  |  ALARMS {8}"),
+		FText::AsNumber(PlayerResult.PlayerId), EscapeStateText, FText::AsNumber(Contribution.SurfaceForgeries), FText::AsNumber(Contribution.Assemblies),
+		FText::AsNumber(Contribution.ArtifactsRecovered), FText::AsNumber(Contribution.SecuredLootValue), FText::AsNumber(Contribution.GuardsDistracted),
+		FText::AsNumber(Contribution.TeammatesRescued), FText::AsNumber(Contribution.AlarmsTriggered));
 }
 
 ESlateVisibility UHeistResultViewModel::BuildResultRowVisibility(const int32 ResultIndex) const

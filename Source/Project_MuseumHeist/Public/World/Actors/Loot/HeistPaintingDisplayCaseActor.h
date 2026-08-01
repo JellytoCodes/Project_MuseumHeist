@@ -194,6 +194,9 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 	bool HasReplicaPaintingData() const;
 
 	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Replica|Painting")
+	FHeistReplicaPaintingData GetReplicaPaintingData() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Replica|Painting")
 	int32 GetReplicaPaintingRevision() const;
 
 	void GetReplicaPaintingDebugState(int32& OutResolution, int32& OutPaletteColorCount, int32& OutPackedByteCount, int32& OutPaintingRevision, bool& OutTextureBuilt, bool& OutDynamicMaterialBuilt,

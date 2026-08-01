@@ -408,6 +408,7 @@ bool UHeistInventoryComponent::TryBeginOriginalCarry(AHeistPlayerState* Carrying
 	OriginalCarryEntry.Weight = Weight;
 	OriginalCarryEntry.bRequiredTarget = bRequiredTarget;
 	OriginalCarryEntry.SourceDisplayCase = SourceDisplayCase;
+	CarryingPlayerState->BeginOriginalCarryContribution();
 	OwnerCharacter->ForceNetUpdate();
 	NotifyInventoryChanged();
 	if (AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr)
@@ -429,6 +430,7 @@ bool UHeistInventoryComponent::TryEndOriginalCarry(AHeistPlayerState* CarryingPl
 
 	OutReleasedEntry = OriginalCarryEntry;
 	OriginalCarryEntry = FHeistOriginalCarryEntry();
+	CarryingPlayerState->EndOriginalCarryContribution(false);
 	OwnerCharacter->ForceNetUpdate();
 	NotifyInventoryChanged();
 	if (AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr)
@@ -560,6 +562,11 @@ bool UHeistInventoryComponent::TryCommitPlayerDeposit(AHeistPlayerState* Deposit
 		ReplicatedInventory.MarkArrayDirty();
 	}
 	OriginalCarryEntry = FHeistOriginalCarryEntry();
+	DepositingPlayerState->RecordSecuredLootContribution(CurrentPayload.LooseLootValue);
+	if (CurrentPayload.OriginalCarry.IsValid())
+	{
+		DepositingPlayerState->EndOriginalCarryContribution(true);
+	}
 
 	OwnerCharacter->ForceNetUpdate();
 	NotifyInventoryChanged();

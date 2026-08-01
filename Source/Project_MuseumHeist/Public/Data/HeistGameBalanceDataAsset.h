@@ -78,6 +78,22 @@ class PROJECT_MUSEUMHEIST_API UHeistGameBalanceDataAsset : public UDataAsset
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Interaction", meta = (ClampMin = "0.0", Units = "s"))
 	float EscapeCastTime = 2.0f;
 
+	/** Reward-only tuning. These values never change SecuredValue or LootValueQuota. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Result|Reward", meta = (ClampMin = "0.0", ClampMax = "2.0"))
+	float MinimumForgeryRewardMultiplier = 0.75f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Result|Reward", meta = (ClampMin = "0.0", ClampMax = "2.0"))
+	float MaximumForgeryRewardMultiplier = 1.25f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Result|Reward", meta = (ClampMin = "0.0", ClampMax = "0.25"))
+	float AlertLevelRewardPenalty = 0.05f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Result|Reward", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float MinimumStealthRewardMultiplier = 0.75f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Result|Reward", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float ArrestRewardPenaltyPerPlayer = 0.10f;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Data Tables")
 	TSoftObjectPtr<UDataTable> ItemDataTable;
 

@@ -10,6 +10,7 @@ class AHeistPlayerState;
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistEscapePhaseStateChanged, bool);
 DECLARE_MULTICAST_DELEGATE(FHeistPlayerResultsChanged);
+DECLARE_MULTICAST_DELEGATE_OneParam(FHeistTeamResultChanged, const FHeistTeamResult&);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistSoundPingEventReported, const FHeistSoundPingEvent&);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistRareLootEventStateChanged, const FHeistRareLootEventState&);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerConnectionsChanged, int32);
@@ -166,12 +167,15 @@ class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
 	UFUNCTION(BlueprintPure, Category = "Heist|Contract")
 	bool IsContractSuccessConditionMet() const;
 
+	UFUNCTION(BlueprintPure, Category = "Heist|Contract")
+	FText GetContractOutcomeReasonText() const;
+
 	bool InitializeContractSnapshot(FName ContractId, FName MapId, int32 AssignmentSeed, FName RequiredTargetArtifactId, FName RequiredTargetCaseId, int32 LootValueQuota);
 	bool SetContractProgress(int32 CarriedValue, int32 SecuredValue, bool bRequiredTargetSecured);
 	bool RefreshContractCarriedValue();
 	bool CanCommitPlayerDeposit(const AHeistPlayerState* DepositingPlayerState, int32 DepositValue, bool bRequiredTargetDeposited, const TCHAR*& OutRejectReason) const;
 	bool CommitPlayerDeposit(AHeistPlayerState* DepositingPlayerState, int32 DepositValue, bool bRequiredTargetDeposited);
-	bool CommitContractOutcome(EHeistContractOutcome Outcome);
+	bool CommitContractOutcome(EHeistContractOutcome Outcome, FName OutcomeReasonId);
 	FHeistContractSnapshotChanged& GetContractSnapshotChangedDelegate();
 
   private:
@@ -346,6 +350,9 @@ class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
 #pragma region ResultData
 
   public:
+	bool CommitTeamResult(FHeistTeamResult NewTeamResult);
+	const FHeistTeamResult& GetTeamResult() const;
+	FHeistTeamResultChanged& GetTeamResultChangedDelegate();
 	void RebuildPlayerResults();
 	const TArray<FHeistPlayerResult>& GetPlayerResults() const;
 	FHeistPlayerResultsChanged& GetPlayerResultsChangedDelegate();
@@ -357,6 +364,14 @@ class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
 
   private:
 	void GetPlayerLifecycleCounts(int32& OutTotalPlayers, int32& OutActivePlayers, int32& OutEscapedPlayers, int32& OutArrestedPlayers) const;
+
+	UPROPERTY(ReplicatedUsing = OnRep_TeamResult, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
+	FHeistTeamResult TeamResult;
+
+	UFUNCTION()
+	void OnRep_TeamResult();
+
+	FHeistTeamResultChanged TeamResultChangedDelegate;
 
 	UPROPERTY(ReplicatedUsing = OnRep_PlayerResults, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
 	TArray<FHeistPlayerResult> PlayerResults;

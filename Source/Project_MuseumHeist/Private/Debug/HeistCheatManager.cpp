@@ -271,6 +271,38 @@ void UHeistCheatManager::HeistDepositDump(const int32 PlayerId)
 
 #pragma endregion
 
+#pragma region OutcomeDebug
+
+void UHeistCheatManager::HeistOutcomeHelp()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugOutcomeHelp(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistOutcomeSeed(const int32 SecuredValue, const int32 RequiredTargetSecured)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugOutcomeSeed(GetOuterAPlayerController(), SecuredValue, RequiredTargetSecured != 0);
+#endif
+}
+
+void UHeistCheatManager::HeistOutcomeResolve(const FString TerminalTrigger)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugOutcomeResolve(GetOuterAPlayerController(), TerminalTrigger);
+#endif
+}
+
+void UHeistCheatManager::HeistOutcomeDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugOutcomeDump(GetOuterAPlayerController());
+#endif
+}
+
+#pragma endregion
+
 #pragma region ObjectAssemblyDebug
 
 void UHeistCheatManager::HeistObjectAssemblyHelp()
@@ -1066,6 +1098,20 @@ void UHeistCheatManager::HeistResultSeed(const int32 Score, const bool bEscaped,
 {
 #if !UE_BUILD_SHIPPING
 	UHeistDebugFunctionLibrary::DebugResultSeed(GetOuterAPlayerController(), Score, bEscaped, EscapeTimeSeconds);
+#endif
+}
+
+void UHeistCheatManager::HeistExitPlacementDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugExitPlacementDump(GetOuterAPlayerController());
+#endif
+}
+
+void UHeistCheatManager::HeistMissionGateDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugMissionGateDump(GetOuterAPlayerController());
 #endif
 }
 
