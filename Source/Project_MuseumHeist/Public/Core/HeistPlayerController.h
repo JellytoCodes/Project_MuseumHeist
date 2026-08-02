@@ -72,6 +72,7 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	void HandleMoveInput(const FInputActionValue& InputValue);
 	void HandleInventoryToggle();
 	void HandleForgeryCancel();
+	void HandleReplicaRedraw();
 	void UpdateFlashlightAimDirection();
 	void RefreshLocalForgeryInputBinding();
 	void UnbindLocalForgeryInputState();
@@ -203,6 +204,8 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 
 	void RequestSubmitForgeryStrokes(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices, float ClientBrushSize,
 									 int32 ClientSessionRevision = INDEX_NONE);
+	void RequestConfirmForgeryReplicaSwap();
+	void RequestRestartForgeryFromPreview();
 
 	void RequestBeginObjectAssembly(AHeistObjectDisplayCaseActor* TargetDisplayCase, float DurationSeconds = -1.0f);
 	void RequestCancelObjectAssembly();
@@ -276,6 +279,12 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 									 int32 ClientSessionRevision);
 
 	UFUNCTION(Server, Reliable)
+	void Server_ConfirmForgeryReplicaSwap();
+
+	UFUNCTION(Server, Reliable)
+	void Server_RestartForgeryFromPreview();
+
+	UFUNCTION(Server, Reliable)
 	void Server_RequestBeginObjectAssembly(AHeistObjectDisplayCaseActor* TargetDisplayCase, float DurationSeconds);
 
 	UFUNCTION(Server, Reliable)
@@ -331,6 +340,8 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	void DebugRequestReportGuardNoise(float Distance);
 	void DebugRequestRebuildResults();
 	void DebugRequestSeedResult(int32 Score, bool bEscaped, float EscapeTimeSeconds);
+	void DebugRequestSeedContribution(int32 SurfaceForgeries, float BestSurfaceQuality, int32 Assemblies, float BestAssemblyQuality, int32 ArtifactsRecovered,
+		float CarryTimeSeconds, int32 SecuredLootValue, int32 GuardsDistracted, int32 TeammatesRescued, int32 AlarmsTriggered);
 	void DebugRequestFeedbackTest();
 	void DebugRequestFillInventoryForFeedback(FName ItemId);
 	void DebugRequestSetArrested(bool bArrested);
@@ -366,6 +377,10 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 
 	UFUNCTION(Server, Reliable)
 	void Server_DebugRequestSeedResult(int32 Score, bool bEscaped, float EscapeTimeSeconds);
+
+	UFUNCTION(Server, Reliable)
+	void Server_DebugRequestSeedContribution(int32 SurfaceForgeries, float BestSurfaceQuality, int32 Assemblies, float BestAssemblyQuality, int32 ArtifactsRecovered,
+		float CarryTimeSeconds, int32 SecuredLootValue, int32 GuardsDistracted, int32 TeammatesRescued, int32 AlarmsTriggered);
 
 	UFUNCTION(Server, Reliable)
 	void Server_DebugRequestSetArrested(bool bArrested);

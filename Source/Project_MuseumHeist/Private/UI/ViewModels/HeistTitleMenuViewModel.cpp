@@ -97,14 +97,14 @@ bool UHeistTitleMenuViewModel::RequestApplySettings(const float FieldOfView, con
 	UHeistGameUserSettings* Settings = UHeistGameUserSettings::GetHeistGameUserSettings();
 	if (!IsValid(Settings))
 	{
-		UE_MVVM_SET_PROPERTY_VALUE(SettingsStatusText, NSLOCTEXT("HeistTitleMenu", "SettingsUnavailable", "SETTINGS ARE UNAVAILABLE."));
+		UE_MVVM_SET_PROPERTY_VALUE(SettingsStatusText, NSLOCTEXT("HeistTitleMenu", "SettingsUnavailable", "설정을 사용할 수 없습니다."));
 		SnapshotChangedDelegate.Broadcast();
 		return false;
 	}
 	if (ResolutionWidth <= 0 || ResolutionHeight <= 0 || WindowModeValue < static_cast<int32>(EWindowMode::Fullscreen)
 		|| WindowModeValue > static_cast<int32>(EWindowMode::Windowed))
 	{
-		UE_MVVM_SET_PROPERTY_VALUE(SettingsStatusText, NSLOCTEXT("HeistTitleMenu", "SettingsInvalidDisplay", "SELECT A VALID RESOLUTION AND WINDOW MODE."));
+		UE_MVVM_SET_PROPERTY_VALUE(SettingsStatusText, NSLOCTEXT("HeistTitleMenu", "SettingsInvalidDisplay", "올바른 해상도와 창 모드를 선택하세요."));
 		SnapshotChangedDelegate.Broadcast();
 		return false;
 	}
@@ -117,7 +117,7 @@ bool UHeistTitleMenuViewModel::RequestApplySettings(const float FieldOfView, con
 	Settings->ApplyHeistSettings(false);
 
 	RefreshSettingsData();
-	UE_MVVM_SET_PROPERTY_VALUE(SettingsStatusText, NSLOCTEXT("HeistTitleMenu", "SettingsApplied", "SETTINGS SAVED AND APPLIED."));
+	UE_MVVM_SET_PROPERTY_VALUE(SettingsStatusText, NSLOCTEXT("HeistTitleMenu", "SettingsApplied", "설정을 저장하고 적용했습니다."));
 	SnapshotChangedDelegate.Broadcast();
 	return true;
 }
@@ -127,14 +127,14 @@ bool UHeistTitleMenuViewModel::RequestRestoreDefaultSettings()
 	UHeistGameUserSettings* Settings = UHeistGameUserSettings::GetHeistGameUserSettings();
 	if (!IsValid(Settings))
 	{
-		UE_MVVM_SET_PROPERTY_VALUE(SettingsStatusText, NSLOCTEXT("HeistTitleMenu", "SettingsDefaultsUnavailable", "SETTINGS ARE UNAVAILABLE."));
+		UE_MVVM_SET_PROPERTY_VALUE(SettingsStatusText, NSLOCTEXT("HeistTitleMenu", "SettingsDefaultsUnavailable", "설정을 사용할 수 없습니다."));
 		SnapshotChangedDelegate.Broadcast();
 		return false;
 	}
 
 	Settings->RestoreHeistDefaults();
 	RefreshSettingsData();
-	UE_MVVM_SET_PROPERTY_VALUE(SettingsStatusText, NSLOCTEXT("HeistTitleMenu", "SettingsDefaultsApplied", "DEFAULT SETTINGS RESTORED."));
+	UE_MVVM_SET_PROPERTY_VALUE(SettingsStatusText, NSLOCTEXT("HeistTitleMenu", "SettingsDefaultsApplied", "기본 설정으로 복원했습니다."));
 	SnapshotChangedDelegate.Broadcast();
 	return true;
 }
@@ -168,55 +168,55 @@ FText UHeistTitleMenuViewModel::ResolveOnlineSessionStatusText() const
 {
 	if (!IsValid(GameInstance))
 	{
-		return NSLOCTEXT("HeistTitleMenu", "OnlineUnavailable", "ONLINE SERVICE IS UNAVAILABLE.");
+		return NSLOCTEXT("HeistTitleMenu", "OnlineUnavailable", "온라인 서비스를 사용할 수 없습니다.");
 	}
 
 	if (GameInstance->IsOnlineSessionCancellationPending())
 	{
-		return NSLOCTEXT("HeistTitleMenu", "CancellingSessionRequest", "CANCELLING THE SESSION REQUEST...");
+		return NSLOCTEXT("HeistTitleMenu", "CancellingSessionRequest", "세션 요청을 취소하는 중...");
 	}
 	if (GameInstance->IsSessionTravelPending())
 	{
 		const FName Destination = GameInstance->GetPendingTravelDestination();
 		return Destination == FName(TEXT("Gameplay"))
-				   ? NSLOCTEXT("HeistTitleMenu", "TravellingToMuseum", "TRAVELLING TO THE MUSEUM...")
-				   : NSLOCTEXT("HeistTitleMenu", "TravellingToLobby", "OPENING THE ONLINE LOBBY...");
+				   ? NSLOCTEXT("HeistTitleMenu", "TravellingToMuseum", "박물관으로 이동하는 중...")
+				   : NSLOCTEXT("HeistTitleMenu", "TravellingToLobby", "온라인 로비를 여는 중...");
 	}
 
 	const FName State = GameInstance->GetOnlineSessionState();
 	if (State == FName(TEXT("Creating")))
 	{
-		return NSLOCTEXT("HeistTitleMenu", "CreatingSession", "CREATING A PRIVATE LOBBY...");
+		return NSLOCTEXT("HeistTitleMenu", "CreatingSession", "비공개 로비를 만드는 중...");
 	}
 	if (State == FName(TEXT("Searching")))
 	{
-		return NSLOCTEXT("HeistTitleMenu", "SearchingSession", "SEARCHING FOR THAT JOIN CODE...");
+		return NSLOCTEXT("HeistTitleMenu", "SearchingSession", "참가 코드로 로비를 찾는 중...");
 	}
 	if (State == FName(TEXT("Joining")))
 	{
-		return NSLOCTEXT("HeistTitleMenu", "JoiningSession", "JOINING THE LOBBY...");
+		return NSLOCTEXT("HeistTitleMenu", "JoiningSession", "로비에 참가하는 중...");
 	}
 	if (State == FName(TEXT("Leaving")))
 	{
-		return NSLOCTEXT("HeistTitleMenu", "LeavingSession", "CLOSING THE CURRENT SESSION...");
+		return NSLOCTEXT("HeistTitleMenu", "LeavingSession", "현재 세션을 닫는 중...");
 	}
 	if (State == FName(TEXT("Failed")))
 	{
-		return NSLOCTEXT("HeistTitleMenu", "SessionFailed", "THE SESSION REQUEST FAILED.");
+		return NSLOCTEXT("HeistTitleMenu", "SessionFailed", "세션 요청에 실패했습니다.");
 	}
 	if (State == FName(TEXT("Hosting")))
 	{
-		return NSLOCTEXT("HeistTitleMenu", "HostingBeforeTravel", "THE LOBBY IS CREATED. RETRY THE LOBBY CONNECTION.");
+		return NSLOCTEXT("HeistTitleMenu", "HostingBeforeTravel", "로비가 생성되었습니다. 로비 연결을 다시 시도하세요.");
 	}
 	if (State == FName(TEXT("Joined")))
 	{
-		return NSLOCTEXT("HeistTitleMenu", "JoinedBeforeTravel", "CONNECTED TO THE HOST. WAITING FOR LOBBY TRAVEL.");
+		return NSLOCTEXT("HeistTitleMenu", "JoinedBeforeTravel", "호스트에 연결되었습니다. 로비 이동을 기다리는 중입니다.");
 	}
 	if (!GameInstance->GetLastOnlineSessionFailure().IsNone())
 	{
-		return NSLOCTEXT("HeistTitleMenu", "SessionRequestEnded", "THE LAST SESSION REQUEST ENDED.");
+		return NSLOCTEXT("HeistTitleMenu", "SessionRequestEnded", "마지막 세션 요청이 종료되었습니다.");
 	}
-	return NSLOCTEXT("HeistTitleMenu", "SessionIdle", "HOST A LOBBY OR ENTER A JOIN CODE.");
+	return NSLOCTEXT("HeistTitleMenu", "SessionIdle", "로비를 만들거나 참가 코드를 입력하세요.");
 }
 
 FText UHeistTitleMenuViewModel::ResolveOnlineSessionFailureText() const
@@ -229,78 +229,78 @@ FText UHeistTitleMenuViewModel::ResolveOnlineSessionFailureText() const
 	const FName Failure = GameInstance->GetLastOnlineSessionFailure();
 	if (Failure == FName(TEXT("InvalidJoinCode")))
 	{
-		return NSLOCTEXT("HeistTitleMenu", "InvalidJoinCode", "ENTER A VALID 6-CHARACTER JOIN CODE.");
+		return NSLOCTEXT("HeistTitleMenu", "InvalidJoinCode", "올바른 6자리 참가 코드를 입력하세요.");
 	}
 	if (Failure == FName(TEXT("SessionNotFound")))
 	{
-		return NSLOCTEXT("HeistTitleMenu", "SessionNotFound", "NO LOBBY WAS FOUND FOR THAT CODE.");
+		return NSLOCTEXT("HeistTitleMenu", "SessionNotFound", "해당 코드의 로비를 찾을 수 없습니다.");
 	}
 	if (Failure == FName(TEXT("SessionFull")))
 	{
-		return NSLOCTEXT("HeistTitleMenu", "SessionFull", "THAT LOBBY ALREADY HAS 4 PLAYERS.");
+		return NSLOCTEXT("HeistTitleMenu", "SessionFull", "해당 로비는 이미 4명으로 가득 찼습니다.");
 	}
 	if (Failure == FName(TEXT("VersionMismatch")))
 	{
-		return NSLOCTEXT("HeistTitleMenu", "VersionMismatch", "THE HOST IS USING A DIFFERENT GAME BUILD.");
+		return NSLOCTEXT("HeistTitleMenu", "VersionMismatch", "호스트가 다른 게임 버전을 사용하고 있습니다.");
 	}
 	if (Failure == FName(TEXT("ConnectStringNotResolved")))
 	{
-		return NSLOCTEXT("HeistTitleMenu", "AddressFailed", "THE HOST ADDRESS COULD NOT BE RESOLVED.");
+		return NSLOCTEXT("HeistTitleMenu", "AddressFailed", "호스트 주소를 확인할 수 없습니다.");
 	}
 	if (Failure == FName(TEXT("CreateTimedOut")))
 	{
-		return NSLOCTEXT("HeistTitleMenu", "CreateTimedOut", "LOBBY CREATION TIMED OUT. SELECT RETRY TO TRY AGAIN.");
+		return NSLOCTEXT("HeistTitleMenu", "CreateTimedOut", "로비 생성 시간이 초과되었습니다. 다시 시도하세요.");
 	}
 	if (Failure == FName(TEXT("FindTimedOut")))
 	{
-		return NSLOCTEXT("HeistTitleMenu", "FindTimedOut", "THE JOIN CODE SEARCH TIMED OUT. SELECT RETRY TO SEARCH AGAIN.");
+		return NSLOCTEXT("HeistTitleMenu", "FindTimedOut", "참가 코드 검색 시간이 초과되었습니다. 다시 검색하세요.");
 	}
 	if (Failure == FName(TEXT("JoinTimedOut")) || Failure == FName(TEXT("TravelTimedOut")))
 	{
-		return NSLOCTEXT("HeistTitleMenu", "JoinTimedOut", "CONNECTION TO THE LOBBY TIMED OUT. SELECT RETRY TO CONNECT AGAIN.");
+		return NSLOCTEXT("HeistTitleMenu", "JoinTimedOut", "로비 연결 시간이 초과되었습니다. 다시 연결하세요.");
 	}
 	if (Failure == FName(TEXT("OperationCancelled")))
 	{
-		return NSLOCTEXT("HeistTitleMenu", "OperationCancelled", "THE SESSION REQUEST WAS CANCELLED. YOU CAN RETRY IT OR START A NEW REQUEST.");
+		return NSLOCTEXT("HeistTitleMenu", "OperationCancelled", "세션 요청이 취소되었습니다. 다시 시도하거나 새 요청을 시작할 수 있습니다.");
 	}
 	if (Failure == FName(TEXT("NetworkFailure")) || Failure == FName(TEXT("ConnectionLost")))
 	{
-		return NSLOCTEXT("HeistTitleMenu", "NetworkFailure", "THE ONLINE CONNECTION WAS LOST. CHECK YOUR NETWORK, THEN SELECT RETRY.");
+		return NSLOCTEXT("HeistTitleMenu", "NetworkFailure", "온라인 연결이 끊어졌습니다. 네트워크를 확인한 뒤 다시 시도하세요.");
 	}
 	if (Failure == FName(TEXT("TravelFailure")) || Failure == FName(TEXT("LobbyTravelRejected")))
 	{
-		return NSLOCTEXT("HeistTitleMenu", "LobbyTravelFailure", "THE ONLINE LOBBY COULD NOT BE OPENED. SELECT RETRY TO TRY AGAIN.");
+		return NSLOCTEXT("HeistTitleMenu", "LobbyTravelFailure", "온라인 로비를 열 수 없습니다. 다시 시도하세요.");
 	}
 	if (Failure == FName(TEXT("OnlineSessionUnavailable")))
 	{
-		return NSLOCTEXT("HeistTitleMenu", "SubsystemUnavailable", "THE ONLINE SERVICE IS NOT AVAILABLE.");
+		return NSLOCTEXT("HeistTitleMenu", "SubsystemUnavailable", "온라인 서비스를 사용할 수 없습니다.");
 	}
 	if (Failure == FName(TEXT("SessionAlreadyExists")))
 	{
-		return NSLOCTEXT("HeistTitleMenu", "ExistingSession", "A SESSION IS ALREADY ACTIVE.");
+		return NSLOCTEXT("HeistTitleMenu", "ExistingSession", "이미 세션이 진행 중입니다.");
 	}
 	if (Failure == FName(TEXT("TitleMenuOnly")))
 	{
-		return NSLOCTEXT("HeistTitleMenu", "TitleMenuOnly", "SESSION ENTRY IS ONLY AVAILABLE FROM THE TITLE MENU.");
+		return NSLOCTEXT("HeistTitleMenu", "TitleMenuOnly", "세션 입장은 타이틀 메뉴에서만 가능합니다.");
 	}
 	if (Failure == FName(TEXT("ClientCannotHost")))
 	{
-		return NSLOCTEXT("HeistTitleMenu", "ClientCannotHost", "A CONNECTED CLIENT CANNOT CREATE ANOTHER LOBBY.");
+		return NSLOCTEXT("HeistTitleMenu", "ClientCannotHost", "접속 중인 클라이언트는 다른 로비를 만들 수 없습니다.");
 	}
 	if (Failure == FName(TEXT("HostQuit")))
 	{
-		return NSLOCTEXT("HeistTitleMenu", "HostQuit", "THE HOST CLOSED THE SESSION. HOST A NEW LOBBY OR ENTER ANOTHER JOIN CODE.");
+		return NSLOCTEXT("HeistTitleMenu", "HostQuit", "호스트가 세션을 닫았습니다. 새 로비를 만들거나 다른 참가 코드를 입력하세요.");
 	}
 	if (Failure == FName(TEXT("CreateFailed")) || Failure == FName(TEXT("CreateRequestRejected")))
 	{
-		return NSLOCTEXT("HeistTitleMenu", "CreateFailed", "THE LOBBY COULD NOT BE CREATED. SELECT RETRY TO TRY AGAIN.");
+		return NSLOCTEXT("HeistTitleMenu", "CreateFailed", "로비를 만들 수 없습니다. 다시 시도하세요.");
 	}
 	if (Failure == FName(TEXT("FindFailed")) || Failure == FName(TEXT("JoinRequestRejected")) || Failure == FName(TEXT("SessionNotJoinable"))
 		|| Failure == FName(TEXT("JoinFailed")) || Failure == FName(TEXT("JoinUnknownError")))
 	{
-		return NSLOCTEXT("HeistTitleMenu", "JoinFailed", "THE LOBBY COULD NOT BE JOINED. VERIFY THE CODE, THEN SELECT RETRY.");
+		return NSLOCTEXT("HeistTitleMenu", "JoinFailed", "로비에 참가할 수 없습니다. 코드를 확인한 뒤 다시 시도하세요.");
 	}
-	return NSLOCTEXT("HeistTitleMenu", "GenericSessionFailure", "THE ONLINE SESSION COULD NOT CONTINUE. RETRY THE REQUEST OR START A NEW ONE.");
+	return NSLOCTEXT("HeistTitleMenu", "GenericSessionFailure", "온라인 세션을 계속할 수 없습니다. 다시 시도하거나 새 요청을 시작하세요.");
 }
 
 FText UHeistTitleMenuViewModel::ResolveSessionActionHintText() const
@@ -311,19 +311,19 @@ FText UHeistTitleMenuViewModel::ResolveSessionActionHintText() const
 	}
 	if (GameInstance->IsOnlineSessionCancellationPending())
 	{
-		return NSLOCTEXT("HeistTitleMenu", "CancellationPendingHint", "WAITING FOR THE ONLINE SERVICE TO FINISH CLEANUP.");
+		return NSLOCTEXT("HeistTitleMenu", "CancellationPendingHint", "온라인 서비스가 정리를 마칠 때까지 기다리는 중입니다.");
 	}
 	if (GameInstance->CanCancelOnlineSessionOperation())
 	{
-		return NSLOCTEXT("HeistTitleMenu", "CancelAvailableHint", "SELECT CANCEL TO STOP THIS SESSION REQUEST.");
+		return NSLOCTEXT("HeistTitleMenu", "CancelAvailableHint", "취소를 선택하면 현재 세션 요청을 중단합니다.");
 	}
 	if (GameInstance->CanRetryLastOnlineSessionOperation())
 	{
-		return NSLOCTEXT("HeistTitleMenu", "RetryAvailableHint", "SELECT RETRY TO REPEAT THE LAST SESSION REQUEST.");
+		return NSLOCTEXT("HeistTitleMenu", "RetryAvailableHint", "다시 시도를 선택하면 마지막 세션 요청을 반복합니다.");
 	}
 	if (!GameInstance->GetLastOnlineSessionFailure().IsNone())
 	{
-		return NSLOCTEXT("HeistTitleMenu", "NewRequestHint", "CHANGE THE JOIN CODE OR START A NEW LOBBY REQUEST.");
+		return NSLOCTEXT("HeistTitleMenu", "NewRequestHint", "참가 코드를 바꾸거나 새 로비 요청을 시작하세요.");
 	}
 	return FText::GetEmpty();
 }

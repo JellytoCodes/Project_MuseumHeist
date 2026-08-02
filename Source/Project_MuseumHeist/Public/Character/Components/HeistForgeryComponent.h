@@ -42,12 +42,15 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryComponent : public UActorComponent
 	bool TryBeginSubmit();
 	bool TrySubmitStrokePayload(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices, float ClientBrushSize,
 								int32 ClientSessionRevision);
+	bool TryConfirmReplicaSwap();
+	bool TryRestartForgeryFromPreview();
 	bool CancelForgerySession(FName Reason);
 	bool ForceTimeoutForDebug();
 	bool ForceExpireSubmissionWindowForDebug();
 	bool ForceNearExpirySubmissionWindowForDebug();
 
 	bool IsSessionActive() const;
+	bool HasPendingReplicaReview() const;
 	bool IsSubmitPending() const;
 	float GetSessionEndServerTime() const;
 	int32 GetSessionRevision() const;
@@ -94,7 +97,7 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryComponent : public UActorComponent
 							   int32 ClientSessionRevision, FName& OutRejectReason, int32& OutPayloadBytes) const;
 	void RecordStrokeValidationResult(bool bAccepted, FName Reason);
 	void ResetStrokeTransportState(bool bResetLastValidation);
-	bool TryCalculateAndCommitForgeryScore();
+	bool TryCalculateAndStageForgeryScore();
 	bool BuildReplicaPaintingData(FHeistReplicaPaintingData& OutPaintingData) const;
 	bool CalculateForgeryScore(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices, float BrushSize,
 							   FHeistForgeryResult& OutResult, int32& OutReferenceMaskPixels, int32& OutSubmittedMaskPixels) const;
@@ -120,6 +123,8 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryComponent : public UActorComponent
 	UFUNCTION()
 	void OnRep_ForgeryScoreRevision();
 
+	// Kept through ReplicaReady while bSessionActive is false so the owner can
+	// leave the case and later return for the world E/R decision.
 	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Forgery", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<AHeistPaintingDisplayCaseActor> ActiveDisplayCase;
 

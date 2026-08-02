@@ -88,15 +88,15 @@ void UHeistRareLootAlertWidget::RefreshRareLootPresentation()
 	{
 		FString RareLootDisplayName = IsValid(ViewModel) ? ViewModel->GetRareLootItemId().ToString() : FString();
 		RareLootDisplayName.ReplaceInline(TEXT("_"), TEXT(" "));
-		RareLootItemText->SetText(IsValid(ViewModel) ? FText::Format(NSLOCTEXT("HeistRareLootAlert", "RareLootItemFormat", "RARE LOOT  {0}"),
+		RareLootItemText->SetText(IsValid(ViewModel) ? FText::Format(NSLOCTEXT("HeistRareLootAlert", "RareLootItemFormat", "희귀 전리품  {0}"),
 																   FText::FromString(RareLootDisplayName))
 													: FText::GetEmpty());
 	}
 
 	if (IsValid(RareLootStatusText))
 	{
-		RareLootStatusText->SetText(bIncoming		? NSLOCTEXT("HeistRareLootAlert", "IncomingStatus", "INCOMING")
-									: bMarkerActive ? NSLOCTEXT("HeistRareLootAlert", "MarkerStatus", "LOCATION MARKED") : FText::GetEmpty());
+		RareLootStatusText->SetText(bIncoming		? NSLOCTEXT("HeistRareLootAlert", "IncomingStatus", "등장 예정")
+									: bMarkerActive ? NSLOCTEXT("HeistRareLootAlert", "MarkerStatus", "위치 표시됨") : FText::GetEmpty());
 	}
 
 	RefreshWarningCountdownText();
@@ -121,7 +121,7 @@ void UHeistRareLootAlertWidget::RefreshWarningCountdownText()
 		return;
 	}
 
-	RareLootCountdownText->SetText(FText::Format(NSLOCTEXT("HeistRareLootAlert", "CountdownFormat", "APPEARS IN  {0}s"),
+	RareLootCountdownText->SetText(FText::Format(NSLOCTEXT("HeistRareLootAlert", "CountdownFormat", "{0}초 후 등장"),
 												FText::AsNumber(FMath::CeilToInt(GetRareLootWarningRemainingSeconds()))));
 }
 
@@ -153,7 +153,7 @@ void UHeistRareLootAlertWidget::RefreshDirectionMarkerPresentation()
 
 	if (IsValid(DirectionMarkerText))
 	{
-		DirectionMarkerText->SetText(FText::Format(NSLOCTEXT("HeistRareLootAlert", "DirectionFormat", "TURN  {0}°"),
+		DirectionMarkerText->SetText(FText::Format(NSLOCTEXT("HeistRareLootAlert", "DirectionFormat", "{0}° 회전"),
 												 FText::AsNumber(FMath::RoundToInt(AngleDegrees))));
 	}
 }

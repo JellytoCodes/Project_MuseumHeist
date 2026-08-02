@@ -39,6 +39,7 @@ struct PROJECT_MUSEUMHEIST_API FHeistGameplayTags
 	FGameplayTag Event_Player_Escaped;
 	FGameplayTag Event_Player_Interrupted;
 	FGameplayTag Event_SoundPing_Footstep;
+	FGameplayTag Event_SoundPing_ReplicaSwap;
 	FGameplayTag Event_SoundPing_GlassBreak;
 	FGameplayTag Event_SoundPing_CoinImpact;
 	FGameplayTag Event_SoundPing_StunHit;

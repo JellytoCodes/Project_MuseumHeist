@@ -47,6 +47,7 @@ void FHeistGameplayTags::InitializeNativeGameplayTags()
 	HEIST_ADD_NATIVE_TAG(Event_Player_Escaped, "Event.Player.Escaped", "Player escape completed.");
 	HEIST_ADD_NATIVE_TAG(Event_Player_Interrupted, "Event.Player.Interrupted", "Player cast was interrupted.");
 	HEIST_ADD_NATIVE_TAG(Event_SoundPing_Footstep, "Event.SoundPing.Footstep", "Footstep sound ping.");
+	HEIST_ADD_NATIVE_TAG(Event_SoundPing_ReplicaSwap, "Event.SoundPing.ReplicaSwap", "Replica frame swap sound ping.");
 	HEIST_ADD_NATIVE_TAG(Event_SoundPing_GlassBreak, "Event.SoundPing.GlassBreak", "Glass break sound ping.");
 	HEIST_ADD_NATIVE_TAG(Event_SoundPing_CoinImpact, "Event.SoundPing.CoinImpact", "Coin impact sound ping.");
 	HEIST_ADD_NATIVE_TAG(Event_SoundPing_StunHit, "Event.SoundPing.StunHit", "Stun hit sound ping.");

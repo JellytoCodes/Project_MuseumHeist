@@ -174,7 +174,7 @@ void AHeistPlayerState::BeginOriginalCarryContribution()
 	}
 }
 
-void AHeistPlayerState::EndOriginalCarryContribution(const bool bArtifactRecovered)
+void AHeistPlayerState::EndOriginalCarryContribution(const int32 RecoveredArtifactCount)
 {
 	if (!HasAuthority())
 	{
@@ -185,9 +185,9 @@ void AHeistPlayerState::EndOriginalCarryContribution(const bool bArtifactRecover
 		Contribution.CarryTimeSeconds += FMath::Max(0.0f, GetWorld()->GetTimeSeconds() - OriginalCarryContributionStartServerTime);
 		OriginalCarryContributionStartServerTime = -1.0f;
 	}
-	if (bArtifactRecovered)
+	if (RecoveredArtifactCount > 0)
 	{
-		Contribution.ArtifactsRecovered = Contribution.ArtifactsRecovered == MAX_int32 ? MAX_int32 : Contribution.ArtifactsRecovered + 1;
+		Contribution.ArtifactsRecovered = static_cast<int32>(FMath::Min<int64>(MAX_int32, static_cast<int64>(Contribution.ArtifactsRecovered) + RecoveredArtifactCount));
 	}
 	CommitContributionMutation();
 }
@@ -227,6 +227,30 @@ void AHeistPlayerState::RecordAlarmContribution()
 		Contribution.AlarmsTriggered = Contribution.AlarmsTriggered == MAX_int32 ? MAX_int32 : Contribution.AlarmsTriggered + 1;
 		CommitContributionMutation();
 	}
+}
+
+void AHeistPlayerState::DebugSetContributionState(const FHeistPlayerContribution& NewContribution)
+{
+#if !UE_BUILD_SHIPPING
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	Contribution = NewContribution;
+	Contribution.SurfaceForgeries = FMath::Max(0, Contribution.SurfaceForgeries);
+	Contribution.BestSurfaceQuality = FMath::IsFinite(Contribution.BestSurfaceQuality) ? FMath::Clamp(Contribution.BestSurfaceQuality, 0.0f, 100.0f) : 0.0f;
+	Contribution.Assemblies = FMath::Max(0, Contribution.Assemblies);
+	Contribution.BestAssemblyQuality = FMath::IsFinite(Contribution.BestAssemblyQuality) ? FMath::Clamp(Contribution.BestAssemblyQuality, 0.0f, 100.0f) : 0.0f;
+	Contribution.ArtifactsRecovered = FMath::Max(0, Contribution.ArtifactsRecovered);
+	Contribution.CarryTimeSeconds = FMath::IsFinite(Contribution.CarryTimeSeconds) ? FMath::Max(0.0f, Contribution.CarryTimeSeconds) : 0.0f;
+	Contribution.SecuredLootValue = FMath::Max(0, Contribution.SecuredLootValue);
+	Contribution.GuardsDistracted = FMath::Max(0, Contribution.GuardsDistracted);
+	Contribution.TeammatesRescued = FMath::Max(0, Contribution.TeammatesRescued);
+	Contribution.AlarmsTriggered = FMath::Max(0, Contribution.AlarmsTriggered);
+	OriginalCarryContributionStartServerTime = -1.0f;
+	CommitContributionMutation();
+#endif
 }
 
 void AHeistPlayerState::CommitContributionMutation()

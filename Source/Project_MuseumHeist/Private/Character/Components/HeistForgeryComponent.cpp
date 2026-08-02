@@ -19,6 +19,8 @@
 
 #include <vector>
 
+#include "Core/HeistLogChannels.h"
+
 #if WITH_OPENCV
 // IWYU pragma: begin_keep
 #include "PreOpenCVHeaders.h"
@@ -39,6 +41,7 @@ constexpr uint8 ReferenceMaskThreshold = 128;
 constexpr uint8 EmptyPaletteIndex = MAX_uint8;
 constexpr float SubmissionTimeoutToleranceSeconds = 0.05f;
 constexpr float BrushSizeValidationTolerance = 0.0001f;
+constexpr float ForgeryBrushPresetMultipliers[] = {0.5f, 1.0f, 1.5f};
 constexpr int32 OpenCVMorphologyKernelSize = 3;
 constexpr float OpenCVDistanceTolerancePixels = 10.0f;
 constexpr float OpenCVStructuralColorWeight = 0.65f;
@@ -820,7 +823,7 @@ UHeistForgeryComponent::UHeistForgeryComponent()
 
 void UHeistForgeryComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	if (GetOwner() && GetOwner()->HasAuthority() && bSessionActive)
+	if (GetOwner() && GetOwner()->HasAuthority() && (bSessionActive || IsValid(ActiveDisplayCase.Get())))
 	{
 		ClearSession(FName(TEXT("OwnerEndPlay")), true);
 	}
@@ -1100,7 +1103,7 @@ bool UHeistForgeryComponent::TrySubmitStrokePayload(const TArray<FVector2D>& Nor
 		return false;
 	}
 
-	if (!TryCalculateAndCommitForgeryScore())
+	if (!TryCalculateAndStageForgeryScore())
 	{
 		bSubmitPending = false;
 		ResetStrokeTransportState(false);
@@ -1113,7 +1116,85 @@ bool UHeistForgeryComponent::TrySubmitStrokePayload(const TArray<FVector2D>& Nor
 
 	AHeistPaintingDisplayCaseActor* SubmittedDisplayCase = ActiveDisplayCase.Get();
 	UHeistDebugFunctionLibrary::DebugForgeryStrokePayloadAccepted(this, SubmittedDisplayCase, ClientSessionRevision);
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(SessionTimeoutTimerHandle);
+	}
+	bSubmitPending = false;
+	bSessionActive = false;
+	SessionEndServerTime = 0.0f;
+	++SessionRevision;
+	GetOwner()->ForceNetUpdate();
+	BroadcastSessionSnapshot(TEXT("ServerPreviewReady"), FName(TEXT("ReplicaReadyGameplayRestored")));
+	return true;
+}
+
+bool UHeistForgeryComponent::TryConfirmReplicaSwap()
+{
+	AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
+	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter) ? HeistCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
+	AHeistPaintingDisplayCaseActor* TargetDisplayCase = ActiveDisplayCase.Get();
+	if (!IsValid(HeistCharacter) || !HeistCharacter->HasAuthority() || !HasPendingReplicaReview() || !IsValid(HeistPlayerState) || !IsValid(TargetDisplayCase))
+	{
+		return false;
+	}
+
+	int32 AddedInventoryInstanceId = INDEX_NONE;
+	FName RejectReason = NAME_None;
+	bHandlingCaseSessionCallback = true;
+	const bool bCommitted = TargetDisplayCase->TryCommitReplicaSwapAndTakeOriginal(HeistPlayerState, AddedInventoryInstanceId, RejectReason);
+	bHandlingCaseSessionCallback = false;
+	if (!bCommitted)
+	{
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Replica swap confirm rejected: Character=%s Case=%s Reason=%s"), *GetNameSafe(HeistCharacter), *GetNameSafe(TargetDisplayCase),
+			   RejectReason.IsNone() ? TEXT("CommitRejected") : *RejectReason.ToString());
+		return false;
+	}
+
+	AuthoritativeForgeryResult = TargetDisplayCase->GetCommittedForgeryResult();
+	HeistPlayerState->RecordSurfaceForgeryContribution(AuthoritativeForgeryResult.SimilarityScore);
+	UE_LOG(LogHeistNetwork, Log, TEXT("Replica swap confirm accepted: Character=%s Case=%s InventoryInstance=%d Score=%.2f Result=PASS"), *GetNameSafe(HeistCharacter),
+		   *GetNameSafe(TargetDisplayCase), AddedInventoryInstanceId, AuthoritativeForgeryResult.SimilarityScore);
 	CompleteSuccessfulForgerySession();
+	return true;
+}
+
+bool UHeistForgeryComponent::TryRestartForgeryFromPreview()
+{
+	AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
+	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter) ? HeistCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
+	AHeistPaintingDisplayCaseActor* TargetDisplayCase = ActiveDisplayCase.Get();
+	if (!IsValid(HeistCharacter) || !HeistCharacter->HasAuthority() || !HasPendingReplicaReview() || !IsValid(HeistPlayerState) || !IsValid(TargetDisplayCase))
+	{
+		return false;
+	}
+
+	FName RejectReason = NAME_None;
+	bHandlingCaseSessionCallback = true;
+	const bool bRestarted = TargetDisplayCase->TryRestartForgeryFromPreview(HeistPlayerState, RejectReason);
+	bHandlingCaseSessionCallback = false;
+	if (!bRestarted)
+	{
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Replica redraw rejected: Character=%s Case=%s Reason=%s"), *GetNameSafe(HeistCharacter), *GetNameSafe(TargetDisplayCase),
+			   RejectReason.IsNone() ? TEXT("RestartRejected") : *RejectReason.ToString());
+		return false;
+	}
+
+	ResetStrokeTransportState(true);
+	ResetForgeryScoreState();
+	++ForgeryScoreRevision;
+	bSessionActive = true;
+	const float SafeDurationSeconds = FMath::Max(1.0f, ActiveSessionDurationSeconds > 0.0f ? ActiveSessionDurationSeconds : TemplateForgeryDuration);
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	const float ServerWorldTime = IsValid(HeistGameState) ? HeistGameState->GetServerWorldTimeSeconds() : (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
+	SessionEndServerTime = ServerWorldTime + SafeDurationSeconds;
+	++SessionRevision;
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().SetTimer(SessionTimeoutTimerHandle, this, &UHeistForgeryComponent::HandleSessionTimeout, SafeDurationSeconds, false);
+	}
+	HeistCharacter->ForceNetUpdate();
+	BroadcastSessionSnapshot(TEXT("ServerRedraw"), FName(TEXT("ReplicaPreviewDiscarded")));
 	return true;
 }
 
@@ -1186,6 +1267,12 @@ bool UHeistForgeryComponent::ForceNearExpirySubmissionWindowForDebug()
 bool UHeistForgeryComponent::IsSessionActive() const
 {
 	return bSessionActive;
+}
+
+bool UHeistForgeryComponent::HasPendingReplicaReview() const
+{
+	const AHeistPaintingDisplayCaseActor* TargetDisplayCase = ActiveDisplayCase.Get();
+	return !bSessionActive && !bSubmitPending && bHasAuthoritativeForgeryResult && IsValid(TargetDisplayCase) && TargetDisplayCase->HasReplicaPreview();
 }
 
 bool UHeistForgeryComponent::IsSubmitPending() const
@@ -1345,7 +1432,7 @@ int32 UHeistForgeryComponent::GetForgeryScoreRevision() const
 
 int32 UHeistForgeryComponent::GetForgeryScoreResolution() const
 {
-	return ForgeryScoreResolution;
+	return ForgeryScoreResolution > 0 ? ForgeryScoreResolution : bTemplatePrepared ? ForgeryScoreGridResolution : 0;
 }
 
 int32 UHeistForgeryComponent::GetReferenceMaskPixelCount() const
@@ -1497,7 +1584,17 @@ bool UHeistForgeryComponent::ValidateStrokePayload(const TArray<FVector2D>& Norm
 		OutRejectReason = FName(TEXT("InvalidBrushSize"));
 		return false;
 	}
-	if (!FMath::IsNearlyEqual(ClientBrushSize, TemplateBrushSize, BrushSizeValidationTolerance))
+	bool bApprovedBrushPreset = false;
+	for (const float PresetMultiplier : ForgeryBrushPresetMultipliers)
+	{
+		const float ApprovedBrushSize = FMath::Clamp(TemplateBrushSize * PresetMultiplier, 0.001f, 0.25f);
+		if (FMath::IsNearlyEqual(ClientBrushSize, ApprovedBrushSize, BrushSizeValidationTolerance))
+		{
+			bApprovedBrushPreset = true;
+			break;
+		}
+	}
+	if (!bApprovedBrushPreset)
 	{
 		OutRejectReason = FName(TEXT("BrushSizeMismatch"));
 		return false;
@@ -1536,7 +1633,7 @@ void UHeistForgeryComponent::ResetStrokeTransportState(const bool bResetLastVali
 	}
 }
 
-bool UHeistForgeryComponent::TryCalculateAndCommitForgeryScore()
+bool UHeistForgeryComponent::TryCalculateAndStageForgeryScore()
 {
 	FHeistForgeryResult CalculatedResult;
 	int32 CalculatedReferenceMaskPixels = 0;
@@ -1567,7 +1664,7 @@ bool UHeistForgeryComponent::TryCalculateAndCommitForgeryScore()
 	}
 
 	bHandlingCaseSessionCallback = true;
-	const bool bReplicaCommitted = TargetDisplayCase->TryCommitReplicaPlacement(HeistPlayerState, CalculatedResult, PaintingData);
+	const bool bReplicaCommitted = TargetDisplayCase->TryStageReplicaPreview(HeistPlayerState, CalculatedResult, PaintingData);
 	bHandlingCaseSessionCallback = false;
 	if (!bReplicaCommitted)
 	{
@@ -1577,7 +1674,6 @@ bool UHeistForgeryComponent::TryCalculateAndCommitForgeryScore()
 
 	AuthoritativeForgeryResult = TargetDisplayCase->GetCommittedForgeryResult();
 	bHasAuthoritativeForgeryResult = true;
-	HeistPlayerState->RecordSurfaceForgeryContribution(AuthoritativeForgeryResult.SimilarityScore);
 	ForgeryScoreResolution = ForgeryScoreGridResolution;
 	ReferenceMaskPixelCount = CalculatedReferenceMaskPixels;
 	SubmittedMaskPixelCount = CalculatedSubmittedMaskPixels;
@@ -2117,7 +2213,7 @@ void UHeistForgeryComponent::UnbindActiveDisplayCase()
 
 void UHeistForgeryComponent::HandleDisplayCaseSessionChanged(AHeistPlayerState* SessionOwner, const bool bLocked, const int32)
 {
-	if (bHandlingCaseSessionCallback || !GetOwner() || !GetOwner()->HasAuthority() || !bSessionActive)
+	if (bHandlingCaseSessionCallback || !GetOwner() || !GetOwner()->HasAuthority() || !IsValid(ActiveDisplayCase.Get()))
 	{
 		return;
 	}

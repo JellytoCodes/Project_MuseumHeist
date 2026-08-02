@@ -58,15 +58,19 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryComponent : public UActorComponent
 	bool IsInventoryOpen() const;
 	bool TrySetInventoryOpen(bool bInInventoryOpen);
 	bool IsCarryingOriginal() const;
-	const FHeistOriginalCarryEntry& GetOriginalCarryEntry() const;
-	bool TryBeginOriginalCarry(AHeistPlayerState* CarryingPlayerState, FName ArtifactId, int32 ArtifactValue, float Weight, bool bRequiredTarget, AActor* SourceDisplayCase);
-	bool TryEndOriginalCarry(AHeistPlayerState* CarryingPlayerState, AActor* ExpectedSourceDisplayCase, FHeistOriginalCarryEntry& OutReleasedEntry);
+	int32 GetOriginalArtifactCount() const;
+	int32 GetOriginalArtifactValue() const;
+	bool TryGetFirstOriginalArtifact(FHeistInventoryItem& OutOriginalArtifact) const;
+	bool TryGetOriginalArtifactForSourceCase(const AActor* SourceDisplayCase, FHeistInventoryItem& OutOriginalArtifact) const;
+	bool TryAddOriginalArtifact(AHeistPlayerState* CarryingPlayerState, FName ArtifactId, bool bRequiredTarget, AActor* SourceDisplayCase, int32& OutInstanceId,
+								const TCHAR*& OutRejectReason);
+	bool TryRemoveOriginalArtifactForSourceCase(AHeistPlayerState* CarryingPlayerState, AActor* ExpectedSourceDisplayCase, FHeistInventoryItem& OutReleasedItem);
 	bool TryBuildPlayerDepositPayload(FHeistPlayerDepositPayload& OutPayload, const TCHAR*& OutRejectReason) const;
 	bool TryCommitPlayerDeposit(AHeistPlayerState* DepositingPlayerState, const FHeistPlayerDepositPayload& ExpectedPayload, FHeistPlayerDepositPayload& OutCommittedPayload,
 								const TCHAR*& OutRejectReason);
 
   private:
-	bool TryFindAutoPlacement(const FHeistItemDataRow& ItemDefinition, FIntPoint& OutGridPosition, bool& bOutRotated) const;
+	bool TryFindAutoPlacement(const FIntPoint& BaseGridSize, bool bCanRotate, FIntPoint& OutGridPosition, bool& bOutRotated) const;
 	bool TryBuildOccupiedCells(TArray<bool>& OutOccupiedCells) const;
 	bool TryBuildOccupiedCellsExcluding(int32 ExcludedInstanceId, TArray<bool>& OutOccupiedCells) const;
 	FHeistInventoryFastArrayItem* FindItemEntry(int32 InstanceId);
@@ -93,12 +97,6 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryComponent : public UActorComponent
 
 	UFUNCTION()
 	void OnRep_QuickSlots();
-
-	UPROPERTY(ReplicatedUsing = OnRep_OriginalCarryEntry)
-	FHeistOriginalCarryEntry OriginalCarryEntry;
-
-	UFUNCTION()
-	void OnRep_OriginalCarryEntry();
 
 	FHeistInventoryChanged InventoryChangedDelegate;
 

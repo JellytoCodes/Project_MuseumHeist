@@ -48,11 +48,12 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerState : public APlayerState
 	void RecordSurfaceForgeryContribution(float QualityScore);
 	void RecordAssemblyContribution(float QualityScore);
 	void BeginOriginalCarryContribution();
-	void EndOriginalCarryContribution(bool bArtifactRecovered);
+	void EndOriginalCarryContribution(int32 RecoveredArtifactCount);
 	void RecordSecuredLootContribution(int32 SecuredLootValue);
 	void RecordGuardDistractionContribution();
 	void RecordTeammateRescueContribution();
 	void RecordAlarmContribution();
+	void DebugSetContributionState(const FHeistPlayerContribution& NewContribution);
 
   private:
 	void CommitContributionMutation();

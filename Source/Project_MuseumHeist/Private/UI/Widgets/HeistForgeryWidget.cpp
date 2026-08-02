@@ -6,6 +6,7 @@
 #include "Components/Widget.h"
 #include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerController.h"
+#include "Engine/Texture2D.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/GameStateBase.h"
 #include "Input/Events.h"
@@ -59,14 +60,14 @@ void ApplyScorePresentation(UTextBlock* ScoreText, const TOptional<float> Score)
 
 	if (!Score.IsSet() || !FMath::IsFinite(Score.GetValue()))
 	{
-		ScoreText->SetText(NSLOCTEXT("HeistForgery", "UnavailableScore", "SCORE  --/100"));
+		ScoreText->SetText(NSLOCTEXT("HeistForgery", "UnavailableScore", "점수  --/100"));
 		ScoreText->SetColorAndOpacity(FLinearColor(0.72f, 0.76f, 0.82f));
 		return;
 	}
 
 	const float ClampedScore = FMath::Clamp(Score.GetValue(), 0.0f, 100.0f);
 	ScoreText->SetText(
-		FText::Format(NSLOCTEXT("HeistForgery", "ScoreFormat", "SCORE  {0}/100"), FText::AsNumber(FMath::RoundToInt(ClampedScore))));
+		FText::Format(NSLOCTEXT("HeistForgery", "ScoreFormat", "점수  {0}/100"), FText::AsNumber(FMath::RoundToInt(ClampedScore))));
 	ScoreText->SetColorAndOpacity(ResolveScoreTextColor(ClampedScore));
 }
 }
@@ -103,6 +104,13 @@ void UHeistForgeryWidget::NativeTick(const FGeometry& MyGeometry, const float In
 	Super::NativeTick(MyGeometry, InDeltaTime);
 	RefreshDrawingTimeRemaining();
 	RefreshForgeryLockdownCountdown();
+	if (IsValid(ReferenceImage) && IsValid(ForgeryViewModel) && ForgeryViewModel->IsResultVisible())
+	{
+		if (UTexture2D* ReplicaPreviewImage = ForgeryViewModel->GetReplicaPreviewImage(); IsValid(ReplicaPreviewImage))
+		{
+			ReferenceImage->SetBrushFromTexture(ReplicaPreviewImage, true);
+		}
+	}
 
 	if (!bPreviewScoreDirty || !IsDrawingInputEnabled())
 	{
@@ -330,6 +338,15 @@ FReply UHeistForgeryWidget::NativeOnMouseMove(const FGeometry& InGeometry, const
 FReply UHeistForgeryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
 {
 	const FKey PressedKey = InKeyEvent.GetKey();
+	if (IsDrawingInputEnabled() && !InKeyEvent.IsRepeat() && PressedKey == EKeys::LeftBracket && ChangeBrushPreset(-1))
+	{
+		return FReply::Handled();
+	}
+	if (IsDrawingInputEnabled() && !InKeyEvent.IsRepeat() && PressedKey == EKeys::RightBracket && ChangeBrushPreset(1))
+	{
+		return FReply::Handled();
+	}
+
 	const FKey PaletteKeys[] = {EKeys::One, EKeys::Two, EKeys::Three, EKeys::Four, EKeys::Five, EKeys::Six, EKeys::Seven, EKeys::Eight};
 	for (int32 PaletteIndex = 0; PaletteIndex < UE_ARRAY_COUNT(PaletteKeys); ++PaletteIndex)
 	{
@@ -467,7 +484,10 @@ int32 UHeistForgeryWidget::GetConfiguredStrokeLimit() const
 
 float UHeistForgeryWidget::GetConfiguredBrushSize() const
 {
-	return IsValid(ForgeryViewModel) ? ForgeryViewModel->GetBrushSize() : 0.0f;
+	static constexpr float BrushPresetMultipliers[] = {0.5f, 1.0f, 1.5f};
+	const float BaseBrushSize = IsValid(ForgeryViewModel) ? ForgeryViewModel->GetBrushSize() : 0.0f;
+	const int32 PresetIndex = FMath::Clamp(ActiveBrushPresetIndex, 0, static_cast<int32>(UE_ARRAY_COUNT(BrushPresetMultipliers)) - 1);
+	return FMath::Clamp(BaseBrushSize * BrushPresetMultipliers[PresetIndex], 0.001f, 0.25f);
 }
 
 int32 UHeistForgeryWidget::GetActivePaletteIndex() const
@@ -587,6 +607,10 @@ void UHeistForgeryWidget::RefreshForgeryPresentation()
 		ResetLocalStrokePreview();
 		SetKeyboardFocus();
 	}
+	else if (bResult)
+	{
+		SetKeyboardFocus();
+	}
 	else if (!bDrawing && bWasDrawingVisible)
 	{
 		FinishPointerInteraction();
@@ -597,7 +621,7 @@ void UHeistForgeryWidget::RefreshForgeryPresentation()
 	ApplyStateVisibility(DrawingContainer, bDrawing);
 	ApplyStateVisibility(ValidationContainer, bValidation);
 	ApplyStateVisibility(ResultContainer, bResult);
-	ApplyStateVisibility(ReferenceImage, bObservation || bDrawing);
+	ApplyStateVisibility(ReferenceImage, bObservation || bDrawing || bResult);
 	RefreshDrawingFeedback();
 	if (IsValid(ForgeryViewModel))
 	{
@@ -625,7 +649,7 @@ void UHeistForgeryWidget::RefreshForgeryPresentation()
 	}
 	if (IsValid(ReferenceImage))
 	{
-		ReferenceImage->SetBrushFromTexture(ForgeryViewModel->GetReferenceImage(), true);
+		ReferenceImage->SetBrushFromTexture(bResult ? ForgeryViewModel->GetReplicaPreviewImage() : ForgeryViewModel->GetReferenceImage(), true);
 	}
 	if (IsValid(ResultText))
 	{
@@ -694,13 +718,13 @@ void UHeistForgeryWidget::RefreshForgeryLockdownCountdown()
 	if (RemainingSeconds == INDEX_NONE)
 	{
 		ForgeryLockdownCountdownText->SetText(
-			NSLOCTEXT("HeistForgery", "LockdownTimePending", "LOCKDOWN IN --:--  —  ESCAPE ROUTES WILL BE RESTRICTED"));
+			NSLOCTEXT("HeistForgery", "LockdownTimePending", "봉쇄까지 --:--  —  탈출 경로가 제한됩니다"));
 		return;
 	}
 
 	const FText TimeText = FText::FromString(FString::Printf(TEXT("%02d:%02d"), RemainingSeconds / 60, RemainingSeconds % 60));
 	ForgeryLockdownCountdownText->SetText(
-		FText::Format(NSLOCTEXT("HeistForgery", "LockdownTimeFormat", "LOCKDOWN IN {0}  —  ESCAPE ROUTES WILL BE RESTRICTED"), TimeText));
+		FText::Format(NSLOCTEXT("HeistForgery", "LockdownTimeFormat", "봉쇄까지 {0}  —  탈출 경로가 제한됩니다"), TimeText));
 }
 
 bool UHeistForgeryWidget::IsAlertWarningContractSatisfied() const
@@ -1188,6 +1212,28 @@ void UHeistForgeryWidget::RefreshPaletteButtons()
 	}
 }
 
+bool UHeistForgeryWidget::ChangeBrushPreset(const int32 Direction)
+{
+	if (!IsDrawingInputEnabled() || Direction == 0)
+	{
+		return false;
+	}
+
+	const int32 NewPresetIndex = FMath::Clamp(ActiveBrushPresetIndex + (Direction > 0 ? 1 : -1), 0, 2);
+	if (NewPresetIndex == ActiveBrushPresetIndex)
+	{
+		return false;
+	}
+
+	FinishPointerInteraction();
+	ActiveBrushPresetIndex = NewPresetIndex;
+	MarkPreviewScoreDirty();
+	RefreshDrawingFeedback();
+	InvalidateLayoutAndVolatility();
+	UE_LOG(LogHeistUI, Log, TEXT("[%s] Forgery brush preset changed: Preset=%d Brush=%.4f"), *GetName(), ActiveBrushPresetIndex, GetConfiguredBrushSize());
+	return true;
+}
+
 void UHeistForgeryWidget::HandlePaletteButton1Clicked()
 {
 	SelectPaletteIndex(0);
@@ -1281,12 +1327,12 @@ void UHeistForgeryWidget::RefreshDrawingTimeRemaining()
 	}
 	if (RemainingSeconds == INDEX_NONE)
 	{
-		DrawingTimeRemainingText->SetText(NSLOCTEXT("HeistForgery", "DrawingTimePending", "SUBMIT IN --:--"));
+		DrawingTimeRemainingText->SetText(NSLOCTEXT("HeistForgery", "DrawingTimePending", "제출까지 --:--"));
 		return;
 	}
 
 	const FText TimeText = FText::FromString(FString::Printf(TEXT("%02d:%02d"), RemainingSeconds / 60, RemainingSeconds % 60));
-	DrawingTimeRemainingText->SetText(FText::Format(NSLOCTEXT("HeistForgery", "DrawingTimeFormat", "SUBMIT IN {0}"), TimeText));
+	DrawingTimeRemainingText->SetText(FText::Format(NSLOCTEXT("HeistForgery", "DrawingTimeFormat", "제출까지 {0}"), TimeText));
 }
 
 void UHeistForgeryWidget::RefreshDrawingFeedback()
@@ -1296,13 +1342,14 @@ void UHeistForgeryWidget::RefreshDrawingFeedback()
 	if (IsValid(DrawingPlaceholder))
 	{
 		DrawingPlaceholder->SetVisibility(bDrawingVisible && PointCount == 0 ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-		DrawingPlaceholder->SetText(NSLOCTEXT("HeistForgery", "EmptyDrawingCanvas", "START DRAWING"));
+		DrawingPlaceholder->SetText(NSLOCTEXT("HeistForgery", "EmptyDrawingCanvas", "그림을 그리세요"));
 	}
 	if (IsValid(DrawingHint) && bDrawingVisible)
 	{
 		DrawingHint->SetText(FText::Format(
-			NSLOCTEXT("HeistForgery", "DrawingCanvasHint", "LMB DRAW  |  RMB ERASE  |  R RESET  |  ENTER SUBMIT  |  COLOR {0}  |  POINTS {1}/{2}"),
-			FText::AsNumber(ActivePaletteIndex + 1), FText::AsNumber(PointCount), FText::AsNumber(GetConfiguredStrokeLimit())));
+			NSLOCTEXT("HeistForgery", "DrawingCanvasHint", "좌클릭 그리기  |  우클릭 지우기  |  [ ] 붓 크기  |  R 초기화  |  Enter 제출  |  색상 {0}  |  점 {1}/{2}  |  붓 {3}  |  판정 {4}×{4}"),
+			FText::AsNumber(ActivePaletteIndex + 1), FText::AsNumber(PointCount), FText::AsNumber(GetConfiguredStrokeLimit()), FText::AsNumber(GetConfiguredBrushSize()),
+			FText::AsNumber(IsValid(ForgeryViewModel) ? ForgeryViewModel->GetScoreRasterResolution() : 0)));
 	}
 	if (IsValid(PreviewScoreText))
 	{

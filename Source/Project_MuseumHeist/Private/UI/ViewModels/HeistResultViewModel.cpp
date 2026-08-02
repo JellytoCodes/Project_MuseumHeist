@@ -62,19 +62,19 @@ void UHeistResultViewModel::RefreshResultData()
 
 	UE_MVVM_SET_PROPERTY_VALUE(PlayerResults, NewPlayerResults);
 	UE_MVVM_SET_PROPERTY_VALUE(TeamResult, NewTeamResult);
-	const FText NewOutcomeText = TeamResult.Outcome == EHeistContractOutcome::Success ? NSLOCTEXT("HeistResult", "OutcomeSuccess", "CONTRACT COMPLETE")
-		: TeamResult.Outcome == EHeistContractOutcome::PartialHaul ? NSLOCTEXT("HeistResult", "OutcomePartial", "PARTIAL HAUL")
-		: TeamResult.Outcome == EHeistContractOutcome::Failed ? NSLOCTEXT("HeistResult", "OutcomeFailed", "CONTRACT FAILED") : FText::GetEmpty();
+	const FText NewOutcomeText = TeamResult.Outcome == EHeistContractOutcome::Success ? NSLOCTEXT("HeistResult", "OutcomeSuccess", "계약 완료")
+		: TeamResult.Outcome == EHeistContractOutcome::PartialHaul ? NSLOCTEXT("HeistResult", "OutcomePartial", "일부 확보")
+		: TeamResult.Outcome == EHeistContractOutcome::Failed ? NSLOCTEXT("HeistResult", "OutcomeFailed", "계약 실패") : FText::GetEmpty();
 	UE_MVVM_SET_PROPERTY_VALUE(OutcomeText, NewOutcomeText);
 	UE_MVVM_SET_PROPERTY_VALUE(OutcomeReasonText, HeistContractOutcomeReasons::ToDisplayText(TeamResult.OutcomeReasonId));
 	UE_MVVM_SET_PROPERTY_VALUE(ContractProgressText,
-		FText::Format(NSLOCTEXT("HeistResult", "ContractProgressFormat", "SECURED {0} / {1}   EXTRA {2}   TARGET {3}"), FText::AsNumber(TeamResult.SecuredValue),
+		FText::Format(NSLOCTEXT("HeistResult", "ContractProgressFormat", "확보 가치 {0} / {1}   초과 {2}   핵심 목표 {3}"), FText::AsNumber(TeamResult.SecuredValue),
 			FText::AsNumber(TeamResult.LootValueQuota), FText::AsNumber(TeamResult.ExtraValue),
-			TeamResult.bRequiredTargetSecured ? NSLOCTEXT("HeistResult", "TargetSecured", "SECURED") : NSLOCTEXT("HeistResult", "TargetMissing", "MISSING")));
+			TeamResult.bRequiredTargetSecured ? NSLOCTEXT("HeistResult", "TargetSecured", "확보 완료") : NSLOCTEXT("HeistResult", "TargetMissing", "미확보")));
 	UE_MVVM_SET_PROPERTY_VALUE(TeamRewardText,
-		FText::Format(NSLOCTEXT("HeistResult", "TeamRewardFormat", "TEAM REWARD  {0}"), FText::AsNumber(TeamResult.TeamReward)));
+		FText::Format(NSLOCTEXT("HeistResult", "TeamRewardFormat", "팀 보상  {0}"), FText::AsNumber(TeamResult.TeamReward)));
 	UE_MVVM_SET_PROPERTY_VALUE(RewardBreakdownText,
-		FText::Format(NSLOCTEXT("HeistResult", "RewardBreakdownFormat", "TARGET {0} × QUALITY {1} × STEALTH {2}  +  LOOSE {3}  −  ARREST {4}"),
+		FText::Format(NSLOCTEXT("HeistResult", "RewardBreakdownFormat", "핵심 목표 {0} × 위조 품질 {1} × 잠입 {2}  +  추가 전리품 {3}  −  체포 {4}"),
 			FText::AsNumber(TeamResult.RequiredTargetValue), FText::AsNumber(TeamResult.ForgeryRewardMultiplier), FText::AsNumber(TeamResult.StealthRewardMultiplier),
 			FText::AsNumber(TeamResult.SecuredLooseLootValue), FText::AsNumber(TeamResult.ArrestPenalty)));
 	FString RecapLines;
@@ -87,14 +87,14 @@ void UHeistResultViewModel::RefreshResultData()
 		RecapLines += FString::Printf(TEXT("%s%s  |  %s  |  %.0f"), Recap.bRequiredTarget ? TEXT("[TARGET] ") : TEXT(""), *Recap.ArtifactId.ToString(),
 			*UEnum::GetValueAsString(Recap.ForgeryType), Recap.QualityScore);
 	}
-	UE_MVVM_SET_PROPERTY_VALUE(ReplicaRecapText, RecapLines.IsEmpty() ? NSLOCTEXT("HeistResult", "NoReplicaRecap", "NO REPLICA RECORDED") : FText::FromString(RecapLines));
+	UE_MVVM_SET_PROPERTY_VALUE(ReplicaRecapText, RecapLines.IsEmpty() ? NSLOCTEXT("HeistResult", "NoReplicaRecap", "기록된 복제품 없음") : FText::FromString(RecapLines));
 
 	const int32 LocalPlayerId = IsValid(LocalPlayerState) ? LocalPlayerState->HeistPlayerId : INDEX_NONE;
 	const FHeistPlayerResult* LocalResult = PlayerResults.FindByPredicate([LocalPlayerId](const FHeistPlayerResult& PlayerResult) { return PlayerResult.PlayerId == LocalPlayerId; });
 
 	const int32 NewMyFinalScore = LocalResult ? LocalResult->FinalScore : 0;
 	UE_MVVM_SET_PROPERTY_VALUE(MyFinalScore, NewMyFinalScore);
-	UE_MVVM_SET_PROPERTY_VALUE(MyFinalScoreText, FText::Format(NSLOCTEXT("HeistResult", "LocalFinalScoreFormat", "LOOT  {0}"), FText::AsNumber(NewMyFinalScore)));
+	UE_MVVM_SET_PROPERTY_VALUE(MyFinalScoreText, FText::Format(NSLOCTEXT("HeistResult", "LocalFinalScoreFormat", "전리품  {0}"), FText::AsNumber(NewMyFinalScore)));
 
 	const bool bNewEscaped = LocalResult ? LocalResult->bEscaped : false;
 	UE_MVVM_SET_PROPERTY_VALUE(bEscaped, bNewEscaped);
@@ -204,10 +204,10 @@ FText UHeistResultViewModel::BuildResultRowText(const int32 ResultIndex) const
 
 	const FHeistPlayerResult& PlayerResult = PlayerResults[ResultIndex];
 	const FText EscapeStateText =
-		PlayerResult.bEscaped ? NSLOCTEXT("HeistResult", "PlayerEscaped", "ESCAPED") : NSLOCTEXT("HeistResult", "PlayerCaught", "CAUGHT");
+		PlayerResult.bEscaped ? NSLOCTEXT("HeistResult", "PlayerEscaped", "탈출") : NSLOCTEXT("HeistResult", "PlayerCaught", "체포");
 	const FHeistPlayerContribution& Contribution = PlayerResult.Contribution;
 	return FText::Format(
-		NSLOCTEXT("HeistResult", "ResultRowFormat", "PLAYER {0}  |  {1}  |  FORGERY {2}/{3}  |  RECOVERED {4}  |  SECURED {5}  |  DISTRACT {6}  |  RESCUE {7}  |  ALARMS {8}"),
+		NSLOCTEXT("HeistResult", "ResultRowFormat", "플레이어 {0}  |  {1}  |  평면/조립 위조 {2}/{3}  |  원본 회수 {4}  |  전리품 {5}  |  경비 교란 {6}  |  동료 구조 {7}  |  경보 {8}"),
 		FText::AsNumber(PlayerResult.PlayerId), EscapeStateText, FText::AsNumber(Contribution.SurfaceForgeries), FText::AsNumber(Contribution.Assemblies),
 		FText::AsNumber(Contribution.ArtifactsRecovered), FText::AsNumber(Contribution.SecuredLootValue), FText::AsNumber(Contribution.GuardsDistracted),
 		FText::AsNumber(Contribution.TeammatesRescued), FText::AsNumber(Contribution.AlarmsTriggered));

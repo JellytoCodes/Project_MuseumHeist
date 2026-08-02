@@ -271,7 +271,8 @@ void AHeistGameMode::Logout(AController* Exiting)
 			ActionComponent->CancelGameplayActions(TEXT("OwnerDisconnected"));
 			++CancelledActionCount;
 		}
-		if (IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive() && ForgeryComponent->CancelForgerySession(FName(TEXT("OwnerDisconnected"))))
+		if (IsValid(ForgeryComponent) && (ForgeryComponent->IsSessionActive() || ForgeryComponent->HasPendingReplicaReview()) &&
+			ForgeryComponent->CancelForgerySession(FName(TEXT("OwnerDisconnected"))))
 		{
 			++CancelledForgeryCount;
 		}
@@ -372,8 +373,8 @@ void AHeistGameMode::PrepareForOnlineSessionShutdown(const FName Reason)
 			ActionComponent->CancelGameplayActions(TEXT("OnlineSessionShutdown"));
 			++CancelledActionCount;
 		}
-		if (UHeistForgeryComponent* ForgeryComponent = PlayerCharacter->GetForgeryComponent(); IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive()
-			&& ForgeryComponent->CancelForgerySession(Reason))
+		if (UHeistForgeryComponent* ForgeryComponent = PlayerCharacter->GetForgeryComponent();
+			IsValid(ForgeryComponent) && (ForgeryComponent->IsSessionActive() || ForgeryComponent->HasPendingReplicaReview()) && ForgeryComponent->CancelForgerySession(Reason))
 		{
 			++CancelledForgeryCount;
 		}
@@ -524,7 +525,8 @@ bool AHeistGameMode::FinalizeContractOutcome(const EHeistContractOutcome Outcome
 			ActionComponent->CancelGameplayActions(*CancellationReason);
 			++CancelledActionCount;
 		}
-		if (UHeistForgeryComponent* ForgeryComponent = PlayerCharacter->GetForgeryComponent(); IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive() &&
+		if (UHeistForgeryComponent* ForgeryComponent = PlayerCharacter->GetForgeryComponent();
+			IsValid(ForgeryComponent) && (ForgeryComponent->IsSessionActive() || ForgeryComponent->HasPendingReplicaReview()) &&
 			ForgeryComponent->CancelForgerySession(TerminalTrigger))
 		{
 			++CancelledForgeryCount;
@@ -543,7 +545,7 @@ bool AHeistGameMode::FinalizeContractOutcome(const EHeistContractOutcome Outcome
 		{
 			if (AHeistPlayerState* PlayerState = PlayerCharacter->GetPlayerState<AHeistPlayerState>())
 			{
-				PlayerState->EndOriginalCarryContribution(false);
+				PlayerState->EndOriginalCarryContribution(0);
 			}
 		}
 		if (UCharacterMovementComponent* MovementComponent = PlayerCharacter->GetCharacterMovement(); IsValid(MovementComponent))

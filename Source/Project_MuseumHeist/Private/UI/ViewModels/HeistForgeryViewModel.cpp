@@ -88,10 +88,9 @@ void UHeistForgeryViewModel::RefreshPresentationState()
 	bool bShowObservation = false;
 	bool bShowDrawing = IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive() && !ForgeryComponent->IsSubmitPending();
 	bool bShowValidation = IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive() && ForgeryComponent->IsSubmitPending();
-	const bool bHasAuthoritativeResult = IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive() && ForgeryComponent->HasAuthoritativeForgeryResult();
-	bool bShowResult = bResultPresentationActive || bHasAuthoritativeResult;
-	float NewResultScore = bHasAuthoritativeResult ? ForgeryComponent->GetAuthoritativeForgeryResult().SimilarityScore : bShowResult ? PendingResultScore : 0.0f;
-	FText NewResultText = bHasAuthoritativeResult ? NSLOCTEXT("HeistForgery", "AuthoritativeResult", "SCORE") : bShowResult ? PendingResultText : FText::GetEmpty();
+	bool bShowResult = bResultPresentationActive;
+	float NewResultScore = bShowResult ? PendingResultScore : 0.0f;
+	FText NewResultText = bShowResult ? PendingResultText : FText::GetEmpty();
 
 	if (!DebugPreviewState.IsNone())
 	{
@@ -100,7 +99,7 @@ void UHeistForgeryViewModel::RefreshPresentationState()
 		bShowValidation = DebugPreviewState == PreviewValidation;
 		bShowResult = DebugPreviewState == PreviewResult;
 		NewResultScore = bShowResult ? 87.0f : 0.0f;
-		NewResultText = bShowResult ? NSLOCTEXT("HeistForgery", "DebugResult", "SCORE") : FText::GetEmpty();
+		NewResultText = bShowResult ? NSLOCTEXT("HeistForgery", "DebugResult", "점수") : FText::GetEmpty();
 	}
 
 	if (bShowResult)
@@ -143,26 +142,26 @@ void UHeistForgeryViewModel::RefreshPresentationState()
 	FText NewStateText;
 	if (bShowResult)
 	{
-		NewStateText = NSLOCTEXT("HeistForgery", "ResultState", "RESULT");
+		NewStateText = NSLOCTEXT("HeistForgery", "ResultState", "복제품 확인");
 	}
 	else if (bShowValidation)
 	{
-		NewStateText = NSLOCTEXT("HeistForgery", "ValidationState", "EVALUATING");
+		NewStateText = NSLOCTEXT("HeistForgery", "ValidationState", "판정 중");
 	}
 	else if (bShowDrawing)
 	{
-		NewStateText = NSLOCTEXT("HeistForgery", "DrawingState", "FORGERY");
+		NewStateText = NSLOCTEXT("HeistForgery", "DrawingState", "위조 중");
 	}
 	else if (bShowObservation)
 	{
-		NewStateText = NSLOCTEXT("HeistForgery", "ObservationState", "OBSERVATION");
+		NewStateText = NSLOCTEXT("HeistForgery", "ObservationState", "관찰 중");
 	}
 
 	FString ReferenceDisplayName = NewReferenceArtifactId.ToString();
 	ReferenceDisplayName.ReplaceInline(TEXT("_"), TEXT(" "));
 	const FText NewReferenceText = NewReferenceArtifactId.IsNone()
 									   ? FText::GetEmpty()
-									   : FText::Format(NSLOCTEXT("HeistForgery", "ReferenceFormat", "REFERENCE  {0}"), FText::FromString(ReferenceDisplayName));
+									   : FText::Format(NSLOCTEXT("HeistForgery", "ReferenceFormat", "참고 작품  {0}"), FText::FromString(ReferenceDisplayName));
 	const EHeistAlertLevel NewAlertLevel = IsValid(GameState) ? GameState->GetAlertLevel() : EHeistAlertLevel::Quiet;
 	const bool bShowDangerWarning = bShowAnyState && NewAlertLevel != EHeistAlertLevel::Quiet;
 	FText NewDangerWarningText;
@@ -180,7 +179,7 @@ void UHeistForgeryViewModel::RefreshPresentationState()
 			SecurityLevelStars += Index < SecurityLevel ? TEXT("\u2605") : TEXT("\u2606");
 		}
 		NewDangerWarningText =
-			FText::Format(NSLOCTEXT("HeistForgery", "SecurityLevelFormat", "SECURITY LEVEL {0}/4  {1}"), FText::AsNumber(SecurityLevel), FText::FromString(SecurityLevelStars));
+			FText::Format(NSLOCTEXT("HeistForgery", "SecurityLevelFormat", "경계 단계 {0}/4  {1}"), FText::AsNumber(SecurityLevel), FText::FromString(SecurityLevelStars));
 	}
 	switch (NewAlertLevel)
 	{
@@ -366,6 +365,12 @@ UTexture2D* UHeistForgeryViewModel::GetReferenceMask() const
 	return ReferenceMask.Get();
 }
 
+UTexture2D* UHeistForgeryViewModel::GetReplicaPreviewImage() const
+{
+	const AHeistPaintingDisplayCaseActor* ActiveDisplayCase = IsValid(ForgeryComponent) ? ForgeryComponent->GetActiveDisplayCase() : nullptr;
+	return IsValid(ActiveDisplayCase) ? ActiveDisplayCase->GetReplicaPaintingTexture() : nullptr;
+}
+
 const TArray<FLinearColor>& UHeistForgeryViewModel::GetAllowedPalette() const
 {
 	return AllowedPalette;
@@ -389,6 +394,11 @@ int32 UHeistForgeryViewModel::GetStrokeLimit() const
 float UHeistForgeryViewModel::GetBrushSize() const
 {
 	return BrushSize;
+}
+
+int32 UHeistForgeryViewModel::GetScoreRasterResolution() const
+{
+	return IsValid(ForgeryComponent) ? ForgeryComponent->GetForgeryScoreResolution() : 0;
 }
 
 bool UHeistForgeryViewModel::CalculatePreviewScore(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices,

@@ -113,7 +113,7 @@ EDataValidationResult FHeistContractDataRow::IsDataValid(FDataValidationContext&
 		return EDataValidationResult::Valid;
 	}
 
-	Context.AddError(FText::Format(LOCTEXT("InvalidContractDefinition", "Contract definition is invalid: {0}."), FText::FromString(FailureReason)));
+	Context.AddError(FText::Format(LOCTEXT("InvalidContractDefinition", "계약 정의가 올바르지 않습니다: {0}."), FText::FromString(FailureReason)));
 	return EDataValidationResult::Invalid;
 }
 

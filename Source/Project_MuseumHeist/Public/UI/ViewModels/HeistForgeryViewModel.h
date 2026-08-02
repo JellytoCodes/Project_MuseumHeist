@@ -78,11 +78,13 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryViewModel : public UMVVMViewModelBase
 	FName GetReferenceTemplateId() const;
 	UTexture2D* GetReferenceImage() const;
 	UTexture2D* GetReferenceMask() const;
+	UTexture2D* GetReplicaPreviewImage() const;
 	const TArray<FLinearColor>& GetAllowedPalette() const;
 	float GetObservationDuration() const;
 	float GetForgeryDuration() const;
 	int32 GetStrokeLimit() const;
 	float GetBrushSize() const;
+	int32 GetScoreRasterResolution() const;
 	bool CalculatePreviewScore(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices, float BrushSize,
 							   FHeistForgeryResult& OutResult, int32& OutReferenceMaskPixels, int32& OutSubmittedMaskPixels) const;
 	FName GetActiveDisplayCaseName() const;

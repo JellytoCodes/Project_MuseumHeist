@@ -194,7 +194,7 @@ void UHeistObjectAssemblyWidget::RefreshCountdownPresentation()
 		const FText TimeText = AssemblyTimeSeconds == INDEX_NONE
 								   ? FText::FromString(TEXT("--:--"))
 								   : FText::FromString(FString::Printf(TEXT("%02d:%02d"), AssemblyTimeSeconds / 60, AssemblyTimeSeconds % 60));
-		ApplyText(AssemblyTimeRemainingText, FText::Format(NSLOCTEXT("HeistObjectAssembly", "AssemblyTimeRemaining", "ASSEMBLY TIME  {0}"), TimeText));
+		ApplyText(AssemblyTimeRemainingText, FText::Format(NSLOCTEXT("HeistObjectAssembly", "AssemblyTimeRemaining", "남은 조립 시간  {0}"), TimeText));
 	}
 
 	const bool bShowLockdown = ObjectAssemblyViewModel->IsLockdownCountdownVisible();
@@ -209,7 +209,7 @@ void UHeistObjectAssemblyWidget::RefreshCountdownPresentation()
 								   ? FText::FromString(TEXT("--:--"))
 								   : FText::FromString(FString::Printf(TEXT("%02d:%02d"), LockdownTimeSeconds / 60, LockdownTimeSeconds % 60));
 		ApplyText(AssemblyLockdownCountdownText,
-				  bShowLockdown ? FText::Format(NSLOCTEXT("HeistObjectAssembly", "LockdownCountdown", "THE MUSEUM WILL ENTER LOCKDOWN IN {0}."), TimeText)
+				  bShowLockdown ? FText::Format(NSLOCTEXT("HeistObjectAssembly", "LockdownCountdown", "박물관 봉쇄까지 {0}"), TimeText)
 								: FText::GetEmpty());
 	}
 	ApplyVisibility(AssemblyLockdownCountdownText, bShowLockdown);

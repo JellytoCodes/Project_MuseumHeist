@@ -237,6 +237,11 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 	void HeistResultSeed(int32 Score = 1000, bool bEscaped = true, float EscapeTimeSeconds = 10.0f);
 
 	UFUNCTION(Exec)
+	void HeistContributionSeed(int32 SurfaceForgeries = 2, float BestSurfaceQuality = 75.0f, int32 Assemblies = 1, float BestAssemblyQuality = 80.0f,
+		int32 ArtifactsRecovered = 1, float CarryTimeSeconds = 12.0f, int32 SecuredLootValue = 500, int32 GuardsDistracted = 2,
+		int32 TeammatesRescued = 1, int32 AlarmsTriggered = 1);
+
+	UFUNCTION(Exec)
 	void HeistExitPlacementDump();
 
 	UFUNCTION(Exec)

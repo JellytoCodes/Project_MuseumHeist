@@ -11,9 +11,10 @@ class AHeistPlayerState;
 class AHeistDroppedOriginalActor;
 class UMaterialInstanceDynamic;
 class UMaterialInterface;
+class USoundBase;
 class UStaticMeshComponent;
 class UTexture2D;
-struct FHeistOriginalCarryEntry;
+struct FHeistInventoryItem;
 
 USTRUCT(BlueprintType)
 struct PROJECT_MUSEUMHEIST_API FHeistReplicaPaintingData
@@ -173,6 +174,15 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 	bool HasCommittedForgeryResult() const;
 
 	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Replica")
+	bool HasReplicaPreview() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Replica|Feedback")
+	bool IsReplicaReviewReadyFor(const AActor* Interactor) const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Replica|Feedback")
+	bool IsUntouchedForWorldFeedback() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Replica")
 	FHeistForgeryResult GetCommittedForgeryResult() const;
 
 	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Replica")
@@ -199,10 +209,15 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Replica|Painting")
 	int32 GetReplicaPaintingRevision() const;
 
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Replica|Painting")
+	UTexture2D* GetReplicaPaintingTexture() const;
+
 	void GetReplicaPaintingDebugState(int32& OutResolution, int32& OutPaletteColorCount, int32& OutPackedByteCount, int32& OutPaintingRevision, bool& OutTextureBuilt, bool& OutDynamicMaterialBuilt,
 									  bool& OutTextureParameterApplied, bool& OutContractPassed) const;
 
-	bool TryCommitReplicaPlacement(AHeistPlayerState* RequestingPlayerState, const FHeistForgeryResult& ForgeryResult, const FHeistReplicaPaintingData& PaintingData);
+	bool TryStageReplicaPreview(AHeistPlayerState* RequestingPlayerState, const FHeistForgeryResult& ForgeryResult, const FHeistReplicaPaintingData& PaintingData);
+	bool TryRestartForgeryFromPreview(AHeistPlayerState* RequestingPlayerState, FName& OutRejectReason);
+	bool TryCommitReplicaSwapAndTakeOriginal(AHeistPlayerState* RequestingPlayerState, int32& OutAddedInstanceId, FName& OutRejectReason);
 
   protected:
 	/**
@@ -212,9 +227,20 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|DisplayCase|Replica|Visual", meta = (DisplayName = "Apply Replica World Visual"))
 	void BP_ApplyReplicaWorldVisual(int32 VisualTier, FName VisualTierName, float SimilarityScore, float CoverageScore, float ColorAccuracyScore, FName TemplateId, bool bUsingAssignedTierMaterial);
 
+	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|DisplayCase|Replica|Feedback", meta = (DisplayName = "Replica Swap Committed"))
+	void BP_OnReplicaSwapCommitted();
+
+	/** Local presentation only. Blueprint may drive outline/emissive/prompt visuals from this state. */
+	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|DisplayCase|Replica|Feedback", meta = (DisplayName = "Apply Replica Review World Feedback"))
+	void BP_ApplyReplicaReviewWorldFeedback(bool bReadyForLocalPlayer, bool bUntouched, FLinearColor SuggestedOutlineColor, FText SuggestedInteractionHint);
+
   private:
 	bool ValidateReplicaPlacementRequest(AHeistPlayerState* RequestingPlayerState, const FHeistForgeryResult& ForgeryResult, FName& OutRejectReason) const;
+	bool ValidateReplicaReviewOwner(AHeistPlayerState* RequestingPlayerState, FName& OutRejectReason) const;
 	bool ValidateReplicaPaintingData(const FHeistReplicaPaintingData& PaintingData, FName& OutRejectReason) const;
+	void ResetReplicaPreviewData();
+	void EmitReplicaSwapFeedback();
+	void RefreshReplicaReviewWorldFeedback();
 	void CaptureReplicaVisualBaseline();
 	void RefreshReplicaWorldVisual();
 	void RefreshReplicaPaintingTexture();
@@ -224,6 +250,8 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 	static int32 ResolveReplicaVisualTier(float SimilarityScore);
 	static FName ResolveReplicaVisualTierName(int32 VisualTier);
 
+	// The authoritative score/painting payload is staged here at ReplicaReady.
+	// FHeistForgeryResult::bReplicaPlaced is the commit bit: false=preview, true=world swap committed.
 	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Replica", meta = (AllowPrivateAccess = "true"))
 	bool bHasCommittedForgeryResult = false;
 
@@ -244,6 +272,15 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Replica|Painting", meta = (AllowPrivateAccess = "true"))
 	FLinearColor ReplicaPaintingBackgroundColor = FLinearColor(0.94f, 0.92f, 0.84f, 1.0f);
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Replica|Feedback", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USoundBase> ReplicaSwapSound;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Replica|Feedback", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "cm"))
+	float ReplicaSwapNoiseRadius = 1000.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Replica|Feedback", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "s"))
+	float ReplicaSwapNoiseDuration = 1.5f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Replica|Visual", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UMaterialInterface> ReplicaPoorMaterial;
@@ -280,6 +317,9 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 
 	UFUNCTION()
 	void OnRep_ReplicaPaintingData();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayReplicaSwapFeedback();
 
 #pragma endregion
 
@@ -399,14 +439,15 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 	bool ReleaseOriginalForCarrier(AHeistPlayerState* ExpectedCarrier, FName Reason);
 	bool DropOriginalForCarrier(AHeistPlayerState* ExpectedCarrier, FName Reason);
 	bool TryClaimDroppedOriginal(AHeistPlayerState* RequestingPlayerState, AHeistDroppedOriginalActor* DroppedOriginal);
-	bool CanCommitOriginalDepositForCarrier(const AHeistPlayerState* ExpectedCarrier, const FHeistOriginalCarryEntry& CarryEntry) const;
-	bool CommitOriginalDepositForCarrier(AHeistPlayerState* ExpectedCarrier, const FHeistOriginalCarryEntry& CarryEntry);
+	bool CanCommitOriginalDepositForCarrier(const AHeistPlayerState* ExpectedCarrier, const FHeistInventoryItem& OriginalItem) const;
+	bool CommitOriginalDepositForCarrier(AHeistPlayerState* ExpectedCarrier, const FHeistInventoryItem& OriginalItem);
 
 	UPROPERTY(BlueprintAssignable, Category = "Heist|DisplayCase|Original")
 	FHeistOriginalCarryChangedSignature OnOriginalCarryChanged;
 
   private:
-	bool ValidateOriginalTakeRequest(AHeistPlayerState* RequestingPlayerState, int32& OutArtifactValue, float& OutArtifactWeight, bool& bOutRequiredTarget, FName& OutRejectReason) const;
+	bool ValidateOriginalTakeRequest(AHeistPlayerState* RequestingPlayerState, int32& OutArtifactValue, float& OutArtifactWeight, bool& bOutRequiredTarget, FName& OutRejectReason,
+								 bool bAllowLockedReplicaReady = false) const;
 	void SyncObjectiveCarrierCandidate(AHeistPlayerState* Carrier);
 	void UnbindOriginalCarrierDelegate();
 	void BroadcastOriginalCarrySnapshot(const TCHAR* ChangeSource, FName Reason);

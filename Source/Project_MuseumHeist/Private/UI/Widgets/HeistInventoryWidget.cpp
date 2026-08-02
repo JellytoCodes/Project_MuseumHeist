@@ -126,25 +126,14 @@ void UHeistInventoryWidget::RefreshVisibilityFromConfirmedSnapshot()
 		const TArray<FHeistInventoryItem>& ConfirmedItems = InventoryViewModel->GetItems();
 		const int32 GridColumns = InventoryViewModel->GetGridColumnCount();
 		const int32 GridRows = InventoryViewModel->GetGridRowCount();
-		const bool bCarryingOriginal = InventoryViewModel->IsCarryingOriginal();
-		const FText& OriginalCarrySummary = InventoryViewModel->GetOriginalCarrySummaryText();
 		if (IsValid(InventorySummaryText))
 		{
-			const FText GridSummary = FText::Format(NSLOCTEXT("HeistInventory", "InventorySummaryFormat", "ITEMS  {0}  |  GRID  {1}x{2}"),
+			const FText GridSummary = FText::Format(NSLOCTEXT("HeistInventory", "InventorySummaryFormat", "아이템  {0}  |  가방  {1}x{2}"),
 											 FText::AsNumber(ConfirmedItems.Num()), FText::AsNumber(GridColumns), FText::AsNumber(GridRows));
-			InventorySummaryText->SetText(bCarryingOriginal
-									  ? FText::Format(NSLOCTEXT("HeistInventory", "InventoryWithOriginalSummaryFormat", "{0}  |  {1}"), GridSummary, OriginalCarrySummary)
-									  : GridSummary);
-		}
-		if (IsValid(OriginalCarrySummaryText))
-		{
-			OriginalCarrySummaryText->SetText(OriginalCarrySummary);
-			OriginalCarrySummaryText->SetVisibility(bCarryingOriginal ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+			InventorySummaryText->SetText(GridSummary);
 		}
 
 		BP_RefreshConfirmedInventory(ConfirmedItems, GridColumns, GridRows);
-		BP_RefreshConfirmedOriginalCarry(bCarryingOriginal, InventoryViewModel->GetOriginalArtifactId(), InventoryViewModel->GetOriginalArtifactValue(),
-										 InventoryViewModel->GetOriginalCarryWeight(), InventoryViewModel->IsOriginalRequiredTarget());
 		RebuildConfirmedInventory(ConfirmedItems, GridColumns, GridRows);
 	}
 }
@@ -164,7 +153,7 @@ void UHeistInventoryWidget::RefreshQuickSlotPresentation()
 		}
 		if (IsValid(QuickSlotSummaryText))
 		{
-			QuickSlotSummaryText->SetText(FText::Format(NSLOCTEXT("HeistInventory", "QuickSlotSummaryFormat", "QUICK SLOTS  {0}/{1}"),
+			QuickSlotSummaryText->SetText(FText::Format(NSLOCTEXT("HeistInventory", "QuickSlotSummaryFormat", "단축 슬롯  {0}/{1}"),
 													   FText::AsNumber(AssignedQuickSlotCount), FText::AsNumber(ConfirmedQuickSlots.Num())));
 		}
 
@@ -355,6 +344,14 @@ bool UHeistInventoryWidget::TryResolveItemPresentation(const FHeistInventoryItem
 {
 	OutPlacedSize = FIntPoint(1, 1);
 	OutIcon = nullptr;
+	if (InventoryItem.BaseGridSize.X > 0 && InventoryItem.BaseGridSize.Y > 0)
+	{
+		OutPlacedSize = InventoryItem.GetPlacedSize();
+	}
+	if (InventoryItem.IsOriginalArtifact())
+	{
+		return true;
+	}
 	if (!IsValid(ItemDataTable) || ItemDataTable->GetRowStruct() != FHeistItemDataRow::StaticStruct())
 	{
 		return false;
@@ -366,7 +363,6 @@ bool UHeistInventoryWidget::TryResolveItemPresentation(const FHeistInventoryItem
 		return false;
 	}
 
-	OutPlacedSize = InventoryItem.bRotated ? FIntPoint(ItemDefinition->GridSize.Y, ItemDefinition->GridSize.X) : ItemDefinition->GridSize;
 	OutIcon = ItemDefinition->Icon.LoadSynchronous();
 	return true;
 }

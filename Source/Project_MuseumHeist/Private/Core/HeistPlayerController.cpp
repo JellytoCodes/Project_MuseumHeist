@@ -10,6 +10,7 @@
 #include "Character/Components/HeistObjectAssemblyComponent.h"
 #include "Character/Components/HeistVisionComponent.h"
 #include "Character/HeistPlayerCharacter.h"
+#include "Components/InputComponent.h"
 #include "Core/HeistGameInstance.h"
 #include "Core/HeistGameUserSettings.h"
 #include "Core/HeistGameMode.h"
@@ -28,6 +29,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "TimerManager.h"
 #include "InputActionValue.h"
+#include "InputCoreTypes.h"
 #include "InputMappingContext.h"
 #include "Inventory/HeistInventoryTypes.h"
 #include "Inventory/HeistItemDataTypes.h"
@@ -207,6 +209,11 @@ void AHeistPlayerController::SetupInputComponent()
 		UHeistDebugFunctionLibrary::DebugMissingInputAsset(this, TEXT("ForgeryCancelInputAction"));
 	}
 
+	// Replica review is a world-state choice, not a full-screen forgery action.
+	// Keep R available only while the controller is back in Gameplay mode.
+	FInputKeyBinding& ReplicaRedrawBinding = InputComponent->BindKey(EKeys::R, IE_Pressed, this, &AHeistPlayerController::HandleReplicaRedraw);
+	ReplicaRedrawBinding.bConsumeInput = false;
+
 	RefreshLocalInputModeFromPawn();
 }
 
@@ -383,6 +390,34 @@ void AHeistPlayerController::HandleForgeryCancel()
 			RequestCancelForgery();
 		}
 	}
+}
+
+void AHeistPlayerController::HandleReplicaRedraw()
+{
+	if (LocalInputMode != EHeistInputMode::Gameplay)
+	{
+		return;
+	}
+
+	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	if (!IsValid(HeistCharacter) || !HeistCharacter->CanPerformGameplayActions())
+	{
+		return;
+	}
+
+	UHeistInteractionComponent* InteractionComponent = HeistCharacter->GetInteractionComponent();
+	if (!IsValid(InteractionComponent) || !InteractionComponent->RefreshInteractionTarget())
+	{
+		return;
+	}
+
+	AHeistPaintingDisplayCaseActor* TargetDisplayCase = Cast<AHeistPaintingDisplayCaseActor>(InteractionComponent->GetCurrentInteractionTarget());
+	if (!IsValid(TargetDisplayCase) || !TargetDisplayCase->IsReplicaReviewReadyFor(HeistCharacter))
+	{
+		return;
+	}
+
+	RequestRestartForgeryFromPreview();
 }
 
 void AHeistPlayerController::RefreshLocalForgeryInputBinding()
@@ -966,7 +1001,11 @@ void AHeistPlayerController::HandleInteractPressed()
 	AHeistPaintingDisplayCaseActor* TargetDisplayCase = Cast<AHeistPaintingDisplayCaseActor>(InteractionComponent->GetCurrentInteractionTarget());
 	if (TargetDisplayCase != nullptr)
 	{
-		if (TargetDisplayCase->GetDisplayCaseState() == EHeistDisplayCaseState::OriginalAvailable)
+		if (TargetDisplayCase->IsReplicaReviewReadyFor(HeistCharacter))
+		{
+			RequestConfirmForgeryReplicaSwap();
+		}
+		else if (TargetDisplayCase->GetDisplayCaseState() == EHeistDisplayCaseState::OriginalAvailable)
 		{
 			Server_RequestTakeOriginal(TargetDisplayCase);
 		}
@@ -1070,15 +1109,15 @@ FText AHeistPlayerController::GetLocalTutorialTitleText() const
 	switch (LocalTutorialStepIndex)
 	{
 	case 0:
-		return NSLOCTEXT("HeistTutorial", "ProximityInteractionTitle", "MOVE WITHIN REACH");
+		return NSLOCTEXT("HeistTutorial", "ProximityInteractionTitle", "상호작용 거리로 접근");
 	case 1:
-		return NSLOCTEXT("HeistTutorial", "CoinTitle", "CREATE A DISTRACTION");
+		return NSLOCTEXT("HeistTutorial", "CoinTitle", "경비의 주의를 분산");
 	case 2:
-		return NSLOCTEXT("HeistTutorial", "ForgeryTitle", "FORGE THE TARGET");
+		return NSLOCTEXT("HeistTutorial", "ForgeryTitle", "목표 작품 위조");
 	case 3:
-		return NSLOCTEXT("HeistTutorial", "AlertTitle", "WATCH SECURITY");
+		return NSLOCTEXT("HeistTutorial", "AlertTitle", "경계 상황 확인");
 	case 4:
-		return NSLOCTEXT("HeistTutorial", "ExtractionTitle", "ESCAPE TOGETHER");
+		return NSLOCTEXT("HeistTutorial", "ExtractionTitle", "팀과 함께 탈출");
 	default:
 		return FText::GetEmpty();
 	}
@@ -1089,15 +1128,15 @@ FText AHeistPlayerController::GetLocalTutorialBodyText() const
 	switch (LocalTutorialStepIndex)
 	{
 	case 0:
-		return NSLOCTEXT("HeistTutorial", "ProximityInteractionBody", "APPROACH AN OBJECT. HOLD [E] WHEN THE INTERACTION PROMPT APPEARS.");
+		return NSLOCTEXT("HeistTutorial", "ProximityInteractionBody", "대상에 가까이 접근한 뒤 상호작용 안내가 나타나면 [E]를 누르세요.");
 	case 1:
-		return NSLOCTEXT("HeistTutorial", "CoinBody", "PRESS [Q] TO THROW A COIN. GUARDS WILL INVESTIGATE THE IMPACT.");
+		return NSLOCTEXT("HeistTutorial", "CoinBody", "[Q]를 눌러 동전을 던지세요. 경비는 동전이 떨어진 곳을 조사합니다.");
 	case 2:
-		return NSLOCTEXT("HeistTutorial", "ForgeryBody", "OBSERVE THE TARGET, THEN CREATE ITS REPLICA BEFORE TIME RUNS OUT.");
+		return NSLOCTEXT("HeistTutorial", "ForgeryBody", "목표를 관찰한 뒤 시간이 끝나기 전에 복제품을 만드세요.");
 	case 3:
-		return NSLOCTEXT("HeistTutorial", "AlertBody", "SECURITY LEVEL RISES WHEN GUARDS FIND EVIDENCE. ALARMED LEADS TO LOCKDOWN.");
+		return NSLOCTEXT("HeistTutorial", "AlertBody", "경비가 증거를 발견하면 경계 단계가 상승합니다. 경보 상태가 지속되면 봉쇄됩니다.");
 	case 4:
-		return NSLOCTEXT("HeistTutorial", "ExtractionBody", "TAKE THE ORIGINAL AND REACH AN EXTRACTION POINT BEFORE LOCKDOWN.");
+		return NSLOCTEXT("HeistTutorial", "ExtractionBody", "원본을 확보하고 봉쇄 전에 탈출 지점에 도달하세요.");
 	default:
 		return FText::GetEmpty();
 	}
@@ -1380,6 +1419,16 @@ void AHeistPlayerController::RequestSubmitForgeryStrokes(const TArray<FVector2D>
 		   *GetName(), *GetNameSafe(HeistCharacter), StrokePointCounts.Num(), NormalizedPoints.Num(), StrokePaletteIndices.Num(), ClientBrushSize, ResolvedSessionRevision,
 		   IsLocalController() ? TEXT("true") : TEXT("false"), HasAuthority() ? TEXT("true") : TEXT("false"));
 	Server_SubmitForgeryStrokes(NormalizedPoints, StrokePointCounts, StrokePaletteIndices, ClientBrushSize, ResolvedSessionRevision);
+}
+
+void AHeistPlayerController::RequestConfirmForgeryReplicaSwap()
+{
+	Server_ConfirmForgeryReplicaSwap();
+}
+
+void AHeistPlayerController::RequestRestartForgeryFromPreview()
+{
+	Server_RestartForgeryFromPreview();
 }
 
 void AHeistPlayerController::RequestBeginObjectAssembly(AHeistObjectDisplayCaseActor* TargetDisplayCase, const float DurationSeconds)
@@ -1768,10 +1817,11 @@ void AHeistPlayerController::Server_RequestTakeOriginal_Implementation(AHeistPai
 		return;
 	}
 
-	const FHeistOriginalCarryEntry& CarryEntry = RequestContext.InventoryComponent->GetOriginalCarryEntry();
+	FHeistInventoryItem OriginalItem;
+	checkf(RequestContext.InventoryComponent->TryGetOriginalArtifactForSourceCase(TargetDisplayCase, OriginalItem), TEXT("Accepted painting Original must exist in the inventory grid."));
 	UHeistDebugFunctionLibrary::Message(
 		this, FString::Printf(TEXT("Original take request accepted: Case=%s Artifact=%s PlayerId=%d CarryWeight=%.1f PreviousWeight=%.1f TotalWeight=%.1f State=%s Authority=true Result=PASS"),
-							  *GetNameSafe(TargetDisplayCase), *CarryEntry.ArtifactId.ToString(), RequestContext.PlayerState->HeistPlayerId, CarryEntry.Weight, PreviousWeight,
+							  *GetNameSafe(TargetDisplayCase), *OriginalItem.ItemId.ToString(), RequestContext.PlayerState->HeistPlayerId, OriginalItem.Weight, PreviousWeight,
 							  RequestContext.PlayerState->GetTotalLootWeight(), *UEnum::GetValueAsString(TargetDisplayCase->GetDisplayCaseState())));
 }
 
@@ -1823,13 +1873,14 @@ void AHeistPlayerController::Server_RequestTakeObjectOriginal_Implementation(AHe
 		return;
 	}
 
-	const FHeistOriginalCarryEntry& CarryEntry = RequestContext.InventoryComponent->GetOriginalCarryEntry();
+	FHeistInventoryItem OriginalItem;
+	checkf(RequestContext.InventoryComponent->TryGetOriginalArtifactForSourceCase(TargetDisplayCase, OriginalItem), TEXT("Accepted object Original must exist in the inventory grid."));
 	UHeistDebugFunctionLibrary::Message(
 		this,
 		FString::Printf(
 			TEXT(
 				"Object original take request accepted: Case=%s Artifact=%s PlayerId=%d CarryWeight=%.1f PreviousWeight=%.1f TotalWeight=%.1f State=%s Authority=true Result=PASS"),
-			*GetNameSafe(TargetDisplayCase), *CarryEntry.ArtifactId.ToString(), RequestContext.PlayerState->HeistPlayerId, CarryEntry.Weight, PreviousWeight,
+			*GetNameSafe(TargetDisplayCase), *OriginalItem.ItemId.ToString(), RequestContext.PlayerState->HeistPlayerId, OriginalItem.Weight, PreviousWeight,
 			RequestContext.PlayerState->GetTotalLootWeight(), *UEnum::GetValueAsString(TargetDisplayCase->GetAssemblyState())));
 }
 
@@ -1844,9 +1895,9 @@ void AHeistPlayerController::Server_RequestDropCarriedOriginal_Implementation()
 		return;
 	}
 
-	const FHeistOriginalCarryEntry CarryEntry = RequestContext.InventoryComponent->GetOriginalCarryEntry();
-	AActor* SourceDisplayCase = CarryEntry.SourceDisplayCase.Get();
-	if (!CarryEntry.IsValid() || !IsValid(SourceDisplayCase))
+	FHeistInventoryItem OriginalItem;
+	AActor* SourceDisplayCase = RequestContext.InventoryComponent->TryGetFirstOriginalArtifact(OriginalItem) ? OriginalItem.SourceDisplayCase.Get() : nullptr;
+	if (!OriginalItem.HasValidOriginalData() || !IsValid(SourceDisplayCase))
 	{
 		UHeistDebugFunctionLibrary::Message(this, TEXT("Original drop request rejected: Reason=NotCarryingOriginal"), EHeistDebugLevel::Warning);
 		return;
@@ -1868,7 +1919,7 @@ void AHeistPlayerController::Server_RequestDropCarriedOriginal_Implementation()
 	if (!bReleased)
 	{
 		UHeistDebugFunctionLibrary::Message(
-			this, FString::Printf(TEXT("Original drop request rejected: Case=%s Artifact=%s Reason=ServerValidationFailed"), *GetNameSafe(SourceDisplayCase), *CarryEntry.ArtifactId.ToString()),
+			this, FString::Printf(TEXT("Original drop request rejected: Case=%s Artifact=%s Reason=ServerValidationFailed"), *GetNameSafe(SourceDisplayCase), *OriginalItem.ItemId.ToString()),
 			EHeistDebugLevel::Warning);
 		return;
 	}
@@ -1878,7 +1929,7 @@ void AHeistPlayerController::Server_RequestDropCarriedOriginal_Implementation()
 		FString::Printf(
 			TEXT(
 				"Original drop request accepted: Case=%s Artifact=%s PlayerId=%d ReleasedWeight=%.1f PreviousWeight=%.1f TotalWeight=%.1f SourceStateAfterDrop=%s Policy=NeutralWorldDrop Authority=true Result=PASS"),
-			*GetNameSafe(SourceDisplayCase), *CarryEntry.ArtifactId.ToString(), RequestContext.PlayerState->HeistPlayerId, CarryEntry.Weight, PreviousWeight,
+			*GetNameSafe(SourceDisplayCase), *OriginalItem.ItemId.ToString(), RequestContext.PlayerState->HeistPlayerId, OriginalItem.Weight, PreviousWeight,
 			RequestContext.PlayerState->GetTotalLootWeight(), *SourceStateAfterDrop));
 }
 
@@ -2032,6 +2083,44 @@ void AHeistPlayerController::Server_SubmitForgeryStrokes_Implementation(const TA
 		ForgeryComponent->GetForgeryScoreRevision(), bAccepted ? TEXT("PASS") : TEXT("REJECTED"));
 }
 
+void AHeistPlayerController::Server_ConfirmForgeryReplicaSwap_Implementation()
+{
+	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	UHeistForgeryComponent* ForgeryComponent = IsValid(HeistCharacter) ? HeistCharacter->GetForgeryComponent() : nullptr;
+	UHeistInteractionComponent* InteractionComponent = IsValid(HeistCharacter) ? HeistCharacter->GetInteractionComponent() : nullptr;
+	AHeistPaintingDisplayCaseActor* TargetDisplayCase = IsValid(ForgeryComponent) ? ForgeryComponent->GetActiveDisplayCase() : nullptr;
+	if (!HasAuthority() || !IsValid(HeistCharacter) || HeistCharacter->GetController() != this || !IsValid(ForgeryComponent) || !IsValid(InteractionComponent) ||
+		!IsValid(TargetDisplayCase) || !InteractionComponent->IsActorOverlappingInteractionArea(TargetDisplayCase))
+	{
+		UE_LOG(LogHeistNetwork, Warning, TEXT("[%s] Replica swap confirm rejected: Character=%s Case=%s Reason=InteractionOverlapRequired"), *GetName(), *GetNameSafe(HeistCharacter),
+			   *GetNameSafe(TargetDisplayCase));
+		return;
+	}
+
+	const bool bAccepted = ForgeryComponent->TryConfirmReplicaSwap();
+	UE_LOG(LogHeistNetwork, Log, TEXT("[%s] Replica swap confirm processed: Character=%s Case=%s Overlap=true Result=%s"), *GetName(), *GetNameSafe(HeistCharacter),
+		   *GetNameSafe(TargetDisplayCase), bAccepted ? TEXT("PASS") : TEXT("REJECTED"));
+}
+
+void AHeistPlayerController::Server_RestartForgeryFromPreview_Implementation()
+{
+	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	UHeistForgeryComponent* ForgeryComponent = IsValid(HeistCharacter) ? HeistCharacter->GetForgeryComponent() : nullptr;
+	UHeistInteractionComponent* InteractionComponent = IsValid(HeistCharacter) ? HeistCharacter->GetInteractionComponent() : nullptr;
+	AHeistPaintingDisplayCaseActor* TargetDisplayCase = IsValid(ForgeryComponent) ? ForgeryComponent->GetActiveDisplayCase() : nullptr;
+	if (!HasAuthority() || !IsValid(HeistCharacter) || HeistCharacter->GetController() != this || !IsValid(ForgeryComponent) || !IsValid(InteractionComponent) ||
+		!IsValid(TargetDisplayCase) || !InteractionComponent->IsActorOverlappingInteractionArea(TargetDisplayCase))
+	{
+		UE_LOG(LogHeistNetwork, Warning, TEXT("[%s] Replica redraw rejected: Character=%s Case=%s Reason=InteractionOverlapRequired"), *GetName(), *GetNameSafe(HeistCharacter),
+			   *GetNameSafe(TargetDisplayCase));
+		return;
+	}
+
+	const bool bAccepted = ForgeryComponent->TryRestartForgeryFromPreview();
+	UE_LOG(LogHeistNetwork, Log, TEXT("[%s] Replica redraw processed: Character=%s Case=%s Overlap=true Result=%s"), *GetName(), *GetNameSafe(HeistCharacter),
+		   *GetNameSafe(TargetDisplayCase), bAccepted ? TEXT("PASS") : TEXT("REJECTED"));
+}
+
 void AHeistPlayerController::Server_RequestBeginObjectAssembly_Implementation(AHeistObjectDisplayCaseActor* TargetDisplayCase, const float DurationSeconds)
 {
 	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
@@ -2123,6 +2212,24 @@ void AHeistPlayerController::Server_RequestDropInventoryItem_Implementation(cons
 	if (!RequestContext.InventoryComponent->TryGetItem(InstanceId, InventoryItem))
 	{
 		LogInventoryRequestRejected(TEXT("Drop"), InstanceId, TEXT("InvalidInstanceId"));
+		return;
+	}
+	if (InventoryItem.IsOriginalArtifact())
+	{
+		AActor* SourceDisplayCase = InventoryItem.SourceDisplayCase.Get();
+		bool bDropped = false;
+		if (AHeistPaintingDisplayCaseActor* PaintingDisplayCase = Cast<AHeistPaintingDisplayCaseActor>(SourceDisplayCase))
+		{
+			bDropped = PaintingDisplayCase->DropOriginalForCarrier(RequestContext.PlayerState, FName(TEXT("OwnerDroppedFromGrid")));
+		}
+		else if (AHeistObjectDisplayCaseActor* ObjectDisplayCase = Cast<AHeistObjectDisplayCaseActor>(SourceDisplayCase))
+		{
+			bDropped = ObjectDisplayCase->DropOriginalForCarrier(RequestContext.PlayerState, FName(TEXT("OwnerDroppedFromGrid")));
+		}
+		if (!bDropped)
+		{
+			LogInventoryRequestRejected(TEXT("DropOriginal"), InstanceId, TEXT("OriginalSourceDropRejected"));
+		}
 		return;
 	}
 
@@ -2332,6 +2439,14 @@ void AHeistPlayerController::DebugRequestRebuildResults()
 void AHeistPlayerController::DebugRequestSeedResult(const int32 Score, const bool bEscaped, const float EscapeTimeSeconds)
 {
 	Server_DebugRequestSeedResult(Score, bEscaped, EscapeTimeSeconds);
+}
+
+void AHeistPlayerController::DebugRequestSeedContribution(const int32 SurfaceForgeries, const float BestSurfaceQuality, const int32 Assemblies,
+	const float BestAssemblyQuality, const int32 ArtifactsRecovered, const float CarryTimeSeconds, const int32 SecuredLootValue, const int32 GuardsDistracted,
+	const int32 TeammatesRescued, const int32 AlarmsTriggered)
+{
+	Server_DebugRequestSeedContribution(SurfaceForgeries, BestSurfaceQuality, Assemblies, BestAssemblyQuality, ArtifactsRecovered, CarryTimeSeconds,
+		SecuredLootValue, GuardsDistracted, TeammatesRescued, AlarmsTriggered);
 }
 
 void AHeistPlayerController::DebugRequestFeedbackTest()
@@ -2623,6 +2738,47 @@ void AHeistPlayerController::Server_DebugRequestSeedResult_Implementation(const 
 #endif
 }
 
+void AHeistPlayerController::Server_DebugRequestSeedContribution_Implementation(const int32 SurfaceForgeries, const float BestSurfaceQuality,
+	const int32 Assemblies, const float BestAssemblyQuality, const int32 ArtifactsRecovered, const float CarryTimeSeconds, const int32 SecuredLootValue,
+	const int32 GuardsDistracted, const int32 TeammatesRescued, const int32 AlarmsTriggered)
+{
+#if !UE_BUILD_SHIPPING
+	AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
+	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	if (!IsValid(HeistPlayerState) || !IsValid(HeistGameState))
+	{
+		UHeistDebugFunctionLibrary::Message(this, TEXT("Contribution debug seed rejected: missing Heist PlayerState or GameState."), EHeistDebugLevel::Warning);
+		return;
+	}
+
+	FHeistPlayerContribution SeededContribution;
+	SeededContribution.SurfaceForgeries = SurfaceForgeries;
+	SeededContribution.BestSurfaceQuality = BestSurfaceQuality;
+	SeededContribution.Assemblies = Assemblies;
+	SeededContribution.BestAssemblyQuality = BestAssemblyQuality;
+	SeededContribution.ArtifactsRecovered = ArtifactsRecovered;
+	SeededContribution.CarryTimeSeconds = CarryTimeSeconds;
+	SeededContribution.SecuredLootValue = SecuredLootValue;
+	SeededContribution.GuardsDistracted = GuardsDistracted;
+	SeededContribution.TeammatesRescued = TeammatesRescued;
+	SeededContribution.AlarmsTriggered = AlarmsTriggered;
+	SeededContribution.bEscaped = HeistPlayerState->IsEscaped();
+	SeededContribution.bArrested = HeistPlayerState->IsArrested();
+	HeistPlayerState->DebugSetContributionState(SeededContribution);
+	HeistGameState->RebuildPlayerResults();
+
+	const FHeistPlayerContribution& CommittedContribution = HeistPlayerState->GetContribution();
+	UHeistDebugFunctionLibrary::Message(
+		this,
+		FString::Printf(
+			TEXT("Contribution debug seed committed: PlayerId=%d Surface=%d BestSurface=%.1f Assembly=%d BestAssembly=%.1f Artifacts=%d CarryTime=%.1f SecuredLoot=%d Distracted=%d Rescued=%d Alarms=%d Authority=true Result=PASS"),
+			HeistPlayerState->HeistPlayerId, CommittedContribution.SurfaceForgeries, CommittedContribution.BestSurfaceQuality,
+			CommittedContribution.Assemblies, CommittedContribution.BestAssemblyQuality, CommittedContribution.ArtifactsRecovered,
+			CommittedContribution.CarryTimeSeconds, CommittedContribution.SecuredLootValue, CommittedContribution.GuardsDistracted,
+			CommittedContribution.TeammatesRescued, CommittedContribution.AlarmsTriggered));
+#endif
+}
+
 void AHeistPlayerController::Server_DebugRequestSetArrested_Implementation(const bool bArrested)
 {
 #if !UE_BUILD_SHIPPING
@@ -2675,7 +2831,7 @@ void AHeistPlayerController::Server_DebugRequestSetFootstepWeight_Implementation
 void AHeistPlayerController::Server_DebugRequestFeedbackTest_Implementation()
 {
 #if !UE_BUILD_SHIPPING
-	SendPopupFeedback(NSLOCTEXT("HeistFeedback", "ServerConfirmedTest", "SERVER CONFIRMED FEEDBACK"), 3.0f);
+	SendPopupFeedback(NSLOCTEXT("HeistFeedback", "ServerConfirmedTest", "서버 확인 피드백"), 3.0f);
 #endif
 }
 
@@ -2778,69 +2934,69 @@ FText AHeistPlayerController::ResolvePopupFeedbackText(const TCHAR* RequestName,
 
 	if (Rejection == TEXT("InventoryFull"))
 	{
-		return NSLOCTEXT("HeistFeedback", "BagFull", "BAG FULL");
+		return NSLOCTEXT("HeistFeedback", "BagFull", "가방이 가득 찼습니다");
 	}
 	if (Rejection == TEXT("AlreadyTaken"))
 	{
-		return NSLOCTEXT("HeistFeedback", "AlreadyTaken", "LOOT ALREADY TAKEN");
+		return NSLOCTEXT("HeistFeedback", "AlreadyTaken", "이미 획득한 전리품입니다");
 	}
 	if (Rejection == TEXT("OutOfRange") || Rejection == TEXT("NotCurrentTarget"))
 	{
-		return NSLOCTEXT("HeistFeedback", "TooFarAway", "TOO FAR AWAY");
+		return NSLOCTEXT("HeistFeedback", "TooFarAway", "너무 멀리 있습니다");
 	}
 	if (Rejection == TEXT("Stunned"))
 	{
-		return NSLOCTEXT("HeistFeedback", "BlockedByStun", "ACTION BLOCKED: STUNNED");
+		return NSLOCTEXT("HeistFeedback", "BlockedByStun", "기절 상태에서는 행동할 수 없습니다");
 	}
 	if (Rejection == TEXT("Casting"))
 	{
-		return NSLOCTEXT("HeistFeedback", "BlockedByCast", "ACTION ALREADY IN PROGRESS");
+		return NSLOCTEXT("HeistFeedback", "BlockedByCast", "이미 다른 행동을 진행 중입니다");
 	}
 	if (Rejection == TEXT("InventoryClosed"))
 	{
-		return NSLOCTEXT("HeistFeedback", "InventoryClosed", "INVENTORY CLOSED");
+		return NSLOCTEXT("HeistFeedback", "InventoryClosed", "가방이 닫혀 있습니다");
 	}
 	if (Rejection == TEXT("InvalidTargetPlacement"))
 	{
-		return NSLOCTEXT("HeistFeedback", "InvalidPlacement", "INVALID PLACEMENT");
+		return NSLOCTEXT("HeistFeedback", "InvalidPlacement", "배치할 수 없는 위치입니다");
 	}
 	if (Rejection == TEXT("RotationRejected"))
 	{
-		return NSLOCTEXT("HeistFeedback", "RotationBlocked", "ROTATION BLOCKED");
+		return NSLOCTEXT("HeistFeedback", "RotationBlocked", "회전할 수 없습니다");
 	}
 	if (Rejection == TEXT("InvalidSlotAssignment") || Rejection == TEXT("InvalidSlot"))
 	{
-		return NSLOCTEXT("HeistFeedback", "InvalidQuickSlot", "INVALID QUICK SLOT");
+		return NSLOCTEXT("HeistFeedback", "InvalidQuickSlot", "올바르지 않은 단축 슬롯입니다");
 	}
 	if (Rejection == TEXT("EmptyQuickSlot"))
 	{
-		return NSLOCTEXT("HeistFeedback", "EmptyQuickSlot", "QUICK SLOT EMPTY");
+		return NSLOCTEXT("HeistFeedback", "EmptyQuickSlot", "단축 슬롯이 비어 있습니다");
 	}
 	if (Rejection == TEXT("EscapePhaseClosed"))
 	{
-		return NSLOCTEXT("HeistFeedback", "EscapeClosed", "ESCAPE NOT AVAILABLE");
+		return NSLOCTEXT("HeistFeedback", "EscapeClosed", "아직 탈출할 수 없습니다");
 	}
 	if (Rejection == TEXT("Lockdown"))
 	{
-		return NSLOCTEXT("HeistFeedback", "Lockdown", "LOCKDOWN: ACTION BLOCKED");
+		return NSLOCTEXT("HeistFeedback", "Lockdown", "봉쇄 상태에서는 행동할 수 없습니다");
 	}
 	if (Rejection == TEXT("MatchNotInGame"))
 	{
-		return NSLOCTEXT("HeistFeedback", "MatchEnded", "MATCH IS NOT ACTIVE");
+		return NSLOCTEXT("HeistFeedback", "MatchEnded", "현재 진행 중인 작전이 없습니다");
 	}
 	if (Request.Contains(TEXT("Loot")))
 	{
-		return NSLOCTEXT("HeistFeedback", "LootRejected", "LOOT REQUEST REJECTED");
+		return NSLOCTEXT("HeistFeedback", "LootRejected", "전리품 획득 요청이 거부되었습니다");
 	}
 	if (Request.Contains(TEXT("Escape")))
 	{
-		return NSLOCTEXT("HeistFeedback", "EscapeRejected", "ESCAPE REQUEST REJECTED");
+		return NSLOCTEXT("HeistFeedback", "EscapeRejected", "탈출 요청이 거부되었습니다");
 	}
 	if (Request.Contains(TEXT("Throwable")))
 	{
-		return NSLOCTEXT("HeistFeedback", "ItemUseRejected", "ITEM USE REJECTED");
+		return NSLOCTEXT("HeistFeedback", "ItemUseRejected", "아이템 사용 요청이 거부되었습니다");
 	}
-	return NSLOCTEXT("HeistFeedback", "RequestRejected", "REQUEST REJECTED");
+	return NSLOCTEXT("HeistFeedback", "RequestRejected", "요청이 거부되었습니다");
 }
 
 #pragma endregion

@@ -5,6 +5,7 @@
 #include "Components/PrimitiveComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Core/HeistGameMode.h"
+#include "Core/HeistGameplayTags.h"
 #include "Core/HeistLogChannels.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistPlayerState.h"
@@ -13,6 +14,8 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 #include "Net/UnrealNetwork.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sound/SoundBase.h"
 #include "TimerManager.h"
 #include "World/Actors/Loot/HeistDroppedOriginalActor.h"
 
@@ -33,6 +36,7 @@ constexpr float PaintingInspectionDelayExcellentMultiplier = 4.0f;
 constexpr float PaintingInspectionDelayGoodMultiplier = 2.0f;
 constexpr float PaintingInspectionDelayFairMultiplier = 1.0f;
 constexpr float PaintingInspectionDelayPoorMultiplier = 0.5f;
+constexpr float ReplicaSwapMinimumInspectionDelaySeconds = 3.0f;
 }
 
 const FName AHeistPaintingDisplayCaseActor::OriginalVisualComponentTag(TEXT("OriginalVisual"));
@@ -69,6 +73,7 @@ void AHeistPaintingDisplayCaseActor::BeginPlay()
 	RefreshPlaceholderVisualState();
 	RefreshInspectionRegistration();
 	RefreshReplicaWorldVisual();
+	RefreshReplicaReviewWorldFeedback();
 
 	BoundGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	if (BoundGameState.IsValid())
@@ -132,7 +137,8 @@ void AHeistPaintingDisplayCaseActor::EndPlay(const EEndPlayReason::Type EndPlayR
 
 bool AHeistPaintingDisplayCaseActor::CanInteract(const AActor* Interactor) const
 {
-	return Super::CanInteract(Interactor) && !bSessionLocked && (DisplayCaseState == EHeistDisplayCaseState::Secured || DisplayCaseState == EHeistDisplayCaseState::OriginalAvailable);
+	const bool bDefaultInteraction = !bSessionLocked && (DisplayCaseState == EHeistDisplayCaseState::Secured || DisplayCaseState == EHeistDisplayCaseState::OriginalAvailable);
+	return Super::CanInteract(Interactor) && (bDefaultInteraction || IsReplicaReviewReadyFor(Interactor));
 }
 
 #pragma region StateMachine
@@ -222,12 +228,14 @@ bool AHeistPaintingDisplayCaseActor::TryAdvanceDisplayCaseState()
 
 bool AHeistPaintingDisplayCaseActor::ResetForgerySessionState(const FName Reason)
 {
-	if (!HasAuthority() || (DisplayCaseState != EHeistDisplayCaseState::Observed && DisplayCaseState != EHeistDisplayCaseState::ForgeryInProgress))
+	if (!HasAuthority() || (DisplayCaseState != EHeistDisplayCaseState::Observed && DisplayCaseState != EHeistDisplayCaseState::ForgeryInProgress &&
+						 DisplayCaseState != EHeistDisplayCaseState::ReplicaReady))
 	{
 		return false;
 	}
 
 	const EHeistDisplayCaseState PreviousState = DisplayCaseState;
+	ResetReplicaPreviewData();
 	DisplayCaseState = EHeistDisplayCaseState::Secured;
 	HandleDisplayCaseStateChanged(PreviousState);
 	ForceNetUpdate();
@@ -305,6 +313,7 @@ void AHeistPaintingDisplayCaseActor::HandleDisplayCaseStateChanged(const EHeistD
 {
 	RefreshPlaceholderVisualState();
 	RefreshInspectionRegistration();
+	RefreshReplicaReviewWorldFeedback();
 
 	UE_LOG(LogHeistNetwork, Log, TEXT("Display case state changed: Case=%s Previous=%s New=%s Authority=%s"), *GetNameSafe(this), *UEnum::GetValueAsString(PreviousState),
 		   *UEnum::GetValueAsString(DisplayCaseState), HasAuthority() ? TEXT("true") : TEXT("false"));
@@ -513,7 +522,24 @@ void AHeistPaintingDisplayCaseActor::OnRep_OriginalVisualRevision()
 
 bool AHeistPaintingDisplayCaseActor::HasCommittedForgeryResult() const
 {
-	return bHasCommittedForgeryResult;
+	return bHasCommittedForgeryResult && CommittedForgeryResult.bReplicaPlaced;
+}
+
+bool AHeistPaintingDisplayCaseActor::HasReplicaPreview() const
+{
+	return bHasCommittedForgeryResult && !CommittedForgeryResult.bReplicaPlaced && DisplayCaseState == EHeistDisplayCaseState::ReplicaReady;
+}
+
+bool AHeistPaintingDisplayCaseActor::IsReplicaReviewReadyFor(const AActor* Interactor) const
+{
+	const AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(Interactor);
+	const AHeistPlayerState* InteractorPlayerState = IsValid(HeistCharacter) ? HeistCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
+	return IsValid(InteractorPlayerState) && HasReplicaPreview() && bSessionLocked && SessionOwner.Get() == InteractorPlayerState;
+}
+
+bool AHeistPaintingDisplayCaseActor::IsUntouchedForWorldFeedback() const
+{
+	return DisplayCaseState == EHeistDisplayCaseState::Secured && !bSessionLocked && !bHasCommittedForgeryResult;
 }
 
 FHeistForgeryResult AHeistPaintingDisplayCaseActor::GetCommittedForgeryResult() const
@@ -564,13 +590,15 @@ void AHeistPaintingDisplayCaseActor::GetReplicaWorldVisualDebugState(bool& OutRe
 	OutUsingTransformFallback = bUsingReplicaTransformFallback;
 	OutCustomPrimitiveDataApplied = bReplicaVisualCustomPrimitiveDataApplied;
 
-	const bool bCommittedResultValid = bHasCommittedForgeryResult && CommittedForgeryResult.bReplicaPlaced && FMath::IsWithinInclusive(CommittedForgeryResult.SimilarityScore, 0.0f, 100.0f);
+	const bool bPreviewOrCommittedResultValid = bHasCommittedForgeryResult && FMath::IsWithinInclusive(CommittedForgeryResult.SimilarityScore, 0.0f, 100.0f) &&
+		(CommittedForgeryResult.bReplicaPlaced || DisplayCaseState == EHeistDisplayCaseState::ReplicaReady);
 	const bool bTierValid = FMath::IsWithinInclusive(OutExpectedTier, ReplicaTierPoor, ReplicaTierExcellent) && OutAppliedTier == OutExpectedTier && !OutTierName.IsNone();
 	const bool bVisibleStateMatches =
 		IsValid(ReplicaVisualComponent) && ReplicaVisualComponent->IsVisible() == OutReplicaExpectedVisible && (!ReplicaVisualComponent->bHiddenInGame) == OutReplicaExpectedVisible;
 	const bool bPresentationPathValid = IsValid(ReplicaPaintingMaterial) ? bReplicaPaintingTextureParameterApplied : OutUsingTierMaterial || OutUsingTransformFallback;
+	const bool bStateVisibilityContract = HasReplicaPreview() ? !OutReplicaExpectedVisible : OutReplicaExpectedVisible;
 
-	OutContractPassed = bCommittedResultValid && OutReplicaExpectedVisible && OutHasReplicaMesh && bTierValid && bVisibleStateMatches && bPresentationPathValid && OutCustomPrimitiveDataApplied;
+	OutContractPassed = bPreviewOrCommittedResultValid && bStateVisibilityContract && OutHasReplicaMesh && bTierValid && bVisibleStateMatches && bPresentationPathValid && OutCustomPrimitiveDataApplied;
 }
 
 bool AHeistPaintingDisplayCaseActor::HasReplicaPaintingData() const
@@ -589,6 +617,11 @@ int32 AHeistPaintingDisplayCaseActor::GetReplicaPaintingRevision() const
 	return ReplicaPaintingData.Revision;
 }
 
+UTexture2D* AHeistPaintingDisplayCaseActor::GetReplicaPaintingTexture() const
+{
+	return ReplicaPaintingTexture.Get();
+}
+
 void AHeistPaintingDisplayCaseActor::GetReplicaPaintingDebugState(int32& OutResolution, int32& OutPaletteColorCount, int32& OutPackedByteCount, int32& OutPaintingRevision, bool& OutTextureBuilt,
 																  bool& OutDynamicMaterialBuilt, bool& OutTextureParameterApplied, bool& OutContractPassed) const
 {
@@ -602,7 +635,8 @@ void AHeistPaintingDisplayCaseActor::GetReplicaPaintingDebugState(int32& OutReso
 
 	FName RejectReason = NAME_None;
 	const bool bDataValid = ValidateReplicaPaintingData(ReplicaPaintingData, RejectReason);
-	OutContractPassed = bHasCommittedForgeryResult && CommittedForgeryResult.bReplicaPlaced && bDataValid && OutPaintingRevision == CommittedForgeryRevision &&
+	OutContractPassed = bHasCommittedForgeryResult && (CommittedForgeryResult.bReplicaPlaced || DisplayCaseState == EHeistDisplayCaseState::ReplicaReady) && bDataValid &&
+		OutPaintingRevision == CommittedForgeryRevision &&
 						AppliedReplicaPaintingRevision == OutPaintingRevision && OutTextureBuilt && OutDynamicMaterialBuilt && OutTextureParameterApplied;
 }
 
@@ -632,7 +666,7 @@ void AHeistPaintingDisplayCaseActor::RefreshReplicaWorldVisual()
 	bReplicaVisualCustomPrimitiveDataApplied = false;
 	bReplicaPaintingTextureParameterApplied = false;
 
-	if (!bHasCommittedForgeryResult || !CommittedForgeryResult.bReplicaPlaced)
+	if (!bHasCommittedForgeryResult)
 	{
 		ResetReplicaPaintingResources();
 		if (bReplicaVisualBaselineCaptured)
@@ -717,7 +751,7 @@ void AHeistPaintingDisplayCaseActor::RefreshReplicaWorldVisual()
 
 void AHeistPaintingDisplayCaseActor::RefreshReplicaPaintingTexture()
 {
-	if (!IsValid(ReplicaVisualComponent) || !IsValid(ReplicaPaintingMaterial) || !HasReplicaPaintingData())
+	if (!IsValid(ReplicaVisualComponent) || !HasReplicaPaintingData())
 	{
 		return;
 	}
@@ -728,6 +762,10 @@ void AHeistPaintingDisplayCaseActor::RefreshReplicaPaintingTexture()
 		ReplicaPaintingTexture = BuildReplicaPaintingTexture();
 	}
 	if (!IsValid(ReplicaPaintingTexture))
+	{
+		return;
+	}
+	if (!IsValid(ReplicaPaintingMaterial))
 	{
 		return;
 	}
@@ -844,56 +882,142 @@ FName AHeistPaintingDisplayCaseActor::ResolveReplicaVisualTierName(const int32 V
 	}
 }
 
-bool AHeistPaintingDisplayCaseActor::TryCommitReplicaPlacement(AHeistPlayerState* RequestingPlayerState, const FHeistForgeryResult& ForgeryResult, const FHeistReplicaPaintingData& PaintingData)
+bool AHeistPaintingDisplayCaseActor::TryStageReplicaPreview(AHeistPlayerState* RequestingPlayerState, const FHeistForgeryResult& ForgeryResult,
+													 const FHeistReplicaPaintingData& PaintingData)
 {
 	if (!HasAuthority())
 	{
-		UE_LOG(LogHeistNetwork, Warning, TEXT("Replica placement rejected: Case=%s Requester=%s Reason=NotAuthority"), *GetNameSafe(this), *GetNameSafe(RequestingPlayerState));
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Replica preview rejected: Case=%s Requester=%s Reason=NotAuthority"), *GetNameSafe(this), *GetNameSafe(RequestingPlayerState));
 		return false;
 	}
 
 	FName RejectReason = NAME_None;
 	if (!ValidateReplicaPlacementRequest(RequestingPlayerState, ForgeryResult, RejectReason) || !ValidateReplicaPaintingData(PaintingData, RejectReason))
 	{
-		UE_LOG(LogHeistNetwork, Warning, TEXT("Replica placement rejected: Case=%s CaseId=%s Artifact=%s Requester=%s State=%s Locked=%s ExistingResult=%s Reason=%s"), *GetNameSafe(this),
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Replica preview rejected: Case=%s CaseId=%s Artifact=%s Requester=%s State=%s Locked=%s ExistingResult=%s Reason=%s"), *GetNameSafe(this),
 			   *DisplayCaseId.ToString(), *TargetArtifactId.ToString(), *GetNameSafe(RequestingPlayerState), *UEnum::GetValueAsString(DisplayCaseState), bSessionLocked ? TEXT("true") : TEXT("false"),
 			   bHasCommittedForgeryResult ? TEXT("true") : TEXT("false"), *RejectReason.ToString());
 		return false;
 	}
-	if (!ResolveInspectionSchedule(ForgeryResult, RejectReason))
+	if (!TryTransitionToDisplayCaseState(EHeistDisplayCaseState::ReplicaReady))
 	{
-		UE_LOG(LogHeistNetwork, Error, TEXT("Replica placement rejected: Case=%s CaseId=%s Artifact=%s Score=%.2f Reason=%s"), *GetNameSafe(this), *DisplayCaseId.ToString(),
-			   *TargetArtifactId.ToString(), ForgeryResult.SimilarityScore, *RejectReason.ToString());
-		return false;
-	}
-
-	if (!TryTransitionToDisplayCaseState(EHeistDisplayCaseState::ReplicaReady) || !TryTransitionToDisplayCaseState(EHeistDisplayCaseState::ReplicaPlaced) ||
-		!TryTransitionToDisplayCaseState(EHeistDisplayCaseState::OriginalAvailable))
-	{
-		UE_LOG(LogHeistNetwork, Error, TEXT("Replica placement failed: Case=%s State=%s Reason=StateTransitionFailed"), *GetNameSafe(this), *UEnum::GetValueAsString(DisplayCaseState));
+		UE_LOG(LogHeistNetwork, Error, TEXT("Replica preview rejected: Case=%s State=%s Reason=StateTransitionFailed"), *GetNameSafe(this), *UEnum::GetValueAsString(DisplayCaseState));
 		return false;
 	}
 
 	CommittedForgeryResult = ForgeryResult;
-	CommittedForgeryResult.bReplicaPlaced = true;
+	CommittedForgeryResult.bReplicaPlaced = false;
 	bHasCommittedForgeryResult = true;
 	++CommittedForgeryRevision;
 	ReplicaPaintingData = PaintingData;
 	ReplicaPaintingData.Revision = CommittedForgeryRevision;
-	StartInspectionDelayTimer();
-	RefreshInspectionRegistration();
 	RefreshReplicaWorldVisual();
-
-	ClearSession(FName(TEXT("ForgeryCompleted")));
+	RefreshReplicaReviewWorldFeedback();
 	ForceNetUpdate();
 
 	UE_LOG(LogHeistNetwork, Log,
 		TEXT(
-			"Replica placement committed: Case=%s CaseId=%s Artifact=%s Template=%s Requester=%s Score=%.2f ReplicaPlaced=%s State=%s Locked=%s Revision=%d PaintingResolution=%d PaintingPalette=%d PaintingBytes=%d PaintingRevision=%d Authority=true Result=PASS"),
+			"Replica preview staged: Case=%s CaseId=%s Artifact=%s Template=%s Requester=%s Score=%.2f ReplicaPlaced=false State=%s Locked=%s Revision=%d PaintingResolution=%d PaintingPalette=%d PaintingBytes=%d PaintingRevision=%d Authority=true Result=PASS"),
 		*GetNameSafe(this), *DisplayCaseId.ToString(), *CommittedForgeryResult.ArtifactId.ToString(), *CommittedForgeryResult.TemplateId.ToString(), *GetNameSafe(RequestingPlayerState),
-		CommittedForgeryResult.SimilarityScore, CommittedForgeryResult.bReplicaPlaced ? TEXT("true") : TEXT("false"), *UEnum::GetValueAsString(DisplayCaseState),
-		bSessionLocked ? TEXT("true") : TEXT("false"), CommittedForgeryRevision, ReplicaPaintingData.Resolution, ReplicaPaintingData.Palette.Num(), ReplicaPaintingData.PackedPaletteIndices.Num(),
-		ReplicaPaintingData.Revision);
+		CommittedForgeryResult.SimilarityScore, *UEnum::GetValueAsString(DisplayCaseState), bSessionLocked ? TEXT("true") : TEXT("false"), CommittedForgeryRevision,
+		ReplicaPaintingData.Resolution, ReplicaPaintingData.Palette.Num(), ReplicaPaintingData.PackedPaletteIndices.Num(), ReplicaPaintingData.Revision);
+	return true;
+}
+
+bool AHeistPaintingDisplayCaseActor::TryRestartForgeryFromPreview(AHeistPlayerState* RequestingPlayerState, FName& OutRejectReason)
+{
+	if (!HasAuthority() || !ValidateReplicaReviewOwner(RequestingPlayerState, OutRejectReason))
+	{
+		if (!HasAuthority())
+		{
+			OutRejectReason = FName(TEXT("NotAuthority"));
+		}
+		return false;
+	}
+
+	const EHeistDisplayCaseState PreviousState = DisplayCaseState;
+	ResetReplicaPreviewData();
+	DisplayCaseState = EHeistDisplayCaseState::ForgeryInProgress;
+	HandleDisplayCaseStateChanged(PreviousState);
+	ForceNetUpdate();
+	UE_LOG(LogHeistNetwork, Log, TEXT("Replica preview discarded: Case=%s Requester=%s State=%s Result=PASS"), *GetNameSafe(this), *GetNameSafe(RequestingPlayerState),
+		   *UEnum::GetValueAsString(DisplayCaseState));
+	return true;
+}
+
+bool AHeistPaintingDisplayCaseActor::TryCommitReplicaSwapAndTakeOriginal(AHeistPlayerState* RequestingPlayerState, int32& OutAddedInstanceId, FName& OutRejectReason)
+{
+	OutAddedInstanceId = INDEX_NONE;
+	if (!HasAuthority() || !ValidateReplicaReviewOwner(RequestingPlayerState, OutRejectReason))
+	{
+		if (!HasAuthority())
+		{
+			OutRejectReason = FName(TEXT("NotAuthority"));
+		}
+		return false;
+	}
+
+	int32 ArtifactValue = 0;
+	float ArtifactWeight = 0.0f;
+	bool bRequiredTarget = false;
+	if (!ValidateOriginalTakeRequest(RequestingPlayerState, ArtifactValue, ArtifactWeight, bRequiredTarget, OutRejectReason, true))
+	{
+		return false;
+	}
+
+	const float PreviousResolvedInspectionDelay = ResolvedInspectionDelay;
+	const float PreviousInspectionReadyServerTime = InspectionReadyServerTime;
+	const FName PreviousInspectionScoreBand = InspectionScoreBand;
+	const EHeistAlertLevel PreviousInspectionAlertOutcome = ResolvedInspectionAlertOutcome;
+	const EHeistDisplayCaseState PreviousInspectionCaseOutcome = ResolvedInspectionCaseOutcome;
+	const int32 PreviousInspectionScheduleRevision = InspectionScheduleRevision;
+	if (!ResolveInspectionSchedule(CommittedForgeryResult, OutRejectReason))
+	{
+		return false;
+	}
+	ResolvedInspectionDelay = FMath::Max(ResolvedInspectionDelay, ReplicaSwapMinimumInspectionDelaySeconds);
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	const float ServerTime = IsValid(HeistGameState) ? HeistGameState->GetServerWorldTimeSeconds() : (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
+	InspectionReadyServerTime = ServerTime + ResolvedInspectionDelay;
+
+	AHeistPlayerCharacter* PlayerCharacter = Cast<AHeistPlayerCharacter>(RequestingPlayerState->GetPawn());
+	UHeistInventoryComponent* InventoryComponent = IsValid(PlayerCharacter) ? PlayerCharacter->GetInventoryComponent() : nullptr;
+	const TCHAR* InventoryRejectReason = nullptr;
+	if (!IsValid(InventoryComponent) ||
+		!InventoryComponent->TryAddOriginalArtifact(RequestingPlayerState, TargetArtifactId, bRequiredTarget, this, OutAddedInstanceId, InventoryRejectReason))
+	{
+		ResolvedInspectionDelay = PreviousResolvedInspectionDelay;
+		InspectionReadyServerTime = PreviousInspectionReadyServerTime;
+		InspectionScoreBand = PreviousInspectionScoreBand;
+		ResolvedInspectionAlertOutcome = PreviousInspectionAlertOutcome;
+		ResolvedInspectionCaseOutcome = PreviousInspectionCaseOutcome;
+		InspectionScheduleRevision = PreviousInspectionScheduleRevision;
+		OutRejectReason = FName(InventoryRejectReason != nullptr ? InventoryRejectReason : TEXT("InventoryCommitFailed"));
+		return false;
+	}
+
+	OriginalCarrier = RequestingPlayerState;
+	OriginalCarrierArrestChangedHandle = RequestingPlayerState->GetArrestStateChangedDelegate().AddUObject(this, &AHeistPaintingDisplayCaseActor::HandleOriginalCarrierArrestStateChanged);
+	const EHeistDisplayCaseState PreviousState = DisplayCaseState;
+	DisplayCaseState = EHeistDisplayCaseState::OriginalRemoved;
+	CommittedForgeryResult.bReplicaPlaced = true;
+	++CommittedForgeryRevision;
+	ReplicaPaintingData.Revision = CommittedForgeryRevision;
+	HandleDisplayCaseStateChanged(PreviousState);
+	++OriginalCarryRevision;
+	SyncObjectiveCarrierCandidate(RequestingPlayerState);
+	StartInspectionDelayTimer();
+	RefreshInspectionRegistration();
+	RefreshReplicaWorldVisual();
+	ClearSession(FName(TEXT("ReplicaSwapCommitted")));
+	EmitReplicaSwapFeedback();
+	ForceNetUpdate();
+	BroadcastOriginalCarrySnapshot(TEXT("ServerReplicaSwap"), FName(TEXT("TakeAccepted")));
+
+	UE_LOG(LogHeistNetwork, Log,
+		TEXT("Replica swap committed: Case=%s CaseId=%s Artifact=%s Requester=%s InventoryInstance=%d GridCommitted=true Score=%.2f NoiseRadius=%.1f State=%s Result=PASS"),
+		*GetNameSafe(this), *DisplayCaseId.ToString(), *TargetArtifactId.ToString(), *GetNameSafe(RequestingPlayerState), OutAddedInstanceId, CommittedForgeryResult.SimilarityScore,
+		ReplicaSwapNoiseRadius, *UEnum::GetValueAsString(DisplayCaseState));
 	return true;
 }
 
@@ -937,6 +1061,77 @@ bool AHeistPaintingDisplayCaseActor::ValidateReplicaPlacementRequest(AHeistPlaye
 	return true;
 }
 
+bool AHeistPaintingDisplayCaseActor::ValidateReplicaReviewOwner(AHeistPlayerState* RequestingPlayerState, FName& OutRejectReason) const
+{
+	OutRejectReason = NAME_None;
+	if (!IsValid(RequestingPlayerState))
+	{
+		OutRejectReason = FName(TEXT("MissingPlayerState"));
+		return false;
+	}
+	if (DisplayCaseState != EHeistDisplayCaseState::ReplicaReady || !bHasCommittedForgeryResult || CommittedForgeryResult.bReplicaPlaced)
+	{
+		OutRejectReason = FName(TEXT("ReplicaPreviewNotReady"));
+		return false;
+	}
+	if (!bSessionLocked || SessionOwner.Get() != RequestingPlayerState)
+	{
+		OutRejectReason = FName(TEXT("CaseOwnershipMismatch"));
+		return false;
+	}
+	if (!ValidateReplicaPaintingData(ReplicaPaintingData, OutRejectReason) || ReplicaPaintingData.Revision != CommittedForgeryRevision)
+	{
+		return false;
+	}
+	return ValidateSessionRequest(RequestingPlayerState, OutRejectReason);
+}
+
+void AHeistPaintingDisplayCaseActor::ResetReplicaPreviewData()
+{
+	if (!bHasCommittedForgeryResult || CommittedForgeryResult.bReplicaPlaced)
+	{
+		return;
+	}
+
+	bHasCommittedForgeryResult = false;
+	CommittedForgeryResult = FHeistForgeryResult();
+	++CommittedForgeryRevision;
+	ReplicaPaintingData = FHeistReplicaPaintingData();
+	ReplicaPaintingData.Revision = CommittedForgeryRevision;
+	RefreshReplicaWorldVisual();
+}
+
+void AHeistPaintingDisplayCaseActor::EmitReplicaSwapFeedback()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	if (AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr)
+	{
+		FHeistSoundPingEvent SoundPingEvent;
+		SoundPingEvent.SoundPingTag = FHeistGameplayTags::Get().Event_SoundPing_ReplicaSwap;
+		SoundPingEvent.PingType = EHeistSoundPingType::ReplicaSwap;
+		SoundPingEvent.WorldLocation = GetActorLocation();
+		SoundPingEvent.Radius = FMath::Max(0.0f, ReplicaSwapNoiseRadius);
+		SoundPingEvent.Duration = FMath::Max(0.0f, ReplicaSwapNoiseDuration);
+		SoundPingEvent.bAffectsGuards = true;
+		HeistGameState->ReportSoundPing(SoundPingEvent);
+	}
+
+	Multicast_PlayReplicaSwapFeedback();
+}
+
+void AHeistPaintingDisplayCaseActor::Multicast_PlayReplicaSwapFeedback_Implementation()
+{
+	if (IsValid(ReplicaSwapSound))
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, ReplicaSwapSound, GetActorLocation());
+	}
+	BP_OnReplicaSwapCommitted();
+}
+
 bool AHeistPaintingDisplayCaseActor::ValidateReplicaPaintingData(const FHeistReplicaPaintingData& PaintingData, FName& OutRejectReason) const
 {
 	OutRejectReason = NAME_None;
@@ -975,11 +1170,13 @@ bool AHeistPaintingDisplayCaseActor::ValidateReplicaPaintingData(const FHeistRep
 void AHeistPaintingDisplayCaseActor::OnRep_CommittedForgeryRevision()
 {
 	RefreshReplicaWorldVisual();
+	RefreshReplicaReviewWorldFeedback();
+	const TCHAR* ReplicaPhase = !bHasCommittedForgeryResult ? TEXT("CLEARED") : CommittedForgeryResult.bReplicaPlaced ? TEXT("COMMITTED") : TEXT("PREVIEW");
 
-	UE_LOG(LogHeistNetwork, Log, TEXT("Replica placement replicated: Case=%s CaseId=%s Artifact=%s Template=%s Score=%.2f ReplicaPlaced=%s State=%s Locked=%s Revision=%d Authority=false Result=%s"),
+	UE_LOG(LogHeistNetwork, Log, TEXT("Replica state replicated: Case=%s CaseId=%s Artifact=%s Template=%s Score=%.2f ReplicaPlaced=%s State=%s Locked=%s Revision=%d Authority=false Phase=%s"),
 		   *GetNameSafe(this), *DisplayCaseId.ToString(), *CommittedForgeryResult.ArtifactId.ToString(), *CommittedForgeryResult.TemplateId.ToString(), CommittedForgeryResult.SimilarityScore,
 		   CommittedForgeryResult.bReplicaPlaced ? TEXT("true") : TEXT("false"), *UEnum::GetValueAsString(DisplayCaseState), bSessionLocked ? TEXT("true") : TEXT("false"), CommittedForgeryRevision,
-		   bHasCommittedForgeryResult && CommittedForgeryResult.bReplicaPlaced ? TEXT("PASS") : TEXT("FAIL"));
+		   ReplicaPhase);
 }
 
 void AHeistPaintingDisplayCaseActor::OnRep_ReplicaPaintingData()
@@ -1409,10 +1606,12 @@ bool AHeistPaintingDisplayCaseActor::TryTakeOriginal(AHeistPlayerState* Requesti
 	UHeistInventoryComponent* InventoryComponent = IsValid(PlayerCharacter) ? PlayerCharacter->GetInventoryComponent() : nullptr;
 	check(IsValid(InventoryComponent));
 
-	if (!InventoryComponent->TryBeginOriginalCarry(RequestingPlayerState, TargetArtifactId, ArtifactValue, ArtifactWeight, bRequiredTarget, this))
+	int32 AddedInstanceId = INDEX_NONE;
+	const TCHAR* InventoryRejectReason = nullptr;
+	if (!InventoryComponent->TryAddOriginalArtifact(RequestingPlayerState, TargetArtifactId, bRequiredTarget, this, AddedInstanceId, InventoryRejectReason))
 	{
-		UE_LOG(LogHeistNetwork, Warning, TEXT("Original carry rejected: Case=%s Artifact=%s Requester=%s Reason=CarryEntryCommitFailed"), *GetNameSafe(this), *TargetArtifactId.ToString(),
-			   *GetNameSafe(RequestingPlayerState));
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Original grid add rejected: Case=%s Artifact=%s Requester=%s Reason=%s"), *GetNameSafe(this), *TargetArtifactId.ToString(),
+			   *GetNameSafe(RequestingPlayerState), InventoryRejectReason != nullptr ? InventoryRejectReason : TEXT("InventoryCommitFailed"));
 		return false;
 	}
 
@@ -1422,8 +1621,8 @@ bool AHeistPaintingDisplayCaseActor::TryTakeOriginal(AHeistPlayerState* Requesti
 	{
 		UnbindOriginalCarrierDelegate();
 		OriginalCarrier = nullptr;
-		FHeistOriginalCarryEntry RolledBackEntry;
-		const bool bRolledBack = InventoryComponent->TryEndOriginalCarry(RequestingPlayerState, this, RolledBackEntry);
+		FHeistInventoryItem RolledBackItem;
+		const bool bRolledBack = InventoryComponent->TryRemoveOriginalArtifactForSourceCase(RequestingPlayerState, this, RolledBackItem);
 		checkf(bRolledBack, TEXT("Failed OriginalRemoved transition must roll back carry weight."));
 		return false;
 	}
@@ -1447,8 +1646,8 @@ bool AHeistPaintingDisplayCaseActor::ReleaseOriginalForCarrier(AHeistPlayerState
 
 	AHeistPlayerCharacter* PlayerCharacter = Cast<AHeistPlayerCharacter>(ExpectedCarrier->GetPawn());
 	UHeistInventoryComponent* InventoryComponent = IsValid(PlayerCharacter) ? PlayerCharacter->GetInventoryComponent() : nullptr;
-	FHeistOriginalCarryEntry ReleasedEntry;
-	const bool bCarryEntryReleased = IsValid(InventoryComponent) && InventoryComponent->TryEndOriginalCarry(ExpectedCarrier, this, ReleasedEntry);
+	FHeistInventoryItem ReleasedItem;
+	const bool bCarryEntryReleased = IsValid(InventoryComponent) && InventoryComponent->TryRemoveOriginalArtifactForSourceCase(ExpectedCarrier, this, ReleasedItem);
 	const bool bAllowMissingInventoryCleanup = Reason == FName(TEXT("OwnerDisconnected")) || Reason == FName(TEXT("OwnerArrested"));
 	if (!bCarryEntryReleased && (IsValid(InventoryComponent) || !bAllowMissingInventoryCleanup))
 	{
@@ -1480,9 +1679,9 @@ bool AHeistPaintingDisplayCaseActor::DropOriginalForCarrier(AHeistPlayerState* E
 
 	AHeistPlayerCharacter* PlayerCharacter = Cast<AHeistPlayerCharacter>(ExpectedCarrier->GetPawn());
 	UHeistInventoryComponent* InventoryComponent = IsValid(PlayerCharacter) ? PlayerCharacter->GetInventoryComponent() : nullptr;
-	FHeistOriginalCarryEntry DropEntry = IsValid(InventoryComponent) ? InventoryComponent->GetOriginalCarryEntry() : FHeistOriginalCarryEntry();
-	const bool bHasCommittedCarryEntry = DropEntry.IsValid();
-	if (!DropEntry.IsValid())
+	FHeistInventoryItem DropItem;
+	const bool bHasCommittedGridItem = IsValid(InventoryComponent) && InventoryComponent->TryGetOriginalArtifactForSourceCase(this, DropItem);
+	if (!bHasCommittedGridItem)
 	{
 		const AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
 		FHeistArtifactDataRow ArtifactDefinition;
@@ -1496,18 +1695,20 @@ bool AHeistPaintingDisplayCaseActor::DropOriginalForCarrier(AHeistPlayerState* E
 
 		const AHeistGameState* HeistGameState = GetWorld()->GetGameState<AHeistGameState>();
 		const FHeistContractSnapshot ContractSnapshot = IsValid(HeistGameState) ? HeistGameState->GetContractSnapshot() : FHeistContractSnapshot();
-		DropEntry.ArtifactId = TargetArtifactId;
-		DropEntry.ArtifactValue = ArtifactDefinition.ArtifactValue;
-		DropEntry.Weight = ArtifactDefinition.Weight;
-		DropEntry.bRequiredTarget = ContractSnapshot.IsInitialized() && ContractSnapshot.RequiredTargetArtifactId == TargetArtifactId &&
+		DropItem.ItemId = TargetArtifactId;
+		DropItem.ContractValue = ArtifactDefinition.ArtifactValue;
+		DropItem.Weight = ArtifactDefinition.Weight;
+		DropItem.BaseGridSize = FIntPoint(ArtifactDefinition.GridWidth, ArtifactDefinition.GridHeight);
+		DropItem.bOriginalArtifact = true;
+		DropItem.bRequiredTarget = ContractSnapshot.IsInitialized() && ContractSnapshot.RequiredTargetArtifactId == TargetArtifactId &&
 			ContractSnapshot.RequiredTargetCaseId == DisplayCaseId;
-		DropEntry.SourceDisplayCase = this;
+		DropItem.SourceDisplayCase = this;
 	}
 
-	if (DropEntry.SourceDisplayCase != this || DropEntry.ArtifactId != TargetArtifactId)
+	if (!DropItem.HasValidOriginalData() || DropItem.SourceDisplayCase != this || DropItem.ItemId != TargetArtifactId)
 	{
 		UE_LOG(LogHeistNetwork, Warning, TEXT("Original world drop rejected: Case=%s Carrier=%s Artifact=%s Reason=CarrySourceMismatch"), *GetNameSafe(this), *GetNameSafe(ExpectedCarrier),
-			   *DropEntry.ArtifactId.ToString());
+			   *DropItem.ItemId.ToString());
 		return false;
 	}
 
@@ -1524,14 +1725,14 @@ bool AHeistPaintingDisplayCaseActor::DropOriginalForCarrier(AHeistPlayerState* E
 		return false;
 	}
 
-	DroppedOriginal->InitializeDroppedOriginal(DropEntry.ArtifactId, DropEntry.ArtifactValue, DropEntry.Weight, DropEntry.bRequiredTarget, this);
+	DroppedOriginal->InitializeDroppedOriginal(DropItem.ItemId, DropItem.ContractValue, DropItem.Weight, DropItem.bRequiredTarget, this);
 	DroppedOriginal->FinishSpawning(DropTransform);
 
-	if (bHasCommittedCarryEntry)
+	if (bHasCommittedGridItem)
 	{
 		check(IsValid(InventoryComponent));
-		FHeistOriginalCarryEntry ReleasedEntry;
-		if (!InventoryComponent->TryEndOriginalCarry(ExpectedCarrier, this, ReleasedEntry))
+		FHeistInventoryItem ReleasedItem;
+		if (!InventoryComponent->TryRemoveOriginalArtifactForSourceCase(ExpectedCarrier, this, ReleasedItem))
 		{
 			DroppedOriginal->Destroy();
 			UE_LOG(LogHeistNetwork, Warning, TEXT("Original world drop rejected: Case=%s Carrier=%s Reason=CarryEntryReleaseFailed"), *GetNameSafe(this), *GetNameSafe(ExpectedCarrier));
@@ -1547,8 +1748,8 @@ bool AHeistPaintingDisplayCaseActor::DropOriginalForCarrier(AHeistPlayerState* E
 	BroadcastOriginalCarrySnapshot(TEXT("ServerWorldDrop"), Reason);
 	UE_LOG(LogHeistNetwork, Log,
 		   TEXT("Original world drop committed: Case=%s CaseId=%s Actor=%s Artifact=%s Value=%d Weight=%.1f Required=%s Reason=%s Revision=%d Authority=true Result=PASS"),
-		   *GetNameSafe(this), *DisplayCaseId.ToString(), *GetNameSafe(DroppedOriginal), *DropEntry.ArtifactId.ToString(), DropEntry.ArtifactValue, DropEntry.Weight,
-		   DropEntry.bRequiredTarget ? TEXT("true") : TEXT("false"), *Reason.ToString(), OriginalCarryRevision);
+		   *GetNameSafe(this), *DisplayCaseId.ToString(), *GetNameSafe(DroppedOriginal), *DropItem.ItemId.ToString(), DropItem.ContractValue, DropItem.Weight,
+		   DropItem.bRequiredTarget ? TEXT("true") : TEXT("false"), *Reason.ToString(), OriginalCarryRevision);
 	return true;
 }
 
@@ -1565,9 +1766,10 @@ bool AHeistPaintingDisplayCaseActor::TryClaimDroppedOriginal(AHeistPlayerState* 
 
 	AHeistPlayerCharacter* PlayerCharacter = Cast<AHeistPlayerCharacter>(RequestingPlayerState->GetPawn());
 	UHeistInventoryComponent* InventoryComponent = IsValid(PlayerCharacter) ? PlayerCharacter->GetInventoryComponent() : nullptr;
-	if (!IsValid(InventoryComponent) || InventoryComponent->IsCarryingOriginal() ||
-		!InventoryComponent->TryBeginOriginalCarry(RequestingPlayerState, DroppedOriginal->GetArtifactId(), DroppedOriginal->GetArtifactValue(), DroppedOriginal->GetWeight(),
-														 DroppedOriginal->IsRequiredTarget(), this))
+	int32 AddedInstanceId = INDEX_NONE;
+	const TCHAR* InventoryRejectReason = nullptr;
+	if (!IsValid(InventoryComponent) || !InventoryComponent->TryAddOriginalArtifact(RequestingPlayerState, DroppedOriginal->GetArtifactId(), DroppedOriginal->IsRequiredTarget(), this,
+																	 AddedInstanceId, InventoryRejectReason))
 	{
 		return false;
 	}
@@ -1581,21 +1783,21 @@ bool AHeistPaintingDisplayCaseActor::TryClaimDroppedOriginal(AHeistPlayerState* 
 	return true;
 }
 
-bool AHeistPaintingDisplayCaseActor::CanCommitOriginalDepositForCarrier(const AHeistPlayerState* ExpectedCarrier, const FHeistOriginalCarryEntry& CarryEntry) const
+bool AHeistPaintingDisplayCaseActor::CanCommitOriginalDepositForCarrier(const AHeistPlayerState* ExpectedCarrier, const FHeistInventoryItem& OriginalItem) const
 {
 	const bool bOriginalOutsideCase = DisplayCaseState == EHeistDisplayCaseState::OriginalRemoved || DisplayCaseState == EHeistDisplayCaseState::Inspecting ||
 		DisplayCaseState == EHeistDisplayCaseState::Completed || DisplayCaseState == EHeistDisplayCaseState::Suspected || DisplayCaseState == EHeistDisplayCaseState::Alarmed ||
 		DisplayCaseState == EHeistDisplayCaseState::Failed;
-	return HasAuthority() && bOriginalOutsideCase && !bOriginalSecuredAtExit && IsValid(ExpectedCarrier) && OriginalCarrier.Get() == ExpectedCarrier && CarryEntry.IsValid() &&
-		   CarryEntry.SourceDisplayCase == this && CarryEntry.ArtifactId == TargetArtifactId;
+	return HasAuthority() && bOriginalOutsideCase && !bOriginalSecuredAtExit && IsValid(ExpectedCarrier) && OriginalCarrier.Get() == ExpectedCarrier && OriginalItem.HasValidOriginalData() &&
+		   OriginalItem.SourceDisplayCase == this && OriginalItem.ItemId == TargetArtifactId;
 }
 
-bool AHeistPaintingDisplayCaseActor::CommitOriginalDepositForCarrier(AHeistPlayerState* ExpectedCarrier, const FHeistOriginalCarryEntry& CarryEntry)
+bool AHeistPaintingDisplayCaseActor::CommitOriginalDepositForCarrier(AHeistPlayerState* ExpectedCarrier, const FHeistInventoryItem& OriginalItem)
 {
-	if (!CanCommitOriginalDepositForCarrier(ExpectedCarrier, CarryEntry))
+	if (!CanCommitOriginalDepositForCarrier(ExpectedCarrier, OriginalItem))
 	{
 		UE_LOG(LogHeistNetwork, Warning, TEXT("Original exit secure rejected: Case=%s Carrier=%s Artifact=%s Reason=InvalidDepositState"), *GetNameSafe(this),
-			   *GetNameSafe(ExpectedCarrier), *CarryEntry.ArtifactId.ToString());
+			   *GetNameSafe(ExpectedCarrier), *OriginalItem.ItemId.ToString());
 		return false;
 	}
 
@@ -1610,7 +1812,7 @@ bool AHeistPaintingDisplayCaseActor::CommitOriginalDepositForCarrier(AHeistPlaye
 }
 
 bool AHeistPaintingDisplayCaseActor::ValidateOriginalTakeRequest(AHeistPlayerState* RequestingPlayerState, int32& OutArtifactValue, float& OutArtifactWeight, bool& bOutRequiredTarget,
-															 FName& OutRejectReason) const
+																 FName& OutRejectReason, const bool bAllowLockedReplicaReady) const
 {
 	OutArtifactValue = 0;
 	OutArtifactWeight = 0.0f;
@@ -1621,12 +1823,14 @@ bool AHeistPaintingDisplayCaseActor::ValidateOriginalTakeRequest(AHeistPlayerSta
 		OutRejectReason = FName(TEXT("MissingPlayerState"));
 		return false;
 	}
-	if (DisplayCaseState != EHeistDisplayCaseState::OriginalAvailable)
+	const bool bStandardPickupState = DisplayCaseState == EHeistDisplayCaseState::OriginalAvailable && !bSessionLocked;
+	const bool bReplicaReviewState = bAllowLockedReplicaReady && DisplayCaseState == EHeistDisplayCaseState::ReplicaReady && bSessionLocked && SessionOwner.Get() == RequestingPlayerState;
+	if (!bStandardPickupState && !bReplicaReviewState)
 	{
 		OutRejectReason = FName(TEXT("OriginalNotAvailable"));
 		return false;
 	}
-	if (bSessionLocked)
+	if (bSessionLocked && !bReplicaReviewState)
 	{
 		OutRejectReason = FName(TEXT("CaseSessionLocked"));
 		return false;
@@ -1674,12 +1878,6 @@ bool AHeistPaintingDisplayCaseActor::ValidateOriginalTakeRequest(AHeistPlayerSta
 		OutRejectReason = FName(TEXT("OutOfRange"));
 		return false;
 	}
-	if (InventoryComponent->IsCarryingOriginal())
-	{
-		OutRejectReason = FName(TEXT("AlreadyCarryingOriginal"));
-		return false;
-	}
-
 	const AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
 	FHeistArtifactDataRow ArtifactDefinition;
 	if (!IsValid(HeistGameMode) || !HeistGameMode->TryGetArtifactDefinition(TargetArtifactId, ArtifactDefinition))
@@ -1932,10 +2130,23 @@ void AHeistPaintingDisplayCaseActor::OnRep_SessionRevision()
 
 void AHeistPaintingDisplayCaseActor::BroadcastSessionSnapshot(const TCHAR* ChangeSource, const FName Reason)
 {
+	RefreshReplicaReviewWorldFeedback();
 	OnDisplayCaseSessionChanged.Broadcast(SessionOwner.Get(), bSessionLocked, SessionRevision);
 	UE_LOG(LogHeistNetwork, Log, TEXT("Display case session %s: Case=%s Owner=%s OwnerPlayerId=%d Locked=%s Revision=%d Reason=%s Authority=%s"), ChangeSource, *GetNameSafe(this),
 		   *GetNameSafe(SessionOwner.Get()), IsValid(SessionOwner.Get()) ? SessionOwner->HeistPlayerId : INDEX_NONE, bSessionLocked ? TEXT("true") : TEXT("false"), SessionRevision,
 		   Reason.IsNone() ? TEXT("None") : *Reason.ToString(), HasAuthority() ? TEXT("true") : TEXT("false"));
+}
+
+void AHeistPaintingDisplayCaseActor::RefreshReplicaReviewWorldFeedback()
+{
+	const APawn* LocalPawn = UGameplayStatics::GetPlayerPawn(this, 0);
+	const bool bReadyForLocalPlayer = IsReplicaReviewReadyFor(LocalPawn);
+	const bool bUntouched = IsUntouchedForWorldFeedback();
+	const FLinearColor SuggestedColor = bReadyForLocalPlayer ? FLinearColor::Green : bUntouched ? FLinearColor::Red : FLinearColor::Transparent;
+	const FText SuggestedHint = bReadyForLocalPlayer
+		? NSLOCTEXT("HeistDisplayCase", "ReplicaReviewHint", "E 회수  |  R 다시 그리기")
+		: bUntouched ? NSLOCTEXT("HeistDisplayCase", "UntouchedHint", "E 위조 시작") : FText::GetEmpty();
+	BP_ApplyReplicaReviewWorldFeedback(bReadyForLocalPlayer, bUntouched, SuggestedColor, SuggestedHint);
 }
 
 void AHeistPaintingDisplayCaseActor::HandleSessionOwnerArrestStateChanged(const bool bArrested)

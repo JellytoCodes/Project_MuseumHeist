@@ -181,6 +181,7 @@ int32 UHeistGuardNoiseReactionComponent::ResolveCandidatePriority(const EHeistSo
 	{
 	case EHeistSoundPingType::StunHit:
 		return 0;
+	case EHeistSoundPingType::ReplicaSwap:
 	case EHeistSoundPingType::GlassBreak:
 		return 1;
 	case EHeistSoundPingType::CoinImpact:

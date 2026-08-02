@@ -1101,6 +1101,16 @@ void UHeistCheatManager::HeistResultSeed(const int32 Score, const bool bEscaped,
 #endif
 }
 
+void UHeistCheatManager::HeistContributionSeed(const int32 SurfaceForgeries, const float BestSurfaceQuality, const int32 Assemblies,
+	const float BestAssemblyQuality, const int32 ArtifactsRecovered, const float CarryTimeSeconds, const int32 SecuredLootValue,
+	const int32 GuardsDistracted, const int32 TeammatesRescued, const int32 AlarmsTriggered)
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugContributionSeed(GetOuterAPlayerController(), SurfaceForgeries, BestSurfaceQuality, Assemblies,
+		BestAssemblyQuality, ArtifactsRecovered, CarryTimeSeconds, SecuredLootValue, GuardsDistracted, TeammatesRescued, AlarmsTriggered);
+#endif
+}
+
 void UHeistCheatManager::HeistExitPlacementDump()
 {
 #if !UE_BUILD_SHIPPING

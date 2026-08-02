@@ -412,21 +412,19 @@ void UHeistActionComponent::HandleEscapeCastTimerElapsed()
 		return;
 	}
 
-	AHeistPaintingDisplayCaseActor* PaintingSourceCase = nullptr;
-	AHeistObjectDisplayCaseActor* ObjectSourceCase = nullptr;
-	if (DepositPreview.OriginalCarry.IsValid())
+	const FHeistContractSnapshot ContractSnapshot = HeistGameState->GetContractSnapshot();
+	for (const FHeistInventoryItem& OriginalItem : DepositPreview.OriginalArtifacts)
 	{
-		AActor* SourceDisplayCase = DepositPreview.OriginalCarry.SourceDisplayCase.Get();
-		PaintingSourceCase = Cast<AHeistPaintingDisplayCaseActor>(SourceDisplayCase);
-		ObjectSourceCase = Cast<AHeistObjectDisplayCaseActor>(SourceDisplayCase);
-		const FHeistContractSnapshot ContractSnapshot = HeistGameState->GetContractSnapshot();
+		AActor* SourceDisplayCase = OriginalItem.SourceDisplayCase.Get();
+		AHeistPaintingDisplayCaseActor* PaintingSourceCase = Cast<AHeistPaintingDisplayCaseActor>(SourceDisplayCase);
+		AHeistObjectDisplayCaseActor* ObjectSourceCase = Cast<AHeistObjectDisplayCaseActor>(SourceDisplayCase);
 		const FName SourceCaseId = IsValid(PaintingSourceCase) ? PaintingSourceCase->GetDisplayCaseId()
-													: (IsValid(ObjectSourceCase) ? ObjectSourceCase->GetObjectCaseId() : NAME_None);
-		const bool bMatchesRequiredTarget = DepositPreview.OriginalCarry.ArtifactId == ContractSnapshot.RequiredTargetArtifactId && SourceCaseId == ContractSnapshot.RequiredTargetCaseId;
-		const bool bRequiredFlagConsistent = DepositPreview.OriginalCarry.bRequiredTarget == bMatchesRequiredTarget;
+												: (IsValid(ObjectSourceCase) ? ObjectSourceCase->GetObjectCaseId() : NAME_None);
+		const bool bMatchesRequiredTarget = OriginalItem.ItemId == ContractSnapshot.RequiredTargetArtifactId && SourceCaseId == ContractSnapshot.RequiredTargetCaseId;
+		const bool bRequiredFlagConsistent = OriginalItem.bRequiredTarget == bMatchesRequiredTarget;
 		const bool bSourceCanCommit =
-			(IsValid(PaintingSourceCase) && PaintingSourceCase->CanCommitOriginalDepositForCarrier(HeistPlayerState, DepositPreview.OriginalCarry)) ||
-			(IsValid(ObjectSourceCase) && ObjectSourceCase->CanCommitOriginalDepositForCarrier(HeistPlayerState, DepositPreview.OriginalCarry));
+			(IsValid(PaintingSourceCase) && PaintingSourceCase->CanCommitOriginalDepositForCarrier(HeistPlayerState, OriginalItem)) ||
+			(IsValid(ObjectSourceCase) && ObjectSourceCase->CanCommitOriginalDepositForCarrier(HeistPlayerState, OriginalItem));
 		if (!bRequiredFlagConsistent || !bSourceCanCommit)
 		{
 			CancelEscapeCast(!bRequiredFlagConsistent ? TEXT("RequiredTargetDepositMismatch") : TEXT("OriginalDepositSourceRejected"));
@@ -442,7 +440,7 @@ void UHeistActionComponent::HandleEscapeCastTimerElapsed()
 			return;
 		}
 
-		if (!HeistGameState->CanCommitPlayerDeposit(HeistPlayerState, DepositPreview.GetTotalValue(), DepositPreview.OriginalCarry.bRequiredTarget, DepositRejectReason))
+		if (!HeistGameState->CanCommitPlayerDeposit(HeistPlayerState, DepositPreview.GetTotalValue(), DepositPreview.ContainsRequiredTarget(), DepositRejectReason))
 		{
 			CancelEscapeCast(DepositRejectReason != nullptr ? DepositRejectReason : TEXT("ContractDepositRejected"));
 			return;
@@ -455,11 +453,17 @@ void UHeistActionComponent::HandleEscapeCastTimerElapsed()
 			return;
 		}
 
-		const bool bOriginalSourceCommitted = !CommittedDeposit.OriginalCarry.IsValid() ||
-			(IsValid(PaintingSourceCase) && PaintingSourceCase->CommitOriginalDepositForCarrier(HeistPlayerState, CommittedDeposit.OriginalCarry)) ||
-			(IsValid(ObjectSourceCase) && ObjectSourceCase->CommitOriginalDepositForCarrier(HeistPlayerState, CommittedDeposit.OriginalCarry));
-		checkf(bOriginalSourceCommitted, TEXT("Validated Original deposit source must commit after inventory deposit."));
-		checkf(HeistGameState->CommitPlayerDeposit(HeistPlayerState, CommittedDeposit.GetTotalValue(), CommittedDeposit.OriginalCarry.bRequiredTarget),
+		for (const FHeistInventoryItem& OriginalItem : CommittedDeposit.OriginalArtifacts)
+		{
+			AActor* SourceDisplayCase = OriginalItem.SourceDisplayCase.Get();
+			AHeistPaintingDisplayCaseActor* PaintingSourceCase = Cast<AHeistPaintingDisplayCaseActor>(SourceDisplayCase);
+			AHeistObjectDisplayCaseActor* ObjectSourceCase = Cast<AHeistObjectDisplayCaseActor>(SourceDisplayCase);
+			const bool bOriginalSourceCommitted =
+				(IsValid(PaintingSourceCase) && PaintingSourceCase->CommitOriginalDepositForCarrier(HeistPlayerState, OriginalItem)) ||
+				(IsValid(ObjectSourceCase) && ObjectSourceCase->CommitOriginalDepositForCarrier(HeistPlayerState, OriginalItem));
+			checkf(bOriginalSourceCommitted, TEXT("Validated Original deposit source must commit after inventory deposit."));
+		}
+		checkf(HeistGameState->CommitPlayerDeposit(HeistPlayerState, CommittedDeposit.GetTotalValue(), CommittedDeposit.ContainsRequiredTarget()),
 			   TEXT("Validated Contract deposit must commit after inventory deposit."));
 	}
 

@@ -390,7 +390,7 @@ bool AHeistGameState::RefreshContractCarriedValue()
 		const UHeistInventoryComponent* InventoryComponent = IsValid(PlayerCharacter) ? PlayerCharacter->GetInventoryComponent() : nullptr;
 		if (IsValid(InventoryComponent) && InventoryComponent->IsCarryingOriginal())
 		{
-			ResolvedCarriedValue += static_cast<int64>(InventoryComponent->GetOriginalCarryEntry().ArtifactValue);
+			ResolvedCarriedValue += static_cast<int64>(InventoryComponent->GetOriginalArtifactValue());
 		}
 
 		if (ResolvedCarriedValue > MAX_int32)

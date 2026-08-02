@@ -11,7 +11,7 @@ class AHeistPlayerState;
 class AHeistDroppedOriginalActor;
 class USceneComponent;
 class UStaticMeshComponent;
-struct FHeistOriginalCarryEntry;
+struct FHeistInventoryItem;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FHeistObjectAssemblySessionChangedSignature, AHeistPlayerState*, SessionOwner, bool, bLocked, int32, Revision);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FHeistObjectOriginalCarryChangedSignature, AHeistPlayerState*, Carrier, FName, ArtifactId, int32, Revision);
@@ -103,8 +103,8 @@ class PROJECT_MUSEUMHEIST_API AHeistObjectDisplayCaseActor : public AHeistIntera
 	bool ReleaseOriginalForCarrier(AHeistPlayerState* ExpectedCarrier, FName Reason);
 	bool DropOriginalForCarrier(AHeistPlayerState* ExpectedCarrier, FName Reason);
 	bool TryClaimDroppedOriginal(AHeistPlayerState* RequestingPlayerState, AHeistDroppedOriginalActor* DroppedOriginal);
-	bool CanCommitOriginalDepositForCarrier(const AHeistPlayerState* ExpectedCarrier, const FHeistOriginalCarryEntry& CarryEntry) const;
-	bool CommitOriginalDepositForCarrier(AHeistPlayerState* ExpectedCarrier, const FHeistOriginalCarryEntry& CarryEntry);
+	bool CanCommitOriginalDepositForCarrier(const AHeistPlayerState* ExpectedCarrier, const FHeistInventoryItem& OriginalItem) const;
+	bool CommitOriginalDepositForCarrier(AHeistPlayerState* ExpectedCarrier, const FHeistInventoryItem& OriginalItem);
 
 	UPROPERTY(BlueprintAssignable, Category = "Heist|Object Assembly|Original")
 	FHeistObjectOriginalCarryChangedSignature OnObjectOriginalCarryChanged;

@@ -87,6 +87,7 @@ Project_MuseumHeist는 Unreal Engine 5.8 C++ 기반의 **1~4인 온라인 협동
 - Guard 위치와 시야를 실시간 표시하는 Minimap / Radar
 - Stamina Bar와 Sprint 소모 자원
 - 고정 역할 또는 Mandatory 2-player Interaction
+- Original 전용 Carry Slot, `OriginalCarryEntry`, `CarryMode`와 Inventory 우측 별도 카드
 
 ---
 
@@ -701,7 +702,13 @@ Escape 취소 조건:
 - 다른 Interaction을 차단한다.
 - Draw를 허용한다.
 - Erase를 허용한다.
-- `R`은 현재 Client의 Local Stroke와 Preview만 초기화하며 Server RPC를 전송하지 않는다.
+- Drawing 단계의 `R`은 현재 Client의 Local Stroke와 Preview만 초기화하며 Server RPC를 전송하지 않는다.
+- Submit 성공 즉시 Forgery Widget을 닫고 Gameplay Input, 이동과 시점을 복원한다. 제출 결과를 Full-Screen Result 단계로 전환하지 않는다.
+- Case는 제출자의 Owner Lock과 Replica Texture 후보를 `ReplicaReady`로 유지한다. 플레이어는 EndOverlap 후 경비를 피해 이탈했다가 나중에 돌아올 수 있다.
+- `ReplicaReady` Case에 다시 BeginOverlap한 Owner의 `E`는 서버에 Replica 교체와 Original 회수를 함께 요청한다.
+- `ReplicaReady` Case에 다시 BeginOverlap한 Owner의 `R`은 서버에 현재 Preview 폐기와 새 Drawing Timer로 Full-Screen Forgery 재진입을 요청한다.
+- `ReplicaReady`의 `E`와 `R`은 요청 순간 Player Capsule과 해당 Case의 Interaction Collision이 현재 Overlap 중인지 서버가 검증한다. Submit 이후 연속 Overlap은 요구하지 않는다.
+- World UX는 Owner에게 `E 회수 | R 다시 그리기` 안내를 표시하고, 회수 준비 상태는 Green, 미작업 상태는 Red를 기본 Outline 의미로 사용한다. 색상만으로 상태를 전달하지 않고 Text Prompt를 함께 제공한다.
 - 남은 Drawing Time은 Owner에게 복제된 `SessionEndServerTime`과 Server World Time의 차이로 표시한다.
 - Drawing Time은 독립된 `DrawingTimeRemainingText`에 표시하며 키 가이드 또는 제목 Text와 결합하지 않는다.
 - Submit을 허용한다.
@@ -715,6 +722,10 @@ Escape 취소 조건:
 - 플레이어는 남은 시간과 관계없이 언제든 현재 Drawing을 Submit할 수 있다.
 - Timeout은 유효 Stroke가 하나 이상 있으면 현재 Drawing을 자동 Submit한다.
 - 유효 Stroke가 없으면 Timeout Cancel로 처리한다.
+- Submit은 Score와 Replica Texture Preview를 확정하고 Case를 `ReplicaReady`로 전환할 뿐, Original 회수나 최종 Replica 배치를 즉시 확정하지 않는다. 동시에 Full-Screen UI Session은 종료하고 Gameplay로 복귀한다.
+- `ReplicaReady`에서는 Owner Lock을 유지하되 Submit 당시의 Overlap 후보는 유지할 필요가 없다. Owner가 같은 Case에 재접근했을 때 `E` 교체·회수 또는 `R` Full-Screen 다시 그리기를 선택한다.
+- `E` 확정은 Replica 배치, Original Grid 추가, Case 상태 변경, Objective/Carrier 갱신과 교체 소음을 하나의 서버 작업으로 처리한다.
+- Inventory Grid 또는 Weight 검증이 실패하면 위 작업 전체를 거부하고 `ReplicaReady`를 유지한다.
 - 낮은 Score는 즉시 Match Failure가 아니라 짧은 Guard Inspection Delay와 Alert Escalation으로 이어진다.
 - Reference Image는 약 15초 Drawing으로도 핵심 실루엣을 알아볼 수 있도록 단순화한다.
 - Template Palette는 2~8색을 허용하되 일반적인 Release Template은 3~5색을 목표로 한다.
@@ -726,7 +737,9 @@ Escape 취소 조건:
 - Client는 정규화된 Stroke Point를 수집한다.
 - Client는 Stroke별 Point Count를 수집한다.
 - Client는 Stroke별 Palette Index를 수집한다.
-- Client는 Template에서 승인된 Brush Size를 사용한다.
+- Client는 Template 기본값에서 파생된 승인 Brush Size Preset만 사용한다.
+- 일반 Surface Forgery는 `0.5× / 1.0× / 1.5×` Brush Size Preset을 제공하며 서버가 허용 집합을 재검증한다.
+- Surface Forgery UI는 현재 Brush Size, Point Budget과 Score Raster Resolution을 표시한다.
 - Reference Image는 직접 제작한 단순한 이미지를 사용한다.
 - Template별 Palette는 2~8색으로 제한한다.
 - Template은 `None / Black / White` 배경 필터를 사용한다.
@@ -746,8 +759,8 @@ Escape 취소 조건:
 
 ## Submitted Texture Replication
 
-- 최종 위조 그림은 서버 Score용 Palette Raster에서 생성한다.
-- 고정 해상도 Palette Index Data는 제출 시 한 번만 복제한다.
+- Replica Preview와 최종 위조 그림은 동일한 서버 Score용 Palette Raster에서 생성한다.
+- 고정 해상도 Palette Index Data는 Submit 시 Preview로 한 번 복제하고, `E` 확정 시 같은 Data를 Committed Replica로 승격한다.
 - 각 Client는 복제된 Index Data로 Transient Texture를 재구성한다.
 - Render Target을 World Visual 목적으로 복제하지 않는다.
 - 전체 Stroke Payload를 World Visual 목적으로 추가 복제하지 않는다.
@@ -960,6 +973,17 @@ Session 종료, Cancel, Timeout, Arrest, Disconnect, Match End, Owner EndPlay �
 - Player Count가 증가하면 Quota와 활성 Optional Exhibit 수를 Data로 조정한다.
 - Forgery Time 자체는 Player Count에 따라 크게 늘리지 않는다.
 
+## Grid Inventory And Original Acquisition
+
+- Painting / Object Original과 Loose Loot는 동일한 Owner-only `FHeistReplicatedInventory` FastArray와 4×5 GridSlot을 사용한다.
+- Painting의 Original은 `ReplicaReady`에서 `E`로 교체·회수를 확정할 때 Artifact Data의 `GridWidth`, `GridHeight`, `Weight`, `ArtifactValue`를 복제 Item Instance에 복사하고 빈 GridSlot에 즉시 자동 배치한다.
+- Painting의 Replica 교체와 Original Grid 추가는 분리된 두 번의 상호작용이 아니며, 어느 한쪽만 성공한 상태를 남기지 않는다.
+- 빈 GridSlot이 없거나 Weight 제한을 넘으면 획득을 거부하며, Original은 전시 케이스 또는 기존 World Drop 상태를 유지한다.
+- Grid와 Weight가 허용하는 한 한 Player가 여러 Original을 동시에 보유할 수 있다.
+- `CarryingOriginal`과 `Heavy`는 Grid Item 목록과 총 Weight에서 파생되는 상태이며 별도 원본 소유 컨테이너가 아니다.
+- 원본 전용 `OriginalCarryEntry`, `CarryMode`, Inventory 우측 별도 카드와 아이템별 반복 출구 전달 흐름을 만들지 않는다.
+- Individual Player가 Shared Extraction을 완료하면 그 시점에 Grid가 보유한 모든 유효 Original과 Loose Loot를 한 번의 서버 Deposit으로 처리한다.
+
 ## Value States
 
 ```text
@@ -1016,9 +1040,12 @@ Contract Failed
 현재 SoundPing 시스템은 Guard가 서버에서 소음에 반응하기 위한 Gameplay Event로 사용한다.
 
 - Footstep
+- Replica Swap
 - Glass Break
 - Coin Impact
 - 현재 기획에 포함된 환경 소음
+
+`Replica Swap`은 Painting Case의 `E` 교체·회수 확정 시 프레임이 덜그럭거리는 World Audio와 함께 서버에서 발생한다. 주변 Guard는 이 Event를 `InvestigateNoise` 후보로 처리하고, Player-facing SoundPing Marker는 생성하지 않는다.
 
 현재 제거된 SoundPing:
 
@@ -1109,13 +1136,16 @@ Context 전환 시:
 
 ## UI Copy Rules
 
-- v1.0의 Source UI Copy는 영어를 사용한다.
+- v1.0의 Source UI Copy와 기본 표시 언어는 한국어를 사용한다.
+- Widget Blueprint의 기본 TextBlock 문구와 C++ `FText` 원문은 한국어를 기준으로 맞춘다.
+- 프로젝트 기본 Culture와 Package Stage Culture는 `ko`를 사용한다.
 - 플레이어에게 상태를 전달하는 문구는 대상, 현재 상태, 결과 또는 필요한 행동을 알 수 있는 문장형으로 작성한다.
-- `LOCKDOWN`처럼 의미가 모호할 수 있는 단독 상태명 대신 `THE MUSEUM WILL ENTER LOCKDOWN IN {0}.`처럼 게임 내 대상을 명시한다.
+- `봉쇄`처럼 의미가 모호할 수 있는 단독 상태명 대신 `박물관 봉쇄까지 {0} 남았습니다.`처럼 게임 내 대상과 상태를 명시한다.
 - Forgery 제출 제한 시간과 Museum Lockdown 제한 시간은 서로 다른 문장으로 구분한다.
 - Raw Enum, Data Row ID, Blueprint Class Name을 그대로 플레이어에게 노출하지 않는다.
 - 화면 제목, 버튼 동사, 키 라벨, 수량처럼 문맥이 이미 분명한 짧은 UI Label은 간결하게 유지할 수 있다.
-- `NSLOCTEXT` Key는 이후 영어 → 한국어 현지화 패치를 위해 안정적으로 유지한다.
+- `NSLOCTEXT` / `LOCTEXT` Namespace와 Key는 안정적으로 유지하고 원문만 한국어로 작성한다.
+- 영어를 포함한 추가 언어는 기존 Namespace와 Key를 사용하는 Localization Target 번역 리소스로 추가하며, 이를 위해 한국어 원문을 다시 영어로 되돌리지 않는다.
 
 ## Blueprint Graph 금지 항목
 

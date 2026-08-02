@@ -96,20 +96,25 @@ void UHeistInventoryItemWidget::RefreshPresentation()
 
 	if (IsValid(InstanceIdText))
 	{
-		InstanceIdText->SetText(FText::Format(NSLOCTEXT("HeistInventory", "ItemInstanceFormat", "ID  {0}"), FText::AsNumber(ConfirmedItem.InstanceId)));
+		InstanceIdText->SetText(FText::Format(NSLOCTEXT("HeistInventory", "ItemInstanceFormat", "식별 번호  {0}"), FText::AsNumber(ConfirmedItem.InstanceId)));
 	}
 
 	if (IsValid(ItemDetailsText))
 	{
-		ItemDetailsText->SetText(FText::Format(
-			NSLOCTEXT("HeistInventory", "ItemDetailsFormat", "{0}x{1}  |  CELL {2},{3}  |  {4}"),
+		const FText GridDetails = FText::Format(
+			NSLOCTEXT("HeistInventory", "ItemDetailsFormat", "{0}x{1}  |  칸 {2},{3}  |  {4}"),
 			FText::AsNumber(PlacedSize.X), FText::AsNumber(PlacedSize.Y), FText::AsNumber(ConfirmedItem.GridPosition.X), FText::AsNumber(ConfirmedItem.GridPosition.Y),
-			ConfirmedItem.bRotated ? NSLOCTEXT("HeistInventory", "ItemRotated", "ROTATED") : NSLOCTEXT("HeistInventory", "ItemNotRotated", "DEFAULT")));
+			ConfirmedItem.bRotated ? NSLOCTEXT("HeistInventory", "ItemRotated", "회전됨") : NSLOCTEXT("HeistInventory", "ItemNotRotated", "기본 방향"));
+		ItemDetailsText->SetText(ConfirmedItem.IsOriginalArtifact()
+			? FText::Format(NSLOCTEXT("HeistInventory", "OriginalGridItemDetails", "원본 | 가치 {0} | 무게 {1} | {2} | {3}"), FText::AsNumber(ConfirmedItem.ContractValue),
+							FText::AsNumber(ConfirmedItem.Weight), ConfirmedItem.bRequiredTarget ? NSLOCTEXT("HeistInventory", "RequiredOriginal", "필수 목표")
+																											 : NSLOCTEXT("HeistInventory", "OptionalOriginal", "추가 원본"), GridDetails)
+			: GridDetails);
 	}
 
 	if (IsValid(ItemBackground))
 	{
-		ItemBackground->SetBrushColor(FLinearColor(0.10f, 0.30f, 0.42f, 0.96f));
+		ItemBackground->SetBrushColor(ConfirmedItem.IsOriginalArtifact() ? FLinearColor(0.48f, 0.31f, 0.08f, 0.98f) : FLinearColor(0.10f, 0.30f, 0.42f, 0.96f));
 	}
 }
 

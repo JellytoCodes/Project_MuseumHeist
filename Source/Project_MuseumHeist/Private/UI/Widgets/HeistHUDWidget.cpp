@@ -160,7 +160,7 @@ void UHeistHUDWidget::RefreshTutorialPresentation()
 	{
 		TutorialProgressText->SetText(
 			bTutorialActive
-				? FText::Format(NSLOCTEXT("HeistTutorial", "ProgressFormat", "STEP {0}/{1}"), FText::AsNumber(TutorialPlayerController->GetLocalTutorialStepIndex() + 1),
+				? FText::Format(NSLOCTEXT("HeistTutorial", "ProgressFormat", "단계 {0}/{1}"), FText::AsNumber(TutorialPlayerController->GetLocalTutorialStepIndex() + 1),
 								FText::AsNumber(TutorialPlayerController->GetLocalTutorialStepCount()))
 				: FText::GetEmpty());
 	}
@@ -290,15 +290,15 @@ void UHeistHUDWidget::RefreshToolPresentation()
 
 	if (CoinPresentation == nullptr)
 	{
-		ToolText->SetText(NSLOCTEXT("HeistHUD", "ToolUnavailable", "COIN  --"));
+		ToolText->SetText(NSLOCTEXT("HeistHUD", "ToolUnavailable", "동전  --"));
 	}
 	else if (!CoinPresentation->bAssigned)
 	{
-		ToolText->SetText(FText::Format(NSLOCTEXT("HeistHUD", "ToolEmptyFormat", "COIN  0  [{0}]"), CoinPresentation->KeyLabel));
+		ToolText->SetText(FText::Format(NSLOCTEXT("HeistHUD", "ToolEmptyFormat", "동전  0  [{0}]"), CoinPresentation->KeyLabel));
 	}
 	else
 	{
-		ToolText->SetText(FText::Format(NSLOCTEXT("HeistHUD", "CoinToolFormat", "COIN  x{1}  [{0}]"), CoinPresentation->KeyLabel,
+		ToolText->SetText(FText::Format(NSLOCTEXT("HeistHUD", "CoinToolFormat", "동전  x{1}  [{0}]"), CoinPresentation->KeyLabel,
 									   FText::AsNumber(CoinPresentation->Quantity)));
 	}
 
@@ -332,14 +332,14 @@ void UHeistHUDWidget::RefreshHUDPresentation()
 		FNumberFormattingOptions WeightFormatting;
 		WeightFormatting.MinimumFractionalDigits = 1;
 		WeightFormatting.MaximumFractionalDigits = 1;
-		WeightText->SetText(FText::Format(NSLOCTEXT("HeistHUD", "WeightFormat", "WEIGHT  {0}"), FText::AsNumber(LocalLootWeight, &WeightFormatting)));
+		WeightText->SetText(FText::Format(NSLOCTEXT("HeistHUD", "WeightFormat", "무게  {0}"), FText::AsNumber(LocalLootWeight, &WeightFormatting)));
 	}
 
 	if (IsValid(ActionText))
 	{
 		const FText ActionLabel =
-			bObservationCastActive ? NSLOCTEXT("HeistHUD", "ObservationCastAction", "OBSERVING")
-								   : (bEscapeCastActive ? NSLOCTEXT("HeistHUD", "EscapeCastAction", "ESCAPING") : NSLOCTEXT("HeistHUD", "ReadyAction", "READY"));
+			bObservationCastActive ? NSLOCTEXT("HeistHUD", "ObservationCastAction", "관찰 중")
+								   : (bEscapeCastActive ? NSLOCTEXT("HeistHUD", "EscapeCastAction", "탈출 중") : NSLOCTEXT("HeistHUD", "ReadyAction", "준비"));
 		ActionText->SetText(ActionLabel);
 	}
 
@@ -352,8 +352,8 @@ void UHeistHUDWidget::RefreshHUDPresentation()
 	if (IsValid(StatusText))
 	{
 		const FText StatusLabel = bLocalPlayerEscaped
-			? NSLOCTEXT("HeistHUD", "EscapedStatus", "ESCAPED")
-			: (bLocalPlayerArrested ? NSLOCTEXT("HeistHUD", "ArrestedStatus", "ARRESTED") : NSLOCTEXT("HeistHUD", "NormalStatus", "INSIDE"));
+			? NSLOCTEXT("HeistHUD", "EscapedStatus", "탈출")
+			: (bLocalPlayerArrested ? NSLOCTEXT("HeistHUD", "ArrestedStatus", "체포") : NSLOCTEXT("HeistHUD", "NormalStatus", "박물관 내부"));
 		StatusText->SetText(StatusLabel);
 	}
 
@@ -413,12 +413,12 @@ void UHeistHUDWidget::RefreshLockdownCountdown()
 	}
 	if (RemainingSeconds == INDEX_NONE)
 	{
-		LockdownCountdownText->SetText(NSLOCTEXT("HeistHUD", "LockdownTimePending", "LOCKDOWN IN --:--  —  ESCAPE ROUTES WILL BE RESTRICTED"));
+		LockdownCountdownText->SetText(NSLOCTEXT("HeistHUD", "LockdownTimePending", "봉쇄까지 --:--  —  탈출 경로가 제한됩니다"));
 		return;
 	}
 
 	const FText TimeText = FText::FromString(FString::Printf(TEXT("%02d:%02d"), RemainingSeconds / 60, RemainingSeconds % 60));
-	LockdownCountdownText->SetText(FText::Format(NSLOCTEXT("HeistHUD", "LockdownTimeFormat", "LOCKDOWN IN {0}  —  ESCAPE ROUTES WILL BE RESTRICTED"), TimeText));
+	LockdownCountdownText->SetText(FText::Format(NSLOCTEXT("HeistHUD", "LockdownTimeFormat", "봉쇄까지 {0}  —  탈출 경로가 제한됩니다"), TimeText));
 }
 
 void UHeistHUDWidget::ApplyAlertAudioLayers()

@@ -114,12 +114,14 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 	void RefreshDrawingTimeRemaining();
 	void BindPaletteButtons();
 	void RefreshPaletteButtons();
+	bool ChangeBrushPreset(int32 Direction);
 	float GetNormalizedEraseRadius() const;
 	static float GetPointToSegmentDistanceSquared(const FVector2D& Point, const FVector2D& SegmentStart, const FVector2D& SegmentEnd);
 
 	TArray<FHeistLocalForgeryStroke> LocalStrokes;
 	int32 ActiveStrokeIndex = INDEX_NONE;
 	int32 ActivePaletteIndex = 0;
+	int32 ActiveBrushPresetIndex = 1;
 	int32 ErasedStrokeCount = 0;
 	bool bErasePointerActive = false;
 	bool bWasDrawingVisible = false;

@@ -102,8 +102,8 @@ void UHeistObjectAssemblyViewModel::RefreshPresentationState()
 			ObservedPayloadValidationRevision = ObjectAssemblyComponent->GetPayloadValidationRevision();
 			bSubmitPending = false;
 			UE_MVVM_SET_PROPERTY_VALUE(bDataReady, LoadActiveTemplateData());
-			SetStatusMessage(bDataReady ? NSLOCTEXT("HeistObjectAssembly", "SelectPartPrompt", "SELECT A PART AND BUILD THE REPLICA.")
-										: NSLOCTEXT("HeistObjectAssembly", "DataUnavailable", "ASSEMBLY DATA IS UNAVAILABLE."));
+			SetStatusMessage(bDataReady ? NSLOCTEXT("HeistObjectAssembly", "SelectPartPrompt", "부품을 선택해 복제품을 조립하세요.")
+										: NSLOCTEXT("HeistObjectAssembly", "DataUnavailable", "조립 데이터를 불러올 수 없습니다."));
 		}
 
 		const int32 PayloadValidationRevision = ObjectAssemblyComponent->GetPayloadValidationRevision();
@@ -112,7 +112,7 @@ void UHeistObjectAssemblyViewModel::RefreshPresentationState()
 			ObservedPayloadValidationRevision = PayloadValidationRevision;
 			bSubmitPending = false;
 			SetStatusMessage(ObjectAssemblyComponent->WasLastPayloadAccepted()
-								 ? NSLOCTEXT("HeistObjectAssembly", "PayloadAccepted", "ASSEMBLY ACCEPTED.")
+								 ? NSLOCTEXT("HeistObjectAssembly", "PayloadAccepted", "조립 결과가 승인되었습니다.")
 								 : MakePayloadReasonText(ObjectAssemblyComponent->GetLastPayloadReason()));
 		}
 	}
@@ -260,21 +260,21 @@ void UHeistObjectAssemblyViewModel::RefreshSelectionPresentation()
 {
 	UE_MVVM_SET_PROPERTY_VALUE(SelectedPartText,
 							   GetSelectedPartId().IsNone()
-								   ? NSLOCTEXT("HeistObjectAssembly", "NoPartSelected", "PART  --")
-								   : FText::Format(NSLOCTEXT("HeistObjectAssembly", "PartFormat", "PART  {0}"), MakeIdentifierDisplayText(GetSelectedPartId())));
+								   ? NSLOCTEXT("HeistObjectAssembly", "NoPartSelected", "부품  --")
+								   : FText::Format(NSLOCTEXT("HeistObjectAssembly", "PartFormat", "부품  {0}"), MakeIdentifierDisplayText(GetSelectedPartId())));
 	UE_MVVM_SET_PROPERTY_VALUE(SelectedSocketText,
 							   GetSelectedSocketId().IsNone()
-								   ? NSLOCTEXT("HeistObjectAssembly", "NoSocketSelected", "SOCKET  --")
-								   : FText::Format(NSLOCTEXT("HeistObjectAssembly", "SocketFormat", "SOCKET  {0}"), MakeIdentifierDisplayText(GetSelectedSocketId())));
+								   ? NSLOCTEXT("HeistObjectAssembly", "NoSocketSelected", "소켓  --")
+								   : FText::Format(NSLOCTEXT("HeistObjectAssembly", "SocketFormat", "소켓  {0}"), MakeIdentifierDisplayText(GetSelectedSocketId())));
 	const int32 OrientationDegrees = FMath::RoundToInt(static_cast<float>(GetSelectedOrientation()) * 22.5f);
 	UE_MVVM_SET_PROPERTY_VALUE(
 		SelectedOrientationText,
 		GetSelectedPartId().IsNone()
-			? NSLOCTEXT("HeistObjectAssembly", "NoOrientationSelected", "ROTATION  --")
-			: FText::Format(NSLOCTEXT("HeistObjectAssembly", "OrientationFormat", "ROTATION  {0}\u00b0"), FText::AsNumber(OrientationDegrees)));
+			? NSLOCTEXT("HeistObjectAssembly", "NoOrientationSelected", "회전  --")
+			: FText::Format(NSLOCTEXT("HeistObjectAssembly", "OrientationFormat", "회전  {0}\u00b0"), FText::AsNumber(OrientationDegrees)));
 	UE_MVVM_SET_PROPERTY_VALUE(
 		PlacementProgressText,
-		FText::Format(NSLOCTEXT("HeistObjectAssembly", "PlacementProgressFormat", "REQUIRED PARTS  {0}/{1}  |  PLACED  {2}"), FText::AsNumber(GetPlacedRequiredPartCount()),
+		FText::Format(NSLOCTEXT("HeistObjectAssembly", "PlacementProgressFormat", "필수 부품  {0}/{1}  |  배치됨  {2}"), FText::AsNumber(GetPlacedRequiredPartCount()),
 					  FText::AsNumber(GetRequiredPartCount()), FText::AsNumber(GetPlacedPartCount())));
 }
 
@@ -295,7 +295,7 @@ void UHeistObjectAssemblyViewModel::RefreshAlertPresentation()
 			}
 			SecurityLevelStars += Index < SecurityLevel ? TEXT("\u2605") : TEXT("\u2606");
 		}
-		NewWarningText = FText::Format(NSLOCTEXT("HeistObjectAssembly", "SecurityLevelFormat", "SECURITY LEVEL {0}/4  {1}"), FText::AsNumber(SecurityLevel),
+		NewWarningText = FText::Format(NSLOCTEXT("HeistObjectAssembly", "SecurityLevelFormat", "경계 단계 {0}/4  {1}"), FText::AsNumber(SecurityLevel),
 									 FText::FromString(SecurityLevelStars));
 	}
 
@@ -364,21 +364,21 @@ FText UHeistObjectAssemblyViewModel::MakePayloadReasonText(const FName Reason)
 {
 	if (Reason == FName(TEXT("MissingEntries")))
 	{
-		return NSLOCTEXT("HeistObjectAssembly", "MissingEntries", "PLACE AT LEAST ONE PART BEFORE SUBMITTING.");
+		return NSLOCTEXT("HeistObjectAssembly", "MissingEntries", "제출하기 전에 부품을 하나 이상 배치하세요.");
 	}
 	if (Reason == FName(TEXT("DuplicatePart")) || Reason == FName(TEXT("DuplicateSocket")))
 	{
-		return NSLOCTEXT("HeistObjectAssembly", "DuplicatePlacement", "EACH PART AND SOCKET CAN ONLY BE USED ONCE.");
+		return NSLOCTEXT("HeistObjectAssembly", "DuplicatePlacement", "각 부품과 소켓은 한 번만 사용할 수 있습니다.");
 	}
 	if (Reason == FName(TEXT("SessionRevisionMismatch")) || Reason == FName(TEXT("SessionInactive")))
 	{
-		return NSLOCTEXT("HeistObjectAssembly", "SessionChanged", "THE ASSEMBLY SESSION CHANGED. TRY AGAIN.");
+		return NSLOCTEXT("HeistObjectAssembly", "SessionChanged", "조립 세션이 변경되었습니다. 다시 시도하세요.");
 	}
 	if (Reason == FName(TEXT("SubmissionTimeout")))
 	{
-		return NSLOCTEXT("HeistObjectAssembly", "SubmissionTimeout", "ASSEMBLY TIME EXPIRED.");
+		return NSLOCTEXT("HeistObjectAssembly", "SubmissionTimeout", "조립 시간이 종료되었습니다.");
 	}
-	return NSLOCTEXT("HeistObjectAssembly", "PayloadRejected", "THE ASSEMBLY WAS REJECTED. CHECK EACH CONNECTION.");
+	return NSLOCTEXT("HeistObjectAssembly", "PayloadRejected", "조립 결과가 거부되었습니다. 각 연결 부위를 확인하세요.");
 }
 
 bool UHeistObjectAssemblyViewModel::SelectPreviousPart()
@@ -466,7 +466,7 @@ bool UHeistObjectAssemblyViewModel::PlaceOrUpdateSelectedPart()
 	const FHeistObjectAssemblyPartRow* PartDefinition = FindPartDefinition(PartId);
 	if (!bPresentationVisible || !bDataReady || PartDefinition == nullptr || PartId.IsNone() || SocketId.IsNone())
 	{
-		SetStatusMessage(NSLOCTEXT("HeistObjectAssembly", "InvalidSelection", "SELECT A VALID PART AND SOCKET."));
+		SetStatusMessage(NSLOCTEXT("HeistObjectAssembly", "InvalidSelection", "올바른 부품과 소켓을 선택하세요."));
 		PresentationChangedDelegate.Broadcast();
 		return false;
 	}
@@ -475,7 +475,7 @@ bool UHeistObjectAssemblyViewModel::PlaceOrUpdateSelectedPart()
 		[PartId, SocketId](const FHeistObjectAssemblyEntry& Entry) { return Entry.PartId != PartId && Entry.SocketId == SocketId; });
 	if (bSocketOccupied)
 	{
-		SetStatusMessage(NSLOCTEXT("HeistObjectAssembly", "SocketOccupied", "THAT SOCKET IS ALREADY OCCUPIED."));
+		SetStatusMessage(NSLOCTEXT("HeistObjectAssembly", "SocketOccupied", "해당 소켓은 이미 사용 중입니다."));
 		PresentationChangedDelegate.Broadcast();
 		return false;
 	}
@@ -495,7 +495,7 @@ bool UHeistObjectAssemblyViewModel::PlaceOrUpdateSelectedPart()
 	}
 
 	++LocalPreviewRevision;
-	SetStatusMessage(FText::Format(NSLOCTEXT("HeistObjectAssembly", "PartSnapped", "{0} SNAPPED TO {1}."), MakeIdentifierDisplayText(PartId),
+	SetStatusMessage(FText::Format(NSLOCTEXT("HeistObjectAssembly", "PartSnapped", "{0} 부품을 {1} 소켓에 장착했습니다."), MakeIdentifierDisplayText(PartId),
 								   MakeIdentifierDisplayText(SocketId)));
 	RefreshSelectionPresentation();
 	PresentationChangedDelegate.Broadcast();
@@ -508,13 +508,13 @@ bool UHeistObjectAssemblyViewModel::RemoveSelectedPart()
 	const int32 RemovedCount = LocalAssemblyEntries.RemoveAll([PartId](const FHeistObjectAssemblyEntry& Entry) { return Entry.PartId == PartId; });
 	if (RemovedCount <= 0)
 	{
-		SetStatusMessage(NSLOCTEXT("HeistObjectAssembly", "PartNotPlaced", "THE SELECTED PART IS NOT PLACED."));
+		SetStatusMessage(NSLOCTEXT("HeistObjectAssembly", "PartNotPlaced", "선택한 부품이 배치되어 있지 않습니다."));
 		PresentationChangedDelegate.Broadcast();
 		return false;
 	}
 
 	++LocalPreviewRevision;
-	SetStatusMessage(FText::Format(NSLOCTEXT("HeistObjectAssembly", "PartRemoved", "{0} REMOVED."), MakeIdentifierDisplayText(PartId)));
+	SetStatusMessage(FText::Format(NSLOCTEXT("HeistObjectAssembly", "PartRemoved", "{0} 부품을 제거했습니다."), MakeIdentifierDisplayText(PartId)));
 	SyncSelectionFromSelectedPart();
 	RefreshSelectionPresentation();
 	PresentationChangedDelegate.Broadcast();
@@ -531,7 +531,7 @@ bool UHeistObjectAssemblyViewModel::ResetLocalAssembly()
 	LocalAssemblyEntries.Reset();
 	++LocalPreviewRevision;
 	SyncSelectionFromSelectedPart();
-	SetStatusMessage(NSLOCTEXT("HeistObjectAssembly", "AssemblyReset", "LOCAL ASSEMBLY RESET."));
+	SetStatusMessage(NSLOCTEXT("HeistObjectAssembly", "AssemblyReset", "현재 조립 상태를 초기화했습니다."));
 	RefreshSelectionPresentation();
 	PresentationChangedDelegate.Broadcast();
 	return true;
@@ -543,14 +543,14 @@ bool UHeistObjectAssemblyViewModel::RequestSubmitAssembly()
 	{
 		if (LocalAssemblyEntries.IsEmpty())
 		{
-			SetStatusMessage(NSLOCTEXT("HeistObjectAssembly", "PlaceBeforeSubmit", "PLACE AT LEAST ONE PART BEFORE SUBMITTING."));
+			SetStatusMessage(NSLOCTEXT("HeistObjectAssembly", "PlaceBeforeSubmit", "제출하기 전에 부품을 하나 이상 배치하세요."));
 			PresentationChangedDelegate.Broadcast();
 		}
 		return false;
 	}
 
 	bSubmitPending = true;
-	SetStatusMessage(NSLOCTEXT("HeistObjectAssembly", "Submitting", "SUBMITTING ASSEMBLY..."));
+	SetStatusMessage(NSLOCTEXT("HeistObjectAssembly", "Submitting", "조립 결과를 제출하는 중..."));
 	PlayerController->RequestSubmitObjectAssembly(LocalAssemblyEntries, GetSessionRevision());
 	PresentationChangedDelegate.Broadcast();
 	return true;

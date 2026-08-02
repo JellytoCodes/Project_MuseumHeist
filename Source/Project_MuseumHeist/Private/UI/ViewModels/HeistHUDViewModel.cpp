@@ -148,7 +148,7 @@ void UHeistHUDViewModel::RefreshPresentationState()
 		SecurityLevelStars += Index < NewSecurityLevel ? TEXT("\u2605") : TEXT("\u2606");
 	}
 	const FText NewAlertBannerText =
-		FText::Format(NSLOCTEXT("HeistHUD", "SecurityLevelFormat", "SECURITY LEVEL {0}/4  {1}"), FText::AsNumber(NewSecurityLevel), FText::FromString(SecurityLevelStars));
+		FText::Format(NSLOCTEXT("HeistHUD", "SecurityLevelFormat", "경계 단계 {0}/4  {1}"), FText::AsNumber(NewSecurityLevel), FText::FromString(SecurityLevelStars));
 	FLinearColor NewAlertColor;
 	switch (ActiveAlertLevel)
 	{
@@ -183,25 +183,25 @@ void UHeistHUDViewModel::RefreshPresentationState()
 	FString ArtifactDisplayName = ActiveObjectiveArtifactId.ToString();
 	ArtifactDisplayName.ReplaceInline(TEXT("_"), TEXT(" "));
 	const FText ArtifactLabel =
-		ActiveObjectiveArtifactId.IsNone() ? NSLOCTEXT("HeistHUD", "UnknownObjectiveArtifact", "TARGET ARTIFACT") : FText::FromString(ArtifactDisplayName);
+		ActiveObjectiveArtifactId.IsNone() ? NSLOCTEXT("HeistHUD", "UnknownObjectiveArtifact", "목표 유물") : FText::FromString(ArtifactDisplayName);
 	UE_MVVM_SET_PROPERTY_VALUE(ObservationReferenceText,
-							   bLocalObservationCastActive ? FText::Format(NSLOCTEXT("HeistHUD", "ObservationReferenceFormat", "REFERENCE  {0}"), ArtifactLabel)
+							   bLocalObservationCastActive ? FText::Format(NSLOCTEXT("HeistHUD", "ObservationReferenceFormat", "참고 작품  {0}"), ArtifactLabel)
 														   : FText::GetEmpty());
 
 	FText NewObjectiveStateText;
 	switch (ActiveObjectiveState)
 	{
 	case EHeistObjectiveState::Available:
-		NewObjectiveStateText = FText::Format(NSLOCTEXT("HeistHUD", "ObjectiveAvailable", "OBJECTIVE  STEAL {0}"), ArtifactLabel);
+		NewObjectiveStateText = FText::Format(NSLOCTEXT("HeistHUD", "ObjectiveAvailable", "목표  {0} 훔치기"), ArtifactLabel);
 		break;
 	case EHeistObjectiveState::InProgress:
-		NewObjectiveStateText = FText::Format(NSLOCTEXT("HeistHUD", "ObjectiveInProgress", "OBJECTIVE  {0} IN PROGRESS"), ArtifactLabel);
+		NewObjectiveStateText = FText::Format(NSLOCTEXT("HeistHUD", "ObjectiveInProgress", "목표  {0} 진행 중"), ArtifactLabel);
 		break;
 	case EHeistObjectiveState::Completed:
-		NewObjectiveStateText = NSLOCTEXT("HeistHUD", "ObjectiveCompleted", "OBJECTIVE COMPLETE");
+		NewObjectiveStateText = NSLOCTEXT("HeistHUD", "ObjectiveCompleted", "목표 완료");
 		break;
 	case EHeistObjectiveState::Failed:
-		NewObjectiveStateText = NSLOCTEXT("HeistHUD", "ObjectiveFailed", "OBJECTIVE FAILED");
+		NewObjectiveStateText = NSLOCTEXT("HeistHUD", "ObjectiveFailed", "목표 실패");
 		break;
 	case EHeistObjectiveState::Inactive:
 	default:

@@ -126,12 +126,14 @@ void UHeistInteractionPromptWidget::RefreshInteractionPrompt(const bool bActionA
 	}
 	if (IsValid(KeyText))
 	{
-		KeyText->SetText(InteractionKeyLabel);
+		const AHeistPaintingDisplayCaseActor* PaintingCase = Cast<AHeistPaintingDisplayCaseActor>(TargetActor);
+		const bool bReplicaReviewReady = IsValid(PaintingCase) && PaintingCase->IsReplicaReviewReadyFor(GetOwningPlayerPawn());
+		KeyText->SetText(bReplicaReviewReady ? NSLOCTEXT("HeistInteraction", "ReplicaReviewKeys", "E 회수  |  R 다시 그리기") : InteractionKeyLabel);
 	}
 	if (IsValid(AvailabilityText))
 	{
-		AvailabilityText->SetText(bAvailable ? NSLOCTEXT("HeistInteraction", "Available", "INTERACT")
-											: NSLOCTEXT("HeistInteraction", "Unavailable", "UNAVAILABLE"));
+		AvailabilityText->SetText(bAvailable ? NSLOCTEXT("HeistInteraction", "Available", "상호작용")
+											: NSLOCTEXT("HeistInteraction", "Unavailable", "사용 불가"));
 	}
 }
 
@@ -176,8 +178,8 @@ void UHeistInteractionPromptWidget::RefreshActionProgress()
 	}
 	if (IsValid(ActionTypeText))
 	{
-		ActionTypeText->SetText(bObservationActive ? NSLOCTEXT("HeistInteraction", "ObservationAction", "OBSERVING")
-												  : (bEscapeActive ? NSLOCTEXT("HeistInteraction", "EscapeAction", "ESCAPING") : FText::GetEmpty()));
+		ActionTypeText->SetText(bObservationActive ? NSLOCTEXT("HeistInteraction", "ObservationAction", "관찰 중")
+												  : (bEscapeActive ? NSLOCTEXT("HeistInteraction", "EscapeAction", "탈출 중") : FText::GetEmpty()));
 	}
 	if (IsValid(ActionProgressBar))
 	{
@@ -185,14 +187,14 @@ void UHeistInteractionPromptWidget::RefreshActionProgress()
 	}
 	if (IsValid(ActionRemainingText))
 	{
-		ActionRemainingText->SetText(FText::Format(NSLOCTEXT("HeistInteraction", "RemainingFormat", "{0}s"),
+		ActionRemainingText->SetText(FText::Format(NSLOCTEXT("HeistInteraction", "RemainingFormat", "{0}초"),
 												  FText::AsNumber(FMath::CeilToInt(RemainingSeconds))));
 	}
 	if (IsValid(CancelHintText))
 	{
 		CancelHintText->SetText(
-			bObservationActive ? NSLOCTEXT("HeistInteraction", "ObservationCancelHint", "RELEASING E, MOVING, TAKING DAMAGE, OR BEING ARRESTED WILL CANCEL THE OBSERVATION.")
-							   : (bEscapeActive ? NSLOCTEXT("HeistInteraction", "EscapeCancelHint", "MOVING OR TAKING DAMAGE WILL CANCEL YOUR ESCAPE.") : FText::GetEmpty()));
+			bObservationActive ? NSLOCTEXT("HeistInteraction", "ObservationCancelHint", "E를 놓거나 이동, 피해 또는 체포 상태가 되면 관찰이 취소됩니다.")
+							   : (bEscapeActive ? NSLOCTEXT("HeistInteraction", "EscapeCancelHint", "이동하거나 피해를 받으면 탈출이 취소됩니다.") : FText::GetEmpty()));
 	}
 
 	const bool bReferenceVisible = bObservationActive && HUDViewModel->IsObservationReferenceVisible();
@@ -219,37 +221,41 @@ FText UHeistInteractionPromptWidget::ResolveTargetLabel(const AActor* TargetActo
 		const FName LootRowId = LootActor->GetLootRowId();
 		if (LootRowId.IsNone())
 		{
-			return NSLOCTEXT("HeistInteraction", "LootTarget", "COLLECT");
+			return NSLOCTEXT("HeistInteraction", "LootTarget", "획득");
 		}
 
 		FString LootDisplayName = LootRowId.ToString();
 		LootDisplayName.ReplaceInline(TEXT("_"), TEXT(" "));
-		return FText::Format(NSLOCTEXT("HeistInteraction", "NamedLootTarget", "COLLECT  {0}"), FText::FromString(LootDisplayName));
+		return FText::Format(NSLOCTEXT("HeistInteraction", "NamedLootTarget", "{0} 획득"), FText::FromString(LootDisplayName));
 	}
 
-	if (Cast<AHeistPaintingDisplayCaseActor>(TargetActor) != nullptr)
+	if (const AHeistPaintingDisplayCaseActor* PaintingCase = Cast<AHeistPaintingDisplayCaseActor>(TargetActor))
 	{
-		return NSLOCTEXT("HeistInteraction", "PaintingTarget", "STUDY PAINTING");
+		if (PaintingCase->IsReplicaReviewReadyFor(GetOwningPlayerPawn()))
+		{
+			return NSLOCTEXT("HeistInteraction", "ReplicaReviewTarget", "복제품 회수 대기");
+		}
+		return NSLOCTEXT("HeistInteraction", "PaintingTarget", "그림 관찰");
 	}
 
 	if (Cast<AHeistVentActor>(TargetActor) != nullptr)
 	{
-		return NSLOCTEXT("HeistInteraction", "VentTarget", "ESCAPE");
+		return NSLOCTEXT("HeistInteraction", "VentTarget", "탈출");
 	}
 
 	if (const AHeistPlayerCharacter* TargetPlayerCharacter = Cast<AHeistPlayerCharacter>(TargetActor))
 	{
 		const AHeistPlayerState* TargetPlayerState = TargetPlayerCharacter->GetPlayerState<AHeistPlayerState>();
 		return IsValid(TargetPlayerState) && TargetPlayerState->HeistPlayerId > 0
-			? FText::Format(NSLOCTEXT("HeistInteraction", "RescueNamedPlayer", "RESCUE  PLAYER {0}"), FText::AsNumber(TargetPlayerState->HeistPlayerId))
-			: NSLOCTEXT("HeistInteraction", "RescuePlayer", "RESCUE TEAMMATE");
+			? FText::Format(NSLOCTEXT("HeistInteraction", "RescueNamedPlayer", "플레이어 {0} 구조"), FText::AsNumber(TargetPlayerState->HeistPlayerId))
+			: NSLOCTEXT("HeistInteraction", "RescuePlayer", "동료 구조");
 	}
 
 	FString TargetDisplayName = TargetActor->GetClass()->GetName();
 	TargetDisplayName.RemoveFromStart(TEXT("BP_"));
 	TargetDisplayName.RemoveFromEnd(TEXT("_C"));
 	TargetDisplayName.ReplaceInline(TEXT("_"), TEXT(" "));
-	return FText::Format(NSLOCTEXT("HeistInteraction", "GenericTarget", "INTERACT  {0}"), FText::FromString(TargetDisplayName));
+	return FText::Format(NSLOCTEXT("HeistInteraction", "GenericTarget", "{0} 상호작용"), FText::FromString(TargetDisplayName));
 }
 
 float UHeistInteractionPromptWidget::GetServerWorldTimeSeconds() const

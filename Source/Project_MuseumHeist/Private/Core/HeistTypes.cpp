@@ -104,35 +104,35 @@ FText ToDisplayText(const FName ReasonId)
 {
 	if (ReasonId == ContractComplete())
 	{
-		return LOCTEXT("ContractComplete", "The required target was secured and the loot quota was reached.");
+		return LOCTEXT("ContractComplete", "필수 목표를 확보하고 전리품 할당량을 달성했습니다.");
 	}
 	if (ReasonId == RequiredTargetSecuredQuotaShort())
 	{
-		return LOCTEXT("RequiredTargetSecuredQuotaShort", "The required target was secured, but the loot quota was not reached.");
+		return LOCTEXT("RequiredTargetSecuredQuotaShort", "필수 목표는 확보했지만 전리품 할당량을 달성하지 못했습니다.");
 	}
 	if (ReasonId == LockdownBeforeContractComplete())
 	{
-		return LOCTEXT("LockdownBeforeContractComplete", "The museum entered lockdown before the contract conditions were completed.");
+		return LOCTEXT("LockdownBeforeContractComplete", "계약 조건을 달성하기 전에 박물관이 봉쇄되었습니다.");
 	}
 	if (ReasonId == MatchTimerExpired())
 	{
-		return LOCTEXT("MatchTimerExpired", "The contract timer expired before the contract conditions were completed.");
+		return LOCTEXT("MatchTimerExpired", "계약 조건을 달성하기 전에 제한 시간이 종료되었습니다.");
 	}
 	if (ReasonId == AllRemainingCrewArrested())
 	{
-		return LOCTEXT("AllRemainingCrewArrested", "All remaining crew members were arrested before the contract conditions were completed.");
+		return LOCTEXT("AllRemainingCrewArrested", "계약 조건을 달성하기 전에 남은 팀원이 모두 체포되었습니다.");
 	}
 	if (ReasonId == AllCrewDisconnected())
 	{
-		return LOCTEXT("AllCrewDisconnected", "No crew members remained connected to finish the contract.");
+		return LOCTEXT("AllCrewDisconnected", "계약을 완료할 접속 중인 팀원이 남아 있지 않습니다.");
 	}
 	if (ReasonId == NoCrewEscaped())
 	{
-		return LOCTEXT("NoCrewEscaped", "No crew member escaped with a secured haul.");
+		return LOCTEXT("NoCrewEscaped", "확보한 전리품을 가지고 탈출한 팀원이 없습니다.");
 	}
 	if (ReasonId == RequiredTargetMissing())
 	{
-		return LOCTEXT("RequiredTargetMissing", "The required target was not secured.");
+		return LOCTEXT("RequiredTargetMissing", "필수 목표를 확보하지 못했습니다.");
 	}
 	return FText::GetEmpty();
 }

@@ -400,7 +400,9 @@ bool AHeistObjectDisplayCaseActor::TryTakeOriginal(AHeistPlayerState* Requesting
 	AHeistPlayerCharacter* PlayerCharacter = Cast<AHeistPlayerCharacter>(RequestingPlayerState->GetPawn());
 	UHeistInventoryComponent* InventoryComponent = IsValid(PlayerCharacter) ? PlayerCharacter->GetInventoryComponent() : nullptr;
 	check(IsValid(InventoryComponent));
-	if (!InventoryComponent->TryBeginOriginalCarry(RequestingPlayerState, TargetObjectArtifactId, ArtifactValue, ArtifactWeight, bRequiredTarget, this))
+	int32 AddedInstanceId = INDEX_NONE;
+	const TCHAR* InventoryRejectReason = nullptr;
+	if (!InventoryComponent->TryAddOriginalArtifact(RequestingPlayerState, TargetObjectArtifactId, bRequiredTarget, this, AddedInstanceId, InventoryRejectReason))
 	{
 		BroadcastOriginalCarrySnapshot(FName(TEXT("Take")), FName(TEXT("CarryEntryCommitFailed")), false);
 		return false;
@@ -413,8 +415,8 @@ bool AHeistObjectDisplayCaseActor::TryTakeOriginal(AHeistPlayerState* Requesting
 	{
 		UnbindOriginalCarrierDelegate();
 		OriginalCarrier = nullptr;
-		FHeistOriginalCarryEntry RolledBackEntry;
-		checkf(InventoryComponent->TryEndOriginalCarry(RequestingPlayerState, this, RolledBackEntry), TEXT("Object original carry rollback must succeed."));
+		FHeistInventoryItem RolledBackItem;
+		checkf(InventoryComponent->TryRemoveOriginalArtifactForSourceCase(RequestingPlayerState, this, RolledBackItem), TEXT("Object original grid rollback must succeed."));
 		BroadcastOriginalCarrySnapshot(FName(TEXT("Take")), FName(TEXT("OriginalRemovedTransitionFailed")), false);
 		return false;
 	}
@@ -438,8 +440,8 @@ bool AHeistObjectDisplayCaseActor::ReleaseOriginalForCarrier(AHeistPlayerState* 
 
 	AHeistPlayerCharacter* PlayerCharacter = Cast<AHeistPlayerCharacter>(ExpectedCarrier->GetPawn());
 	UHeistInventoryComponent* InventoryComponent = IsValid(PlayerCharacter) ? PlayerCharacter->GetInventoryComponent() : nullptr;
-	FHeistOriginalCarryEntry ReleasedEntry;
-	const bool bCarryEntryReleased = IsValid(InventoryComponent) && InventoryComponent->TryEndOriginalCarry(ExpectedCarrier, this, ReleasedEntry);
+	FHeistInventoryItem ReleasedItem;
+	const bool bCarryEntryReleased = IsValid(InventoryComponent) && InventoryComponent->TryRemoveOriginalArtifactForSourceCase(ExpectedCarrier, this, ReleasedItem);
 	const bool bAllowMissingInventoryCleanup =
 		Reason == FName(TEXT("OwnerDisconnected")) || Reason == FName(TEXT("OwnerArrested")) || Reason == FName(TEXT("CaseEndPlay")) || Reason == FName(TEXT("OnlineSessionShutdown"));
 	if (!bCarryEntryReleased && (IsValid(InventoryComponent) || !bAllowMissingInventoryCleanup))
@@ -473,9 +475,9 @@ bool AHeistObjectDisplayCaseActor::DropOriginalForCarrier(AHeistPlayerState* Exp
 
 	AHeistPlayerCharacter* PlayerCharacter = Cast<AHeistPlayerCharacter>(ExpectedCarrier->GetPawn());
 	UHeistInventoryComponent* InventoryComponent = IsValid(PlayerCharacter) ? PlayerCharacter->GetInventoryComponent() : nullptr;
-	FHeistOriginalCarryEntry DropEntry = IsValid(InventoryComponent) ? InventoryComponent->GetOriginalCarryEntry() : FHeistOriginalCarryEntry();
-	const bool bHasCommittedCarryEntry = DropEntry.IsValid();
-	if (!DropEntry.IsValid())
+	FHeistInventoryItem DropItem;
+	const bool bHasCommittedGridItem = IsValid(InventoryComponent) && InventoryComponent->TryGetOriginalArtifactForSourceCase(this, DropItem);
+	if (!bHasCommittedGridItem)
 	{
 		const AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
 		FHeistArtifactDataRow ArtifactDefinition;
@@ -489,15 +491,17 @@ bool AHeistObjectDisplayCaseActor::DropOriginalForCarrier(AHeistPlayerState* Exp
 
 		const AHeistGameState* HeistGameState = GetWorld()->GetGameState<AHeistGameState>();
 		const FHeistContractSnapshot ContractSnapshot = IsValid(HeistGameState) ? HeistGameState->GetContractSnapshot() : FHeistContractSnapshot();
-		DropEntry.ArtifactId = TargetObjectArtifactId;
-		DropEntry.ArtifactValue = ArtifactDefinition.ArtifactValue;
-		DropEntry.Weight = ArtifactDefinition.Weight;
-		DropEntry.bRequiredTarget = ContractSnapshot.IsInitialized() && ContractSnapshot.RequiredTargetArtifactId == TargetObjectArtifactId &&
+		DropItem.ItemId = TargetObjectArtifactId;
+		DropItem.ContractValue = ArtifactDefinition.ArtifactValue;
+		DropItem.Weight = ArtifactDefinition.Weight;
+		DropItem.BaseGridSize = FIntPoint(ArtifactDefinition.GridWidth, ArtifactDefinition.GridHeight);
+		DropItem.bOriginalArtifact = true;
+		DropItem.bRequiredTarget = ContractSnapshot.IsInitialized() && ContractSnapshot.RequiredTargetArtifactId == TargetObjectArtifactId &&
 			ContractSnapshot.RequiredTargetCaseId == ObjectCaseId;
-		DropEntry.SourceDisplayCase = this;
+		DropItem.SourceDisplayCase = this;
 	}
 
-	if (DropEntry.SourceDisplayCase != this || DropEntry.ArtifactId != TargetObjectArtifactId)
+	if (!DropItem.HasValidOriginalData() || DropItem.SourceDisplayCase != this || DropItem.ItemId != TargetObjectArtifactId)
 	{
 		BroadcastOriginalCarrySnapshot(FName(TEXT("WorldDrop")), FName(TEXT("CarrySourceMismatch")), false);
 		return false;
@@ -516,14 +520,14 @@ bool AHeistObjectDisplayCaseActor::DropOriginalForCarrier(AHeistPlayerState* Exp
 		return false;
 	}
 
-	DroppedOriginal->InitializeDroppedOriginal(DropEntry.ArtifactId, DropEntry.ArtifactValue, DropEntry.Weight, DropEntry.bRequiredTarget, this);
+	DroppedOriginal->InitializeDroppedOriginal(DropItem.ItemId, DropItem.ContractValue, DropItem.Weight, DropItem.bRequiredTarget, this);
 	DroppedOriginal->FinishSpawning(DropTransform);
 
-	if (bHasCommittedCarryEntry)
+	if (bHasCommittedGridItem)
 	{
 		check(IsValid(InventoryComponent));
-		FHeistOriginalCarryEntry ReleasedEntry;
-		if (!InventoryComponent->TryEndOriginalCarry(ExpectedCarrier, this, ReleasedEntry))
+		FHeistInventoryItem ReleasedItem;
+		if (!InventoryComponent->TryRemoveOriginalArtifactForSourceCase(ExpectedCarrier, this, ReleasedItem))
 		{
 			DroppedOriginal->Destroy();
 			BroadcastOriginalCarrySnapshot(FName(TEXT("WorldDrop")), FName(TEXT("CarryEntryReleaseFailed")), false);
@@ -539,8 +543,8 @@ bool AHeistObjectDisplayCaseActor::DropOriginalForCarrier(AHeistPlayerState* Exp
 	BroadcastOriginalCarrySnapshot(FName(TEXT("WorldDrop")), Reason, true);
 	UE_LOG(LogHeistNetwork, Log,
 		   TEXT("Object original world drop committed: Case=%s CaseId=%s Actor=%s Artifact=%s Value=%d Weight=%.1f Required=%s Reason=%s Revision=%d Authority=true Result=PASS"),
-		   *GetNameSafe(this), *ObjectCaseId.ToString(), *GetNameSafe(DroppedOriginal), *DropEntry.ArtifactId.ToString(), DropEntry.ArtifactValue, DropEntry.Weight,
-		   DropEntry.bRequiredTarget ? TEXT("true") : TEXT("false"), *Reason.ToString(), OriginalCarryRevision);
+		   *GetNameSafe(this), *ObjectCaseId.ToString(), *GetNameSafe(DroppedOriginal), *DropItem.ItemId.ToString(), DropItem.ContractValue, DropItem.Weight,
+		   DropItem.bRequiredTarget ? TEXT("true") : TEXT("false"), *Reason.ToString(), OriginalCarryRevision);
 	return true;
 }
 
@@ -558,9 +562,10 @@ bool AHeistObjectDisplayCaseActor::TryClaimDroppedOriginal(AHeistPlayerState* Re
 
 	AHeistPlayerCharacter* PlayerCharacter = Cast<AHeistPlayerCharacter>(RequestingPlayerState->GetPawn());
 	UHeistInventoryComponent* InventoryComponent = IsValid(PlayerCharacter) ? PlayerCharacter->GetInventoryComponent() : nullptr;
-	if (!IsValid(InventoryComponent) || InventoryComponent->IsCarryingOriginal() ||
-		!InventoryComponent->TryBeginOriginalCarry(RequestingPlayerState, DroppedOriginal->GetArtifactId(), DroppedOriginal->GetArtifactValue(), DroppedOriginal->GetWeight(),
-														 DroppedOriginal->IsRequiredTarget(), this))
+	int32 AddedInstanceId = INDEX_NONE;
+	const TCHAR* InventoryRejectReason = nullptr;
+	if (!IsValid(InventoryComponent) || !InventoryComponent->TryAddOriginalArtifact(RequestingPlayerState, DroppedOriginal->GetArtifactId(), DroppedOriginal->IsRequiredTarget(), this,
+																	 AddedInstanceId, InventoryRejectReason))
 	{
 		return false;
 	}
@@ -575,18 +580,18 @@ bool AHeistObjectDisplayCaseActor::TryClaimDroppedOriginal(AHeistPlayerState* Re
 	return true;
 }
 
-bool AHeistObjectDisplayCaseActor::CanCommitOriginalDepositForCarrier(const AHeistPlayerState* ExpectedCarrier, const FHeistOriginalCarryEntry& CarryEntry) const
+bool AHeistObjectDisplayCaseActor::CanCommitOriginalDepositForCarrier(const AHeistPlayerState* ExpectedCarrier, const FHeistInventoryItem& OriginalItem) const
 {
 	const bool bOriginalOutsideCase = AssemblyState == EHeistObjectAssemblyState::OriginalRemoved || AssemblyState == EHeistObjectAssemblyState::Inspecting ||
 		AssemblyState == EHeistObjectAssemblyState::Completed || AssemblyState == EHeistObjectAssemblyState::Suspected || AssemblyState == EHeistObjectAssemblyState::Alarmed ||
 		AssemblyState == EHeistObjectAssemblyState::Failed;
-	return HasAuthority() && bOriginalOutsideCase && !bOriginalSecuredAtExit && IsValid(ExpectedCarrier) && OriginalCarrier.Get() == ExpectedCarrier && CarryEntry.IsValid() &&
-		   CarryEntry.SourceDisplayCase == this && CarryEntry.ArtifactId == TargetObjectArtifactId;
+	return HasAuthority() && bOriginalOutsideCase && !bOriginalSecuredAtExit && IsValid(ExpectedCarrier) && OriginalCarrier.Get() == ExpectedCarrier && OriginalItem.HasValidOriginalData() &&
+		   OriginalItem.SourceDisplayCase == this && OriginalItem.ItemId == TargetObjectArtifactId;
 }
 
-bool AHeistObjectDisplayCaseActor::CommitOriginalDepositForCarrier(AHeistPlayerState* ExpectedCarrier, const FHeistOriginalCarryEntry& CarryEntry)
+bool AHeistObjectDisplayCaseActor::CommitOriginalDepositForCarrier(AHeistPlayerState* ExpectedCarrier, const FHeistInventoryItem& OriginalItem)
 {
-	if (!CanCommitOriginalDepositForCarrier(ExpectedCarrier, CarryEntry))
+	if (!CanCommitOriginalDepositForCarrier(ExpectedCarrier, OriginalItem))
 	{
 		BroadcastOriginalCarrySnapshot(FName(TEXT("Deposit")), FName(TEXT("InvalidDepositState")), false);
 		return false;
@@ -1288,7 +1293,7 @@ bool AHeistObjectDisplayCaseActor::ValidateOriginalTakeRequest(AHeistPlayerState
 	AHeistPlayerCharacter* PlayerCharacter = Cast<AHeistPlayerCharacter>(RequestingPlayerState->GetPawn());
 	UHeistInventoryComponent* InventoryComponent = IsValid(PlayerCharacter) ? PlayerCharacter->GetInventoryComponent() : nullptr;
 	if (!IsValid(PlayerCharacter) || !IsValid(InventoryComponent) ||
-		FVector::DistSquared(PlayerCharacter->GetActorLocation(), GetActorLocation()) > FMath::Square(MaximumSessionDistance) || InventoryComponent->IsCarryingOriginal())
+		FVector::DistSquared(PlayerCharacter->GetActorLocation(), GetActorLocation()) > FMath::Square(MaximumSessionDistance))
 	{
 		OutRejectReason = FName(TEXT("CharacterInventoryOrRangeBlocked"));
 		return false;

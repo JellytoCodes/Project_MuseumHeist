@@ -5,6 +5,7 @@
 #include "Core/HeistGameState.h"
 #include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerState.h"
+#include "Data/HeistArtifactDataTypes.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
@@ -143,7 +144,7 @@ bool UHeistInventoryComponent::TryAddItem(const FName ItemId, int32& OutInstance
 
 	FIntPoint GridPosition = FIntPoint(-1, -1);
 	bool bRotated = false;
-	if (!TryFindAutoPlacement(ItemDefinition, GridPosition, bRotated))
+	if (!TryFindAutoPlacement(ItemDefinition.GridSize, ItemDefinition.bCanRotate, GridPosition, bRotated))
 	{
 		OutRejectReason = TEXT("InventoryFull");
 		UHeistDebugFunctionLibrary::DebugInventoryAddRejected(OwnerActor, ItemId, TEXT("InventoryFull"), GridColumnCount, GridRowCount);
@@ -156,6 +157,9 @@ bool UHeistInventoryComponent::TryAddItem(const FName ItemId, int32& OutInstance
 	AddedEntry.InventoryItem.GridPosition = GridPosition;
 	AddedEntry.InventoryItem.Quantity = 1;
 	AddedEntry.InventoryItem.bRotated = bRotated;
+	AddedEntry.InventoryItem.BaseGridSize = ItemDefinition.GridSize;
+	AddedEntry.InventoryItem.Weight = ItemDefinition.Weight;
+	AddedEntry.InventoryItem.bCanRotate = ItemDefinition.bCanRotate;
 	ReplicatedInventory.MarkItemDirty(AddedEntry);
 	OwnerActor->ForceNetUpdate();
 	NotifyInventoryChanged();
@@ -195,8 +199,7 @@ bool UHeistInventoryComponent::TryMoveItem(const int32 InstanceId, const FIntPoi
 		return false;
 	}
 
-	FHeistItemDataRow ItemDefinition;
-	if (!TryGetItemDefinition(ItemEntry->InventoryItem.ItemId, ItemDefinition))
+	if (ItemEntry->InventoryItem.BaseGridSize.X <= 0 || ItemEntry->InventoryItem.BaseGridSize.Y <= 0)
 	{
 		return false;
 	}
@@ -207,7 +210,7 @@ bool UHeistInventoryComponent::TryMoveItem(const int32 InstanceId, const FIntPoi
 		return false;
 	}
 
-	const FIntPoint ItemSize = ItemEntry->InventoryItem.bRotated ? FIntPoint(ItemDefinition.GridSize.Y, ItemDefinition.GridSize.X) : ItemDefinition.GridSize;
+	const FIntPoint ItemSize = ItemEntry->InventoryItem.GetPlacedSize();
 	if (!CanPlaceAt(OccupiedCells, TargetGridPosition, ItemSize))
 	{
 		return false;
@@ -235,8 +238,7 @@ bool UHeistInventoryComponent::TryRotateItem(const int32 InstanceId)
 		return false;
 	}
 
-	FHeistItemDataRow ItemDefinition;
-	if (!TryGetItemDefinition(ItemEntry->InventoryItem.ItemId, ItemDefinition) || !ItemDefinition.bCanRotate)
+	if (!ItemEntry->InventoryItem.bCanRotate)
 	{
 		return false;
 	}
@@ -247,7 +249,8 @@ bool UHeistInventoryComponent::TryRotateItem(const int32 InstanceId)
 		return false;
 	}
 
-	const FIntPoint RotatedSize = ItemEntry->InventoryItem.bRotated ? ItemDefinition.GridSize : FIntPoint(ItemDefinition.GridSize.Y, ItemDefinition.GridSize.X);
+	const FIntPoint RotatedSize = ItemEntry->InventoryItem.bRotated ? ItemEntry->InventoryItem.BaseGridSize
+															: FIntPoint(ItemEntry->InventoryItem.BaseGridSize.Y, ItemEntry->InventoryItem.BaseGridSize.X);
 	if (!CanPlaceAt(OccupiedCells, ItemEntry->InventoryItem.GridPosition, RotatedSize))
 	{
 		return false;
@@ -277,6 +280,11 @@ bool UHeistInventoryComponent::TryRemoveItem(const int32 InstanceId, FHeistInven
 	}
 
 	OutRemovedItem = ReplicatedInventory.Items[ItemIndex].InventoryItem;
+	if (OutRemovedItem.IsOriginalArtifact())
+	{
+		OutRemovedItem = FHeistInventoryItem();
+		return false;
+	}
 	ClearQuickSlotReferences(InstanceId);
 	ReplicatedInventory.Items.RemoveAt(ItemIndex);
 	ReplicatedInventory.MarkArrayDirty();
@@ -351,86 +359,178 @@ bool UHeistInventoryComponent::TrySetInventoryOpen(const bool bInInventoryOpen)
 
 bool UHeistInventoryComponent::IsCarryingOriginal() const
 {
-	return OriginalCarryEntry.IsValid();
+	return GetOriginalArtifactCount() > 0;
 }
 
-const FHeistOriginalCarryEntry& UHeistInventoryComponent::GetOriginalCarryEntry() const
+int32 UHeistInventoryComponent::GetOriginalArtifactCount() const
 {
-	return OriginalCarryEntry;
-}
-
-bool UHeistInventoryComponent::TryBeginOriginalCarry(AHeistPlayerState* CarryingPlayerState, const FName ArtifactId, const int32 ArtifactValue, const float Weight, const bool bRequiredTarget,
-															 AActor* SourceDisplayCase)
-{
-	AHeistPlayerCharacter* OwnerCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
-	const TCHAR* RejectReason = nullptr;
-	if (!IsValid(OwnerCharacter))
+	int32 OriginalArtifactCount = 0;
+	for (const FHeistInventoryFastArrayItem& Entry : ReplicatedInventory.Items)
 	{
-		RejectReason = TEXT("InvalidInventoryOwner");
+		if (Entry.InventoryItem.IsOriginalArtifact())
+		{
+			++OriginalArtifactCount;
+		}
 	}
-	else if (!OwnerCharacter->HasAuthority())
+
+	return OriginalArtifactCount;
+}
+
+int32 UHeistInventoryComponent::GetOriginalArtifactValue() const
+{
+	int64 TotalValue = 0;
+	for (const FHeistInventoryFastArrayItem& Entry : ReplicatedInventory.Items)
 	{
-		RejectReason = TEXT("NotAuthority");
+		if (Entry.InventoryItem.HasValidOriginalData())
+		{
+			TotalValue += Entry.InventoryItem.ContractValue;
+		}
+	}
+	return static_cast<int32>(FMath::Min<int64>(MAX_int32, TotalValue));
+}
+
+bool UHeistInventoryComponent::TryGetFirstOriginalArtifact(FHeistInventoryItem& OutOriginalArtifact) const
+
+{
+	OutOriginalArtifact = FHeistInventoryItem();
+	const FHeistInventoryFastArrayItem* Entry = ReplicatedInventory.Items.FindByPredicate(
+		[](const FHeistInventoryFastArrayItem& Candidate) { return Candidate.InventoryItem.IsOriginalArtifact(); });
+	if (Entry == nullptr)
+	{
+		return false;
+	}
+	OutOriginalArtifact = Entry->InventoryItem;
+	return true;
+}
+
+bool UHeistInventoryComponent::TryGetOriginalArtifactForSourceCase(const AActor* SourceDisplayCase, FHeistInventoryItem& OutOriginalArtifact) const
+
+{
+	OutOriginalArtifact = FHeistInventoryItem();
+	const FHeistInventoryFastArrayItem* Entry = ReplicatedInventory.Items.FindByPredicate([SourceDisplayCase](const FHeistInventoryFastArrayItem& Candidate)
+	{
+		return Candidate.InventoryItem.IsOriginalArtifact() && Candidate.InventoryItem.SourceDisplayCase == SourceDisplayCase;
+	});
+	if (Entry == nullptr)
+	{
+		return false;
+	}
+	OutOriginalArtifact = Entry->InventoryItem;
+	return true;
+}
+
+bool UHeistInventoryComponent::TryAddOriginalArtifact(AHeistPlayerState* CarryingPlayerState, const FName ArtifactId, const bool bRequiredTarget, AActor* SourceDisplayCase,
+														  int32& OutInstanceId, const TCHAR*& OutRejectReason)
+{
+	OutInstanceId = INDEX_NONE;
+	OutRejectReason = nullptr;
+	AHeistPlayerCharacter* OwnerCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
+	AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	FHeistArtifactDataRow ArtifactDefinition;
+	if (!IsValid(OwnerCharacter) || !OwnerCharacter->HasAuthority())
+	{
+		OutRejectReason = TEXT("RequiresAuthority");
 	}
 	else if (!IsValid(CarryingPlayerState) || CarryingPlayerState->GetPawn() != OwnerCharacter)
 	{
-		RejectReason = TEXT("PlayerStatePawnMismatch");
+		OutRejectReason = TEXT("PlayerStatePawnMismatch");
 	}
-	else if (ArtifactId.IsNone() || ArtifactValue <= 0 || !FMath::IsFinite(Weight) || Weight < 0.0f || !IsValid(SourceDisplayCase))
+	else if (!IsValid(SourceDisplayCase) || !IsValid(HeistGameMode) || !HeistGameMode->TryGetArtifactDefinition(ArtifactId, ArtifactDefinition) ||
+			 ArtifactDefinition.ArtifactId != ArtifactId || ArtifactDefinition.ArtifactValue <= 0 || !FMath::IsFinite(ArtifactDefinition.Weight) || ArtifactDefinition.Weight < 0.0f ||
+			 ArtifactDefinition.GridWidth <= 0 || ArtifactDefinition.GridHeight <= 0)
 	{
-		RejectReason = TEXT("InvalidCarryDefinition");
+		OutRejectReason = TEXT("InvalidArtifactDefinition");
 	}
-	else if (IsCarryingOriginal())
+	else if (ReplicatedInventory.Items.ContainsByPredicate([SourceDisplayCase](const FHeistInventoryFastArrayItem& Entry)
+			 { return Entry.InventoryItem.IsOriginalArtifact() && Entry.InventoryItem.SourceDisplayCase == SourceDisplayCase; }))
 	{
-		RejectReason = TEXT("AlreadyCarryingOriginal");
-	}
-	else if (!CarryingPlayerState->CanAddLootScoreAndWeight(0, Weight))
-	{
-		RejectReason = TEXT("CarryWeightRejected");
+		OutRejectReason = TEXT("OriginalAlreadyInInventory");
 	}
 
-	if (RejectReason != nullptr)
+	FIntPoint GridPosition(-1, -1);
+	bool bRotated = false;
+	const FIntPoint BaseGridSize(ArtifactDefinition.GridWidth, ArtifactDefinition.GridHeight);
+	if (OutRejectReason == nullptr && !TryFindAutoPlacement(BaseGridSize, true, GridPosition, bRotated))
 	{
-		UE_LOG(LogHeistInventory, Warning, TEXT("Original carry entry begin rejected: Owner=%s PlayerState=%s Artifact=%s Weight=%.1f SourceCase=%s Reason=%s"), *GetNameSafe(OwnerCharacter),
-			   *GetNameSafe(CarryingPlayerState), *ArtifactId.ToString(), Weight, *GetNameSafe(SourceDisplayCase), RejectReason);
+		OutRejectReason = TEXT("InventoryFull");
+	}
+	if (OutRejectReason == nullptr && !CarryingPlayerState->CanAddLootScoreAndWeight(0, ArtifactDefinition.Weight))
+	{
+		OutRejectReason = TEXT("CarryWeightRejected");
+	}
+	if (OutRejectReason != nullptr)
+	{
+		UE_LOG(LogHeistInventory, Warning, TEXT("Original grid add rejected: Owner=%s PlayerState=%s Artifact=%s SourceCase=%s Reason=%s"), *GetNameSafe(OwnerCharacter),
+			   *GetNameSafe(CarryingPlayerState), *ArtifactId.ToString(), *GetNameSafe(SourceDisplayCase), OutRejectReason);
+		return false;
+	}
+	if (!CarryingPlayerState->AddLootScoreAndWeight(0, ArtifactDefinition.Weight))
+	{
+		OutRejectReason = TEXT("WeightCommitFailed");
 		return false;
 	}
 
-	if (!CarryingPlayerState->AddLootScoreAndWeight(0, Weight))
+	const bool bWasCarryingOriginal = IsCarryingOriginal();
+	FHeistInventoryFastArrayItem& AddedEntry = ReplicatedInventory.Items.Emplace_GetRef();
+	AddedEntry.InventoryItem.InstanceId = AllocateNextInstanceId();
+	AddedEntry.InventoryItem.ItemId = ArtifactId;
+	AddedEntry.InventoryItem.GridPosition = GridPosition;
+	AddedEntry.InventoryItem.Quantity = 1;
+	AddedEntry.InventoryItem.bRotated = bRotated;
+	AddedEntry.InventoryItem.BaseGridSize = BaseGridSize;
+	AddedEntry.InventoryItem.Weight = ArtifactDefinition.Weight;
+	AddedEntry.InventoryItem.ContractValue = ArtifactDefinition.ArtifactValue;
+	AddedEntry.InventoryItem.bCanRotate = true;
+	AddedEntry.InventoryItem.bOriginalArtifact = true;
+	AddedEntry.InventoryItem.bRequiredTarget = bRequiredTarget;
+	AddedEntry.InventoryItem.SourceDisplayCase = SourceDisplayCase;
+	ReplicatedInventory.MarkItemDirty(AddedEntry);
+	OutInstanceId = AddedEntry.InventoryItem.InstanceId;
+	if (!bWasCarryingOriginal)
 	{
-		UE_LOG(LogHeistInventory, Warning, TEXT("Original carry entry begin rejected: Owner=%s PlayerState=%s Artifact=%s Weight=%.1f Reason=WeightCommitFailed"), *GetNameSafe(OwnerCharacter),
-			   *GetNameSafe(CarryingPlayerState), *ArtifactId.ToString(), Weight);
-		return false;
+		CarryingPlayerState->BeginOriginalCarryContribution();
 	}
-
-	OriginalCarryEntry.ArtifactId = ArtifactId;
-	OriginalCarryEntry.ArtifactValue = ArtifactValue;
-	OriginalCarryEntry.Weight = Weight;
-	OriginalCarryEntry.bRequiredTarget = bRequiredTarget;
-	OriginalCarryEntry.SourceDisplayCase = SourceDisplayCase;
-	CarryingPlayerState->BeginOriginalCarryContribution();
 	OwnerCharacter->ForceNetUpdate();
 	NotifyInventoryChanged();
 	if (AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr)
 	{
 		HeistGameState->RefreshContractCarriedValue();
 	}
+	const FIntPoint PlacedSize = bRotated ? FIntPoint(BaseGridSize.Y, BaseGridSize.X) : BaseGridSize;
+	UHeistDebugFunctionLibrary::DebugInventoryItemAdded(OwnerCharacter, ArtifactId, OutInstanceId, GridPosition, PlacedSize, bRotated, ReplicatedInventory.Items.Num());
+	UE_LOG(LogHeistInventory, Log,
+		TEXT("Original added to grid: Owner=%s PlayerState=%s Artifact=%s Instance=%d Position=(%d,%d) BaseSize=(%d,%d) PlacedSize=(%d,%d) Rotated=%s Required=%s Result=PASS"),
+		*GetNameSafe(OwnerCharacter), *GetNameSafe(CarryingPlayerState), *ArtifactId.ToString(), OutInstanceId, GridPosition.X, GridPosition.Y, BaseGridSize.X, BaseGridSize.Y,
+		PlacedSize.X, PlacedSize.Y, bRotated ? TEXT("true") : TEXT("false"), bRequiredTarget ? TEXT("true") : TEXT("false"));
 	return true;
 }
 
-bool UHeistInventoryComponent::TryEndOriginalCarry(AHeistPlayerState* CarryingPlayerState, AActor* ExpectedSourceDisplayCase, FHeistOriginalCarryEntry& OutReleasedEntry)
+bool UHeistInventoryComponent::TryRemoveOriginalArtifactForSourceCase(AHeistPlayerState* CarryingPlayerState, AActor* ExpectedSourceDisplayCase,
+																 FHeistInventoryItem& OutReleasedItem)
 {
-	OutReleasedEntry = FHeistOriginalCarryEntry();
+	OutReleasedItem = FHeistInventoryItem();
 	AHeistPlayerCharacter* OwnerCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
-	if (!IsValid(OwnerCharacter) || !OwnerCharacter->HasAuthority() || !IsValid(CarryingPlayerState) || CarryingPlayerState->GetPawn() != OwnerCharacter || !OriginalCarryEntry.IsValid() ||
-		(IsValid(ExpectedSourceDisplayCase) && OriginalCarryEntry.SourceDisplayCase != ExpectedSourceDisplayCase) || !CarryingPlayerState->RemoveCarriedOriginalWeight(OriginalCarryEntry.Weight))
+	const int32 ItemIndex = ReplicatedInventory.Items.IndexOfByPredicate([ExpectedSourceDisplayCase](const FHeistInventoryFastArrayItem& Entry)
+	{
+		return Entry.InventoryItem.IsOriginalArtifact() && Entry.InventoryItem.SourceDisplayCase == ExpectedSourceDisplayCase;
+	});
+	if (!IsValid(OwnerCharacter) || !OwnerCharacter->HasAuthority() || !IsValid(CarryingPlayerState) || CarryingPlayerState->GetPawn() != OwnerCharacter ||
+		!IsValid(ExpectedSourceDisplayCase) || !ReplicatedInventory.Items.IsValidIndex(ItemIndex))
 	{
 		return false;
 	}
-
-	OutReleasedEntry = OriginalCarryEntry;
-	OriginalCarryEntry = FHeistOriginalCarryEntry();
-	CarryingPlayerState->EndOriginalCarryContribution(false);
+	OutReleasedItem = ReplicatedInventory.Items[ItemIndex].InventoryItem;
+	if (!OutReleasedItem.HasValidOriginalData() || !CarryingPlayerState->RemoveCarriedOriginalWeight(OutReleasedItem.Weight))
+	{
+		OutReleasedItem = FHeistInventoryItem();
+		return false;
+	}
+	ReplicatedInventory.Items.RemoveAt(ItemIndex);
+	ReplicatedInventory.MarkArrayDirty();
+	if (!IsCarryingOriginal())
+	{
+		CarryingPlayerState->EndOriginalCarryContribution(0);
+	}
 	OwnerCharacter->ForceNetUpdate();
 	NotifyInventoryChanged();
 	if (AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr)
@@ -463,6 +563,16 @@ bool UHeistInventoryComponent::TryBuildPlayerDepositPayload(FHeistPlayerDepositP
 	for (const FHeistInventoryFastArrayItem& Entry : ReplicatedInventory.Items)
 	{
 		const FHeistInventoryItem& InventoryItem = Entry.InventoryItem;
+		if (InventoryItem.IsOriginalArtifact())
+		{
+			if (!InventoryItem.HasValidOriginalData())
+			{
+				OutRejectReason = TEXT("InvalidOriginalArtifactData");
+				return false;
+			}
+			OutPayload.OriginalArtifacts.Add(InventoryItem);
+			continue;
+		}
 		FHeistItemDataRow ItemDefinition;
 		if (!HeistGameMode->TryGetItemDefinition(InventoryItem.ItemId, ItemDefinition))
 		{
@@ -493,7 +603,6 @@ bool UHeistInventoryComponent::TryBuildPlayerDepositPayload(FHeistPlayerDepositP
 
 	OutPayload.LooseLootValue = static_cast<int32>(LooseLootValue);
 	OutPayload.LooseLootWeight = static_cast<float>(LooseLootWeight);
-	OutPayload.OriginalCarry = OriginalCarryEntry;
 	const int64 TotalValue = static_cast<int64>(OutPayload.LooseLootValue) + static_cast<int64>(OutPayload.GetOriginalValue());
 	if ((OutPayload.HasDeposit() && TotalValue <= 0) || TotalValue > MAX_int32 || !FMath::IsFinite(OutPayload.GetTotalWeight()))
 	{
@@ -528,7 +637,7 @@ bool UHeistInventoryComponent::TryCommitPlayerDeposit(AHeistPlayerState* Deposit
 		OutRejectReason = TEXT("LooseLootTotalsMismatch");
 		return false;
 	}
-	if (CurrentPayload.OriginalCarry.IsValid() && CurrentPayload.OriginalCarry.Weight > DepositingPlayerState->GetTotalLootWeight() - CurrentPayload.LooseLootWeight + KINDA_SMALL_NUMBER)
+	if (CurrentPayload.GetOriginalWeight() > DepositingPlayerState->GetTotalLootWeight() - CurrentPayload.LooseLootWeight + KINDA_SMALL_NUMBER)
 	{
 		OutRejectReason = TEXT("OriginalWeightMismatch");
 		return false;
@@ -539,33 +648,33 @@ bool UHeistInventoryComponent::TryCommitPlayerDeposit(AHeistPlayerState* Deposit
 		OutRejectReason = TEXT("LooseLootTotalsCommitFailed");
 		return false;
 	}
-	if (CurrentPayload.OriginalCarry.IsValid() && !DepositingPlayerState->RemoveCarriedOriginalWeight(CurrentPayload.OriginalCarry.Weight))
+	if (CurrentPayload.GetOriginalItemCount() > 0 && !DepositingPlayerState->RemoveCarriedOriginalWeight(CurrentPayload.GetOriginalWeight()))
 	{
 		OutRejectReason = TEXT("OriginalWeightCommitFailed");
 		return false;
 	}
 
-	int32 RemovedLooseLootEntryCount = 0;
+	int32 RemovedDepositEntryCount = 0;
 	for (int32 ItemIndex = ReplicatedInventory.Items.Num() - 1; ItemIndex >= 0; --ItemIndex)
 	{
-		FHeistItemDataRow ItemDefinition;
 		const FHeistInventoryItem& InventoryItem = ReplicatedInventory.Items[ItemIndex].InventoryItem;
-		if (TryGetItemDefinition(InventoryItem.ItemId, ItemDefinition) && ItemDefinition.ItemType == EHeistItemType::Loot)
+		FHeistItemDataRow ItemDefinition;
+		const bool bDepositedItem = InventoryItem.IsOriginalArtifact() || (TryGetItemDefinition(InventoryItem.ItemId, ItemDefinition) && ItemDefinition.ItemType == EHeistItemType::Loot);
+		if (bDepositedItem)
 		{
 			ClearQuickSlotReferences(InventoryItem.InstanceId);
 			ReplicatedInventory.Items.RemoveAt(ItemIndex);
-			++RemovedLooseLootEntryCount;
+			++RemovedDepositEntryCount;
 		}
 	}
-	if (RemovedLooseLootEntryCount > 0)
+	if (RemovedDepositEntryCount > 0)
 	{
 		ReplicatedInventory.MarkArrayDirty();
 	}
-	OriginalCarryEntry = FHeistOriginalCarryEntry();
 	DepositingPlayerState->RecordSecuredLootContribution(CurrentPayload.LooseLootValue);
-	if (CurrentPayload.OriginalCarry.IsValid())
+	if (CurrentPayload.GetOriginalItemCount() > 0)
 	{
-		DepositingPlayerState->EndOriginalCarryContribution(true);
+		DepositingPlayerState->EndOriginalCarryContribution(CurrentPayload.GetOriginalItemCount());
 	}
 
 	OwnerCharacter->ForceNetUpdate();
@@ -574,7 +683,7 @@ bool UHeistInventoryComponent::TryCommitPlayerDeposit(AHeistPlayerState* Deposit
 	return true;
 }
 
-bool UHeistInventoryComponent::TryFindAutoPlacement(const FHeistItemDataRow& ItemDefinition, FIntPoint& OutGridPosition, bool& bOutRotated) const
+bool UHeistInventoryComponent::TryFindAutoPlacement(const FIntPoint& BaseGridSize, const bool bCanRotate, FIntPoint& OutGridPosition, bool& bOutRotated) const
 {
 	OutGridPosition = FIntPoint(-1, -1);
 	bOutRotated = false;
@@ -603,17 +712,17 @@ bool UHeistInventoryComponent::TryFindAutoPlacement(const FHeistItemDataRow& Ite
 		return false;
 	};
 
-	if (TryFindForSize(ItemDefinition.GridSize))
+	if (TryFindForSize(BaseGridSize))
 	{
 		return true;
 	}
 
-	if (!ItemDefinition.bCanRotate || ItemDefinition.GridSize.X == ItemDefinition.GridSize.Y)
+	if (!bCanRotate || BaseGridSize.X == BaseGridSize.Y)
 	{
 		return false;
 	}
 
-	const FIntPoint RotatedSize(ItemDefinition.GridSize.Y, ItemDefinition.GridSize.X);
+	const FIntPoint RotatedSize(BaseGridSize.Y, BaseGridSize.X);
 	bOutRotated = TryFindForSize(RotatedSize);
 	return bOutRotated;
 }
@@ -634,14 +743,13 @@ bool UHeistInventoryComponent::TryBuildOccupiedCellsExcluding(const int32 Exclud
 		{
 			continue;
 		}
-		FHeistItemDataRow ExistingDefinition;
-		if (!TryGetItemDefinition(ExistingItem.ItemId, ExistingDefinition))
+		if (ExistingItem.BaseGridSize.X <= 0 || ExistingItem.BaseGridSize.Y <= 0)
 		{
-			UHeistDebugFunctionLibrary::DebugInventoryOccupancyInvalid(ExistingItem.InstanceId, ExistingItem.ItemId, TEXT("InvalidItemDefinition"));
+			UHeistDebugFunctionLibrary::DebugInventoryOccupancyInvalid(ExistingItem.InstanceId, ExistingItem.ItemId, TEXT("InvalidStoredGridSize"));
 			return false;
 		}
 
-		const FIntPoint ExistingSize = ExistingItem.bRotated ? FIntPoint(ExistingDefinition.GridSize.Y, ExistingDefinition.GridSize.X) : ExistingDefinition.GridSize;
+		const FIntPoint ExistingSize = ExistingItem.GetPlacedSize();
 
 		if (!CanPlaceAt(OutOccupiedCells, ExistingItem.GridPosition, ExistingSize))
 		{
@@ -716,11 +824,6 @@ void UHeistInventoryComponent::OnRep_InventoryOpen()
 	NotifyInventoryChanged();
 }
 
-void UHeistInventoryComponent::OnRep_OriginalCarryEntry()
-{
-	NotifyInventoryChanged();
-}
-
 bool UHeistInventoryComponent::CanPlaceAt(const TArray<bool>& OccupiedCells, const FIntPoint& GridPosition, const FIntPoint& ItemSize)
 {
 	if (GridPosition.X < 0 || GridPosition.Y < 0 || ItemSize.X <= 0 || ItemSize.Y <= 0 || GridPosition.X + ItemSize.X > GridColumnCount || GridPosition.Y + ItemSize.Y > GridRowCount ||
@@ -768,7 +871,6 @@ void UHeistInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProper
 	DOREPLIFETIME_CONDITION(UHeistInventoryComponent, ReplicatedInventory, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(UHeistInventoryComponent, bInventoryOpen, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(UHeistInventoryComponent, QuickSlots, COND_OwnerOnly);
-	DOREPLIFETIME_CONDITION(UHeistInventoryComponent, OriginalCarryEntry, COND_OwnerOnly);
 }
 
 #pragma endregion

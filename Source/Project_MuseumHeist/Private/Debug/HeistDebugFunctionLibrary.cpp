@@ -1280,11 +1280,14 @@ void UHeistDebugFunctionLibrary::DebugOriginalDump(APlayerController* PlayerCont
 		return;
 	}
 
-	const FHeistOriginalCarryEntry& CarryEntry = InventoryComponent->GetOriginalCarryEntry();
+	FHeistInventoryItem CarryItem;
+	const bool bHasCarryItem = IsValid(DisplayCase) ? InventoryComponent->TryGetOriginalArtifactForSourceCase(DisplayCase, CarryItem)
+															: InventoryComponent->TryGetFirstOriginalArtifact(CarryItem);
 	const AHeistPlayerState* CaseCarrier = IsValid(DisplayCase) ? DisplayCase->GetOriginalCarrier() : nullptr;
 	const AHeistPlayerCharacter* CaseCarrierCharacter = IsValid(CaseCarrier) ? CaseCarrier->GetPawn<AHeistPlayerCharacter>() : nullptr;
 	const UHeistInventoryComponent* CaseCarrierInventory = IsValid(CaseCarrierCharacter) ? CaseCarrierCharacter->GetInventoryComponent() : nullptr;
-	const FHeistOriginalCarryEntry* CaseCarrierEntry = IsValid(CaseCarrierInventory) ? &CaseCarrierInventory->GetOriginalCarryEntry() : nullptr;
+	FHeistInventoryItem CaseCarrierItem;
+	const bool bCaseCarrierHasItem = IsValid(CaseCarrierInventory) && IsValid(DisplayCase) && CaseCarrierInventory->TryGetOriginalArtifactForSourceCase(DisplayCase, CaseCarrierItem);
 	int32 MatchingWorldDropCount = 0;
 	const AHeistDroppedOriginalActor* MatchingWorldDrop = nullptr;
 	if (UWorld* World = PlayerController ? PlayerController->GetWorld() : nullptr; World != nullptr)
@@ -1305,27 +1308,27 @@ void UHeistDebugFunctionLibrary::DebugOriginalDump(APlayerController* PlayerCont
 	const bool bOriginalOutsideCase = CaseState == EHeistDisplayCaseState::OriginalRemoved || CaseState == EHeistDisplayCaseState::Inspecting ||
 		CaseState == EHeistDisplayCaseState::Completed || CaseState == EHeistDisplayCaseState::Suspected || CaseState == EHeistDisplayCaseState::Alarmed ||
 		CaseState == EHeistDisplayCaseState::Failed;
-	const bool bLocalCarryMatchesCarrier = !CarryEntry.IsValid() || CaseCarrier == HeistPlayerState;
-	const bool bActiveCarryConsistent = CaseCarrierEntry != nullptr && CaseCarrierEntry->IsValid() && IsValid(DisplayCase) &&
-		CaseCarrierEntry->SourceDisplayCase == DisplayCase && CaseCarrierEntry->ArtifactId == DisplayCase->GetTargetArtifactId() && bLocalCarryMatchesCarrier &&
+	const bool bLocalCarryMatchesCarrier = !bHasCarryItem || CaseCarrier == HeistPlayerState;
+	const bool bActiveCarryConsistent = bCaseCarrierHasItem && CaseCarrierItem.HasValidOriginalData() && IsValid(DisplayCase) &&
+		CaseCarrierItem.SourceDisplayCase == DisplayCase && CaseCarrierItem.ItemId == DisplayCase->GetTargetArtifactId() && bLocalCarryMatchesCarrier &&
 		bOriginalOutsideCase && MatchingWorldDropCount == 0;
-	const bool bNeutralWorldDropConsistent = !bOriginalSecuredAtExit && !CarryEntry.IsValid() && !IsValid(CaseCarrier) && bOriginalOutsideCase && MatchingWorldDropCount == 1;
-	const bool bSecuredAtExitConsistent = bOriginalSecuredAtExit && !CarryEntry.IsValid() && !IsValid(CaseCarrier) && bOriginalOutsideCase && MatchingWorldDropCount == 0;
-	const bool bOriginalInsideOrPendingConsistent = !CarryEntry.IsValid() && !IsValid(CaseCarrier) && !bOriginalOutsideCase && MatchingWorldDropCount == 0;
+	const bool bNeutralWorldDropConsistent = !bOriginalSecuredAtExit && !bCaseCarrierHasItem && !IsValid(CaseCarrier) && bOriginalOutsideCase && MatchingWorldDropCount == 1;
+	const bool bSecuredAtExitConsistent = bOriginalSecuredAtExit && !bCaseCarrierHasItem && !IsValid(CaseCarrier) && bOriginalOutsideCase && MatchingWorldDropCount == 0;
+	const bool bOriginalInsideOrPendingConsistent = !bCaseCarrierHasItem && !IsValid(CaseCarrier) && !bOriginalOutsideCase && MatchingWorldDropCount == 0;
 	const bool bCarryContractConsistent = IsValid(DisplayCase) && (bActiveCarryConsistent || bNeutralWorldDropConsistent || bSecuredAtExitConsistent || bOriginalInsideOrPendingConsistent);
 	Message(
 		PlayerController,
 		FString::Printf(
 			TEXT(
 				"Original carry dump: PlayerId=%d CarryActive=%s Artifact=%s Value=%d Required=%s CarryWeight=%.1f TotalWeight=%.1f SourceCase=%s NearestCase=%s CaseId=%s CaseState=%s SecuredAtExit=%s CaseCarrierPlayerId=%d CarrierCarryActive=%s CarrierArtifact=%s CarrierValue=%d CarrierRequired=%s CarrierWeight=%.1f WorldDropCount=%d WorldDrop=%s DropArtifact=%s DropValue=%d DropRequired=%s CarryRevision=%d ContractConsistent=%s Authority=%s Result=%s"),
-			HeistPlayerState->HeistPlayerId, CarryEntry.IsValid() ? TEXT("true") : TEXT("false"), *CarryEntry.ArtifactId.ToString(), CarryEntry.ArtifactValue,
-			CarryEntry.bRequiredTarget ? TEXT("true") : TEXT("false"), CarryEntry.Weight, HeistPlayerState->GetTotalLootWeight(),
-			*GetNameSafe(CarryEntry.SourceDisplayCase.Get()), *GetNameSafe(DisplayCase), IsValid(DisplayCase) ? *DisplayCase->GetDisplayCaseId().ToString() : TEXT("None"),
+			HeistPlayerState->HeistPlayerId, bHasCarryItem ? TEXT("true") : TEXT("false"), *CarryItem.ItemId.ToString(), CarryItem.ContractValue,
+			CarryItem.bRequiredTarget ? TEXT("true") : TEXT("false"), CarryItem.Weight, HeistPlayerState->GetTotalLootWeight(),
+			*GetNameSafe(CarryItem.SourceDisplayCase.Get()), *GetNameSafe(DisplayCase), IsValid(DisplayCase) ? *DisplayCase->GetDisplayCaseId().ToString() : TEXT("None"),
 			IsValid(DisplayCase) ? *UEnum::GetValueAsString(DisplayCase->GetDisplayCaseState()) : TEXT("MissingCase"), bOriginalSecuredAtExit ? TEXT("true") : TEXT("false"),
 			IsValid(CaseCarrier) ? CaseCarrier->HeistPlayerId : INDEX_NONE,
-			CaseCarrierEntry != nullptr && CaseCarrierEntry->IsValid() ? TEXT("true") : TEXT("false"),
-			CaseCarrierEntry != nullptr ? *CaseCarrierEntry->ArtifactId.ToString() : TEXT("None"), CaseCarrierEntry != nullptr ? CaseCarrierEntry->ArtifactValue : 0,
-			CaseCarrierEntry != nullptr && CaseCarrierEntry->bRequiredTarget ? TEXT("true") : TEXT("false"), CaseCarrierEntry != nullptr ? CaseCarrierEntry->Weight : 0.0f,
+			bCaseCarrierHasItem ? TEXT("true") : TEXT("false"),
+			bCaseCarrierHasItem ? *CaseCarrierItem.ItemId.ToString() : TEXT("None"), bCaseCarrierHasItem ? CaseCarrierItem.ContractValue : 0,
+			bCaseCarrierHasItem && CaseCarrierItem.bRequiredTarget ? TEXT("true") : TEXT("false"), bCaseCarrierHasItem ? CaseCarrierItem.Weight : 0.0f,
 			MatchingWorldDropCount, *GetNameSafe(MatchingWorldDrop), IsValid(MatchingWorldDrop) ? *MatchingWorldDrop->GetArtifactId().ToString() : TEXT("None"),
 			IsValid(MatchingWorldDrop) ? MatchingWorldDrop->GetArtifactValue() : 0,
 			IsValid(MatchingWorldDrop) && MatchingWorldDrop->IsRequiredTarget() ? TEXT("true") : TEXT("false"),
@@ -1471,10 +1474,10 @@ void UHeistDebugFunctionLibrary::DebugDepositDump(APlayerController* PlayerContr
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Shared deposit dump: PlayerId=%d Escaped=%s Arrested=%s CastActive=%s LooseItems=%d LooseValue=%d Original=%s OriginalValue=%d Required=%s DepositValue=%d PlayerLootScore=%d PlayerWeight=%.1f ContractCarried=%d ContractSecured=%d Quota=%d RequiredSecured=%s Exits=%d ActiveExits=%d PayloadReason=%s Authority=true Result=%s"),
+			TEXT("Shared deposit dump: PlayerId=%d Escaped=%s Arrested=%s CastActive=%s LooseItems=%d LooseValue=%d OriginalItems=%d OriginalValue=%d Required=%s DepositValue=%d PlayerLootScore=%d PlayerWeight=%.1f ContractCarried=%d ContractSecured=%d Quota=%d RequiredSecured=%s Exits=%d ActiveExits=%d PayloadReason=%s Authority=true Result=%s"),
 			TargetPlayerState->HeistPlayerId, TargetPlayerState->IsEscaped() ? TEXT("true") : TEXT("false"), TargetPlayerState->IsArrested() ? TEXT("true") : TEXT("false"),
 			TargetCharacter->GetActionComponent()->IsEscapeCastActive() ? TEXT("true") : TEXT("false"), DepositPayload.LooseLootItemCount, DepositPayload.LooseLootValue,
-			*DepositPayload.OriginalCarry.ArtifactId.ToString(), DepositPayload.GetOriginalValue(), DepositPayload.OriginalCarry.bRequiredTarget ? TEXT("true") : TEXT("false"),
+			DepositPayload.GetOriginalItemCount(), DepositPayload.GetOriginalValue(), DepositPayload.ContainsRequiredTarget() ? TEXT("true") : TEXT("false"),
 			DepositPayload.GetTotalValue(), TargetPlayerState->GetTotalLootScore(), TargetPlayerState->GetTotalLootWeight(), ContractSnapshot.CarriedValue, ContractSnapshot.SecuredValue,
 			ContractSnapshot.LootValueQuota, ContractSnapshot.bRequiredTargetSecured ? TEXT("true") : TEXT("false"), SharedExitCount, ActiveSharedExitCount,
 			PayloadRejectReason != nullptr ? PayloadRejectReason : TEXT("None"), bPassed ? TEXT("PASS") : TEXT("FAIL")),
@@ -1812,7 +1815,7 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyKickPlayer(APlayerController
 	}
 
 	const bool bResult = GameSession->KickPlayer(
-		TargetPlayerController, NSLOCTEXT("HeistDebug", "ObjectAssemblyDisconnectTest", "Object Assembly disconnect cleanup test."));
+		TargetPlayerController, NSLOCTEXT("HeistDebug", "ObjectAssemblyDisconnectTest", "오브젝트 조립 연결 종료 정리 테스트입니다."));
 	Message(PlayerController,
 			FString::Printf(TEXT("Object Assembly kick player: PlayerId=%d Authority=true Result=%s"), PlayerId, bResult ? TEXT("PASS") : TEXT("FAIL")),
 			bResult ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
@@ -3643,6 +3646,7 @@ void UHeistDebugFunctionLibrary::DebugForgeryRecoveryDump(APlayerController* Pla
 	int32 LocalOwnedLocks = 0;
 	int32 OrphanLocks = 0;
 	int32 ActiveSessions = 0;
+	int32 PendingReviewSessions = 0;
 	int32 OrphanSessions = 0;
 	AHeistGameState* HeistGameState = HeistPlayerController->GetWorld() ? HeistPlayerController->GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 
@@ -3668,7 +3672,10 @@ void UHeistDebugFunctionLibrary::DebugForgeryRecoveryDump(APlayerController* Pla
 			const AHeistPlayerCharacter* SessionCharacter = IsValid(SessionOwner) ? Cast<AHeistPlayerCharacter>(SessionOwner->GetPawn()) : nullptr;
 			const UHeistForgeryComponent* SessionComponent = IsValid(SessionCharacter) ? SessionCharacter->GetForgeryComponent() : nullptr;
 			const bool bBackedByActiveSession = IsValid(SessionComponent) && SessionComponent->IsSessionActive() && SessionComponent->GetActiveDisplayCase() == DisplayCase;
-			if (!bOwnerInMatch || !bBackedByActiveSession)
+			const bool bBackedByPendingReview = IsValid(SessionComponent) && SessionComponent->HasPendingReplicaReview() &&
+											 SessionComponent->GetActiveDisplayCase() == DisplayCase && DisplayCase->IsReplicaReviewReadyFor(SessionCharacter);
+			PendingReviewSessions += bBackedByPendingReview ? 1 : 0;
+			if (!bOwnerInMatch || (!bBackedByActiveSession && !bBackedByPendingReview))
 			{
 				++OrphanLocks;
 			}
@@ -3705,25 +3712,29 @@ void UHeistDebugFunctionLibrary::DebugForgeryRecoveryDump(APlayerController* Pla
 
 	const bool bInactiveSnapshotClean =
 		!bSessionActive && !ForgeryComponent->IsSubmitPending() && !IsValid(ActiveDisplayCase) && FMath::IsNearlyZero(ForgeryComponent->GetSessionEndServerTime()) && LocalOwnedLocks == 0;
+	const bool bPendingReviewSnapshotConsistent = ForgeryComponent->HasPendingReplicaReview() && IsValid(ActiveDisplayCase) &&
+											  ActiveDisplayCase->IsReplicaReviewReadyFor(HeistCharacter) && FMath::IsNearlyZero(ForgeryComponent->GetSessionEndServerTime()) &&
+											  LocalOwnedLocks == 1;
 	const bool bActiveSnapshotConsistent = bSessionActive && !ForgeryComponent->IsSubmitPending() && IsValid(ActiveDisplayCase) && ActiveDisplayCase->IsSessionLocked() &&
 										   ActiveDisplayCase->GetSessionOwner() == HeistPlayerState && LocalOwnedLocks == 1;
-	const bool bSessionContract = bInactiveSnapshotClean || bActiveSnapshotConsistent;
+	const bool bSessionContract = bInactiveSnapshotClean || bPendingReviewSnapshotConsistent || bActiveSnapshotConsistent;
 	const bool bExpectedPresentationVisible = bSessionActive;
 	const bool bUIContract = ForgeryViewModel->IsPresentationVisible() == bExpectedPresentationVisible && ForgeryWidget->IsWidgetPresentationVisible() == bExpectedPresentationVisible &&
 							 ForgeryViewModel->GetVisibleStateCount() == (bExpectedPresentationVisible ? 1 : 0) && ForgeryWidget->IsOwnerOnlyContractSatisfied() && LocalForgeryWidgetCount == 1;
 	const bool bInputContract = HeistPlayerController->IsLocalInputModeContractSatisfied() &&
 								(bSessionActive ? HeistPlayerController->GetLocalInputMode() == EHeistInputMode::Forgery : HeistPlayerController->GetLocalInputMode() != EHeistInputMode::Forgery);
-	const bool bGlobalContract = !bAuthority || (OrphanLocks == 0 && OrphanSessions == 0 && LockedCases == ActiveSessions);
+	const bool bGlobalContract = !bAuthority || (OrphanLocks == 0 && OrphanSessions == 0 && LockedCases == ActiveSessions + PendingReviewSessions);
 	const bool bContractPassed = bSessionContract && bUIContract && bInputContract && bGlobalContract;
 
 	Message(
 		PlayerController,
 		FString::Printf(
 			TEXT(
-				"Forgery recovery dump: Active=%s SubmitPending=%s ActiveCase=%s LastCleanup=%s LocalOwnedLocks=%d LockedCases=%d ActiveSessions=%d OrphanLocks=%d OrphanSessions=%d WidgetInstances=%d UIVisible=%s InputMode=%s ActiveContexts=%d SessionContract=%s UIContract=%s InputContract=%s GlobalContract=%s Authority=%s Result=%s"),
+				"Forgery recovery dump: Active=%s SubmitPending=%s ActiveCase=%s LastCleanup=%s LocalOwnedLocks=%d LockedCases=%d ActiveSessions=%d PendingReviews=%d OrphanLocks=%d OrphanSessions=%d WidgetInstances=%d UIVisible=%s InputMode=%s ActiveContexts=%d SessionContract=%s UIContract=%s InputContract=%s GlobalContract=%s Authority=%s Result=%s"),
 			bSessionActive ? TEXT("true") : TEXT("false"), ForgeryComponent->IsSubmitPending() ? TEXT("true") : TEXT("false"), *GetNameSafe(ActiveDisplayCase),
 			ForgeryComponent->GetLastCleanupReason().IsNone() ? TEXT("None") : *ForgeryComponent->GetLastCleanupReason().ToString(), LocalOwnedLocks, LockedCases,
-			bAuthority ? ActiveSessions : INDEX_NONE, bAuthority ? OrphanLocks : INDEX_NONE, bAuthority ? OrphanSessions : INDEX_NONE, LocalForgeryWidgetCount,
+			bAuthority ? ActiveSessions : INDEX_NONE, bAuthority ? PendingReviewSessions : INDEX_NONE, bAuthority ? OrphanLocks : INDEX_NONE,
+			bAuthority ? OrphanSessions : INDEX_NONE, LocalForgeryWidgetCount,
 			ForgeryWidget->IsWidgetPresentationVisible() ? TEXT("true") : TEXT("false"),
 			HeistPlayerController->GetLocalInputMode() == EHeistInputMode::Gameplay	   ? TEXT("Gameplay")
 			: HeistPlayerController->GetLocalInputMode() == EHeistInputMode::Inventory ? TEXT("Inventory")
@@ -7321,7 +7332,7 @@ void UHeistDebugFunctionLibrary::DebugResultHelp(APlayerController* PlayerContro
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(PlayerController, TEXT("Result debug commands: HeistResultShow | HeistResultHide | HeistResultDump | HeistResultRebuild | HeistResultSeed <Score> <Escaped 1/0> <EscapeTime> | HeistExitPlacementDump | HeistMissionGateDump"),
+	Message(PlayerController, TEXT("Result debug commands: HeistResultShow | HeistResultHide | HeistResultDump | HeistResultRebuild | HeistResultSeed <Score> <Escaped 1/0> <EscapeTime> | HeistContributionSeed <SurfaceCount> <BestSurface> <AssemblyCount> <BestAssembly> <Artifacts> <CarryTime> <SecuredLoot> <Distracted> <Rescued> <Alarms> | HeistExitPlacementDump | HeistMissionGateDump"),
 			EHeistDebugLevel::Info, true, 8.0f);
 #endif
 }
@@ -7609,6 +7620,33 @@ void UHeistDebugFunctionLibrary::DebugResultSeed(APlayerController* PlayerContro
 	HeistPlayerController->DebugRequestSeedResult(SafeScore, bEscaped, SafeEscapeTimeSeconds);
 	Message(PlayerController, FString::Printf(TEXT("Result debug seed requested: Score=%d Escaped=%s EscapeTime=%.2f"), SafeScore, bEscaped ? TEXT("true") : TEXT("false"), SafeEscapeTimeSeconds),
 			EHeistDebugLevel::Info, true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugContributionSeed(APlayerController* PlayerController, const int32 SurfaceForgeries,
+	const float BestSurfaceQuality, const int32 Assemblies, const float BestAssemblyQuality, const int32 ArtifactsRecovered,
+	const float CarryTimeSeconds, const int32 SecuredLootValue, const int32 GuardsDistracted, const int32 TeammatesRescued,
+	const int32 AlarmsTriggered)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	if (!IsValid(HeistPlayerController))
+	{
+		Message(PlayerController, TEXT("Contribution debug seed failed: invalid Heist player controller."), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	HeistPlayerController->DebugRequestSeedContribution(SurfaceForgeries, BestSurfaceQuality, Assemblies, BestAssemblyQuality,
+		ArtifactsRecovered, CarryTimeSeconds, SecuredLootValue, GuardsDistracted, TeammatesRescued, AlarmsTriggered);
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("Contribution debug seed requested: Surface=%d BestSurface=%.1f Assembly=%d BestAssembly=%.1f Artifacts=%d CarryTime=%.1f SecuredLoot=%d Distracted=%d Rescued=%d Alarms=%d"),
+			SurfaceForgeries, BestSurfaceQuality, Assemblies, BestAssemblyQuality, ArtifactsRecovered, CarryTimeSeconds,
+			SecuredLootValue, GuardsDistracted, TeammatesRescued, AlarmsTriggered),
+		EHeistDebugLevel::Info, true);
 #endif
 }
 
