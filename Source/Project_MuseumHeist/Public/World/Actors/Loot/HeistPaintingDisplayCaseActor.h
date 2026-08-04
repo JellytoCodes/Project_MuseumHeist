@@ -14,6 +14,7 @@ class UMaterialInterface;
 class USoundBase;
 class UStaticMeshComponent;
 class UTexture2D;
+class UPackageMap;
 struct FHeistInventoryItem;
 
 USTRUCT(BlueprintType)
@@ -36,6 +37,18 @@ struct PROJECT_MUSEUMHEIST_API FHeistReplicaPaintingData
 
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|DisplayCase|Replica|Painting")
 	int32 Revision = 0;
+
+	bool NetSerialize(FArchive& Ar, UPackageMap* Map, bool& bOutSuccess);
+};
+
+template <>
+struct TStructOpsTypeTraits<FHeistReplicaPaintingData> : public TStructOpsTypeTraitsBase2<FHeistReplicaPaintingData>
+{
+	enum
+	{
+		WithNetSerializer = true,
+		WithNetSharedSerialization = true
+	};
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FHeistDisplayCaseStateChangedSignature, EHeistDisplayCaseState, PreviousState, EHeistDisplayCaseState, NewState);
@@ -232,7 +245,7 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 
 	/** Local presentation only. Blueprint may drive outline/emissive/prompt visuals from this state. */
 	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|DisplayCase|Replica|Feedback", meta = (DisplayName = "Apply Replica Review World Feedback"))
-	void BP_ApplyReplicaReviewWorldFeedback(bool bReadyForLocalPlayer, bool bUntouched, FLinearColor SuggestedOutlineColor, FText SuggestedInteractionHint);
+	void BP_ApplyReplicaReviewWorldFeedback(bool bReadyForLocalPlayer, bool bUntouched, FLinearColor SuggestedOutlineColor, const FText& SuggestedInteractionHint);
 
   private:
 	bool ValidateReplicaPlacementRequest(AHeistPlayerState* RequestingPlayerState, const FHeistForgeryResult& ForgeryResult, FName& OutRejectReason) const;

@@ -481,9 +481,6 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 	UFUNCTION(Exec)
 	void HeistForgeryUIDump();
 
-	UFUNCTION(Exec)
-	void HeistForgeryUIPreview(FString State);
-
 #pragma endregion
 
 #pragma region GuardDebug

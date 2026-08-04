@@ -36,14 +36,13 @@ namespace
 constexpr int32 MinimumSubmittedStrokePointCount = 2;
 constexpr int32 MaximumSubmittedStrokeCount = 256;
 constexpr int32 MaximumStrokePayloadBytes = 48 * 1024;
-constexpr int32 ForgeryScoreGridResolution = 128;
+constexpr int32 ForgeryScoreGridResolution = 256;
 constexpr uint8 ReferenceMaskThreshold = 128;
 constexpr uint8 EmptyPaletteIndex = MAX_uint8;
 constexpr float SubmissionTimeoutToleranceSeconds = 0.05f;
-constexpr float BrushSizeValidationTolerance = 0.0001f;
-constexpr float ForgeryBrushPresetMultipliers[] = {0.5f, 1.0f, 1.5f};
-constexpr int32 OpenCVMorphologyKernelSize = 3;
-constexpr float OpenCVDistanceTolerancePixels = 10.0f;
+constexpr float ForgeryBrushPresetSizes[] = {0.015f, 0.03f, 0.05f};
+constexpr int32 OpenCVMorphologyKernelSize = 5;
+constexpr float OpenCVDistanceTolerancePixels = 20.0f;
 constexpr float OpenCVStructuralColorWeight = 0.65f;
 constexpr float OpenCVHistogramColorWeight = 0.35f;
 constexpr float OpenCVShapeScoreExponent = 1.15f;
@@ -51,6 +50,16 @@ constexpr float OpenCVColorScoreExponent = 1.10f;
 constexpr float PaintCompletenessExponent = 0.65f;
 constexpr float OpenCVPaletteFidelityBonusWeight = 0.75f;
 constexpr float OpenCVPaletteFidelityBonusExponent = 3.0f;
+
+float ResolveForgeryBrushSize(const uint8 BrushPresetIndex)
+{
+	if (BrushPresetIndex >= UE_ARRAY_COUNT(ForgeryBrushPresetSizes))
+	{
+		return 0.0f;
+	}
+
+	return ForgeryBrushPresetSizes[BrushPresetIndex];
+}
 
 struct FOpenCVForgeryMetrics
 {
@@ -609,20 +618,26 @@ void StampForgeryPaletteBrush(TArray<uint8>& PlayerPaletteMap, const FVector2D& 
 	}
 }
 
-void RasterizeForgeryPaletteStrokes(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices, const float BrushSize,
-									TArray<uint8>& OutPlayerPaletteMap)
+void RasterizeForgeryPaletteStrokes(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices,
+									const TArray<uint8>& StrokeBrushPresetIndices, TArray<uint8>& OutPlayerPaletteMap)
 {
 	OutPlayerPaletteMap.Init(EmptyPaletteIndex, ForgeryScoreGridResolution * ForgeryScoreGridResolution);
 	int32 PointOffset = 0;
 	for (int32 StrokeIndex = 0; StrokeIndex < StrokePointCounts.Num(); ++StrokeIndex)
 	{
 		const int32 StrokePointCount = StrokePointCounts[StrokeIndex];
-		if (StrokePointCount <= 0 || PointOffset + StrokePointCount > NormalizedPoints.Num() || !StrokePaletteIndices.IsValidIndex(StrokeIndex))
+		if (StrokePointCount <= 0 || PointOffset + StrokePointCount > NormalizedPoints.Num() || !StrokePaletteIndices.IsValidIndex(StrokeIndex) ||
+			!StrokeBrushPresetIndices.IsValidIndex(StrokeIndex))
 		{
 			break;
 		}
 
 		const uint8 PaletteIndex = StrokePaletteIndices[StrokeIndex];
+		const float BrushSize = ResolveForgeryBrushSize(StrokeBrushPresetIndices[StrokeIndex]);
+		if (BrushSize <= 0.0f)
+		{
+			break;
+		}
 		StampForgeryPaletteBrush(OutPlayerPaletteMap, NormalizedPoints[PointOffset], BrushSize, PaletteIndex);
 		for (int32 StrokePointIndex = 1; StrokePointIndex < StrokePointCount; ++StrokePointIndex)
 		{
@@ -792,7 +807,7 @@ bool CalculateOpenCVForgeryMetrics(const TArray<uint8>& ReferenceMask, const TAr
 	}
 
 	cv::Rect ComparisonBounds = cv::boundingRect(ForegroundPoints);
-	constexpr int32 ComparisonPaddingPixels = 4;
+	constexpr int32 ComparisonPaddingPixels = 8;
 	ComparisonBounds.x = FMath::Max(0, ComparisonBounds.x - ComparisonPaddingPixels);
 	ComparisonBounds.y = FMath::Max(0, ComparisonBounds.y - ComparisonPaddingPixels);
 	ComparisonBounds.width = FMath::Min(ForgeryScoreGridResolution - ComparisonBounds.x, ComparisonBounds.width + ComparisonPaddingPixels * 2);
@@ -1065,7 +1080,7 @@ bool UHeistForgeryComponent::TryBeginSubmit()
 }
 
 bool UHeistForgeryComponent::TrySubmitStrokePayload(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices,
-													const float ClientBrushSize, const int32 ClientSessionRevision)
+													const TArray<uint8>& StrokeBrushPresetIndices, const int32 ClientSessionRevision)
 {
 	if (!GetOwner() || !GetOwner()->HasAuthority())
 	{
@@ -1074,10 +1089,11 @@ bool UHeistForgeryComponent::TrySubmitStrokePayload(const TArray<FVector2D>& Nor
 
 	FName RejectReason = NAME_None;
 	int32 PayloadBytes = 0;
-	if (!ValidateStrokePayload(NormalizedPoints, StrokePointCounts, StrokePaletteIndices, ClientBrushSize, ClientSessionRevision, RejectReason, PayloadBytes))
+	if (!ValidateStrokePayload(NormalizedPoints, StrokePointCounts, StrokePaletteIndices, StrokeBrushPresetIndices, ClientSessionRevision, RejectReason, PayloadBytes))
 	{
 		RecordStrokeValidationResult(false, RejectReason);
-		UHeistDebugFunctionLibrary::DebugForgeryStrokePayloadRejected(this, StrokePointCounts.Num(), NormalizedPoints.Num(), PayloadBytes, ClientBrushSize, ClientSessionRevision, RejectReason);
+		UHeistDebugFunctionLibrary::DebugForgeryStrokePayloadRejected(this, StrokePointCounts.Num(), NormalizedPoints.Num(), PayloadBytes, StrokeBrushPresetIndices.Num(), ClientSessionRevision,
+			RejectReason);
 
 		if (RejectReason == FName(TEXT("SessionExpired")))
 		{
@@ -1089,10 +1105,10 @@ bool UHeistForgeryComponent::TrySubmitStrokePayload(const TArray<FVector2D>& Nor
 	ValidatedStrokePoints = NormalizedPoints;
 	ValidatedStrokePointCounts = StrokePointCounts;
 	ValidatedStrokePaletteIndices = StrokePaletteIndices;
+	ValidatedStrokeBrushPresetIndices = StrokeBrushPresetIndices;
 	ValidatedStrokeCount = StrokePointCounts.Num();
 	ValidatedPointCount = NormalizedPoints.Num();
 	ValidatedPayloadBytes = PayloadBytes;
-	ValidatedBrushSize = ClientBrushSize;
 	bHasValidatedStrokePayload = true;
 	RecordStrokeValidationResult(true, FName(TEXT("Accepted")));
 
@@ -1355,6 +1371,11 @@ float UHeistForgeryComponent::GetTemplateBrushSize() const
 	return TemplateBrushSize;
 }
 
+float UHeistForgeryComponent::ResolveBrushSizeForPreset(const uint8 BrushPresetIndex) const
+{
+	return ResolveForgeryBrushSize(BrushPresetIndex);
+}
+
 const TArray<FLinearColor>& UHeistForgeryComponent::GetTemplateAllowedPalette() const
 {
 	return TemplateAllowedPalette;
@@ -1393,11 +1414,6 @@ int32 UHeistForgeryComponent::GetValidatedPointCount() const
 int32 UHeistForgeryComponent::GetValidatedPayloadBytes() const
 {
 	return ValidatedPayloadBytes;
-}
-
-float UHeistForgeryComponent::GetValidatedBrushSize() const
-{
-	return ValidatedBrushSize;
 }
 
 const TArray<FVector2D>& UHeistForgeryComponent::GetValidatedStrokePoints() const
@@ -1453,21 +1469,23 @@ bool UHeistForgeryComponent::RecalculateValidatedForgeryScoreForDebug(FHeistForg
 		return false;
 	}
 
-	return CalculateForgeryScore(ValidatedStrokePoints, ValidatedStrokePointCounts, ValidatedStrokePaletteIndices, ValidatedBrushSize, OutResult, OutReferenceMaskPixels, OutSubmittedMaskPixels);
+	return CalculateForgeryScore(ValidatedStrokePoints, ValidatedStrokePointCounts, ValidatedStrokePaletteIndices, ValidatedStrokeBrushPresetIndices, OutResult, OutReferenceMaskPixels,
+		OutSubmittedMaskPixels, true);
 #else
 	return false;
 #endif
 }
 
 bool UHeistForgeryComponent::CalculateLocalForgeryPreview(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices,
-														  const float BrushSize, FHeistForgeryResult& OutResult, int32& OutReferenceMaskPixels, int32& OutSubmittedMaskPixels) const
+														  const TArray<uint8>& StrokeBrushPresetIndices, FHeistForgeryResult& OutResult, int32& OutReferenceMaskPixels,
+														  int32& OutSubmittedMaskPixels) const
 {
 	if (!bSessionActive || bSubmitPending)
 	{
 		return false;
 	}
 
-	return CalculateForgeryScore(NormalizedPoints, StrokePointCounts, StrokePaletteIndices, BrushSize, OutResult, OutReferenceMaskPixels, OutSubmittedMaskPixels);
+	return CalculateForgeryScore(NormalizedPoints, StrokePointCounts, StrokePaletteIndices, StrokeBrushPresetIndices, OutResult, OutReferenceMaskPixels, OutSubmittedMaskPixels, false);
 }
 
 FHeistForgerySessionStateChanged& UHeistForgeryComponent::GetSessionStateChangedDelegate()
@@ -1476,11 +1494,13 @@ FHeistForgerySessionStateChanged& UHeistForgeryComponent::GetSessionStateChanged
 }
 
 bool UHeistForgeryComponent::ValidateStrokePayload(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices,
-												   const float ClientBrushSize, const int32 ClientSessionRevision, FName& OutRejectReason, int32& OutPayloadBytes) const
+												   const TArray<uint8>& StrokeBrushPresetIndices, const int32 ClientSessionRevision, FName& OutRejectReason,
+												   int32& OutPayloadBytes) const
 {
 	OutRejectReason = NAME_None;
 	const int64 EstimatedPayloadBytes = static_cast<int64>(NormalizedPoints.Num()) * sizeof(FVector2D) + static_cast<int64>(StrokePointCounts.Num()) * sizeof(int32) +
-										static_cast<int64>(StrokePaletteIndices.Num()) * sizeof(uint8) + sizeof(ClientBrushSize) + sizeof(ClientSessionRevision);
+										static_cast<int64>(StrokePaletteIndices.Num()) * sizeof(uint8) + static_cast<int64>(StrokeBrushPresetIndices.Num()) * sizeof(uint8) +
+										sizeof(ClientSessionRevision);
 	OutPayloadBytes = EstimatedPayloadBytes > MAX_int32 ? MAX_int32 : static_cast<int32>(EstimatedPayloadBytes);
 
 	if (bSubmitPending)
@@ -1518,6 +1538,11 @@ bool UHeistForgeryComponent::ValidateStrokePayload(const TArray<FVector2D>& Norm
 	if (StrokePaletteIndices.Num() != StrokePointCounts.Num())
 	{
 		OutRejectReason = FName(TEXT("PaletteLayoutMismatch"));
+		return false;
+	}
+	if (StrokeBrushPresetIndices.Num() != StrokePointCounts.Num())
+	{
+		OutRejectReason = FName(TEXT("BrushPresetLayoutMismatch"));
 		return false;
 	}
 	if (StrokePointCounts.Num() > MaximumSubmittedStrokeCount)
@@ -1579,25 +1604,13 @@ bool UHeistForgeryComponent::ValidateStrokePayload(const TArray<FVector2D>& Norm
 		}
 	}
 
-	if (!FMath::IsFinite(ClientBrushSize) || !FMath::IsWithinInclusive(ClientBrushSize, 0.001f, 0.25f))
+	for (const uint8 BrushPresetIndex : StrokeBrushPresetIndices)
 	{
-		OutRejectReason = FName(TEXT("InvalidBrushSize"));
-		return false;
-	}
-	bool bApprovedBrushPreset = false;
-	for (const float PresetMultiplier : ForgeryBrushPresetMultipliers)
-	{
-		const float ApprovedBrushSize = FMath::Clamp(TemplateBrushSize * PresetMultiplier, 0.001f, 0.25f);
-		if (FMath::IsNearlyEqual(ClientBrushSize, ApprovedBrushSize, BrushSizeValidationTolerance))
+		if (ResolveBrushSizeForPreset(BrushPresetIndex) <= 0.0f)
 		{
-			bApprovedBrushPreset = true;
-			break;
+			OutRejectReason = FName(TEXT("BrushPresetOutOfBounds"));
+			return false;
 		}
-	}
-	if (!bApprovedBrushPreset)
-	{
-		OutRejectReason = FName(TEXT("BrushSizeMismatch"));
-		return false;
 	}
 
 	return true;
@@ -1621,11 +1634,11 @@ void UHeistForgeryComponent::ResetStrokeTransportState(const bool bResetLastVali
 	ValidatedStrokePoints.Reset();
 	ValidatedStrokePointCounts.Reset();
 	ValidatedStrokePaletteIndices.Reset();
+	ValidatedStrokeBrushPresetIndices.Reset();
 	bHasValidatedStrokePayload = false;
 	ValidatedStrokeCount = 0;
 	ValidatedPointCount = 0;
 	ValidatedPayloadBytes = 0;
-	ValidatedBrushSize = 0.0f;
 	if (bResetLastValidation)
 	{
 		bLastStrokeValidationAccepted = false;
@@ -1639,8 +1652,8 @@ bool UHeistForgeryComponent::TryCalculateAndStageForgeryScore()
 	int32 CalculatedReferenceMaskPixels = 0;
 	int32 CalculatedSubmittedMaskPixels = 0;
 	const double ScoreCalculationStartSeconds = FPlatformTime::Seconds();
-	if (!CalculateForgeryScore(ValidatedStrokePoints, ValidatedStrokePointCounts, ValidatedStrokePaletteIndices, ValidatedBrushSize, CalculatedResult, CalculatedReferenceMaskPixels,
-							   CalculatedSubmittedMaskPixels))
+	if (!CalculateForgeryScore(ValidatedStrokePoints, ValidatedStrokePointCounts, ValidatedStrokePaletteIndices, ValidatedStrokeBrushPresetIndices, CalculatedResult,
+							   CalculatedReferenceMaskPixels, CalculatedSubmittedMaskPixels, true))
 	{
 		UHeistDebugFunctionLibrary::DebugForgeryScoreCalculationRejected(this, FName(TEXT("MaskDecodeOrScoreContractFailed")));
 		return false;
@@ -1694,13 +1707,13 @@ bool UHeistForgeryComponent::BuildReplicaPaintingData(FHeistReplicaPaintingData&
 {
 	OutPaintingData = FHeistReplicaPaintingData();
 	if (ValidatedStrokePoints.IsEmpty() || ValidatedStrokePointCounts.IsEmpty() || ValidatedStrokePaletteIndices.Num() != ValidatedStrokePointCounts.Num() ||
-		!FMath::IsWithinInclusive(TemplateAllowedPalette.Num(), 2, 8) || ValidatedBrushSize <= 0.0f)
+		ValidatedStrokeBrushPresetIndices.Num() != ValidatedStrokePointCounts.Num() || !FMath::IsWithinInclusive(TemplateAllowedPalette.Num(), 2, 8))
 	{
 		return false;
 	}
 
 	TArray<uint8> SubmittedPaletteMap;
-	RasterizeForgeryPaletteStrokes(ValidatedStrokePoints, ValidatedStrokePointCounts, ValidatedStrokePaletteIndices, ValidatedBrushSize, SubmittedPaletteMap);
+	RasterizeForgeryPaletteStrokes(ValidatedStrokePoints, ValidatedStrokePointCounts, ValidatedStrokePaletteIndices, ValidatedStrokeBrushPresetIndices, SubmittedPaletteMap);
 
 	const int32 ExpectedPixelCount = ForgeryScoreGridResolution * ForgeryScoreGridResolution;
 	if (SubmittedPaletteMap.Num() != ExpectedPixelCount)
@@ -1796,15 +1809,17 @@ void UHeistForgeryComponent::ResetScoringReferenceCache() const
 	CachedReferencePaletteMap.Reset();
 }
 
-bool UHeistForgeryComponent::CalculateForgeryScore(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices, const float BrushSize,
-												   FHeistForgeryResult& OutResult, int32& OutReferenceMaskPixels, int32& OutSubmittedMaskPixels) const
+bool UHeistForgeryComponent::CalculateForgeryScore(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices,
+												   const TArray<uint8>& StrokeBrushPresetIndices, FHeistForgeryResult& OutResult, int32& OutReferenceMaskPixels,
+												   int32& OutSubmittedMaskPixels, const bool bEmitOpenCVMetricsLog) const
 {
 	OutResult = FHeistForgeryResult();
 	OutReferenceMaskPixels = 0;
 	OutSubmittedMaskPixels = 0;
 	if (!GetOwner() || ActiveArtifactId.IsNone() || ActiveTemplateId.IsNone() || ReferenceImageAsset.IsNull() ||
 		(TemplateBackgroundFilterMode == EHeistForgeryBackgroundFilter::None && ReferenceMaskAsset.IsNull()) || NormalizedPoints.IsEmpty() || StrokePointCounts.IsEmpty() ||
-		StrokePaletteIndices.Num() != StrokePointCounts.Num() || !FMath::IsWithinInclusive(TemplateAllowedPalette.Num(), 2, 8) || BrushSize <= 0.0f || TemplateCoverageWeight < 0.0f ||
+		StrokePaletteIndices.Num() != StrokePointCounts.Num() || StrokeBrushPresetIndices.Num() != StrokePointCounts.Num() || !FMath::IsWithinInclusive(TemplateAllowedPalette.Num(), 2, 8) ||
+		TemplateCoverageWeight < 0.0f ||
 		TemplateMajorShapeWeight < 0.0f || TemplateExtraStrokePenaltyWeight < 0.0f || TemplateTimeoutPenalty < 0.0f || TemplateShapeAccuracyWeight < 0.0f || TemplateColorAccuracyWeight < 0.0f ||
 		TemplateShapeAccuracyWeight + TemplateColorAccuracyWeight <= 0.0f || !FMath::IsWithinInclusive(TemplateBackgroundColorTolerance, 0.0f, 0.49f) || TemplateMaximumPaintToReferenceRatio < 1.0f ||
 		!FMath::IsWithinInclusive(TemplateOverpaintScoreCap, 0.0f, 100.0f))
@@ -1826,7 +1841,7 @@ bool UHeistForgeryComponent::CalculateForgeryScore(const TArray<FVector2D>& Norm
 	const TArray<uint8>& ReferenceMask = CachedReferenceMask;
 	const TArray<uint8>& ReferencePaletteMap = CachedReferencePaletteMap;
 	TArray<uint8> SubmittedPaletteMap;
-	RasterizeForgeryPaletteStrokes(NormalizedPoints, StrokePointCounts, StrokePaletteIndices, BrushSize, SubmittedPaletteMap);
+	RasterizeForgeryPaletteStrokes(NormalizedPoints, StrokePointCounts, StrokePaletteIndices, StrokeBrushPresetIndices, SubmittedPaletteMap);
 
 #if WITH_OPENCV
 	FOpenCVForgeryMetrics OpenCVMetrics;
@@ -1839,7 +1854,7 @@ bool UHeistForgeryComponent::CalculateForgeryScore(const TArray<FVector2D>& Norm
 	LastOpenCVScoringMilliseconds = (FPlatformTime::Seconds() - OpenCVScoringStartSeconds) * 1000.0;
 	OutReferenceMaskPixels = OpenCVMetrics.ReferencePixelCount;
 	OutSubmittedMaskPixels = OpenCVMetrics.SubmittedPixelCount;
-	if (GetOwner()->HasAuthority())
+	if (bEmitOpenCVMetricsLog && GetOwner()->HasAuthority())
 	{
 		UHeistDebugFunctionLibrary::DebugForgeryOpenCVMetrics(
 			this, OpenCVMetrics.ReferenceCoverage, OpenCVMetrics.SubmittedPrecision, OpenCVMetrics.BidirectionalShapeSimilarity, OpenCVMetrics.MaskPrecision, OpenCVMetrics.MaskRecall,
@@ -1942,9 +1957,9 @@ bool UHeistForgeryComponent::RunOpenCVScoringSelfTestForDebug(FString& OutSummar
 	FilledPaletteMap.Init(0, PixelCount);
 	EmptyPaletteMap.Init(EmptyPaletteIndex, PixelCount);
 
-	constexpr int32 ShapeMinimum = 32;
-	constexpr int32 ShapeMaximum = 95;
-	constexpr int32 ShiftPixels = 5;
+	constexpr int32 ShapeMinimum = ForgeryScoreGridResolution / 4;
+	constexpr int32 ShapeMaximum = ForgeryScoreGridResolution * 3 / 4 - 1;
+	constexpr int32 ShiftPixels = ForgeryScoreGridResolution * 5 / 128;
 	for (int32 Y = ShapeMinimum; Y <= ShapeMaximum; ++Y)
 	{
 		for (int32 X = ShapeMinimum; X <= ShapeMaximum; ++X)
@@ -2279,7 +2294,6 @@ void UHeistForgeryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 	DOREPLIFETIME_CONDITION(UHeistForgeryComponent, ValidatedStrokeCount, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(UHeistForgeryComponent, ValidatedPointCount, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(UHeistForgeryComponent, ValidatedPayloadBytes, COND_OwnerOnly);
-	DOREPLIFETIME_CONDITION(UHeistForgeryComponent, ValidatedBrushSize, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(UHeistForgeryComponent, bHasAuthoritativeForgeryResult, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(UHeistForgeryComponent, AuthoritativeForgeryResult, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(UHeistForgeryComponent, ForgeryScoreRevision, COND_OwnerOnly);

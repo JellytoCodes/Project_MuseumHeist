@@ -737,9 +737,14 @@ Escape 취소 조건:
 - Client는 정규화된 Stroke Point를 수집한다.
 - Client는 Stroke별 Point Count를 수집한다.
 - Client는 Stroke별 Palette Index를 수집한다.
-- Client는 Template 기본값에서 파생된 승인 Brush Size Preset만 사용한다.
-- 일반 Surface Forgery는 `0.5× / 1.0× / 1.5×` Brush Size Preset을 제공하며 서버가 허용 집합을 재검증한다.
+- Client는 Stroke마다 승인된 고정 `BrushPresetIndex`를 기록하고 제출한다.
+- 일반 Surface Forgery Brush Preset은 Template 비율값을 사용하지 않고 `소 0.015 / 중 0.030 / 대 0.050`의 세 단계로 고정하며 서버가 허용 집합을 재검증한다.
+- Brush Size 선택 변경은 변경 이후 새로 시작하는 Stroke에만 적용한다. 이미 그린 Stroke의 굵기, Local Preview, 서버 Score와 Replica 굵기는 변경하지 않으며 Eraser 반경에도 영향을 주지 않는다.
+- Surface Forgery의 화면 Drawing은 현재 Brush로 전체 Stroke를 다시 그리는 Vector Line 방식이 아니라 `800×800` Local Palette Raster에 Pointer Segment를 순서대로 누적하는 Painter 방식으로 표시한다.
+- Local Palette Raster는 나중에 칠한 색이 이전 픽셀을 덮어쓴다. 따라서 소/중/대 Brush는 이미 칠한 영역의 크기를 다시 해석하지 않으며, 뒤에 사용한 작은 Brush도 앞서 사용한 큰 Brush 위에 정상 합성돼야 한다.
+- Local Palette Raster와 최종 서버 Palette Raster는 모두 Canvas 경계에서 Brush Stamp를 Clamp한다. Brush 중심이 가장자리에 있어도 색 픽셀이 Drawing Surface 밖으로 표시되거나 판정 데이터 밖으로 기록되어서는 안 된다.
 - Surface Forgery UI는 현재 Brush Size, Point Budget과 Score Raster Resolution을 표시한다.
+- Surface Forgery의 서버 Score와 Replica Palette Raster는 `256×256`을 사용한다. 더 큰 Reference Image는 이 판정 해상도로 정규화한다.
 - Reference Image는 직접 제작한 단순한 이미지를 사용한다.
 - Template별 Palette는 2~8색으로 제한한다.
 - Template은 `None / Black / White` 배경 필터를 사용한다.
@@ -753,7 +758,7 @@ Escape 취소 조건:
 - 서버는 Stroke Count를 검증한다.
 - 서버는 Point Count를 검증한다.
 - 서버는 Palette Index를 검증한다.
-- 서버는 Brush Size를 검증한다.
+- 서버는 Stroke 수와 `BrushPresetIndex` 수의 일치 여부 및 각 Preset 허용 범위를 검증한다.
 - 서버는 Session Revision을 검증한다.
 - Client는 최종 Score를 전송하지 않는다.
 
@@ -761,6 +766,7 @@ Escape 취소 조건:
 
 - Replica Preview와 최종 위조 그림은 동일한 서버 Score용 Palette Raster에서 생성한다.
 - 고정 해상도 Palette Index Data는 Submit 시 Preview로 한 번 복제하고, `E` 확정 시 같은 Data를 Committed Replica로 승격한다.
+- `FHeistReplicaPaintingData`는 전용 `NetSerialize`로 Palette와 4-bit Packed Index Buffer를 연속 바이트 직렬화한다. 일반 반영형 배열 요소 직렬화로 64KB Actor Bunch 제한을 초과하지 않는다.
 - 각 Client는 복제된 Index Data로 Transient Texture를 재구성한다.
 - Render Target을 World Visual 목적으로 복제하지 않는다.
 - 전체 Stroke Payload를 World Visual 목적으로 추가 복제하지 않는다.
@@ -768,6 +774,10 @@ Escape 취소 조건:
 ## OpenCV Score
 
 서버와 Local Preview는 동일한 C++ Evaluator를 사용한다.
+
+Local Preview의 전체 `256×256` OpenCV 평가는 Pointer Drawing / Erase 입력 중에는 실행하지 않는다. 마지막 Stroke 변경 후 `0.5초` 동안 입력이 없을 때 한 번만 재계산하며, 새 입력이 들어오면 대기 시간을 다시 시작한다.
+
+Local Preview 평가와 진단 로그 억제는 클라이언트 반응성 정책일 뿐이며, Submit 시 서버 권한 최종 평가는 생략하거나 저해상도로 대체하지 않는다.
 
 최종 확정값은 서버 결과뿐이다.
 

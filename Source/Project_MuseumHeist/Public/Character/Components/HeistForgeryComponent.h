@@ -40,8 +40,8 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryComponent : public UActorComponent
 	bool TryPrepareForgeryTemplate(AHeistPaintingDisplayCaseActor* TargetDisplayCase, float& OutObservationDuration);
 	bool ClearPreparedForgeryTemplate(FName Reason);
 	bool TryBeginSubmit();
-	bool TrySubmitStrokePayload(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices, float ClientBrushSize,
-								int32 ClientSessionRevision);
+	bool TrySubmitStrokePayload(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices,
+								const TArray<uint8>& StrokeBrushPresetIndices, int32 ClientSessionRevision);
 	bool TryConfirmReplicaSwap();
 	bool TryRestartForgeryFromPreview();
 	bool CancelForgerySession(FName Reason);
@@ -67,6 +67,7 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryComponent : public UActorComponent
 	float GetTemplateForgeryDuration() const;
 	int32 GetTemplateStrokeLimit() const;
 	float GetTemplateBrushSize() const;
+	float ResolveBrushSizeForPreset(uint8 BrushPresetIndex) const;
 	const TArray<FLinearColor>& GetTemplateAllowedPalette() const;
 	bool HasValidatedStrokePayload() const;
 	bool WasLastStrokeValidationAccepted() const;
@@ -75,7 +76,6 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryComponent : public UActorComponent
 	int32 GetValidatedStrokeCount() const;
 	int32 GetValidatedPointCount() const;
 	int32 GetValidatedPayloadBytes() const;
-	float GetValidatedBrushSize() const;
 	const TArray<FVector2D>& GetValidatedStrokePoints() const;
 	const TArray<int32>& GetValidatedStrokePointCounts() const;
 	const TArray<uint8>& GetValidatedStrokePaletteIndices() const;
@@ -87,20 +87,22 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryComponent : public UActorComponent
 	int32 GetSubmittedMaskPixelCount() const;
 	bool RecalculateValidatedForgeryScoreForDebug(FHeistForgeryResult& OutResult, int32& OutReferenceMaskPixels, int32& OutSubmittedMaskPixels) const;
 	bool RunOpenCVScoringSelfTestForDebug(FString& OutSummary) const;
-	bool CalculateLocalForgeryPreview(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices, float BrushSize,
-									  FHeistForgeryResult& OutResult, int32& OutReferenceMaskPixels, int32& OutSubmittedMaskPixels) const;
+	bool CalculateLocalForgeryPreview(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices,
+									  const TArray<uint8>& StrokeBrushPresetIndices, FHeistForgeryResult& OutResult, int32& OutReferenceMaskPixels,
+									  int32& OutSubmittedMaskPixels) const;
 	FHeistForgerySessionStateChanged& GetSessionStateChangedDelegate();
 
   private:
 	bool ValidateActiveSession(FName& OutRejectReason) const;
-	bool ValidateStrokePayload(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices, float ClientBrushSize,
-							   int32 ClientSessionRevision, FName& OutRejectReason, int32& OutPayloadBytes) const;
+	bool ValidateStrokePayload(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices,
+							   const TArray<uint8>& StrokeBrushPresetIndices, int32 ClientSessionRevision, FName& OutRejectReason, int32& OutPayloadBytes) const;
 	void RecordStrokeValidationResult(bool bAccepted, FName Reason);
 	void ResetStrokeTransportState(bool bResetLastValidation);
 	bool TryCalculateAndStageForgeryScore();
 	bool BuildReplicaPaintingData(FHeistReplicaPaintingData& OutPaintingData) const;
-	bool CalculateForgeryScore(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices, float BrushSize,
-							   FHeistForgeryResult& OutResult, int32& OutReferenceMaskPixels, int32& OutSubmittedMaskPixels) const;
+	bool CalculateForgeryScore(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices,
+							   const TArray<uint8>& StrokeBrushPresetIndices, FHeistForgeryResult& OutResult, int32& OutReferenceMaskPixels, int32& OutSubmittedMaskPixels,
+							   bool bEmitOpenCVMetricsLog) const;
 	bool BuildScoringReferenceCache() const;
 	void ResetScoringReferenceCache() const;
 	void ResetForgeryScoreState();
@@ -197,12 +199,10 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryComponent : public UActorComponent
 	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Forgery|Transport", meta = (AllowPrivateAccess = "true"))
 	int32 ValidatedPayloadBytes = 0;
 
-	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Forgery|Transport", meta = (AllowPrivateAccess = "true"))
-	float ValidatedBrushSize = 0.0f;
-
 	TArray<FVector2D> ValidatedStrokePoints;
 	TArray<int32> ValidatedStrokePointCounts;
 	TArray<uint8> ValidatedStrokePaletteIndices;
+	TArray<uint8> ValidatedStrokeBrushPresetIndices;
 
 	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Forgery|Score", meta = (AllowPrivateAccess = "true"))
 	bool bHasAuthoritativeForgeryResult = false;

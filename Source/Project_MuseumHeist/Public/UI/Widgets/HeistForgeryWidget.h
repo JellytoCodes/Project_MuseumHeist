@@ -9,11 +9,16 @@ class UTextBlock;
 class UWidget;
 class UImage;
 class UButton;
+class UTexture2D;
+struct FSlateBrush;
 
 struct FHeistLocalForgeryStroke
 {
 	TArray<FVector2D> Points;
+	FVector2D LastPaintedPoint = FVector2D::ZeroVector;
 	uint8 PaletteIndex = 0;
+	uint8 BrushPresetIndex = 1;
+	bool bHasPaintedPoint = false;
 };
 
 UCLASS(Blueprintable)
@@ -88,9 +93,6 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|Forgery", meta = (DisplayName = "Forgery Sources Ready"))
 	void BP_OnForgerySourcesReady();
 
-	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|Forgery", meta = (DisplayName = "Refresh Forgery Presentation"))
-	void BP_RefreshForgeryPresentation(bool bObservation, bool bDrawing, bool bValidation, bool bResult, float StateEndServerTime, float ResultScore);
-
 	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|Forgery|Palette", meta = (DisplayName = "Refresh Forgery Palette"))
 	void BP_RefreshForgeryPalette(const TArray<FLinearColor>& AllowedPalette, int32 InActivePaletteIndex);
 
@@ -105,7 +107,16 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 	bool AppendLocalStrokePoint(const FVector2D& NormalizedPoint);
 	bool CompactLocalStrokesForPointBudget();
 	bool EraseLocalStrokeSegments(const FVector2D& NormalizedPoint);
-	bool BuildDrawableStrokePayload(TArray<FVector2D>& OutNormalizedPoints, TArray<int32>& OutStrokePointCounts, TArray<uint8>& OutStrokePaletteIndices, int32& OutIgnoredShortStrokeCount) const;
+	bool BuildDrawableStrokePayload(TArray<FVector2D>& OutNormalizedPoints, TArray<int32>& OutStrokePointCounts, TArray<uint8>& OutStrokePaletteIndices,
+		TArray<uint8>& OutStrokeBrushPresetIndices, int32& OutIgnoredShortStrokeCount) const;
+	bool EnsureDrawingRasterResources();
+	void ReleaseDrawingRasterResources();
+	void ClearDrawingRaster();
+	void RebuildDrawingRaster();
+	void PaintDrawingRasterSegment(const FVector2D& Start, const FVector2D& End, float BrushSize, const FLinearColor& Color);
+	void StampDrawingRasterBrush(const FVector2D& NormalizedPoint, float BrushSize, const FColor& Color);
+	void MarkDrawingRasterDirty(int32 MinimumX, int32 MinimumY, int32 MaximumX, int32 MaximumY);
+	void UploadDrawingRasterTexture();
 	void FinishPointerInteraction();
 	void ResetLocalStrokePreview();
 	void RefreshDrawingFeedback();
@@ -126,6 +137,14 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 	bool bErasePointerActive = false;
 	bool bWasDrawingVisible = false;
 	TOptional<FGeometry> DrawingInputWidgetGeometry;
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> DrawingRasterTexture;
+	TSharedPtr<FSlateBrush> DrawingRasterBrush;
+	TArray64<uint8> DrawingRasterBytes;
+	int32 DrawingRasterDirtyMinimumX = 0;
+	int32 DrawingRasterDirtyMinimumY = 0;
+	int32 DrawingRasterDirtyMaximumX = INDEX_NONE;
+	int32 DrawingRasterDirtyMaximumY = INDEX_NONE;
 	mutable bool bPendingDrawCoordinateLog = false;
 	mutable FVector2D PendingDrawMouseScreen = FVector2D::ZeroVector;
 	mutable FVector2D PendingDrawNormalizedPoint = FVector2D::ZeroVector;
@@ -162,15 +181,16 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 
 #pragma region Presentation
 
-  private:
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UWidget> ObservationContainer;
 
+  private:
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UWidget> DrawingContainer;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UWidget> DrawingSurface;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
+	TObjectPtr<UImage> ReferenceImage;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> DrawingPlaceholder;
@@ -237,27 +257,6 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> PaletteButtonText8;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UWidget> ValidationContainer;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UWidget> ResultContainer;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> StateText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> ReferenceText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UImage> ReferenceImage;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> ResultText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> ResultScoreText;
 
 #pragma endregion
 };

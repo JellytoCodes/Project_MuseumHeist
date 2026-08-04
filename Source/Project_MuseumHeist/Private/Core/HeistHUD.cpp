@@ -394,9 +394,8 @@ void AHeistHUD::InitializeForgeryPresentation()
 
 	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	AHeistPlayerCharacter* HeistPlayerCharacter = HeistPlayerController->GetPawn<AHeistPlayerCharacter>();
-	UHeistActionComponent* ActionComponent = IsValid(HeistPlayerCharacter) ? HeistPlayerCharacter->GetActionComponent() : nullptr;
 	UHeistForgeryComponent* ForgeryComponent = IsValid(HeistPlayerCharacter) ? HeistPlayerCharacter->GetForgeryComponent() : nullptr;
-	ForgeryViewModel->SetupViewModel(HeistGameState, ActionComponent, ForgeryComponent);
+	ForgeryViewModel->SetupViewModel(HeistGameState, ForgeryComponent);
 
 	if (!ForgeryWidgetClass)
 	{

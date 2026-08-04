@@ -603,13 +603,6 @@ void UHeistCheatManager::HeistForgeryUIDump()
 #endif
 }
 
-void UHeistCheatManager::HeistForgeryUIPreview(FString State)
-{
-#if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugForgeryUIPreview(GetOuterAPlayerController(), State);
-#endif
-}
-
 #pragma endregion
 
 #pragma region FirstPersonScaleDebug

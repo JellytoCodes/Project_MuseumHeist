@@ -25,8 +25,9 @@ constexpr int32 ReplicaTierPoor = 0;
 constexpr int32 ReplicaTierFair = 1;
 constexpr int32 ReplicaTierGood = 2;
 constexpr int32 ReplicaTierExcellent = 3;
-constexpr int32 ReplicaPaintingResolution = 128;
+constexpr int32 ReplicaPaintingResolution = 256;
 constexpr int32 ReplicaPaintingMaximumPaletteColors = 8;
+constexpr uint32 ReplicaPaintingMaximumPackedBytes = (ReplicaPaintingResolution * ReplicaPaintingResolution + 1) / 2;
 
 constexpr int32 ReplicaScorePrimitiveDataIndex = 0;
 constexpr int32 ReplicaCoveragePrimitiveDataIndex = 1;
@@ -37,6 +38,61 @@ constexpr float PaintingInspectionDelayGoodMultiplier = 2.0f;
 constexpr float PaintingInspectionDelayFairMultiplier = 1.0f;
 constexpr float PaintingInspectionDelayPoorMultiplier = 0.5f;
 constexpr float ReplicaSwapMinimumInspectionDelaySeconds = 3.0f;
+}
+
+bool FHeistReplicaPaintingData::NetSerialize(FArchive& Ar, UPackageMap*, bool& bOutSuccess)
+{
+	static_assert(sizeof(FColor) == 4, "Replica palette network serialization requires four-byte FColor values.");
+
+	const bool bClearedPayload = Resolution == 0 && Palette.IsEmpty() && PackedPaletteIndices.IsEmpty();
+	const bool bCompletePayload = Resolution == ReplicaPaintingResolution && FMath::IsWithinInclusive(Palette.Num(), 2, ReplicaPaintingMaximumPaletteColors) &&
+		PackedPaletteIndices.Num() == static_cast<int32>(ReplicaPaintingMaximumPackedBytes);
+	if (Ar.IsSaving() && !bClearedPayload && !bCompletePayload)
+	{
+		Ar.SetError();
+		bOutSuccess = false;
+		return true;
+	}
+
+	uint32 SerializedResolution = Ar.IsSaving() ? static_cast<uint32>(Resolution) : 0;
+	uint32 SerializedPaletteCount = Ar.IsSaving() ? static_cast<uint32>(Palette.Num()) : 0;
+	uint32 SerializedPackedByteCount = Ar.IsSaving() ? static_cast<uint32>(PackedPaletteIndices.Num()) : 0;
+	uint32 SerializedRevision = Ar.IsSaving() ? static_cast<uint32>(FMath::Max(0, Revision)) : 0;
+	Ar.SerializeIntPacked(SerializedResolution);
+	Ar.SerializeIntPacked(SerializedPaletteCount);
+	Ar.SerializeIntPacked(SerializedPackedByteCount);
+	Ar.SerializeIntPacked(SerializedRevision);
+
+	if (Ar.IsLoading())
+	{
+		const bool bClearedHeader = SerializedResolution == 0 && SerializedPaletteCount == 0 && SerializedPackedByteCount == 0;
+		const bool bCompleteHeader = SerializedResolution == ReplicaPaintingResolution &&
+			FMath::IsWithinInclusive(SerializedPaletteCount, 2U, static_cast<uint32>(ReplicaPaintingMaximumPaletteColors)) &&
+			SerializedPackedByteCount == ReplicaPaintingMaximumPackedBytes;
+		if ((!bClearedHeader && !bCompleteHeader) || SerializedRevision > static_cast<uint32>(MAX_int32))
+		{
+			Ar.SetError();
+			bOutSuccess = false;
+			return true;
+		}
+
+		Resolution = static_cast<int32>(SerializedResolution);
+		Revision = static_cast<int32>(SerializedRevision);
+		Palette.SetNumUninitialized(static_cast<int32>(SerializedPaletteCount));
+		PackedPaletteIndices.SetNumUninitialized(static_cast<int32>(SerializedPackedByteCount));
+	}
+
+	if (!Palette.IsEmpty())
+	{
+		Ar.Serialize(Palette.GetData(), static_cast<int64>(Palette.Num()) * sizeof(FColor));
+	}
+	if (!PackedPaletteIndices.IsEmpty())
+	{
+		Ar.Serialize(PackedPaletteIndices.GetData(), PackedPaletteIndices.Num());
+	}
+
+	bOutSuccess = !Ar.IsError();
+	return true;
 }
 
 const FName AHeistPaintingDisplayCaseActor::OriginalVisualComponentTag(TEXT("OriginalVisual"));

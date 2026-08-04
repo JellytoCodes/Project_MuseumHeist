@@ -1408,17 +1408,17 @@ void AHeistPlayerController::RequestCancelForgery()
 }
 
 void AHeistPlayerController::RequestSubmitForgeryStrokes(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices,
-														 const float ClientBrushSize, const int32 ClientSessionRevision)
+														 const TArray<uint8>& StrokeBrushPresetIndices, const int32 ClientSessionRevision)
 {
 	const AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
 	const UHeistForgeryComponent* ForgeryComponent = IsValid(HeistCharacter) ? HeistCharacter->GetForgeryComponent() : nullptr;
 	const int32 ResolvedSessionRevision = ClientSessionRevision == INDEX_NONE && IsValid(ForgeryComponent) ? ForgeryComponent->GetSessionRevision() : ClientSessionRevision;
 
 	UE_LOG(LogHeistNetwork, Log,
-		   TEXT("[%s] Forgery stroke submit requested: Character=%s Strokes=%d Points=%d PaletteIndices=%d Brush=%.4f ClientSessionRevision=%d Local=%s Authority=%s RenderTargetSent=false"),
-		   *GetName(), *GetNameSafe(HeistCharacter), StrokePointCounts.Num(), NormalizedPoints.Num(), StrokePaletteIndices.Num(), ClientBrushSize, ResolvedSessionRevision,
+		   TEXT("[%s] Forgery stroke submit requested: Character=%s Strokes=%d Points=%d PaletteIndices=%d BrushPresetIndices=%d ClientSessionRevision=%d Local=%s Authority=%s RenderTargetSent=false"),
+		   *GetName(), *GetNameSafe(HeistCharacter), StrokePointCounts.Num(), NormalizedPoints.Num(), StrokePaletteIndices.Num(), StrokeBrushPresetIndices.Num(), ResolvedSessionRevision,
 		   IsLocalController() ? TEXT("true") : TEXT("false"), HasAuthority() ? TEXT("true") : TEXT("false"));
-	Server_SubmitForgeryStrokes(NormalizedPoints, StrokePointCounts, StrokePaletteIndices, ClientBrushSize, ResolvedSessionRevision);
+	Server_SubmitForgeryStrokes(NormalizedPoints, StrokePointCounts, StrokePaletteIndices, StrokeBrushPresetIndices, ResolvedSessionRevision);
 }
 
 void AHeistPlayerController::RequestConfirmForgeryReplicaSwap()
@@ -2063,7 +2063,7 @@ void AHeistPlayerController::Server_CancelForgery_Implementation()
 }
 
 void AHeistPlayerController::Server_SubmitForgeryStrokes_Implementation(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices,
-																		const float ClientBrushSize, const int32 ClientSessionRevision)
+																		const TArray<uint8>& StrokeBrushPresetIndices, const int32 ClientSessionRevision)
 {
 	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
 	UHeistForgeryComponent* ForgeryComponent = IsValid(HeistCharacter) ? HeistCharacter->GetForgeryComponent() : nullptr;
@@ -2073,7 +2073,7 @@ void AHeistPlayerController::Server_SubmitForgeryStrokes_Implementation(const TA
 		return;
 	}
 
-	const bool bAccepted = ForgeryComponent->TrySubmitStrokePayload(NormalizedPoints, StrokePointCounts, StrokePaletteIndices, ClientBrushSize, ClientSessionRevision);
+	const bool bAccepted = ForgeryComponent->TrySubmitStrokePayload(NormalizedPoints, StrokePointCounts, StrokePaletteIndices, StrokeBrushPresetIndices, ClientSessionRevision);
 	const FHeistForgeryResult& ForgeryResult = ForgeryComponent->GetAuthoritativeForgeryResult();
 	UE_LOG(LogHeistNetwork, Log,
 		TEXT(

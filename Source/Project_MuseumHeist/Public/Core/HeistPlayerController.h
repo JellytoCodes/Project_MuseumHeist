@@ -202,8 +202,8 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	UFUNCTION(BlueprintCallable, Category = "Heist|Forgery")
 	void RequestCancelForgery();
 
-	void RequestSubmitForgeryStrokes(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices, float ClientBrushSize,
-									 int32 ClientSessionRevision = INDEX_NONE);
+	void RequestSubmitForgeryStrokes(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices,
+									 const TArray<uint8>& StrokeBrushPresetIndices, int32 ClientSessionRevision = INDEX_NONE);
 	void RequestConfirmForgeryReplicaSwap();
 	void RequestRestartForgeryFromPreview();
 
@@ -275,8 +275,8 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	void Server_CancelForgery();
 
 	UFUNCTION(Server, Reliable)
-	void Server_SubmitForgeryStrokes(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices, float ClientBrushSize,
-									 int32 ClientSessionRevision);
+	void Server_SubmitForgeryStrokes(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices,
+									 const TArray<uint8>& StrokeBrushPresetIndices, int32 ClientSessionRevision);
 
 	UFUNCTION(Server, Reliable)
 	void Server_ConfirmForgeryReplicaSwap();

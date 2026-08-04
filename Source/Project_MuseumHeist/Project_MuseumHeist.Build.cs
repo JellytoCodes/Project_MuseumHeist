@@ -32,6 +32,7 @@ public class Project_MuseumHeist : ModuleRules
 			"ImageCore",
 			"OnlineBase",
 			"OnlineSubsystemUtils",
+			"RHI",
 			"SlateCore"
 		});
 

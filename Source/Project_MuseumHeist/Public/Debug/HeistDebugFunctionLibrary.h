@@ -92,7 +92,7 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 	static void DebugSurfaceTemplateSelectionState(const UObject* WorldContextObject, const TCHAR* ChangeSource, FName PoolId, FName TemplateId, int32 PoolSize,
 												   int32 BagCycle, int32 RemainingCount, int32 SelectionRevision, bool bAccepted);
 	static void DebugForgerySubmitRejected(const UHeistForgeryComponent* ForgeryComponent, FName Reason);
-	static void DebugForgeryStrokePayloadRejected(const UHeistForgeryComponent* ForgeryComponent, int32 StrokeCount, int32 PointCount, int32 PayloadBytes, float ClientBrushSize,
+	static void DebugForgeryStrokePayloadRejected(const UHeistForgeryComponent* ForgeryComponent, int32 StrokeCount, int32 PointCount, int32 PayloadBytes, int32 BrushPresetCount,
 												  int32 ClientSessionRevision, FName Reason);
 	static void DebugForgeryStrokePayloadAccepted(const UHeistForgeryComponent* ForgeryComponent, const AHeistPaintingDisplayCaseActor* SubmittedDisplayCase,
 												  int32 ValidatedSessionRevision);
@@ -499,9 +499,6 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
 	static void DebugForgeryUIDump(APlayerController* PlayerController);
-
-	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
-	static void DebugForgeryUIPreview(APlayerController* PlayerController, const FString& State);
 
 #pragma endregion
 
