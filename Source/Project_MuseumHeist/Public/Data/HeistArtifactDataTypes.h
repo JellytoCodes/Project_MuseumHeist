@@ -106,7 +106,7 @@ struct PROJECT_MUSEUMHEIST_API FHeistForgeryTemplateRow : public FTableRowBase
 	float ForgeryDuration = 60.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery", meta = (ClampMin = "1"))
-	int32 StrokeLimit = 2048;
+	int32 StrokeLimit = 5120;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery", meta = (ClampMin = "0.001", ClampMax = "0.25"))
 	float BrushSize = 0.02f;

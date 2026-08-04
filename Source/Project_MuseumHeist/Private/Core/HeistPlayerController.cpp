@@ -44,6 +44,29 @@
 
 namespace
 {
+constexpr double ForgeryPointQuantizationMaximum = 65535.0;
+
+bool TryPackForgeryPoint(const FVector2D& NormalizedPoint, uint32& OutPackedPoint)
+{
+	if (!FMath::IsFinite(NormalizedPoint.X) || !FMath::IsFinite(NormalizedPoint.Y) || !FMath::IsWithinInclusive(NormalizedPoint.X, 0.0, 1.0) ||
+		!FMath::IsWithinInclusive(NormalizedPoint.Y, 0.0, 1.0))
+	{
+		return false;
+	}
+
+	const uint32 QuantizedX = static_cast<uint32>(FMath::Clamp(FMath::RoundToInt64(NormalizedPoint.X * ForgeryPointQuantizationMaximum), static_cast<int64>(0), static_cast<int64>(MAX_uint16)));
+	const uint32 QuantizedY = static_cast<uint32>(FMath::Clamp(FMath::RoundToInt64(NormalizedPoint.Y * ForgeryPointQuantizationMaximum), static_cast<int64>(0), static_cast<int64>(MAX_uint16)));
+	OutPackedPoint = QuantizedX | (QuantizedY << 16);
+	return true;
+}
+
+FVector2D UnpackForgeryPoint(const uint32 PackedPoint)
+{
+	const double NormalizedX = static_cast<double>(PackedPoint & MAX_uint16) / ForgeryPointQuantizationMaximum;
+	const double NormalizedY = static_cast<double>((PackedPoint >> 16) & MAX_uint16) / ForgeryPointQuantizationMaximum;
+	return FVector2D(NormalizedX, NormalizedY);
+}
+
 bool CanUseHeistInteraction(AActor* TargetActor, const AActor* Interactor)
 {
 	IHeistInteractable* InteractableTarget = Cast<IHeistInteractable>(TargetActor);
@@ -1408,17 +1431,32 @@ void AHeistPlayerController::RequestCancelForgery()
 }
 
 void AHeistPlayerController::RequestSubmitForgeryStrokes(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices,
-														 const TArray<uint8>& StrokeBrushPresetIndices, const int32 ClientSessionRevision)
+													 const TArray<uint8>& StrokeBrushPresetIndices, const int32 ClientSessionRevision)
 {
 	const AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
 	const UHeistForgeryComponent* ForgeryComponent = IsValid(HeistCharacter) ? HeistCharacter->GetForgeryComponent() : nullptr;
 	const int32 ResolvedSessionRevision = ClientSessionRevision == INDEX_NONE && IsValid(ForgeryComponent) ? ForgeryComponent->GetSessionRevision() : ClientSessionRevision;
 
+	TArray<uint32> PackedNormalizedPoints;
+	PackedNormalizedPoints.Reserve(NormalizedPoints.Num());
+	for (const FVector2D& NormalizedPoint : NormalizedPoints)
+	{
+		uint32 PackedPoint = 0;
+		if (!TryPackForgeryPoint(NormalizedPoint, PackedPoint))
+		{
+			UE_LOG(LogHeistNetwork, Warning,
+				TEXT("[%s] Forgery stroke submit rejected locally: Character=%s Points=%d Reason=InvalidNormalizedPoint CoordinateEncoding=UInt16Pair Result=REJECTED"), *GetName(),
+				*GetNameSafe(HeistCharacter), NormalizedPoints.Num());
+			return;
+		}
+		PackedNormalizedPoints.Add(PackedPoint);
+	}
+
 	UE_LOG(LogHeistNetwork, Log,
-		   TEXT("[%s] Forgery stroke submit requested: Character=%s Strokes=%d Points=%d PaletteIndices=%d BrushPresetIndices=%d ClientSessionRevision=%d Local=%s Authority=%s RenderTargetSent=false"),
+		   TEXT("[%s] Forgery stroke submit requested: Character=%s Strokes=%d Points=%d PaletteIndices=%d BrushPresetIndices=%d ClientSessionRevision=%d Local=%s Authority=%s CoordinateEncoding=UInt16Pair RenderTargetSent=false"),
 		   *GetName(), *GetNameSafe(HeistCharacter), StrokePointCounts.Num(), NormalizedPoints.Num(), StrokePaletteIndices.Num(), StrokeBrushPresetIndices.Num(), ResolvedSessionRevision,
 		   IsLocalController() ? TEXT("true") : TEXT("false"), HasAuthority() ? TEXT("true") : TEXT("false"));
-	Server_SubmitForgeryStrokes(NormalizedPoints, StrokePointCounts, StrokePaletteIndices, StrokeBrushPresetIndices, ResolvedSessionRevision);
+	Server_SubmitForgeryStrokes(PackedNormalizedPoints, StrokePointCounts, StrokePaletteIndices, StrokeBrushPresetIndices, ResolvedSessionRevision);
 }
 
 void AHeistPlayerController::RequestConfirmForgeryReplicaSwap()
@@ -2062,8 +2100,9 @@ void AHeistPlayerController::Server_CancelForgery_Implementation()
 	UE_LOG(LogHeistNetwork, Log, TEXT("[%s] Forgery input cancel: Character=%s Result=%s"), *GetName(), *GetNameSafe(HeistCharacter), bCancelled ? TEXT("PASS") : TEXT("REJECTED"));
 }
 
-void AHeistPlayerController::Server_SubmitForgeryStrokes_Implementation(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices,
-																		const TArray<uint8>& StrokeBrushPresetIndices, const int32 ClientSessionRevision)
+void AHeistPlayerController::Server_SubmitForgeryStrokes_Implementation(const TArray<uint32>& PackedNormalizedPoints, const TArray<int32>& StrokePointCounts,
+																		const TArray<uint8>& StrokePaletteIndices, const TArray<uint8>& StrokeBrushPresetIndices,
+																		const int32 ClientSessionRevision)
 {
 	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
 	UHeistForgeryComponent* ForgeryComponent = IsValid(HeistCharacter) ? HeistCharacter->GetForgeryComponent() : nullptr;
@@ -2073,12 +2112,19 @@ void AHeistPlayerController::Server_SubmitForgeryStrokes_Implementation(const TA
 		return;
 	}
 
+	TArray<FVector2D> NormalizedPoints;
+	NormalizedPoints.Reserve(PackedNormalizedPoints.Num());
+	for (const uint32 PackedPoint : PackedNormalizedPoints)
+	{
+		NormalizedPoints.Add(UnpackForgeryPoint(PackedPoint));
+	}
+
 	const bool bAccepted = ForgeryComponent->TrySubmitStrokePayload(NormalizedPoints, StrokePointCounts, StrokePaletteIndices, StrokeBrushPresetIndices, ClientSessionRevision);
 	const FHeistForgeryResult& ForgeryResult = ForgeryComponent->GetAuthoritativeForgeryResult();
 	UE_LOG(LogHeistNetwork, Log,
 		TEXT(
 			"[%s] Forgery stroke RPC processed: Character=%s Strokes=%d Points=%d ClientSessionRevision=%d ServerSessionRevision=%d Accepted=%s HasAuthoritativeScore=%s Score=%.2f ScoreRevision=%d Result=%s"),
-		*GetName(), *GetNameSafe(HeistCharacter), StrokePointCounts.Num(), NormalizedPoints.Num(), ClientSessionRevision, ForgeryComponent->GetSessionRevision(),
+		*GetName(), *GetNameSafe(HeistCharacter), StrokePointCounts.Num(), PackedNormalizedPoints.Num(), ClientSessionRevision, ForgeryComponent->GetSessionRevision(),
 		bAccepted ? TEXT("true") : TEXT("false"), ForgeryComponent->HasAuthoritativeForgeryResult() ? TEXT("true") : TEXT("false"), ForgeryResult.SimilarityScore,
 		ForgeryComponent->GetForgeryScoreRevision(), bAccepted ? TEXT("PASS") : TEXT("REJECTED"));
 }

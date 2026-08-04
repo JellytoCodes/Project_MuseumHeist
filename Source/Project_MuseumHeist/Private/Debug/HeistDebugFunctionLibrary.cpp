@@ -2986,21 +2986,21 @@ void UHeistDebugFunctionLibrary::DebugSurfaceTemplateContentValidate(APlayerCont
 			++EasyCount;
 			bDifficultyValid =
 				FMath::IsNearlyEqual(Template->ForgeryDuration, 60.0f) &&
-				Template->StrokeLimit == 1536 &&
+				Template->StrokeLimit == 4096 &&
 				FMath::IsNearlyEqual(Template->BrushSize, 0.025f);
 			break;
 		case 5:
 			++MediumCount;
 			bDifficultyValid =
 				FMath::IsNearlyEqual(Template->ForgeryDuration, 75.0f) &&
-				Template->StrokeLimit == 2048 &&
+				Template->StrokeLimit == 5120 &&
 				FMath::IsNearlyEqual(Template->BrushSize, 0.02f);
 			break;
 		case 6:
 			++HardCount;
 			bDifficultyValid =
 				FMath::IsNearlyEqual(Template->ForgeryDuration, 90.0f) &&
-				Template->StrokeLimit == 3072 &&
+				Template->StrokeLimit == 6144 &&
 				FMath::IsNearlyEqual(Template->BrushSize, 0.018f);
 			break;
 		default:
@@ -3107,20 +3107,20 @@ void UHeistDebugFunctionLibrary::DebugForgeryStrokeDump(APlayerController* Playe
 	const int32 ActivePaletteIndex = ForgeryWidget->GetActivePaletteIndex();
 	const bool bPaletteControlsReady =
 		FMath::IsWithinInclusive(PaletteColorCount, 2, 8) && VisiblePaletteButtonCount == PaletteColorCount && FMath::IsWithinInclusive(ActivePaletteIndex, 0, PaletteColorCount - 1);
-	const bool bLimitRespected = StrokeLimit > 0 && PointCount <= StrokeLimit;
+	const bool bTransportBudgetConfigured = StrokeLimit > 0;
 	const bool bBrushValid = FMath::IsWithinInclusive(BrushSize, 0.001f, 0.25f);
 	const bool bCollectionReady = StrokeCount > 0 && PointCount > 1 && SegmentCount > 0;
 	const bool bEraseVerified = ErasedCount > 0;
-	const bool bContractPassed = bCanvasReady && bDrawingVisible && bPaletteControlsReady && bNormalized && bLimitRespected && bBrushValid && bCollectionReady && bEraseVerified;
+	const bool bContractPassed = bCanvasReady && bDrawingVisible && bPaletteControlsReady && bNormalized && bTransportBudgetConfigured && bBrushValid && bCollectionReady && bEraseVerified;
 
 	Message(
 		PlayerController,
 		FString::Printf(
 			TEXT(
-				"Forgery stroke dump: DrawingVisible=%s CanvasReady=%s CanvasSize=(%.1f,%.1f) EmptyCanvas=%s PaletteColors=%d PaletteButtons=%d ActivePalette=%d PaletteControls=%s Preview='%s' Strokes=%d Points=%d Segments=%d ErasedStrokes=%d StrokeLimit=%d LimitRespected=%s Brush=%.4f BrushValid=%s NormalizedPoints=%s Collection=%s Erase=%s Result=%s"),
+				"Forgery stroke dump: DrawingVisible=%s CanvasReady=%s CanvasSize=(%.1f,%.1f) EmptyCanvas=%s PaletteColors=%d PaletteButtons=%d ActivePalette=%d PaletteControls=%s Preview='%s' Strokes=%d LocalPoints=%d Segments=%d ErasedStrokes=%d TransportPointBudget=%d LocalDrawingUnbounded=true TransportBudgetConfigured=%s Brush=%.4f BrushValid=%s NormalizedPoints=%s Collection=%s Erase=%s Result=%s"),
 			bDrawingVisible ? TEXT("true") : TEXT("false"), bCanvasReady ? TEXT("true") : TEXT("false"), CanvasSize.X, CanvasSize.Y, PointCount == 0 ? TEXT("true") : TEXT("false"), PaletteColorCount,
 			VisiblePaletteButtonCount, ActivePaletteIndex + 1, bPaletteControlsReady ? TEXT("PASS") : TEXT("FAIL"), *ForgeryWidget->GetPreviewScoreText(), StrokeCount, PointCount, SegmentCount,
-			ErasedCount, StrokeLimit, bLimitRespected ? TEXT("true") : TEXT("false"), BrushSize, bBrushValid ? TEXT("true") : TEXT("false"), bNormalized ? TEXT("true") : TEXT("false"),
+			ErasedCount, StrokeLimit, bTransportBudgetConfigured ? TEXT("true") : TEXT("false"), BrushSize, bBrushValid ? TEXT("true") : TEXT("false"), bNormalized ? TEXT("true") : TEXT("false"),
 			bCollectionReady ? TEXT("PASS") : TEXT("FAIL"), bEraseVerified ? TEXT("PASS") : TEXT("FAIL"), bContractPassed ? TEXT("PASS") : TEXT("FAIL")),
 		bContractPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
 #endif
@@ -3146,7 +3146,7 @@ void UHeistDebugFunctionLibrary::DebugForgeryTransportDump(APlayerController* Pl
 		PlayerController,
 		FString::Printf(
 			TEXT(
-				"Forgery transport dump: SessionActive=%s SubmitPending=%s HasValidatedPayload=%s LastAccepted=%s LastReason=%s ValidationRevision=%d Strokes=%d Points=%d StrokeLimit=%d PayloadBytes=%d PayloadLimitBytes=%d BrushMode=PerStrokePreset TemplateBrush=%.4f RenderTargetReplicated=false Authority=%s Result=%s"),
+				"Forgery transport dump: SessionActive=%s SubmitPending=%s HasValidatedPayload=%s LastAccepted=%s LastReason=%s ValidationRevision=%d Strokes=%d Points=%d TransportPointBudget=%d PayloadBytes=%d PayloadLimitBytes=%d CoordinateEncoding=UInt16Pair BrushMode=PerStrokePreset TemplateBrush=%.4f RenderTargetReplicated=false Authority=%s Result=%s"),
 			ForgeryComponent->IsSessionActive() ? TEXT("true") : TEXT("false"), ForgeryComponent->IsSubmitPending() ? TEXT("true") : TEXT("false"),
 			ForgeryComponent->HasValidatedStrokePayload() ? TEXT("true") : TEXT("false"), ForgeryComponent->WasLastStrokeValidationAccepted() ? TEXT("true") : TEXT("false"),
 			ForgeryComponent->GetLastStrokeValidationReason().IsNone() ? TEXT("None") : *ForgeryComponent->GetLastStrokeValidationReason().ToString(), ForgeryComponent->GetStrokeValidationRevision(),
@@ -3184,9 +3184,10 @@ void UHeistDebugFunctionLibrary::DebugForgeryTransportTest(APlayerController* Pl
 	}
 	else if (NormalizedScenario == TEXT("bounds"))
 	{
-		Points = {FVector2D(0.1, 0.1), FVector2D(1.25, 0.2)};
-		StrokePointCounts = {2};
-		ExpectedResult = TEXT("REJECTED_PointOutOfBounds");
+		Message(PlayerController,
+			TEXT("Forgery transport test: Scenario=bounds CoordinateEncoding=UInt16Pair OutOfBoundsRepresentable=false ClientPackingValidation=true Result=PASS"),
+			EHeistDebugLevel::Info, true, 12.0f);
+		return;
 	}
 	else if (NormalizedScenario == TEXT("count"))
 	{

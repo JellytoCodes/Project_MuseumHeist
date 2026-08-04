@@ -1,5 +1,6 @@
 #include "UI/Widgets/HeistForgeryWidget.h"
 
+#include "Components/Border.h"
 #include "Components/Button.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
@@ -11,26 +12,143 @@
 #include "GameFramework/GameStateBase.h"
 #include "Input/Events.h"
 #include "InputCoreTypes.h"
-#include "Layout/Clipping.h"
-#include "Rendering/DrawElementTypes.h"
 #include "RHITypes.h"
 #include "Styling/SlateBrush.h"
 #include "UI/ViewModels/HeistForgeryViewModel.h"
 
 namespace
 {
-// The local raster follows every pointer segment. Transport points can be
-// sampled more sparsely, but must stay dense enough for the server raster to
-// reproduce curves without visibly cutting corners.
-constexpr float MinimumNormalizedPointSpacing = 0.0025f;
-constexpr float BrushRelativePointSpacing = 0.25f;
+// The local raster follows every pointer segment. The replicated polyline is
+// sampled and simplified independently so transport limits never stop local
+// painting during a live stroke.
+constexpr float MinimumNormalizedPointSpacing = 0.006f;
+constexpr float BrushRelativePointSpacing = 0.50f;
 constexpr float NormalizedEraseRadius = 0.03f;
 // Full 256x256 OpenCV preview scoring runs synchronously on the game thread.
-// Wait until pointer editing has stopped so scoring never interrupts a live stroke.
-constexpr float PreviewScoreIdleDelaySeconds = 0.50f;
-constexpr float DrawingSurfaceSizeSlateUnits = 800.0f;
-constexpr int32 DrawingRasterResolution = 800;
+// Completed strokes refresh quickly, while a held pointer is sampled at a
+// deliberately lower cadence so feedback remains useful without stalling every
+// drawing event.
+constexpr float PreviewScoreReleaseDelaySeconds = 0.12f;
+constexpr float PreviewScoreActiveIntervalSeconds = 1.25f;
+constexpr float MinimumDrawingSurfaceDimensionSlateUnits = 256.0f;
+constexpr float MaximumDrawingSurfaceAspectError = 0.02f;
+// The WBP layout may be 400, 800, or DPI-scaled to another visible size. Keep
+// the painter on its own power-of-two supersampled canvas.
+constexpr int32 DrawingRasterResolution = 1024;
 constexpr int32 DrawingRasterBytesPerPixel = 4;
+
+void ResetRasterToOpaqueBlack(TArray64<uint8>& RasterBytes)
+{
+	FMemory::Memzero(RasterBytes.GetData(), RasterBytes.Num());
+	for (int64 AlphaOffset = 3; AlphaOffset < RasterBytes.Num(); AlphaOffset += DrawingRasterBytesPerPixel)
+	{
+		RasterBytes[AlphaOffset] = 255;
+	}
+}
+
+double GetPolylinePointToSegmentDistanceSquared(const FVector2D& Point, const FVector2D& SegmentStart, const FVector2D& SegmentEnd)
+{
+	const FVector2D Segment = SegmentEnd - SegmentStart;
+	const double SegmentLengthSquared = Segment.SizeSquared();
+	if (SegmentLengthSquared <= UE_DOUBLE_SMALL_NUMBER)
+	{
+		return FVector2D::DistSquared(Point, SegmentStart);
+	}
+
+	const double Projection = FMath::Clamp(FVector2D::DotProduct(Point - SegmentStart, Segment) / SegmentLengthSquared, 0.0, 1.0);
+	return FVector2D::DistSquared(Point, SegmentStart + Segment * Projection);
+}
+
+void MarkPolylinePointsToKeep(const TArray<FVector2D>& Points, const double ToleranceSquared, TArray<uint8>& KeepFlags)
+{
+	if (Points.Num() <= 2)
+	{
+		return;
+	}
+
+	TArray<FIntPoint> PendingRanges;
+	PendingRanges.Reserve(Points.Num());
+	PendingRanges.Emplace(0, Points.Num() - 1);
+	while (!PendingRanges.IsEmpty())
+	{
+		const FIntPoint Range = PendingRanges.Pop(EAllowShrinking::No);
+		if (Range.Y <= Range.X + 1)
+		{
+			continue;
+		}
+
+		double MaximumDistanceSquared = 0.0;
+		int32 FarthestPointIndex = INDEX_NONE;
+		for (int32 PointIndex = Range.X + 1; PointIndex < Range.Y; ++PointIndex)
+		{
+			const double DistanceSquared = GetPolylinePointToSegmentDistanceSquared(Points[PointIndex], Points[Range.X], Points[Range.Y]);
+			if (DistanceSquared > MaximumDistanceSquared)
+			{
+				MaximumDistanceSquared = DistanceSquared;
+				FarthestPointIndex = PointIndex;
+			}
+		}
+
+		if (FarthestPointIndex == INDEX_NONE || MaximumDistanceSquared <= ToleranceSquared)
+		{
+			continue;
+		}
+
+		KeepFlags[FarthestPointIndex] = 1;
+		PendingRanges.Emplace(Range.X, FarthestPointIndex);
+		PendingRanges.Emplace(FarthestPointIndex, Range.Y);
+	}
+}
+
+bool SimplifyPolyline(TArray<FVector2D>& Points, const float Tolerance)
+{
+	if (Points.Num() <= 2 || Tolerance <= 0.0f)
+	{
+		return false;
+	}
+
+	TArray<uint8> KeepFlags;
+	KeepFlags.Init(0, Points.Num());
+	KeepFlags[0] = 1;
+	KeepFlags.Last() = 1;
+	MarkPolylinePointsToKeep(Points, FMath::Square(static_cast<double>(Tolerance)), KeepFlags);
+
+	TArray<FVector2D> SimplifiedPoints;
+	SimplifiedPoints.Reserve(Points.Num());
+	for (int32 PointIndex = 0; PointIndex < Points.Num(); ++PointIndex)
+	{
+		if (KeepFlags[PointIndex] != 0)
+		{
+			SimplifiedPoints.Add(Points[PointIndex]);
+		}
+	}
+
+	if (SimplifiedPoints.Num() >= Points.Num())
+	{
+		return false;
+	}
+
+	Points = MoveTemp(SimplifiedPoints);
+	return true;
+}
+
+void ResamplePolylineToPointCount(TArray<FVector2D>& Points, const int32 TargetPointCount)
+{
+	if (TargetPointCount < 2 || Points.Num() <= TargetPointCount)
+	{
+		return;
+	}
+
+	TArray<FVector2D> ResampledPoints;
+	ResampledPoints.Reserve(TargetPointCount);
+	for (int32 TargetIndex = 0; TargetIndex < TargetPointCount; ++TargetIndex)
+	{
+		const double SourcePosition = static_cast<double>(TargetIndex) * (Points.Num() - 1) / (TargetPointCount - 1);
+		const int32 SourceIndex = FMath::Clamp(FMath::RoundToInt32(SourcePosition), 0, Points.Num() - 1);
+		ResampledPoints.Add(Points[SourceIndex]);
+	}
+	Points = MoveTemp(ResampledPoints);
+}
 
 FLinearColor ResolveScoreTextColor(const float Score)
 {
@@ -66,14 +184,14 @@ void ApplyScorePresentation(UTextBlock* ScoreText, const TOptional<float> Score)
 
 	if (!Score.IsSet() || !FMath::IsFinite(Score.GetValue()))
 	{
-		ScoreText->SetText(NSLOCTEXT("HeistForgery", "UnavailableScore", "점수  --/100"));
+		ScoreText->SetText(NSLOCTEXT("HeistForgery", "UnavailableScore", "예상 점수  --/100"));
 		ScoreText->SetColorAndOpacity(FLinearColor(0.72f, 0.76f, 0.82f));
 		return;
 	}
 
 	const float ClampedScore = FMath::Clamp(Score.GetValue(), 0.0f, 100.0f);
 	ScoreText->SetText(
-		FText::Format(NSLOCTEXT("HeistForgery", "ScoreFormat", "점수  {0}/100"), FText::AsNumber(FMath::RoundToInt(ClampedScore))));
+		FText::Format(NSLOCTEXT("HeistForgery", "ScoreFormat", "예상 점수  {0}/100"), FText::AsNumber(FMath::RoundToInt(ClampedScore))));
 	ScoreText->SetColorAndOpacity(ResolveScoreTextColor(ClampedScore));
 }
 }
@@ -118,86 +236,15 @@ void UHeistForgeryWidget::NativeTick(const FGeometry& MyGeometry, const float In
 	{
 		return;
 	}
-	if (ActiveStrokeIndex != INDEX_NONE || bErasePointerActive)
-	{
-		PreviewScoreUpdateAccumulator = 0.0f;
-		return;
-	}
-
 	PreviewScoreUpdateAccumulator += InDeltaTime;
-	if (PreviewScoreUpdateAccumulator < PreviewScoreIdleDelaySeconds)
+	const bool bPointerEditing = ActiveStrokeIndex != INDEX_NONE || bErasePointerActive;
+	const float RequiredDelay = bPointerEditing ? PreviewScoreActiveIntervalSeconds : PreviewScoreReleaseDelaySeconds;
+	if (PreviewScoreUpdateAccumulator < RequiredDelay)
 	{
 		return;
 	}
 
 	RefreshLocalPreviewScore();
-}
-
-int32 UHeistForgeryWidget::NativePaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry, const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, const int32 LayerId,
-									   const FWidgetStyle& InWidgetStyle, const bool bParentEnabled) const
-{
-	const int32 SuperLayer = Super::NativePaint(Args, AllottedGeometry, MyCullingRect, OutDrawElements, LayerId, InWidgetStyle, bParentEnabled);
-	if (!IsDrawingInputEnabled() || LocalStrokes.IsEmpty())
-	{
-		return SuperLayer;
-	}
-
-	if (!DrawingInputWidgetGeometry.IsSet())
-	{
-		return SuperLayer;
-	}
-
-	const FGeometry SurfaceGeometry = DrawingSurface->GetCachedGeometry();
-	// Windowed PIE reports pointer/child geometry in desktop space, while
-	// NativePaint's AllottedGeometry is rooted in the PIE window. Convert
-	// through the input-event geometry so DrawPoints remain widget-local.
-	const FGeometry& WidgetGeometry = DrawingInputWidgetGeometry.GetValue();
-	const FVector2D SurfaceLocalSize = SurfaceGeometry.GetLocalSize();
-	const FVector2D WidgetLocalSize = WidgetGeometry.GetLocalSize();
-	if (SurfaceLocalSize.X <= 0.0f || SurfaceLocalSize.Y <= 0.0f || WidgetLocalSize.X <= 0.0f || WidgetLocalSize.Y <= 0.0f)
-	{
-		return SuperLayer;
-	}
-
-	if (bPendingDrawCoordinateLog)
-	{
-		const FVector2D SurfaceLocal(PendingDrawNormalizedPoint.X * SurfaceLocalSize.X, PendingDrawNormalizedPoint.Y * SurfaceLocalSize.Y);
-		const FVector2D PaintScreen = SurfaceGeometry.LocalToAbsolute(SurfaceLocal);
-		const FVector2D PaintWidgetLocal = WidgetGeometry.AbsoluteToLocal(PaintScreen);
-		const FVector2D ReprojectedPaintScreen = WidgetGeometry.LocalToAbsolute(PaintWidgetLocal);
-		const FVector2D MouseToPaintDelta = ReprojectedPaintScreen - PendingDrawMouseScreen;
-		const FVector2D SurfaceScreenTopLeft = SurfaceGeometry.LocalToAbsolute(FVector2D::ZeroVector);
-		const FVector2D SurfaceScreenBottomRight = SurfaceGeometry.LocalToAbsolute(SurfaceLocalSize);
-
-		UE_LOG(LogHeistUI, Log,
-			TEXT(
-				"[%s] Forgery draw paint coordinate: MouseScreen=(%.2f,%.2f) Normalized=(%.6f,%.6f) SurfaceLocal=(%.2f,%.2f) PaintWidgetLocal=(%.2f,%.2f) PaintScreen=(%.2f,%.2f) MouseToPaintDelta=(%.2f,%.2f) SurfaceScreen=[(%.2f,%.2f)->(%.2f,%.2f)] SurfaceLocalSize=(%.2f,%.2f) Result=%s"),
-			*GetName(), PendingDrawMouseScreen.X, PendingDrawMouseScreen.Y, PendingDrawNormalizedPoint.X, PendingDrawNormalizedPoint.Y, SurfaceLocal.X, SurfaceLocal.Y, PaintWidgetLocal.X,
-			PaintWidgetLocal.Y, ReprojectedPaintScreen.X, ReprojectedPaintScreen.Y, MouseToPaintDelta.X, MouseToPaintDelta.Y, SurfaceScreenTopLeft.X, SurfaceScreenTopLeft.Y,
-			SurfaceScreenBottomRight.X, SurfaceScreenBottomRight.Y, SurfaceLocalSize.X, SurfaceLocalSize.Y, MouseToPaintDelta.IsNearlyZero(0.5) ? TEXT("MATCH") : TEXT("MISMATCH"));
-		bPendingDrawCoordinateLog = false;
-	}
-
-	if (!DrawingRasterBrush.IsValid() || !IsValid(DrawingRasterTexture))
-	{
-		return SuperLayer;
-	}
-
-	const FVector2D SurfaceWidgetTopLeft = WidgetGeometry.AbsoluteToLocal(SurfaceGeometry.LocalToAbsolute(FVector2D::ZeroVector));
-	const FVector2D SurfaceWidgetBottomRight = WidgetGeometry.AbsoluteToLocal(SurfaceGeometry.LocalToAbsolute(SurfaceLocalSize));
-	const FVector2D SurfaceWidgetSize = SurfaceWidgetBottomRight - SurfaceWidgetTopLeft;
-	if (SurfaceWidgetSize.X <= 0.0f || SurfaceWidgetSize.Y <= 0.0f)
-	{
-		return SuperLayer;
-	}
-
-	const int32 StrokeLayer = SuperLayer + 1;
-	OutDrawElements.PushClip(FSlateClippingZone(SurfaceGeometry));
-	FSlateDrawElement::MakeBox(OutDrawElements, StrokeLayer, AllottedGeometry.ToPaintGeometry(SurfaceWidgetSize, FSlateLayoutTransform(SurfaceWidgetTopLeft)), DrawingRasterBrush.Get(),
-		ESlateDrawEffect::None, FLinearColor::White);
-	OutDrawElements.PopClip();
-
-	return StrokeLayer;
 }
 
 FReply UHeistForgeryWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
@@ -206,8 +253,6 @@ FReply UHeistForgeryWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry,
 	{
 		return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
 	}
-
-	DrawingInputWidgetGeometry.Emplace(InGeometry);
 
 	const bool bDrawAttempt = InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton;
 	const FGeometry SurfaceGeometry = DrawingSurface->GetCachedGeometry();
@@ -239,16 +284,13 @@ FReply UHeistForgeryWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry,
 		const bool bStrokeBegan = BeginLocalStroke(NormalizedPoint);
 		UE_LOG(LogHeistUI, Log,
 			TEXT(
-				"[%s] Forgery draw input coordinate: MouseScreen=(%.2f,%.2f) ViewportMouse=(%.2f,%.2f) HasViewportMouse=%s SurfaceLocal=(%.2f,%.2f) SurfaceLocalSize=(%.2f,%.2f) Normalized=(%.6f,%.6f) WidgetScreenTopLeft=(%.2f,%.2f) WidgetLocalSize=(%.2f,%.2f) Inside=true PointCount=%d StrokeLimit=%d Result=%s"),
+				"[%s] Forgery draw input coordinate: MouseScreen=(%.2f,%.2f) ViewportMouse=(%.2f,%.2f) HasViewportMouse=%s SurfaceLocal=(%.2f,%.2f) SurfaceLocalSize=(%.2f,%.2f) Normalized=(%.6f,%.6f) WidgetScreenTopLeft=(%.2f,%.2f) WidgetLocalSize=(%.2f,%.2f) Inside=true LocalPoints=%d TransportPointBudget=%d Result=%s"),
 			*GetName(), MouseScreen.X, MouseScreen.Y, ViewportMouseX, ViewportMouseY, bHasViewportMouse ? TEXT("true") : TEXT("false"), RawSurfaceLocal.X, RawSurfaceLocal.Y, SurfaceLocalSize.X,
 			SurfaceLocalSize.Y, NormalizedPoint.X, NormalizedPoint.Y, InGeometry.LocalToAbsolute(FVector2D::ZeroVector).X, InGeometry.LocalToAbsolute(FVector2D::ZeroVector).Y,
-			InGeometry.GetLocalSize().X, InGeometry.GetLocalSize().Y, GetCollectedPointCount(), GetConfiguredStrokeLimit(), bStrokeBegan ? TEXT("ACCEPTED") : TEXT("REJECTED_LIMIT"));
+			InGeometry.GetLocalSize().X, InGeometry.GetLocalSize().Y, GetCollectedPointCount(), GetConfiguredStrokeLimit(), bStrokeBegan ? TEXT("ACCEPTED") : TEXT("REJECTED_RASTER"));
 
 		if (bStrokeBegan)
 		{
-			PendingDrawMouseScreen = MouseScreen;
-			PendingDrawNormalizedPoint = NormalizedPoint;
-			bPendingDrawCoordinateLog = true;
 			return FReply::Handled().CaptureMouse(TakeWidget());
 		}
 	}
@@ -284,8 +326,6 @@ FReply UHeistForgeryWidget::NativeOnMouseMove(const FGeometry& InGeometry, const
 		return Super::NativeOnMouseMove(InGeometry, InMouseEvent);
 	}
 
-	DrawingInputWidgetGeometry.Emplace(InGeometry);
-
 	FVector2D NormalizedPoint = FVector2D::ZeroVector;
 	if (!TryResolveNormalizedDrawingPoint(InMouseEvent, NormalizedPoint))
 	{
@@ -313,15 +353,19 @@ FReply UHeistForgeryWidget::NativeOnMouseMove(const FGeometry& InGeometry, const
 		}
 
 		AppendLocalStrokePoint(NormalizedPoint);
-		return ActiveStrokeIndex != INDEX_NONE ? FReply::Handled().CaptureMouse(TakeWidget()) : FReply::Handled().ReleaseMouseCapture();
+		return ActiveStrokeIndex != INDEX_NONE ? FReply::Handled() : FReply::Handled().ReleaseMouseCapture();
 	}
 
 	if (bRightMouseDown)
 	{
-		FinishPointerInteraction();
-		bErasePointerActive = true;
+		const bool bEraserStartedThisMove = !bErasePointerActive;
+		if (bEraserStartedThisMove)
+		{
+			FinishPointerInteraction();
+			bErasePointerActive = true;
+		}
 		EraseLocalStrokeSegments(NormalizedPoint);
-		return FReply::Handled().CaptureMouse(TakeWidget());
+		return bEraserStartedThisMove ? FReply::Handled().CaptureMouse(TakeWidget()) : FReply::Handled();
 	}
 
 	if (ActiveStrokeIndex != INDEX_NONE || bErasePointerActive)
@@ -371,6 +415,8 @@ FReply UHeistForgeryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const F
 void UHeistForgeryWidget::NativeOnMouseCaptureLost(const FCaptureLostEvent& CaptureLostEvent)
 {
 	Super::NativeOnMouseCaptureLost(CaptureLostEvent);
+	UE_LOG(LogHeistUI, Verbose, TEXT("[%s] Forgery mouse capture lost: ActiveStroke=%s Eraser=%s Strokes=%d Points=%d"), *GetName(),
+		ActiveStrokeIndex != INDEX_NONE ? TEXT("true") : TEXT("false"), bErasePointerActive ? TEXT("true") : TEXT("false"), GetCollectedStrokeCount(), GetCollectedPointCount());
 	FinishPointerInteraction();
 }
 
@@ -406,7 +452,10 @@ bool UHeistForgeryWidget::IsWidgetPresentationVisible() const
 bool UHeistForgeryWidget::IsDrawingSurfaceReady() const
 {
 	const FVector2D SurfaceSize = GetDrawingSurfaceSize();
-	return FMath::IsNearlyEqual(SurfaceSize.X, DrawingSurfaceSizeSlateUnits, 1.0) && FMath::IsNearlyEqual(SurfaceSize.Y, DrawingSurfaceSizeSlateUnits, 1.0);
+	const double MaximumDimension = FMath::Max(SurfaceSize.X, SurfaceSize.Y);
+	const double MinimumDimension = FMath::Min(SurfaceSize.X, SurfaceSize.Y);
+	return FMath::IsFinite(SurfaceSize.X) && FMath::IsFinite(SurfaceSize.Y) && MinimumDimension >= MinimumDrawingSurfaceDimensionSlateUnits && MaximumDimension > 0.0 &&
+		   (MaximumDimension - MinimumDimension) / MaximumDimension <= MaximumDrawingSurfaceAspectError;
 }
 
 FVector2D UHeistForgeryWidget::GetDrawingSurfaceSize() const
@@ -566,7 +615,7 @@ bool UHeistForgeryWidget::RequestSubmitCollectedStrokes()
 	TArray<uint8> StrokePaletteIndices;
 	TArray<uint8> StrokeBrushPresetIndices;
 	int32 IgnoredShortStrokeCount = 0;
-	if (!BuildDrawableStrokePayload(NormalizedPoints, StrokePointCounts, StrokePaletteIndices, StrokeBrushPresetIndices, IgnoredShortStrokeCount))
+	if (!BuildDrawableStrokePayload(NormalizedPoints, StrokePointCounts, StrokePaletteIndices, StrokeBrushPresetIndices, IgnoredShortStrokeCount, GetConfiguredStrokeLimit()))
 	{
 		UE_LOG(LogHeistUI, Warning, TEXT("[%s] Forgery stroke submit skipped: Strokes=%d Points=%d IgnoredShortStrokes=%d Reason=EmptyDrawablePayload"), *GetName(), StrokePointCounts.Num(),
 			   NormalizedPoints.Num(), IgnoredShortStrokeCount);
@@ -614,7 +663,7 @@ void UHeistForgeryWidget::RefreshForgeryPresentation()
 		ReferenceImage->SetVisibility(IsValid(ReferenceTexture) ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 		if (IsValid(ReferenceTexture))
 		{
-			// Preserve the WBP-authored 800x800 presentation size instead of
+			// Preserve the WBP-authored responsive presentation size instead of
 			// replacing it with the source texture's native dimensions.
 			ReferenceImage->SetBrushFromTexture(ReferenceTexture, false);
 		}
@@ -776,15 +825,6 @@ bool UHeistForgeryWidget::TryResolveNormalizedDrawingPoint(const FPointerEvent& 
 bool UHeistForgeryWidget::BeginLocalStroke(const FVector2D& NormalizedPoint)
 {
 	FinishPointerInteraction();
-	constexpr int32 MinimumPointsForDrawableStroke = 2;
-	if (GetCollectedPointCount() + MinimumPointsForDrawableStroke > GetConfiguredStrokeLimit())
-	{
-		CompactLocalStrokesForPointBudget();
-		if (GetCollectedPointCount() + MinimumPointsForDrawableStroke > GetConfiguredStrokeLimit())
-		{
-			return false;
-		}
-	}
 	if (!EnsureDrawingRasterResources())
 	{
 		return false;
@@ -811,11 +851,6 @@ bool UHeistForgeryWidget::AppendLocalStrokePoint(const FVector2D& NormalizedPoin
 	{
 		FinishPointerInteraction();
 		return false;
-	}
-
-	if (GetCollectedPointCount() >= GetConfiguredStrokeLimit())
-	{
-		CompactLocalStrokesForPointBudget();
 	}
 
 	TArray<FVector2D>& ActiveStroke = LocalStrokes[ActiveStrokeIndex].Points;
@@ -849,14 +884,8 @@ bool UHeistForgeryWidget::AppendLocalStrokePoint(const FVector2D& NormalizedPoin
 		Stroke.bHasPaintedPoint = true;
 	};
 	const float MinimumSpacing = FMath::Max(MinimumNormalizedPointSpacing, ActiveStrokeBrushSize * BrushRelativePointSpacing);
-	const bool bPointBudgetFull = GetCollectedPointCount() >= GetConfiguredStrokeLimit();
 	if (ActiveStroke.Num() == 1)
 	{
-		if (bPointBudgetFull)
-		{
-			return false;
-		}
-
 		const FVector2D InitialDelta = (NormalizedPoint - ActiveStroke[0]) * CanvasAspectScale;
 		if (InitialDelta.IsNearlyZero())
 		{
@@ -869,7 +898,7 @@ bool UHeistForgeryWidget::AppendLocalStrokePoint(const FVector2D& NormalizedPoin
 		// event, then commit another point once the pending segment is long
 		// enough in aspect-corrected canvas space.
 		const FVector2D PendingSegment = (NormalizedPoint - ActiveStroke[ActiveStroke.Num() - 2]) * CanvasAspectScale;
-		if (PendingSegment.SizeSquared() < FMath::Square(MinimumSpacing) || bPointBudgetFull)
+		if (PendingSegment.SizeSquared() < FMath::Square(MinimumSpacing))
 		{
 			if (ActiveStroke.Last().Equals(NormalizedPoint, UE_DOUBLE_SMALL_NUMBER))
 			{
@@ -886,49 +915,6 @@ bool UHeistForgeryWidget::AppendLocalStrokePoint(const FVector2D& NormalizedPoin
 
 	ActiveStroke.Add(NormalizedPoint);
 	PaintToCurrentPoint();
-	MarkPreviewScoreDirty();
-	RefreshDrawingFeedback();
-	InvalidateLayoutAndVolatility();
-	return true;
-}
-
-bool UHeistForgeryWidget::CompactLocalStrokesForPointBudget()
-{
-	const int32 PreviousPointCount = GetCollectedPointCount();
-	if (PreviousPointCount < GetConfiguredStrokeLimit())
-	{
-		return false;
-	}
-
-	for (FHeistLocalForgeryStroke& StrokeData : LocalStrokes)
-	{
-		TArray<FVector2D>& Stroke = StrokeData.Points;
-		if (Stroke.Num() <= 2)
-		{
-			continue;
-		}
-
-		TArray<FVector2D> CompactedStroke;
-		CompactedStroke.Reserve(Stroke.Num() / 2 + 2);
-		CompactedStroke.Add(Stroke[0]);
-		for (int32 PointIndex = 2; PointIndex < Stroke.Num() - 1; PointIndex += 2)
-		{
-			CompactedStroke.Add(Stroke[PointIndex]);
-		}
-		if (!CompactedStroke.Last().Equals(Stroke.Last()))
-		{
-			CompactedStroke.Add(Stroke.Last());
-		}
-		Stroke = MoveTemp(CompactedStroke);
-	}
-
-	const int32 CompactedPointCount = GetCollectedPointCount();
-	if (CompactedPointCount >= PreviousPointCount)
-	{
-		return false;
-	}
-
-	UE_LOG(LogHeistUI, Log, TEXT("[%s] Forgery stroke points compacted: Previous=%d Current=%d Limit=%d Result=PASS"), *GetName(), PreviousPointCount, CompactedPointCount, GetConfiguredStrokeLimit());
 	MarkPreviewScoreDirty();
 	RefreshDrawingFeedback();
 	InvalidateLayoutAndVolatility();
@@ -1076,17 +1062,16 @@ bool UHeistForgeryWidget::EraseLocalStrokeSegments(const FVector2D& NormalizedPo
 }
 
 bool UHeistForgeryWidget::BuildDrawableStrokePayload(TArray<FVector2D>& OutNormalizedPoints, TArray<int32>& OutStrokePointCounts, TArray<uint8>& OutStrokePaletteIndices,
-												 TArray<uint8>& OutStrokeBrushPresetIndices, int32& OutIgnoredShortStrokeCount) const
+												 TArray<uint8>& OutStrokeBrushPresetIndices, int32& OutIgnoredShortStrokeCount, const int32 MaximumTransportPointCount) const
 {
 	OutNormalizedPoints.Reset();
 	OutStrokePointCounts.Reset();
 	OutStrokePaletteIndices.Reset();
 	OutStrokeBrushPresetIndices.Reset();
 	OutIgnoredShortStrokeCount = 0;
-	OutNormalizedPoints.Reserve(GetCollectedPointCount());
-	OutStrokePointCounts.Reserve(LocalStrokes.Num());
-	OutStrokePaletteIndices.Reserve(LocalStrokes.Num());
-	OutStrokeBrushPresetIndices.Reserve(LocalStrokes.Num());
+
+	TArray<FHeistLocalForgeryStroke> PayloadStrokes;
+	PayloadStrokes.Reserve(LocalStrokes.Num());
 
 	for (const FHeistLocalForgeryStroke& Stroke : LocalStrokes)
 	{
@@ -1096,6 +1081,79 @@ bool UHeistForgeryWidget::BuildDrawableStrokePayload(TArray<FVector2D>& OutNorma
 			continue;
 		}
 
+		PayloadStrokes.Add(Stroke);
+	}
+	if (PayloadStrokes.IsEmpty())
+	{
+		return false;
+	}
+	if (MaximumTransportPointCount > 0 && PayloadStrokes.Num() * 2 > MaximumTransportPointCount)
+	{
+		UE_LOG(LogHeistUI, Warning,
+			TEXT("[%s] Forgery transport copy rejected: Strokes=%d MinimumPoints=%d TransportLimit=%d LocalRasterChanged=false Reason=InsufficientPointBudget Result=FAIL"),
+			*GetName(), PayloadStrokes.Num(), PayloadStrokes.Num() * 2, MaximumTransportPointCount);
+		return false;
+	}
+
+	const auto CountPayloadPoints = [&PayloadStrokes]()
+	{
+		int32 PointCount = 0;
+		for (const FHeistLocalForgeryStroke& Stroke : PayloadStrokes)
+		{
+			PointCount += Stroke.Points.Num();
+		}
+		return PointCount;
+	};
+
+	const int32 OriginalPointCount = CountPayloadPoints();
+	if (MaximumTransportPointCount > 0 && OriginalPointCount > MaximumTransportPointCount)
+	{
+		constexpr float SimplificationTolerances[] = {0.00125f, 0.0025f, 0.004f, 0.006f, 0.01f, 0.015f, 0.025f};
+		for (const float Tolerance : SimplificationTolerances)
+		{
+			for (FHeistLocalForgeryStroke& Stroke : PayloadStrokes)
+			{
+				SimplifyPolyline(Stroke.Points, Tolerance);
+			}
+			if (CountPayloadPoints() <= MaximumTransportPointCount)
+			{
+				break;
+			}
+		}
+
+		int32 CurrentPointCount = CountPayloadPoints();
+		if (CurrentPointCount > MaximumTransportPointCount)
+		{
+			int32 RemainingPointBudget = MaximumTransportPointCount;
+			int32 RemainingStrokeCount = PayloadStrokes.Num();
+			for (FHeistLocalForgeryStroke& Stroke : PayloadStrokes)
+			{
+				const int32 MinimumBudgetForRemainingStrokes = FMath::Max(0, RemainingStrokeCount - 1) * 2;
+				const int32 ProportionalTarget = FMath::RoundToInt32(static_cast<double>(Stroke.Points.Num()) * MaximumTransportPointCount / CurrentPointCount);
+				const int32 MaximumTarget = FMath::Max(2, RemainingPointBudget - MinimumBudgetForRemainingStrokes);
+				const int32 TargetPointCount = FMath::Clamp(ProportionalTarget, 2, MaximumTarget);
+				ResamplePolylineToPointCount(Stroke.Points, TargetPointCount);
+				RemainingPointBudget -= Stroke.Points.Num();
+				--RemainingStrokeCount;
+			}
+		}
+
+		const int32 TransportPointCount = CountPayloadPoints();
+		UE_LOG(LogHeistUI, Log,
+			TEXT("[%s] Forgery transport copy simplified: LocalPoints=%d TransportPoints=%d TransportLimit=%d LocalRasterChanged=false Result=%s"), *GetName(), OriginalPointCount,
+			TransportPointCount, MaximumTransportPointCount, TransportPointCount <= MaximumTransportPointCount ? TEXT("PASS") : TEXT("FAIL"));
+		if (TransportPointCount > MaximumTransportPointCount)
+		{
+			return false;
+		}
+	}
+
+	OutNormalizedPoints.Reserve(CountPayloadPoints());
+	OutStrokePointCounts.Reserve(PayloadStrokes.Num());
+	OutStrokePaletteIndices.Reserve(PayloadStrokes.Num());
+	OutStrokeBrushPresetIndices.Reserve(PayloadStrokes.Num());
+	for (const FHeistLocalForgeryStroke& Stroke : PayloadStrokes)
+	{
 		OutStrokePointCounts.Add(Stroke.Points.Num());
 		OutStrokePaletteIndices.Add(Stroke.PaletteIndex);
 		OutStrokeBrushPresetIndices.Add(Stroke.BrushPresetIndex);
@@ -1110,11 +1168,12 @@ bool UHeistForgeryWidget::EnsureDrawingRasterResources()
 	const int64 ExpectedByteCount = static_cast<int64>(DrawingRasterResolution) * DrawingRasterResolution * DrawingRasterBytesPerPixel;
 	if (IsValid(DrawingRasterTexture) && DrawingRasterBrush.IsValid() && DrawingRasterBytes.Num() == ExpectedByteCount)
 	{
-		return true;
+		return bDrawingRasterBoundToSurface || ApplyDrawingRasterToSurfaceWidget();
 	}
 
 	ReleaseDrawingRasterResources();
 	DrawingRasterBytes.SetNumZeroed(ExpectedByteCount);
+	ResetRasterToOpaqueBlack(DrawingRasterBytes);
 	DrawingRasterTexture = UTexture2D::CreateTransient(DrawingRasterResolution, DrawingRasterResolution, PF_B8G8R8A8, NAME_None, DrawingRasterBytes);
 	if (!IsValid(DrawingRasterTexture))
 	{
@@ -1137,11 +1196,45 @@ bool UHeistForgeryWidget::EnsureDrawingRasterResources()
 	DrawingRasterDirtyMinimumY = 0;
 	DrawingRasterDirtyMaximumX = INDEX_NONE;
 	DrawingRasterDirtyMaximumY = INDEX_NONE;
-	return true;
+	return ApplyDrawingRasterToSurfaceWidget();
+}
+
+bool UHeistForgeryWidget::ApplyDrawingRasterToSurfaceWidget()
+{
+	if (!IsValid(DrawingSurface) || !DrawingRasterBrush.IsValid() || !IsValid(DrawingRasterTexture))
+	{
+		return false;
+	}
+
+	if (UImage* SurfaceImage = Cast<UImage>(DrawingSurface))
+	{
+		SurfaceImage->SetBrush(*DrawingRasterBrush);
+		SurfaceImage->SetColorAndOpacity(FLinearColor::White);
+		bDrawingRasterBoundToSurface = true;
+		UE_LOG(LogHeistUI, Log, TEXT("[%s] Forgery raster bound to UMG surface: Surface=%s Class=%s Mode=Image Resolution=%d Result=PASS"), *GetName(), *GetNameSafe(DrawingSurface),
+			*GetNameSafe(DrawingSurface->GetClass()), DrawingRasterResolution);
+		return true;
+	}
+
+	if (UBorder* SurfaceBorder = Cast<UBorder>(DrawingSurface))
+	{
+		SurfaceBorder->SetBrush(*DrawingRasterBrush);
+		SurfaceBorder->SetBrushColor(FLinearColor::White);
+		bDrawingRasterBoundToSurface = true;
+		UE_LOG(LogHeistUI, Log, TEXT("[%s] Forgery raster bound to UMG surface: Surface=%s Class=%s Mode=Border Resolution=%d Result=PASS"), *GetName(), *GetNameSafe(DrawingSurface),
+			*GetNameSafe(DrawingSurface->GetClass()), DrawingRasterResolution);
+		return true;
+	}
+
+	bDrawingRasterBoundToSurface = false;
+	UE_LOG(LogHeistUI, Error, TEXT("[%s] Forgery raster surface unsupported: Surface=%s Class=%s Expected=ImageOrBorder Result=FAIL"), *GetName(), *GetNameSafe(DrawingSurface),
+		*GetNameSafe(DrawingSurface->GetClass()));
+	return false;
 }
 
 void UHeistForgeryWidget::ReleaseDrawingRasterResources()
 {
+	bDrawingRasterBoundToSurface = false;
 	if (DrawingRasterBrush.IsValid())
 	{
 		DrawingRasterBrush->SetResourceObject(nullptr);
@@ -1162,7 +1255,7 @@ void UHeistForgeryWidget::ClearDrawingRaster()
 		return;
 	}
 
-	FMemory::Memzero(DrawingRasterBytes.GetData(), DrawingRasterBytes.Num());
+	ResetRasterToOpaqueBlack(DrawingRasterBytes);
 	MarkDrawingRasterDirty(0, 0, DrawingRasterResolution - 1, DrawingRasterResolution - 1);
 }
 
@@ -1201,20 +1294,40 @@ void UHeistForgeryWidget::PaintDrawingRasterSegment(const FVector2D& Start, cons
 
 	FColor RasterColor = Color.ToFColorSRGB();
 	RasterColor.A = 255;
-	const float DistancePixels = FVector2D::Distance(Start, End) * DrawingRasterResolution;
+	const FVector2D StartPixels(FMath::Clamp(Start.X, 0.0, 1.0) * (DrawingRasterResolution - 1), FMath::Clamp(Start.Y, 0.0, 1.0) * (DrawingRasterResolution - 1));
+	const FVector2D EndPixels(FMath::Clamp(End.X, 0.0, 1.0) * (DrawingRasterResolution - 1), FMath::Clamp(End.Y, 0.0, 1.0) * (DrawingRasterResolution - 1));
 	const float RadiusPixels = FMath::Max(1.0f, BrushSize * DrawingRasterResolution * 0.5f);
-	if (DistancePixels <= UE_KINDA_SMALL_NUMBER)
+	if (StartPixels.Equals(EndPixels, UE_KINDA_SMALL_NUMBER))
 	{
 		StampDrawingRasterBrush(Start, BrushSize, RasterColor);
 		return;
 	}
 
-	const float SampleSpacingPixels = FMath::Max(1.0f, RadiusPixels * 0.5f);
-	const int32 SampleCount = FMath::Max(1, FMath::CeilToInt(DistancePixels / SampleSpacingPixels));
-	for (int32 SampleIndex = 0; SampleIndex <= SampleCount; ++SampleIndex)
+	// Rasterize one continuous capsule instead of a row of circular dabs. This
+	// removes the scalloped/dotted edge visible when fast pointer events are far
+	// apart while preserving ordinary painter overwrite order.
+	const int32 MinimumX = FMath::Max(0, FMath::FloorToInt(FMath::Min(StartPixels.X, EndPixels.X) - RadiusPixels));
+	const int32 MaximumX = FMath::Min(DrawingRasterResolution - 1, FMath::CeilToInt(FMath::Max(StartPixels.X, EndPixels.X) + RadiusPixels));
+	const int32 MinimumY = FMath::Max(0, FMath::FloorToInt(FMath::Min(StartPixels.Y, EndPixels.Y) - RadiusPixels));
+	const int32 MaximumY = FMath::Min(DrawingRasterResolution - 1, FMath::CeilToInt(FMath::Max(StartPixels.Y, EndPixels.Y) + RadiusPixels));
+	const double RadiusSquared = FMath::Square(static_cast<double>(RadiusPixels));
+	for (int32 Y = MinimumY; Y <= MaximumY; ++Y)
 	{
-		StampDrawingRasterBrush(FMath::Lerp(Start, End, static_cast<float>(SampleIndex) / SampleCount), BrushSize, RasterColor);
+		for (int32 X = MinimumX; X <= MaximumX; ++X)
+		{
+			if (GetPolylinePointToSegmentDistanceSquared(FVector2D(X, Y), StartPixels, EndPixels) > RadiusSquared)
+			{
+				continue;
+			}
+
+			const int64 ByteOffset = (static_cast<int64>(Y) * DrawingRasterResolution + X) * DrawingRasterBytesPerPixel;
+			DrawingRasterBytes[ByteOffset] = RasterColor.B;
+			DrawingRasterBytes[ByteOffset + 1] = RasterColor.G;
+			DrawingRasterBytes[ByteOffset + 2] = RasterColor.R;
+			DrawingRasterBytes[ByteOffset + 3] = RasterColor.A;
+		}
 	}
+	MarkDrawingRasterDirty(MinimumX, MinimumY, MaximumX, MaximumY);
 }
 
 void UHeistForgeryWidget::StampDrawingRasterBrush(const FVector2D& NormalizedPoint, const float BrushSize, const FColor& Color)
@@ -1310,8 +1423,12 @@ void UHeistForgeryWidget::UploadDrawingRasterTexture()
 
 void UHeistForgeryWidget::MarkPreviewScoreDirty()
 {
+	const bool bWasAlreadyDirty = bPreviewScoreDirty;
 	bPreviewScoreDirty = true;
-	PreviewScoreUpdateAccumulator = 0.0f;
+	if (!bWasAlreadyDirty)
+	{
+		PreviewScoreUpdateAccumulator = 0.0f;
+	}
 }
 
 void UHeistForgeryWidget::RefreshLocalPreviewScore()
@@ -1492,9 +1609,15 @@ void UHeistForgeryWidget::HandlePaletteButton8Clicked()
 
 void UHeistForgeryWidget::FinishPointerInteraction()
 {
-	if (LocalStrokes.IsValidIndex(ActiveStrokeIndex) && LocalStrokes[ActiveStrokeIndex].Points.Num() == 1 && GetCollectedPointCount() < GetConfiguredStrokeLimit())
+	if (LocalStrokes.IsValidIndex(ActiveStrokeIndex))
 	{
-		LocalStrokes[ActiveStrokeIndex].Points.Add(LocalStrokes[ActiveStrokeIndex].Points[0]);
+		TArray<FVector2D>& StrokePoints = LocalStrokes[ActiveStrokeIndex].Points;
+		if (StrokePoints.Num() == 1)
+		{
+			const FVector2D DotPoint = StrokePoints[0];
+			StrokePoints.Add(DotPoint);
+		}
+
 		MarkPreviewScoreDirty();
 		RefreshDrawingFeedback();
 		InvalidateLayoutAndVolatility();
@@ -1508,10 +1631,6 @@ void UHeistForgeryWidget::ResetLocalStrokePreview()
 	FinishPointerInteraction();
 	LocalStrokes.Reset();
 	ErasedStrokeCount = 0;
-	bPendingDrawCoordinateLog = false;
-	PendingDrawMouseScreen = FVector2D::ZeroVector;
-	PendingDrawNormalizedPoint = FVector2D::ZeroVector;
-	DrawingInputWidgetGeometry.Reset();
 	ClearDrawingRaster();
 	PreviewScoreUpdateAccumulator = 0.0f;
 	bPreviewScoreDirty = false;
@@ -1574,9 +1693,8 @@ void UHeistForgeryWidget::RefreshDrawingFeedback()
 			: ActiveBrushPresetIndex == 2 ? NSLOCTEXT("HeistForgery", "BrushPresetLarge", "대")
 			                              : NSLOCTEXT("HeistForgery", "BrushPresetMedium", "중");
 		DrawingHint->SetText(FText::Format(
-			NSLOCTEXT("HeistForgery", "DrawingCanvasHint", "좌클릭 그리기  |  우클릭 지우기  |  [ ] 붓 크기  |  R 초기화  |  Enter 제출  |  색상 {0}  |  점 {1}/{2}  |  붓 {3}  |  판정 {4}×{4}"),
-			FText::AsNumber(ActivePaletteIndex + 1), FText::AsNumber(PointCount), FText::AsNumber(GetConfiguredStrokeLimit()), BrushPresetText,
-			FText::AsNumber(IsValid(ForgeryViewModel) ? ForgeryViewModel->GetScoreRasterResolution() : 0)));
+			NSLOCTEXT("HeistForgery", "DrawingCanvasHint", "좌클릭 그리기  |  우클릭 지우기  |  [ ] 붓 크기  |  R 초기화  |  Enter 제출  |  색상 {0}  |  붓 {1}"),
+			FText::AsNumber(ActivePaletteIndex + 1), BrushPresetText));
 	}
 	if (IsValid(PreviewScoreText))
 	{

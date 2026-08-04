@@ -40,7 +40,10 @@ constexpr int32 ForgeryScoreGridResolution = 256;
 constexpr uint8 ReferenceMaskThreshold = 128;
 constexpr uint8 EmptyPaletteIndex = MAX_uint8;
 constexpr float SubmissionTimeoutToleranceSeconds = 0.05f;
-constexpr float ForgeryBrushPresetSizes[] = {0.015f, 0.03f, 0.05f};
+// Normalized canvas diameters. These resolve to 16 / 32 / 64 pixels on the
+// 800-unit drawing surface, roughly 20 / 41 / 82 pixels on the 1024 local
+// raster, and roughly 5 / 10 / 20 pixels on the 256 server score raster.
+constexpr float ForgeryBrushPresetSizes[] = {0.02f, 0.04f, 0.08f};
 constexpr int32 OpenCVMorphologyKernelSize = 5;
 constexpr float OpenCVDistanceTolerancePixels = 20.0f;
 constexpr float OpenCVStructuralColorWeight = 0.65f;
@@ -1498,7 +1501,7 @@ bool UHeistForgeryComponent::ValidateStrokePayload(const TArray<FVector2D>& Norm
 												   int32& OutPayloadBytes) const
 {
 	OutRejectReason = NAME_None;
-	const int64 EstimatedPayloadBytes = static_cast<int64>(NormalizedPoints.Num()) * sizeof(FVector2D) + static_cast<int64>(StrokePointCounts.Num()) * sizeof(int32) +
+	const int64 EstimatedPayloadBytes = static_cast<int64>(NormalizedPoints.Num()) * sizeof(uint32) + static_cast<int64>(StrokePointCounts.Num()) * sizeof(int32) +
 										static_cast<int64>(StrokePaletteIndices.Num()) * sizeof(uint8) + static_cast<int64>(StrokeBrushPresetIndices.Num()) * sizeof(uint8) +
 										sizeof(ClientSessionRevision);
 	OutPayloadBytes = EstimatedPayloadBytes > MAX_int32 ? MAX_int32 : static_cast<int32>(EstimatedPayloadBytes);

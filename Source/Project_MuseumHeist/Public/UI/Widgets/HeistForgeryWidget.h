@@ -39,8 +39,6 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
-	virtual int32 NativePaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry, const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, int32 LayerId,
-							  const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const override;
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	virtual FReply NativeOnMouseMove(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
@@ -105,11 +103,11 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 	bool TryResolveNormalizedDrawingPoint(const FPointerEvent& PointerEvent, FVector2D& OutNormalizedPoint) const;
 	bool BeginLocalStroke(const FVector2D& NormalizedPoint);
 	bool AppendLocalStrokePoint(const FVector2D& NormalizedPoint);
-	bool CompactLocalStrokesForPointBudget();
 	bool EraseLocalStrokeSegments(const FVector2D& NormalizedPoint);
 	bool BuildDrawableStrokePayload(TArray<FVector2D>& OutNormalizedPoints, TArray<int32>& OutStrokePointCounts, TArray<uint8>& OutStrokePaletteIndices,
-		TArray<uint8>& OutStrokeBrushPresetIndices, int32& OutIgnoredShortStrokeCount) const;
+		TArray<uint8>& OutStrokeBrushPresetIndices, int32& OutIgnoredShortStrokeCount, int32 MaximumTransportPointCount = 0) const;
 	bool EnsureDrawingRasterResources();
+	bool ApplyDrawingRasterToSurfaceWidget();
 	void ReleaseDrawingRasterResources();
 	void ClearDrawingRaster();
 	void RebuildDrawingRaster();
@@ -136,18 +134,15 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 	int32 ErasedStrokeCount = 0;
 	bool bErasePointerActive = false;
 	bool bWasDrawingVisible = false;
-	TOptional<FGeometry> DrawingInputWidgetGeometry;
 	UPROPERTY(Transient)
 	TObjectPtr<UTexture2D> DrawingRasterTexture;
 	TSharedPtr<FSlateBrush> DrawingRasterBrush;
 	TArray64<uint8> DrawingRasterBytes;
+	bool bDrawingRasterBoundToSurface = false;
 	int32 DrawingRasterDirtyMinimumX = 0;
 	int32 DrawingRasterDirtyMinimumY = 0;
 	int32 DrawingRasterDirtyMaximumX = INDEX_NONE;
 	int32 DrawingRasterDirtyMaximumY = INDEX_NONE;
-	mutable bool bPendingDrawCoordinateLog = false;
-	mutable FVector2D PendingDrawMouseScreen = FVector2D::ZeroVector;
-	mutable FVector2D PendingDrawNormalizedPoint = FVector2D::ZeroVector;
 	float PreviewScoreUpdateAccumulator = 0.0f;
 	bool bPreviewScoreDirty = true;
 	int32 LastDisplayedDrawingTimeSeconds = INDEX_NONE;

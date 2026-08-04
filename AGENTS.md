@@ -738,12 +738,16 @@ Escape 취소 조건:
 - Client는 Stroke별 Point Count를 수집한다.
 - Client는 Stroke별 Palette Index를 수집한다.
 - Client는 Stroke마다 승인된 고정 `BrushPresetIndex`를 기록하고 제출한다.
-- 일반 Surface Forgery Brush Preset은 Template 비율값을 사용하지 않고 `소 0.015 / 중 0.030 / 대 0.050`의 세 단계로 고정하며 서버가 허용 집합을 재검증한다.
+- 일반 Surface Forgery Brush Preset은 Template 비율값을 사용하지 않고 정규화 지름 `소 0.020 / 중 0.040 / 대 0.080`의 세 단계로 고정한다. 기준 `800×800` Drawing Surface에서는 각각 `16 / 32 / 64 px`에 해당하며 서버가 허용 집합을 재검증한다.
 - Brush Size 선택 변경은 변경 이후 새로 시작하는 Stroke에만 적용한다. 이미 그린 Stroke의 굵기, Local Preview, 서버 Score와 Replica 굵기는 변경하지 않으며 Eraser 반경에도 영향을 주지 않는다.
-- Surface Forgery의 화면 Drawing은 현재 Brush로 전체 Stroke를 다시 그리는 Vector Line 방식이 아니라 `800×800` Local Palette Raster에 Pointer Segment를 순서대로 누적하는 Painter 방식으로 표시한다.
+- Surface Forgery의 WBP Drawing Surface 크기와 내부 Painter 해상도는 분리한다. Drawing Surface는 정사각형 Responsive Layout을 사용하며 `400×400`, `800×800` 같은 특정 Slate Unit 크기를 C++ 계약으로 고정하지 않는다.
+- Surface Forgery의 화면 Drawing은 현재 Brush로 전체 Stroke를 다시 그리는 Vector Line 방식이 아니라 `1024×1024` Local Palette Raster에 Pointer Segment를 순서대로 누적하는 Painter 방식으로 표시한다.
+- Pointer 입력은 실제 Drawing Surface Geometry에서 정규화하고, Local Palette Raster Texture는 같은 `DrawingSurface`의 UMG `Image` 또는 `Border` Brush에 직접 연결한다. 부모 Widget의 `NativePaint`에서 별도 DrawElement 좌표를 재구성하지 않으며 DPI Scale, PIE Window 크기와 WBP Layout 크기가 바뀌어도 입력과 표시 좌표가 일치해야 한다.
+- Drawing Pointer의 Mouse Capture는 Button Down에서 한 번 획득하고 Button Up, Surface 이탈, UI 종료 또는 실제 Capture Lost까지 유지한다. Pointer Move마다 Capture를 다시 요청해 하나의 Drag를 여러 Stroke로 분할하지 않는다.
+- Local Painter는 모든 Pointer Segment를 연속 Capsule로 누적하고, 서버 전송용 Polyline은 입력 중 고정 간격으로 별도 샘플링한다. 로컬 Stroke와 화면 Raster는 전송 Point Budget과 무관하게 계속 유지하며, 제출 시에만 로컬 데이터를 변경하지 않는 전송용 복사본을 단순화한다. 전송 Point Budget에 도달했다는 이유로 화면 붓칠이 중단되거나 이미 그린 결과와 예상 점수가 감소해서는 안 된다.
 - Local Palette Raster는 나중에 칠한 색이 이전 픽셀을 덮어쓴다. 따라서 소/중/대 Brush는 이미 칠한 영역의 크기를 다시 해석하지 않으며, 뒤에 사용한 작은 Brush도 앞서 사용한 큰 Brush 위에 정상 합성돼야 한다.
 - Local Palette Raster와 최종 서버 Palette Raster는 모두 Canvas 경계에서 Brush Stamp를 Clamp한다. Brush 중심이 가장자리에 있어도 색 픽셀이 Drawing Surface 밖으로 표시되거나 판정 데이터 밖으로 기록되어서는 안 된다.
-- Surface Forgery UI는 현재 Brush Size, Point Budget과 Score Raster Resolution을 표시한다.
+- Surface Forgery UI는 현재 Palette, Brush Size, 남은 시간과 `예상 점수`를 표시한다. Point Budget, Payload Byte와 Score Raster Resolution은 플레이어용 정보가 아니므로 일반 UI에 표시하지 않고 Debug Dump에서만 확인한다.
 - Surface Forgery의 서버 Score와 Replica Palette Raster는 `256×256`을 사용한다. 더 큰 Reference Image는 이 판정 해상도로 정규화한다.
 - Reference Image는 직접 제작한 단순한 이미지를 사용한다.
 - Template별 Palette는 2~8색으로 제한한다.
@@ -753,10 +757,11 @@ Escape 취소 조건:
 - 플레이어는 Template Palette에서 색을 직접 선택한다.
 - 위치에 맞는 정답 색을 자동 선택하지 않는다.
 - Stroke는 임의 RGB가 아니라 `PaletteIndex`를 전송한다.
-- 서버는 Payload 크기를 검증한다.
+- 정규화 Stroke Point는 X/Y를 각각 16-bit Unsigned Integer로 양자화하고 하나의 `uint32`에 Packing해 RPC로 전송한다. 서버는 이를 `FVector2D`로 복원한 뒤 동일한 판정 Raster를 구성한다.
+- 서버는 Packed Coordinate, Stroke Count, Palette Index, Brush Preset과 Session Revision을 포함한 Payload 크기가 `48 KiB`를 초과하지 않는지 검증한다.
 - 서버는 좌표 범위를 검증한다.
 - 서버는 Stroke Count를 검증한다.
-- 서버는 Point Count를 검증한다.
+- 서버는 Point Count를 검증한다. Template Transport Point Budget은 Easy `4096`, Medium `5120`, Hard `6144`를 기본으로 사용하며 Local Drawing의 입력 한계로 사용하지 않는다.
 - 서버는 Palette Index를 검증한다.
 - 서버는 Stroke 수와 `BrushPresetIndex` 수의 일치 여부 및 각 Preset 허용 범위를 검증한다.
 - 서버는 Session Revision을 검증한다.
@@ -775,7 +780,7 @@ Escape 취소 조건:
 
 서버와 Local Preview는 동일한 C++ Evaluator를 사용한다.
 
-Local Preview의 전체 `256×256` OpenCV 평가는 Pointer Drawing / Erase 입력 중에는 실행하지 않는다. 마지막 Stroke 변경 후 `0.5초` 동안 입력이 없을 때 한 번만 재계산하며, 새 입력이 들어오면 대기 시간을 다시 시작한다.
+Local Preview의 전체 `256×256` OpenCV 평가는 Pointer Drawing / Erase 입력 중 최대 `1.25초` 간격으로만 실행하고, Pointer Release 뒤에는 `0.12초` 이내의 다음 Tick에서 갱신한다. 입력 Event마다 갱신 타이머를 다시 시작해 장시간 점수가 고정되게 하지 않는다. UI 문구는 서버 확정값과 구분하기 위해 `예상 점수`를 사용한다.
 
 Local Preview 평가와 진단 로그 억제는 클라이언트 반응성 정책일 뿐이며, Submit 시 서버 권한 최종 평가는 생략하거나 저해상도로 대체하지 않는다.
 
