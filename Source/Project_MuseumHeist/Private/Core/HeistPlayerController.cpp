@@ -435,12 +435,19 @@ void AHeistPlayerController::HandleReplicaRedraw()
 	}
 
 	AHeistPaintingDisplayCaseActor* TargetDisplayCase = Cast<AHeistPaintingDisplayCaseActor>(InteractionComponent->GetCurrentInteractionTarget());
-	if (!IsValid(TargetDisplayCase) || !TargetDisplayCase->IsReplicaReviewReadyFor(HeistCharacter))
+	if (IsValid(TargetDisplayCase) && TargetDisplayCase->IsReplicaReviewReadyFor(HeistCharacter))
+	{
+		RequestRestartForgeryFromPreview();
+		return;
+	}
+
+	AHeistObjectDisplayCaseActor* TargetObjectDisplayCase = Cast<AHeistObjectDisplayCaseActor>(InteractionComponent->GetCurrentInteractionTarget());
+	if (!IsValid(TargetObjectDisplayCase) || !TargetObjectDisplayCase->IsReplicaReviewReadyFor(HeistCharacter))
 	{
 		return;
 	}
 
-	RequestRestartForgeryFromPreview();
+	RequestRestartObjectAssemblyFromPreview();
 }
 
 void AHeistPlayerController::RefreshLocalForgeryInputBinding()
@@ -1043,13 +1050,18 @@ void AHeistPlayerController::HandleInteractPressed()
 	AHeistObjectDisplayCaseActor* TargetObjectDisplayCase = Cast<AHeistObjectDisplayCaseActor>(InteractionComponent->GetCurrentInteractionTarget());
 	if (TargetObjectDisplayCase != nullptr)
 	{
-		if (TargetObjectDisplayCase->GetAssemblyState() == EHeistObjectAssemblyState::OriginalAvailable)
+		if (TargetObjectDisplayCase->IsReplicaReviewReadyFor(HeistCharacter))
+		{
+			RequestConfirmObjectAssemblyReplicaSwap();
+		}
+		else if (TargetObjectDisplayCase->GetAssemblyState() == EHeistObjectAssemblyState::OriginalAvailable)
 		{
 			Server_RequestTakeObjectOriginal(TargetObjectDisplayCase);
 		}
 		else
 		{
-			RequestBeginObjectAssembly(TargetObjectDisplayCase);
+			bLocalObservationInputHeld = true;
+			Server_RequestObjectObservation(TargetObjectDisplayCase);
 		}
 		return;
 	}
@@ -1488,6 +1500,16 @@ void AHeistPlayerController::RequestSubmitObjectAssembly(const TArray<FHeistObje
 	Server_SubmitObjectAssembly(Entries, ResolvedSessionRevision);
 }
 
+void AHeistPlayerController::RequestConfirmObjectAssemblyReplicaSwap()
+{
+	Server_ConfirmObjectAssemblyReplicaSwap();
+}
+
+void AHeistPlayerController::RequestRestartObjectAssemblyFromPreview()
+{
+	Server_RestartObjectAssemblyFromPreview();
+}
+
 void AHeistPlayerController::RequestMoveInventoryItem(const int32 InstanceId, const FIntPoint TargetGridPosition)
 {
 	Server_RequestMoveInventoryItem(InstanceId, TargetGridPosition);
@@ -1789,6 +1811,49 @@ void AHeistPlayerController::Server_RequestObservation_Implementation(AHeistPain
 	}
 
 	if (TargetDisplayCase->GetDisplayCaseState() != EHeistDisplayCaseState::Secured)
+	{
+		UHeistDebugFunctionLibrary::DebugObservationRequestRejected(this, TargetDisplayCase, TEXT("CaseNotSecured"), Distance);
+		return;
+	}
+
+	UHeistActionComponent* ActionComponent = RequestContext.Character->GetActionComponent();
+	if (!ActionComponent->TryBeginObservationRequest(TargetDisplayCase))
+	{
+		UHeistDebugFunctionLibrary::DebugObservationRequestRejected(this, TargetDisplayCase, TEXT("ObservationCastRejected"), Distance);
+	}
+}
+
+void AHeistPlayerController::Server_RequestObjectObservation_Implementation(AHeistObjectDisplayCaseActor* TargetDisplayCase)
+{
+	FHeistGameplayRequestContext RequestContext;
+	const TCHAR* RejectReason = nullptr;
+	if (!TryBuildGameplayRequestContext(RequestContext, RejectReason))
+	{
+		UHeistDebugFunctionLibrary::DebugObservationRequestRejected(this, TargetDisplayCase, RejectReason != nullptr ? RejectReason : TEXT("InvalidRequestContext"));
+		return;
+	}
+
+	if (!IsValid(TargetDisplayCase))
+	{
+		UHeistDebugFunctionLibrary::DebugObservationRequestRejected(this, nullptr, TEXT("InvalidTarget"));
+		return;
+	}
+
+	UHeistInteractionComponent* InteractionComponent = RequestContext.Character->GetInteractionComponent();
+	const float Distance = FVector::Distance(RequestContext.Character->GetActorLocation(), TargetDisplayCase->GetActorLocation());
+	if (!InteractionComponent->IsActorOverlappingInteractionArea(TargetDisplayCase))
+	{
+		UHeistDebugFunctionLibrary::DebugObservationRequestRejected(this, TargetDisplayCase, TEXT("OutOfRange"), Distance);
+		return;
+	}
+
+	if (!CanUseHeistInteraction(TargetDisplayCase, RequestContext.Character))
+	{
+		UHeistDebugFunctionLibrary::DebugObservationRequestRejected(this, TargetDisplayCase, TEXT("InteractionUnavailable"), Distance);
+		return;
+	}
+
+	if (TargetDisplayCase->GetAssemblyState() != EHeistObjectAssemblyState::Secured)
 	{
 		UHeistDebugFunctionLibrary::DebugObservationRequestRejected(this, TargetDisplayCase, TEXT("CaseNotSecured"), Distance);
 		return;
@@ -2210,6 +2275,44 @@ void AHeistPlayerController::Server_SubmitObjectAssembly_Implementation(const TA
 	}
 
 	ObjectAssemblyComponent->TrySubmitAssemblyPayload(Entries, ClientSessionRevision);
+}
+
+void AHeistPlayerController::Server_ConfirmObjectAssemblyReplicaSwap_Implementation()
+{
+	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	UHeistObjectAssemblyComponent* ObjectAssemblyComponent = IsValid(HeistCharacter) ? HeistCharacter->GetObjectAssemblyComponent() : nullptr;
+	UHeistInteractionComponent* InteractionComponent = IsValid(HeistCharacter) ? HeistCharacter->GetInteractionComponent() : nullptr;
+	AHeistObjectDisplayCaseActor* TargetDisplayCase = IsValid(ObjectAssemblyComponent) ? ObjectAssemblyComponent->GetActiveDisplayCase() : nullptr;
+	if (!HasAuthority() || !IsValid(HeistCharacter) || HeistCharacter->GetController() != this || !IsValid(ObjectAssemblyComponent) || !IsValid(InteractionComponent) ||
+		!IsValid(TargetDisplayCase) || !InteractionComponent->IsActorOverlappingInteractionArea(TargetDisplayCase))
+	{
+		UE_LOG(LogHeistNetwork, Warning, TEXT("[%s] Object replica swap rejected: Character=%s Case=%s Reason=InteractionOverlapRequired"), *GetName(),
+			   *GetNameSafe(HeistCharacter), *GetNameSafe(TargetDisplayCase));
+		return;
+	}
+
+	const bool bAccepted = ObjectAssemblyComponent->TryConfirmReplicaSwap();
+	UE_LOG(LogHeistNetwork, Log, TEXT("[%s] Object replica swap processed: Character=%s Case=%s Overlap=true Result=%s"), *GetName(), *GetNameSafe(HeistCharacter),
+		   *GetNameSafe(TargetDisplayCase), bAccepted ? TEXT("PASS") : TEXT("REJECTED"));
+}
+
+void AHeistPlayerController::Server_RestartObjectAssemblyFromPreview_Implementation()
+{
+	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	UHeistObjectAssemblyComponent* ObjectAssemblyComponent = IsValid(HeistCharacter) ? HeistCharacter->GetObjectAssemblyComponent() : nullptr;
+	UHeistInteractionComponent* InteractionComponent = IsValid(HeistCharacter) ? HeistCharacter->GetInteractionComponent() : nullptr;
+	AHeistObjectDisplayCaseActor* TargetDisplayCase = IsValid(ObjectAssemblyComponent) ? ObjectAssemblyComponent->GetActiveDisplayCase() : nullptr;
+	if (!HasAuthority() || !IsValid(HeistCharacter) || HeistCharacter->GetController() != this || !IsValid(ObjectAssemblyComponent) || !IsValid(InteractionComponent) ||
+		!IsValid(TargetDisplayCase) || !InteractionComponent->IsActorOverlappingInteractionArea(TargetDisplayCase))
+	{
+		UE_LOG(LogHeistNetwork, Warning, TEXT("[%s] Object reassemble rejected: Character=%s Case=%s Reason=InteractionOverlapRequired"), *GetName(),
+			   *GetNameSafe(HeistCharacter), *GetNameSafe(TargetDisplayCase));
+		return;
+	}
+
+	const bool bAccepted = ObjectAssemblyComponent->TryRestartAssemblyFromPreview();
+	UE_LOG(LogHeistNetwork, Log, TEXT("[%s] Object reassemble processed: Character=%s Case=%s Overlap=true Result=%s"), *GetName(), *GetNameSafe(HeistCharacter),
+		   *GetNameSafe(TargetDisplayCase), bAccepted ? TEXT("PASS") : TEXT("REJECTED"));
 }
 
 void AHeistPlayerController::Server_RequestMoveInventoryItem_Implementation(const int32 InstanceId, const FIntPoint TargetGridPosition)

@@ -210,6 +210,8 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	void RequestBeginObjectAssembly(AHeistObjectDisplayCaseActor* TargetDisplayCase, float DurationSeconds = -1.0f);
 	void RequestCancelObjectAssembly();
 	void RequestSubmitObjectAssembly(const TArray<FHeistObjectAssemblyEntry>& Entries, int32 ClientSessionRevision = INDEX_NONE);
+	void RequestConfirmObjectAssemblyReplicaSwap();
+	void RequestRestartObjectAssemblyFromPreview();
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Inventory")
 	void RequestMoveInventoryItem(int32 InstanceId, FIntPoint TargetGridPosition);
@@ -266,6 +268,9 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	void Server_RequestObservation(AHeistPaintingDisplayCaseActor* TargetDisplayCase);
 
 	UFUNCTION(Server, Reliable)
+	void Server_RequestObjectObservation(AHeistObjectDisplayCaseActor* TargetDisplayCase);
+
+	UFUNCTION(Server, Reliable)
 	void Server_CancelObservation();
 
 	UFUNCTION(Server, Reliable)
@@ -292,6 +297,12 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 
 	UFUNCTION(Server, Reliable)
 	void Server_SubmitObjectAssembly(const TArray<FHeistObjectAssemblyEntry>& Entries, int32 ClientSessionRevision);
+
+	UFUNCTION(Server, Reliable)
+	void Server_ConfirmObjectAssemblyReplicaSwap();
+
+	UFUNCTION(Server, Reliable)
+	void Server_RestartObjectAssemblyFromPreview();
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestMoveInventoryItem(int32 InstanceId, FIntPoint TargetGridPosition);

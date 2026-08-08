@@ -131,7 +131,7 @@ void UHeistHUDViewModel::RefreshPresentationState()
 	UE_MVVM_SET_PROPERTY_VALUE(ObservationCastEndServerTime, bLocalObservationCastActive ? ActionComponent->GetObservationCastEndServerTime() : 0.0f);
 	// This ViewModel is constructed from the locally owned PlayerState and ActionComponent.
 	// Remote players can replicate the cast state, but their HUD never consumes this instance.
-	UE_MVVM_SET_PROPERTY_VALUE(bObservationReferenceVisible, bLocalObservationCastActive);
+	UE_MVVM_SET_PROPERTY_VALUE(bObservationReferenceVisible, bLocalObservationCastActive && ActionComponent->ShouldShowObservationReference());
 	UE_MVVM_SET_PROPERTY_VALUE(ObservationReferenceArtifactId, bLocalObservationCastActive ? ActiveObjectiveArtifactId : NAME_None);
 	UE_MVVM_SET_PROPERTY_VALUE(ObjectiveArtifactId, ActiveObjectiveArtifactId);
 	UE_MVVM_SET_PROPERTY_VALUE(ObjectiveCaseId, ActiveObjectiveCaseId);

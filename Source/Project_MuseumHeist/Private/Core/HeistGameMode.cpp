@@ -282,7 +282,7 @@ void AHeistGameMode::Logout(AController* Exiting)
 		{
 			++CancelledForgeryCount;
 		}
-		if (IsValid(ObjectAssemblyComponent) && ObjectAssemblyComponent->IsSessionActive() &&
+		if (IsValid(ObjectAssemblyComponent) && (ObjectAssemblyComponent->IsSessionActive() || ObjectAssemblyComponent->HasPendingReplicaReview()) &&
 			ObjectAssemblyComponent->CancelAssemblySession(FName(TEXT("OwnerDisconnected"))))
 		{
 			++CancelledForgeryCount;
@@ -385,7 +385,8 @@ void AHeistGameMode::PrepareForOnlineSessionShutdown(const FName Reason)
 			++CancelledForgeryCount;
 		}
 		if (UHeistObjectAssemblyComponent* ObjectAssemblyComponent = PlayerCharacter->GetObjectAssemblyComponent();
-			IsValid(ObjectAssemblyComponent) && ObjectAssemblyComponent->IsSessionActive() && ObjectAssemblyComponent->CancelAssemblySession(Reason))
+			IsValid(ObjectAssemblyComponent) && (ObjectAssemblyComponent->IsSessionActive() || ObjectAssemblyComponent->HasPendingReplicaReview()) &&
+			ObjectAssemblyComponent->CancelAssemblySession(Reason))
 		{
 			++CancelledForgeryCount;
 		}
@@ -538,7 +539,8 @@ bool AHeistGameMode::FinalizeContractOutcome(const EHeistContractOutcome Outcome
 			++CancelledForgeryCount;
 		}
 		if (UHeistObjectAssemblyComponent* ObjectAssemblyComponent = PlayerCharacter->GetObjectAssemblyComponent();
-			IsValid(ObjectAssemblyComponent) && ObjectAssemblyComponent->IsSessionActive() && ObjectAssemblyComponent->CancelAssemblySession(TerminalTrigger))
+			IsValid(ObjectAssemblyComponent) && (ObjectAssemblyComponent->IsSessionActive() || ObjectAssemblyComponent->HasPendingReplicaReview()) &&
+			ObjectAssemblyComponent->CancelAssemblySession(TerminalTrigger))
 		{
 			++CancelledForgeryCount;
 		}
@@ -1183,8 +1185,7 @@ bool AHeistGameMode::TryGetArtifactDefinition(const FName ArtifactId, FHeistArti
 
 	const FHeistArtifactDataRow* ArtifactDefinition = ArtifactDataTable->FindRow<FHeistArtifactDataRow>(ArtifactId, TEXT("AHeistGameMode::TryGetArtifactDefinition"), false);
 	if (ArtifactDefinition == nullptr || ArtifactDefinition->ArtifactId != ArtifactId || ArtifactDefinition->ArtifactValue < 0 || !FMath::IsFinite(ArtifactDefinition->Weight) ||
-		ArtifactDefinition->Weight < 0.0f || ArtifactDefinition->OriginalWorldMesh.IsNull() || ArtifactDefinition->OriginalWorldVisualRelativeTransform.ContainsNaN() ||
-		ArtifactDefinition->OriginalWorldMaterials.ContainsByPredicate([](const TSoftObjectPtr<UMaterialInterface>& Material) { return Material.IsNull(); }))
+		ArtifactDefinition->Weight < 0.0f || ArtifactDefinition->DisplayName.IsEmpty() || ArtifactDefinition->ForgeryType == EHeistForgeryType::None)
 	{
 		UE_LOG(LogHeist, Error, TEXT("Artifact definition lookup rejected: ArtifactId=%s Reason=MissingOrInvalidDefinition"), *ArtifactId.ToString());
 		return false;

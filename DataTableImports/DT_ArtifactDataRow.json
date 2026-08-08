@@ -2,7 +2,8 @@
   {
     "Name": "Artifact_Painting_M01",
     "ArtifactId": "Artifact_Painting_M01",
-    "DisplayName": "M01 Target Painting",
+    "DisplayName": "M01 핵심 그림",
+    "ItemGrade": "OneStar",
     "ArtifactValue": 2500,
     "Weight": 3.0,
     "GridWidth": 2,
@@ -10,13 +11,13 @@
     "ForgeryType": "Drawing",
     "ForgeryTemplateId": "Template_M01_Portrait_01",
     "MinimumForgeryScore": 0.6,
-    "BaseInspectionDelay": 8.0,
-    "VisualActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_Painting.BP_Painting_C'"
+    "BaseInspectionDelay": 8.0
   },
   {
     "Name": "Artifact_Sculpture_Prototype",
     "ArtifactId": "Artifact_Sculpture_Prototype",
-    "DisplayName": "Prototype Figure",
+    "DisplayName": "프로토타입 조각상",
+    "ItemGrade": "OneStar",
     "ArtifactValue": 3000,
     "Weight": 6.0,
     "GridWidth": 2,
@@ -24,13 +25,13 @@
     "ForgeryType": "Assembly",
     "ForgeryTemplateId": "Template_Sculpture_Prototype_01",
     "MinimumForgeryScore": 0.6,
-    "BaseInspectionDelay": 8.0,
-    "VisualActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_SculptureDisplayCase.BP_SculptureDisplayCase_C'"
+    "BaseInspectionDelay": 8.0
   },
   {
     "Name": "Artifact_Sculpture_Gallery_01",
     "ArtifactId": "Artifact_Sculpture_Gallery_01",
-    "DisplayName": "Winged Curator I",
+    "DisplayName": "날개 달린 큐레이터 I",
+    "ItemGrade": "OneStar",
     "ArtifactValue": 3000,
     "Weight": 6.0,
     "GridWidth": 2,
@@ -38,13 +39,13 @@
     "ForgeryType": "Assembly",
     "ForgeryTemplateId": "Template_Sculpture_Gallery_01",
     "MinimumForgeryScore": 0.6,
-    "BaseInspectionDelay": 8.0,
-    "VisualActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_SculptureDisplayCase.BP_SculptureDisplayCase_C'"
+    "BaseInspectionDelay": 8.0
   },
   {
     "Name": "Artifact_Sculpture_Gallery_02",
     "ArtifactId": "Artifact_Sculpture_Gallery_02",
-    "DisplayName": "Winged Curator II",
+    "DisplayName": "날개 달린 큐레이터 II",
+    "ItemGrade": "OneStar",
     "ArtifactValue": 3000,
     "Weight": 6.0,
     "GridWidth": 2,
@@ -52,13 +53,13 @@
     "ForgeryType": "Assembly",
     "ForgeryTemplateId": "Template_Sculpture_Gallery_02",
     "MinimumForgeryScore": 0.6,
-    "BaseInspectionDelay": 8.0,
-    "VisualActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_SculptureDisplayCase.BP_SculptureDisplayCase_C'"
+    "BaseInspectionDelay": 8.0
   },
   {
     "Name": "Artifact_Sculpture_Gallery_03",
     "ArtifactId": "Artifact_Sculpture_Gallery_03",
-    "DisplayName": "Winged Curator III",
+    "DisplayName": "날개 달린 큐레이터 III",
+    "ItemGrade": "OneStar",
     "ArtifactValue": 3000,
     "Weight": 6.0,
     "GridWidth": 2,
@@ -66,13 +67,13 @@
     "ForgeryType": "Assembly",
     "ForgeryTemplateId": "Template_Sculpture_Gallery_03",
     "MinimumForgeryScore": 0.6,
-    "BaseInspectionDelay": 8.0,
-    "VisualActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_SculptureDisplayCase.BP_SculptureDisplayCase_C'"
+    "BaseInspectionDelay": 8.0
   },
   {
     "Name": "Artifact_Sculpture_Gallery_04",
     "ArtifactId": "Artifact_Sculpture_Gallery_04",
-    "DisplayName": "Winged Curator IV",
+    "DisplayName": "날개 달린 큐레이터 IV",
+    "ItemGrade": "OneStar",
     "ArtifactValue": 3000,
     "Weight": 6.0,
     "GridWidth": 2,
@@ -80,13 +81,13 @@
     "ForgeryType": "Assembly",
     "ForgeryTemplateId": "Template_Sculpture_Gallery_04",
     "MinimumForgeryScore": 0.6,
-    "BaseInspectionDelay": 8.0,
-    "VisualActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_SculptureDisplayCase.BP_SculptureDisplayCase_C'"
+    "BaseInspectionDelay": 8.0
   },
   {
     "Name": "Artifact_Sculpture_Gallery_05",
     "ArtifactId": "Artifact_Sculpture_Gallery_05",
-    "DisplayName": "Winged Curator V",
+    "DisplayName": "날개 달린 큐레이터 V",
+    "ItemGrade": "OneStar",
     "ArtifactValue": 3000,
     "Weight": 6.0,
     "GridWidth": 2,
@@ -94,13 +95,13 @@
     "ForgeryType": "Assembly",
     "ForgeryTemplateId": "Template_Sculpture_Gallery_05",
     "MinimumForgeryScore": 0.6,
-    "BaseInspectionDelay": 8.0,
-    "VisualActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_SculptureDisplayCase.BP_SculptureDisplayCase_C'"
+    "BaseInspectionDelay": 8.0
   },
   {
     "Name": "Artifact_Sculpture_Gallery_06",
     "ArtifactId": "Artifact_Sculpture_Gallery_06",
-    "DisplayName": "Winged Curator VI",
+    "DisplayName": "날개 달린 큐레이터 VI",
+    "ItemGrade": "OneStar",
     "ArtifactValue": 3000,
     "Weight": 6.0,
     "GridWidth": 2,
@@ -108,13 +109,13 @@
     "ForgeryType": "Assembly",
     "ForgeryTemplateId": "Template_Sculpture_Gallery_06",
     "MinimumForgeryScore": 0.6,
-    "BaseInspectionDelay": 8.0,
-    "VisualActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_SculptureDisplayCase.BP_SculptureDisplayCase_C'"
+    "BaseInspectionDelay": 8.0
   },
   {
     "Name": "Artifact_Ceramic_Gallery_01",
     "ArtifactId": "Artifact_Ceramic_Gallery_01",
-    "DisplayName": "Moonlit Vessel I",
+    "DisplayName": "달빛 항아리 I",
+    "ItemGrade": "OneStar",
     "ArtifactValue": 3000,
     "Weight": 6.0,
     "GridWidth": 2,
@@ -122,13 +123,13 @@
     "ForgeryType": "Assembly",
     "ForgeryTemplateId": "Template_Ceramic_Gallery_01",
     "MinimumForgeryScore": 0.6,
-    "BaseInspectionDelay": 8.0,
-    "VisualActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_CeramicDisplayCase.BP_CeramicDisplayCase_C'"
+    "BaseInspectionDelay": 8.0
   },
   {
     "Name": "Artifact_Ceramic_Gallery_02",
     "ArtifactId": "Artifact_Ceramic_Gallery_02",
-    "DisplayName": "Moonlit Vessel II",
+    "DisplayName": "달빛 항아리 II",
+    "ItemGrade": "OneStar",
     "ArtifactValue": 3000,
     "Weight": 6.0,
     "GridWidth": 2,
@@ -136,13 +137,13 @@
     "ForgeryType": "Assembly",
     "ForgeryTemplateId": "Template_Ceramic_Gallery_02",
     "MinimumForgeryScore": 0.6,
-    "BaseInspectionDelay": 8.0,
-    "VisualActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_CeramicDisplayCase.BP_CeramicDisplayCase_C'"
+    "BaseInspectionDelay": 8.0
   },
   {
     "Name": "Artifact_Ceramic_Gallery_03",
     "ArtifactId": "Artifact_Ceramic_Gallery_03",
-    "DisplayName": "Moonlit Vessel III",
+    "DisplayName": "달빛 항아리 III",
+    "ItemGrade": "OneStar",
     "ArtifactValue": 3000,
     "Weight": 6.0,
     "GridWidth": 2,
@@ -150,13 +151,13 @@
     "ForgeryType": "Assembly",
     "ForgeryTemplateId": "Template_Ceramic_Gallery_03",
     "MinimumForgeryScore": 0.6,
-    "BaseInspectionDelay": 8.0,
-    "VisualActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_CeramicDisplayCase.BP_CeramicDisplayCase_C'"
+    "BaseInspectionDelay": 8.0
   },
   {
     "Name": "Artifact_Ceramic_Gallery_04",
     "ArtifactId": "Artifact_Ceramic_Gallery_04",
-    "DisplayName": "Moonlit Vessel IV",
+    "DisplayName": "달빛 항아리 IV",
+    "ItemGrade": "OneStar",
     "ArtifactValue": 3000,
     "Weight": 6.0,
     "GridWidth": 2,
@@ -164,13 +165,13 @@
     "ForgeryType": "Assembly",
     "ForgeryTemplateId": "Template_Ceramic_Gallery_04",
     "MinimumForgeryScore": 0.6,
-    "BaseInspectionDelay": 8.0,
-    "VisualActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_CeramicDisplayCase.BP_CeramicDisplayCase_C'"
+    "BaseInspectionDelay": 8.0
   },
   {
     "Name": "Artifact_Ceramic_Gallery_05",
     "ArtifactId": "Artifact_Ceramic_Gallery_05",
-    "DisplayName": "Moonlit Vessel V",
+    "DisplayName": "달빛 항아리 V",
+    "ItemGrade": "OneStar",
     "ArtifactValue": 3000,
     "Weight": 6.0,
     "GridWidth": 2,
@@ -178,13 +179,13 @@
     "ForgeryType": "Assembly",
     "ForgeryTemplateId": "Template_Ceramic_Gallery_05",
     "MinimumForgeryScore": 0.6,
-    "BaseInspectionDelay": 8.0,
-    "VisualActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_CeramicDisplayCase.BP_CeramicDisplayCase_C'"
+    "BaseInspectionDelay": 8.0
   },
   {
     "Name": "Artifact_Ceramic_Gallery_06",
     "ArtifactId": "Artifact_Ceramic_Gallery_06",
-    "DisplayName": "Moonlit Vessel VI",
+    "DisplayName": "달빛 항아리 VI",
+    "ItemGrade": "OneStar",
     "ArtifactValue": 3000,
     "Weight": 6.0,
     "GridWidth": 2,
@@ -192,7 +193,6 @@
     "ForgeryType": "Assembly",
     "ForgeryTemplateId": "Template_Ceramic_Gallery_06",
     "MinimumForgeryScore": 0.6,
-    "BaseInspectionDelay": 8.0,
-    "VisualActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_CeramicDisplayCase.BP_CeramicDisplayCase_C'"
+    "BaseInspectionDelay": 8.0
   }
 ]

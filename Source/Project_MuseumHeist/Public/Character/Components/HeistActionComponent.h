@@ -6,6 +6,7 @@
 #include "HeistActionComponent.generated.h"
 
 class AController;
+class AHeistObjectDisplayCaseActor;
 class AHeistPlayerCharacter;
 class AHeistPaintingDisplayCaseActor;
 class AHeistVentActor;
@@ -13,7 +14,7 @@ class UDamageType;
 
 DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistEscapeCastCompleted, AHeistPlayerCharacter*, AHeistVentActor*);
 
-DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistObservationCastCompleted, AHeistPlayerCharacter*, AHeistPaintingDisplayCaseActor*);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistObservationCastCompleted, AHeistPlayerCharacter*, AActor*);
 
 DECLARE_MULTICAST_DELEGATE(FHeistActionStateChanged);
 
@@ -33,15 +34,17 @@ class PROJECT_MUSEUMHEIST_API UHeistActionComponent : public UActorComponent
 
   public:
 	bool TryBeginObservationRequest(AHeistPaintingDisplayCaseActor* TargetDisplayCase);
+	bool TryBeginObservationRequest(AHeistObjectDisplayCaseActor* TargetDisplayCase);
 	void CancelObservationRequest(const TCHAR* Reason);
 	bool IsObservationCastActive() const;
 	float GetObservationCastEndServerTime() const;
-	AHeistPaintingDisplayCaseActor* GetPendingObservationDisplayCase() const;
+	bool ShouldShowObservationReference() const;
+	AActor* GetPendingObservationTarget() const;
 	FHeistObservationCastCompleted& GetObservationCastCompletedDelegate();
 
   private:
 	UPROPERTY(Transient)
-	TWeakObjectPtr<AHeistPaintingDisplayCaseActor> PendingObservationDisplayCase;
+	TWeakObjectPtr<AActor> PendingObservationTarget;
 
 	UPROPERTY(ReplicatedUsing = OnRep_ObservationCastActive, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Observation", meta = (AllowPrivateAccess = "true"))
 	bool bObservationCastActive = false;
@@ -49,8 +52,11 @@ class PROJECT_MUSEUMHEIST_API UHeistActionComponent : public UActorComponent
 	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Observation", meta = (AllowPrivateAccess = "true"))
 	float ObservationCastEndServerTime = 0.0f;
 
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Observation", meta = (AllowPrivateAccess = "true"))
+	bool bObservationReferenceAvailable = false;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Observation", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "s"))
-	float ObservationCastDurationSeconds = 1.5f;
+	float ObservationCastDurationSeconds = 1.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Observation", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "cm"))
 	float ObservationCastMovementCancelDistance = 5.0f;
@@ -131,6 +137,7 @@ class PROJECT_MUSEUMHEIST_API UHeistActionComponent : public UActorComponent
 
   private:
 	float ResolveEscapeCastDurationSeconds() const;
+	bool BeginObservationCast(AHeistPlayerCharacter* HeistCharacter, AActor* TargetActor);
 	bool HasMovedBeyondEscapeCastTolerance() const;
 	bool HasMovedBeyondObservationCastTolerance() const;
 	void HandleEscapeCastTimerElapsed();

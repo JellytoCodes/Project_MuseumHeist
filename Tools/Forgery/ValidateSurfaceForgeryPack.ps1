@@ -418,7 +418,7 @@ foreach ($assetDefinition in $assetDefinitions)
         [int]$row.StrokeLimit -eq [int]$difficultySettings.StrokeLimit -and
         [Math]::Abs([double]$row.BrushSize - [double]$difficultySettings.BrushSize) -lt 0.0001
     $commonScoringContract =
-        [Math]::Abs([double]$row.ObservationDuration - 1.5) -lt 0.0001 -and
+        [Math]::Abs([double]$row.ObservationDuration - 1.0) -lt 0.0001 -and
         [Math]::Abs([double]$row.BackgroundColorTolerance - 0.08) -lt 0.0001 -and
         [Math]::Abs([double]$row.CoverageWeight - 0.45) -lt 0.0001 -and
         [Math]::Abs([double]$row.MajorShapeWeight - 0.55) -lt 0.0001 -and

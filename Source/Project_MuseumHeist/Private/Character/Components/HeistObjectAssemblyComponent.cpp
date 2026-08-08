@@ -71,20 +71,34 @@ bool UHeistObjectAssemblyComponent::TryBeginAssemblySession(AHeistObjectDisplayC
 		BroadcastSessionSnapshot(FName(TEXT("SessionBegin")), FName(TEXT("InventoryOpen")), false);
 		return false;
 	}
+	const bool bObservationLockOwned = TargetDisplayCase->IsSessionLocked() && TargetDisplayCase->GetSessionOwner() == HeistPlayerState;
+	if (TargetDisplayCase->IsSessionLocked() && !bObservationLockOwned)
+	{
+		BroadcastSessionSnapshot(FName(TEXT("SessionBegin")), FName(TEXT("CaseSessionLocked")), false);
+		return false;
+	}
 
 	FName RejectReason = NAME_None;
 	if (!TryPrepareTemplate(TargetDisplayCase, RejectReason))
 	{
+		if (bObservationLockOwned)
+		{
+			TargetDisplayCase->CancelSessionForOwner(HeistPlayerState, FName(TEXT("AssemblyTemplateRejected")));
+		}
 		BroadcastSessionSnapshot(FName(TEXT("SessionBegin")), RejectReason, false);
 		return false;
 	}
 	if (DurationSeconds > 0.0f && !FMath::IsWithinInclusive(DurationSeconds, 25.0f, 35.0f))
 	{
+		if (bObservationLockOwned)
+		{
+			TargetDisplayCase->CancelSessionForOwner(HeistPlayerState, FName(TEXT("AssemblyDurationRejected")));
+		}
 		ResetPreparedTemplate();
 		BroadcastSessionSnapshot(FName(TEXT("SessionBegin")), FName(TEXT("DurationOutsideContract")), false);
 		return false;
 	}
-	if (!TargetDisplayCase->TryBeginSession(HeistPlayerState))
+	if (!bObservationLockOwned && !TargetDisplayCase->TryBeginSession(HeistPlayerState))
 	{
 		ResetPreparedTemplate();
 		BroadcastSessionSnapshot(FName(TEXT("SessionBegin")), FName(TEXT("CaseSessionAcquireFailed")), false);
@@ -174,11 +188,78 @@ bool UHeistObjectAssemblyComponent::TrySubmitAssemblyPayload(const TArray<FHeist
 
 	AuthoritativeResult = SubmittedDisplayCase->GetCommittedAssemblyResult();
 	bHasAuthoritativeResult = true;
-	HeistPlayerState->RecordAssemblyContribution(AuthoritativeResult.QualityScore);
 	++ScoreRevision;
 	GetOwner()->ForceNetUpdate();
 	UHeistDebugFunctionLibrary::DebugObjectAssemblyScoreCommitted(this, AuthoritativeResult);
+	EnterPendingReplicaReview();
+	return true;
+}
+
+bool UHeistObjectAssemblyComponent::TryConfirmReplicaSwap()
+{
+	AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
+	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter) ? HeistCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
+	AHeistObjectDisplayCaseActor* TargetDisplayCase = ActiveDisplayCase.Get();
+	if (!IsValid(HeistCharacter) || !HeistCharacter->HasAuthority() || !HasPendingReplicaReview() || !IsValid(HeistPlayerState) || !IsValid(TargetDisplayCase))
+	{
+		return false;
+	}
+
+	int32 AddedInventoryInstanceId = INDEX_NONE;
+	FName RejectReason = NAME_None;
+	bHandlingCaseSessionCallback = true;
+	const bool bCommitted = TargetDisplayCase->TryCommitReplicaSwapAndTakeOriginal(HeistPlayerState, AddedInventoryInstanceId, RejectReason);
+	bHandlingCaseSessionCallback = false;
+	if (!bCommitted)
+	{
+		BroadcastSessionSnapshot(FName(TEXT("ServerReplicaSwap")), RejectReason.IsNone() ? FName(TEXT("CommitRejected")) : RejectReason, false);
+		return false;
+	}
+
+	AuthoritativeResult = TargetDisplayCase->GetCommittedAssemblyResult();
+	HeistPlayerState->RecordAssemblyContribution(AuthoritativeResult.QualityScore);
+	++ScoreRevision;
+	HeistCharacter->ForceNetUpdate();
+	UHeistDebugFunctionLibrary::DebugObjectAssemblyScoreCommitted(this, AuthoritativeResult);
 	CompleteSuccessfulSession();
+	return true;
+}
+
+bool UHeistObjectAssemblyComponent::TryRestartAssemblyFromPreview()
+{
+	AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
+	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter) ? HeistCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
+	AHeistObjectDisplayCaseActor* TargetDisplayCase = ActiveDisplayCase.Get();
+	if (!IsValid(HeistCharacter) || !HeistCharacter->HasAuthority() || !HasPendingReplicaReview() || !IsValid(HeistPlayerState) || !IsValid(TargetDisplayCase))
+	{
+		return false;
+	}
+
+	FName RejectReason = NAME_None;
+	bHandlingCaseSessionCallback = true;
+	const bool bRestarted = TargetDisplayCase->TryRestartAssemblyFromPreview(HeistPlayerState, RejectReason);
+	bHandlingCaseSessionCallback = false;
+	if (!bRestarted)
+	{
+		return false;
+	}
+
+	ResetPayloadState(true);
+	ResetAuthoritativeResult();
+	++ScoreRevision;
+	bSessionActive = true;
+	const float SafeDurationSeconds = FMath::Max(1.0f, ActiveSessionDurationSeconds > 0.0f ? ActiveSessionDurationSeconds : PreparedTemplate.AssemblyDuration);
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	const float ServerWorldTime = IsValid(HeistGameState) ? HeistGameState->GetServerWorldTimeSeconds() : (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
+	SessionStartServerTime = ServerWorldTime;
+	SessionEndServerTime = ServerWorldTime + SafeDurationSeconds;
+	++SessionRevision;
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().SetTimer(SessionTimeoutTimerHandle, this, &UHeistObjectAssemblyComponent::HandleSessionTimeout, SafeDurationSeconds, false);
+	}
+	HeistCharacter->ForceNetUpdate();
+	BroadcastSessionSnapshot(FName(TEXT("ServerReassemble")), FName(TEXT("ReplicaPreviewDiscarded")), true);
 	return true;
 }
 
@@ -208,6 +289,14 @@ bool UHeistObjectAssemblyComponent::ForceTimeoutForDebug()
 bool UHeistObjectAssemblyComponent::IsSessionActive() const
 {
 	return bSessionActive;
+}
+
+bool UHeistObjectAssemblyComponent::HasPendingReplicaReview() const
+{
+	const AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
+	const AHeistObjectDisplayCaseActor* TargetDisplayCase = ActiveDisplayCase.Get();
+	return !bSessionActive && bHasAuthoritativeResult && !AuthoritativeResult.bReplicaPlaced && IsValid(HeistCharacter) && IsValid(TargetDisplayCase) &&
+		TargetDisplayCase->IsReplicaReviewReadyFor(HeistCharacter);
 }
 
 float UHeistObjectAssemblyComponent::GetSessionEndServerTime() const
@@ -627,9 +716,25 @@ void UHeistObjectAssemblyComponent::ResetAuthoritativeResult()
 	AuthoritativeResult = FHeistObjectAssemblyResult();
 }
 
+void UHeistObjectAssemblyComponent::EnterPendingReplicaReview()
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(SessionTimeoutTimerHandle);
+	}
+	bSessionActive = false;
+	SessionEndServerTime = 0.0f;
+	++SessionRevision;
+	if (GetOwner())
+	{
+		GetOwner()->ForceNetUpdate();
+	}
+	BroadcastSessionSnapshot(FName(TEXT("ServerPreviewReady")), FName(TEXT("ReplicaReadyGameplayRestored")), true);
+}
+
 void UHeistObjectAssemblyComponent::CompleteSuccessfulSession()
 {
-	ClearSession(FName(TEXT("ScoreCommitted")), true, true);
+	ClearSession(FName(TEXT("ReplicaSwapCommitted")), false, true);
 }
 
 void UHeistObjectAssemblyComponent::HandleSessionTimeout()
@@ -693,7 +798,7 @@ void UHeistObjectAssemblyComponent::BroadcastSessionSnapshot(const FName EventNa
 
 void UHeistObjectAssemblyComponent::HandleDisplayCaseSessionChanged(AHeistPlayerState* SessionOwner, const bool bLocked, const int32 /*Revision*/)
 {
-	if (bHandlingCaseSessionCallback || !GetOwner() || !GetOwner()->HasAuthority() || !bSessionActive)
+	if (bHandlingCaseSessionCallback || !GetOwner() || !GetOwner()->HasAuthority() || !IsValid(ActiveDisplayCase.Get()))
 	{
 		return;
 	}

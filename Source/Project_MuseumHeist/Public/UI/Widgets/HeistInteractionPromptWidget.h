@@ -26,6 +26,7 @@ class PROJECT_MUSEUMHEIST_API UHeistInteractionPromptWidget : public UHeistUserW
 #pragma region Lifecycle
 
   protected:
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	virtual void NativeDestruct() override;
 
 #pragma endregion

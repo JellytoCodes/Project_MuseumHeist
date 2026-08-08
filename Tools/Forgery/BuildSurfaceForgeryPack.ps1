@@ -201,7 +201,7 @@ foreach ($template in @($manifest.templates))
         BackgroundFilterMode = "Black"
         BackgroundColorTolerance = 0.08
         AllowedPalette = $allowedPalette
-        ObservationDuration = 1.5
+        ObservationDuration = 1.0
         ForgeryDuration = $settings.Duration
         StrokeLimit = $settings.StrokeLimit
         BrushSize = $settings.BrushSize

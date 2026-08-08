@@ -2017,11 +2017,15 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyDump(APlayerController* Play
 	}
 
 	const bool bSessionActive = ObjectAssemblyComponent->IsSessionActive();
+	const bool bPendingReplicaReview = ObjectAssemblyComponent->HasPendingReplicaReview();
 	const bool bInactiveSnapshotClean = !bSessionActive && !IsValid(ActiveDisplayCase) && FMath::IsNearlyZero(ObjectAssemblyComponent->GetSessionEndServerTime());
 	const bool bActiveSnapshotConsistent =
 		bSessionActive && IsValid(ActiveDisplayCase) && ActiveDisplayCase->IsSessionLocked() && ActiveDisplayCase->GetSessionOwner() == HeistPlayerState &&
 		ActiveDisplayCase->GetAssemblyState() == EHeistObjectAssemblyState::AssemblyInProgress && ObjectAssemblyComponent->GetSessionEndServerTime() > 0.0f;
-	const bool bSessionContractConsistent = bInactiveSnapshotClean || bActiveSnapshotConsistent;
+	const bool bPendingReviewSnapshotConsistent =
+		bPendingReplicaReview && IsValid(ActiveDisplayCase) && ActiveDisplayCase->IsSessionLocked() && ActiveDisplayCase->GetSessionOwner() == HeistPlayerState &&
+		ActiveDisplayCase->GetAssemblyState() == EHeistObjectAssemblyState::ReplicaReady && FMath::IsNearlyZero(ObjectAssemblyComponent->GetSessionEndServerTime());
+	const bool bSessionContractConsistent = bInactiveSnapshotClean || bActiveSnapshotConsistent || bPendingReviewSnapshotConsistent;
 	const FHeistObjectAssemblyResult& Result = ObjectAssemblyComponent->GetAuthoritativeResult();
 	const bool bScoreContractConsistent = !ObjectAssemblyComponent->HasAuthoritativeResult() ||
 		(FMath::IsFinite(Result.QualityScore) && FMath::IsWithinInclusive(Result.QualityScore, 0.0f, 100.0f) &&
@@ -2031,8 +2035,9 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyDump(APlayerController* Play
 		PlayerController,
 		FString::Printf(
 			TEXT(
-				"Object Assembly dump: Character=%s PlayerId=%d Active=%s ActiveCase=%s NearestCase=%s CaseState=%s CaseOwnerPlayerId=%d CaseLocked=%s EndServerTime=%.2f SessionRevision=%d Artifact=%s Template=%s Family=%s LastPayloadAccepted=%s LastPayloadReason=%s ValidationRevision=%d HasScore=%s Quality=%.2f Required=%.2f Socket=%.2f Orientation=%.2f Material=%.2f Completeness=%.3f ExtraCap=%s CompletionTime=%.2f ScoreRevision=%d LastCleanup=%s SessionContract=%s ScoreContract=%s Authority=%s Result=%s"),
+				"Object Assembly dump: Character=%s PlayerId=%d Active=%s PendingReview=%s ActiveCase=%s NearestCase=%s CaseState=%s CaseOwnerPlayerId=%d CaseLocked=%s EndServerTime=%.2f SessionRevision=%d Artifact=%s Template=%s Family=%s LastPayloadAccepted=%s LastPayloadReason=%s ValidationRevision=%d HasScore=%s Quality=%.2f Required=%.2f Socket=%.2f Orientation=%.2f Material=%.2f Completeness=%.3f ExtraCap=%s CompletionTime=%.2f ScoreRevision=%d LastCleanup=%s SessionContract=%s ScoreContract=%s Authority=%s Result=%s"),
 			*GetNameSafe(HeistCharacter), IsValid(HeistPlayerState) ? HeistPlayerState->HeistPlayerId : INDEX_NONE, bSessionActive ? TEXT("true") : TEXT("false"),
+			bPendingReplicaReview ? TEXT("true") : TEXT("false"),
 			*GetNameSafe(ActiveDisplayCase), *GetNameSafe(NearestDisplayCase),
 			IsValid(NearestDisplayCase) ? *UEnum::GetValueAsString(NearestDisplayCase->GetAssemblyState()) : TEXT("None"),
 			IsValid(NearestDisplayCase) && IsValid(NearestDisplayCase->GetSessionOwner()) ? NearestDisplayCase->GetSessionOwner()->HeistPlayerId : INDEX_NONE,
@@ -2473,11 +2478,9 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyContentValidate(APlayerContr
 		const FName ArtifactId(*ArtifactIdString);
 		const FHeistArtifactDataRow* Artifact =
 			ArtifactTable->FindRow<FHeistArtifactDataRow>(ArtifactId, TEXT("DebugObjectAssemblyContentValidateArtifact"), false);
-		UStaticMesh* OriginalWorldMesh = Artifact != nullptr ? Artifact->OriginalWorldMesh.LoadSynchronous() : nullptr;
-		const FString OriginalWorldMeshPath = Artifact != nullptr ? Artifact->OriginalWorldMesh.ToSoftObjectPath().ToString() : FString();
 		const bool bArtifactValid =
 			Artifact != nullptr && Artifact->ArtifactId == ArtifactId && Artifact->ForgeryType == EHeistForgeryType::Assembly &&
-			Artifact->ForgeryTemplateId == Template->TemplateId && IsValid(OriginalWorldMesh) && OriginalWorldMeshPath.StartsWith(TEXT("/Game/"));
+			Artifact->ForgeryTemplateId == Template->TemplateId && !Artifact->DisplayName.IsEmpty();
 		ArtifactCount += bArtifactValid ? 1 : 0;
 		bTemplateValid = bTemplateValid && bArtifactValid;
 		InvalidTemplateCount += bTemplateValid ? 0 : 1;
@@ -2517,15 +2520,27 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyTakeOriginal(APlayerControll
 {
 #if !UE_BUILD_SHIPPING
 	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
+	const UHeistObjectAssemblyComponent* ObjectAssemblyComponent = ResolveObjectAssemblyComponent(PlayerController);
 	AHeistObjectDisplayCaseActor* DisplayCase = ResolveNearestReplicaObjectDisplayCase(PlayerController);
-	if (!IsValid(HeistPlayerController) || !IsValid(DisplayCase))
+	if (!IsValid(HeistPlayerController) || !IsValid(ObjectAssemblyComponent) || !IsValid(DisplayCase))
 	{
 		Message(PlayerController, TEXT("Object Assembly original take: Result=REJECTED Reason=MissingControllerOrReplicaCase"), EHeistDebugLevel::Warning, true);
 		return;
 	}
 
-	HeistPlayerController->RequestTakeObjectOriginal(DisplayCase);
-	Message(PlayerController, FString::Printf(TEXT("Object Assembly original take requested: Case=%s"), *GetNameSafe(DisplayCase)), EHeistDebugLevel::Info, true);
+	const bool bConfirmReplicaSwap = ObjectAssemblyComponent->HasPendingReplicaReview() && ObjectAssemblyComponent->GetActiveDisplayCase() == DisplayCase;
+	if (bConfirmReplicaSwap)
+	{
+		HeistPlayerController->RequestConfirmObjectAssemblyReplicaSwap();
+	}
+	else
+	{
+		HeistPlayerController->RequestTakeObjectOriginal(DisplayCase);
+	}
+	Message(PlayerController,
+			FString::Printf(TEXT("Object Assembly original take requested: Case=%s Mode=%s"), *GetNameSafe(DisplayCase),
+							bConfirmReplicaSwap ? TEXT("ReplicaSwapAndTake") : TEXT("OriginalAvailableTake")),
+			EHeistDebugLevel::Info, true);
 #endif
 }
 
@@ -6112,13 +6127,14 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyReplicaCommit(const AHeistOb
 	return;
 #else
 	const FHeistObjectAssemblyReplicaData ReplicaData = IsValid(DisplayCase) ? DisplayCase->GetAssemblyReplicaData() : FHeistObjectAssemblyReplicaData();
-	const bool bContractPassed = bResult && IsValid(DisplayCase) && DisplayCase->HasCommittedAssemblyResult() && Result.bReplicaPlaced &&
-		ReplicaData.Revision > 0 && ReplicaData.Entries.Num() == EntryCount && FMath::IsWithinInclusive(Result.QualityScore, 0.0f, 100.0f);
+	const bool bContractPassed = bResult && IsValid(DisplayCase) && DisplayCase->HasCommittedAssemblyResult() && !Result.bReplicaPlaced &&
+		DisplayCase->GetAssemblyState() == EHeistObjectAssemblyState::ReplicaReady && DisplayCase->IsSessionLocked() && ReplicaData.Revision > 0 &&
+		ReplicaData.Entries.Num() == EntryCount && FMath::IsWithinInclusive(Result.QualityScore, 0.0f, 100.0f);
 	LogMessage(
 		EHeistDebugChannel::Network, bContractPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
 		FString::Printf(
 			TEXT(
-				"Object Assembly replica commit: Case=%s CaseId=%s Artifact=%s Template=%s RequesterPlayerId=%d Entries=%d ReplicaRevision=%d Quality=%.2f State=%s ReplicaPlaced=%s Authority=%s Result=%s Reason=%s"),
+				"Object Assembly replica preview: Case=%s CaseId=%s Artifact=%s Template=%s RequesterPlayerId=%d Entries=%d ReplicaRevision=%d Quality=%.2f State=%s ReplicaPlaced=%s Authority=%s Result=%s Reason=%s"),
 			*GetNameSafe(DisplayCase), IsValid(DisplayCase) ? *DisplayCase->GetObjectCaseId().ToString() : TEXT("None"),
 			IsValid(DisplayCase) ? *DisplayCase->GetTargetArtifactId().ToString() : TEXT("None"), *Result.TemplateId.ToString(),
 			IsValid(RequestingPlayerState) ? RequestingPlayerState->HeistPlayerId : INDEX_NONE, EntryCount, ReplicaData.Revision, Result.QualityScore,

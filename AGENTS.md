@@ -611,6 +611,10 @@ OrphanExtensions=0
 - Observation Cast
 - Escape Cast
 
+- Observation Cast는 Painting과 Object Display Case의 최초 위조/조립 진입에 공통으로 사용한다.
+- Observation Cast 기본 시간은 두 방식 모두 `1.0초`다. Server가 시작·취소·완료와 Session Lock을 확정한다.
+- Owning Client는 복제된 `ObservationCastEndServerTime`을 기준으로 ProgressBar만 매 Frame 갱신하며, 진행률 갱신을 위한 Tick RPC는 전송하지 않는다.
+
 제거된 Gameplay Cast:
 
 - Trap Placement Cast
@@ -639,7 +643,7 @@ Observation 취소 조건:
 - Damage
 - Arrest
 - Session Invalid
-- Display Case Invalid
+- Painting / Object Display Case Invalid
 - Match Phase 변경
 - Owner EndPlay
 - Disconnect
@@ -904,6 +908,8 @@ Jewelry, Fossil 및 기타 Family는 명시적인 설계·구현 승인 전 활�
 
 ## Owner-only Assembly Mode
 
+- `Secured` Object Case의 최초 `E`는 즉시 Assembly를 열지 않는다. `E`를 1.0초 유지해 Observation Cast가 서버에서 완료된 뒤 Assembly Session으로 전환한다.
+- Observation 중 Input Release, Movement, Damage, Arrest, Session Invalid 또는 Match Phase 변경이 발생하면 Assembly 진입 없이 취소한다.
 - Object Assembly Widget은 Owning Player에게만 표시한다.
 - Assembly 중 World View는 완전히 가린다.
 - Move, Look, Jump, Sprint, Throw, QuickSlot, Inventory와 다른 Interaction을 차단한다.
@@ -1059,7 +1065,7 @@ Contract Failed
 - Coin Impact
 - 현재 기획에 포함된 환경 소음
 
-`Replica Swap`은 Painting Case의 `E` 교체·회수 확정 시 프레임이 덜그럭거리는 World Audio와 함께 서버에서 발생한다. 주변 Guard는 이 Event를 `InvestigateNoise` 후보로 처리하고, Player-facing SoundPing Marker는 생성하지 않는다.
+`Replica Swap`은 Painting/Object Case의 `E` 교체·회수 확정 시 작은 World Audio와 함께 서버에서 발생한다. 주변 Guard는 이 Event를 `InvestigateNoise` 후보로 처리하고, Player-facing SoundPing Marker는 생성하지 않는다. Drawing/Assembly 제출만으로는 이 Event를 발생시키지 않는다.
 
 현재 제거된 SoundPing:
 
@@ -1156,13 +1162,16 @@ Actor Blueprint 분리는 Component Topology, Collision Contract, Authority Stat
 | Gameplay Family | C++ Parent | Canonical Blueprint Shell | Variant Data Source |
 |---|---|---|---|
 | Loose Loot World Pickup | `AHeistLootActor` | `BP_Loot` | `ItemId` → `DT_ItemData` + `DT_LootData`의 Mesh / Material / Visual Transform |
-| Dropped Original Recovery | `AHeistDroppedOriginalActor` | `BP_DroppedOriginal` | 복제된 `ArtifactId` → `DT_ArtifactData`와 원본 Visual Data |
+| Dropped Original Recovery | `AHeistDroppedOriginalActor` | `BP_DroppedOriginal` | `ArtifactId` → `DT_ArtifactData`의 DisplayName / ItemGrade / ForgeryType, Category Mesh와 Grade Material은 공용 Shell Default |
 | Painting Display Case | `AHeistPaintingDisplayCaseActor` | `BP_PaintingDisplayCase` | `CaseId` / `ArtifactId` → `DT_ArtifactData` + `DT_ForgeryTemplate` |
 | Object Assembly Display Case | `AHeistObjectDisplayCaseActor` | `BP_ObjectDisplayCase` | `CaseId` / `ArtifactId` → `DT_ArtifactData` + `DT_ObjectAssemblyTemplate` + `DT_ObjectAssemblyPart` |
 | Shared Extraction | `AHeistVentActor` | `BP_Vent` | Map Instance Identity와 공통 Vent Presentation |
 | Loot Spawn Point | `AHeistLootSpawnPoint` | `BP_LootSpawnPoint` | Spawn Category / Zone / Transform |
 
 - Loose Loot와 Dropped Original은 외형이 유사해도 서버 상태와 회수 Transaction이 다르므로 서로 다른 공용 Shell을 유지한다.
+- Dropped Original은 작품별 원본 Mesh/Material을 재현하지 않는다. Drawing Artifact는 작은 액자, Assembly Artifact는 작은 조각상 공용 외형만 사용한다.
+- `DT_ArtifactData`는 Dropped Original을 위한 개별 Mesh, Material 또는 Actor Class를 소유하지 않는다. 작품 차이는 DisplayName과 ItemGrade로 식별한다.
+- Dropped Original의 등급은 공용 Shell의 Grade Material 색상과 UI의 별/등급 Text를 함께 사용한다. Required Target 표시는 등급과 별도의 Text/Icon으로 구분한다.
 - `BP_Loot`는 기존 `BP_LootRoyalCrown`을 In-place Rename하고 고정 Mesh/Row를 제거해 승격한 유일한 Loose Loot 공용 Shell이다.
 - Crown, Sword, Painting, Vase, Necklace 같은 Loose Loot 차이는 별도 파생 Actor Blueprint가 아니라 Data Row로 표현한다.
 - Sculpture와 Ceramic은 모두 `BP_ObjectDisplayCase` 하나를 사용한다. Family, Core/Part Mesh, Socket, Orientation과 Material은 Object Assembly Data가 결정한다.
@@ -1184,6 +1193,7 @@ Actor Blueprint 분리는 Component Topology, Collision Contract, Authority Stat
 - `봉쇄`처럼 의미가 모호할 수 있는 단독 상태명 대신 `박물관 봉쇄까지 {0} 남았습니다.`처럼 게임 내 대상과 상태를 명시한다.
 - Forgery 제출 제한 시간과 Museum Lockdown 제한 시간은 서로 다른 문장으로 구분한다.
 - Raw Enum, Data Row ID, Blueprint Class Name을 그대로 플레이어에게 노출하지 않는다.
+- Dropped Original 접근 Prompt는 `Required Target 여부 + 등급 + 작품 DisplayName + E 회수`를 표시한다.
 - 화면 제목, 버튼 동사, 키 라벨, 수량처럼 문맥이 이미 분명한 짧은 UI Label은 간결하게 유지할 수 있다.
 - `NSLOCTEXT` / `LOCTEXT` Namespace와 Key는 안정적으로 유지하고 원문만 한국어로 작성한다.
 - 영어를 포함한 추가 언어는 기존 Namespace와 Key를 사용하는 Localization Target 번역 리소스로 추가하며, 이를 위해 한국어 원문을 다시 영어로 되돌리지 않는다.

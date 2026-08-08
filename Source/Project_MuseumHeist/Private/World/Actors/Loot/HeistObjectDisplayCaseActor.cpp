@@ -232,7 +232,8 @@ bool AHeistObjectDisplayCaseActor::HasCommittedAssemblyResult() const
 
 bool AHeistObjectDisplayCaseActor::HasReplicaPreview() const
 {
-	return bHasCommittedAssemblyResult && !CommittedAssemblyResult.bReplicaPlaced && AssemblyState == EHeistObjectAssemblyState::ReplicaReady && AssemblyReplicaData.Revision > 0;
+	// CommittedAssemblyResult is server-only. Client review UX must rely on the replicated compact replica payload and case state.
+	return AssemblyState == EHeistObjectAssemblyState::ReplicaReady && AssemblyReplicaData.Revision > 0 && !AssemblyReplicaData.Entries.IsEmpty();
 }
 
 bool AHeistObjectDisplayCaseActor::IsReplicaReviewReadyFor(const AActor* Interactor) const
@@ -950,12 +951,13 @@ bool AHeistObjectDisplayCaseActor::CanInteract(const AActor* Interactor) const
 	const AHeistPlayerState* RequestingPlayerState = IsValid(RequestingPawn) ? RequestingPawn->GetPlayerState<AHeistPlayerState>() : nullptr;
 	const bool bStateAllowsAssembly = AssemblyState == EHeistObjectAssemblyState::Secured || AssemblyState == EHeistObjectAssemblyState::Observed;
 	const bool bStateAllowsOriginalTake = AssemblyState == EHeistObjectAssemblyState::OriginalAvailable;
+	const bool bReplicaReviewReady = IsReplicaReviewReadyFor(Interactor);
 	const bool bIdentityReady = !ObjectCaseId.IsNone() && !TargetObjectArtifactId.IsNone() && !ObjectFamilyId.IsNone();
 	const bool bPlayerReady = IsValid(RequestingPlayerState) && !RequestingPlayerState->IsArrested() && !RequestingPlayerState->IsEscaped();
 	const bool bWithinSessionDistance =
 		IsValid(RequestingPawn) && FVector::DistSquared(RequestingPawn->GetActorLocation(), GetActorLocation()) <= FMath::Square(MaximumSessionDistance);
-	return Super::CanInteract(Interactor) && bIdentityReady && (bStateAllowsAssembly || bStateAllowsOriginalTake) && !bSessionLocked && !IsValid(SessionOwner.Get()) && bPlayerReady &&
-		bWithinSessionDistance;
+	const bool bUnlockedInteraction = (bStateAllowsAssembly || bStateAllowsOriginalTake) && !bSessionLocked && !IsValid(SessionOwner.Get());
+	return Super::CanInteract(Interactor) && bIdentityReady && (bUnlockedInteraction || bReplicaReviewReady) && bPlayerReady && bWithinSessionDistance;
 }
 
 void AHeistObjectDisplayCaseActor::OnRep_AssemblyState()
@@ -1105,6 +1107,79 @@ bool AHeistObjectDisplayCaseActor::ValidateReplicaCommit(AHeistPlayerState* Requ
 		SubmittedSocketIds.Add(Entry.SocketId);
 	}
 	return true;
+}
+
+bool AHeistObjectDisplayCaseActor::ValidateReplicaReviewOwner(AHeistPlayerState* RequestingPlayerState, FName& OutRejectReason) const
+{
+	OutRejectReason = NAME_None;
+	if (!IsValid(RequestingPlayerState))
+	{
+		OutRejectReason = FName(TEXT("MissingPlayerState"));
+		return false;
+	}
+	if (!HasReplicaPreview() || !bHasCommittedAssemblyResult || CommittedAssemblyResult.bReplicaPlaced)
+	{
+		OutRejectReason = FName(TEXT("ReplicaPreviewNotReady"));
+		return false;
+	}
+	if (!bSessionLocked || SessionOwner.Get() != RequestingPlayerState)
+	{
+		OutRejectReason = FName(TEXT("CaseOwnershipMismatch"));
+		return false;
+	}
+
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	const APawn* RequestingPawn = RequestingPlayerState->GetPawn();
+	if (!IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame || RequestingPlayerState->IsArrested() || RequestingPlayerState->IsEscaped())
+	{
+		OutRejectReason = FName(TEXT("PlayerOrMatchBlocked"));
+		return false;
+	}
+	if (!IsValid(RequestingPawn) || FVector::DistSquared(RequestingPawn->GetActorLocation(), GetActorLocation()) > FMath::Square(MaximumSessionDistance))
+	{
+		OutRejectReason = FName(TEXT("OutOfRange"));
+		return false;
+	}
+	return true;
+}
+
+void AHeistObjectDisplayCaseActor::ResetAssemblyPreviewData()
+{
+	bHasCommittedAssemblyResult = false;
+	CommittedAssemblyResult = FHeistObjectAssemblyResult();
+	AssemblyReplicaData = FHeistObjectAssemblyReplicaData();
+	DestroyReplicaComponents();
+}
+
+void AHeistObjectDisplayCaseActor::EmitReplicaSwapFeedback()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	if (AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr)
+	{
+		FHeistSoundPingEvent SoundPingEvent;
+		SoundPingEvent.SoundPingTag = FHeistGameplayTags::Get().Event_SoundPing_ReplicaSwap;
+		SoundPingEvent.PingType = EHeistSoundPingType::ReplicaSwap;
+		SoundPingEvent.WorldLocation = GetActorLocation();
+		SoundPingEvent.Radius = FMath::Max(0.0f, ReplicaSwapNoiseRadius);
+		SoundPingEvent.Duration = FMath::Max(0.0f, ReplicaSwapNoiseDuration);
+		SoundPingEvent.bAffectsGuards = true;
+		HeistGameState->ReportSoundPing(SoundPingEvent);
+	}
+
+	Multicast_PlayReplicaSwapFeedback();
+}
+
+void AHeistObjectDisplayCaseActor::Multicast_PlayReplicaSwapFeedback_Implementation()
+{
+	if (IsValid(ReplicaSwapSound))
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, ReplicaSwapSound, GetActorLocation());
+	}
+	BP_OnReplicaSwapCommitted();
 }
 
 void AHeistObjectDisplayCaseActor::RefreshObjectVisualState()
@@ -1384,7 +1459,7 @@ bool AHeistObjectDisplayCaseActor::IsAssemblyStateTransitionAllowed(const EHeist
 	case EHeistObjectAssemblyState::AssemblyInProgress:
 		return NewState == EHeistObjectAssemblyState::Observed || NewState == EHeistObjectAssemblyState::ReplicaReady || NewState == EHeistObjectAssemblyState::Failed;
 	case EHeistObjectAssemblyState::ReplicaReady:
-		return NewState == EHeistObjectAssemblyState::ReplicaPlaced || NewState == EHeistObjectAssemblyState::Failed;
+		return NewState == EHeistObjectAssemblyState::AssemblyInProgress || NewState == EHeistObjectAssemblyState::ReplicaPlaced || NewState == EHeistObjectAssemblyState::Failed;
 	case EHeistObjectAssemblyState::ReplicaPlaced:
 		return NewState == EHeistObjectAssemblyState::OriginalAvailable || NewState == EHeistObjectAssemblyState::Inspecting || NewState == EHeistObjectAssemblyState::Failed;
 	case EHeistObjectAssemblyState::OriginalAvailable:
@@ -1410,7 +1485,12 @@ void AHeistObjectDisplayCaseActor::ClearSession(const FName Reason)
 	UnbindSessionOwnerDelegate();
 	SessionOwner = nullptr;
 	bSessionLocked = false;
-	if (AssemblyState == EHeistObjectAssemblyState::AssemblyInProgress)
+	if (AssemblyState == EHeistObjectAssemblyState::ReplicaReady)
+	{
+		ResetAssemblyPreviewData();
+		AssemblyState = EHeistObjectAssemblyState::Observed;
+	}
+	else if (AssemblyState == EHeistObjectAssemblyState::AssemblyInProgress)
 	{
 		AssemblyState = EHeistObjectAssemblyState::Observed;
 	}
@@ -1440,13 +1520,20 @@ void AHeistObjectDisplayCaseActor::BroadcastAssemblySnapshot(const FName EventNa
 }
 
 bool AHeistObjectDisplayCaseActor::ValidateOriginalTakeRequest(AHeistPlayerState* RequestingPlayerState, int32& OutArtifactValue, float& OutArtifactWeight, bool& bOutRequiredTarget,
-														  FName& OutRejectReason) const
+														  FName& OutRejectReason, const bool bAllowLockedReplicaReady) const
 {
 	OutArtifactValue = 0;
 	OutArtifactWeight = 0.0f;
 	bOutRequiredTarget = false;
 	OutRejectReason = NAME_None;
-	if (!IsValid(RequestingPlayerState) || AssemblyState != EHeistObjectAssemblyState::OriginalAvailable || bSessionLocked || IsValid(OriginalCarrier.Get()))
+	if (!IsValid(RequestingPlayerState))
+	{
+		OutRejectReason = FName(TEXT("MissingPlayerState"));
+		return false;
+	}
+	const bool bStandardPickupState = AssemblyState == EHeistObjectAssemblyState::OriginalAvailable && !bSessionLocked;
+	const bool bReplicaReviewState = bAllowLockedReplicaReady && AssemblyState == EHeistObjectAssemblyState::ReplicaReady && bSessionLocked && SessionOwner.Get() == RequestingPlayerState;
+	if ((!bStandardPickupState && !bReplicaReviewState) || IsValid(OriginalCarrier.Get()))
 	{
 		OutRejectReason = FName(TEXT("InvalidOriginalState"));
 		return false;
@@ -1465,13 +1552,6 @@ bool AHeistObjectDisplayCaseActor::ValidateOriginalTakeRequest(AHeistPlayerState
 		OutRejectReason = FName(TEXT("PlayerStateNotInMatch"));
 		return false;
 	}
-	if ((!HeistGameState->GetActiveTargetArtifactId().IsNone() && HeistGameState->GetActiveTargetArtifactId() != TargetObjectArtifactId) ||
-		(!HeistGameState->GetActiveTargetCaseId().IsNone() && HeistGameState->GetActiveTargetCaseId() != ObjectCaseId))
-	{
-		OutRejectReason = FName(TEXT("NotActiveTargetCase"));
-		return false;
-	}
-
 	AHeistPlayerCharacter* PlayerCharacter = Cast<AHeistPlayerCharacter>(RequestingPlayerState->GetPawn());
 	UHeistInventoryComponent* InventoryComponent = IsValid(PlayerCharacter) ? PlayerCharacter->GetInventoryComponent() : nullptr;
 	if (!IsValid(PlayerCharacter) || !IsValid(InventoryComponent) ||

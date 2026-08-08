@@ -1910,12 +1910,6 @@ bool AHeistPaintingDisplayCaseActor::ValidateOriginalTakeRequest(AHeistPlayerSta
 		OutRejectReason = FName(TEXT("PlayerStateNotInMatch"));
 		return false;
 	}
-	if ((!HeistGameState->GetActiveTargetArtifactId().IsNone() && HeistGameState->GetActiveTargetArtifactId() != TargetArtifactId) ||
-		(!HeistGameState->GetActiveTargetCaseId().IsNone() && HeistGameState->GetActiveTargetCaseId() != DisplayCaseId))
-	{
-		OutRejectReason = FName(TEXT("NotActiveTargetCase"));
-		return false;
-	}
 	if (RequestingPlayerState->IsArrested() || RequestingPlayerState->IsEscaped())
 	{
 		OutRejectReason = FName(TEXT("PlayerStateBlocked"));

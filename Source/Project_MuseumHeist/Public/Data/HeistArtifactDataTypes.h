@@ -6,6 +6,8 @@
 
 #include "HeistArtifactDataTypes.generated.h"
 
+class UMaterialInterface;
+class UStaticMesh;
 class UTexture2D;
 
 UENUM(BlueprintType)
@@ -99,7 +101,7 @@ struct PROJECT_MUSEUMHEIST_API FHeistForgeryTemplateRow : public FTableRowBase
 										   FLinearColor(0.90f, 0.84f, 0.68f, 1.0f)};
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery", meta = (ClampMin = "0.0", Units = "s"))
-	float ObservationDuration = 1.5f;
+	float ObservationDuration = 1.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery", meta = (ClampMin = "20.0", ClampMax = "45.0", Units = "s"))
 	float ForgeryDuration = 40.0f;

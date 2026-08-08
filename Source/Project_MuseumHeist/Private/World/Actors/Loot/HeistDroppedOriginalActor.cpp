@@ -5,6 +5,7 @@
 #include "Data/HeistArtifactDataTypes.h"
 #include "Data/HeistGameBalanceDataAsset.h"
 #include "Engine/DataTable.h"
+#include "Engine/StaticMesh.h"
 #include "Materials/MaterialInterface.h"
 #include "Net/UnrealNetwork.h"
 

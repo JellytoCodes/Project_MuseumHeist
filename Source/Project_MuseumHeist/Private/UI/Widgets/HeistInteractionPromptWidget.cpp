@@ -7,13 +7,55 @@
 #include "Components/Widget.h"
 #include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerState.h"
+#include "Data/HeistArtifactDataTypes.h"
+#include "Data/HeistGameBalanceDataAsset.h"
+#include "Engine/DataTable.h"
 #include "Engine/World.h"
 #include "GameFramework/GameStateBase.h"
 #include "TimerManager.h"
 #include "UI/ViewModels/HeistHUDViewModel.h"
 #include "World/Actors/Escape/HeistVentActor.h"
+#include "World/Actors/Loot/HeistDroppedOriginalActor.h"
 #include "World/Actors/Loot/HeistLootActor.h"
+#include "World/Actors/Loot/HeistObjectDisplayCaseActor.h"
 #include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
+
+namespace
+{
+FText ResolveArtifactDisplayName(const FName ArtifactId)
+{
+	const UHeistGameBalanceDataAsset* BalanceData = GetDefault<UHeistGameBalanceDataAsset>();
+	UDataTable* ArtifactDataTable = IsValid(BalanceData) ? BalanceData->ArtifactDataTable.LoadSynchronous() : nullptr;
+	const FHeistArtifactDataRow* ArtifactDefinition = IsValid(ArtifactDataTable) && ArtifactDataTable->GetRowStruct() == FHeistArtifactDataRow::StaticStruct()
+		? ArtifactDataTable->FindRow<FHeistArtifactDataRow>(ArtifactId, TEXT("ResolveInteractionArtifactDisplayName"), false)
+		: nullptr;
+	if (ArtifactDefinition != nullptr && ArtifactDefinition->ArtifactId == ArtifactId && !ArtifactDefinition->DisplayName.IsEmpty())
+	{
+		return ArtifactDefinition->DisplayName;
+	}
+
+	FString FallbackName = ArtifactId.ToString();
+	FallbackName.ReplaceInline(TEXT("_"), TEXT(" "));
+	return FText::FromString(FallbackName);
+}
+
+FText ResolveGradeText(const EHeistLootGrade ItemGrade)
+{
+	switch (ItemGrade)
+	{
+	case EHeistLootGrade::OneStar:
+		return NSLOCTEXT("HeistInteraction", "OneStarGrade", "★");
+	case EHeistLootGrade::TwoStar:
+		return NSLOCTEXT("HeistInteraction", "TwoStarGrade", "★★");
+	case EHeistLootGrade::ThreeStar:
+		return NSLOCTEXT("HeistInteraction", "ThreeStarGrade", "★★★");
+	case EHeistLootGrade::FourStar:
+		return NSLOCTEXT("HeistInteraction", "FourStarGrade", "★★★★");
+	default:
+		return FText::GetEmpty();
+	}
+}
+}
 
 #pragma region Construction
 
@@ -25,6 +67,16 @@ UHeistInteractionPromptWidget::UHeistInteractionPromptWidget(const FObjectInitia
 #pragma endregion
 
 #pragma region Lifecycle
+
+void UHeistInteractionPromptWidget::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+
+	if (IsValid(HUDViewModel) && (HUDViewModel->IsObservationCastActive() || HUDViewModel->IsEscapeCastActive()))
+	{
+		RefreshActionProgress();
+	}
+}
 
 void UHeistInteractionPromptWidget::NativeDestruct()
 {
@@ -127,8 +179,11 @@ void UHeistInteractionPromptWidget::RefreshInteractionPrompt(const bool bActionA
 	if (IsValid(KeyText))
 	{
 		const AHeistPaintingDisplayCaseActor* PaintingCase = Cast<AHeistPaintingDisplayCaseActor>(TargetActor);
-		const bool bReplicaReviewReady = IsValid(PaintingCase) && PaintingCase->IsReplicaReviewReadyFor(GetOwningPlayerPawn());
-		KeyText->SetText(bReplicaReviewReady ? NSLOCTEXT("HeistInteraction", "ReplicaReviewKeys", "E 회수  |  R 다시 그리기") : InteractionKeyLabel);
+		const AHeistObjectDisplayCaseActor* ObjectCase = Cast<AHeistObjectDisplayCaseActor>(TargetActor);
+		const bool bPaintingReviewReady = IsValid(PaintingCase) && PaintingCase->IsReplicaReviewReadyFor(GetOwningPlayerPawn());
+		const bool bObjectReviewReady = IsValid(ObjectCase) && ObjectCase->IsReplicaReviewReadyFor(GetOwningPlayerPawn());
+		KeyText->SetText(bPaintingReviewReady ? NSLOCTEXT("HeistInteraction", "PaintingReplicaReviewKeys", "E 교체·회수  |  R 다시 그리기")
+										: bObjectReviewReady ? NSLOCTEXT("HeistInteraction", "ObjectReplicaReviewKeys", "E 교체·회수  |  R 다시 조립") : InteractionKeyLabel);
 	}
 	if (IsValid(AvailabilityText))
 	{
@@ -229,13 +284,31 @@ FText UHeistInteractionPromptWidget::ResolveTargetLabel(const AActor* TargetActo
 		return FText::Format(NSLOCTEXT("HeistInteraction", "NamedLootTarget", "{0} 획득"), FText::FromString(LootDisplayName));
 	}
 
+	if (const AHeistDroppedOriginalActor* DroppedOriginal = Cast<AHeistDroppedOriginalActor>(TargetActor))
+	{
+		const FText TargetPrefix = DroppedOriginal->IsRequiredTarget() ? NSLOCTEXT("HeistInteraction", "RequiredTargetPrefix", "[핵심 목표] ") : FText::GetEmpty();
+		return FText::Format(NSLOCTEXT("HeistInteraction", "DroppedOriginalTarget", "{0}[{1}] {2} 원본 회수"), TargetPrefix,
+							 ResolveGradeText(DroppedOriginal->GetItemGrade()), DroppedOriginal->GetArtifactDisplayName());
+	}
+
 	if (const AHeistPaintingDisplayCaseActor* PaintingCase = Cast<AHeistPaintingDisplayCaseActor>(TargetActor))
 	{
+		const FText ArtifactName = ResolveArtifactDisplayName(PaintingCase->GetTargetArtifactId());
 		if (PaintingCase->IsReplicaReviewReadyFor(GetOwningPlayerPawn()))
 		{
-			return NSLOCTEXT("HeistInteraction", "ReplicaReviewTarget", "복제품 회수 대기");
+			return FText::Format(NSLOCTEXT("HeistInteraction", "PaintingReplicaReviewTarget", "{0} 교체 준비 완료"), ArtifactName);
 		}
-		return NSLOCTEXT("HeistInteraction", "PaintingTarget", "그림 관찰");
+		return FText::Format(NSLOCTEXT("HeistInteraction", "PaintingTarget", "{0} 그림 관찰"), ArtifactName);
+	}
+
+	if (const AHeistObjectDisplayCaseActor* ObjectCase = Cast<AHeistObjectDisplayCaseActor>(TargetActor))
+	{
+		const FText ArtifactName = ResolveArtifactDisplayName(ObjectCase->GetTargetArtifactId());
+		if (ObjectCase->IsReplicaReviewReadyFor(GetOwningPlayerPawn()))
+		{
+			return FText::Format(NSLOCTEXT("HeistInteraction", "ObjectReplicaReviewTarget", "{0} 교체 준비 완료"), ArtifactName);
+		}
+		return FText::Format(NSLOCTEXT("HeistInteraction", "ObjectTarget", "{0} 작품 관찰"), ArtifactName);
 	}
 
 	if (Cast<AHeistVentActor>(TargetActor) != nullptr)

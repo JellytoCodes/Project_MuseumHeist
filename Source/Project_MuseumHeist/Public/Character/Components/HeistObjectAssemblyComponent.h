@@ -32,10 +32,13 @@ class PROJECT_MUSEUMHEIST_API UHeistObjectAssemblyComponent : public UActorCompo
   public:
 	bool TryBeginAssemblySession(AHeistObjectDisplayCaseActor* TargetDisplayCase, float DurationSeconds = -1.0f);
 	bool TrySubmitAssemblyPayload(const TArray<FHeistObjectAssemblyEntry>& Entries, int32 ClientSessionRevision);
+	bool TryConfirmReplicaSwap();
+	bool TryRestartAssemblyFromPreview();
 	bool CancelAssemblySession(FName Reason);
 	bool ForceTimeoutForDebug();
 
 	bool IsSessionActive() const;
+	bool HasPendingReplicaReview() const;
 	float GetSessionEndServerTime() const;
 	int32 GetSessionRevision() const;
 	AHeistObjectDisplayCaseActor* GetActiveDisplayCase() const;
@@ -64,6 +67,7 @@ class PROJECT_MUSEUMHEIST_API UHeistObjectAssemblyComponent : public UActorCompo
 	void ResetPayloadState(bool bResetLastValidation);
 	void ResetPreparedTemplate();
 	void ResetAuthoritativeResult();
+	void EnterPendingReplicaReview();
 	void CompleteSuccessfulSession();
 	void HandleSessionTimeout();
 	void ClearSession(FName Reason, bool bReleaseCaseLock, bool bPreserveResult);
