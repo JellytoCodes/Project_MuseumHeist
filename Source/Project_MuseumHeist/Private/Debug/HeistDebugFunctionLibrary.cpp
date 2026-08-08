@@ -26,6 +26,7 @@
 #include "Core/HeistPlayerState.h"
 #include "Core/HeistLogChannels.h"
 #include "Data/HeistArtifactDataTypes.h"
+#include "Data/HeistGameBalanceDataAsset.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/DataTable.h"
 #include "Engine/Engine.h"
@@ -79,6 +80,13 @@ UHeistInventoryComponent* ResolveInventoryComponent(APlayerController* PlayerCon
 	const AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
 	const AHeistPlayerCharacter* HeistCharacter = IsValid(HeistPlayerController) ? HeistPlayerController->GetPawn<AHeistPlayerCharacter>() : nullptr;
 	return IsValid(HeistCharacter) ? HeistCharacter->GetInventoryComponent() : nullptr;
+}
+
+UClass* ResolveObjectDisplayCaseShellClass()
+{
+	const UHeistGameBalanceDataAsset* BalanceData = GetDefault<UHeistGameBalanceDataAsset>();
+	UClass* ResolvedClass = IsValid(BalanceData) ? BalanceData->ObjectDisplayCaseActorClass.LoadSynchronous() : nullptr;
+	return IsValid(ResolvedClass) && ResolvedClass->IsChildOf(AHeistObjectDisplayCaseActor::StaticClass()) ? ResolvedClass : nullptr;
 }
 
 UHeistStatusComponent* ResolveStatusComponent(APlayerController* PlayerController)
@@ -1634,8 +1642,10 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblySpawn(APlayerController* Pla
 	const FVector SpawnLocation = ReferencePawn->GetActorLocation() + ReferencePawn->GetActorForwardVector() * SafeDistance;
 	FActorSpawnParameters SpawnParameters;
 	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	AHeistObjectDisplayCaseActor* DisplayCase =
-		PlayerController->GetWorld()->SpawnActor<AHeistObjectDisplayCaseActor>(AHeistObjectDisplayCaseActor::StaticClass(), SpawnLocation, ReferencePawn->GetActorRotation(), SpawnParameters);
+	UClass* DisplayCaseClass = ResolveObjectDisplayCaseShellClass();
+	AHeistObjectDisplayCaseActor* DisplayCase = IsValid(DisplayCaseClass)
+		? PlayerController->GetWorld()->SpawnActor<AHeistObjectDisplayCaseActor>(DisplayCaseClass, SpawnLocation, ReferencePawn->GetActorRotation(), SpawnParameters)
+		: nullptr;
 	const bool bInitialized = IsValid(DisplayCase) &&
 		DisplayCase->InitializeObjectIdentity(FName(TEXT("ObjectCase_Sculpture_Debug")), FName(TEXT("Artifact_Sculpture_Prototype")), FName(TEXT("Sculpture")));
 	AHeistGameState* HeistGameState = PlayerController->GetWorld()->GetGameState<AHeistGameState>();
@@ -1676,8 +1686,10 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblySpawnFor(APlayerController* 
 	const FVector SpawnLocation = TargetPawn->GetActorLocation() + TargetPawn->GetActorForwardVector() * SafeDistance;
 	FActorSpawnParameters SpawnParameters;
 	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	AHeistObjectDisplayCaseActor* DisplayCase =
-		PlayerController->GetWorld()->SpawnActor<AHeistObjectDisplayCaseActor>(AHeistObjectDisplayCaseActor::StaticClass(), SpawnLocation, TargetPawn->GetActorRotation(), SpawnParameters);
+	UClass* DisplayCaseClass = ResolveObjectDisplayCaseShellClass();
+	AHeistObjectDisplayCaseActor* DisplayCase = IsValid(DisplayCaseClass)
+		? PlayerController->GetWorld()->SpawnActor<AHeistObjectDisplayCaseActor>(DisplayCaseClass, SpawnLocation, TargetPawn->GetActorRotation(), SpawnParameters)
+		: nullptr;
 	const FName CaseId(*FString::Printf(TEXT("ObjectCase_Sculpture_Debug_P%d"), PlayerId));
 	const bool bInitialized = IsValid(DisplayCase) &&
 		DisplayCase->InitializeObjectIdentity(CaseId, FName(TEXT("Artifact_Sculpture_Prototype")), FName(TEXT("Sculpture")));
@@ -1725,8 +1737,10 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyContentSpawn(APlayerControll
 	const FVector SpawnLocation = ReferencePawn->GetActorLocation() + ReferencePawn->GetActorForwardVector() * SafeDistance;
 	FActorSpawnParameters SpawnParameters;
 	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	AHeistObjectDisplayCaseActor* DisplayCase =
-		PlayerController->GetWorld()->SpawnActor<AHeistObjectDisplayCaseActor>(AHeistObjectDisplayCaseActor::StaticClass(), SpawnLocation, ReferencePawn->GetActorRotation(), SpawnParameters);
+	UClass* DisplayCaseClass = ResolveObjectDisplayCaseShellClass();
+	AHeistObjectDisplayCaseActor* DisplayCase = IsValid(DisplayCaseClass)
+		? PlayerController->GetWorld()->SpawnActor<AHeistObjectDisplayCaseActor>(DisplayCaseClass, SpawnLocation, ReferencePawn->GetActorRotation(), SpawnParameters)
+		: nullptr;
 	const bool bInitialized = IsValid(DisplayCase) && DisplayCase->InitializeObjectIdentity(CaseId, ArtifactId, FamilyId);
 	AHeistGameState* HeistGameState = PlayerController->GetWorld()->GetGameState<AHeistGameState>();
 	const bool bObjectiveSet =
@@ -1785,8 +1799,10 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyContentSpawnFor(APlayerContr
 	const FVector SpawnLocation = TargetPawn->GetActorLocation() + TargetPawn->GetActorForwardVector() * SafeDistance;
 	FActorSpawnParameters SpawnParameters;
 	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	AHeistObjectDisplayCaseActor* DisplayCase =
-		PlayerController->GetWorld()->SpawnActor<AHeistObjectDisplayCaseActor>(AHeistObjectDisplayCaseActor::StaticClass(), SpawnLocation, TargetPawn->GetActorRotation(), SpawnParameters);
+	UClass* DisplayCaseClass = ResolveObjectDisplayCaseShellClass();
+	AHeistObjectDisplayCaseActor* DisplayCase = IsValid(DisplayCaseClass)
+		? PlayerController->GetWorld()->SpawnActor<AHeistObjectDisplayCaseActor>(DisplayCaseClass, SpawnLocation, TargetPawn->GetActorRotation(), SpawnParameters)
+		: nullptr;
 	const bool bInitialized = IsValid(DisplayCase) && DisplayCase->InitializeObjectIdentity(CaseId, ArtifactId, FamilyId);
 	AHeistGameState* HeistGameState = PlayerController->GetWorld()->GetGameState<AHeistGameState>();
 	const bool bObjectiveSet =
@@ -2405,10 +2421,12 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyContentValidate(APlayerContr
 				PartTable->FindRow<FHeistObjectAssemblyPartRow>(RequiredPartEntry.PartId, TEXT("DebugObjectAssemblyContentValidateRequiredPart"), false);
 			UStaticMesh* PartMesh = Part != nullptr ? Part->StaticMesh.LoadSynchronous() : nullptr;
 			const FString PartMeshPath = Part != nullptr ? Part->StaticMesh.ToSoftObjectPath().ToString() : FString();
-			const bool bMaterialValid =
-				Part != nullptr && (RequiredPartEntry.MaterialId.IsNone()
-									   ? Part->AllowedMaterialIds.IsEmpty()
-									   : Part->AllowedMaterialIds.Contains(RequiredPartEntry.MaterialId));
+			const TSoftObjectPtr<UMaterialInterface>* MaterialVariant =
+				Part != nullptr && !RequiredPartEntry.MaterialId.IsNone() ? Part->MaterialVariants.Find(RequiredPartEntry.MaterialId) : nullptr;
+			const bool bMaterialValid = Part != nullptr &&
+				(RequiredPartEntry.MaterialId.IsNone()
+					 ? Part->AllowedMaterialIds.IsEmpty()
+					 : Part->AllowedMaterialIds.Contains(RequiredPartEntry.MaterialId) && MaterialVariant != nullptr && !MaterialVariant->IsNull());
 			const bool bPartValid =
 				Part != nullptr && Part->PartId == RequiredPartEntry.PartId && Part->FamilyId == Template->FamilyId &&
 				Part->CompatibleSocketIds.Contains(RequiredPartEntry.SocketId) &&
@@ -2455,11 +2473,11 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyContentValidate(APlayerContr
 		const FName ArtifactId(*ArtifactIdString);
 		const FHeistArtifactDataRow* Artifact =
 			ArtifactTable->FindRow<FHeistArtifactDataRow>(ArtifactId, TEXT("DebugObjectAssemblyContentValidateArtifact"), false);
-		UClass* VisualActorClass = Artifact != nullptr ? Artifact->VisualActorClass.LoadSynchronous() : nullptr;
+		UStaticMesh* OriginalWorldMesh = Artifact != nullptr ? Artifact->OriginalWorldMesh.LoadSynchronous() : nullptr;
+		const FString OriginalWorldMeshPath = Artifact != nullptr ? Artifact->OriginalWorldMesh.ToSoftObjectPath().ToString() : FString();
 		const bool bArtifactValid =
 			Artifact != nullptr && Artifact->ArtifactId == ArtifactId && Artifact->ForgeryType == EHeistForgeryType::Assembly &&
-			Artifact->ForgeryTemplateId == Template->TemplateId && IsValid(VisualActorClass) &&
-			VisualActorClass->IsChildOf(AHeistObjectDisplayCaseActor::StaticClass());
+			Artifact->ForgeryTemplateId == Template->TemplateId && IsValid(OriginalWorldMesh) && OriginalWorldMeshPath.StartsWith(TEXT("/Game/"));
 		ArtifactCount += bArtifactValid ? 1 : 0;
 		bTemplateValid = bTemplateValid && bArtifactValid;
 		InvalidTemplateCount += bTemplateValid ? 0 : 1;
@@ -2997,21 +3015,21 @@ void UHeistDebugFunctionLibrary::DebugSurfaceTemplateContentValidate(APlayerCont
 		case 4:
 			++EasyCount;
 			bDifficultyValid =
-				FMath::IsNearlyEqual(Template->ForgeryDuration, 60.0f) &&
+				FMath::IsNearlyEqual(Template->ForgeryDuration, 35.0f) &&
 				Template->StrokeLimit == 4096 &&
 				FMath::IsNearlyEqual(Template->BrushSize, 0.025f);
 			break;
 		case 5:
 			++MediumCount;
 			bDifficultyValid =
-				FMath::IsNearlyEqual(Template->ForgeryDuration, 75.0f) &&
+				FMath::IsNearlyEqual(Template->ForgeryDuration, 40.0f) &&
 				Template->StrokeLimit == 5120 &&
 				FMath::IsNearlyEqual(Template->BrushSize, 0.02f);
 			break;
 		case 6:
 			++HardCount;
 			bDifficultyValid =
-				FMath::IsNearlyEqual(Template->ForgeryDuration, 90.0f) &&
+				FMath::IsNearlyEqual(Template->ForgeryDuration, 45.0f) &&
 				Template->StrokeLimit == 6144 &&
 				FMath::IsNearlyEqual(Template->BrushSize, 0.018f);
 			break;
@@ -3080,7 +3098,7 @@ void UHeistDebugFunctionLibrary::DebugSurfaceTemplateContentValidate(APlayerCont
 		PlayerController,
 		FString::Printf(
 			TEXT(
-				"Surface template content validation: Pool=%s Templates=%d CategoryA=%s CategoryACount=%d CategoryB=%s CategoryBCount=%d Easy=%d Medium=%d Hard=%d ReferencesLoaded=%d MasksLoaded=%d UniqueReferences=%d UniqueMasks=%d AntiFillConfiguration=%s AntiFillConfiguredRows=%d ArtifactDefault=%s InvalidTemplates=%d InvalidDetails=%s DifficultyRule=Palette4Easy5Medium6Hard Authority=true Result=%s"),
+				"Surface template content validation: Pool=%s Templates=%d CategoryA=%s CategoryACount=%d CategoryB=%s CategoryBCount=%d Easy=%d Medium=%d Hard=%d ReferencesLoaded=%d MasksLoaded=%d UniqueReferences=%d UniqueMasks=%d AntiFillConfiguration=%s AntiFillConfiguredRows=%d ArtifactDefault=%s InvalidTemplates=%d InvalidDetails=%s DifficultyRule=Palette4Easy35s5Medium40s6Hard45s Authority=true Result=%s"),
 			*NormalizedPoolId, TemplateCount, *FirstCategoryName, FirstCategoryCount, *SecondCategoryName, SecondCategoryCount, EasyCount, MediumCount, HardCount,
 			LoadedReferenceCount, LoadedMaskCount, UniqueReferencePaths.Num(), UniqueMaskPaths.Num(),
 			bAntiFillConfigurationRequired ? (bAntiFillConfigurationValid ? TEXT("PASS") : TEXT("FAIL")) : TEXT("NOT_REQUIRED"),

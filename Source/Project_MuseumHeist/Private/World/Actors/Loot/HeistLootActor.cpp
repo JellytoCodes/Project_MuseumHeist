@@ -2,7 +2,11 @@
 
 #include "Core/HeistGameMode.h"
 #include "Core/HeistLogChannels.h"
+#include "Data/HeistGameBalanceDataAsset.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/StaticMesh.h"
 #include "Inventory/HeistItemDataTypes.h"
+#include "Materials/MaterialInterface.h"
 #include "Net/UnrealNetwork.h"
 
 #pragma region Construction
@@ -26,6 +30,7 @@ void AHeistLootActor::BeginPlay()
 	{
 		ResolveLootData();
 	}
+	ResolveLootVisualFromRowId();
 }
 
 #pragma endregion
@@ -162,6 +167,50 @@ void AHeistLootActor::ResolveLootData()
 #endif
 }
 
+void AHeistLootActor::ResolveLootVisualFromRowId()
+{
+	if (LootRowId.IsNone() || !IsValid(VisualMeshComponent))
+	{
+		return;
+	}
+
+	const UHeistGameBalanceDataAsset* BalanceData = GetDefault<UHeistGameBalanceDataAsset>();
+	UDataTable* LootDataTable = IsValid(BalanceData) ? BalanceData->LootDataTable.LoadSynchronous() : nullptr;
+	const FHeistLootDataRow* LootDefinition = IsValid(LootDataTable) && LootDataTable->GetRowStruct() == FHeistLootDataRow::StaticStruct()
+		? LootDataTable->FindRow<FHeistLootDataRow>(LootRowId, TEXT("AHeistLootActor::ResolveLootVisualFromRowId"), false)
+		: nullptr;
+	if (LootDefinition == nullptr || LootDefinition->ItemId != LootRowId)
+	{
+		VisualMeshComponent->SetStaticMesh(nullptr);
+		UE_LOG(LogHeistInventory, Error, TEXT("Loot visual resolution failed: Actor=%s ItemId=%s Reason=MissingVisualRow"), *GetNameSafe(this), *LootRowId.ToString());
+		return;
+	}
+
+	ApplyLootVisual(*LootDefinition);
+}
+
+void AHeistLootActor::ApplyLootVisual(const FHeistLootDataRow& LootDefinition)
+{
+	UStaticMesh* ResolvedMesh = LootDefinition.WorldMesh.LoadSynchronous();
+	if (!IsValid(ResolvedMesh))
+	{
+		VisualMeshComponent->SetStaticMesh(nullptr);
+		UE_LOG(LogHeistInventory, Error, TEXT("Loot visual resolution failed: Actor=%s ItemId=%s Reason=MissingWorldMesh"), *GetNameSafe(this), *LootDefinition.ItemId.ToString());
+		return;
+	}
+
+	VisualMeshComponent->SetStaticMesh(ResolvedMesh);
+	VisualMeshComponent->SetRelativeTransform(LootDefinition.WorldVisualRelativeTransform);
+	VisualMeshComponent->EmptyOverrideMaterials();
+	for (int32 MaterialIndex = 0; MaterialIndex < LootDefinition.WorldMaterials.Num(); ++MaterialIndex)
+	{
+		if (UMaterialInterface* Material = LootDefinition.WorldMaterials[MaterialIndex].LoadSynchronous(); IsValid(Material))
+		{
+			VisualMeshComponent->SetMaterial(MaterialIndex, Material);
+		}
+	}
+}
+
 void AHeistLootActor::ApplyFallbackLootData()
 {
 	LootRowId = LootDataRow.RowName;
@@ -169,6 +218,11 @@ void AHeistLootActor::ApplyFallbackLootData()
 	ScoreValue = 0;
 	WeightValue = 0.0f;
 	bIsAvailable = true;
+}
+
+void AHeistLootActor::OnRep_LootRowId()
+{
+	ResolveLootVisualFromRowId();
 }
 
 #pragma endregion

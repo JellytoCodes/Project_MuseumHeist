@@ -60,11 +60,6 @@ EDataValidationResult FHeistArtifactDataRow::IsDataValid(FDataValidationContext&
 		AddError(LOCTEXT("InvalidBaseInspectionDelay", "BaseInspectionDelay must be zero or greater."));
 	}
 
-	if (VisualActorClass.IsNull())
-	{
-		AddError(LOCTEXT("MissingVisualActorClass", "VisualActorClass must reference an artifact presentation actor."));
-	}
-
 	return Result;
 }
 
@@ -206,6 +201,19 @@ EDataValidationResult FHeistObjectAssemblyPartRow::IsDataValid(FDataValidationCo
 			AddError(LOCTEXT("DuplicateObjectAssemblyMaterialId", "AllowedMaterialIds must not contain duplicates."));
 		}
 		UniqueMaterialIds.Add(MaterialId);
+		const TSoftObjectPtr<UMaterialInterface>* MaterialAsset = MaterialVariants.Find(MaterialId);
+		if (MaterialAsset == nullptr || MaterialAsset->IsNull())
+		{
+			AddError(LOCTEXT("MissingObjectAssemblyMaterialAsset", "Every AllowedMaterialId must map to a non-null MaterialVariants asset."));
+		}
+	}
+
+	for (const TPair<FName, TSoftObjectPtr<UMaterialInterface>>& MaterialVariant : MaterialVariants)
+	{
+		if (MaterialVariant.Key.IsNone() || MaterialVariant.Value.IsNull() || !UniqueMaterialIds.Contains(MaterialVariant.Key))
+		{
+			AddError(LOCTEXT("InvalidObjectAssemblyMaterialVariant", "MaterialVariants keys must be non-None members of AllowedMaterialIds and values must be non-null."));
+		}
 	}
 
 	if (AllowedOrientationSteps.IsEmpty())

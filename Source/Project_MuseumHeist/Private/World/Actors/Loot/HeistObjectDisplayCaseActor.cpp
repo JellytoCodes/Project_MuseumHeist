@@ -6,6 +6,7 @@
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Core/HeistGameMode.h"
+#include "Core/HeistGameplayTags.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerState.h"
@@ -16,8 +17,11 @@
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "GameFramework/Pawn.h"
+#include "Kismet/GameplayStatics.h"
+#include "Materials/MaterialInterface.h"
 #include "Net/UnrealNetwork.h"
 #include "TimerManager.h"
+#include "Sound/SoundBase.h"
 #include "UObject/UObjectGlobals.h"
 
 namespace
@@ -27,6 +31,17 @@ constexpr float ObjectInspectionDelayExcellentMultiplier = 4.0f;
 constexpr float ObjectInspectionDelayGoodMultiplier = 2.0f;
 constexpr float ObjectInspectionDelayFairMultiplier = 1.0f;
 constexpr float ObjectInspectionDelayPoorMultiplier = 0.5f;
+constexpr float ReplicaSwapMinimumInspectionDelaySeconds = 3.0f;
+
+bool IsMaterialSelectionResolved(const FHeistObjectAssemblyPartRow& PartDefinition, const FName MaterialId)
+{
+	if (PartDefinition.AllowedMaterialIds.IsEmpty())
+	{
+		return MaterialId.IsNone();
+	}
+	const TSoftObjectPtr<UMaterialInterface>* MaterialAsset = PartDefinition.MaterialVariants.Find(MaterialId);
+	return !MaterialId.IsNone() && PartDefinition.AllowedMaterialIds.Contains(MaterialId) && MaterialAsset != nullptr && !MaterialAsset->IsNull();
+}
 
 bool ResolveReplicaDefinitions(const FName ArtifactId, const FName FamilyId, FHeistArtifactDataRow& OutArtifact, FHeistObjectAssemblyTemplateRow& OutTemplate,
 							   TMap<FName, FHeistObjectAssemblyPartRow>& OutParts, FName& OutRejectReason)
@@ -114,6 +129,7 @@ void AHeistObjectDisplayCaseActor::BeginPlay()
 	{
 		RebuildReplicaComponents();
 	}
+	RebuildOriginalComponents();
 	RefreshObjectVisualState();
 }
 
@@ -150,6 +166,7 @@ void AHeistObjectDisplayCaseActor::EndPlay(const EEndPlayReason::Type EndPlayRea
 	}
 	MatchPhaseChangedHandle.Reset();
 	BoundGameState.Reset();
+	DestroyOriginalComponents();
 	DestroyReplicaComponents();
 
 	Super::EndPlay(EndPlayReason);
@@ -213,6 +230,18 @@ bool AHeistObjectDisplayCaseActor::HasCommittedAssemblyResult() const
 	return bHasCommittedAssemblyResult;
 }
 
+bool AHeistObjectDisplayCaseActor::HasReplicaPreview() const
+{
+	return bHasCommittedAssemblyResult && !CommittedAssemblyResult.bReplicaPlaced && AssemblyState == EHeistObjectAssemblyState::ReplicaReady && AssemblyReplicaData.Revision > 0;
+}
+
+bool AHeistObjectDisplayCaseActor::IsReplicaReviewReadyFor(const AActor* Interactor) const
+{
+	const APawn* RequestingPawn = Cast<APawn>(Interactor);
+	const AHeistPlayerState* RequestingPlayerState = IsValid(RequestingPawn) ? RequestingPawn->GetPlayerState<AHeistPlayerState>() : nullptr;
+	return IsValid(RequestingPlayerState) && HasReplicaPreview() && bSessionLocked && SessionOwner.Get() == RequestingPlayerState;
+}
+
 FHeistObjectAssemblyResult AHeistObjectDisplayCaseActor::GetCommittedAssemblyResult() const
 {
 	return CommittedAssemblyResult;
@@ -228,21 +257,13 @@ bool AHeistObjectDisplayCaseActor::TryCommitAssemblyReplica(AHeistPlayerState* R
 																   RejectReason.IsNone() ? FName(TEXT("NotAuthority")) : RejectReason, false);
 		return false;
 	}
-	if (!ResolveInspectionSchedule(AssemblyResult, RejectReason))
-	{
-		UHeistDebugFunctionLibrary::DebugObjectAssemblyReplicaCommit(this, RequestingPlayerState, AssemblyResult, Entries.Num(), RejectReason, false);
-		return false;
-	}
-
 	CommittedAssemblyResult = AssemblyResult;
-	CommittedAssemblyResult.bReplicaPlaced = true;
+	CommittedAssemblyResult.bReplicaPlaced = false;
 	bHasCommittedAssemblyResult = true;
 	AssemblyReplicaData.Entries = Entries;
 	++AssemblyReplicaData.Revision;
 
-	const bool bTransitionsCommitted = TryTransitionToAssemblyState(EHeistObjectAssemblyState::ReplicaReady) &&
-		TryTransitionToAssemblyState(EHeistObjectAssemblyState::ReplicaPlaced) && TryTransitionToAssemblyState(EHeistObjectAssemblyState::OriginalAvailable);
-	if (!bTransitionsCommitted)
+	if (!TryTransitionToAssemblyState(EHeistObjectAssemblyState::ReplicaReady))
 	{
 		bHasCommittedAssemblyResult = false;
 		CommittedAssemblyResult = FHeistObjectAssemblyResult();
@@ -251,13 +272,99 @@ bool AHeistObjectDisplayCaseActor::TryCommitAssemblyReplica(AHeistPlayerState* R
 		return false;
 	}
 
-	StartInspectionDelayTimer();
-	RefreshInspectionRegistration();
-	UHeistDebugFunctionLibrary::DebugObjectAssemblyInspection(this, nullptr, FName(TEXT("Schedule")), FName(TEXT("Accepted")), true);
-	RebuildReplicaComponents();
-	ClearSession(FName(TEXT("AssemblyCompleted")));
 	ForceNetUpdate();
 	UHeistDebugFunctionLibrary::DebugObjectAssemblyReplicaCommit(this, RequestingPlayerState, CommittedAssemblyResult, Entries.Num(), FName(TEXT("Accepted")), true);
+	return true;
+}
+
+bool AHeistObjectDisplayCaseActor::TryRestartAssemblyFromPreview(AHeistPlayerState* RequestingPlayerState, FName& OutRejectReason)
+{
+	if (!HasAuthority() || !ValidateReplicaReviewOwner(RequestingPlayerState, OutRejectReason))
+	{
+		if (!HasAuthority())
+		{
+			OutRejectReason = FName(TEXT("NotAuthority"));
+		}
+		return false;
+	}
+
+	ResetAssemblyPreviewData();
+	AssemblyState = EHeistObjectAssemblyState::AssemblyInProgress;
+	++AssemblyRevision;
+	RefreshObjectVisualState();
+	ForceNetUpdate();
+	BroadcastAssemblySnapshot(FName(TEXT("ReplicaRestart")), FName(TEXT("Accepted")), true);
+	return true;
+}
+
+bool AHeistObjectDisplayCaseActor::TryCommitReplicaSwapAndTakeOriginal(AHeistPlayerState* RequestingPlayerState, int32& OutAddedInstanceId, FName& OutRejectReason)
+{
+	OutAddedInstanceId = INDEX_NONE;
+	if (!HasAuthority() || !ValidateReplicaReviewOwner(RequestingPlayerState, OutRejectReason))
+	{
+		if (!HasAuthority())
+		{
+			OutRejectReason = FName(TEXT("NotAuthority"));
+		}
+		return false;
+	}
+
+	int32 ArtifactValue = 0;
+	float ArtifactWeight = 0.0f;
+	bool bRequiredTarget = false;
+	if (!ValidateOriginalTakeRequest(RequestingPlayerState, ArtifactValue, ArtifactWeight, bRequiredTarget, OutRejectReason, true))
+	{
+		return false;
+	}
+
+	const float PreviousResolvedInspectionDelay = ResolvedInspectionDelay;
+	const float PreviousInspectionReadyServerTime = InspectionReadyServerTime;
+	const FName PreviousInspectionScoreBand = InspectionScoreBand;
+	const EHeistAlertLevel PreviousInspectionAlertOutcome = ResolvedInspectionAlertOutcome;
+	const EHeistObjectAssemblyState PreviousInspectionCaseOutcome = ResolvedInspectionCaseOutcome;
+	const int32 PreviousInspectionScheduleRevision = InspectionScheduleRevision;
+	if (!ResolveInspectionSchedule(CommittedAssemblyResult, OutRejectReason))
+	{
+		return false;
+	}
+	ResolvedInspectionDelay = FMath::Max(ResolvedInspectionDelay, ReplicaSwapMinimumInspectionDelaySeconds);
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	const float ServerTime = IsValid(HeistGameState) ? HeistGameState->GetServerWorldTimeSeconds() : (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
+	InspectionReadyServerTime = ServerTime + ResolvedInspectionDelay;
+
+	AHeistPlayerCharacter* PlayerCharacter = Cast<AHeistPlayerCharacter>(RequestingPlayerState->GetPawn());
+	UHeistInventoryComponent* InventoryComponent = IsValid(PlayerCharacter) ? PlayerCharacter->GetInventoryComponent() : nullptr;
+	const TCHAR* InventoryRejectReason = nullptr;
+	if (!IsValid(InventoryComponent) ||
+		!InventoryComponent->TryAddOriginalArtifact(RequestingPlayerState, TargetObjectArtifactId, bRequiredTarget, this, OutAddedInstanceId, InventoryRejectReason))
+	{
+		ResolvedInspectionDelay = PreviousResolvedInspectionDelay;
+		InspectionReadyServerTime = PreviousInspectionReadyServerTime;
+		InspectionScoreBand = PreviousInspectionScoreBand;
+		ResolvedInspectionAlertOutcome = PreviousInspectionAlertOutcome;
+		ResolvedInspectionCaseOutcome = PreviousInspectionCaseOutcome;
+		InspectionScheduleRevision = PreviousInspectionScheduleRevision;
+		OutRejectReason = FName(InventoryRejectReason != nullptr ? InventoryRejectReason : TEXT("InventoryCommitFailed"));
+		return false;
+	}
+
+	OriginalCarrier = RequestingPlayerState;
+	OriginalCarrierArrestChangedHandle =
+		RequestingPlayerState->GetArrestStateChangedDelegate().AddUObject(this, &AHeistObjectDisplayCaseActor::HandleOriginalCarrierArrestStateChanged);
+	AssemblyState = EHeistObjectAssemblyState::OriginalRemoved;
+	CommittedAssemblyResult.bReplicaPlaced = true;
+	++AssemblyReplicaData.Revision;
+	++AssemblyRevision;
+	++OriginalCarryRevision;
+	SyncObjectiveCarrierCandidate(RequestingPlayerState);
+	StartInspectionDelayTimer();
+	RefreshInspectionRegistration();
+	RebuildReplicaComponents();
+	RefreshObjectVisualState();
+	ClearSession(FName(TEXT("ReplicaSwapCommitted")));
+	EmitReplicaSwapFeedback();
+	ForceNetUpdate();
+	BroadcastOriginalCarrySnapshot(FName(TEXT("ServerReplicaSwap")), FName(TEXT("TakeAccepted")), true);
 	return true;
 }
 
@@ -304,6 +411,7 @@ bool AHeistObjectDisplayCaseActor::InitializeObjectIdentity(const FName InObject
 	TargetObjectArtifactId = InTargetArtifactId;
 	ObjectFamilyId = InObjectFamilyId;
 	++AssemblyRevision;
+	RebuildOriginalComponents();
 	ForceNetUpdate();
 	BroadcastAssemblySnapshot(FName(TEXT("IdentityInitialize")), FName(TEXT("Accepted")), true);
 	return true;
@@ -850,22 +958,6 @@ bool AHeistObjectDisplayCaseActor::CanInteract(const AActor* Interactor) const
 		bWithinSessionDistance;
 }
 
-void AHeistObjectDisplayCaseActor::SetObjectIdentityForLegacyMigration(const FName InObjectCaseId, const FName InTargetArtifactId, const FName InObjectFamilyId)
-{
-	if (!InObjectCaseId.IsNone())
-	{
-		ObjectCaseId = InObjectCaseId;
-	}
-	if (!InTargetArtifactId.IsNone())
-	{
-		TargetObjectArtifactId = InTargetArtifactId;
-	}
-	if (!InObjectFamilyId.IsNone())
-	{
-		ObjectFamilyId = InObjectFamilyId;
-	}
-}
-
 void AHeistObjectDisplayCaseActor::OnRep_AssemblyState()
 {
 	RefreshObjectVisualState();
@@ -874,6 +966,7 @@ void AHeistObjectDisplayCaseActor::OnRep_AssemblyState()
 
 void AHeistObjectDisplayCaseActor::OnRep_ObjectIdentity()
 {
+	RebuildOriginalComponents();
 	if (AssemblyReplicaData.Revision > 0)
 	{
 		RebuildReplicaComponents();
@@ -1000,8 +1093,7 @@ bool AHeistObjectDisplayCaseActor::ValidateReplicaCommit(AHeistPlayerState* Requ
 	for (const FHeistObjectAssemblyEntry& Entry : Entries)
 	{
 		const FHeistObjectAssemblyPartRow* PartDefinition = PartDefinitions.Find(Entry.PartId);
-		const bool bMaterialValid =
-			PartDefinition != nullptr && (PartDefinition->AllowedMaterialIds.IsEmpty() ? Entry.MaterialId.IsNone() : PartDefinition->AllowedMaterialIds.Contains(Entry.MaterialId));
+		const bool bMaterialValid = PartDefinition != nullptr && IsMaterialSelectionResolved(*PartDefinition, Entry.MaterialId);
 		if (Entry.PartId.IsNone() || Entry.SocketId.IsNone() || SubmittedPartIds.Contains(Entry.PartId) || SubmittedSocketIds.Contains(Entry.SocketId) || PartDefinition == nullptr ||
 			Entry.PartId == TemplateDefinition.CorePartId || !PartDefinition->CompatibleSocketIds.Contains(Entry.SocketId) ||
 			!PartDefinition->AllowedOrientationSteps.Contains(Entry.QuantizedOrientation) || !bMaterialValid)
@@ -1029,6 +1121,79 @@ void AHeistObjectDisplayCaseActor::RefreshObjectVisualState()
 		ReplicaRootComponent->SetVisibility(bReplicaVisible, true);
 		SetActorHiddenInGame(false);
 	}
+}
+
+void AHeistObjectDisplayCaseActor::RebuildOriginalComponents()
+{
+	DestroyOriginalComponents();
+	if (!IsValid(VisualMeshComponent) || TargetObjectArtifactId.IsNone() || ObjectFamilyId.IsNone())
+	{
+		return;
+	}
+
+	FHeistArtifactDataRow ArtifactDefinition;
+	FHeistObjectAssemblyTemplateRow TemplateDefinition;
+	TMap<FName, FHeistObjectAssemblyPartRow> PartDefinitions;
+	FName RejectReason = NAME_None;
+	if (!ResolveReplicaDefinitions(TargetObjectArtifactId, ObjectFamilyId, ArtifactDefinition, TemplateDefinition, PartDefinitions, RejectReason))
+	{
+		VisualMeshComponent->SetStaticMesh(nullptr);
+		return;
+	}
+
+	const FHeistObjectAssemblyPartRow* CoreDefinition = PartDefinitions.Find(TemplateDefinition.CorePartId);
+	UStaticMesh* CoreMesh = CoreDefinition != nullptr ? CoreDefinition->StaticMesh.LoadSynchronous() : nullptr;
+	if (CoreDefinition == nullptr || !IsValid(CoreMesh))
+	{
+		VisualMeshComponent->SetStaticMesh(nullptr);
+		return;
+	}
+
+	VisualMeshComponent->SetStaticMesh(CoreMesh);
+	ApplyPartMaterial(VisualMeshComponent, *CoreDefinition, NAME_None);
+
+	for (int32 EntryIndex = 0; EntryIndex < TemplateDefinition.RequiredParts.Num(); ++EntryIndex)
+	{
+		const FHeistObjectAssemblyEntry& Entry = TemplateDefinition.RequiredParts[EntryIndex];
+		const FHeistObjectAssemblyPartRow* PartDefinition = PartDefinitions.Find(Entry.PartId);
+		UStaticMesh* PartMesh = PartDefinition != nullptr ? PartDefinition->StaticMesh.LoadSynchronous() : nullptr;
+		if (PartDefinition == nullptr || !IsValid(PartMesh))
+		{
+			continue;
+		}
+
+		UStaticMeshComponent* PartComponent =
+			NewObject<UStaticMeshComponent>(this, MakeUniqueObjectName(this, UStaticMeshComponent::StaticClass(), FName(TEXT("ObjectOriginalPart"))));
+		PartComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		PartComponent->SetGenerateOverlapEvents(false);
+		PartComponent->SetStaticMesh(PartMesh);
+		if (VisualMeshComponent->DoesSocketExist(Entry.SocketId))
+		{
+			PartComponent->SetupAttachment(VisualMeshComponent, Entry.SocketId);
+			PartComponent->SetRelativeRotation(FRotator(0.0f, static_cast<float>(Entry.QuantizedOrientation) * 22.5f, 0.0f));
+		}
+		else
+		{
+			PartComponent->SetupAttachment(VisualMeshComponent);
+			PartComponent->SetRelativeTransform(ResolveFallbackPartTransform(Entry.SocketId, EntryIndex, Entry.QuantizedOrientation));
+		}
+		AddInstanceComponent(PartComponent);
+		PartComponent->RegisterComponent();
+		ApplyPartMaterial(PartComponent, *PartDefinition, Entry.MaterialId);
+		OriginalPartComponents.Add(PartComponent);
+	}
+}
+
+void AHeistObjectDisplayCaseActor::DestroyOriginalComponents()
+{
+	for (UStaticMeshComponent* PartComponent : OriginalPartComponents)
+	{
+		if (IsValid(PartComponent))
+		{
+			PartComponent->DestroyComponent();
+		}
+	}
+	OriginalPartComponents.Reset();
 }
 
 void AHeistObjectDisplayCaseActor::RebuildReplicaComponents()
@@ -1065,6 +1230,7 @@ void AHeistObjectDisplayCaseActor::RebuildReplicaComponents()
 	ReplicaCoreComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	ReplicaCoreComponent->SetGenerateOverlapEvents(false);
 	ReplicaCoreComponent->SetStaticMesh(CoreMesh);
+	ApplyPartMaterial(ReplicaCoreComponent, *CoreDefinition, NAME_None);
 	ReplicaCoreComponent->ComponentTags.Add(FName(*FString::Printf(TEXT("PartId=%s"), *TemplateDefinition.CorePartId.ToString())));
 	AddInstanceComponent(ReplicaCoreComponent);
 	ReplicaCoreComponent->RegisterComponent();
@@ -1101,7 +1267,7 @@ void AHeistObjectDisplayCaseActor::RebuildReplicaComponents()
 		}
 		AddInstanceComponent(PartComponent);
 		PartComponent->RegisterComponent();
-		BP_ApplyObjectReplicaPartMaterial(PartComponent, Entry.PartId, Entry.MaterialId);
+		ApplyPartMaterial(PartComponent, *PartDefinition, Entry.MaterialId);
 		ReplicaPartComponents.Add(PartComponent);
 	}
 
@@ -1115,6 +1281,22 @@ void AHeistObjectDisplayCaseActor::RebuildReplicaComponents()
 	bool bContractPassed = false;
 	GetReplicaComponentDebugState(ReplicaRevision, ExpectedEntryCount, BuiltPartCount, UnresolvedSocketCount, bDebugCoreReady, bContractPassed);
 	UHeistDebugFunctionLibrary::DebugObjectAssemblyReplicaRebuildEvent(this, ExpectedEntryCount, BuiltPartCount, UnresolvedSocketCount, bCoreReady, ReplicaRevision, bContractPassed);
+}
+
+void AHeistObjectDisplayCaseActor::ApplyPartMaterial(UStaticMeshComponent* PartComponent, const FHeistObjectAssemblyPartRow& PartDefinition, const FName MaterialId) const
+{
+	if (!IsValid(PartComponent))
+	{
+		return;
+	}
+
+	const TSoftObjectPtr<UMaterialInterface>* Variant = MaterialId.IsNone() ? nullptr : PartDefinition.MaterialVariants.Find(MaterialId);
+	UMaterialInterface* Material = Variant != nullptr ? Variant->LoadSynchronous() : PartDefinition.DefaultMaterial.LoadSynchronous();
+	PartComponent->EmptyOverrideMaterials();
+	if (IsValid(Material))
+	{
+		PartComponent->SetMaterial(0, Material);
+	}
 }
 
 void AHeistObjectDisplayCaseActor::DestroyReplicaComponents()

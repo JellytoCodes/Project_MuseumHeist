@@ -7,6 +7,8 @@
 #include "HeistGameBalanceDataAsset.generated.h"
 
 class UDataTable;
+class AHeistLootActor;
+class AHeistObjectDisplayCaseActor;
 
 USTRUCT(BlueprintType)
 struct PROJECT_MUSEUMHEIST_API FHeistPlayerCountDifficultyBaseline
@@ -117,6 +119,14 @@ class PROJECT_MUSEUMHEIST_API UHeistGameBalanceDataAsset : public UDataAsset
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Data Tables")
 	TSoftObjectPtr<UDataTable> LootDataTable;
+
+	/** Shared presentation shell used for every loose-loot row. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Actor Shells")
+	TSoftClassPtr<AHeistLootActor> WorldLootActorClass;
+
+	/** Shared presentation shell used for every Sculpture/Ceramic display case. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Actor Shells")
+	TSoftClassPtr<AHeistObjectDisplayCaseActor> ObjectDisplayCaseActorClass;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Data Tables")
 	TSoftObjectPtr<UDataTable> UsableItemDataTable;

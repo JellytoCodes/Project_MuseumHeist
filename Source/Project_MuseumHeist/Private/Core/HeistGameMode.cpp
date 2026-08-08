@@ -85,6 +85,12 @@ FName ResolveContractMapId(const UObject* WorldContextObject, const AHeistGameSt
 	const FName SelectedMapId = IsValid(HeistGameState) ? HeistGameState->GetSelectedLobbyMapId() : NAME_None;
 	return SelectedMapId == FName(TEXT("M01")) || SelectedMapId == FName(TEXT("M02")) || SelectedMapId == FName(TEXT("M03")) ? SelectedMapId : NAME_None;
 }
+
+UClass* ResolveWorldLootShellClass(const UHeistGameBalanceDataAsset* BalanceData)
+{
+	UClass* ResolvedClass = IsValid(BalanceData) ? BalanceData->WorldLootActorClass.LoadSynchronous() : nullptr;
+	return IsValid(ResolvedClass) && ResolvedClass->IsChildOf(AHeistLootActor::StaticClass()) ? ResolvedClass : nullptr;
+}
 }
 
 #pragma endregion
@@ -1177,7 +1183,8 @@ bool AHeistGameMode::TryGetArtifactDefinition(const FName ArtifactId, FHeistArti
 
 	const FHeistArtifactDataRow* ArtifactDefinition = ArtifactDataTable->FindRow<FHeistArtifactDataRow>(ArtifactId, TEXT("AHeistGameMode::TryGetArtifactDefinition"), false);
 	if (ArtifactDefinition == nullptr || ArtifactDefinition->ArtifactId != ArtifactId || ArtifactDefinition->ArtifactValue < 0 || !FMath::IsFinite(ArtifactDefinition->Weight) ||
-		ArtifactDefinition->Weight < 0.0f)
+		ArtifactDefinition->Weight < 0.0f || ArtifactDefinition->OriginalWorldMesh.IsNull() || ArtifactDefinition->OriginalWorldVisualRelativeTransform.ContainsNaN() ||
+		ArtifactDefinition->OriginalWorldMaterials.ContainsByPredicate([](const TSoftObjectPtr<UMaterialInterface>& Material) { return Material.IsNull(); }))
 	{
 		UE_LOG(LogHeist, Error, TEXT("Artifact definition lookup rejected: ArtifactId=%s Reason=MissingOrInvalidDefinition"), *ArtifactId.ToString());
 		return false;
@@ -1378,7 +1385,8 @@ bool AHeistGameMode::TryGetLootDefinition(const FName ItemId, FHeistLootDataRow&
 
 	const FHeistLootDataRow* LootDefinition = LootDataTable->FindRow<FHeistLootDataRow>(ItemId, TEXT("AHeistGameMode::TryGetLootDefinition"), false);
 	if (LootDefinition == nullptr || LootDefinition->ItemId != ItemId || LootDefinition->ScoreValue < 0 || LootDefinition->SpawnCategory == EHeistSpawnCategory::None ||
-		LootDefinition->SpawnWeight < 0.0f || (ItemDefinition.bAvailableInV1 && LootDefinition->WorldLootActorClass.IsNull()))
+		LootDefinition->SpawnWeight < 0.0f || (ItemDefinition.bAvailableInV1 && LootDefinition->WorldMesh.IsNull()) || LootDefinition->WorldVisualRelativeTransform.ContainsNaN() ||
+		LootDefinition->WorldMaterials.ContainsByPredicate([](const TSoftObjectPtr<UMaterialInterface>& Material) { return Material.IsNull(); }))
 	{
 		return false;
 	}
@@ -1535,13 +1543,13 @@ bool AHeistGameMode::TrySpawnDroppedLoot(const FHeistLootDropRequest& DropReques
 		return false;
 	}
 
-	UClass* LootActorClass = LootDefinition.WorldLootActorClass.LoadSynchronous();
-	if (!IsValid(LootActorClass) || !LootActorClass->IsChildOf(AHeistLootActor::StaticClass()))
+	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset) ? GameBalanceDataAsset.Get() : GetDefault<UHeistGameBalanceDataAsset>();
+	UClass* LootActorClass = ResolveWorldLootShellClass(ResolvedBalanceData);
+	if (!IsValid(LootActorClass))
 	{
 		return false;
 	}
 
-	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset) ? GameBalanceDataAsset.Get() : GetDefault<UHeistGameBalanceDataAsset>();
 	UDataTable* LootDataTable = ResolvedBalanceData->LootDataTable.LoadSynchronous();
 	const FTransform SpawnTransform(FRotator::ZeroRotator, FVector(DropRequest.DropOrigin));
 	AHeistLootActor* DroppedLootActor =
@@ -1828,10 +1836,11 @@ bool AHeistGameMode::TrySpawnRareLoot(const int32 EventIndex, AHeistLootActor*& 
 	}
 
 	OutSpawnPoint = CandidateSpawnPoints[FMath::RandRange(0, CandidateSpawnPoints.Num() - 1)];
-	UClass* LootActorClass = LootDefinition.WorldLootActorClass.LoadSynchronous();
-	if (!IsValid(LootActorClass) || !LootActorClass->IsChildOf(AHeistLootActor::StaticClass()))
+	UClass* LootActorClass = ResolveWorldLootShellClass(BalanceData);
+	if (!IsValid(LootActorClass))
 	{
-		LootActorClass = AHeistLootActor::StaticClass();
+		UHeistDebugFunctionLibrary::DebugRareLootEventFailed(this, EventIndex, TEXT("MissingWorldLootShell"));
+		return false;
 	}
 
 	UDataTable* LootDataTable = BalanceData->LootDataTable.LoadSynchronous();

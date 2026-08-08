@@ -44,7 +44,7 @@ class PROJECT_MUSEUMHEIST_API AHeistLootActor : public AHeistInteractableActor
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Loot", meta = (AllowPrivateAccess = "true"))
 	FDataTableRowHandle LootDataRow;
 
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Loot", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(ReplicatedUsing = OnRep_LootRowId, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Loot", meta = (AllowPrivateAccess = "true"))
 	FName LootRowId = NAME_None;
 
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Loot", meta = (AllowPrivateAccess = "true"))
@@ -93,7 +93,12 @@ class PROJECT_MUSEUMHEIST_API AHeistLootActor : public AHeistInteractableActor
 
   private:
 	void ResolveLootData();
+	void ResolveLootVisualFromRowId();
+	void ApplyLootVisual(const struct FHeistLootDataRow& LootDefinition);
 	void ApplyFallbackLootData();
+
+	UFUNCTION()
+	void OnRep_LootRowId();
 
 #pragma endregion
 };

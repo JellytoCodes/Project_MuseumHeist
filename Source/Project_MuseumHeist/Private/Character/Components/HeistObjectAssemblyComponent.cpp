@@ -15,6 +15,16 @@
 namespace
 {
 constexpr int32 ObjectAssemblyEntryWireBytes = sizeof(FName) * 3 + sizeof(uint8);
+
+bool IsMaterialSelectionResolved(const FHeistObjectAssemblyPartRow& PartDefinition, const FName MaterialId)
+{
+	if (PartDefinition.AllowedMaterialIds.IsEmpty())
+	{
+		return MaterialId.IsNone();
+	}
+	const TSoftObjectPtr<UMaterialInterface>* MaterialAsset = PartDefinition.MaterialVariants.Find(MaterialId);
+	return !MaterialId.IsNone() && PartDefinition.AllowedMaterialIds.Contains(MaterialId) && MaterialAsset != nullptr && !MaterialAsset->IsNull();
+}
 }
 
 UHeistObjectAssemblyComponent::UHeistObjectAssemblyComponent()
@@ -342,8 +352,7 @@ bool UHeistObjectAssemblyComponent::TryPrepareTemplate(AHeistObjectDisplayCaseAc
 	for (const FHeistObjectAssemblyEntry& RequiredPart : TemplateDefinition.RequiredParts)
 	{
 		const FHeistObjectAssemblyPartRow* PartDefinition = ResolvedPartDefinitions.Find(RequiredPart.PartId);
-		const bool bMaterialValid = PartDefinition != nullptr &&
-			(PartDefinition->AllowedMaterialIds.IsEmpty() ? RequiredPart.MaterialId.IsNone() : PartDefinition->AllowedMaterialIds.Contains(RequiredPart.MaterialId));
+		const bool bMaterialValid = PartDefinition != nullptr && IsMaterialSelectionResolved(*PartDefinition, RequiredPart.MaterialId);
 		if (PartDefinition == nullptr || !PartDefinition->CompatibleSocketIds.Contains(RequiredPart.SocketId) ||
 			!PartDefinition->AllowedOrientationSteps.Contains(RequiredPart.QuantizedOrientation) || !bMaterialValid)
 		{
@@ -495,8 +504,7 @@ bool UHeistObjectAssemblyComponent::ValidatePayload(const TArray<FHeistObjectAss
 			OutRejectReason = FName(TEXT("OrientationNotAllowed"));
 			return false;
 		}
-		const bool bMaterialValid =
-			PartDefinition->AllowedMaterialIds.IsEmpty() ? Entry.MaterialId.IsNone() : PartDefinition->AllowedMaterialIds.Contains(Entry.MaterialId);
+		const bool bMaterialValid = IsMaterialSelectionResolved(*PartDefinition, Entry.MaterialId);
 		if (!bMaterialValid)
 		{
 			OutRejectReason = FName(TEXT("MaterialNotAllowed"));

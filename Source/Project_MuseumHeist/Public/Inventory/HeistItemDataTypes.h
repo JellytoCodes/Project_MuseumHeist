@@ -8,9 +8,10 @@
 #include "HeistItemDataTypes.generated.h"
 
 class AActor;
-class AHeistLootActor;
+class UMaterialInterface;
 class USkeletalMesh;
 class USoundBase;
+class UStaticMesh;
 class UTexture2D;
 
 #pragma region Inventory
@@ -71,8 +72,16 @@ struct PROJECT_MUSEUMHEIST_API FHeistLootDataRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0"))
 	float SpawnWeight = 1.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TSoftClassPtr<AHeistLootActor> WorldLootActorClass;
+	/** World presentation resolved by the shared BP_Loot shell. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Loot|World Visual")
+	TSoftObjectPtr<UStaticMesh> WorldMesh;
+
+	/** Material slot order follows the resolved WorldMesh. Empty keeps mesh defaults. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Loot|World Visual", meta = (EditFixedOrder))
+	TArray<TSoftObjectPtr<UMaterialInterface>> WorldMaterials;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Loot|World Visual")
+	FTransform WorldVisualRelativeTransform = FTransform::Identity;
 };
 
 USTRUCT(BlueprintType)

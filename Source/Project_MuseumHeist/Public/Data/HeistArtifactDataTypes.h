@@ -6,8 +6,6 @@
 
 #include "HeistArtifactDataTypes.generated.h"
 
-class AActor;
-class UStaticMesh;
 class UTexture2D;
 
 UENUM(BlueprintType)
@@ -29,6 +27,10 @@ struct PROJECT_MUSEUMHEIST_API FHeistArtifactDataRow : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Artifact")
 	FText DisplayName;
+
+	/** Shared rarity contract used by inventory, dropped-original UI, and grade presentation. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Artifact")
+	EHeistLootGrade ItemGrade = EHeistLootGrade::OneStar;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Artifact", meta = (ClampMin = "0"))
 	int32 ArtifactValue = 0;
@@ -53,9 +55,6 @@ struct PROJECT_MUSEUMHEIST_API FHeistArtifactDataRow : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Artifact", meta = (ClampMin = "0.0", Units = "s"))
 	float BaseInspectionDelay = 0.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Artifact")
-	TSoftClassPtr<AActor> VisualActorClass;
 
 #if WITH_EDITOR
 	virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;
@@ -161,12 +160,20 @@ struct PROJECT_MUSEUMHEIST_API FHeistObjectAssemblyPartRow : public FTableRowBas
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly")
 	TSoftObjectPtr<UStaticMesh> StaticMesh;
 
+	/** Optional material applied when the part has no selected MaterialId. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly|Visual")
+	TSoftObjectPtr<UMaterialInterface> DefaultMaterial;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly", meta = (EditFixedOrder))
 	TArray<FName> CompatibleSocketIds;
 
 	/** Empty means that the part has no player-selectable material variant. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly", meta = (EditFixedOrder))
 	TArray<FName> AllowedMaterialIds;
+
+	/** Asset lookup for each selectable MaterialId. Keys must match AllowedMaterialIds. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly|Visual")
+	TMap<FName, TSoftObjectPtr<UMaterialInterface>> MaterialVariants;
 
 	/** Template-approved orientation indices. v1.0 supports indices 0 through 15. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly", meta = (EditFixedOrder))

@@ -4,6 +4,11 @@
 
 UHeistGameBalanceDataAsset::UHeistGameBalanceDataAsset()
 {
+	WorldLootActorClass = TSoftClassPtr<AHeistLootActor>(FSoftObjectPath(TEXT("/Game/Blueprints/World/Actors/Loot/BP_Loot.BP_Loot_C")));
+	ObjectDisplayCaseActorClass =
+		TSoftClassPtr<AHeistObjectDisplayCaseActor>(FSoftObjectPath(TEXT("/Game/Blueprints/World/Actors/Loot/BP_ObjectDisplayCase.BP_ObjectDisplayCase_C")));
+	ItemDataTable = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Game/Data/DataTable/DT_ItemData.DT_ItemData")));
+	LootDataTable = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Game/Data/DataTable/DT_LootData.DT_LootData")));
 	ContractDataTable = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Game/Data/DataTable/DT_ContractData.DT_ContractData")));
 	ArtifactDataTable = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Game/Data/DataTable/DT_ArtifactData.DT_ArtifactData")));
 	ForgeryTemplateDataTable = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Game/Data/DataTable/DT_ForgeryTemplate.DT_ForgeryTemplate")));

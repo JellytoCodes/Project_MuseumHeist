@@ -303,12 +303,11 @@ Smoke 및 Trap 계열 기능은 Stretch 목록에 포함하지 않는다.
 - Surface Forgery와 Object Assembly는 서로의 제출 Payload와 Replica Data를 공유하지 않는다.
 - Surface Forgery와 Object Assembly는 서로의 State Machine과 상세 Result를 공유하지 않는다.
 - 두 방식은 Owner-only Input Mode 원칙과 서버가 확정한 최종 0~100 Quality Score의 Guard Inspection Handoff만 공유할 수 있다.
-- `AHeistDisplayCaseActor`는 기존 Asset 호환 전용 Deprecated Painting Alias다.
-- 신규 Asset은 `AHeistDisplayCaseActor`를 부모로 사용하지 않는다.
-- 기존 `BP_DisplayCase`는 `AHeistPaintingDisplayCaseActor`를 부모로 사용한다.
-- `AHeistSculptureDisplayCaseActor`는 기존 `BP_SculptureDisplayCase` 호환 전용 Deprecated Alias로 전환한다.
-- 신규 Sculpture / Ceramic Asset은 `AHeistObjectDisplayCaseActor`를 부모로 사용한다.
-- `AHeistSculptureDisplayCaseActor`(Deprecated) Case는 시각 Shell만 유지하며 v1.0 Gameplay에 사용하지 않는다.
+- `AHeistDisplayCaseActor`는 제거됐다. `BP_PaintingDisplayCase`는 `AHeistPaintingDisplayCaseActor`를 직접 부모로 사용한다.
+- Painting 전시품은 `BP_PaintingDisplayCase` 공용 Shell만 사용한다.
+- `AHeistSculptureDisplayCaseActor`는 제거됐다. Sculpture / Ceramic 전시품은 `AHeistObjectDisplayCaseActor`만 사용한다.
+- `BP_ObjectDisplayCase`는 `AHeistObjectDisplayCaseActor`를 직접 부모로 사용한다.
+- 신규 Sculpture / Ceramic Asset은 `BP_ObjectDisplayCase` 공용 Shell과 Object Assembly Data Row로 표현한다.
 
 ## Removed Feature Boundary
 
@@ -1148,6 +1147,33 @@ Context 전환 시:
 | ViewModel / C++ Widget | HUD, Nameplate, Map, Status, Result State Exposure와 Request Routing |
 | DataTable / DataAsset | Contract, Artifact, Template, Guard, Balance, Map Presentation, Scaling Data |
 | Map | Painting/Object Case, Guard Route, Loot Spawn, Exit, Zone, Lighting, Navigation |
+
+## Canonical Actor Blueprint Shell Registry
+
+Mesh, Material, Texture, Icon, Relative Visual Transform 또는 밸런스 값만 다른 콘텐츠를 위해 Actor Blueprint를 추가하지 않는다.
+Actor Blueprint 분리는 Component Topology, Collision Contract, Authority State Machine 또는 Interaction Lifecycle이 실제로 다를 때만 허용한다.
+
+| Gameplay Family | C++ Parent | Canonical Blueprint Shell | Variant Data Source |
+|---|---|---|---|
+| Loose Loot World Pickup | `AHeistLootActor` | `BP_Loot` | `ItemId` → `DT_ItemData` + `DT_LootData`의 Mesh / Material / Visual Transform |
+| Dropped Original Recovery | `AHeistDroppedOriginalActor` | `BP_DroppedOriginal` | 복제된 `ArtifactId` → `DT_ArtifactData`와 원본 Visual Data |
+| Painting Display Case | `AHeistPaintingDisplayCaseActor` | `BP_PaintingDisplayCase` | `CaseId` / `ArtifactId` → `DT_ArtifactData` + `DT_ForgeryTemplate` |
+| Object Assembly Display Case | `AHeistObjectDisplayCaseActor` | `BP_ObjectDisplayCase` | `CaseId` / `ArtifactId` → `DT_ArtifactData` + `DT_ObjectAssemblyTemplate` + `DT_ObjectAssemblyPart` |
+| Shared Extraction | `AHeistVentActor` | `BP_Vent` | Map Instance Identity와 공통 Vent Presentation |
+| Loot Spawn Point | `AHeistLootSpawnPoint` | `BP_LootSpawnPoint` | Spawn Category / Zone / Transform |
+
+- Loose Loot와 Dropped Original은 외형이 유사해도 서버 상태와 회수 Transaction이 다르므로 서로 다른 공용 Shell을 유지한다.
+- `BP_Loot`는 기존 `BP_LootRoyalCrown`을 In-place Rename하고 고정 Mesh/Row를 제거해 승격한 유일한 Loose Loot 공용 Shell이다.
+- Crown, Sword, Painting, Vase, Necklace 같은 Loose Loot 차이는 별도 파생 Actor Blueprint가 아니라 Data Row로 표현한다.
+- Sculpture와 Ceramic은 모두 `BP_ObjectDisplayCase` 하나를 사용한다. Family, Core/Part Mesh, Socket, Orientation과 Material은 Object Assembly Data가 결정한다.
+- `BP_ObjectDisplayCase`는 기존 `BP_SculptureDisplayCase`를 `AHeistObjectDisplayCaseActor`로 Reparent한 뒤 In-place Rename해 승격한 유일한 Object Display Case 공용 Shell이다.
+- `BP_LootAncientSword`, `BP_Painting`, `BP_CeramicDisplayCase`는 제거됐으며 다시 생성하지 않는다. Rename Redirector는 참조가 0인 것을 확인한 뒤 제거한다.
+- `FHeistLootDataRow::WorldLootActorClass`처럼 Row마다 Actor Class를 선택하게 만드는 필드는 활성 Content Schema에서 사용하지 않는다. Spawn Class는 공용 Shell 하나를 시스템 설정이 소유하고 Row는 Visual Asset만 소유한다.
+- `FHeistArtifactDataRow::VisualActorClass`를 Painting/Object Display Case 선택에 사용하지 않는다. Painting Original은 Surface Template Texture로, Object Original/Replica는 Object Template/Part Data로 재구성한다.
+- 서버는 Row Id와 Revision을 확정·복제하고, Client는 동일한 Data Row에서 Mesh와 Material을 해석한다. Client나 Blueprint가 ItemId/ArtifactId Switch로 Gameplay 또는 Visual Variant를 하드코딩하지 않는다.
+- Blueprint Event는 C++이 해석해 전달한 Mesh/Material을 적용하는 Presentation Hook만 담당한다. PartId/MaterialId별 Asset 선택 Switch는 Data Resolver가 담당한다.
+- Debug Spawn과 PIE Fixture도 Canonical Blueprint Shell을 생성해야 한다. Shell Load 실패 시 순수 C++ Actor로 대체하지 않고 `BLOCKED` 또는 `FAIL`로 기록한다.
+- 새 Actor Blueprint가 필요하다고 판단되면 생성 전에 기존 Shell로 표현할 수 없는 Component/Collision/State/Interaction 차이를 TDD와 AGENTS에 먼저 기록한다.
 
 ## UI Copy Rules
 

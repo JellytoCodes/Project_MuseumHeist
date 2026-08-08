@@ -10,8 +10,10 @@ class AHeistGameState;
 class AHeistPlayerState;
 class AHeistDroppedOriginalActor;
 class USceneComponent;
+class USoundBase;
 class UStaticMeshComponent;
 struct FHeistInventoryItem;
+struct FHeistObjectAssemblyPartRow;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FHeistObjectAssemblySessionChangedSignature, AHeistPlayerState*, SessionOwner, bool, bLocked, int32, Revision);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FHeistObjectOriginalCarryChangedSignature, AHeistPlayerState*, Carrier, FName, ArtifactId, int32, Revision);
@@ -56,10 +58,19 @@ class PROJECT_MUSEUMHEIST_API AHeistObjectDisplayCaseActor : public AHeistIntera
 	bool HasCommittedAssemblyResult() const;
 
 	UFUNCTION(BlueprintPure, Category = "Heist|Object Assembly|Replica")
+	bool HasReplicaPreview() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Object Assembly|Replica|Feedback")
+	bool IsReplicaReviewReadyFor(const AActor* Interactor) const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Object Assembly|Replica")
 	FHeistObjectAssemblyResult GetCommittedAssemblyResult() const;
 
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Heist|Object Assembly|Replica")
 	bool TryCommitAssemblyReplica(AHeistPlayerState* RequestingPlayerState, const FHeistObjectAssemblyResult& AssemblyResult, const TArray<FHeistObjectAssemblyEntry>& Entries);
+
+	bool TryRestartAssemblyFromPreview(AHeistPlayerState* RequestingPlayerState, FName& OutRejectReason);
+	bool TryCommitReplicaSwapAndTakeOriginal(AHeistPlayerState* RequestingPlayerState, int32& OutAddedInstanceId, FName& OutRejectReason);
 
 	void GetReplicaComponentDebugState(int32& OutReplicaRevision, int32& OutExpectedEntryCount, int32& OutBuiltPartCount, int32& OutUnresolvedSocketCount, bool& OutCoreReady,
 									   bool& OutContractPassed) const;
@@ -157,9 +168,6 @@ class PROJECT_MUSEUMHEIST_API AHeistObjectDisplayCaseActor : public AHeistIntera
   protected:
 	virtual bool CanInteract(const AActor* Interactor) const override;
 
-	/** One-time identity bridge used only by deprecated display-case aliases. */
-	void SetObjectIdentityForLegacyMigration(FName InObjectCaseId, FName InTargetArtifactId, FName InObjectFamilyId);
-
 	UFUNCTION()
 	void OnRep_AssemblyState();
 
@@ -184,16 +192,22 @@ class PROJECT_MUSEUMHEIST_API AHeistObjectDisplayCaseActor : public AHeistIntera
 	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|Object Assembly", meta = (DisplayName = "Object Assembly Snapshot Changed"))
 	void BP_ObjectAssemblySnapshotChanged();
 
-	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|Object Assembly|Replica", meta = (DisplayName = "Apply Object Replica Part Material"))
-	void BP_ApplyObjectReplicaPartMaterial(UStaticMeshComponent* PartComponent, FName PartId, FName MaterialId);
+	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|Object Assembly|Replica|Feedback", meta = (DisplayName = "Replica Swap Committed"))
+	void BP_OnReplicaSwapCommitted();
 
   private:
 	bool ValidateSessionRequest(AHeistPlayerState* RequestingPlayerState, FName& OutRejectReason) const;
 	bool ValidateReplicaCommit(AHeistPlayerState* RequestingPlayerState, const FHeistObjectAssemblyResult& AssemblyResult, const TArray<FHeistObjectAssemblyEntry>& Entries,
 							   FName& OutRejectReason) const;
+	bool ValidateReplicaReviewOwner(AHeistPlayerState* RequestingPlayerState, FName& OutRejectReason) const;
+	void ResetAssemblyPreviewData();
+	void EmitReplicaSwapFeedback();
 	void RefreshObjectVisualState();
+	void RebuildOriginalComponents();
+	void DestroyOriginalComponents();
 	void RebuildReplicaComponents();
 	void DestroyReplicaComponents();
+	void ApplyPartMaterial(UStaticMeshComponent* PartComponent, const FHeistObjectAssemblyPartRow& PartDefinition, FName MaterialId) const;
 	FTransform ResolveFallbackPartTransform(FName SocketId, int32 PlacementIndex, uint8 QuantizedOrientation) const;
 	bool ShouldDisplayOriginalVisual() const;
 	bool ShouldDisplayReplicaVisual() const;
@@ -201,7 +215,8 @@ class PROJECT_MUSEUMHEIST_API AHeistObjectDisplayCaseActor : public AHeistIntera
 	void ClearSession(FName Reason);
 	void UnbindSessionOwnerDelegate();
 	void BroadcastAssemblySnapshot(FName EventName, FName Reason, bool bResult);
-	bool ValidateOriginalTakeRequest(AHeistPlayerState* RequestingPlayerState, int32& OutArtifactValue, float& OutArtifactWeight, bool& bOutRequiredTarget, FName& OutRejectReason) const;
+	bool ValidateOriginalTakeRequest(AHeistPlayerState* RequestingPlayerState, int32& OutArtifactValue, float& OutArtifactWeight, bool& bOutRequiredTarget, FName& OutRejectReason,
+								 bool bAllowLockedReplicaReady = false) const;
 	void SyncObjectiveCarrierCandidate(AHeistPlayerState* Carrier);
 	void UnbindOriginalCarrierDelegate();
 	void BroadcastOriginalCarrySnapshot(FName EventName, FName Reason, bool bResult);
@@ -245,6 +260,9 @@ class PROJECT_MUSEUMHEIST_API AHeistObjectDisplayCaseActor : public AHeistIntera
 	TObjectPtr<USceneComponent> ReplicaRootComponent;
 
 	UPROPERTY(Transient)
+	TArray<TObjectPtr<UStaticMeshComponent>> OriginalPartComponents;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UStaticMeshComponent> ReplicaCoreComponent;
 
 	UPROPERTY(Transient)
@@ -273,6 +291,15 @@ class PROJECT_MUSEUMHEIST_API AHeistObjectDisplayCaseActor : public AHeistIntera
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Object Assembly|Original", meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<AHeistDroppedOriginalActor> DroppedOriginalActorClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Object Assembly|Replica|Feedback", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USoundBase> ReplicaSwapSound;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Object Assembly|Replica|Feedback", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "cm"))
+	float ReplicaSwapNoiseRadius = 1000.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Object Assembly|Replica|Feedback", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "s"))
+	float ReplicaSwapNoiseDuration = 1.5f;
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly|Inspection", meta = (AllowPrivateAccess = "true"))
 	bool bRegisteredForInspection = false;
@@ -308,6 +335,9 @@ class PROJECT_MUSEUMHEIST_API AHeistObjectDisplayCaseActor : public AHeistIntera
 	int32 ActiveInspectionScheduleRevision = INDEX_NONE;
 	int32 LastAppliedInspectionScheduleRevision = INDEX_NONE;
 	int32 InspectionResultApplicationCount = 0;
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayReplicaSwapFeedback();
 	int32 InspectionDuplicateBlockCount = 0;
 	EHeistObjectAssemblyState PreInspectionState = EHeistObjectAssemblyState::OriginalAvailable;
 };
