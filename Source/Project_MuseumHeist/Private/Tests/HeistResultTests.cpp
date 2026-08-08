@@ -3,6 +3,8 @@
 #include "Core/HeistTypes.h"
 #include "Misc/AutomationTest.h"
 
+#include <limits>
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistTeamRewardDeterminismTest, "ProjectMuseumHeist.Result.TeamRewardDeterminism",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
@@ -98,6 +100,51 @@ bool FHeistTeamResultSnapshotTest::RunTest(const FString& Parameters)
 	Result.TeamReward = 4200;
 	Result.Revision = 1;
 	TestTrue(TEXT("Complete replicated team result is valid"), Result.IsValid());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistPlayerContributionDataContractTest, "ProjectMuseumHeist.Result.PlayerContribution",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHeistPlayerContributionDataContractTest::RunTest(const FString& Parameters)
+{
+	FHeistPlayerContribution Contribution;
+	TestTrue(TEXT("Default contribution is a valid empty noncompetitive record"), Contribution.IsValid());
+
+	Contribution.SurfaceForgeries = 2;
+	Contribution.BestSurfaceQuality = 73.1f;
+	Contribution.Assemblies = 1;
+	Contribution.BestAssemblyQuality = 82.5f;
+	Contribution.ArtifactsRecovered = 1;
+	Contribution.CarryTimeSeconds = 12.5f;
+	Contribution.SecuredLootValue = 1500;
+	Contribution.GuardsDistracted = 2;
+	Contribution.TeammatesRescued = 1;
+	Contribution.AlarmsTriggered = 1;
+	Contribution.bEscaped = true;
+	TestTrue(TEXT("Complete contribution record is valid"), Contribution.IsValid());
+
+	FHeistPlayerResult PlayerResult;
+	PlayerResult.PlayerId = 1;
+	PlayerResult.bEscaped = true;
+	PlayerResult.Contribution = Contribution;
+	const FHeistPlayerResult ReplicatedCopy = PlayerResult;
+	TestTrue(TEXT("Contribution survives the player result snapshot contract"), ReplicatedCopy == PlayerResult);
+	TestEqual(TEXT("Surface count remains descriptive data"), ReplicatedCopy.Contribution.SurfaceForgeries, 2);
+	TestEqual(TEXT("Secured loot remains descriptive data"), ReplicatedCopy.Contribution.SecuredLootValue, 1500);
+
+	FHeistPlayerContribution InvalidContribution = Contribution;
+	InvalidContribution.BestSurfaceQuality = 100.1f;
+	TestFalse(TEXT("Out-of-range surface quality is rejected"), InvalidContribution.IsValid());
+	InvalidContribution = Contribution;
+	InvalidContribution.CarryTimeSeconds = std::numeric_limits<float>::quiet_NaN();
+	TestFalse(TEXT("Non-finite carry time is rejected"), InvalidContribution.IsValid());
+	InvalidContribution = Contribution;
+	InvalidContribution.TeammatesRescued = -1;
+	TestFalse(TEXT("Negative counters are rejected"), InvalidContribution.IsValid());
+	InvalidContribution = Contribution;
+	InvalidContribution.bArrested = true;
+	TestFalse(TEXT("Escaped and arrested cannot both be recorded"), InvalidContribution.IsValid());
 	return true;
 }
 

@@ -68,6 +68,10 @@ class PROJECT_MUSEUMHEIST_API UHeistGameBalanceDataAsset : public UDataAsset
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Alert", meta = (ClampMin = "0.0", Units = "s"))
 	float AlarmedToLockdownDelay = 30.0f;
 
+	/** Global range-only multiplier for guard sight, lose-sight, and SoundPing acceptance. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|AI|Perception", meta = (ClampMin = "0.0", ClampMax = "2.0"))
+	float GuardPerceptionRangeMultiplier = 0.5f;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Rare Loot")
 	TArray<float> RareLootEventTimes = {90.0f, 225.0f};
 

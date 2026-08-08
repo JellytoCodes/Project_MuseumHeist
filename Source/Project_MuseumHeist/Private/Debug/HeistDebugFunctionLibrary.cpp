@@ -4760,7 +4760,8 @@ void UHeistDebugFunctionLibrary::DebugGuardAlertModifiersDump(APlayerController*
 	const bool bExitTargetResolved = GuardController->TryGetAlertExitSurveillanceTarget(ExitTarget, ExitAcceptanceRadius);
 	const bool bExitSurveillanceValid = !GuardController->IsAlertExitSurveillanceActive() || bExitTargetResolved;
 	const bool bValuesValid = GuardCharacter->GetAlertPatrolSpeedMultiplier() > 0.0f && GuardCharacter->GetEffectivePatrolSpeed() > 0.0f &&
-		NoiseReactionComponent->GetAlertNoiseRadiusMultiplier() > 0.0f && GuardController->GetAlertSightRadiusMultiplier() > 0.0f && GuardController->GetActiveSightRadius() > 0.0f &&
+		NoiseReactionComponent->GetPerceptionRangeMultiplier() > 0.0f && NoiseReactionComponent->GetAlertNoiseRadiusMultiplier() > 0.0f &&
+		GuardController->GetAlertSightRadiusMultiplier() > 0.0f && GuardController->GetActiveSightRadius() > 0.0f &&
 		GuardStateComponent->GetAlertSearchDurationMultiplier() > 0.0f && GuardStateComponent->GetSearchDuration() > 0.0f;
 	const bool bPassed = PlayerController->HasAuthority() && GuardCharacter->HasAuthority() && GuardCharacter->HasResolvedGuardProfile() &&
 		GuardController->GetAppliedAlertLevel() == HeistGameState->GetAlertLevel() && bValuesValid && bExitSurveillanceValid;
@@ -4768,10 +4769,10 @@ void UHeistDebugFunctionLibrary::DebugGuardAlertModifiersDump(APlayerController*
 	Message(
 		PlayerController,
 		FString::Printf(
-			TEXT("Guard alert modifiers dump: Guard=%s Profile=%s Alert=%s AppliedAlert=%s PatrolMultiplier=%.2f PatrolSpeed=%.1f NoiseMultiplier=%.2f SightMultiplier=%.2f SightRadius=%.1f SearchMultiplier=%.2f SearchDuration=%.2f ExitSurveillance=%s ExitTarget=%s ExitAcceptance=%.1f Authority=%s Result=%s"),
+			TEXT("Guard alert modifiers dump: Guard=%s Profile=%s Alert=%s AppliedAlert=%s PatrolMultiplier=%.2f PatrolSpeed=%.1f PerceptionRangeMultiplier=%.2f NoiseMultiplier=%.2f SightMultiplier=%.2f SightRadius=%.1f SearchMultiplier=%.2f SearchDuration=%.2f ExitSurveillance=%s ExitTarget=%s ExitAcceptance=%.1f Authority=%s Result=%s"),
 			*GetNameSafe(GuardCharacter), *GuardCharacter->GetGuardProfileId().ToString(), *UEnum::GetValueAsString(HeistGameState->GetAlertLevel()),
 			*UEnum::GetValueAsString(GuardController->GetAppliedAlertLevel()), GuardCharacter->GetAlertPatrolSpeedMultiplier(), GuardCharacter->GetEffectivePatrolSpeed(),
-			NoiseReactionComponent->GetAlertNoiseRadiusMultiplier(), GuardController->GetAlertSightRadiusMultiplier(), GuardController->GetActiveSightRadius(),
+			NoiseReactionComponent->GetPerceptionRangeMultiplier(), NoiseReactionComponent->GetAlertNoiseRadiusMultiplier(), GuardController->GetAlertSightRadiusMultiplier(), GuardController->GetActiveSightRadius(),
 			GuardStateComponent->GetAlertSearchDurationMultiplier(), GuardStateComponent->GetSearchDuration(), GuardController->IsAlertExitSurveillanceActive() ? TEXT("true") : TEXT("false"),
 			*GetNameSafe(ExitTarget), ExitAcceptanceRadius, PlayerController->HasAuthority() ? TEXT("true") : TEXT("false"), bPassed ? TEXT("PASS") : TEXT("FAIL")),
 		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
@@ -7342,7 +7343,7 @@ void UHeistDebugFunctionLibrary::DebugResultHelp(APlayerController* PlayerContro
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(PlayerController, TEXT("Result debug commands: HeistResultShow | HeistResultHide | HeistResultDump | HeistResultRebuild | HeistResultSeed <Score> <Escaped 1/0> <EscapeTime> | HeistContributionSeed <SurfaceCount> <BestSurface> <AssemblyCount> <BestAssembly> <Artifacts> <CarryTime> <SecuredLoot> <Distracted> <Rescued> <Alarms> | HeistExitPlacementDump | HeistMissionGateDump"),
+	Message(PlayerController, TEXT("Result debug commands: HeistResultShow | HeistResultHide | HeistResultDump | HeistResultRebuild | HeistResultSeed <Score> <Escaped 1/0> <EscapeTime> | HeistContributionSeed <SurfaceCount> <BestSurface> <AssemblyCount> <BestAssembly> <Artifacts> <CarryTime> <SecuredLoot> <Distracted> <Rescued> <Alarms> | HeistContributionDump | HeistExitPlacementDump | HeistMissionGateDump"),
 			EHeistDebugLevel::Info, true, 8.0f);
 #endif
 }
@@ -7712,6 +7713,64 @@ void UHeistDebugFunctionLibrary::DebugContributionSeed(APlayerController* Player
 			SurfaceForgeries, BestSurfaceQuality, Assemblies, BestAssemblyQuality, ArtifactsRecovered, CarryTimeSeconds,
 			SecuredLootValue, GuardsDistracted, TeammatesRescued, AlarmsTriggered),
 		EHeistDebugLevel::Info, true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugContributionDump(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	const AHeistGameState* HeistGameState = IsValid(PlayerController) && IsValid(PlayerController->GetWorld())
+		? PlayerController->GetWorld()->GetGameState<AHeistGameState>()
+		: nullptr;
+	if (!IsValid(HeistGameState))
+	{
+		Message(PlayerController, TEXT("W6-006 contribution dump: Result=FAIL Reason=MissingHeistGameState"), EHeistDebugLevel::Error, true);
+		return;
+	}
+
+	TArray<const AHeistPlayerState*> PlayerStates;
+	PlayerStates.Reserve(HeistGameState->PlayerArray.Num());
+	for (const APlayerState* PlayerState : HeistGameState->PlayerArray)
+	{
+		if (const AHeistPlayerState* HeistPlayerState = Cast<AHeistPlayerState>(PlayerState); IsValid(HeistPlayerState))
+		{
+			PlayerStates.Add(HeistPlayerState);
+		}
+	}
+	PlayerStates.Sort([](const AHeistPlayerState& Left, const AHeistPlayerState& Right) { return Left.HeistPlayerId < Right.HeistPlayerId; });
+
+	bool bAllRecordsValid = !PlayerStates.IsEmpty();
+	bool bAllTerminalFlagsMatch = !PlayerStates.IsEmpty();
+	for (const AHeistPlayerState* HeistPlayerState : PlayerStates)
+	{
+		const FHeistPlayerContribution& Contribution = HeistPlayerState->GetContribution();
+		const bool bRecordValid = Contribution.IsValid();
+		const bool bTerminalFlagsMatch = Contribution.bEscaped == HeistPlayerState->IsEscaped() && Contribution.bArrested == HeistPlayerState->IsArrested();
+		bAllRecordsValid = bAllRecordsValid && bRecordValid;
+		bAllTerminalFlagsMatch = bAllTerminalFlagsMatch && bTerminalFlagsMatch;
+		Message(
+			PlayerController,
+			FString::Printf(
+				TEXT("Contribution entry: PlayerId=%d Surface=%d BestSurface=%.1f Assembly=%d BestAssembly=%.1f Artifacts=%d CarryTime=%.1f SecuredLoot=%d Distracted=%d Rescued=%d Alarms=%d Escaped=%s Arrested=%s Data=%s Flags=%s"),
+				HeistPlayerState->HeistPlayerId, Contribution.SurfaceForgeries, Contribution.BestSurfaceQuality, Contribution.Assemblies,
+				Contribution.BestAssemblyQuality, Contribution.ArtifactsRecovered, Contribution.CarryTimeSeconds, Contribution.SecuredLootValue,
+				Contribution.GuardsDistracted, Contribution.TeammatesRescued, Contribution.AlarmsTriggered,
+				Contribution.bEscaped ? TEXT("true") : TEXT("false"), Contribution.bArrested ? TEXT("true") : TEXT("false"),
+				bRecordValid ? TEXT("PASS") : TEXT("FAIL"), bTerminalFlagsMatch ? TEXT("PASS") : TEXT("FAIL")),
+			bRecordValid && bTerminalFlagsMatch ? EHeistDebugLevel::Info : EHeistDebugLevel::Error, false);
+	}
+
+	const bool bPassed = bAllRecordsValid && bAllTerminalFlagsMatch;
+	Message(
+		PlayerController,
+		FString::Printf(
+			TEXT("W6-006 contribution dump: Source=%s PlayerCount=%d DataContract=%s TerminalFlags=%s WinnerRank=None Authority=%s Result=%s"),
+			PlayerController->HasAuthority() ? TEXT("SERVER") : TEXT("REPLICATED_CLIENT"), PlayerStates.Num(),
+			bAllRecordsValid ? TEXT("PASS") : TEXT("FAIL"), bAllTerminalFlagsMatch ? TEXT("PASS") : TEXT("FAIL"),
+			PlayerController->HasAuthority() ? TEXT("true") : TEXT("false"), bPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Error, true, 15.0f);
 #endif
 }
 

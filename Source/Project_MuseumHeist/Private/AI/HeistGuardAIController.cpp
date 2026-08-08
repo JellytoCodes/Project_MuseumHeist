@@ -236,8 +236,10 @@ void AHeistGuardAIController::ConfigurePerceptionFromGuardProfile(const FHeistGu
 		return;
 	}
 
-	SightRadius = FMath::Max(0.0f, GuardData.SightRadius);
-	AggroResetDistance = FMath::Max(SightRadius, GuardData.AggroResetDistance);
+	const AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	const float PerceptionRangeMultiplier = IsValid(HeistGameMode) ? HeistGameMode->GetGuardPerceptionRangeMultiplier() : 1.0f;
+	SightRadius = FMath::Max(0.0f, GuardData.SightRadius * PerceptionRangeMultiplier);
+	AggroResetDistance = FMath::Max(SightRadius, GuardData.AggroResetDistance * PerceptionRangeMultiplier);
 	ActiveSightRadius = SightRadius;
 	ActiveAggroResetDistance = AggroResetDistance;
 	DefaultSightHalfAngle = FMath::Clamp(GuardData.SightAngle * 0.5f, 0.0f, 180.0f);

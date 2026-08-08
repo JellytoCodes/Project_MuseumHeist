@@ -278,6 +278,9 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 		float BestAssemblyQuality, int32 ArtifactsRecovered, float CarryTimeSeconds, int32 SecuredLootValue, int32 GuardsDistracted, int32 TeammatesRescued,
 		int32 AlarmsTriggered);
 
+	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Result", meta = (DevelopmentOnly))
+	static void DebugContributionDump(APlayerController* PlayerController);
+
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Gate", meta = (DevelopmentOnly))
 	static void DebugExitPlacementDump(APlayerController* PlayerController);
 

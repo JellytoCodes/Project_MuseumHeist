@@ -34,6 +34,7 @@ class PROJECT_MUSEUMHEIST_API UHeistGuardNoiseReactionComponent : public UActorC
 	void ConfigureGuardProfile(const FHeistGuardDataRow& GuardData);
 	void SetAlertNoiseRadiusMultiplier(float Multiplier);
 	float GetAlertNoiseRadiusMultiplier() const;
+	float GetPerceptionRangeMultiplier() const;
 	bool ReactToSoundPing(const FHeistSoundPingEvent& SoundPingEvent);
 
   private:
@@ -43,6 +44,7 @@ class PROJECT_MUSEUMHEIST_API UHeistGuardNoiseReactionComponent : public UActorC
 
 	float InvestigateDuration = 0.0f;
 	float AlertNoiseRadiusMultiplier = 1.0f;
+	float PerceptionRangeMultiplier = 1.0f;
 	FHeistSoundPingEvent CurrentCandidate;
 	bool bHasCurrentCandidate = false;
 

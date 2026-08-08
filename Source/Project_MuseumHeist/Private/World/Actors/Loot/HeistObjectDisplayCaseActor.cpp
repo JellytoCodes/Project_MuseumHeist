@@ -31,7 +31,7 @@ constexpr float ObjectInspectionDelayExcellentMultiplier = 4.0f;
 constexpr float ObjectInspectionDelayGoodMultiplier = 2.0f;
 constexpr float ObjectInspectionDelayFairMultiplier = 1.0f;
 constexpr float ObjectInspectionDelayPoorMultiplier = 0.5f;
-constexpr float ReplicaSwapMinimumInspectionDelaySeconds = 3.0f;
+constexpr float ObjectReplicaSwapMinimumInspectionDelaySeconds = 3.0f;
 
 bool IsMaterialSelectionResolved(const FHeistObjectAssemblyPartRow& PartDefinition, const FName MaterialId)
 {
@@ -328,7 +328,7 @@ bool AHeistObjectDisplayCaseActor::TryCommitReplicaSwapAndTakeOriginal(AHeistPla
 	{
 		return false;
 	}
-	ResolvedInspectionDelay = FMath::Max(ResolvedInspectionDelay, ReplicaSwapMinimumInspectionDelaySeconds);
+	ResolvedInspectionDelay = FMath::Max(ResolvedInspectionDelay, ObjectReplicaSwapMinimumInspectionDelaySeconds);
 	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	const float ServerTime = IsValid(HeistGameState) ? HeistGameState->GetServerWorldTimeSeconds() : (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
 	InspectionReadyServerTime = ServerTime + ResolvedInspectionDelay;

@@ -242,6 +242,9 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 		int32 TeammatesRescued = 1, int32 AlarmsTriggered = 1);
 
 	UFUNCTION(Exec)
+	void HeistContributionDump();
+
+	UFUNCTION(Exec)
 	void HeistExitPlacementDump();
 
 	UFUNCTION(Exec)

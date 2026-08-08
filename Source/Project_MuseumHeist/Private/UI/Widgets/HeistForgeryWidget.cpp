@@ -291,7 +291,7 @@ FReply UHeistForgeryWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry,
 
 		if (bStrokeBegan)
 		{
-			return FReply::Handled().CaptureMouse(TakeWidget());
+			return FReply::Handled().SetUserFocus(TakeWidget(), EFocusCause::Mouse).CaptureMouse(TakeWidget());
 		}
 	}
 
@@ -300,7 +300,7 @@ FReply UHeistForgeryWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry,
 		FinishPointerInteraction();
 		bErasePointerActive = true;
 		EraseLocalStrokeSegments(NormalizedPoint);
-		return FReply::Handled().CaptureMouse(TakeWidget());
+		return FReply::Handled().SetUserFocus(TakeWidget(), EFocusCause::Mouse).CaptureMouse(TakeWidget());
 	}
 
 	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
@@ -312,7 +312,7 @@ FReply UHeistForgeryWidget::NativeOnMouseButtonUp(const FGeometry& InGeometry, c
 	if ((ReleasedButton == EKeys::LeftMouseButton && ActiveStrokeIndex != INDEX_NONE) || (ReleasedButton == EKeys::RightMouseButton && bErasePointerActive))
 	{
 		FinishPointerInteraction();
-		return FReply::Handled().ReleaseMouseCapture();
+		return FReply::Handled().SetUserFocus(TakeWidget(), EFocusCause::Mouse).ReleaseMouseCapture();
 	}
 
 	return Super::NativeOnMouseButtonUp(InGeometry, InMouseEvent);
@@ -340,38 +340,61 @@ FReply UHeistForgeryWidget::NativeOnMouseMove(const FGeometry& InGeometry, const
 
 	const bool bLeftMouseDown = InMouseEvent.IsMouseButtonDown(EKeys::LeftMouseButton);
 	const bool bRightMouseDown = InMouseEvent.IsMouseButtonDown(EKeys::RightMouseButton);
-
-	if (bLeftMouseDown)
+	if (bPointerStateRequiresRevalidation)
 	{
+		const bool bExpectedButtonStillHeld = (ActiveStrokeIndex != INDEX_NONE && bLeftMouseDown) || (bErasePointerActive && bRightMouseDown);
+		bPointerStateRequiresRevalidation = false;
+		if (!bExpectedButtonStillHeld)
+		{
+			FinishPointerInteraction();
+			return FReply::Handled().SetUserFocus(TakeWidget(), EFocusCause::Mouse).ReleaseMouseCapture();
+		}
+	}
+
+	// Mouse capture owns the pointer interaction until an explicit button-up or capture-loss event.
+	// Slate can transiently omit the held-button flag from a captured move event; treating that as
+	// a release fragmented one drag into hundreds of two-point strokes.
+	if (ActiveStrokeIndex != INDEX_NONE)
+	{
+		AppendLocalStrokePoint(NormalizedPoint);
 		if (ActiveStrokeIndex == INDEX_NONE)
 		{
-			if (BeginLocalStroke(NormalizedPoint))
-			{
-				return FReply::Handled().CaptureMouse(TakeWidget());
-			}
 			return FReply::Handled().ReleaseMouseCapture();
 		}
 
-		AppendLocalStrokePoint(NormalizedPoint);
-		return ActiveStrokeIndex != INDEX_NONE ? FReply::Handled() : FReply::Handled().ReleaseMouseCapture();
+		FReply Reply = FReply::Handled();
+		if (!HasMouseCapture())
+		{
+			Reply.SetUserFocus(TakeWidget(), EFocusCause::Mouse).CaptureMouse(TakeWidget());
+		}
+		return Reply;
+	}
+
+	if (bErasePointerActive)
+	{
+		EraseLocalStrokeSegments(NormalizedPoint);
+		FReply Reply = FReply::Handled();
+		if (!HasMouseCapture())
+		{
+			Reply.SetUserFocus(TakeWidget(), EFocusCause::Mouse).CaptureMouse(TakeWidget());
+		}
+		return Reply;
+	}
+
+	if (bLeftMouseDown)
+	{
+		if (BeginLocalStroke(NormalizedPoint))
+		{
+			return FReply::Handled().SetUserFocus(TakeWidget(), EFocusCause::Mouse).CaptureMouse(TakeWidget());
+		}
+		return FReply::Handled().ReleaseMouseCapture();
 	}
 
 	if (bRightMouseDown)
 	{
-		const bool bEraserStartedThisMove = !bErasePointerActive;
-		if (bEraserStartedThisMove)
-		{
-			FinishPointerInteraction();
-			bErasePointerActive = true;
-		}
+		bErasePointerActive = true;
 		EraseLocalStrokeSegments(NormalizedPoint);
-		return bEraserStartedThisMove ? FReply::Handled().CaptureMouse(TakeWidget()) : FReply::Handled();
-	}
-
-	if (ActiveStrokeIndex != INDEX_NONE || bErasePointerActive)
-	{
-		FinishPointerInteraction();
-		return FReply::Handled().ReleaseMouseCapture();
+		return FReply::Handled().SetUserFocus(TakeWidget(), EFocusCause::Mouse).CaptureMouse(TakeWidget());
 	}
 
 	return Super::NativeOnMouseMove(InGeometry, InMouseEvent);
@@ -415,9 +438,22 @@ FReply UHeistForgeryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const F
 void UHeistForgeryWidget::NativeOnMouseCaptureLost(const FCaptureLostEvent& CaptureLostEvent)
 {
 	Super::NativeOnMouseCaptureLost(CaptureLostEvent);
-	UE_LOG(LogHeistUI, Verbose, TEXT("[%s] Forgery mouse capture lost: ActiveStroke=%s Eraser=%s Strokes=%d Points=%d"), *GetName(),
-		ActiveStrokeIndex != INDEX_NONE ? TEXT("true") : TEXT("false"), bErasePointerActive ? TEXT("true") : TEXT("false"), GetCollectedStrokeCount(), GetCollectedPointCount());
+	const bool bPointerInteractionActive = ActiveStrokeIndex != INDEX_NONE || bErasePointerActive;
+	UE_LOG(LogHeistUI, Verbose,
+		TEXT("[%s] Forgery mouse capture lost: ActiveStroke=%s Eraser=%s Strokes=%d Points=%d Action=%s"), *GetName(),
+		ActiveStrokeIndex != INDEX_NONE ? TEXT("true") : TEXT("false"), bErasePointerActive ? TEXT("true") : TEXT("false"), GetCollectedStrokeCount(), GetCollectedPointCount(),
+		bPointerInteractionActive ? TEXT("PRESERVE_UNTIL_POINTER_EVENT") : TEXT("FINISH"));
+	if (bPointerInteractionActive)
+	{
+		bPointerStateRequiresRevalidation = true;
+		return;
+	}
+
 	FinishPointerInteraction();
+	if (IsDrawingInputEnabled())
+	{
+		SetKeyboardFocus();
+	}
 }
 
 void UHeistForgeryWidget::SetupForgeryWidget(UHeistForgeryViewModel* InForgeryViewModel)
@@ -1624,6 +1660,7 @@ void UHeistForgeryWidget::FinishPointerInteraction()
 	}
 	ActiveStrokeIndex = INDEX_NONE;
 	bErasePointerActive = false;
+	bPointerStateRequiresRevalidation = false;
 }
 
 void UHeistForgeryWidget::ResetLocalStrokePreview()

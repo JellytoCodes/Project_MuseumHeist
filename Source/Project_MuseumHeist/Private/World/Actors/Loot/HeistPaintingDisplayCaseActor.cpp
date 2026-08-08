@@ -37,7 +37,7 @@ constexpr float PaintingInspectionDelayExcellentMultiplier = 4.0f;
 constexpr float PaintingInspectionDelayGoodMultiplier = 2.0f;
 constexpr float PaintingInspectionDelayFairMultiplier = 1.0f;
 constexpr float PaintingInspectionDelayPoorMultiplier = 0.5f;
-constexpr float ReplicaSwapMinimumInspectionDelaySeconds = 3.0f;
+constexpr float PaintingReplicaSwapMinimumInspectionDelaySeconds = 3.0f;
 }
 
 bool FHeistReplicaPaintingData::NetSerialize(FArchive& Ar, UPackageMap*, bool& bOutSuccess)
@@ -1031,7 +1031,7 @@ bool AHeistPaintingDisplayCaseActor::TryCommitReplicaSwapAndTakeOriginal(AHeistP
 	{
 		return false;
 	}
-	ResolvedInspectionDelay = FMath::Max(ResolvedInspectionDelay, ReplicaSwapMinimumInspectionDelaySeconds);
+	ResolvedInspectionDelay = FMath::Max(ResolvedInspectionDelay, PaintingReplicaSwapMinimumInspectionDelaySeconds);
 	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	const float ServerTime = IsValid(HeistGameState) ? HeistGameState->GetServerWorldTimeSeconds() : (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
 	InspectionReadyServerTime = ServerTime + ResolvedInspectionDelay;

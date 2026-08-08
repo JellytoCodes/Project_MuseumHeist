@@ -133,6 +133,7 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 	int32 ActiveBrushPresetIndex = 1;
 	int32 ErasedStrokeCount = 0;
 	bool bErasePointerActive = false;
+	bool bPointerStateRequiresRevalidation = false;
 	bool bWasDrawingVisible = false;
 	UPROPERTY(Transient)
 	TObjectPtr<UTexture2D> DrawingRasterTexture;

@@ -33,6 +33,57 @@
 namespace
 {
 const FLinearColor VerificationPlayerColors[] = {FLinearColor::Red, FLinearColor::Green, FLinearColor::Blue, FLinearColor::Yellow};
+constexpr int32 CommittedReplicaPaintingResolution = 256;
+
+bool BuildReplicaRecapPaintingThumbnail(const FHeistReplicaPaintingData& SourcePainting, FHeistReplicaRecapEntry& OutRecap)
+{
+	if (SourcePainting.Resolution != CommittedReplicaPaintingResolution ||
+		!FMath::IsWithinInclusive(SourcePainting.Palette.Num(), 2, FHeistReplicaRecapEntry::MaximumPaintingPaletteColors))
+	{
+		return false;
+	}
+
+	const int32 SourcePixelCount = SourcePainting.Resolution * SourcePainting.Resolution;
+	if (SourcePainting.PackedPaletteIndices.Num() != FMath::DivideAndRoundUp(SourcePixelCount, 2))
+	{
+		return false;
+	}
+
+	const int32 ThumbnailResolution = FHeistReplicaRecapEntry::PaintingThumbnailResolution;
+	OutRecap.PaintingResolution = ThumbnailResolution;
+	OutRecap.PaintingPalette = SourcePainting.Palette;
+	OutRecap.PaintingPackedPaletteIndices.Init(0, FMath::DivideAndRoundUp(ThumbnailResolution * ThumbnailResolution, 2));
+	for (int32 ThumbnailY = 0; ThumbnailY < ThumbnailResolution; ++ThumbnailY)
+	{
+		const int32 SourceY = FMath::Min(SourcePainting.Resolution - 1, ((ThumbnailY * 2 + 1) * SourcePainting.Resolution) / (ThumbnailResolution * 2));
+		for (int32 ThumbnailX = 0; ThumbnailX < ThumbnailResolution; ++ThumbnailX)
+		{
+			const int32 SourceX = FMath::Min(SourcePainting.Resolution - 1, ((ThumbnailX * 2 + 1) * SourcePainting.Resolution) / (ThumbnailResolution * 2));
+			const int32 SourcePixelIndex = SourceY * SourcePainting.Resolution + SourceX;
+			const uint8 SourcePackedByte = SourcePainting.PackedPaletteIndices[SourcePixelIndex / 2];
+			const uint8 PaletteIndex = (SourcePixelIndex & 1) == 0 ? SourcePackedByte & 0x0f : SourcePackedByte >> 4;
+			if (PaletteIndex > SourcePainting.Palette.Num())
+			{
+				OutRecap.PaintingResolution = 0;
+				OutRecap.PaintingPalette.Reset();
+				OutRecap.PaintingPackedPaletteIndices.Reset();
+				return false;
+			}
+
+			const int32 ThumbnailPixelIndex = ThumbnailY * ThumbnailResolution + ThumbnailX;
+			uint8& DestinationPackedByte = OutRecap.PaintingPackedPaletteIndices[ThumbnailPixelIndex / 2];
+			if ((ThumbnailPixelIndex & 1) == 0)
+			{
+				DestinationPackedByte = static_cast<uint8>((DestinationPackedByte & 0xf0) | PaletteIndex);
+			}
+			else
+			{
+				DestinationPackedByte = static_cast<uint8>((DestinationPackedByte & 0x0f) | (PaletteIndex << 4));
+			}
+		}
+	}
+	return true;
+}
 
 int32 FindLowestAvailableHeistPlayerId(const AHeistGameState* HeistGameState, const int32 MaxPlayerSlots)
 {
@@ -621,9 +672,11 @@ bool AHeistGameMode::BuildTeamResultSnapshot(const EHeistContractOutcome Outcome
 		Recap.QualityScore = FMath::Clamp(Result.SimilarityScore, 0.0f, 100.0f);
 		Recap.bRequiredTarget = Recap.CaseId == ContractSnapshot.RequiredTargetCaseId && Recap.ArtifactId == ContractSnapshot.RequiredTargetArtifactId;
 		const FHeistReplicaPaintingData PaintingData = DisplayCase->GetReplicaPaintingData();
-		Recap.PaintingResolution = PaintingData.Resolution;
-		Recap.PaintingPalette = PaintingData.Palette;
-		Recap.PaintingPackedPaletteIndices = PaintingData.PackedPaletteIndices;
+		if (!BuildReplicaRecapPaintingThumbnail(PaintingData, Recap))
+		{
+			UE_LOG(LogHeistNetwork, Warning, TEXT("Team result painting thumbnail skipped: Case=%s Artifact=%s Result=METADATA_ONLY Reason=InvalidReplicaPaintingData"),
+				*Recap.CaseId.ToString(), *Recap.ArtifactId.ToString());
+		}
 		if (Recap.bRequiredTarget)
 		{
 			RequiredTargetQuality = Recap.QualityScore;
@@ -1484,6 +1537,17 @@ bool AHeistGameMode::TryGetPlayerCountDifficultyBaseline(const int32 PlayerCount
 {
 	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
 	return IsValid(BalanceData) && BalanceData->TryGetPlayerCountDifficultyBaseline(PlayerCount, OutBaseline);
+}
+
+float AHeistGameMode::GetGuardPerceptionRangeMultiplier() const
+{
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	if (!IsValid(BalanceData) || !FMath::IsFinite(BalanceData->GuardPerceptionRangeMultiplier))
+	{
+		return 1.0f;
+	}
+
+	return FMath::Clamp(BalanceData->GuardPerceptionRangeMultiplier, 0.0f, 2.0f);
 }
 
 void AHeistGameMode::DebugDumpPlayerCountDifficultyBaseline() const

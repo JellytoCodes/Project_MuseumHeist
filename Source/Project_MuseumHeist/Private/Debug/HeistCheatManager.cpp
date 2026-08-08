@@ -1104,6 +1104,13 @@ void UHeistCheatManager::HeistContributionSeed(const int32 SurfaceForgeries, con
 #endif
 }
 
+void UHeistCheatManager::HeistContributionDump()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugContributionDump(GetOuterAPlayerController());
+#endif
+}
+
 void UHeistCheatManager::HeistExitPlacementDump()
 {
 #if !UE_BUILD_SHIPPING

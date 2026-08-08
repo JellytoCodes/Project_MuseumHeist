@@ -2,6 +2,7 @@
 
 #include "AI/HeistGuardCharacter.h"
 #include "AI/HeistGuardStateComponent.h"
+#include "Core/HeistGameMode.h"
 #include "Core/HeistGameState.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "Engine/World.h"
@@ -66,6 +67,8 @@ void UHeistGuardNoiseReactionComponent::EndPlay(const EEndPlayReason::Type EndPl
 void UHeistGuardNoiseReactionComponent::ConfigureGuardProfile(const FHeistGuardDataRow& GuardData)
 {
 	InvestigateDuration = FMath::Max(0.0f, GuardData.InvestigateDuration);
+	const AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	PerceptionRangeMultiplier = IsValid(HeistGameMode) ? HeistGameMode->GetGuardPerceptionRangeMultiplier() : 1.0f;
 }
 
 void UHeistGuardNoiseReactionComponent::SetAlertNoiseRadiusMultiplier(const float Multiplier)
@@ -78,6 +81,11 @@ float UHeistGuardNoiseReactionComponent::GetAlertNoiseRadiusMultiplier() const
 	return AlertNoiseRadiusMultiplier;
 }
 
+float UHeistGuardNoiseReactionComponent::GetPerceptionRangeMultiplier() const
+{
+	return PerceptionRangeMultiplier;
+}
+
 bool UHeistGuardNoiseReactionComponent::ReactToSoundPing(const FHeistSoundPingEvent& SoundPingEvent)
 {
 	AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetOwner());
@@ -88,7 +96,7 @@ bool UHeistGuardNoiseReactionComponent::ReactToSoundPing(const FHeistSoundPingEv
 	}
 
 	const float Distance = FVector::Dist(GuardCharacter->GetActorLocation(), SoundPingEvent.WorldLocation);
-	const float EffectiveNoiseRadius = SoundPingEvent.Radius * AlertNoiseRadiusMultiplier;
+	const float EffectiveNoiseRadius = SoundPingEvent.Radius * PerceptionRangeMultiplier * AlertNoiseRadiusMultiplier;
 	if (Distance > EffectiveNoiseRadius)
 	{
 		UHeistDebugFunctionLibrary::DebugGuardNoiseReactionRejected(this, GuardCharacter, SoundPingEvent, TEXT("OutsideRadius"), Distance);

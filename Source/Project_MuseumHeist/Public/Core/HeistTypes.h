@@ -421,6 +421,14 @@ struct PROJECT_MUSEUMHEIST_API FHeistPlayerContribution
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|Contribution")
 	bool bArrested = false;
 
+	bool IsValid() const
+	{
+		return SurfaceForgeries >= 0 && FMath::IsFinite(BestSurfaceQuality) && FMath::IsWithinInclusive(BestSurfaceQuality, 0.0f, 100.0f) &&
+			Assemblies >= 0 && FMath::IsFinite(BestAssemblyQuality) && FMath::IsWithinInclusive(BestAssemblyQuality, 0.0f, 100.0f) &&
+			ArtifactsRecovered >= 0 && FMath::IsFinite(CarryTimeSeconds) && CarryTimeSeconds >= 0.0f && SecuredLootValue >= 0 &&
+			GuardsDistracted >= 0 && TeammatesRescued >= 0 && AlarmsTriggered >= 0 && !(bEscaped && bArrested);
+	}
+
 	bool operator==(const FHeistPlayerContribution& Other) const
 	{
 		return SurfaceForgeries == Other.SurfaceForgeries && FMath::IsNearlyEqual(BestSurfaceQuality, Other.BestSurfaceQuality, 0.001f) &&
@@ -435,6 +443,10 @@ USTRUCT(BlueprintType)
 struct PROJECT_MUSEUMHEIST_API FHeistReplicaRecapEntry
 {
 	GENERATED_BODY()
+
+	static constexpr int32 PaintingThumbnailResolution = 64;
+	static constexpr int32 MaximumPaintingPaletteColors = 8;
+	static constexpr int32 MaximumAssemblyEntries = 32;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|Result|Replica")
 	FName CaseId = NAME_None;
@@ -454,7 +466,7 @@ struct PROJECT_MUSEUMHEIST_API FHeistReplicaRecapEntry
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|Result|Replica")
 	bool bRequiredTarget = false;
 
-	/** Actual submitted Surface Forgery image, packed as two palette indices per byte. */
+	/** Result-screen thumbnail sampled from the actual submitted Surface Forgery image. Two palette indices per byte. */
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|Result|Replica")
 	int32 PaintingResolution = 0;
 
@@ -468,12 +480,23 @@ struct PROJECT_MUSEUMHEIST_API FHeistReplicaRecapEntry
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|Result|Replica")
 	TArray<FHeistObjectAssemblyEntry> AssemblyEntries;
 
+	bool NetSerialize(FArchive& Ar, UPackageMap* Map, bool& bOutSuccess);
+
 	bool operator==(const FHeistReplicaRecapEntry& Other) const
 	{
 		return CaseId == Other.CaseId && ArtifactId == Other.ArtifactId && TemplateId == Other.TemplateId && ForgeryType == Other.ForgeryType &&
 			FMath::IsNearlyEqual(QualityScore, Other.QualityScore, 0.001f) && bRequiredTarget == Other.bRequiredTarget && PaintingResolution == Other.PaintingResolution &&
 			PaintingPalette == Other.PaintingPalette && PaintingPackedPaletteIndices == Other.PaintingPackedPaletteIndices && AssemblyEntries == Other.AssemblyEntries;
 	}
+};
+
+template <>
+struct TStructOpsTypeTraits<FHeistReplicaRecapEntry> : public TStructOpsTypeTraitsBase2<FHeistReplicaRecapEntry>
+{
+	enum
+	{
+		WithNetSerializer = true
+	};
 };
 
 /** Immutable, server-authored end-of-contract summary. This never mutates quota progress. */

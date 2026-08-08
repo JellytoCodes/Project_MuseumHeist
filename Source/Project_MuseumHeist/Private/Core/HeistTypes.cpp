@@ -1,5 +1,144 @@
 #include "Core/HeistTypes.h"
 
+namespace
+{
+bool IsValidReplicaRecapPayload(const FHeistReplicaRecapEntry& Entry)
+{
+	if (Entry.CaseId.IsNone() || Entry.ArtifactId.IsNone() || Entry.TemplateId.IsNone() || !FMath::IsFinite(Entry.QualityScore) ||
+		!FMath::IsWithinInclusive(Entry.QualityScore, 0.0f, 100.0f))
+	{
+		return false;
+	}
+
+	if (Entry.ForgeryType == EHeistForgeryType::Drawing)
+	{
+		const int32 ExpectedPackedByteCount = FMath::DivideAndRoundUp(
+			FHeistReplicaRecapEntry::PaintingThumbnailResolution * FHeistReplicaRecapEntry::PaintingThumbnailResolution, 2);
+		const bool bClearedPainting = Entry.PaintingResolution == 0 && Entry.PaintingPalette.IsEmpty() && Entry.PaintingPackedPaletteIndices.IsEmpty();
+		const bool bCompletePainting = Entry.PaintingResolution == FHeistReplicaRecapEntry::PaintingThumbnailResolution &&
+			FMath::IsWithinInclusive(Entry.PaintingPalette.Num(), 2, FHeistReplicaRecapEntry::MaximumPaintingPaletteColors) &&
+			Entry.PaintingPackedPaletteIndices.Num() == ExpectedPackedByteCount;
+		if ((!bClearedPainting && !bCompletePainting) || !Entry.AssemblyEntries.IsEmpty())
+		{
+			return false;
+		}
+
+		if (bClearedPainting)
+		{
+			return true;
+		}
+
+		for (int32 PixelIndex = 0; PixelIndex < Entry.PaintingResolution * Entry.PaintingResolution; ++PixelIndex)
+		{
+			const uint8 PackedByte = Entry.PaintingPackedPaletteIndices[PixelIndex / 2];
+			const uint8 PaletteIndex = (PixelIndex & 1) == 0 ? PackedByte & 0x0f : PackedByte >> 4;
+			if (PaletteIndex > Entry.PaintingPalette.Num())
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	if (Entry.ForgeryType != EHeistForgeryType::Assembly || Entry.PaintingResolution != 0 || !Entry.PaintingPalette.IsEmpty() ||
+		!Entry.PaintingPackedPaletteIndices.IsEmpty() || Entry.AssemblyEntries.IsEmpty() || Entry.AssemblyEntries.Num() > FHeistReplicaRecapEntry::MaximumAssemblyEntries)
+	{
+		return false;
+	}
+
+	for (const FHeistObjectAssemblyEntry& AssemblyEntry : Entry.AssemblyEntries)
+	{
+		if (AssemblyEntry.PartId.IsNone() || AssemblyEntry.SocketId.IsNone())
+		{
+			return false;
+		}
+	}
+	return true;
+}
+}
+
+bool FHeistReplicaRecapEntry::NetSerialize(FArchive& Ar, UPackageMap*, bool& bOutSuccess)
+{
+	static_assert(sizeof(FColor) == 4, "Replica recap palette network serialization requires four-byte FColor values.");
+
+	if (Ar.IsSaving() && !IsValidReplicaRecapPayload(*this))
+	{
+		Ar.SetError();
+		bOutSuccess = false;
+		return true;
+	}
+
+	Ar << CaseId;
+	Ar << ArtifactId;
+	Ar << TemplateId;
+	uint8 SerializedForgeryType = Ar.IsSaving() ? static_cast<uint8>(ForgeryType) : 0;
+	Ar.SerializeBits(&SerializedForgeryType, 2);
+	Ar << QualityScore;
+	uint8 SerializedRequiredTarget = Ar.IsSaving() && bRequiredTarget ? 1 : 0;
+	Ar.SerializeBits(&SerializedRequiredTarget, 1);
+
+	uint32 SerializedPaintingResolution = Ar.IsSaving() ? static_cast<uint32>(PaintingResolution) : 0;
+	uint32 SerializedPaletteCount = Ar.IsSaving() ? static_cast<uint32>(PaintingPalette.Num()) : 0;
+	uint32 SerializedPackedByteCount = Ar.IsSaving() ? static_cast<uint32>(PaintingPackedPaletteIndices.Num()) : 0;
+	uint32 SerializedAssemblyEntryCount = Ar.IsSaving() ? static_cast<uint32>(AssemblyEntries.Num()) : 0;
+	Ar.SerializeIntPacked(SerializedPaintingResolution);
+	Ar.SerializeIntPacked(SerializedPaletteCount);
+	Ar.SerializeIntPacked(SerializedPackedByteCount);
+	Ar.SerializeIntPacked(SerializedAssemblyEntryCount);
+
+	if (Ar.IsLoading())
+	{
+		const bool bClearedDrawingHeader = SerializedForgeryType == static_cast<uint8>(EHeistForgeryType::Drawing) && SerializedPaintingResolution == 0 &&
+			SerializedPaletteCount == 0 && SerializedPackedByteCount == 0 && SerializedAssemblyEntryCount == 0;
+		const bool bCompleteDrawingHeader = SerializedForgeryType == static_cast<uint8>(EHeistForgeryType::Drawing) &&
+			SerializedPaintingResolution == static_cast<uint32>(PaintingThumbnailResolution) &&
+			FMath::IsWithinInclusive(SerializedPaletteCount, 2U, static_cast<uint32>(MaximumPaintingPaletteColors)) &&
+			SerializedPackedByteCount == static_cast<uint32>(FMath::DivideAndRoundUp(PaintingThumbnailResolution * PaintingThumbnailResolution, 2)) &&
+			SerializedAssemblyEntryCount == 0;
+		const bool bAssemblyHeader = SerializedForgeryType == static_cast<uint8>(EHeistForgeryType::Assembly) && SerializedPaintingResolution == 0 &&
+			SerializedPaletteCount == 0 && SerializedPackedByteCount == 0 && FMath::IsWithinInclusive(SerializedAssemblyEntryCount, 1U, static_cast<uint32>(MaximumAssemblyEntries));
+		if (!bClearedDrawingHeader && !bCompleteDrawingHeader && !bAssemblyHeader)
+		{
+			Ar.SetError();
+			bOutSuccess = false;
+			return true;
+		}
+
+		ForgeryType = static_cast<EHeistForgeryType>(SerializedForgeryType);
+		bRequiredTarget = SerializedRequiredTarget != 0;
+		PaintingResolution = static_cast<int32>(SerializedPaintingResolution);
+		PaintingPalette.SetNumUninitialized(static_cast<int32>(SerializedPaletteCount));
+		PaintingPackedPaletteIndices.SetNumUninitialized(static_cast<int32>(SerializedPackedByteCount));
+		AssemblyEntries.SetNum(static_cast<int32>(SerializedAssemblyEntryCount));
+	}
+
+	if (!PaintingPalette.IsEmpty())
+	{
+		Ar.Serialize(PaintingPalette.GetData(), static_cast<int64>(PaintingPalette.Num()) * sizeof(FColor));
+	}
+	if (!PaintingPackedPaletteIndices.IsEmpty())
+	{
+		Ar.Serialize(PaintingPackedPaletteIndices.GetData(), PaintingPackedPaletteIndices.Num());
+	}
+	for (FHeistObjectAssemblyEntry& AssemblyEntry : AssemblyEntries)
+	{
+		Ar << AssemblyEntry.PartId;
+		Ar << AssemblyEntry.SocketId;
+		Ar.Serialize(&AssemblyEntry.QuantizedOrientation, sizeof(AssemblyEntry.QuantizedOrientation));
+		Ar << AssemblyEntry.MaterialId;
+	}
+
+	if (Ar.IsLoading() && !IsValidReplicaRecapPayload(*this))
+	{
+		Ar.SetError();
+		bOutSuccess = false;
+		return true;
+	}
+
+	bOutSuccess = !Ar.IsError();
+	return true;
+}
+
 #define LOCTEXT_NAMESPACE "HeistContractOutcomeReasons"
 
 namespace HeistContractOutcomeReasons
