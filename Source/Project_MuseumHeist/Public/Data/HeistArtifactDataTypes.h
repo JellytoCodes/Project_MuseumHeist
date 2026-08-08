@@ -102,8 +102,8 @@ struct PROJECT_MUSEUMHEIST_API FHeistForgeryTemplateRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery", meta = (ClampMin = "0.0", Units = "s"))
 	float ObservationDuration = 1.5f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery", meta = (ClampMin = "1.0", Units = "s"))
-	float ForgeryDuration = 60.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery", meta = (ClampMin = "20.0", ClampMax = "45.0", Units = "s"))
+	float ForgeryDuration = 40.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Forgery", meta = (ClampMin = "1"))
 	int32 StrokeLimit = 5120;
@@ -201,8 +201,8 @@ struct PROJECT_MUSEUMHEIST_API FHeistObjectAssemblyTemplateRow : public FTableRo
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly", meta = (EditFixedOrder))
 	TArray<FName> DecoyPartIds;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly", meta = (ClampMin = "1.0", Units = "s"))
-	float AssemblyDuration = 60.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly", meta = (ClampMin = "25.0", ClampMax = "35.0", Units = "s"))
+	float AssemblyDuration = 30.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Object Assembly|Score", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float RequiredPartWeight = 0.35f;

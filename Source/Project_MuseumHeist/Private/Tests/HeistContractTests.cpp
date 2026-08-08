@@ -99,4 +99,102 @@ bool FHeistContractSnapshotTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistContractOutcomeMatrixTest, "ProjectMuseumHeist.Contract.OutcomeMatrix",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHeistContractOutcomeMatrixTest::RunTest(const FString& Parameters)
+{
+	auto MakeSnapshot = []
+	{
+		FHeistContractSnapshot Snapshot;
+		Snapshot.ContractId = FName(TEXT("Contract_MuseumSwap_01"));
+		Snapshot.MapId = FName(TEXT("M01"));
+		Snapshot.AssignmentSeed = 12345;
+		Snapshot.RequiredTargetArtifactId = FName(TEXT("Artifact_Painting_M01"));
+		Snapshot.RequiredTargetCaseId = FName(TEXT("Case_M01_Target"));
+		Snapshot.LootValueQuota = 4000;
+		Snapshot.Revision = 1;
+		return Snapshot;
+	};
+
+	auto ResolveAndValidate = [this](FHeistContractSnapshot Snapshot, const bool bAtLeastOneCrewEscaped,
+		const bool bAllRemainingCrewArrested, const bool bAllCrewDisconnected, const FName TerminalTrigger,
+		const EHeistContractOutcome ExpectedOutcome, const FName ExpectedReason, const TCHAR* Scenario)
+	{
+		Snapshot.Outcome = Snapshot.ResolveTerminalOutcome(bAtLeastOneCrewEscaped);
+		Snapshot.OutcomeReasonId = HeistContractOutcomeReasons::Resolve(Snapshot.Outcome, Snapshot.bRequiredTargetSecured,
+			bAtLeastOneCrewEscaped, bAllRemainingCrewArrested, bAllCrewDisconnected, TerminalTrigger);
+
+		TestEqual(FString::Printf(TEXT("%s resolves the expected outcome"), Scenario), static_cast<uint8>(Snapshot.Outcome),
+			static_cast<uint8>(ExpectedOutcome));
+		TestEqual(FString::Printf(TEXT("%s resolves the expected reason"), Scenario), Snapshot.OutcomeReasonId, ExpectedReason);
+		TestTrue(FString::Printf(TEXT("%s produces a consistent replicated snapshot"), Scenario), Snapshot.IsOutcomeConsistent());
+		TestFalse(FString::Printf(TEXT("%s exposes a player-facing natural-language reason"), Scenario), Snapshot.GetOutcomeReasonText().IsEmpty());
+	};
+
+	FHeistContractSnapshot Snapshot = MakeSnapshot();
+	Snapshot.bRequiredTargetSecured = true;
+	Snapshot.SecuredValue = Snapshot.LootValueQuota;
+	ResolveAndValidate(Snapshot, true, false, false, FName(TEXT("Lockdown")), EHeistContractOutcome::Success,
+		HeistContractOutcomeReasons::ContractComplete(), TEXT("Committed target and quota before same-frame lockdown"));
+
+	Snapshot = MakeSnapshot();
+	Snapshot.bRequiredTargetSecured = true;
+	Snapshot.SecuredValue = Snapshot.LootValueQuota - 1;
+	ResolveAndValidate(Snapshot, true, false, false, FName(TEXT("MatchTimerExpired")), EHeistContractOutcome::PartialHaul,
+		HeistContractOutcomeReasons::RequiredTargetSecuredQuotaShort(), TEXT("Committed target below quota before same-frame timer"));
+
+	Snapshot = MakeSnapshot();
+	Snapshot.CarriedValue = Snapshot.LootValueQuota * 2;
+	Snapshot.SecuredValue = Snapshot.LootValueQuota;
+	ResolveAndValidate(Snapshot, true, false, false, FName(TEXT("PlayerEscaped")), EHeistContractOutcome::Failed,
+		HeistContractOutcomeReasons::RequiredTargetMissing(), TEXT("Quota without required target"));
+
+	Snapshot = MakeSnapshot();
+	Snapshot.bRequiredTargetSecured = true;
+	Snapshot.CarriedValue = Snapshot.LootValueQuota * 2;
+	Snapshot.SecuredValue = Snapshot.LootValueQuota - 1;
+	ResolveAndValidate(Snapshot, true, false, false, FName(TEXT("PlayerEscaped")), EHeistContractOutcome::PartialHaul,
+		HeistContractOutcomeReasons::RequiredTargetSecuredQuotaShort(), TEXT("Carried value excluded from quota"));
+
+	Snapshot = MakeSnapshot();
+	Snapshot.bRequiredTargetSecured = true;
+	Snapshot.SecuredValue = Snapshot.LootValueQuota;
+	ResolveAndValidate(Snapshot, false, false, false, FName(TEXT("PlayerEscaped")), EHeistContractOutcome::Failed,
+		HeistContractOutcomeReasons::NoCrewEscaped(), TEXT("Contract progress without an escaped crew member"));
+
+	Snapshot = MakeSnapshot();
+	ResolveAndValidate(Snapshot, false, true, true, FName(TEXT("Lockdown")), EHeistContractOutcome::Failed,
+		HeistContractOutcomeReasons::LockdownBeforeContractComplete(), TEXT("Lockdown priority over lifecycle failures"));
+	ResolveAndValidate(Snapshot, false, true, true, FName(TEXT("MatchTimerExpired")), EHeistContractOutcome::Failed,
+		HeistContractOutcomeReasons::MatchTimerExpired(), TEXT("Match timer priority over lifecycle failures"));
+	ResolveAndValidate(Snapshot, false, true, true, FName(TEXT("PlayerArrested")), EHeistContractOutcome::Failed,
+		HeistContractOutcomeReasons::AllRemainingCrewArrested(), TEXT("All remaining crew arrested priority over disconnect"));
+	ResolveAndValidate(Snapshot, false, false, true, FName(TEXT("PlayerDisconnected")), EHeistContractOutcome::Failed,
+		HeistContractOutcomeReasons::AllCrewDisconnected(), TEXT("All crew disconnected"));
+
+	const FName AllReasonIds[] = {
+		HeistContractOutcomeReasons::ContractComplete(),
+		HeistContractOutcomeReasons::RequiredTargetSecuredQuotaShort(),
+		HeistContractOutcomeReasons::LockdownBeforeContractComplete(),
+		HeistContractOutcomeReasons::MatchTimerExpired(),
+		HeistContractOutcomeReasons::AllRemainingCrewArrested(),
+		HeistContractOutcomeReasons::AllCrewDisconnected(),
+		HeistContractOutcomeReasons::NoCrewEscaped(),
+		HeistContractOutcomeReasons::RequiredTargetMissing()
+	};
+	for (const FName ReasonId : AllReasonIds)
+	{
+		TestFalse(FString::Printf(TEXT("Reason %s has player-facing text"), *ReasonId.ToString()), HeistContractOutcomeReasons::ToDisplayText(ReasonId).IsEmpty());
+	}
+
+	Snapshot = MakeSnapshot();
+	Snapshot.Outcome = EHeistContractOutcome::Failed;
+	Snapshot.OutcomeReasonId = FName(TEXT("UnknownOutcomeReason"));
+	TestFalse(TEXT("Unknown failure reason cannot form a valid replicated outcome"), Snapshot.IsOutcomeConsistent());
+	TestTrue(TEXT("Unknown failure reason has no player-facing text"), Snapshot.GetOutcomeReasonText().IsEmpty());
+
+	return true;
+}
+
 #endif

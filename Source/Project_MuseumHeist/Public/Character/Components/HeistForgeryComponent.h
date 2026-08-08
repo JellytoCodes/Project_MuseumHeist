@@ -172,8 +172,8 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryComponent : public UActorComponent
 	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Forgery|Template", meta = (AllowPrivateAccess = "true"))
 	TArray<FLinearColor> TemplateAllowedPalette;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Forgery", meta = (AllowPrivateAccess = "true", ClampMin = "1.0", Units = "s"))
-	float DefaultSessionDurationSeconds = 60.0f;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Forgery", meta = (AllowPrivateAccess = "true", ClampMin = "20.0", ClampMax = "45.0", Units = "s"))
+	float DefaultSessionDurationSeconds = 40.0f;
 
 	UPROPERTY(Transient)
 	FName LastCleanupReason = NAME_None;

@@ -1205,7 +1205,8 @@ bool AHeistGameMode::TryGetForgeryTemplateDefinition(const FName TemplateId, FHe
 
 	const FHeistForgeryTemplateRow* TemplateDefinition = TemplateDataTable->FindRow<FHeistForgeryTemplateRow>(TemplateId, TEXT("AHeistGameMode::TryGetForgeryTemplateDefinition"), false);
 	if (TemplateDefinition == nullptr || TemplateDefinition->TemplateId != TemplateId || TemplateDefinition->ReferenceImage.IsNull() || TemplateDefinition->ReferenceMask.IsNull() ||
-		TemplateDefinition->ObservationDuration < 0.0f || TemplateDefinition->ForgeryDuration <= 0.0f || TemplateDefinition->StrokeLimit <= 0 || TemplateDefinition->BrushSize <= 0.0f)
+		TemplateDefinition->ObservationDuration < 0.0f || !FMath::IsFinite(TemplateDefinition->ForgeryDuration) ||
+		!FMath::IsWithinInclusive(TemplateDefinition->ForgeryDuration, 20.0f, 45.0f) || TemplateDefinition->StrokeLimit <= 0 || TemplateDefinition->BrushSize <= 0.0f)
 	{
 		UE_LOG(LogHeist, Error, TEXT("Forgery template lookup rejected: TemplateId=%s Reason=MissingOrInvalidDefinition"), *TemplateId.ToString());
 		return false;
@@ -1344,7 +1345,8 @@ bool AHeistGameMode::TryGetObjectAssemblyTemplateDefinition(const FName Template
 											 TemplateDefinition->MaterialWeight;
 	if (TemplateDefinition == nullptr || TemplateDefinition->TemplateId != TemplateId || TemplateDefinition->FamilyId.IsNone() || TemplateDefinition->DisplayName.IsEmpty() ||
 		TemplateDefinition->CorePartId.IsNone() || !FMath::IsWithinInclusive(TemplateDefinition->RequiredParts.Num(), 3, 5) ||
-		!FMath::IsFinite(TemplateDefinition->AssemblyDuration) || TemplateDefinition->AssemblyDuration <= 0.0f || !FMath::IsFinite(ScoreWeightTotal) || ScoreWeightTotal <= 0.0f)
+		!FMath::IsFinite(TemplateDefinition->AssemblyDuration) || !FMath::IsWithinInclusive(TemplateDefinition->AssemblyDuration, 25.0f, 35.0f) ||
+		!FMath::IsFinite(ScoreWeightTotal) || ScoreWeightTotal <= 0.0f)
 	{
 		return false;
 	}
@@ -1587,6 +1589,7 @@ void AHeistGameMode::ValidateItemDataTables() const
 	}
 
 	int32 ValidRowCount = 0;
+	int32 ReleaseLootRowCount = 0;
 	for (const FName RowName : RowNames)
 	{
 		FHeistItemDataRow ItemDefinition;
@@ -1612,6 +1615,10 @@ void AHeistGameMode::ValidateItemDataTables() const
 		if (bValidExtension)
 		{
 			++ValidRowCount;
+			if (ItemDefinition.ItemType == EHeistItemType::Loot && ItemDefinition.bAvailableInV1)
+			{
+				++ReleaseLootRowCount;
+			}
 		}
 		else
 		{
@@ -1638,16 +1645,26 @@ void AHeistGameMode::ValidateItemDataTables() const
 		}
 	}
 
-	const int32 InvalidRowCount = RowNames.Num() - ValidRowCount + OrphanExtensionCount;
+	constexpr int32 MinimumReleaseLootRowCount = 5;
+	const bool bReleaseLootCountValid = ReleaseLootRowCount >= MinimumReleaseLootRowCount;
+	if (!bReleaseLootCountValid)
+	{
+		UE_LOG(LogHeistInventory, Error, TEXT("Item data validation rejected release loot set: ReleaseLootRows=%d RequiredMinimum=%d"), ReleaseLootRowCount, MinimumReleaseLootRowCount);
+	}
+
+	const int32 InvalidRowCount = RowNames.Num() - ValidRowCount + OrphanExtensionCount + (bReleaseLootCountValid ? 0 : 1);
 	if (InvalidRowCount > 0)
 	{
-		UE_LOG(LogHeistInventory, Error, TEXT("Item data validation completed: ItemTable=%s LootTable=%s UsableTable=%s TotalItems=%d ValidItems=%d InvalidRows=%d OrphanExtensions=%d Result=FAIL"),
-			   *GetNameSafe(ItemDataTable), *GetNameSafe(LootDataTable), *GetNameSafe(UsableItemDataTable), RowNames.Num(), ValidRowCount, InvalidRowCount, OrphanExtensionCount);
+		UE_LOG(LogHeistInventory, Error,
+			   TEXT("Item data validation completed: ItemTable=%s LootTable=%s UsableTable=%s TotalItems=%d ValidItems=%d ReleaseLootRows=%d InvalidRows=%d OrphanExtensions=%d Result=FAIL"),
+			   *GetNameSafe(ItemDataTable), *GetNameSafe(LootDataTable), *GetNameSafe(UsableItemDataTable), RowNames.Num(), ValidRowCount, ReleaseLootRowCount, InvalidRowCount,
+			   OrphanExtensionCount);
 		return;
 	}
 
-	UE_LOG(LogHeistInventory, Log, TEXT("Item data validation completed: ItemTable=%s LootTable=%s UsableTable=%s TotalItems=%d ValidItems=%d InvalidRows=0 OrphanExtensions=0 Result=PASS"),
-		   *GetNameSafe(ItemDataTable), *GetNameSafe(LootDataTable), *GetNameSafe(UsableItemDataTable), RowNames.Num(), ValidRowCount);
+	UE_LOG(LogHeistInventory, Log,
+		   TEXT("Item data validation completed: ItemTable=%s LootTable=%s UsableTable=%s TotalItems=%d ValidItems=%d ReleaseLootRows=%d InvalidRows=0 OrphanExtensions=0 Result=PASS"),
+		   *GetNameSafe(ItemDataTable), *GetNameSafe(LootDataTable), *GetNameSafe(UsableItemDataTable), RowNames.Num(), ValidRowCount, ReleaseLootRowCount);
 }
 
 #pragma endregion

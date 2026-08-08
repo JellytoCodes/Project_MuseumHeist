@@ -1493,7 +1493,7 @@ void UHeistDebugFunctionLibrary::DebugOutcomeHelp(APlayerController* PlayerContr
 {
 #if !UE_BUILD_SHIPPING
 	Message(PlayerController,
-		TEXT("Outcome commands: SERVER HeistOutcomeSeed <SecuredValue> <RequiredTargetSecured 0|1> | SERVER HeistOutcomeResolve <Escaped|Lockdown|MatchTimer|AllArrested|AllDisconnected> | SERVER/CLIENT HeistOutcomeDump. Each resolve ends the current PIE run."),
+		TEXT("Outcome commands: SERVER HeistOutcomeSeed <SecuredValue> <RequiredTargetSecured 0|1> | SERVER HeistOutcomeResolve <Escaped|EscapedLockdown|EscapedMatchTimer|Lockdown|MatchTimer|AllArrested|AllDisconnected> | SERVER/CLIENT HeistOutcomeDump. Each resolve ends the current PIE run."),
 		EHeistDebugLevel::Info, true, 12.0f);
 #endif
 }
@@ -1537,6 +1537,16 @@ void UHeistDebugFunctionLibrary::DebugOutcomeResolve(APlayerController* PlayerCo
 		ResolvedTrigger = FName(TEXT("PlayerEscaped"));
 		bTreatAsCrewEscaped = true;
 	}
+	else if (TerminalTrigger.Equals(TEXT("EscapedLockdown"), ESearchCase::IgnoreCase))
+	{
+		ResolvedTrigger = FName(TEXT("Lockdown"));
+		bTreatAsCrewEscaped = true;
+	}
+	else if (TerminalTrigger.Equals(TEXT("EscapedMatchTimer"), ESearchCase::IgnoreCase))
+	{
+		ResolvedTrigger = FName(TEXT("MatchTimerExpired"));
+		bTreatAsCrewEscaped = true;
+	}
 	else if (TerminalTrigger.Equals(TEXT("Lockdown"), ESearchCase::IgnoreCase))
 	{
 		ResolvedTrigger = FName(TEXT("Lockdown"));
@@ -1558,7 +1568,9 @@ void UHeistDebugFunctionLibrary::DebugOutcomeResolve(APlayerController* PlayerCo
 
 	if (ResolvedTrigger.IsNone())
 	{
-		Message(PlayerController, TEXT("Outcome resolve: Result=REJECTED Reason=ExpectedEscapedLockdownMatchTimerAllArrestedOrAllDisconnected"), EHeistDebugLevel::Warning, true);
+		Message(PlayerController,
+			TEXT("Outcome resolve: Result=REJECTED Reason=ExpectedEscapedEscapedLockdownEscapedMatchTimerLockdownMatchTimerAllArrestedOrAllDisconnected"),
+			EHeistDebugLevel::Warning, true);
 		return;
 	}
 
@@ -7357,6 +7369,61 @@ void UHeistDebugFunctionLibrary::DebugResultDump(APlayerController* PlayerContro
 			TeamResult.LootValueQuota, TeamResult.ExtraValue, TeamResult.TeamReward, TeamResult.RequiredTargetValue, TeamResult.SecuredLooseLootValue,
 			TeamResult.RequiredTargetQuality, TeamResult.ForgeryRewardMultiplier, TeamResult.StealthRewardMultiplier, TeamResult.ArrestPenalty,
 			TeamResult.ReplicaRecap.Num(), TeamResult.Revision, PlayerResults.Num()), EHeistDebugLevel::Info, true, 10.0f);
+
+	const FHeistContractSnapshot ContractSnapshot = HeistGameState->GetContractSnapshot();
+	int32 RequiredReplicaCount = 0;
+	bool bRequiredReplicaMatches = true;
+	bool bRequiredReplicaHighQuality = false;
+	for (const FHeistReplicaRecapEntry& ReplicaEntry : TeamResult.ReplicaRecap)
+	{
+		if (!ReplicaEntry.bRequiredTarget)
+		{
+			continue;
+		}
+
+		++RequiredReplicaCount;
+		bRequiredReplicaMatches = bRequiredReplicaMatches && ReplicaEntry.ArtifactId == TeamResult.RequiredTargetArtifactId &&
+			FMath::IsNearlyEqual(ReplicaEntry.QualityScore, TeamResult.RequiredTargetQuality, 0.001f);
+		bRequiredReplicaHighQuality = bRequiredReplicaHighQuality || ReplicaEntry.QualityScore >= 90.0f;
+	}
+
+	const bool bRewardMultipliersValid = FMath::IsFinite(TeamResult.ForgeryRewardMultiplier) && TeamResult.ForgeryRewardMultiplier >= 0.0f &&
+		FMath::IsFinite(TeamResult.StealthRewardMultiplier) && TeamResult.StealthRewardMultiplier >= 0.0f && TeamResult.StealthRewardMultiplier <= 1.0f;
+	int64 RewardSubtotal = 0;
+	int32 ExpectedReward = INDEX_NONE;
+	if (bRewardMultipliersValid)
+	{
+		const int64 RewardedTargetValue = FMath::Clamp<int64>(
+			FMath::RoundToInt64(static_cast<double>(TeamResult.RequiredTargetValue) * TeamResult.ForgeryRewardMultiplier * TeamResult.StealthRewardMultiplier), 0, MAX_int32);
+		RewardSubtotal = FMath::Clamp<int64>(RewardedTargetValue + static_cast<int64>(TeamResult.SecuredLooseLootValue), 0, MAX_int32);
+		if (TeamResult.ArrestPenalty >= 0 && TeamResult.ArrestPenalty <= RewardSubtotal)
+		{
+			ExpectedReward = static_cast<int32>(RewardSubtotal - TeamResult.ArrestPenalty);
+		}
+	}
+
+	const bool bContractConsistent = ContractSnapshot.IsOutcomeConsistent() && TeamResult.Outcome == ContractSnapshot.Outcome &&
+		TeamResult.OutcomeReasonId == ContractSnapshot.OutcomeReasonId && TeamResult.RequiredTargetArtifactId == ContractSnapshot.RequiredTargetArtifactId &&
+		TeamResult.bRequiredTargetSecured == ContractSnapshot.bRequiredTargetSecured && TeamResult.LootValueQuota == ContractSnapshot.LootValueQuota &&
+		TeamResult.SecuredValue == ContractSnapshot.SecuredValue;
+	const bool bValuePartitionConsistent = static_cast<int64>(TeamResult.RequiredTargetValue) + TeamResult.SecuredLooseLootValue == TeamResult.SecuredValue &&
+		TeamResult.ExtraValue == FMath::Max(0, TeamResult.SecuredValue - TeamResult.LootValueQuota) &&
+		TeamResult.RequiredTargetValue >= 0 && TeamResult.SecuredLooseLootValue >= 0;
+	const bool bRequiredReplicaLinkConsistent = RequiredReplicaCount <= 1 && bRequiredReplicaMatches &&
+		(!TeamResult.bRequiredTargetSecured || RequiredReplicaCount == 1);
+	const bool bRewardFormulaConsistent = ExpectedReward != INDEX_NONE && TeamResult.TeamReward == ExpectedReward;
+	const bool bCrewCountsConsistent = TeamResult.CrewCount >= 0 && TeamResult.EscapedCrewCount >= 0 && TeamResult.ArrestedCrewCount >= 0 &&
+		TeamResult.EscapedCrewCount <= TeamResult.CrewCount && TeamResult.ArrestedCrewCount <= TeamResult.CrewCount;
+	const bool bPassed = TeamResult.IsValid() && bContractConsistent && bValuePartitionConsistent && bRequiredReplicaLinkConsistent &&
+		bRewardFormulaConsistent && bCrewCountsConsistent;
+	Message(PlayerController,
+		FString::Printf(TEXT("W6-005 team reward audit: Source=%s Contract=%s ValuePartition=%s RequiredReplicaLink=%s RequiredReplicaCount=%d HighQuality90Plus=%s Formula=%s ExpectedReward=%d ActualReward=%d RewardSubtotal=%lld QuotaUntouched=%d SecuredUntouched=%d Authority=%s Result=%s"),
+			IsValid(PlayerController) && PlayerController->HasAuthority() ? TEXT("SERVER") : TEXT("REPLICATED_CLIENT"),
+			bContractConsistent ? TEXT("PASS") : TEXT("FAIL"), bValuePartitionConsistent ? TEXT("PASS") : TEXT("FAIL"),
+			bRequiredReplicaLinkConsistent ? TEXT("PASS") : TEXT("FAIL"), RequiredReplicaCount, bRequiredReplicaHighQuality ? TEXT("true") : TEXT("false"),
+			bRewardFormulaConsistent ? TEXT("PASS") : TEXT("FAIL"), ExpectedReward, TeamResult.TeamReward, RewardSubtotal, TeamResult.LootValueQuota,
+			TeamResult.SecuredValue, IsValid(PlayerController) && PlayerController->HasAuthority() ? TEXT("true") : TEXT("false"), bPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Error, true, 15.0f);
 
 	for (const FHeistPlayerResult& PlayerResult : PlayerResults)
 	{

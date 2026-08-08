@@ -108,7 +108,7 @@ Project_MuseumHeist는 Unreal Engine 5.8 C++ 기반의 **1~4인 온라인 협동
 - Authority, Replication, Data Schema 또는 Validation을 변경할 때는 TDD를 먼저 갱신하고 AGENTS의 실행 규칙을 동기화한다.
 - Codex 작업 절차와 금지 범위는 AGENTS가 최종 권한을 가진다.
 
-Notion Task/Test 기록은 문서 우선순위에 포함하지 않는다. 에이전트는 사용자가 지정한 작업의 범위를 이해하기 위해 관련 항목을 필요할 때 한 번 조회할 수 있지만, Task를 생성·수정·삭제·재배열하거나 상태·진행률·증적을 갱신하지 않는다. Task 운영과 실시간 기록은 사용자가 직접 관리한다.
+Notion Task/Test 기록은 문서 우선순위에 포함하지 않는다. 에이전트는 사용자가 지정한 작업의 범위를 이해하기 위해 관련 항목을 필요할 때 조회할 수 있다. Task 생성·삭제·재배열과 실행 순서 변경은 사용자가 직접 관리한다. 다만 사용자가 명시적으로 요청한 경우, 에이전트는 현재 대화에서 검증한 결과에 한해 기존 Task의 상태·진행률·완료 증적을 갱신할 수 있다. 별도 Test Log Database는 사용자 제공 PIE 로그·화면 관찰과 자동화 결과를 근거로 에이전트가 직접 생성·갱신하며, 관련 Task Relation, 환경, 시나리오, 기대 결과, 실제 결과, Server/Client 증적, 최종 PASS/FAIL과 잔여 이슈를 기록한다. Test Log 기록만으로 Task 완료 상태를 임의 변경하지 않는다.
 
 `ClassManifest.md`와 `Docs/W2_BlueprintShellPlan.md`는 더 이상 별도 거점 문서로 운영하지 않으며 AGENTS로 통합한다.
 게임플레이 규칙, 데이터 계약, Shell/Presentation 경계, 구현 우선순위 변경은 AGENTS 본문에서 직접 관리한다.
@@ -1215,7 +1215,10 @@ Smoke 및 Trap 관련 Blueprint와 C++ Class는 신규 Asset의 부모 또는 Da
 ## Task Management Non-interference
 
 - Notion의 Task 목록은 사용자가 지정한 작업 범위를 이해하기 위한 읽기 전용 Context다.
-- 에이전트는 Task ID, 실행 순서, 상태, 진행률, 담당자, 증적 또는 완료 판정을 직접 변경하지 않는다.
+- 에이전트는 Task ID, 실행 순서, 담당자, Task 생성·삭제·재배열을 직접 변경하지 않는다.
+- 사용자가 명시적으로 요청한 경우에만, 현재 대화에서 검증한 결과에 한해 기존 Task의 상태·진행률·완료 증적을 갱신한다.
+- 별도 Notion Test Log Database는 검증 증적의 기록 대상이다. 사용자 제공 PIE Server/Client 로그·화면 관찰과 자동화 결과를 근거로 에이전트가 직접 Test Log를 생성·갱신하고 관련 Task를 연결한다.
+- Test Log에는 테스트 환경, 시나리오, 기대 결과, 실제 결과, Server/Client 증적, PASS/FAIL, 잔여 이슈를 포함한다. Test Log 작성만으로 관련 Task 상태를 임의 변경하지 않는다.
 - AGENTS, GDD 또는 TDD에 개별 Task 목록, 실시간 진행 상태나 Roadmap 사본을 유지하지 않는다.
 - Task 기록과 설계·구현 문서가 충돌하면 사용자에게 차이만 보고하며 임의로 어느 쪽도 동기화하지 않는다.
 

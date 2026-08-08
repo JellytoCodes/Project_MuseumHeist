@@ -114,9 +114,9 @@ EDataValidationResult FHeistForgeryTemplateRow::IsDataValid(FDataValidationConte
 	{
 		AddError(LOCTEXT("InvalidObservationDuration", "ObservationDuration must be zero or greater."));
 	}
-	if (ForgeryDuration <= 0.0f)
+	if (!FMath::IsFinite(ForgeryDuration) || !FMath::IsWithinInclusive(ForgeryDuration, 20.0f, 45.0f))
 	{
-		AddError(LOCTEXT("InvalidForgeryDuration", "ForgeryDuration must be greater than zero."));
+		AddError(LOCTEXT("InvalidForgeryDuration", "ForgeryDuration must be finite and between 20 and 45 seconds."));
 	}
 	if (StrokeLimit <= 0)
 	{
@@ -314,9 +314,9 @@ EDataValidationResult FHeistObjectAssemblyTemplateRow::IsDataValid(FDataValidati
 		UniqueDecoyPartIds.Add(DecoyPartId);
 	}
 
-	if (!FMath::IsFinite(AssemblyDuration) || AssemblyDuration <= 0.0f)
+	if (!FMath::IsFinite(AssemblyDuration) || !FMath::IsWithinInclusive(AssemblyDuration, 25.0f, 35.0f))
 	{
-		AddError(LOCTEXT("InvalidObjectAssemblyDuration", "AssemblyDuration must be finite and greater than zero."));
+		AddError(LOCTEXT("InvalidObjectAssemblyDuration", "AssemblyDuration must be finite and between 25 and 35 seconds."));
 	}
 
 	const bool bWeightsValid = FMath::IsWithinInclusive(RequiredPartWeight, 0.0f, 1.0f) && FMath::IsWithinInclusive(SocketTopologyWeight, 0.0f, 1.0f) &&

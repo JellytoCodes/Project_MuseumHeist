@@ -916,6 +916,11 @@ bool UHeistForgeryComponent::TryBeginForgerySession(AHeistPaintingDisplayCaseAct
 		UHeistDebugFunctionLibrary::DebugForgerySessionBeginRejected(this, TargetDisplayCase, FName(TEXT("OutOfRange")));
 		return false;
 	}
+	if (DurationSeconds > 0.0f && !FMath::IsWithinInclusive(DurationSeconds, 20.0f, 45.0f))
+	{
+		UHeistDebugFunctionLibrary::DebugForgerySessionBeginRejected(this, TargetDisplayCase, FName(TEXT("DurationOutsideContract")));
+		return false;
+	}
 
 	if (!TargetDisplayCase->TryTransitionToDisplayCaseState(EHeistDisplayCaseState::ForgeryInProgress))
 	{
@@ -931,7 +936,7 @@ bool UHeistForgeryComponent::TryBeginForgerySession(AHeistPaintingDisplayCaseAct
 	bSubmitPending = false;
 	LastCleanupReason = NAME_None;
 
-	const float SafeDurationSeconds = DurationSeconds > 0.0f ? DurationSeconds : FMath::Max(1.0f, TemplateForgeryDuration > 0.0f ? TemplateForgeryDuration : DefaultSessionDurationSeconds);
+	const float SafeDurationSeconds = DurationSeconds > 0.0f ? DurationSeconds : TemplateForgeryDuration;
 	ActiveSessionDurationSeconds = SafeDurationSeconds;
 	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	const float ServerWorldTime = IsValid(HeistGameState) ? HeistGameState->GetServerWorldTimeSeconds() : (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
@@ -2104,8 +2109,9 @@ bool UHeistForgeryComponent::ValidateActiveSession(FName& OutRejectReason) const
 		return false;
 	}
 	if (!bTemplatePrepared || ActiveArtifactId.IsNone() || ActiveTemplateId.IsNone() || ReferenceImageAsset.IsNull() ||
-		(TemplateBackgroundFilterMode == EHeistForgeryBackgroundFilter::None && ReferenceMaskAsset.IsNull()) || TemplateForgeryDuration <= 0.0f || TemplateStrokeLimit <= 0 ||
-		TemplateBrushSize <= 0.0f || !FMath::IsWithinInclusive(TemplateAllowedPalette.Num(), 2, 8) || ActiveSessionDurationSeconds <= 0.0f || TemplateCoverageWeight < 0.0f ||
+		(TemplateBackgroundFilterMode == EHeistForgeryBackgroundFilter::None && ReferenceMaskAsset.IsNull()) ||
+		!FMath::IsWithinInclusive(TemplateForgeryDuration, 20.0f, 45.0f) || TemplateStrokeLimit <= 0 || TemplateBrushSize <= 0.0f ||
+		!FMath::IsWithinInclusive(TemplateAllowedPalette.Num(), 2, 8) || !FMath::IsWithinInclusive(ActiveSessionDurationSeconds, 20.0f, 45.0f) || TemplateCoverageWeight < 0.0f ||
 		TemplateMajorShapeWeight < 0.0f || TemplateExtraStrokePenaltyWeight < 0.0f || TemplateTimeoutPenalty < 0.0f || TemplateShapeAccuracyWeight < 0.0f || TemplateColorAccuracyWeight < 0.0f ||
 		TemplateShapeAccuracyWeight + TemplateColorAccuracyWeight <= 0.0f || !FMath::IsWithinInclusive(TemplateBackgroundColorTolerance, 0.0f, 0.49f) || TemplateMaximumPaintToReferenceRatio < 1.0f ||
 		!FMath::IsWithinInclusive(TemplateOverpaintScoreCap, 0.0f, 100.0f))

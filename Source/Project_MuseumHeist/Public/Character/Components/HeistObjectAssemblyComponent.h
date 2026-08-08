@@ -126,8 +126,8 @@ class PROJECT_MUSEUMHEIST_API UHeistObjectAssemblyComponent : public UActorCompo
 	UPROPERTY(ReplicatedUsing = OnRep_ScoreRevision, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly|Score", meta = (AllowPrivateAccess = "true"))
 	int32 ScoreRevision = 0;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Object Assembly", meta = (AllowPrivateAccess = "true", ClampMin = "1.0", Units = "s"))
-	float DefaultSessionDurationSeconds = 60.0f;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Object Assembly", meta = (AllowPrivateAccess = "true", ClampMin = "25.0", ClampMax = "35.0", Units = "s"))
+	float DefaultSessionDurationSeconds = 30.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Object Assembly|Payload", meta = (AllowPrivateAccess = "true", ClampMin = "1", ClampMax = "32"))
 	int32 MaximumPayloadEntries = 16;

@@ -25,5 +25,23 @@
     "SpawnCategory": "ExhibitionRoom",
     "SpawnWeight": 1.0,
     "WorldLootActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_LootAncientSword.BP_LootAncientSword_C'"
+  },
+  {
+    "Name": "Loot_GoldenVase",
+    "ItemId": "Loot_GoldenVase",
+    "LootGrade": "ThreeStar",
+    "ScoreValue": 500,
+    "SpawnCategory": "ExhibitionRoom",
+    "SpawnWeight": 1.0,
+    "WorldLootActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_LootGoldenVase.BP_LootGoldenVase_C'"
+  },
+  {
+    "Name": "Loot_JewelNecklace",
+    "ItemId": "Loot_JewelNecklace",
+    "LootGrade": "OneStar",
+    "ScoreValue": 150,
+    "SpawnCategory": "ExhibitionRoom",
+    "SpawnWeight": 1.25,
+    "WorldLootActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_LootJewelNecklace.BP_LootJewelNecklace_C'"
   }
 ]

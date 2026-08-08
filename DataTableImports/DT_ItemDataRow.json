@@ -2,7 +2,7 @@
   {
     "Name": "Loot_RoyalCrown",
     "ItemId": "Loot_RoyalCrown",
-    "DisplayName": "Royal Crown",
+    "DisplayName": "왕실 왕관",
     "CategoryTag": "Item.Loot.RoyalCrown",
     "ItemType": "Loot",
     "GridSize": "(X=2,Y=2)",
@@ -15,7 +15,7 @@
   {
     "Name": "Loot_Painting",
     "ItemId": "Loot_Painting",
-    "DisplayName": "Painting",
+    "DisplayName": "회화 작품",
     "CategoryTag": "Item.Loot.Painting",
     "ItemType": "Loot",
     "GridSize": "(X=1,Y=3)",
@@ -28,7 +28,7 @@
   {
     "Name": "Loot_AncientSword",
     "ItemId": "Loot_AncientSword",
-    "DisplayName": "Ancient Sword",
+    "DisplayName": "고대 검",
     "CategoryTag": "Item.Loot.AncientSword",
     "ItemType": "Loot",
     "GridSize": "(X=1,Y=3)",
@@ -41,13 +41,39 @@
   {
     "Name": "Throwable_Coin",
     "ItemId": "Throwable_Coin",
-    "DisplayName": "Coin",
+    "DisplayName": "동전",
     "CategoryTag": "Item.Throwable.Coin",
     "ItemType": "Throwable",
     "GridSize": "(X=1,Y=1)",
     "Weight": 1.0,
     "bCanRotate": false,
     "bCanUseQuickSlot": true,
+    "bAvailableInV1": true,
+    "Icon": ""
+  },
+  {
+    "Name": "Loot_GoldenVase",
+    "ItemId": "Loot_GoldenVase",
+    "DisplayName": "황금 화병",
+    "CategoryTag": "Item.Loot.GoldenVase",
+    "ItemType": "Loot",
+    "GridSize": "(X=2,Y=2)",
+    "Weight": 4.0,
+    "bCanRotate": false,
+    "bCanUseQuickSlot": false,
+    "bAvailableInV1": true,
+    "Icon": ""
+  },
+  {
+    "Name": "Loot_JewelNecklace",
+    "ItemId": "Loot_JewelNecklace",
+    "DisplayName": "보석 목걸이",
+    "CategoryTag": "Item.Loot.JewelNecklace",
+    "ItemType": "Loot",
+    "GridSize": "(X=1,Y=1)",
+    "Weight": 1.0,
+    "bCanRotate": false,
+    "bCanUseQuickSlot": false,
     "bAvailableInV1": true,
     "Icon": ""
   }

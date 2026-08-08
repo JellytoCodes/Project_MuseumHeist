@@ -28,7 +28,7 @@
     "DecoyPartIds": [
       "Part_Sculpture_Prototype_Decoy"
     ],
-    "AssemblyDuration": 60.0,
+    "AssemblyDuration": 25.0,
     "RequiredPartWeight": 0.35,
     "SocketTopologyWeight": 0.3,
     "OrientationWeight": 0.25,
@@ -64,7 +64,7 @@
     "DecoyPartIds": [
       "Part_Sculpture_Gallery_Decoy"
     ],
-    "AssemblyDuration": 60.0,
+    "AssemblyDuration": 25.0,
     "RequiredPartWeight": 0.35,
     "SocketTopologyWeight": 0.3,
     "OrientationWeight": 0.25,
@@ -100,7 +100,7 @@
     "DecoyPartIds": [
       "Part_Sculpture_Gallery_Decoy"
     ],
-    "AssemblyDuration": 60.0,
+    "AssemblyDuration": 25.0,
     "RequiredPartWeight": 0.35,
     "SocketTopologyWeight": 0.3,
     "OrientationWeight": 0.25,
@@ -142,7 +142,7 @@
     "DecoyPartIds": [
       "Part_Sculpture_Gallery_Decoy"
     ],
-    "AssemblyDuration": 75.0,
+    "AssemblyDuration": 30.0,
     "RequiredPartWeight": 0.35,
     "SocketTopologyWeight": 0.3,
     "OrientationWeight": 0.25,
@@ -184,7 +184,7 @@
     "DecoyPartIds": [
       "Part_Sculpture_Gallery_Decoy"
     ],
-    "AssemblyDuration": 75.0,
+    "AssemblyDuration": 30.0,
     "RequiredPartWeight": 0.35,
     "SocketTopologyWeight": 0.3,
     "OrientationWeight": 0.25,
@@ -232,7 +232,7 @@
     "DecoyPartIds": [
       "Part_Sculpture_Gallery_Decoy"
     ],
-    "AssemblyDuration": 90.0,
+    "AssemblyDuration": 35.0,
     "RequiredPartWeight": 0.35,
     "SocketTopologyWeight": 0.3,
     "OrientationWeight": 0.25,
@@ -280,7 +280,7 @@
     "DecoyPartIds": [
       "Part_Sculpture_Gallery_Decoy"
     ],
-    "AssemblyDuration": 90.0,
+    "AssemblyDuration": 35.0,
     "RequiredPartWeight": 0.35,
     "SocketTopologyWeight": 0.3,
     "OrientationWeight": 0.25,
@@ -316,7 +316,7 @@
     "DecoyPartIds": [
       "Part_Ceramic_Gallery_Decoy"
     ],
-    "AssemblyDuration": 60.0,
+    "AssemblyDuration": 25.0,
     "RequiredPartWeight": 0.35,
     "SocketTopologyWeight": 0.3,
     "OrientationWeight": 0.25,
@@ -352,7 +352,7 @@
     "DecoyPartIds": [
       "Part_Ceramic_Gallery_Decoy"
     ],
-    "AssemblyDuration": 60.0,
+    "AssemblyDuration": 25.0,
     "RequiredPartWeight": 0.35,
     "SocketTopologyWeight": 0.3,
     "OrientationWeight": 0.25,
@@ -394,7 +394,7 @@
     "DecoyPartIds": [
       "Part_Ceramic_Gallery_Decoy"
     ],
-    "AssemblyDuration": 75.0,
+    "AssemblyDuration": 30.0,
     "RequiredPartWeight": 0.35,
     "SocketTopologyWeight": 0.3,
     "OrientationWeight": 0.25,
@@ -436,7 +436,7 @@
     "DecoyPartIds": [
       "Part_Ceramic_Gallery_Decoy"
     ],
-    "AssemblyDuration": 75.0,
+    "AssemblyDuration": 30.0,
     "RequiredPartWeight": 0.35,
     "SocketTopologyWeight": 0.3,
     "OrientationWeight": 0.25,
@@ -478,7 +478,7 @@
     "DecoyPartIds": [
       "Part_Ceramic_Gallery_Decoy"
     ],
-    "AssemblyDuration": 75.0,
+    "AssemblyDuration": 30.0,
     "RequiredPartWeight": 0.35,
     "SocketTopologyWeight": 0.3,
     "OrientationWeight": 0.25,
@@ -526,7 +526,7 @@
     "DecoyPartIds": [
       "Part_Ceramic_Gallery_Decoy"
     ],
-    "AssemblyDuration": 90.0,
+    "AssemblyDuration": 35.0,
     "RequiredPartWeight": 0.35,
     "SocketTopologyWeight": 0.3,
     "OrientationWeight": 0.25,

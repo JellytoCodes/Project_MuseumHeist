@@ -68,6 +68,12 @@ bool UHeistObjectAssemblyComponent::TryBeginAssemblySession(AHeistObjectDisplayC
 		BroadcastSessionSnapshot(FName(TEXT("SessionBegin")), RejectReason, false);
 		return false;
 	}
+	if (DurationSeconds > 0.0f && !FMath::IsWithinInclusive(DurationSeconds, 25.0f, 35.0f))
+	{
+		ResetPreparedTemplate();
+		BroadcastSessionSnapshot(FName(TEXT("SessionBegin")), FName(TEXT("DurationOutsideContract")), false);
+		return false;
+	}
 	if (!TargetDisplayCase->TryBeginSession(HeistPlayerState))
 	{
 		ResetPreparedTemplate();
@@ -90,7 +96,6 @@ bool UHeistObjectAssemblyComponent::TryBeginAssemblySession(AHeistObjectDisplayC
 		BroadcastSessionSnapshot(FName(TEXT("SessionBegin")), FName(TEXT("AssemblyTransitionFailed")), false);
 		return false;
 	}
-
 	ActiveDisplayCase = TargetDisplayCase;
 	ActiveDisplayCase->OnObjectAssemblySessionChanged.AddDynamic(this, &UHeistObjectAssemblyComponent::HandleDisplayCaseSessionChanged);
 	bSessionActive = true;
@@ -98,7 +103,7 @@ bool UHeistObjectAssemblyComponent::TryBeginAssemblySession(AHeistObjectDisplayC
 	ResetPayloadState(true);
 	ResetAuthoritativeResult();
 
-	const float SafeDurationSeconds = DurationSeconds > 0.0f ? DurationSeconds : FMath::Max(1.0f, PreparedTemplate.AssemblyDuration > 0.0f ? PreparedTemplate.AssemblyDuration : DefaultSessionDurationSeconds);
+	const float SafeDurationSeconds = DurationSeconds > 0.0f ? DurationSeconds : PreparedTemplate.AssemblyDuration;
 	ActiveSessionDurationSeconds = SafeDurationSeconds;
 	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	SessionStartServerTime = IsValid(HeistGameState) ? HeistGameState->GetServerWorldTimeSeconds() : (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
@@ -370,6 +375,11 @@ bool UHeistObjectAssemblyComponent::ValidateActiveSession(FName& OutRejectReason
 		ActiveDisplayCase->GetAssemblyState() != EHeistObjectAssemblyState::AssemblyInProgress)
 	{
 		OutRejectReason = FName(TEXT("CaseOwnershipOrStateMismatch"));
+		return false;
+	}
+	if (!FMath::IsWithinInclusive(PreparedTemplate.AssemblyDuration, 25.0f, 35.0f) || !FMath::IsWithinInclusive(ActiveSessionDurationSeconds, 25.0f, 35.0f))
+	{
+		OutRejectReason = FName(TEXT("DurationOutsideContract"));
 		return false;
 	}
 	if (HeistPlayerState->IsArrested() || HeistPlayerState->IsEscaped())

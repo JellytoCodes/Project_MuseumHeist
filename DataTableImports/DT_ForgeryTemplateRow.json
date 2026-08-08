@@ -14,7 +14,7 @@
                                "(R=0.896269,G=0.871367,B=0.708376,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  60.0,
+        "ForgeryDuration":  35.0,
         "StrokeLimit":  4096,
         "BrushSize":  0.025,
         "CoverageWeight":  0.45,
@@ -41,7 +41,7 @@
                                "(R=0.323143,G=0.063010,B=0.027321,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  60.0,
+        "ForgeryDuration":  35.0,
         "StrokeLimit":  4096,
         "BrushSize":  0.025,
         "CoverageWeight":  0.45,
@@ -68,7 +68,7 @@
                                "(R=0.004025,G=0.012983,B=0.035601,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  60.0,
+        "ForgeryDuration":  35.0,
         "StrokeLimit":  4096,
         "BrushSize":  0.025,
         "CoverageWeight":  0.45,
@@ -95,7 +95,7 @@
                                "(R=0.201556,G=0.242281,B=0.283149,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  60.0,
+        "ForgeryDuration":  35.0,
         "StrokeLimit":  4096,
         "BrushSize":  0.025,
         "CoverageWeight":  0.45,
@@ -123,7 +123,7 @@
                                "(R=0.341914,G=0.254152,B=0.080220,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  75.0,
+        "ForgeryDuration":  40.0,
         "StrokeLimit":  5120,
         "BrushSize":  0.02,
         "CoverageWeight":  0.45,
@@ -151,7 +151,7 @@
                                "(R=0.913099,G=0.871367,B=0.730461,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  75.0,
+        "ForgeryDuration":  40.0,
         "StrokeLimit":  5120,
         "BrushSize":  0.02,
         "CoverageWeight":  0.45,
@@ -179,7 +179,7 @@
                                "(R=0.031896,G=0.109462,B=0.097587,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  75.0,
+        "ForgeryDuration":  40.0,
         "StrokeLimit":  5120,
         "BrushSize":  0.02,
         "CoverageWeight":  0.45,
@@ -207,7 +207,7 @@
                                "(R=0.016807,G=0.049707,B=0.070360,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  75.0,
+        "ForgeryDuration":  40.0,
         "StrokeLimit":  5120,
         "BrushSize":  0.02,
         "CoverageWeight":  0.45,
@@ -235,7 +235,7 @@
                                "(R=0.603827,G=0.584078,B=0.181164,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  75.0,
+        "ForgeryDuration":  40.0,
         "StrokeLimit":  5120,
         "BrushSize":  0.02,
         "CoverageWeight":  0.45,
@@ -264,7 +264,7 @@
                                "(R=0.539479,G=0.250158,B=0.029557,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  90.0,
+        "ForgeryDuration":  45.0,
         "StrokeLimit":  6144,
         "BrushSize":  0.018,
         "CoverageWeight":  0.45,
@@ -293,7 +293,7 @@
                                "(R=0.025187,G=0.016807,B=0.007499,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  90.0,
+        "ForgeryDuration":  45.0,
         "StrokeLimit":  6144,
         "BrushSize":  0.018,
         "CoverageWeight":  0.45,
@@ -322,7 +322,7 @@
                                "(R=0.964686,G=0.737910,B=0.412543,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  90.0,
+        "ForgeryDuration":  45.0,
         "StrokeLimit":  6144,
         "BrushSize":  0.018,
         "CoverageWeight":  0.45,
@@ -349,7 +349,7 @@
                                "(R=0.029557,G=0.029557,B=0.029557,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  60,
+        "ForgeryDuration":  35.0,
         "StrokeLimit":  4096,
         "BrushSize":  0.025,
         "CoverageWeight":  0.45,
@@ -376,7 +376,7 @@
                                "(R=0.029557,G=0.029557,B=0.029557,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  60,
+        "ForgeryDuration":  35.0,
         "StrokeLimit":  4096,
         "BrushSize":  0.025,
         "CoverageWeight":  0.45,
@@ -404,7 +404,7 @@
                                "(R=0.029557,G=0.029557,B=0.029557,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  75,
+        "ForgeryDuration":  40.0,
         "StrokeLimit":  5120,
         "BrushSize":  0.02,
         "CoverageWeight":  0.45,
@@ -432,7 +432,7 @@
                                "(R=0.029557,G=0.029557,B=0.029557,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  75,
+        "ForgeryDuration":  40.0,
         "StrokeLimit":  5120,
         "BrushSize":  0.02,
         "CoverageWeight":  0.45,
@@ -460,7 +460,7 @@
                                "(R=0.029557,G=0.029557,B=0.029557,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  75,
+        "ForgeryDuration":  40.0,
         "StrokeLimit":  5120,
         "BrushSize":  0.02,
         "CoverageWeight":  0.45,
@@ -489,7 +489,7 @@
                                "(R=0.029557,G=0.029557,B=0.029557,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  90,
+        "ForgeryDuration":  45.0,
         "StrokeLimit":  6144,
         "BrushSize":  0.018,
         "CoverageWeight":  0.45,
@@ -516,7 +516,7 @@
                                "(R=0.029557,G=0.029557,B=0.029557,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  60,
+        "ForgeryDuration":  35.0,
         "StrokeLimit":  4096,
         "BrushSize":  0.025,
         "CoverageWeight":  0.45,
@@ -543,7 +543,7 @@
                                "(R=0.009134,G=0.015209,B=0.019382,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  60,
+        "ForgeryDuration":  35.0,
         "StrokeLimit":  4096,
         "BrushSize":  0.025,
         "CoverageWeight":  0.45,
@@ -571,7 +571,7 @@
                                "(R=0.008568,G=0.048172,B=0.021219,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  75,
+        "ForgeryDuration":  40.0,
         "StrokeLimit":  5120,
         "BrushSize":  0.02,
         "CoverageWeight":  0.45,
@@ -599,7 +599,7 @@
                                "(R=0.010330,G=0.016807,B=0.009721,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  75,
+        "ForgeryDuration":  40.0,
         "StrokeLimit":  5120,
         "BrushSize":  0.02,
         "CoverageWeight":  0.45,
@@ -628,7 +628,7 @@
                                "(R=0.070360,G=0.028426,B=0.015996,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  90,
+        "ForgeryDuration":  45.0,
         "StrokeLimit":  6144,
         "BrushSize":  0.018,
         "CoverageWeight":  0.45,
@@ -657,7 +657,7 @@
                                "(R=0.097587,G=0.184475,B=0.063010,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  90,
+        "ForgeryDuration":  45.0,
         "StrokeLimit":  6144,
         "BrushSize":  0.018,
         "CoverageWeight":  0.45,
@@ -684,7 +684,7 @@
                                "(R=0.246201,G=0.230740,B=0.205079,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  60,
+        "ForgeryDuration":  35.0,
         "StrokeLimit":  4096,
         "BrushSize":  0.025,
         "CoverageWeight":  0.45,
@@ -711,7 +711,7 @@
                                "(R=0.658375,G=0.381326,B=0.023153,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  60,
+        "ForgeryDuration":  35.0,
         "StrokeLimit":  4096,
         "BrushSize":  0.025,
         "CoverageWeight":  0.45,
@@ -738,7 +738,7 @@
                                "(R=0.019382,G=0.078187,B=0.070360,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  60,
+        "ForgeryDuration":  35.0,
         "StrokeLimit":  4096,
         "BrushSize":  0.025,
         "CoverageWeight":  0.45,
@@ -766,7 +766,7 @@
                                "(R=0.462077,G=0.254152,B=0.046665,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  75,
+        "ForgeryDuration":  40.0,
         "StrokeLimit":  5120,
         "BrushSize":  0.02,
         "CoverageWeight":  0.45,
@@ -795,7 +795,7 @@
                                "(R=0.147027,G=0.070360,B=0.258183,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  90,
+        "ForgeryDuration":  45.0,
         "StrokeLimit":  6144,
         "BrushSize":  0.018,
         "CoverageWeight":  0.45,
@@ -824,7 +824,7 @@
                                "(R=0.201556,G=0.262251,B=0.064803,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  90,
+        "ForgeryDuration":  45.0,
         "StrokeLimit":  6144,
         "BrushSize":  0.018,
         "CoverageWeight":  0.45,
@@ -851,7 +851,7 @@
                                "(R=0.637597,G=0.391572,B=0.049707,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  60,
+        "ForgeryDuration":  35.0,
         "StrokeLimit":  4096,
         "BrushSize":  0.025,
         "CoverageWeight":  0.45,
@@ -879,7 +879,7 @@
                                "(R=0.863157,G=0.775822,B=0.610496,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  75,
+        "ForgeryDuration":  40.0,
         "StrokeLimit":  5120,
         "BrushSize":  0.02,
         "CoverageWeight":  0.45,
@@ -907,7 +907,7 @@
                                "(R=0.026241,G=0.029557,B=0.033105,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  75,
+        "ForgeryDuration":  40.0,
         "StrokeLimit":  5120,
         "BrushSize":  0.02,
         "CoverageWeight":  0.45,
@@ -935,7 +935,7 @@
                                "(R=0.026241,G=0.022174,B=0.020289,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  75,
+        "ForgeryDuration":  40.0,
         "StrokeLimit":  5120,
         "BrushSize":  0.02,
         "CoverageWeight":  0.45,
@@ -963,7 +963,7 @@
                                "(R=0.029557,G=0.025187,B=0.022174,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  75,
+        "ForgeryDuration":  40.0,
         "StrokeLimit":  5120,
         "BrushSize":  0.02,
         "CoverageWeight":  0.45,
@@ -992,7 +992,7 @@
                                "(R=0.341914,G=0.048172,B=0.031896,A=1.000000)"
                            ],
         "ObservationDuration":  1.5,
-        "ForgeryDuration":  90,
+        "ForgeryDuration":  45.0,
         "StrokeLimit":  6144,
         "BrushSize":  0.018,
         "CoverageWeight":  0.45,
