@@ -250,6 +250,8 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 	static void DebugLobbyMapSelectionState(const UObject* WorldContextObject, const TCHAR* ChangeSource, FName SelectedMapId, bool bRandomSelection, int32 Revision, bool bAccepted);
 	static void DebugOnlineSessionShutdownCleanup(const UObject* WorldContextObject, FName Reason, int32 CancelledActionCount, int32 CancelledForgeryCount, int32 ClosedInventoryCount,
 												  int32 ReleasedOriginalCount, int32 ClearedCaseLockCount, int32 ClearedTimerCount, bool bAuthority);
+	static void DebugOnlineSessionShutdownVerification(const UObject* WorldContextObject, FName Reason, int32 RemainingCaseLockCount, int32 RemainingCaseTimerCount,
+		int32 RemainingActionCount, int32 RemainingForgeryCount, int32 RemainingInventoryCount, int32 RemainingMatchTimerCount, bool bAuthority);
 
 #pragma endregion
 

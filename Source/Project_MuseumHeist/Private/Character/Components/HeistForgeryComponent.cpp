@@ -1498,6 +1498,186 @@ bool UHeistForgeryComponent::CalculateLocalForgeryPreview(const TArray<FVector2D
 	return CalculateForgeryScore(NormalizedPoints, StrokePointCounts, StrokePaletteIndices, StrokeBrushPresetIndices, OutResult, OutReferenceMaskPixels, OutSubmittedMaskPixels, false);
 }
 
+bool UHeistForgeryComponent::BuildReferenceMatchedStrokePayloadForAutomation(TArray<FVector2D>& OutNormalizedPoints, TArray<int32>& OutStrokePointCounts,
+	TArray<uint8>& OutStrokePaletteIndices, TArray<uint8>& OutStrokeBrushPresetIndices, FHeistForgeryResult& OutPreviewResult) const
+{
+	OutNormalizedPoints.Reset();
+	OutStrokePointCounts.Reset();
+	OutStrokePaletteIndices.Reset();
+	OutStrokeBrushPresetIndices.Reset();
+	OutPreviewResult = FHeistForgeryResult();
+#if !WITH_DEV_AUTOMATION_TESTS
+	return false;
+#else
+	if (!bSessionActive || bSubmitPending || !bTemplatePrepared || TemplateStrokeLimit < MinimumSubmittedStrokePointCount || !BuildScoringReferenceCache())
+	{
+		return false;
+	}
+
+	struct FCandidateSpec
+	{
+		int32 CellSize = 0;
+		uint8 BrushPresetIndex = 0;
+	};
+	const FCandidateSpec CandidateSpecs[] = {{4, 0}, {6, 0}, {8, 1}, {16, 2}};
+	float BestScore = -1.0f;
+
+	for (const FCandidateSpec& CandidateSpec : CandidateSpecs)
+	{
+		const int32 CoarseWidth = FMath::DivideAndRoundUp(ForgeryScoreGridResolution, CandidateSpec.CellSize);
+		const int32 CoarseHeight = FMath::DivideAndRoundUp(ForgeryScoreGridResolution, CandidateSpec.CellSize);
+		TArray<uint8> CoarsePaletteMap;
+		CoarsePaletteMap.Init(EmptyPaletteIndex, CoarseWidth * CoarseHeight);
+		for (int32 CoarseY = 0; CoarseY < CoarseHeight; ++CoarseY)
+		{
+			for (int32 CoarseX = 0; CoarseX < CoarseWidth; ++CoarseX)
+			{
+				int32 PaletteCounts[8] = {};
+				const int32 MinimumX = CoarseX * CandidateSpec.CellSize;
+				const int32 MaximumX = FMath::Min(MinimumX + CandidateSpec.CellSize, ForgeryScoreGridResolution);
+				const int32 MinimumY = CoarseY * CandidateSpec.CellSize;
+				const int32 MaximumY = FMath::Min(MinimumY + CandidateSpec.CellSize, ForgeryScoreGridResolution);
+				for (int32 GridY = MinimumY; GridY < MaximumY; ++GridY)
+				{
+					for (int32 GridX = MinimumX; GridX < MaximumX; ++GridX)
+					{
+						const int32 GridIndex = GridY * ForgeryScoreGridResolution + GridX;
+						const uint8 PaletteIndex = CachedReferencePaletteMap[GridIndex];
+						if (CachedReferenceMask[GridIndex] != 0 && TemplateAllowedPalette.IsValidIndex(PaletteIndex))
+						{
+							++PaletteCounts[PaletteIndex];
+						}
+					}
+				}
+
+				int32 DominantCount = 0;
+				uint8 DominantPaletteIndex = EmptyPaletteIndex;
+				for (int32 PaletteIndex = 0; PaletteIndex < TemplateAllowedPalette.Num(); ++PaletteIndex)
+				{
+					if (PaletteCounts[PaletteIndex] > DominantCount)
+					{
+						DominantCount = PaletteCounts[PaletteIndex];
+						DominantPaletteIndex = static_cast<uint8>(PaletteIndex);
+					}
+				}
+				if (DominantCount > 0)
+				{
+					CoarsePaletteMap[CoarseY * CoarseWidth + CoarseX] = DominantPaletteIndex;
+				}
+			}
+		}
+
+		TArray<FVector2D> CandidatePoints;
+		TArray<int32> CandidateStrokePointCounts;
+		TArray<uint8> CandidatePaletteIndices;
+		TArray<uint8> CandidateBrushPresetIndices;
+		TArray<bool> VisitedCells;
+		VisitedCells.Init(false, CoarsePaletteMap.Num());
+		bool bCandidateWithinLimits = true;
+		const int32 NeighborX[] = {-1, 0, 1, 1, 1, 0, -1, -1};
+		const int32 NeighborY[] = {-1, -1, -1, 0, 1, 1, 1, 0};
+		struct FTraversalNode
+		{
+			int32 CellIndex = INDEX_NONE;
+			int32 NextNeighborIndex = 0;
+		};
+		const auto AppendCellCenter = [&CandidatePoints, CoarseWidth, CoarseHeight](const int32 CellIndex)
+		{
+			const int32 CellX = CellIndex % CoarseWidth;
+			const int32 CellY = CellIndex / CoarseWidth;
+			const double NormalizedX = CoarseWidth > 1 ? static_cast<double>(CellX) / static_cast<double>(CoarseWidth - 1) : 0.5;
+			const double NormalizedY = CoarseHeight > 1 ? static_cast<double>(CellY) / static_cast<double>(CoarseHeight - 1) : 0.5;
+			CandidatePoints.Emplace(NormalizedX, NormalizedY);
+		};
+
+		for (int32 StartCellIndex = 0; StartCellIndex < CoarsePaletteMap.Num() && bCandidateWithinLimits; ++StartCellIndex)
+		{
+			const uint8 ComponentPaletteIndex = CoarsePaletteMap[StartCellIndex];
+			if (ComponentPaletteIndex == EmptyPaletteIndex || VisitedCells[StartCellIndex])
+			{
+				continue;
+			}
+			if (CandidateStrokePointCounts.Num() >= MaximumSubmittedStrokeCount)
+			{
+				bCandidateWithinLimits = false;
+				break;
+			}
+
+			const int32 StrokeStartPointIndex = CandidatePoints.Num();
+			TArray<FTraversalNode> TraversalStack;
+			TraversalStack.Add({StartCellIndex, 0});
+			VisitedCells[StartCellIndex] = true;
+			AppendCellCenter(StartCellIndex);
+			while (!TraversalStack.IsEmpty())
+			{
+				FTraversalNode& CurrentNode = TraversalStack.Last();
+				if (CurrentNode.NextNeighborIndex >= UE_ARRAY_COUNT(NeighborX))
+				{
+					TraversalStack.Pop(EAllowShrinking::No);
+					if (!TraversalStack.IsEmpty())
+					{
+						AppendCellCenter(TraversalStack.Last().CellIndex);
+					}
+					continue;
+				}
+
+				const int32 NeighborIndex = CurrentNode.NextNeighborIndex++;
+				const int32 CurrentX = CurrentNode.CellIndex % CoarseWidth;
+				const int32 CurrentY = CurrentNode.CellIndex / CoarseWidth;
+				const int32 NextX = CurrentX + NeighborX[NeighborIndex];
+				const int32 NextY = CurrentY + NeighborY[NeighborIndex];
+				if (NextX < 0 || NextX >= CoarseWidth || NextY < 0 || NextY >= CoarseHeight)
+				{
+					continue;
+				}
+				const int32 NextCellIndex = NextY * CoarseWidth + NextX;
+				if (VisitedCells[NextCellIndex] || CoarsePaletteMap[NextCellIndex] != ComponentPaletteIndex)
+				{
+					continue;
+				}
+				VisitedCells[NextCellIndex] = true;
+				TraversalStack.Add({NextCellIndex, 0});
+				AppendCellCenter(NextCellIndex);
+			}
+
+			int32 StrokePointCount = CandidatePoints.Num() - StrokeStartPointIndex;
+			if (StrokePointCount == 1)
+			{
+				CandidatePoints.Add(CandidatePoints.Last());
+				StrokePointCount = 2;
+			}
+			CandidateStrokePointCounts.Add(StrokePointCount);
+			CandidatePaletteIndices.Add(ComponentPaletteIndex);
+			CandidateBrushPresetIndices.Add(CandidateSpec.BrushPresetIndex);
+			bCandidateWithinLimits = CandidatePoints.Num() <= TemplateStrokeLimit;
+		}
+
+		const int64 EstimatedPayloadBytes = static_cast<int64>(CandidatePoints.Num()) * sizeof(uint32) +
+			static_cast<int64>(CandidateStrokePointCounts.Num()) * (sizeof(int32) + sizeof(uint8) + sizeof(uint8)) + sizeof(int32);
+		if (!bCandidateWithinLimits || CandidatePoints.IsEmpty() || CandidateStrokePointCounts.IsEmpty() || EstimatedPayloadBytes > MaximumStrokePayloadBytes)
+		{
+			continue;
+		}
+
+		FHeistForgeryResult CandidateResult;
+		int32 ReferenceMaskPixels = 0;
+		int32 SubmittedMaskPixels = 0;
+		if (CalculateForgeryScore(CandidatePoints, CandidateStrokePointCounts, CandidatePaletteIndices, CandidateBrushPresetIndices, CandidateResult, ReferenceMaskPixels,
+			SubmittedMaskPixels, false) && CandidateResult.SimilarityScore > BestScore)
+		{
+			BestScore = CandidateResult.SimilarityScore;
+			OutNormalizedPoints = MoveTemp(CandidatePoints);
+			OutStrokePointCounts = MoveTemp(CandidateStrokePointCounts);
+			OutStrokePaletteIndices = MoveTemp(CandidatePaletteIndices);
+			OutStrokeBrushPresetIndices = MoveTemp(CandidateBrushPresetIndices);
+			OutPreviewResult = CandidateResult;
+		}
+	}
+
+	return BestScore >= HeistReplicaAcceptance::MinimumQualityScore;
+#endif
+}
+
 FHeistForgerySessionStateChanged& UHeistForgeryComponent::GetSessionStateChangedDelegate()
 {
 	return SessionStateChangedDelegate;

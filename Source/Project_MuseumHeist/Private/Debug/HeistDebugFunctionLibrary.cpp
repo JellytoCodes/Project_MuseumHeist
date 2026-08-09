@@ -7332,6 +7332,22 @@ void UHeistDebugFunctionLibrary::DebugOnlineSessionShutdownCleanup(const UObject
 #endif
 }
 
+void UHeistDebugFunctionLibrary::DebugOnlineSessionShutdownVerification(const UObject* WorldContextObject, const FName Reason, const int32 RemainingCaseLockCount,
+	const int32 RemainingCaseTimerCount, const int32 RemainingActionCount, const int32 RemainingForgeryCount, const int32 RemainingInventoryCount,
+	const int32 RemainingMatchTimerCount, const bool bAuthority)
+{
+#if !UE_BUILD_SHIPPING
+	const bool bPassed = bAuthority && RemainingCaseLockCount == 0 && RemainingCaseTimerCount == 0 && RemainingActionCount == 0 && RemainingForgeryCount == 0 &&
+		RemainingInventoryCount == 0 && RemainingMatchTimerCount == 0;
+	LogMessage(EHeistDebugChannel::Network, bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+		FString::Printf(TEXT("Online session shutdown verification: GameMode=%s Reason=%s RemainingCaseLocks=%d RemainingCaseTimers=%d RemainingActions=%d "
+							 "RemainingForgeries=%d RemainingInventories=%d RemainingMatchTimers=%d Authority=%s Result=%s"),
+			*GetNameSafe(WorldContextObject), Reason.IsNone() ? TEXT("None") : *Reason.ToString(), RemainingCaseLockCount, RemainingCaseTimerCount,
+			RemainingActionCount, RemainingForgeryCount, RemainingInventoryCount, RemainingMatchTimerCount, bAuthority ? TEXT("true") : TEXT("false"),
+			bPassed ? TEXT("PASS") : TEXT("FAIL")));
+#endif
+}
+
 #pragma endregion
 
 #pragma region ResultDebug
@@ -7420,19 +7436,32 @@ void UHeistDebugFunctionLibrary::DebugResultDump(APlayerController* PlayerContro
 		bRequiredReplicaHighQuality = bRequiredReplicaHighQuality || ReplicaEntry.QualityScore >= 90.0f;
 	}
 
-	const bool bRewardMultipliersValid = FMath::IsFinite(TeamResult.ForgeryRewardMultiplier) && TeamResult.ForgeryRewardMultiplier >= 0.0f &&
-		FMath::IsFinite(TeamResult.StealthRewardMultiplier) && TeamResult.StealthRewardMultiplier >= 0.0f && TeamResult.StealthRewardMultiplier <= 1.0f;
+	const UHeistGameBalanceDataAsset* BalanceData = GetDefault<UHeistGameBalanceDataAsset>();
+	float ExpectedForgeryMultiplier = 1.0f;
+	float ExpectedStealthMultiplier = 1.0f;
+	int32 ExpectedArrestPenalty = 0;
+	int32 ExpectedReward = 0;
+	const bool bRewardCalculated = IsValid(BalanceData) && HeistTeamReward::Calculate(
+		TeamResult.RequiredTargetValue,
+		TeamResult.SecuredLooseLootValue,
+		TeamResult.RequiredTargetQuality,
+		BalanceData->MinimumForgeryRewardMultiplier,
+		BalanceData->MaximumForgeryRewardMultiplier,
+		static_cast<int32>(HeistGameState->GetAlertLevel()),
+		BalanceData->AlertLevelRewardPenalty,
+		BalanceData->MinimumStealthRewardMultiplier,
+		TeamResult.ArrestedCrewCount,
+		BalanceData->ArrestRewardPenaltyPerPlayer,
+		ExpectedForgeryMultiplier,
+		ExpectedStealthMultiplier,
+		ExpectedArrestPenalty,
+		ExpectedReward);
 	int64 RewardSubtotal = 0;
-	int32 ExpectedReward = INDEX_NONE;
-	if (bRewardMultipliersValid)
+	if (bRewardCalculated)
 	{
 		const int64 RewardedTargetValue = FMath::Clamp<int64>(
-			FMath::RoundToInt64(static_cast<double>(TeamResult.RequiredTargetValue) * TeamResult.ForgeryRewardMultiplier * TeamResult.StealthRewardMultiplier), 0, MAX_int32);
+			FMath::RoundToInt64(static_cast<double>(TeamResult.RequiredTargetValue) * ExpectedForgeryMultiplier * ExpectedStealthMultiplier), 0, MAX_int32);
 		RewardSubtotal = FMath::Clamp<int64>(RewardedTargetValue + static_cast<int64>(TeamResult.SecuredLooseLootValue), 0, MAX_int32);
-		if (TeamResult.ArrestPenalty >= 0 && TeamResult.ArrestPenalty <= RewardSubtotal)
-		{
-			ExpectedReward = static_cast<int32>(RewardSubtotal - TeamResult.ArrestPenalty);
-		}
 	}
 
 	const bool bContractConsistent = ContractSnapshot.IsOutcomeConsistent() && TeamResult.Outcome == ContractSnapshot.Outcome &&
@@ -7444,7 +7473,10 @@ void UHeistDebugFunctionLibrary::DebugResultDump(APlayerController* PlayerContro
 		TeamResult.RequiredTargetValue >= 0 && TeamResult.SecuredLooseLootValue >= 0;
 	const bool bRequiredReplicaLinkConsistent = RequiredReplicaCount <= 1 && bRequiredReplicaMatches &&
 		(!TeamResult.bRequiredTargetSecured || RequiredReplicaCount == 1);
-	const bool bRewardFormulaConsistent = ExpectedReward != INDEX_NONE && TeamResult.TeamReward == ExpectedReward;
+	const bool bRewardFormulaConsistent = bRewardCalculated &&
+		FMath::IsNearlyEqual(TeamResult.ForgeryRewardMultiplier, ExpectedForgeryMultiplier, 0.001f) &&
+		FMath::IsNearlyEqual(TeamResult.StealthRewardMultiplier, ExpectedStealthMultiplier, 0.001f) &&
+		TeamResult.ArrestPenalty == ExpectedArrestPenalty && TeamResult.TeamReward == ExpectedReward;
 	const bool bCrewCountsConsistent = TeamResult.CrewCount >= 0 && TeamResult.EscapedCrewCount >= 0 && TeamResult.ArrestedCrewCount >= 0 &&
 		TeamResult.EscapedCrewCount <= TeamResult.CrewCount && TeamResult.ArrestedCrewCount <= TeamResult.CrewCount;
 	const bool bPassed = TeamResult.IsValid() && bContractConsistent && bValuePartitionConsistent && bRequiredReplicaLinkConsistent &&
@@ -7646,7 +7678,7 @@ void UHeistDebugFunctionLibrary::DebugMissionGateDump(APlayerController* PlayerC
 		ActiveGameplayActionCount += (IsValid(Action) && Action->IsGameplayCastActive()) || (IsValid(Forgery) && Forgery->IsSessionActive()) ||
 			(IsValid(Assembly) && Assembly->IsSessionActive()) ? 1 : 0;
 		OpenInventoryCount += IsValid(Inventory) && Inventory->IsInventoryOpen() ? 1 : 0;
-		OriginalCarryCount += IsValid(Inventory) && Inventory->IsCarryingOriginal() ? 1 : 0;
+		OriginalCarryCount += IsValid(Inventory) ? Inventory->GetOriginalArtifactCount() : 0;
 	}
 
 	const EHeistMatchPhase Phase = HeistGameState->GetMatchPhase();
@@ -7762,6 +7794,31 @@ void UHeistDebugFunctionLibrary::DebugResultVisualSeed(APlayerController* Player
 	}
 
 	TeamResult.RequiredTargetDisplayName = FText::FromString(TEXT("테스트 필수 그림"));
+	constexpr float DebugPaintingQuality = 84.0f;
+	if (TeamResult.bRequiredTargetSecured)
+	{
+		TeamResult.RequiredTargetQuality = DebugPaintingQuality;
+		const UHeistGameBalanceDataAsset* BalanceData = GetDefault<UHeistGameBalanceDataAsset>();
+		if (!IsValid(BalanceData) || !HeistTeamReward::Calculate(
+			TeamResult.RequiredTargetValue,
+			TeamResult.SecuredLooseLootValue,
+			TeamResult.RequiredTargetQuality,
+			BalanceData->MinimumForgeryRewardMultiplier,
+			BalanceData->MaximumForgeryRewardMultiplier,
+			static_cast<int32>(HeistGameState->GetAlertLevel()),
+			BalanceData->AlertLevelRewardPenalty,
+			BalanceData->MinimumStealthRewardMultiplier,
+			TeamResult.ArrestedCrewCount,
+			BalanceData->ArrestRewardPenaltyPerPlayer,
+			TeamResult.ForgeryRewardMultiplier,
+			TeamResult.StealthRewardMultiplier,
+			TeamResult.ArrestPenalty,
+			TeamResult.TeamReward))
+		{
+			Message(PlayerController, TEXT("W6-007 visual seed: Result=REJECTED Reason=RewardRecalculationFailed"), EHeistDebugLevel::Error, true);
+			return;
+		}
+	}
 	TeamResult.ReplicaRecap.Reset();
 	FHeistReplicaRecapEntry& PaintingRecap = TeamResult.ReplicaRecap.AddDefaulted_GetRef();
 	PaintingRecap.CaseId = FName(TEXT("Case_Debug_Painting"));
@@ -7769,7 +7826,7 @@ void UHeistDebugFunctionLibrary::DebugResultVisualSeed(APlayerController* Player
 	PaintingRecap.ArtifactDisplayName = TeamResult.RequiredTargetDisplayName;
 	PaintingRecap.TemplateId = FName(TEXT("Template_Debug_Painting"));
 	PaintingRecap.ForgeryType = EHeistForgeryType::Drawing;
-	PaintingRecap.QualityScore = 84.0f;
+	PaintingRecap.QualityScore = DebugPaintingQuality;
 	PaintingRecap.bRequiredTarget = TeamResult.bRequiredTargetSecured;
 	PaintingRecap.PaintingResolution = FHeistReplicaRecapEntry::PaintingThumbnailResolution;
 	PaintingRecap.PaintingPalette = {FColor(229, 153, 62), FColor(67, 122, 176), FColor(240, 226, 188)};

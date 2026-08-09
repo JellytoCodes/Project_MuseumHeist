@@ -176,7 +176,8 @@ void AHeistGuardAIController::OnPossess(APawn* InPawn)
 		ConfigurePerceptionFromGuardProfile(GuardCharacter->GetGuardProfile());
 	}
 
-	if (HasAuthority() && bStartStateTreeAutomatically)
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	if (HasAuthority() && bStartStateTreeAutomatically && IsValid(HeistGameState) && HeistGameState->GetMatchPhase() == EHeistMatchPhase::InGame)
 	{
 		GuardStateTreeComponent->StartLogic();
 		SendGuardStateTreeEvent(GuardStateComponent->GetGuardState());
@@ -233,6 +234,25 @@ void AHeistGuardAIController::ConfigurePerceptionFromGuardProfile(const FHeistGu
 {
 	if (!HasAuthority() || !IsValid(GuardPerceptionComponent) || !IsValid(GuardSightConfig))
 	{
+		return;
+	}
+	if (!GuardPerceptionComponent->GetListenerId().IsValid())
+	{
+		if (bPerceptionConfigurationPending)
+		{
+			return;
+		}
+
+		bPerceptionConfigurationPending = true;
+		GetWorldTimerManager().SetTimerForNextTick(FTimerDelegate::CreateWeakLambda(this, [this, GuardData]()
+		{
+			bPerceptionConfigurationPending = false;
+			if (!IsValid(GetPawn()) || !IsValid(GuardPerceptionComponent) || !GuardPerceptionComponent->GetListenerId().IsValid())
+			{
+				return;
+			}
+			ConfigurePerceptionFromGuardProfile(GuardData);
+		}));
 		return;
 	}
 
@@ -805,8 +825,22 @@ void AHeistGuardAIController::HandleAlertStateChanged(const EHeistAlertLevel, co
 
 void AHeistGuardAIController::HandleMatchPhaseChanged(const EHeistMatchPhase PreviousMatchPhase, const EHeistMatchPhase NewMatchPhase)
 {
-	if (!HasAuthority() || PreviousMatchPhase == NewMatchPhase || NewMatchPhase == EHeistMatchPhase::InGame)
+	if (!HasAuthority() || PreviousMatchPhase == NewMatchPhase)
 	{
+		return;
+	}
+	if (NewMatchPhase == EHeistMatchPhase::InGame)
+	{
+		const AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn());
+		const UHeistGuardStateComponent* GuardStateComponent = IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
+		if (bStartStateTreeAutomatically && IsValid(GuardStateTreeComponent) && !GuardStateTreeComponent->IsRunning())
+		{
+			GuardStateTreeComponent->StartLogic();
+			if (IsValid(GuardStateComponent))
+			{
+				SendGuardStateTreeEvent(GuardStateComponent->GetGuardState());
+			}
+		}
 		return;
 	}
 

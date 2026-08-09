@@ -3,6 +3,7 @@
 #include "Core/HeistGameMode.h"
 #include "Core/HeistLogChannels.h"
 #include "Data/HeistGameBalanceDataAsset.h"
+#include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Inventory/HeistItemDataTypes.h"
@@ -31,6 +32,7 @@ void AHeistLootActor::BeginPlay()
 		ResolveLootData();
 	}
 	ResolveLootVisualFromRowId();
+	RefreshAvailabilityPresentation();
 }
 
 #pragma endregion
@@ -119,6 +121,7 @@ bool AHeistLootActor::CommitPickupReservation(AActor* Requester)
 
 	bIsAvailable = false;
 	PickupReservationOwner.Reset();
+	RefreshAvailabilityPresentation();
 	ForceNetUpdate();
 	LootPickupCommittedDelegate.Broadcast(this, Requester);
 	return true;
@@ -157,6 +160,7 @@ void AHeistLootActor::ResolveLootData()
 			ScoreValue = ResolvedRow->ScoreValue;
 			WeightValue = ItemDefinition.Weight;
 			bIsAvailable = true;
+			RefreshAvailabilityPresentation();
 			return;
 		}
 	}
@@ -218,11 +222,32 @@ void AHeistLootActor::ApplyFallbackLootData()
 	ScoreValue = 0;
 	WeightValue = 0.0f;
 	bIsAvailable = true;
+	RefreshAvailabilityPresentation();
+}
+
+void AHeistLootActor::RefreshAvailabilityPresentation()
+{
+	if (IsValid(VisualMeshComponent))
+	{
+		VisualMeshComponent->SetVisibility(bIsAvailable, true);
+	}
+
+	if (IsValid(InteractionCollision))
+	{
+		InteractionCollision->SetCollisionEnabled(bIsAvailable ? ECollisionEnabled::QueryOnly : ECollisionEnabled::NoCollision);
+		InteractionCollision->SetGenerateOverlapEvents(bIsAvailable);
+	}
 }
 
 void AHeistLootActor::OnRep_LootRowId()
 {
 	ResolveLootVisualFromRowId();
+	RefreshAvailabilityPresentation();
+}
+
+void AHeistLootActor::OnRep_IsAvailable()
+{
+	RefreshAvailabilityPresentation();
 }
 
 #pragma endregion

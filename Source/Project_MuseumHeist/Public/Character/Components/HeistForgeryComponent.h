@@ -90,6 +90,8 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryComponent : public UActorComponent
 	bool CalculateLocalForgeryPreview(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices,
 									  const TArray<uint8>& StrokeBrushPresetIndices, FHeistForgeryResult& OutResult, int32& OutReferenceMaskPixels,
 									  int32& OutSubmittedMaskPixels) const;
+	bool BuildReferenceMatchedStrokePayloadForAutomation(TArray<FVector2D>& OutNormalizedPoints, TArray<int32>& OutStrokePointCounts,
+		TArray<uint8>& OutStrokePaletteIndices, TArray<uint8>& OutStrokeBrushPresetIndices, FHeistForgeryResult& OutPreviewResult) const;
 	FHeistForgerySessionStateChanged& GetSessionStateChangedDelegate();
 
   private:

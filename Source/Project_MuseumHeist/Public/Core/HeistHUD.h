@@ -159,6 +159,7 @@ class PROJECT_MUSEUMHEIST_API AHeistHUD : public AHUD
 	bool ShowResultScreen();
 	void HideResultScreen();
 	class UHeistResultViewModel* GetResultViewModel() const;
+	class UHeistResultWidget* GetResultWidget() const;
 
   private:
 	void InitializeResultPresentation();

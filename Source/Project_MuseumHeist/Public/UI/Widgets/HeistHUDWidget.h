@@ -41,9 +41,9 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
   public:
 	void SetupHUDWidget(class UHeistHUDViewModel* InHUDViewModel, class UHeistInventoryViewModel* InInventoryViewModel, class UHeistQuickSlotViewModel* InQuickSlotViewModel,
 						class UHeistInteractionComponent* InInteractionComponent);
+	void RefreshHUDPresentation();
 
   private:
-	void RefreshHUDPresentation();
 	void SetupPopupFeedbackPresentation();
 	void ResolveInteractionChildWidgets();
 	void ResolveCrosshairWidgets();
@@ -85,6 +85,9 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 #pragma region Debug
 
   public:
+	/** Clears local-only HUD state that must not survive Result, Lobby, or seamless travel. */
+	void ResetHiddenPresentationState();
+	bool IsHiddenPresentationStateReset() const;
 	void DebugDumpFirstPersonHUDState() const;
 	void DebugDumpFeedbackState() const;
 	void DebugDumpAlertPresentationState() const;

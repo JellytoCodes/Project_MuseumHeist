@@ -68,13 +68,9 @@ class PROJECT_MUSEUMHEIST_API UHeistResultViewModel : public UMVVMViewModelBase
 	ESlateVisibility GetResultRow4Visibility() const;
 	const FText& GetOutcomeText() const;
 	const FText& GetOutcomeReasonText() const;
-	const FText& GetContractProgressText() const;
 	const FText& GetTeamRewardText() const;
-	const FText& GetRewardBreakdownText() const;
 	const FText& GetReplicaRecapText() const;
 	static FText BuildOutcomeDisplayText(EHeistContractOutcome Outcome);
-	static FText BuildContractProgressSummaryText(const FHeistTeamResult& InTeamResult);
-	static FText BuildRewardBreakdownSummaryText(const FHeistTeamResult& InTeamResult);
 	static FText BuildReplicaRecapSummaryText(const FHeistTeamResult& InTeamResult);
 	static FText BuildPlayerResultSummaryText(const FHeistPlayerResult& PlayerResult);
 
@@ -96,13 +92,7 @@ class PROJECT_MUSEUMHEIST_API UHeistResultViewModel : public UMVVMViewModelBase
 	FText OutcomeReasonText;
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
-	FText ContractProgressText;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
 	FText TeamRewardText;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
-	FText RewardBreakdownText;
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
 	FText ReplicaRecapText;

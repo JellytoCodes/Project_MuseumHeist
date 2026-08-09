@@ -31,6 +31,10 @@ UHeistHUDWidget::UHeistHUDWidget(const FObjectInitializer& ObjectInitializer) : 
 void UHeistHUDWidget::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+	if (GetVisibility() == ESlateVisibility::Collapsed || GetVisibility() == ESlateVisibility::Hidden)
+	{
+		return;
+	}
 	RefreshLockdownCountdown();
 }
 
@@ -307,6 +311,12 @@ void UHeistHUDWidget::RefreshToolPresentation()
 
 void UHeistHUDWidget::RefreshHUDPresentation()
 {
+	if (GetVisibility() == ESlateVisibility::Collapsed || GetVisibility() == ESlateVisibility::Hidden)
+	{
+		ResetHiddenPresentationState();
+		return;
+	}
+
 	if (!IsValid(HUDViewModel))
 	{
 		return;
@@ -494,6 +504,33 @@ void UHeistHUDWidget::StopAlertAudioLayers()
 #pragma endregion
 
 #pragma region Debug
+
+void UHeistHUDWidget::ResetHiddenPresentationState()
+{
+	StopAlertAudioLayers();
+	LastAppliedAudioAlertLevel = EHeistAlertLevel::Quiet;
+	LastDisplayedLockdownSeconds = INDEX_NONE;
+
+	if (IsValid(AlertText))
+	{
+		AlertText->SetText(FText::GetEmpty());
+		AlertText->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	if (IsValid(LockdownCountdownText))
+	{
+		LockdownCountdownText->SetText(FText::GetEmpty());
+		LockdownCountdownText->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+bool UHeistHUDWidget::IsHiddenPresentationStateReset() const
+{
+	const bool bAlertAudioStopped = !bAlertAudioInitialized && !IsValid(SuspenseMusicComponent) && !IsValid(AlarmMusicComponent);
+	const bool bAlertTextReset = !IsValid(AlertText) || AlertText->GetVisibility() == ESlateVisibility::Collapsed;
+	const bool bCountdownReset = LastDisplayedLockdownSeconds == INDEX_NONE &&
+		(!IsValid(LockdownCountdownText) || LockdownCountdownText->GetVisibility() == ESlateVisibility::Collapsed);
+	return bAlertAudioStopped && bAlertTextReset && bCountdownReset;
+}
 
 void UHeistHUDWidget::DebugDumpFirstPersonHUDState() const
 {

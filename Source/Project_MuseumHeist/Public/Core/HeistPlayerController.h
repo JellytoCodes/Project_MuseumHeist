@@ -43,6 +43,7 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
   protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	virtual void PostSeamlessTravel() override;
 	virtual void OnPossess(APawn* InPawn) override;
 	virtual void OnRep_Pawn() override;
 	virtual void OnRep_PlayerState() override;
@@ -50,6 +51,7 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 
   private:
 	void RefreshLocalHUDPresentation();
+	void RefreshLocalPresentationAfterSeamlessTravel();
 	void RefreshMatchPhasePresentationBinding();
 	void HandleMatchPhasePresentationChanged(EHeistMatchPhase PreviousMatchPhase, EHeistMatchPhase NewMatchPhase);
 	void HandlePlayerResultsPresentationChanged();

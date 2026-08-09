@@ -5,43 +5,53 @@
     "LootGrade": "FourStar",
     "ScoreValue": 1000,
     "SpawnCategory": "VaultFixed",
-    "SpawnWeight": 1.0,
-    "WorldLootActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_LootRoyalCrown.BP_LootRoyalCrown_C'"
+    "SpawnWeight": 0.4,
+    "WorldMesh": "StaticMesh'/Game/Assets/StarterContent/Shapes/Shape_Torus.Shape_Torus'",
+    "WorldMaterials": ["Material'/Game/Assets/StarterContent/Materials/M_Metal_Gold.M_Metal_Gold'"],
+    "WorldVisualRelativeTransform": "(Rotation=(Pitch=0,Yaw=0,Roll=0),Translation=(X=0,Y=0,Z=24),Scale3D=(X=0.42,Y=0.42,Z=0.24))"
   },
   {
     "Name": "Loot_Painting",
     "ItemId": "Loot_Painting",
     "LootGrade": "TwoStar",
-    "ScoreValue": 300,
+    "ScoreValue": 350,
     "SpawnCategory": "ExhibitionRoom",
     "SpawnWeight": 1.0,
-    "WorldLootActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_Painting.BP_Painting_C'"
+    "WorldMesh": "StaticMesh'/Game/Assets/StarterContent/Shapes/Shape_Plane.Shape_Plane'",
+    "WorldMaterials": ["Material'/Game/Assets/StarterContent/Materials/M_Wood_Walnut.M_Wood_Walnut'"],
+    "WorldVisualRelativeTransform": "(Rotation=(Pitch=90,Yaw=0,Roll=0),Translation=(X=0,Y=0,Z=45),Scale3D=(X=0.70,Y=0.50,Z=0.08))"
   },
   {
     "Name": "Loot_AncientSword",
     "ItemId": "Loot_AncientSword",
     "LootGrade": "TwoStar",
-    "ScoreValue": 300,
+    "ScoreValue": 450,
     "SpawnCategory": "ExhibitionRoom",
-    "SpawnWeight": 1.0,
-    "WorldLootActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_LootAncientSword.BP_LootAncientSword_C'"
+    "SpawnWeight": 0.8,
+    "WorldMesh": "StaticMesh'/Game/Assets/StarterContent/Shapes/Shape_NarrowCapsule.Shape_NarrowCapsule'",
+    "WorldMaterials": ["Material'/Game/Assets/StarterContent/Materials/M_Metal_Burnished_Steel.M_Metal_Burnished_Steel'"],
+    "WorldVisualRelativeTransform": "(Rotation=(Pitch=90,Yaw=0,Roll=0),Translation=(X=0,Y=0,Z=18),Scale3D=(X=0.14,Y=0.14,Z=0.75))"
   },
   {
     "Name": "Loot_GoldenVase",
     "ItemId": "Loot_GoldenVase",
     "LootGrade": "ThreeStar",
-    "ScoreValue": 500,
+    "ScoreValue": 600,
     "SpawnCategory": "ExhibitionRoom",
-    "SpawnWeight": 1.0,
-    "WorldLootActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_LootGoldenVase.BP_LootGoldenVase_C'"
+    "SpawnWeight": 0.6,
+    "WorldMesh": "StaticMesh'/Game/Assets/StarterContent/Shapes/Shape_Cylinder.Shape_Cylinder'",
+    "WorldMaterials": ["Material'/Game/Assets/StarterContent/Materials/M_Metal_Copper.M_Metal_Copper'"],
+    "WorldVisualRelativeTransform": "(Rotation=(Pitch=0,Yaw=0,Roll=0),Translation=(X=0,Y=0,Z=28),Scale3D=(X=0.32,Y=0.32,Z=0.56))"
   },
   {
     "Name": "Loot_JewelNecklace",
     "ItemId": "Loot_JewelNecklace",
-    "LootGrade": "OneStar",
-    "ScoreValue": 150,
+    "LootGrade": "ThreeStar",
+    "ScoreValue": 700,
     "SpawnCategory": "ExhibitionRoom",
-    "SpawnWeight": 1.25,
-    "WorldLootActorClass": "BlueprintGeneratedClass'/Game/Blueprints/World/Actors/Loot/BP_LootJewelNecklace.BP_LootJewelNecklace_C'"
+    "SpawnWeight": 1.2,
+    "WorldMesh": "StaticMesh'/Game/Assets/StarterContent/Shapes/Shape_Pipe_180.Shape_Pipe_180'",
+    "WorldMaterials": ["Material'/Game/Assets/StarterContent/Materials/M_Metal_Chrome.M_Metal_Chrome'"],
+    "WorldVisualRelativeTransform": "(Rotation=(Pitch=0,Yaw=0,Roll=0),Translation=(X=0,Y=0,Z=12),Scale3D=(X=0.36,Y=0.36,Z=0.08))"
   }
 ]

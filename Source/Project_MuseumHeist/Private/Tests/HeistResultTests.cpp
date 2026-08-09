@@ -141,21 +141,9 @@ bool FHeistResultScreenPresentationTest::RunTest(const FString& Parameters)
 	Recap.QualityScore = 84.0f;
 	Recap.bRequiredTarget = true;
 
-	TestEqual(TEXT("Success outcome is player-facing Korean"), UHeistResultViewModel::BuildOutcomeDisplayText(EHeistContractOutcome::Success).ToString(), FString(TEXT("계약 완료")));
-	TestEqual(TEXT("Partial outcome is player-facing Korean"), UHeistResultViewModel::BuildOutcomeDisplayText(EHeistContractOutcome::PartialHaul).ToString(), FString(TEXT("일부 확보")));
-	TestEqual(TEXT("Failure outcome is player-facing Korean"), UHeistResultViewModel::BuildOutcomeDisplayText(EHeistContractOutcome::Failed).ToString(), FString(TEXT("계약 실패")));
-
-	const FString ContractSummary = UHeistResultViewModel::BuildContractProgressSummaryText(TeamResult).ToString();
-	TestTrue(TEXT("Required target display name is visible"), ContractSummary.Contains(TEXT("별이 빛나는 위작")));
-	TestTrue(TEXT("Required target secured state is visible"), ContractSummary.Contains(TEXT("확보 완료")));
-	TestTrue(TEXT("Secured value and quota are visible"), ContractSummary.Contains(TEXT("5,200")) || ContractSummary.Contains(TEXT("5200")));
-	TestTrue(TEXT("Quota is visible"), ContractSummary.Contains(TEXT("4,000")) || ContractSummary.Contains(TEXT("4000")));
-	TestTrue(TEXT("Extra value is visible"), ContractSummary.Contains(TEXT("1,200")) || ContractSummary.Contains(TEXT("1200")));
-
-	const FString RewardSummary = UHeistResultViewModel::BuildRewardBreakdownSummaryText(TeamResult).ToString();
-	TestTrue(TEXT("Reward breakdown explains target, loose loot, arrest, and final reward"), RewardSummary.Contains(TEXT("필수 목표")) &&
-		RewardSummary.Contains(TEXT("추가 전리품")) && RewardSummary.Contains(TEXT("체포")) && (RewardSummary.Contains(TEXT("4,788")) || RewardSummary.Contains(TEXT("4788"))));
-	TestTrue(TEXT("Reward multipliers are shown as readable percentages"), RewardSummary.Contains(TEXT("115")) && RewardSummary.Contains(TEXT("90")));
+	TestEqual(TEXT("Success outcome is player-facing Korean"), UHeistResultViewModel::BuildOutcomeDisplayText(EHeistContractOutcome::Success).ToString(), FString(TEXT("임무 성공")));
+	TestEqual(TEXT("Partial haul uses the lightweight success heading"), UHeistResultViewModel::BuildOutcomeDisplayText(EHeistContractOutcome::PartialHaul).ToString(), FString(TEXT("임무 성공")));
+	TestEqual(TEXT("Failure outcome is player-facing Korean"), UHeistResultViewModel::BuildOutcomeDisplayText(EHeistContractOutcome::Failed).ToString(), FString(TEXT("임무 실패")));
 
 	const FString RecapSummary = UHeistResultViewModel::BuildReplicaRecapSummaryText(TeamResult).ToString();
 	TestTrue(TEXT("Replica recap identifies required target and actual type/quality"), RecapSummary.Contains(TEXT("필수 목표")) &&

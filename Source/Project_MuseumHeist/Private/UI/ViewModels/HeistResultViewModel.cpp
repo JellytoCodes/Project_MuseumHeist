@@ -63,11 +63,11 @@ void UHeistResultViewModel::RefreshResultData()
 	UE_MVVM_SET_PROPERTY_VALUE(PlayerResults, NewPlayerResults);
 	UE_MVVM_SET_PROPERTY_VALUE(TeamResult, NewTeamResult);
 	UE_MVVM_SET_PROPERTY_VALUE(OutcomeText, BuildOutcomeDisplayText(TeamResult.Outcome));
-	UE_MVVM_SET_PROPERTY_VALUE(OutcomeReasonText, HeistContractOutcomeReasons::ToDisplayText(TeamResult.OutcomeReasonId));
-	UE_MVVM_SET_PROPERTY_VALUE(ContractProgressText, BuildContractProgressSummaryText(TeamResult));
+	UE_MVVM_SET_PROPERTY_VALUE(OutcomeReasonText, TeamResult.Outcome == EHeistContractOutcome::Failed
+		? HeistContractOutcomeReasons::ToDisplayText(TeamResult.OutcomeReasonId)
+		: FText::GetEmpty());
 	UE_MVVM_SET_PROPERTY_VALUE(TeamRewardText,
 		FText::Format(NSLOCTEXT("HeistResult", "TeamRewardFormat", "팀 보상  {0}"), FText::AsNumber(TeamResult.TeamReward)));
-	UE_MVVM_SET_PROPERTY_VALUE(RewardBreakdownText, BuildRewardBreakdownSummaryText(TeamResult));
 	UE_MVVM_SET_PROPERTY_VALUE(ReplicaRecapText, BuildReplicaRecapSummaryText(TeamResult));
 
 	const int32 LocalPlayerId = IsValid(LocalPlayerState) ? LocalPlayerState->HeistPlayerId : INDEX_NONE;
@@ -171,48 +171,20 @@ ESlateVisibility UHeistResultViewModel::GetResultRow4Visibility() const
 
 const FText& UHeistResultViewModel::GetOutcomeText() const { return OutcomeText; }
 const FText& UHeistResultViewModel::GetOutcomeReasonText() const { return OutcomeReasonText; }
-const FText& UHeistResultViewModel::GetContractProgressText() const { return ContractProgressText; }
 const FText& UHeistResultViewModel::GetTeamRewardText() const { return TeamRewardText; }
-const FText& UHeistResultViewModel::GetRewardBreakdownText() const { return RewardBreakdownText; }
 const FText& UHeistResultViewModel::GetReplicaRecapText() const { return ReplicaRecapText; }
 
 FText UHeistResultViewModel::BuildOutcomeDisplayText(const EHeistContractOutcome Outcome)
 {
-	if (Outcome == EHeistContractOutcome::Success)
+	if (Outcome == EHeistContractOutcome::Success || Outcome == EHeistContractOutcome::PartialHaul)
 	{
-		return NSLOCTEXT("HeistResult", "OutcomeSuccess", "계약 완료");
-	}
-	if (Outcome == EHeistContractOutcome::PartialHaul)
-	{
-		return NSLOCTEXT("HeistResult", "OutcomePartial", "일부 확보");
+		return NSLOCTEXT("HeistResult", "OutcomeSuccess", "임무 성공");
 	}
 	if (Outcome == EHeistContractOutcome::Failed)
 	{
-		return NSLOCTEXT("HeistResult", "OutcomeFailed", "계약 실패");
+		return NSLOCTEXT("HeistResult", "OutcomeFailed", "임무 실패");
 	}
 	return FText::GetEmpty();
-}
-
-FText UHeistResultViewModel::BuildContractProgressSummaryText(const FHeistTeamResult& InTeamResult)
-{
-	const FText TargetName = InTeamResult.RequiredTargetDisplayName.IsEmpty() ? FText::FromName(InTeamResult.RequiredTargetArtifactId)
-		: InTeamResult.RequiredTargetDisplayName;
-	return FText::Format(
-		NSLOCTEXT("HeistResult", "ContractProgressFormat", "필수 목표 {0}  |  {1}  |  확보 가치 {2} / 할당량 {3}  |  초과 {4}"), TargetName,
-		InTeamResult.bRequiredTargetSecured ? NSLOCTEXT("HeistResult", "TargetSecured", "확보 완료") : NSLOCTEXT("HeistResult", "TargetMissing", "미확보"),
-		FText::AsNumber(InTeamResult.SecuredValue), FText::AsNumber(InTeamResult.LootValueQuota), FText::AsNumber(InTeamResult.ExtraValue));
-}
-
-FText UHeistResultViewModel::BuildRewardBreakdownSummaryText(const FHeistTeamResult& InTeamResult)
-{
-	FNumberFormattingOptions PercentFormatting;
-	PercentFormatting.MinimumFractionalDigits = 0;
-	PercentFormatting.MaximumFractionalDigits = 1;
-	return FText::Format(
-		NSLOCTEXT("HeistResult", "RewardBreakdownFormat", "필수 목표 {0} × 위조 {1} × 잠입 {2}  +  추가 전리품 {3}  −  체포 {4}  =  {5}"),
-		FText::AsNumber(InTeamResult.RequiredTargetValue), FText::AsPercent(InTeamResult.ForgeryRewardMultiplier, &PercentFormatting),
-		FText::AsPercent(InTeamResult.StealthRewardMultiplier, &PercentFormatting), FText::AsNumber(InTeamResult.SecuredLooseLootValue),
-		FText::AsNumber(InTeamResult.ArrestPenalty), FText::AsNumber(InTeamResult.TeamReward));
 }
 
 FText UHeistResultViewModel::BuildReplicaRecapSummaryText(const FHeistTeamResult& InTeamResult)

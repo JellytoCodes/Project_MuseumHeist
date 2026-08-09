@@ -144,6 +144,57 @@ void AHeistPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	Super::EndPlay(EndPlayReason);
 }
 
+void AHeistPlayerController::PostSeamlessTravel()
+{
+	Super::PostSeamlessTravel();
+
+	bLocalObservationInputHeld = false;
+	UnbindLocalForgeryInputState();
+	UnbindLocalObjectAssemblyInputState();
+	if (BoundMatchPhaseGameState.IsValid())
+	{
+		BoundMatchPhaseGameState->GetMatchPhaseChangedDelegate().RemoveAll(this);
+		BoundMatchPhaseGameState->GetPlayerResultsChangedDelegate().RemoveAll(this);
+		BoundMatchPhaseGameState->GetAlertStateChangedDelegate().RemoveAll(this);
+		BoundMatchPhaseGameState->GetEscapePhaseStateChangedDelegate().RemoveAll(this);
+		BoundMatchPhaseGameState.Reset();
+	}
+	bLocalAwaitingCrew = false;
+	LocalSpectateTarget.Reset();
+
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	ResetIgnoreMoveInput();
+	ResetIgnoreLookInput();
+	if (UHeistGameInstance* HeistGameInstance = Cast<UHeistGameInstance>(GetGameInstance()))
+	{
+		HeistGameInstance->NotifySessionWorldReady();
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(LocalTutorialStepTimerHandle);
+		World->GetTimerManager().SetTimerForNextTick(this, &AHeistPlayerController::RefreshLocalPresentationAfterSeamlessTravel);
+	}
+}
+
+void AHeistPlayerController::RefreshLocalPresentationAfterSeamlessTravel()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	RefreshLocalInputModeFromPawn();
+	RefreshLocalPlayerTerminalState();
+	RefreshLocalHUDPresentation();
+	ApplyLocalUserSettings();
+	UpdateFlashlightAimDirection();
+}
+
 void AHeistPlayerController::OnPossess(APawn* InPawn)
 {
 	bLocalObservationInputHeld = false;
@@ -1687,6 +1738,9 @@ void AHeistPlayerController::Server_RequestLootPickup_Implementation(AHeistLootA
 	}
 
 	UHeistDebugFunctionLibrary::DebugLootPickupRequestAccepted(this, TargetLootActor, TargetLootActor->GetLootRowId(), AddedInstanceId, Distance);
+	SendPopupFeedback(FText::Format(
+		NSLOCTEXT("HeistFeedback", "LootPickupAccepted", "전리품 획득 +{0}"),
+		FText::AsNumber(ScoreDelta)));
 }
 
 void AHeistPlayerController::Server_RequestDroppedOriginalPickup_Implementation(AHeistDroppedOriginalActor* TargetDroppedOriginal)

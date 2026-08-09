@@ -86,6 +86,7 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardAIController : public AAIController
 	bool bDoorsBlockSight = true;
 	bool bDisplayCasesBlockSight = true;
 	bool bPerceptionConfigured = false;
+	bool bPerceptionConfigurationPending = false;
 	bool bAutomaticSightEnabled = true;
 	bool bAlertExitSurveillanceActive = false;
 	EHeistAlertLevel AppliedAlertLevel = EHeistAlertLevel::Quiet;

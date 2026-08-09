@@ -1,7 +1,7 @@
 # Project_MuseumHeist Current Project Status
 
-최종 갱신: 2026-08-09 17:46 KST
-현재 문서 Revision: 7
+최종 갱신: 2026-08-09 23:14 KST
+현재 문서 Revision: 10
 
 이 문서는 새 Codex/Claude 작업이 이전 대화 없이도 현재 진척과 다음 행동을 바로 파악하기 위한 단일 실행 인계 문서다.
 
@@ -27,50 +27,64 @@
 
 시작 시 `주차별 작업보드`에서 `상태 = 진행중 또는 검토중`을 조회하고, 사용자가 Task ID를 지정했다면 해당 페이지를 추가 Fetch한다. SQL 조회가 제한되면 Search/Fetch를 사용한다. Notion 자체 조회가 실패하면 이 문서를 `OFFLINE CACHE`로 표시하고 Task 상태·우선순위·다음 작업을 확정하지 않는다.
 
-마지막 라이브 조회: `2026-08-09 17:46 KST`
+마지막 라이브 조회: `2026-08-09 23:14 KST`
 
 ```text
 TASK-W6-000  검토중  Contract Foundation / Required Target / Loot Value Quota
-TASK-W6-006  진행중  Player Contribution Capture
+TASK-W6-006  완료    Player Contribution Capture
+TASK-W6-007  완료    Team Result ViewModel / Widget
+TASK-W6-008  완료    End Phase / Lobby Return
 ```
 
 ---
 
 ## 1. Current Focus
 
-Notion Active Task: [`TASK-W6-006`](https://app.notion.com/p/39a1d26a5dfb8132a835ee75d548e348) — `Player Contribution Capture` / `진행중`
+사용자 지정 범위 [`TASK-W6-007`](https://app.notion.com/p/39a1d26a5dfb81dd9c33ef462175be83)과 [`TASK-W6-008`](https://app.notion.com/p/39a1d26a5dfb81d49b3cc22a67ad68a2)은 구현·검증·Notion 완료 처리가 끝났다.
+
+Notion에서 현재 별도 확인이 필요한 항목은 [`TASK-W6-000`](https://app.notion.com/p/3af1d26a5dfb819199d9e3b1be2eeaf5) `검토중`이다. 다음 구현 Task는 사용자가 지정하거나 작업보드를 다시 라이브 조회한 뒤 확정한다.
 
 로컬 Resume Work Package: [`LOCAL-20260809-01`](LOCAL_PROGRESS_INBOX.md#local-20260809-01) — Replica Acceptance / Forgery Timeout / Shared Forgery UI 방향 변경
 
-주의: 사용자가 이전 대화에서 부른 `TASK 006` 작업 내용과 Notion의 `TASK-W6-006` 완료 기준은 일치하지 않는다. 아래 위조 변경 증거만으로 `TASK-W6-006`의 진행률 또는 완료 상태를 변경하지 않는다. 새 작업은 Notion의 현재 Task 정의를 우선 확인하고, 이 로컬 Work Package를 별도 후속 검증 대상으로 취급한다.
-
-Notion 재확인 결과 `TASK-W5-013 Owner-only Object Assembly UI / Input Restore`는 기존 버튼식 조립 계약으로 이미 `완료`다. 이번 2D Drag & Drop 개편은 그 완료 증거를 소급 변경하지 않는 신규 회귀 패키지이며, 정확히 대응하는 진행중 Task는 확인되지 않았다.
-
-`TASK-W6-006` 현재 결론:
+`TASK-W6-007` / `TASK-W6-008` 최종 결론:
 
 ```text
-서버 기여 누적          IMPLEMENTED / Forgery·Assembly·Carry·Deposit·Loot·Coin·Rescue·Alarm·Escape·Arrest
-Contribution 복제       IMPLEMENTED / AHeistPlayerState 전체 Crew 복제
-Result Snapshot / Row   IMPLEMENTED / 최고 품질·운반 시간·탈출/체포/미탈출 포함
-Winner / Rank           NONE / 비경쟁 설명 정보만 사용
-Coin Distraction        FIXED / 반경 검사가 아닌 실제 Guard Investigate 수락 수 누적
-C++ Editor Build        PASS / 2026-08-09 17:42 KST
-자동화 테스트 실행     PASS / ProjectMuseumHeist.Result 6/6
-2 Player User PIE       REQUIRED / NOT RUN
-Notion Live Read/Write  PASS / TASK-W6-006 + TEST-W6-005
-Notion Task Status      진행중 / 사용자 PIE 후 완료 판정
+Result Presentation     PASS / Outcome·실패 사유·상세 점수·최대 4인 표·실제 Replica Recap
+Winner / Rank           NONE / 비경쟁 Mission Result만 사용
+WBP_Result              PASS / MCP Compile·Save 및 Native Binding 확인
+C++ Editor Build        PASS / 2026-08-09 23:05 KST 최종 빌드
+Result Automation       PASS / ProjectMuseumHeist.Result 8/8
+2 Player Replay PIE     PASS / 동일 HeistSession에서 Result→Lobby→두 번째 M01
+Residual Cleanup        PASS / Case·Timer·Action·Forgery·Inventory·Audio·Widget·Input 잔여 없음
+Softlock                NONE / Host·Client 두 번째 Gameplay 입력 정상
+Notion Test Logs        TEST-W6-006 / TEST-W6-007 PASS
+Notion Task Status      TASK-W6-007 완료 / TASK-W6-008 완료
 ```
 
 `LOCAL-20260809-01`의 Forgery UI/Timeout 패키지는 별도 범위이며 기존 검증 상태를 유지한다.
 
-### TASK-W6-006 변경 및 검증 체크포인트
+### TASK-W6-007 변경 및 검증 체크포인트
 
-- `AHeistGameState::ReportSoundPing`이 각 Guard Noise Reaction의 실제 수락 수를 동기 집계한다.
-- Coin Impact는 수락된 Guard 수가 1명 이상일 때만 투척자의 `GuardsDistracted`를 누적한다.
-- Result Row는 Surface/Assembly 횟수와 최고 품질, Original 회수 수와 운반 시간, Loose Loot, Distraction, Rescue, Alarm, Escape/Arrest 상태를 모두 표시한다.
-- `ProjectMuseumHeist.Result.PlayerContribution`, `PlayerContributionPresentation`, `SoundPingAcceptanceAggregation`을 포함한 Result 자동화 6개가 모두 PASS했다.
-- Notion [`TEST-W6-005`](https://app.notion.com/p/3b71d26a5dfb81428a21f134d49cd06a)에 Integration 자동화 PASS를 기록했다.
-- 남은 완료 증거는 2 Player Listen Server PIE의 서버 누적, Client 복제, Result Row와 Winner/Rank 부재 확인이다.
+- `FHeistTeamResult`가 서버 확정 `RequiredTargetDisplayName`을 포함하고 모든 Client에 복제한다.
+- `FHeistReplicaRecapEntry`가 작품 표시명, 실제 Painting Thumbnail Payload 또는 실제 Object Assembly Recipe를 전달한다.
+- `UHeistResultViewModel`이 Full/Partial/Failure, 필수 목표 확보 여부, Secured/Quota/Extra와 Reward 식을 한글로 설명한다.
+- `UHeistResultWidget`이 Painting Texture 생성과 Object Part Anchor/크기/각도 재구성 Helper를 제공하고, `WBP_Result`의 가로 Card Container를 Native에서 실제 Payload로 채운다.
+- `WBP_Result`에 `ReplicaRecapVisualPanel → ReplicaRecapScrollBox → ReplicaRecapVisualContainer`를 추가하고 기존 결과·기여 텍스트와 겹치지 않게 재배치했다.
+- `WBP_Result`의 TextBlock 13개는 기존 크기와 배치를 유지하면서 Runtime Font를 `F_TENADA`로 통일했다. Native 생성 Card Text도 `ReplicaRecapTextBlock`의 Font Style을 복사한다.
+- `WBP_Result` MCP Compile은 성공했고 Asset Save 후 Dirty=false를 확인했다. `BP_RefreshReplicaRecap`은 추가 연출용 Optional Hook이며 실제 시각 Recap의 필수 경로가 아니다.
+- `HeistResultVisualSeed`는 서버에서 Painting/Object 시각 Payload를 결정론적으로 주입하고, `HeistResultDump`는 Server/Client 표시 계약을 한 줄로 판정한다.
+- `ProjectMuseumHeist.Result` 8개 자동화는 최종 Source 기준 모두 PASS다.
+- 2 Player Listen Server Result 표시 감사와 WBP Compile 성공은 [`TEST-W6-006`](https://app.notion.com/p/3b71d26a5dfb81b49a73e907e5e21e45)에 기록했다.
+
+### TASK-W6-008 End Phase / Lobby Return
+
+- Result 진입 시 Main HUD Alert 오디오와 숨은 경고 Text를 정리하고 Result 상세 패널·동적 Recap/Contribution 자식을 초기화한다.
+- 숨겨진 Main HUD는 ViewModel 변경을 받아도 Alert 오디오를 재초기화하지 않으며, 다시 표시할 때만 최신 상태를 갱신한다.
+- Seamless Travel 이후 Local Presentation Source, Input Mode와 Session World Ready 통지를 재결합한다.
+- 현재 Source/Blueprint에는 활성 PostProcess·AudioFilter 경로가 없으며, HUD Alert Audio Component 잔여 0을 런타임에서 검증했다.
+- Return Lobby 사전 정리 뒤 Case Lock/Timer, Gameplay Action, Forgery/Assembly, Inventory와 Match Timer의 실제 사후 잔여값을 재검사한다.
+- `ProjectMuseumHeist.Replay.EndLobbyReturnTwoPlayer`가 동일 `HeistSession`의 첫 M01 종료, 2인 Lobby 복귀, 두 번째 M01 재입장과 입력 복구를 검증한다.
+- 최종 증적은 [`TEST-W6-007`](https://app.notion.com/p/3b71d26a5dfb81f6bbc2e4a9a9dc1335)에 기록했다.
 
 ---
 
@@ -152,6 +166,29 @@ Guard의 시야 발각, 추격, 교체 소음과 일반 Alert/Lockdown 흐름은
 - `DataTableImports/DT_ArtifactDataRow.json`
   - 14개 Row 모두 `MinimumForgeryScore=0.7`
 
+### TASK-W6-007 Result Presentation
+
+- `Source/Project_MuseumHeist/Public/Core/HeistTypes.h`
+- `Source/Project_MuseumHeist/Private/Core/HeistTypes.cpp`
+  - Team Result의 Required Target 표시명과 Replica별 작품 표시명 추가
+  - 실제 Painting 64x64 Palette Payload와 Object Assembly Recipe의 제한된 NetSerialize 유지
+- `Source/Project_MuseumHeist/Private/Core/HeistGameMode.cpp`
+  - 서버 결과 Snapshot에서 Artifact DataTable 표시명과 실제 제출 Replica Payload 캡처
+- `Source/Project_MuseumHeist/Public/UI/ViewModels/HeistResultViewModel.h`
+- `Source/Project_MuseumHeist/Private/UI/ViewModels/HeistResultViewModel.cpp`
+  - 계약 결과, 필수 목표, Secured/Quota/Extra, Reward 식과 Replica Metadata의 한글 요약
+- `Source/Project_MuseumHeist/Public/UI/Widgets/HeistResultWidget.h`
+- `Source/Project_MuseumHeist/Private/UI/Widgets/HeistResultWidget.cpp`
+  - Painting Payload를 실제 Texture로 복원
+  - Object Part/Socket/Orientation을 현재 2D Assembly 규칙과 같은 Anchor/Size/Angle로 재구성하는 Blueprint Helper
+- `Source/Project_MuseumHeist/Private/Tests/HeistResultTests.cpp`
+  - `ScreenPresentation`, `ReplicaRecapPayload` 자동화 추가
+- `Source/Project_MuseumHeist/Public/Debug/HeistCheatManager.h`
+- `Source/Project_MuseumHeist/Private/Debug/HeistCheatManager.cpp`
+- `Source/Project_MuseumHeist/Public/Debug/HeistDebugFunctionLibrary.h`
+- `Source/Project_MuseumHeist/Private/Debug/HeistDebugFunctionLibrary.cpp`
+  - 서버 시각 Recap Seed와 Server/Client Result Presentation Audit 추가
+
 ### Unreal Assets
 
 - `Content/Blueprints/UI/Forgery/WBP_HeistForgery.uasset`
@@ -180,14 +217,11 @@ GDD 29쪽과 TDD 40쪽을 Microsoft Word PDF로 다시 렌더해 전 페이지 C
 
 ### Build
 
-현재 `C:\Users\User\AppData\Local\UnrealBuildTool\Log.txt`:
-
 ```text
-Result: Succeeded
-Total execution time: 5.52 seconds
+UnrealEditor-Project_MuseumHeist.dll  2026-08-09 23:05 KST
+Project_MuseumHeistEditor Build       PASS
+Final Source Revision Build           PASS
 ```
-
-`Binaries/Win64/UnrealEditor-Project_MuseumHeist.dll` 시각은 `2026-08-09 15:24:00`이며 최신 변경 C++ 시각 `15:23:41`보다 이후다.
 
 ### MCP / Asset Save
 
@@ -201,6 +235,9 @@ F_TENADA Runtime Font          FontFace=TENADA / Source=SourceArt/UI/Fonts/TENAD
 Object Assembly KoreanUIFont   WBP CDO assignment / Saved=true
 Python Remote Execution        DisabledAfterImport=true
 Font Asset Dirty State         false / FF_TENADA, F_TENADA, Forgery WBP, Assembly WBP
+WBP_Result Visual Recap Tree   MCP COMPILE PASS / SAVED / Dirty=false
+WBP_Result Korean Runtime Font F_TENADA / 13 TextBlocks / 기존 Size 유지
+WBP_Result Native Binding      PASS / 최종 Editor DLL 반영
 ```
 
 ### Static Checks
@@ -212,6 +249,15 @@ MinimumForgeryScore unique values        [0.7]
 Inspection score Alert escalation path   REMOVED
 Timeout Guard selection                  EVENT-ONLY / NEAREST ONE
 ReplicaAcceptanceContract                PASS / 2026-08-09 15:42 KST
+TASK-W6-007 source diff check             PASS
+Required Target player-facing name       PASS
+Painting/Object actual recap payload      PASS
+Result presentation automation            PASS / 8 of 8
+TASK-W6-008 replay automation             PASS / 2 Player same-session replay
+Shutdown residual verification            PASS / all remaining counts 0
+Lobby/second-match presentation reset     PASS
+Replay clean log                          Saved/Logs/TASK-W6-008-Replay-2P-Clean.log
+Result clean log                          Saved/Logs/TASK-W6-008-Result-Regression-Clean.log
 ```
 
 ---
@@ -229,40 +275,14 @@ ReplicaAcceptanceContract                PASS / 2026-08-09 15:42 KST
 
 ## 6. Resume Here
 
-현재 변경을 다시 구현하지 않는다. 다음 단계는 User PIE 증거 수집이다.
+TASK-W6-007과 TASK-W6-008 변경을 다시 구현하거나 같은 검증을 반복하지 않는다.
 
-권장 환경:
+1. 새 대화에서 Notion 작업보드의 `진행중`/`검토중`과 사용자가 지정한 Task를 라이브 조회한다.
+2. 현재 확인된 `검토중` 항목은 TASK-W6-000이며, 다음 구현 번호는 사용자 지정 또는 최신 Notion 순서를 따른다.
+3. 007 증적은 TEST-W6-006, 008 증적은 TEST-W6-007을 기준으로 한다.
+4. 008 이후 별도 코드가 Result/Travel/HUD 수명주기를 변경한 경우에만 `ProjectMuseumHeist.Result`와 `ProjectMuseumHeist.Replay`를 재실행한다.
 
-```text
-PIE Mode: New Editor Window
-Players: 2
-Net Mode: Listen Server
-```
-
-최소 확인 항목:
-
-1. Surface와 Object UI가 한글 Title/단일 예상 품질/시간/Submit/Cancel/통합 Footer 구조이고, 별도 Instruction/Mode Status가 없는지 확인한다.
-2. 작업 UI는 Owning Client에만 나타나야 한다.
-3. 예상 점수 70 미만은 Submit이 비활성화되고 70 이상은 활성화돼야 한다.
-4. 서버가 `QualityBelowMinimum`으로 거부하면 Replica 없이 같은 UI와 남은 Timer가 유지돼야 한다.
-5. 70 이상 승인 시 UI가 닫히고 Case가 Owner 전용 ReplicaReady 상태가 돼야 한다.
-6. Surface에서 Brush 소·중·대가 Drawing Content 안에 시각적으로 구분되고 실제 Stroke 굵기에 반영돼야 한다.
-7. Object에서 2D 조각 Drag & Drop, 호환 Socket 양자화, Wheel 회전, 우클릭 제거, R Reset이 동작해야 한다.
-8. Object 화면에는 Original/Template Name/정답 실루엣/UViewport/Part·Socket 순회 버튼이 없어야 한다.
-9. Surface/Object 작업 중 Alert가 Quiet을 벗어나면 Cancel 요청은 한 번만 발생하고 Widget이 즉시 닫히며 Gameplay Input이 복원돼야 한다.
-10. Surface와 Object Timeout 모두 작업과 Preview를 폐기하고 Replica를 만들지 않아야 한다.
-11. Timeout 전후 Alert 값이 같고 근처 유효 Guard 한 명만 한 번 조사해야 한다.
-12. 승인된 70/80/95점 Replica 검사로 Alert가 증가하지 않아야 한다.
-
-고신호 로그:
-
-```text
-Forgery timeout investigation: ... AlertChanged=false OneShot=true ... Result=ASSIGNED
-Guard forgery timeout investigation: ... AlertChanged=false ... Result=PASS
-Forgery score commit rejected: ... Reason=QualityBelowMinimum
-```
-
-`ProjectMuseumHeist.Forgery.ReplicaAcceptanceContract` 자동화는 PASS했다. 남은 필수 증거는 User PIE다. User PIE까지 PASS하면 이 로컬 Work Package의 구현 상태만 완료 후보로 판단한다. Weekly Gate/Test Log와 Notion Task 상태는 해당 Task의 완료 기준과 증거를 별도로 대조한 뒤 갱신한다.
+현재 사용자 지정 범위 007/008은 `완료`다. 새 Task를 임의로 시작하지 않는다.
 
 ---
 

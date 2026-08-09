@@ -20,6 +20,7 @@
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
+#include "Engine/SkeletalMesh.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Net/UnrealNetwork.h"
 
@@ -96,8 +97,18 @@ void AHeistPlayerCharacter::BeginPlay()
 		FirstPersonCamera->AttachToComponent(GetCapsuleComponent(), FAttachmentTransformRules::SnapToTargetNotIncludingScale);
 		FirstPersonCamera->SetRelativeLocation(FVector(0.0f, 0.0f, 64.0f));
 
-		UE_LOG(LogHeist, Warning, TEXT("[%s] First-person camera socket setup failed: RequestedSocket=%s Reason=MissingSocket Fallback=CapsuleEyeHeight"), *GetName(),
-			   *FirstPersonCameraSocketName.ToString());
+		const USkeletalMesh* SkeletalMeshAsset = GetMesh()->GetSkeletalMeshAsset();
+		const bool bUsesEnginePlaceholderMesh = IsValid(SkeletalMeshAsset) && SkeletalMeshAsset->GetPathName().StartsWith(TEXT("/Engine/EngineMeshes/SkeletalCube"));
+		if (bUsesEnginePlaceholderMesh)
+		{
+			UE_LOG(LogHeist, Log, TEXT("[%s] First-person camera placeholder fallback: Mesh=%s RequestedSocket=%s Fallback=CapsuleEyeHeight"), *GetName(),
+				   *GetNameSafe(SkeletalMeshAsset), *FirstPersonCameraSocketName.ToString());
+		}
+		else
+		{
+			UE_LOG(LogHeist, Warning, TEXT("[%s] First-person camera socket setup failed: Mesh=%s RequestedSocket=%s Reason=MissingSocket Fallback=CapsuleEyeHeight"), *GetName(),
+				   *GetNameSafe(SkeletalMeshAsset), *FirstPersonCameraSocketName.ToString());
+		}
 	}
 
 	GetMesh()->SetCastShadow(true);

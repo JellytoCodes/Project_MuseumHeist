@@ -60,6 +60,7 @@ bool AHeistHUD::ShowMainHUD()
 	}
 
 	MainHUDWidget->SetVisibility(ESlateVisibility::Visible);
+	MainHUDWidget->RefreshHUDPresentation();
 	return true;
 }
 
@@ -67,6 +68,7 @@ void AHeistHUD::HideMainHUD()
 {
 	if (IsValid(MainHUDWidget))
 	{
+		MainHUDWidget->ResetHiddenPresentationState();
 		MainHUDWidget->SetVisibility(ESlateVisibility::Collapsed);
 	}
 }
@@ -514,6 +516,7 @@ void AHeistHUD::HideResultScreen()
 {
 	if (IsValid(ResultWidget))
 	{
+		ResultWidget->ResetHiddenPresentationState();
 		ResultWidget->SetVisibility(ESlateVisibility::Collapsed);
 	}
 }
@@ -521,6 +524,11 @@ void AHeistHUD::HideResultScreen()
 UHeistResultViewModel* AHeistHUD::GetResultViewModel() const
 {
 	return ResultViewModel;
+}
+
+UHeistResultWidget* AHeistHUD::GetResultWidget() const
+{
+	return ResultWidget;
 }
 
 void AHeistHUD::InitializeResultPresentation()
