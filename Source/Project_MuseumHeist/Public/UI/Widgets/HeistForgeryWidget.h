@@ -118,7 +118,11 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 	void FinishPointerInteraction();
 	void ResetLocalStrokePreview();
 	void RefreshDrawingFeedback();
-	void MarkPreviewScoreDirty();
+	void BindActionButtons();
+	void RefreshCommonActionPresentation();
+	bool CanSubmitCurrentDrawing() const;
+	bool IsCurrentDrawingRejectedByServer() const;
+	void MarkPreviewScoreDirty(bool bLocalDrawingChanged = false);
 	void RefreshLocalPreviewScore();
 	void RefreshDrawingTimeRemaining();
 	void BindPaletteButtons();
@@ -146,6 +150,10 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 	int32 DrawingRasterDirtyMaximumY = INDEX_NONE;
 	float PreviewScoreUpdateAccumulator = 0.0f;
 	bool bPreviewScoreDirty = true;
+	TOptional<float> LocalPreviewScore;
+	int32 LocalDrawingRevision = 0;
+	int32 LastObservedStrokeValidationRevision = INDEX_NONE;
+	int32 RejectedLocalDrawingRevision = INDEX_NONE;
 	int32 LastDisplayedDrawingTimeSeconds = INDEX_NONE;
 	int32 LastDisplayedLockdownSeconds = INDEX_NONE;
 
@@ -172,6 +180,12 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 
 	UFUNCTION()
 	void HandlePaletteButton8Clicked();
+
+	UFUNCTION()
+	void HandleSubmitClicked();
+
+	UFUNCTION()
+	void HandleCancelClicked();
 
 #pragma endregion
 
@@ -205,6 +219,30 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> PreviewScoreText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> TitleText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> InstructionText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> QualityRequirementText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> ModeStatusText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UButton> SubmitButton;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UButton> CancelButton;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> SubmitButtonLabel;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> CancelButtonLabel;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UButton> PaletteButton1;

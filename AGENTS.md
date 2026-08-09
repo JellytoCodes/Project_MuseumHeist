@@ -1,8 +1,8 @@
 # Project_MuseumHeist — Codex Instructions
 
-## Rev 11: Contract Run And Player Experience Foundation
+## Rev 12: Replica Acceptance And Shared Forgery UI Contract
 
-기준일: 2026-08-01 (GDD / TDD / Agent Rulebook 분리 반영)
+기준일: 2026-08-09 (Quality 70 승인 Gate / Timeout Investigation / 공통 UI 반영)
 엔진: Unreal Engine 5.8
 현재 목표: 2026-09-20 Final RC / 프로젝트 마무리
 
@@ -42,7 +42,7 @@ Object Assembly Forgery
 
 Project_MuseumHeist는 Unreal Engine 5.8 C++ 기반의 **1~4인 온라인 협동 1인칭 잠입·유물 위조 하이스트 게임**이다.
 
-플레이어들은 박물관에 침입해 계약이 지정한 핵심 작품을 찾고, 여러 전시품의 Replica를 현장에서 빠르게 제작해 Original과 바꿔치기한다. Guard가 위조품을 발견하고 Lockdown을 완료하기 전에 Required Target을 반출하고 Loot Value Quota를 채운 뒤, 욕심을 더 낼지 현재 전리품을 확보하고 탈출할지 결정한다.
+플레이어들은 박물관에 침입해 계약이 지정한 핵심 작품을 찾고, 제한 시간 안에 Quality 70 이상인 Replica를 현장에서 제작해 Original과 바꿔치기한다. Guard의 시야·추격·교체 소음과 Timeout 조사로 Museum Alert와 동선 압박이 커지기 전에 Required Target을 반출하고 Loot Value Quota를 채운 뒤, 욕심을 더 낼지 현재 전리품을 확보하고 탈출할지 결정한다.
 
 ## Core Fantasy
 
@@ -51,10 +51,10 @@ Project_MuseumHeist는 Unreal Engine 5.8 C++ 기반의 **1~4인 온라인 협동
 → 계약의 Required Target과 Loot Value Quota 확인
 → 여러 전시품 탐색
 → 20~45초 Speed Forgery 또는 Object Assembly
-→ 서버 품질 판정
+→ 서버 품질 판정 / 70점 Replica 승인
 → Replica와 Original 교체
 → 전리품 운반 / Secured Value 누적
-→ Guard 검사 및 Alert 상승
+→ 교체 소음·Timeout 조사 / Guard Detection·Alert
 → 더 훔치기 또는 탈출 결정
 → Required Target과 Quota를 반출하고 팀 결과 확인
 ```
@@ -102,13 +102,17 @@ Project_MuseumHeist는 Unreal Engine 5.8 C++ 기반의 **1~4인 온라인 협동
 3. `Museum_Heist_GDD.docx`
    - 제품 비전, 재미의 근거, Player Experience, Contract Run, Level/Art/Audio 방향과 Balance 의도
 
+Notion의 `Museum Heist — Project Leaderboard`와 연결된 `주차별 작업보드`는 현재 Task, 상태, 우선순위와 실행 순서에 대한 Live Source of Truth다. 새 작업은 `AGENTS.md`를 읽은 직후 Notion 작업보드의 `진행중`/`검토중` Task와 사용자가 지정한 Task를 반드시 라이브 조회한다. `CURRENT_PROJECT_STATUS.md`는 그 결과와 로컬 Git/Editor 증거를 이어 주는 오프라인 실행 캐시이며 설계 우선순위에 포함하지 않는다. `LOCAL_PROGRESS_INBOX.md`는 Notion에 아직 연결되지 않았거나 반영되지 않은 실질 작업을 잃지 않기 위한 Reconciliation Queue다.
+
+Notion은 진행 상태의 권한을 가지지만 Gameplay Rule, Authority, Data Contract와 구현 사실을 덮어쓰지 않는다. Notion Task 내용이 AGENTS/GDD/TDD 또는 현재 코드와 충돌하면 어느 한쪽을 추측으로 동기화하지 않고 차이를 보고한다. Notion 연결 또는 조회가 실패하면 로컬 인계 문서를 최신 상태로 단정하지 않고 `OFFLINE CACHE`로 표시하며, Task 완료·우선순위·다음 작업을 확정하지 않는다.
+
 하위 문서가 상위 문서와 충돌하면 구현 전에 상위 문서를 먼저 수정한다. 다만 문서의 역할이 다른 경우에는 해당 역할의 Source of Truth를 따른다.
 
 - 제품 방향과 Player-facing 경험을 변경할 때는 GDD를 먼저 갱신하고 TDD와 AGENTS의 파급 범위를 동기화한다.
 - Authority, Replication, Data Schema 또는 Validation을 변경할 때는 TDD를 먼저 갱신하고 AGENTS의 실행 규칙을 동기화한다.
 - Codex 작업 절차와 금지 범위는 AGENTS가 최종 권한을 가진다.
 
-Notion Task/Test 기록은 문서 우선순위에 포함하지 않는다. 에이전트는 사용자가 지정한 작업의 범위를 이해하기 위해 관련 항목을 필요할 때 조회할 수 있다. Task 생성·삭제·재배열과 실행 순서 변경은 사용자가 직접 관리한다. 다만 사용자가 명시적으로 요청한 경우, 에이전트는 현재 대화에서 검증한 결과에 한해 기존 Task의 상태·진행률·완료 증적을 갱신할 수 있다. 별도 Test Log Database는 사용자 제공 PIE 로그·화면 관찰과 자동화 결과를 근거로 에이전트가 직접 생성·갱신하며, 관련 Task Relation, 환경, 시나리오, 기대 결과, 실제 결과, Server/Client 증적, 최종 PASS/FAIL과 잔여 이슈를 기록한다. Test Log 기록만으로 Task 완료 상태를 임의 변경하지 않는다.
+Notion Task/Test 기록은 설계 문서 우선순위에 포함하지 않지만 프로젝트 진척 상태의 Live Source of Truth다. 에이전트는 매 작업 시작 시 관련 항목을 라이브 조회하고 사용자 요청·로컬 구현 증거와 대조한다. Task 생성·삭제·재배열과 실행 순서 변경은 사용자가 직접 관리한다. 다만 사용자가 명시적으로 요청한 경우, 에이전트는 현재 대화에서 검증한 결과에 한해 기존 Task의 상태·진행률·완료 증적을 갱신할 수 있다. 별도 Test Log Database는 사용자 제공 PIE 로그·화면 관찰과 자동화 결과를 근거로 에이전트가 직접 생성·갱신하며, 관련 Task Relation, 환경, 시나리오, 기대 결과, 실제 결과, Server/Client 증적, 최종 PASS/FAIL과 잔여 이슈를 기록한다. Test Log 기록만으로 Task 완료 상태를 임의 변경하지 않는다.
 
 `ClassManifest.md`와 `Docs/W2_BlueprintShellPlan.md`는 더 이상 별도 거점 문서로 운영하지 않으며 AGENTS로 통합한다.
 게임플레이 규칙, 데이터 계약, Shell/Presentation 경계, 구현 우선순위 변경은 AGENTS 본문에서 직접 관리한다.
@@ -147,8 +151,8 @@ Title Menu
 → Required Target / Loot Value Quota 확인
 → 전시품과 Loose Loot 탐색
 → Painting Speed Forgery 또는 Object Assembly
-→ 서버 Quality Score 판정 / Replica 배치 / Original 회수
-→ Carry Value 증가 / Guard Inspection / Alert
+→ 서버 Quality Score 판정 / 70점 Replica 승인 / Original 회수
+→ Carry Value 증가 / 교체 소음·Timeout 조사 / Guard Detection·Alert
 → 다른 전시품을 반복해서 노리거나 탈출 결정
 → Shared Extraction에서 전리품 Secured
 → Team Result / Player Contribution
@@ -302,7 +306,7 @@ Smoke 및 Trap 계열 기능은 Stretch 목록에 포함하지 않는다.
 - Surface Forgery와 Object Assembly는 서로의 Template Row를 공유하지 않는다.
 - Surface Forgery와 Object Assembly는 서로의 제출 Payload와 Replica Data를 공유하지 않는다.
 - Surface Forgery와 Object Assembly는 서로의 State Machine과 상세 Result를 공유하지 않는다.
-- 두 방식은 Owner-only Input Mode 원칙과 서버가 확정한 최종 0~100 Quality Score의 Guard Inspection Handoff만 공유할 수 있다.
+- 두 방식은 Owner-only Input Mode, 공통 설명·70점 기준·예상 점수·Timer·Submit/Cancel UI, 서버가 확정한 최종 0~100 Quality Score와 Replica 승인 Gate만 공유할 수 있다.
 - `AHeistDisplayCaseActor`는 제거됐다. `BP_PaintingDisplayCase`는 `AHeistPaintingDisplayCaseActor`를 직접 부모로 사용한다.
 - Painting 전시품은 `BP_PaintingDisplayCase` 공용 Shell만 사용한다.
 - `AHeistSculptureDisplayCaseActor`는 제거됐다. Sculpture / Ceramic 전시품은 `AHeistObjectDisplayCaseActor`만 사용한다.
@@ -722,14 +726,16 @@ Escape 취소 조건:
 ## Speed Painting Pacing
 
 - Surface Forgery의 목표 시간은 `20~45초`, 기본값은 `40초`다.
-- 플레이어는 남은 시간과 관계없이 언제든 현재 Drawing을 Submit할 수 있다.
-- Timeout은 유효 Stroke가 하나 이상 있으면 현재 Drawing을 자동 Submit한다.
-- 유효 Stroke가 없으면 Timeout Cancel로 처리한다.
-- Submit은 Score와 Replica Texture Preview를 확정하고 Case를 `ReplicaReady`로 전환할 뿐, Original 회수나 최종 Replica 배치를 즉시 확정하지 않는다. 동시에 Full-Screen UI Session은 종료하고 Gameplay로 복귀한다.
+- 플레이어는 남은 시간과 관계없이 Local Preview Quality가 70 이상일 때 현재 Drawing을 Submit할 수 있다.
+- 서버는 Artifact의 `MinimumForgeryScore`와 프로젝트 공통 하한 `0.70` 중 큰 값을 사용하며, 최종 Quality가 기준 이상일 때만 Replica 후보를 승인한다.
+- 최종 Quality가 기준 미만이면 `QualityBelowMinimum`으로 거부하고 현재 Drawing, Full-Screen UI Session과 남은 Timer를 유지한다.
+- Timeout은 Stroke 유무와 관계없이 현재 Drawing과 Preview를 폐기하고 Replica를 만들지 않는다.
+- Timeout 시 Case 반경 `ForgeryTimeoutInvestigationRadius` 안의 `Patrol` 또는 `ReturnToPatrol` Guard 중 가장 가까운 한 명에게 한 번만 `InvestigateNoise`를 요청한다. Timeout 자체는 Alert를 변경하지 않는다.
+- 승인된 Submit은 Score와 Replica Texture Preview를 확정하고 Case를 `ReplicaReady`로 전환할 뿐, Original 회수나 최종 Replica 배치를 즉시 확정하지 않는다. 동시에 Full-Screen UI Session은 종료하고 Gameplay로 복귀한다.
 - `ReplicaReady`에서는 Owner Lock을 유지하되 Submit 당시의 Overlap 후보는 유지할 필요가 없다. Owner가 같은 Case에 재접근했을 때 `E` 교체·회수 또는 `R` Full-Screen 다시 그리기를 선택한다.
 - `E` 확정은 Replica 배치, Original Grid 추가, Case 상태 변경, Objective/Carrier 갱신과 교체 소음을 하나의 서버 작업으로 처리한다.
 - Inventory Grid 또는 Weight 검증이 실패하면 위 작업 전체를 거부하고 `ReplicaReady`를 유지한다.
-- 낮은 Score는 즉시 Match Failure가 아니라 짧은 Guard Inspection Delay와 Alert Escalation으로 이어진다.
+- Quality는 70점 Replica 승인과 Result Recap에만 사용한다. 승인된 70~100점 안에서 Quality가 Guard Inspection Delay, Alert 또는 Lockdown을 변경하지 않는다.
 - Reference Image는 약 15초 Drawing으로도 핵심 실루엣을 알아볼 수 있도록 단순화한다.
 - Template Palette는 2~8색을 허용하되 일반적인 Release Template은 3~5색을 목표로 한다.
 - 실제 작품 기반 Reference는 Public Domain 또는 사용 권한이 확인된 Source만 사용하며 직접 단순화한 파생 이미지를 제작한다.
@@ -917,8 +923,10 @@ Jewelry, Fossil 및 기타 Family는 명시적인 설계·구현 승인 전 활�
 - 조립 화면은 로컬 Preview Component를 사용하며 World Actor를 직접 변경하지 않는다.
 - Session 종료 시 Gameplay Input Mode와 HUD 접근을 Surface Forgery와 동일한 원칙으로 복원한다.
 - Object Assembly 목표 시간은 `25~35초`, 기본값은 `30초`다.
-- 플레이어는 언제든 현재 Assembly를 Submit할 수 있다.
-- Timeout은 현재 유효 Entry가 하나 이상 있으면 현재 Payload를 자동 Submit하고, 유효 Entry가 없으면 Cancel 처리한다.
+- 플레이어는 Local Preview Quality가 70 이상일 때 현재 Assembly를 Submit할 수 있다.
+- 서버 최종 Quality가 70 미만이면 `QualityBelowMinimum`으로 거부하고 현재 Entry, Full-Screen UI Session과 남은 Timer를 유지한다.
+- Timeout은 Entry 유무와 관계없이 현재 Assembly Payload와 Preview를 폐기하고 Replica를 만들지 않는다.
+- Timeout의 근처 Guard 1회 `InvestigateNoise`와 Alert 불변 계약은 Surface Forgery와 동일하다.
 
 ## Server Authority And Payload
 
@@ -956,7 +964,14 @@ Material Match: 10%
 - 불필요한 Part를 과도하게 추가하면 Final Score Cap을 적용한다.
 - Client Preview는 확정값이 아니다.
 - 최종 Quality Score는 서버만 확정한다.
-- Guard Inspection은 서버가 확정한 0~100 Quality Score만 공통 입력으로 사용한다.
+- Object와 Surface의 서버 최종 Quality는 동일한 70점 Replica 승인 Gate를 사용한다.
+
+## Shared Forgery UI Contract
+
+- Surface Forgery와 Object Assembly는 `Mode Title → 한 문장 Instruction → QUALITY 70 REQUIRED → Preview Score → Remaining Time → Submit / Cancel` 정보 순서를 공통으로 사용한다.
+- Submit Label과 `Enter`, Cancel Label과 `Escape`, `TIME {0}` 표기, 기준 미달 상태 문구와 Button Disabled 의미를 두 모드에서 일치시킨다.
+- Palette / Brush / Erase와 Part / Socket / Orientation / Material 선택은 모드별 작업 영역으로 유지한다.
+- Local Preview는 반응성 안내일 뿐이며 서버 최종 Quality와 승인 결과를 대체하지 않는다.
 
 ## Replica Data
 
@@ -1042,13 +1057,13 @@ Contract Failed
 - 전원 체포 또는 다른 Terminal Failure
 ```
 
-- 모든 Crew 탈출, 일부 Arrest, Alert Level, 최고 / 최악 Replica와 Extra Value는 별도 Recap으로 표시한다.
-- 낮은 Forgery Score는 Contract Value를 직접 삭제하지 않고 Guard Pressure를 높인다.
+- 모든 Crew 탈출, 일부 Arrest, Alert Level, 승인된 실제 Replica와 Extra Value는 별도 Recap으로 표시한다.
+- Forgery Quality는 Contract Value를 직접 변경하지 않으며 70점 Replica 승인과 Recap에만 사용한다.
 - Result는 경쟁 Rank를 만들지 않으며 팀이 만든 Replica와 발생한 사건을 보여주는 Match Story로 사용한다.
 
 ## Failure-forward
 
-- 서툰 Replica와 불완전한 Assembly도 서버 Validation을 통과하면 World에 배치한다.
+- 서툴더라도 Quality 70 이상인 Replica와 Assembly는 서버 Validation을 통과하면 World에 배치한다.
 - 실수는 가능한 한 즉시 Match Failure가 아니라 Guard Investigation, Alert, Drop, Rescue 또는 급한 탈출 상황을 만든다.
 - Guard와 Museum Presentation은 진지하게 유지하고, 코미디는 Player 행동과 실제 Replica 결과에서 발생하게 한다.
 - 고정 Painter, Lookout, Carrier 역할을 강제하지 않는다.
@@ -1250,7 +1265,9 @@ Smoke 및 Trap 관련 Blueprint와 C++ Class는 신규 Asset의 부모 또는 Da
 
 ## Task Management Non-interference
 
-- Notion의 Task 목록은 사용자가 지정한 작업 범위를 이해하기 위한 읽기 전용 Context다.
+- Notion의 `주차별 작업보드`는 현재 Task, 상태, 우선순위와 실행 순서의 Live Source of Truth다. 모든 새 작업에서 `진행중`/`검토중` Task와 사용자가 지정한 Task를 먼저 라이브 조회한다.
+- 고정 진입점은 `CURRENT_PROJECT_STATUS.md`의 `Notion Live Progress Source`에 기록된 Leaderboard, Task Data Source와 Test Log Data Source를 사용한다.
+- Notion SQL 조회가 플랜 또는 일시 오류로 실패하면 같은 작업보드에서 Search/Fetch로 폴백한다. Search/Fetch도 실패하면 실패를 보고하고 로컬 문서를 `OFFLINE CACHE`로만 취급한다.
 - 에이전트는 Task ID, 실행 순서, 담당자, Task 생성·삭제·재배열을 직접 변경하지 않는다.
 - 사용자가 명시적으로 요청한 경우에만, 현재 대화에서 검증한 결과에 한해 기존 Task의 상태·진행률·완료 증적을 갱신한다.
 - 별도 Notion Test Log Database는 검증 증적의 기록 대상이다. 사용자 제공 PIE Server/Client 로그·화면 관찰과 자동화 결과를 근거로 에이전트가 직접 Test Log를 생성·갱신하고 관련 Task를 연결한다.
@@ -1260,10 +1277,26 @@ Smoke 및 Trap 관련 Blueprint와 C++ Class는 신규 Asset의 부모 또는 Da
 
 ## Work Bootstrap
 
-- 작업 시작 시 `AGENTS.md`와 관련 GDD/TDD 범위, Manifest 상태를 먼저 확인한다.
+- 작업 시작 시 `AGENTS.md`를 읽은 뒤 Notion `주차별 작업보드`를 라이브 조회하고, 그 다음 `LOCAL_PROGRESS_INBOX.md`의 Active Entry, `CURRENT_PROJECT_STATUS.md`, 관련 GDD/TDD 범위와 Manifest 상태를 확인한다.
+- Notion에서 `진행중`/`검토중` Task, 사용자가 지정한 Task의 제목·상태·완료 기준·비고를 확인하고 로컬 인계 문서와 대조한다.
+- Inbox의 `UNLINKED` 또는 `READY_TO_SYNC` Entry를 Notion 라이브 결과와 대조하고, 연결 근거가 없으면 기존 Task에 임의 귀속하지 않는다.
 - Git 작업 상태와 기존 Asset 경로를 읽기 전용으로 확인하고, 사용자의 기존 변경을 새 작업 결과로 오인하지 않는다.
 - Editor 작업이 필요하면 사용자용 Blueprint/Data/Map 절차를 현재 대화에서 제공한다.
 - 사용자가 명시적으로 요청하지 않는 한 별도 작업용 `.md` 파일을 추가하지 않는다.
+- Notion 라이브 조회 시각·조회 결과, Active Task, 구현 범위, Build/Asset/PIE 증거 또는 Resume Point가 실질적으로 바뀌면 같은 작업 안에서 `CURRENT_PROJECT_STATUS.md`를 갱신한다.
+- `CURRENT_PROJECT_STATUS.md`에는 확인된 현재 상태만 유지하고 GDD/TDD 규칙, 전체 Roadmap 또는 Notion Task 목록을 복제하지 않는다.
+
+## Local Progress Inbox Contract
+
+- 정확한 Notion Task Relation을 확인하지 못한 상태에서 코드, Asset, 문서, Gameplay 방향 또는 검증 증거가 실질적으로 바뀌면 같은 작업 안에서 `LOCAL_PROGRESS_INBOX.md`에 기록한다.
+- Notion Task는 확인됐지만 쓰기 요청이 없거나 쓰기가 실패해 진행 증거가 아직 반영되지 않았으면 `READY_TO_SYNC`로 기록한다.
+- Entry ID는 `LOCAL-YYYYMMDD-NN` 형식을 사용한다.
+- 각 Entry는 `State`, `Notion Relation`, `User Request / Decision`, `Changed Scope`, `Verification`, `Remaining Evidence`, `Next Reconciliation Action`을 포함한다.
+- Build, Blueprint Compile/Save, Automation, User PIE, Multiplayer와 Notion Write 증거를 서로 대체하지 않고 개별 상태로 기록한다.
+- `UNLINKED` Entry를 제목이나 번호가 비슷하다는 이유만으로 기존 Notion Task에 연결하지 않는다. 완료 기준이 일치하거나 사용자가 관계를 확정해야 한다.
+- Notion Task 상태·진행률·증거 쓰기는 기존 규칙대로 사용자가 명시적으로 요청하고 현재 대화의 증거가 있을 때만 수행한다.
+- Notion 반영을 확인하면 Entry를 `RECONCILED`로 바꾸고 Active Queue에서 한 줄 Archive로 이동한다. 별도 Task가 필요 없는 프로젝트 운영 기록은 `NO_TASK_REQUIRED`로 닫을 수 있다.
+- 단순 조회, 변경 없는 진단, 반복 상태 확인은 Inbox에 누적하지 않는다.
 
 ## 구현 전 Deliverable Audit
 

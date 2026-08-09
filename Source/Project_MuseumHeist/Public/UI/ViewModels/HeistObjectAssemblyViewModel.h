@@ -47,6 +47,7 @@ class PROJECT_MUSEUMHEIST_API UHeistObjectAssemblyViewModel : public UMVVMViewMo
 	void ResetLocalAssemblyState();
 	void SyncSelectionFromSelectedPart();
 	void RefreshSelectionPresentation();
+	void RefreshQualityPreview();
 	void RefreshAlertPresentation();
 	void SetStatusMessage(const FText& NewStatusText);
 	const FHeistObjectAssemblyPartRow* FindPartDefinition(FName PartId) const;
@@ -77,6 +78,9 @@ class PROJECT_MUSEUMHEIST_API UHeistObjectAssemblyViewModel : public UMVVMViewMo
 	int32 ObservedPayloadValidationRevision = 0;
 	int32 LocalPreviewRevision = 0;
 	bool bSubmitPending = false;
+	bool bHasPreviewQuality = false;
+	float PreviewQualityScore = 0.0f;
+	float MinimumAcceptedQualityScore = HeistReplicaAcceptance::MinimumQualityScore;
 
 #pragma endregion
 
@@ -116,6 +120,10 @@ class PROJECT_MUSEUMHEIST_API UHeistObjectAssemblyViewModel : public UMVVMViewMo
 	int32 GetRequiredPartCount() const;
 	int32 GetPlacedRequiredPartCount() const;
 	int32 GetLocalPreviewRevision() const;
+	bool HasPreviewQuality() const;
+	float GetPreviewQualityScore() const;
+	float GetMinimumAcceptedQualityScore() const;
+	bool CanSubmitAssembly() const;
 	UStaticMesh* LoadCoreStaticMesh() const;
 	UStaticMesh* LoadPartStaticMesh(FName PartId) const;
 

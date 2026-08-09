@@ -36,6 +36,8 @@ class PROJECT_MUSEUMHEIST_API UHeistObjectAssemblyComponent : public UActorCompo
 	bool TryRestartAssemblyFromPreview();
 	bool CancelAssemblySession(FName Reason);
 	bool ForceTimeoutForDebug();
+	static bool CalculateQualityPreview(const FHeistObjectAssemblyTemplateRow& TemplateDefinition, FName ArtifactId,
+		const TArray<FHeistObjectAssemblyEntry>& Entries, FHeistObjectAssemblyResult& OutResult);
 
 	bool IsSessionActive() const;
 	bool HasPendingReplicaReview() const;

@@ -9,6 +9,7 @@
 #include "Core/HeistPlayerController.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/GameStateBase.h"
+#include "InputCoreTypes.h"
 #include "UI/ViewModels/HeistObjectAssemblyViewModel.h"
 
 namespace
@@ -27,6 +28,11 @@ void ApplyVisibility(UWidget* Widget, const bool bVisible)
 	{
 		Widget->SetVisibility(bVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	}
+}
+
+FLinearColor ResolveQualityColor(const float Score, const float MinimumScore)
+{
+	return Score >= MinimumScore ? FLinearColor(0.25f, 0.95f, 0.42f) : FLinearColor(1.0f, 0.40f, 0.10f);
 }
 }
 
@@ -56,6 +62,21 @@ void UHeistObjectAssemblyWidget::NativeTick(const FGeometry& MyGeometry, const f
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
 	RefreshCountdownPresentation();
+}
+
+FReply UHeistObjectAssemblyWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
+{
+	if (!InKeyEvent.IsRepeat() && InKeyEvent.GetKey() == EKeys::Enter)
+	{
+		HandleSubmitClicked();
+		return FReply::Handled();
+	}
+	if (!InKeyEvent.IsRepeat() && InKeyEvent.GetKey() == EKeys::Escape)
+	{
+		HandleCancelClicked();
+		return FReply::Handled();
+	}
+	return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
 }
 
 void UHeistObjectAssemblyWidget::SetupObjectAssemblyWidget(UHeistObjectAssemblyViewModel* InObjectAssemblyViewModel, AHeistPlayerController* InPlayerController)
@@ -145,11 +166,30 @@ void UHeistObjectAssemblyWidget::RefreshObjectAssemblyPresentation()
 	}
 
 	ApplyText(TemplateNameText, ObjectAssemblyViewModel->GetTemplateDisplayText());
+	ApplyText(TitleText, NSLOCTEXT("HeistCommonForgeryUI", "AssemblyTitle", "OBJECT ASSEMBLY"));
 	ApplyText(SelectedPartText, ObjectAssemblyViewModel->GetSelectedPartText());
 	ApplyText(SelectedSocketText, ObjectAssemblyViewModel->GetSelectedSocketText());
 	ApplyText(SelectedOrientationText, ObjectAssemblyViewModel->GetSelectedOrientationText());
 	ApplyText(PlacementProgressText, ObjectAssemblyViewModel->GetPlacementProgressText());
 	ApplyText(AssemblyStatusText, ObjectAssemblyViewModel->GetStatusText());
+	ApplyText(InstructionText, NSLOCTEXT("HeistCommonForgeryUI", "AssemblyInstruction",
+		"Match the reference assembly. Reach 70/100, then submit. Timeout discards the work and calls one nearby guard."));
+	ApplyText(QualityRequirementText,
+		FText::Format(NSLOCTEXT("HeistCommonForgeryUI", "QualityRequirement", "REPLICA REQUIREMENT  {0}/100"),
+			FText::AsNumber(FMath::RoundToInt(ObjectAssemblyViewModel->GetMinimumAcceptedQualityScore()))));
+	const FText PreviewQualityText = ObjectAssemblyViewModel->HasPreviewQuality()
+		? FText::Format(NSLOCTEXT("HeistCommonForgeryUI", "ExpectedScore", "EXPECTED SCORE  {0}/100"),
+			FText::AsNumber(FMath::RoundToInt(ObjectAssemblyViewModel->GetPreviewQualityScore())))
+		: NSLOCTEXT("HeistCommonForgeryUI", "ExpectedScoreUnavailable", "EXPECTED SCORE  --/100");
+	ApplyText(PreviewScoreText, PreviewQualityText);
+	if (IsValid(PreviewScoreText))
+	{
+		PreviewScoreText->SetColorAndOpacity(ObjectAssemblyViewModel->HasPreviewQuality()
+			? ResolveQualityColor(ObjectAssemblyViewModel->GetPreviewQualityScore(), ObjectAssemblyViewModel->GetMinimumAcceptedQualityScore())
+			: FLinearColor(0.72f, 0.76f, 0.82f));
+	}
+	ApplyText(SubmitButtonLabel, NSLOCTEXT("HeistCommonForgeryUI", "SubmitButton", "SUBMIT"));
+	ApplyText(CancelButtonLabel, NSLOCTEXT("HeistCommonForgeryUI", "CancelButton", "CANCEL"));
 	ApplyText(AssemblyAlertWarningText, ObjectAssemblyViewModel->GetDangerWarningText());
 	if (IsValid(AssemblyAlertWarningText))
 	{
@@ -168,7 +208,7 @@ void UHeistObjectAssemblyWidget::RefreshObjectAssemblyPresentation()
 	PlacePartButton->SetIsEnabled(bHasSelection);
 	RemovePartButton->SetIsEnabled(bHasSelection && ObjectAssemblyViewModel->GetPlacedPartCount() > 0);
 	ResetAssemblyButton->SetIsEnabled(bDataReady && ObjectAssemblyViewModel->GetPlacedPartCount() > 0);
-	SubmitButton->SetIsEnabled(bDataReady && ObjectAssemblyViewModel->GetPlacedPartCount() > 0 && !ObjectAssemblyViewModel->IsSubmitPending());
+	SubmitButton->SetIsEnabled(ObjectAssemblyViewModel->CanSubmitAssembly());
 	CancelButton->SetIsEnabled(true);
 
 	RefreshLocalPreview();
@@ -194,7 +234,7 @@ void UHeistObjectAssemblyWidget::RefreshCountdownPresentation()
 		const FText TimeText = AssemblyTimeSeconds == INDEX_NONE
 								   ? FText::FromString(TEXT("--:--"))
 								   : FText::FromString(FString::Printf(TEXT("%02d:%02d"), AssemblyTimeSeconds / 60, AssemblyTimeSeconds % 60));
-		ApplyText(AssemblyTimeRemainingText, FText::Format(NSLOCTEXT("HeistObjectAssembly", "AssemblyTimeRemaining", "남은 조립 시간  {0}"), TimeText));
+		ApplyText(AssemblyTimeRemainingText, FText::Format(NSLOCTEXT("HeistCommonForgeryUI", "TimeRemaining", "TIME  {0}"), TimeText));
 	}
 
 	const bool bShowLockdown = ObjectAssemblyViewModel->IsLockdownCountdownVisible();

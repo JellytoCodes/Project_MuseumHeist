@@ -1105,7 +1105,7 @@ bool UHeistForgeryComponent::TrySubmitStrokePayload(const TArray<FVector2D>& Nor
 
 		if (RejectReason == FName(TEXT("SessionExpired")))
 		{
-			ClearSession(FName(TEXT("Timeout")), true);
+			HandleSessionTimeout();
 		}
 		return false;
 	}
@@ -1127,14 +1127,16 @@ bool UHeistForgeryComponent::TrySubmitStrokePayload(const TArray<FVector2D>& Nor
 		return false;
 	}
 
-	if (!TryCalculateAndStageForgeryScore())
+	FName ScoreRejectReason = NAME_None;
+	if (!TryCalculateAndStageForgeryScore(ScoreRejectReason))
 	{
 		bSubmitPending = false;
 		ResetStrokeTransportState(false);
-		RecordStrokeValidationResult(false, FName(TEXT("ScoreCalculationFailed")));
+		const FName FinalRejectReason = ScoreRejectReason.IsNone() ? FName(TEXT("ScoreCalculationFailed")) : ScoreRejectReason;
+		RecordStrokeValidationResult(false, FinalRejectReason);
 		++SessionRevision;
 		GetOwner()->ForceNetUpdate();
-		BroadcastSessionSnapshot(TEXT("ServerScoreRejected"), FName(TEXT("ScoreCalculationFailed")));
+		BroadcastSessionSnapshot(TEXT("ServerScoreRejected"), FinalRejectReason);
 		return false;
 	}
 
@@ -1654,8 +1656,9 @@ void UHeistForgeryComponent::ResetStrokeTransportState(const bool bResetLastVali
 	}
 }
 
-bool UHeistForgeryComponent::TryCalculateAndStageForgeryScore()
+bool UHeistForgeryComponent::TryCalculateAndStageForgeryScore(FName& OutRejectReason)
 {
+	OutRejectReason = NAME_None;
 	FHeistForgeryResult CalculatedResult;
 	int32 CalculatedReferenceMaskPixels = 0;
 	int32 CalculatedSubmittedMaskPixels = 0;
@@ -1663,14 +1666,31 @@ bool UHeistForgeryComponent::TryCalculateAndStageForgeryScore()
 	if (!CalculateForgeryScore(ValidatedStrokePoints, ValidatedStrokePointCounts, ValidatedStrokePaletteIndices, ValidatedStrokeBrushPresetIndices, CalculatedResult,
 							   CalculatedReferenceMaskPixels, CalculatedSubmittedMaskPixels, true))
 	{
+		OutRejectReason = FName(TEXT("ScoreCalculationFailed"));
 		UHeistDebugFunctionLibrary::DebugForgeryScoreCalculationRejected(this, FName(TEXT("MaskDecodeOrScoreContractFailed")));
 		return false;
 	}
 	const double ScoreCalculationMilliseconds = (FPlatformTime::Seconds() - ScoreCalculationStartSeconds) * 1000.0;
 
+	const AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	FHeistArtifactDataRow ArtifactDefinition;
+	if (!IsValid(HeistGameMode) || !HeistGameMode->TryGetArtifactDefinition(CalculatedResult.ArtifactId, ArtifactDefinition))
+	{
+		OutRejectReason = FName(TEXT("InvalidArtifactDefinition"));
+		UHeistDebugFunctionLibrary::DebugForgeryScoreCommitRejected(this, ActiveDisplayCase.Get(), OutRejectReason);
+		return false;
+	}
+	if (!HeistReplicaAcceptance::MeetsMinimumQuality(CalculatedResult.SimilarityScore, ArtifactDefinition.MinimumForgeryScore))
+	{
+		OutRejectReason = FName(TEXT("QualityBelowMinimum"));
+		UHeistDebugFunctionLibrary::DebugForgeryScoreCommitRejected(this, ActiveDisplayCase.Get(), OutRejectReason);
+		return false;
+	}
+
 	FHeistReplicaPaintingData PaintingData;
 	if (!BuildReplicaPaintingData(PaintingData))
 	{
+		OutRejectReason = FName(TEXT("ReplicaPaintingDataBuildFailed"));
 		UHeistDebugFunctionLibrary::DebugForgeryPaintingDataBuildRejected(this, FName(TEXT("PaletteRasterPackingFailed")));
 		return false;
 	}
@@ -1680,6 +1700,7 @@ bool UHeistForgeryComponent::TryCalculateAndStageForgeryScore()
 	AHeistPaintingDisplayCaseActor* TargetDisplayCase = ActiveDisplayCase.Get();
 	if (!IsValid(HeistPlayerState) || !IsValid(TargetDisplayCase))
 	{
+		OutRejectReason = FName(TEXT("MissingOwnerOrDisplayCase"));
 		UHeistDebugFunctionLibrary::DebugForgeryScoreCommitRejected(this, TargetDisplayCase, FName(TEXT("MissingOwnerOrDisplayCase")));
 		return false;
 	}
@@ -1689,6 +1710,7 @@ bool UHeistForgeryComponent::TryCalculateAndStageForgeryScore()
 	bHandlingCaseSessionCallback = false;
 	if (!bReplicaCommitted)
 	{
+		OutRejectReason = FName(TEXT("ReplicaPlacementRejected"));
 		UHeistDebugFunctionLibrary::DebugForgeryScoreCommitRejected(this, TargetDisplayCase, FName(TEXT("ReplicaPlacementRejected")));
 		return false;
 	}
@@ -2147,6 +2169,14 @@ void UHeistForgeryComponent::HandleSessionTimeout()
 {
 	if (GetOwner() && GetOwner()->HasAuthority() && bSessionActive)
 	{
+		if (const AHeistPaintingDisplayCaseActor* TimedOutDisplayCase = ActiveDisplayCase.Get(); IsValid(TimedOutDisplayCase))
+		{
+			if (AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr)
+			{
+				const FName SourceId(*FString::Printf(TEXT("SurfaceTimeout_%s_%d"), *TimedOutDisplayCase->GetDisplayCaseId().ToString(), SessionRevision));
+				HeistGameMode->RequestForgeryTimeoutInvestigation(TimedOutDisplayCase->GetActorLocation(), SourceId);
+			}
+		}
 		ClearSession(FName(TEXT("Timeout")), true);
 	}
 }

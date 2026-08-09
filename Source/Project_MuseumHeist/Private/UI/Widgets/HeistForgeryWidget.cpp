@@ -206,6 +206,7 @@ void UHeistForgeryWidget::NativeConstruct()
 	Super::NativeConstruct();
 	EnsureDrawingRasterResources();
 	BindPaletteButtons();
+	BindActionButtons();
 	RefreshPaletteButtons();
 	MarkPreviewScoreDirty();
 	RefreshDrawingTimeRemaining();
@@ -426,6 +427,11 @@ FReply UHeistForgeryWidget::NativeOnKeyDown(const FGeometry& InGeometry, const F
 		RequestSubmitCollectedStrokes();
 		return FReply::Handled();
 	}
+	if (PressedKey == EKeys::Escape && !InKeyEvent.IsRepeat() && IsDrawingInputEnabled())
+	{
+		HandleCancelClicked();
+		return FReply::Handled();
+	}
 
 	if (PressedKey == EKeys::R && !InKeyEvent.IsRepeat() && ResetDrawingCanvas())
 	{
@@ -644,6 +650,14 @@ bool UHeistForgeryWidget::RequestSubmitCollectedStrokes()
 		UE_LOG(LogHeistUI, Warning, TEXT("[%s] Forgery stroke submit skipped: Reason=DrawingInputDisabled"), *GetName());
 		return false;
 	}
+	if (!CanSubmitCurrentDrawing())
+	{
+		const FString PreviewScoreString = LocalPreviewScore.IsSet() ? FString::Printf(TEXT("%.2f"), LocalPreviewScore.GetValue()) : FString(TEXT("Unavailable"));
+		UE_LOG(LogHeistUI, Log, TEXT("[%s] Forgery stroke submit blocked: PreviewScore=%s Minimum=%.0f Reason=QualityBelowMinimum"), *GetName(), *PreviewScoreString,
+			IsValid(ForgeryViewModel) ? ForgeryViewModel->GetMinimumAcceptedQualityScore() : HeistReplicaAcceptance::MinimumQualityScore);
+		RefreshCommonActionPresentation();
+		return false;
+	}
 
 	FinishPointerInteraction();
 	TArray<FVector2D> NormalizedPoints;
@@ -693,6 +707,7 @@ void UHeistForgeryWidget::RefreshForgeryPresentation()
 	bWasDrawingVisible = bDrawing;
 
 	ApplyStateVisibility(DrawingContainer, bDrawing);
+	RefreshCommonActionPresentation();
 	if (IsValid(ReferenceImage))
 	{
 		UTexture2D* ReferenceTexture = bDrawing ? ForgeryViewModel->GetReferenceImage() : nullptr;
@@ -875,7 +890,7 @@ bool UHeistForgeryWidget::BeginLocalStroke(const FVector2D& NormalizedPoint)
 	const TArray<FLinearColor>& Palette = ForgeryViewModel->GetAllowedPalette();
 	const FLinearColor StrokeColor = Palette.IsValidIndex(ActivePaletteIndex) ? Palette[ActivePaletteIndex] : FLinearColor::Black;
 	PaintDrawingRasterSegment(NormalizedPoint, NormalizedPoint, ForgeryViewModel->GetBrushSizeForPreset(static_cast<uint8>(ActiveBrushPresetIndex)), StrokeColor);
-	MarkPreviewScoreDirty();
+	MarkPreviewScoreDirty(true);
 	RefreshDrawingFeedback();
 	InvalidateLayoutAndVolatility();
 	return true;
@@ -943,7 +958,7 @@ bool UHeistForgeryWidget::AppendLocalStrokePoint(const FVector2D& NormalizedPoin
 
 			ActiveStroke.Last() = NormalizedPoint;
 			PaintToCurrentPoint();
-			MarkPreviewScoreDirty();
+			MarkPreviewScoreDirty(true);
 			InvalidateLayoutAndVolatility();
 			return true;
 		}
@@ -951,7 +966,7 @@ bool UHeistForgeryWidget::AppendLocalStrokePoint(const FVector2D& NormalizedPoin
 
 	ActiveStroke.Add(NormalizedPoint);
 	PaintToCurrentPoint();
-	MarkPreviewScoreDirty();
+	MarkPreviewScoreDirty(true);
 	RefreshDrawingFeedback();
 	InvalidateLayoutAndVolatility();
 	return true;
@@ -1091,7 +1106,7 @@ bool UHeistForgeryWidget::EraseLocalStrokeSegments(const FVector2D& NormalizedPo
 	LocalStrokes = MoveTemp(UpdatedStrokes);
 	ErasedStrokeCount += AffectedStrokeCount;
 	RebuildDrawingRaster();
-	MarkPreviewScoreDirty();
+	MarkPreviewScoreDirty(true);
 	RefreshDrawingFeedback();
 	InvalidateLayoutAndVolatility();
 	return true;
@@ -1457,14 +1472,19 @@ void UHeistForgeryWidget::UploadDrawingRasterTexture()
 	DrawingRasterDirtyMaximumY = INDEX_NONE;
 }
 
-void UHeistForgeryWidget::MarkPreviewScoreDirty()
+void UHeistForgeryWidget::MarkPreviewScoreDirty(const bool bLocalDrawingChanged)
 {
+	if (bLocalDrawingChanged)
+	{
+		++LocalDrawingRevision;
+	}
 	const bool bWasAlreadyDirty = bPreviewScoreDirty;
 	bPreviewScoreDirty = true;
 	if (!bWasAlreadyDirty)
 	{
 		PreviewScoreUpdateAccumulator = 0.0f;
 	}
+	RefreshCommonActionPresentation();
 }
 
 void UHeistForgeryWidget::RefreshLocalPreviewScore()
@@ -1478,7 +1498,9 @@ void UHeistForgeryWidget::RefreshLocalPreviewScore()
 	if (!BuildDrawableStrokePayload(NormalizedPoints, StrokePointCounts, StrokePaletteIndices, StrokeBrushPresetIndices, IgnoredShortStrokeCount))
 	{
 		bPreviewScoreDirty = false;
+		LocalPreviewScore.Reset();
 		ApplyScorePresentation(PreviewScoreText, TOptional<float>());
+		RefreshCommonActionPresentation();
 		return;
 	}
 
@@ -1493,12 +1515,16 @@ void UHeistForgeryWidget::RefreshLocalPreviewScore()
 		// update after the drawing state. The next presentation refresh or
 		// stroke change retries without generating RPC or log traffic.
 		bPreviewScoreDirty = false;
+		LocalPreviewScore.Reset();
 		ApplyScorePresentation(PreviewScoreText, TOptional<float>());
+		RefreshCommonActionPresentation();
 		return;
 	}
 
 	bPreviewScoreDirty = false;
-	ApplyScorePresentation(PreviewScoreText, TOptional<float>(ForgeryPreviewResult.SimilarityScore));
+	LocalPreviewScore = ForgeryPreviewResult.SimilarityScore;
+	ApplyScorePresentation(PreviewScoreText, LocalPreviewScore);
+	RefreshCommonActionPresentation();
 }
 
 void UHeistForgeryWidget::BindPaletteButtons()
@@ -1542,6 +1568,106 @@ void UHeistForgeryWidget::BindPaletteButtons()
 	{
 		PaletteButton8->OnClicked.RemoveAll(this);
 		PaletteButton8->OnClicked.AddDynamic(this, &UHeistForgeryWidget::HandlePaletteButton8Clicked);
+	}
+}
+
+void UHeistForgeryWidget::BindActionButtons()
+{
+	if (IsValid(SubmitButton))
+	{
+		SubmitButton->OnClicked.RemoveAll(this);
+		SubmitButton->OnClicked.AddDynamic(this, &UHeistForgeryWidget::HandleSubmitClicked);
+	}
+	if (IsValid(CancelButton))
+	{
+		CancelButton->OnClicked.RemoveAll(this);
+		CancelButton->OnClicked.AddDynamic(this, &UHeistForgeryWidget::HandleCancelClicked);
+	}
+}
+
+bool UHeistForgeryWidget::CanSubmitCurrentDrawing() const
+{
+	const float MinimumScore = IsValid(ForgeryViewModel) ? ForgeryViewModel->GetMinimumAcceptedQualityScore() : HeistReplicaAcceptance::MinimumQualityScore;
+	return IsDrawingInputEnabled() && !bPreviewScoreDirty && LocalPreviewScore.IsSet() && FMath::IsFinite(LocalPreviewScore.GetValue()) &&
+		LocalPreviewScore.GetValue() >= MinimumScore && !ForgeryViewModel->IsSubmitPending() && !IsCurrentDrawingRejectedByServer();
+}
+
+bool UHeistForgeryWidget::IsCurrentDrawingRejectedByServer() const
+{
+	return RejectedLocalDrawingRevision != INDEX_NONE && RejectedLocalDrawingRevision == LocalDrawingRevision;
+}
+
+void UHeistForgeryWidget::RefreshCommonActionPresentation()
+{
+	const bool bDrawingVisible = IsValid(ForgeryViewModel) && ForgeryViewModel->IsDrawingVisible();
+	const float MinimumScore = IsValid(ForgeryViewModel) ? ForgeryViewModel->GetMinimumAcceptedQualityScore() : HeistReplicaAcceptance::MinimumQualityScore;
+	const int32 StrokeValidationRevision = IsValid(ForgeryViewModel) ? ForgeryViewModel->GetStrokeValidationRevision() : INDEX_NONE;
+	const FName SubmissionRejectReason = IsValid(ForgeryViewModel) ? ForgeryViewModel->GetLastSubmissionRejectReason() : NAME_None;
+	if (StrokeValidationRevision != LastObservedStrokeValidationRevision)
+	{
+		LastObservedStrokeValidationRevision = StrokeValidationRevision;
+		RejectedLocalDrawingRevision = SubmissionRejectReason == FName(TEXT("QualityBelowMinimum")) ? LocalDrawingRevision : INDEX_NONE;
+	}
+	if (IsValid(TitleText))
+	{
+		TitleText->SetText(NSLOCTEXT("HeistCommonForgeryUI", "SurfaceTitle", "SURFACE FORGERY"));
+	}
+	if (IsValid(InstructionText))
+	{
+		InstructionText->SetText(NSLOCTEXT("HeistCommonForgeryUI", "SurfaceInstruction",
+			"Match the reference painting. Reach 70/100, then submit. Timeout discards the work and calls one nearby guard."));
+		InstructionText->SetVisibility(bDrawingVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+	if (IsValid(QualityRequirementText))
+	{
+		QualityRequirementText->SetText(FText::Format(NSLOCTEXT("HeistCommonForgeryUI", "QualityRequirement", "REPLICA REQUIREMENT  {0}/100"),
+			FText::AsNumber(FMath::RoundToInt(MinimumScore))));
+		QualityRequirementText->SetVisibility(bDrawingVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+	if (IsValid(SubmitButtonLabel))
+	{
+		SubmitButtonLabel->SetText(NSLOCTEXT("HeistCommonForgeryUI", "SubmitButton", "SUBMIT"));
+	}
+	if (IsValid(CancelButtonLabel))
+	{
+		CancelButtonLabel->SetText(NSLOCTEXT("HeistCommonForgeryUI", "CancelButton", "CANCEL"));
+	}
+	if (IsValid(SubmitButton))
+	{
+		SubmitButton->SetVisibility(bDrawingVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		SubmitButton->SetIsEnabled(CanSubmitCurrentDrawing());
+	}
+	if (IsValid(CancelButton))
+	{
+		CancelButton->SetVisibility(bDrawingVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		CancelButton->SetIsEnabled(bDrawingVisible);
+	}
+	if (IsValid(ModeStatusText))
+	{
+		FText StatusText = NSLOCTEXT("HeistCommonForgeryUI", "DrawToScore", "DRAW TO CALCULATE QUALITY");
+		FLinearColor StatusColor(0.72f, 0.76f, 0.82f);
+		if (IsValid(ForgeryViewModel) && ForgeryViewModel->IsSubmitPending())
+		{
+			StatusText = NSLOCTEXT("HeistCommonForgeryUI", "Validating", "VALIDATING ON SERVER...");
+		}
+		else if (IsCurrentDrawingRejectedByServer())
+		{
+			StatusText = NSLOCTEXT("HeistCommonForgeryUI", "ServerQualityRejected", "SERVER SCORE BELOW 70 - KEEP PAINTING");
+			StatusColor = FLinearColor(1.0f, 0.40f, 0.10f);
+		}
+		else if (CanSubmitCurrentDrawing())
+		{
+			StatusText = NSLOCTEXT("HeistCommonForgeryUI", "ReadyToSubmit", "READY TO SUBMIT");
+			StatusColor = FLinearColor(0.25f, 0.95f, 0.42f);
+		}
+		else if (LocalPreviewScore.IsSet())
+		{
+			StatusText = FText::Format(NSLOCTEXT("HeistCommonForgeryUI", "ReachMinimum", "REACH {0}/100 TO SUBMIT"), FText::AsNumber(FMath::RoundToInt(MinimumScore)));
+			StatusColor = FLinearColor(1.0f, 0.40f, 0.10f);
+		}
+		ModeStatusText->SetText(StatusText);
+		ModeStatusText->SetColorAndOpacity(StatusColor);
+		ModeStatusText->SetVisibility(bDrawingVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	}
 }
 
@@ -1643,6 +1769,19 @@ void UHeistForgeryWidget::HandlePaletteButton8Clicked()
 	SelectPaletteIndex(7);
 }
 
+void UHeistForgeryWidget::HandleSubmitClicked()
+{
+	RequestSubmitCollectedStrokes();
+}
+
+void UHeistForgeryWidget::HandleCancelClicked()
+{
+	if (AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(GetOwningPlayer()); IsValid(HeistPlayerController) && IsDrawingInputEnabled())
+	{
+		HeistPlayerController->RequestCancelForgery();
+	}
+}
+
 void UHeistForgeryWidget::FinishPointerInteraction()
 {
 	if (LocalStrokes.IsValidIndex(ActiveStrokeIndex))
@@ -1654,7 +1793,7 @@ void UHeistForgeryWidget::FinishPointerInteraction()
 			StrokePoints.Add(DotPoint);
 		}
 
-		MarkPreviewScoreDirty();
+		MarkPreviewScoreDirty(true);
 		RefreshDrawingFeedback();
 		InvalidateLayoutAndVolatility();
 	}
@@ -1666,12 +1805,15 @@ void UHeistForgeryWidget::FinishPointerInteraction()
 void UHeistForgeryWidget::ResetLocalStrokePreview()
 {
 	FinishPointerInteraction();
+	++LocalDrawingRevision;
 	LocalStrokes.Reset();
 	ErasedStrokeCount = 0;
 	ClearDrawingRaster();
 	PreviewScoreUpdateAccumulator = 0.0f;
 	bPreviewScoreDirty = false;
+	LocalPreviewScore.Reset();
 	ApplyScorePresentation(PreviewScoreText, TOptional<float>());
+	RefreshCommonActionPresentation();
 	RefreshDrawingFeedback();
 	InvalidateLayoutAndVolatility();
 }
@@ -1707,12 +1849,12 @@ void UHeistForgeryWidget::RefreshDrawingTimeRemaining()
 	}
 	if (RemainingSeconds == INDEX_NONE)
 	{
-		DrawingTimeRemainingText->SetText(NSLOCTEXT("HeistForgery", "DrawingTimePending", "제출까지 --:--"));
+		DrawingTimeRemainingText->SetText(NSLOCTEXT("HeistCommonForgeryUI", "TimePending", "TIME  --:--"));
 		return;
 	}
 
 	const FText TimeText = FText::FromString(FString::Printf(TEXT("%02d:%02d"), RemainingSeconds / 60, RemainingSeconds % 60));
-	DrawingTimeRemainingText->SetText(FText::Format(NSLOCTEXT("HeistForgery", "DrawingTimeFormat", "제출까지 {0}"), TimeText));
+	DrawingTimeRemainingText->SetText(FText::Format(NSLOCTEXT("HeistCommonForgeryUI", "TimeRemaining", "TIME  {0}"), TimeText));
 }
 
 void UHeistForgeryWidget::RefreshDrawingFeedback()

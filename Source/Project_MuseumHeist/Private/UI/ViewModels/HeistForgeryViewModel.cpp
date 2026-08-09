@@ -54,8 +54,9 @@ void UHeistForgeryViewModel::SetupViewModel(AHeistGameState* InGameState, UHeist
 void UHeistForgeryViewModel::RefreshPresentationState()
 {
 	// Observation stays in the world HUD. WBP_HeistForgery has one job:
-	// present the active drawing session, then close as soon as submission begins.
-	const bool bShowDrawing = IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive() && !ForgeryComponent->IsSubmitPending();
+	// present the active drawing session. A rejected score keeps the same local
+	// canvas open; a successful submit closes when the server ends the session.
+	const bool bShowDrawing = IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive();
 	const bool bTemplatePrepared = bShowDrawing && ForgeryComponent->HasPreparedForgeryTemplate();
 	const float NewStateEndServerTime = bShowDrawing ? ForgeryComponent->GetSessionEndServerTime() : 0.0f;
 	UTexture2D* NewReferenceImage = bTemplatePrepared ? ForgeryComponent->LoadReferenceImage() : nullptr;
@@ -178,6 +179,26 @@ float UHeistForgeryViewModel::GetBrushSizeForPreset(const int32 BrushPresetIndex
 	return IsValid(ForgeryComponent) && FMath::IsWithinInclusive(BrushPresetIndex, 0, 2)
 			   ? ForgeryComponent->ResolveBrushSizeForPreset(static_cast<uint8>(BrushPresetIndex))
 			   : 0.0f;
+}
+
+bool UHeistForgeryViewModel::IsSubmitPending() const
+{
+	return IsValid(ForgeryComponent) && ForgeryComponent->IsSubmitPending();
+}
+
+FName UHeistForgeryViewModel::GetLastSubmissionRejectReason() const
+{
+	return IsValid(ForgeryComponent) && !ForgeryComponent->WasLastStrokeValidationAccepted() ? ForgeryComponent->GetLastStrokeValidationReason() : NAME_None;
+}
+
+int32 UHeistForgeryViewModel::GetStrokeValidationRevision() const
+{
+	return IsValid(ForgeryComponent) ? ForgeryComponent->GetStrokeValidationRevision() : INDEX_NONE;
+}
+
+float UHeistForgeryViewModel::GetMinimumAcceptedQualityScore() const
+{
+	return HeistReplicaAcceptance::MinimumQualityScore;
 }
 
 int32 UHeistForgeryViewModel::GetScoreRasterResolution() const

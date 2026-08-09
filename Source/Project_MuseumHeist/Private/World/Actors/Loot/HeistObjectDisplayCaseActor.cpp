@@ -27,10 +27,6 @@
 namespace
 {
 constexpr int32 MaximumReplicaEntryCount = 8;
-constexpr float ObjectInspectionDelayExcellentMultiplier = 4.0f;
-constexpr float ObjectInspectionDelayGoodMultiplier = 2.0f;
-constexpr float ObjectInspectionDelayFairMultiplier = 1.0f;
-constexpr float ObjectInspectionDelayPoorMultiplier = 0.5f;
 constexpr float ObjectReplicaSwapMinimumInspectionDelaySeconds = 3.0f;
 
 bool IsMaterialSelectionResolved(const FHeistObjectAssemblyPartRow& PartDefinition, const FName MaterialId)
@@ -836,14 +832,6 @@ bool AHeistObjectDisplayCaseActor::ApplyInspectionResult(AActor* InspectingGuard
 		return false;
 	}
 
-	AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
-	const FName AlertTriggerId(*FString::Printf(TEXT("ObjectInspection_%s_%d"), *ObjectCaseId.ToString(), InspectionScheduleRevision));
-	if (!IsValid(HeistGameMode) || !HeistGameMode->RequestAlertEscalation(ResolvedInspectionAlertOutcome, AlertTriggerId))
-	{
-		UHeistDebugFunctionLibrary::DebugObjectAssemblyInspection(this, InspectingGuard, FName(TEXT("Apply")), FName(TEXT("AlertRequestRejected")), false);
-		return false;
-	}
-
 	LastAppliedInspectionScheduleRevision = ActiveInspectionScheduleRevision;
 	ActiveInspectionScheduleRevision = INDEX_NONE;
 	++InspectionResultApplicationCount;
@@ -894,54 +882,20 @@ bool AHeistObjectDisplayCaseActor::ForceInspectionReadyForDebug()
 }
 
 bool AHeistObjectDisplayCaseActor::CalculateInspectionSchedule(const float QualityScore, const float BaseInspectionDelay, float& OutDelay, FName& OutScoreBand,
-															   EHeistAlertLevel& OutAlertOutcome, EHeistObjectAssemblyState& OutCaseOutcome)
+																   EHeistAlertLevel& OutAlertOutcome, EHeistObjectAssemblyState& OutCaseOutcome)
 {
 	OutDelay = 0.0f;
 	OutScoreBand = NAME_None;
 	OutAlertOutcome = EHeistAlertLevel::Quiet;
-	OutCaseOutcome = EHeistObjectAssemblyState::Suspected;
-	if (!FMath::IsFinite(QualityScore) || !FMath::IsFinite(BaseInspectionDelay) || !FMath::IsWithinInclusive(QualityScore, 0.0f, 100.0f) || BaseInspectionDelay < 0.0f)
+	OutCaseOutcome = EHeistObjectAssemblyState::Completed;
+	if (!FMath::IsFinite(QualityScore) || !FMath::IsFinite(BaseInspectionDelay) ||
+		!FMath::IsWithinInclusive(QualityScore, HeistReplicaAcceptance::MinimumQualityScore, 100.0f) || BaseInspectionDelay < 0.0f)
 	{
 		return false;
 	}
 
-	float DelayMultiplier = 0.0f;
-	if (QualityScore >= 90.0f)
-	{
-		OutScoreBand = FName(TEXT("90-100"));
-		OutAlertOutcome = EHeistAlertLevel::Quiet;
-		OutCaseOutcome = EHeistObjectAssemblyState::Completed;
-		DelayMultiplier = ObjectInspectionDelayExcellentMultiplier;
-	}
-	else if (QualityScore >= 70.0f)
-	{
-		OutScoreBand = FName(TEXT("70-89"));
-		OutAlertOutcome = EHeistAlertLevel::Suspicious;
-		OutCaseOutcome = EHeistObjectAssemblyState::Suspected;
-		DelayMultiplier = ObjectInspectionDelayGoodMultiplier;
-	}
-	else if (QualityScore >= 50.0f)
-	{
-		OutScoreBand = FName(TEXT("50-69"));
-		OutAlertOutcome = EHeistAlertLevel::Searching;
-		OutCaseOutcome = EHeistObjectAssemblyState::Suspected;
-		DelayMultiplier = ObjectInspectionDelayFairMultiplier;
-	}
-	else if (QualityScore >= 30.0f)
-	{
-		OutScoreBand = FName(TEXT("30-49"));
-		OutAlertOutcome = EHeistAlertLevel::Alarmed;
-		OutCaseOutcome = EHeistObjectAssemblyState::Alarmed;
-		DelayMultiplier = ObjectInspectionDelayPoorMultiplier;
-	}
-	else
-	{
-		OutScoreBand = FName(TEXT("0-29"));
-		OutAlertOutcome = EHeistAlertLevel::Alarmed;
-		OutCaseOutcome = EHeistObjectAssemblyState::Alarmed;
-	}
-
-	OutDelay = BaseInspectionDelay * DelayMultiplier;
+	OutScoreBand = FName(TEXT("Accepted70Plus"));
+	OutDelay = BaseInspectionDelay;
 	return FMath::IsFinite(OutDelay) && OutDelay >= 0.0f;
 }
 
@@ -1087,6 +1041,11 @@ bool AHeistObjectDisplayCaseActor::ValidateReplicaCommit(AHeistPlayerState* Requ
 		AssemblyResult.TemplateId != TemplateDefinition.TemplateId)
 	{
 		OutRejectReason = OutRejectReason.IsNone() ? FName(TEXT("TemplateIdentityMismatch")) : OutRejectReason;
+		return false;
+	}
+	if (!HeistReplicaAcceptance::MeetsMinimumQuality(AssemblyResult.QualityScore, ArtifactDefinition.MinimumForgeryScore))
+	{
+		OutRejectReason = FName(TEXT("QualityBelowMinimum"));
 		return false;
 	}
 

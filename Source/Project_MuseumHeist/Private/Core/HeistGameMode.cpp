@@ -1,5 +1,7 @@
 #include "Core/HeistGameMode.h"
 
+#include "AI/HeistGuardAIController.h"
+#include "AI/HeistGuardCharacter.h"
 #include "Character/Components/HeistActionComponent.h"
 #include "Character/Components/HeistForgeryComponent.h"
 #include "Character/Components/HeistInventoryComponent.h"
@@ -870,8 +872,12 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 
 #pragma region Alert
 
-bool AHeistGameMode::RequestAlertEscalation(const EHeistAlertLevel RequestedAlertLevel, const FName TriggerId)
+bool AHeistGameMode::RequestAlertEscalation(const EHeistAlertLevel RequestedAlertLevel, const FName TriggerId, bool* bOutLevelChanged)
 {
+	if (bOutLevelChanged != nullptr)
+	{
+		*bOutLevelChanged = false;
+	}
 	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
 	const UEnum* AlertLevelEnum = StaticEnum<EHeistAlertLevel>();
 	if (!HasAuthority() || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame || TriggerId.IsNone() || !IsValid(AlertLevelEnum) ||
@@ -901,11 +907,58 @@ bool AHeistGameMode::RequestAlertEscalation(const EHeistAlertLevel RequestedAler
 
 	if (ApplyAlertLevel(RequestedAlertLevel, TriggerId))
 	{
+		if (bOutLevelChanged != nullptr)
+		{
+			*bOutLevelChanged = true;
+		}
 		return true;
 	}
 
 	ProcessedAlertTriggerIds.Remove(TriggerId);
 	return false;
+}
+
+bool AHeistGameMode::RequestForgeryTimeoutInvestigation(const FVector& WorldLocation, const FName SourceId)
+{
+	const AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	if (!HasAuthority() || !IsValid(GetWorld()) || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame || WorldLocation.ContainsNaN() ||
+		SourceId.IsNone())
+	{
+		UE_LOG(LogHeistNetwork, Warning,
+			TEXT("Forgery timeout investigation rejected: Source=%s Location=%s Authority=%s MatchPhase=%s Result=FAIL Reason=InvalidRequest"), *SourceId.ToString(),
+			*WorldLocation.ToCompactString(), HasAuthority() ? TEXT("true") : TEXT("false"),
+			IsValid(HeistGameState) ? *UEnum::GetValueAsString(HeistGameState->GetMatchPhase()) : TEXT("MissingGameState"));
+		return false;
+	}
+
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	const float SearchRadius = IsValid(BalanceData) ? FMath::Max(0.0f, BalanceData->ForgeryTimeoutInvestigationRadius) : 0.0f;
+	const float SearchRadiusSquared = FMath::Square(SearchRadius);
+	AHeistGuardAIController* NearestEligibleController = nullptr;
+	float NearestDistanceSquared = TNumericLimits<float>::Max();
+	for (TActorIterator<AHeistGuardCharacter> It(GetWorld()); It; ++It)
+	{
+		AHeistGuardCharacter* GuardCharacter = *It;
+		AHeistGuardAIController* GuardController = IsValid(GuardCharacter) ? Cast<AHeistGuardAIController>(GuardCharacter->GetController()) : nullptr;
+		if (!IsValid(GuardController) || !GuardController->CanAcceptForgeryTimeoutInvestigation())
+		{
+			continue;
+		}
+
+		const float DistanceSquared = FVector::DistSquared(GuardCharacter->GetActorLocation(), WorldLocation);
+		if (DistanceSquared <= SearchRadiusSquared && DistanceSquared < NearestDistanceSquared)
+		{
+			NearestEligibleController = GuardController;
+			NearestDistanceSquared = DistanceSquared;
+		}
+	}
+
+	const bool bAssigned = IsValid(NearestEligibleController) && NearestEligibleController->RequestForgeryTimeoutInvestigation(WorldLocation, SourceId);
+	UE_LOG(LogHeistNetwork, Log,
+		TEXT("Forgery timeout investigation: Source=%s Location=%s Radius=%.1f Guard=%s Distance=%.1f AlertChanged=false OneShot=true Authority=true Result=%s"),
+		*SourceId.ToString(), *WorldLocation.ToCompactString(), SearchRadius, *GetNameSafe(IsValid(NearestEligibleController) ? NearestEligibleController->GetPawn() : nullptr),
+		bAssigned ? FMath::Sqrt(NearestDistanceSquared) : -1.0f, bAssigned ? TEXT("ASSIGNED") : TEXT("NO_NEARBY_GUARD"));
+	return bAssigned;
 }
 
 bool AHeistGameMode::IsAlertTransitionTimerActive() const

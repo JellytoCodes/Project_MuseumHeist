@@ -158,7 +158,7 @@ bool UHeistObjectAssemblyComponent::TrySubmitAssemblyPayload(const TArray<FHeist
 		RecordPayloadValidation(false, RejectReason, Entries.Num(), PayloadBytes);
 		if (RejectReason == FName(TEXT("SessionExpired")))
 		{
-			ClearSession(FName(TEXT("Timeout")), true, false);
+			HandleSessionTimeout();
 		}
 		return false;
 	}
@@ -167,6 +167,19 @@ bool UHeistObjectAssemblyComponent::TrySubmitAssemblyPayload(const TArray<FHeist
 	if (!CalculateDeterministicScore(Entries, CalculatedResult))
 	{
 		RecordPayloadValidation(false, FName(TEXT("ScoreCalculationFailed")), Entries.Num(), PayloadBytes);
+		return false;
+	}
+
+	const AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	FHeistArtifactDataRow ArtifactDefinition;
+	if (!IsValid(HeistGameMode) || !HeistGameMode->TryGetArtifactDefinition(CalculatedResult.ArtifactId, ArtifactDefinition))
+	{
+		RecordPayloadValidation(false, FName(TEXT("InvalidArtifactDefinition")), Entries.Num(), PayloadBytes);
+		return false;
+	}
+	if (!HeistReplicaAcceptance::MeetsMinimumQuality(CalculatedResult.QualityScore, ArtifactDefinition.MinimumForgeryScore))
+	{
+		RecordPayloadValidation(false, FName(TEXT("QualityBelowMinimum")), Entries.Num(), PayloadBytes);
 		return false;
 	}
 
@@ -605,12 +618,13 @@ bool UHeistObjectAssemblyComponent::ValidatePayload(const TArray<FHeistObjectAss
 	return true;
 }
 
-bool UHeistObjectAssemblyComponent::CalculateDeterministicScore(const TArray<FHeistObjectAssemblyEntry>& Entries, FHeistObjectAssemblyResult& OutResult) const
+bool UHeistObjectAssemblyComponent::CalculateQualityPreview(const FHeistObjectAssemblyTemplateRow& TemplateDefinition, const FName ArtifactId,
+	const TArray<FHeistObjectAssemblyEntry>& Entries, FHeistObjectAssemblyResult& OutResult)
 {
 	OutResult = FHeistObjectAssemblyResult();
-	const int32 RequiredPartCount = PreparedTemplate.RequiredParts.Num();
-	const float WeightTotal = PreparedTemplate.RequiredPartWeight + PreparedTemplate.SocketTopologyWeight + PreparedTemplate.OrientationWeight + PreparedTemplate.MaterialWeight;
-	if (RequiredPartCount <= 0 || !FMath::IsFinite(WeightTotal) || WeightTotal <= 0.0f)
+	const int32 RequiredPartCount = TemplateDefinition.RequiredParts.Num();
+	const float WeightTotal = TemplateDefinition.RequiredPartWeight + TemplateDefinition.SocketTopologyWeight + TemplateDefinition.OrientationWeight + TemplateDefinition.MaterialWeight;
+	if (ArtifactId.IsNone() || TemplateDefinition.TemplateId.IsNone() || RequiredPartCount <= 0 || !FMath::IsFinite(WeightTotal) || WeightTotal <= 0.0f)
 	{
 		return false;
 	}
@@ -625,7 +639,7 @@ bool UHeistObjectAssemblyComponent::CalculateDeterministicScore(const TArray<FHe
 	int32 CorrectSockets = 0;
 	int32 CorrectOrientations = 0;
 	int32 CorrectMaterials = 0;
-	for (const FHeistObjectAssemblyEntry& RequiredPart : PreparedTemplate.RequiredParts)
+	for (const FHeistObjectAssemblyEntry& RequiredPart : TemplateDefinition.RequiredParts)
 	{
 		const FHeistObjectAssemblyEntry* const* SubmittedEntryPtr = SubmittedByPartId.Find(RequiredPart.PartId);
 		const FHeistObjectAssemblyEntry* SubmittedEntry = SubmittedEntryPtr != nullptr ? *SubmittedEntryPtr : nullptr;
@@ -645,8 +659,8 @@ bool UHeistObjectAssemblyComponent::CalculateDeterministicScore(const TArray<FHe
 	const float OrientationScore = 100.0f * static_cast<float>(CorrectOrientations) / static_cast<float>(RequiredPartCount);
 	const float MaterialScore = 100.0f * static_cast<float>(CorrectMaterials) / static_cast<float>(RequiredPartCount);
 	const float Completeness = FMath::Clamp(static_cast<float>(MatchedRequiredParts) / static_cast<float>(RequiredPartCount), 0.0f, 1.0f);
-	const float WeightedScore = (RequiredPartScore * PreparedTemplate.RequiredPartWeight + SocketTopologyScore * PreparedTemplate.SocketTopologyWeight +
-								 OrientationScore * PreparedTemplate.OrientationWeight + MaterialScore * PreparedTemplate.MaterialWeight) /
+	const float WeightedScore = (RequiredPartScore * TemplateDefinition.RequiredPartWeight + SocketTopologyScore * TemplateDefinition.SocketTopologyWeight +
+								 OrientationScore * TemplateDefinition.OrientationWeight + MaterialScore * TemplateDefinition.MaterialWeight) /
 								WeightTotal;
 
 	const int32 ExtraPartCount = FMath::Max(0, Entries.Num() - MatchedRequiredParts);
@@ -654,13 +668,11 @@ bool UHeistObjectAssemblyComponent::CalculateDeterministicScore(const TArray<FHe
 	float QualityScore = FMath::Clamp(WeightedScore * Completeness, 0.0f, 100.0f);
 	if (bExtraPartCapTriggered)
 	{
-		QualityScore = FMath::Min(QualityScore, PreparedTemplate.ExtraPartScoreCap);
+		QualityScore = FMath::Min(QualityScore, TemplateDefinition.ExtraPartScoreCap);
 	}
 
-	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
-	const float ServerWorldTime = IsValid(HeistGameState) ? HeistGameState->GetServerWorldTimeSeconds() : (GetWorld() ? GetWorld()->GetTimeSeconds() : SessionStartServerTime);
-	OutResult.ArtifactId = ActiveArtifactId;
-	OutResult.TemplateId = ActiveTemplateId;
+	OutResult.ArtifactId = ArtifactId;
+	OutResult.TemplateId = TemplateDefinition.TemplateId;
 	OutResult.QualityScore = QualityScore;
 	OutResult.RequiredPartScore = RequiredPartScore;
 	OutResult.SocketTopologyScore = SocketTopologyScore;
@@ -668,11 +680,24 @@ bool UHeistObjectAssemblyComponent::CalculateDeterministicScore(const TArray<FHe
 	OutResult.MaterialScore = MaterialScore;
 	OutResult.Completeness = Completeness;
 	OutResult.bExtraPartCapTriggered = bExtraPartCapTriggered;
-	OutResult.CompletionTime = FMath::Clamp(ServerWorldTime - SessionStartServerTime, 0.0f, ActiveSessionDurationSeconds);
+	OutResult.CompletionTime = 0.0f;
 	OutResult.bReplicaPlaced = false;
 
 	return !OutResult.ArtifactId.IsNone() && !OutResult.TemplateId.IsNone() && FMath::IsFinite(OutResult.QualityScore) &&
 		   FMath::IsWithinInclusive(OutResult.QualityScore, 0.0f, 100.0f) && FMath::IsWithinInclusive(OutResult.Completeness, 0.0f, 1.0f);
+}
+
+bool UHeistObjectAssemblyComponent::CalculateDeterministicScore(const TArray<FHeistObjectAssemblyEntry>& Entries, FHeistObjectAssemblyResult& OutResult) const
+{
+	if (!CalculateQualityPreview(PreparedTemplate, ActiveArtifactId, Entries, OutResult))
+	{
+		return false;
+	}
+
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	const float ServerWorldTime = IsValid(HeistGameState) ? HeistGameState->GetServerWorldTimeSeconds() : (GetWorld() ? GetWorld()->GetTimeSeconds() : SessionStartServerTime);
+	OutResult.CompletionTime = FMath::Clamp(ServerWorldTime - SessionStartServerTime, 0.0f, ActiveSessionDurationSeconds);
+	return true;
 }
 
 void UHeistObjectAssemblyComponent::RecordPayloadValidation(const bool bAccepted, const FName Reason, const int32 EntryCount, const int32 PayloadBytes)
@@ -741,6 +766,14 @@ void UHeistObjectAssemblyComponent::HandleSessionTimeout()
 {
 	if (GetOwner() && GetOwner()->HasAuthority() && bSessionActive)
 	{
+		if (const AHeistObjectDisplayCaseActor* TimedOutDisplayCase = ActiveDisplayCase.Get(); IsValid(TimedOutDisplayCase))
+		{
+			if (AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr)
+			{
+				const FName SourceId(*FString::Printf(TEXT("AssemblyTimeout_%s_%d"), *TimedOutDisplayCase->GetObjectCaseId().ToString(), SessionRevision));
+				HeistGameMode->RequestForgeryTimeoutInvestigation(TimedOutDisplayCase->GetActorLocation(), SourceId);
+			}
+		}
 		ClearSession(FName(TEXT("Timeout")), true, false);
 	}
 }

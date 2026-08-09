@@ -4124,14 +4124,7 @@ void UHeistDebugFunctionLibrary::DebugInspectionTargetDump(APlayerController* Pl
 	const bool bAuthority = PlayerController->HasAuthority();
 	FString MappingSummary;
 	const float TestScores[] = {95.0f, 80.0f, 60.0f, 40.0f, 20.0f};
-	const float ExpectedDelays[] = {32.0f, 16.0f, 8.0f, 4.0f, 0.0f};
-	const FName ExpectedBands[] = {FName(TEXT("90-100")), FName(TEXT("70-89")), FName(TEXT("50-69")), FName(TEXT("30-49")), FName(TEXT("0-29"))};
-	const EHeistAlertLevel ExpectedAlertOutcomes[] = {EHeistAlertLevel::Quiet, EHeistAlertLevel::Suspicious, EHeistAlertLevel::Searching, EHeistAlertLevel::Alarmed, EHeistAlertLevel::Alarmed};
-	const EHeistDisplayCaseState ExpectedCaseOutcomes[] = {EHeistDisplayCaseState::Completed, EHeistDisplayCaseState::Suspected, EHeistDisplayCaseState::Suspected, EHeistDisplayCaseState::Alarmed,
-														   EHeistDisplayCaseState::Alarmed};
-	const EHeistObjectAssemblyState ExpectedObjectCaseOutcomes[] = {
-		EHeistObjectAssemblyState::Completed, EHeistObjectAssemblyState::Suspected, EHeistObjectAssemblyState::Suspected, EHeistObjectAssemblyState::Alarmed,
-		EHeistObjectAssemblyState::Alarmed};
+	const bool ExpectedAccepted[] = {true, true, false, false, false};
 	bool bMappingPassed = true;
 	for (int32 Index = 0; Index < UE_ARRAY_COUNT(TestScores); ++Index)
 	{
@@ -4146,14 +4139,19 @@ void UHeistDebugFunctionLibrary::DebugInspectionTargetDump(APlayerController* Pl
 		const bool bMapped = AHeistPaintingDisplayCaseActor::CalculateInspectionSchedule(TestScores[Index], 8.0f, Delay, Band, AlertOutcome, CaseOutcome);
 		const bool bObjectMapped =
 			AHeistObjectDisplayCaseActor::CalculateInspectionSchedule(TestScores[Index], 8.0f, ObjectDelay, ObjectBand, ObjectAlertOutcome, ObjectCaseOutcome);
-		bMappingPassed = bMappingPassed && bMapped && FMath::IsNearlyEqual(Delay, ExpectedDelays[Index]) && Band == ExpectedBands[Index] && AlertOutcome == ExpectedAlertOutcomes[Index] &&
-						 CaseOutcome == ExpectedCaseOutcomes[Index] && bObjectMapped && FMath::IsNearlyEqual(ObjectDelay, ExpectedDelays[Index]) &&
-						 ObjectBand == ExpectedBands[Index] && ObjectAlertOutcome == ExpectedAlertOutcomes[Index] && ObjectCaseOutcome == ExpectedObjectCaseOutcomes[Index];
+		const bool bSurfaceContractPassed = bMapped == ExpectedAccepted[Index] &&
+			(!bMapped || (FMath::IsNearlyEqual(Delay, 8.0f) && Band == FName(TEXT("Accepted70Plus")) && AlertOutcome == EHeistAlertLevel::Quiet &&
+						  CaseOutcome == EHeistDisplayCaseState::Completed));
+		const bool bObjectContractPassed = bObjectMapped == ExpectedAccepted[Index] &&
+			(!bObjectMapped || (FMath::IsNearlyEqual(ObjectDelay, 8.0f) && ObjectBand == FName(TEXT("Accepted70Plus")) && ObjectAlertOutcome == EHeistAlertLevel::Quiet &&
+						  ObjectCaseOutcome == EHeistObjectAssemblyState::Completed));
+		bMappingPassed = bMappingPassed && bSurfaceContractPassed && bObjectContractPassed;
 		if (!MappingSummary.IsEmpty())
 		{
 			MappingSummary += TEXT(",");
 		}
-		MappingSummary += FString::Printf(TEXT("%.0f:%s/%.0f/%s/%s"), TestScores[Index], *Band.ToString(), Delay, *UEnum::GetValueAsString(CaseOutcome), *UEnum::GetValueAsString(AlertOutcome));
+		MappingSummary += FString::Printf(TEXT("%.0f:%s/%s/%.0f/%s/%s"), TestScores[Index], bMapped ? TEXT("ACCEPTED") : TEXT("REJECTED"), *Band.ToString(), Delay,
+			*UEnum::GetValueAsString(CaseOutcome), *UEnum::GetValueAsString(AlertOutcome));
 	}
 
 	const bool bRuntimeScheduleValid = ScheduledCount > 0 && ValidCandidateCount <= RegisteredCount && PendingDelayCount + RegisteredCount <= CaseCount;

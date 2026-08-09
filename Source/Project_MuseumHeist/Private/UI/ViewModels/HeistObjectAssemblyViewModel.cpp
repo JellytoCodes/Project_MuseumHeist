@@ -158,9 +158,10 @@ bool UHeistObjectAssemblyViewModel::LoadActiveTemplateData()
 	const UHeistGameBalanceDataAsset* BalanceData = GetDefault<UHeistGameBalanceDataAsset>();
 	UDataTable* TemplateDataTable = IsValid(BalanceData) ? BalanceData->ObjectAssemblyTemplateDataTable.LoadSynchronous() : nullptr;
 	UDataTable* PartDataTable = IsValid(BalanceData) ? BalanceData->ObjectAssemblyPartDataTable.LoadSynchronous() : nullptr;
-	if (!IsValid(TemplateDataTable) || !IsValid(PartDataTable) ||
+	UDataTable* ArtifactDataTable = IsValid(BalanceData) ? BalanceData->ArtifactDataTable.LoadSynchronous() : nullptr;
+	if (!IsValid(TemplateDataTable) || !IsValid(PartDataTable) || !IsValid(ArtifactDataTable) ||
 		TemplateDataTable->GetRowStruct() != FHeistObjectAssemblyTemplateRow::StaticStruct() ||
-		PartDataTable->GetRowStruct() != FHeistObjectAssemblyPartRow::StaticStruct())
+		PartDataTable->GetRowStruct() != FHeistObjectAssemblyPartRow::StaticStruct() || ArtifactDataTable->GetRowStruct() != FHeistArtifactDataRow::StaticStruct())
 	{
 		return false;
 	}
@@ -172,6 +173,13 @@ bool UHeistObjectAssemblyViewModel::LoadActiveTemplateData()
 	{
 		return false;
 	}
+	const FName ArtifactId = ObjectAssemblyComponent->GetActiveArtifactId();
+	const FHeistArtifactDataRow* ArtifactRow = ArtifactDataTable->FindRow<FHeistArtifactDataRow>(ArtifactId, TEXT("UHeistObjectAssemblyViewModel::LoadActiveTemplateData"), false);
+	if (ArtifactRow == nullptr || ArtifactRow->ArtifactId != ArtifactId)
+	{
+		return false;
+	}
+	MinimumAcceptedQualityScore = HeistReplicaAcceptance::ResolveMinimumQualityScore(ArtifactRow->MinimumForgeryScore);
 
 	ActiveTemplate = *TemplateRow;
 	TArray<FName> ReferencedPartIds;
@@ -218,6 +226,9 @@ void UHeistObjectAssemblyViewModel::ClearLoadedTemplateData()
 	SelectedOrientationIndex = INDEX_NONE;
 	SelectedMaterialIndex = INDEX_NONE;
 	UE_MVVM_SET_PROPERTY_VALUE(TemplateDisplayText, FText::GetEmpty());
+	bHasPreviewQuality = false;
+	PreviewQualityScore = 0.0f;
+	MinimumAcceptedQualityScore = HeistReplicaAcceptance::MinimumQualityScore;
 }
 
 void UHeistObjectAssemblyViewModel::ResetLocalAssemblyState()
@@ -258,6 +269,7 @@ void UHeistObjectAssemblyViewModel::SyncSelectionFromSelectedPart()
 
 void UHeistObjectAssemblyViewModel::RefreshSelectionPresentation()
 {
+	RefreshQualityPreview();
 	UE_MVVM_SET_PROPERTY_VALUE(SelectedPartText,
 							   GetSelectedPartId().IsNone()
 								   ? NSLOCTEXT("HeistObjectAssembly", "NoPartSelected", "부품  --")
@@ -276,6 +288,14 @@ void UHeistObjectAssemblyViewModel::RefreshSelectionPresentation()
 		PlacementProgressText,
 		FText::Format(NSLOCTEXT("HeistObjectAssembly", "PlacementProgressFormat", "필수 부품  {0}/{1}  |  배치됨  {2}"), FText::AsNumber(GetPlacedRequiredPartCount()),
 					  FText::AsNumber(GetRequiredPartCount()), FText::AsNumber(GetPlacedPartCount())));
+}
+
+void UHeistObjectAssemblyViewModel::RefreshQualityPreview()
+{
+	FHeistObjectAssemblyResult PreviewResult;
+	bHasPreviewQuality = bDataReady && !LocalAssemblyEntries.IsEmpty() &&
+		UHeistObjectAssemblyComponent::CalculateQualityPreview(ActiveTemplate, GetActiveArtifactId(), LocalAssemblyEntries, PreviewResult);
+	PreviewQualityScore = bHasPreviewQuality ? PreviewResult.QualityScore : 0.0f;
 }
 
 void UHeistObjectAssemblyViewModel::RefreshAlertPresentation()
@@ -377,6 +397,10 @@ FText UHeistObjectAssemblyViewModel::MakePayloadReasonText(const FName Reason)
 	if (Reason == FName(TEXT("SubmissionTimeout")))
 	{
 		return NSLOCTEXT("HeistObjectAssembly", "SubmissionTimeout", "조립 시간이 종료되었습니다.");
+	}
+	if (Reason == FName(TEXT("QualityBelowMinimum")))
+	{
+		return NSLOCTEXT("HeistObjectAssembly", "QualityBelowMinimum", "Replica quality is below 70. Keep assembling.");
 	}
 	return NSLOCTEXT("HeistObjectAssembly", "PayloadRejected", "조립 결과가 거부되었습니다. 각 연결 부위를 확인하세요.");
 }
@@ -539,11 +563,17 @@ bool UHeistObjectAssemblyViewModel::ResetLocalAssembly()
 
 bool UHeistObjectAssemblyViewModel::RequestSubmitAssembly()
 {
-	if (!bPresentationVisible || !bDataReady || bSubmitPending || LocalAssemblyEntries.IsEmpty() || !IsValid(PlayerController))
+	if (!CanSubmitAssembly() || !IsValid(PlayerController))
 	{
 		if (LocalAssemblyEntries.IsEmpty())
 		{
 			SetStatusMessage(NSLOCTEXT("HeistObjectAssembly", "PlaceBeforeSubmit", "제출하기 전에 부품을 하나 이상 배치하세요."));
+			PresentationChangedDelegate.Broadcast();
+		}
+		else if (bHasPreviewQuality && PreviewQualityScore < MinimumAcceptedQualityScore)
+		{
+			SetStatusMessage(FText::Format(NSLOCTEXT("HeistObjectAssembly", "QualityGate", "Replica quality must reach {0}/100 before submission."),
+				FText::AsNumber(FMath::RoundToInt(MinimumAcceptedQualityScore))));
 			PresentationChangedDelegate.Broadcast();
 		}
 		return false;
@@ -685,6 +715,27 @@ int32 UHeistObjectAssemblyViewModel::GetPlacedRequiredPartCount() const
 int32 UHeistObjectAssemblyViewModel::GetLocalPreviewRevision() const
 {
 	return LocalPreviewRevision;
+}
+
+bool UHeistObjectAssemblyViewModel::HasPreviewQuality() const
+{
+	return bHasPreviewQuality;
+}
+
+float UHeistObjectAssemblyViewModel::GetPreviewQualityScore() const
+{
+	return PreviewQualityScore;
+}
+
+float UHeistObjectAssemblyViewModel::GetMinimumAcceptedQualityScore() const
+{
+	return MinimumAcceptedQualityScore;
+}
+
+bool UHeistObjectAssemblyViewModel::CanSubmitAssembly() const
+{
+	return bPresentationVisible && bDataReady && !bSubmitPending && !LocalAssemblyEntries.IsEmpty() && bHasPreviewQuality &&
+		PreviewQualityScore >= MinimumAcceptedQualityScore;
 }
 
 UStaticMesh* UHeistObjectAssemblyViewModel::LoadCoreStaticMesh() const

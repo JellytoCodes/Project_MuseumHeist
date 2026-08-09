@@ -72,6 +72,10 @@ class PROJECT_MUSEUMHEIST_API UHeistGameBalanceDataAsset : public UDataAsset
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|AI|Perception", meta = (ClampMin = "0.0", ClampMax = "2.0"))
 	float GuardPerceptionRangeMultiplier = 0.5f;
 
+	/** Event-only lookup radius used once when a forgery mode expires. This does not raise global Alert. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|AI|Forgery Timeout", meta = (ClampMin = "0.0", Units = "cm"))
+	float ForgeryTimeoutInvestigationRadius = 1500.0f;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Rare Loot")
 	TArray<float> RareLootEventTimes = {90.0f, 225.0f};
 

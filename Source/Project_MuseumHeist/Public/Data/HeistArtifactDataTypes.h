@@ -18,6 +18,22 @@ enum class EHeistForgeryBackgroundFilter : uint8
 	White UMETA(DisplayName = "Filter White Background")
 };
 
+namespace HeistReplicaAcceptance
+{
+inline constexpr float MinimumQualityRatio = 0.70f;
+inline constexpr float MinimumQualityScore = MinimumQualityRatio * 100.0f;
+
+inline float ResolveMinimumQualityScore(const float ConfiguredMinimumRatio)
+{
+	return FMath::Max(MinimumQualityScore, FMath::Clamp(ConfiguredMinimumRatio, 0.0f, 1.0f) * 100.0f);
+}
+
+inline bool MeetsMinimumQuality(const float QualityScore, const float ConfiguredMinimumRatio)
+{
+	return FMath::IsFinite(QualityScore) && QualityScore >= ResolveMinimumQualityScore(ConfiguredMinimumRatio);
+}
+}
+
 /** Static definition for an objective artifact shared by objective, display-case, and inventory flows. */
 USTRUCT(BlueprintType)
 struct PROJECT_MUSEUMHEIST_API FHeistArtifactDataRow : public FTableRowBase
@@ -52,8 +68,9 @@ struct PROJECT_MUSEUMHEIST_API FHeistArtifactDataRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Artifact")
 	FName ForgeryTemplateId = NAME_None;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Artifact", meta = (ClampMin = "0.0", ClampMax = "1.0"))
-	float MinimumForgeryScore = 0.0f;
+	/** Normalized server acceptance threshold. v1.0 never resolves below 0.70. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Artifact", meta = (ClampMin = "0.70", ClampMax = "1.0"))
+	float MinimumForgeryScore = HeistReplicaAcceptance::MinimumQualityRatio;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Artifact", meta = (ClampMin = "0.0", Units = "s"))
 	float BaseInspectionDelay = 0.0f;

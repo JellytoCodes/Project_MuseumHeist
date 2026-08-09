@@ -98,7 +98,7 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryComponent : public UActorComponent
 							   const TArray<uint8>& StrokeBrushPresetIndices, int32 ClientSessionRevision, FName& OutRejectReason, int32& OutPayloadBytes) const;
 	void RecordStrokeValidationResult(bool bAccepted, FName Reason);
 	void ResetStrokeTransportState(bool bResetLastValidation);
-	bool TryCalculateAndStageForgeryScore();
+	bool TryCalculateAndStageForgeryScore(FName& OutRejectReason);
 	bool BuildReplicaPaintingData(FHeistReplicaPaintingData& OutPaintingData) const;
 	bool CalculateForgeryScore(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices,
 							   const TArray<uint8>& StrokeBrushPresetIndices, FHeistForgeryResult& OutResult, int32& OutReferenceMaskPixels, int32& OutSubmittedMaskPixels,

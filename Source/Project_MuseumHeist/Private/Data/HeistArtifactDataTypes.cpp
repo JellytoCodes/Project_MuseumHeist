@@ -50,9 +50,9 @@ EDataValidationResult FHeistArtifactDataRow::IsDataValid(FDataValidationContext&
 		AddError(LOCTEXT("MissingForgeryTemplateId", "ForgeryTemplateId must not be None."));
 	}
 
-	if (!FMath::IsWithinInclusive(MinimumForgeryScore, 0.0f, 1.0f))
+	if (!FMath::IsWithinInclusive(MinimumForgeryScore, HeistReplicaAcceptance::MinimumQualityRatio, 1.0f))
 	{
-		AddError(LOCTEXT("InvalidMinimumForgeryScore", "MinimumForgeryScore must be between 0.0 and 1.0."));
+		AddError(LOCTEXT("InvalidMinimumForgeryScore", "MinimumForgeryScore must be between 0.70 and 1.0."));
 	}
 
 	if (BaseInspectionDelay < 0.0f)

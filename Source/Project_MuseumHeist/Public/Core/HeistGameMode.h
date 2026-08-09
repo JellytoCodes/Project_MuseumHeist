@@ -79,7 +79,8 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 #pragma region Alert
 
   public:
-	bool RequestAlertEscalation(EHeistAlertLevel RequestedAlertLevel, FName TriggerId);
+	bool RequestAlertEscalation(EHeistAlertLevel RequestedAlertLevel, FName TriggerId, bool* bOutLevelChanged = nullptr);
+	bool RequestForgeryTimeoutInvestigation(const FVector& WorldLocation, FName SourceId);
 	bool IsAlertTransitionTimerActive() const;
 	int32 GetProcessedAlertTriggerCount() const;
 	int32 GetActiveMatchTimerCount() const;

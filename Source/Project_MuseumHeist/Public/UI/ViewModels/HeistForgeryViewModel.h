@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Core/HeistTypes.h"
+#include "Data/HeistArtifactDataTypes.h"
 #include "MVVMViewModelBase.h"
 
 #include "HeistForgeryViewModel.generated.h"
@@ -61,6 +62,10 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryViewModel : public UMVVMViewModelBase
 	int32 GetStrokeLimit() const;
 	float GetBrushSize() const;
 	float GetBrushSizeForPreset(int32 BrushPresetIndex) const;
+	bool IsSubmitPending() const;
+	FName GetLastSubmissionRejectReason() const;
+	int32 GetStrokeValidationRevision() const;
+	float GetMinimumAcceptedQualityScore() const;
 	int32 GetScoreRasterResolution() const;
 	bool CalculatePreviewScore(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices,
 		const TArray<uint8>& StrokeBrushPresetIndices, FHeistForgeryResult& OutResult, int32& OutReferenceMaskPixels, int32& OutSubmittedMaskPixels) const;
