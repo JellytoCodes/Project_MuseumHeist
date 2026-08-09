@@ -38,7 +38,7 @@ class PROJECT_MUSEUMHEIST_API UHeistGuardNoiseReactionComponent : public UActorC
 	bool ReactToSoundPing(const FHeistSoundPingEvent& SoundPingEvent);
 
   private:
-	void HandleSoundPingReported(const FHeistSoundPingEvent& SoundPingEvent);
+	void HandleSoundPingReported(const FHeistSoundPingEvent& SoundPingEvent, int32* InOutAcceptedGuardCount);
 	void HandleGuardStateChanged(EHeistGuardState PreviousState, EHeistGuardState NewState);
 	static int32 ResolveCandidatePriority(EHeistSoundPingType PingType);
 

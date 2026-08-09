@@ -50,7 +50,7 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerState : public APlayerState
 	void BeginOriginalCarryContribution();
 	void EndOriginalCarryContribution(int32 RecoveredArtifactCount);
 	void RecordSecuredLootContribution(int32 SecuredLootValue);
-	void RecordGuardDistractionContribution();
+	void RecordGuardDistractionContribution(int32 DistractedGuardCount = 1);
 	void RecordTeammateRescueContribution();
 	void RecordAlarmContribution();
 	void DebugSetContributionState(const FHeistPlayerContribution& NewContribution);

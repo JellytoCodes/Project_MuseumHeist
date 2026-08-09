@@ -1,19 +1,24 @@
 #include "UI/Widgets/HeistObjectAssemblyWidget.h"
 
+#include "Blueprint/WidgetTree.h"
+#include "Components/Border.h"
 #include "Components/Button.h"
-#include "Components/SceneComponent.h"
-#include "Components/StaticMeshComponent.h"
+#include "Components/CanvasPanel.h"
+#include "Components/CanvasPanelSlot.h"
 #include "Components/TextBlock.h"
-#include "Components/Viewport.h"
-#include "Components/Widget.h"
+#include "Engine/Font.h"
+#include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerController.h"
-#include "GameFramework/Actor.h"
 #include "GameFramework/GameStateBase.h"
 #include "InputCoreTypes.h"
 #include "UI/ViewModels/HeistObjectAssemblyViewModel.h"
 
 namespace
 {
+constexpr double AssemblyWorkAreaRatio = 0.72;
+constexpr double TrayCellWidth = 136.0;
+constexpr double TrayCellHeight = 88.0;
+
 void ApplyText(UTextBlock* TextBlock, const FText& Text)
 {
 	if (IsValid(TextBlock))
@@ -22,17 +27,19 @@ void ApplyText(UTextBlock* TextBlock, const FText& Text)
 	}
 }
 
-void ApplyVisibility(UWidget* Widget, const bool bVisible)
-{
-	if (IsValid(Widget))
-	{
-		Widget->SetVisibility(bVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-	}
-}
-
 FLinearColor ResolveQualityColor(const float Score, const float MinimumScore)
 {
 	return Score >= MinimumScore ? FLinearColor(0.25f, 0.95f, 0.42f) : FLinearColor(1.0f, 0.40f, 0.10f);
+}
+
+FLinearColor ResolvePieceColor(const int32 CandidateIndex, const bool bPlaced)
+{
+	static const FLinearColor Colors[] = {
+		FLinearColor(0.21f, 0.50f, 0.78f), FLinearColor(0.72f, 0.38f, 0.18f), FLinearColor(0.34f, 0.64f, 0.42f),
+		FLinearColor(0.62f, 0.35f, 0.70f), FLinearColor(0.74f, 0.62f, 0.20f), FLinearColor(0.28f, 0.62f, 0.66f)};
+	FLinearColor Result = Colors[FMath::Abs(CandidateIndex) % UE_ARRAY_COUNT(Colors)];
+	Result.A = bPlaced ? 1.0f : 0.78f;
+	return Result;
 }
 }
 
@@ -44,7 +51,7 @@ UHeistObjectAssemblyWidget::UHeistObjectAssemblyWidget(const FObjectInitializer&
 void UHeistObjectAssemblyWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-	BindButtons();
+	BindActionButtons();
 	RefreshObjectAssemblyPresentation();
 }
 
@@ -54,14 +61,30 @@ void UHeistObjectAssemblyWidget::NativeDestruct()
 	{
 		ObjectAssemblyViewModel->GetPresentationChangedDelegate().RemoveAll(this);
 	}
-	DestroyLocalPreview();
+	ClearPartTiles();
 	Super::NativeDestruct();
 }
 
 void UHeistObjectAssemblyWidget::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+	if (TryForceCloseForAlert())
+	{
+		return;
+	}
+
 	RefreshCountdownPresentation();
+	if (IsValid(ObjectAssemblyViewModel) && ObjectAssemblyViewModel->IsDataReady())
+	{
+		if (DisplayedSessionRevision != ObjectAssemblyViewModel->GetSessionRevision() || PartTiles.Num() != ObjectAssemblyViewModel->GetCandidatePartCount())
+		{
+			RebuildPartTiles();
+		}
+		if (DisplayedPreviewRevision != ObjectAssemblyViewModel->GetLocalPreviewRevision())
+		{
+			RefreshPartTilePresentation();
+		}
+	}
 }
 
 FReply UHeistObjectAssemblyWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
@@ -76,7 +99,107 @@ FReply UHeistObjectAssemblyWidget::NativeOnKeyDown(const FGeometry& InGeometry, 
 		HandleCancelClicked();
 		return FReply::Handled();
 	}
+	if (!InKeyEvent.IsRepeat() && InKeyEvent.GetKey() == EKeys::R && IsValid(ObjectAssemblyViewModel))
+	{
+		ObjectAssemblyViewModel->ResetLocalAssembly();
+		return FReply::Handled();
+	}
 	return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
+}
+
+FReply UHeistObjectAssemblyWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	if (!IsValid(ObjectAssemblyViewModel) || !ObjectAssemblyViewModel->IsDataReady() || !IsValid(AssemblyCanvas))
+	{
+		return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
+	}
+
+	const FName PartId = FindPartTileAtScreenPosition(InMouseEvent.GetScreenSpacePosition());
+	if (PartId.IsNone())
+	{
+		return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
+	}
+	if (InMouseEvent.GetEffectingButton() == EKeys::RightMouseButton)
+	{
+		ObjectAssemblyViewModel->RemovePart(PartId);
+		return FReply::Handled();
+	}
+	if (InMouseEvent.GetEffectingButton() != EKeys::LeftMouseButton)
+	{
+		return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
+	}
+
+	DraggedPartId = PartId;
+	const FVector2D CanvasPoint = AssemblyCanvas->GetCachedGeometry().AbsoluteToLocal(InMouseEvent.GetScreenSpacePosition());
+	const UBorder* Tile = PartTiles.FindRef(PartId);
+	const UCanvasPanelSlot* CanvasSlot = IsValid(Tile) ? Cast<UCanvasPanelSlot>(Tile->Slot) : nullptr;
+	DragOffset = IsValid(CanvasSlot) ? CanvasSlot->GetPosition() - CanvasPoint : FVector2D::ZeroVector;
+	SetKeyboardFocus();
+	return FReply::Handled().CaptureMouse(TakeWidget());
+}
+
+FReply UHeistObjectAssemblyWidget::NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	if (DraggedPartId.IsNone() || InMouseEvent.GetEffectingButton() != EKeys::LeftMouseButton || !IsValid(AssemblyCanvas) || !IsValid(ObjectAssemblyViewModel))
+	{
+		return Super::NativeOnMouseButtonUp(InGeometry, InMouseEvent);
+	}
+
+	const FName ReleasedPartId = DraggedPartId;
+	DraggedPartId = NAME_None;
+	const FVector2D CanvasPoint = AssemblyCanvas->GetCachedGeometry().AbsoluteToLocal(InMouseEvent.GetScreenSpacePosition());
+	const FVector2D CanvasSize = GetAssemblyCanvasSize();
+	if (CanvasPoint.Y >= CanvasSize.Y * AssemblyWorkAreaRatio)
+	{
+		ObjectAssemblyViewModel->RemovePart(ReleasedPartId);
+	}
+	else
+	{
+		const FName SocketId = ResolveClosestCompatibleSocket(ReleasedPartId, CanvasPoint);
+		if (!SocketId.IsNone())
+		{
+			ObjectAssemblyViewModel->PlacePartAtSocket(ReleasedPartId, SocketId);
+		}
+	}
+	RefreshPartTilePresentation();
+	return FReply::Handled().ReleaseMouseCapture();
+}
+
+FReply UHeistObjectAssemblyWidget::NativeOnMouseMove(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	if (DraggedPartId.IsNone() || !InMouseEvent.IsMouseButtonDown(EKeys::LeftMouseButton) || !IsValid(AssemblyCanvas))
+	{
+		return Super::NativeOnMouseMove(InGeometry, InMouseEvent);
+	}
+
+	const FVector2D CanvasSize = GetAssemblyCanvasSize();
+	const FVector2D TileSize = ResolvePartTileSize(DraggedPartId);
+	const FVector2D CanvasPoint = AssemblyCanvas->GetCachedGeometry().AbsoluteToLocal(InMouseEvent.GetScreenSpacePosition());
+	const FVector2D RequestedPosition = CanvasPoint + DragOffset;
+	SetPartTilePosition(DraggedPartId,
+		FVector2D(FMath::Clamp(RequestedPosition.X, 0.0, FMath::Max(0.0, CanvasSize.X - TileSize.X)),
+			FMath::Clamp(RequestedPosition.Y, 0.0, FMath::Max(0.0, CanvasSize.Y - TileSize.Y))));
+	return FReply::Handled();
+}
+
+FReply UHeistObjectAssemblyWidget::NativeOnMouseWheel(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	if (IsValid(ObjectAssemblyViewModel))
+	{
+		const FName PartId = FindPartTileAtScreenPosition(InMouseEvent.GetScreenSpacePosition());
+		if (!PartId.IsNone() && ObjectAssemblyViewModel->RotatePart(PartId, InMouseEvent.GetWheelDelta() > 0.0f ? 1 : -1))
+		{
+			return FReply::Handled();
+		}
+	}
+	return Super::NativeOnMouseWheel(InGeometry, InMouseEvent);
+}
+
+void UHeistObjectAssemblyWidget::NativeOnMouseCaptureLost(const FCaptureLostEvent& CaptureLostEvent)
+{
+	Super::NativeOnMouseCaptureLost(CaptureLostEvent);
+	DraggedPartId = NAME_None;
+	RefreshPartTilePresentation();
 }
 
 void UHeistObjectAssemblyWidget::SetupObjectAssemblyWidget(UHeistObjectAssemblyViewModel* InObjectAssemblyViewModel, AHeistPlayerController* InPlayerController)
@@ -101,7 +224,7 @@ void UHeistObjectAssemblyWidget::SetupObjectAssemblyWidget(UHeistObjectAssemblyV
 bool UHeistObjectAssemblyWidget::IsOwnerOnlyContractSatisfied() const
 {
 	return IsValid(ObjectAssemblyViewModel) && IsValid(PlayerController) && PlayerController == GetOwningPlayer() && PlayerController->IsLocalController() &&
-		   ObjectAssemblyViewModel->IsOwnerOnlyContractSatisfied();
+		ObjectAssemblyViewModel->IsOwnerOnlyContractSatisfied();
 }
 
 bool UHeistObjectAssemblyWidget::IsWidgetPresentationVisible() const
@@ -109,109 +232,82 @@ bool UHeistObjectAssemblyWidget::IsWidgetPresentationVisible() const
 	return GetVisibility() != ESlateVisibility::Collapsed && GetVisibility() != ESlateVisibility::Hidden;
 }
 
-bool UHeistObjectAssemblyWidget::IsPreviewReady() const
+bool UHeistObjectAssemblyWidget::IsCanvasReady() const
 {
-	return IsValid(PreviewActor) && IsValid(PreviewCoreComponent) && IsValid(PreviewCoreComponent->GetStaticMesh());
+	return IsValid(AssemblyCanvas) && IsValid(ObjectAssemblyViewModel) && ObjectAssemblyViewModel->IsDataReady() &&
+		PartTiles.Num() == ObjectAssemblyViewModel->GetCandidatePartCount();
 }
 
-int32 UHeistObjectAssemblyWidget::GetPreviewComponentCount() const
+int32 UHeistObjectAssemblyWidget::GetPartTileCount() const
 {
-	return (IsValid(PreviewCoreComponent) ? 1 : 0) + PreviewPartComponents.Num();
+	return PartTiles.Num();
 }
 
-int32 UHeistObjectAssemblyWidget::GetUnresolvedPreviewSocketCount() const
+void UHeistObjectAssemblyWidget::BindActionButtons()
 {
-	return UnresolvedPreviewSocketCount;
-}
-
-void UHeistObjectAssemblyWidget::BindButtons()
-{
-	PreviousPartButton->OnClicked.RemoveAll(this);
-	PreviousPartButton->OnClicked.AddDynamic(this, &UHeistObjectAssemblyWidget::HandlePreviousPartClicked);
-	NextPartButton->OnClicked.RemoveAll(this);
-	NextPartButton->OnClicked.AddDynamic(this, &UHeistObjectAssemblyWidget::HandleNextPartClicked);
-	PreviousSocketButton->OnClicked.RemoveAll(this);
-	PreviousSocketButton->OnClicked.AddDynamic(this, &UHeistObjectAssemblyWidget::HandlePreviousSocketClicked);
-	NextSocketButton->OnClicked.RemoveAll(this);
-	NextSocketButton->OnClicked.AddDynamic(this, &UHeistObjectAssemblyWidget::HandleNextSocketClicked);
-	RotateLeftButton->OnClicked.RemoveAll(this);
-	RotateLeftButton->OnClicked.AddDynamic(this, &UHeistObjectAssemblyWidget::HandleRotateLeftClicked);
-	RotateRightButton->OnClicked.RemoveAll(this);
-	RotateRightButton->OnClicked.AddDynamic(this, &UHeistObjectAssemblyWidget::HandleRotateRightClicked);
-	PlacePartButton->OnClicked.RemoveAll(this);
-	PlacePartButton->OnClicked.AddDynamic(this, &UHeistObjectAssemblyWidget::HandlePlacePartClicked);
-	RemovePartButton->OnClicked.RemoveAll(this);
-	RemovePartButton->OnClicked.AddDynamic(this, &UHeistObjectAssemblyWidget::HandleRemovePartClicked);
-	ResetAssemblyButton->OnClicked.RemoveAll(this);
-	ResetAssemblyButton->OnClicked.AddDynamic(this, &UHeistObjectAssemblyWidget::HandleResetAssemblyClicked);
-	SubmitButton->OnClicked.RemoveAll(this);
-	SubmitButton->OnClicked.AddDynamic(this, &UHeistObjectAssemblyWidget::HandleSubmitClicked);
-	CancelButton->OnClicked.RemoveAll(this);
-	CancelButton->OnClicked.AddDynamic(this, &UHeistObjectAssemblyWidget::HandleCancelClicked);
+	if (IsValid(SubmitButton))
+	{
+		SubmitButton->OnClicked.RemoveAll(this);
+		SubmitButton->OnClicked.AddDynamic(this, &UHeistObjectAssemblyWidget::HandleSubmitClicked);
+	}
+	if (IsValid(CancelButton))
+	{
+		CancelButton->OnClicked.RemoveAll(this);
+		CancelButton->OnClicked.AddDynamic(this, &UHeistObjectAssemblyWidget::HandleCancelClicked);
+	}
 }
 
 void UHeistObjectAssemblyWidget::RefreshObjectAssemblyPresentation()
 {
 	const bool bVisible = IsValid(ObjectAssemblyViewModel) && ObjectAssemblyViewModel->IsPresentationVisible();
-	const bool bDataReady = bVisible && ObjectAssemblyViewModel->IsDataReady();
-	SetVisibility(bVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-
 	if (!bVisible)
 	{
-		DestroyLocalPreview();
+		bAlertExitRequested = false;
+		DraggedPartId = NAME_None;
+		ClearPartTiles();
+		SetVisibility(ESlateVisibility::Collapsed);
 		LastDisplayedAssemblyTimeSeconds = INDEX_NONE;
-		LastDisplayedLockdownSeconds = INDEX_NONE;
 		BP_RefreshObjectAssemblyPresentation(false, false, 0, 0);
 		return;
 	}
+	if (TryForceCloseForAlert())
+	{
+		return;
+	}
 
-	ApplyText(TemplateNameText, ObjectAssemblyViewModel->GetTemplateDisplayText());
-	ApplyText(TitleText, NSLOCTEXT("HeistCommonForgeryUI", "AssemblyTitle", "OBJECT ASSEMBLY"));
-	ApplyText(SelectedPartText, ObjectAssemblyViewModel->GetSelectedPartText());
-	ApplyText(SelectedSocketText, ObjectAssemblyViewModel->GetSelectedSocketText());
-	ApplyText(SelectedOrientationText, ObjectAssemblyViewModel->GetSelectedOrientationText());
-	ApplyText(PlacementProgressText, ObjectAssemblyViewModel->GetPlacementProgressText());
-	ApplyText(AssemblyStatusText, ObjectAssemblyViewModel->GetStatusText());
-	ApplyText(InstructionText, NSLOCTEXT("HeistCommonForgeryUI", "AssemblyInstruction",
-		"Match the reference assembly. Reach 70/100, then submit. Timeout discards the work and calls one nearby guard."));
-	ApplyText(QualityRequirementText,
-		FText::Format(NSLOCTEXT("HeistCommonForgeryUI", "QualityRequirement", "REPLICA REQUIREMENT  {0}/100"),
-			FText::AsNumber(FMath::RoundToInt(ObjectAssemblyViewModel->GetMinimumAcceptedQualityScore()))));
+	const bool bDataReady = ObjectAssemblyViewModel->IsDataReady();
+	SetVisibility(ESlateVisibility::Visible);
+	ApplyText(TitleText, NSLOCTEXT("HeistCommonForgeryUI", "AssemblyTitle", "조각 조립"));
+
+	const float MinimumScore = ObjectAssemblyViewModel->GetMinimumAcceptedQualityScore();
 	const FText PreviewQualityText = ObjectAssemblyViewModel->HasPreviewQuality()
-		? FText::Format(NSLOCTEXT("HeistCommonForgeryUI", "ExpectedScore", "EXPECTED SCORE  {0}/100"),
-			FText::AsNumber(FMath::RoundToInt(ObjectAssemblyViewModel->GetPreviewQualityScore())))
-		: NSLOCTEXT("HeistCommonForgeryUI", "ExpectedScoreUnavailable", "EXPECTED SCORE  --/100");
+		? FText::Format(NSLOCTEXT("HeistCommonForgeryUI", "ExpectedScore", "예상 품질  {0}/100  ·  제출 가능 {1}+"),
+			FText::AsNumber(FMath::RoundToInt(ObjectAssemblyViewModel->GetPreviewQualityScore())), FText::AsNumber(FMath::RoundToInt(MinimumScore)))
+		: FText::Format(NSLOCTEXT("HeistCommonForgeryUI", "ExpectedScoreUnavailable", "예상 품질  --/100  ·  제출 가능 {0}+"),
+			FText::AsNumber(FMath::RoundToInt(MinimumScore)));
 	ApplyText(PreviewScoreText, PreviewQualityText);
 	if (IsValid(PreviewScoreText))
 	{
 		PreviewScoreText->SetColorAndOpacity(ObjectAssemblyViewModel->HasPreviewQuality()
-			? ResolveQualityColor(ObjectAssemblyViewModel->GetPreviewQualityScore(), ObjectAssemblyViewModel->GetMinimumAcceptedQualityScore())
+			? ResolveQualityColor(ObjectAssemblyViewModel->GetPreviewQualityScore(), MinimumScore)
 			: FLinearColor(0.72f, 0.76f, 0.82f));
 	}
-	ApplyText(SubmitButtonLabel, NSLOCTEXT("HeistCommonForgeryUI", "SubmitButton", "SUBMIT"));
-	ApplyText(CancelButtonLabel, NSLOCTEXT("HeistCommonForgeryUI", "CancelButton", "CANCEL"));
-	ApplyText(AssemblyAlertWarningText, ObjectAssemblyViewModel->GetDangerWarningText());
-	if (IsValid(AssemblyAlertWarningText))
+	ApplyText(SubmitButtonLabel, NSLOCTEXT("HeistCommonForgeryUI", "SubmitButton", "제출"));
+	ApplyText(CancelButtonLabel, NSLOCTEXT("HeistCommonForgeryUI", "CancelButton", "취소"));
+	ApplyText(FooterHint, NSLOCTEXT("HeistObjectAssembly", "FooterHint",
+		"좌클릭 드래그 배치  |  휠 회전  |  우클릭 제거  |  R 초기화  |  Enter 제출  |  Esc 취소  |  주변 소리와 팀 음성 유지"));
+
+	if (IsValid(SubmitButton))
 	{
-		AssemblyAlertWarningText->SetColorAndOpacity(ObjectAssemblyViewModel->GetDangerWarningColor());
+		SubmitButton->SetIsEnabled(ObjectAssemblyViewModel->CanSubmitAssembly());
 	}
-	ApplyVisibility(AssemblyAlertWarningText, ObjectAssemblyViewModel->IsDangerWarningVisible());
+	if (IsValid(CancelButton))
+	{
+		CancelButton->SetIsEnabled(true);
+	}
 
-	const int32 CandidatePartCount = ObjectAssemblyViewModel->GetCandidatePartCount();
-	const bool bHasSelection = bDataReady && CandidatePartCount > 0;
-	PreviousPartButton->SetIsEnabled(bHasSelection && CandidatePartCount > 1);
-	NextPartButton->SetIsEnabled(bHasSelection && CandidatePartCount > 1);
-	PreviousSocketButton->SetIsEnabled(bHasSelection);
-	NextSocketButton->SetIsEnabled(bHasSelection);
-	RotateLeftButton->SetIsEnabled(bHasSelection);
-	RotateRightButton->SetIsEnabled(bHasSelection);
-	PlacePartButton->SetIsEnabled(bHasSelection);
-	RemovePartButton->SetIsEnabled(bHasSelection && ObjectAssemblyViewModel->GetPlacedPartCount() > 0);
-	ResetAssemblyButton->SetIsEnabled(bDataReady && ObjectAssemblyViewModel->GetPlacedPartCount() > 0);
-	SubmitButton->SetIsEnabled(ObjectAssemblyViewModel->CanSubmitAssembly());
-	CancelButton->SetIsEnabled(true);
-
-	RefreshLocalPreview();
+	RebuildPartTiles();
+	RefreshPartTilePresentation();
 	RefreshCountdownPresentation();
 	BP_RefreshObjectAssemblyPresentation(true, bDataReady, ObjectAssemblyViewModel->GetPlacedPartCount(), ObjectAssemblyViewModel->GetRequiredPartCount());
 }
@@ -224,227 +320,274 @@ void UHeistObjectAssemblyWidget::RefreshCountdownPresentation()
 	}
 
 	const AGameStateBase* GameState = GetWorld() ? GetWorld()->GetGameState<AGameStateBase>() : nullptr;
-	const bool bHasAuthoritativeAssemblyTime = IsValid(GameState) && ObjectAssemblyViewModel->GetSessionEndServerTime() > 0.0f;
-	const float ServerWorldTime = bHasAuthoritativeAssemblyTime ? static_cast<float>(GameState->GetServerWorldTimeSeconds()) : 0.0f;
-	const int32 AssemblyTimeSeconds =
-		bHasAuthoritativeAssemblyTime ? FMath::Max(0, FMath::CeilToInt(ObjectAssemblyViewModel->GetSessionEndServerTime() - ServerWorldTime)) : INDEX_NONE;
-	if (AssemblyTimeSeconds != LastDisplayedAssemblyTimeSeconds)
+	const bool bHasAuthoritativeTime = IsValid(GameState) && ObjectAssemblyViewModel->GetSessionEndServerTime() > 0.0f;
+	const float ServerWorldTime = bHasAuthoritativeTime ? static_cast<float>(GameState->GetServerWorldTimeSeconds()) : 0.0f;
+	const int32 RemainingSeconds = bHasAuthoritativeTime
+		? FMath::Max(0, FMath::CeilToInt(ObjectAssemblyViewModel->GetSessionEndServerTime() - ServerWorldTime))
+		: INDEX_NONE;
+	if (RemainingSeconds == LastDisplayedAssemblyTimeSeconds)
 	{
-		LastDisplayedAssemblyTimeSeconds = AssemblyTimeSeconds;
-		const FText TimeText = AssemblyTimeSeconds == INDEX_NONE
-								   ? FText::FromString(TEXT("--:--"))
-								   : FText::FromString(FString::Printf(TEXT("%02d:%02d"), AssemblyTimeSeconds / 60, AssemblyTimeSeconds % 60));
-		ApplyText(AssemblyTimeRemainingText, FText::Format(NSLOCTEXT("HeistCommonForgeryUI", "TimeRemaining", "TIME  {0}"), TimeText));
+		return;
 	}
 
-	const bool bShowLockdown = ObjectAssemblyViewModel->IsLockdownCountdownVisible();
-	const int32 LockdownTimeSeconds =
-		bShowLockdown && IsValid(GameState) && ObjectAssemblyViewModel->GetLockdownCountdownEndServerTime() > 0.0f
-			? FMath::Max(0, FMath::CeilToInt(ObjectAssemblyViewModel->GetLockdownCountdownEndServerTime() - static_cast<float>(GameState->GetServerWorldTimeSeconds())))
-			: INDEX_NONE;
-	if (LockdownTimeSeconds != LastDisplayedLockdownSeconds)
-	{
-		LastDisplayedLockdownSeconds = LockdownTimeSeconds;
-		const FText TimeText = LockdownTimeSeconds == INDEX_NONE
-								   ? FText::FromString(TEXT("--:--"))
-								   : FText::FromString(FString::Printf(TEXT("%02d:%02d"), LockdownTimeSeconds / 60, LockdownTimeSeconds % 60));
-		ApplyText(AssemblyLockdownCountdownText,
-				  bShowLockdown ? FText::Format(NSLOCTEXT("HeistObjectAssembly", "LockdownCountdown", "박물관 봉쇄까지 {0}"), TimeText)
-								: FText::GetEmpty());
-	}
-	ApplyVisibility(AssemblyLockdownCountdownText, bShowLockdown);
+	LastDisplayedAssemblyTimeSeconds = RemainingSeconds;
+	const FText TimeText = RemainingSeconds == INDEX_NONE
+		? FText::FromString(TEXT("--:--"))
+		: FText::FromString(FString::Printf(TEXT("%02d:%02d"), RemainingSeconds / 60, RemainingSeconds % 60));
+	ApplyText(AssemblyTimeRemainingText, FText::Format(NSLOCTEXT("HeistCommonForgeryUI", "TimeRemaining", "남은 시간  {0}"), TimeText));
 }
 
-void UHeistObjectAssemblyWidget::RefreshLocalPreview()
+bool UHeistObjectAssemblyWidget::TryForceCloseForAlert()
 {
-	if (!IsValid(ObjectAssemblyViewModel) || !ObjectAssemblyViewModel->IsDataReady() || !IsValid(AssemblyViewport))
+	const bool bShouldClose = IsValid(ObjectAssemblyViewModel) && ObjectAssemblyViewModel->IsPresentationVisible() && ObjectAssemblyViewModel->IsDangerWarningVisible();
+	if (!bShouldClose || bAlertExitRequested)
 	{
-		DestroyLocalPreview();
-		return;
+		return bShouldClose;
 	}
 
-	const int32 PreviewRevision = ObjectAssemblyViewModel->GetLocalPreviewRevision();
-	if (DisplayedPreviewRevision == PreviewRevision && IsValid(PreviewActor))
+	bAlertExitRequested = true;
+	DraggedPartId = NAME_None;
+	SetVisibility(ESlateVisibility::Collapsed);
+	if (IsValid(ObjectAssemblyViewModel))
 	{
-		return;
+		ObjectAssemblyViewModel->RequestCancelAssembly();
 	}
-
-	DestroyLocalPreview();
-	PreviewActor = AssemblyViewport->Spawn(AActor::StaticClass());
-	if (!IsValid(PreviewActor))
+	if (IsValid(PlayerController))
 	{
-		return;
+		PlayerController->RestoreGameplayInputAfterForcedForgeryClose();
 	}
-
-	USceneComponent* PreviewRoot = NewObject<USceneComponent>(PreviewActor, TEXT("ObjectAssemblyPreviewRoot"));
-	PreviewActor->SetRootComponent(PreviewRoot);
-	PreviewActor->AddInstanceComponent(PreviewRoot);
-	PreviewRoot->RegisterComponent();
-
-	PreviewCoreComponent = NewObject<UStaticMeshComponent>(PreviewActor, TEXT("ObjectAssemblyPreviewCore"));
-	PreviewCoreComponent->SetupAttachment(PreviewRoot);
-	PreviewCoreComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	PreviewCoreComponent->SetStaticMesh(ObjectAssemblyViewModel->LoadCoreStaticMesh());
-	PreviewActor->AddInstanceComponent(PreviewCoreComponent);
-	PreviewCoreComponent->RegisterComponent();
-
-	const TArray<FHeistObjectAssemblyEntry>& Entries = ObjectAssemblyViewModel->GetLocalAssemblyEntries();
-	for (int32 EntryIndex = 0; EntryIndex < Entries.Num(); ++EntryIndex)
-	{
-		const FHeistObjectAssemblyEntry& Entry = Entries[EntryIndex];
-		UStaticMeshComponent* PartComponent = NewObject<UStaticMeshComponent>(PreviewActor);
-		PartComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		PartComponent->SetStaticMesh(ObjectAssemblyViewModel->LoadPartStaticMesh(Entry.PartId));
-
-		if (IsValid(PreviewCoreComponent) && PreviewCoreComponent->DoesSocketExist(Entry.SocketId))
-		{
-			PartComponent->SetupAttachment(PreviewCoreComponent, Entry.SocketId);
-			PartComponent->SetRelativeRotation(FRotator(0.0f, static_cast<float>(Entry.QuantizedOrientation) * 22.5f, 0.0f));
-		}
-		else
-		{
-			++UnresolvedPreviewSocketCount;
-			PartComponent->SetupAttachment(PreviewRoot);
-			PartComponent->SetRelativeTransform(ResolveFallbackPartTransform(Entry.SocketId, EntryIndex, Entry.QuantizedOrientation));
-		}
-
-		PreviewActor->AddInstanceComponent(PartComponent);
-		PartComponent->RegisterComponent();
-		PreviewPartComponents.Add(PartComponent);
-	}
-
-	const FVector CameraLocation(360.0f, 0.0f, 120.0f);
-	const FVector PreviewLookAt(0.0f, 0.0f, 35.0f);
-	AssemblyViewport->SetViewLocation(CameraLocation);
-	AssemblyViewport->SetViewRotation((PreviewLookAt - CameraLocation).Rotation());
-	AssemblyViewport->SetBackgroundColor(FLinearColor(0.018f, 0.024f, 0.035f, 1.0f));
-	AssemblyViewport->SetLightIntensity(4.0f);
-	AssemblyViewport->SetSkyIntensity(0.75f);
-	DisplayedPreviewRevision = PreviewRevision;
+	UE_LOG(LogHeistUI, Log, TEXT("[%s] Object assembly screen force-closed: AlertLevel=%s CancelRequested=true"), *GetName(),
+		*UEnum::GetValueAsString(ObjectAssemblyViewModel->GetAlertLevel()));
+	return true;
 }
 
-void UHeistObjectAssemblyWidget::DestroyLocalPreview()
+void UHeistObjectAssemblyWidget::RebuildPartTiles()
 {
-	PreviewPartComponents.Reset();
-	PreviewCoreComponent = nullptr;
-	UnresolvedPreviewSocketCount = 0;
+	if (!IsValid(AssemblyCanvas) || !IsValid(ObjectAssemblyViewModel) || !ObjectAssemblyViewModel->IsDataReady() || !IsValid(WidgetTree))
+	{
+		return;
+	}
+	if (DisplayedSessionRevision == ObjectAssemblyViewModel->GetSessionRevision() && PartTiles.Num() == ObjectAssemblyViewModel->GetCandidatePartCount())
+	{
+		return;
+	}
+
+	ClearPartTiles();
+	const TArray<FName>& CandidatePartIds = ObjectAssemblyViewModel->GetCandidatePartIds();
+	for (int32 CandidateIndex = 0; CandidateIndex < CandidatePartIds.Num(); ++CandidateIndex)
+	{
+		const FName PartId = CandidatePartIds[CandidateIndex];
+		UBorder* PartTile = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(),
+			FName(*FString::Printf(TEXT("AssemblyPiece_%s"), *PartId.ToString())));
+		UTextBlock* PartLabel = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),
+			FName(*FString::Printf(TEXT("AssemblyPieceLabel_%s"), *PartId.ToString())));
+		if (!IsValid(PartTile) || !IsValid(PartLabel))
+		{
+			continue;
+		}
+
+		PartLabel->SetText(ObjectAssemblyViewModel->GetPartDisplayText(PartId));
+		if (IsValid(KoreanUIFont.Get()))
+		{
+			FSlateFontInfo PartFont = PartLabel->GetFont();
+			PartFont.FontObject = KoreanUIFont.Get();
+			PartFont.TypefaceFontName = TEXT("Regular");
+			PartLabel->SetFont(PartFont);
+		}
+		PartLabel->SetJustification(ETextJustify::Center);
+		PartLabel->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+		PartLabel->SetAutoWrapText(true);
+		PartTile->SetPadding(FMargin(8.0f));
+		PartTile->SetHorizontalAlignment(HAlign_Center);
+		PartTile->SetVerticalAlignment(VAlign_Center);
+		PartTile->SetContent(PartLabel);
+		UCanvasPanelSlot* TileSlot = AssemblyCanvas->AddChildToCanvas(PartTile);
+		TileSlot->SetAutoSize(false);
+		TileSlot->SetSize(ResolvePartTileSize(PartId));
+		PartTiles.Add(PartId, PartTile);
+	}
+
+	DisplayedSessionRevision = ObjectAssemblyViewModel->GetSessionRevision();
 	DisplayedPreviewRevision = INDEX_NONE;
-	if (IsValid(PreviewActor))
-	{
-		PreviewActor->Destroy();
-	}
-	PreviewActor = nullptr;
 }
 
-FTransform UHeistObjectAssemblyWidget::ResolveFallbackPartTransform(const FName SocketId, const int32 PlacementIndex, const uint8 QuantizedOrientation) const
+void UHeistObjectAssemblyWidget::ClearPartTiles()
+{
+	for (const TPair<FName, TObjectPtr<UBorder>>& Pair : PartTiles)
+	{
+		if (IsValid(Pair.Value))
+		{
+			Pair.Value->RemoveFromParent();
+		}
+	}
+	PartTiles.Reset();
+	DisplayedSessionRevision = INDEX_NONE;
+	DisplayedPreviewRevision = INDEX_NONE;
+}
+
+void UHeistObjectAssemblyWidget::RefreshPartTilePresentation()
+{
+	if (!IsValid(ObjectAssemblyViewModel) || !IsValid(AssemblyCanvas))
+	{
+		return;
+	}
+
+	const FVector2D CanvasSize = GetAssemblyCanvasSize();
+	const TArray<FName>& CandidatePartIds = ObjectAssemblyViewModel->GetCandidatePartIds();
+	for (int32 CandidateIndex = 0; CandidateIndex < CandidatePartIds.Num(); ++CandidateIndex)
+	{
+		const FName PartId = CandidatePartIds[CandidateIndex];
+		UBorder* Tile = PartTiles.FindRef(PartId);
+		if (!IsValid(Tile))
+		{
+			continue;
+		}
+
+		const bool bPlaced = ObjectAssemblyViewModel->IsPartPlaced(PartId);
+		Tile->SetBrushColor(ResolvePieceColor(CandidateIndex, bPlaced));
+		Tile->SetRenderTransformAngle(bPlaced ? static_cast<float>(ObjectAssemblyViewModel->GetPlacedPartOrientation(PartId)) * 22.5f : 0.0f);
+		if (PartId == DraggedPartId)
+		{
+			continue;
+		}
+
+		const FVector2D TileSize = ResolvePartTileSize(PartId);
+		FVector2D Position = ResolveTrayPosition(CandidateIndex, CanvasSize, TileSize);
+		if (bPlaced)
+		{
+			for (const FHeistObjectAssemblyEntry& Entry : ObjectAssemblyViewModel->GetLocalAssemblyEntries())
+			{
+				if (Entry.PartId == PartId)
+				{
+					const FVector2D Anchor = ResolveSocketAnchorNormalized(Entry.SocketId);
+					Position = FVector2D(Anchor.X * CanvasSize.X - TileSize.X * 0.5,
+						Anchor.Y * (CanvasSize.Y * AssemblyWorkAreaRatio) - TileSize.Y * 0.5);
+					break;
+				}
+			}
+		}
+		SetPartTilePosition(PartId, Position);
+	}
+	DisplayedPreviewRevision = ObjectAssemblyViewModel->GetLocalPreviewRevision();
+}
+
+FName UHeistObjectAssemblyWidget::FindPartTileAtScreenPosition(const FVector2D& ScreenPosition) const
+{
+	for (const TPair<FName, TObjectPtr<UBorder>>& Pair : PartTiles)
+	{
+		if (IsValid(Pair.Value) && Pair.Value->GetCachedGeometry().IsUnderLocation(ScreenPosition))
+		{
+			return Pair.Key;
+		}
+	}
+	return NAME_None;
+}
+
+FName UHeistObjectAssemblyWidget::ResolveClosestCompatibleSocket(const FName PartId, const FVector2D& CanvasPoint) const
+{
+	if (!IsValid(ObjectAssemblyViewModel))
+	{
+		return NAME_None;
+	}
+
+	const FVector2D CanvasSize = GetAssemblyCanvasSize();
+	const FVector2D WorkSize(CanvasSize.X, CanvasSize.Y * AssemblyWorkAreaRatio);
+	const FVector2D NormalizedPoint(FMath::Clamp(CanvasPoint.X / FMath::Max(1.0, WorkSize.X), 0.0, 1.0),
+		FMath::Clamp(CanvasPoint.Y / FMath::Max(1.0, WorkSize.Y), 0.0, 1.0));
+	FName ClosestSocketId = NAME_None;
+	double ClosestDistanceSquared = TNumericLimits<double>::Max();
+	for (const FName SocketId : ObjectAssemblyViewModel->GetCompatibleSocketIds(PartId))
+	{
+		const double DistanceSquared = FVector2D::DistSquared(NormalizedPoint, ResolveSocketAnchorNormalized(SocketId));
+		if (DistanceSquared < ClosestDistanceSquared)
+		{
+			ClosestDistanceSquared = DistanceSquared;
+			ClosestSocketId = SocketId;
+		}
+	}
+	return ClosestSocketId;
+}
+
+FVector2D UHeistObjectAssemblyWidget::ResolveSocketAnchorNormalized(const FName SocketId) const
 {
 	const FString SocketName = SocketId.ToString();
-	FVector Location;
-	FVector Scale(0.55f);
-	if (SocketName.Contains(TEXT("Head"), ESearchCase::IgnoreCase))
+	if (SocketName.Equals(TEXT("Crest"), ESearchCase::IgnoreCase))
 	{
-		Location = FVector(0.0f, 0.0f, 105.0f);
-		Scale = FVector(0.65f);
+		return FVector2D(0.50, 0.10);
 	}
-	else if (SocketName.Contains(TEXT("Shoulder_L"), ESearchCase::IgnoreCase))
+	if (SocketName.Equals(TEXT("Head"), ESearchCase::IgnoreCase) || SocketName.Equals(TEXT("Lid"), ESearchCase::IgnoreCase))
 	{
-		Location = FVector(0.0f, -75.0f, 40.0f);
-		Scale = FVector(0.32f, 0.32f, 0.85f);
+		return FVector2D(0.50, 0.23);
 	}
-	else if (SocketName.Contains(TEXT("Shoulder_R"), ESearchCase::IgnoreCase))
+	if (SocketName.Contains(TEXT("_L"), ESearchCase::IgnoreCase))
 	{
-		Location = FVector(0.0f, 75.0f, 40.0f);
-		Scale = FVector(0.32f, 0.32f, 0.85f);
+		return FVector2D(0.27, 0.48);
 	}
-	else if (SocketName.Contains(TEXT("Pedestal"), ESearchCase::IgnoreCase))
+	if (SocketName.Equals(TEXT("Spout"), ESearchCase::IgnoreCase))
 	{
-		Location = FVector(0.0f, 0.0f, -80.0f);
-		Scale = FVector(0.65f);
+		return FVector2D(0.78, 0.40);
 	}
-	else if (SocketName.Contains(TEXT("Handle"), ESearchCase::IgnoreCase))
+	if (SocketName.Contains(TEXT("_R"), ESearchCase::IgnoreCase))
 	{
-		Location = FVector(0.0f, 75.0f, 25.0f);
-		Scale = FVector(0.45f);
+		return FVector2D(0.73, 0.48);
 	}
-	else
+	if (SocketName.Equals(TEXT("Foot"), ESearchCase::IgnoreCase) || SocketName.Equals(TEXT("Pedestal"), ESearchCase::IgnoreCase))
 	{
-		const float AngleRadians = FMath::DegreesToRadians(static_cast<float>(PlacementIndex) * 72.0f);
-		Location = FVector(0.0f, FMath::Cos(AngleRadians) * 85.0f, 25.0f + FMath::Sin(AngleRadians) * 60.0f);
+		return FVector2D(0.50, 0.80);
 	}
 
-	const FRotator Rotation(0.0f, static_cast<float>(QuantizedOrientation) * 22.5f, 0.0f);
-	return FTransform(Rotation, Location, Scale);
+	static const FVector2D FallbackAnchors[] = {FVector2D(0.34, 0.32), FVector2D(0.66, 0.32), FVector2D(0.34, 0.66), FVector2D(0.66, 0.66)};
+	return FallbackAnchors[GetTypeHash(SocketName) % UE_ARRAY_COUNT(FallbackAnchors)];
 }
 
-void UHeistObjectAssemblyWidget::HandlePreviousPartClicked()
+FVector2D UHeistObjectAssemblyWidget::ResolvePartTileSize(const FName PartId) const
 {
-	if (IsValid(ObjectAssemblyViewModel))
+	const FString PartName = PartId.ToString();
+	if (PartName.Contains(TEXT("Arm"), ESearchCase::IgnoreCase) || PartName.Contains(TEXT("Handle"), ESearchCase::IgnoreCase) ||
+		PartName.Contains(TEXT("Spout"), ESearchCase::IgnoreCase))
 	{
-		ObjectAssemblyViewModel->SelectPreviousPart();
+		return FVector2D(118.0, 54.0);
 	}
+	if (PartName.Contains(TEXT("Pedestal"), ESearchCase::IgnoreCase) || PartName.Contains(TEXT("Foot"), ESearchCase::IgnoreCase))
+	{
+		return FVector2D(140.0, 60.0);
+	}
+	if (PartName.Contains(TEXT("Head"), ESearchCase::IgnoreCase) || PartName.Contains(TEXT("Lid"), ESearchCase::IgnoreCase) ||
+		PartName.Contains(TEXT("Crest"), ESearchCase::IgnoreCase))
+	{
+		return FVector2D(78.0, 78.0);
+	}
+	return FVector2D(96.0, 70.0);
 }
 
-void UHeistObjectAssemblyWidget::HandleNextPartClicked()
+FVector2D UHeistObjectAssemblyWidget::ResolveTrayPosition(const int32 CandidateIndex, const FVector2D& CanvasSize, const FVector2D& TileSize) const
 {
-	if (IsValid(ObjectAssemblyViewModel))
-	{
-		ObjectAssemblyViewModel->SelectNextPart();
-	}
+	const int32 ColumnCount = FMath::Max(1, FMath::FloorToInt(CanvasSize.X / TrayCellWidth));
+	const int32 Row = CandidateIndex / ColumnCount;
+	const int32 Column = CandidateIndex % ColumnCount;
+	const double RowWidth = FMath::Min(ColumnCount, FMath::Max(1, ObjectAssemblyViewModel->GetCandidatePartCount() - Row * ColumnCount)) * TrayCellWidth;
+	const double StartX = FMath::Max(12.0, (CanvasSize.X - RowWidth) * 0.5);
+	return FVector2D(StartX + Column * TrayCellWidth + (TrayCellWidth - TileSize.X) * 0.5,
+		CanvasSize.Y * AssemblyWorkAreaRatio + 10.0 + Row * TrayCellHeight + (TrayCellHeight - TileSize.Y) * 0.5);
 }
 
-void UHeistObjectAssemblyWidget::HandlePreviousSocketClicked()
+FVector2D UHeistObjectAssemblyWidget::GetAssemblyCanvasSize() const
 {
-	if (IsValid(ObjectAssemblyViewModel))
+	if (!IsValid(AssemblyCanvas))
 	{
-		ObjectAssemblyViewModel->SelectPreviousSocket();
+		return FVector2D(900.0, 560.0);
 	}
+	const FVector2D CachedSize = AssemblyCanvas->GetCachedGeometry().GetLocalSize();
+	return CachedSize.X >= 100.0 && CachedSize.Y >= 100.0 ? CachedSize : FVector2D(900.0, 560.0);
 }
 
-void UHeistObjectAssemblyWidget::HandleNextSocketClicked()
+void UHeistObjectAssemblyWidget::SetPartTilePosition(const FName PartId, const FVector2D& Position)
 {
-	if (IsValid(ObjectAssemblyViewModel))
+	UBorder* Tile = PartTiles.FindRef(PartId);
+	UCanvasPanelSlot* CanvasSlot = IsValid(Tile) ? Cast<UCanvasPanelSlot>(Tile->Slot) : nullptr;
+	if (IsValid(CanvasSlot))
 	{
-		ObjectAssemblyViewModel->SelectNextSocket();
-	}
-}
-
-void UHeistObjectAssemblyWidget::HandleRotateLeftClicked()
-{
-	if (IsValid(ObjectAssemblyViewModel))
-	{
-		ObjectAssemblyViewModel->RotatePrevious();
-	}
-}
-
-void UHeistObjectAssemblyWidget::HandleRotateRightClicked()
-{
-	if (IsValid(ObjectAssemblyViewModel))
-	{
-		ObjectAssemblyViewModel->RotateNext();
-	}
-}
-
-void UHeistObjectAssemblyWidget::HandlePlacePartClicked()
-{
-	if (IsValid(ObjectAssemblyViewModel))
-	{
-		ObjectAssemblyViewModel->PlaceOrUpdateSelectedPart();
-	}
-}
-
-void UHeistObjectAssemblyWidget::HandleRemovePartClicked()
-{
-	if (IsValid(ObjectAssemblyViewModel))
-	{
-		ObjectAssemblyViewModel->RemoveSelectedPart();
-	}
-}
-
-void UHeistObjectAssemblyWidget::HandleResetAssemblyClicked()
-{
-	if (IsValid(ObjectAssemblyViewModel))
-	{
-		ObjectAssemblyViewModel->ResetLocalAssembly();
+		CanvasSlot->SetPosition(Position);
 	}
 }
 

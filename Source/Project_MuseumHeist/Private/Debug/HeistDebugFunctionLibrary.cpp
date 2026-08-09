@@ -2080,23 +2080,23 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyUIDump(APlayerController* Pl
 	const bool bDataContract =
 		bSessionActive ? bViewModelReady && ViewModel->IsDataReady() && ViewModel->GetCandidatePartCount() > 0 && ViewModel->GetSessionEndServerTime() > 0.0f
 					   : bViewModelReady && !ViewModel->IsDataReady();
-	const bool bPreviewContract =
-		bSessionActive ? bWidgetReady && Widget->IsPreviewReady() && Widget->GetPreviewComponentCount() >= 1
-					   : bWidgetReady && !Widget->IsPreviewReady() && Widget->GetPreviewComponentCount() == 0;
+	const bool bCanvasContract =
+		bSessionActive ? bWidgetReady && Widget->IsCanvasReady() && Widget->GetPartTileCount() == ViewModel->GetCandidatePartCount()
+					   : bWidgetReady && !Widget->IsCanvasReady() && Widget->GetPartTileCount() == 0;
 	const bool bContractPassed =
-		bLocalController && bViewModelReady && bWidgetReady && bOwnerOnlyContract && bVisibilityContract && bInputContract && bDataContract && bPreviewContract;
+		bLocalController && bViewModelReady && bWidgetReady && bOwnerOnlyContract && bVisibilityContract && bInputContract && bDataContract && bCanvasContract;
 
 	Message(
 		PlayerController,
 		FString::Printf(
 			TEXT(
-				"Object Assembly UI dump: Controller=%s Local=%s HUD=%s ViewModel=%s Widget=%s SessionActive=%s WidgetVisible=%s OwnerOnly=%s VisibilityMatch=%s DataReady=%s CandidateParts=%d PlacedParts=%d RequiredParts=%d PreviewReady=%s PreviewComponents=%d PreviewFallbackSockets=%d InputMode=%s InputContextActive=%s ActiveContexts=%d Cursor=%s IgnoreMove=%s IgnoreLook=%s InputContract=%s SessionRevision=%d EndServerTime=%.2f Artifact=%s Template=%s Family=%s Result=%s"),
+				"Object Assembly UI dump: Controller=%s Local=%s HUD=%s ViewModel=%s Widget=%s SessionActive=%s WidgetVisible=%s OwnerOnly=%s VisibilityMatch=%s DataReady=%s CandidateParts=%d PlacedParts=%d RequiredParts=%d CanvasReady=%s PartTiles=%d InputMode=%s InputContextActive=%s ActiveContexts=%d Cursor=%s IgnoreMove=%s IgnoreLook=%s InputContract=%s SessionRevision=%d EndServerTime=%.2f Artifact=%s Template=%s Family=%s Result=%s"),
 			*GetNameSafe(HeistPlayerController), bLocalController ? TEXT("true") : TEXT("false"), *GetNameSafe(HeistHUD), *GetNameSafe(ViewModel), *GetNameSafe(Widget),
 			bSessionActive ? TEXT("true") : TEXT("false"), bWidgetVisible ? TEXT("true") : TEXT("false"), bOwnerOnlyContract ? TEXT("true") : TEXT("false"),
 			bVisibilityContract ? TEXT("true") : TEXT("false"), bViewModelReady && ViewModel->IsDataReady() ? TEXT("true") : TEXT("false"),
 			bViewModelReady ? ViewModel->GetCandidatePartCount() : 0, bViewModelReady ? ViewModel->GetPlacedPartCount() : 0,
-			bViewModelReady ? ViewModel->GetRequiredPartCount() : 0, bWidgetReady && Widget->IsPreviewReady() ? TEXT("true") : TEXT("false"),
-			bWidgetReady ? Widget->GetPreviewComponentCount() : 0, bWidgetReady ? Widget->GetUnresolvedPreviewSocketCount() : 0,
+			bViewModelReady ? ViewModel->GetRequiredPartCount() : 0, bWidgetReady && Widget->IsCanvasReady() ? TEXT("true") : TEXT("false"),
+			bWidgetReady ? Widget->GetPartTileCount() : 0,
 			IsValid(HeistPlayerController)
 				? (HeistPlayerController->GetLocalInputMode() == EHeistInputMode::Gameplay
 					   ? TEXT("Gameplay")
@@ -4641,7 +4641,7 @@ void UHeistDebugFunctionLibrary::DebugAlertDump(APlayerController* PlayerControl
 	}
 	else
 	{
-		Message(PlayerController, TEXT("Forgery alert warning: Result=FAIL Reason=MissingForgeryWidget"), EHeistDebugLevel::Warning, true);
+		Message(PlayerController, TEXT("Forgery alert close: Result=FAIL Reason=MissingForgeryWidget"), EHeistDebugLevel::Warning, true);
 	}
 #endif
 }
@@ -7341,7 +7341,7 @@ void UHeistDebugFunctionLibrary::DebugResultHelp(APlayerController* PlayerContro
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(PlayerController, TEXT("Result debug commands: HeistResultShow | HeistResultHide | HeistResultDump | HeistResultRebuild | HeistResultSeed <Score> <Escaped 1/0> <EscapeTime> | HeistContributionSeed <SurfaceCount> <BestSurface> <AssemblyCount> <BestAssembly> <Artifacts> <CarryTime> <SecuredLoot> <Distracted> <Rescued> <Alarms> | HeistContributionDump | HeistExitPlacementDump | HeistMissionGateDump"),
+	Message(PlayerController, TEXT("Result debug commands: HeistResultShow | HeistResultHide | HeistResultDump | HeistResultRebuild | HeistResultSeed <Score> <Escaped 1/0> <EscapeTime> | HeistContributionSeed <SurfaceCount> <BestSurface> <AssemblyCount> <BestAssembly> <Artifacts> <CarryTime> <SecuredLoot> <Distracted> <Rescued> <Alarms> | SERVER HeistResultVisualSeed | HeistContributionDump | HeistExitPlacementDump | HeistMissionGateDump"),
 			EHeistDebugLevel::Info, true, 8.0f);
 #endif
 }
@@ -7462,6 +7462,32 @@ void UHeistDebugFunctionLibrary::DebugResultDump(APlayerController* PlayerContro
 	{
 		Message(PlayerController, FString::Printf(TEXT("Result entry: %s"), *FormatResultEntry(PlayerResult)), EHeistDebugLevel::Info, false);
 	}
+
+	int32 PaintingVisualCount = 0;
+	int32 AssemblyVisualCount = 0;
+	const bool bReplicaVisualsExpected = TeamResult.bRequiredTargetSecured || !TeamResult.ReplicaRecap.IsEmpty();
+	bool bAllReplicaVisualsValid = !bReplicaVisualsExpected || !TeamResult.ReplicaRecap.IsEmpty();
+	for (const FHeistReplicaRecapEntry& ReplicaEntry : TeamResult.ReplicaRecap)
+	{
+		const bool bPaintingVisual = ReplicaEntry.HasPaintingVisualPayload();
+		const bool bAssemblyVisual = ReplicaEntry.HasAssemblyVisualPayload();
+		PaintingVisualCount += bPaintingVisual ? 1 : 0;
+		AssemblyVisualCount += bAssemblyVisual ? 1 : 0;
+		bAllReplicaVisualsValid = bAllReplicaVisualsValid && !ReplicaEntry.ArtifactDisplayName.IsEmpty() && (bPaintingVisual || bAssemblyVisual);
+	}
+	const bool bOutcomeReadable = TeamResult.Outcome != EHeistContractOutcome::None && !HeistContractOutcomeReasons::ToDisplayText(TeamResult.OutcomeReasonId).IsEmpty();
+	const bool bContractReadable = !TeamResult.RequiredTargetArtifactId.IsNone() && !TeamResult.RequiredTargetDisplayName.IsEmpty() && TeamResult.LootValueQuota > 0 &&
+		TeamResult.SecuredValue >= 0;
+	const bool bContributionRowsReady = PlayerResults.Num() == TeamResult.CrewCount && !PlayerResults.IsEmpty();
+	const bool bPresentationPassed = TeamResult.IsValid() && bOutcomeReadable && bContractReadable && bRewardFormulaConsistent && bContributionRowsReady && bAllReplicaVisualsValid;
+	Message(PlayerController,
+		FString::Printf(TEXT("W6-007 result presentation audit: Source=%s OutcomeReason=%s RequiredTarget=%s ContractProgress=%s RewardBreakdown=%s Contributions=%s PaintingVisuals=%d AssemblyVisuals=%d ReplicaVisuals=%s WinnerRank=None Authority=%s Result=%s"),
+			PlayerController->HasAuthority() ? TEXT("SERVER") : TEXT("REPLICATED_CLIENT"), bOutcomeReadable ? TEXT("PASS") : TEXT("FAIL"),
+			!TeamResult.RequiredTargetDisplayName.IsEmpty() ? TEXT("PASS") : TEXT("FAIL"), bContractReadable ? TEXT("PASS") : TEXT("FAIL"),
+			bRewardFormulaConsistent ? TEXT("PASS") : TEXT("FAIL"), bContributionRowsReady ? TEXT("PASS") : TEXT("FAIL"), PaintingVisualCount, AssemblyVisualCount,
+			bAllReplicaVisualsValid ? TEXT("PASS") : TEXT("FAIL"), PlayerController->HasAuthority() ? TEXT("true") : TEXT("false"),
+			bPresentationPassed ? TEXT("PASS") : TEXT("FAIL")),
+		bPresentationPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Error, true, 15.0f);
 #endif
 }
 
@@ -7711,6 +7737,89 @@ void UHeistDebugFunctionLibrary::DebugContributionSeed(APlayerController* Player
 			SurfaceForgeries, BestSurfaceQuality, Assemblies, BestAssemblyQuality, ArtifactsRecovered, CarryTimeSeconds,
 			SecuredLootValue, GuardsDistracted, TeammatesRescued, AlarmsTriggered),
 		EHeistDebugLevel::Info, true);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugResultVisualSeed(APlayerController* PlayerController)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	AHeistGameState* HeistGameState = IsValid(PlayerController) && IsValid(PlayerController->GetWorld())
+		? PlayerController->GetWorld()->GetGameState<AHeistGameState>()
+		: nullptr;
+	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(HeistGameState))
+	{
+		Message(PlayerController, TEXT("W6-007 visual seed: Result=REJECTED Reason=ExpectedServerAuthority"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	FHeistTeamResult TeamResult = HeistGameState->GetTeamResult();
+	if (!TeamResult.IsValid())
+	{
+		Message(PlayerController, TEXT("W6-007 visual seed: Result=REJECTED Reason=FinalizeOutcomeFirst"), EHeistDebugLevel::Warning, true);
+		return;
+	}
+
+	TeamResult.RequiredTargetDisplayName = FText::FromString(TEXT("테스트 필수 그림"));
+	TeamResult.ReplicaRecap.Reset();
+	FHeistReplicaRecapEntry& PaintingRecap = TeamResult.ReplicaRecap.AddDefaulted_GetRef();
+	PaintingRecap.CaseId = FName(TEXT("Case_Debug_Painting"));
+	PaintingRecap.ArtifactId = TeamResult.RequiredTargetArtifactId;
+	PaintingRecap.ArtifactDisplayName = TeamResult.RequiredTargetDisplayName;
+	PaintingRecap.TemplateId = FName(TEXT("Template_Debug_Painting"));
+	PaintingRecap.ForgeryType = EHeistForgeryType::Drawing;
+	PaintingRecap.QualityScore = 84.0f;
+	PaintingRecap.bRequiredTarget = TeamResult.bRequiredTargetSecured;
+	PaintingRecap.PaintingResolution = FHeistReplicaRecapEntry::PaintingThumbnailResolution;
+	PaintingRecap.PaintingPalette = {FColor(229, 153, 62), FColor(67, 122, 176), FColor(240, 226, 188)};
+	PaintingRecap.PaintingPackedPaletteIndices.Init(0, FMath::DivideAndRoundUp(
+		PaintingRecap.PaintingResolution * PaintingRecap.PaintingResolution, 2));
+	for (int32 Y = 0; Y < PaintingRecap.PaintingResolution; ++Y)
+	{
+		for (int32 X = 0; X < PaintingRecap.PaintingResolution; ++X)
+		{
+			const FVector2D Centered(static_cast<double>(X) - PaintingRecap.PaintingResolution * 0.5, static_cast<double>(Y) - PaintingRecap.PaintingResolution * 0.5);
+			uint8 PaletteValue = 0;
+			if (Centered.SizeSquared() < FMath::Square(PaintingRecap.PaintingResolution * 0.32))
+			{
+				PaletteValue = X < PaintingRecap.PaintingResolution / 2 ? 1 : 2;
+			}
+			if (FMath::Abs(X - Y) <= 2)
+			{
+				PaletteValue = 3;
+			}
+			const int32 PixelIndex = Y * PaintingRecap.PaintingResolution + X;
+			uint8& PackedByte = PaintingRecap.PaintingPackedPaletteIndices[PixelIndex / 2];
+			PackedByte = (PixelIndex & 1) == 0 ? static_cast<uint8>((PackedByte & 0xf0) | PaletteValue)
+				: static_cast<uint8>((PackedByte & 0x0f) | (PaletteValue << 4));
+		}
+	}
+
+	FHeistReplicaRecapEntry& AssemblyRecap = TeamResult.ReplicaRecap.AddDefaulted_GetRef();
+	AssemblyRecap.CaseId = FName(TEXT("Case_Debug_Object"));
+	AssemblyRecap.ArtifactId = FName(TEXT("Artifact_Debug_Sculpture"));
+	AssemblyRecap.ArtifactDisplayName = FText::FromString(TEXT("테스트 조립 조각상"));
+	AssemblyRecap.TemplateId = FName(TEXT("Template_Sculpture_Gallery_03"));
+	AssemblyRecap.ForgeryType = EHeistForgeryType::Assembly;
+	AssemblyRecap.QualityScore = 91.0f;
+	const TPair<FName, FName> DebugAssemblyParts[] = {
+		{FName(TEXT("Part_Sculpture_Gallery_Head")), FName(TEXT("Head"))},
+		{FName(TEXT("Part_Sculpture_Gallery_ArmLeft")), FName(TEXT("Shoulder_L"))},
+		{FName(TEXT("Part_Sculpture_Gallery_ArmRight")), FName(TEXT("Shoulder_R"))},
+		{FName(TEXT("Part_Sculpture_Gallery_Crest")), FName(TEXT("Crest"))}};
+	for (int32 EntryIndex = 0; EntryIndex < UE_ARRAY_COUNT(DebugAssemblyParts); ++EntryIndex)
+	{
+		FHeistObjectAssemblyEntry& Entry = AssemblyRecap.AssemblyEntries.AddDefaulted_GetRef();
+		Entry.PartId = DebugAssemblyParts[EntryIndex].Key;
+		Entry.SocketId = DebugAssemblyParts[EntryIndex].Value;
+		Entry.QuantizedOrientation = static_cast<uint8>((EntryIndex * 4) % 16);
+	}
+
+	const bool bCommitted = HeistGameState->CommitTeamResult(MoveTemp(TeamResult));
+	Message(PlayerController,
+		FString::Printf(TEXT("W6-007 visual seed: Painting=1 Assembly=1 Authority=true Result=%s"), bCommitted ? TEXT("PASS") : TEXT("FAIL")),
+		bCommitted ? EHeistDebugLevel::Info : EHeistDebugLevel::Error, true, 10.0f);
 #endif
 }
 

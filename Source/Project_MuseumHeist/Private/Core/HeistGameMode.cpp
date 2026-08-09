@@ -658,6 +658,21 @@ bool AHeistGameMode::BuildTeamResultSnapshot(const EHeistContractOutcome Outcome
 	float RequiredTargetQuality = 50.0f;
 	bool bFoundRequiredTargetReplica = false;
 	TArray<FHeistReplicaRecapEntry> ReplicaRecap;
+	const FText RequiredTargetDisplayName = RequiredTargetDefinition.DisplayName.IsEmpty()
+		? FText::FromName(ContractSnapshot.RequiredTargetArtifactId)
+		: RequiredTargetDefinition.DisplayName;
+	auto ResolveArtifactDisplayName = [this, &RequiredTargetDisplayName, &ContractSnapshot](const FName ArtifactId)
+	{
+		if (ArtifactId == ContractSnapshot.RequiredTargetArtifactId)
+		{
+			return RequiredTargetDisplayName;
+		}
+
+		FHeistArtifactDataRow ArtifactDefinition;
+		return TryGetArtifactDefinition(ArtifactId, ArtifactDefinition) && !ArtifactDefinition.DisplayName.IsEmpty()
+			? ArtifactDefinition.DisplayName
+			: FText::FromName(ArtifactId);
+	};
 	for (TActorIterator<AHeistPaintingDisplayCaseActor> DisplayCaseIterator(GetWorld()); DisplayCaseIterator; ++DisplayCaseIterator)
 	{
 		const AHeistPaintingDisplayCaseActor* DisplayCase = *DisplayCaseIterator;
@@ -669,6 +684,7 @@ bool AHeistGameMode::BuildTeamResultSnapshot(const EHeistContractOutcome Outcome
 		FHeistReplicaRecapEntry& Recap = ReplicaRecap.AddDefaulted_GetRef();
 		Recap.CaseId = DisplayCase->GetDisplayCaseId();
 		Recap.ArtifactId = Result.ArtifactId;
+		Recap.ArtifactDisplayName = ResolveArtifactDisplayName(Recap.ArtifactId);
 		Recap.TemplateId = Result.TemplateId;
 		Recap.ForgeryType = Result.ForgeryType == EHeistForgeryType::None ? EHeistForgeryType::Drawing : Result.ForgeryType;
 		Recap.QualityScore = FMath::Clamp(Result.SimilarityScore, 0.0f, 100.0f);
@@ -696,6 +712,7 @@ bool AHeistGameMode::BuildTeamResultSnapshot(const EHeistContractOutcome Outcome
 		FHeistReplicaRecapEntry& Recap = ReplicaRecap.AddDefaulted_GetRef();
 		Recap.CaseId = DisplayCase->GetObjectCaseId();
 		Recap.ArtifactId = Result.ArtifactId;
+		Recap.ArtifactDisplayName = ResolveArtifactDisplayName(Recap.ArtifactId);
 		Recap.TemplateId = Result.TemplateId;
 		Recap.ForgeryType = EHeistForgeryType::Assembly;
 		Recap.QualityScore = FMath::Clamp(Result.QualityScore, 0.0f, 100.0f);
@@ -731,6 +748,7 @@ bool AHeistGameMode::BuildTeamResultSnapshot(const EHeistContractOutcome Outcome
 	OutTeamResult.Outcome = Outcome;
 	OutTeamResult.OutcomeReasonId = OutcomeReasonId;
 	OutTeamResult.RequiredTargetArtifactId = ContractSnapshot.RequiredTargetArtifactId;
+	OutTeamResult.RequiredTargetDisplayName = RequiredTargetDisplayName;
 	OutTeamResult.bRequiredTargetSecured = ContractSnapshot.bRequiredTargetSecured;
 	OutTeamResult.LootValueQuota = ContractSnapshot.LootValueQuota;
 	OutTeamResult.SecuredValue = ContractSnapshot.SecuredValue;

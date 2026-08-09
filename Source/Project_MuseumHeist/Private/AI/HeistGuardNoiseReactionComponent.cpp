@@ -167,9 +167,12 @@ bool UHeistGuardNoiseReactionComponent::ReactToSoundPing(const FHeistSoundPingEv
 	return true;
 }
 
-void UHeistGuardNoiseReactionComponent::HandleSoundPingReported(const FHeistSoundPingEvent& SoundPingEvent)
+void UHeistGuardNoiseReactionComponent::HandleSoundPingReported(const FHeistSoundPingEvent& SoundPingEvent, int32* InOutAcceptedGuardCount)
 {
-	ReactToSoundPing(SoundPingEvent);
+	if (ReactToSoundPing(SoundPingEvent) && InOutAcceptedGuardCount)
+	{
+		*InOutAcceptedGuardCount = *InOutAcceptedGuardCount == MAX_int32 ? MAX_int32 : *InOutAcceptedGuardCount + 1;
+	}
 }
 
 void UHeistGuardNoiseReactionComponent::HandleGuardStateChanged(const EHeistGuardState, const EHeistGuardState NewState)

@@ -1491,6 +1491,14 @@ void AHeistPlayerController::RequestCancelObjectAssembly()
 	Server_CancelObjectAssembly();
 }
 
+void AHeistPlayerController::RestoreGameplayInputAfterForcedForgeryClose()
+{
+	if (IsLocalController() && LocalInputMode == EHeistInputMode::Forgery)
+	{
+		ApplyLocalInputMode(EHeistInputMode::Gameplay);
+	}
+}
+
 void AHeistPlayerController::RequestSubmitObjectAssembly(const TArray<FHeistObjectAssemblyEntry>& Entries, const int32 ClientSessionRevision)
 {
 	const AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();

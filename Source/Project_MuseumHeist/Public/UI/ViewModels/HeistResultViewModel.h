@@ -72,6 +72,11 @@ class PROJECT_MUSEUMHEIST_API UHeistResultViewModel : public UMVVMViewModelBase
 	const FText& GetTeamRewardText() const;
 	const FText& GetRewardBreakdownText() const;
 	const FText& GetReplicaRecapText() const;
+	static FText BuildOutcomeDisplayText(EHeistContractOutcome Outcome);
+	static FText BuildContractProgressSummaryText(const FHeistTeamResult& InTeamResult);
+	static FText BuildRewardBreakdownSummaryText(const FHeistTeamResult& InTeamResult);
+	static FText BuildReplicaRecapSummaryText(const FHeistTeamResult& InTeamResult);
+	static FText BuildPlayerResultSummaryText(const FHeistPlayerResult& PlayerResult);
 
   private:
 	FText BuildResultRowText(int32 ResultIndex) const;

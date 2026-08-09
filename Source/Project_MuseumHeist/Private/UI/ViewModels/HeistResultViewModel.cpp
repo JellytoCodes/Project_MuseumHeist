@@ -62,32 +62,13 @@ void UHeistResultViewModel::RefreshResultData()
 
 	UE_MVVM_SET_PROPERTY_VALUE(PlayerResults, NewPlayerResults);
 	UE_MVVM_SET_PROPERTY_VALUE(TeamResult, NewTeamResult);
-	const FText NewOutcomeText = TeamResult.Outcome == EHeistContractOutcome::Success ? NSLOCTEXT("HeistResult", "OutcomeSuccess", "계약 완료")
-		: TeamResult.Outcome == EHeistContractOutcome::PartialHaul ? NSLOCTEXT("HeistResult", "OutcomePartial", "일부 확보")
-		: TeamResult.Outcome == EHeistContractOutcome::Failed ? NSLOCTEXT("HeistResult", "OutcomeFailed", "계약 실패") : FText::GetEmpty();
-	UE_MVVM_SET_PROPERTY_VALUE(OutcomeText, NewOutcomeText);
+	UE_MVVM_SET_PROPERTY_VALUE(OutcomeText, BuildOutcomeDisplayText(TeamResult.Outcome));
 	UE_MVVM_SET_PROPERTY_VALUE(OutcomeReasonText, HeistContractOutcomeReasons::ToDisplayText(TeamResult.OutcomeReasonId));
-	UE_MVVM_SET_PROPERTY_VALUE(ContractProgressText,
-		FText::Format(NSLOCTEXT("HeistResult", "ContractProgressFormat", "확보 가치 {0} / {1}   초과 {2}   핵심 목표 {3}"), FText::AsNumber(TeamResult.SecuredValue),
-			FText::AsNumber(TeamResult.LootValueQuota), FText::AsNumber(TeamResult.ExtraValue),
-			TeamResult.bRequiredTargetSecured ? NSLOCTEXT("HeistResult", "TargetSecured", "확보 완료") : NSLOCTEXT("HeistResult", "TargetMissing", "미확보")));
+	UE_MVVM_SET_PROPERTY_VALUE(ContractProgressText, BuildContractProgressSummaryText(TeamResult));
 	UE_MVVM_SET_PROPERTY_VALUE(TeamRewardText,
 		FText::Format(NSLOCTEXT("HeistResult", "TeamRewardFormat", "팀 보상  {0}"), FText::AsNumber(TeamResult.TeamReward)));
-	UE_MVVM_SET_PROPERTY_VALUE(RewardBreakdownText,
-		FText::Format(NSLOCTEXT("HeistResult", "RewardBreakdownFormat", "핵심 목표 {0} × 위조 품질 {1} × 잠입 {2}  +  추가 전리품 {3}  −  체포 {4}"),
-			FText::AsNumber(TeamResult.RequiredTargetValue), FText::AsNumber(TeamResult.ForgeryRewardMultiplier), FText::AsNumber(TeamResult.StealthRewardMultiplier),
-			FText::AsNumber(TeamResult.SecuredLooseLootValue), FText::AsNumber(TeamResult.ArrestPenalty)));
-	FString RecapLines;
-	for (const FHeistReplicaRecapEntry& Recap : TeamResult.ReplicaRecap)
-	{
-		if (!RecapLines.IsEmpty())
-		{
-			RecapLines += TEXT("\n");
-		}
-		RecapLines += FString::Printf(TEXT("%s%s  |  %s  |  %.0f"), Recap.bRequiredTarget ? TEXT("[TARGET] ") : TEXT(""), *Recap.ArtifactId.ToString(),
-			*UEnum::GetValueAsString(Recap.ForgeryType), Recap.QualityScore);
-	}
-	UE_MVVM_SET_PROPERTY_VALUE(ReplicaRecapText, RecapLines.IsEmpty() ? NSLOCTEXT("HeistResult", "NoReplicaRecap", "기록된 복제품 없음") : FText::FromString(RecapLines));
+	UE_MVVM_SET_PROPERTY_VALUE(RewardBreakdownText, BuildRewardBreakdownSummaryText(TeamResult));
+	UE_MVVM_SET_PROPERTY_VALUE(ReplicaRecapText, BuildReplicaRecapSummaryText(TeamResult));
 
 	const int32 LocalPlayerId = IsValid(LocalPlayerState) ? LocalPlayerState->HeistPlayerId : INDEX_NONE;
 	const FHeistPlayerResult* LocalResult = PlayerResults.FindByPredicate([LocalPlayerId](const FHeistPlayerResult& PlayerResult) { return PlayerResult.PlayerId == LocalPlayerId; });
@@ -195,6 +176,77 @@ const FText& UHeistResultViewModel::GetTeamRewardText() const { return TeamRewar
 const FText& UHeistResultViewModel::GetRewardBreakdownText() const { return RewardBreakdownText; }
 const FText& UHeistResultViewModel::GetReplicaRecapText() const { return ReplicaRecapText; }
 
+FText UHeistResultViewModel::BuildOutcomeDisplayText(const EHeistContractOutcome Outcome)
+{
+	if (Outcome == EHeistContractOutcome::Success)
+	{
+		return NSLOCTEXT("HeistResult", "OutcomeSuccess", "계약 완료");
+	}
+	if (Outcome == EHeistContractOutcome::PartialHaul)
+	{
+		return NSLOCTEXT("HeistResult", "OutcomePartial", "일부 확보");
+	}
+	if (Outcome == EHeistContractOutcome::Failed)
+	{
+		return NSLOCTEXT("HeistResult", "OutcomeFailed", "계약 실패");
+	}
+	return FText::GetEmpty();
+}
+
+FText UHeistResultViewModel::BuildContractProgressSummaryText(const FHeistTeamResult& InTeamResult)
+{
+	const FText TargetName = InTeamResult.RequiredTargetDisplayName.IsEmpty() ? FText::FromName(InTeamResult.RequiredTargetArtifactId)
+		: InTeamResult.RequiredTargetDisplayName;
+	return FText::Format(
+		NSLOCTEXT("HeistResult", "ContractProgressFormat", "필수 목표 {0}  |  {1}  |  확보 가치 {2} / 할당량 {3}  |  초과 {4}"), TargetName,
+		InTeamResult.bRequiredTargetSecured ? NSLOCTEXT("HeistResult", "TargetSecured", "확보 완료") : NSLOCTEXT("HeistResult", "TargetMissing", "미확보"),
+		FText::AsNumber(InTeamResult.SecuredValue), FText::AsNumber(InTeamResult.LootValueQuota), FText::AsNumber(InTeamResult.ExtraValue));
+}
+
+FText UHeistResultViewModel::BuildRewardBreakdownSummaryText(const FHeistTeamResult& InTeamResult)
+{
+	FNumberFormattingOptions PercentFormatting;
+	PercentFormatting.MinimumFractionalDigits = 0;
+	PercentFormatting.MaximumFractionalDigits = 1;
+	return FText::Format(
+		NSLOCTEXT("HeistResult", "RewardBreakdownFormat", "필수 목표 {0} × 위조 {1} × 잠입 {2}  +  추가 전리품 {3}  −  체포 {4}  =  {5}"),
+		FText::AsNumber(InTeamResult.RequiredTargetValue), FText::AsPercent(InTeamResult.ForgeryRewardMultiplier, &PercentFormatting),
+		FText::AsPercent(InTeamResult.StealthRewardMultiplier, &PercentFormatting), FText::AsNumber(InTeamResult.SecuredLooseLootValue),
+		FText::AsNumber(InTeamResult.ArrestPenalty), FText::AsNumber(InTeamResult.TeamReward));
+}
+
+FText UHeistResultViewModel::BuildReplicaRecapSummaryText(const FHeistTeamResult& InTeamResult)
+{
+	FString RecapLines;
+	for (const FHeistReplicaRecapEntry& Recap : InTeamResult.ReplicaRecap)
+	{
+		if (!RecapLines.IsEmpty())
+		{
+			RecapLines += TEXT("\n");
+		}
+		const TCHAR* TypeText = Recap.ForgeryType == EHeistForgeryType::Assembly ? TEXT("조립") : TEXT("그림");
+		const FString DisplayName = Recap.ArtifactDisplayName.IsEmpty() ? Recap.ArtifactId.ToString() : Recap.ArtifactDisplayName.ToString();
+		RecapLines += FString::Printf(TEXT("%s%s  |  %s  |  품질 %.0f"), Recap.bRequiredTarget ? TEXT("[필수 목표] ") : TEXT(""), *DisplayName, TypeText,
+			Recap.QualityScore);
+	}
+	return RecapLines.IsEmpty() ? NSLOCTEXT("HeistResult", "NoReplicaRecap", "기록된 복제품 없음") : FText::FromString(RecapLines);
+}
+
+FText UHeistResultViewModel::BuildPlayerResultSummaryText(const FHeistPlayerResult& PlayerResult)
+{
+	const FText EscapeStateText = PlayerResult.bEscaped ? NSLOCTEXT("HeistResult", "PlayerEscaped", "탈출")
+		: PlayerResult.bArrested ? NSLOCTEXT("HeistResult", "PlayerCaught", "체포") : NSLOCTEXT("HeistResult", "PlayerDidNotEscape", "미탈출");
+	const FHeistPlayerContribution& Contribution = PlayerResult.Contribution;
+	return FText::Format(
+		NSLOCTEXT("HeistResult", "ResultRowFormat",
+			"플레이어 {0}  |  {1}  |  위조 {2}({3}) / 조립 {4}({5})  |  원본 {6} · 운반 {7}초  |  전리품 {8}  |  교란 {9}  |  구조 {10}  |  경보 {11}"),
+		FText::AsNumber(PlayerResult.PlayerId), EscapeStateText, FText::AsNumber(Contribution.SurfaceForgeries),
+		FText::AsNumber(FMath::RoundToInt(Contribution.BestSurfaceQuality)), FText::AsNumber(Contribution.Assemblies),
+		FText::AsNumber(FMath::RoundToInt(Contribution.BestAssemblyQuality)), FText::AsNumber(Contribution.ArtifactsRecovered),
+		FText::AsNumber(FMath::RoundToInt(Contribution.CarryTimeSeconds)), FText::AsNumber(Contribution.SecuredLootValue),
+		FText::AsNumber(Contribution.GuardsDistracted), FText::AsNumber(Contribution.TeammatesRescued), FText::AsNumber(Contribution.AlarmsTriggered));
+}
+
 FText UHeistResultViewModel::BuildResultRowText(const int32 ResultIndex) const
 {
 	if (!PlayerResults.IsValidIndex(ResultIndex))
@@ -202,15 +254,7 @@ FText UHeistResultViewModel::BuildResultRowText(const int32 ResultIndex) const
 		return FText::GetEmpty();
 	}
 
-	const FHeistPlayerResult& PlayerResult = PlayerResults[ResultIndex];
-	const FText EscapeStateText =
-		PlayerResult.bEscaped ? NSLOCTEXT("HeistResult", "PlayerEscaped", "탈출") : NSLOCTEXT("HeistResult", "PlayerCaught", "체포");
-	const FHeistPlayerContribution& Contribution = PlayerResult.Contribution;
-	return FText::Format(
-		NSLOCTEXT("HeistResult", "ResultRowFormat", "플레이어 {0}  |  {1}  |  평면/조립 위조 {2}/{3}  |  원본 회수 {4}  |  전리품 {5}  |  경비 교란 {6}  |  동료 구조 {7}  |  경보 {8}"),
-		FText::AsNumber(PlayerResult.PlayerId), EscapeStateText, FText::AsNumber(Contribution.SurfaceForgeries), FText::AsNumber(Contribution.Assemblies),
-		FText::AsNumber(Contribution.ArtifactsRecovered), FText::AsNumber(Contribution.SecuredLootValue), FText::AsNumber(Contribution.GuardsDistracted),
-		FText::AsNumber(Contribution.TeammatesRescued), FText::AsNumber(Contribution.AlarmsTriggered));
+	return BuildPlayerResultSummaryText(PlayerResults[ResultIndex]);
 }
 
 ESlateVisibility UHeistResultViewModel::BuildResultRowVisibility(const int32 ResultIndex) const

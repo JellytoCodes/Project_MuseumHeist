@@ -11,7 +11,7 @@ class AHeistPlayerState;
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistEscapePhaseStateChanged, bool);
 DECLARE_MULTICAST_DELEGATE(FHeistPlayerResultsChanged);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistTeamResultChanged, const FHeistTeamResult&);
-DECLARE_MULTICAST_DELEGATE_OneParam(FHeistSoundPingEventReported, const FHeistSoundPingEvent&);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistSoundPingEventReported, const FHeistSoundPingEvent&, int32*);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistRareLootEventStateChanged, const FHeistRareLootEventState&);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerConnectionsChanged, int32);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistMatchPhaseChanged, EHeistMatchPhase, EHeistMatchPhase);
@@ -336,7 +336,7 @@ class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
 #pragma region SoundPing
 
   public:
-	void ReportSoundPing(const FHeistSoundPingEvent& SoundPingEvent);
+	int32 ReportSoundPing(const FHeistSoundPingEvent& SoundPingEvent);
 	FHeistSoundPingEventReported& GetSoundPingEventReportedDelegate();
 
   private:

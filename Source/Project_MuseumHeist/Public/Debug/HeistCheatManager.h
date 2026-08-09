@@ -244,6 +244,10 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 	UFUNCTION(Exec)
 	void HeistContributionDump();
 
+	/** SERVER: injects deterministic Painting/Object visual recap entries into an already finalized Team Result. */
+	UFUNCTION(Exec)
+	void HeistResultVisualSeed();
+
 	UFUNCTION(Exec)
 	void HeistExitPlacementDump();
 

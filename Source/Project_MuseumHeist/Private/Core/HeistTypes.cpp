@@ -4,7 +4,7 @@ namespace
 {
 bool IsValidReplicaRecapPayload(const FHeistReplicaRecapEntry& Entry)
 {
-	if (Entry.CaseId.IsNone() || Entry.ArtifactId.IsNone() || Entry.TemplateId.IsNone() || !FMath::IsFinite(Entry.QualityScore) ||
+	if (Entry.CaseId.IsNone() || Entry.ArtifactId.IsNone() || Entry.ArtifactDisplayName.IsEmpty() || Entry.TemplateId.IsNone() || !FMath::IsFinite(Entry.QualityScore) ||
 		!FMath::IsWithinInclusive(Entry.QualityScore, 0.0f, 100.0f))
 	{
 		return false;
@@ -70,6 +70,7 @@ bool FHeistReplicaRecapEntry::NetSerialize(FArchive& Ar, UPackageMap*, bool& bOu
 
 	Ar << CaseId;
 	Ar << ArtifactId;
+	Ar << ArtifactDisplayName;
 	Ar << TemplateId;
 	uint8 SerializedForgeryType = Ar.IsSaving() ? static_cast<uint8>(ForgeryType) : 0;
 	Ar.SerializeBits(&SerializedForgeryType, 2);

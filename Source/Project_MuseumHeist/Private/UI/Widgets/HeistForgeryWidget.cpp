@@ -175,7 +175,7 @@ FLinearColor ResolveScoreTextColor(const float Score)
 	return FLinearColor(1.0f, 0.18f, 0.15f);
 }
 
-void ApplyScorePresentation(UTextBlock* ScoreText, const TOptional<float> Score)
+void ApplyScorePresentation(UTextBlock* ScoreText, const TOptional<float> Score, const float MinimumScore)
 {
 	if (!IsValid(ScoreText))
 	{
@@ -184,14 +184,15 @@ void ApplyScorePresentation(UTextBlock* ScoreText, const TOptional<float> Score)
 
 	if (!Score.IsSet() || !FMath::IsFinite(Score.GetValue()))
 	{
-		ScoreText->SetText(NSLOCTEXT("HeistForgery", "UnavailableScore", "예상 점수  --/100"));
+		ScoreText->SetText(FText::Format(NSLOCTEXT("HeistForgery", "UnavailableScore", "예상 품질  --/100  ·  제출 가능 {0}+"),
+			FText::AsNumber(FMath::RoundToInt(MinimumScore))));
 		ScoreText->SetColorAndOpacity(FLinearColor(0.72f, 0.76f, 0.82f));
 		return;
 	}
 
 	const float ClampedScore = FMath::Clamp(Score.GetValue(), 0.0f, 100.0f);
-	ScoreText->SetText(
-		FText::Format(NSLOCTEXT("HeistForgery", "ScoreFormat", "예상 점수  {0}/100"), FText::AsNumber(FMath::RoundToInt(ClampedScore))));
+	ScoreText->SetText(FText::Format(NSLOCTEXT("HeistForgery", "ScoreFormat", "예상 품질  {0}/100  ·  제출 가능 {1}+"),
+		FText::AsNumber(FMath::RoundToInt(ClampedScore)), FText::AsNumber(FMath::RoundToInt(MinimumScore))));
 	ScoreText->SetColorAndOpacity(ResolveScoreTextColor(ClampedScore));
 }
 }
@@ -229,8 +230,11 @@ void UHeistForgeryWidget::NativeDestruct()
 void UHeistForgeryWidget::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+	if (TryForceCloseForAlert())
+	{
+		return;
+	}
 	RefreshDrawingTimeRemaining();
-	RefreshForgeryLockdownCountdown();
 	UploadDrawingRasterTexture();
 
 	if (!bPreviewScoreDirty || !IsDrawingInputEnabled())
@@ -691,6 +695,15 @@ void UHeistForgeryWidget::RefreshForgeryPresentation()
 	const bool bOwnerLocal = IsValid(OwningPlayerController) && OwningPlayerController->IsLocalController();
 	const bool bPresentationVisible = bOwnerLocal && IsValid(ForgeryViewModel) && ForgeryViewModel->IsPresentationVisible();
 
+	if (!bPresentationVisible)
+	{
+		bAlertExitRequested = false;
+	}
+	if (bPresentationVisible && TryForceCloseForAlert())
+	{
+		return;
+	}
+
 	SetVisibility(bPresentationVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 
 	const bool bDrawing = bPresentationVisible && ForgeryViewModel->IsDrawingVisible();
@@ -737,102 +750,47 @@ void UHeistForgeryWidget::RefreshForgeryPresentation()
 	}
 
 	RefreshDrawingTimeRemaining();
-	RefreshAlertWarningPresentation();
-
 	UE_LOG(LogHeistUI, Verbose, TEXT("[%s] Forgery widget refreshed: LocalOwner=%s Visible=%s Drawing=%s Contract=%s"), *GetName(),
 		   bOwnerLocal ? TEXT("true") : TEXT("false"), bPresentationVisible ? TEXT("true") : TEXT("false"), bDrawing ? TEXT("true") : TEXT("false"),
 		   IsOwnerOnlyContractSatisfied() ? TEXT("PASS") : TEXT("FAIL"));
 }
 
-void UHeistForgeryWidget::RefreshAlertWarningPresentation()
+bool UHeistForgeryWidget::TryForceCloseForAlert()
 {
-	const bool bWarningVisible = IsValid(ForgeryViewModel) && ForgeryViewModel->IsDangerWarningVisible() && IsWidgetPresentationVisible();
-	if (IsValid(ForgeryAlertWarningText))
+	const bool bShouldClose = IsValid(ForgeryViewModel) && ForgeryViewModel->IsPresentationVisible() && ForgeryViewModel->IsDangerWarningVisible();
+	if (!bShouldClose || bAlertExitRequested)
 	{
-		ForgeryAlertWarningText->SetText(bWarningVisible ? ForgeryViewModel->GetDangerWarningText() : FText::GetEmpty());
-		ForgeryAlertWarningText->SetColorAndOpacity(bWarningVisible ? ForgeryViewModel->GetDangerWarningColor() : FLinearColor::White);
-		ForgeryAlertWarningText->SetVisibility(bWarningVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		return bShouldClose;
 	}
 
-	LastDisplayedLockdownSeconds = INDEX_NONE;
-	RefreshForgeryLockdownCountdown();
-}
-
-void UHeistForgeryWidget::RefreshForgeryLockdownCountdown()
-{
-	const bool bCountdownVisible = IsValid(ForgeryViewModel) && ForgeryViewModel->IsLockdownCountdownVisible() && IsWidgetPresentationVisible();
-	if (IsValid(ForgeryLockdownCountdownText))
+	bAlertExitRequested = true;
+	FinishPointerInteraction();
+	SetVisibility(ESlateVisibility::Collapsed);
+	if (AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(GetOwningPlayer()); IsValid(HeistPlayerController))
 	{
-		ForgeryLockdownCountdownText->SetVisibility(bCountdownVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-		ForgeryLockdownCountdownText->SetColorAndOpacity(IsValid(ForgeryViewModel) ? ForgeryViewModel->GetDangerWarningColor() : FLinearColor::White);
+		HeistPlayerController->RequestCancelForgery();
+		HeistPlayerController->RestoreGameplayInputAfterForcedForgeryClose();
 	}
-	if (!bCountdownVisible)
-	{
-		LastDisplayedLockdownSeconds = INDEX_NONE;
-		return;
-	}
-
-	const UWorld* World = GetWorld();
-	const AGameStateBase* WorldGameState = IsValid(World) ? World->GetGameState() : nullptr;
-	const float CountdownEndServerTime = ForgeryViewModel->GetLockdownCountdownEndServerTime();
-	const int32 RemainingSeconds = IsValid(WorldGameState) && CountdownEndServerTime > 0.0f
-										   ? FMath::Max(0, FMath::CeilToInt(CountdownEndServerTime - static_cast<float>(WorldGameState->GetServerWorldTimeSeconds())))
-										   : INDEX_NONE;
-	if (RemainingSeconds == LastDisplayedLockdownSeconds)
-	{
-		return;
-	}
-	LastDisplayedLockdownSeconds = RemainingSeconds;
-
-	if (!IsValid(ForgeryLockdownCountdownText))
-	{
-		return;
-	}
-	if (RemainingSeconds == INDEX_NONE)
-	{
-		ForgeryLockdownCountdownText->SetText(
-			NSLOCTEXT("HeistForgery", "LockdownTimePending", "봉쇄까지 --:--  —  탈출 경로가 제한됩니다"));
-		return;
-	}
-
-	const FText TimeText = FText::FromString(FString::Printf(TEXT("%02d:%02d"), RemainingSeconds / 60, RemainingSeconds % 60));
-	ForgeryLockdownCountdownText->SetText(
-		FText::Format(NSLOCTEXT("HeistForgery", "LockdownTimeFormat", "봉쇄까지 {0}  —  탈출 경로가 제한됩니다"), TimeText));
+	UE_LOG(LogHeistUI, Log, TEXT("[%s] Forgery screen force-closed: AlertLevel=%s CancelRequested=true"), *GetName(),
+		*UEnum::GetValueAsString(ForgeryViewModel->GetAlertLevel()));
+	return true;
 }
 
 bool UHeistForgeryWidget::IsAlertWarningContractSatisfied() const
 {
-	if (!IsValid(ForgeryViewModel) || !IsValid(ForgeryAlertWarningText) || !IsValid(ForgeryLockdownCountdownText))
+	if (!IsValid(ForgeryViewModel))
 	{
 		return false;
 	}
-
-	const bool bWarningVisible = ForgeryAlertWarningText->GetVisibility() != ESlateVisibility::Collapsed && ForgeryAlertWarningText->GetVisibility() != ESlateVisibility::Hidden;
-	const bool bCountdownVisible =
-		ForgeryLockdownCountdownText->GetVisibility() != ESlateVisibility::Collapsed && ForgeryLockdownCountdownText->GetVisibility() != ESlateVisibility::Hidden;
-	return bWarningVisible == ForgeryViewModel->IsDangerWarningVisible() && bCountdownVisible == ForgeryViewModel->IsLockdownCountdownVisible() &&
-		   (!bWarningVisible || !ForgeryAlertWarningText->GetText().IsEmpty());
+	return !ForgeryViewModel->IsDangerWarningVisible() || (bAlertExitRequested && !IsWidgetPresentationVisible());
 }
 
 void UHeistForgeryWidget::DebugDumpAlertWarningState() const
 {
 	const bool bPassed = IsAlertWarningContractSatisfied();
-	const FString Message =
-		FString::Printf(TEXT("[%s] Forgery alert warning: Level=%s PresentationVisible=%s WarningRequested=%s WarningVisible=%s Warning='%s' CountdownRequested=%s CountdownVisible=%s "
-							 "Countdown='%s' Result=%s"),
-						*GetName(), IsValid(ForgeryViewModel) ? *UEnum::GetValueAsString(ForgeryViewModel->GetAlertLevel()) : TEXT("None"),
-						IsWidgetPresentationVisible() ? TEXT("true") : TEXT("false"), IsValid(ForgeryViewModel) && ForgeryViewModel->IsDangerWarningVisible() ? TEXT("true") : TEXT("false"),
-						IsValid(ForgeryAlertWarningText) && ForgeryAlertWarningText->GetVisibility() != ESlateVisibility::Collapsed &&
-								ForgeryAlertWarningText->GetVisibility() != ESlateVisibility::Hidden
-							? TEXT("true")
-							: TEXT("false"),
-						IsValid(ForgeryAlertWarningText) ? *ForgeryAlertWarningText->GetText().ToString() : TEXT("None"),
-						IsValid(ForgeryViewModel) && ForgeryViewModel->IsLockdownCountdownVisible() ? TEXT("true") : TEXT("false"),
-						IsValid(ForgeryLockdownCountdownText) && ForgeryLockdownCountdownText->GetVisibility() != ESlateVisibility::Collapsed &&
-								ForgeryLockdownCountdownText->GetVisibility() != ESlateVisibility::Hidden
-							? TEXT("true")
-							: TEXT("false"),
-						IsValid(ForgeryLockdownCountdownText) ? *ForgeryLockdownCountdownText->GetText().ToString() : TEXT("None"), bPassed ? TEXT("PASS") : TEXT("FAIL"));
+	const FString Message = FString::Printf(TEXT("[%s] Forgery alert close: Level=%s PresentationVisible=%s CloseRequested=%s Result=%s"), *GetName(),
+		IsValid(ForgeryViewModel) ? *UEnum::GetValueAsString(ForgeryViewModel->GetAlertLevel()) : TEXT("None"),
+		IsWidgetPresentationVisible() ? TEXT("true") : TEXT("false"), bAlertExitRequested ? TEXT("true") : TEXT("false"), bPassed ? TEXT("PASS") : TEXT("FAIL"));
 	if (bPassed)
 	{
 		UE_LOG(LogHeistUI, Log, TEXT("%s"), *Message);
@@ -1490,6 +1448,7 @@ void UHeistForgeryWidget::MarkPreviewScoreDirty(const bool bLocalDrawingChanged)
 void UHeistForgeryWidget::RefreshLocalPreviewScore()
 {
 	PreviewScoreUpdateAccumulator = 0.0f;
+	const float MinimumScore = IsValid(ForgeryViewModel) ? ForgeryViewModel->GetMinimumAcceptedQualityScore() : HeistReplicaAcceptance::MinimumQualityScore;
 	TArray<FVector2D> NormalizedPoints;
 	TArray<int32> StrokePointCounts;
 	TArray<uint8> StrokePaletteIndices;
@@ -1499,7 +1458,7 @@ void UHeistForgeryWidget::RefreshLocalPreviewScore()
 	{
 		bPreviewScoreDirty = false;
 		LocalPreviewScore.Reset();
-		ApplyScorePresentation(PreviewScoreText, TOptional<float>());
+		ApplyScorePresentation(PreviewScoreText, TOptional<float>(), MinimumScore);
 		RefreshCommonActionPresentation();
 		return;
 	}
@@ -1516,14 +1475,14 @@ void UHeistForgeryWidget::RefreshLocalPreviewScore()
 		// stroke change retries without generating RPC or log traffic.
 		bPreviewScoreDirty = false;
 		LocalPreviewScore.Reset();
-		ApplyScorePresentation(PreviewScoreText, TOptional<float>());
+		ApplyScorePresentation(PreviewScoreText, TOptional<float>(), MinimumScore);
 		RefreshCommonActionPresentation();
 		return;
 	}
 
 	bPreviewScoreDirty = false;
 	LocalPreviewScore = ForgeryPreviewResult.SimilarityScore;
-	ApplyScorePresentation(PreviewScoreText, LocalPreviewScore);
+	ApplyScorePresentation(PreviewScoreText, LocalPreviewScore, MinimumScore);
 	RefreshCommonActionPresentation();
 }
 
@@ -1583,6 +1542,21 @@ void UHeistForgeryWidget::BindActionButtons()
 		CancelButton->OnClicked.RemoveAll(this);
 		CancelButton->OnClicked.AddDynamic(this, &UHeistForgeryWidget::HandleCancelClicked);
 	}
+	if (IsValid(BrushSmallButton))
+	{
+		BrushSmallButton->OnClicked.RemoveAll(this);
+		BrushSmallButton->OnClicked.AddDynamic(this, &UHeistForgeryWidget::HandleBrushSmallClicked);
+	}
+	if (IsValid(BrushMediumButton))
+	{
+		BrushMediumButton->OnClicked.RemoveAll(this);
+		BrushMediumButton->OnClicked.AddDynamic(this, &UHeistForgeryWidget::HandleBrushMediumClicked);
+	}
+	if (IsValid(BrushLargeButton))
+	{
+		BrushLargeButton->OnClicked.RemoveAll(this);
+		BrushLargeButton->OnClicked.AddDynamic(this, &UHeistForgeryWidget::HandleBrushLargeClicked);
+	}
 }
 
 bool UHeistForgeryWidget::CanSubmitCurrentDrawing() const
@@ -1600,7 +1574,6 @@ bool UHeistForgeryWidget::IsCurrentDrawingRejectedByServer() const
 void UHeistForgeryWidget::RefreshCommonActionPresentation()
 {
 	const bool bDrawingVisible = IsValid(ForgeryViewModel) && ForgeryViewModel->IsDrawingVisible();
-	const float MinimumScore = IsValid(ForgeryViewModel) ? ForgeryViewModel->GetMinimumAcceptedQualityScore() : HeistReplicaAcceptance::MinimumQualityScore;
 	const int32 StrokeValidationRevision = IsValid(ForgeryViewModel) ? ForgeryViewModel->GetStrokeValidationRevision() : INDEX_NONE;
 	const FName SubmissionRejectReason = IsValid(ForgeryViewModel) ? ForgeryViewModel->GetLastSubmissionRejectReason() : NAME_None;
 	if (StrokeValidationRevision != LastObservedStrokeValidationRevision)
@@ -1610,27 +1583,15 @@ void UHeistForgeryWidget::RefreshCommonActionPresentation()
 	}
 	if (IsValid(TitleText))
 	{
-		TitleText->SetText(NSLOCTEXT("HeistCommonForgeryUI", "SurfaceTitle", "SURFACE FORGERY"));
-	}
-	if (IsValid(InstructionText))
-	{
-		InstructionText->SetText(NSLOCTEXT("HeistCommonForgeryUI", "SurfaceInstruction",
-			"Match the reference painting. Reach 70/100, then submit. Timeout discards the work and calls one nearby guard."));
-		InstructionText->SetVisibility(bDrawingVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-	}
-	if (IsValid(QualityRequirementText))
-	{
-		QualityRequirementText->SetText(FText::Format(NSLOCTEXT("HeistCommonForgeryUI", "QualityRequirement", "REPLICA REQUIREMENT  {0}/100"),
-			FText::AsNumber(FMath::RoundToInt(MinimumScore))));
-		QualityRequirementText->SetVisibility(bDrawingVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		TitleText->SetText(NSLOCTEXT("HeistCommonForgeryUI", "SurfaceTitle", "그림 위조"));
 	}
 	if (IsValid(SubmitButtonLabel))
 	{
-		SubmitButtonLabel->SetText(NSLOCTEXT("HeistCommonForgeryUI", "SubmitButton", "SUBMIT"));
+		SubmitButtonLabel->SetText(NSLOCTEXT("HeistCommonForgeryUI", "SubmitButton", "제출"));
 	}
 	if (IsValid(CancelButtonLabel))
 	{
-		CancelButtonLabel->SetText(NSLOCTEXT("HeistCommonForgeryUI", "CancelButton", "CANCEL"));
+		CancelButtonLabel->SetText(NSLOCTEXT("HeistCommonForgeryUI", "CancelButton", "취소"));
 	}
 	if (IsValid(SubmitButton))
 	{
@@ -1642,33 +1603,7 @@ void UHeistForgeryWidget::RefreshCommonActionPresentation()
 		CancelButton->SetVisibility(bDrawingVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 		CancelButton->SetIsEnabled(bDrawingVisible);
 	}
-	if (IsValid(ModeStatusText))
-	{
-		FText StatusText = NSLOCTEXT("HeistCommonForgeryUI", "DrawToScore", "DRAW TO CALCULATE QUALITY");
-		FLinearColor StatusColor(0.72f, 0.76f, 0.82f);
-		if (IsValid(ForgeryViewModel) && ForgeryViewModel->IsSubmitPending())
-		{
-			StatusText = NSLOCTEXT("HeistCommonForgeryUI", "Validating", "VALIDATING ON SERVER...");
-		}
-		else if (IsCurrentDrawingRejectedByServer())
-		{
-			StatusText = NSLOCTEXT("HeistCommonForgeryUI", "ServerQualityRejected", "SERVER SCORE BELOW 70 - KEEP PAINTING");
-			StatusColor = FLinearColor(1.0f, 0.40f, 0.10f);
-		}
-		else if (CanSubmitCurrentDrawing())
-		{
-			StatusText = NSLOCTEXT("HeistCommonForgeryUI", "ReadyToSubmit", "READY TO SUBMIT");
-			StatusColor = FLinearColor(0.25f, 0.95f, 0.42f);
-		}
-		else if (LocalPreviewScore.IsSet())
-		{
-			StatusText = FText::Format(NSLOCTEXT("HeistCommonForgeryUI", "ReachMinimum", "REACH {0}/100 TO SUBMIT"), FText::AsNumber(FMath::RoundToInt(MinimumScore)));
-			StatusColor = FLinearColor(1.0f, 0.40f, 0.10f);
-		}
-		ModeStatusText->SetText(StatusText);
-		ModeStatusText->SetColorAndOpacity(StatusColor);
-		ModeStatusText->SetVisibility(bDrawingVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-	}
+	RefreshBrushPresetButtons();
 }
 
 void UHeistForgeryWidget::RefreshPaletteButtons()
@@ -1715,18 +1650,37 @@ bool UHeistForgeryWidget::ChangeBrushPreset(const int32 Direction)
 		return false;
 	}
 
-	const int32 NewPresetIndex = FMath::Clamp(ActiveBrushPresetIndex + (Direction > 0 ? 1 : -1), 0, 2);
-	if (NewPresetIndex == ActiveBrushPresetIndex)
+	return SelectBrushPreset(FMath::Clamp(ActiveBrushPresetIndex + (Direction > 0 ? 1 : -1), 0, 2));
+}
+
+bool UHeistForgeryWidget::SelectBrushPreset(const int32 PresetIndex)
+{
+	if (!IsDrawingInputEnabled() || !FMath::IsWithinInclusive(PresetIndex, 0, 2) || PresetIndex == ActiveBrushPresetIndex)
 	{
 		return false;
 	}
 
 	FinishPointerInteraction();
-	ActiveBrushPresetIndex = NewPresetIndex;
+	ActiveBrushPresetIndex = PresetIndex;
 	RefreshDrawingFeedback();
+	RefreshBrushPresetButtons();
 	InvalidateLayoutAndVolatility();
 	UE_LOG(LogHeistUI, Log, TEXT("[%s] Forgery brush preset changed: Preset=%d Brush=%.4f"), *GetName(), ActiveBrushPresetIndex, GetConfiguredBrushSize());
 	return true;
+}
+
+void UHeistForgeryWidget::RefreshBrushPresetButtons()
+{
+	UButton* Buttons[] = {BrushSmallButton.Get(), BrushMediumButton.Get(), BrushLargeButton.Get()};
+	for (int32 PresetIndex = 0; PresetIndex < UE_ARRAY_COUNT(Buttons); ++PresetIndex)
+	{
+		if (IsValid(Buttons[PresetIndex]))
+		{
+			const bool bSelected = ActiveBrushPresetIndex == PresetIndex;
+			Buttons[PresetIndex]->SetRenderOpacity(bSelected ? 1.0f : 0.50f);
+			Buttons[PresetIndex]->SetRenderScale(bSelected ? FVector2D(1.12f, 1.12f) : FVector2D(1.0f, 1.0f));
+		}
+	}
 }
 
 void UHeistForgeryWidget::HandlePaletteButton1Clicked()
@@ -1782,6 +1736,21 @@ void UHeistForgeryWidget::HandleCancelClicked()
 	}
 }
 
+void UHeistForgeryWidget::HandleBrushSmallClicked()
+{
+	SelectBrushPreset(0);
+}
+
+void UHeistForgeryWidget::HandleBrushMediumClicked()
+{
+	SelectBrushPreset(1);
+}
+
+void UHeistForgeryWidget::HandleBrushLargeClicked()
+{
+	SelectBrushPreset(2);
+}
+
 void UHeistForgeryWidget::FinishPointerInteraction()
 {
 	if (LocalStrokes.IsValidIndex(ActiveStrokeIndex))
@@ -1812,7 +1781,8 @@ void UHeistForgeryWidget::ResetLocalStrokePreview()
 	PreviewScoreUpdateAccumulator = 0.0f;
 	bPreviewScoreDirty = false;
 	LocalPreviewScore.Reset();
-	ApplyScorePresentation(PreviewScoreText, TOptional<float>());
+	ApplyScorePresentation(PreviewScoreText, TOptional<float>(),
+		IsValid(ForgeryViewModel) ? ForgeryViewModel->GetMinimumAcceptedQualityScore() : HeistReplicaAcceptance::MinimumQualityScore);
 	RefreshCommonActionPresentation();
 	RefreshDrawingFeedback();
 	InvalidateLayoutAndVolatility();
@@ -1849,12 +1819,12 @@ void UHeistForgeryWidget::RefreshDrawingTimeRemaining()
 	}
 	if (RemainingSeconds == INDEX_NONE)
 	{
-		DrawingTimeRemainingText->SetText(NSLOCTEXT("HeistCommonForgeryUI", "TimePending", "TIME  --:--"));
+		DrawingTimeRemainingText->SetText(NSLOCTEXT("HeistCommonForgeryUI", "TimePending", "남은 시간  --:--"));
 		return;
 	}
 
 	const FText TimeText = FText::FromString(FString::Printf(TEXT("%02d:%02d"), RemainingSeconds / 60, RemainingSeconds % 60));
-	DrawingTimeRemainingText->SetText(FText::Format(NSLOCTEXT("HeistCommonForgeryUI", "TimeRemaining", "TIME  {0}"), TimeText));
+	DrawingTimeRemainingText->SetText(FText::Format(NSLOCTEXT("HeistCommonForgeryUI", "TimeRemaining", "남은 시간  {0}"), TimeText));
 }
 
 void UHeistForgeryWidget::RefreshDrawingFeedback()
@@ -1866,14 +1836,11 @@ void UHeistForgeryWidget::RefreshDrawingFeedback()
 		DrawingPlaceholder->SetVisibility(bDrawingVisible && PointCount == 0 ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 		DrawingPlaceholder->SetText(NSLOCTEXT("HeistForgery", "EmptyDrawingCanvas", "그림을 그리세요"));
 	}
-	if (IsValid(DrawingHint) && bDrawingVisible)
+	if (IsValid(FooterHint))
 	{
-		const FText BrushPresetText = ActiveBrushPresetIndex == 0 ? NSLOCTEXT("HeistForgery", "BrushPresetSmall", "소")
-			: ActiveBrushPresetIndex == 2 ? NSLOCTEXT("HeistForgery", "BrushPresetLarge", "대")
-			                              : NSLOCTEXT("HeistForgery", "BrushPresetMedium", "중");
-		DrawingHint->SetText(FText::Format(
-			NSLOCTEXT("HeistForgery", "DrawingCanvasHint", "좌클릭 그리기  |  우클릭 지우기  |  [ ] 붓 크기  |  R 초기화  |  Enter 제출  |  색상 {0}  |  붓 {1}"),
-			FText::AsNumber(ActivePaletteIndex + 1), BrushPresetText));
+		FooterHint->SetText(NSLOCTEXT("HeistForgery", "DrawingCanvasHint",
+			"좌클릭 그리기  |  우클릭 지우기  |  [ ] 붓 크기  |  R 초기화  |  Enter 제출  |  Esc 취소  |  주변 소리와 팀 음성 유지"));
+		FooterHint->SetVisibility(bDrawingVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	}
 	if (IsValid(PreviewScoreText))
 	{

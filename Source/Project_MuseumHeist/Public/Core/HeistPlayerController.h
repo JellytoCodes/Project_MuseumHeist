@@ -212,6 +212,7 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	void RequestSubmitObjectAssembly(const TArray<FHeistObjectAssemblyEntry>& Entries, int32 ClientSessionRevision = INDEX_NONE);
 	void RequestConfirmObjectAssemblyReplicaSwap();
 	void RequestRestartObjectAssemblyFromPreview();
+	void RestoreGameplayInputAfterForcedForgeryClose();
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Inventory")
 	void RequestMoveInventoryItem(int32 InstanceId, FIntPoint TargetGridPosition);

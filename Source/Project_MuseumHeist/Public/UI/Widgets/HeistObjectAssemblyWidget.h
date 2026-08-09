@@ -5,20 +5,15 @@
 
 #include "HeistObjectAssemblyWidget.generated.h"
 
-class AActor;
 class AHeistPlayerController;
+class UBorder;
 class UButton;
+class UCanvasPanel;
 class UHeistObjectAssemblyViewModel;
-class UStaticMeshComponent;
+class UFont;
 class UTextBlock;
-class UViewport;
 
-/**
- * Owner-only Object Assembly screen.
- *
- * The UViewport scene and every preview component are local presentation
- * objects. Only the compact entry payload owned by the ViewModel is submitted.
- */
+/** Owner-only 2D memory assembly screen. Intermediate drag positions stay local. */
 UCLASS(Blueprintable)
 class PROJECT_MUSEUMHEIST_API UHeistObjectAssemblyWidget : public UHeistUserWidgetBase
 {
@@ -38,6 +33,11 @@ class PROJECT_MUSEUMHEIST_API UHeistObjectAssemblyWidget : public UHeistUserWidg
 	virtual void NativeDestruct() override;
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnMouseMove(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnMouseWheel(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual void NativeOnMouseCaptureLost(const FCaptureLostEvent& CaptureLostEvent) override;
 
 #pragma endregion
 
@@ -47,17 +47,24 @@ class PROJECT_MUSEUMHEIST_API UHeistObjectAssemblyWidget : public UHeistUserWidg
 	void SetupObjectAssemblyWidget(UHeistObjectAssemblyViewModel* InObjectAssemblyViewModel, AHeistPlayerController* InPlayerController);
 	bool IsOwnerOnlyContractSatisfied() const;
 	bool IsWidgetPresentationVisible() const;
-	bool IsPreviewReady() const;
-	int32 GetPreviewComponentCount() const;
-	int32 GetUnresolvedPreviewSocketCount() const;
+	bool IsCanvasReady() const;
+	int32 GetPartTileCount() const;
 
   private:
-	void BindButtons();
+	void BindActionButtons();
 	void RefreshObjectAssemblyPresentation();
 	void RefreshCountdownPresentation();
-	void RefreshLocalPreview();
-	void DestroyLocalPreview();
-	FTransform ResolveFallbackPartTransform(FName SocketId, int32 PlacementIndex, uint8 QuantizedOrientation) const;
+	bool TryForceCloseForAlert();
+	void RebuildPartTiles();
+	void ClearPartTiles();
+	void RefreshPartTilePresentation();
+	FName FindPartTileAtScreenPosition(const FVector2D& ScreenPosition) const;
+	FName ResolveClosestCompatibleSocket(FName PartId, const FVector2D& CanvasPoint) const;
+	FVector2D ResolveSocketAnchorNormalized(FName SocketId) const;
+	FVector2D ResolvePartTileSize(FName PartId) const;
+	FVector2D ResolveTrayPosition(int32 CandidateIndex, const FVector2D& CanvasSize, const FVector2D& TileSize) const;
+	FVector2D GetAssemblyCanvasSize() const;
+	void SetPartTilePosition(FName PartId, const FVector2D& Position);
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Heist|Object Assembly", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistObjectAssemblyViewModel> ObjectAssemblyViewModel;
@@ -66,18 +73,14 @@ class PROJECT_MUSEUMHEIST_API UHeistObjectAssemblyWidget : public UHeistUserWidg
 	TObjectPtr<AHeistPlayerController> PlayerController;
 
 	UPROPERTY(Transient)
-	TObjectPtr<AActor> PreviewActor;
+	TMap<FName, TObjectPtr<UBorder>> PartTiles;
 
-	UPROPERTY(Transient)
-	TObjectPtr<UStaticMeshComponent> PreviewCoreComponent;
-
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UStaticMeshComponent>> PreviewPartComponents;
-
+	FName DraggedPartId = NAME_None;
+	FVector2D DragOffset = FVector2D::ZeroVector;
+	int32 DisplayedSessionRevision = INDEX_NONE;
 	int32 DisplayedPreviewRevision = INDEX_NONE;
-	int32 UnresolvedPreviewSocketCount = 0;
 	int32 LastDisplayedAssemblyTimeSeconds = INDEX_NONE;
-	int32 LastDisplayedLockdownSeconds = INDEX_NONE;
+	bool bAlertExitRequested = false;
 
   protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|Object Assembly", meta = (DisplayName = "Object Assembly Sources Ready"))
@@ -92,33 +95,6 @@ class PROJECT_MUSEUMHEIST_API UHeistObjectAssemblyWidget : public UHeistUserWidg
 
   private:
 	UFUNCTION()
-	void HandlePreviousPartClicked();
-
-	UFUNCTION()
-	void HandleNextPartClicked();
-
-	UFUNCTION()
-	void HandlePreviousSocketClicked();
-
-	UFUNCTION()
-	void HandleNextSocketClicked();
-
-	UFUNCTION()
-	void HandleRotateLeftClicked();
-
-	UFUNCTION()
-	void HandleRotateRightClicked();
-
-	UFUNCTION()
-	void HandlePlacePartClicked();
-
-	UFUNCTION()
-	void HandleRemovePartClicked();
-
-	UFUNCTION()
-	void HandleResetAssemblyClicked();
-
-	UFUNCTION()
 	void HandleSubmitClicked();
 
 	UFUNCTION()
@@ -129,35 +105,14 @@ class PROJECT_MUSEUMHEIST_API UHeistObjectAssemblyWidget : public UHeistUserWidg
 #pragma region Presentation
 
   private:
+	UPROPERTY(EditDefaultsOnly, Category = "Heist|Object Assembly|Presentation")
+	TObjectPtr<UFont> KoreanUIFont;
+
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
-	TObjectPtr<UViewport> AssemblyViewport;
+	TObjectPtr<UCanvasPanel> AssemblyCanvas;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> TitleText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> TemplateNameText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> SelectedPartText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> SelectedSocketText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> SelectedOrientationText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> PlacementProgressText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> AssemblyStatusText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> InstructionText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> QualityRequirementText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> PreviewScoreText;
@@ -165,38 +120,8 @@ class PROJECT_MUSEUMHEIST_API UHeistObjectAssemblyWidget : public UHeistUserWidg
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> AssemblyTimeRemainingText;
 
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> AssemblyAlertWarningText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> AssemblyLockdownCountdownText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
-	TObjectPtr<UButton> PreviousPartButton;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
-	TObjectPtr<UButton> NextPartButton;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
-	TObjectPtr<UButton> PreviousSocketButton;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
-	TObjectPtr<UButton> NextSocketButton;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
-	TObjectPtr<UButton> RotateLeftButton;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
-	TObjectPtr<UButton> RotateRightButton;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
-	TObjectPtr<UButton> PlacePartButton;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
-	TObjectPtr<UButton> RemovePartButton;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
-	TObjectPtr<UButton> ResetAssemblyButton;
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> FooterHint;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
 	TObjectPtr<UButton> SubmitButton;

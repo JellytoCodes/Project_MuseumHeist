@@ -1,7 +1,7 @@
 # Project_MuseumHeist Current Project Status
 
-최종 갱신: 2026-08-09 13:17 KST  
-현재 문서 Revision: 3
+최종 갱신: 2026-08-09 17:46 KST
+현재 문서 Revision: 7
 
 이 문서는 새 Codex/Claude 작업이 이전 대화 없이도 현재 진척과 다음 행동을 바로 파악하기 위한 단일 실행 인계 문서다.
 
@@ -27,7 +27,7 @@
 
 시작 시 `주차별 작업보드`에서 `상태 = 진행중 또는 검토중`을 조회하고, 사용자가 Task ID를 지정했다면 해당 페이지를 추가 Fetch한다. SQL 조회가 제한되면 Search/Fetch를 사용한다. Notion 자체 조회가 실패하면 이 문서를 `OFFLINE CACHE`로 표시하고 Task 상태·우선순위·다음 작업을 확정하지 않는다.
 
-마지막 라이브 조회: `2026-08-09 13:17 KST`
+마지막 라이브 조회: `2026-08-09 17:46 KST`
 
 ```text
 TASK-W6-000  검토중  Contract Foundation / Required Target / Loot Value Quota
@@ -44,20 +44,33 @@ Notion Active Task: [`TASK-W6-006`](https://app.notion.com/p/39a1d26a5dfb8132a83
 
 주의: 사용자가 이전 대화에서 부른 `TASK 006` 작업 내용과 Notion의 `TASK-W6-006` 완료 기준은 일치하지 않는다. 아래 위조 변경 증거만으로 `TASK-W6-006`의 진행률 또는 완료 상태를 변경하지 않는다. 새 작업은 Notion의 현재 Task 정의를 우선 확인하고, 이 로컬 Work Package를 별도 후속 검증 대상으로 취급한다.
 
-현재 결론:
+Notion 재확인 결과 `TASK-W5-013 Owner-only Object Assembly UI / Input Restore`는 기존 버튼식 조립 계약으로 이미 `완료`다. 이번 2D Drag & Drop 개편은 그 완료 증거를 소급 변경하지 않는 신규 회귀 패키지이며, 정확히 대응하는 진행중 Task는 확인되지 않았다.
+
+`TASK-W6-006` 현재 결론:
 
 ```text
-구현                   COMPLETE
-C++ Editor Build       PASS
-WBP Compile / Save      PASS
-DataTable Save          PASS
-문서 동기화 / 렌더 QA  PASS
-자동화 테스트 실행     NOT RUN
-User PIE                REQUIRED / NOT RUN
-Notion Live Read        PASS / 2026-08-09 13:17 KST
-Notion Task Update      NOT DONE
-로컬 Work Package PASS  PENDING USER PIE
+서버 기여 누적          IMPLEMENTED / Forgery·Assembly·Carry·Deposit·Loot·Coin·Rescue·Alarm·Escape·Arrest
+Contribution 복제       IMPLEMENTED / AHeistPlayerState 전체 Crew 복제
+Result Snapshot / Row   IMPLEMENTED / 최고 품질·운반 시간·탈출/체포/미탈출 포함
+Winner / Rank           NONE / 비경쟁 설명 정보만 사용
+Coin Distraction        FIXED / 반경 검사가 아닌 실제 Guard Investigate 수락 수 누적
+C++ Editor Build        PASS / 2026-08-09 17:42 KST
+자동화 테스트 실행     PASS / ProjectMuseumHeist.Result 6/6
+2 Player User PIE       REQUIRED / NOT RUN
+Notion Live Read/Write  PASS / TASK-W6-006 + TEST-W6-005
+Notion Task Status      진행중 / 사용자 PIE 후 완료 판정
 ```
+
+`LOCAL-20260809-01`의 Forgery UI/Timeout 패키지는 별도 범위이며 기존 검증 상태를 유지한다.
+
+### TASK-W6-006 변경 및 검증 체크포인트
+
+- `AHeistGameState::ReportSoundPing`이 각 Guard Noise Reaction의 실제 수락 수를 동기 집계한다.
+- Coin Impact는 수락된 Guard 수가 1명 이상일 때만 투척자의 `GuardsDistracted`를 누적한다.
+- Result Row는 Surface/Assembly 횟수와 최고 품질, Original 회수 수와 운반 시간, Loose Loot, Distraction, Rescue, Alarm, Escape/Arrest 상태를 모두 표시한다.
+- `ProjectMuseumHeist.Result.PlayerContribution`, `PlayerContributionPresentation`, `SoundPingAcceptanceAggregation`을 포함한 Result 자동화 6개가 모두 PASS했다.
+- Notion [`TEST-W6-005`](https://app.notion.com/p/3b71d26a5dfb81428a21f134d49cd06a)에 Integration 자동화 PASS를 기록했다.
+- 남은 완료 증거는 2 Player Listen Server PIE의 서버 누적, Client 복제, Result Row와 Winner/Rank 부재 확인이다.
 
 ---
 
@@ -85,14 +98,17 @@ Timeout
 
 Shared UI
 - Mode Title
-- 한 문장 Instruction
-- Quality 70 Required
-- Expected Score
+- 예상 품질 `{점수}/100 · 제출 가능 70+` 단일 표시
 - Remaining Time
 - Submit / Enter
 - Cancel / Escape
-- Team / Alert 최소 정보
-- Surface의 Palette/Brush/Canvas와 Object의 Part/Socket/Orientation/Material만 모드별로 다르다.
+- 통합 하단 조작 안내
+- 별도 InstructionText와 ModeStatusText는 사용하지 않는다. 작업 설명은 Tutorial과 통합 하단 안내가 담당한다.
+- 별도 서버 점수, QualityRequirement, Alert Warning, Lockdown Countdown은 표시하지 않는다.
+- Alert가 Quiet을 벗어나면 서버 취소를 한 번만 요청하고 작업 화면을 즉시 닫아 Gameplay Input을 복원한다.
+- Surface는 Palette/Canvas와 Drawing Content 안의 시각적 Brush 소·중·대 선택을 사용한다.
+- Object는 Original/Template Name/정답 실루엣/UViewport/순회 버튼을 제거하고 2D Part Tray와 Assembly Canvas Drag & Drop을 사용한다.
+- Object Drop은 가장 가까운 호환 Socket Anchor로 양자화하며 Wheel 회전, 우클릭 제거, R Reset을 사용한다. 중간 Drag 좌표는 복제하지 않는다.
 ```
 
 Guard의 시야 발각, 추격, 교체 소음과 일반 Alert/Lockdown 흐름은 유지한다. 제거된 것은 Forgery Quality가 Alert를 누적시키던 경로뿐이다.
@@ -127,7 +143,10 @@ Guard의 시야 발각, 추격, 교체 소음과 일반 Alert/Lockdown 흐름은
   - 검사 완료 시 Alert 변화 없음
 - `Source/Project_MuseumHeist/Private/UI/Widgets/HeistForgeryWidget.cpp`
 - `Source/Project_MuseumHeist/Private/UI/Widgets/HeistObjectAssemblyWidget.cpp`
-  - 공통 UI 계약과 Submit/Cancel 입력
+  - Alert 진입 시 1회 Cancel + 강제 종료 / Gameplay Input 복원
+  - 한글 공통 UI, 단일 예상 품질, 통합 Footer
+  - Surface 시각적 Brush 소·중·대
+  - Object 2D Part Tray / Canvas Drag & Drop, 숨은 Socket Anchor 양자화, Wheel/우클릭/R 입력
 - `Source/Project_MuseumHeist/Private/Tests/HeistContractTests.cpp`
   - `ProjectMuseumHeist.Forgery.ReplicaAcceptanceContract` 추가
 - `DataTableImports/DT_ArtifactDataRow.json`
@@ -137,9 +156,15 @@ Guard의 시야 발각, 추격, 교체 소음과 일반 Alert/Lockdown 흐름은
 
 - `Content/Blueprints/UI/Forgery/WBP_HeistForgery.uasset`
 - `Content/Blueprints/UI/ObjectAssembly/WBP_HeistObjectAssembly.uasset`
+- `Content/Blueprints/UI/Fonts/FF_HeistKorean_Regular.uasset`
+- `Content/Blueprints/UI/Fonts/F_HeistKorean.uasset`
+- `Content/Blueprints/UI/Fonts/FF_TENADA.uasset`
+- `Content/Blueprints/UI/Fonts/F_TENADA.uasset`
 - `Content/Data/DataTable/DT_ArtifactData.uasset`
 
-공식 Unreal MCP의 `UMGToolSet`, `DataTableTools`, `AssetTools`로 수정했다. 세 Asset 모두 저장됐고 두 Widget Blueprint Compile 요청이 완료됐다.
+공식 Unreal Editor/MCP의 `UMGToolSet`, `ObjectTools`, `AssetTools`와 Editor Python Import 경로로 수정했다. 두 Widget Blueprint는 Compile/Save PASS다. 제목·제출·취소 6개 TextBlock에는 SIL OFL 1.1 TENADA 기반 `F_TENADA`를 적용하고, 점수·시간·통합 하단 안내와 Brush Label은 NanumGothic 기반 `F_HeistKorean`을 유지한다. 기존 WBP에 저장돼 있던 `??` 한글 19개 문구를 UTF-8 MCP 경로로 복구했고, Regular만 존재하는 Font에서 요청하던 `Bold` Typeface 17개를 `Regular`로 정규화했다. 사용자 편집본에서 `WBP_HeistForgery.ModeStatusText`, 두 WBP의 `InstructionText`는 실제 Widget Tree에서 이미 제거된 상태를 확인했으며, C++의 상속 바인딩과 갱신 코드만 추가 정리했다. 이 확인 과정에서는 WBP 크기·위치·패딩·Slot 값을 수정하지 않았다.
+
+TENADA 원본과 배포 안내는 `SourceArt/UI/Fonts/TENADA/`에 보존했다. Designer 캡처는 `Saved/FontQA/TENADA/`에 저장했다.
 
 ### Documents
 
@@ -147,7 +172,7 @@ Guard의 시야 발각, 추격, 교체 소음과 일반 Alert/Lockdown 흐름은
 - `Museum_Heist_GDD.docx` Rev 12
 - `Museum_Heist_TDD.docx` Rev 12
 
-GDD 29쪽과 TDD 40쪽을 렌더해 전 페이지를 검수했다. 최종 수정에서 남아 있던 `Rev 11` 머리글과 TDD의 `Replica Review / Atomic Swap` 번호 체계를 바로잡고 영향 페이지를 다시 렌더했다.
+GDD 29쪽과 TDD 40쪽을 Microsoft Word PDF로 다시 렌더해 전 페이지 Contact Sheet와 `InstructionText`/`ModeStatusText` 변경 페이지를 원본 크기로 검수했다. 페이지 수, 표 경계, 줄바꿈과 잘림은 정상이다. 본문뿐 아니라 남아 있던 버튼식 Object Assembly/ViewModel 표도 2D Drag & Drop 계약으로 교체했다. 이번 최종 QA 산출물은 `Saved/DocQA/UIInstructionRemoval/Final_GDD`와 `Final_TDD`에 있다.
 
 ---
 
@@ -158,25 +183,24 @@ GDD 29쪽과 TDD 40쪽을 렌더해 전 페이지를 검수했다. 최종 수정
 현재 `C:\Users\User\AppData\Local\UnrealBuildTool\Log.txt`:
 
 ```text
-Target is up to date
 Result: Succeeded
+Total execution time: 5.52 seconds
 ```
 
-`Binaries/Win64/UnrealEditor-Project_MuseumHeist.dll` 시각은 2026-08-09 10:41:12이며 최신 변경 C++ 시각 10:39:47보다 이후다.
+`Binaries/Win64/UnrealEditor-Project_MuseumHeist.dll` 시각은 `2026-08-09 15:24:00`이며 최신 변경 C++ 시각 `15:23:41`보다 이후다.
 
 ### MCP / Asset Save
 
-근거 로그:
-
-`Saved/Logs/Project_MuseumHeist-backup-2026.08.09-02.08.17.log`
-
 ```text
-02:04:29 DT_ArtifactData Imported - 0 Problems
-02:04:37 WBP_HeistForgery CompileWidgetBlueprint
-02:04:37 WBP_HeistObjectAssembly CompileWidgetBlueprint
-02:04:47 WBP_HeistForgery SavePackage
-02:04:47 WBP_HeistObjectAssembly SavePackage
-02:04:47 DT_ArtifactData SavePackage
+WBP_HeistForgery               Compile=true / Save=true
+WBP_HeistObjectAssembly        Compile=true / Save=true
+Korean Static Text             QuestionMark=0 / TextBlocks=27
+TENADA Display TextBlocks      Updated=6 / Title+Submit+Cancel
+F_HeistKorean Runtime Font     FontFace=NanumGothic / Saved=true
+F_TENADA Runtime Font          FontFace=TENADA / Source=SourceArt/UI/Fonts/TENADA/Tenada.ttf / Saved=true
+Object Assembly KoreanUIFont   WBP CDO assignment / Saved=true
+Python Remote Execution        DisabledAfterImport=true
+Font Asset Dirty State         false / FF_TENADA, F_TENADA, Forgery WBP, Assembly WBP
 ```
 
 ### Static Checks
@@ -187,6 +211,7 @@ DT_ArtifactDataRow.json Row Count        14
 MinimumForgeryScore unique values        [0.7]
 Inspection score Alert escalation path   REMOVED
 Timeout Guard selection                  EVENT-ONLY / NEAREST ONE
+ReplicaAcceptanceContract                PASS / 2026-08-09 15:42 KST
 ```
 
 ---
@@ -216,15 +241,18 @@ Net Mode: Listen Server
 
 최소 확인 항목:
 
-1. Surface와 Object UI가 공통 설명/70점/예상 점수/시간/Submit/Cancel 구조인지 확인한다.
+1. Surface와 Object UI가 한글 Title/단일 예상 품질/시간/Submit/Cancel/통합 Footer 구조이고, 별도 Instruction/Mode Status가 없는지 확인한다.
 2. 작업 UI는 Owning Client에만 나타나야 한다.
 3. 예상 점수 70 미만은 Submit이 비활성화되고 70 이상은 활성화돼야 한다.
 4. 서버가 `QualityBelowMinimum`으로 거부하면 Replica 없이 같은 UI와 남은 Timer가 유지돼야 한다.
 5. 70 이상 승인 시 UI가 닫히고 Case가 Owner 전용 ReplicaReady 상태가 돼야 한다.
-6. Surface와 Object Timeout 모두 작업과 Preview를 폐기하고 Replica를 만들지 않아야 한다.
-7. Timeout 전후 Alert 값이 같아야 한다.
-8. 근처 유효 Guard가 한 명만 한 번 조사해야 한다.
-9. 승인된 70/80/95점 Replica 검사로 Alert가 증가하지 않아야 한다.
+6. Surface에서 Brush 소·중·대가 Drawing Content 안에 시각적으로 구분되고 실제 Stroke 굵기에 반영돼야 한다.
+7. Object에서 2D 조각 Drag & Drop, 호환 Socket 양자화, Wheel 회전, 우클릭 제거, R Reset이 동작해야 한다.
+8. Object 화면에는 Original/Template Name/정답 실루엣/UViewport/Part·Socket 순회 버튼이 없어야 한다.
+9. Surface/Object 작업 중 Alert가 Quiet을 벗어나면 Cancel 요청은 한 번만 발생하고 Widget이 즉시 닫히며 Gameplay Input이 복원돼야 한다.
+10. Surface와 Object Timeout 모두 작업과 Preview를 폐기하고 Replica를 만들지 않아야 한다.
+11. Timeout 전후 Alert 값이 같고 근처 유효 Guard 한 명만 한 번 조사해야 한다.
+12. 승인된 70/80/95점 Replica 검사로 Alert가 증가하지 않아야 한다.
 
 고신호 로그:
 
@@ -234,13 +262,7 @@ Guard forgery timeout investigation: ... AlertChanged=false ... Result=PASS
 Forgery score commit rejected: ... Reason=QualityBelowMinimum
 ```
 
-자동화 테스트도 실행한다.
-
-```text
-ProjectMuseumHeist.Forgery.ReplicaAcceptanceContract
-```
-
-User PIE와 자동화 결과가 모두 PASS하면 이 로컬 Work Package의 구현 상태만 완료 후보로 판단한다. Weekly Gate/Test Log와 Notion Task 상태는 해당 Task의 완료 기준과 증거를 별도로 대조한 뒤 갱신한다.
+`ProjectMuseumHeist.Forgery.ReplicaAcceptanceContract` 자동화는 PASS했다. 남은 필수 증거는 User PIE다. User PIE까지 PASS하면 이 로컬 Work Package의 구현 상태만 완료 후보로 판단한다. Weekly Gate/Test Log와 Notion Task 상태는 해당 Task의 완료 기준과 증거를 별도로 대조한 뒤 갱신한다.
 
 ---
 

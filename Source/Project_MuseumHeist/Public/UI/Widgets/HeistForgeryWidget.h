@@ -80,8 +80,7 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 
   private:
 	void RefreshForgeryPresentation();
-	void RefreshAlertWarningPresentation();
-	void RefreshForgeryLockdownCountdown();
+	bool TryForceCloseForAlert();
 	void ApplyStateVisibility(UWidget* TargetWidget, bool bVisible) const;
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Heist|Forgery", meta = (AllowPrivateAccess = "true"))
@@ -128,6 +127,8 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 	void BindPaletteButtons();
 	void RefreshPaletteButtons();
 	bool ChangeBrushPreset(int32 Direction);
+	bool SelectBrushPreset(int32 PresetIndex);
+	void RefreshBrushPresetButtons();
 	float GetNormalizedEraseRadius() const;
 	static float GetPointToSegmentDistanceSquared(const FVector2D& Point, const FVector2D& SegmentStart, const FVector2D& SegmentEnd);
 
@@ -155,7 +156,7 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 	int32 LastObservedStrokeValidationRevision = INDEX_NONE;
 	int32 RejectedLocalDrawingRevision = INDEX_NONE;
 	int32 LastDisplayedDrawingTimeSeconds = INDEX_NONE;
-	int32 LastDisplayedLockdownSeconds = INDEX_NONE;
+	bool bAlertExitRequested = false;
 
 	UFUNCTION()
 	void HandlePaletteButton1Clicked();
@@ -187,6 +188,15 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 	UFUNCTION()
 	void HandleCancelClicked();
 
+	UFUNCTION()
+	void HandleBrushSmallClicked();
+
+	UFUNCTION()
+	void HandleBrushMediumClicked();
+
+	UFUNCTION()
+	void HandleBrushLargeClicked();
+
 #pragma endregion
 
 #pragma region Presentation
@@ -206,16 +216,10 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 	TObjectPtr<UTextBlock> DrawingPlaceholder;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> DrawingHint;
+	TObjectPtr<UTextBlock> FooterHint;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> DrawingTimeRemainingText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> ForgeryAlertWarningText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> ForgeryLockdownCountdownText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> PreviewScoreText;
@@ -224,13 +228,13 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 	TObjectPtr<UTextBlock> TitleText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> InstructionText;
+	TObjectPtr<UButton> BrushSmallButton;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> QualityRequirementText;
+	TObjectPtr<UButton> BrushMediumButton;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> ModeStatusText;
+	TObjectPtr<UButton> BrushLargeButton;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UButton> SubmitButton;

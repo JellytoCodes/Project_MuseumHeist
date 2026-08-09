@@ -95,6 +95,9 @@ class PROJECT_MUSEUMHEIST_API UHeistObjectAssemblyViewModel : public UMVVMViewMo
 	bool RotateNext();
 	bool PlaceOrUpdateSelectedPart();
 	bool RemoveSelectedPart();
+	bool PlacePartAtSocket(FName PartId, FName SocketId);
+	bool RemovePart(FName PartId);
+	bool RotatePart(FName PartId, int32 Direction);
 	bool ResetLocalAssembly();
 	bool RequestSubmitAssembly();
 	bool RequestCancelAssembly();
@@ -110,7 +113,11 @@ class PROJECT_MUSEUMHEIST_API UHeistObjectAssemblyViewModel : public UMVVMViewMo
 	FName GetActiveFamilyId() const;
 	const FHeistObjectAssemblyTemplateRow& GetActiveTemplate() const;
 	const TArray<FName>& GetCandidatePartIds() const;
+	const TArray<FName>& GetCompatibleSocketIds(FName PartId) const;
 	const TArray<FHeistObjectAssemblyEntry>& GetLocalAssemblyEntries() const;
+	bool IsPartPlaced(FName PartId) const;
+	uint8 GetPlacedPartOrientation(FName PartId) const;
+	FText GetPartDisplayText(FName PartId) const;
 	FName GetSelectedPartId() const;
 	FName GetSelectedSocketId() const;
 	uint8 GetSelectedOrientation() const;

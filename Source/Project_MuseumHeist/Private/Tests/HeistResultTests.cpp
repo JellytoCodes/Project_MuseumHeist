@@ -1,7 +1,12 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "Core/HeistGameState.h"
 #include "Core/HeistTypes.h"
 #include "Misc/AutomationTest.h"
+#include "Serialization/MemoryReader.h"
+#include "Serialization/MemoryWriter.h"
+#include "UI/ViewModels/HeistResultViewModel.h"
+#include "UI/Widgets/HeistResultWidget.h"
 
 #include <limits>
 
@@ -95,11 +100,132 @@ bool FHeistTeamResultSnapshotTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("Default team result is not terminal"), Result.IsValid());
 	Result.Outcome = EHeistContractOutcome::Success;
 	Result.OutcomeReasonId = HeistContractOutcomeReasons::ContractComplete();
+	Result.RequiredTargetArtifactId = FName(TEXT("Artifact_Painting_M01"));
+	Result.RequiredTargetDisplayName = FText::FromString(TEXT("별이 빛나는 위작"));
 	Result.LootValueQuota = 4000;
 	Result.SecuredValue = 4500;
 	Result.TeamReward = 4200;
 	Result.Revision = 1;
 	TestTrue(TEXT("Complete replicated team result is valid"), Result.IsValid());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistResultScreenPresentationTest, "ProjectMuseumHeist.Result.ScreenPresentation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHeistResultScreenPresentationTest::RunTest(const FString& Parameters)
+{
+	FHeistTeamResult TeamResult;
+	TeamResult.Outcome = EHeistContractOutcome::Success;
+	TeamResult.OutcomeReasonId = HeistContractOutcomeReasons::ContractComplete();
+	TeamResult.RequiredTargetArtifactId = FName(TEXT("Artifact_Painting_M01"));
+	TeamResult.RequiredTargetDisplayName = FText::FromString(TEXT("별이 빛나는 위작"));
+	TeamResult.bRequiredTargetSecured = true;
+	TeamResult.LootValueQuota = 4000;
+	TeamResult.SecuredValue = 5200;
+	TeamResult.ExtraValue = 1200;
+	TeamResult.RequiredTargetValue = 2500;
+	TeamResult.SecuredLooseLootValue = 2700;
+	TeamResult.ForgeryRewardMultiplier = 1.15f;
+	TeamResult.StealthRewardMultiplier = 0.90f;
+	TeamResult.ArrestPenalty = 500;
+	TeamResult.TeamReward = 4788;
+	TeamResult.Revision = 1;
+
+	FHeistReplicaRecapEntry& Recap = TeamResult.ReplicaRecap.AddDefaulted_GetRef();
+	Recap.CaseId = FName(TEXT("Case_M01_Target"));
+	Recap.ArtifactId = TeamResult.RequiredTargetArtifactId;
+	Recap.ArtifactDisplayName = TeamResult.RequiredTargetDisplayName;
+	Recap.TemplateId = FName(TEXT("Template_M01_Portrait_05"));
+	Recap.ForgeryType = EHeistForgeryType::Drawing;
+	Recap.QualityScore = 84.0f;
+	Recap.bRequiredTarget = true;
+
+	TestEqual(TEXT("Success outcome is player-facing Korean"), UHeistResultViewModel::BuildOutcomeDisplayText(EHeistContractOutcome::Success).ToString(), FString(TEXT("계약 완료")));
+	TestEqual(TEXT("Partial outcome is player-facing Korean"), UHeistResultViewModel::BuildOutcomeDisplayText(EHeistContractOutcome::PartialHaul).ToString(), FString(TEXT("일부 확보")));
+	TestEqual(TEXT("Failure outcome is player-facing Korean"), UHeistResultViewModel::BuildOutcomeDisplayText(EHeistContractOutcome::Failed).ToString(), FString(TEXT("계약 실패")));
+
+	const FString ContractSummary = UHeistResultViewModel::BuildContractProgressSummaryText(TeamResult).ToString();
+	TestTrue(TEXT("Required target display name is visible"), ContractSummary.Contains(TEXT("별이 빛나는 위작")));
+	TestTrue(TEXT("Required target secured state is visible"), ContractSummary.Contains(TEXT("확보 완료")));
+	TestTrue(TEXT("Secured value and quota are visible"), ContractSummary.Contains(TEXT("5,200")) || ContractSummary.Contains(TEXT("5200")));
+	TestTrue(TEXT("Quota is visible"), ContractSummary.Contains(TEXT("4,000")) || ContractSummary.Contains(TEXT("4000")));
+	TestTrue(TEXT("Extra value is visible"), ContractSummary.Contains(TEXT("1,200")) || ContractSummary.Contains(TEXT("1200")));
+
+	const FString RewardSummary = UHeistResultViewModel::BuildRewardBreakdownSummaryText(TeamResult).ToString();
+	TestTrue(TEXT("Reward breakdown explains target, loose loot, arrest, and final reward"), RewardSummary.Contains(TEXT("필수 목표")) &&
+		RewardSummary.Contains(TEXT("추가 전리품")) && RewardSummary.Contains(TEXT("체포")) && (RewardSummary.Contains(TEXT("4,788")) || RewardSummary.Contains(TEXT("4788"))));
+	TestTrue(TEXT("Reward multipliers are shown as readable percentages"), RewardSummary.Contains(TEXT("115")) && RewardSummary.Contains(TEXT("90")));
+
+	const FString RecapSummary = UHeistResultViewModel::BuildReplicaRecapSummaryText(TeamResult).ToString();
+	TestTrue(TEXT("Replica recap identifies required target and actual type/quality"), RecapSummary.Contains(TEXT("필수 목표")) &&
+		RecapSummary.Contains(TEXT("별이 빛나는 위작")) && RecapSummary.Contains(TEXT("그림")) && RecapSummary.Contains(TEXT("84")));
+	TestFalse(TEXT("Team result presentation does not create Winner or Rank"), RecapSummary.Contains(TEXT("Winner")) || RecapSummary.Contains(TEXT("Rank")) ||
+		RecapSummary.Contains(TEXT("우승")) || RecapSummary.Contains(TEXT("순위")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistReplicaRecapPayloadTest, "ProjectMuseumHeist.Result.ReplicaRecapPayload",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHeistReplicaRecapPayloadTest::RunTest(const FString& Parameters)
+{
+	FHeistReplicaRecapEntry PaintingRecap;
+	PaintingRecap.CaseId = FName(TEXT("Case_M01_Target"));
+	PaintingRecap.ArtifactId = FName(TEXT("Artifact_Painting_M01"));
+	PaintingRecap.ArtifactDisplayName = FText::FromString(TEXT("별이 빛나는 위작"));
+	PaintingRecap.TemplateId = FName(TEXT("Template_M01_Portrait_05"));
+	PaintingRecap.ForgeryType = EHeistForgeryType::Drawing;
+	PaintingRecap.QualityScore = 84.0f;
+	PaintingRecap.bRequiredTarget = true;
+	PaintingRecap.PaintingResolution = FHeistReplicaRecapEntry::PaintingThumbnailResolution;
+	PaintingRecap.PaintingPalette = {FColor::Red, FColor::Blue};
+	PaintingRecap.PaintingPackedPaletteIndices.Init(0x21, FMath::DivideAndRoundUp(
+		PaintingRecap.PaintingResolution * PaintingRecap.PaintingResolution, 2));
+
+	TArray64<uint8> PaintingPixels;
+	TestTrue(TEXT("Painting recap decodes the actual submitted palette payload"),
+		UHeistResultWidget::DecodePaintingRecapPixels(PaintingRecap, FColor::Black, PaintingPixels));
+	TestEqual(TEXT("Painting recap produces BGRA pixels"), PaintingPixels.Num(), static_cast<int64>(PaintingRecap.PaintingResolution * PaintingRecap.PaintingResolution * 4));
+	TestEqual(TEXT("First packed nibble resolves palette color one"), PaintingPixels[2], static_cast<uint8>(255));
+	TestEqual(TEXT("Second packed nibble resolves palette color two"), PaintingPixels[4], static_cast<uint8>(255));
+
+	TArray<uint8> PaintingBytes;
+	FMemoryWriter PaintingWriter(PaintingBytes);
+	bool bPaintingSaved = false;
+	PaintingRecap.NetSerialize(PaintingWriter, nullptr, bPaintingSaved);
+	TestTrue(TEXT("Painting recap network payload saves"), bPaintingSaved && !PaintingWriter.IsError());
+	FHeistReplicaRecapEntry PaintingCopy;
+	FMemoryReader PaintingReader(PaintingBytes);
+	bool bPaintingLoaded = false;
+	PaintingCopy.NetSerialize(PaintingReader, nullptr, bPaintingLoaded);
+	TestTrue(TEXT("Painting recap network payload round-trips"), bPaintingLoaded && !PaintingReader.IsError() && PaintingCopy == PaintingRecap);
+
+	FHeistReplicaRecapEntry AssemblyRecap;
+	AssemblyRecap.CaseId = FName(TEXT("Case_M01_Object"));
+	AssemblyRecap.ArtifactId = FName(TEXT("Artifact_Sculpture_M01"));
+	AssemblyRecap.ArtifactDisplayName = FText::FromString(TEXT("날개 달린 큐레이터"));
+	AssemblyRecap.TemplateId = FName(TEXT("Template_Sculpture_Gallery_03"));
+	AssemblyRecap.ForgeryType = EHeistForgeryType::Assembly;
+	AssemblyRecap.QualityScore = 91.0f;
+	FHeistObjectAssemblyEntry& AssemblyEntry = AssemblyRecap.AssemblyEntries.AddDefaulted_GetRef();
+	AssemblyEntry.PartId = FName(TEXT("Part_Sculpture_Gallery_Head"));
+	AssemblyEntry.SocketId = FName(TEXT("Head"));
+	AssemblyEntry.QuantizedOrientation = 4;
+
+	TArray<uint8> AssemblyBytes;
+	FMemoryWriter AssemblyWriter(AssemblyBytes);
+	bool bAssemblySaved = false;
+	AssemblyRecap.NetSerialize(AssemblyWriter, nullptr, bAssemblySaved);
+	TestTrue(TEXT("Assembly recap network payload saves"), bAssemblySaved && !AssemblyWriter.IsError());
+	FHeistReplicaRecapEntry AssemblyCopy;
+	FMemoryReader AssemblyReader(AssemblyBytes);
+	bool bAssemblyLoaded = false;
+	AssemblyCopy.NetSerialize(AssemblyReader, nullptr, bAssemblyLoaded);
+	TestTrue(TEXT("Assembly recap network payload round-trips"), bAssemblyLoaded && !AssemblyReader.IsError() && AssemblyCopy == AssemblyRecap);
+	TestTrue(TEXT("Assembly recap uses the same head socket anchor as the minigame"),
+		UHeistResultWidget::ResolveAssemblyRecapSocketAnchor(AssemblyEntry.SocketId).Equals(FVector2D(0.50, 0.23)));
+	TestTrue(TEXT("Assembly recap preserves submitted orientation"), FMath::IsNearlyEqual(UHeistResultWidget::ResolveAssemblyRecapPartAngle(4), 90.0f));
 	return true;
 }
 
@@ -145,6 +271,64 @@ bool FHeistPlayerContributionDataContractTest::RunTest(const FString& Parameters
 	InvalidContribution = Contribution;
 	InvalidContribution.bArrested = true;
 	TestFalse(TEXT("Escaped and arrested cannot both be recorded"), InvalidContribution.IsValid());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistPlayerContributionPresentationTest, "ProjectMuseumHeist.Result.PlayerContributionPresentation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHeistPlayerContributionPresentationTest::RunTest(const FString& Parameters)
+{
+	FHeistPlayerResult PlayerResult;
+	PlayerResult.PlayerId = 2;
+	PlayerResult.Contribution.SurfaceForgeries = 2;
+	PlayerResult.Contribution.BestSurfaceQuality = 73.1f;
+	PlayerResult.Contribution.Assemblies = 1;
+	PlayerResult.Contribution.BestAssemblyQuality = 82.5f;
+	PlayerResult.Contribution.ArtifactsRecovered = 1;
+	PlayerResult.Contribution.CarryTimeSeconds = 12.5f;
+	PlayerResult.Contribution.SecuredLootValue = 1500;
+	PlayerResult.Contribution.GuardsDistracted = 2;
+	PlayerResult.Contribution.TeammatesRescued = 1;
+	PlayerResult.Contribution.AlarmsTriggered = 1;
+
+	const FString ActiveSummary = UHeistResultViewModel::BuildPlayerResultSummaryText(PlayerResult).ToString();
+	TestTrue(TEXT("Non-terminal player is not mislabeled as arrested"), ActiveSummary.Contains(TEXT("미탈출")));
+	TestTrue(TEXT("Surface count and best quality are explained"), ActiveSummary.Contains(TEXT("위조 2(73)")));
+	TestTrue(TEXT("Assembly count and best quality are explained"), ActiveSummary.Contains(TEXT("조립 1(83)")));
+	TestTrue(TEXT("Original recovery and carry time are explained"), ActiveSummary.Contains(TEXT("원본 1 · 운반 13초")));
+	TestTrue(TEXT("Loose loot contribution is explained"), ActiveSummary.Contains(TEXT("전리품 1,500")) || ActiveSummary.Contains(TEXT("전리품 1500")));
+	TestTrue(TEXT("Distraction, rescue, and alarm contributions are explained"),
+		ActiveSummary.Contains(TEXT("교란 2")) && ActiveSummary.Contains(TEXT("구조 1")) && ActiveSummary.Contains(TEXT("경보 1")));
+	TestFalse(TEXT("Result summary does not create a Winner label"), ActiveSummary.Contains(TEXT("Winner")) || ActiveSummary.Contains(TEXT("우승")));
+	TestFalse(TEXT("Result summary does not create a Rank label"), ActiveSummary.Contains(TEXT("Rank")) || ActiveSummary.Contains(TEXT("순위")));
+
+	PlayerResult.bArrested = true;
+	PlayerResult.Contribution.bArrested = true;
+	const FString ArrestedSummary = UHeistResultViewModel::BuildPlayerResultSummaryText(PlayerResult).ToString();
+	TestTrue(TEXT("Arrested player is labeled arrested"), ArrestedSummary.Contains(TEXT("체포")));
+
+	PlayerResult.bArrested = false;
+	PlayerResult.bEscaped = true;
+	PlayerResult.Contribution.bArrested = false;
+	PlayerResult.Contribution.bEscaped = true;
+	const FString EscapedSummary = UHeistResultViewModel::BuildPlayerResultSummaryText(PlayerResult).ToString();
+	TestTrue(TEXT("Escaped player is labeled escaped"), EscapedSummary.Contains(TEXT("탈출")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistSoundPingAcceptanceAggregationTest, "ProjectMuseumHeist.Result.SoundPingAcceptanceAggregation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHeistSoundPingAcceptanceAggregationTest::RunTest(const FString& Parameters)
+{
+	FHeistSoundPingEventReported Delegate;
+	Delegate.AddLambda([](const FHeistSoundPingEvent&, int32* InOutAcceptedGuardCount) { ++*InOutAcceptedGuardCount; });
+	Delegate.AddLambda([](const FHeistSoundPingEvent&, int32* InOutAcceptedGuardCount) { ++*InOutAcceptedGuardCount; });
+
+	int32 AcceptedGuardCount = 0;
+	Delegate.Broadcast(FHeistSoundPingEvent(), &AcceptedGuardCount);
+	TestEqual(TEXT("Synchronous sound-ping listeners aggregate accepted guard reactions"), AcceptedGuardCount, 2);
 	return true;
 }
 

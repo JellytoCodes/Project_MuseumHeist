@@ -1111,6 +1111,13 @@ void UHeistCheatManager::HeistContributionDump()
 #endif
 }
 
+void UHeistCheatManager::HeistResultVisualSeed()
+{
+#if !UE_BUILD_SHIPPING
+	UHeistDebugFunctionLibrary::DebugResultVisualSeed(GetOuterAPlayerController());
+#endif
+}
+
 void UHeistCheatManager::HeistExitPlacementDump()
 {
 #if !UE_BUILD_SHIPPING

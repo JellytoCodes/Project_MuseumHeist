@@ -306,7 +306,8 @@ Smoke 및 Trap 계열 기능은 Stretch 목록에 포함하지 않는다.
 - Surface Forgery와 Object Assembly는 서로의 Template Row를 공유하지 않는다.
 - Surface Forgery와 Object Assembly는 서로의 제출 Payload와 Replica Data를 공유하지 않는다.
 - Surface Forgery와 Object Assembly는 서로의 State Machine과 상세 Result를 공유하지 않는다.
-- 두 방식은 Owner-only Input Mode, 공통 설명·70점 기준·예상 점수·Timer·Submit/Cancel UI, 서버가 확정한 최종 0~100 Quality Score와 Replica 승인 Gate만 공유할 수 있다.
+- 두 방식은 Owner-only Input Mode, 한글 중심 Mode Title, 70점 기준을 함께 표시하는 단일 예상 품질, Timer, Submit/Cancel, 통합 하단 안내와 서버가 확정한 최종 0~100 Quality Score/Replica 승인 Gate만 공유할 수 있다.
+- 작업 방법은 Tutorial과 통합 하단 안내가 담당하며, Surface/Object 작업 화면에 별도 `InstructionText`와 `ModeStatusText`를 만들지 않는다.
 - `AHeistDisplayCaseActor`는 제거됐다. `BP_PaintingDisplayCase`는 `AHeistPaintingDisplayCaseActor`를 직접 부모로 사용한다.
 - Painting 전시품은 `BP_PaintingDisplayCase` 공용 Shell만 사용한다.
 - `AHeistSculptureDisplayCaseActor`는 제거됐다. Sculpture / Ceramic 전시품은 `AHeistObjectDisplayCaseActor`만 사용한다.
@@ -756,7 +757,8 @@ Escape 취소 조건:
 - Local Painter는 모든 Pointer Segment를 연속 Capsule로 누적하고, 서버 전송용 Polyline은 입력 중 고정 간격으로 별도 샘플링한다. 로컬 Stroke와 화면 Raster는 전송 Point Budget과 무관하게 계속 유지하며, 제출 시에만 로컬 데이터를 변경하지 않는 전송용 복사본을 단순화한다. 전송 Point Budget에 도달했다는 이유로 화면 붓칠이 중단되거나 이미 그린 결과와 예상 점수가 감소해서는 안 된다.
 - Local Palette Raster는 나중에 칠한 색이 이전 픽셀을 덮어쓴다. 따라서 소/중/대 Brush는 이미 칠한 영역의 크기를 다시 해석하지 않으며, 뒤에 사용한 작은 Brush도 앞서 사용한 큰 Brush 위에 정상 합성돼야 한다.
 - Local Palette Raster와 최종 서버 Palette Raster는 모두 Canvas 경계에서 Brush Stamp를 Clamp한다. Brush 중심이 가장자리에 있어도 색 픽셀이 Drawing Surface 밖으로 표시되거나 판정 데이터 밖으로 기록되어서는 안 된다.
-- Surface Forgery UI는 현재 Palette, Brush Size, 남은 시간과 `예상 점수`를 표시한다. Point Budget, Payload Byte와 Score Raster Resolution은 플레이어용 정보가 아니므로 일반 UI에 표시하지 않고 Debug Dump에서만 확인한다.
+- Surface Forgery UI는 현재 Palette, Drawing Content 안의 시각적 소/중/대 Brush 선택, 남은 시간과 `예상 품질 {점수}/100 · 제출 가능 70+` 한 줄을 표시한다. 별도 Quality Requirement, 서버 점수, Point Budget, Payload Byte와 Score Raster Resolution은 일반 UI에 표시하지 않는다.
+- Draw/Erase/Reset/Submit/Cancel 조작 안내는 하단 한 줄로 통합하고 별도 Drawing Hint와 Footer Hint로 나누지 않는다.
 - Surface Forgery의 서버 Score와 Replica Palette Raster는 `256×256`을 사용한다. 더 큰 Reference Image는 이 판정 해상도로 정규화한다.
 - Reference Image는 직접 제작한 단순한 이미지를 사용한다.
 - Template별 Palette는 2~8색으로 제한한다.
@@ -853,15 +855,14 @@ Penalty 또는 Diagnostic Field가 Final Score에 직접 적용되지 않는 경
 
 ## Alert Presentation
 
-- `UHeistHUDViewModel`과 `UHeistForgeryViewModel`은 `AHeistGameState`의 복제 Alert Snapshot만 읽는다.
+- `UHeistHUDViewModel`, `UHeistForgeryViewModel`과 `UHeistObjectAssemblyViewModel`은 `AHeistGameState`의 복제 Alert Snapshot만 읽는다.
 - Main HUD는 Quiet, Suspicious, Searching, Alarmed, Lockdown을 단계별 Text와 Color로 표시한다.
 - 플레이어 표시는 `SECURITY LEVEL 0/4~4/4`와 4칸 별 Indicator를 사용한다.
-- Guard의 확정 발각은 서버에서 최소 Suspicious를 요청하고, Painting 검사 결과는 Score Mapping 결과를 요청한다.
-- Main HUD가 가려지는 Owner-only Forgery 화면에서도 동일한 Security Level Indicator를 표시한다.
+- Guard의 확정 발각은 서버에서 최소 Suspicious를 요청한다. Forgery Quality와 Guard의 Replica 검사는 Alert를 변경하지 않는다.
+- Owner-only Surface Forgery/Object Assembly 화면에는 Security Level Indicator, Alert Warning 또는 Lockdown Countdown을 중복 표시하지 않는다.
+- 두 작업 화면이 표시 중 Alert가 Quiet을 벗어나면 해당 Widget은 서버 Cancel Request를 한 번만 보내고, 복제된 Session 종료에 따라 화면을 닫아 Gameplay Input을 복원한다.
 - Alarmed의 Lockdown Countdown은 복제된 `AlertNextTransitionServerTime`과 Server World Time의 차이로 표시한다.
 - HUD Lockdown Countdown은 독립된 `LockdownCountdownText`에 표시한다.
-- Forgery 화면은 Quiet 이외 Alert에서 독립된 `ForgeryAlertWarningText`를 표시한다.
-- Forgery 화면의 Lockdown Countdown은 `ForgeryLockdownCountdownText`에 별도로 표시한다.
 - Suspicious/Searching은 Suspense Music Layer, Alarmed/Lockdown은 Alarm Music Layer를 사용한다.
 - Forgery Full-Screen UI 중에도 Alert Music Layer는 유지한다.
 - 실제 Music Asset 지정은 Widget Blueprint Class Default가 담당한다.
@@ -919,8 +920,12 @@ Jewelry, Fossil 및 기타 Family는 명시적인 설계·구현 승인 전 활�
 - Object Assembly Widget은 Owning Player에게만 표시한다.
 - Assembly 중 World View는 완전히 가린다.
 - Move, Look, Jump, Sprint, Throw, QuickSlot, Inventory와 다른 Interaction을 차단한다.
-- Part 선택, Socket 선택, 승인된 회전, Submit, Cancel, Push-To-Talk와 Pause를 허용한다.
-- 조립 화면은 로컬 Preview Component를 사용하며 World Actor를 직접 변경하지 않는다.
+- 2D Part Drag, 승인된 회전, 다시 배치, 제거, Submit, Cancel, Push-To-Talk와 Pause를 허용한다.
+- 조립 화면은 Original, Template Name, 정답 실루엣과 `UViewport` 3D Preview를 표시하지 않는다.
+- 하단 Tray에 Required/Decoy Part를 2D 조각으로 제시하고 Canvas에서 Drag & Drop한다. Drop 위치는 가장 가까운 숨은 Socket Anchor로 양자화하며 정답 Anchor 또는 Socket 이름을 플레이어에게 노출하지 않는다.
+- 휠 입력은 선택한 Part의 승인된 Orientation Step만 순환하고, 우클릭은 배치된 Part를 Tray로 되돌리며 `R`은 현재 로컬 조립을 초기화한다.
+- Part/Socket/Orientation 순회, Place/Remove와 Reset 전용 Button Row는 사용하지 않는다.
+- 중간 Drag 좌표와 로컬 조립 표현은 World Actor를 직접 변경하거나 복제하지 않는다.
 - Session 종료 시 Gameplay Input Mode와 HUD 접근을 Surface Forgery와 동일한 원칙으로 복원한다.
 - Object Assembly 목표 시간은 `25~35초`, 기본값은 `30초`다.
 - 플레이어는 Local Preview Quality가 70 이상일 때 현재 Assembly를 Submit할 수 있다.
@@ -933,6 +938,7 @@ Jewelry, Fossil 및 기타 Family는 명시적인 설계·구현 승인 전 활�
 - 서버가 Object Assembly Session Owner, Revision, End Server Time과 선택 Template을 확정한다.
 - Client는 Part Mesh 또는 임의 Transform을 전송하지 않는다.
 - Client 최종 Payload는 승인된 `PartId`, `SocketId`, Quantized Orientation과 Material Id만 포함한다.
+- Client Drop 좌표는 가장 가까운 숨은 Socket Anchor 선택에만 사용하고 Payload에 포함하지 않는다.
 - 서버는 Session Revision, Part Count, 중복 Part, Part Family, Socket 호환, Orientation 범위, Material 범위와 Payload 크기를 검증한다.
 - 중간 Drag 또는 Preview Transform은 복제하지 않는다.
 - Submit 시 검증된 최종 Assembly Payload를 한 번만 확정한다.
@@ -968,9 +974,11 @@ Material Match: 10%
 
 ## Shared Forgery UI Contract
 
-- Surface Forgery와 Object Assembly는 `Mode Title → 한 문장 Instruction → QUALITY 70 REQUIRED → Preview Score → Remaining Time → Submit / Cancel` 정보 순서를 공통으로 사용한다.
-- Submit Label과 `Enter`, Cancel Label과 `Escape`, `TIME {0}` 표기, 기준 미달 상태 문구와 Button Disabled 의미를 두 모드에서 일치시킨다.
-- Palette / Brush / Erase와 Part / Socket / Orientation / Material 선택은 모드별 작업 영역으로 유지한다.
+- Surface Forgery와 Object Assembly는 `한글 Mode Title → 예상 품질 {점수}/100 · 제출 가능 70+ → 남은 시간 → Submit / Cancel → 통합 하단 안내` 정보 순서를 공통으로 사용한다.
+- 별도 `InstructionText`와 `ModeStatusText`는 사용하지 않으며 작업 방법 설명은 Tutorial과 통합 하단 안내로 이관한다.
+- Submit Label과 `Enter`, Cancel Label과 `Escape`, `남은 시간 {0}` 표기, 기준 미달 상태 문구와 Button Disabled 의미를 두 모드에서 일치시킨다.
+- Palette/시각적 Brush/Erase와 2D Part Tray/Canvas Drag/승인된 회전은 모드별 작업 영역으로 유지한다.
+- `QualityRequirementText`, 별도 서버 점수, `TemplateNameText`, `AssemblyStatusText`, 작업 화면 전용 Alert Warning/Lockdown Countdown은 두 WBP 공통 계약에 포함하지 않는다.
 - Local Preview는 반응성 안내일 뿐이며 서버 최종 Quality와 승인 결과를 대체하지 않는다.
 
 ## Replica Data

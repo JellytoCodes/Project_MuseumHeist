@@ -400,7 +400,7 @@ FText UHeistObjectAssemblyViewModel::MakePayloadReasonText(const FName Reason)
 	}
 	if (Reason == FName(TEXT("QualityBelowMinimum")))
 	{
-		return NSLOCTEXT("HeistObjectAssembly", "QualityBelowMinimum", "Replica quality is below 70. Keep assembling.");
+		return NSLOCTEXT("HeistObjectAssembly", "QualityBelowMinimum", "품질이 부족합니다. 조각 배치를 다시 확인하세요.");
 	}
 	return NSLOCTEXT("HeistObjectAssembly", "PayloadRejected", "조립 결과가 거부되었습니다. 각 연결 부위를 확인하세요.");
 }
@@ -545,6 +545,61 @@ bool UHeistObjectAssemblyViewModel::RemoveSelectedPart()
 	return true;
 }
 
+bool UHeistObjectAssemblyViewModel::PlacePartAtSocket(const FName PartId, const FName SocketId)
+{
+	const int32 PartIndex = CandidatePartIds.IndexOfByKey(PartId);
+	const FHeistObjectAssemblyPartRow* PartDefinition = FindPartDefinition(PartId);
+	if (!bPresentationVisible || !bDataReady || PartIndex == INDEX_NONE || PartDefinition == nullptr)
+	{
+		return false;
+	}
+
+	const int32 SocketIndex = PartDefinition->CompatibleSocketIds.IndexOfByKey(SocketId);
+	if (SocketIndex == INDEX_NONE)
+	{
+		return false;
+	}
+
+	SelectedPartIndex = PartIndex;
+	SyncSelectionFromSelectedPart();
+	SelectedSocketIndex = SocketIndex;
+	return PlaceOrUpdateSelectedPart();
+}
+
+bool UHeistObjectAssemblyViewModel::RemovePart(const FName PartId)
+{
+	const int32 PartIndex = CandidatePartIds.IndexOfByKey(PartId);
+	if (PartIndex == INDEX_NONE)
+	{
+		return false;
+	}
+
+	SelectedPartIndex = PartIndex;
+	SyncSelectionFromSelectedPart();
+	return RemoveSelectedPart();
+}
+
+bool UHeistObjectAssemblyViewModel::RotatePart(const FName PartId, const int32 Direction)
+{
+	const int32 PartIndex = CandidatePartIds.IndexOfByKey(PartId);
+	const FHeistObjectAssemblyPartRow* PartDefinition = FindPartDefinition(PartId);
+	FHeistObjectAssemblyEntry* ExistingEntry = FindMutableLocalEntry(PartId);
+	if (!bPresentationVisible || Direction == 0 || PartIndex == INDEX_NONE || PartDefinition == nullptr || ExistingEntry == nullptr ||
+		PartDefinition->AllowedOrientationSteps.IsEmpty())
+	{
+		return false;
+	}
+
+	SelectedPartIndex = PartIndex;
+	SyncSelectionFromSelectedPart();
+	SelectedOrientationIndex = WrapSelectionIndex(SelectedOrientationIndex, Direction > 0 ? 1 : -1, PartDefinition->AllowedOrientationSteps.Num());
+	ExistingEntry->QuantizedOrientation = GetSelectedOrientation();
+	++LocalPreviewRevision;
+	RefreshSelectionPresentation();
+	PresentationChangedDelegate.Broadcast();
+	return true;
+}
+
 bool UHeistObjectAssemblyViewModel::ResetLocalAssembly()
 {
 	if (!bPresentationVisible)
@@ -572,7 +627,7 @@ bool UHeistObjectAssemblyViewModel::RequestSubmitAssembly()
 		}
 		else if (bHasPreviewQuality && PreviewQualityScore < MinimumAcceptedQualityScore)
 		{
-			SetStatusMessage(FText::Format(NSLOCTEXT("HeistObjectAssembly", "QualityGate", "Replica quality must reach {0}/100 before submission."),
+			SetStatusMessage(FText::Format(NSLOCTEXT("HeistObjectAssembly", "QualityGate", "예상 품질이 {0} 이상이어야 제출할 수 있습니다."),
 				FText::AsNumber(FMath::RoundToInt(MinimumAcceptedQualityScore))));
 			PresentationChangedDelegate.Broadcast();
 		}
@@ -653,9 +708,35 @@ const TArray<FName>& UHeistObjectAssemblyViewModel::GetCandidatePartIds() const
 	return CandidatePartIds;
 }
 
+const TArray<FName>& UHeistObjectAssemblyViewModel::GetCompatibleSocketIds(const FName PartId) const
+{
+	static const TArray<FName> EmptySocketIds;
+	const FHeistObjectAssemblyPartRow* PartDefinition = FindPartDefinition(PartId);
+	return PartDefinition != nullptr ? PartDefinition->CompatibleSocketIds : EmptySocketIds;
+}
+
 const TArray<FHeistObjectAssemblyEntry>& UHeistObjectAssemblyViewModel::GetLocalAssemblyEntries() const
 {
 	return LocalAssemblyEntries;
+}
+
+bool UHeistObjectAssemblyViewModel::IsPartPlaced(const FName PartId) const
+{
+	return FindLocalEntry(PartId) != nullptr;
+}
+
+uint8 UHeistObjectAssemblyViewModel::GetPlacedPartOrientation(const FName PartId) const
+{
+	const FHeistObjectAssemblyEntry* Entry = FindLocalEntry(PartId);
+	return Entry != nullptr ? Entry->QuantizedOrientation : 0;
+}
+
+FText UHeistObjectAssemblyViewModel::GetPartDisplayText(const FName PartId) const
+{
+	const int32 CandidateIndex = CandidatePartIds.IndexOfByKey(PartId);
+	return CandidateIndex == INDEX_NONE
+		? NSLOCTEXT("HeistObjectAssembly", "UnknownPiece", "조각")
+		: FText::Format(NSLOCTEXT("HeistObjectAssembly", "PieceNumber", "조각 {0}"), FText::AsNumber(CandidateIndex + 1));
 }
 
 FName UHeistObjectAssemblyViewModel::GetSelectedPartId() const

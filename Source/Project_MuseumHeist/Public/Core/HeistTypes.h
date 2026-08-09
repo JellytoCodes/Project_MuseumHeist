@@ -454,6 +454,10 @@ struct PROJECT_MUSEUMHEIST_API FHeistReplicaRecapEntry
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|Result|Replica")
 	FName ArtifactId = NAME_None;
 
+	/** Player-facing artifact name captured by the server with the immutable result snapshot. */
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Result|Replica")
+	FText ArtifactDisplayName;
+
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|Result|Replica")
 	FName TemplateId = NAME_None;
 
@@ -482,9 +486,23 @@ struct PROJECT_MUSEUMHEIST_API FHeistReplicaRecapEntry
 
 	bool NetSerialize(FArchive& Ar, UPackageMap* Map, bool& bOutSuccess);
 
+	bool HasPaintingVisualPayload() const
+	{
+		return ForgeryType == EHeistForgeryType::Drawing && PaintingResolution == PaintingThumbnailResolution &&
+			FMath::IsWithinInclusive(PaintingPalette.Num(), 2, MaximumPaintingPaletteColors) &&
+			PaintingPackedPaletteIndices.Num() == FMath::DivideAndRoundUp(PaintingResolution * PaintingResolution, 2) && AssemblyEntries.IsEmpty();
+	}
+
+	bool HasAssemblyVisualPayload() const
+	{
+		return ForgeryType == EHeistForgeryType::Assembly && PaintingResolution == 0 && PaintingPalette.IsEmpty() &&
+			PaintingPackedPaletteIndices.IsEmpty() && FMath::IsWithinInclusive(AssemblyEntries.Num(), 1, MaximumAssemblyEntries);
+	}
+
 	bool operator==(const FHeistReplicaRecapEntry& Other) const
 	{
-		return CaseId == Other.CaseId && ArtifactId == Other.ArtifactId && TemplateId == Other.TemplateId && ForgeryType == Other.ForgeryType &&
+		return CaseId == Other.CaseId && ArtifactId == Other.ArtifactId && ArtifactDisplayName.EqualTo(Other.ArtifactDisplayName) &&
+			TemplateId == Other.TemplateId && ForgeryType == Other.ForgeryType &&
 			FMath::IsNearlyEqual(QualityScore, Other.QualityScore, 0.001f) && bRequiredTarget == Other.bRequiredTarget && PaintingResolution == Other.PaintingResolution &&
 			PaintingPalette == Other.PaintingPalette && PaintingPackedPaletteIndices == Other.PaintingPackedPaletteIndices && AssemblyEntries == Other.AssemblyEntries;
 	}
@@ -513,6 +531,9 @@ struct PROJECT_MUSEUMHEIST_API FHeistTeamResult
 
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|Result")
 	FName RequiredTargetArtifactId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Result")
+	FText RequiredTargetDisplayName;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|Result")
 	bool bRequiredTargetSecured = false;
@@ -564,12 +585,14 @@ struct PROJECT_MUSEUMHEIST_API FHeistTeamResult
 
 	bool IsValid() const
 	{
-		return Revision > 0 && Outcome != EHeistContractOutcome::None && !OutcomeReasonId.IsNone() && LootValueQuota > 0 && SecuredValue >= 0 && TeamReward >= 0;
+		return Revision > 0 && Outcome != EHeistContractOutcome::None && !OutcomeReasonId.IsNone() && !RequiredTargetArtifactId.IsNone() &&
+			!RequiredTargetDisplayName.IsEmpty() && LootValueQuota > 0 && SecuredValue >= 0 && TeamReward >= 0;
 	}
 
 	bool operator==(const FHeistTeamResult& Other) const
 	{
 		return Outcome == Other.Outcome && OutcomeReasonId == Other.OutcomeReasonId && RequiredTargetArtifactId == Other.RequiredTargetArtifactId &&
+			RequiredTargetDisplayName.EqualTo(Other.RequiredTargetDisplayName) &&
 			bRequiredTargetSecured == Other.bRequiredTargetSecured && LootValueQuota == Other.LootValueQuota && SecuredValue == Other.SecuredValue && ExtraValue == Other.ExtraValue &&
 			RequiredTargetValue == Other.RequiredTargetValue && SecuredLooseLootValue == Other.SecuredLooseLootValue &&
 			FMath::IsNearlyEqual(RequiredTargetQuality, Other.RequiredTargetQuality, 0.001f) && FMath::IsNearlyEqual(ForgeryRewardMultiplier, Other.ForgeryRewardMultiplier, 0.001f) &&

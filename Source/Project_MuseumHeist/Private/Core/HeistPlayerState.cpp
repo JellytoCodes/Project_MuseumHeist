@@ -202,11 +202,12 @@ void AHeistPlayerState::RecordSecuredLootContribution(const int32 SecuredLootVal
 	CommitContributionMutation();
 }
 
-void AHeistPlayerState::RecordGuardDistractionContribution()
+void AHeistPlayerState::RecordGuardDistractionContribution(const int32 DistractedGuardCount)
 {
-	if (HasAuthority())
+	if (HasAuthority() && DistractedGuardCount > 0)
 	{
-		Contribution.GuardsDistracted = Contribution.GuardsDistracted == MAX_int32 ? MAX_int32 : Contribution.GuardsDistracted + 1;
+		Contribution.GuardsDistracted = static_cast<int32>(
+			FMath::Min<int64>(MAX_int32, static_cast<int64>(Contribution.GuardsDistracted) + DistractedGuardCount));
 		CommitContributionMutation();
 	}
 }

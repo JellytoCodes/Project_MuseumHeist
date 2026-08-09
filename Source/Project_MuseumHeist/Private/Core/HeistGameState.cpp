@@ -863,21 +863,23 @@ void AHeistGameState::BroadcastRareLootEventState()
 
 #pragma region SoundPing
 
-void AHeistGameState::ReportSoundPing(const FHeistSoundPingEvent& SoundPingEvent)
+int32 AHeistGameState::ReportSoundPing(const FHeistSoundPingEvent& SoundPingEvent)
 {
 	if (!HasAuthority())
 	{
 		UE_LOG(LogHeistNetwork, Warning, TEXT("Sound ping report rejected: GameState=%s Reason=NotAuthority"), *GetNameSafe(this));
-		return;
+		return 0;
 	}
 
 	FHeistSoundPingEvent ReportedEvent = SoundPingEvent;
 	ReportedEvent.SequenceId = NextSoundPingSequenceId++;
 	ReportedEvent.ServerTimeSeconds = GetServerWorldTimeSeconds();
-	SoundPingEventReportedDelegate.Broadcast(ReportedEvent);
+	int32 AcceptedGuardCount = 0;
+	SoundPingEventReportedDelegate.Broadcast(ReportedEvent, &AcceptedGuardCount);
 #if !UE_BUILD_SHIPPING
 	LogSoundPingEvent(TEXT("reported"), ReportedEvent);
 #endif
+	return AcceptedGuardCount;
 }
 
 FHeistSoundPingEventReported& AHeistGameState::GetSoundPingEventReportedDelegate()
