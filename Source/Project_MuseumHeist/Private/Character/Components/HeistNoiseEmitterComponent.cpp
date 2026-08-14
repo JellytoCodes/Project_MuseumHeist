@@ -16,6 +16,11 @@ UHeistNoiseEmitterComponent::UHeistNoiseEmitterComponent()
 	PrimaryComponentTick.TickInterval = 0.05f;
 }
 
+bool UHeistNoiseEmitterComponent::IsHeavyWeight(const float TotalLootWeight) const
+{
+	return FMath::IsFinite(TotalLootWeight) && TotalLootWeight >= FMath::Max(0.0f, HeavyWeightThreshold);
+}
+
 void UHeistNoiseEmitterComponent::BeginPlay()
 {
 	Super::BeginPlay();
@@ -54,7 +59,7 @@ bool UHeistNoiseEmitterComponent::TryEmitFootstepNoise()
 	}
 
 	const float MaximumSpeed = FMath::Max(MinimumFootstepSpeed, MovementComponent->GetMaxSpeed());
-	const bool bRunning = HorizontalSpeed >= MaximumSpeed * FMath::Clamp(RunSpeedThresholdRatio, 0.0f, 1.0f);
+	const bool bRunning = Character->IsSprinting();
 	const FName SoundPingId = bRunning ? FName(TEXT("Ping_Footstep_Run")) : FName(TEXT("Ping_Footstep_Walk"));
 	FHeistSoundPingDataRow SoundPingDefinition;
 	if (!HeistGameMode->TryGetSoundPingDefinition(SoundPingId, SoundPingDefinition))

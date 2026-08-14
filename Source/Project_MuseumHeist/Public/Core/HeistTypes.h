@@ -28,8 +28,32 @@ enum class EHeistInputMode : uint8
 {
 	Gameplay,
 	Inventory,
-	Forgery
+	Forgery,
+	Map
 };
+
+#pragma endregion
+
+#pragma region CrewStatus
+
+UENUM(BlueprintType)
+enum class EHeistCrewStatus : uint8
+{
+	Active,
+	Forging,
+	Assembling,
+	CarryingOriginal,
+	Heavy,
+	Stunned,
+	Arrested,
+	Escaped
+};
+
+namespace HeistCrewStatus
+{
+	PROJECT_MUSEUMHEIST_API FText ToDisplayText(EHeistCrewStatus Status);
+	PROJECT_MUSEUMHEIST_API FText ToCompactText(EHeistCrewStatus Status);
+}
 
 #pragma endregion
 

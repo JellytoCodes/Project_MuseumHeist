@@ -47,6 +47,7 @@ class PROJECT_MUSEUMHEIST_API UHeistObjectAssemblyWidget : public UHeistUserWidg
 	void SetupObjectAssemblyWidget(UHeistObjectAssemblyViewModel* InObjectAssemblyViewModel, AHeistPlayerController* InPlayerController);
 	bool IsOwnerOnlyContractSatisfied() const;
 	bool IsWidgetPresentationVisible() const;
+	bool IsAlertWarningContractSatisfied() const;
 	bool IsCanvasReady() const;
 	int32 GetPartTileCount() const;
 

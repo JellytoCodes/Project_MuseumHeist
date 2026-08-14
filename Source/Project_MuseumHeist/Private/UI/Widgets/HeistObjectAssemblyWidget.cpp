@@ -361,6 +361,15 @@ bool UHeistObjectAssemblyWidget::TryForceCloseForAlert()
 	return true;
 }
 
+bool UHeistObjectAssemblyWidget::IsAlertWarningContractSatisfied() const
+{
+	if (!IsValid(ObjectAssemblyViewModel))
+	{
+		return false;
+	}
+	return !ObjectAssemblyViewModel->IsDangerWarningVisible() || (bAlertExitRequested && !IsWidgetPresentationVisible());
+}
+
 void UHeistObjectAssemblyWidget::RebuildPartTiles()
 {
 	if (!IsValid(AssemblyCanvas) || !IsValid(ObjectAssemblyViewModel) || !ObjectAssemblyViewModel->IsDataReady() || !IsValid(WidgetTree))

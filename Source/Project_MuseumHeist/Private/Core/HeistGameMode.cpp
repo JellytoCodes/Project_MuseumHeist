@@ -978,17 +978,23 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 	{
 		for (const FPlacedTargetCase& OptionalCase : OptionalCases)
 		{
-			if (!IsValid(OptionalCase.Actor) || SelectedOptionalActors.Contains(OptionalCase.Actor))
+			if (!IsValid(OptionalCase.Actor))
 			{
 				continue;
 			}
 
-			// Display cases are replicated level actors. Server destruction is the narrowest way to remove
-			// both their presentation and overlap collision on every client without a second active-state contract.
-			OptionalCase.Actor->SetActorEnableCollision(false);
-			OptionalCase.Actor->SetActorHiddenInGame(true);
-			OptionalCase.Actor->SetActorTickEnabled(false);
-			if (OptionalCase.Actor->Destroy())
+			const bool bSelected = SelectedOptionalActors.Contains(OptionalCase.Actor);
+			bool bActivationApplied = false;
+			if (AHeistPaintingDisplayCaseActor* PaintingCase = Cast<AHeistPaintingDisplayCaseActor>(OptionalCase.Actor))
+			{
+				bActivationApplied = PaintingCase->SetContractExhibitActive(bSelected);
+			}
+			else if (AHeistObjectDisplayCaseActor* ObjectCase = Cast<AHeistObjectDisplayCaseActor>(OptionalCase.Actor))
+			{
+				bActivationApplied = ObjectCase->SetContractExhibitActive(bSelected);
+			}
+
+			if (bActivationApplied && !bSelected)
 			{
 				++DeactivatedOptionalCaseCount;
 			}

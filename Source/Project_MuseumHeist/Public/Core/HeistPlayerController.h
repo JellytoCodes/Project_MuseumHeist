@@ -72,6 +72,9 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
   private:
 	void HandleLookInput(const FInputActionValue& InputValue);
 	void HandleMoveInput(const FInputActionValue& InputValue);
+	void HandleSprintStarted();
+	void HandleSprintStopped();
+	void HandleMapToggle();
 	void HandleInventoryToggle();
 	void HandleForgeryCancel();
 	void HandleReplicaRedraw();
@@ -101,6 +104,12 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	TObjectPtr<UInputAction> ForgeryCancelInputAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Input", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UInputAction> SprintInputAction;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Input", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UInputAction> MapInputAction;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Input", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInputMappingContext> GameplayInputMappingContext;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Input", meta = (AllowPrivateAccess = "true"))
@@ -109,6 +118,9 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Input", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInputMappingContext> ForgeryInputMappingContext;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Input", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UInputMappingContext> MapInputMappingContext;
+
 	TWeakObjectPtr<UHeistForgeryComponent> BoundForgeryComponent;
 	TWeakObjectPtr<UHeistObjectAssemblyComponent> BoundObjectAssemblyComponent;
 	EHeistInputMode LocalInputMode = EHeistInputMode::Gameplay;
@@ -116,9 +128,12 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	bool bLocalObjectAssemblySessionActive = false;
 
   public:
+	bool ToggleFloorPlanMap();
+	void RequestSetSprintRequested(bool bRequested);
 	void HandleInventoryOpenStateChanged(bool bInventoryOpen);
 	void HandleArrestStateChanged(bool bArrested);
 	void HandlePlayerTerminalStateChanged(bool bEscaped, bool bArrested);
+	void HandlePlayerStunStateChanged(bool bStunned);
 	void ApplyLocalUserSettings();
 	float GetLocalMouseSensitivity() const;
 	EHeistInputMode GetLocalInputMode() const;
@@ -127,6 +142,7 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	bool IsLocalInputModeContractSatisfied() const;
 	bool IsLocalAwaitingCrew() const;
 	AActor* GetLocalSpectateTarget() const;
+	bool AreW7InputAssetsConfigured() const;
 
   private:
 	float LocalMouseSensitivity = 1.0f;
@@ -339,6 +355,9 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 
 	UFUNCTION(Server, Unreliable)
 	void Server_UpdateFlashlightAimDirection(FVector_NetQuantizeNormal ClientCameraForward);
+
+	UFUNCTION(Server, Reliable)
+	void Server_SetSprintRequested(bool bRequested);
 
 #pragma endregion
 

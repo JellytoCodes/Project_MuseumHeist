@@ -61,6 +61,8 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardAIController : public AAIController
 	void CompleteDetectionGrace();
 	void ClearDetectionGrace(const TCHAR* Reason);
 	void ValidateCurrentChaseTarget();
+	void CompletePendingArrest();
+	void ClearPendingArrest(bool bClearStunTag);
 	void UpdateSightForGuardState(EHeistGuardState NewState);
 	void StartSightValidationTimer();
 	void ClearSightValidationTimer();
@@ -98,6 +100,8 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardAIController : public AAIController
 	TWeakObjectPtr<AActor> PendingSightTarget;
 	FTimerHandle DetectionGraceTimerHandle;
 	FTimerHandle SightValidationTimerHandle;
+	FTimerHandle ArrestCompletionTimerHandle;
+	TWeakObjectPtr<class AHeistPlayerCharacter> PendingArrestTarget;
 
 #pragma endregion
 

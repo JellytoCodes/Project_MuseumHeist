@@ -3,6 +3,12 @@
 #include "Character/Components/HeistInteractionComponent.h"
 #include "Components/AudioComponent.h"
 #include "Components/PanelWidget.h"
+#include "Components/HorizontalBox.h"
+#include "Components/HorizontalBoxSlot.h"
+#include "Components/VerticalBox.h"
+#include "Components/CanvasPanel.h"
+#include "Components/CanvasPanelSlot.h"
+#include "Components/Border.h"
 #include "Components/TextBlock.h"
 #include "Components/Widget.h"
 #include "Core/HeistGameState.h"
@@ -17,6 +23,16 @@
 #include "UI/ViewModels/HeistInventoryViewModel.h"
 #include "UI/ViewModels/HeistQuickSlotViewModel.h"
 #include "UI/Widgets/HeistInteractionPromptWidget.h"
+#include "Blueprint/WidgetTree.h"
+
+namespace
+{
+FSlateFontInfo MakeHUDTenadaFont(const int32 Size)
+{
+	static UObject* TenadaFont = LoadObject<UObject>(nullptr, TEXT("/Game/Blueprints/UI/Fonts/F_TENADA.F_TENADA"));
+	return FSlateFontInfo(TenadaFont, Size);
+}
+}
 
 #pragma region Construction
 
@@ -104,6 +120,7 @@ void UHeistHUDWidget::SetupHUDWidget(UHeistHUDViewModel* InHUDViewModel, UHeistI
 	HUDViewModel->GetPresentationChangedDelegate().AddUObject(this, &UHeistHUDWidget::RefreshHUDPresentation);
 	ResolveInteractionChildWidgets();
 	ResolveCrosshairWidgets();
+	ResolveCrewPresentationWidgets();
 	UE_LOG(LogHeistUI, Verbose,
 		   TEXT("[%s] HUD widget setup: Class=%s HUDViewModel=%s InteractionComponent=%s InteractionPromptWidget=%s InteractionPromptClass=%s ActionProgressWidget=%s ActionProgressClass=%s"),
 		   *GetName(), *GetClass()->GetName(), *GetNameSafe(HUDViewModel.Get()), *GetNameSafe(InteractionComponent.Get()), *GetNameSafe(InteractionPromptWidget.Get()),
@@ -127,6 +144,90 @@ void UHeistHUDWidget::SetupHUDWidget(UHeistHUDViewModel* InHUDViewModel, UHeistI
 	SetupTutorialPresentation();
 	RefreshToolPresentation();
 	RefreshHUDPresentation();
+}
+
+void UHeistHUDWidget::RefreshCrewStatusPresentation()
+{
+	if (!IsValid(TeamStatusContainer) || !IsValid(HUDViewModel) || !IsValid(WidgetTree))
+	{
+		return;
+	}
+
+	TeamStatusContainer->ClearChildren();
+	EHeistCrewStatus LocalCrewStatus = EHeistCrewStatus::Active;
+	for (const FHeistCrewStatusEntry& Entry : HUDViewModel->GetCrewStatusEntries())
+	{
+		if (Entry.PlayerId == HUDViewModel->GetLocalPlayerId())
+		{
+			LocalCrewStatus = Entry.Status;
+		}
+		UHorizontalBox* Row = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+		UTextBlock* NameText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
+		UTextBlock* StatusValueText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
+		NameText->SetText(Entry.PlayerName);
+		NameText->SetColorAndOpacity(FSlateColor(Entry.PlayerColor));
+		NameText->SetJustification(ETextJustify::Left);
+		NameText->SetFont(MakeHUDTenadaFont(16));
+		StatusValueText->SetText(HeistCrewStatus::ToDisplayText(Entry.Status));
+		StatusValueText->SetJustification(ETextJustify::Right);
+		StatusValueText->SetFont(MakeHUDTenadaFont(16));
+
+		if (UHorizontalBoxSlot* NameSlot = Row->AddChildToHorizontalBox(NameText))
+		{
+			NameSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+			NameSlot->SetVerticalAlignment(VAlign_Center);
+		}
+		if (UHorizontalBoxSlot* StatusSlot = Row->AddChildToHorizontalBox(StatusValueText))
+		{
+			StatusSlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
+			StatusSlot->SetVerticalAlignment(VAlign_Center);
+		}
+		TeamStatusContainer->AddChild(Row);
+	}
+	if (IsValid(StunOverlay))
+	{
+		StunOverlay->SetVisibility(LocalCrewStatus == EHeistCrewStatus::Stunned ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+}
+
+void UHeistHUDWidget::ResolveCrewPresentationWidgets()
+{
+	if (!IsValid(WidgetTree))
+	{
+		return;
+	}
+	if (!IsValid(TeamStatusContainer))
+	{
+		TeamStatusContainer = Cast<UPanelWidget>(GetWidgetFromName(TEXT("TeamStatusContainer")));
+	}
+	UCanvasPanel* RootCanvas = Cast<UCanvasPanel>(WidgetTree->RootWidget);
+	if (!IsValid(TeamStatusContainer) && IsValid(RootCanvas))
+	{
+		UVerticalBox* TeamList = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("TeamStatusContainer"));
+		TeamStatusContainer = TeamList;
+		if (UCanvasPanelSlot* TeamSlot = RootCanvas->AddChildToCanvas(TeamList))
+		{
+			TeamSlot->SetAnchors(FAnchors(1.0f, 0.0f));
+			TeamSlot->SetAlignment(FVector2D(1.0f, 0.0f));
+			TeamSlot->SetPosition(FVector2D(-36.0f, 110.0f));
+			TeamSlot->SetSize(FVector2D(280.0f, 180.0f));
+		}
+	}
+	if (!IsValid(StunOverlay))
+	{
+		StunOverlay = Cast<UBorder>(GetWidgetFromName(TEXT("StunOverlay")));
+	}
+	if (!IsValid(StunOverlay) && IsValid(RootCanvas))
+	{
+		StunOverlay = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("StunOverlay"));
+		StunOverlay->SetBrushColor(FLinearColor(0.12f, 0.04f, 0.16f, 0.24f));
+		StunOverlay->SetVisibility(ESlateVisibility::Collapsed);
+		if (UCanvasPanelSlot* StunSlot = RootCanvas->AddChildToCanvas(StunOverlay))
+		{
+			StunSlot->SetAnchors(FAnchors(0.0f, 0.0f, 1.0f, 1.0f));
+			StunSlot->SetOffsets(FMargin(0.0f));
+		}
+	}
 }
 
 void UHeistHUDWidget::SetupTutorialPresentation()
@@ -375,6 +476,7 @@ void UHeistHUDWidget::RefreshHUDPresentation()
 	}
 
 	RefreshAlertPresentation();
+	RefreshCrewStatusPresentation();
 	BP_RefreshHUDPresentation(LocalLootScore, LocalLootWeight, ConnectedPlayerCount, bLocalPlayerEscaped, bEscapePhaseOpen, bEscapeCastActive, EscapeCastEndServerTime);
 	RefreshToolPresentation();
 }

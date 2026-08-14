@@ -21,16 +21,26 @@
 #include "UI/ViewModels/HeistTitleMenuViewModel.h"
 #include "UI/Widgets/HeistHUDWidget.h"
 #include "UI/Widgets/HeistForgeryWidget.h"
+#include "UI/Widgets/HeistFloorPlanMapWidget.h"
 #include "UI/Widgets/HeistInventoryWidget.h"
 #include "UI/Widgets/HeistLobbyWidget.h"
 #include "UI/Widgets/HeistObjectAssemblyWidget.h"
 #include "UI/Widgets/HeistResultWidget.h"
 #include "UI/Widgets/HeistTitleMenuWidget.h"
 
+namespace
+{
+bool HasAttachedLocalPlayer(const APlayerController* PlayerController)
+{
+	return IsValid(PlayerController) && PlayerController->IsLocalController() && IsValid(PlayerController->GetLocalPlayer());
+}
+}
+
 #pragma region Construction
 
 AHeistHUD::AHeistHUD()
 {
+	FloorPlanMapWidgetClass = UHeistFloorPlanMapWidget::StaticClass();
 }
 
 #pragma endregion
@@ -49,6 +59,11 @@ void AHeistHUD::BeginPlay()
 
 bool AHeistHUD::ShowMainHUD()
 {
+	if (!HasAttachedLocalPlayer(GetOwningPlayerController()))
+	{
+		return false;
+	}
+
 	InitializeInventoryPresentation();
 	InitializeMainHUDPresentation();
 	InitializeForgeryPresentation();
@@ -66,6 +81,7 @@ bool AHeistHUD::ShowMainHUD()
 
 void AHeistHUD::HideMainHUD()
 {
+	HideFloorPlanMap();
 	if (IsValid(MainHUDWidget))
 	{
 		MainHUDWidget->ResetHiddenPresentationState();
@@ -82,7 +98,57 @@ void AHeistHUD::RefreshPresentationSources()
 	InitializeResultPresentation();
 	InitializeTitleMenuPresentation();
 	InitializeLobbyPresentation();
+	InitializeFloorPlanMapPresentation();
 }
+
+#pragma region FloorPlanMapPresentation
+
+bool AHeistHUD::ShowFloorPlanMap()
+{
+	InitializeFloorPlanMapPresentation();
+	if (!IsValid(FloorPlanMapWidget))
+	{
+		return false;
+	}
+	FloorPlanMapWidget->SetVisibility(ESlateVisibility::Visible);
+	FloorPlanMapWidget->RefreshMapPresentation();
+	return true;
+}
+
+void AHeistHUD::HideFloorPlanMap()
+{
+	if (IsValid(FloorPlanMapWidget))
+	{
+		FloorPlanMapWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+bool AHeistHUD::IsFloorPlanMapVisible() const
+{
+	return IsValid(FloorPlanMapWidget) && FloorPlanMapWidget->GetVisibility() != ESlateVisibility::Collapsed && FloorPlanMapWidget->GetVisibility() != ESlateVisibility::Hidden;
+}
+
+void AHeistHUD::InitializeFloorPlanMapPresentation()
+{
+	AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(GetOwningPlayerController());
+	if (!HasAttachedLocalPlayer(HeistPlayerController) || !FloorPlanMapWidgetClass)
+	{
+		return;
+	}
+	if (!IsValid(FloorPlanMapWidget))
+	{
+		FloorPlanMapWidget = CreateWidget<UHeistFloorPlanMapWidget>(HeistPlayerController, FloorPlanMapWidgetClass);
+		if (!IsValid(FloorPlanMapWidget))
+		{
+			return;
+		}
+		FloorPlanMapWidget->AddToViewport(50);
+		FloorPlanMapWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	FloorPlanMapWidget->SetupMap(GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr, HeistPlayerController);
+}
+
+#pragma endregion
 
 UHeistHUDViewModel* AHeistHUD::GetHUDViewModel() const
 {
@@ -97,7 +163,7 @@ UHeistHUDWidget* AHeistHUD::GetMainHUDWidget() const
 void AHeistHUD::InitializeMainHUDPresentation()
 {
 	AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(GetOwningPlayerController());
-	if (!IsValid(HeistPlayerController) || !HeistPlayerController->IsLocalController())
+	if (!HasAttachedLocalPlayer(HeistPlayerController))
 	{
 		return;
 	}
@@ -139,6 +205,11 @@ void AHeistHUD::InitializeMainHUDPresentation()
 
 bool AHeistHUD::ShowTitleMenuScreen()
 {
+	if (!HasAttachedLocalPlayer(GetOwningPlayerController()))
+	{
+		return false;
+	}
+
 	InitializeTitleMenuPresentation();
 
 	if (!IsValid(TitleMenuViewModel) || !TitleMenuWidgetClass)
@@ -200,7 +271,7 @@ UHeistTitleMenuViewModel* AHeistHUD::GetTitleMenuViewModel() const
 void AHeistHUD::InitializeTitleMenuPresentation()
 {
 	APlayerController* OwningPlayerController = GetOwningPlayerController();
-	if (!IsValid(OwningPlayerController) || !OwningPlayerController->IsLocalController())
+	if (!HasAttachedLocalPlayer(OwningPlayerController))
 	{
 		return;
 	}
@@ -219,6 +290,11 @@ void AHeistHUD::InitializeTitleMenuPresentation()
 
 bool AHeistHUD::ShowLobbyScreen()
 {
+	if (!HasAttachedLocalPlayer(GetOwningPlayerController()))
+	{
+		return false;
+	}
+
 	InitializeLobbyPresentation();
 
 	if (!IsValid(LobbyViewModel) || !LobbyWidgetClass)
@@ -289,7 +365,7 @@ UHeistLobbyViewModel* AHeistHUD::GetLobbyViewModel() const
 void AHeistHUD::InitializeLobbyPresentation()
 {
 	APlayerController* OwningPlayerController = GetOwningPlayerController();
-	if (!IsValid(OwningPlayerController) || !OwningPlayerController->IsLocalController())
+	if (!HasAttachedLocalPlayer(OwningPlayerController))
 	{
 		return;
 	}
@@ -313,7 +389,7 @@ bool AHeistHUD::ShowInventoryScreen()
 {
 	InitializeInventoryPresentation();
 	AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(GetOwningPlayerController());
-	if (!IsValid(HeistPlayerController) || !IsValid(InventoryViewModel) || !IsValid(QuickSlotViewModel) || !InventoryWidgetClass)
+	if (!HasAttachedLocalPlayer(HeistPlayerController) || !IsValid(InventoryViewModel) || !IsValid(QuickSlotViewModel) || !InventoryWidgetClass)
 	{
 		return false;
 	}
@@ -346,7 +422,7 @@ UHeistQuickSlotViewModel* AHeistHUD::GetQuickSlotViewModel() const
 void AHeistHUD::InitializeInventoryPresentation()
 {
 	AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(GetOwningPlayerController());
-	if (!IsValid(HeistPlayerController) || !HeistPlayerController->IsLocalController())
+	if (!HasAttachedLocalPlayer(HeistPlayerController))
 	{
 		return;
 	}
@@ -384,7 +460,7 @@ UHeistForgeryWidget* AHeistHUD::GetForgeryWidget() const
 void AHeistHUD::InitializeForgeryPresentation()
 {
 	AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(GetOwningPlayerController());
-	if (!IsValid(HeistPlayerController) || !HeistPlayerController->IsLocalController())
+	if (!HasAttachedLocalPlayer(HeistPlayerController))
 	{
 		return;
 	}
@@ -435,7 +511,7 @@ UHeistObjectAssemblyWidget* AHeistHUD::GetObjectAssemblyWidget() const
 void AHeistHUD::InitializeObjectAssemblyPresentation()
 {
 	AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(GetOwningPlayerController());
-	if (!IsValid(HeistPlayerController) || !HeistPlayerController->IsLocalController())
+	if (!HasAttachedLocalPlayer(HeistPlayerController))
 	{
 		return;
 	}
@@ -476,6 +552,11 @@ void AHeistHUD::InitializeObjectAssemblyPresentation()
 
 bool AHeistHUD::ShowResultScreen()
 {
+	if (!HasAttachedLocalPlayer(GetOwningPlayerController()))
+	{
+		return false;
+	}
+
 	InitializeResultPresentation();
 
 	if (!IsValid(ResultViewModel) || !ResultWidgetClass)
@@ -534,7 +615,7 @@ UHeistResultWidget* AHeistHUD::GetResultWidget() const
 void AHeistHUD::InitializeResultPresentation()
 {
 	APlayerController* OwningPlayerController = GetOwningPlayerController();
-	if (!IsValid(OwningPlayerController) || !OwningPlayerController->IsLocalController())
+	if (!HasAttachedLocalPlayer(OwningPlayerController))
 	{
 		return;
 	}

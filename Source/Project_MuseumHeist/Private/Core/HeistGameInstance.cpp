@@ -156,6 +156,7 @@ void UHeistGameInstance::Init()
 	}
 	DefaultSelectedMapId = SelectedMapId;
 	SurfaceTemplateRandomStream.GenerateNewSeed();
+	RandomMapSelectionStream.GenerateNewSeed();
 	RefreshOnlineSessionInterface();
 	if (GEngine != nullptr)
 	{
@@ -1240,7 +1241,7 @@ bool UHeistGameInstance::IsCurrentWorldMap(const FString& MapPath, const TCHAR* 
 	return !ExpectedMapName.IsEmpty() && UGameplayStatics::GetCurrentLevelName(this, true).Equals(ExpectedMapName, ESearchCase::IgnoreCase);
 }
 
-bool UHeistGameInstance::ResolveRequestedMapSelection(const FName RequestedMapId, FName& OutSelectedMapId, bool& bOutRandomSelection) const
+bool UHeistGameInstance::ResolveRequestedMapSelection(const FName RequestedMapId, FName& OutSelectedMapId, bool& bOutRandomSelection)
 {
 	FString NormalizedMapId = RequestedMapId.ToString();
 	NormalizedMapId.TrimStartAndEndInline();
@@ -1249,8 +1250,7 @@ bool UHeistGameInstance::ResolveRequestedMapSelection(const FName RequestedMapId
 	bOutRandomSelection = NormalizedName == HeistOnlineSession::RandomMapSelection;
 	if (bOutRandomSelection)
 	{
-		const FName AvailableMapIds[] = {FName(TEXT("M01")), FName(TEXT("M02")), FName(TEXT("M03"))};
-		OutSelectedMapId = AvailableMapIds[FMath::RandRange(0, UE_ARRAY_COUNT(AvailableMapIds) - 1)];
+		OutSelectedMapId = DrawRandomMapSelection();
 		return true;
 	}
 
@@ -1262,6 +1262,41 @@ bool UHeistGameInstance::ResolveRequestedMapSelection(const FName RequestedMapId
 
 	OutSelectedMapId = NAME_None;
 	return false;
+}
+
+FName UHeistGameInstance::DrawRandomMapSelection()
+{
+	if (RemainingRandomMapIds.IsEmpty())
+	{
+		RemainingRandomMapIds = {FName(TEXT("M01")), FName(TEXT("M02")), FName(TEXT("M03"))};
+	}
+	const int32 Index = RandomMapSelectionStream.RandRange(0, RemainingRandomMapIds.Num() - 1);
+	const FName Selected = RemainingRandomMapIds[Index];
+	RemainingRandomMapIds.RemoveAtSwap(Index, 1, EAllowShrinking::No);
+	return Selected;
+}
+
+bool UHeistGameInstance::RunRandomMapShuffleBagSelfTestForDebug(int32& OutDrawCount, int32& OutFirstCycleUniqueCount, int32& OutSecondCycleUniqueCount) const
+{
+	TArray<FName> Remaining;
+	FRandomStream Stream(701103);
+	TSet<FName> FirstCycle;
+	TSet<FName> SecondCycle;
+	for (int32 DrawIndex = 0; DrawIndex < 6; ++DrawIndex)
+	{
+		if (Remaining.IsEmpty())
+		{
+			Remaining = {FName(TEXT("M01")), FName(TEXT("M02")), FName(TEXT("M03"))};
+		}
+		const int32 Index = Stream.RandRange(0, Remaining.Num() - 1);
+		const FName Selected = Remaining[Index];
+		Remaining.RemoveAtSwap(Index, 1, EAllowShrinking::No);
+		(DrawIndex < 3 ? FirstCycle : SecondCycle).Add(Selected);
+	}
+	OutDrawCount = 6;
+	OutFirstCycleUniqueCount = FirstCycle.Num();
+	OutSecondCycleUniqueCount = SecondCycle.Num();
+	return FirstCycle.Num() == 3 && SecondCycle.Num() == 3;
 }
 
 bool UHeistGameInstance::CommitLobbyMapSelection(const FName NewSelectedMapId, const bool bNewRandomSelection)
@@ -1319,6 +1354,8 @@ void UHeistGameInstance::ResetOnlineSessionRuntimeState(const FName PreservedFai
 	PendingLeaveReason = NAME_None;
 	PendingFailureAfterDestroy = NAME_None;
 	ResetSurfaceTemplateShuffleState();
+	RemainingRandomMapIds.Reset();
+	RandomMapSelectionStream.GenerateNewSeed();
 	SetOnlineSessionState(HeistOnlineSession::StateIdle, PreservedFailure);
 }
 

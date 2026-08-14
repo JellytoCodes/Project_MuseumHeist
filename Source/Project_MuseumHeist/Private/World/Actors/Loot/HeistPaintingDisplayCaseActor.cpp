@@ -119,6 +119,7 @@ AHeistPaintingDisplayCaseActor::AHeistPaintingDisplayCaseActor()
 void AHeistPaintingDisplayCaseActor::BeginPlay()
 {
 	Super::BeginPlay();
+	ApplyContractExhibitActiveState();
 
 	CaptureReplicaVisualBaseline();
 	OriginalPaintingBaselineMaterial = IsValid(OriginalVisualComponent) ? OriginalVisualComponent->GetMaterial(0) : nullptr;
@@ -190,7 +191,37 @@ void AHeistPaintingDisplayCaseActor::EndPlay(const EEndPlayReason::Type EndPlayR
 bool AHeistPaintingDisplayCaseActor::CanInteract(const AActor* Interactor) const
 {
 	const bool bDefaultInteraction = !bSessionLocked && (DisplayCaseState == EHeistDisplayCaseState::Secured || DisplayCaseState == EHeistDisplayCaseState::OriginalAvailable);
-	return Super::CanInteract(Interactor) && (bDefaultInteraction || IsReplicaReviewReadyFor(Interactor));
+	return bContractExhibitActive && Super::CanInteract(Interactor) && (bDefaultInteraction || IsReplicaReviewReadyFor(Interactor));
+}
+
+bool AHeistPaintingDisplayCaseActor::IsContractExhibitActive() const
+{
+	return bContractExhibitActive;
+}
+
+bool AHeistPaintingDisplayCaseActor::SetContractExhibitActive(const bool bActive)
+{
+	if (!HasAuthority())
+	{
+		return false;
+	}
+
+	bContractExhibitActive = bActive;
+	ApplyContractExhibitActiveState();
+	ForceNetUpdate();
+	return true;
+}
+
+void AHeistPaintingDisplayCaseActor::ApplyContractExhibitActiveState()
+{
+	SetActorHiddenInGame(!bContractExhibitActive);
+	SetActorEnableCollision(bContractExhibitActive);
+	SetActorTickEnabled(bContractExhibitActive);
+}
+
+void AHeistPaintingDisplayCaseActor::OnRep_ContractExhibitActive()
+{
+	ApplyContractExhibitActiveState();
 }
 
 #pragma region StateMachine
@@ -1379,7 +1410,7 @@ bool AHeistPaintingDisplayCaseActor::IsValidInspectionCandidate() const
 		DisplayCaseState == EHeistDisplayCaseState::ReplicaPlaced || DisplayCaseState == EHeistDisplayCaseState::OriginalAvailable || DisplayCaseState == EHeistDisplayCaseState::OriginalRemoved;
 	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	const bool bMatchInGame = IsValid(HeistGameState) && HeistGameState->GetMatchPhase() == EHeistMatchPhase::InGame;
-	return bMatchInGame && bRegisteredForInspection && bHasCommittedForgeryResult && CommittedForgeryResult.bReplicaPlaced && bEligibleState && HasInspectionDelayElapsed() &&
+	return bContractExhibitActive && bMatchInGame && bRegisteredForInspection && bHasCommittedForgeryResult && CommittedForgeryResult.bReplicaPlaced && bEligibleState && HasInspectionDelayElapsed() &&
 		   !InspectingGuardActor.IsValid() && LastAppliedInspectionScheduleRevision != InspectionScheduleRevision;
 }
 
@@ -2061,6 +2092,11 @@ bool AHeistPaintingDisplayCaseActor::CancelSessionForOwner(AHeistPlayerState* Ex
 bool AHeistPaintingDisplayCaseActor::ValidateSessionRequest(AHeistPlayerState* RequestingPlayerState, FName& OutRejectReason) const
 {
 	OutRejectReason = NAME_None;
+	if (!bContractExhibitActive)
+	{
+		OutRejectReason = FName(TEXT("InactiveContractExhibit"));
+		return false;
+	}
 	if (!IsValid(RequestingPlayerState))
 	{
 		OutRejectReason = FName(TEXT("MissingPlayerState"));
@@ -2221,6 +2257,7 @@ void AHeistPaintingDisplayCaseActor::GetLifetimeReplicatedProps(TArray<FLifetime
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, DisplayCaseState);
+	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, bContractExhibitActive);
 	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, OriginalVisualTemplateId);
 	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, OriginalReferenceImage);
 	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, OriginalVisualRevision);

@@ -278,6 +278,57 @@ FText ToDisplayText(const FName ReasonId)
 }
 }
 
+namespace HeistCrewStatus
+{
+FText ToDisplayText(const EHeistCrewStatus Status)
+{
+	switch (Status)
+	{
+	case EHeistCrewStatus::Forging:
+		return NSLOCTEXT("HeistCrewStatus", "Forging", "위조 중");
+	case EHeistCrewStatus::Assembling:
+		return NSLOCTEXT("HeistCrewStatus", "Assembling", "조립 중");
+	case EHeistCrewStatus::CarryingOriginal:
+		return NSLOCTEXT("HeistCrewStatus", "CarryingOriginal", "원본 운반");
+	case EHeistCrewStatus::Heavy:
+		return NSLOCTEXT("HeistCrewStatus", "Heavy", "과적");
+	case EHeistCrewStatus::Stunned:
+		return NSLOCTEXT("HeistCrewStatus", "Stunned", "기절");
+	case EHeistCrewStatus::Arrested:
+		return NSLOCTEXT("HeistCrewStatus", "Arrested", "체포");
+	case EHeistCrewStatus::Escaped:
+		return NSLOCTEXT("HeistCrewStatus", "Escaped", "탈출");
+	case EHeistCrewStatus::Active:
+	default:
+		return NSLOCTEXT("HeistCrewStatus", "Active", "활동 중");
+	}
+}
+
+FText ToCompactText(const EHeistCrewStatus Status)
+{
+	switch (Status)
+	{
+	case EHeistCrewStatus::Forging:
+		return NSLOCTEXT("HeistCrewStatus", "ForgingCompact", "위조");
+	case EHeistCrewStatus::Assembling:
+		return NSLOCTEXT("HeistCrewStatus", "AssemblingCompact", "조립");
+	case EHeistCrewStatus::CarryingOriginal:
+		return NSLOCTEXT("HeistCrewStatus", "CarryingOriginalCompact", "원본");
+	case EHeistCrewStatus::Heavy:
+		return NSLOCTEXT("HeistCrewStatus", "HeavyCompact", "과적");
+	case EHeistCrewStatus::Stunned:
+		return NSLOCTEXT("HeistCrewStatus", "StunnedCompact", "기절");
+	case EHeistCrewStatus::Arrested:
+		return NSLOCTEXT("HeistCrewStatus", "ArrestedCompact", "체포");
+	case EHeistCrewStatus::Escaped:
+		return NSLOCTEXT("HeistCrewStatus", "EscapedCompact", "탈출");
+	case EHeistCrewStatus::Active:
+	default:
+		return NSLOCTEXT("HeistCrewStatus", "ActiveCompact", "활동");
+	}
+}
+}
+
 namespace HeistTeamReward
 {
 bool Calculate(const int32 RequiredTargetValue, const int32 SecuredLooseLootValue, const float RequiredTargetQuality,

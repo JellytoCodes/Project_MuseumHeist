@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Core/HeistTypes.h"
 #include "GameFramework/Character.h"
 #include "World/Interaction/HeistInteractable.h"
 
@@ -18,6 +19,7 @@ class UHeistTagComponent;
 class UHeistVisionComponent;
 class UCameraComponent;
 class USphereComponent;
+class UWidgetComponent;
 
 UCLASS()
 class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter, public IHeistInteractable
@@ -43,28 +45,53 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter, public 
   public:
 	void MoveOnGameplayPlane(const FVector2D& MovementInput);
 	void RefreshMovementSpeedFromWeight();
+	void SetSprintRequested(bool bRequested);
+	bool IsSprinting() const;
+	float CalculateMovementSpeedForPace(float TotalWeight, bool bSprintPace) const;
 
   protected:
 	virtual void PossessedBy(AController* NewController) override;
 
   private:
-	float CalculateMoveSpeedFromWeight(float InTotalWeight) const;
+	float CalculateMoveSpeedFromWeight(float InTotalWeight, bool bUseSprintPace) const;
 	void ApplyCurrentMoveSpeed();
+	void HandleInventoryStateForCrewStatus();
+	void HandleForgeryStateForCrewStatus();
+	void HandleAssemblyStateForCrewStatus();
+	void HandleStatusStateForCrewStatus(const TArray<FHeistTimedTagState>& StatusTags);
+	void RefreshAuthoritativeCrewStatus();
 
 	UFUNCTION()
 	void OnRep_CurrentMoveSpeed();
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Movement", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
-	float BaseMoveSpeed = 600.0f;
+	float WalkMoveSpeed = 300.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Movement", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
-	float WeightSpeedPenalty = 15.0f;
+	float SprintMoveSpeed = 600.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Movement", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
-	float MinimumMoveSpeed = 200.0f;
+	float WalkWeightSpeedPenalty = 7.5f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Movement", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float SprintWeightSpeedPenalty = 15.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Movement", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float MinimumWalkMoveSpeed = 150.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Movement", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float MinimumSprintMoveSpeed = 250.0f;
 
 	UPROPERTY(ReplicatedUsing = OnRep_CurrentMoveSpeed, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Movement", meta = (AllowPrivateAccess = "true"))
-	float CurrentMoveSpeed = 600.0f;
+	float CurrentMoveSpeed = 300.0f;
+
+	UPROPERTY(ReplicatedUsing = OnRep_Sprinting, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Movement", meta = (AllowPrivateAccess = "true"))
+	bool bSprinting = false;
+
+	bool bSprintRequested = false;
+
+	UFUNCTION()
+	void OnRep_Sprinting();
 
 #pragma endregion
 
@@ -75,6 +102,9 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter, public 
 	void ApplyPlayerStateGameplayRestrictions();
 	void ApplyEscapedGameplayRestrictions();
 	void HandleInventoryOpenStateChanged(bool bInventoryOpen);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|Presentation")
+	void BP_ApplyCrewStatusPresentation(EHeistCrewStatus CrewStatus);
 
   protected:
 	virtual void OnRep_PlayerState() override;
@@ -122,6 +152,18 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter, public 
 #pragma region GameplayComponents
 
   private:
+	void RefreshNameplatePresentation();
+	void HandleReplicatedCrewStatus(EHeistCrewStatus CrewStatus);
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Presentation", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UWidgetComponent> NameplateWidgetComponent;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Presentation", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<class UHeistNameplateWidget> NameplateWidgetClass;
+
+
+
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistTagComponent> TagComponent;
 

@@ -1643,7 +1643,8 @@ bool UHeistForgeryComponent::BuildReferenceMatchedStrokePayloadForAutomation(TAr
 			int32 StrokePointCount = CandidatePoints.Num() - StrokeStartPointIndex;
 			if (StrokePointCount == 1)
 			{
-				CandidatePoints.Add(CandidatePoints.Last());
+				const FVector2D DuplicatePoint = CandidatePoints.Last();
+				CandidatePoints.Add(DuplicatePoint);
 				StrokePointCount = 2;
 			}
 			CandidateStrokePointCounts.Add(StrokePointCount);

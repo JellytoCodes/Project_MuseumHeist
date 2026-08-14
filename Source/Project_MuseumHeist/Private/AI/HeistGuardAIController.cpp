@@ -4,11 +4,13 @@
 #include "AI/HeistGuardNoiseReactionComponent.h"
 #include "AI/HeistGuardStateComponent.h"
 #include "Character/HeistPlayerCharacter.h"
+#include "Character/Components/HeistStatusComponent.h"
 #include "Components/StateTreeAIComponent.h"
 #include "Core/HeistGameMode.h"
 #include "Core/HeistGameplayTags.h"
 #include "Core/HeistPlayerState.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
+#include "Data/HeistGameBalanceDataAsset.h"
 #include "Components/PrimitiveComponent.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistLogChannels.h"
@@ -203,6 +205,7 @@ void AHeistGuardAIController::OnUnPossess()
 	}
 	ClearDetectionGrace(TEXT("GuardUnpossessed"));
 	ClearSightValidationTimer();
+	ClearPendingArrest(true);
 	GuardPerceptionComponent->OnTargetPerceptionUpdated.RemoveDynamic(this, &AHeistGuardAIController::HandleTargetPerceptionUpdated);
 
 	if (AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn()))
@@ -258,6 +261,11 @@ void AHeistGuardAIController::ConfigurePerceptionFromGuardProfile(const FHeistGu
 
 	const AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
 	const float PerceptionRangeMultiplier = IsValid(HeistGameMode) ? HeistGameMode->GetGuardPerceptionRangeMultiplier() : 1.0f;
+	FHeistPlayerCountDifficultyBaseline DifficultyBaseline;
+	const AHeistGameState* DifficultyGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	const int32 DifficultyPlayerCount = IsValid(DifficultyGameState) ? FMath::Clamp(DifficultyGameState->GetConnectedPlayerCount(), 1, 4) : 1;
+	const bool bDifficultyResolved = IsValid(HeistGameMode) && HeistGameMode->TryGetPlayerCountDifficultyBaseline(DifficultyPlayerCount, DifficultyBaseline);
+	const float DetectionDifficultyMultiplier = bDifficultyResolved ? FMath::Max(0.01f, DifficultyBaseline.DetectionMultiplier) : 1.0f;
 	SightRadius = FMath::Max(0.0f, GuardData.SightRadius * PerceptionRangeMultiplier);
 	AggroResetDistance = FMath::Max(SightRadius, GuardData.AggroResetDistance * PerceptionRangeMultiplier);
 	ActiveSightRadius = SightRadius;
@@ -265,7 +273,8 @@ void AHeistGuardAIController::ConfigurePerceptionFromGuardProfile(const FHeistGu
 	DefaultSightHalfAngle = FMath::Clamp(GuardData.SightAngle * 0.5f, 0.0f, 180.0f);
 	InvestigateSightHalfAngle = FMath::Clamp(GuardData.InvestigateSightAngle * 0.5f, 0.0f, 180.0f);
 	EyeHeight = FMath::Max(0.0f, GuardData.EyeHeight);
-	DetectionGrace = FMath::Max(0.0f, GuardData.DetectionGrace);
+	DetectionGrace = FMath::Max(0.0f, GuardData.DetectionGrace / DetectionDifficultyMultiplier);
+	InspectionCastDuration = FMath::Max(0.1f, 2.0f * (bDifficultyResolved ? DifficultyBaseline.InspectionDurationMultiplier : 1.0f));
 	SightUpdateInterval = FMath::Max(0.01f, GuardData.SightUpdateInterval);
 	bDoorsBlockSight = GuardData.bDoorsBlockSight;
 	bDisplayCasesBlockSight = GuardData.bDisplayCasesBlockSight;
@@ -290,6 +299,10 @@ void AHeistGuardAIController::ConfigurePerceptionFromGuardProfile(const FHeistGu
 
 	UHeistDebugFunctionLibrary::DebugGuardPerceptionConfigured(this, GuardCharacter, ActiveSightRadius, ActiveAggroResetDistance, DefaultSightHalfAngle * 2.0f, InvestigateSightHalfAngle * 2.0f, EyeHeight,
 															   DetectionGrace, bDoorsBlockSight, bDisplayCasesBlockSight, DoorOccluderTag, SightUpdateInterval);
+	UE_LOG(LogHeist, Log, TEXT("Guard player-count difficulty applied: Guard=%s Players=%d DetectionMultiplier=%.2f DetectionGrace=%.2f InspectionMultiplier=%.2f InspectionDuration=%.2f GuardCountMultiplier=%.2f"),
+		*GetNameSafe(GuardCharacter), DifficultyPlayerCount, DetectionDifficultyMultiplier, DetectionGrace,
+		bDifficultyResolved ? DifficultyBaseline.InspectionDurationMultiplier : 1.0f, InspectionCastDuration,
+		bDifficultyResolved ? DifficultyBaseline.GuardCountMultiplier : 1.0f);
 }
 
 bool AHeistGuardAIController::DebugEvaluateSightTarget(AActor* TargetActor)
@@ -714,17 +727,72 @@ bool AHeistGuardAIController::TryArrestChaseTarget()
 	{
 		return false;
 	}
+	if (PendingArrestTarget.Get() == PlayerCharacter && GetWorldTimerManager().TimerExists(ArrestCompletionTimerHandle))
+	{
+		return true;
+	}
 
-	if (!HeistPlayerState->MarkArrested(GuardCharacter))
+	UHeistStatusComponent* StatusComponent = PlayerCharacter->GetStatusComponent();
+	if (!IsValid(StatusComponent))
 	{
 		return false;
 	}
+	const float StunDuration = FMath::Max(0.1f, GuardCharacter->GetGuardProfile().StunDuration);
+	if (!StatusComponent->ApplyTimedStatusTag(FHeistGameplayTags::Get().Event_Player_Stunned, StunDuration))
+	{
+		return false;
+	}
+	PendingArrestTarget = PlayerCharacter;
+	StopMovement();
+	GetWorldTimerManager().SetTimer(ArrestCompletionTimerHandle, this, &AHeistGuardAIController::CompletePendingArrest, StunDuration, false);
+	UHeistDebugFunctionLibrary::Message(this, FString::Printf(TEXT("Guard stun committed: Guard=%s Player=%s PlayerId=%d Duration=%.2f Distance=%.1f Authority=true"),
+		*GetNameSafe(GuardCharacter), *GetNameSafe(PlayerCharacter), HeistPlayerState->HeistPlayerId, StunDuration, Distance));
+	return true;
+}
+
+void AHeistGuardAIController::CompletePendingArrest()
+{
+	AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn());
+	UHeistGuardStateComponent* GuardStateComponent = IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
+	AHeistPlayerCharacter* PlayerCharacter = PendingArrestTarget.Get();
+	AHeistPlayerState* HeistPlayerState = IsValid(PlayerCharacter) ? PlayerCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
+	const bool bContextValid = HasAuthority() && IsValid(GuardCharacter) && IsValid(GuardStateComponent) && IsValid(PlayerCharacter) && IsValid(HeistPlayerState) &&
+		GuardStateComponent->GetGuardState() == EHeistGuardState::ChasePlayer && GuardStateComponent->GetChaseTarget() == PlayerCharacter &&
+		!HeistPlayerState->IsEscaped() && !HeistPlayerState->IsArrested() &&
+		FVector::Dist(GuardCharacter->GetActorLocation(), PlayerCharacter->GetActorLocation()) <= ArrestDistance + 25.0f;
+	if (!bContextValid || !HeistPlayerState->MarkArrested(GuardCharacter))
+	{
+		ClearPendingArrest(true);
+		return;
+	}
+
+	if (UHeistStatusComponent* StatusComponent = PlayerCharacter->GetStatusComponent())
+	{
+		StatusComponent->ClearStatusTag(FHeistGameplayTags::Get().Event_Player_Stunned);
+	}
 
 	StopMovement();
+	const float Distance = FVector::Dist(GuardCharacter->GetActorLocation(), PlayerCharacter->GetActorLocation());
 	UHeistDebugFunctionLibrary::Message(this, FString::Printf(TEXT("Guard arrest committed: Guard=%s Player=%s PlayerId=%d Distance=%.1f ArrestDistance=%.1f Authority=true"),
-															  *GetNameSafe(GuardCharacter), *GetNameSafe(PlayerCharacter), HeistPlayerState->HeistPlayerId, Distance, ArrestDistance));
+														  *GetNameSafe(GuardCharacter), *GetNameSafe(PlayerCharacter), HeistPlayerState->HeistPlayerId, Distance, ArrestDistance));
+	PendingArrestTarget.Reset();
 	GuardStateComponent->EnterReturnToPatrol();
-	return true;
+}
+
+void AHeistGuardAIController::ClearPendingArrest(const bool bClearStunTag)
+{
+	GetWorldTimerManager().ClearTimer(ArrestCompletionTimerHandle);
+	if (bClearStunTag)
+	{
+		if (AHeistPlayerCharacter* PlayerCharacter = PendingArrestTarget.Get())
+		{
+			if (UHeistStatusComponent* StatusComponent = PlayerCharacter->GetStatusComponent())
+			{
+				StatusComponent->ClearStatusTag(FHeistGameplayTags::Get().Event_Player_Stunned);
+			}
+		}
+	}
+	PendingArrestTarget.Reset();
 }
 
 bool AHeistGuardAIController::TryGetAlertExitSurveillanceTarget(AActor*& OutTargetActor, float& OutAcceptanceRadius) const
@@ -1222,6 +1290,10 @@ void AHeistGuardAIController::HandleGuardStateChanged(const EHeistGuardState Pre
 	}
 
 	StopMovement();
+	if (PreviousState == EHeistGuardState::ChasePlayer && NewState != EHeistGuardState::ChasePlayer)
+	{
+		ClearPendingArrest(true);
+	}
 	if (PreviousState == EHeistGuardState::InspectExhibit && NewState != EHeistGuardState::InspectExhibit)
 	{
 		AbortInspection(NewState == EHeistGuardState::ChasePlayer ? FName(TEXT("ChasePreempted")) : FName(TEXT("GuardStateChanged")));

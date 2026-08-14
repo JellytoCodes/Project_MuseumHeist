@@ -9,6 +9,24 @@
 DECLARE_MULTICAST_DELEGATE(FHeistRareLootPresentationChanged);
 DECLARE_MULTICAST_DELEGATE(FHeistHUDPresentationChanged);
 
+USTRUCT(BlueprintType)
+struct PROJECT_MUSEUMHEIST_API FHeistCrewStatusEntry
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Crew")
+	int32 PlayerId = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Crew")
+	FText PlayerName;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Crew")
+	FLinearColor PlayerColor = FLinearColor::White;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Crew")
+	EHeistCrewStatus Status = EHeistCrewStatus::Active;
+};
+
 UCLASS(BlueprintType)
 class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
 {
@@ -41,6 +59,9 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
 	void HandleRareLootEventStateChanged(const FHeistRareLootEventState& EventState);
 	void HandlePlayerConnectionsChanged(int32 ConnectedPlayers);
 	void HandlePlayerIdentityChanged(int32 PlayerId);
+	void HandleCrewStatusChanged(EHeistCrewStatus CrewStatus);
+	void RefreshCrewStatusEntries();
+	void UnbindCrewPlayerStates();
 	void HandleAlertStateChanged(EHeistAlertLevel PreviousAlertLevel, EHeistAlertLevel NewAlertLevel, int32 AlertRevision, FName TriggerId);
 	void HandleObjectiveStateChanged(FName ArtifactId, FName CaseId, EHeistObjectiveState ObjectiveState, class AHeistPlayerState* CarrierCandidate);
 	void HandleEscapePhaseStateChanged(bool bEscapePhaseOpen);
@@ -92,6 +113,7 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
 	float GetLockdownCountdownEndServerTime() const;
 	bool IsSuspenseMusicActive() const;
 	bool IsAlarmMusicActive() const;
+	const TArray<FHeistCrewStatusEntry>& GetCrewStatusEntries() const;
 
   private:
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|HUD", meta = (AllowPrivateAccess = "true"))
@@ -171,6 +193,11 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Audio", meta = (AllowPrivateAccess = "true"))
 	bool bAlarmMusicActive = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Crew", meta = (AllowPrivateAccess = "true"))
+	TArray<FHeistCrewStatusEntry> CrewStatusEntries;
+
+	TArray<TWeakObjectPtr<AHeistPlayerState>> BoundCrewPlayerStates;
 
 #pragma endregion
 

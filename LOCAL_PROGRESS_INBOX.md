@@ -1,6 +1,6 @@
 # Project_MuseumHeist Local Progress Inbox
 
-최종 갱신: 2026-08-09 17:46 KST
+최종 갱신: 2026-08-15 KST
 
 이 문서는 Notion에 아직 연결되지 않았거나 반영되지 않은 실질 작업을 잃지 않기 위한 Reconciliation Queue다.
 
@@ -96,6 +96,50 @@ Notion Write            NOT DONE
 ---
 
 ## Reconciled Archive
+
+### LOCAL-20260815-01 — W6 Contract Run Feature Complete
+
+- State: `RECONCILED`
+- Created / Reconciled: `2026-08-15 KST`
+- Notion Relations:
+  - [`TASK-W6-000`](https://app.notion.com/p/3af1d26a5dfb819199d9e3b1be2eeaf5)
+  - [`TASK-W6-009`](https://app.notion.com/p/39a1d26a5dfb81b08540c8824de8dc30)
+  - [`TASK-W6-010`](https://app.notion.com/p/39a1d26a5dfb810a8591d5d48ed7dd56)
+  - [`TASK-W6-011`](https://app.notion.com/p/39a1d26a5dfb81b0a157d294b89edfc8)
+- Test Logs:
+  - [`TEST-W6-008`](https://app.notion.com/p/3bc1d26a5dfb810a9cb1f1462b3ee8ca)
+  - [`TEST-W6-009`](https://app.notion.com/p/3bc1d26a5dfb816aa446e67ce0b1db5a)
+  - [`TEST-W6-010`](https://app.notion.com/p/3bc1d26a5dfb81b281f0de6af59cddf2)
+- Notion Status: `TASK-W6-000~011 완료` / `W6 Gate=Pass` / live re-fetch confirmed
+
+#### Applied Work
+
+- M01 Shared Exit의 실제 배치·Nav·Deposit을 검증하고 M02/M03 W8 배치 체크리스트를 확정했다.
+- M01 Solo와 4P Contract Run을 각각 두 번 연속 수행해 Lobby Return 및 두 번째 Match clean reset을 검증했다.
+- Loose Loot 5종의 정의·월드 비주얼을 구분하고 2P Pickup/Drop/Re-pickup/Deposit 전 과정을 자동화했다.
+- TASK-W6-000의 독립 수동 검토를 TEST-W6-008/009/010과 TASK-W6-010 상위 E2E 증거로 대체해 완료 처리했다.
+- replicated level actor 파괴로 발생하던 ActorChannelFailure를 Contract 활성 상태 RepNotify로 제거했다.
+- seamless transition 중 LocalPlayer 미부착 Controller의 Widget 생성 오류를 차단했다.
+
+#### Evidence
+
+```text
+Project_MuseumHeistEditor ForceUnity Build       PASS
+TASK-W6-009 M01 Exit/Nav/Deposit                 PASS
+TASK-W6-010 Solo Two Runs                        PASS / Errors=0
+TASK-W6-010 Four Player Two Runs                 PASS / Errors=0
+TASK-W6-011 Loot Definition                      PASS / Errors=0
+TASK-W6-011 Loot LifecycleTwoPlayer              PASS / Errors=0
+Notion Test Logs                                 TEST-W6-008/009/010 Pass
+Notion Task Status                               TASK-W6-000~011 완료
+Notion Week Gate                                 W6 Pass
+```
+
+#### Scope Boundary
+
+- M02/M03 실제 `.umap` Shared Exit 배치와 최종 3-Map 조명·Lockdown·Original Carrier 동선은 W8 범위다.
+
+---
 
 ### LOCAL-20260809-02 — TASK-W6-006 Progress Checkpoint
 

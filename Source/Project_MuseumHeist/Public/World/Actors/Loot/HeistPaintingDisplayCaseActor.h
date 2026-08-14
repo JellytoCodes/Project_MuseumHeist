@@ -70,6 +70,27 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual bool CanInteract(const AActor* Interactor) const override;
 
+#pragma region ContractActivation
+
+  public:
+	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Contract")
+	bool IsContractExhibitActive() const;
+
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Heist|DisplayCase|Contract")
+	bool SetContractExhibitActive(bool bActive);
+
+  private:
+	void ApplyContractExhibitActiveState();
+
+	UFUNCTION()
+	void OnRep_ContractExhibitActive();
+
+	UPROPERTY(ReplicatedUsing = OnRep_ContractExhibitActive, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Contract",
+		meta = (AllowPrivateAccess = "true"))
+	bool bContractExhibitActive = true;
+
+#pragma endregion
+
 #pragma region StateMachine
 
   public:

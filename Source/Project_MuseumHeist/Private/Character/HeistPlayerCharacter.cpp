@@ -14,8 +14,10 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/SphereComponent.h"
+#include "Components/WidgetComponent.h"
 #include "Core/HeistCollisionChannels.h"
 #include "Core/HeistGameState.h"
+#include "Core/HeistGameplayTags.h"
 #include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
@@ -23,11 +25,13 @@
 #include "Engine/SkeletalMesh.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "UI/Widgets/HeistNameplateWidget.h"
 
 #pragma region Construction
 
 AHeistPlayerCharacter::AHeistPlayerCharacter()
 {
+	NameplateWidgetClass = UHeistNameplateWidget::StaticClass();
 	FirstPersonCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
 	FirstPersonCamera->SetupAttachment(GetMesh(), TEXT("FirstPersonCameraSocket"));
 	FirstPersonCamera->bUsePawnControlRotation = true;
@@ -52,12 +56,19 @@ AHeistPlayerCharacter::AHeistPlayerCharacter()
 	RescueInteractionTarget->SetCollisionResponseToAllChannels(ECR_Ignore);
 	RescueInteractionTarget->SetCollisionResponseToChannel(HeistCollisionChannels::Player, ECR_Overlap);
 	RescueInteractionTarget->SetGenerateOverlapEvents(true);
+	NameplateWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("NameplateWidgetComponent"));
+	NameplateWidgetComponent->SetupAttachment(GetCapsuleComponent());
+	NameplateWidgetComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 120.0f));
+	NameplateWidgetComponent->SetWidgetSpace(EWidgetSpace::Screen);
+	NameplateWidgetComponent->SetDrawSize(FVector2D(260.0f, 56.0f));
+	NameplateWidgetComponent->SetOwnerNoSee(true);
+	NameplateWidgetComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = true;
 	bUseControllerRotationRoll = false;
 	GetCharacterMovement()->bOrientRotationToMovement = false;
-	GetCharacterMovement()->MaxWalkSpeed = BaseMoveSpeed;
+	GetCharacterMovement()->MaxWalkSpeed = WalkMoveSpeed;
 }
 
 #pragma endregion
@@ -80,6 +91,7 @@ void AHeistPlayerCharacter::BeginPlay()
 	checkf(IsValid(CustomizationComponent), TEXT("HeistPlayerCharacter requires HeistCustomizationComponent"));
 	checkf(IsValid(NoiseEmitterComponent), TEXT("HeistPlayerCharacter requires HeistNoiseEmitterComponent"));
 	checkf(IsValid(RescueInteractionTarget), TEXT("HeistPlayerCharacter requires RescueInteractionTarget"));
+	checkf(IsValid(NameplateWidgetComponent), TEXT("HeistPlayerCharacter requires NameplateWidgetComponent"));
 	checkf(IsValid(GetMesh()), TEXT("HeistPlayerCharacter requires a Full Body SkeletalMeshComponent"));
 	GetCapsuleComponent()->SetCollisionObjectType(HeistCollisionChannels::Player);
 	GetCapsuleComponent()->SetCollisionResponseToChannel(HeistCollisionChannels::Guard, ECR_Block);
@@ -112,6 +124,12 @@ void AHeistPlayerCharacter::BeginPlay()
 	}
 
 	GetMesh()->SetCastShadow(true);
+	StatusComponent->GetStatusTagsChangedDelegate().AddUObject(this, &AHeistPlayerCharacter::HandleStatusStateForCrewStatus);
+	InventoryComponent->GetInventoryChangedDelegate().AddUObject(this, &AHeistPlayerCharacter::HandleInventoryStateForCrewStatus);
+	ForgeryComponent->GetSessionStateChangedDelegate().AddUObject(this, &AHeistPlayerCharacter::HandleForgeryStateForCrewStatus);
+	ObjectAssemblyComponent->GetSessionStateChangedDelegate().AddUObject(this, &AHeistPlayerCharacter::HandleAssemblyStateForCrewStatus);
+	RefreshAuthoritativeCrewStatus();
+	RefreshNameplatePresentation();
 
 	UE_LOG(LogHeist, Log,
 		TEXT(
@@ -174,11 +192,32 @@ void AHeistPlayerCharacter::RefreshMovementSpeedFromWeight()
 	}
 
 	const float TotalLootWeight = HeistPlayerState->GetTotalLootWeight();
-	CurrentMoveSpeed = CalculateMoveSpeedFromWeight(TotalLootWeight);
+	bSprinting = bSprintRequested && CanPerformGameplayActions();
+	CurrentMoveSpeed = CalculateMoveSpeedFromWeight(TotalLootWeight, bSprinting);
 	ApplyCurrentMoveSpeed();
 	ForceNetUpdate();
 
-	UHeistDebugFunctionLibrary::DebugWeightMovementSpeedApplied(this, TotalLootWeight, BaseMoveSpeed, CurrentMoveSpeed);
+	UHeistDebugFunctionLibrary::DebugWeightMovementSpeedApplied(this, TotalLootWeight, bSprinting ? SprintMoveSpeed : WalkMoveSpeed, CurrentMoveSpeed);
+}
+
+void AHeistPlayerCharacter::SetSprintRequested(const bool bRequested)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	bSprintRequested = bRequested;
+	RefreshMovementSpeedFromWeight();
+}
+
+bool AHeistPlayerCharacter::IsSprinting() const
+{
+	return bSprinting;
+}
+
+float AHeistPlayerCharacter::CalculateMovementSpeedForPace(const float TotalWeight, const bool bSprintPace) const
+{
+	return CalculateMoveSpeedFromWeight(TotalWeight, bSprintPace);
 }
 
 void AHeistPlayerCharacter::PossessedBy(AController* NewController)
@@ -186,13 +225,14 @@ void AHeistPlayerCharacter::PossessedBy(AController* NewController)
 	Super::PossessedBy(NewController);
 	RefreshMovementSpeedFromWeight();
 	ApplyPlayerStateGameplayRestrictions();
+	RefreshNameplatePresentation();
 }
 
-float AHeistPlayerCharacter::CalculateMoveSpeedFromWeight(float InTotalWeight) const
+float AHeistPlayerCharacter::CalculateMoveSpeedFromWeight(float InTotalWeight, const bool bUseSprintPace) const
 {
-	const float SafeBaseMoveSpeed = FMath::Max(0.0f, BaseMoveSpeed);
-	const float SafeMinimumMoveSpeed = FMath::Clamp(MinimumMoveSpeed, 0.0f, SafeBaseMoveSpeed);
-	const float SafeWeightSpeedPenalty = FMath::Max(0.0f, WeightSpeedPenalty);
+	const float SafeBaseMoveSpeed = FMath::Max(0.0f, bUseSprintPace ? SprintMoveSpeed : WalkMoveSpeed);
+	const float SafeMinimumMoveSpeed = FMath::Clamp(bUseSprintPace ? MinimumSprintMoveSpeed : MinimumWalkMoveSpeed, 0.0f, SafeBaseMoveSpeed);
+	const float SafeWeightSpeedPenalty = FMath::Max(0.0f, bUseSprintPace ? SprintWeightSpeedPenalty : WalkWeightSpeedPenalty);
 	const float SafeTotalWeight = FMath::IsFinite(InTotalWeight) ? FMath::Max(0.0f, InTotalWeight) : 0.0f;
 	const float UnclampedMoveSpeed = SafeBaseMoveSpeed - (SafeTotalWeight * SafeWeightSpeedPenalty);
 
@@ -216,6 +256,11 @@ void AHeistPlayerCharacter::OnRep_CurrentMoveSpeed()
 	ApplyCurrentMoveSpeed();
 }
 
+void AHeistPlayerCharacter::OnRep_Sprinting()
+{
+	ApplyCurrentMoveSpeed();
+}
+
 #pragma endregion
 
 #pragma region EscapeState
@@ -228,9 +273,10 @@ bool AHeistPlayerCharacter::CanPerformGameplayActions() const
 	const bool bInventoryOpen = IsValid(InventoryComponent) && InventoryComponent->IsInventoryOpen();
 	const bool bForgeryActive = IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive();
 	const bool bObjectAssemblyActive = IsValid(ObjectAssemblyComponent) && ObjectAssemblyComponent->IsSessionActive();
+	const bool bStunned = IsValid(StatusComponent) && StatusComponent->HasStatusTag(FHeistGameplayTags::Get().Event_Player_Stunned);
 	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	const bool bWorldRestricted = IsValid(HeistGameState) && HeistGameState->AreWorldInteractionsRestricted();
-	return !bEscaped && !bArrested && !bInventoryOpen && !bForgeryActive && !bObjectAssemblyActive && !bWorldRestricted;
+	return !bEscaped && !bArrested && !bStunned && !bInventoryOpen && !bForgeryActive && !bObjectAssemblyActive && !bWorldRestricted;
 }
 
 void AHeistPlayerCharacter::HandleInventoryOpenStateChanged(const bool bInventoryOpen)
@@ -242,7 +288,12 @@ void AHeistPlayerCharacter::HandleInventoryOpenStateChanged(const bool bInventor
 
 	if (!bInventoryOpen)
 	{
+		RefreshAuthoritativeCrewStatus();
 		return;
+	}
+	if (HasAuthority())
+	{
+		SetSprintRequested(false);
 	}
 
 	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
@@ -260,10 +311,11 @@ void AHeistPlayerCharacter::ApplyPlayerStateGameplayRestrictions()
 	}
 	const bool bEscaped = HeistPlayerState->IsEscaped();
 	const bool bArrested = HeistPlayerState->IsArrested();
+	const bool bStunned = IsValid(StatusComponent) && StatusComponent->HasStatusTag(FHeistGameplayTags::Get().Event_Player_Stunned);
 
 	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
 	{
-		if (bEscaped || bArrested)
+		if (bEscaped || bArrested || bStunned)
 		{
 			MovementComponent->StopMovementImmediately();
 			MovementComponent->DisableMovement();
@@ -295,7 +347,9 @@ void AHeistPlayerCharacter::ApplyPlayerStateGameplayRestrictions()
 	if (AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(GetController()))
 	{
 		HeistPlayerController->HandlePlayerTerminalStateChanged(bEscaped, bArrested);
+		HeistPlayerController->HandlePlayerStunStateChanged(bStunned);
 	}
+	RefreshAuthoritativeCrewStatus();
 }
 
 void AHeistPlayerCharacter::ApplyEscapedGameplayRestrictions()
@@ -307,6 +361,87 @@ void AHeistPlayerCharacter::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
 	ApplyPlayerStateGameplayRestrictions();
+	RefreshNameplatePresentation();
+}
+
+void AHeistPlayerCharacter::RefreshNameplatePresentation()
+{
+	if (!IsValid(NameplateWidgetComponent))
+	{
+		return;
+	}
+	if (NameplateWidgetClass && NameplateWidgetComponent->GetWidgetClass() != NameplateWidgetClass)
+	{
+		NameplateWidgetComponent->SetWidgetClass(NameplateWidgetClass);
+		NameplateWidgetComponent->InitWidget();
+	}
+	NameplateWidgetComponent->SetVisibility(!IsLocallyControlled());
+	if (UHeistNameplateWidget* NameplateWidget = Cast<UHeistNameplateWidget>(NameplateWidgetComponent->GetUserWidgetObject()))
+	{
+		NameplateWidget->SetupPlayerState(GetPlayerState<AHeistPlayerState>());
+	}
+	if (AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>())
+	{
+		HeistPlayerState->GetCrewStatusChangedDelegate().RemoveAll(this);
+		HeistPlayerState->GetCrewStatusChangedDelegate().AddUObject(this, &AHeistPlayerCharacter::HandleReplicatedCrewStatus);
+		HandleReplicatedCrewStatus(HeistPlayerState->GetCrewStatus());
+	}
+}
+
+void AHeistPlayerCharacter::HandleReplicatedCrewStatus(const EHeistCrewStatus CrewStatus)
+{
+	BP_ApplyCrewStatusPresentation(CrewStatus);
+}
+
+void AHeistPlayerCharacter::HandleInventoryStateForCrewStatus()
+{
+	RefreshAuthoritativeCrewStatus();
+}
+
+void AHeistPlayerCharacter::HandleForgeryStateForCrewStatus()
+{
+	if (HasAuthority() && ForgeryComponent->IsSessionActive())
+	{
+		SetSprintRequested(false);
+	}
+	RefreshAuthoritativeCrewStatus();
+}
+
+void AHeistPlayerCharacter::HandleAssemblyStateForCrewStatus()
+{
+	if (HasAuthority() && ObjectAssemblyComponent->IsSessionActive())
+	{
+		SetSprintRequested(false);
+	}
+	RefreshAuthoritativeCrewStatus();
+}
+
+void AHeistPlayerCharacter::HandleStatusStateForCrewStatus(const TArray<FHeistTimedTagState>&)
+{
+	if (HasAuthority() && StatusComponent->HasStatusTag(FHeistGameplayTags::Get().Event_Player_Stunned))
+	{
+		SetSprintRequested(false);
+		ActionComponent->CancelGameplayActions(TEXT("PlayerStunned"));
+		if (InventoryComponent->IsInventoryOpen())
+		{
+			InventoryComponent->TrySetInventoryOpen(false);
+		}
+	}
+	ApplyPlayerStateGameplayRestrictions();
+	RefreshAuthoritativeCrewStatus();
+}
+
+void AHeistPlayerCharacter::RefreshAuthoritativeCrewStatus()
+{
+	AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
+	if (HasAuthority() && IsValid(HeistPlayerState))
+	{
+		HeistPlayerState->RefreshCrewStatus();
+	}
+	if (IsValid(HeistPlayerState))
+	{
+		BP_ApplyCrewStatusPresentation(HeistPlayerState->GetCrewStatus());
+	}
 }
 
 #pragma endregion
@@ -353,6 +488,7 @@ void AHeistPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AHeistPlayerCharacter, CurrentMoveSpeed);
+	DOREPLIFETIME(AHeistPlayerCharacter, bSprinting);
 }
 
 #pragma endregion

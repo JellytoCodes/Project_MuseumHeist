@@ -16,13 +16,11 @@ class PROJECT_MUSEUMHEIST_API UHeistNoiseEmitterComponent : public UActorCompone
 
   public:
 	UHeistNoiseEmitterComponent();
+	bool IsHeavyWeight(float TotalLootWeight) const;
 
   private:
 	bool TryEmitFootstepNoise();
 	float ResolveLootWeightBonus(float TotalLootWeight) const;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Noise", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", ClampMax = "1.0"))
-	float RunSpeedThresholdRatio = 0.75f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Noise", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "cm/s"))
 	float MinimumFootstepSpeed = 10.0f;

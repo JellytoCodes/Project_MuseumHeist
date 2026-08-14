@@ -50,6 +50,8 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 	void RefreshCrosshairPresentation(AActor* TargetActor, bool bAvailable);
 	void RefreshToolPresentation();
 	void RefreshAlertPresentation();
+	void RefreshCrewStatusPresentation();
+	void ResolveCrewPresentationWidgets();
 	void RefreshLockdownCountdown();
 	void SetupTutorialPresentation();
 	void RefreshTutorialPresentation();
@@ -141,6 +143,12 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UPanelWidget> PopupFeedbackLayer;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UPanelWidget> TeamStatusContainer;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<class UBorder> StunOverlay;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UWidget> TutorialCardContainer;

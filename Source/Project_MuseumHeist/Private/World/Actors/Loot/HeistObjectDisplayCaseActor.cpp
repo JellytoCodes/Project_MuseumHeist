@@ -114,6 +114,7 @@ AHeistObjectDisplayCaseActor::AHeistObjectDisplayCaseActor()
 void AHeistObjectDisplayCaseActor::BeginPlay()
 {
 	Super::BeginPlay();
+	ApplyContractExhibitActiveState();
 
 	BoundGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	if (HasAuthority() && BoundGameState.IsValid())
@@ -173,6 +174,7 @@ void AHeistObjectDisplayCaseActor::GetLifetimeReplicatedProps(TArray<FLifetimePr
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AHeistObjectDisplayCaseActor, ObjectCaseId);
+	DOREPLIFETIME(AHeistObjectDisplayCaseActor, bContractExhibitActive);
 	DOREPLIFETIME(AHeistObjectDisplayCaseActor, TargetObjectArtifactId);
 	DOREPLIFETIME(AHeistObjectDisplayCaseActor, ObjectFamilyId);
 	DOREPLIFETIME(AHeistObjectDisplayCaseActor, AssemblyState);
@@ -189,6 +191,36 @@ void AHeistObjectDisplayCaseActor::GetLifetimeReplicatedProps(TArray<FLifetimePr
 	DOREPLIFETIME(AHeistObjectDisplayCaseActor, ResolvedInspectionAlertOutcome);
 	DOREPLIFETIME(AHeistObjectDisplayCaseActor, ResolvedInspectionCaseOutcome);
 	DOREPLIFETIME(AHeistObjectDisplayCaseActor, InspectionScheduleRevision);
+}
+
+bool AHeistObjectDisplayCaseActor::IsContractExhibitActive() const
+{
+	return bContractExhibitActive;
+}
+
+bool AHeistObjectDisplayCaseActor::SetContractExhibitActive(const bool bActive)
+{
+	if (!HasAuthority())
+	{
+		return false;
+	}
+
+	bContractExhibitActive = bActive;
+	ApplyContractExhibitActiveState();
+	ForceNetUpdate();
+	return true;
+}
+
+void AHeistObjectDisplayCaseActor::ApplyContractExhibitActiveState()
+{
+	SetActorHiddenInGame(!bContractExhibitActive);
+	SetActorEnableCollision(bContractExhibitActive);
+	SetActorTickEnabled(bContractExhibitActive);
+}
+
+void AHeistObjectDisplayCaseActor::OnRep_ContractExhibitActive()
+{
+	ApplyContractExhibitActiveState();
 }
 
 FName AHeistObjectDisplayCaseActor::GetObjectCaseId() const
@@ -723,7 +755,7 @@ bool AHeistObjectDisplayCaseActor::IsValidInspectionCandidate() const
 		AssemblyState == EHeistObjectAssemblyState::OriginalRemoved;
 	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	const bool bMatchInGame = IsValid(HeistGameState) && HeistGameState->GetMatchPhase() == EHeistMatchPhase::InGame;
-	return bMatchInGame && bRegisteredForInspection && bHasCommittedAssemblyResult && CommittedAssemblyResult.bReplicaPlaced && bEligibleState && HasInspectionDelayElapsed() &&
+	return bContractExhibitActive && bMatchInGame && bRegisteredForInspection && bHasCommittedAssemblyResult && CommittedAssemblyResult.bReplicaPlaced && bEligibleState && HasInspectionDelayElapsed() &&
 		!InspectingGuardActor.IsValid() && LastAppliedInspectionScheduleRevision != InspectionScheduleRevision;
 }
 
@@ -911,7 +943,7 @@ bool AHeistObjectDisplayCaseActor::CanInteract(const AActor* Interactor) const
 	const bool bWithinSessionDistance =
 		IsValid(RequestingPawn) && FVector::DistSquared(RequestingPawn->GetActorLocation(), GetActorLocation()) <= FMath::Square(MaximumSessionDistance);
 	const bool bUnlockedInteraction = (bStateAllowsAssembly || bStateAllowsOriginalTake) && !bSessionLocked && !IsValid(SessionOwner.Get());
-	return Super::CanInteract(Interactor) && bIdentityReady && (bUnlockedInteraction || bReplicaReviewReady) && bPlayerReady && bWithinSessionDistance;
+	return bContractExhibitActive && Super::CanInteract(Interactor) && bIdentityReady && (bUnlockedInteraction || bReplicaReviewReady) && bPlayerReady && bWithinSessionDistance;
 }
 
 void AHeistObjectDisplayCaseActor::OnRep_AssemblyState()
@@ -964,6 +996,11 @@ void AHeistObjectDisplayCaseActor::OnRep_InspectionScheduleRevision()
 bool AHeistObjectDisplayCaseActor::ValidateSessionRequest(AHeistPlayerState* RequestingPlayerState, FName& OutRejectReason) const
 {
 	OutRejectReason = NAME_None;
+	if (!bContractExhibitActive)
+	{
+		OutRejectReason = FName(TEXT("InactiveContractExhibit"));
+		return false;
+	}
 	if (!HasAuthority() || !IsValid(RequestingPlayerState))
 	{
 		OutRejectReason = FName(TEXT("InvalidAuthorityContext"));

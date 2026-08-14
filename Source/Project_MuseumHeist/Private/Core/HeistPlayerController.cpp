@@ -283,6 +283,25 @@ void AHeistPlayerController::SetupInputComponent()
 		UHeistDebugFunctionLibrary::DebugMissingInputAsset(this, TEXT("ForgeryCancelInputAction"));
 	}
 
+	if (SprintInputAction != nullptr)
+	{
+		EnhancedInputComponent->BindAction(SprintInputAction, ETriggerEvent::Started, this, &AHeistPlayerController::HandleSprintStarted);
+		EnhancedInputComponent->BindAction(SprintInputAction, ETriggerEvent::Completed, this, &AHeistPlayerController::HandleSprintStopped);
+		EnhancedInputComponent->BindAction(SprintInputAction, ETriggerEvent::Canceled, this, &AHeistPlayerController::HandleSprintStopped);
+	}
+	else
+	{
+		UHeistDebugFunctionLibrary::DebugMissingInputAsset(this, TEXT("SprintInputAction"));
+	}
+
+	if (MapInputAction != nullptr)
+	{
+		EnhancedInputComponent->BindAction(MapInputAction, ETriggerEvent::Started, this, &AHeistPlayerController::HandleMapToggle);
+	}
+	else
+	{
+		UHeistDebugFunctionLibrary::DebugMissingInputAsset(this, TEXT("MapInputAction"));
+	}
 	// Replica review is a world-state choice, not a full-screen forgery action.
 	// Keep R available only while the controller is back in Gameplay mode.
 	FInputKeyBinding& ReplicaRedrawBinding = InputComponent->BindKey(EKeys::R, IE_Pressed, this, &AHeistPlayerController::HandleReplicaRedraw);
@@ -428,9 +447,66 @@ void AHeistPlayerController::HandleMoveInput(const FInputActionValue& InputValue
 	HeistCharacter->MoveOnGameplayPlane(MovementInput);
 }
 
+void AHeistPlayerController::HandleSprintStarted()
+{
+	if (LocalInputMode == EHeistInputMode::Gameplay)
+	{
+		RequestSetSprintRequested(true);
+	}
+}
+
+void AHeistPlayerController::HandleSprintStopped()
+{
+	RequestSetSprintRequested(false);
+}
+
+void AHeistPlayerController::RequestSetSprintRequested(const bool bRequested)
+{
+	if (IsLocalController())
+	{
+		Server_SetSprintRequested(bRequested);
+	}
+}
+
+void AHeistPlayerController::HandleMapToggle()
+{
+	ToggleFloorPlanMap();
+}
+
+bool AHeistPlayerController::ToggleFloorPlanMap()
+{
+	if (!IsLocalController())
+	{
+		return false;
+	}
+	AHeistHUD* HeistHUD = GetHUD<AHeistHUD>();
+	if (!IsValid(HeistHUD))
+	{
+		return false;
+	}
+	if (LocalInputMode == EHeistInputMode::Map)
+	{
+		HeistHUD->HideFloorPlanMap();
+		ApplyLocalInputMode(EHeistInputMode::Gameplay);
+		return !HeistHUD->IsFloorPlanMapVisible() && LocalInputMode == EHeistInputMode::Gameplay && IsLocalInputModeContractSatisfied();
+	}
+	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	if (LocalInputMode != EHeistInputMode::Gameplay || !IsValid(HeistCharacter) || !HeistCharacter->CanPerformGameplayActions())
+	{
+		return false;
+	}
+	if (HeistHUD->ShowFloorPlanMap())
+	{
+		RequestSetSprintRequested(false);
+		ApplyLocalInputMode(EHeistInputMode::Map);
+		return LocalInputMode == EHeistInputMode::Map && IsLocalInputModeContractSatisfied();
+	}
+	return false;
+}
+
 void AHeistPlayerController::HandleInventoryToggle()
 {
-	if (LocalInputMode == EHeistInputMode::Forgery)
+	if (LocalInputMode == EHeistInputMode::Forgery || LocalInputMode == EHeistInputMode::Map)
 	{
 		return;
 	}
@@ -655,6 +731,11 @@ void AHeistPlayerController::RefreshLocalInputModeFromPawn()
 	const UHeistObjectAssemblyComponent* ObjectAssemblyComponent =
 		IsValid(HeistCharacter) ? HeistCharacter->GetObjectAssemblyComponent() : nullptr;
 	const UHeistInventoryComponent* InventoryComponent = IsValid(HeistCharacter) ? HeistCharacter->GetInventoryComponent() : nullptr;
+	if (AHeistHUD* HeistHUD = GetHUD<AHeistHUD>(); IsValid(HeistHUD) && HeistHUD->IsFloorPlanMapVisible())
+	{
+		ApplyLocalInputMode(EHeistInputMode::Map);
+		return;
+	}
 	ApplyLocalInputMode((IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive()) ||
 								(IsValid(ObjectAssemblyComponent) && ObjectAssemblyComponent->IsSessionActive())
 							? EHeistInputMode::Forgery
@@ -689,6 +770,10 @@ void AHeistPlayerController::ApplyLocalInputMode(const EHeistInputMode NewInputM
 		{
 			InputSubsystem->RemoveMappingContext(ForgeryInputMappingContext);
 		}
+		if (IsValid(MapInputMappingContext.Get()))
+		{
+			InputSubsystem->RemoveMappingContext(MapInputMappingContext);
+		}
 	}
 
 	ResetIgnoreMoveInput();
@@ -719,7 +804,9 @@ void AHeistPlayerController::ApplyLocalInputMode(const EHeistInputMode NewInputM
 	{
 		if (IsValid(InputSubsystem))
 		{
-			UInputMappingContext* RequestedMappingContext = NewInputMode == EHeistInputMode::Inventory ? InventoryInputMappingContext.Get() : ForgeryInputMappingContext.Get();
+			UInputMappingContext* RequestedMappingContext = NewInputMode == EHeistInputMode::Inventory ? InventoryInputMappingContext.Get()
+				: NewInputMode == EHeistInputMode::Map ? MapInputMappingContext.Get()
+				: ForgeryInputMappingContext.Get();
 			if (IsValid(RequestedMappingContext))
 			{
 				InputSubsystem->AddMappingContext(RequestedMappingContext, NewInputMode == EHeistInputMode::Inventory ? 10 : 20);
@@ -732,6 +819,10 @@ void AHeistPlayerController::ApplyLocalInputMode(const EHeistInputMode NewInputM
 		else if (NewInputMode == EHeistInputMode::Forgery && !IsValid(ForgeryInputMappingContext.Get()))
 		{
 			UHeistDebugFunctionLibrary::DebugMissingInputAsset(this, TEXT("ForgeryInputMappingContext"));
+		}
+		else if (NewInputMode == EHeistInputMode::Map && !IsValid(MapInputMappingContext.Get()))
+		{
+			UHeistDebugFunctionLibrary::DebugMissingInputAsset(this, TEXT("MapInputMappingContext"));
 		}
 
 		SetIgnoreMoveInput(true);
@@ -828,6 +919,28 @@ void AHeistPlayerController::HandlePlayerTerminalStateChanged(const bool bEscape
 							  : LocalInputMode == EHeistInputMode::Inventory ? TEXT("Inventory")
 															 : TEXT("Forgery"),
 							  bShowMouseCursor ? TEXT("true") : TEXT("false"), IsMoveInputIgnored() ? TEXT("true") : TEXT("false"), IsLookInputIgnored() ? TEXT("true") : TEXT("false")));
+}
+
+void AHeistPlayerController::HandlePlayerStunStateChanged(const bool bStunned)
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+	if (bStunned)
+	{
+		if (AHeistHUD* HeistHUD = GetHUD<AHeistHUD>())
+		{
+			HeistHUD->HideFloorPlanMap();
+		}
+		ApplyLocalInputMode(EHeistInputMode::Gameplay);
+		SetIgnoreMoveInput(true);
+		SetIgnoreLookInput(true);
+	}
+	else
+	{
+		RefreshLocalInputModeFromPawn();
+	}
 }
 
 void AHeistPlayerController::RefreshLocalPlayerTerminalState()
@@ -957,6 +1070,9 @@ bool AHeistPlayerController::IsLocalInputMappingContextActive(const EHeistInputM
 	case EHeistInputMode::Forgery:
 		MappingContext = ForgeryInputMappingContext;
 		break;
+	case EHeistInputMode::Map:
+		MappingContext = MapInputMappingContext;
+		break;
 	default:
 		break;
 	}
@@ -970,6 +1086,7 @@ int32 AHeistPlayerController::GetActiveHeistInputMappingContextCount() const
 	ActiveContextCount += IsLocalInputMappingContextActive(EHeistInputMode::Gameplay) ? 1 : 0;
 	ActiveContextCount += IsLocalInputMappingContextActive(EHeistInputMode::Inventory) ? 1 : 0;
 	ActiveContextCount += IsLocalInputMappingContextActive(EHeistInputMode::Forgery) ? 1 : 0;
+	ActiveContextCount += IsLocalInputMappingContextActive(EHeistInputMode::Map) ? 1 : 0;
 	return ActiveContextCount;
 }
 
@@ -994,6 +1111,11 @@ bool AHeistPlayerController::IsLocalAwaitingCrew() const
 AActor* AHeistPlayerController::GetLocalSpectateTarget() const
 {
 	return LocalSpectateTarget.Get();
+}
+
+bool AHeistPlayerController::AreW7InputAssetsConfigured() const
+{
+	return IsValid(SprintInputAction) && IsValid(MapInputAction) && IsValid(GameplayInputMappingContext) && IsValid(MapInputMappingContext);
 }
 
 void AHeistPlayerController::UpdateFlashlightAimDirection()
@@ -2591,6 +2713,16 @@ void AHeistPlayerController::Server_UpdateFlashlightAimDirection_Implementation(
 	UHeistVisionComponent* VisionComponent = HeistCharacter->GetVisionComponent();
 	checkf(IsValid(VisionComponent), TEXT("HeistPlayerCharacter requires HeistVisionComponent"));
 	VisionComponent->UpdateFlashlightAimDirection(RequestedDirection);
+}
+
+void AHeistPlayerController::Server_SetSprintRequested_Implementation(const bool bRequested)
+{
+	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	if (!HasAuthority() || !IsValid(HeistCharacter) || HeistCharacter->GetController() != this)
+	{
+		return;
+	}
+	HeistCharacter->SetSprintRequested(bRequested);
 }
 
 #pragma endregion

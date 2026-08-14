@@ -17,6 +17,7 @@ UHeistHUDViewModel::UHeistHUDViewModel(const FObjectInitializer& ObjectInitializ
 
 void UHeistHUDViewModel::BeginDestroy()
 {
+	UnbindCrewPlayerStates();
 	if (IsValid(GameState))
 	{
 		GameState->GetPlayerConnectionsChangedDelegate().RemoveAll(this);
@@ -112,6 +113,7 @@ void UHeistHUDViewModel::SetupViewModel(AHeistGameState* InGameState, AHeistPlay
 
 void UHeistHUDViewModel::RefreshPresentationState()
 {
+	RefreshCrewStatusEntries();
 	UE_MVVM_SET_PROPERTY_VALUE(LocalLootScore, IsValid(LocalPlayerState) ? LocalPlayerState->GetTotalLootScore() : 0);
 	UE_MVVM_SET_PROPERTY_VALUE(LocalLootWeight, IsValid(LocalPlayerState) ? LocalPlayerState->GetTotalLootWeight() : 0.0f);
 	UE_MVVM_SET_PROPERTY_VALUE(LocalPlayerId, IsValid(LocalPlayerState) ? LocalPlayerState->HeistPlayerId : INDEX_NONE);
@@ -241,6 +243,56 @@ void UHeistHUDViewModel::HandlePlayerIdentityChanged(const int32)
 	RefreshPresentationState();
 }
 
+void UHeistHUDViewModel::HandleCrewStatusChanged(const EHeistCrewStatus)
+{
+	RefreshPresentationState();
+}
+
+void UHeistHUDViewModel::UnbindCrewPlayerStates()
+{
+	for (const TWeakObjectPtr<AHeistPlayerState>& PlayerStatePtr : BoundCrewPlayerStates)
+	{
+		if (AHeistPlayerState* PlayerState = PlayerStatePtr.Get())
+		{
+			PlayerState->GetPlayerIdentityChangedDelegate().RemoveAll(this);
+			PlayerState->GetCrewStatusChangedDelegate().RemoveAll(this);
+		}
+	}
+	BoundCrewPlayerStates.Reset();
+}
+
+void UHeistHUDViewModel::RefreshCrewStatusEntries()
+{
+	UnbindCrewPlayerStates();
+	TArray<FHeistCrewStatusEntry> NewEntries;
+	if (IsValid(GameState))
+	{
+		for (APlayerState* PlayerStateBase : GameState->PlayerArray)
+		{
+			AHeistPlayerState* PlayerState = Cast<AHeistPlayerState>(PlayerStateBase);
+			if (!IsValid(PlayerState))
+			{
+				continue;
+			}
+			PlayerState->GetPlayerIdentityChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandlePlayerIdentityChanged);
+			PlayerState->GetCrewStatusChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandleCrewStatusChanged);
+			BoundCrewPlayerStates.Add(PlayerState);
+			if (PlayerState->HeistPlayerId < 1 || PlayerState->HeistPlayerId > 4)
+			{
+				continue;
+			}
+
+			FHeistCrewStatusEntry& Entry = NewEntries.AddDefaulted_GetRef();
+			Entry.PlayerId = PlayerState->HeistPlayerId;
+			Entry.PlayerName = PlayerState->GetHeistDisplayName();
+			Entry.PlayerColor = PlayerState->PlayerColor;
+			Entry.Status = PlayerState->GetCrewStatus();
+		}
+	}
+	NewEntries.Sort([](const FHeistCrewStatusEntry& Left, const FHeistCrewStatusEntry& Right) { return Left.PlayerId < Right.PlayerId; });
+	CrewStatusEntries = MoveTemp(NewEntries);
+}
+
 void UHeistHUDViewModel::HandleAlertStateChanged(const EHeistAlertLevel, const EHeistAlertLevel, const int32, const FName)
 {
 	RefreshPresentationState();
@@ -311,6 +363,11 @@ int32 UHeistHUDViewModel::GetLocalPlayerId() const
 int32 UHeistHUDViewModel::GetConnectedPlayerCount() const
 {
 	return ConnectedPlayerCount;
+}
+
+const TArray<FHeistCrewStatusEntry>& UHeistHUDViewModel::GetCrewStatusEntries() const
+{
+	return CrewStatusEntries;
 }
 
 bool UHeistHUDViewModel::IsLocalPlayerEscaped() const

@@ -17,6 +17,24 @@ class PROJECT_MUSEUMHEIST_API AHeistHUD : public AHUD
 
 #pragma endregion
 
+#pragma region FloorPlanMapPresentation
+
+  public:
+	bool ShowFloorPlanMap();
+	void HideFloorPlanMap();
+	bool IsFloorPlanMapVisible() const;
+
+  private:
+	void InitializeFloorPlanMapPresentation();
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|UI", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<class UHeistFloorPlanMapWidget> FloorPlanMapWidgetClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHeistFloorPlanMapWidget> FloorPlanMapWidget;
+
+#pragma endregion
+
 #pragma region Lifecycle
 
   protected:

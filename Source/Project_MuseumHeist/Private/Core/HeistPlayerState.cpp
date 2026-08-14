@@ -3,8 +3,13 @@
 #include "Character/HeistPlayerCharacter.h"
 #include "Character/Components/HeistActionComponent.h"
 #include "Character/Components/HeistInventoryComponent.h"
+#include "Character/Components/HeistForgeryComponent.h"
+#include "Character/Components/HeistNoiseEmitterComponent.h"
+#include "Character/Components/HeistObjectAssemblyComponent.h"
+#include "Character/Components/HeistStatusComponent.h"
 #include "Core/HeistGameMode.h"
 #include "Core/HeistGameState.h"
+#include "Core/HeistGameplayTags.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "Net/UnrealNetwork.h"
 
@@ -133,6 +138,7 @@ bool AHeistPlayerState::RemoveCarriedOriginalWeight(const float WeightDelta)
 void AHeistPlayerState::BroadcastLootTotalsChanged()
 {
 	LootTotalsChangedDelegate.Broadcast(TotalLootScore, TotalLootWeight);
+	RefreshCrewStatus();
 }
 
 #pragma endregion
@@ -291,6 +297,7 @@ bool AHeistPlayerState::MarkEscaped()
 	}
 
 	bEscaped = true;
+	RefreshCrewStatus();
 	CommitContributionMutation();
 	FinalScore = TotalLootScore;
 	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
@@ -391,6 +398,7 @@ bool AHeistPlayerState::SetArrestedInternal(const bool bNewArrested, AActor* Arr
 	}
 
 	bArrested = bNewArrested;
+	RefreshCrewStatus();
 	CommitContributionMutation();
 	AHeistPlayerCharacter* HeistPlayerCharacter = Cast<AHeistPlayerCharacter>(GetPawn());
 	if (IsValid(HeistPlayerCharacter))
@@ -468,7 +476,97 @@ void AHeistPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME(AHeistPlayerState, FinalScore);
 	DOREPLIFETIME(AHeistPlayerState, EscapeTimeSeconds);
 	DOREPLIFETIME(AHeistPlayerState, Contribution);
+	DOREPLIFETIME(AHeistPlayerState, CrewStatus);
 }
+
+#pragma region CrewStatus
+
+EHeistCrewStatus AHeistPlayerState::GetCrewStatus() const
+{
+	return CrewStatus;
+}
+
+FText AHeistPlayerState::GetHeistDisplayName() const
+{
+	const FString ReplicatedName = GetPlayerName();
+	if (!ReplicatedName.TrimStartAndEnd().IsEmpty())
+	{
+		return FText::FromString(ReplicatedName);
+	}
+	return HeistPlayerId >= 1 ? FText::Format(NSLOCTEXT("HeistCrewStatus", "FallbackPlayerName", "PLAYER {0}"), FText::AsNumber(HeistPlayerId))
+							  : NSLOCTEXT("HeistCrewStatus", "UnknownPlayerName", "PLAYER");
+}
+
+bool AHeistPlayerState::RefreshCrewStatus()
+{
+	if (!HasAuthority())
+	{
+		return false;
+	}
+
+	const EHeistCrewStatus NewStatus = ResolveCrewStatusFromPawn();
+	if (CrewStatus == NewStatus)
+	{
+		return false;
+	}
+
+	CrewStatus = NewStatus;
+	ForceNetUpdate();
+	CrewStatusChangedDelegate.Broadcast(CrewStatus);
+	return true;
+}
+
+FHeistCrewStatusChanged& AHeistPlayerState::GetCrewStatusChangedDelegate()
+{
+	return CrewStatusChangedDelegate;
+}
+
+EHeistCrewStatus AHeistPlayerState::ResolveCrewStatusFromPawn() const
+{
+	if (bEscaped)
+	{
+		return EHeistCrewStatus::Escaped;
+	}
+	if (bArrested)
+	{
+		return EHeistCrewStatus::Arrested;
+	}
+
+	const AHeistPlayerCharacter* Character = Cast<AHeistPlayerCharacter>(GetPawn());
+	if (!IsValid(Character))
+	{
+		return EHeistCrewStatus::Active;
+	}
+	const UHeistStatusComponent* Status = Character->GetStatusComponent();
+	if (IsValid(Status) && Status->HasStatusTag(FHeistGameplayTags::Get().Event_Player_Stunned))
+	{
+		return EHeistCrewStatus::Stunned;
+	}
+	const UHeistInventoryComponent* Inventory = Character->GetInventoryComponent();
+	if (IsValid(Inventory) && Inventory->GetOriginalArtifactCount() > 0)
+	{
+		return EHeistCrewStatus::CarryingOriginal;
+	}
+	const UHeistNoiseEmitterComponent* NoiseEmitter = Character->GetNoiseEmitterComponent();
+	if (IsValid(NoiseEmitter) && NoiseEmitter->IsHeavyWeight(TotalLootWeight))
+	{
+		return EHeistCrewStatus::Heavy;
+	}
+	const UHeistObjectAssemblyComponent* Assembly = Character->GetObjectAssemblyComponent();
+	if (IsValid(Assembly) && Assembly->IsSessionActive())
+	{
+		return EHeistCrewStatus::Assembling;
+	}
+	const UHeistForgeryComponent* Forgery = Character->GetForgeryComponent();
+	return IsValid(Forgery) && Forgery->IsSessionActive() ? EHeistCrewStatus::Forging : EHeistCrewStatus::Active;
+}
+
+void AHeistPlayerState::OnRep_CrewStatus()
+{
+	CrewStatusChangedDelegate.Broadcast(CrewStatus);
+}
+
+#pragma endregion
 
 void AHeistPlayerState::OnRep_TotalLootScore()
 {
@@ -561,6 +659,11 @@ FHeistPlayerIdentityChanged& AHeistPlayerState::GetPlayerIdentityChangedDelegate
 }
 
 void AHeistPlayerState::OnRep_HeistPlayerId()
+{
+	PlayerIdentityChangedDelegate.Broadcast(HeistPlayerId);
+}
+
+void AHeistPlayerState::OnRep_PlayerColor()
 {
 	PlayerIdentityChangedDelegate.Broadcast(HeistPlayerId);
 }

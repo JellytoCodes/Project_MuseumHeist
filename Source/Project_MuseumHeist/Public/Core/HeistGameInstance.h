@@ -41,6 +41,7 @@ class PROJECT_MUSEUMHEIST_API UHeistGameInstance : public UGameInstance
 									   int32& OutRemainingTemplateCount);
 	bool RunSurfaceTemplateShuffleBagSelfTestForDebug(int32 PoolSize, int32& OutDrawCount, int32& OutFirstCycleUniqueCount, int32& OutSecondCycleUniqueCount,
 													  int32& OutRecentProtectionCheckCount, int32& OutRecentProtectionPassCount) const;
+	bool RunRandomMapShuffleBagSelfTestForDebug(int32& OutDrawCount, int32& OutFirstCycleUniqueCount, int32& OutSecondCycleUniqueCount) const;
 
   private:
 	void ResetSurfaceTemplateShuffleState();
@@ -177,7 +178,8 @@ class PROJECT_MUSEUMHEIST_API UHeistGameInstance : public UGameInstance
 	bool BeginHostServerTravel(const FString& MapPath, const TCHAR* TravelOption);
 	bool ReturnToTitleMenu(FName ReturnReason);
 	bool IsCurrentWorldMap(const FString& MapPath, const TCHAR* TravelOption) const;
-	bool ResolveRequestedMapSelection(FName RequestedMapId, FName& OutSelectedMapId, bool& bOutRandomSelection) const;
+	bool ResolveRequestedMapSelection(FName RequestedMapId, FName& OutSelectedMapId, bool& bOutRandomSelection);
+	FName DrawRandomMapSelection();
 	bool CommitLobbyMapSelection(FName NewSelectedMapId, bool bNewRandomSelection);
 	void NotifyRemoteClientsSessionEnded(FName Reason) const;
 	void HandleHostLeaveGracePeriodElapsed();
@@ -264,6 +266,8 @@ class PROJECT_MUSEUMHEIST_API UHeistGameInstance : public UGameInstance
 	bool bLeaveWasHosting = false;
 	FName PendingLeaveReason = NAME_None;
 	FName DefaultSelectedMapId = FName(TEXT("M01"));
+	TArray<FName> RemainingRandomMapIds;
+	FRandomStream RandomMapSelectionStream;
 	double OnlineSessionOperationDeadlineSeconds = 0.0;
 	FTimerHandle HostLeaveGraceTimerHandle;
 	FTSTicker::FDelegateHandle OnlineSessionOperationTimeoutHandle;

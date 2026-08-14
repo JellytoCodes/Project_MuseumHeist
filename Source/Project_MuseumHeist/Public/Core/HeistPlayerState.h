@@ -10,6 +10,7 @@ DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerEscapeStateChanged, bool);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerArrestStateChanged, bool);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistLootTotalsChanged, int32, float);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerIdentityChanged, int32);
+DECLARE_MULTICAST_DELEGATE_OneParam(FHeistCrewStatusChanged, EHeistCrewStatus);
 
 UCLASS()
 class PROJECT_MUSEUMHEIST_API AHeistPlayerState : public APlayerState
@@ -38,6 +39,27 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerState : public APlayerState
 	float TotalLootWeight = 0.0f;
 
 	FHeistLootTotalsChanged LootTotalsChangedDelegate;
+
+#pragma endregion
+
+#pragma region CrewStatus
+
+  public:
+	EHeistCrewStatus GetCrewStatus() const;
+	FText GetHeistDisplayName() const;
+	bool RefreshCrewStatus();
+	FHeistCrewStatusChanged& GetCrewStatusChangedDelegate();
+
+  private:
+	EHeistCrewStatus ResolveCrewStatusFromPawn() const;
+
+	UPROPERTY(ReplicatedUsing = OnRep_CrewStatus, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Crew", meta = (AllowPrivateAccess = "true"))
+	EHeistCrewStatus CrewStatus = EHeistCrewStatus::Active;
+
+	FHeistCrewStatusChanged CrewStatusChangedDelegate;
+
+	UFUNCTION()
+	void OnRep_CrewStatus();
 
 #pragma endregion
 
@@ -145,12 +167,15 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerState : public APlayerState
 	UPROPERTY(ReplicatedUsing = OnRep_HeistPlayerId, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Verification")
 	int32 HeistPlayerId = INDEX_NONE;
 
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Verification")
+	UPROPERTY(ReplicatedUsing = OnRep_PlayerColor, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Verification")
 	FLinearColor PlayerColor = FLinearColor::White;
 
   private:
 	UFUNCTION()
 	void OnRep_HeistPlayerId();
+
+	UFUNCTION()
+	void OnRep_PlayerColor();
 
 	FHeistPlayerIdentityChanged PlayerIdentityChangedDelegate;
 

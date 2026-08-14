@@ -36,6 +36,12 @@ class PROJECT_MUSEUMHEIST_API AHeistObjectDisplayCaseActor : public AHeistIntera
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
   public:
+	UFUNCTION(BlueprintPure, Category = "Heist|Object Assembly|Contract")
+	bool IsContractExhibitActive() const;
+
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Heist|Object Assembly|Contract")
+	bool SetContractExhibitActive(bool bActive);
+
 	UFUNCTION(BlueprintPure, Category = "Heist|Object Assembly")
 	FName GetObjectCaseId() const;
 
@@ -189,6 +195,9 @@ class PROJECT_MUSEUMHEIST_API AHeistObjectDisplayCaseActor : public AHeistIntera
 	UFUNCTION()
 	void OnRep_InspectionScheduleRevision();
 
+	UFUNCTION()
+	void OnRep_ContractExhibitActive();
+
 	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|Object Assembly", meta = (DisplayName = "Object Assembly Snapshot Changed"))
 	void BP_ObjectAssemblySnapshotChanged();
 
@@ -196,6 +205,7 @@ class PROJECT_MUSEUMHEIST_API AHeistObjectDisplayCaseActor : public AHeistIntera
 	void BP_OnReplicaSwapCommitted();
 
   private:
+	void ApplyContractExhibitActiveState();
 	bool ValidateSessionRequest(AHeistPlayerState* RequestingPlayerState, FName& OutRejectReason) const;
 	bool ValidateReplicaCommit(AHeistPlayerState* RequestingPlayerState, const FHeistObjectAssemblyResult& AssemblyResult, const TArray<FHeistObjectAssemblyEntry>& Entries,
 							   FName& OutRejectReason) const;
@@ -230,6 +240,10 @@ class PROJECT_MUSEUMHEIST_API AHeistObjectDisplayCaseActor : public AHeistIntera
 	void HandleSessionOwnerArrestStateChanged(bool bArrested);
 	void HandleOriginalCarrierArrestStateChanged(bool bArrested);
 	void HandleMatchPhaseChanged(EHeistMatchPhase PreviousMatchPhase, EHeistMatchPhase NewMatchPhase);
+
+	UPROPERTY(ReplicatedUsing = OnRep_ContractExhibitActive, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly|Contract",
+		meta = (AllowPrivateAccess = "true"))
+	bool bContractExhibitActive = true;
 
 	UPROPERTY(ReplicatedUsing = OnRep_ObjectIdentity, EditInstanceOnly, BlueprintReadOnly, Category = "Heist|Object Assembly", meta = (AllowPrivateAccess = "true"))
 	FName ObjectCaseId = TEXT("ObjectCase_Unassigned");
