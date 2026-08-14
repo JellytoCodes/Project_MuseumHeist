@@ -1335,6 +1335,48 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 		const AHeistGameState* GameState = GetContractRunServerWorld()->GetGameState<AHeistGameState>();
 		return IsValid(GameState) && IsSurfaceSessionReady(1, GameState->GetContractSnapshot().RequiredTargetCaseId);
 	}, 15.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d W7 force-close Surface on danger Alert"), RunIndex), [State, RunIndex]()
+	{
+		if (State->PlayerCount != 4 || RunIndex != 1)
+		{
+			return true;
+		}
+		AHeistGameState* GameState = GetContractRunServerWorld()->GetGameState<AHeistGameState>();
+		return IsValid(GameState) && GameState->SetAlertSnapshot(EHeistAlertLevel::Alarmed, 0.0f, FName(TEXT("W7SurfaceDangerClose")));
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d W7 Surface danger close and Gameplay input restore"), RunIndex), [State, RunIndex]()
+	{
+		return State->PlayerCount != 4 || RunIndex != 1 || IsWeek7DangerCloseReady(1, true);
+	}, 10.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d W7 reset Alert after Surface danger close"), RunIndex), [State, RunIndex]()
+	{
+		if (State->PlayerCount != 4 || RunIndex != 1)
+		{
+			return true;
+		}
+		AHeistGameState* GameState = GetContractRunServerWorld()->GetGameState<AHeistGameState>();
+		return IsValid(GameState) && GameState->SetAlertSnapshot(EHeistAlertLevel::Quiet, 0.0f, FName(TEXT("W7SurfaceDangerCloseReset")));
+	}));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d W7 restart Surface after danger close"), RunIndex), [State, RunIndex]()
+	{
+		if (State->PlayerCount != 4 || RunIndex != 1)
+		{
+			return true;
+		}
+		AHeistPlayerController* OwningPlayerController = GetOwningPlayerControllerById(1);
+		const AHeistGameState* GameState = IsValid(OwningPlayerController) ? OwningPlayerController->GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+		AHeistPaintingDisplayCaseActor* LocalDisplayCase = IsValid(GameState) ? FindPaintingCase(OwningPlayerController->GetWorld(), GameState->GetContractSnapshot().RequiredTargetCaseId) : nullptr;
+		return InvokeSingleActorServerRPC(OwningPlayerController, FName(TEXT("Server_RequestObservation")), LocalDisplayCase);
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d W7 restarted Surface session"), RunIndex), [State, RunIndex]()
+	{
+		if (State->PlayerCount != 4 || RunIndex != 1)
+		{
+			return true;
+		}
+		const AHeistGameState* GameState = GetContractRunServerWorld()->GetGameState<AHeistGameState>();
+		return IsValid(GameState) && GameState->GetAlertLevel() == EHeistAlertLevel::Quiet && IsSurfaceSessionReady(1, GameState->GetContractSnapshot().RequiredTargetCaseId);
+	}, 15.0));
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d submit generated Surface strokes"), RunIndex), []()
 	{
 		return SubmitReferenceMatchedSurface(1);
@@ -1391,6 +1433,60 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 			FString::Printf(TEXT("run %d player %d owner Assembly session"), RunIndex, PlayerId), [State, PlayerId, AssemblyIndex]()
 		{
 			return State->SelectedObjectCaseIds.IsValidIndex(AssemblyIndex) && IsObjectSessionReady(PlayerId, State->SelectedObjectCaseIds[AssemblyIndex]);
+		}, 15.0));
+		Test->AddCommand(new FHeistContractRunActionCommand(Test, State,
+			FString::Printf(TEXT("run %d W7 force-close player %d Assembly on danger Alert"), RunIndex, PlayerId), [State, RunIndex, PlayerId, AssemblyIndex]()
+		{
+			if (State->PlayerCount != 4 || RunIndex != 1 || AssemblyIndex != 0)
+			{
+				return true;
+			}
+			AHeistGameState* GameState = GetContractRunServerWorld()->GetGameState<AHeistGameState>();
+			return IsValid(GameState) && GameState->SetAlertSnapshot(EHeistAlertLevel::Alarmed, 0.0f, FName(TEXT("W7AssemblyDangerClose")));
+		}));
+		Test->AddCommand(new FHeistContractRunWaitCommand(Test, State,
+			FString::Printf(TEXT("run %d W7 player %d Assembly danger close and Gameplay input restore"), RunIndex, PlayerId), [State, RunIndex, PlayerId, AssemblyIndex]()
+		{
+			return State->PlayerCount != 4 || RunIndex != 1 || AssemblyIndex != 0 || IsWeek7DangerCloseReady(PlayerId, false);
+		}, 10.0));
+		Test->AddCommand(new FHeistContractRunActionCommand(Test, State,
+			FString::Printf(TEXT("run %d W7 reset Alert after player %d Assembly danger close"), RunIndex, PlayerId), [State, RunIndex, AssemblyIndex]()
+		{
+			if (State->PlayerCount != 4 || RunIndex != 1 || AssemblyIndex != 0)
+			{
+				return true;
+			}
+			AHeistGameState* GameState = GetContractRunServerWorld()->GetGameState<AHeistGameState>();
+			return IsValid(GameState) && GameState->SetAlertSnapshot(EHeistAlertLevel::Quiet, 0.0f, FName(TEXT("W7AssemblyDangerCloseReset")));
+		}));
+		Test->AddCommand(new FHeistContractRunActionCommand(Test, State,
+			FString::Printf(TEXT("run %d W7 restart player %d Assembly after danger close"), RunIndex, PlayerId), [State, RunIndex, PlayerId, AssemblyIndex]()
+		{
+			if (State->PlayerCount != 4 || RunIndex != 1 || AssemblyIndex != 0)
+			{
+				return true;
+			}
+			AHeistPlayerController* PlayerController = GetOwningPlayerControllerById(PlayerId);
+			AHeistObjectDisplayCaseActor* LocalDisplayCase = IsValid(PlayerController) && State->SelectedObjectCaseIds.IsValidIndex(AssemblyIndex)
+				? FindObjectCase(PlayerController->GetWorld(), State->SelectedObjectCaseIds[AssemblyIndex])
+				: nullptr;
+			if (!IsValid(PlayerController) || !IsValid(LocalDisplayCase))
+			{
+				return false;
+			}
+			PlayerController->RequestBeginObjectAssembly(LocalDisplayCase);
+			return true;
+		}));
+		Test->AddCommand(new FHeistContractRunWaitCommand(Test, State,
+			FString::Printf(TEXT("run %d W7 restarted player %d Assembly session"), RunIndex, PlayerId), [State, RunIndex, PlayerId, AssemblyIndex]()
+		{
+			if (State->PlayerCount != 4 || RunIndex != 1 || AssemblyIndex != 0)
+			{
+				return true;
+			}
+			const AHeistGameState* GameState = GetContractRunServerWorld()->GetGameState<AHeistGameState>();
+			return IsValid(GameState) && GameState->GetAlertLevel() == EHeistAlertLevel::Quiet && State->SelectedObjectCaseIds.IsValidIndex(AssemblyIndex) &&
+				IsObjectSessionReady(PlayerId, State->SelectedObjectCaseIds[AssemblyIndex]);
 		}, 15.0));
 		Test->AddCommand(new FHeistContractRunActionCommand(Test, State,
 			FString::Printf(TEXT("run %d player %d submit exact Assembly entries"), RunIndex, PlayerId), [PlayerId]()

@@ -253,6 +253,8 @@ bool UHeistGameInstance::RunSurfaceTemplateShuffleBagSelfTestForDebug(const int3
 	TArray<FName> RecentIds;
 	TSet<FName> FirstCycleIds;
 	TSet<FName> SecondCycleIds;
+	TArray<FName> FirstPassSequence;
+	FirstPassSequence.Reserve(PoolSize * 2);
 	int32 BagCycle = 0;
 	FRandomStream TestRandomStream(160516);
 	for (int32 DrawIndex = 0; DrawIndex < PoolSize * 2; ++DrawIndex)
@@ -280,7 +282,22 @@ bool UHeistGameInstance::RunSurfaceTemplateShuffleBagSelfTestForDebug(const int3
 		{
 			SecondCycleIds.Add(SelectedTemplateId);
 		}
+		FirstPassSequence.Add(SelectedTemplateId);
 		++OutDrawCount;
+	}
+
+	TArray<FName> ReplayRemainingIds;
+	TArray<FName> ReplayRecentIds;
+	int32 ReplayBagCycle = 0;
+	FRandomStream ReplayRandomStream(160516);
+	for (const FName ExpectedTemplateId : FirstPassSequence)
+	{
+		FName ReplayedTemplateId = NAME_None;
+		if (!HeistSurfaceTemplate::DrawFromShuffleBag(Candidates, ReplayRemainingIds, ReplayRecentIds, ReplayBagCycle, ReplayRandomStream, ReplayedTemplateId) ||
+			ReplayedTemplateId != ExpectedTemplateId)
+		{
+			return false;
+		}
 	}
 
 	OutFirstCycleUniqueCount = FirstCycleIds.Num();

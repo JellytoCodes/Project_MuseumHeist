@@ -1,7 +1,7 @@
 # Project_MuseumHeist Current Project Status
 
 최종 갱신: 2026-08-15 KST
-현재 문서 Revision: 11
+현재 문서 Revision: 12
 
 이 문서는 새 Codex 작업이 Notion의 최신 진행 상태와 로컬 구현·검증 증거를 바로 이어받기 위한 오프라인 실행 캐시다.
 
@@ -31,6 +31,18 @@ TASK-W6-009  완료    3-Map Shared Exit Placement — W6 Slice
 TASK-W6-010  완료    W6 End-to-End Mission Gate
 TASK-W6-011  완료    Shared Loose Loot Content 5+
 W6 Gate      Pass    Contract Run Feature Complete
+
+TASK-W7-001  진행중  Balance Runtime 소비·1P/4P 회귀 완료 / 2P·수동 튜닝 잔여
+TASK-W7-002  검토중  Remote Nameplate / Crew Status 4P 동기화
+TASK-W7-003  완료    Main HUD Team Status
+TASK-W7-004  진행중  Stun Runtime / Input / HUD 완료, 최종 화면·오디오 잔여
+TASK-W7-005  진행중  Arrest / Rescue Runtime 완료, Cuffed/RESCUE 연출 잔여
+TASK-W7-006  진행중  Carry / Heavy Runtime 완료, Pose/Icon/Audio 잔여
+TASK-W7-007  검토중  Owner-only Floor Plan Map
+TASK-W7-008  검토중  Walk/Sprint/Weight/Footstep 계약
+TASK-W7-009  검토중  Alert 작업 화면 강제 종료 / Main HUD 계약
+TASK-W7-010  진행중  자동 E2E 완료 / 실제 2~3분 리듬 테스트 잔여
+TASK-W7-011  완료    Surface/Map/Optional Variation
 ```
 
 신규 Test Log:
@@ -39,27 +51,29 @@ W6 Gate      Pass    Contract Run Feature Complete
 TEST-W6-008  Pass  TASK-W6-009 / M01 Exit·Nav·Deposit + M02/M03 W8 Checklist
 TEST-W6-009  Pass  TASK-W6-011 / Loose Loot Definition + 2P Lifecycle
 TEST-W6-010  Pass  TASK-W6-000·010 / Contract Foundation + Solo·4P Two-Run Gate
+TEST-W7-001  Pass  W7 Team Readability / Map / Alert / Movement / Variation 통합 회귀
 ```
 
 ---
 
 ## 1. Current Focus
 
-W6 활성 범위 `TASK-W6-000`~`TASK-W6-011`은 구현·자동화·빌드·Notion 완료 처리가 끝났고 주차 Gate는 `Pass`다. `TASK-W6-012`~`020`은 취소된 이전 구성으로 W6 Gate에 포함하지 않는다.
+W7는 팀 가독성과 협동 피드백의 C++/복제/Input 기반을 구현하고 전체 자동화 회귀를 통과했다. 자동화로 완료 기준을 닫은 `TASK-W7-003`, `TASK-W7-011`은 완료 처리했고, 실제 화면·오디오·플레이 리듬 확인이 필요한 항목은 `진행중` 또는 `검토중`으로 유지했다.
 
 ```text
-TASK-W6-000  PASS / TEST-W6-008·009·010 및 상위 E2E로 Contract Foundation 검증
-TASK-W6-009  PASS / M01 실제 Shared Exit 배치·Nav·Deposit 검증
-TASK-W6-010  PASS / M01 Solo 2회 + 4P 2회 Contract Run 및 Lobby clean reset
-TASK-W6-011  PASS / Loose Loot 5종 정의 고유성 + 2P 전 수명주기
-W6 Gate      PASS / 2026-08-15 공식 종료
+Editor Build        PASS / Win64 Development / Unity-safe
+Full Automation     PASS / 21 total / Failed 0 / NotRun 0
+Solo ContractRun    PASS / 2 consecutive runs / clean Lobby reset
+4P ContractRun      PASS / 2 consecutive runs / clean Lobby reset
+W7 Variation        PASS / real M01·M02·M03 12 rows / deterministic 24 draws
+Notion Test Log     TEST-W7-001 / Pass
 ```
 
 범위 경계:
 
-- `TASK-W6-009`의 W6 완료 기준은 M01 실제 배치·완주와 M02/M03 배치 체크리스트 확정이다.
-- M02/M03의 실제 `.umap` 배치와 최종 3-Map 조명·Lockdown·Original Carrier 동선은 W8 범위다.
-- 다음 구현 Task는 새 작업 시작 시 Notion의 `진행중`/`검토중` 항목과 사용자 지정을 다시 조회해 확정한다.
+- NullRHI 자동화는 상태·복제·입력·Widget 생성 계약을 검증하지만 렌더링 화면과 실제 청음을 대신하지 않는다.
+- Stun/Arrest/Carry 최종 Presentation Asset, Nameplate/Map 화면 가독성, Alert 음악, 실제 2~3분 Escape 리듬은 후속 검토 대상이다.
+- W7 Gate는 아직 닫지 않는다. Notion의 `진행중`/`검토중` Task를 완료 기준별로 마감한 뒤 판단한다.
 
 ---
 
@@ -185,8 +199,8 @@ Warning은 Title/Lobby RecastNavMesh 부재 및 테스트 Guard Noise의 Outside
 
 ## 5. Working Tree Safeguards
 
-- 현재 변경은 Stage/Commit/Push하지 않았다.
-- 사용자 변경과 기존 `da8daaf End Phase / Lobby Return` 커밋은 보존한다.
+- W7 기반 구현은 `2395cdb Add W7 readability systems and contract safety`에 보존돼 있다.
+- 후속 검증 보강은 같은 W7 범위의 최소 변경으로만 유지한다.
 - `.uasset`과 `.umap`은 Unreal Editor 또는 승인된 MCP 경로로만 수정한다.
 - M02/M03 실제 맵 배치는 W8 요청 전 임의로 진행하지 않는다.
 
@@ -198,12 +212,47 @@ Warning은 Title/Lobby RecastNavMesh 부재 및 테스트 Guard Noise의 Outside
 2. Notion 작업보드의 `진행중`/`검토중` Task와 사용자가 지정한 Task를 라이브 조회한다.
 3. `LOCAL_PROGRESS_INBOX.md`의 `UNLINKED`/`READY_TO_SYNC` Entry를 확인한다.
 4. `git status --short`와 관련 Diff를 확인한다.
-5. W6의 000~011은 완료된 증거를 재구현하지 않는다.
-6. W8에서 M02/M03 맵 작업을 시작할 때 TEST-W6-008의 체크리스트를 사용한다.
+5. `TEST-W7-001`과 아래 W7 Remaining Evidence를 확인하고 이미 통과한 기반을 재구현하지 않는다.
+6. W7 Presentation 검토는 렌더링 Editor에서 화면·청음 증거를 수집하고 Task별 완료 기준만 닫는다.
 
 ---
 
-## 7. Update Contract
+## 7. W7 Implementation And Evidence
+
+### Implemented Foundation
+
+- `AHeistPlayerState` 공통 `CrewStatus` 복제: Active / Forging / Assembling / CarryingOriginal / Heavy / Stunned / Arrested / Escaped
+- Remote-only `UHeistNameplateWidget`과 Main HUD Team Status가 동일 PlayerState 상태를 소비
+- 서버 Walk 300 / Sprint 600, Weight 감속, Pace 기반 Footstep 500 / 1000
+- Guard 접촉 Stun → 지연 Arrest → Teammate Rescue와 Owner Input/UI 복원
+- `IA_Map`, `IMC_Map`, Owner-only `UHeistFloorPlanMapWidget` 및 Gameplay Input 복원
+- Surface/Object 작업 중 Alarmed 진입 시 Widget 강제 종료, Session 해제, Gameplay Input 복원과 정상 재진입
+- Random Map Shuffle Bag, Surface Template 최근 3개 보호, 고정 Seed 결정성, Optional Exhibit 조합 변화
+
+### Verification
+
+```text
+Build       Saved/Logs/W7-Implementation-Build-Final.log
+Full Log    Saved/Logs/W7-FinalRegression-Retry.log
+Full Report Saved/Automation/W7-FinalRegression-Retry/index.json
+Variation   Saved/Automation/W7-Variation-Final/index.json
+Result      21/21 Success or SuccessWithWarnings / Failed 0
+Notion      TEST-W7-001 Pass / live re-fetch confirmed
+```
+
+### Remaining Evidence
+
+- W7-001: GuardCountMultiplier의 실제 Spawn 소비, 2P ContractRun, 수동 밸런스 표
+- W7-002: 최종 아이콘과 렌더링 화면에서 Nameplate 거리 Fade/색상 가독성
+- W7-004~006: Vignette/Low-pass, Cuffed/RESCUE, Carry Pose/Icon/Audio Asset
+- W7-007: Floor Plan 최종 렌더링 화면
+- W7-008: 실제 이동 입력 기반 2P Guard Investigate 가시 증거
+- W7-009: Main HUD 색/Countdown과 실제 음악 레이어 청음
+- W7-010: 실제 2~3분 단위 탐욕/탈출 리듬 테스트 시트
+
+---
+
+## 8. Update Contract
 
 다음 경우 같은 작업 안에서 이 문서를 갱신한다.
 

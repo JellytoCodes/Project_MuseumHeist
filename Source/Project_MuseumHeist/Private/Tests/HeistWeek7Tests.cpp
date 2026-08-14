@@ -4,7 +4,9 @@
 #include "Core/HeistGameInstance.h"
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistTypes.h"
+#include "Data/HeistArtifactDataTypes.h"
 #include "Data/HeistGameBalanceDataAsset.h"
+#include "Engine/DataTable.h"
 #include "InputAction.h"
 #include "InputCoreTypes.h"
 #include "InputMappingContext.h"
@@ -72,6 +74,26 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistWeek7VariationContractTest, "ProjectMuseu
 bool FHeistWeek7VariationContractTest::RunTest(const FString& Parameters)
 {
 	const UHeistGameInstance* GameInstanceCDO = GetDefault<UHeistGameInstance>();
+	const UDataTable* TemplateTable = LoadObject<UDataTable>(nullptr, TEXT("/Game/Data/DataTable/DT_ForgeryTemplate.DT_ForgeryTemplate"));
+	TestNotNull(TEXT("DT_ForgeryTemplate exists"), TemplateTable);
+	TestTrue(TEXT("DT_ForgeryTemplate uses FHeistForgeryTemplateRow"), IsValid(TemplateTable) && TemplateTable->GetRowStruct() == FHeistForgeryTemplateRow::StaticStruct());
+	TMap<FName, int32> TemplateCountByPool;
+	if (IsValid(TemplateTable) && TemplateTable->GetRowStruct() == FHeistForgeryTemplateRow::StaticStruct())
+	{
+		for (const FName RowName : TemplateTable->GetRowNames())
+		{
+			const FHeistForgeryTemplateRow* Row = TemplateTable->FindRow<FHeistForgeryTemplateRow>(RowName, TEXT("FHeistWeek7VariationContractTest"), false);
+			if (Row != nullptr && Row->TemplateId == RowName)
+			{
+				++TemplateCountByPool.FindOrAdd(Row->SurfacePoolId);
+			}
+		}
+	}
+	for (const FName PoolId : {FName(TEXT("M01")), FName(TEXT("M02")), FName(TEXT("M03"))})
+	{
+		TestEqual(FString::Printf(TEXT("%s Surface pool has exactly 12 valid templates"), *PoolId.ToString()), TemplateCountByPool.FindRef(PoolId), 12);
+	}
+
 	int32 DrawCount = 0;
 	int32 FirstCycleUnique = 0;
 	int32 SecondCycleUnique = 0;
@@ -86,7 +108,7 @@ bool FHeistWeek7VariationContractTest::RunTest(const FString& Parameters)
 	int32 SurfaceSecondUnique = 0;
 	int32 RecentChecks = 0;
 	int32 RecentPasses = 0;
-	TestTrue(TEXT("Surface template shuffle-bag protects recent history"), GameInstanceCDO->RunSurfaceTemplateShuffleBagSelfTestForDebug(
+	TestTrue(TEXT("Fixed-seed Surface template shuffle-bag is deterministic and protects recent history"), GameInstanceCDO->RunSurfaceTemplateShuffleBagSelfTestForDebug(
 		12, SurfaceDrawCount, SurfaceFirstUnique, SurfaceSecondUnique, RecentChecks, RecentPasses));
 	TestEqual(TEXT("Surface test draws two 12-template cycles"), SurfaceDrawCount, 24);
 	TestEqual(TEXT("Surface first cycle unique count"), SurfaceFirstUnique, 12);

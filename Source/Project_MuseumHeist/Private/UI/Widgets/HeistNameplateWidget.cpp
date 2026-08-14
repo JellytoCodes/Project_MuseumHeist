@@ -11,7 +11,7 @@
 
 namespace
 {
-FSlateFontInfo MakeTenadaFont(const int32 Size)
+FSlateFontInfo MakeNameplateTenadaFont(const int32 Size)
 {
 	static UObject* TenadaFont = LoadObject<UObject>(nullptr, TEXT("/Game/Blueprints/UI/Fonts/F_TENADA.F_TENADA"));
 	return FSlateFontInfo(TenadaFont, Size);
@@ -30,8 +30,8 @@ TSharedRef<SWidget> UHeistNameplateWidget::RebuildWidget()
 		CrewStatusText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("CrewStatusText"));
 		PlayerNameText->SetJustification(ETextJustify::Center);
 		CrewStatusText->SetJustification(ETextJustify::Center);
-		PlayerNameText->SetFont(MakeTenadaFont(18));
-		CrewStatusText->SetFont(MakeTenadaFont(14));
+		PlayerNameText->SetFont(MakeNameplateTenadaFont(18));
+		CrewStatusText->SetFont(MakeNameplateTenadaFont(14));
 		TextColumn->AddChildToVerticalBox(PlayerNameText);
 		TextColumn->AddChildToVerticalBox(CrewStatusText);
 		RootBorder->SetContent(TextColumn);

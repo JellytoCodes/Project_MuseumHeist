@@ -18,7 +18,7 @@
 
 namespace
 {
-FSlateFontInfo MakeTenadaFont(const int32 Size)
+FSlateFontInfo MakeFloorPlanTenadaFont(const int32 Size)
 {
 	static UObject* TenadaFont = LoadObject<UObject>(nullptr, TEXT("/Game/Blueprints/UI/Fonts/F_TENADA.F_TENADA"));
 	return FSlateFontInfo(TenadaFont, Size);
@@ -38,8 +38,8 @@ TSharedRef<SWidget> UHeistFloorPlanMapWidget::RebuildWidget()
 		MarkerContainer = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("MarkerContainer"));
 		MapTitleText->SetJustification(ETextJustify::Center);
 		MapHintText->SetJustification(ETextJustify::Center);
-		MapTitleText->SetFont(MakeTenadaFont(34));
-		MapHintText->SetFont(MakeTenadaFont(18));
+		MapTitleText->SetFont(MakeFloorPlanTenadaFont(34));
+		MapHintText->SetFont(MakeFloorPlanTenadaFont(18));
 		Layout->AddChildToVerticalBox(MapTitleText);
 		if (UVerticalBoxSlot* MarkerAreaSlot = Layout->AddChildToVerticalBox(MarkerContainer))
 		{
@@ -140,7 +140,7 @@ void UHeistFloorPlanMapWidget::AddMarker(const FVector& WorldLocation, const FTe
 	Marker->SetText(Label);
 	Marker->SetColorAndOpacity(FSlateColor(Color));
 	Marker->SetJustification(ETextJustify::Center);
-	Marker->SetFont(MakeTenadaFont(17));
+	Marker->SetFont(MakeFloorPlanTenadaFont(17));
 	if (UCanvasPanelSlot* MarkerSlot = MarkerContainer->AddChildToCanvas(Marker))
 	{
 		MarkerSlot->SetAnchors(FAnchors(0.0f, 0.0f));
