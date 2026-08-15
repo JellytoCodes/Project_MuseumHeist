@@ -61,6 +61,7 @@ AHeistPlayerCharacter::AHeistPlayerCharacter()
 	NameplateWidgetComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 120.0f));
 	NameplateWidgetComponent->SetWidgetSpace(EWidgetSpace::Screen);
 	NameplateWidgetComponent->SetDrawSize(FVector2D(260.0f, 56.0f));
+	NameplateWidgetComponent->SetWidgetClass(NameplateWidgetClass);
 	NameplateWidgetComponent->SetOwnerNoSee(true);
 	NameplateWidgetComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
@@ -375,7 +376,7 @@ void AHeistPlayerCharacter::RefreshNameplatePresentation()
 		NameplateWidgetComponent->SetWidgetClass(NameplateWidgetClass);
 		NameplateWidgetComponent->InitWidget();
 	}
-	NameplateWidgetComponent->SetVisibility(!IsLocallyControlled());
+	NameplateWidgetComponent->SetVisibility(UHeistNameplateWidget::ShouldDisplayForLocalControl(IsLocallyControlled()));
 	if (UHeistNameplateWidget* NameplateWidget = Cast<UHeistNameplateWidget>(NameplateWidgetComponent->GetUserWidgetObject()))
 	{
 		NameplateWidget->SetupPlayerState(GetPlayerState<AHeistPlayerState>());

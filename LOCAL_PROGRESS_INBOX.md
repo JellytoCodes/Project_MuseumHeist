@@ -45,7 +45,7 @@ NO_TASK_REQUIRED
 - Timeout은 작업을 폐기하고 Alert 변화 없이 근처 Guard 한 명의 1회 조사만 발생시킨다.
 - Surface Forgery와 Object Assembly의 한글 Title, 70점 기준을 포함한 단일 예상 품질, Timer, Submit/Cancel과 통합 하단 안내 구조를 통일한다.
 - 별도 `InstructionText`와 `ModeStatusText`는 사용하지 않고 작업 설명은 Tutorial과 통합 하단 안내가 담당한다.
-- 작업 화면의 Alert/Lockdown 상세 Text는 제거하고 Alert가 Quiet을 벗어나면 화면을 강제 종료해 탈출 판단을 우선한다.
+- 작업 화면의 Alert/Lockdown 상세 Text는 제거한다. Suspicious/Searching에서는 작업을 유지하고, Alarmed/Lockdown에서만 서버가 Session을 선취소한 뒤 화면을 강제 종료해 탈출 판단을 우선한다.
 - Object Assembly는 버튼식 3D Preview 대신 Original/정답을 숨긴 기억 기반 2D 조각 Drag & Drop으로 교체한다.
 - 공통 UI의 제목·제출·취소에는 TENADA를 사용하고, 점수·시간·통합 하단 안내와 Brush Label은 가독성용 한글 본문 폰트를 유지한다.
 
@@ -83,7 +83,7 @@ Notion Write            NOT DONE
 
 - `ProjectMuseumHeist.Forgery.ReplicaAcceptanceContract` 자동화 PASS (`2026-08-09 15:42 KST`)
 - 2 Player Listen Server PIE에서 Owner-only UI, 70점 Gate, Timeout 1회 조사, Alert 불변 확인
-- Surface/Object 작업 중 Alert가 Quiet을 벗어날 때 Widget 강제 종료, Cancel 1회, Gameplay Input 복원 확인
+- Surface/Object 작업 중 Suspicious/Searching Session 유지, Alarmed/Lockdown 서버 선취소, Widget 강제 종료, 신규 재진입 거부, Gameplay Input 복원 확인
 - Object 2D Drag & Drop, Socket 양자화, Wheel/우클릭/R 입력과 제출 후 Compact Payload 기반 3D Replica 확인
 
 #### Next Reconciliation Action
@@ -105,9 +105,11 @@ Notion Write            NOT DONE
 - Test Logs:
   - [`TEST-W7-001`](https://app.notion.com/p/3bc1d26a5dfb81f9a48ac7f4566fa7be)
   - [`TEST-W7-002`](https://app.notion.com/p/3bd1d26a5dfb81549291f537370bfd37)
+  - [`TEST-W7-003`](https://app.notion.com/p/3bd1d26a5dfb813c8f05ee11c1ecc46c)
+  - [`TEST-W7-004`](https://app.notion.com/p/3bd1d26a5dfb81e5aaabc7f01159e089)
+  - [`TEST-W7-005`](https://app.notion.com/p/3bd1d26a5dfb81379889d4e36d76f8ee)
 - Notion Status:
-  - 완료: `TASK-W7-001`, `003`, `008`, `011`
-  - 검토중: `TASK-W7-002`, `007`, `009`
+  - 완료: `TASK-W7-001`, `002`, `003`, `007`, `008`, `009`, `011`
   - 진행중: `TASK-W7-004`, `005`, `006`, `010`
 
 #### Applied Work
@@ -115,7 +117,11 @@ Notion Write            NOT DONE
 - PlayerState 기반 Crew Status를 Remote Nameplate와 Main HUD가 함께 소비하도록 통합했다.
 - 서버 Walk/Sprint/Weight, Pace 기반 Footstep, Guard Stun→Arrest→Rescue 상태를 복제·입력 계약과 연결했다.
 - Owner-only Floor Plan Map과 Map Input Mode를 추가하고 Local/Team/Exit/Zone/발견 Target만 표시하도록 제한했다.
-- Surface/Object 작업 중 위험 Alert에서 Widget을 강제 종료하고 서버 Session과 Gameplay Input을 정상 복원하도록 검증했다.
+- Surface/Object 작업 중 Suspicious/Searching은 유지하고 Alarmed/Lockdown에서 서버가 Session을 선취소한 뒤 Widget과 Gameplay Input을 정리하며, 위험 단계의 신규 재진입과 Case Lock 누수를 막도록 검증했다.
+- 실제 `WBP_HeistNameplate_C`와 Team Status의 8상태 색·글리프 및 Remote 3/Local 0을 4P TwoRuns 상태 전이에서 검증하고, 거리 Fade는 별도 수식 계약 테스트로 검증했다.
+- M01/M02/M03 Floor Plan Data/Texture, 명시적 Marker whitelist, 4P Map 입력 잠금·복원과 Map-open Stun 강제 종료를 검증했다.
+- 렌더·오디오 활성 4P에서 Alert 0~4 한글/색, Alarmed Countdown, click-free edge로 재임포트한 Suspense/Alarm Loop 재생과 Lockdown Cleanup을 검증했다.
+- GDD/TDD를 Rev 13으로 맞추고 Suspicious/Searching 유지, Alarmed/Lockdown 서버 선취소·재진입 거부 계약으로 동기화했으며 변경 페이지를 Word PDF/PNG로 검증했다.
 - 실제 M01/M02/M03 Surface Template 각 12개, 고정 Seed 결정성, 24회 Cycle 중복 방지, 최근 3개 보호, Random Map Bag, Optional Exhibit 조합을 검증했다.
 - Player Count별 경비 수·발각 유예·검사 시간을 실제 Runtime에 적용하고 1P/2P/4P M01 TwoRuns 및 Lobby Reset을 검증했다.
 - 2P Client의 실제 `IA_Move` 입력으로 Walk/Sprint Footstep 500/1000cm, 서버 Guard Investigate와 Client 상태 복제, Alert 불변을 검증했다.
@@ -133,12 +139,15 @@ Stun / Arrest / Rescue                    PASS
 Surface / Object Alert Forced Close      PASS
 Variation Real Data + Determinism        PASS
 Notion Test Logs                         TEST-W7-001/002 Pass
+W7 Presentation Test Logs                TEST-W7-003/004/005 Pass
+W7 Presentation Full Regression          10/10 / Failed 0 / NotRun 0
+GDD/TDD Rev 13 Alert Contract             PASS / changed-page Word render
 Notion Live Re-fetch                     PASS
 ```
 
 #### Remaining Scope
 
-- 최종 화면·오디오·Pose Presentation은 개별 `진행중`/`검토중` Task의 완료 기준으로 남겼다.
+- Stun/Arrest/Carry 최종 화면·오디오·Pose Presentation은 개별 `진행중` Task의 완료 기준으로 남겼다.
 - 실제 2~3분 Escape 리듬은 NullRHI 자동화 Pass로 대체하지 않았다.
 
 ---

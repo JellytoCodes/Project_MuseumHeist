@@ -10,6 +10,7 @@ UHeistGameBalanceDataAsset::UHeistGameBalanceDataAsset()
 	ItemDataTable = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Game/Data/DataTable/DT_ItemData.DT_ItemData")));
 	LootDataTable = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Game/Data/DataTable/DT_LootData.DT_LootData")));
 	ContractDataTable = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Game/Data/DataTable/DT_ContractData.DT_ContractData")));
+	MapPresentationDataTable = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Game/Data/DataTable/DT_MapPresentation.DT_MapPresentation")));
 	ArtifactDataTable = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Game/Data/DataTable/DT_ArtifactData.DT_ArtifactData")));
 	ForgeryTemplateDataTable = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Game/Data/DataTable/DT_ForgeryTemplate.DT_ForgeryTemplate")));
 	ObjectAssemblyPartDataTable = TSoftObjectPtr<UDataTable>(FSoftObjectPath(TEXT("/Game/Data/DataTable/DT_ObjectAssemblyPart.DT_ObjectAssemblyPart")));

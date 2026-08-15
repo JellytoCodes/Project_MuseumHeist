@@ -96,6 +96,10 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 	void DebugDumpTutorialPresentationState() const;
 	bool IsAlertPresentationContractSatisfied() const;
 	bool IsTutorialPresentationContractSatisfied() const;
+	bool AreAlertAudioAssetsAssignedForDebug() const;
+	bool AreAlertAudioAssetsLoopingForDebug() const;
+	bool IsSuspenseMusicPlayingForDebug() const;
+	bool IsAlarmMusicPlayingForDebug() const;
 
 #pragma endregion
 

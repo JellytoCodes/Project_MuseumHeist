@@ -56,6 +56,13 @@ bool UHeistObjectAssemblyComponent::TryBeginAssemblySession(AHeistObjectDisplayC
 		BroadcastSessionSnapshot(FName(TEXT("SessionBegin")), FName(TEXT("InvalidAuthorityContext")), false);
 		return false;
 	}
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	if (IsValid(HeistGameState) &&
+		(HeistGameState->GetAlertLevel() == EHeistAlertLevel::Alarmed || HeistGameState->GetAlertLevel() == EHeistAlertLevel::Lockdown))
+	{
+		BroadcastSessionSnapshot(FName(TEXT("SessionBegin")), FName(TEXT("AlertDanger")), false);
+		return false;
+	}
 	if (bSessionActive || IsValid(ActiveDisplayCase.Get()))
 	{
 		BroadcastSessionSnapshot(FName(TEXT("SessionBegin")), FName(TEXT("SessionAlreadyActive")), false);
@@ -129,7 +136,6 @@ bool UHeistObjectAssemblyComponent::TryBeginAssemblySession(AHeistObjectDisplayC
 
 	const float SafeDurationSeconds = DurationSeconds > 0.0f ? DurationSeconds : PreparedTemplate.AssemblyDuration;
 	ActiveSessionDurationSeconds = SafeDurationSeconds;
-	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	SessionStartServerTime = IsValid(HeistGameState) ? HeistGameState->GetServerWorldTimeSeconds() : (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
 	SessionEndServerTime = SessionStartServerTime + SafeDurationSeconds;
 	++SessionRevision;

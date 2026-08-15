@@ -768,10 +768,9 @@ bool UHeistForgeryWidget::TryForceCloseForAlert()
 	SetVisibility(ESlateVisibility::Collapsed);
 	if (AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(GetOwningPlayer()); IsValid(HeistPlayerController))
 	{
-		HeistPlayerController->RequestCancelForgery();
 		HeistPlayerController->RestoreGameplayInputAfterForcedForgeryClose();
 	}
-	UE_LOG(LogHeistUI, Log, TEXT("[%s] Forgery screen force-closed: AlertLevel=%s CancelRequested=true"), *GetName(),
+	UE_LOG(LogHeistUI, Log, TEXT("[%s] Forgery screen force-closed: AlertLevel=%s ServerCleanupExpected=true"), *GetName(),
 		*UEnum::GetValueAsString(ForgeryViewModel->GetAlertLevel()));
 	return true;
 }

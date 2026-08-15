@@ -301,7 +301,8 @@ void UHeistObjectAssemblyViewModel::RefreshQualityPreview()
 void UHeistObjectAssemblyViewModel::RefreshAlertPresentation()
 {
 	const EHeistAlertLevel NewAlertLevel = IsValid(GameState) ? GameState->GetAlertLevel() : EHeistAlertLevel::Quiet;
-	const bool bShowWarning = bPresentationVisible && NewAlertLevel != EHeistAlertLevel::Quiet;
+	const bool bShowWarning = bPresentationVisible &&
+		(NewAlertLevel == EHeistAlertLevel::Alarmed || NewAlertLevel == EHeistAlertLevel::Lockdown);
 	FText NewWarningText;
 	if (bShowWarning)
 	{

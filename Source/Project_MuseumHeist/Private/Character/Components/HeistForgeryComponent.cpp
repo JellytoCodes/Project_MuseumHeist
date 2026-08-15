@@ -866,6 +866,13 @@ bool UHeistForgeryComponent::TryBeginForgerySession(AHeistPaintingDisplayCaseAct
 		UHeistDebugFunctionLibrary::DebugForgerySessionBeginRejected(this, TargetDisplayCase, FName(TEXT("InvalidAuthorityContext")));
 		return false;
 	}
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	if (IsValid(HeistGameState) &&
+		(HeistGameState->GetAlertLevel() == EHeistAlertLevel::Alarmed || HeistGameState->GetAlertLevel() == EHeistAlertLevel::Lockdown))
+	{
+		UHeistDebugFunctionLibrary::DebugForgerySessionBeginRejected(this, TargetDisplayCase, FName(TEXT("AlertDanger")));
+		return false;
+	}
 
 	if (bSessionActive || bSubmitPending || IsValid(ActiveDisplayCase.Get()))
 	{
@@ -938,7 +945,6 @@ bool UHeistForgeryComponent::TryBeginForgerySession(AHeistPaintingDisplayCaseAct
 
 	const float SafeDurationSeconds = DurationSeconds > 0.0f ? DurationSeconds : TemplateForgeryDuration;
 	ActiveSessionDurationSeconds = SafeDurationSeconds;
-	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	const float ServerWorldTime = IsValid(HeistGameState) ? HeistGameState->GetServerWorldTimeSeconds() : (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
 	SessionEndServerTime = ServerWorldTime + SafeDurationSeconds;
 	++SessionRevision;

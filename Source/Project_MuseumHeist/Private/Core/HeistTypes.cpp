@@ -327,6 +327,54 @@ FText ToCompactText(const EHeistCrewStatus Status)
 		return NSLOCTEXT("HeistCrewStatus", "ActiveCompact", "활동");
 	}
 }
+
+FText ToIconGlyph(const EHeistCrewStatus Status)
+{
+	switch (Status)
+	{
+	case EHeistCrewStatus::Forging:
+		return NSLOCTEXT("HeistCrewStatus", "ForgingIcon", "위");
+	case EHeistCrewStatus::Assembling:
+		return NSLOCTEXT("HeistCrewStatus", "AssemblingIcon", "조");
+	case EHeistCrewStatus::CarryingOriginal:
+		return NSLOCTEXT("HeistCrewStatus", "CarryingOriginalIcon", "원");
+	case EHeistCrewStatus::Heavy:
+		return NSLOCTEXT("HeistCrewStatus", "HeavyIcon", "과");
+	case EHeistCrewStatus::Stunned:
+		return NSLOCTEXT("HeistCrewStatus", "StunnedIcon", "기");
+	case EHeistCrewStatus::Arrested:
+		return NSLOCTEXT("HeistCrewStatus", "ArrestedIcon", "체");
+	case EHeistCrewStatus::Escaped:
+		return NSLOCTEXT("HeistCrewStatus", "EscapedIcon", "탈");
+	case EHeistCrewStatus::Active:
+	default:
+		return NSLOCTEXT("HeistCrewStatus", "ActiveIcon", "활");
+	}
+}
+
+FLinearColor GetPresentationColor(const EHeistCrewStatus Status)
+{
+	switch (Status)
+	{
+	case EHeistCrewStatus::Forging:
+		return FLinearColor(0.90f, 0.38f, 0.08f, 1.0f);
+	case EHeistCrewStatus::Assembling:
+		return FLinearColor(0.54f, 0.25f, 0.78f, 1.0f);
+	case EHeistCrewStatus::CarryingOriginal:
+		return FLinearColor(0.85f, 0.60f, 0.08f, 1.0f);
+	case EHeistCrewStatus::Heavy:
+		return FLinearColor(0.72f, 0.18f, 0.10f, 1.0f);
+	case EHeistCrewStatus::Stunned:
+		return FLinearColor(0.05f, 0.58f, 0.78f, 1.0f);
+	case EHeistCrewStatus::Arrested:
+		return FLinearColor(0.68f, 0.06f, 0.12f, 1.0f);
+	case EHeistCrewStatus::Escaped:
+		return FLinearColor(0.12f, 0.62f, 0.28f, 1.0f);
+	case EHeistCrewStatus::Active:
+	default:
+		return FLinearColor(0.22f, 0.42f, 0.62f, 1.0f);
+	}
+}
 }
 
 namespace HeistTeamReward

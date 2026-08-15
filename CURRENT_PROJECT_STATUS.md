@@ -1,7 +1,7 @@
 # Project_MuseumHeist Current Project Status
 
 최종 갱신: 2026-08-15 KST
-현재 문서 Revision: 12
+현재 문서 Revision: 13
 
 이 문서는 새 Codex 작업이 Notion의 최신 진행 상태와 로컬 구현·검증 증거를 바로 이어받기 위한 오프라인 실행 캐시다.
 
@@ -33,14 +33,14 @@ TASK-W6-011  완료    Shared Loose Loot Content 5+
 W6 Gate      Pass    Contract Run Feature Complete
 
 TASK-W7-001  완료    1P·2P·4P Guard Scaling / TwoRuns / 밸런스 표
-TASK-W7-002  검토중  Remote Nameplate / Crew Status 4P 동기화
+TASK-W7-002  완료    Remote Nameplate / Crew Status 실제 WBP 4P 동기화
 TASK-W7-003  완료    Main HUD Team Status
 TASK-W7-004  진행중  Stun Runtime / Input / HUD 완료, 최종 화면·오디오 잔여
 TASK-W7-005  진행중  Arrest / Rescue Runtime 완료, Cuffed/RESCUE 연출 잔여
 TASK-W7-006  진행중  Carry / Heavy Runtime 완료, Pose/Icon/Audio 잔여
-TASK-W7-007  검토중  Owner-only Floor Plan Map
+TASK-W7-007  완료    Owner-only Floor Plan Map / Marker 정책 / Stun Cleanup
 TASK-W7-008  완료    2P 실제 이동 입력 / Footstep→Guard Investigate 복제
-TASK-W7-009  검토중  Alert 작업 화면 강제 종료 / Main HUD 계약
+TASK-W7-009  완료    Alert 0~4 HUD·음악 / Alarmed 서버 강제 종료
 TASK-W7-010  진행중  자동 E2E 완료 / 실제 2~3분 리듬 테스트 잔여
 TASK-W7-011  완료    Surface/Map/Optional Variation
 ```
@@ -53,13 +53,16 @@ TEST-W6-009  Pass  TASK-W6-011 / Loose Loot Definition + 2P Lifecycle
 TEST-W6-010  Pass  TASK-W6-000·010 / Contract Foundation + Solo·4P Two-Run Gate
 TEST-W7-001  Pass  W7 Team Readability / Map / Alert / Movement / Variation 통합 회귀
 TEST-W7-002  Pass  Player Count Guard Scaling + 2P Footstep Guard Investigation
+TEST-W7-003  Pass  Remote Nameplate / Team Status 실제 WBP 4P 동기화
+TEST-W7-004  Pass  Owner-only Floor Plan Map / 입력·정보정책·강제 Cleanup
+TEST-W7-005  Pass  Alert 0~4 HUD / 음악 / Alarmed 서버 강제 종료
 ```
 
 ---
 
 ## 1. Current Focus
 
-W7는 팀 가독성과 협동 피드백의 C++/복제/Input 기반을 구현하고 전체 자동화 회귀를 통과했다. 자동화와 멀티플레이 증거로 완료 기준을 닫은 `TASK-W7-001`, `TASK-W7-003`, `TASK-W7-008`, `TASK-W7-011`은 완료 처리했고, 실제 화면·오디오·플레이 리듬 확인이 필요한 항목은 `진행중` 또는 `검토중`으로 유지했다.
+W7는 팀 가독성과 협동 피드백의 C++/복제/Input 기반을 구현하고 전체 자동화 회귀를 통과했다. 추가 렌더·오디오 활성 4P 검증으로 `TASK-W7-002`, `TASK-W7-007`, `TASK-W7-009`까지 완료 처리했다. Stun/Arrest/Carry 최종 연출과 실제 2~3분 플레이 리듬은 개별 Task에 남아 있다.
 
 ```text
 Editor Build        PASS / Win64 Development / Adaptive Non-Unity
@@ -68,13 +71,13 @@ Solo ContractRun    PASS / 2 consecutive runs / clean Lobby reset
 2P ContractRun      PASS / 2 consecutive runs / clean Lobby reset
 4P ContractRun      PASS / 2 consecutive runs / clean Lobby reset
 W7 Variation        PASS / real M01·M02·M03 12 rows / deterministic 24 draws
-Notion Test Log     TEST-W7-002 / Pass / live re-fetch confirmed
+W7 Presentation     TEST-W7-003·004·005 / Pass / live re-fetch confirmed
 ```
 
 범위 경계:
 
 - NullRHI 자동화는 상태·복제·입력·Widget 생성 계약을 검증하지만 렌더링 화면과 실제 청음을 대신하지 않는다.
-- Stun/Arrest/Carry 최종 Presentation Asset, Nameplate/Map 화면 가독성, Alert 음악, 실제 2~3분 Escape 리듬은 후속 검토 대상이다.
+- Stun/Arrest/Carry 최종 Presentation Asset과 실제 2~3분 Escape 리듬은 후속 검토 대상이다.
 - W7 Gate는 아직 닫지 않는다. Notion의 `진행중`/`검토중` Task를 완료 기준별로 마감한 뒤 판단한다.
 
 ---
@@ -214,7 +217,7 @@ Warning은 Title/Lobby RecastNavMesh 부재 및 테스트 Guard Noise의 Outside
 2. Notion 작업보드의 `진행중`/`검토중` Task와 사용자가 지정한 Task를 라이브 조회한다.
 3. `LOCAL_PROGRESS_INBOX.md`의 `UNLINKED`/`READY_TO_SYNC` Entry를 확인한다.
 4. `git status --short`와 관련 Diff를 확인한다.
-5. `TEST-W7-002`와 아래 W7 Remaining Evidence를 확인하고 이미 통과한 기반을 재구현하지 않는다.
+5. `TEST-W7-003`~`TEST-W7-005`와 아래 W7 Remaining Evidence를 확인하고 이미 통과한 기반을 재구현하지 않는다.
 6. W7 Presentation 검토는 렌더링 Editor에서 화면·청음 증거를 수집하고 Task별 완료 기준만 닫는다.
 
 ---
@@ -228,7 +231,7 @@ Warning은 Title/Lobby RecastNavMesh 부재 및 테스트 Guard Noise의 Outside
 - 서버 Walk 300 / Sprint 600, Weight 감속, Pace 기반 Footstep 500 / 1000
 - Guard 접촉 Stun → 지연 Arrest → Teammate Rescue와 Owner Input/UI 복원
 - `IA_Map`, `IMC_Map`, Owner-only `UHeistFloorPlanMapWidget` 및 Gameplay Input 복원
-- Surface/Object 작업 중 Alarmed 진입 시 Widget 강제 종료, Session 해제, Gameplay Input 복원과 정상 재진입
+- Surface/Object 작업 중 Alarmed 진입 시 서버 Session 선취소, Widget/Input 정리, 위험 단계 재진입 거부와 Quiet 복귀 후 정상 재진입
 - Random Map Shuffle Bag, Surface Template 최근 3개 보호, 고정 Seed 결정성, Optional Exhibit 조합 변화
 
 ### Verification
@@ -240,17 +243,21 @@ Contract      Saved/Automation/W7-ContractRuns-PerceptionFix-Final/index.json
 W7 Targeted   Saved/Automation/W7-Targeted-CooldownFix-Final/index.json
 Full Log      Saved/Logs/W7-FullRegression-CooldownFix-Final.log
 Full Report   Saved/Automation/W7-FullRegression-CooldownFix-Final/index.json
+Nameplate     Saved/Automation/W7-002-Nameplate-PostContract-Final/index.json
+Floor Plan    Saved/Automation/W7-007-FloorPlan-PostPolicy-Final/index.json
+Alert 4P      Saved/Automation/W7-009-AlertPresentation-NoDC-Final/index.json
+Asset Import  Saved/Logs/W7-Presentation-AssetReimport-NoDC-Final.log
+4P TwoRuns    Saved/Automation/W7-002-007-4P-Integration-PostFix-Final/index.json
+W7 Full       Saved/Automation/W7-Presentation-FullRegression-Final/index.json
+Documents     Museum_Heist_GDD.docx / Museum_Heist_TDD.docx Rev 13 / changed-page Word render PASS
 Balance       Docs/W7_PLAYER_COUNT_BALANCE.md
-Result        23/23 Success / Failed 0 / NotRun 0
-Notion        TEST-W7-002 Pass / TASK-W7-001·008 완료 / live re-fetch confirmed
+Result        W7 Full 10/10 + 4P TwoRuns / Failed 0 / NotRun 0
+Notion        TEST-W7-003·004·005 Pass / TASK-W7-002·007·009 완료 / live re-fetch confirmed
 ```
 
 ### Remaining Evidence
 
-- W7-002: 최종 아이콘과 렌더링 화면에서 Nameplate 거리 Fade/색상 가독성
 - W7-004~006: Vignette/Low-pass, Cuffed/RESCUE, Carry Pose/Icon/Audio Asset
-- W7-007: Floor Plan 최종 렌더링 화면
-- W7-009: Main HUD 색/Countdown과 실제 음악 레이어 청음
 - W7-010: 실제 2~3분 단위 탐욕/탈출 리듬 테스트 시트
 
 ---

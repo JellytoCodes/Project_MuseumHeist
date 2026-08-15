@@ -110,6 +110,12 @@ bool AHeistHUD::ShowFloorPlanMap()
 	{
 		return false;
 	}
+	AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(GetOwningPlayerController());
+	if (!FloorPlanMapWidget->SetupMap(GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr, HeistPlayerController, true))
+	{
+		FloorPlanMapWidget->SetVisibility(ESlateVisibility::Collapsed);
+		return false;
+	}
 	FloorPlanMapWidget->SetVisibility(ESlateVisibility::Visible);
 	FloorPlanMapWidget->RefreshMapPresentation();
 	return true;
@@ -145,7 +151,7 @@ void AHeistHUD::InitializeFloorPlanMapPresentation()
 		FloorPlanMapWidget->AddToViewport(50);
 		FloorPlanMapWidget->SetVisibility(ESlateVisibility::Collapsed);
 	}
-	FloorPlanMapWidget->SetupMap(GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr, HeistPlayerController);
+	FloorPlanMapWidget->SetupMap(GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr, HeistPlayerController, false);
 }
 
 #pragma endregion

@@ -65,7 +65,8 @@ void UHeistForgeryViewModel::RefreshPresentationState()
 	const float NewBrushSize = bTemplatePrepared ? ForgeryComponent->GetTemplateBrushSize() : 0.0f;
 
 	const EHeistAlertLevel NewAlertLevel = IsValid(GameState) ? GameState->GetAlertLevel() : EHeistAlertLevel::Quiet;
-	const bool bShowDangerWarning = bShowDrawing && NewAlertLevel != EHeistAlertLevel::Quiet;
+	const bool bShowDangerWarning = bShowDrawing &&
+		(NewAlertLevel == EHeistAlertLevel::Alarmed || NewAlertLevel == EHeistAlertLevel::Lockdown);
 	FText NewDangerWarningText;
 	FLinearColor NewDangerWarningColor = FLinearColor::White;
 	if (bShowDangerWarning)

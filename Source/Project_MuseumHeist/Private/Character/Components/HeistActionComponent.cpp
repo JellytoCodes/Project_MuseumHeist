@@ -265,9 +265,11 @@ bool UHeistActionComponent::TryBeginObservationRequest(AHeistPaintingDisplayCase
 	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter) ? HeistCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
 	UHeistForgeryComponent* ForgeryComponent = IsValid(HeistCharacter) ? HeistCharacter->GetForgeryComponent() : nullptr;
 	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	const bool bAlertDanger = IsValid(HeistGameState) &&
+		(HeistGameState->GetAlertLevel() == EHeistAlertLevel::Alarmed || HeistGameState->GetAlertLevel() == EHeistAlertLevel::Lockdown);
 	if (!IsValid(HeistCharacter) || !HeistCharacter->HasAuthority() || !IsValid(HeistPlayerState) || !IsValid(TargetDisplayCase) || !IsValid(ForgeryComponent) || IsGameplayCastActive() ||
 		TargetDisplayCase->GetDisplayCaseState() != EHeistDisplayCaseState::Secured || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame ||
-		HeistGameState->AreWorldInteractionsRestricted())
+		HeistGameState->AreWorldInteractionsRestricted() || bAlertDanger)
 	{
 		return false;
 	}
@@ -295,11 +297,13 @@ bool UHeistActionComponent::TryBeginObservationRequest(AHeistObjectDisplayCaseAc
 	UHeistObjectAssemblyComponent* ObjectAssemblyComponent = IsValid(HeistCharacter) ? HeistCharacter->GetObjectAssemblyComponent() : nullptr;
 	UHeistInventoryComponent* InventoryComponent = IsValid(HeistCharacter) ? HeistCharacter->GetInventoryComponent() : nullptr;
 	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	const bool bAlertDanger = IsValid(HeistGameState) &&
+		(HeistGameState->GetAlertLevel() == EHeistAlertLevel::Alarmed || HeistGameState->GetAlertLevel() == EHeistAlertLevel::Lockdown);
 	if (!IsValid(HeistCharacter) || !HeistCharacter->HasAuthority() || !IsValid(HeistPlayerState) || !IsValid(TargetDisplayCase) || !IsValid(ObjectAssemblyComponent) ||
 		IsGameplayCastActive() || TargetDisplayCase->GetAssemblyState() != EHeistObjectAssemblyState::Secured || TargetDisplayCase->IsSessionLocked() ||
 		ObjectAssemblyComponent->IsSessionActive() || ObjectAssemblyComponent->HasPendingReplicaReview() ||
 		(IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive()) || (IsValid(InventoryComponent) && InventoryComponent->IsInventoryOpen()) ||
-		!IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame || HeistGameState->AreWorldInteractionsRestricted())
+		!IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame || HeistGameState->AreWorldInteractionsRestricted() || bAlertDanger)
 	{
 		return false;
 	}

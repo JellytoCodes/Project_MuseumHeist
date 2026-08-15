@@ -132,6 +132,7 @@ void AHeistPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	}
 	if (IsLocalController())
 	{
+		CloseFloorPlanMapForStateTransition();
 		ResetIgnoreMoveInput();
 		ResetIgnoreLookInput();
 		if (APawn* ControlledPawn = GetPawn())
@@ -167,6 +168,7 @@ void AHeistPlayerController::PostSeamlessTravel()
 		return;
 	}
 
+	CloseFloorPlanMapForStateTransition();
 	ResetIgnoreMoveInput();
 	ResetIgnoreLookInput();
 	if (UHeistGameInstance* HeistGameInstance = Cast<UHeistGameInstance>(GetGameInstance()))
@@ -381,8 +383,12 @@ void AHeistPlayerController::RefreshMatchPhasePresentationBinding()
 	}
 }
 
-void AHeistPlayerController::HandleMatchPhasePresentationChanged(const EHeistMatchPhase, const EHeistMatchPhase)
+void AHeistPlayerController::HandleMatchPhasePresentationChanged(const EHeistMatchPhase, const EHeistMatchPhase NewMatchPhase)
 {
+	if (NewMatchPhase != EHeistMatchPhase::InGame)
+	{
+		CloseFloorPlanMapForStateTransition();
+	}
 	RefreshLocalPlayerTerminalState();
 	RefreshLocalHUDPresentation();
 }
@@ -471,6 +477,22 @@ void AHeistPlayerController::RequestSetSprintRequested(const bool bRequested)
 void AHeistPlayerController::HandleMapToggle()
 {
 	ToggleFloorPlanMap();
+}
+
+void AHeistPlayerController::CloseFloorPlanMapForStateTransition()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+	if (AHeistHUD* HeistHUD = GetHUD<AHeistHUD>())
+	{
+		HeistHUD->HideFloorPlanMap();
+	}
+	if (LocalInputMode == EHeistInputMode::Map)
+	{
+		ApplyLocalInputMode(EHeistInputMode::Gameplay);
+	}
 }
 
 bool AHeistPlayerController::ToggleFloorPlanMap()
@@ -912,6 +934,10 @@ void AHeistPlayerController::HandlePlayerTerminalStateChanged(const bool bEscape
 		return;
 	}
 
+	if (bEscaped || bArrested)
+	{
+		CloseFloorPlanMapForStateTransition();
+	}
 	RefreshLocalPlayerTerminalState();
 	UHeistDebugFunctionLibrary::Message(
 		this, FString::Printf(TEXT("Local player terminal state applied: Escaped=%s Arrested=%s AwaitingCrew=%s SpectateTarget=%s InputMode=%s Cursor=%s IgnoreMove=%s IgnoreLook=%s"),
@@ -931,11 +957,7 @@ void AHeistPlayerController::HandlePlayerStunStateChanged(const bool bStunned)
 	}
 	if (bStunned)
 	{
-		if (AHeistHUD* HeistHUD = GetHUD<AHeistHUD>())
-		{
-			HeistHUD->HideFloorPlanMap();
-		}
-		ApplyLocalInputMode(EHeistInputMode::Gameplay);
+		CloseFloorPlanMapForStateTransition();
 		SetIgnoreMoveInput(true);
 		SetIgnoreLookInput(true);
 	}

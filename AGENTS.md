@@ -1,8 +1,8 @@
 # Project_MuseumHeist — Codex Instructions
 
-## Rev 12: Replica Acceptance And Shared Forgery UI Contract
+## Rev 13: W7 Nameplate, Floor Plan And Alert Authority Contract
 
-기준일: 2026-08-09 (Quality 70 승인 Gate / Timeout Investigation / 공통 UI 반영)
+기준일: 2026-08-15 (Remote Nameplate / Owner-only Floor Plan / Alert 0~4 및 Alarmed 서버 Gate 반영)
 엔진: Unreal Engine 5.8
 현재 목표: 2026-09-20 Final RC / 프로젝트 마무리
 
@@ -860,7 +860,9 @@ Penalty 또는 Diagnostic Field가 Final Score에 직접 적용되지 않는 경
 - 플레이어 표시는 `SECURITY LEVEL 0/4~4/4`와 4칸 별 Indicator를 사용한다.
 - Guard의 확정 발각은 서버에서 최소 Suspicious를 요청한다. Forgery Quality와 Guard의 Replica 검사는 Alert를 변경하지 않는다.
 - Owner-only Surface Forgery/Object Assembly 화면에는 Security Level Indicator, Alert Warning 또는 Lockdown Countdown을 중복 표시하지 않는다.
-- 두 작업 화면이 표시 중 Alert가 Quiet을 벗어나면 해당 Widget은 서버 Cancel Request를 한 번만 보내고, 복제된 Session 종료에 따라 화면을 닫아 Gameplay Input을 복원한다.
+- Suspicious/Searching에서는 진행 중인 Surface Forgery/Object Assembly Session을 유지한다.
+- Alarmed/Lockdown 진입 시 `AHeistGameMode`가 활성 Surface/Object Session을 `AlertDanger`로 서버에서 먼저 취소하고, 해당 Widget은 별도 Cancel RPC 없이 즉시 화면을 닫아 Gameplay Input을 복원한다.
+- Alarmed/Lockdown 상태에서는 Observation과 신규 Surface/Object Session 시작을 서버가 거부하며 Display Case Lock을 남기지 않는다.
 - Alarmed의 Lockdown Countdown은 복제된 `AlertNextTransitionServerTime`과 Server World Time의 차이로 표시한다.
 - HUD Lockdown Countdown은 독립된 `LockdownCountdownText`에 표시한다.
 - Suspicious/Searching은 Suspense Music Layer, Alarmed/Lockdown은 Alarm Music Layer를 사용한다.

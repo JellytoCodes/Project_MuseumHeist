@@ -358,6 +358,35 @@ bool IsCrewStatusReplicated(const int32 PlayerId, const EHeistCrewStatus Expecte
 		{
 			return false;
 		}
+
+		const AHeistPlayerController* LocalController = GetContractRunLocalHeistPlayerController(World);
+		const AHeistHUD* HUD = IsValid(LocalController) ? LocalController->GetHUD<AHeistHUD>() : nullptr;
+		const UHeistHUDViewModel* HUDViewModel = IsValid(HUD) ? HUD->GetHUDViewModel() : nullptr;
+		const FHeistCrewStatusEntry* CrewEntry = IsValid(HUDViewModel)
+			? HUDViewModel->GetCrewStatusEntries().FindByPredicate([PlayerId](const FHeistCrewStatusEntry& Entry) { return Entry.PlayerId == PlayerId; })
+			: nullptr;
+		if (!CrewEntry || CrewEntry->Status != ExpectedStatus || !CrewEntry->PlayerColor.Equals(PlayerState->PlayerColor) ||
+			CrewEntry->PlayerName.ToString() != PlayerState->GetHeistDisplayName().ToString())
+		{
+			return false;
+		}
+
+		const AHeistPlayerState* LocalPlayerState = IsValid(LocalController) ? LocalController->GetPlayerState<AHeistPlayerState>() : nullptr;
+		if (IsValid(LocalPlayerState) && LocalPlayerState->HeistPlayerId != PlayerId)
+		{
+			const AHeistPlayerCharacter* Character = FindHeistCharacterById(World, PlayerId);
+			TInlineComponentArray<UWidgetComponent*> WidgetComponents(Character);
+			const bool bRemoteNameplateReady = WidgetComponents.ContainsByPredicate([PlayerState](const UWidgetComponent* Component)
+			{
+				const UHeistNameplateWidget* Widget = IsValid(Component) ? Cast<UHeistNameplateWidget>(Component->GetUserWidgetObject()) : nullptr;
+				return IsValid(Widget) && Widget->GetPresentedPlayerState() == PlayerState && Widget->IsPresentationContractSatisfied() &&
+					Widget->GetClass()->GetPathName().Contains(TEXT("/Game/Blueprints/UI/HUD/WBP_HeistNameplate."));
+			});
+			if (!bRemoteNameplateReady)
+			{
+				return false;
+			}
+		}
 	}
 	return true;
 }
@@ -394,7 +423,9 @@ bool IsWeek7ReadabilityPresentationReady(const int32 PlayerCount)
 					break;
 				}
 			}
-			if (!IsValid(PlayerState) || !IsValid(NameplateComponent) || !IsValid(NameplateWidget) || NameplateWidget->GetPresentedPlayerState() != PlayerState)
+			if (!IsValid(PlayerState) || !IsValid(NameplateComponent) || !IsValid(NameplateWidget) || NameplateWidget->GetPresentedPlayerState() != PlayerState ||
+				!NameplateWidget->IsPresentationContractSatisfied() ||
+				!NameplateWidget->GetClass()->GetPathName().Contains(TEXT("/Game/Blueprints/UI/HUD/WBP_HeistNameplate.")))
 			{
 				return false;
 			}
@@ -483,6 +514,22 @@ bool AreWeek7MapContractsReady(const bool bShouldBeOpen)
 	return true;
 }
 
+bool ToggleWeek7MapForPlayer(const int32 PlayerId, const bool bShouldOpen)
+{
+	AHeistPlayerController* PlayerController = GetOwningPlayerControllerById(PlayerId);
+	AHeistHUD* HUD = IsValid(PlayerController) ? PlayerController->GetHUD<AHeistHUD>() : nullptr;
+	return IsValid(PlayerController) && IsValid(HUD) && HUD->IsFloorPlanMapVisible() != bShouldOpen && PlayerController->ToggleFloorPlanMap();
+}
+
+bool IsWeek7MapContractReadyForPlayer(const int32 PlayerId, const bool bShouldBeOpen)
+{
+	const AHeistPlayerController* PlayerController = GetOwningPlayerControllerById(PlayerId);
+	const AHeistHUD* HUD = IsValid(PlayerController) ? PlayerController->GetHUD<AHeistHUD>() : nullptr;
+	const EHeistInputMode ExpectedMode = bShouldBeOpen ? EHeistInputMode::Map : EHeistInputMode::Gameplay;
+	return IsValid(PlayerController) && IsValid(HUD) && HUD->IsFloorPlanMapVisible() == bShouldBeOpen && PlayerController->GetLocalInputMode() == ExpectedMode &&
+		PlayerController->GetActiveHeistInputMappingContextCount() == 1 && (!bShouldBeOpen || PlayerController->IsLocalInputModeContractSatisfied());
+}
+
 bool RequestWeek7Sprint(const bool bRequested)
 {
 	for (int32 PlayerId = 1; PlayerId <= GetContractRunPIEWorlds().Num(); ++PlayerId)
@@ -563,7 +610,10 @@ bool IsWeek7StunPresentationReady(const int32 TargetPlayerId)
 		return false;
 	}
 	AHeistPlayerController* OwningController = GetOwningPlayerControllerById(TargetPlayerId);
-	return IsValid(OwningController) && OwningController->IsMoveInputIgnored() && OwningController->IsLookInputIgnored();
+	const AHeistHUD* HUD = IsValid(OwningController) ? OwningController->GetHUD<AHeistHUD>() : nullptr;
+	return IsValid(OwningController) && IsValid(HUD) && !HUD->IsFloorPlanMapVisible() && OwningController->GetLocalInputMode() == EHeistInputMode::Gameplay &&
+		OwningController->GetActiveHeistInputMappingContextCount() == 1 && !OwningController->bShowMouseCursor && OwningController->IsMoveInputIgnored() &&
+		OwningController->IsLookInputIgnored();
 }
 
 bool IsWeek7ArrestReplicated(const int32 TargetPlayerId)
@@ -1173,7 +1223,8 @@ bool IsGameplayResetClean(const int32 PlayerCount)
 		const AHeistPlayerController* PlayerController = GetContractRunLocalHeistPlayerController(World);
 		const AHeistHUD* HUD = IsValid(PlayerController) ? PlayerController->GetHUD<AHeistHUD>() : nullptr;
 		const UHeistResultWidget* ResultWidget = IsValid(HUD) ? HUD->GetResultWidget() : nullptr;
-		if (!IsValid(ReplicatedGameState) || !IsValid(PlayerController) || !IsValid(PlayerController->GetPawn()) || PlayerController->GetLocalInputMode() != EHeistInputMode::Gameplay ||
+		if (!IsValid(ReplicatedGameState) || !IsValid(PlayerController) || !IsValid(PlayerController->GetPawn()) || !IsValid(HUD) || HUD->IsFloorPlanMapVisible() ||
+			PlayerController->GetLocalInputMode() != EHeistInputMode::Gameplay ||
 			PlayerController->GetActiveHeistInputMappingContextCount() != 1 || !PlayerController->IsLocalInputModeContractSatisfied() || PlayerController->bShowMouseCursor ||
 			PlayerController->IsMoveInputIgnored() || PlayerController->IsLookInputIgnored() ||
 			(IsValid(ResultWidget) && (ResultWidget->GetVisibility() != ESlateVisibility::Collapsed || !ResultWidget->IsHiddenPresentationStateReset())))
@@ -1383,6 +1434,14 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 	{
 		return IsWeek7SprintReplicated(State->PlayerCount, false);
 	}, 10.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d open Floor Plan before player 2 Stun transition"), RunIndex), [State]()
+	{
+		return State->PlayerCount == 1 || ToggleWeek7MapForPlayer(2, true);
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d player 2 Map ready before Stun transition"), RunIndex), [State]()
+	{
+		return State->PlayerCount == 1 || IsWeek7MapContractReadyForPlayer(2, true);
+	}, 10.0));
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d Guard contact applies Stun before Arrest"), RunIndex), [State]()
 	{
 		return State->PlayerCount == 1 || BeginWeek7GuardStun(2);
@@ -1485,8 +1544,9 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 		{
 			return true;
 		}
-		AHeistGameState* GameState = GetContractRunServerWorld()->GetGameState<AHeistGameState>();
-		return IsValid(GameState) && GameState->SetAlertSnapshot(EHeistAlertLevel::Alarmed, 0.0f, FName(TEXT("W7SurfaceDangerClose")));
+		AHeistGameMode* GameMode = GetContractRunServerWorld()->GetAuthGameMode<AHeistGameMode>();
+		bool bLevelChanged = false;
+		return IsValid(GameMode) && GameMode->RequestAlertEscalation(EHeistAlertLevel::Alarmed, FName(TEXT("W7SurfaceDangerClose")), &bLevelChanged) && bLevelChanged;
 	}));
 	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d W7 Surface danger close and Gameplay input restore"), RunIndex), [State, RunIndex]()
 	{
@@ -1591,8 +1651,9 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 			{
 				return true;
 			}
-			AHeistGameState* GameState = GetContractRunServerWorld()->GetGameState<AHeistGameState>();
-			return IsValid(GameState) && GameState->SetAlertSnapshot(EHeistAlertLevel::Alarmed, 0.0f, FName(TEXT("W7AssemblyDangerClose")));
+			AHeistGameMode* GameMode = GetContractRunServerWorld()->GetAuthGameMode<AHeistGameMode>();
+			bool bLevelChanged = false;
+			return IsValid(GameMode) && GameMode->RequestAlertEscalation(EHeistAlertLevel::Alarmed, FName(TEXT("W7AssemblyDangerClose")), &bLevelChanged) && bLevelChanged;
 		}));
 		Test->AddCommand(new FHeistContractRunWaitCommand(Test, State,
 			FString::Printf(TEXT("run %d W7 player %d Assembly danger close and Gameplay input restore"), RunIndex, PlayerId), [State, RunIndex, PlayerId, AssemblyIndex]()

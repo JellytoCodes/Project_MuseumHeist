@@ -18,6 +18,7 @@
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundBase.h"
+#include "Sound/SoundWave.h"
 #include "UI/Pool/HeistPopupWidgetPool.h"
 #include "UI/ViewModels/HeistHUDViewModel.h"
 #include "UI/ViewModels/HeistInventoryViewModel.h"
@@ -163,12 +164,22 @@ void UHeistHUDWidget::RefreshCrewStatusPresentation()
 		}
 		UHorizontalBox* Row = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
 		UTextBlock* NameText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
+		UBorder* StatusBadge = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass());
+		UTextBlock* StatusIconText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
 		UTextBlock* StatusValueText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
 		NameText->SetText(Entry.PlayerName);
 		NameText->SetColorAndOpacity(FSlateColor(Entry.PlayerColor));
 		NameText->SetJustification(ETextJustify::Left);
 		NameText->SetFont(MakeHUDTenadaFont(16));
+		StatusBadge->SetBrushColor(HeistCrewStatus::GetPresentationColor(Entry.Status));
+		StatusBadge->SetPadding(FMargin(5.0f, 1.0f));
+		StatusIconText->SetText(HeistCrewStatus::ToIconGlyph(Entry.Status));
+		StatusIconText->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+		StatusIconText->SetJustification(ETextJustify::Center);
+		StatusIconText->SetFont(MakeHUDTenadaFont(14));
+		StatusBadge->SetContent(StatusIconText);
 		StatusValueText->SetText(HeistCrewStatus::ToDisplayText(Entry.Status));
+		StatusValueText->SetColorAndOpacity(FSlateColor(HeistCrewStatus::GetPresentationColor(Entry.Status)));
 		StatusValueText->SetJustification(ETextJustify::Right);
 		StatusValueText->SetFont(MakeHUDTenadaFont(16));
 
@@ -176,6 +187,12 @@ void UHeistHUDWidget::RefreshCrewStatusPresentation()
 		{
 			NameSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 			NameSlot->SetVerticalAlignment(VAlign_Center);
+		}
+		if (UHorizontalBoxSlot* BadgeSlot = Row->AddChildToHorizontalBox(StatusBadge))
+		{
+			BadgeSlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
+			BadgeSlot->SetVerticalAlignment(VAlign_Center);
+			BadgeSlot->SetPadding(FMargin(0.0f, 0.0f, 6.0f, 0.0f));
 		}
 		if (UHorizontalBoxSlot* StatusSlot = Row->AddChildToHorizontalBox(StatusValueText))
 		{
@@ -751,6 +768,28 @@ bool UHeistHUDWidget::IsAlertPresentationContractSatisfied() const
 	const bool bSecurityLevelMatches = AlertText->GetText().ToString().Contains(SecurityLevelFraction);
 	return bSecurityLevelMatches && bCountdownVisibilityMatches && bCountdownTextValid && bAudioModeMatches && bSuspensePlaybackMatches && bAlarmPlaybackMatches && bAlertAudioInitialized &&
 		   LastAppliedAudioAlertLevel == HUDViewModel->GetAlertLevel();
+}
+
+bool UHeistHUDWidget::AreAlertAudioAssetsAssignedForDebug() const
+{
+	return IsValid(SuspenseMusic) && IsValid(AlarmMusic);
+}
+
+bool UHeistHUDWidget::AreAlertAudioAssetsLoopingForDebug() const
+{
+	const USoundWave* SuspenseWave = Cast<USoundWave>(SuspenseMusic);
+	const USoundWave* AlarmWave = Cast<USoundWave>(AlarmMusic);
+	return IsValid(SuspenseWave) && SuspenseWave->bLooping && IsValid(AlarmWave) && AlarmWave->bLooping;
+}
+
+bool UHeistHUDWidget::IsSuspenseMusicPlayingForDebug() const
+{
+	return IsValid(SuspenseMusicComponent) && SuspenseMusicComponent->IsPlaying();
+}
+
+bool UHeistHUDWidget::IsAlarmMusicPlayingForDebug() const
+{
+	return IsValid(AlarmMusicComponent) && AlarmMusicComponent->IsPlaying();
 }
 
 void UHeistHUDWidget::DebugDumpAlertPresentationState() const

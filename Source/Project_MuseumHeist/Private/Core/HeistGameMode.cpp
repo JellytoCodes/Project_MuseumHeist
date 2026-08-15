@@ -1204,6 +1204,36 @@ bool AHeistGameMode::ApplyAlertLevel(const EHeistAlertLevel NewAlertLevel, const
 		return false;
 	}
 
+	if (NewAlertLevel == EHeistAlertLevel::Alarmed || NewAlertLevel == EHeistAlertLevel::Lockdown)
+	{
+		const FName CleanupReason(TEXT("AlertDanger"));
+		int32 CancelledSurfaceSessions = 0;
+		int32 CancelledObjectSessions = 0;
+		for (TActorIterator<AHeistPlayerCharacter> PlayerIterator(GetWorld()); PlayerIterator; ++PlayerIterator)
+		{
+			AHeistPlayerCharacter* PlayerCharacter = *PlayerIterator;
+			if (!IsValid(PlayerCharacter))
+			{
+				continue;
+			}
+
+			if (UHeistForgeryComponent* ForgeryComponent = PlayerCharacter->GetForgeryComponent();
+				IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive() && ForgeryComponent->CancelForgerySession(CleanupReason))
+			{
+				++CancelledSurfaceSessions;
+			}
+			if (UHeistObjectAssemblyComponent* AssemblyComponent = PlayerCharacter->GetObjectAssemblyComponent();
+				IsValid(AssemblyComponent) && AssemblyComponent->IsSessionActive() && AssemblyComponent->CancelAssemblySession(CleanupReason))
+			{
+				++CancelledObjectSessions;
+			}
+		}
+
+		UE_LOG(LogHeistNetwork, Log,
+			TEXT("Alert danger sessions cancelled: Level=%s Trigger=%s Surface=%d Object=%d Reason=%s Authority=true Result=PASS"),
+			*UEnum::GetValueAsString(NewAlertLevel), *TriggerId.ToString(), CancelledSurfaceSessions, CancelledObjectSessions, *CleanupReason.ToString());
+	}
+
 	ScheduledAlertSourceLevel = NewAlertLevel;
 	ScheduledAlertRevision = HeistGameState->GetAlertRevision();
 	if (!bHasNextTransition)

@@ -53,6 +53,8 @@ namespace HeistCrewStatus
 {
 	PROJECT_MUSEUMHEIST_API FText ToDisplayText(EHeistCrewStatus Status);
 	PROJECT_MUSEUMHEIST_API FText ToCompactText(EHeistCrewStatus Status);
+	PROJECT_MUSEUMHEIST_API FText ToIconGlyph(EHeistCrewStatus Status);
+	PROJECT_MUSEUMHEIST_API FLinearColor GetPresentationColor(EHeistCrewStatus Status);
 }
 
 #pragma endregion

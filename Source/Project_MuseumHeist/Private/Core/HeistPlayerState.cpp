@@ -452,6 +452,12 @@ void AHeistPlayerState::OnRep_Arrested()
 
 #pragma region Replication
 
+void AHeistPlayerState::OnRep_PlayerName()
+{
+	Super::OnRep_PlayerName();
+	PlayerIdentityChangedDelegate.Broadcast(HeistPlayerId);
+}
+
 void AHeistPlayerState::CopyProperties(APlayerState* PlayerState)
 {
 	Super::CopyProperties(PlayerState);

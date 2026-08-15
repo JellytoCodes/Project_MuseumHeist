@@ -7,6 +7,7 @@
 #include "HeistNameplateWidget.generated.h"
 
 class AHeistPlayerState;
+class UBorder;
 class UTextBlock;
 class UWidget;
 class SWidget;
@@ -19,6 +20,9 @@ class PROJECT_MUSEUMHEIST_API UHeistNameplateWidget : public UHeistUserWidgetBas
   public:
 	void SetupPlayerState(AHeistPlayerState* InPlayerState);
 	AHeistPlayerState* GetPresentedPlayerState() const { return PlayerState; }
+	bool IsPresentationContractSatisfied() const;
+	float CalculateDistanceOpacity(float Distance) const;
+	static bool ShouldDisplayForLocalControl(bool bLocallyControlled);
 
   protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
@@ -41,6 +45,12 @@ class PROJECT_MUSEUMHEIST_API UHeistNameplateWidget : public UHeistUserWidgetBas
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UWidget> OriginalCarrierIndicator;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UBorder> CrewStatusBadge;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> CrewStatusIconText;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Heist|Nameplate", meta = (ClampMin = "0.0", Units = "cm"))
 	float MaximumVisibleDistance = 2500.0f;

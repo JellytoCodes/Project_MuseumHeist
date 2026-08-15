@@ -85,6 +85,7 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	void RefreshLocalObjectAssemblyInputBinding();
 	void UnbindLocalObjectAssemblyInputState();
 	void HandleObjectAssemblySessionStateChanged();
+	void CloseFloorPlanMapForStateTransition();
 	void RefreshLocalInputModeFromPawn();
 	void ApplyLocalInputMode(EHeistInputMode NewInputMode);
 

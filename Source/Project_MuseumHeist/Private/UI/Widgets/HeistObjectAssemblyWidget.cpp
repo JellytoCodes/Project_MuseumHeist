@@ -348,15 +348,11 @@ bool UHeistObjectAssemblyWidget::TryForceCloseForAlert()
 	bAlertExitRequested = true;
 	DraggedPartId = NAME_None;
 	SetVisibility(ESlateVisibility::Collapsed);
-	if (IsValid(ObjectAssemblyViewModel))
-	{
-		ObjectAssemblyViewModel->RequestCancelAssembly();
-	}
 	if (IsValid(PlayerController))
 	{
 		PlayerController->RestoreGameplayInputAfterForcedForgeryClose();
 	}
-	UE_LOG(LogHeistUI, Log, TEXT("[%s] Object assembly screen force-closed: AlertLevel=%s CancelRequested=true"), *GetName(),
+	UE_LOG(LogHeistUI, Log, TEXT("[%s] Object assembly screen force-closed: AlertLevel=%s ServerCleanupExpected=true"), *GetName(),
 		*UEnum::GetValueAsString(ObjectAssemblyViewModel->GetAlertLevel()));
 	return true;
 }
