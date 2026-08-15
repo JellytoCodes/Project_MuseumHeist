@@ -26,6 +26,7 @@ class PROJECT_MUSEUMHEIST_API UHeistPatrolPathComponent : public UActorComponent
 	bool ShouldLookAroundAtWaypoints() const;
 	float GetLookAroundYawAngle() const;
 	float GetLookAroundTurnRate() const;
+	void CopyAuthoredConfigurationFrom(const UHeistPatrolPathComponent& Source);
 
   private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Guard Patrol Route", meta = (AllowPrivateAccess = "true"))

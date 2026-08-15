@@ -32,14 +32,14 @@ TASK-W6-010  완료    W6 End-to-End Mission Gate
 TASK-W6-011  완료    Shared Loose Loot Content 5+
 W6 Gate      Pass    Contract Run Feature Complete
 
-TASK-W7-001  진행중  Balance Runtime 소비·1P/4P 회귀 완료 / 2P·수동 튜닝 잔여
+TASK-W7-001  완료    1P·2P·4P Guard Scaling / TwoRuns / 밸런스 표
 TASK-W7-002  검토중  Remote Nameplate / Crew Status 4P 동기화
 TASK-W7-003  완료    Main HUD Team Status
 TASK-W7-004  진행중  Stun Runtime / Input / HUD 완료, 최종 화면·오디오 잔여
 TASK-W7-005  진행중  Arrest / Rescue Runtime 완료, Cuffed/RESCUE 연출 잔여
 TASK-W7-006  진행중  Carry / Heavy Runtime 완료, Pose/Icon/Audio 잔여
 TASK-W7-007  검토중  Owner-only Floor Plan Map
-TASK-W7-008  검토중  Walk/Sprint/Weight/Footstep 계약
+TASK-W7-008  완료    2P 실제 이동 입력 / Footstep→Guard Investigate 복제
 TASK-W7-009  검토중  Alert 작업 화면 강제 종료 / Main HUD 계약
 TASK-W7-010  진행중  자동 E2E 완료 / 실제 2~3분 리듬 테스트 잔여
 TASK-W7-011  완료    Surface/Map/Optional Variation
@@ -52,21 +52,23 @@ TEST-W6-008  Pass  TASK-W6-009 / M01 Exit·Nav·Deposit + M02/M03 W8 Checklist
 TEST-W6-009  Pass  TASK-W6-011 / Loose Loot Definition + 2P Lifecycle
 TEST-W6-010  Pass  TASK-W6-000·010 / Contract Foundation + Solo·4P Two-Run Gate
 TEST-W7-001  Pass  W7 Team Readability / Map / Alert / Movement / Variation 통합 회귀
+TEST-W7-002  Pass  Player Count Guard Scaling + 2P Footstep Guard Investigation
 ```
 
 ---
 
 ## 1. Current Focus
 
-W7는 팀 가독성과 협동 피드백의 C++/복제/Input 기반을 구현하고 전체 자동화 회귀를 통과했다. 자동화로 완료 기준을 닫은 `TASK-W7-003`, `TASK-W7-011`은 완료 처리했고, 실제 화면·오디오·플레이 리듬 확인이 필요한 항목은 `진행중` 또는 `검토중`으로 유지했다.
+W7는 팀 가독성과 협동 피드백의 C++/복제/Input 기반을 구현하고 전체 자동화 회귀를 통과했다. 자동화와 멀티플레이 증거로 완료 기준을 닫은 `TASK-W7-001`, `TASK-W7-003`, `TASK-W7-008`, `TASK-W7-011`은 완료 처리했고, 실제 화면·오디오·플레이 리듬 확인이 필요한 항목은 `진행중` 또는 `검토중`으로 유지했다.
 
 ```text
-Editor Build        PASS / Win64 Development / Unity-safe
-Full Automation     PASS / 21 total / Failed 0 / NotRun 0
+Editor Build        PASS / Win64 Development / Adaptive Non-Unity
+Full Automation     PASS / 23 total / Failed 0 / NotRun 0
 Solo ContractRun    PASS / 2 consecutive runs / clean Lobby reset
+2P ContractRun      PASS / 2 consecutive runs / clean Lobby reset
 4P ContractRun      PASS / 2 consecutive runs / clean Lobby reset
 W7 Variation        PASS / real M01·M02·M03 12 rows / deterministic 24 draws
-Notion Test Log     TEST-W7-001 / Pass
+Notion Test Log     TEST-W7-002 / Pass / live re-fetch confirmed
 ```
 
 범위 경계:
@@ -152,7 +154,7 @@ Jewel Necklace    Value 700   Grid 1x1
 ```text
 Target                 Project_MuseumHeistEditor Win64 Development
 Engine                 Unreal Engine 5.8
-ForceUnity Build       PASS
+Compile Mode           Adaptive Non-Unity / 변경 Translation Unit 개별 컴파일
 Final Errors           0
 ```
 
@@ -212,7 +214,7 @@ Warning은 Title/Lobby RecastNavMesh 부재 및 테스트 Guard Noise의 Outside
 2. Notion 작업보드의 `진행중`/`검토중` Task와 사용자가 지정한 Task를 라이브 조회한다.
 3. `LOCAL_PROGRESS_INBOX.md`의 `UNLINKED`/`READY_TO_SYNC` Entry를 확인한다.
 4. `git status --short`와 관련 Diff를 확인한다.
-5. `TEST-W7-001`과 아래 W7 Remaining Evidence를 확인하고 이미 통과한 기반을 재구현하지 않는다.
+5. `TEST-W7-002`와 아래 W7 Remaining Evidence를 확인하고 이미 통과한 기반을 재구현하지 않는다.
 6. W7 Presentation 검토는 렌더링 Editor에서 화면·청음 증거를 수집하고 Task별 완료 기준만 닫는다.
 
 ---
@@ -232,21 +234,22 @@ Warning은 Title/Lobby RecastNavMesh 부재 및 테스트 Guard Noise의 Outside
 ### Verification
 
 ```text
-Build       Saved/Logs/W7-Implementation-Build-Final.log
-Full Log    Saved/Logs/W7-FinalRegression-Retry.log
-Full Report Saved/Automation/W7-FinalRegression-Retry/index.json
-Variation   Saved/Automation/W7-Variation-Final/index.json
-Result      21/21 Success or SuccessWithWarnings / Failed 0
-Notion      TEST-W7-001 Pass / live re-fetch confirmed
+Build         Saved/Logs/W7-Integration-Build-CooldownFix-Final.log
+Contract Log  Saved/Logs/W7-ContractRuns-PerceptionFix-Final.log
+Contract      Saved/Automation/W7-ContractRuns-PerceptionFix-Final/index.json
+W7 Targeted   Saved/Automation/W7-Targeted-CooldownFix-Final/index.json
+Full Log      Saved/Logs/W7-FullRegression-CooldownFix-Final.log
+Full Report   Saved/Automation/W7-FullRegression-CooldownFix-Final/index.json
+Balance       Docs/W7_PLAYER_COUNT_BALANCE.md
+Result        23/23 Success / Failed 0 / NotRun 0
+Notion        TEST-W7-002 Pass / TASK-W7-001·008 완료 / live re-fetch confirmed
 ```
 
 ### Remaining Evidence
 
-- W7-001: GuardCountMultiplier의 실제 Spawn 소비, 2P ContractRun, 수동 밸런스 표
 - W7-002: 최종 아이콘과 렌더링 화면에서 Nameplate 거리 Fade/색상 가독성
 - W7-004~006: Vignette/Low-pass, Cuffed/RESCUE, Carry Pose/Icon/Audio Asset
 - W7-007: Floor Plan 최종 렌더링 화면
-- W7-008: 실제 이동 입력 기반 2P Guard Investigate 가시 증거
 - W7-009: Main HUD 색/Countdown과 실제 음악 레이어 청음
 - W7-010: 실제 2~3분 단위 탐욕/탈출 리듬 테스트 시트
 

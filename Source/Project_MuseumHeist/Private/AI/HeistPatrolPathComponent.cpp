@@ -109,3 +109,14 @@ float UHeistPatrolPathComponent::GetLookAroundTurnRate() const
 {
 	return FMath::Max(0.0f, LookAroundTurnRate);
 }
+
+void UHeistPatrolPathComponent::CopyAuthoredConfigurationFrom(const UHeistPatrolPathComponent& Source)
+{
+	PatrolRouteId = Source.PatrolRouteId;
+	AcceptanceRadius = Source.AcceptanceRadius;
+	WaypointWaitDuration = Source.WaypointWaitDuration;
+	bLookAroundAtWaypoints = Source.bLookAroundAtWaypoints;
+	LookAroundYawAngle = Source.LookAroundYawAngle;
+	LookAroundTurnRate = Source.LookAroundTurnRate;
+	bLoopPatrol = Source.bLoopPatrol;
+}

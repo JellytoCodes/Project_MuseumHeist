@@ -30,6 +30,7 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardCharacter : public ACharacter
 
   public:
 	virtual void GetActorEyesViewPoint(FVector& OutLocation, FRotator& OutRotation) const override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 #pragma endregion
 
@@ -61,10 +62,18 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardCharacter : public ACharacter
 	void SetAlertPatrolSpeedMultiplier(float Multiplier);
 	float GetAlertPatrolSpeedMultiplier() const;
 	float GetEffectivePatrolSpeed() const;
+	void ConfigureAsDifficultySupplemental(const AHeistGuardCharacter& SourceGuard);
+	void SetDifficultyActive(bool bActive);
+	bool IsDifficultyActive() const;
+	bool IsDifficultySupplementalGuard() const;
 
   private:
 	void ResolveGuardProfile();
 	void HandleGuardStateChanged(EHeistGuardState PreviousState, EHeistGuardState NewState);
+	void ApplyDifficultyActivationPresentation();
+
+	UFUNCTION()
+	void OnRep_DifficultyActive();
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Guard", meta = (AllowPrivateAccess = "true"))
 	FName GuardProfileId = FName(TEXT("Guard_Alert_Medium"));
@@ -74,6 +83,12 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardCharacter : public ACharacter
 
 	bool bHasResolvedGuardProfile = false;
 	float AlertPatrolSpeedMultiplier = 1.0f;
+
+	UPROPERTY(ReplicatedUsing = OnRep_DifficultyActive, Transient)
+	bool bDifficultyActive = true;
+
+	UPROPERTY(Replicated, Transient)
+	bool bDifficultySupplementalGuard = false;
 
 #pragma endregion
 };

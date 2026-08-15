@@ -141,6 +141,8 @@ AHeistGuardAIController::AHeistGuardAIController()
 	GuardPerceptionComponent = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("GuardPerceptionComponent"));
 	GuardSightConfig = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("GuardSightConfig"));
 	SetPerceptionComponent(*GuardPerceptionComponent);
+	GuardPerceptionComponent->ConfigureSense(*GuardSightConfig);
+	GuardPerceptionComponent->SetDominantSense(GuardSightConfig->GetSenseImplementation());
 
 	GuardStateTreeComponent = CreateDefaultSubobject<UStateTreeAIComponent>(TEXT("GuardStateTreeComponent"));
 	GuardStateTreeComponent->SetStartLogicAutomatically(false);
@@ -847,6 +849,11 @@ float AHeistGuardAIController::GetAlertSightRadiusMultiplier() const
 	return AlertSightRadiusMultiplier;
 }
 
+float AHeistGuardAIController::GetDetectionGraceDuration() const
+{
+	return DetectionGrace;
+}
+
 bool AHeistGuardAIController::CanAcceptForgeryTimeoutInvestigation() const
 {
 	const AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn());
@@ -1230,6 +1237,11 @@ int32 AHeistGuardAIController::GetInspectionTargetSelectionRevision() const
 float AHeistGuardAIController::GetInspectionAcceptanceRadius() const
 {
 	return FMath::Max(0.0f, InspectionAcceptanceRadius);
+}
+
+float AHeistGuardAIController::GetInspectionCastDuration() const
+{
+	return InspectionCastDuration;
 }
 
 AActor* AHeistGuardAIController::FindBestInspectionTarget() const

@@ -45,6 +45,7 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardAIController : public AAIController
 	EHeistAlertLevel GetAppliedAlertLevel() const;
 	float GetActiveSightRadius() const;
 	float GetAlertSightRadiusMultiplier() const;
+	float GetDetectionGraceDuration() const;
 	bool CanAcceptForgeryTimeoutInvestigation() const;
 	bool RequestForgeryTimeoutInvestigation(const FVector& WorldLocation, FName SourceId);
 
@@ -116,6 +117,7 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardAIController : public AAIController
 	bool IsInspectionTargetValid() const;
 	int32 GetInspectionTargetSelectionRevision() const;
 	float GetInspectionAcceptanceRadius() const;
+	float GetInspectionCastDuration() const;
 
   private:
 	AActor* FindBestInspectionTarget() const;

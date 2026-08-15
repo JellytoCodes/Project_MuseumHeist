@@ -2,6 +2,7 @@
 
 #include "AI/HeistGuardAIController.h"
 #include "AI/HeistGuardCharacter.h"
+#include "AI/HeistPatrolPathComponent.h"
 #include "Character/Components/HeistActionComponent.h"
 #include "Character/Components/HeistForgeryComponent.h"
 #include "Character/Components/HeistInventoryComponent.h"
@@ -24,6 +25,7 @@
 #include "Inventory/HeistItemDataTypes.h"
 #include "Inventory/HeistInventoryTypes.h"
 #include "Kismet/GameplayStatics.h"
+#include "NavigationSystem.h"
 #include "TimerManager.h"
 #include "World/Actors/Loot/HeistLootActor.h"
 #include "World/Actors/Loot/HeistObjectDisplayCaseActor.h"
@@ -175,10 +177,18 @@ void AHeistGameMode::StartPlay()
 			|| (IsValid(HeistGameInstance) && HeistGameInstance->IsCurrentWorldLobby()));
 	const bool bOnlineSessionActive =
 		IsValid(HeistGameInstance) && (HeistGameInstance->IsHostingOnlineSession() || HeistGameInstance->IsJoinedOnlineSession());
+	if (!bStartAsTitleMenu && !bStartAsOnlineLobby)
+	{
+		bPlayerCountGuardScalingApplied = false;
+		DifficultyAppliedPlayerCount = 0;
+		LockGuardsForPlayerCountResolution();
+	}
 	if (AHeistGameState* HeistGameState = GetGameState<AHeistGameState>())
 	{
 		HeistGameState->GetMatchPhaseChangedDelegate().RemoveAll(this);
 		HeistGameState->GetMatchPhaseChangedDelegate().AddUObject(this, &AHeistGameMode::HandleMatchPhaseChanged);
+		HeistGameState->GetPlayerConnectionsChangedDelegate().RemoveAll(this);
+		HeistGameState->GetPlayerConnectionsChangedDelegate().AddUObject(this, &AHeistGameMode::HandlePlayerConnectionsChanged);
 		HeistGameState->SetMatchPhase(bStartAsTitleMenu ? EHeistMatchPhase::None
 													  : (bStartAsOnlineLobby ? EHeistMatchPhase::Lobby : EHeistMatchPhase::InGame));
 		if (!bStartAsTitleMenu && (bStartAsOnlineLobby || bOnlineSessionActive))
@@ -208,6 +218,7 @@ void AHeistGameMode::StartPlay()
 	InitializeSurfaceTemplateSelection();
 	InitializeAlertState();
 	InitializeContractFromPlacedTargetCase();
+	SchedulePlayerCountGuardScaling();
 	StartEscapePhaseTimer();
 	StartContractDurationTimer();
 }
@@ -217,6 +228,7 @@ void AHeistGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	if (AHeistGameState* HeistGameState = GetGameState<AHeistGameState>())
 	{
 		HeistGameState->GetMatchPhaseChangedDelegate().RemoveAll(this);
+		HeistGameState->GetPlayerConnectionsChangedDelegate().RemoveAll(this);
 	}
 	ClearMatchScopedTimers();
 	ProcessedAlertTriggerIds.Reset();
@@ -252,6 +264,19 @@ void AHeistGameMode::HandleMatchPhaseChanged(const EHeistMatchPhase PreviousMatc
 		   GetActiveMatchTimerCount() == 0 ? TEXT("PASS") : TEXT("FAIL"));
 }
 
+void AHeistGameMode::HandlePlayerConnectionsChanged(const int32 ConnectedPlayerCount)
+{
+	const AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	if (!HasAuthority() || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame)
+	{
+		return;
+	}
+
+	bPlayerCountGuardScalingApplied = false;
+	SchedulePlayerCountGuardScaling();
+	UE_LOG(LogHeistAI, Log, TEXT("Player-count guard rescale scheduled: ConnectedPlayers=%d Debounce=0.50 Authority=true"), ConnectedPlayerCount);
+}
+
 int32 AHeistGameMode::ClearMatchScopedTimers()
 {
 	FTimerManager& TimerManager = GetWorldTimerManager();
@@ -269,6 +294,7 @@ int32 AHeistGameMode::ClearMatchScopedTimers()
 	ClearTimer(AlertTransitionTimerHandle);
 	ClearTimer(EscapePhaseTimerHandle);
 	ClearTimer(ContractDurationTimerHandle);
+	ClearTimer(GuardScalingTimerHandle);
 	for (FTimerHandle& TimerHandle : RareLootWarningTimerHandles)
 	{
 		ClearTimer(TimerHandle);
@@ -1135,6 +1161,7 @@ int32 AHeistGameMode::GetActiveMatchTimerCount() const
 	int32 ActiveTimerCount = TimerManager.TimerExists(AlertTransitionTimerHandle) ? 1 : 0;
 	ActiveTimerCount += TimerManager.TimerExists(EscapePhaseTimerHandle) ? 1 : 0;
 	ActiveTimerCount += TimerManager.TimerExists(ContractDurationTimerHandle) ? 1 : 0;
+	ActiveTimerCount += TimerManager.TimerExists(GuardScalingTimerHandle) ? 1 : 0;
 	for (const FTimerHandle& TimerHandle : RareLootWarningTimerHandles)
 	{
 		ActiveTimerCount += TimerManager.TimerExists(TimerHandle) ? 1 : 0;
@@ -1748,6 +1775,244 @@ bool AHeistGameMode::TryGetPlayerCountDifficultyBaseline(const int32 PlayerCount
 {
 	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
 	return IsValid(BalanceData) && BalanceData->TryGetPlayerCountDifficultyBaseline(PlayerCount, OutBaseline);
+}
+
+int32 AHeistGameMode::CalculateDifficultyGuardCount(const int32 AuthoredGuardCount, const float GuardCountMultiplier)
+{
+	if (AuthoredGuardCount <= 0 || !FMath::IsFinite(GuardCountMultiplier) || GuardCountMultiplier <= 0.0f)
+	{
+		return 0;
+	}
+
+	return FMath::Max(1, FMath::RoundToInt(static_cast<float>(AuthoredGuardCount) * GuardCountMultiplier));
+}
+
+bool AHeistGameMode::IsPlayerCountGuardScalingApplied() const
+{
+	return bPlayerCountGuardScalingApplied;
+}
+
+int32 AHeistGameMode::GetDifficultyAuthoredGuardCount() const
+{
+	return DifficultyAuthoredGuardCount;
+}
+
+int32 AHeistGameMode::GetDifficultyExpectedGuardCount() const
+{
+	return DifficultyExpectedGuardCount;
+}
+
+int32 AHeistGameMode::GetDifficultyActiveGuardCount() const
+{
+	return DifficultyActiveGuardCount;
+}
+
+int32 AHeistGameMode::GetDifficultyAppliedPlayerCount() const
+{
+	return DifficultyAppliedPlayerCount;
+}
+
+float AHeistGameMode::GetDifficultyAppliedGuardCountMultiplier() const
+{
+	return DifficultyAppliedGuardCountMultiplier;
+}
+
+float AHeistGameMode::GetDifficultyAppliedDetectionMultiplier() const
+{
+	return DifficultyAppliedDetectionMultiplier;
+}
+
+float AHeistGameMode::GetDifficultyAppliedInspectionDurationMultiplier() const
+{
+	return DifficultyAppliedInspectionDurationMultiplier;
+}
+
+void AHeistGameMode::LockGuardsForPlayerCountResolution()
+{
+	if (!HasAuthority() || !IsValid(GetWorld()))
+	{
+		return;
+	}
+
+	int32 LockedGuardCount = 0;
+	for (TActorIterator<AHeistGuardCharacter> It(GetWorld()); It; ++It)
+	{
+		if (AHeistGuardCharacter* Guard = *It; IsValid(Guard))
+		{
+			Guard->SetDifficultyActive(false);
+			++LockedGuardCount;
+		}
+	}
+	UE_LOG(LogHeistAI, Log, TEXT("Player-count guard resolution lock: Guards=%d Authority=true Result=PASS"), LockedGuardCount);
+}
+
+void AHeistGameMode::SchedulePlayerCountGuardScaling()
+{
+	const AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	if (!HasAuthority() || !IsValid(GetWorld()) || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame)
+	{
+		return;
+	}
+
+	GetWorldTimerManager().ClearTimer(GuardScalingTimerHandle);
+	GetWorldTimerManager().SetTimer(GuardScalingTimerHandle, this, &AHeistGameMode::ApplyPlayerCountGuardScaling, 0.5f, false);
+}
+
+void AHeistGameMode::ApplyPlayerCountGuardScaling()
+{
+	GetWorldTimerManager().ClearTimer(GuardScalingTimerHandle);
+	GuardScalingTimerHandle.Invalidate();
+	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	if (!HasAuthority() || !IsValid(GetWorld()) || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame)
+	{
+		return;
+	}
+
+	TArray<AHeistGuardCharacter*> AuthoredGuards;
+	TArray<AHeistGuardCharacter*> SupplementalGuards;
+	for (TActorIterator<AHeistGuardCharacter> It(GetWorld()); It; ++It)
+	{
+		AHeistGuardCharacter* Guard = *It;
+		if (!IsValid(Guard))
+		{
+			continue;
+		}
+		if (Guard->IsDifficultySupplementalGuard())
+		{
+			SupplementalGuards.Add(Guard);
+		}
+		else
+		{
+			AuthoredGuards.Add(Guard);
+		}
+	}
+	AuthoredGuards.Sort([](const AHeistGuardCharacter& Left, const AHeistGuardCharacter& Right)
+	{
+		return Left.GetPathName() < Right.GetPathName();
+	});
+	SupplementalGuards.Sort([](const AHeistGuardCharacter& Left, const AHeistGuardCharacter& Right)
+	{
+		return Left.GetPathName() < Right.GetPathName();
+	});
+
+	DifficultyAuthoredGuardCount = AuthoredGuards.Num();
+	DifficultyAppliedPlayerCount = FMath::Clamp(HeistGameState->GetConnectedPlayerCount(), 1, 4);
+	FHeistPlayerCountDifficultyBaseline DifficultyBaseline;
+	const bool bResolvedBaseline = TryGetPlayerCountDifficultyBaseline(DifficultyAppliedPlayerCount, DifficultyBaseline);
+	DifficultyAppliedGuardCountMultiplier = bResolvedBaseline ? DifficultyBaseline.GuardCountMultiplier : 1.0f;
+	DifficultyAppliedDetectionMultiplier = bResolvedBaseline ? DifficultyBaseline.DetectionMultiplier : 1.0f;
+	DifficultyAppliedInspectionDurationMultiplier = bResolvedBaseline ? DifficultyBaseline.InspectionDurationMultiplier : 1.0f;
+	DifficultyExpectedGuardCount = CalculateDifficultyGuardCount(DifficultyAuthoredGuardCount, DifficultyAppliedGuardCountMultiplier);
+
+	const int32 ActiveAuthoredGuardCount = FMath::Min(DifficultyExpectedGuardCount, DifficultyAuthoredGuardCount);
+	for (int32 GuardIndex = 0; GuardIndex < AuthoredGuards.Num(); ++GuardIndex)
+	{
+		AuthoredGuards[GuardIndex]->SetDifficultyActive(GuardIndex < ActiveAuthoredGuardCount);
+	}
+
+	const int32 RequestedSupplementalCount = FMath::Max(0, DifficultyExpectedGuardCount - DifficultyAuthoredGuardCount);
+	const int32 ReusedSupplementalCount = FMath::Min(RequestedSupplementalCount, SupplementalGuards.Num());
+	for (int32 SupplementalIndex = 0; SupplementalIndex < SupplementalGuards.Num(); ++SupplementalIndex)
+	{
+		SupplementalGuards[SupplementalIndex]->SetDifficultyActive(SupplementalIndex < ReusedSupplementalCount);
+	}
+
+	int32 SpawnedSupplementalCount = 0;
+	int32 NavigationProjectedSpawnCount = 0;
+	int32 NavigationSourceFallbackSpawnCount = 0;
+	int32 NavigationProjectionFailureCount = 0;
+	UNavigationSystemV1* NavigationSystem = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+	for (int32 SupplementalIndex = SupplementalGuards.Num(); SupplementalIndex < RequestedSupplementalCount && !AuthoredGuards.IsEmpty(); ++SupplementalIndex)
+	{
+		AHeistGuardCharacter* SourceGuard = AuthoredGuards[SupplementalIndex % AuthoredGuards.Num()];
+		const float Separation = FMath::Max(150.0f, SourceGuard->GetSimpleCollisionRadius() * 3.0f);
+		FTransform SpawnTransform = SourceGuard->GetActorTransform();
+		SpawnTransform.AddToTranslation(SourceGuard->GetActorRightVector() * Separation * static_cast<float>(SupplementalIndex + 1));
+		FNavLocation ProjectedLocation;
+		bool bNavigationProjectionSucceeded = IsValid(NavigationSystem) &&
+			NavigationSystem->ProjectPointToNavigation(SpawnTransform.GetLocation(), ProjectedLocation, FVector(300.0f, 300.0f, 500.0f));
+		if (!bNavigationProjectionSucceeded && IsValid(NavigationSystem))
+		{
+			bNavigationProjectionSucceeded = NavigationSystem->ProjectPointToNavigation(
+				SourceGuard->GetActorLocation(), ProjectedLocation, FVector(300.0f, 300.0f, 500.0f));
+			NavigationSourceFallbackSpawnCount += bNavigationProjectionSucceeded ? 1 : 0;
+		}
+		if (!bNavigationProjectionSucceeded)
+		{
+			++NavigationProjectionFailureCount;
+			continue;
+		}
+		else
+		{
+			SpawnTransform.SetLocation(ProjectedLocation.Location);
+			++NavigationProjectedSpawnCount;
+		}
+		AHeistGuardCharacter* SupplementalGuard = GetWorld()->SpawnActorDeferred<AHeistGuardCharacter>(
+			SourceGuard->GetClass(), SpawnTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
+		if (!IsValid(SupplementalGuard))
+		{
+			continue;
+		}
+
+		SupplementalGuard->ConfigureAsDifficultySupplemental(*SourceGuard);
+		SupplementalGuard->FinishSpawning(SpawnTransform);
+		SupplementalGuard->SetDifficultyActive(true);
+		++SpawnedSupplementalCount;
+	}
+
+	DifficultyActiveGuardCount = 0;
+	int32 ReadyActiveGuardCount = 0;
+	for (TActorIterator<AHeistGuardCharacter> It(GetWorld()); It; ++It)
+	{
+		AHeistGuardCharacter* Guard = *It;
+		if (!IsValid(Guard) || !Guard->IsDifficultyActive())
+		{
+			continue;
+		}
+
+		++DifficultyActiveGuardCount;
+		if (!Guard->HasResolvedGuardProfile())
+		{
+			continue;
+		}
+		if (!IsValid(Guard->GetController()))
+		{
+			Guard->SpawnDefaultController();
+		}
+		AHeistGuardAIController* GuardController = Cast<AHeistGuardAIController>(Guard->GetController());
+		UHeistPatrolPathComponent* PatrolPath = Guard->GetPatrolPathComponent();
+		const bool bPatrolReady = IsValid(PatrolPath) && (PatrolPath->GetWaypointCount() > 0 || PatrolPath->ResolvePatrolPath());
+		if (!IsValid(GuardController) || !bPatrolReady)
+		{
+			continue;
+		}
+
+		GuardController->ConfigurePerceptionFromGuardProfile(Guard->GetGuardProfile());
+		++ReadyActiveGuardCount;
+	}
+	bPlayerCountGuardScalingApplied = bResolvedBaseline && !AuthoredGuards.IsEmpty() && DifficultyActiveGuardCount == DifficultyExpectedGuardCount &&
+		ReadyActiveGuardCount == DifficultyActiveGuardCount;
+	if (bPlayerCountGuardScalingApplied)
+	{
+		UE_LOG(LogHeistAI, Log,
+			TEXT("Player-count guard scaling: Players=%d AuthoredAlive=%d GuardMultiplier=%.2f DetectionMultiplier=%.2f InspectionMultiplier=%.2f Expected=%d Active=%d Ready=%d SupplementalRequested=%d Reused=%d Spawned=%d NavigationProjected=%d NavigationSourceFallback=%d NavigationProjectionFailures=%d Pooled=%d Authority=true Result=PASS"),
+			DifficultyAppliedPlayerCount, DifficultyAuthoredGuardCount, DifficultyAppliedGuardCountMultiplier, DifficultyAppliedDetectionMultiplier,
+			DifficultyAppliedInspectionDurationMultiplier, DifficultyExpectedGuardCount, DifficultyActiveGuardCount, ReadyActiveGuardCount,
+			RequestedSupplementalCount, ReusedSupplementalCount, SpawnedSupplementalCount, NavigationProjectedSpawnCount,
+			NavigationSourceFallbackSpawnCount, NavigationProjectionFailureCount,
+			SupplementalGuards.Num() + SpawnedSupplementalCount);
+	}
+	else
+	{
+		UE_LOG(LogHeistAI, Error,
+			TEXT("Player-count guard scaling: Players=%d AuthoredAlive=%d GuardMultiplier=%.2f DetectionMultiplier=%.2f InspectionMultiplier=%.2f Expected=%d Active=%d Ready=%d SupplementalRequested=%d Reused=%d Spawned=%d NavigationProjected=%d NavigationSourceFallback=%d NavigationProjectionFailures=%d Pooled=%d BaselineResolved=%s Authority=true Result=FAIL"),
+			DifficultyAppliedPlayerCount, DifficultyAuthoredGuardCount, DifficultyAppliedGuardCountMultiplier, DifficultyAppliedDetectionMultiplier,
+			DifficultyAppliedInspectionDurationMultiplier, DifficultyExpectedGuardCount, DifficultyActiveGuardCount, ReadyActiveGuardCount,
+			RequestedSupplementalCount, ReusedSupplementalCount, SpawnedSupplementalCount, NavigationProjectedSpawnCount,
+			NavigationSourceFallbackSpawnCount, NavigationProjectionFailureCount,
+			SupplementalGuards.Num() + SpawnedSupplementalCount,
+			bResolvedBaseline ? TEXT("true") : TEXT("false"));
+	}
 }
 
 float AHeistGameMode::GetGuardPerceptionRangeMultiplier() const

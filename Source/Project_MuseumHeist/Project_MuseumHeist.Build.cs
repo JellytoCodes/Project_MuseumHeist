@@ -30,6 +30,7 @@ public class Project_MuseumHeist : ModuleRules
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
 			"ImageCore",
+			"NavigationSystem",
 			"OnlineBase",
 			"OnlineSubsystemUtils",
 			"RHI",

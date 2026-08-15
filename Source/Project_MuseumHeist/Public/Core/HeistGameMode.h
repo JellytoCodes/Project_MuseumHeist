@@ -47,6 +47,7 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 
   private:
 	void HandleMatchPhaseChanged(EHeistMatchPhase PreviousMatchPhase, EHeistMatchPhase NewMatchPhase);
+	void HandlePlayerConnectionsChanged(int32 ConnectedPlayerCount);
 	int32 ClearMatchScopedTimers();
 
   public:
@@ -121,6 +122,15 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 	bool TryGetGuardDefinition(FName GuardProfileId, FHeistGuardDataRow& OutGuardDefinition) const;
 	bool TryGetSoundPingDefinition(FName SoundPingId, FHeistSoundPingDataRow& OutSoundPingDefinition) const;
 	bool TryGetPlayerCountDifficultyBaseline(int32 PlayerCount, FHeistPlayerCountDifficultyBaseline& OutBaseline) const;
+	static int32 CalculateDifficultyGuardCount(int32 AuthoredGuardCount, float GuardCountMultiplier);
+	bool IsPlayerCountGuardScalingApplied() const;
+	int32 GetDifficultyAuthoredGuardCount() const;
+	int32 GetDifficultyExpectedGuardCount() const;
+	int32 GetDifficultyActiveGuardCount() const;
+	int32 GetDifficultyAppliedPlayerCount() const;
+	float GetDifficultyAppliedGuardCountMultiplier() const;
+	float GetDifficultyAppliedDetectionMultiplier() const;
+	float GetDifficultyAppliedInspectionDurationMultiplier() const;
 	float GetGuardPerceptionRangeMultiplier() const;
 	void DebugDumpPlayerCountDifficultyBaseline() const;
 	bool TrySpawnDroppedLoot(const FHeistLootDropRequest& DropRequest, AHeistLootActor*& OutDroppedLootActor) const;
@@ -129,6 +139,19 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 	void ValidateItemDataTables() const;
 	void InitializeSurfaceTemplateSelection();
 	bool GatherSurfaceTemplatePool(FName PoolId, TArray<FName>& OutTemplateIds) const;
+	void LockGuardsForPlayerCountResolution();
+	void SchedulePlayerCountGuardScaling();
+	void ApplyPlayerCountGuardScaling();
+
+	bool bPlayerCountGuardScalingApplied = false;
+	int32 DifficultyAuthoredGuardCount = 0;
+	int32 DifficultyExpectedGuardCount = 0;
+	int32 DifficultyActiveGuardCount = 0;
+	int32 DifficultyAppliedPlayerCount = 0;
+	float DifficultyAppliedGuardCountMultiplier = 1.0f;
+	float DifficultyAppliedDetectionMultiplier = 1.0f;
+	float DifficultyAppliedInspectionDurationMultiplier = 1.0f;
+	FTimerHandle GuardScalingTimerHandle;
 
 #pragma endregion
 

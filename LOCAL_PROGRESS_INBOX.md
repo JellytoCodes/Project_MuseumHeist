@@ -102,11 +102,13 @@ Notion Write            NOT DONE
 - State: `RECONCILED`
 - Created / Reconciled: `2026-08-15 KST`
 - Notion Relations: `TASK-W7-001`~`TASK-W7-011`
-- Test Log: [`TEST-W7-001`](https://app.notion.com/p/3bc1d26a5dfb81f9a48ac7f4566fa7be)
+- Test Logs:
+  - [`TEST-W7-001`](https://app.notion.com/p/3bc1d26a5dfb81f9a48ac7f4566fa7be)
+  - [`TEST-W7-002`](https://app.notion.com/p/3bd1d26a5dfb81549291f537370bfd37)
 - Notion Status:
-  - 완료: `TASK-W7-003`, `TASK-W7-011`
-  - 검토중: `TASK-W7-002`, `007`, `008`, `009`
-  - 진행중: `TASK-W7-001`, `004`, `005`, `006`, `010`
+  - 완료: `TASK-W7-001`, `003`, `008`, `011`
+  - 검토중: `TASK-W7-002`, `007`, `009`
+  - 진행중: `TASK-W7-004`, `005`, `006`, `010`
 
 #### Applied Work
 
@@ -115,25 +117,29 @@ Notion Write            NOT DONE
 - Owner-only Floor Plan Map과 Map Input Mode를 추가하고 Local/Team/Exit/Zone/발견 Target만 표시하도록 제한했다.
 - Surface/Object 작업 중 위험 Alert에서 Widget을 강제 종료하고 서버 Session과 Gameplay Input을 정상 복원하도록 검증했다.
 - 실제 M01/M02/M03 Surface Template 각 12개, 고정 Seed 결정성, 24회 Cycle 중복 방지, 최근 3개 보호, Random Map Bag, Optional Exhibit 조합을 검증했다.
+- Player Count별 경비 수·발각 유예·검사 시간을 실제 Runtime에 적용하고 1P/2P/4P M01 TwoRuns 및 Lobby Reset을 검증했다.
+- 2P Client의 실제 `IA_Move` 입력으로 Walk/Sprint Footstep 500/1000cm, 서버 Guard Investigate와 Client 상태 복제, Alert 불변을 검증했다.
 
 #### Evidence
 
 ```text
 Project_MuseumHeistEditor Build          PASS
-ProjectMuseumHeist Full Automation       21/21 / Failed 0
+ProjectMuseumHeist Full Automation       23/23 / Failed 0
 Solo ContractRun Two Runs                PASS
+Two Player ContractRun Two Runs          PASS
 Four Player ContractRun Two Runs         PASS
+2P Walk/Sprint Footstep→Guard Investigate PASS
 Stun / Arrest / Rescue                    PASS
 Surface / Object Alert Forced Close      PASS
 Variation Real Data + Determinism        PASS
-Notion Test Log                          TEST-W7-001 Pass
+Notion Test Logs                         TEST-W7-001/002 Pass
 Notion Live Re-fetch                     PASS
 ```
 
 #### Remaining Scope
 
 - 최종 화면·오디오·Pose Presentation은 개별 `진행중`/`검토중` Task의 완료 기준으로 남겼다.
-- 실제 2~3분 Escape 리듬과 수동 밸런스 튜닝은 NullRHI 자동화 Pass로 대체하지 않았다.
+- 실제 2~3분 Escape 리듬은 NullRHI 자동화 Pass로 대체하지 않았다.
 
 ---
 

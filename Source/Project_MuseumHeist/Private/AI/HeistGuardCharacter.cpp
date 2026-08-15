@@ -9,6 +9,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Core/HeistCollisionChannels.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Net/UnrealNetwork.h"
 
 #pragma region Construction
 
@@ -62,6 +63,7 @@ void AHeistGuardCharacter::BeginPlay()
 		ResolveGuardProfile();
 	}
 
+	ApplyDifficultyActivationPresentation();
 	HandleGuardStateChanged(GuardStateComponent->GetGuardState(), GuardStateComponent->GetGuardState());
 }
 
@@ -69,6 +71,13 @@ void AHeistGuardCharacter::GetActorEyesViewPoint(FVector& OutLocation, FRotator&
 {
 	OutLocation = GetPawnViewLocation();
 	OutRotation = GetActorRotation();
+}
+
+void AHeistGuardCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AHeistGuardCharacter, bDifficultyActive);
+	DOREPLIFETIME(AHeistGuardCharacter, bDifficultySupplementalGuard);
 }
 
 #pragma endregion
@@ -153,6 +162,73 @@ float AHeistGuardCharacter::GetAlertPatrolSpeedMultiplier() const
 float AHeistGuardCharacter::GetEffectivePatrolSpeed() const
 {
 	return bHasResolvedGuardProfile ? FMath::Max(0.0f, GuardProfile.PatrolSpeed * AlertPatrolSpeedMultiplier) : 0.0f;
+}
+
+void AHeistGuardCharacter::ConfigureAsDifficultySupplemental(const AHeistGuardCharacter& SourceGuard)
+{
+	if (!HasAuthority() || HasActorBegunPlay())
+	{
+		return;
+	}
+
+	GuardProfileId = SourceGuard.GuardProfileId;
+	if (IsValid(PatrolPathComponent) && IsValid(SourceGuard.PatrolPathComponent))
+	{
+		PatrolPathComponent->CopyAuthoredConfigurationFrom(*SourceGuard.PatrolPathComponent);
+	}
+	bDifficultySupplementalGuard = true;
+	bDifficultyActive = true;
+}
+
+void AHeistGuardCharacter::SetDifficultyActive(const bool bActive)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	bDifficultyActive = bActive;
+	if (IsValid(GuardStateComponent))
+	{
+		GuardStateComponent->SetDisabled(!bDifficultyActive);
+	}
+	ApplyDifficultyActivationPresentation();
+	ForceNetUpdate();
+}
+
+bool AHeistGuardCharacter::IsDifficultyActive() const
+{
+	return bDifficultyActive;
+}
+
+bool AHeistGuardCharacter::IsDifficultySupplementalGuard() const
+{
+	return bDifficultySupplementalGuard;
+}
+
+void AHeistGuardCharacter::ApplyDifficultyActivationPresentation()
+{
+	SetActorHiddenInGame(!bDifficultyActive);
+	SetActorEnableCollision(bDifficultyActive);
+	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement(); IsValid(MovementComponent))
+	{
+		if (bDifficultyActive)
+		{
+			if (MovementComponent->MovementMode == MOVE_None)
+			{
+				MovementComponent->SetMovementMode(MOVE_Walking);
+			}
+		}
+		else
+		{
+			MovementComponent->DisableMovement();
+		}
+	}
+}
+
+void AHeistGuardCharacter::OnRep_DifficultyActive()
+{
+	ApplyDifficultyActivationPresentation();
 }
 
 void AHeistGuardCharacter::HandleGuardStateChanged(const EHeistGuardState, const EHeistGuardState NewState)

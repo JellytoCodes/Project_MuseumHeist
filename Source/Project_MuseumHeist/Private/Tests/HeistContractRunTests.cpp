@@ -18,6 +18,7 @@
 #include "Core/HeistHUD.h"
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
+#include "Data/HeistGameBalanceDataAsset.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "Editor.h"
 #include "Engine/Engine.h"
@@ -230,6 +231,24 @@ AHeistLootActor* FindLootActor(UWorld* World, const FName ActorName)
 		}
 	}
 	return nullptr;
+}
+
+bool IsOwningLootActorRelevant(const int32 PlayerId, const FName ActorName)
+{
+	const AHeistPlayerController* PlayerController = GetOwningPlayerControllerById(PlayerId);
+	return IsValid(PlayerController) && IsValid(FindLootActor(PlayerController->GetWorld(), ActorName));
+}
+
+bool IsOwningPaintingCaseRelevant(const int32 PlayerId, const FName CaseId)
+{
+	const AHeistPlayerController* PlayerController = GetOwningPlayerControllerById(PlayerId);
+	return IsValid(PlayerController) && IsValid(FindPaintingCase(PlayerController->GetWorld(), CaseId));
+}
+
+bool IsOwningObjectCaseRelevant(const int32 PlayerId, const FName CaseId)
+{
+	const AHeistPlayerController* PlayerController = GetOwningPlayerControllerById(PlayerId);
+	return IsValid(PlayerController) && IsValid(FindObjectCase(PlayerController->GetWorld(), CaseId));
 }
 
 bool TeleportServerPlayerIntoInteraction(const int32 PlayerId, AActor* TargetActor)
@@ -513,6 +532,10 @@ bool BeginWeek7GuardStun(const int32 TargetPlayerId)
 	for (TActorIterator<AHeistGuardCharacter> It(ServerWorld); It; ++It)
 	{
 		AHeistGuardCharacter* Guard = *It;
+		if (!IsValid(Guard) || !Guard->IsDifficultyActive())
+		{
+			continue;
+		}
 		AHeistGuardAIController* GuardController = IsValid(Guard) ? Cast<AHeistGuardAIController>(Guard->GetController()) : nullptr;
 		UHeistGuardStateComponent* GuardState = IsValid(Guard) ? Guard->GetGuardStateComponent() : nullptr;
 		if (!IsValid(GuardController) || !IsValid(GuardState))
@@ -628,13 +651,66 @@ bool CaptureAndValidateGameplayPreflight(FAutomationTestBase* Test, const TShare
 		}
 	}
 	ObjectCaseIds.Sort([](const FName Left, const FName Right) { return Left.LexicalLess(Right); });
-	const int32 RequiredAssemblyCaseCount = State->PlayerCount == 1 ? 1 : 3;
+	const int32 RequiredAssemblyCaseCount = FMath::Min(3, State->PlayerCount);
 	if (RequiredTargetCaseCount != 1 || ObjectCaseIds.Num() != ExpectedOptionalCaseCount || ObjectCaseIds.Num() < RequiredAssemblyCaseCount)
 	{
 		return false;
 	}
 
 	AHeistGameMode* GameMode = ServerWorld->GetAuthGameMode<AHeistGameMode>();
+	FHeistPlayerCountDifficultyBaseline DifficultyBaseline;
+	if (!IsValid(GameMode) || !GameMode->TryGetPlayerCountDifficultyBaseline(State->PlayerCount, DifficultyBaseline) ||
+		!GameMode->IsPlayerCountGuardScalingApplied() || GameMode->GetDifficultyExpectedGuardCount() != GameMode->GetDifficultyActiveGuardCount() ||
+		GameMode->GetDifficultyAppliedPlayerCount() != State->PlayerCount ||
+		!FMath::IsNearlyEqual(GameMode->GetDifficultyAppliedGuardCountMultiplier(), DifficultyBaseline.GuardCountMultiplier) ||
+		!FMath::IsNearlyEqual(GameMode->GetDifficultyAppliedDetectionMultiplier(), DifficultyBaseline.DetectionMultiplier) ||
+		!FMath::IsNearlyEqual(GameMode->GetDifficultyAppliedInspectionDurationMultiplier(), DifficultyBaseline.InspectionDurationMultiplier) ||
+		GameMode->GetDifficultyExpectedGuardCount() !=
+			AHeistGameMode::CalculateDifficultyGuardCount(GameMode->GetDifficultyAuthoredGuardCount(), DifficultyBaseline.GuardCountMultiplier))
+	{
+		return false;
+	}
+	int32 AuthoredGuardAliveCount = 0;
+	int32 SupplementalGuardAliveCount = 0;
+	float FirstDetectionGrace = -1.0f;
+	float FirstInspectionDuration = -1.0f;
+	for (TActorIterator<AHeistGuardCharacter> It(ServerWorld); It; ++It)
+	{
+		const AHeistGuardCharacter* Guard = *It;
+		if (!IsValid(Guard))
+		{
+			continue;
+		}
+		if (Guard->IsDifficultySupplementalGuard())
+		{
+			++SupplementalGuardAliveCount;
+		}
+		else
+		{
+			++AuthoredGuardAliveCount;
+		}
+		if (!Guard->IsDifficultyActive())
+		{
+			continue;
+		}
+		const AHeistGuardAIController* GuardController = Cast<AHeistGuardAIController>(Guard->GetController());
+		const float ExpectedDetectionGrace = FMath::Max(0.0f, Guard->GetGuardProfile().DetectionGrace / FMath::Max(0.01f, DifficultyBaseline.DetectionMultiplier));
+		const float ExpectedInspectionDuration = FMath::Max(0.1f, 2.0f * DifficultyBaseline.InspectionDurationMultiplier);
+		if (!IsValid(GuardController) || !FMath::IsNearlyEqual(GuardController->GetDetectionGraceDuration(), ExpectedDetectionGrace, 0.001f) ||
+			!FMath::IsNearlyEqual(GuardController->GetInspectionCastDuration(), ExpectedInspectionDuration, 0.001f))
+		{
+			return false;
+		}
+		if (FirstDetectionGrace < 0.0f)
+		{
+			FirstDetectionGrace = GuardController->GetDetectionGraceDuration();
+			FirstInspectionDuration = GuardController->GetInspectionCastDuration();
+		}
+	}
+	if (AuthoredGuardAliveCount != GameMode->GetDifficultyAuthoredGuardCount())
+	{
+		return false;
+	}
 	AHeistLootActor* SelectedLootActor = nullptr;
 	FHeistItemDataRow SelectedItemDefinition;
 	FHeistLootDataRow SelectedLootDefinition;
@@ -697,19 +773,7 @@ bool CaptureAndValidateGameplayPreflight(FAutomationTestBase* Test, const TShare
 	for (UWorld* World : GetContractRunPIEWorlds())
 	{
 		const AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
-		if (!IsValid(GameState) || !(GameState->GetContractSnapshot() == ServerContract) || !IsValid(FindPaintingCase(World, ServerContract.RequiredTargetCaseId)))
-		{
-			return false;
-		}
-		for (const FName ObjectCaseId : ObjectCaseIds)
-		{
-			if (!IsValid(FindObjectCase(World, ObjectCaseId)))
-			{
-				return false;
-			}
-		}
-		const AHeistLootActor* ReplicatedLootActor = FindLootActor(World, SelectedLootActor->GetFName());
-		if (!IsValid(ReplicatedLootActor) || !ReplicatedLootActor->IsLootAvailable() || ReplicatedLootActor->GetLootRowId() != SelectedLootActor->GetLootRowId())
+		if (!IsValid(GameState) || !(GameState->GetContractSnapshot() == ServerContract))
 		{
 			return false;
 		}
@@ -723,11 +787,17 @@ bool CaptureAndValidateGameplayPreflight(FAutomationTestBase* Test, const TShare
 	{
 		State->FirstRunContract = ServerContract;
 	}
-	Test->AddInfo(FString::Printf(TEXT("W6-010 preflight: Run=%d Players=%d Map=%s Seed=%d Target=%s OptionalCases=%d Quota=%d SpawnSnapshot=PASS ContractReplication=PASS ContributionReset=PASS InputLock=0"),
+	Test->AddInfo(FString::Printf(TEXT("W6-010 preflight: Run=%d Players=%d Map=%s Seed=%d Target=%s OptionalCases=%d Quota=%d SpawnSnapshot=PASS AssignmentSnapshotReplication=PASS ContributionReset=PASS InputLock=0"),
 		RunIndex, State->PlayerCount, *ServerContract.MapId.ToString(), ServerContract.AssignmentSeed, *ServerContract.RequiredTargetCaseId.ToString(),
 		State->SelectedObjectCaseIds.Num(), ServerContract.LootValueQuota));
 	Test->AddInfo(FString::Printf(TEXT("W6-010 loose-loot fixture: Run=%d Actor=%s Row=%s Value=%d Grid=%dx%d Replication=PASS"), RunIndex,
 		*State->SelectedLootActorName.ToString(), *State->SelectedLootRowId.ToString(), State->SelectedLootValue, SelectedItemDefinition.GridSize.X, SelectedItemDefinition.GridSize.Y));
+	Test->AddInfo(FString::Printf(
+		TEXT("W7-001 guard balance: Run=%d Players=%d AuthoredAlive=%d SupplementalAlive=%d GuardMultiplier=%.2f DetectionMultiplier=%.2f InspectionMultiplier=%.2f "
+			 "ExpectedActive=%d ActualActive=%d DetectionGrace=%.3f InspectionDuration=%.3f AuthorityRuntimeProfile=PASS"),
+		RunIndex, State->PlayerCount, AuthoredGuardAliveCount, SupplementalGuardAliveCount, DifficultyBaseline.GuardCountMultiplier,
+		DifficultyBaseline.DetectionMultiplier, DifficultyBaseline.InspectionDurationMultiplier, GameMode->GetDifficultyExpectedGuardCount(),
+		GameMode->GetDifficultyActiveGuardCount(), FirstDetectionGrace, FirstInspectionDuration));
 	return true;
 }
 
@@ -802,10 +872,15 @@ bool HasReplicatedLooseLootPickup(const TSharedRef<FHeistContractRunAutomationSt
 	{
 		return false;
 	}
+	const AHeistLootActor* ServerLootActor = FindLootActor(GetContractRunServerWorld(), State->SelectedLootActorName);
+	if (!IsValid(ServerLootActor) || ServerLootActor->IsLootAvailable())
+	{
+		return false;
+	}
 	for (UWorld* World : GetContractRunPIEWorlds())
 	{
 		const AHeistLootActor* LootActor = FindLootActor(World, State->SelectedLootActorName);
-		if (!IsValid(LootActor) || LootActor->IsLootAvailable())
+		if (IsValid(LootActor) && LootActor->IsLootAvailable())
 		{
 			return false;
 		}
@@ -867,7 +942,7 @@ int32 CountVisibleResultWidgets(UWorld* World)
 
 bool IsCompletedResultReady(const TSharedRef<FHeistContractRunAutomationState>& State)
 {
-	const int32 ExpectedRecoveredOriginalCount = State->PlayerCount == 1 ? 2 : 4;
+	const int32 ExpectedRecoveredOriginalCount = 1 + FMath::Min(3, State->PlayerCount);
 	for (UWorld* World : GetContractRunPIEWorlds())
 	{
 		const AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
@@ -943,7 +1018,7 @@ FString DescribeCompletedResultReadiness(const TSharedRef<FHeistContractRunAutom
 			RecoveredOriginalCount));
 	}
 	return FString::Printf(TEXT("W6-010 Result readiness diagnostic: ExpectedPlayers=%d ExpectedRecoveredOriginals=%d %s"), State->PlayerCount,
-		State->PlayerCount == 1 ? 2 : 4, *FString::Join(WorldStates, TEXT(" | ")));
+		1 + FMath::Min(3, State->PlayerCount), *FString::Join(WorldStates, TEXT(" | ")));
 }
 
 bool IsLobbyStateClean(const int32 PlayerCount)
@@ -967,25 +1042,85 @@ bool IsLobbyStateClean(const int32 PlayerCount)
 bool IsGameplayContentReplicated(const int32 PlayerCount)
 {
 	const int32 ExpectedOptionalCaseCount = PlayerCount + 1;
+	UWorld* ServerWorld = GetContractRunServerWorld();
+	const AHeistGameMode* GameMode = IsValid(ServerWorld) ? ServerWorld->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	const AHeistGameState* ServerGameState = IsValid(ServerWorld) ? ServerWorld->GetGameState<AHeistGameState>() : nullptr;
+	if (!IsValid(GameMode) || !GameMode->IsPlayerCountGuardScalingApplied() || !IsValid(ServerGameState) ||
+		!ServerGameState->GetContractSnapshot().IsInitialized() ||
+		!IsValid(FindPaintingCase(ServerWorld, ServerGameState->GetContractSnapshot().RequiredTargetCaseId)))
+	{
+		return false;
+	}
+	const int32 ExpectedActiveGuardCount = GameMode->GetDifficultyExpectedGuardCount();
+	int32 ServerActiveObjectCaseCount = 0;
+	for (TActorIterator<AHeistObjectDisplayCaseActor> It(ServerWorld); It; ++It)
+	{
+		ServerActiveObjectCaseCount += IsValid(*It) && It->IsContractExhibitActive() ? 1 : 0;
+	}
+	int32 ServerActiveGuardCount = 0;
+	for (TActorIterator<AHeistGuardCharacter> It(ServerWorld); It; ++It)
+	{
+		ServerActiveGuardCount += IsValid(*It) && It->IsDifficultyActive() ? 1 : 0;
+	}
+	if (ServerActiveObjectCaseCount != ExpectedOptionalCaseCount || ServerActiveGuardCount != ExpectedActiveGuardCount)
+	{
+		return false;
+	}
+	const FHeistContractSnapshot ServerContract = ServerGameState->GetContractSnapshot();
 	for (UWorld* World : GetContractRunPIEWorlds())
 	{
 		const AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
 		if (!IsValid(GameState) || GameState->GetMatchPhase() != EHeistMatchPhase::InGame || !GameState->GetContractSnapshot().IsInitialized() ||
-			GameState->GetContractSnapshot().MapId != FName(TEXT("M01")) || !IsValid(FindPaintingCase(World, GameState->GetContractSnapshot().RequiredTargetCaseId)))
-		{
-			return false;
-		}
-		int32 ObjectCaseCount = 0;
-		for (TActorIterator<AHeistObjectDisplayCaseActor> It(World); It; ++It)
-		{
-			ObjectCaseCount += IsValid(*It) && It->IsContractExhibitActive() ? 1 : 0;
-		}
-		if (ObjectCaseCount != ExpectedOptionalCaseCount)
+			GameState->GetContractSnapshot().MapId != FName(TEXT("M01")) || !(GameState->GetContractSnapshot() == ServerContract))
 		{
 			return false;
 		}
 	}
 	return true;
+}
+
+FString DescribeGameplayContentReplication(const int32 PlayerCount)
+{
+	const int32 ExpectedOptionalCaseCount = PlayerCount + 1;
+	UWorld* ServerWorld = GetContractRunServerWorld();
+	const AHeistGameMode* GameMode = IsValid(ServerWorld) ? ServerWorld->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	const int32 ExpectedActiveGuardCount = IsValid(GameMode) ? GameMode->GetDifficultyExpectedGuardCount() : INDEX_NONE;
+	TArray<FString> WorldStates;
+	for (UWorld* World : GetContractRunPIEWorlds())
+	{
+		const AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
+		const FHeistContractSnapshot Contract = IsValid(GameState) ? GameState->GetContractSnapshot() : FHeistContractSnapshot();
+		int32 ActiveObjectCaseCount = 0;
+		int32 TotalObjectCaseCount = 0;
+		for (TActorIterator<AHeistObjectDisplayCaseActor> It(World); It; ++It)
+		{
+			if (IsValid(*It))
+			{
+				++TotalObjectCaseCount;
+				ActiveObjectCaseCount += It->IsContractExhibitActive() ? 1 : 0;
+			}
+		}
+		int32 ActiveGuardCount = 0;
+		int32 TotalGuardCount = 0;
+		for (TActorIterator<AHeistGuardCharacter> It(World); It; ++It)
+		{
+			if (IsValid(*It))
+			{
+				++TotalGuardCount;
+				ActiveGuardCount += It->IsDifficultyActive() ? 1 : 0;
+			}
+		}
+		WorldStates.Add(FString::Printf(
+			TEXT("World=%s NetMode=%d Phase=%s Players=%d Contract=%s Map=%s RequiredCase=%s RequiredCaseFound=%s ObjectCases=%d/%d ExpectedObjects=%d Guards=%d/%d ExpectedGuards=%d"),
+			*GetNameSafe(World), IsValid(World) ? static_cast<int32>(World->GetNetMode()) : INDEX_NONE,
+			IsValid(GameState) ? *UEnum::GetValueAsString(GameState->GetMatchPhase()) : TEXT("Missing"),
+			IsValid(GameState) ? GameState->PlayerArray.Num() : INDEX_NONE,
+			Contract.IsInitialized() ? TEXT("Initialized") : TEXT("Missing"), *Contract.MapId.ToString(), *Contract.RequiredTargetCaseId.ToString(),
+			IsValid(FindPaintingCase(World, Contract.RequiredTargetCaseId)) ? TEXT("true") : TEXT("false"), ActiveObjectCaseCount,
+			TotalObjectCaseCount, ExpectedOptionalCaseCount, ActiveGuardCount, TotalGuardCount, ExpectedActiveGuardCount));
+	}
+	return FString::Printf(TEXT("W6-010 gameplay readiness diagnostic: authority owns exact Case/Guard counts; client actor totals are informational because distance relevancy applies. GameMode=%s GuardScalingApplied=%s %s"), *GetNameSafe(GameMode),
+		IsValid(GameMode) && GameMode->IsPlayerCountGuardScalingApplied() ? TEXT("true") : TEXT("false"), *FString::Join(WorldStates, TEXT(" | ")));
 }
 
 bool IsGameplayResetClean(const int32 PlayerCount)
@@ -1203,7 +1338,7 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d M01 worlds and replicated content"), RunIndex), [State]()
 	{
 		return AreContractRunWorldsReady(State->PlayerCount, EHeistMatchPhase::InGame, true) && IsGameplayContentReplicated(State->PlayerCount);
-	}, 75.0));
+	}, 75.0, [State]() { return DescribeGameplayContentReplication(State->PlayerCount); }));
 	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d clean gameplay state"), RunIndex), [State]()
 	{
 		return IsGameplayResetClean(State->PlayerCount);
@@ -1286,7 +1421,7 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 		bool bFoundGuard = false;
 		for (TActorIterator<AHeistGuardCharacter> It(ServerWorld); It; ++It)
 		{
-			if (UHeistGuardStateComponent* GuardState = IsValid(*It) ? It->GetGuardStateComponent() : nullptr; IsValid(GuardState))
+			if (UHeistGuardStateComponent* GuardState = IsValid(*It) && It->IsDifficultyActive() ? It->GetGuardStateComponent() : nullptr; IsValid(GuardState))
 			{
 				GuardState->SetDisabled(true);
 				bFoundGuard = true;
@@ -1301,6 +1436,10 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d shared loose-loot overlap"), RunIndex), [State]()
 	{
 		return IsServerPlayerOverlapping(1, FindLootActor(GetContractRunServerWorld(), State->SelectedLootActorName));
+	}, 10.0));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d shared loose-loot relevant to owning peer"), RunIndex), [State]()
+	{
+		return IsOwningLootActorRelevant(1, State->SelectedLootActorName);
 	}, 10.0));
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d request loose-loot pickup through server RPC"), RunIndex), [State]()
 	{
@@ -1322,6 +1461,11 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 	{
 		const AHeistGameState* GameState = GetContractRunServerWorld()->GetGameState<AHeistGameState>();
 		return IsValid(GameState) && IsServerPlayerOverlapping(1, FindPaintingCase(GetContractRunServerWorld(), GameState->GetContractSnapshot().RequiredTargetCaseId));
+	}, 10.0));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d required Surface relevant to owning peer"), RunIndex), []()
+	{
+		const AHeistGameState* GameState = GetContractRunServerWorld()->GetGameState<AHeistGameState>();
+		return IsValid(GameState) && IsOwningPaintingCaseRelevant(1, GameState->GetContractSnapshot().RequiredTargetCaseId);
 	}, 10.0));
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d request Surface observation through server RPC"), RunIndex), []()
 	{
@@ -1404,10 +1548,10 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 			IsCrewStatusReplicated(1, EHeistCrewStatus::CarryingOriginal);
 	}, 15.0));
 
-	const int32 AssemblyCaseCount = State->PlayerCount == 1 ? 1 : 3;
+	const int32 AssemblyCaseCount = FMath::Min(3, State->PlayerCount);
 	for (int32 AssemblyIndex = 0; AssemblyIndex < AssemblyCaseCount; ++AssemblyIndex)
 	{
-		const int32 PlayerId = State->PlayerCount == 1 ? 1 : AssemblyIndex + 2;
+		const int32 PlayerId = State->PlayerCount == 1 ? 1 : 2 + AssemblyIndex % FMath::Max(1, State->PlayerCount - 1);
 		Test->AddCommand(new FHeistContractRunActionCommand(Test, State,
 			FString::Printf(TEXT("run %d move player %d to Assembly case %d"), RunIndex, PlayerId, AssemblyIndex + 1), [State, PlayerId, AssemblyIndex]()
 		{
@@ -1420,6 +1564,12 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 			return State->SelectedObjectCaseIds.IsValidIndex(AssemblyIndex) &&
 				IsServerPlayerOverlapping(PlayerId, FindObjectCase(GetContractRunServerWorld(), State->SelectedObjectCaseIds[AssemblyIndex]));
 		}, 10.0));
+		Test->AddCommand(new FHeistContractRunWaitCommand(Test, State,
+			FString::Printf(TEXT("run %d player %d Assembly case relevant to owning peer"), RunIndex, PlayerId), [State, PlayerId, AssemblyIndex]()
+		{
+			return State->SelectedObjectCaseIds.IsValidIndex(AssemblyIndex) &&
+				IsOwningObjectCaseRelevant(PlayerId, State->SelectedObjectCaseIds[AssemblyIndex]);
+		}, 15.0));
 		Test->AddCommand(new FHeistContractRunActionCommand(Test, State,
 			FString::Printf(TEXT("run %d player %d request Object observation through server RPC"), RunIndex, PlayerId), [State, PlayerId, AssemblyIndex]()
 		{
@@ -1533,7 +1683,7 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 		bool bFoundGuard = false;
 		for (TActorIterator<AHeistGuardCharacter> It(ServerWorld); It; ++It)
 		{
-			if (UHeistGuardStateComponent* GuardState = IsValid(*It) ? It->GetGuardStateComponent() : nullptr; IsValid(GuardState))
+			if (UHeistGuardStateComponent* GuardState = IsValid(*It) && It->IsDifficultyActive() ? It->GetGuardStateComponent() : nullptr; IsValid(GuardState))
 			{
 				GuardState->SetDisabled(false);
 				bFoundGuard = true;
@@ -1628,9 +1778,10 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 		{
 			RecoveredOriginalCount += PlayerResult.Contribution.ArtifactsRecovered;
 		}
-		const int32 ExpectedRecoveredOriginalCount = State->PlayerCount == 1 ? 2 : 4;
+		const int32 ExpectedAssemblyCaseCount = FMath::Min(3, State->PlayerCount);
+		const int32 ExpectedRecoveredOriginalCount = 1 + ExpectedAssemblyCaseCount;
 		Test->AddInfo(FString::Printf(TEXT("W6-010 run evidence: Run=%d Players=%d Surface=1 Assemblies=%d Originals=%d/%d LooseLoot=%s LooseValue=%d Secured=%d Quota=%d RequiredSecured=%s Escaped=%d ResultWidgetsPerWorld=1 Outcome=%s Result=PASS"),
-			RunIndex, State->PlayerCount, State->PlayerCount == 1 ? 1 : 3, RecoveredOriginalCount, ExpectedRecoveredOriginalCount, *State->SelectedLootRowId.ToString(),
+			RunIndex, State->PlayerCount, ExpectedAssemblyCaseCount, RecoveredOriginalCount, ExpectedRecoveredOriginalCount, *State->SelectedLootRowId.ToString(),
 			State->SelectedLootValue, Contract.SecuredValue, Contract.LootValueQuota, Contract.bRequiredTargetSecured ? TEXT("true") : TEXT("false"),
 			GameState->GetEscapedCrewCount(), *UEnum::GetValueAsString(Contract.Outcome)));
 		return Contract.IsSuccessConditionMet() && Contract.Outcome == EHeistContractOutcome::Success && RecoveredOriginalCount == ExpectedRecoveredOriginalCount;
@@ -1774,6 +1925,14 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistFourPlayerContractRunTwoPassTest, "Projec
 bool FHeistFourPlayerContractRunTwoPassTest::RunTest(const FString& Parameters)
 {
 	return HeistContractRunTest::EnqueueTwoRunContractScenario(this, 4);
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistTwoPlayerContractRunTwoPassTest, "ProjectMuseumHeist.ContractRun.M01.TwoPlayerTwoRuns",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHeistTwoPlayerContractRunTwoPassTest::RunTest(const FString& Parameters)
+{
+	return HeistContractRunTest::EnqueueTwoRunContractScenario(this, 2);
 }
 
 #endif

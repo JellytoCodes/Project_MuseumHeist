@@ -844,11 +844,13 @@ void AHeistPlayerController::ApplyLocalInputMode(const EHeistInputMode NewInputM
 	}
 
 	UE_LOG(LogHeist, Verbose,
-		   TEXT("[%s] Local input mode applied: Mode=%s GameplayContext=%s InventoryContext=%s ForgeryContext=%s ActiveContexts=%d Cursor=%s IgnoreMove=%s IgnoreLook=%s Contract=%s"), *GetName(),
+		   TEXT("[%s] Local input mode applied: Mode=%s GameplayContext=%s InventoryContext=%s ForgeryContext=%s MapContext=%s ActiveContexts=%d Cursor=%s IgnoreMove=%s IgnoreLook=%s Contract=%s"), *GetName(),
 		   NewInputMode == EHeistInputMode::Gameplay	? TEXT("Gameplay")
 		   : NewInputMode == EHeistInputMode::Inventory ? TEXT("Inventory")
-														: TEXT("Forgery"),
-		   *GetNameSafe(GameplayInputMappingContext.Get()), *GetNameSafe(InventoryInputMappingContext.Get()), *GetNameSafe(ForgeryInputMappingContext.Get()), GetActiveHeistInputMappingContextCount(),
+		   : NewInputMode == EHeistInputMode::Map       ? TEXT("Map")
+													: TEXT("Forgery"),
+		   *GetNameSafe(GameplayInputMappingContext.Get()), *GetNameSafe(InventoryInputMappingContext.Get()), *GetNameSafe(ForgeryInputMappingContext.Get()),
+		   *GetNameSafe(MapInputMappingContext.Get()), GetActiveHeistInputMappingContextCount(),
 		   bShowMouseCursor ? TEXT("true") : TEXT("false"), IsMoveInputIgnored() ? TEXT("true") : TEXT("false"), IsLookInputIgnored() ? TEXT("true") : TEXT("false"),
 		   IsLocalInputModeContractSatisfied() ? TEXT("PASS") : TEXT("FAIL"));
 }

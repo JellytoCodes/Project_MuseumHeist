@@ -2,6 +2,7 @@
 
 #include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameInstance.h"
+#include "Core/HeistGameMode.h"
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistTypes.h"
 #include "Data/HeistArtifactDataTypes.h"
@@ -128,6 +129,10 @@ bool FHeistWeek7BalanceContractTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
+	const float ExpectedGuardMultipliers[] = {0.75f, 1.00f, 1.25f, 1.50f};
+	const float ExpectedDetectionMultipliers[] = {0.85f, 1.00f, 1.10f, 1.20f};
+	const float ExpectedInspectionMultipliers[] = {1.20f, 1.00f, 0.90f, 0.80f};
+	const int32 ExpectedGuardsForFourAuthored[] = {3, 4, 5, 6};
 	for (int32 PlayerCount = 1; PlayerCount <= 4; ++PlayerCount)
 	{
 		FHeistPlayerCountDifficultyBaseline Baseline;
@@ -135,10 +140,23 @@ bool FHeistWeek7BalanceContractTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("Guard multiplier is positive"), Baseline.GuardCountMultiplier > 0.0f);
 		TestTrue(TEXT("Detection multiplier is positive"), Baseline.DetectionMultiplier > 0.0f);
 		TestTrue(TEXT("Inspection multiplier is positive"), Baseline.InspectionDurationMultiplier > 0.0f);
+		TestTrue(FString::Printf(TEXT("Guard multiplier matches %d-player balance table"), PlayerCount),
+			FMath::IsNearlyEqual(Baseline.GuardCountMultiplier, ExpectedGuardMultipliers[PlayerCount - 1]));
+		TestTrue(FString::Printf(TEXT("Detection multiplier matches %d-player balance table"), PlayerCount),
+			FMath::IsNearlyEqual(Baseline.DetectionMultiplier, ExpectedDetectionMultipliers[PlayerCount - 1]));
+		TestTrue(FString::Printf(TEXT("Inspection multiplier matches %d-player balance table"), PlayerCount),
+			FMath::IsNearlyEqual(Baseline.InspectionDurationMultiplier, ExpectedInspectionMultipliers[PlayerCount - 1]));
+		TestEqual(FString::Printf(TEXT("Guard count rounding matches %d-player balance table"), PlayerCount),
+			AHeistGameMode::CalculateDifficultyGuardCount(4, Baseline.GuardCountMultiplier), ExpectedGuardsForFourAuthored[PlayerCount - 1]);
 	}
 	TestTrue(TEXT("Reward multiplier bounds are ordered"), Balance->MinimumForgeryRewardMultiplier <= Balance->MaximumForgeryRewardMultiplier);
 	TestTrue(TEXT("Alert reward penalty does not mutate quota"), Balance->AlertLevelRewardPenalty >= 0.0f && Balance->AlertLevelRewardPenalty <= 0.25f);
 	TestTrue(TEXT("Arrest reward penalty is bounded"), Balance->ArrestRewardPenaltyPerPlayer >= 0.0f && Balance->ArrestRewardPenaltyPerPlayer <= 1.0f);
+	TestTrue(TEXT("Minimum forgery reward matches balance table"), FMath::IsNearlyEqual(Balance->MinimumForgeryRewardMultiplier, 0.75f));
+	TestTrue(TEXT("Maximum forgery reward matches balance table"), FMath::IsNearlyEqual(Balance->MaximumForgeryRewardMultiplier, 1.25f));
+	TestTrue(TEXT("Alert reward penalty matches balance table"), FMath::IsNearlyEqual(Balance->AlertLevelRewardPenalty, 0.05f));
+	TestTrue(TEXT("Minimum stealth reward matches balance table"), FMath::IsNearlyEqual(Balance->MinimumStealthRewardMultiplier, 0.75f));
+	TestTrue(TEXT("Arrest reward penalty matches balance table"), FMath::IsNearlyEqual(Balance->ArrestRewardPenaltyPerPlayer, 0.10f));
 	return true;
 }
 
