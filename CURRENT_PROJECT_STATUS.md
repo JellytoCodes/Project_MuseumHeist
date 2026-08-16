@@ -41,7 +41,7 @@ TASK-W7-006  진행중  Carry / Heavy Runtime 완료, Pose/Icon/Audio 잔여
 TASK-W7-007  완료    Owner-only Floor Plan Map / Marker 정책 / Stun Cleanup
 TASK-W7-008  완료    2P 실제 이동 입력 / Footstep→Guard Investigate 복제
 TASK-W7-009  완료    Alert 0~4 HUD·음악 / Alarmed 서버 강제 종료
-TASK-W7-010  진행중  자동 E2E 완료 / 실제 2~3분 리듬 테스트 잔여
+TASK-W7-010  취소    TASK-W8-007 3-Map 9판 Release Balance Gate로 통합
 TASK-W7-011  완료    Surface/Map/Optional Variation
 ```
 
@@ -62,7 +62,7 @@ TEST-W7-005  Pass  Alert 0~4 HUD / 음악 / Alarmed 서버 강제 종료
 
 ## 1. Current Focus
 
-W7는 팀 가독성과 협동 피드백의 C++/복제/Input 기반을 구현하고 전체 자동화 회귀를 통과했다. 추가 렌더·오디오 활성 4P 검증으로 `TASK-W7-002`, `TASK-W7-007`, `TASK-W7-009`까지 완료 처리했다. Stun/Arrest/Carry 최종 연출과 실제 2~3분 플레이 리듬은 개별 Task에 남아 있다.
+W7는 팀 가독성과 협동 피드백의 C++/복제/Input 기반을 구현하고 전체 자동화 회귀를 통과했다. 추가 렌더·오디오 활성 4P 검증으로 `TASK-W7-002`, `TASK-W7-007`, `TASK-W7-009`까지 완료 처리했다. Stun/Arrest/Carry 최종 연출은 `TASK-W7-004~006` 공동 2P Presentation Pass로 마감하고, 실제 2~3분 플레이 리듬은 중복 Task를 만들지 않고 `TASK-W8-007`의 3-Map 9판 Gate에서 함께 판정한다.
 
 ```text
 Editor Build        PASS / Win64 Development / Adaptive Non-Unity
@@ -77,7 +77,7 @@ W7 Presentation     TEST-W7-003·004·005 / Pass / live re-fetch confirmed
 범위 경계:
 
 - NullRHI 자동화는 상태·복제·입력·Widget 생성 계약을 검증하지만 렌더링 화면과 실제 청음을 대신하지 않는다.
-- Stun/Arrest/Carry 최종 Presentation Asset과 실제 2~3분 Escape 리듬은 후속 검토 대상이다.
+- Stun/Arrest/Carry 최종 Presentation Asset은 W7의 마지막 후속 검토 대상이다. 실제 2~3분 Escape 리듬은 W8-007로 통합했다.
 - W7 Gate는 아직 닫지 않는다. Notion의 `진행중`/`검토중` Task를 완료 기준별로 마감한 뒤 판단한다.
 
 ---
@@ -218,7 +218,8 @@ Warning은 Title/Lobby RecastNavMesh 부재 및 테스트 Guard Noise의 Outside
 3. `LOCAL_PROGRESS_INBOX.md`의 `UNLINKED`/`READY_TO_SYNC` Entry를 확인한다.
 4. `git status --short`와 관련 Diff를 확인한다.
 5. `TEST-W7-003`~`TEST-W7-005`와 아래 W7 Remaining Evidence를 확인하고 이미 통과한 기반을 재구현하지 않는다.
-6. W7 Presentation 검토는 렌더링 Editor에서 화면·청음 증거를 수집하고 Task별 완료 기준만 닫는다.
+6. `TASK-W7-004~006`은 단일 2P 렌더·오디오 Presentation Pass로 검증한다.
+7. W7 Gate 종료 후 W8은 M02 Gameplay 배치 → M03 Gameplay 배치 → M01 Final Pass → 세 맵 Route·Audio·UI 잔여 → 3-Map 9판 Gate 순서로 진행한다.
 
 ---
 
@@ -258,7 +259,17 @@ Notion        TEST-W7-003·004·005 Pass / TASK-W7-002·007·009 완료 / live r
 ### Remaining Evidence
 
 - W7-004~006: Vignette/Low-pass, Cuffed/RESCUE, Carry Pose/Icon/Audio Asset
-- W7-010: 실제 2~3분 단위 탐욕/탈출 리듬 테스트 시트
+- W8-007: 각 맵 Solo/2P/4P 총 9판에서 실제 2~3분 탐욕/탈출 선택 시점과 15~25분 Contract 지표 기록
+
+### 2026-08-15 Roadmap Optimization
+
+- W7~W12 활성 잔여는 29개이며 이 중 필수 27개다. 취소·통합된 행은 활성 주차 Relation에서 제거하고 이력만 보존했다.
+- `TASK-W7-010`은 자동 E2E 범위가 이미 통과했고 실제 리듬 검증이 `TASK-W8-007`과 중복되어 취소 후 W8-007에 통합했다.
+- `TASK-W11-002`는 External Test 직후 수행할 Issue Triage가 `TASK-W11-001`과 분리될 이유가 없어 취소 후 W11-001에 통합했다.
+- W8-003의 삭제 기능 `Smoke` 문구를 제거했다.
+- W8-004~006은 이미 통과한 Guard Scaling, Alert Loop, HUD/Result/Forgery/Inventory/Popup Pool을 재구현하지 않고 맵 배치·누락 Audio·해상도/시각 회귀만 수행한다.
+- W9~W12의 반복 QA는 대상 Build가 서로 다르므로 유지하되 Baseline/RC1/External/RC2/Steam-installed Hash 경계를 명시했다.
+- W12 실행 순서는 RC2 → Final Regression → Steam RC Upload → Steam-installed Smoke → Store/Rollback 준비 → Publish로 고정했다.
 
 ---
 

@@ -110,7 +110,8 @@ Notion Write            NOT DONE
   - [`TEST-W7-005`](https://app.notion.com/p/3bd1d26a5dfb81379889d4e36d76f8ee)
 - Notion Status:
   - 완료: `TASK-W7-001`, `002`, `003`, `007`, `008`, `009`, `011`
-  - 진행중: `TASK-W7-004`, `005`, `006`, `010`
+  - 진행중: `TASK-W7-004`, `005`, `006`
+  - 취소/통합: `TASK-W7-010` → `TASK-W8-007`
 
 #### Applied Work
 
@@ -148,7 +149,10 @@ Notion Live Re-fetch                     PASS
 #### Remaining Scope
 
 - Stun/Arrest/Carry 최종 화면·오디오·Pose Presentation은 개별 `진행중` Task의 완료 기준으로 남겼다.
-- 실제 2~3분 Escape 리듬은 NullRHI 자동화 Pass로 대체하지 않았다.
+- `TASK-W7-004~006`은 단일 2P 렌더·오디오 Presentation Pass와 하나의 Test Log로 공동 검증한다.
+- 실제 2~3분 Escape 리듬은 NullRHI 자동화 Pass로 대체하지 않고 `TASK-W8-007`의 3-Map 9판 Gate에 통합했다.
+- `TASK-W11-002`는 `TASK-W11-001 External Test / RC1 Gate & Issue Triage`에 통합하고 취소 상태로 이력을 보존했다.
+- 최적화 후 W7~W12 활성 잔여는 29개, 필수 잔여는 27개다.
 
 ---
 

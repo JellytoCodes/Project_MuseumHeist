@@ -379,19 +379,9 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 	float GetInspectionDelayRemaining() const;
 
 	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Inspection")
-	FName GetInspectionScoreBand() const;
-
-	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Inspection")
-	EHeistAlertLevel GetResolvedInspectionAlertOutcome() const;
-
-	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Inspection")
-	EHeistDisplayCaseState GetResolvedInspectionCaseOutcome() const;
-
-	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Inspection")
 	int32 GetInspectionScheduleRevision() const;
 
-	static bool CalculateInspectionSchedule(float SimilarityScore, float BaseInspectionDelay, float& OutDelay, FName& OutScoreBand, EHeistAlertLevel& OutAlertOutcome,
-											EHeistDisplayCaseState& OutCaseOutcome);
+	static bool CalculateInspectionSchedule(float BaseInspectionDelay, float& OutDelay);
 
 	bool TryBeginInspection(AActor* InspectingGuard);
 	bool InterruptInspection(AActor* InspectingGuard, FName Reason);
@@ -404,7 +394,7 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 	int32 GetInspectionDuplicateBlockCount() const;
 
   private:
-	bool ResolveInspectionSchedule(const FHeistForgeryResult& ForgeryResult, FName& OutRejectReason);
+	bool ResolveInspectionSchedule(FName& OutRejectReason);
 	void StartInspectionDelayTimer();
 	void ClearInspectionDelayTimer();
 	void HandleInspectionDelayExpired(int32 ExpectedScheduleRevision, int32 ExpectedTimerRevision);
@@ -425,15 +415,6 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 
 	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Inspection", meta = (AllowPrivateAccess = "true"))
 	float InspectionReadyServerTime = 0.0f;
-
-	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Inspection", meta = (AllowPrivateAccess = "true"))
-	FName InspectionScoreBand = NAME_None;
-
-	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Inspection", meta = (AllowPrivateAccess = "true"))
-	EHeistAlertLevel ResolvedInspectionAlertOutcome = EHeistAlertLevel::Quiet;
-
-	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Inspection", meta = (AllowPrivateAccess = "true"))
-	EHeistDisplayCaseState ResolvedInspectionCaseOutcome = EHeistDisplayCaseState::Suspected;
 
 	UPROPERTY(ReplicatedUsing = OnRep_InspectionScheduleRevision, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Inspection", meta = (AllowPrivateAccess = "true"))
 	int32 InspectionScheduleRevision = 0;

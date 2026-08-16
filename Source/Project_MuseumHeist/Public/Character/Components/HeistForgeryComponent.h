@@ -234,9 +234,6 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryComponent : public UActorComponent
 	float TemplateExtraStrokePenaltyWeight = 0.0f;
 
 	UPROPERTY(Replicated)
-	float TemplateTimeoutPenalty = 0.0f;
-
-	UPROPERTY(Replicated)
 	EHeistForgeryBackgroundFilter TemplateBackgroundFilterMode = EHeistForgeryBackgroundFilter::None;
 
 	UPROPERTY(Replicated)

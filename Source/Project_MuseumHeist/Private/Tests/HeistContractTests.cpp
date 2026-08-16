@@ -7,6 +7,8 @@
 #include "World/Actors/Loot/HeistObjectDisplayCaseActor.h"
 #include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 
+#include <limits>
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistReplicaAcceptanceContractTest, "ProjectMuseumHeist.Forgery.ReplicaAcceptanceContract",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
@@ -16,35 +18,18 @@ bool FHeistReplicaAcceptanceContractTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Exactly 70 is accepted"), HeistReplicaAcceptance::MeetsMinimumQuality(70.0f, 0.60f));
 	TestFalse(TEXT("Below 70 is rejected"), HeistReplicaAcceptance::MeetsMinimumQuality(69.99f, 0.60f));
 
-	for (const float AcceptedScore : {70.0f, 80.0f, 95.0f, 100.0f})
-	{
-		float SurfaceDelay = 0.0f;
-		FName SurfaceBand;
-		EHeistAlertLevel SurfaceAlert = EHeistAlertLevel::Lockdown;
-		EHeistDisplayCaseState SurfaceOutcome = EHeistDisplayCaseState::Alarmed;
-		TestTrue(FString::Printf(TEXT("Surface score %.0f schedules an ambient inspection"), AcceptedScore),
-			AHeistPaintingDisplayCaseActor::CalculateInspectionSchedule(AcceptedScore, 8.0f, SurfaceDelay, SurfaceBand, SurfaceAlert, SurfaceOutcome));
-		TestTrue(TEXT("Surface inspection delay is quality-independent"), FMath::IsNearlyEqual(SurfaceDelay, 8.0f));
-		TestEqual(TEXT("Surface inspection never changes Alert"), SurfaceAlert, EHeistAlertLevel::Quiet);
-		TestEqual(TEXT("Surface inspection completes an accepted replica"), SurfaceOutcome, EHeistDisplayCaseState::Completed);
+	float SurfaceDelay = 0.0f;
+	TestTrue(TEXT("Surface ambient inspection uses the configured delay"), AHeistPaintingDisplayCaseActor::CalculateInspectionSchedule(8.0f, SurfaceDelay));
+	TestTrue(TEXT("Surface inspection delay is preserved"), FMath::IsNearlyEqual(SurfaceDelay, 8.0f));
 
-		float ObjectDelay = 0.0f;
-		FName ObjectBand;
-		EHeistAlertLevel ObjectAlert = EHeistAlertLevel::Lockdown;
-		EHeistObjectAssemblyState ObjectOutcome = EHeistObjectAssemblyState::Alarmed;
-		TestTrue(FString::Printf(TEXT("Object score %.0f schedules an ambient inspection"), AcceptedScore),
-			AHeistObjectDisplayCaseActor::CalculateInspectionSchedule(AcceptedScore, 8.0f, ObjectDelay, ObjectBand, ObjectAlert, ObjectOutcome));
-		TestTrue(TEXT("Object inspection delay is quality-independent"), FMath::IsNearlyEqual(ObjectDelay, 8.0f));
-		TestEqual(TEXT("Object inspection never changes Alert"), ObjectAlert, EHeistAlertLevel::Quiet);
-		TestEqual(TEXT("Object inspection completes an accepted replica"), ObjectOutcome, EHeistObjectAssemblyState::Completed);
-	}
+	float ObjectDelay = 0.0f;
+	TestTrue(TEXT("Object ambient inspection uses the configured delay"), AHeistObjectDisplayCaseActor::CalculateInspectionSchedule(8.0f, ObjectDelay));
+	TestTrue(TEXT("Object inspection delay is preserved"), FMath::IsNearlyEqual(ObjectDelay, 8.0f));
 
 	float RejectedDelay = 0.0f;
-	FName RejectedBand;
-	EHeistAlertLevel RejectedAlert = EHeistAlertLevel::Quiet;
-	EHeistDisplayCaseState RejectedOutcome = EHeistDisplayCaseState::Completed;
-	TestFalse(TEXT("A below-threshold surface score cannot enter inspection"),
-		AHeistPaintingDisplayCaseActor::CalculateInspectionSchedule(69.99f, 8.0f, RejectedDelay, RejectedBand, RejectedAlert, RejectedOutcome));
+	TestFalse(TEXT("A negative surface inspection delay is rejected"), AHeistPaintingDisplayCaseActor::CalculateInspectionSchedule(-1.0f, RejectedDelay));
+	TestFalse(TEXT("A non-finite object inspection delay is rejected"),
+		AHeistObjectDisplayCaseActor::CalculateInspectionSchedule(std::numeric_limits<float>::quiet_NaN(), RejectedDelay));
 	return true;
 }
 

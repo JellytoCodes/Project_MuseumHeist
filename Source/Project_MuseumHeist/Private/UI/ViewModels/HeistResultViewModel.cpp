@@ -1,7 +1,6 @@
 #include "UI/ViewModels/HeistResultViewModel.h"
 
 #include "Core/HeistGameState.h"
-#include "Core/HeistPlayerState.h"
 
 #pragma region Construction
 
@@ -28,7 +27,7 @@ void UHeistResultViewModel::BeginDestroy()
 
 #pragma region Setup
 
-void UHeistResultViewModel::SetupViewModel(AHeistGameState* InGameState, AHeistPlayerState* InLocalPlayerState)
+void UHeistResultViewModel::SetupViewModel(AHeistGameState* InGameState)
 {
 	if (GameState != InGameState && IsValid(GameState))
 	{
@@ -37,7 +36,6 @@ void UHeistResultViewModel::SetupViewModel(AHeistGameState* InGameState, AHeistP
 	}
 
 	GameState = InGameState;
-	LocalPlayerState = InLocalPlayerState;
 
 	if (IsValid(GameState))
 	{
@@ -70,18 +68,6 @@ void UHeistResultViewModel::RefreshResultData()
 		FText::Format(NSLOCTEXT("HeistResult", "TeamRewardFormat", "팀 보상  {0}"), FText::AsNumber(TeamResult.TeamReward)));
 	UE_MVVM_SET_PROPERTY_VALUE(ReplicaRecapText, BuildReplicaRecapSummaryText(TeamResult));
 
-	const int32 LocalPlayerId = IsValid(LocalPlayerState) ? LocalPlayerState->HeistPlayerId : INDEX_NONE;
-	const FHeistPlayerResult* LocalResult = PlayerResults.FindByPredicate([LocalPlayerId](const FHeistPlayerResult& PlayerResult) { return PlayerResult.PlayerId == LocalPlayerId; });
-
-	const int32 NewMyFinalScore = LocalResult ? LocalResult->FinalScore : 0;
-	UE_MVVM_SET_PROPERTY_VALUE(MyFinalScore, NewMyFinalScore);
-	UE_MVVM_SET_PROPERTY_VALUE(MyFinalScoreText, FText::Format(NSLOCTEXT("HeistResult", "LocalFinalScoreFormat", "전리품  {0}"), FText::AsNumber(NewMyFinalScore)));
-
-	const bool bNewEscaped = LocalResult ? LocalResult->bEscaped : false;
-	UE_MVVM_SET_PROPERTY_VALUE(bEscaped, bNewEscaped);
-	UE_MVVM_SET_PROPERTY_VALUE(EscapedVisibility, bNewEscaped ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-
-	RefreshResultRows();
 	SnapshotChangedDelegate.Broadcast();
 }
 
@@ -107,66 +93,6 @@ const FHeistTeamResult& UHeistResultViewModel::GetTeamResult() const
 const TArray<FHeistReplicaRecapEntry>& UHeistResultViewModel::GetReplicaRecap() const
 {
 	return TeamResult.ReplicaRecap;
-}
-
-int32 UHeistResultViewModel::GetMyFinalScore() const
-{
-	return MyFinalScore;
-}
-
-bool UHeistResultViewModel::IsEscaped() const
-{
-	return bEscaped;
-}
-
-const FText& UHeistResultViewModel::GetMyFinalScoreText() const
-{
-	return MyFinalScoreText;
-}
-
-ESlateVisibility UHeistResultViewModel::GetEscapedVisibility() const
-{
-	return EscapedVisibility;
-}
-
-const FText& UHeistResultViewModel::GetResultRow1Text() const
-{
-	return ResultRow1Text;
-}
-
-const FText& UHeistResultViewModel::GetResultRow2Text() const
-{
-	return ResultRow2Text;
-}
-
-const FText& UHeistResultViewModel::GetResultRow3Text() const
-{
-	return ResultRow3Text;
-}
-
-const FText& UHeistResultViewModel::GetResultRow4Text() const
-{
-	return ResultRow4Text;
-}
-
-ESlateVisibility UHeistResultViewModel::GetResultRow1Visibility() const
-{
-	return ResultRow1Visibility;
-}
-
-ESlateVisibility UHeistResultViewModel::GetResultRow2Visibility() const
-{
-	return ResultRow2Visibility;
-}
-
-ESlateVisibility UHeistResultViewModel::GetResultRow3Visibility() const
-{
-	return ResultRow3Visibility;
-}
-
-ESlateVisibility UHeistResultViewModel::GetResultRow4Visibility() const
-{
-	return ResultRow4Visibility;
 }
 
 const FText& UHeistResultViewModel::GetOutcomeText() const { return OutcomeText; }
@@ -202,48 +128,6 @@ FText UHeistResultViewModel::BuildReplicaRecapSummaryText(const FHeistTeamResult
 			Recap.QualityScore);
 	}
 	return RecapLines.IsEmpty() ? NSLOCTEXT("HeistResult", "NoReplicaRecap", "기록된 복제품 없음") : FText::FromString(RecapLines);
-}
-
-FText UHeistResultViewModel::BuildPlayerResultSummaryText(const FHeistPlayerResult& PlayerResult)
-{
-	const FText EscapeStateText = PlayerResult.bEscaped ? NSLOCTEXT("HeistResult", "PlayerEscaped", "탈출")
-		: PlayerResult.bArrested ? NSLOCTEXT("HeistResult", "PlayerCaught", "체포") : NSLOCTEXT("HeistResult", "PlayerDidNotEscape", "미탈출");
-	const FHeistPlayerContribution& Contribution = PlayerResult.Contribution;
-	return FText::Format(
-		NSLOCTEXT("HeistResult", "ResultRowFormat",
-			"플레이어 {0}  |  {1}  |  위조 {2}({3}) / 조립 {4}({5})  |  원본 {6} · 운반 {7}초  |  전리품 {8}  |  교란 {9}  |  구조 {10}  |  경보 {11}"),
-		FText::AsNumber(PlayerResult.PlayerId), EscapeStateText, FText::AsNumber(Contribution.SurfaceForgeries),
-		FText::AsNumber(FMath::RoundToInt(Contribution.BestSurfaceQuality)), FText::AsNumber(Contribution.Assemblies),
-		FText::AsNumber(FMath::RoundToInt(Contribution.BestAssemblyQuality)), FText::AsNumber(Contribution.ArtifactsRecovered),
-		FText::AsNumber(FMath::RoundToInt(Contribution.CarryTimeSeconds)), FText::AsNumber(Contribution.SecuredLootValue),
-		FText::AsNumber(Contribution.GuardsDistracted), FText::AsNumber(Contribution.TeammatesRescued), FText::AsNumber(Contribution.AlarmsTriggered));
-}
-
-FText UHeistResultViewModel::BuildResultRowText(const int32 ResultIndex) const
-{
-	if (!PlayerResults.IsValidIndex(ResultIndex))
-	{
-		return FText::GetEmpty();
-	}
-
-	return BuildPlayerResultSummaryText(PlayerResults[ResultIndex]);
-}
-
-ESlateVisibility UHeistResultViewModel::BuildResultRowVisibility(const int32 ResultIndex) const
-{
-	return PlayerResults.IsValidIndex(ResultIndex) ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
-}
-
-void UHeistResultViewModel::RefreshResultRows()
-{
-	UE_MVVM_SET_PROPERTY_VALUE(ResultRow1Text, BuildResultRowText(0));
-	UE_MVVM_SET_PROPERTY_VALUE(ResultRow2Text, BuildResultRowText(1));
-	UE_MVVM_SET_PROPERTY_VALUE(ResultRow3Text, BuildResultRowText(2));
-	UE_MVVM_SET_PROPERTY_VALUE(ResultRow4Text, BuildResultRowText(3));
-	UE_MVVM_SET_PROPERTY_VALUE(ResultRow1Visibility, BuildResultRowVisibility(0));
-	UE_MVVM_SET_PROPERTY_VALUE(ResultRow2Visibility, BuildResultRowVisibility(1));
-	UE_MVVM_SET_PROPERTY_VALUE(ResultRow3Visibility, BuildResultRowVisibility(2));
-	UE_MVVM_SET_PROPERTY_VALUE(ResultRow4Visibility, BuildResultRowVisibility(3));
 }
 
 #pragma endregion

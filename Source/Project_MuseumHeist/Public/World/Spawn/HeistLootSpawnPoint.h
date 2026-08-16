@@ -31,7 +31,7 @@ class PROJECT_MUSEUMHEIST_API AHeistLootSpawnPoint : public AActor
 	TObjectPtr<class USceneComponent> SceneRoot;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Spawn", meta = (AllowPrivateAccess = "true"))
-	EHeistSpawnCategory SpawnCategory = EHeistSpawnCategory::RareEvent;
+	EHeistSpawnCategory SpawnCategory = EHeistSpawnCategory::ExhibitionRoom;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Spawn", meta = (AllowPrivateAccess = "true"))
 	bool bSpawnEnabled = true;

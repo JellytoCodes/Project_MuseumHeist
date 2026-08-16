@@ -135,7 +135,7 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 	static void DebugLootScoreWeightApplied(const UObject* WorldContextObject, int32 ScoreDelta, float WeightDelta, int32 TotalScore, float TotalWeight);
 	static void DebugLootScoreWeightRemoved(const UObject* WorldContextObject, int32 ScoreDelta, float WeightDelta, int32 TotalScore, float TotalWeight);
 	static void DebugPlayerEscapeStateRejected(const UObject* WorldContextObject, const TCHAR* Reason);
-	static void DebugPlayerEscapeStateCommitted(const UObject* WorldContextObject, int32 HeistPlayerId, int32 FinalScore, float EscapeTimeSeconds);
+	static void DebugPlayerEscapeStateCommitted(const UObject* WorldContextObject, int32 HeistPlayerId);
 	static void DebugPlayerEscapeStateReplicated(const UObject* WorldContextObject, int32 HeistPlayerId, bool bEscaped);
 	static void DebugPlayerStateScoreReplicated(const UObject* WorldContextObject, int32 TotalLootScore);
 	static void DebugPlayerStateWeightReplicated(const UObject* WorldContextObject, float TotalLootWeight);
@@ -146,12 +146,6 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 	static void DebugThrowableProjectileSpawned(const UObject* WorldContextObject, const UObject* Character, const UObject* Projectile, FName ItemId, const FVector& TargetWorldLocation,
 												const FVector& LaunchDirection, float ProjectileSpeed, bool bDebugBypassInventory);
 	static void DebugThrowableProjectileImpact(const UObject* WorldContextObject, const UObject* Projectile, const UObject* OtherActor, FName ItemId, const FVector& ImpactLocation);
-
-	static void DebugRareLootTimersStarted(const UObject* WorldContextObject, const TArray<float>& EventTimes, float WarningLeadTime);
-	static void DebugRareLootWarningStarted(const UObject* WorldContextObject, int32 EventIndex, FName ItemId, float SpawnServerTime);
-	static void DebugRareLootSpawned(const UObject* WorldContextObject, int32 EventIndex, const UObject* LootActor, const UObject* SpawnPoint, FName ItemId, const FVector& WorldLocation);
-	static void DebugRareLootEventFailed(const UObject* WorldContextObject, int32 EventIndex, const TCHAR* Reason);
-	static void DebugRareLootPickedUp(const UObject* WorldContextObject, int32 EventIndex, const UObject* LootActor, const UObject* Requester, FName ItemId);
 
 	static void DebugGuardStunApplied(const UObject* WorldContextObject, const UObject* GuardActor, float DurationSeconds);
 	static void DebugGuardStunCleared(const UObject* WorldContextObject, const UObject* GuardActor, EHeistGuardState NewState);
@@ -273,7 +267,7 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 	static void DebugResultRebuild(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Result", meta = (DevelopmentOnly))
-	static void DebugResultSeed(APlayerController* PlayerController, int32 Score, bool bEscaped, float EscapeTimeSeconds);
+	static void DebugResultSeed(APlayerController* PlayerController, bool bEscaped);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Result", meta = (DevelopmentOnly))
 	static void DebugContributionSeed(APlayerController* PlayerController, int32 SurfaceForgeries, float BestSurfaceQuality, int32 Assemblies,
@@ -414,9 +408,6 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
 	static void DebugObjectAssemblyReplicaDump(APlayerController* PlayerController);
-
-	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
-	static void DebugObjectAssemblyPrototypeGate(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|ObjectAssembly", meta = (DevelopmentOnly))
 	static void DebugObjectAssemblyContentValidate(APlayerController* PlayerController);

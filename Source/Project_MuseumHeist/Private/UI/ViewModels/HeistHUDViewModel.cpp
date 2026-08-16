@@ -22,7 +22,6 @@ void UHeistHUDViewModel::BeginDestroy()
 	{
 		GameState->GetPlayerConnectionsChangedDelegate().RemoveAll(this);
 		GameState->GetEscapePhaseStateChangedDelegate().RemoveAll(this);
-		GameState->GetRareLootEventStateChangedDelegate().RemoveAll(this);
 		GameState->GetObjectiveStateChangedDelegate().RemoveAll(this);
 		GameState->GetAlertStateChangedDelegate().RemoveAll(this);
 	}
@@ -53,7 +52,6 @@ void UHeistHUDViewModel::SetupViewModel(AHeistGameState* InGameState, AHeistPlay
 	{
 		GameState->GetPlayerConnectionsChangedDelegate().RemoveAll(this);
 		GameState->GetEscapePhaseStateChangedDelegate().RemoveAll(this);
-		GameState->GetRareLootEventStateChangedDelegate().RemoveAll(this);
 		GameState->GetObjectiveStateChangedDelegate().RemoveAll(this);
 		GameState->GetAlertStateChangedDelegate().RemoveAll(this);
 	}
@@ -81,8 +79,6 @@ void UHeistHUDViewModel::SetupViewModel(AHeistGameState* InGameState, AHeistPlay
 		GameState->GetPlayerConnectionsChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandlePlayerConnectionsChanged);
 		GameState->GetEscapePhaseStateChangedDelegate().RemoveAll(this);
 		GameState->GetEscapePhaseStateChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandleEscapePhaseStateChanged);
-		GameState->GetRareLootEventStateChangedDelegate().RemoveAll(this);
-		GameState->GetRareLootEventStateChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandleRareLootEventStateChanged);
 		GameState->GetObjectiveStateChangedDelegate().RemoveAll(this);
 		GameState->GetObjectiveStateChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandleObjectiveStateChanged);
 		GameState->GetAlertStateChangedDelegate().RemoveAll(this);
@@ -108,7 +104,6 @@ void UHeistHUDViewModel::SetupViewModel(AHeistGameState* InGameState, AHeistPlay
 	}
 
 	RefreshPresentationState();
-	RefreshRareLootState();
 }
 
 void UHeistHUDViewModel::RefreshPresentationState()
@@ -215,24 +210,6 @@ void UHeistHUDViewModel::RefreshPresentationState()
 	PresentationChangedDelegate.Broadcast();
 }
 
-void UHeistHUDViewModel::RefreshRareLootState()
-{
-	const FHeistRareLootEventState State = IsValid(GameState) ? GameState->GetRareLootEventState() : FHeistRareLootEventState();
-
-	UE_MVVM_SET_PROPERTY_VALUE(bRareLootIncoming, State.bIncomingWarningActive);
-	UE_MVVM_SET_PROPERTY_VALUE(bRareLootDirectionMarkerVisible, State.bDirectionMarkerActive);
-	UE_MVVM_SET_PROPERTY_VALUE(RareLootEventIndex, State.EventIndex);
-	UE_MVVM_SET_PROPERTY_VALUE(RareLootItemId, State.ItemId);
-	UE_MVVM_SET_PROPERTY_VALUE(RareLootWorldLocation, FVector(State.WorldLocation));
-	UE_MVVM_SET_PROPERTY_VALUE(RareLootSpawnServerTime, State.SpawnServerTime);
-	RareLootPresentationChangedDelegate.Broadcast();
-}
-
-void UHeistHUDViewModel::HandleRareLootEventStateChanged(const FHeistRareLootEventState&)
-{
-	RefreshRareLootState();
-}
-
 void UHeistHUDViewModel::HandlePlayerConnectionsChanged(const int32)
 {
 	RefreshPresentationState();
@@ -334,11 +311,6 @@ void UHeistHUDViewModel::HandleActionStateChanged()
 FHeistHUDPresentationChanged& UHeistHUDViewModel::GetPresentationChangedDelegate()
 {
 	return PresentationChangedDelegate;
-}
-
-FHeistRareLootPresentationChanged& UHeistHUDViewModel::GetRareLootPresentationChangedDelegate()
-{
-	return RareLootPresentationChangedDelegate;
 }
 
 #pragma endregion
@@ -478,40 +450,6 @@ bool UHeistHUDViewModel::IsSuspenseMusicActive() const
 bool UHeistHUDViewModel::IsAlarmMusicActive() const
 {
 	return bAlarmMusicActive;
-}
-
-#pragma endregion
-
-#pragma region RareLootPresentation
-
-bool UHeistHUDViewModel::IsRareLootIncoming() const
-{
-	return bRareLootIncoming;
-}
-
-bool UHeistHUDViewModel::IsRareLootDirectionMarkerVisible() const
-{
-	return bRareLootDirectionMarkerVisible;
-}
-
-int32 UHeistHUDViewModel::GetRareLootEventIndex() const
-{
-	return RareLootEventIndex;
-}
-
-FName UHeistHUDViewModel::GetRareLootItemId() const
-{
-	return RareLootItemId;
-}
-
-FVector UHeistHUDViewModel::GetRareLootWorldLocation() const
-{
-	return RareLootWorldLocation;
-}
-
-float UHeistHUDViewModel::GetRareLootSpawnServerTime() const
-{
-	return RareLootSpawnServerTime;
 }
 
 #pragma endregion

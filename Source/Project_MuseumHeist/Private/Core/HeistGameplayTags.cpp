@@ -22,7 +22,6 @@ void FHeistGameplayTags::InitializeNativeGameplayTags()
 	HEIST_ADD_NATIVE_TAG(State_Interacting, "State.Interacting", "Player is performing an interaction cast.");
 	HEIST_ADD_NATIVE_TAG(State_MovementLocked, "State.MovementLocked", "Player movement is locked.");
 	HEIST_ADD_NATIVE_TAG(State_CarryingLoot, "State.CarryingLoot", "Player carries at least one loot item.");
-	HEIST_ADD_NATIVE_TAG(State_Revealed, "State.Revealed", "Player direction is revealed.");
 
 	HEIST_ADD_NATIVE_TAG(Action_Looting, "Action.Looting", "Loot interaction cast is active.");
 	HEIST_ADD_NATIVE_TAG(Action_Escaping, "Action.Escaping", "Vent escape cast is active.");
@@ -32,7 +31,6 @@ void FHeistGameplayTags::InitializeNativeGameplayTags()
 
 	HEIST_ADD_NATIVE_TAG(Item_Loot, "Item.Loot", "Loot item category.");
 	HEIST_ADD_NATIVE_TAG(Item_Loot_RoyalCrown, "Item.Loot.RoyalCrown", "Royal Crown loot.");
-	HEIST_ADD_NATIVE_TAG(Item_Loot_RareArtifact, "Item.Loot.RareArtifact", "Rare Artifact loot.");
 	HEIST_ADD_NATIVE_TAG(Item_Loot_Painting, "Item.Loot.Painting", "Painting loot.");
 	HEIST_ADD_NATIVE_TAG(Item_Loot_AncientSword, "Item.Loot.AncientSword", "Ancient Sword loot.");
 	HEIST_ADD_NATIVE_TAG(Item_Loot_GoldenVase, "Item.Loot.GoldenVase", "Golden Vase loot.");
@@ -78,8 +76,6 @@ void FHeistGameplayTags::InitializeNativeGameplayTags()
 	HEIST_ADD_NATIVE_TAG(Match_ExtractionPhase, "Match.ExtractionPhase", "Match is in extraction phase.");
 	HEIST_ADD_NATIVE_TAG(Match_End, "Match.End", "Match has ended.");
 	HEIST_ADD_NATIVE_TAG(UI_Warning_InventoryFull, "UI.Warning.InventoryFull", "Inventory full warning.");
-	HEIST_ADD_NATIVE_TAG(UI_Warning_Revealed, "UI.Warning.Revealed", "Player revealed warning.");
-	HEIST_ADD_NATIVE_TAG(UI_Warning_RareLootIncoming, "UI.Warning.RareLootIncoming", "Rare loot incoming warning.");
 
 #undef HEIST_ADD_NATIVE_TAG
 }

@@ -396,13 +396,6 @@ void UHeistCheatManager::HeistObjectAssemblyReplicaDump()
 #endif
 }
 
-void UHeistCheatManager::HeistObjectAssemblyPrototypeGate()
-{
-#if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugObjectAssemblyPrototypeGate(GetOuterAPlayerController());
-#endif
-}
-
 void UHeistCheatManager::HeistObjectAssemblyContentValidate()
 {
 #if !UE_BUILD_SHIPPING
@@ -1087,10 +1080,10 @@ void UHeistCheatManager::HeistResultRebuild()
 #endif
 }
 
-void UHeistCheatManager::HeistResultSeed(const int32 Score, const bool bEscaped, const float EscapeTimeSeconds)
+void UHeistCheatManager::HeistResultSeed(const bool bEscaped)
 {
 #if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugResultSeed(GetOuterAPlayerController(), Score, bEscaped, EscapeTimeSeconds);
+	UHeistDebugFunctionLibrary::DebugResultSeed(GetOuterAPlayerController(), bEscaped);
 #endif
 }
 

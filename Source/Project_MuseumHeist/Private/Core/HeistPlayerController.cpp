@@ -2803,9 +2803,9 @@ void AHeistPlayerController::DebugRequestRebuildResults()
 	Server_DebugRequestRebuildResults();
 }
 
-void AHeistPlayerController::DebugRequestSeedResult(const int32 Score, const bool bEscaped, const float EscapeTimeSeconds)
+void AHeistPlayerController::DebugRequestSeedResult(const bool bEscaped)
 {
-	Server_DebugRequestSeedResult(Score, bEscaped, EscapeTimeSeconds);
+	Server_DebugRequestSeedResult(bEscaped);
 }
 
 void AHeistPlayerController::DebugRequestSeedContribution(const int32 SurfaceForgeries, const float BestSurfaceQuality, const int32 Assemblies,
@@ -3089,7 +3089,7 @@ void AHeistPlayerController::Server_DebugRequestRebuildResults_Implementation()
 #endif
 }
 
-void AHeistPlayerController::Server_DebugRequestSeedResult_Implementation(const int32 Score, const bool bEscaped, const float EscapeTimeSeconds)
+void AHeistPlayerController::Server_DebugRequestSeedResult_Implementation(const bool bEscaped)
 {
 #if !UE_BUILD_SHIPPING
 	AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
@@ -3100,7 +3100,7 @@ void AHeistPlayerController::Server_DebugRequestSeedResult_Implementation(const 
 		return;
 	}
 
-	HeistPlayerState->DebugSetResultState(FMath::Max(0, Score), bEscaped, FMath::Max(0.0f, EscapeTimeSeconds));
+	HeistPlayerState->DebugSetResultState(bEscaped);
 	HeistGameState->RebuildPlayerResults();
 #endif
 }

@@ -8,14 +8,12 @@
 #include "HeistPlayerCharacter.generated.h"
 
 class UHeistActionComponent;
-class UHeistCustomizationComponent;
 class UHeistForgeryComponent;
 class UHeistInteractionComponent;
 class UHeistInventoryComponent;
 class UHeistNoiseEmitterComponent;
 class UHeistObjectAssemblyComponent;
 class UHeistStatusComponent;
-class UHeistTagComponent;
 class UHeistVisionComponent;
 class UCameraComponent;
 class USphereComponent;
@@ -161,12 +159,6 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter, public 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Presentation", meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<class UHeistNameplateWidget> NameplateWidgetClass;
 
-
-
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Components", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UHeistTagComponent> TagComponent;
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistStatusComponent> StatusComponent;
 
@@ -189,13 +181,9 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter, public 
 	TObjectPtr<UHeistVisionComponent> VisionComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Components", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UHeistCustomizationComponent> CustomizationComponent;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistNoiseEmitterComponent> NoiseEmitterComponent;
 
   public:
-	UHeistTagComponent* GetTagComponent() const;
 	UHeistStatusComponent* GetStatusComponent() const;
 	UHeistInventoryComponent* GetInventoryComponent() const;
 	UHeistInteractionComponent* GetInteractionComponent() const;
@@ -203,7 +191,6 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter, public 
 	UHeistForgeryComponent* GetForgeryComponent() const;
 	UHeistObjectAssemblyComponent* GetObjectAssemblyComponent() const;
 	UHeistVisionComponent* GetVisionComponent() const;
-	UHeistCustomizationComponent* GetCustomizationComponent() const;
 	UHeistNoiseEmitterComponent* GetNoiseEmitterComponent() const;
 
 #pragma endregion

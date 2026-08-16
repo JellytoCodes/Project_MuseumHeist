@@ -9,7 +9,6 @@
 class UHeistGameBalanceDataAsset;
 class UDataTable;
 class AHeistLootActor;
-class AHeistLootSpawnPoint;
 class AHeistPlayerState;
 struct FHeistItemDataRow;
 struct FHeistContractDataRow;
@@ -142,6 +141,7 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 	void LockGuardsForPlayerCountResolution();
 	void SchedulePlayerCountGuardScaling();
 	void ApplyPlayerCountGuardScaling();
+	const UHeistGameBalanceDataAsset* ResolveGameBalanceData() const;
 
 	bool bPlayerCountGuardScalingApplied = false;
 	int32 DifficultyAuthoredGuardCount = 0;
@@ -152,27 +152,6 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 	float DifficultyAppliedDetectionMultiplier = 1.0f;
 	float DifficultyAppliedInspectionDurationMultiplier = 1.0f;
 	FTimerHandle GuardScalingTimerHandle;
-
-#pragma endregion
-
-#pragma region RareLootEvent
-
-  public:
-	void ForceRareLootEvent(float WarningDelaySeconds = 5.0f);
-
-  private:
-	void StartRareLootEventTimers();
-	void BeginRareLootWarning(int32 EventIndex, float ScheduledSpawnTime);
-	void TriggerRareLootEvent(int32 EventIndex);
-	bool TrySpawnRareLoot(int32 EventIndex, AHeistLootActor*& OutRareLootActor, AHeistLootSpawnPoint*& OutSpawnPoint);
-	void HandleRareLootPickedUp(AHeistLootActor* LootActor, AActor* Requester);
-	const UHeistGameBalanceDataAsset* ResolveGameBalanceData() const;
-
-	TArray<FTimerHandle> RareLootWarningTimerHandles;
-	TArray<FTimerHandle> RareLootSpawnTimerHandles;
-	TSet<int32> TriggeredRareLootEventIndices;
-	TMap<TWeakObjectPtr<AHeistLootActor>, int32> ActiveRareLootEventIndices;
-	int32 NextForcedRareLootEventIndex = 1;
 
 #pragma endregion
 

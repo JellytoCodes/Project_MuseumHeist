@@ -122,7 +122,7 @@ EDataValidationResult FHeistForgeryTemplateRow::IsDataValid(FDataValidationConte
 		AddError(LOCTEXT("InvalidBrushSize", "BrushSize must be between 0.001 and 0.25."));
 	}
 	if (!FMath::IsWithinInclusive(CoverageWeight, 0.0f, 1.0f) || !FMath::IsWithinInclusive(MajorShapeWeight, 0.0f, 1.0f) || !FMath::IsWithinInclusive(ExtraStrokePenaltyWeight, 0.0f, 1.0f) ||
-		!FMath::IsWithinInclusive(TimeoutPenalty, 0.0f, 1.0f) || !FMath::IsWithinInclusive(ShapeAccuracyWeight, 0.0f, 1.0f) || !FMath::IsWithinInclusive(ColorAccuracyWeight, 0.0f, 1.0f))
+		!FMath::IsWithinInclusive(ShapeAccuracyWeight, 0.0f, 1.0f) || !FMath::IsWithinInclusive(ColorAccuracyWeight, 0.0f, 1.0f))
 	{
 		AddError(LOCTEXT("InvalidForgeryWeights", "Forgery weights and penalties must be between 0.0 and 1.0."));
 	}

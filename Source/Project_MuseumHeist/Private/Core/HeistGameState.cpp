@@ -785,82 +785,6 @@ void AHeistGameState::OnRep_EscapePhaseOpen()
 
 #pragma endregion
 
-#pragma region RareLootEvent
-
-const FHeistRareLootEventState& AHeistGameState::GetRareLootEventState() const
-{
-	return RareLootEventState;
-}
-
-void AHeistGameState::BeginRareLootWarning(const int32 EventIndex, const FName ItemId, const float SpawnServerTime)
-{
-	if (!HasAuthority())
-	{
-		return;
-	}
-
-	RareLootEventState.EventIndex = EventIndex;
-	RareLootEventState.ItemId = ItemId;
-	RareLootEventState.WorldLocation = FVector::ZeroVector;
-	RareLootEventState.SpawnServerTime = SpawnServerTime;
-	RareLootEventState.bIncomingWarningActive = true;
-	RareLootEventState.bDirectionMarkerActive = false;
-	ForceNetUpdate();
-	BroadcastRareLootEventState();
-}
-
-void AHeistGameState::ActivateRareLootMarker(const int32 EventIndex, const FName ItemId, const FVector& WorldLocation)
-{
-	if (!HasAuthority())
-	{
-		return;
-	}
-
-	RareLootEventState.EventIndex = EventIndex;
-	RareLootEventState.ItemId = ItemId;
-	RareLootEventState.WorldLocation = WorldLocation;
-	RareLootEventState.SpawnServerTime = GetServerWorldTimeSeconds();
-	RareLootEventState.bIncomingWarningActive = false;
-	RareLootEventState.bDirectionMarkerActive = true;
-	ForceNetUpdate();
-	BroadcastRareLootEventState();
-}
-
-void AHeistGameState::DeactivateRareLootMarker(const int32 EventIndex)
-{
-	if (!HasAuthority() || RareLootEventState.EventIndex != EventIndex)
-	{
-		return;
-	}
-
-	RareLootEventState.bIncomingWarningActive = false;
-	RareLootEventState.bDirectionMarkerActive = false;
-	ForceNetUpdate();
-	BroadcastRareLootEventState();
-}
-
-FHeistRareLootEventStateChanged& AHeistGameState::GetRareLootEventStateChangedDelegate()
-{
-	return RareLootEventStateChangedDelegate;
-}
-
-void AHeistGameState::OnRep_RareLootEventState()
-{
-	BroadcastRareLootEventState();
-#if !UE_BUILD_SHIPPING
-	UE_LOG(LogHeistNetwork, Log, TEXT("Rare Loot state replicated: EventIndex=%d ItemId=%s Incoming=%s MarkerActive=%s SpawnServerTime=%.2f Location=(%.1f,%.1f,%.1f)"), RareLootEventState.EventIndex,
-		   *RareLootEventState.ItemId.ToString(), RareLootEventState.bIncomingWarningActive ? TEXT("true") : TEXT("false"), RareLootEventState.bDirectionMarkerActive ? TEXT("true") : TEXT("false"),
-		   RareLootEventState.SpawnServerTime, RareLootEventState.WorldLocation.X, RareLootEventState.WorldLocation.Y, RareLootEventState.WorldLocation.Z);
-#endif
-}
-
-void AHeistGameState::BroadcastRareLootEventState()
-{
-	RareLootEventStateChangedDelegate.Broadcast(RareLootEventState);
-}
-
-#pragma endregion
-
 #pragma region SoundPing
 
 int32 AHeistGameState::ReportSoundPing(const FHeistSoundPingEvent& SoundPingEvent)
@@ -952,10 +876,6 @@ void AHeistGameState::RebuildPlayerResults()
 
 		FHeistPlayerResult& PlayerResult = NewPlayerResults.AddDefaulted_GetRef();
 		PlayerResult.PlayerId = HeistPlayerState->HeistPlayerId;
-		PlayerResult.LootScore = HeistPlayerState->GetTotalLootScore();
-		PlayerResult.FinalScore = HeistPlayerState->GetFinalScore();
-		PlayerResult.LootWeight = HeistPlayerState->GetTotalLootWeight();
-		PlayerResult.EscapeTimeSeconds = HeistPlayerState->GetEscapeTimeSeconds();
 		PlayerResult.bEscaped = HeistPlayerState->IsEscaped();
 		PlayerResult.bArrested = HeistPlayerState->IsArrested();
 		PlayerResult.Contribution = HeistPlayerState->GetContribution();
@@ -971,9 +891,8 @@ void AHeistGameState::RebuildPlayerResults()
 
 	for (const FHeistPlayerResult& PlayerResult : PlayerResults)
 	{
-		UE_LOG(LogHeist, Log, TEXT("Player contribution result: PlayerId=%d Escaped=%s Arrested=%s LootScore=%d FinalScore=%d LootWeight=%.2f EscapeTime=%.2f"), PlayerResult.PlayerId,
-			   PlayerResult.bEscaped ? TEXT("true") : TEXT("false"), PlayerResult.bArrested ? TEXT("true") : TEXT("false"), PlayerResult.LootScore, PlayerResult.FinalScore, PlayerResult.LootWeight,
-			   PlayerResult.EscapeTimeSeconds);
+		UE_LOG(LogHeist, Log, TEXT("Player contribution result: PlayerId=%d Escaped=%s Arrested=%s SecuredLootValue=%d"), PlayerResult.PlayerId,
+			   PlayerResult.bEscaped ? TEXT("true") : TEXT("false"), PlayerResult.bArrested ? TEXT("true") : TEXT("false"), PlayerResult.Contribution.SecuredLootValue);
 	}
 
 	int32 TotalPlayerCount = 0;
@@ -1087,9 +1006,9 @@ void AHeistGameState::OnRep_PlayerResults()
 
 	for (const FHeistPlayerResult& PlayerResult : PlayerResults)
 	{
-		UE_LOG(LogHeistNetwork, Log, TEXT("Player contribution result replicated: PlayerId=%d Escaped=%s Arrested=%s LootScore=%d FinalScore=%d LootWeight=%.2f EscapeTime=%.2f"),
-			   PlayerResult.PlayerId, PlayerResult.bEscaped ? TEXT("true") : TEXT("false"), PlayerResult.bArrested ? TEXT("true") : TEXT("false"), PlayerResult.LootScore, PlayerResult.FinalScore,
-			   PlayerResult.LootWeight, PlayerResult.EscapeTimeSeconds);
+		UE_LOG(LogHeistNetwork, Log, TEXT("Player contribution result replicated: PlayerId=%d Escaped=%s Arrested=%s SecuredLootValue=%d"),
+			   PlayerResult.PlayerId, PlayerResult.bEscaped ? TEXT("true") : TEXT("false"), PlayerResult.bArrested ? TEXT("true") : TEXT("false"),
+			   PlayerResult.Contribution.SecuredLootValue);
 	}
 
 	UE_LOG(LogHeistNetwork, Log, TEXT("Player contribution results replicated: GameState=%s PlayerCount=%d"), *GetNameSafe(this), PlayerResults.Num());

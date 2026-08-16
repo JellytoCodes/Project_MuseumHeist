@@ -1,7 +1,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/SlateWrapperTypes.h"
 #include "Core/HeistTypes.h"
 #include "MVVMViewModelBase.h"
 
@@ -31,7 +30,7 @@ class PROJECT_MUSEUMHEIST_API UHeistResultViewModel : public UMVVMViewModelBase
 #pragma region Setup
 
   public:
-	void SetupViewModel(class AHeistGameState* InGameState, class AHeistPlayerState* InLocalPlayerState);
+	void SetupViewModel(class AHeistGameState* InGameState);
 	void RefreshResultData();
 	FHeistResultSnapshotChanged& GetSnapshotChangedDelegate();
 
@@ -40,9 +39,6 @@ class PROJECT_MUSEUMHEIST_API UHeistResultViewModel : public UMVVMViewModelBase
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHeistGameState> GameState;
-
-	UPROPERTY(Transient)
-	TObjectPtr<AHeistPlayerState> LocalPlayerState;
 
 	FHeistResultSnapshotChanged SnapshotChangedDelegate;
 
@@ -54,31 +50,14 @@ class PROJECT_MUSEUMHEIST_API UHeistResultViewModel : public UMVVMViewModelBase
 	const TArray<FHeistPlayerResult>& GetPlayerResults() const;
 	const FHeistTeamResult& GetTeamResult() const;
 	const TArray<FHeistReplicaRecapEntry>& GetReplicaRecap() const;
-	int32 GetMyFinalScore() const;
-	bool IsEscaped() const;
-	const FText& GetMyFinalScoreText() const;
-	ESlateVisibility GetEscapedVisibility() const;
-	const FText& GetResultRow1Text() const;
-	const FText& GetResultRow2Text() const;
-	const FText& GetResultRow3Text() const;
-	const FText& GetResultRow4Text() const;
-	ESlateVisibility GetResultRow1Visibility() const;
-	ESlateVisibility GetResultRow2Visibility() const;
-	ESlateVisibility GetResultRow3Visibility() const;
-	ESlateVisibility GetResultRow4Visibility() const;
 	const FText& GetOutcomeText() const;
 	const FText& GetOutcomeReasonText() const;
 	const FText& GetTeamRewardText() const;
 	const FText& GetReplicaRecapText() const;
 	static FText BuildOutcomeDisplayText(EHeistContractOutcome Outcome);
 	static FText BuildReplicaRecapSummaryText(const FHeistTeamResult& InTeamResult);
-	static FText BuildPlayerResultSummaryText(const FHeistPlayerResult& PlayerResult);
 
   private:
-	FText BuildResultRowText(int32 ResultIndex) const;
-	ESlateVisibility BuildResultRowVisibility(int32 ResultIndex) const;
-	void RefreshResultRows();
-
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
 	TArray<FHeistPlayerResult> PlayerResults;
 
@@ -96,42 +75,6 @@ class PROJECT_MUSEUMHEIST_API UHeistResultViewModel : public UMVVMViewModelBase
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
 	FText ReplicaRecapText;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
-	int32 MyFinalScore = 0;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
-	bool bEscaped = false;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
-	FText MyFinalScoreText;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
-	ESlateVisibility EscapedVisibility = ESlateVisibility::Collapsed;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
-	FText ResultRow1Text;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
-	FText ResultRow2Text;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
-	FText ResultRow3Text;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
-	FText ResultRow4Text;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
-	ESlateVisibility ResultRow1Visibility = ESlateVisibility::Collapsed;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
-	ESlateVisibility ResultRow2Visibility = ESlateVisibility::Collapsed;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
-	ESlateVisibility ResultRow3Visibility = ESlateVisibility::Collapsed;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
-	ESlateVisibility ResultRow4Visibility = ESlateVisibility::Collapsed;
 
 #pragma endregion
 };

@@ -9,7 +9,6 @@
 
 class AActor;
 class UMaterialInterface;
-class USkeletalMesh;
 class USoundBase;
 class UStaticMesh;
 class UTexture2D;
@@ -275,27 +274,6 @@ struct PROJECT_MUSEUMHEIST_API FHeistVentDataRow : public FTableRowBase
 #pragma endregion
 
 #pragma region UI
-
-USTRUCT(BlueprintType)
-struct PROJECT_MUSEUMHEIST_API FHeistCustomizationRow : public FTableRowBase
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	FName CustomizationId = NAME_None;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	FText DisplayName;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	FGameplayTag CustomizationTag;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TSoftObjectPtr<USkeletalMesh> CharacterMesh;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TSoftObjectPtr<UTexture2D> PreviewImage;
-};
 
 USTRUCT(BlueprintType)
 struct PROJECT_MUSEUMHEIST_API FHeistUITextRow : public FTableRowBase

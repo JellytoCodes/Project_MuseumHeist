@@ -373,7 +373,7 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	void DebugRequestSetNearestGuardAutomaticSight(bool bEnabled);
 	void DebugRequestReportGuardNoise(float Distance);
 	void DebugRequestRebuildResults();
-	void DebugRequestSeedResult(int32 Score, bool bEscaped, float EscapeTimeSeconds);
+	void DebugRequestSeedResult(bool bEscaped);
 	void DebugRequestSeedContribution(int32 SurfaceForgeries, float BestSurfaceQuality, int32 Assemblies, float BestAssemblyQuality, int32 ArtifactsRecovered,
 		float CarryTimeSeconds, int32 SecuredLootValue, int32 GuardsDistracted, int32 TeammatesRescued, int32 AlarmsTriggered);
 	void DebugRequestFeedbackTest();
@@ -410,7 +410,7 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	void Server_DebugRequestRebuildResults();
 
 	UFUNCTION(Server, Reliable)
-	void Server_DebugRequestSeedResult(int32 Score, bool bEscaped, float EscapeTimeSeconds);
+	void Server_DebugRequestSeedResult(bool bEscaped);
 
 	UFUNCTION(Server, Reliable)
 	void Server_DebugRequestSeedContribution(int32 SurfaceForgeries, float BestSurfaceQuality, int32 Assemblies, float BestAssemblyQuality, int32 ArtifactsRecovered,

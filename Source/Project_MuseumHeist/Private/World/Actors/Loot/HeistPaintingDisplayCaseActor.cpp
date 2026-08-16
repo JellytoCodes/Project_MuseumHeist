@@ -383,8 +383,6 @@ bool AHeistPaintingDisplayCaseActor::ShouldDisplayReplicaPlaceholderForState(con
 	case EHeistDisplayCaseState::OriginalRemoved:
 	case EHeistDisplayCaseState::Inspecting:
 	case EHeistDisplayCaseState::Completed:
-	case EHeistDisplayCaseState::Suspected:
-	case EHeistDisplayCaseState::Alarmed:
 	case EHeistDisplayCaseState::Failed:
 		return true;
 	default:
@@ -1050,11 +1048,8 @@ bool AHeistPaintingDisplayCaseActor::TryCommitReplicaSwapAndTakeOriginal(AHeistP
 
 	const float PreviousResolvedInspectionDelay = ResolvedInspectionDelay;
 	const float PreviousInspectionReadyServerTime = InspectionReadyServerTime;
-	const FName PreviousInspectionScoreBand = InspectionScoreBand;
-	const EHeistAlertLevel PreviousInspectionAlertOutcome = ResolvedInspectionAlertOutcome;
-	const EHeistDisplayCaseState PreviousInspectionCaseOutcome = ResolvedInspectionCaseOutcome;
 	const int32 PreviousInspectionScheduleRevision = InspectionScheduleRevision;
-	if (!ResolveInspectionSchedule(CommittedForgeryResult, OutRejectReason))
+	if (!ResolveInspectionSchedule(OutRejectReason))
 	{
 		return false;
 	}
@@ -1071,9 +1066,6 @@ bool AHeistPaintingDisplayCaseActor::TryCommitReplicaSwapAndTakeOriginal(AHeistP
 	{
 		ResolvedInspectionDelay = PreviousResolvedInspectionDelay;
 		InspectionReadyServerTime = PreviousInspectionReadyServerTime;
-		InspectionScoreBand = PreviousInspectionScoreBand;
-		ResolvedInspectionAlertOutcome = PreviousInspectionAlertOutcome;
-		ResolvedInspectionCaseOutcome = PreviousInspectionCaseOutcome;
 		InspectionScheduleRevision = PreviousInspectionScheduleRevision;
 		OutRejectReason = FName(InventoryRejectReason != nullptr ? InventoryRejectReason : TEXT("InventoryCommitFailed"));
 		return false;
@@ -1133,9 +1125,9 @@ bool AHeistPaintingDisplayCaseActor::ValidateReplicaPlacementRequest(AHeistPlaye
 		return false;
 	}
 	if (!FMath::IsFinite(ForgeryResult.SimilarityScore) || !FMath::IsFinite(ForgeryResult.CoverageScore) || !FMath::IsFinite(ForgeryResult.MajorShapeScore) ||
-		!FMath::IsFinite(ForgeryResult.MissingShapePenalty) || !FMath::IsFinite(ForgeryResult.ExtraStrokePenalty) || !FMath::IsFinite(ForgeryResult.TimeoutPenalty) ||
+		!FMath::IsFinite(ForgeryResult.MissingShapePenalty) || !FMath::IsFinite(ForgeryResult.ExtraStrokePenalty) ||
 		!FMath::IsFinite(ForgeryResult.CompletionTime) || !FMath::IsWithinInclusive(ForgeryResult.SimilarityScore, 0.0f, 100.0f) || ForgeryResult.CoverageScore < 0.0f ||
-		ForgeryResult.MajorShapeScore < 0.0f || ForgeryResult.MissingShapePenalty < 0.0f || ForgeryResult.ExtraStrokePenalty < 0.0f || ForgeryResult.TimeoutPenalty < 0.0f ||
+		ForgeryResult.MajorShapeScore < 0.0f || ForgeryResult.MissingShapePenalty < 0.0f || ForgeryResult.ExtraStrokePenalty < 0.0f ||
 		ForgeryResult.CompletionTime < 0.0f || ForgeryResult.bReplicaPlaced)
 	{
 		OutRejectReason = FName(TEXT("ForgeryResultInvalid"));
@@ -1299,25 +1291,19 @@ void AHeistPaintingDisplayCaseActor::OnRep_ReplicaPaintingData()
 
 #pragma region InspectionTarget
 
-bool AHeistPaintingDisplayCaseActor::CalculateInspectionSchedule(const float SimilarityScore, const float BaseInspectionDelay, float& OutDelay, FName& OutScoreBand, EHeistAlertLevel& OutAlertOutcome,
-																 EHeistDisplayCaseState& OutCaseOutcome)
+bool AHeistPaintingDisplayCaseActor::CalculateInspectionSchedule(const float BaseInspectionDelay, float& OutDelay)
 {
 	OutDelay = 0.0f;
-	OutScoreBand = NAME_None;
-	OutAlertOutcome = EHeistAlertLevel::Quiet;
-	OutCaseOutcome = EHeistDisplayCaseState::Completed;
-	if (!FMath::IsFinite(SimilarityScore) || !FMath::IsFinite(BaseInspectionDelay) ||
-		!FMath::IsWithinInclusive(SimilarityScore, HeistReplicaAcceptance::MinimumQualityScore, 100.0f) || BaseInspectionDelay < 0.0f)
+	if (!FMath::IsFinite(BaseInspectionDelay) || BaseInspectionDelay < 0.0f)
 	{
 		return false;
 	}
 
-	OutScoreBand = FName(TEXT("Accepted70Plus"));
 	OutDelay = BaseInspectionDelay;
-	return FMath::IsFinite(OutDelay) && OutDelay >= 0.0f;
+	return true;
 }
 
-bool AHeistPaintingDisplayCaseActor::ResolveInspectionSchedule(const FHeistForgeryResult& ForgeryResult, FName& OutRejectReason)
+bool AHeistPaintingDisplayCaseActor::ResolveInspectionSchedule(FName& OutRejectReason)
 {
 	OutRejectReason = NAME_None;
 	const AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
@@ -1329,24 +1315,20 @@ bool AHeistPaintingDisplayCaseActor::ResolveInspectionSchedule(const FHeistForge
 		return false;
 	}
 
-	const float Score = ForgeryResult.SimilarityScore;
-	if (!CalculateInspectionSchedule(Score, ArtifactDefinition.BaseInspectionDelay, ResolvedInspectionDelay, InspectionScoreBand, ResolvedInspectionAlertOutcome, ResolvedInspectionCaseOutcome))
+	if (!CalculateInspectionSchedule(ArtifactDefinition.BaseInspectionDelay, ResolvedInspectionDelay))
 	{
 		OutRejectReason = FName(TEXT("InspectionScheduleMappingFailed"));
 		return false;
 	}
-	const float DelayMultiplier = ArtifactDefinition.BaseInspectionDelay > KINDA_SMALL_NUMBER ? ResolvedInspectionDelay / ArtifactDefinition.BaseInspectionDelay : 0.0f;
 	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	const float ServerTime = IsValid(HeistGameState) ? HeistGameState->GetServerWorldTimeSeconds() : (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
 	InspectionReadyServerTime = ServerTime + ResolvedInspectionDelay;
 	++InspectionScheduleRevision;
 
 	UE_LOG(LogHeistNetwork, Log,
-		TEXT(
-			"Inspection schedule resolved: Case=%s CaseId=%s Artifact=%s Score=%.2f Band=%s BaseDelay=%.2f Multiplier=%.2f Delay=%.2f ReadyServerTime=%.2f CaseOutcome=%s AlertOutcome=%s ScheduleRevision=%d Authority=true Result=PASS"),
-		*GetNameSafe(this), *DisplayCaseId.ToString(), *TargetArtifactId.ToString(), Score, *InspectionScoreBand.ToString(), ArtifactDefinition.BaseInspectionDelay, DelayMultiplier,
-		ResolvedInspectionDelay, InspectionReadyServerTime, *UEnum::GetValueAsString(ResolvedInspectionCaseOutcome), *UEnum::GetValueAsString(ResolvedInspectionAlertOutcome),
-		InspectionScheduleRevision);
+		TEXT("Inspection schedule resolved: Case=%s CaseId=%s Artifact=%s BaseDelay=%.2f Delay=%.2f ReadyServerTime=%.2f ScheduleRevision=%d Authority=true Result=PASS"),
+		*GetNameSafe(this), *DisplayCaseId.ToString(), *TargetArtifactId.ToString(), ArtifactDefinition.BaseInspectionDelay, ResolvedInspectionDelay,
+		InspectionReadyServerTime, InspectionScheduleRevision);
 	return true;
 }
 
@@ -1389,8 +1371,8 @@ void AHeistPaintingDisplayCaseActor::HandleInspectionDelayExpired(const int32 Ex
 
 	InspectionDelayTimerHandle.Invalidate();
 	RefreshInspectionRegistration();
-	UE_LOG(LogHeistNetwork, Log, TEXT("Inspection delay expired: Case=%s CaseId=%s Score=%.2f Band=%s Delay=%.2f Registered=%s ScheduleRevision=%d Authority=true Result=%s"), *GetNameSafe(this),
-		   *DisplayCaseId.ToString(), CommittedForgeryResult.SimilarityScore, *InspectionScoreBand.ToString(), ResolvedInspectionDelay, bRegisteredForInspection ? TEXT("true") : TEXT("false"),
+	UE_LOG(LogHeistNetwork, Log, TEXT("Inspection delay expired: Case=%s CaseId=%s Delay=%.2f Registered=%s ScheduleRevision=%d Authority=true Result=%s"), *GetNameSafe(this),
+		   *DisplayCaseId.ToString(), ResolvedInspectionDelay, bRegisteredForInspection ? TEXT("true") : TEXT("false"),
 		   InspectionScheduleRevision, bRegisteredForInspection ? TEXT("PASS") : TEXT("INELIGIBLE"));
 }
 
@@ -1438,21 +1420,6 @@ float AHeistPaintingDisplayCaseActor::GetInspectionDelayRemaining() const
 	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	const float ServerTime = IsValid(HeistGameState) ? HeistGameState->GetServerWorldTimeSeconds() : (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
 	return FMath::Max(0.0f, InspectionReadyServerTime - ServerTime);
-}
-
-FName AHeistPaintingDisplayCaseActor::GetInspectionScoreBand() const
-{
-	return InspectionScoreBand;
-}
-
-EHeistAlertLevel AHeistPaintingDisplayCaseActor::GetResolvedInspectionAlertOutcome() const
-{
-	return ResolvedInspectionAlertOutcome;
-}
-
-EHeistDisplayCaseState AHeistPaintingDisplayCaseActor::GetResolvedInspectionCaseOutcome() const
-{
-	return ResolvedInspectionCaseOutcome;
 }
 
 int32 AHeistPaintingDisplayCaseActor::GetInspectionScheduleRevision() const
@@ -1530,16 +1497,15 @@ bool AHeistPaintingDisplayCaseActor::ApplyInspectionResult(AActor* InspectingGua
 	LastAppliedInspectionScheduleRevision = ActiveInspectionScheduleRevision;
 	ActiveInspectionScheduleRevision = INDEX_NONE;
 	++InspectionResultApplicationCount;
-	DisplayCaseState = ResolvedInspectionCaseOutcome;
+	DisplayCaseState = EHeistDisplayCaseState::Completed;
 	InspectingGuardActor.Reset();
 	HandleDisplayCaseStateChanged(PreviousState);
 	ForceNetUpdate();
 
 	UE_LOG(LogHeistNetwork, Log,
-		   TEXT("Exhibit inspection result applied: Case=%s CaseId=%s Guard=%s Score=%.2f Band=%s CaseOutcome=%s AlertOutcome=%s NewState=%s ScheduleRevision=%d Applications=%d "
-					"QualityIndependent=true Authority=true Result=PASS"),
-		   *GetNameSafe(this), *DisplayCaseId.ToString(), *GetNameSafe(InspectingGuard), CommittedForgeryResult.SimilarityScore, *InspectionScoreBand.ToString(),
-		   *UEnum::GetValueAsString(ResolvedInspectionCaseOutcome), *UEnum::GetValueAsString(ResolvedInspectionAlertOutcome), *UEnum::GetValueAsString(DisplayCaseState),
+		   TEXT("Exhibit inspection result applied: Case=%s CaseId=%s Guard=%s NewState=%s ScheduleRevision=%d Applications=%d QualityIndependent=true AlertUnchanged=true "
+					"Authority=true Result=PASS"),
+		   *GetNameSafe(this), *DisplayCaseId.ToString(), *GetNameSafe(InspectingGuard), *UEnum::GetValueAsString(DisplayCaseState),
 		   LastAppliedInspectionScheduleRevision, InspectionResultApplicationCount);
 	return true;
 }
@@ -1602,10 +1568,8 @@ void AHeistPaintingDisplayCaseActor::RefreshInspectionRegistration()
 void AHeistPaintingDisplayCaseActor::OnRep_InspectionScheduleRevision()
 {
 	UE_LOG(LogHeistNetwork, Log,
-		TEXT(
-			"Inspection schedule replicated: Case=%s CaseId=%s Score=%.2f Band=%s Delay=%.2f ReadyServerTime=%.2f Remaining=%.2f CaseOutcome=%s AlertOutcome=%s ScheduleRevision=%d Authority=false Result=PASS"),
-		*GetNameSafe(this), *DisplayCaseId.ToString(), CommittedForgeryResult.SimilarityScore, *InspectionScoreBand.ToString(), ResolvedInspectionDelay, InspectionReadyServerTime,
-		GetInspectionDelayRemaining(), *UEnum::GetValueAsString(ResolvedInspectionCaseOutcome), *UEnum::GetValueAsString(ResolvedInspectionAlertOutcome), InspectionScheduleRevision);
+		TEXT("Inspection schedule replicated: Case=%s CaseId=%s Delay=%.2f ReadyServerTime=%.2f Remaining=%.2f ScheduleRevision=%d Authority=false Result=PASS"),
+		*GetNameSafe(this), *DisplayCaseId.ToString(), ResolvedInspectionDelay, InspectionReadyServerTime, GetInspectionDelayRemaining(), InspectionScheduleRevision);
 }
 
 #pragma endregion
@@ -1691,7 +1655,7 @@ bool AHeistPaintingDisplayCaseActor::TryTakeOriginal(AHeistPlayerState* Requesti
 bool AHeistPaintingDisplayCaseActor::ReleaseOriginalForCarrier(AHeistPlayerState* ExpectedCarrier, const FName Reason)
 {
 	const bool bOriginalCanReturn = DisplayCaseState == EHeistDisplayCaseState::OriginalRemoved || DisplayCaseState == EHeistDisplayCaseState::Inspecting ||
-		DisplayCaseState == EHeistDisplayCaseState::Completed || DisplayCaseState == EHeistDisplayCaseState::Suspected || DisplayCaseState == EHeistDisplayCaseState::Alarmed ||
+		DisplayCaseState == EHeistDisplayCaseState::Completed ||
 		DisplayCaseState == EHeistDisplayCaseState::Failed;
 	if (!HasAuthority() || !bOriginalCanReturn || !IsValid(OriginalCarrier.Get()) || OriginalCarrier.Get() != ExpectedCarrier)
 	{
@@ -1724,7 +1688,7 @@ bool AHeistPaintingDisplayCaseActor::ReleaseOriginalForCarrier(AHeistPlayerState
 bool AHeistPaintingDisplayCaseActor::DropOriginalForCarrier(AHeistPlayerState* ExpectedCarrier, const FName Reason)
 {
 	const bool bOriginalOutsideCase = DisplayCaseState == EHeistDisplayCaseState::OriginalRemoved || DisplayCaseState == EHeistDisplayCaseState::Inspecting ||
-		DisplayCaseState == EHeistDisplayCaseState::Completed || DisplayCaseState == EHeistDisplayCaseState::Suspected || DisplayCaseState == EHeistDisplayCaseState::Alarmed ||
+		DisplayCaseState == EHeistDisplayCaseState::Completed ||
 		DisplayCaseState == EHeistDisplayCaseState::Failed;
 	if (!HasAuthority() || !bOriginalOutsideCase || !IsValid(ExpectedCarrier) || OriginalCarrier.Get() != ExpectedCarrier)
 	{
@@ -1810,7 +1774,7 @@ bool AHeistPaintingDisplayCaseActor::DropOriginalForCarrier(AHeistPlayerState* E
 bool AHeistPaintingDisplayCaseActor::TryClaimDroppedOriginal(AHeistPlayerState* RequestingPlayerState, AHeistDroppedOriginalActor* DroppedOriginal)
 {
 	const bool bOriginalOutsideCase = DisplayCaseState == EHeistDisplayCaseState::OriginalRemoved || DisplayCaseState == EHeistDisplayCaseState::Inspecting ||
-		DisplayCaseState == EHeistDisplayCaseState::Completed || DisplayCaseState == EHeistDisplayCaseState::Suspected || DisplayCaseState == EHeistDisplayCaseState::Alarmed ||
+		DisplayCaseState == EHeistDisplayCaseState::Completed ||
 		DisplayCaseState == EHeistDisplayCaseState::Failed;
 	if (!HasAuthority() || !bOriginalOutsideCase || bOriginalSecuredAtExit || IsValid(OriginalCarrier.Get()) || !IsValid(RequestingPlayerState) || RequestingPlayerState->IsArrested() ||
 		RequestingPlayerState->IsEscaped() || !IsValid(DroppedOriginal) || DroppedOriginal->GetSourceDisplayCase() != this || DroppedOriginal->GetArtifactId() != TargetArtifactId)
@@ -1840,7 +1804,7 @@ bool AHeistPaintingDisplayCaseActor::TryClaimDroppedOriginal(AHeistPlayerState* 
 bool AHeistPaintingDisplayCaseActor::CanCommitOriginalDepositForCarrier(const AHeistPlayerState* ExpectedCarrier, const FHeistInventoryItem& OriginalItem) const
 {
 	const bool bOriginalOutsideCase = DisplayCaseState == EHeistDisplayCaseState::OriginalRemoved || DisplayCaseState == EHeistDisplayCaseState::Inspecting ||
-		DisplayCaseState == EHeistDisplayCaseState::Completed || DisplayCaseState == EHeistDisplayCaseState::Suspected || DisplayCaseState == EHeistDisplayCaseState::Alarmed ||
+		DisplayCaseState == EHeistDisplayCaseState::Completed ||
 		DisplayCaseState == EHeistDisplayCaseState::Failed;
 	return HasAuthority() && bOriginalOutsideCase && !bOriginalSecuredAtExit && IsValid(ExpectedCarrier) && OriginalCarrier.Get() == ExpectedCarrier && OriginalItem.HasValidOriginalData() &&
 		   OriginalItem.SourceDisplayCase == this && OriginalItem.ItemId == TargetArtifactId;
@@ -2273,9 +2237,6 @@ void AHeistPaintingDisplayCaseActor::GetLifetimeReplicatedProps(TArray<FLifetime
 	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, SessionRevision);
 	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, ResolvedInspectionDelay);
 	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, InspectionReadyServerTime);
-	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, InspectionScoreBand);
-	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, ResolvedInspectionAlertOutcome);
-	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, ResolvedInspectionCaseOutcome);
 	DOREPLIFETIME(AHeistPaintingDisplayCaseActor, InspectionScheduleRevision);
 }
 

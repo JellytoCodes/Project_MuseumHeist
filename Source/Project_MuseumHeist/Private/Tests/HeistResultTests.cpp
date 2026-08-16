@@ -262,49 +262,6 @@ bool FHeistPlayerContributionDataContractTest::RunTest(const FString& Parameters
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistPlayerContributionPresentationTest, "ProjectMuseumHeist.Result.PlayerContributionPresentation",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FHeistPlayerContributionPresentationTest::RunTest(const FString& Parameters)
-{
-	FHeistPlayerResult PlayerResult;
-	PlayerResult.PlayerId = 2;
-	PlayerResult.Contribution.SurfaceForgeries = 2;
-	PlayerResult.Contribution.BestSurfaceQuality = 73.1f;
-	PlayerResult.Contribution.Assemblies = 1;
-	PlayerResult.Contribution.BestAssemblyQuality = 82.5f;
-	PlayerResult.Contribution.ArtifactsRecovered = 1;
-	PlayerResult.Contribution.CarryTimeSeconds = 12.5f;
-	PlayerResult.Contribution.SecuredLootValue = 1500;
-	PlayerResult.Contribution.GuardsDistracted = 2;
-	PlayerResult.Contribution.TeammatesRescued = 1;
-	PlayerResult.Contribution.AlarmsTriggered = 1;
-
-	const FString ActiveSummary = UHeistResultViewModel::BuildPlayerResultSummaryText(PlayerResult).ToString();
-	TestTrue(TEXT("Non-terminal player is not mislabeled as arrested"), ActiveSummary.Contains(TEXT("미탈출")));
-	TestTrue(TEXT("Surface count and best quality are explained"), ActiveSummary.Contains(TEXT("위조 2(73)")));
-	TestTrue(TEXT("Assembly count and best quality are explained"), ActiveSummary.Contains(TEXT("조립 1(83)")));
-	TestTrue(TEXT("Original recovery and carry time are explained"), ActiveSummary.Contains(TEXT("원본 1 · 운반 13초")));
-	TestTrue(TEXT("Loose loot contribution is explained"), ActiveSummary.Contains(TEXT("전리품 1,500")) || ActiveSummary.Contains(TEXT("전리품 1500")));
-	TestTrue(TEXT("Distraction, rescue, and alarm contributions are explained"),
-		ActiveSummary.Contains(TEXT("교란 2")) && ActiveSummary.Contains(TEXT("구조 1")) && ActiveSummary.Contains(TEXT("경보 1")));
-	TestFalse(TEXT("Result summary does not create a Winner label"), ActiveSummary.Contains(TEXT("Winner")) || ActiveSummary.Contains(TEXT("우승")));
-	TestFalse(TEXT("Result summary does not create a Rank label"), ActiveSummary.Contains(TEXT("Rank")) || ActiveSummary.Contains(TEXT("순위")));
-
-	PlayerResult.bArrested = true;
-	PlayerResult.Contribution.bArrested = true;
-	const FString ArrestedSummary = UHeistResultViewModel::BuildPlayerResultSummaryText(PlayerResult).ToString();
-	TestTrue(TEXT("Arrested player is labeled arrested"), ArrestedSummary.Contains(TEXT("체포")));
-
-	PlayerResult.bArrested = false;
-	PlayerResult.bEscaped = true;
-	PlayerResult.Contribution.bArrested = false;
-	PlayerResult.Contribution.bEscaped = true;
-	const FString EscapedSummary = UHeistResultViewModel::BuildPlayerResultSummaryText(PlayerResult).ToString();
-	TestTrue(TEXT("Escaped player is labeled escaped"), EscapedSummary.Contains(TEXT("탈출")));
-	return true;
-}
-
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistSoundPingAcceptanceAggregationTest, "ProjectMuseumHeist.Result.SoundPingAcceptanceAggregation",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 

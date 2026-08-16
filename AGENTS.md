@@ -262,6 +262,8 @@ Title Menu
 - 추가 Object Assembly Kit / Template
 - 추가 Loose Loot
 
+Optional Rare Artifact는 Stretch 승인 전 Runtime State, Timer, 위치·방향 Marker, 전용 Widget과 Data Row를 유지하지 않는다. 승인이 확정되면 제거된 경쟁형 Rare Loot 구현을 복구하지 않고 당시 Contract Run과 정보 공개 정책을 기준으로 새로 설계한다.
+
 Smoke 및 Trap 계열 기능은 Stretch 목록에 포함하지 않는다.
 
 필요성이 다시 확정될 경우 기존 삭제 코드를 복구하지 않고, 당시의 기획과 현재 아키텍처를 기준으로 설계와 구현 범위를 다시 정의한다.

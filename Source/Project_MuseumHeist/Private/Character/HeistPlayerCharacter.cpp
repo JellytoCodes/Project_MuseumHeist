@@ -1,14 +1,12 @@
 #include "Character/HeistPlayerCharacter.h"
 
 #include "Character/Components/HeistActionComponent.h"
-#include "Character/Components/HeistCustomizationComponent.h"
 #include "Character/Components/HeistForgeryComponent.h"
 #include "Character/Components/HeistInteractionComponent.h"
 #include "Character/Components/HeistInventoryComponent.h"
 #include "Character/Components/HeistNoiseEmitterComponent.h"
 #include "Character/Components/HeistObjectAssemblyComponent.h"
 #include "Character/Components/HeistStatusComponent.h"
-#include "Character/Components/HeistTagComponent.h"
 #include "Character/Components/HeistVisionComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -37,7 +35,6 @@ AHeistPlayerCharacter::AHeistPlayerCharacter()
 	FirstPersonCamera->bUsePawnControlRotation = true;
 	FirstPersonCamera->SetFieldOfView(90.0f);
 
-	TagComponent = CreateDefaultSubobject<UHeistTagComponent>(TEXT("TagComponent"));
 	StatusComponent = CreateDefaultSubobject<UHeistStatusComponent>(TEXT("StatusComponent"));
 	InventoryComponent = CreateDefaultSubobject<UHeistInventoryComponent>(TEXT("InventoryComponent"));
 	InteractionComponent = CreateDefaultSubobject<UHeistInteractionComponent>(TEXT("InteractionComponent"));
@@ -45,7 +42,6 @@ AHeistPlayerCharacter::AHeistPlayerCharacter()
 	ForgeryComponent = CreateDefaultSubobject<UHeistForgeryComponent>(TEXT("ForgeryComponent"));
 	ObjectAssemblyComponent = CreateDefaultSubobject<UHeistObjectAssemblyComponent>(TEXT("ObjectAssemblyComponent"));
 	VisionComponent = CreateDefaultSubobject<UHeistVisionComponent>(TEXT("VisionComponent"));
-	CustomizationComponent = CreateDefaultSubobject<UHeistCustomizationComponent>(TEXT("CustomizationComponent"));
 	NoiseEmitterComponent = CreateDefaultSubobject<UHeistNoiseEmitterComponent>(TEXT("NoiseEmitterComponent"));
 	RescueInteractionTarget = CreateDefaultSubobject<USphereComponent>(TEXT("RescueInteractionTarget"));
 	RescueInteractionTarget->SetupAttachment(GetCapsuleComponent());
@@ -81,7 +77,6 @@ void AHeistPlayerCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	checkf(IsValid(FirstPersonCamera), TEXT("HeistPlayerCharacter requires FirstPersonCamera"));
-	checkf(IsValid(TagComponent), TEXT("HeistPlayerCharacter requires HeistTagComponent"));
 	checkf(IsValid(StatusComponent), TEXT("HeistPlayerCharacter requires HeistStatusComponent"));
 	checkf(IsValid(InventoryComponent), TEXT("HeistPlayerCharacter requires HeistInventoryComponent"));
 	checkf(IsValid(InteractionComponent), TEXT("HeistPlayerCharacter requires HeistInteractionComponent"));
@@ -89,7 +84,6 @@ void AHeistPlayerCharacter::BeginPlay()
 	checkf(IsValid(ForgeryComponent), TEXT("HeistPlayerCharacter requires HeistForgeryComponent"));
 	checkf(IsValid(ObjectAssemblyComponent), TEXT("HeistPlayerCharacter requires HeistObjectAssemblyComponent"));
 	checkf(IsValid(VisionComponent), TEXT("HeistPlayerCharacter requires HeistVisionComponent"));
-	checkf(IsValid(CustomizationComponent), TEXT("HeistPlayerCharacter requires HeistCustomizationComponent"));
 	checkf(IsValid(NoiseEmitterComponent), TEXT("HeistPlayerCharacter requires HeistNoiseEmitterComponent"));
 	checkf(IsValid(RescueInteractionTarget), TEXT("HeistPlayerCharacter requires RescueInteractionTarget"));
 	checkf(IsValid(NameplateWidgetComponent), TEXT("HeistPlayerCharacter requires NameplateWidgetComponent"));
@@ -496,11 +490,6 @@ void AHeistPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 
 #pragma region GameplayComponents
 
-UHeistTagComponent* AHeistPlayerCharacter::GetTagComponent() const
-{
-	return TagComponent.Get();
-}
-
 UHeistStatusComponent* AHeistPlayerCharacter::GetStatusComponent() const
 {
 	return StatusComponent.Get();
@@ -534,11 +523,6 @@ UHeistObjectAssemblyComponent* AHeistPlayerCharacter::GetObjectAssemblyComponent
 UHeistVisionComponent* AHeistPlayerCharacter::GetVisionComponent() const
 {
 	return VisionComponent.Get();
-}
-
-UHeistCustomizationComponent* AHeistPlayerCharacter::GetCustomizationComponent() const
-{
-	return CustomizationComponent.Get();
 }
 
 UHeistNoiseEmitterComponent* AHeistPlayerCharacter::GetNoiseEmitterComponent() const

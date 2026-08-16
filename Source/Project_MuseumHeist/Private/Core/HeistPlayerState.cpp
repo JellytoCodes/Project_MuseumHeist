@@ -299,9 +299,6 @@ bool AHeistPlayerState::MarkEscaped()
 	bEscaped = true;
 	RefreshCrewStatus();
 	CommitContributionMutation();
-	FinalScore = TotalLootScore;
-	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
-	EscapeTimeSeconds = IsValid(HeistGameState) ? HeistGameState->GetServerWorldTimeSeconds() : (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
 
 	if (AHeistPlayerCharacter* HeistPlayerCharacter = Cast<AHeistPlayerCharacter>(GetPawn()))
 	{
@@ -316,23 +313,13 @@ bool AHeistPlayerState::MarkEscaped()
 	ForceNetUpdate();
 	EscapeStateChangedDelegate.Broadcast(bEscaped);
 
-	UHeistDebugFunctionLibrary::DebugPlayerEscapeStateCommitted(this, HeistPlayerId, FinalScore, EscapeTimeSeconds);
+	UHeistDebugFunctionLibrary::DebugPlayerEscapeStateCommitted(this, HeistPlayerId);
 	if (AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr)
 	{
 		HeistGameMode->NotifyPlayerTerminalStateChanged(this, FName(TEXT("PlayerEscaped")));
 	}
 
 	return true;
-}
-
-int32 AHeistPlayerState::GetFinalScore() const
-{
-	return FinalScore;
-}
-
-float AHeistPlayerState::GetEscapeTimeSeconds() const
-{
-	return EscapeTimeSeconds;
 }
 
 FHeistPlayerEscapeStateChanged& AHeistPlayerState::GetEscapeStateChangedDelegate()
@@ -479,8 +466,6 @@ void AHeistPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME_CONDITION(AHeistPlayerState, TotalLootWeight, COND_OwnerOnly);
 	DOREPLIFETIME(AHeistPlayerState, bEscaped);
 	DOREPLIFETIME(AHeistPlayerState, bArrested);
-	DOREPLIFETIME(AHeistPlayerState, FinalScore);
-	DOREPLIFETIME(AHeistPlayerState, EscapeTimeSeconds);
 	DOREPLIFETIME(AHeistPlayerState, Contribution);
 	DOREPLIFETIME(AHeistPlayerState, CrewStatus);
 }
@@ -623,7 +608,7 @@ void AHeistPlayerState::DebugSetTotalLootWeight(const float InWeight)
 #endif
 }
 
-void AHeistPlayerState::DebugSetResultState(const int32 InScore, const bool bInEscaped, const float InEscapeTimeSeconds)
+void AHeistPlayerState::DebugSetResultState(const bool bInEscaped)
 {
 #if !UE_BUILD_SHIPPING
 	if (!HasAuthority())
@@ -631,17 +616,14 @@ void AHeistPlayerState::DebugSetResultState(const int32 InScore, const bool bInE
 		return;
 	}
 
-	TotalLootScore = FMath::Max(0, InScore);
-	FinalScore = TotalLootScore;
 	bEscaped = bInEscaped;
-	EscapeTimeSeconds = bEscaped ? FMath::Max(0.0f, InEscapeTimeSeconds) : -1.0f;
+	RefreshCrewStatus();
 	CommitContributionMutation();
 	ForceNetUpdate();
-	BroadcastLootTotalsChanged();
 	EscapeStateChangedDelegate.Broadcast(bEscaped);
 
-	UHeistDebugFunctionLibrary::Message(this, FString::Printf(TEXT("Result debug state seeded: PlayerId=%d Escaped=%s FinalScore=%d EscapeTime=%.2f"), HeistPlayerId,
-															  bEscaped ? TEXT("true") : TEXT("false"), FinalScore, EscapeTimeSeconds));
+	UHeistDebugFunctionLibrary::Message(this, FString::Printf(TEXT("Result debug state seeded: PlayerId=%d Escaped=%s"), HeistPlayerId,
+															  bEscaped ? TEXT("true") : TEXT("false")));
 #endif
 }
 

@@ -113,19 +113,11 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerState : public APlayerState
   public:
 	bool IsEscaped() const;
 	bool MarkEscaped();
-	int32 GetFinalScore() const;
-	float GetEscapeTimeSeconds() const;
 	FHeistPlayerEscapeStateChanged& GetEscapeStateChangedDelegate();
 
   private:
 	UPROPERTY(ReplicatedUsing = OnRep_Escaped, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Escape", meta = (AllowPrivateAccess = "true"))
 	bool bEscaped = false;
-
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
-	int32 FinalScore = 0;
-
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
-	float EscapeTimeSeconds = -1.0f;
 
 	FHeistPlayerEscapeStateChanged EscapeStateChangedDelegate;
 
@@ -155,7 +147,7 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerState : public APlayerState
   public:
 	void DebugSetTotalLootScore(int32 InScore);
 	void DebugSetTotalLootWeight(float InWeight);
-	void DebugSetResultState(int32 InScore, bool bInEscaped, float InEscapeTimeSeconds);
+	void DebugSetResultState(bool bInEscaped);
 
 #pragma endregion
 

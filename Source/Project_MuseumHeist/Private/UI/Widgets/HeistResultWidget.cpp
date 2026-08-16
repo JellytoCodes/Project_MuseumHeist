@@ -334,50 +334,6 @@ void UHeistResultWidget::RefreshResultPresentation()
 	RefreshReplicaRecapPresentation(ResultViewModel->GetReplicaRecap());
 	RefreshContributionTablePresentation(ResultViewModel->GetPlayerResults());
 	BP_RefreshReplicaRecap(ResultViewModel->GetReplicaRecap());
-
-	if (IsValid(MyFinalScoreText))
-	{
-		MyFinalScoreText->SetVisibility(ESlateVisibility::Collapsed);
-	}
-	if (IsValid(EscapedBadge))
-	{
-		EscapedBadge->SetVisibility(ESlateVisibility::Collapsed);
-	}
-
-	const bool bUsesContributionTable = IsValid(ContributionTableContainer);
-	if (IsValid(ResultRow1Container))
-	{
-		ResultRow1Container->SetVisibility(bUsesContributionTable ? ESlateVisibility::Collapsed : ResultViewModel->GetResultRow1Visibility());
-	}
-	if (IsValid(ResultRow2Container))
-	{
-		ResultRow2Container->SetVisibility(bUsesContributionTable ? ESlateVisibility::Collapsed : ResultViewModel->GetResultRow2Visibility());
-	}
-	if (IsValid(ResultRow3Container))
-	{
-		ResultRow3Container->SetVisibility(bUsesContributionTable ? ESlateVisibility::Collapsed : ResultViewModel->GetResultRow3Visibility());
-	}
-	if (IsValid(ResultRow4Container))
-	{
-		ResultRow4Container->SetVisibility(bUsesContributionTable ? ESlateVisibility::Collapsed : ResultViewModel->GetResultRow4Visibility());
-	}
-
-	if (!bUsesContributionTable && IsValid(ResultRow1TextBlock))
-	{
-		ResultRow1TextBlock->SetText(ResultViewModel->GetResultRow1Text());
-	}
-	if (!bUsesContributionTable && IsValid(ResultRow2TextBlock))
-	{
-		ResultRow2TextBlock->SetText(ResultViewModel->GetResultRow2Text());
-	}
-	if (!bUsesContributionTable && IsValid(ResultRow3TextBlock))
-	{
-		ResultRow3TextBlock->SetText(ResultViewModel->GetResultRow3Text());
-	}
-	if (!bUsesContributionTable && IsValid(ResultRow4TextBlock))
-	{
-		ResultRow4TextBlock->SetText(ResultViewModel->GetResultRow4Text());
-	}
 }
 
 void UHeistResultWidget::RefreshRewardDetailPresentation(const FHeistTeamResult& TeamResult)

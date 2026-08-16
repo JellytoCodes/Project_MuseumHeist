@@ -107,9 +107,6 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 
   private:
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> ScoreText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> ToolText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))

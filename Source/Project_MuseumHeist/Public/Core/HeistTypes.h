@@ -13,7 +13,6 @@ enum class EHeistMatchPhase : uint8
 {
 	None,
 	Lobby,
-	Loadout,
 	ReadyCountdown,
 	InGame,
 	End
@@ -91,8 +90,6 @@ enum class EHeistDisplayCaseState : uint8
 	OriginalRemoved,
 	Inspecting,
 	Completed,
-	Suspected,
-	Alarmed,
 	Failed
 };
 
@@ -108,8 +105,6 @@ enum class EHeistObjectAssemblyState : uint8
 	OriginalRemoved,
 	Inspecting,
 	Completed,
-	Suspected,
-	Alarmed,
 	Failed
 };
 
@@ -387,9 +382,6 @@ struct PROJECT_MUSEUMHEIST_API FHeistForgeryResult
 	float ExtraStrokePenalty = 0.0f;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|Forgery")
-	float TimeoutPenalty = 0.0f;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Heist|Forgery")
 	float CompletionTime = 0.0f;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|Forgery")
@@ -401,7 +393,7 @@ struct PROJECT_MUSEUMHEIST_API FHeistForgeryResult
 			   FMath::IsNearlyEqual(CoverageScore, Other.CoverageScore, 0.001f) && FMath::IsNearlyEqual(MajorShapeScore, Other.MajorShapeScore, 0.001f) &&
 			   FMath::IsNearlyEqual(ColorAccuracyScore, Other.ColorAccuracyScore, 0.001f) && FMath::IsNearlyEqual(PaintToReferenceRatio, Other.PaintToReferenceRatio, 0.001f) &&
 			   bAntiFillTriggered == Other.bAntiFillTriggered && FMath::IsNearlyEqual(MissingShapePenalty, Other.MissingShapePenalty, 0.001f) &&
-			   FMath::IsNearlyEqual(ExtraStrokePenalty, Other.ExtraStrokePenalty, 0.001f) && FMath::IsNearlyEqual(TimeoutPenalty, Other.TimeoutPenalty, 0.001f) &&
+			   FMath::IsNearlyEqual(ExtraStrokePenalty, Other.ExtraStrokePenalty, 0.001f) &&
 			   FMath::IsNearlyEqual(CompletionTime, Other.CompletionTime, 0.001f) && bReplicaPlaced == Other.bReplicaPlaced;
 	}
 };
@@ -644,18 +636,6 @@ struct PROJECT_MUSEUMHEIST_API FHeistPlayerResult
 	int32 PlayerId = INDEX_NONE;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|Result")
-	int32 LootScore = 0;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Heist|Result")
-	int32 FinalScore = 0;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Heist|Result")
-	float LootWeight = 0.0f;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Heist|Result")
-	float EscapeTimeSeconds = -1.0f;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Heist|Result")
 	bool bEscaped = false;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|Result")
@@ -666,8 +646,7 @@ struct PROJECT_MUSEUMHEIST_API FHeistPlayerResult
 
 	bool operator==(const FHeistPlayerResult& Other) const
 	{
-		return PlayerId == Other.PlayerId && LootScore == Other.LootScore && FinalScore == Other.FinalScore && LootWeight == Other.LootWeight && EscapeTimeSeconds == Other.EscapeTimeSeconds &&
-			   bEscaped == Other.bEscaped && bArrested == Other.bArrested && Contribution == Other.Contribution;
+		return PlayerId == Other.PlayerId && bEscaped == Other.bEscaped && bArrested == Other.bArrested && Contribution == Other.Contribution;
 	}
 };
 
@@ -764,7 +743,6 @@ enum class EHeistSpawnCategory : uint8
 	None,
 	VaultFixed,
 	ExhibitionRoom,
-	RareEvent,
 	Dropped
 };
 
@@ -777,36 +755,6 @@ enum class EHeistSoundPingType : uint8
 	CoinImpact,
 	StunHit,
 	ReplicaSwap
-};
-
-USTRUCT(BlueprintType)
-struct PROJECT_MUSEUMHEIST_API FHeistRareLootEventState
-{
-	GENERATED_BODY()
-
-	UPROPERTY(BlueprintReadOnly, Category = "Heist|RareLoot")
-	int32 EventIndex = 0;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Heist|RareLoot")
-	FName ItemId = NAME_None;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Heist|RareLoot")
-	FVector_NetQuantize WorldLocation = FVector::ZeroVector;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Heist|RareLoot")
-	float SpawnServerTime = -1.0f;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Heist|RareLoot")
-	bool bIncomingWarningActive = false;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Heist|RareLoot")
-	bool bDirectionMarkerActive = false;
-
-	bool operator==(const FHeistRareLootEventState& Other) const
-	{
-		return EventIndex == Other.EventIndex && ItemId == Other.ItemId && WorldLocation.Equals(Other.WorldLocation) && FMath::IsNearlyEqual(SpawnServerTime, Other.SpawnServerTime) &&
-			   bIncomingWarningActive == Other.bIncomingWarningActive && bDirectionMarkerActive == Other.bDirectionMarkerActive;
-	}
 };
 
 USTRUCT(BlueprintType)
@@ -844,16 +792,6 @@ struct PROJECT_MUSEUMHEIST_API FHeistSoundPingEvent
 			   FMath::IsNearlyEqual(Radius, Other.Radius) && FMath::IsNearlyEqual(Duration, Other.Duration) && bAffectsGuards == Other.bAffectsGuards &&
 			   FMath::IsNearlyEqual(ServerTimeSeconds, Other.ServerTimeSeconds);
 	}
-};
-
-UENUM(BlueprintType)
-enum class EHeistCustomizationType : uint8
-{
-	Hat,
-	Cloth,
-	SkinColor,
-	HatColor,
-	ClothColor
 };
 
 UENUM(BlueprintType)

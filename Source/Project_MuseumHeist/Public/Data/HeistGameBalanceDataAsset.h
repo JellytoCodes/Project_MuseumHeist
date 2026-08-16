@@ -76,15 +76,6 @@ class PROJECT_MUSEUMHEIST_API UHeistGameBalanceDataAsset : public UDataAsset
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|AI|Forgery Timeout", meta = (ClampMin = "0.0", Units = "cm"))
 	float ForgeryTimeoutInvestigationRadius = 1500.0f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Rare Loot")
-	TArray<float> RareLootEventTimes = {90.0f, 225.0f};
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Rare Loot", meta = (ClampMin = "0.0", Units = "s"))
-	float RareLootWarningLeadTime = 5.0f;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Rare Loot")
-	FName RareLootItemId = FName(TEXT("Loot_RareArtifact"));
-
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Interaction", meta = (ClampMin = "0.0", Units = "s"))
 	float EscapeCastTime = 2.0f;
 
@@ -153,9 +144,6 @@ class PROJECT_MUSEUMHEIST_API UHeistGameBalanceDataAsset : public UDataAsset
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Data Tables")
 	TSoftObjectPtr<UDataTable> VentDataTable;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Data Tables")
-	TSoftObjectPtr<UDataTable> CustomizationDataTable;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Data Tables")
 	TSoftObjectPtr<UDataTable> UITextDataTable;

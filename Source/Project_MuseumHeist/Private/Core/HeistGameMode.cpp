@@ -30,7 +30,6 @@
 #include "World/Actors/Loot/HeistLootActor.h"
 #include "World/Actors/Loot/HeistObjectDisplayCaseActor.h"
 #include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
-#include "World/Spawn/HeistLootSpawnPoint.h"
 
 #pragma region InternalHelpers
 
@@ -295,16 +294,6 @@ int32 AHeistGameMode::ClearMatchScopedTimers()
 	ClearTimer(EscapePhaseTimerHandle);
 	ClearTimer(ContractDurationTimerHandle);
 	ClearTimer(GuardScalingTimerHandle);
-	for (FTimerHandle& TimerHandle : RareLootWarningTimerHandles)
-	{
-		ClearTimer(TimerHandle);
-	}
-	for (FTimerHandle& TimerHandle : RareLootSpawnTimerHandles)
-	{
-		ClearTimer(TimerHandle);
-	}
-	RareLootWarningTimerHandles.Reset();
-	RareLootSpawnTimerHandles.Reset();
 	return ClearedTimerCount;
 }
 
@@ -1162,14 +1151,6 @@ int32 AHeistGameMode::GetActiveMatchTimerCount() const
 	ActiveTimerCount += TimerManager.TimerExists(EscapePhaseTimerHandle) ? 1 : 0;
 	ActiveTimerCount += TimerManager.TimerExists(ContractDurationTimerHandle) ? 1 : 0;
 	ActiveTimerCount += TimerManager.TimerExists(GuardScalingTimerHandle) ? 1 : 0;
-	for (const FTimerHandle& TimerHandle : RareLootWarningTimerHandles)
-	{
-		ActiveTimerCount += TimerManager.TimerExists(TimerHandle) ? 1 : 0;
-	}
-	for (const FTimerHandle& TimerHandle : RareLootSpawnTimerHandles)
-	{
-		ActiveTimerCount += TimerManager.TimerExists(TimerHandle) ? 1 : 0;
-	}
 	return ActiveTimerCount;
 }
 
@@ -1591,7 +1572,6 @@ bool AHeistGameMode::GatherSurfaceTemplatePool(const FName PoolId, TArray<FName>
 	}
 
 	TSet<FName> UniqueTemplateIds;
-	TArray<FName> LegacyM01TemplateIds;
 	for (const FName RowName : TemplateDataTable->GetRowNames())
 	{
 		const FHeistForgeryTemplateRow* TemplateDefinition =
@@ -1607,17 +1587,8 @@ bool AHeistGameMode::GatherSurfaceTemplatePool(const FName PoolId, TArray<FName>
 			UniqueTemplateIds.Add(TemplateDefinition->TemplateId);
 			OutTemplateIds.Add(TemplateDefinition->TemplateId);
 		}
-		else if (PoolId == FName(TEXT("M01")) && TemplateDefinition->SurfacePoolId.IsNone())
-		{
-			LegacyM01TemplateIds.AddUnique(TemplateDefinition->TemplateId);
-		}
 	}
 
-	// Keeps the pre-W5 prototype usable until its JSON source is reimported with SurfacePoolId=M01.
-	if (OutTemplateIds.IsEmpty())
-	{
-		OutTemplateIds = MoveTemp(LegacyM01TemplateIds);
-	}
 	OutTemplateIds.Sort(
 		[](const FName Left, const FName Right)
 		{
@@ -2244,230 +2215,6 @@ void AHeistGameMode::ValidateItemDataTables() const
 	UE_LOG(LogHeistInventory, Log,
 		   TEXT("Item data validation completed: ItemTable=%s LootTable=%s UsableTable=%s TotalItems=%d ValidItems=%d ReleaseLootRows=%d InvalidRows=0 OrphanExtensions=0 Result=PASS"),
 		   *GetNameSafe(ItemDataTable), *GetNameSafe(LootDataTable), *GetNameSafe(UsableItemDataTable), RowNames.Num(), ValidRowCount, ReleaseLootRowCount);
-}
-
-#pragma endregion
-
-#pragma region RareLootEvent
-
-void AHeistGameMode::ForceRareLootEvent(const float WarningDelaySeconds)
-{
-#if !UE_BUILD_SHIPPING
-	if (!HasAuthority())
-	{
-		return;
-	}
-
-	while (TriggeredRareLootEventIndices.Contains(NextForcedRareLootEventIndex))
-	{
-		++NextForcedRareLootEventIndex;
-	}
-
-	const int32 EventIndex = NextForcedRareLootEventIndex;
-	const float SafeWarningDelay = FMath::Max(0.0f, WarningDelaySeconds);
-	const AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
-	const float SpawnServerTime = IsValid(HeistGameState) ? HeistGameState->GetServerWorldTimeSeconds() + SafeWarningDelay : GetWorld()->GetTimeSeconds() + SafeWarningDelay;
-	BeginRareLootWarning(EventIndex, SpawnServerTime);
-
-	if (SafeWarningDelay <= 0.0f)
-	{
-		TriggerRareLootEvent(EventIndex);
-		return;
-	}
-
-	FTimerHandle& SpawnTimerHandle = RareLootSpawnTimerHandles.AddDefaulted_GetRef();
-	FTimerDelegate SpawnDelegate;
-	SpawnDelegate.BindUObject(this, &AHeistGameMode::TriggerRareLootEvent, EventIndex);
-	GetWorldTimerManager().SetTimer(SpawnTimerHandle, SpawnDelegate, SafeWarningDelay, false);
-#endif
-}
-
-void AHeistGameMode::StartRareLootEventTimers()
-{
-	if (!HasAuthority())
-	{
-		return;
-	}
-
-	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
-	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
-	if (!IsValid(BalanceData) || !IsValid(HeistGameState))
-	{
-		UHeistDebugFunctionLibrary::DebugRareLootEventFailed(this, 0, TEXT("MissingBalanceOrGameState"));
-		return;
-	}
-
-	const float WarningLeadTime = FMath::Max(0.0f, BalanceData->RareLootWarningLeadTime);
-	for (int32 EventArrayIndex = 0; EventArrayIndex < BalanceData->RareLootEventTimes.Num(); ++EventArrayIndex)
-	{
-		const int32 EventIndex = EventArrayIndex + 1;
-		const float SpawnDelay = FMath::Max(0.0f, BalanceData->RareLootEventTimes[EventArrayIndex]);
-		const float WarningDelay = FMath::Max(0.0f, SpawnDelay - WarningLeadTime);
-		const float ScheduledSpawnServerTime = HeistGameState->GetServerWorldTimeSeconds() + SpawnDelay;
-
-		FTimerHandle& WarningTimerHandle = RareLootWarningTimerHandles.AddDefaulted_GetRef();
-		FTimerDelegate WarningDelegate;
-		WarningDelegate.BindUObject(this, &AHeistGameMode::BeginRareLootWarning, EventIndex, ScheduledSpawnServerTime);
-		GetWorldTimerManager().SetTimer(WarningTimerHandle, WarningDelegate, WarningDelay, false);
-
-		FTimerHandle& SpawnTimerHandle = RareLootSpawnTimerHandles.AddDefaulted_GetRef();
-		FTimerDelegate SpawnDelegate;
-		SpawnDelegate.BindUObject(this, &AHeistGameMode::TriggerRareLootEvent, EventIndex);
-		GetWorldTimerManager().SetTimer(SpawnTimerHandle, SpawnDelegate, SpawnDelay, false);
-	}
-
-	UHeistDebugFunctionLibrary::DebugRareLootTimersStarted(this, BalanceData->RareLootEventTimes, WarningLeadTime);
-}
-
-void AHeistGameMode::BeginRareLootWarning(const int32 EventIndex, const float ScheduledSpawnTime)
-{
-	if (!HasAuthority() || TriggeredRareLootEventIndices.Contains(EventIndex))
-	{
-		return;
-	}
-
-	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
-	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
-	if (!IsValid(HeistGameState) || !IsValid(BalanceData) || BalanceData->RareLootItemId.IsNone())
-	{
-		UHeistDebugFunctionLibrary::DebugRareLootEventFailed(this, EventIndex, TEXT("InvalidWarningState"));
-		return;
-	}
-
-	HeistGameState->BeginRareLootWarning(EventIndex, BalanceData->RareLootItemId, ScheduledSpawnTime);
-	UHeistDebugFunctionLibrary::DebugRareLootWarningStarted(this, EventIndex, BalanceData->RareLootItemId, ScheduledSpawnTime);
-}
-
-void AHeistGameMode::TriggerRareLootEvent(const int32 EventIndex)
-{
-	if (!HasAuthority() || TriggeredRareLootEventIndices.Contains(EventIndex))
-	{
-		return;
-	}
-
-	AHeistLootActor* RareLootActor = nullptr;
-	AHeistLootSpawnPoint* SpawnPoint = nullptr;
-	if (!TrySpawnRareLoot(EventIndex, RareLootActor, SpawnPoint))
-	{
-		if (AHeistGameState* HeistGameState = GetGameState<AHeistGameState>())
-		{
-			HeistGameState->DeactivateRareLootMarker(EventIndex);
-		}
-		return;
-	}
-
-	TriggeredRareLootEventIndices.Add(EventIndex);
-	ActiveRareLootEventIndices.Add(RareLootActor, EventIndex);
-	NextForcedRareLootEventIndex = FMath::Max(NextForcedRareLootEventIndex, EventIndex + 1);
-	RareLootActor->GetLootPickupCommittedDelegate().AddUObject(this, &AHeistGameMode::HandleRareLootPickedUp);
-
-	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
-	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
-	checkf(IsValid(HeistGameState), TEXT("Rare Loot event requires AHeistGameState."));
-	checkf(IsValid(BalanceData), TEXT("Rare Loot event requires balance data."));
-	HeistGameState->ActivateRareLootMarker(EventIndex, BalanceData->RareLootItemId, RareLootActor->GetActorLocation());
-	UHeistDebugFunctionLibrary::DebugRareLootSpawned(this, EventIndex, RareLootActor, SpawnPoint, BalanceData->RareLootItemId, RareLootActor->GetActorLocation());
-}
-
-bool AHeistGameMode::TrySpawnRareLoot(const int32 EventIndex, AHeistLootActor*& OutRareLootActor, AHeistLootSpawnPoint*& OutSpawnPoint)
-{
-	OutRareLootActor = nullptr;
-	OutSpawnPoint = nullptr;
-
-	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
-	if (!IsValid(BalanceData) || BalanceData->RareLootItemId.IsNone())
-	{
-		UHeistDebugFunctionLibrary::DebugRareLootEventFailed(this, EventIndex, TEXT("MissingRareLootConfig"));
-		return false;
-	}
-
-	FHeistItemDataRow ItemDefinition;
-	FHeistLootDataRow LootDefinition;
-	if (!TryGetItemDefinition(BalanceData->RareLootItemId, ItemDefinition) || ItemDefinition.ItemType != EHeistItemType::Loot || !TryGetLootDefinition(BalanceData->RareLootItemId, LootDefinition) ||
-		LootDefinition.SpawnCategory != EHeistSpawnCategory::RareEvent)
-	{
-		UHeistDebugFunctionLibrary::DebugRareLootEventFailed(this, EventIndex, TEXT("InvalidRareLootData"));
-		return false;
-	}
-
-	TArray<AHeistLootSpawnPoint*> CandidateSpawnPoints;
-	for (TActorIterator<AHeistLootSpawnPoint> It(GetWorld()); It; ++It)
-	{
-		AHeistLootSpawnPoint* SpawnPoint = *It;
-		if (IsValid(SpawnPoint) && SpawnPoint->CanSpawnCategory(EHeistSpawnCategory::RareEvent))
-		{
-			CandidateSpawnPoints.Add(SpawnPoint);
-		}
-	}
-
-	if (CandidateSpawnPoints.IsEmpty())
-	{
-		UHeistDebugFunctionLibrary::DebugRareLootEventFailed(this, EventIndex, TEXT("NoEmptyRareEventSpawnPoint"));
-		return false;
-	}
-
-	OutSpawnPoint = CandidateSpawnPoints[FMath::RandRange(0, CandidateSpawnPoints.Num() - 1)];
-	UClass* LootActorClass = ResolveWorldLootShellClass(BalanceData);
-	if (!IsValid(LootActorClass))
-	{
-		UHeistDebugFunctionLibrary::DebugRareLootEventFailed(this, EventIndex, TEXT("MissingWorldLootShell"));
-		return false;
-	}
-
-	UDataTable* LootDataTable = BalanceData->LootDataTable.LoadSynchronous();
-	if (!IsValid(LootDataTable))
-	{
-		UHeistDebugFunctionLibrary::DebugRareLootEventFailed(this, EventIndex, TEXT("MissingLootDataTable"));
-		return false;
-	}
-
-	const FTransform SpawnTransform = OutSpawnPoint->GetActorTransform();
-	AHeistLootActor* DeferredLootActor =
-		GetWorld()->SpawnActorDeferred<AHeistLootActor>(LootActorClass, SpawnTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn);
-	if (!IsValid(DeferredLootActor))
-	{
-		UHeistDebugFunctionLibrary::DebugRareLootEventFailed(this, EventIndex, TEXT("DeferredSpawnFailed"));
-		return false;
-	}
-
-	DeferredLootActor->InitializeLootData(LootDataTable, BalanceData->RareLootItemId);
-	OutRareLootActor = Cast<AHeistLootActor>(UGameplayStatics::FinishSpawningActor(DeferredLootActor, SpawnTransform));
-	if (!IsValid(OutRareLootActor))
-	{
-		UHeistDebugFunctionLibrary::DebugRareLootEventFailed(this, EventIndex, TEXT("FinishSpawnFailed"));
-		return false;
-	}
-
-	return true;
-}
-
-void AHeistGameMode::HandleRareLootPickedUp(AHeistLootActor* LootActor, AActor* Requester)
-{
-	if (!HasAuthority() || !IsValid(LootActor))
-	{
-		return;
-	}
-
-	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
-	if (!IsValid(HeistGameState))
-	{
-		return;
-	}
-
-	const int32* EventIndexPtr = ActiveRareLootEventIndices.Find(LootActor);
-	if (EventIndexPtr == nullptr)
-	{
-		return;
-	}
-
-	const int32 EventIndex = *EventIndexPtr;
-	if (HeistGameState->GetRareLootEventState().EventIndex == EventIndex)
-	{
-		HeistGameState->DeactivateRareLootMarker(EventIndex);
-	}
-	ActiveRareLootEventIndices.Remove(LootActor);
-	LootActor->GetLootPickupCommittedDelegate().RemoveAll(this);
-	UHeistDebugFunctionLibrary::DebugRareLootPickedUp(this, EventIndex, LootActor, Requester, LootActor->GetLootRowId());
 }
 
 const UHeistGameBalanceDataAsset* AHeistGameMode::ResolveGameBalanceData() const

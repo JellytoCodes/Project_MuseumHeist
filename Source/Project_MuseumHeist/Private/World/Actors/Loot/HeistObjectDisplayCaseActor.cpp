@@ -187,9 +187,6 @@ void AHeistObjectDisplayCaseActor::GetLifetimeReplicatedProps(TArray<FLifetimePr
 	DOREPLIFETIME(AHeistObjectDisplayCaseActor, bOriginalSecuredAtExit);
 	DOREPLIFETIME(AHeistObjectDisplayCaseActor, ResolvedInspectionDelay);
 	DOREPLIFETIME(AHeistObjectDisplayCaseActor, InspectionReadyServerTime);
-	DOREPLIFETIME(AHeistObjectDisplayCaseActor, InspectionScoreBand);
-	DOREPLIFETIME(AHeistObjectDisplayCaseActor, ResolvedInspectionAlertOutcome);
-	DOREPLIFETIME(AHeistObjectDisplayCaseActor, ResolvedInspectionCaseOutcome);
 	DOREPLIFETIME(AHeistObjectDisplayCaseActor, InspectionScheduleRevision);
 }
 
@@ -348,11 +345,8 @@ bool AHeistObjectDisplayCaseActor::TryCommitReplicaSwapAndTakeOriginal(AHeistPla
 
 	const float PreviousResolvedInspectionDelay = ResolvedInspectionDelay;
 	const float PreviousInspectionReadyServerTime = InspectionReadyServerTime;
-	const FName PreviousInspectionScoreBand = InspectionScoreBand;
-	const EHeistAlertLevel PreviousInspectionAlertOutcome = ResolvedInspectionAlertOutcome;
-	const EHeistObjectAssemblyState PreviousInspectionCaseOutcome = ResolvedInspectionCaseOutcome;
 	const int32 PreviousInspectionScheduleRevision = InspectionScheduleRevision;
-	if (!ResolveInspectionSchedule(CommittedAssemblyResult, OutRejectReason))
+	if (!ResolveInspectionSchedule(OutRejectReason))
 	{
 		return false;
 	}
@@ -369,9 +363,6 @@ bool AHeistObjectDisplayCaseActor::TryCommitReplicaSwapAndTakeOriginal(AHeistPla
 	{
 		ResolvedInspectionDelay = PreviousResolvedInspectionDelay;
 		InspectionReadyServerTime = PreviousInspectionReadyServerTime;
-		InspectionScoreBand = PreviousInspectionScoreBand;
-		ResolvedInspectionAlertOutcome = PreviousInspectionAlertOutcome;
-		ResolvedInspectionCaseOutcome = PreviousInspectionCaseOutcome;
 		InspectionScheduleRevision = PreviousInspectionScheduleRevision;
 		OutRejectReason = FName(InventoryRejectReason != nullptr ? InventoryRejectReason : TEXT("InventoryCommitFailed"));
 		return false;
@@ -568,7 +559,7 @@ bool AHeistObjectDisplayCaseActor::TryTakeOriginal(AHeistPlayerState* Requesting
 bool AHeistObjectDisplayCaseActor::ReleaseOriginalForCarrier(AHeistPlayerState* ExpectedCarrier, const FName Reason)
 {
 	const bool bOriginalCanReturn = AssemblyState == EHeistObjectAssemblyState::OriginalRemoved || AssemblyState == EHeistObjectAssemblyState::Inspecting ||
-		AssemblyState == EHeistObjectAssemblyState::Completed || AssemblyState == EHeistObjectAssemblyState::Suspected || AssemblyState == EHeistObjectAssemblyState::Alarmed ||
+		AssemblyState == EHeistObjectAssemblyState::Completed ||
 		AssemblyState == EHeistObjectAssemblyState::Failed;
 	if (!HasAuthority() || !bOriginalCanReturn || !IsValid(OriginalCarrier.Get()) || OriginalCarrier.Get() != ExpectedCarrier)
 	{
@@ -603,7 +594,7 @@ bool AHeistObjectDisplayCaseActor::ReleaseOriginalForCarrier(AHeistPlayerState* 
 bool AHeistObjectDisplayCaseActor::DropOriginalForCarrier(AHeistPlayerState* ExpectedCarrier, const FName Reason)
 {
 	const bool bOriginalOutsideCase = AssemblyState == EHeistObjectAssemblyState::OriginalRemoved || AssemblyState == EHeistObjectAssemblyState::Inspecting ||
-		AssemblyState == EHeistObjectAssemblyState::Completed || AssemblyState == EHeistObjectAssemblyState::Suspected || AssemblyState == EHeistObjectAssemblyState::Alarmed ||
+		AssemblyState == EHeistObjectAssemblyState::Completed ||
 		AssemblyState == EHeistObjectAssemblyState::Failed;
 	if (!HasAuthority() || !bOriginalOutsideCase || !IsValid(ExpectedCarrier) || OriginalCarrier.Get() != ExpectedCarrier)
 	{
@@ -688,7 +679,7 @@ bool AHeistObjectDisplayCaseActor::DropOriginalForCarrier(AHeistPlayerState* Exp
 bool AHeistObjectDisplayCaseActor::TryClaimDroppedOriginal(AHeistPlayerState* RequestingPlayerState, AHeistDroppedOriginalActor* DroppedOriginal)
 {
 	const bool bOriginalOutsideCase = AssemblyState == EHeistObjectAssemblyState::OriginalRemoved || AssemblyState == EHeistObjectAssemblyState::Inspecting ||
-		AssemblyState == EHeistObjectAssemblyState::Completed || AssemblyState == EHeistObjectAssemblyState::Suspected || AssemblyState == EHeistObjectAssemblyState::Alarmed ||
+		AssemblyState == EHeistObjectAssemblyState::Completed ||
 		AssemblyState == EHeistObjectAssemblyState::Failed;
 	if (!HasAuthority() || !bOriginalOutsideCase || bOriginalSecuredAtExit || IsValid(OriginalCarrier.Get()) || !IsValid(RequestingPlayerState) || RequestingPlayerState->IsArrested() ||
 		RequestingPlayerState->IsEscaped() || !IsValid(DroppedOriginal) || DroppedOriginal->GetSourceDisplayCase() != this ||
@@ -720,7 +711,7 @@ bool AHeistObjectDisplayCaseActor::TryClaimDroppedOriginal(AHeistPlayerState* Re
 bool AHeistObjectDisplayCaseActor::CanCommitOriginalDepositForCarrier(const AHeistPlayerState* ExpectedCarrier, const FHeistInventoryItem& OriginalItem) const
 {
 	const bool bOriginalOutsideCase = AssemblyState == EHeistObjectAssemblyState::OriginalRemoved || AssemblyState == EHeistObjectAssemblyState::Inspecting ||
-		AssemblyState == EHeistObjectAssemblyState::Completed || AssemblyState == EHeistObjectAssemblyState::Suspected || AssemblyState == EHeistObjectAssemblyState::Alarmed ||
+		AssemblyState == EHeistObjectAssemblyState::Completed ||
 		AssemblyState == EHeistObjectAssemblyState::Failed;
 	return HasAuthority() && bOriginalOutsideCase && !bOriginalSecuredAtExit && IsValid(ExpectedCarrier) && OriginalCarrier.Get() == ExpectedCarrier && OriginalItem.HasValidOriginalData() &&
 		   OriginalItem.SourceDisplayCase == this && OriginalItem.ItemId == TargetObjectArtifactId;
@@ -773,21 +764,6 @@ float AHeistObjectDisplayCaseActor::GetInspectionDelayRemaining() const
 float AHeistObjectDisplayCaseActor::GetResolvedInspectionDelay() const
 {
 	return ResolvedInspectionDelay;
-}
-
-FName AHeistObjectDisplayCaseActor::GetInspectionScoreBand() const
-{
-	return InspectionScoreBand;
-}
-
-EHeistAlertLevel AHeistObjectDisplayCaseActor::GetResolvedInspectionAlertOutcome() const
-{
-	return ResolvedInspectionAlertOutcome;
-}
-
-EHeistObjectAssemblyState AHeistObjectDisplayCaseActor::GetResolvedInspectionCaseOutcome() const
-{
-	return ResolvedInspectionCaseOutcome;
 }
 
 int32 AHeistObjectDisplayCaseActor::GetInspectionScheduleRevision() const
@@ -867,7 +843,7 @@ bool AHeistObjectDisplayCaseActor::ApplyInspectionResult(AActor* InspectingGuard
 	LastAppliedInspectionScheduleRevision = ActiveInspectionScheduleRevision;
 	ActiveInspectionScheduleRevision = INDEX_NONE;
 	++InspectionResultApplicationCount;
-	AssemblyState = ResolvedInspectionCaseOutcome;
+	AssemblyState = EHeistObjectAssemblyState::Completed;
 	InspectingGuardActor.Reset();
 	++AssemblyRevision;
 	RefreshObjectVisualState();
@@ -913,22 +889,16 @@ bool AHeistObjectDisplayCaseActor::ForceInspectionReadyForDebug()
 	return false;
 }
 
-bool AHeistObjectDisplayCaseActor::CalculateInspectionSchedule(const float QualityScore, const float BaseInspectionDelay, float& OutDelay, FName& OutScoreBand,
-																   EHeistAlertLevel& OutAlertOutcome, EHeistObjectAssemblyState& OutCaseOutcome)
+bool AHeistObjectDisplayCaseActor::CalculateInspectionSchedule(const float BaseInspectionDelay, float& OutDelay)
 {
 	OutDelay = 0.0f;
-	OutScoreBand = NAME_None;
-	OutAlertOutcome = EHeistAlertLevel::Quiet;
-	OutCaseOutcome = EHeistObjectAssemblyState::Completed;
-	if (!FMath::IsFinite(QualityScore) || !FMath::IsFinite(BaseInspectionDelay) ||
-		!FMath::IsWithinInclusive(QualityScore, HeistReplicaAcceptance::MinimumQualityScore, 100.0f) || BaseInspectionDelay < 0.0f)
+	if (!FMath::IsFinite(BaseInspectionDelay) || BaseInspectionDelay < 0.0f)
 	{
 		return false;
 	}
 
-	OutScoreBand = FName(TEXT("Accepted70Plus"));
 	OutDelay = BaseInspectionDelay;
-	return FMath::IsFinite(OutDelay) && OutDelay >= 0.0f;
+	return true;
 }
 
 bool AHeistObjectDisplayCaseActor::CanInteract(const AActor* Interactor) const
@@ -1463,12 +1433,8 @@ bool AHeistObjectDisplayCaseActor::IsAssemblyStateTransitionAllowed(const EHeist
 	case EHeistObjectAssemblyState::OriginalRemoved:
 		return NewState == EHeistObjectAssemblyState::Inspecting || NewState == EHeistObjectAssemblyState::Completed || NewState == EHeistObjectAssemblyState::Failed;
 	case EHeistObjectAssemblyState::Inspecting:
-		return NewState == EHeistObjectAssemblyState::Completed || NewState == EHeistObjectAssemblyState::Suspected || NewState == EHeistObjectAssemblyState::Alarmed ||
-			NewState == EHeistObjectAssemblyState::Failed;
-	case EHeistObjectAssemblyState::Suspected:
-		return NewState == EHeistObjectAssemblyState::Alarmed || NewState == EHeistObjectAssemblyState::Completed || NewState == EHeistObjectAssemblyState::Failed;
+		return NewState == EHeistObjectAssemblyState::Completed || NewState == EHeistObjectAssemblyState::Failed;
 	case EHeistObjectAssemblyState::Completed:
-	case EHeistObjectAssemblyState::Alarmed:
 	case EHeistObjectAssemblyState::Failed:
 	default:
 		return false;
@@ -1608,7 +1574,7 @@ void AHeistObjectDisplayCaseActor::BroadcastOriginalCarrySnapshot(const FName Ev
 	BP_ObjectAssemblySnapshotChanged();
 }
 
-bool AHeistObjectDisplayCaseActor::ResolveInspectionSchedule(const FHeistObjectAssemblyResult& AssemblyResult, FName& OutRejectReason)
+bool AHeistObjectDisplayCaseActor::ResolveInspectionSchedule(FName& OutRejectReason)
 {
 	OutRejectReason = NAME_None;
 	const AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
@@ -1619,8 +1585,7 @@ bool AHeistObjectDisplayCaseActor::ResolveInspectionSchedule(const FHeistObjectA
 		OutRejectReason = FName(TEXT("InvalidInspectionDelayData"));
 		return false;
 	}
-	if (!CalculateInspectionSchedule(AssemblyResult.QualityScore, ArtifactDefinition.BaseInspectionDelay, ResolvedInspectionDelay, InspectionScoreBand,
-									 ResolvedInspectionAlertOutcome, ResolvedInspectionCaseOutcome))
+	if (!CalculateInspectionSchedule(ArtifactDefinition.BaseInspectionDelay, ResolvedInspectionDelay))
 	{
 		OutRejectReason = FName(TEXT("InspectionScheduleMappingFailed"));
 		return false;

@@ -12,7 +12,6 @@ DECLARE_MULTICAST_DELEGATE_OneParam(FHeistEscapePhaseStateChanged, bool);
 DECLARE_MULTICAST_DELEGATE(FHeistPlayerResultsChanged);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistTeamResultChanged, const FHeistTeamResult&);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistSoundPingEventReported, const FHeistSoundPingEvent&, int32*);
-DECLARE_MULTICAST_DELEGATE_OneParam(FHeistRareLootEventStateChanged, const FHeistRareLootEventState&);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerConnectionsChanged, int32);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistMatchPhaseChanged, EHeistMatchPhase, EHeistMatchPhase);
 DECLARE_MULTICAST_DELEGATE_ThreeParams(FHeistLobbyMapSelectionChanged, FName, bool, int32);
@@ -308,28 +307,6 @@ class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
 	void OnRep_EscapePhaseOpen();
 
 	FHeistEscapePhaseStateChanged EscapePhaseStateChangedDelegate;
-
-#pragma endregion
-
-#pragma region RareLootEvent
-
-  public:
-	const FHeistRareLootEventState& GetRareLootEventState() const;
-	void BeginRareLootWarning(int32 EventIndex, FName ItemId, float SpawnServerTime);
-	void ActivateRareLootMarker(int32 EventIndex, FName ItemId, const FVector& WorldLocation);
-	void DeactivateRareLootMarker(int32 EventIndex);
-	FHeistRareLootEventStateChanged& GetRareLootEventStateChangedDelegate();
-
-  private:
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Legacy", meta = (AllowPrivateAccess = "true"))
-	FHeistRareLootEventState RareLootEventState;
-
-	UFUNCTION()
-	void OnRep_RareLootEventState();
-
-	void BroadcastRareLootEventState();
-
-	FHeistRareLootEventStateChanged RareLootEventStateChangedDelegate;
 
 #pragma endregion
 

@@ -78,10 +78,6 @@
 			"Enabled": true
 		},
 		{
-			"Name": "OpenCVLensDistortion",
-			"Enabled": true
-		},
-		{
 			"Name": "OnlineSubsystem",
 			"Enabled": true
 		},

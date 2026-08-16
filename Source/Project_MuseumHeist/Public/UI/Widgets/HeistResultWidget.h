@@ -161,35 +161,5 @@ class PROJECT_MUSEUMHEIST_API UHeistResultWidget : public UHeistUserWidgetBase
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UButton> ReturnToLobbyButton;
 
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> MyFinalScoreText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UWidget> EscapedBadge;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UWidget> ResultRow1Container;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UWidget> ResultRow2Container;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UWidget> ResultRow3Container;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UWidget> ResultRow4Container;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> ResultRow1TextBlock;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> ResultRow2TextBlock;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> ResultRow3TextBlock;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> ResultRow4TextBlock;
-
 #pragma endregion
 };

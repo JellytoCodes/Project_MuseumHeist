@@ -1,8 +1,11 @@
 import json
+import os
 import unreal
 
 
-SOURCE_FILE = r"D:\Dev\UE5.8\Project_MuseumHeist\SourceArt\UI\Fonts\TENADA\Tenada.ttf"
+SOURCE_FILE = os.path.normpath(
+    os.path.join(unreal.Paths.project_dir(), "SourceArt", "UI", "Fonts", "TENADA", "Tenada.ttf")
+)
 DESTINATION_PATH = "/Game/Blueprints/UI/Fonts"
 FONT_FACE_PATH = f"{DESTINATION_PATH}/FF_TENADA"
 COMPOSITE_FONT_PATH = f"{DESTINATION_PATH}/F_TENADA"

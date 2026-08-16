@@ -1,0 +1,140 @@
+# Project Museum Heist - Shipping Asset Manifest
+
+Baseline: 2026-08-16
+Work item: TASK-W9-007
+Scope: project-added Surface Forgery art, Object Assembly art, TENADA font, W7 floor-plan/audio assets, and Epic StarterContent currently referenced by the project.
+
+This manifest records evidence that exists in the repository or the current workspace. It is not a legal opinion and does not by itself establish that an asset is cleared for every territory or distribution channel. An unlisted asset must not be treated as cleared merely because it is absent from this document.
+
+## Status Legend
+
+| Status | Meaning |
+|---|---|
+| `VERIFIED_LOCAL` | Source, generator, notice, or provenance statement exists locally and matches the recorded project use. This is not legal clearance. |
+| `REVIEW_REQUIRED` | Provenance is identifiable, but the durable license record, package inclusion, tracking state, or distribution scope still needs confirmation. |
+| `RELEASE_BLOCKER` | The current repository evidence is insufficient for release sign-off. Resolve before TASK-W9-007 or the release license gate is marked complete. |
+
+## Release Gate Summary
+
+| Asset group | Current use | Local evidence | Status | Required action |
+|---|---|---|---|---|
+| M01 Surface Forgery pool | 12 timed painting templates | 12 source URLs and artwork metadata; 12 of 12 entries have no `rights` value | `RELEASE_BLOCKER` | Record a source-specific rights statement and review note for every M01 entry. Replace any source that cannot be supported. |
+| M02 Surface Forgery pool | 12 timed painting templates | 12 source URLs; every entry is labelled `Public Domain` in the local manifest | `VERIFIED_LOCAL` | Retain the manifest and source URLs. Re-check the statements during final release review. |
+| M03 Surface Forgery pool | 12 timed painting templates | 12 source URLs; eight entries have `Public Domain` or `CC0 Public Domain Designation`; four entries say only `No Copyright - United States` | `RELEASE_BLOCKER` | Establish the intended global distribution basis for the four US-only entries, or replace them. |
+| Surface fallback texture | Default painting material texture `T_Forgery_SunArchWave` | Runtime asset and asset metadata exist; source PNG is ignored by Git and the metadata has no origin or rights statement | `RELEASE_BLOCKER` | Add a durable project-original or third-party provenance statement and decide whether the source PNG must be tracked. |
+| Object Assembly gallery meshes | Sculpture and Ceramic modular kits | 14 local OBJ sources, deterministic generator, and project-generated provenance statement | `REVIEW_REQUIRED` | Ensure `SourceArt/ObjectAssembly/` is version-controlled and retained with the runtime meshes before sign-off. |
+| TENADA | Korean display font in UI | TTF, upstream URL, four-page upstream notice, and SIL Open Font License 1.1 text are stored locally | `REVIEW_REQUIRED` | Include the required notice and license in the distributed package or another user-viewable location, then record package evidence. |
+| W7 floor plans | M01/M02/M03 full-screen map textures | Deterministic generator, three generated PNGs, and project-original declaration | `VERIFIED_LOCAL` | Retain generator, README, and generated sources. |
+| W7 alert audio | Suspense and alarm loops | Deterministic generator, two generated WAVs, and project-original declaration | `VERIFIED_LOCAL` | Retain generator, README, and generated sources. |
+| Epic StarterContent | Graybox architecture and five Loose Loot visual definitions | 264 tracked assets under the Epic StarterContent folder; live map/DataTable references verified | `REVIEW_REQUIRED` | Record the applicable Epic/Unreal content terms, review date, and permitted distribution scope. Do not treat the folder name alone as license evidence. |
+
+## Surface Forgery Art
+
+### M01 - Classical
+
+- Runtime pool: `Content/Data/Forgery/Textures/M01/`
+- Durable source manifest: [M01_SourceManifest.json](../SourceArt/Forgery/M01/M01_SourceManifest.json)
+- Per-asset metadata: `SourceArt/Forgery/M01/*.asset.json`
+- Recorded inventory: 12 entries, 12 source URLs, 0 per-entry rights values.
+- Manifest-level art direction says the pool is based on public-domain real artworks, but that general statement does not replace a source-specific rights record.
+
+Release blocker: add a `rights` value and, where needed, a short jurisdiction or review note to all 12 entries. This document does not infer a rights status from artist death dates, artwork age, or museum ownership.
+
+### M02 - Moonlit
+
+- Runtime pool: `Content/Data/Forgery/Textures/M02/`
+- Durable source manifest: [M02_SourceManifest.json](../SourceArt/Forgery/M02/M02_SourceManifest.json)
+- Per-asset metadata: `SourceArt/Forgery/M02/*.asset.json`
+- Recorded inventory: 12 entries, 12 source URLs, 12 entries labelled `Public Domain`.
+
+The status above means only that the local manifest is complete and internally consistent. Final release review should preserve the URLs and confirm that the recorded statements still support the intended distribution.
+
+### M03 - Glasshouse
+
+- Runtime pool: `Content/Data/Forgery/Textures/M03/`
+- Durable source manifest: [M03_SourceManifest.json](../SourceArt/Forgery/M03/M03_SourceManifest.json)
+- Per-asset metadata: `SourceArt/Forgery/M03/*.asset.json`
+- Recorded inventory: 12 entries and 12 source URLs.
+
+The following entries require a distribution-scope decision because the manifest says only `No Copyright - United States`:
+
+| Slot | Work | Artist | Recorded year | Source |
+|---|---|---|---|---|
+| `M03_GeometricAbstract_02` | Simultaneous Composition | Theo van Doesburg | 1929 | [Yale University Art Gallery](https://artgallery.yale.edu/collections/objects/49581) |
+| `M03_GeometricAbstract_03` | Sunrise III | Arthur Dove | 1936-1937 | [Yale University Art Gallery](https://artgallery.yale.edu/collections/objects/46733) |
+| `M03_GeometricAbstract_04` | Proun 99 | El Lissitzky | ca. 1923-1925 | [Yale University Art Gallery](https://artgallery.yale.edu/collections/objects/51116) |
+| `M03_GeometricAbstract_05` | Multicolored Circle | Wassily Kandinsky | 1921 | [Yale University Art Gallery](https://artgallery.yale.edu/collections/objects/43960) |
+
+Release blocker: do not convert the US-only wording into a global public-domain assertion without supporting evidence. Record the reviewed distribution basis or replace the four sources.
+
+### Surface Fallback Texture
+
+- Runtime asset: `Content/Data/Forgery/Textures/T_Forgery_SunArchWave.uasset`
+- Durable metadata: [T_Forgery_SunArchWave.asset.json](../SourceArt/Forgery/T_Forgery_SunArchWave.asset.json)
+- Local source named by the metadata: `SourceArt/Forgery/T_Forgery_SunArchWave.png`
+- Runtime consumers include the painting surface material under `Content/Blueprints/World/Actors/Loot/Materials/`.
+
+The PNG exists in the current workspace but is excluded by the repository's `SourceArt/**/*.png` ignore rule. The metadata records palette and import behavior but no creator, external source, or rights statement. Treat this as unresolved until provenance is recorded.
+
+## Object Assembly Art
+
+- Runtime meshes: `Content/Assets/Art/ObjectAssembly/Sculpture/` and `Content/Assets/Art/ObjectAssembly/Ceramic/`
+- Source README: [SourceArt/ObjectAssembly/README.md](../SourceArt/ObjectAssembly/README.md)
+- Deterministic generator: [rebuild_object_assembly_content.py](../SourceArt/ObjectAssembly/rebuild_object_assembly_content.py)
+- Source geometry: `SourceArt/ObjectAssembly/Meshes/` - 14 OBJ files.
+
+The local README states that the geometry is project-generated procedural source art and that no external mesh source is embedded. At this baseline, `SourceArt/ObjectAssembly/` is present locally but not yet tracked by Git. The provenance record is therefore not durable until the directory is added to version control and reviewed.
+
+## TENADA Font
+
+- Runtime assets: `Content/Blueprints/UI/Fonts/FF_TENADA.uasset` and `F_TENADA.uasset`
+- Local source font: [Tenada.ttf](../SourceArt/UI/Fonts/TENADA/Tenada.ttf)
+- Project record: [TENADA README](../SourceArt/UI/Fonts/TENADA/README.md)
+- Preserved upstream notice and license: [reedme_tenada_font.pdf](../SourceArt/UI/Fonts/TENADA/reedme_tenada_font.pdf)
+- Recorded upstream page: <https://en.tenada.co.kr/Font>
+- License identified in the preserved upstream file: SIL Open Font License 1.1.
+
+The preserved PDF contains an author note and the full SIL Open Font License 1.1 text. Its conditions include retaining the copyright notice and license with redistributed Font Software. Final package verification must show where a user can view that notice and license. This manifest does not decide whether a particular packaging method satisfies the license.
+
+## W7 Project-Original Presentation Assets
+
+- Provenance record: [SourceArt/W7/README.md](../SourceArt/W7/README.md)
+- Deterministic generator: [GenerateW7PresentationAssets.ps1](../SourceArt/W7/GenerateW7PresentationAssets.ps1)
+- Source outputs:
+  - `SourceArt/W7/Generated/T_FloorPlan_M01.png`
+  - `SourceArt/W7/Generated/T_FloorPlan_M02.png`
+  - `SourceArt/W7/Generated/T_FloorPlan_M03.png`
+  - `SourceArt/W7/Generated/SW_HeistSuspenseLoop.wav`
+  - `SourceArt/W7/Generated/SW_HeistAlarmLoop.wav`
+- Runtime outputs:
+  - `Content/Blueprints/UI/Map/T_FloorPlan_M01.uasset`
+  - `Content/Blueprints/UI/Map/T_FloorPlan_M02.uasset`
+  - `Content/Blueprints/UI/Map/T_FloorPlan_M03.uasset`
+  - `Content/Blueprints/Audio/W7/SW_HeistSuspenseLoop.uasset`
+  - `Content/Blueprints/Audio/W7/SW_HeistAlarmLoop.uasset`
+
+The README states that these are project-original schematic textures and procedurally generated PCM audio with no embedded third-party visual or audio material. Source, generator, and runtime assets are all present locally.
+
+## Epic StarterContent
+
+- Content root: `Content/Assets/StarterContent/`
+- Current tracked count: 264 files.
+- Confirmed shipping-facing references:
+  - [DT_LootDataRow.json](../DataTableImports/DT_LootDataRow.json) uses StarterContent shapes and materials for five Loose Loot visuals.
+  - `Content/Maps/M01_ClassicalPrototype.umap` uses StarterContent architecture.
+- Developer-only reference:
+  - `Content/Maps/SandBoxMap.umap` also uses StarterContent architecture/materials but is not listed in `MapsToCook`.
+
+The asset origin is identifiable from the Epic StarterContent directory, but no applicable Epic license/EULA snapshot or reviewed terms record is stored in this repository. Before release sign-off, record the reviewed official terms, review date, reviewer, and the conclusion for packaged game distribution. This is a documentation requirement, not a statement that the current use is prohibited.
+
+## Release Sign-off Checklist
+
+- [ ] All 12 M01 manifest entries have reviewed per-source rights values.
+- [ ] The four M03 US-only entries have a documented global distribution basis or replacements.
+- [ ] `T_Forgery_SunArchWave` has durable creator/source/rights provenance.
+- [ ] `SourceArt/ObjectAssembly/` is version-controlled and its project-original statement is reviewed.
+- [ ] The final package exposes the TENADA notice and SIL Open Font License 1.1 text in a user-viewable form.
+- [ ] The applicable Epic StarterContent terms and review date are recorded.
+- [ ] A fresh Development package asset audit confirms which StarterContent assets are actually staged.
+- [ ] [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) matches this manifest and the final package contents.
+- [ ] Any newly added art, audio, font, icon, texture, or model has a manifest entry before release.

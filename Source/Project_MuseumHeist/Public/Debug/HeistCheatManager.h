@@ -234,7 +234,7 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 	void HeistResultRebuild();
 
 	UFUNCTION(Exec)
-	void HeistResultSeed(int32 Score = 1000, bool bEscaped = true, float EscapeTimeSeconds = 10.0f);
+	void HeistResultSeed(bool bEscaped = true);
 
 	UFUNCTION(Exec)
 	void HeistContributionSeed(int32 SurfaceForgeries = 2, float BestSurfaceQuality = 75.0f, int32 Assemblies = 1, float BestAssemblyQuality = 80.0f,
@@ -395,9 +395,6 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 
 	UFUNCTION(Exec)
 	void HeistObjectAssemblyReplicaDump();
-
-	UFUNCTION(Exec)
-	void HeistObjectAssemblyPrototypeGate();
 
 	UFUNCTION(Exec)
 	void HeistObjectAssemblyContentValidate();

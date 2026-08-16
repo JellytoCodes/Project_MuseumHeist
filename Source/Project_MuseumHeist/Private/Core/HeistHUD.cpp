@@ -633,7 +633,7 @@ void AHeistHUD::InitializeResultPresentation()
 
 	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	AHeistPlayerState* HeistPlayerState = OwningPlayerController->GetPlayerState<AHeistPlayerState>();
-	ResultViewModel->SetupViewModel(HeistGameState, HeistPlayerState);
+	ResultViewModel->SetupViewModel(HeistGameState);
 }
 
 #pragma endregion

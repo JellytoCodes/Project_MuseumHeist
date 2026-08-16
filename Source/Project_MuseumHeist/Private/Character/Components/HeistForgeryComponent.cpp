@@ -1041,7 +1041,6 @@ bool UHeistForgeryComponent::TryPrepareForgeryTemplate(AHeistPaintingDisplayCase
 	TemplateCoverageWeight = TemplateDefinition.CoverageWeight;
 	TemplateMajorShapeWeight = TemplateDefinition.MajorShapeWeight;
 	TemplateExtraStrokePenaltyWeight = TemplateDefinition.ExtraStrokePenaltyWeight;
-	TemplateTimeoutPenalty = TemplateDefinition.TimeoutPenalty;
 	TemplateShapeAccuracyWeight = TemplateDefinition.ShapeAccuracyWeight;
 	TemplateColorAccuracyWeight = TemplateDefinition.ColorAccuracyWeight;
 	TemplateMaximumPaintToReferenceRatio = TemplateDefinition.MaximumPaintToReferenceRatio;
@@ -2037,7 +2036,7 @@ bool UHeistForgeryComponent::CalculateForgeryScore(const TArray<FVector2D>& Norm
 		(TemplateBackgroundFilterMode == EHeistForgeryBackgroundFilter::None && ReferenceMaskAsset.IsNull()) || NormalizedPoints.IsEmpty() || StrokePointCounts.IsEmpty() ||
 		StrokePaletteIndices.Num() != StrokePointCounts.Num() || StrokeBrushPresetIndices.Num() != StrokePointCounts.Num() || !FMath::IsWithinInclusive(TemplateAllowedPalette.Num(), 2, 8) ||
 		TemplateCoverageWeight < 0.0f ||
-		TemplateMajorShapeWeight < 0.0f || TemplateExtraStrokePenaltyWeight < 0.0f || TemplateTimeoutPenalty < 0.0f || TemplateShapeAccuracyWeight < 0.0f || TemplateColorAccuracyWeight < 0.0f ||
+		TemplateMajorShapeWeight < 0.0f || TemplateExtraStrokePenaltyWeight < 0.0f || TemplateShapeAccuracyWeight < 0.0f || TemplateColorAccuracyWeight < 0.0f ||
 		TemplateShapeAccuracyWeight + TemplateColorAccuracyWeight <= 0.0f || !FMath::IsWithinInclusive(TemplateBackgroundColorTolerance, 0.0f, 0.49f) || TemplateMaximumPaintToReferenceRatio < 1.0f ||
 		!FMath::IsWithinInclusive(TemplateOverpaintScoreCap, 0.0f, 100.0f))
 	{
@@ -2110,13 +2109,12 @@ bool UHeistForgeryComponent::CalculateForgeryScore(const TArray<FVector2D>& Norm
 	const float MajorShapePoints = MajorShapeRatio * TemplateMajorShapeWeight * 100.0f;
 	const float MissingShapePenaltyPoints = MissingShapeRatio * TemplateExtraStrokePenaltyWeight * 100.0f;
 	const float ExtraStrokePenaltyPoints = ExtraStrokeRatio * TemplateExtraStrokePenaltyWeight * 100.0f;
-	const float TimeoutPenaltyPoints = 0.0f;
 	const float ColorAccuracyScore = ColorSimilarityRatio * 100.0f;
 	const float AccuracyWeightTotal = TemplateShapeAccuracyWeight + TemplateColorAccuracyWeight;
 	const float WeightedGeometricAccuracy =
 		FMath::Pow(MajorShapeRatio, TemplateShapeAccuracyWeight / AccuracyWeightTotal) * FMath::Pow(ColorSimilarityRatio, TemplateColorAccuracyWeight / AccuracyWeightTotal);
 	const float BottleneckSimilarity = FMath::Min(MajorShapeRatio, ColorSimilarityRatio);
-	float FinalScore = FMath::Clamp(WeightedGeometricAccuracy * BottleneckSimilarity * 100.0f - TimeoutPenaltyPoints, 0.0f, 100.0f);
+	float FinalScore = FMath::Clamp(WeightedGeometricAccuracy * BottleneckSimilarity * 100.0f, 0.0f, 100.0f);
 	const float PaintToReferenceRatio = static_cast<float>(OutSubmittedMaskPixels) / OutReferenceMaskPixels;
 	const float PaintCompletenessFactor = FMath::Pow(FMath::Clamp(PaintToReferenceRatio, 0.0f, 1.0f), PaintCompletenessExponent);
 	FinalScore *= PaintCompletenessFactor;
@@ -2147,7 +2145,6 @@ bool UHeistForgeryComponent::CalculateForgeryScore(const TArray<FVector2D>& Norm
 	OutResult.bAntiFillTriggered = bAntiFillTriggered;
 	OutResult.MissingShapePenalty = RoundScore(MissingShapePenaltyPoints);
 	OutResult.ExtraStrokePenalty = RoundScore(ExtraStrokePenaltyPoints);
-	OutResult.TimeoutPenalty = RoundScore(TimeoutPenaltyPoints);
 	OutResult.CompletionTime = RoundScore(CompletionTime);
 	OutResult.bReplicaPlaced = false;
 	return true;
@@ -2321,7 +2318,7 @@ bool UHeistForgeryComponent::ValidateActiveSession(FName& OutRejectReason) const
 		(TemplateBackgroundFilterMode == EHeistForgeryBackgroundFilter::None && ReferenceMaskAsset.IsNull()) ||
 		!FMath::IsWithinInclusive(TemplateForgeryDuration, 20.0f, 45.0f) || TemplateStrokeLimit <= 0 || TemplateBrushSize <= 0.0f ||
 		!FMath::IsWithinInclusive(TemplateAllowedPalette.Num(), 2, 8) || !FMath::IsWithinInclusive(ActiveSessionDurationSeconds, 20.0f, 45.0f) || TemplateCoverageWeight < 0.0f ||
-		TemplateMajorShapeWeight < 0.0f || TemplateExtraStrokePenaltyWeight < 0.0f || TemplateTimeoutPenalty < 0.0f || TemplateShapeAccuracyWeight < 0.0f || TemplateColorAccuracyWeight < 0.0f ||
+		TemplateMajorShapeWeight < 0.0f || TemplateExtraStrokePenaltyWeight < 0.0f || TemplateShapeAccuracyWeight < 0.0f || TemplateColorAccuracyWeight < 0.0f ||
 		TemplateShapeAccuracyWeight + TemplateColorAccuracyWeight <= 0.0f || !FMath::IsWithinInclusive(TemplateBackgroundColorTolerance, 0.0f, 0.49f) || TemplateMaximumPaintToReferenceRatio < 1.0f ||
 		!FMath::IsWithinInclusive(TemplateOverpaintScoreCap, 0.0f, 100.0f))
 	{
@@ -2435,7 +2432,6 @@ void UHeistForgeryComponent::ResetPreparedTemplateSnapshot()
 	TemplateCoverageWeight = 0.0f;
 	TemplateMajorShapeWeight = 0.0f;
 	TemplateExtraStrokePenaltyWeight = 0.0f;
-	TemplateTimeoutPenalty = 0.0f;
 	TemplateBackgroundFilterMode = EHeistForgeryBackgroundFilter::None;
 	TemplateBackgroundColorTolerance = 0.0f;
 	TemplateShapeAccuracyWeight = 0.0f;
@@ -2506,7 +2502,6 @@ void UHeistForgeryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 	DOREPLIFETIME_CONDITION(UHeistForgeryComponent, TemplateCoverageWeight, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(UHeistForgeryComponent, TemplateMajorShapeWeight, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(UHeistForgeryComponent, TemplateExtraStrokePenaltyWeight, COND_OwnerOnly);
-	DOREPLIFETIME_CONDITION(UHeistForgeryComponent, TemplateTimeoutPenalty, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(UHeistForgeryComponent, TemplateBackgroundFilterMode, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(UHeistForgeryComponent, TemplateBackgroundColorTolerance, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(UHeistForgeryComponent, TemplateShapeAccuracyWeight, COND_OwnerOnly);

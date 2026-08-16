@@ -456,11 +456,6 @@ bool TryParseMatchPhase(const FString& PhaseName, EHeistMatchPhase& OutPhase)
 		OutPhase = EHeistMatchPhase::Lobby;
 		return true;
 	}
-	if (NormalizedPhaseName == TEXT("loadout"))
-	{
-		OutPhase = EHeistMatchPhase::Loadout;
-		return true;
-	}
 	if (NormalizedPhaseName == TEXT("readycountdown") || NormalizedPhaseName == TEXT("ready"))
 	{
 		OutPhase = EHeistMatchPhase::ReadyCountdown;
@@ -1314,7 +1309,7 @@ void UHeistDebugFunctionLibrary::DebugOriginalDump(APlayerController* PlayerCont
 	const EHeistDisplayCaseState CaseState = IsValid(DisplayCase) ? DisplayCase->GetDisplayCaseState() : EHeistDisplayCaseState::Secured;
 	const bool bOriginalSecuredAtExit = IsValid(DisplayCase) && DisplayCase->IsOriginalSecuredAtExit();
 	const bool bOriginalOutsideCase = CaseState == EHeistDisplayCaseState::OriginalRemoved || CaseState == EHeistDisplayCaseState::Inspecting ||
-		CaseState == EHeistDisplayCaseState::Completed || CaseState == EHeistDisplayCaseState::Suspected || CaseState == EHeistDisplayCaseState::Alarmed ||
+		CaseState == EHeistDisplayCaseState::Completed ||
 		CaseState == EHeistDisplayCaseState::Failed;
 	const bool bLocalCarryMatchesCarrier = !bHasCarryItem || CaseCarrier == HeistPlayerState;
 	const bool bActiveCarryConsistent = bCaseCarrierHasItem && CaseCarrierItem.HasValidOriginalData() && IsValid(DisplayCase) &&
@@ -1623,7 +1618,7 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyHelp(APlayerController* Play
 	Message(
 		PlayerController,
 		TEXT(
-			"Object Assembly commands: HeistCasePhase InGame | HeistObjectAssemblySpawn 200 | HeistObjectAssemblySpawnFor <PlayerId> <Distance> | HeistObjectAssemblyContentSpawn <Sculpture|Ceramic> <1-6> <Distance> | HeistObjectAssemblyContentSpawnFor <PlayerId> <Sculpture|Ceramic> <1-6> <Distance> | HeistObjectAssemblyKickPlayer <PlayerId> | HeistObjectAssemblyTestIsolation <0|1> | HeistObjectAssemblyBegin 60 | HeistObjectAssemblyTest <Valid|Missing|Extra|Socket|Orientation|Material|Duplicate|Revision|Family|Empty> | HeistObjectAssemblyDump | HeistObjectAssemblyUIDump | HeistObjectAssemblyCancel | HeistObjectAssemblyTimeout | HeistObjectAssemblyReplicaDump | HeistObjectAssemblyPrototypeGate | HeistObjectAssemblyContentValidate | HeistObjectAssemblyReplicaRebuild | HeistObjectAssemblyTakeOriginal | HeistObjectAssemblyInspectionReady | HeistObjectAssemblyInspectionGate. Spawn, SpawnFor, ContentSpawn, ContentSpawnFor, ContentValidate, KickPlayer, TestIsolation, Timeout, InspectionReady, and InspectionGate are listen-server commands; Begin/Test/Cancel/Dump/UIDump/ReplicaDump/PrototypeGate/ReplicaRebuild/TakeOriginal may run in the owning client."),
+			"Object Assembly commands: HeistCasePhase InGame | HeistObjectAssemblySpawn 200 | HeistObjectAssemblySpawnFor <PlayerId> <Distance> | HeistObjectAssemblyContentSpawn <Sculpture|Ceramic> <1-6> <Distance> | HeistObjectAssemblyContentSpawnFor <PlayerId> <Sculpture|Ceramic> <1-6> <Distance> | HeistObjectAssemblyKickPlayer <PlayerId> | HeistObjectAssemblyTestIsolation <0|1> | HeistObjectAssemblyBegin 60 | HeistObjectAssemblyTest <Valid|Missing|Extra|Socket|Orientation|Material|Duplicate|Revision|Family|Empty> | HeistObjectAssemblyDump | HeistObjectAssemblyUIDump | HeistObjectAssemblyCancel | HeistObjectAssemblyTimeout | HeistObjectAssemblyReplicaDump | HeistObjectAssemblyContentValidate | HeistObjectAssemblyReplicaRebuild | HeistObjectAssemblyTakeOriginal | HeistObjectAssemblyInspectionReady | HeistObjectAssemblyInspectionGate. Spawn, SpawnFor, ContentSpawn, ContentSpawnFor, ContentValidate, KickPlayer, TestIsolation, Timeout, InspectionReady, and InspectionGate are listen-server commands; Begin/Test/Cancel/Dump/UIDump/ReplicaDump/ReplicaRebuild/TakeOriginal may run in the owning client."),
 		EHeistDebugLevel::Info, true, 12.0f);
 #endif
 }
@@ -1647,7 +1642,7 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblySpawn(APlayerController* Pla
 		? PlayerController->GetWorld()->SpawnActor<AHeistObjectDisplayCaseActor>(DisplayCaseClass, SpawnLocation, ReferencePawn->GetActorRotation(), SpawnParameters)
 		: nullptr;
 	const bool bInitialized = IsValid(DisplayCase) &&
-		DisplayCase->InitializeObjectIdentity(FName(TEXT("ObjectCase_Sculpture_Debug")), FName(TEXT("Artifact_Sculpture_Prototype")), FName(TEXT("Sculpture")));
+		DisplayCase->InitializeObjectIdentity(FName(TEXT("ObjectCase_Sculpture_Debug")), FName(TEXT("Artifact_Sculpture_Gallery_01")), FName(TEXT("Sculpture")));
 	AHeistGameState* HeistGameState = PlayerController->GetWorld()->GetGameState<AHeistGameState>();
 	const bool bObjectiveSet =
 		bInitialized && IsValid(HeistGameState) &&
@@ -1692,7 +1687,7 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblySpawnFor(APlayerController* 
 		: nullptr;
 	const FName CaseId(*FString::Printf(TEXT("ObjectCase_Sculpture_Debug_P%d"), PlayerId));
 	const bool bInitialized = IsValid(DisplayCase) &&
-		DisplayCase->InitializeObjectIdentity(CaseId, FName(TEXT("Artifact_Sculpture_Prototype")), FName(TEXT("Sculpture")));
+		DisplayCase->InitializeObjectIdentity(CaseId, FName(TEXT("Artifact_Sculpture_Gallery_01")), FName(TEXT("Sculpture")));
 	AHeistGameState* HeistGameState = PlayerController->GetWorld()->GetGameState<AHeistGameState>();
 	const bool bObjectiveSet =
 		bInitialized && IsValid(HeistGameState) &&
@@ -1891,9 +1886,9 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyTest(APlayerController* Play
 		return Entry;
 	};
 	TArray<FHeistObjectAssemblyEntry> Entries;
-	Entries.Add(MakeEntry(TEXT("Part_Sculpture_Prototype_Head"), TEXT("Head"), 0, TEXT("None")));
-	Entries.Add(MakeEntry(TEXT("Part_Sculpture_Prototype_ArmLeft"), TEXT("Shoulder_L"), 4, TEXT("None")));
-	Entries.Add(MakeEntry(TEXT("Part_Sculpture_Prototype_ArmRight"), TEXT("Shoulder_R"), 12, TEXT("None")));
+	Entries.Add(MakeEntry(TEXT("Part_Sculpture_Gallery_Head"), TEXT("Head"), 0, TEXT("None")));
+	Entries.Add(MakeEntry(TEXT("Part_Sculpture_Gallery_ArmLeft"), TEXT("Shoulder_L"), 4, TEXT("None")));
+	Entries.Add(MakeEntry(TEXT("Part_Sculpture_Gallery_ArmRight"), TEXT("Shoulder_R"), 12, TEXT("None")));
 
 	const FString NormalizedScenario = Scenario.TrimStartAndEnd().ToLower();
 	int32 ClientSessionRevision = ObjectAssemblyComponent->GetSessionRevision();
@@ -1945,7 +1940,7 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyTest(APlayerController* Play
 	}
 	else if (NormalizedScenario == TEXT("extra"))
 	{
-		Entries.Add(MakeEntry(TEXT("Part_Sculpture_Prototype_Decoy"), TEXT("Pedestal"), 0, TEXT("None")));
+		Entries.Add(MakeEntry(TEXT("Part_Sculpture_Gallery_Decoy"), TEXT("Pedestal"), 0, TEXT("None")));
 	}
 	else if (NormalizedScenario == TEXT("socket"))
 	{
@@ -1972,7 +1967,7 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyTest(APlayerController* Play
 	}
 	else if (NormalizedScenario == TEXT("family"))
 	{
-		Entries[0] = MakeEntry(TEXT("Part_Ceramic_Test_Handle"), TEXT("Handle"), 0, TEXT("Material_Ceramic"));
+		Entries[0] = MakeEntry(TEXT("Part_Ceramic_Gallery_HandleLeft"), TEXT("Handle_L"), 0, TEXT("Material_Ceramic"));
 		bExpectedAccepted = false;
 	}
 	else if (NormalizedScenario == TEXT("empty"))
@@ -2192,145 +2187,6 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyReplicaDump(APlayerControlle
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugObjectAssemblyPrototypeGate(APlayerController* PlayerController)
-{
-#if !UE_BUILD_SHIPPING
-	struct FPrototypePartContract
-	{
-		FName PartId;
-		FName SocketId;
-		uint8 Orientation = 0;
-	};
-
-	const FName PrototypeArtifactId(TEXT("Artifact_Sculpture_Prototype"));
-	const FName PrototypeTemplateId(TEXT("Template_Sculpture_Prototype_01"));
-	const FName PrototypeCorePartId(TEXT("Part_Sculpture_Prototype_Core"));
-	const FName PrototypeFamilyId(TEXT("Sculpture"));
-	const TArray<FPrototypePartContract> ExpectedParts = {
-		{FName(TEXT("Part_Sculpture_Prototype_Head")), FName(TEXT("Head")), 0},
-		{FName(TEXT("Part_Sculpture_Prototype_ArmLeft")), FName(TEXT("Shoulder_L")), 4},
-		{FName(TEXT("Part_Sculpture_Prototype_ArmRight")), FName(TEXT("Shoulder_R")), 12}};
-	const TArray<uint8> ExpectedOrientationSteps = {0, 4, 8, 12};
-
-	const AHeistObjectDisplayCaseActor* DisplayCase = ResolveNearestReplicaObjectDisplayCase(PlayerController);
-	if (!IsValid(DisplayCase))
-	{
-		Message(PlayerController, TEXT("Object Assembly prototype gate: Result=FAIL Reason=MissingReplicatedReplicaCase"), EHeistDebugLevel::Warning, true);
-		return;
-	}
-
-	const FHeistObjectAssemblyReplicaData ReplicaData = DisplayCase->GetAssemblyReplicaData();
-	int32 ReplicaRevision = 0;
-	int32 ExpectedEntryCount = 0;
-	int32 BuiltPartCount = 0;
-	int32 UnresolvedSocketCount = 0;
-	bool bCoreReady = false;
-	bool bComponentContractPassed = false;
-	DisplayCase->GetReplicaComponentDebugState(ReplicaRevision, ExpectedEntryCount, BuiltPartCount, UnresolvedSocketCount, bCoreReady, bComponentContractPassed);
-
-	bool bRuntimePayloadContract = ReplicaData.Revision > 0 && ReplicaRevision == ReplicaData.Revision && ReplicaData.Entries.Num() == ExpectedParts.Num();
-	for (const FPrototypePartContract& ExpectedPart : ExpectedParts)
-	{
-		const FHeistObjectAssemblyEntry* RuntimeEntry = ReplicaData.Entries.FindByPredicate(
-			[&ExpectedPart](const FHeistObjectAssemblyEntry& Entry) { return Entry.PartId == ExpectedPart.PartId; });
-		bRuntimePayloadContract =
-			bRuntimePayloadContract && RuntimeEntry != nullptr && RuntimeEntry->SocketId == ExpectedPart.SocketId &&
-			RuntimeEntry->QuantizedOrientation == ExpectedPart.Orientation && RuntimeEntry->MaterialId.IsNone();
-	}
-
-	const bool bRuntimeContractPassed =
-		DisplayCase->GetTargetArtifactId() == PrototypeArtifactId && DisplayCase->GetObjectFamilyId() == PrototypeFamilyId &&
-		ExpectedEntryCount == ExpectedParts.Num() && BuiltPartCount == ExpectedParts.Num() && bCoreReady && UnresolvedSocketCount == 0 &&
-		bComponentContractPassed && bRuntimePayloadContract;
-
-	const bool bAuthority = IsValid(PlayerController) && PlayerController->HasAuthority();
-	bool bDataContractChecked = false;
-	bool bDataContractPassed = true;
-	bool bCoreMeshProjectLocal = false;
-	int32 CoreSocketCount = 0;
-	bool bOrientationStepContract = false;
-	bool bNoMaterialSelectionContract = false;
-
-	if (bAuthority)
-	{
-		bDataContractChecked = true;
-		bDataContractPassed = false;
-
-		const AHeistGameMode* HeistGameMode = PlayerController->GetWorld() ? PlayerController->GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
-		FHeistArtifactDataRow ArtifactDefinition;
-		FHeistObjectAssemblyTemplateRow TemplateDefinition;
-		FHeistObjectAssemblyPartRow CoreDefinition;
-		const bool bBaseDataReady =
-			IsValid(HeistGameMode) && HeistGameMode->TryGetArtifactDefinition(PrototypeArtifactId, ArtifactDefinition) &&
-			HeistGameMode->TryGetObjectAssemblyTemplateDefinition(PrototypeTemplateId, TemplateDefinition) &&
-			HeistGameMode->TryGetObjectAssemblyPartDefinition(PrototypeCorePartId, CoreDefinition);
-
-		bool bRequiredPartContract = bBaseDataReady && TemplateDefinition.RequiredParts.Num() == ExpectedParts.Num();
-		bOrientationStepContract = bRequiredPartContract;
-		bNoMaterialSelectionContract = bRequiredPartContract && CoreDefinition.AllowedMaterialIds.IsEmpty();
-		UStaticMesh* CoreMesh = bBaseDataReady ? CoreDefinition.StaticMesh.LoadSynchronous() : nullptr;
-		const FString CoreMeshPath = bBaseDataReady ? CoreDefinition.StaticMesh.ToSoftObjectPath().ToString() : FString();
-		bCoreMeshProjectLocal = IsValid(CoreMesh) && CoreMeshPath.StartsWith(TEXT("/Game/"));
-
-		for (const FPrototypePartContract& ExpectedPart : ExpectedParts)
-		{
-			const FHeistObjectAssemblyEntry* RequiredEntry = TemplateDefinition.RequiredParts.FindByPredicate(
-				[&ExpectedPart](const FHeistObjectAssemblyEntry& Entry) { return Entry.PartId == ExpectedPart.PartId; });
-			FHeistObjectAssemblyPartRow PartDefinition;
-			const bool bPartDefinitionReady =
-				bBaseDataReady && HeistGameMode->TryGetObjectAssemblyPartDefinition(ExpectedPart.PartId, PartDefinition);
-			const bool bRequiredEntryValid =
-				RequiredEntry != nullptr && RequiredEntry->SocketId == ExpectedPart.SocketId &&
-				RequiredEntry->QuantizedOrientation == ExpectedPart.Orientation && RequiredEntry->MaterialId.IsNone();
-			bool bOrientationStepsValid =
-				bPartDefinitionReady && PartDefinition.AllowedOrientationSteps.Num() == ExpectedOrientationSteps.Num();
-			for (const uint8 ExpectedStep : ExpectedOrientationSteps)
-			{
-				bOrientationStepsValid = bOrientationStepsValid && PartDefinition.AllowedOrientationSteps.Contains(ExpectedStep);
-			}
-			const bool bPartContract =
-				bPartDefinitionReady && PartDefinition.FamilyId == PrototypeFamilyId &&
-				PartDefinition.CompatibleSocketIds.Contains(ExpectedPart.SocketId) && bRequiredEntryValid;
-
-			bRequiredPartContract = bRequiredPartContract && bPartContract;
-			bOrientationStepContract = bOrientationStepContract && bOrientationStepsValid;
-			bNoMaterialSelectionContract = bNoMaterialSelectionContract && bPartDefinitionReady && PartDefinition.AllowedMaterialIds.IsEmpty();
-			CoreSocketCount += IsValid(CoreMesh) && CoreMesh->FindSocket(ExpectedPart.SocketId) != nullptr ? 1 : 0;
-		}
-
-		const bool bArtifactContract =
-			bBaseDataReady && ArtifactDefinition.ArtifactId == PrototypeArtifactId && ArtifactDefinition.ForgeryType == EHeistForgeryType::Assembly &&
-			ArtifactDefinition.ForgeryTemplateId == PrototypeTemplateId;
-		const bool bTemplateContract =
-			bBaseDataReady && TemplateDefinition.TemplateId == PrototypeTemplateId && TemplateDefinition.FamilyId == PrototypeFamilyId &&
-			TemplateDefinition.CorePartId == PrototypeCorePartId && TemplateDefinition.RequiredParts.Num() == ExpectedParts.Num();
-		const bool bCoreSocketContract = bCoreMeshProjectLocal && CoreSocketCount == ExpectedParts.Num();
-		bDataContractPassed =
-			bArtifactContract && bTemplateContract && bRequiredPartContract && bCoreSocketContract &&
-			bOrientationStepContract && bNoMaterialSelectionContract;
-	}
-
-	const bool bPassed = bRuntimeContractPassed && (!bDataContractChecked || bDataContractPassed);
-	const TCHAR* DataContractText = bDataContractChecked ? (bDataContractPassed ? TEXT("PASS") : TEXT("FAIL")) : TEXT("SKIPPED_CLIENT");
-	const TCHAR* DataFlagNotApplicable = TEXT("N/A");
-	const FString CoreAssetSocketText =
-		bDataContractChecked ? FString::Printf(TEXT("%d/%d"), CoreSocketCount, ExpectedParts.Num()) : FString(DataFlagNotApplicable);
-	Message(
-		PlayerController,
-		FString::Printf(
-			TEXT(
-				"Object Assembly prototype gate: Case=%s Artifact=%s Family=%s Core=1 RequiredParts=%d SocketCount=%d OrientationSteps=0|4|8|12 NoMaterialSelection=%s CoreMeshProjectLocal=%s CoreAssetSockets=%s DataContract=%s ReplicaRevision=%d Entries=%d BuiltParts=%d CoreReady=%s UnresolvedSockets=%d RuntimePayload=%s Reconstruction=%s Authority=%s Result=%s"),
-			*GetNameSafe(DisplayCase), *DisplayCase->GetTargetArtifactId().ToString(), *DisplayCase->GetObjectFamilyId().ToString(), ExpectedParts.Num(),
-			ExpectedParts.Num(), bDataContractChecked ? (bNoMaterialSelectionContract ? TEXT("true") : TEXT("false")) : DataFlagNotApplicable,
-			bDataContractChecked ? (bCoreMeshProjectLocal ? TEXT("true") : TEXT("false")) : DataFlagNotApplicable,
-			*CoreAssetSocketText, DataContractText,
-			ReplicaRevision, ReplicaData.Entries.Num(), BuiltPartCount, bCoreReady ? TEXT("true") : TEXT("false"), UnresolvedSocketCount,
-			bRuntimePayloadContract ? TEXT("PASS") : TEXT("FAIL"), bComponentContractPassed ? TEXT("PASS") : TEXT("FAIL"),
-			bAuthority ? TEXT("true") : TEXT("false"), bPassed ? TEXT("PASS") : TEXT("FAIL")),
-		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
-#endif
-}
-
 void UHeistDebugFunctionLibrary::DebugObjectAssemblyContentValidate(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
@@ -2373,8 +2229,7 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyContentValidate(APlayerContr
 	for (const TPair<FName, uint8*>& TemplatePair : TemplateTable->GetRowMap())
 	{
 		const FHeistObjectAssemblyTemplateRow* Template = reinterpret_cast<const FHeistObjectAssemblyTemplateRow*>(TemplatePair.Value);
-		if (Template == nullptr || (Template->FamilyId != SculptureFamilyId && Template->FamilyId != CeramicFamilyId) ||
-			Template->TemplateId.ToString().Contains(TEXT("_Prototype_")))
+		if (Template == nullptr || (Template->FamilyId != SculptureFamilyId && Template->FamilyId != CeramicFamilyId))
 		{
 			continue;
 		}
@@ -2591,7 +2446,7 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyInspectionGate(APlayerContro
 	}
 
 	const bool bAlreadyApplied = DisplayCase->GetInspectionResultApplicationCount() == 1 &&
-		DisplayCase->GetAssemblyState() == DisplayCase->GetResolvedInspectionCaseOutcome() && !DisplayCase->IsInspectionClaimActive();
+		DisplayCase->GetAssemblyState() == EHeistObjectAssemblyState::Completed && !DisplayCase->IsInspectionClaimActive();
 	bool bForcedReady = false;
 	bool bClaimStarted = false;
 	bool bResultApplied = false;
@@ -2614,23 +2469,19 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyInspectionGate(APlayerContro
 		bResultApplied = IsValid(InspectionGuard) && DisplayCase->ApplyInspectionResult(InspectionGuard);
 	}
 
-	const FHeistObjectAssemblyResult CommittedResult = DisplayCase->GetCommittedAssemblyResult();
-	const bool bScheduleContract =
-		FMath::IsFinite(CommittedResult.QualityScore) && FMath::IsWithinInclusive(CommittedResult.QualityScore, 0.0f, 100.0f) &&
-		!DisplayCase->GetInspectionScoreBand().IsNone() && DisplayCase->GetInspectionScheduleRevision() > 0;
+	const bool bScheduleContract = FMath::IsFinite(DisplayCase->GetResolvedInspectionDelay()) && DisplayCase->GetResolvedInspectionDelay() >= 0.0f &&
+		DisplayCase->GetInspectionScheduleRevision() > 0;
 	const bool bApplicationContract = DisplayCase->GetInspectionResultApplicationCount() == 1 &&
-		DisplayCase->GetAssemblyState() == DisplayCase->GetResolvedInspectionCaseOutcome() && !DisplayCase->IsInspectionClaimActive() &&
+		DisplayCase->GetAssemblyState() == EHeistObjectAssemblyState::Completed && !DisplayCase->IsInspectionClaimActive() &&
 		DisplayCase->GetInspectionDuplicateBlockCount() == 0;
 	const bool bPassed = bScheduleContract && bApplicationContract && (bAlreadyApplied || bResultApplied);
 	Message(
 		PlayerController,
 		FString::Printf(
 			TEXT(
-				"Object Assembly inspection gate: Case=%s CaseId=%s Guard=%s Quality=%.2f Band=%s Delay=%.2f Alert=%s ExpectedState=%s ActualState=%s ForcedReady=%s ClaimStarted=%s Applied=%s Applications=%d DuplicateBlocks=%d Authority=true Result=%s"),
-			*GetNameSafe(DisplayCase), *DisplayCase->GetObjectCaseId().ToString(), *GetNameSafe(InspectionGuard), CommittedResult.QualityScore,
-			*DisplayCase->GetInspectionScoreBand().ToString(), DisplayCase->GetResolvedInspectionDelay(),
-			*UEnum::GetValueAsString(DisplayCase->GetResolvedInspectionAlertOutcome()),
-			*UEnum::GetValueAsString(DisplayCase->GetResolvedInspectionCaseOutcome()), *UEnum::GetValueAsString(DisplayCase->GetAssemblyState()),
+				"Object Assembly inspection gate: Case=%s CaseId=%s Guard=%s Delay=%.2f ExpectedState=Completed ActualState=%s ForcedReady=%s ClaimStarted=%s Applied=%s Applications=%d DuplicateBlocks=%d AlertUnchanged=true Authority=true Result=%s"),
+			*GetNameSafe(DisplayCase), *DisplayCase->GetObjectCaseId().ToString(), *GetNameSafe(InspectionGuard), DisplayCase->GetResolvedInspectionDelay(),
+			*UEnum::GetValueAsString(DisplayCase->GetAssemblyState()),
 			bForcedReady ? TEXT("true") : TEXT("false"), bClaimStarted ? TEXT("true") : TEXT("false"),
 			(bAlreadyApplied || bResultApplied) ? TEXT("true") : TEXT("false"), DisplayCase->GetInspectionResultApplicationCount(),
 			DisplayCase->GetInspectionDuplicateBlockCount(), bPassed ? TEXT("PASS") : TEXT("FAIL")),
@@ -3343,7 +3194,7 @@ void UHeistDebugFunctionLibrary::DebugForgeryScoreDump(APlayerController* Player
 	const bool bHasScore = ForgeryComponent->HasAuthoritativeForgeryResult();
 	const bool bScoreInRange = FMath::IsWithinInclusive(ScoreResult.SimilarityScore, 0.0f, 100.0f);
 	const bool bBreakdownValid = ScoreResult.CoverageScore >= 0.0f && ScoreResult.MajorShapeScore >= 0.0f && ScoreResult.ColorAccuracyScore >= 0.0f && ScoreResult.PaintToReferenceRatio >= 0.0f &&
-								 ScoreResult.MissingShapePenalty >= 0.0f && ScoreResult.ExtraStrokePenalty >= 0.0f && ScoreResult.TimeoutPenalty >= 0.0f;
+								 ScoreResult.MissingShapePenalty >= 0.0f && ScoreResult.ExtraStrokePenalty >= 0.0f;
 	const bool bResolutionValid = ForgeryComponent->GetForgeryScoreResolution() == 256;
 	const bool bMaskCountsValid = ForgeryComponent->GetReferenceMaskPixelCount() > 0 && ForgeryComponent->GetSubmittedMaskPixelCount() > 0;
 	const bool bIdentityValid = !ScoreResult.ArtifactId.IsNone() && !ScoreResult.TemplateId.IsNone() && ScoreResult.ForgeryType == EHeistForgeryType::Drawing;
@@ -3353,10 +3204,10 @@ void UHeistDebugFunctionLibrary::DebugForgeryScoreDump(APlayerController* Player
 		PlayerController,
 		FString::Printf(
 			TEXT(
-				"Forgery score dump: Backend=OpenCV ShapeMetric=DistanceDiceGeometric ColorMetric=LabSSIMHistogramGeometric Fusion=WeightedGeometricBottleneck Calibration=OpenCVHistogramBonus0.75x3 ScoreCurve=Shape1.15Color1.10 PaintCompletenessExponent=0.65 TargetCharacter=%s TargetSelection=%s HasScore=%s Artifact=%s Template=%s Score=%.2f Coverage=%.2f MajorShape=%.2f ColorAccuracy=%.2f MissingPenalty=%.2f ExtraPenalty=%.2f TimeoutPenalty=%.2f CompletionTime=%.2f PaintToReference=%.2f PaintCompleteness=%.3f AntiFill=%s ReplicaPlaced=%s Resolution=%dx%d ReferencePixels=%d SubmittedPixels=%d ScoreRevision=%d OwnerOnlySummary=true RawStrokeReplicated=false Authority=%s Result=%s"),
+				"Forgery score dump: Backend=OpenCV ShapeMetric=DistanceDiceGeometric ColorMetric=LabSSIMHistogramGeometric Fusion=WeightedGeometricBottleneck Calibration=OpenCVHistogramBonus0.75x3 ScoreCurve=Shape1.15Color1.10 PaintCompletenessExponent=0.65 TargetCharacter=%s TargetSelection=%s HasScore=%s Artifact=%s Template=%s Score=%.2f Coverage=%.2f MajorShape=%.2f ColorAccuracy=%.2f MissingPenalty=%.2f ExtraPenalty=%.2f CompletionTime=%.2f PaintToReference=%.2f PaintCompleteness=%.3f AntiFill=%s ReplicaPlaced=%s Resolution=%dx%d ReferencePixels=%d SubmittedPixels=%d ScoreRevision=%d OwnerOnlySummary=true RawStrokeReplicated=false Authority=%s Result=%s"),
 			*GetNameSafe(ForgeryComponent->GetOwner()), bUsedAuthorityFallback ? TEXT("AuthorityScoredFallback") : TEXT("OwningPlayer"), bHasScore ? TEXT("true") : TEXT("false"),
 			*ScoreResult.ArtifactId.ToString(), *ScoreResult.TemplateId.ToString(), ScoreResult.SimilarityScore, ScoreResult.CoverageScore, ScoreResult.MajorShapeScore, ScoreResult.ColorAccuracyScore,
-			ScoreResult.MissingShapePenalty, ScoreResult.ExtraStrokePenalty, ScoreResult.TimeoutPenalty, ScoreResult.CompletionTime, ScoreResult.PaintToReferenceRatio,
+			ScoreResult.MissingShapePenalty, ScoreResult.ExtraStrokePenalty, ScoreResult.CompletionTime, ScoreResult.PaintToReferenceRatio,
 			FMath::Pow(FMath::Clamp(ScoreResult.PaintToReferenceRatio, 0.0f, 1.0f), 0.65f), ScoreResult.bAntiFillTriggered ? TEXT("true") : TEXT("false"),
 			ScoreResult.bReplicaPlaced ? TEXT("true") : TEXT("false"), ForgeryComponent->GetForgeryScoreResolution(), ForgeryComponent->GetForgeryScoreResolution(),
 			ForgeryComponent->GetReferenceMaskPixelCount(), ForgeryComponent->GetSubmittedMaskPixelCount(), ForgeryComponent->GetForgeryScoreRevision(),
@@ -3525,7 +3376,7 @@ void UHeistDebugFunctionLibrary::DebugForgeryScoreTest(APlayerController* Player
 			   FMath::IsNearlyEqual(Left.CoverageScore, Right.CoverageScore, 0.001f) && FMath::IsNearlyEqual(Left.MajorShapeScore, Right.MajorShapeScore, 0.001f) &&
 			   FMath::IsNearlyEqual(Left.ColorAccuracyScore, Right.ColorAccuracyScore, 0.001f) && FMath::IsNearlyEqual(Left.PaintToReferenceRatio, Right.PaintToReferenceRatio, 0.001f) &&
 			   Left.bAntiFillTriggered == Right.bAntiFillTriggered && FMath::IsNearlyEqual(Left.MissingShapePenalty, Right.MissingShapePenalty, 0.001f) &&
-			   FMath::IsNearlyEqual(Left.ExtraStrokePenalty, Right.ExtraStrokePenalty, 0.001f) && FMath::IsNearlyEqual(Left.TimeoutPenalty, Right.TimeoutPenalty, 0.001f);
+			   FMath::IsNearlyEqual(Left.ExtraStrokePenalty, Right.ExtraStrokePenalty, 0.001f);
 	};
 	const bool bDeterministic =
 		bFirstCalculated && bSecondCalculated && HasSameScoreBreakdown(FirstResult, SecondResult) && FirstReferencePixels == SecondReferencePixels && FirstSubmittedPixels == SecondSubmittedPixels;
@@ -4064,10 +3915,8 @@ void UHeistDebugFunctionLibrary::DebugInspectionTargetDump(APlayerController* Pl
 			{
 				ScheduleSummary += TEXT(",");
 			}
-			ScheduleSummary += FString::Printf(TEXT("%s:Score=%.2f,Band=%s,Delay=%.2f,Remaining=%.2f,Case=%s,Alert=%s,Rev=%d"), *GetNameSafe(DisplayCase),
-											   DisplayCase->GetCommittedForgeryResult().SimilarityScore, *DisplayCase->GetInspectionScoreBand().ToString(), DisplayCase->GetResolvedInspectionDelay(),
-											   DisplayCase->GetInspectionDelayRemaining(), *UEnum::GetValueAsString(DisplayCase->GetResolvedInspectionCaseOutcome()),
-											   *UEnum::GetValueAsString(DisplayCase->GetResolvedInspectionAlertOutcome()), DisplayCase->GetInspectionScheduleRevision());
+			ScheduleSummary += FString::Printf(TEXT("%s:Delay=%.2f,Remaining=%.2f,Rev=%d"), *GetNameSafe(DisplayCase), DisplayCase->GetResolvedInspectionDelay(),
+											   DisplayCase->GetInspectionDelayRemaining(), DisplayCase->GetInspectionScheduleRevision());
 		}
 	}
 	for (TActorIterator<AHeistObjectDisplayCaseActor> It(PlayerController->GetWorld()); It; ++It)
@@ -4090,12 +3939,8 @@ void UHeistDebugFunctionLibrary::DebugInspectionTargetDump(APlayerController* Pl
 			{
 				ScheduleSummary += TEXT(",");
 			}
-			const FHeistObjectAssemblyResult AssemblyResult = DisplayCase->GetCommittedAssemblyResult();
-			ScheduleSummary +=
-				FString::Printf(TEXT("%s:ObjectScore=%.2f,Band=%s,Delay=%.2f,Remaining=%.2f,Case=%s,Alert=%s,Rev=%d"), *GetNameSafe(DisplayCase),
-								AssemblyResult.QualityScore, *DisplayCase->GetInspectionScoreBand().ToString(), DisplayCase->GetResolvedInspectionDelay(),
-								DisplayCase->GetInspectionDelayRemaining(), *UEnum::GetValueAsString(DisplayCase->GetResolvedInspectionCaseOutcome()),
-								*UEnum::GetValueAsString(DisplayCase->GetResolvedInspectionAlertOutcome()), DisplayCase->GetInspectionScheduleRevision());
+			ScheduleSummary += FString::Printf(TEXT("%s:ObjectDelay=%.2f,Remaining=%.2f,Rev=%d"), *GetNameSafe(DisplayCase), DisplayCase->GetResolvedInspectionDelay(),
+											   DisplayCase->GetInspectionDelayRemaining(), DisplayCase->GetInspectionScheduleRevision());
 		}
 	}
 
@@ -4122,37 +3967,15 @@ void UHeistDebugFunctionLibrary::DebugInspectionTargetDump(APlayerController* Pl
 	}
 
 	const bool bAuthority = PlayerController->HasAuthority();
-	FString MappingSummary;
-	const float TestScores[] = {95.0f, 80.0f, 60.0f, 40.0f, 20.0f};
-	const bool ExpectedAccepted[] = {true, true, false, false, false};
-	bool bMappingPassed = true;
-	for (int32 Index = 0; Index < UE_ARRAY_COUNT(TestScores); ++Index)
-	{
-		float Delay = 0.0f;
-		float ObjectDelay = 0.0f;
-		FName Band;
-		FName ObjectBand;
-		EHeistAlertLevel AlertOutcome = EHeistAlertLevel::Quiet;
-		EHeistAlertLevel ObjectAlertOutcome = EHeistAlertLevel::Quiet;
-		EHeistDisplayCaseState CaseOutcome = EHeistDisplayCaseState::Failed;
-		EHeistObjectAssemblyState ObjectCaseOutcome = EHeistObjectAssemblyState::Failed;
-		const bool bMapped = AHeistPaintingDisplayCaseActor::CalculateInspectionSchedule(TestScores[Index], 8.0f, Delay, Band, AlertOutcome, CaseOutcome);
-		const bool bObjectMapped =
-			AHeistObjectDisplayCaseActor::CalculateInspectionSchedule(TestScores[Index], 8.0f, ObjectDelay, ObjectBand, ObjectAlertOutcome, ObjectCaseOutcome);
-		const bool bSurfaceContractPassed = bMapped == ExpectedAccepted[Index] &&
-			(!bMapped || (FMath::IsNearlyEqual(Delay, 8.0f) && Band == FName(TEXT("Accepted70Plus")) && AlertOutcome == EHeistAlertLevel::Quiet &&
-						  CaseOutcome == EHeistDisplayCaseState::Completed));
-		const bool bObjectContractPassed = bObjectMapped == ExpectedAccepted[Index] &&
-			(!bObjectMapped || (FMath::IsNearlyEqual(ObjectDelay, 8.0f) && ObjectBand == FName(TEXT("Accepted70Plus")) && ObjectAlertOutcome == EHeistAlertLevel::Quiet &&
-						  ObjectCaseOutcome == EHeistObjectAssemblyState::Completed));
-		bMappingPassed = bMappingPassed && bSurfaceContractPassed && bObjectContractPassed;
-		if (!MappingSummary.IsEmpty())
-		{
-			MappingSummary += TEXT(",");
-		}
-		MappingSummary += FString::Printf(TEXT("%.0f:%s/%s/%.0f/%s/%s"), TestScores[Index], bMapped ? TEXT("ACCEPTED") : TEXT("REJECTED"), *Band.ToString(), Delay,
-			*UEnum::GetValueAsString(CaseOutcome), *UEnum::GetValueAsString(AlertOutcome));
-	}
+	float SurfaceDelay = 0.0f;
+	float ObjectDelay = 0.0f;
+	float InvalidDelay = 0.0f;
+	const bool bSurfaceMapped = AHeistPaintingDisplayCaseActor::CalculateInspectionSchedule(8.0f, SurfaceDelay);
+	const bool bObjectMapped = AHeistObjectDisplayCaseActor::CalculateInspectionSchedule(8.0f, ObjectDelay);
+	const bool bInvalidRejected = !AHeistPaintingDisplayCaseActor::CalculateInspectionSchedule(-1.0f, InvalidDelay);
+	const bool bMappingPassed = bSurfaceMapped && bObjectMapped && bInvalidRejected && FMath::IsNearlyEqual(SurfaceDelay, 8.0f) && FMath::IsNearlyEqual(ObjectDelay, 8.0f);
+	const FString MappingSummary = FString::Printf(TEXT("Surface=%s/%.0f,Object=%s/%.0f,Invalid=%s"), bSurfaceMapped ? TEXT("ACCEPTED") : TEXT("REJECTED"), SurfaceDelay,
+		bObjectMapped ? TEXT("ACCEPTED") : TEXT("REJECTED"), ObjectDelay, bInvalidRejected ? TEXT("REJECTED") : TEXT("ACCEPTED"));
 
 	const bool bRuntimeScheduleValid = ScheduledCount > 0 && ValidCandidateCount <= RegisteredCount && PendingDelayCount + RegisteredCount <= CaseCount;
 	const bool bPassed = bAuthority && CaseCount > 0 && GuardCount > 0 && bMappingPassed && bRuntimeScheduleValid;
@@ -4262,7 +4085,7 @@ void UHeistDebugFunctionLibrary::DebugInspectionStateDump(APlayerController* Pla
 
 	int32 GuardCount = 0;
 	int32 InspectingGuardCount = 0;
-	int32 SuspectedCaseCount = 0;
+	int32 CompletedCaseCount = 0;
 	int32 AppliedCaseCount = 0;
 	FString GuardSummary;
 	for (TActorIterator<AHeistGuardAIController> It(PlayerController->GetWorld()); It; ++It)
@@ -4288,18 +4111,18 @@ void UHeistDebugFunctionLibrary::DebugInspectionStateDump(APlayerController* Pla
 	for (TActorIterator<AHeistPaintingDisplayCaseActor> It(PlayerController->GetWorld()); It; ++It)
 	{
 		const AHeistPaintingDisplayCaseActor* DisplayCase = *It;
-		if (IsValid(DisplayCase) && DisplayCase->GetDisplayCaseState() == EHeistDisplayCaseState::Suspected)
+		if (IsValid(DisplayCase) && DisplayCase->GetDisplayCaseState() == EHeistDisplayCaseState::Completed)
 		{
-			++SuspectedCaseCount;
+			++CompletedCaseCount;
 		}
 		AppliedCaseCount += IsValid(DisplayCase) && DisplayCase->GetInspectionResultApplicationCount() > 0 ? 1 : 0;
 	}
 	for (TActorIterator<AHeistObjectDisplayCaseActor> It(PlayerController->GetWorld()); It; ++It)
 	{
 		const AHeistObjectDisplayCaseActor* DisplayCase = *It;
-		if (IsValid(DisplayCase) && DisplayCase->GetAssemblyState() == EHeistObjectAssemblyState::Suspected)
+		if (IsValid(DisplayCase) && DisplayCase->GetAssemblyState() == EHeistObjectAssemblyState::Completed)
 		{
-			++SuspectedCaseCount;
+			++CompletedCaseCount;
 		}
 		AppliedCaseCount += IsValid(DisplayCase) && DisplayCase->GetInspectionResultApplicationCount() > 0 ? 1 : 0;
 	}
@@ -4307,8 +4130,8 @@ void UHeistDebugFunctionLibrary::DebugInspectionStateDump(APlayerController* Pla
 	const bool bAuthority = PlayerController->HasAuthority();
 	const bool bPassed = bAuthority && GuardCount > 0 && (InspectingGuardCount > 0 || AppliedCaseCount > 0);
 	Message(PlayerController,
-			FString::Printf(TEXT("Inspection state dump: Guards=%d Inspecting=%d SuspectedCases=%d AppliedCases=%d GuardStates=%s Authority=%s Result=%s"), GuardCount,
-							InspectingGuardCount, SuspectedCaseCount, AppliedCaseCount, GuardSummary.IsEmpty() ? TEXT("None") : *GuardSummary, bAuthority ? TEXT("true") : TEXT("false"),
+			FString::Printf(TEXT("Inspection state dump: Guards=%d Inspecting=%d CompletedCases=%d AppliedCases=%d GuardStates=%s Authority=%s Result=%s"), GuardCount,
+							InspectingGuardCount, CompletedCaseCount, AppliedCaseCount, GuardSummary.IsEmpty() ? TEXT("None") : *GuardSummary, bAuthority ? TEXT("true") : TEXT("false"),
 							bPassed ? TEXT("PASS") : TEXT("FAIL")),
 			bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
 #endif
@@ -5285,55 +5108,6 @@ void UHeistDebugFunctionLibrary::Message(const UObject* WorldContextObject, cons
 
 #pragma endregion
 
-#pragma region RareLootLogging
-
-void UHeistDebugFunctionLibrary::DebugRareLootTimersStarted(const UObject* WorldContextObject, const TArray<float>& EventTimes, const float WarningLeadTime)
-{
-#if !UE_BUILD_SHIPPING
-	TArray<FString> TimeEntries;
-	TimeEntries.Reserve(EventTimes.Num());
-	for (const float EventTime : EventTimes)
-	{
-		TimeEntries.Add(FString::Printf(TEXT("%.2f"), EventTime));
-	}
-
-	Message(WorldContextObject, FString::Printf(TEXT("Rare Loot timers started: EventTimes=[%s] WarningLeadTime=%.2f"), *FString::Join(TimeEntries, TEXT(",")), WarningLeadTime));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugRareLootWarningStarted(const UObject* WorldContextObject, const int32 EventIndex, const FName ItemId, const float SpawnServerTime)
-{
-#if !UE_BUILD_SHIPPING
-	Message(WorldContextObject, FString::Printf(TEXT("Rare Loot warning started: EventIndex=%d ItemId=%s SpawnServerTime=%.2f"), EventIndex, *ItemId.ToString(), SpawnServerTime));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugRareLootSpawned(const UObject* WorldContextObject, const int32 EventIndex, const UObject* LootActor, const UObject* SpawnPoint, const FName ItemId,
-													  const FVector& WorldLocation)
-{
-#if !UE_BUILD_SHIPPING
-	Message(WorldContextObject, FString::Printf(TEXT("Rare Loot spawned: EventIndex=%d LootActor=%s SpawnPoint=%s ItemId=%s Location=(%.1f,%.1f,%.1f)"), EventIndex, *GetNameSafe(LootActor),
-												*GetNameSafe(SpawnPoint), *ItemId.ToString(), WorldLocation.X, WorldLocation.Y, WorldLocation.Z));
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugRareLootEventFailed(const UObject* WorldContextObject, const int32 EventIndex, const TCHAR* Reason)
-{
-#if !UE_BUILD_SHIPPING
-	Message(WorldContextObject, FString::Printf(TEXT("Rare Loot event failed: EventIndex=%d Reason=%s"), EventIndex, Reason), EHeistDebugLevel::Warning);
-#endif
-}
-
-void UHeistDebugFunctionLibrary::DebugRareLootPickedUp(const UObject* WorldContextObject, const int32 EventIndex, const UObject* LootActor, const UObject* Requester, const FName ItemId)
-{
-#if !UE_BUILD_SHIPPING
-	Message(WorldContextObject, FString::Printf(TEXT("Rare Loot picked up: EventIndex=%d LootActor=%s Requester=%s ItemId=%s MarkerActive=false"), EventIndex, *GetNameSafe(LootActor),
-												*GetNameSafe(Requester), *ItemId.ToString()));
-#endif
-}
-
-#pragma endregion
-
 #pragma region GameplayDebug
 
 void UHeistDebugFunctionLibrary::DebugMissingInputAsset(const UObject* WorldContextObject, const TCHAR* AssetName)
@@ -5673,7 +5447,7 @@ void UHeistDebugFunctionLibrary::DebugForgeryTemplatePrepared(const UHeistForger
 		EHeistDebugChannel::Core, EHeistDebugLevel::Info,
 		FString::Printf(
 			TEXT(
-				"Forgery template prepared: Character=%s Case=%s Artifact=%s Template=%s ReferenceImage=%s ReferenceMask=%s BackgroundFilter=%s BackgroundTolerance=%.3f PaletteColors=%d Observation=%.2f Forgery=%.2f StrokeLimit=%d Brush=%.4f CoverageWeight=%.3f MajorShapeWeight=%.3f ExtraStrokePenaltyWeight=%.3f TimeoutPenalty=%.3f ShapeWeight=%.3f ColorWeight=%.3f MaxPaintRatio=%.2f OverpaintCap=%.2f Result=PASS"),
+				"Forgery template prepared: Character=%s Case=%s Artifact=%s Template=%s ReferenceImage=%s ReferenceMask=%s BackgroundFilter=%s BackgroundTolerance=%.3f PaletteColors=%d Observation=%.2f Forgery=%.2f StrokeLimit=%d Brush=%.4f CoverageWeight=%.3f MajorShapeWeight=%.3f ExtraStrokePenaltyWeight=%.3f ShapeWeight=%.3f ColorWeight=%.3f MaxPaintRatio=%.2f OverpaintCap=%.2f Result=PASS"),
 			*GetNameSafe(IsValid(ForgeryComponent) ? ForgeryComponent->GetOwner() : nullptr), *GetNameSafe(TargetDisplayCase),
 			*(IsValid(ForgeryComponent) ? ForgeryComponent->GetActiveArtifactId() : NAME_None).ToString(), *TemplateDefinition.TemplateId.ToString(),
 			*TemplateDefinition.ReferenceImage.ToSoftObjectPath().ToString(),
@@ -5681,7 +5455,7 @@ void UHeistDebugFunctionLibrary::DebugForgeryTemplatePrepared(const UHeistForger
 			*StaticEnum<EHeistForgeryBackgroundFilter>()->GetNameStringByValue(static_cast<int64>(TemplateDefinition.BackgroundFilterMode)),
 			TemplateDefinition.BackgroundColorTolerance, TemplateDefinition.AllowedPalette.Num(), TemplateDefinition.ObservationDuration, TemplateDefinition.ForgeryDuration,
 			TemplateDefinition.StrokeLimit, TemplateDefinition.BrushSize, TemplateDefinition.CoverageWeight, TemplateDefinition.MajorShapeWeight,
-			TemplateDefinition.ExtraStrokePenaltyWeight, TemplateDefinition.TimeoutPenalty, TemplateDefinition.ShapeAccuracyWeight, TemplateDefinition.ColorAccuracyWeight,
+			TemplateDefinition.ExtraStrokePenaltyWeight, TemplateDefinition.ShapeAccuracyWeight, TemplateDefinition.ColorAccuracyWeight,
 			TemplateDefinition.MaximumPaintToReferenceRatio, TemplateDefinition.OverpaintScoreCap));
 #endif
 }
@@ -5877,10 +5651,10 @@ void UHeistDebugFunctionLibrary::DebugForgeryScoreCommitted(const UHeistForgeryC
 		EHeistDebugChannel::Network, EHeistDebugLevel::Info,
 		FString::Printf(
 			TEXT(
-				"Forgery score committed: Character=%s Case=%s Artifact=%s Template=%s Backend=OpenCV ShapeMetric=DistanceDiceGeometric ColorMetric=LabSSIMHistogramGeometric Fusion=WeightedGeometricBottleneck Calibration=OpenCVHistogramBonus0.75x3 ScoreCurve=Shape1.15Color1.10 PaintCompletenessExponent=%.2f Score=%.2f Coverage=%.2f MajorShape=%.2f ColorAccuracy=%.2f MissingPenalty=%.2f ExtraPenalty=%.2f TimeoutPenalty=%.2f CompletionTime=%.2f PaintToReference=%.2f PaintCompleteness=%.3f AntiFill=%s Resolution=%dx%d ReferencePixels=%d SubmittedPixels=%d ReferenceRatio=%.4f SubmittedRatio=%.4f Cache=%s ReferenceMs=%.3f OpenCVMs=%.3f TotalMs=%.3f ScoreRevision=%d Authority=true Deterministic=true Result=PASS"),
+				"Forgery score committed: Character=%s Case=%s Artifact=%s Template=%s Backend=OpenCV ShapeMetric=DistanceDiceGeometric ColorMetric=LabSSIMHistogramGeometric Fusion=WeightedGeometricBottleneck Calibration=OpenCVHistogramBonus0.75x3 ScoreCurve=Shape1.15Color1.10 PaintCompletenessExponent=%.2f Score=%.2f Coverage=%.2f MajorShape=%.2f ColorAccuracy=%.2f MissingPenalty=%.2f ExtraPenalty=%.2f CompletionTime=%.2f PaintToReference=%.2f PaintCompleteness=%.3f AntiFill=%s Resolution=%dx%d ReferencePixels=%d SubmittedPixels=%d ReferenceRatio=%.4f SubmittedRatio=%.4f Cache=%s ReferenceMs=%.3f OpenCVMs=%.3f TotalMs=%.3f ScoreRevision=%d Authority=true Deterministic=true Result=PASS"),
 			*GetNameSafe(IsValid(ForgeryComponent) ? ForgeryComponent->GetOwner() : nullptr), *GetNameSafe(TargetDisplayCase), *Result.ArtifactId.ToString(),
 			*Result.TemplateId.ToString(), PaintCompletenessExponent, Result.SimilarityScore, Result.CoverageScore, Result.MajorShapeScore, Result.ColorAccuracyScore,
-			Result.MissingShapePenalty, Result.ExtraStrokePenalty, Result.TimeoutPenalty, Result.CompletionTime, Result.PaintToReferenceRatio,
+			Result.MissingShapePenalty, Result.ExtraStrokePenalty, Result.CompletionTime, Result.PaintToReferenceRatio,
 			FMath::Pow(FMath::Clamp(Result.PaintToReferenceRatio, 0.0f, 1.0f), PaintCompletenessExponent), Result.bAntiFillTriggered ? TEXT("true") : TEXT("false"),
 			Resolution, Resolution, ReferencePixels, SubmittedPixels, static_cast<float>(ReferencePixels) / SafeTotalPixels, static_cast<float>(SubmittedPixels) / SafeTotalPixels,
 			bReferenceCacheHit ? TEXT("Hit") : TEXT("Miss"), ReferenceMilliseconds, OpenCVMilliseconds, TotalMilliseconds,
@@ -5977,10 +5751,10 @@ void UHeistDebugFunctionLibrary::DebugForgeryScoreReplicated(const UHeistForgery
 		EHeistDebugChannel::Network, EHeistDebugLevel::Info,
 		FString::Printf(
 			TEXT(
-				"Forgery score replicated: Character=%s HasScore=%s Artifact=%s Template=%s Score=%.2f Coverage=%.2f MajorShape=%.2f ColorAccuracy=%.2f MissingPenalty=%.2f ExtraPenalty=%.2f TimeoutPenalty=%.2f CompletionTime=%.2f PaintToReference=%.2f AntiFill=%s Resolution=%dx%d ReferencePixels=%d SubmittedPixels=%d ScoreRevision=%d Authority=false Result=%s"),
+				"Forgery score replicated: Character=%s HasScore=%s Artifact=%s Template=%s Score=%.2f Coverage=%.2f MajorShape=%.2f ColorAccuracy=%.2f MissingPenalty=%.2f ExtraPenalty=%.2f CompletionTime=%.2f PaintToReference=%.2f AntiFill=%s Resolution=%dx%d ReferencePixels=%d SubmittedPixels=%d ScoreRevision=%d Authority=false Result=%s"),
 			*GetNameSafe(IsValid(ForgeryComponent) ? ForgeryComponent->GetOwner() : nullptr), bHasScore ? TEXT("true") : TEXT("false"), *Result.ArtifactId.ToString(),
 			*Result.TemplateId.ToString(), Result.SimilarityScore, Result.CoverageScore, Result.MajorShapeScore, Result.ColorAccuracyScore, Result.MissingShapePenalty,
-			Result.ExtraStrokePenalty, Result.TimeoutPenalty, Result.CompletionTime, Result.PaintToReferenceRatio, Result.bAntiFillTriggered ? TEXT("true") : TEXT("false"),
+			Result.ExtraStrokePenalty, Result.CompletionTime, Result.PaintToReferenceRatio, Result.bAntiFillTriggered ? TEXT("true") : TEXT("false"),
 			Resolution, Resolution, IsValid(ForgeryComponent) ? ForgeryComponent->GetReferenceMaskPixelCount() : 0,
 			IsValid(ForgeryComponent) ? ForgeryComponent->GetSubmittedMaskPixelCount() : 0,
 			IsValid(ForgeryComponent) ? ForgeryComponent->GetForgeryScoreRevision() : INDEX_NONE, bHasScore ? TEXT("PASS") : TEXT("CLEARED")));
@@ -6255,13 +6029,13 @@ void UHeistDebugFunctionLibrary::DebugPlayerEscapeStateRejected(const UObject* W
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugPlayerEscapeStateCommitted(const UObject* WorldContextObject, const int32 HeistPlayerId, const int32 FinalScore, const float EscapeTimeSeconds)
+void UHeistDebugFunctionLibrary::DebugPlayerEscapeStateCommitted(const UObject* WorldContextObject, const int32 HeistPlayerId)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(WorldContextObject, FString::Printf(TEXT("Player escape state committed: PlayerState=%s HeistPlayerId=%d IsEscaped=true FinalScore=%d EscapeTime=%.2f ScoreFrozen=true"),
-												*GetNameSafe(WorldContextObject), HeistPlayerId, FinalScore, EscapeTimeSeconds));
+	Message(WorldContextObject, FString::Printf(TEXT("Player escape state committed: PlayerState=%s HeistPlayerId=%d IsEscaped=true"),
+												*GetNameSafe(WorldContextObject), HeistPlayerId));
 #endif
 }
 
@@ -7357,7 +7131,7 @@ void UHeistDebugFunctionLibrary::DebugResultHelp(APlayerController* PlayerContro
 #if UE_BUILD_SHIPPING
 	return;
 #else
-	Message(PlayerController, TEXT("Result debug commands: HeistResultShow | HeistResultHide | HeistResultDump | HeistResultRebuild | HeistResultSeed <Score> <Escaped 1/0> <EscapeTime> | HeistContributionSeed <SurfaceCount> <BestSurface> <AssemblyCount> <BestAssembly> <Artifacts> <CarryTime> <SecuredLoot> <Distracted> <Rescued> <Alarms> | SERVER HeistResultVisualSeed | HeistContributionDump | HeistExitPlacementDump | HeistMissionGateDump"),
+	Message(PlayerController, TEXT("Result debug commands: HeistResultShow | HeistResultHide | HeistResultDump | HeistResultRebuild | HeistResultSeed <Escaped 1/0> | HeistContributionSeed <SurfaceCount> <BestSurface> <AssemblyCount> <BestAssembly> <Artifacts> <CarryTime> <SecuredLoot> <Distracted> <Rescued> <Alarms> | SERVER HeistResultVisualSeed | HeistContributionDump | HeistExitPlacementDump | HeistMissionGateDump"),
 			EHeistDebugLevel::Info, true, 8.0f);
 #endif
 }
@@ -7725,7 +7499,7 @@ void UHeistDebugFunctionLibrary::DebugResultRebuild(APlayerController* PlayerCon
 #endif
 }
 
-void UHeistDebugFunctionLibrary::DebugResultSeed(APlayerController* PlayerController, const int32 Score, const bool bEscaped, const float EscapeTimeSeconds)
+void UHeistDebugFunctionLibrary::DebugResultSeed(APlayerController* PlayerController, const bool bEscaped)
 {
 #if UE_BUILD_SHIPPING
 	return;
@@ -7737,10 +7511,8 @@ void UHeistDebugFunctionLibrary::DebugResultSeed(APlayerController* PlayerContro
 		return;
 	}
 
-	const int32 SafeScore = FMath::Max(0, Score);
-	const float SafeEscapeTimeSeconds = FMath::Max(0.0f, EscapeTimeSeconds);
-	HeistPlayerController->DebugRequestSeedResult(SafeScore, bEscaped, SafeEscapeTimeSeconds);
-	Message(PlayerController, FString::Printf(TEXT("Result debug seed requested: Score=%d Escaped=%s EscapeTime=%.2f"), SafeScore, bEscaped ? TEXT("true") : TEXT("false"), SafeEscapeTimeSeconds),
+	HeistPlayerController->DebugRequestSeedResult(bEscaped);
+	Message(PlayerController, FString::Printf(TEXT("Result debug seed requested: Escaped=%s"), bEscaped ? TEXT("true") : TEXT("false")),
 			EHeistDebugLevel::Info, true);
 #endif
 }

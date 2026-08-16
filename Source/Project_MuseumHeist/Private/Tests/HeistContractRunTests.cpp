@@ -258,9 +258,17 @@ bool TeleportServerPlayerIntoInteraction(const int32 PlayerId, AActor* TargetAct
 	{
 		return false;
 	}
+	if (UCharacterMovementComponent* MovementComponent = Character->GetCharacterMovement())
+	{
+		MovementComponent->StopMovementImmediately();
+	}
 	const USphereComponent* InteractionSphere = TargetActor->FindComponentByClass<USphereComponent>();
 	const FVector Destination = IsValid(InteractionSphere) ? InteractionSphere->GetComponentLocation() : TargetActor->GetActorLocation();
 	Character->SetActorLocation(Destination, false, nullptr, ETeleportType::TeleportPhysics);
+	if (UCharacterMovementComponent* MovementComponent = Character->GetCharacterMovement())
+	{
+		MovementComponent->StopMovementImmediately();
+	}
 	Character->ForceNetUpdate();
 	return true;
 }
@@ -1630,6 +1638,17 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 			return State->SelectedObjectCaseIds.IsValidIndex(AssemblyIndex) &&
 				IsOwningObjectCaseRelevant(PlayerId, State->SelectedObjectCaseIds[AssemblyIndex]);
 		}, 15.0));
+		// Teleporting into an authored interaction volume can require one movement tick for
+		// collision depenetration. Let that settle before starting the movement-cancellable cast.
+		Test->AddCommand(new FWaitLatentCommand(0.2f));
+		Test->AddCommand(new FHeistContractRunWaitCommand(Test, State,
+			FString::Printf(TEXT("run %d player %d Assembly overlap settled"), RunIndex, PlayerId), [State, PlayerId, AssemblyIndex]()
+		{
+			const AHeistPlayerCharacter* Character = GetServerCharacterById(PlayerId);
+			const UCharacterMovementComponent* MovementComponent = IsValid(Character) ? Character->GetCharacterMovement() : nullptr;
+			return State->SelectedObjectCaseIds.IsValidIndex(AssemblyIndex) && IsValid(MovementComponent) && MovementComponent->Velocity.SizeSquared2D() <= 1.0f &&
+				IsServerPlayerOverlapping(PlayerId, FindObjectCase(GetContractRunServerWorld(), State->SelectedObjectCaseIds[AssemblyIndex]));
+		}, 10.0));
 		Test->AddCommand(new FHeistContractRunActionCommand(Test, State,
 			FString::Printf(TEXT("run %d player %d request Object observation through server RPC"), RunIndex, PlayerId), [State, PlayerId, AssemblyIndex]()
 		{
