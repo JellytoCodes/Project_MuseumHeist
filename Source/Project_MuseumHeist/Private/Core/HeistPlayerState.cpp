@@ -598,6 +598,7 @@ void AHeistPlayerState::DebugSetTotalLootWeight(const float InWeight)
 	}
 
 	TotalLootWeight = FMath::IsFinite(InWeight) ? FMath::Max(0.0f, InWeight) : 0.0f;
+	RefreshCrewStatus();
 	ForceNetUpdate();
 	BroadcastLootTotalsChanged();
 	if (AHeistPlayerCharacter* HeistPlayerCharacter = Cast<AHeistPlayerCharacter>(GetPawn()))

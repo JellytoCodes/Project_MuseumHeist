@@ -86,6 +86,7 @@ bool UHeistNoiseEmitterComponent::TryEmitFootstepNoise()
 	SoundPingEvent.bAffectsGuards = SoundPingDefinition.bAffectsGuards;
 	HeistGameState->ReportSoundPing(SoundPingEvent);
 	LastFootstepServerTime = ServerTime;
+	Character->NotifyAuthoritativeCrewStatusFootstep(bRunning);
 
 #if !UE_BUILD_SHIPPING
 	UE_LOG(LogHeist, Verbose,

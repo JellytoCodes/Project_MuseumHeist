@@ -180,11 +180,248 @@ function New-HeistLoopWave
 	}
 }
 
+function New-HeistStatusIcon
+{
+	param(
+		[ValidateSet('Stunned', 'Arrested', 'CarryingOriginal', 'Heavy')]
+		[string]$StatusName
+	)
+
+	$size = 256
+	$bitmap = [System.Drawing.Bitmap]::new($size, $size)
+	$graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+	$graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+	$graphics.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighQuality
+	$graphics.Clear([System.Drawing.Color]::Transparent)
+
+	switch ($StatusName)
+	{
+		'Stunned'
+		{
+			$backgroundColor = [System.Drawing.Color]::FromArgb(238, 83, 56, 148)
+			$accentColor = [System.Drawing.Color]::FromArgb(255, 248, 218, 88)
+		}
+		'Arrested'
+		{
+			$backgroundColor = [System.Drawing.Color]::FromArgb(238, 151, 45, 58)
+			$accentColor = [System.Drawing.Color]::FromArgb(255, 244, 246, 250)
+		}
+		'CarryingOriginal'
+		{
+			$backgroundColor = [System.Drawing.Color]::FromArgb(238, 32, 111, 134)
+			$accentColor = [System.Drawing.Color]::FromArgb(255, 242, 192, 76)
+		}
+		'Heavy'
+		{
+			$backgroundColor = [System.Drawing.Color]::FromArgb(238, 157, 86, 31)
+			$accentColor = [System.Drawing.Color]::FromArgb(255, 245, 239, 224)
+		}
+	}
+
+	$shadowBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(72, 0, 0, 0))
+	$backgroundBrush = [System.Drawing.SolidBrush]::new($backgroundColor)
+	$symbolBrush = [System.Drawing.SolidBrush]::new($accentColor)
+	$symbolPen = [System.Drawing.Pen]::new($accentColor, 14.0)
+	$symbolPen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+	$symbolPen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
+	$ringPen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(220, $accentColor), 7.0)
+
+	$graphics.FillEllipse($shadowBrush, 20, 25, 224, 224)
+	$graphics.FillEllipse($backgroundBrush, 16, 16, 224, 224)
+	$graphics.DrawEllipse($ringPen, 20, 20, 216, 216)
+
+	switch ($StatusName)
+	{
+		'Stunned'
+		{
+			$bolt = [System.Drawing.PointF[]]@(
+				[System.Drawing.PointF]::new(139, 42),
+				[System.Drawing.PointF]::new(84, 132),
+				[System.Drawing.PointF]::new(121, 132),
+				[System.Drawing.PointF]::new(101, 211),
+				[System.Drawing.PointF]::new(177, 111),
+				[System.Drawing.PointF]::new(139, 111)
+			)
+			$graphics.FillPolygon($symbolBrush, $bolt)
+			$graphics.FillEllipse($symbolBrush, 58, 67, 18, 18)
+			$graphics.FillEllipse($symbolBrush, 182, 61, 13, 13)
+			$graphics.FillEllipse($symbolBrush, 183, 171, 17, 17)
+		}
+		'Arrested'
+		{
+			$graphics.DrawEllipse($symbolPen, 52, 75, 66, 66)
+			$graphics.DrawEllipse($symbolPen, 138, 115, 66, 66)
+			$graphics.DrawLine($symbolPen, 109, 127, 151, 144)
+			$graphics.DrawLine($symbolPen, 112, 145, 145, 158)
+		}
+		'CarryingOriginal'
+		{
+			$framePen = [System.Drawing.Pen]::new($accentColor, 12.0)
+			$graphics.DrawRectangle($framePen, 62, 59, 132, 105)
+			$mountain = [System.Drawing.PointF[]]@(
+				[System.Drawing.PointF]::new(79, 145),
+				[System.Drawing.PointF]::new(111, 107),
+				[System.Drawing.PointF]::new(133, 129),
+				[System.Drawing.PointF]::new(154, 96),
+				[System.Drawing.PointF]::new(180, 145)
+			)
+			$graphics.FillPolygon($symbolBrush, $mountain)
+			$graphics.FillEllipse($symbolBrush, 91, 79, 17, 17)
+			$graphics.DrawLine($symbolPen, 78, 181, 178, 203)
+			$framePen.Dispose()
+		}
+		'Heavy'
+		{
+			$graphics.DrawArc($symbolPen, 88, 55, 80, 78, 190, 160)
+			$weight = [System.Drawing.PointF[]]@(
+				[System.Drawing.PointF]::new(71, 110),
+				[System.Drawing.PointF]::new(185, 110),
+				[System.Drawing.PointF]::new(205, 193),
+				[System.Drawing.PointF]::new(51, 193)
+			)
+			$graphics.FillPolygon($symbolBrush, $weight)
+			$cutoutBrush = [System.Drawing.SolidBrush]::new($backgroundColor)
+			$graphics.FillRectangle($cutoutBrush, 111, 127, 34, 47)
+			$cutoutBrush.Dispose()
+		}
+	}
+
+	$outputPath = Join-Path $OutputDirectory ("T_HeistStatus_{0}.png" -f $StatusName)
+	$bitmap.Save($outputPath, [System.Drawing.Imaging.ImageFormat]::Png)
+
+	foreach ($resource in @($shadowBrush, $backgroundBrush, $symbolBrush, $symbolPen, $ringPen, $graphics, $bitmap))
+	{
+		$resource.Dispose()
+	}
+}
+
+function New-HeistCueWave
+{
+	param(
+		[string]$FileName,
+		[ValidateSet('Arrested', 'Rescue', 'CarryFootstep', 'HeavyFootstep')]
+		[string]$Mode
+	)
+
+	$durationSeconds = switch ($Mode)
+	{
+		'Arrested' { 1.10 }
+		'Rescue' { 0.85 }
+		'CarryFootstep' { 0.32 }
+		'HeavyFootstep' { 0.46 }
+	}
+	$sampleRate = 48000
+	$channels = 2
+	$bitsPerSample = 16
+	$sampleCount = [int]($sampleRate * $durationSeconds)
+	$blockAlign = $channels * ($bitsPerSample / 8)
+	$dataSize = $sampleCount * $blockAlign
+	$outputPath = Join-Path $OutputDirectory $FileName
+
+	$stream = [System.IO.File]::Open($outputPath, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write)
+	$writer = [System.IO.BinaryWriter]::new($stream)
+	try
+	{
+		$writer.Write([System.Text.Encoding]::ASCII.GetBytes('RIFF'))
+		$writer.Write([int](36 + $dataSize))
+		$writer.Write([System.Text.Encoding]::ASCII.GetBytes('WAVE'))
+		$writer.Write([System.Text.Encoding]::ASCII.GetBytes('fmt '))
+		$writer.Write([int]16)
+		$writer.Write([short]1)
+		$writer.Write([short]$channels)
+		$writer.Write([int]$sampleRate)
+		$writer.Write([int]($sampleRate * $blockAlign))
+		$writer.Write([short]$blockAlign)
+		$writer.Write([short]$bitsPerSample)
+		$writer.Write([System.Text.Encoding]::ASCII.GetBytes('data'))
+		$writer.Write([int]$dataSize)
+
+		$fadeInFrames = [int]($sampleRate * 0.004)
+		$fadeOutFrames = [int]($sampleRate * 0.025)
+		for ($i = 0; $i -lt $sampleCount; ++$i)
+		{
+			$t = $i / [double]$sampleRate
+			$edgeEnvelope = 1.0
+			if ($i -lt $fadeInFrames)
+			{
+				$edgeEnvelope = $i / [double]$fadeInFrames
+			}
+			elseif ($i -ge $sampleCount - $fadeOutFrames)
+			{
+				$edgeEnvelope = ($sampleCount - 1 - $i) / [double]$fadeOutFrames
+			}
+
+			$left = 0.0
+			$right = 0.0
+			switch ($Mode)
+			{
+				'Arrested'
+				{
+					$firstHit = [Math]::Exp(-9.0 * $t) * (0.46 * [Math]::Sin(2.0 * [Math]::PI * 790.0 * $t) + 0.24 * [Math]::Sin(2.0 * [Math]::PI * 1270.0 * $t))
+					$secondTime = $t - 0.27
+					$secondHit = if ($secondTime -ge 0.0) { [Math]::Exp(-11.0 * $secondTime) * (0.40 * [Math]::Sin(2.0 * [Math]::PI * 650.0 * $secondTime) + 0.22 * [Math]::Sin(2.0 * [Math]::PI * 1040.0 * $secondTime)) } else { 0.0 }
+					$impact = 0.28 * [Math]::Exp(-15.0 * $t) * [Math]::Sin(2.0 * [Math]::PI * 92.0 * $t)
+					$left = ($firstHit + $secondHit + $impact) * 0.62
+					$right = ($firstHit + 0.94 * $secondHit + 0.90 * $impact) * 0.60
+				}
+				'Rescue'
+				{
+					$signal = 0.0
+					foreach ($note in @(@(0.00, 440.0), @(0.18, 659.25), @(0.36, 880.0)))
+					{
+						$noteTime = $t - $note[0]
+						if ($noteTime -ge 0.0)
+						{
+							$signal += 0.40 * [Math]::Exp(-7.5 * $noteTime) * [Math]::Sin(2.0 * [Math]::PI * $note[1] * $noteTime)
+						}
+					}
+					$left = $signal * 0.66
+					$right = ($signal + 0.07 * [Math]::Exp(-5.0 * $t) * [Math]::Sin(2.0 * [Math]::PI * 1320.0 * $t)) * 0.64
+				}
+				'CarryFootstep'
+				{
+					$thump = [Math]::Exp(-18.0 * $t) * (0.62 * [Math]::Sin(2.0 * [Math]::PI * 92.0 * $t) + 0.18 * [Math]::Sin(2.0 * [Math]::PI * 184.0 * $t))
+					$contact = 0.15 * [Math]::Exp(-42.0 * $t) * [Math]::Sin(2.0 * [Math]::PI * 760.0 * $t)
+					$left = ($thump + $contact) * 0.58
+					$right = ($thump + 0.85 * $contact) * 0.55
+				}
+				'HeavyFootstep'
+				{
+					$thump = [Math]::Exp(-12.0 * $t) * (0.72 * [Math]::Sin(2.0 * [Math]::PI * 58.0 * $t) + 0.28 * [Math]::Sin(2.0 * [Math]::PI * 116.0 * $t))
+					$contact = 0.18 * [Math]::Exp(-34.0 * $t) * [Math]::Sin(2.0 * [Math]::PI * 520.0 * $t)
+					$left = ($thump + $contact) * 0.64
+					$right = (0.96 * $thump + 0.78 * $contact) * 0.62
+				}
+			}
+
+			$left *= $edgeEnvelope
+			$right *= $edgeEnvelope
+			$writer.Write([short]([Math]::Round([Math]::Max(-1.0, [Math]::Min(1.0, $left)) * 32767.0)))
+			$writer.Write([short]([Math]::Round([Math]::Max(-1.0, [Math]::Min(1.0, $right)) * 32767.0)))
+		}
+	}
+	finally
+	{
+		$writer.Dispose()
+		$stream.Dispose()
+	}
+}
+
 New-FloorPlanTexture -MapId 'M01' -AccentColor ([System.Drawing.Color]::FromArgb(255, 75, 210, 236)) -SecondaryColor ([System.Drawing.Color]::FromArgb(255, 128, 162, 205))
 New-FloorPlanTexture -MapId 'M02' -AccentColor ([System.Drawing.Color]::FromArgb(255, 130, 170, 255)) -SecondaryColor ([System.Drawing.Color]::FromArgb(255, 173, 137, 226))
 New-FloorPlanTexture -MapId 'M03' -AccentColor ([System.Drawing.Color]::FromArgb(255, 91, 232, 181)) -SecondaryColor ([System.Drawing.Color]::FromArgb(255, 103, 181, 209))
 
 New-HeistLoopWave -FileName 'SW_HeistSuspenseLoop.wav' -Mode 'Suspense'
 New-HeistLoopWave -FileName 'SW_HeistAlarmLoop.wav' -Mode 'Alarm'
+
+foreach ($statusName in @('Stunned', 'Arrested', 'CarryingOriginal', 'Heavy'))
+{
+	New-HeistStatusIcon -StatusName $statusName
+}
+
+New-HeistCueWave -FileName 'SW_HeistArrested.wav' -Mode 'Arrested'
+New-HeistCueWave -FileName 'SW_HeistRescue.wav' -Mode 'Rescue'
+New-HeistCueWave -FileName 'SW_HeistCarryFootstep.wav' -Mode 'CarryFootstep'
+New-HeistCueWave -FileName 'SW_HeistHeavyFootstep.wav' -Mode 'HeavyFootstep'
 
 Write-Host "Generated W7 presentation sources in $OutputDirectory"

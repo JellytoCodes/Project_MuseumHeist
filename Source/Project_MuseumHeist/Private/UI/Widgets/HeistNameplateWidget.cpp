@@ -1,13 +1,15 @@
 #include "UI/Widgets/HeistNameplateWidget.h"
 
-#include "Components/TextBlock.h"
-#include "Components/Widget.h"
+#include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
+#include "Components/Image.h"
+#include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
-#include "Blueprint/WidgetTree.h"
+#include "Components/Widget.h"
 #include "Core/HeistPlayerState.h"
+#include "Engine/Texture2D.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -34,6 +36,10 @@ TSharedRef<SWidget> UHeistNameplateWidget::RebuildWidget()
 		CrewStatusIconText->SetJustification(ETextJustify::Center);
 		CrewStatusIconText->SetFont(MakeNameplateTenadaFont(18));
 		CrewStatusIconText->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+		CrewStatusIconImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("CrewStatusIconImage"));
+		CrewStatusIconImage->SetDesiredSizeOverride(FVector2D(18.0f, 18.0f));
+		CrewStatusIconImage->SetColorAndOpacity(FLinearColor::White);
+		CrewStatusIconImage->SetVisibility(ESlateVisibility::Collapsed);
 		CrewStatusBadge->SetContent(CrewStatusIconText);
 		UVerticalBox* TextColumn = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("NameplateTextColumn"));
 		PlayerNameText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("PlayerNameText"));
@@ -76,6 +82,7 @@ void UHeistNameplateWidget::SetupPlayerState(AHeistPlayerState* InPlayerState)
 		PlayerState->GetCrewStatusChangedDelegate().RemoveAll(this);
 		PlayerState->GetCrewStatusChangedDelegate().AddUObject(this, &UHeistNameplateWidget::HandleCrewStatusChanged);
 	}
+	ResolveStatusIconWidgets();
 	RefreshPresentation();
 }
 
@@ -106,12 +113,25 @@ bool UHeistNameplateWidget::IsPresentationContractSatisfied() const
 	}
 
 	const FLinearColor ExpectedStatusColor = HeistCrewStatus::GetPresentationColor(PlayerState->GetCrewStatus());
+	const UTexture2D* ExpectedIconTexture = ResolveStatusIconTexture(PlayerState->GetCrewStatus());
+	const bool bTexturePresentationValid = IsValid(ExpectedIconTexture) && IsValid(CrewStatusIconImage) && CrewStatusBadge->GetContent() == CrewStatusIconImage &&
+		CrewStatusIconImage->GetVisibility() != ESlateVisibility::Collapsed && CrewStatusIconImage->GetVisibility() != ESlateVisibility::Hidden &&
+		CrewStatusIconImage->GetBrush().GetResourceObject() == ExpectedIconTexture && CrewStatusIconText->GetVisibility() == ESlateVisibility::Collapsed;
+	const bool bGlyphPresentationValid = !IsValid(ExpectedIconTexture) && CrewStatusBadge->GetContent() == CrewStatusIconText &&
+		CrewStatusIconText->GetVisibility() != ESlateVisibility::Collapsed && CrewStatusIconText->GetVisibility() != ESlateVisibility::Hidden &&
+		CrewStatusIconText->GetText().ToString() == HeistCrewStatus::ToIconGlyph(PlayerState->GetCrewStatus()).ToString() &&
+		(!IsValid(CrewStatusIconImage) || CrewStatusIconImage->GetVisibility() == ESlateVisibility::Collapsed);
 	return PlayerNameText->GetText().ToString() == PlayerState->GetHeistDisplayName().ToString() &&
 		PlayerNameText->GetColorAndOpacity().GetSpecifiedColor().Equals(PlayerState->PlayerColor) &&
 		CrewStatusText->GetText().ToString() == HeistCrewStatus::ToCompactText(PlayerState->GetCrewStatus()).ToString() &&
 		CrewStatusText->GetColorAndOpacity().GetSpecifiedColor().Equals(ExpectedStatusColor) &&
 		CrewStatusBadge->GetBrushColor().Equals(ExpectedStatusColor) &&
-		CrewStatusIconText->GetText().ToString() == HeistCrewStatus::ToIconGlyph(PlayerState->GetCrewStatus()).ToString();
+		(bTexturePresentationValid || bGlyphPresentationValid);
+}
+
+bool UHeistNameplateWidget::AreStatusIconTexturesAssignedForDebug() const
+{
+	return IsValid(StunnedStatusIcon) && IsValid(ArrestedStatusIcon) && IsValid(CarryingOriginalStatusIcon) && IsValid(HeavyStatusIcon);
 }
 
 float UHeistNameplateWidget::CalculateDistanceOpacity(const float Distance) const
@@ -156,13 +176,77 @@ void UHeistNameplateWidget::RefreshPresentation()
 	{
 		CrewStatusBadge->SetBrushColor(HeistCrewStatus::GetPresentationColor(PlayerState->GetCrewStatus()));
 	}
-	if (IsValid(CrewStatusIconText))
+	const EHeistCrewStatus CrewStatus = PlayerState->GetCrewStatus();
+	if (UTexture2D* StatusIconTexture = ResolveStatusIconTexture(CrewStatus); IsValid(StatusIconTexture) && IsValid(CrewStatusIconImage))
 	{
-		CrewStatusIconText->SetText(HeistCrewStatus::ToIconGlyph(PlayerState->GetCrewStatus()));
+		CrewStatusIconImage->SetBrushFromTexture(StatusIconTexture, true);
+		CrewStatusIconImage->SetColorAndOpacity(FLinearColor::White);
+		CrewStatusIconImage->SetVisibility(ESlateVisibility::HitTestInvisible);
+		if (IsValid(CrewStatusBadge) && CrewStatusBadge->GetContent() != CrewStatusIconImage)
+		{
+			CrewStatusBadge->SetContent(CrewStatusIconImage);
+		}
+		if (IsValid(CrewStatusIconText))
+		{
+			CrewStatusIconText->SetVisibility(ESlateVisibility::Collapsed);
+		}
+	}
+	else if (IsValid(CrewStatusIconText))
+	{
+		CrewStatusIconText->SetText(HeistCrewStatus::ToIconGlyph(CrewStatus));
+		CrewStatusIconText->SetVisibility(ESlateVisibility::HitTestInvisible);
+		if (IsValid(CrewStatusBadge) && CrewStatusBadge->GetContent() != CrewStatusIconText)
+		{
+			CrewStatusBadge->SetContent(CrewStatusIconText);
+		}
+		if (IsValid(CrewStatusIconImage))
+		{
+			CrewStatusIconImage->SetVisibility(ESlateVisibility::Collapsed);
+		}
 	}
 	if (IsValid(OriginalCarrierIndicator))
 	{
 		OriginalCarrierIndicator->SetVisibility(PlayerState->GetCrewStatus() == EHeistCrewStatus::CarryingOriginal ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+}
+
+void UHeistNameplateWidget::ResolveStatusIconWidgets()
+{
+	if (!IsValid(WidgetTree))
+	{
+		return;
+	}
+	if (!IsValid(CrewStatusIconText))
+	{
+		CrewStatusIconText = Cast<UTextBlock>(GetWidgetFromName(TEXT("CrewStatusIconText")));
+	}
+	if (!IsValid(CrewStatusIconImage))
+	{
+		CrewStatusIconImage = Cast<UImage>(GetWidgetFromName(TEXT("CrewStatusIconImage")));
+	}
+	if (!IsValid(CrewStatusIconImage) && IsValid(CrewStatusBadge))
+	{
+		CrewStatusIconImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("CrewStatusIconImage"));
+		CrewStatusIconImage->SetDesiredSizeOverride(FVector2D(18.0f, 18.0f));
+		CrewStatusIconImage->SetColorAndOpacity(FLinearColor::White);
+		CrewStatusIconImage->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+UTexture2D* UHeistNameplateWidget::ResolveStatusIconTexture(const EHeistCrewStatus CrewStatus) const
+{
+	switch (CrewStatus)
+	{
+	case EHeistCrewStatus::Stunned:
+		return StunnedStatusIcon.Get();
+	case EHeistCrewStatus::Arrested:
+		return ArrestedStatusIcon.Get();
+	case EHeistCrewStatus::CarryingOriginal:
+		return CarryingOriginalStatusIcon.Get();
+	case EHeistCrewStatus::Heavy:
+		return HeavyStatusIcon.Get();
+	default:
+		return nullptr;
 	}
 }
 

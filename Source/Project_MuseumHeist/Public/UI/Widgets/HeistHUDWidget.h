@@ -7,6 +7,7 @@
 #include "HeistHUDWidget.generated.h"
 
 class UTextBlock;
+class UImage;
 class UHeistInteractionPromptWidget;
 class UHeistPopupWidgetPool;
 class UHeistUserWidgetBase;
@@ -14,6 +15,7 @@ class UPanelWidget;
 class UWidget;
 class UAudioComponent;
 class USoundBase;
+class UTexture2D;
 class AHeistPlayerController;
 
 UCLASS(Blueprintable)
@@ -52,11 +54,17 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 	void RefreshAlertPresentation();
 	void RefreshCrewStatusPresentation();
 	void ResolveCrewPresentationWidgets();
+	void ApplyLocalCrewStatusPresentation(EHeistCrewStatus CrewStatus);
+	void RefreshStunCountdown();
+	EHeistCrewStatus ResolveLocalCrewStatus() const;
+	UTexture2D* ResolveStatusIconTexture(EHeistCrewStatus CrewStatus) const;
 	void RefreshLockdownCountdown();
 	void SetupTutorialPresentation();
 	void RefreshTutorialPresentation();
 	void ApplyAlertAudioLayers();
 	void StopAlertAudioLayers();
+	void PlayArrestFeedbackAudio(USoundBase* Sound, FName FeedbackEvent);
+	void StopArrestFeedbackAudio();
 	UHeistInteractionPromptWidget* ResolveInteractionChildWidget(FName WidgetName, UHeistInteractionPromptWidget* ExistingWidget) const;
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Heist|HUD", meta = (AllowPrivateAccess = "true"))
@@ -100,6 +108,12 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 	bool AreAlertAudioAssetsLoopingForDebug() const;
 	bool IsSuspenseMusicPlayingForDebug() const;
 	bool IsAlarmMusicPlayingForDebug() const;
+	bool IsLocalCrewStatusPresentationContractSatisfied() const;
+	bool AreCrewStatusIconTexturesAssignedForDebug() const;
+	bool AreArrestAudioAssetsAssignedForDebug() const;
+	bool IsArrestFeedbackAudioActiveForDebug() const;
+	int32 GetArrestAudioPlayCountForDebug() const { return ArrestAudioPlayCount; }
+	int32 GetRescueAudioPlayCountForDebug() const { return RescueAudioPlayCount; }
 
 #pragma endregion
 
@@ -152,6 +166,18 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 	TObjectPtr<class UBorder> StunOverlay;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> StunCountdownText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<class UBorder> ArrestOverlay;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> ArrestTitleText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> ArrestInstructionText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UWidget> TutorialCardContainer;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
@@ -187,15 +213,42 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Alert|Audio", meta = (ClampMin = "0.0", ClampMax = "5.0", AllowPrivateAccess = "true"))
 	float AlertMusicFadeSeconds = 0.35f;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Crew|Icons", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UTexture2D> StunnedStatusIcon;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Crew|Icons", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UTexture2D> ArrestedStatusIcon;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Crew|Icons", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UTexture2D> CarryingOriginalStatusIcon;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Crew|Icons", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UTexture2D> HeavyStatusIcon;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Crew|Audio", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USoundBase> ArrestedSound;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Crew|Audio", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USoundBase> RescuedSound;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UAudioComponent> SuspenseMusicComponent;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UAudioComponent> AlarmMusicComponent;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UAudioComponent> ArrestFeedbackAudioComponent;
+
 	EHeistAlertLevel LastAppliedAudioAlertLevel = EHeistAlertLevel::Quiet;
+	EHeistCrewStatus LastPresentedLocalCrewStatus = EHeistCrewStatus::Active;
 	bool bAlertAudioInitialized = false;
+	bool bLocalCrewStatusPresentationInitialized = false;
 	int32 LastDisplayedLockdownSeconds = INDEX_NONE;
+	int32 LastDisplayedStunSeconds = INDEX_NONE;
+	FName LastArrestFeedbackEvent = NAME_None;
+	int32 ArrestAudioPlayCount = 0;
+	int32 RescueAudioPlayCount = 0;
 
 #pragma endregion
 };

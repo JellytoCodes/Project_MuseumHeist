@@ -584,7 +584,8 @@ class FDriveMoveInputCommand final : public IAutomationLatentCommand
 			return true;
 		}
 
-		EnhancedPlayerInput->InjectInputForAction(MoveAction, FInputActionValue(FVector2D(0.0f, 1.0f)));
+		const FVector2D MovementInput = bSprint ? FVector2D(0.0f, -1.0f) : FVector2D(0.0f, 1.0f);
+		EnhancedPlayerInput->InjectInputForAction(MoveAction, FInputActionValue(MovementInput));
 		if (FPlatformTime::Seconds() - StartTimeSeconds < DurationSeconds)
 		{
 			return false;

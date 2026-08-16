@@ -64,12 +64,16 @@ bool FHeistWeek7NameplatePresentationTest::RunTest(const FString& Parameters)
 	if (BadgeProperty)
 	{
 		TestTrue(TEXT("CrewStatusBadge binding requires UBorder"), BadgeProperty->PropertyClass->IsChildOf(UBorder::StaticClass()));
+#if WITH_METADATA
 		TestTrue(TEXT("CrewStatusBadge is optional for native fallback"), BadgeProperty->HasMetaData(TEXT("BindWidgetOptional")));
+#endif
 	}
 	if (IconTextProperty)
 	{
 		TestTrue(TEXT("CrewStatusIconText binding requires UTextBlock"), IconTextProperty->PropertyClass->IsChildOf(UTextBlock::StaticClass()));
+#if WITH_METADATA
 		TestTrue(TEXT("CrewStatusIconText is optional for native fallback"), IconTextProperty->HasMetaData(TEXT("BindWidgetOptional")));
+#endif
 	}
 
 	const AHeistPlayerCharacter* CharacterCDO = GetDefault<AHeistPlayerCharacter>();

@@ -16,8 +16,13 @@ class UHeistObjectAssemblyComponent;
 class UHeistStatusComponent;
 class UHeistVisionComponent;
 class UCameraComponent;
+class UAudioComponent;
 class USphereComponent;
+class USoundBase;
+class USoundMix;
 class UWidgetComponent;
+class AHeistGameState;
+class AHeistPlayerState;
 
 UCLASS()
 class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter, public IHeistInteractable
@@ -35,6 +40,9 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter, public 
 
   protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	virtual void PawnClientRestart() override;
+	virtual void UnPossessed() override;
 
 #pragma endregion
 
@@ -104,7 +112,18 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter, public 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|Presentation")
 	void BP_ApplyCrewStatusPresentation(EHeistCrewStatus CrewStatus);
 
+	void NotifyAuthoritativeCrewStatusFootstep(bool bSprintingPace);
+
+	EHeistCrewStatus GetAppliedCrewStatusForDebug() const { return AppliedCrewStatusPresentation; }
+	bool IsLocalStunPostProcessEnabledForDebug() const { return bLocalStunPostProcessEnabled; }
+	bool IsStunSoundMixPushedForDebug() const { return bStunSoundMixPushed; }
+	bool AreCrewStatusAudioAssetsAssignedForDebug() const;
+	bool IsCrewStatusAudioPlayingForDebug() const;
+	int32 GetCrewStatusFootstepPlayCountForDebug() const { return CrewStatusFootstepPlayCount; }
+
   protected:
+	virtual void OnPlayerStateChanged(APlayerState* NewPlayerState, APlayerState* OldPlayerState) override;
+	virtual void OnRep_Controller() override;
 	virtual void OnRep_PlayerState() override;
 
 #pragma endregion
@@ -152,12 +171,45 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter, public 
   private:
 	void RefreshNameplatePresentation();
 	void HandleReplicatedCrewStatus(EHeistCrewStatus CrewStatus);
+	void BindPresentationGameState();
+	void HandlePresentationMatchPhaseChanged(EHeistMatchPhase PreviousMatchPhase, EHeistMatchPhase NewMatchPhase);
+	void ApplyCrewStatusPresentation(EHeistCrewStatus CrewStatus);
+	void ResetCrewStatusPresentation();
+	void SetLocalStunPostProcessEnabled(bool bEnabled);
+
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_PlayCrewStatusFootstep(EHeistCrewStatus CrewStatus, bool bSprintingPace);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Presentation", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UWidgetComponent> NameplateWidgetComponent;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Presentation", meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<class UHeistNameplateWidget> NameplateWidgetClass;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Presentation", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UAudioComponent> CrewStatusFootstepAudioComponent;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Presentation|Audio", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USoundMix> StunSoundMix;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Presentation|Audio", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USoundBase> CarryingOriginalFootstepSound;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Presentation|Audio", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USoundBase> HeavyFootstepSound;
+
+	TWeakObjectPtr<AHeistGameState> BoundPresentationGameState;
+	TWeakObjectPtr<AHeistPlayerState> BoundPresentationPlayerState;
+	EHeistCrewStatus AppliedCrewStatusPresentation = EHeistCrewStatus::Active;
+	bool bLocalStunPostProcessEnabled = false;
+	bool bStunSoundMixPushed = false;
+	bool bStunPostProcessSnapshotValid = false;
+	bool bSavedOverrideColorSaturation = false;
+	bool bSavedOverrideVignetteIntensity = false;
+	FVector4 SavedColorSaturation = FVector4(1.0f, 1.0f, 1.0f, 1.0f);
+	float SavedVignetteIntensity = 0.0f;
+	float SavedPostProcessBlendWeight = 0.0f;
+	int32 CrewStatusFootstepPlayCount = 0;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistStatusComponent> StatusComponent;

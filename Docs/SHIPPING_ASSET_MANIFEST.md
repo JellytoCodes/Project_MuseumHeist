@@ -22,7 +22,7 @@ This manifest records evidence that exists in the repository or the current work
 | M02 Surface Forgery pool | 12 timed painting templates | 12 source URLs; every entry is labelled `Public Domain` in the local manifest | `VERIFIED_LOCAL` | Retain the manifest and source URLs. Re-check the statements during final release review. |
 | M03 Surface Forgery pool | 12 timed painting templates | 12 source URLs; eight entries have `Public Domain` or `CC0 Public Domain Designation`; four entries say only `No Copyright - United States` | `RELEASE_BLOCKER` | Establish the intended global distribution basis for the four US-only entries, or replace them. |
 | Surface fallback texture | Default painting material texture `T_Forgery_SunArchWave` | Runtime asset and asset metadata exist; source PNG is ignored by Git and the metadata has no origin or rights statement | `RELEASE_BLOCKER` | Add a durable project-original or third-party provenance statement and decide whether the source PNG must be tracked. |
-| Object Assembly gallery meshes | Sculpture and Ceramic modular kits | 14 local OBJ sources, deterministic generator, and project-generated provenance statement | `REVIEW_REQUIRED` | Ensure `SourceArt/ObjectAssembly/` is version-controlled and retained with the runtime meshes before sign-off. |
+| Object Assembly gallery meshes | Sculpture and Ceramic modular kits | 14 tracked OBJ sources, deterministic generator, and project-generated provenance statement | `VERIFIED_LOCAL` | Retain the tracked source art, generator, README, and runtime meshes. |
 | TENADA | Korean display font in UI | TTF, upstream URL, four-page upstream notice, and SIL Open Font License 1.1 text are stored locally | `REVIEW_REQUIRED` | Include the required notice and license in the distributed package or another user-viewable location, then record package evidence. |
 | W7 floor plans | M01/M02/M03 full-screen map textures | Deterministic generator, three generated PNGs, and project-original declaration | `VERIFIED_LOCAL` | Retain generator, README, and generated sources. |
 | W7 alert audio | Suspense and alarm loops | Deterministic generator, two generated WAVs, and project-original declaration | `VERIFIED_LOCAL` | Retain generator, README, and generated sources. |
@@ -83,7 +83,7 @@ The PNG exists in the current workspace but is excluded by the repository's `Sou
 - Deterministic generator: [rebuild_object_assembly_content.py](../SourceArt/ObjectAssembly/rebuild_object_assembly_content.py)
 - Source geometry: `SourceArt/ObjectAssembly/Meshes/` - 14 OBJ files.
 
-The local README states that the geometry is project-generated procedural source art and that no external mesh source is embedded. At this baseline, `SourceArt/ObjectAssembly/` is present locally but not yet tracked by Git. The provenance record is therefore not durable until the directory is added to version control and reviewed.
+The local README states that the geometry is project-generated procedural source art and that no external mesh source is embedded. All 14 OBJ files, the deterministic generator, and the README are tracked by Git, so the provenance record is durable in the repository.
 
 ## TENADA Font
 
@@ -132,9 +132,9 @@ The asset origin is identifiable from the Epic StarterContent directory, but no 
 - [ ] All 12 M01 manifest entries have reviewed per-source rights values.
 - [ ] The four M03 US-only entries have a documented global distribution basis or replacements.
 - [ ] `T_Forgery_SunArchWave` has durable creator/source/rights provenance.
-- [ ] `SourceArt/ObjectAssembly/` is version-controlled and its project-original statement is reviewed.
+- [x] `SourceArt/ObjectAssembly/` is version-controlled and its project-original statement is present.
 - [ ] The final package exposes the TENADA notice and SIL Open Font License 1.1 text in a user-viewable form.
 - [ ] The applicable Epic StarterContent terms and review date are recorded.
-- [ ] A fresh Development package asset audit confirms which StarterContent assets are actually staged.
+- [x] A 2026-08-16 strict fresh Development package audit found 57 staged StarterContent chunks totaling 40.69 MiB and no StarterContent sample maps or Blueprints.
 - [ ] [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) matches this manifest and the final package contents.
 - [ ] Any newly added art, audio, font, icon, texture, or model has a manifest entry before release.

@@ -13,7 +13,9 @@ param(
 
 	[switch]$PlanOnly,
 
-	[switch]$Clean
+	[switch]$Clean,
+
+	[switch]$CleanCook
 )
 
 $ErrorActionPreference = 'Stop'
@@ -99,6 +101,10 @@ $uatArguments = @(
 
 if ($Configuration -eq 'Shipping') {
 	$uatArguments += '-distribution'
+}
+
+if ($CleanCook) {
+	$uatArguments += '-clean'
 }
 
 if ($PlanOnly) {

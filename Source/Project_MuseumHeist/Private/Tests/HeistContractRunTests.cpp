@@ -55,6 +55,7 @@ struct FHeistContractRunAutomationState
 	FName SelectedLootActorName = NAME_None;
 	FName SelectedLootRowId = NAME_None;
 	int32 SelectedLootValue = 0;
+	TMap<TWeakObjectPtr<AHeistPlayerCharacter>, int32> CrewStatusFootstepBaselines;
 };
 
 TArray<UWorld*> GetContractRunPIEWorlds()
@@ -367,6 +368,14 @@ bool IsCrewStatusReplicated(const int32 PlayerId, const EHeistCrewStatus Expecte
 			return false;
 		}
 
+		const AHeistGameState* GameState = World->GetGameState<AHeistGameState>();
+		const AHeistPlayerCharacter* Character = FindHeistCharacterById(World, PlayerId);
+		if (!IsValid(Character) || (IsValid(GameState) && GameState->GetMatchPhase() == EHeistMatchPhase::InGame &&
+			Character->GetAppliedCrewStatusForDebug() != ExpectedStatus))
+		{
+			return false;
+		}
+
 		const AHeistPlayerController* LocalController = GetContractRunLocalHeistPlayerController(World);
 		const AHeistHUD* HUD = IsValid(LocalController) ? LocalController->GetHUD<AHeistHUD>() : nullptr;
 		const UHeistHUDViewModel* HUDViewModel = IsValid(HUD) ? HUD->GetHUDViewModel() : nullptr;
@@ -382,7 +391,6 @@ bool IsCrewStatusReplicated(const int32 PlayerId, const EHeistCrewStatus Expecte
 		const AHeistPlayerState* LocalPlayerState = IsValid(LocalController) ? LocalController->GetPlayerState<AHeistPlayerState>() : nullptr;
 		if (IsValid(LocalPlayerState) && LocalPlayerState->HeistPlayerId != PlayerId)
 		{
-			const AHeistPlayerCharacter* Character = FindHeistCharacterById(World, PlayerId);
 			TInlineComponentArray<UWidgetComponent*> WidgetComponents(Character);
 			const bool bRemoteNameplateReady = WidgetComponents.ContainsByPredicate([PlayerState](const UWidgetComponent* Component)
 			{
@@ -394,6 +402,42 @@ bool IsCrewStatusReplicated(const int32 PlayerId, const EHeistCrewStatus Expecte
 			{
 				return false;
 			}
+		}
+	}
+	return true;
+}
+
+bool CaptureCrewStatusFootstepBaseline(const TSharedRef<FHeistContractRunAutomationState>& State, const int32 PlayerId)
+{
+	State->CrewStatusFootstepBaselines.Reset();
+	for (UWorld* World : GetContractRunPIEWorlds())
+	{
+		AHeistPlayerCharacter* Character = FindHeistCharacterById(World, PlayerId);
+		if (!IsValid(Character))
+		{
+			State->CrewStatusFootstepBaselines.Reset();
+			return false;
+		}
+		State->CrewStatusFootstepBaselines.Add(TWeakObjectPtr<AHeistPlayerCharacter>(Character), Character->GetCrewStatusFootstepPlayCountForDebug());
+	}
+	return !State->CrewStatusFootstepBaselines.IsEmpty();
+}
+
+bool IsCrewStatusFootstepPresentationReady(const TSharedRef<FHeistContractRunAutomationState>& State, const int32 PlayerId, const EHeistCrewStatus ExpectedStatus)
+{
+	if (!IsCrewStatusReplicated(PlayerId, ExpectedStatus))
+	{
+		return false;
+	}
+
+	for (UWorld* World : GetContractRunPIEWorlds())
+	{
+		AHeistPlayerCharacter* Character = FindHeistCharacterById(World, PlayerId);
+		const int32* Baseline = IsValid(Character) ? State->CrewStatusFootstepBaselines.Find(TWeakObjectPtr<AHeistPlayerCharacter>(Character)) : nullptr;
+		if (!IsValid(Character) || !Character->AreCrewStatusAudioAssetsAssignedForDebug() ||
+			Baseline == nullptr || Character->GetCrewStatusFootstepPlayCountForDebug() < *Baseline + 1)
+		{
+			return false;
 		}
 	}
 	return true;
@@ -618,14 +662,57 @@ bool IsWeek7StunPresentationReady(const int32 TargetPlayerId)
 		return false;
 	}
 	AHeistPlayerController* OwningController = GetOwningPlayerControllerById(TargetPlayerId);
+	const AHeistPlayerCharacter* OwningCharacter = GetOwningCharacterById(TargetPlayerId);
 	const AHeistHUD* HUD = IsValid(OwningController) ? OwningController->GetHUD<AHeistHUD>() : nullptr;
-	return IsValid(OwningController) && IsValid(HUD) && !HUD->IsFloorPlanMapVisible() && OwningController->GetLocalInputMode() == EHeistInputMode::Gameplay &&
+	const UHeistHUDWidget* MainHUDWidget = IsValid(HUD) ? HUD->GetMainHUDWidget() : nullptr;
+	return IsValid(OwningController) && IsValid(OwningCharacter) && IsValid(HUD) && IsValid(MainHUDWidget) && !HUD->IsFloorPlanMapVisible() &&
+		OwningCharacter->IsLocalStunPostProcessEnabledForDebug() && OwningCharacter->IsStunSoundMixPushedForDebug() &&
+		MainHUDWidget->IsLocalCrewStatusPresentationContractSatisfied() && OwningController->GetLocalInputMode() == EHeistInputMode::Gameplay &&
 		OwningController->GetActiveHeistInputMappingContextCount() == 1 && !OwningController->bShowMouseCursor && OwningController->IsMoveInputIgnored() &&
 		OwningController->IsLookInputIgnored();
 }
 
+FString DescribeWeek7StunPresentation(const int32 TargetPlayerId)
+{
+	TArray<FString> WorldStates;
+	for (UWorld* World : GetContractRunPIEWorlds())
+	{
+		const AHeistPlayerState* PlayerState = FindPlayerStateById(World, TargetPlayerId);
+		const AHeistPlayerCharacter* Character = FindHeistCharacterById(World, TargetPlayerId);
+		const AHeistPlayerController* LocalController = GetContractRunLocalHeistPlayerController(World);
+		const AHeistHUD* HUD = IsValid(LocalController) ? LocalController->GetHUD<AHeistHUD>() : nullptr;
+		const UHeistHUDWidget* MainHUDWidget = IsValid(HUD) ? HUD->GetMainHUDWidget() : nullptr;
+		WorldStates.Add(FString::Printf(
+			TEXT("World=%s NetMode=%d PS=%s Character=%s Applied=%s Local=%s PP=%s Mix=%s LocalPlayer=%d Input=%d Mappings=%d Map=%s Cursor=%s Move=%s Look=%s HUD=%s HUDContract=%s"),
+			*GetNameSafe(World), IsValid(World) ? static_cast<int32>(World->GetNetMode()) : INDEX_NONE,
+			IsValid(PlayerState) ? *UEnum::GetValueAsString(PlayerState->GetCrewStatus()) : TEXT("Missing"), *GetNameSafe(Character),
+			IsValid(Character) ? *UEnum::GetValueAsString(Character->GetAppliedCrewStatusForDebug()) : TEXT("Missing"),
+			IsValid(Character) && Character->IsLocallyControlled() ? TEXT("true") : TEXT("false"),
+			IsValid(Character) && Character->IsLocalStunPostProcessEnabledForDebug() ? TEXT("true") : TEXT("false"),
+			IsValid(Character) && Character->IsStunSoundMixPushedForDebug() ? TEXT("true") : TEXT("false"),
+			IsValid(LocalController) && IsValid(LocalController->GetPlayerState<AHeistPlayerState>()) ? LocalController->GetPlayerState<AHeistPlayerState>()->HeistPlayerId : INDEX_NONE,
+			IsValid(LocalController) ? static_cast<int32>(LocalController->GetLocalInputMode()) : INDEX_NONE,
+			IsValid(LocalController) ? LocalController->GetActiveHeistInputMappingContextCount() : INDEX_NONE,
+			IsValid(HUD) && HUD->IsFloorPlanMapVisible() ? TEXT("true") : TEXT("false"),
+			IsValid(LocalController) && LocalController->bShowMouseCursor ? TEXT("true") : TEXT("false"),
+			IsValid(LocalController) && LocalController->IsMoveInputIgnored() ? TEXT("true") : TEXT("false"),
+			IsValid(LocalController) && LocalController->IsLookInputIgnored() ? TEXT("true") : TEXT("false"), *GetNameSafe(MainHUDWidget),
+			IsValid(MainHUDWidget) && MainHUDWidget->IsLocalCrewStatusPresentationContractSatisfied() ? TEXT("true") : TEXT("false")));
+		if (IsValid(MainHUDWidget))
+		{
+			MainHUDWidget->DebugDumpFirstPersonHUDState();
+		}
+	}
+	return FString::Printf(TEXT("W7 Stun presentation diagnostic: Target=%d Replicated=%s %s"), TargetPlayerId,
+		IsCrewStatusReplicated(TargetPlayerId, EHeistCrewStatus::Stunned) ? TEXT("true") : TEXT("false"), *FString::Join(WorldStates, TEXT(" | ")));
+}
+
 bool IsWeek7ArrestReplicated(const int32 TargetPlayerId)
 {
+	if (!IsCrewStatusReplicated(TargetPlayerId, EHeistCrewStatus::Arrested))
+	{
+		return false;
+	}
 	for (UWorld* World : GetContractRunPIEWorlds())
 	{
 		const AHeistPlayerState* PlayerState = FindPlayerStateById(World, TargetPlayerId);
@@ -634,7 +721,14 @@ bool IsWeek7ArrestReplicated(const int32 TargetPlayerId)
 			return false;
 		}
 	}
-	return true;
+
+	const AHeistPlayerController* OwningController = GetOwningPlayerControllerById(TargetPlayerId);
+	const AHeistPlayerCharacter* OwningCharacter = GetOwningCharacterById(TargetPlayerId);
+	const AHeistHUD* HUD = IsValid(OwningController) ? OwningController->GetHUD<AHeistHUD>() : nullptr;
+	const UHeistHUDWidget* MainHUDWidget = IsValid(HUD) ? HUD->GetMainHUDWidget() : nullptr;
+	return IsValid(OwningCharacter) && IsValid(MainHUDWidget) && !OwningCharacter->IsLocalStunPostProcessEnabledForDebug() &&
+		!OwningCharacter->IsStunSoundMixPushedForDebug() && MainHUDWidget->IsLocalCrewStatusPresentationContractSatisfied() &&
+		MainHUDWidget->GetArrestAudioPlayCountForDebug() >= 1;
 }
 
 bool MoveWeek7RescuerIntoRange(const int32 RescuerPlayerId, const int32 TargetPlayerId)
@@ -672,7 +766,13 @@ bool IsWeek7RescueComplete(const int32 TargetPlayerId)
 		}
 	}
 	AHeistPlayerController* OwningController = GetOwningPlayerControllerById(TargetPlayerId);
-	return IsValid(OwningController) && !OwningController->IsMoveInputIgnored() && !OwningController->IsLookInputIgnored();
+	const AHeistPlayerCharacter* OwningCharacter = GetOwningCharacterById(TargetPlayerId);
+	const AHeistHUD* HUD = IsValid(OwningController) ? OwningController->GetHUD<AHeistHUD>() : nullptr;
+	const UHeistHUDWidget* MainHUDWidget = IsValid(HUD) ? HUD->GetMainHUDWidget() : nullptr;
+	return IsValid(OwningController) && IsValid(OwningCharacter) && IsValid(MainHUDWidget) &&
+		!OwningCharacter->IsLocalStunPostProcessEnabledForDebug() && !OwningCharacter->IsStunSoundMixPushedForDebug() &&
+		MainHUDWidget->IsLocalCrewStatusPresentationContractSatisfied() && MainHUDWidget->GetRescueAudioPlayCountForDebug() >= 1 &&
+		!OwningController->IsMoveInputIgnored() && !OwningController->IsLookInputIgnored();
 }
 
 bool CaptureAndValidateGameplayPreflight(FAutomationTestBase* Test, const TSharedRef<FHeistContractRunAutomationState>& State, const int32 RunIndex)
@@ -1015,6 +1115,14 @@ bool IsCompletedResultReady(const TSharedRef<FHeistContractRunAutomationState>& 
 		{
 			return false;
 		}
+		for (TActorIterator<AHeistPlayerCharacter> It(World); It; ++It)
+		{
+			if (IsValid(*It) && (It->GetAppliedCrewStatusForDebug() != EHeistCrewStatus::Active || It->IsLocalStunPostProcessEnabledForDebug() ||
+				It->IsStunSoundMixPushedForDebug() || It->IsCrewStatusAudioPlayingForDebug()))
+			{
+				return false;
+			}
+		}
 		const FHeistPlayerResult* LootCarrierResult = GameState->GetPlayerResults().FindByPredicate(
 			[](const FHeistPlayerResult& PlayerResult) { return PlayerResult.PlayerId == 1; });
 		if (LootCarrierResult == nullptr || LootCarrierResult->Contribution.SecuredLootValue < State->SelectedLootValue)
@@ -1086,15 +1194,65 @@ bool IsLobbyStateClean(const int32 PlayerCount)
 		const AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
 		const AHeistPlayerController* PlayerController = GetContractRunLocalHeistPlayerController(World);
 		const AHeistHUD* HUD = IsValid(PlayerController) ? PlayerController->GetHUD<AHeistHUD>() : nullptr;
+		const UHeistHUDWidget* MainHUDWidget = IsValid(HUD) ? HUD->GetMainHUDWidget() : nullptr;
 		const UHeistResultWidget* ResultWidget = IsValid(HUD) ? HUD->GetResultWidget() : nullptr;
-		if (!IsValid(GameState) || GameState->GetMatchPhase() != EHeistMatchPhase::Lobby || GameState->PlayerArray.Num() != PlayerCount ||
+		const bool bResultPresentationClean = !IsValid(ResultWidget) ||
+			(ResultWidget->GetVisibility() == ESlateVisibility::Collapsed && ResultWidget->IsHiddenPresentationStateReset());
+		if (!IsValid(GameState) || !IsValid(PlayerController) || !IsValid(HUD) || !IsValid(MainHUDWidget) ||
+			GameState->GetMatchPhase() != EHeistMatchPhase::Lobby || GameState->PlayerArray.Num() != PlayerCount ||
 			GameState->GetContractSnapshot().IsInitialized() || GameState->GetAlertLevel() != EHeistAlertLevel::Quiet || GameState->GetTeamResult().IsValid() ||
-			!GameState->GetPlayerResults().IsEmpty() || (IsValid(ResultWidget) && (ResultWidget->GetVisibility() != ESlateVisibility::Collapsed || !ResultWidget->IsHiddenPresentationStateReset())))
+			!GameState->GetPlayerResults().IsEmpty() || !MainHUDWidget->IsHiddenPresentationStateReset() || !bResultPresentationClean)
 		{
 			return false;
 		}
+		for (TActorIterator<AHeistPlayerCharacter> It(World); It; ++It)
+		{
+			if (IsValid(*It) && (It->GetAppliedCrewStatusForDebug() != EHeistCrewStatus::Active || It->IsLocalStunPostProcessEnabledForDebug() ||
+				It->IsStunSoundMixPushedForDebug() || It->IsCrewStatusAudioPlayingForDebug()))
+			{
+				return false;
+			}
+		}
 	}
 	return true;
+}
+
+FString DescribeLobbyStateClean(const int32 PlayerCount)
+{
+	TArray<FString> WorldStates;
+	for (UWorld* World : GetContractRunPIEWorlds())
+	{
+		const AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
+		const AHeistPlayerController* PlayerController = GetContractRunLocalHeistPlayerController(World);
+		const AHeistHUD* HUD = IsValid(PlayerController) ? PlayerController->GetHUD<AHeistHUD>() : nullptr;
+		const UHeistHUDWidget* MainHUDWidget = IsValid(HUD) ? HUD->GetMainHUDWidget() : nullptr;
+		const UHeistResultWidget* ResultWidget = IsValid(HUD) ? HUD->GetResultWidget() : nullptr;
+		TArray<FString> CharacterStates;
+		for (TActorIterator<AHeistPlayerCharacter> It(World); It; ++It)
+		{
+			if (IsValid(*It))
+			{
+				CharacterStates.Add(FString::Printf(TEXT("%s:Applied=%s,PP=%s,Mix=%s,CrewAudio=%s"), *It->GetName(),
+					*UEnum::GetValueAsString(It->GetAppliedCrewStatusForDebug()), It->IsLocalStunPostProcessEnabledForDebug() ? TEXT("true") : TEXT("false"),
+					It->IsStunSoundMixPushedForDebug() ? TEXT("true") : TEXT("false"), It->IsCrewStatusAudioPlayingForDebug() ? TEXT("true") : TEXT("false")));
+			}
+		}
+		WorldStates.Add(FString::Printf(
+			TEXT("World=%s NetMode=%d Phase=%s Players=%d/%d Contract=%s Alert=%s TeamResult=%s PlayerResults=%d PC=%s HUD=%s MainHUD=%s MainHUDReset=%s Result=%s ResultVisibility=%s ResultReset=%s Characters=[%s]"),
+			*GetNameSafe(World), IsValid(World) ? static_cast<int32>(World->GetNetMode()) : INDEX_NONE,
+			IsValid(GameState) ? *UEnum::GetValueAsString(GameState->GetMatchPhase()) : TEXT("Missing"),
+			IsValid(GameState) ? GameState->PlayerArray.Num() : INDEX_NONE, PlayerCount,
+			IsValid(GameState) && GameState->GetContractSnapshot().IsInitialized() ? TEXT("initialized") : TEXT("clear"),
+			IsValid(GameState) ? *UEnum::GetValueAsString(GameState->GetAlertLevel()) : TEXT("Missing"),
+			IsValid(GameState) && GameState->GetTeamResult().IsValid() ? TEXT("valid") : TEXT("clear"),
+			IsValid(GameState) ? GameState->GetPlayerResults().Num() : INDEX_NONE, *GetNameSafe(PlayerController), *GetNameSafe(HUD), *GetNameSafe(MainHUDWidget),
+			IsValid(MainHUDWidget) && MainHUDWidget->IsHiddenPresentationStateReset() ? TEXT("true") : TEXT("false"), *GetNameSafe(ResultWidget),
+			IsValid(ResultWidget) ? *UEnum::GetValueAsString(ResultWidget->GetVisibility()) : TEXT("Missing"),
+			IsValid(ResultWidget) && ResultWidget->IsHiddenPresentationStateReset() ? TEXT("true") : TEXT("false"), *FString::Join(CharacterStates, TEXT("; "))));
+	}
+	return FString::Printf(TEXT("W6-010 Lobby cleanup diagnostic: WorldsReady=%s LobbyClean=%s %s"),
+		AreContractRunWorldsReady(PlayerCount, EHeistMatchPhase::Lobby, false) ? TEXT("true") : TEXT("false"), IsLobbyStateClean(PlayerCount) ? TEXT("true") : TEXT("false"),
+		*FString::Join(WorldStates, TEXT(" | ")));
 }
 
 bool IsGameplayContentReplicated(const int32 PlayerCount)
@@ -1243,6 +1401,14 @@ bool IsGameplayResetClean(const int32 PlayerCount)
 		{
 			const AHeistPlayerState* PlayerState = Cast<AHeistPlayerState>(RawPlayerState);
 			if (!IsValid(PlayerState) || !(PlayerState->GetContribution() == EmptyContribution))
+			{
+				return false;
+			}
+		}
+		for (TActorIterator<AHeistPlayerCharacter> It(World); It; ++It)
+		{
+			if (IsValid(*It) && (It->GetAppliedCrewStatusForDebug() != EHeistCrewStatus::Active || It->IsLocalStunPostProcessEnabledForDebug() ||
+				It->IsStunSoundMixPushedForDebug() || It->IsCrewStatusAudioPlayingForDebug()))
 			{
 				return false;
 			}
@@ -1457,7 +1623,12 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d Stun HUD/input lock replicated"), RunIndex), [State]()
 	{
 		return State->PlayerCount == 1 || IsWeek7StunPresentationReady(2);
-	}, 10.0));
+	}, 2.5, [State]() { return State->PlayerCount == 1 ? FString() : DescribeWeek7StunPresentation(2); }));
+	Test->AddCommand(new FWaitLatentCommand(0.75f));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d Stun presentation sustained for 0.75 seconds"), RunIndex), [State]()
+	{
+		return State->PlayerCount == 1 || IsWeek7StunPresentationReady(2);
+	}, 5.0));
 	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d delayed Arrest replicated"), RunIndex), [State]()
 	{
 		return State->PlayerCount == 1 || IsWeek7ArrestReplicated(2);
@@ -1496,6 +1667,52 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 		}
 		return bFoundGuard;
 	}));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d seed Heavy presentation weight"), RunIndex), []()
+	{
+		AHeistPlayerState* PlayerState = FindPlayerStateById(GetContractRunServerWorld(), 1);
+		if (!IsValid(PlayerState))
+		{
+			return false;
+		}
+		PlayerState->DebugSetTotalLootWeight(10.0f);
+		return true;
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d Heavy status replicated"), RunIndex), []()
+	{
+		return IsCrewStatusReplicated(1, EHeistCrewStatus::Heavy);
+	}, 10.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d capture Heavy footstep presentation baseline"), RunIndex), [State]()
+	{
+		return CaptureCrewStatusFootstepBaseline(State, 1);
+	}));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d play authoritative Heavy footstep presentation"), RunIndex), []()
+	{
+		AHeistPlayerCharacter* Character = GetServerCharacterById(1);
+		if (!IsValid(Character))
+		{
+			return false;
+		}
+		Character->NotifyAuthoritativeCrewStatusFootstep(false);
+		return true;
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d Heavy footstep presentation replicated"), RunIndex), [State]()
+	{
+		return IsCrewStatusFootstepPresentationReady(State, 1, EHeistCrewStatus::Heavy);
+	}, 10.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d clear Heavy presentation weight"), RunIndex), []()
+	{
+		AHeistPlayerState* PlayerState = FindPlayerStateById(GetContractRunServerWorld(), 1);
+		if (!IsValid(PlayerState))
+		{
+			return false;
+		}
+		PlayerState->DebugSetTotalLootWeight(0.0f);
+		return true;
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d Active restored after Heavy presentation"), RunIndex), []()
+	{
+		return IsCrewStatusReplicated(1, EHeistCrewStatus::Active);
+	}, 10.0));
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d move player 1 to shared loose loot"), RunIndex), [State]()
 	{
 		return TeleportServerPlayerIntoInteraction(1, FindLootActor(GetContractRunServerWorld(), State->SelectedLootActorName));
@@ -1615,6 +1832,24 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 		return IsValid(DisplayCase) && DisplayCase->GetDisplayCaseState() == EHeistDisplayCaseState::OriginalRemoved && HasOriginalForCase(1, DisplayCase) &&
 			IsCrewStatusReplicated(1, EHeistCrewStatus::CarryingOriginal);
 	}, 15.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d capture Original-carry footstep presentation baseline"), RunIndex), [State]()
+	{
+		return CaptureCrewStatusFootstepBaseline(State, 1);
+	}));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d play authoritative Original-carry footstep presentation"), RunIndex), []()
+	{
+		AHeistPlayerCharacter* Character = GetServerCharacterById(1);
+		if (!IsValid(Character))
+		{
+			return false;
+		}
+		Character->NotifyAuthoritativeCrewStatusFootstep(false);
+		return true;
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d Original-carry footstep presentation replicated"), RunIndex), [State]()
+	{
+		return IsCrewStatusFootstepPresentationReady(State, 1, EHeistCrewStatus::CarryingOriginal);
+	}, 10.0));
 
 	const int32 AssemblyCaseCount = FMath::Min(3, State->PlayerCount);
 	for (int32 AssemblyIndex = 0; AssemblyIndex < AssemblyCaseCount; ++AssemblyIndex)
@@ -1959,7 +2194,7 @@ bool EnqueueTwoRunContractScenario(FAutomationTestBase* Test, const int32 Player
 				const UHeistGameInstance* GameInstance = IsValid(ServerWorld) ? Cast<UHeistGameInstance>(ServerWorld->GetGameInstance()) : nullptr;
 				return AreContractRunWorldsReady(State->PlayerCount, EHeistMatchPhase::Lobby, false) && IsLobbyStateClean(State->PlayerCount) && IsValid(GameInstance) &&
 					GameInstance->HasActiveNamedOnlineSession();
-			}, 75.0));
+			}, 75.0, [State]() { return DescribeLobbyStateClean(State->PlayerCount); }));
 		}
 	}
 

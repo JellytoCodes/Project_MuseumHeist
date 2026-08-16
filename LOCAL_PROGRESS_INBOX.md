@@ -1,6 +1,6 @@
 # Project_MuseumHeist Local Progress Inbox
 
-최종 갱신: 2026-08-15 KST
+최종 갱신: 2026-08-16 KST
 
 이 문서는 Notion에 아직 연결되지 않았거나 반영되지 않은 실질 작업을 잃지 않기 위한 Reconciliation Queue다.
 
@@ -29,6 +29,41 @@ NO_TASK_REQUIRED
 ---
 
 ## Active Queue
+
+### LOCAL-20260816-02 — W7 Final Presentation Verification
+
+- State: `READY_TO_SYNC`
+- Created: `2026-08-16 KST`
+- Notion Relations:
+  - [`TASK-W7-004`](https://app.notion.com/p/3ad1d26a5dfb81ceaf09d805b0435905)
+  - [`TASK-W7-005`](https://app.notion.com/p/3ad1d26a5dfb812c80d5f37473fed9ab)
+  - [`TASK-W7-006`](https://app.notion.com/p/3ad1d26a5dfb81beb59afc7f124fca89)
+- Last Live Status: `진행중` / 로컬 증거 상태 판정 대기
+
+#### Applied Work
+
+- 실제 `WBP_HeistHUD` Tree에 `StunOverlay`, `StunCountdownText`, `ArrestOverlay`, `ArrestTitleText`, `ArrestInstructionText`를 추가하고 기존 Widget Size는 변경하지 않았다.
+- Stun Vignette·Low-pass, Arrest/Rescue Edge Audio, Carry/Heavy Icon·Spatial One-shot Audio와 Match/Lobby Cleanup을 구현했다.
+- 2P TwoRuns Lobby Reset 실패는 지연 생성되는 `ResultWidget=null`을 정상 Lobby 상태로 허용하도록 Test Fixture를 수정해 Production 계약과 일치시켰다.
+
+#### Evidence
+
+```text
+HUD Actual Widget Tree       PASS / Saved/Logs/W7-FinalPresentation-HUDTreeSync2.log
+2P Presentation TwoRuns      PASS / Saved/Automation/W7-FinalPresentation-2P-PostLobbyFix/index.json
+2P Presentation Log          PASS / Saved/Logs/W7-FinalPresentation-2P-PostLobbyFix.log
+Full Regression              PASS / 27/27 / Failed 0 / Warning 0 / NotRun 0
+Full Regression Report       Saved/Automation/W7-FinalPresentation-FullRegression/index.json
+Full Regression Log          Saved/Logs/W7-FinalPresentation-FullRegression.log
+```
+
+#### Status Boundary
+
+- `TASK-W7-005`는 로컬 구현·자동화 증거가 완료됐지만 Notion 완료 기준 대조와 상태 판정 전에는 완료로 단정하지 않는다.
+- Editor 실제 확인 결과 `BP_HeistPlayerCharacter`는 `SkeletalCube` 기반 Data-only Blueprint이고 `Anim Class=None`이다.
+- 따라서 `TASK-W7-004`·`006`의 Remote Stun/Carry/Heavy Pose는 실제 Character/AnimBP Asset 결정 전 완료할 수 없다.
+
+---
 
 ### LOCAL-20260809-01
 
@@ -96,6 +131,45 @@ Notion Write            NOT DONE
 ---
 
 ## Reconciled Archive
+
+### LOCAL-20260816-01 — Legacy Cleanup / Post-Verify Strict Fresh Package
+
+- State: `RECONCILED`
+- Created / Reconciled: `2026-08-16 KST`
+- Notion Relation: [`TASK-W9-007`](https://app.notion.com/p/39a1d26a5dfb8192940dd5cdee4c1a07)
+- Notion Status: `진행중` / 검증 증거 반영 후 Live Re-fetch 확인
+
+#### Applied Work
+
+- 구 경쟁형 Score/Result, Rare Loot Runtime, Forgery Timeout/Inspection Alert shell, 빈 Tag/Customization Component와 obsolete Prototype/Data Row를 제거했다.
+- Redirector와 옛 Serialized Path를 Canonical Asset으로 Fix Up하고 Release Map을 재저장했다.
+- 패키징 스크립트에 기존 Output 정리와 구분되는 명시적 `-CleanCook` 옵션을 추가했다.
+- Development Game에서 `WITH_METADATA=0`인 경우에도 Nameplate Test가 컴파일되도록 Metadata assertion만 조건부로 제한했다.
+- W7 Footstep 자동화의 Sprint가 Walk 경로를 역방향으로 되짚도록 해 맵 Geometry 의존 Flake를 제거했다.
+
+#### Evidence
+
+```text
+UE 5.8.1 Launcher Verify          PASS / 656 files / 40,274,808 bytes restored
+Post-Verify Editor Build          PASS
+Post-Verify Full Regression       PASS / 27/27 / Failed 0 / NotRun 0
+Nameplate Post-Game Guard         PASS / 1/1
+Strict Fresh Development Cook     PASS / UAT -clean / 5 maps
+Package Validator                 PASS / Version 0.5.0 / Development
+Packaged HeistBuildDump           PASS / Windows / Cooked / STEAM / SessionBuild 55116800
+Cooked Legacy Project Paths       0
+Cooked StarterContent Footprint   57 chunks / 40.69 MiB
+Notion Live Re-fetch              PASS
+```
+
+#### Remaining Scope
+
+- M01/M03 원화의 Global Distribution 권리 근거를 보완한다.
+- `T_Forgery_SunArchWave` provenance를 기록한다.
+- StarterContent 배포 약관 근거와 TENADA OFL/Notice를 Release Package에 포함한다.
+- 위 권리·Notice Gate가 남아 있으므로 Notion Task는 완료가 아니라 `진행중`을 유지한다.
+
+---
 
 ### LOCAL-20260815-02 — W7 Team Readability Foundation And Integration Gate
 

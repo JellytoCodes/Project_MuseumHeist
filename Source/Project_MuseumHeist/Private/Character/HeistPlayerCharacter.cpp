@@ -9,6 +9,7 @@
 #include "Character/Components/HeistStatusComponent.h"
 #include "Character/Components/HeistVisionComponent.h"
 #include "Camera/CameraComponent.h"
+#include "Components/AudioComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/SphereComponent.h"
@@ -22,7 +23,11 @@
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "Engine/SkeletalMesh.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
+#include "Sound/SoundAttenuation.h"
+#include "Sound/SoundBase.h"
+#include "Sound/SoundMix.h"
 #include "UI/Widgets/HeistNameplateWidget.h"
 
 #pragma region Construction
@@ -43,6 +48,18 @@ AHeistPlayerCharacter::AHeistPlayerCharacter()
 	ObjectAssemblyComponent = CreateDefaultSubobject<UHeistObjectAssemblyComponent>(TEXT("ObjectAssemblyComponent"));
 	VisionComponent = CreateDefaultSubobject<UHeistVisionComponent>(TEXT("VisionComponent"));
 	NoiseEmitterComponent = CreateDefaultSubobject<UHeistNoiseEmitterComponent>(TEXT("NoiseEmitterComponent"));
+	CrewStatusFootstepAudioComponent = CreateDefaultSubobject<UAudioComponent>(TEXT("CrewStatusFootstepAudioComponent"));
+	CrewStatusFootstepAudioComponent->SetupAttachment(GetRootComponent());
+	CrewStatusFootstepAudioComponent->bAutoActivate = false;
+	CrewStatusFootstepAudioComponent->bAllowSpatialization = true;
+	CrewStatusFootstepAudioComponent->bOverrideAttenuation = true;
+	FSoundAttenuationSettings CrewStatusAttenuation;
+	CrewStatusAttenuation.bAttenuate = true;
+	CrewStatusAttenuation.bSpatialize = true;
+	CrewStatusAttenuation.AttenuationShape = EAttenuationShape::Sphere;
+	CrewStatusAttenuation.AttenuationShapeExtents = FVector(150.0f, 0.0f, 0.0f);
+	CrewStatusAttenuation.FalloffDistance = 850.0f;
+	CrewStatusFootstepAudioComponent->SetAttenuationOverrides(CrewStatusAttenuation);
 	RescueInteractionTarget = CreateDefaultSubobject<USphereComponent>(TEXT("RescueInteractionTarget"));
 	RescueInteractionTarget->SetupAttachment(GetCapsuleComponent());
 	RescueInteractionTarget->SetSphereRadius(60.0f);
@@ -85,6 +102,7 @@ void AHeistPlayerCharacter::BeginPlay()
 	checkf(IsValid(ObjectAssemblyComponent), TEXT("HeistPlayerCharacter requires HeistObjectAssemblyComponent"));
 	checkf(IsValid(VisionComponent), TEXT("HeistPlayerCharacter requires HeistVisionComponent"));
 	checkf(IsValid(NoiseEmitterComponent), TEXT("HeistPlayerCharacter requires HeistNoiseEmitterComponent"));
+	checkf(IsValid(CrewStatusFootstepAudioComponent), TEXT("HeistPlayerCharacter requires CrewStatusFootstepAudioComponent"));
 	checkf(IsValid(RescueInteractionTarget), TEXT("HeistPlayerCharacter requires RescueInteractionTarget"));
 	checkf(IsValid(NameplateWidgetComponent), TEXT("HeistPlayerCharacter requires NameplateWidgetComponent"));
 	checkf(IsValid(GetMesh()), TEXT("HeistPlayerCharacter requires a Full Body SkeletalMeshComponent"));
@@ -123,6 +141,7 @@ void AHeistPlayerCharacter::BeginPlay()
 	InventoryComponent->GetInventoryChangedDelegate().AddUObject(this, &AHeistPlayerCharacter::HandleInventoryStateForCrewStatus);
 	ForgeryComponent->GetSessionStateChangedDelegate().AddUObject(this, &AHeistPlayerCharacter::HandleForgeryStateForCrewStatus);
 	ObjectAssemblyComponent->GetSessionStateChangedDelegate().AddUObject(this, &AHeistPlayerCharacter::HandleAssemblyStateForCrewStatus);
+	BindPresentationGameState();
 	RefreshAuthoritativeCrewStatus();
 	RefreshNameplatePresentation();
 
@@ -133,6 +152,41 @@ void AHeistPlayerCharacter::BeginPlay()
 		*FirstPersonCamera->GetAttachSocketName().ToString(), *FirstPersonCamera->GetRelativeLocation().ToCompactString(), FirstPersonCamera->FieldOfView,
 		FirstPersonCamera->bUsePawnControlRotation ? TEXT("true") : TEXT("false"), bUseControllerRotationYaw ? TEXT("true") : TEXT("false"),
 		GetCharacterMovement()->bOrientRotationToMovement ? TEXT("true") : TEXT("false"), GetMesh()->IsVisible() ? TEXT("true") : TEXT("false"), GetMesh()->CastShadow ? TEXT("true") : TEXT("false"));
+}
+
+void AHeistPlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (BoundPresentationGameState.IsValid())
+	{
+		BoundPresentationGameState->GetMatchPhaseChangedDelegate().RemoveAll(this);
+	}
+	if (BoundPresentationPlayerState.IsValid())
+	{
+		BoundPresentationPlayerState->GetCrewStatusChangedDelegate().RemoveAll(this);
+	}
+	BoundPresentationPlayerState.Reset();
+	ResetCrewStatusPresentation();
+	Super::EndPlay(EndPlayReason);
+}
+
+void AHeistPlayerCharacter::PawnClientRestart()
+{
+	Super::PawnClientRestart();
+	BindPresentationGameState();
+	RefreshNameplatePresentation();
+	const AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
+	ApplyCrewStatusPresentation(IsValid(HeistPlayerState) ? HeistPlayerState->GetCrewStatus() : EHeistCrewStatus::Active);
+}
+
+void AHeistPlayerCharacter::UnPossessed()
+{
+	if (BoundPresentationPlayerState.IsValid())
+	{
+		BoundPresentationPlayerState->GetCrewStatusChangedDelegate().RemoveAll(this);
+		BoundPresentationPlayerState.Reset();
+	}
+	ResetCrewStatusPresentation();
+	Super::UnPossessed();
 }
 
 #pragma endregion
@@ -359,6 +413,32 @@ void AHeistPlayerCharacter::OnRep_PlayerState()
 	RefreshNameplatePresentation();
 }
 
+void AHeistPlayerCharacter::OnPlayerStateChanged(APlayerState* NewPlayerState, APlayerState* OldPlayerState)
+{
+	Super::OnPlayerStateChanged(NewPlayerState, OldPlayerState);
+	if (AHeistPlayerState* OldHeistPlayerState = Cast<AHeistPlayerState>(OldPlayerState))
+	{
+		OldHeistPlayerState->GetCrewStatusChangedDelegate().RemoveAll(this);
+	}
+	BoundPresentationPlayerState.Reset();
+	RefreshNameplatePresentation();
+}
+
+void AHeistPlayerCharacter::OnRep_Controller()
+{
+	Super::OnRep_Controller();
+	RefreshNameplatePresentation();
+	if (!IsLocallyControlled())
+	{
+		SetLocalStunPostProcessEnabled(false);
+		return;
+	}
+
+	BindPresentationGameState();
+	const AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
+	ApplyCrewStatusPresentation(IsValid(HeistPlayerState) ? HeistPlayerState->GetCrewStatus() : EHeistCrewStatus::Active);
+}
+
 void AHeistPlayerCharacter::RefreshNameplatePresentation()
 {
 	if (!IsValid(NameplateWidgetComponent))
@@ -375,17 +455,185 @@ void AHeistPlayerCharacter::RefreshNameplatePresentation()
 	{
 		NameplateWidget->SetupPlayerState(GetPlayerState<AHeistPlayerState>());
 	}
-	if (AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>())
+	AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
+	if (BoundPresentationPlayerState.Get() != HeistPlayerState)
 	{
-		HeistPlayerState->GetCrewStatusChangedDelegate().RemoveAll(this);
-		HeistPlayerState->GetCrewStatusChangedDelegate().AddUObject(this, &AHeistPlayerCharacter::HandleReplicatedCrewStatus);
+		if (BoundPresentationPlayerState.IsValid())
+		{
+			BoundPresentationPlayerState->GetCrewStatusChangedDelegate().RemoveAll(this);
+		}
+		BoundPresentationPlayerState = HeistPlayerState;
+		if (IsValid(HeistPlayerState))
+		{
+			HeistPlayerState->GetCrewStatusChangedDelegate().AddUObject(this, &AHeistPlayerCharacter::HandleReplicatedCrewStatus);
+		}
+	}
+	if (IsValid(HeistPlayerState))
+	{
 		HandleReplicatedCrewStatus(HeistPlayerState->GetCrewStatus());
 	}
 }
 
 void AHeistPlayerCharacter::HandleReplicatedCrewStatus(const EHeistCrewStatus CrewStatus)
 {
-	BP_ApplyCrewStatusPresentation(CrewStatus);
+	ApplyCrewStatusPresentation(CrewStatus);
+}
+
+void AHeistPlayerCharacter::BindPresentationGameState()
+{
+	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	if (BoundPresentationGameState.Get() == HeistGameState)
+	{
+		return;
+	}
+	if (BoundPresentationGameState.IsValid())
+	{
+		BoundPresentationGameState->GetMatchPhaseChangedDelegate().RemoveAll(this);
+	}
+	BoundPresentationGameState = HeistGameState;
+	if (IsValid(HeistGameState))
+	{
+		HeistGameState->GetMatchPhaseChangedDelegate().AddUObject(this, &AHeistPlayerCharacter::HandlePresentationMatchPhaseChanged);
+	}
+}
+
+void AHeistPlayerCharacter::HandlePresentationMatchPhaseChanged(const EHeistMatchPhase, const EHeistMatchPhase NewMatchPhase)
+{
+	if (NewMatchPhase != EHeistMatchPhase::InGame)
+	{
+		ResetCrewStatusPresentation();
+		return;
+	}
+	const AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
+	ApplyCrewStatusPresentation(IsValid(HeistPlayerState) ? HeistPlayerState->GetCrewStatus() : EHeistCrewStatus::Active);
+}
+
+void AHeistPlayerCharacter::ApplyCrewStatusPresentation(const EHeistCrewStatus CrewStatus)
+{
+	BindPresentationGameState();
+	const AHeistGameState* HeistGameState = BoundPresentationGameState.Get();
+	const EHeistCrewStatus PresentationStatus = IsValid(HeistGameState) && HeistGameState->GetMatchPhase() == EHeistMatchPhase::InGame ? CrewStatus : EHeistCrewStatus::Active;
+	const EHeistCrewStatus PreviousPresentationStatus = AppliedCrewStatusPresentation;
+	AppliedCrewStatusPresentation = PresentationStatus;
+
+	SetLocalStunPostProcessEnabled(PresentationStatus == EHeistCrewStatus::Stunned);
+	if (PresentationStatus != EHeistCrewStatus::CarryingOriginal && PresentationStatus != EHeistCrewStatus::Heavy &&
+		(PreviousPresentationStatus == EHeistCrewStatus::CarryingOriginal || PreviousPresentationStatus == EHeistCrewStatus::Heavy) && IsValid(CrewStatusFootstepAudioComponent))
+	{
+		CrewStatusFootstepAudioComponent->Stop();
+	}
+	BP_ApplyCrewStatusPresentation(PresentationStatus);
+}
+
+void AHeistPlayerCharacter::ResetCrewStatusPresentation()
+{
+	SetLocalStunPostProcessEnabled(false);
+	if (IsValid(CrewStatusFootstepAudioComponent))
+	{
+		CrewStatusFootstepAudioComponent->Stop();
+	}
+	AppliedCrewStatusPresentation = EHeistCrewStatus::Active;
+	BP_ApplyCrewStatusPresentation(EHeistCrewStatus::Active);
+}
+
+void AHeistPlayerCharacter::SetLocalStunPostProcessEnabled(const bool bEnabled)
+{
+	if (bEnabled && (!IsLocallyControlled() || !IsValid(FirstPersonCamera)))
+	{
+		return;
+	}
+	if (bEnabled == bLocalStunPostProcessEnabled && (bEnabled || (!bStunPostProcessSnapshotValid && !bStunSoundMixPushed)))
+	{
+		return;
+	}
+
+	if (bEnabled)
+	{
+		FPostProcessSettings& Settings = FirstPersonCamera->PostProcessSettings;
+		bSavedOverrideColorSaturation = Settings.bOverride_ColorSaturation;
+		bSavedOverrideVignetteIntensity = Settings.bOverride_VignetteIntensity;
+		SavedColorSaturation = Settings.ColorSaturation;
+		SavedVignetteIntensity = Settings.VignetteIntensity;
+		SavedPostProcessBlendWeight = FirstPersonCamera->PostProcessBlendWeight;
+		bStunPostProcessSnapshotValid = true;
+
+		Settings.bOverride_ColorSaturation = true;
+		Settings.ColorSaturation = FVector4(0.45f, 0.45f, 0.45f, 1.0f);
+		Settings.bOverride_VignetteIntensity = true;
+		Settings.VignetteIntensity = 0.60f;
+		FirstPersonCamera->PostProcessBlendWeight = 1.0f;
+		if (IsValid(StunSoundMix) && !bStunSoundMixPushed)
+		{
+			UGameplayStatics::PushSoundMixModifier(this, StunSoundMix);
+			bStunSoundMixPushed = true;
+		}
+	}
+	else
+	{
+		if (bStunPostProcessSnapshotValid && IsValid(FirstPersonCamera))
+		{
+			FPostProcessSettings& Settings = FirstPersonCamera->PostProcessSettings;
+			Settings.bOverride_ColorSaturation = bSavedOverrideColorSaturation;
+			Settings.ColorSaturation = SavedColorSaturation;
+			Settings.bOverride_VignetteIntensity = bSavedOverrideVignetteIntensity;
+			Settings.VignetteIntensity = SavedVignetteIntensity;
+			FirstPersonCamera->PostProcessBlendWeight = SavedPostProcessBlendWeight;
+			bStunPostProcessSnapshotValid = false;
+		}
+		if (bStunSoundMixPushed && IsValid(StunSoundMix))
+		{
+			UGameplayStatics::PopSoundMixModifier(this, StunSoundMix);
+		}
+		bStunSoundMixPushed = false;
+	}
+	bLocalStunPostProcessEnabled = bEnabled;
+}
+
+void AHeistPlayerCharacter::NotifyAuthoritativeCrewStatusFootstep(const bool bSprintingPace)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	const AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
+	if (!IsValid(HeistPlayerState))
+	{
+		return;
+	}
+	const EHeistCrewStatus CrewStatus = HeistPlayerState->GetCrewStatus();
+	if (CrewStatus == EHeistCrewStatus::CarryingOriginal || CrewStatus == EHeistCrewStatus::Heavy)
+	{
+		Multicast_PlayCrewStatusFootstep(CrewStatus, bSprintingPace);
+	}
+}
+
+void AHeistPlayerCharacter::Multicast_PlayCrewStatusFootstep_Implementation(const EHeistCrewStatus CrewStatus, const bool bSprintingPace)
+{
+	if (!IsValid(CrewStatusFootstepAudioComponent))
+	{
+		return;
+	}
+	USoundBase* CrewStatusSound = CrewStatus == EHeistCrewStatus::CarryingOriginal ? CarryingOriginalFootstepSound.Get() :
+		(CrewStatus == EHeistCrewStatus::Heavy ? HeavyFootstepSound.Get() : nullptr);
+	if (!IsValid(CrewStatusSound))
+	{
+		return;
+	}
+	CrewStatusFootstepAudioComponent->Stop();
+	CrewStatusFootstepAudioComponent->SetSound(CrewStatusSound);
+	CrewStatusFootstepAudioComponent->SetPitchMultiplier(bSprintingPace ? 1.08f : 1.0f);
+	CrewStatusFootstepAudioComponent->Play();
+	++CrewStatusFootstepPlayCount;
+}
+
+bool AHeistPlayerCharacter::AreCrewStatusAudioAssetsAssignedForDebug() const
+{
+	return IsValid(StunSoundMix) && IsValid(CarryingOriginalFootstepSound) && IsValid(HeavyFootstepSound);
+}
+
+bool AHeistPlayerCharacter::IsCrewStatusAudioPlayingForDebug() const
+{
+	return IsValid(CrewStatusFootstepAudioComponent) && CrewStatusFootstepAudioComponent->IsPlaying();
 }
 
 void AHeistPlayerCharacter::HandleInventoryStateForCrewStatus()
@@ -435,7 +683,7 @@ void AHeistPlayerCharacter::RefreshAuthoritativeCrewStatus()
 	}
 	if (IsValid(HeistPlayerState))
 	{
-		BP_ApplyCrewStatusPresentation(HeistPlayerState->GetCrewStatus());
+		ApplyCrewStatusPresentation(HeistPlayerState->GetCrewStatus());
 	}
 }
 
