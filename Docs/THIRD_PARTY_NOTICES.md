@@ -1,6 +1,6 @@
 # Project Museum Heist - Third-Party Notices Index
 
-Baseline: 2026-08-16
+Baseline: 2026-08-17
 Related manifest: [SHIPPING_ASSET_MANIFEST.md](SHIPPING_ASSET_MANIFEST.md)
 
 This file is a durable index to source and license evidence for project-added content. It does not replace official license texts, Unreal Engine generated notices, or legal review. Status descriptions report what is present locally; they do not assert worldwide copyright or license validity.
@@ -9,7 +9,7 @@ This file is a durable index to source and license evidence for project-added co
 
 - Component: TENADA Korean display font
 - Project use: UI headings and primary display typography
-- Runtime assets: `Content/Blueprints/UI/Fonts/FF_TENADA.uasset`, `Content/Blueprints/UI/Fonts/F_TENADA.uasset`
+- Runtime assets: `Content/Assets/UI/Fonts/FF_TENADA.uasset`, `Content/Assets/UI/Fonts/F_TENADA.uasset`
 - Source font: [Tenada.ttf](../SourceArt/UI/Fonts/TENADA/Tenada.ttf)
 - Upstream page recorded by the project: <https://en.tenada.co.kr/Font>
 - Project source record: [SourceArt/UI/Fonts/TENADA/README.md](../SourceArt/UI/Fonts/TENADA/README.md)
@@ -43,6 +43,17 @@ The fallback texture `T_Forgery_SunArchWave` has durable import metadata at [T_F
 
 Before release, add a dated reference to the official Epic/Unreal terms reviewed for packaged game distribution and record who performed the review. This file intentionally does not invent a license name or URL from the folder name alone.
 
+## Epic UE5 Mannequins
+
+- Local content root: `Content/Assets/Mannequins/`
+- Installed source pack: `D:/UE_5.8/Templates/TemplateResources/High/Characters/Content/Mannequins/`
+- Identified pack: UE 5.8 `Mannequin shared resource high` (Manny/Quinn)
+- Confirmed project use: `SKM_Manny_Simple` full-body player mesh and `ABP_Unarmed` baseline locomotion
+- Local official license text or reviewed terms snapshot: not present
+- Applicable terms review: `PENDING`
+
+The local 128-file pack matches the installed UE 5.8 template resource by filename. Review and record the applicable Epic/Unreal terms together with StarterContent before release sign-off; this index does not infer a separate license from the pack name.
+
 ## Project-Original Assets Recorded Outside This Notice
 
 The following assets are currently documented as project-original rather than third-party. Their source records are linked here so the exclusion is auditable.
@@ -64,6 +75,7 @@ Complete these fields during the release candidate audit:
 - Package date: `PENDING`
 - TENADA notice/license shipped location: `PENDING`
 - Epic StarterContent terms reference and review date: `PENDING`
+- Epic UE5 Mannequin terms reference and review date: `PENDING`
 - M01 rights review result: `BLOCKED`
 - M03 global-scope review result: `BLOCKED`
 - Surface fallback texture provenance: `BLOCKED`

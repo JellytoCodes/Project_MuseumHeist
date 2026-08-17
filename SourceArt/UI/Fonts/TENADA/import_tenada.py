@@ -6,7 +6,7 @@ import unreal
 SOURCE_FILE = os.path.normpath(
     os.path.join(unreal.Paths.project_dir(), "SourceArt", "UI", "Fonts", "TENADA", "Tenada.ttf")
 )
-DESTINATION_PATH = "/Game/Blueprints/UI/Fonts"
+DESTINATION_PATH = "/Game/Assets/UI/Fonts"
 FONT_FACE_PATH = f"{DESTINATION_PATH}/FF_TENADA"
 COMPOSITE_FONT_PATH = f"{DESTINATION_PATH}/F_TENADA"
 BASE_COMPOSITE_FONT_PATH = f"{DESTINATION_PATH}/F_HeistKorean"
@@ -45,7 +45,7 @@ def create_composite_font(font_face):
         "/Game/Blueprints/UI/Fonts/FF_HeistKorean_Regular."
         "FF_HeistKorean_Regular"
     )
-    new_face = "/Game/Blueprints/UI/Fonts/FF_TENADA.FF_TENADA"
+    new_face = "/Game/Assets/UI/Fonts/FF_TENADA.FF_TENADA"
     if old_face not in composite_text and new_face not in composite_text:
         raise RuntimeError("Unexpected base composite font structure")
 

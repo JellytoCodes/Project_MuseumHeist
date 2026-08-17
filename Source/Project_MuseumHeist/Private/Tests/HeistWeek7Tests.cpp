@@ -44,10 +44,10 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistWeek7InputAssetContractTest, "ProjectMuse
 
 bool FHeistWeek7InputAssetContractTest::RunTest(const FString& Parameters)
 {
-	const UInputAction* SprintAction = LoadObject<UInputAction>(nullptr, TEXT("/Game/Blueprints/Player/Input/IA_Sprint.IA_Sprint"));
-	const UInputAction* MapAction = LoadObject<UInputAction>(nullptr, TEXT("/Game/Blueprints/Player/Input/IA_Map.IA_Map"));
-	const UInputMappingContext* GameplayContext = LoadObject<UInputMappingContext>(nullptr, TEXT("/Game/Blueprints/Player/Input/IMC_Default.IMC_Default"));
-	const UInputMappingContext* MapContext = LoadObject<UInputMappingContext>(nullptr, TEXT("/Game/Blueprints/Player/Input/IMC_Map.IMC_Map"));
+	const UInputAction* SprintAction = LoadObject<UInputAction>(nullptr, TEXT("/Game/Assets/Input/IA_Sprint.IA_Sprint"));
+	const UInputAction* MapAction = LoadObject<UInputAction>(nullptr, TEXT("/Game/Assets/Input/IA_Map.IA_Map"));
+	const UInputMappingContext* GameplayContext = LoadObject<UInputMappingContext>(nullptr, TEXT("/Game/Assets/Input/IMC_Default.IMC_Default"));
+	const UInputMappingContext* MapContext = LoadObject<UInputMappingContext>(nullptr, TEXT("/Game/Assets/Input/IMC_Map.IMC_Map"));
 	TestNotNull(TEXT("IA_Sprint exists"), SprintAction);
 	TestNotNull(TEXT("IA_Map exists"), MapAction);
 	TestNotNull(TEXT("IMC_Default exists"), GameplayContext);

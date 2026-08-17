@@ -17,7 +17,7 @@ namespace
 {
 FSlateFontInfo MakeNameplateTenadaFont(const int32 Size)
 {
-	static UObject* TenadaFont = LoadObject<UObject>(nullptr, TEXT("/Game/Blueprints/UI/Fonts/F_TENADA.F_TENADA"));
+	static UObject* TenadaFont = LoadObject<UObject>(nullptr, TEXT("/Game/Assets/UI/Fonts/F_TENADA.F_TENADA"));
 	return FSlateFontInfo(TenadaFont, Size);
 }
 }

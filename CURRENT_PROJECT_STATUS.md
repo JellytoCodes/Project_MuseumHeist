@@ -1,6 +1,6 @@
 # Project_MuseumHeist Current Project Status
 
-최종 갱신: 2026-08-16 KST
+최종 갱신: 2026-08-17 KST
 현재 문서 Revision: 13
 
 이 문서는 새 Codex 작업이 Notion의 최신 진행 상태와 로컬 구현·검증 증거를 바로 이어받기 위한 오프라인 실행 캐시다.
@@ -20,7 +20,7 @@
 - [테스트 로그](https://app.notion.com/p/ec9727a40d9541e6a2e4ee6096b1c678)  
   Data Source: `collection://2f308111-75f1-4b68-bd45-f94361e855af`
 
-마지막 라이브 재조회: `2026-08-16 KST`
+마지막 라이브 재조회: `2026-08-17 KST`
 
 ```text
 TASK-W6-000  완료    Contract Foundation / Required Target / Loot Value Quota
@@ -35,9 +35,9 @@ W6 Gate      Pass    Contract Run Feature Complete
 TASK-W7-001  완료    1P·2P·4P Guard Scaling / TwoRuns / 밸런스 표
 TASK-W7-002  완료    Remote Nameplate / Crew Status 실제 WBP 4P 동기화
 TASK-W7-003  완료    Main HUD Team Status
-TASK-W7-004  진행중  Stun 화면·오디오 구현/자동화 완료, Remote Stun Pose Asset 차단
-TASK-W7-005  진행중  Arrest / Rescue 최종 UI·오디오 및 자동화 완료, Notion 완료 판정 대기
-TASK-W7-006  진행중  Carry / Heavy Icon·Audio 구현/자동화 완료, Remote Pose Asset 차단
+TASK-W7-004  진행중  Stun 화면·오디오 구현/자동화 완료, Manny Remote Stun Pose 연결·실화면 확인 잔여
+TASK-W7-005  진행중  Arrest / Rescue UI·오디오 및 자동화 완료, 2P 실제 화면·청음 확인 잔여
+TASK-W7-006  진행중  Carry / Heavy Icon·Audio 구현/자동화 완료, Manny Remote Pose 연결·실화면 확인 잔여
 TASK-W7-007  완료    Owner-only Floor Plan Map / Marker 정책 / Stun Cleanup
 TASK-W7-008  완료    2P 실제 이동 입력 / Footstep→Guard Investigate 복제
 TASK-W7-009  완료    Alert 0~4 HUD·음악 / Alarmed 서버 강제 종료
@@ -58,29 +58,35 @@ TEST-W7-002  Pass  Player Count Guard Scaling + 2P Footstep Guard Investigation
 TEST-W7-003  Pass  Remote Nameplate / Team Status 실제 WBP 4P 동기화
 TEST-W7-004  Pass  Owner-only Floor Plan Map / 입력·정보정책·강제 Cleanup
 TEST-W7-005  Pass  Alert 0~4 HUD / 음악 / Alarmed 서버 강제 종료
+TEST-W7-006  Pass  Stun·Arrest/Rescue·Carry/Heavy 자동 Presentation 계약 / 2P TwoRuns / Lobby Cleanup
 ```
 
 ---
 
 ## 1. Current Focus
 
-W7는 팀 가독성과 협동 피드백의 C++/복제/Input 기반과 Stun/Arrest/Carry 최종 HUD·Icon·Audio 구현을 마쳤다. 실제 HUD Widget Tree 동기화 후 2P TwoRuns와 전체 27/27 자동화를 통과했다. 현재 W7 마감 대상은 `TASK-W7-005`의 Notion 완료 판정과, `TASK-W7-004`·`006`의 실제 Remote Stun/Carry/Heavy Pose를 만들 Character/AnimBP Asset 결정이다.
+W7는 팀 가독성과 협동 피드백의 C++/복제/Input 기반과 Stun/Arrest/Carry 최종 HUD·Icon·Audio 구현을 마쳤다. 실제 HUD Widget Tree 동기화 후 2P TwoRuns와 전체 27/27 자동화를 통과했다. 2026-08-17 UE5 Manny와 `ABP_Unarmed`를 임시 Character/AnimBP 베이스로 연결했고, `/Game/Blueprints`의 Non-Blueprint Asset 29개를 `/Game/Assets`로 이동해 폴더 경계를 정리했다. 현재 W7 마감 대상은 `TASK-W7-004`·`006`의 실제 Remote Stun/Carry/Heavy Pose 연결과 `TASK-W7-004~006`의 2P 실제 화면·청음 확인이다.
 
 ```text
 Editor Build        PASS / Win64 Development
-Full Automation     PASS / 27 total / Failed 0 / Warning 0 / NotRun 0
+Full Automation     PASS / 27 Success / WithWarnings 7 / Failed 0 / NotRun 0
 Solo ContractRun    PASS / 2 consecutive runs / clean Lobby reset
 2P Presentation     PASS / 2 consecutive runs / clean Lobby reset / PostLobbyFix
 4P ContractRun      PASS / 2 consecutive runs / clean Lobby reset
 W7 Variation        PASS / real M01·M02·M03 12 rows / deterministic 24 draws
 HUD Widget Tree     PASS / actual StunOverlay·ArrestOverlay·Countdown·Reason nodes
+Asset Boundary      PASS / Blueprints=27 BP·WBP only / NonBlueprintAfter=0 / 29 assets moved
+Manny Base          PASS / SKM_Manny_Simple / ABP_Unarmed / CameraSocket=head
+Manny Editor Build  PASS / Win64 Development / 10 of 10 actions
+W7 Regression       PASS / 10 Success / Failed 0 / NotRun 0 / renderer·audio enabled
+2P Camera Socket    PASS / Host·Client head resolved / FullBody visible / face clipping not observed
 ```
 
 범위 경계:
 
 - NullRHI 자동화는 상태·복제·입력·Widget 생성 계약을 검증하지만 렌더링 화면과 실제 청음을 대신하지 않는다.
-- `TASK-W7-005`는 로컬 구현과 자동화 증거가 완료됐지만 Notion 상태 판정 전에는 완료로 단정하지 않는다.
-- `BP_HeistPlayerCharacter`는 `SkeletalCube` 기반 Data-only Blueprint이며 `Anim Class=None`이다. 따라서 `TASK-W7-004`·`006`의 Remote Pose는 실제 Character/AnimBP Asset 결정 전 완료 처리할 수 없다.
+- `TASK-W7-005`는 로컬 구현·자동화와 Notion 증거 동기화를 완료했지만 실제 2P 화면·청음 확인 전에는 완료로 단정하지 않는다.
+- `BP_HeistPlayerCharacter`는 UE5 `SKM_Manny_Simple`과 `ABP_Unarmed` 베이스로 교체됐다. 다만 `BP_ApplyCrewStatusPresentation`의 실제 Remote Stun/Carry/Heavy Pose Layer는 아직 연결되지 않았으므로 `TASK-W7-004`·`006`은 완료 처리하지 않는다.
 - 실제 2~3분 Escape 리듬은 W8-007로 통합했다.
 - W7 Gate는 아직 닫지 않는다. Notion의 `진행중`/`검토중` Task를 완료 기준별로 마감한 뒤 판단한다.
 
@@ -222,8 +228,8 @@ Warning은 Title/Lobby RecastNavMesh 부재 및 테스트 Guard Noise의 Outside
 3. `LOCAL_PROGRESS_INBOX.md`의 `UNLINKED`/`READY_TO_SYNC` Entry를 확인한다.
 4. `git status --short`와 관련 Diff를 확인한다.
 5. 아래 W7 Final Presentation 증거를 확인하고 이미 통과한 HUD·Icon·Audio 기반을 재구현하지 않는다.
-6. `TASK-W7-005`의 로컬 완료 증거를 Notion 완료 기준과 대조해 상태를 판정한다.
-7. `TASK-W7-004`·`006`은 실제 Character/AnimBP Asset 방향을 확정한 뒤 Remote Stun/Carry/Heavy Pose를 검증한다.
+6. `TASK-W7-005`는 2P 실제 화면·청음 Handoff를 수행한 뒤 Notion 완료 상태를 판정한다.
+7. `TASK-W7-004`·`006`은 연결된 Manny/`ABP_Unarmed` 베이스 위에 Remote Stun/Carry/Heavy Pose Layer를 구현하고 2P에서 검증한다.
 8. W7 Gate 종료 후 W8은 M02 Gameplay 배치 → M03 Gameplay 배치 → M01 Final Pass → 세 맵 Route·Audio·UI 잔여 → 3-Map 9판 Gate 순서로 진행한다.
 9. 이후 `TASK-W9-007`의 배포 권리·Notice 잔여를 재개한다.
 
@@ -263,16 +269,22 @@ HUD Tree      Saved/Logs/W7-FinalPresentation-HUDTreeSync2.log
 2P Log        Saved/Logs/W7-FinalPresentation-2P-PostLobbyFix.log
 Full Final    Saved/Automation/W7-FinalPresentation-FullRegression/index.json
 Full Log      Saved/Logs/W7-FinalPresentation-FullRegression.log
+Boundary      Saved/Logs/Project_MuseumHeist.log / ContentBoundary Errors=0 / NonBlueprintAfter=0
+Manny Setup   Saved/Logs/Project_MuseumHeist.log / W7Mannequin Result=PASS
+Manny Build   Saved/Logs/W7-Mannequin-AssetBoundary-EditorBuild.log
+W7 Regression Saved/Automation/W7-Mannequin-AssetBoundary-Regression/index.json
+W7 Test Log   Saved/Logs/W7-Mannequin-AssetBoundary-Regression.log
 Documents     Museum_Heist_GDD.docx / Museum_Heist_TDD.docx Rev 13 / changed-page Word render PASS
 Balance       Docs/W7_PLAYER_COUNT_BALANCE.md
-Result        W7 Final Presentation 2P TwoRuns + Full 27/27 / Failed 0 / Warning 0 / NotRun 0
-Notion        TASK-W7-004·005·006 진행중 / 최신 로컬 증거 상태 판정 대기
+Result        W7 Final Presentation 2P TwoRuns + Full 27/27 Success / WithWarnings 7 / Failed 0 / NotRun 0
+Notion        2026-08-17 재조회 PASS / Manny·Asset Boundary 증거 동기화 / TASK-W7-004·005·006 진행중
+Test Log      TEST-W7-006 Pass / 자동 계약 범위 / 실제 화면·청음 및 Remote Pose는 Task 잔여로 분리
 ```
 
 ### Remaining Evidence
 
-- W7-005: 로컬 구현·자동화 완료, Notion 완료 기준 대조와 상태 판정 대기
-- W7-004·006: `SkeletalCube` Data-only BP / `Anim Class=None` 때문에 Remote Stun/Carry/Heavy Pose Asset 결정 필요
+- W7-005: 로컬 구현·자동화·Notion 증거 동기화 완료, 2P 실제 화면·청음 확인 필요
+- W7-004·006: Manny/`ABP_Unarmed` 베이스 연결 완료, `BP_ApplyCrewStatusPresentation`의 실제 Remote Stun/Carry/Heavy Pose Layer 및 2P 실화면 확인 필요
 - W8-007: 각 맵 Solo/2P/4P 총 9판에서 실제 2~3분 탐욕/탈출 선택 시점과 15~25분 Contract 지표 기록
 
 ### 2026-08-15 Roadmap Optimization

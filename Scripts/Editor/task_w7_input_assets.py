@@ -1,7 +1,7 @@
 import unreal
 
 
-ROOT = "/Game/Blueprints/Player/Input"
+ROOT = "/Game/Assets/Input"
 
 
 def log(message):

@@ -576,7 +576,7 @@ class FDriveMoveInputCommand final : public IAutomationLatentCommand
 
 		AHeistPlayerController* OwningController = GetOwningControllerById(FootstepPlayerId);
 		UEnhancedPlayerInput* EnhancedPlayerInput = IsValid(OwningController) ? Cast<UEnhancedPlayerInput>(OwningController->PlayerInput) : nullptr;
-		UInputAction* MoveAction = LoadObject<UInputAction>(nullptr, TEXT("/Game/Blueprints/Player/Input/IA_Move.IA_Move"));
+		UInputAction* MoveAction = LoadObject<UInputAction>(nullptr, TEXT("/Game/Assets/Input/IA_Move.IA_Move"));
 		if (!IsValid(EnhancedPlayerInput) || !IsValid(MoveAction))
 		{
 			Test->AddError(TEXT("W7-008 move injection failed: owning EnhancedPlayerInput or IA_Move is missing."));

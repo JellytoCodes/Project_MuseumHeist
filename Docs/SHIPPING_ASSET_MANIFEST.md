@@ -1,8 +1,8 @@
 # Project Museum Heist - Shipping Asset Manifest
 
-Baseline: 2026-08-16
+Baseline: 2026-08-17
 Work item: TASK-W9-007
-Scope: project-added Surface Forgery art, Object Assembly art, TENADA font, W7 floor-plan/audio assets, and Epic StarterContent currently referenced by the project.
+Scope: project-added Surface Forgery art, Object Assembly art, TENADA font, W7 floor-plan/audio assets, and Epic StarterContent/UE5 Mannequin content currently referenced by the project.
 
 This manifest records evidence that exists in the repository or the current workspace. It is not a legal opinion and does not by itself establish that an asset is cleared for every territory or distribution channel. An unlisted asset must not be treated as cleared merely because it is absent from this document.
 
@@ -27,6 +27,7 @@ This manifest records evidence that exists in the repository or the current work
 | W7 floor plans | M01/M02/M03 full-screen map textures | Deterministic generator, three generated PNGs, and project-original declaration | `VERIFIED_LOCAL` | Retain generator, README, and generated sources. |
 | W7 alert audio | Suspense and alarm loops | Deterministic generator, two generated WAVs, and project-original declaration | `VERIFIED_LOCAL` | Retain generator, README, and generated sources. |
 | Epic StarterContent | Graybox architecture and five Loose Loot visual definitions | 264 tracked assets under the Epic StarterContent folder; live map/DataTable references verified | `REVIEW_REQUIRED` | Record the applicable Epic/Unreal content terms, review date, and permitted distribution scope. Do not treat the folder name alone as license evidence. |
+| Epic UE5 Mannequins | Player full-body mesh and baseline locomotion AnimBP | 128 assets copied from the installed UE 5.8 High Mannequin template resource; exact local source pack identified | `REVIEW_REQUIRED` | Record the applicable Epic/Unreal content terms, review date, and permitted distribution scope together with StarterContent. |
 
 ## Surface Forgery Art
 
@@ -72,7 +73,7 @@ Release blocker: do not convert the US-only wording into a global public-domain 
 - Runtime asset: `Content/Data/Forgery/Textures/T_Forgery_SunArchWave.uasset`
 - Durable metadata: [T_Forgery_SunArchWave.asset.json](../SourceArt/Forgery/T_Forgery_SunArchWave.asset.json)
 - Local source named by the metadata: `SourceArt/Forgery/T_Forgery_SunArchWave.png`
-- Runtime consumers include the painting surface material under `Content/Blueprints/World/Actors/Loot/Materials/`.
+- Runtime consumers include the painting surface material under `Content/Assets/Art/SurfaceForgery/Materials/`.
 
 The PNG exists in the current workspace but is excluded by the repository's `SourceArt/**/*.png` ignore rule. The metadata records palette and import behavior but no creator, external source, or rights statement. Treat this as unresolved until provenance is recorded.
 
@@ -87,7 +88,7 @@ The local README states that the geometry is project-generated procedural source
 
 ## TENADA Font
 
-- Runtime assets: `Content/Blueprints/UI/Fonts/FF_TENADA.uasset` and `F_TENADA.uasset`
+- Runtime assets: `Content/Assets/UI/Fonts/FF_TENADA.uasset` and `F_TENADA.uasset`
 - Local source font: [Tenada.ttf](../SourceArt/UI/Fonts/TENADA/Tenada.ttf)
 - Project record: [TENADA README](../SourceArt/UI/Fonts/TENADA/README.md)
 - Preserved upstream notice and license: [reedme_tenada_font.pdf](../SourceArt/UI/Fonts/TENADA/reedme_tenada_font.pdf)
@@ -107,11 +108,11 @@ The preserved PDF contains an author note and the full SIL Open Font License 1.1
   - `SourceArt/W7/Generated/SW_HeistSuspenseLoop.wav`
   - `SourceArt/W7/Generated/SW_HeistAlarmLoop.wav`
 - Runtime outputs:
-  - `Content/Blueprints/UI/Map/T_FloorPlan_M01.uasset`
-  - `Content/Blueprints/UI/Map/T_FloorPlan_M02.uasset`
-  - `Content/Blueprints/UI/Map/T_FloorPlan_M03.uasset`
-  - `Content/Blueprints/Audio/W7/SW_HeistSuspenseLoop.uasset`
-  - `Content/Blueprints/Audio/W7/SW_HeistAlarmLoop.uasset`
+  - `Content/Assets/UI/Map/T_FloorPlan_M01.uasset`
+  - `Content/Assets/UI/Map/T_FloorPlan_M02.uasset`
+  - `Content/Assets/UI/Map/T_FloorPlan_M03.uasset`
+  - `Content/Assets/Audio/W7/SW_HeistSuspenseLoop.uasset`
+  - `Content/Assets/Audio/W7/SW_HeistAlarmLoop.uasset`
 
 The README states that these are project-original schematic textures and procedurally generated PCM audio with no embedded third-party visual or audio material. Source, generator, and runtime assets are all present locally.
 
@@ -127,6 +128,18 @@ The README states that these are project-original schematic textures and procedu
 
 The asset origin is identifiable from the Epic StarterContent directory, but no applicable Epic license/EULA snapshot or reviewed terms record is stored in this repository. Before release sign-off, record the reviewed official terms, review date, reviewer, and the conclusion for packaged game distribution. This is a documentation requirement, not a statement that the current use is prohibited.
 
+## Epic UE5 Mannequins
+
+- Content root: `Content/Assets/Mannequins/`
+- Current local count: 128 files.
+- Installed source pack: `D:/UE_5.8/Templates/TemplateResources/High/Characters/Content/Mannequins/`
+- Source pack identity: UE 5.8 `Mannequin shared resource high` (Manny/Quinn mesh, skeleton, animation, IK and Control Rig content).
+- Current player presentation references:
+  - Mesh: `Content/Assets/Mannequins/Meshes/SKM_Manny_Simple.uasset`
+  - Locomotion AnimBP: `Content/Assets/Mannequins/Anims/Unarmed/ABP_Unarmed.uasset`
+
+The 128 project files were matched one-for-one by filename with the installed UE 5.8 template resource. They are kept as a self-contained imported pack under `Content/Assets` so its internal animation and rig dependencies are not split across project-owned folders. As with StarterContent, final release sign-off still requires a dated review of the applicable official Epic/Unreal terms and packaged-game distribution scope.
+
 ## Release Sign-off Checklist
 
 - [ ] All 12 M01 manifest entries have reviewed per-source rights values.
@@ -135,6 +148,7 @@ The asset origin is identifiable from the Epic StarterContent directory, but no 
 - [x] `SourceArt/ObjectAssembly/` is version-controlled and its project-original statement is present.
 - [ ] The final package exposes the TENADA notice and SIL Open Font License 1.1 text in a user-viewable form.
 - [ ] The applicable Epic StarterContent terms and review date are recorded.
+- [ ] The applicable Epic UE5 Mannequin terms and review date are recorded.
 - [x] A 2026-08-16 strict fresh Development package audit found 57 staged StarterContent chunks totaling 40.69 MiB and no StarterContent sample maps or Blueprints.
 - [ ] [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) matches this manifest and the final package contents.
 - [ ] Any newly added art, audio, font, icon, texture, or model has a manifest entry before release.

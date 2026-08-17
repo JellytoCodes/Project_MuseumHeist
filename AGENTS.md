@@ -284,6 +284,9 @@ Smoke 및 Trap 계열 기능은 Stretch 목록에 포함하지 않는다.
 - Blueprint는 Component Assembly를 담당한다.
 - Blueprint는 Mesh, Material, Animation, Audio, Visual Hook을 담당한다.
 - Widget Blueprint는 Layout, Animation, Color, Icon, Binding만 담당한다.
+- 프로젝트 소유 `/Game/Blueprints` 폴더에는 Gameplay Blueprint, AI Controller Blueprint와 Widget Blueprint만 둔다.
+- 프로젝트 소유 Texture, Font, Audio, Material, Enhanced Input, StateTree, Mesh와 Animation은 `/Game/Assets`에서 관리한다.
+- Epic StarterContent와 Mannequin 같은 외부·공용 Content Pack은 `/Game/Assets` 아래에서 팩 내부 의존 구조를 유지한다.
 - DataTable과 DataAsset은 반복 데이터와 밸런스 값을 담당한다.
 - Map은 Actor 배치, 공간 구성, Lighting, Navigation을 담당한다.
 - Map Presentation Data는 Floor Plan Texture, World Bounds, Zone Label, Exit Marker 기준만 담당한다.
