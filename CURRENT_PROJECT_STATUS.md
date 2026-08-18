@@ -1,6 +1,6 @@
 # Project_MuseumHeist Current Project Status
 
-최종 갱신: 2026-08-17 KST
+최종 갱신: 2026-08-18 KST
 현재 문서 Revision: 13
 
 이 문서는 새 Codex 작업이 Notion의 최신 진행 상태와 로컬 구현·검증 증거를 바로 이어받기 위한 오프라인 실행 캐시다.
@@ -35,9 +35,9 @@ W6 Gate      Pass    Contract Run Feature Complete
 TASK-W7-001  완료    1P·2P·4P Guard Scaling / TwoRuns / 밸런스 표
 TASK-W7-002  완료    Remote Nameplate / Crew Status 실제 WBP 4P 동기화
 TASK-W7-003  완료    Main HUD Team Status
-TASK-W7-004  진행중  Stun 화면·오디오 구현/자동화 완료, Manny Remote Stun Pose 연결·실화면 확인 잔여
+TASK-W7-004  진행중  Stun 화면·오디오·상태 FX 슬롯 기반 완료, Remote Stun Pose·실제 FX·화면·청음 잔여
 TASK-W7-005  진행중  Arrest / Rescue UI·오디오 및 자동화 완료, 2P 실제 화면·청음 확인 잔여
-TASK-W7-006  진행중  Carry / Heavy Icon·Audio 구현/자동화 완료, Manny Remote Pose 연결·실화면 확인 잔여
+TASK-W7-006  진행중  Carry / Heavy Icon·Audio·상태 FX 슬롯 기반 완료, Remote Pose·실제 FX·화면·청음 잔여
 TASK-W7-007  완료    Owner-only Floor Plan Map / Marker 정책 / Stun Cleanup
 TASK-W7-008  완료    2P 실제 이동 입력 / Footstep→Guard Investigate 복제
 TASK-W7-009  완료    Alert 0~4 HUD·음악 / Alarmed 서버 강제 종료
@@ -65,7 +65,7 @@ TEST-W7-006  Pass  Stun·Arrest/Rescue·Carry/Heavy 자동 Presentation 계약 /
 
 ## 1. Current Focus
 
-W7는 팀 가독성과 협동 피드백의 C++/복제/Input 기반과 Stun/Arrest/Carry 최종 HUD·Icon·Audio 구현을 마쳤다. 실제 HUD Widget Tree 동기화 후 2P TwoRuns와 전체 27/27 자동화를 통과했다. 2026-08-17 UE5 Manny와 `ABP_Unarmed`를 임시 Character/AnimBP 베이스로 연결했고, `/Game/Blueprints`의 Non-Blueprint Asset 29개를 `/Game/Assets`로 이동해 폴더 경계를 정리했다. 현재 W7 마감 대상은 `TASK-W7-004`·`006`의 실제 Remote Stun/Carry/Heavy Pose 연결과 `TASK-W7-004~006`의 2P 실제 화면·청음 확인이다.
+W7는 팀 가독성과 협동 피드백의 C++/복제/Input 기반과 Stun/Arrest/Carry 최종 HUD·Icon·Audio 구현을 마쳤다. 실제 HUD Widget Tree 동기화 후 2P TwoRuns와 전체 27/27 자동화를 통과했다. 2026-08-17 UE5 Manny와 `ABP_Unarmed`를 임시 Character/AnimBP 베이스로 연결했고, `/Game/Blueprints`의 Non-Blueprint Asset 29개를 `/Game/Assets`로 이동해 폴더 경계를 정리했다. 2026-08-18에는 상태별 Component를 늘리지 않고 재사용 Niagara/Audio Component 각 1개와 7개 non-Active 상태 Asset 슬롯을 추가했으며 W7 11/11 회귀를 통과했다. 현재 W7 마감 대상은 실제 Niagara/Sound Asset 할당, `TASK-W7-004`·`006`의 Remote Stun/Carry/Heavy Pose 연결과 `TASK-W7-004~006`의 2P 실제 화면·청음 확인이다.
 
 ```text
 Editor Build        PASS / Win64 Development
@@ -78,7 +78,8 @@ HUD Widget Tree     PASS / actual StunOverlay·ArrestOverlay·Countdown·Reason 
 Asset Boundary      PASS / Blueprints=27 BP·WBP only / NonBlueprintAfter=0 / 29 assets moved
 Manny Base          PASS / SKM_Manny_Simple / ABP_Unarmed / CameraSocket=head
 Manny Editor Build  PASS / Win64 Development / 10 of 10 actions
-W7 Regression       PASS / 10 Success / Failed 0 / NotRun 0 / renderer·audio enabled
+W7 Regression       PASS / 11 of 11 / Success 9 / WithWarnings 2 / Failed 0 / NotRun 0
+Status FX Slots     PASS / 1 reusable Niagara + 1 reusable Audio / 7 state pairs / null=no-op
 2P Camera Socket    PASS / Host·Client head resolved / FullBody visible / face clipping not observed
 ```
 
@@ -87,6 +88,7 @@ W7 Regression       PASS / 10 Success / Failed 0 / NotRun 0 / renderer·audio en
 - NullRHI 자동화는 상태·복제·입력·Widget 생성 계약을 검증하지만 렌더링 화면과 실제 청음을 대신하지 않는다.
 - `TASK-W7-005`는 로컬 구현·자동화와 Notion 증거 동기화를 완료했지만 실제 2P 화면·청음 확인 전에는 완료로 단정하지 않는다.
 - `BP_HeistPlayerCharacter`는 UE5 `SKM_Manny_Simple`과 `ABP_Unarmed` 베이스로 교체됐다. 다만 `BP_ApplyCrewStatusPresentation`의 실제 Remote Stun/Carry/Heavy Pose Layer는 아직 연결되지 않았으므로 `TASK-W7-004`·`006`은 완료 처리하지 않는다.
+- 상태 VFX·전환 Sound 슬롯과 Lifecycle은 완료했지만 실제 Asset은 의도적으로 미할당이다. Asset 할당 후 late-join, 반복 전환, Escaped one-shot과 2P 화면·청음을 별도 검증한다.
 - 실제 2~3분 Escape 리듬은 W8-007로 통합했다.
 - W7 Gate는 아직 닫지 않는다. Notion의 `진행중`/`검토중` Task를 완료 기준별로 마감한 뒤 판단한다.
 
@@ -227,7 +229,7 @@ Warning은 Title/Lobby RecastNavMesh 부재 및 테스트 Guard Noise의 Outside
 2. Notion 작업보드의 `진행중`/`검토중` Task와 사용자가 지정한 Task를 라이브 조회한다.
 3. `LOCAL_PROGRESS_INBOX.md`의 `UNLINKED`/`READY_TO_SYNC` Entry를 확인한다.
 4. `git status --short`와 관련 Diff를 확인한다.
-5. 아래 W7 Final Presentation 증거를 확인하고 이미 통과한 HUD·Icon·Audio 기반을 재구현하지 않는다.
+5. 아래 W7 Final Presentation 및 Status FX Slot 증거를 확인하고 이미 통과한 HUD·Icon·Audio·재사용 Component 기반을 재구현하지 않는다.
 6. `TASK-W7-005`는 2P 실제 화면·청음 Handoff를 수행한 뒤 Notion 완료 상태를 판정한다.
 7. `TASK-W7-004`·`006`은 연결된 Manny/`ABP_Unarmed` 베이스 위에 Remote Stun/Carry/Heavy Pose Layer를 구현하고 2P에서 검증한다.
 8. W7 Gate 종료 후 W8은 M02 Gameplay 배치 → M03 Gameplay 배치 → M01 Final Pass → 세 맵 Route·Audio·UI 잔여 → 3-Map 9판 Gate 순서로 진행한다.
@@ -248,6 +250,7 @@ Warning은 Title/Lobby RecastNavMesh 부재 및 테스트 Guard Noise의 Outside
 - Random Map Shuffle Bag, Surface Template 최근 3개 보호, 고정 Seed 결정성, Optional Exhibit 조합 변화
 - 실제 `WBP_HeistHUD` Tree에 Stun/Arrest Overlay, Countdown과 Reason Text를 추가하고 기존 Widget Size는 변경하지 않음
 - Stun Vignette·Low-pass, Arrest/Rescue Edge Audio, Carry/Heavy Icon·Spatial One-shot Audio와 Match/Lobby Cleanup 구현
+- 재사용 `CrewStatusVFXComponent`·`CrewStatusTransitionAudioComponent`와 Forging/Assembling/CarryingOriginal/Heavy/Stunned/Arrested/Escaped별 Asset 슬롯, late-join 전환 억제와 Escaped World one-shot 구현
 
 ### Verification
 
@@ -274,17 +277,19 @@ Manny Setup   Saved/Logs/Project_MuseumHeist.log / W7Mannequin Result=PASS
 Manny Build   Saved/Logs/W7-Mannequin-AssetBoundary-EditorBuild.log
 W7 Regression Saved/Automation/W7-Mannequin-AssetBoundary-Regression/index.json
 W7 Test Log   Saved/Logs/W7-Mannequin-AssetBoundary-Regression.log
+Status FX     Saved/Automation/W7-StatusEffectSlots/index.json / 1 of 1 / warnings 0
+Status FX W7  Saved/Automation/W7-StatusEffectSlots-FullRegression/index.json / 11 of 11 / Failed 0
 Documents     Museum_Heist_GDD.docx / Museum_Heist_TDD.docx Rev 13 / changed-page Word render PASS
 Balance       Docs/W7_PLAYER_COUNT_BALANCE.md
 Result        W7 Final Presentation 2P TwoRuns + Full 27/27 Success / WithWarnings 7 / Failed 0 / NotRun 0
-Notion        2026-08-17 재조회 PASS / Manny·Asset Boundary 증거 동기화 / TASK-W7-004·005·006 진행중
+Notion        2026-08-18 재조회·쓰기·재조회 PASS / Status FX Slot 증거 동기화 / TASK-W7-004·006 진행중 유지
 Test Log      TEST-W7-006 Pass / 자동 계약 범위 / 실제 화면·청음 및 Remote Pose는 Task 잔여로 분리
 ```
 
 ### Remaining Evidence
 
 - W7-005: 로컬 구현·자동화·Notion 증거 동기화 완료, 2P 실제 화면·청음 확인 필요
-- W7-004·006: Manny/`ABP_Unarmed` 베이스 연결 완료, `BP_ApplyCrewStatusPresentation`의 실제 Remote Stun/Carry/Heavy Pose Layer 및 2P 실화면 확인 필요
+- W7-004·006: Manny/`ABP_Unarmed`와 상태 FX/Sound 슬롯 기반 완료, 실제 Niagara/Sound Asset·Remote Stun/Carry/Heavy Pose Layer 및 2P 실화면·청음 확인 필요
 - W8-007: 각 맵 Solo/2P/4P 총 9판에서 실제 2~3분 탐욕/탈출 선택 시점과 15~25분 Contract 지표 기록
 
 ### 2026-08-15 Roadmap Optimization

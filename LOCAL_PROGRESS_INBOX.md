@@ -1,6 +1,6 @@
 # Project_MuseumHeist Local Progress Inbox
 
-최종 갱신: 2026-08-17 KST
+최종 갱신: 2026-08-18 KST
 
 이 문서는 Notion에 아직 연결되지 않았거나 반영되지 않은 실질 작업을 잃지 않기 위한 Reconciliation Queue다.
 
@@ -101,13 +101,13 @@ Notion Write            NOT DONE
 
 - State: `RECONCILED`
 - Created: `2026-08-16 KST`
-- Reconciled: `2026-08-17 KST`
+- Reconciled: `2026-08-18 KST`
 - Notion Relations:
   - [`TASK-W7-004`](https://app.notion.com/p/3ad1d26a5dfb81ceaf09d805b0435905)
   - [`TASK-W7-005`](https://app.notion.com/p/3ad1d26a5dfb812c80d5f37473fed9ab)
   - [`TASK-W7-006`](https://app.notion.com/p/3ad1d26a5dfb81beb59afc7f124fca89)
   - [`TEST-W7-006`](https://app.notion.com/p/3be1d26a5dfb8137ab1cf7482289c24a)
-- Last Live Status: `진행중` / 2026-08-17 구현·자동화·잔여 기준 동기화 재조회 PASS
+- Last Live Status: `진행중` / 2026-08-18 상태 FX·전환 Audio 슬롯 증거 동기화 재조회 PASS
 
 #### Applied Work
 
@@ -116,6 +116,8 @@ Notion Write            NOT DONE
 - 2P TwoRuns Lobby Reset 실패는 지연 생성되는 `ResultWidget=null`을 정상 Lobby 상태로 허용하도록 Test Fixture를 수정해 Production 계약과 일치시켰다.
 - UE5 `SKM_Manny_Simple`과 `ABP_Unarmed`를 `BP_HeistPlayerCharacter`의 임시 Full-body/Locomotion 베이스로 연결하고 Camera Socket을 `head`로 맞췄다.
 - `/Game/Blueprints`의 Texture·Audio·Input·StateTree·Font·Material 29개를 `/Game/Assets`로 이동해 Blueprint/WBP 전용 경계를 확정했다.
+- 상태별 Component를 증식하지 않고 `CrewStatusVFXComponent`·`CrewStatusTransitionAudioComponent` 각 1개를 재사용하며, 7개 non-Active 상태별 Niagara/Sound 슬롯을 Class Defaults에 노출했다.
+- 미할당 슬롯은 정상 No-op, Active는 Cleanup, Escaped는 Character Hidden 전 World one-shot, 최초 복제 Snapshot은 전환음·Burst 억제 계약으로 고정했다.
 
 #### Evidence
 
@@ -131,13 +133,16 @@ Manny Character Setup        PASS / SKM_Manny_Simple / ABP_Unarmed / head socket
 Manny Editor Build           PASS / Saved/Logs/W7-Mannequin-AssetBoundary-EditorBuild.log
 W7 Manny Regression          PASS / 10 of 10 / Saved/Automation/W7-Mannequin-AssetBoundary-Regression/index.json
 2P Camera Socket             PASS / Host·Client SocketResolved=true / FullBodyVisible=true
+Status FX Slots              PASS / 1 of 1 / warnings 0 / Saved/Automation/W7-StatusEffectSlots/index.json
+W7 Status FX Regression      PASS / 11 of 11 / Failed 0 / Saved/Automation/W7-StatusEffectSlots-FullRegression/index.json
 ```
 
 #### Status Boundary
 
 - `TASK-W7-005`는 로컬 구현·자동화와 Notion 증거 동기화를 완료했지만 2P 실제 화면·청음 확인 전에는 완료로 단정하지 않는다.
 - Character/AnimBP 베이스 결정 차단은 UE5 Manny와 `ABP_Unarmed` 연결로 해소했다.
-- 다만 실제 `BP_ApplyCrewStatusPresentation` Remote Stun/Carry/Heavy Pose Layer와 2P 실화면·청음 증거가 없으므로 `TASK-W7-004`·`006`은 진행중을 유지한다.
+- 상태 VFX·전환 Sound 슬롯과 Lifecycle은 완료했지만 실제 Asset은 아직 비어 있다.
+- 실제 Niagara/Sound Asset, `BP_ApplyCrewStatusPresentation` Remote Stun/Carry/Heavy Pose Layer와 2P 실화면·청음 증거가 없으므로 `TASK-W7-004`·`006`은 진행중을 유지한다.
 
 ---
 
