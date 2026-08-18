@@ -1,10 +1,18 @@
 # Project Museum Heist - Shipping Asset Manifest
 
-Baseline: 2026-08-17
+Baseline: 2026-08-18
 Work item: TASK-W9-007
-Scope: project-added Surface Forgery art, Object Assembly art, TENADA font, W7 floor-plan/audio assets, and Epic StarterContent/UE5 Mannequin content currently referenced by the project.
+Scope: Rev14 v1 shipping target for Surface Forgery, Patrol/CCTV/Laser presentation, TENADA font, W7 floor-plan/audio assets, and Epic StarterContent/UE5 Mannequin content. Object Assembly art remains recorded as preserved Deferred Expansion repository content and is not part of the v1 shipping target.
 
 This manifest records evidence that exists in the repository or the current workspace. It is not a legal opinion and does not by itself establish that an asset is cleared for every territory or distribution channel. An unlisted asset must not be treated as cleared merely because it is absent from this document.
+
+## Rev14 Release Scope Boundary
+
+- Public v1 supports 2~4 Player Contract Runs centered on Painting Surface Forgery.
+- The required security set is existing Patrol Guard plus CCTV and high-value Painting Laser Hold. CCTV/Laser runtime assets have not yet been selected, implemented, or audited; any new Mesh, Material, Texture, Niagara, Audio, Icon, Font, or source file must be added to this manifest before release sign-off.
+- Object Assembly is **Deferred Expansion**, not removed. Its C++/Enum/Struct/DataTable/Blueprint Shell, SourceArt, generator, and project-original provenance records remain in the repository.
+- v1 Release Contract, Runtime Assignment, Release Map, Player-facing UI, Result, Cook and QA/Release Gate must not activate Object Assembly. A fresh Rev14 cook/reference audit is still required; this document does not claim that the current package already satisfies that boundary.
+- Historical packages and W6/W7 evidence predate this release rebaseline and remain valid only as evidence of the implementation tested at that time.
 
 ## Status Legend
 
@@ -22,7 +30,8 @@ This manifest records evidence that exists in the repository or the current work
 | M02 Surface Forgery pool | 12 timed painting templates | 12 source URLs; every entry is labelled `Public Domain` in the local manifest | `VERIFIED_LOCAL` | Retain the manifest and source URLs. Re-check the statements during final release review. |
 | M03 Surface Forgery pool | 12 timed painting templates | 12 source URLs; eight entries have `Public Domain` or `CC0 Public Domain Designation`; four entries say only `No Copyright - United States` | `RELEASE_BLOCKER` | Establish the intended global distribution basis for the four US-only entries, or replace them. |
 | Surface fallback texture | Default painting material texture `T_Forgery_SunArchWave` | Runtime asset and asset metadata exist; source PNG is ignored by Git and the metadata has no origin or rights statement | `RELEASE_BLOCKER` | Add a durable project-original or third-party provenance statement and decide whether the source PNG must be tracked. |
-| Object Assembly gallery meshes | Sculpture and Ceramic modular kits | 14 tracked OBJ sources, deterministic generator, and project-generated provenance statement | `VERIFIED_LOCAL` | Retain the tracked source art, generator, README, and runtime meshes. |
+| Patrol/CCTV/Laser presentation | Rev14 v1 security target; Patrol retained, CCTV/Laser implementation pending | No Rev14 CCTV/Laser release asset inventory or provenance record yet | `REVIEW_REQUIRED` | Select or create the assets, record source/license evidence, and verify the final cooked inventory. Do not infer approval from placeholder or Engine content. |
+| Object Assembly gallery meshes | Deferred Expansion repository content; no v1 runtime/cook use intended | 14 tracked OBJ sources, deterministic generator, and project-generated provenance statement | `VERIFIED_LOCAL` | Retain the tracked source art, generator, README, and runtime source assets. Separately prove Object Assembly Release Map references and cooked packages are zero in the Rev14 RC. |
 | TENADA | Korean display font in UI | TTF, upstream URL, four-page upstream notice, and SIL Open Font License 1.1 text are stored locally | `REVIEW_REQUIRED` | Include the required notice and license in the distributed package or another user-viewable location, then record package evidence. |
 | W7 floor plans | M01/M02/M03 full-screen map textures | Deterministic generator, three generated PNGs, and project-original declaration | `VERIFIED_LOCAL` | Retain generator, README, and generated sources. |
 | W7 alert audio | Suspense and alarm loops | Deterministic generator, two generated WAVs, and project-original declaration | `VERIFIED_LOCAL` | Retain generator, README, and generated sources. |
@@ -77,7 +86,7 @@ Release blocker: do not convert the US-only wording into a global public-domain 
 
 The PNG exists in the current workspace but is excluded by the repository's `SourceArt/**/*.png` ignore rule. The metadata records palette and import behavior but no creator, external source, or rights statement. Treat this as unresolved until provenance is recorded.
 
-## Object Assembly Art
+## Object Assembly Art — Deferred Expansion
 
 - Runtime meshes: `Content/Assets/Art/ObjectAssembly/Sculpture/` and `Content/Assets/Art/ObjectAssembly/Ceramic/`
 - Source README: [SourceArt/ObjectAssembly/README.md](../SourceArt/ObjectAssembly/README.md)
@@ -85,6 +94,17 @@ The PNG exists in the current workspace but is excluded by the repository's `Sou
 - Source geometry: `SourceArt/ObjectAssembly/Meshes/` - 14 OBJ files.
 
 The local README states that the geometry is project-generated procedural source art and that no external mesh source is embedded. All 14 OBJ files, the deterministic generator, and the README are tracked by Git, so the provenance record is durable in the repository.
+
+Rev14 does not authorize deleting these sources or their dormant implementation contracts. It changes only the v1 shipping boundary: Object Assembly must not be eligible for a v1 Contract Assignment, placed or referenced by a Release Map, constructed by Player-facing UI/Result, or pulled into the final cook. Because the existing local runtime assets still exist and the last packaged-build evidence predates Rev14, a fresh hard-reference and staged-package audit is required before this exclusion can be marked PASS.
+
+## Rev14 Patrol, CCTV And Laser Assets
+
+- Patrol Guard remains part of the v1 gameplay baseline. This revision does not by itself change the previously recorded Character/Mannequin or project asset provenance.
+- CCTV and Laser Hold are required v1 gameplay presentation targets, but no final project-owned or third-party asset set has been selected in this manifest.
+- Placeholder Engine assets, Marketplace/Fab downloads, generated files, and externally sourced sounds or textures are not release-cleared by being referenced in a Blueprint.
+- When the implementation lands, record the exact source and runtime paths, creator/vendor, license or project-original declaration, required notices, and final cook evidence here.
+
+Current Rev14 status: `DOCUMENTED / IMPLEMENTATION_AND_ASSET_AUDIT_PENDING`.
 
 ## TENADA Font
 
@@ -146,6 +166,8 @@ The 128 project files were matched one-for-one by filename with the installed UE
 - [ ] The four M03 US-only entries have a documented global distribution basis or replacements.
 - [ ] `T_Forgery_SunArchWave` has durable creator/source/rights provenance.
 - [x] `SourceArt/ObjectAssembly/` is version-controlled and its project-original statement is present.
+- [ ] Release Maps, v1 Contract data, Player-facing UI/Result and final cooked packages contain no active Object Assembly reference or package; Deferred source/data/Shell remain preserved.
+- [ ] Final CCTV/Laser Mesh, Material, Texture, VFX, Audio and Icon inventory has source/license or project-original evidence.
 - [ ] The final package exposes the TENADA notice and SIL Open Font License 1.1 text in a user-viewable form.
 - [ ] The applicable Epic StarterContent terms and review date are recorded.
 - [ ] The applicable Epic UE5 Mannequin terms and review date are recorded.

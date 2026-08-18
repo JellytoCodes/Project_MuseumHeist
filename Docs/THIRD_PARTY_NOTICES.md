@@ -1,9 +1,17 @@
 # Project Museum Heist - Third-Party Notices Index
 
-Baseline: 2026-08-17
+Baseline: 2026-08-18
 Related manifest: [SHIPPING_ASSET_MANIFEST.md](SHIPPING_ASSET_MANIFEST.md)
 
 This file is a durable index to source and license evidence for project-added content. It does not replace official license texts, Unreal Engine generated notices, or legal review. Status descriptions report what is present locally; they do not assert worldwide copyright or license validity.
+
+## Rev14 Shipping Scope Note
+
+- Public v1 is now a 2~4 Player, Surface Forgery-centered release target with Patrol Guard, CCTV, and high-value Painting Laser Hold.
+- Object Assembly is preserved as Deferred Expansion repository content. Its SourceArt, generator, C++/data contracts, Blueprint Shell and provenance record are not deleted, but Object Assembly must remain inactive in the v1 Runtime, Release Maps, Player-facing UI, Result, Cook and release Gate.
+- This scope decision is not proof that the current package already excludes every Object Assembly reference. A fresh Rev14 cook/reference audit remains `PENDING`.
+- No final third-party CCTV or Laser asset has been identified in this index. If a Marketplace/Fab, web, audio-library, font, icon, texture, model, Niagara, or other external asset is selected, its exact source, applicable terms and required notice must be recorded before release.
+- Historical W6/W7 and prior package evidence predates Rev14 and is not reclassified as proof of the new shipping boundary.
 
 ## TENADA Font
 
@@ -61,7 +69,9 @@ The following assets are currently documented as project-original rather than th
 - W7 floor-plan textures and alert audio: [SourceArt/W7/README.md](../SourceArt/W7/README.md) and [GenerateW7PresentationAssets.ps1](../SourceArt/W7/GenerateW7PresentationAssets.ps1)
 - Object Assembly Sculpture/Ceramic meshes: [SourceArt/ObjectAssembly/README.md](../SourceArt/ObjectAssembly/README.md) and [rebuild_object_assembly_content.py](../SourceArt/ObjectAssembly/rebuild_object_assembly_content.py)
 
-The Object Assembly record remains pending until its currently local `SourceArt/ObjectAssembly/` directory is version-controlled.
+The Object Assembly README, deterministic generator, and 14 source OBJ files are version-controlled and document project-generated procedural source art. Rev14 preserves that provenance record even though the feature is Deferred. The separate v1 requirement is to prove that Release Maps and the final staged cook do not pull Object Assembly runtime assets into the shipping build.
+
+CCTV and Laser Hold do not yet have a final asset inventory. They therefore have no third-party notice entry beyond this `PENDING` declaration; placeholder use must not be interpreted as release clearance.
 
 ## Engine and Plugin Notices
 
@@ -76,6 +86,8 @@ Complete these fields during the release candidate audit:
 - TENADA notice/license shipped location: `PENDING`
 - Epic StarterContent terms reference and review date: `PENDING`
 - Epic UE5 Mannequin terms reference and review date: `PENDING`
+- Rev14 Object Assembly Release Map/cook exclusion: `PENDING`
+- Rev14 CCTV/Laser asset provenance and notice inventory: `PENDING`
 - M01 rights review result: `BLOCKED`
 - M03 global-scope review result: `BLOCKED`
 - Surface fallback texture provenance: `BLOCKED`

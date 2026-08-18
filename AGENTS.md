@@ -1,14 +1,14 @@
 # Project_MuseumHeist — Codex Instructions
 
-## Rev 13: W7 Nameplate, Floor Plan And Alert Authority Contract
+## Rev 14: 2-4 Player Cooperative Security Gimmicks And Object Assembly Deferral
 
-기준일: 2026-08-15 (Remote Nameplate / Owner-only Floor Plan / Alert 0~4 및 Alarmed 서버 Gate 반영)
+기준일: 2026-08-18 (2~4인 출시 범위 / Patrol·CCTV·Cooperative Laser / Surface-only v1 / Object Assembly Deferred Expansion 반영)
 엔진: Unreal Engine 5.8
 현재 목표: 2026-09-20 Final RC / 프로젝트 마무리
 
 이 문서는 프로젝트 엔지니어링 정책의 최상위 Source of Truth다.
 
-현재 프로젝트는 기존 경쟁형 Top-Down 구조에서 **1~4인 온라인 협동 1인칭 잠입·유물 위조 하이스트 게임**으로 전환됐다.
+현재 프로젝트는 기존 경쟁형 Top-Down 구조에서 **2~4인 온라인 협동 1인칭 잠입·유물 위조 하이스트 게임**으로 전환됐다.
 
 Rev 11부터 한 판은 단일 목표를 한 번 위조하고 끝나는 Vertical Slice가 아니라 다음 두 계약 조건을 만족하는 15~25분 Contract Run으로 정의한다.
 
@@ -20,18 +20,19 @@ Loot Value Quota
 - Original과 Loose Loot의 Secured Value 합계로 계약 할당량을 달성한다.
 ```
 
-한 매치에서 여러 Painting / Object 전시품을 반복적으로 관찰하고 위조할 수 있다. 플레이어가 언제 더 훔치고 언제 도망칠지 판단하는 Greed Decision이 전체 게임의 중심이다.
+한 매치에서 여러 Painting 전시품을 반복적으로 관찰하고 위조할 수 있다. 플레이어가 Patrol Guard와 CCTV를 피하고, 고가 Painting의 Laser Zone에서는 임시 역할을 나눠 협력하며, 언제 더 훔치고 언제 도망칠지 판단하는 Greed Decision이 전체 게임의 중심이다.
 
 플레이어 이름표, Walk / Sprint, Team Status, Floor Plan Map, Guard Detection, Stun / Arrest, Carry / Extraction의 화면·오디오·월드 피드백은 Polish가 아니라 v1.0 Required Gameplay Readability로 취급한다.
 
-Forgery Gameplay는 다음 두 축으로 구분한다.
+v1.0의 활성 Forgery Gameplay와 출시 이후 확장 경계는 다음과 같이 구분한다.
 
 ```text
 Surface Forgery
 - Painting 중심 2D Reference / Stroke / Palette / OpenCV 판정
 
-Object Assembly Forgery
-- Sculpture / Ceramic 중심 3D Modular Part / Socket / Orientation 판정
+Deferred Object Assembly Forgery
+- Sculpture / Ceramic 중심 Part / Socket / Orientation 판정
+- 삭제하지 않고 보존하지만 v1.0 Runtime Entry와 Release Gate에서는 비활성화
 ```
 
 기존 경쟁형 Top-Down 구현은 아직 참조가 남아 있는 범위에서만 Legacy로 취급한다. 현재 기획에서 명시적으로 제거된 Smoke 및 플레이어 설치형 Trap 기능은 Legacy, Deferred, Stretch 또는 회귀 기준으로 유지하지 않는다.
@@ -40,7 +41,7 @@ Object Assembly Forgery
 
 # 1. Project Overview
 
-Project_MuseumHeist는 Unreal Engine 5.8 C++ 기반의 **1~4인 온라인 협동 1인칭 잠입·유물 위조 하이스트 게임**이다.
+Project_MuseumHeist는 Unreal Engine 5.8 C++ 기반의 **2~4인 온라인 협동 1인칭 잠입·유물 위조 하이스트 게임**이다.
 
 플레이어들은 박물관에 침입해 계약이 지정한 핵심 작품을 찾고, 제한 시간 안에 Quality 70 이상인 Replica를 현장에서 제작해 Original과 바꿔치기한다. Guard의 시야·추격·교체 소음과 Timeout 조사로 Museum Alert와 동선 압박이 커지기 전에 Required Target을 반출하고 Loot Value Quota를 채운 뒤, 욕심을 더 낼지 현재 전리품을 확보하고 탈출할지 결정한다.
 
@@ -50,7 +51,9 @@ Project_MuseumHeist는 Unreal Engine 5.8 C++ 기반의 **1~4인 온라인 협동
 박물관 침입
 → 계약의 Required Target과 Loot Value Quota 확인
 → 여러 전시품 탐색
-→ 20~45초 Speed Forgery 또는 Object Assembly
+→ Patrol Guard와 CCTV 감시 회피
+→ 필요 시 Laser Button을 유지하는 Player와 침투 Player로 임시 역할 분담
+→ 20~45초 Painting Speed Forgery
 → 서버 품질 판정 / 70점 Replica 승인
 → Replica와 Original 교체
 → 전리품 운반 / Secured Value 누적
@@ -86,7 +89,8 @@ Project_MuseumHeist는 Unreal Engine 5.8 C++ 기반의 **1~4인 온라인 협동
 - SoundPing Direction Widget
 - Guard 위치와 시야를 실시간 표시하는 Minimap / Radar
 - Stamina Bar와 Sprint 소모 자원
-- 고정 역할 또는 Mandatory 2-player Interaction
+- 고정 Class / Role Lock
+- 모든 목표에 일괄 적용되는 Mandatory Group Gate
 - Original 전용 Carry Slot, `OriginalCarryEntry`, `CarryMode`와 Inventory 우측 별도 카드
 
 ---
@@ -122,10 +126,10 @@ Notion Task/Test 기록은 설계 문서 우선순위에 포함하지 않지만 
 Blueprint Shell/Presentation 운용은 별도 문서로 분리하지 않고 아래 규칙을 AGENTS 본문 규칙으로 통합해 적용한다.
 
 - `WBP_` 계열 UI는 Layout, Animation, Color, Icon, Binding 중심으로 운영하고, 상태/값 확정은 C++ ViewModel과 게임 규칙이 소유한다.
-- Nameplate는 Remote Player에 한해 항상 표시하며, 동일 Map에 대한 상태 아이콘은 Team Status 상태값(`Active`, `Forging`, `Assembling`, `CarryingOriginal`, `Heavy`, `Stunned`, `Arrested`, `Escaped`)과 동기화한다.
+- Nameplate는 Remote Player에 한해 항상 표시하며, 동일 Map에 대한 상태 아이콘은 v1 활성 Team Status 상태값(`Active`, `Forging`, `CarryingOriginal`, `Heavy`, `Stunned`, `Arrested`, `Escaped`)과 동기화한다. `Assembling`은 Deferred Object Assembly 호환 상태로만 보존하며 v1 플레이 중 새로 진입시키지 않는다.
 - Floor Plan Map은 Owner-only Full-Screen으로 운영한다. Guard 위치, 시야 Cone, SoundPing, 미탐색 Loose Loot/숨겨진 Spawn은 기본 표시하지 않는다.
-- Move/Look/Mouse Capture 전환은 Owner-only Forgery, Assembly, Inventory, Map 진입 시 각각 입력 정책이 일치해야 한다.
-- 2D Painting Forgery 타이머는 기본 40초(최소 20초/최대 45초), Object Assembly는 기본 30초(최소 25초/최대 35초)로 운영한다.
+- Move/Look/Mouse Capture 전환은 Owner-only Surface Forgery, Inventory, Map 진입 시 각각 입력 정책이 일치해야 한다. Deferred Object Assembly 입력 정책은 재활성화 전까지 회귀 보존만 한다.
+- v1의 2D Painting Forgery 타이머는 기본 40초(최소 20초/최대 45초)로 운영한다. Object Assembly의 30초(최소 25초/최대 35초) 계약은 Deferred Expansion 기준으로만 보존한다.
 - Walk / Sprint / Weight / Footstep Noise는 동일한 수치 계약으로 C++ Authority와 Blueprint UI에서 일치시킨다.
 
 ## 2B. Document Boundary And Maintenance Rules
@@ -150,7 +154,9 @@ Title Menu
 → First-Person Infiltration
 → Required Target / Loot Value Quota 확인
 → 전시품과 Loose Loot 탐색
-→ Painting Speed Forgery 또는 Object Assembly
+→ Patrol Guard와 CCTV 감시 회피
+→ 고가 Painting은 동료가 Laser Button을 Hold하는 동안 진입
+→ Painting Speed Forgery
 → 서버 Quality Score 판정 / 70점 Replica 승인 / Original 회수
 → Carry Value 증가 / 교체 소음·Timeout 조사 / Guard Detection·Alert
 → 다른 전시품을 반복해서 노리거나 탈출 결정
@@ -162,7 +168,7 @@ Title Menu
 
 # 4. v1.0 Required Scope
 
-- 1~4인 Listen Server
+- 2~4인 Listen Server
 - Steam Online Session
 - 별도 Title Menu Level
 - 별도 Online Lobby Level
@@ -170,9 +176,9 @@ Title Menu
 - 고정 박물관 맵 3개
 - 고정 Contract Archetype 1개
 - 매치별 Required Target 1개
-- Player Count 기반 Loot Value Quota
+- `ContractStartPlayerCount` 기반 Loot Value Quota
 - Server-seeded Exhibit Assignment / Spawn Variation
-- 한 매치에서 Surface / Object Forgery를 여러 번 반복하는 Contract Run
+- 한 매치에서 Surface Forgery를 여러 번 반복하는 Contract Run
 - 목표 플레이 시간 15~25분
 - `TitleMenu → Lobby → ReadyCountdown → InGame → End`
 - Painting Target Artifact
@@ -183,14 +189,12 @@ Title Menu
 - Observation Cast
 - Owner-only Full-Screen Drawing Forgery
 - 서버 권한 Forgery Score
-- Object Assembly Forgery Vertical Slice
-- Sculpture / Ceramic Modular Kit 최소 2종
-- Object Assembly Template 최소 12개
-- Owner-only Full-Screen Object Assembly
-- 서버 권한 Part / Socket / Orientation Score
 - Replica Placement
 - Original Removal
 - Guard Patrol
+- CCTV Detection
+- 고가 Painting용 Cooperative Laser Zone / Hold Button
+- Laser Button Hold와 Zone 통과 상태의 서버 권한 검증·복제·해제
 - Guard Investigate
 - Guard Chase
 - Guard Search
@@ -213,9 +217,10 @@ Title Menu
 - Failure
 - Team Result
 - Player Contribution
-- 실제 Replica Painting / Object를 보여주는 Match Recap
-- 1인 완주
-- 2~4인 멀티플레이 완주
+- 실제 Replica Painting을 보여주는 Match Recap
+- 2인 멀티플레이 완주
+- 3인 멀티플레이 완주
+- 4인 멀티플레이 완주
 - Development Build 패키징
 
 ## Excluded
@@ -252,6 +257,16 @@ Title Menu
 - Stamina Resource
 - Mandatory Class / Role Lock
 
+## Deferred Expansion
+
+Object Assembly Forgery는 삭제하지 않고 출시 이후 재평가할 Expansion으로 보존한다. v1 활성 Gameplay, Release Content와 완료 Gate에는 포함하지 않는다.
+
+- `AHeistObjectDisplayCaseActor`, `UHeistObjectAssemblyComponent`, Object Assembly ViewModel/Widget, `BP_ObjectDisplayCase`와 기존 Sculpture / Ceramic Asset 계약은 삭제하지 않는다.
+- Object Assembly Template, Modular Part / Socket / Orientation Score와 Replica Data는 재활성화 가능한 기술 기준으로 보존한다.
+- v1 서버는 Object Case를 Contract Assignment, Required Target, Loot Value Quota 충족 수단 또는 Release Map 활성 Case로 선택하지 않는다.
+- v1 플레이어는 Object Assembly Session에 진입할 수 없어야 하며, `Assembling` 상태를 정상 플레이에서 새로 발생시키지 않는다.
+- Deferred 코드는 compile/load/cleanup 회귀와 Asset Reference 무결성까지만 유지한다. Object 전용 콘텐츠 확장과 Release Gate 추가는 별도 승인 전 수행하지 않는다.
+
 ## Stretch
 
 필수 기능과 멀티플레이 Gate가 모두 PASS한 뒤에만 검토한다.
@@ -259,7 +274,6 @@ Title Menu
 - Optional Rare Artifact
 - First-Person Hand Animation
 - 추가 Surface Forgery Template
-- 추가 Object Assembly Kit / Template
 - 추가 Loose Loot
 
 Optional Rare Artifact는 Stretch 승인 전 Runtime State, Timer, 위치·방향 Marker, 전용 Widget과 Data Row를 유지하지 않는다. 승인이 확정되면 제거된 경쟁형 Rare Loot 구현을 복구하지 않고 당시 Contract Run과 정보 공개 정책을 기준으로 새로 설계한다.
@@ -301,23 +315,23 @@ Smoke 및 Trap 계열 기능은 Stretch 목록에 포함하지 않는다.
 - Player Name, Crew Status, Contract Progress, Alert, Stun / Arrest, Original Carrier와 Extraction 상태를 로그 전용 또는 숨은 상태로 남기지 않는다.
 - Contract Value와 Forgery Quality Score를 같은 수치로 취급하지 않는다.
 - Required Target / Loot Value Quota / Secured Value / Contract Outcome은 서버가 확정한다.
-- 고정 역할을 만들지 않으며 모든 Player가 Forgery, Assembly, Carry, Loot, Coin, Map과 Extraction을 사용할 수 있다.
+- 고정 역할을 만들지 않으며 모든 Player가 Surface Forgery, Laser Button Hold, Carry, Loot, Coin, Map과 Extraction을 사용할 수 있다. Laser 협동 중 Button Holder와 Zone 진입자는 일시적 행동 분담일 뿐 Class 또는 영구 Role이 아니다.
 
-## Surface Forgery / Object Assembly Boundary
+## Active Surface Forgery / Deferred Object Assembly Boundary
 
 - Painting 전시품과 Surface Forgery는 `AHeistPaintingDisplayCaseActor`가 담당한다.
-- Sculpture와 Ceramic을 포함한 3D 조립 전시품은 `AHeistObjectDisplayCaseActor`가 담당한다.
-- `Object Assembly Forgery`는 Sculpture / Ceramic을 포괄하는 Gameplay System 명칭이다.
+- Deferred Sculpture와 Ceramic을 포함한 3D 조립 전시품은 `AHeistObjectDisplayCaseActor`가 담당한다.
+- `Object Assembly Forgery`는 Sculpture / Ceramic을 포괄하는 Deferred Gameplay System 명칭이다.
 - Surface Forgery와 Object Assembly는 서로의 Template Row를 공유하지 않는다.
 - Surface Forgery와 Object Assembly는 서로의 제출 Payload와 Replica Data를 공유하지 않는다.
 - Surface Forgery와 Object Assembly는 서로의 State Machine과 상세 Result를 공유하지 않는다.
-- 두 방식은 Owner-only Input Mode, 한글 중심 Mode Title, 70점 기준을 함께 표시하는 단일 예상 품질, Timer, Submit/Cancel, 통합 하단 안내와 서버가 확정한 최종 0~100 Quality Score/Replica 승인 Gate만 공유할 수 있다.
-- 작업 방법은 Tutorial과 통합 하단 안내가 담당하며, Surface/Object 작업 화면에 별도 `InstructionText`와 `ModeStatusText`를 만들지 않는다.
+- Object Assembly 재활성화 시 두 방식은 Owner-only Input Mode, 한글 중심 Mode Title, 70점 기준을 함께 표시하는 단일 예상 품질, Timer, Submit/Cancel, 통합 하단 안내와 서버가 확정한 최종 0~100 Quality Score/Replica 승인 Gate만 공유할 수 있다.
+- 작업 방법은 Tutorial과 통합 하단 안내가 담당하며, Surface 작업 화면과 보존 중인 Object 작업 화면에 별도 `InstructionText`와 `ModeStatusText`를 만들지 않는다.
 - `AHeistDisplayCaseActor`는 제거됐다. `BP_PaintingDisplayCase`는 `AHeistPaintingDisplayCaseActor`를 직접 부모로 사용한다.
 - Painting 전시품은 `BP_PaintingDisplayCase` 공용 Shell만 사용한다.
 - `AHeistSculptureDisplayCaseActor`는 제거됐다. Sculpture / Ceramic 전시품은 `AHeistObjectDisplayCaseActor`만 사용한다.
 - `BP_ObjectDisplayCase`는 `AHeistObjectDisplayCaseActor`를 직접 부모로 사용한다.
-- 신규 Sculpture / Ceramic Asset은 `BP_ObjectDisplayCase` 공용 Shell과 Object Assembly Data Row로 표현한다.
+- Deferred Expansion이 재승인되기 전 신규 Sculpture / Ceramic Asset과 Object Assembly Data Row를 추가하지 않는다. 재승인 후에는 `BP_ObjectDisplayCase` 공용 Shell과 Object Assembly Data Row로 표현한다.
 
 ## Removed Feature Boundary
 
@@ -369,6 +383,8 @@ Client가 직접 확정할 수 없는 항목:
 - Objective State
 - Alert Level
 - Lockdown
+- CCTV Detection Result
+- Laser Button Hold / Zone Access State
 - Guard Inspection Result
 - Extraction Result
 - Team Result
@@ -394,7 +410,7 @@ Client Preview는 확정값으로 취급하지 않는다.
 - 비 Editor 실행과 패키지 빌드는 기본 `OnlineSubsystemSteam`을 사용한다.
 - Editor `OnlineSubsystemNull` 검증은 구현 검증용이며 Steam 최종 PASS를 대체하지 않는다.
 - Online Session의 로컬 이름은 PIE가 선점하는 `GameSession`과 분리된 `HeistSession`을 사용한다.
-- Session은 1~4인 Listen Server, Presence, Lobby, Join In Progress를 사용한다.
+- Session은 최대 4인 Listen Server, Presence와 Lobby 참가를 사용하며 공개 지원 인원은 2~4인이다. Join In Progress는 Lobby/ReadyCountdown까지만 허용하고 InGame 이후에는 허용하지 않는다.
 
 ## Level Flow
 
@@ -413,6 +429,11 @@ Client Preview는 확정값으로 취급하지 않는다.
 - Host는 Lobby에서 `M01`, `M02`, `M03`, `Random`을 선택할 수 있고 선택 결과는 `AHeistGameState`를 통해 모든 Client에 복제한다.
 - Lobby Player Id는 현재 `PlayerArray`에서 사용하지 않는 가장 낮은 `1~4` 번호를 할당한다. 퇴장한 Slot은 `EMPTY`가 되고 다음 참가자가 해당 번호를 재사용한다.
 - `UHeistLobbyViewModel`은 Player 추가·제거뿐 아니라 각 `AHeistPlayerState`의 Identity 변경에도 반응해 모든 Client의 Slot 표시를 갱신한다.
+- Host 혼자 Lobby를 생성하고 대기할 수 있지만 서버는 연결된 유효 Player가 2명 미만이면 Start 요청을 `MinimumPlayersRequired` 사유로 거부하고 Lobby를 유지한다.
+- InGame 전환 시 서버가 `ContractStartPlayerCount`를 2~4 범위로 Snapshot하고 Loot Value Quota와 Exhibit Assignment는 이 값을 기준으로 한 번만 확정한다.
+- Contract 시작 후 인원이 2명에서 1명으로 줄어도 진행 중인 Run은 안전하게 계속한다. Quota와 Exhibit Assignment를 소급 변경하지 않으며 1인용 Balance Row는 Disconnect 복구와 내부 검증용 Fallback으로만 유지한다.
+- Direct Gameplay Map의 1인 PIE, 자동화와 진단 실행은 내부 Fallback이며 Public Solo 지원 또는 Release 완료 증거로 취급하지 않는다.
+- Join은 Lobby/ReadyCountdown에서만 최대 4명과 현재 Session 수용 상태를 검증해 허용한다. InGame 이후 Join Request는 `MatchAlreadyStarted`로 거부하며, 이미 확정된 `ContractStartPlayerCount`, Quota와 Exhibit Assignment는 변경하지 않는다.
 - Package Client는 로컬 PlayerController `BeginPlay`에서 Session World Ready를 통지해 성공한 `TravelJoin`의 Pending 상태와 30초 감시 타이머를 해제한다.
 - Steam 최종 PASS는 서로 다른 Steam 계정 2개와 Development Package 증거가 있을 때만 처리한다.
 
@@ -463,7 +484,7 @@ ResolvedSprintSpeed = Clamp(600 - TotalCarryWeight × 15, 250, 600)
 
 - 정확한 수치는 Balance Data가 소유하며 플레이 테스트에서 조정한다.
 - Walk Footstep 기본 반경은 `500 cm`, Sprint Footstep 기본 반경은 `1,000 cm`다.
-- Inventory, Map, Surface Forgery, Object Assembly, Stun, Arrest, Escape 완료와 World Restriction 중에는 Sprint를 허용하지 않는다.
+- Inventory, Map, Surface Forgery, Stun, Arrest, Escape 완료와 World Restriction 중에는 Sprint를 허용하지 않는다. Deferred Object Assembly 상태가 복구 경로에서 감지된 경우에도 안전을 위해 Sprint를 차단한다.
 - Sprint 요청과 서버 확정 이동 속도는 Weight, Match Phase와 Player State를 검증한다.
 - Head Bob, Camera Roll, Sprint FOV Kick과 Stamina UI는 v1.0에서 사용하지 않는다.
 
@@ -475,12 +496,12 @@ ResolvedSprintSpeed = Clamp(600 - TotalCarryWeight × 15, 250, 600)
 - Display Name을 사용할 수 없으면 `PLAYER {HeistPlayerId}`를 사용한다.
 - Remote Player는 머리 위 Nameplate를 표시한다.
 - Nameplate는 Player Name, Player Color, 거리와 현재 핵심 상태 Icon을 표시할 수 있다.
-- 핵심 상태는 `Active`, `Forging`, `Assembling`, `CarryingOriginal`, `Heavy`, `Stunned`, `Arrested`, `Escaped`를 구분한다.
+- v1 핵심 상태는 `Active`, `Forging`, `CarryingOriginal`, `Heavy`, `Stunned`, `Arrested`, `Escaped`를 구분한다. `Assembling` Enum/Presentation Hook은 Deferred 호환용으로만 남는다.
 - 이름표는 Local Owning Player 자신에게 표시하지 않는다.
 - 이름표는 일반적으로 `2~2,500 cm` 범위에서 표시하고 원거리에서 Fade한다.
 - 벽을 통과하는 Guard, Loot 또는 SoundPing Marker는 추가하지 않는다.
 - Main HUD Team Status는 연결된 모든 Player의 Name, Color, Crew Status, Original Carrier와 Escape / Arrest 상태를 항상 요약한다.
-- Forgery 또는 Assembly Full-Screen 중에도 최소 Team Status와 Alert Warning을 유지한다.
+- Surface Forgery Full-Screen 중에도 최소 Team Status와 Alert Warning을 유지한다.
 
 ---
 
@@ -517,7 +538,7 @@ Audio
 - Escape 완료 Player는 Team Status에서 `ESCAPED`로 유지하고 남은 Crew 상태를 관찰한다.
 - 상태 해제, Arrest 해제, Match End와 Lobby Return에서 Post Process, Audio Filter, Input Lock과 Widget을 정리한다.
 - Character 상태 VFX는 상태별 Component를 늘리지 않고 재사용 Niagara Component 하나가 현재 `CrewStatus`의 System만 교체한다.
-- 상태 전환 World Audio도 재사용 Audio Component 하나가 담당하며, Blueprint Class Defaults에는 `Forging / Assembling / CarryingOriginal / Heavy / Stunned / Arrested / Escaped`별 Niagara System과 Sound Asset 슬롯만 노출한다.
+- 상태 전환 World Audio도 재사용 Audio Component 하나가 담당하며, Blueprint Class Defaults에는 `Forging / Assembling / CarryingOriginal / Heavy / Stunned / Arrested / Escaped`별 Niagara System과 Sound Asset 슬롯만 노출한다. `Assembling` 슬롯은 Deferred Asset 호환용이며 v1 활성 콘텐츠가 사용하지 않는다.
 - `Active`는 별도 Effect Asset을 사용하지 않는 정리 상태다. `Escaped` VFX는 Character Hidden 처리 전에 World one-shot으로 재생하고 나머지 상태 VFX는 Character에 부착한다.
 - 상태 VFX·Audio Asset은 `/Game/Assets`에서 관리하고 `BP_HeistPlayerCharacter`는 Assignment만 담당한다. 비어 있는 슬롯은 정상적인 No-op이며 Gameplay State, Authority와 Replication에 영향을 주지 않는다.
 
@@ -616,6 +637,32 @@ OrphanExtensions=0
 - 신규 Guard의 기본 `GuardProfileId`는 `Guard_Alert_Medium`이다.
 - 실제 맵의 Guard별 등급 배정, Patrol 영역, 공간 압박과 최종 수치 조정은 Release Level Design / Map Balance에서 수행한다.
 
+## v1 Security Gimmick Rules
+
+v1의 활성 Security Layer는 기존 Patrol Guard, CCTV와 고가 Painting용 Cooperative Laser다. 세 시스템은 같은 Alert Authority를 사용하지만 서로의 Runtime State를 대신 소유하지 않는다.
+
+- Detection, Hold, Zone Access, Consequence, Alert Mutation과 Replication은 C++ 서버가 소유한다.
+- Blueprint는 Mesh, Material, Animation, Audio, Niagara와 상태별 Visual Hook만 담당하고 Map은 CCTV Coverage, Laser Zone, Button과 Painting 연결을 배치한다.
+- Player가 판단해야 하는 Detection, CCTV 활성 상태와 Laser 개폐 상태는 화면·월드·오디오 중 최소 두 채널로 피드백한다.
+
+### CCTV
+
+- CCTV는 서버가 Target Eligibility, View Cone, Line of Sight, Detection Build-up, Cooldown과 Alert 요청을 검증한다.
+- CCTV Detection은 Guard Detection과 동일한 서버 Alert 경로를 사용하되 중복 Tick마다 Alert를 누적하지 않고 명시된 Threshold/Cooldown 계약을 따른다.
+- CCTV 위치, View Cone과 실시간 Target은 Floor Plan, Minimap 또는 Radar에 표시하지 않는다.
+- v1에는 CCTV Hack, 영구 비활성화, 원격 조종과 Security Room을 추가하지 않는다.
+
+### Cooperative Laser
+
+- Laser는 Contract 진행에 필수인 모든 Painting이 아니라 명시적으로 지정된 고가 Painting에만 적용한다.
+- 기본 상태는 경보 Beam 활성이다. 한 Player가 연결된 Button을 2~5초 동안 Hold하면 다른 Player가 문턱을 통과할 수 있게 비활성화하고, 전체 Forgery 시간 동안 Holder를 대기시키지 않는다.
+- 서버는 Button Holder와 Zone 진입자가 서로 다른 유효 Player인지, 거리·Interaction·Match Phase·Crew Status·연결 상태와 Hold 지속 여부를 검증한다.
+- Input Release, 거리 이탈, Stun, Arrest, Escape, Disconnect, Match End 또는 Actor EndPlay 시 Hold를 즉시 해제하고 Laser를 기본 상태로 복구한다.
+- Button Holder와 Zone 진입자는 일시적인 협동 행동만 나누며 고정 Class, 전용 능력 또는 영구 Role을 부여하지 않는다.
+- v1 Required Target은 Laser 뒤에 배치하지 않는다. 2인 시작 후 1명만 남아도 Required Target과 최소 Quota 경로를 완료할 수 있어야 한다.
+- Laser는 물리 Collision으로 이동을 막지 않는다. 활성 Beam을 통과하면 사건당 Suspicious Alert 요청과 근처 Guard 1회 조사만 발생시키며 Stun이나 Damage를 직접 적용하지 않는다.
+- Hold 해제 뒤 기본 Rearm Grace는 0.75초다. Map은 독립적인 Egress를 제공하고, Laser가 복구돼도 Zone 안 Player를 가두거나 피할 수 없는 즉시 피해를 주지 않는다.
+
 ---
 
 # 9. Action Component Rules
@@ -625,8 +672,8 @@ OrphanExtensions=0
 - Observation Cast
 - Escape Cast
 
-- Observation Cast는 Painting과 Object Display Case의 최초 위조/조립 진입에 공통으로 사용한다.
-- Observation Cast 기본 시간은 두 방식 모두 `1.0초`다. Server가 시작·취소·완료와 Session Lock을 확정한다.
+- v1 Observation Cast는 Painting Display Case의 최초 Surface Forgery 진입에 사용한다.
+- Observation Cast 기본 시간은 `1.0초`다. Server가 시작·취소·완료와 Session Lock을 확정한다. Object Display Case 지원 경로는 Deferred 호환용으로만 보존한다.
 - Owning Client는 복제된 `ObservationCastEndServerTime`을 기준으로 ProgressBar만 매 Frame 갱신하며, 진행률 갱신을 위한 Tick RPC는 전송하지 않는다.
 
 제거된 Gameplay Cast:
@@ -657,7 +704,7 @@ Observation 취소 조건:
 - Damage
 - Arrest
 - Session Invalid
-- Painting / Object Display Case Invalid
+- Painting Display Case Invalid. Deferred Object Session 정리 경로에서는 Object Display Case Invalid도 동일하게 취소한다.
 - Match Phase 변경
 - Owner EndPlay
 - Disconnect
@@ -681,11 +728,11 @@ Escape 취소 조건:
 
 - 서버는 현재 Map의 Eligible Exhibit Case와 Contract Definition으로 매치별 Exhibit Assignment를 확정한다.
 - Required Target Case는 반드시 하나 지정한다.
-- Optional Painting / Object Case는 Player Count와 Loot Value Quota가 요구하는 수량만 활성화한다.
+- Optional Painting Case는 `ContractStartPlayerCount`와 Loot Value Quota가 요구하는 수량만 활성화한다. Object Case는 v1 Assignment에서 제외한다.
 - Surface Template 선택은 Map Pool별 Shuffle Bag을 사용하며 한 Match Assignment 안에서 같은 Template을 중복 사용하지 않는다.
 - Shuffle Bag 재충전 시 직전 Cycle의 최근 3개 Template을 첫 선택 후보에서 제외한다.
-- Object Assembly Template은 별도 Family Pool과 Shuffle Bag을 사용한다.
-- Assignment는 `CaseId`, `ArtifactId`, `ForgeryType`, `TemplateId`, `ArtifactValue`, `bRequiredTarget`을 포함한다.
+- Object Assembly Template의 별도 Family Pool과 Shuffle Bag 코드는 Deferred 호환용으로 보존하되 v1 Assignment에서 실행하지 않는다.
+- Assignment는 `CaseId`, `ArtifactId`, `ForgeryType`, `TemplateId`, `ArtifactValue`, `bRequiredTarget`을 포함하며 v1의 `ForgeryType`은 Surface만 선택한다.
 - Assignment Snapshot과 Contract Snapshot은 모든 Client에 복제한다.
 - 선택된 Reference Image는 해당 Assignment를 받은 Painting Case의 Original World Visual에만 적용한다.
 - 비활성 Case 또는 다른 Case의 Original World Visual을 현재 Assignment로 덮어쓰지 않는다.
@@ -864,14 +911,14 @@ Penalty 또는 Diagnostic Field가 Final Score에 직접 적용되지 않는 경
 
 ## Alert Presentation
 
-- `UHeistHUDViewModel`, `UHeistForgeryViewModel`과 `UHeistObjectAssemblyViewModel`은 `AHeistGameState`의 복제 Alert Snapshot만 읽는다.
+- v1 활성 `UHeistHUDViewModel`과 `UHeistForgeryViewModel`은 `AHeistGameState`의 복제 Alert Snapshot만 읽는다. 보존 중인 `UHeistObjectAssemblyViewModel`도 자체 Alert를 확정하지 않는다.
 - Main HUD는 Quiet, Suspicious, Searching, Alarmed, Lockdown을 단계별 Text와 Color로 표시한다.
 - 플레이어 표시는 `SECURITY LEVEL 0/4~4/4`와 4칸 별 Indicator를 사용한다.
 - Guard의 확정 발각은 서버에서 최소 Suspicious를 요청한다. Forgery Quality와 Guard의 Replica 검사는 Alert를 변경하지 않는다.
-- Owner-only Surface Forgery/Object Assembly 화면에는 Security Level Indicator, Alert Warning 또는 Lockdown Countdown을 중복 표시하지 않는다.
-- Suspicious/Searching에서는 진행 중인 Surface Forgery/Object Assembly Session을 유지한다.
-- Alarmed/Lockdown 진입 시 `AHeistGameMode`가 활성 Surface/Object Session을 `AlertDanger`로 서버에서 먼저 취소하고, 해당 Widget은 별도 Cancel RPC 없이 즉시 화면을 닫아 Gameplay Input을 복원한다.
-- Alarmed/Lockdown 상태에서는 Observation과 신규 Surface/Object Session 시작을 서버가 거부하며 Display Case Lock을 남기지 않는다.
+- Owner-only Surface Forgery 화면에는 Security Level Indicator, Alert Warning 또는 Lockdown Countdown을 중복 표시하지 않는다. Deferred Object Widget에도 같은 Presentation 원칙을 보존한다.
+- Suspicious/Searching에서는 진행 중인 Surface Forgery Session을 유지한다.
+- Alarmed/Lockdown 진입 시 `AHeistGameMode`가 활성 Surface Session을 `AlertDanger`로 서버에서 먼저 취소하고, 해당 Widget은 별도 Cancel RPC 없이 즉시 화면을 닫아 Gameplay Input을 복원한다. 잔존 Object Session이 있으면 같은 Cleanup 경로로 정리한다.
+- Alarmed/Lockdown 상태에서는 Observation과 신규 Surface Session 시작을 서버가 거부하며 Display Case Lock을 남기지 않는다. Deferred Object Session 시작 요청은 Alert와 무관하게 v1에서 항상 거부한다.
 - Alarmed의 Lockdown Countdown은 복제된 `AlertNextTransitionServerTime`과 Server World Time의 차이로 표시한다.
 - HUD Lockdown Countdown은 독립된 `LockdownCountdownText`에 표시한다.
 - Suspicious/Searching은 Suspense Music Layer, Alarmed/Lockdown은 Alarm Music Layer를 사용한다.
@@ -899,11 +946,13 @@ Forgery 종료 시 반드시 복원한다.
 
 ---
 
-# 10A. Object Assembly Forgery Rules
+# 10A. Deferred Object Assembly Technical Contract
+
+이 절은 삭제하지 않은 Object Assembly 구현의 재활성화 기준과 Cleanup 회귀를 보존한다. v1 Release Gameplay, Contract Assignment, Map 활성 배치와 완료 Gate로 해석하지 않는다.
 
 ## Supported Artifact Families
 
-현재 Object Assembly Forgery의 활성 Family:
+재활성화 시 지원할 보존 Family:
 
 ```text
 Sculpture
@@ -921,10 +970,12 @@ Jewelry, Fossil 및 기타 Family는 명시적인 설계·구현 승인 전 활�
 - Core Mesh는 승인된 Socket을 소유한다.
 - Part Pivot은 연결 지점을 기준으로 제작한다.
 - Runtime Mesh Cutting, Geometry Collection, 자유 물리 조립을 사용하지 않는다.
-- v1.0 조립은 Socket Snap과 승인된 회전 단계만 사용한다.
-- Scale 자유 조절은 v1.0에서 사용하지 않는다.
+- 재활성화 기준 조립은 Socket Snap과 승인된 회전 단계만 사용한다.
+- Scale 자유 조절은 재활성화 기준에서 사용하지 않는다.
 
 ## Owner-only Assembly Mode
+
+아래 동작 계약은 Deferred Expansion이 별도 승인된 이후에만 Player-facing 경로로 활성화한다.
 
 - `Secured` Object Case의 최초 `E`는 즉시 Assembly를 열지 않는다. `E`를 1.0초 유지해 Observation Cast가 서버에서 완료된 뒤 Assembly Session으로 전환한다.
 - Observation 중 Input Release, Movement, Damage, Arrest, Session Invalid 또는 Match Phase 변경이 발생하면 Assembly 진입 없이 취소한다.
@@ -1021,15 +1072,15 @@ Session 종료, Cancel, Timeout, Arrest, Disconnect, Match End, Owner EndPlay �
 
 - v1.0은 하나의 Contract Archetype을 사용한다.
 - 각 Match는 `Required Target 1개 + Loot Value Quota 1개`를 확정한다.
-- Required Target은 Painting 또는 Object Assembly Exhibit가 될 수 있다.
+- v1 Required Target은 Painting Exhibit만 선택한다. Object Assembly Exhibit 선택 계약은 Deferred Expansion 재승인 전 실행하지 않는다.
 - Required Target의 Artifact Value는 Loot Value Quota에 포함된다.
 - Quota는 Required Target만 훔쳐서는 일반적으로 달성할 수 없도록 Data Validation한다.
-- Player Count가 증가하면 Quota와 활성 Optional Exhibit 수를 Data로 조정한다.
+- `ContractStartPlayerCount`가 증가하면 Quota와 활성 Optional Painting 수를 Data로 조정한다.
 - Forgery Time 자체는 Player Count에 따라 크게 늘리지 않는다.
 
 ## Grid Inventory And Original Acquisition
 
-- Painting / Object Original과 Loose Loot는 동일한 Owner-only `FHeistReplicatedInventory` FastArray와 4×5 GridSlot을 사용한다.
+- v1 Painting Original과 Loose Loot는 동일한 Owner-only `FHeistReplicatedInventory` FastArray와 4×5 GridSlot을 사용한다. Object Original 지원은 Deferred 호환 데이터로만 보존한다.
 - Painting의 Original은 `ReplicaReady`에서 `E`로 교체·회수를 확정할 때 Artifact Data의 `GridWidth`, `GridHeight`, `Weight`, `ArtifactValue`를 복제 Item Instance에 복사하고 빈 GridSlot에 즉시 자동 배치한다.
 - Painting의 Replica 교체와 Original Grid 추가는 분리된 두 번의 상호작용이 아니며, 어느 한쪽만 성공한 상태를 남기지 않는다.
 - 빈 GridSlot이 없거나 Weight 제한을 넘으면 획득을 거부하며, Original은 전시 케이스 또는 기존 World Drop 상태를 유지한다.
@@ -1082,7 +1133,7 @@ Contract Failed
 
 ## Failure-forward
 
-- 서툴더라도 Quality 70 이상인 Replica와 Assembly는 서버 Validation을 통과하면 World에 배치한다.
+- 서툴더라도 Quality 70 이상인 Surface Replica는 서버 Validation을 통과하면 World에 배치한다. Object Assembly Replica 규칙은 Deferred 계약으로만 보존한다.
 - 실수는 가능한 한 즉시 Match Failure가 아니라 Guard Investigation, Alert, Drop, Rescue 또는 급한 탈출 상황을 만든다.
 - Guard와 Museum Presentation은 진지하게 유지하고, 코미디는 Player 행동과 실제 Replica 결과에서 발생하게 한다.
 - 고정 Painter, Lookout, Carrier 역할을 강제하지 않는다.
@@ -1099,7 +1150,7 @@ Contract Failed
 - Coin Impact
 - 현재 기획에 포함된 환경 소음
 
-`Replica Swap`은 Painting/Object Case의 `E` 교체·회수 확정 시 작은 World Audio와 함께 서버에서 발생한다. 주변 Guard는 이 Event를 `InvestigateNoise` 후보로 처리하고, Player-facing SoundPing Marker는 생성하지 않는다. Drawing/Assembly 제출만으로는 이 Event를 발생시키지 않는다.
+`Replica Swap`은 v1 Painting Case의 `E` 교체·회수 확정 시 작은 World Audio와 함께 서버에서 발생한다. 주변 Guard는 이 Event를 `InvestigateNoise` 후보로 처리하고, Player-facing SoundPing Marker는 생성하지 않는다. Drawing 제출만으로는 이 Event를 발생시키지 않는다. Object Case와 Assembly 제출 경로는 Deferred 호환 계약으로만 보존한다.
 
 현재 제거된 SoundPing:
 
@@ -1186,7 +1237,7 @@ Context 전환 시:
 | Widget Blueprint | Layout, Binding, Animation, Presentation |
 | ViewModel / C++ Widget | HUD, Nameplate, Map, Status, Result State Exposure와 Request Routing |
 | DataTable / DataAsset | Contract, Artifact, Template, Guard, Balance, Map Presentation, Scaling Data |
-| Map | Painting/Object Case, Guard Route, Loot Spawn, Exit, Zone, Lighting, Navigation |
+| Map | Painting Case, Guard Route, CCTV Coverage, Laser Zone/Button 연결, Loot Spawn, Exit, Zone, Lighting, Navigation |
 
 ## Canonical Actor Blueprint Shell Registry
 
@@ -1198,21 +1249,21 @@ Actor Blueprint 분리는 Component Topology, Collision Contract, Authority Stat
 | Loose Loot World Pickup | `AHeistLootActor` | `BP_Loot` | `ItemId` → `DT_ItemData` + `DT_LootData`의 Mesh / Material / Visual Transform |
 | Dropped Original Recovery | `AHeistDroppedOriginalActor` | `BP_DroppedOriginal` | `ArtifactId` → `DT_ArtifactData`의 DisplayName / ItemGrade / ForgeryType, Category Mesh와 Grade Material은 공용 Shell Default |
 | Painting Display Case | `AHeistPaintingDisplayCaseActor` | `BP_PaintingDisplayCase` | `CaseId` / `ArtifactId` → `DT_ArtifactData` + `DT_ForgeryTemplate` |
-| Object Assembly Display Case | `AHeistObjectDisplayCaseActor` | `BP_ObjectDisplayCase` | `CaseId` / `ArtifactId` → `DT_ArtifactData` + `DT_ObjectAssemblyTemplate` + `DT_ObjectAssemblyPart` |
+| Object Assembly Display Case (Deferred) | `AHeistObjectDisplayCaseActor` | `BP_ObjectDisplayCase` | `CaseId` / `ArtifactId` → `DT_ArtifactData` + `DT_ObjectAssemblyTemplate` + `DT_ObjectAssemblyPart` |
 | Shared Extraction | `AHeistVentActor` | `BP_Vent` | Map Instance Identity와 공통 Vent Presentation |
 | Loot Spawn Point | `AHeistLootSpawnPoint` | `BP_LootSpawnPoint` | Spawn Category / Zone / Transform |
 
 - Loose Loot와 Dropped Original은 외형이 유사해도 서버 상태와 회수 Transaction이 다르므로 서로 다른 공용 Shell을 유지한다.
-- Dropped Original은 작품별 원본 Mesh/Material을 재현하지 않는다. Drawing Artifact는 작은 액자, Assembly Artifact는 작은 조각상 공용 외형만 사용한다.
+- Dropped Original은 작품별 원본 Mesh/Material을 재현하지 않는다. v1 Drawing Artifact는 작은 액자 공용 외형을 사용하며 Assembly Artifact의 작은 조각상 외형은 Deferred 호환용으로만 보존한다.
 - `DT_ArtifactData`는 Dropped Original을 위한 개별 Mesh, Material 또는 Actor Class를 소유하지 않는다. 작품 차이는 DisplayName과 ItemGrade로 식별한다.
 - Dropped Original의 등급은 공용 Shell의 Grade Material 색상과 UI의 별/등급 Text를 함께 사용한다. Required Target 표시는 등급과 별도의 Text/Icon으로 구분한다.
 - `BP_Loot`는 기존 `BP_LootRoyalCrown`을 In-place Rename하고 고정 Mesh/Row를 제거해 승격한 유일한 Loose Loot 공용 Shell이다.
 - Crown, Sword, Painting, Vase, Necklace 같은 Loose Loot 차이는 별도 파생 Actor Blueprint가 아니라 Data Row로 표현한다.
-- Sculpture와 Ceramic은 모두 `BP_ObjectDisplayCase` 하나를 사용한다. Family, Core/Part Mesh, Socket, Orientation과 Material은 Object Assembly Data가 결정한다.
-- `BP_ObjectDisplayCase`는 기존 `BP_SculptureDisplayCase`를 `AHeistObjectDisplayCaseActor`로 Reparent한 뒤 In-place Rename해 승격한 유일한 Object Display Case 공용 Shell이다.
+- Deferred Sculpture와 Ceramic은 모두 `BP_ObjectDisplayCase` 하나를 사용한다. 재활성화 시 Family, Core/Part Mesh, Socket, Orientation과 Material은 Object Assembly Data가 결정한다.
+- `BP_ObjectDisplayCase`는 기존 `BP_SculptureDisplayCase`를 `AHeistObjectDisplayCaseActor`로 Reparent한 뒤 In-place Rename해 승격한 유일한 Deferred Object Display Case 공용 Shell이다.
 - `BP_LootAncientSword`, `BP_Painting`, `BP_CeramicDisplayCase`는 제거됐으며 다시 생성하지 않는다. Rename Redirector는 참조가 0인 것을 확인한 뒤 제거한다.
 - `FHeistLootDataRow::WorldLootActorClass`처럼 Row마다 Actor Class를 선택하게 만드는 필드는 활성 Content Schema에서 사용하지 않는다. Spawn Class는 공용 Shell 하나를 시스템 설정이 소유하고 Row는 Visual Asset만 소유한다.
-- `FHeistArtifactDataRow::VisualActorClass`를 Painting/Object Display Case 선택에 사용하지 않는다. Painting Original은 Surface Template Texture로, Object Original/Replica는 Object Template/Part Data로 재구성한다.
+- `FHeistArtifactDataRow::VisualActorClass`를 Painting/Object Display Case 선택에 사용하지 않는다. v1 Painting Original은 Surface Template Texture로 재구성하며, Deferred Object Original/Replica는 재활성화 시 Object Template/Part Data로 재구성한다.
 - 서버는 Row Id와 Revision을 확정·복제하고, Client는 동일한 Data Row에서 Mesh와 Material을 해석한다. Client나 Blueprint가 ItemId/ArtifactId Switch로 Gameplay 또는 Visual Variant를 하드코딩하지 않는다.
 - Blueprint Event는 C++이 해석해 전달한 Mesh/Material을 적용하는 Presentation Hook만 담당한다. PartId/MaterialId별 Asset 선택 Switch는 Data Resolver가 담당한다.
 - Debug Spawn과 PIE Fixture도 Canonical Blueprint Shell을 생성해야 한다. Shell Load 실패 시 순수 C++ Actor로 대체하지 않고 `BLOCKED` 또는 `FAIL`로 기록한다.
@@ -1458,7 +1509,7 @@ Editor 작업 안내에는 다음만 포함한다.
 - PIE의 Disconnect, Session Cleanup, Owner EndPlay 또는 재접속 연속성 검증에서 Client 콘솔 `disconnect`를 사용하지 않는다.
 - PIE Client를 종료하기 위해 `ESC`를 사용하지 않는다.
 - 위 검증에서 원격 Client 연결 종료가 필요하면 Listen Server가 서버 권한 `KickPlayer` Debug Command로 대상 Player를 제거한다.
-- 현재 공용 Kick 경로는 `HeistObjectAssemblyKickPlayer <PlayerId>`이며, 이름과 관계없이 `AGameSession::KickPlayer()`를 호출하는 서버 권한 진단 명령으로 사용한다.
+- 현재 공용 Kick 경로는 `HeistObjectAssemblyKickPlayer <PlayerId>`이며, 역사적 명칭과 관계없이 `AGameSession::KickPlayer()`를 호출하는 서버 권한 진단 명령으로 사용한다. 이 명령 이름은 Object Assembly의 v1 활성 범위를 의미하지 않는다.
 - 테스트 안내에서 `disconnect`가 필요한 것처럼 보이는 경우에도 항상 위 Listen Server Kick 절차로 대체한다.
 
 ## Session Debug Commands
@@ -1628,7 +1679,7 @@ DecisionScore =
 
 | 현재 상태 | 조건 | 다음 상태 |
 |---|---|---|
-| 탐색 | 확장 후보이며 Target 확인 | 작업: Forgery / Assembly |
+| 탐색 | 확장 후보이며 Target 확인 | 작업: Surface Forgery / Laser Cooperation |
 | 작업 | P0/P1/P2 발동 | 탈출 준비 |
 | 작업 | Submit 성공 | 휴대 / 교체 완료 |
 | 탈출 준비 | Exit 승인 | 탈출 실행 |
@@ -1648,9 +1699,9 @@ DecisionScore =
 
 # 20. Product Direction
 
-현재 제품 방향은 Rev 11 — Contract Run And Player Experience Foundation이다.
+현재 제품 방향은 Rev 14 — 2~4 Player Cooperative Security Gimmicks And Object Assembly Deferral이다.
 
-`Contract 확인 → Forgery/Assembly → Original/Loose Loot Carry → Alert/Chase → Player별 Deposit → Outcome/Result → Lobby Return`의 단일 완주 흐름을 먼저 닫는다. 이후 협동 가독성과 탐욕/퇴각 리듬, 세 맵의 Release Shape, QA와 Release Gate 순서로 완성도를 높인다.
+`2~4인 Lobby → Contract 확인 → Patrol Guard/CCTV 회피 → 선택적 Laser Cooperation → Surface Forgery → Original/Loose Loot Carry → Alert/Chase → Player별 Deposit → Outcome/Result → Lobby Return`의 단일 완주 흐름을 먼저 닫는다. Object Assembly는 기존 구현과 Asset Reference를 삭제하지 않되 v1 플레이 흐름과 Release Gate에서 제외한다.
 
 ## Product Completion Gate
 
@@ -1663,15 +1714,18 @@ DecisionScore =
 
 Build 성공이나 단일 함수 호출 성공만으로 기능 완료를 주장하지 않는다. Asset/Map 배치가 필요한 기능은 C++ 구현과 실제 Gameplay 검증을 구분해 설명한다.
 
-## Rev 11 Execution Priority
+## Rev 14 Execution Priority
 
-- Player가 이해할 수 없는 숨은 상태를 먼저 제거한다.
-- Contract Run의 Required Target / Quota / Secured Value를 Extraction / Result보다 먼저 확정한다.
-- Walk / Sprint, Nameplate, Team Status, Map과 Status Feedback은 Polish로 미루지 않는다.
+- 2인 미만 Start 거부, Lobby-only Join, InGame Join 거부, 2인 시작 후 1인 잔존 복구와 고정 Contract Snapshot을 먼저 검증한다.
+- Surface Painting만으로 Required Target / Quota / Secured Value와 Extraction / Result를 완주할 수 있게 닫는다.
+- 기존 Patrol Guard를 유지하고 CCTV와 고가 Painting용 Laser Cooperation을 서버 권한 Security Layer로 통합한다.
+- Required Target과 최소 Quota 경로는 Laser 협동 또는 Deferred Object Assembly에만 의존하지 않게 한다.
+- Walk / Sprint, Nameplate, Team Status, Map, Security Gimmick과 Status Feedback은 Polish로 미루지 않는다.
 - Gameplay Rule, Authority, Validation과 Replication은 계속 C++가 소유한다.
 - Animation, Audio, VFX와 Layout은 승인된 C++ State Hook을 표현한다.
-- 한 판의 완주 가능성을 먼저 닫고, 이후 협동 가독성과 탐욕/퇴각 리듬을 검증한다.
+- 한 판의 완주 가능성을 먼저 닫고, 이후 2~4인 협동 가독성과 탐욕/퇴각 리듬을 검증한다.
 - 세 맵을 Release Shape로 만든 뒤 신규 Gameplay Feature를 잠근다.
+- Object Assembly 콘텐츠 확장과 Player-facing 재활성화는 v1 Release Gate 이후 별도 승인 없이는 진행하지 않는다.
 - 그다음 QA, RC, 외부 테스트와 Final Release Gate를 진행한다.
 - Public Release 목표일 `2026-09-20`을 유지하되 RC Gate가 실패하면 날짜 때문에 통과시키지 않는다.
 

@@ -1,7 +1,7 @@
 # Project_MuseumHeist Current Project Status
 
 최종 갱신: 2026-08-18 KST
-현재 문서 Revision: 13
+현재 문서 Revision: 14
 
 이 문서는 새 Codex 작업이 Notion의 최신 진행 상태와 로컬 구현·검증 증거를 바로 이어받기 위한 오프라인 실행 캐시다.
 
@@ -9,6 +9,8 @@
 - Task 상태·우선순위·실행 순서는 Notion `주차별 작업보드`가 Live Source of Truth다.
 - Notion에 아직 연결되지 않은 실질 작업은 `LOCAL_PROGRESS_INBOX.md`에 기록한다.
 - 이 문서만 보고 Task 상태를 확정하지 않는다. 새 작업 시작 시 Notion을 다시 라이브 조회한다.
+
+> Rev14는 2026-08-18에 확정한 **Public Release 방향 재기준화**다. 현재는 문서 계약과 로컬 인계 기준만 바꾼 상태며, 코드·맵·UI·에셋·Cook·멀티플레이 Gate가 완료됐다는 의미가 아니다. 기존 W6/W7의 Solo·1P·Surface/Object 증거는 당시 구현의 역사적 검증으로 보존하며 Rev14 출시 Gate 통과로 재해석하지 않는다.
 
 ---
 
@@ -65,10 +67,21 @@ TEST-W7-006  Pass  Stun·Arrest/Rescue·Carry/Heavy 자동 Presentation 계약 /
 
 ## 1. Current Focus
 
+### Rev14 Release Rebaseline — Documentation Complete / Implementation Pending
+
+- Public Contract 지원 인원은 `2~4인`으로 바꾼다. 1인 PIE/자동화는 개발 진단 경로로만 남기고 출시 지원 인원으로 취급하지 않는다.
+- InGame에서 2인이 1인으로 줄어든 경우 즉시 실패·즉시 종료하지 않는 soft-fail을 사용한다. Match 시작 시 확정한 Quota/Assignment는 재계산하지 않고, 남은 Player가 계속 진행하거나 탈출할 수 있어야 한다.
+- v1 잠입 압박은 기존 Patrol Guard에 `CCTV`와 고가 Painting용 `Laser Hold`를 추가한다. Laser는 한 Player가 Hold Switch를 유지하고 다른 Player가 진입하는 선택적 협동 기믹이다.
+- v1 플레이 콘텐츠는 Painting `Surface Forgery`를 중심으로 한다.
+- `Object Assembly`는 삭제하지 않고 **Deferred Expansion**으로 보존한다. 소스·C++·Enum·Struct·DataTable·Blueprint Shell·원본 에셋은 repository에 남기되, v1 Runtime Assignment·Release Map·Player-facing UI·Result·Cook·QA/Release Gate에서는 비활성화한다.
+- 위 항목은 아직 구현·Build·PIE·Cook 검증 전이다. Notion Task 재편과 실제 구현 증거가 없으므로 완료로 처리하지 않는다.
+
+### Pre-Rev14 Implementation Evidence
+
 W7는 팀 가독성과 협동 피드백의 C++/복제/Input 기반과 Stun/Arrest/Carry 최종 HUD·Icon·Audio 구현을 마쳤다. 실제 HUD Widget Tree 동기화 후 2P TwoRuns와 전체 27/27 자동화를 통과했다. 2026-08-17 UE5 Manny와 `ABP_Unarmed`를 임시 Character/AnimBP 베이스로 연결했고, `/Game/Blueprints`의 Non-Blueprint Asset 29개를 `/Game/Assets`로 이동해 폴더 경계를 정리했다. 2026-08-18에는 상태별 Component를 늘리지 않고 재사용 Niagara/Audio Component 각 1개와 7개 non-Active 상태 Asset 슬롯을 추가했으며 W7 11/11 회귀를 통과했다. 현재 W7 마감 대상은 실제 Niagara/Sound Asset 할당, `TASK-W7-004`·`006`의 Remote Stun/Carry/Heavy Pose 연결과 `TASK-W7-004~006`의 2P 실제 화면·청음 확인이다.
 
 ```text
-Editor Build        PASS / Win64 Development
+Editor Build        PASS / Win64 Development / pre-Rev14 implementation
 Full Automation     PASS / 27 Success / WithWarnings 7 / Failed 0 / NotRun 0
 Solo ContractRun    PASS / 2 consecutive runs / clean Lobby reset
 2P Presentation     PASS / 2 consecutive runs / clean Lobby reset / PostLobbyFix
@@ -101,12 +114,12 @@ Status FX Slots     PASS / 1 reusable Niagara + 1 reusable Audio / 7 state pairs
 - Forgery Quality는 Alert 또는 Lockdown을 직접 올리지 않는다.
 - 서버 확정 Quality 70 이상만 Replica를 승인한다.
 - Timeout은 Replica 없이 작업을 폐기하고 근처 Guard 한 명에게 1회 조사만 요청한다.
-- Surface/Object는 한글 중심 공통 UI 계약을 따르며 별도 `InstructionText`와 `ModeStatusText`를 사용하지 않는다.
+- v1에서는 Surface Forgery만 Player-facing 공통 UI 계약을 사용하며 별도 `InstructionText`와 `ModeStatusText`를 사용하지 않는다. Object Assembly UI 계약과 Asset은 Deferred Expansion 자료로만 보존한다.
 
 ### Contract Run
 
 - Required Target 확보와 Loot Value Quota 달성은 서로 별도 조건이다.
-- Player Count별 Optional Exhibit는 1/2/3/4P에서 2/3/4/5개를 서버가 활성화한다.
+- 현재 구현은 1/2/3/4P에서 Optional Exhibit 2/3/4/5개를 활성화하는 pre-Rev14 계약이다. Rev14 Public 2~4인 계약과 Surface-only Eligible Case Filter로 수정·재검증해야 한다.
 - 비선택 Level Case를 파괴하지 않고 replicated Contract 활성 상태로 숨김·충돌·상호작용을 비활성화한다.
 - Shared Exit에서 각 Player의 Original과 Loose Loot를 서버가 Deposit하고 Result를 확정한다.
 
@@ -229,11 +242,12 @@ Warning은 Title/Lobby RecastNavMesh 부재 및 테스트 Guard Noise의 Outside
 2. Notion 작업보드의 `진행중`/`검토중` Task와 사용자가 지정한 Task를 라이브 조회한다.
 3. `LOCAL_PROGRESS_INBOX.md`의 `UNLINKED`/`READY_TO_SYNC` Entry를 확인한다.
 4. `git status --short`와 관련 Diff를 확인한다.
-5. 아래 W7 Final Presentation 및 Status FX Slot 증거를 확인하고 이미 통과한 HUD·Icon·Audio·재사용 Component 기반을 재구현하지 않는다.
-6. `TASK-W7-005`는 2P 실제 화면·청음 Handoff를 수행한 뒤 Notion 완료 상태를 판정한다.
-7. `TASK-W7-004`·`006`은 연결된 Manny/`ABP_Unarmed` 베이스 위에 Remote Stun/Carry/Heavy Pose Layer를 구현하고 2P에서 검증한다.
-8. W7 Gate 종료 후 W8은 M02 Gameplay 배치 → M03 Gameplay 배치 → M01 Final Pass → 세 맵 Route·Audio·UI 잔여 → 3-Map 9판 Gate 순서로 진행한다.
-9. 이후 `TASK-W9-007`의 배포 권리·Notice 잔여를 재개한다.
+5. `LOCAL-20260818-01`은 `RECONCILED`다. Notion `TASK-W8-008`을 공통 기반 Task로 사용하고 기존 Task 상태를 구현 증거 없이 완료 처리하지 않는다.
+6. Rev14 구현은 `TASK-W8-008`에서 Public 2~4 Lobby Start Gate → 2→1 soft-fail → Surface-only Assignment/Result/UI Gate → Object Release Map/Cook 참조 0 → CCTV → Laser Hold 순으로 검증 가능하게 나눈다.
+7. 아래 W6/W7 Solo·1P·Surface/Object 증거는 삭제하지 않되 Rev14 출시 PASS로 보지 않는다. 이미 통과한 HUD·Icon·Audio·재사용 Component 기반은 재구현하지 않는다.
+8. `TASK-W7-004~006`의 실제 Niagara/Sound·Remote Pose·2P 화면/청음 잔여는 Rev14 Task 재편 후에도 유지되는지 Notion에서 확인한다.
+9. W8 실제 맵 배치는 CCTV/Laser/Surface-only Release Contract가 문서와 C++에서 고정된 뒤 M02 → M03 → M01 Final Pass → 세 맵 Gate 순으로 재기준화한다.
+10. `TASK-W9-007`의 배포 권리·Notice는 Surface/TENADA/Epic 잔여와 Rev14 실제 Cook Manifest를 함께 검증한다.
 
 ---
 
@@ -290,7 +304,7 @@ Test Log      TEST-W7-006 Pass / 자동 계약 범위 / 실제 화면·청음 �
 
 - W7-005: 로컬 구현·자동화·Notion 증거 동기화 완료, 2P 실제 화면·청음 확인 필요
 - W7-004·006: Manny/`ABP_Unarmed`와 상태 FX/Sound 슬롯 기반 완료, 실제 Niagara/Sound Asset·Remote Stun/Carry/Heavy Pose Layer 및 2P 실화면·청음 확인 필요
-- W8-007: 각 맵 Solo/2P/4P 총 9판에서 실제 2~3분 탐욕/탈출 선택 시점과 15~25분 Contract 지표 기록
+- W8-007: Rev14 기준 각 맵 2P/3P/4P 총 9판의 Completion Time, Peak Alert, Secured Value/Quota Margin, CCTV Detection, Laser Trip·Hold와 퇴각 선택 시점 기록
 
 ### 2026-08-15 Roadmap Optimization
 
