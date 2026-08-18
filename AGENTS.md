@@ -516,6 +516,10 @@ Audio
 - Original Carry와 Heavy 상태는 HUD, Nameplate Icon, Movement / Footstep Audio와 Remote Carry Pose로 식별할 수 있어야 한다.
 - Escape 완료 Player는 Team Status에서 `ESCAPED`로 유지하고 남은 Crew 상태를 관찰한다.
 - 상태 해제, Arrest 해제, Match End와 Lobby Return에서 Post Process, Audio Filter, Input Lock과 Widget을 정리한다.
+- Character 상태 VFX는 상태별 Component를 늘리지 않고 재사용 Niagara Component 하나가 현재 `CrewStatus`의 System만 교체한다.
+- 상태 전환 World Audio도 재사용 Audio Component 하나가 담당하며, Blueprint Class Defaults에는 `Forging / Assembling / CarryingOriginal / Heavy / Stunned / Arrested / Escaped`별 Niagara System과 Sound Asset 슬롯만 노출한다.
+- `Active`는 별도 Effect Asset을 사용하지 않는 정리 상태다. `Escaped` VFX는 Character Hidden 처리 전에 World one-shot으로 재생하고 나머지 상태 VFX는 Character에 부착한다.
+- 상태 VFX·Audio Asset은 `/Game/Assets`에서 관리하고 `BP_HeistPlayerCharacter`는 Assignment만 담당한다. 비어 있는 슬롯은 정상적인 No-op이며 Gameplay State, Authority와 Replication에 영향을 주지 않는다.
 
 ---
 

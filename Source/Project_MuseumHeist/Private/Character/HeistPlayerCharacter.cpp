@@ -25,6 +25,9 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
+#include "NiagaraComponent.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
 #include "Sound/SoundAttenuation.h"
 #include "Sound/SoundBase.h"
 #include "Sound/SoundMix.h"
@@ -48,6 +51,14 @@ AHeistPlayerCharacter::AHeistPlayerCharacter()
 	ObjectAssemblyComponent = CreateDefaultSubobject<UHeistObjectAssemblyComponent>(TEXT("ObjectAssemblyComponent"));
 	VisionComponent = CreateDefaultSubobject<UHeistVisionComponent>(TEXT("VisionComponent"));
 	NoiseEmitterComponent = CreateDefaultSubobject<UHeistNoiseEmitterComponent>(TEXT("NoiseEmitterComponent"));
+	CrewStatusVFXComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("CrewStatusVFXComponent"));
+	CrewStatusVFXComponent->SetupAttachment(GetMesh());
+	CrewStatusVFXComponent->SetAutoActivate(false);
+	CrewStatusTransitionAudioComponent = CreateDefaultSubobject<UAudioComponent>(TEXT("CrewStatusTransitionAudioComponent"));
+	CrewStatusTransitionAudioComponent->SetupAttachment(GetRootComponent());
+	CrewStatusTransitionAudioComponent->bAutoActivate = false;
+	CrewStatusTransitionAudioComponent->bAllowSpatialization = true;
+	CrewStatusTransitionAudioComponent->bOverrideAttenuation = true;
 	CrewStatusFootstepAudioComponent = CreateDefaultSubobject<UAudioComponent>(TEXT("CrewStatusFootstepAudioComponent"));
 	CrewStatusFootstepAudioComponent->SetupAttachment(GetRootComponent());
 	CrewStatusFootstepAudioComponent->bAutoActivate = false;
@@ -60,6 +71,7 @@ AHeistPlayerCharacter::AHeistPlayerCharacter()
 	CrewStatusAttenuation.AttenuationShapeExtents = FVector(150.0f, 0.0f, 0.0f);
 	CrewStatusAttenuation.FalloffDistance = 850.0f;
 	CrewStatusFootstepAudioComponent->SetAttenuationOverrides(CrewStatusAttenuation);
+	CrewStatusTransitionAudioComponent->SetAttenuationOverrides(CrewStatusAttenuation);
 	RescueInteractionTarget = CreateDefaultSubobject<USphereComponent>(TEXT("RescueInteractionTarget"));
 	RescueInteractionTarget->SetupAttachment(GetCapsuleComponent());
 	RescueInteractionTarget->SetSphereRadius(60.0f);
@@ -102,6 +114,8 @@ void AHeistPlayerCharacter::BeginPlay()
 	checkf(IsValid(ObjectAssemblyComponent), TEXT("HeistPlayerCharacter requires HeistObjectAssemblyComponent"));
 	checkf(IsValid(VisionComponent), TEXT("HeistPlayerCharacter requires HeistVisionComponent"));
 	checkf(IsValid(NoiseEmitterComponent), TEXT("HeistPlayerCharacter requires HeistNoiseEmitterComponent"));
+	checkf(IsValid(CrewStatusVFXComponent), TEXT("HeistPlayerCharacter requires CrewStatusVFXComponent"));
+	checkf(IsValid(CrewStatusTransitionAudioComponent), TEXT("HeistPlayerCharacter requires CrewStatusTransitionAudioComponent"));
 	checkf(IsValid(CrewStatusFootstepAudioComponent), TEXT("HeistPlayerCharacter requires CrewStatusFootstepAudioComponent"));
 	checkf(IsValid(RescueInteractionTarget), TEXT("HeistPlayerCharacter requires RescueInteractionTarget"));
 	checkf(IsValid(NameplateWidgetComponent), TEXT("HeistPlayerCharacter requires NameplateWidgetComponent"));
@@ -514,6 +528,7 @@ void AHeistPlayerCharacter::ApplyCrewStatusPresentation(const EHeistCrewStatus C
 	const AHeistGameState* HeistGameState = BoundPresentationGameState.Get();
 	const EHeistCrewStatus PresentationStatus = IsValid(HeistGameState) && HeistGameState->GetMatchPhase() == EHeistMatchPhase::InGame ? CrewStatus : EHeistCrewStatus::Active;
 	const EHeistCrewStatus PreviousPresentationStatus = AppliedCrewStatusPresentation;
+	const bool bStatusChanged = bCrewStatusPresentationInitialized && PreviousPresentationStatus != PresentationStatus;
 	AppliedCrewStatusPresentation = PresentationStatus;
 
 	SetLocalStunPostProcessEnabled(PresentationStatus == EHeistCrewStatus::Stunned);
@@ -522,18 +537,136 @@ void AHeistPlayerCharacter::ApplyCrewStatusPresentation(const EHeistCrewStatus C
 	{
 		CrewStatusFootstepAudioComponent->Stop();
 	}
+	ApplyCrewStatusVFX(PresentationStatus, bStatusChanged);
+	if (bStatusChanged)
+	{
+		PlayCrewStatusTransitionSound(PresentationStatus);
+	}
 	BP_ApplyCrewStatusPresentation(PresentationStatus);
+	bCrewStatusPresentationInitialized = true;
 }
 
 void AHeistPlayerCharacter::ResetCrewStatusPresentation()
 {
 	SetLocalStunPostProcessEnabled(false);
+	if (IsValid(CrewStatusVFXComponent))
+	{
+		CrewStatusVFXComponent->DeactivateImmediate();
+		CrewStatusVFXComponent->SetAsset(nullptr);
+	}
+	if (IsValid(CrewStatusTransitionAudioComponent))
+	{
+		CrewStatusTransitionAudioComponent->Stop();
+		CrewStatusTransitionAudioComponent->SetSound(nullptr);
+	}
 	if (IsValid(CrewStatusFootstepAudioComponent))
 	{
 		CrewStatusFootstepAudioComponent->Stop();
 	}
 	AppliedCrewStatusPresentation = EHeistCrewStatus::Active;
+	bCrewStatusPresentationInitialized = false;
 	BP_ApplyCrewStatusPresentation(EHeistCrewStatus::Active);
+}
+
+UNiagaraSystem* AHeistPlayerCharacter::ResolveCrewStatusVFX(const EHeistCrewStatus CrewStatus) const
+{
+	switch (CrewStatus)
+	{
+	case EHeistCrewStatus::Forging:
+		return ForgingStatusVFX;
+	case EHeistCrewStatus::Assembling:
+		return AssemblingStatusVFX;
+	case EHeistCrewStatus::CarryingOriginal:
+		return CarryingOriginalStatusVFX;
+	case EHeistCrewStatus::Heavy:
+		return HeavyStatusVFX;
+	case EHeistCrewStatus::Stunned:
+		return StunnedStatusVFX;
+	case EHeistCrewStatus::Arrested:
+		return ArrestedStatusVFX;
+	case EHeistCrewStatus::Escaped:
+		return EscapedStatusBurstVFX;
+	case EHeistCrewStatus::Active:
+	default:
+		return nullptr;
+	}
+}
+
+USoundBase* AHeistPlayerCharacter::ResolveCrewStatusTransitionSound(const EHeistCrewStatus CrewStatus) const
+{
+	switch (CrewStatus)
+	{
+	case EHeistCrewStatus::Forging:
+		return ForgingStatusSound;
+	case EHeistCrewStatus::Assembling:
+		return AssemblingStatusSound;
+	case EHeistCrewStatus::CarryingOriginal:
+		return CarryingOriginalStatusSound;
+	case EHeistCrewStatus::Heavy:
+		return HeavyStatusSound;
+	case EHeistCrewStatus::Stunned:
+		return StunnedStatusSound;
+	case EHeistCrewStatus::Arrested:
+		return ArrestedStatusSound;
+	case EHeistCrewStatus::Escaped:
+		return EscapedStatusSound;
+	case EHeistCrewStatus::Active:
+	default:
+		return nullptr;
+	}
+}
+
+void AHeistPlayerCharacter::ApplyCrewStatusVFX(const EHeistCrewStatus CrewStatus, const bool bForceRestart)
+{
+	if (!IsValid(CrewStatusVFXComponent))
+	{
+		return;
+	}
+
+	UNiagaraSystem* DesiredSystem = ResolveCrewStatusVFX(CrewStatus);
+	if (CrewStatus == EHeistCrewStatus::Escaped)
+	{
+		CrewStatusVFXComponent->DeactivateImmediate();
+		CrewStatusVFXComponent->SetAsset(nullptr);
+		if (bForceRestart && IsValid(DesiredSystem))
+		{
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, DesiredSystem, GetActorLocation(), GetActorRotation(), FVector(1.0f), true, true, ENCPoolMethod::AutoRelease);
+		}
+		return;
+	}
+	if (!IsValid(DesiredSystem))
+	{
+		CrewStatusVFXComponent->DeactivateImmediate();
+		CrewStatusVFXComponent->SetAsset(nullptr);
+		return;
+	}
+
+	const bool bAssetChanged = CrewStatusVFXComponent->GetAsset() != DesiredSystem;
+	if (bAssetChanged)
+	{
+		CrewStatusVFXComponent->DeactivateImmediate();
+		CrewStatusVFXComponent->SetAsset(DesiredSystem);
+	}
+	if (bForceRestart || bAssetChanged)
+	{
+		CrewStatusVFXComponent->Activate(true);
+	}
+}
+
+void AHeistPlayerCharacter::PlayCrewStatusTransitionSound(const EHeistCrewStatus CrewStatus)
+{
+	if (!IsValid(CrewStatusTransitionAudioComponent))
+	{
+		return;
+	}
+
+	CrewStatusTransitionAudioComponent->Stop();
+	USoundBase* DesiredSound = ResolveCrewStatusTransitionSound(CrewStatus);
+	CrewStatusTransitionAudioComponent->SetSound(DesiredSound);
+	if (IsValid(DesiredSound))
+	{
+		CrewStatusTransitionAudioComponent->Play();
+	}
 }
 
 void AHeistPlayerCharacter::SetLocalStunPostProcessEnabled(const bool bEnabled)
@@ -634,6 +767,19 @@ bool AHeistPlayerCharacter::AreCrewStatusAudioAssetsAssignedForDebug() const
 bool AHeistPlayerCharacter::IsCrewStatusAudioPlayingForDebug() const
 {
 	return IsValid(CrewStatusFootstepAudioComponent) && CrewStatusFootstepAudioComponent->IsPlaying();
+}
+
+bool AHeistPlayerCharacter::AreCrewStatusEffectComponentsReadyForDebug() const
+{
+	return IsValid(CrewStatusVFXComponent) && IsValid(CrewStatusTransitionAudioComponent);
+}
+
+bool AHeistPlayerCharacter::IsCrewStatusEffectPresentationCleanForDebug() const
+{
+	const bool bVFXClean = !IsValid(CrewStatusVFXComponent) || (!CrewStatusVFXComponent->IsActive() && CrewStatusVFXComponent->GetAsset() == nullptr);
+	const bool bTransitionAudioClean = !IsValid(CrewStatusTransitionAudioComponent) ||
+		(!CrewStatusTransitionAudioComponent->IsPlaying() && CrewStatusTransitionAudioComponent->GetSound() == nullptr);
+	return bVFXClean && bTransitionAudioClean;
 }
 
 void AHeistPlayerCharacter::HandleInventoryStateForCrewStatus()

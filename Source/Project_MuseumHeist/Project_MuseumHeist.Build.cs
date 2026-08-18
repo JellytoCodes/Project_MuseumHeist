@@ -31,6 +31,7 @@ public class Project_MuseumHeist : ModuleRules
 		{
 			"ImageCore",
 			"NavigationSystem",
+			"Niagara",
 			"OnlineBase",
 			"OnlineSubsystemUtils",
 			"RHI",

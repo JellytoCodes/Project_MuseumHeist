@@ -1118,7 +1118,7 @@ bool IsCompletedResultReady(const TSharedRef<FHeistContractRunAutomationState>& 
 		for (TActorIterator<AHeistPlayerCharacter> It(World); It; ++It)
 		{
 			if (IsValid(*It) && (It->GetAppliedCrewStatusForDebug() != EHeistCrewStatus::Active || It->IsLocalStunPostProcessEnabledForDebug() ||
-				It->IsStunSoundMixPushedForDebug() || It->IsCrewStatusAudioPlayingForDebug()))
+				It->IsStunSoundMixPushedForDebug() || It->IsCrewStatusAudioPlayingForDebug() || !It->IsCrewStatusEffectPresentationCleanForDebug()))
 			{
 				return false;
 			}
@@ -1208,7 +1208,7 @@ bool IsLobbyStateClean(const int32 PlayerCount)
 		for (TActorIterator<AHeistPlayerCharacter> It(World); It; ++It)
 		{
 			if (IsValid(*It) && (It->GetAppliedCrewStatusForDebug() != EHeistCrewStatus::Active || It->IsLocalStunPostProcessEnabledForDebug() ||
-				It->IsStunSoundMixPushedForDebug() || It->IsCrewStatusAudioPlayingForDebug()))
+				It->IsStunSoundMixPushedForDebug() || It->IsCrewStatusAudioPlayingForDebug() || !It->IsCrewStatusEffectPresentationCleanForDebug()))
 			{
 				return false;
 			}
@@ -1232,9 +1232,10 @@ FString DescribeLobbyStateClean(const int32 PlayerCount)
 		{
 			if (IsValid(*It))
 			{
-				CharacterStates.Add(FString::Printf(TEXT("%s:Applied=%s,PP=%s,Mix=%s,CrewAudio=%s"), *It->GetName(),
+				CharacterStates.Add(FString::Printf(TEXT("%s:Applied=%s,PP=%s,Mix=%s,CrewAudio=%s,StatusFXClean=%s"), *It->GetName(),
 					*UEnum::GetValueAsString(It->GetAppliedCrewStatusForDebug()), It->IsLocalStunPostProcessEnabledForDebug() ? TEXT("true") : TEXT("false"),
-					It->IsStunSoundMixPushedForDebug() ? TEXT("true") : TEXT("false"), It->IsCrewStatusAudioPlayingForDebug() ? TEXT("true") : TEXT("false")));
+					It->IsStunSoundMixPushedForDebug() ? TEXT("true") : TEXT("false"), It->IsCrewStatusAudioPlayingForDebug() ? TEXT("true") : TEXT("false"),
+					It->IsCrewStatusEffectPresentationCleanForDebug() ? TEXT("true") : TEXT("false")));
 			}
 		}
 		WorldStates.Add(FString::Printf(
@@ -1408,7 +1409,7 @@ bool IsGameplayResetClean(const int32 PlayerCount)
 		for (TActorIterator<AHeistPlayerCharacter> It(World); It; ++It)
 		{
 			if (IsValid(*It) && (It->GetAppliedCrewStatusForDebug() != EHeistCrewStatus::Active || It->IsLocalStunPostProcessEnabledForDebug() ||
-				It->IsStunSoundMixPushedForDebug() || It->IsCrewStatusAudioPlayingForDebug()))
+				It->IsStunSoundMixPushedForDebug() || It->IsCrewStatusAudioPlayingForDebug() || !It->IsCrewStatusEffectPresentationCleanForDebug()))
 			{
 				return false;
 			}

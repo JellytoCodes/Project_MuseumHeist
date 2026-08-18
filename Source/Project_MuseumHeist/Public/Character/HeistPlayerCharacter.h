@@ -17,6 +17,8 @@ class UHeistStatusComponent;
 class UHeistVisionComponent;
 class UCameraComponent;
 class UAudioComponent;
+class UNiagaraComponent;
+class UNiagaraSystem;
 class USphereComponent;
 class USoundBase;
 class USoundMix;
@@ -119,6 +121,8 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter, public 
 	bool IsStunSoundMixPushedForDebug() const { return bStunSoundMixPushed; }
 	bool AreCrewStatusAudioAssetsAssignedForDebug() const;
 	bool IsCrewStatusAudioPlayingForDebug() const;
+	bool AreCrewStatusEffectComponentsReadyForDebug() const;
+	bool IsCrewStatusEffectPresentationCleanForDebug() const;
 	int32 GetCrewStatusFootstepPlayCountForDebug() const { return CrewStatusFootstepPlayCount; }
 
   protected:
@@ -176,6 +180,10 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter, public 
 	void ApplyCrewStatusPresentation(EHeistCrewStatus CrewStatus);
 	void ResetCrewStatusPresentation();
 	void SetLocalStunPostProcessEnabled(bool bEnabled);
+	UNiagaraSystem* ResolveCrewStatusVFX(EHeistCrewStatus CrewStatus) const;
+	USoundBase* ResolveCrewStatusTransitionSound(EHeistCrewStatus CrewStatus) const;
+	void ApplyCrewStatusVFX(EHeistCrewStatus CrewStatus, bool bForceRestart);
+	void PlayCrewStatusTransitionSound(EHeistCrewStatus CrewStatus);
 
 	UFUNCTION(NetMulticast, Unreliable)
 	void Multicast_PlayCrewStatusFootstep(EHeistCrewStatus CrewStatus, bool bSprintingPace);
@@ -189,6 +197,12 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter, public 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Presentation", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UAudioComponent> CrewStatusFootstepAudioComponent;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Presentation|Status Effects", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UNiagaraComponent> CrewStatusVFXComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Presentation|Status Effects", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UAudioComponent> CrewStatusTransitionAudioComponent;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Presentation|Audio", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<USoundMix> StunSoundMix;
 
@@ -198,9 +212,53 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter, public 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Presentation|Audio", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<USoundBase> HeavyFootstepSound;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Presentation|Status Effects|VFX", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UNiagaraSystem> ForgingStatusVFX;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Presentation|Status Effects|VFX", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UNiagaraSystem> AssemblingStatusVFX;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Presentation|Status Effects|VFX", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UNiagaraSystem> CarryingOriginalStatusVFX;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Presentation|Status Effects|VFX", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UNiagaraSystem> HeavyStatusVFX;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Presentation|Status Effects|VFX", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UNiagaraSystem> StunnedStatusVFX;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Presentation|Status Effects|VFX", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UNiagaraSystem> ArrestedStatusVFX;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Presentation|Status Effects|VFX",
+		meta = (AllowPrivateAccess = "true", ToolTip = "One-shot Niagara System spawned at the character location before the escaped character is hidden. Use a non-looping system."))
+	TObjectPtr<UNiagaraSystem> EscapedStatusBurstVFX;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Presentation|Status Effects|Audio", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USoundBase> ForgingStatusSound;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Presentation|Status Effects|Audio", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USoundBase> AssemblingStatusSound;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Presentation|Status Effects|Audio", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USoundBase> CarryingOriginalStatusSound;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Presentation|Status Effects|Audio", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USoundBase> HeavyStatusSound;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Presentation|Status Effects|Audio", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USoundBase> StunnedStatusSound;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Presentation|Status Effects|Audio", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USoundBase> ArrestedStatusSound;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Presentation|Status Effects|Audio", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USoundBase> EscapedStatusSound;
+
 	TWeakObjectPtr<AHeistGameState> BoundPresentationGameState;
 	TWeakObjectPtr<AHeistPlayerState> BoundPresentationPlayerState;
 	EHeistCrewStatus AppliedCrewStatusPresentation = EHeistCrewStatus::Active;
+	bool bCrewStatusPresentationInitialized = false;
 	bool bLocalStunPostProcessEnabled = false;
 	bool bStunSoundMixPushed = false;
 	bool bStunPostProcessSnapshotValid = false;
