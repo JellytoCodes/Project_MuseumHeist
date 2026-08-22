@@ -3,6 +3,7 @@
 #include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameMode.h"
 #include "Core/HeistGameState.h"
+#include "Core/HeistGameplayTags.h"
 #include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerState.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
@@ -93,6 +94,41 @@ bool UHeistNoiseEmitterComponent::TryEmitFootstepNoise()
 		   TEXT("Footstep noise emitted: PlayerId=%d Mode=%s Speed=%.1f MaxSpeed=%.1f Weight=%.1f BaseRadius=%.1f WeightBonus=%.1f FinalRadius=%.1f RefreshInterval=%.2f Authority=true"),
 		   HeistPlayerState->HeistPlayerId, bRunning ? TEXT("Run") : TEXT("Walk"), HorizontalSpeed, MaximumSpeed, TotalLootWeight, SoundPingDefinition.Radius, WeightRadiusBonus, SoundPingEvent.Radius,
 		   RefreshInterval);
+#endif
+	return true;
+}
+
+bool UHeistNoiseEmitterComponent::TryEmitVoiceNoise()
+{
+	AHeistPlayerCharacter* Character = Cast<AHeistPlayerCharacter>(GetOwner());
+	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	const AHeistPlayerState* HeistPlayerState = IsValid(Character) ? Character->GetPlayerState<AHeistPlayerState>() : nullptr;
+	if (!IsValid(Character) || !Character->HasAuthority() || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame ||
+		!IsValid(HeistPlayerState) || HeistPlayerState->IsEscaped() || HeistPlayerState->IsArrested())
+	{
+		return false;
+	}
+
+	const float ServerTime = HeistGameState->GetServerWorldTimeSeconds();
+	const float RefreshInterval = FMath::Max(0.0f, VoiceNoiseRefreshInterval);
+	if (LastVoiceServerTime >= 0.0f && ServerTime - LastVoiceServerTime < RefreshInterval)
+	{
+		return false;
+	}
+
+	FHeistSoundPingEvent SoundPingEvent;
+	SoundPingEvent.SoundPingTag = FHeistGameplayTags::Get().Event_SoundPing_Voice;
+	SoundPingEvent.PingType = EHeistSoundPingType::Voice;
+	SoundPingEvent.WorldLocation = Character->GetActorLocation();
+	SoundPingEvent.Radius = FMath::Max(0.0f, VoiceNoiseRadius);
+	SoundPingEvent.Duration = FMath::Max(0.0f, VoiceNoiseDuration);
+	SoundPingEvent.bAffectsGuards = true;
+	const int32 AcceptedGuardCount = HeistGameState->ReportSoundPing(SoundPingEvent);
+	LastVoiceServerTime = ServerTime;
+
+#if !UE_BUILD_SHIPPING
+	UE_LOG(LogHeist, Verbose, TEXT("Voice noise emitted: PlayerId=%d Radius=%.1f Duration=%.2f RefreshInterval=%.2f AcceptedGuards=%d Authority=true"),
+		HeistPlayerState->HeistPlayerId, SoundPingEvent.Radius, SoundPingEvent.Duration, RefreshInterval, AcceptedGuardCount);
 #endif
 	return true;
 }

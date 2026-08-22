@@ -170,6 +170,8 @@ Title Menu
 
 - 2~4인 Listen Server
 - Steam Online Session
+- Steam Push-to-Talk Team Voice
+- InGame Proximity Voice와 Guard Speech Noise
 - 별도 Title Menu Level
 - 별도 Online Lobby Level
 - Full First-Person
@@ -237,7 +239,6 @@ Title Menu
 - Noise Trap
 - 플레이어 설치형 Trap
 - Trap Placement Cast
-- Steam Voice
 - PCG
 - Security Room
 - Cinematic
@@ -315,6 +316,9 @@ Smoke 및 Trap 계열 기능은 Stretch 목록에 포함하지 않는다.
 - Player Name, Crew Status, Contract Progress, Alert, Stun / Arrest, Original Carrier와 Extraction 상태를 로그 전용 또는 숨은 상태로 남기지 않는다.
 - Contract Value와 Forgery Quality Score를 같은 수치로 취급하지 않는다.
 - Required Target / Loot Value Quota / Secured Value / Contract Outcome은 서버가 확정한다.
+- Steam Voice Transport와 `UVOIPTalker` 재생은 Online Subsystem/Client가 담당하고, 발화가 Guard에게 미치는 Gameplay 결과는 서버가 확정한다.
+- Voice Gameplay RPC에는 PCM, 녹음 파일, 전사 텍스트와 원본 Amplitude를 보내거나 저장하지 않는다. Client는 `IOnlineVoice::IsLocalPlayerTalking`으로 확인한 실제 발화 상태만 저빈도로 보고한다.
+- 특정 동료의 Voice 출력을 로컬에서 음소거해도 Guard Speech Noise는 사라지지 않는다. PTT 해제 또는 입력 음소거만 발화 보고를 중단한다.
 - 고정 역할을 만들지 않으며 모든 Player가 Surface Forgery, Laser Button Hold, Carry, Loot, Coin, Map과 Extraction을 사용할 수 있다. Laser 협동 중 Button Holder와 Zone 진입자는 일시적 행동 분담일 뿐 Class 또는 영구 Role이 아니다.
 
 ## Active Surface Forgery / Deferred Object Assembly Boundary
@@ -411,6 +415,10 @@ Client Preview는 확정값으로 취급하지 않는다.
 - Editor `OnlineSubsystemNull` 검증은 구현 검증용이며 Steam 최종 PASS를 대체하지 않는다.
 - Online Session의 로컬 이름은 PIE가 선점하는 `GameSession`과 분리된 `HeistSession`을 사용한다.
 - Session은 최대 4인 Listen Server, Presence와 Lobby 참가를 사용하며 공개 지원 인원은 2~4인이다. Join In Progress는 Lobby/ReadyCountdown까지만 허용하고 InGame 이후에는 허용하지 않는다.
+- Voice는 `V` Hold Push-to-Talk만 지원한다. Open Mic은 v1.0 범위에 포함하지 않는다.
+- Lobby와 Result에서는 거리 제한 없는 Team Voice를 사용하고, InGame에서는 Character 위치에 부착된 Proximity Voice를 사용한다.
+- InGame Voice 기본 감쇠는 `0~250 cm` 정상 음량, `250~1,500 cm` 감쇠, `1,500 cm` 밖 무음이다.
+- Editor `OnlineSubsystemNull`은 입력·Guard Speech Noise 구현 검증에만 사용한다. Steam Voice 최종 PASS는 서로 다른 Steam 계정 2개 이상의 Development Package에서 처리한다.
 
 ## Level Flow
 
@@ -501,6 +509,7 @@ ResolvedSprintSpeed = Clamp(600 - TotalCarryWeight × 15, 250, 600)
 - 이름표는 일반적으로 `2~2,500 cm` 범위에서 표시하고 원거리에서 Fade한다.
 - 벽을 통과하는 Guard, Loot 또는 SoundPing Marker는 추가하지 않는다.
 - Main HUD Team Status는 연결된 모든 Player의 Name, Color, Crew Status, Original Carrier와 Escape / Arrest 상태를 항상 요약한다.
+- Lobby/Team Status/Nameplate용 C++ Presentation은 `PTT Held`, 실제 `Speaking`, 개별 `Muted`를 구분하는 읽기 전용 Hook을 제공한다. Widget Layout은 별도 UI 개편에서 확정한다.
 - Surface Forgery Full-Screen 중에도 최소 Team Status와 Alert Warning을 유지한다.
 
 ---
@@ -1148,9 +1157,22 @@ Contract Failed
 - Replica Swap
 - Glass Break
 - Coin Impact
+- Voice Speech
 - 현재 기획에 포함된 환경 소음
 
 `Replica Swap`은 v1 Painting Case의 `E` 교체·회수 확정 시 작은 World Audio와 함께 서버에서 발생한다. 주변 Guard는 이 Event를 `InvestigateNoise` 후보로 처리하고, Player-facing SoundPing Marker는 생성하지 않는다. Drawing 제출만으로는 이 Event를 발생시키지 않는다. Object Case와 Assembly 제출 경로는 Deferred 호환 계약으로만 보존한다.
+
+`Voice Speech`는 Local Player가 `V` PTT를 누른 상태에서 `IOnlineVoice::IsLocalPlayerTalking`이 실제 발화를 보고할 때만 전달한다. 서버는 RPC Ownership, InGame Phase, 유효 Character와 최소 `0.8초` 간격을 검증하고 서버가 가진 Character 위치에서 반경 `800 cm`의 `Event.SoundPing.Voice`를 생성한다. 이 Event는 Alert를 직접 올리지 않고 주변 Guard의 `InvestigateNoise` 후보로만 사용한다.
+
+Guard Noise Candidate 우선순위는 다음과 같다.
+
+```text
+0 StunHit
+1 GlassBreak / ReplicaSwap
+2 CoinImpact
+3 Voice
+4 Footstep
+```
 
 현재 제거된 SoundPing:
 

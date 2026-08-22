@@ -7,6 +7,7 @@
 #include "Character/Components/HeistForgeryComponent.h"
 #include "Character/Components/HeistInteractionComponent.h"
 #include "Character/Components/HeistInventoryComponent.h"
+#include "Character/Components/HeistNoiseEmitterComponent.h"
 #include "Character/Components/HeistObjectAssemblyComponent.h"
 #include "Character/Components/HeistVisionComponent.h"
 #include "Character/HeistPlayerCharacter.h"
@@ -31,8 +32,12 @@
 #include "InputActionValue.h"
 #include "InputCoreTypes.h"
 #include "InputMappingContext.h"
+#include "Interfaces/VoiceInterface.h"
 #include "Inventory/HeistInventoryTypes.h"
 #include "Inventory/HeistItemDataTypes.h"
+#include "OnlineSubsystem.h"
+#include "OnlineSubsystemNames.h"
+#include "OnlineSubsystemUtils.h"
 #include "World/Actors/Escape/HeistVentActor.h"
 #include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 #include "World/Actors/Loot/HeistObjectDisplayCaseActor.h"
@@ -72,6 +77,22 @@ bool CanUseHeistInteraction(AActor* TargetActor, const AActor* Interactor)
 {
 	IHeistInteractable* InteractableTarget = Cast<IHeistInteractable>(TargetActor);
 	return InteractableTarget != nullptr && InteractableTarget->CanInteract(Interactor);
+}
+
+IOnlineSubsystem* ResolveVoiceOnlineSubsystem(UWorld* World)
+{
+	IOnlineSubsystem* OnlineSubsystem = nullptr;
+#if WITH_EDITOR
+	if (GIsEditor && IsValid(World))
+	{
+		OnlineSubsystem = Online::GetSubsystem(World, NULL_SUBSYSTEM);
+	}
+#endif
+	if (OnlineSubsystem == nullptr && IsValid(World))
+	{
+		OnlineSubsystem = Online::GetSubsystem(World);
+	}
+	return OnlineSubsystem != nullptr ? OnlineSubsystem : IOnlineSubsystem::Get();
 }
 }
 
@@ -149,6 +170,7 @@ void AHeistPlayerController::UnbindMatchPhasePresentationState()
 void AHeistPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	ResetLocalHeldInteractionInputState();
+	ResetLocalVoicePushToTalk(false);
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().ClearTimer(LocalTutorialStepTimerHandle);
@@ -176,6 +198,7 @@ void AHeistPlayerController::PostSeamlessTravel()
 	Super::PostSeamlessTravel();
 
 	ResetLocalHeldInteractionInputState();
+	ResetLocalVoicePushToTalk(false);
 	UnbindLocalForgeryInputState();
 	UnbindLocalObjectAssemblyInputState();
 	UnbindMatchPhasePresentationState();
@@ -219,6 +242,7 @@ void AHeistPlayerController::RefreshLocalPresentationAfterSeamlessTravel()
 void AHeistPlayerController::OnPossess(APawn* InPawn)
 {
 	ResetLocalHeldInteractionInputState();
+	ResetLocalVoicePushToTalk(true);
 	UnbindLocalForgeryInputState();
 	UnbindLocalObjectAssemblyInputState();
 	Super::OnPossess(InPawn);
@@ -233,6 +257,7 @@ void AHeistPlayerController::OnRep_Pawn()
 {
 	Super::OnRep_Pawn();
 	ResetLocalHeldInteractionInputState();
+	ResetLocalVoicePushToTalk(true);
 	RefreshLocalInputModeFromPawn();
 	RefreshLocalPlayerTerminalState();
 	RefreshLocalHUDPresentation();
@@ -327,6 +352,10 @@ void AHeistPlayerController::SetupInputComponent()
 	// Keep R available only while the controller is back in Gameplay mode.
 	FInputKeyBinding& ReplicaRedrawBinding = InputComponent->BindKey(EKeys::R, IE_Pressed, this, &AHeistPlayerController::HandleReplicaRedraw);
 	ReplicaRedrawBinding.bConsumeInput = false;
+	FInputKeyBinding& VoicePressedBinding = InputComponent->BindKey(EKeys::V, IE_Pressed, this, &AHeistPlayerController::HandleVoicePushToTalkPressed);
+	VoicePressedBinding.bConsumeInput = false;
+	FInputKeyBinding& VoiceReleasedBinding = InputComponent->BindKey(EKeys::V, IE_Released, this, &AHeistPlayerController::HandleVoicePushToTalkReleased);
+	VoiceReleasedBinding.bConsumeInput = false;
 
 	RefreshLocalInputModeFromPawn();
 }
@@ -1191,6 +1220,129 @@ void AHeistPlayerController::UpdateFlashlightAimDirection()
 	{
 		Server_UpdateFlashlightAimDirection(CameraForward);
 	}
+}
+
+#pragma endregion
+
+#pragma region Voice
+
+void AHeistPlayerController::HandleVoicePushToTalkPressed()
+{
+	if (!IsLocalController() || bLocalVoicePushToTalkHeld)
+	{
+		return;
+	}
+
+	bLocalVoicePushToTalkHeld = true;
+	LocalVoiceActivityLevel = 0.0f;
+	LocalVoiceActivityDuration = 0.0f;
+	bLocalVoiceSpeaking = false;
+	ToggleSpeaking(true);
+	Server_SetVoicePushToTalk(true);
+
+	if (UWorld* World = GetWorld())
+	{
+		const float PollInterval = FMath::Max(0.05f, VoiceActivityPollInterval);
+		World->GetTimerManager().SetTimer(LocalVoiceActivityTimerHandle, this, &AHeistPlayerController::PollLocalVoiceActivity, PollInterval, true, 0.0f);
+	}
+}
+
+void AHeistPlayerController::HandleVoicePushToTalkReleased()
+{
+	ResetLocalVoicePushToTalk(true);
+}
+
+void AHeistPlayerController::ResetLocalVoicePushToTalk(const bool bNotifyServer)
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(LocalVoiceActivityTimerHandle);
+	}
+
+	if (IsLocalController())
+	{
+		ToggleSpeaking(false);
+		if (bNotifyServer)
+		{
+			Server_SetVoicePushToTalk(false);
+		}
+	}
+	if (HasAuthority() && (!IsLocalController() || !bNotifyServer))
+	{
+		bServerVoicePushToTalkHeld = false;
+	}
+
+	bLocalVoicePushToTalkHeld = false;
+	bLocalVoiceSpeaking = false;
+	LocalVoiceActivityLevel = 0.0f;
+	LocalVoiceActivityDuration = 0.0f;
+	LastLocalVoiceActivityReportTime = -1.0;
+}
+
+void AHeistPlayerController::PollLocalVoiceActivity()
+{
+	if (!IsLocalController() || !bLocalVoicePushToTalkHeld)
+	{
+		ResetLocalVoicePushToTalk(true);
+		return;
+	}
+
+	bool bVoiceInterfaceReportsTalking = false;
+	IOnlineSubsystem* OnlineSubsystem = ResolveVoiceOnlineSubsystem(GetWorld());
+	const IOnlineVoicePtr VoiceInterface = OnlineSubsystem != nullptr ? OnlineSubsystem->GetVoiceInterface() : nullptr;
+	const ULocalPlayer* LocalPlayer = GetLocalPlayer();
+	if (VoiceInterface.IsValid() && IsValid(LocalPlayer))
+	{
+		bVoiceInterfaceReportsTalking = VoiceInterface->IsLocalPlayerTalking(LocalPlayer->GetControllerId());
+	}
+
+	bLocalVoiceSpeaking = bVoiceInterfaceReportsTalking;
+	LocalVoiceActivityLevel = bLocalVoiceSpeaking ? 1.0f : 0.0f;
+	const float PollInterval = FMath::Max(0.05f, VoiceActivityPollInterval);
+	LocalVoiceActivityDuration = bLocalVoiceSpeaking ? LocalVoiceActivityDuration + PollInterval : 0.0f;
+	if (!bLocalVoiceSpeaking || LocalVoiceActivityDuration + KINDA_SMALL_NUMBER < FMath::Max(0.0f, MinimumVoiceActivityDuration))
+	{
+		return;
+	}
+
+	const UWorld* World = GetWorld();
+	const double CurrentTime = IsValid(World) ? static_cast<double>(World->GetRealTimeSeconds()) : 0.0;
+	const double ReportInterval = static_cast<double>(FMath::Max(0.0f, VoiceActivityReportInterval));
+	if (LastLocalVoiceActivityReportTime >= 0.0 && CurrentTime - LastLocalVoiceActivityReportTime < ReportInterval)
+	{
+		return;
+	}
+
+	Server_ReportVoiceActivity();
+	LastLocalVoiceActivityReportTime = CurrentTime;
+}
+
+void AHeistPlayerController::SetPlayerVoiceMuted(AHeistPlayerState* TargetPlayerState, const bool bMuted)
+{
+	if (!IsLocalController() || !IsValid(TargetPlayerState) || !TargetPlayerState->GetUniqueId().IsValid())
+	{
+		return;
+	}
+
+	if (bMuted)
+	{
+		GameplayMutePlayer(TargetPlayerState->GetUniqueId());
+	}
+	else
+	{
+		GameplayUnmutePlayer(TargetPlayerState->GetUniqueId());
+	}
+}
+
+bool AHeistPlayerController::IsPlayerVoiceMuted(AHeistPlayerState* TargetPlayerState)
+{
+	if (!IsLocalController() || !IsValid(TargetPlayerState))
+	{
+		return false;
+	}
+
+	const FUniqueNetIdPtr UniqueNetId = TargetPlayerState->GetUniqueId().GetUniqueNetId();
+	return UniqueNetId.IsValid() && IsPlayerMuted(*UniqueNetId);
 }
 
 #pragma endregion
@@ -2807,6 +2959,29 @@ void AHeistPlayerController::Server_SetSprintRequested_Implementation(const bool
 		return;
 	}
 	HeistCharacter->SetSprintRequested(bRequested);
+}
+
+void AHeistPlayerController::Server_SetVoicePushToTalk_Implementation(const bool bHeld)
+{
+	if (HasAuthority())
+	{
+		bServerVoicePushToTalkHeld = bHeld;
+	}
+}
+
+void AHeistPlayerController::Server_ReportVoiceActivity_Implementation()
+{
+	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	if (!HasAuthority() || !bServerVoicePushToTalkHeld || !IsValid(HeistCharacter) || HeistCharacter->GetController() != this)
+	{
+		return;
+	}
+
+	UHeistNoiseEmitterComponent* NoiseEmitter = HeistCharacter->GetNoiseEmitterComponent();
+	if (IsValid(NoiseEmitter))
+	{
+		NoiseEmitter->TryEmitVoiceNoise();
+	}
 }
 
 #pragma endregion

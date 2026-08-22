@@ -1,7 +1,6 @@
-#include "UI/ViewModels/HeistTitleMenuViewModel.h"
+#include "UI/Title/ViewModels/HeistTitleMenuViewModel.h"
 
 #include "Core/HeistGameInstance.h"
-#include "Core/HeistGameUserSettings.h"
 
 #pragma region Construction
 
@@ -62,7 +61,7 @@ void UHeistTitleMenuViewModel::RefreshTitleMenuData()
 	UE_MVVM_SET_PROPERTY_VALUE(bCanRequestJoinSession, bInTitleMenu && !bOperationPending && !bSessionActive);
 	UE_MVVM_SET_PROPERTY_VALUE(bCanCancelSessionOperation, bInTitleMenu && IsValid(GameInstance) && GameInstance->CanCancelOnlineSessionOperation());
 	UE_MVVM_SET_PROPERTY_VALUE(bCanRetrySessionOperation, bInTitleMenu && IsValid(GameInstance) && GameInstance->CanRetryLastOnlineSessionOperation());
-	RefreshSettingsData();
+	UE_MVVM_SET_PROPERTY_VALUE(bSessionOperationPending, bOperationPending);
 	SnapshotChangedDelegate.Broadcast();
 }
 
@@ -89,74 +88,6 @@ bool UHeistTitleMenuViewModel::RequestCancelSessionOperation()
 bool UHeistTitleMenuViewModel::RequestRetrySessionOperation()
 {
 	return IsValid(GameInstance) && bCanRetrySessionOperation && GameInstance->RequestRetryLastOnlineSessionOperation();
-}
-
-bool UHeistTitleMenuViewModel::RequestApplySettings(const float FieldOfView, const float MouseSensitivity, const float MasterVolume, const int32 ResolutionWidth,
-													const int32 ResolutionHeight, const int32 WindowModeValue)
-{
-	UHeistGameUserSettings* Settings = UHeistGameUserSettings::GetHeistGameUserSettings();
-	if (!IsValid(Settings))
-	{
-		UE_MVVM_SET_PROPERTY_VALUE(SettingsStatusText, NSLOCTEXT("HeistTitleMenu", "SettingsUnavailable", "설정을 사용할 수 없습니다."));
-		SnapshotChangedDelegate.Broadcast();
-		return false;
-	}
-	if (ResolutionWidth <= 0 || ResolutionHeight <= 0 || WindowModeValue < static_cast<int32>(EWindowMode::Fullscreen)
-		|| WindowModeValue > static_cast<int32>(EWindowMode::Windowed))
-	{
-		UE_MVVM_SET_PROPERTY_VALUE(SettingsStatusText, NSLOCTEXT("HeistTitleMenu", "SettingsInvalidDisplay", "올바른 해상도와 창 모드를 선택하세요."));
-		SnapshotChangedDelegate.Broadcast();
-		return false;
-	}
-
-	Settings->SetFieldOfView(FieldOfView);
-	Settings->SetMouseSensitivity(MouseSensitivity);
-	Settings->SetMasterVolume(MasterVolume);
-	Settings->SetScreenResolution(FIntPoint(ResolutionWidth, ResolutionHeight));
-	Settings->SetFullscreenMode(static_cast<EWindowMode::Type>(WindowModeValue));
-	Settings->ApplyHeistSettings(false);
-
-	RefreshSettingsData();
-	UE_MVVM_SET_PROPERTY_VALUE(SettingsStatusText, NSLOCTEXT("HeistTitleMenu", "SettingsApplied", "설정을 저장하고 적용했습니다."));
-	SnapshotChangedDelegate.Broadcast();
-	return true;
-}
-
-bool UHeistTitleMenuViewModel::RequestRestoreDefaultSettings()
-{
-	UHeistGameUserSettings* Settings = UHeistGameUserSettings::GetHeistGameUserSettings();
-	if (!IsValid(Settings))
-	{
-		UE_MVVM_SET_PROPERTY_VALUE(SettingsStatusText, NSLOCTEXT("HeistTitleMenu", "SettingsDefaultsUnavailable", "설정을 사용할 수 없습니다."));
-		SnapshotChangedDelegate.Broadcast();
-		return false;
-	}
-
-	Settings->RestoreHeistDefaults();
-	RefreshSettingsData();
-	UE_MVVM_SET_PROPERTY_VALUE(SettingsStatusText, NSLOCTEXT("HeistTitleMenu", "SettingsDefaultsApplied", "기본 설정으로 복원했습니다."));
-	SnapshotChangedDelegate.Broadcast();
-	return true;
-}
-
-void UHeistTitleMenuViewModel::GetSupportedSettingsResolutions(TArray<FIntPoint>& OutResolutions) const
-{
-	UHeistGameUserSettings::GetSupportedScreenResolutions(OutResolutions);
-}
-
-void UHeistTitleMenuViewModel::RefreshSettingsData()
-{
-	const UHeistGameUserSettings* Settings = UHeistGameUserSettings::GetHeistGameUserSettings();
-	if (!IsValid(Settings))
-	{
-		return;
-	}
-
-	UE_MVVM_SET_PROPERTY_VALUE(SettingsFieldOfView, Settings->GetFieldOfView());
-	UE_MVVM_SET_PROPERTY_VALUE(SettingsMouseSensitivity, Settings->GetMouseSensitivity());
-	UE_MVVM_SET_PROPERTY_VALUE(SettingsMasterVolume, Settings->GetMasterVolume());
-	UE_MVVM_SET_PROPERTY_VALUE(SettingsScreenResolution, Settings->GetScreenResolution());
-	UE_MVVM_SET_PROPERTY_VALUE(SettingsWindowModeValue, static_cast<int32>(Settings->GetFullscreenMode()));
 }
 
 void UHeistTitleMenuViewModel::HandleOnlineSessionStateChanged()
@@ -377,34 +308,9 @@ bool UHeistTitleMenuViewModel::CanRetrySessionOperation() const
 	return bCanRetrySessionOperation;
 }
 
-float UHeistTitleMenuViewModel::GetSettingsFieldOfView() const
+bool UHeistTitleMenuViewModel::IsSessionOperationPending() const
 {
-	return SettingsFieldOfView;
-}
-
-float UHeistTitleMenuViewModel::GetSettingsMouseSensitivity() const
-{
-	return SettingsMouseSensitivity;
-}
-
-float UHeistTitleMenuViewModel::GetSettingsMasterVolume() const
-{
-	return SettingsMasterVolume;
-}
-
-FIntPoint UHeistTitleMenuViewModel::GetSettingsScreenResolution() const
-{
-	return SettingsScreenResolution;
-}
-
-int32 UHeistTitleMenuViewModel::GetSettingsWindowModeValue() const
-{
-	return SettingsWindowModeValue;
-}
-
-const FText& UHeistTitleMenuViewModel::GetSettingsStatusText() const
-{
-	return SettingsStatusText;
+	return bSessionOperationPending;
 }
 
 #pragma endregion

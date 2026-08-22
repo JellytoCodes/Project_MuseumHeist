@@ -99,10 +99,11 @@ Security Policy Automation       PASS / Saved/Automation/W8-SecurityIncidentPoli
 SandBox 2P Listen Server         PASS WITH WARNINGS / Saved/Automation/W8-SandboxSecurity
 M01·M02·M03 2P TwoRuns           PASS WITH WARNINGS / Contract + CCTV + Guard investigate + Hold/Laser bypass/rearm
 3P / 4P Release Gate             NOT RUN / user multiplayer and balance evidence required
-Holder Actual Disconnect         NOT RUN / Logout cleanup code exists; real disconnect evidence required
+Holder Actual Disconnect         SKIPPED / NOT RUN / user accepted residual risk
 Visual / Audio PIE               NOT RUN / temporary presentation assets only
 Cook                             NOT RUN
-Notion TASK-W8-001~008           미시작 / read only / no write
+Notion TEST-W8-001               PASS / CCTV·Laser 2P 자동 계약 / Holder Disconnect 제외
+Notion TASK-W8-001~008           미시작 유지 / Task 상태 미변경
 ```
 
 따라서 Release Map 배치와 2인 자동화는 구현 검증 PASS지만 `TASK-W8-001~008` 및 Rev14 Release Gate 전체를 완료로 처리하지 않는다.
@@ -284,7 +285,7 @@ Warning은 Title/Lobby RecastNavMesh 부재 및 테스트 Guard Noise의 Outside
 9. M01/M02/M03에 Release 콘텐츠와 CCTV/Laser/Button/Painting 연결을 배치했다. Required Target은 Laser 뒤에 두지 않았고 FourStar Optional Painting을 보호 대상으로 연결했다. 세 맵 모두 2인 두 판 Contract와 배치 보안 상호작용을 자동화로 통과했다.
 10. 세 맵의 Recast NavData는 실제 `RebuildAll` 후 저장했으며 `Saved/Logs/W8-ReleaseMaps-BuildNavigation-Unlocked.log`에 맵별 Build/Save PASS가 있다.
 11. 다음 실행 우선순위는 3인/4인 Release Gate와 2P 실제 화면·청음/동선 검증이다. 자동화 PASS를 사용자 플레이 밸런스 PASS로 대체하지 않는다.
-12. 실제 Holder Disconnect, 2→1 Snapshot 불변, 이탈 Player의 Loose Loot/Original 월드 복구와 독립 Egress를 Host/Client PIE에서 추가 검증한다.
+12. 실제 Holder Disconnect는 2026-08-22 사용자 결정으로 `SKIPPED / RISK ACCEPTED` 처리하며 PASS 증거로 재분류하지 않는다. 2→1 Snapshot 불변, 이탈 Player의 Loose Loot/Original 월드 복구와 독립 Egress는 별도 Host/Client Gate 범위로 남긴다.
 13. 세 맵의 Object Case v1 비활성 상태와 Object 전용 Cook Package/불필요 Hard Reference 0을 최종 Cook에서 확인한다.
 14. 아래 W6/W7 Solo·1P·Surface/Object 증거는 삭제하지 않되 Rev14 출시 PASS로 보지 않는다. 최종 Niagara/Sound·Remote Pose·실제 화면/청음은 별도 에셋 결합 범위로만 유지하며 `TASK-W7-004~006`과 W7 Gate를 다시 열지 않는다.
 15. `TASK-W9-007`의 배포 권리·Notice는 Surface/TENADA/Epic 잔여와 Rev14 실제 Cook Manifest를 함께 검증한다.

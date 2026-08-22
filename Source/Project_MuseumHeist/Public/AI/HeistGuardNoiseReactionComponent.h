@@ -36,11 +36,11 @@ class PROJECT_MUSEUMHEIST_API UHeistGuardNoiseReactionComponent : public UActorC
 	float GetAlertNoiseRadiusMultiplier() const;
 	float GetPerceptionRangeMultiplier() const;
 	bool ReactToSoundPing(const FHeistSoundPingEvent& SoundPingEvent);
+	static int32 ResolveCandidatePriority(EHeistSoundPingType PingType);
 
   private:
 	void HandleSoundPingReported(const FHeistSoundPingEvent& SoundPingEvent, int32* InOutAcceptedGuardCount);
 	void HandleGuardStateChanged(EHeistGuardState PreviousState, EHeistGuardState NewState);
-	static int32 ResolveCandidatePriority(EHeistSoundPingType PingType);
 
 	float InvestigateDuration = 0.0f;
 	float AlertNoiseRadiusMultiplier = 1.0f;

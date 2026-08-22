@@ -18,7 +18,9 @@
 #include "UI/ViewModels/HeistObjectAssemblyViewModel.h"
 #include "UI/ViewModels/HeistQuickSlotViewModel.h"
 #include "UI/ViewModels/HeistResultViewModel.h"
-#include "UI/ViewModels/HeistTitleMenuViewModel.h"
+#include "UI/Title/ViewModels/HeistSettingsViewModel.h"
+#include "UI/Title/ViewModels/HeistTitleMenuViewModel.h"
+#include "UI/Title/Widgets/HeistTitleMenuWidget.h"
 #include "UI/Widgets/HeistHUDWidget.h"
 #include "UI/Widgets/HeistForgeryWidget.h"
 #include "UI/Widgets/HeistFloorPlanMapWidget.h"
@@ -26,7 +28,6 @@
 #include "UI/Widgets/HeistLobbyWidget.h"
 #include "UI/Widgets/HeistObjectAssemblyWidget.h"
 #include "UI/Widgets/HeistResultWidget.h"
-#include "UI/Widgets/HeistTitleMenuWidget.h"
 
 namespace
 {
@@ -218,7 +219,7 @@ bool AHeistHUD::ShowTitleMenuScreen()
 
 	InitializeTitleMenuPresentation();
 
-	if (!IsValid(TitleMenuViewModel) || !TitleMenuWidgetClass)
+	if (!IsValid(TitleMenuViewModel) || !IsValid(SettingsViewModel) || !TitleMenuWidgetClass)
 	{
 		return false;
 	}
@@ -237,7 +238,7 @@ bool AHeistHUD::ShowTitleMenuScreen()
 			return false;
 		}
 
-		TitleMenuWidget->SetupTitleMenuWidget(TitleMenuViewModel);
+		TitleMenuWidget->SetupTitleMenuWidget(TitleMenuViewModel, SettingsViewModel);
 		TitleMenuWidget->AddToViewport();
 	}
 	else
@@ -246,6 +247,7 @@ bool AHeistHUD::ShowTitleMenuScreen()
 	}
 
 	TitleMenuViewModel->RefreshTitleMenuData();
+	SettingsViewModel->RefreshSettingsData();
 	APlayerController* OwningPlayerController = GetOwningPlayerController();
 	if (IsValid(OwningPlayerController))
 	{
@@ -286,8 +288,13 @@ void AHeistHUD::InitializeTitleMenuPresentation()
 	{
 		TitleMenuViewModel = NewObject<UHeistTitleMenuViewModel>(this);
 	}
+	if (!IsValid(SettingsViewModel))
+	{
+		SettingsViewModel = NewObject<UHeistSettingsViewModel>(this);
+	}
 
 	TitleMenuViewModel->SetupViewModel(Cast<UHeistGameInstance>(GetGameInstance()));
+	SettingsViewModel->RefreshSettingsData();
 }
 
 #pragma endregion

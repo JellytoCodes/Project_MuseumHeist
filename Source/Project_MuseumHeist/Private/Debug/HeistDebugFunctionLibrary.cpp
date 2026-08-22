@@ -57,7 +57,7 @@
 #include "UI/ViewModels/HeistHUDViewModel.h"
 #include "UI/ViewModels/HeistLobbyViewModel.h"
 #include "UI/ViewModels/HeistObjectAssemblyViewModel.h"
-#include "UI/ViewModels/HeistTitleMenuViewModel.h"
+#include "UI/Title/ViewModels/HeistTitleMenuViewModel.h"
 #include "UI/Widgets/HeistForgeryWidget.h"
 #include "UI/Widgets/HeistHUDWidget.h"
 #include "UI/Widgets/HeistObjectAssemblyWidget.h"

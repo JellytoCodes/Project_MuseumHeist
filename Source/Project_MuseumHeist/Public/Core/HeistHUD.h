@@ -82,6 +82,9 @@ class PROJECT_MUSEUMHEIST_API AHeistHUD : public AHUD
 	TObjectPtr<UHeistTitleMenuViewModel> TitleMenuViewModel;
 
 	UPROPERTY(Transient)
+	TObjectPtr<class UHeistSettingsViewModel> SettingsViewModel;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UHeistTitleMenuWidget> TitleMenuWidget;
 
 #pragma endregion

@@ -46,18 +46,8 @@ class PROJECT_MUSEUMHEIST_API UHeistTitleMenuViewModel : public UMVVMViewModelBa
 	UFUNCTION(BlueprintCallable, Category = "Heist|TitleMenu")
 	bool RequestRetrySessionOperation();
 
-	UFUNCTION(BlueprintCallable, Category = "Heist|TitleMenu|Settings")
-	bool RequestApplySettings(float FieldOfView, float MouseSensitivity, float MasterVolume, int32 ResolutionWidth, int32 ResolutionHeight, int32 WindowModeValue);
-
-	UFUNCTION(BlueprintCallable, Category = "Heist|TitleMenu|Settings")
-	bool RequestRestoreDefaultSettings();
-
-	UFUNCTION(BlueprintCallable, Category = "Heist|TitleMenu|Settings")
-	void GetSupportedSettingsResolutions(TArray<FIntPoint>& OutResolutions) const;
-
   private:
 	void HandleOnlineSessionStateChanged();
-	void RefreshSettingsData();
 	FText ResolveOnlineSessionStatusText() const;
 	FText ResolveOnlineSessionFailureText() const;
 	FText ResolveSessionActionHintText() const;
@@ -81,12 +71,7 @@ class PROJECT_MUSEUMHEIST_API UHeistTitleMenuViewModel : public UMVVMViewModelBa
 	bool CanRequestJoinSession() const;
 	bool CanCancelSessionOperation() const;
 	bool CanRetrySessionOperation() const;
-	float GetSettingsFieldOfView() const;
-	float GetSettingsMouseSensitivity() const;
-	float GetSettingsMasterVolume() const;
-	FIntPoint GetSettingsScreenResolution() const;
-	int32 GetSettingsWindowModeValue() const;
-	const FText& GetSettingsStatusText() const;
+	bool IsSessionOperationPending() const;
 
   private:
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|TitleMenu", meta = (AllowPrivateAccess = "true"))
@@ -116,28 +101,8 @@ class PROJECT_MUSEUMHEIST_API UHeistTitleMenuViewModel : public UMVVMViewModelBa
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|TitleMenu", meta = (AllowPrivateAccess = "true"))
 	bool bCanRetrySessionOperation = false;
 
-#pragma endregion
-
-#pragma region SettingsData
-
-  private:
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|TitleMenu|Settings", meta = (AllowPrivateAccess = "true"))
-	float SettingsFieldOfView = 90.0f;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|TitleMenu|Settings", meta = (AllowPrivateAccess = "true"))
-	float SettingsMouseSensitivity = 1.0f;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|TitleMenu|Settings", meta = (AllowPrivateAccess = "true"))
-	float SettingsMasterVolume = 1.0f;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|TitleMenu|Settings", meta = (AllowPrivateAccess = "true"))
-	FIntPoint SettingsScreenResolution = FIntPoint(1920, 1080);
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|TitleMenu|Settings", meta = (AllowPrivateAccess = "true"))
-	int32 SettingsWindowModeValue = 1;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|TitleMenu|Settings", meta = (AllowPrivateAccess = "true"))
-	FText SettingsStatusText;
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|TitleMenu", meta = (AllowPrivateAccess = "true"))
+	bool bSessionOperationPending = false;
 
 #pragma endregion
 };

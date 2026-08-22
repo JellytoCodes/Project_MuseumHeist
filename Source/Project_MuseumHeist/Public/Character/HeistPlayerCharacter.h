@@ -21,7 +21,9 @@ class UNiagaraComponent;
 class UNiagaraSystem;
 class USphereComponent;
 class USoundBase;
+class USoundAttenuation;
 class USoundMix;
+class UVOIPTalker;
 class UWidgetComponent;
 class AHeistGameState;
 class AHeistPlayerState;
@@ -173,6 +175,8 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter, public 
 #pragma region GameplayComponents
 
   private:
+	void RefreshVoiceTalkerRegistration();
+	void RefreshVoiceTalkerSettings();
 	void RefreshNameplatePresentation();
 	void HandleReplicatedCrewStatus(EHeistCrewStatus CrewStatus);
 	void BindPresentationGameState();
@@ -293,6 +297,21 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter, public 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistNoiseEmitterComponent> NoiseEmitterComponent;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Voice", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UVOIPTalker> VoiceTalkerComponent;
+
+	UPROPERTY(Transient)
+	TObjectPtr<USoundAttenuation> RuntimeVoiceAttenuation;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Voice", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "cm"))
+	float VoiceFullVolumeRadius = 250.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Voice", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "cm"))
+	float VoiceFalloffDistance = 1250.0f;
+
+	FTimerHandle VoiceTalkerRegistrationTimerHandle;
+	bool bVoiceTalkerRegistered = false;
+
   public:
 	UHeistStatusComponent* GetStatusComponent() const;
 	UHeistInventoryComponent* GetInventoryComponent() const;
@@ -302,6 +321,12 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerCharacter : public ACharacter, public 
 	UHeistObjectAssemblyComponent* GetObjectAssemblyComponent() const;
 	UHeistVisionComponent* GetVisionComponent() const;
 	UHeistNoiseEmitterComponent* GetNoiseEmitterComponent() const;
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Voice")
+	float GetVoiceLevel() const;
+
+	float GetVoiceFullVolumeRadius() const { return VoiceFullVolumeRadius; }
+	float GetVoiceFalloffDistance() const { return VoiceFalloffDistance; }
 
 #pragma endregion
 };

@@ -197,8 +197,10 @@ int32 UHeistGuardNoiseReactionComponent::ResolveCandidatePriority(const EHeistSo
 		return 1;
 	case EHeistSoundPingType::CoinImpact:
 		return 2;
-	case EHeistSoundPingType::Footstep:
+	case EHeistSoundPingType::Voice:
 		return 3;
+	case EHeistSoundPingType::Footstep:
+		return 4;
 	default:
 		return MAX_int32;
 	}

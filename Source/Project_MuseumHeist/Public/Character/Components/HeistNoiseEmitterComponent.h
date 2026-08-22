@@ -17,6 +17,10 @@ class PROJECT_MUSEUMHEIST_API UHeistNoiseEmitterComponent : public UActorCompone
   public:
 	UHeistNoiseEmitterComponent();
 	bool IsHeavyWeight(float TotalLootWeight) const;
+	bool TryEmitVoiceNoise();
+	float GetVoiceNoiseRadius() const { return VoiceNoiseRadius; }
+	float GetVoiceNoiseDuration() const { return VoiceNoiseDuration; }
+	float GetVoiceNoiseRefreshInterval() const { return VoiceNoiseRefreshInterval; }
 
   private:
 	bool TryEmitFootstepNoise();
@@ -37,5 +41,15 @@ class PROJECT_MUSEUMHEIST_API UHeistNoiseEmitterComponent : public UActorCompone
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Noise", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "cm"))
 	float HeavyWeightRadiusBonus = 500.0f;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Noise|Voice", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "cm"))
+	float VoiceNoiseRadius = 800.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Noise|Voice", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "s"))
+	float VoiceNoiseDuration = 0.8f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Noise|Voice", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "s"))
+	float VoiceNoiseRefreshInterval = 0.8f;
+
 	float LastFootstepServerTime = -1.0f;
+	float LastVoiceServerTime = -1.0f;
 };

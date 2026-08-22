@@ -25,6 +25,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
+#include "Net/VoiceConfig.h"
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
@@ -32,6 +33,7 @@
 #include "Sound/SoundBase.h"
 #include "Sound/SoundMix.h"
 #include "UI/Widgets/HeistNameplateWidget.h"
+#include "TimerManager.h"
 
 #pragma region Construction
 
@@ -51,6 +53,7 @@ AHeistPlayerCharacter::AHeistPlayerCharacter()
 	ObjectAssemblyComponent = CreateDefaultSubobject<UHeistObjectAssemblyComponent>(TEXT("ObjectAssemblyComponent"));
 	VisionComponent = CreateDefaultSubobject<UHeistVisionComponent>(TEXT("VisionComponent"));
 	NoiseEmitterComponent = CreateDefaultSubobject<UHeistNoiseEmitterComponent>(TEXT("NoiseEmitterComponent"));
+	VoiceTalkerComponent = CreateDefaultSubobject<UVOIPTalker>(TEXT("VoiceTalkerComponent"));
 	CrewStatusVFXComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("CrewStatusVFXComponent"));
 	CrewStatusVFXComponent->SetupAttachment(GetMesh());
 	CrewStatusVFXComponent->SetAutoActivate(false);
@@ -114,6 +117,7 @@ void AHeistPlayerCharacter::BeginPlay()
 	checkf(IsValid(ObjectAssemblyComponent), TEXT("HeistPlayerCharacter requires HeistObjectAssemblyComponent"));
 	checkf(IsValid(VisionComponent), TEXT("HeistPlayerCharacter requires HeistVisionComponent"));
 	checkf(IsValid(NoiseEmitterComponent), TEXT("HeistPlayerCharacter requires HeistNoiseEmitterComponent"));
+	checkf(IsValid(VoiceTalkerComponent), TEXT("HeistPlayerCharacter requires VoiceTalkerComponent"));
 	checkf(IsValid(CrewStatusVFXComponent), TEXT("HeistPlayerCharacter requires CrewStatusVFXComponent"));
 	checkf(IsValid(CrewStatusTransitionAudioComponent), TEXT("HeistPlayerCharacter requires CrewStatusTransitionAudioComponent"));
 	checkf(IsValid(CrewStatusFootstepAudioComponent), TEXT("HeistPlayerCharacter requires CrewStatusFootstepAudioComponent"));
@@ -155,7 +159,17 @@ void AHeistPlayerCharacter::BeginPlay()
 	InventoryComponent->GetInventoryChangedDelegate().AddUObject(this, &AHeistPlayerCharacter::HandleInventoryStateForCrewStatus);
 	ForgeryComponent->GetSessionStateChangedDelegate().AddUObject(this, &AHeistPlayerCharacter::HandleForgeryStateForCrewStatus);
 	ObjectAssemblyComponent->GetSessionStateChangedDelegate().AddUObject(this, &AHeistPlayerCharacter::HandleAssemblyStateForCrewStatus);
+	RuntimeVoiceAttenuation = NewObject<USoundAttenuation>(this, TEXT("RuntimeVoiceAttenuation"));
+	checkf(IsValid(RuntimeVoiceAttenuation), TEXT("HeistPlayerCharacter failed to create RuntimeVoiceAttenuation"));
+	RuntimeVoiceAttenuation->Attenuation.bAttenuate = true;
+	RuntimeVoiceAttenuation->Attenuation.bSpatialize = true;
+	RuntimeVoiceAttenuation->Attenuation.DistanceAlgorithm = EAttenuationDistanceModel::Linear;
+	RuntimeVoiceAttenuation->Attenuation.AttenuationShape = EAttenuationShape::Sphere;
+	RuntimeVoiceAttenuation->Attenuation.AttenuationShapeExtents = FVector(FMath::Max(0.0f, VoiceFullVolumeRadius), 0.0f, 0.0f);
+	RuntimeVoiceAttenuation->Attenuation.FalloffDistance = FMath::Max(0.0f, VoiceFalloffDistance);
 	BindPresentationGameState();
+	RefreshVoiceTalkerSettings();
+	RefreshVoiceTalkerRegistration();
 	RefreshAuthoritativeCrewStatus();
 	RefreshNameplatePresentation();
 
@@ -170,6 +184,10 @@ void AHeistPlayerCharacter::BeginPlay()
 
 void AHeistPlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(VoiceTalkerRegistrationTimerHandle);
+	}
 	if (BoundPresentationGameState.IsValid())
 	{
 		BoundPresentationGameState->GetMatchPhaseChangedDelegate().RemoveAll(this);
@@ -187,6 +205,8 @@ void AHeistPlayerCharacter::PawnClientRestart()
 {
 	Super::PawnClientRestart();
 	BindPresentationGameState();
+	RefreshVoiceTalkerSettings();
+	RefreshVoiceTalkerRegistration();
 	RefreshNameplatePresentation();
 	const AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
 	ApplyCrewStatusPresentation(IsValid(HeistPlayerState) ? HeistPlayerState->GetCrewStatus() : EHeistCrewStatus::Active);
@@ -286,6 +306,7 @@ float AHeistPlayerCharacter::CalculateMovementSpeedForPace(const float TotalWeig
 void AHeistPlayerCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
+	RefreshVoiceTalkerRegistration();
 	RefreshMovementSpeedFromWeight();
 	ApplyPlayerStateGameplayRestrictions();
 	RefreshNameplatePresentation();
@@ -423,6 +444,8 @@ void AHeistPlayerCharacter::ApplyEscapedGameplayRestrictions()
 void AHeistPlayerCharacter::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
+	bVoiceTalkerRegistered = false;
+	RefreshVoiceTalkerRegistration();
 	ApplyPlayerStateGameplayRestrictions();
 	RefreshNameplatePresentation();
 }
@@ -435,6 +458,8 @@ void AHeistPlayerCharacter::OnPlayerStateChanged(APlayerState* NewPlayerState, A
 		OldHeistPlayerState->GetCrewStatusChangedDelegate().RemoveAll(this);
 	}
 	BoundPresentationPlayerState.Reset();
+	bVoiceTalkerRegistered = false;
+	RefreshVoiceTalkerRegistration();
 	RefreshNameplatePresentation();
 }
 
@@ -488,6 +513,44 @@ void AHeistPlayerCharacter::RefreshNameplatePresentation()
 	}
 }
 
+void AHeistPlayerCharacter::RefreshVoiceTalkerRegistration()
+{
+	if (!IsValid(VoiceTalkerComponent) || bVoiceTalkerRegistered)
+	{
+		return;
+	}
+
+	APlayerState* CurrentPlayerState = GetPlayerState();
+	if (IsValid(CurrentPlayerState) && CurrentPlayerState->GetUniqueId().IsValid())
+	{
+		VoiceTalkerComponent->RegisterWithPlayerState(CurrentPlayerState);
+		bVoiceTalkerRegistered = true;
+		if (UWorld* World = GetWorld())
+		{
+			World->GetTimerManager().ClearTimer(VoiceTalkerRegistrationTimerHandle);
+		}
+		return;
+	}
+
+	if (UWorld* World = GetWorld(); IsValid(World) && !World->GetTimerManager().IsTimerActive(VoiceTalkerRegistrationTimerHandle))
+	{
+		World->GetTimerManager().SetTimer(VoiceTalkerRegistrationTimerHandle, this, &AHeistPlayerCharacter::RefreshVoiceTalkerRegistration, 0.5f, true);
+	}
+}
+
+void AHeistPlayerCharacter::RefreshVoiceTalkerSettings()
+{
+	if (!IsValid(VoiceTalkerComponent))
+	{
+		return;
+	}
+
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	const bool bUseProximityVoice = IsValid(HeistGameState) && HeistGameState->GetMatchPhase() == EHeistMatchPhase::InGame;
+	VoiceTalkerComponent->Settings.ComponentToAttachTo = bUseProximityVoice ? GetMesh() : nullptr;
+	VoiceTalkerComponent->Settings.AttenuationSettings = bUseProximityVoice ? RuntimeVoiceAttenuation.Get() : nullptr;
+}
+
 void AHeistPlayerCharacter::HandleReplicatedCrewStatus(const EHeistCrewStatus CrewStatus)
 {
 	ApplyCrewStatusPresentation(CrewStatus);
@@ -513,6 +576,7 @@ void AHeistPlayerCharacter::BindPresentationGameState()
 
 void AHeistPlayerCharacter::HandlePresentationMatchPhaseChanged(const EHeistMatchPhase, const EHeistMatchPhase NewMatchPhase)
 {
+	RefreshVoiceTalkerSettings();
 	if (NewMatchPhase != EHeistMatchPhase::InGame)
 	{
 		ResetCrewStatusPresentation();
@@ -922,6 +986,11 @@ UHeistVisionComponent* AHeistPlayerCharacter::GetVisionComponent() const
 UHeistNoiseEmitterComponent* AHeistPlayerCharacter::GetNoiseEmitterComponent() const
 {
 	return NoiseEmitterComponent.Get();
+}
+
+float AHeistPlayerCharacter::GetVoiceLevel() const
+{
+	return IsValid(VoiceTalkerComponent) ? FMath::Max(0.0f, VoiceTalkerComponent->GetVoiceLevel()) : 0.0f;
 }
 
 #pragma endregion

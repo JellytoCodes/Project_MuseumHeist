@@ -35,6 +35,7 @@ This manifest records evidence that exists in the repository or the current work
 | TENADA | Korean display font in UI | TTF, upstream URL, four-page upstream notice, and SIL Open Font License 1.1 text are stored locally | `REVIEW_REQUIRED` | Include the required notice and license in the distributed package or another user-viewable location, then record package evidence. |
 | W7 floor plans | M01/M02/M03 full-screen map textures | Deterministic generator, three generated PNGs, and project-original declaration | `VERIFIED_LOCAL` | Retain generator, README, and generated sources. |
 | W7 alert audio | Suspense and alarm loops | Deterministic generator, two generated WAVs, and project-original declaration | `VERIFIED_LOCAL` | Retain generator, README, and generated sources. |
+| Title menu generated UI | Shared Normal/Hovered/Pressed button brushes and text-free logo emblem | Four tracked RGBA PNG sources, generation prompts and local alpha validation | `VERIFIED_LOCAL` | Retain the source README and confirm the imported runtime textures are included in the final UI cook. |
 | Epic StarterContent | Graybox architecture and five Loose Loot visual definitions | 264 tracked assets under the Epic StarterContent folder; live map/DataTable references verified | `REVIEW_REQUIRED` | Record the applicable Epic/Unreal content terms, review date, and permitted distribution scope. Do not treat the folder name alone as license evidence. |
 | Epic UE5 Mannequins | Player full-body mesh and baseline locomotion AnimBP | 128 assets copied from the installed UE 5.8 High Mannequin template resource; exact local source pack identified | `REVIEW_REQUIRED` | Record the applicable Epic/Unreal content terms, review date, and permitted distribution scope together with StarterContent. |
 
@@ -135,6 +136,18 @@ The preserved PDF contains an author note and the full SIL Open Font License 1.1
   - `Content/Assets/Audio/W7/SW_HeistAlarmLoop.uasset`
 
 The README states that these are project-original schematic textures and procedurally generated PCM audio with no embedded third-party visual or audio material. Source, generator, and runtime assets are all present locally.
+
+## Title Menu Button Textures
+
+- Source record: [SourceArt/UI/Title/README.md](../SourceArt/UI/Title/README.md)
+- Source PNGs:
+  - `SourceArt/UI/Title/T_TitleButton_Normal.png`
+  - `SourceArt/UI/Title/T_TitleButton_Hovered.png`
+  - `SourceArt/UI/Title/T_TitleButton_Pressed.png`
+  - `SourceArt/UI/Title/T_TitleLogo_Emblem.png`
+- Intended runtime root: `Content/Assets/UI/Title/`
+
+The three text-free button backgrounds and the text-free logo emblem were generated specifically for the project with the built-in OpenAI `imagegen` tool. Their source record preserves the prompts, rejected-draft note and RGBA alpha validation. Final release verification must still confirm that the imported runtime textures are the versions referenced by the Title Widget and included in the cooked UI package.
 
 ## Epic StarterContent
 

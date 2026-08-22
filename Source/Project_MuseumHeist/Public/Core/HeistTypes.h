@@ -786,7 +786,8 @@ enum class EHeistSoundPingType : uint8
 	GlassBreak,
 	CoinImpact,
 	StunHit,
-	ReplicaSwap
+	ReplicaSwap,
+	Voice
 };
 
 USTRUCT(BlueprintType)

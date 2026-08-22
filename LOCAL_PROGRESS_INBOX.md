@@ -1,6 +1,6 @@
 # Project_MuseumHeist Local Progress Inbox
 
-최종 갱신: 2026-08-22 KST
+최종 갱신: 2026-08-23 KST
 
 이 문서는 Notion에 아직 연결되지 않았거나 반영되지 않은 실질 작업을 잃지 않기 위한 Reconciliation Queue다.
 
@@ -29,6 +29,80 @@ NO_TASK_REQUIRED
 ---
 
 ## Active Queue
+
+### LOCAL-20260823-01 — Title Menu Responsibility Split And Button State Art
+
+- State: `UNLINKED`
+- Created: `2026-08-23 KST`
+- Notion Relation: `NONE` / 라이브 조회에서 대응 Title UI Task 없음 (`TASK-W9-007`만 진행중이며 별도 범위)
+- Sync Boundary: 사용자 승인으로 C++·Widget Blueprint·UI Texture를 구현하고 로컬 검증했으며 Notion Task 생성이나 상태 변경은 하지 않았다.
+
+#### Applied Work
+
+- Title UI C++를 `UI/Title/ViewModels`와 `UI/Title/Widgets` 아래로 이동하고, Master `UHeistTitleMenuWidget`, Session 전용 `UHeistTitleMenuViewModel`, 별도 `UHeistSessionJoinWidget`, Settings 전용 `UHeistSettingsViewModel`과 `UHeistSettingsWidget`으로 책임을 분리했다.
+- 방 만들기는 기존 서버 권한 Session 생성·Lobby Travel 경로를 유지하고, 방 참가와 설정은 Master 안에 별도 Child Widget으로 열리도록 연결했다. 게임 종료는 C++에서 로컬 Owning PlayerController를 사용해 처리한다.
+- `/Game/Blueprints/UI/Title`에 `WBP_TitleMenu`, `WBP_SessionJoin`, `WBP_Settings`를 구성했다. Widget Blueprint EventGraph Gameplay Logic은 추가하지 않았다.
+- 공용 Title Button용 Normal/Hovered/Pressed RGBA Texture 3개와 Text-free Logo Emblem을 생성해 `/Game/Assets/UI/Title`에 Import하고, 네 메인 버튼에 동일한 3상태 Brush Set을 적용했다.
+- Source PNG, 생성 근거, 재생성·검증 스크립트와 Shipping Asset Manifest 항목을 함께 보존했다.
+
+#### Evidence
+
+```text
+Project_MuseumHeistEditor Development Build       PASS / Result Succeeded / 17 actions
+WBP_TitleMenu Parent / BindWidget / Compile       PASS / 8 required variables
+WBP_SessionJoin Parent / BindWidget / Compile     PASS / 8 required variables
+WBP_Settings Parent / BindWidget / Compile        PASS / 12 required variables
+Main Button Normal/Hovered/Pressed Brush           PASS / 4 of 4
+Generated PNG RGBA Alpha Validation                PASS / 4 of 4
+git diff --check                                   PASS / line-ending warning only
+Notion Write                                       NOT DONE / corresponding task absent
+Rendered Designer / PIE Visual QA                  NOT RUN / user inspection pending
+```
+
+#### Remaining Evidence / Presentation Boundary
+
+- Commandlet 검증은 C++ Parent, BindWidget, Blueprint compile과 Brush Reference를 증명하지만 실제 화면의 비율·간격·Hover/Pressed 체감은 증명하지 않는다.
+- 다음 Editor 확인에서 사용자가 Title Designer/PIE 화면을 보고 크기와 배치 조정 범위를 확정한다. Session Host/Join과 Settings 적용 E2E는 이 UI 시각 조정 뒤 별도 검증한다.
+
+---
+
+### LOCAL-20260822-03 — Steam Proximity Voice / Guard Speech Noise
+
+- State: `UNLINKED`
+- Created: `2026-08-22 KST`
+- Notion Relation: `NONE` / 라이브 조회에서 대응 Voice Task 없음
+- Sync Boundary: 사용자 승인으로 구현·로컬 검증했으며 Notion Task 생성이나 상태 변경은 하지 않았다.
+
+#### Applied Work
+
+- GDD → TDD → AGENTS 순서로 `V` Hold PTT, Lobby/Result 비공간 팀 보이스, InGame 거리 보이스와 Guard Hearing 계약을 동기화했다.
+- Steam Online Voice 전송과 Character의 `UVOIPTalker` 재생을 연결하고, InGame은 `0~250cm` 정상 음량 / `250~1,500cm` 감쇠 / 이후 무음으로 설정했다.
+- Client는 PTT 중 `IOnlineVoice::IsLocalPlayerTalking`으로 실제 발화 상태만 저빈도로 보고한다. PCM·원본 진폭·녹음·전사 데이터는 Gameplay RPC와 Telemetry에 포함하지 않는다.
+- Server는 Ownership, InGame Phase, Pawn과 PTT 상태를 검증한 뒤 Character 확정 위치에서 `Event.SoundPing.Voice`를 `800cm / 0.8초`로 생성한다. Alert를 직접 올리지 않고 Guard의 `InvestigateNoise` 후보로만 사용한다.
+- Guard 소음 우선순위는 `StunHit 0 / GlassBreak·ReplicaSwap 1 / CoinImpact 2 / Voice 3 / Footstep 4`로 확정했다.
+- 개별 출력 Mute와 Guard Hearing을 분리하고, C++에 `IsVoicePushToTalkHeld`, `IsLocalVoiceSpeaking`, `GetLocalVoiceActivityLevel`, Remote `GetVoiceLevel`, Player Mute 조회/변경 훅만 제공했다. Widget Blueprint와 UI Layout은 변경하지 않았다.
+
+#### Evidence
+
+```text
+GDD/TDD OOXML Structural QA        PASS / ZIP·Heading·Table·Field 보존
+GDD/TDD Visual PNG QA              NOT RUN / LibreOffice·soffice 미설치
+Single-thread UHT                  PASS / Editor·Game generated code refreshed
+Editor Development Build          PASS / Saved/Logs/VoiceEditorBuild.log
+Game Development Build            PASS / Saved/Logs/VoiceGameBuild.log
+Voice Static Contract Automation  PASS / 1 of 1 / Saved/Logs/VoiceAutomation.log
+git diff --check                   PASS / line-ending warning only
+Widget / uasset                    NOT CHANGED
+Notion Write                       NOT DONE / 대응 Task 없음
+```
+
+#### Remaining Evidence / UI Boundary
+
+- 실제 Steam 음성 송수신, 250/1,500cm 청음, 개별 Mute와 발화→Guard 조사는 서로 다른 Steam 계정 2개의 Development Package에서 검증해야 한다. Editor Null Subsystem 자동화는 이를 대체하지 않는다.
+- Lobby/HUD/Nameplate에 Speaking·Mute 아이콘을 배치하는 작업은 현재 Widget 개편 논의 후 진행한다.
+- 이 UE 5.8.1 설치본의 번들 .NET 10 UHT는 병렬 헤더 파싱에서 `AccessViolation`이 재현됐다. Header regeneration이 필요한 빌드는 공식 `UnrealHeaderTool -NoGoWide` 단일 스레드 생성 후 UBT를 실행하면 통과한다.
+
+---
 
 ### LOCAL-20260822-02 — W7 Asset-Deferred Gate Completion
 
@@ -66,12 +140,12 @@ Notion                     TASK-W7-004~006 완료 / TEST-W7-006 Pass / W7 Gate P
 
 ### LOCAL-20260818-01 — Rev14 Public Release Scope Rebaseline
 
-- State: `READY_TO_SYNC`
+- State: `PARTIALLY_RECONCILED`
 - Created: `2026-08-18 KST`
 - Last Updated: `2026-08-22 KST`
 - Reconciled: `2026-08-18 KST` (문서 재기준화 범위만 해당)
 - Notion Relations: [`W8`](https://app.notion.com/p/39a1d26a5dfb81ffad91ff21b194e505), [`TASK-W8-008`](https://app.notion.com/p/3c01d26a5dfb81a68634d1d63f15e791), `TASK-W8-001~007`
-- Sync Boundary: 2026-08-18 문서 재기준화는 반영됐지만, 2026-08-22 C++ 기반 구현·Editor Build·Security Blueprint Shell·Release Map 배치·2인 자동화 증거는 Notion에 쓰지 않았다. `TASK-W8-001~008`은 라이브 재조회 기준 `미시작`이며 어떤 Task도 완료·PASS로 올리지 않았다.
+- Sync Boundary: 2026-08-18 문서 재기준화에 이어 2026-08-22 CCTV·Laser 2P 자동 계약은 Notion [`TEST-W8-001`](https://app.notion.com/p/3c41d26a5dfb81ccb1fcd8e59c4dcc4f)로 기록·재조회했다. 실제 Holder Disconnect는 사용자 결정으로 `SKIPPED / NOT RUN / RISK ACCEPTED` 처리했고, `TASK-W8-001~008`은 라이브 재조회 기준 `미시작`이며 어떤 Task도 완료·PASS로 올리지 않았다.
 
 #### User Request / Decision
 
@@ -101,7 +175,7 @@ Notion                     TASK-W7-004~006 완료 / TEST-W7-006 Pass / W7 Gate P
 2. Public Lobby 2~4 Start Validation과 InGame 2→1 Snapshot 불변은 C++에 반영했다. 현재 Revision Build와 Host/Client 멀티플레이 증거가 필요하다.
 3. Release Contract의 Eligible Forgery Type을 Surface/Drawing으로 제한하고 Object Runtime Entry·Result 경로를 차단했다. User Widget 개편이 끝난 뒤 Player-facing Object 경로 0을 별도로 대조한다.
 4. Release Map Object Case 배치/참조 0과 Final Cook의 Object Assembly 전용 Hard Reference/Package 0을 검증하되, Deferred 소스·데이터·Shell은 보존한다.
-5. CCTV 서버 Detection/Alert와 Laser Hold/Release/Stun·Arrest·Disconnect 기반 및 비-Widget Blueprint Shell을 반영했다. `SandBoxMap` 및 M01/M02/M03의 `Hold.LinkedLaserBarrier → Laser`, `Laser.ProtectedPaintingCase → FourStar Painting Case`, CCTV 사건당 Alert+경비 조사 1회, 단일 Holder와 Release/Rearm은 2인 Listen Server 자동화에서 PASS했다. 3인/4인 밸런스, 실제 홀더 Disconnect, 독립 Egress와 이탈 Player의 Loose Loot/Original 월드 복구는 후속 Host/Client 검증으로 남긴다.
+5. CCTV 서버 Detection/Alert와 Laser Hold/Release/Stun·Arrest·Disconnect 기반 및 비-Widget Blueprint Shell을 반영했다. `SandBoxMap` 및 M01/M02/M03의 `Hold.LinkedLaserBarrier → Laser`, `Laser.ProtectedPaintingCase → FourStar Painting Case`, CCTV 사건당 Alert+경비 조사 1회, 단일 Holder와 Release/Rearm은 2인 Listen Server 자동화에서 PASS했다. 실제 Holder Disconnect는 사용자 결정으로 `SKIPPED / RISK ACCEPTED`이며 PASS로 재분류하지 않는다. 3인/4인 밸런스, 독립 Egress와 이탈 Player의 Loose Loot/Original 월드 복구는 후속 Host/Client Gate 범위로 남긴다.
 6. 실제 사용할 CCTV/Laser Mesh·Material·VFX·Audio·Icon을 추가하면 `Docs/SHIPPING_ASSET_MANIFEST.md`와 Notice/라이선스 근거를 같이 갱신한다.
 7. 마지막 Player Disconnect의 `Logout()` Outcome 판정이 `PlayerArray` 제거보다 먼저 실행되는 순서를 별도 기능 이슈로 재현·수정한다. 이번 보일러플레이트 정리에서는 동작 변경을 피하기 위해 미수정했다.
 
@@ -126,11 +200,12 @@ Security Policy Automation      PASS / Saved/Automation/W8-SecurityIncidentPolic
 SandBox 2P Listen Server        PASS WITH WARNINGS / RecastNavMesh absent + EOS offline / gameplay errors 0
 M01·M02·M03 2P TwoRuns          PASS WITH WARNINGS / placed security and contract assertions pass
 3P / 4P Release Gate            NOT RUN / user multiplayer and balance evidence required
-Holder Actual Disconnect        NOT RUN / code path only, real disconnect evidence required
+Holder Actual Disconnect        SKIPPED / NOT RUN / user accepted residual risk
 Visual / Audio PIE              NOT RUN / temporary presentation assets only
 Cook                            NOT RUN
 Notion Read                     PASS / TASK-W8-001~008 미시작
-Notion Write                    NOT DONE / not requested
+Notion Test Log                 PASS / TEST-W8-001 created and re-fetched
+Notion Task Write               NOT DONE / status unchanged
 Historical Evidence             PRESERVED / not reclassified
 ```
 

@@ -154,6 +154,49 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 
 #pragma endregion
 
+#pragma region Voice
+
+  public:
+	UFUNCTION(BlueprintPure, Category = "Heist|Voice")
+	bool IsVoicePushToTalkHeld() const { return bLocalVoicePushToTalkHeld; }
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Voice")
+	bool IsLocalVoiceSpeaking() const { return bLocalVoiceSpeaking; }
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Voice")
+	float GetLocalVoiceActivityLevel() const { return LocalVoiceActivityLevel; }
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Voice")
+	void SetPlayerVoiceMuted(AHeistPlayerState* TargetPlayerState, bool bMuted);
+
+	UFUNCTION(BlueprintPure, Category = "Heist|Voice")
+	bool IsPlayerVoiceMuted(AHeistPlayerState* TargetPlayerState);
+
+  private:
+	void HandleVoicePushToTalkPressed();
+	void HandleVoicePushToTalkReleased();
+	void PollLocalVoiceActivity();
+	void ResetLocalVoicePushToTalk(bool bNotifyServer);
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Voice", meta = (AllowPrivateAccess = "true", ClampMin = "0.05", Units = "s"))
+	float VoiceActivityPollInterval = 0.1f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Voice", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "s"))
+	float MinimumVoiceActivityDuration = 0.2f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Voice", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "s"))
+	float VoiceActivityReportInterval = 0.8f;
+
+	FTimerHandle LocalVoiceActivityTimerHandle;
+	float LocalVoiceActivityLevel = 0.0f;
+	float LocalVoiceActivityDuration = 0.0f;
+	double LastLocalVoiceActivityReportTime = -1.0;
+	bool bLocalVoicePushToTalkHeld = false;
+	bool bLocalVoiceSpeaking = false;
+	bool bServerVoicePushToTalkHeld = false;
+
+#pragma endregion
+
 #pragma region Interaction
 
   private:
@@ -370,6 +413,12 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 
 	UFUNCTION(Server, Reliable)
 	void Server_SetSprintRequested(bool bRequested);
+
+	UFUNCTION(Server, Reliable)
+	void Server_SetVoicePushToTalk(bool bHeld);
+
+	UFUNCTION(Server, Unreliable)
+	void Server_ReportVoiceActivity();
 
 #pragma endregion
 
