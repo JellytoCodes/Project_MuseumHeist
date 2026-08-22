@@ -1,7 +1,6 @@
 #include "UI/Title/Widgets/HeistTitleMenuWidget.h"
 
 #include "Components/Button.h"
-#include "Components/TextBlock.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "UI/Title/ViewModels/HeistSettingsViewModel.h"
 #include "UI/Title/ViewModels/HeistTitleMenuViewModel.h"
@@ -178,15 +177,6 @@ void UHeistTitleMenuWidget::RefreshTitleMenuPresentation()
 	if (IsValid(SettingsButton))
 	{
 		SettingsButton->SetIsEnabled(!TitleMenuViewModel->IsSessionOperationPending());
-	}
-	if (IsValid(SessionStatusText))
-	{
-		SessionStatusText->SetText(TitleMenuViewModel->GetSessionStatusText());
-	}
-	if (IsValid(SessionErrorText))
-	{
-		SessionErrorText->SetText(TitleMenuViewModel->GetSessionErrorText());
-		SessionErrorText->SetVisibility(TitleMenuViewModel->GetSessionErrorVisibility());
 	}
 }
 

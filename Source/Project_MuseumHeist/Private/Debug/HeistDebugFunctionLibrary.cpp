@@ -6982,24 +6982,20 @@ void UHeistDebugFunctionLibrary::DebugOnlineSessionDump(APlayerController* Playe
 			bConfigurationValid ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
 
 	const FText SessionStatusText =
-		bTitleMenuWorld && IsValid(TitleMenuViewModel)
-			? TitleMenuViewModel->GetSessionStatusText()
-			: (bLobbyWorld && IsValid(LobbyViewModel) ? LobbyViewModel->GetSessionStatusText() : FText::GetEmpty());
+		bLobbyWorld && IsValid(LobbyViewModel) ? LobbyViewModel->GetSessionStatusText() : FText::GetEmpty();
 	const FText SessionErrorText =
 		bTitleMenuWorld && IsValid(TitleMenuViewModel)
 			? TitleMenuViewModel->GetSessionErrorText()
 			: (bLobbyWorld && IsValid(LobbyViewModel) ? LobbyViewModel->GetSessionErrorText() : FText::GetEmpty());
 	const FText SessionActionHintText =
-		bTitleMenuWorld && IsValid(TitleMenuViewModel)
-			? TitleMenuViewModel->GetSessionActionHintText()
-			: (bLobbyWorld && IsValid(LobbyViewModel) ? LobbyViewModel->GetSessionActionHintText() : FText::GetEmpty());
+		bLobbyWorld && IsValid(LobbyViewModel) ? LobbyViewModel->GetSessionActionHintText() : FText::GetEmpty();
 	const FText InviteGuidanceText = bLobbyWorld && IsValid(LobbyViewModel) ? LobbyViewModel->GetInviteGuidanceText() : FText::GetEmpty();
 	const bool bCanCancel = bTitleMenuWorld && IsValid(TitleMenuViewModel) && TitleMenuViewModel->CanCancelSessionOperation();
 	const bool bCanRetry = (bTitleMenuWorld && IsValid(TitleMenuViewModel) && TitleMenuViewModel->CanRetrySessionOperation())
 		|| (bLobbyWorld && IsValid(LobbyViewModel) && LobbyViewModel->CanRetrySessionOperation());
 	const bool bInviteGuidanceRequired = bLobbyWorld && !HeistGameInstance->GetActiveJoinCode().IsEmpty();
-	const bool bSessionUXValid = (!bTitleMenuWorld && !bLobbyWorld)
-		|| (!SessionStatusText.IsEmpty() && (!bInviteGuidanceRequired || !InviteGuidanceText.IsEmpty()));
+	const bool bSessionUXValid = (!bTitleMenuWorld && !bLobbyWorld) || (bTitleMenuWorld && IsValid(TitleMenuViewModel))
+		|| (bLobbyWorld && !SessionStatusText.IsEmpty() && (!bInviteGuidanceRequired || !InviteGuidanceText.IsEmpty()));
 	Message(PlayerController,
 			FString::Printf(TEXT("Online session UX dump: Screen=%s Operation=%s TimeoutRemaining=%.2f TravelPending=%s Destination=%s CancellationPending=%s "
 								 "RetryRequest=%s Status=%s Error=%s ActionHint=%s Invite=%s CanCancel=%s CanRetry=%s Result=%s"),

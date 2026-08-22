@@ -24,8 +24,11 @@ All three prompts requested a centered, front-facing 4:1 pill-shaped UMG button 
 - All four delivered PNGs are RGBA.
 - Alpha extrema are `0..255`, confirming transparent and opaque pixels are both present.
 - The first edit-based Hovered/Pressed drafts were rejected because their checkerboard backgrounds were baked RGB pixels; they are not stored in this repository.
+- The three button canvases are cropped from their approved RGBA sources to the visible alpha bounds with 6 px padding. Their current dimensions are Normal `2033x491`, Hovered `2033x513`, and Pressed `1895x514`.
+- A later imagegen crop attempt was also rejected because all three outputs were RGB (`PNG ColorType 2`) with baked checkerboard backgrounds. The retained tight versions preserve the approved source pixels and only remove transparent canvas area.
 - `build_title_widgets.py` imports the textures and creates/updates the three Title Widget Blueprints through Unreal's UMGToolSet without EventGraph logic.
 - `verify_title_widgets.py` checks native parents, required `BindWidget` variables, Blueprint compilation, and the four main buttons' Normal/Hovered/Pressed texture assignments.
+- `reimport_title_button_textures.py` reimports only the three button textures when Widget Blueprints must remain untouched.
 
 ## Provenance
 

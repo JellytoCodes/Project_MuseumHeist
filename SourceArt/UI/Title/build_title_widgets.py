@@ -363,9 +363,7 @@ def build_session_join(textures):
     add_styled_button(blueprint, action_row, "RetrySessionButton", "다시 시도", textures, 190.0, 68.0, (8.0, 0.0, 8.0, 0.0))
     add_styled_button(blueprint, action_row, "JoinCloseButton", "닫기", textures, 190.0, 68.0, (8.0, 0.0, 0.0, 0.0))
 
-    add_text(blueprint, column, "SessionStatusText", "온라인 상태를 확인하는 중...", 20, WHITE, padding=(0.0, 18.0, 0.0, 0.0), centered=True)
-    add_text(blueprint, column, "SessionErrorText", "", 20, ERROR, padding=(0.0, 8.0, 0.0, 0.0), centered=True)
-    add_text(blueprint, column, "SessionActionHintText", "", 18, MINT, padding=(0.0, 6.0, 0.0, 0.0), centered=True)
+    add_text(blueprint, column, "SessionErrorText", "", 20, ERROR, padding=(0.0, 18.0, 0.0, 0.0), centered=True)
 
     mark_bind_widgets(
         blueprint,
@@ -375,9 +373,7 @@ def build_session_join(textures):
             "CancelSessionButton",
             "RetrySessionButton",
             "JoinCloseButton",
-            "SessionStatusText",
             "SessionErrorText",
-            "SessionActionHintText",
         ),
     )
 
@@ -493,13 +489,6 @@ def build_title_menu(textures, session_blueprint, settings_blueprint):
     add_styled_button(blueprint, menu_column, "SettingsButton", "설정", textures)
     add_styled_button(blueprint, menu_column, "QuitGameButton", "게임 종료", textures)
 
-    status, status_slot = add_widget(blueprint, unreal.TextBlock, "SessionStatusText", root)
-    configure_text(status, "온라인 서비스를 확인하는 중...", 19, WHITE, unreal.TextJustify.CENTER)
-    set_canvas_layout(status_slot, 96.0, 830.0, 524.0, 46.0)
-    error, error_slot = add_widget(blueprint, unreal.TextBlock, "SessionErrorText", root)
-    configure_text(error, "", 18, ERROR, unreal.TextJustify.CENTER)
-    set_canvas_layout(error_slot, 96.0, 878.0, 524.0, 84.0)
-
     session_class = unreal.load_class(None, f"{WIDGET_ROOT}/WBP_SessionJoin.WBP_SessionJoin_C")
     settings_class = unreal.load_class(None, f"{WIDGET_ROOT}/WBP_Settings.WBP_Settings_C")
     if not session_class or not settings_class:
@@ -519,8 +508,6 @@ def build_title_menu(textures, session_blueprint, settings_blueprint):
             "JoinSessionButton",
             "SettingsButton",
             "QuitGameButton",
-            "SessionStatusText",
-            "SessionErrorText",
             "SessionJoinWidget",
             "SettingsWidget",
         ),

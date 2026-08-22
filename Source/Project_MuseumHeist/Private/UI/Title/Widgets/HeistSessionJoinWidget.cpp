@@ -159,29 +159,16 @@ void UHeistSessionJoinWidget::RefreshSessionJoinPresentation()
 	}
 	if (IsValid(CancelSessionButton))
 	{
-		const bool bCanCancel = TitleMenuViewModel->CanCancelSessionOperation();
-		CancelSessionButton->SetIsEnabled(bCanCancel);
-		CancelSessionButton->SetVisibility(bCanCancel ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		CancelSessionButton->SetIsEnabled(TitleMenuViewModel->CanCancelSessionOperation());
 	}
 	if (IsValid(RetrySessionButton))
 	{
-		const bool bCanRetry = TitleMenuViewModel->CanRetrySessionOperation();
-		RetrySessionButton->SetIsEnabled(bCanRetry);
-		RetrySessionButton->SetVisibility(bCanRetry ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-	}
-	if (IsValid(SessionStatusText))
-	{
-		SessionStatusText->SetText(TitleMenuViewModel->GetSessionStatusText());
+		RetrySessionButton->SetIsEnabled(TitleMenuViewModel->CanRetrySessionOperation());
 	}
 	if (IsValid(SessionErrorText))
 	{
 		SessionErrorText->SetText(TitleMenuViewModel->GetSessionErrorText());
 		SessionErrorText->SetVisibility(TitleMenuViewModel->GetSessionErrorVisibility());
-	}
-	if (IsValid(SessionActionHintText))
-	{
-		SessionActionHintText->SetText(TitleMenuViewModel->GetSessionActionHintText());
-		SessionActionHintText->SetVisibility(TitleMenuViewModel->GetSessionActionHintVisibility());
 	}
 }
 

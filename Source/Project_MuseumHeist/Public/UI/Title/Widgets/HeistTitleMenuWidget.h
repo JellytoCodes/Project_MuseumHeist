@@ -6,7 +6,6 @@
 #include "HeistTitleMenuWidget.generated.h"
 
 class UButton;
-class UTextBlock;
 
 UCLASS(Blueprintable)
 class PROJECT_MUSEUMHEIST_API UHeistTitleMenuWidget : public UHeistUserWidgetBase
@@ -65,12 +64,6 @@ class PROJECT_MUSEUMHEIST_API UHeistTitleMenuWidget : public UHeistUserWidgetBas
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UButton> QuitGameButton;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> SessionStatusText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> SessionErrorText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<class UHeistSessionJoinWidget> SessionJoinWidget;

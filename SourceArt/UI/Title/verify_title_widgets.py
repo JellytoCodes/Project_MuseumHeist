@@ -12,8 +12,6 @@ EXPECTED_WIDGETS = {
             "JoinSessionButton",
             "SettingsButton",
             "QuitGameButton",
-            "SessionStatusText",
-            "SessionErrorText",
             "SessionJoinWidget",
             "SettingsWidget",
         ),
@@ -26,9 +24,7 @@ EXPECTED_WIDGETS = {
             "CancelSessionButton",
             "RetrySessionButton",
             "JoinCloseButton",
-            "SessionStatusText",
             "SessionErrorText",
-            "SessionActionHintText",
         ),
     },
     "WBP_Settings": {

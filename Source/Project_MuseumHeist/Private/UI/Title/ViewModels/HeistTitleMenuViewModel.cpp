@@ -50,13 +50,9 @@ void UHeistTitleMenuViewModel::RefreshTitleMenuData()
 		&& (GameInstance->IsHostingOnlineSession() || GameInstance->IsJoinedOnlineSession() || GameInstance->HasActiveNamedOnlineSession());
 	const bool bInTitleMenu = IsValid(GameInstance) && GameInstance->IsCurrentWorldTitleMenu();
 	const FText NewSessionErrorText = ResolveOnlineSessionFailureText();
-	const FText NewSessionActionHintText = ResolveSessionActionHintText();
 
-	UE_MVVM_SET_PROPERTY_VALUE(SessionStatusText, ResolveOnlineSessionStatusText());
 	UE_MVVM_SET_PROPERTY_VALUE(SessionErrorText, NewSessionErrorText);
-	UE_MVVM_SET_PROPERTY_VALUE(SessionActionHintText, NewSessionActionHintText);
 	UE_MVVM_SET_PROPERTY_VALUE(SessionErrorVisibility, NewSessionErrorText.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
-	UE_MVVM_SET_PROPERTY_VALUE(SessionActionHintVisibility, NewSessionActionHintText.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
 	UE_MVVM_SET_PROPERTY_VALUE(bCanRequestHostSession, bInTitleMenu && !bOperationPending && !bSessionActive);
 	UE_MVVM_SET_PROPERTY_VALUE(bCanRequestJoinSession, bInTitleMenu && !bOperationPending && !bSessionActive);
 	UE_MVVM_SET_PROPERTY_VALUE(bCanCancelSessionOperation, bInTitleMenu && IsValid(GameInstance) && GameInstance->CanCancelOnlineSessionOperation());
@@ -93,61 +89,6 @@ bool UHeistTitleMenuViewModel::RequestRetrySessionOperation()
 void UHeistTitleMenuViewModel::HandleOnlineSessionStateChanged()
 {
 	RefreshTitleMenuData();
-}
-
-FText UHeistTitleMenuViewModel::ResolveOnlineSessionStatusText() const
-{
-	if (!IsValid(GameInstance))
-	{
-		return NSLOCTEXT("HeistTitleMenu", "OnlineUnavailable", "온라인 서비스를 사용할 수 없습니다.");
-	}
-
-	if (GameInstance->IsOnlineSessionCancellationPending())
-	{
-		return NSLOCTEXT("HeistTitleMenu", "CancellingSessionRequest", "세션 요청을 취소하는 중...");
-	}
-	if (GameInstance->IsSessionTravelPending())
-	{
-		const FName Destination = GameInstance->GetPendingTravelDestination();
-		return Destination == FName(TEXT("Gameplay"))
-				   ? NSLOCTEXT("HeistTitleMenu", "TravellingToMuseum", "박물관으로 이동하는 중...")
-				   : NSLOCTEXT("HeistTitleMenu", "TravellingToLobby", "온라인 로비를 여는 중...");
-	}
-
-	const FName State = GameInstance->GetOnlineSessionState();
-	if (State == FName(TEXT("Creating")))
-	{
-		return NSLOCTEXT("HeistTitleMenu", "CreatingSession", "비공개 로비를 만드는 중...");
-	}
-	if (State == FName(TEXT("Searching")))
-	{
-		return NSLOCTEXT("HeistTitleMenu", "SearchingSession", "참가 코드로 로비를 찾는 중...");
-	}
-	if (State == FName(TEXT("Joining")))
-	{
-		return NSLOCTEXT("HeistTitleMenu", "JoiningSession", "로비에 참가하는 중...");
-	}
-	if (State == FName(TEXT("Leaving")))
-	{
-		return NSLOCTEXT("HeistTitleMenu", "LeavingSession", "현재 세션을 닫는 중...");
-	}
-	if (State == FName(TEXT("Failed")))
-	{
-		return NSLOCTEXT("HeistTitleMenu", "SessionFailed", "세션 요청에 실패했습니다.");
-	}
-	if (State == FName(TEXT("Hosting")))
-	{
-		return NSLOCTEXT("HeistTitleMenu", "HostingBeforeTravel", "로비가 생성되었습니다. 로비 연결을 다시 시도하세요.");
-	}
-	if (State == FName(TEXT("Joined")))
-	{
-		return NSLOCTEXT("HeistTitleMenu", "JoinedBeforeTravel", "호스트에 연결되었습니다. 로비 이동을 기다리는 중입니다.");
-	}
-	if (!GameInstance->GetLastOnlineSessionFailure().IsNone())
-	{
-		return NSLOCTEXT("HeistTitleMenu", "SessionRequestEnded", "마지막 세션 요청이 종료되었습니다.");
-	}
-	return NSLOCTEXT("HeistTitleMenu", "SessionIdle", "로비를 만들거나 참가 코드를 입력하세요.");
 }
 
 FText UHeistTitleMenuViewModel::ResolveOnlineSessionFailureText() const
@@ -234,58 +175,18 @@ FText UHeistTitleMenuViewModel::ResolveOnlineSessionFailureText() const
 	return NSLOCTEXT("HeistTitleMenu", "GenericSessionFailure", "온라인 세션을 계속할 수 없습니다. 다시 시도하거나 새 요청을 시작하세요.");
 }
 
-FText UHeistTitleMenuViewModel::ResolveSessionActionHintText() const
-{
-	if (!IsValid(GameInstance))
-	{
-		return FText::GetEmpty();
-	}
-	if (GameInstance->IsOnlineSessionCancellationPending())
-	{
-		return NSLOCTEXT("HeistTitleMenu", "CancellationPendingHint", "온라인 서비스가 정리를 마칠 때까지 기다리는 중입니다.");
-	}
-	if (GameInstance->CanCancelOnlineSessionOperation())
-	{
-		return NSLOCTEXT("HeistTitleMenu", "CancelAvailableHint", "취소를 선택하면 현재 세션 요청을 중단합니다.");
-	}
-	if (GameInstance->CanRetryLastOnlineSessionOperation())
-	{
-		return NSLOCTEXT("HeistTitleMenu", "RetryAvailableHint", "다시 시도를 선택하면 마지막 세션 요청을 반복합니다.");
-	}
-	if (!GameInstance->GetLastOnlineSessionFailure().IsNone())
-	{
-		return NSLOCTEXT("HeistTitleMenu", "NewRequestHint", "참가 코드를 바꾸거나 새 로비 요청을 시작하세요.");
-	}
-	return FText::GetEmpty();
-}
-
 #pragma endregion
 
 #pragma region TitleMenuData
-
-const FText& UHeistTitleMenuViewModel::GetSessionStatusText() const
-{
-	return SessionStatusText;
-}
 
 const FText& UHeistTitleMenuViewModel::GetSessionErrorText() const
 {
 	return SessionErrorText;
 }
 
-const FText& UHeistTitleMenuViewModel::GetSessionActionHintText() const
-{
-	return SessionActionHintText;
-}
-
 ESlateVisibility UHeistTitleMenuViewModel::GetSessionErrorVisibility() const
 {
 	return SessionErrorVisibility;
-}
-
-ESlateVisibility UHeistTitleMenuViewModel::GetSessionActionHintVisibility() const
-{
-	return SessionActionHintVisibility;
 }
 
 bool UHeistTitleMenuViewModel::CanRequestHostSession() const

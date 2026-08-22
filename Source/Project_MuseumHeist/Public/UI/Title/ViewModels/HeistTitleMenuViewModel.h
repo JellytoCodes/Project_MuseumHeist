@@ -48,9 +48,7 @@ class PROJECT_MUSEUMHEIST_API UHeistTitleMenuViewModel : public UMVVMViewModelBa
 
   private:
 	void HandleOnlineSessionStateChanged();
-	FText ResolveOnlineSessionStatusText() const;
 	FText ResolveOnlineSessionFailureText() const;
-	FText ResolveSessionActionHintText() const;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UHeistGameInstance> GameInstance;
@@ -62,11 +60,8 @@ class PROJECT_MUSEUMHEIST_API UHeistTitleMenuViewModel : public UMVVMViewModelBa
 #pragma region TitleMenuData
 
   public:
-	const FText& GetSessionStatusText() const;
 	const FText& GetSessionErrorText() const;
-	const FText& GetSessionActionHintText() const;
 	ESlateVisibility GetSessionErrorVisibility() const;
-	ESlateVisibility GetSessionActionHintVisibility() const;
 	bool CanRequestHostSession() const;
 	bool CanRequestJoinSession() const;
 	bool CanCancelSessionOperation() const;
@@ -75,19 +70,10 @@ class PROJECT_MUSEUMHEIST_API UHeistTitleMenuViewModel : public UMVVMViewModelBa
 
   private:
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|TitleMenu", meta = (AllowPrivateAccess = "true"))
-	FText SessionStatusText;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|TitleMenu", meta = (AllowPrivateAccess = "true"))
 	FText SessionErrorText;
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|TitleMenu", meta = (AllowPrivateAccess = "true"))
-	FText SessionActionHintText;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|TitleMenu", meta = (AllowPrivateAccess = "true"))
 	ESlateVisibility SessionErrorVisibility = ESlateVisibility::Collapsed;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|TitleMenu", meta = (AllowPrivateAccess = "true"))
-	ESlateVisibility SessionActionHintVisibility = ESlateVisibility::Collapsed;
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|TitleMenu", meta = (AllowPrivateAccess = "true"))
 	bool bCanRequestHostSession = true;

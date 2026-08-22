@@ -44,6 +44,10 @@ NO_TASK_REQUIRED
 - `/Game/Blueprints/UI/Title`에 `WBP_TitleMenu`, `WBP_SessionJoin`, `WBP_Settings`를 구성했다. Widget Blueprint EventGraph Gameplay Logic은 추가하지 않았다.
 - 공용 Title Button용 Normal/Hovered/Pressed RGBA Texture 3개와 Text-free Logo Emblem을 생성해 `/Game/Assets/UI/Title`에 Import하고, 네 메인 버튼에 동일한 3상태 Brush Set을 적용했다.
 - Source PNG, 생성 근거, 재생성·검증 스크립트와 Shipping Asset Manifest 항목을 함께 보존했다.
+- 후속 UI 검토에서 Master Title의 `SessionStatusText`와 `SessionErrorText` C++ BindWidget·Presentation 갱신을 제거했다. SessionJoin의 사용자 조치용 오류 피드백은 유지했고 WBP는 사용자가 편집 중이므로 변경하지 않았다.
+- SessionJoin 후속 검토에서 `SessionStatusText`와 `SessionActionHintText`의 C++ BindWidget, ViewModel FieldNotify·문구 생성과 Debug Title UX 의존을 제거하고 `SessionErrorText`만 유지했다. 현재 열린 Editor의 사용자 WBP 편집은 건드리지 않았다.
+- SessionJoin의 `다시 시도`와 `요청 취소` 버튼은 존재를 항상 노출하고, 실패 시 Retry만 Enable·진행 중 Cancel만 Enable하도록 C++ Visibility 전환을 제거하고 기존 `CanRetrySessionOperation` / `CanCancelSessionOperation` 상태만 적용한다.
+- 버튼 3상태 Source PNG는 승인된 RGBA 픽셀을 유지한 채 Alpha Bounds 기준 6px Padding으로 Tight Crop하고 Texture 전용 Unreal 재임포트를 수행했다.
 
 #### Evidence
 
@@ -54,6 +58,11 @@ WBP_SessionJoin Parent / BindWidget / Compile     PASS / 8 required variables
 WBP_Settings Parent / BindWidget / Compile        PASS / 12 required variables
 Main Button Normal/Hovered/Pressed Brush           PASS / 4 of 4
 Generated PNG RGBA Alpha Validation                PASS / 4 of 4
+Tight Button Source Dimensions                     PASS / 2033x491, 2033x513, 1895x514 / ColorType 6
+Texture-only Unreal Reimport                       PASS / 3 of 3
+Title WBP SHA-256 Before/After                      IDENTICAL / 3 of 3 / no UMG mutation
+Master Status/Error C++ Removal Build               PASS / Result Succeeded / 9 actions
+SessionJoin Status/ActionHint C++ Removal            STATIC CHECK PASS / BUILD NOT RUN / Editor active
 git diff --check                                   PASS / line-ending warning only
 Notion Write                                       NOT DONE / corresponding task absent
 Rendered Designer / PIE Visual QA                  NOT RUN / user inspection pending

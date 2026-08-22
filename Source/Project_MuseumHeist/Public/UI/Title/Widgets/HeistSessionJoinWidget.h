@@ -68,13 +68,7 @@ class PROJECT_MUSEUMHEIST_API UHeistSessionJoinWidget : public UHeistUserWidgetB
 	TObjectPtr<UButton> JoinCloseButton;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> SessionStatusText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> SessionErrorText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> SessionActionHintText;
 
 #pragma endregion
 };
