@@ -315,15 +315,18 @@ FText AHeistGameState::GetContractOutcomeReasonText() const
 	return ContractSnapshot.GetOutcomeReasonText();
 }
 
-bool AHeistGameState::InitializeContractSnapshot(const FName ContractId, const FName MapId, const int32 AssignmentSeed, const FName RequiredTargetArtifactId,
-											 const FName RequiredTargetCaseId, const int32 LootValueQuota)
+bool AHeistGameState::InitializeContractSnapshot(const FName ContractId, const FName MapId, const int32 AssignmentSeed, const int32 ContractStartPlayerCount,
+											 const FName RequiredTargetArtifactId, const FName RequiredTargetCaseId, const int32 LootValueQuota)
 {
-	if (!HasAuthority() || MatchPhase != EHeistMatchPhase::InGame || ContractId.IsNone() || MapId.IsNone() || RequiredTargetArtifactId.IsNone() || RequiredTargetCaseId.IsNone() || LootValueQuota <= 0)
+	if (!HasAuthority() || MatchPhase != EHeistMatchPhase::InGame || ContractSnapshot.IsInitialized() || ContractId.IsNone() || MapId.IsNone() ||
+		!HeistSessionContract::IsSnapshotStartPlayerCountSupported(ContractStartPlayerCount) || RequiredTargetArtifactId.IsNone() || RequiredTargetCaseId.IsNone() ||
+		LootValueQuota <= 0)
 	{
 		UE_LOG(LogHeistNetwork, Error,
-			   TEXT("Contract snapshot initialization rejected: Contract=%s Map=%s Seed=%d TargetArtifact=%s TargetCase=%s Quota=%d MatchPhase=%s Authority=%s Result=FAIL"),
-			   *ContractId.ToString(), *MapId.ToString(), AssignmentSeed, *RequiredTargetArtifactId.ToString(), *RequiredTargetCaseId.ToString(), LootValueQuota,
-			   *UEnum::GetValueAsString(MatchPhase), HasAuthority() ? TEXT("true") : TEXT("false"));
+			   TEXT("Contract snapshot initialization rejected: Contract=%s Map=%s Seed=%d StartPlayers=%d TargetArtifact=%s TargetCase=%s Quota=%d MatchPhase=%s AlreadyInitialized=%s Authority=%s Result=FAIL"),
+			   *ContractId.ToString(), *MapId.ToString(), AssignmentSeed, ContractStartPlayerCount, *RequiredTargetArtifactId.ToString(),
+			   *RequiredTargetCaseId.ToString(), LootValueQuota, *UEnum::GetValueAsString(MatchPhase), ContractSnapshot.IsInitialized() ? TEXT("true") : TEXT("false"),
+			   HasAuthority() ? TEXT("true") : TEXT("false"));
 		return false;
 	}
 
@@ -334,6 +337,7 @@ bool AHeistGameState::InitializeContractSnapshot(const FName ContractId, const F
 	ContractSnapshot.ContractId = ContractId;
 	ContractSnapshot.MapId = MapId;
 	ContractSnapshot.AssignmentSeed = AssignmentSeed;
+	ContractSnapshot.ContractStartPlayerCount = ContractStartPlayerCount;
 	ContractSnapshot.RequiredTargetArtifactId = RequiredTargetArtifactId;
 	ContractSnapshot.RequiredTargetCaseId = RequiredTargetCaseId;
 	ContractSnapshot.LootValueQuota = LootValueQuota;
@@ -515,8 +519,8 @@ void AHeistGameState::BroadcastContractSnapshot(const TCHAR* ChangeSource)
 {
 	ContractSnapshotChangedDelegate.Broadcast(ContractSnapshot);
 	UE_LOG(LogHeistNetwork, Log,
-		   TEXT("Contract snapshot %s: Contract=%s Map=%s Seed=%d TargetArtifact=%s TargetCase=%s Quota=%d Carried=%d Secured=%d RequiredSecured=%s Outcome=%s OutcomeReasonId=%s OutcomeReason=\"%s\" Revision=%d Authority=%s Result=%s"),
-		   ChangeSource, *ContractSnapshot.ContractId.ToString(), *ContractSnapshot.MapId.ToString(), ContractSnapshot.AssignmentSeed,
+		   TEXT("Contract snapshot %s: Contract=%s Map=%s Seed=%d StartPlayers=%d TargetArtifact=%s TargetCase=%s Quota=%d Carried=%d Secured=%d RequiredSecured=%s Outcome=%s OutcomeReasonId=%s OutcomeReason=\"%s\" Revision=%d Authority=%s Result=%s"),
+		   ChangeSource, *ContractSnapshot.ContractId.ToString(), *ContractSnapshot.MapId.ToString(), ContractSnapshot.AssignmentSeed, ContractSnapshot.ContractStartPlayerCount,
 		   *ContractSnapshot.RequiredTargetArtifactId.ToString(), *ContractSnapshot.RequiredTargetCaseId.ToString(), ContractSnapshot.LootValueQuota, ContractSnapshot.CarriedValue,
 		   ContractSnapshot.SecuredValue, ContractSnapshot.bRequiredTargetSecured ? TEXT("true") : TEXT("false"), *UEnum::GetValueAsString(ContractSnapshot.Outcome),
 		   *ContractSnapshot.OutcomeReasonId.ToString(), *ContractSnapshot.GetOutcomeReasonText().ToString(), ContractSnapshot.Revision,

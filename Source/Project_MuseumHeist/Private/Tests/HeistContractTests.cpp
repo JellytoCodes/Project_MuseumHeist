@@ -40,6 +40,13 @@ bool FHeistContractDefinitionTest::RunTest(const FString& Parameters)
 	const FHeistContractDataRow Definition;
 	FString FailureReason;
 
+	TestFalse(TEXT("Public one-player start is rejected"), HeistSessionContract::IsPublicStartPlayerCountSupported(1));
+	TestTrue(TEXT("Public two-player start is supported"), HeistSessionContract::IsPublicStartPlayerCountSupported(2));
+	TestTrue(TEXT("Public four-player start is supported"), HeistSessionContract::IsPublicStartPlayerCountSupported(4));
+	TestFalse(TEXT("Public five-player start is rejected"), HeistSessionContract::IsPublicStartPlayerCountSupported(5));
+	TestTrue(TEXT("One-player snapshot remains available for direct PIE and automation"), HeistSessionContract::IsSnapshotStartPlayerCountSupported(1));
+	TestFalse(TEXT("Object Assembly runtime is disabled for the v1 release"), HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled());
+
 	TestTrue(TEXT("Default contract definition is valid"), Definition.IsRuntimeDefinitionValid(&FailureReason));
 	TestTrue(TEXT("Valid definition has no failure reason"), FailureReason.IsEmpty());
 	TestEqual(TEXT("One-player quota"), Definition.ResolveLootValueQuota(1), 4000);
@@ -72,12 +79,16 @@ bool FHeistContractSnapshotTest::RunTest(const FString& Parameters)
 	Snapshot.ContractId = FName(TEXT("Contract_MuseumSwap_01"));
 	Snapshot.MapId = FName(TEXT("M01"));
 	Snapshot.AssignmentSeed = 12345;
+	Snapshot.ContractStartPlayerCount = 2;
 	Snapshot.RequiredTargetArtifactId = FName(TEXT("Artifact_Painting_M01"));
 	Snapshot.RequiredTargetCaseId = FName(TEXT("Case_M01_Target"));
 	Snapshot.LootValueQuota = 4000;
 	Snapshot.Revision = 1;
 
 	TestTrue(TEXT("Populated snapshot is initialized"), Snapshot.IsInitialized());
+	FHeistContractSnapshot MissingStartPlayerCount = Snapshot;
+	MissingStartPlayerCount.ContractStartPlayerCount = 0;
+	TestFalse(TEXT("Contract start player count is required"), MissingStartPlayerCount.IsInitialized());
 	TestTrue(TEXT("Initial progress is valid"), Snapshot.IsProgressValid());
 	TestFalse(TEXT("Required target and quota are both needed"), Snapshot.IsSuccessConditionMet());
 	TestEqual(TEXT("Missing required target resolves to failure"), static_cast<uint8>(Snapshot.ResolveTerminalOutcome(true)), static_cast<uint8>(EHeistContractOutcome::Failed));
@@ -139,6 +150,7 @@ bool FHeistContractOutcomeMatrixTest::RunTest(const FString& Parameters)
 		Snapshot.ContractId = FName(TEXT("Contract_MuseumSwap_01"));
 		Snapshot.MapId = FName(TEXT("M01"));
 		Snapshot.AssignmentSeed = 12345;
+		Snapshot.ContractStartPlayerCount = 2;
 		Snapshot.RequiredTargetArtifactId = FName(TEXT("Artifact_Painting_M01"));
 		Snapshot.RequiredTargetCaseId = FName(TEXT("Case_M01_Target"));
 		Snapshot.LootValueQuota = 4000;

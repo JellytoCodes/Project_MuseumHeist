@@ -1,6 +1,6 @@
 # Project_MuseumHeist Local Progress Inbox
 
-최종 갱신: 2026-08-18 KST
+최종 갱신: 2026-08-22 KST
 
 이 문서는 Notion에 아직 연결되지 않았거나 반영되지 않은 실질 작업을 잃지 않기 위한 Reconciliation Queue다.
 
@@ -32,11 +32,12 @@ NO_TASK_REQUIRED
 
 ### LOCAL-20260818-01 — Rev14 Public Release Scope Rebaseline
 
-- State: `RECONCILED`
-- Created / Last Updated: `2026-08-18 KST`
-- Reconciled: `2026-08-18 KST`
+- State: `READY_TO_SYNC`
+- Created: `2026-08-18 KST`
+- Last Updated: `2026-08-22 KST`
+- Reconciled: `2026-08-18 KST` (문서 재기준화 범위만 해당)
 - Notion Relations: [`W8`](https://app.notion.com/p/39a1d26a5dfb81ffad91ff21b194e505), [`TASK-W8-008`](https://app.notion.com/p/3c01d26a5dfb81a68634d1d63f15e791), `TASK-W8-001~007`
-- Sync Boundary: Rev14 방향과 구현 대기 범위만 반영했다. 어떤 기존 Task도 구현 완료·PASS로 올리지 않았고, 공통 구현은 신규 `TASK-W8-008`로 분리했다.
+- Sync Boundary: 2026-08-18 문서 재기준화는 반영됐지만, 2026-08-22 C++ 기반 구현과 정적 검토 증거는 Notion에 쓰지 않았다. `TASK-W8-008`은 라이브 재조회 기준 `미시작`이며 어떤 Task도 완료·PASS로 올리지 않았다.
 
 #### User Request / Decision
 
@@ -50,26 +51,37 @@ NO_TASK_REQUIRED
 #### Documentation And Implementation Boundary
 
 - `CURRENT_PROJECT_STATUS.md`와 Release Asset/Notice 문서에 Rev14 출시 범위와 Deferred 경계를 재기준화한다.
-- 현재 Entry는 문서 재기준화 기록이며, Public 2~4 Start Gate, 2→1 soft-fail, CCTV, Laser, Surface-only Assignment, Object Cook 제외가 구현됐다는 증거가 아니다.
+- C++ Rule/Authority/Replication 기반에는 Public 2~4 Start Gate, immutable Start Player Snapshot, InGame Join 거부, Surface-only Assignment/Result, Object Runtime Entry 차단, CCTV, Laser/Hold Button, 공통 Alert/Guard Incident 경로를 반영했다.
+- InGame 원격 Client Quit은 Pawn 파괴 전 Loose Loot를 월드에 복구하고, 기존 Logout 경로에서 Original·Case Lock·Security Hold를 해제한 뒤 Contract Carried Value를 다시 계산하도록 연결했다.
+- 기존 자동화의 Public Solo Start와 Object Assembly 성공 기대는 Rev14의 거부·불변 경계로 재정렬했다.
+- Pending Start Count와 Local Hold 입력 초기화, GameState Delegate 해제, Loot 제거 후처리, 중복 Timer Handle 무효화와 Laser 기본 상태 복구를 같은 파일 안의 private helper/delegation으로 정리했다. 파일 분할·새 Manager·공개 Gameplay 계약 변경은 하지 않았다.
+- Widget, `.uasset`, `.umap`, Blueprint Shell, Map, DataAsset 인스턴스와 Release Asset은 변경하지 않았다.
+- 이번 C++ 상태는 정적 검토 결과이며 Build·Automation·PIE·Cook 증거가 아니다.
 - 기존 W6/W7의 Solo/1P, Surface/Object, 1/2/3/4P 자동화·PIE·Package 증거는 당시 구현의 역사적 증거로 보존한다. Rev14 현재 계약으로 바꿔 쓰거나 삭제하지 않는다.
 
 #### Required Follow-up Evidence
 
 1. Notion W8과 `TASK-W8-001~008`의 Rev14 Acceptance Criteria·우선순위·실행 순서 동기화 및 재조회는 완료했다. 구현 증거와 상태 변경은 별도다.
-2. Public Lobby 2~4 Start Validation과 InGame 2→1 soft-fail을 서버 권한으로 구현·멀티플레이 검증한다. Match 시작 시 Quota/Assignment는 이탈 후 재계산하지 않는다.
-3. Release Contract의 Eligible Forgery Type을 Surface/Drawing으로 제한하고 Object Case·Widget·Result 컬럼 생성 경로가 v1에서 0임을 검증한다.
+2. Public Lobby 2~4 Start Validation과 InGame 2→1 Snapshot 불변은 C++에 반영했다. 현재 Revision Build와 Host/Client 멀티플레이 증거가 필요하다.
+3. Release Contract의 Eligible Forgery Type을 Surface/Drawing으로 제한하고 Object Runtime Entry·Result 경로를 차단했다. User Widget 개편이 끝난 뒤 Player-facing Object 경로 0을 별도로 대조한다.
 4. Release Map Object Case 배치/참조 0과 Final Cook의 Object Assembly 전용 Hard Reference/Package 0을 검증하되, Deferred 소스·데이터·Shell은 보존한다.
-5. CCTV 서버 Detection/Alert, Laser Hold 경쟁·Release·Stun·Arrest·Disconnect, 독립 Egress와 2→1 이탈 중 진입자 softlock 방지를 Host/Client에서 검증한다.
+5. CCTV 서버 Detection/Alert와 Laser Hold/Release/Stun·Arrest·Disconnect 기반은 C++에 반영했다. 비-Widget Blueprint Shell·맵 연결·독립 Egress, 2→1 softlock 방지와 이탈 Player의 Loose Loot/Original 월드 복구를 Host/Client에서 검증한다.
 6. 실제 사용할 CCTV/Laser Mesh·Material·VFX·Audio·Icon을 추가하면 `Docs/SHIPPING_ASSET_MANIFEST.md`와 Notice/라이선스 근거를 같이 갱신한다.
+7. 마지막 Player Disconnect의 `Logout()` Outcome 판정이 `PlayerArray` 제거보다 먼저 실행되는 순서를 별도 기능 이슈로 재현·수정한다. 이번 보일러플레이트 정리에서는 동작 변경을 피하기 위해 미수정했다.
 
 #### Verification
 
 ```text
-Local Handoff Docs       UPDATED / Rev14 decision and pending boundary
-Code / Blueprint / Map   NOT CHANGED / NOT VERIFIED
-Build / PIE / Cook       NOT RUN
-Notion Write             DONE / W8 + TASK-W8-001~008 live re-fetch PASS
-Historical Evidence      PRESERVED / not reclassified
+Local Handoff Docs              UPDATED / 2026-08-22 C++ boundary and resume state
+C++ Rule/Authority/Replication  UPDATED / static review only
+Duplicate / Boilerplate Cleanup APPLIED / same-file / git diff --check PASS
+Automation Expectations         UPDATED / Rev14 rebaseline / not run
+Widget / uasset / umap          NOT CHANGED
+Blueprint Shell / Map / Assets  NOT CHANGED / NOT VERIFIED
+Editor Build / PIE / Cook       NOT RUN
+Notion Read                     PASS / TASK-W8-008 미시작
+Notion Write                    NOT DONE / not requested
+Historical Evidence             PRESERVED / not reclassified
 ```
 
 ---

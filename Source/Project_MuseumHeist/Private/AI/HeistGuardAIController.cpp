@@ -854,7 +854,12 @@ float AHeistGuardAIController::GetDetectionGraceDuration() const
 	return DetectionGrace;
 }
 
-bool AHeistGuardAIController::CanAcceptForgeryTimeoutInvestigation() const
+bool AHeistGuardAIController::IsSecurityInvestigationStateEligible(const EHeistGuardState GuardState)
+{
+	return GuardState == EHeistGuardState::Patrol || GuardState == EHeistGuardState::ReturnToPatrol;
+}
+
+bool AHeistGuardAIController::CanAcceptSecurityInvestigation() const
 {
 	const AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn());
 	const UHeistGuardStateComponent* GuardStateComponent = IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
@@ -863,26 +868,33 @@ bool AHeistGuardAIController::CanAcceptForgeryTimeoutInvestigation() const
 		return false;
 	}
 
-	const EHeistGuardState CurrentState = GuardStateComponent->GetGuardState();
-	return CurrentState == EHeistGuardState::Patrol || CurrentState == EHeistGuardState::ReturnToPatrol;
+	return IsSecurityInvestigationStateEligible(GuardStateComponent->GetGuardState());
 }
 
-bool AHeistGuardAIController::RequestForgeryTimeoutInvestigation(const FVector& WorldLocation, const FName SourceId)
+bool AHeistGuardAIController::RequestSecurityInvestigation(const FVector& WorldLocation, const FName SourceId)
 {
 	AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn());
 	UHeistGuardStateComponent* GuardStateComponent = IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
-	if (!CanAcceptForgeryTimeoutInvestigation() || !IsValid(GuardStateComponent) || WorldLocation.ContainsNaN() || SourceId.IsNone())
+	if (!CanAcceptSecurityInvestigation() || !IsValid(GuardStateComponent) || WorldLocation.ContainsNaN() || SourceId.IsNone())
 	{
 		return false;
 	}
 
 	StopMovement();
-	const float ConfirmationDuration = FMath::Max(0.1f, GuardStateComponent->GetInvestigateConfirmationDuration());
+	const float ConfirmationDuration = FMath::Max(0.1f, GuardStateComponent->GetConfiguredInvestigateDuration());
 	const bool bAccepted = GuardStateComponent->EnterInvestigateNoise(WorldLocation, ConfirmationDuration);
-	UE_LOG(LogHeistNetwork, Log,
-		TEXT("Guard forgery timeout investigation: Controller=%s Guard=%s Source=%s Location=%s Duration=%.2f AlertChanged=false Authority=true Result=%s"),
-		*GetNameSafe(this), *GetNameSafe(GuardCharacter), *SourceId.ToString(), *WorldLocation.ToCompactString(), ConfirmationDuration, bAccepted ? TEXT("PASS") : TEXT("FAIL"));
+	UHeistDebugFunctionLibrary::DebugGuardSecurityInvestigationRequest(this, GuardCharacter, SourceId, WorldLocation, ConfirmationDuration, bAccepted);
 	return bAccepted;
+}
+
+bool AHeistGuardAIController::CanAcceptForgeryTimeoutInvestigation() const
+{
+	return CanAcceptSecurityInvestigation();
+}
+
+bool AHeistGuardAIController::RequestForgeryTimeoutInvestigation(const FVector& WorldLocation, const FName SourceId)
+{
+	return RequestSecurityInvestigation(WorldLocation, SourceId);
 }
 
 void AHeistGuardAIController::HandleAlertStateChanged(const EHeistAlertLevel, const EHeistAlertLevel NewLevel, const int32, const FName)

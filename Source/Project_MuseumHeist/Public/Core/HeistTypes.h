@@ -18,6 +18,31 @@ enum class EHeistMatchPhase : uint8
 	End
 };
 
+namespace HeistSessionContract
+{
+	inline constexpr int32 MinimumPublicPlayerCount = 2;
+	inline constexpr int32 MaximumPublicPlayerCount = 4;
+
+	inline bool IsPublicStartPlayerCountSupported(const int32 PlayerCount)
+	{
+		return FMath::IsWithinInclusive(PlayerCount, MinimumPublicPlayerCount, MaximumPublicPlayerCount);
+	}
+
+	inline bool IsSnapshotStartPlayerCountSupported(const int32 PlayerCount)
+	{
+		// One player is retained only for direct PIE, automation, and disconnect-recovery validation.
+		return FMath::IsWithinInclusive(PlayerCount, 1, MaximumPublicPlayerCount);
+	}
+}
+
+namespace HeistReleaseFeatures
+{
+	inline constexpr bool IsObjectAssemblyRuntimeEnabled()
+	{
+		return false;
+	}
+}
+
 #pragma endregion
 
 #pragma region InputMode
@@ -161,6 +186,10 @@ struct PROJECT_MUSEUMHEIST_API FHeistContractSnapshot
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|Contract")
 	int32 AssignmentSeed = 0;
 
+	/** Immutable player-count snapshot used to resolve this run's quota and exhibit assignment. */
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Contract")
+	int32 ContractStartPlayerCount = 0;
+
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|Contract")
 	FName RequiredTargetArtifactId = NAME_None;
 
@@ -191,7 +220,8 @@ struct PROJECT_MUSEUMHEIST_API FHeistContractSnapshot
 
 	bool IsInitialized() const
 	{
-		return Revision > 0 && !ContractId.IsNone() && !MapId.IsNone() && !RequiredTargetArtifactId.IsNone() && !RequiredTargetCaseId.IsNone() && LootValueQuota > 0;
+		return Revision > 0 && !ContractId.IsNone() && !MapId.IsNone() && HeistSessionContract::IsSnapshotStartPlayerCountSupported(ContractStartPlayerCount) &&
+			!RequiredTargetArtifactId.IsNone() && !RequiredTargetCaseId.IsNone() && LootValueQuota > 0;
 	}
 
 	bool IsProgressValid() const
@@ -238,9 +268,11 @@ struct PROJECT_MUSEUMHEIST_API FHeistContractSnapshot
 
 	bool operator==(const FHeistContractSnapshot& Other) const
 	{
-		return ContractId == Other.ContractId && MapId == Other.MapId && AssignmentSeed == Other.AssignmentSeed && RequiredTargetArtifactId == Other.RequiredTargetArtifactId &&
-			   RequiredTargetCaseId == Other.RequiredTargetCaseId && LootValueQuota == Other.LootValueQuota && CarriedValue == Other.CarriedValue && SecuredValue == Other.SecuredValue &&
-			   bRequiredTargetSecured == Other.bRequiredTargetSecured && Outcome == Other.Outcome && OutcomeReasonId == Other.OutcomeReasonId && Revision == Other.Revision;
+		return ContractId == Other.ContractId && MapId == Other.MapId && AssignmentSeed == Other.AssignmentSeed &&
+			   ContractStartPlayerCount == Other.ContractStartPlayerCount && RequiredTargetArtifactId == Other.RequiredTargetArtifactId &&
+			   RequiredTargetCaseId == Other.RequiredTargetCaseId && LootValueQuota == Other.LootValueQuota && CarriedValue == Other.CarriedValue &&
+			   SecuredValue == Other.SecuredValue && bRequiredTargetSecured == Other.bRequiredTargetSecured && Outcome == Other.Outcome &&
+			   OutcomeReasonId == Other.OutcomeReasonId && Revision == Other.Revision;
 	}
 };
 

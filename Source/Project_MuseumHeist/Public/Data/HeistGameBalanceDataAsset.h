@@ -76,6 +76,25 @@ class PROJECT_MUSEUMHEIST_API UHeistGameBalanceDataAsset : public UDataAsset
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|AI|Forgery Timeout", meta = (ClampMin = "0.0", Units = "cm"))
 	float ForgeryTimeoutInvestigationRadius = 1500.0f;
 
+	/** Nearby-guard lookup radius for CCTV detection and Laser trip incidents. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|AI|Security Incident", meta = (ClampMin = "0.0", Units = "cm"))
+	float SecurityIncidentInvestigationRadius = 1500.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Security|CCTV", meta = (ClampMin = "0.05", Units = "s"))
+	float SecurityCameraEvaluationIntervalSeconds = 0.15f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Security|CCTV", meta = (ClampMin = "1.2", ClampMax = "1.5", Units = "s"))
+	float SecurityCameraDetectionBuildUpSeconds = 1.35f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Security|CCTV", meta = (ClampMin = "0.0", Units = "s"))
+	float SecurityCameraDetectionCooldownSeconds = 4.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Security|Laser", meta = (ClampMin = "2.0", ClampMax = "5.0", Units = "s"))
+	float SecurityLaserHoldDurationSeconds = 3.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Security|Laser", meta = (ClampMin = "0.0", Units = "s"))
+	float SecurityLaserRearmGraceSeconds = 0.75f;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Interaction", meta = (ClampMin = "0.0", Units = "s"))
 	float EscapeCastTime = 2.0f;
 

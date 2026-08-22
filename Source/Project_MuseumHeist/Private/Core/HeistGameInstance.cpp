@@ -632,6 +632,14 @@ bool UHeistGameInstance::RequestStartSelectedGameplayMap()
 	{
 		RejectReason = FName(TEXT("LobbyNotReady"));
 	}
+	else if (HeistGameState->GetConnectedPlayerCount() < HeistSessionContract::MinimumPublicPlayerCount)
+	{
+		RejectReason = FName(TEXT("MinimumPlayersRequired"));
+	}
+	else if (HeistGameState->GetConnectedPlayerCount() > HeistSessionContract::MaximumPublicPlayerCount)
+	{
+		RejectReason = FName(TEXT("MaximumPlayersExceeded"));
+	}
 	else if (HeistGameState->GetSelectedLobbyMapId() != SelectedMapId)
 	{
 		RejectReason = FName(TEXT("SelectedMapMismatch"));
@@ -648,14 +656,23 @@ bool UHeistGameInstance::RequestStartSelectedGameplayMap()
 	}
 
 	LastRetryRequest = HeistOnlineSession::RetryTravelGameplay;
+	PendingContractStartPlayerCount = HeistGameState->GetConnectedPlayerCount();
 	SetOnlineSessionState(HeistOnlineSession::StateHosting);
 	if (TravelHostToSelectedGameplayMap())
 	{
 		return true;
 	}
 
+	ClearPendingContractStartPlayerCount();
 	SetOnlineSessionState(HeistOnlineSession::StateHosting, FName(TEXT("GameplayTravelRejected")));
 	return false;
+}
+
+int32 UHeistGameInstance::ConsumePendingContractStartPlayerCount()
+{
+	const int32 CapturedPlayerCount = PendingContractStartPlayerCount;
+	ClearPendingContractStartPlayerCount();
+	return HeistSessionContract::IsPublicStartPlayerCountSupported(CapturedPlayerCount) ? CapturedPlayerCount : 0;
 }
 
 bool UHeistGameInstance::RequestReturnToLobby()
@@ -697,6 +714,7 @@ bool UHeistGameInstance::RequestReturnToLobby()
 		HeistGameMode->PrepareForOnlineSessionShutdown(FName(TEXT("ReturnLobbyTravel")));
 	}
 
+	ClearPendingContractStartPlayerCount();
 	SetOnlineSessionState(HeistOnlineSession::StateHosting);
 	if (TravelHostToLobby())
 	{
@@ -958,7 +976,7 @@ int32 UHeistGameInstance::GetSessionBuildUniqueId() const
 
 int32 UHeistGameInstance::GetMaxPublicConnections() const
 {
-	return FMath::Clamp(MaxPublicConnections, 1, 4);
+	return FMath::Clamp(MaxPublicConnections, HeistSessionContract::MinimumPublicPlayerCount, HeistSessionContract::MaximumPublicPlayerCount);
 }
 
 FName UHeistGameInstance::GetSelectedMapId() const
@@ -1347,6 +1365,11 @@ void UHeistGameInstance::NotifyRemoteClientsSessionEnded(const FName Reason) con
 	}
 }
 
+void UHeistGameInstance::ClearPendingContractStartPlayerCount()
+{
+	PendingContractStartPlayerCount = 0;
+}
+
 void UHeistGameInstance::ResetOnlineSessionRuntimeState(const FName PreservedFailure)
 {
 	if (UWorld* World = GetWorld())
@@ -1366,6 +1389,7 @@ void UHeistGameInstance::ResetOnlineSessionRuntimeState(const FName PreservedFai
 	bSessionTravelPending = false;
 	PendingTravelDestination = NAME_None;
 	bOnlineSessionCancellationPending = false;
+	ClearPendingContractStartPlayerCount();
 	PendingOperationAbortFailure = NAME_None;
 	bLeaveWasHosting = false;
 	PendingLeaveReason = NAME_None;
@@ -1480,6 +1504,10 @@ bool UHeistGameInstance::HandleOnlineSessionOperationTimeout(const float)
 			 || TimedOutOperation == HeistOnlineSession::OperationTravelJoin)
 	{
 		TimeoutFailure = FName(TEXT("TravelTimedOut"));
+		if (TimedOutOperation == HeistOnlineSession::OperationTravelGameplay)
+		{
+			ClearPendingContractStartPlayerCount();
+		}
 		const bool bWasJoinedClient = IsJoinedOnlineSession() || TimedOutOperation == HeistOnlineSession::OperationTravelJoin;
 		bSessionTravelPending = false;
 		PendingTravelDestination = NAME_None;
@@ -1514,7 +1542,7 @@ bool UHeistGameInstance::HandleOnlineSessionOperationTimeout(const float)
 	return false;
 }
 
-void UHeistGameInstance::HandleEngineNetworkFailure(UWorld* World, UNetDriver*, const ENetworkFailure::Type FailureType, const FString&)
+void UHeistGameInstance::HandleEngineNetworkFailure(UWorld* World, UNetDriver*, const ENetworkFailure::Type FailureType, const FString& ErrorString)
 {
 	if (IsValid(World) && World->GetGameInstance() != this)
 	{
@@ -1522,7 +1550,8 @@ void UHeistGameInstance::HandleEngineNetworkFailure(UWorld* World, UNetDriver*, 
 	}
 
 	const bool bClientFailure = (IsValid(World) && World->GetNetMode() == NM_Client) || IsJoinedOnlineSession();
-	const FName FailureReason = FailureType == ENetworkFailure::ConnectionLost ? FName(TEXT("ConnectionLost")) : FName(TEXT("NetworkFailure"));
+	const FName FailureReason = ErrorString.Contains(TEXT("MatchAlreadyStarted"), ESearchCase::IgnoreCase) ? FName(TEXT("MatchAlreadyStarted")) :
+		(FailureType == ENetworkFailure::ConnectionLost ? FName(TEXT("ConnectionLost")) : FName(TEXT("NetworkFailure")));
 	UHeistDebugFunctionLibrary::DebugOnlineSessionRequest(this, TEXT("NetworkFailure"), ActiveOnlineSubsystemName, ActiveJoinCode, OnlineSessionState, false,
 														 *FailureReason.ToString());
 
@@ -1548,6 +1577,7 @@ void UHeistGameInstance::HandleEngineNetworkFailure(UWorld* World, UNetDriver*, 
 
 	if (bSessionTravelPending)
 	{
+		ClearPendingContractStartPlayerCount();
 		bSessionTravelPending = false;
 		PendingTravelDestination = NAME_None;
 		CompleteOnlineSessionOperation();
@@ -1563,6 +1593,7 @@ void UHeistGameInstance::HandleEngineTravelFailure(UWorld* World, const ETravelF
 	}
 
 	const FName FailureReason(TEXT("TravelFailure"));
+	ClearPendingContractStartPlayerCount();
 	const bool bJoinedClient = (IsValid(World) && World->GetNetMode() == NM_Client) || IsJoinedOnlineSession();
 	if (ActiveOnlineSessionOperation == HeistOnlineSession::OperationLeave)
 	{

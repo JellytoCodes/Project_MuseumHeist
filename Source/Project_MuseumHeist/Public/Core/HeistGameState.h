@@ -169,7 +169,8 @@ class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
 	UFUNCTION(BlueprintPure, Category = "Heist|Contract")
 	FText GetContractOutcomeReasonText() const;
 
-	bool InitializeContractSnapshot(FName ContractId, FName MapId, int32 AssignmentSeed, FName RequiredTargetArtifactId, FName RequiredTargetCaseId, int32 LootValueQuota);
+	bool InitializeContractSnapshot(FName ContractId, FName MapId, int32 AssignmentSeed, int32 ContractStartPlayerCount, FName RequiredTargetArtifactId,
+		FName RequiredTargetCaseId, int32 LootValueQuota);
 	bool SetContractProgress(int32 CarriedValue, int32 SecuredValue, bool bRequiredTargetSecured);
 	bool RefreshContractCarriedValue();
 	bool CanCommitPlayerDeposit(const AHeistPlayerState* DepositingPlayerState, int32 DepositValue, bool bRequiredTargetDeposited, const TCHAR*& OutRejectReason) const;

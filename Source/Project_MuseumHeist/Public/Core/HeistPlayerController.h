@@ -9,6 +9,7 @@
 class AHeistPlayerCharacter;
 class AHeistObjectDisplayCaseActor;
 class AHeistPaintingDisplayCaseActor;
+class AHeistSecurityHoldButtonActor;
 class AHeistGuardCharacter;
 class AHeistGameState;
 class AHeistLootActor;
@@ -47,9 +48,12 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	virtual void OnPossess(APawn* InPawn) override;
 	virtual void OnRep_Pawn() override;
 	virtual void OnRep_PlayerState() override;
+	virtual void PawnLeavingGame() override;
 	virtual void SetupInputComponent() override;
 
   private:
+	void ResetLocalHeldInteractionInputState();
+	void UnbindMatchPhasePresentationState();
 	void RefreshLocalHUDPresentation();
 	void RefreshLocalPresentationAfterSeamlessTravel();
 	void RefreshMatchPhasePresentationBinding();
@@ -156,6 +160,7 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	void HandleInteractPressed();
 	void HandleInteractReleased();
 	bool bLocalObservationInputHeld = false;
+	TWeakObjectPtr<AHeistSecurityHoldButtonActor> LocalSecurityHoldButton;
 
 #pragma endregion
 
@@ -292,6 +297,12 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 
 	UFUNCTION(Server, Reliable)
 	void Server_CancelObservation();
+
+	UFUNCTION(Server, Reliable)
+	void Server_RequestBeginSecurityHold(AHeistSecurityHoldButtonActor* TargetButton);
+
+	UFUNCTION(Server, Reliable)
+	void Server_RequestEndSecurityHold(AHeistSecurityHoldButtonActor* TargetButton);
 
 	UFUNCTION(Server, Reliable)
 	void Server_SetInventoryOpen(bool bInventoryOpen);

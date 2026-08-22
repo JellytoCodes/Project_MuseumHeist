@@ -30,6 +30,7 @@
 #include "World/Actors/Loot/HeistLootActor.h"
 #include "World/Actors/Loot/HeistObjectDisplayCaseActor.h"
 #include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
+#include "World/Actors/Security/HeistSecurityHoldButtonActor.h"
 
 #pragma region InternalHelpers
 
@@ -287,7 +288,6 @@ int32 AHeistGameMode::ClearMatchScopedTimers()
 			++ClearedTimerCount;
 		}
 		TimerManager.ClearTimer(TimerHandle);
-		TimerHandle.Invalidate();
 	};
 
 	ClearTimer(AlertTransitionTimerHandle);
@@ -322,6 +322,47 @@ void AHeistGameMode::RestartPlayer(AController* NewPlayer)
 	{
 		bMatchHadPlayer = true;
 	}
+}
+
+void AHeistGameMode::PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
+{
+	Super::PreLogin(Options, Address, UniqueId, ErrorMessage);
+	if (!ErrorMessage.IsEmpty())
+	{
+		return;
+	}
+
+	const AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	const EHeistMatchPhase MatchPhase = IsValid(HeistGameState) ? HeistGameState->GetMatchPhase() : EHeistMatchPhase::None;
+	const UHeistGameInstance* HeistGameInstance = Cast<UHeistGameInstance>(GetGameInstance());
+	const bool bOnlineGameplayWorld = IsValid(HeistGameInstance) && HeistGameInstance->IsHostingOnlineSession() &&
+		HeistGameInstance->IsCurrentWorldSelectedGameplayMap();
+	if (bOnlineGameplayWorld && (MatchPhase == EHeistMatchPhase::InGame || MatchPhase == EHeistMatchPhase::End))
+	{
+		ErrorMessage = TEXT("MatchAlreadyStarted");
+		UHeistDebugFunctionLibrary::DebugPlayerLoginRejected(this, Address, MatchPhase, bOnlineGameplayWorld, FName(TEXT("MatchAlreadyStarted")));
+	}
+}
+
+void AHeistGameMode::HandlePlayerPawnLeavingGame(AHeistPlayerController* ExitingController)
+{
+	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	AHeistPlayerState* ExitingPlayerState = IsValid(ExitingController) ? ExitingController->GetPlayerState<AHeistPlayerState>() : nullptr;
+	AHeistPlayerCharacter* ExitingCharacter = IsValid(ExitingController) ? Cast<AHeistPlayerCharacter>(ExitingController->GetPawn()) : nullptr;
+	UHeistInventoryComponent* InventoryComponent = IsValid(ExitingCharacter) ? ExitingCharacter->GetInventoryComponent() : nullptr;
+	if (!HasAuthority() || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame || !HeistGameState->IsContractInitialized() ||
+		!IsValid(ExitingPlayerState) || !IsValid(ExitingCharacter) || !IsValid(InventoryComponent))
+	{
+		return;
+	}
+
+	int32 FailedLooseLootDropCount = 0;
+	const int32 DroppedLooseLootCount =
+		DropDisconnectedPlayerLooseLoot(ExitingCharacter, ExitingPlayerState, InventoryComponent, FailedLooseLootDropCount);
+	UHeistDebugFunctionLibrary::Message(this,
+		FString::Printf(TEXT("Disconnect loose loot recovery: Player=%s Dropped=%d Failed=%d Authority=true Result=%s"), *GetNameSafe(ExitingPlayerState),
+			DroppedLooseLootCount, FailedLooseLootDropCount, FailedLooseLootDropCount == 0 ? TEXT("PASS") : TEXT("FAIL")),
+		FailedLooseLootDropCount == 0 ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning);
 }
 
 void AHeistGameMode::Logout(AController* Exiting)
@@ -378,16 +419,146 @@ void AHeistGameMode::Logout(AController* Exiting)
 				ReleasedOriginalCount += DisplayCase->DropOriginalForCarrier(ExitingPlayerState, FName(TEXT("OwnerDisconnected"))) ? 1 : 0;
 			}
 		}
+		for (TActorIterator<AHeistSecurityHoldButtonActor> HoldButtonIterator(GetWorld()); HoldButtonIterator; ++HoldButtonIterator)
+		{
+			if (AHeistSecurityHoldButtonActor* HoldButton = *HoldButtonIterator; IsValid(HoldButton) &&
+				HoldButton->ForceReleaseForPlayer(ExitingPlayerState, FName(TEXT("OwnerDisconnected"))))
+			{
+				++CancelledActionCount;
+			}
+		}
 		UHeistDebugFunctionLibrary::DebugOnlineSessionShutdownCleanup(this, FName(TEXT("OwnerDisconnected")), CancelledActionCount, CancelledForgeryCount, ClosedInventoryCount,
-																	 ReleasedOriginalCount, ClearedCaseLockCount, 0, true);
+													 ReleasedOriginalCount, ClearedCaseLockCount, 0, true);
 	}
 
 	Super::Logout(Exiting);
 	if (HasAuthority())
 	{
+		if (AHeistGameState* HeistGameState = GetGameState<AHeistGameState>())
+		{
+			HeistGameState->RefreshContractCarriedValue();
+		}
 		bAnyPlayerEscapedThisMatch |= bExitingPlayerEscaped;
 		TryResolveContractOutcome(FName(TEXT("PlayerDisconnected")));
 	}
+}
+
+int32 AHeistGameMode::DropDisconnectedPlayerLooseLoot(AHeistPlayerCharacter* ExitingCharacter, AHeistPlayerState* ExitingPlayerState,
+	UHeistInventoryComponent* InventoryComponent, int32& OutFailureCount)
+{
+	OutFailureCount = 0;
+	if (!HasAuthority() || !IsValid(ExitingCharacter) || !IsValid(ExitingPlayerState) || !IsValid(InventoryComponent))
+	{
+		OutFailureCount = IsValid(ExitingPlayerState) && ExitingPlayerState->GetTotalLootScore() > 0 ? 1 : 0;
+		return 0;
+	}
+
+	TArray<FHeistInventoryItem> LooseLootItems;
+	for (const FHeistInventoryFastArrayItem& Entry : InventoryComponent->GetReplicatedInventory().Items)
+	{
+		const FHeistInventoryItem& InventoryItem = Entry.InventoryItem;
+		FHeistItemDataRow ItemDefinition;
+		if (!InventoryItem.IsOriginalArtifact() && TryGetItemDefinition(InventoryItem.ItemId, ItemDefinition) && ItemDefinition.ItemType == EHeistItemType::Loot)
+		{
+			LooseLootItems.Add(InventoryItem);
+		}
+	}
+
+	int32 DroppedLootCount = 0;
+	int32 SpawnIndex = 0;
+	for (const FHeistInventoryItem& InventoryItem : LooseLootItems)
+	{
+		FHeistItemDataRow ItemDefinition;
+		FHeistLootDataRow LootDefinition;
+		const int32 Quantity = FMath::Max(0, InventoryItem.Quantity);
+		if (Quantity <= 0 || !TryGetItemDefinition(InventoryItem.ItemId, ItemDefinition) || ItemDefinition.ItemType != EHeistItemType::Loot ||
+			!TryGetLootDefinition(InventoryItem.ItemId, LootDefinition))
+		{
+			++OutFailureCount;
+			continue;
+		}
+		const int64 ScoreToRemove64 = static_cast<int64>(LootDefinition.ScoreValue) * Quantity;
+		const double WeightToRemove64 = static_cast<double>(ItemDefinition.Weight) * Quantity;
+		if (ScoreToRemove64 <= 0 || ScoreToRemove64 > MAX_int32 || !FMath::IsFinite(WeightToRemove64) || WeightToRemove64 < 0.0 || WeightToRemove64 > MAX_flt)
+		{
+			++OutFailureCount;
+			continue;
+		}
+		const int32 ScoreToRemove = static_cast<int32>(ScoreToRemove64);
+		const float WeightToRemove = static_cast<float>(WeightToRemove64);
+		if (ScoreToRemove > ExitingPlayerState->GetTotalLootScore() || WeightToRemove > ExitingPlayerState->GetTotalLootWeight() + KINDA_SMALL_NUMBER)
+		{
+			++OutFailureCount;
+			continue;
+		}
+
+		TArray<AHeistLootActor*> SpawnedLootActors;
+		SpawnedLootActors.Reserve(Quantity);
+		for (int32 QuantityIndex = 0; QuantityIndex < Quantity; ++QuantityIndex)
+		{
+			constexpr float GoldenAngleRadians = 2.39996323f;
+			const float AngleRadians = static_cast<float>(SpawnIndex++) * GoldenAngleRadians;
+			const FVector DropOffset(FMath::Cos(AngleRadians) * 90.0f, FMath::Sin(AngleRadians) * 90.0f, 20.0f);
+			FHeistLootDropRequest DropRequest;
+			DropRequest.DroppedBy = ExitingCharacter;
+			DropRequest.ItemId = InventoryItem.ItemId;
+			DropRequest.SourceInstanceId = InventoryItem.InstanceId;
+			DropRequest.DropOrigin = ExitingCharacter->GetActorLocation() + DropOffset;
+
+			AHeistLootActor* DroppedLootActor = nullptr;
+			if (!TrySpawnDroppedLoot(DropRequest, DroppedLootActor))
+			{
+				for (AHeistLootActor* SpawnedLootActor : SpawnedLootActors)
+				{
+					if (IsValid(SpawnedLootActor))
+					{
+						SpawnedLootActor->Destroy();
+					}
+				}
+				SpawnedLootActors.Reset();
+				break;
+			}
+			SpawnedLootActors.Add(DroppedLootActor);
+		}
+
+		if (SpawnedLootActors.Num() != Quantity)
+		{
+			++OutFailureCount;
+			continue;
+		}
+
+		FHeistInventoryItem RemovedItem;
+		if (!InventoryComponent->TryRemoveItem(InventoryItem.InstanceId, RemovedItem))
+		{
+			for (AHeistLootActor* SpawnedLootActor : SpawnedLootActors)
+			{
+				if (IsValid(SpawnedLootActor))
+				{
+					SpawnedLootActor->Destroy();
+				}
+			}
+			++OutFailureCount;
+			continue;
+		}
+
+		const bool bRemovedPlayerStateValue = ExitingPlayerState->RemoveLootScoreAndWeightForDisconnect(ScoreToRemove, WeightToRemove);
+		for (AHeistLootActor* SpawnedLootActor : SpawnedLootActors)
+		{
+			UHeistDebugFunctionLibrary::DebugInventoryDropAccepted(this, ExitingCharacter, InventoryItem.ItemId, InventoryItem.InstanceId, SpawnedLootActor,
+				SpawnedLootActor->GetActorLocation());
+		}
+		DroppedLootCount += SpawnedLootActors.Num();
+		if (!bRemovedPlayerStateValue)
+		{
+			++OutFailureCount;
+		}
+	}
+
+	if (ExitingPlayerState->GetTotalLootScore() > 0 && OutFailureCount == 0)
+	{
+		++OutFailureCount;
+	}
+	return DroppedLootCount;
 }
 
 void AHeistGameMode::PrepareForOnlineSessionShutdown(const FName Reason)
@@ -740,6 +911,10 @@ bool AHeistGameMode::BuildTeamResultSnapshot(const EHeistContractOutcome Outcome
 			continue;
 		}
 		const FHeistForgeryResult Result = DisplayCase->GetCommittedForgeryResult();
+		if (Result.ForgeryType != EHeistForgeryType::None && Result.ForgeryType != EHeistForgeryType::Drawing)
+		{
+			continue;
+		}
 		FHeistReplicaRecapEntry& Recap = ReplicaRecap.AddDefaulted_GetRef();
 		Recap.CaseId = DisplayCase->GetDisplayCaseId();
 		Recap.ArtifactId = Result.ArtifactId;
@@ -754,29 +929,6 @@ bool AHeistGameMode::BuildTeamResultSnapshot(const EHeistContractOutcome Outcome
 			UE_LOG(LogHeistNetwork, Warning, TEXT("Team result painting thumbnail skipped: Case=%s Artifact=%s Result=METADATA_ONLY Reason=InvalidReplicaPaintingData"),
 				*Recap.CaseId.ToString(), *Recap.ArtifactId.ToString());
 		}
-		if (Recap.bRequiredTarget)
-		{
-			RequiredTargetQuality = Recap.QualityScore;
-			bFoundRequiredTargetReplica = true;
-		}
-	}
-	for (TActorIterator<AHeistObjectDisplayCaseActor> DisplayCaseIterator(GetWorld()); DisplayCaseIterator; ++DisplayCaseIterator)
-	{
-		const AHeistObjectDisplayCaseActor* DisplayCase = *DisplayCaseIterator;
-		if (!IsValid(DisplayCase) || !DisplayCase->HasCommittedAssemblyResult())
-		{
-			continue;
-		}
-		const FHeistObjectAssemblyResult Result = DisplayCase->GetCommittedAssemblyResult();
-		FHeistReplicaRecapEntry& Recap = ReplicaRecap.AddDefaulted_GetRef();
-		Recap.CaseId = DisplayCase->GetObjectCaseId();
-		Recap.ArtifactId = Result.ArtifactId;
-		Recap.ArtifactDisplayName = ResolveArtifactDisplayName(Recap.ArtifactId);
-		Recap.TemplateId = Result.TemplateId;
-		Recap.ForgeryType = EHeistForgeryType::Assembly;
-		Recap.QualityScore = FMath::Clamp(Result.QualityScore, 0.0f, 100.0f);
-		Recap.bRequiredTarget = Recap.CaseId == ContractSnapshot.RequiredTargetCaseId && Recap.ArtifactId == ContractSnapshot.RequiredTargetArtifactId;
-		Recap.AssemblyEntries = DisplayCase->GetAssemblyReplicaData().Entries;
 		if (Recap.bRequiredTarget)
 		{
 			RequiredTargetQuality = Recap.QualityScore;
@@ -819,7 +971,7 @@ bool AHeistGameMode::BuildTeamResultSnapshot(const EHeistContractOutcome Outcome
 	OutTeamResult.StealthRewardMultiplier = StealthMultiplier;
 	OutTeamResult.ArrestPenalty = ArrestPenalty;
 	OutTeamResult.TeamReward = TeamReward;
-	OutTeamResult.CrewCount = HeistGameState->GetConnectedPlayerCount();
+	OutTeamResult.CrewCount = ContractSnapshot.ContractStartPlayerCount;
 	OutTeamResult.EscapedCrewCount = HeistGameState->GetEscapedCrewCount();
 	OutTeamResult.ArrestedCrewCount = ArrestedCrewCount;
 	OutTeamResult.ReplicaRecap = MoveTemp(ReplicaRecap);
@@ -842,6 +994,10 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 	{
 		return;
 	}
+
+	UHeistGameInstance* HeistGameInstance = Cast<UHeistGameInstance>(GetGameInstance());
+	const int32 ApprovedStartPlayerCount = IsValid(HeistGameInstance) ? HeistGameInstance->ConsumePendingContractStartPlayerCount() : 0;
+	const bool bUsesApprovedStartPlayerCount = HeistSessionContract::IsPublicStartPlayerCountSupported(ApprovedStartPlayerCount);
 
 	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
 	if (!IsValid(HeistGameState))
@@ -878,7 +1034,8 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 		Candidate.CaseState = CaseState;
 		Candidate.bCaseStateValid = bCaseStateValid;
 		FHeistArtifactDataRow ArtifactDefinition;
-		Candidate.bArtifactValid = !ArtifactId.IsNone() && TryGetArtifactDefinition(ArtifactId, ArtifactDefinition);
+		Candidate.bArtifactValid = !ArtifactId.IsNone() && TryGetArtifactDefinition(ArtifactId, ArtifactDefinition) &&
+			ArtifactDefinition.ForgeryType == EHeistForgeryType::Drawing;
 		Candidate.ArtifactValue = Candidate.bArtifactValid ? ArtifactDefinition.ArtifactValue : 0;
 		(IsConfiguredTargetCase(CaseId) ? MatchingTargetCases : OptionalCases).Add(MoveTemp(Candidate));
 	};
@@ -895,6 +1052,8 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 			DisplayCase->GetDisplayCaseState() == EHeistDisplayCaseState::Secured);
 	}
 
+	int32 DeferredObjectCaseCount = 0;
+	int32 DeferredObjectDeactivationFailureCount = 0;
 	for (TActorIterator<AHeistObjectDisplayCaseActor> DisplayCaseIterator(GetWorld()); DisplayCaseIterator; ++DisplayCaseIterator)
 	{
 		AHeistObjectDisplayCaseActor* DisplayCase = *DisplayCaseIterator;
@@ -903,9 +1062,13 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 			continue;
 		}
 
-		AddPlacedCase(DisplayCase, DisplayCase->GetObjectCaseId(), DisplayCase->GetTargetArtifactId(), UEnum::GetValueAsString(DisplayCase->GetAssemblyState()),
-			DisplayCase->GetAssemblyState() == EHeistObjectAssemblyState::Secured);
+		++DeferredObjectCaseCount;
+		if (!DisplayCase->SetContractExhibitActive(false))
+		{
+			++DeferredObjectDeactivationFailureCount;
+		}
 	}
+	const bool bDeferredObjectBoundaryApplied = DeferredObjectDeactivationFailureCount == 0;
 
 	if (MatchingTargetCases.Num() != 1)
 	{
@@ -925,11 +1088,12 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 	FHeistContractDataRow ContractDefinition;
 	FString ContractFailureReason;
 	const bool bContractDefinitionValid = TryGetContractDefinition(ContractId, ContractDefinition) && ContractDefinition.IsRuntimeDefinitionValid(&ContractFailureReason);
-	const int32 PlayerCount = FMath::Clamp(HeistGameState->GetConnectedPlayerCount(), 1, 4);
+	const int32 LivePlayerCount = HeistGameState->GetConnectedPlayerCount();
+	const int32 PlayerCount = bUsesApprovedStartPlayerCount ? ApprovedStartPlayerCount :
+		FMath::Clamp(LivePlayerCount, 1, HeistSessionContract::MaximumPublicPlayerCount);
 	const int32 LootValueQuota = bContractDefinitionValid ? ContractDefinition.ResolveLootValueQuota(PlayerCount) : 0;
 	const int32 MinimumOptionalExhibitCount = bContractDefinitionValid ? ContractDefinition.ResolveMinimumOptionalExhibitCount(PlayerCount) : 0;
 	const int32 MaximumOptionalExhibitCount = bContractDefinitionValid ? ContractDefinition.ResolveMaximumOptionalExhibitCount(PlayerCount) : 0;
-	const int32 SelectedOptionalExhibitCount = FMath::Clamp(MinimumOptionalExhibitCount, 0, MaximumOptionalExhibitCount);
 	const bool bRequiredTargetNeedsOptionalLoot = bArtifactValid && TargetArtifactValue < LootValueQuota;
 	const FName MapId = ResolveContractMapId(this, HeistGameState);
 	const int32 AssignmentSeed = FMath::Rand();
@@ -967,25 +1131,52 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 		EligibleOptionalCases.Swap(Index, AssignmentRandom.RandRange(0, Index));
 	}
 
-	const bool bOptionalAssignmentValid = MinimumOptionalExhibitCount <= MaximumOptionalExhibitCount &&
-		EligibleOptionalCases.Num() >= SelectedOptionalExhibitCount;
+	int32 EligibleLooseLootCount = 0;
+	int32 InvalidLooseLootCount = 0;
+	int64 EligibleLooseLootValue = 0;
+	for (TActorIterator<AHeistLootActor> LootIterator(GetWorld()); LootIterator; ++LootIterator)
+	{
+		const AHeistLootActor* LootActor = *LootIterator;
+		if (!IsValid(LootActor) || !LootActor->IsLootAvailable() || LootActor->GetScoreValue() <= 0)
+		{
+			++InvalidLooseLootCount;
+			continue;
+		}
+
+		++EligibleLooseLootCount;
+		EligibleLooseLootValue = FMath::Min<int64>(MAX_int32, EligibleLooseLootValue + LootActor->GetScoreValue());
+	}
+
+	const bool bOptionalAssignmentValid = MinimumOptionalExhibitCount <= MaximumOptionalExhibitCount;
+	const int32 MaximumSelectableOptionalCount = bOptionalAssignmentValid ? FMath::Min(EligibleOptionalCases.Num(), MaximumOptionalExhibitCount) : 0;
+	const int64 OptionalValueRequired = FMath::Max<int64>(0,
+		static_cast<int64>(LootValueQuota) - static_cast<int64>(TargetArtifactValue) - EligibleLooseLootValue);
 	TSet<AActor*> SelectedOptionalActors;
 	FString SelectedOptionalCaseIds;
 	int32 SelectedOptionalValue = 0;
 	if (bOptionalAssignmentValid)
 	{
-		for (int32 Index = 0; Index < SelectedOptionalExhibitCount; ++Index)
+		for (int32 Index = 0; Index < MaximumSelectableOptionalCount; ++Index)
 		{
+			if (SelectedOptionalActors.Num() >= MinimumOptionalExhibitCount && SelectedOptionalValue >= OptionalValueRequired)
+			{
+				break;
+			}
+
 			const FPlacedTargetCase& SelectedCase = EligibleOptionalCases[Index];
 			SelectedOptionalActors.Add(SelectedCase.Actor);
 			SelectedOptionalValue += SelectedCase.ArtifactValue;
 			SelectedOptionalCaseIds += SelectedOptionalCaseIds.IsEmpty() ? SelectedCase.CaseId.ToString() : FString::Printf(TEXT(",%s"), *SelectedCase.CaseId.ToString());
 		}
 	}
+	const bool bAuthoredOptionalMinimumSatisfied = SelectedOptionalActors.Num() >= MinimumOptionalExhibitCount;
+	const int64 ReachableContractValue = static_cast<int64>(TargetArtifactValue) + SelectedOptionalValue + EligibleLooseLootValue;
+	const bool bReleaseQuotaReachable = bContractDefinitionValid && ReachableContractValue >= LootValueQuota;
 
 	const bool bContractInitialized = bArtifactValid && bCaseStateValid && bContractDefinitionValid && bRequiredTargetNeedsOptionalLoot &&
-		bOptionalAssignmentValid && !MapId.IsNone() &&
-		HeistGameState->InitializeContractSnapshot(ContractDefinition.ContractId, MapId, AssignmentSeed, TargetArtifactId, TargetDisplayCase.CaseId, LootValueQuota);
+		bOptionalAssignmentValid && bReleaseQuotaReachable && bDeferredObjectBoundaryApplied && !MapId.IsNone() &&
+		HeistGameState->InitializeContractSnapshot(ContractDefinition.ContractId, MapId, AssignmentSeed, PlayerCount, TargetArtifactId, TargetDisplayCase.CaseId,
+			LootValueQuota);
 	const bool bObjectiveInitialized = bContractInitialized &&
 		HeistGameState->SetObjectiveSnapshot(TargetArtifactId, TargetDisplayCase.CaseId, EHeistObjectiveState::Available, nullptr);
 	int32 DeactivatedOptionalCaseCount = 0;
@@ -1004,10 +1195,6 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 			{
 				bActivationApplied = PaintingCase->SetContractExhibitActive(bSelected);
 			}
-			else if (AHeistObjectDisplayCaseActor* ObjectCase = Cast<AHeistObjectDisplayCaseActor>(OptionalCase.Actor))
-			{
-				bActivationApplied = ObjectCase->SetContractExhibitActive(bSelected);
-			}
 
 			if (bActivationApplied && !bSelected)
 			{
@@ -1020,12 +1207,16 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 	const bool bInitializationPassed = bObjectiveInitialized && bOptionalDeactivationValid;
 
 	const FString InitializationMessage =
-		FString::Printf(TEXT("Contract objective initialization: Contract=%s Map=%s Seed=%d Players=%d Quota=%d TargetValue=%d RequiresOptionalLoot=%s OptionalAuthored=%d OptionalEligible=%d OptionalInvalid=%d OptionalMin=%d OptionalMax=%d OptionalSelected=%d OptionalSelectedValue=%d OptionalSelectedCases=%s OptionalDeactivated=%d OptionalDeactivationValid=%s TargetCase=%s CaseId=%s ArtifactId=%s Location=%s CaseState=%s CaseStateValid=%s ArtifactValid=%s ContractDefinitionValid=%s ContractFailure=%s ContractInitialized=%s ObjectiveState=%s Result=%s"),
-						*ContractDefinition.ContractId.ToString(), *MapId.ToString(), AssignmentSeed, PlayerCount, LootValueQuota, TargetArtifactValue,
+		FString::Printf(TEXT("Contract objective initialization: Contract=%s Map=%s Seed=%d StartPlayers=%d LivePlayers=%d StartPlayerSource=%s Quota=%d TargetValue=%d RequiresOptionalLoot=%s OptionalPaintingAuthored=%d OptionalPaintingEligible=%d OptionalPaintingInvalid=%d AuthoredOptionalMin=%d OptionalMax=%d OptionalValueRequired=%lld OptionalSelected=%d AuthoredOptionalMinSatisfied=%s OptionalSelectedValue=%d OptionalSelectedCases=%s LooseLootEligible=%d LooseLootInvalid=%d LooseLootValue=%lld ReachableValue=%lld ReleaseQuotaReachable=%s OptionalDeactivated=%d OptionalDeactivationValid=%s DeferredObjectCases=%d DeferredObjectDeactivationFailures=%d DeferredObjectBoundary=%s TargetCase=%s CaseId=%s ArtifactId=%s Location=%s CaseState=%s CaseStateValid=%s ArtifactValid=%s ContractDefinitionValid=%s ContractFailure=%s ContractInitialized=%s ObjectiveState=%s Result=%s"),
+						*ContractDefinition.ContractId.ToString(), *MapId.ToString(), AssignmentSeed, PlayerCount, LivePlayerCount,
+						bUsesApprovedStartPlayerCount ? TEXT("LobbyApproval") : TEXT("DirectPIEOrAutomationFallback"), LootValueQuota, TargetArtifactValue,
 						bRequiredTargetNeedsOptionalLoot ? TEXT("true") : TEXT("false"),
-						OptionalCases.Num(), EligibleOptionalCases.Num(), InvalidOptionalCaseCount, MinimumOptionalExhibitCount, MaximumOptionalExhibitCount,
-						SelectedOptionalActors.Num(), SelectedOptionalValue, SelectedOptionalCaseIds.IsEmpty() ? TEXT("None") : *SelectedOptionalCaseIds,
+						OptionalCases.Num(), EligibleOptionalCases.Num(), InvalidOptionalCaseCount, MinimumOptionalExhibitCount, MaximumOptionalExhibitCount, OptionalValueRequired,
+						SelectedOptionalActors.Num(), bAuthoredOptionalMinimumSatisfied ? TEXT("true") : TEXT("false"), SelectedOptionalValue,
+						SelectedOptionalCaseIds.IsEmpty() ? TEXT("None") : *SelectedOptionalCaseIds, EligibleLooseLootCount, InvalidLooseLootCount, EligibleLooseLootValue,
+						ReachableContractValue, bReleaseQuotaReachable ? TEXT("true") : TEXT("false"),
 						DeactivatedOptionalCaseCount, bOptionalDeactivationValid ? TEXT("true") : TEXT("false"),
+						DeferredObjectCaseCount, DeferredObjectDeactivationFailureCount, bDeferredObjectBoundaryApplied ? TEXT("true") : TEXT("false"),
 						*GetNameSafe(TargetDisplayCase.Actor), *TargetDisplayCase.CaseId.ToString(), *TargetArtifactId.ToString(), *TargetDisplayCase.Actor->GetActorLocation().ToCompactString(),
 						*TargetDisplayCase.CaseState, bCaseStateValid ? TEXT("true") : TEXT("false"), bArtifactValid ? TEXT("true") : TEXT("false"),
 						bContractDefinitionValid ? TEXT("true") : TEXT("false"), ContractFailureReason.IsEmpty() ? TEXT("None") : *ContractFailureReason,
@@ -1091,47 +1282,162 @@ bool AHeistGameMode::RequestAlertEscalation(const EHeistAlertLevel RequestedAler
 	return false;
 }
 
+bool AHeistGameMode::RequestSecurityIncident(const FVector& WorldLocation, const FName IncidentId)
+{
+	const AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	const bool bAuthority = HasAuthority();
+	const EHeistMatchPhase MatchPhase = IsValid(HeistGameState) ? HeistGameState->GetMatchPhase() : EHeistMatchPhase::None;
+	if (!bAuthority || !IsValid(GetWorld()) || !IsValid(HeistGameState) || MatchPhase != EHeistMatchPhase::InGame || WorldLocation.ContainsNaN() ||
+		IncidentId.IsNone())
+	{
+		UHeistDebugFunctionLibrary::DebugSecurityIncidentRequest(this, IncidentId, WorldLocation, nullptr, -1.0f, -1.0f, MatchPhase, bAuthority, false, false,
+			false, false, false, FName(TEXT("InvalidRequest")));
+		return false;
+	}
+
+	if (!TryConsumeOneShotSecurityId(ProcessedSecurityIncidentIds, IncidentId))
+	{
+		UHeistDebugFunctionLibrary::DebugSecurityIncidentRequest(this, IncidentId, WorldLocation, nullptr, -1.0f, -1.0f, MatchPhase, bAuthority, false, false,
+			false, true, false, FName(TEXT("DuplicateIncident")));
+		return true;
+	}
+
+	bool bAlertLevelChanged = false;
+	const bool bAlertAccepted = RequestAlertEscalation(EHeistAlertLevel::Suspicious, IncidentId, &bAlertLevelChanged);
+	if (!bAlertAccepted)
+	{
+		ProcessedSecurityIncidentIds.Remove(IncidentId);
+		UHeistDebugFunctionLibrary::DebugSecurityIncidentRequest(this, IncidentId, WorldLocation, nullptr, -1.0f, -1.0f, MatchPhase, bAuthority, false, false,
+			false, false, false, FName(TEXT("AlertRequestRejected")));
+		return false;
+	}
+
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	const float SearchRadius = IsValid(BalanceData) ? FMath::Max(0.0f, BalanceData->SecurityIncidentInvestigationRadius) : 0.0f;
+	AHeistGuardCharacter* AssignedGuard = nullptr;
+	float AssignedGuardDistance = -1.0f;
+	bool bDuplicateInvestigation = false;
+	FName InvestigationReason = NAME_None;
+	const bool bInvestigationAssigned = RequestNearestGuardInvestigation(WorldLocation, IncidentId, SearchRadius, AssignedGuard, AssignedGuardDistance,
+		bDuplicateInvestigation, InvestigationReason);
+	if (!bInvestigationAssigned)
+	{
+		// The alert trigger remains idempotently consumed, but the incident is unresolved until a guard accepts it.
+		// Releasing the incident id lets the same confirmed event finish its missing investigation on a later retry.
+		ProcessedSecurityIncidentIds.Remove(IncidentId);
+	}
+	UHeistDebugFunctionLibrary::DebugSecurityIncidentRequest(this, IncidentId, WorldLocation, AssignedGuard, AssignedGuardDistance, SearchRadius, MatchPhase, bAuthority, true,
+		bAlertLevelChanged, bInvestigationAssigned, bDuplicateInvestigation, bInvestigationAssigned,
+		bInvestigationAssigned ? FName(TEXT("Resolved")) : InvestigationReason);
+	return bInvestigationAssigned;
+}
+
 bool AHeistGameMode::RequestForgeryTimeoutInvestigation(const FVector& WorldLocation, const FName SourceId)
 {
 	const AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
-	if (!HasAuthority() || !IsValid(GetWorld()) || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame || WorldLocation.ContainsNaN() ||
+	const bool bAuthority = HasAuthority();
+	const EHeistMatchPhase MatchPhase = IsValid(HeistGameState) ? HeistGameState->GetMatchPhase() : EHeistMatchPhase::None;
+	if (!bAuthority || !IsValid(GetWorld()) || !IsValid(HeistGameState) || MatchPhase != EHeistMatchPhase::InGame || WorldLocation.ContainsNaN() ||
 		SourceId.IsNone())
 	{
-		UE_LOG(LogHeistNetwork, Warning,
-			TEXT("Forgery timeout investigation rejected: Source=%s Location=%s Authority=%s MatchPhase=%s Result=FAIL Reason=InvalidRequest"), *SourceId.ToString(),
-			*WorldLocation.ToCompactString(), HasAuthority() ? TEXT("true") : TEXT("false"),
-			IsValid(HeistGameState) ? *UEnum::GetValueAsString(HeistGameState->GetMatchPhase()) : TEXT("MissingGameState"));
+		UHeistDebugFunctionLibrary::DebugForgeryTimeoutInvestigationRequest(this, SourceId, WorldLocation, nullptr, -1.0f, -1.0f, MatchPhase, bAuthority, false,
+			false, FName(TEXT("InvalidRequest")));
 		return false;
 	}
 
 	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
 	const float SearchRadius = IsValid(BalanceData) ? FMath::Max(0.0f, BalanceData->ForgeryTimeoutInvestigationRadius) : 0.0f;
+	AHeistGuardCharacter* AssignedGuard = nullptr;
+	float AssignedGuardDistance = -1.0f;
+	bool bDuplicateInvestigation = false;
+	FName InvestigationReason = NAME_None;
+	const bool bAssigned = RequestNearestGuardInvestigation(WorldLocation, SourceId, SearchRadius, AssignedGuard, AssignedGuardDistance,
+		bDuplicateInvestigation, InvestigationReason);
+	UHeistDebugFunctionLibrary::DebugForgeryTimeoutInvestigationRequest(this, SourceId, WorldLocation, AssignedGuard, AssignedGuardDistance, SearchRadius, MatchPhase,
+		bAuthority, bAssigned, bDuplicateInvestigation, bAssigned ? FName(TEXT("Resolved")) : InvestigationReason);
+	return bAssigned;
+}
+
+bool AHeistGameMode::TryConsumeOneShotSecurityId(TSet<FName>& InOutProcessedIds, const FName SourceId)
+{
+	if (SourceId.IsNone() || InOutProcessedIds.Contains(SourceId))
+	{
+		return false;
+	}
+
+	InOutProcessedIds.Add(SourceId);
+	return true;
+}
+
+bool AHeistGameMode::RequestNearestGuardInvestigation(const FVector& WorldLocation, const FName SourceId, const float SearchRadius,
+	AHeistGuardCharacter*& OutAssignedGuard, float& OutDistance, bool& bOutDuplicate, FName& OutReason)
+{
+	OutAssignedGuard = nullptr;
+	OutDistance = -1.0f;
+	bOutDuplicate = false;
+	OutReason = NAME_None;
+	const AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	if (!HasAuthority() || !IsValid(GetWorld()) || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame || WorldLocation.ContainsNaN() ||
+		SourceId.IsNone() || !FMath::IsFinite(SearchRadius) || SearchRadius < 0.0f)
+	{
+		OutReason = FName(TEXT("InvalidRequest"));
+		return false;
+	}
+
+	if (ProcessedGuardInvestigationSourceIds.Contains(SourceId))
+	{
+		bOutDuplicate = true;
+		OutReason = FName(TEXT("DuplicateInvestigation"));
+		return false;
+	}
+
 	const float SearchRadiusSquared = FMath::Square(SearchRadius);
 	AHeistGuardAIController* NearestEligibleController = nullptr;
+	AHeistGuardCharacter* NearestEligibleGuard = nullptr;
 	float NearestDistanceSquared = TNumericLimits<float>::Max();
 	for (TActorIterator<AHeistGuardCharacter> It(GetWorld()); It; ++It)
 	{
 		AHeistGuardCharacter* GuardCharacter = *It;
 		AHeistGuardAIController* GuardController = IsValid(GuardCharacter) ? Cast<AHeistGuardAIController>(GuardCharacter->GetController()) : nullptr;
-		if (!IsValid(GuardController) || !GuardController->CanAcceptForgeryTimeoutInvestigation())
+		if (!IsValid(GuardController) || !GuardController->CanAcceptSecurityInvestigation())
 		{
 			continue;
 		}
 
 		const float DistanceSquared = FVector::DistSquared(GuardCharacter->GetActorLocation(), WorldLocation);
-		if (DistanceSquared <= SearchRadiusSquared && DistanceSquared < NearestDistanceSquared)
+		if (DistanceSquared > SearchRadiusSquared)
+		{
+			continue;
+		}
+
+		const bool bCloser = DistanceSquared < NearestDistanceSquared;
+		const bool bStableTieBreak = DistanceSquared == NearestDistanceSquared &&
+			(!IsValid(NearestEligibleGuard) || GuardCharacter->GetFName().LexicalLess(NearestEligibleGuard->GetFName()));
+		if (bCloser || bStableTieBreak)
 		{
 			NearestEligibleController = GuardController;
+			NearestEligibleGuard = GuardCharacter;
 			NearestDistanceSquared = DistanceSquared;
 		}
 	}
 
-	const bool bAssigned = IsValid(NearestEligibleController) && NearestEligibleController->RequestForgeryTimeoutInvestigation(WorldLocation, SourceId);
-	UE_LOG(LogHeistNetwork, Log,
-		TEXT("Forgery timeout investigation: Source=%s Location=%s Radius=%.1f Guard=%s Distance=%.1f AlertChanged=false OneShot=true Authority=true Result=%s"),
-		*SourceId.ToString(), *WorldLocation.ToCompactString(), SearchRadius, *GetNameSafe(IsValid(NearestEligibleController) ? NearestEligibleController->GetPawn() : nullptr),
-		bAssigned ? FMath::Sqrt(NearestDistanceSquared) : -1.0f, bAssigned ? TEXT("ASSIGNED") : TEXT("NO_NEARBY_GUARD"));
-	return bAssigned;
+	if (!IsValid(NearestEligibleController))
+	{
+		OutReason = FName(TEXT("NoEligibleGuard"));
+		return false;
+	}
+
+	if (!NearestEligibleController->RequestSecurityInvestigation(WorldLocation, SourceId))
+	{
+		OutReason = FName(TEXT("GuardRejected"));
+		return false;
+	}
+
+	ProcessedGuardInvestigationSourceIds.Add(SourceId);
+	OutAssignedGuard = NearestEligibleGuard;
+	OutDistance = FMath::Sqrt(NearestDistanceSquared);
+	OutReason = FName(TEXT("Assigned"));
+	return true;
 }
 
 bool AHeistGameMode::IsAlertTransitionTimerActive() const
@@ -1142,6 +1448,16 @@ bool AHeistGameMode::IsAlertTransitionTimerActive() const
 int32 AHeistGameMode::GetProcessedAlertTriggerCount() const
 {
 	return ProcessedAlertTriggerIds.Num();
+}
+
+int32 AHeistGameMode::GetProcessedSecurityIncidentCount() const
+{
+	return ProcessedSecurityIncidentIds.Num();
+}
+
+int32 AHeistGameMode::GetProcessedGuardInvestigationCount() const
+{
+	return ProcessedGuardInvestigationSourceIds.Num();
 }
 
 int32 AHeistGameMode::GetActiveMatchTimerCount() const
@@ -1158,6 +1474,8 @@ void AHeistGameMode::InitializeAlertState()
 {
 	GetWorldTimerManager().ClearTimer(AlertTransitionTimerHandle);
 	ProcessedAlertTriggerIds.Reset();
+	ProcessedSecurityIncidentIds.Reset();
+	ProcessedGuardInvestigationSourceIds.Reset();
 	ScheduledAlertSourceLevel = EHeistAlertLevel::Quiet;
 	ScheduledAlertRevision = 0;
 	bLockdownWorldRestrictionsApplied = false;
@@ -1862,7 +2180,6 @@ void AHeistGameMode::SchedulePlayerCountGuardScaling()
 void AHeistGameMode::ApplyPlayerCountGuardScaling()
 {
 	GetWorldTimerManager().ClearTimer(GuardScalingTimerHandle);
-	GuardScalingTimerHandle.Invalidate();
 	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
 	if (!HasAuthority() || !IsValid(GetWorld()) || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame)
 	{
@@ -2025,6 +2342,41 @@ float AHeistGameMode::GetGuardPerceptionRangeMultiplier() const
 	}
 
 	return FMath::Clamp(BalanceData->GuardPerceptionRangeMultiplier, 0.0f, 2.0f);
+}
+
+float AHeistGameMode::GetSecurityCameraEvaluationIntervalSeconds() const
+{
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	return IsValid(BalanceData) && FMath::IsFinite(BalanceData->SecurityCameraEvaluationIntervalSeconds) ?
+		FMath::Max(0.05f, BalanceData->SecurityCameraEvaluationIntervalSeconds) : 0.15f;
+}
+
+float AHeistGameMode::GetSecurityCameraDetectionBuildUpSeconds() const
+{
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	return IsValid(BalanceData) && FMath::IsFinite(BalanceData->SecurityCameraDetectionBuildUpSeconds) ?
+		FMath::Clamp(BalanceData->SecurityCameraDetectionBuildUpSeconds, 1.2f, 1.5f) : 1.35f;
+}
+
+float AHeistGameMode::GetSecurityCameraDetectionCooldownSeconds() const
+{
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	return IsValid(BalanceData) && FMath::IsFinite(BalanceData->SecurityCameraDetectionCooldownSeconds) ?
+		FMath::Max(0.0f, BalanceData->SecurityCameraDetectionCooldownSeconds) : 4.0f;
+}
+
+float AHeistGameMode::GetSecurityLaserHoldDurationSeconds() const
+{
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	return IsValid(BalanceData) && FMath::IsFinite(BalanceData->SecurityLaserHoldDurationSeconds) ?
+		FMath::Clamp(BalanceData->SecurityLaserHoldDurationSeconds, 2.0f, 5.0f) : 3.0f;
+}
+
+float AHeistGameMode::GetSecurityLaserRearmGraceSeconds() const
+{
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	return IsValid(BalanceData) && FMath::IsFinite(BalanceData->SecurityLaserRearmGraceSeconds) ?
+		FMath::Max(0.0f, BalanceData->SecurityLaserRearmGraceSeconds) : 0.75f;
 }
 
 void AHeistGameMode::DebugDumpPlayerCountDifficultyBaseline() const

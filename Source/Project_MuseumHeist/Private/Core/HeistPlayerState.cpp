@@ -101,17 +101,19 @@ bool AHeistPlayerState::RemoveLootScoreAndWeight(const int32 ScoreDelta, const f
 		return false;
 	}
 
-	TotalLootScore -= ScoreDelta;
-	TotalLootWeight = FMath::Max(0.0f, TotalLootWeight - WeightDelta);
-	ForceNetUpdate();
-	BroadcastLootTotalsChanged();
+	CommitLootScoreAndWeightRemoval(ScoreDelta, WeightDelta, true);
+	return true;
+}
 
-	if (AHeistPlayerCharacter* HeistPlayerCharacter = Cast<AHeistPlayerCharacter>(GetPawn()))
+bool AHeistPlayerState::RemoveLootScoreAndWeightForDisconnect(const int32 ScoreDelta, const float WeightDelta)
+{
+	if (!HasAuthority() || ScoreDelta < 0 || WeightDelta < 0.0f || !FMath::IsFinite(WeightDelta) || ScoreDelta > TotalLootScore ||
+		WeightDelta > TotalLootWeight + KINDA_SMALL_NUMBER)
 	{
-		HeistPlayerCharacter->RefreshMovementSpeedFromWeight();
+		return false;
 	}
 
-	UHeistDebugFunctionLibrary::DebugLootScoreWeightRemoved(this, ScoreDelta, WeightDelta, TotalLootScore, TotalLootWeight);
+	CommitLootScoreAndWeightRemoval(ScoreDelta, WeightDelta, false);
 	return true;
 }
 
@@ -122,17 +124,26 @@ bool AHeistPlayerState::RemoveCarriedOriginalWeight(const float WeightDelta)
 		return false;
 	}
 
+	CommitLootScoreAndWeightRemoval(0, WeightDelta, true);
+	return true;
+}
+
+void AHeistPlayerState::CommitLootScoreAndWeightRemoval(const int32 ScoreDelta, const float WeightDelta, const bool bRefreshMovement)
+{
+	TotalLootScore -= ScoreDelta;
 	TotalLootWeight = FMath::Max(0.0f, TotalLootWeight - WeightDelta);
 	ForceNetUpdate();
 	BroadcastLootTotalsChanged();
 
-	if (AHeistPlayerCharacter* HeistPlayerCharacter = Cast<AHeistPlayerCharacter>(GetPawn()))
+	if (bRefreshMovement)
 	{
-		HeistPlayerCharacter->RefreshMovementSpeedFromWeight();
+		if (AHeistPlayerCharacter* HeistPlayerCharacter = Cast<AHeistPlayerCharacter>(GetPawn()))
+		{
+			HeistPlayerCharacter->RefreshMovementSpeedFromWeight();
+		}
 	}
 
-	UHeistDebugFunctionLibrary::DebugLootScoreWeightRemoved(this, 0, WeightDelta, TotalLootScore, TotalLootWeight);
-	return true;
+	UHeistDebugFunctionLibrary::DebugLootScoreWeightRemoved(this, ScoreDelta, WeightDelta, TotalLootScore, TotalLootWeight);
 }
 
 void AHeistPlayerState::BroadcastLootTotalsChanged()

@@ -57,6 +57,7 @@ class PROJECT_MUSEUMHEIST_API UHeistGuardStateComponent : public UActorComponent
 	UFUNCTION(BlueprintPure, Category = "Heist|Guard Runtime State")
 	AActor* GetChaseTarget() const;
 	float GetInvestigateConfirmationDuration() const;
+	float GetConfiguredInvestigateDuration() const;
 	float GetSearchDuration() const;
 	void SetAlertSearchDurationMultiplier(float Multiplier);
 	float GetAlertSearchDurationMultiplier() const;

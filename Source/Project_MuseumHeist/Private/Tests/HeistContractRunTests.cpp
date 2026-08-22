@@ -18,6 +18,7 @@
 #include "Core/HeistHUD.h"
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
+#include "Core/HeistTypes.h"
 #include "Data/HeistGameBalanceDataAsset.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "Editor.h"
@@ -31,7 +32,6 @@
 #include "UI/Widgets/HeistHUDWidget.h"
 #include "UI/Widgets/HeistForgeryWidget.h"
 #include "UI/Widgets/HeistNameplateWidget.h"
-#include "UI/Widgets/HeistObjectAssemblyWidget.h"
 #include "UI/Widgets/HeistResultWidget.h"
 #include "UI/ViewModels/HeistHUDViewModel.h"
 #include "UObject/UObjectIterator.h"
@@ -790,9 +790,9 @@ bool CaptureAndValidateGameplayPreflight(FAutomationTestBase* Test, const TShare
 		return false;
 	}
 
-	const int32 ExpectedOptionalCaseCount = State->PlayerCount + 1;
 	TArray<FName> ObjectCaseIds;
 	int32 RequiredTargetCaseCount = 0;
+	int32 ActiveObjectCaseCount = 0;
 	for (TActorIterator<AHeistPaintingDisplayCaseActor> It(ServerWorld); It; ++It)
 	{
 		if (IsValid(*It))
@@ -802,15 +802,21 @@ bool CaptureAndValidateGameplayPreflight(FAutomationTestBase* Test, const TShare
 	}
 	for (TActorIterator<AHeistObjectDisplayCaseActor> It(ServerWorld); It; ++It)
 	{
-		if (IsValid(*It) && It->IsContractExhibitActive())
+		if (IsValid(*It))
 		{
 			ObjectCaseIds.Add(It->GetObjectCaseId());
+			ActiveObjectCaseCount += It->IsContractExhibitActive() ? 1 : 0;
 			RequiredTargetCaseCount += It->GetObjectCaseId() == ServerContract.RequiredTargetCaseId ? 1 : 0;
+			if (It->GetAssemblyState() != EHeistObjectAssemblyState::Secured || It->IsSessionLocked() || It->HasCommittedAssemblyResult() ||
+				It->HasReplicaPreview() || It->IsRegisteredForInspection())
+			{
+				return false;
+			}
 		}
 	}
 	ObjectCaseIds.Sort([](const FName Left, const FName Right) { return Left.LexicalLess(Right); });
-	const int32 RequiredAssemblyCaseCount = FMath::Min(3, State->PlayerCount);
-	if (RequiredTargetCaseCount != 1 || ObjectCaseIds.Num() != ExpectedOptionalCaseCount || ObjectCaseIds.Num() < RequiredAssemblyCaseCount)
+	if (HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled() || RequiredTargetCaseCount != 1 || ActiveObjectCaseCount != 0 ||
+		ServerContract.ContractStartPlayerCount != State->PlayerCount)
 	{
 		return false;
 	}
@@ -945,7 +951,7 @@ bool CaptureAndValidateGameplayPreflight(FAutomationTestBase* Test, const TShare
 	{
 		State->FirstRunContract = ServerContract;
 	}
-	Test->AddInfo(FString::Printf(TEXT("W6-010 preflight: Run=%d Players=%d Map=%s Seed=%d Target=%s OptionalCases=%d Quota=%d SpawnSnapshot=PASS AssignmentSnapshotReplication=PASS ContributionReset=PASS InputLock=0"),
+	Test->AddInfo(FString::Printf(TEXT("W6-010 preflight: Run=%d Players=%d Map=%s Seed=%d Target=%s DeferredObjectCases=%d ActiveObjectCases=0 Quota=%d SpawnSnapshot=PASS AssignmentSnapshotReplication=PASS ContributionReset=PASS InputLock=0"),
 		RunIndex, State->PlayerCount, *ServerContract.MapId.ToString(), ServerContract.AssignmentSeed, *ServerContract.RequiredTargetCaseId.ToString(),
 		State->SelectedObjectCaseIds.Num(), ServerContract.LootValueQuota));
 	Test->AddInfo(FString::Printf(TEXT("W6-010 loose-loot fixture: Run=%d Actor=%s Row=%s Value=%d Grid=%dx%d Replication=PASS"), RunIndex,
@@ -1046,45 +1052,39 @@ bool HasReplicatedLooseLootPickup(const TSharedRef<FHeistContractRunAutomationSt
 	return true;
 }
 
-bool IsObjectSessionReady(const int32 PlayerId, const FName CaseId)
+bool ValidateDeferredObjectAssemblyAttempt(const int32 PlayerId, const FName CaseId)
 {
-	const AHeistPlayerCharacter* ServerCharacter = GetServerCharacterById(PlayerId);
-	const UHeistObjectAssemblyComponent* ServerAssembly = IsValid(ServerCharacter) ? ServerCharacter->GetObjectAssemblyComponent() : nullptr;
-	const UHeistInventoryComponent* ServerInventory = IsValid(ServerCharacter) ? ServerCharacter->GetInventoryComponent() : nullptr;
-	const AHeistPlayerCharacter* OwningCharacter = GetOwningCharacterById(PlayerId);
-	const UHeistObjectAssemblyComponent* OwningAssembly = IsValid(OwningCharacter) ? OwningCharacter->GetObjectAssemblyComponent() : nullptr;
-	const EHeistCrewStatus ExpectedStatus = IsValid(ServerInventory) && ServerInventory->GetOriginalArtifactCount() > 0
-		? EHeistCrewStatus::CarryingOriginal
-		: EHeistCrewStatus::Assembling;
-	return IsValid(ServerAssembly) && ServerAssembly->IsSessionActive() && ServerAssembly->GetActiveDisplayCase() == FindObjectCase(GetContractRunServerWorld(), CaseId) &&
-		IsValid(OwningAssembly) && OwningAssembly->IsSessionActive() && OwningAssembly->GetSessionRevision() == ServerAssembly->GetSessionRevision() &&
-		OwningAssembly->GetActiveTemplateId() == ServerAssembly->GetActiveTemplateId() && IsCrewStatusReplicated(PlayerId, ExpectedStatus);
-}
-
-bool SubmitExactObjectAssembly(const int32 PlayerId)
-{
-	AHeistPlayerController* OwningPlayerController = GetOwningPlayerControllerById(PlayerId);
-	AHeistPlayerCharacter* OwningCharacter = IsValid(OwningPlayerController) ? OwningPlayerController->GetPawn<AHeistPlayerCharacter>() : nullptr;
-	UHeistObjectAssemblyComponent* AssemblyComponent = IsValid(OwningCharacter) ? OwningCharacter->GetObjectAssemblyComponent() : nullptr;
-	AHeistGameMode* GameMode = IsValid(GetContractRunServerWorld()) ? GetContractRunServerWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
-	FHeistObjectAssemblyTemplateRow TemplateDefinition;
-	if (!IsValid(AssemblyComponent) || !IsValid(GameMode) || !GameMode->TryGetObjectAssemblyTemplateDefinition(AssemblyComponent->GetActiveTemplateId(), TemplateDefinition) ||
-		TemplateDefinition.RequiredParts.IsEmpty())
+	AHeistPlayerCharacter* Character = GetServerCharacterById(PlayerId);
+	AHeistPlayerState* PlayerState = IsValid(Character) ? Character->GetPlayerState<AHeistPlayerState>() : nullptr;
+	UHeistObjectAssemblyComponent* Assembly = IsValid(Character) ? Character->GetObjectAssemblyComponent() : nullptr;
+	AHeistObjectDisplayCaseActor* DisplayCase = FindObjectCase(GetContractRunServerWorld(), CaseId);
+	if (HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled() || !IsValid(Character) || !IsValid(PlayerState) || !IsValid(Assembly) || !IsValid(DisplayCase) ||
+		DisplayCase->IsContractExhibitActive() || DisplayCase->GetAssemblyState() != EHeistObjectAssemblyState::Secured || DisplayCase->IsSessionLocked() ||
+		DisplayCase->HasCommittedAssemblyResult() || DisplayCase->HasReplicaPreview() || Assembly->IsSessionActive() || Assembly->HasPendingReplicaReview())
 	{
 		return false;
 	}
-	OwningPlayerController->RequestSubmitObjectAssembly(TemplateDefinition.RequiredParts, AssemblyComponent->GetSessionRevision());
-	return true;
-}
 
-bool HasObjectReplicaPreview(const int32 PlayerId, const FName CaseId)
-{
-	const AHeistObjectDisplayCaseActor* DisplayCase = FindObjectCase(GetContractRunServerWorld(), CaseId);
-	const AHeistPlayerCharacter* Character = GetServerCharacterById(PlayerId);
-	const UHeistObjectAssemblyComponent* AssemblyComponent = IsValid(Character) ? Character->GetObjectAssemblyComponent() : nullptr;
-	return IsValid(DisplayCase) && DisplayCase->HasReplicaPreview() && DisplayCase->HasCommittedAssemblyResult() &&
-		DisplayCase->GetCommittedAssemblyResult().QualityScore >= HeistReplicaAcceptance::MinimumQualityScore && IsValid(AssemblyComponent) &&
-		AssemblyComponent->HasPendingReplicaReview();
+	const EHeistObjectAssemblyState InitialCaseState = DisplayCase->GetAssemblyState();
+	const int32 InitialCaseRevision = DisplayCase->GetAssemblyRevision();
+	const int32 InitialSessionRevision = Assembly->GetSessionRevision();
+	const int32 InitialPayloadRevision = Assembly->GetPayloadValidationRevision();
+	const int32 InitialScoreRevision = Assembly->GetScoreRevision();
+	const FName InitialCleanupReason = Assembly->GetLastCleanupReason();
+
+	const bool bCaseSessionRejected = !DisplayCase->TryBeginSession(PlayerState);
+	const bool bComponentBeginRejected = !Assembly->TryBeginAssemblySession(DisplayCase, 30.0f);
+	const bool bActivationRejected = !DisplayCase->SetContractExhibitActive(true);
+	const bool bTransitionRejected = !DisplayCase->TryTransitionToAssemblyState(EHeistObjectAssemblyState::Observed);
+	const bool bOriginalTakeRejected = !DisplayCase->TryTakeOriginal(PlayerState);
+
+	return bCaseSessionRejected && bComponentBeginRejected && bActivationRejected && bTransitionRejected && bOriginalTakeRejected &&
+		!Assembly->IsSessionActive() && !Assembly->HasPendingReplicaReview() && Assembly->GetActiveDisplayCase() == nullptr &&
+		Assembly->GetSessionRevision() == InitialSessionRevision && Assembly->GetPayloadValidationRevision() == InitialPayloadRevision &&
+		Assembly->GetScoreRevision() == InitialScoreRevision && Assembly->GetLastCleanupReason() == InitialCleanupReason &&
+		!DisplayCase->IsContractExhibitActive() && DisplayCase->GetAssemblyState() == InitialCaseState && DisplayCase->GetAssemblyRevision() == InitialCaseRevision &&
+		!DisplayCase->IsSessionLocked() && !DisplayCase->HasCommittedAssemblyResult() && !DisplayCase->HasReplicaPreview() &&
+		DisplayCase->GetOriginalCarrier() == nullptr && !DisplayCase->IsOriginalSecuredAtExit();
 }
 
 int32 CountVisibleResultWidgets(UWorld* World)
@@ -1100,7 +1100,7 @@ int32 CountVisibleResultWidgets(UWorld* World)
 
 bool IsCompletedResultReady(const TSharedRef<FHeistContractRunAutomationState>& State)
 {
-	const int32 ExpectedRecoveredOriginalCount = 1 + FMath::Min(3, State->PlayerCount);
+	constexpr int32 ExpectedRecoveredOriginalCount = 1;
 	for (UWorld* World : GetContractRunPIEWorlds())
 	{
 		const AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
@@ -1184,7 +1184,7 @@ FString DescribeCompletedResultReadiness(const TSharedRef<FHeistContractRunAutom
 			RecoveredOriginalCount));
 	}
 	return FString::Printf(TEXT("W6-010 Result readiness diagnostic: ExpectedPlayers=%d ExpectedRecoveredOriginals=%d %s"), State->PlayerCount,
-		1 + FMath::Min(3, State->PlayerCount), *FString::Join(WorldStates, TEXT(" | ")));
+		1, *FString::Join(WorldStates, TEXT(" | ")));
 }
 
 bool IsLobbyStateClean(const int32 PlayerCount)
@@ -1258,7 +1258,6 @@ FString DescribeLobbyStateClean(const int32 PlayerCount)
 
 bool IsGameplayContentReplicated(const int32 PlayerCount)
 {
-	const int32 ExpectedOptionalCaseCount = PlayerCount + 1;
 	UWorld* ServerWorld = GetContractRunServerWorld();
 	const AHeistGameMode* GameMode = IsValid(ServerWorld) ? ServerWorld->GetAuthGameMode<AHeistGameMode>() : nullptr;
 	const AHeistGameState* ServerGameState = IsValid(ServerWorld) ? ServerWorld->GetGameState<AHeistGameState>() : nullptr;
@@ -1279,7 +1278,7 @@ bool IsGameplayContentReplicated(const int32 PlayerCount)
 	{
 		ServerActiveGuardCount += IsValid(*It) && It->IsDifficultyActive() ? 1 : 0;
 	}
-	if (ServerActiveObjectCaseCount != ExpectedOptionalCaseCount || ServerActiveGuardCount != ExpectedActiveGuardCount)
+	if (HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled() || ServerActiveObjectCaseCount != 0 || ServerActiveGuardCount != ExpectedActiveGuardCount)
 	{
 		return false;
 	}
@@ -1298,7 +1297,6 @@ bool IsGameplayContentReplicated(const int32 PlayerCount)
 
 FString DescribeGameplayContentReplication(const int32 PlayerCount)
 {
-	const int32 ExpectedOptionalCaseCount = PlayerCount + 1;
 	UWorld* ServerWorld = GetContractRunServerWorld();
 	const AHeistGameMode* GameMode = IsValid(ServerWorld) ? ServerWorld->GetAuthGameMode<AHeistGameMode>() : nullptr;
 	const int32 ExpectedActiveGuardCount = IsValid(GameMode) ? GameMode->GetDifficultyExpectedGuardCount() : INDEX_NONE;
@@ -1328,13 +1326,13 @@ FString DescribeGameplayContentReplication(const int32 PlayerCount)
 			}
 		}
 		WorldStates.Add(FString::Printf(
-			TEXT("World=%s NetMode=%d Phase=%s Players=%d Contract=%s Map=%s RequiredCase=%s RequiredCaseFound=%s ObjectCases=%d/%d ExpectedObjects=%d Guards=%d/%d ExpectedGuards=%d"),
+			TEXT("World=%s NetMode=%d Phase=%s Players=%d Contract=%s Map=%s RequiredCase=%s RequiredCaseFound=%s ActiveObjectCases=%d TotalDeferredObjectCases=%d ExpectedActiveObjects=0 Guards=%d/%d ExpectedGuards=%d"),
 			*GetNameSafe(World), IsValid(World) ? static_cast<int32>(World->GetNetMode()) : INDEX_NONE,
 			IsValid(GameState) ? *UEnum::GetValueAsString(GameState->GetMatchPhase()) : TEXT("Missing"),
 			IsValid(GameState) ? GameState->PlayerArray.Num() : INDEX_NONE,
 			Contract.IsInitialized() ? TEXT("Initialized") : TEXT("Missing"), *Contract.MapId.ToString(), *Contract.RequiredTargetCaseId.ToString(),
 			IsValid(FindPaintingCase(World, Contract.RequiredTargetCaseId)) ? TEXT("true") : TEXT("false"), ActiveObjectCaseCount,
-			TotalObjectCaseCount, ExpectedOptionalCaseCount, ActiveGuardCount, TotalGuardCount, ExpectedActiveGuardCount));
+			TotalObjectCaseCount, ActiveGuardCount, TotalGuardCount, ExpectedActiveGuardCount));
 	}
 	return FString::Printf(TEXT("W6-010 gameplay readiness diagnostic: authority owns exact Case/Guard counts; client actor totals are informational because distance relevancy applies. GameMode=%s GuardScalingApplied=%s %s"), *GetNameSafe(GameMode),
 		IsValid(GameMode) && GameMode->IsPlayerCountGuardScalingApplied() ? TEXT("true") : TEXT("false"), *FString::Join(WorldStates, TEXT(" | ")));
@@ -1442,13 +1440,12 @@ bool IsGuardChaseAndAlertReady(const int32 PlayerId)
 	return true;
 }
 
-bool IsWeek7DangerCloseReady(const int32 PlayerId, const bool bSurface)
+bool IsWeek7SurfaceDangerCloseReady(const int32 PlayerId)
 {
 	UWorld* ServerWorld = GetContractRunServerWorld();
 	const AHeistPlayerCharacter* ServerCharacter = GetServerCharacterById(PlayerId);
 	const UHeistForgeryComponent* Forgery = IsValid(ServerCharacter) ? ServerCharacter->GetForgeryComponent() : nullptr;
-	const UHeistObjectAssemblyComponent* Assembly = IsValid(ServerCharacter) ? ServerCharacter->GetObjectAssemblyComponent() : nullptr;
-	if (!IsValid(ServerWorld) || (bSurface ? (IsValid(Forgery) && Forgery->IsSessionActive()) : (IsValid(Assembly) && Assembly->IsSessionActive())))
+	if (!IsValid(ServerWorld) || (IsValid(Forgery) && Forgery->IsSessionActive()))
 	{
 		return false;
 	}
@@ -1467,12 +1464,7 @@ bool IsWeek7DangerCloseReady(const int32 PlayerId, const bool bSurface)
 	{
 		return false;
 	}
-	if (bSurface)
-	{
-		const UHeistForgeryWidget* Widget = HUD->GetForgeryWidget();
-		return IsValid(Widget) && Widget->IsAlertWarningContractSatisfied();
-	}
-	const UHeistObjectAssemblyWidget* Widget = HUD->GetObjectAssemblyWidget();
+	const UHeistForgeryWidget* Widget = HUD->GetForgeryWidget();
 	return IsValid(Widget) && Widget->IsAlertWarningContractSatisfied();
 }
 
@@ -1776,7 +1768,7 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 	}));
 	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d W7 Surface danger close and Gameplay input restore"), RunIndex), [State, RunIndex]()
 	{
-		return State->PlayerCount != 4 || RunIndex != 1 || IsWeek7DangerCloseReady(1, true);
+		return State->PlayerCount != 4 || RunIndex != 1 || IsWeek7SurfaceDangerCloseReady(1);
 	}, 10.0));
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d W7 reset Alert after Surface danger close"), RunIndex), [State, RunIndex]()
 	{
@@ -1852,139 +1844,22 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 		return IsCrewStatusFootstepPresentationReady(State, 1, EHeistCrewStatus::CarryingOriginal);
 	}, 10.0));
 
-	const int32 AssemblyCaseCount = FMath::Min(3, State->PlayerCount);
-	for (int32 AssemblyIndex = 0; AssemblyIndex < AssemblyCaseCount; ++AssemblyIndex)
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State,
+		FString::Printf(TEXT("run %d Object Assembly is FeatureDisabled and leaves every authored Case unchanged"), RunIndex), [State]()
 	{
-		const int32 PlayerId = State->PlayerCount == 1 ? 1 : 2 + AssemblyIndex % FMath::Max(1, State->PlayerCount - 1);
-		Test->AddCommand(new FHeistContractRunActionCommand(Test, State,
-			FString::Printf(TEXT("run %d move player %d to Assembly case %d"), RunIndex, PlayerId, AssemblyIndex + 1), [State, PlayerId, AssemblyIndex]()
+		if (HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled())
 		{
-			return State->SelectedObjectCaseIds.IsValidIndex(AssemblyIndex) &&
-				TeleportServerPlayerIntoInteraction(PlayerId, FindObjectCase(GetContractRunServerWorld(), State->SelectedObjectCaseIds[AssemblyIndex]));
-		}));
-		Test->AddCommand(new FHeistContractRunWaitCommand(Test, State,
-			FString::Printf(TEXT("run %d player %d Assembly overlap"), RunIndex, PlayerId), [State, PlayerId, AssemblyIndex]()
+			return false;
+		}
+		for (const FName ObjectCaseId : State->SelectedObjectCaseIds)
 		{
-			return State->SelectedObjectCaseIds.IsValidIndex(AssemblyIndex) &&
-				IsServerPlayerOverlapping(PlayerId, FindObjectCase(GetContractRunServerWorld(), State->SelectedObjectCaseIds[AssemblyIndex]));
-		}, 10.0));
-		Test->AddCommand(new FHeistContractRunWaitCommand(Test, State,
-			FString::Printf(TEXT("run %d player %d Assembly case relevant to owning peer"), RunIndex, PlayerId), [State, PlayerId, AssemblyIndex]()
-		{
-			return State->SelectedObjectCaseIds.IsValidIndex(AssemblyIndex) &&
-				IsOwningObjectCaseRelevant(PlayerId, State->SelectedObjectCaseIds[AssemblyIndex]);
-		}, 15.0));
-		// Teleporting into an authored interaction volume can require one movement tick for
-		// collision depenetration. Let that settle before starting the movement-cancellable cast.
-		Test->AddCommand(new FWaitLatentCommand(0.2f));
-		Test->AddCommand(new FHeistContractRunWaitCommand(Test, State,
-			FString::Printf(TEXT("run %d player %d Assembly overlap settled"), RunIndex, PlayerId), [State, PlayerId, AssemblyIndex]()
-		{
-			const AHeistPlayerCharacter* Character = GetServerCharacterById(PlayerId);
-			const UCharacterMovementComponent* MovementComponent = IsValid(Character) ? Character->GetCharacterMovement() : nullptr;
-			return State->SelectedObjectCaseIds.IsValidIndex(AssemblyIndex) && IsValid(MovementComponent) && MovementComponent->Velocity.SizeSquared2D() <= 1.0f &&
-				IsServerPlayerOverlapping(PlayerId, FindObjectCase(GetContractRunServerWorld(), State->SelectedObjectCaseIds[AssemblyIndex]));
-		}, 10.0));
-		Test->AddCommand(new FHeistContractRunActionCommand(Test, State,
-			FString::Printf(TEXT("run %d player %d request Object observation through server RPC"), RunIndex, PlayerId), [State, PlayerId, AssemblyIndex]()
-		{
-			AHeistPlayerController* PlayerController = GetOwningPlayerControllerById(PlayerId);
-			AHeistObjectDisplayCaseActor* LocalDisplayCase = IsValid(PlayerController) && State->SelectedObjectCaseIds.IsValidIndex(AssemblyIndex)
-				? FindObjectCase(PlayerController->GetWorld(), State->SelectedObjectCaseIds[AssemblyIndex])
-				: nullptr;
-			return InvokeSingleActorServerRPC(PlayerController, FName(TEXT("Server_RequestObjectObservation")), LocalDisplayCase);
-		}));
-		Test->AddCommand(new FHeistContractRunWaitCommand(Test, State,
-			FString::Printf(TEXT("run %d player %d owner Assembly session"), RunIndex, PlayerId), [State, PlayerId, AssemblyIndex]()
-		{
-			return State->SelectedObjectCaseIds.IsValidIndex(AssemblyIndex) && IsObjectSessionReady(PlayerId, State->SelectedObjectCaseIds[AssemblyIndex]);
-		}, 15.0));
-		Test->AddCommand(new FHeistContractRunActionCommand(Test, State,
-			FString::Printf(TEXT("run %d W7 force-close player %d Assembly on danger Alert"), RunIndex, PlayerId), [State, RunIndex, PlayerId, AssemblyIndex]()
-		{
-			if (State->PlayerCount != 4 || RunIndex != 1 || AssemblyIndex != 0)
-			{
-				return true;
-			}
-			AHeistGameMode* GameMode = GetContractRunServerWorld()->GetAuthGameMode<AHeistGameMode>();
-			bool bLevelChanged = false;
-			return IsValid(GameMode) && GameMode->RequestAlertEscalation(EHeistAlertLevel::Alarmed, FName(TEXT("W7AssemblyDangerClose")), &bLevelChanged) && bLevelChanged;
-		}));
-		Test->AddCommand(new FHeistContractRunWaitCommand(Test, State,
-			FString::Printf(TEXT("run %d W7 player %d Assembly danger close and Gameplay input restore"), RunIndex, PlayerId), [State, RunIndex, PlayerId, AssemblyIndex]()
-		{
-			return State->PlayerCount != 4 || RunIndex != 1 || AssemblyIndex != 0 || IsWeek7DangerCloseReady(PlayerId, false);
-		}, 10.0));
-		Test->AddCommand(new FHeistContractRunActionCommand(Test, State,
-			FString::Printf(TEXT("run %d W7 reset Alert after player %d Assembly danger close"), RunIndex, PlayerId), [State, RunIndex, AssemblyIndex]()
-		{
-			if (State->PlayerCount != 4 || RunIndex != 1 || AssemblyIndex != 0)
-			{
-				return true;
-			}
-			AHeistGameState* GameState = GetContractRunServerWorld()->GetGameState<AHeistGameState>();
-			return IsValid(GameState) && GameState->SetAlertSnapshot(EHeistAlertLevel::Quiet, 0.0f, FName(TEXT("W7AssemblyDangerCloseReset")));
-		}));
-		Test->AddCommand(new FHeistContractRunActionCommand(Test, State,
-			FString::Printf(TEXT("run %d W7 restart player %d Assembly after danger close"), RunIndex, PlayerId), [State, RunIndex, PlayerId, AssemblyIndex]()
-		{
-			if (State->PlayerCount != 4 || RunIndex != 1 || AssemblyIndex != 0)
-			{
-				return true;
-			}
-			AHeistPlayerController* PlayerController = GetOwningPlayerControllerById(PlayerId);
-			AHeistObjectDisplayCaseActor* LocalDisplayCase = IsValid(PlayerController) && State->SelectedObjectCaseIds.IsValidIndex(AssemblyIndex)
-				? FindObjectCase(PlayerController->GetWorld(), State->SelectedObjectCaseIds[AssemblyIndex])
-				: nullptr;
-			if (!IsValid(PlayerController) || !IsValid(LocalDisplayCase))
+			if (!ValidateDeferredObjectAssemblyAttempt(1, ObjectCaseId))
 			{
 				return false;
 			}
-			PlayerController->RequestBeginObjectAssembly(LocalDisplayCase);
-			return true;
-		}));
-		Test->AddCommand(new FHeistContractRunWaitCommand(Test, State,
-			FString::Printf(TEXT("run %d W7 restarted player %d Assembly session"), RunIndex, PlayerId), [State, RunIndex, PlayerId, AssemblyIndex]()
-		{
-			if (State->PlayerCount != 4 || RunIndex != 1 || AssemblyIndex != 0)
-			{
-				return true;
-			}
-			const AHeistGameState* GameState = GetContractRunServerWorld()->GetGameState<AHeistGameState>();
-			return IsValid(GameState) && GameState->GetAlertLevel() == EHeistAlertLevel::Quiet && State->SelectedObjectCaseIds.IsValidIndex(AssemblyIndex) &&
-				IsObjectSessionReady(PlayerId, State->SelectedObjectCaseIds[AssemblyIndex]);
-		}, 15.0));
-		Test->AddCommand(new FHeistContractRunActionCommand(Test, State,
-			FString::Printf(TEXT("run %d player %d submit exact Assembly entries"), RunIndex, PlayerId), [PlayerId]()
-		{
-			return SubmitExactObjectAssembly(PlayerId);
-		}));
-		Test->AddCommand(new FHeistContractRunWaitCommand(Test, State,
-			FString::Printf(TEXT("run %d player %d authoritative Assembly quality 70+"), RunIndex, PlayerId), [State, PlayerId, AssemblyIndex]()
-		{
-			return State->SelectedObjectCaseIds.IsValidIndex(AssemblyIndex) && HasObjectReplicaPreview(PlayerId, State->SelectedObjectCaseIds[AssemblyIndex]);
-		}, 15.0));
-		Test->AddCommand(new FHeistContractRunActionCommand(Test, State,
-			FString::Printf(TEXT("run %d player %d confirm Assembly replica swap"), RunIndex, PlayerId), [PlayerId]()
-		{
-			AHeistPlayerController* PlayerController = GetOwningPlayerControllerById(PlayerId);
-			if (!IsValid(PlayerController))
-			{
-				return false;
-			}
-			PlayerController->RequestConfirmObjectAssemblyReplicaSwap();
-			return true;
-		}));
-		Test->AddCommand(new FHeistContractRunWaitCommand(Test, State,
-			FString::Printf(TEXT("run %d player %d Object Original carried"), RunIndex, PlayerId), [State, PlayerId, AssemblyIndex]()
-		{
-			AHeistObjectDisplayCaseActor* DisplayCase = State->SelectedObjectCaseIds.IsValidIndex(AssemblyIndex)
-				? FindObjectCase(GetContractRunServerWorld(), State->SelectedObjectCaseIds[AssemblyIndex])
-				: nullptr;
-			return IsValid(DisplayCase) && DisplayCase->GetAssemblyState() == EHeistObjectAssemblyState::OriginalRemoved && HasOriginalForCase(PlayerId, DisplayCase) &&
-				IsCrewStatusReplicated(PlayerId, EHeistCrewStatus::CarryingOriginal);
-		}, 15.0));
-	}
+		}
+		return true;
+	}));
 
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d refresh carried value and trigger Guard Chase/Alert"), RunIndex), []()
 	{
@@ -2094,10 +1969,9 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 		{
 			RecoveredOriginalCount += PlayerResult.Contribution.ArtifactsRecovered;
 		}
-		const int32 ExpectedAssemblyCaseCount = FMath::Min(3, State->PlayerCount);
-		const int32 ExpectedRecoveredOriginalCount = 1 + ExpectedAssemblyCaseCount;
-		Test->AddInfo(FString::Printf(TEXT("W6-010 run evidence: Run=%d Players=%d Surface=1 Assemblies=%d Originals=%d/%d LooseLoot=%s LooseValue=%d Secured=%d Quota=%d RequiredSecured=%s Escaped=%d ResultWidgetsPerWorld=1 Outcome=%s Result=PASS"),
-			RunIndex, State->PlayerCount, ExpectedAssemblyCaseCount, RecoveredOriginalCount, ExpectedRecoveredOriginalCount, *State->SelectedLootRowId.ToString(),
+		constexpr int32 ExpectedRecoveredOriginalCount = 1;
+		Test->AddInfo(FString::Printf(TEXT("W6-010 run evidence: Run=%d Players=%d Surface=1 ObjectAssembly=FeatureDisabled Originals=%d/%d LooseLoot=%s LooseValue=%d Secured=%d Quota=%d RequiredSecured=%s Escaped=%d ResultWidgetsPerWorld=1 Outcome=%s Result=PASS"),
+			RunIndex, State->PlayerCount, RecoveredOriginalCount, ExpectedRecoveredOriginalCount, *State->SelectedLootRowId.ToString(),
 			State->SelectedLootValue, Contract.SecuredValue, Contract.LootValueQuota, Contract.bRequiredTargetSecured ? TEXT("true") : TEXT("false"),
 			GameState->GetEscapedCrewCount(), *UEnum::GetValueAsString(Contract.Outcome)));
 		return Contract.IsSuccessConditionMet() && Contract.Outcome == EHeistContractOutcome::Success && RecoveredOriginalCount == ExpectedRecoveredOriginalCount;
@@ -2225,6 +2099,103 @@ bool EnqueueTwoRunContractScenario(FAutomationTestBase* Test, const int32 Player
 	}, true));
 	return true;
 }
+
+bool EnqueueSoloPublicStartRejectedScenario(FAutomationTestBase* Test)
+{
+	const TSharedRef<FHeistContractRunAutomationState> State = MakeShared<FHeistContractRunAutomationState>();
+	State->PlayerCount = 1;
+	Test->AddCommand(new FEditorLoadMap(TEXT("/Game/Maps/TitleMenuMap")));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("configure one-player listen-server PIE for public-start rejection"), [State]()
+	{
+		ULevelEditorPlaySettings* PlaySettings = GetMutableDefault<ULevelEditorPlaySettings>();
+		if (!IsValid(PlaySettings))
+		{
+			return false;
+		}
+		PlaySettings->GetPlayNetMode(State->OriginalNetMode);
+		PlaySettings->GetRunUnderOneProcess(State->bOriginalRunUnderOneProcess);
+		PlaySettings->GetPlayNumberOfClients(State->OriginalClientCount);
+		State->bCapturedPlaySettings = true;
+		PlaySettings->SetRunUnderOneProcess(true);
+		PlaySettings->SetPlayNetMode(EPlayNetMode::PIE_ListenServer);
+		PlaySettings->SetPlayNumberOfClients(1);
+		return true;
+	}));
+	Test->AddCommand(new FStartPIECommand(false));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("single title world"), []()
+	{
+		const TArray<UWorld*> Worlds = GetContractRunPIEWorlds();
+		return Worlds.Num() == 1 && IsValid(GetContractRunServerWorld()) && IsValid(GetContractRunLocalHeistPlayerController(Worlds[0]));
+	}, 45.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("create one-player host session"), []()
+	{
+		UWorld* ServerWorld = GetContractRunServerWorld();
+		UHeistGameInstance* GameInstance = IsValid(ServerWorld) ? Cast<UHeistGameInstance>(ServerWorld->GetGameInstance()) : nullptr;
+		return IsValid(GameInstance) && GameInstance->RequestHostSession();
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("one-player public lobby remains valid for waiting"), []()
+	{
+		UWorld* ServerWorld = GetContractRunServerWorld();
+		const UHeistGameInstance* GameInstance = IsValid(ServerWorld) ? Cast<UHeistGameInstance>(ServerWorld->GetGameInstance()) : nullptr;
+		return AreContractRunWorldsReady(1, EHeistMatchPhase::Lobby, false) && IsValid(GameInstance) && GameInstance->IsHostingOnlineSession() &&
+			GameInstance->HasActiveNamedOnlineSession();
+	}, 60.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("select M01 in the one-player lobby"), []()
+	{
+		AHeistPlayerController* HostPlayerController = GetOwningPlayerControllerById(1);
+		if (!IsValid(HostPlayerController))
+		{
+			return false;
+		}
+		HostPlayerController->RequestSetLobbyMapSelection(FName(TEXT("M01")));
+		return true;
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("M01 selection in the one-player lobby"), []()
+	{
+		UWorld* ServerWorld = GetContractRunServerWorld();
+		const UHeistGameInstance* GameInstance = IsValid(ServerWorld) ? Cast<UHeistGameInstance>(ServerWorld->GetGameInstance()) : nullptr;
+		return IsValid(GameInstance) && GameInstance->GetSelectedMapId() == FName(TEXT("M01")) && !GameInstance->IsMapSelectionUpdatePending();
+	}, 15.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("reject one-player public Contract start with MinimumPlayersRequired"), []()
+	{
+		UWorld* ServerWorld = GetContractRunServerWorld();
+		UHeistGameInstance* GameInstance = IsValid(ServerWorld) ? Cast<UHeistGameInstance>(ServerWorld->GetGameInstance()) : nullptr;
+		return IsValid(GameInstance) && !GameInstance->RequestStartSelectedGameplayMap() &&
+			GameInstance->GetLastOnlineSessionFailure() == FName(TEXT("MinimumPlayersRequired")) && !GameInstance->IsSessionTravelPending();
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("rejected one-player public start stays in Lobby with session preserved"), []()
+	{
+		UWorld* ServerWorld = GetContractRunServerWorld();
+		const UHeistGameInstance* GameInstance = IsValid(ServerWorld) ? Cast<UHeistGameInstance>(ServerWorld->GetGameInstance()) : nullptr;
+		return AreContractRunWorldsReady(1, EHeistMatchPhase::Lobby, false) && IsValid(GameInstance) && GameInstance->HasActiveNamedOnlineSession() &&
+			GameInstance->GetLastOnlineSessionFailure() == FName(TEXT("MinimumPlayersRequired"));
+	}, 10.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("record one-player public-start boundary evidence"), [Test]()
+	{
+		Test->AddInfo(TEXT("W6-010 solo boundary: HistoricalPath=SoloTwoRuns PublicStart=false Reject=MinimumPlayersRequired LobbyPreserved=true "
+			"DirectGameplaySnapshotFallback=separate Result=PASS"));
+		return true;
+	}));
+	Test->AddCommand(new FEndPlayMapCommand());
+	Test->AddCommand(new FWaitLatentCommand(1.0f));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("restore editor play settings after solo-start boundary"), [State]()
+	{
+		if (!State->bCapturedPlaySettings)
+		{
+			return true;
+		}
+		ULevelEditorPlaySettings* PlaySettings = GetMutableDefault<ULevelEditorPlaySettings>();
+		if (!IsValid(PlaySettings))
+		{
+			return false;
+		}
+		PlaySettings->SetRunUnderOneProcess(State->bOriginalRunUnderOneProcess);
+		PlaySettings->SetPlayNetMode(State->OriginalNetMode);
+		PlaySettings->SetPlayNumberOfClients(State->OriginalClientCount);
+		return true;
+	}, true));
+	return true;
+}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistSoloContractRunTwoPassTest, "ProjectMuseumHeist.ContractRun.M01.SoloTwoRuns",
@@ -2232,7 +2203,10 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistSoloContractRunTwoPassTest, "ProjectMuseu
 
 bool FHeistSoloContractRunTwoPassTest::RunTest(const FString& Parameters)
 {
-	return HeistContractRunTest::EnqueueTwoRunContractScenario(this, 1);
+	TestFalse(TEXT("One player is not a supported public Contract start"), HeistSessionContract::IsPublicStartPlayerCountSupported(1));
+	TestTrue(TEXT("One player remains a direct gameplay/automation/disconnect-recovery snapshot fallback"),
+		HeistSessionContract::IsSnapshotStartPlayerCountSupported(1));
+	return HeistContractRunTest::EnqueueSoloPublicStartRejectedScenario(this);
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistFourPlayerContractRunTwoPassTest, "ProjectMuseumHeist.ContractRun.M01.FourPlayerTwoRuns",

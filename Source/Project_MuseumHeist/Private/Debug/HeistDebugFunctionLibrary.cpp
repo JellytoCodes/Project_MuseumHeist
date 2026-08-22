@@ -6373,6 +6373,59 @@ void UHeistDebugFunctionLibrary::DebugGuardSearchTimerStarted(const UObject* Wor
 #endif
 }
 
+void UHeistDebugFunctionLibrary::DebugGuardSecurityInvestigationRequest(const UObject* WorldContextObject, const UObject* GuardActor, const FName SourceId,
+	const FVector& InvestigateLocation, const float InvestigateDuration, const bool bAccepted)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	const AActor* AuthorityActor = IsValid(WorldContextObject) && WorldContextObject->IsA<AActor>() ? static_cast<const AActor*>(WorldContextObject) : nullptr;
+	LogMessage(EHeistDebugChannel::AI, bAccepted ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+		FString::Printf(
+			TEXT("Guard security investigation request: Controller=%s Guard=%s Source=%s Location=(%.1f,%.1f,%.1f) Duration=%.2f Authority=%s Result=%s"),
+			*GetNameSafe(WorldContextObject), *GetNameSafe(GuardActor), SourceId.IsNone() ? TEXT("None") : *SourceId.ToString(), InvestigateLocation.X,
+			InvestigateLocation.Y, InvestigateLocation.Z, InvestigateDuration, IsValid(AuthorityActor) && AuthorityActor->HasAuthority() ? TEXT("true") : TEXT("false"),
+			bAccepted ? TEXT("PASS") : TEXT("FAIL")));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugSecurityIncidentRequest(const UObject* WorldContextObject, const FName IncidentId, const FVector& IncidentLocation,
+	const UObject* GuardActor, const float GuardDistance, const float SearchRadius, const EHeistMatchPhase MatchPhase, const bool bAuthority,
+	const bool bAlertAccepted, const bool bAlertChanged, const bool bInvestigationAssigned, const bool bDuplicate, const bool bOneShotConsumed, const FName Reason)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	const bool bResolved = bDuplicate || (bAlertAccepted && bInvestigationAssigned);
+	LogMessage(EHeistDebugChannel::Network, bResolved ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+		FString::Printf(
+			TEXT("Security incident request: GameMode=%s Incident=%s Location=(%.1f,%.1f,%.1f) Radius=%.1f MatchPhase=%s Authority=%s AlertAccepted=%s AlertChanged=%s Guard=%s Distance=%.1f InvestigationAssigned=%s OneShotConsumed=%s Duplicate=%s Result=%s Reason=%s"),
+			*GetNameSafe(WorldContextObject), IncidentId.IsNone() ? TEXT("None") : *IncidentId.ToString(), IncidentLocation.X, IncidentLocation.Y, IncidentLocation.Z,
+			SearchRadius, *UEnum::GetValueAsString(MatchPhase), bAuthority ? TEXT("true") : TEXT("false"), bAlertAccepted ? TEXT("true") : TEXT("false"),
+			bAlertChanged ? TEXT("true") : TEXT("false"),
+			*GetNameSafe(GuardActor), GuardDistance, bInvestigationAssigned ? TEXT("true") : TEXT("false"), bOneShotConsumed ? TEXT("true") : TEXT("false"),
+			bDuplicate ? TEXT("true") : TEXT("false"), bResolved ? TEXT("PASS") : TEXT("FAIL"), Reason.IsNone() ? TEXT("None") : *Reason.ToString()));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugForgeryTimeoutInvestigationRequest(const UObject* WorldContextObject, const FName SourceId, const FVector& WorldLocation,
+	const UObject* GuardActor, const float GuardDistance, const float SearchRadius, const EHeistMatchPhase MatchPhase, const bool bAuthority,
+	const bool bInvestigationAssigned, const bool bDuplicate, const FName Reason)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	const bool bResolved = bInvestigationAssigned || bDuplicate;
+	LogMessage(EHeistDebugChannel::Network, bResolved ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning,
+		FString::Printf(
+			TEXT("Forgery timeout investigation: GameMode=%s Source=%s Location=(%.1f,%.1f,%.1f) Radius=%.1f MatchPhase=%s Authority=%s AlertChanged=false Guard=%s Distance=%.1f InvestigationAssigned=%s OneShot=%s Duplicate=%s Result=%s Reason=%s"),
+			*GetNameSafe(WorldContextObject), SourceId.IsNone() ? TEXT("None") : *SourceId.ToString(), WorldLocation.X, WorldLocation.Y, WorldLocation.Z,
+			SearchRadius, *UEnum::GetValueAsString(MatchPhase), bAuthority ? TEXT("true") : TEXT("false"), *GetNameSafe(GuardActor), GuardDistance,
+			bInvestigationAssigned ? TEXT("true") : TEXT("false"), bInvestigationAssigned ? TEXT("true") : TEXT("false"), bDuplicate ? TEXT("true") : TEXT("false"),
+			bResolved ? TEXT("PASS") : TEXT("FAIL"), Reason.IsNone() ? TEXT("None") : *Reason.ToString()));
+#endif
+}
+
 void UHeistDebugFunctionLibrary::DebugSoundPingDefinitionRejected(const UObject* WorldContextObject, const FName SoundPingId, const TCHAR* Reason)
 {
 #if UE_BUILD_SHIPPING
@@ -7075,6 +7128,19 @@ void UHeistDebugFunctionLibrary::DebugOnlineSessionMapSelection(const UHeistGame
 							   ResolvedMapId.IsNone() ? TEXT("None") : *ResolvedMapId.ToString(), bRandomSelection ? TEXT("Random") : TEXT("Fixed"),
 							   bOnlineUpdateRequested ? TEXT("true") : TEXT("false"), bAccepted ? TEXT("true") : TEXT("false"),
 							   FailureReason.IsNone() ? TEXT("None") : *FailureReason.ToString()));
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugPlayerLoginRejected(const UObject* WorldContextObject, const FString& Address, const EHeistMatchPhase MatchPhase,
+	const bool bOnlineGameplayWorld, const FName Reason)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	LogMessage(EHeistDebugChannel::Network, EHeistDebugLevel::Warning,
+		FString::Printf(TEXT("Player login rejected: GameMode=%s Address=%s MatchPhase=%s OnlineGameplayWorld=%s Result=FAIL Reason=%s"),
+			*GetNameSafe(WorldContextObject), Address.IsEmpty() ? TEXT("None") : *Address, *UEnum::GetValueAsString(MatchPhase),
+			bOnlineGameplayWorld ? TEXT("true") : TEXT("false"), Reason.IsNone() ? TEXT("None") : *Reason.ToString()));
 #endif
 }
 

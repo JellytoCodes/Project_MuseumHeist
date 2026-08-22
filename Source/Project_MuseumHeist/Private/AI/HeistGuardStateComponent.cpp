@@ -268,6 +268,11 @@ float UHeistGuardStateComponent::GetInvestigateConfirmationDuration() const
 	return PendingInvestigateDuration;
 }
 
+float UHeistGuardStateComponent::GetConfiguredInvestigateDuration() const
+{
+	return InvestigateDuration;
+}
+
 float UHeistGuardStateComponent::GetSearchDuration() const
 {
 	return SearchDuration;

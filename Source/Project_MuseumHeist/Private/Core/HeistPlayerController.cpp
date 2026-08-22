@@ -40,6 +40,7 @@
 #include "World/Actors/Loot/HeistLootActor.h"
 #include "World/Actors/Projectile/HeistCoinProjectile.h"
 #include "World/Actors/Projectile/HeistThrowableProjectile.h"
+#include "World/Actors/Security/HeistSecurityHoldButtonActor.h"
 #include "World/Interaction/HeistInteractable.h"
 
 namespace
@@ -113,23 +114,48 @@ void AHeistPlayerController::BeginPlay()
 	UpdateFlashlightAimDirection();
 }
 
-void AHeistPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+void AHeistPlayerController::PawnLeavingGame()
+{
+	if (HasAuthority())
+	{
+		if (AHeistGameMode* HeistGameMode = GetWorld() != nullptr ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr)
+		{
+			HeistGameMode->HandlePlayerPawnLeavingGame(this);
+		}
+	}
+
+	Super::PawnLeavingGame();
+}
+
+void AHeistPlayerController::ResetLocalHeldInteractionInputState()
 {
 	bLocalObservationInputHeld = false;
-	if (UWorld* World = GetWorld())
-	{
-		World->GetTimerManager().ClearTimer(LocalTutorialStepTimerHandle);
-	}
-	UnbindLocalForgeryInputState();
-	UnbindLocalObjectAssemblyInputState();
+	LocalSecurityHoldButton.Reset();
+}
+
+void AHeistPlayerController::UnbindMatchPhasePresentationState()
+{
 	if (BoundMatchPhaseGameState.IsValid())
 	{
 		BoundMatchPhaseGameState->GetMatchPhaseChangedDelegate().RemoveAll(this);
 		BoundMatchPhaseGameState->GetPlayerResultsChangedDelegate().RemoveAll(this);
 		BoundMatchPhaseGameState->GetAlertStateChangedDelegate().RemoveAll(this);
 		BoundMatchPhaseGameState->GetEscapePhaseStateChangedDelegate().RemoveAll(this);
-		BoundMatchPhaseGameState.Reset();
 	}
+
+	BoundMatchPhaseGameState.Reset();
+}
+
+void AHeistPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	ResetLocalHeldInteractionInputState();
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(LocalTutorialStepTimerHandle);
+	}
+	UnbindLocalForgeryInputState();
+	UnbindLocalObjectAssemblyInputState();
+	UnbindMatchPhasePresentationState();
 	if (IsLocalController())
 	{
 		CloseFloorPlanMapForStateTransition();
@@ -149,17 +175,10 @@ void AHeistPlayerController::PostSeamlessTravel()
 {
 	Super::PostSeamlessTravel();
 
-	bLocalObservationInputHeld = false;
+	ResetLocalHeldInteractionInputState();
 	UnbindLocalForgeryInputState();
 	UnbindLocalObjectAssemblyInputState();
-	if (BoundMatchPhaseGameState.IsValid())
-	{
-		BoundMatchPhaseGameState->GetMatchPhaseChangedDelegate().RemoveAll(this);
-		BoundMatchPhaseGameState->GetPlayerResultsChangedDelegate().RemoveAll(this);
-		BoundMatchPhaseGameState->GetAlertStateChangedDelegate().RemoveAll(this);
-		BoundMatchPhaseGameState->GetEscapePhaseStateChangedDelegate().RemoveAll(this);
-		BoundMatchPhaseGameState.Reset();
-	}
+	UnbindMatchPhasePresentationState();
 	bLocalAwaitingCrew = false;
 	LocalSpectateTarget.Reset();
 
@@ -199,7 +218,7 @@ void AHeistPlayerController::RefreshLocalPresentationAfterSeamlessTravel()
 
 void AHeistPlayerController::OnPossess(APawn* InPawn)
 {
-	bLocalObservationInputHeld = false;
+	ResetLocalHeldInteractionInputState();
 	UnbindLocalForgeryInputState();
 	UnbindLocalObjectAssemblyInputState();
 	Super::OnPossess(InPawn);
@@ -213,7 +232,7 @@ void AHeistPlayerController::OnPossess(APawn* InPawn)
 void AHeistPlayerController::OnRep_Pawn()
 {
 	Super::OnRep_Pawn();
-	bLocalObservationInputHeld = false;
+	ResetLocalHeldInteractionInputState();
 	RefreshLocalInputModeFromPawn();
 	RefreshLocalPlayerTerminalState();
 	RefreshLocalHUDPresentation();
@@ -366,13 +385,7 @@ void AHeistPlayerController::RefreshMatchPhasePresentationBinding()
 		return;
 	}
 
-	if (BoundMatchPhaseGameState.IsValid())
-	{
-		BoundMatchPhaseGameState->GetMatchPhaseChangedDelegate().RemoveAll(this);
-		BoundMatchPhaseGameState->GetPlayerResultsChangedDelegate().RemoveAll(this);
-		BoundMatchPhaseGameState->GetAlertStateChangedDelegate().RemoveAll(this);
-		BoundMatchPhaseGameState->GetEscapePhaseStateChangedDelegate().RemoveAll(this);
-	}
+	UnbindMatchPhasePresentationState();
 	BoundMatchPhaseGameState = HeistGameState;
 	if (IsValid(HeistGameState))
 	{
@@ -387,6 +400,7 @@ void AHeistPlayerController::HandleMatchPhasePresentationChanged(const EHeistMat
 {
 	if (NewMatchPhase != EHeistMatchPhase::InGame)
 	{
+		LocalSecurityHoldButton.Reset();
 		CloseFloorPlanMapForStateTransition();
 	}
 	RefreshLocalPlayerTerminalState();
@@ -1204,6 +1218,14 @@ void AHeistPlayerController::HandleInteractPressed()
 
 	NotifyLocalTutorialMilestone(TEXT("ProximityInteraction"), TEXT("ValidInteractionInput"));
 
+	AHeistSecurityHoldButtonActor* TargetSecurityButton = Cast<AHeistSecurityHoldButtonActor>(InteractionComponent->GetCurrentInteractionTarget());
+	if (TargetSecurityButton != nullptr)
+	{
+		LocalSecurityHoldButton = TargetSecurityButton;
+		Server_RequestBeginSecurityHold(TargetSecurityButton);
+		return;
+	}
+
 	AHeistPlayerCharacter* TargetPlayerCharacter = Cast<AHeistPlayerCharacter>(InteractionComponent->GetCurrentInteractionTarget());
 	if (TargetPlayerCharacter != nullptr)
 	{
@@ -1272,6 +1294,13 @@ void AHeistPlayerController::HandleInteractPressed()
 
 void AHeistPlayerController::HandleInteractReleased()
 {
+	if (AHeistSecurityHoldButtonActor* HeldSecurityButton = LocalSecurityHoldButton.Get())
+	{
+		Server_RequestEndSecurityHold(HeldSecurityButton);
+		LocalSecurityHoldButton.Reset();
+		return;
+	}
+
 	if (!bLocalObservationInputHeld)
 	{
 		return;
@@ -2083,6 +2112,37 @@ void AHeistPlayerController::Server_CancelObservation_Implementation()
 	}
 
 	HeistCharacter->GetActionComponent()->CancelObservationRequest(TEXT("InputReleased"));
+}
+
+void AHeistPlayerController::Server_RequestBeginSecurityHold_Implementation(AHeistSecurityHoldButtonActor* TargetButton)
+{
+	FHeistGameplayRequestContext RequestContext;
+	const TCHAR* RejectReason = nullptr;
+	if (!TryBuildGameplayRequestContext(RequestContext, RejectReason) || !IsValid(TargetButton))
+	{
+		return;
+	}
+
+	UHeistInteractionComponent* InteractionComponent = RequestContext.Character->GetInteractionComponent();
+	if (!IsValid(InteractionComponent) || !InteractionComponent->IsActorOverlappingInteractionArea(TargetButton) || !CanUseHeistInteraction(TargetButton, RequestContext.Character))
+	{
+		return;
+	}
+
+	TargetButton->TryBeginHold(RequestContext.Character);
+}
+
+void AHeistPlayerController::Server_RequestEndSecurityHold_Implementation(AHeistSecurityHoldButtonActor* TargetButton)
+{
+	AHeistPlayerState* RequestingPlayerState = GetPlayerState<AHeistPlayerState>();
+	if (!IsValid(TargetButton) || !IsValid(RequestingPlayerState))
+	{
+		return;
+	}
+
+	// Release must remain valid after Stun/Arrest/Input cancellation, so it intentionally
+	// does not require the normal action-eligible gameplay request context.
+	TargetButton->TryEndHold(RequestingPlayerState, FName(TEXT("InputReleased")));
 }
 
 void AHeistPlayerController::Server_RequestTakeOriginal_Implementation(AHeistPaintingDisplayCaseActor* TargetDisplayCase)

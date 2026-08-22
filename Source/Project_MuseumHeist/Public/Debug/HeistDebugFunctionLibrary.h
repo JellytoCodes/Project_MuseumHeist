@@ -171,6 +171,13 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 									  uint8 RetryCount);
 	static void DebugGuardInvestigateConfirmationStarted(const UObject* WorldContextObject, const UObject* GuardActor, const FVector& InvestigateLocation, float DurationSeconds);
 	static void DebugGuardSearchTimerStarted(const UObject* WorldContextObject, const UObject* GuardActor, const FVector& SearchLocation, float DurationSeconds);
+	static void DebugGuardSecurityInvestigationRequest(const UObject* WorldContextObject, const UObject* GuardActor, FName SourceId, const FVector& InvestigateLocation,
+		float InvestigateDuration, bool bAccepted);
+	static void DebugSecurityIncidentRequest(const UObject* WorldContextObject, FName IncidentId, const FVector& IncidentLocation, const UObject* GuardActor, float GuardDistance,
+		float SearchRadius, EHeistMatchPhase MatchPhase, bool bAuthority, bool bAlertAccepted, bool bAlertChanged, bool bInvestigationAssigned, bool bDuplicate,
+		bool bOneShotConsumed, FName Reason);
+	static void DebugForgeryTimeoutInvestigationRequest(const UObject* WorldContextObject, FName SourceId, const FVector& WorldLocation, const UObject* GuardActor,
+		float GuardDistance, float SearchRadius, EHeistMatchPhase MatchPhase, bool bAuthority, bool bInvestigationAssigned, bool bDuplicate, FName Reason);
 	static void DebugSoundPingDefinitionRejected(const UObject* WorldContextObject, FName SoundPingId, const TCHAR* Reason);
 	static void DebugEscapedPlayerRestrictionsApplied(const UObject* WorldContextObject);
 
@@ -241,6 +248,7 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 	static void DebugOnlineSessionRemoteEnded(const UHeistGameInstance* GameInstance, FName Reason, bool bLeaveStarted);
 	static void DebugOnlineSessionMapSelection(const UHeistGameInstance* GameInstance, FName RequestedMapId, FName ResolvedMapId, bool bRandomSelection, bool bOnlineUpdateRequested,
 											   bool bAccepted, FName FailureReason);
+	static void DebugPlayerLoginRejected(const UObject* WorldContextObject, const FString& Address, EHeistMatchPhase MatchPhase, bool bOnlineGameplayWorld, FName Reason);
 	static void DebugLobbyMapSelectionState(const UObject* WorldContextObject, const TCHAR* ChangeSource, FName SelectedMapId, bool bRandomSelection, int32 Revision, bool bAccepted);
 	static void DebugOnlineSessionShutdownCleanup(const UObject* WorldContextObject, FName Reason, int32 CancelledActionCount, int32 CancelledForgeryCount, int32 ClosedInventoryCount,
 												  int32 ReleasedOriginalCount, int32 ClearedCaseLockCount, int32 ClearedTimerCount, bool bAuthority);

@@ -114,6 +114,10 @@ AHeistObjectDisplayCaseActor::AHeistObjectDisplayCaseActor()
 void AHeistObjectDisplayCaseActor::BeginPlay()
 {
 	Super::BeginPlay();
+	if (!HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled())
+	{
+		bContractExhibitActive = false;
+	}
 	ApplyContractExhibitActiveState();
 
 	BoundGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
@@ -197,7 +201,7 @@ bool AHeistObjectDisplayCaseActor::IsContractExhibitActive() const
 
 bool AHeistObjectDisplayCaseActor::SetContractExhibitActive(const bool bActive)
 {
-	if (!HasAuthority())
+	if (!HasAuthority() || (bActive && !HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled()))
 	{
 		return false;
 	}
@@ -258,7 +262,8 @@ bool AHeistObjectDisplayCaseActor::HasCommittedAssemblyResult() const
 bool AHeistObjectDisplayCaseActor::HasReplicaPreview() const
 {
 	// CommittedAssemblyResult is server-only. Client review UX must rely on the replicated compact replica payload and case state.
-	return AssemblyState == EHeistObjectAssemblyState::ReplicaReady && AssemblyReplicaData.Revision > 0 && !AssemblyReplicaData.Entries.IsEmpty();
+	return HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled() && AssemblyState == EHeistObjectAssemblyState::ReplicaReady && AssemblyReplicaData.Revision > 0 &&
+		!AssemblyReplicaData.Entries.IsEmpty();
 }
 
 bool AHeistObjectDisplayCaseActor::IsReplicaReviewReadyFor(const AActor* Interactor) const
@@ -439,6 +444,11 @@ bool AHeistObjectDisplayCaseActor::InitializeObjectIdentity(const FName InObject
 
 bool AHeistObjectDisplayCaseActor::TryTransitionToAssemblyState(const EHeistObjectAssemblyState NewState)
 {
+	if (!HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled())
+	{
+		BroadcastAssemblySnapshot(FName(TEXT("StateTransition")), FName(TEXT("FeatureDisabled")), false);
+		return false;
+	}
 	if (!HasAuthority() || !IsAssemblyStateTransitionAllowed(NewState))
 	{
 		BroadcastAssemblySnapshot(FName(TEXT("StateTransition")), FName(TEXT("TransitionRejected")), false);
@@ -678,6 +688,12 @@ bool AHeistObjectDisplayCaseActor::DropOriginalForCarrier(AHeistPlayerState* Exp
 
 bool AHeistObjectDisplayCaseActor::TryClaimDroppedOriginal(AHeistPlayerState* RequestingPlayerState, AHeistDroppedOriginalActor* DroppedOriginal)
 {
+	if (!HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled())
+	{
+		BroadcastOriginalCarrySnapshot(FName(TEXT("WorldPickup")), FName(TEXT("FeatureDisabled")), false);
+		return false;
+	}
+
 	const bool bOriginalOutsideCase = AssemblyState == EHeistObjectAssemblyState::OriginalRemoved || AssemblyState == EHeistObjectAssemblyState::Inspecting ||
 		AssemblyState == EHeistObjectAssemblyState::Completed ||
 		AssemblyState == EHeistObjectAssemblyState::Failed;
@@ -742,6 +758,11 @@ bool AHeistObjectDisplayCaseActor::IsRegisteredForInspection() const
 
 bool AHeistObjectDisplayCaseActor::IsValidInspectionCandidate() const
 {
+	if (!HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled())
+	{
+		return false;
+	}
+
 	const bool bEligibleState = AssemblyState == EHeistObjectAssemblyState::ReplicaPlaced || AssemblyState == EHeistObjectAssemblyState::OriginalAvailable ||
 		AssemblyState == EHeistObjectAssemblyState::OriginalRemoved;
 	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
@@ -788,6 +809,11 @@ int32 AHeistObjectDisplayCaseActor::GetInspectionDuplicateBlockCount() const
 
 bool AHeistObjectDisplayCaseActor::TryBeginInspection(AActor* InspectingGuard)
 {
+	if (!HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled())
+	{
+		UHeistDebugFunctionLibrary::DebugObjectAssemblyInspection(this, InspectingGuard, FName(TEXT("Begin")), FName(TEXT("FeatureDisabled")), false);
+		return false;
+	}
 	if (!HasAuthority() || !IsValid(InspectingGuard) || InspectingGuardActor.IsValid() || !IsValidInspectionCandidate())
 	{
 		UHeistDebugFunctionLibrary::DebugObjectAssemblyInspection(this, InspectingGuard, FName(TEXT("Begin")), FName(TEXT("InvalidOrDuplicateCandidate")), false);
@@ -826,6 +852,11 @@ bool AHeistObjectDisplayCaseActor::InterruptInspection(AActor* InspectingGuard, 
 
 bool AHeistObjectDisplayCaseActor::ApplyInspectionResult(AActor* InspectingGuard)
 {
+	if (!HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled())
+	{
+		UHeistDebugFunctionLibrary::DebugObjectAssemblyInspection(this, InspectingGuard, FName(TEXT("Apply")), FName(TEXT("FeatureDisabled")), false);
+		return false;
+	}
 	if (HasAuthority() && IsValid(InspectingGuard) && LastAppliedInspectionScheduleRevision == InspectionScheduleRevision)
 	{
 		++InspectionDuplicateBlockCount;
@@ -877,7 +908,7 @@ AActor* AHeistObjectDisplayCaseActor::GetInspectingGuard() const
 bool AHeistObjectDisplayCaseActor::ForceInspectionReadyForDebug()
 {
 #if !UE_BUILD_SHIPPING
-	if (HasAuthority() && bHasCommittedAssemblyResult && InspectionScheduleRevision > 0)
+	if (HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled() && HasAuthority() && bHasCommittedAssemblyResult && InspectionScheduleRevision > 0)
 	{
 		ClearInspectionDelayTimer();
 		InspectionReadyServerTime = 0.0f;
@@ -903,6 +934,11 @@ bool AHeistObjectDisplayCaseActor::CalculateInspectionSchedule(const float BaseI
 
 bool AHeistObjectDisplayCaseActor::CanInteract(const AActor* Interactor) const
 {
+	if (!HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled())
+	{
+		return false;
+	}
+
 	const APawn* RequestingPawn = Cast<APawn>(Interactor);
 	const AHeistPlayerState* RequestingPlayerState = IsValid(RequestingPawn) ? RequestingPawn->GetPlayerState<AHeistPlayerState>() : nullptr;
 	const bool bStateAllowsAssembly = AssemblyState == EHeistObjectAssemblyState::Secured || AssemblyState == EHeistObjectAssemblyState::Observed;
@@ -966,6 +1002,11 @@ void AHeistObjectDisplayCaseActor::OnRep_InspectionScheduleRevision()
 bool AHeistObjectDisplayCaseActor::ValidateSessionRequest(AHeistPlayerState* RequestingPlayerState, FName& OutRejectReason) const
 {
 	OutRejectReason = NAME_None;
+	if (!HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled())
+	{
+		OutRejectReason = FName(TEXT("FeatureDisabled"));
+		return false;
+	}
 	if (!bContractExhibitActive)
 	{
 		OutRejectReason = FName(TEXT("InactiveContractExhibit"));
@@ -1018,6 +1059,11 @@ bool AHeistObjectDisplayCaseActor::ValidateReplicaCommit(AHeistPlayerState* Requ
 														  const TArray<FHeistObjectAssemblyEntry>& Entries, FName& OutRejectReason) const
 {
 	OutRejectReason = NAME_None;
+	if (!HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled())
+	{
+		OutRejectReason = FName(TEXT("FeatureDisabled"));
+		return false;
+	}
 	if (!IsValid(RequestingPlayerState) || bHasCommittedAssemblyResult || AssemblyReplicaData.Revision > 0)
 	{
 		OutRejectReason = bHasCommittedAssemblyResult ? FName(TEXT("DuplicateReplicaPlacement")) : FName(TEXT("MissingPlayerState"));
@@ -1078,6 +1124,11 @@ bool AHeistObjectDisplayCaseActor::ValidateReplicaCommit(AHeistPlayerState* Requ
 bool AHeistObjectDisplayCaseActor::ValidateReplicaReviewOwner(AHeistPlayerState* RequestingPlayerState, FName& OutRejectReason) const
 {
 	OutRejectReason = NAME_None;
+	if (!HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled())
+	{
+		OutRejectReason = FName(TEXT("FeatureDisabled"));
+		return false;
+	}
 	if (!IsValid(RequestingPlayerState))
 	{
 		OutRejectReason = FName(TEXT("MissingPlayerState"));
@@ -1488,6 +1539,11 @@ bool AHeistObjectDisplayCaseActor::ValidateOriginalTakeRequest(AHeistPlayerState
 	OutArtifactWeight = 0.0f;
 	bOutRequiredTarget = false;
 	OutRejectReason = NAME_None;
+	if (!HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled())
+	{
+		OutRejectReason = FName(TEXT("FeatureDisabled"));
+		return false;
+	}
 	if (!IsValid(RequestingPlayerState))
 	{
 		OutRejectReason = FName(TEXT("MissingPlayerState"));
@@ -1642,6 +1698,15 @@ void AHeistObjectDisplayCaseActor::RefreshInspectionRegistration()
 {
 	if (!HasAuthority())
 	{
+		return;
+	}
+	if (!HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled())
+	{
+		if (bRegisteredForInspection)
+		{
+			bRegisteredForInspection = false;
+			++InspectionRegistrationRevision;
+		}
 		return;
 	}
 	const bool bEligibleState = AssemblyState == EHeistObjectAssemblyState::ReplicaPlaced || AssemblyState == EHeistObjectAssemblyState::OriginalAvailable ||

@@ -1,6 +1,6 @@
 # Project_MuseumHeist Current Project Status
 
-최종 갱신: 2026-08-18 KST
+최종 갱신: 2026-08-22 KST
 현재 문서 Revision: 14
 
 이 문서는 새 Codex 작업이 Notion의 최신 진행 상태와 로컬 구현·검증 증거를 바로 이어받기 위한 오프라인 실행 캐시다.
@@ -10,7 +10,7 @@
 - Notion에 아직 연결되지 않은 실질 작업은 `LOCAL_PROGRESS_INBOX.md`에 기록한다.
 - 이 문서만 보고 Task 상태를 확정하지 않는다. 새 작업 시작 시 Notion을 다시 라이브 조회한다.
 
-> Rev14는 2026-08-18에 확정한 **Public Release 방향 재기준화**다. 현재는 문서 계약과 로컬 인계 기준만 바꾼 상태며, 코드·맵·UI·에셋·Cook·멀티플레이 Gate가 완료됐다는 의미가 아니다. 기존 W6/W7의 Solo·1P·Surface/Object 증거는 당시 구현의 역사적 검증으로 보존하며 Rev14 출시 Gate 통과로 재해석하지 않는다.
+> Rev14는 2026-08-18에 확정한 **Public Release 방향 재기준화**다. 2026-08-22 기준 C++ Rule/Authority/Replication 기반은 정적 구현했지만, Editor Build·Blueprint Shell·맵·UI·에셋·PIE·Cook·멀티플레이 Gate가 완료됐다는 의미는 아니다. 기존 W6/W7의 Solo·1P·Surface/Object 증거는 당시 구현의 역사적 검증으로 보존하며 Rev14 출시 Gate 통과로 재해석하지 않는다.
 
 ---
 
@@ -22,7 +22,7 @@
 - [테스트 로그](https://app.notion.com/p/ec9727a40d9541e6a2e4ee6096b1c678)  
   Data Source: `collection://2f308111-75f1-4b68-bd45-f94361e855af`
 
-마지막 라이브 재조회: `2026-08-17 KST`
+마지막 라이브 재조회: `2026-08-22 KST` (`TASK-W8-008`만 재조회, 상태 `미시작`; 이번 작업에서 Notion 쓰기 없음)
 
 ```text
 TASK-W6-000  완료    Contract Foundation / Required Target / Loot Value Quota
@@ -67,14 +67,33 @@ TEST-W7-006  Pass  Stun·Arrest/Rescue·Carry/Heavy 자동 Presentation 계약 /
 
 ## 1. Current Focus
 
-### Rev14 Release Rebaseline — Documentation Complete / Implementation Pending
+### Rev14 Release Rebaseline — C++ Foundation Applied / Editor Integration Pending
 
 - Public Contract 지원 인원은 `2~4인`으로 바꾼다. 1인 PIE/자동화는 개발 진단 경로로만 남기고 출시 지원 인원으로 취급하지 않는다.
 - InGame에서 2인이 1인으로 줄어든 경우 즉시 실패·즉시 종료하지 않는 soft-fail을 사용한다. Match 시작 시 확정한 Quota/Assignment는 재계산하지 않고, 남은 Player가 계속 진행하거나 탈출할 수 있어야 한다.
 - v1 잠입 압박은 기존 Patrol Guard에 `CCTV`와 고가 Painting용 `Laser Hold`를 추가한다. Laser는 한 Player가 Hold Switch를 유지하고 다른 Player가 진입하는 선택적 협동 기믹이다.
 - v1 플레이 콘텐츠는 Painting `Surface Forgery`를 중심으로 한다.
 - `Object Assembly`는 삭제하지 않고 **Deferred Expansion**으로 보존한다. 소스·C++·Enum·Struct·DataTable·Blueprint Shell·원본 에셋은 repository에 남기되, v1 Runtime Assignment·Release Map·Player-facing UI·Result·Cook·QA/Release Gate에서는 비활성화한다.
-- 위 항목은 아직 구현·Build·PIE·Cook 검증 전이다. Notion Task 재편과 실제 구현 증거가 없으므로 완료로 처리하지 않는다.
+- C++ 서버 기반에는 Public 2~4 Lobby Start Gate, 목적지 월드에서 1회 소비되는 `ContractStartPlayerCount`, InGame Join 거부, Surface-only Assignment/Result, Object Assembly Runtime Entry 차단, CCTV, Laser/Hold Button과 공통 Security Incident→Alert/근처 Guard 조사 경로를 반영했다.
+- 2→1 이탈은 Contract의 Player Count·Quota·Assignment를 재계산하지 않는다. 원격 Client Quit 시 Pawn 파괴 전 Loose Loot를 월드 드롭으로 복구하고, 기존 Logout 안전망이 Original·Case Lock·Security Hold를 해제한 뒤 Carried Value를 다시 계산한다. Laser는 Query-only다.
+- 기존 Object Assembly 소스·데이터·Shell은 보존하되 정상 플레이의 Case 활성화·Session·Submit·Original·Inspection·Result 경로를 비활성화했다.
+- 기존 자동화의 Object 성공 기대와 Public Solo Start 기대는 Rev14 경계에 맞게 재정렬했지만 실행하지 않았다.
+- 같은 `.cpp` 안에서 Pending Start Count 초기화, Local Hold 입력 상태 초기화, GameState Delegate 해제, Loot 제거 후처리, Timer Handle 정리와 Laser 기본 상태 복구의 확정 중복만 통합했다. 파일 분할·새 Manager·공개 Gameplay 계약 변경은 하지 않았다.
+- Widget, `.uasset`, `.umap`은 사용자 요청에 따라 변경하지 않았다.
+
+```text
+C++ Rule/Authority/Replication   UPDATED / static review only
+Duplicate / Boilerplate Cleanup  APPLIED / same-file, behavior-preserving static review
+Widget / uasset / umap           NOT CHANGED
+Editor Build                     NOT RUN / user Editor required
+Automation / PIE / Cook          NOT RUN
+Blueprint Shell / Map Placement  NOT CHANGED / pending
+Notion TASK-W8-008               미시작 / read only / no write
+```
+
+따라서 `TASK-W8-008`과 Rev14 Gate는 완료로 처리하지 않는다.
+
+정적 검토에서 마지막 Player Disconnect 시 `Logout()`의 Outcome 판정이 `PlayerArray` 제거보다 먼저 실행되는 순서가 별도 기능 이슈 후보로 확인됐다. 이번 중복·보일러플레이트 정리에는 섞지 않았으며, 재현 테스트와 동작 수정이 필요한 후속 항목으로 남긴다.
 
 ### Pre-Rev14 Implementation Evidence
 
@@ -119,7 +138,7 @@ Status FX Slots     PASS / 1 reusable Niagara + 1 reusable Audio / 7 state pairs
 ### Contract Run
 
 - Required Target 확보와 Loot Value Quota 달성은 서로 별도 조건이다.
-- 현재 구현은 1/2/3/4P에서 Optional Exhibit 2/3/4/5개를 활성화하는 pre-Rev14 계약이다. Rev14 Public 2~4인 계약과 Surface-only Eligible Case Filter로 수정·재검증해야 한다.
+- 현재 C++ 계약은 Public 2~4 Start와 Match 시작 인원 Snapshot을 사용하고 Drawing Painting만 Required/Optional Assignment에 포함한다. 다만 M01/M02/M03의 실제 Surface Case·Loose Loot 합산 Quota 도달 가능성과 기존 `MinimumOptionalExhibits` Authoring 기준은 Editor/Cook에서 재검증해야 한다.
 - 비선택 Level Case를 파괴하지 않고 replicated Contract 활성 상태로 숨김·충돌·상호작용을 비활성화한다.
 - Shared Exit에서 각 Player의 Original과 Loose Loot를 서버가 Deposit하고 Result를 확정한다.
 
@@ -242,12 +261,14 @@ Warning은 Title/Lobby RecastNavMesh 부재 및 테스트 Guard Noise의 Outside
 2. Notion 작업보드의 `진행중`/`검토중` Task와 사용자가 지정한 Task를 라이브 조회한다.
 3. `LOCAL_PROGRESS_INBOX.md`의 `UNLINKED`/`READY_TO_SYNC` Entry를 확인한다.
 4. `git status --short`와 관련 Diff를 확인한다.
-5. `LOCAL-20260818-01`은 `RECONCILED`다. Notion `TASK-W8-008`을 공통 기반 Task로 사용하고 기존 Task 상태를 구현 증거 없이 완료 처리하지 않는다.
-6. Rev14 구현은 `TASK-W8-008`에서 Public 2~4 Lobby Start Gate → 2→1 soft-fail → Surface-only Assignment/Result/UI Gate → Object Release Map/Cook 참조 0 → CCTV → Laser Hold 순으로 검증 가능하게 나눈다.
-7. 아래 W6/W7 Solo·1P·Surface/Object 증거는 삭제하지 않되 Rev14 출시 PASS로 보지 않는다. 이미 통과한 HUD·Icon·Audio·재사용 Component 기반은 재구현하지 않는다.
-8. `TASK-W7-004~006`의 실제 Niagara/Sound·Remote Pose·2P 화면/청음 잔여는 Rev14 Task 재편 후에도 유지되는지 Notion에서 확인한다.
-9. W8 실제 맵 배치는 CCTV/Laser/Surface-only Release Contract가 문서와 C++에서 고정된 뒤 M02 → M03 → M01 Final Pass → 세 맵 Gate 순으로 재기준화한다.
-10. `TASK-W9-007`의 배포 권리·Notice는 Surface/TENADA/Epic 잔여와 Rev14 실제 Cook Manifest를 함께 검증한다.
+5. `LOCAL-20260818-01`은 2026-08-22 C++ 구현 증거가 Notion에 아직 반영되지 않아 `READY_TO_SYNC`다. 사용자가 요청하기 전 Notion 상태를 쓰거나 완료 처리하지 않는다.
+6. 현재 Revision으로 `Project_MuseumHeistEditor Win64 Development`를 먼저 Build하고 전체 Error를 보존한다. 과거 Build PASS는 현재 Revision의 컴파일 증거가 아니다.
+7. Build PASS 뒤 Editor에서 CCTV/Laser/Hold Button의 비-Widget Blueprint Shell을 구성하고 Mesh·Material·Audio·Niagara 슬롯을 할당·컴파일·저장한다. 최종 외부 Asset은 출처·라이선스·Notice를 함께 기록한다.
+8. M02 → M03 → M01 순으로 CCTV Coverage와 Laser/Button/Painting 연결을 배치한다. Required Target은 Laser 뒤에 두지 않고 2→1에서도 Required Target·최소 Quota·Egress가 가능해야 한다.
+9. 세 맵의 Surface Painting + Loose Loot 도달 가능 금액, Object Case Release 배치/하드 참조 0, Object 전용 Cook Package 0을 확인한다.
+10. 위 Editor 전제까지 확인된 뒤 2P Host/Client를 시작으로 CCTV Detection, Laser Hold/Release/Stun/Arrest/Disconnect, 사건당 Alert+경비 1회, Timeout Alert 미변경, 2→1 Snapshot 불변과 이탈 Player의 Loose Loot/Original 월드 복구를 PIE 검증한다.
+11. 아래 W6/W7 Solo·1P·Surface/Object 증거는 삭제하지 않되 Rev14 출시 PASS로 보지 않는다. `TASK-W7-004~006`의 실제 Niagara/Sound·Remote Pose·2P 화면/청음 잔여도 별도 유지한다.
+12. `TASK-W9-007`의 배포 권리·Notice는 Surface/TENADA/Epic 잔여와 Rev14 실제 Cook Manifest를 함께 검증한다.
 
 ---
 

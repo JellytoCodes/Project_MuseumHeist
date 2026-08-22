@@ -7,8 +7,12 @@
 #include "HeistGameMode.generated.h"
 
 class UHeistGameBalanceDataAsset;
+class UHeistInventoryComponent;
 class UDataTable;
+class AHeistGuardCharacter;
 class AHeistLootActor;
+class AHeistPlayerCharacter;
+class AHeistPlayerController;
 class AHeistPlayerState;
 struct FHeistItemDataRow;
 struct FHeistContractDataRow;
@@ -42,15 +46,19 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual APawn* SpawnDefaultPawnFor_Implementation(AController* NewPlayer, AActor* StartSpot) override;
 	virtual void RestartPlayer(AController* NewPlayer) override;
+	virtual void PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage) override;
 	virtual void Logout(AController* Exiting) override;
 
   private:
 	void HandleMatchPhaseChanged(EHeistMatchPhase PreviousMatchPhase, EHeistMatchPhase NewMatchPhase);
 	void HandlePlayerConnectionsChanged(int32 ConnectedPlayerCount);
+	int32 DropDisconnectedPlayerLooseLoot(AHeistPlayerCharacter* ExitingCharacter, AHeistPlayerState* ExitingPlayerState,
+		UHeistInventoryComponent* InventoryComponent, int32& OutFailureCount);
 	int32 ClearMatchScopedTimers();
 
   public:
 	void PrepareForOnlineSessionShutdown(FName Reason);
+	void HandlePlayerPawnLeavingGame(AHeistPlayerController* ExitingController);
 	void NotifyPlayerTerminalStateChanged(AHeistPlayerState* PlayerState, FName TerminalTrigger);
 
 #pragma endregion
@@ -80,12 +88,18 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 
   public:
 	bool RequestAlertEscalation(EHeistAlertLevel RequestedAlertLevel, FName TriggerId, bool* bOutLevelChanged = nullptr);
+	bool RequestSecurityIncident(const FVector& WorldLocation, FName IncidentId);
 	bool RequestForgeryTimeoutInvestigation(const FVector& WorldLocation, FName SourceId);
+	static bool TryConsumeOneShotSecurityId(TSet<FName>& InOutProcessedIds, FName SourceId);
 	bool IsAlertTransitionTimerActive() const;
 	int32 GetProcessedAlertTriggerCount() const;
+	int32 GetProcessedSecurityIncidentCount() const;
+	int32 GetProcessedGuardInvestigationCount() const;
 	int32 GetActiveMatchTimerCount() const;
 
   private:
+	bool RequestNearestGuardInvestigation(const FVector& WorldLocation, FName SourceId, float SearchRadius, AHeistGuardCharacter*& OutAssignedGuard, float& OutDistance,
+		bool& bOutDuplicate, FName& OutReason);
 	void InitializeAlertState();
 	bool ApplyAlertLevel(EHeistAlertLevel NewAlertLevel, FName TriggerId);
 	bool ApplyLockdownWorldRestrictions(FName TriggerId);
@@ -95,6 +109,8 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 
 	FTimerHandle AlertTransitionTimerHandle;
 	TSet<FName> ProcessedAlertTriggerIds;
+	TSet<FName> ProcessedSecurityIncidentIds;
+	TSet<FName> ProcessedGuardInvestigationSourceIds;
 	EHeistAlertLevel ScheduledAlertSourceLevel = EHeistAlertLevel::Quiet;
 	int32 ScheduledAlertRevision = 0;
 	bool bLockdownWorldRestrictionsApplied = false;
@@ -131,6 +147,11 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 	float GetDifficultyAppliedDetectionMultiplier() const;
 	float GetDifficultyAppliedInspectionDurationMultiplier() const;
 	float GetGuardPerceptionRangeMultiplier() const;
+	float GetSecurityCameraEvaluationIntervalSeconds() const;
+	float GetSecurityCameraDetectionBuildUpSeconds() const;
+	float GetSecurityCameraDetectionCooldownSeconds() const;
+	float GetSecurityLaserHoldDurationSeconds() const;
+	float GetSecurityLaserRearmGraceSeconds() const;
 	void DebugDumpPlayerCountDifficultyBaseline() const;
 	bool TrySpawnDroppedLoot(const FHeistLootDropRequest& DropRequest, AHeistLootActor*& OutDroppedLootActor) const;
 

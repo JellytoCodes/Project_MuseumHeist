@@ -27,9 +27,11 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerState : public APlayerState
 	bool AddLootScoreAndWeight(int32 ScoreDelta, float WeightDelta);
 	bool CanRemoveLootScoreAndWeight(int32 ScoreDelta, float WeightDelta) const;
 	bool RemoveLootScoreAndWeight(int32 ScoreDelta, float WeightDelta);
+	bool RemoveLootScoreAndWeightForDisconnect(int32 ScoreDelta, float WeightDelta);
 	bool RemoveCarriedOriginalWeight(float WeightDelta);
 
   private:
+	void CommitLootScoreAndWeightRemoval(int32 ScoreDelta, float WeightDelta, bool bRefreshMovement);
 	void BroadcastLootTotalsChanged();
 
 	UPROPERTY(ReplicatedUsing = OnRep_TotalLootScore, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Score", meta = (AllowPrivateAccess = "true"))

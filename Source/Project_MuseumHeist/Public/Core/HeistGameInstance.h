@@ -76,6 +76,7 @@ class PROJECT_MUSEUMHEIST_API UHeistGameInstance : public UGameInstance
 	bool RequestStartSelectedGameplayMap();
 	bool RequestReturnToLobby();
 	bool RequestSetLobbyMapSelection(FName RequestedMapId);
+	int32 ConsumePendingContractStartPlayerCount();
 	void HandleHostSessionEnded(FName Reason);
 	void NotifySessionWorldReady();
 	void SynchronizeSessionMapSelection(const AHeistGameState* SourceGameState, FName NewSelectedMapId, bool bNewRandomSelection);
@@ -183,6 +184,7 @@ class PROJECT_MUSEUMHEIST_API UHeistGameInstance : public UGameInstance
 	bool CommitLobbyMapSelection(FName NewSelectedMapId, bool bNewRandomSelection);
 	void NotifyRemoteClientsSessionEnded(FName Reason) const;
 	void HandleHostLeaveGracePeriodElapsed();
+	void ClearPendingContractStartPlayerCount();
 	void ResetOnlineSessionRuntimeState(FName PreservedFailure = NAME_None);
 	void ClearOnlineDelegates();
 	void BeginOnlineSessionOperation(FName OperationName, float TimeoutSeconds);
@@ -263,6 +265,7 @@ class PROJECT_MUSEUMHEIST_API UHeistGameInstance : public UGameInstance
 	bool bMapSelectionUpdatePending = false;
 	bool bSessionTravelPending = false;
 	bool bOnlineSessionCancellationPending = false;
+	int32 PendingContractStartPlayerCount = 0;
 	bool bLeaveWasHosting = false;
 	FName PendingLeaveReason = NAME_None;
 	FName DefaultSelectedMapId = FName(TEXT("M01"));

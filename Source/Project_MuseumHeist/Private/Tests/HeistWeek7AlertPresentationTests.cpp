@@ -9,6 +9,7 @@
 #include "Core/HeistHUD.h"
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
+#include "Core/HeistTypes.h"
 #include "Components/TextBlock.h"
 #include "Editor.h"
 #include "Engine/Engine.h"
@@ -20,7 +21,6 @@
 #include "UI/ViewModels/HeistHUDViewModel.h"
 #include "UI/Widgets/HeistForgeryWidget.h"
 #include "UI/Widgets/HeistHUDWidget.h"
-#include "UI/Widgets/HeistObjectAssemblyWidget.h"
 #include "World/Actors/Loot/HeistObjectDisplayCaseActor.h"
 #include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 
@@ -347,7 +347,7 @@ AHeistObjectDisplayCaseActor* FindObjectCase(const FName CaseId = NAME_None)
 	UWorld* ServerWorld = GetServerWorld();
 	for (TActorIterator<AHeistObjectDisplayCaseActor> It(ServerWorld); It; ++It)
 	{
-		if (!IsValid(*It) || !It->IsContractExhibitActive() || (!CaseId.IsNone() && It->GetObjectCaseId() != CaseId))
+		if (!IsValid(*It) || (!CaseId.IsNone() && It->GetObjectCaseId() != CaseId))
 		{
 			continue;
 		}
@@ -390,20 +390,44 @@ bool StartSurfaceSession(const TSharedRef<FAlertPresentationAutomationState>& St
 	return Forgery->TryBeginForgerySession(DisplayCase, 40.0f);
 }
 
-bool StartObjectSession(const TSharedRef<FAlertPresentationAutomationState>& State)
+bool ValidateDeferredObjectAssemblyRegression(const TSharedRef<FAlertPresentationAutomationState>& State)
 {
 	AHeistPlayerCharacter* Character = GetServerCharacterById(AssemblyOwnerPlayerId);
+	AHeistPlayerState* PlayerState = IsValid(Character) ? Character->GetPlayerState<AHeistPlayerState>() : nullptr;
+	UHeistActionComponent* Action = IsValid(Character) ? Character->GetActionComponent() : nullptr;
 	UHeistObjectAssemblyComponent* Assembly = IsValid(Character) ? Character->GetObjectAssemblyComponent() : nullptr;
 	AHeistObjectDisplayCaseActor* DisplayCase = FindObjectCase(State->ObjectCaseId);
-	if (!IsValid(Character) || !IsValid(Assembly) || Assembly->IsSessionActive() || !IsValid(DisplayCase))
+	if (HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled() || !IsValid(Character) || !IsValid(PlayerState) || !IsValid(Action) || !IsValid(Assembly) ||
+		!IsValid(DisplayCase) || DisplayCase->IsContractExhibitActive() || DisplayCase->GetAssemblyState() != EHeistObjectAssemblyState::Secured ||
+		DisplayCase->IsSessionLocked() || DisplayCase->HasCommittedAssemblyResult() || DisplayCase->HasReplicaPreview() || Assembly->IsSessionActive() ||
+		Assembly->HasPendingReplicaReview())
 	{
 		return false;
 	}
 
 	State->ObjectCaseId = DisplayCase->GetObjectCaseId();
-	Character->SetActorLocation(DisplayCase->GetActorLocation(), false, nullptr, ETeleportType::TeleportPhysics);
-	Character->ForceNetUpdate();
-	return Assembly->TryBeginAssemblySession(DisplayCase, 30.0f);
+	const EHeistObjectAssemblyState InitialCaseState = DisplayCase->GetAssemblyState();
+	const int32 InitialCaseRevision = DisplayCase->GetAssemblyRevision();
+	const int32 InitialSessionRevision = Assembly->GetSessionRevision();
+	const int32 InitialPayloadRevision = Assembly->GetPayloadValidationRevision();
+	const int32 InitialScoreRevision = Assembly->GetScoreRevision();
+
+	const bool bObservationRejected = !Action->TryBeginObservationRequest(DisplayCase);
+	const bool bCaseSessionRejected = !DisplayCase->TryBeginSession(PlayerState);
+	const bool bComponentBeginRejected = !Assembly->TryBeginAssemblySession(DisplayCase, 30.0f);
+	const bool bActivationRejected = !DisplayCase->SetContractExhibitActive(true);
+	const bool bTransitionRejected = !DisplayCase->TryTransitionToAssemblyState(EHeistObjectAssemblyState::Observed);
+
+	const AHeistPlayerController* OwnerController = GetOwningControllerById(AssemblyOwnerPlayerId);
+	const AHeistPlayerCharacter* OwnerCharacter = IsValid(OwnerController) ? OwnerController->GetPawn<AHeistPlayerCharacter>() : nullptr;
+	const UHeistObjectAssemblyComponent* OwnerAssembly = IsValid(OwnerCharacter) ? OwnerCharacter->GetObjectAssemblyComponent() : nullptr;
+	return bObservationRejected && bCaseSessionRejected && bComponentBeginRejected && bActivationRejected && bTransitionRejected &&
+		!Action->IsObservationCastActive() && !Assembly->IsSessionActive() && !Assembly->HasPendingReplicaReview() && Assembly->GetActiveDisplayCase() == nullptr &&
+		Assembly->GetSessionRevision() == InitialSessionRevision && Assembly->GetPayloadValidationRevision() == InitialPayloadRevision &&
+		Assembly->GetScoreRevision() == InitialScoreRevision && !DisplayCase->IsContractExhibitActive() && DisplayCase->GetAssemblyState() == InitialCaseState &&
+		DisplayCase->GetAssemblyRevision() == InitialCaseRevision && !DisplayCase->IsSessionLocked() && !DisplayCase->HasCommittedAssemblyResult() &&
+		!DisplayCase->HasReplicaPreview() && IsValid(OwnerController) && OwnerController->GetLocalInputMode() == EHeistInputMode::Gameplay &&
+		OwnerController->IsLocalInputModeContractSatisfied() && IsValid(OwnerAssembly) && !OwnerAssembly->IsSessionActive();
 }
 
 bool IsSurfaceSessionPresentationReady()
@@ -421,21 +445,6 @@ bool IsSurfaceSessionPresentationReady()
 		Widget->GetWidgetFromName(TEXT("ForgeryLockdownCountdownText")) == nullptr;
 }
 
-bool IsObjectSessionPresentationReady()
-{
-	const AHeistPlayerCharacter* ServerCharacter = GetServerCharacterById(AssemblyOwnerPlayerId);
-	const UHeistObjectAssemblyComponent* ServerAssembly = IsValid(ServerCharacter) ? ServerCharacter->GetObjectAssemblyComponent() : nullptr;
-	const AHeistPlayerController* OwnerController = GetOwningControllerById(AssemblyOwnerPlayerId);
-	const AHeistPlayerCharacter* OwnerCharacter = IsValid(OwnerController) ? OwnerController->GetPawn<AHeistPlayerCharacter>() : nullptr;
-	const UHeistObjectAssemblyComponent* OwnerAssembly = IsValid(OwnerCharacter) ? OwnerCharacter->GetObjectAssemblyComponent() : nullptr;
-	const AHeistHUD* HUD = IsValid(OwnerController) ? OwnerController->GetHUD<AHeistHUD>() : nullptr;
-	const UHeistObjectAssemblyWidget* Widget = IsValid(HUD) ? HUD->GetObjectAssemblyWidget() : nullptr;
-	return IsValid(ServerAssembly) && ServerAssembly->IsSessionActive() && IsValid(OwnerAssembly) && OwnerAssembly->IsSessionActive() && IsValid(OwnerController) &&
-		OwnerController->GetLocalInputMode() == EHeistInputMode::Forgery && OwnerController->IsLocalInputModeContractSatisfied() && IsValid(Widget) &&
-		Widget->IsWidgetPresentationVisible() && Widget->IsOwnerOnlyContractSatisfied() && Widget->GetWidgetFromName(TEXT("AssemblyAlertWarningText")) == nullptr &&
-		Widget->GetWidgetFromName(TEXT("AssemblyLockdownCountdownText")) == nullptr;
-}
-
 bool IsSurfaceSessionClosedForReason(const FName ExpectedCleanupReason)
 {
 	const AHeistPlayerCharacter* ServerCharacter = GetServerCharacterById(SurfaceOwnerPlayerId);
@@ -447,22 +456,6 @@ bool IsSurfaceSessionClosedForReason(const FName ExpectedCleanupReason)
 	const UHeistForgeryWidget* Widget = IsValid(HUD) ? HUD->GetForgeryWidget() : nullptr;
 	return IsValid(ServerForgery) && !ServerForgery->IsSessionActive() && ServerForgery->GetLastCleanupReason() == ExpectedCleanupReason && IsValid(OwnerForgery) &&
 		!OwnerForgery->IsSessionActive() && IsValid(OwnerController) &&
-		OwnerController->GetLocalInputMode() == EHeistInputMode::Gameplay && OwnerController->IsLocalInputModeContractSatisfied() && !OwnerController->bShowMouseCursor &&
-		!OwnerController->IsMoveInputIgnored() && !OwnerController->IsLookInputIgnored() && IsValid(Widget) && !Widget->IsWidgetPresentationVisible() &&
-		Widget->IsAlertWarningContractSatisfied();
-}
-
-bool IsObjectSessionClosedForReason(const FName ExpectedCleanupReason)
-{
-	const AHeistPlayerCharacter* ServerCharacter = GetServerCharacterById(AssemblyOwnerPlayerId);
-	const UHeistObjectAssemblyComponent* ServerAssembly = IsValid(ServerCharacter) ? ServerCharacter->GetObjectAssemblyComponent() : nullptr;
-	const AHeistPlayerController* OwnerController = GetOwningControllerById(AssemblyOwnerPlayerId);
-	const AHeistPlayerCharacter* OwnerCharacter = IsValid(OwnerController) ? OwnerController->GetPawn<AHeistPlayerCharacter>() : nullptr;
-	const UHeistObjectAssemblyComponent* OwnerAssembly = IsValid(OwnerCharacter) ? OwnerCharacter->GetObjectAssemblyComponent() : nullptr;
-	const AHeistHUD* HUD = IsValid(OwnerController) ? OwnerController->GetHUD<AHeistHUD>() : nullptr;
-	const UHeistObjectAssemblyWidget* Widget = IsValid(HUD) ? HUD->GetObjectAssemblyWidget() : nullptr;
-	return IsValid(ServerAssembly) && !ServerAssembly->IsSessionActive() && ServerAssembly->GetLastCleanupReason() == ExpectedCleanupReason && IsValid(OwnerAssembly) &&
-		!OwnerAssembly->IsSessionActive() && IsValid(OwnerController) &&
 		OwnerController->GetLocalInputMode() == EHeistInputMode::Gameplay && OwnerController->IsLocalInputModeContractSatisfied() && !OwnerController->bShowMouseCursor &&
 		!OwnerController->IsMoveInputIgnored() && !OwnerController->IsLookInputIgnored() && IsValid(Widget) && !Widget->IsWidgetPresentationVisible() &&
 		Widget->IsAlertWarningContractSatisfied();
@@ -696,21 +689,20 @@ bool EnqueueFourPlayerAlertScenario(FAutomationTestBase* Test)
 	Test->AddCommand(new FAlertWaitCommand(Test, State, TEXT("Surface cleanup restores Gameplay input"),
 		[]() { return IsSurfaceSessionClosedForReason(FName(TEXT("W7AlertPresentationCleanup"))); }, 10.0));
 
-	Test->AddCommand(new FAlertActionCommand(Test, State, TEXT("start Player 2 Object Assembly session at Quiet"), [State]() { return StartObjectSession(State); }));
-	Test->AddCommand(new FAlertWaitCommand(Test, State, TEXT("Player 2 Object Assembly owner-only presentation"), []() { return IsObjectSessionPresentationReady(); }, 10.0));
+	Test->AddCommand(new FAlertActionCommand(Test, State, TEXT("Object Assembly is FeatureDisabled at Quiet and leaves authority state unchanged"),
+		[State]() { return ValidateDeferredObjectAssemblyRegression(State); }));
 	EnqueueAlertStage(Test, State, EHeistAlertLevel::Suspicious, 60.0f, TEXT("ObjectSuspicious"), TEXT("Alert 1 Object Suspicious"));
-	Test->AddCommand(new FAlertWaitCommand(Test, State, TEXT("Object Assembly remains active at Suspicious"), []() { return IsObjectSessionPresentationReady(); }, 5.0));
+	Test->AddCommand(new FAlertActionCommand(Test, State, TEXT("Object Assembly remains FeatureDisabled at Suspicious"),
+		[State]() { return ValidateDeferredObjectAssemblyRegression(State); }));
 	EnqueueAlertStage(Test, State, EHeistAlertLevel::Searching, 60.0f, TEXT("ObjectSearching"), TEXT("Alert 2 Object Searching"));
-	Test->AddCommand(new FAlertWaitCommand(Test, State, TEXT("Object Assembly remains active at Searching"), []() { return IsObjectSessionPresentationReady(); }, 5.0));
+	Test->AddCommand(new FAlertActionCommand(Test, State, TEXT("Object Assembly remains FeatureDisabled at Searching"),
+		[State]() { return ValidateDeferredObjectAssemblyRegression(State); }));
 	EnqueueAlertStage(Test, State, EHeistAlertLevel::Alarmed, 60.0f, TEXT("ObjectAlarmed"), TEXT("Alert 3 Object Alarmed countdown"));
-	Test->AddCommand(new FAlertWaitCommand(Test, State, TEXT("Object Assembly closes only at Alarmed and Gameplay input restores"),
-		[]() { return IsObjectSessionClosedForReason(FName(TEXT("AlertDanger"))); }, 10.0));
+	Test->AddCommand(new FAlertActionCommand(Test, State, TEXT("Object Assembly stays FeatureDisabled at Alarmed without a Case lock"),
+		[State]() { return ValidateDeferredObjectAssemblyRegression(State); }));
 	EnqueueAlertStage(Test, State, EHeistAlertLevel::Quiet, 0.0f, TEXT("ObjectReset"), TEXT("Alert 0 Object reset"));
-	Test->AddCommand(new FAlertActionCommand(Test, State, TEXT("re-enter Player 2 Object Assembly after Alarmed close"), [State]() { return StartObjectSession(State); }));
-	Test->AddCommand(new FAlertWaitCommand(Test, State, TEXT("Player 2 Object Assembly re-entry presentation"), []() { return IsObjectSessionPresentationReady(); }, 10.0));
-	Test->AddCommand(new FAlertActionCommand(Test, State, TEXT("clean re-entered Object Assembly session"), []() { return CancelActiveSessionsForCleanup(); }));
-	Test->AddCommand(new FAlertWaitCommand(Test, State, TEXT("Object Assembly cleanup restores Gameplay input"),
-		[]() { return IsObjectSessionClosedForReason(FName(TEXT("W7AlertPresentationCleanup"))); }, 10.0));
+	Test->AddCommand(new FAlertActionCommand(Test, State, TEXT("Object Assembly remains FeatureDisabled after Alert reset"),
+		[State]() { return ValidateDeferredObjectAssemblyRegression(State); }));
 
 	EnqueueAlertStage(Test, State, EHeistAlertLevel::Lockdown, 0.0f, TEXT("Lockdown"), TEXT("Alert 4 Lockdown presentation"));
 	Test->AddCommand(new FAlertActionCommand(Test, State, TEXT("record W7-009 four-player evidence"), [Test, State]()
@@ -721,8 +713,9 @@ bool EnqueueFourPlayerAlertScenario(FAutomationTestBase* Test)
 		}
 		Test->AddInfo(FString::Printf(
 			TEXT("W7-009 4P alert gate: Peers=4 Levels=0>1>2>3>4 ExactKoreanBanner=true ExactColor=true AlarmedCountdown=true "
-				 "SuspenseRequestedAndPlaying=Alert1+2 AlarmRequestedAndPlaying=Alert3+4 SurfaceOwner=1 AssemblyOwner=2 "
-				 "SuspiciousSearchingSessionRetained=true AlarmedForceClose=true AlarmedReentryRejected=true NoCaseLockLeak=true GameplayInputRestored=true Reentry=true "
+				 "SuspenseRequestedAndPlaying=Alert1+2 AlarmRequestedAndPlaying=Alert3+4 SurfaceOwner=1 ObjectAssemblyDeferred=true "
+				 "SurfaceSuspiciousSearchingSessionRetained=true SurfaceAlarmedForceClose=true AlarmedReentryRejected=true DeferredObjectStateUnchanged=true "
+				 "NoCaseLockLeak=true GameplayInputRestored=true SurfaceReentry=true "
 				 "WorkScreenAlertDetailTextAbsent=true AudioAssetsAssigned=true AudioAssetsLooping=true PlaybackStateVerified=true Result=PASS | %s"),
 			*DescribeAlertStage(State)));
 		return true;

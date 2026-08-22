@@ -49,6 +49,12 @@ void UHeistObjectAssemblyComponent::EndPlay(const EEndPlayReason::Type EndPlayRe
 
 bool UHeistObjectAssemblyComponent::TryBeginAssemblySession(AHeistObjectDisplayCaseActor* TargetDisplayCase, const float DurationSeconds)
 {
+	if (!HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled())
+	{
+		BroadcastSessionSnapshot(FName(TEXT("SessionBegin")), FName(TEXT("FeatureDisabled")), false);
+		return false;
+	}
+
 	AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
 	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter) ? HeistCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
 	if (!IsValid(HeistCharacter) || !HeistCharacter->HasAuthority() || !IsValid(HeistPlayerState) || !IsValid(TargetDisplayCase))
@@ -216,6 +222,12 @@ bool UHeistObjectAssemblyComponent::TrySubmitAssemblyPayload(const TArray<FHeist
 
 bool UHeistObjectAssemblyComponent::TryConfirmReplicaSwap()
 {
+	if (!HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled())
+	{
+		BroadcastSessionSnapshot(FName(TEXT("ServerReplicaSwap")), FName(TEXT("FeatureDisabled")), false);
+		return false;
+	}
+
 	AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
 	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter) ? HeistCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
 	AHeistObjectDisplayCaseActor* TargetDisplayCase = ActiveDisplayCase.Get();
@@ -246,6 +258,12 @@ bool UHeistObjectAssemblyComponent::TryConfirmReplicaSwap()
 
 bool UHeistObjectAssemblyComponent::TryRestartAssemblyFromPreview()
 {
+	if (!HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled())
+	{
+		BroadcastSessionSnapshot(FName(TEXT("ServerReassemble")), FName(TEXT("FeatureDisabled")), false);
+		return false;
+	}
+
 	AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
 	AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter) ? HeistCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
 	AHeistObjectDisplayCaseActor* TargetDisplayCase = ActiveDisplayCase.Get();
@@ -312,6 +330,11 @@ bool UHeistObjectAssemblyComponent::IsSessionActive() const
 
 bool UHeistObjectAssemblyComponent::HasPendingReplicaReview() const
 {
+	if (!HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled())
+	{
+		return false;
+	}
+
 	const AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
 	const AHeistObjectDisplayCaseActor* TargetDisplayCase = ActiveDisplayCase.Get();
 	return !bSessionActive && bHasAuthoritativeResult && !AuthoritativeResult.bReplicaPlaced && IsValid(HeistCharacter) && IsValid(TargetDisplayCase) &&
@@ -481,6 +504,11 @@ bool UHeistObjectAssemblyComponent::TryPrepareTemplate(AHeistObjectDisplayCaseAc
 bool UHeistObjectAssemblyComponent::ValidateActiveSession(FName& OutRejectReason) const
 {
 	OutRejectReason = NAME_None;
+	if (!HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled())
+	{
+		OutRejectReason = FName(TEXT("FeatureDisabled"));
+		return false;
+	}
 	const AHeistPlayerCharacter* HeistCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
 	const AHeistPlayerState* HeistPlayerState = IsValid(HeistCharacter) ? HeistCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
 	if (!IsValid(HeistCharacter) || !HeistCharacter->HasAuthority() || !IsValid(HeistPlayerState) || !bSessionActive || !IsValid(ActiveDisplayCase.Get()))
