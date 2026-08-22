@@ -30,6 +30,40 @@ NO_TASK_REQUIRED
 
 ## Active Queue
 
+### LOCAL-20260822-02 — W7 Asset-Deferred Gate Completion
+
+- State: `RECONCILED`
+- Created / Reconciled: `2026-08-22 KST`
+- Notion Relations: [`W7`](https://app.notion.com/p/39a1d26a5dfb81948e6ce351c3abb413), [`TASK-W7-004`](https://app.notion.com/p/3ad1d26a5dfb81ceaf09d805b0435905), [`TASK-W7-005`](https://app.notion.com/p/3ad1d26a5dfb812c80d5f37473fed9ab), [`TASK-W7-006`](https://app.notion.com/p/3ad1d26a5dfb81beb59afc7f124fca89), [`TEST-W7-006`](https://app.notion.com/p/3be1d26a5dfb8137ab1cf7482289c24a)
+- Live Status: `TASK-W7-004~006 완료`, `W7 Gate=Pass`, `TEST-W7-006=Pass` 쓰기·재조회 확인
+
+#### User Decision
+
+- 현재 확보하지 않은 최종 Niagara/Sound·Remote Stun/Carry/Heavy Pose 에셋은 W7 완료 Gate에서 제외한다.
+- 기존 C++/복제/HUD/Nameplate/후처리/Audio 호출/Footstep/Input/Cleanup과 상태별 Asset 슬롯을 에셋 비의존 완료 기준으로 사용한다.
+- 최종 에셋은 추후 별도 결합하며 W7 Task와 Gate를 다시 열지 않는다.
+
+#### Evidence
+
+```text
+Editor Development Build   PASS / Target up to date / Result Succeeded
+W7 Regression              PASS / 11 of 11 / Success 9 / WithWarnings 2 / Failed 0 / NotRun 0
+W7 Regression Report       Saved/Automation/W7-AssetDeferred-FinalRegression/index.json
+W7 Regression Log          Saved/Logs/W7-AssetDeferred-FinalRegression.log
+M01 2P TwoRuns             PASS / Success / WithWarnings 1 / Failed 0 / 2 Runs / Lobby Clean Reset
+M01 2P Report              Saved/Automation/W7-AssetDeferred-Final2P/index.json
+M01 2P Log                 Saved/Logs/W7-AssetDeferred-Final2P.log
+Notion                     TASK-W7-004~006 완료 / TEST-W7-006 Pass / W7 Gate Pass / live re-fetch PASS
+```
+
+#### Warning Boundary
+
+- 자동화 경고는 v1에서 의도적으로 비활성인 Object Assembly 접근 거부, 임시 PIE의 Recast 부재, 범위 밖 Noise 거부와 렌더 CVar 진단이다.
+- 자동화 Error와 Failed Test는 0이다.
+- NullRHI/D3D12 자동화는 최종 에셋의 시각 품질과 주관적 청음을 증명하지 않는다. 해당 검증은 실제 에셋 결합 시 수행한다.
+
+---
+
 ### LOCAL-20260818-01 — Rev14 Public Release Scope Rebaseline
 
 - State: `READY_TO_SYNC`
@@ -37,7 +71,7 @@ NO_TASK_REQUIRED
 - Last Updated: `2026-08-22 KST`
 - Reconciled: `2026-08-18 KST` (문서 재기준화 범위만 해당)
 - Notion Relations: [`W8`](https://app.notion.com/p/39a1d26a5dfb81ffad91ff21b194e505), [`TASK-W8-008`](https://app.notion.com/p/3c01d26a5dfb81a68634d1d63f15e791), `TASK-W8-001~007`
-- Sync Boundary: 2026-08-18 문서 재기준화는 반영됐지만, 2026-08-22 C++ 기반 구현과 정적 검토 증거는 Notion에 쓰지 않았다. `TASK-W8-008`은 라이브 재조회 기준 `미시작`이며 어떤 Task도 완료·PASS로 올리지 않았다.
+- Sync Boundary: 2026-08-18 문서 재기준화는 반영됐지만, 2026-08-22 C++ 기반 구현·Editor Build·Security Blueprint Shell·Release Map 배치·2인 자동화 증거는 Notion에 쓰지 않았다. `TASK-W8-001~008`은 라이브 재조회 기준 `미시작`이며 어떤 Task도 완료·PASS로 올리지 않았다.
 
 #### User Request / Decision
 
@@ -55,8 +89,10 @@ NO_TASK_REQUIRED
 - InGame 원격 Client Quit은 Pawn 파괴 전 Loose Loot를 월드에 복구하고, 기존 Logout 경로에서 Original·Case Lock·Security Hold를 해제한 뒤 Contract Carried Value를 다시 계산하도록 연결했다.
 - 기존 자동화의 Public Solo Start와 Object Assembly 성공 기대는 Rev14의 거부·불변 경계로 재정렬했다.
 - Pending Start Count와 Local Hold 입력 초기화, GameState Delegate 해제, Loot 제거 후처리, 중복 Timer Handle 무효화와 Laser 기본 상태 복구를 같은 파일 안의 private helper/delegation으로 정리했다. 파일 분할·새 Manager·공개 Gameplay 계약 변경은 하지 않았다.
-- Widget, `.uasset`, `.umap`, Blueprint Shell, Map, DataAsset 인스턴스와 Release Asset은 변경하지 않았다.
-- 이번 C++ 상태는 정적 검토 결과이며 Build·Automation·PIE·Cook 증거가 아니다.
+- Widget은 변경하지 않았다. M01/M02/M03 Release Map에는 맵별 Painting Case 6개, Loose Loot 5개, CCTV/Laser/Hold Button 각 1개, Guard 1개, Waypoint 4개와 NavData를 배치·연결했다. Artifact DataTable에는 맵별 Target/Optional Surface Row와 Loose Loot Row를 추가했다.
+- `/Game/Blueprints/World/Actors/Security`에 `BP_SecurityCamera`, `BP_LaserBarrier`, `BP_SecurityHoldButton` 공용 Shell을 추가했다. C++ Parent와 상속 Component를 유지하고 EventGraph는 비워 둔다. 기본 Mesh 가시성과 Button 눌림 Scale은 C++ `ApplyPresentation()`이 갱신한다.
+- StarterContent Mesh/Material은 배치와 동작 확인용 임시 표현이다. 최종 Security VFX/Audio 슬롯은 비워 두고 W8 Presentation 작업이 교체·할당한다.
+- 사용자가 세 EventGraph를 제거한 상태를 유지하고 기본 표현을 C++로 이동했다. 현재 Revision은 Full Editor Build를 통과했고, 세 Blueprint도 Unreal Editor에서 재컴파일·저장 후 `BS_UP_TO_DATE`, Data Validation 3/3 유효를 확인했다. `SandBoxMap` Security 자동화에 이어 M01/M02/M03의 실제 배치 CCTV 탐지 1회→Alert/근처 Guard 조사 1회, 단일 Holder, 비-Holder Laser 통과, Release/Rearm과 2인 Contract 두 판을 자동 검증했다. Cook은 실행하지 않았다.
 - 기존 W6/W7의 Solo/1P, Surface/Object, 1/2/3/4P 자동화·PIE·Package 증거는 당시 구현의 역사적 증거로 보존한다. Rev14 현재 계약으로 바꿔 쓰거나 삭제하지 않는다.
 
 #### Required Follow-up Evidence
@@ -65,21 +101,35 @@ NO_TASK_REQUIRED
 2. Public Lobby 2~4 Start Validation과 InGame 2→1 Snapshot 불변은 C++에 반영했다. 현재 Revision Build와 Host/Client 멀티플레이 증거가 필요하다.
 3. Release Contract의 Eligible Forgery Type을 Surface/Drawing으로 제한하고 Object Runtime Entry·Result 경로를 차단했다. User Widget 개편이 끝난 뒤 Player-facing Object 경로 0을 별도로 대조한다.
 4. Release Map Object Case 배치/참조 0과 Final Cook의 Object Assembly 전용 Hard Reference/Package 0을 검증하되, Deferred 소스·데이터·Shell은 보존한다.
-5. CCTV 서버 Detection/Alert와 Laser Hold/Release/Stun·Arrest·Disconnect 기반은 C++에 반영했다. 비-Widget Blueprint Shell·맵 연결·독립 Egress, 2→1 softlock 방지와 이탈 Player의 Loose Loot/Original 월드 복구를 Host/Client에서 검증한다.
+5. CCTV 서버 Detection/Alert와 Laser Hold/Release/Stun·Arrest·Disconnect 기반 및 비-Widget Blueprint Shell을 반영했다. `SandBoxMap` 및 M01/M02/M03의 `Hold.LinkedLaserBarrier → Laser`, `Laser.ProtectedPaintingCase → FourStar Painting Case`, CCTV 사건당 Alert+경비 조사 1회, 단일 Holder와 Release/Rearm은 2인 Listen Server 자동화에서 PASS했다. 3인/4인 밸런스, 실제 홀더 Disconnect, 독립 Egress와 이탈 Player의 Loose Loot/Original 월드 복구는 후속 Host/Client 검증으로 남긴다.
 6. 실제 사용할 CCTV/Laser Mesh·Material·VFX·Audio·Icon을 추가하면 `Docs/SHIPPING_ASSET_MANIFEST.md`와 Notice/라이선스 근거를 같이 갱신한다.
 7. 마지막 Player Disconnect의 `Logout()` Outcome 판정이 `PlayerArray` 제거보다 먼저 실행되는 순서를 별도 기능 이슈로 재현·수정한다. 이번 보일러플레이트 정리에서는 동작 변경을 피하기 위해 미수정했다.
 
 #### Verification
 
 ```text
-Local Handoff Docs              UPDATED / 2026-08-22 C++ boundary and resume state
-C++ Rule/Authority/Replication  UPDATED / static review only
+Local Handoff Docs              UPDATED / 2026-08-22 Sandbox and public-path results
+C++ Rule/Authority/Replication  UPDATED / Full Editor Build PASS
 Duplicate / Boilerplate Cleanup APPLIED / same-file / git diff --check PASS
-Automation Expectations         UPDATED / Rev14 rebaseline / not run
-Widget / uasset / umap          NOT CHANGED
-Blueprint Shell / Map / Assets  NOT CHANGED / NOT VERIFIED
-Editor Build / PIE / Cook       NOT RUN
-Notion Read                     PASS / TASK-W8-008 미시작
+Automation Expectations         UPDATED / Rev14 rebaseline
+Security Blueprint Shell        PASS / 3 assets / EventGraph removed by user / Compile+Save+Validation 3/3
+Temporary Security Visuals      ASSIGNED / StarterContent / final VFX+Audio pending
+Widget                          NOT CHANGED
+Release umap                    UPDATED / M01·M02·M03 instances and references
+SandBoxMap Test Instances       PASS / CCTV + Hold→Laser→FourStar Painting
+Release Map Instance Links      PASS / 3 maps / direct references valid
+Release Map NavData             PASS / M01·M02·M03 rebuilt and saved
+Full Editor Link                PASS / UnrealEditor-Project_MuseumHeist.dll
+Build Evidence                  Saved/Logs/W8-ReleaseGameplay-FullBuild.log
+Blueprint Evidence              Saved/Logs/W8-SecurityBlueprint-CompileSave.log
+Security Policy Automation      PASS / Saved/Automation/W8-SecurityIncidentPolicy
+SandBox 2P Listen Server        PASS WITH WARNINGS / RecastNavMesh absent + EOS offline / gameplay errors 0
+M01·M02·M03 2P TwoRuns          PASS WITH WARNINGS / placed security and contract assertions pass
+3P / 4P Release Gate            NOT RUN / user multiplayer and balance evidence required
+Holder Actual Disconnect        NOT RUN / code path only, real disconnect evidence required
+Visual / Audio PIE              NOT RUN / temporary presentation assets only
+Cook                            NOT RUN
+Notion Read                     PASS / TASK-W8-001~008 미시작
 Notion Write                    NOT DONE / not requested
 Historical Evidence             PRESERVED / not reclassified
 ```
@@ -163,7 +213,7 @@ Notion Write            NOT DONE
   - [`TASK-W7-005`](https://app.notion.com/p/3ad1d26a5dfb812c80d5f37473fed9ab)
   - [`TASK-W7-006`](https://app.notion.com/p/3ad1d26a5dfb81beb59afc7f124fca89)
   - [`TEST-W7-006`](https://app.notion.com/p/3be1d26a5dfb8137ab1cf7482289c24a)
-- Last Live Status: `진행중` / 2026-08-18 상태 FX·전환 Audio 슬롯 증거 동기화 재조회 PASS
+- Last Live Status: `완료` / 2026-08-22 에셋 비의존 완료 기준 재검증, TASK-W7-004~006 완료 및 W7 Gate Pass 재조회 확인
 
 #### Applied Work
 
@@ -195,10 +245,10 @@ W7 Status FX Regression      PASS / 11 of 11 / Failed 0 / Saved/Automation/W7-St
 
 #### Status Boundary
 
-- `TASK-W7-005`는 로컬 구현·자동화와 Notion 증거 동기화를 완료했지만 2P 실제 화면·청음 확인 전에는 완료로 단정하지 않는다.
 - Character/AnimBP 베이스 결정 차단은 UE5 Manny와 `ABP_Unarmed` 연결로 해소했다.
-- 상태 VFX·전환 Sound 슬롯과 Lifecycle은 완료했지만 실제 Asset은 아직 비어 있다.
-- 실제 Niagara/Sound Asset, `BP_ApplyCrewStatusPresentation` Remote Stun/Carry/Heavy Pose Layer와 2P 실화면·청음 증거가 없으므로 `TASK-W7-004`·`006`은 진행중을 유지한다.
+- 상태 VFX·전환 Sound 슬롯과 Lifecycle은 완료했고 미할당 슬롯은 정상 No-op이다.
+- 2026-08-22 사용자 결정으로 실제 Niagara/Sound와 Remote Stun/Carry/Heavy Pose를 W7 Gate에서 제외했다.
+- 현재 작업 트리의 W7 11/11과 M01 2P TwoRuns 재검증 후 `TASK-W7-004~006 완료`, `W7 Gate=Pass`를 Notion에 반영·재조회했다.
 
 ---
 

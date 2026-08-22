@@ -2,6 +2,7 @@
 
 #include "Character/HeistPlayerCharacter.h"
 #include "Components/SphereComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Core/HeistGameMode.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistPlayerState.h"
@@ -20,6 +21,10 @@ void AHeistSecurityHoldButtonActor::BeginPlay()
 {
 	Super::BeginPlay();
 
+	if (IsValid(VisualMeshComponent))
+	{
+		ReleasedVisualScale = VisualMeshComponent->GetRelativeScale3D();
+	}
 	InteractionCollision->OnComponentEndOverlap.AddDynamic(this, &AHeistSecurityHoldButtonActor::HandleInteractionAreaEndOverlap);
 	if (HasAuthority())
 	{
@@ -263,6 +268,15 @@ void AHeistSecurityHoldButtonActor::ApplyPresentation()
 	bAppliedBypassActive = bBypassActive;
 	AppliedHoldRevision = HoldRevision;
 	AppliedHolderPlayerState = HolderPlayerState;
+	if (IsValid(VisualMeshComponent))
+	{
+		FVector ResolvedVisualScale = ReleasedVisualScale;
+		if (IsHoldActive())
+		{
+			ResolvedVisualScale.Z *= FMath::Clamp(HeldVisualScaleZMultiplier, 0.01f, 1.0f);
+		}
+		VisualMeshComponent->SetRelativeScale3D(ResolvedVisualScale);
+	}
 	BP_ApplySecurityHoldButtonPresentation(IsHoldActive(), bBypassActive, GetHoldProgress(), HoldRevision, HolderPlayerState.Get());
 }
 

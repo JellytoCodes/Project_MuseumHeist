@@ -248,6 +248,10 @@ void AHeistLaserBarrierActor::ApplyPresentation()
 	bAppliedRearmGraceActive = bRearmGraceActive;
 	AppliedSecurityRevision = SecurityRevision;
 	AppliedBypassHolderPlayerState = BypassHolderPlayerState;
+	if (IsValid(BeamVisualComponent))
+	{
+		BeamVisualComponent->SetVisibility(IsBeamActive(), true);
+	}
 	BP_ApplyLaserBarrierPresentation(bBarrierEnabled, IsBeamActive(), bRearmGraceActive, SecurityRevision, BypassHolderPlayerState.Get());
 }
 

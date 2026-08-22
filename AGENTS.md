@@ -1252,8 +1252,13 @@ Actor Blueprint 분리는 Component Topology, Collision Contract, Authority Stat
 | Object Assembly Display Case (Deferred) | `AHeistObjectDisplayCaseActor` | `BP_ObjectDisplayCase` | `CaseId` / `ArtifactId` → `DT_ArtifactData` + `DT_ObjectAssemblyTemplate` + `DT_ObjectAssemblyPart` |
 | Shared Extraction | `AHeistVentActor` | `BP_Vent` | Map Instance Identity와 공통 Vent Presentation |
 | Loot Spawn Point | `AHeistLootSpawnPoint` | `BP_LootSpawnPoint` | Spawn Category / Zone / Transform |
+| Security Camera | `AHeistSecurityCameraActor` | `BP_SecurityCamera` | Map Instance Coverage/Transform과 공통 Security Presentation Asset 슬롯 |
+| Cooperative Laser Barrier | `AHeistLaserBarrierActor` | `BP_LaserBarrier` | Map Instance Painting Link/Transform과 공통 Security Presentation Asset 슬롯 |
+| Cooperative Laser Hold Button | `AHeistSecurityHoldButtonActor` | `BP_SecurityHoldButton` | Map Instance Laser Link/Transform과 공통 Security Presentation Asset 슬롯 |
 
 - Loose Loot와 Dropped Original은 외형이 유사해도 서버 상태와 회수 Transaction이 다르므로 서로 다른 공용 Shell을 유지한다.
+- CCTV, Laser Barrier와 Hold Button은 Sensor Volume, Trip Trigger, Hold Interaction이라는 Component/Collision/State/Interaction 계약이 서로 다르므로 각각 하나의 공용 Shell을 유지하며 외형별 Variant Blueprint를 만들지 않는다.
+- `BP_SecurityCamera`, `BP_LaserBarrier`, `BP_SecurityHoldButton`은 Class Defaults의 Mesh/Material/VFX/Audio 할당만 담당한다. 기본 Visibility와 Hold Button Transform은 C++ `ApplyPresentation()`이 소유하며, 실제 Animation/VFX/Audio 요구가 확정되기 전 이 세 Shell의 EventGraph를 구현하지 않는다.
 - Dropped Original은 작품별 원본 Mesh/Material을 재현하지 않는다. v1 Drawing Artifact는 작은 액자 공용 외형을 사용하며 Assembly Artifact의 작은 조각상 외형은 Deferred 호환용으로만 보존한다.
 - `DT_ArtifactData`는 Dropped Original을 위한 개별 Mesh, Material 또는 Actor Class를 소유하지 않는다. 작품 차이는 DisplayName과 ItemGrade로 식별한다.
 - Dropped Original의 등급은 공용 Shell의 Grade Material 색상과 UI의 별/등급 Text를 함께 사용한다. Required Target 표시는 등급과 별도의 Text/Icon으로 구분한다.

@@ -102,6 +102,10 @@ class PROJECT_MUSEUMHEIST_API AHeistSecurityHoldButtonActor : public AHeistInter
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Security|Hold Button|Assets")
 	TObjectPtr<UNiagaraSystem> HoldCompletedEffect;
 
+	/** Multiplies the Blueprint-authored resting mesh scale on Z while a player owns the hold. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Security|Hold Button|Presentation", meta = (ClampMin = "0.01", ClampMax = "1.0"))
+	float HeldVisualScaleZMultiplier = 0.72f;
+
 #pragma endregion
 
 #pragma region Replication
@@ -133,6 +137,7 @@ class PROJECT_MUSEUMHEIST_API AHeistSecurityHoldButtonActor : public AHeistInter
 	TWeakObjectPtr<AHeistGameState> BoundGameState;
 	FTimerHandle HoldCompletionTimerHandle;
 	FTimerHandle HolderValidationTimerHandle;
+	FVector ReleasedVisualScale = FVector::OneVector;
 	bool bAppliedBypassActive = false;
 	int32 AppliedHoldRevision = INDEX_NONE;
 	TWeakObjectPtr<AHeistPlayerState> AppliedHolderPlayerState;

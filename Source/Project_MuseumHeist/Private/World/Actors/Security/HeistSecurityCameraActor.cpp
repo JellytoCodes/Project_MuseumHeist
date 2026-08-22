@@ -332,6 +332,10 @@ void AHeistSecurityCameraActor::ApplyPresentation()
 	AppliedDetectionRevision = ConfirmedDetectionRevision;
 	AppliedDetectedPlayerState = LastDetectedPlayerState;
 	AppliedSweepEpochServerTime = SweepEpochServerTime;
+	if (IsValid(VisualMeshComponent))
+	{
+		VisualMeshComponent->SetVisibility(bCameraEnabled, true);
+	}
 	BP_ApplySecurityCameraPresentation(bCameraEnabled, bTrackingAnyTarget, GetDetectionProgress(), ConfirmedDetectionRevision, LastDetectedPlayerState.Get());
 }
 

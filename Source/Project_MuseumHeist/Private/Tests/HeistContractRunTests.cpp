@@ -39,6 +39,9 @@
 #include "World/Actors/Loot/HeistObjectDisplayCaseActor.h"
 #include "World/Actors/Loot/HeistLootActor.h"
 #include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
+#include "World/Actors/Security/HeistLaserBarrierActor.h"
+#include "World/Actors/Security/HeistSecurityCameraActor.h"
+#include "World/Actors/Security/HeistSecurityHoldButtonActor.h"
 
 namespace HeistContractRunTest
 {
@@ -50,13 +53,20 @@ struct FHeistContractRunAutomationState
 	bool bOriginalRunUnderOneProcess = true;
 	int32 OriginalClientCount = 1;
 	int32 PlayerCount = 1;
+	FName MapId = FName(TEXT("M01"));
 	FHeistContractSnapshot FirstRunContract;
 	TArray<FName> SelectedObjectCaseIds;
+	FName SelectedHighValuePaintingCaseId = NAME_None;
 	FName SelectedLootActorName = NAME_None;
 	FName SelectedLootRowId = NAME_None;
 	int32 SelectedLootValue = 0;
+	int32 SecurityDetectionRevisionBaseline = 0;
+	int32 SecurityIncidentCountBaseline = 0;
+	int32 SecurityInvestigationCountBaseline = 0;
 	TMap<TWeakObjectPtr<AHeistPlayerCharacter>, int32> CrewStatusFootstepBaselines;
 };
+
+bool AreContractRunWorldsReady(int32 PlayerCount, EHeistMatchPhase ExpectedPhase, bool bRequirePawn);
 
 TArray<UWorld*> GetContractRunPIEWorlds()
 {
@@ -232,6 +242,260 @@ AHeistLootActor* FindLootActor(UWorld* World, const FName ActorName)
 		}
 	}
 	return nullptr;
+}
+
+template <typename TActorType>
+TActorType* FindOnlyActorOfType(UWorld* World)
+{
+	if (!IsValid(World))
+	{
+		return nullptr;
+	}
+
+	TActorType* Result = nullptr;
+	for (TActorIterator<TActorType> It(World); It; ++It)
+	{
+		if (!IsValid(*It))
+		{
+			continue;
+		}
+		if (IsValid(Result))
+		{
+			return nullptr;
+		}
+		Result = *It;
+	}
+	return Result;
+}
+
+bool TeleportServerPlayerToLocation(const int32 PlayerId, const FVector& Destination)
+{
+	AHeistPlayerCharacter* Character = GetServerCharacterById(PlayerId);
+	if (!IsValid(Character) || Destination.ContainsNaN())
+	{
+		return false;
+	}
+	if (UCharacterMovementComponent* MovementComponent = Character->GetCharacterMovement())
+	{
+		MovementComponent->StopMovementImmediately();
+	}
+	Character->SetActorLocation(Destination, false, nullptr, ETeleportType::TeleportPhysics);
+	Character->ForceNetUpdate();
+	return FVector::DistSquared(Character->GetActorLocation(), Destination) <= 1.0f;
+}
+
+bool BootstrapSandBoxSecurityContract()
+{
+	UWorld* ServerWorld = GetContractRunServerWorld();
+	AHeistGameState* GameState = IsValid(ServerWorld) ? ServerWorld->GetGameState<AHeistGameState>() : nullptr;
+	AHeistPaintingDisplayCaseActor* RequiredCase = FindPaintingCase(ServerWorld, FName(TEXT("Case_M01_Target")));
+	AHeistPaintingDisplayCaseActor* ProtectedCase = FindPaintingCase(ServerWorld, FName(TEXT("Case_W8_SecurityTest_Laser")));
+	AHeistLaserBarrierActor* Laser = FindOnlyActorOfType<AHeistLaserBarrierActor>(ServerWorld);
+	if (!IsValid(GameState) || !IsValid(RequiredCase) || !IsValid(ProtectedCase) || !IsValid(Laser) ||
+		Laser->GetProtectedPaintingCase() != ProtectedCase)
+	{
+		return false;
+	}
+
+	if (!GameState->IsContractInitialized() &&
+		!GameState->InitializeContractSnapshot(FName(TEXT("Contract_MuseumSwap_01")), FName(TEXT("M01")), 8008, 1,
+			RequiredCase->GetTargetArtifactId(), RequiredCase->GetDisplayCaseId(), 4000))
+	{
+		return false;
+	}
+
+	const FHeistContractSnapshot Contract = GameState->GetContractSnapshot();
+	if (Contract.ContractStartPlayerCount != 1 || Contract.RequiredTargetCaseId != RequiredCase->GetDisplayCaseId() ||
+		!ProtectedCase->SetContractExhibitActive(true))
+	{
+		return false;
+	}
+
+	Laser->ForceRestoreDefaultState();
+	int32 EligibleGuardCount = 0;
+	for (TActorIterator<AHeistGuardCharacter> It(ServerWorld); It; ++It)
+	{
+		AHeistGuardCharacter* Guard = *It;
+		AHeistGuardAIController* GuardController = IsValid(Guard) ? Cast<AHeistGuardAIController>(Guard->GetController()) : nullptr;
+		UHeistGuardStateComponent* GuardState = IsValid(Guard) ? Guard->GetGuardStateComponent() : nullptr;
+		if (!IsValid(GuardController) || !IsValid(GuardState) || !Guard->IsDifficultyActive())
+		{
+			continue;
+		}
+		GuardController->SetAutomaticSightEnabled(false);
+		GuardState->EnterPatrol();
+		EligibleGuardCount += GuardController->CanAcceptSecurityInvestigation() ? 1 : 0;
+	}
+	return EligibleGuardCount > 0 && Laser->IsBarrierEnabled() && Laser->IsBeamActive();
+}
+
+bool IsSandBoxSecurityPreflightReady()
+{
+	UWorld* ServerWorld = GetContractRunServerWorld();
+	if (!AreContractRunWorldsReady(2, EHeistMatchPhase::InGame, true) ||
+		!IsValid(FindOnlyActorOfType<AHeistSecurityCameraActor>(ServerWorld)) || !IsValid(FindOnlyActorOfType<AHeistLaserBarrierActor>(ServerWorld)) ||
+		!IsValid(FindOnlyActorOfType<AHeistSecurityHoldButtonActor>(ServerWorld)) ||
+		!IsValid(FindPaintingCase(ServerWorld, FName(TEXT("Case_W8_SecurityTest_Laser")))))
+	{
+		return false;
+	}
+
+	for (TActorIterator<AHeistGuardCharacter> It(ServerWorld); It; ++It)
+	{
+		const AHeistGuardCharacter* Guard = *It;
+		if (IsValid(Guard) && Guard->IsDifficultyActive() && IsValid(Cast<AHeistGuardAIController>(Guard->GetController())) &&
+			IsValid(Guard->GetGuardStateComponent()))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool IsSandBoxSecurityRuntimeReplicated()
+{
+	const TArray<UWorld*> Worlds = GetContractRunPIEWorlds();
+	if (Worlds.Num() != 2)
+	{
+		return false;
+	}
+
+	for (UWorld* World : Worlds)
+	{
+		const AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
+		const AHeistSecurityCameraActor* Camera = FindOnlyActorOfType<AHeistSecurityCameraActor>(World);
+		const AHeistLaserBarrierActor* Laser = FindOnlyActorOfType<AHeistLaserBarrierActor>(World);
+		const AHeistSecurityHoldButtonActor* Button = FindOnlyActorOfType<AHeistSecurityHoldButtonActor>(World);
+		const AHeistPaintingDisplayCaseActor* ProtectedCase = FindPaintingCase(World, FName(TEXT("Case_W8_SecurityTest_Laser")));
+		if (!IsValid(GameState) || !GameState->IsContractInitialized() || GameState->GetContractSnapshot().ContractStartPlayerCount != 1 ||
+			!IsValid(Camera) || !Camera->IsCameraEnabled() || !IsValid(Laser) || !Laser->IsBarrierEnabled() || !Laser->IsBeamActive() ||
+			!IsValid(Button) || !IsValid(ProtectedCase) || !ProtectedCase->IsContractExhibitActive() ||
+			Laser->GetProtectedPaintingCase() != ProtectedCase || Button->GetLinkedLaserBarrier() != Laser)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+bool IsCameraDetectionReplicated(const int32 ExpectedRevision, const int32 ExpectedPlayerId)
+{
+	for (UWorld* World : GetContractRunPIEWorlds())
+	{
+		const AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
+		const AHeistSecurityCameraActor* Camera = FindOnlyActorOfType<AHeistSecurityCameraActor>(World);
+		const AHeistPlayerState* DetectedPlayerState = IsValid(Camera) ? Camera->GetLastDetectedPlayerState() : nullptr;
+		if (!IsValid(GameState) || GameState->GetAlertLevel() < EHeistAlertLevel::Suspicious || !IsValid(Camera) ||
+			Camera->GetDetectionRevision() != ExpectedRevision || !IsValid(DetectedPlayerState) || DetectedPlayerState->HeistPlayerId != ExpectedPlayerId)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+bool IsSecurityHoldStateReplicated(const bool bExpectedHolding, const bool bExpectedBypass, const bool bExpectedBeamActive)
+{
+	for (UWorld* World : GetContractRunPIEWorlds())
+	{
+		const AHeistSecurityHoldButtonActor* Button = FindOnlyActorOfType<AHeistSecurityHoldButtonActor>(World);
+		const AHeistLaserBarrierActor* Laser = FindOnlyActorOfType<AHeistLaserBarrierActor>(World);
+		const AHeistPlayerState* Holder = IsValid(Button) ? Button->GetHolderPlayerState() : nullptr;
+		if (!IsValid(Button) || !IsValid(Laser) || Button->IsHoldActive() != bExpectedHolding || Button->IsBypassActive() != bExpectedBypass ||
+			Laser->IsBeamActive() != bExpectedBeamActive || (bExpectedHolding && (!IsValid(Holder) || Holder->HeistPlayerId != 1)) ||
+			(!bExpectedHolding && IsValid(Holder)))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+bool IsLaserRearmingReplicated()
+{
+	for (UWorld* World : GetContractRunPIEWorlds())
+	{
+		const AHeistSecurityHoldButtonActor* Button = FindOnlyActorOfType<AHeistSecurityHoldButtonActor>(World);
+		const AHeistLaserBarrierActor* Laser = FindOnlyActorOfType<AHeistLaserBarrierActor>(World);
+		if (!IsValid(Button) || Button->IsHoldActive() || Button->IsBypassActive() || !IsValid(Laser) || Laser->IsBeamActive() || !Laser->IsRearming())
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+bool PrepareReleaseSecurityInteraction(const TSharedRef<FHeistContractRunAutomationState>& State)
+{
+	UWorld* ServerWorld = GetContractRunServerWorld();
+	const AHeistSecurityCameraActor* Camera = FindOnlyActorOfType<AHeistSecurityCameraActor>(ServerWorld);
+	const AHeistGameMode* GameMode = IsValid(ServerWorld) ? ServerWorld->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	if (!IsValid(Camera) || !IsValid(GameMode))
+	{
+		return false;
+	}
+
+	int32 ActiveGuardCount = 0;
+	for (TActorIterator<AHeistGuardCharacter> It(ServerWorld); It; ++It)
+	{
+		AHeistGuardCharacter* Guard = *It;
+		AHeistGuardAIController* GuardController = IsValid(Guard) ? Cast<AHeistGuardAIController>(Guard->GetController()) : nullptr;
+		UHeistGuardStateComponent* GuardState = IsValid(Guard) ? Guard->GetGuardStateComponent() : nullptr;
+		if (!IsValid(GuardController) || !IsValid(GuardState) || !Guard->IsDifficultyActive())
+		{
+			continue;
+		}
+		GuardController->SetAutomaticSightEnabled(false);
+		GuardState->EnterPatrol();
+		++ActiveGuardCount;
+	}
+
+	State->SecurityDetectionRevisionBaseline = Camera->GetDetectionRevision();
+	State->SecurityIncidentCountBaseline = GameMode->GetProcessedSecurityIncidentCount();
+	State->SecurityInvestigationCountBaseline = GameMode->GetProcessedGuardInvestigationCount();
+	return ActiveGuardCount > 0;
+}
+
+bool IsReleaseSecurityDetectionReady(const TSharedRef<FHeistContractRunAutomationState>& State)
+{
+	UWorld* ServerWorld = GetContractRunServerWorld();
+	const AHeistGameMode* GameMode = IsValid(ServerWorld) ? ServerWorld->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	return IsValid(GameMode) && GameMode->GetProcessedSecurityIncidentCount() == State->SecurityIncidentCountBaseline + 1 &&
+		GameMode->GetProcessedGuardInvestigationCount() == State->SecurityInvestigationCountBaseline + 1 &&
+		IsCameraDetectionReplicated(State->SecurityDetectionRevisionBaseline + 1, 2);
+}
+
+bool IsReleaseSecurityIncidentOneShot(const TSharedRef<FHeistContractRunAutomationState>& State)
+{
+	UWorld* ServerWorld = GetContractRunServerWorld();
+	const AHeistGameMode* GameMode = IsValid(ServerWorld) ? ServerWorld->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	const AHeistSecurityCameraActor* Camera = FindOnlyActorOfType<AHeistSecurityCameraActor>(ServerWorld);
+	return IsValid(GameMode) && IsValid(Camera) && Camera->GetDetectionRevision() == State->SecurityDetectionRevisionBaseline + 1 &&
+		GameMode->GetProcessedSecurityIncidentCount() == State->SecurityIncidentCountBaseline + 1 &&
+		GameMode->GetProcessedGuardInvestigationCount() == State->SecurityInvestigationCountBaseline + 1;
+}
+
+bool ResetReleaseSecurityAfterCamera()
+{
+	UWorld* ServerWorld = GetContractRunServerWorld();
+	AHeistGameState* GameState = IsValid(ServerWorld) ? ServerWorld->GetGameState<AHeistGameState>() : nullptr;
+	if (!IsValid(GameState) || !GameState->SetAlertSnapshot(EHeistAlertLevel::Quiet, 0.0f, FName(TEXT("W8ReleaseCameraReset"))))
+	{
+		return false;
+	}
+
+	bool bFoundActiveGuard = false;
+	for (TActorIterator<AHeistGuardCharacter> It(ServerWorld); It; ++It)
+	{
+		AHeistGuardCharacter* Guard = *It;
+		UHeistGuardStateComponent* GuardState = IsValid(Guard) && Guard->IsDifficultyActive() ? Guard->GetGuardStateComponent() : nullptr;
+		if (IsValid(GuardState))
+		{
+			GuardState->EnterPatrol();
+			bFoundActiveGuard = true;
+		}
+	}
+	return bFoundActiveGuard;
 }
 
 bool IsOwningLootActorRelevant(const int32 PlayerId, const FName ActorName)
@@ -784,7 +1048,7 @@ bool CaptureAndValidateGameplayPreflight(FAutomationTestBase* Test, const TShare
 		return false;
 	}
 	const FHeistContractSnapshot ServerContract = ServerGameState->GetContractSnapshot();
-	if (!ServerContract.IsInitialized() || ServerContract.MapId != FName(TEXT("M01")) || ServerContract.Outcome != EHeistContractOutcome::None ||
+	if (!ServerContract.IsInitialized() || ServerContract.MapId != State->MapId || ServerContract.Outcome != EHeistContractOutcome::None ||
 		ServerContract.CarriedValue != 0 || ServerContract.SecuredValue != 0 || ServerContract.bRequiredTargetSecured)
 	{
 		return false;
@@ -875,6 +1139,50 @@ bool CaptureAndValidateGameplayPreflight(FAutomationTestBase* Test, const TShare
 	{
 		return false;
 	}
+	AHeistPaintingDisplayCaseActor* SelectedHighValuePaintingCase = nullptr;
+	for (TActorIterator<AHeistPaintingDisplayCaseActor> It(ServerWorld); It; ++It)
+	{
+		AHeistPaintingDisplayCaseActor* Candidate = *It;
+		if (!IsValid(Candidate) || !Candidate->IsContractExhibitActive() || Candidate->GetDisplayCaseId() == ServerContract.RequiredTargetCaseId)
+		{
+			continue;
+		}
+		FHeistArtifactDataRow ArtifactDefinition;
+		if (!GameMode->TryGetArtifactDefinition(Candidate->GetTargetArtifactId(), ArtifactDefinition) || ArtifactDefinition.ItemGrade != EHeistLootGrade::FourStar)
+		{
+			continue;
+		}
+		if (IsValid(SelectedHighValuePaintingCase))
+		{
+			return false;
+		}
+		SelectedHighValuePaintingCase = Candidate;
+	}
+	AHeistLaserBarrierActor* ReleaseLaser = nullptr;
+	AHeistSecurityHoldButtonActor* ReleaseHoldButton = nullptr;
+	int32 ReleaseLaserCount = 0;
+	int32 ReleaseHoldButtonCount = 0;
+	int32 ReleaseCameraCount = 0;
+	for (TActorIterator<AHeistLaserBarrierActor> It(ServerWorld); It; ++It)
+	{
+		ReleaseLaser = *It;
+		++ReleaseLaserCount;
+	}
+	for (TActorIterator<AHeistSecurityHoldButtonActor> It(ServerWorld); It; ++It)
+	{
+		ReleaseHoldButton = *It;
+		++ReleaseHoldButtonCount;
+	}
+	for (TActorIterator<AHeistSecurityCameraActor> It(ServerWorld); It; ++It)
+	{
+		++ReleaseCameraCount;
+	}
+	if (!IsValid(SelectedHighValuePaintingCase) || ReleaseLaserCount != 1 || ReleaseHoldButtonCount != 1 || ReleaseCameraCount != 1 ||
+		!IsValid(ReleaseLaser) || !IsValid(ReleaseHoldButton) || ReleaseLaser->GetProtectedPaintingCase() != SelectedHighValuePaintingCase ||
+		ReleaseHoldButton->GetLinkedLaserBarrier() != ReleaseLaser)
+	{
+		return false;
+	}
 	AHeistLootActor* SelectedLootActor = nullptr;
 	FHeistItemDataRow SelectedItemDefinition;
 	FHeistLootDataRow SelectedLootDefinition;
@@ -944,6 +1252,7 @@ bool CaptureAndValidateGameplayPreflight(FAutomationTestBase* Test, const TShare
 	}
 
 	State->SelectedObjectCaseIds = MoveTemp(ObjectCaseIds);
+	State->SelectedHighValuePaintingCaseId = SelectedHighValuePaintingCase->GetDisplayCaseId();
 	State->SelectedLootActorName = SelectedLootActor->GetFName();
 	State->SelectedLootRowId = SelectedLootActor->GetLootRowId();
 	State->SelectedLootValue = SelectedLootDefinition.ScoreValue;
@@ -956,6 +1265,8 @@ bool CaptureAndValidateGameplayPreflight(FAutomationTestBase* Test, const TShare
 		State->SelectedObjectCaseIds.Num(), ServerContract.LootValueQuota));
 	Test->AddInfo(FString::Printf(TEXT("W6-010 loose-loot fixture: Run=%d Actor=%s Row=%s Value=%d Grid=%dx%d Replication=PASS"), RunIndex,
 		*State->SelectedLootActorName.ToString(), *State->SelectedLootRowId.ToString(), State->SelectedLootValue, SelectedItemDefinition.GridSize.X, SelectedItemDefinition.GridSize.Y));
+	Test->AddInfo(FString::Printf(TEXT("W8 release security fixture: Run=%d Map=%s FourStarCase=%s CCTV=1 Laser=1 HoldButton=1 Links=PASS Active=PASS"), RunIndex,
+		*State->MapId.ToString(), *State->SelectedHighValuePaintingCaseId.ToString()));
 	Test->AddInfo(FString::Printf(
 		TEXT("W7-001 guard balance: Run=%d Players=%d AuthoredAlive=%d SupplementalAlive=%d GuardMultiplier=%.2f DetectionMultiplier=%.2f InspectionMultiplier=%.2f "
 			 "ExpectedActive=%d ActualActive=%d DetectionGrace=%.3f InspectionDuration=%.3f AuthorityRuntimeProfile=PASS"),
@@ -965,7 +1276,7 @@ bool CaptureAndValidateGameplayPreflight(FAutomationTestBase* Test, const TShare
 	return true;
 }
 
-bool IsSurfaceSessionReady(const int32 PlayerId, const FName CaseId)
+bool IsSurfaceSessionReady(const int32 PlayerId, const FName CaseId, const EHeistCrewStatus ExpectedCrewStatus = EHeistCrewStatus::Forging)
 {
 	const AHeistPlayerCharacter* ServerCharacter = GetServerCharacterById(PlayerId);
 	const UHeistForgeryComponent* ServerForgery = IsValid(ServerCharacter) ? ServerCharacter->GetForgeryComponent() : nullptr;
@@ -973,7 +1284,7 @@ bool IsSurfaceSessionReady(const int32 PlayerId, const FName CaseId)
 	const UHeistForgeryComponent* OwningForgery = IsValid(OwningCharacter) ? OwningCharacter->GetForgeryComponent() : nullptr;
 	return IsValid(ServerForgery) && ServerForgery->IsSessionActive() && ServerForgery->GetActiveDisplayCase() == FindPaintingCase(GetContractRunServerWorld(), CaseId) &&
 		IsValid(OwningForgery) && OwningForgery->IsSessionActive() && OwningForgery->GetSessionRevision() == ServerForgery->GetSessionRevision() &&
-		OwningForgery->GetActiveTemplateId() == ServerForgery->GetActiveTemplateId() && IsCrewStatusReplicated(PlayerId, EHeistCrewStatus::Forging);
+		OwningForgery->GetActiveTemplateId() == ServerForgery->GetActiveTemplateId() && IsCrewStatusReplicated(PlayerId, ExpectedCrewStatus);
 }
 
 bool SubmitReferenceMatchedSurface(const int32 PlayerId)
@@ -1100,7 +1411,7 @@ int32 CountVisibleResultWidgets(UWorld* World)
 
 bool IsCompletedResultReady(const TSharedRef<FHeistContractRunAutomationState>& State)
 {
-	constexpr int32 ExpectedRecoveredOriginalCount = 1;
+	constexpr int32 ExpectedRecoveredOriginalCount = 2;
 	for (UWorld* World : GetContractRunPIEWorlds())
 	{
 		const AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
@@ -1184,7 +1495,7 @@ FString DescribeCompletedResultReadiness(const TSharedRef<FHeistContractRunAutom
 			RecoveredOriginalCount));
 	}
 	return FString::Printf(TEXT("W6-010 Result readiness diagnostic: ExpectedPlayers=%d ExpectedRecoveredOriginals=%d %s"), State->PlayerCount,
-		1, *FString::Join(WorldStates, TEXT(" | ")));
+		2, *FString::Join(WorldStates, TEXT(" | ")));
 }
 
 bool IsLobbyStateClean(const int32 PlayerCount)
@@ -1256,7 +1567,37 @@ FString DescribeLobbyStateClean(const int32 PlayerCount)
 		*FString::Join(WorldStates, TEXT(" | ")));
 }
 
-bool IsGameplayContentReplicated(const int32 PlayerCount)
+bool IsReleaseSecurityContentReady(UWorld* World)
+{
+	if (!IsValid(World))
+	{
+		return false;
+	}
+	AHeistLaserBarrierActor* Laser = nullptr;
+	AHeistSecurityHoldButtonActor* HoldButton = nullptr;
+	int32 LaserCount = 0;
+	int32 HoldButtonCount = 0;
+	int32 CameraCount = 0;
+	for (TActorIterator<AHeistLaserBarrierActor> It(World); It; ++It)
+	{
+		Laser = *It;
+		++LaserCount;
+	}
+	for (TActorIterator<AHeistSecurityHoldButtonActor> It(World); It; ++It)
+	{
+		HoldButton = *It;
+		++HoldButtonCount;
+	}
+	for (TActorIterator<AHeistSecurityCameraActor> It(World); It; ++It)
+	{
+		++CameraCount;
+	}
+	const AHeistPaintingDisplayCaseActor* ProtectedCase = IsValid(Laser) ? Laser->GetProtectedPaintingCase() : nullptr;
+	return LaserCount == 1 && HoldButtonCount == 1 && CameraCount == 1 && IsValid(Laser) && IsValid(HoldButton) && IsValid(ProtectedCase) &&
+		ProtectedCase->IsContractExhibitActive() && HoldButton->GetLinkedLaserBarrier() == Laser && Laser->IsBarrierEnabled() && Laser->IsBeamActive();
+}
+
+bool IsGameplayContentReplicated(const int32 PlayerCount, const FName ExpectedMapId)
 {
 	UWorld* ServerWorld = GetContractRunServerWorld();
 	const AHeistGameMode* GameMode = IsValid(ServerWorld) ? ServerWorld->GetAuthGameMode<AHeistGameMode>() : nullptr;
@@ -1287,7 +1628,7 @@ bool IsGameplayContentReplicated(const int32 PlayerCount)
 	{
 		const AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
 		if (!IsValid(GameState) || GameState->GetMatchPhase() != EHeistMatchPhase::InGame || !GameState->GetContractSnapshot().IsInitialized() ||
-			GameState->GetContractSnapshot().MapId != FName(TEXT("M01")) || !(GameState->GetContractSnapshot() == ServerContract))
+			GameState->GetContractSnapshot().MapId != ExpectedMapId || !(GameState->GetContractSnapshot() == ServerContract) || !IsReleaseSecurityContentReady(World))
 		{
 			return false;
 		}
@@ -1338,9 +1679,9 @@ FString DescribeGameplayContentReplication(const int32 PlayerCount)
 		IsValid(GameMode) && GameMode->IsPlayerCountGuardScalingApplied() ? TEXT("true") : TEXT("false"), *FString::Join(WorldStates, TEXT(" | ")));
 }
 
-bool IsGameplayResetClean(const int32 PlayerCount)
+bool IsGameplayResetClean(const int32 PlayerCount, const FName ExpectedMapId)
 {
-	if (!IsGameplayContentReplicated(PlayerCount))
+	if (!IsGameplayContentReplicated(PlayerCount, ExpectedMapId))
 	{
 		return false;
 	}
@@ -1553,13 +1894,13 @@ class FHeistContractRunActionCommand final : public IAutomationLatentCommand
 
 void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeistContractRunAutomationState>& State, const int32 RunIndex)
 {
-	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d M01 worlds and replicated content"), RunIndex), [State]()
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d %s worlds and replicated content"), RunIndex, *State->MapId.ToString()), [State]()
 	{
-		return AreContractRunWorldsReady(State->PlayerCount, EHeistMatchPhase::InGame, true) && IsGameplayContentReplicated(State->PlayerCount);
+		return AreContractRunWorldsReady(State->PlayerCount, EHeistMatchPhase::InGame, true) && IsGameplayContentReplicated(State->PlayerCount, State->MapId);
 	}, 75.0, [State]() { return DescribeGameplayContentReplication(State->PlayerCount); }));
 	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d clean gameplay state"), RunIndex), [State]()
 	{
-		return IsGameplayResetClean(State->PlayerCount);
+		return IsGameplayResetClean(State->PlayerCount, State->MapId);
 	}, 30.0));
 	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("capture run %d spawn and contract snapshot"), RunIndex), [Test, State, RunIndex]()
 	{
@@ -1585,6 +1926,145 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 	{
 		return AreWeek7MapContractsReady(false);
 	}, 10.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d prepare placed CCTV/Laser/Hold interaction"), RunIndex), [State, RunIndex]()
+	{
+		return State->PlayerCount != 2 || RunIndex != 1 || PrepareReleaseSecurityInteraction(State);
+	}));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d move player 2 into placed CCTV coverage"), RunIndex), [State, RunIndex]()
+	{
+		if (State->PlayerCount != 2 || RunIndex != 1)
+		{
+			return true;
+		}
+		const AHeistSecurityCameraActor* Camera = FindOnlyActorOfType<AHeistSecurityCameraActor>(GetContractRunServerWorld());
+		if (!IsValid(Camera))
+		{
+			return false;
+		}
+		FVector DetectionLocation = Camera->GetActorLocation() + Camera->GetActorForwardVector() * 600.0f;
+		DetectionLocation.Z = 88.0f;
+		return TeleportServerPlayerToLocation(2, DetectionLocation);
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d placed CCTV detection, Alert, and Guard investigation"), RunIndex), [State, RunIndex]()
+	{
+		return State->PlayerCount != 2 || RunIndex != 1 || IsReleaseSecurityDetectionReady(State);
+	}, 12.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d move player 2 behind placed CCTV"), RunIndex), [State, RunIndex]()
+	{
+		if (State->PlayerCount != 2 || RunIndex != 1)
+		{
+			return true;
+		}
+		const AHeistSecurityCameraActor* Camera = FindOnlyActorOfType<AHeistSecurityCameraActor>(GetContractRunServerWorld());
+		if (!IsValid(Camera))
+		{
+			return false;
+		}
+		FVector SafeLocation = Camera->GetActorLocation() - Camera->GetActorForwardVector() * 800.0f;
+		SafeLocation.Z = 88.0f;
+		return TeleportServerPlayerToLocation(2, SafeLocation);
+	}));
+	Test->AddCommand(new FWaitLatentCommand(0.75f));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d placed CCTV incident remains one-shot"), RunIndex), [State, RunIndex]()
+	{
+		return State->PlayerCount != 2 || RunIndex != 1 || IsReleaseSecurityIncidentOneShot(State);
+	}));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d reset Alert after placed CCTV evidence"), RunIndex), [State, RunIndex]()
+	{
+		return State->PlayerCount != 2 || RunIndex != 1 || ResetReleaseSecurityAfterCamera();
+	}));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d move player 1 into placed Hold Button interaction"), RunIndex), [State, RunIndex]()
+	{
+		return State->PlayerCount != 2 || RunIndex != 1 ||
+			TeleportServerPlayerIntoInteraction(1, FindOnlyActorOfType<AHeistSecurityHoldButtonActor>(GetContractRunServerWorld()));
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d player 1 overlaps placed Hold Button"), RunIndex), [State, RunIndex]()
+	{
+		return State->PlayerCount != 2 || RunIndex != 1 ||
+			IsServerPlayerOverlapping(1, FindOnlyActorOfType<AHeistSecurityHoldButtonActor>(GetContractRunServerWorld()));
+	}, 5.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d begin placed Security Hold through server RPC"), RunIndex), [State, RunIndex]()
+	{
+		if (State->PlayerCount != 2 || RunIndex != 1)
+		{
+			return true;
+		}
+		AHeistPlayerController* OwningController = GetOwningPlayerControllerById(1);
+		AHeistSecurityHoldButtonActor* LocalButton = IsValid(OwningController)
+			? FindOnlyActorOfType<AHeistSecurityHoldButtonActor>(OwningController->GetWorld())
+			: nullptr;
+		return InvokeSingleActorServerRPC(OwningController, FName(TEXT("Server_RequestBeginSecurityHold")), LocalButton);
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d placed Hold bypasses Laser on both peers"), RunIndex), [State, RunIndex]()
+	{
+		return State->PlayerCount != 2 || RunIndex != 1 || IsSecurityHoldStateReplicated(true, true, false);
+	}, 8.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d non-holder crosses placed bypassed Laser"), RunIndex), [State, RunIndex]()
+	{
+		if (State->PlayerCount != 2 || RunIndex != 1)
+		{
+			return true;
+		}
+		const AHeistLaserBarrierActor* Laser = FindOnlyActorOfType<AHeistLaserBarrierActor>(GetContractRunServerWorld());
+		return IsValid(Laser) && TeleportServerPlayerToLocation(2, Laser->GetActorLocation());
+	}));
+	Test->AddCommand(new FWaitLatentCommand(0.75f));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d bypassed crossing adds no security incident"), RunIndex), [State, RunIndex]()
+	{
+		if (State->PlayerCount != 2 || RunIndex != 1)
+		{
+			return true;
+		}
+		UWorld* ServerWorld = GetContractRunServerWorld();
+		const AHeistGameMode* GameMode = IsValid(ServerWorld) ? ServerWorld->GetAuthGameMode<AHeistGameMode>() : nullptr;
+		return IsValid(GameMode) && IsSecurityHoldStateReplicated(true, true, false) &&
+			GameMode->GetProcessedSecurityIncidentCount() == State->SecurityIncidentCountBaseline + 1 &&
+			GameMode->GetProcessedGuardInvestigationCount() == State->SecurityInvestigationCountBaseline + 1;
+	}));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d clear non-holder before placed Hold release"), RunIndex), [State, RunIndex]()
+	{
+		if (State->PlayerCount != 2 || RunIndex != 1)
+		{
+			return true;
+		}
+		const AHeistSecurityCameraActor* Camera = FindOnlyActorOfType<AHeistSecurityCameraActor>(GetContractRunServerWorld());
+		if (!IsValid(Camera))
+		{
+			return false;
+		}
+		FVector SafeLocation = Camera->GetActorLocation() - Camera->GetActorForwardVector() * 800.0f;
+		SafeLocation.Z = 88.0f;
+		return TeleportServerPlayerToLocation(2, SafeLocation);
+	}));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d release placed Security Hold through server RPC"), RunIndex), [State, RunIndex]()
+	{
+		if (State->PlayerCount != 2 || RunIndex != 1)
+		{
+			return true;
+		}
+		AHeistPlayerController* OwningController = GetOwningPlayerControllerById(1);
+		AHeistSecurityHoldButtonActor* LocalButton = IsValid(OwningController)
+			? FindOnlyActorOfType<AHeistSecurityHoldButtonActor>(OwningController->GetWorld())
+			: nullptr;
+		return InvokeSingleActorServerRPC(OwningController, FName(TEXT("Server_RequestEndSecurityHold")), LocalButton);
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d placed Laser rearm grace replicated"), RunIndex), [State, RunIndex]()
+	{
+		return State->PlayerCount != 2 || RunIndex != 1 || IsLaserRearmingReplicated();
+	}, 3.0));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d placed Laser fully rearmed"), RunIndex), [State, RunIndex]()
+	{
+		return State->PlayerCount != 2 || RunIndex != 1 || IsSecurityHoldStateReplicated(false, false, true);
+	}, 5.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d record placed security evidence"), RunIndex), [Test, State, RunIndex]()
+	{
+		if (State->PlayerCount == 2 && RunIndex == 1)
+		{
+			Test->AddInfo(FString::Printf(TEXT("W8 placed security: Map=%s Players=2 CCTVDetections=1 SecurityIncidents=1 GuardInvestigations=1 Holder=Player1 BypassedCrossing=PASS Rearmed=PASS Result=PASS"),
+				*State->MapId.ToString()));
+		}
+		return true;
+	}));
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d request Sprint on every peer"), RunIndex), []()
 	{
 		return RequestWeek7Sprint(true);
@@ -1825,6 +2305,66 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 		return IsValid(DisplayCase) && DisplayCase->GetDisplayCaseState() == EHeistDisplayCaseState::OriginalRemoved && HasOriginalForCase(1, DisplayCase) &&
 			IsCrewStatusReplicated(1, EHeistCrewStatus::CarryingOriginal);
 	}, 15.0));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d first Surface session fully cleared on owner"), RunIndex), []()
+	{
+		const AHeistPlayerCharacter* ServerCharacter = GetServerCharacterById(1);
+		const UHeistForgeryComponent* ServerForgery = IsValid(ServerCharacter) ? ServerCharacter->GetForgeryComponent() : nullptr;
+		const AHeistPlayerCharacter* OwningCharacter = GetOwningCharacterById(1);
+		const UHeistForgeryComponent* OwningForgery = IsValid(OwningCharacter) ? OwningCharacter->GetForgeryComponent() : nullptr;
+		return IsValid(ServerForgery) && IsValid(OwningForgery) && !ServerForgery->IsSessionActive() && !ServerForgery->HasPendingReplicaReview() &&
+			!OwningForgery->IsSessionActive() && !OwningForgery->HasPendingReplicaReview() && ServerForgery->GetActiveDisplayCase() == nullptr &&
+			OwningForgery->GetActiveDisplayCase() == nullptr && OwningForgery->GetSessionRevision() == ServerForgery->GetSessionRevision();
+	}, 10.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d move player 1 to active FourStar Surface case"), RunIndex), [State]()
+	{
+		return TeleportServerPlayerIntoInteraction(1, FindPaintingCase(GetContractRunServerWorld(), State->SelectedHighValuePaintingCaseId));
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d FourStar Surface overlap"), RunIndex), [State]()
+	{
+		return IsServerPlayerOverlapping(1, FindPaintingCase(GetContractRunServerWorld(), State->SelectedHighValuePaintingCaseId));
+	}, 10.0));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d FourStar Surface relevant to owning peer"), RunIndex), [State]()
+	{
+		return IsOwningPaintingCaseRelevant(1, State->SelectedHighValuePaintingCaseId);
+	}, 10.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d request FourStar Surface observation through server RPC"), RunIndex), [State]()
+	{
+		AHeistPlayerController* OwningPlayerController = GetOwningPlayerControllerById(1);
+		AHeistPaintingDisplayCaseActor* LocalDisplayCase = IsValid(OwningPlayerController)
+			? FindPaintingCase(OwningPlayerController->GetWorld(), State->SelectedHighValuePaintingCaseId)
+			: nullptr;
+		return InvokeSingleActorServerRPC(OwningPlayerController, FName(TEXT("Server_RequestObservation")), LocalDisplayCase);
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d owner FourStar Surface session"), RunIndex), [State]()
+	{
+		return IsSurfaceSessionReady(1, State->SelectedHighValuePaintingCaseId, EHeistCrewStatus::CarryingOriginal);
+	}, 15.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d submit generated FourStar Surface strokes"), RunIndex), []()
+	{
+		return SubmitReferenceMatchedSurface(1);
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d authoritative FourStar Surface quality 70+"), RunIndex), [State]()
+	{
+		return HasSurfaceReplicaPreview(1, State->SelectedHighValuePaintingCaseId);
+	}, 20.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d confirm FourStar Surface replica swap"), RunIndex), []()
+	{
+		AHeistPlayerController* PlayerController = GetOwningPlayerControllerById(1);
+		if (!IsValid(PlayerController))
+		{
+			return false;
+		}
+		PlayerController->RequestConfirmForgeryReplicaSwap();
+		return true;
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d FourStar Original carried and quota reached"), RunIndex), [State]()
+	{
+		const AHeistGameState* GameState = GetContractRunServerWorld()->GetGameState<AHeistGameState>();
+		const AHeistPaintingDisplayCaseActor* DisplayCase = FindPaintingCase(GetContractRunServerWorld(), State->SelectedHighValuePaintingCaseId);
+		return IsValid(GameState) && IsValid(DisplayCase) && DisplayCase->GetDisplayCaseState() == EHeistDisplayCaseState::OriginalRemoved &&
+			HasOriginalForCase(1, DisplayCase) && GameState->GetContractSnapshot().CarriedValue >= GameState->GetContractSnapshot().LootValueQuota &&
+			IsCrewStatusReplicated(1, EHeistCrewStatus::CarryingOriginal);
+	}, 15.0));
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d capture Original-carry footstep presentation baseline"), RunIndex), [State]()
 	{
 		return CaptureCrewStatusFootstepBaseline(State, 1);
@@ -1969,8 +2509,8 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 		{
 			RecoveredOriginalCount += PlayerResult.Contribution.ArtifactsRecovered;
 		}
-		constexpr int32 ExpectedRecoveredOriginalCount = 1;
-		Test->AddInfo(FString::Printf(TEXT("W6-010 run evidence: Run=%d Players=%d Surface=1 ObjectAssembly=FeatureDisabled Originals=%d/%d LooseLoot=%s LooseValue=%d Secured=%d Quota=%d RequiredSecured=%s Escaped=%d ResultWidgetsPerWorld=1 Outcome=%s Result=PASS"),
+		constexpr int32 ExpectedRecoveredOriginalCount = 2;
+		Test->AddInfo(FString::Printf(TEXT("W6-010 run evidence: Run=%d Players=%d Surface=2 ObjectAssembly=FeatureDisabled Originals=%d/%d LooseLoot=%s LooseValue=%d Secured=%d Quota=%d RequiredSecured=%s Escaped=%d ResultWidgetsPerWorld=1 Outcome=%s Result=PASS"),
 			RunIndex, State->PlayerCount, RecoveredOriginalCount, ExpectedRecoveredOriginalCount, *State->SelectedLootRowId.ToString(),
 			State->SelectedLootValue, Contract.SecuredValue, Contract.LootValueQuota, Contract.bRequiredTargetSecured ? TEXT("true") : TEXT("false"),
 			GameState->GetEscapedCrewCount(), *UEnum::GetValueAsString(Contract.Outcome)));
@@ -1978,10 +2518,11 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 	}));
 }
 
-bool EnqueueTwoRunContractScenario(FAutomationTestBase* Test, const int32 PlayerCount)
+bool EnqueueTwoRunContractScenario(FAutomationTestBase* Test, const int32 PlayerCount, const FName MapId)
 {
 	const TSharedRef<FHeistContractRunAutomationState> State = MakeShared<FHeistContractRunAutomationState>();
 	State->PlayerCount = PlayerCount;
+	State->MapId = MapId;
 	Test->AddCommand(new FEditorLoadMap(TEXT("/Game/Maps/TitleMenuMap")));
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("configure listen-server PIE"), [State]()
 	{
@@ -2032,23 +2573,23 @@ bool EnqueueTwoRunContractScenario(FAutomationTestBase* Test, const int32 Player
 
 	for (int32 RunIndex = 1; RunIndex <= 2; ++RunIndex)
 	{
-		Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("select M01 for run %d"), RunIndex), []()
+		Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("select %s for run %d"), *State->MapId.ToString(), RunIndex), [State]()
 		{
 			AHeistPlayerController* HostPlayerController = GetOwningPlayerControllerById(1);
 			if (!IsValid(HostPlayerController))
 			{
 				return false;
 			}
-			HostPlayerController->RequestSetLobbyMapSelection(FName(TEXT("M01")));
+			HostPlayerController->RequestSetLobbyMapSelection(State->MapId);
 			return true;
 		}));
-		Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("M01 selection for run %d"), RunIndex), []()
+		Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("%s selection for run %d"), *State->MapId.ToString(), RunIndex), [State]()
 		{
 			UWorld* ServerWorld = GetContractRunServerWorld();
 			const UHeistGameInstance* GameInstance = IsValid(ServerWorld) ? Cast<UHeistGameInstance>(ServerWorld->GetGameInstance()) : nullptr;
-			return IsValid(GameInstance) && GameInstance->GetSelectedMapId() == FName(TEXT("M01")) && !GameInstance->IsMapSelectionUpdatePending();
+			return IsValid(GameInstance) && GameInstance->GetSelectedMapId() == State->MapId && !GameInstance->IsMapSelectionUpdatePending();
 		}, 15.0));
-		Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("start M01 run %d"), RunIndex), []()
+		Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("start %s run %d"), *State->MapId.ToString(), RunIndex), []()
 		{
 			UWorld* ServerWorld = GetContractRunServerWorld();
 			UHeistGameInstance* GameInstance = IsValid(ServerWorld) ? Cast<UHeistGameInstance>(ServerWorld->GetGameInstance()) : nullptr;
@@ -2075,13 +2616,176 @@ bool EnqueueTwoRunContractScenario(FAutomationTestBase* Test, const int32 Player
 
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("record two-run PASS evidence"), [Test, State]()
 	{
-		Test->AddInfo(FString::Printf(TEXT("W6-010 two-run gate: Players=%d Map=M01 RunsCompleted=2 LobbyReturn=true SecondRunCleanReset=true AuthorityFlows=true Result=PASS"),
-			State->PlayerCount));
+		Test->AddInfo(FString::Printf(TEXT("W6-010 two-run gate: Players=%d Map=%s RunsCompleted=2 LobbyReturn=true SecondRunCleanReset=true AuthorityFlows=true Result=PASS"),
+			State->PlayerCount, *State->MapId.ToString()));
 		return true;
 	}));
 	Test->AddCommand(new FEndPlayMapCommand());
 	Test->AddCommand(new FWaitLatentCommand(1.0f));
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("restore editor play settings"), [State]()
+	{
+		if (!State->bCapturedPlaySettings)
+		{
+			return true;
+		}
+		ULevelEditorPlaySettings* PlaySettings = GetMutableDefault<ULevelEditorPlaySettings>();
+		if (!IsValid(PlaySettings))
+		{
+			return false;
+		}
+		PlaySettings->SetRunUnderOneProcess(State->bOriginalRunUnderOneProcess);
+		PlaySettings->SetPlayNetMode(State->OriginalNetMode);
+		PlaySettings->SetPlayNumberOfClients(State->OriginalClientCount);
+		return true;
+	}, true));
+	return true;
+}
+
+bool EnqueueSandBoxSecurityCooperationScenario(FAutomationTestBase* Test)
+{
+	const TSharedRef<FHeistContractRunAutomationState> State = MakeShared<FHeistContractRunAutomationState>();
+	State->PlayerCount = 2;
+	Test->AddCommand(new FEditorLoadMap(TEXT("/Game/Maps/SandBoxMap")));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("configure two-player Sandbox listen-server PIE"), [State]()
+	{
+		ULevelEditorPlaySettings* PlaySettings = GetMutableDefault<ULevelEditorPlaySettings>();
+		if (!IsValid(PlaySettings))
+		{
+			return false;
+		}
+		PlaySettings->GetPlayNetMode(State->OriginalNetMode);
+		PlaySettings->GetRunUnderOneProcess(State->bOriginalRunUnderOneProcess);
+		PlaySettings->GetPlayNumberOfClients(State->OriginalClientCount);
+		State->bCapturedPlaySettings = true;
+		PlaySettings->SetRunUnderOneProcess(true);
+		PlaySettings->SetPlayNetMode(EPlayNetMode::PIE_ListenServer);
+		PlaySettings->SetPlayNumberOfClients(2);
+		return true;
+	}));
+	Test->AddCommand(new FStartPIECommand(false));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("Sandbox security actors, two players, and active guard"), []()
+	{
+		return IsSandBoxSecurityPreflightReady();
+	}, 60.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("bootstrap Sandbox-only contract and disable autonomous guard sight"), []()
+	{
+		return BootstrapSandBoxSecurityContract();
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("Sandbox instance links and enabled security runtime replicated"), []()
+	{
+		return IsSandBoxSecurityRuntimeReplicated();
+	}, 15.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("capture CCTV incident baselines"), [State]()
+	{
+		UWorld* ServerWorld = GetContractRunServerWorld();
+		const AHeistSecurityCameraActor* Camera = FindOnlyActorOfType<AHeistSecurityCameraActor>(ServerWorld);
+		const AHeistGameMode* GameMode = IsValid(ServerWorld) ? ServerWorld->GetAuthGameMode<AHeistGameMode>() : nullptr;
+		if (!IsValid(Camera) || !IsValid(GameMode))
+		{
+			return false;
+		}
+		State->SecurityDetectionRevisionBaseline = Camera->GetDetectionRevision();
+		State->SecurityIncidentCountBaseline = GameMode->GetProcessedSecurityIncidentCount();
+		State->SecurityInvestigationCountBaseline = GameMode->GetProcessedGuardInvestigationCount();
+		return true;
+	}));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("move player 2 into CCTV coverage"), []()
+	{
+		const AHeistSecurityCameraActor* Camera = FindOnlyActorOfType<AHeistSecurityCameraActor>(GetContractRunServerWorld());
+		if (!IsValid(Camera))
+		{
+			return false;
+		}
+		FVector DetectionLocation = Camera->GetActorLocation() + Camera->GetActorForwardVector() * 600.0f;
+		DetectionLocation.Z = 88.0f;
+		return TeleportServerPlayerToLocation(2, DetectionLocation);
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("one CCTV detection produces one Alert and one nearby guard investigation"), [State]()
+	{
+		UWorld* ServerWorld = GetContractRunServerWorld();
+		const AHeistGameMode* GameMode = IsValid(ServerWorld) ? ServerWorld->GetAuthGameMode<AHeistGameMode>() : nullptr;
+		return IsValid(GameMode) &&
+			GameMode->GetProcessedSecurityIncidentCount() == State->SecurityIncidentCountBaseline + 1 &&
+			GameMode->GetProcessedGuardInvestigationCount() == State->SecurityInvestigationCountBaseline + 1 &&
+			IsCameraDetectionReplicated(State->SecurityDetectionRevisionBaseline + 1, 2);
+	}, 12.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("move player 2 out of CCTV coverage"), []()
+	{
+		return TeleportServerPlayerToLocation(2, FVector(-1500.0f, -1200.0f, 88.0f));
+	}));
+	Test->AddCommand(new FWaitLatentCommand(1.0f));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("CCTV incident remains one-shot after leaving coverage"), [State]()
+	{
+		UWorld* ServerWorld = GetContractRunServerWorld();
+		const AHeistGameMode* GameMode = IsValid(ServerWorld) ? ServerWorld->GetAuthGameMode<AHeistGameMode>() : nullptr;
+		const AHeistSecurityCameraActor* Camera = FindOnlyActorOfType<AHeistSecurityCameraActor>(ServerWorld);
+		return IsValid(GameMode) && IsValid(Camera) && Camera->GetDetectionRevision() == State->SecurityDetectionRevisionBaseline + 1 &&
+			GameMode->GetProcessedSecurityIncidentCount() == State->SecurityIncidentCountBaseline + 1 &&
+			GameMode->GetProcessedGuardInvestigationCount() == State->SecurityInvestigationCountBaseline + 1;
+	}));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("move player 1 into Security Hold Button interaction"), []()
+	{
+		return TeleportServerPlayerIntoInteraction(1, FindOnlyActorOfType<AHeistSecurityHoldButtonActor>(GetContractRunServerWorld()));
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("player 1 overlaps Security Hold Button"), []()
+	{
+		return IsServerPlayerOverlapping(1, FindOnlyActorOfType<AHeistSecurityHoldButtonActor>(GetContractRunServerWorld()));
+	}, 5.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("player 1 begins hold through server RPC"), []()
+	{
+		AHeistPlayerController* OwningController = GetOwningPlayerControllerById(1);
+		AHeistSecurityHoldButtonActor* LocalButton = IsValid(OwningController)
+			? FindOnlyActorOfType<AHeistSecurityHoldButtonActor>(OwningController->GetWorld())
+			: nullptr;
+		return InvokeSingleActorServerRPC(OwningController, FName(TEXT("Server_RequestBeginSecurityHold")), LocalButton);
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("single holder bypasses Laser on both peers"), []()
+	{
+		return IsSecurityHoldStateReplicated(true, true, false);
+	}, 8.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("non-holder player 2 crosses bypassed Laser"), []()
+	{
+		const AHeistLaserBarrierActor* Laser = FindOnlyActorOfType<AHeistLaserBarrierActor>(GetContractRunServerWorld());
+		return IsValid(Laser) && TeleportServerPlayerToLocation(2, Laser->GetActorLocation());
+	}));
+	Test->AddCommand(new FWaitLatentCommand(0.75f));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("bypassed crossing creates no additional security incident"), [State]()
+	{
+		UWorld* ServerWorld = GetContractRunServerWorld();
+		const AHeistGameMode* GameMode = IsValid(ServerWorld) ? ServerWorld->GetAuthGameMode<AHeistGameMode>() : nullptr;
+		return IsValid(GameMode) && IsSecurityHoldStateReplicated(true, true, false) &&
+			GameMode->GetProcessedSecurityIncidentCount() == State->SecurityIncidentCountBaseline + 1 &&
+			GameMode->GetProcessedGuardInvestigationCount() == State->SecurityInvestigationCountBaseline + 1;
+	}));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("move player 2 clear of Laser before release"), []()
+	{
+		return TeleportServerPlayerToLocation(2, FVector(-1500.0f, -1200.0f, 88.0f));
+	}));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("player 1 releases hold through server RPC"), []()
+	{
+		AHeistPlayerController* OwningController = GetOwningPlayerControllerById(1);
+		AHeistSecurityHoldButtonActor* LocalButton = IsValid(OwningController)
+			? FindOnlyActorOfType<AHeistSecurityHoldButtonActor>(OwningController->GetWorld())
+			: nullptr;
+		return InvokeSingleActorServerRPC(OwningController, FName(TEXT("Server_RequestEndSecurityHold")), LocalButton);
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("Laser rearm grace replicated after holder release"), []()
+	{
+		return IsLaserRearmingReplicated();
+	}, 3.0));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("Laser fully rearmed on both peers"), []()
+	{
+		return IsSecurityHoldStateReplicated(false, false, true);
+	}, 5.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("record W8 Sandbox security cooperation evidence"), [Test, State]()
+	{
+		Test->AddInfo(FString::Printf(TEXT("W8 security cooperation: Map=SandBoxMap NetMode=ListenServer Players=2 ContractStartPlayerCount=1 DirectPIEFallback=true CCTVDetections=1 SecurityIncidents=%d GuardInvestigations=%d Holder=Player1 BypassedCrossing=true Rearmed=true Result=PASS"),
+			State->SecurityIncidentCountBaseline + 1, State->SecurityInvestigationCountBaseline + 1));
+		return true;
+	}));
+	Test->AddCommand(new FEndPlayMapCommand());
+	Test->AddCommand(new FWaitLatentCommand(1.0f));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("restore editor play settings after W8 Sandbox security test"), [State]()
 	{
 		if (!State->bCapturedPlaySettings)
 		{
@@ -2214,7 +2918,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistFourPlayerContractRunTwoPassTest, "Projec
 
 bool FHeistFourPlayerContractRunTwoPassTest::RunTest(const FString& Parameters)
 {
-	return HeistContractRunTest::EnqueueTwoRunContractScenario(this, 4);
+	return HeistContractRunTest::EnqueueTwoRunContractScenario(this, 4, FName(TEXT("M01")));
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistTwoPlayerContractRunTwoPassTest, "ProjectMuseumHeist.ContractRun.M01.TwoPlayerTwoRuns",
@@ -2222,7 +2926,31 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistTwoPlayerContractRunTwoPassTest, "Project
 
 bool FHeistTwoPlayerContractRunTwoPassTest::RunTest(const FString& Parameters)
 {
-	return HeistContractRunTest::EnqueueTwoRunContractScenario(this, 2);
+	return HeistContractRunTest::EnqueueTwoRunContractScenario(this, 2, FName(TEXT("M01")));
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistM02TwoPlayerContractRunTwoPassTest, "ProjectMuseumHeist.ContractRun.M02.TwoPlayerTwoRuns",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHeistM02TwoPlayerContractRunTwoPassTest::RunTest(const FString& Parameters)
+{
+	return HeistContractRunTest::EnqueueTwoRunContractScenario(this, 2, FName(TEXT("M02")));
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistM03TwoPlayerContractRunTwoPassTest, "ProjectMuseumHeist.ContractRun.M03.TwoPlayerTwoRuns",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHeistM03TwoPlayerContractRunTwoPassTest::RunTest(const FString& Parameters)
+{
+	return HeistContractRunTest::EnqueueTwoRunContractScenario(this, 2, FName(TEXT("M03")));
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistSandBoxSecurityCooperationTest, "ProjectMuseumHeist.W8.SecurityCooperation.SandBoxTwoPlayer",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHeistSandBoxSecurityCooperationTest::RunTest(const FString& Parameters)
+{
+	return HeistContractRunTest::EnqueueSandBoxSecurityCooperationScenario(this);
 }
 
 #endif

@@ -1015,6 +1015,7 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 		bool bCaseStateValid = false;
 		bool bArtifactValid = false;
 		int32 ArtifactValue = 0;
+		EHeistLootGrade ItemGrade = EHeistLootGrade::OneStar;
 	};
 
 	TArray<FPlacedTargetCase> MatchingTargetCases;
@@ -1037,6 +1038,7 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 		Candidate.bArtifactValid = !ArtifactId.IsNone() && TryGetArtifactDefinition(ArtifactId, ArtifactDefinition) &&
 			ArtifactDefinition.ForgeryType == EHeistForgeryType::Drawing;
 		Candidate.ArtifactValue = Candidate.bArtifactValid ? ArtifactDefinition.ArtifactValue : 0;
+		Candidate.ItemGrade = Candidate.bArtifactValid ? ArtifactDefinition.ItemGrade : EHeistLootGrade::OneStar;
 		(IsConfiguredTargetCase(CaseId) ? MatchingTargetCases : OptionalCases).Add(MoveTemp(Candidate));
 	};
 
@@ -1129,6 +1131,12 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 	for (int32 Index = EligibleOptionalCases.Num() - 1; Index > 0; --Index)
 	{
 		EligibleOptionalCases.Swap(Index, AssignmentRandom.RandRange(0, Index));
+	}
+	const int32 FourStarOptionalIndex = EligibleOptionalCases.IndexOfByPredicate(
+		[](const FPlacedTargetCase& OptionalCase) { return OptionalCase.ItemGrade == EHeistLootGrade::FourStar; });
+	if (FourStarOptionalIndex > 0)
+	{
+		EligibleOptionalCases.Swap(0, FourStarOptionalIndex);
 	}
 
 	int32 EligibleLooseLootCount = 0;
