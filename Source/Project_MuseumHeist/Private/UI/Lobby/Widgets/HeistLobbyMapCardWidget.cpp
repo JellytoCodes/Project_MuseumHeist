@@ -4,15 +4,6 @@
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 
-void UHeistLobbyMapCardWidget::NativePreConstruct()
-{
-	Super::NativePreConstruct();
-	if (IsValid(MapImage) && IsValid(MapThumbnail))
-	{
-		MapImage->SetBrushFromTexture(MapThumbnail, true);
-	}
-}
-
 void UHeistLobbyMapCardWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
@@ -43,10 +34,6 @@ void UHeistLobbyMapCardWidget::ConfigureMapCard(const FName InMapId, const FText
 void UHeistLobbyMapCardWidget::SetMapThumbnail(UTexture2D* InMapThumbnail)
 {
 	MapThumbnail = InMapThumbnail;
-	if (IsValid(MapImage))
-	{
-		MapImage->SetBrushFromTexture(MapThumbnail, true);
-	}
 }
 
 void UHeistLobbyMapCardWidget::ApplySelectionState(const bool bSelected, const bool bCanSelect)

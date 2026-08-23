@@ -18,7 +18,6 @@ class PROJECT_MUSEUMHEIST_API UHeistLobbyMapCardWidget : public UHeistUserWidget
 	GENERATED_BODY()
 
   protected:
-	virtual void NativePreConstruct() override;
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
 
@@ -38,9 +37,6 @@ class PROJECT_MUSEUMHEIST_API UHeistLobbyMapCardWidget : public UHeistUserWidget
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> MapNameText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
-	TObjectPtr<UImage> MapImage;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UImage> SelectedCheckImage;
