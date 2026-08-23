@@ -14,7 +14,7 @@
 #include "UI/ViewModels/HeistHUDViewModel.h"
 #include "UI/ViewModels/HeistForgeryViewModel.h"
 #include "UI/ViewModels/HeistInventoryViewModel.h"
-#include "UI/ViewModels/HeistLobbyViewModel.h"
+#include "UI/Lobby/ViewModels/HeistLobbyViewModel.h"
 #include "UI/ViewModels/HeistObjectAssemblyViewModel.h"
 #include "UI/ViewModels/HeistQuickSlotViewModel.h"
 #include "UI/ViewModels/HeistResultViewModel.h"
@@ -25,7 +25,7 @@
 #include "UI/Widgets/HeistForgeryWidget.h"
 #include "UI/Widgets/HeistFloorPlanMapWidget.h"
 #include "UI/Widgets/HeistInventoryWidget.h"
-#include "UI/Widgets/HeistLobbyWidget.h"
+#include "UI/Lobby/Widgets/HeistLobbyWidget.h"
 #include "UI/Widgets/HeistObjectAssemblyWidget.h"
 #include "UI/Widgets/HeistResultWidget.h"
 

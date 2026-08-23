@@ -448,6 +448,43 @@ void AHeistPlayerState::OnRep_Arrested()
 
 #pragma endregion
 
+#pragma region LobbyReady
+
+bool AHeistPlayerState::IsLobbyReady() const
+{
+	return bLobbyReady;
+}
+
+bool AHeistPlayerState::SetLobbyReady(const bool bNewLobbyReady)
+{
+	if (!HasAuthority())
+	{
+		return false;
+	}
+
+	if (bLobbyReady == bNewLobbyReady)
+	{
+		return true;
+	}
+
+	bLobbyReady = bNewLobbyReady;
+	ForceNetUpdate();
+	LobbyReadyChangedDelegate.Broadcast(bLobbyReady);
+	return true;
+}
+
+FHeistLobbyReadyChanged& AHeistPlayerState::GetLobbyReadyChangedDelegate()
+{
+	return LobbyReadyChangedDelegate;
+}
+
+void AHeistPlayerState::OnRep_LobbyReady()
+{
+	LobbyReadyChangedDelegate.Broadcast(bLobbyReady);
+}
+
+#pragma endregion
+
 #pragma region Replication
 
 void AHeistPlayerState::OnRep_PlayerName()
@@ -473,6 +510,7 @@ void AHeistPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 
 	DOREPLIFETIME(AHeistPlayerState, HeistPlayerId);
 	DOREPLIFETIME(AHeistPlayerState, PlayerColor);
+	DOREPLIFETIME(AHeistPlayerState, bLobbyReady);
 	DOREPLIFETIME_CONDITION(AHeistPlayerState, TotalLootScore, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHeistPlayerState, TotalLootWeight, COND_OwnerOnly);
 	DOREPLIFETIME(AHeistPlayerState, bEscaped);

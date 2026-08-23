@@ -57,6 +57,47 @@ int32 AHeistGameState::GetConnectedPlayerCount() const
 	return PlayerArray.Num();
 }
 
+int32 AHeistGameState::GetLobbyReadyPlayerCount() const
+{
+	int32 ReadyPlayerCount = 0;
+	for (const APlayerState* PlayerState : PlayerArray)
+	{
+		const AHeistPlayerState* HeistPlayerState = Cast<AHeistPlayerState>(PlayerState);
+		if (IsValid(HeistPlayerState) && HeistPlayerState->IsLobbyReady())
+		{
+			++ReadyPlayerCount;
+		}
+	}
+	return ReadyPlayerCount;
+}
+
+bool AHeistGameState::AreAllConnectedPlayersLobbyReady() const
+{
+	const int32 ConnectedPlayerCount = GetConnectedPlayerCount();
+	if (ConnectedPlayerCount < 2 || ConnectedPlayerCount > 4)
+	{
+		return false;
+	}
+
+	return GetLobbyReadyPlayerCount() == ConnectedPlayerCount;
+}
+
+void AHeistGameState::ResetLobbyReadyStates()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	for (APlayerState* PlayerState : PlayerArray)
+	{
+		if (AHeistPlayerState* HeistPlayerState = Cast<AHeistPlayerState>(PlayerState))
+		{
+			HeistPlayerState->SetLobbyReady(false);
+		}
+	}
+}
+
 FHeistPlayerConnectionsChanged& AHeistGameState::GetPlayerConnectionsChangedDelegate()
 {
 	return PlayerConnectionsChangedDelegate;

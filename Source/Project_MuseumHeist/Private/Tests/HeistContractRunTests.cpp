@@ -106,6 +106,23 @@ UWorld* GetContractRunServerWorld()
 	return nullptr;
 }
 
+bool SetAllContractRunLobbyPlayersReady(UWorld* ServerWorld)
+{
+	AHeistGameState* GameState = IsValid(ServerWorld) ? ServerWorld->GetGameState<AHeistGameState>() : nullptr;
+	if (!IsValid(GameState))
+	{
+		return false;
+	}
+	for (APlayerState* PlayerState : GameState->PlayerArray)
+	{
+		if (AHeistPlayerState* HeistPlayerState = Cast<AHeistPlayerState>(PlayerState))
+		{
+			HeistPlayerState->SetLobbyReady(true);
+		}
+	}
+	return GameState->AreAllConnectedPlayersLobbyReady();
+}
+
 AHeistPlayerController* GetContractRunLocalHeistPlayerController(UWorld* World)
 {
 	if (!IsValid(World))
@@ -2593,7 +2610,7 @@ bool EnqueueTwoRunContractScenario(FAutomationTestBase* Test, const int32 Player
 		{
 			UWorld* ServerWorld = GetContractRunServerWorld();
 			UHeistGameInstance* GameInstance = IsValid(ServerWorld) ? Cast<UHeistGameInstance>(ServerWorld->GetGameInstance()) : nullptr;
-			return IsValid(GameInstance) && GameInstance->RequestStartSelectedGameplayMap();
+			return IsValid(GameInstance) && SetAllContractRunLobbyPlayersReady(ServerWorld) && GameInstance->RequestStartSelectedGameplayMap();
 		}));
 		AppendGameplayRunCommands(Test, State, RunIndex);
 		if (RunIndex == 1)

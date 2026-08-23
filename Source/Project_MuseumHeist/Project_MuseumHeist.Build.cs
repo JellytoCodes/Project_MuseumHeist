@@ -29,6 +29,8 @@ public class Project_MuseumHeist : ModuleRules
 
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
+			"ApplicationCore",
+			"CoreOnline",
 			"ImageCore",
 			"NavigationSystem",
 			"Niagara",
@@ -42,6 +44,16 @@ public class Project_MuseumHeist : ModuleRules
 		{
 			"OnlineSubsystemSteam"
 		});
+
+		if (Target.Platform == UnrealTargetPlatform.Win64)
+		{
+			AddEngineThirdPartyPrivateStaticDependencies(Target, "Steamworks");
+			PrivateDefinitions.Add("WITH_HEIST_STEAM_AVATAR=1");
+		}
+		else
+		{
+			PrivateDefinitions.Add("WITH_HEIST_STEAM_AVATAR=0");
+		}
 
 		if (Target.bBuildEditor)
 		{

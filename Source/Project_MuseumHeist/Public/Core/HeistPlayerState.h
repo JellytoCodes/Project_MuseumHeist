@@ -11,6 +11,7 @@ DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerArrestStateChanged, bool);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistLootTotalsChanged, int32, float);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerIdentityChanged, int32);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistCrewStatusChanged, EHeistCrewStatus);
+DECLARE_MULTICAST_DELEGATE_OneParam(FHeistLobbyReadyChanged, bool);
 
 UCLASS()
 class PROJECT_MUSEUMHEIST_API AHeistPlayerState : public APlayerState
@@ -125,6 +126,26 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerState : public APlayerState
 
 	UFUNCTION()
 	void OnRep_Escaped();
+
+#pragma endregion
+
+#pragma region LobbyReady
+
+  public:
+	UFUNCTION(BlueprintPure, Category = "Heist|Lobby")
+	bool IsLobbyReady() const;
+
+	bool SetLobbyReady(bool bNewLobbyReady);
+	FHeistLobbyReadyChanged& GetLobbyReadyChangedDelegate();
+
+  private:
+	UPROPERTY(ReplicatedUsing = OnRep_LobbyReady, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
+	bool bLobbyReady = false;
+
+	UFUNCTION()
+	void OnRep_LobbyReady();
+
+	FHeistLobbyReadyChanged LobbyReadyChangedDelegate;
 
 #pragma endregion
 

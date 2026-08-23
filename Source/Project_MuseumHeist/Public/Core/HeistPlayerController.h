@@ -255,6 +255,9 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	void RequestSetLobbyMapSelection(FName RequestedMapId);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Lobby")
+	void RequestSetLobbyReady(bool bReady);
+
+	UFUNCTION(BlueprintCallable, Category = "Heist|Lobby")
 	void RequestStartSelectedGameplayMap();
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Online")
@@ -316,6 +319,9 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
   private:
 	UFUNCTION(Server, Reliable)
 	void Server_RequestSetLobbyMapSelection(FName RequestedMapId);
+
+	UFUNCTION(Server, Reliable)
+	void Server_RequestSetLobbyReady(bool bReady);
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestStartSelectedGameplayMap();

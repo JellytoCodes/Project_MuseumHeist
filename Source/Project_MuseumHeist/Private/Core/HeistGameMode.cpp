@@ -190,7 +190,11 @@ void AHeistGameMode::StartPlay()
 		HeistGameState->GetPlayerConnectionsChangedDelegate().RemoveAll(this);
 		HeistGameState->GetPlayerConnectionsChangedDelegate().AddUObject(this, &AHeistGameMode::HandlePlayerConnectionsChanged);
 		HeistGameState->SetMatchPhase(bStartAsTitleMenu ? EHeistMatchPhase::None
-													  : (bStartAsOnlineLobby ? EHeistMatchPhase::Lobby : EHeistMatchPhase::InGame));
+												  : (bStartAsOnlineLobby ? EHeistMatchPhase::Lobby : EHeistMatchPhase::InGame));
+		if (bStartAsOnlineLobby)
+		{
+			HeistGameState->ResetLobbyReadyStates();
+		}
 		if (!bStartAsTitleMenu && (bStartAsOnlineLobby || bOnlineSessionActive))
 		{
 			HeistGameState->InitializeSessionMapSelection(HeistGameInstance->GetSelectedMapId(), HeistGameInstance->IsRandomMapSelection());

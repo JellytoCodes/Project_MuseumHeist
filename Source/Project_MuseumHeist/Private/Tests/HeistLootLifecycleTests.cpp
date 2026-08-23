@@ -104,6 +104,23 @@ UWorld* GetLootLifecycleServerWorld()
 	return nullptr;
 }
 
+bool SetAllLootLifecycleLobbyPlayersReady(UWorld* ServerWorld)
+{
+	AHeistGameState* GameState = IsValid(ServerWorld) ? ServerWorld->GetGameState<AHeistGameState>() : nullptr;
+	if (!IsValid(GameState))
+	{
+		return false;
+	}
+	for (APlayerState* PlayerState : GameState->PlayerArray)
+	{
+		if (AHeistPlayerState* HeistPlayerState = Cast<AHeistPlayerState>(PlayerState))
+		{
+			HeistPlayerState->SetLobbyReady(true);
+		}
+	}
+	return GameState->AreAllConnectedPlayersLobbyReady();
+}
+
 AHeistPlayerController* GetLootLifecycleLocalHeistPlayerController(UWorld* World)
 {
 	if (!IsValid(World))
@@ -940,7 +957,7 @@ bool EnqueueTwoPlayerLootLifecycleScenario(FAutomationTestBase* Test)
 	{
 		UWorld* ServerWorld = GetLootLifecycleServerWorld();
 		UHeistGameInstance* GameInstance = IsValid(ServerWorld) ? Cast<UHeistGameInstance>(ServerWorld->GetGameInstance()) : nullptr;
-		return IsValid(GameInstance) && GameInstance->RequestStartSelectedGameplayMap();
+		return IsValid(GameInstance) && SetAllLootLifecycleLobbyPlayersReady(ServerWorld) && GameInstance->RequestStartSelectedGameplayMap();
 	}));
 	Test->AddCommand(new FHeistLootLifecycleWaitCommand(Test, State, TEXT("M01 two-player gameplay and five authored loot fixtures"), [Test, State]()
 	{

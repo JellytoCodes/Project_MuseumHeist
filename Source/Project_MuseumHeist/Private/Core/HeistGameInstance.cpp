@@ -640,6 +640,10 @@ bool UHeistGameInstance::RequestStartSelectedGameplayMap()
 	{
 		RejectReason = FName(TEXT("MaximumPlayersExceeded"));
 	}
+	else if (!HeistGameState->AreAllConnectedPlayersLobbyReady())
+	{
+		RejectReason = FName(TEXT("PlayersNotReady"));
+	}
 	else if (HeistGameState->GetSelectedLobbyMapId() != SelectedMapId)
 	{
 		RejectReason = FName(TEXT("SelectedMapMismatch"));

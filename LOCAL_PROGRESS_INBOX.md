@@ -30,6 +30,46 @@ NO_TASK_REQUIRED
 
 ## Active Queue
 
+### LOCAL-20260823-02 — Fixed-Slot Lobby UI And All-Ready Start Gate
+
+- State: `UNLINKED`
+- Created: `2026-08-23 KST`
+- Notion Relation: `NONE` / 라이브 조회에서 대응 Lobby UI 개편 Task 없음
+- Sync Boundary: 사용자 승인으로 C++·Widget Blueprint·UI Texture를 구현하고 로컬 검증했으며 Notion Task 생성이나 상태 변경은 하지 않았다.
+
+#### Applied Work
+
+- Lobby C++를 `UI/Lobby/ViewModels`와 `UI/Lobby/Widgets` 아래로 이동하고 Master `UHeistLobbyWidget`, 고정 Slot용 `UHeistLobbyPlayerCardWidget`, 선택 항목용 `UHeistLobbyMapCardWidget`으로 책임을 분리했다.
+- Lobby 상단에 Logo/Text, 참가 코드와 복사 버튼, 현재 인원 `N / 4`, 세션 나가기를 구성하고 Title 버튼 스타일을 Lobby 용도별 Desired Size로 정규화해 원본 Brush 크기가 레이아웃을 밀지 않게 했다.
+- `PlayerCard1~4`를 항상 배치하고 참가자 Identity, Steam Avatar/Fallback, Local-only 준비 토글과 Ready Check를 연결했다. PlayerState 제거 시 Slot은 Empty 상태로 돌아가며 재사용된 Slot은 기본 미준비 상태로 시작한다.
+- `Random`, `M01`, `M02`, `M03` Map Card를 가로 ScrollBox에 고정 순서로 배치하고 Host-only 선택, 복제된 선택 Check와 Map Thumbnail Hook을 연결했다.
+- `AHeistPlayerState::bLobbyReady`를 서버 권한 복제로 추가하고 GameState의 Connected/Ready 집계와 전원 준비 판정을 연결했다. 시작은 2~4명 전원이 준비한 Host만 요청할 수 있고 GameInstance가 동일 조건을 다시 검증한다.
+- `ReadyCountdownText`는 WBP와 C++ BindWidget에서 제거했다. 별도 시작 Message 연출은 후속 UI 작업으로 남겼다.
+- 복사/준비 체크용 투명 PNG를 생성해 `/Game/Assets/UI/Lobby`로 Import했으며 Widget Blueprint EventGraph Gameplay Logic은 추가하지 않았다.
+
+#### Evidence
+
+```text
+Project_MuseumHeistEditor Development Build       PASS / Result Succeeded / 20 actions
+WBP_LobbyPlayerCard Final Compile                  PASS / 11 widgets / missing 0
+WBP_LobbyMapCard Final Compile                     PASS / 7 widgets / missing 0
+WBP_Lobby Final Compile                            PASS / 29 widgets / missing 0
+ReadyCountdownText                                 ABSENT / 3 of 3 WBP
+Final WBP Verification Error/Warning Scan          0
+Lobby Asset Validation                             PASS / 5 assets
+1280x720 Designer Visual QA                        PASS / fixed cards, horizontal maps, header, start button visible
+git diff --check                                   PASS
+Notion Write                                       NOT DONE / corresponding task absent
+```
+
+#### Remaining Evidence / Presentation Boundary
+
+- Steam Profile Image와 실제 Platform Display Name은 서로 다른 Steam 계정의 Development Package에서 확인해야 한다. Editor Fallback Image는 Steam 최종 증거를 대체하지 않는다.
+- 2P/3P/4P에서 각 Client의 Ready Toggle, 이탈 시 Slot/Ready 정리, Host Start Enable, Map Selection 복제를 실제 Listen Server로 확인해야 한다.
+- Designer의 세부 크기·간격·색과 시작 Message 연출은 사용자의 다음 Lobby 시각 검토 후 확정한다.
+
+---
+
 ### LOCAL-20260823-01 — Title Menu Responsibility Split And Button State Art
 
 - State: `UNLINKED`

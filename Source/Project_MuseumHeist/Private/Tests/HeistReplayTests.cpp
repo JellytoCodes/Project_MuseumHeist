@@ -62,6 +62,23 @@ UWorld* GetHeistPIEWorld(const ENetMode NetMode)
 	return nullptr;
 }
 
+bool SetAllReplayLobbyPlayersReady(UWorld* HostWorld)
+{
+	AHeistGameState* GameState = IsValid(HostWorld) ? HostWorld->GetGameState<AHeistGameState>() : nullptr;
+	if (!IsValid(GameState))
+	{
+		return false;
+	}
+	for (APlayerState* PlayerState : GameState->PlayerArray)
+	{
+		if (AHeistPlayerState* HeistPlayerState = Cast<AHeistPlayerState>(PlayerState))
+		{
+			HeistPlayerState->SetLobbyReady(true);
+		}
+	}
+	return GameState->AreAllConnectedPlayersLobbyReady();
+}
+
 AHeistPlayerController* GetLocalHeistPlayerController(UWorld* World)
 {
 	if (!IsValid(World))
@@ -331,7 +348,7 @@ bool FHeistEndLobbyReplayIntegrationTest::RunTest(const FString& Parameters)
 	{
 		UWorld* HostWorld = GetHeistPIEWorld(NM_ListenServer);
 		UHeistGameInstance* GameInstance = IsValid(HostWorld) ? Cast<UHeistGameInstance>(HostWorld->GetGameInstance()) : nullptr;
-		return IsValid(GameInstance) && GameInstance->RequestStartSelectedGameplayMap();
+		return IsValid(GameInstance) && SetAllReplayLobbyPlayersReady(HostWorld) && GameInstance->RequestStartSelectedGameplayMap();
 	}));
 	AddCommand(new FHeistReplayWaitCommand(this, State, TEXT("first gameplay host/client worlds"), []()
 	{
@@ -431,7 +448,8 @@ bool FHeistEndLobbyReplayIntegrationTest::RunTest(const FString& Parameters)
 	{
 		UWorld* HostWorld = GetHeistPIEWorld(NM_ListenServer);
 		UHeistGameInstance* GameInstance = IsValid(HostWorld) ? Cast<UHeistGameInstance>(HostWorld->GetGameInstance()) : nullptr;
-		return IsValid(GameInstance) && GameInstance->HasActiveNamedOnlineSession() && GameInstance->RequestStartSelectedGameplayMap();
+		return IsValid(GameInstance) && GameInstance->HasActiveNamedOnlineSession() && SetAllReplayLobbyPlayersReady(HostWorld)
+			&& GameInstance->RequestStartSelectedGameplayMap();
 	}));
 	AddCommand(new FHeistReplayWaitCommand(this, State, TEXT("second gameplay has clean input and match state"), []()
 	{

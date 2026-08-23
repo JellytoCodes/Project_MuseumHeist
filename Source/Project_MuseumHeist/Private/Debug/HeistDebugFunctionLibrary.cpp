@@ -55,7 +55,7 @@
 #include "World/Spawn/HeistLootSpawnPoint.h"
 #include "UI/ViewModels/HeistForgeryViewModel.h"
 #include "UI/ViewModels/HeistHUDViewModel.h"
-#include "UI/ViewModels/HeistLobbyViewModel.h"
+#include "UI/Lobby/ViewModels/HeistLobbyViewModel.h"
 #include "UI/ViewModels/HeistObjectAssemblyViewModel.h"
 #include "UI/Title/ViewModels/HeistTitleMenuViewModel.h"
 #include "UI/Widgets/HeistForgeryWidget.h"
@@ -6515,23 +6515,25 @@ void UHeistDebugFunctionLibrary::DebugLobbyDump(APlayerController* PlayerControl
 
 	LobbyViewModel->RefreshLobbyData();
 	Message(PlayerController,
-			FString::Printf(TEXT("Lobby dump: Connected=%d LocalPlayerId=%d Phase=%s Countdown=%s Loadout=%s Map=%s MapStatus=%s SessionStatus=%s SessionError=%s "
-								 "ActionHint=%s Invite=%s CanLeave=%s CanSelectMap=%s CanRetry=%s Blocker=%s"),
-							LobbyViewModel->GetConnectedPlayerCount(),
-							LobbyViewModel->GetLocalPlayerId(), *LobbyViewModel->GetPhaseText().ToString(), *LobbyViewModel->GetReadyCountdownText().ToString(),
-							*LobbyViewModel->GetDefaultLoadoutText().ToString(), *LobbyViewModel->GetSelectedMapText().ToString(),
-							*LobbyViewModel->GetMapSelectionStatusText().ToString(), *LobbyViewModel->GetSessionStatusText().ToString(),
-							LobbyViewModel->GetSessionErrorText().IsEmpty() ? TEXT("None") : *LobbyViewModel->GetSessionErrorText().ToString(),
-							LobbyViewModel->GetSessionActionHintText().IsEmpty() ? TEXT("None") : *LobbyViewModel->GetSessionActionHintText().ToString(),
-							LobbyViewModel->GetInviteGuidanceText().IsEmpty() ? TEXT("None") : *LobbyViewModel->GetInviteGuidanceText().ToString(),
-							LobbyViewModel->CanRequestLeaveSession() ? TEXT("true") : TEXT("false"),
-							LobbyViewModel->CanSelectMap() ? TEXT("true") : TEXT("false"), LobbyViewModel->CanRetrySessionOperation() ? TEXT("true") : TEXT("false"),
-							*LobbyViewModel->GetAuthorityBlockerText().ToString()),
+			FString::Printf(TEXT("Lobby dump: Connected=%d Ready=%d LocalPlayerId=%d JoinCode=%s Map=%s Random=%s CanLeave=%s CanSelectMap=%s CanToggleReady=%s CanStart=%s"),
+				LobbyViewModel->GetConnectedPlayerCount(), LobbyViewModel->GetReadyPlayerCount(), LobbyViewModel->GetLocalPlayerId(),
+				*LobbyViewModel->GetJoinCodeText().ToString(), *LobbyViewModel->GetSelectedMapId().ToString(),
+				LobbyViewModel->IsRandomMapSelection() ? TEXT("true") : TEXT("false"), LobbyViewModel->CanRequestLeaveSession() ? TEXT("true") : TEXT("false"),
+				LobbyViewModel->CanSelectMap() ? TEXT("true") : TEXT("false"), LobbyViewModel->CanToggleLocalReady() ? TEXT("true") : TEXT("false"),
+				LobbyViewModel->CanStartGame() ? TEXT("true") : TEXT("false")),
 			EHeistDebugLevel::Info, true, 8.0f);
-	Message(PlayerController, FString::Printf(TEXT("Lobby slot: %s"), *LobbyViewModel->GetPlayerSlot1Text().ToString()), EHeistDebugLevel::Info, false);
-	Message(PlayerController, FString::Printf(TEXT("Lobby slot: %s"), *LobbyViewModel->GetPlayerSlot2Text().ToString()), EHeistDebugLevel::Info, false);
-	Message(PlayerController, FString::Printf(TEXT("Lobby slot: %s"), *LobbyViewModel->GetPlayerSlot3Text().ToString()), EHeistDebugLevel::Info, false);
-	Message(PlayerController, FString::Printf(TEXT("Lobby slot: %s"), *LobbyViewModel->GetPlayerSlot4Text().ToString()), EHeistDebugLevel::Info, false);
+	for (int32 PlayerSlot = 1; PlayerSlot <= 4; ++PlayerSlot)
+	{
+		FHeistLobbyPlayerCardData PlayerCardData;
+		if (LobbyViewModel->TryGetPlayerCardData(PlayerSlot, PlayerCardData))
+		{
+			Message(PlayerController,
+				FString::Printf(TEXT("Lobby card: Slot=%d Occupied=%s Local=%s Ready=%s Name=%s PlatformId=%s"), PlayerSlot,
+					PlayerCardData.bOccupied ? TEXT("true") : TEXT("false"), PlayerCardData.bLocalPlayer ? TEXT("true") : TEXT("false"),
+					PlayerCardData.bReady ? TEXT("true") : TEXT("false"), *PlayerCardData.PlayerName.ToString(), *PlayerCardData.PlatformUserId),
+				EHeistDebugLevel::Info, false);
+		}
+	}
 #endif
 }
 
@@ -6981,21 +6983,18 @@ void UHeistDebugFunctionLibrary::DebugOnlineSessionDump(APlayerController* Playe
 							HeistGameInstance->IsJoinedOnlineSession() ? TEXT("true") : TEXT("false"), bConfigurationValid ? TEXT("PASS") : TEXT("FAIL")),
 			bConfigurationValid ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 10.0f);
 
-	const FText SessionStatusText =
-		bLobbyWorld && IsValid(LobbyViewModel) ? LobbyViewModel->GetSessionStatusText() : FText::GetEmpty();
+	const FText SessionStatusText = FText::FromName(HeistGameInstance->GetOnlineSessionState());
 	const FText SessionErrorText =
 		bTitleMenuWorld && IsValid(TitleMenuViewModel)
 			? TitleMenuViewModel->GetSessionErrorText()
-			: (bLobbyWorld && IsValid(LobbyViewModel) ? LobbyViewModel->GetSessionErrorText() : FText::GetEmpty());
-	const FText SessionActionHintText =
-		bLobbyWorld && IsValid(LobbyViewModel) ? LobbyViewModel->GetSessionActionHintText() : FText::GetEmpty();
-	const FText InviteGuidanceText = bLobbyWorld && IsValid(LobbyViewModel) ? LobbyViewModel->GetInviteGuidanceText() : FText::GetEmpty();
+			: FText::FromName(HeistGameInstance->GetLastOnlineSessionFailure());
+	const FText SessionActionHintText = FText::GetEmpty();
+	const FText InviteGuidanceText = FText::GetEmpty();
 	const bool bCanCancel = bTitleMenuWorld && IsValid(TitleMenuViewModel) && TitleMenuViewModel->CanCancelSessionOperation();
 	const bool bCanRetry = (bTitleMenuWorld && IsValid(TitleMenuViewModel) && TitleMenuViewModel->CanRetrySessionOperation())
-		|| (bLobbyWorld && IsValid(LobbyViewModel) && LobbyViewModel->CanRetrySessionOperation());
-	const bool bInviteGuidanceRequired = bLobbyWorld && !HeistGameInstance->GetActiveJoinCode().IsEmpty();
+		|| (bLobbyWorld && HeistGameInstance->CanRetryLastOnlineSessionOperation());
 	const bool bSessionUXValid = (!bTitleMenuWorld && !bLobbyWorld) || (bTitleMenuWorld && IsValid(TitleMenuViewModel))
-		|| (bLobbyWorld && !SessionStatusText.IsEmpty() && (!bInviteGuidanceRequired || !InviteGuidanceText.IsEmpty()));
+		|| (bLobbyWorld && IsValid(LobbyViewModel));
 	Message(PlayerController,
 			FString::Printf(TEXT("Online session UX dump: Screen=%s Operation=%s TimeoutRemaining=%.2f TravelPending=%s Destination=%s CancellationPending=%s "
 								 "RetryRequest=%s Status=%s Error=%s ActionHint=%s Invite=%s CanCancel=%s CanRetry=%s Result=%s"),

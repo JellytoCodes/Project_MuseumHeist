@@ -1753,6 +1753,17 @@ void AHeistPlayerController::RequestSetLobbyMapSelection(const FName RequestedMa
 	Server_RequestSetLobbyMapSelection(RequestedMapId);
 }
 
+void AHeistPlayerController::RequestSetLobbyReady(const bool bReady)
+{
+	if (!IsLocalController())
+	{
+		UHeistDebugFunctionLibrary::DebugOnlineSessionControllerRequest(this, TEXT("SetLobbyReady"), false, FName(TEXT("NotLocalController")));
+		return;
+	}
+
+	Server_RequestSetLobbyReady(bReady);
+}
+
 void AHeistPlayerController::RequestStartSelectedGameplayMap()
 {
 	if (!IsLocalController())
@@ -2544,6 +2555,16 @@ void AHeistPlayerController::Server_RequestSetLobbyMapSelection_Implementation(c
 	const bool bAccepted = HasAuthority() && IsLocalController() && IsValid(HeistGameInstance) && HeistGameInstance->RequestSetLobbyMapSelection(RequestedMapId);
 	UHeistDebugFunctionLibrary::DebugOnlineSessionControllerRequest(this, TEXT("SetMap"), bAccepted,
 																   bAccepted ? NAME_None : FName(IsLocalController() ? TEXT("AuthorityOrSessionRejected") : TEXT("HostOnly")));
+}
+
+void AHeistPlayerController::Server_RequestSetLobbyReady_Implementation(const bool bReady)
+{
+	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	AHeistPlayerState* HeistPlayerState = GetPlayerState<AHeistPlayerState>();
+	const bool bAccepted = HasAuthority() && IsValid(HeistGameState) && HeistGameState->GetMatchPhase() == EHeistMatchPhase::Lobby
+		&& IsValid(HeistPlayerState) && HeistPlayerState->SetLobbyReady(bReady);
+	UHeistDebugFunctionLibrary::DebugOnlineSessionControllerRequest(this, TEXT("SetLobbyReady"), bAccepted,
+		bAccepted ? NAME_None : FName(TEXT("LobbyReadyRequestRejected")));
 }
 
 void AHeistPlayerController::Server_RequestStartSelectedGameplayMap_Implementation()

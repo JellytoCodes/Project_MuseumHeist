@@ -38,6 +38,9 @@ class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
 	virtual void AddPlayerState(APlayerState* PlayerState) override;
 	virtual void RemovePlayerState(APlayerState* PlayerState) override;
 	int32 GetConnectedPlayerCount() const;
+	int32 GetLobbyReadyPlayerCount() const;
+	bool AreAllConnectedPlayersLobbyReady() const;
+	void ResetLobbyReadyStates();
 	FHeistPlayerConnectionsChanged& GetPlayerConnectionsChangedDelegate();
 
   private:
