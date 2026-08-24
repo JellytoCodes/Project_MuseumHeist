@@ -1,0 +1,61 @@
+{
+    "asset_name":  "T_Forgery_M01_Landscape_14",
+    "source_file":  "M01_Landscape_14.png",
+    "mask_asset_name":  "T_Forgery_M01_Landscape_14_Mask",
+    "mask_source_file":  "M01_Landscape_14_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M01",
+    "template_id":  "Template_M01_Landscape_14",
+    "category":  "Landscape",
+    "difficulty":  "Medium",
+    "source_artwork":  "A Sunday on La Grande Jatte",
+    "source_artist":  "Georges Seurat",
+    "source_manifest":  "M01_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M01_Landscape_14_GrandeJatte_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#315B45",
+                         "#6E8CAD",
+                         "#D0B15A",
+                         "#B65345",
+                         "#E3D4AE"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.030713,
+                               0.104616,
+                               0.059511,
+                               1
+                           ],
+                           [
+                               0.155926,
+                               0.262251,
+                               0.417885,
+                               1
+                           ],
+                           [
+                               0.630757,
+                               0.439657,
+                               0.102242,
+                               1
+                           ],
+                           [
+                               0.467784,
+                               0.0865,
+                               0.059511,
+                               1
+                           ],
+                           [
+                               0.768151,
+                               0.658375,
+                               0.423268,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.3886,
+    "quantize_cleanup_radius":  3,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

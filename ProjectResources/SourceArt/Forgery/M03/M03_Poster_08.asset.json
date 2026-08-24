@@ -1,0 +1,54 @@
+{
+    "asset_name":  "T_Forgery_M03_Poster_08",
+    "source_file":  "M03_Poster_08.png",
+    "mask_asset_name":  "T_Forgery_M03_Poster_08_Mask",
+    "mask_source_file":  "M03_Poster_08_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M03",
+    "template_id":  "Template_M03_Poster_08",
+    "category":  "Poster",
+    "difficulty":  "Easy",
+    "source_artwork":  "JOB",
+    "source_artist":  "Alphonse Mucha",
+    "source_manifest":  "M03_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M03_Poster_08_JobCigarettes_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#C89B36",
+                         "#E2C8A7",
+                         "#6B4335",
+                         "#303030"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.57758,
+                               0.327778,
+                               0.036889,
+                               1
+                           ],
+                           [
+                               0.760525,
+                               0.57758,
+                               0.386429,
+                               1
+                           ],
+                           [
+                               0.147027,
+                               0.056128,
+                               0.035601,
+                               1
+                           ],
+                           [
+                               0.029557,
+                               0.029557,
+                               0.029557,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.1442,
+    "quantize_cleanup_radius":  4,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

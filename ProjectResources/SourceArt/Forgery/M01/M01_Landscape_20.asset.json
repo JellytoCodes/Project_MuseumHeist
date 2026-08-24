@@ -1,0 +1,68 @@
+{
+    "asset_name":  "T_Forgery_M01_Landscape_20",
+    "source_file":  "M01_Landscape_20.png",
+    "mask_asset_name":  "T_Forgery_M01_Landscape_20_Mask",
+    "mask_source_file":  "M01_Landscape_20_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M01",
+    "template_id":  "Template_M01_Landscape_20",
+    "category":  "Landscape",
+    "difficulty":  "Hard",
+    "source_artwork":  "Landscape with Shepherd",
+    "source_artist":  "Robert S. Duncanson",
+    "source_manifest":  "M01_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M01_Landscape_20_LandscapeShepherd_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#3B4936",
+                         "#8D744C",
+                         "#C2AF82",
+                         "#6A7D8C",
+                         "#594335",
+                         "#D2C8AC"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.043735,
+                               0.066626,
+                               0.036889,
+                               1
+                           ],
+                           [
+                               0.266356,
+                               0.174647,
+                               0.072272,
+                               1
+                           ],
+                           [
+                               0.539479,
+                               0.42869,
+                               0.223228,
+                               1
+                           ],
+                           [
+                               0.144128,
+                               0.205079,
+                               0.262251,
+                               1
+                           ],
+                           [
+                               0.099899,
+                               0.056128,
+                               0.035601,
+                               1
+                           ],
+                           [
+                               0.64448,
+                               0.57758,
+                               0.412543,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.4335,
+    "quantize_cleanup_radius":  2,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

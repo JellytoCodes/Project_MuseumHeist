@@ -1,0 +1,68 @@
+{
+    "asset_name":  "T_Forgery_M03_Poster_19",
+    "source_file":  "M03_Poster_19.png",
+    "mask_asset_name":  "T_Forgery_M03_Poster_19_Mask",
+    "mask_source_file":  "M03_Poster_19_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M03",
+    "template_id":  "Template_M03_Poster_19",
+    "category":  "Poster",
+    "difficulty":  "Hard",
+    "source_artwork":  "The Chap-Book",
+    "source_artist":  "Will H. Bradley",
+    "source_manifest":  "M03_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M03_Poster_19_ChapBook_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#C4473E",
+                         "#D7AD38",
+                         "#E8DDC6",
+                         "#4A5F6F",
+                         "#765A48",
+                         "#303030"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.552011,
+                               0.06301,
+                               0.048172,
+                               1
+                           ],
+                           [
+                               0.679542,
+                               0.417885,
+                               0.039546,
+                               1
+                           ],
+                           [
+                               0.806952,
+                               0.723055,
+                               0.564712,
+                               1
+                           ],
+                           [
+                               0.068478,
+                               0.114435,
+                               0.158961,
+                               1
+                           ],
+                           [
+                               0.181164,
+                               0.102242,
+                               0.064803,
+                               1
+                           ],
+                           [
+                               0.029557,
+                               0.029557,
+                               0.029557,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.1316,
+    "quantize_cleanup_radius":  2,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

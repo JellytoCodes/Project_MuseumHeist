@@ -455,7 +455,7 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 	static void DebugSurfaceTemplateDump(APlayerController* PlayerController);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
-	static void DebugSurfaceTemplatePoolTest(APlayerController* PlayerController, int32 PoolSize = 12);
+	static void DebugSurfaceTemplatePoolTest(APlayerController* PlayerController, int32 PoolSize = 40);
 
 	UFUNCTION(BlueprintCallable, Category = "Heist|Debug|Forgery", meta = (DevelopmentOnly))
 	static void DebugSurfaceTemplateContentValidate(APlayerController* PlayerController, const FString& PoolId);

@@ -1,0 +1,61 @@
+{
+    "asset_name":  "T_Forgery_M02_FoldingScreen_15",
+    "source_file":  "M02_FoldingScreen_15.png",
+    "mask_asset_name":  "T_Forgery_M02_FoldingScreen_15_Mask",
+    "mask_source_file":  "M02_FoldingScreen_15_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M02",
+    "template_id":  "Template_M02_FoldingScreen_15",
+    "category":  "FoldingScreen",
+    "difficulty":  "Medium",
+    "source_artwork":  "Birds and Flowers of Spring and Summer",
+    "source_artist":  "Kano-school painter",
+    "source_manifest":  "M02_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M02_FoldingScreen_15_BirdsSpringSummer_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#D7AF3F",
+                         "#304F3B",
+                         "#B6564C",
+                         "#E9DFCC",
+                         "#4D6D7D"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.679542,
+                               0.42869,
+                               0.049707,
+                               1
+                           ],
+                           [
+                               0.029557,
+                               0.078187,
+                               0.043735,
+                               1
+                           ],
+                           [
+                               0.467784,
+                               0.093059,
+                               0.072272,
+                               1
+                           ],
+                           [
+                               0.814847,
+                               0.73791,
+                               0.603827,
+                               1
+                           ],
+                           [
+                               0.074214,
+                               0.152926,
+                               0.205079,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.2247,
+    "quantize_cleanup_radius":  3,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

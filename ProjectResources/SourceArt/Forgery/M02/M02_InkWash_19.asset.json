@@ -1,0 +1,68 @@
+{
+    "asset_name":  "T_Forgery_M02_InkWash_19",
+    "source_file":  "M02_InkWash_19.png",
+    "mask_asset_name":  "T_Forgery_M02_InkWash_19_Mask",
+    "mask_source_file":  "M02_InkWash_19_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M02",
+    "template_id":  "Template_M02_InkWash_19",
+    "category":  "InkWash",
+    "difficulty":  "Hard",
+    "source_artwork":  "Monkey Reaching for the Moon",
+    "source_artist":  "Japanese Edo-period school",
+    "source_manifest":  "M02_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M02_InkWash_19_MonkeyMoon_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#F4EBDD",
+                         "#D7CCBA",
+                         "#A69A88",
+                         "#756C61",
+                         "#4A4641",
+                         "#303030"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.904661,
+                               0.83077,
+                               0.723055,
+                               1
+                           ],
+                           [
+                               0.679542,
+                               0.603827,
+                               0.491021,
+                               1
+                           ],
+                           [
+                               0.381326,
+                               0.323143,
+                               0.246201,
+                               1
+                           ],
+                           [
+                               0.177888,
+                               0.14996,
+                               0.119538,
+                               1
+                           ],
+                           [
+                               0.068478,
+                               0.061246,
+                               0.052861,
+                               1
+                           ],
+                           [
+                               0.029557,
+                               0.029557,
+                               0.029557,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.1239,
+    "quantize_cleanup_radius":  2,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

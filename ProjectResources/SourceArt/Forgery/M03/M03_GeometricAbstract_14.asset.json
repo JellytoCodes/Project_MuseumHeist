@@ -1,0 +1,61 @@
+{
+    "asset_name":  "T_Forgery_M03_GeometricAbstract_14",
+    "source_file":  "M03_GeometricAbstract_14.png",
+    "mask_asset_name":  "T_Forgery_M03_GeometricAbstract_14_Mask",
+    "mask_source_file":  "M03_GeometricAbstract_14_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M03",
+    "template_id":  "Template_M03_GeometricAbstract_14",
+    "category":  "GeometricAbstract",
+    "difficulty":  "Medium",
+    "source_artwork":  "Dynamic Suprematism",
+    "source_artist":  "Kazimir Malevich",
+    "source_manifest":  "M03_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M03_GeometricAbstract_14_DynamicSuprematism_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#303030",
+                         "#C8463C",
+                         "#35679C",
+                         "#D9AF32",
+                         "#E9E0CC"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.029557,
+                               0.029557,
+                               0.029557,
+                               1
+                           ],
+                           [
+                               0.57758,
+                               0.061246,
+                               0.045186,
+                               1
+                           ],
+                           [
+                               0.035601,
+                               0.135633,
+                               0.332452,
+                               1
+                           ],
+                           [
+                               0.693872,
+                               0.42869,
+                               0.031896,
+                               1
+                           ],
+                           [
+                               0.814847,
+                               0.745404,
+                               0.603827,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.0811,
+    "quantize_cleanup_radius":  3,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

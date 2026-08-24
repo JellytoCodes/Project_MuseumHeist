@@ -1,0 +1,61 @@
+{
+    "asset_name":  "T_Forgery_M03_Poster_15",
+    "source_file":  "M03_Poster_15.png",
+    "mask_asset_name":  "T_Forgery_M03_Poster_15_Mask",
+    "mask_source_file":  "M03_Poster_15_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M03",
+    "template_id":  "Template_M03_Poster_15",
+    "category":  "Poster",
+    "difficulty":  "Medium",
+    "source_artwork":  "Bitter Campari",
+    "source_artist":  "Leonetto Cappiello",
+    "source_manifest":  "M03_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M03_Poster_15_BitterCampari_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#C74339",
+                         "#D9862D",
+                         "#E8DDC7",
+                         "#496178",
+                         "#303030"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.571125,
+                               0.056128,
+                               0.040915,
+                               1
+                           ],
+                           [
+                               0.693872,
+                               0.238398,
+                               0.026241,
+                               1
+                           ],
+                           [
+                               0.806952,
+                               0.723055,
+                               0.571125,
+                               1
+                           ],
+                           [
+                               0.066626,
+                               0.119538,
+                               0.187821,
+                               1
+                           ],
+                           [
+                               0.029557,
+                               0.029557,
+                               0.029557,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.1047,
+    "quantize_cleanup_radius":  3,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

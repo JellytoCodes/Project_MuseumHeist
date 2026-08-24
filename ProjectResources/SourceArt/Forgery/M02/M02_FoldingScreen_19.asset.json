@@ -1,0 +1,68 @@
+{
+    "asset_name":  "T_Forgery_M02_FoldingScreen_19",
+    "source_file":  "M02_FoldingScreen_19.png",
+    "mask_asset_name":  "T_Forgery_M02_FoldingScreen_19_Mask",
+    "mask_source_file":  "M02_FoldingScreen_19_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M02",
+    "template_id":  "Template_M02_FoldingScreen_19",
+    "category":  "FoldingScreen",
+    "difficulty":  "Hard",
+    "source_artwork":  "Chinese Lions",
+    "source_artist":  "Kano Eitoku",
+    "source_manifest":  "M02_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M02_FoldingScreen_19_ChineseLions_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#D6AD3C",
+                         "#E8DFCC",
+                         "#A96F2C",
+                         "#496477",
+                         "#5A4738",
+                         "#303030"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.672443,
+                               0.417885,
+                               0.045186,
+                               1
+                           ],
+                           [
+                               0.806952,
+                               0.73791,
+                               0.603827,
+                               1
+                           ],
+                           [
+                               0.396755,
+                               0.158961,
+                               0.025187,
+                               1
+                           ],
+                           [
+                               0.066626,
+                               0.127438,
+                               0.184475,
+                               1
+                           ],
+                           [
+                               0.102242,
+                               0.06301,
+                               0.039546,
+                               1
+                           ],
+                           [
+                               0.029557,
+                               0.029557,
+                               0.029557,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.2852,
+    "quantize_cleanup_radius":  2,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

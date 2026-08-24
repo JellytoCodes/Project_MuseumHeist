@@ -1,0 +1,61 @@
+{
+    "asset_name":  "T_Forgery_M03_GeometricAbstract_17",
+    "source_file":  "M03_GeometricAbstract_17.png",
+    "mask_asset_name":  "T_Forgery_M03_GeometricAbstract_17_Mask",
+    "mask_source_file":  "M03_GeometricAbstract_17_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M03",
+    "template_id":  "Template_M03_GeometricAbstract_17",
+    "category":  "GeometricAbstract",
+    "difficulty":  "Medium",
+    "source_artwork":  "Several Circles",
+    "source_artist":  "Wassily Kandinsky",
+    "source_manifest":  "M03_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M03_GeometricAbstract_17_SeveralCircles_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#3569A4",
+                         "#DDB43A",
+                         "#C64B42",
+                         "#76588A",
+                         "#E8DFCD"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.035601,
+                               0.141263,
+                               0.371238,
+                               1
+                           ],
+                           [
+                               0.723055,
+                               0.456411,
+                               0.042311,
+                               1
+                           ],
+                           [
+                               0.564712,
+                               0.07036,
+                               0.05448,
+                               1
+                           ],
+                           [
+                               0.181164,
+                               0.097587,
+                               0.254152,
+                               1
+                           ],
+                           [
+                               0.806952,
+                               0.73791,
+                               0.610496,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.1251,
+    "quantize_cleanup_radius":  3,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

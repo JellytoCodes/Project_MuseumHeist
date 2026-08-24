@@ -1,0 +1,61 @@
+{
+    "asset_name":  "T_Forgery_M01_Landscape_16",
+    "source_file":  "M01_Landscape_16.png",
+    "mask_asset_name":  "T_Forgery_M01_Landscape_16_Mask",
+    "mask_source_file":  "M01_Landscape_16_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M01",
+    "template_id":  "Template_M01_Landscape_16",
+    "category":  "Landscape",
+    "difficulty":  "Medium",
+    "source_artwork":  "The Red Vineyard",
+    "source_artist":  "Vincent van Gogh",
+    "source_manifest":  "M01_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M01_Landscape_16_RedVineyard_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#B7432F",
+                         "#D77A28",
+                         "#E0B743",
+                         "#304C63",
+                         "#3C4935"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.473531,
+                               0.056128,
+                               0.028426,
+                               1
+                           ],
+                           [
+                               0.679542,
+                               0.194618,
+                               0.021219,
+                               1
+                           ],
+                           [
+                               0.745404,
+                               0.473531,
+                               0.056128,
+                               1
+                           ],
+                           [
+                               0.029557,
+                               0.072272,
+                               0.124772,
+                               1
+                           ],
+                           [
+                               0.045186,
+                               0.066626,
+                               0.035601,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.4609,
+    "quantize_cleanup_radius":  3,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

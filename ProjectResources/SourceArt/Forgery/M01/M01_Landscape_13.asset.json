@@ -1,0 +1,61 @@
+{
+    "asset_name":  "T_Forgery_M01_Landscape_13",
+    "source_file":  "M01_Landscape_13.png",
+    "mask_asset_name":  "T_Forgery_M01_Landscape_13_Mask",
+    "mask_source_file":  "M01_Landscape_13_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M01",
+    "template_id":  "Template_M01_Landscape_13",
+    "category":  "Landscape",
+    "difficulty":  "Medium",
+    "source_artwork":  "Wheat Field with Cypresses",
+    "source_artist":  "Vincent van Gogh",
+    "source_manifest":  "M01_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M01_Landscape_13_WheatCypresses_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#254C3D",
+                         "#D5A62D",
+                         "#476E9B",
+                         "#AFC2C6",
+                         "#ECE0B4"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.0185,
+                               0.072272,
+                               0.046665,
+                               1
+                           ],
+                           [
+                               0.665387,
+                               0.381326,
+                               0.026241,
+                               1
+                           ],
+                           [
+                               0.06301,
+                               0.155926,
+                               0.327778,
+                               1
+                           ],
+                           [
+                               0.42869,
+                               0.539479,
+                               0.564712,
+                               1
+                           ],
+                           [
+                               0.838799,
+                               0.745404,
+                               0.456411,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.4034,
+    "quantize_cleanup_radius":  3,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

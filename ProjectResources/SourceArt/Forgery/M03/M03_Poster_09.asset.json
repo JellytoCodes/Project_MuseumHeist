@@ -1,0 +1,54 @@
+{
+    "asset_name":  "T_Forgery_M03_Poster_09",
+    "source_file":  "M03_Poster_09.png",
+    "mask_asset_name":  "T_Forgery_M03_Poster_09_Mask",
+    "mask_source_file":  "M03_Poster_09_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M03",
+    "template_id":  "Template_M03_Poster_09",
+    "category":  "Poster",
+    "difficulty":  "Easy",
+    "source_artwork":  "Zodiac",
+    "source_artist":  "Alphonse Mucha",
+    "source_manifest":  "M03_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M03_Poster_09_Zodiac_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#D3A53D",
+                         "#B5574D",
+                         "#E4D3B8",
+                         "#4C5F68"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.651406,
+                               0.376262,
+                               0.046665,
+                               1
+                           ],
+                           [
+                               0.462077,
+                               0.095307,
+                               0.074214,
+                               1
+                           ],
+                           [
+                               0.775822,
+                               0.651406,
+                               0.47932,
+                               1
+                           ],
+                           [
+                               0.072272,
+                               0.114435,
+                               0.138432,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.161,
+    "quantize_cleanup_radius":  4,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

@@ -1,0 +1,54 @@
+{
+    "asset_name":  "T_Forgery_M01_Portrait_08",
+    "source_file":  "M01_Portrait_08.png",
+    "mask_asset_name":  "T_Forgery_M01_Portrait_08_Mask",
+    "mask_source_file":  "M01_Portrait_08_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M01",
+    "template_id":  "Template_M01_Portrait_08",
+    "category":  "Portrait",
+    "difficulty":  "Easy",
+    "source_artwork":  "Arrangement in Grey and Black No. 1",
+    "source_artist":  "James McNeill Whistler",
+    "source_manifest":  "M01_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M01_Portrait_08_WhistlersMother_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#E6DCC8",
+                         "#303030",
+                         "#6F655D",
+                         "#B9AA92"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.791298,
+                               0.715694,
+                               0.57758,
+                               1
+                           ],
+                           [
+                               0.029557,
+                               0.029557,
+                               0.029557,
+                               1
+                           ],
+                           [
+                               0.158961,
+                               0.130136,
+                               0.109462,
+                               1
+                           ],
+                           [
+                               0.48515,
+                               0.401978,
+                               0.287441,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.2281,
+    "quantize_cleanup_radius":  4,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

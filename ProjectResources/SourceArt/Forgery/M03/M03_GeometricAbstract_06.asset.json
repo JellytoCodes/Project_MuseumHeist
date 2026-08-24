@@ -11,6 +11,7 @@
     "source_artist":  "Otto Freundlich",
     "source_manifest":  "M03_SourceManifest.json",
     "candidate_source_file":  "Candidates/M03_GeometricAbstract_06_FreundlichComposition_source.png",
+    "background_threshold":  24,
     "background_srgb":  "#000000",
     "background_filter_mode":  "Black",
     "background_color_tolerance":  0.08,

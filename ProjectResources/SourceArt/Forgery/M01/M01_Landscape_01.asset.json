@@ -1,32 +1,54 @@
 {
-  "asset_name": "T_Forgery_M01_Landscape_01",
-  "source_file": "M01_Landscape_01.png",
-  "mask_asset_name": "T_Forgery_M01_Landscape_01_Mask",
-  "mask_source_file": "M01_Landscape_01_Mask.png",
-  "unreal_destination": "/Game/Data/Forgery/Textures/M01",
-  "template_id": "Template_M01_Landscape_01",
-  "category": "Landscape",
-  "difficulty": "Easy",
-  "source_artwork": "Impression, Sunrise",
-  "source_artist": "Claude Monet",
-  "source_manifest": "M01_SourceManifest.json",
-  "candidate_source_file": "Candidates/M01_Landscape_01_ImpressionSunrise_source.png",
-  "background_srgb": "#000000",
-  "background_filter_mode": "Black",
-  "background_color_tolerance": 0.08,
-  "palette_srgb": [
-    "#4B74A1",
-    "#E46925",
-    "#B2BFCE",
-    "#0D1E35"
-  ],
-  "palette_linear": [
-    [0.070360, 0.174647, 0.356400, 1.0],
-    [0.775822, 0.141263, 0.018500, 1.0],
-    [0.445201, 0.520996, 0.617207, 1.0],
-    [0.004025, 0.012983, 0.035601, 1.0]
-  ],
-  "foreground_ratio": 0.6469,
-  "quantize_cleanup_radius": 4,
-  "notes": "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+    "asset_name":  "T_Forgery_M01_Landscape_01",
+    "source_file":  "M01_Landscape_01.png",
+    "mask_asset_name":  "T_Forgery_M01_Landscape_01_Mask",
+    "mask_source_file":  "M01_Landscape_01_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M01",
+    "template_id":  "Template_M01_Landscape_01",
+    "category":  "Landscape",
+    "difficulty":  "Easy",
+    "source_artwork":  "Impression, Sunrise",
+    "source_artist":  "Claude Monet",
+    "source_manifest":  "M01_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M01_Landscape_01_ImpressionSunrise_source.png",
+    "background_threshold":  24,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#4B74A1",
+                         "#E46925",
+                         "#B2BFCE",
+                         "#0D1E35"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.07036,
+                               0.174647,
+                               0.3564,
+                               1
+                           ],
+                           [
+                               0.775822,
+                               0.141263,
+                               0.0185,
+                               1
+                           ],
+                           [
+                               0.445201,
+                               0.520996,
+                               0.617207,
+                               1
+                           ],
+                           [
+                               0.004025,
+                               0.012983,
+                               0.035601,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.6475,
+    "quantize_cleanup_radius":  4,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
 }

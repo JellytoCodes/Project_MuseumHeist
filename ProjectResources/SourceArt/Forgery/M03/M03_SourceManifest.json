@@ -18,13 +18,13 @@
     ]
   },
   "category_distribution": {
-    "GeometricAbstract": 6,
-    "Poster": 6
+    "GeometricAbstract": 20,
+    "Poster": 20
   },
   "difficulty_distribution": {
-    "Easy": 4,
-    "Medium": 5,
-    "Hard": 3
+    "Easy": 14,
+    "Medium": 17,
+    "Hard": 9
   },
   "templates": [
     {
@@ -194,6 +194,174 @@
       "candidate_source_file": "Candidates/M03_Poster_06_JaneAvril_source.png",
       "palette_srgb": ["#D7BC85", "#272421", "#D96A2F", "#F2E4C9", "#7A6A3C", "#9E3E32"],
       "iconic_features": ["high-kicking dancer", "double-bass neck frame", "layered ivory skirt"]
+    },
+    {
+      "slot": "M03_GeometricAbstract_07", "template_id": "Template_M03_GeometricAbstract_07", "category": "GeometricAbstract", "difficulty": "Easy",
+      "artwork": "Composition VIII", "artist": "Wassily Kandinsky", "year": "1923", "source_url": "https://www.guggenheim.org/artwork/1924", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_GeometricAbstract_07_CompositionVIII_source.png", "palette_srgb": ["#E8D7A4", "#2F4E7A", "#C64C3F", "#303030"],
+      "iconic_features": ["dominant circle", "diagonal line", "triangles"]
+    },
+    {
+      "slot": "M03_GeometricAbstract_08", "template_id": "Template_M03_GeometricAbstract_08", "category": "GeometricAbstract", "difficulty": "Easy",
+      "artwork": "Black Square", "artist": "Kazimir Malevich", "year": "1915", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Malevich%20Black%20Square", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_GeometricAbstract_08_BlackSquare_source.png", "palette_srgb": ["#303030", "#202020", "#F0E0D0", "#F0E0C0"],
+      "iconic_features": ["tilted dark square", "cream halo"]
+    },
+    {
+      "slot": "M03_GeometricAbstract_09", "template_id": "Template_M03_GeometricAbstract_09", "category": "GeometricAbstract", "difficulty": "Easy",
+      "artwork": "Suprematist Composition", "artist": "Kazimir Malevich", "year": "1916", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Malevich%20Suprematist%20Composition%201916", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_GeometricAbstract_09_SuprematistComposition_source.png", "palette_srgb": ["#2F5E9B", "#BE4439", "#D8AD32", "#303030"],
+      "iconic_features": ["blue rectangle", "red rectangle", "yellow bar"]
+    },
+    {
+      "slot": "M03_GeometricAbstract_10", "template_id": "Template_M03_GeometricAbstract_10", "category": "GeometricAbstract", "difficulty": "Easy",
+      "artwork": "Tableau I", "artist": "Piet Mondrian", "year": "1921", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Mondrian%20Tableau%20I%201921", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_GeometricAbstract_10_TableauI_source.png", "palette_srgb": ["#C4453C", "#DAB335", "#37689B", "#303030"],
+      "iconic_features": ["orthogonal grid", "red yellow blue blocks"]
+    },
+    {
+      "slot": "M03_GeometricAbstract_11", "template_id": "Template_M03_GeometricAbstract_11", "category": "GeometricAbstract", "difficulty": "Easy",
+      "artwork": "Counter-Composition VI", "artist": "Theo van Doesburg", "year": "1925", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Theo%20van%20Doesburg%20Counter-Composition%20VI", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_GeometricAbstract_11_CounterCompositionVI_source.png", "palette_srgb": ["#3C6DA4", "#C84940", "#E9E1CD", "#303030"],
+      "iconic_features": ["tilted rectangles", "stepped diamond"]
+    },
+    {
+      "slot": "M03_GeometricAbstract_12", "template_id": "Template_M03_GeometricAbstract_12", "category": "GeometricAbstract", "difficulty": "Medium",
+      "artwork": "Proun 19D", "artist": "El Lissitzky", "year": "1920-1921", "source_url": "https://www.moma.org/collection/works/79040", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_GeometricAbstract_12_Proun19D_source.png", "palette_srgb": ["#E8E0CF", "#303030", "#C34B40", "#7C7D79", "#3F6D91"],
+      "iconic_features": ["diagonal beam", "circle", "red block"]
+    },
+    {
+      "slot": "M03_GeometricAbstract_13", "template_id": "Template_M03_GeometricAbstract_13", "category": "GeometricAbstract", "difficulty": "Medium",
+      "artwork": "Beat the Whites with the Red Wedge", "artist": "El Lissitzky", "year": "1919", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Beat%20the%20Whites%20with%20the%20Red%20Wedge", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_GeometricAbstract_13_RedWedge_source.png", "palette_srgb": ["#F0E0D0", "#D04030", "#807070", "#303030", "#F0E0C0"],
+      "iconic_features": ["red wedge", "pale circle", "dark bars"]
+    },
+    {
+      "slot": "M03_GeometricAbstract_14", "template_id": "Template_M03_GeometricAbstract_14", "category": "GeometricAbstract", "difficulty": "Medium",
+      "artwork": "Dynamic Suprematism", "artist": "Kazimir Malevich", "year": "1915-1916", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Malevich%20Dynamic%20Suprematism", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_GeometricAbstract_14_DynamicSuprematism_source.png", "palette_srgb": ["#303030", "#C8463C", "#35679C", "#D9AF32", "#E9E0CC"],
+      "iconic_features": ["long diagonal", "red block", "blue bar"]
+    },
+    {
+      "slot": "M03_GeometricAbstract_15", "template_id": "Template_M03_GeometricAbstract_15", "category": "GeometricAbstract", "difficulty": "Medium",
+      "artwork": "Eight Red Rectangles", "artist": "Kazimir Malevich", "year": "1915", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Malevich%20Eight%20Red%20Rectangles", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_GeometricAbstract_15_EightRedRectangles_source.png", "palette_srgb": ["#C4423A", "#9E372F", "#D06A42", "#E7DCC8", "#303030"],
+      "iconic_features": ["eight red rectangles", "diagonal arrangement"]
+    },
+    {
+      "slot": "M03_GeometricAbstract_16", "template_id": "Template_M03_GeometricAbstract_16", "category": "GeometricAbstract", "difficulty": "Medium",
+      "artwork": "Color Study: Squares with Concentric Circles", "artist": "Wassily Kandinsky", "year": "1913", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Kandinsky%20Concentric%20Circles", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_GeometricAbstract_16_ConcentricSquares_source.png", "palette_srgb": ["#D9B13A", "#C54D42", "#3B6C9F", "#6C4F84", "#E7DFCC"],
+      "iconic_features": ["four nested targets", "two-by-two cluster"]
+    },
+    {
+      "slot": "M03_GeometricAbstract_17", "template_id": "Template_M03_GeometricAbstract_17", "category": "GeometricAbstract", "difficulty": "Medium",
+      "artwork": "Several Circles", "artist": "Wassily Kandinsky", "year": "1926", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Kandinsky%20Several%20Circles", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_GeometricAbstract_17_SeveralCircles_source.png", "palette_srgb": ["#3569A4", "#DDB43A", "#C64B42", "#76588A", "#E8DFCD"],
+      "iconic_features": ["large blue circle", "yellow and red circles", "small orbiting circles"]
+    },
+    {
+      "slot": "M03_GeometricAbstract_18", "template_id": "Template_M03_GeometricAbstract_18", "category": "GeometricAbstract", "difficulty": "Hard",
+      "artwork": "On White II", "artist": "Wassily Kandinsky", "year": "1923", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Kandinsky%20On%20White%20II", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_GeometricAbstract_18_OnWhiteII_source.png", "palette_srgb": ["#303030", "#C74B3F", "#35689E", "#DAB237", "#E8DFCC", "#77706A"],
+      "iconic_features": ["crossing diagonals", "red wedge", "blue block"]
+    },
+    {
+      "slot": "M03_GeometricAbstract_19", "template_id": "Template_M03_GeometricAbstract_19", "category": "GeometricAbstract", "difficulty": "Hard",
+      "artwork": "Upward", "artist": "Wassily Kandinsky", "year": "1929", "source_url": "https://www.guggenheim.org/artwork/1927", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_GeometricAbstract_19_Upward_source.png", "palette_srgb": ["#D9B23C", "#C44940", "#396B9E", "#7B5A88", "#E8DFCB", "#303030"],
+      "iconic_features": ["abstract head", "semicircle", "vertical bar"]
+    },
+    {
+      "slot": "M03_GeometricAbstract_20", "template_id": "Template_M03_GeometricAbstract_20", "category": "GeometricAbstract", "difficulty": "Hard",
+      "artwork": "The Swan, No. 17", "artist": "Hilma af Klint", "year": "1915", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Hilma%20af%20Klint%20Swan%20No%2017", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_GeometricAbstract_20_SwanNo17_source.png", "palette_srgb": ["#303030", "#202020", "#F0E0C0", "#C05040", "#E0A030", "#D0A030"],
+      "iconic_features": ["opposing swans", "red disc", "gold arc"]
+    },
+    {
+      "slot": "M03_Poster_07", "template_id": "Template_M03_Poster_07", "category": "Poster", "difficulty": "Easy",
+      "artwork": "Absinthe Robette", "artist": "Privat Livemont", "year": "1896", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Absinthe%20Robette%20Livemont", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_Poster_07_AbsintheRobette_source.png", "palette_srgb": ["#4D8A64", "#D6B343", "#E8DFC9", "#303030"],
+      "iconic_features": ["green woman", "small glass", "circular halo"]
+    },
+    {
+      "slot": "M03_Poster_08", "template_id": "Template_M03_Poster_08", "category": "Poster", "difficulty": "Easy",
+      "artwork": "JOB", "artist": "Alphonse Mucha", "year": "1896", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Mucha%20JOB%20poster", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_Poster_08_JobCigarettes_source.png", "palette_srgb": ["#C89B36", "#E2C8A7", "#6B4335", "#303030"],
+      "iconic_features": ["profile woman", "large hair mass", "smoke ribbon"]
+    },
+    {
+      "slot": "M03_Poster_09", "template_id": "Template_M03_Poster_09", "category": "Poster", "difficulty": "Easy",
+      "artwork": "Zodiac", "artist": "Alphonse Mucha", "year": "1896", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Mucha%20Zodiac", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_Poster_09_Zodiac_source.png", "palette_srgb": ["#D3A53D", "#B5574D", "#E4D3B8", "#4C5F68"],
+      "iconic_features": ["woman profile", "circular halo", "floral curls"]
+    },
+    {
+      "slot": "M03_Poster_10", "template_id": "Template_M03_Poster_10", "category": "Poster", "difficulty": "Easy",
+      "artwork": "Monaco Monte-Carlo", "artist": "Alphonse Mucha", "year": "1897", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Mucha%20Monaco%20Monte%20Carlo", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_Poster_10_Monaco_source.png", "palette_srgb": ["#C04E46", "#D6A83C", "#426A57", "#E8DCC5"],
+      "iconic_features": ["serene woman", "red floral halo", "green stems"]
+    },
+    {
+      "slot": "M03_Poster_11", "template_id": "Template_M03_Poster_11", "category": "Poster", "difficulty": "Easy",
+      "artwork": "Biscuits Lefevre-Utile", "artist": "Alphonse Mucha", "year": "1896", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Mucha%20Biscuits%20Lefevre%20Utile", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_Poster_11_BiscuitsLU_source.png", "palette_srgb": ["#D5AA3D", "#C36A45", "#E8DCC3", "#4C5F4E"],
+      "iconic_features": ["woman with plate", "wheat stalks", "gold arch"]
+    },
+    {
+      "slot": "M03_Poster_12", "template_id": "Template_M03_Poster_12", "category": "Poster", "difficulty": "Medium",
+      "artwork": "Cycles Gladiator", "artist": "Georges Massias", "year": "1895", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Cycles%20Gladiator%20Massias", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_Poster_12_CyclesGladiator_source.png", "palette_srgb": ["#D8AD3A", "#C34940", "#3E668B", "#E9DFC8", "#303030"],
+      "iconic_features": ["winged cyclist", "gold wheel", "red scarf"]
+    },
+    {
+      "slot": "M03_Poster_13", "template_id": "Template_M03_Poster_13", "category": "Poster", "difficulty": "Medium",
+      "artwork": "Le Frou-Frou", "artist": "Leonetto Cappiello", "year": "1899", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Le%20Frou-Frou%20Cappiello", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_Poster_13_FrouFrou_source.png", "palette_srgb": ["#D9AD36", "#C54C3E", "#E8D9BE", "#3B5F7C", "#303030"],
+      "iconic_features": ["red-haired dancer", "high kick", "yellow skirt"]
+    },
+    {
+      "slot": "M03_Poster_14", "template_id": "Template_M03_Poster_14", "category": "Poster", "difficulty": "Medium",
+      "artwork": "Thermogene", "artist": "Leonetto Cappiello", "year": "1909", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Thermogene%20Cappiello", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_Poster_14_Thermogene_source.png", "palette_srgb": ["#C74339", "#D9822B", "#E8DCC4", "#3E617E", "#303030"],
+      "iconic_features": ["red figure", "orange heat ribbon", "dark hat"]
+    },
+    {
+      "slot": "M03_Poster_15", "template_id": "Template_M03_Poster_15", "category": "Poster", "difficulty": "Medium",
+      "artwork": "Bitter Campari", "artist": "Leonetto Cappiello", "year": "1921", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Cappiello%20Bitter%20Campari", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_Poster_15_BitterCampari_source.png", "palette_srgb": ["#C74339", "#D9862D", "#E8DDC7", "#496178", "#303030"],
+      "iconic_features": ["red jester", "orange spiral", "dark cup"]
+    },
+    {
+      "slot": "M03_Poster_16", "template_id": "Template_M03_Poster_16", "category": "Poster", "difficulty": "Medium",
+      "artwork": "Nord Express", "artist": "A. M. Cassandre", "year": "1927", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Cassandre%20Nord%20Express", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_Poster_16_NordExpress_source.png", "palette_srgb": ["#344F6A", "#788998", "#D8B13B", "#E8E0CF", "#303030"],
+      "iconic_features": ["streamlined locomotive", "diagonal rails", "pale star"]
+    },
+    {
+      "slot": "M03_Poster_17", "template_id": "Template_M03_Poster_17", "category": "Poster", "difficulty": "Medium",
+      "artwork": "Etoile du Nord", "artist": "A. M. Cassandre", "year": "1927", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Cassandre%20Etoile%20du%20Nord", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_Poster_17_EtoileDuNord_source.png", "palette_srgb": ["#E0B030", "#303030", "#205080", "#506080", "#F0E0C0"],
+      "iconic_features": ["large star", "train nose", "blue speed bands"]
+    },
+    {
+      "slot": "M03_Poster_18", "template_id": "Template_M03_Poster_18", "category": "Poster", "difficulty": "Hard",
+      "artwork": "Harper's May", "artist": "Edward Penfield", "year": "1897", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Edward%20Penfield%20Harpers%20May", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_Poster_18_HarpersMay_source.png", "palette_srgb": ["#D0A030", "#405060", "#C04040", "#F0E0C0", "#406050", "#303030"],
+      "iconic_features": ["reading woman", "blossoming branch", "red sun"]
+    },
+    {
+      "slot": "M03_Poster_19", "template_id": "Template_M03_Poster_19", "category": "Poster", "difficulty": "Hard",
+      "artwork": "The Chap-Book", "artist": "Will H. Bradley", "year": "1894", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Will%20Bradley%20Chap-Book", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_Poster_19_ChapBook_source.png", "palette_srgb": ["#C4473E", "#D7AD38", "#E8DDC6", "#4A5F6F", "#765A48", "#303030"],
+      "iconic_features": ["two tall women", "red sun", "vertical plants"]
+    },
+    {
+      "slot": "M03_Poster_20", "template_id": "Template_M03_Poster_20", "category": "Poster", "difficulty": "Hard",
+      "artwork": "Divan Japonais", "artist": "Henri de Toulouse-Lautrec", "year": "1893", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Toulouse-Lautrec%20Divan%20Japonais", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M03_Poster_20_DivanJaponais_source.png", "palette_srgb": ["#303030", "#D67D2F", "#E8DDC5", "#C54B42", "#4D6B7C", "#B99A5A"],
+      "iconic_features": ["seated woman with fan", "orange-haired companion", "stage silhouette"]
     }
   ]
 }

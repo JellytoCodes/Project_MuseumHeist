@@ -1,0 +1,61 @@
+{
+    "asset_name":  "T_Forgery_M01_Landscape_12",
+    "source_file":  "M01_Landscape_12.png",
+    "mask_asset_name":  "T_Forgery_M01_Landscape_12_Mask",
+    "mask_source_file":  "M01_Landscape_12_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M01",
+    "template_id":  "Template_M01_Landscape_12",
+    "category":  "Landscape",
+    "difficulty":  "Medium",
+    "source_artwork":  "The Church at Auvers",
+    "source_artist":  "Vincent van Gogh",
+    "source_manifest":  "M01_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M01_Landscape_12_ChurchAuvers_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#315E91",
+                         "#D5A12E",
+                         "#4F7C43",
+                         "#A8B8C2",
+                         "#45392E"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.030713,
+                               0.111932,
+                               0.283149,
+                               1
+                           ],
+                           [
+                               0.665387,
+                               0.3564,
+                               0.027321,
+                               1
+                           ],
+                           [
+                               0.078187,
+                               0.201556,
+                               0.056128,
+                               1
+                           ],
+                           [
+                               0.391572,
+                               0.47932,
+                               0.539479,
+                               1
+                           ],
+                           [
+                               0.059511,
+                               0.040915,
+                               0.027321,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.4987,
+    "quantize_cleanup_radius":  3,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

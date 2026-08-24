@@ -1,29 +1,68 @@
 {
-  "asset_name": "T_Forgery_M01_Landscape_06",
-  "source_file": "M01_Landscape_06.png",
-  "mask_asset_name": "T_Forgery_M01_Landscape_06_Mask",
-  "mask_source_file": "M01_Landscape_06_Mask.png",
-  "unreal_destination": "/Game/Data/Forgery/Textures/M01",
-  "template_id": "Template_M01_Landscape_06",
-  "category": "Landscape",
-  "difficulty": "Hard",
-  "source_artwork": "Water Lilies and Japanese Bridge",
-  "source_artist": "Claude Monet",
-  "source_manifest": "M01_SourceManifest.json",
-  "candidate_source_file": "Candidates/M01_Landscape_06_WaterLiliesBridge_source.png",
-  "background_srgb": "#000000",
-  "background_filter_mode": "Black",
-  "background_color_tolerance": 0.08,
-  "palette_srgb": ["#608E4F", "#19442B", "#1D5F9E", "#78A9B1", "#F2A3AD", "#FBDFAC"],
-  "palette_linear": [
-    [0.116971, 0.270498, 0.078187, 1.0],
-    [0.009721, 0.057805, 0.024158, 1.0],
-    [0.012286, 0.114435, 0.341914, 1.0],
-    [0.187821, 0.396755, 0.439657, 1.0],
-    [0.887923, 0.366253, 0.417885, 1.0],
-    [0.964686, 0.737910, 0.412543, 1.0]
-  ],
-  "foreground_ratio": 0.7042,
-  "quantize_cleanup_radius": 4,
-  "notes": "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+    "asset_name":  "T_Forgery_M01_Landscape_06",
+    "source_file":  "M01_Landscape_06.png",
+    "mask_asset_name":  "T_Forgery_M01_Landscape_06_Mask",
+    "mask_source_file":  "M01_Landscape_06_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M01",
+    "template_id":  "Template_M01_Landscape_06",
+    "category":  "Landscape",
+    "difficulty":  "Hard",
+    "source_artwork":  "Water Lilies and Japanese Bridge",
+    "source_artist":  "Claude Monet",
+    "source_manifest":  "M01_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M01_Landscape_06_WaterLiliesBridge_source.png",
+    "background_threshold":  24,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#608E4F",
+                         "#19442B",
+                         "#1D5F9E",
+                         "#78A9B1",
+                         "#F2A3AD",
+                         "#FBDFAC"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.116971,
+                               0.270498,
+                               0.078187,
+                               1
+                           ],
+                           [
+                               0.009721,
+                               0.057805,
+                               0.024158,
+                               1
+                           ],
+                           [
+                               0.012286,
+                               0.114435,
+                               0.341914,
+                               1
+                           ],
+                           [
+                               0.187821,
+                               0.396755,
+                               0.439657,
+                               1
+                           ],
+                           [
+                               0.887923,
+                               0.366253,
+                               0.417885,
+                               1
+                           ],
+                           [
+                               0.964686,
+                               0.73791,
+                               0.412543,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.7044,
+    "quantize_cleanup_radius":  2,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
 }

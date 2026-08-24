@@ -1,0 +1,54 @@
+{
+    "asset_name":  "T_Forgery_M02_FoldingScreen_07",
+    "source_file":  "M02_FoldingScreen_07.png",
+    "mask_asset_name":  "T_Forgery_M02_FoldingScreen_07_Mask",
+    "mask_source_file":  "M02_FoldingScreen_07_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M02",
+    "template_id":  "Template_M02_FoldingScreen_07",
+    "category":  "FoldingScreen",
+    "difficulty":  "Easy",
+    "source_artwork":  "Pine Trees",
+    "source_artist":  "Hasegawa Tohaku",
+    "source_manifest":  "M02_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M02_FoldingScreen_07_PineTrees_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#EDE4D3",
+                         "#9C9A91",
+                         "#535653",
+                         "#303030"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.846873,
+                               0.775822,
+                               0.651406,
+                               1
+                           ],
+                           [
+                               0.332452,
+                               0.323143,
+                               0.283149,
+                               1
+                           ],
+                           [
+                               0.0865,
+                               0.093059,
+                               0.0865,
+                               1
+                           ],
+                           [
+                               0.029557,
+                               0.029557,
+                               0.029557,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.1222,
+    "quantize_cleanup_radius":  4,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

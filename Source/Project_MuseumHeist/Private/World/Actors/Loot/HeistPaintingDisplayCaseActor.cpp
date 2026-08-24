@@ -454,6 +454,44 @@ int32 AHeistPaintingDisplayCaseActor::GetOriginalVisualRevision() const
 	return OriginalVisualRevision;
 }
 
+bool AHeistPaintingDisplayCaseActor::SetAssignedSurfaceTemplate(const FName PoolId, const FName TemplateId, const int32 AssignmentRevision)
+{
+	if (!HasAuthority() || PoolId.IsNone() || TemplateId.IsNone() || AssignmentRevision <= 0)
+	{
+		return false;
+	}
+
+	const AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	FHeistForgeryTemplateRow TemplateDefinition;
+	if (!IsValid(HeistGameMode) || !HeistGameMode->TryGetForgeryTemplateDefinition(TemplateId, TemplateDefinition) ||
+		TemplateDefinition.SurfacePoolId != PoolId || TemplateDefinition.ReferenceImage.IsNull())
+	{
+		return false;
+	}
+
+	OriginalVisualTemplateId = TemplateId;
+	OriginalReferenceImage = TemplateDefinition.ReferenceImage;
+	OriginalVisualRevision = AssignmentRevision;
+	ForceNetUpdate();
+	RefreshOriginalPaintingVisual();
+	return true;
+}
+
+bool AHeistPaintingDisplayCaseActor::ClearAssignedSurfaceTemplate()
+{
+	if (!HasAuthority())
+	{
+		return false;
+	}
+
+	OriginalVisualTemplateId = NAME_None;
+	OriginalReferenceImage.Reset();
+	OriginalVisualRevision = 0;
+	ForceNetUpdate();
+	ResetOriginalPaintingVisual();
+	return true;
+}
+
 void AHeistPaintingDisplayCaseActor::GetOriginalPaintingVisualDebugState(FName& OutTemplateId, int32& OutRevision, bool& OutReferenceLoaded, bool& OutDynamicMaterialBuilt,
 																		 bool& OutTextureParameterApplied, bool& OutContractPassed) const
 {
@@ -463,54 +501,44 @@ void AHeistPaintingDisplayCaseActor::GetOriginalPaintingVisualDebugState(FName& 
 	OutDynamicMaterialBuilt = IsValid(OriginalPaintingDynamicMaterial);
 	OutTextureParameterApplied = bOriginalPaintingTextureParameterApplied;
 	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
-	OutContractPassed =
-		IsActiveObjectiveTargetCase() && IsValid(HeistGameState) && !OutTemplateId.IsNone() && OutTemplateId == HeistGameState->GetSelectedSurfaceTemplateId() &&
-		OutRevision > 0 && OutRevision == HeistGameState->GetSurfaceTemplateSelectionRevision() && AppliedOriginalVisualRevision == OutRevision &&
-		OutReferenceLoaded && OutDynamicMaterialBuilt && OutTextureParameterApplied;
+	const bool bTargetTemplateAligned = !IsActiveObjectiveTargetCase() ||
+		(IsValid(HeistGameState) && OutTemplateId == HeistGameState->GetSelectedSurfaceTemplateId());
+	OutContractPassed = bContractExhibitActive && IsValid(HeistGameState) && !OutTemplateId.IsNone() && bTargetTemplateAligned && OutRevision > 0 &&
+		OutRevision == HeistGameState->GetSurfaceTemplateSelectionRevision() && AppliedOriginalVisualRevision == OutRevision && OutReferenceLoaded &&
+		OutDynamicMaterialBuilt && OutTextureParameterApplied;
 }
 
 void AHeistPaintingDisplayCaseActor::HandleSurfaceTemplateSelectionChanged(const FName PoolId, const FName TemplateId, const int32 SelectionRevision)
 {
 	if (PoolId.IsNone() || TemplateId.IsNone() || SelectionRevision <= 0)
 	{
-		if (HasAuthority())
+		if (HasAuthority() && IsActiveObjectiveTargetCase())
 		{
-			OriginalVisualTemplateId = NAME_None;
-			OriginalReferenceImage.Reset();
-			OriginalVisualRevision = 0;
-			ForceNetUpdate();
+			ClearAssignedSurfaceTemplate();
 		}
-		ResetOriginalPaintingVisual();
+		else if (OriginalVisualTemplateId.IsNone())
+		{
+			ResetOriginalPaintingVisual();
+		}
+		else
+		{
+			RefreshOriginalPaintingVisual();
+		}
 		return;
 	}
 
 	if (!IsActiveObjectiveTargetCase())
 	{
-		if (HasAuthority() && (!OriginalVisualTemplateId.IsNone() || !OriginalReferenceImage.IsNull() || OriginalVisualRevision > 0))
-		{
-			OriginalVisualTemplateId = NAME_None;
-			OriginalReferenceImage.Reset();
-			OriginalVisualRevision = 0;
-			ForceNetUpdate();
-		}
-		ResetOriginalPaintingVisual();
+		RefreshOriginalPaintingVisual();
 		return;
 	}
 
 	if (HasAuthority())
 	{
-		const AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
-		FHeistForgeryTemplateRow TemplateDefinition;
-		if (!IsValid(HeistGameMode) || !HeistGameMode->TryGetForgeryTemplateDefinition(TemplateId, TemplateDefinition) ||
-			(!TemplateDefinition.SurfacePoolId.IsNone() && TemplateDefinition.SurfacePoolId != PoolId) || TemplateDefinition.ReferenceImage.IsNull())
+		if (!SetAssignedSurfaceTemplate(PoolId, TemplateId, SelectionRevision))
 		{
 			return;
 		}
-
-		OriginalVisualTemplateId = TemplateId;
-		OriginalReferenceImage = TemplateDefinition.ReferenceImage;
-		OriginalVisualRevision = SelectionRevision;
-		ForceNetUpdate();
 	}
 
 	RefreshOriginalPaintingVisual();
@@ -526,7 +554,7 @@ void AHeistPaintingDisplayCaseActor::HandleObjectiveStateChanged(const FName Act
 		return;
 	}
 
-	HandleSurfaceTemplateSelectionChanged(NAME_None, NAME_None, 0);
+	RefreshOriginalPaintingVisual();
 }
 
 bool AHeistPaintingDisplayCaseActor::IsActiveObjectiveTargetCase() const
@@ -538,7 +566,7 @@ bool AHeistPaintingDisplayCaseActor::IsActiveObjectiveTargetCase() const
 
 void AHeistPaintingDisplayCaseActor::RefreshOriginalPaintingVisual()
 {
-	if (!IsActiveObjectiveTargetCase() || !IsValid(OriginalVisualComponent) || OriginalVisualTemplateId.IsNone() || OriginalVisualRevision <= 0 || OriginalReferenceImage.IsNull())
+	if (!bContractExhibitActive || !IsValid(OriginalVisualComponent) || OriginalVisualTemplateId.IsNone() || OriginalVisualRevision <= 0 || OriginalReferenceImage.IsNull())
 	{
 		ResetOriginalPaintingVisual();
 		return;

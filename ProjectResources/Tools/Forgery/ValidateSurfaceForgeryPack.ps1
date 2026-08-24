@@ -183,9 +183,9 @@ if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf))
 else
 {
     $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
-    if ($manifest.pool_id -ne $PoolId -or $manifest.templates.Count -ne 12)
+    if ($manifest.pool_id -ne $PoolId -or $manifest.templates.Count -ne 40)
     {
-        $failures.Add("Source manifest must declare Pool=$PoolId and exactly 12 templates.")
+        $failures.Add("Source manifest must declare Pool=$PoolId and exactly 40 templates.")
     }
 }
 $expectedResolution =
@@ -204,13 +204,13 @@ $artifactRows = Get-Content -LiteralPath $artifactDataTablePath -Raw -Encoding U
 $assetFiles = @(Get-ChildItem -LiteralPath $resolvedSourceRoot -Filter "*.asset.json" -File)
 $assetDefinitions = @($assetFiles | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8 | ConvertFrom-Json })
 
-if ($poolRows.Count -ne 12)
+if ($poolRows.Count -ne 40)
 {
-    $failures.Add("DataTable must contain exactly 12 rows for $PoolId; found $($poolRows.Count).")
+    $failures.Add("DataTable must contain exactly 40 rows for $PoolId; found $($poolRows.Count).")
 }
-if ($assetDefinitions.Count -ne 12)
+if ($assetDefinitions.Count -ne 40)
 {
-    $failures.Add("Source pack must contain exactly 12 asset metadata files; found $($assetDefinitions.Count).")
+    $failures.Add("Source pack must contain exactly 40 asset metadata files; found $($assetDefinitions.Count).")
 }
 
 $manifestByTemplateId = @{}
@@ -485,14 +485,14 @@ foreach ($assetDefinition in $assetDefinitions)
     }
 }
 
-if ($firstCategoryCount -ne 6 -or $secondCategoryCount -ne 6)
+if ($firstCategoryCount -ne 20 -or $secondCategoryCount -ne 20)
 {
     $failures.Add(
-        "Category distribution must be $firstCategoryName=6 $secondCategoryName=6; found $firstCategoryName=$firstCategoryCount $secondCategoryName=$secondCategoryCount.")
+        "Category distribution must be $firstCategoryName=20 $secondCategoryName=20; found $firstCategoryName=$firstCategoryCount $secondCategoryName=$secondCategoryCount.")
 }
-if ($easyCount -ne 4 -or $mediumCount -ne 5 -or $hardCount -ne 3)
+if ($easyCount -ne 14 -or $mediumCount -ne 17 -or $hardCount -ne 9)
 {
-    $failures.Add("Difficulty distribution must be Easy=4 Medium=5 Hard=3; found Easy=$easyCount Medium=$mediumCount Hard=$hardCount.")
+    $failures.Add("Difficulty distribution must be Easy=14 Medium=17 Hard=9; found Easy=$easyCount Medium=$mediumCount Hard=$hardCount.")
 }
 
 $paintingArtifact = $artifactRows | Where-Object { $_.ArtifactId -eq "Artifact_Painting_M01" } | Select-Object -First 1
@@ -515,7 +515,7 @@ $passed = $failures.Count -eq 0
 $resultText = if ($passed) { "PASS" } else { "FAIL" }
 $emptySubmitPrerequisiteResult = if ($PoolId -eq "M03")
 {
-    if ($emptySubmitPrerequisiteDataContractCount -eq 12) { "PASS" } else { "FAIL" }
+    if ($emptySubmitPrerequisiteDataContractCount -eq 40) { "PASS" } else { "FAIL" }
 }
 else
 {
@@ -523,7 +523,7 @@ else
 }
 $fullFillAntiFillResult = if ($PoolId -eq "M03")
 {
-    if ($fullFillAntiFillDataContractCount -eq 12) { "PASS" } else { "FAIL" }
+    if ($fullFillAntiFillDataContractCount -eq 40) { "PASS" } else { "FAIL" }
 }
 else
 {

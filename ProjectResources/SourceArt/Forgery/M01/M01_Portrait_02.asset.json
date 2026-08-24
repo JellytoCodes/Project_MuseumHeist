@@ -1,27 +1,54 @@
 {
-  "asset_name": "T_Forgery_M01_Portrait_02",
-  "source_file": "M01_Portrait_02.png",
-  "mask_asset_name": "T_Forgery_M01_Portrait_02_Mask",
-  "mask_source_file": "M01_Portrait_02_Mask.png",
-  "unreal_destination": "/Game/Data/Forgery/Textures/M01",
-  "template_id": "Template_M01_Portrait_02",
-  "category": "Portrait",
-  "difficulty": "Easy",
-  "source_artwork": "Self-Portrait with a Straw Hat",
-  "source_artist": "Vincent van Gogh",
-  "source_manifest": "M01_SourceManifest.json",
-  "candidate_source_file": "Candidates/M01_Portrait_02_VanGogh_source.png",
-  "background_srgb": "#000000",
-  "background_filter_mode": "Black",
-  "background_color_tolerance": 0.08,
-  "palette_srgb": ["#F0AC3E", "#ECA41C", "#2F7B74", "#9A472E"],
-  "palette_linear": [
-    [0.871367, 0.412543, 0.048172, 1.0],
-    [0.838799, 0.371238, 0.011612, 1.0],
-    [0.028426, 0.198069, 0.174647, 1.0],
-    [0.323143, 0.063010, 0.027321, 1.0]
-  ],
-  "foreground_ratio": 0.5379,
-  "quantize_cleanup_radius": 4,
-  "notes": "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+    "asset_name":  "T_Forgery_M01_Portrait_02",
+    "source_file":  "M01_Portrait_02.png",
+    "mask_asset_name":  "T_Forgery_M01_Portrait_02_Mask",
+    "mask_source_file":  "M01_Portrait_02_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M01",
+    "template_id":  "Template_M01_Portrait_02",
+    "category":  "Portrait",
+    "difficulty":  "Easy",
+    "source_artwork":  "Self-Portrait with a Straw Hat",
+    "source_artist":  "Vincent van Gogh",
+    "source_manifest":  "M01_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M01_Portrait_02_VanGogh_source.png",
+    "background_threshold":  24,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#F0AC3E",
+                         "#ECA41C",
+                         "#2F7B74",
+                         "#9A472E"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.871367,
+                               0.412543,
+                               0.048172,
+                               1
+                           ],
+                           [
+                               0.838799,
+                               0.371238,
+                               0.011612,
+                               1
+                           ],
+                           [
+                               0.028426,
+                               0.198069,
+                               0.174647,
+                               1
+                           ],
+                           [
+                               0.323143,
+                               0.06301,
+                               0.027321,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.5382,
+    "quantize_cleanup_radius":  4,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
 }

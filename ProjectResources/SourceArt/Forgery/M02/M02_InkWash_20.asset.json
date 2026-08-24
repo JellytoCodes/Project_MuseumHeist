@@ -1,0 +1,68 @@
+{
+    "asset_name":  "T_Forgery_M02_InkWash_20",
+    "source_file":  "M02_InkWash_20.png",
+    "mask_asset_name":  "T_Forgery_M02_InkWash_20_Mask",
+    "mask_source_file":  "M02_InkWash_20_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M02",
+    "template_id":  "Template_M02_InkWash_20",
+    "category":  "InkWash",
+    "difficulty":  "Hard",
+    "source_artwork":  "Fish and Rocks",
+    "source_artist":  "Bada Shanren",
+    "source_manifest":  "M02_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M02_InkWash_20_FishRocks_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#F3E9D8",
+                         "#D4C8B5",
+                         "#A49683",
+                         "#71685C",
+                         "#494540",
+                         "#303030"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.896269,
+                               0.814847,
+                               0.686685,
+                               1
+                           ],
+                           [
+                               0.658375,
+                               0.57758,
+                               0.462077,
+                               1
+                           ],
+                           [
+                               0.371238,
+                               0.304987,
+                               0.226966,
+                               1
+                           ],
+                           [
+                               0.165132,
+                               0.138432,
+                               0.107023,
+                               1
+                           ],
+                           [
+                               0.066626,
+                               0.059511,
+                               0.051269,
+                               1
+                           ],
+                           [
+                               0.029557,
+                               0.029557,
+                               0.029557,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.2136,
+    "quantize_cleanup_radius":  2,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

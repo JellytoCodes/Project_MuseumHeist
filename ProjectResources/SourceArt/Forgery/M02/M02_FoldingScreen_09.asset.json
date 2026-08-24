@@ -1,0 +1,54 @@
+{
+    "asset_name":  "T_Forgery_M02_FoldingScreen_09",
+    "source_file":  "M02_FoldingScreen_09.png",
+    "mask_asset_name":  "T_Forgery_M02_FoldingScreen_09_Mask",
+    "mask_source_file":  "M02_FoldingScreen_09_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M02",
+    "template_id":  "Template_M02_FoldingScreen_09",
+    "category":  "FoldingScreen",
+    "difficulty":  "Easy",
+    "source_artwork":  "Red and White Plum Blossoms",
+    "source_artist":  "Ogata Korin",
+    "source_manifest":  "M02_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M02_FoldingScreen_09_RedWhitePlum_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#D1AA3C",
+                         "#EDE4D2",
+                         "#B94D52",
+                         "#345C71"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.637597,
+                               0.401978,
+                               0.045186,
+                               1
+                           ],
+                           [
+                               0.846873,
+                               0.775822,
+                               0.64448,
+                               1
+                           ],
+                           [
+                               0.48515,
+                               0.074214,
+                               0.084376,
+                               1
+                           ],
+                           [
+                               0.03434,
+                               0.107023,
+                               0.165132,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.1751,
+    "quantize_cleanup_radius":  4,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

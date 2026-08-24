@@ -1,0 +1,54 @@
+{
+    "asset_name":  "T_Forgery_M02_InkWash_09",
+    "source_file":  "M02_InkWash_09.png",
+    "mask_asset_name":  "T_Forgery_M02_InkWash_09_Mask",
+    "mask_source_file":  "M02_InkWash_09_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M02",
+    "template_id":  "Template_M02_InkWash_09",
+    "category":  "InkWash",
+    "difficulty":  "Easy",
+    "source_artwork":  "Orchid and Bamboo",
+    "source_artist":  "Zheng Xie",
+    "source_manifest":  "M02_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M02_InkWash_09_OrchidBamboo_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#F0E8D9",
+                         "#C7BFAF",
+                         "#777169",
+                         "#303030"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.871367,
+                               0.806952,
+                               0.693872,
+                               1
+                           ],
+                           [
+                               0.571125,
+                               0.520996,
+                               0.42869,
+                               1
+                           ],
+                           [
+                               0.184475,
+                               0.165132,
+                               0.141263,
+                               1
+                           ],
+                           [
+                               0.029557,
+                               0.029557,
+                               0.029557,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.1352,
+    "quantize_cleanup_radius":  4,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

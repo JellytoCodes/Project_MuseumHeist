@@ -1,29 +1,68 @@
 {
-  "asset_name": "T_Forgery_M01_Portrait_06",
-  "source_file": "M01_Portrait_06.png",
-  "mask_asset_name": "T_Forgery_M01_Portrait_06_Mask",
-  "mask_source_file": "M01_Portrait_06_Mask.png",
-  "unreal_destination": "/Game/Data/Forgery/Textures/M01",
-  "template_id": "Template_M01_Portrait_06",
-  "category": "Portrait",
-  "difficulty": "Hard",
-  "source_artwork": "The Arnolfini Portrait",
-  "source_artist": "Jan van Eyck",
-  "source_manifest": "M01_SourceManifest.json",
-  "candidate_source_file": "Candidates/M01_Portrait_06_Arnolfini_source.png",
-  "background_srgb": "#000000",
-  "background_filter_mode": "Black",
-  "background_color_tolerance": 0.08,
-  "palette_srgb": ["#E6A058", "#365D38", "#853016", "#573318", "#F4F0E5", "#C28930"],
-  "palette_linear": [
-    [0.791298, 0.351533, 0.097587, 1.0],
-    [0.036889, 0.109462, 0.039546, 1.0],
-    [0.234551, 0.029557, 0.008023, 1.0],
-    [0.095307, 0.033105, 0.009134, 1.0],
-    [0.904661, 0.871367, 0.783538, 1.0],
-    [0.539479, 0.250158, 0.029557, 1.0]
-  ],
-  "foreground_ratio": 0.5356,
-  "quantize_cleanup_radius": 4,
-  "notes": "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+    "asset_name":  "T_Forgery_M01_Portrait_06",
+    "source_file":  "M01_Portrait_06.png",
+    "mask_asset_name":  "T_Forgery_M01_Portrait_06_Mask",
+    "mask_source_file":  "M01_Portrait_06_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M01",
+    "template_id":  "Template_M01_Portrait_06",
+    "category":  "Portrait",
+    "difficulty":  "Hard",
+    "source_artwork":  "The Arnolfini Portrait",
+    "source_artist":  "Jan van Eyck",
+    "source_manifest":  "M01_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M01_Portrait_06_Arnolfini_source.png",
+    "background_threshold":  24,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#E6A058",
+                         "#365D38",
+                         "#853016",
+                         "#573318",
+                         "#F4F0E5",
+                         "#C28930"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.791298,
+                               0.351533,
+                               0.097587,
+                               1
+                           ],
+                           [
+                               0.036889,
+                               0.109462,
+                               0.039546,
+                               1
+                           ],
+                           [
+                               0.234551,
+                               0.029557,
+                               0.008023,
+                               1
+                           ],
+                           [
+                               0.095307,
+                               0.033105,
+                               0.009134,
+                               1
+                           ],
+                           [
+                               0.904661,
+                               0.871367,
+                               0.783538,
+                               1
+                           ],
+                           [
+                               0.539479,
+                               0.250158,
+                               0.029557,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.5368,
+    "quantize_cleanup_radius":  2,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
 }

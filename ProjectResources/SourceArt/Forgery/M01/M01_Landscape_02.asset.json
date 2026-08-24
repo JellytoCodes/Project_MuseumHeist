@@ -1,27 +1,54 @@
 {
-  "asset_name": "T_Forgery_M01_Landscape_02",
-  "source_file": "M01_Landscape_02.png",
-  "mask_asset_name": "T_Forgery_M01_Landscape_02_Mask",
-  "mask_source_file": "M01_Landscape_02_Mask.png",
-  "unreal_destination": "/Game/Data/Forgery/Textures/M01",
-  "template_id": "Template_M01_Landscape_02",
-  "category": "Landscape",
-  "difficulty": "Easy",
-  "source_artwork": "The Great Wave off Kanagawa",
-  "source_artist": "Katsushika Hokusai",
-  "source_manifest": "M01_SourceManifest.json",
-  "candidate_source_file": "Candidates/M01_Landscape_02_GreatWave_source.png",
-  "background_srgb": "#000000",
-  "background_filter_mode": "Black",
-  "background_color_tolerance": 0.08,
-  "palette_srgb": ["#174E89", "#5C9CC6", "#E7D8B7", "#7C8791"],
-  "palette_linear": [
-    [0.008568, 0.076185, 0.250158, 1.0],
-    [0.107023, 0.332452, 0.564712, 1.0],
-    [0.799103, 0.686685, 0.473531, 1.0],
-    [0.201556, 0.242281, 0.283149, 1.0]
-  ],
-  "foreground_ratio": 0.5755,
-  "quantize_cleanup_radius": 4,
-  "notes": "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+    "asset_name":  "T_Forgery_M01_Landscape_02",
+    "source_file":  "M01_Landscape_02.png",
+    "mask_asset_name":  "T_Forgery_M01_Landscape_02_Mask",
+    "mask_source_file":  "M01_Landscape_02_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M01",
+    "template_id":  "Template_M01_Landscape_02",
+    "category":  "Landscape",
+    "difficulty":  "Easy",
+    "source_artwork":  "The Great Wave off Kanagawa",
+    "source_artist":  "Katsushika Hokusai",
+    "source_manifest":  "M01_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M01_Landscape_02_GreatWave_source.png",
+    "background_threshold":  24,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#174E89",
+                         "#5C9CC6",
+                         "#E7D8B7",
+                         "#7C8791"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.008568,
+                               0.076185,
+                               0.250158,
+                               1
+                           ],
+                           [
+                               0.107023,
+                               0.332452,
+                               0.564712,
+                               1
+                           ],
+                           [
+                               0.799103,
+                               0.686685,
+                               0.473531,
+                               1
+                           ],
+                           [
+                               0.201556,
+                               0.242281,
+                               0.283149,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.5759,
+    "quantize_cleanup_radius":  4,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
 }

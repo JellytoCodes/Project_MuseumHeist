@@ -1,0 +1,54 @@
+{
+    "asset_name":  "T_Forgery_M01_Landscape_11",
+    "source_file":  "M01_Landscape_11.png",
+    "mask_asset_name":  "T_Forgery_M01_Landscape_11_Mask",
+    "mask_source_file":  "M01_Landscape_11_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M01",
+    "template_id":  "Template_M01_Landscape_11",
+    "category":  "Landscape",
+    "difficulty":  "Easy",
+    "source_artwork":  "The Monk by the Sea",
+    "source_artist":  "Caspar David Friedrich",
+    "source_manifest":  "M01_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M01_Landscape_11_MonkBySea_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#303030",
+                         "#B9AE91",
+                         "#71818D",
+                         "#D3CEC1"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.029557,
+                               0.029557,
+                               0.029557,
+                               1
+                           ],
+                           [
+                               0.48515,
+                               0.423268,
+                               0.283149,
+                               1
+                           ],
+                           [
+                               0.165132,
+                               0.219526,
+                               0.266356,
+                               1
+                           ],
+                           [
+                               0.651406,
+                               0.617207,
+                               0.533276,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.4609,
+    "quantize_cleanup_radius":  4,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

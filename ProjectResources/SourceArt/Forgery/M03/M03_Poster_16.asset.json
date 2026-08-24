@@ -1,0 +1,61 @@
+{
+    "asset_name":  "T_Forgery_M03_Poster_16",
+    "source_file":  "M03_Poster_16.png",
+    "mask_asset_name":  "T_Forgery_M03_Poster_16_Mask",
+    "mask_source_file":  "M03_Poster_16_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M03",
+    "template_id":  "Template_M03_Poster_16",
+    "category":  "Poster",
+    "difficulty":  "Medium",
+    "source_artwork":  "Nord Express",
+    "source_artist":  "A. M. Cassandre",
+    "source_manifest":  "M03_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M03_Poster_16_NordExpress_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#344F6A",
+                         "#788998",
+                         "#D8B13B",
+                         "#E8E0CF",
+                         "#303030"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.03434,
+                               0.078187,
+                               0.144128,
+                               1
+                           ],
+                           [
+                               0.187821,
+                               0.250158,
+                               0.313989,
+                               1
+                           ],
+                           [
+                               0.686685,
+                               0.439657,
+                               0.043735,
+                               1
+                           ],
+                           [
+                               0.806952,
+                               0.745404,
+                               0.62396,
+                               1
+                           ],
+                           [
+                               0.029557,
+                               0.029557,
+                               0.029557,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.1565,
+    "quantize_cleanup_radius":  3,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

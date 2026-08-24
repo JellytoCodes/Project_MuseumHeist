@@ -1,0 +1,61 @@
+{
+    "asset_name":  "T_Forgery_M03_GeometricAbstract_12",
+    "source_file":  "M03_GeometricAbstract_12.png",
+    "mask_asset_name":  "T_Forgery_M03_GeometricAbstract_12_Mask",
+    "mask_source_file":  "M03_GeometricAbstract_12_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M03",
+    "template_id":  "Template_M03_GeometricAbstract_12",
+    "category":  "GeometricAbstract",
+    "difficulty":  "Medium",
+    "source_artwork":  "Proun 19D",
+    "source_artist":  "El Lissitzky",
+    "source_manifest":  "M03_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M03_GeometricAbstract_12_Proun19D_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#E8E0CF",
+                         "#303030",
+                         "#C34B40",
+                         "#7C7D79",
+                         "#3F6D91"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.806952,
+                               0.745404,
+                               0.62396,
+                               1
+                           ],
+                           [
+                               0.029557,
+                               0.029557,
+                               0.029557,
+                               1
+                           ],
+                           [
+                               0.545724,
+                               0.07036,
+                               0.051269,
+                               1
+                           ],
+                           [
+                               0.201556,
+                               0.205079,
+                               0.191202,
+                               1
+                           ],
+                           [
+                               0.049707,
+                               0.152926,
+                               0.283149,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.1038,
+    "quantize_cleanup_radius":  3,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

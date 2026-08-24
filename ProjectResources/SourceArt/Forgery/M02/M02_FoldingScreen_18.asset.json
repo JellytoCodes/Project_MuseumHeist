@@ -1,0 +1,68 @@
+{
+    "asset_name":  "T_Forgery_M02_FoldingScreen_18",
+    "source_file":  "M02_FoldingScreen_18.png",
+    "mask_asset_name":  "T_Forgery_M02_FoldingScreen_18_Mask",
+    "mask_source_file":  "M02_FoldingScreen_18_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M02",
+    "template_id":  "Template_M02_FoldingScreen_18",
+    "category":  "FoldingScreen",
+    "difficulty":  "Hard",
+    "source_artwork":  "Maple Tree",
+    "source_artist":  "Hasegawa-school painter",
+    "source_manifest":  "M02_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M02_FoldingScreen_18_MapleTree_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#D5AC3B",
+                         "#B84736",
+                         "#D9782F",
+                         "#4A5E3D",
+                         "#486A7A",
+                         "#5B4634"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.665387,
+                               0.412543,
+                               0.043735,
+                               1
+                           ],
+                           [
+                               0.47932,
+                               0.06301,
+                               0.036889,
+                               1
+                           ],
+                           [
+                               0.693872,
+                               0.187821,
+                               0.028426,
+                               1
+                           ],
+                           [
+                               0.068478,
+                               0.111932,
+                               0.046665,
+                               1
+                           ],
+                           [
+                               0.064803,
+                               0.144128,
+                               0.194618,
+                               1
+                           ],
+                           [
+                               0.104616,
+                               0.061246,
+                               0.03434,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.3218,
+    "quantize_cleanup_radius":  2,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

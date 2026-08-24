@@ -1,0 +1,61 @@
+{
+    "asset_name":  "T_Forgery_M02_FoldingScreen_14",
+    "source_file":  "M02_FoldingScreen_14.png",
+    "mask_asset_name":  "T_Forgery_M02_FoldingScreen_14_Mask",
+    "mask_source_file":  "M02_FoldingScreen_14_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M02",
+    "template_id":  "Template_M02_FoldingScreen_14",
+    "category":  "FoldingScreen",
+    "difficulty":  "Medium",
+    "source_artwork":  "Flowers of the Four Seasons",
+    "source_artist":  "Edo-period Japanese school",
+    "source_manifest":  "M02_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M02_FoldingScreen_14_FourSeasonsFlowers_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#D5AD3D",
+                         "#385D43",
+                         "#4B5FA0",
+                         "#D19A3E",
+                         "#E6D9C4"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.665387,
+                               0.417885,
+                               0.046665,
+                               1
+                           ],
+                           [
+                               0.039546,
+                               0.109462,
+                               0.056128,
+                               1
+                           ],
+                           [
+                               0.07036,
+                               0.114435,
+                               0.351533,
+                               1
+                           ],
+                           [
+                               0.637597,
+                               0.323143,
+                               0.048172,
+                               1
+                           ],
+                           [
+                               0.791298,
+                               0.693872,
+                               0.552011,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.2019,
+    "quantize_cleanup_radius":  3,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

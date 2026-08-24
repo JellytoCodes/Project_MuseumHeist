@@ -1,0 +1,68 @@
+{
+    "asset_name":  "T_Forgery_M01_Portrait_20",
+    "source_file":  "M01_Portrait_20.png",
+    "mask_asset_name":  "T_Forgery_M01_Portrait_20_Mask",
+    "mask_source_file":  "M01_Portrait_20_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M01",
+    "template_id":  "Template_M01_Portrait_20",
+    "category":  "Portrait",
+    "difficulty":  "Hard",
+    "source_artwork":  "Benjamin Franklin",
+    "source_artist":  "Joseph Siffred Duplessis",
+    "source_manifest":  "M01_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M01_Portrait_20_BenjaminFranklin_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#D7A779",
+                         "#7E2F2F",
+                         "#4C3A2E",
+                         "#C0A56C",
+                         "#E5D8C0",
+                         "#303030"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.679542,
+                               0.386429,
+                               0.191202,
+                               1
+                           ],
+                           [
+                               0.208637,
+                               0.028426,
+                               0.028426,
+                               1
+                           ],
+                           [
+                               0.072272,
+                               0.042311,
+                               0.027321,
+                               1
+                           ],
+                           [
+                               0.527115,
+                               0.376262,
+                               0.14996,
+                               1
+                           ],
+                           [
+                               0.783538,
+                               0.686685,
+                               0.527115,
+                               1
+                           ],
+                           [
+                               0.029557,
+                               0.029557,
+                               0.029557,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.3174,
+    "quantize_cleanup_radius":  2,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

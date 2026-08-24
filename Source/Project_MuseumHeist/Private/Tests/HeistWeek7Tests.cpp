@@ -92,7 +92,9 @@ bool FHeistWeek7VariationContractTest::RunTest(const FString& Parameters)
 	}
 	for (const FName PoolId : {FName(TEXT("M01")), FName(TEXT("M02")), FName(TEXT("M03"))})
 	{
-		TestEqual(FString::Printf(TEXT("%s Surface pool has exactly 12 valid templates"), *PoolId.ToString()), TemplateCountByPool.FindRef(PoolId), 12);
+		const int32 TemplateCount = TemplateCountByPool.FindRef(PoolId);
+		TestTrue(FString::Printf(TEXT("%s Surface pool preserves the shipped 12-template baseline while expanding toward 40"), *PoolId.ToString()),
+			FMath::IsWithinInclusive(TemplateCount, 12, 40));
 	}
 
 	int32 DrawCount = 0;
@@ -110,11 +112,20 @@ bool FHeistWeek7VariationContractTest::RunTest(const FString& Parameters)
 	int32 RecentChecks = 0;
 	int32 RecentPasses = 0;
 	TestTrue(TEXT("Fixed-seed Surface template shuffle-bag is deterministic and protects recent history"), GameInstanceCDO->RunSurfaceTemplateShuffleBagSelfTestForDebug(
-		12, SurfaceDrawCount, SurfaceFirstUnique, SurfaceSecondUnique, RecentChecks, RecentPasses));
-	TestEqual(TEXT("Surface test draws two 12-template cycles"), SurfaceDrawCount, 24);
-	TestEqual(TEXT("Surface first cycle unique count"), SurfaceFirstUnique, 12);
-	TestEqual(TEXT("Surface second cycle unique count"), SurfaceSecondUnique, 12);
+		40, SurfaceDrawCount, SurfaceFirstUnique, SurfaceSecondUnique, RecentChecks, RecentPasses));
+	TestEqual(TEXT("Surface test draws two 40-template cycles"), SurfaceDrawCount, 80);
+	TestEqual(TEXT("Surface first cycle unique count"), SurfaceFirstUnique, 40);
+	TestEqual(TEXT("Surface second cycle unique count"), SurfaceSecondUnique, 40);
 	TestEqual(TEXT("All recent-history checks pass"), RecentPasses, RecentChecks);
+
+	int32 MatchSelectedCount = 0;
+	int32 MatchUniqueCount = 0;
+	int32 MatchBagCycle = 0;
+	TestTrue(TEXT("A 40-template catalog selects 20 unique templates even across a shuffle-bag refill"),
+		GameInstanceCDO->RunSurfaceTemplateMatchSelectionSelfTestForDebug(40, 20, MatchSelectedCount, MatchUniqueCount, MatchBagCycle));
+	TestEqual(TEXT("Match selection returns 20 templates"), MatchSelectedCount, 20);
+	TestEqual(TEXT("All match-selected templates are unique"), MatchUniqueCount, 20);
+	TestTrue(TEXT("Match selection crossed the synthetic shuffle-bag refill"), MatchBagCycle >= 2);
 	return true;
 }
 

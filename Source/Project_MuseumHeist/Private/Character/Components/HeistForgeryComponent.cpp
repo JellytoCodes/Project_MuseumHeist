@@ -980,19 +980,20 @@ bool UHeistForgeryComponent::TryPrepareForgeryTemplate(AHeistPaintingDisplayCase
 	FHeistForgeryTemplateRow TemplateDefinition;
 	const FName ArtifactId = TargetDisplayCase->GetTargetArtifactId();
 	if (!IsValid(HeistGameMode) || !HeistGameMode->TryGetArtifactDefinition(ArtifactId, ArtifactDefinition) || ArtifactDefinition.ForgeryType != EHeistForgeryType::Drawing ||
-		ArtifactDefinition.ForgeryTemplateId.IsNone())
+		TargetDisplayCase->GetOriginalVisualTemplateId().IsNone())
 	{
 		UHeistDebugFunctionLibrary::DebugForgeryTemplatePreparationRejected(this, TargetDisplayCase, ArtifactId, nullptr, FName(TEXT("ArtifactOrTemplateLookupFailed")));
 		return false;
 	}
 
-	if (!IsValid(HeistGameState) || HeistGameState->GetSurfaceTemplateSelectionRevision() <= 0 || HeistGameState->GetSelectedSurfaceTemplateId().IsNone())
+	if (!IsValid(HeistGameState) || HeistGameState->GetSurfaceTemplateSelectionRevision() <= 0 || HeistGameState->GetSurfaceTemplatePoolId().IsNone() ||
+		TargetDisplayCase->GetOriginalVisualRevision() != HeistGameState->GetSurfaceTemplateSelectionRevision())
 	{
 		UHeistDebugFunctionLibrary::DebugForgeryTemplatePreparationRejected(this, TargetDisplayCase, ArtifactId, nullptr, FName(TEXT("MissingMatchTemplateSelection")));
 		return false;
 	}
 
-	const FName SelectedTemplateId = HeistGameState->GetSelectedSurfaceTemplateId();
+	const FName SelectedTemplateId = TargetDisplayCase->GetOriginalVisualTemplateId();
 	if (!HeistGameMode->TryGetForgeryTemplateDefinition(SelectedTemplateId, TemplateDefinition))
 	{
 		UHeistDebugFunctionLibrary::DebugForgeryTemplatePreparationRejected(this, TargetDisplayCase, ArtifactId, nullptr, FName(TEXT("SelectedTemplateLookupFailed")));

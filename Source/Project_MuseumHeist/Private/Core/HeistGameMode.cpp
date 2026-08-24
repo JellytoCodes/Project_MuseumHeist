@@ -1170,24 +1170,28 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 		EligibleLooseLootValue = FMath::Min<int64>(MAX_int32, EligibleLooseLootValue + LootActor->GetScoreValue());
 	}
 
-	const bool bOptionalAssignmentValid = MinimumOptionalExhibitCount <= MaximumOptionalExhibitCount;
-	const int32 MaximumSelectableOptionalCount = bOptionalAssignmentValid ? FMath::Min(EligibleOptionalCases.Num(), MaximumOptionalExhibitCount) : 0;
+	const int32 AssignmentRevision = HeistGameState->GetSurfaceTemplateSelectionRevision();
+	const int32 AvailableTemplateCount = SelectedSurfaceTemplateIdsForMatch.Num();
+	const int32 SurfaceTemplateCatalogCount = HeistGameState->GetSurfaceTemplatePoolSize();
+	const int32 RequestedPaintingExhibitCount = bContractDefinitionValid ? ContractDefinition.MatchPaintingExhibitCount : 0;
+	const int32 MaximumTemplateBackedOptionalCount = FMath::Max(0, FMath::Min(RequestedPaintingExhibitCount, AvailableTemplateCount) - 1);
+	const bool bOptionalAssignmentValid = MinimumOptionalExhibitCount <= MaximumOptionalExhibitCount && AssignmentRevision > 0 && AvailableTemplateCount > 0;
+	const int32 MaximumSelectableOptionalCount = bOptionalAssignmentValid
+		? FMath::Min(EligibleOptionalCases.Num(), MaximumTemplateBackedOptionalCount)
+		: 0;
 	const int64 OptionalValueRequired = FMath::Max<int64>(0,
 		static_cast<int64>(LootValueQuota) - static_cast<int64>(TargetArtifactValue) - EligibleLooseLootValue);
 	TSet<AActor*> SelectedOptionalActors;
+	TArray<const FPlacedTargetCase*> SelectedOptionalCases;
 	FString SelectedOptionalCaseIds;
 	int32 SelectedOptionalValue = 0;
 	if (bOptionalAssignmentValid)
 	{
 		for (int32 Index = 0; Index < MaximumSelectableOptionalCount; ++Index)
 		{
-			if (SelectedOptionalActors.Num() >= MinimumOptionalExhibitCount && SelectedOptionalValue >= OptionalValueRequired)
-			{
-				break;
-			}
-
 			const FPlacedTargetCase& SelectedCase = EligibleOptionalCases[Index];
 			SelectedOptionalActors.Add(SelectedCase.Actor);
+			SelectedOptionalCases.Add(&SelectedCase);
 			SelectedOptionalValue += SelectedCase.ArtifactValue;
 			SelectedOptionalCaseIds += SelectedOptionalCaseIds.IsEmpty() ? SelectedCase.CaseId.ToString() : FString::Printf(TEXT(",%s"), *SelectedCase.CaseId.ToString());
 		}
@@ -1203,8 +1207,17 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 	const bool bObjectiveInitialized = bContractInitialized &&
 		HeistGameState->SetObjectiveSnapshot(TargetArtifactId, TargetDisplayCase.CaseId, EHeistObjectiveState::Available, nullptr);
 	int32 DeactivatedOptionalCaseCount = 0;
+	int32 AssignedPaintingCaseCount = 0;
 	if (bObjectiveInitialized)
 	{
+		if (AHeistPaintingDisplayCaseActor* PaintingTargetCase = Cast<AHeistPaintingDisplayCaseActor>(TargetDisplayCase.Actor))
+		{
+			const bool bTargetActivated = PaintingTargetCase->SetContractExhibitActive(true);
+			const bool bTargetTemplateAssigned = bTargetActivated &&
+				PaintingTargetCase->SetAssignedSurfaceTemplate(HeistGameState->GetSurfaceTemplatePoolId(), SelectedSurfaceTemplateIdsForMatch[0], AssignmentRevision);
+			AssignedPaintingCaseCount += bTargetTemplateAssigned ? 1 : 0;
+		}
+
 		for (const FPlacedTargetCase& OptionalCase : OptionalCases)
 		{
 			if (!IsValid(OptionalCase.Actor))
@@ -1212,11 +1225,26 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 				continue;
 			}
 
-			const bool bSelected = SelectedOptionalActors.Contains(OptionalCase.Actor);
+			const int32 SelectedIndex = SelectedOptionalCases.IndexOfByPredicate(
+				[&OptionalCase](const FPlacedTargetCase* SelectedCase) { return SelectedCase != nullptr && SelectedCase->Actor == OptionalCase.Actor; });
+			const bool bSelected = SelectedIndex != INDEX_NONE;
 			bool bActivationApplied = false;
 			if (AHeistPaintingDisplayCaseActor* PaintingCase = Cast<AHeistPaintingDisplayCaseActor>(OptionalCase.Actor))
 			{
 				bActivationApplied = PaintingCase->SetContractExhibitActive(bSelected);
+				if (bSelected)
+				{
+					const int32 TemplateIndex = SelectedIndex + 1;
+					if (bActivationApplied && SelectedSurfaceTemplateIdsForMatch.IsValidIndex(TemplateIndex) &&
+						PaintingCase->SetAssignedSurfaceTemplate(HeistGameState->GetSurfaceTemplatePoolId(), SelectedSurfaceTemplateIdsForMatch[TemplateIndex], AssignmentRevision))
+					{
+						++AssignedPaintingCaseCount;
+					}
+				}
+				else
+				{
+					PaintingCase->ClearAssignedSurfaceTemplate();
+				}
 			}
 
 			if (bActivationApplied && !bSelected)
@@ -1227,16 +1255,23 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 	}
 	const int32 ExpectedDeactivatedOptionalCaseCount = bObjectiveInitialized ? OptionalCases.Num() - SelectedOptionalActors.Num() : 0;
 	const bool bOptionalDeactivationValid = DeactivatedOptionalCaseCount == ExpectedDeactivatedOptionalCaseCount;
-	const bool bInitializationPassed = bObjectiveInitialized && bOptionalDeactivationValid;
+	const int32 ExpectedAssignedPaintingCaseCount = bObjectiveInitialized ? SelectedOptionalActors.Num() + 1 : 0;
+	const bool bTemplateAssignmentValid = AssignedPaintingCaseCount == ExpectedAssignedPaintingCaseCount;
+	const bool bReleasePaintingContentReady = bContractDefinitionValid && AvailableTemplateCount == ContractDefinition.MatchPaintingExhibitCount &&
+		SurfaceTemplateCatalogCount == ContractDefinition.SurfaceTemplateCatalogSize && ExpectedAssignedPaintingCaseCount == ContractDefinition.MatchPaintingExhibitCount;
+	const bool bInitializationPassed = bObjectiveInitialized && bOptionalDeactivationValid && bTemplateAssignmentValid;
 
 	const FString InitializationMessage =
-		FString::Printf(TEXT("Contract objective initialization: Contract=%s Map=%s Seed=%d StartPlayers=%d LivePlayers=%d StartPlayerSource=%s Quota=%d TargetValue=%d RequiresOptionalLoot=%s OptionalPaintingAuthored=%d OptionalPaintingEligible=%d OptionalPaintingInvalid=%d AuthoredOptionalMin=%d OptionalMax=%d OptionalValueRequired=%lld OptionalSelected=%d AuthoredOptionalMinSatisfied=%s OptionalSelectedValue=%d OptionalSelectedCases=%s LooseLootEligible=%d LooseLootInvalid=%d LooseLootValue=%lld ReachableValue=%lld ReleaseQuotaReachable=%s OptionalDeactivated=%d OptionalDeactivationValid=%s DeferredObjectCases=%d DeferredObjectDeactivationFailures=%d DeferredObjectBoundary=%s TargetCase=%s CaseId=%s ArtifactId=%s Location=%s CaseState=%s CaseStateValid=%s ArtifactValid=%s ContractDefinitionValid=%s ContractFailure=%s ContractInitialized=%s ObjectiveState=%s Result=%s"),
+		FString::Printf(TEXT("Contract objective initialization: Contract=%s Map=%s Seed=%d StartPlayers=%d LivePlayers=%d StartPlayerSource=%s Quota=%d TargetValue=%d RequiresOptionalLoot=%s OptionalPaintingAuthored=%d OptionalPaintingEligible=%d OptionalPaintingInvalid=%d AuthoredOptionalMin=%d OptionalMax=%d OptionalValueRequired=%lld OptionalSelected=%d AuthoredOptionalMinSatisfied=%s OptionalSelectedValue=%d OptionalSelectedCases=%s SurfaceCatalogTarget=%d SurfaceCatalogActual=%d MatchPaintingTarget=%d MatchTemplatesSelected=%d PaintingCasesAssigned=%d TemplateAssignmentValid=%s ReleasePaintingContentReady=%s LooseLootEligible=%d LooseLootInvalid=%d LooseLootValue=%lld ReachableValue=%lld ReleaseQuotaReachable=%s OptionalDeactivated=%d OptionalDeactivationValid=%s DeferredObjectCases=%d DeferredObjectDeactivationFailures=%d DeferredObjectBoundary=%s TargetCase=%s CaseId=%s ArtifactId=%s Location=%s CaseState=%s CaseStateValid=%s ArtifactValid=%s ContractDefinitionValid=%s ContractFailure=%s ContractInitialized=%s ObjectiveState=%s Result=%s"),
 						*ContractDefinition.ContractId.ToString(), *MapId.ToString(), AssignmentSeed, PlayerCount, LivePlayerCount,
 						bUsesApprovedStartPlayerCount ? TEXT("LobbyApproval") : TEXT("DirectPIEOrAutomationFallback"), LootValueQuota, TargetArtifactValue,
 						bRequiredTargetNeedsOptionalLoot ? TEXT("true") : TEXT("false"),
 						OptionalCases.Num(), EligibleOptionalCases.Num(), InvalidOptionalCaseCount, MinimumOptionalExhibitCount, MaximumOptionalExhibitCount, OptionalValueRequired,
 						SelectedOptionalActors.Num(), bAuthoredOptionalMinimumSatisfied ? TEXT("true") : TEXT("false"), SelectedOptionalValue,
-						SelectedOptionalCaseIds.IsEmpty() ? TEXT("None") : *SelectedOptionalCaseIds, EligibleLooseLootCount, InvalidLooseLootCount, EligibleLooseLootValue,
+						SelectedOptionalCaseIds.IsEmpty() ? TEXT("None") : *SelectedOptionalCaseIds,
+						ContractDefinition.SurfaceTemplateCatalogSize, SurfaceTemplateCatalogCount, RequestedPaintingExhibitCount, AvailableTemplateCount,
+						AssignedPaintingCaseCount, bTemplateAssignmentValid ? TEXT("true") : TEXT("false"), bReleasePaintingContentReady ? TEXT("true") : TEXT("false"),
+						EligibleLooseLootCount, InvalidLooseLootCount, EligibleLooseLootValue,
 						ReachableContractValue, bReleaseQuotaReachable ? TEXT("true") : TEXT("false"),
 						DeactivatedOptionalCaseCount, bOptionalDeactivationValid ? TEXT("true") : TEXT("false"),
 						DeferredObjectCaseCount, DeferredObjectDeactivationFailureCount, bDeferredObjectBoundaryApplied ? TEXT("true") : TEXT("false"),
@@ -1926,16 +1961,35 @@ void AHeistGameMode::InitializeSurfaceTemplateSelection()
 		return;
 	}
 
-	FName SelectedTemplateId = NAME_None;
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	const FName ContractId = IsValid(BalanceData) ? BalanceData->DefaultContractDefinition.ContractId : NAME_None;
+	FHeistContractDataRow ContractDefinition;
+	const int32 RequestedTemplateCount = TryGetContractDefinition(ContractId, ContractDefinition)
+		? ContractDefinition.MatchPaintingExhibitCount
+		: FHeistContractDataRow().MatchPaintingExhibitCount;
 	int32 SelectionRevision = 0;
 	int32 BagCycle = 0;
 	int32 RemainingTemplateCount = 0;
-	if (!HeistGameInstance->SelectSurfaceTemplateForMatch(PoolId, CandidateTemplateIds, SelectedTemplateId, SelectionRevision, BagCycle, RemainingTemplateCount) ||
-		!HeistGameState->InitializeSurfaceTemplateSelection(PoolId, SelectedTemplateId, CandidateTemplateIds.Num(), BagCycle, RemainingTemplateCount, SelectionRevision))
+	SelectedSurfaceTemplateIdsForMatch.Reset();
+	if (!HeistGameInstance->SelectSurfaceTemplatesForMatch(PoolId, CandidateTemplateIds, RequestedTemplateCount, SelectedSurfaceTemplateIdsForMatch,
+			SelectionRevision, BagCycle, RemainingTemplateCount) || SelectedSurfaceTemplateIdsForMatch.IsEmpty() ||
+		!HeistGameState->InitializeSurfaceTemplateSelection(PoolId, SelectedSurfaceTemplateIdsForMatch[0], CandidateTemplateIds.Num(), BagCycle,
+			RemainingTemplateCount, SelectionRevision))
 	{
-		UHeistDebugFunctionLibrary::DebugSurfaceTemplateSelectionState(this, TEXT("ServerSelectionRejected"), PoolId, SelectedTemplateId, CandidateTemplateIds.Num(), BagCycle,
-																	  RemainingTemplateCount, SelectionRevision, false);
+		const FName FirstSelectedTemplateId = SelectedSurfaceTemplateIdsForMatch.IsEmpty() ? NAME_None : SelectedSurfaceTemplateIdsForMatch[0];
+		UHeistDebugFunctionLibrary::DebugSurfaceTemplateSelectionState(this, TEXT("ServerSelectionRejected"), PoolId, FirstSelectedTemplateId,
+			CandidateTemplateIds.Num(), BagCycle, RemainingTemplateCount, SelectionRevision, false);
+		SelectedSurfaceTemplateIdsForMatch.Reset();
+		return;
 	}
+
+	UE_LOG(LogHeist, Log,
+		TEXT("Surface template match selection: Pool=%s CatalogActual=%d CatalogTarget=%d Requested=%d Selected=%d AssignmentRevision=%d ContentReady=%s Result=PASS"),
+		*PoolId.ToString(), CandidateTemplateIds.Num(), ContractDefinition.SurfaceTemplateCatalogSize, RequestedTemplateCount,
+		SelectedSurfaceTemplateIdsForMatch.Num(), SelectionRevision,
+		CandidateTemplateIds.Num() == ContractDefinition.SurfaceTemplateCatalogSize && SelectedSurfaceTemplateIdsForMatch.Num() == RequestedTemplateCount
+			? TEXT("true")
+			: TEXT("false"));
 }
 
 bool AHeistGameMode::GatherSurfaceTemplatePool(const FName PoolId, TArray<FName>& OutTemplateIds) const

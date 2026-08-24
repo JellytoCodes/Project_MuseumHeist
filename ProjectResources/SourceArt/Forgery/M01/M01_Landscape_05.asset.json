@@ -1,29 +1,68 @@
 {
-  "asset_name": "T_Forgery_M01_Landscape_05",
-  "source_file": "M01_Landscape_05.png",
-  "mask_asset_name": "T_Forgery_M01_Landscape_05_Mask",
-  "mask_source_file": "M01_Landscape_05_Mask.png",
-  "unreal_destination": "/Game/Data/Forgery/Textures/M01",
-  "template_id": "Template_M01_Landscape_05",
-  "category": "Landscape",
-  "difficulty": "Hard",
-  "source_artwork": "The Fighting Temeraire",
-  "source_artist": "J. M. W. Turner",
-  "source_manifest": "M01_SourceManifest.json",
-  "candidate_source_file": "Candidates/M01_Landscape_05_FightingTemeraire_source.png",
-  "background_srgb": "#000000",
-  "background_filter_mode": "Black",
-  "background_color_tolerance": 0.08,
-  "palette_srgb": ["#F7D499", "#D78926", "#D45B0C", "#465A66", "#15383A", "#2C2315"],
-  "palette_linear": [
-    [0.930111, 0.658375, 0.318547, 1.0],
-    [0.679542, 0.250158, 0.019382, 1.0],
-    [0.658375, 0.104616, 0.003677, 1.0],
-    [0.061246, 0.102242, 0.132868, 1.0],
-    [0.007499, 0.039546, 0.042311, 1.0],
-    [0.025187, 0.016807, 0.007499, 1.0]
-  ],
-  "foreground_ratio": 0.7598,
-  "quantize_cleanup_radius": 4,
-  "notes": "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+    "asset_name":  "T_Forgery_M01_Landscape_05",
+    "source_file":  "M01_Landscape_05.png",
+    "mask_asset_name":  "T_Forgery_M01_Landscape_05_Mask",
+    "mask_source_file":  "M01_Landscape_05_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M01",
+    "template_id":  "Template_M01_Landscape_05",
+    "category":  "Landscape",
+    "difficulty":  "Hard",
+    "source_artwork":  "The Fighting Temeraire",
+    "source_artist":  "J. M. W. Turner",
+    "source_manifest":  "M01_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M01_Landscape_05_FightingTemeraire_source.png",
+    "background_threshold":  24,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#F7D499",
+                         "#D78926",
+                         "#D45B0C",
+                         "#465A66",
+                         "#15383A",
+                         "#2C2315"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.930111,
+                               0.658375,
+                               0.318547,
+                               1
+                           ],
+                           [
+                               0.679542,
+                               0.250158,
+                               0.019382,
+                               1
+                           ],
+                           [
+                               0.658375,
+                               0.104616,
+                               0.003677,
+                               1
+                           ],
+                           [
+                               0.061246,
+                               0.102242,
+                               0.132868,
+                               1
+                           ],
+                           [
+                               0.007499,
+                               0.039546,
+                               0.042311,
+                               1
+                           ],
+                           [
+                               0.025187,
+                               0.016807,
+                               0.007499,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.7599,
+    "quantize_cleanup_radius":  2,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
 }

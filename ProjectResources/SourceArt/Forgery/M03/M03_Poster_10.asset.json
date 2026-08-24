@@ -1,0 +1,54 @@
+{
+    "asset_name":  "T_Forgery_M03_Poster_10",
+    "source_file":  "M03_Poster_10.png",
+    "mask_asset_name":  "T_Forgery_M03_Poster_10_Mask",
+    "mask_source_file":  "M03_Poster_10_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M03",
+    "template_id":  "Template_M03_Poster_10",
+    "category":  "Poster",
+    "difficulty":  "Easy",
+    "source_artwork":  "Monaco Monte-Carlo",
+    "source_artist":  "Alphonse Mucha",
+    "source_manifest":  "M03_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M03_Poster_10_Monaco_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#C04E46",
+                         "#D6A83C",
+                         "#426A57",
+                         "#E8DCC5"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.527115,
+                               0.076185,
+                               0.061246,
+                               1
+                           ],
+                           [
+                               0.672443,
+                               0.391572,
+                               0.045186,
+                               1
+                           ],
+                           [
+                               0.05448,
+                               0.144128,
+                               0.095307,
+                               1
+                           ],
+                           [
+                               0.806952,
+                               0.715694,
+                               0.55834,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.148,
+    "quantize_cleanup_radius":  4,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

@@ -5,6 +5,7 @@
     "basis": "Public-domain real artworks",
     "goal": "Preserve the iconic composition, silhouette, and representative colors while simplifying the image into large drawable regions for timed Surface Forgery gameplay.",
     "canvas": "Square 1:1 with black background",
+    "final_resolution": 1024,
     "constraints": [
       "No readable text, signature, frame, watermark, or museum label",
       "No gradients, photorealistic texture, fine brushwork, or tiny isolated highlights",
@@ -13,10 +14,14 @@
       "Reference is an original gameplay reinterpretation, not a facsimile of the museum image"
     ]
   },
+  "category_distribution": {
+    "Portrait": 20,
+    "Landscape": 20
+  },
   "difficulty_distribution": {
-    "Easy": 4,
-    "Medium": 5,
-    "Hard": 3
+    "Easy": 14,
+    "Medium": 17,
+    "Hard": 9
   },
   "templates": [
     {
@@ -162,6 +167,174 @@
       "source_url": "https://artmuseum.princeton.edu/art/collections/objects/31852",
       "palette_srgb": ["#608E4F", "#19442B", "#1D5F9E", "#78A9B1", "#F2A3AD", "#FBDFAC"],
       "iconic_features": ["arched green bridge", "dark foliage banks", "layered blue-green water", "large pink and cream lily clusters"]
+    },
+    {
+      "slot": "M01_Portrait_07", "template_id": "Template_M01_Portrait_07", "category": "Portrait", "difficulty": "Easy",
+      "artwork": "Madame X", "artist": "John Singer Sargent", "year": "1883-1884", "source_url": "https://www.metmuseum.org/art/collection/search/12127", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Portrait_07_MadameX_source.png", "palette_srgb": ["#F2D2B6", "#303030", "#6B4D3A", "#D8C7A4"],
+      "iconic_features": ["side-profile woman", "long dark dress", "small table"]
+    },
+    {
+      "slot": "M01_Portrait_08", "template_id": "Template_M01_Portrait_08", "category": "Portrait", "difficulty": "Easy",
+      "artwork": "Arrangement in Grey and Black No. 1", "artist": "James McNeill Whistler", "year": "1871", "source_url": "https://www.musee-orsay.fr/en/artworks/arrangement-grey-and-black-no-1-also-called-whistlers-mother-14468", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Portrait_08_WhistlersMother_source.png", "palette_srgb": ["#E6DCC8", "#303030", "#6F655D", "#B9AA92"],
+      "iconic_features": ["seated side profile", "white cap", "framed rectangle"]
+    },
+    {
+      "slot": "M01_Portrait_09", "template_id": "Template_M01_Portrait_09", "category": "Portrait", "difficulty": "Easy",
+      "artwork": "Napoleon Crossing the Alps", "artist": "Jacques-Louis David", "year": "1801", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Napoleon%20Crossing%20the%20Alps%20David", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Portrait_09_NapoleonCrossingAlps_source.png", "palette_srgb": ["#F3EFE2", "#B82C2C", "#D8A23A", "#344A5E"],
+      "iconic_features": ["rearing horse", "red cape", "raised pointing arm"]
+    },
+    {
+      "slot": "M01_Portrait_10", "template_id": "Template_M01_Portrait_10", "category": "Portrait", "difficulty": "Easy",
+      "artwork": "Portrait of Madame Recamier", "artist": "Jacques-Louis David", "year": "1800", "source_url": "https://collections.louvre.fr/en/ark:/53355/cl010065910", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Portrait_10_MadameRecamier_source.png", "palette_srgb": ["#F2E8D0", "#C99858", "#55667A", "#A64B3C"],
+      "iconic_features": ["reclining woman", "white classical dress", "curved daybed"]
+    },
+    {
+      "slot": "M01_Portrait_11", "template_id": "Template_M01_Portrait_11", "category": "Portrait", "difficulty": "Easy",
+      "artwork": "The Blue Boy", "artist": "Thomas Gainsborough", "year": "c. 1770", "source_url": "https://huntington.org/blue-boy", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Portrait_11_BlueBoy_source.png", "palette_srgb": ["#1E4E8C", "#76A7D2", "#E7C99B", "#5A3D2B"],
+      "iconic_features": ["standing youth", "broad hat", "blue suit"]
+    },
+    {
+      "slot": "M01_Portrait_12", "template_id": "Template_M01_Portrait_12", "category": "Portrait", "difficulty": "Medium",
+      "artwork": "Pinkie", "artist": "Thomas Lawrence", "year": "1794", "source_url": "https://huntington.org/pinkie", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Portrait_12_Pinkie_source.png", "palette_srgb": ["#E7B8A7", "#C55D75", "#F1D8B5", "#58708A", "#5A3F34"],
+      "iconic_features": ["pink dress", "bonnet", "wind-blown ribbon"]
+    },
+    {
+      "slot": "M01_Portrait_13", "template_id": "Template_M01_Portrait_13", "category": "Portrait", "difficulty": "Medium",
+      "artwork": "Portrait of Dr. Gachet", "artist": "Vincent van Gogh", "year": "1890", "source_url": "https://www.musee-orsay.fr/en/artworks/le-docteur-paul-gachet-751", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Portrait_13_DoctorGachet_source.png", "palette_srgb": ["#D9B38C", "#245E9A", "#E0B43F", "#6A3E31", "#4E7458"],
+      "iconic_features": ["head on hand", "blue jacket", "flower on table"]
+    },
+    {
+      "slot": "M01_Portrait_14", "template_id": "Template_M01_Portrait_14", "category": "Portrait", "difficulty": "Medium",
+      "artwork": "Self-Portrait at the Age of 63", "artist": "Rembrandt van Rijn", "year": "1669", "source_url": "https://www.nationalgallery.org.uk/paintings/rembrandt-self-portrait-at-the-age-of-63", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Portrait_14_RembrandtSelfPortrait_source.png", "palette_srgb": ["#D0A060", "#604020", "#303030", "#B08060", "#D0B080"],
+      "iconic_features": ["broad beret", "aging face", "fur collar"]
+    },
+    {
+      "slot": "M01_Portrait_15", "template_id": "Template_M01_Portrait_15", "category": "Portrait", "difficulty": "Medium",
+      "artwork": "Portrait of an African Man", "artist": "Jan Mostaert", "year": "c. 1525-1530", "source_url": "https://www.rijksmuseum.nl/en/collection/SK-A-4986", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Portrait_15_PortraitAfricanMan_source.png", "palette_srgb": ["#6E4937", "#B63A2D", "#315D6A", "#E2D8C3", "#B89352"],
+      "iconic_features": ["red cap", "blue-green coat", "white collar"]
+    },
+    {
+      "slot": "M01_Portrait_16", "template_id": "Template_M01_Portrait_16", "category": "Portrait", "difficulty": "Medium",
+      "artwork": "Las Meninas", "artist": "Diego Velazquez", "year": "1656", "source_url": "https://www.museodelprado.es/en/the-collection/art-work/las-meninas/9fdc7800-9ade-48b0-ab8b-edee94ea877f", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Portrait_16_LasMeninas_source.png", "palette_srgb": ["#F1E5C8", "#C6A45D", "#4B3528", "#7A3F39", "#66707A"],
+      "iconic_features": ["central princess", "attendants", "painter and doorway"]
+    },
+    {
+      "slot": "M01_Portrait_17", "template_id": "Template_M01_Portrait_17", "category": "Portrait", "difficulty": "Medium",
+      "artwork": "The Laughing Cavalier", "artist": "Frans Hals", "year": "1624", "source_url": "https://www.wallacecollection.org/explore/collection/search-the-collection/laughing-cavalier/", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Portrait_17_LaughingCavalier_source.png", "palette_srgb": ["#D5A374", "#303030", "#C97632", "#E0D4BA", "#6B5040"],
+      "iconic_features": ["broad hat", "curled moustache", "hand on hip"]
+    },
+    {
+      "slot": "M01_Portrait_18", "template_id": "Template_M01_Portrait_18", "category": "Portrait", "difficulty": "Hard",
+      "artwork": "The Ambassadors", "artist": "Hans Holbein the Younger", "year": "1533", "source_url": "https://www.nationalgallery.org.uk/paintings/hans-holbein-the-younger-the-ambassadors", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Portrait_18_Ambassadors_source.png", "palette_srgb": ["#202020", "#503020", "#D0C0A0", "#304030", "#B08040", "#203040"],
+      "iconic_features": ["two standing figures", "two-level shelf", "diagonal skull shape"]
+    },
+    {
+      "slot": "M01_Portrait_19", "template_id": "Template_M01_Portrait_19", "category": "Portrait", "difficulty": "Hard",
+      "artwork": "The Lady of Shalott", "artist": "John William Waterhouse", "year": "1888", "source_url": "https://www.tate.org.uk/art/artworks/waterhouse-the-lady-of-shalott-n01543", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Portrait_19_LadyShalott_source.png", "palette_srgb": ["#F1E3C4", "#B64D3A", "#3B5C4A", "#657D8D", "#C99D48", "#4B3526"],
+      "iconic_features": ["woman in boat", "white dress", "red tapestry"]
+    },
+    {
+      "slot": "M01_Portrait_20", "template_id": "Template_M01_Portrait_20", "category": "Portrait", "difficulty": "Hard",
+      "artwork": "Benjamin Franklin", "artist": "Joseph Siffred Duplessis", "year": "1778", "source_url": "https://www.metmuseum.org/art/collection/search?q=Benjamin%20Franklin%20Duplessis", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Portrait_20_BenjaminFranklin_source.png", "palette_srgb": ["#D7A779", "#7E2F2F", "#4C3A2E", "#C0A56C", "#E5D8C0", "#303030"],
+      "iconic_features": ["bald head", "spectacles", "fur collar"]
+    },
+    {
+      "slot": "M01_Landscape_07", "template_id": "Template_M01_Landscape_07", "category": "Landscape", "difficulty": "Easy",
+      "artwork": "The Hay Wain", "artist": "John Constable", "year": "1821", "source_url": "https://www.nationalgallery.org.uk/paintings/john-constable-the-hay-wain", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Landscape_07_HayWain_source.png", "palette_srgb": ["#6C8A58", "#B88B55", "#D7D2B8", "#58758A"],
+      "iconic_features": ["country cottage", "wagon in water", "large clouds"]
+    },
+    {
+      "slot": "M01_Landscape_08", "template_id": "Template_M01_Landscape_08", "category": "Landscape", "difficulty": "Easy",
+      "artwork": "View of Delft", "artist": "Johannes Vermeer", "year": "c. 1660-1661", "source_url": "https://www.mauritshuis.nl/en/our-collection/artworks/92-view-of-delft", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Landscape_08_ViewDelft_source.png", "palette_srgb": ["#C8B27A", "#5C6F78", "#2F4550", "#D8D3C5"],
+      "iconic_features": ["low skyline", "two towers", "calm water"]
+    },
+    {
+      "slot": "M01_Landscape_09", "template_id": "Template_M01_Landscape_09", "category": "Landscape", "difficulty": "Easy",
+      "artwork": "The Oxbow", "artist": "Thomas Cole", "year": "1836", "source_url": "https://www.metmuseum.org/art/collection/search/10497", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Landscape_09_Oxbow_source.png", "palette_srgb": ["#394D3B", "#8AA078", "#C9BE91", "#5E7182"],
+      "iconic_features": ["storm tree", "looping river", "bright valley"]
+    },
+    {
+      "slot": "M01_Landscape_10", "template_id": "Template_M01_Landscape_10", "category": "Landscape", "difficulty": "Easy",
+      "artwork": "Mount Corcoran", "artist": "Albert Bierstadt", "year": "c. 1876-1877", "source_url": "https://www.nga.gov/collection/art-object-page.166428.html", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Landscape_10_MountCorcoran_source.png", "palette_srgb": ["#D9D8CC", "#6086A5", "#2E5140", "#B99B58"],
+      "iconic_features": ["snow peak", "blue lake", "pine bank"]
+    },
+    {
+      "slot": "M01_Landscape_11", "template_id": "Template_M01_Landscape_11", "category": "Landscape", "difficulty": "Easy",
+      "artwork": "The Monk by the Sea", "artist": "Caspar David Friedrich", "year": "1808-1810", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Monk%20by%20the%20Sea", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Landscape_11_MonkBySea_source.png", "palette_srgb": ["#303030", "#B9AE91", "#71818D", "#D3CEC1"],
+      "iconic_features": ["tiny monk", "thin shore", "vast sky"]
+    },
+    {
+      "slot": "M01_Landscape_12", "template_id": "Template_M01_Landscape_12", "category": "Landscape", "difficulty": "Medium",
+      "artwork": "The Church at Auvers", "artist": "Vincent van Gogh", "year": "1890", "source_url": "https://www.musee-orsay.fr/en/artworks/leglise-dauvers-sur-oise-vue-du-chevet-798", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Landscape_12_ChurchAuvers_source.png", "palette_srgb": ["#315E91", "#D5A12E", "#4F7C43", "#A8B8C2", "#45392E"],
+      "iconic_features": ["crooked church", "forked roads", "dark sky"]
+    },
+    {
+      "slot": "M01_Landscape_13", "template_id": "Template_M01_Landscape_13", "category": "Landscape", "difficulty": "Medium",
+      "artwork": "Wheat Field with Cypresses", "artist": "Vincent van Gogh", "year": "1889", "source_url": "https://www.metmuseum.org/art/collection/search/436535", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Landscape_13_WheatCypresses_source.png", "palette_srgb": ["#254C3D", "#D5A62D", "#476E9B", "#AFC2C6", "#ECE0B4"],
+      "iconic_features": ["tall cypress", "gold wheat", "curling clouds"]
+    },
+    {
+      "slot": "M01_Landscape_14", "template_id": "Template_M01_Landscape_14", "category": "Landscape", "difficulty": "Medium",
+      "artwork": "A Sunday on La Grande Jatte", "artist": "Georges Seurat", "year": "1884-1886", "source_url": "https://www.artic.edu/artworks/27992/a-sunday-on-la-grande-jatte-1884", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Landscape_14_GrandeJatte_source.png", "palette_srgb": ["#315B45", "#6E8CAD", "#D0B15A", "#B65345", "#E3D4AE"],
+      "iconic_features": ["parasol woman", "tree trunks", "river figures"]
+    },
+    {
+      "slot": "M01_Landscape_15", "template_id": "Template_M01_Landscape_15", "category": "Landscape", "difficulty": "Medium",
+      "artwork": "The Boulevard Montmartre at Night", "artist": "Camille Pissarro", "year": "1897", "source_url": "https://www.nationalgallery.org.uk/paintings/camille-pissarro-the-boulevard-montmartre-at-night", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Landscape_15_BoulevardNight_source.png", "palette_srgb": ["#2D3440", "#C8762A", "#E0C28A", "#6F4E3D", "#73808A"],
+      "iconic_features": ["diagonal boulevard", "street lamps", "building bands"]
+    },
+    {
+      "slot": "M01_Landscape_16", "template_id": "Template_M01_Landscape_16", "category": "Landscape", "difficulty": "Medium",
+      "artwork": "The Red Vineyard", "artist": "Vincent van Gogh", "year": "1888", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=The%20Red%20Vineyard%20Van%20Gogh", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Landscape_16_RedVineyard_source.png", "palette_srgb": ["#B7432F", "#D77A28", "#E0B743", "#304C63", "#3C4935"],
+      "iconic_features": ["red vineyard", "yellow sun", "worker silhouettes"]
+    },
+    {
+      "slot": "M01_Landscape_17", "template_id": "Template_M01_Landscape_17", "category": "Landscape", "difficulty": "Medium",
+      "artwork": "Poppy Field", "artist": "Claude Monet", "year": "1873", "source_url": "https://www.musee-orsay.fr/en/artworks/coquelicots-1010", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Landscape_17_PoppyField_source.png", "palette_srgb": ["#4F7D45", "#C8493F", "#E4D7B8", "#6C8E9A", "#B49A5D"],
+      "iconic_features": ["green hillside", "red poppies", "walking figures"]
+    },
+    {
+      "slot": "M01_Landscape_18", "template_id": "Template_M01_Landscape_18", "category": "Landscape", "difficulty": "Hard",
+      "artwork": "Italian Landscape", "artist": "Camille Corot", "year": "c. 1825-1828", "source_url": "https://www.metmuseum.org/art/collection/search/435973", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Landscape_18_ItalianLandscape_source.png", "palette_srgb": ["#B28A54", "#66513B", "#3F604A", "#718A9E", "#D8C9A9", "#8E6E48"],
+      "iconic_features": ["stone arch", "umbrella pines", "distant ridge"]
+    },
+    {
+      "slot": "M01_Landscape_19", "template_id": "Template_M01_Landscape_19", "category": "Landscape", "difficulty": "Hard",
+      "artwork": "A River Landscape", "artist": "Theodore Rousseau", "year": "c. 1845-1850", "source_url": "https://www.metmuseum.org/art/collection/search/437519", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Landscape_19_RiverLandscape_source.png", "palette_srgb": ["#54717A", "#A69263", "#425744", "#6E4D37", "#C9BE9E", "#7F8D83"],
+      "iconic_features": ["winding river", "boatman", "farm and trees"]
+    },
+    {
+      "slot": "M01_Landscape_20", "template_id": "Template_M01_Landscape_20", "category": "Landscape", "difficulty": "Hard",
+      "artwork": "Landscape with Shepherd", "artist": "Robert S. Duncanson", "year": "1852", "source_url": "https://www.metmuseum.org/art/collection/search/10777", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M01_Landscape_20_LandscapeShepherd_source.png", "palette_srgb": ["#3B4936", "#8D744C", "#C2AF82", "#6A7D8C", "#594335", "#D2C8AC"],
+      "iconic_features": ["shepherd and flock", "blasted tree", "distant ruins"]
     }
   ]
 }

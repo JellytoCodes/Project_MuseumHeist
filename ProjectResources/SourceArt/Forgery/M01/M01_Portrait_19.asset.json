@@ -1,0 +1,68 @@
+{
+    "asset_name":  "T_Forgery_M01_Portrait_19",
+    "source_file":  "M01_Portrait_19.png",
+    "mask_asset_name":  "T_Forgery_M01_Portrait_19_Mask",
+    "mask_source_file":  "M01_Portrait_19_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M01",
+    "template_id":  "Template_M01_Portrait_19",
+    "category":  "Portrait",
+    "difficulty":  "Hard",
+    "source_artwork":  "The Lady of Shalott",
+    "source_artist":  "John William Waterhouse",
+    "source_manifest":  "M01_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M01_Portrait_19_LadyShalott_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#F1E3C4",
+                         "#B64D3A",
+                         "#3B5C4A",
+                         "#657D8D",
+                         "#C99D48",
+                         "#4B3526"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.879622,
+                               0.768151,
+                               0.552011,
+                               1
+                           ],
+                           [
+                               0.467784,
+                               0.074214,
+                               0.042311,
+                               1
+                           ],
+                           [
+                               0.043735,
+                               0.107023,
+                               0.068478,
+                               1
+                           ],
+                           [
+                               0.130136,
+                               0.205079,
+                               0.266356,
+                               1
+                           ],
+                           [
+                               0.584078,
+                               0.337164,
+                               0.064803,
+                               1
+                           ],
+                           [
+                               0.07036,
+                               0.035601,
+                               0.019382,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.1767,
+    "quantize_cleanup_radius":  2,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

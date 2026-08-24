@@ -100,7 +100,7 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryWidget : public UHeistUserWidgetBas
 	TObjectPtr<UDataTable> ItemDataTable;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Inventory|Presentation", meta = (AllowPrivateAccess = "true"))
-	FVector2D InventoryCellSize = FVector2D(123.0, 108.4);
+	FVector2D InventoryCellSize = FVector2D(100.0, 100.0);
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UHeistInventorySlotWidget>> InventorySlotWidgets;

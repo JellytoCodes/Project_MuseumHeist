@@ -1,0 +1,54 @@
+{
+    "asset_name":  "T_Forgery_M02_InkWash_11",
+    "source_file":  "M02_InkWash_11.png",
+    "mask_asset_name":  "T_Forgery_M02_InkWash_11_Mask",
+    "mask_source_file":  "M02_InkWash_11_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M02",
+    "template_id":  "Template_M02_InkWash_11",
+    "category":  "InkWash",
+    "difficulty":  "Easy",
+    "source_artwork":  "Dwelling in the Fuchun Mountains",
+    "source_artist":  "Huang Gongwang",
+    "source_manifest":  "M02_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M02_InkWash_11_FuchunMountains_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#EFE5D2",
+                         "#BDB09D",
+                         "#74695E",
+                         "#303030"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.863157,
+                               0.783538,
+                               0.64448,
+                               1
+                           ],
+                           [
+                               0.508881,
+                               0.434154,
+                               0.337164,
+                               1
+                           ],
+                           [
+                               0.174647,
+                               0.141263,
+                               0.111932,
+                               1
+                           ],
+                           [
+                               0.029557,
+                               0.029557,
+                               0.029557,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.1861,
+    "quantize_cleanup_radius":  4,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

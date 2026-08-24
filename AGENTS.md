@@ -196,9 +196,10 @@ Title Menu
 - 목표 플레이 시간 15~25분
 - `TitleMenu → Lobby → ReadyCountdown → InGame → End`
 - Painting Target Artifact
-- Surface Forgery Template 36개
-  - M01 / M02 / M03 각 12개
-- Server-selected Surface Template Pool / Shuffle Bag
+- Surface Forgery Template 카탈로그 120개
+  - M01 / M02 / M03 각 40개
+- MatchStart Server-selected Surface Template Pool / Shuffle Bag
+  - 선택된 Map의 40개 중 20개를 중복 없이 활성 Painting Exhibit에 배정
 - Painting Display Case State Machine
 - Observation Cast
 - Owner-only Full-Screen Drawing Forgery
@@ -760,7 +761,9 @@ Escape 취소 조건:
 - 서버는 현재 Map의 Eligible Exhibit Case와 Contract Definition으로 매치별 Exhibit Assignment를 확정한다.
 - Required Target Case는 반드시 하나 지정한다.
 - Optional Painting Case는 `ContractStartPlayerCount`와 Loot Value Quota가 요구하는 수량만 활성화한다. Object Case는 v1 Assignment에서 제외한다.
-- Surface Template 선택은 Map Pool별 Shuffle Bag을 사용하며 한 Match Assignment 안에서 같은 Template을 중복 사용하지 않는다.
+- Surface Template 카탈로그는 M01/M02/M03마다 40개를 유지한다. MatchStart 서버는 선택된 Map Pool의 40개 중 20개를 Draw해 Required Target을 포함한 활성 Painting Exhibit 20개에 하나씩 배정하며, 같은 Match Assignment 안에서 같은 Template을 중복 사용하지 않는다.
+- `AHeistPaintingDisplayCaseActor`가 Case별 Assigned TemplateId, ReferenceImage와 AssignmentRevision을 복제한다. Forgery 준비는 GameState의 단일 선택값을 전체 Case에 공용하지 않고 상호작용한 Case의 배정값을 검증해 사용한다.
+- 개발 중 유효 Template 또는 배치 Painting Case가 부족하면 서버는 `min(20, 유효 Template 수, 유효 Painting Case 수)`만 안전하게 배정하고 `INCOMPLETE`로 기록할 수 있다. 이 Fallback은 Release 완료 증거가 아니며 Release Gate는 맵별 40개 카탈로그와 활성 Painting Exhibit 20개를 모두 요구한다.
 - Shuffle Bag 재충전 시 직전 Cycle의 최근 3개 Template을 첫 선택 후보에서 제외한다.
 - Object Assembly Template의 별도 Family Pool과 Shuffle Bag 코드는 Deferred 호환용으로 보존하되 v1 Assignment에서 실행하지 않는다.
 - Assignment는 `CaseId`, `ArtifactId`, `ForgeryType`, `TemplateId`, `ArtifactValue`, `bRequiredTarget`을 포함하며 v1의 `ForgeryType`은 Surface만 선택한다.

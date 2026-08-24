@@ -56,7 +56,9 @@ bool FHeistContractDefinitionTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Player count below range clamps to one"), Definition.ResolveLootValueQuota(0), 4000);
 	TestEqual(TEXT("Player count above range clamps to four"), Definition.ResolveLootValueQuota(5), 11200);
 	TestEqual(TEXT("Three-player minimum optional exhibits"), Definition.ResolveMinimumOptionalExhibitCount(3), 4);
-	TestEqual(TEXT("Three-player maximum optional exhibits"), Definition.ResolveMaximumOptionalExhibitCount(3), 6);
+	TestEqual(TEXT("Three-player maximum optional exhibits"), Definition.ResolveMaximumOptionalExhibitCount(3), 19);
+	TestEqual(TEXT("Per-map Surface template catalog target"), Definition.SurfaceTemplateCatalogSize, 40);
+	TestEqual(TEXT("Per-match Painting exhibit target"), Definition.MatchPaintingExhibitCount, 20);
 
 	FHeistContractDataRow InvalidDefinition = Definition;
 	InvalidDefinition.PlayerCountQuotaMultipliers = {1.0f, 1.6f, 1.5f, 2.8f};
@@ -67,6 +69,16 @@ bool FHeistContractDefinitionTest::RunTest(const FString& Parameters)
 	InvalidDefinition.MaximumOptionalExhibits.SetNum(3);
 	TestFalse(TEXT("Incomplete player count arrays are rejected"), InvalidDefinition.IsRuntimeDefinitionValid(&FailureReason));
 	TestEqual(TEXT("Array count failure reason"), FailureReason, FString(TEXT("PlayerCountArraySizeMismatch")));
+
+	InvalidDefinition = Definition;
+	InvalidDefinition.MatchPaintingExhibitCount = InvalidDefinition.SurfaceTemplateCatalogSize + 1;
+	TestFalse(TEXT("A match cannot assign more Painting exhibits than the map catalog"), InvalidDefinition.IsRuntimeDefinitionValid(&FailureReason));
+	TestEqual(TEXT("Surface catalog range failure reason"), FailureReason, FString(TEXT("InvalidSurfaceExhibitCatalogRange")));
+
+	InvalidDefinition = Definition;
+	InvalidDefinition.MaximumOptionalExhibits[0] = InvalidDefinition.MatchPaintingExhibitCount;
+	TestFalse(TEXT("Optional exhibit capacity reserves one slot for the required target"), InvalidDefinition.IsRuntimeDefinitionValid(&FailureReason));
+	TestEqual(TEXT("Optional exhibit capacity failure reason"), FailureReason, FString(TEXT("OptionalExhibitRangeExceedsMatchPaintingCount")));
 
 	return true;
 }

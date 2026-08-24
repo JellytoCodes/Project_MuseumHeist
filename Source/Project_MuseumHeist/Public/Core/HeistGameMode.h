@@ -164,6 +164,7 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 	const UHeistGameBalanceDataAsset* ResolveGameBalanceData() const;
 
 	bool bPlayerCountGuardScalingApplied = false;
+	TArray<FName> SelectedSurfaceTemplateIdsForMatch;
 	int32 DifficultyAuthoredGuardCount = 0;
 	int32 DifficultyExpectedGuardCount = 0;
 	int32 DifficultyActiveGuardCount = 0;

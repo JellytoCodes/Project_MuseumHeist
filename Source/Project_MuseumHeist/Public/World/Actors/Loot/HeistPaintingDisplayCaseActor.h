@@ -158,6 +158,9 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Original|Visual")
 	int32 GetOriginalVisualRevision() const;
 
+	bool SetAssignedSurfaceTemplate(FName PoolId, FName TemplateId, int32 AssignmentRevision);
+	bool ClearAssignedSurfaceTemplate();
+
 	void GetOriginalPaintingVisualDebugState(FName& OutTemplateId, int32& OutRevision, bool& OutReferenceLoaded, bool& OutDynamicMaterialBuilt,
 											 bool& OutTextureParameterApplied, bool& OutContractPassed) const;
 

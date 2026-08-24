@@ -1,0 +1,61 @@
+{
+    "asset_name":  "T_Forgery_M02_FoldingScreen_12",
+    "source_file":  "M02_FoldingScreen_12.png",
+    "mask_asset_name":  "T_Forgery_M02_FoldingScreen_12_Mask",
+    "mask_source_file":  "M02_FoldingScreen_12_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M02",
+    "template_id":  "Template_M02_FoldingScreen_12",
+    "category":  "FoldingScreen",
+    "difficulty":  "Medium",
+    "source_artwork":  "Cranes",
+    "source_artist":  "Ogata Korin",
+    "source_manifest":  "M02_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M02_FoldingScreen_12_Cranes_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#D8AF3E",
+                         "#F1E9DA",
+                         "#303030",
+                         "#B74B3F",
+                         "#7E8A83"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.686685,
+                               0.42869,
+                               0.048172,
+                               1
+                           ],
+                           [
+                               0.879622,
+                               0.814847,
+                               0.701102,
+                               1
+                           ],
+                           [
+                               0.029557,
+                               0.029557,
+                               0.029557,
+                               1
+                           ],
+                           [
+                               0.473531,
+                               0.07036,
+                               0.049707,
+                               1
+                           ],
+                           [
+                               0.208637,
+                               0.254152,
+                               0.226966,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.1822,
+    "quantize_cleanup_radius":  3,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

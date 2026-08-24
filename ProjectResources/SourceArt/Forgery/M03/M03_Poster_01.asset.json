@@ -11,6 +11,7 @@
     "source_artist":  "Théophile-Alexandre Steinlen",
     "source_manifest":  "M03_SourceManifest.json",
     "candidate_source_file":  "Candidates/M03_Poster_01_ChatNoir_source.png",
+    "background_threshold":  24,
     "background_srgb":  "#000000",
     "background_filter_mode":  "Black",
     "background_color_tolerance":  0.08,
@@ -46,7 +47,7 @@
                                1
                            ]
                        ],
-    "foreground_ratio":  0.1302,
+    "foreground_ratio":  0.2798,
     "quantize_cleanup_radius":  4,
     "final_resolution":  1024,
     "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."

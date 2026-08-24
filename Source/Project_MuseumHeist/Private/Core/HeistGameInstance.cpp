@@ -85,7 +85,7 @@ TArray<FName> NormalizeCandidateIds(const TArray<FName>& CandidateTemplateIds)
 }
 
 bool DrawFromShuffleBag(const TArray<FName>& CandidateTemplateIds, TArray<FName>& RemainingTemplateIds, TArray<FName>& RecentTemplateIds, int32& BagCycle,
-						FRandomStream& RandomStream, FName& OutTemplateId)
+						FRandomStream& RandomStream, FName& OutTemplateId, const TSet<FName>* ExcludedTemplateIds = nullptr)
 {
 	OutTemplateId = NAME_None;
 	if (CandidateTemplateIds.IsEmpty())
@@ -118,14 +118,28 @@ bool DrawFromShuffleBag(const TArray<FName>& CandidateTemplateIds, TArray<FName>
 	TArray<int32> EligibleIndices;
 	for (int32 TemplateIndex = 0; TemplateIndex < RemainingTemplateIds.Num(); ++TemplateIndex)
 	{
-		if (!RecentTemplateIds.Contains(RemainingTemplateIds[TemplateIndex]))
+		const FName CandidateId = RemainingTemplateIds[TemplateIndex];
+		if (!RecentTemplateIds.Contains(CandidateId) && (ExcludedTemplateIds == nullptr || !ExcludedTemplateIds->Contains(CandidateId)))
 		{
 			EligibleIndices.Add(TemplateIndex);
 		}
 	}
+	if (EligibleIndices.IsEmpty() && ExcludedTemplateIds != nullptr)
+	{
+		for (int32 TemplateIndex = 0; TemplateIndex < RemainingTemplateIds.Num(); ++TemplateIndex)
+		{
+			if (!ExcludedTemplateIds->Contains(RemainingTemplateIds[TemplateIndex]))
+			{
+				EligibleIndices.Add(TemplateIndex);
+			}
+		}
+	}
+	if (EligibleIndices.IsEmpty())
+	{
+		return false;
+	}
 
-	const int32 SelectedIndex = EligibleIndices.IsEmpty() ? RandomStream.RandRange(0, RemainingTemplateIds.Num() - 1)
-														 : EligibleIndices[RandomStream.RandRange(0, EligibleIndices.Num() - 1)];
+	const int32 SelectedIndex = EligibleIndices[RandomStream.RandRange(0, EligibleIndices.Num() - 1)];
 	OutTemplateId = RemainingTemplateIds[SelectedIndex];
 	RemainingTemplateIds.RemoveAtSwap(SelectedIndex, 1, EAllowShrinking::No);
 	RecentTemplateIds.Add(OutTemplateId);
@@ -191,12 +205,27 @@ bool UHeistGameInstance::SelectSurfaceTemplateForMatch(const FName PoolId, const
 													   int32& OutBagCycle, int32& OutRemainingTemplateCount)
 {
 	OutTemplateId = NAME_None;
+	TArray<FName> SelectedTemplateIds;
+	if (!SelectSurfaceTemplatesForMatch(PoolId, CandidateTemplateIds, 1, SelectedTemplateIds, OutSelectionRevision, OutBagCycle, OutRemainingTemplateCount) ||
+		SelectedTemplateIds.Num() != 1)
+	{
+		return false;
+	}
+
+	OutTemplateId = SelectedTemplateIds[0];
+	return true;
+}
+
+bool UHeistGameInstance::SelectSurfaceTemplatesForMatch(const FName PoolId, const TArray<FName>& CandidateTemplateIds, const int32 RequestedTemplateCount,
+	TArray<FName>& OutTemplateIds, int32& OutSelectionRevision, int32& OutBagCycle, int32& OutRemainingTemplateCount)
+{
+	OutTemplateIds.Reset();
 	OutSelectionRevision = 0;
 	OutBagCycle = 0;
 	OutRemainingTemplateCount = 0;
 	UWorld* World = GetWorld();
 	const TArray<FName> NormalizedCandidateIds = HeistSurfaceTemplate::NormalizeCandidateIds(CandidateTemplateIds);
-	if (PoolId.IsNone() || NormalizedCandidateIds.IsEmpty() || !IsValid(World) || World->GetNetMode() == NM_Client)
+	if (PoolId.IsNone() || NormalizedCandidateIds.IsEmpty() || RequestedTemplateCount <= 0 || !IsValid(World) || World->GetNetMode() == NM_Client)
 	{
 		return false;
 	}
@@ -213,9 +242,20 @@ bool UHeistGameInstance::SelectSurfaceTemplateForMatch(const FName PoolId, const
 		BagCycle = 0;
 	}
 
-	if (!HeistSurfaceTemplate::DrawFromShuffleBag(Catalog, RemainingIds, RecentIds, BagCycle, SurfaceTemplateRandomStream, OutTemplateId))
+	const int32 ResolvedTemplateCount = FMath::Min(RequestedTemplateCount, Catalog.Num());
+	TSet<FName> SelectedThisMatch;
+	OutTemplateIds.Reserve(ResolvedTemplateCount);
+	for (int32 SelectionIndex = 0; SelectionIndex < ResolvedTemplateCount; ++SelectionIndex)
 	{
-		return false;
+		FName SelectedTemplateId = NAME_None;
+		if (!HeistSurfaceTemplate::DrawFromShuffleBag(Catalog, RemainingIds, RecentIds, BagCycle, SurfaceTemplateRandomStream, SelectedTemplateId, &SelectedThisMatch))
+		{
+			OutTemplateIds.Reset();
+			return false;
+		}
+
+		SelectedThisMatch.Add(SelectedTemplateId);
+		OutTemplateIds.Add(SelectedTemplateId);
 	}
 
 	++SurfaceTemplateSelectionRevision;
@@ -304,6 +344,52 @@ bool UHeistGameInstance::RunSurfaceTemplateShuffleBagSelfTestForDebug(const int3
 	OutSecondCycleUniqueCount = SecondCycleIds.Num();
 	return OutDrawCount == PoolSize * 2 && OutFirstCycleUniqueCount == PoolSize && OutSecondCycleUniqueCount == PoolSize &&
 		   OutRecentProtectionCheckCount > 0 && OutRecentProtectionPassCount == OutRecentProtectionCheckCount;
+#endif
+}
+
+bool UHeistGameInstance::RunSurfaceTemplateMatchSelectionSelfTestForDebug(const int32 PoolSize, const int32 RequestedTemplateCount,
+	int32& OutSelectedCount, int32& OutUniqueCount, int32& OutBagCycle) const
+{
+	OutSelectedCount = 0;
+	OutUniqueCount = 0;
+	OutBagCycle = 0;
+#if UE_BUILD_SHIPPING
+	return false;
+#else
+	if (PoolSize < 4 || PoolSize > 64 || RequestedTemplateCount <= 0 || RequestedTemplateCount > PoolSize)
+	{
+		return false;
+	}
+
+	TArray<FName> Candidates;
+	Candidates.Reserve(PoolSize);
+	for (int32 TemplateIndex = 0; TemplateIndex < PoolSize; ++TemplateIndex)
+	{
+		Candidates.Add(FName(*FString::Printf(TEXT("SelfTest_Surface_%02d"), TemplateIndex + 1)));
+	}
+
+	TArray<FName> RemainingIds;
+	const int32 InitialRemainingCount = FMath::Max(1, FMath::Min(RequestedTemplateCount / 2, PoolSize));
+	RemainingIds.Append(Candidates.GetData(), InitialRemainingCount);
+	TArray<FName> RecentIds;
+	TSet<FName> SelectedIds;
+	FRandomStream TestRandomStream(200840);
+	OutBagCycle = 1;
+	for (int32 SelectionIndex = 0; SelectionIndex < RequestedTemplateCount; ++SelectionIndex)
+	{
+		FName SelectedTemplateId = NAME_None;
+		if (!HeistSurfaceTemplate::DrawFromShuffleBag(Candidates, RemainingIds, RecentIds, OutBagCycle, TestRandomStream,
+			SelectedTemplateId, &SelectedIds))
+		{
+			return false;
+		}
+
+		SelectedIds.Add(SelectedTemplateId);
+		++OutSelectedCount;
+	}
+
+	OutUniqueCount = SelectedIds.Num();
+	return OutSelectedCount == RequestedTemplateCount && OutUniqueCount == RequestedTemplateCount;
 #endif
 }
 

@@ -6,7 +6,9 @@
     "BaseLootValueQuota": 4000,
     "PlayerCountQuotaMultipliers": [1.0, 1.6, 2.2, 2.8],
     "MinimumOptionalExhibits": [2, 3, 4, 5],
-    "MaximumOptionalExhibits": [4, 5, 6, 8],
+	"MaximumOptionalExhibits": [19, 19, 19, 19],
+	"SurfaceTemplateCatalogSize": 40,
+	"MatchPaintingExhibitCount": 20,
     "MatchDurationSeconds": 1200.0,
     "ExtractionRuleId": "IndividualDeposit_SharedExit"
   }

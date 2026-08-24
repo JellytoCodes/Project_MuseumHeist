@@ -1,28 +1,61 @@
 {
-  "asset_name": "T_Forgery_M01_Landscape_04",
-  "source_file": "M01_Landscape_04.png",
-  "mask_asset_name": "T_Forgery_M01_Landscape_04_Mask",
-  "mask_source_file": "M01_Landscape_04_Mask.png",
-  "unreal_destination": "/Game/Data/Forgery/Textures/M01",
-  "template_id": "Template_M01_Landscape_04",
-  "category": "Landscape",
-  "difficulty": "Medium",
-  "source_artwork": "The Starry Night",
-  "source_artist": "Vincent van Gogh",
-  "source_manifest": "M01_SourceManifest.json",
-  "candidate_source_file": "Candidates/M01_Landscape_04_StarryNight_source.png",
-  "background_srgb": "#000000",
-  "background_filter_mode": "Black",
-  "background_color_tolerance": 0.08,
-  "palette_srgb": ["#011E4D", "#1C55C4", "#FED02D", "#0A1D13", "#CCC976"],
-  "palette_linear": [
-    [0.000304, 0.012983, 0.074214, 1.0],
-    [0.011612, 0.090842, 0.552011, 1.0],
-    [0.991102, 0.630757, 0.026241, 1.0],
-    [0.003035, 0.012286, 0.006512, 1.0],
-    [0.603827, 0.584078, 0.181164, 1.0]
-  ],
-  "foreground_ratio": 0.5178,
-  "quantize_cleanup_radius": 4,
-  "notes": "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+    "asset_name":  "T_Forgery_M01_Landscape_04",
+    "source_file":  "M01_Landscape_04.png",
+    "mask_asset_name":  "T_Forgery_M01_Landscape_04_Mask",
+    "mask_source_file":  "M01_Landscape_04_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M01",
+    "template_id":  "Template_M01_Landscape_04",
+    "category":  "Landscape",
+    "difficulty":  "Medium",
+    "source_artwork":  "The Starry Night",
+    "source_artist":  "Vincent van Gogh",
+    "source_manifest":  "M01_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M01_Landscape_04_StarryNight_source.png",
+    "background_threshold":  24,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#011E4D",
+                         "#1C55C4",
+                         "#FED02D",
+                         "#0A1D13",
+                         "#CCC976"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.000304,
+                               0.012983,
+                               0.074214,
+                               1
+                           ],
+                           [
+                               0.011612,
+                               0.090842,
+                               0.552011,
+                               1
+                           ],
+                           [
+                               0.991102,
+                               0.630757,
+                               0.026241,
+                               1
+                           ],
+                           [
+                               0.003035,
+                               0.012286,
+                               0.006512,
+                               1
+                           ],
+                           [
+                               0.603827,
+                               0.584078,
+                               0.181164,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.518,
+    "quantize_cleanup_radius":  3,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
 }

@@ -1,0 +1,68 @@
+{
+    "asset_name":  "T_Forgery_M02_FoldingScreen_20",
+    "source_file":  "M02_FoldingScreen_20.png",
+    "mask_asset_name":  "T_Forgery_M02_FoldingScreen_20_Mask",
+    "mask_source_file":  "M02_FoldingScreen_20_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M02",
+    "template_id":  "Template_M02_FoldingScreen_20",
+    "category":  "FoldingScreen",
+    "difficulty":  "Hard",
+    "source_artwork":  "Peacocks and Peonies",
+    "source_artist":  "Edo-period Japanese school",
+    "source_manifest":  "M02_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M02_FoldingScreen_20_PeacocksPeonies_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#D8AF3E",
+                         "#315F56",
+                         "#3E628B",
+                         "#B94E57",
+                         "#EEE1C8",
+                         "#4D4035"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.686685,
+                               0.42869,
+                               0.048172,
+                               1
+                           ],
+                           [
+                               0.030713,
+                               0.114435,
+                               0.093059,
+                               1
+                           ],
+                           [
+                               0.048172,
+                               0.122139,
+                               0.258183,
+                               1
+                           ],
+                           [
+                               0.48515,
+                               0.076185,
+                               0.095307,
+                               1
+                           ],
+                           [
+                               0.854993,
+                               0.752942,
+                               0.57758,
+                               1
+                           ],
+                           [
+                               0.074214,
+                               0.051269,
+                               0.035601,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.3291,
+    "quantize_cleanup_radius":  2,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

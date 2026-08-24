@@ -1,0 +1,68 @@
+{
+    "asset_name":  "T_Forgery_M03_Poster_18",
+    "source_file":  "M03_Poster_18.png",
+    "mask_asset_name":  "T_Forgery_M03_Poster_18_Mask",
+    "mask_source_file":  "M03_Poster_18_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M03",
+    "template_id":  "Template_M03_Poster_18",
+    "category":  "Poster",
+    "difficulty":  "Hard",
+    "source_artwork":  "Harper\u0027s May",
+    "source_artist":  "Edward Penfield",
+    "source_manifest":  "M03_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M03_Poster_18_HarpersMay_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#D7AE3D",
+                         "#B64C46",
+                         "#E9DFC9",
+                         "#4F6B59",
+                         "#516B86",
+                         "#303030"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.679542,
+                               0.423268,
+                               0.046665,
+                               1
+                           ],
+                           [
+                               0.467784,
+                               0.072272,
+                               0.061246,
+                               1
+                           ],
+                           [
+                               0.814847,
+                               0.73791,
+                               0.584078,
+                               1
+                           ],
+                           [
+                               0.078187,
+                               0.147027,
+                               0.099899,
+                               1
+                           ],
+                           [
+                               0.082283,
+                               0.147027,
+                               0.238398,
+                               1
+                           ],
+                           [
+                               0.029557,
+                               0.029557,
+                               0.029557,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.1214,
+    "quantize_cleanup_radius":  2,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

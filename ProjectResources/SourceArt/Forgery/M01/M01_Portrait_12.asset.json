@@ -1,0 +1,61 @@
+{
+    "asset_name":  "T_Forgery_M01_Portrait_12",
+    "source_file":  "M01_Portrait_12.png",
+    "mask_asset_name":  "T_Forgery_M01_Portrait_12_Mask",
+    "mask_source_file":  "M01_Portrait_12_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M01",
+    "template_id":  "Template_M01_Portrait_12",
+    "category":  "Portrait",
+    "difficulty":  "Medium",
+    "source_artwork":  "Pinkie",
+    "source_artist":  "Thomas Lawrence",
+    "source_manifest":  "M01_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M01_Portrait_12_Pinkie_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#E7B8A7",
+                         "#C55D75",
+                         "#F1D8B5",
+                         "#58708A",
+                         "#5A3F34"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.799103,
+                               0.47932,
+                               0.386429,
+                               1
+                           ],
+                           [
+                               0.55834,
+                               0.109462,
+                               0.177888,
+                               1
+                           ],
+                           [
+                               0.879622,
+                               0.686685,
+                               0.462077,
+                               1
+                           ],
+                           [
+                               0.097587,
+                               0.162029,
+                               0.254152,
+                               1
+                           ],
+                           [
+                               0.102242,
+                               0.049707,
+                               0.03434,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.3789,
+    "quantize_cleanup_radius":  3,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

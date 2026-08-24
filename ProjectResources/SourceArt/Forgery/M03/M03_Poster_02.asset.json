@@ -11,6 +11,7 @@
     "source_artist":  "Henri de Toulouse-Lautrec",
     "source_manifest":  "M03_SourceManifest.json",
     "candidate_source_file":  "Candidates/M03_Poster_02_MoulinRouge_source.png",
+    "background_threshold":  24,
     "background_srgb":  "#000000",
     "background_filter_mode":  "Black",
     "background_color_tolerance":  0.08,
@@ -53,7 +54,7 @@
                                1
                            ]
                        ],
-    "foreground_ratio":  0.1464,
+    "foreground_ratio":  0.2807,
     "quantize_cleanup_radius":  3,
     "final_resolution":  1024,
     "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."

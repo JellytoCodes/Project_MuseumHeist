@@ -1,0 +1,68 @@
+{
+    "asset_name":  "T_Forgery_M03_GeometricAbstract_20",
+    "source_file":  "M03_GeometricAbstract_20.png",
+    "mask_asset_name":  "T_Forgery_M03_GeometricAbstract_20_Mask",
+    "mask_source_file":  "M03_GeometricAbstract_20_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M03",
+    "template_id":  "Template_M03_GeometricAbstract_20",
+    "category":  "GeometricAbstract",
+    "difficulty":  "Hard",
+    "source_artwork":  "The Swan, No. 17",
+    "source_artist":  "Hilma af Klint",
+    "source_manifest":  "M03_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M03_GeometricAbstract_20_SwanNo17_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#303030",
+                         "#565656",
+                         "#E9E1D0",
+                         "#CFC6B5",
+                         "#C6473F",
+                         "#D9AE39"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.029557,
+                               0.029557,
+                               0.029557,
+                               1
+                           ],
+                           [
+                               0.093059,
+                               0.093059,
+                               0.093059,
+                               1
+                           ],
+                           [
+                               0.814847,
+                               0.752942,
+                               0.630757,
+                               1
+                           ],
+                           [
+                               0.62396,
+                               0.564712,
+                               0.462077,
+                               1
+                           ],
+                           [
+                               0.564712,
+                               0.06301,
+                               0.049707,
+                               1
+                           ],
+                           [
+                               0.693872,
+                               0.423268,
+                               0.040915,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.1031,
+    "quantize_cleanup_radius":  2,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

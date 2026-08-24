@@ -1,0 +1,54 @@
+{
+    "asset_name":  "T_Forgery_M01_Portrait_11",
+    "source_file":  "M01_Portrait_11.png",
+    "mask_asset_name":  "T_Forgery_M01_Portrait_11_Mask",
+    "mask_source_file":  "M01_Portrait_11_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M01",
+    "template_id":  "Template_M01_Portrait_11",
+    "category":  "Portrait",
+    "difficulty":  "Easy",
+    "source_artwork":  "The Blue Boy",
+    "source_artist":  "Thomas Gainsborough",
+    "source_manifest":  "M01_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M01_Portrait_11_BlueBoy_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#1E4E8C",
+                         "#76A7D2",
+                         "#E7C99B",
+                         "#5A3D2B"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.012983,
+                               0.076185,
+                               0.262251,
+                               1
+                           ],
+                           [
+                               0.181164,
+                               0.386429,
+                               0.64448,
+                               1
+                           ],
+                           [
+                               0.799103,
+                               0.584078,
+                               0.327778,
+                               1
+                           ],
+                           [
+                               0.102242,
+                               0.046665,
+                               0.024158,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.1613,
+    "quantize_cleanup_radius":  4,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

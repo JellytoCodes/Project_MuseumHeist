@@ -61,6 +61,10 @@ bool FHeistContractDataRow::IsRuntimeDefinitionValid(FString* OutFailureReason) 
 	{
 		return Fail(TEXT("PlayerCountArraySizeMismatch"));
 	}
+	if (SurfaceTemplateCatalogSize <= 0 || MatchPaintingExhibitCount <= 0 || MatchPaintingExhibitCount > SurfaceTemplateCatalogSize)
+	{
+		return Fail(TEXT("InvalidSurfaceExhibitCatalogRange"));
+	}
 	if (!FMath::IsWithinInclusive(MatchDurationSeconds, 900.0f, 1500.0f))
 	{
 		return Fail(TEXT("MatchDurationOutsideTargetRange"));
@@ -83,6 +87,10 @@ bool FHeistContractDataRow::IsRuntimeDefinitionValid(FString* OutFailureReason) 
 		if (MinimumExhibits < 0 || MaximumExhibits < MinimumExhibits)
 		{
 			return Fail(TEXT("InvalidOptionalExhibitRange"));
+		}
+		if (MaximumExhibits >= MatchPaintingExhibitCount)
+		{
+			return Fail(TEXT("OptionalExhibitRangeExceedsMatchPaintingCount"));
 		}
 
 		const int32 ResolvedQuota = ResolveLootValueQuota(PlayerCountIndex + 1);

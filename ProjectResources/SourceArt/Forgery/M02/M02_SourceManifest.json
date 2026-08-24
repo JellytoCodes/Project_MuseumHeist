@@ -2,7 +2,7 @@
   "task_id": "TASK-W5-020",
   "pool_id": "M02",
   "art_direction": {
-    "basis": "Public-domain real artworks from The Metropolitan Museum of Art",
+    "basis": "Public-domain real East Asian artworks from museum and archive collections",
     "goal": "Preserve each work's iconic composition while simplifying ink wash and folding-screen motifs into large drawable regions for timed Surface Forgery gameplay.",
     "canvas": "Square 1:1 with pure black background and generous negative space",
     "final_resolution": 1024,
@@ -16,13 +16,13 @@
     ]
   },
   "category_distribution": {
-    "InkWash": 6,
-    "FoldingScreen": 6
+    "InkWash": 20,
+    "FoldingScreen": 20
   },
   "difficulty_distribution": {
-    "Easy": 4,
-    "Medium": 5,
-    "Hard": 3
+    "Easy": 14,
+    "Medium": 17,
+    "Hard": 9
   },
   "templates": [
     {
@@ -192,6 +192,174 @@
       "candidate_source_file": "Candidates/M02_FoldingScreen_06_ArrivalEuropeans_source.png",
       "palette_srgb": ["#D4A53D", "#F0E5CB", "#303030", "#A83D2D", "#264C73", "#587747"],
       "iconic_features": ["large dark-sailed carrack", "shoreline church block", "curved procession of faceless figures"]
+    },
+    {
+      "slot": "M02_InkWash_07", "template_id": "Template_M02_InkWash_07", "category": "InkWash", "difficulty": "Easy",
+      "artwork": "Six Persimmons", "artist": "Muqi", "year": "13th century", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Six%20Persimmons%20Muqi", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_InkWash_07_SixPersimmons_source.png", "palette_srgb": ["#F1E8D6", "#BEB4A4", "#716B64", "#303030"],
+      "iconic_features": ["six round persimmons", "loose horizontal cluster"]
+    },
+    {
+      "slot": "M02_InkWash_08", "template_id": "Template_M02_InkWash_08", "category": "InkWash", "difficulty": "Easy",
+      "artwork": "Bamboo in Wind", "artist": "Ke Jiusi", "year": "14th century", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Ke%20Jiusi%20Bamboo", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_InkWash_08_BambooWind_source.png", "palette_srgb": ["#EFE7D8", "#B9B1A3", "#6A6861", "#303030"],
+      "iconic_features": ["three bent bamboo stems", "wind-swept leaves"]
+    },
+    {
+      "slot": "M02_InkWash_09", "template_id": "Template_M02_InkWash_09", "category": "InkWash", "difficulty": "Easy",
+      "artwork": "Orchid and Bamboo", "artist": "Zheng Xie", "year": "18th century", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Zheng%20Xie%20Orchid%20Bamboo", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_InkWash_09_OrchidBamboo_source.png", "palette_srgb": ["#F0E8D9", "#C7BFAF", "#777169", "#303030"],
+      "iconic_features": ["low rock", "bamboo sprays", "orchid clusters"]
+    },
+    {
+      "slot": "M02_InkWash_10", "template_id": "Template_M02_InkWash_10", "category": "InkWash", "difficulty": "Easy",
+      "artwork": "Habitat among Pines", "artist": "Ni Zan", "year": "14th century", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Ni%20Zan%20Habitat%20among%20Pines", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_InkWash_10_HabitatPines_source.png", "palette_srgb": ["#F2E9D7", "#C0B6A6", "#6D6962", "#303030"],
+      "iconic_features": ["tiny hut", "two sparse pines", "distant mountain"]
+    },
+    {
+      "slot": "M02_InkWash_11", "template_id": "Template_M02_InkWash_11", "category": "InkWash", "difficulty": "Easy",
+      "artwork": "Dwelling in the Fuchun Mountains", "artist": "Huang Gongwang", "year": "1347-1350", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Dwelling%20in%20the%20Fuchun%20Mountains", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_InkWash_11_FuchunMountains_source.png", "palette_srgb": ["#EFE5D2", "#BDB09D", "#74695E", "#303030"],
+      "iconic_features": ["low mountain ridge", "winding river", "tree clusters"]
+    },
+    {
+      "slot": "M02_InkWash_12", "template_id": "Template_M02_InkWash_12", "category": "InkWash", "difficulty": "Medium",
+      "artwork": "Travelers among Mountains and Streams", "artist": "Fan Kuan", "year": "c. 1000", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Travelers%20among%20Mountains%20and%20Streams", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_InkWash_12_TravelersMountains_source.png", "palette_srgb": ["#F3EAD8", "#CFC5B4", "#A09789", "#625D56", "#303030"],
+      "iconic_features": ["monumental peak", "thin waterfall", "tiny travelers"]
+    },
+    {
+      "slot": "M02_InkWash_13", "template_id": "Template_M02_InkWash_13", "category": "InkWash", "difficulty": "Medium",
+      "artwork": "Early Spring", "artist": "Guo Xi", "year": "1072", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Guo%20Xi%20Early%20Spring", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_InkWash_13_EarlySpring_source.png", "palette_srgb": ["#F2E9D7", "#CDC2B0", "#958D82", "#5C5852", "#303030"],
+      "iconic_features": ["hooked mountain", "mist channels", "winter trees"]
+    },
+    {
+      "slot": "M02_InkWash_14", "template_id": "Template_M02_InkWash_14", "category": "InkWash", "difficulty": "Medium",
+      "artwork": "Poet on a Mountaintop", "artist": "Shen Zhou", "year": "c. 1500", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Shen%20Zhou%20Poet%20Mountaintop", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_InkWash_14_PoetMountaintop_source.png", "palette_srgb": ["#F4EBD9", "#D1C6B4", "#9B9183", "#615B53", "#303030"],
+      "iconic_features": ["tiny scholar", "cliff ledge", "large mountain"]
+    },
+    {
+      "slot": "M02_InkWash_15", "template_id": "Template_M02_InkWash_15", "category": "InkWash", "difficulty": "Medium",
+      "artwork": "Old Trees, Level Distance", "artist": "Guo Xi", "year": "c. 1080", "source_url": "https://www.metmuseum.org/art/collection/search?q=Old%20Trees%20Level%20Distance", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_InkWash_15_OldTreesDistance_source.png", "palette_srgb": ["#F1E7D5", "#C9BFAE", "#91877A", "#5A554F", "#303030"],
+      "iconic_features": ["two gnarled trees", "flat water", "distant hills"]
+    },
+    {
+      "slot": "M02_InkWash_16", "template_id": "Template_M02_InkWash_16", "category": "InkWash", "difficulty": "Medium",
+      "artwork": "White-Robed Guanyin", "artist": "Mincho", "year": "15th century", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=White-robed%20Guanyin%20Mincho", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_InkWash_16_WhiteGuanyin_source.png", "palette_srgb": ["#F5EDDE", "#D4CAB9", "#9D9386", "#615B54", "#303030"],
+      "iconic_features": ["seated white robe", "grotto arch", "halo"]
+    },
+    {
+      "slot": "M02_InkWash_17", "template_id": "Template_M02_InkWash_17", "category": "InkWash", "difficulty": "Medium",
+      "artwork": "Dragon amid Clouds", "artist": "Chen Rong", "year": "1244", "source_url": "https://www.metmuseum.org/art/collection/search?q=Chen%20Rong%20Dragon%20Clouds", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_InkWash_17_DragonClouds_source.png", "palette_srgb": ["#F1E9DA", "#C8C0B2", "#8C857B", "#55514C", "#303030"],
+      "iconic_features": ["coiling dragon", "three cloud masses"]
+    },
+    {
+      "slot": "M02_InkWash_18", "template_id": "Template_M02_InkWash_18", "category": "InkWash", "difficulty": "Hard",
+      "artwork": "Tiger", "artist": "Kishi Ganku", "year": "18th-19th century", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Kishi%20Ganku%20Tiger", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_InkWash_18_Tiger_source.png", "palette_srgb": ["#F3E9D7", "#D2C5B0", "#A18F79", "#75685A", "#4C4741", "#303030"],
+      "iconic_features": ["crouching tiger", "broad stripes", "reeds and rock"]
+    },
+    {
+      "slot": "M02_InkWash_19", "template_id": "Template_M02_InkWash_19", "category": "InkWash", "difficulty": "Hard",
+      "artwork": "Monkey Reaching for the Moon", "artist": "Japanese Edo-period school", "year": "Edo period", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Japanese%20monkey%20reaching%20moon%20painting", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_InkWash_19_MonkeyMoon_source.png", "palette_srgb": ["#F4EBDD", "#D7CCBA", "#A69A88", "#756C61", "#4A4641", "#303030"],
+      "iconic_features": ["hanging monkey", "curved branch", "moon reflection"]
+    },
+    {
+      "slot": "M02_InkWash_20", "template_id": "Template_M02_InkWash_20", "category": "InkWash", "difficulty": "Hard",
+      "artwork": "Fish and Rocks", "artist": "Bada Shanren", "year": "17th century", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Bada%20Shanren%20fish%20rocks", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_InkWash_20_FishRocks_source.png", "palette_srgb": ["#F3E9D8", "#D4C8B5", "#A49683", "#71685C", "#494540", "#303030"],
+      "iconic_features": ["two fish", "angular rocks", "lotus and reeds"]
+    },
+    {
+      "slot": "M02_FoldingScreen_07", "template_id": "Template_M02_FoldingScreen_07", "category": "FoldingScreen", "difficulty": "Easy",
+      "artwork": "Pine Trees", "artist": "Hasegawa Tohaku", "year": "late 16th century", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Hasegawa%20Tohaku%20Pine%20Trees", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_FoldingScreen_07_PineTrees_source.png", "palette_srgb": ["#EDE4D3", "#9C9A91", "#535653", "#303030"],
+      "iconic_features": ["two pine clusters", "pale mist", "empty center"]
+    },
+    {
+      "slot": "M02_FoldingScreen_08", "template_id": "Template_M02_FoldingScreen_08", "category": "FoldingScreen", "difficulty": "Easy",
+      "artwork": "Wind God and Thunder God", "artist": "Tawaraya Sotatsu", "year": "17th century", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Sotatsu%20Wind%20Thunder%20Gods", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_FoldingScreen_08_WindThunderGods_source.png", "palette_srgb": ["#D6AE3C", "#4E7757", "#D8D0BA", "#303030"],
+      "iconic_features": ["two crouching deities", "wind bag", "drum ring"]
+    },
+    {
+      "slot": "M02_FoldingScreen_09", "template_id": "Template_M02_FoldingScreen_09", "category": "FoldingScreen", "difficulty": "Easy",
+      "artwork": "Red and White Plum Blossoms", "artist": "Ogata Korin", "year": "early 18th century", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Red%20White%20Plum%20Blossoms%20Korin", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_FoldingScreen_09_RedWhitePlum_source.png", "palette_srgb": ["#D1AA3C", "#EDE4D2", "#B94D52", "#345C71"],
+      "iconic_features": ["opposing plum branches", "red and white blossoms", "blue stream"]
+    },
+    {
+      "slot": "M02_FoldingScreen_10", "template_id": "Template_M02_FoldingScreen_10", "category": "FoldingScreen", "difficulty": "Easy",
+      "artwork": "Cypress Trees", "artist": "Kano Eitoku", "year": "late 16th century", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Kano%20Eitoku%20Cypress%20Trees", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_FoldingScreen_10_CypressTrees_source.png", "palette_srgb": ["#D4AC3C", "#3F6947", "#715234", "#303030"],
+      "iconic_features": ["monumental cypress", "angular canopy", "gold clouds"]
+    },
+    {
+      "slot": "M02_FoldingScreen_11", "template_id": "Template_M02_FoldingScreen_11", "category": "FoldingScreen", "difficulty": "Easy",
+      "artwork": "Waves at Matsushima", "artist": "Tawaraya Sotatsu", "year": "17th century", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Waves%20at%20Matsushima%20Sotatsu", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_FoldingScreen_11_WavesMatsushima_source.png", "palette_srgb": ["#D7AE3C", "#356C8A", "#2F4E3D", "#EFE7D6"],
+      "iconic_features": ["pine islands", "curling waves", "gold clouds"]
+    },
+    {
+      "slot": "M02_FoldingScreen_12", "template_id": "Template_M02_FoldingScreen_12", "category": "FoldingScreen", "difficulty": "Medium",
+      "artwork": "Cranes", "artist": "Ogata Korin", "year": "18th century", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Ogata%20Korin%20Cranes", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_FoldingScreen_12_Cranes_source.png", "palette_srgb": ["#D8AF3E", "#F1E9DA", "#303030", "#B74B3F", "#7E8A83"],
+      "iconic_features": ["six cranes", "red crowns", "gold ground pools"]
+    },
+    {
+      "slot": "M02_FoldingScreen_13", "template_id": "Template_M02_FoldingScreen_13", "category": "FoldingScreen", "difficulty": "Medium",
+      "artwork": "Cherry Blossoms", "artist": "Sakai Hoitsu", "year": "early 19th century", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Sakai%20Hoitsu%20Cherry%20Blossoms", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_FoldingScreen_13_CherryBlossoms_source.png", "palette_srgb": ["#D7AE3D", "#F1E8D8", "#D98B9D", "#5C493A", "#486F7D"],
+      "iconic_features": ["sweeping branch", "pink and white blossoms", "river curve"]
+    },
+    {
+      "slot": "M02_FoldingScreen_14", "template_id": "Template_M02_FoldingScreen_14", "category": "FoldingScreen", "difficulty": "Medium",
+      "artwork": "Flowers of the Four Seasons", "artist": "Edo-period Japanese school", "year": "Edo period", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Japanese%20Flowers%20Four%20Seasons%20screen", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_FoldingScreen_14_FourSeasonsFlowers_source.png", "palette_srgb": ["#D5AD3D", "#385D43", "#4B5FA0", "#D19A3E", "#E6D9C4"],
+      "iconic_features": ["iris", "lotus", "chrysanthemum and plum"]
+    },
+    {
+      "slot": "M02_FoldingScreen_15", "template_id": "Template_M02_FoldingScreen_15", "category": "FoldingScreen", "difficulty": "Medium",
+      "artwork": "Birds and Flowers of Spring and Summer", "artist": "Kano-school painter", "year": "Edo period", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Japanese%20birds%20flowers%20folding%20screen", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_FoldingScreen_15_BirdsSpringSummer_source.png", "palette_srgb": ["#D7AF3F", "#304F3B", "#B6564C", "#E9DFCC", "#4D6D7D"],
+      "iconic_features": ["pheasant", "blooming tree", "flying birds"]
+    },
+    {
+      "slot": "M02_FoldingScreen_16", "template_id": "Template_M02_FoldingScreen_16", "category": "FoldingScreen", "difficulty": "Medium",
+      "artwork": "Pine, Bamboo, and Plum", "artist": "Maruyama-school painter", "year": "Edo period", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Japanese%20pine%20bamboo%20plum%20screen", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_FoldingScreen_16_PineBambooPlum_source.png", "palette_srgb": ["#D4AC3D", "#355D42", "#78965C", "#EEE5D5", "#4A4036"],
+      "iconic_features": ["pine", "bamboo", "flowering plum"]
+    },
+    {
+      "slot": "M02_FoldingScreen_17", "template_id": "Template_M02_FoldingScreen_17", "category": "FoldingScreen", "difficulty": "Medium",
+      "artwork": "Moon and Autumn Grasses", "artist": "Sakai Hoitsu", "year": "early 19th century", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Sakai%20Hoitsu%20Moon%20Autumn%20Grasses", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_FoldingScreen_17_MoonAutumnGrass_source.png", "palette_srgb": ["#D6AF42", "#E9D7A5", "#7B8A4F", "#7A5D78", "#303030"],
+      "iconic_features": ["gold moon", "pampas grass", "autumn flowers"]
+    },
+    {
+      "slot": "M02_FoldingScreen_18", "template_id": "Template_M02_FoldingScreen_18", "category": "FoldingScreen", "difficulty": "Hard",
+      "artwork": "Maple Tree", "artist": "Hasegawa-school painter", "year": "Momoyama period", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Japanese%20Maple%20Tree%20folding%20screen", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_FoldingScreen_18_MapleTree_source.png", "palette_srgb": ["#D5AC3B", "#B84736", "#D9782F", "#4A5E3D", "#486A7A", "#5B4634"],
+      "iconic_features": ["twisted maple", "red foliage", "stream and rocks"]
+    },
+    {
+      "slot": "M02_FoldingScreen_19", "template_id": "Template_M02_FoldingScreen_19", "category": "FoldingScreen", "difficulty": "Hard",
+      "artwork": "Chinese Lions", "artist": "Kano Eitoku", "year": "late 16th century", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Kano%20Eitoku%20Chinese%20Lions", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_FoldingScreen_19_ChineseLions_source.png", "palette_srgb": ["#D6AD3C", "#E8DFCC", "#A96F2C", "#496477", "#5A4738", "#303030"],
+      "iconic_features": ["two guardian lions", "curling manes", "clouds and rocks"]
+    },
+    {
+      "slot": "M02_FoldingScreen_20", "template_id": "Template_M02_FoldingScreen_20", "category": "FoldingScreen", "difficulty": "Hard",
+      "artwork": "Peacocks and Peonies", "artist": "Edo-period Japanese school", "year": "Edo period", "source_url": "https://commons.wikimedia.org/wiki/Special:MediaSearch?type=image&search=Japanese%20Peacocks%20Peonies%20screen", "rights": "Public Domain",
+      "candidate_source_file": "Candidates/M02_FoldingScreen_20_PeacocksPeonies_source.png", "palette_srgb": ["#D8AF3E", "#315F56", "#3E628B", "#B94E57", "#EEE1C8", "#4D4035"],
+      "iconic_features": ["two peacocks", "fan tails", "peony clusters"]
     }
   ]
 }

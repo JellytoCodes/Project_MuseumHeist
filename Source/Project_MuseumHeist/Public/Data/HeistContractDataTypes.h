@@ -30,7 +30,15 @@ struct PROJECT_MUSEUMHEIST_API FHeistContractDataRow : public FTableRowBase
 
 	/** Maximum optional Exhibit count by player count. Consumed by W6-002 assignment. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Contract", meta = (EditFixedOrder))
-	TArray<int32> MaximumOptionalExhibits = {4, 5, 6, 8};
+	TArray<int32> MaximumOptionalExhibits = {19, 19, 19, 19};
+
+	/** Authored Surface Template target for each release map. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Contract|Surface", meta = (ClampMin = "1"))
+	int32 SurfaceTemplateCatalogSize = 40;
+
+	/** Unique Painting exhibits assigned from the selected map pool at MatchStart. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Contract|Surface", meta = (ClampMin = "1"))
+	int32 MatchPaintingExhibitCount = 20;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Contract", meta = (ClampMin = "900.0", ClampMax = "1500.0", Units = "s"))
 	float MatchDurationSeconds = 1200.0f;

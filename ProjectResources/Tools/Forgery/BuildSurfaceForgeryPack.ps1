@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet("M02", "M03")]
+    [ValidateSet("M01", "M02", "M03")]
     [string]$PoolId,
 
     [ValidateRange(256, 2048)]
@@ -86,14 +86,29 @@ foreach ($requiredPath in @($manifestPath, $dataTablePath, $quantizeScript))
 }
 
 $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
-if ($manifest.pool_id -ne $PoolId -or @($manifest.templates).Count -ne 12)
+if ($manifest.pool_id -ne $PoolId -or @($manifest.templates).Count -ne 40)
 {
-    throw "Manifest must declare Pool=$PoolId and exactly 12 templates."
+    throw "Manifest must declare Pool=$PoolId and exactly 40 templates."
 }
 
 foreach ($template in @($manifest.templates))
 {
-    $candidatePath = Join-Path $sourceRoot $template.candidate_source_file
+    $candidateSourceFile = [string]$template.candidate_source_file
+    if ([string]::IsNullOrWhiteSpace($candidateSourceFile))
+    {
+        $existingAssetMetadataPath = Join-Path $sourceRoot "$($template.slot).asset.json"
+        if (Test-Path -LiteralPath $existingAssetMetadataPath -PathType Leaf)
+        {
+            $existingAssetMetadata = Get-Content -LiteralPath $existingAssetMetadataPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            $candidateSourceFile = [string]$existingAssetMetadata.candidate_source_file
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($candidateSourceFile))
+    {
+        throw "Candidate source_file is not declared for $($template.template_id)."
+    }
+    $template | Add-Member -NotePropertyName resolved_candidate_source_file -NotePropertyValue $candidateSourceFile -Force
+    $candidatePath = Join-Path $sourceRoot $candidateSourceFile
     if (-not (Test-Path -LiteralPath $candidatePath -PathType Leaf))
     {
         throw "Candidate image is missing for $($template.template_id): $candidatePath"
@@ -126,9 +141,14 @@ foreach ($template in @($manifest.templates))
     $maskAssetName = "$assetName`_Mask"
     $sourceFile = "$stem.png"
     $maskSourceFile = "$stem`_Mask.png"
-    $candidatePath = Join-Path $sourceRoot $template.candidate_source_file
+    $candidateSourceFile = [string]$template.resolved_candidate_source_file
+    $candidatePath = Join-Path $sourceRoot $candidateSourceFile
     $outputPath = Join-Path $sourceRoot $sourceFile
     $maskOutputPath = Join-Path $sourceRoot $maskSourceFile
+
+    $slotIndexMatch = [regex]::Match([string]$template.slot, "_(?<index>[0-9]+)$")
+    $slotIndex = if ($slotIndexMatch.Success) { [int]$slotIndexMatch.Groups["index"].Value } else { 0 }
+    $backgroundThreshold = if ($slotIndex -ge 7) { 4 } else { 24 }
 
     $quantizeOutput = & $quantizeScript `
         -InputPath $candidatePath `
@@ -136,7 +156,7 @@ foreach ($template in @($manifest.templates))
         -MaskOutputPath $maskOutputPath `
         -BackgroundHex "#000000" `
         -PaletteHex @($template.palette_srgb) `
-        -BackgroundThreshold 24 `
+        -BackgroundThreshold $backgroundThreshold `
         -CleanupRadius $settings.CleanupRadius `
         -OutputSize $OutputSize
     $quantizeSummary = $quantizeOutput -join [Environment]::NewLine
@@ -178,7 +198,8 @@ foreach ($template in @($manifest.templates))
         source_artwork = $template.artwork
         source_artist = $template.artist
         source_manifest = "$($PoolId)_SourceManifest.json"
-        candidate_source_file = $template.candidate_source_file
+        candidate_source_file = $candidateSourceFile
+        background_threshold = $backgroundThreshold
         background_srgb = "#000000"
         background_filter_mode = "Black"
         background_color_tolerance = 0.08

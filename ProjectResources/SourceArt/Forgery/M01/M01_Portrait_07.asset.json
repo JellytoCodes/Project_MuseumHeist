@@ -1,0 +1,54 @@
+{
+    "asset_name":  "T_Forgery_M01_Portrait_07",
+    "source_file":  "M01_Portrait_07.png",
+    "mask_asset_name":  "T_Forgery_M01_Portrait_07_Mask",
+    "mask_source_file":  "M01_Portrait_07_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M01",
+    "template_id":  "Template_M01_Portrait_07",
+    "category":  "Portrait",
+    "difficulty":  "Easy",
+    "source_artwork":  "Madame X",
+    "source_artist":  "John Singer Sargent",
+    "source_manifest":  "M01_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M01_Portrait_07_MadameX_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#F2D2B6",
+                         "#303030",
+                         "#6B4D3A",
+                         "#D8C7A4"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.887923,
+                               0.64448,
+                               0.467784,
+                               1
+                           ],
+                           [
+                               0.029557,
+                               0.029557,
+                               0.029557,
+                               1
+                           ],
+                           [
+                               0.147027,
+                               0.074214,
+                               0.042311,
+                               1
+                           ],
+                           [
+                               0.686685,
+                               0.571125,
+                               0.371238,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.2675,
+    "quantize_cleanup_radius":  4,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

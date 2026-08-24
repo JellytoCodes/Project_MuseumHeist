@@ -1,0 +1,61 @@
+{
+    "asset_name":  "T_Forgery_M01_Portrait_16",
+    "source_file":  "M01_Portrait_16.png",
+    "mask_asset_name":  "T_Forgery_M01_Portrait_16_Mask",
+    "mask_source_file":  "M01_Portrait_16_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M01",
+    "template_id":  "Template_M01_Portrait_16",
+    "category":  "Portrait",
+    "difficulty":  "Medium",
+    "source_artwork":  "Las Meninas",
+    "source_artist":  "Diego Velazquez",
+    "source_manifest":  "M01_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M01_Portrait_16_LasMeninas_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#F1E5C8",
+                         "#C6A45D",
+                         "#4B3528",
+                         "#7A3F39",
+                         "#66707A"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.879622,
+                               0.783538,
+                               0.57758,
+                               1
+                           ],
+                           [
+                               0.564712,
+                               0.371238,
+                               0.109462,
+                               1
+                           ],
+                           [
+                               0.07036,
+                               0.035601,
+                               0.021219,
+                               1
+                           ],
+                           [
+                               0.194618,
+                               0.049707,
+                               0.040915,
+                               1
+                           ],
+                           [
+                               0.132868,
+                               0.162029,
+                               0.194618,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.2746,
+    "quantize_cleanup_radius":  3,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

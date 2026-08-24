@@ -1,0 +1,68 @@
+{
+    "asset_name":  "T_Forgery_M03_Poster_20",
+    "source_file":  "M03_Poster_20.png",
+    "mask_asset_name":  "T_Forgery_M03_Poster_20_Mask",
+    "mask_source_file":  "M03_Poster_20_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M03",
+    "template_id":  "Template_M03_Poster_20",
+    "category":  "Poster",
+    "difficulty":  "Hard",
+    "source_artwork":  "Divan Japonais",
+    "source_artist":  "Henri de Toulouse-Lautrec",
+    "source_manifest":  "M03_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M03_Poster_20_DivanJaponais_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#303030",
+                         "#D67D2F",
+                         "#E8DDC5",
+                         "#C54B42",
+                         "#4D6B7C",
+                         "#B99A5A"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.029557,
+                               0.029557,
+                               0.029557,
+                               1
+                           ],
+                           [
+                               0.672443,
+                               0.205079,
+                               0.028426,
+                               1
+                           ],
+                           [
+                               0.806952,
+                               0.723055,
+                               0.55834,
+                               1
+                           ],
+                           [
+                               0.55834,
+                               0.07036,
+                               0.05448,
+                               1
+                           ],
+                           [
+                               0.074214,
+                               0.147027,
+                               0.201556,
+                               1
+                           ],
+                           [
+                               0.48515,
+                               0.323143,
+                               0.102242,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.123,
+    "quantize_cleanup_radius":  2,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}

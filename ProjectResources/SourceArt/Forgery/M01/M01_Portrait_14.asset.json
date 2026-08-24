@@ -1,0 +1,61 @@
+{
+    "asset_name":  "T_Forgery_M01_Portrait_14",
+    "source_file":  "M01_Portrait_14.png",
+    "mask_asset_name":  "T_Forgery_M01_Portrait_14_Mask",
+    "mask_source_file":  "M01_Portrait_14_Mask.png",
+    "unreal_destination":  "/Game/Data/Forgery/Textures/M01",
+    "template_id":  "Template_M01_Portrait_14",
+    "category":  "Portrait",
+    "difficulty":  "Medium",
+    "source_artwork":  "Self-Portrait at the Age of 63",
+    "source_artist":  "Rembrandt van Rijn",
+    "source_manifest":  "M01_SourceManifest.json",
+    "candidate_source_file":  "Candidates/M01_Portrait_14_RembrandtSelfPortrait_source.png",
+    "background_threshold":  4,
+    "background_srgb":  "#000000",
+    "background_filter_mode":  "Black",
+    "background_color_tolerance":  0.08,
+    "palette_srgb":  [
+                         "#D0A060",
+                         "#604020",
+                         "#303030",
+                         "#B08060",
+                         "#D0B080"
+                     ],
+    "palette_linear":  [
+                           [
+                               0.630757,
+                               0.351533,
+                               0.116971,
+                               1
+                           ],
+                           [
+                               0.116971,
+                               0.051269,
+                               0.014444,
+                               1
+                           ],
+                           [
+                               0.029557,
+                               0.029557,
+                               0.029557,
+                               1
+                           ],
+                           [
+                               0.434154,
+                               0.215861,
+                               0.116971,
+                               1
+                           ],
+                           [
+                               0.630757,
+                               0.434154,
+                               0.215861,
+                               1
+                           ]
+                       ],
+    "foreground_ratio":  0.3447,
+    "quantize_cleanup_radius":  3,
+    "final_resolution":  1024,
+    "notes":  "ReferenceImage is the owner UI preview. Result imagery is generated from the submitted palette raster; no static result texture is required."
+}
