@@ -38,8 +38,8 @@ struct FAlertPresentationAutomationState
 	bool bOriginalRunUnderOneProcess = true;
 	int32 OriginalClientCount = 1;
 	EHeistAlertLevel ExpectedAlertLevel = EHeistAlertLevel::Quiet;
+	float ExpectedAlertMeterValue = 0.0f;
 	int32 ExpectedAlertRevision = INDEX_NONE;
-	float ExpectedTransitionEndServerTime = 0.0f;
 	FName ExpectedTriggerId = NAME_None;
 	FName SurfaceCaseId = NAME_None;
 	FName ObjectCaseId = NAME_None;
@@ -185,19 +185,27 @@ FLinearColor ResolveExpectedAlertColor(const EHeistAlertLevel AlertLevel)
 	}
 }
 
-FString ResolveExpectedAlertBanner(const EHeistAlertLevel AlertLevel)
+float ResolveExpectedAlertMeterValue(const EHeistAlertLevel AlertLevel)
 {
-	const int32 SecurityLevel = FMath::Clamp(static_cast<int32>(AlertLevel), 0, 4);
-	FString Stars;
-	for (int32 Index = 0; Index < 4; ++Index)
+	switch (AlertLevel)
 	{
-		if (Index > 0)
-		{
-			Stars += TEXT(" ");
-		}
-		Stars += Index < SecurityLevel ? TEXT("\u2605") : TEXT("\u2606");
+	case EHeistAlertLevel::Suspicious:
+		return 0.5f;
+	case EHeistAlertLevel::Searching:
+		return 4.0f;
+	case EHeistAlertLevel::Alarmed:
+		return 7.0f;
+	case EHeistAlertLevel::Lockdown:
+		return 10.0f;
+	case EHeistAlertLevel::Quiet:
+	default:
+		return 0.0f;
 	}
-	return FString::Printf(TEXT("경계 단계 %d/4  %s"), SecurityLevel, *Stars);
+}
+
+FString ResolveExpectedAlertBanner(const float AlertMeterValue)
+{
+	return FText::Format(NSLOCTEXT("HeistHUD", "SecurityLevelFormat", "경계도 {0}/10"), FText::AsNumber(AlertMeterValue)).ToString();
 }
 
 bool ApplyAlertSnapshot(const TSharedRef<FAlertPresentationAutomationState>& State, const EHeistAlertLevel AlertLevel, const float TransitionDelaySeconds,
@@ -222,8 +230,8 @@ bool ApplyAlertSnapshot(const TSharedRef<FAlertPresentationAutomationState>& Sta
 	}
 	else
 	{
-		const float RequestedEndServerTime = TransitionDelaySeconds > 0.0f ? ServerGameState->GetServerWorldTimeSeconds() + TransitionDelaySeconds : 0.0f;
-		bApplied = ServerGameState->SetAlertSnapshot(AlertLevel, RequestedEndServerTime, TriggerId);
+		const float RequestedMeterValue = ResolveExpectedAlertMeterValue(AlertLevel);
+		bApplied = ServerGameState->SetAlertSnapshot(RequestedMeterValue, AlertLevel, TriggerId);
 	}
 	if (!bApplied)
 	{
@@ -231,8 +239,8 @@ bool ApplyAlertSnapshot(const TSharedRef<FAlertPresentationAutomationState>& Sta
 	}
 
 	State->ExpectedAlertLevel = AlertLevel;
+	State->ExpectedAlertMeterValue = ServerGameState->GetAlertMeterValue();
 	State->ExpectedAlertRevision = ServerGameState->GetAlertRevision();
-	State->ExpectedTransitionEndServerTime = ServerGameState->GetAlertNextTransitionServerTime();
 	State->ExpectedTriggerId = TriggerId;
 	return true;
 }
@@ -245,10 +253,9 @@ bool IsAlertStageReadyOnAllPeers(const TSharedRef<FAlertPresentationAutomationSt
 		return false;
 	}
 
-	const int32 ExpectedSecurityLevel = FMath::Clamp(static_cast<int32>(State->ExpectedAlertLevel), 0, 4);
-	const FString ExpectedBanner = ResolveExpectedAlertBanner(State->ExpectedAlertLevel);
+	const int32 ExpectedSecurityLevel = FMath::Clamp(FMath::FloorToInt(State->ExpectedAlertMeterValue), 0, 10);
+	const FString ExpectedBanner = ResolveExpectedAlertBanner(State->ExpectedAlertMeterValue);
 	const FLinearColor ExpectedColor = ResolveExpectedAlertColor(State->ExpectedAlertLevel);
-	const bool bExpectedCountdown = State->ExpectedAlertLevel == EHeistAlertLevel::Alarmed && State->ExpectedTransitionEndServerTime > 0.0f;
 	const bool bExpectedSuspense = State->ExpectedAlertLevel == EHeistAlertLevel::Suspicious || State->ExpectedAlertLevel == EHeistAlertLevel::Searching;
 	const bool bExpectedAlarm = State->ExpectedAlertLevel == EHeistAlertLevel::Alarmed || State->ExpectedAlertLevel == EHeistAlertLevel::Lockdown;
 
@@ -259,38 +266,22 @@ bool IsAlertStageReadyOnAllPeers(const TSharedRef<FAlertPresentationAutomationSt
 		const AHeistHUD* HUD = IsValid(Controller) ? Controller->GetHUD<AHeistHUD>() : nullptr;
 		const UHeistHUDViewModel* ViewModel = IsValid(HUD) ? HUD->GetHUDViewModel() : nullptr;
 		const UHeistHUDWidget* Widget = IsValid(HUD) ? HUD->GetMainHUDWidget() : nullptr;
-		const UTextBlock* AlertTextWidget = IsValid(Widget) ? Cast<UTextBlock>(Widget->GetWidgetFromName(TEXT("AlertText"))) : nullptr;
+		const UTextBlock* AlertTitleWidget = IsValid(Widget) ? Cast<UTextBlock>(Widget->GetWidgetFromName(TEXT("AlertTitleText"))) : nullptr;
 		const UTextBlock* CountdownTextWidget = IsValid(Widget) ? Cast<UTextBlock>(Widget->GetWidgetFromName(TEXT("LockdownCountdownText"))) : nullptr;
-		const bool bCountdownDisplayed = IsValid(CountdownTextWidget) && CountdownTextWidget->GetVisibility() != ESlateVisibility::Collapsed &&
-			CountdownTextWidget->GetVisibility() != ESlateVisibility::Hidden;
-		if (!IsValid(GameState) || GameState->GetAlertLevel() != State->ExpectedAlertLevel || GameState->GetAlertRevision() != State->ExpectedAlertRevision ||
+		if (!IsValid(GameState) || !FMath::IsNearlyEqual(GameState->GetAlertMeterValue(), State->ExpectedAlertMeterValue) ||
+			GameState->GetAlertLevel() != State->ExpectedAlertLevel || GameState->GetAlertNextTransitionServerTime() > 0.0f ||
+			GameState->GetAlertRevision() != State->ExpectedAlertRevision ||
 			GameState->GetLastAlertTriggerId() != State->ExpectedTriggerId || !IsValid(ViewModel) || ViewModel->GetAlertLevel() != State->ExpectedAlertLevel ||
+			!FMath::IsNearlyEqual(ViewModel->GetAlertMeterValue(), State->ExpectedAlertMeterValue) ||
 			ViewModel->GetSecurityLevel() != ExpectedSecurityLevel || ViewModel->GetAlertBannerText().ToString() != ExpectedBanner ||
-			!ViewModel->GetAlertColor().Equals(ExpectedColor, KINDA_SMALL_NUMBER) || ViewModel->IsLockdownCountdownVisible() != bExpectedCountdown ||
+			!ViewModel->GetAlertColor().Equals(ExpectedColor, KINDA_SMALL_NUMBER) || ViewModel->IsLockdownCountdownVisible() ||
+			!FMath::IsNearlyZero(ViewModel->GetLockdownCountdownEndServerTime()) ||
 			ViewModel->IsSuspenseMusicActive() != bExpectedSuspense || ViewModel->IsAlarmMusicActive() != bExpectedAlarm || !IsValid(Widget) ||
-			!IsValid(AlertTextWidget) || AlertTextWidget->GetText().ToString() != ExpectedBanner ||
-			!AlertTextWidget->GetColorAndOpacity().GetSpecifiedColor().Equals(ExpectedColor, KINDA_SMALL_NUMBER) || !IsValid(CountdownTextWidget) ||
-			bCountdownDisplayed != bExpectedCountdown ||
+			!IsValid(AlertTitleWidget) || AlertTitleWidget->GetText().ToString() != TEXT("경계도") || IsValid(CountdownTextWidget) ||
 			!Widget->AreAlertAudioAssetsAssignedForDebug() || !Widget->AreAlertAudioAssetsLoopingForDebug() || Widget->IsSuspenseMusicPlayingForDebug() != bExpectedSuspense ||
 			Widget->IsAlarmMusicPlayingForDebug() != bExpectedAlarm || !Widget->IsAlertPresentationContractSatisfied())
 		{
 			return false;
-		}
-
-		const float ExpectedEndServerTime = bExpectedCountdown ? State->ExpectedTransitionEndServerTime : 0.0f;
-		if (!FMath::IsNearlyEqual(ViewModel->GetLockdownCountdownEndServerTime(), ExpectedEndServerTime, 0.1f))
-		{
-			return false;
-		}
-		if (bExpectedCountdown)
-		{
-			const int32 RemainingSeconds = FMath::Max(0, FMath::CeilToInt(State->ExpectedTransitionEndServerTime - GameState->GetServerWorldTimeSeconds()));
-			const FString ExpectedCountdown = FString::Printf(TEXT("봉쇄까지 %02d:%02d  —  탈출 경로가 제한됩니다"), RemainingSeconds / 60, RemainingSeconds % 60);
-			if (CountdownTextWidget->GetText().ToString() != ExpectedCountdown ||
-				!CountdownTextWidget->GetColorAndOpacity().GetSpecifiedColor().Equals(ExpectedColor, KINDA_SMALL_NUMBER))
-			{
-				return false;
-			}
 		}
 	}
 	return true;
@@ -308,14 +299,14 @@ FString DescribeAlertStage(const TSharedRef<FAlertPresentationAutomationState>& 
 		const UHeistHUDViewModel* ViewModel = IsValid(HUD) ? HUD->GetHUDViewModel() : nullptr;
 		const UHeistHUDWidget* Widget = IsValid(HUD) ? HUD->GetMainHUDWidget() : nullptr;
 		PeerStates.Add(FString::Printf(
-			TEXT("World=%s NetMode=%d Player=%d GS=%s/%d VM=%s/%d Banner='%s' Color=%s Countdown=%s End=%.2f Suspense=%s/%s Alarm=%s/%s AudioAssets=%s Contract=%s"),
+			TEXT("World=%s NetMode=%d Player=%d GS=%s/%.1f/%d VM=%s/%.1f Banner='%s' Color=%s CountdownRemoved=%s Suspense=%s/%s Alarm=%s/%s AudioAssets=%s Contract=%s"),
 			*GetNameSafe(World), IsValid(World) ? static_cast<int32>(World->GetNetMode()) : INDEX_NONE,
 			IsValid(PlayerState) ? PlayerState->HeistPlayerId : INDEX_NONE,
-			IsValid(GameState) ? *UEnum::GetValueAsString(GameState->GetAlertLevel()) : TEXT("Missing"), IsValid(GameState) ? GameState->GetAlertRevision() : INDEX_NONE,
-			IsValid(ViewModel) ? *UEnum::GetValueAsString(ViewModel->GetAlertLevel()) : TEXT("Missing"), IsValid(ViewModel) ? ViewModel->GetSecurityLevel() : INDEX_NONE,
+			IsValid(GameState) ? *UEnum::GetValueAsString(GameState->GetAlertLevel()) : TEXT("Missing"), IsValid(GameState) ? GameState->GetAlertMeterValue() : -1.0f,
+			IsValid(GameState) ? GameState->GetAlertRevision() : INDEX_NONE,
+			IsValid(ViewModel) ? *UEnum::GetValueAsString(ViewModel->GetAlertLevel()) : TEXT("Missing"), IsValid(ViewModel) ? ViewModel->GetAlertMeterValue() : -1.0f,
 			IsValid(ViewModel) ? *ViewModel->GetAlertBannerText().ToString() : TEXT("Missing"), IsValid(ViewModel) ? *ViewModel->GetAlertColor().ToString() : TEXT("Missing"),
-			IsValid(ViewModel) && ViewModel->IsLockdownCountdownVisible() ? TEXT("true") : TEXT("false"),
-			IsValid(ViewModel) ? ViewModel->GetLockdownCountdownEndServerTime() : -1.0f,
+			IsValid(Widget) && Widget->GetWidgetFromName(TEXT("LockdownCountdownText")) == nullptr ? TEXT("true") : TEXT("false"),
 			IsValid(ViewModel) && ViewModel->IsSuspenseMusicActive() ? TEXT("requested") : TEXT("inactive"),
 			IsValid(Widget) && Widget->IsSuspenseMusicPlayingForDebug() ? TEXT("playing") : TEXT("stopped"),
 			IsValid(ViewModel) && ViewModel->IsAlarmMusicActive() ? TEXT("requested") : TEXT("inactive"),
@@ -323,8 +314,8 @@ FString DescribeAlertStage(const TSharedRef<FAlertPresentationAutomationState>& 
 			IsValid(Widget) && Widget->AreAlertAudioAssetsAssignedForDebug() ? TEXT("true") : TEXT("false"),
 			IsValid(Widget) && Widget->IsAlertPresentationContractSatisfied() ? TEXT("PASS") : TEXT("FAIL")));
 	}
-	return FString::Printf(TEXT("Expected=%s Revision=%d End=%.2f Trigger=%s | %s"), *UEnum::GetValueAsString(State->ExpectedAlertLevel),
-		State->ExpectedAlertRevision, State->ExpectedTransitionEndServerTime, *State->ExpectedTriggerId.ToString(), *FString::Join(PeerStates, TEXT(" | ")));
+	return FString::Printf(TEXT("Expected=%s Meter=%.1f Revision=%d Trigger=%s | %s"), *UEnum::GetValueAsString(State->ExpectedAlertLevel),
+		State->ExpectedAlertMeterValue, State->ExpectedAlertRevision, *State->ExpectedTriggerId.ToString(), *FString::Join(PeerStates, TEXT(" | ")));
 }
 
 AHeistPaintingDisplayCaseActor* FindSurfaceCase(const FName CaseId = NAME_None)
@@ -677,7 +668,7 @@ bool EnqueueFourPlayerAlertScenario(FAutomationTestBase* Test)
 	Test->AddCommand(new FAlertWaitCommand(Test, State, TEXT("Surface remains active at Suspicious"), []() { return IsSurfaceSessionPresentationReady(); }, 5.0));
 	EnqueueAlertStage(Test, State, EHeistAlertLevel::Searching, 60.0f, TEXT("SurfaceSearching"), TEXT("Alert 2 Searching"));
 	Test->AddCommand(new FAlertWaitCommand(Test, State, TEXT("Surface remains active at Searching"), []() { return IsSurfaceSessionPresentationReady(); }, 5.0));
-	EnqueueAlertStage(Test, State, EHeistAlertLevel::Alarmed, 60.0f, TEXT("SurfaceAlarmed"), TEXT("Alert 3 Alarmed countdown"));
+	EnqueueAlertStage(Test, State, EHeistAlertLevel::Alarmed, 0.0f, TEXT("SurfaceAlarmed"), TEXT("Alert 7 Alarmed"));
 	Test->AddCommand(new FAlertWaitCommand(Test, State, TEXT("Surface closes only at Alarmed and Gameplay input restores"),
 		[]() { return IsSurfaceSessionClosedForReason(FName(TEXT("AlertDanger"))); }, 10.0));
 	Test->AddCommand(new FAlertActionCommand(Test, State, TEXT("Alarmed rejects new Surface/Object observation and component begin without leaving a Case lock"),
@@ -697,14 +688,14 @@ bool EnqueueFourPlayerAlertScenario(FAutomationTestBase* Test)
 	EnqueueAlertStage(Test, State, EHeistAlertLevel::Searching, 60.0f, TEXT("ObjectSearching"), TEXT("Alert 2 Object Searching"));
 	Test->AddCommand(new FAlertActionCommand(Test, State, TEXT("Object Assembly remains FeatureDisabled at Searching"),
 		[State]() { return ValidateDeferredObjectAssemblyRegression(State); }));
-	EnqueueAlertStage(Test, State, EHeistAlertLevel::Alarmed, 60.0f, TEXT("ObjectAlarmed"), TEXT("Alert 3 Object Alarmed countdown"));
+	EnqueueAlertStage(Test, State, EHeistAlertLevel::Alarmed, 0.0f, TEXT("ObjectAlarmed"), TEXT("Alert 7 Object Alarmed"));
 	Test->AddCommand(new FAlertActionCommand(Test, State, TEXT("Object Assembly stays FeatureDisabled at Alarmed without a Case lock"),
 		[State]() { return ValidateDeferredObjectAssemblyRegression(State); }));
 	EnqueueAlertStage(Test, State, EHeistAlertLevel::Quiet, 0.0f, TEXT("ObjectReset"), TEXT("Alert 0 Object reset"));
 	Test->AddCommand(new FAlertActionCommand(Test, State, TEXT("Object Assembly remains FeatureDisabled after Alert reset"),
 		[State]() { return ValidateDeferredObjectAssemblyRegression(State); }));
 
-	EnqueueAlertStage(Test, State, EHeistAlertLevel::Lockdown, 0.0f, TEXT("Lockdown"), TEXT("Alert 4 Lockdown presentation"));
+	EnqueueAlertStage(Test, State, EHeistAlertLevel::Lockdown, 0.0f, TEXT("Lockdown"), TEXT("Alert 10 Lockdown presentation"));
 	Test->AddCommand(new FAlertActionCommand(Test, State, TEXT("record W7-009 four-player evidence"), [Test, State]()
 	{
 		if (!IsAlertStageReadyOnAllPeers(State))
@@ -712,8 +703,8 @@ bool EnqueueFourPlayerAlertScenario(FAutomationTestBase* Test)
 			return false;
 		}
 		Test->AddInfo(FString::Printf(
-			TEXT("W7-009 4P alert gate: Peers=4 Levels=0>1>2>3>4 ExactKoreanBanner=true ExactColor=true AlarmedCountdown=true "
-				 "SuspenseRequestedAndPlaying=Alert1+2 AlarmRequestedAndPlaying=Alert3+4 SurfaceOwner=1 ObjectAssemblyDeferred=true "
+			TEXT("W7-009 4P alert gate: Peers=4 Meter=0>0.5>4>7>10 TenStars=true CountdownRemoved=true "
+				 "SuspenseRequestedAndPlaying=Suspicious+Searching AlarmRequestedAndPlaying=Alarmed+Lockdown SurfaceOwner=1 ObjectAssemblyDeferred=true "
 				 "SurfaceSuspiciousSearchingSessionRetained=true SurfaceAlarmedForceClose=true AlarmedReentryRejected=true DeferredObjectStateUnchanged=true "
 				 "NoCaseLockLeak=true GameplayInputRestored=true SurfaceReentry=true "
 				 "WorkScreenAlertDetailTextAbsent=true AudioAssetsAssigned=true AudioAssetsLooping=true PlaybackStateVerified=true Result=PASS | %s"),
@@ -726,7 +717,7 @@ bool EnqueueFourPlayerAlertScenario(FAutomationTestBase* Test)
 	Test->AddCommand(new FAlertActionCommand(Test, State, TEXT("apply production Lockdown escalation"), []() { return ApplyProductionLockdown(); }));
 	Test->AddCommand(new FAlertWaitCommand(Test, State, TEXT("production Lockdown terminates the active Surface session on the server"),
 		[]() { return IsSurfaceSessionTerminatedForLockdown(); }, 10.0));
-	Test->AddCommand(new FAlertWaitCommand(Test, State, TEXT("match-end Main HUD cleanup clears Alert text countdown and audio components on every peer"),
+	Test->AddCommand(new FAlertWaitCommand(Test, State, TEXT("match-end Main HUD cleanup clears Alert stars, transient event, and audio components on every peer"),
 		[]() { return AreAllMainHUDsHiddenAndReset(); }, 10.0));
 	Test->AddCommand(new FAlertActionCommand(Test, State, TEXT("record production Lockdown cleanup evidence"), [Test]()
 	{

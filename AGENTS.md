@@ -1,8 +1,8 @@
 # Project_MuseumHeist — Codex Instructions
 
-## Rev 14: 2-4 Player Cooperative Security Gimmicks And Object Assembly Deferral
+## Rev 15: Main HUD Mission Readability And Server Alert Meter
 
-기준일: 2026-08-18 (2~4인 출시 범위 / Patrol·CCTV·Cooperative Laser / Surface-only v1 / Object Assembly Deferred Expansion 반영)
+기준일: 2026-08-23 (2~4인 출시 범위 / Main HUD 재정립 / 0~10 Server Alert Meter / Patrol·CCTV·Cooperative Laser / Surface-only v1 / Object Assembly Deferred Expansion 반영)
 엔진: Unreal Engine 5.8
 현재 목표: 2026-09-20 Final RC / 프로젝트 마무리
 
@@ -201,7 +201,7 @@ Title Menu
 - Guard Chase
 - Guard Search
 - Guard InspectExhibit
-- Alert Level
+- Server Alert Meter 0.0~10.0 / Internal Alert Level
 - Lockdown
 - Loose Loot
 - 4×5 Grid Inventory
@@ -211,7 +211,7 @@ Title Menu
 - Remote Player Nameplate / Team Status
 - Owner-only Full-Screen Floor Plan Map
 - Guard Detection / Stun / Arrest / Carry / Escape Presentation
-- Contract Target / Carried Value / Secured Value / Quota HUD
+- Mission Timer / Required Target 획득 상태 HUD
 - Shared Extraction
 - Individual Extraction Deposit와 남은 Crew 진행
 - Team Success
@@ -313,7 +313,7 @@ Smoke 및 Trap 계열 기능은 Stretch 목록에 포함하지 않는다.
 - 현재 사용자 요청 범위를 벗어난 전체 시스템을 선행 구현하지 않는다.
 - 현재 기획에서 삭제된 기능을 호환성 명목으로 다시 추가하지 않는다.
 - 플레이어의 진행 판단에 영향을 주는 Runtime State는 화면, 월드, 오디오 중 최소 두 채널로 피드백한다.
-- Player Name, Crew Status, Contract Progress, Alert, Stun / Arrest, Original Carrier와 Extraction 상태를 로그 전용 또는 숨은 상태로 남기지 않는다.
+- Player Name, Crew Status, Mission Time/Required Target, Alert Meter, Stun / Arrest, Original Carrier와 Extraction 상태를 로그 전용 또는 숨은 상태로 남기지 않는다.
 - Contract Value와 Forgery Quality Score를 같은 수치로 취급하지 않는다.
 - Required Target / Loot Value Quota / Secured Value / Contract Outcome은 서버가 확정한다.
 - Steam Voice Transport와 `UVOIPTalker` 재생은 Online Subsystem/Client가 담당하고, 발화가 Guard에게 미치는 Gameplay 결과는 서버가 확정한다.
@@ -385,7 +385,7 @@ Client가 직접 확정할 수 없는 항목:
 - Original Removal
 - Display Case State
 - Objective State
-- Alert Level
+- Alert Meter / Internal Alert Level
 - Lockdown
 - CCTV Detection Result
 - Laser Button Hold / Zone Access State
@@ -508,9 +508,9 @@ ResolvedSprintSpeed = Clamp(600 - TotalCarryWeight × 15, 250, 600)
 - 이름표는 Local Owning Player 자신에게 표시하지 않는다.
 - 이름표는 일반적으로 `2~2,500 cm` 범위에서 표시하고 원거리에서 Fade한다.
 - 벽을 통과하는 Guard, Loot 또는 SoundPing Marker는 추가하지 않는다.
-- Main HUD Team Status는 연결된 모든 Player의 Name, Color, Crew Status, Original Carrier와 Escape / Arrest 상태를 항상 요약한다.
-- Lobby/Team Status/Nameplate용 C++ Presentation은 `PTT Held`, 실제 `Speaking`, 개별 `Muted`를 구분하는 읽기 전용 Hook을 제공한다. Widget Layout은 별도 UI 개편에서 확정한다.
-- Surface Forgery Full-Screen 중에도 최소 Team Status와 Alert Warning을 유지한다.
+- Main HUD는 고정 `WBP_TeamCard` 4개를 배치한다. 각 Card는 Steam Profile Image/Name, Crew Status Icon/Text와 Mic 상태를 표시하며 비어 있는 Slot도 레이아웃에서 제거하지 않는다.
+- Lobby/Team Status/Nameplate용 C++ Presentation은 `PTT Held`, 실제 `Speaking`, 개별 `Muted`를 구분하는 읽기 전용 Hook을 제공한다.
+- Surface Forgery Full-Screen은 Main HUD의 TeamCard나 Alert Widget을 중복 표시하지 않는다. Suspicious/Searching에서는 Session을 유지하고 Alarmed/Lockdown 진입 시 서버가 Session을 취소해 Gameplay HUD로 즉시 복귀시킨다.
 
 ---
 
@@ -648,16 +648,26 @@ OrphanExtensions=0
 
 ## v1 Security Gimmick Rules
 
-v1의 활성 Security Layer는 기존 Patrol Guard, CCTV와 고가 Painting용 Cooperative Laser다. 세 시스템은 같은 Alert Authority를 사용하지만 서로의 Runtime State를 대신 소유하지 않는다.
+v1의 활성 Security Layer는 기존 Patrol Guard, CCTV와 고가 Painting용 Cooperative Laser다. 세 시스템은 같은 서버 권한 `0.0~10.0` Alert Meter를 사용하지만 서로의 Runtime State를 대신 소유하지 않는다.
 
-- Detection, Hold, Zone Access, Consequence, Alert Mutation과 Replication은 C++ 서버가 소유한다.
+- Detection, Hold, Zone Access, Consequence, Alert Meter Mutation과 Replication은 C++ 서버가 소유한다.
 - Blueprint는 Mesh, Material, Animation, Audio, Niagara와 상태별 Visual Hook만 담당하고 Map은 CCTV Coverage, Laser Zone, Button과 Painting 연결을 배치한다.
 - Player가 판단해야 하는 Detection, CCTV 활성 상태와 Laser 개폐 상태는 화면·월드·오디오 중 최소 두 채널로 피드백한다.
 
+### Alert Meter
+
+- `AHeistGameState`가 `AlertMeter 0.0~10.0`, 내부 `EHeistAlertLevel`, 마지막 Trigger와 Revision을 모든 Client에 복제한다.
+- `AHeistGameMode`만 Alert Meter 증가, 내부 Level 파생과 Lockdown을 확정한다. Meter는 `0.5` 단위로 Quantize하며 시간 경과만으로 자동 상승하지 않는다.
+- 내부 Level 구간은 `0.0=Quiet`, `0.5~3.5=Suspicious`, `4.0~6.5=Searching`, `7.0~9.5=Alarmed`, `10.0=Lockdown`을 기본값으로 사용하고 정확한 Threshold는 Balance Data가 소유한다.
+- Guard의 시야 확정은 Chase를 시작하지만 Alert Meter를 직접 올리지 않는다. Guard가 Player 포획을 확정해 Stun을 적용한 사건만 `+1.0`이다.
+- CCTV 완전 발각과 활성 Laser 접촉은 사건당 각각 `+0.5`이며 근처 유효 Guard 한 명에게 1회 조사 요청을 함께 보낸다.
+- 동일 IncidentId는 Meter와 Guard 조사를 중복 적용하지 않는다. Forgery Timeout과 Voice SoundPing은 Alert Meter를 변경하지 않는다.
+- Meter가 `10.0`에 도달하면 별도 Lockdown Countdown 없이 즉시 Lockdown과 Match 종료 판정을 실행한다.
+
 ### CCTV
 
-- CCTV는 서버가 Target Eligibility, View Cone, Line of Sight, Detection Build-up, Cooldown과 Alert 요청을 검증한다.
-- CCTV Detection은 Guard Detection과 동일한 서버 Alert 경로를 사용하되 중복 Tick마다 Alert를 누적하지 않고 명시된 Threshold/Cooldown 계약을 따른다.
+- CCTV는 서버가 Target Eligibility, View Cone, Line of Sight, Detection Build-up, Cooldown과 Alert Meter `+0.5` 요청을 검증한다.
+- CCTV Detection은 중복 Tick마다 Alert를 누적하지 않고 명시된 Build-up/Threshold/Cooldown과 사건별 One-shot 계약을 따른다.
 - CCTV 위치, View Cone과 실시간 Target은 Floor Plan, Minimap 또는 Radar에 표시하지 않는다.
 - v1에는 CCTV Hack, 영구 비활성화, 원격 조종과 Security Room을 추가하지 않는다.
 
@@ -669,7 +679,7 @@ v1의 활성 Security Layer는 기존 Patrol Guard, CCTV와 고가 Painting용 C
 - Input Release, 거리 이탈, Stun, Arrest, Escape, Disconnect, Match End 또는 Actor EndPlay 시 Hold를 즉시 해제하고 Laser를 기본 상태로 복구한다.
 - Button Holder와 Zone 진입자는 일시적인 협동 행동만 나누며 고정 Class, 전용 능력 또는 영구 Role을 부여하지 않는다.
 - v1 Required Target은 Laser 뒤에 배치하지 않는다. 2인 시작 후 1명만 남아도 Required Target과 최소 Quota 경로를 완료할 수 있어야 한다.
-- Laser는 물리 Collision으로 이동을 막지 않는다. 활성 Beam을 통과하면 사건당 Suspicious Alert 요청과 근처 Guard 1회 조사만 발생시키며 Stun이나 Damage를 직접 적용하지 않는다.
+- Laser는 물리 Collision으로 이동을 막지 않는다. 활성 Beam을 통과하면 사건당 Alert Meter `+0.5`와 근처 Guard 1회 조사만 발생시키며 Stun이나 Damage를 직접 적용하지 않는다.
 - Hold 해제 뒤 기본 Rearm Grace는 0.75초다. Map은 독립적인 Egress를 제공하고, Laser가 복구돼도 Zone 안 Player를 가두거나 피할 수 없는 즉시 피해를 주지 않는다.
 
 ---
@@ -920,19 +930,26 @@ Penalty 또는 Diagnostic Field가 Final Score에 직접 적용되지 않는 경
 
 ## Alert Presentation
 
-- v1 활성 `UHeistHUDViewModel`과 `UHeistForgeryViewModel`은 `AHeistGameState`의 복제 Alert Snapshot만 읽는다. 보존 중인 `UHeistObjectAssemblyViewModel`도 자체 Alert를 확정하지 않는다.
-- Main HUD는 Quiet, Suspicious, Searching, Alarmed, Lockdown을 단계별 Text와 Color로 표시한다.
-- 플레이어 표시는 `SECURITY LEVEL 0/4~4/4`와 4칸 별 Indicator를 사용한다.
-- Guard의 확정 발각은 서버에서 최소 Suspicious를 요청한다. Forgery Quality와 Guard의 Replica 검사는 Alert를 변경하지 않는다.
+- v1 활성 `UHeistHUDViewModel`과 `UHeistForgeryViewModel`은 `AHeistGameState`의 복제 Alert Meter Snapshot만 읽는다. 보존 중인 `UHeistObjectAssemblyViewModel`도 자체 Alert를 확정하지 않는다.
+- Main HUD 중앙 상단은 고정 10칸 Indicator를 사용한다. 각 칸은 외곽 여백이 없는 단색 `Empty/Half/Full` 별 이미지 중 하나를 사용해 `0.0~10.0`을 `0.5` 단위로 표현한다.
+- Indicator 아래 단일 Event TextBlock은 CCTV 발각, Laser 접촉, Guard 포획, Stun, Arrest 같은 마지막 사건을 짧게 표시하고 자동으로 숨긴다.
+- Guard 포획은 `+1.0`, CCTV 완전 발각과 Laser 접촉은 각각 `+0.5`다. Forgery Quality, Guard Replica 검사, Forgery Timeout과 Voice SoundPing은 Alert Meter를 변경하지 않는다.
 - Owner-only Surface Forgery 화면에는 Security Level Indicator, Alert Warning 또는 Lockdown Countdown을 중복 표시하지 않는다. Deferred Object Widget에도 같은 Presentation 원칙을 보존한다.
 - Suspicious/Searching에서는 진행 중인 Surface Forgery Session을 유지한다.
 - Alarmed/Lockdown 진입 시 `AHeistGameMode`가 활성 Surface Session을 `AlertDanger`로 서버에서 먼저 취소하고, 해당 Widget은 별도 Cancel RPC 없이 즉시 화면을 닫아 Gameplay Input을 복원한다. 잔존 Object Session이 있으면 같은 Cleanup 경로로 정리한다.
 - Alarmed/Lockdown 상태에서는 Observation과 신규 Surface Session 시작을 서버가 거부하며 Display Case Lock을 남기지 않는다. Deferred Object Session 시작 요청은 Alert와 무관하게 v1에서 항상 거부한다.
-- Alarmed의 Lockdown Countdown은 복제된 `AlertNextTransitionServerTime`과 Server World Time의 차이로 표시한다.
-- HUD Lockdown Countdown은 독립된 `LockdownCountdownText`에 표시한다.
 - Suspicious/Searching은 Suspense Music Layer, Alarmed/Lockdown은 Alarm Music Layer를 사용한다.
 - Forgery Full-Screen UI 중에도 Alert Music Layer는 유지한다.
 - 실제 Music Asset 지정은 Widget Blueprint Class Default가 담당한다.
+
+## Main HUD Presentation
+
+- 좌측 상단은 `미션`, 서버 `ContractEndServerTime`에서 계산한 `MM : SS`, 필수 목표 작품명만 표시한다. 남은 시간이 60초 미만이면 시간 Text만 빨간색으로 바꾼다.
+- 현재 v1 Contract는 Required Target 하나만 확정한다. UI는 향후 목록 확장 가능한 Container를 사용할 수 있지만 Runtime에서는 작품명 한 행만 표시하며 미획득은 회색, Secured는 초록색이다.
+- Main HUD에 Carried/Secured/Quota, Loot Value, 예상 점수와 Weight 숫자를 표시하지 않는다. 이 값의 상세는 Inventory와 Result가 소유한다.
+- 좌측 하단은 Inventory Icon과 `[TAB]`만 배치하고 현재 Carry Weight를 Heavy Threshold로 정규화한 초록→빨강 색상으로 상태만 전달한다.
+- 우측 하단은 고정 `WBP_QuickSlot` 세 개를 배치하며 각 Slot은 Item Image, Count와 Key Label만 표시한다. HUD Mode에서는 ItemId, Assignment Text와 Clear Button을 표시하지 않는다.
+- 기존 Interaction Prompt, Action Progress, Popup Pool, Stun/Arrest Overlay와 Crosshair 책임은 유지하며 Main HUD 개편을 이유로 재구성하지 않는다.
 
 ## Cleanup
 
@@ -1302,8 +1319,8 @@ Actor Blueprint 분리는 Component Topology, Collision Contract, Authority Stat
 - Widget Blueprint의 기본 TextBlock 문구와 C++ `FText` 원문은 한국어를 기준으로 맞춘다.
 - 프로젝트 기본 Culture와 Package Stage Culture는 `ko`를 사용한다.
 - 플레이어에게 상태를 전달하는 문구는 대상, 현재 상태, 결과 또는 필요한 행동을 알 수 있는 문장형으로 작성한다.
-- `봉쇄`처럼 의미가 모호할 수 있는 단독 상태명 대신 `박물관 봉쇄까지 {0} 남았습니다.`처럼 게임 내 대상과 상태를 명시한다.
-- Forgery 제출 제한 시간과 Museum Lockdown 제한 시간은 서로 다른 문장으로 구분한다.
+- Main HUD 시간은 `MM : SS`로만 표시하고 60초 미만에서 빨간색으로 전환한다. 별도 봉쇄 Countdown 문구는 만들지 않는다.
+- Forgery 제출 제한 시간과 Contract Mission Time은 서로 다른 권한 데이터와 TextBlock을 사용한다.
 - Raw Enum, Data Row ID, Blueprint Class Name을 그대로 플레이어에게 노출하지 않는다.
 - Dropped Original 접근 Prompt는 `Required Target 여부 + 등급 + 작품 DisplayName + E 회수`를 표시한다.
 - 화면 제목, 버튼 동사, 키 라벨, 수량처럼 문맥이 이미 분명한 짧은 UI Label은 간결하게 유지할 수 있다.
@@ -1671,7 +1688,7 @@ Reference Viewer와 회귀 확인 후 별도 정리 작업에서 제거한다.
 | `PotentialGain` | 현재 Target에서 기대되는 수익 | 0~1 정규화 |
 | `SurvivalMargin` | 거리, Guard 반응, 이동 안정성 | 0~1 정규화 |
 | `ExtractionProximity` | 거리와 Exit 상태를 반영한 탈출 성공성 | 0~1 정규화 |
-| `AlertPressure` | Quiet~Lockdown 단계 | 0~4 원본, 식에 넣기 전 `AlertStage / 4`로 정규화 |
+| `AlertPressure` | 서버 Alert Meter | 0~10 원본, 식에 넣기 전 `AlertMeter / 10`으로 정규화 |
 | `RecoveryRisk` | 실책 복구 난이도 | 0~1 정규화 |
 | `CarryWeight` | 현재 운반 무게 | P1 우선순위 조건에 사용 |
 | `MatchUrgency` | 경과 시간과 목표 거리 압박 | P0/P4 조건과 Telemetry에 사용 |
@@ -1693,7 +1710,7 @@ DecisionScore =
 
 | 순위 | 조건 | 단일 판정 | 실행 결과 |
 |---|---|---|---|
-| P0 | Alert가 Searching 이상 또는 Lockdown 시작 60초 이내 | 퇴각 | 작업 중단 후 탈출 준비 |
+| P0 | Alert Meter가 7.0 이상 또는 Mission Time이 60초 미만 | 퇴각 | 작업 중단 후 탈출 준비 |
 | P1 | CarryWeight가 2.5 이상 또는 현재 속도 210cm/s 미만 | 퇴각 | 저중량 Route로 회귀, Loot Drop 또는 포기 |
 | P2 | 동일 Exhibit 20초 이상 체류, Timeout 1회 누적 또는 Guard 추적 | 퇴각 | 현재 작업 Cancel 또는 즉시 Submit 후 퇴각 |
 | P3 | 최근 1분 Major Incident 0회이고 Quota 미달 | 저위험 확장 | 추가 시도 1회 허용, Sprint 제한 |
@@ -1726,7 +1743,7 @@ DecisionScore =
 
 # 20. Product Direction
 
-현재 제품 방향은 Rev 14 — 2~4 Player Cooperative Security Gimmicks And Object Assembly Deferral이다.
+현재 제품 방향은 Rev 15 — Main HUD Mission Readability And Server Alert Meter다.
 
 `2~4인 Lobby → Contract 확인 → Patrol Guard/CCTV 회피 → 선택적 Laser Cooperation → Surface Forgery → Original/Loose Loot Carry → Alert/Chase → Player별 Deposit → Outcome/Result → Lobby Return`의 단일 완주 흐름을 먼저 닫는다. Object Assembly는 기존 구현과 Asset Reference를 삭제하지 않되 v1 플레이 흐름과 Release Gate에서 제외한다.
 
@@ -1741,11 +1758,12 @@ DecisionScore =
 
 Build 성공이나 단일 함수 호출 성공만으로 기능 완료를 주장하지 않는다. Asset/Map 배치가 필요한 기능은 C++ 구현과 실제 Gameplay 검증을 구분해 설명한다.
 
-## Rev 14 Execution Priority
+## Rev 15 Execution Priority
 
 - 2인 미만 Start 거부, Lobby-only Join, InGame Join 거부, 2인 시작 후 1인 잔존 복구와 고정 Contract Snapshot을 먼저 검증한다.
 - Surface Painting만으로 Required Target / Quota / Secured Value와 Extraction / Result를 완주할 수 있게 닫는다.
 - 기존 Patrol Guard를 유지하고 CCTV와 고가 Painting용 Laser Cooperation을 서버 권한 Security Layer로 통합한다.
+- Main HUD는 Mission Time/Required Target, 10칸 Alert Meter, 고정 TeamCard 4개, Inventory 상태색과 QuickSlot 3개만 우선 노출하고 가치·점수·무게 숫자는 Inventory/Result로 이동한다.
 - Required Target과 최소 Quota 경로는 Laser 협동 또는 Deferred Object Assembly에만 의존하지 않게 한다.
 - Walk / Sprint, Nameplate, Team Status, Map, Security Gimmick과 Status Feedback은 Polish로 미루지 않는다.
 - Gameplay Rule, Authority, Validation과 Replication은 계속 C++가 소유한다.

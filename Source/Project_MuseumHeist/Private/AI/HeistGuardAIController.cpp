@@ -9,8 +9,8 @@
 #include "Core/HeistGameMode.h"
 #include "Core/HeistGameplayTags.h"
 #include "Core/HeistPlayerState.h"
-#include "Debug/HeistDebugFunctionLibrary.h"
 #include "Data/HeistGameBalanceDataAsset.h"
+#include "Debug/HeistDebugFunctionLibrary.h"
 #include "Components/PrimitiveComponent.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistLogChannels.h"
@@ -625,21 +625,6 @@ void AHeistGuardAIController::CompleteDetectionGrace()
 	UHeistGuardStateComponent* GuardStateComponent = IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
 	if (IsValid(GuardStateComponent) && GuardStateComponent->EnterChasePlayer(TargetActor))
 	{
-		if (AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr)
-		{
-			const FName AlertTriggerId(*FString::Printf(TEXT("GuardSight_%s_%s"), *GuardCharacter->GetFName().ToString(), *TargetActor->GetFName().ToString()));
-			bool bAlertLevelChanged = false;
-			if (HeistGameMode->RequestAlertEscalation(EHeistAlertLevel::Suspicious, AlertTriggerId, &bAlertLevelChanged) && bAlertLevelChanged)
-			{
-				if (AHeistPlayerCharacter* DetectedPlayer = Cast<AHeistPlayerCharacter>(TargetActor))
-				{
-					if (AHeistPlayerState* DetectedPlayerState = DetectedPlayer->GetPlayerState<AHeistPlayerState>())
-					{
-						DetectedPlayerState->RecordAlarmContribution();
-					}
-				}
-			}
-		}
 		UHeistDebugFunctionLibrary::DebugGuardSightTargetAcquired(this, GuardCharacter, TargetActor);
 	}
 }
@@ -743,6 +728,16 @@ bool AHeistGuardAIController::TryArrestChaseTarget()
 	if (!StatusComponent->ApplyTimedStatusTag(FHeistGameplayTags::Get().Event_Player_Stunned, StunDuration))
 	{
 		return false;
+	}
+	if (AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr)
+	{
+		const FName AlertTriggerId(*FString::Printf(TEXT("GuardCapture_%s_%s_%d"), *GuardCharacter->GetFName().ToString(),
+			*PlayerCharacter->GetFName().ToString(), ++GuardCaptureIncidentSequence));
+		bool bAlertMeterChanged = false;
+		if (HeistGameMode->RequestAlertIncrease(HeistGameMode->GetGuardCaptureAlertIncrease(), AlertTriggerId, &bAlertMeterChanged) && bAlertMeterChanged)
+		{
+			HeistPlayerState->RecordAlarmContribution();
+		}
 	}
 	PendingArrestTarget = PlayerCharacter;
 	StopMovement();

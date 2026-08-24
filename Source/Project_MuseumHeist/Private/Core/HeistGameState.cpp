@@ -356,16 +356,18 @@ FText AHeistGameState::GetContractOutcomeReasonText() const
 	return ContractSnapshot.GetOutcomeReasonText();
 }
 
-bool AHeistGameState::InitializeContractSnapshot(const FName ContractId, const FName MapId, const int32 AssignmentSeed, const int32 ContractStartPlayerCount,
-											 const FName RequiredTargetArtifactId, const FName RequiredTargetCaseId, const int32 LootValueQuota)
+bool AHeistGameState::InitializeContractSnapshot(const FName ContractId, const FName MapId, const float ContractEndServerTime, const int32 AssignmentSeed,
+	const int32 ContractStartPlayerCount, const FName RequiredTargetArtifactId, const FText& RequiredTargetDisplayName, const FName RequiredTargetCaseId,
+	const int32 LootValueQuota)
 {
 	if (!HasAuthority() || MatchPhase != EHeistMatchPhase::InGame || ContractSnapshot.IsInitialized() || ContractId.IsNone() || MapId.IsNone() ||
-		!HeistSessionContract::IsSnapshotStartPlayerCountSupported(ContractStartPlayerCount) || RequiredTargetArtifactId.IsNone() || RequiredTargetCaseId.IsNone() ||
-		LootValueQuota <= 0)
+		!FMath::IsFinite(ContractEndServerTime) || ContractEndServerTime <= GetServerWorldTimeSeconds() ||
+		!HeistSessionContract::IsSnapshotStartPlayerCountSupported(ContractStartPlayerCount) || RequiredTargetArtifactId.IsNone() || RequiredTargetDisplayName.IsEmpty() ||
+		RequiredTargetCaseId.IsNone() || LootValueQuota <= 0)
 	{
 		UE_LOG(LogHeistNetwork, Error,
-			   TEXT("Contract snapshot initialization rejected: Contract=%s Map=%s Seed=%d StartPlayers=%d TargetArtifact=%s TargetCase=%s Quota=%d MatchPhase=%s AlreadyInitialized=%s Authority=%s Result=FAIL"),
-			   *ContractId.ToString(), *MapId.ToString(), AssignmentSeed, ContractStartPlayerCount, *RequiredTargetArtifactId.ToString(),
+			   TEXT("Contract snapshot initialization rejected: Contract=%s Map=%s EndServerTime=%.2f Seed=%d StartPlayers=%d TargetArtifact=%s TargetCase=%s Quota=%d MatchPhase=%s AlreadyInitialized=%s Authority=%s Result=FAIL"),
+			   *ContractId.ToString(), *MapId.ToString(), ContractEndServerTime, AssignmentSeed, ContractStartPlayerCount, *RequiredTargetArtifactId.ToString(),
 			   *RequiredTargetCaseId.ToString(), LootValueQuota, *UEnum::GetValueAsString(MatchPhase), ContractSnapshot.IsInitialized() ? TEXT("true") : TEXT("false"),
 			   HasAuthority() ? TEXT("true") : TEXT("false"));
 		return false;
@@ -377,9 +379,11 @@ bool AHeistGameState::InitializeContractSnapshot(const FName ContractId, const F
 	PlayerResults.Reset();
 	ContractSnapshot.ContractId = ContractId;
 	ContractSnapshot.MapId = MapId;
+	ContractSnapshot.ContractEndServerTime = ContractEndServerTime;
 	ContractSnapshot.AssignmentSeed = AssignmentSeed;
 	ContractSnapshot.ContractStartPlayerCount = ContractStartPlayerCount;
 	ContractSnapshot.RequiredTargetArtifactId = RequiredTargetArtifactId;
+	ContractSnapshot.RequiredTargetDisplayName = RequiredTargetDisplayName;
 	ContractSnapshot.RequiredTargetCaseId = RequiredTargetCaseId;
 	ContractSnapshot.LootValueQuota = LootValueQuota;
 	ContractSnapshot.Revision = PreviousRevision == MAX_int32 ? 1 : FMath::Max(1, PreviousRevision + 1);
@@ -589,6 +593,11 @@ EHeistAlertLevel AHeistGameState::GetAlertLevel() const
 	return AlertLevel;
 }
 
+float AHeistGameState::GetAlertMeterValue() const
+{
+	return AlertMeterValue;
+}
+
 float AHeistGameState::GetAlertNextTransitionServerTime() const
 {
 	return AlertNextTransitionServerTime;
@@ -601,7 +610,7 @@ float AHeistGameState::GetAlertTransitionRemainingSeconds() const
 
 bool AHeistGameState::IsLockdownCountdownActive() const
 {
-	return AlertLevel == EHeistAlertLevel::Alarmed && GetAlertTransitionRemainingSeconds() > 0.0f;
+	return false;
 }
 
 float AHeistGameState::GetLockdownCountdownRemainingSeconds() const
@@ -629,25 +638,27 @@ FName AHeistGameState::GetLastAlertTriggerId() const
 	return LastAlertTriggerId;
 }
 
-bool AHeistGameState::SetAlertSnapshot(const EHeistAlertLevel NewAlertLevel, const float NewNextTransitionServerTime, const FName TriggerId)
+bool AHeistGameState::SetAlertSnapshot(const float NewAlertMeterValue, const EHeistAlertLevel NewAlertLevel, const FName TriggerId)
 {
 	const UEnum* AlertLevelEnum = StaticEnum<EHeistAlertLevel>();
-	if (!HasAuthority() || !IsValid(AlertLevelEnum) || !AlertLevelEnum->IsValidEnumValue(static_cast<int64>(NewAlertLevel)) || !FMath::IsFinite(NewNextTransitionServerTime) ||
-		NewNextTransitionServerTime < 0.0f)
+	const bool bMeterQuantized = FMath::IsNearlyEqual(NewAlertMeterValue * 2.0f, FMath::RoundToFloat(NewAlertMeterValue * 2.0f), KINDA_SMALL_NUMBER);
+	if (!HasAuthority() || !IsValid(AlertLevelEnum) || !AlertLevelEnum->IsValidEnumValue(static_cast<int64>(NewAlertLevel)) || !FMath::IsFinite(NewAlertMeterValue) ||
+		!FMath::IsWithinInclusive(NewAlertMeterValue, 0.0f, 10.0f) || !bMeterQuantized || TriggerId.IsNone())
 	{
-		UE_LOG(LogHeistNetwork, Warning, TEXT("Alert snapshot rejected: GameState=%s Level=%s NextTransitionServerTime=%.2f Trigger=%s Authority=%s Result=FAIL"), *GetNameSafe(this),
-			   *UEnum::GetValueAsString(NewAlertLevel), NewNextTransitionServerTime, *TriggerId.ToString(), HasAuthority() ? TEXT("true") : TEXT("false"));
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Alert snapshot rejected: GameState=%s Meter=%.1f Level=%s Trigger=%s Authority=%s Result=FAIL"), *GetNameSafe(this),
+			   NewAlertMeterValue, *UEnum::GetValueAsString(NewAlertLevel), *TriggerId.ToString(), HasAuthority() ? TEXT("true") : TEXT("false"));
 		return false;
 	}
 
-	if (AlertLevel == NewAlertLevel && FMath::IsNearlyEqual(AlertNextTransitionServerTime, NewNextTransitionServerTime, KINDA_SMALL_NUMBER) && LastAlertTriggerId == TriggerId)
+	if (FMath::IsNearlyEqual(AlertMeterValue, NewAlertMeterValue, KINDA_SMALL_NUMBER) && AlertLevel == NewAlertLevel && LastAlertTriggerId == TriggerId)
 	{
 		return true;
 	}
 
 	const EHeistAlertLevel PreviousAlertLevel = AlertLevel;
+	AlertMeterValue = NewAlertMeterValue;
 	AlertLevel = NewAlertLevel;
-	AlertNextTransitionServerTime = NewNextTransitionServerTime;
+	AlertNextTransitionServerTime = 0.0f;
 	LastAlertTriggerId = TriggerId;
 	++AlertRevision;
 	ForceNetUpdate();
@@ -669,8 +680,8 @@ void AHeistGameState::BroadcastAlertState(const EHeistAlertLevel PreviousAlertLe
 {
 	LastBroadcastAlertLevel = AlertLevel;
 	AlertStateChangedDelegate.Broadcast(PreviousAlertLevel, AlertLevel, AlertRevision, LastAlertTriggerId);
-	UE_LOG(LogHeistNetwork, Log, TEXT("Global alert state %s: GameState=%s Previous=%s New=%s NextTransitionServerTime=%.2f Remaining=%.2f Trigger=%s Revision=%d Authority=%s Result=PASS"),
-		   ChangeSource, *GetNameSafe(this), *UEnum::GetValueAsString(PreviousAlertLevel), *UEnum::GetValueAsString(AlertLevel), AlertNextTransitionServerTime, GetAlertTransitionRemainingSeconds(),
+	UE_LOG(LogHeistNetwork, Log, TEXT("Global alert state %s: GameState=%s Meter=%.1f Previous=%s New=%s Trigger=%s Revision=%d Authority=%s Result=PASS"),
+		   ChangeSource, *GetNameSafe(this), AlertMeterValue, *UEnum::GetValueAsString(PreviousAlertLevel), *UEnum::GetValueAsString(AlertLevel),
 		   *LastAlertTriggerId.ToString(), AlertRevision, HasAuthority() ? TEXT("true") : TEXT("false"));
 }
 
@@ -1086,6 +1097,7 @@ void AHeistGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(AHeistGameState, SurfaceTemplateSelectionRevision);
 	DOREPLIFETIME(AHeistGameState, ContractSnapshot);
 	DOREPLIFETIME(AHeistGameState, AlertLevel);
+	DOREPLIFETIME(AHeistGameState, AlertMeterValue);
 	DOREPLIFETIME(AHeistGameState, AlertNextTransitionServerTime);
 	DOREPLIFETIME(AHeistGameState, LastAlertTriggerId);
 	DOREPLIFETIME(AHeistGameState, AlertRevision);

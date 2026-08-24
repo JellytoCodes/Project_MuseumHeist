@@ -106,6 +106,7 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardAIController : public AAIController
 	FTimerHandle SightValidationTimerHandle;
 	FTimerHandle ArrestCompletionTimerHandle;
 	TWeakObjectPtr<class AHeistPlayerCharacter> PendingArrestTarget;
+	int32 GuardCaptureIncidentSequence = 0;
 
 #pragma endregion
 

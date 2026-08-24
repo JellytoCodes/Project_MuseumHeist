@@ -56,6 +56,15 @@ bool FHeistSecurityIncidentPolicyTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("Game balance defaults exist"), BalanceDefaults);
 	if (BalanceDefaults)
 	{
+		TestTrue(TEXT("Alert meter advances in half-step increments"), FMath::IsNearlyEqual(BalanceDefaults->AlertMeterStep, 0.5f));
+		TestTrue(TEXT("Alert meter owns ten full stages"), FMath::IsNearlyEqual(BalanceDefaults->AlertMeterMaximum, 10.0f));
+		TestTrue(TEXT("A successful guard capture adds one full Alert stage"),
+			FMath::IsNearlyEqual(BalanceDefaults->GuardCaptureAlertIncrease, 1.0f));
+		TestTrue(TEXT("CCTV and Laser incidents add one half Alert stage"),
+			FMath::IsNearlyEqual(BalanceDefaults->SecurityIncidentAlertIncrease, 0.5f));
+		TestTrue(TEXT("Searching behavior starts at Alert 4"), FMath::IsNearlyEqual(BalanceDefaults->SearchingAlertMeterThreshold, 4.0f));
+		TestTrue(TEXT("Alarmed behavior starts at Alert 7"), FMath::IsNearlyEqual(BalanceDefaults->AlarmedAlertMeterThreshold, 7.0f));
+		TestTrue(TEXT("Lockdown starts immediately at Alert 10"), FMath::IsNearlyEqual(BalanceDefaults->LockdownAlertMeterThreshold, 10.0f));
 		TestTrue(TEXT("Security incidents own a positive nearby-guard radius"), BalanceDefaults->SecurityIncidentInvestigationRadius > 0.0f);
 		TestTrue(TEXT("Forgery timeout keeps its independent positive nearby-guard radius"), BalanceDefaults->ForgeryTimeoutInvestigationRadius > 0.0f);
 		TestTrue(TEXT("CCTV evaluation interval is positive"), BalanceDefaults->SecurityCameraEvaluationIntervalSeconds > 0.0f);

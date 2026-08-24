@@ -1,6 +1,7 @@
 #include "UI/Widgets/HeistHUDWidget.h"
 
 #include "Character/Components/HeistInteractionComponent.h"
+#include "Character/Components/HeistNoiseEmitterComponent.h"
 #include "Character/Components/HeistStatusComponent.h"
 #include "Character/HeistPlayerCharacter.h"
 #include "Components/AudioComponent.h"
@@ -29,6 +30,8 @@
 #include "UI/ViewModels/HeistInventoryViewModel.h"
 #include "UI/ViewModels/HeistQuickSlotViewModel.h"
 #include "UI/Widgets/HeistInteractionPromptWidget.h"
+#include "UI/Widgets/HeistQuickSlotWidget.h"
+#include "UI/HUD/Widgets/HeistTeamCardWidget.h"
 #include "Blueprint/WidgetTree.h"
 
 namespace
@@ -60,7 +63,8 @@ void UHeistHUDWidget::NativeTick(const FGeometry& MyGeometry, const float InDelt
 	{
 		return;
 	}
-	RefreshLockdownCountdown();
+	RefreshMissionPresentation();
+	RefreshTransientEvent();
 	RefreshStunCountdown();
 }
 
@@ -166,63 +170,26 @@ void UHeistHUDWidget::RefreshCrewStatusPresentation()
 	const EHeistCrewStatus LocalCrewStatus = ResolveLocalCrewStatus();
 	ApplyLocalCrewStatusPresentation(LocalCrewStatus);
 
-	if (!IsValid(TeamStatusContainer) || !IsValid(WidgetTree))
+	AHeistPlayerController* OwningHeistController = Cast<AHeistPlayerController>(GetOwningPlayer());
+	const TArray<UHeistTeamCardWidget*> TeamCards = {TeamCard1.Get(), TeamCard2.Get(), TeamCard3.Get(), TeamCard4.Get()};
+	for (int32 SlotIndex = 0; SlotIndex < TeamCards.Num(); ++SlotIndex)
 	{
-		return;
-	}
-
-	TeamStatusContainer->ClearChildren();
-	for (const FHeistCrewStatusEntry& Entry : HUDViewModel->GetCrewStatusEntries())
-	{
-		UHorizontalBox* Row = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
-		UTextBlock* NameText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
-		UBorder* StatusBadge = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass());
-		UTextBlock* StatusValueText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
-		NameText->SetText(Entry.PlayerName);
-		NameText->SetColorAndOpacity(FSlateColor(Entry.PlayerColor));
-		NameText->SetJustification(ETextJustify::Left);
-		NameText->SetFont(MakeHUDTenadaFont(16));
-		StatusBadge->SetBrushColor(HeistCrewStatus::GetPresentationColor(Entry.Status));
-		StatusBadge->SetPadding(FMargin(5.0f, 1.0f));
-		if (UTexture2D* StatusIconTexture = ResolveStatusIconTexture(Entry.Status))
+		UHeistTeamCardWidget* TeamCard = TeamCards[SlotIndex];
+		if (!IsValid(TeamCard))
 		{
-			UImage* StatusIconImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass());
-			StatusIconImage->SetBrushFromTexture(StatusIconTexture, true);
-			StatusIconImage->SetDesiredSizeOverride(FVector2D(16.0f, 16.0f));
-			StatusIconImage->SetColorAndOpacity(FLinearColor::White);
-			StatusBadge->SetContent(StatusIconImage);
+			continue;
+		}
+		const int32 PlayerSlot = SlotIndex + 1;
+		const FHeistCrewStatusEntry* Entry = HUDViewModel->GetCrewStatusEntries().FindByPredicate(
+			[PlayerSlot](const FHeistCrewStatusEntry& Candidate) { return Candidate.PlayerId == PlayerSlot; });
+		if (Entry != nullptr)
+		{
+			TeamCard->ApplyCrewData(*Entry, OwningHeistController);
 		}
 		else
 		{
-			UTextBlock* StatusIconText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
-			StatusIconText->SetText(HeistCrewStatus::ToIconGlyph(Entry.Status));
-			StatusIconText->SetColorAndOpacity(FSlateColor(FLinearColor::White));
-			StatusIconText->SetJustification(ETextJustify::Center);
-			StatusIconText->SetFont(MakeHUDTenadaFont(14));
-			StatusBadge->SetContent(StatusIconText);
+			TeamCard->ApplyEmptySlot(PlayerSlot);
 		}
-		StatusValueText->SetText(HeistCrewStatus::ToDisplayText(Entry.Status));
-		StatusValueText->SetColorAndOpacity(FSlateColor(HeistCrewStatus::GetPresentationColor(Entry.Status)));
-		StatusValueText->SetJustification(ETextJustify::Right);
-		StatusValueText->SetFont(MakeHUDTenadaFont(16));
-
-		if (UHorizontalBoxSlot* NameSlot = Row->AddChildToHorizontalBox(NameText))
-		{
-			NameSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
-			NameSlot->SetVerticalAlignment(VAlign_Center);
-		}
-		if (UHorizontalBoxSlot* BadgeSlot = Row->AddChildToHorizontalBox(StatusBadge))
-		{
-			BadgeSlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
-			BadgeSlot->SetVerticalAlignment(VAlign_Center);
-			BadgeSlot->SetPadding(FMargin(0.0f, 0.0f, 6.0f, 0.0f));
-		}
-		if (UHorizontalBoxSlot* StatusSlot = Row->AddChildToHorizontalBox(StatusValueText))
-		{
-			StatusSlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
-			StatusSlot->SetVerticalAlignment(VAlign_Center);
-		}
-		TeamStatusContainer->AddChild(Row);
 	}
 }
 
@@ -236,22 +203,26 @@ void UHeistHUDWidget::ResolveCrewPresentationWidgets()
 	{
 		TeamStatusContainer = Cast<UPanelWidget>(GetWidgetFromName(TEXT("TeamStatusContainer")));
 	}
+	if (!IsValid(TeamCard1))
+	{
+		TeamCard1 = Cast<UHeistTeamCardWidget>(GetWidgetFromName(TEXT("TeamCard1")));
+	}
+	if (!IsValid(TeamCard2))
+	{
+		TeamCard2 = Cast<UHeistTeamCardWidget>(GetWidgetFromName(TEXT("TeamCard2")));
+	}
+	if (!IsValid(TeamCard3))
+	{
+		TeamCard3 = Cast<UHeistTeamCardWidget>(GetWidgetFromName(TEXT("TeamCard3")));
+	}
+	if (!IsValid(TeamCard4))
+	{
+		TeamCard4 = Cast<UHeistTeamCardWidget>(GetWidgetFromName(TEXT("TeamCard4")));
+	}
 	UCanvasPanel* RootCanvas = Cast<UCanvasPanel>(WidgetTree->RootWidget);
 	if (!IsValid(RootCanvas))
 	{
 		RootCanvas = Cast<UCanvasPanel>(GetWidgetFromName(TEXT("HUDCanvas")));
-	}
-	if (!IsValid(TeamStatusContainer) && IsValid(RootCanvas))
-	{
-		UVerticalBox* TeamList = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("TeamStatusContainer"));
-		TeamStatusContainer = TeamList;
-		if (UCanvasPanelSlot* TeamSlot = RootCanvas->AddChildToCanvas(TeamList))
-		{
-			TeamSlot->SetAnchors(FAnchors(1.0f, 0.0f));
-			TeamSlot->SetAlignment(FVector2D(1.0f, 0.0f));
-			TeamSlot->SetPosition(FVector2D(-36.0f, 110.0f));
-			TeamSlot->SetSize(FVector2D(280.0f, 180.0f));
-		}
 	}
 	if (!IsValid(StunOverlay))
 	{
@@ -379,6 +350,11 @@ void UHeistHUDWidget::ApplyLocalCrewStatusPresentation(const EHeistCrewStatus Cr
 		if (CrewStatus == EHeistCrewStatus::Arrested)
 		{
 			PlayArrestFeedbackAudio(ArrestedSound, ArrestedFeedbackEvent);
+			ShowTransientEvent(NSLOCTEXT("HeistHUD", "EventArrested", "경비에게 체포되었습니다"));
+		}
+		else if (CrewStatus == EHeistCrewStatus::Stunned)
+		{
+			ShowTransientEvent(NSLOCTEXT("HeistHUD", "EventStunned", "기절 상태입니다"));
 		}
 	}
 	else if (PreviousStatus != CrewStatus)
@@ -386,10 +362,20 @@ void UHeistHUDWidget::ApplyLocalCrewStatusPresentation(const EHeistCrewStatus Cr
 		if (CrewStatus == EHeistCrewStatus::Arrested)
 		{
 			PlayArrestFeedbackAudio(ArrestedSound, ArrestedFeedbackEvent);
+			ShowTransientEvent(NSLOCTEXT("HeistHUD", "EventArrested", "경비에게 체포되었습니다"));
+		}
+		else if (CrewStatus == EHeistCrewStatus::Stunned)
+		{
+			ShowTransientEvent(NSLOCTEXT("HeistHUD", "EventStunned", "기절 상태입니다"));
 		}
 		else if (PreviousStatus == EHeistCrewStatus::Arrested)
 		{
 			PlayArrestFeedbackAudio(RescuedSound, RescuedFeedbackEvent);
+			ShowTransientEvent(NSLOCTEXT("HeistHUD", "EventRescued", "팀원이 구조했습니다"));
+		}
+		else if (CrewStatus == EHeistCrewStatus::Escaped)
+		{
+			ShowTransientEvent(NSLOCTEXT("HeistHUD", "EventEscaped", "탈출 지점에 도착했습니다"));
 		}
 	}
 
@@ -627,33 +613,56 @@ UHeistInteractionPromptWidget* UHeistHUDWidget::ResolveInteractionChildWidget(co
 
 void UHeistHUDWidget::RefreshToolPresentation()
 {
-	if (!IsValid(ToolText))
+	if (IsValid(ToolText))
+	{
+		ToolText->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	RefreshHUDQuickSlots();
+}
+
+void UHeistHUDWidget::RefreshMissionPresentation()
+
+{
+	if (!IsValid(HUDViewModel))
 	{
 		return;
 	}
-
-	const FHeistQuickSlotPresentation* CoinPresentation = nullptr;
-	if (IsValid(QuickSlotViewModel))
+	if (IsValid(MissionTitleText))
 	{
-		CoinPresentation =
-			QuickSlotViewModel->GetQuickSlotPresentations().FindByPredicate([](const FHeistQuickSlotPresentation& Presentation) { return Presentation.SlotType == EHeistQuickSlotType::Coin; });
+		MissionTitleText->SetText(NSLOCTEXT("HeistHUD", "MissionTitle", "미션"));
+	}
+	if (IsValid(RequiredTargetNameText))
+	{
+		const FText TargetName = HUDViewModel->GetRequiredTargetDisplayName().IsEmpty()
+			? NSLOCTEXT("HeistHUD", "RequiredTargetPending", "필수 목표 확인 중")
+			: HUDViewModel->GetRequiredTargetDisplayName();
+		RequiredTargetNameText->SetText(TargetName);
+		RequiredTargetNameText->SetColorAndOpacity(FSlateColor(HUDViewModel->IsRequiredTargetAcquired()
+			? FLinearColor(0.25f, 0.78f, 0.34f)
+			: FLinearColor(0.52f, 0.52f, 0.52f)));
 	}
 
-	if (CoinPresentation == nullptr)
+	const UWorld* World = GetWorld();
+	const AGameStateBase* WorldGameState = IsValid(World) ? World->GetGameState() : nullptr;
+	const float EndServerTime = HUDViewModel->GetMissionEndServerTime();
+	const int32 RemainingSeconds = IsValid(WorldGameState) && EndServerTime > 0.0f
+		? FMath::Max(0, FMath::CeilToInt(EndServerTime - static_cast<float>(WorldGameState->GetServerWorldTimeSeconds())))
+		: INDEX_NONE;
+	if (RemainingSeconds == LastDisplayedMissionSeconds)
 	{
-		ToolText->SetText(NSLOCTEXT("HeistHUD", "ToolUnavailable", "동전  --"));
+		return;
 	}
-	else if (!CoinPresentation->bAssigned)
-	{
-		ToolText->SetText(FText::Format(NSLOCTEXT("HeistHUD", "ToolEmptyFormat", "동전  0  [{0}]"), CoinPresentation->KeyLabel));
-	}
-	else
-	{
-		ToolText->SetText(FText::Format(NSLOCTEXT("HeistHUD", "CoinToolFormat", "동전  x{1}  [{0}]"), CoinPresentation->KeyLabel,
-									   FText::AsNumber(CoinPresentation->Quantity)));
-	}
+	LastDisplayedMissionSeconds = RemainingSeconds;
 
-	ToolText->SetVisibility(ESlateVisibility::HitTestInvisible);
+	if (IsValid(MissionTimeText))
+	{
+		MissionTimeText->SetText(RemainingSeconds == INDEX_NONE
+			? FText::FromString(TEXT("-- : --"))
+			: FText::FromString(FString::Printf(TEXT("%02d : %02d"), RemainingSeconds / 60, RemainingSeconds % 60)));
+		MissionTimeText->SetColorAndOpacity(FSlateColor(RemainingSeconds != INDEX_NONE && RemainingSeconds < 60
+			? FLinearColor(0.90f, 0.12f, 0.10f)
+			: FLinearColor::White));
+	}
 }
 
 void UHeistHUDWidget::RefreshHUDPresentation()
@@ -681,10 +690,7 @@ void UHeistHUDWidget::RefreshHUDPresentation()
 
 	if (IsValid(WeightText))
 	{
-		FNumberFormattingOptions WeightFormatting;
-		WeightFormatting.MinimumFractionalDigits = 1;
-		WeightFormatting.MaximumFractionalDigits = 1;
-		WeightText->SetText(FText::Format(NSLOCTEXT("HeistHUD", "WeightFormat", "무게  {0}"), FText::AsNumber(LocalLootWeight, &WeightFormatting)));
+		WeightText->SetVisibility(ESlateVisibility::Collapsed);
 	}
 
 	if (IsValid(ActionText))
@@ -697,27 +703,23 @@ void UHeistHUDWidget::RefreshHUDPresentation()
 
 	if (IsValid(ObjectiveText))
 	{
-		ObjectiveText->SetText(HUDViewModel->GetObjectiveStateText());
-		ObjectiveText->SetVisibility(ESlateVisibility::HitTestInvisible);
+		ObjectiveText->SetVisibility(ESlateVisibility::Collapsed);
 	}
 
 	if (IsValid(StatusText))
 	{
-		const FText StatusLabel = bLocalPlayerEscaped
-			? NSLOCTEXT("HeistHUD", "EscapedStatus", "탈출")
-			: (bLocalPlayerArrested ? NSLOCTEXT("HeistHUD", "ArrestedStatus", "체포") : NSLOCTEXT("HeistHUD", "NormalStatus", "박물관 내부"));
-		StatusText->SetText(StatusLabel);
+		StatusText->SetVisibility(ESlateVisibility::Collapsed);
 	}
 
 	if (IsValid(AlertText))
 	{
-		AlertText->SetText(HUDViewModel->GetAlertBannerText());
-		AlertText->SetColorAndOpacity(HUDViewModel->GetAlertColor());
-		AlertText->SetVisibility(ESlateVisibility::HitTestInvisible);
+		AlertText->SetVisibility(ESlateVisibility::Collapsed);
 	}
 
+	RefreshMissionPresentation();
 	RefreshAlertPresentation();
 	RefreshCrewStatusPresentation();
+	RefreshInventoryShortcutPresentation();
 	BP_RefreshHUDPresentation(LocalLootScore, LocalLootWeight, ConnectedPlayerCount, bLocalPlayerEscaped, bEscapePhaseOpen, bEscapeCastActive, EscapeCastEndServerTime);
 	RefreshToolPresentation();
 }
@@ -730,48 +732,143 @@ void UHeistHUDWidget::RefreshAlertPresentation()
 	}
 
 	ApplyAlertAudioLayers();
-	LastDisplayedLockdownSeconds = INDEX_NONE;
-	RefreshLockdownCountdown();
+	RefreshAlertStars();
+	const FName AlertTriggerId = HUDViewModel->GetLastAlertTriggerId();
+	if (!AlertTriggerId.IsNone() && AlertTriggerId != LastPresentedAlertTriggerId)
+	{
+		LastPresentedAlertTriggerId = AlertTriggerId;
+		const FText EventText = ResolveAlertEventText(AlertTriggerId);
+		if (!EventText.IsEmpty())
+		{
+			ShowTransientEvent(EventText);
+		}
+	}
 }
 
-void UHeistHUDWidget::RefreshLockdownCountdown()
+void UHeistHUDWidget::RefreshAlertStars()
 {
-	const bool bCountdownVisible = IsValid(HUDViewModel) && HUDViewModel->IsLockdownCountdownVisible();
-	if (IsValid(LockdownCountdownText))
+	if (!IsValid(HUDViewModel))
 	{
-		LockdownCountdownText->SetVisibility(bCountdownVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-		LockdownCountdownText->SetColorAndOpacity(IsValid(HUDViewModel) ? HUDViewModel->GetAlertColor() : FLinearColor::White);
+		return;
 	}
-	if (!bCountdownVisible)
+	if (IsValid(AlertTitleText))
 	{
-		LastDisplayedLockdownSeconds = INDEX_NONE;
+		AlertTitleText->SetText(NSLOCTEXT("HeistHUD", "AlertTitle", "경계도"));
+	}
+
+	const TArray<UImage*> AlertStars = {AlertStar01.Get(), AlertStar02.Get(), AlertStar03.Get(), AlertStar04.Get(), AlertStar05.Get(), AlertStar06.Get(), AlertStar07.Get(),
+		AlertStar08.Get(), AlertStar09.Get(), AlertStar10.Get()};
+	const float MeterValue = FMath::Clamp(HUDViewModel->GetAlertMeterValue(), 0.0f, 10.0f);
+	for (int32 StarIndex = 0; StarIndex < AlertStars.Num(); ++StarIndex)
+	{
+		UImage* StarImage = AlertStars[StarIndex];
+		if (!IsValid(StarImage))
+		{
+			continue;
+		}
+		const float FilledAmount = MeterValue - static_cast<float>(StarIndex);
+		UTexture2D* StarTexture = FilledAmount >= 1.0f ? FullAlertStarTexture.Get() : (FilledAmount >= 0.5f ? HalfAlertStarTexture.Get() : EmptyAlertStarTexture.Get());
+		if (IsValid(StarTexture))
+		{
+			StarImage->SetBrushFromTexture(StarTexture, true);
+		}
+		StarImage->SetColorAndOpacity(FLinearColor::White);
+		StarImage->SetVisibility(ESlateVisibility::HitTestInvisible);
+	}
+}
+
+void UHeistHUDWidget::ShowTransientEvent(const FText& EventText)
+
+{
+	if (EventText.IsEmpty() || !IsValid(AlertEventText))
+	{
+		return;
+	}
+	AlertEventText->SetText(EventText);
+	AlertEventText->SetVisibility(ESlateVisibility::HitTestInvisible);
+	TransientEventHideWorldTime = IsValid(GetWorld()) ? GetWorld()->GetTimeSeconds() + 3.0f : 0.0f;
+}
+
+void UHeistHUDWidget::RefreshTransientEvent()
+{
+	if (!IsValid(AlertEventText) || AlertEventText->GetVisibility() == ESlateVisibility::Collapsed || TransientEventHideWorldTime <= 0.0f || !IsValid(GetWorld()))
+	{
+		return;
+	}
+	if (GetWorld()->GetTimeSeconds() >= TransientEventHideWorldTime)
+	{
+		AlertEventText->SetText(FText::GetEmpty());
+		AlertEventText->SetVisibility(ESlateVisibility::Collapsed);
+		TransientEventHideWorldTime = 0.0f;
+	}
+}
+
+FText UHeistHUDWidget::ResolveAlertEventText(const FName TriggerId) const
+{
+	const FString Trigger = TriggerId.ToString();
+	if (Trigger.StartsWith(TEXT("CCTV_")))
+	{
+		return NSLOCTEXT("HeistHUD", "EventCCTV", "CCTV에 발각되었습니다");
+	}
+	if (Trigger.StartsWith(TEXT("Laser_")))
+	{
+		return NSLOCTEXT("HeistHUD", "EventLaser", "레이저 경보가 작동했습니다");
+	}
+	if (Trigger.StartsWith(TEXT("GuardCapture_")))
+	{
+		return NSLOCTEXT("HeistHUD", "EventGuardCapture", "경비에게 붙잡혔습니다");
+	}
+	return FText::GetEmpty();
+}
+
+void UHeistHUDWidget::RefreshInventoryShortcutPresentation()
+{
+	if (IsValid(InventoryShortcutKeyText))
+	{
+		InventoryShortcutKeyText->SetText(NSLOCTEXT("HeistHUD", "InventoryShortcut", "TAB"));
+	}
+	if (!IsValid(InventoryShortcutIcon) || !IsValid(HUDViewModel))
+	{
 		return;
 	}
 
-	const UWorld* World = GetWorld();
-	const AGameStateBase* WorldGameState = IsValid(World) ? World->GetGameState() : nullptr;
-	const float CountdownEndServerTime = HUDViewModel->GetLockdownCountdownEndServerTime();
-	const int32 RemainingSeconds = IsValid(WorldGameState) && CountdownEndServerTime > 0.0f
-										   ? FMath::Max(0, FMath::CeilToInt(CountdownEndServerTime - static_cast<float>(WorldGameState->GetServerWorldTimeSeconds())))
-										   : INDEX_NONE;
-	if (RemainingSeconds == LastDisplayedLockdownSeconds)
-	{
-		return;
-	}
-	LastDisplayedLockdownSeconds = RemainingSeconds;
+	const AHeistPlayerCharacter* OwningCharacter = IsValid(GetOwningPlayer()) ? Cast<AHeistPlayerCharacter>(GetOwningPlayer()->GetPawn()) : nullptr;
+	const UHeistNoiseEmitterComponent* NoiseEmitter = IsValid(OwningCharacter) ? OwningCharacter->GetNoiseEmitterComponent() : nullptr;
+	const float HeavyThreshold = IsValid(NoiseEmitter) ? FMath::Max(1.0f, NoiseEmitter->GetHeavyWeightThreshold()) : 10.0f;
+	const float WeightRatio = FMath::Clamp(HUDViewModel->GetLocalLootWeight() / HeavyThreshold, 0.0f, 1.0f);
+	const FLinearColor LightColor(0.22f, 0.78f, 0.34f);
+	const FLinearColor MediumColor(0.94f, 0.72f, 0.18f);
+	const FLinearColor HeavyColor(0.90f, 0.14f, 0.10f);
+	const FLinearColor InventoryColor = WeightRatio < 0.5f
+		? FLinearColor::LerpUsingHSV(LightColor, MediumColor, WeightRatio * 2.0f)
+		: FLinearColor::LerpUsingHSV(MediumColor, HeavyColor, (WeightRatio - 0.5f) * 2.0f);
+	InventoryShortcutIcon->SetColorAndOpacity(InventoryColor);
+}
 
-	if (!IsValid(LockdownCountdownText))
+void UHeistHUDWidget::RefreshHUDQuickSlots()
+{
+	const TArray<UHeistQuickSlotWidget*> QuickSlotWidgets = {HUDQuickSlot1.Get(), HUDQuickSlot2.Get(), HUDQuickSlot3.Get()};
+	const FHeistQuickSlotPresentation* CoinPresentation = IsValid(QuickSlotViewModel)
+		? QuickSlotViewModel->GetQuickSlotPresentations().FindByPredicate(
+			[](const FHeistQuickSlotPresentation& Presentation) { return Presentation.SlotType == EHeistQuickSlotType::Coin; })
+		: nullptr;
+	for (int32 SlotIndex = 0; SlotIndex < QuickSlotWidgets.Num(); ++SlotIndex)
 	{
-		return;
+		UHeistQuickSlotWidget* QuickSlotWidget = QuickSlotWidgets[SlotIndex];
+		if (!IsValid(QuickSlotWidget))
+		{
+			continue;
+		}
+		if (SlotIndex == 0 && CoinPresentation != nullptr)
+		{
+			QuickSlotWidget->SetupHUDQuickSlot(*CoinPresentation, CoinQuickSlotIcon);
+		}
+		else
+		{
+			FHeistQuickSlotPresentation EmptyPresentation;
+			QuickSlotWidget->SetupHUDQuickSlot(EmptyPresentation, nullptr);
+		}
 	}
-	if (RemainingSeconds == INDEX_NONE)
-	{
-		LockdownCountdownText->SetText(NSLOCTEXT("HeistHUD", "LockdownTimePending", "봉쇄까지 --:--  —  탈출 경로가 제한됩니다"));
-		return;
-	}
-
-	const FText TimeText = FText::FromString(FString::Printf(TEXT("%02d:%02d"), RemainingSeconds / 60, RemainingSeconds % 60));
-	LockdownCountdownText->SetText(FText::Format(NSLOCTEXT("HeistHUD", "LockdownTimeFormat", "봉쇄까지 {0}  —  탈출 경로가 제한됩니다"), TimeText));
 }
 
 void UHeistHUDWidget::ApplyAlertAudioLayers()
@@ -894,8 +991,10 @@ void UHeistHUDWidget::ResetHiddenPresentationState()
 	LastAppliedAudioAlertLevel = EHeistAlertLevel::Quiet;
 	LastPresentedLocalCrewStatus = EHeistCrewStatus::Active;
 	bLocalCrewStatusPresentationInitialized = false;
-	LastDisplayedLockdownSeconds = INDEX_NONE;
+	LastDisplayedMissionSeconds = INDEX_NONE;
 	LastDisplayedStunSeconds = INDEX_NONE;
+	LastPresentedAlertTriggerId = NAME_None;
+	TransientEventHideWorldTime = 0.0f;
 	LastArrestFeedbackEvent = NAME_None;
 	ArrestAudioPlayCount = 0;
 	RescueAudioPlayCount = 0;
@@ -905,14 +1004,22 @@ void UHeistHUDWidget::ResetHiddenPresentationState()
 		AlertText->SetText(FText::GetEmpty());
 		AlertText->SetVisibility(ESlateVisibility::Collapsed);
 	}
-	if (IsValid(LockdownCountdownText))
+	if (IsValid(MissionTimeText))
 	{
-		LockdownCountdownText->SetText(FText::GetEmpty());
-		LockdownCountdownText->SetVisibility(ESlateVisibility::Collapsed);
+		MissionTimeText->SetText(FText::GetEmpty());
 	}
-	if (IsValid(TeamStatusContainer))
+	if (IsValid(AlertEventText))
 	{
-		TeamStatusContainer->ClearChildren();
+		AlertEventText->SetText(FText::GetEmpty());
+		AlertEventText->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	const TArray<UHeistTeamCardWidget*> TeamCards = {TeamCard1.Get(), TeamCard2.Get(), TeamCard3.Get(), TeamCard4.Get()};
+	for (int32 SlotIndex = 0; SlotIndex < TeamCards.Num(); ++SlotIndex)
+	{
+		if (IsValid(TeamCards[SlotIndex]))
+		{
+			TeamCards[SlotIndex]->ApplyEmptySlot(SlotIndex + 1);
+		}
 	}
 	if (IsValid(StunOverlay))
 	{
@@ -944,9 +1051,9 @@ bool UHeistHUDWidget::IsHiddenPresentationStateReset() const
 	const bool bAlertAudioStopped = !bAlertAudioInitialized && !IsValid(SuspenseMusicComponent) && !IsValid(AlarmMusicComponent);
 	const bool bArrestAudioStopped = !IsValid(ArrestFeedbackAudioComponent);
 	const bool bAlertTextReset = !IsValid(AlertText) || (AlertText->GetVisibility() == ESlateVisibility::Collapsed && AlertText->GetText().IsEmpty());
-	const bool bCountdownReset = LastDisplayedLockdownSeconds == INDEX_NONE &&
-		(!IsValid(LockdownCountdownText) || (LockdownCountdownText->GetVisibility() == ESlateVisibility::Collapsed && LockdownCountdownText->GetText().IsEmpty()));
-	const bool bTeamRowsCleared = !IsValid(TeamStatusContainer) || TeamStatusContainer->GetChildrenCount() == 0;
+	const bool bMissionTimerReset = LastDisplayedMissionSeconds == INDEX_NONE && (!IsValid(MissionTimeText) || MissionTimeText->GetText().IsEmpty());
+	const bool bEventReset = TransientEventHideWorldTime <= 0.0f &&
+		(!IsValid(AlertEventText) || (AlertEventText->GetVisibility() == ESlateVisibility::Collapsed && AlertEventText->GetText().IsEmpty()));
 	const bool bStunReset = LastDisplayedStunSeconds == INDEX_NONE && (!IsValid(StunOverlay) || StunOverlay->GetVisibility() == ESlateVisibility::Collapsed) &&
 		(!IsValid(StunCountdownText) || (StunCountdownText->GetVisibility() == ESlateVisibility::Collapsed && StunCountdownText->GetText().IsEmpty()));
 	const bool bArrestReset = (!IsValid(ArrestOverlay) || ArrestOverlay->GetVisibility() == ESlateVisibility::Collapsed) &&
@@ -954,17 +1061,17 @@ bool UHeistHUDWidget::IsHiddenPresentationStateReset() const
 		(!IsValid(ArrestInstructionText) || (ArrestInstructionText->GetVisibility() == ESlateVisibility::Collapsed && ArrestInstructionText->GetText().IsEmpty()));
 	const bool bTransitionStateReset = !bLocalCrewStatusPresentationInitialized && LastPresentedLocalCrewStatus == EHeistCrewStatus::Active && LastArrestFeedbackEvent.IsNone() &&
 		ArrestAudioPlayCount == 0 && RescueAudioPlayCount == 0;
-	return bAlertAudioStopped && bArrestAudioStopped && bAlertTextReset && bCountdownReset && bTeamRowsCleared && bStunReset && bArrestReset && bTransitionStateReset;
+	return bAlertAudioStopped && bArrestAudioStopped && bAlertTextReset && bMissionTimerReset && bEventReset && bStunReset && bArrestReset && bTransitionStateReset;
 }
 
 void UHeistHUDWidget::DebugDumpFirstPersonHUDState() const
 {
 	const bool bCrosshairReady = IsValid(CrosshairContainer) && IsValid(CrosshairIdleIndicator) && IsValid(CrosshairFocusIndicator);
 	const bool bCenterPromptReady = IsValid(InteractionPromptWidget) && IsValid(ActionProgressWidget);
-	const bool bToolReady = IsValid(ToolText);
-	const bool bStatusReady = IsValid(StatusText) && IsValid(WeightText);
-	const bool bObjectiveReady = IsValid(ObjectiveText) && IsValid(HUDViewModel) && !HUDViewModel->GetObjectiveArtifactId().IsNone() && !HUDViewModel->GetObjectiveCaseId().IsNone() &&
-								 HUDViewModel->GetObjectiveState() != EHeistObjectiveState::Inactive && !ObjectiveText->GetText().IsEmpty();
+	const bool bToolReady = IsValid(HUDQuickSlot1) && IsValid(HUDQuickSlot2) && IsValid(HUDQuickSlot3);
+	const bool bStatusReady = IsValid(InventoryShortcutIcon) && IsValid(InventoryShortcutKeyText);
+	const bool bObjectiveReady = IsValid(MissionTitleText) && IsValid(MissionTimeText) && IsValid(RequiredTargetNameText) && IsValid(HUDViewModel) &&
+		!HUDViewModel->GetRequiredTargetDisplayName().IsEmpty();
 	const bool bContractPass = bCrosshairReady && bCenterPromptReady && bToolReady && bStatusReady && bObjectiveReady;
 
 	const FString ContractMessage =
@@ -1068,22 +1175,21 @@ void UHeistHUDWidget::DebugDumpTutorialPresentationState() const
 
 bool UHeistHUDWidget::IsAlertPresentationContractSatisfied() const
 {
-	if (!IsValid(HUDViewModel) || !IsValid(AlertText) || !IsValid(LockdownCountdownText) || !IsValid(SuspenseMusic) || !IsValid(AlarmMusic))
+	const TArray<UImage*> AlertStars = {AlertStar01.Get(), AlertStar02.Get(), AlertStar03.Get(), AlertStar04.Get(), AlertStar05.Get(), AlertStar06.Get(), AlertStar07.Get(),
+		AlertStar08.Get(), AlertStar09.Get(), AlertStar10.Get()};
+	if (!IsValid(HUDViewModel) || !IsValid(AlertTitleText) || AlertStars.Contains(nullptr) || !IsValid(EmptyAlertStarTexture) || !IsValid(HalfAlertStarTexture) ||
+		!IsValid(FullAlertStarTexture) || !IsValid(SuspenseMusic) || !IsValid(AlarmMusic))
 	{
 		return false;
 	}
 
-	const bool bCountdownVisibilityMatches =
-		HUDViewModel->IsLockdownCountdownVisible() == (LockdownCountdownText->GetVisibility() != ESlateVisibility::Collapsed && LockdownCountdownText->GetVisibility() != ESlateVisibility::Hidden);
 	const bool bAudioModeMatches = HUDViewModel->IsSuspenseMusicActive() != HUDViewModel->IsAlarmMusicActive() ||
 								   (!HUDViewModel->IsSuspenseMusicActive() && !HUDViewModel->IsAlarmMusicActive());
 	const bool bSuspensePlaybackMatches =
 		!HUDViewModel->IsSuspenseMusicActive() || (IsValid(SuspenseMusicComponent) && SuspenseMusicComponent->IsPlaying());
 	const bool bAlarmPlaybackMatches = !HUDViewModel->IsAlarmMusicActive() || (IsValid(AlarmMusicComponent) && AlarmMusicComponent->IsPlaying());
-	const bool bCountdownTextValid = !HUDViewModel->IsLockdownCountdownVisible() || !LockdownCountdownText->GetText().IsEmpty();
-	const FString SecurityLevelFraction = FString::Printf(TEXT("%d/4"), HUDViewModel->GetSecurityLevel());
-	const bool bSecurityLevelMatches = AlertText->GetText().ToString().Contains(SecurityLevelFraction);
-	return bSecurityLevelMatches && bCountdownVisibilityMatches && bCountdownTextValid && bAudioModeMatches && bSuspensePlaybackMatches && bAlarmPlaybackMatches && bAlertAudioInitialized &&
+	const bool bStarsVisible = AlertStars.ContainsByPredicate([](const UImage* Star) { return !IsValid(Star) || Star->GetVisibility() == ESlateVisibility::Collapsed; }) == false;
+	return bStarsVisible && bAudioModeMatches && bSuspensePlaybackMatches && bAlarmPlaybackMatches && bAlertAudioInitialized &&
 		   LastAppliedAudioAlertLevel == HUDViewModel->GetAlertLevel();
 }
 
@@ -1147,14 +1253,11 @@ void UHeistHUDWidget::DebugDumpAlertPresentationState() const
 {
 	const bool bPassed = IsAlertPresentationContractSatisfied();
 	const FString Message = FString::Printf(
-		TEXT("[%s] Alert HUD presentation: Level=%s SecurityLevel=%d/4 Banner='%s' BannerWidget=%s CountdownVisible=%s CountdownText='%s' SuspenseRequested=%s SuspensePlaying=%s AlarmRequested=%s "
+		TEXT("[%s] Alert HUD presentation: Level=%s Meter=%.1f/10 Stars=10 Trigger=%s Event='%s' SuspenseRequested=%s SuspensePlaying=%s AlarmRequested=%s "
 			 "AlarmPlaying=%s SuspenseAsset=%s AlarmAsset=%s AudioApplied=%s Result=%s"),
 		*GetName(), IsValid(HUDViewModel) ? *UEnum::GetValueAsString(HUDViewModel->GetAlertLevel()) : TEXT("None"),
-		IsValid(HUDViewModel) ? HUDViewModel->GetSecurityLevel() : INDEX_NONE, IsValid(AlertText) ? *AlertText->GetText().ToString() : TEXT("None"), IsValid(AlertText) ? TEXT("true") : TEXT("false"),
-		IsValid(LockdownCountdownText) && LockdownCountdownText->GetVisibility() != ESlateVisibility::Collapsed && LockdownCountdownText->GetVisibility() != ESlateVisibility::Hidden
-			? TEXT("true")
-			: TEXT("false"),
-		IsValid(LockdownCountdownText) ? *LockdownCountdownText->GetText().ToString() : TEXT("None"),
+		IsValid(HUDViewModel) ? HUDViewModel->GetAlertMeterValue() : -1.0f,
+		IsValid(HUDViewModel) ? *HUDViewModel->GetLastAlertTriggerId().ToString() : TEXT("None"), IsValid(AlertEventText) ? *AlertEventText->GetText().ToString() : TEXT("None"),
 		IsValid(HUDViewModel) && HUDViewModel->IsSuspenseMusicActive() ? TEXT("true") : TEXT("false"),
 		IsValid(SuspenseMusicComponent) && SuspenseMusicComponent->IsPlaying() ? TEXT("true") : TEXT("false"),
 		IsValid(HUDViewModel) && HUDViewModel->IsAlarmMusicActive() ? TEXT("true") : TEXT("false"),

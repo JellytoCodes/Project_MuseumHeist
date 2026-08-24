@@ -40,6 +40,7 @@ class PROJECT_MUSEUMHEIST_API UHeistQuickSlotWidget : public UHeistUserWidgetBas
 
   public:
 	void SetupQuickSlot(const FHeistQuickSlotPresentation& InConfirmedPresentation, UTexture2D* InIcon, UHeistInventoryWidget* InInventoryWidget);
+	void SetupHUDQuickSlot(const FHeistQuickSlotPresentation& InConfirmedPresentation, UTexture2D* InIcon);
 
   private:
 	void RefreshPresentation();
@@ -53,6 +54,8 @@ class PROJECT_MUSEUMHEIST_API UHeistQuickSlotWidget : public UHeistUserWidgetBas
 
 	UPROPERTY(Transient)
 	TObjectPtr<UHeistInventoryWidget> InventoryWidget;
+
+	bool bHUDPresentation = false;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UBorder> SlotBackground;

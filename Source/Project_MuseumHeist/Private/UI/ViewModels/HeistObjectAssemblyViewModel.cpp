@@ -301,32 +301,14 @@ void UHeistObjectAssemblyViewModel::RefreshQualityPreview()
 void UHeistObjectAssemblyViewModel::RefreshAlertPresentation()
 {
 	const EHeistAlertLevel NewAlertLevel = IsValid(GameState) ? GameState->GetAlertLevel() : EHeistAlertLevel::Quiet;
-	const bool bShowWarning = bPresentationVisible &&
-		(NewAlertLevel == EHeistAlertLevel::Alarmed || NewAlertLevel == EHeistAlertLevel::Lockdown);
-	FText NewWarningText;
-	if (bShowWarning)
-	{
-		const int32 SecurityLevel = FMath::Clamp(static_cast<int32>(NewAlertLevel), 0, 4);
-		FString SecurityLevelStars;
-		for (int32 Index = 0; Index < 4; ++Index)
-		{
-			if (Index > 0)
-			{
-				SecurityLevelStars += TEXT(" ");
-			}
-			SecurityLevelStars += Index < SecurityLevel ? TEXT("\u2605") : TEXT("\u2606");
-		}
-		NewWarningText = FText::Format(NSLOCTEXT("HeistObjectAssembly", "SecurityLevelFormat", "경계 단계 {0}/4  {1}"), FText::AsNumber(SecurityLevel),
-									 FText::FromString(SecurityLevelStars));
-	}
-
-	const bool bLockdownActive = bPresentationVisible && IsValid(GameState) && GameState->IsLockdownCountdownActive();
+	const bool bShowWarning = false;
+	const FText NewWarningText = FText::GetEmpty();
 	UE_MVVM_SET_PROPERTY_VALUE(AlertLevel, NewAlertLevel);
 	UE_MVVM_SET_PROPERTY_VALUE(bDangerWarningVisible, bShowWarning);
 	UE_MVVM_SET_PROPERTY_VALUE(DangerWarningText, NewWarningText);
 	UE_MVVM_SET_PROPERTY_VALUE(DangerWarningColor, ResolveAssemblyAlertColor(NewAlertLevel));
-	UE_MVVM_SET_PROPERTY_VALUE(bLockdownCountdownVisible, bLockdownActive);
-	UE_MVVM_SET_PROPERTY_VALUE(LockdownCountdownEndServerTime, bLockdownActive ? GameState->GetAlertNextTransitionServerTime() : 0.0f);
+	UE_MVVM_SET_PROPERTY_VALUE(bLockdownCountdownVisible, false);
+	UE_MVVM_SET_PROPERTY_VALUE(LockdownCountdownEndServerTime, 0.0f);
 }
 
 void UHeistObjectAssemblyViewModel::SetStatusMessage(const FText& NewStatusText)

@@ -183,6 +183,10 @@ struct PROJECT_MUSEUMHEIST_API FHeistContractSnapshot
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|Contract")
 	FName MapId = NAME_None;
 
+	/** Absolute server world time used by the Main HUD mission clock. */
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Contract")
+	float ContractEndServerTime = 0.0f;
+
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|Contract")
 	int32 AssignmentSeed = 0;
 
@@ -192,6 +196,9 @@ struct PROJECT_MUSEUMHEIST_API FHeistContractSnapshot
 
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|Contract")
 	FName RequiredTargetArtifactId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Contract")
+	FText RequiredTargetDisplayName;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|Contract")
 	FName RequiredTargetCaseId = NAME_None;
@@ -220,8 +227,9 @@ struct PROJECT_MUSEUMHEIST_API FHeistContractSnapshot
 
 	bool IsInitialized() const
 	{
-		return Revision > 0 && !ContractId.IsNone() && !MapId.IsNone() && HeistSessionContract::IsSnapshotStartPlayerCountSupported(ContractStartPlayerCount) &&
-			!RequiredTargetArtifactId.IsNone() && !RequiredTargetCaseId.IsNone() && LootValueQuota > 0;
+		return Revision > 0 && !ContractId.IsNone() && !MapId.IsNone() && FMath::IsFinite(ContractEndServerTime) && ContractEndServerTime > 0.0f &&
+			HeistSessionContract::IsSnapshotStartPlayerCountSupported(ContractStartPlayerCount) && !RequiredTargetArtifactId.IsNone() &&
+			!RequiredTargetDisplayName.IsEmpty() && !RequiredTargetCaseId.IsNone() && LootValueQuota > 0;
 	}
 
 	bool IsProgressValid() const
@@ -268,9 +276,11 @@ struct PROJECT_MUSEUMHEIST_API FHeistContractSnapshot
 
 	bool operator==(const FHeistContractSnapshot& Other) const
 	{
-		return ContractId == Other.ContractId && MapId == Other.MapId && AssignmentSeed == Other.AssignmentSeed &&
+		return ContractId == Other.ContractId && MapId == Other.MapId && FMath::IsNearlyEqual(ContractEndServerTime, Other.ContractEndServerTime) &&
+			   AssignmentSeed == Other.AssignmentSeed &&
 			   ContractStartPlayerCount == Other.ContractStartPlayerCount && RequiredTargetArtifactId == Other.RequiredTargetArtifactId &&
-			   RequiredTargetCaseId == Other.RequiredTargetCaseId && LootValueQuota == Other.LootValueQuota && CarriedValue == Other.CarriedValue &&
+			   RequiredTargetDisplayName.EqualTo(Other.RequiredTargetDisplayName) && RequiredTargetCaseId == Other.RequiredTargetCaseId &&
+			   LootValueQuota == Other.LootValueQuota && CarriedValue == Other.CarriedValue &&
 			   SecuredValue == Other.SecuredValue && bRequiredTargetSecured == Other.bRequiredTargetSecured && Outcome == Other.Outcome &&
 			   OutcomeReasonId == Other.OutcomeReasonId && Revision == Other.Revision;
 	}

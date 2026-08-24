@@ -261,8 +261,6 @@ void AHeistGameMode::HandleMatchPhaseChanged(const EHeistMatchPhase PreviousMatc
 	}
 
 	const int32 ClearedTimerCount = ClearMatchScopedTimers();
-	ScheduledAlertSourceLevel = EHeistAlertLevel::Quiet;
-	ScheduledAlertRevision = 0;
 	UE_LOG(LogHeistNetwork, Log, TEXT("Match timer cleanup: PreviousPhase=%s NewPhase=%s ClearedTimers=%d RemainingTimers=%d Authority=true Result=%s"),
 		   *UEnum::GetValueAsString(PreviousMatchPhase), *UEnum::GetValueAsString(NewMatchPhase), ClearedTimerCount, GetActiveMatchTimerCount(),
 		   GetActiveMatchTimerCount() == 0 ? TEXT("PASS") : TEXT("FAIL"));
@@ -294,7 +292,6 @@ int32 AHeistGameMode::ClearMatchScopedTimers()
 		TimerManager.ClearTimer(TimerHandle);
 	};
 
-	ClearTimer(AlertTransitionTimerHandle);
 	ClearTimer(EscapePhaseTimerHandle);
 	ClearTimer(ContractDurationTimerHandle);
 	ClearTimer(GuardScalingTimerHandle);
@@ -738,12 +735,21 @@ void AHeistGameMode::StartContractDurationTimer()
 		return;
 	}
 
+	const FHeistContractSnapshot ContractSnapshot = HeistGameState->GetContractSnapshot();
+	const float RemainingDuration = ContractSnapshot.ContractEndServerTime - HeistGameState->GetServerWorldTimeSeconds();
+	if (!FMath::IsFinite(RemainingDuration) || RemainingDuration <= KINDA_SMALL_NUMBER)
+	{
+		UE_LOG(LogHeistNetwork, Error, TEXT("Contract duration timer skipped: Contract=%s EndServerTime=%.2f Remaining=%.2f Result=FAIL Reason=InvalidDeadline"),
+			*ContractId.ToString(), ContractSnapshot.ContractEndServerTime, RemainingDuration);
+		return;
+	}
+
 	FTimerManager& TimerManager = GetWorldTimerManager();
 	TimerManager.ClearTimer(ContractDurationTimerHandle);
-	TimerManager.SetTimer(ContractDurationTimerHandle, this, &AHeistGameMode::HandleContractDurationTimerElapsed, ContractDefinition.MatchDurationSeconds, false);
+	TimerManager.SetTimer(ContractDurationTimerHandle, this, &AHeistGameMode::HandleContractDurationTimerElapsed, RemainingDuration, false);
 	UE_LOG(LogHeistNetwork, Log,
 		   TEXT("Contract duration timer started: Contract=%s Duration=%.2f DeadlineServerTime=%.2f Authority=true Priority=CommittedEscapeThenLockdownThenMatchTimer Result=PASS"),
-		   *ContractId.ToString(), ContractDefinition.MatchDurationSeconds, HeistGameState->GetServerWorldTimeSeconds() + ContractDefinition.MatchDurationSeconds);
+		   *ContractId.ToString(), RemainingDuration, ContractSnapshot.ContractEndServerTime);
 }
 
 void AHeistGameMode::HandleContractDurationTimerElapsed()
@@ -1019,6 +1025,7 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 		bool bCaseStateValid = false;
 		bool bArtifactValid = false;
 		int32 ArtifactValue = 0;
+		FText ArtifactDisplayName;
 		EHeistLootGrade ItemGrade = EHeistLootGrade::OneStar;
 	};
 
@@ -1042,6 +1049,7 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 		Candidate.bArtifactValid = !ArtifactId.IsNone() && TryGetArtifactDefinition(ArtifactId, ArtifactDefinition) &&
 			ArtifactDefinition.ForgeryType == EHeistForgeryType::Drawing;
 		Candidate.ArtifactValue = Candidate.bArtifactValid ? ArtifactDefinition.ArtifactValue : 0;
+		Candidate.ArtifactDisplayName = Candidate.bArtifactValid ? ArtifactDefinition.DisplayName : FText::GetEmpty();
 		Candidate.ItemGrade = Candidate.bArtifactValid ? ArtifactDefinition.ItemGrade : EHeistLootGrade::OneStar;
 		(IsConfiguredTargetCase(CaseId) ? MatchingTargetCases : OptionalCases).Add(MoveTemp(Candidate));
 	};
@@ -1102,6 +1110,9 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 	const int32 MaximumOptionalExhibitCount = bContractDefinitionValid ? ContractDefinition.ResolveMaximumOptionalExhibitCount(PlayerCount) : 0;
 	const bool bRequiredTargetNeedsOptionalLoot = bArtifactValid && TargetArtifactValue < LootValueQuota;
 	const FName MapId = ResolveContractMapId(this, HeistGameState);
+	const float ContractEndServerTime = bContractDefinitionValid
+		? HeistGameState->GetServerWorldTimeSeconds() + ContractDefinition.MatchDurationSeconds
+		: 0.0f;
 	const int32 AssignmentSeed = FMath::Rand();
 
 	int32 InvalidOptionalCaseCount = 0;
@@ -1187,8 +1198,8 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 
 	const bool bContractInitialized = bArtifactValid && bCaseStateValid && bContractDefinitionValid && bRequiredTargetNeedsOptionalLoot &&
 		bOptionalAssignmentValid && bReleaseQuotaReachable && bDeferredObjectBoundaryApplied && !MapId.IsNone() &&
-		HeistGameState->InitializeContractSnapshot(ContractDefinition.ContractId, MapId, AssignmentSeed, PlayerCount, TargetArtifactId, TargetDisplayCase.CaseId,
-			LootValueQuota);
+		HeistGameState->InitializeContractSnapshot(ContractDefinition.ContractId, MapId, ContractEndServerTime, AssignmentSeed, PlayerCount, TargetArtifactId,
+			TargetDisplayCase.ArtifactDisplayName, TargetDisplayCase.CaseId, LootValueQuota);
 	const bool bObjectiveInitialized = bContractInitialized &&
 		HeistGameState->SetObjectiveSnapshot(TargetArtifactId, TargetDisplayCase.CaseId, EHeistObjectiveState::Available, nullptr);
 	int32 DeactivatedOptionalCaseCount = 0;
@@ -1273,25 +1284,61 @@ bool AHeistGameMode::RequestAlertEscalation(const EHeistAlertLevel RequestedAler
 	}
 
 	ProcessedAlertTriggerIds.Add(TriggerId);
-	const EHeistAlertLevel CurrentAlertLevel = HeistGameState->GetAlertLevel();
-	if (static_cast<uint8>(RequestedAlertLevel) <= static_cast<uint8>(CurrentAlertLevel))
-	{
-		UE_LOG(LogHeistNetwork, Log, TEXT("Global alert trigger consumed: Current=%s Requested=%s Trigger=%s ProcessedTriggers=%d Authority=true Result=PASS Reason=NoDowngradeOrDuplicateLevel"),
-			   *UEnum::GetValueAsString(CurrentAlertLevel), *UEnum::GetValueAsString(RequestedAlertLevel), *TriggerId.ToString(), ProcessedAlertTriggerIds.Num());
-		return true;
-	}
-
+	const EHeistAlertLevel PreviousAlertLevel = HeistGameState->GetAlertLevel();
 	if (ApplyAlertLevel(RequestedAlertLevel, TriggerId))
 	{
 		if (bOutLevelChanged != nullptr)
 		{
-			*bOutLevelChanged = true;
+			*bOutLevelChanged = HeistGameState->GetAlertLevel() != PreviousAlertLevel;
 		}
 		return true;
 	}
 
 	ProcessedAlertTriggerIds.Remove(TriggerId);
 	return false;
+}
+
+bool AHeistGameMode::RequestAlertIncrease(const float IncreaseAmount, const FName TriggerId, bool* bOutMeterChanged)
+{
+	if (bOutMeterChanged != nullptr)
+	{
+		*bOutMeterChanged = false;
+	}
+
+	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	if (!HasAuthority() || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame || !IsValid(BalanceData) ||
+		TriggerId.IsNone() || !FMath::IsFinite(IncreaseAmount) || IncreaseAmount <= 0.0f)
+	{
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Alert meter increase rejected: Delta=%.2f Trigger=%s Authority=%s MatchPhase=%s Result=FAIL Reason=InvalidRequest"),
+			IncreaseAmount, *TriggerId.ToString(), HasAuthority() ? TEXT("true") : TEXT("false"),
+			IsValid(HeistGameState) ? *UEnum::GetValueAsString(HeistGameState->GetMatchPhase()) : TEXT("MissingGameState"));
+		return false;
+	}
+
+	if (ProcessedAlertTriggerIds.Contains(TriggerId))
+	{
+		UE_LOG(LogHeistNetwork, Log, TEXT("Alert meter increase blocked: Meter=%.1f Delta=%.1f Trigger=%s Result=PASS Reason=DuplicateTrigger"),
+			HeistGameState->GetAlertMeterValue(), IncreaseAmount, *TriggerId.ToString());
+		return true;
+	}
+
+	const float Step = FMath::Max(0.5f, BalanceData->AlertMeterStep);
+	const float QuantizedIncrease = FMath::Max(Step, FMath::RoundToFloat(IncreaseAmount / Step) * Step);
+	const float PreviousMeterValue = HeistGameState->GetAlertMeterValue();
+	const float NewMeterValue = FMath::Clamp(PreviousMeterValue + QuantizedIncrease, 0.0f, BalanceData->AlertMeterMaximum);
+	ProcessedAlertTriggerIds.Add(TriggerId);
+	if (!ApplyAlertMeterValue(NewMeterValue, TriggerId))
+	{
+		ProcessedAlertTriggerIds.Remove(TriggerId);
+		return false;
+	}
+
+	if (bOutMeterChanged != nullptr)
+	{
+		*bOutMeterChanged = !FMath::IsNearlyEqual(PreviousMeterValue, HeistGameState->GetAlertMeterValue(), KINDA_SMALL_NUMBER);
+	}
+	return true;
 }
 
 bool AHeistGameMode::RequestSecurityIncident(const FVector& WorldLocation, const FName IncidentId)
@@ -1314,8 +1361,9 @@ bool AHeistGameMode::RequestSecurityIncident(const FVector& WorldLocation, const
 		return true;
 	}
 
-	bool bAlertLevelChanged = false;
-	const bool bAlertAccepted = RequestAlertEscalation(EHeistAlertLevel::Suspicious, IncidentId, &bAlertLevelChanged);
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	bool bAlertMeterChanged = false;
+	const bool bAlertAccepted = IsValid(BalanceData) && RequestAlertIncrease(BalanceData->SecurityIncidentAlertIncrease, IncidentId, &bAlertMeterChanged);
 	if (!bAlertAccepted)
 	{
 		ProcessedSecurityIncidentIds.Remove(IncidentId);
@@ -1324,7 +1372,6 @@ bool AHeistGameMode::RequestSecurityIncident(const FVector& WorldLocation, const
 		return false;
 	}
 
-	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
 	const float SearchRadius = IsValid(BalanceData) ? FMath::Max(0.0f, BalanceData->SecurityIncidentInvestigationRadius) : 0.0f;
 	AHeistGuardCharacter* AssignedGuard = nullptr;
 	float AssignedGuardDistance = -1.0f;
@@ -1339,7 +1386,7 @@ bool AHeistGameMode::RequestSecurityIncident(const FVector& WorldLocation, const
 		ProcessedSecurityIncidentIds.Remove(IncidentId);
 	}
 	UHeistDebugFunctionLibrary::DebugSecurityIncidentRequest(this, IncidentId, WorldLocation, AssignedGuard, AssignedGuardDistance, SearchRadius, MatchPhase, bAuthority, true,
-		bAlertLevelChanged, bInvestigationAssigned, bDuplicateInvestigation, bInvestigationAssigned,
+		bAlertMeterChanged, bInvestigationAssigned, bDuplicateInvestigation, bInvestigationAssigned,
 		bInvestigationAssigned ? FName(TEXT("Resolved")) : InvestigationReason);
 	return bInvestigationAssigned;
 }
@@ -1454,7 +1501,7 @@ bool AHeistGameMode::RequestNearestGuardInvestigation(const FVector& WorldLocati
 
 bool AHeistGameMode::IsAlertTransitionTimerActive() const
 {
-	return GetWorldTimerManager().IsTimerActive(AlertTransitionTimerHandle);
+	return false;
 }
 
 int32 AHeistGameMode::GetProcessedAlertTriggerCount() const
@@ -1475,8 +1522,7 @@ int32 AHeistGameMode::GetProcessedGuardInvestigationCount() const
 int32 AHeistGameMode::GetActiveMatchTimerCount() const
 {
 	const FTimerManager& TimerManager = GetWorldTimerManager();
-	int32 ActiveTimerCount = TimerManager.TimerExists(AlertTransitionTimerHandle) ? 1 : 0;
-	ActiveTimerCount += TimerManager.TimerExists(EscapePhaseTimerHandle) ? 1 : 0;
+	int32 ActiveTimerCount = TimerManager.TimerExists(EscapePhaseTimerHandle) ? 1 : 0;
 	ActiveTimerCount += TimerManager.TimerExists(ContractDurationTimerHandle) ? 1 : 0;
 	ActiveTimerCount += TimerManager.TimerExists(GuardScalingTimerHandle) ? 1 : 0;
 	return ActiveTimerCount;
@@ -1484,16 +1530,13 @@ int32 AHeistGameMode::GetActiveMatchTimerCount() const
 
 void AHeistGameMode::InitializeAlertState()
 {
-	GetWorldTimerManager().ClearTimer(AlertTransitionTimerHandle);
 	ProcessedAlertTriggerIds.Reset();
 	ProcessedSecurityIncidentIds.Reset();
 	ProcessedGuardInvestigationSourceIds.Reset();
-	ScheduledAlertSourceLevel = EHeistAlertLevel::Quiet;
-	ScheduledAlertRevision = 0;
 	bLockdownWorldRestrictionsApplied = false;
 	if (AHeistGameState* HeistGameState = GetGameState<AHeistGameState>())
 	{
-		HeistGameState->SetAlertSnapshot(EHeistAlertLevel::Quiet, 0.0f, FName(TEXT("MatchStart")));
+		HeistGameState->SetAlertSnapshot(0.0f, EHeistAlertLevel::Quiet, FName(TEXT("MatchStart")));
 	}
 }
 
@@ -1505,17 +1548,43 @@ bool AHeistGameMode::ApplyAlertLevel(const EHeistAlertLevel NewAlertLevel, const
 		return false;
 	}
 
-	GetWorldTimerManager().ClearTimer(AlertTransitionTimerHandle);
-	const EHeistAlertLevel NextAlertLevel = GetNextAlertLevel(NewAlertLevel);
-	const float TransitionDelay = ResolveAlertTransitionDelay(NewAlertLevel);
-	const bool bHasNextTransition = NextAlertLevel != NewAlertLevel;
-	const float NextTransitionServerTime = bHasNextTransition ? HeistGameState->GetServerWorldTimeSeconds() + TransitionDelay : 0.0f;
-	if (!HeistGameState->SetAlertSnapshot(NewAlertLevel, NextTransitionServerTime, TriggerId))
+	const float RequestedMinimumMeter = ResolveMinimumMeterForAlertLevel(NewAlertLevel);
+	return ApplyAlertMeterValue(FMath::Max(HeistGameState->GetAlertMeterValue(), RequestedMinimumMeter), TriggerId);
+}
+
+bool AHeistGameMode::ApplyAlertMeterValue(const float NewAlertMeterValue, const FName TriggerId, bool* bOutLevelChanged)
+{
+	if (bOutLevelChanged != nullptr)
+	{
+		*bOutLevelChanged = false;
+	}
+	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	if (!HasAuthority() || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame || !IsValid(BalanceData) ||
+		TriggerId.IsNone() || !FMath::IsFinite(NewAlertMeterValue))
 	{
 		return false;
 	}
 
-	if (NewAlertLevel == EHeistAlertLevel::Alarmed || NewAlertLevel == EHeistAlertLevel::Lockdown)
+	const float Step = FMath::Max(0.5f, BalanceData->AlertMeterStep);
+	const float QuantizedMeterValue = FMath::Clamp(FMath::RoundToFloat(NewAlertMeterValue / Step) * Step, 0.0f, BalanceData->AlertMeterMaximum);
+	const EHeistAlertLevel PreviousAlertLevel = HeistGameState->GetAlertLevel();
+	const EHeistAlertLevel NewAlertLevel = ResolveAlertLevelForMeter(QuantizedMeterValue);
+	if (FMath::IsNearlyEqual(HeistGameState->GetAlertMeterValue(), QuantizedMeterValue, KINDA_SMALL_NUMBER) && PreviousAlertLevel == NewAlertLevel)
+	{
+		return true;
+	}
+	if (!HeistGameState->SetAlertSnapshot(QuantizedMeterValue, NewAlertLevel, TriggerId))
+	{
+		return false;
+	}
+	if (bOutLevelChanged != nullptr)
+	{
+		*bOutLevelChanged = PreviousAlertLevel != NewAlertLevel;
+	}
+
+	if (static_cast<uint8>(PreviousAlertLevel) < static_cast<uint8>(EHeistAlertLevel::Alarmed) &&
+		static_cast<uint8>(NewAlertLevel) >= static_cast<uint8>(EHeistAlertLevel::Alarmed))
 	{
 		const FName CleanupReason(TEXT("AlertDanger"));
 		int32 CancelledSurfaceSessions = 0;
@@ -1541,29 +1610,20 @@ bool AHeistGameMode::ApplyAlertLevel(const EHeistAlertLevel NewAlertLevel, const
 		}
 
 		UE_LOG(LogHeistNetwork, Log,
-			TEXT("Alert danger sessions cancelled: Level=%s Trigger=%s Surface=%d Object=%d Reason=%s Authority=true Result=PASS"),
-			*UEnum::GetValueAsString(NewAlertLevel), *TriggerId.ToString(), CancelledSurfaceSessions, CancelledObjectSessions, *CleanupReason.ToString());
+			TEXT("Alert danger sessions cancelled: Meter=%.1f Level=%s Trigger=%s Surface=%d Object=%d Reason=%s Authority=true Result=PASS"),
+			QuantizedMeterValue, *UEnum::GetValueAsString(NewAlertLevel), *TriggerId.ToString(), CancelledSurfaceSessions, CancelledObjectSessions, *CleanupReason.ToString());
 	}
 
-	ScheduledAlertSourceLevel = NewAlertLevel;
-	ScheduledAlertRevision = HeistGameState->GetAlertRevision();
-	if (!bHasNextTransition)
+	if (NewAlertLevel == EHeistAlertLevel::Lockdown)
 	{
-		const bool bRestrictionsApplied = NewAlertLevel != EHeistAlertLevel::Lockdown || ApplyLockdownWorldRestrictions(TriggerId);
-		UE_LOG(LogHeistNetwork, Log, TEXT("Global alert terminal level reached: Level=%s Trigger=%s Revision=%d Authority=true Result=%s"), *UEnum::GetValueAsString(NewAlertLevel),
-			   *TriggerId.ToString(), ScheduledAlertRevision, bRestrictionsApplied ? TEXT("PASS") : TEXT("FAIL"));
+		const bool bRestrictionsApplied = ApplyLockdownWorldRestrictions(TriggerId);
+		UE_LOG(LogHeistNetwork, Log, TEXT("Alert meter maximum reached: Meter=%.1f Level=%s Trigger=%s Revision=%d Authority=true Result=%s"), QuantizedMeterValue,
+			*UEnum::GetValueAsString(NewAlertLevel), *TriggerId.ToString(), HeistGameState->GetAlertRevision(), bRestrictionsApplied ? TEXT("PASS") : TEXT("FAIL"));
 		return bRestrictionsApplied;
 	}
 
-	if (TransitionDelay <= KINDA_SMALL_NUMBER)
-	{
-		HandleAlertTransitionTimerElapsed();
-		return true;
-	}
-
-	GetWorldTimerManager().SetTimer(AlertTransitionTimerHandle, this, &AHeistGameMode::HandleAlertTransitionTimerElapsed, TransitionDelay, false);
-	UE_LOG(LogHeistNetwork, Log, TEXT("Global alert timer started: Current=%s Next=%s Delay=%.2f NextTransitionServerTime=%.2f Trigger=%s Revision=%d Authority=true Result=PASS"),
-		   *UEnum::GetValueAsString(NewAlertLevel), *UEnum::GetValueAsString(NextAlertLevel), TransitionDelay, NextTransitionServerTime, *TriggerId.ToString(), ScheduledAlertRevision);
+	UE_LOG(LogHeistNetwork, Log, TEXT("Alert meter applied: Meter=%.1f Level=%s Trigger=%s Revision=%d Authority=true AutoTransition=false Result=PASS"),
+		QuantizedMeterValue, *UEnum::GetValueAsString(NewAlertLevel), *TriggerId.ToString(), HeistGameState->GetAlertRevision());
 	return true;
 }
 
@@ -1595,43 +1655,29 @@ bool AHeistGameMode::ApplyLockdownWorldRestrictions(const FName TriggerId)
 	return bOutcomeFinalized;
 }
 
-void AHeistGameMode::HandleAlertTransitionTimerElapsed()
+EHeistAlertLevel AHeistGameMode::ResolveAlertLevelForMeter(const float AlertMeterValue) const
 {
-	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
-	if (!HasAuthority() || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame || HeistGameState->GetAlertLevel() != ScheduledAlertSourceLevel ||
-		HeistGameState->GetAlertRevision() != ScheduledAlertRevision)
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	if (!IsValid(BalanceData) || AlertMeterValue <= KINDA_SMALL_NUMBER)
 	{
-		UE_LOG(LogHeistNetwork, Warning, TEXT("Global alert timer blocked: ScheduledSource=%s ScheduledRevision=%d Current=%s CurrentRevision=%d Authority=%s Result=PASS Reason=StaleOrMatchEnded"),
-			   *UEnum::GetValueAsString(ScheduledAlertSourceLevel), ScheduledAlertRevision,
-			   IsValid(HeistGameState) ? *UEnum::GetValueAsString(HeistGameState->GetAlertLevel()) : TEXT("MissingGameState"),
-			   IsValid(HeistGameState) ? HeistGameState->GetAlertRevision() : INDEX_NONE, HasAuthority() ? TEXT("true") : TEXT("false"));
-		return;
+		return EHeistAlertLevel::Quiet;
 	}
-
-	const EHeistAlertLevel NextAlertLevel = GetNextAlertLevel(ScheduledAlertSourceLevel);
-	const FName TimerTriggerId(*FString::Printf(TEXT("AlertTimer_%s_%d"), *UEnum::GetValueAsString(ScheduledAlertSourceLevel), ScheduledAlertRevision));
-	ApplyAlertLevel(NextAlertLevel, TimerTriggerId);
-}
-
-EHeistAlertLevel AHeistGameMode::GetNextAlertLevel(const EHeistAlertLevel CurrentAlertLevel) const
-{
-	switch (CurrentAlertLevel)
+	if (AlertMeterValue >= BalanceData->LockdownAlertMeterThreshold)
 	{
-	case EHeistAlertLevel::Quiet:
-		return EHeistAlertLevel::Suspicious;
-	case EHeistAlertLevel::Suspicious:
-		return EHeistAlertLevel::Searching;
-	case EHeistAlertLevel::Searching:
+		return EHeistAlertLevel::Lockdown;
+	}
+	if (AlertMeterValue >= BalanceData->AlarmedAlertMeterThreshold)
+	{
 		return EHeistAlertLevel::Alarmed;
-	case EHeistAlertLevel::Alarmed:
-		return EHeistAlertLevel::Lockdown;
-	case EHeistAlertLevel::Lockdown:
-	default:
-		return EHeistAlertLevel::Lockdown;
 	}
+	if (AlertMeterValue >= BalanceData->SearchingAlertMeterThreshold)
+	{
+		return EHeistAlertLevel::Searching;
+	}
+	return EHeistAlertLevel::Suspicious;
 }
 
-float AHeistGameMode::ResolveAlertTransitionDelay(const EHeistAlertLevel CurrentAlertLevel) const
+float AHeistGameMode::ResolveMinimumMeterForAlertLevel(const EHeistAlertLevel AlertLevel) const
 {
 	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
 	if (!IsValid(BalanceData))
@@ -1639,16 +1685,17 @@ float AHeistGameMode::ResolveAlertTransitionDelay(const EHeistAlertLevel Current
 		return 0.0f;
 	}
 
-	switch (CurrentAlertLevel)
+	switch (AlertLevel)
 	{
 	case EHeistAlertLevel::Suspicious:
-		return FMath::Max(0.0f, BalanceData->SuspiciousToSearchingDelay);
+		return BalanceData->AlertMeterStep;
 	case EHeistAlertLevel::Searching:
-		return FMath::Max(0.0f, BalanceData->SearchingToAlarmedDelay);
+		return BalanceData->SearchingAlertMeterThreshold;
 	case EHeistAlertLevel::Alarmed:
-		return FMath::Max(0.0f, BalanceData->AlarmedToLockdownDelay);
-	case EHeistAlertLevel::Quiet:
+		return BalanceData->AlarmedAlertMeterThreshold;
 	case EHeistAlertLevel::Lockdown:
+		return BalanceData->LockdownAlertMeterThreshold;
+	case EHeistAlertLevel::Quiet:
 	default:
 		return 0.0f;
 	}
@@ -2354,6 +2401,14 @@ float AHeistGameMode::GetGuardPerceptionRangeMultiplier() const
 	}
 
 	return FMath::Clamp(BalanceData->GuardPerceptionRangeMultiplier, 0.0f, 2.0f);
+}
+
+float AHeistGameMode::GetGuardCaptureAlertIncrease() const
+{
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	return IsValid(BalanceData) && FMath::IsFinite(BalanceData->GuardCaptureAlertIncrease)
+		? FMath::Clamp(BalanceData->GuardCaptureAlertIncrease, 0.5f, 10.0f)
+		: 1.0f;
 }
 
 float AHeistGameMode::GetSecurityCameraEvaluationIntervalSeconds() const

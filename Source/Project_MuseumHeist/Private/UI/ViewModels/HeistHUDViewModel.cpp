@@ -24,6 +24,7 @@ void UHeistHUDViewModel::BeginDestroy()
 		GameState->GetEscapePhaseStateChangedDelegate().RemoveAll(this);
 		GameState->GetObjectiveStateChangedDelegate().RemoveAll(this);
 		GameState->GetAlertStateChangedDelegate().RemoveAll(this);
+		GameState->GetContractSnapshotChangedDelegate().RemoveAll(this);
 	}
 
 	if (IsValid(LocalPlayerState))
@@ -54,6 +55,7 @@ void UHeistHUDViewModel::SetupViewModel(AHeistGameState* InGameState, AHeistPlay
 		GameState->GetEscapePhaseStateChangedDelegate().RemoveAll(this);
 		GameState->GetObjectiveStateChangedDelegate().RemoveAll(this);
 		GameState->GetAlertStateChangedDelegate().RemoveAll(this);
+		GameState->GetContractSnapshotChangedDelegate().RemoveAll(this);
 	}
 
 	if (LocalPlayerState != InLocalPlayerState && IsValid(LocalPlayerState))
@@ -83,6 +85,8 @@ void UHeistHUDViewModel::SetupViewModel(AHeistGameState* InGameState, AHeistPlay
 		GameState->GetObjectiveStateChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandleObjectiveStateChanged);
 		GameState->GetAlertStateChangedDelegate().RemoveAll(this);
 		GameState->GetAlertStateChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandleAlertStateChanged);
+		GameState->GetContractSnapshotChangedDelegate().RemoveAll(this);
+		GameState->GetContractSnapshotChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandleContractSnapshotChanged);
 	}
 
 	if (IsValid(LocalPlayerState))
@@ -123,6 +127,8 @@ void UHeistHUDViewModel::RefreshPresentationState()
 	const FName ActiveObjectiveCaseId = IsValid(GameState) ? GameState->GetActiveTargetCaseId() : NAME_None;
 	const EHeistObjectiveState ActiveObjectiveState = IsValid(GameState) ? GameState->GetObjectiveState() : EHeistObjectiveState::Inactive;
 	const EHeistAlertLevel ActiveAlertLevel = IsValid(GameState) ? GameState->GetAlertLevel() : EHeistAlertLevel::Quiet;
+	const float ActiveAlertMeterValue = IsValid(GameState) ? GameState->GetAlertMeterValue() : 0.0f;
+	const FHeistContractSnapshot ContractSnapshot = IsValid(GameState) ? GameState->GetContractSnapshot() : FHeistContractSnapshot();
 
 	UE_MVVM_SET_PROPERTY_VALUE(bObservationCastActive, bLocalObservationCastActive);
 	UE_MVVM_SET_PROPERTY_VALUE(ObservationCastEndServerTime, bLocalObservationCastActive ? ActionComponent->GetObservationCastEndServerTime() : 0.0f);
@@ -134,18 +140,9 @@ void UHeistHUDViewModel::RefreshPresentationState()
 	UE_MVVM_SET_PROPERTY_VALUE(ObjectiveCaseId, ActiveObjectiveCaseId);
 	UE_MVVM_SET_PROPERTY_VALUE(ObjectiveState, ActiveObjectiveState);
 
-	const int32 NewSecurityLevel = FMath::Clamp(static_cast<int32>(ActiveAlertLevel), 0, 4);
-	FString SecurityLevelStars;
-	for (int32 Index = 0; Index < 4; ++Index)
-	{
-		if (Index > 0)
-		{
-			SecurityLevelStars += TEXT(" ");
-		}
-		SecurityLevelStars += Index < NewSecurityLevel ? TEXT("\u2605") : TEXT("\u2606");
-	}
+	const int32 NewSecurityLevel = FMath::Clamp(FMath::FloorToInt(ActiveAlertMeterValue), 0, 10);
 	const FText NewAlertBannerText =
-		FText::Format(NSLOCTEXT("HeistHUD", "SecurityLevelFormat", "경계 단계 {0}/4  {1}"), FText::AsNumber(NewSecurityLevel), FText::FromString(SecurityLevelStars));
+		FText::Format(NSLOCTEXT("HeistHUD", "SecurityLevelFormat", "경계도 {0}/10"), FText::AsNumber(ActiveAlertMeterValue));
 	FLinearColor NewAlertColor;
 	switch (ActiveAlertLevel)
 	{
@@ -167,13 +164,17 @@ void UHeistHUDViewModel::RefreshPresentationState()
 		break;
 	}
 
-	const bool bLockdownCountdownActive = IsValid(GameState) && GameState->IsLockdownCountdownActive();
 	UE_MVVM_SET_PROPERTY_VALUE(AlertLevel, ActiveAlertLevel);
+	UE_MVVM_SET_PROPERTY_VALUE(AlertMeterValue, ActiveAlertMeterValue);
+	UE_MVVM_SET_PROPERTY_VALUE(MissionEndServerTime, ContractSnapshot.ContractEndServerTime);
+	UE_MVVM_SET_PROPERTY_VALUE(RequiredTargetDisplayName, ContractSnapshot.RequiredTargetDisplayName);
+	UE_MVVM_SET_PROPERTY_VALUE(bRequiredTargetAcquired, IsValid(GameState) && (IsValid(GameState->GetOriginalCarrierCandidate()) || ContractSnapshot.bRequiredTargetSecured));
+	UE_MVVM_SET_PROPERTY_VALUE(LastAlertTriggerId, IsValid(GameState) ? GameState->GetLastAlertTriggerId() : NAME_None);
 	UE_MVVM_SET_PROPERTY_VALUE(SecurityLevel, NewSecurityLevel);
 	UE_MVVM_SET_PROPERTY_VALUE(AlertBannerText, NewAlertBannerText);
 	UE_MVVM_SET_PROPERTY_VALUE(AlertColor, NewAlertColor);
-	UE_MVVM_SET_PROPERTY_VALUE(bLockdownCountdownVisible, bLockdownCountdownActive);
-	UE_MVVM_SET_PROPERTY_VALUE(LockdownCountdownEndServerTime, bLockdownCountdownActive ? GameState->GetAlertNextTransitionServerTime() : 0.0f);
+	UE_MVVM_SET_PROPERTY_VALUE(bLockdownCountdownVisible, false);
+	UE_MVVM_SET_PROPERTY_VALUE(LockdownCountdownEndServerTime, 0.0f);
 	UE_MVVM_SET_PROPERTY_VALUE(bSuspenseMusicActive, ActiveAlertLevel == EHeistAlertLevel::Suspicious || ActiveAlertLevel == EHeistAlertLevel::Searching);
 	UE_MVVM_SET_PROPERTY_VALUE(bAlarmMusicActive, ActiveAlertLevel == EHeistAlertLevel::Alarmed || ActiveAlertLevel == EHeistAlertLevel::Lockdown);
 
@@ -264,6 +265,8 @@ void UHeistHUDViewModel::RefreshCrewStatusEntries()
 			Entry.PlayerName = PlayerState->GetHeistDisplayName();
 			Entry.PlayerColor = PlayerState->PlayerColor;
 			Entry.Status = PlayerState->GetCrewStatus();
+			Entry.PlatformUserId = PlayerState->GetUniqueId().IsValid() ? PlayerState->GetUniqueId().ToString() : FString();
+			Entry.PlayerState = PlayerState;
 		}
 	}
 	NewEntries.Sort([](const FHeistCrewStatusEntry& Left, const FHeistCrewStatusEntry& Right) { return Left.PlayerId < Right.PlayerId; });
@@ -271,6 +274,11 @@ void UHeistHUDViewModel::RefreshCrewStatusEntries()
 }
 
 void UHeistHUDViewModel::HandleAlertStateChanged(const EHeistAlertLevel, const EHeistAlertLevel, const int32, const FName)
+{
+	RefreshPresentationState();
+}
+
+void UHeistHUDViewModel::HandleContractSnapshotChanged(const FHeistContractSnapshot&)
 {
 	RefreshPresentationState();
 }
@@ -415,6 +423,31 @@ const FText& UHeistHUDViewModel::GetObjectiveStateText() const
 EHeistAlertLevel UHeistHUDViewModel::GetAlertLevel() const
 {
 	return AlertLevel;
+}
+
+float UHeistHUDViewModel::GetAlertMeterValue() const
+{
+	return AlertMeterValue;
+}
+
+float UHeistHUDViewModel::GetMissionEndServerTime() const
+{
+	return MissionEndServerTime;
+}
+
+const FText& UHeistHUDViewModel::GetRequiredTargetDisplayName() const
+{
+	return RequiredTargetDisplayName;
+}
+
+bool UHeistHUDViewModel::IsRequiredTargetAcquired() const
+{
+	return bRequiredTargetAcquired;
+}
+
+FName UHeistHUDViewModel::GetLastAlertTriggerId() const
+{
+	return LastAlertTriggerId;
 }
 
 int32 UHeistHUDViewModel::GetSecurityLevel() const

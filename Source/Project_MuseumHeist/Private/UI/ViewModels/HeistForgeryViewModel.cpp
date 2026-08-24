@@ -65,24 +65,9 @@ void UHeistForgeryViewModel::RefreshPresentationState()
 	const float NewBrushSize = bTemplatePrepared ? ForgeryComponent->GetTemplateBrushSize() : 0.0f;
 
 	const EHeistAlertLevel NewAlertLevel = IsValid(GameState) ? GameState->GetAlertLevel() : EHeistAlertLevel::Quiet;
-	const bool bShowDangerWarning = bShowDrawing &&
-		(NewAlertLevel == EHeistAlertLevel::Alarmed || NewAlertLevel == EHeistAlertLevel::Lockdown);
-	FText NewDangerWarningText;
+	const bool bShowDangerWarning = false;
+	const FText NewDangerWarningText = FText::GetEmpty();
 	FLinearColor NewDangerWarningColor = FLinearColor::White;
-	if (bShowDangerWarning)
-	{
-		const int32 SecurityLevel = FMath::Clamp(static_cast<int32>(NewAlertLevel), 0, 4);
-		FString SecurityLevelStars;
-		for (int32 Index = 0; Index < 4; ++Index)
-		{
-			if (Index > 0)
-			{
-				SecurityLevelStars += TEXT(" ");
-			}
-			SecurityLevelStars += Index < SecurityLevel ? TEXT("\u2605") : TEXT("\u2606");
-		}
-		NewDangerWarningText = FText::Format(NSLOCTEXT("HeistForgery", "SecurityLevelFormat", "경계 단계 {0}/4  {1}"), FText::AsNumber(SecurityLevel), FText::FromString(SecurityLevelStars));
-	}
 
 	switch (NewAlertLevel)
 	{
@@ -111,13 +96,12 @@ void UHeistForgeryViewModel::RefreshPresentationState()
 	UE_MVVM_SET_PROPERTY_VALUE(StrokeLimit, NewStrokeLimit);
 	UE_MVVM_SET_PROPERTY_VALUE(BrushSize, NewBrushSize);
 
-	const bool bLockdownCountdownActive = bShowDrawing && IsValid(GameState) && GameState->IsLockdownCountdownActive();
 	UE_MVVM_SET_PROPERTY_VALUE(AlertLevel, NewAlertLevel);
 	UE_MVVM_SET_PROPERTY_VALUE(bDangerWarningVisible, bShowDangerWarning);
 	UE_MVVM_SET_PROPERTY_VALUE(DangerWarningText, NewDangerWarningText);
 	UE_MVVM_SET_PROPERTY_VALUE(DangerWarningColor, NewDangerWarningColor);
-	UE_MVVM_SET_PROPERTY_VALUE(bLockdownCountdownVisible, bLockdownCountdownActive);
-	UE_MVVM_SET_PROPERTY_VALUE(LockdownCountdownEndServerTime, bLockdownCountdownActive ? GameState->GetAlertNextTransitionServerTime() : 0.0f);
+	UE_MVVM_SET_PROPERTY_VALUE(bLockdownCountdownVisible, false);
+	UE_MVVM_SET_PROPERTY_VALUE(LockdownCountdownEndServerTime, 0.0f);
 
 	PresentationChangedDelegate.Broadcast();
 	UE_LOG(LogHeistUI, Verbose, TEXT("Forgery presentation refreshed: Visible=%s Drawing=%s ReferenceImage=%s PaletteColors=%d StrokeLimit=%d Brush=%.4f EndServerTime=%.2f OwnerOnly=true"),

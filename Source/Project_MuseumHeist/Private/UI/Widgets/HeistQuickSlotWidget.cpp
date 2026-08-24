@@ -41,6 +41,10 @@ void UHeistQuickSlotWidget::NativeDestruct()
 
 bool UHeistQuickSlotWidget::NativeOnDragOver(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
 {
+	if (bHUDPresentation)
+	{
+		return false;
+	}
 	const bool bCanAssign = IsValid(Cast<UHeistInventoryDragDropOperation>(InOperation)) && ConfirmedPresentation.SlotType != EHeistQuickSlotType::None;
 	SetDropPreview(bCanAssign);
 	return bCanAssign || Super::NativeOnDragOver(InGeometry, InDragDropEvent, InOperation);
@@ -48,12 +52,20 @@ bool UHeistQuickSlotWidget::NativeOnDragOver(const FGeometry& InGeometry, const 
 
 void UHeistQuickSlotWidget::NativeOnDragLeave(const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
 {
+	if (bHUDPresentation)
+	{
+		return;
+	}
 	SetDropPreview(false);
 	Super::NativeOnDragLeave(InDragDropEvent, InOperation);
 }
 
 bool UHeistQuickSlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
 {
+	if (bHUDPresentation)
+	{
+		return false;
+	}
 	const UHeistInventoryDragDropOperation* InventoryOperation = Cast<UHeistInventoryDragDropOperation>(InOperation);
 	const bool bHandled = IsValid(InventoryOperation) && IsValid(InventoryWidget) && ConfirmedPresentation.SlotType != EHeistQuickSlotType::None;
 	if (bHandled)
@@ -71,6 +83,7 @@ bool UHeistQuickSlotWidget::NativeOnDrop(const FGeometry& InGeometry, const FDra
 
 void UHeistQuickSlotWidget::SetupQuickSlot(const FHeistQuickSlotPresentation& InConfirmedPresentation, UTexture2D* InIcon, UHeistInventoryWidget* InInventoryWidget)
 {
+	bHUDPresentation = false;
 	ConfirmedPresentation = InConfirmedPresentation;
 	InventoryWidget = InInventoryWidget;
 
@@ -86,6 +99,22 @@ void UHeistQuickSlotWidget::SetupQuickSlot(const FHeistQuickSlotPresentation& In
 	RefreshPresentation();
 }
 
+void UHeistQuickSlotWidget::SetupHUDQuickSlot(const FHeistQuickSlotPresentation& InConfirmedPresentation, UTexture2D* InIcon)
+{
+	bHUDPresentation = true;
+	ConfirmedPresentation = InConfirmedPresentation;
+	InventoryWidget = nullptr;
+	if (IsValid(PlaceholderIcon))
+	{
+		if (IsValid(InIcon))
+		{
+			PlaceholderIcon->SetBrushFromTexture(InIcon);
+		}
+		PlaceholderIcon->SetOpacity(ConfirmedPresentation.bAssigned ? 1.0f : 0.22f);
+	}
+	RefreshPresentation();
+}
+
 void UHeistQuickSlotWidget::RefreshPresentation()
 {
 	if (IsValid(KeyLabelText))
@@ -94,6 +123,7 @@ void UHeistQuickSlotWidget::RefreshPresentation()
 	}
 	if (IsValid(ItemIdText))
 	{
+		ItemIdText->SetVisibility(bHUDPresentation ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 		FString ItemDisplayName = ConfirmedPresentation.ItemId.ToString();
 		ItemDisplayName.ReplaceInline(TEXT("_"), TEXT(" "));
 		ItemIdText->SetText(ConfirmedPresentation.bAssigned
@@ -107,11 +137,13 @@ void UHeistQuickSlotWidget::RefreshPresentation()
 	}
 	if (IsValid(AssignmentStateText))
 	{
+		AssignmentStateText->SetVisibility(bHUDPresentation ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 		AssignmentStateText->SetText(ConfirmedPresentation.bAssigned ? NSLOCTEXT("HeistQuickSlot", "Assigned", "준비")
 																	: NSLOCTEXT("HeistQuickSlot", "Empty", "동전을 여기에 놓으세요"));
 	}
 	if (IsValid(ClearButton))
 	{
+		ClearButton->SetVisibility(bHUDPresentation ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
 		ClearButton->SetIsEnabled(ConfirmedPresentation.bAssigned);
 	}
 	if (IsValid(SlotBackground))

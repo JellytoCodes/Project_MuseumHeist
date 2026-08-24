@@ -78,9 +78,11 @@ bool FHeistContractSnapshotTest::RunTest(const FString& Parameters)
 	FHeistContractSnapshot Snapshot;
 	Snapshot.ContractId = FName(TEXT("Contract_MuseumSwap_01"));
 	Snapshot.MapId = FName(TEXT("M01"));
+	Snapshot.ContractEndServerTime = 1200.0f;
 	Snapshot.AssignmentSeed = 12345;
 	Snapshot.ContractStartPlayerCount = 2;
 	Snapshot.RequiredTargetArtifactId = FName(TEXT("Artifact_Painting_M01"));
+	Snapshot.RequiredTargetDisplayName = FText::FromString(TEXT("테스트 필수 작품"));
 	Snapshot.RequiredTargetCaseId = FName(TEXT("Case_M01_Target"));
 	Snapshot.LootValueQuota = 4000;
 	Snapshot.Revision = 1;
@@ -149,9 +151,11 @@ bool FHeistContractOutcomeMatrixTest::RunTest(const FString& Parameters)
 		FHeistContractSnapshot Snapshot;
 		Snapshot.ContractId = FName(TEXT("Contract_MuseumSwap_01"));
 		Snapshot.MapId = FName(TEXT("M01"));
+		Snapshot.ContractEndServerTime = 1200.0f;
 		Snapshot.AssignmentSeed = 12345;
 		Snapshot.ContractStartPlayerCount = 2;
 		Snapshot.RequiredTargetArtifactId = FName(TEXT("Artifact_Painting_M01"));
+		Snapshot.RequiredTargetDisplayName = FText::FromString(TEXT("테스트 필수 작품"));
 		Snapshot.RequiredTargetCaseId = FName(TEXT("Case_M01_Target"));
 		Snapshot.LootValueQuota = 4000;
 		Snapshot.Revision = 1;

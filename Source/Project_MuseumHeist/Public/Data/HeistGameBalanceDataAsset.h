@@ -59,14 +59,26 @@ class PROJECT_MUSEUMHEIST_API UHeistGameBalanceDataAsset : public UDataAsset
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Match", meta = (ClampMin = "0.0", Units = "s"))
 	float VentUnlockTime = 180.0f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Alert", meta = (ClampMin = "0.0", Units = "s"))
-	float SuspiciousToSearchingDelay = 20.0f;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Alert", meta = (ClampMin = "0.5", ClampMax = "0.5"))
+	float AlertMeterStep = 0.5f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Alert", meta = (ClampMin = "0.0", Units = "s"))
-	float SearchingToAlarmedDelay = 20.0f;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Alert", meta = (ClampMin = "10.0", ClampMax = "10.0"))
+	float AlertMeterMaximum = 10.0f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Alert", meta = (ClampMin = "0.0", Units = "s"))
-	float AlarmedToLockdownDelay = 30.0f;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Alert", meta = (ClampMin = "0.5", ClampMax = "10.0"))
+	float GuardCaptureAlertIncrease = 1.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Alert", meta = (ClampMin = "0.5", ClampMax = "10.0"))
+	float SecurityIncidentAlertIncrease = 0.5f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Alert", meta = (ClampMin = "0.5", ClampMax = "10.0"))
+	float SearchingAlertMeterThreshold = 4.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Alert", meta = (ClampMin = "0.5", ClampMax = "10.0"))
+	float AlarmedAlertMeterThreshold = 7.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Alert", meta = (ClampMin = "10.0", ClampMax = "10.0"))
+	float LockdownAlertMeterThreshold = 10.0f;
 
 	/** Global range-only multiplier for guard sight, lose-sight, and SoundPing acceptance. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|AI|Perception", meta = (ClampMin = "0.0", ClampMax = "2.0"))

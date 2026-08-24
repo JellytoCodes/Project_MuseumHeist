@@ -88,6 +88,7 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 
   public:
 	bool RequestAlertEscalation(EHeistAlertLevel RequestedAlertLevel, FName TriggerId, bool* bOutLevelChanged = nullptr);
+	bool RequestAlertIncrease(float IncreaseAmount, FName TriggerId, bool* bOutMeterChanged = nullptr);
 	bool RequestSecurityIncident(const FVector& WorldLocation, FName IncidentId);
 	bool RequestForgeryTimeoutInvestigation(const FVector& WorldLocation, FName SourceId);
 	static bool TryConsumeOneShotSecurityId(TSet<FName>& InOutProcessedIds, FName SourceId);
@@ -102,17 +103,14 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 		bool& bOutDuplicate, FName& OutReason);
 	void InitializeAlertState();
 	bool ApplyAlertLevel(EHeistAlertLevel NewAlertLevel, FName TriggerId);
+	bool ApplyAlertMeterValue(float NewAlertMeterValue, FName TriggerId, bool* bOutLevelChanged = nullptr);
 	bool ApplyLockdownWorldRestrictions(FName TriggerId);
-	void HandleAlertTransitionTimerElapsed();
-	EHeistAlertLevel GetNextAlertLevel(EHeistAlertLevel CurrentAlertLevel) const;
-	float ResolveAlertTransitionDelay(EHeistAlertLevel CurrentAlertLevel) const;
+	EHeistAlertLevel ResolveAlertLevelForMeter(float AlertMeterValue) const;
+	float ResolveMinimumMeterForAlertLevel(EHeistAlertLevel AlertLevel) const;
 
-	FTimerHandle AlertTransitionTimerHandle;
 	TSet<FName> ProcessedAlertTriggerIds;
 	TSet<FName> ProcessedSecurityIncidentIds;
 	TSet<FName> ProcessedGuardInvestigationSourceIds;
-	EHeistAlertLevel ScheduledAlertSourceLevel = EHeistAlertLevel::Quiet;
-	int32 ScheduledAlertRevision = 0;
 	bool bLockdownWorldRestrictionsApplied = false;
 
 #pragma endregion
@@ -147,6 +145,7 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 	float GetDifficultyAppliedDetectionMultiplier() const;
 	float GetDifficultyAppliedInspectionDurationMultiplier() const;
 	float GetGuardPerceptionRangeMultiplier() const;
+	float GetGuardCaptureAlertIncrease() const;
 	float GetSecurityCameraEvaluationIntervalSeconds() const;
 	float GetSecurityCameraDetectionBuildUpSeconds() const;
 	float GetSecurityCameraDetectionCooldownSeconds() const;

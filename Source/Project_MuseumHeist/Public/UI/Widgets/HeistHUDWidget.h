@@ -17,6 +17,8 @@ class UAudioComponent;
 class USoundBase;
 class UTexture2D;
 class AHeistPlayerController;
+class UHeistTeamCardWidget;
+class UHeistQuickSlotWidget;
 
 UCLASS(Blueprintable)
 class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
@@ -51,14 +53,20 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 	void ResolveCrosshairWidgets();
 	void RefreshCrosshairPresentation(AActor* TargetActor, bool bAvailable);
 	void RefreshToolPresentation();
+	void RefreshMissionPresentation();
 	void RefreshAlertPresentation();
+	void RefreshAlertStars();
+	void RefreshTransientEvent();
+	void ShowTransientEvent(const FText& EventText);
+	FText ResolveAlertEventText(FName TriggerId) const;
 	void RefreshCrewStatusPresentation();
+	void RefreshInventoryShortcutPresentation();
+	void RefreshHUDQuickSlots();
 	void ResolveCrewPresentationWidgets();
 	void ApplyLocalCrewStatusPresentation(EHeistCrewStatus CrewStatus);
 	void RefreshStunCountdown();
 	EHeistCrewStatus ResolveLocalCrewStatus() const;
 	UTexture2D* ResolveStatusIconTexture(EHeistCrewStatus CrewStatus) const;
-	void RefreshLockdownCountdown();
 	void SetupTutorialPresentation();
 	void RefreshTutorialPresentation();
 	void ApplyAlertAudioLayers();
@@ -135,11 +143,53 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> StatusText;
 
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> AlertText;
 
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> LockdownCountdownText;
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> MissionTitleText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> MissionTimeText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> RequiredTargetNameText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> AlertTitleText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> AlertEventText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UImage> AlertStar01;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UImage> AlertStar02;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UImage> AlertStar03;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UImage> AlertStar04;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UImage> AlertStar05;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UImage> AlertStar06;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UImage> AlertStar07;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UImage> AlertStar08;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UImage> AlertStar09;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UImage> AlertStar10;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistInteractionPromptWidget> InteractionPromptWidget;
@@ -161,6 +211,33 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UPanelWidget> TeamStatusContainer;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UHeistTeamCardWidget> TeamCard1;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UHeistTeamCardWidget> TeamCard2;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UHeistTeamCardWidget> TeamCard3;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UHeistTeamCardWidget> TeamCard4;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UImage> InventoryShortcutIcon;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> InventoryShortcutKeyText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UHeistQuickSlotWidget> HUDQuickSlot1;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UHeistQuickSlotWidget> HUDQuickSlot2;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UHeistQuickSlotWidget> HUDQuickSlot3;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<class UBorder> StunOverlay;
@@ -204,6 +281,18 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Alert|Audio", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<USoundBase> AlarmMusic;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Alert|Visual", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UTexture2D> EmptyAlertStarTexture;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Alert|Visual", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UTexture2D> HalfAlertStarTexture;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Alert|Visual", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UTexture2D> FullAlertStarTexture;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|QuickSlot|Visual", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UTexture2D> CoinQuickSlotIcon;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Alert|Audio", meta = (ClampMin = "0.0", ClampMax = "1.0", AllowPrivateAccess = "true"))
 	float SuspenseMusicVolume = 0.55f;
 
@@ -244,8 +333,10 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 	EHeistCrewStatus LastPresentedLocalCrewStatus = EHeistCrewStatus::Active;
 	bool bAlertAudioInitialized = false;
 	bool bLocalCrewStatusPresentationInitialized = false;
-	int32 LastDisplayedLockdownSeconds = INDEX_NONE;
+	int32 LastDisplayedMissionSeconds = INDEX_NONE;
 	int32 LastDisplayedStunSeconds = INDEX_NONE;
+	FName LastPresentedAlertTriggerId = NAME_None;
+	float TransientEventHideWorldTime = 0.0f;
 	FName LastArrestFeedbackEvent = NAME_None;
 	int32 ArrestAudioPlayCount = 0;
 	int32 RescueAudioPlayCount = 0;

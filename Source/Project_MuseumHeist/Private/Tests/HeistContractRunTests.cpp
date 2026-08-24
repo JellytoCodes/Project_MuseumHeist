@@ -63,6 +63,7 @@ struct FHeistContractRunAutomationState
 	int32 SecurityDetectionRevisionBaseline = 0;
 	int32 SecurityIncidentCountBaseline = 0;
 	int32 SecurityInvestigationCountBaseline = 0;
+	float SecurityAlertMeterBaseline = 0.0f;
 	TMap<TWeakObjectPtr<AHeistPlayerCharacter>, int32> CrewStatusFootstepBaselines;
 };
 
@@ -315,8 +316,9 @@ bool BootstrapSandBoxSecurityContract()
 	}
 
 	if (!GameState->IsContractInitialized() &&
-		!GameState->InitializeContractSnapshot(FName(TEXT("Contract_MuseumSwap_01")), FName(TEXT("M01")), 8008, 1,
-			RequiredCase->GetTargetArtifactId(), RequiredCase->GetDisplayCaseId(), 4000))
+		!GameState->InitializeContractSnapshot(FName(TEXT("Contract_MuseumSwap_01")), FName(TEXT("M01")),
+			GameState->GetServerWorldTimeSeconds() + 1200.0f, 8008, 1, RequiredCase->GetTargetArtifactId(), FText::FromString(TEXT("테스트 필수 작품")),
+			RequiredCase->GetDisplayCaseId(), 4000))
 	{
 		return false;
 	}
@@ -470,6 +472,8 @@ bool PrepareReleaseSecurityInteraction(const TSharedRef<FHeistContractRunAutomat
 	State->SecurityDetectionRevisionBaseline = Camera->GetDetectionRevision();
 	State->SecurityIncidentCountBaseline = GameMode->GetProcessedSecurityIncidentCount();
 	State->SecurityInvestigationCountBaseline = GameMode->GetProcessedGuardInvestigationCount();
+	const AHeistGameState* GameState = ServerWorld->GetGameState<AHeistGameState>();
+	State->SecurityAlertMeterBaseline = IsValid(GameState) ? GameState->GetAlertMeterValue() : 0.0f;
 	return ActiveGuardCount > 0;
 }
 
@@ -477,8 +481,10 @@ bool IsReleaseSecurityDetectionReady(const TSharedRef<FHeistContractRunAutomatio
 {
 	UWorld* ServerWorld = GetContractRunServerWorld();
 	const AHeistGameMode* GameMode = IsValid(ServerWorld) ? ServerWorld->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	const AHeistGameState* GameState = IsValid(ServerWorld) ? ServerWorld->GetGameState<AHeistGameState>() : nullptr;
 	return IsValid(GameMode) && GameMode->GetProcessedSecurityIncidentCount() == State->SecurityIncidentCountBaseline + 1 &&
 		GameMode->GetProcessedGuardInvestigationCount() == State->SecurityInvestigationCountBaseline + 1 &&
+		IsValid(GameState) && FMath::IsNearlyEqual(GameState->GetAlertMeterValue(), State->SecurityAlertMeterBaseline + 0.5f) &&
 		IsCameraDetectionReplicated(State->SecurityDetectionRevisionBaseline + 1, 2);
 }
 
@@ -486,17 +492,19 @@ bool IsReleaseSecurityIncidentOneShot(const TSharedRef<FHeistContractRunAutomati
 {
 	UWorld* ServerWorld = GetContractRunServerWorld();
 	const AHeistGameMode* GameMode = IsValid(ServerWorld) ? ServerWorld->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	const AHeistGameState* GameState = IsValid(ServerWorld) ? ServerWorld->GetGameState<AHeistGameState>() : nullptr;
 	const AHeistSecurityCameraActor* Camera = FindOnlyActorOfType<AHeistSecurityCameraActor>(ServerWorld);
 	return IsValid(GameMode) && IsValid(Camera) && Camera->GetDetectionRevision() == State->SecurityDetectionRevisionBaseline + 1 &&
 		GameMode->GetProcessedSecurityIncidentCount() == State->SecurityIncidentCountBaseline + 1 &&
-		GameMode->GetProcessedGuardInvestigationCount() == State->SecurityInvestigationCountBaseline + 1;
+		GameMode->GetProcessedGuardInvestigationCount() == State->SecurityInvestigationCountBaseline + 1 && IsValid(GameState) &&
+		FMath::IsNearlyEqual(GameState->GetAlertMeterValue(), State->SecurityAlertMeterBaseline + 0.5f);
 }
 
 bool ResetReleaseSecurityAfterCamera()
 {
 	UWorld* ServerWorld = GetContractRunServerWorld();
 	AHeistGameState* GameState = IsValid(ServerWorld) ? ServerWorld->GetGameState<AHeistGameState>() : nullptr;
-	if (!IsValid(GameState) || !GameState->SetAlertSnapshot(EHeistAlertLevel::Quiet, 0.0f, FName(TEXT("W8ReleaseCameraReset"))))
+	if (!IsValid(GameState) || !GameState->SetAlertSnapshot(0.0f, EHeistAlertLevel::Quiet, FName(TEXT("W8ReleaseCameraReset"))))
 	{
 		return false;
 	}
@@ -2274,7 +2282,7 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 			return true;
 		}
 		AHeistGameState* GameState = GetContractRunServerWorld()->GetGameState<AHeistGameState>();
-		return IsValid(GameState) && GameState->SetAlertSnapshot(EHeistAlertLevel::Quiet, 0.0f, FName(TEXT("W7SurfaceDangerCloseReset")));
+		return IsValid(GameState) && GameState->SetAlertSnapshot(0.0f, EHeistAlertLevel::Quiet, FName(TEXT("W7SurfaceDangerCloseReset")));
 	}));
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d W7 restart Surface after danger close"), RunIndex), [State, RunIndex]()
 	{
@@ -2704,6 +2712,8 @@ bool EnqueueSandBoxSecurityCooperationScenario(FAutomationTestBase* Test)
 		State->SecurityDetectionRevisionBaseline = Camera->GetDetectionRevision();
 		State->SecurityIncidentCountBaseline = GameMode->GetProcessedSecurityIncidentCount();
 		State->SecurityInvestigationCountBaseline = GameMode->GetProcessedGuardInvestigationCount();
+		const AHeistGameState* GameState = ServerWorld->GetGameState<AHeistGameState>();
+		State->SecurityAlertMeterBaseline = IsValid(GameState) ? GameState->GetAlertMeterValue() : 0.0f;
 		return true;
 	}));
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("move player 2 into CCTV coverage"), []()
@@ -2721,9 +2731,11 @@ bool EnqueueSandBoxSecurityCooperationScenario(FAutomationTestBase* Test)
 	{
 		UWorld* ServerWorld = GetContractRunServerWorld();
 		const AHeistGameMode* GameMode = IsValid(ServerWorld) ? ServerWorld->GetAuthGameMode<AHeistGameMode>() : nullptr;
+		const AHeistGameState* GameState = IsValid(ServerWorld) ? ServerWorld->GetGameState<AHeistGameState>() : nullptr;
 		return IsValid(GameMode) &&
 			GameMode->GetProcessedSecurityIncidentCount() == State->SecurityIncidentCountBaseline + 1 &&
 			GameMode->GetProcessedGuardInvestigationCount() == State->SecurityInvestigationCountBaseline + 1 &&
+			IsValid(GameState) && FMath::IsNearlyEqual(GameState->GetAlertMeterValue(), State->SecurityAlertMeterBaseline + 0.5f) &&
 			IsCameraDetectionReplicated(State->SecurityDetectionRevisionBaseline + 1, 2);
 	}, 12.0));
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("move player 2 out of CCTV coverage"), []()
@@ -2735,10 +2747,12 @@ bool EnqueueSandBoxSecurityCooperationScenario(FAutomationTestBase* Test)
 	{
 		UWorld* ServerWorld = GetContractRunServerWorld();
 		const AHeistGameMode* GameMode = IsValid(ServerWorld) ? ServerWorld->GetAuthGameMode<AHeistGameMode>() : nullptr;
+		const AHeistGameState* GameState = IsValid(ServerWorld) ? ServerWorld->GetGameState<AHeistGameState>() : nullptr;
 		const AHeistSecurityCameraActor* Camera = FindOnlyActorOfType<AHeistSecurityCameraActor>(ServerWorld);
 		return IsValid(GameMode) && IsValid(Camera) && Camera->GetDetectionRevision() == State->SecurityDetectionRevisionBaseline + 1 &&
 			GameMode->GetProcessedSecurityIncidentCount() == State->SecurityIncidentCountBaseline + 1 &&
-			GameMode->GetProcessedGuardInvestigationCount() == State->SecurityInvestigationCountBaseline + 1;
+			GameMode->GetProcessedGuardInvestigationCount() == State->SecurityInvestigationCountBaseline + 1 && IsValid(GameState) &&
+			FMath::IsNearlyEqual(GameState->GetAlertMeterValue(), State->SecurityAlertMeterBaseline + 0.5f);
 	}));
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("move player 1 into Security Hold Button interaction"), []()
 	{

@@ -24,6 +24,12 @@ struct PROJECT_MUSEUMHEIST_API FHeistCrewStatusEntry
 
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|Crew")
 	EHeistCrewStatus Status = EHeistCrewStatus::Active;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Crew")
+	FString PlatformUserId;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Crew")
+	TObjectPtr<class AHeistPlayerState> PlayerState = nullptr;
 };
 
 UCLASS(BlueprintType)
@@ -56,6 +62,7 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
 	void HandlePlayerConnectionsChanged(int32 ConnectedPlayers);
 	void HandlePlayerIdentityChanged(int32 PlayerId);
 	void HandleCrewStatusChanged(EHeistCrewStatus CrewStatus);
+	void HandleContractSnapshotChanged(const FHeistContractSnapshot& ContractSnapshot);
 	void RefreshCrewStatusEntries();
 	void UnbindCrewPlayerStates();
 	void HandleAlertStateChanged(EHeistAlertLevel PreviousAlertLevel, EHeistAlertLevel NewAlertLevel, int32 AlertRevision, FName TriggerId);
@@ -101,6 +108,11 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
 	const FText& GetObservationReferenceText() const;
 	const FText& GetObjectiveStateText() const;
 	EHeistAlertLevel GetAlertLevel() const;
+	float GetAlertMeterValue() const;
+	float GetMissionEndServerTime() const;
+	const FText& GetRequiredTargetDisplayName() const;
+	bool IsRequiredTargetAcquired() const;
+	FName GetLastAlertTriggerId() const;
 	int32 GetSecurityLevel() const;
 	const FText& GetAlertBannerText() const;
 	FLinearColor GetAlertColor() const;
@@ -167,6 +179,21 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
 	EHeistAlertLevel AlertLevel = EHeistAlertLevel::Quiet;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
+	float AlertMeterValue = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Mission", meta = (AllowPrivateAccess = "true"))
+	float MissionEndServerTime = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Mission", meta = (AllowPrivateAccess = "true"))
+	FText RequiredTargetDisplayName;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Mission", meta = (AllowPrivateAccess = "true"))
+	bool bRequiredTargetAcquired = false;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
+	FName LastAlertTriggerId = NAME_None;
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
 	int32 SecurityLevel = 0;
