@@ -16,8 +16,8 @@
 
 namespace
 {
-constexpr int32 MaxSteamAvatarRetryCount = 10;
-constexpr float SteamAvatarRetrySeconds = 0.5f;
+constexpr int32 TeamCardMaxSteamAvatarRetryCount = 10;
+constexpr float TeamCardSteamAvatarRetrySeconds = 0.5f;
 constexpr float RemoteVoiceSpeakingThreshold = 0.02f;
 }
 
@@ -42,6 +42,7 @@ void UHeistTeamCardWidget::ApplyCrewData(const FHeistCrewStatusEntry& CrewEntry,
 	OwningHeistPlayerController = InOwningPlayerController;
 	PlatformUserId = CrewEntry.PlatformUserId;
 	CrewStatus = CrewEntry.Status;
+	SetVisibility(bOccupied ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
 
 	if (IsValid(PlayerNameText))
 	{
@@ -81,6 +82,7 @@ void UHeistTeamCardWidget::ApplyEmptySlot(const int32 InPlayerSlot)
 	PlatformUserId.Reset();
 	LoadedProfileTexture = nullptr;
 	CrewStatus = EHeistCrewStatus::Active;
+	SetVisibility(ESlateVisibility::Hidden);
 	if (IsValid(PlayerNameText))
 	{
 		PlayerNameText->SetText(FText::GetEmpty());
@@ -115,10 +117,10 @@ void UHeistTeamCardWidget::RefreshProfileImage()
 	}
 
 #if WITH_HEIST_STEAM_AVATAR
-	if (ProfileImageRetryCount < MaxSteamAvatarRetryCount && IsValid(GetWorld()))
+	if (ProfileImageRetryCount < TeamCardMaxSteamAvatarRetryCount && IsValid(GetWorld()))
 	{
 		++ProfileImageRetryCount;
-		GetWorld()->GetTimerManager().SetTimer(ProfileImageRetryTimerHandle, this, &UHeistTeamCardWidget::RetryProfileImageLoad, SteamAvatarRetrySeconds, false);
+		GetWorld()->GetTimerManager().SetTimer(ProfileImageRetryTimerHandle, this, &UHeistTeamCardWidget::RetryProfileImageLoad, TeamCardSteamAvatarRetrySeconds, false);
 	}
 #endif
 }
@@ -132,10 +134,10 @@ void UHeistTeamCardWidget::RetryProfileImageLoad()
 	}
 
 #if WITH_HEIST_STEAM_AVATAR
-	if (ProfileImageRetryCount < MaxSteamAvatarRetryCount && IsValid(GetWorld()))
+	if (ProfileImageRetryCount < TeamCardMaxSteamAvatarRetryCount && IsValid(GetWorld()))
 	{
 		++ProfileImageRetryCount;
-		GetWorld()->GetTimerManager().SetTimer(ProfileImageRetryTimerHandle, this, &UHeistTeamCardWidget::RetryProfileImageLoad, SteamAvatarRetrySeconds, false);
+		GetWorld()->GetTimerManager().SetTimer(ProfileImageRetryTimerHandle, this, &UHeistTeamCardWidget::RetryProfileImageLoad, TeamCardSteamAvatarRetrySeconds, false);
 	}
 #endif
 }
@@ -229,16 +231,6 @@ void UHeistTeamCardWidget::RefreshVoicePresentation()
 	{
 		MicStatusImage->SetColorAndOpacity(MicColor);
 		MicStatusImage->SetVisibility(bOccupied ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-	}
-	if (IsValid(MicStatusText))
-	{
-		const FText VoiceText = !bOccupied ? FText::GetEmpty() :
-			(bMuted ? NSLOCTEXT("HeistTeamCard", "VoiceMuted", "음소거") :
-				(bSpeaking ? NSLOCTEXT("HeistTeamCard", "VoiceSpeaking", "말하는 중") :
-					(bPushToTalkHeld ? NSLOCTEXT("HeistTeamCard", "VoicePTTHeld", "마이크 대기") : NSLOCTEXT("HeistTeamCard", "VoiceIdle", "마이크"))));
-		MicStatusText->SetText(VoiceText);
-		MicStatusText->SetColorAndOpacity(FSlateColor(MicColor));
-		MicStatusText->SetVisibility(bOccupied ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	}
 }
 

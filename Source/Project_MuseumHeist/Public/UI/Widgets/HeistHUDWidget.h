@@ -64,7 +64,6 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 	void RefreshHUDQuickSlots();
 	void ResolveCrewPresentationWidgets();
 	void ApplyLocalCrewStatusPresentation(EHeistCrewStatus CrewStatus);
-	void RefreshStunCountdown();
 	EHeistCrewStatus ResolveLocalCrewStatus() const;
 	UTexture2D* ResolveStatusIconTexture(EHeistCrewStatus CrewStatus) const;
 	void SetupTutorialPresentation();
@@ -240,21 +239,6 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 	TObjectPtr<UHeistQuickSlotWidget> HUDQuickSlot3;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<class UBorder> StunOverlay;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> StunCountdownText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<class UBorder> ArrestOverlay;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> ArrestTitleText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> ArrestInstructionText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UWidget> TutorialCardContainer;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
@@ -334,7 +318,6 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 	bool bAlertAudioInitialized = false;
 	bool bLocalCrewStatusPresentationInitialized = false;
 	int32 LastDisplayedMissionSeconds = INDEX_NONE;
-	int32 LastDisplayedStunSeconds = INDEX_NONE;
 	FName LastPresentedAlertTriggerId = NAME_None;
 	float TransientEventHideWorldTime = 0.0f;
 	FName LastArrestFeedbackEvent = NAME_None;

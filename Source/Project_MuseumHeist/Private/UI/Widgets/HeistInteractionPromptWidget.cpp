@@ -106,6 +106,10 @@ void UHeistInteractionPromptWidget::SetupInteractionPresentation(UHeistInteracti
 
 	InteractionComponent = InInteractionComponent;
 	HUDViewModel = InHUDViewModel;
+	if (IsValid(AvailabilityText))
+	{
+		AvailabilityText->SetText(NSLOCTEXT("HeistInteraction", "InteractionPrompt", "[E] 상호작용"));
+	}
 
 	UE_LOG(LogHeistUI, Verbose,
 		   TEXT("[%s] Interaction presentation setup: InteractionComponent=%s HUDViewModel=%s PromptContainer=%s ActionProgressContainer=%s SelfPromptFallback=%s SelfActionFallback=%s"), *GetName(),
@@ -157,7 +161,7 @@ void UHeistInteractionPromptWidget::RefreshInteractionPrompt(const bool bActionA
 		bAvailable = IsValid(TargetActor) && InteractionComponent->HasValidInteractionTarget();
 	}
 
-	const bool bVisible = IsValid(TargetActor) && !bActionActive;
+	const bool bVisible = bAvailable && !bActionActive;
 	if (IsValid(InteractionPromptContainer))
 	{
 		InteractionPromptContainer->SetVisibility(bVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
@@ -184,11 +188,6 @@ void UHeistInteractionPromptWidget::RefreshInteractionPrompt(const bool bActionA
 		const bool bObjectReviewReady = IsValid(ObjectCase) && ObjectCase->IsReplicaReviewReadyFor(GetOwningPlayerPawn());
 		KeyText->SetText(bPaintingReviewReady ? NSLOCTEXT("HeistInteraction", "PaintingReplicaReviewKeys", "E 교체·회수  |  R 다시 그리기")
 										: bObjectReviewReady ? NSLOCTEXT("HeistInteraction", "ObjectReplicaReviewKeys", "E 교체·회수  |  R 다시 조립") : InteractionKeyLabel);
-	}
-	if (IsValid(AvailabilityText))
-	{
-		AvailabilityText->SetText(bAvailable ? NSLOCTEXT("HeistInteraction", "Available", "상호작용")
-											: NSLOCTEXT("HeistInteraction", "Unavailable", "사용 불가"));
 	}
 }
 

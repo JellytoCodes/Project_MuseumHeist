@@ -2,20 +2,14 @@
 
 #include "Character/Components/HeistInteractionComponent.h"
 #include "Character/Components/HeistNoiseEmitterComponent.h"
-#include "Character/Components/HeistStatusComponent.h"
 #include "Character/HeistPlayerCharacter.h"
 #include "Components/AudioComponent.h"
-#include "Components/Border.h"
-#include "Components/CanvasPanel.h"
-#include "Components/CanvasPanelSlot.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/Image.h"
 #include "Components/PanelWidget.h"
 #include "Components/TextBlock.h"
-#include "Components/VerticalBox.h"
 #include "Components/Widget.h"
-#include "Core/HeistGameplayTags.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerController.h"
@@ -36,12 +30,6 @@
 
 namespace
 {
-FSlateFontInfo MakeHUDTenadaFont(const int32 Size)
-{
-	static UObject* TenadaFont = LoadObject<UObject>(nullptr, TEXT("/Game/Assets/UI/Fonts/F_TENADA.F_TENADA"));
-	return FSlateFontInfo(TenadaFont, Size);
-}
-
 const FName ArrestedFeedbackEvent(TEXT("Arrested"));
 const FName RescuedFeedbackEvent(TEXT("Rescued"));
 }
@@ -65,7 +53,6 @@ void UHeistHUDWidget::NativeTick(const FGeometry& MyGeometry, const float InDelt
 	}
 	RefreshMissionPresentation();
 	RefreshTransientEvent();
-	RefreshStunCountdown();
 }
 
 void UHeistHUDWidget::NativeDestruct()
@@ -219,88 +206,6 @@ void UHeistHUDWidget::ResolveCrewPresentationWidgets()
 	{
 		TeamCard4 = Cast<UHeistTeamCardWidget>(GetWidgetFromName(TEXT("TeamCard4")));
 	}
-	UCanvasPanel* RootCanvas = Cast<UCanvasPanel>(WidgetTree->RootWidget);
-	if (!IsValid(RootCanvas))
-	{
-		RootCanvas = Cast<UCanvasPanel>(GetWidgetFromName(TEXT("HUDCanvas")));
-	}
-	if (!IsValid(StunOverlay))
-	{
-		StunOverlay = Cast<UBorder>(GetWidgetFromName(TEXT("StunOverlay")));
-	}
-	if (!IsValid(StunCountdownText))
-	{
-		StunCountdownText = Cast<UTextBlock>(GetWidgetFromName(TEXT("StunCountdownText")));
-	}
-	if (!IsValid(StunOverlay) && IsValid(RootCanvas))
-	{
-		StunOverlay = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("StunOverlay"));
-		StunOverlay->SetBrushColor(FLinearColor(0.12f, 0.04f, 0.16f, 0.24f));
-		StunOverlay->SetHorizontalAlignment(HAlign_Center);
-		StunOverlay->SetVerticalAlignment(VAlign_Center);
-		StunOverlay->SetVisibility(ESlateVisibility::Collapsed);
-		StunCountdownText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("StunCountdownText"));
-		StunCountdownText->SetJustification(ETextJustify::Center);
-		StunCountdownText->SetFont(MakeHUDTenadaFont(26));
-		StunCountdownText->SetColorAndOpacity(FSlateColor(FLinearColor::White));
-		StunCountdownText->SetVisibility(ESlateVisibility::Collapsed);
-		StunOverlay->SetContent(StunCountdownText);
-		if (UCanvasPanelSlot* StunSlot = RootCanvas->AddChildToCanvas(StunOverlay))
-		{
-			StunSlot->SetAnchors(FAnchors(0.0f, 0.0f, 1.0f, 1.0f));
-			StunSlot->SetOffsets(FMargin(0.0f));
-		}
-	}
-	if (IsValid(StunOverlay) && !IsValid(StunCountdownText))
-	{
-		StunOverlay->SetHorizontalAlignment(HAlign_Center);
-		StunOverlay->SetVerticalAlignment(VAlign_Center);
-		StunCountdownText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("StunCountdownText"));
-		StunCountdownText->SetJustification(ETextJustify::Center);
-		StunCountdownText->SetFont(MakeHUDTenadaFont(26));
-		StunCountdownText->SetColorAndOpacity(FSlateColor(FLinearColor::White));
-		StunCountdownText->SetVisibility(ESlateVisibility::Collapsed);
-		StunOverlay->SetContent(StunCountdownText);
-	}
-
-	if (!IsValid(ArrestOverlay))
-	{
-		ArrestOverlay = Cast<UBorder>(GetWidgetFromName(TEXT("ArrestOverlay")));
-	}
-	if (!IsValid(ArrestTitleText))
-	{
-		ArrestTitleText = Cast<UTextBlock>(GetWidgetFromName(TEXT("ArrestTitleText")));
-	}
-	if (!IsValid(ArrestInstructionText))
-	{
-		ArrestInstructionText = Cast<UTextBlock>(GetWidgetFromName(TEXT("ArrestInstructionText")));
-	}
-	if (!IsValid(ArrestOverlay) && IsValid(RootCanvas))
-	{
-		ArrestOverlay = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("ArrestOverlay"));
-		ArrestOverlay->SetBrushColor(FLinearColor(0.12f, 0.01f, 0.01f, 0.58f));
-		ArrestOverlay->SetHorizontalAlignment(HAlign_Center);
-		ArrestOverlay->SetVerticalAlignment(VAlign_Center);
-		ArrestOverlay->SetVisibility(ESlateVisibility::Collapsed);
-
-		UVerticalBox* ArrestContent = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("ArrestContent"));
-		ArrestTitleText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("ArrestTitleText"));
-		ArrestTitleText->SetJustification(ETextJustify::Center);
-		ArrestTitleText->SetFont(MakeHUDTenadaFont(42));
-		ArrestTitleText->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.36f, 0.30f)));
-		ArrestInstructionText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("ArrestInstructionText"));
-		ArrestInstructionText->SetJustification(ETextJustify::Center);
-		ArrestInstructionText->SetFont(MakeHUDTenadaFont(20));
-		ArrestInstructionText->SetColorAndOpacity(FSlateColor(FLinearColor::White));
-		ArrestContent->AddChildToVerticalBox(ArrestTitleText);
-		ArrestContent->AddChildToVerticalBox(ArrestInstructionText);
-		ArrestOverlay->SetContent(ArrestContent);
-		if (UCanvasPanelSlot* ArrestSlot = RootCanvas->AddChildToCanvas(ArrestOverlay))
-		{
-			ArrestSlot->SetAnchors(FAnchors(0.0f, 0.0f, 1.0f, 1.0f));
-			ArrestSlot->SetOffsets(FMargin(0.0f));
-		}
-	}
 }
 
 EHeistCrewStatus UHeistHUDWidget::ResolveLocalCrewStatus() const
@@ -381,85 +286,6 @@ void UHeistHUDWidget::ApplyLocalCrewStatusPresentation(const EHeistCrewStatus Cr
 
 	bLocalCrewStatusPresentationInitialized = true;
 	LastPresentedLocalCrewStatus = CrewStatus;
-	const bool bStunned = CrewStatus == EHeistCrewStatus::Stunned;
-	const bool bArrested = CrewStatus == EHeistCrewStatus::Arrested;
-	if (IsValid(StunOverlay))
-	{
-		StunOverlay->SetVisibility(bStunned ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-	}
-	if (IsValid(StunCountdownText))
-	{
-		StunCountdownText->SetVisibility(bStunned ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-		if (!bStunned)
-		{
-			StunCountdownText->SetText(FText::GetEmpty());
-		}
-	}
-	if (IsValid(ArrestOverlay))
-	{
-		ArrestOverlay->SetVisibility(bArrested ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-	}
-	if (IsValid(ArrestTitleText))
-	{
-		ArrestTitleText->SetText(NSLOCTEXT("HeistHUD", "ArrestTitle", "체포됨"));
-		ArrestTitleText->SetVisibility(bArrested ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-	}
-	if (IsValid(ArrestInstructionText))
-	{
-		ArrestInstructionText->SetText(NSLOCTEXT("HeistHUD", "ArrestInstruction", "이동할 수 없습니다 · 팀원의 구조가 필요합니다"));
-		ArrestInstructionText->SetVisibility(bArrested ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-	}
-
-	if (bStunned)
-	{
-		LastDisplayedStunSeconds = INDEX_NONE;
-		RefreshStunCountdown();
-	}
-	else
-	{
-		LastDisplayedStunSeconds = INDEX_NONE;
-	}
-}
-
-void UHeistHUDWidget::RefreshStunCountdown()
-{
-	if (ResolveLocalCrewStatus() != EHeistCrewStatus::Stunned)
-	{
-		LastDisplayedStunSeconds = INDEX_NONE;
-		if (IsValid(StunCountdownText))
-		{
-			StunCountdownText->SetText(FText::GetEmpty());
-			StunCountdownText->SetVisibility(ESlateVisibility::Collapsed);
-		}
-		return;
-	}
-
-	const APlayerController* OwningPlayerController = GetOwningPlayer();
-	const AHeistPlayerCharacter* OwningCharacter = IsValid(OwningPlayerController) ? Cast<AHeistPlayerCharacter>(OwningPlayerController->GetPawn()) : nullptr;
-	const UHeistStatusComponent* StatusComponent = IsValid(OwningCharacter) ? OwningCharacter->GetStatusComponent() : nullptr;
-	const FGameplayTag StunnedTag = FHeistGameplayTags::Get().Event_Player_Stunned;
-	const FHeistTimedTagState* StunState = IsValid(StatusComponent)
-		? StatusComponent->GetStatusTags().FindByPredicate([StunnedTag](const FHeistTimedTagState& State) { return State.StateTag == StunnedTag; })
-		: nullptr;
-	const UWorld* World = GetWorld();
-	const AGameStateBase* WorldGameState = IsValid(World) ? World->GetGameState() : nullptr;
-	const int32 RemainingSeconds = StunState != nullptr && IsValid(WorldGameState) && StunState->EndServerTime > 0.0f
-		? FMath::Max(0, FMath::CeilToInt(StunState->EndServerTime - static_cast<float>(WorldGameState->GetServerWorldTimeSeconds())))
-		: INDEX_NONE;
-	if (RemainingSeconds == LastDisplayedStunSeconds && (!IsValid(StunCountdownText) || !StunCountdownText->GetText().IsEmpty()))
-	{
-		return;
-	}
-	LastDisplayedStunSeconds = RemainingSeconds;
-
-	if (!IsValid(StunCountdownText))
-	{
-		return;
-	}
-	StunCountdownText->SetVisibility(ESlateVisibility::HitTestInvisible);
-	StunCountdownText->SetText(RemainingSeconds == INDEX_NONE
-		? NSLOCTEXT("HeistHUD", "StunTimePending", "기절  --초")
-		: FText::Format(NSLOCTEXT("HeistHUD", "StunTimeFormat", "기절  {0}초"), FText::AsNumber(RemainingSeconds)));
 }
 
 void UHeistHUDWidget::SetupTutorialPresentation()
@@ -992,7 +818,6 @@ void UHeistHUDWidget::ResetHiddenPresentationState()
 	LastPresentedLocalCrewStatus = EHeistCrewStatus::Active;
 	bLocalCrewStatusPresentationInitialized = false;
 	LastDisplayedMissionSeconds = INDEX_NONE;
-	LastDisplayedStunSeconds = INDEX_NONE;
 	LastPresentedAlertTriggerId = NAME_None;
 	TransientEventHideWorldTime = 0.0f;
 	LastArrestFeedbackEvent = NAME_None;
@@ -1021,29 +846,6 @@ void UHeistHUDWidget::ResetHiddenPresentationState()
 			TeamCards[SlotIndex]->ApplyEmptySlot(SlotIndex + 1);
 		}
 	}
-	if (IsValid(StunOverlay))
-	{
-		StunOverlay->SetVisibility(ESlateVisibility::Collapsed);
-	}
-	if (IsValid(StunCountdownText))
-	{
-		StunCountdownText->SetText(FText::GetEmpty());
-		StunCountdownText->SetVisibility(ESlateVisibility::Collapsed);
-	}
-	if (IsValid(ArrestOverlay))
-	{
-		ArrestOverlay->SetVisibility(ESlateVisibility::Collapsed);
-	}
-	if (IsValid(ArrestTitleText))
-	{
-		ArrestTitleText->SetText(FText::GetEmpty());
-		ArrestTitleText->SetVisibility(ESlateVisibility::Collapsed);
-	}
-	if (IsValid(ArrestInstructionText))
-	{
-		ArrestInstructionText->SetText(FText::GetEmpty());
-		ArrestInstructionText->SetVisibility(ESlateVisibility::Collapsed);
-	}
 }
 
 bool UHeistHUDWidget::IsHiddenPresentationStateReset() const
@@ -1054,14 +856,9 @@ bool UHeistHUDWidget::IsHiddenPresentationStateReset() const
 	const bool bMissionTimerReset = LastDisplayedMissionSeconds == INDEX_NONE && (!IsValid(MissionTimeText) || MissionTimeText->GetText().IsEmpty());
 	const bool bEventReset = TransientEventHideWorldTime <= 0.0f &&
 		(!IsValid(AlertEventText) || (AlertEventText->GetVisibility() == ESlateVisibility::Collapsed && AlertEventText->GetText().IsEmpty()));
-	const bool bStunReset = LastDisplayedStunSeconds == INDEX_NONE && (!IsValid(StunOverlay) || StunOverlay->GetVisibility() == ESlateVisibility::Collapsed) &&
-		(!IsValid(StunCountdownText) || (StunCountdownText->GetVisibility() == ESlateVisibility::Collapsed && StunCountdownText->GetText().IsEmpty()));
-	const bool bArrestReset = (!IsValid(ArrestOverlay) || ArrestOverlay->GetVisibility() == ESlateVisibility::Collapsed) &&
-		(!IsValid(ArrestTitleText) || (ArrestTitleText->GetVisibility() == ESlateVisibility::Collapsed && ArrestTitleText->GetText().IsEmpty())) &&
-		(!IsValid(ArrestInstructionText) || (ArrestInstructionText->GetVisibility() == ESlateVisibility::Collapsed && ArrestInstructionText->GetText().IsEmpty()));
 	const bool bTransitionStateReset = !bLocalCrewStatusPresentationInitialized && LastPresentedLocalCrewStatus == EHeistCrewStatus::Active && LastArrestFeedbackEvent.IsNone() &&
 		ArrestAudioPlayCount == 0 && RescueAudioPlayCount == 0;
-	return bAlertAudioStopped && bArrestAudioStopped && bAlertTextReset && bMissionTimerReset && bEventReset && bStunReset && bArrestReset && bTransitionStateReset;
+	return bAlertAudioStopped && bArrestAudioStopped && bAlertTextReset && bMissionTimerReset && bEventReset && bTransitionStateReset;
 }
 
 void UHeistHUDWidget::DebugDumpFirstPersonHUDState() const
@@ -1087,19 +884,9 @@ void UHeistHUDWidget::DebugDumpFirstPersonHUDState() const
 		UE_LOG(LogHeistUI, Error, TEXT("%s"), *ContractMessage);
 	}
 
-	UE_LOG(
-		LogHeistUI, Log,
-		TEXT("[%s] Local crew presentation: Initialized=%s Last=%s Resolved=%s StunOverlay=%s/%d StunCountdown=%s/%d/'%s' ArrestOverlay=%s/%d ArrestTitle=%s/%d/'%s' ArrestInstruction=%s/%d/'%s' Result=%s"),
-		*GetName(), bLocalCrewStatusPresentationInitialized ? TEXT("true") : TEXT("false"), *UEnum::GetValueAsString(LastPresentedLocalCrewStatus),
-		*UEnum::GetValueAsString(ResolveLocalCrewStatus()), IsValid(StunOverlay) ? TEXT("valid") : TEXT("missing"),
-		IsValid(StunOverlay) ? static_cast<int32>(StunOverlay->GetVisibility()) : INDEX_NONE, IsValid(StunCountdownText) ? TEXT("valid") : TEXT("missing"),
-		IsValid(StunCountdownText) ? static_cast<int32>(StunCountdownText->GetVisibility()) : INDEX_NONE,
-		IsValid(StunCountdownText) ? *StunCountdownText->GetText().ToString() : TEXT(""), IsValid(ArrestOverlay) ? TEXT("valid") : TEXT("missing"),
-		IsValid(ArrestOverlay) ? static_cast<int32>(ArrestOverlay->GetVisibility()) : INDEX_NONE, IsValid(ArrestTitleText) ? TEXT("valid") : TEXT("missing"),
-		IsValid(ArrestTitleText) ? static_cast<int32>(ArrestTitleText->GetVisibility()) : INDEX_NONE,
-		IsValid(ArrestTitleText) ? *ArrestTitleText->GetText().ToString() : TEXT(""), IsValid(ArrestInstructionText) ? TEXT("valid") : TEXT("missing"),
-		IsValid(ArrestInstructionText) ? static_cast<int32>(ArrestInstructionText->GetVisibility()) : INDEX_NONE,
-		IsValid(ArrestInstructionText) ? *ArrestInstructionText->GetText().ToString() : TEXT(""),
+	UE_LOG(LogHeistUI, Log, TEXT("[%s] Local crew presentation: Initialized=%s Last=%s Resolved=%s EventText='%s' Result=%s"), *GetName(),
+		bLocalCrewStatusPresentationInitialized ? TEXT("true") : TEXT("false"), *UEnum::GetValueAsString(LastPresentedLocalCrewStatus),
+		*UEnum::GetValueAsString(ResolveLocalCrewStatus()), IsValid(AlertEventText) ? *AlertEventText->GetText().ToString() : TEXT(""),
 		IsLocalCrewStatusPresentationContractSatisfied() ? TEXT("PASS") : TEXT("FAIL"));
 
 	UE_LOG(LogHeistUI, Log, TEXT("[%s] First-person HUD state: ToolText='%s' StatusText='%s' WeightText='%s'"), *GetName(), IsValid(ToolText) ? *ToolText->GetText().ToString() : TEXT("None"),
@@ -1217,21 +1004,13 @@ bool UHeistHUDWidget::IsAlarmMusicPlayingForDebug() const
 
 bool UHeistHUDWidget::IsLocalCrewStatusPresentationContractSatisfied() const
 {
-	if (!IsValid(HUDViewModel) || !IsValid(StunOverlay) || !IsValid(StunCountdownText) || !IsValid(ArrestOverlay) || !IsValid(ArrestTitleText) || !IsValid(ArrestInstructionText))
+	if (!IsValid(HUDViewModel))
 	{
 		return false;
 	}
 
 	const EHeistCrewStatus CrewStatus = ResolveLocalCrewStatus();
-	const bool bStunned = CrewStatus == EHeistCrewStatus::Stunned;
-	const bool bArrested = CrewStatus == EHeistCrewStatus::Arrested;
-	const bool bStunOverlayVisible = StunOverlay->GetVisibility() != ESlateVisibility::Collapsed && StunOverlay->GetVisibility() != ESlateVisibility::Hidden;
-	const bool bStunCountdownVisible = StunCountdownText->GetVisibility() != ESlateVisibility::Collapsed && StunCountdownText->GetVisibility() != ESlateVisibility::Hidden;
-	const bool bArrestOverlayVisible = ArrestOverlay->GetVisibility() != ESlateVisibility::Collapsed && ArrestOverlay->GetVisibility() != ESlateVisibility::Hidden;
-	const bool bStunCopyReady = !bStunned || !StunCountdownText->GetText().IsEmpty();
-	const bool bArrestCopyReady = !bArrested || (!ArrestTitleText->GetText().IsEmpty() && !ArrestInstructionText->GetText().IsEmpty());
-	return bLocalCrewStatusPresentationInitialized && LastPresentedLocalCrewStatus == CrewStatus && bStunned == bStunOverlayVisible && bStunned == bStunCountdownVisible &&
-		bArrested == bArrestOverlayVisible && bStunCopyReady && bArrestCopyReady;
+	return bLocalCrewStatusPresentationInitialized && LastPresentedLocalCrewStatus == CrewStatus;
 }
 
 bool UHeistHUDWidget::AreCrewStatusIconTexturesAssignedForDebug() const

@@ -49,9 +49,6 @@ class PROJECT_MUSEUMHEIST_API UHeistTeamCardWidget : public UHeistUserWidgetBase
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UImage> MicStatusImage;
 
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> MicStatusText;
-
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|TeamCard", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UTexture2D> DefaultProfileTexture;
 

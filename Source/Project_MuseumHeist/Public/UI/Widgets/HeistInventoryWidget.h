@@ -10,8 +10,8 @@
 class UButton;
 class UCanvasPanel;
 class UDataTable;
+class UHeistInventoryFrameWidget;
 class UHeistInventoryItemWidget;
-class UHeistQuickSlotWidget;
 class UHeistInventorySlotWidget;
 class UTextBlock;
 class UTexture2D;
@@ -43,27 +43,20 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryWidget : public UHeistUserWidgetBas
 #pragma region ViewModels
 
   public:
-	void SetupInventoryWidget(class UHeistInventoryViewModel* InInventoryViewModel, class UHeistQuickSlotViewModel* InQuickSlotViewModel, class AHeistPlayerController* InPlayerController);
+	void SetupInventoryWidget(class UHeistInventoryViewModel* InInventoryViewModel, class AHeistPlayerController* InPlayerController);
 
   private:
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Heist|Inventory", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistInventoryViewModel> InventoryViewModel;
 
-	UPROPERTY(Transient, BlueprintReadOnly, Category = "Heist|Inventory", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UHeistQuickSlotViewModel> QuickSlotViewModel;
-
 	UPROPERTY(Transient)
 	TObjectPtr<AHeistPlayerController> PlayerController;
 
 	void RefreshVisibilityFromConfirmedSnapshot();
-	void RefreshQuickSlotPresentation();
 
   protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|Inventory", meta = (DisplayName = "Refresh Confirmed Inventory"))
 	void BP_RefreshConfirmedInventory(const TArray<FHeistInventoryItem>& ConfirmedItems, int32 GridColumns, int32 GridRows);
-
-	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|Inventory", meta = (DisplayName = "Refresh Confirmed QuickSlots"))
-	void BP_RefreshConfirmedQuickSlots(const TArray<FHeistQuickSlotState>& ConfirmedQuickSlots);
 
 #pragma endregion
 
@@ -82,12 +75,6 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryWidget : public UHeistUserWidgetBas
 	UFUNCTION(BlueprintCallable, Category = "Heist|Inventory")
 	void RequestDropItem(int32 InstanceId);
 
-	UFUNCTION(BlueprintCallable, Category = "Heist|Inventory")
-	void RequestAssignQuickSlot(EHeistQuickSlotType SlotType, int32 InstanceId);
-
-	UFUNCTION(BlueprintCallable, Category = "Heist|Inventory")
-	void RequestClearQuickSlot(EHeistQuickSlotType SlotType);
-
 #pragma endregion
 
 #pragma region DragDropPresentation
@@ -95,11 +82,9 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryWidget : public UHeistUserWidgetBas
   public:
 	bool CanPreviewItemDrop(int32 InstanceId, const FIntPoint& TargetGridPosition) const;
 
-  private:
+	private:
 	void RebuildConfirmedInventory(const TArray<FHeistInventoryItem>& ConfirmedItems, int32 GridColumns, int32 GridRows);
-	void RebuildConfirmedQuickSlots(const TArray<struct FHeistQuickSlotPresentation>& ConfirmedQuickSlots);
 	bool TryResolveItemPresentation(const FHeistInventoryItem& InventoryItem, FIntPoint& OutPlacedSize, UTexture2D*& OutIcon) const;
-	UTexture2D* ResolveQuickSlotIcon(FName ItemId) const;
 	bool TryGetDropTargetGridPosition(const FDragDropEvent& DragDropEvent, FIntPoint& OutGridPosition) const;
 	void UpdateDropPreview(int32 InstanceId, const FIntPoint& TargetGridPosition);
 	void ClearDropPreview();
@@ -112,9 +97,6 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryWidget : public UHeistUserWidgetBas
 	TSubclassOf<UHeistInventoryItemWidget> InventoryItemWidgetClass;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Inventory|Presentation", meta = (AllowPrivateAccess = "true"))
-	TSubclassOf<UHeistQuickSlotWidget> QuickSlotWidgetClass;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Inventory|Presentation", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UDataTable> ItemDataTable;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Inventory|Presentation", meta = (AllowPrivateAccess = "true"))
@@ -125,9 +107,6 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryWidget : public UHeistUserWidgetBas
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UHeistInventoryItemWidget>> InventoryItemWidgets;
-
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UHeistQuickSlotWidget>> QuickSlotWidgets;
 
 	UPROPERTY(Transient)
 	TArray<FHeistInventoryItem> ConfirmedInventoryItems;
@@ -150,19 +129,19 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryWidget : public UHeistUserWidgetBas
 	TObjectPtr<UButton> CloseButton;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> InventorySummaryText;
+	TObjectPtr<UTextBlock> ItemCountText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> QuickSlotSummaryText;
+	TObjectPtr<UTextBlock> WeightText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UHeistInventoryFrameWidget> InventoryFrameWidget;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UUniformGridPanel> InventoryGrid;
 
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	UPROPERTY(Transient)
 	TObjectPtr<UCanvasPanel> ItemOverlay;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UUniformGridPanel> QuickSlotPanel;
 
 #pragma endregion
 };

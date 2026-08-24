@@ -49,6 +49,8 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryViewModel : public UMVVMViewModelBa
 	bool IsInventoryOpen() const;
 	int32 GetGridColumnCount() const;
 	int32 GetGridRowCount() const;
+	int32 GetItemCount() const;
+	float GetTotalWeight() const;
 
   private:
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Inventory", meta = (AllowPrivateAccess = "true"))
@@ -62,6 +64,12 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryViewModel : public UMVVMViewModelBa
 
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|Inventory", meta = (AllowPrivateAccess = "true"))
 	int32 GridRowCount = 5;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Inventory", meta = (AllowPrivateAccess = "true"))
+	int32 ItemCount = 0;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Inventory", meta = (AllowPrivateAccess = "true"))
+	float TotalWeight = 0.0f;
 
 #pragma endregion
 };

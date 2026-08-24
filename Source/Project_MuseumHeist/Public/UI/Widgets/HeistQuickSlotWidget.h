@@ -7,8 +7,6 @@
 #include "HeistQuickSlotWidget.generated.h"
 
 class UBorder;
-class UButton;
-class UHeistInventoryWidget;
 class UImage;
 class UTextBlock;
 class UTexture2D;
@@ -25,37 +23,16 @@ class PROJECT_MUSEUMHEIST_API UHeistQuickSlotWidget : public UHeistUserWidgetBas
 
 #pragma endregion
 
-#pragma region Lifecycle
-
-  protected:
-	virtual void NativeConstruct() override;
-	virtual void NativeDestruct() override;
-	virtual bool NativeOnDragOver(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
-	virtual void NativeOnDragLeave(const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
-	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
-
-#pragma endregion
-
 #pragma region Presentation
 
   public:
-	void SetupQuickSlot(const FHeistQuickSlotPresentation& InConfirmedPresentation, UTexture2D* InIcon, UHeistInventoryWidget* InInventoryWidget);
 	void SetupHUDQuickSlot(const FHeistQuickSlotPresentation& InConfirmedPresentation, UTexture2D* InIcon);
 
   private:
 	void RefreshPresentation();
-	void SetDropPreview(bool bInDropPreview);
-
-	UFUNCTION()
-	void HandleClearButtonClicked();
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Heist|QuickSlot", meta = (AllowPrivateAccess = "true"))
 	FHeistQuickSlotPresentation ConfirmedPresentation;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UHeistInventoryWidget> InventoryWidget;
-
-	bool bHUDPresentation = false;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UBorder> SlotBackground;
@@ -67,16 +44,7 @@ class PROJECT_MUSEUMHEIST_API UHeistQuickSlotWidget : public UHeistUserWidgetBas
 	TObjectPtr<UImage> PlaceholderIcon;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> ItemIdText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> CountText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> AssignmentStateText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UButton> ClearButton;
 
 #pragma endregion
 };

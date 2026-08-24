@@ -4,9 +4,7 @@
 ### UnrealEngine ###
 # Visual Studio 2015 user specific files & CODEX
 .vs/
-.agents/
 .codex/
-.codex-doc-review/
 .codex-mcp-*.json
 
 # Compiled Object files
@@ -14,7 +12,7 @@
 *.lo
 *.o
 *.obj
-!SourceArt/ObjectAssembly/Meshes/*.obj
+!ProjectResources/SourceArt/ObjectAssembly/Meshes/*.obj
 
 # Precompiled Headers
 *.gch
@@ -51,9 +49,9 @@
 *.VC.opendb
 
 # Precompiled Assets
-SourceArt/**/*.png
-SourceArt/**/*.tga
-!SourceArt/UI/Title/*.png
+ProjectResources/SourceArt/**/*.png
+ProjectResources/SourceArt/**/*.tga
+!ProjectResources/SourceArt/UI/Title/*.png
 
 # Binary Files
 Binaries/*

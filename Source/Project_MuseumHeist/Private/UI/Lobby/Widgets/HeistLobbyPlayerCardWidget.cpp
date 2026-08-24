@@ -14,8 +14,8 @@
 
 namespace
 {
-constexpr int32 MaxSteamAvatarRetryCount = 10;
-constexpr float SteamAvatarRetrySeconds = 0.5f;
+constexpr int32 LobbyPlayerCardMaxSteamAvatarRetryCount = 10;
+constexpr float LobbyPlayerCardSteamAvatarRetrySeconds = 0.5f;
 }
 
 void UHeistLobbyPlayerCardWidget::NativeConstruct()
@@ -110,10 +110,10 @@ void UHeistLobbyPlayerCardWidget::RefreshProfileImage()
 	}
 
 #if WITH_HEIST_STEAM_AVATAR
-	if (ProfileImageRetryCount < MaxSteamAvatarRetryCount && IsValid(GetWorld()))
+	if (ProfileImageRetryCount < LobbyPlayerCardMaxSteamAvatarRetryCount && IsValid(GetWorld()))
 	{
 		++ProfileImageRetryCount;
-		GetWorld()->GetTimerManager().SetTimer(ProfileImageRetryTimerHandle, this, &UHeistLobbyPlayerCardWidget::RetryProfileImageLoad, SteamAvatarRetrySeconds, false);
+		GetWorld()->GetTimerManager().SetTimer(ProfileImageRetryTimerHandle, this, &UHeistLobbyPlayerCardWidget::RetryProfileImageLoad, LobbyPlayerCardSteamAvatarRetrySeconds, false);
 	}
 #endif
 }
@@ -127,10 +127,10 @@ void UHeistLobbyPlayerCardWidget::RetryProfileImageLoad()
 	}
 
 #if WITH_HEIST_STEAM_AVATAR
-	if (ProfileImageRetryCount < MaxSteamAvatarRetryCount && IsValid(GetWorld()))
+	if (ProfileImageRetryCount < LobbyPlayerCardMaxSteamAvatarRetryCount && IsValid(GetWorld()))
 	{
 		++ProfileImageRetryCount;
-		GetWorld()->GetTimerManager().SetTimer(ProfileImageRetryTimerHandle, this, &UHeistLobbyPlayerCardWidget::RetryProfileImageLoad, SteamAvatarRetrySeconds, false);
+		GetWorld()->GetTimerManager().SetTimer(ProfileImageRetryTimerHandle, this, &UHeistLobbyPlayerCardWidget::RetryProfileImageLoad, LobbyPlayerCardSteamAvatarRetrySeconds, false);
 	}
 #endif
 }

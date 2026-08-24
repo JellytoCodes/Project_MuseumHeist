@@ -7,7 +7,6 @@
 #include "HeistInventoryItemWidget.generated.h"
 
 class UBorder;
-class UButton;
 class UHeistInventoryWidget;
 class UImage;
 class UTextBlock;
@@ -25,14 +24,6 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryItemWidget : public UHeistUserWidge
 
 #pragma endregion
 
-#pragma region Lifecycle
-
-  protected:
-	virtual void NativeConstruct() override;
-	virtual void NativeDestruct() override;
-
-#pragma endregion
-
 #pragma region Presentation
 
   public:
@@ -47,9 +38,6 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryItemWidget : public UHeistUserWidge
 
   private:
 	void RefreshPresentation();
-
-	UFUNCTION()
-	void HandleDropButtonClicked();
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Heist|Inventory", meta = (AllowPrivateAccess = "true"))
 	FHeistInventoryItem ConfirmedItem;
@@ -74,9 +62,6 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryItemWidget : public UHeistUserWidge
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> InstanceIdText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UButton> DropButton;
 
 #pragma endregion
 };

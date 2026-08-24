@@ -402,7 +402,7 @@ bool AHeistHUD::ShowInventoryScreen()
 {
 	InitializeInventoryPresentation();
 	AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(GetOwningPlayerController());
-	if (!HasAttachedLocalPlayer(HeistPlayerController) || !IsValid(InventoryViewModel) || !IsValid(QuickSlotViewModel) || !InventoryWidgetClass)
+	if (!HasAttachedLocalPlayer(HeistPlayerController) || !IsValid(InventoryViewModel) || !InventoryWidgetClass)
 	{
 		return false;
 	}
@@ -415,7 +415,7 @@ bool AHeistHUD::ShowInventoryScreen()
 			return false;
 		}
 
-		InventoryWidget->SetupInventoryWidget(InventoryViewModel, QuickSlotViewModel, HeistPlayerController);
+		InventoryWidget->SetupInventoryWidget(InventoryViewModel, HeistPlayerController);
 		InventoryWidget->AddToViewport();
 	}
 

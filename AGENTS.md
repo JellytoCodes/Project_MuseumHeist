@@ -106,9 +106,9 @@ Project_MuseumHeist는 Unreal Engine 5.8 C++ 기반의 **2~4인 온라인 협동
 3. `Museum_Heist_GDD.docx`
    - 제품 비전, 재미의 근거, Player Experience, Contract Run, Level/Art/Audio 방향과 Balance 의도
 
-Notion의 `Museum Heist — Project Leaderboard`와 연결된 `주차별 작업보드`는 현재 Task, 상태, 우선순위와 실행 순서에 대한 Live Source of Truth다. 새 작업은 `AGENTS.md`를 읽은 직후 Notion 작업보드의 `진행중`/`검토중` Task와 사용자가 지정한 Task를 반드시 라이브 조회한다. `CURRENT_PROJECT_STATUS.md`는 그 결과와 로컬 Git/Editor 증거를 이어 주는 오프라인 실행 캐시이며 설계 우선순위에 포함하지 않는다. `LOCAL_PROGRESS_INBOX.md`는 Notion에 아직 연결되지 않았거나 반영되지 않은 실질 작업을 잃지 않기 위한 Reconciliation Queue다.
+Notion의 `Museum Heist — Project Leaderboard`와 연결된 `주차별 작업보드`, `Test Log`, `결정 로그`는 프로젝트 진행·검증·의사결정 기록의 Live Source of Truth다. 새 작업은 `AGENTS.md`를 읽은 직후 Notion 작업보드의 `진행중`/`검토중` Task와 사용자가 지정한 Task를 반드시 라이브 조회한다. 로컬 진행 캐시, Inbox, Handoff 또는 Roadmap Markdown은 운영하지 않는다.
 
-Notion은 진행 상태의 권한을 가지지만 Gameplay Rule, Authority, Data Contract와 구현 사실을 덮어쓰지 않는다. Notion Task 내용이 AGENTS/GDD/TDD 또는 현재 코드와 충돌하면 어느 한쪽을 추측으로 동기화하지 않고 차이를 보고한다. Notion 연결 또는 조회가 실패하면 로컬 인계 문서를 최신 상태로 단정하지 않고 `OFFLINE CACHE`로 표시하며, Task 완료·우선순위·다음 작업을 확정하지 않는다.
+Notion은 진행 상태의 권한을 가지지만 Gameplay Rule, Authority, Data Contract와 구현 사실을 덮어쓰지 않는다. Notion Task 내용이 AGENTS/GDD/TDD 또는 현재 코드와 충돌하면 어느 한쪽을 추측으로 동기화하지 않고 차이를 보고한다. Notion 연결 또는 조회가 실패하면 현재 대화에서 실패를 보고하고 Task 완료·우선순위·다음 작업을 확정하지 않는다. 실패를 우회하기 위한 로컬 Markdown 캐시는 만들지 않는다.
 
 하위 문서가 상위 문서와 충돌하면 구현 전에 상위 문서를 먼저 수정한다. 다만 문서의 역할이 다른 경우에는 해당 역할의 Source of Truth를 따른다.
 
@@ -118,7 +118,19 @@ Notion은 진행 상태의 권한을 가지지만 Gameplay Rule, Authority, Data
 
 Notion Task/Test 기록은 설계 문서 우선순위에 포함하지 않지만 프로젝트 진척 상태의 Live Source of Truth다. 에이전트는 매 작업 시작 시 관련 항목을 라이브 조회하고 사용자 요청·로컬 구현 증거와 대조한다. Task 생성·삭제·재배열과 실행 순서 변경은 사용자가 직접 관리한다. 다만 사용자가 명시적으로 요청한 경우, 에이전트는 현재 대화에서 검증한 결과에 한해 기존 Task의 상태·진행률·완료 증적을 갱신할 수 있다. 별도 Test Log Database는 사용자 제공 PIE 로그·화면 관찰과 자동화 결과를 근거로 에이전트가 직접 생성·갱신하며, 관련 Task Relation, 환경, 시나리오, 기대 결과, 실제 결과, Server/Client 증적, 최종 PASS/FAIL과 잔여 이슈를 기록한다. Test Log 기록만으로 Task 완료 상태를 임의 변경하지 않는다.
 
-`ClassManifest.md`와 `Docs/W2_BlueprintShellPlan.md`는 더 이상 별도 거점 문서로 운영하지 않으며 AGENTS로 통합한다.
+저장소의 Markdown은 루트 `AGENTS.md` 하나만 허용한다. README, 진행 기록, Inbox, Handoff, Roadmap, Asset Manifest, License Notice, 작업 메모와 임시 검토 문서를 `.md`로 만들거나 복구하지 않는다. 설계는 GDD/TDD DOCX, 진행·검증·의사결정·에셋/라이선스 기록은 Notion, 기계 판독 Source Metadata는 JSON/PDF 등 해당 원본 형식으로 관리한다.
+
+프로젝트 루트의 비런타임 개발 리소스는 다음 단일 경계 아래에서 관리한다.
+
+```text
+ProjectResources/
+  Scripts/
+  DataTableImports/
+  SourceArt/
+  Tools/
+```
+
+`.codex/config.toml`은 Unreal MCP 연결에 필요한 프로젝트 설정이므로 유지한다. `.agents`, `.codex-doc-review`, `.codex-render-*`와 같은 로컬 에이전트 출력·리뷰·렌더 폴더는 저장소에 만들거나 보존하지 않는다.
 게임플레이 규칙, 데이터 계약, Shell/Presentation 경계, 구현 우선순위 변경은 AGENTS 본문에서 직접 관리한다.
 
 ## 2A. Blueprint / Presentation Rule Integration
@@ -1367,7 +1379,7 @@ C++ 타입을 삭제한 경우 다음 순서로 Asset 정리를 완료한다.
 
 Smoke 및 Trap 관련 Blueprint와 C++ Class는 신규 Asset의 부모 또는 DataTable Class Reference로 사용하지 않는다.
 
-`DataTableImports/*.json`을 Import Source로 사용하는 DataTable은 JSON을 Source of Truth로 취급한다.
+`ProjectResources/DataTableImports/*.json`을 Import Source로 사용하는 DataTable은 JSON을 Source of Truth로 취급한다.
 
 이 DataTable의 Row를 정리할 때는 `.uasset`에서 직접 삭제하지 않고 JSON을 수정한 뒤 Unreal Editor에서 Reimport한다.
 
@@ -1380,8 +1392,8 @@ Smoke 및 Trap 관련 Blueprint와 C++ Class는 신규 Asset의 부모 또는 Da
 ## Task Management Non-interference
 
 - Notion의 `주차별 작업보드`는 현재 Task, 상태, 우선순위와 실행 순서의 Live Source of Truth다. 모든 새 작업에서 `진행중`/`검토중` Task와 사용자가 지정한 Task를 먼저 라이브 조회한다.
-- 고정 진입점은 `CURRENT_PROJECT_STATUS.md`의 `Notion Live Progress Source`에 기록된 Leaderboard, Task Data Source와 Test Log Data Source를 사용한다.
-- Notion SQL 조회가 플랜 또는 일시 오류로 실패하면 같은 작업보드에서 Search/Fetch로 폴백한다. Search/Fetch도 실패하면 실패를 보고하고 로컬 문서를 `OFFLINE CACHE`로만 취급한다.
+- 고정 진입점은 Notion `Museum Heist — Project Leaderboard`와 연결된 `주차별 작업보드`, `Test Log`, `결정 로그`를 사용한다.
+- Notion SQL 조회가 플랜 또는 일시 오류로 실패하면 같은 작업보드에서 Search/Fetch로 폴백한다. Search/Fetch도 실패하면 실패를 보고하고 상태 변경을 중단한다.
 - 에이전트는 Task ID, 실행 순서, 담당자, Task 생성·삭제·재배열을 직접 변경하지 않는다.
 - 사용자가 명시적으로 요청한 경우에만, 현재 대화에서 검증한 결과에 한해 기존 Task의 상태·진행률·완료 증적을 갱신한다.
 - 별도 Notion Test Log Database는 검증 증적의 기록 대상이다. 사용자 제공 PIE Server/Client 로그·화면 관찰과 자동화 결과를 근거로 에이전트가 직접 Test Log를 생성·갱신하고 관련 Task를 연결한다.
@@ -1391,26 +1403,15 @@ Smoke 및 Trap 관련 Blueprint와 C++ Class는 신규 Asset의 부모 또는 Da
 
 ## Work Bootstrap
 
-- 작업 시작 시 `AGENTS.md`를 읽은 뒤 Notion `주차별 작업보드`를 라이브 조회하고, 그 다음 `LOCAL_PROGRESS_INBOX.md`의 Active Entry, `CURRENT_PROJECT_STATUS.md`, 관련 GDD/TDD 범위와 Manifest 상태를 확인한다.
-- Notion에서 `진행중`/`검토중` Task, 사용자가 지정한 Task의 제목·상태·완료 기준·비고를 확인하고 로컬 인계 문서와 대조한다.
-- Inbox의 `UNLINKED` 또는 `READY_TO_SYNC` Entry를 Notion 라이브 결과와 대조하고, 연결 근거가 없으면 기존 Task에 임의 귀속하지 않는다.
+- 작업 시작 시 `AGENTS.md`를 읽은 뒤 Notion `주차별 작업보드`를 라이브 조회하고, 관련 GDD/TDD 범위와 Notion 결정/에셋·라이선스 기록을 확인한다.
+- Notion에서 `진행중`/`검토중` Task, 사용자가 지정한 Task의 제목·상태·완료 기준·비고를 확인하고 현재 Git/Editor 증거와 대조한다.
+- 대응 Task가 없는 실질 작업은 사용자의 현재 요청이 Notion 기록까지 포함하는 경우에만 새 Task 또는 결정으로 기록한다. 그렇지 않으면 현재 대화에서 누락을 보고하고 임의 귀속하지 않는다.
 - Git 작업 상태와 기존 Asset 경로를 읽기 전용으로 확인하고, 사용자의 기존 변경을 새 작업 결과로 오인하지 않는다.
 - Editor 작업이 필요하면 사용자용 Blueprint/Data/Map 절차를 현재 대화에서 제공한다.
-- 사용자가 명시적으로 요청하지 않는 한 별도 작업용 `.md` 파일을 추가하지 않는다.
-- Notion 라이브 조회 시각·조회 결과, Active Task, 구현 범위, Build/Asset/PIE 증거 또는 Resume Point가 실질적으로 바뀌면 같은 작업 안에서 `CURRENT_PROJECT_STATUS.md`를 갱신한다.
-- `CURRENT_PROJECT_STATUS.md`에는 확인된 현재 상태만 유지하고 GDD/TDD 규칙, 전체 Roadmap 또는 Notion Task 목록을 복제하지 않는다.
-
-## Local Progress Inbox Contract
-
-- 정확한 Notion Task Relation을 확인하지 못한 상태에서 코드, Asset, 문서, Gameplay 방향 또는 검증 증거가 실질적으로 바뀌면 같은 작업 안에서 `LOCAL_PROGRESS_INBOX.md`에 기록한다.
-- Notion Task는 확인됐지만 쓰기 요청이 없거나 쓰기가 실패해 진행 증거가 아직 반영되지 않았으면 `READY_TO_SYNC`로 기록한다.
-- Entry ID는 `LOCAL-YYYYMMDD-NN` 형식을 사용한다.
-- 각 Entry는 `State`, `Notion Relation`, `User Request / Decision`, `Changed Scope`, `Verification`, `Remaining Evidence`, `Next Reconciliation Action`을 포함한다.
+- `AGENTS.md` 외의 `.md` 파일은 사용자가 명시적으로 요청해도 만들지 않는다. Markdown 산출물이 필요하면 Notion Page 또는 현재 대화로 제공하고, GDD/TDD 변경은 DOCX에 반영한다.
+- Active Task, 구현 범위, Build/Asset/PIE 증거 또는 Resume Point가 실질적으로 바뀌고 사용자가 Notion 기록을 요청했으면 같은 작업 안에서 관련 Task/Test Log/결정 로그를 갱신하고 재조회한다.
 - Build, Blueprint Compile/Save, Automation, User PIE, Multiplayer와 Notion Write 증거를 서로 대체하지 않고 개별 상태로 기록한다.
-- `UNLINKED` Entry를 제목이나 번호가 비슷하다는 이유만으로 기존 Notion Task에 연결하지 않는다. 완료 기준이 일치하거나 사용자가 관계를 확정해야 한다.
-- Notion Task 상태·진행률·증거 쓰기는 기존 규칙대로 사용자가 명시적으로 요청하고 현재 대화의 증거가 있을 때만 수행한다.
-- Notion 반영을 확인하면 Entry를 `RECONCILED`로 바꾸고 Active Queue에서 한 줄 Archive로 이동한다. 별도 Task가 필요 없는 프로젝트 운영 기록은 `NO_TASK_REQUIRED`로 닫을 수 있다.
-- 단순 조회, 변경 없는 진단, 반복 상태 확인은 Inbox에 누적하지 않는다.
+- Notion 쓰기가 실패하면 성공으로 보고하지 않고, 로컬 파일에 대신 기록하지 않는다.
 
 ## 구현 전 Deliverable Audit
 
@@ -1586,7 +1587,7 @@ Editor 작업 안내에는 다음만 포함한다.
 # 17A. Packaging Pipeline
 
 - Project Version Source of Truth는 `Config/DefaultGame.ini`의 `ProjectVersion`이다.
-- Win64 Development / Shipping Package는 `Tools/Packaging/PackageProject.ps1`로 생성한다.
+- Win64 Development / Shipping Package는 `ProjectResources/Tools/Packaging/PackageProject.ps1`로 생성한다.
 - Package 출력은 `Build/Packages`, Steam Depot 후보는 `Build/SteamCandidate` 아래에 생성한다.
 - 프로젝트에서 사용하지 않는 기본 `ChaosCloth` Plugin은 비활성화하며, 그 의존성인 `Buoyancy`, `Water`, `Landmass`의 Editor Content를 Release Cook에 포함하지 않는다.
 - `HeistBuildDump`는 Development Package에서 Version, Configuration, Platform, Cooked Runtime, Online Subsystem과 Session Build Id를 검증한다.

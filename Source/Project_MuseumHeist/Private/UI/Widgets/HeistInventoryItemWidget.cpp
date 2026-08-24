@@ -2,7 +2,6 @@
 
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Components/Border.h"
-#include "Components/Button.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "Engine/Texture2D.h"
@@ -12,27 +11,6 @@
 
 UHeistInventoryItemWidget::UHeistInventoryItemWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
-}
-
-void UHeistInventoryItemWidget::NativeConstruct()
-{
-	Super::NativeConstruct();
-
-	if (IsValid(DropButton))
-	{
-		DropButton->OnClicked.RemoveDynamic(this, &UHeistInventoryItemWidget::HandleDropButtonClicked);
-		DropButton->OnClicked.AddDynamic(this, &UHeistInventoryItemWidget::HandleDropButtonClicked);
-	}
-}
-
-void UHeistInventoryItemWidget::NativeDestruct()
-{
-	if (IsValid(DropButton))
-	{
-		DropButton->OnClicked.RemoveDynamic(this, &UHeistInventoryItemWidget::HandleDropButtonClicked);
-	}
-
-	Super::NativeDestruct();
 }
 
 void UHeistInventoryItemWidget::SetupItem(const FHeistInventoryItem& InConfirmedItem, const FIntPoint& InPlacedSize, UTexture2D* InIcon, UHeistInventoryWidget* InInventoryWidget)
@@ -115,13 +93,5 @@ void UHeistInventoryItemWidget::RefreshPresentation()
 	if (IsValid(ItemBackground))
 	{
 		ItemBackground->SetBrushColor(ConfirmedItem.IsOriginalArtifact() ? FLinearColor(0.48f, 0.31f, 0.08f, 0.98f) : FLinearColor(0.10f, 0.30f, 0.42f, 0.96f));
-	}
-}
-
-void UHeistInventoryItemWidget::HandleDropButtonClicked()
-{
-	if (IsValid(InventoryWidget) && ConfirmedItem.InstanceId != INDEX_NONE)
-	{
-		InventoryWidget->RequestDropItem(ConfirmedItem.InstanceId);
 	}
 }
