@@ -932,6 +932,8 @@ void AHeistGameState::RebuildPlayerResults()
 
 		FHeistPlayerResult& PlayerResult = NewPlayerResults.AddDefaulted_GetRef();
 		PlayerResult.PlayerId = HeistPlayerState->HeistPlayerId;
+		PlayerResult.PlayerDisplayName = HeistPlayerState->GetHeistDisplayName().ToString();
+		PlayerResult.PlatformUserId = HeistPlayerState->GetUniqueId().IsValid() ? HeistPlayerState->GetUniqueId().ToString() : FString();
 		PlayerResult.bEscaped = HeistPlayerState->IsEscaped();
 		PlayerResult.bArrested = HeistPlayerState->IsArrested();
 		PlayerResult.Contribution = HeistPlayerState->GetContribution();

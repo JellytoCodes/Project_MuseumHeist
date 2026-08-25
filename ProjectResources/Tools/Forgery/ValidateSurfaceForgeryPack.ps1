@@ -198,6 +198,39 @@ $expectedResolution =
         0
     }
 
+$candidateDirectory = Join-Path $resolvedSourceRoot "Candidates"
+if (-not (Test-Path -LiteralPath $candidateDirectory -PathType Container))
+{
+    $failures.Add("Missing candidate source directory: $candidateDirectory")
+}
+elseif ($expectedResolution -gt 0)
+{
+    foreach ($candidateFile in @(Get-ChildItem -LiteralPath $candidateDirectory -Filter "*.png" -File))
+    {
+        $candidateImage = $null
+        try
+        {
+            $candidateImage = [System.Drawing.Image]::FromFile($candidateFile.FullName)
+            if ($candidateImage.Width -ne $expectedResolution -or $candidateImage.Height -ne $expectedResolution)
+            {
+                $failures.Add(
+                    "Candidate resolution contract failed for $($candidateFile.Name): Expected=$($expectedResolution)x$expectedResolution Actual=$($candidateImage.Width)x$($candidateImage.Height)")
+            }
+        }
+        catch
+        {
+            $failures.Add("Candidate image could not be read: $($candidateFile.FullName) Error=$($_.Exception.Message)")
+        }
+        finally
+        {
+            if ($null -ne $candidateImage)
+            {
+                $candidateImage.Dispose()
+            }
+        }
+    }
+}
+
 $allRows = Get-Content -LiteralPath $resolvedDataTablePath -Raw -Encoding UTF8 | ConvertFrom-Json
 $poolRows = @($allRows | Where-Object { $_.SurfacePoolId -eq $PoolId })
 $artifactRows = Get-Content -LiteralPath $artifactDataTablePath -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -423,7 +456,6 @@ foreach ($assetDefinition in $assetDefinitions)
         [Math]::Abs([double]$row.CoverageWeight - 0.45) -lt 0.0001 -and
         [Math]::Abs([double]$row.MajorShapeWeight - 0.55) -lt 0.0001 -and
         [Math]::Abs([double]$row.ExtraStrokePenaltyWeight - 0.15) -lt 0.0001 -and
-        [Math]::Abs([double]$row.TimeoutPenalty - 0.25) -lt 0.0001 -and
         [Math]::Abs([double]$row.ShapeAccuracyWeight - 0.65) -lt 0.0001 -and
         [Math]::Abs([double]$row.ColorAccuracyWeight - 0.35) -lt 0.0001 -and
         [Math]::Abs([double]$row.MaximumPaintToReferenceRatio - 2.5) -lt 0.0001 -and

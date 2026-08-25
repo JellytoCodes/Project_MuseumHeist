@@ -678,6 +678,12 @@ struct PROJECT_MUSEUMHEIST_API FHeistPlayerResult
 	int32 PlayerId = INDEX_NONE;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|Result")
+	FString PlayerDisplayName;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Result")
+	FString PlatformUserId;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Heist|Result")
 	bool bEscaped = false;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|Result")
@@ -688,7 +694,8 @@ struct PROJECT_MUSEUMHEIST_API FHeistPlayerResult
 
 	bool operator==(const FHeistPlayerResult& Other) const
 	{
-		return PlayerId == Other.PlayerId && bEscaped == Other.bEscaped && bArrested == Other.bArrested && Contribution == Other.Contribution;
+		return PlayerId == Other.PlayerId && PlayerDisplayName == Other.PlayerDisplayName && PlatformUserId == Other.PlatformUserId &&
+			bEscaped == Other.bEscaped && bArrested == Other.bArrested && Contribution == Other.Contribution;
 	}
 };
 

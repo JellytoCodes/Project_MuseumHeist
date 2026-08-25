@@ -20,7 +20,13 @@ Add-Type -AssemblyName System.Drawing
 
 $resolvedSourceDirectory = (Resolve-Path -LiteralPath $SourceDirectory).Path
 $resolvedOutputPath = [System.IO.Path]::GetFullPath($OutputPath)
-$sourceFiles = @(Get-ChildItem -LiteralPath $resolvedSourceDirectory -Filter $Pattern -File | Sort-Object Name)
+$sourceFiles = @(
+    Get-ChildItem -LiteralPath $resolvedSourceDirectory -Filter $Pattern -File |
+        Where-Object {
+            $_.Name -notlike "*_Mask.png" -and
+            $_.Name -notlike "*_ContactSheet.png"
+        } |
+        Sort-Object Name)
 if ($sourceFiles.Count -eq 0)
 {
     throw "No images matched '$Pattern' in $resolvedSourceDirectory."

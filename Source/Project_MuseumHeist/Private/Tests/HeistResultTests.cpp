@@ -6,6 +6,7 @@
 #include "Serialization/MemoryReader.h"
 #include "Serialization/MemoryWriter.h"
 #include "UI/ViewModels/HeistResultViewModel.h"
+#include "UI/Result/Widgets/HeistResultPlayerRowWidget.h"
 #include "UI/Widgets/HeistResultWidget.h"
 
 #include <limits>
@@ -148,6 +149,10 @@ bool FHeistResultScreenPresentationTest::RunTest(const FString& Parameters)
 	const FString RecapSummary = UHeistResultViewModel::BuildReplicaRecapSummaryText(TeamResult).ToString();
 	TestTrue(TEXT("Replica recap identifies required target and actual type/quality"), RecapSummary.Contains(TEXT("필수 목표")) &&
 		RecapSummary.Contains(TEXT("별이 빛나는 위작")) && RecapSummary.Contains(TEXT("그림")) && RecapSummary.Contains(TEXT("84")));
+	const FString ReplicaCardTitle = UHeistResultWidget::BuildReplicaCardTitle(Recap).ToString();
+	TestTrue(TEXT("Surface-only replica card keeps target, name, and quality"), ReplicaCardTitle.Contains(TEXT("필수 목표")) &&
+		ReplicaCardTitle.Contains(TEXT("별이 빛나는 위작")) && ReplicaCardTitle.Contains(TEXT("84")));
+	TestFalse(TEXT("Surface-only replica card omits redundant type labels"), ReplicaCardTitle.Contains(TEXT("그림")) || ReplicaCardTitle.Contains(TEXT("조립")));
 	TestFalse(TEXT("Team result presentation does not create Winner or Rank"), RecapSummary.Contains(TEXT("Winner")) || RecapSummary.Contains(TEXT("Rank")) ||
 		RecapSummary.Contains(TEXT("우승")) || RecapSummary.Contains(TEXT("순위")));
 	return true;
@@ -240,12 +245,20 @@ bool FHeistPlayerContributionDataContractTest::RunTest(const FString& Parameters
 
 	FHeistPlayerResult PlayerResult;
 	PlayerResult.PlayerId = 1;
+	PlayerResult.PlayerDisplayName = TEXT("STEAM TESTER");
+	PlayerResult.PlatformUserId = TEXT("76561198000000001");
 	PlayerResult.bEscaped = true;
 	PlayerResult.Contribution = Contribution;
-	const FHeistPlayerResult ReplicatedCopy = PlayerResult;
+	FHeistPlayerResult ReplicatedCopy = PlayerResult;
 	TestTrue(TEXT("Contribution survives the player result snapshot contract"), ReplicatedCopy == PlayerResult);
 	TestEqual(TEXT("Surface count remains descriptive data"), ReplicatedCopy.Contribution.SurfaceForgeries, 2);
 	TestEqual(TEXT("Secured loot remains descriptive data"), ReplicatedCopy.Contribution.SecuredLootValue, 1500);
+	TestEqual(TEXT("Result snapshot preserves the platform display name"), ReplicatedCopy.PlayerDisplayName, FString(TEXT("STEAM TESTER")));
+	TestEqual(TEXT("Result snapshot preserves the platform user id for the avatar"), ReplicatedCopy.PlatformUserId, FString(TEXT("76561198000000001")));
+	TestEqual(TEXT("Escaped player state is explicit"), UHeistResultPlayerRowWidget::BuildPlayerStateText(ReplicatedCopy).ToString(), FString(TEXT("탈출")));
+	ReplicatedCopy.bEscaped = false;
+	ReplicatedCopy.bArrested = true;
+	TestEqual(TEXT("Arrested player state is not collapsed into unresolved"), UHeistResultPlayerRowWidget::BuildPlayerStateText(ReplicatedCopy).ToString(), FString(TEXT("체포")));
 
 	FHeistPlayerContribution InvalidContribution = Contribution;
 	InvalidContribution.BestSurfaceQuality = 100.1f;

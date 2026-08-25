@@ -7,12 +7,14 @@
 #include "HeistResultWidget.generated.h"
 
 class UTextBlock;
-class UWidget;
 class UButton;
 class UTexture2D;
 class UHorizontalBox;
 class UBorder;
 class UVerticalBox;
+class UHeistResultPlayerRowWidget;
+class UHeistResultReplicaCardWidget;
+class UHeistResultRewardDetailWidget;
 
 UCLASS(Blueprintable)
 class PROJECT_MUSEUMHEIST_API UHeistResultWidget : public UHeistUserWidgetBase
@@ -79,18 +81,12 @@ class PROJECT_MUSEUMHEIST_API UHeistResultWidget : public UHeistUserWidgetBase
 	void RefreshRewardDetailPresentation(const FHeistTeamResult& TeamResult);
 	void RefreshReplicaRecapPresentation(const TArray<FHeistReplicaRecapEntry>& ReplicaRecap);
 	void RefreshContributionTablePresentation(const TArray<FHeistPlayerResult>& PlayerResults);
-	UWidget* CreateReplicaVisualWidget(const FHeistReplicaRecapEntry& ReplicaRecap);
-	UWidget* CreateContributionTableRow(const FHeistPlayerResult* PlayerResult, bool bHeaderRow, int32 RowIndex);
-	void AddContributionTableCell(UHorizontalBox* RowContainer, const FText& CellText, float Width, bool bHeaderCell, int32 RowIndex);
 
 	UFUNCTION()
 	void HandleReturnToLobbyClicked();
 
 	UFUNCTION()
 	void HandleRewardDetailsClicked();
-
-	UFUNCTION()
-	void HandleRewardDetailsCloseClicked();
 
 	// Blueprint events must remain overridable, so presentation hooks cannot be private.
   protected:
@@ -108,37 +104,10 @@ class PROJECT_MUSEUMHEIST_API UHeistResultWidget : public UHeistUserWidgetBase
 	TObjectPtr<UTextBlock> TeamRewardTextBlock;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> DetailRequiredTargetValueTextBlock;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> DetailTargetStatusValueTextBlock;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> DetailQuotaValueTextBlock;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> DetailSecuredValueTextBlock;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> DetailExtraValueTextBlock;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> DetailRequiredTargetRewardValueTextBlock;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> DetailLooseLootValueTextBlock;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> DetailForgeryMultiplierValueTextBlock;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> DetailStealthMultiplierValueTextBlock;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> DetailArrestPenaltyValueTextBlock;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> ReplicaRecapTextBlock;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> ReplicaRecapEmptyTextBlock;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UBorder> ReplicaRecapVisualPanel;
@@ -150,16 +119,22 @@ class PROJECT_MUSEUMHEIST_API UHeistResultWidget : public UHeistUserWidgetBase
 	TObjectPtr<UVerticalBox> ContributionTableContainer;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UBorder> RewardDetailPanel;
+	TObjectPtr<UTextBlock> ContributionEmptyTextBlock;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UHeistResultRewardDetailWidget> RewardDetailWidget;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UButton> RewardDetailsButton;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UButton> RewardDetailsCloseButton;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UButton> ReturnToLobbyButton;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<UHeistResultReplicaCardWidget> ReplicaCardWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<UHeistResultPlayerRowWidget> PlayerRowWidgetClass;
 
 #pragma endregion
 };

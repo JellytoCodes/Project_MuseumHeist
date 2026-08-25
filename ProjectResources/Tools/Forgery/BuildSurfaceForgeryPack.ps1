@@ -9,6 +9,11 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+if ($OutputSize -ne 1024)
+{
+    throw "Surface Forgery reference assets must be built at 1024x1024. Requested=$($OutputSize)x$OutputSize"
+}
+
 function Convert-SrgbChannelToLinear
 {
     param([int]$Channel)
@@ -229,7 +234,6 @@ foreach ($template in @($manifest.templates))
         CoverageWeight = 0.45
         MajorShapeWeight = 0.55
         ExtraStrokePenaltyWeight = 0.15
-        TimeoutPenalty = 0.25
         ShapeAccuracyWeight = 0.65
         ColorAccuracyWeight = 0.35
         MaximumPaintToReferenceRatio = 2.5
