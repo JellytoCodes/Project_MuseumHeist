@@ -1,9 +1,7 @@
 #include "UI/Widgets/HeistInventoryItemWidget.h"
 
 #include "Blueprint/WidgetBlueprintLibrary.h"
-#include "Components/Border.h"
 #include "Components/Image.h"
-#include "Components/TextBlock.h"
 #include "Engine/Texture2D.h"
 #include "Input/Reply.h"
 #include "UI/DragDrop/HeistInventoryDragDropOperation.h"
@@ -13,18 +11,19 @@ UHeistInventoryItemWidget::UHeistInventoryItemWidget(const FObjectInitializer& O
 {
 }
 
-void UHeistInventoryItemWidget::SetupItem(const FHeistInventoryItem& InConfirmedItem, const FIntPoint& InPlacedSize, UTexture2D* InIcon, UHeistInventoryWidget* InInventoryWidget)
+void UHeistInventoryItemWidget::SetupItem(const FHeistInventoryItem& InConfirmedItem, UTexture2D* InIcon, UHeistInventoryWidget* InInventoryWidget)
 {
 	ConfirmedItem = InConfirmedItem;
-	PlacedSize = InPlacedSize;
 	InventoryWidget = InInventoryWidget;
 
-	if (IsValid(PlaceholderIcon) && IsValid(InIcon))
+	if (IsValid(PlaceholderIcon))
 	{
-		PlaceholderIcon->SetBrushFromTexture(InIcon);
+		if (IsValid(InIcon))
+		{
+			PlaceholderIcon->SetBrushFromTexture(InIcon, false);
+		}
+		PlaceholderIcon->SetColorAndOpacity(FLinearColor::White);
 	}
-
-	RefreshPresentation();
 }
 
 int32 UHeistInventoryItemWidget::GetInstanceId() const
@@ -58,40 +57,19 @@ void UHeistInventoryItemWidget::NativeOnDragDetected(const FGeometry& InGeometry
 	}
 
 	UHeistInventoryDragDropOperation* InventoryOperation = NewObject<UHeistInventoryDragDropOperation>(this);
-	InventoryOperation->SetupDragOperation(ConfirmedItem.InstanceId, ConfirmedItem.GridPosition);
+	UImage* DragVisualImage = nullptr;
+	if (IsValid(PlaceholderIcon))
+	{
+		DragVisualImage = NewObject<UImage>(InventoryOperation);
+		FSlateBrush DragVisualBrush = PlaceholderIcon->GetBrush();
+		const FVector2D DragVisualSize = InGeometry.GetLocalSize();
+		DragVisualBrush.ImageSize = DragVisualSize;
+		DragVisualImage->SetBrush(DragVisualBrush);
+		DragVisualImage->SetDesiredSizeOverride(DragVisualSize);
+		DragVisualImage->SetVisibility(ESlateVisibility::HitTestInvisible);
+	}
+
+	InventoryOperation->SetupDragOperation(ConfirmedItem.InstanceId, ConfirmedItem.GridPosition, DragVisualImage);
 	InventoryOperation->Pivot = EDragPivot::CenterCenter;
 	OutOperation = InventoryOperation;
-}
-
-void UHeistInventoryItemWidget::RefreshPresentation()
-{
-	if (IsValid(ItemIdText))
-	{
-		FString ItemDisplayName = ConfirmedItem.ItemId.ToString();
-		ItemDisplayName.ReplaceInline(TEXT("_"), TEXT(" "));
-		ItemIdText->SetText(FText::FromString(ItemDisplayName));
-	}
-
-	if (IsValid(InstanceIdText))
-	{
-		InstanceIdText->SetText(FText::Format(NSLOCTEXT("HeistInventory", "ItemInstanceFormat", "식별 번호  {0}"), FText::AsNumber(ConfirmedItem.InstanceId)));
-	}
-
-	if (IsValid(ItemDetailsText))
-	{
-		const FText GridDetails = FText::Format(
-			NSLOCTEXT("HeistInventory", "ItemDetailsFormat", "{0}x{1}  |  칸 {2},{3}  |  {4}"),
-			FText::AsNumber(PlacedSize.X), FText::AsNumber(PlacedSize.Y), FText::AsNumber(ConfirmedItem.GridPosition.X), FText::AsNumber(ConfirmedItem.GridPosition.Y),
-			ConfirmedItem.bRotated ? NSLOCTEXT("HeistInventory", "ItemRotated", "회전됨") : NSLOCTEXT("HeistInventory", "ItemNotRotated", "기본 방향"));
-		ItemDetailsText->SetText(ConfirmedItem.IsOriginalArtifact()
-			? FText::Format(NSLOCTEXT("HeistInventory", "OriginalGridItemDetails", "원본 | 가치 {0} | 무게 {1} | {2} | {3}"), FText::AsNumber(ConfirmedItem.ContractValue),
-							FText::AsNumber(ConfirmedItem.Weight), ConfirmedItem.bRequiredTarget ? NSLOCTEXT("HeistInventory", "RequiredOriginal", "필수 목표")
-																											 : NSLOCTEXT("HeistInventory", "OptionalOriginal", "추가 원본"), GridDetails)
-			: GridDetails);
-	}
-
-	if (IsValid(ItemBackground))
-	{
-		ItemBackground->SetBrushColor(ConfirmedItem.IsOriginalArtifact() ? FLinearColor(0.48f, 0.31f, 0.08f, 0.98f) : FLinearColor(0.10f, 0.30f, 0.42f, 0.96f));
-	}
 }

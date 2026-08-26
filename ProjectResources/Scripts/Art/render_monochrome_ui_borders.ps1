@@ -42,9 +42,11 @@ function New-MonochromeBorderPng {
 
     $shortEdge = [Math]::Min($Width, $Height)
     $outerPadding = Convert-ToMultipleOfFour ($shortEdge * 0.055)
-    $outerStroke = Convert-ToMultipleOfFour ($shortEdge * 0.024)
+    $originalOuterStroke = Convert-ToMultipleOfFour ($shortEdge * 0.024)
+    $outerStroke = [int]($originalOuterStroke / 2)
     $innerStroke = [Math]::Max(4, (Convert-ToMultipleOfFour ($shortEdge * 0.004)))
-    $chamfer = Convert-ToMultipleOfFour ($shortEdge * 0.075)
+    $originalChamfer = Convert-ToMultipleOfFour ($shortEdge * 0.075)
+    $chamfer = [int]($originalChamfer / 2)
     $borderGap = 12
 
     $bitmap = [System.Drawing.Bitmap]::new($Width, $Height, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)

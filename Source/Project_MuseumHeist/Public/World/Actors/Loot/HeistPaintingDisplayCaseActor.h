@@ -158,6 +158,9 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 	UFUNCTION(BlueprintPure, Category = "Heist|DisplayCase|Original|Visual")
 	int32 GetOriginalVisualRevision() const;
 
+	/** Loads the replicated reference texture used by this case's assigned Original painting. */
+	UTexture2D* LoadOriginalReferenceImage() const;
+
 	bool SetAssignedSurfaceTemplate(FName PoolId, FName TemplateId, int32 AssignmentRevision);
 	bool ClearAssignedSurfaceTemplate();
 

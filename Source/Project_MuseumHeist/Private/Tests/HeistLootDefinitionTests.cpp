@@ -1,6 +1,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "Character/Components/HeistInventoryComponent.h"
+#include "Components/Image.h"
 #include "Data/HeistArtifactDataTypes.h"
 #include "Data/HeistContractDataTypes.h"
 #include "Data/HeistGameBalanceDataAsset.h"
@@ -9,6 +10,7 @@
 #include "Inventory/HeistItemDataTypes.h"
 #include "Materials/MaterialInterface.h"
 #include "Misc/AutomationTest.h"
+#include "UI/DragDrop/HeistInventoryDragDropOperation.h"
 
 namespace
 {
@@ -62,6 +64,31 @@ bool FHeistInventoryGridContractTest::RunTest(const FString& Parameters)
 	TemplateDefinition.AllowedPalette.SetNum(3);
 	TestFalse(TEXT("Unsupported Surface difficulty is rejected"), HeistSurfaceForgeryInventory::TryResolveGridSize(TemplateDefinition, GridSize));
 	TestEqual(TEXT("Rejected Surface difficulty clears the footprint"), GridSize, FIntPoint::ZeroValue);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistInventoryDragVisualContractTest, "ProjectMuseumHeist.Inventory.DragVisualContract",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHeistInventoryDragVisualContractTest::RunTest(const FString& Parameters)
+{
+	UHeistInventoryDragDropOperation* DragOperation = NewObject<UHeistInventoryDragDropOperation>();
+	UImage* DragVisualImage = NewObject<UImage>(DragOperation);
+	DragOperation->SetupDragOperation(7, FIntPoint(1, 2), DragVisualImage);
+
+	TestEqual(TEXT("Drag operation keeps the item instance"), DragOperation->InstanceId, 7);
+	TestEqual(TEXT("Drag operation keeps the source grid position"), DragOperation->SourceGridPosition, FIntPoint(1, 2));
+	TestTrue(TEXT("Drag operation uses the supplied image as its visual"), DragOperation->DefaultDragVisual == DragVisualImage);
+	TestFalse(TEXT("Drag starts as an inventory move"), DragOperation->bWorldDropPreview);
+
+	const FLinearColor InventoryMoveColor = DragVisualImage->GetColorAndOpacity();
+	DragOperation->SetWorldDropPreview(true);
+	TestTrue(TEXT("Leaving the inventory enables world-drop preview"), DragOperation->bWorldDropPreview);
+	TestFalse(TEXT("World-drop preview changes the drag image tint"), DragVisualImage->GetColorAndOpacity().Equals(InventoryMoveColor));
+
+	DragOperation->SetWorldDropPreview(false);
+	TestFalse(TEXT("Returning to the grid clears world-drop preview"), DragOperation->bWorldDropPreview);
+	TestTrue(TEXT("Returning to the grid restores the move tint"), DragVisualImage->GetColorAndOpacity().Equals(InventoryMoveColor));
 	return true;
 }
 

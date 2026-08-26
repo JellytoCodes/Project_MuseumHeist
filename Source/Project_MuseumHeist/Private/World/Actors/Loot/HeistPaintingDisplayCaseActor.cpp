@@ -454,6 +454,11 @@ int32 AHeistPaintingDisplayCaseActor::GetOriginalVisualRevision() const
 	return OriginalVisualRevision;
 }
 
+UTexture2D* AHeistPaintingDisplayCaseActor::LoadOriginalReferenceImage() const
+{
+	return OriginalReferenceImage.LoadSynchronous();
+}
+
 bool AHeistPaintingDisplayCaseActor::SetAssignedSurfaceTemplate(const FName PoolId, const FName TemplateId, const int32 AssignmentRevision)
 {
 	if (!HasAuthority() || PoolId.IsNone() || TemplateId.IsNone() || AssignmentRevision <= 0)

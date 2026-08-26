@@ -18,6 +18,7 @@
 #include "UI/Widgets/HeistInventoryItemWidget.h"
 #include "UI/Widgets/HeistInventorySlotWidget.h"
 #include "View/MVVMView.h"
+#include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 
 UHeistInventoryWidget::UHeistInventoryWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
@@ -65,16 +66,18 @@ void UHeistInventoryWidget::NativeTick(const FGeometry& MyGeometry, const float 
 
 bool UHeistInventoryWidget::NativeOnDragOver(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
 {
-	const UHeistInventoryDragDropOperation* InventoryOperation = Cast<UHeistInventoryDragDropOperation>(InOperation);
+	UHeistInventoryDragDropOperation* InventoryOperation = Cast<UHeistInventoryDragDropOperation>(InOperation);
 	FIntPoint TargetGridPosition(-1, -1);
 	if (IsValid(InventoryOperation))
 	{
 		if (TryGetDropTargetGridPosition(InDragDropEvent, TargetGridPosition))
 		{
+			InventoryOperation->SetWorldDropPreview(false);
 			UpdateDropPreview(InventoryOperation->InstanceId, TargetGridPosition);
 		}
 		else
 		{
+			InventoryOperation->SetWorldDropPreview(true);
 			ClearDropPreview();
 		}
 		return true;
@@ -86,13 +89,17 @@ bool UHeistInventoryWidget::NativeOnDragOver(const FGeometry& InGeometry, const 
 
 void UHeistInventoryWidget::NativeOnDragLeave(const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
 {
+	if (UHeistInventoryDragDropOperation* InventoryOperation = Cast<UHeistInventoryDragDropOperation>(InOperation))
+	{
+		InventoryOperation->SetWorldDropPreview(true);
+	}
 	ClearDropPreview();
 	Super::NativeOnDragLeave(InDragDropEvent, InOperation);
 }
 
 bool UHeistInventoryWidget::NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
 {
-	const UHeistInventoryDragDropOperation* InventoryOperation = Cast<UHeistInventoryDragDropOperation>(InOperation);
+	UHeistInventoryDragDropOperation* InventoryOperation = Cast<UHeistInventoryDragDropOperation>(InOperation);
 	if (!IsValid(InventoryOperation))
 	{
 		ClearDropPreview();
@@ -106,6 +113,7 @@ bool UHeistInventoryWidget::NativeOnDrop(const FGeometry& InGeometry, const FDra
 	}
 	else
 	{
+		InventoryOperation->SetWorldDropPreview(true);
 		RequestDropItem(InventoryOperation->InstanceId);
 	}
 
@@ -292,7 +300,7 @@ void UHeistInventoryWidget::RebuildConfirmedInventory(const TArray<FHeistInvento
 			continue;
 		}
 
-		ItemWidget->SetupItem(ConfirmedItem, PlacedSize, Icon, this);
+		ItemWidget->SetupItem(ConfirmedItem, Icon, this);
 		UCanvasPanelSlot* CanvasSlot = ItemOverlay->AddChildToCanvas(ItemWidget);
 		const FVector2D CellSize = ResolveInventoryCellSize();
 		CanvasSlot->SetPosition(FVector2D(ConfirmedItem.GridPosition.X * CellSize.X, ConfirmedItem.GridPosition.Y * CellSize.Y));
@@ -383,6 +391,11 @@ bool UHeistInventoryWidget::TryResolveItemPresentation(const FHeistInventoryItem
 	}
 	if (InventoryItem.IsOriginalArtifact())
 	{
+		const AHeistPaintingDisplayCaseActor* PaintingSourceCase = Cast<AHeistPaintingDisplayCaseActor>(InventoryItem.SourceDisplayCase.Get());
+		if (IsValid(PaintingSourceCase))
+		{
+			OutIcon = PaintingSourceCase->LoadOriginalReferenceImage();
+		}
 		return true;
 	}
 	if (!IsValid(ItemDataTable) || ItemDataTable->GetRowStruct() != FHeistItemDataRow::StaticStruct())
