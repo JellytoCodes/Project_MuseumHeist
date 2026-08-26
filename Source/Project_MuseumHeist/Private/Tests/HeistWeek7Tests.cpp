@@ -75,26 +75,42 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistWeek7VariationContractTest, "ProjectMuseu
 bool FHeistWeek7VariationContractTest::RunTest(const FString& Parameters)
 {
 	const UHeistGameInstance* GameInstanceCDO = GetDefault<UHeistGameInstance>();
+	const AHeistGameMode* GameModeCDO = GetDefault<AHeistGameMode>();
 	const UDataTable* TemplateTable = LoadObject<UDataTable>(nullptr, TEXT("/Game/Data/DataTable/DT_ForgeryTemplate.DT_ForgeryTemplate"));
+	TestNotNull(TEXT("Heist GameMode CDO exists"), GameModeCDO);
 	TestNotNull(TEXT("DT_ForgeryTemplate exists"), TemplateTable);
 	TestTrue(TEXT("DT_ForgeryTemplate uses FHeistForgeryTemplateRow"), IsValid(TemplateTable) && TemplateTable->GetRowStruct() == FHeistForgeryTemplateRow::StaticStruct());
 	TMap<FName, int32> TemplateCountByPool;
+	int32 InvalidTemplateCount = 0;
 	if (IsValid(TemplateTable) && TemplateTable->GetRowStruct() == FHeistForgeryTemplateRow::StaticStruct())
 	{
 		for (const FName RowName : TemplateTable->GetRowNames())
 		{
 			const FHeistForgeryTemplateRow* Row = TemplateTable->FindRow<FHeistForgeryTemplateRow>(RowName, TEXT("FHeistWeek7VariationContractTest"), false);
+			FHeistForgeryTemplateRow RuntimeDefinition;
+			const bool bRuntimeLookupValid = IsValid(GameModeCDO) && GameModeCDO->TryGetForgeryTemplateDefinition(RowName, RuntimeDefinition);
 			if (Row != nullptr && Row->TemplateId == RowName)
 			{
 				++TemplateCountByPool.FindOrAdd(Row->SurfacePoolId);
+				const bool bValidDifficultyContract =
+					(Row->AllowedPalette.Num() == HeistSurfaceForgeryInventory::EasyPaletteCount && FMath::IsNearlyEqual(Row->ForgeryDuration, 35.0f) && Row->StrokeLimit == 4096) ||
+					(Row->AllowedPalette.Num() == HeistSurfaceForgeryInventory::MediumPaletteCount && FMath::IsNearlyEqual(Row->ForgeryDuration, 40.0f) && Row->StrokeLimit == 5120) ||
+					(Row->AllowedPalette.Num() == HeistSurfaceForgeryInventory::HardPaletteCount && FMath::IsNearlyEqual(Row->ForgeryDuration, 45.0f) && Row->StrokeLimit == 6144);
+				const bool bMissingRequiredMask = Row->BackgroundFilterMode == EHeistForgeryBackgroundFilter::None && Row->ReferenceMask.IsNull();
+				InvalidTemplateCount += !bRuntimeLookupValid || Row->ReferenceImage.IsNull() || bMissingRequiredMask || Row->ObservationDuration < 0.0f ||
+					!FMath::IsWithinInclusive(Row->ForgeryDuration, 20.0f, 45.0f) || Row->BrushSize <= 0.0f || !bValidDifficultyContract;
+			}
+			else
+			{
+				++InvalidTemplateCount;
 			}
 		}
 	}
+	TestEqual(TEXT("All Surface templates satisfy the runtime interaction contract"), InvalidTemplateCount, 0);
 	for (const FName PoolId : {FName(TEXT("M01")), FName(TEXT("M02")), FName(TEXT("M03"))})
 	{
 		const int32 TemplateCount = TemplateCountByPool.FindRef(PoolId);
-		TestTrue(FString::Printf(TEXT("%s Surface pool preserves the shipped 12-template baseline while expanding toward 40"), *PoolId.ToString()),
-			FMath::IsWithinInclusive(TemplateCount, 12, 40));
+		TestEqual(FString::Printf(TEXT("%s Surface pool contains the required 40 templates"), *PoolId.ToString()), TemplateCount, 40);
 	}
 
 	int32 DrawCount = 0;

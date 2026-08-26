@@ -1,5 +1,25 @@
 #include "Data/HeistArtifactDataTypes.h"
 
+bool HeistSurfaceForgeryInventory::TryResolveGridSize(const FHeistForgeryTemplateRow& TemplateDefinition, FIntPoint& OutGridSize)
+{
+	OutGridSize = FIntPoint::ZeroValue;
+
+	switch (TemplateDefinition.AllowedPalette.Num())
+	{
+		case EasyPaletteCount:
+			OutGridSize = FIntPoint(1, 2);
+			return true;
+		case MediumPaletteCount:
+			OutGridSize = FIntPoint(2, 2);
+			return true;
+		case HardPaletteCount:
+			OutGridSize = FIntPoint(3, 2);
+			return true;
+		default:
+			return false;
+	}
+}
+
 #if WITH_EDITOR
 #include "Misc/DataValidation.h"
 
@@ -93,9 +113,9 @@ EDataValidationResult FHeistForgeryTemplateRow::IsDataValid(FDataValidationConte
 	{
 		AddError(LOCTEXT("InvalidBackgroundColorTolerance", "BackgroundColorTolerance must be between 0.0 and 0.49."));
 	}
-	if (!FMath::IsWithinInclusive(AllowedPalette.Num(), 2, 8))
+	if (!FMath::IsWithinInclusive(AllowedPalette.Num(), HeistSurfaceForgeryInventory::EasyPaletteCount, HeistSurfaceForgeryInventory::HardPaletteCount))
 	{
-		AddError(LOCTEXT("InvalidAllowedPaletteCount", "AllowedPalette must contain between 2 and 8 colors."));
+		AddError(LOCTEXT("InvalidAllowedPaletteCount", "AllowedPalette must contain 4, 5, or 6 colors for Easy, Medium, or Hard difficulty."));
 	}
 	for (const FLinearColor& PaletteColor : AllowedPalette)
 	{

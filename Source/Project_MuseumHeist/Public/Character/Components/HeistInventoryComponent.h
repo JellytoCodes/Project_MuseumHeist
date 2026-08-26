@@ -34,7 +34,7 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryComponent : public UActorComponent
 #pragma region InventoryContract
 
   public:
-	static constexpr int32 GridColumnCount = 4;
+	static constexpr int32 GridColumnCount = 5;
 	static constexpr int32 GridRowCount = 5;
 
 	UFUNCTION(BlueprintPure, Category = "Heist|Inventory")

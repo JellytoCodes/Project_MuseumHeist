@@ -34,6 +34,7 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryWidget : public UHeistUserWidgetBas
   protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	virtual bool NativeOnDragOver(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 	virtual void NativeOnDragLeave(const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
 	virtual bool NativeOnDrop(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation) override;
@@ -84,6 +85,8 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryWidget : public UHeistUserWidgetBas
 
 	private:
 	void RebuildConfirmedInventory(const TArray<FHeistInventoryItem>& ConfirmedItems, int32 GridColumns, int32 GridRows);
+	void RefreshItemOverlayLayout();
+	FVector2D ResolveInventoryCellSize() const;
 	bool TryResolveItemPresentation(const FHeistInventoryItem& InventoryItem, FIntPoint& OutPlacedSize, UTexture2D*& OutIcon) const;
 	bool TryGetDropTargetGridPosition(const FDragDropEvent& DragDropEvent, FIntPoint& OutGridPosition) const;
 	void UpdateDropPreview(int32 InstanceId, const FIntPoint& TargetGridPosition);
@@ -117,6 +120,10 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryWidget : public UHeistUserWidgetBas
 	UPROPERTY(Transient)
 	int32 ConfirmedGridRows = 0;
 
+	bool bItemOverlayLayoutDirty = true;
+	FVector2D LastGridTopLeftInOverlay = FVector2D::ZeroVector;
+	FVector2D LastGridSizeInOverlay = FVector2D::ZeroVector;
+
 #pragma endregion
 
 #pragma region Presentation
@@ -129,10 +136,7 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryWidget : public UHeistUserWidgetBas
 	TObjectPtr<UButton> CloseButton;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> ItemCountText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> WeightText;
+	TObjectPtr<UTextBlock> InventorySummaryText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistInventoryFrameWidget> InventoryFrameWidget;

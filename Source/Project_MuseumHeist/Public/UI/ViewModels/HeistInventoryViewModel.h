@@ -60,7 +60,7 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryViewModel : public UMVVMViewModelBa
 	bool bInventoryOpen = false;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|Inventory", meta = (AllowPrivateAccess = "true"))
-	int32 GridColumnCount = 4;
+	int32 GridColumnCount = 5;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Heist|Inventory", meta = (AllowPrivateAccess = "true"))
 	int32 GridRowCount = 5;

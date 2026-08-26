@@ -217,7 +217,7 @@ Title Menu
 - Server Alert Meter 0.0~10.0 / Internal Alert Level
 - Lockdown
 - Loose Loot
-- 4×5 Grid Inventory
+- 5×5 Grid Inventory
 - Weight Penalty
 - Walk / Sprint와 속도별 Footstep Noise
 - Coin Guard Distraction
@@ -1121,8 +1121,8 @@ Session 종료, Cancel, Timeout, Arrest, Disconnect, Match End, Owner EndPlay �
 
 ## Grid Inventory And Original Acquisition
 
-- v1 Painting Original과 Loose Loot는 동일한 Owner-only `FHeistReplicatedInventory` FastArray와 4×5 GridSlot을 사용한다. Object Original 지원은 Deferred 호환 데이터로만 보존한다.
-- Painting의 Original은 `ReplicaReady`에서 `E`로 교체·회수를 확정할 때 Artifact Data의 `GridWidth`, `GridHeight`, `Weight`, `ArtifactValue`를 복제 Item Instance에 복사하고 빈 GridSlot에 즉시 자동 배치한다.
+- v1 Painting Original과 Loose Loot는 동일한 Owner-only `FHeistReplicatedInventory` FastArray와 5×5 GridSlot을 사용한다. Object Original 지원은 Deferred 호환 데이터로만 보존한다.
+- Painting의 Original은 `ReplicaReady`에서 `E`로 교체·회수를 확정할 때 배정된 Surface Template 난이도로 `BaseGridSize`를 서버가 확정한다. 하(Easy, Palette 4)는 1×2, 중(Medium, Palette 5)은 2×2, 상(Hard, Palette 6)은 3×2다. `Weight`, `ArtifactValue`와 Required Target 여부는 Artifact Data에서 복제 Item Instance로 복사하고 빈 GridSlot에 즉시 자동 배치한다.
 - Painting의 Replica 교체와 Original Grid 추가는 분리된 두 번의 상호작용이 아니며, 어느 한쪽만 성공한 상태를 남기지 않는다.
 - 빈 GridSlot이 없거나 Weight 제한을 넘으면 획득을 거부하며, Original은 전시 케이스 또는 기존 World Drop 상태를 유지한다.
 - Grid와 Weight가 허용하는 한 한 Player가 여러 Original을 동시에 보유할 수 있다.

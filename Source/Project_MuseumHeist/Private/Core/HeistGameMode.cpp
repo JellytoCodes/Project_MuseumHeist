@@ -1926,11 +1926,15 @@ bool AHeistGameMode::TryGetForgeryTemplateDefinition(const FName TemplateId, FHe
 	}
 
 	const FHeistForgeryTemplateRow* TemplateDefinition = TemplateDataTable->FindRow<FHeistForgeryTemplateRow>(TemplateId, TEXT("AHeistGameMode::TryGetForgeryTemplateDefinition"), false);
-	if (TemplateDefinition == nullptr || TemplateDefinition->TemplateId != TemplateId || TemplateDefinition->ReferenceImage.IsNull() || TemplateDefinition->ReferenceMask.IsNull() ||
+	const bool bMissingRequiredMask = TemplateDefinition != nullptr && TemplateDefinition->BackgroundFilterMode == EHeistForgeryBackgroundFilter::None && TemplateDefinition->ReferenceMask.IsNull();
+	if (TemplateDefinition == nullptr || TemplateDefinition->TemplateId != TemplateId || TemplateDefinition->ReferenceImage.IsNull() || bMissingRequiredMask ||
 		TemplateDefinition->ObservationDuration < 0.0f || !FMath::IsFinite(TemplateDefinition->ForgeryDuration) ||
 		!FMath::IsWithinInclusive(TemplateDefinition->ForgeryDuration, 20.0f, 45.0f) || TemplateDefinition->StrokeLimit <= 0 || TemplateDefinition->BrushSize <= 0.0f)
 	{
-		UE_LOG(LogHeist, Error, TEXT("Forgery template lookup rejected: TemplateId=%s Reason=MissingOrInvalidDefinition"), *TemplateId.ToString());
+		UE_LOG(LogHeist, Error,
+			TEXT("Forgery template lookup rejected: TemplateId=%s Reason=MissingOrInvalidDefinition Duration=%.2f StrokeLimit=%d BrushSize=%.4f"),
+			*TemplateId.ToString(), TemplateDefinition != nullptr ? TemplateDefinition->ForgeryDuration : -1.0f,
+			TemplateDefinition != nullptr ? TemplateDefinition->StrokeLimit : 0, TemplateDefinition != nullptr ? TemplateDefinition->BrushSize : 0.0f);
 		return false;
 	}
 
@@ -2005,18 +2009,16 @@ bool AHeistGameMode::GatherSurfaceTemplatePool(const FName PoolId, TArray<FName>
 	TSet<FName> UniqueTemplateIds;
 	for (const FName RowName : TemplateDataTable->GetRowNames())
 	{
-		const FHeistForgeryTemplateRow* TemplateDefinition =
-			TemplateDataTable->FindRow<FHeistForgeryTemplateRow>(RowName, TEXT("AHeistGameMode::GatherSurfaceTemplatePool"), false);
-		if (TemplateDefinition == nullptr || TemplateDefinition->TemplateId.IsNone() || TemplateDefinition->TemplateId != RowName || TemplateDefinition->ReferenceImage.IsNull() ||
-			(TemplateDefinition->BackgroundFilterMode == EHeistForgeryBackgroundFilter::None && TemplateDefinition->ReferenceMask.IsNull()))
+		FHeistForgeryTemplateRow TemplateDefinition;
+		if (!TryGetForgeryTemplateDefinition(RowName, TemplateDefinition))
 		{
 			continue;
 		}
 
-		if (TemplateDefinition->SurfacePoolId == PoolId && !UniqueTemplateIds.Contains(TemplateDefinition->TemplateId))
+		if (TemplateDefinition.SurfacePoolId == PoolId && !UniqueTemplateIds.Contains(TemplateDefinition.TemplateId))
 		{
-			UniqueTemplateIds.Add(TemplateDefinition->TemplateId);
-			OutTemplateIds.Add(TemplateDefinition->TemplateId);
+			UniqueTemplateIds.Add(TemplateDefinition.TemplateId);
+			OutTemplateIds.Add(TemplateDefinition.TemplateId);
 		}
 	}
 

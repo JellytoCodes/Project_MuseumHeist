@@ -1,5 +1,6 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "Character/Components/HeistInventoryComponent.h"
 #include "Data/HeistArtifactDataTypes.h"
 #include "Data/HeistContractDataTypes.h"
 #include "Data/HeistGameBalanceDataAsset.h"
@@ -34,6 +35,34 @@ bool HaveSameWorldVisualSignature(const FHeistLootDataRow& Left, const FHeistLoo
 	return Left.WorldMesh.ToSoftObjectPath() == Right.WorldMesh.ToSoftObjectPath() && HaveSameMaterialPaths(Left, Right) &&
 		Left.WorldVisualRelativeTransform.Equals(Right.WorldVisualRelativeTransform, 0.0);
 }
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistInventoryGridContractTest, "ProjectMuseumHeist.Inventory.GridContract",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHeistInventoryGridContractTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("Inventory column count is five"), UHeistInventoryComponent::GridColumnCount, 5);
+	TestEqual(TEXT("Inventory row count is five"), UHeistInventoryComponent::GridRowCount, 5);
+
+	FHeistForgeryTemplateRow TemplateDefinition;
+	FIntPoint GridSize = FIntPoint::ZeroValue;
+	TemplateDefinition.AllowedPalette.SetNum(HeistSurfaceForgeryInventory::EasyPaletteCount);
+	TestTrue(TEXT("Easy Surface difficulty resolves an inventory footprint"), HeistSurfaceForgeryInventory::TryResolveGridSize(TemplateDefinition, GridSize));
+	TestEqual(TEXT("Easy Painting Original uses 1x2"), GridSize, FIntPoint(1, 2));
+
+	TemplateDefinition.AllowedPalette.SetNum(HeistSurfaceForgeryInventory::MediumPaletteCount);
+	TestTrue(TEXT("Medium Surface difficulty resolves an inventory footprint"), HeistSurfaceForgeryInventory::TryResolveGridSize(TemplateDefinition, GridSize));
+	TestEqual(TEXT("Medium Painting Original uses 2x2"), GridSize, FIntPoint(2, 2));
+
+	TemplateDefinition.AllowedPalette.SetNum(HeistSurfaceForgeryInventory::HardPaletteCount);
+	TestTrue(TEXT("Hard Surface difficulty resolves an inventory footprint"), HeistSurfaceForgeryInventory::TryResolveGridSize(TemplateDefinition, GridSize));
+	TestEqual(TEXT("Hard Painting Original uses 3x2"), GridSize, FIntPoint(3, 2));
+
+	TemplateDefinition.AllowedPalette.SetNum(3);
+	TestFalse(TEXT("Unsupported Surface difficulty is rejected"), HeistSurfaceForgeryInventory::TryResolveGridSize(TemplateDefinition, GridSize));
+	TestEqual(TEXT("Rejected Surface difficulty clears the footprint"), GridSize, FIntPoint::ZeroValue);
+	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistLootDefinitionTest, "ProjectMuseumHeist.Loot.Definition",

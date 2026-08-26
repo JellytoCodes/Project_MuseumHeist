@@ -85,7 +85,7 @@ struct PROJECT_MUSEUMHEIST_API FHeistInventoryItem
 
 /**
  * Server-only preview/commit payload for one player's Shared Extraction deposit.
- * Loose Loot and every Original are sourced from the same 4x5 grid inventory and
+ * Loose Loot and every Original are sourced from the same 5x5 grid inventory and
  * deposited through one authoritative Contract mutation.
  */
 struct PROJECT_MUSEUMHEIST_API FHeistPlayerDepositPayload

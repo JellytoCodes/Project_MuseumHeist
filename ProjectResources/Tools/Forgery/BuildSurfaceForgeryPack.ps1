@@ -121,9 +121,9 @@ foreach ($template in @($manifest.templates))
 }
 
 $difficultySettings = @{
-    "Easy" = [ordered]@{ Palette = 4; Duration = 60.0; StrokeLimit = 1536; BrushSize = 0.025; CleanupRadius = 4 }
-    "Medium" = [ordered]@{ Palette = 5; Duration = 75.0; StrokeLimit = 2048; BrushSize = 0.020; CleanupRadius = 3 }
-    "Hard" = [ordered]@{ Palette = 6; Duration = 90.0; StrokeLimit = 3072; BrushSize = 0.018; CleanupRadius = 2 }
+    "Easy" = [ordered]@{ Palette = 4; Duration = 35.0; StrokeLimit = 4096; BrushSize = 0.025; CleanupRadius = 4 }
+    "Medium" = [ordered]@{ Palette = 5; Duration = 40.0; StrokeLimit = 5120; BrushSize = 0.020; CleanupRadius = 3 }
+    "Hard" = [ordered]@{ Palette = 6; Duration = 45.0; StrokeLimit = 6144; BrushSize = 0.018; CleanupRadius = 2 }
 }
 
 $newRows = [System.Collections.Generic.List[object]]::new()

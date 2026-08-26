@@ -161,6 +161,16 @@ struct PROJECT_MUSEUMHEIST_API FHeistForgeryTemplateRow : public FTableRowBase
 #endif
 };
 
+namespace HeistSurfaceForgeryInventory
+{
+inline constexpr int32 EasyPaletteCount = 4;
+inline constexpr int32 MediumPaletteCount = 5;
+inline constexpr int32 HardPaletteCount = 6;
+
+/** Resolves the authoritative Painting Original footprint from its assigned Surface template difficulty. */
+PROJECT_MUSEUMHEIST_API bool TryResolveGridSize(const FHeistForgeryTemplateRow& TemplateDefinition, FIntPoint& OutGridSize);
+}
+
 /** Reusable modular mesh definition for Sculpture and Ceramic assembly kits. */
 USTRUCT(BlueprintType)
 struct PROJECT_MUSEUMHEIST_API FHeistObjectAssemblyPartRow : public FTableRowBase

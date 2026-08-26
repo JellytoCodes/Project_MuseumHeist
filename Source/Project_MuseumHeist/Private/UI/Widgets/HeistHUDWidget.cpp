@@ -596,7 +596,7 @@ void UHeistHUDWidget::RefreshAlertStars()
 		UTexture2D* StarTexture = FilledAmount >= 1.0f ? FullAlertStarTexture.Get() : (FilledAmount >= 0.5f ? HalfAlertStarTexture.Get() : EmptyAlertStarTexture.Get());
 		if (IsValid(StarTexture))
 		{
-			StarImage->SetBrushFromTexture(StarTexture, true);
+			StarImage->SetBrushFromTexture(StarTexture, false);
 		}
 		StarImage->SetColorAndOpacity(FLinearColor::White);
 		StarImage->SetVisibility(ESlateVisibility::HitTestInvisible);

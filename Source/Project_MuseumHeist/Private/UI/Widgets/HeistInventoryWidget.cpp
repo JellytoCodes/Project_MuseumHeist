@@ -1,5 +1,7 @@
 #include "UI/Widgets/HeistInventoryWidget.h"
 
+#include "Character/Components/HeistNoiseEmitterComponent.h"
+#include "Character/HeistPlayerCharacter.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/Button.h"
@@ -39,6 +41,9 @@ void UHeistInventoryWidget::NativeDestruct()
 {
 	InventoryGrid = nullptr;
 	ItemOverlay = nullptr;
+	bItemOverlayLayoutDirty = true;
+	LastGridTopLeftInOverlay = FVector2D::ZeroVector;
+	LastGridSizeInOverlay = FVector2D::ZeroVector;
 
 	if (IsValid(CloseButton))
 	{
@@ -50,6 +55,12 @@ void UHeistInventoryWidget::NativeDestruct()
 		InventoryViewModel->GetSnapshotChangedDelegate().RemoveAll(this);
 	}
 	Super::NativeDestruct();
+}
+
+void UHeistInventoryWidget::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+	RefreshItemOverlayLayout();
 }
 
 bool UHeistInventoryWidget::NativeOnDragOver(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
@@ -132,16 +143,25 @@ void UHeistInventoryWidget::RefreshVisibilityFromConfirmedSnapshot()
 		const TArray<FHeistInventoryItem>& ConfirmedItems = InventoryViewModel->GetItems();
 		const int32 GridColumns = InventoryViewModel->GetGridColumnCount();
 		const int32 GridRows = InventoryViewModel->GetGridRowCount();
-		if (IsValid(ItemCountText))
+		if (IsValid(InventorySummaryText))
 		{
-			ItemCountText->SetText(FText::Format(NSLOCTEXT("HeistInventory", "ItemCountFormat", "아이템 {0}개"), FText::AsNumber(InventoryViewModel->GetItemCount())));
-		}
-		if (IsValid(WeightText))
-		{
-			FNumberFormattingOptions WeightFormat;
-			WeightFormat.MinimumFractionalDigits = 1;
-			WeightFormat.MaximumFractionalDigits = 1;
-			WeightText->SetText(FText::Format(NSLOCTEXT("HeistInventory", "WeightFormat", "무게 {0} kg"), FText::AsNumber(InventoryViewModel->GetTotalWeight(), &WeightFormat)));
+			const AHeistPlayerCharacter* OwningCharacter = IsValid(PlayerController) ? Cast<AHeistPlayerCharacter>(PlayerController->GetPawn()) : nullptr;
+			const UHeistNoiseEmitterComponent* NoiseEmitter = IsValid(OwningCharacter) ? OwningCharacter->GetNoiseEmitterComponent() : GetDefault<UHeistNoiseEmitterComponent>();
+			const float MediumWeightThreshold = IsValid(NoiseEmitter) ? FMath::Max(0.0f, NoiseEmitter->GetMediumWeightThreshold()) : 5.0f;
+			const float HeavyWeightThreshold = IsValid(NoiseEmitter) ? FMath::Max(MediumWeightThreshold, NoiseEmitter->GetHeavyWeightThreshold()) : 10.0f;
+			const float TotalWeight = FMath::Max(0.0f, InventoryViewModel->GetTotalWeight());
+
+			FText WeightState = NSLOCTEXT("HeistInventory", "WeightStateLight", "가벼움");
+			if (TotalWeight >= HeavyWeightThreshold)
+			{
+				WeightState = NSLOCTEXT("HeistInventory", "WeightStateHeavy", "무거움");
+			}
+			else if (TotalWeight >= MediumWeightThreshold)
+			{
+				WeightState = NSLOCTEXT("HeistInventory", "WeightStateMedium", "중간");
+			}
+
+			InventorySummaryText->SetText(FText::Format(NSLOCTEXT("HeistInventory", "WeightStateFormat", "배낭 상태: {0}"), WeightState));
 		}
 
 		BP_RefreshConfirmedInventory(ConfirmedItems, GridColumns, GridRows);
@@ -216,6 +236,7 @@ void UHeistInventoryWidget::RebuildConfirmedInventory(const TArray<FHeistInvento
 	ConfirmedInventoryItems = ConfirmedItems;
 	ConfirmedGridColumns = GridColumns;
 	ConfirmedGridRows = GridRows;
+	bItemOverlayLayoutDirty = true;
 
 	InventorySlotWidgets.Reset();
 	if (IsValid(InventoryGrid))
@@ -273,11 +294,83 @@ void UHeistInventoryWidget::RebuildConfirmedInventory(const TArray<FHeistInvento
 
 		ItemWidget->SetupItem(ConfirmedItem, PlacedSize, Icon, this);
 		UCanvasPanelSlot* CanvasSlot = ItemOverlay->AddChildToCanvas(ItemWidget);
-		CanvasSlot->SetPosition(FVector2D(ConfirmedItem.GridPosition.X * InventoryCellSize.X, ConfirmedItem.GridPosition.Y * InventoryCellSize.Y));
-		CanvasSlot->SetSize(FVector2D(PlacedSize.X * InventoryCellSize.X, PlacedSize.Y * InventoryCellSize.Y));
+		const FVector2D CellSize = ResolveInventoryCellSize();
+		CanvasSlot->SetPosition(FVector2D(ConfirmedItem.GridPosition.X * CellSize.X, ConfirmedItem.GridPosition.Y * CellSize.Y));
+		CanvasSlot->SetSize(FVector2D(PlacedSize.X * CellSize.X, PlacedSize.Y * CellSize.Y));
 		CanvasSlot->SetZOrder(10);
 		InventoryItemWidgets.Add(ItemWidget);
 	}
+
+	RefreshItemOverlayLayout();
+}
+
+void UHeistInventoryWidget::RefreshItemOverlayLayout()
+{
+	if (!IsValid(InventoryGrid) || !IsValid(ItemOverlay) || ConfirmedGridColumns <= 0 || ConfirmedGridRows <= 0)
+	{
+		return;
+	}
+
+	const FGeometry& GridGeometry = InventoryGrid->GetCachedGeometry();
+	const FGeometry& OverlayGeometry = ItemOverlay->GetCachedGeometry();
+	const FVector2D GridLocalSize = GridGeometry.GetLocalSize();
+	const FVector2D OverlayLocalSize = OverlayGeometry.GetLocalSize();
+	if (GridLocalSize.X <= 0.0 || GridLocalSize.Y <= 0.0 || OverlayLocalSize.X <= 0.0 || OverlayLocalSize.Y <= 0.0)
+	{
+		return;
+	}
+
+	const FVector2D GridTopLeft = OverlayGeometry.AbsoluteToLocal(GridGeometry.LocalToAbsolute(FVector2D::ZeroVector));
+	const FVector2D GridBottomRight = OverlayGeometry.AbsoluteToLocal(GridGeometry.LocalToAbsolute(GridLocalSize));
+	const FVector2D GridSizeInOverlay = GridBottomRight - GridTopLeft;
+	if (!bItemOverlayLayoutDirty && GridTopLeft.Equals(LastGridTopLeftInOverlay) && GridSizeInOverlay.Equals(LastGridSizeInOverlay))
+	{
+		return;
+	}
+
+	const FVector2D CellSize(GridSizeInOverlay.X / static_cast<double>(ConfirmedGridColumns), GridSizeInOverlay.Y / static_cast<double>(ConfirmedGridRows));
+	if (CellSize.X <= 0.0 || CellSize.Y <= 0.0)
+	{
+		return;
+	}
+
+	for (UHeistInventoryItemWidget* ItemWidget : InventoryItemWidgets)
+	{
+		if (!IsValid(ItemWidget))
+		{
+			continue;
+		}
+
+		const FHeistInventoryItem* ConfirmedItem = ConfirmedInventoryItems.FindByPredicate(
+			[ItemWidget](const FHeistInventoryItem& InventoryItem) { return InventoryItem.InstanceId == ItemWidget->GetInstanceId(); });
+		UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(ItemWidget->Slot);
+		if (ConfirmedItem == nullptr || !IsValid(CanvasSlot))
+		{
+			continue;
+		}
+
+		const FIntPoint PlacedSize = ConfirmedItem->BaseGridSize.X > 0 && ConfirmedItem->BaseGridSize.Y > 0 ? ConfirmedItem->GetPlacedSize() : FIntPoint(1, 1);
+		CanvasSlot->SetPosition(GridTopLeft + FVector2D(ConfirmedItem->GridPosition.X * CellSize.X, ConfirmedItem->GridPosition.Y * CellSize.Y));
+		CanvasSlot->SetSize(FVector2D(PlacedSize.X * CellSize.X, PlacedSize.Y * CellSize.Y));
+	}
+
+	bItemOverlayLayoutDirty = false;
+	LastGridTopLeftInOverlay = GridTopLeft;
+	LastGridSizeInOverlay = GridSizeInOverlay;
+}
+
+FVector2D UHeistInventoryWidget::ResolveInventoryCellSize() const
+{
+	if (IsValid(InventoryGrid) && ConfirmedGridColumns > 0 && ConfirmedGridRows > 0)
+	{
+		const FVector2D GridLocalSize = InventoryGrid->GetCachedGeometry().GetLocalSize();
+		if (GridLocalSize.X > 0.0 && GridLocalSize.Y > 0.0)
+		{
+			return FVector2D(GridLocalSize.X / static_cast<double>(ConfirmedGridColumns), GridLocalSize.Y / static_cast<double>(ConfirmedGridRows));
+		}
+	}
+
+	return InventoryCellSize;
 }
 
 bool UHeistInventoryWidget::TryResolveItemPresentation(const FHeistInventoryItem& InventoryItem, FIntPoint& OutPlacedSize, UTexture2D*& OutIcon) const
@@ -310,13 +403,19 @@ bool UHeistInventoryWidget::TryResolveItemPresentation(const FHeistInventoryItem
 bool UHeistInventoryWidget::TryGetDropTargetGridPosition(const FDragDropEvent& DragDropEvent, FIntPoint& OutGridPosition) const
 {
 	OutGridPosition = FIntPoint(-1, -1);
-	if (!IsValid(InventoryGrid) || InventoryCellSize.X <= 0.0 || InventoryCellSize.Y <= 0.0)
+	if (!IsValid(InventoryGrid))
+	{
+		return false;
+	}
+
+	const FVector2D CellSize = ResolveInventoryCellSize();
+	if (CellSize.X <= 0.0 || CellSize.Y <= 0.0)
 	{
 		return false;
 	}
 
 	const FVector2D LocalPosition = InventoryGrid->GetCachedGeometry().AbsoluteToLocal(DragDropEvent.GetScreenSpacePosition());
-	OutGridPosition = FIntPoint(FMath::FloorToInt(LocalPosition.X / InventoryCellSize.X), FMath::FloorToInt(LocalPosition.Y / InventoryCellSize.Y));
+	OutGridPosition = FIntPoint(FMath::FloorToInt(LocalPosition.X / CellSize.X), FMath::FloorToInt(LocalPosition.Y / CellSize.Y));
 	return OutGridPosition.X >= 0 && OutGridPosition.Y >= 0 && OutGridPosition.X < ConfirmedGridColumns && OutGridPosition.Y < ConfirmedGridRows;
 }
 

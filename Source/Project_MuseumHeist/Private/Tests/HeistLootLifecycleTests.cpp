@@ -58,7 +58,7 @@ struct FHeistLootLifecycleAutomationState
 
 const TArray<FName>& GetLifecycleLootRowIds()
 {
-	// Largest first keeps the production first-fit placement deterministic within the 4x5 grid.
+	// Largest first keeps the production first-fit placement deterministic within the 5x5 grid.
 	static const TArray<FName> RowIds = {
 		FName(TEXT("Loot_Painting")), FName(TEXT("Loot_RoyalCrown")), FName(TEXT("Loot_AncientSword")), FName(TEXT("Loot_GoldenVase")),
 		FName(TEXT("Loot_JewelNecklace"))};
@@ -969,7 +969,7 @@ bool EnqueueTwoPlayerLootLifecycleScenario(FAutomationTestBase* Test)
 		AppendLootFixtureLifecycleCommands(Test, State, FixtureIndex);
 	}
 
-	Test->AddCommand(new FHeistLootLifecycleActionCommand(Test, State, TEXT("validate all five rows fit the production 4x5 inventory"), [Test, State]()
+	Test->AddCommand(new FHeistLootLifecycleActionCommand(Test, State, TEXT("validate all five rows fit the production 5x5 inventory"), [Test, State]()
 	{
 		if (!AreHeldLootStateAndContractReplicated(State, State->Fixtures.Num() - 1))
 		{
@@ -1074,7 +1074,7 @@ bool EnqueueTwoPlayerLootLifecycleScenario(FAutomationTestBase* Test)
 			return false;
 		}
 		Test->AddInfo(FString::Printf(
-			TEXT("W6-011 lifecycle gate: Players=2 Map=M01 Rows=5 InitialPickups=5 Drops=5 Repickups=5 PickupFeedback=10 SharedShell=BP_Loot HostClientVisual=true InventoryGrid=4x5 Secured=%d InventoryEmpty=true ContractOutcomeSeed=false Result=PASS"),
+			TEXT("W6-011 lifecycle gate: Players=2 Map=M01 Rows=5 InitialPickups=5 Drops=5 Repickups=5 PickupFeedback=10 SharedShell=BP_Loot HostClientVisual=true InventoryGrid=5x5 Secured=%d InventoryEmpty=true ContractOutcomeSeed=false Result=PASS"),
 			ExpectedValue));
 		return true;
 	}));

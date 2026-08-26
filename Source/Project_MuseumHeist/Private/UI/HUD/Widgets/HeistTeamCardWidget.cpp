@@ -59,7 +59,7 @@ void UHeistTeamCardWidget::ApplyCrewData(const FHeistCrewStatusEntry& CrewEntry,
 		UTexture2D* IconTexture = ResolveStatusIcon();
 		if (IsValid(IconTexture))
 		{
-			StatusIcon->SetBrushFromTexture(IconTexture, true);
+			StatusIcon->SetBrushFromTexture(IconTexture, false);
 		}
 		StatusIcon->SetVisibility(IsValid(IconTexture) ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	}
@@ -109,7 +109,7 @@ void UHeistTeamCardWidget::RefreshProfileImage()
 	}
 	if (IsValid(DefaultProfileTexture))
 	{
-		ProfileImage->SetBrushFromTexture(DefaultProfileTexture, true);
+		ProfileImage->SetBrushFromTexture(DefaultProfileTexture, false);
 	}
 	if (!bOccupied || PlatformUserId.IsEmpty() || TryLoadSteamProfileImage())
 	{
@@ -190,7 +190,7 @@ bool UHeistTeamCardWidget::TryLoadSteamProfileImage()
 	}
 	LoadedProfileTexture->SRGB = true;
 	LoadedProfileTexture->UpdateResource();
-	ProfileImage->SetBrushFromTexture(LoadedProfileTexture, true);
+	ProfileImage->SetBrushFromTexture(LoadedProfileTexture, false);
 	return true;
 #else
 	return false;

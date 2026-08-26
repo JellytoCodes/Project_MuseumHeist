@@ -13,6 +13,7 @@
 #include "Inventory/HeistItemDataTypes.h"
 #include "Net/UnrealNetwork.h"
 #include "World/Actors/Loot/HeistLootActor.h"
+#include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 
 #pragma region InternalConstants
 
@@ -449,7 +450,18 @@ bool UHeistInventoryComponent::TryAddOriginalArtifact(AHeistPlayerState* Carryin
 
 	FIntPoint GridPosition(-1, -1);
 	bool bRotated = false;
-	const FIntPoint BaseGridSize(ArtifactDefinition.GridWidth, ArtifactDefinition.GridHeight);
+	FIntPoint BaseGridSize(ArtifactDefinition.GridWidth, ArtifactDefinition.GridHeight);
+	if (OutRejectReason == nullptr && ArtifactDefinition.ForgeryType == EHeistForgeryType::Drawing)
+	{
+		const AHeistPaintingDisplayCaseActor* PaintingDisplayCase = Cast<AHeistPaintingDisplayCaseActor>(SourceDisplayCase);
+		FHeistForgeryTemplateRow TemplateDefinition;
+		if (!IsValid(PaintingDisplayCase) || PaintingDisplayCase->GetOriginalVisualTemplateId().IsNone() ||
+			!HeistGameMode->TryGetForgeryTemplateDefinition(PaintingDisplayCase->GetOriginalVisualTemplateId(), TemplateDefinition) ||
+			!HeistSurfaceForgeryInventory::TryResolveGridSize(TemplateDefinition, BaseGridSize))
+		{
+			OutRejectReason = TEXT("InvalidSurfaceInventoryGridSize");
+		}
+	}
 	if (OutRejectReason == nullptr && !TryFindAutoPlacement(BaseGridSize, true, GridPosition, bRotated))
 	{
 		OutRejectReason = TEXT("InventoryFull");

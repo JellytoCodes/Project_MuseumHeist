@@ -17,6 +17,7 @@ class PROJECT_MUSEUMHEIST_API UHeistNoiseEmitterComponent : public UActorCompone
   public:
 	UHeistNoiseEmitterComponent();
 	bool IsHeavyWeight(float TotalLootWeight) const;
+	float GetMediumWeightThreshold() const { return MediumWeightThreshold; }
 	float GetHeavyWeightThreshold() const { return HeavyWeightThreshold; }
 	bool TryEmitVoiceNoise();
 	float GetVoiceNoiseRadius() const { return VoiceNoiseRadius; }
