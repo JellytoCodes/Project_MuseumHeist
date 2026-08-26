@@ -1,4 +1,5 @@
 import json
+import math
 
 import unreal
 
@@ -11,9 +12,14 @@ EXPECTED = {
         "floor_count": 234,
         "vent_points": 3,
         "guards": 5,
-        "waypoints": 22,
+        "waypoints": 31,
         "cameras": 6,
         "lasers": 2,
+        "generated_lights": 10,
+        "ceiling_panels": 58,
+        "ceiling_prefixes": ("LDV2_M01_Ceiling_",),
+        "laser_case_ids": ("Case_M01_Optional_HighValue", "Case_M01_Optional_11"),
+        "signature_labels": ("LDV2_M01_HeroPlinth", "LDV2_M01_Portal_00", "LDV2_M01_WarmLight_00"),
         "nav_scale": (72.0, 52.0, 10.0),
     },
     "M02": {
@@ -23,9 +29,14 @@ EXPECTED = {
         "floor_count": 224,
         "vent_points": 2,
         "guards": 5,
-        "waypoints": 21,
+        "waypoints": 30,
         "cameras": 4,
         "lasers": 2,
+        "generated_lights": 13,
+        "ceiling_panels": 60,
+        "ceiling_prefixes": ("LDV2_M02_Ceiling_",),
+        "laser_case_ids": ("Case_M02_Optional_HighValue", "Case_M02_Optional_07"),
+        "signature_labels": ("LDV2_M02_MoonPool", "LDV2_M02_FoldingScreen_00A", "LDV2_M02_MoonCourtLight"),
         "nav_scale": (64.0, 56.0, 10.0),
     },
     "M03": {
@@ -35,12 +46,20 @@ EXPECTED = {
         "floor_count": 220,
         "vent_points": 3,
         "guards": 4,
-        "waypoints": 17,
+        "waypoints": 29,
         "cameras": 8,
         "lasers": 3,
+        "generated_lights": 13,
+        "ceiling_panels": 10,
+        "ceiling_prefixes": ("LDV2_M03_GlassRoof_",),
+        "laser_case_ids": ("Case_M03_Optional_HighValue", "Case_M03_Optional_08", "Case_M03_Optional_10"),
+        "signature_labels": ("LDV2_M03_SpinePortal_00", "LDV2_M03_RestorationTable_00", "LDV2_M03_EmergencyLight_00"),
         "nav_scale": (80.0, 44.0, 10.0),
     },
 }
+
+MIN_CASE_GUARD_CLEARANCE_CM = 450.0
+MIN_GUARD_OBSTACLE_CLEARANCE_CM = 100.0
 
 
 def prop(obj, name):
@@ -56,6 +75,20 @@ def close_float(left, right, tolerance=0.1):
 
 def actor_label(value):
     return value.get_actor_label() if value else ""
+
+
+def sampled_segment_aabb_clearance(start, end, origin, extent, sample_spacing=50.0):
+    length = math.hypot(end.x - start.x, end.y - start.y)
+    sample_count = max(1, int(math.ceil(length / sample_spacing)))
+    minimum = float("inf")
+    for sample_index in range(sample_count + 1):
+        alpha = float(sample_index) / sample_count
+        x = start.x + (end.x - start.x) * alpha
+        y = start.y + (end.y - start.y) * alpha
+        delta_x = max(abs(x - origin.x) - extent.x, 0.0)
+        delta_y = max(abs(y - origin.y) - extent.y, 0.0)
+        minimum = min(minimum, math.hypot(delta_x, delta_y))
+    return minimum
 
 
 actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
@@ -95,6 +128,25 @@ for code, expected in EXPECTED.items():
     if any(not str(prop(actor, "target_artifact_id")) for actor in cases):
         failures.append("empty target_artifact_id")
 
+    guard_path_actors = by_class.get("HeistGuardWaypoint", []) + by_class.get("BP_Guard_C", [])
+    case_guard_clearances = []
+    for guard_path_actor in guard_path_actors:
+        guard_location = guard_path_actor.get_actor_location()
+        for case in cases:
+            case_location = case.get_actor_location()
+            distance = math.hypot(guard_location.x - case_location.x, guard_location.y - case_location.y)
+            case_guard_clearances.append((distance, guard_path_actor.get_actor_label(), case.get_actor_label()))
+    minimum_case_guard_clearance = min(case_guard_clearances, default=(float("inf"), "", ""))
+    if minimum_case_guard_clearance[0] < MIN_CASE_GUARD_CLEARANCE_CM:
+        failures.append(
+            "guard path clearance {:.1f}cm below {:.1f}cm: {} vs {}".format(
+                minimum_case_guard_clearance[0],
+                MIN_CASE_GUARD_CLEARANCE_CM,
+                minimum_case_guard_clearance[1],
+                minimum_case_guard_clearance[2],
+            )
+        )
+
     class_expectations = {
         "PlayerStart": 4,
         "BP_Vent_C": 1,
@@ -110,6 +162,12 @@ for code, expected in EXPECTED.items():
             failures.append("{} count {} != {}".format(class_name, actual, count))
 
     prefix = "LDV2_{}_".format(code)
+    legacy_static = [
+        actor for actor in by_class.get("StaticMeshActor", [])
+        if actor.get_actor_label().startswith(code + "_") and str(actor.get_folder_path()).startswith("Architecture/")
+    ]
+    if legacy_static:
+        failures.append("legacy overlay static mesh actors remain: {}".format(len(legacy_static)))
     ldv2_static = [
         actor for actor in by_class.get("StaticMeshActor", [])
         if actor.get_actor_label().startswith(prefix)
@@ -140,6 +198,9 @@ for code, expected in EXPECTED.items():
             failures.append("floor bounds {} != {}".format(bounds, expected_bounds))
     else:
         bounds = ()
+    floor_xy = [(round(actor.get_actor_location().x, 1), round(actor.get_actor_location().y, 1)) for actor in floors]
+    if len(floor_xy) != len(set(floor_xy)):
+        failures.append("duplicate LDV2 floor XY locations")
 
     vent_panels = [actor for actor in ldv2_static if "VentEntry_" in actor.get_actor_label() and actor.get_actor_label().endswith("_Panel")]
     vent_slats = [actor for actor in ldv2_static if "VentEntry_" in actor.get_actor_label() and "_Slat_" in actor.get_actor_label()]
@@ -157,6 +218,53 @@ for code, expected in EXPECTED.items():
     for required_label in required_spatial_labels:
         if required_label not in labels:
             failures.append("missing spatial marker {}".format(required_label))
+    for required_label in expected["signature_labels"]:
+        if required_label not in labels:
+            failures.append("missing map signature actor {}".format(required_label))
+
+    generated_lights = [
+        actor for actor in by_class.get("PointLight", [])
+        if actor.get_actor_label().startswith(prefix)
+    ]
+    if len(generated_lights) != expected["generated_lights"]:
+        failures.append("generated light count {} != {}".format(len(generated_lights), expected["generated_lights"]))
+
+    ceiling_panels = [
+        actor for actor in ldv2_static
+        if any(actor.get_actor_label().startswith(prefix_value) for prefix_value in expected["ceiling_prefixes"])
+    ]
+    if len(ceiling_panels) != expected["ceiling_panels"]:
+        failures.append("ceiling panel count {} != {}".format(len(ceiling_panels), expected["ceiling_panels"]))
+
+    waypoint_routes = {}
+    for waypoint in by_class.get("HeistGuardWaypoint", []):
+        route_id = str(prop(waypoint, "patrol_route_id"))
+        waypoint_routes.setdefault(route_id, []).append(waypoint)
+    for route_id in waypoint_routes:
+        waypoint_routes[route_id].sort(key=lambda actor: int(prop(actor, "patrol_order") or 0))
+    guard_obstacles = [
+        actor for actor in ldv2_static
+        if "FoldingScreen_" in actor.get_actor_label()
+        or "SpineTechPlinth_" in actor.get_actor_label()
+        or "SpineGlassBaffle_" in actor.get_actor_label()
+    ]
+    obstacle_clearances = []
+    for obstacle in guard_obstacles:
+        origin, extent = obstacle.get_actor_bounds(False)
+        for route_id, route_waypoints in waypoint_routes.items():
+            for start, end in zip(route_waypoints, route_waypoints[1:]):
+                distance = sampled_segment_aabb_clearance(start.get_actor_location(), end.get_actor_location(), origin, extent)
+                obstacle_clearances.append((distance, route_id, obstacle.get_actor_label()))
+    minimum_guard_obstacle_clearance = min(obstacle_clearances, default=(None, "", ""))
+    if minimum_guard_obstacle_clearance[0] is not None and minimum_guard_obstacle_clearance[0] < MIN_GUARD_OBSTACLE_CLEARANCE_CM:
+        failures.append(
+            "guard obstacle clearance {:.1f}cm below {:.1f}cm: {} vs {}".format(
+                minimum_guard_obstacle_clearance[0],
+                MIN_GUARD_OBSTACLE_CLEARANCE_CM,
+                minimum_guard_obstacle_clearance[1],
+                minimum_guard_obstacle_clearance[2],
+            )
+        )
 
     navs = by_class.get("NavMeshBoundsVolume", [])
     if len(navs) != 1:
@@ -169,6 +277,7 @@ for code, expected in EXPECTED.items():
             failures.append("nav scale {} != {}".format(nav_scale, expected["nav_scale"]))
 
     linked_case_labels = []
+    linked_case_ids = []
     for barrier in by_class.get("BP_LaserBarrier_C", []):
         protected_case = prop(barrier, "protected_painting_case")
         protected_id = str(prop(protected_case, "display_case_id")) if protected_case else ""
@@ -177,9 +286,19 @@ for code, expected in EXPECTED.items():
         elif protected_id.endswith("_Target"):
             failures.append("required target protected by mandatory laser")
         linked_case_labels.append(actor_label(protected_case))
+        linked_case_ids.append(protected_id)
+    if set(linked_case_ids) != set(expected["laser_case_ids"]):
+        failures.append("laser protected case set mismatch: {}".format(sorted(linked_case_ids)))
+    if len(linked_case_ids) != len(set(linked_case_ids)):
+        failures.append("duplicate laser protected case")
     for button in by_class.get("BP_SecurityHoldButton_C", []):
-        if not prop(button, "linked_laser_barrier"):
+        linked_barrier = prop(button, "linked_laser_barrier")
+        if not linked_barrier:
             failures.append("laser button without linked barrier")
+            continue
+        expected_barrier_label = button.get_actor_label().replace("LaserButton_", "Laser_")
+        if actor_label(linked_barrier) != expected_barrier_label:
+            failures.append("laser button pair mismatch: {} -> {}".format(button.get_actor_label(), actor_label(linked_barrier)))
 
     payload = {
         "map": expected["path"],
@@ -187,6 +306,9 @@ for code, expected in EXPECTED.items():
         "failures": failures,
         "actor_count": len(actors),
         "ldv2_starter_static_mesh_actors": len(ldv2_static),
+        "legacy_overlay_static_mesh_actors": len(legacy_static),
+        "generated_lights": len(generated_lights),
+        "ceiling_panels": len(ceiling_panels),
         "floor_bounds_cm": list(bounds),
         "painting_cases": len(cases),
         "unique_case_ids": len(set(case_ids)),
@@ -194,9 +316,12 @@ for code, expected in EXPECTED.items():
         "gameplay_exit_vents": len(by_class.get("BP_Vent_C", [])),
         "guards": len(by_class.get("BP_Guard_C", [])),
         "guard_waypoints": len(by_class.get("HeistGuardWaypoint", [])),
+        "minimum_case_guard_clearance_cm": round(minimum_case_guard_clearance[0], 1),
+        "minimum_guard_obstacle_clearance_cm": None if minimum_guard_obstacle_clearance[0] is None else round(minimum_guard_obstacle_clearance[0], 1),
         "cameras": len(by_class.get("BP_SecurityCamera_C", [])),
         "lasers": len(by_class.get("BP_LaserBarrier_C", [])),
         "linked_laser_cases": linked_case_labels,
+        "linked_laser_case_ids": sorted(linked_case_ids),
         "nav_scale": list(nav_scale),
         "security_detention_spatial_shell": all(label in labels for label in required_spatial_labels),
     }
