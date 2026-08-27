@@ -195,6 +195,7 @@ void UHeistInteractionPromptWidget::RefreshActionProgress()
 {
 	const bool bObservationActive = IsValid(HUDViewModel) && HUDViewModel->IsObservationCastActive();
 	const bool bEscapeActive = IsValid(HUDViewModel) && HUDViewModel->IsEscapeCastActive();
+	const bool bVentSettlement = IsValid(HUDViewModel) && HUDViewModel->GetLocalLootScore() > 0;
 	const bool bActionActive = bObservationActive || bEscapeActive;
 	const FName ActionType = bObservationActive ? FName(TEXT("Observation")) : (bEscapeActive ? FName(TEXT("Escape")) : NAME_None);
 	const float EndServerTime = bObservationActive ? HUDViewModel->GetObservationCastEndServerTime() : (bEscapeActive ? HUDViewModel->GetEscapeCastEndServerTime() : 0.0f);
@@ -233,7 +234,8 @@ void UHeistInteractionPromptWidget::RefreshActionProgress()
 	if (IsValid(ActionTypeText))
 	{
 		ActionTypeText->SetText(bObservationActive ? NSLOCTEXT("HeistInteraction", "ObservationAction", "관찰 중")
-												  : (bEscapeActive ? NSLOCTEXT("HeistInteraction", "EscapeAction", "탈출 중") : FText::GetEmpty()));
+												  : (bEscapeActive && bVentSettlement ? NSLOCTEXT("HeistInteraction", "VentSettlementAction", "전리품 정산 중")
+																				 : (bEscapeActive ? NSLOCTEXT("HeistInteraction", "VentEscapeAction", "최종 탈출 중") : FText::GetEmpty())));
 	}
 	if (IsValid(ActionProgressBar))
 	{
@@ -248,7 +250,7 @@ void UHeistInteractionPromptWidget::RefreshActionProgress()
 	{
 		CancelHintText->SetText(
 			bObservationActive ? NSLOCTEXT("HeistInteraction", "ObservationCancelHint", "E를 놓거나 이동, 피해 또는 체포 상태가 되면 관찰이 취소됩니다.")
-							   : (bEscapeActive ? NSLOCTEXT("HeistInteraction", "EscapeCancelHint", "이동하거나 피해를 받으면 탈출이 취소됩니다.") : FText::GetEmpty()));
+							   : (bEscapeActive ? NSLOCTEXT("HeistInteraction", "VentCancelHint", "이동하거나 피해를 받으면 벤트 사용이 취소됩니다.") : FText::GetEmpty()));
 	}
 
 	const bool bReferenceVisible = bObservationActive && HUDViewModel->IsObservationReferenceVisible();
@@ -312,7 +314,8 @@ FText UHeistInteractionPromptWidget::ResolveTargetLabel(const AActor* TargetActo
 
 	if (Cast<AHeistVentActor>(TargetActor) != nullptr)
 	{
-		return NSLOCTEXT("HeistInteraction", "VentTarget", "탈출");
+		return IsValid(HUDViewModel) && HUDViewModel->GetLocalLootScore() > 0 ? NSLOCTEXT("HeistInteraction", "VentSettlementTarget", "전리품 정산")
+																					 : NSLOCTEXT("HeistInteraction", "VentEscapeTarget", "최종 탈출");
 	}
 
 	if (const AHeistPlayerCharacter* TargetPlayerCharacter = Cast<AHeistPlayerCharacter>(TargetActor))

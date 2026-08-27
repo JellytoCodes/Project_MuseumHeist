@@ -1,4 +1,4 @@
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_DEV_AUTOMATION_TESTS && WITH_EDITOR
 
 #include "Character/Components/HeistInventoryComponent.h"
 #include "Components/Image.h"
@@ -7,6 +7,7 @@
 #include "Data/HeistGameBalanceDataAsset.h"
 #include "Engine/DataTable.h"
 #include "Engine/StaticMesh.h"
+#include "GameFramework/Actor.h"
 #include "Inventory/HeistItemDataTypes.h"
 #include "Materials/MaterialInterface.h"
 #include "Misc/AutomationTest.h"
@@ -64,6 +65,43 @@ bool FHeistInventoryGridContractTest::RunTest(const FString& Parameters)
 	TemplateDefinition.AllowedPalette.SetNum(3);
 	TestFalse(TEXT("Unsupported Surface difficulty is rejected"), HeistSurfaceForgeryInventory::TryResolveGridSize(TemplateDefinition, GridSize));
 	TestEqual(TEXT("Rejected Surface difficulty clears the footprint"), GridSize, FIntPoint::ZeroValue);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistArrestConfiscationPayloadContractTest, "ProjectMuseumHeist.Inventory.ArrestConfiscationPayload",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHeistArrestConfiscationPayloadContractTest::RunTest(const FString& Parameters)
+{
+	FHeistInventoryItem LooseLoot;
+	LooseLoot.InstanceId = 1;
+	LooseLoot.ItemId = FName(TEXT("Loot_Test"));
+	LooseLoot.Quantity = 2;
+	LooseLoot.Weight = 1.5f;
+
+	FHeistInventoryItem Original;
+	Original.InstanceId = 2;
+	Original.ItemId = FName(TEXT("Artifact_Test"));
+	Original.Quantity = 1;
+	Original.BaseGridSize = FIntPoint(2, 2);
+	Original.Weight = 4.0f;
+	Original.ContractValue = 1000;
+	Original.bOriginalArtifact = true;
+	Original.SourceDisplayCase = GetMutableDefault<AActor>();
+
+	FHeistArrestConfiscationPayload Payload;
+	Payload.ConfiscatedItems = {LooseLoot, Original};
+	Payload.LooseLootValue = 400;
+	Payload.LooseLootWeight = 3.0f;
+	TestTrue(TEXT("Loose Loot and Original form a confiscation payload"), Payload.HasConfiscatedItems());
+	TestEqual(TEXT("Only the Original counts as an Original"), Payload.GetOriginalItemCount(), 1);
+	TestEqual(TEXT("Loose quantity expands to two world actors and Original to one"), Payload.GetWorldActorCount(), 3);
+	TestTrue(TEXT("Confiscation total weight combines Loose Loot and Original"), FMath::IsNearlyEqual(Payload.GetTotalWeight(), 7.0f));
+
+	FHeistArrestConfiscationPayload MatchingPayload = Payload;
+	TestTrue(TEXT("An unchanged server preview matches at commit"), Payload.Matches(MatchingPayload));
+	MatchingPayload.ConfiscatedItems[0].Quantity = 1;
+	TestFalse(TEXT("A changed inventory quantity invalidates commit"), Payload.Matches(MatchingPayload));
 	return true;
 }
 

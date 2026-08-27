@@ -28,6 +28,7 @@
 #include "NavigationSystem.h"
 #include "TimerManager.h"
 #include "World/Actors/Loot/HeistLootActor.h"
+#include "World/Actors/Loot/HeistDroppedOriginalActor.h"
 #include "World/Actors/Loot/HeistObjectDisplayCaseActor.h"
 #include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 #include "World/Actors/Security/HeistSecurityHoldButtonActor.h"
@@ -146,6 +147,74 @@ UClass* ResolveWorldLootShellClass(const UHeistGameBalanceDataAsset* BalanceData
 	UClass* ResolvedClass = IsValid(BalanceData) ? BalanceData->WorldLootActorClass.LoadSynchronous() : nullptr;
 	return IsValid(ResolvedClass) && ResolvedClass->IsChildOf(AHeistLootActor::StaticClass()) ? ResolvedClass : nullptr;
 }
+
+const FName DetentionSpawnTag(TEXT("HeistDetentionSpawn"));
+const FName EvidenceTableAnchorTag(TEXT("HeistEvidenceTableAnchor"));
+const FName EvidenceSlotTag(TEXT("HeistEvidenceSlot"));
+const FName ArrestEvidenceActorTag(TEXT("HeistArrestEvidence"));
+
+void GatherSortedTaggedActors(UWorld* World, const FName ActorTag, TArray<AActor*>& OutActors)
+{
+	OutActors.Reset();
+	if (!IsValid(World))
+	{
+		return;
+	}
+	UGameplayStatics::GetAllActorsWithTag(World, ActorTag, OutActors);
+	OutActors.RemoveAll([](const AActor* Actor) { return !IsValid(Actor); });
+	OutActors.Sort([](const AActor& Left, const AActor& Right) { return Left.GetPathName() < Right.GetPathName(); });
+}
+
+bool ResolveArrestEvidenceTransforms(UWorld* World, const int32 FirstTransformIndex, const int32 RequiredTransformCount, TArray<FTransform>& OutTransforms)
+{
+	OutTransforms.Reset();
+	if (FirstTransformIndex < 0 || RequiredTransformCount <= 0)
+	{
+		return FirstTransformIndex >= 0;
+	}
+
+	TArray<AActor*> EvidenceSlots;
+	GatherSortedTaggedActors(World, EvidenceSlotTag, EvidenceSlots);
+	if (!EvidenceSlots.IsEmpty())
+	{
+		OutTransforms.Reserve(RequiredTransformCount);
+		for (int32 SlotIndex = 0; SlotIndex < RequiredTransformCount; ++SlotIndex)
+		{
+			const int32 GlobalSlotIndex = FirstTransformIndex + SlotIndex;
+			const int32 TableSlotIndex = GlobalSlotIndex % EvidenceSlots.Num();
+			const int32 StackLayer = GlobalSlotIndex / EvidenceSlots.Num();
+			FTransform EvidenceTransform = EvidenceSlots[TableSlotIndex]->GetActorTransform();
+			EvidenceTransform.AddToTranslation(FVector::UpVector * (static_cast<float>(StackLayer) * 45.0f));
+			OutTransforms.Add(EvidenceTransform);
+		}
+		return true;
+	}
+
+	TArray<AActor*> EvidenceTableAnchors;
+	GatherSortedTaggedActors(World, EvidenceTableAnchorTag, EvidenceTableAnchors);
+	if (EvidenceTableAnchors.IsEmpty())
+	{
+		return false;
+	}
+
+	const FTransform AnchorTransform = EvidenceTableAnchors[0]->GetActorTransform();
+	constexpr int32 ColumnCount = 5;
+	constexpr float ColumnSpacing = 100.0f;
+	constexpr float RowSpacing = 90.0f;
+	OutTransforms.Reserve(RequiredTransformCount);
+	for (int32 SlotIndex = 0; SlotIndex < RequiredTransformCount; ++SlotIndex)
+	{
+		const int32 GlobalSlotIndex = FirstTransformIndex + SlotIndex;
+		const int32 TableSlotIndex = GlobalSlotIndex % (ColumnCount * ColumnCount);
+		const int32 StackLayer = GlobalSlotIndex / (ColumnCount * ColumnCount);
+		const int32 Column = TableSlotIndex % ColumnCount;
+		const int32 Row = TableSlotIndex / ColumnCount;
+		const FVector LocalOffset((static_cast<float>(Column) - 2.0f) * ColumnSpacing, static_cast<float>(Row) * RowSpacing,
+			10.0f + static_cast<float>(StackLayer) * 45.0f);
+		OutTransforms.Emplace(AnchorTransform.GetRotation(), AnchorTransform.TransformPositionNoScale(LocalOffset), FVector::OneVector);
+	}
+	return true;
+}
 }
 
 #pragma endregion
@@ -169,6 +238,7 @@ AHeistGameMode::AHeistGameMode()
 void AHeistGameMode::StartPlay()
 {
 	Super::StartPlay();
+	NextArrestEvidenceSlotIndex = 0;
 	UHeistGameInstance* HeistGameInstance = Cast<UHeistGameInstance>(GetGameInstance());
 	const bool bStartAsTitleMenu = IsValid(HeistGameInstance) && HeistGameInstance->IsCurrentWorldTitleMenu();
 	const bool bStartAsOnlineLobby =
@@ -688,6 +758,195 @@ void AHeistGameMode::PrepareForOnlineSessionShutdown(const FName Reason)
 
 	UHeistDebugFunctionLibrary::DebugOnlineSessionShutdownVerification(this, Reason, RemainingCaseLockCount, RemainingCaseTimerCount, RemainingActionCount,
 		RemainingForgeryCount, RemainingInventoryCount, GetActiveMatchTimerCount(), true);
+}
+
+#pragma endregion
+
+#pragma region Arrest
+
+bool AHeistGameMode::TryCompletePlayerArrest(AHeistPlayerCharacter* ArrestedCharacter, AActor* ArrestingGuard, FName& OutRejectReason)
+{
+	OutRejectReason = NAME_None;
+	AHeistPlayerState* ArrestedPlayerState = IsValid(ArrestedCharacter) ? ArrestedCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
+	UHeistInventoryComponent* InventoryComponent = IsValid(ArrestedCharacter) ? ArrestedCharacter->GetInventoryComponent() : nullptr;
+	AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
+	if (!HasAuthority() || !IsValid(ArrestedCharacter) || !IsValid(Cast<AHeistGuardCharacter>(ArrestingGuard)) || !IsValid(ArrestedPlayerState) || !IsValid(InventoryComponent) ||
+		ArrestedPlayerState->GetPawn() != ArrestedCharacter || ArrestedPlayerState->IsEscaped() || ArrestedPlayerState->IsArrested() || !IsValid(HeistGameState) ||
+		HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame)
+	{
+		OutRejectReason = FName(TEXT("InvalidArrestContext"));
+		return false;
+	}
+	if (!HeistGameState->IsContractInitialized() || !HeistGameState->RefreshContractCarriedValue())
+	{
+		OutRejectReason = FName(TEXT("InvalidContractCarriedState"));
+		return false;
+	}
+
+	TArray<AActor*> DetentionSpawns;
+	GatherSortedTaggedActors(GetWorld(), DetentionSpawnTag, DetentionSpawns);
+	if (DetentionSpawns.IsEmpty())
+	{
+		OutRejectReason = FName(TEXT("MissingDetentionSpawn"));
+		return false;
+	}
+
+	FHeistArrestConfiscationPayload ConfiscationPreview;
+	const TCHAR* InventoryRejectReason = nullptr;
+	if (!InventoryComponent->TryBuildArrestConfiscationPayload(ConfiscationPreview, InventoryRejectReason))
+	{
+		OutRejectReason = FName(InventoryRejectReason != nullptr ? InventoryRejectReason : TEXT("ConfiscationPreviewRejected"));
+		return false;
+	}
+	if (!ArrestedPlayerState->CanRemoveLootScoreAndWeight(ConfiscationPreview.LooseLootValue, ConfiscationPreview.GetTotalWeight()))
+	{
+		OutRejectReason = FName(TEXT("ConfiscationTotalsMismatch"));
+		return false;
+	}
+
+	TArray<FTransform> EvidenceTransforms;
+	const int32 FirstEvidenceTransformIndex = NextArrestEvidenceSlotIndex;
+	if (!ResolveArrestEvidenceTransforms(GetWorld(), FirstEvidenceTransformIndex, ConfiscationPreview.GetWorldActorCount(), EvidenceTransforms))
+	{
+		OutRejectReason = FName(TEXT("MissingEvidenceTableAnchor"));
+		return false;
+	}
+
+	for (const FHeistInventoryItem& InventoryItem : ConfiscationPreview.ConfiscatedItems)
+	{
+		if (!InventoryItem.IsOriginalArtifact())
+		{
+			continue;
+		}
+		if (const AHeistPaintingDisplayCaseActor* PaintingCase = Cast<AHeistPaintingDisplayCaseActor>(InventoryItem.SourceDisplayCase);
+			IsValid(PaintingCase) && PaintingCase->CanStageOriginalForArrest(ArrestedPlayerState, InventoryItem))
+		{
+			continue;
+		}
+		if (const AHeistObjectDisplayCaseActor* ObjectCase = Cast<AHeistObjectDisplayCaseActor>(InventoryItem.SourceDisplayCase);
+			IsValid(ObjectCase) && ObjectCase->CanStageOriginalForArrest(ArrestedPlayerState, InventoryItem))
+		{
+			continue;
+		}
+		OutRejectReason = FName(TEXT("InvalidOriginalCarrierSnapshot"));
+		return false;
+	}
+
+	TArray<AActor*> StagedEvidenceActors;
+	StagedEvidenceActors.Reserve(ConfiscationPreview.GetWorldActorCount());
+	const auto RollbackEvidenceActors = [&StagedEvidenceActors]()
+	{
+		for (AActor* StagedActor : StagedEvidenceActors)
+		{
+			if (IsValid(StagedActor))
+			{
+				StagedActor->Destroy();
+			}
+		}
+		StagedEvidenceActors.Reset();
+	};
+
+	int32 EvidenceTransformIndex = 0;
+	for (const FHeistInventoryItem& InventoryItem : ConfiscationPreview.ConfiscatedItems)
+	{
+		if (InventoryItem.IsOriginalArtifact())
+		{
+			AHeistDroppedOriginalActor* StagedOriginal = nullptr;
+			bool bSpawned = false;
+			if (AHeistPaintingDisplayCaseActor* PaintingCase = Cast<AHeistPaintingDisplayCaseActor>(InventoryItem.SourceDisplayCase))
+			{
+				bSpawned = PaintingCase->TryStageOriginalForArrest(ArrestedPlayerState, InventoryItem, EvidenceTransforms[EvidenceTransformIndex], StagedOriginal);
+			}
+			else if (AHeistObjectDisplayCaseActor* ObjectCase = Cast<AHeistObjectDisplayCaseActor>(InventoryItem.SourceDisplayCase))
+			{
+				bSpawned = ObjectCase->TryStageOriginalForArrest(ArrestedPlayerState, InventoryItem, EvidenceTransforms[EvidenceTransformIndex], StagedOriginal);
+			}
+			if (!bSpawned || !IsValid(StagedOriginal))
+			{
+				RollbackEvidenceActors();
+				OutRejectReason = FName(TEXT("OriginalEvidenceSpawnFailed"));
+				return false;
+			}
+			StagedOriginal->Tags.AddUnique(ArrestEvidenceActorTag);
+			StagedEvidenceActors.Add(StagedOriginal);
+			++EvidenceTransformIndex;
+			continue;
+		}
+
+		for (int32 QuantityIndex = 0; QuantityIndex < InventoryItem.Quantity; ++QuantityIndex)
+		{
+			FHeistLootDropRequest DropRequest;
+			DropRequest.DroppedBy = ArrestedCharacter;
+			DropRequest.ItemId = InventoryItem.ItemId;
+			DropRequest.SourceInstanceId = InventoryItem.InstanceId;
+			DropRequest.DropOrigin = EvidenceTransforms[EvidenceTransformIndex].GetLocation();
+			AHeistLootActor* StagedLoot = nullptr;
+			if (!TrySpawnDroppedLoot(DropRequest, StagedLoot))
+			{
+				RollbackEvidenceActors();
+				OutRejectReason = FName(TEXT("LootEvidenceSpawnFailed"));
+				return false;
+			}
+			StagedLoot->SetActorRotation(EvidenceTransforms[EvidenceTransformIndex].Rotator());
+			StagedLoot->Tags.AddUnique(ArrestEvidenceActorTag);
+			StagedEvidenceActors.Add(StagedLoot);
+			++EvidenceTransformIndex;
+		}
+	}
+
+	const FTransform PreviousPlayerTransform = ArrestedCharacter->GetActorTransform();
+	const int32 DetentionSpawnIndex = FMath::Clamp(ArrestedPlayerState->HeistPlayerId - 1, 0, DetentionSpawns.Num() - 1);
+	const FTransform DetentionTransform = DetentionSpawns[DetentionSpawnIndex]->GetActorTransform();
+	if (!ArrestedCharacter->SetActorLocationAndRotation(DetentionTransform.GetLocation(), DetentionTransform.Rotator(), false, nullptr, ETeleportType::TeleportPhysics))
+	{
+		RollbackEvidenceActors();
+		OutRejectReason = FName(TEXT("DetentionTeleportFailed"));
+		return false;
+	}
+
+	FHeistArrestConfiscationPayload CommittedConfiscation;
+	if (!InventoryComponent->TryCommitArrestConfiscation(ArrestedPlayerState, ConfiscationPreview, CommittedConfiscation, InventoryRejectReason))
+	{
+		ArrestedCharacter->SetActorTransform(PreviousPlayerTransform, false, nullptr, ETeleportType::TeleportPhysics);
+		RollbackEvidenceActors();
+		OutRejectReason = FName(InventoryRejectReason != nullptr ? InventoryRejectReason : TEXT("ConfiscationCommitFailed"));
+		return false;
+	}
+	checkf(!ArrestedPlayerState->IsEscaped() && !ArrestedPlayerState->IsArrested(),
+		TEXT("Arrest terminal state must remain unchanged between the validated Inventory commit and the invariant final state commit."));
+
+	for (const FHeistInventoryItem& InventoryItem : CommittedConfiscation.ConfiscatedItems)
+	{
+		if (!InventoryItem.IsOriginalArtifact())
+		{
+			continue;
+		}
+		if (AHeistPaintingDisplayCaseActor* PaintingCase = Cast<AHeistPaintingDisplayCaseActor>(InventoryItem.SourceDisplayCase))
+		{
+			PaintingCase->CommitStagedOriginalForArrest(ArrestedPlayerState, InventoryItem);
+		}
+		else if (AHeistObjectDisplayCaseActor* ObjectCase = Cast<AHeistObjectDisplayCaseActor>(InventoryItem.SourceDisplayCase))
+		{
+			ObjectCase->CommitStagedOriginalForArrest(ArrestedPlayerState, InventoryItem);
+		}
+	}
+
+	const bool bArrestCommitted = ArrestedPlayerState->MarkArrested(ArrestingGuard);
+	checkf(bArrestCommitted, TEXT("Validated Arrest transaction must commit after evidence staging, teleport, Inventory mutation and carrier release."));
+	if (!bArrestCommitted)
+	{
+		OutRejectReason = FName(TEXT("ArrestStateCommitInvariantFailed"));
+		return false;
+	}
+	NextArrestEvidenceSlotIndex = static_cast<int32>(FMath::Min<int64>(MAX_int32,
+		static_cast<int64>(NextArrestEvidenceSlotIndex) + static_cast<int64>(CommittedConfiscation.GetWorldActorCount())));
+
+	ArrestedCharacter->ForceNetUpdate();
+	UHeistDebugFunctionLibrary::Message(this,
+		FString::Printf(TEXT("Arrest detention transaction committed: Player=%s PlayerId=%d Guard=%s ConfiscatedEntries=%d EvidenceActors=%d LooseValue=%d OriginalItems=%d Detention=%s Authority=true Result=PASS"),
+			*GetNameSafe(ArrestedCharacter), ArrestedPlayerState->HeistPlayerId, *GetNameSafe(ArrestingGuard), CommittedConfiscation.ConfiscatedItems.Num(),
+			StagedEvidenceActors.Num(), CommittedConfiscation.LooseLootValue, CommittedConfiscation.GetOriginalItemCount(), *GetNameSafe(DetentionSpawns[DetentionSpawnIndex])));
+	return true;
 }
 
 #pragma endregion

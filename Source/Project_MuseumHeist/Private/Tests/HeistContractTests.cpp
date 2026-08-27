@@ -1,4 +1,4 @@
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_DEV_AUTOMATION_TESTS && WITH_EDITOR
 
 #include "Core/HeistTypes.h"
 #include "Data/HeistArtifactDataTypes.h"

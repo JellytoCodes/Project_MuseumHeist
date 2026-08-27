@@ -81,12 +81,79 @@ struct PROJECT_MUSEUMHEIST_API FHeistInventoryItem
 
 #pragma endregion
 
-#pragma region ExtractionDeposit
+#pragma region ArrestConfiscation
 
 /**
- * Server-only preview/commit payload for one player's Shared Extraction deposit.
- * Loose Loot and every Original are sourced from the same 5x5 grid inventory and
- * deposited through one authoritative Contract mutation.
+ * Server-only snapshot of un-secured valuables confiscated when a Guard
+ * completes an Arrest. Usable items such as Coin are intentionally excluded.
+ */
+struct PROJECT_MUSEUMHEIST_API FHeistArrestConfiscationPayload
+{
+	TArray<FHeistInventoryItem> ConfiscatedItems;
+	int32 LooseLootValue = 0;
+	float LooseLootWeight = 0.0f;
+
+	int32 GetOriginalItemCount() const
+	{
+		int32 OriginalItemCount = 0;
+		for (const FHeistInventoryItem& Item : ConfiscatedItems)
+		{
+			OriginalItemCount += Item.IsOriginalArtifact() ? 1 : 0;
+		}
+		return OriginalItemCount;
+	}
+
+	float GetOriginalWeight() const
+	{
+		double Total = 0.0;
+		for (const FHeistInventoryItem& Item : ConfiscatedItems)
+		{
+			Total += Item.HasValidOriginalData() ? Item.Weight : 0.0f;
+		}
+		return static_cast<float>(Total);
+	}
+
+	int32 GetWorldActorCount() const
+	{
+		int64 Total = 0;
+		for (const FHeistInventoryItem& Item : ConfiscatedItems)
+		{
+			Total += Item.IsOriginalArtifact() ? 1 : FMath::Max(0, Item.Quantity);
+		}
+		return static_cast<int32>(FMath::Min<int64>(MAX_int32, Total));
+	}
+
+	float GetTotalWeight() const
+	{
+		return LooseLootWeight + GetOriginalWeight();
+	}
+
+	bool HasConfiscatedItems() const
+	{
+		return !ConfiscatedItems.IsEmpty();
+	}
+
+	bool Matches(const FHeistArrestConfiscationPayload& Other) const
+	{
+		return ConfiscatedItems == Other.ConfiscatedItems && LooseLootValue == Other.LooseLootValue && FMath::IsNearlyEqual(LooseLootWeight, Other.LooseLootWeight);
+	}
+};
+
+#pragma endregion
+
+#pragma region ExtractionDeposit
+
+/** Server-selected inventory scope for a Vent transaction. */
+enum class EHeistDepositScope : uint8
+{
+	LooseLootOnly,
+	FullEscape
+};
+
+/**
+ * Server-only preview/commit payload for one player's Vent transaction.
+ * LooseLootOnly secures only normal Loot and keeps every Original in the 5x5 grid.
+ * FullEscape deposits normal Loot and every Original through one authoritative mutation.
  */
 struct PROJECT_MUSEUMHEIST_API FHeistPlayerDepositPayload
 {

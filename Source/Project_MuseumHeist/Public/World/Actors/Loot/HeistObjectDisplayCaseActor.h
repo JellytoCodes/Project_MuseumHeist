@@ -119,6 +119,10 @@ class PROJECT_MUSEUMHEIST_API AHeistObjectDisplayCaseActor : public AHeistIntera
 
 	bool ReleaseOriginalForCarrier(AHeistPlayerState* ExpectedCarrier, FName Reason);
 	bool DropOriginalForCarrier(AHeistPlayerState* ExpectedCarrier, FName Reason);
+	bool CanStageOriginalForArrest(const AHeistPlayerState* ExpectedCarrier, const FHeistInventoryItem& OriginalItem) const;
+	bool TryStageOriginalForArrest(AHeistPlayerState* ExpectedCarrier, const FHeistInventoryItem& OriginalItem, const FTransform& EvidenceTransform,
+		AHeistDroppedOriginalActor*& OutDroppedOriginal);
+	void CommitStagedOriginalForArrest(AHeistPlayerState* ExpectedCarrier, const FHeistInventoryItem& OriginalItem);
 	bool TryClaimDroppedOriginal(AHeistPlayerState* RequestingPlayerState, AHeistDroppedOriginalActor* DroppedOriginal);
 	bool CanCommitOriginalDepositForCarrier(const AHeistPlayerState* ExpectedCarrier, const FHeistInventoryItem& OriginalItem) const;
 	bool CommitOriginalDepositForCarrier(AHeistPlayerState* ExpectedCarrier, const FHeistInventoryItem& OriginalItem);

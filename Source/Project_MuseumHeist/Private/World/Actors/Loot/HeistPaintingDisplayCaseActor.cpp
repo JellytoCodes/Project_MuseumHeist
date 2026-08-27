@@ -1804,6 +1804,57 @@ bool AHeistPaintingDisplayCaseActor::DropOriginalForCarrier(AHeistPlayerState* E
 	return true;
 }
 
+bool AHeistPaintingDisplayCaseActor::CanStageOriginalForArrest(const AHeistPlayerState* ExpectedCarrier, const FHeistInventoryItem& OriginalItem) const
+{
+	const bool bOriginalOutsideCase = DisplayCaseState == EHeistDisplayCaseState::OriginalRemoved || DisplayCaseState == EHeistDisplayCaseState::Inspecting ||
+		DisplayCaseState == EHeistDisplayCaseState::Completed || DisplayCaseState == EHeistDisplayCaseState::Failed;
+	return HasAuthority() && bOriginalOutsideCase && !bOriginalSecuredAtExit && IsValid(ExpectedCarrier) && OriginalCarrier.Get() == ExpectedCarrier &&
+		OriginalItem.HasValidOriginalData() && OriginalItem.SourceDisplayCase == this && OriginalItem.ItemId == TargetArtifactId;
+}
+
+bool AHeistPaintingDisplayCaseActor::TryStageOriginalForArrest(AHeistPlayerState* ExpectedCarrier, const FHeistInventoryItem& OriginalItem,
+	const FTransform& EvidenceTransform, AHeistDroppedOriginalActor*& OutDroppedOriginal)
+{
+	OutDroppedOriginal = nullptr;
+	if (!CanStageOriginalForArrest(ExpectedCarrier, OriginalItem))
+	{
+		return false;
+	}
+
+	AHeistPlayerCharacter* PlayerCharacter = Cast<AHeistPlayerCharacter>(ExpectedCarrier->GetPawn());
+	UClass* SpawnClass = DroppedOriginalActorClass ? DroppedOriginalActorClass.Get() : AHeistDroppedOriginalActor::StaticClass();
+	AHeistDroppedOriginalActor* StagedOriginal = GetWorld()->SpawnActorDeferred<AHeistDroppedOriginalActor>(SpawnClass, EvidenceTransform, nullptr, PlayerCharacter,
+		ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+	if (!IsValid(StagedOriginal))
+	{
+		return false;
+	}
+
+	StagedOriginal->InitializeDroppedOriginal(OriginalItem.ItemId, OriginalItem.ContractValue, OriginalItem.Weight, OriginalItem.bRequiredTarget, this);
+	StagedOriginal->FinishSpawning(EvidenceTransform);
+	if (!IsValid(StagedOriginal) || !StagedOriginal->IsDropAvailable())
+	{
+		if (IsValid(StagedOriginal))
+		{
+			StagedOriginal->Destroy();
+		}
+		return false;
+	}
+	OutDroppedOriginal = StagedOriginal;
+	return true;
+}
+
+void AHeistPaintingDisplayCaseActor::CommitStagedOriginalForArrest(AHeistPlayerState* ExpectedCarrier, const FHeistInventoryItem& OriginalItem)
+{
+	checkf(CanStageOriginalForArrest(ExpectedCarrier, OriginalItem), TEXT("Staged Painting Original Arrest commit requires the validated carrier snapshot."));
+	UnbindOriginalCarrierDelegate();
+	OriginalCarrier = nullptr;
+	++OriginalCarryRevision;
+	SyncObjectiveCarrierCandidate(nullptr);
+	ForceNetUpdate();
+	BroadcastOriginalCarrySnapshot(TEXT("ServerWorldDrop"), FName(TEXT("ConfiscatedOnArrest")));
+}
+
 bool AHeistPaintingDisplayCaseActor::TryClaimDroppedOriginal(AHeistPlayerState* RequestingPlayerState, AHeistDroppedOriginalActor* DroppedOriginal)
 {
 	const bool bOriginalOutsideCase = DisplayCaseState == EHeistDisplayCaseState::OriginalRemoved || DisplayCaseState == EHeistDisplayCaseState::Inspecting ||

@@ -61,6 +61,19 @@ if ($projectVersion -notmatch '^[0-9A-Za-z][0-9A-Za-z._-]*$') {
 	throw "ProjectVersion contains unsupported packaging path characters: $projectVersion"
 }
 
+$requiredAlwaysCookDirectories = @(
+	'/Game/Data/DataAsset',
+	'/Game/Data/DataTable',
+	'/Game/Data/Forgery/Textures'
+)
+$defaultGameConfig = Get-Content -LiteralPath $defaultGameIni
+foreach ($requiredDirectory in $requiredAlwaysCookDirectories) {
+	$escapedDirectory = [Regex]::Escape($requiredDirectory)
+	if (-not ($defaultGameConfig -match "^\+DirectoriesToAlwaysCook=\(Path=`"$escapedDirectory`"\)$")) {
+		throw "Required cook directory is missing from Config\DefaultGame.ini: $requiredDirectory"
+	}
+}
+
 $packagesRoot = if ([string]::IsNullOrWhiteSpace($OutputRoot)) {
 	Join-Path $projectRoot 'Build\Packages'
 }
@@ -113,6 +126,7 @@ if ($PlanOnly) {
 		$Configuration,
 		$archiveDirectory,
 		($mapsToCook -join ','))
+	Write-Output ("Packaging data roots: {0} Result=PASS" -f ($requiredAlwaysCookDirectories -join ','))
 	Write-Output ("RunUAT: {0} {1}" -f $runUat, ($uatArguments -join ' '))
 	exit 0
 }

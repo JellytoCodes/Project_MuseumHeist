@@ -25,6 +25,7 @@ struct FHeistUsableItemDataRow;
 struct FHeistGuardDataRow;
 struct FHeistSoundPingDataRow;
 struct FHeistLootDropRequest;
+struct FHeistArrestConfiscationPayload;
 struct FHeistPlayerCountDifficultyBaseline;
 
 UCLASS()
@@ -60,6 +61,16 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 	void PrepareForOnlineSessionShutdown(FName Reason);
 	void HandlePlayerPawnLeavingGame(AHeistPlayerController* ExitingController);
 	void NotifyPlayerTerminalStateChanged(AHeistPlayerState* PlayerState, FName TerminalTrigger);
+
+#pragma endregion
+
+#pragma region Arrest
+
+  public:
+	bool TryCompletePlayerArrest(AHeistPlayerCharacter* ArrestedCharacter, AActor* ArrestingGuard, FName& OutRejectReason);
+
+  private:
+	int32 NextArrestEvidenceSlotIndex = 0;
 
 #pragma endregion
 

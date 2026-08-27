@@ -757,8 +757,15 @@ void AHeistGuardAIController::CompletePendingArrest()
 		GuardStateComponent->GetGuardState() == EHeistGuardState::ChasePlayer && GuardStateComponent->GetChaseTarget() == PlayerCharacter &&
 		!HeistPlayerState->IsEscaped() && !HeistPlayerState->IsArrested() &&
 		FVector::Dist(GuardCharacter->GetActorLocation(), PlayerCharacter->GetActorLocation()) <= ArrestDistance + 25.0f;
-	if (!bContextValid || !HeistPlayerState->MarkArrested(GuardCharacter))
+	const float CaptureDistance = bContextValid ? FVector::Dist(GuardCharacter->GetActorLocation(), PlayerCharacter->GetActorLocation()) : 0.0f;
+	AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	FName ArrestRejectReason = NAME_None;
+	if (!bContextValid || !IsValid(HeistGameMode) || !HeistGameMode->TryCompletePlayerArrest(PlayerCharacter, GuardCharacter, ArrestRejectReason))
 	{
+		UHeistDebugFunctionLibrary::Message(this,
+			FString::Printf(TEXT("Guard arrest rejected: Guard=%s Player=%s Reason=%s Authority=%s"), *GetNameSafe(GuardCharacter), *GetNameSafe(PlayerCharacter),
+				ArrestRejectReason.IsNone() ? TEXT("InvalidContext") : *ArrestRejectReason.ToString(), HasAuthority() ? TEXT("true") : TEXT("false")),
+			EHeistDebugLevel::Warning);
 		ClearPendingArrest(true);
 		return;
 	}
@@ -769,9 +776,8 @@ void AHeistGuardAIController::CompletePendingArrest()
 	}
 
 	StopMovement();
-	const float Distance = FVector::Dist(GuardCharacter->GetActorLocation(), PlayerCharacter->GetActorLocation());
 	UHeistDebugFunctionLibrary::Message(this, FString::Printf(TEXT("Guard arrest committed: Guard=%s Player=%s PlayerId=%d Distance=%.1f ArrestDistance=%.1f Authority=true"),
-														  *GetNameSafe(GuardCharacter), *GetNameSafe(PlayerCharacter), HeistPlayerState->HeistPlayerId, Distance, ArrestDistance));
+													  *GetNameSafe(GuardCharacter), *GetNameSafe(PlayerCharacter), HeistPlayerState->HeistPlayerId, CaptureDistance, ArrestDistance));
 	PendingArrestTarget.Reset();
 	GuardStateComponent->EnterReturnToPatrol();
 }

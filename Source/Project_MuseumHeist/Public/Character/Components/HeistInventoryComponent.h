@@ -65,9 +65,19 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryComponent : public UActorComponent
 	bool TryAddOriginalArtifact(AHeistPlayerState* CarryingPlayerState, FName ArtifactId, bool bRequiredTarget, AActor* SourceDisplayCase, int32& OutInstanceId,
 								const TCHAR*& OutRejectReason);
 	bool TryRemoveOriginalArtifactForSourceCase(AHeistPlayerState* CarryingPlayerState, AActor* ExpectedSourceDisplayCase, FHeistInventoryItem& OutReleasedItem);
-	bool TryBuildPlayerDepositPayload(FHeistPlayerDepositPayload& OutPayload, const TCHAR*& OutRejectReason) const;
+
+#pragma region ArrestConfiscation
+
+	bool TryBuildArrestConfiscationPayload(FHeistArrestConfiscationPayload& OutPayload, const TCHAR*& OutRejectReason) const;
+	bool TryCommitArrestConfiscation(AHeistPlayerState* ArrestedPlayerState, const FHeistArrestConfiscationPayload& ExpectedPayload,
+		FHeistArrestConfiscationPayload& OutCommittedPayload, const TCHAR*& OutRejectReason);
+
+#pragma endregion
+
+	bool TryBuildPlayerDepositPayload(FHeistPlayerDepositPayload& OutPayload, const TCHAR*& OutRejectReason,
+		EHeistDepositScope DepositScope = EHeistDepositScope::FullEscape) const;
 	bool TryCommitPlayerDeposit(AHeistPlayerState* DepositingPlayerState, const FHeistPlayerDepositPayload& ExpectedPayload, FHeistPlayerDepositPayload& OutCommittedPayload,
-								const TCHAR*& OutRejectReason);
+								const TCHAR*& OutRejectReason, EHeistDepositScope DepositScope = EHeistDepositScope::FullEscape);
 
   private:
 	bool TryFindAutoPlacement(const FIntPoint& BaseGridSize, bool bCanRotate, FIntPoint& OutGridPosition, bool& bOutRotated) const;

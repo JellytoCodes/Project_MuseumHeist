@@ -523,7 +523,9 @@ void UHeistHUDWidget::RefreshHUDPresentation()
 	{
 		const FText ActionLabel =
 			bObservationCastActive ? NSLOCTEXT("HeistHUD", "ObservationCastAction", "관찰 중")
-								   : (bEscapeCastActive ? NSLOCTEXT("HeistHUD", "EscapeCastAction", "탈출 중") : NSLOCTEXT("HeistHUD", "ReadyAction", "준비"));
+								   : (bEscapeCastActive && LocalLootScore > 0 ? NSLOCTEXT("HeistHUD", "VentSettlementAction", "전리품 정산 중")
+																			 : (bEscapeCastActive ? NSLOCTEXT("HeistHUD", "VentEscapeAction", "최종 탈출 중")
+																								: NSLOCTEXT("HeistHUD", "ReadyAction", "준비")));
 		ActionText->SetText(ActionLabel);
 	}
 

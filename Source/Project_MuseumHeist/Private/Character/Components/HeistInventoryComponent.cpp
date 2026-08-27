@@ -552,7 +552,152 @@ bool UHeistInventoryComponent::TryRemoveOriginalArtifactForSourceCase(AHeistPlay
 	return true;
 }
 
-bool UHeistInventoryComponent::TryBuildPlayerDepositPayload(FHeistPlayerDepositPayload& OutPayload, const TCHAR*& OutRejectReason) const
+#pragma region ArrestConfiscation
+
+bool UHeistInventoryComponent::TryBuildArrestConfiscationPayload(FHeistArrestConfiscationPayload& OutPayload, const TCHAR*& OutRejectReason) const
+{
+	OutPayload = FHeistArrestConfiscationPayload();
+	OutRejectReason = nullptr;
+
+	const AHeistPlayerCharacter* OwnerCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
+	const AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	if (!IsValid(OwnerCharacter) || !OwnerCharacter->HasAuthority())
+	{
+		OutRejectReason = TEXT("RequiresAuthority");
+		return false;
+	}
+	if (!IsValid(HeistGameMode))
+	{
+		OutRejectReason = TEXT("MissingAuthGameMode");
+		return false;
+	}
+
+	int64 LooseLootValue = 0;
+	double LooseLootWeight = 0.0;
+	for (const FHeistInventoryFastArrayItem& Entry : ReplicatedInventory.Items)
+	{
+		const FHeistInventoryItem& InventoryItem = Entry.InventoryItem;
+		if (InventoryItem.IsOriginalArtifact())
+		{
+			if (!InventoryItem.HasValidOriginalData())
+			{
+				OutRejectReason = TEXT("InvalidOriginalArtifactData");
+				return false;
+			}
+			OutPayload.ConfiscatedItems.Add(InventoryItem);
+			continue;
+		}
+
+		FHeistItemDataRow ItemDefinition;
+		if (!HeistGameMode->TryGetItemDefinition(InventoryItem.ItemId, ItemDefinition))
+		{
+			OutRejectReason = TEXT("InvalidItemDefinition");
+			return false;
+		}
+		if (ItemDefinition.ItemType != EHeistItemType::Loot)
+		{
+			continue;
+		}
+
+		FHeistLootDataRow LootDefinition;
+		if (!HeistGameMode->TryGetLootDefinition(InventoryItem.ItemId, LootDefinition) || InventoryItem.Quantity <= 0)
+		{
+			OutRejectReason = TEXT("InvalidLootDefinition");
+			return false;
+		}
+
+		LooseLootValue += static_cast<int64>(LootDefinition.ScoreValue) * static_cast<int64>(InventoryItem.Quantity);
+		LooseLootWeight += static_cast<double>(ItemDefinition.Weight) * static_cast<double>(InventoryItem.Quantity);
+		if (LooseLootValue > MAX_int32 || !FMath::IsFinite(LooseLootWeight) || LooseLootWeight > static_cast<double>(TNumericLimits<float>::Max()))
+		{
+			OutRejectReason = TEXT("ConfiscationValueOverflow");
+			return false;
+		}
+		OutPayload.ConfiscatedItems.Add(InventoryItem);
+	}
+
+	OutPayload.LooseLootValue = static_cast<int32>(LooseLootValue);
+	OutPayload.LooseLootWeight = static_cast<float>(LooseLootWeight);
+	if (!FMath::IsFinite(OutPayload.GetTotalWeight()) || OutPayload.GetWorldActorCount() < OutPayload.ConfiscatedItems.Num())
+	{
+		OutRejectReason = TEXT("InvalidConfiscationTotals");
+		return false;
+	}
+	return true;
+}
+
+bool UHeistInventoryComponent::TryCommitArrestConfiscation(AHeistPlayerState* ArrestedPlayerState, const FHeistArrestConfiscationPayload& ExpectedPayload,
+	FHeistArrestConfiscationPayload& OutCommittedPayload, const TCHAR*& OutRejectReason)
+{
+	OutCommittedPayload = FHeistArrestConfiscationPayload();
+	OutRejectReason = nullptr;
+
+	AHeistPlayerCharacter* OwnerCharacter = Cast<AHeistPlayerCharacter>(GetOwner());
+	if (!IsValid(OwnerCharacter) || !OwnerCharacter->HasAuthority() || !IsValid(ArrestedPlayerState) || ArrestedPlayerState->GetPawn() != OwnerCharacter ||
+		ArrestedPlayerState->IsEscaped() || ArrestedPlayerState->IsArrested())
+	{
+		OutRejectReason = TEXT("InvalidConfiscationOwner");
+		return false;
+	}
+
+	FHeistArrestConfiscationPayload CurrentPayload;
+	if (!TryBuildArrestConfiscationPayload(CurrentPayload, OutRejectReason) || !CurrentPayload.Matches(ExpectedPayload))
+	{
+		OutRejectReason = OutRejectReason != nullptr ? OutRejectReason : TEXT("ConfiscationPayloadChanged");
+		return false;
+	}
+	if (!ArrestedPlayerState->CanRemoveLootScoreAndWeight(CurrentPayload.LooseLootValue, CurrentPayload.GetTotalWeight()))
+	{
+		OutRejectReason = TEXT("ConfiscationTotalsMismatch");
+		return false;
+	}
+
+	if (CurrentPayload.HasConfiscatedItems() &&
+		!ArrestedPlayerState->RemoveLootScoreAndWeight(CurrentPayload.LooseLootValue, CurrentPayload.GetTotalWeight()))
+	{
+		OutRejectReason = TEXT("ConfiscationTotalsCommitFailed");
+		return false;
+	}
+
+	int32 RemovedEntryCount = 0;
+	for (int32 ItemIndex = ReplicatedInventory.Items.Num() - 1; ItemIndex >= 0; --ItemIndex)
+	{
+		const FHeistInventoryItem& InventoryItem = ReplicatedInventory.Items[ItemIndex].InventoryItem;
+		FHeistItemDataRow ItemDefinition;
+		const bool bConfiscatedItem = InventoryItem.IsOriginalArtifact() ||
+			(TryGetItemDefinition(InventoryItem.ItemId, ItemDefinition) && ItemDefinition.ItemType == EHeistItemType::Loot);
+		if (bConfiscatedItem)
+		{
+			ClearQuickSlotReferences(InventoryItem.InstanceId);
+			ReplicatedInventory.Items.RemoveAt(ItemIndex);
+			++RemovedEntryCount;
+		}
+	}
+	if (RemovedEntryCount > 0)
+	{
+		ReplicatedInventory.MarkArrayDirty();
+	}
+	if (CurrentPayload.GetOriginalItemCount() > 0)
+	{
+		ArrestedPlayerState->EndOriginalCarryContribution(0);
+	}
+
+	OwnerCharacter->ForceNetUpdate();
+	NotifyInventoryChanged();
+	if (AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr)
+	{
+		const bool bContractCarriedValueRefreshed = HeistGameState->RefreshContractCarriedValue();
+		ensureAlwaysMsgf(bContractCarriedValueRefreshed,
+			TEXT("A validated Arrest confiscation must refresh Contract Carried Value after Inventory commit."));
+	}
+	OutCommittedPayload = CurrentPayload;
+	return true;
+}
+
+#pragma endregion
+
+bool UHeistInventoryComponent::TryBuildPlayerDepositPayload(FHeistPlayerDepositPayload& OutPayload, const TCHAR*& OutRejectReason,
+														 EHeistDepositScope DepositScope) const
 {
 	OutPayload = FHeistPlayerDepositPayload();
 	OutRejectReason = nullptr;
@@ -577,6 +722,10 @@ bool UHeistInventoryComponent::TryBuildPlayerDepositPayload(FHeistPlayerDepositP
 		const FHeistInventoryItem& InventoryItem = Entry.InventoryItem;
 		if (InventoryItem.IsOriginalArtifact())
 		{
+			if (DepositScope == EHeistDepositScope::LooseLootOnly)
+			{
+				continue;
+			}
 			if (!InventoryItem.HasValidOriginalData())
 			{
 				OutRejectReason = TEXT("InvalidOriginalArtifactData");
@@ -626,7 +775,8 @@ bool UHeistInventoryComponent::TryBuildPlayerDepositPayload(FHeistPlayerDepositP
 }
 
 bool UHeistInventoryComponent::TryCommitPlayerDeposit(AHeistPlayerState* DepositingPlayerState, const FHeistPlayerDepositPayload& ExpectedPayload,
-												  FHeistPlayerDepositPayload& OutCommittedPayload, const TCHAR*& OutRejectReason)
+												  FHeistPlayerDepositPayload& OutCommittedPayload, const TCHAR*& OutRejectReason,
+												  EHeistDepositScope DepositScope)
 {
 	OutCommittedPayload = FHeistPlayerDepositPayload();
 	OutRejectReason = nullptr;
@@ -639,7 +789,7 @@ bool UHeistInventoryComponent::TryCommitPlayerDeposit(AHeistPlayerState* Deposit
 	}
 
 	FHeistPlayerDepositPayload CurrentPayload;
-	if (!TryBuildPlayerDepositPayload(CurrentPayload, OutRejectReason) || !CurrentPayload.Matches(ExpectedPayload))
+	if (!TryBuildPlayerDepositPayload(CurrentPayload, OutRejectReason, DepositScope) || !CurrentPayload.Matches(ExpectedPayload))
 	{
 		OutRejectReason = OutRejectReason != nullptr ? OutRejectReason : TEXT("DepositPayloadChanged");
 		return false;
@@ -649,7 +799,8 @@ bool UHeistInventoryComponent::TryCommitPlayerDeposit(AHeistPlayerState* Deposit
 		OutRejectReason = TEXT("LooseLootTotalsMismatch");
 		return false;
 	}
-	if (CurrentPayload.GetOriginalWeight() > DepositingPlayerState->GetTotalLootWeight() - CurrentPayload.LooseLootWeight + KINDA_SMALL_NUMBER)
+	if (DepositScope == EHeistDepositScope::FullEscape &&
+		CurrentPayload.GetOriginalWeight() > DepositingPlayerState->GetTotalLootWeight() - CurrentPayload.LooseLootWeight + KINDA_SMALL_NUMBER)
 	{
 		OutRejectReason = TEXT("OriginalWeightMismatch");
 		return false;
@@ -660,7 +811,8 @@ bool UHeistInventoryComponent::TryCommitPlayerDeposit(AHeistPlayerState* Deposit
 		OutRejectReason = TEXT("LooseLootTotalsCommitFailed");
 		return false;
 	}
-	if (CurrentPayload.GetOriginalItemCount() > 0 && !DepositingPlayerState->RemoveCarriedOriginalWeight(CurrentPayload.GetOriginalWeight()))
+	if (DepositScope == EHeistDepositScope::FullEscape && CurrentPayload.GetOriginalItemCount() > 0 &&
+		!DepositingPlayerState->RemoveCarriedOriginalWeight(CurrentPayload.GetOriginalWeight()))
 	{
 		OutRejectReason = TEXT("OriginalWeightCommitFailed");
 		return false;
@@ -671,7 +823,8 @@ bool UHeistInventoryComponent::TryCommitPlayerDeposit(AHeistPlayerState* Deposit
 	{
 		const FHeistInventoryItem& InventoryItem = ReplicatedInventory.Items[ItemIndex].InventoryItem;
 		FHeistItemDataRow ItemDefinition;
-		const bool bDepositedItem = InventoryItem.IsOriginalArtifact() || (TryGetItemDefinition(InventoryItem.ItemId, ItemDefinition) && ItemDefinition.ItemType == EHeistItemType::Loot);
+		const bool bDepositedItem = (DepositScope == EHeistDepositScope::FullEscape && InventoryItem.IsOriginalArtifact()) ||
+			(TryGetItemDefinition(InventoryItem.ItemId, ItemDefinition) && ItemDefinition.ItemType == EHeistItemType::Loot);
 		if (bDepositedItem)
 		{
 			ClearQuickSlotReferences(InventoryItem.InstanceId);
@@ -684,7 +837,7 @@ bool UHeistInventoryComponent::TryCommitPlayerDeposit(AHeistPlayerState* Deposit
 		ReplicatedInventory.MarkArrayDirty();
 	}
 	DepositingPlayerState->RecordSecuredLootContribution(CurrentPayload.LooseLootValue);
-	if (CurrentPayload.GetOriginalItemCount() > 0)
+	if (DepositScope == EHeistDepositScope::FullEscape && CurrentPayload.GetOriginalItemCount() > 0)
 	{
 		DepositingPlayerState->EndOriginalCarryContribution(CurrentPayload.GetOriginalItemCount());
 	}

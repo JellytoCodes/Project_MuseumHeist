@@ -46,30 +46,6 @@ function New-FloorPlanTexture
 	$innerPen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(150, $SecondaryColor), 3.0)
 	$doorPen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(255, 238, 194, 91), 5.0)
 
-	$west = [System.Drawing.Rectangle]::new(72, 218, 238, 204)
-	$central = [System.Drawing.Rectangle]::new(310, 172, 404, 296)
-	$east = [System.Drawing.Rectangle]::new(714, 218, 238, 204)
-	$north = [System.Drawing.Rectangle]::new(382, 48, 260, 124)
-	$south = [System.Drawing.Rectangle]::new(382, 468, 260, 124)
-
-	foreach ($room in @($west, $central, $east))
-	{
-		$graphics.FillRectangle($roomFill, $room)
-		$graphics.DrawRectangle($wallPen, $room)
-	}
-	foreach ($room in @($north, $south))
-	{
-		$graphics.FillRectangle($roomFillSecondary, $room)
-		$graphics.DrawRectangle($wallPen, $room)
-	}
-
-	$graphics.DrawRectangle($innerPen, 350, 212, 324, 216)
-	$graphics.DrawLine($doorPen, 310, 286, 310, 354)
-	$graphics.DrawLine($doorPen, 714, 286, 714, 354)
-	$graphics.DrawLine($doorPen, 478, 172, 546, 172)
-	$graphics.DrawLine($doorPen, 478, 468, 546, 468)
-	$graphics.DrawLine($doorPen, 478, 48, 546, 48)
-
 	$titleFont = [System.Drawing.Font]::new('Malgun Gothic', 24, [System.Drawing.FontStyle]::Bold)
 	$roomFont = [System.Drawing.Font]::new('Malgun Gothic', 17, [System.Drawing.FontStyle]::Bold)
 	$smallFont = [System.Drawing.Font]::new('Malgun Gothic', 12, [System.Drawing.FontStyle]::Regular)
@@ -78,11 +54,89 @@ function New-FloorPlanTexture
 	$mutedBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(190, $SecondaryColor))
 
 	$graphics.DrawString("$MapId 박물관 도면", $titleFont, $titleBrush, 42, 24)
-	$graphics.DrawString('서관', $roomFont, $textBrush, 160, 303)
-	$graphics.DrawString('중앙 전시관', $roomFont, $textBrush, 452, 303)
-	$graphics.DrawString('동관', $roomFont, $textBrush, 800, 303)
-	$graphics.DrawString('북관', $roomFont, $mutedBrush, 480, 92)
-	$graphics.DrawString('로비', $roomFont, $mutedBrush, 484, 518)
+
+	switch ($MapId)
+	{
+		'M01'
+		{
+			$northLoop = [System.Drawing.Rectangle]::new(150, 92, 714, 208)
+			$southLoop = [System.Drawing.Rectangle]::new(150, 340, 714, 208)
+			$westVent = [System.Drawing.Rectangle]::new(66, 248, 110, 144)
+			$eastWing = [System.Drawing.Rectangle]::new(848, 218, 110, 204)
+			foreach ($room in @($northLoop, $southLoop, $westVent, $eastWing))
+			{
+				$graphics.FillRectangle($roomFill, $room)
+				$graphics.DrawRectangle($wallPen, $room)
+			}
+			$graphics.FillEllipse($roomFillSecondary, 422, 216, 180, 208)
+			$graphics.DrawEllipse($wallPen, 422, 216, 180, 208)
+			$graphics.DrawLine($doorPen, 150, 270, 150, 330)
+			$graphics.DrawLine($doorPen, 864, 270, 864, 330)
+			$graphics.DrawLine($doorPen, 474, 216, 550, 216)
+			$graphics.DrawLine($doorPen, 474, 424, 550, 424)
+			$graphics.DrawString('북측 순환 회랑', $roomFont, $textBrush, 402, 144)
+			$graphics.DrawString('남측 순환 회랑', $roomFont, $textBrush, 402, 476)
+			$graphics.DrawString('로툰다', $roomFont, $mutedBrush, 472, 304)
+			$graphics.DrawString('귀환 벤트', $smallFont, $mutedBrush, 78, 304)
+			$graphics.DrawString('타깃 윙', $smallFont, $mutedBrush, 872, 304)
+		}
+		'M02'
+		{
+			$body = [System.Drawing.Rectangle]::new(70, 82, 884, 476)
+			$graphics.FillRectangle($roomFill, $body)
+			$graphics.DrawRectangle($wallPen, $body)
+			$serpentineWalls = @(
+				@(206, 184, 206, 548), @(334, 82, 334, 438), @(462, 184, 462, 548),
+				@(590, 82, 590, 438), @(718, 184, 718, 548), @(846, 82, 846, 438)
+			)
+			foreach ($wall in $serpentineWalls)
+			{
+				$graphics.DrawLine($wallPen, $wall[0], $wall[1], $wall[2], $wall[3])
+			}
+			foreach ($shortcut in @(@(206, 338), @(334, 248), @(462, 386), @(590, 232), @(718, 366), @(846, 244)))
+			{
+				$graphics.DrawLine($doorPen, $shortcut[0], $shortcut[1] - 24, $shortcut[0], $shortcut[1] + 24)
+			}
+			$graphics.FillEllipse($roomFillSecondary, 382, 214, 176, 128)
+			$graphics.DrawEllipse($innerPen, 382, 214, 176, 128)
+			$graphics.DrawString('진입', $smallFont, $mutedBrush, 86, 506)
+			$graphics.DrawString('비대칭 달빛 정원', $roomFont, $textBrush, 394, 258)
+			$graphics.DrawString('S자 안전 동선', $roomFont, $textBrush, 420, 494)
+			$graphics.DrawString('감시 지름길', $smallFont, $mutedBrush, 694, 132)
+			$graphics.DrawString('배출 벤트', $smallFont, $mutedBrush, 720, 92)
+		}
+		'M03'
+		{
+			$northLane = [System.Drawing.Rectangle]::new(70, 104, 884, 126)
+			$centralLane = [System.Drawing.Rectangle]::new(70, 258, 884, 124)
+			$southLane = [System.Drawing.Rectangle]::new(70, 410, 884, 126)
+			foreach ($room in @($northLane, $centralLane, $southLane))
+			{
+				$graphics.FillRectangle(($room.Y -eq 258) ? $roomFill : $roomFillSecondary, $room)
+				$graphics.DrawRectangle($wallPen, $room)
+			}
+			foreach ($x in @(150, 390, 600, 824))
+			{
+				$graphics.DrawLine($doorPen, $x, 230, $x, 258)
+			}
+			foreach ($x in @(260, 506, 724, 900))
+			{
+				$graphics.DrawLine($doorPen, $x, 382, $x, 410)
+			}
+			$graphics.DrawRectangle($innerPen, 474, 238, 92, 164)
+			$graphics.DrawString('북측 유리 레인', $roomFont, $textBrush, 418, 146)
+			$graphics.DrawString('중앙 스파인', $roomFont, $textBrush, 420, 278)
+			$graphics.DrawString('남측 복원 레인', $roomFont, $textBrush, 412, 452)
+			$graphics.DrawString('엇갈린 교차', $smallFont, $mutedBrush, 478, 342)
+			$graphics.DrawString('진입/귀환 벤트', $smallFont, $mutedBrush, 78, 302)
+			$graphics.DrawString('타깃', $smallFont, $mutedBrush, 900, 146)
+		}
+		default
+		{
+			throw "Unknown floor plan MapId: $MapId"
+		}
+	}
+
 	$graphics.DrawString('N', $roomFont, $titleBrush, 936, 48)
 	$graphics.DrawLine($wallPen, 947, 86, 947, 122)
 	$graphics.DrawLine($wallPen, 947, 86, 934, 104)

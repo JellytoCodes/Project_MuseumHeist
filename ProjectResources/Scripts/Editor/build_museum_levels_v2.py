@@ -71,36 +71,36 @@ MAPS = {
         "wall_material": "m01_wall",
         "vent_entries": [(-6800, -1200, 90.0), (800, -4800, 0.0), (6800, 2400, 90.0)],
         "player_starts": [(-6200, -1650), (-6200, -1050), (-6600, -1650), (-6600, -1050)],
-        "exit": (6400, 4400, 180.0),
+        "exit": (-6800, -1200, 90.0),
         "nav_scale": (72.0, 52.0, 10.0),
         "cases": [
-            ("Target", 6000, 2800, 90.0),
-            ("HighValue", 6000, -2800, 90.0),
-            ("01", -6800, -2400, -90.0), ("02", -6800, 0, -90.0),
-            ("03", -6800, 2400, -90.0), ("04", -5200, -1200, 90.0),
-            ("05", -5200, 1200, 90.0), ("06", -3200, -4400, 180.0),
-            ("07", -800, -4400, 180.0), ("08", 2000, -4400, 180.0),
-            ("09", 3600, -4400, 180.0), ("10", 4800, 0, 90.0),
-            ("11", 3600, 4400, 0.0), ("12", 1200, 4400, 0.0),
-            ("13", -1200, 4400, 0.0), ("14", -3600, 4400, 0.0),
-            ("15", -2800, 800, -90.0), ("16", -2800, -800, -90.0),
-            ("17", 2800, 800, 90.0), ("18", 2800, -800, 90.0),
+            ("Target", 6200, 2200, 90.0),
+            ("HighValue", 6200, -2400, 90.0),
+            ("01", -6600, -2600, -90.0), ("02", -6600, -400, -90.0),
+            ("03", -6600, 1800, -90.0), ("04", -5200, 3600, 0.0),
+            ("05", -3600, 4200, 0.0), ("06", -1200, 4200, 0.0),
+            ("07", 1200, 4200, 0.0), ("08", 3600, 4200, 0.0),
+            ("09", 5000, 3600, 0.0), ("10", 5200, 400, 90.0),
+            ("11", 3600, -4200, 180.0), ("12", 1200, -4200, 180.0),
+            ("13", -1200, -4200, 180.0), ("14", -3600, -4200, 180.0),
+            ("15", -2400, 900, -90.0), ("16", -2400, -900, -90.0),
+            ("17", 2400, 900, 90.0), ("18", 2400, -900, 90.0),
         ],
         "guard_routes": [
-            [(-6000, -3200), (-1600, -4400), (3600, -3800), (5400, -2800), (5400, 2800), (2400, 4400), (-3600, 3800), (-6000, 2400)],
-            [(-6000, -1600), (-5800, 1200), (-3600, 3600), (-1200, 3800), (-2800, 1600)],
-            [(4800, -2800), (6000, -800), (4800, 1200), (5400, 2800), (3200, 3200), (3400, 800)],
-            [(-2200, -800), (-1600, -2400), (1600, -2400), (2200, -800), (2200, 800), (1600, 2400), (-1600, 2400), (-2200, 800)],
-            [(-6000, -4400), (-4400, -4400), (-4400, -3400), (-6000, -3400)],
+            [(-5800, 2600), (-4200, 2600), (-1800, 2800), (0, 2000), (1800, 2800), (4200, 2600), (5600, 2400), (4200, 1200), (0, 1600), (-4200, 1200)],
+            [(-5600, -2800), (-4000, -2600), (-1800, -2800), (0, -2000), (1800, -2800), (4200, -2600), (5600, -1800), (4200, -1200), (0, -1600), (-4200, -1200)],
+            [(-1600, -500), (-800, -1600), (800, -1600), (1600, -500), (1600, 500), (800, 1600), (-800, 1600), (-1600, 500)],
+            [(4800, -2200), (5600, -1000), (4600, 1000), (5400, 2000), (4200, 3000), (3200, 1800), (3400, -800)],
+            [(-5800, -4600), (-4600, -4600), (-4600, -3400), (-5800, -3400)],
         ],
         "cameras": [
-            (-5200, -2800, 315, 25), (-4400, 3200, 315, -40),
-            (-800, -3600, 315, 70), (1600, 3600, 315, -110),
-            (4800, -2000, 315, 155), (5600, 2400, 315, -150),
+            (-4000, -2200, 315, 35), (-4000, 2200, 315, -35),
+            (0, -2600, 315, 90), (0, 2600, 315, -90),
+            (4000, -2200, 315, 145), (4000, 2200, 315, -145),
         ],
         "lasers": [
-            ("HighValue", (5400, -2800, 120, 90), (4600, -3600, 0, 0)),
-            ("11", (3600, 4000, 120, 0), (2800, 3600, 0, 0)),
+            ("HighValue", (5600, -2400, 120, 90), (4800, -3200, 0, 0)),
+            ("09", (5000, 3200, 120, 0), (4200, 2800, 0, 0)),
         ],
     },
     "M02": {
@@ -109,37 +109,37 @@ MAPS = {
         "half_y": 5600,
         "floor_material": "m02_floor",
         "wall_material": "m02_wall",
-        "vent_entries": [(-6000, -2400, 90.0), (2400, 5200, 0.0)],
-        "player_starts": [(-5400, -2850), (-5400, -2250), (-5800, -2850), (-5800, -2250)],
-        "exit": (5600, 4800, 180.0),
+        "vent_entries": [(-6000, -3200, 90.0), (2400, 5200, 0.0), (6000, 800, 90.0)],
+        "player_starts": [(-5400, -3450), (-5400, -2850), (-5800, -3450), (-5800, -2850)],
+        "exit": (2400, 5200, 0.0),
         "nav_scale": (64.0, 56.0, 10.0),
         "cases": [
-            ("Target", 5200, 3200, 90.0),
-            ("HighValue", -5200, 3200, -90.0),
-            ("01", -5600, -3600, -90.0), ("02", -5600, -1200, -90.0),
-            ("03", -5600, 1200, -90.0), ("04", -3600, 4400, 0.0),
-            ("05", -1600, 4400, 0.0), ("06", 800, 4400, 0.0),
-            ("07", 3200, 4400, 0.0), ("08", 5200, 800, 90.0),
-            ("09", 5200, -1600, 90.0), ("10", 5200, -4000, 90.0),
-            ("11", 2800, -4400, 180.0), ("12", 400, -4400, 180.0),
-            ("13", -2000, -4400, 180.0), ("14", -3600, -2800, -90.0),
-            ("15", -2800, -800, 90.0), ("16", -1200, 2200, 180.0),
-            ("17", 1200, -2200, 0.0), ("18", 2800, 800, -90.0),
+            ("Target", 5200, 3000, 90.0),
+            ("HighValue", -5200, 3600, -90.0),
+            ("01", -5600, -3600, -90.0), ("02", -4800, -2200, 180.0),
+            ("03", -5200, 600, -90.0), ("04", -4400, 2600, -90.0),
+            ("05", -3000, 4600, 0.0), ("06", -600, 4600, 0.0),
+            ("07", 2200, 4600, 0.0), ("08", 5200, 1000, 90.0),
+            ("09", 4400, -800, -90.0), ("10", 5200, -3400, 90.0),
+            ("11", 3000, -4600, 180.0), ("12", 600, -4600, 180.0),
+            ("13", -1800, -4600, 180.0), ("14", -3200, -1000, 90.0),
+            ("15", -2600, 1600, -90.0), ("16", -600, 2800, 180.0),
+            ("17", 1200, -2600, 0.0), ("18", 3000, 600, -90.0),
         ],
         "guard_routes": [
-            [(-3200, -2400), (-1200, -800), (-2800, 800), (-1200, 3000), (1200, 2200), (2400, 1200), (1200, -2800), (3200, -2400)],
-            [(-5000, -3600), (-5000, 1200), (-4600, 3200), (-3600, 3800), (-2000, 2800), (-3000, -2800)],
-            [(4600, -4000), (4000, -2800), (5200, -800), (4000, 1200), (4600, 3200), (3200, 3800)],
-            [(-1600, 3800), (800, 3800), (2400, 3200), (800, 2400), (-1200, 2800), (-2800, 3200)],
-            [(4200, -5000), (5800, -5000), (5800, -3800), (4200, -3800)],
+            [(-5000, -3000), (-4000, -3200), (-3600, -1800), (-4400, -200), (-3600, 1200), (-4200, 3400), (-2400, 3800), (0, 3600), (1600, 3400), (3600, 3000), (4200, 1400), (3600, 0), (4200, -1800), (3400, -3600), (1600, -3600), (-600, -3600), (-2600, -3000)],
+            [(-1800, -600), (-1800, 1000), (-1200, 2200), (0, 2400), (1000, 1600), (1000, 200), (0, -600)],
+            [(4800, -2800), (3600, -2200), (5200, -200), (4200, 800), (4600, 2200), (3400, 3800)],
+            [(-5000, -2800), (-4200, -1400), (-4600, 0), (-3800, 1200), (-5000, 2400), (-3800, 3800)],
+            [(4200, -5000), (5800, -5000), (5800, -4000), (4200, -4000)],
         ],
         "cameras": [
-            (-4000, -3200, 315, 35), (-3200, 3200, 315, -55),
-            (3200, -2400, 315, 145), (4000, 2400, 315, -125),
+            (-3200, -800, 315, 15), (-1200, 2600, 315, -65),
+            (2400, -1600, 315, 135), (4400, 2200, 315, -145),
         ],
         "lasers": [
             ("HighValue", (-4800, 3200, 120, 90), (-4000, 4000, 0, 0)),
-            ("07", (3200, 4000, 120, 0), (2400, 3200, 0, 0)),
+            ("07", (2200, 4200, 120, 0), (1400, 3400, 0, 0)),
         ],
     },
     "M03": {
@@ -150,7 +150,7 @@ MAPS = {
         "wall_material": "m03_wall",
         "vent_entries": [(-7600, 0, 90.0), (-2400, 4000, 0.0), (7200, -4000, 0.0)],
         "player_starts": [(-7000, -900), (-7000, -300), (-7000, 300), (-7000, 900)],
-        "exit": (7200, 3200, 180.0),
+        "exit": (-7600, 0, 90.0),
         "nav_scale": (80.0, 44.0, 10.0),
         "cases": [
             ("Target", 6800, 2400, 90.0),
@@ -166,9 +166,9 @@ MAPS = {
             ("17", 1600, 400, -90.0), ("18", 4800, -400, -90.0),
         ],
         "guard_routes": [
-            [(-6600, 0), (-4800, -300), (-3200, -400), (-1600, 300), (0, 400), (1600, -300), (3200, -400), (4800, 300), (6800, 0)],
-            [(-6000, 2400), (-4400, 2600), (-2800, 2400), (-1200, 3200), (400, 2400), (2000, 3200), (3600, 2400), (5200, 2600), (6200, 2400)],
-            [(-6200, -2800), (-4000, -2400), (-2000, -3200), (0, -2400), (2400, -2800), (4000, -2400), (6000, -3200)],
+            [(-6600, 0), (-5200, -400), (-3600, 400), (-2400, -500), (-400, 400), (1000, -400), (2800, 400), (4200, -500), (6200, 0)],
+            [(-6200, 2200), (-5000, 2400), (-3400, 2600), (-1000, 2400), (1200, 2600), (2600, 2400), (4400, 2400), (6000, 1800)],
+            [(-6200, -2600), (-4400, -2400), (-2400, -2600), (-400, -2400), (2000, -2600), (3600, -2400), (5600, -2200)],
             [(5200, -3400), (7400, -3800), (7400, -2800), (5000, -2600)],
         ],
         "cameras": [
@@ -178,7 +178,7 @@ MAPS = {
             (6000, -2200, 315, 150), (6800, 2000, 315, -155),
         ],
         "lasers": [
-            ("HighValue", (6200, -1600, 120, 90), (5600, -2400, 0, 0)),
+            ("HighValue", (6800, -2400, 120, 0), (6000, -3400, 0, 90)),
             ("08", (4000, -2800, 120, 0), (3200, -2200, 0, 0)),
             ("10", (5200, 2800, 120, 0), (4400, 2200, 0, 0)),
         ],
@@ -250,6 +250,17 @@ class LevelBuilder:
             tags.append(generated_tag)
             safe_set(actor, "tags", tags)
 
+    def add_tags(self, actor, *tag_names):
+        tags = list(actor.get_editor_property("tags"))
+        changed = False
+        for tag_name in tag_names:
+            tag = unreal.Name(tag_name)
+            if tag not in tags:
+                tags.append(tag)
+                changed = True
+        if changed:
+            safe_set(actor, "tags", tags)
+
     def is_generated(self, actor):
         label = actor.get_actor_label()
         tags = list(actor.get_editor_property("tags"))
@@ -309,6 +320,11 @@ class LevelBuilder:
         component.set_editor_property("static_mesh", assets[mesh_name])
         if material_name:
             component.set_material(0, materials[material_name])
+        # Persist collision through map saves and later navigation rebuilds.
+        # InvisibleWall keeps Pawn blocking while allowing the interaction
+        # visibility channel to pass through the M03 glass partitions.
+        collision_profile = "InvisibleWall" if material_name == "glass" else "BlockAll"
+        component.set_collision_profile_name(unreal.Name(collision_profile))
         set_transform(actor, location, yaw, scale)
         self.folder(actor, folder)
         self.mark_generated(actor)
@@ -326,6 +342,21 @@ class LevelBuilder:
         set_transform(actor, location, yaw)
         self.folder(actor, folder)
         self.mark_generated(actor)
+        return actor
+
+    def target_point(self, label, location, yaw=0.0, folder="Gameplay/Anchors", tags=()):
+        actor = self.by_label.get(label)
+        if actor is None:
+            actor = actor_subsystem.spawn_actor_from_class(unreal.TargetPoint, vec(location), rot(yaw))
+            actor.set_actor_label(label)
+            self.register(actor)
+            self.created += 1
+        else:
+            self.updated += 1
+        set_transform(actor, location, yaw)
+        self.folder(actor, folder)
+        self.mark_generated(actor)
+        self.add_tags(actor, *tags)
         return actor
 
     def point_light(self, label, location, color, intensity=1800.0, radius=1500.0, folder="Lighting"):
@@ -356,7 +387,7 @@ class LevelBuilder:
     def screen(self, label, location, yaw, length, material_name, height=2.2, folder="Theme/Partitions"):
         return self.static(label, "cube", location, yaw, (length / 100.0, 0.18, height), material_name, folder)
 
-    def ceiling_rect(self, label_prefix, center, size, material_name, max_tile_size=(1600.0, 1600.0), mesh_name="floor"):
+    def ceiling_rect(self, label_prefix, center, size, material_name, max_tile_size=(1600.0, 1600.0), mesh_name="floor", z=412.0):
         count_x = max(1, int(math.ceil(float(size[0]) / float(max_tile_size[0]))))
         count_y = max(1, int(math.ceil(float(size[1]) / float(max_tile_size[1]))))
         tile_x = float(size[0]) / count_x
@@ -368,7 +399,7 @@ class LevelBuilder:
                 self.static(
                     "{}_{}_{:02d}".format(label_prefix, x_index, y_index),
                     mesh_name,
-                    (start_x + x_index * tile_x, start_y + y_index * tile_y, 412),
+                    (start_x + x_index * tile_x, start_y + y_index * tile_y, z),
                     0.0,
                     (tile_x / 400.0, tile_y / 400.0, 1.0),
                     material_name,
@@ -497,6 +528,17 @@ class LevelBuilder:
     def configure_guards(self):
         guards = sorted((actor for actor in self.actors if actor.get_class().get_name() == "BP_Guard_C" and self.is_generated(actor)), key=lambda actor: actor.get_actor_label())
         waypoints = sorted((actor for actor in self.actors if actor.get_class().get_name() == "HeistGuardWaypoint" and self.is_generated(actor)), key=lambda actor: actor.get_actor_label())
+        required_waypoint_count = sum(len(route) for route in self.config["guard_routes"])
+        for waypoint in waypoints[required_waypoint_count:]:
+            label = waypoint.get_actor_label()
+            if not actor_subsystem.destroy_actor(waypoint):
+                raise RuntimeError("Surplus guard waypoint cleanup failed: " + label)
+            self.actors.remove(waypoint)
+            self.orphaned_removed += 1
+        waypoints = waypoints[:required_waypoint_count]
+        for index, waypoint in enumerate(waypoints):
+            waypoint.set_actor_label("LDV2_{}_WaypointTemp_{:03d}".format(self.code, index))
+        self.by_label = {actor.get_actor_label(): actor for actor in self.actors}
         waypoint_cursor = 0
 
         for route_index, route in enumerate(self.config["guard_routes"]):
@@ -587,7 +629,16 @@ class LevelBuilder:
             safe_set(button, "linked_laser_barrier", barrier)
 
     def security_detention_props(self, origin_x, origin_y, yaw=0.0):
-        self.static("LDV2_{}_SecurityDesk".format(self.code), "table", (origin_x, origin_y, 0), yaw, (1.0, 1.0, 1.0), None, "SecurityDetention")
+        evidence_table = self.static(
+            "LDV2_{}_SecurityDesk".format(self.code),
+            "table",
+            (origin_x, origin_y, 0),
+            yaw,
+            (2.0, 2.0, 1.0),
+            None,
+            "SecurityDetention",
+        )
+        self.add_tags(evidence_table, "HeistEvidenceTableVisual")
         for index, offset in enumerate((-240, 0, 240)):
             self.static("LDV2_{}_SecurityChair_{:02d}".format(self.code, index), "chair", (origin_x + offset, origin_y - 260, 0), yaw + 180.0, (1.0, 1.0, 1.0), None, "SecurityDetention")
         for index in range(5):
@@ -598,6 +649,40 @@ class LevelBuilder:
                 self.static(label, "shelf", (origin_x - 700 + index * 300, origin_y + 520, height), yaw, (1.0, 0.85, 1.0), None, "SecurityDetention")
         for index in range(5):
             self.static("LDV2_{}_DetentionBar_{:02d}".format(self.code, index), "pillar", (origin_x + 700, origin_y - 500 + index * 220, -12), yaw, (0.65, 0.65, 0.75), "steel", "SecurityDetention")
+
+        # Four deterministic cell positions support the public 2-4 player contract.
+        # Z is the Character capsule center height used by the existing PlayerStarts.
+        for index, offset in enumerate(((400, -120), (400, 120), (520, -120), (520, 120)), start=1):
+            self.target_point(
+                "LDV2_{}_DetentionSpawn_{:02d}".format(self.code, index),
+                (origin_x + offset[0], origin_y + offset[1], 96),
+                yaw,
+                "Gameplay/DetentionAnchors",
+                ("HeistDetentionSpawn",),
+            )
+
+        # A 5x5 evidence grid matches the maximum inventory capacity. Every slot
+        # carries both the table-group and slot tags so runtime discovery is based
+        # on stable Actor Tags rather than editor-only labels.
+        grid_spacing = 70.0
+        yaw_radians = math.radians(yaw)
+        axis_x = (math.cos(yaw_radians), math.sin(yaw_radians))
+        axis_y = (-math.sin(yaw_radians), math.cos(yaw_radians))
+        slot_index = 1
+        for row in range(5):
+            for column in range(5):
+                local_x = (column - 2) * grid_spacing
+                local_y = (row - 2) * grid_spacing
+                slot_x = origin_x + axis_x[0] * local_x + axis_y[0] * local_y
+                slot_y = origin_y + axis_x[1] * local_x + axis_y[1] * local_y
+                self.target_point(
+                    "LDV2_{}_EvidenceSlot_{:02d}".format(self.code, slot_index),
+                    (slot_x, slot_y, 110),
+                    yaw,
+                    "Gameplay/EvidenceAnchors",
+                    ("HeistEvidenceTableAnchor", "HeistEvidenceSlot"),
+                )
+                slot_index += 1
 
     def save(self):
         save_ok = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).save_current_level()
@@ -633,62 +718,65 @@ def add_m01_geometry(builder):
     builder.floor_grid()
     builder.perimeter(False)
     mat = builder.config["wall_material"]
-    builder.ceiling_rect("LDV2_M01_Ceiling_West", (-5000, 0), (4400, 10400), mat)
-    builder.ceiling_rect("LDV2_M01_Ceiling_East", (5000, 0), (4400, 10400), mat)
-    builder.ceiling_rect("LDV2_M01_Ceiling_North", (0, 3800), (5600, 2800), mat)
-    builder.ceiling_rect("LDV2_M01_Ceiling_South", (0, -3800), (5600, 2800), mat)
-    builder.wall_v("OuterRingWest", -4400, -3600, 3600, doors=(-2000, 400, 2800), material_name=mat)
-    builder.wall_v("OuterRingEast", 4400, -3600, 3600, doors=(-2800, -400, 2000), material_name=mat)
-    builder.wall_h("OuterRingSouth", -4000, -3600, 3600, doors=(-2800, -400, 2000), material_name=mat)
-    builder.wall_h("OuterRingNorth", 4000, -3600, 3600, doors=(-2000, 400, 2800), material_name=mat)
-    builder.wall_h("WestWingLower", -2000, -6800, -4400, doors=(-5200,), material_name=mat)
-    builder.wall_h("WestWingUpper", 2000, -6800, -4400, doors=(-6000,), material_name=mat)
-    builder.wall_h("EastWingLower", -2000, 4400, 6800, doors=(6000,), material_name=mat)
-    builder.wall_h("EastWingUpper", 2000, 4400, 6800, doors=(5200,), material_name=mat)
+    builder.ceiling_rect("LDV2_M01_Ceiling_West", (-4200, 0), (6000, 10400), mat)
+    builder.ceiling_rect("LDV2_M01_Ceiling_East", (4200, 0), (6000, 10400), mat)
+    builder.ceiling_rect("LDV2_M01_Ceiling_North", (0, 3100), (2400, 4200), mat)
+    builder.ceiling_rect("LDV2_M01_Ceiling_South", (0, -3100), (2400, 4200), mat)
+
+    # Two broad gallery loops share the always-visible Rotunda instead of forming one rectangular ring.
+    builder.wall_h("NorthLoopInnerWest", 1600, -6000, -2000, doors=(-4400,), material_name=mat)
+    builder.wall_h("NorthLoopInnerEast", 1600, 2000, 6000, doors=(4400,), material_name=mat)
+    builder.wall_h("SouthLoopInnerWest", -1600, -6000, -2000, doors=(-3600,), material_name=mat)
+    builder.wall_h("SouthLoopInnerEast", -1600, 2000, 6000, doors=(3600,), material_name=mat)
+    builder.wall_v("RotundaWestNeck", -2400, -800, 800, doors=(0,), material_name=mat)
+    builder.wall_v("RotundaEastNeck", 2400, -800, 800, doors=(0,), material_name=mat)
+    builder.wall_h("WestLoopNorthGate", 3200, -6800, -4400, doors=(-6000,), material_name=mat)
+    builder.wall_h("WestLoopSouthGate", -3200, -6800, -4400, doors=(-5200,), material_name=mat)
+    builder.wall_h("EastTargetNorthGate", 3200, 4400, 6800, doors=(6000,), material_name=mat)
+    builder.wall_h("EastTargetSouthGate", -3200, 4400, 6800, doors=(5200,), material_name=mat)
     builder.wall_v("SecurityEast", -4400, -5200 + 400, -3200, doors=(-4000,), material_name=mat)
-    builder.wall_h("SecurityNorth", -3200, -6800, -4400, doors=(-5200,), material_name=mat)
+    # WestLoopSouthGate is also the security-room north wall; do not stack a
+    # second identical wall run at the same transform.
     builder.wall_v("DetentionDivider", -6000, -4800, -3200, doors=(-4000,), material_name=mat)
-    builder.wall_v("InnerGalleryWest", -2800, -1200, 1200, doors=(-400, 1200), material_name=mat)
-    builder.wall_v("InnerGalleryEast", 2800, -1200, 1200, doors=(-1200, 400), material_name=mat)
-    builder.wall_h("InnerGalleryNorth", 2400, -2000, 2000, doors=(-400, 1200), material_name=mat)
-    builder.wall_h("InnerGallerySouth", -2400, -2000, 2000, doors=(-1200, 400), material_name=mat)
     builder.security_detention_props(-5200, -4200, 90.0)
+
+    builder.static("LDV2_M01_Topology_Figure8_North", "cube", (0, 1520, -20), 0.0, (24.0, 0.08, 0.04), "gold", "Theme/Figure8Inlay")
+    builder.static("LDV2_M01_Topology_Figure8_South", "cube", (0, -1520, -20), 0.0, (24.0, 0.08, 0.04), "gold", "Theme/Figure8Inlay")
     rotunda_pillars = []
     for index in range(8):
         angle = math.radians(22.5 + index * 45.0)
-        rotunda_pillars.append((math.cos(angle) * 1800, math.sin(angle) * 1550))
-    rotunda_pillars.extend(((-2400, 0), (2400, 0), (0, -2050), (0, 2050)))
+        rotunda_pillars.append((math.cos(angle) * 1700, math.sin(angle) * 950))
+    rotunda_pillars.extend(((-2400, 0), (2400, 0), (0, -1250), (0, 1250)))
     for index, pos in enumerate(rotunda_pillars):
         builder.static("LDV2_M01_RotundaPillar_{:02d}".format(index), "pillar", (pos[0], pos[1], -12), 0.0, (1.0, 1.0, 0.8), "gold" if index >= 8 else None, "Theme/Rotunda")
     builder.static("LDV2_M01_HeroPlinth", "platform", (0, 0, 0), 45.0, (1.65, 1.65, 4.0), "gold", "Theme/Rotunda")
-    statue_specs = ((0, 0, 45.0, 2.4, 40), (-5600, 0, 90.0, 1.6, 0), (5200, 0, -90.0, 1.6, 0), (0, 3500, 180.0, 1.5, 0))
+    statue_specs = ((0, 0, 45.0, 2.6, 40), (-5600, 800, 90.0, 1.6, 0), (5200, 800, -90.0, 1.6, 0), (0, 3600, 180.0, 1.5, 0))
     for index, spec in enumerate(statue_specs):
         builder.static("LDV2_M01_RotundaStatue_{:02d}".format(index), "statue", (spec[0], spec[1], spec[4]), spec[2], (spec[3], spec[3], spec[3]), None, "Theme/Rotunda" if index == 0 else "Theme/GalleryLandmarks")
-    for index, pos in enumerate(((-5650, -2850, 25), (-5650, -500, -20))):
+    for index, pos in enumerate(((-5650, -2450, 25), (-5650, 50, -20))):
         builder.static("LDV2_M01_EntryPlinth_{:02d}".format(index), "platform", (pos[0], pos[1], 0), pos[2], (0.8, 0.8, 3.0), "gold", "Theme/EntryGallery")
         builder.static("LDV2_M01_EntryStatue_{:02d}".format(index), "statue", (pos[0], pos[1], 30), pos[2], (1.4, 1.4, 1.4), None, "Theme/EntryGallery")
-    couch_specs = ((-6000, -800, 90), (-5600, 1400, 90), (5600, -600, -90), (5200, 1200, -90), (-2000, -4200, 0), (2800, -4200, 180), (-2800, 4200, 0), (2000, 4200, 180))
+    couch_specs = ((-6000, -200, 90), (-5200, 2200, 90), (5600, 0, -90), (5200, 2200, -90), (-2000, -3600, 0), (2800, -3600, 180), (-2800, 3600, 0), (2000, 3600, 180))
     for index, pos in enumerate(couch_specs):
         builder.static("LDV2_M01_GalleryCouch_{:02d}".format(index), "couch", (pos[0], pos[1], 0), pos[2], (0.9, 0.9, 0.9), None, "Theme/Galleries")
-    for index, pos in enumerate(((-3800, -2600, 45), (-3600, 2800, -45), (3800, -2600, 135), (3600, 2800, -135))):
+    for index, pos in enumerate(((-3800, -2400, 45), (-3600, 2400, -45), (3800, -2400, 135), (3600, 2400, -135))):
         builder.static("LDV2_M01_ReadingTable_{:02d}".format(index), "table", (pos[0], pos[1], 0), pos[2], (1.05, 1.05, 1.05), None, "Theme/Galleries")
-    portal_specs = ((-4400, -2000, 90), (-4400, 400, 90), (-4400, 2800, 90), (4400, -2800, 90), (4400, -400, 90), (4400, 2000, 90), (-400, -4000, 0), (400, 4000, 0))
+    portal_specs = ((-6000, -3200, 0), (-6000, 3200, 0), (-4400, 1600, 90), (-3600, -1600, 90), (3600, -1600, 90), (4400, 1600, 90), (5200, -3200, 0), (6000, 3200, 0))
     for index, pos in enumerate(portal_specs):
-        corrected_yaw = 0.0 if abs(pos[0]) == 4400 else 90.0
-        builder.portal("LDV2_M01_Portal_{:02d}".format(index), (pos[0], pos[1], 0), corrected_yaw, "gold", (1.0, 1.8, 1.05))
-    inner_portals = ((-2800, -400, 0), (-2800, 1200, 0), (2800, -1200, 0), (2800, 400, 0), (-1200, -2400, 90), (400, -2400, 90), (-400, 2400, 90), (1200, 2400, 90))
+        builder.portal("LDV2_M01_Portal_{:02d}".format(index), (pos[0], pos[1], 0), pos[2], "gold", (1.0, 1.8, 1.05))
+    inner_portals = ((-2400, 0, 0), (2400, 0, 0))
     for index, pos in enumerate(inner_portals):
         builder.portal("LDV2_M01_InnerPortal_{:02d}".format(index), (pos[0], pos[1], 0), pos[2], "gold", (1.0, 1.8, 1.05))
     for label, location, scale in (
-        ("SkylightRimNorth", (0, 2400, 390), (56.0, 0.18, 0.15)),
-        ("SkylightRimSouth", (0, -2400, 390), (56.0, 0.18, 0.15)),
-        ("SkylightRimWest", (-2800, 0, 390), (0.18, 48.0, 0.15)),
-        ("SkylightRimEast", (2800, 0, 390), (0.18, 48.0, 0.15)),
-        ("SkylightBeamX", (0, 0, 390), (56.0, 0.16, 0.15)),
-        ("SkylightBeamY", (0, 0, 390), (0.16, 48.0, 0.15)),
+        ("SkylightRimNorth", (0, 1000, 390), (24.0, 0.18, 0.15)),
+        ("SkylightRimSouth", (0, -1000, 390), (24.0, 0.18, 0.15)),
+        ("SkylightRimWest", (-1200, 0, 390), (0.18, 20.0, 0.15)),
+        ("SkylightRimEast", (1200, 0, 390), (0.18, 20.0, 0.15)),
+        ("SkylightBeamX", (0, 0, 390), (24.0, 0.16, 0.15)),
+        ("SkylightBeamY", (0, 0, 390), (0.16, 20.0, 0.15)),
     ):
         builder.static("LDV2_M01_{}".format(label), "cube", location, 0.0, scale, "gold", "Theme/RotundaCeiling")
-    light_positions = ((0, 0), (-5600, 0), (5600, 0), (0, -3400), (0, 3400), (-3600, -2600), (3600, -2600), (-3600, 2800), (3600, 2800), (-5200, -4200))
+    light_positions = ((0, 0), (-5600, 0), (5600, 0), (0, -3400), (0, 3400), (-4000, -2400), (4000, -2400), (-4000, 2400), (4000, 2400), (-5200, -4200), (-6000, 3600), (6000, 3600))
     for index, pos in enumerate(light_positions):
         builder.static("LDV2_M01_CeilingLamp_{:02d}".format(index), "ceiling_lamp", (pos[0], pos[1], 370), 0.0, (0.8, 0.8, 0.8), "gold", "Lighting/Fixtures")
         builder.point_light("LDV2_M01_WarmLight_{:02d}".format(index), (pos[0], pos[1], 320), (255, 205, 145), 1150.0 if index else 1900.0, 1350.0)
@@ -698,32 +786,34 @@ def add_m02_geometry(builder):
     builder.floor_grid()
     builder.perimeter(False)
     mat = builder.config["wall_material"]
-    builder.ceiling_rect("LDV2_M02_Ceiling_West", (-4200, 0), (4400, 11200), "m01_wall")
-    builder.ceiling_rect("LDV2_M02_Ceiling_East", (4200, 0), (4400, 11200), "m01_wall")
-    builder.ceiling_rect("LDV2_M02_Ceiling_North", (0, 3600), (4000, 4000), "m01_wall")
-    builder.ceiling_rect("LDV2_M02_Ceiling_South", (0, -3600), (4000, 4000), "m01_wall")
-    builder.wall_h("CourtyardNorth", 1600, -1600, 1600, doors=(0,), windows=(-1600, -800, 800, 1600), material_name=None)
-    builder.wall_h("CourtyardSouth", -1600, -1600, 1600, doors=(0,), windows=(-1600, -800, 800, 1600), material_name=None)
-    builder.wall_v("CourtyardWest", -2000, -1200, 1200, doors=(0,), windows=(-800, 800), material_name=None)
-    builder.wall_v("CourtyardEast", 2000, -1200, 1200, doors=(0,), windows=(-800, 800), material_name=None)
-    builder.wall_v("GalleryWest", -4000, -4400, 4400, doors=(-2800, -400, 2000), material_name=mat)
-    builder.wall_v("GalleryEast", 4000, -4400, 4400, doors=(-2000, 400, 2800), material_name=mat)
-    builder.wall_h("GallerySouth", -3600, -3600, 3600, doors=(-2800, -400, 2000), material_name=mat)
-    builder.wall_h("GalleryNorth", 3600, -3600, 3600, doors=(-2000, 400, 2800), material_name=mat)
-    builder.wall_h("WestBendLower", -2400, -6000, -4000, doors=(-5200,), material_name=mat)
-    builder.wall_h("WestBendUpper", 2400, -6000, -4000, doors=(-4400,), material_name=mat)
-    builder.wall_h("EastBendLower", -2400, 4000, 6000, doors=(4400,), material_name=mat)
-    builder.wall_h("EastBendUpper", 2400, 4000, 6000, doors=(5200,), material_name=mat)
+    builder.ceiling_rect("LDV2_M02_Ceiling_West", (-5000, 0), (2800, 11200), "m01_wall")
+    builder.ceiling_rect("LDV2_M02_Ceiling_NorthWest", (-2600, 3600), (2000, 4000), "m01_wall")
+    builder.ceiling_rect("LDV2_M02_Ceiling_SouthMid", (-800, -3600), (2400, 4000), "m01_wall")
+    builder.ceiling_rect("LDV2_M02_Ceiling_NorthMid", (1600, 3600), (2400, 4000), "m01_wall")
+    builder.ceiling_rect("LDV2_M02_Ceiling_East", (4800, 0), (3200, 11200), "m01_wall")
+    builder.ceiling_rect("LDV2_M02_Ceiling_SouthEast", (2600, -3600), (1200, 4000), "m01_wall")
+
+    # Alternating walls create the long safe S-route; each mid-wall door is a watched shortcut.
+    builder.wall_v("SerpentineGateA", -4000, -4800, 2400, doors=(-800,), material_name=mat)
+    builder.wall_v("SerpentineGateB", -2400, -2400, 4800, doors=(800,), material_name=mat)
+    builder.wall_v("SerpentineGateC", -800, -4800, -800, doors=(-2400,), material_name=mat)
+    builder.wall_v("SerpentineGateD", 800, 2400, 4800, doors=(3200,), material_name=mat)
+    builder.wall_v("SerpentineGateE", 2400, -4800, 2400, doors=(-800,), material_name=mat)
+    builder.wall_v("SerpentineGateF", 4000, -2400, 4800, doors=(800,), material_name=mat)
+    builder.wall_h("NorthGalleryBend", 4000, -5600, -3200, doors=(-4800,), material_name=mat)
+    builder.wall_h("TargetWingBend", 2400, 4000, 6000, doors=(4800,), material_name=mat)
+    builder.wall_h("SouthServiceBend", -4000, -3200, 2400, doors=(-1600, 800), material_name=mat)
     builder.wall_v("SecurityWest", 4400, -5200, -3600, doors=(-4400,), material_name=mat)
     builder.wall_h("SecurityNorth", -3600, 4400, 6000, doors=(5200,), material_name=mat)
     builder.wall_v("DetentionDivider", 5200, -5200, -3600, doors=(-4400,), material_name=mat)
     builder.security_detention_props(4800, -4500, -90.0)
     screen_specs = (
-        ("00A", -3750, -2400, 0, 600), ("00B", -2300, -2400, 0, 500),
-        ("01", -3600, -400, 90, 600), ("02", -2800, 1800, 0, 700),
-        ("03", -300, 3100, 0, 500), ("04", 2200, 2200, 90, 600),
-        ("05", 3000, 800, 90, 700), ("06", 2600, -1800, 0, 700),
-        ("07", 400, -3000, 90, 500), ("08", -1200, -2200, 0, 600),
+        ("00A", -5000, -3500, 10, 500), ("00B", -3600, -3500, -15, 450),
+        ("01A", -3400, -400, 75, 520), ("01B", -3000, 700, 20, 420),
+        ("02A", -1800, 2600, -20, 520), ("02B", -600, 3200, 15, 480),
+        ("03A", 1200, -2600, 20, 520), ("03B", 2100, -1700, 75, 460),
+        ("04A", 3000, 1000, -15, 560), ("04B", 3500, 2200, 70, 440),
+        ("05A", -1200, -1200, 25, 420), ("05B", 1800, 800, -25, 420),
     )
     for key, x, y, yaw, length in screen_specs:
         builder.screen("LDV2_M02_FoldingScreen_{}".format(key), (x, y, 0), yaw, length, "worn_wood", 2.2, "Theme/FoldingScreens")
@@ -740,50 +830,58 @@ def add_m02_geometry(builder):
                 "copper",
                 "Theme/FoldingScreens",
             )
-    builder.static("LDV2_M02_MoonPool", "cube", (400, -200, -7), 0.0, (11.0, 7.5, 0.12), "water", "Theme/MoonCourtyard")
-    builder.static("LDV2_M02_MoonPoolEdgeNorth", "cube", (400, 190, 12), 0.0, (12.0, 0.18, 0.18), "moss", "Theme/MoonCourtyard")
-    builder.static("LDV2_M02_MoonPoolEdgeSouth", "cube", (400, -590, 12), 0.0, (12.0, 0.18, 0.18), "moss", "Theme/MoonCourtyard")
-    builder.static("LDV2_M02_MoonPoolEdgeWest", "cube", (-160, -200, 12), 0.0, (0.18, 8.0, 0.18), "moss", "Theme/MoonCourtyard")
-    builder.static("LDV2_M02_MoonPoolEdgeEast", "cube", (960, -200, 12), 0.0, (0.18, 8.0, 0.18), "moss", "Theme/MoonCourtyard")
-    builder.static("LDV2_M02_MoonPoolBridge", "cube", (400, -200, 15), 90.0, (8.5, 3.0, 0.08), "oak", "Theme/MoonCourtyard")
-    garden_specs = ((-850, -650, "bush", 0.8), (-450, 500, "rock", 0.7), (950, 450, "bush", 0.9), (1300, -700, "rock", 0.8), (-1100, 100, "rock", 0.55), (1500, 100, "bush", 0.65), (0, 850, "rock", 0.6), (700, -1150, "bush", 0.7))
+    builder.static("LDV2_M02_Topology_Serpentine_Gate_A", "pillar_frame", (-4000, -800, 0), 0.0, (1.1, 1.1, 1.0), "copper", "Theme/SerpentineGates")
+    builder.static("LDV2_M02_Topology_Serpentine_Gate_F", "pillar_frame", (4000, 800, 0), 0.0, (1.1, 1.1, 1.0), "copper", "Theme/SerpentineGates")
+    builder.static("LDV2_M02_MoonPool", "cube", (-600, 800, -7), 0.0, (9.0, 6.0, 0.12), "water", "Theme/MoonCourtyard")
+    builder.static("LDV2_M02_MoonPoolEdgeNorth", "cube", (-600, 1110, 12), 0.0, (10.0, 0.18, 0.18), "moss", "Theme/MoonCourtyard")
+    builder.static("LDV2_M02_MoonPoolEdgeSouth", "cube", (-600, 490, 12), 0.0, (10.0, 0.18, 0.18), "moss", "Theme/MoonCourtyard")
+    builder.static("LDV2_M02_MoonPoolEdgeWest", "cube", (-1060, 800, 12), 0.0, (0.18, 6.4, 0.18), "moss", "Theme/MoonCourtyard")
+    builder.static("LDV2_M02_MoonPoolEdgeEast", "cube", (-140, 800, 12), 0.0, (0.18, 6.4, 0.18), "moss", "Theme/MoonCourtyard")
+    builder.static("LDV2_M02_MoonPoolBridge", "cube", (-600, 800, 15), 0.0, (11.0, 2.4, 0.2), "oak", "Theme/MoonCourtyard")
+    garden_specs = ((-1300, 200, "bush", 0.8), (-1200, 1450, "rock", 0.7), (150, 1500, "bush", 0.9), (500, 200, "rock", 0.8), (-1500, 800, "rock", 0.55), (700, 900, "bush", 0.65), (200, 1900, "rock", 0.6), (-100, -100, "bush", 0.7))
     for index, spec in enumerate(garden_specs):
         builder.static("LDV2_M02_MoonCourt_{:02d}".format(index), spec[2], (spec[0], spec[1], 0), index * 37.0, (spec[3], spec[3], spec[3]), "moss" if spec[2] == "rock" else None, "Theme/MoonCourtyard")
-    builder.static("LDV2_M02_MoonCourtPlinth", "platform", (-650, 250, 0), 25.0, (1.2, 1.2, 3.0), "copper", "Theme/MoonCourtyard")
-    builder.static("LDV2_M02_MoonCourtCenter", "statue", (-650, 250, 30), 25.0, (2.0, 2.0, 2.0), "copper", "Theme/MoonCourtyard")
-    portal_specs = ((-4000, -2800, 90), (-4000, -400, 90), (-4000, 2000, 90), (4000, -2000, 90), (4000, 400, 90), (4000, 2800, 90), (0, -3600, 0), (0, 3600, 0))
+    builder.static("LDV2_M02_MoonCourtPlinth", "platform", (1100, 1200, 0), 25.0, (1.2, 1.2, 3.0), "copper", "Theme/MoonCourtyard")
+    builder.static("LDV2_M02_MoonCourtCenter", "statue", (1100, 1200, 30), 25.0, (2.0, 2.0, 2.0), "copper", "Theme/MoonCourtyard")
+    portal_specs = ((-4000, -800, 0), (-2400, 800, 0), (-800, -2400, 0), (800, 3200, 0), (2400, -800, 0), (4000, 800, 0), (-4800, 4000, 90), (4800, 2400, 90))
     for index, pos in enumerate(portal_specs):
-        corrected_yaw = 0.0 if abs(pos[0]) == 4000 else 90.0
-        builder.portal("LDV2_M02_Portal_{:02d}".format(index), (pos[0], pos[1], 0), corrected_yaw, "oak", (1.0, 1.8, 1.05))
-    lamp_positions = ((-5200, -400, 90), (-5200, 3200, 90), (5200, 800, -90), (5200, -3200, -90), (-2800, 4400, 180), (2800, 4400, 180), (-2800, -4400, 0), (2400, -4400, 0), (-1200, 2200, 180), (1200, -2200, 0))
+        builder.portal("LDV2_M02_Portal_{:02d}".format(index), (pos[0], pos[1], 0), pos[2], "oak", (1.0, 1.8, 1.05))
+    lamp_positions = ((-5200, -3200, 90), (-5200, 800, 90), (-4400, 3200, 90), (-2800, 4400, 180), (-1200, -3600, 0), (1200, 3600, 180), (2800, -3200, 0), (3600, 1600, 90), (5200, -1200, -90), (5200, 3000, -90))
     for index, pos in enumerate(lamp_positions):
         builder.static("LDV2_M02_GalleryLamp_{:02d}".format(index), "wall_lamp", (pos[0], pos[1], 250), pos[2], (1.0, 1.0, 1.0), "copper", "Lighting/Fixtures")
         builder.point_light("LDV2_M02_WarmLight_{:02d}".format(index), (pos[0], pos[1], 230), (255, 176, 105), 900.0, 1050.0)
-    for index, pos in enumerate(((-4050, -3150, 90), (-4050, -2450, 90)), start=len(lamp_positions)):
+    for index, pos in enumerate(((-5050, -3500, 90), (-3850, -2850, 90)), start=len(lamp_positions)):
         builder.static("LDV2_M02_GalleryLamp_{:02d}".format(index), "wall_lamp", (pos[0], pos[1], 230), pos[2], (1.0, 1.0, 1.0), "copper", "Lighting/Fixtures")
         builder.point_light("LDV2_M02_WarmLight_{:02d}".format(index), (pos[0], pos[1], 220), (255, 176, 105), 800.0, 900.0)
-    builder.point_light("LDV2_M02_MoonCourtLight", (400, -200, 360), (145, 185, 255), 1900.0, 2100.0)
+    builder.point_light("LDV2_M02_MoonCourtLight", (-600, 800, 360), (145, 185, 255), 1900.0, 2100.0)
 
 
 def add_m03_geometry(builder):
     builder.floor_grid()
     builder.perimeter(True)
     mat = builder.config["wall_material"]
-    builder.ceiling_rect("LDV2_M03_GlassRoof", (0, 0), (16000, 2400), "glass", (1600.0, 2400.0))
-    cross_links = (-3600, 400, 3600)
-    builder.wall_h("SpineNorth", 1200, -7200, 7200, doors=cross_links, windows=(-6800, -5200, -2000, 2000, 5200, 6800), material_name=mat)
-    builder.wall_h("SpineSouth", -1200, -7200, 7200, doors=(-3600, -400, 3600), windows=(-6800, -5200, -2000, 2000, 5200, 6800), material_name=mat)
+    builder.ceiling_rect("LDV2_M03_GlassRoof_West", (-4400, 0), (7200, 2400), "glass", (1600.0, 2400.0), z=412.0)
+    builder.ceiling_rect("LDV2_M03_GlassRoof_Crossing", (400, 0), (2400, 2400), "glass", (1200.0, 2400.0), z=600.0)
+    builder.ceiling_rect("LDV2_M03_GlassRoof_East", (4800, 0), (6400, 2400), "glass", (1600.0, 2400.0), z=412.0)
+    north_links = (-6400, -2400, 800, 4800, 6400)
+    south_links = (-4800, -800, 3200, 6400)
+    builder.wall_h("SpineNorth", 1200, -7200, 7200, doors=north_links, windows=(-5600, -4000, -800, 2400, 4000, 5600), material_name=mat)
+    builder.wall_h("SpineSouth", -1200, -7200, 7200, doors=south_links, windows=(-6400, -3200, 800, 2400, 4800), material_name=mat)
     builder.wall_h("GlassLane", 2800, -7200, 7200, doors=(-4400, -1200, 2000, 5200), windows=tuple(range(-7200, 7201, 800)), material_name=None)
-    builder.wall_h("BackstageLane", -2800, -7200, 7200, doors=(-5200, -2000, 1200, 4400), material_name=mat)
-    for index, x in enumerate((-4800, -1600, 1600, 4800)):
+    builder.wall_h("BackstageLane", -2800, -7200, 7200, doors=(-5200, -2000, 1200, 4400, 6800), material_name=mat)
+    for index, x in enumerate((-4800, -1600, 2400, 5600)):
         north_door = (2000, 2800, 3600)[index % 3]
         south_door = (-3600, -2800, -2000)[(index + 1) % 3]
         builder.wall_v("NorthBay_{:02d}".format(index), x, 2000, 3600, doors=(north_door,), material_name=mat)
         builder.wall_v("SouthBay_{:02d}".format(index), x, -3600, -2000, doors=(south_door,), material_name=mat)
+    builder.wall_v("HighValueAirlockWest", 6000, -2800, -1200, doors=(-2000,), material_name=mat)
+    builder.wall_h("HighValueAirlockNorth", -1200, 6000, 7600, doors=(6800,), material_name=mat)
     builder.wall_v("SecurityWest", 5200, -4000, -2800, doors=(-3600,), material_name=mat)
     builder.wall_h("SecurityNorth", -4000, 5600, 7200, doors=(6400,), material_name=mat)
     builder.wall_v("DetentionDivider", 6400, -4000, -2800, doors=(-3600,), material_name=mat)
     builder.security_detention_props(6000, -3500, -90.0)
+    builder.static("LDV2_M03_Topology_BraidedCrossing", "cube", (400, 0, 505), 45.0, (2.4, 2.4, 0.12), "tech", "Theme/BraidedCrossing")
+    builder.static("LDV2_M03_CrossingSuspendedFrame", "pillar_frame", (400, 0, 380), 90.0, (1.5, 1.5, 1.2), "nickel", "Theme/BraidedCrossing")
     island_specs = (
         (-6800, -820, -12, 0.9, 2.5), (-5200, 820, 12, 1.0, 3.0),
         (-3600, 820, -8, 0.9, 2.5), (-2000, -820, 15, 1.05, 3.0),
@@ -806,21 +904,22 @@ def add_m03_geometry(builder):
             if tier:
                 label += "_Tier_{:02d}".format(tier)
             builder.static(label, "shelf", (spec[0], spec[1], height), spec[2], (1.0, 0.9, 1.0), "nickel", "Theme/Backstage")
-    for index, x in enumerate((-4800, -1600, 1600, 4800)):
+    for index, x in enumerate((-4800, -1600, 2400, 5600)):
         builder.static("LDV2_M03_SpinePortal_{:02d}".format(index), "pillar_frame", (x, 0, 0), 90.0, (1.15, 1.15, 1.0), "nickel", "Theme/PublicSpine")
         builder.static("LDV2_M03_PodWindowFrame_{:02d}".format(index), "window_frame", (x, 2800, 145), 90.0, (1.0, 1.8, 2.0), "nickel", "Theme/GlassLane")
-    side_portals = ((-3600, 1200), (400, 1200), (3600, 1200), (-3600, -1200), (-400, -1200), (3600, -1200))
+    side_portals = ((-6400, 1200), (-2400, 1200), (800, 1200), (4800, 1200), (6400, 1200), (-4800, -1200), (-800, -1200), (3200, -1200), (6400, -1200))
     for index, pos in enumerate(side_portals):
         builder.portal("LDV2_M03_SidePortal_{:02d}".format(index), (pos[0], pos[1], 0), 90.0, "nickel", (1.0, 1.8, 1.05), "Theme/PublicSpine")
-    baffle_specs = ((-2800, 930, 75), (-2500, -930, 105), (800, 930, 75), (1100, -930, 105), (4200, 930, 75), (4500, -930, 105))
+    baffle_specs = ((-6100, 650, 70), (-5800, -650, 110), (-2600, 930, 75), (-2200, -930, 105), (1200, 930, 75), (1600, -930, 105), (4600, 930, 75), (5000, -930, 105))
     for index, spec in enumerate(baffle_specs):
         builder.static("LDV2_M03_SpineGlassBaffle_{:02d}".format(index), "glass_window", (spec[0], spec[1], 0), spec[2], (0.55, 1.5, 1.2), "glass", "Theme/PublicSpine")
     restore_tables = ((-5000, -2200, 15), (-2600, -2400, -12), (200, -2200, 12), (2800, -2400, -15))
     for index, spec in enumerate(restore_tables):
         builder.static("LDV2_M03_RestorationTable_{:02d}".format(index), "table", (spec[0], spec[1], 0), spec[2], (1.05, 1.05, 1.05), "nickel", "Theme/Backstage")
         builder.static("LDV2_M03_RestorationChair_{:02d}".format(index), "chair", (spec[0] + 260, spec[1] - 160, 0), spec[2] + 180.0, (0.85, 0.85, 0.85), None, "Theme/Backstage")
-    for index, x in enumerate((-8000, -6400, -4800, -3200, -1600, 0, 1600, 3200, 4800, 6400, 8000)):
-        builder.static("LDV2_M03_RoofRib_{:02d}".format(index), "cube", (x, 0, 400), 0.0, (0.15, 24.0, 0.15), "nickel", "Theme/GlassRoof")
+    for index, x in enumerate((-8000, -6400, -4800, -3200, -1600, 0, 800, 1600, 3200, 4800, 6400, 8000)):
+        roof_z = 588 if -800 <= x <= 1600 else 400
+        builder.static("LDV2_M03_RoofRib_{:02d}".format(index), "cube", (x, 0, roof_z), 0.0, (0.15, 24.0, 0.15), "nickel", "Theme/GlassRoof")
     for index, y in enumerate((-1200, 1200)):
         builder.static("LDV2_M03_RoofRail_{:02d}".format(index), "cube", (0, y, 400), 0.0, (160.0, 0.15, 0.15), "nickel", "Theme/GlassRoof")
     for index, x in enumerate((-6800, -5200, -3600, -2000, -400, 1400, 3000, 4600, 6200)):
@@ -829,6 +928,7 @@ def add_m03_geometry(builder):
         builder.point_light("LDV2_M03_SpineLight_{:02d}".format(index), (x, y, 315), (172, 216, 255), 1000.0, 1150.0)
     for index, pos in enumerate(((-5600, -2600), (-800, -2600), (3600, -2600), (6000, -3000))):
         builder.point_light("LDV2_M03_EmergencyLight_{:02d}".format(index), (pos[0], pos[1], 240), (255, 72, 58), 650.0, 800.0)
+    builder.point_light("LDV2_M03_CrossingLight", (400, 0, 520), (150, 220, 255), 1800.0, 1900.0)
 
 
 for code, config in MAPS.items():

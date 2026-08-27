@@ -459,7 +459,14 @@ void UHeistActionComponent::HandleEscapeCastTimerElapsed()
 
 	FHeistPlayerDepositPayload DepositPreview;
 	const TCHAR* DepositRejectReason = nullptr;
-	if (!InventoryComponent->TryBuildPlayerDepositPayload(DepositPreview, DepositRejectReason))
+	if (!InventoryComponent->TryBuildPlayerDepositPayload(DepositPreview, DepositRejectReason, EHeistDepositScope::LooseLootOnly))
+	{
+		CancelEscapeCast(DepositRejectReason != nullptr ? DepositRejectReason : TEXT("DepositPreviewRejected"));
+		return;
+	}
+	const EHeistDepositScope DepositScope = DepositPreview.HasDeposit() ? EHeistDepositScope::LooseLootOnly : EHeistDepositScope::FullEscape;
+	const bool bMidRunSettlement = DepositScope == EHeistDepositScope::LooseLootOnly;
+	if (!bMidRunSettlement && !InventoryComponent->TryBuildPlayerDepositPayload(DepositPreview, DepositRejectReason, EHeistDepositScope::FullEscape))
 	{
 		CancelEscapeCast(DepositRejectReason != nullptr ? DepositRejectReason : TEXT("DepositPreviewRejected"));
 		return;
@@ -500,7 +507,7 @@ void UHeistActionComponent::HandleEscapeCastTimerElapsed()
 		}
 
 		FHeistPlayerDepositPayload CommittedDeposit;
-		if (!InventoryComponent->TryCommitPlayerDeposit(HeistPlayerState, DepositPreview, CommittedDeposit, DepositRejectReason))
+		if (!InventoryComponent->TryCommitPlayerDeposit(HeistPlayerState, DepositPreview, CommittedDeposit, DepositRejectReason, DepositScope))
 		{
 			CancelEscapeCast(DepositRejectReason != nullptr ? DepositRejectReason : TEXT("InventoryDepositRejected"));
 			return;
@@ -518,6 +525,16 @@ void UHeistActionComponent::HandleEscapeCastTimerElapsed()
 		}
 		checkf(HeistGameState->CommitPlayerDeposit(HeistPlayerState, CommittedDeposit.GetTotalValue(), CommittedDeposit.ContainsRequiredTarget()),
 			   TEXT("Validated Contract deposit must commit after inventory deposit."));
+	}
+
+	if (bMidRunSettlement)
+	{
+		ClearEscapeCastState();
+		UHeistDebugFunctionLibrary::Message(
+			this,
+			FString::Printf(TEXT("Vent settlement committed: PlayerId=%d ItemCount=%d DepositValue=%d SecuredTotal=%d Escaped=false Authority=true Result=PASS"),
+				HeistPlayerState->HeistPlayerId, DepositPreview.LooseLootItemCount, DepositPreview.LooseLootValue, HeistGameState->GetContractSnapshot().SecuredValue));
+		return;
 	}
 
 	if (!HeistPlayerState->MarkEscaped())

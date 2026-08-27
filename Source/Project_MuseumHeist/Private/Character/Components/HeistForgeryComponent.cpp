@@ -1504,6 +1504,7 @@ bool UHeistForgeryComponent::CalculateLocalForgeryPreview(const TArray<FVector2D
 	return CalculateForgeryScore(NormalizedPoints, StrokePointCounts, StrokePaletteIndices, StrokeBrushPresetIndices, OutResult, OutReferenceMaskPixels, OutSubmittedMaskPixels, false);
 }
 
+#if WITH_EDITOR
 bool UHeistForgeryComponent::BuildReferenceMatchedStrokePayloadForAutomation(TArray<FVector2D>& OutNormalizedPoints, TArray<int32>& OutStrokePointCounts,
 	TArray<uint8>& OutStrokePaletteIndices, TArray<uint8>& OutStrokeBrushPresetIndices, FHeistForgeryResult& OutPreviewResult) const
 {
@@ -1684,6 +1685,7 @@ bool UHeistForgeryComponent::BuildReferenceMatchedStrokePayloadForAutomation(TAr
 	return BestScore >= HeistReplicaAcceptance::MinimumQualityScore;
 #endif
 }
+#endif
 
 FHeistForgerySessionStateChanged& UHeistForgeryComponent::GetSessionStateChangedDelegate()
 {

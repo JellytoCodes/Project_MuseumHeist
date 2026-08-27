@@ -1,8 +1,8 @@
 # Project_MuseumHeist — Codex Instructions
 
-## Rev 15: Main HUD Mission Readability And Server Alert Meter
+## Rev 16: Vent Settlement And Arrest Detention Recovery
 
-기준일: 2026-08-23 (2~4인 출시 범위 / Main HUD 재정립 / 0~10 Server Alert Meter / Patrol·CCTV·Cooperative Laser / Surface-only v1 / Object Assembly Deferred Expansion 반영)
+기준일: 2026-08-27 (2~4인 출시 범위 / 180초 Vent 개방·Loose Loot 중간 정산 / Stun→Detention 체포·Evidence 회수 선택 / 0~10 Server Alert Meter / Surface-only v1 반영)
 엔진: Unreal Engine 5.8
 현재 목표: 2026-09-20 Final RC / 프로젝트 마무리
 
@@ -56,9 +56,10 @@ Project_MuseumHeist는 Unreal Engine 5.8 C++ 기반의 **2~4인 온라인 협동
 → 20~45초 Painting Speed Forgery
 → 서버 품질 판정 / 70점 Replica 승인
 → Replica와 Original 교체
-→ 전리품 운반 / Secured Value 누적
+→ 전리품 운반 / Carried Value 누적
 → 교체 소음·Timeout 조사 / Guard Detection·Alert
-→ 더 훔치기 또는 탈출 결정
+→ Contract InGame 180초 뒤 Vent 개방
+→ Loose Loot 중간 정산 후 계속 탐색하거나 Original을 포함해 최종 탈출 결정
 → Required Target과 Quota를 반출하고 팀 결과 확인
 ```
 
@@ -172,7 +173,7 @@ Title Menu
 → 서버 Quality Score 판정 / 70점 Replica 승인 / Original 회수
 → Carry Value 증가 / 교체 소음·Timeout 조사 / Guard Detection·Alert
 → 다른 전시품을 반복해서 노리거나 탈출 결정
-→ Shared Extraction에서 전리품 Secured
+→ Contract InGame 180초 뒤 Vent에서 Loose Loot 중간 정산 또는 최종 탈출
 → Team Result / Player Contribution
 ```
 
@@ -225,6 +226,9 @@ Title Menu
 - Owner-only Full-Screen Floor Plan Map
 - Guard Detection / Stun / Arrest / Carry / Escape Presentation
 - Mission Timer / Required Target 획득 상태 HUD
+- Contract InGame 시작 180초 뒤 Vent 활성과 개방 전 서버 거부
+- Vent Loose Loot 중간 정산과 기존 Full Escape 분기
+- Stun 완료 뒤 Detention 이동, 미정산 전리품 Evidence 압수와 팀 회수 / 구조 선택
 - Shared Extraction
 - Individual Extraction Deposit와 남은 Crew 진행
 - Team Success
@@ -253,7 +257,7 @@ Title Menu
 - 플레이어 설치형 Trap
 - Trap Placement Cast
 - PCG
-- Security Room
+- Security Room Hacking / Global CCTV Disable / Remote Control Minigame
 - Cinematic
 - 추가 맵
 - 고급 Loadout
@@ -316,7 +320,7 @@ Smoke 및 Trap 계열 기능은 Stretch 목록에 포함하지 않는다.
 - 프로젝트 소유 Texture, Font, Audio, Material, Enhanced Input, StateTree, Mesh와 Animation은 `/Game/Assets`에서 관리한다.
 - Epic StarterContent와 Mannequin 같은 외부·공용 Content Pack은 `/Game/Assets` 아래에서 팩 내부 의존 구조를 유지한다.
 - DataTable과 DataAsset은 반복 데이터와 밸런스 값을 담당한다.
-- Map은 Actor 배치, 공간 구성, Lighting, Navigation을 담당한다.
+- Map은 Actor 배치, 공간 구성, Lighting, Navigation과 Vent / Detention / Evidence의 결정적 Runtime Anchor 배치를 담당한다.
 - Map Presentation Data는 Floor Plan Texture, World Bounds, Zone Label, Exit Marker 기준만 담당한다.
 - `.uasset`은 Unreal Editor 또는 명시적으로 승인된 MCP 경로로만 수정한다.
 - `.umap`은 사용자가 명시적으로 요청한 경우에만 수정한다.
@@ -326,7 +330,7 @@ Smoke 및 Trap 계열 기능은 Stretch 목록에 포함하지 않는다.
 - 현재 사용자 요청 범위를 벗어난 전체 시스템을 선행 구현하지 않는다.
 - 현재 기획에서 삭제된 기능을 호환성 명목으로 다시 추가하지 않는다.
 - 플레이어의 진행 판단에 영향을 주는 Runtime State는 화면, 월드, 오디오 중 최소 두 채널로 피드백한다.
-- Player Name, Crew Status, Mission Time/Required Target, Alert Meter, Stun / Arrest, Original Carrier와 Extraction 상태를 로그 전용 또는 숨은 상태로 남기지 않는다.
+- Player Name, Crew Status, Mission Time/Required Target, Alert Meter, Vent 개방/정산, Stun / Arrest / Detention, Original Carrier, Evidence와 Extraction 상태를 로그 전용 또는 숨은 상태로 남기지 않는다.
 - Contract Value와 Forgery Quality Score를 같은 수치로 취급하지 않는다.
 - Required Target / Loot Value Quota / Secured Value / Contract Outcome은 서버가 확정한다.
 - Steam Voice Transport와 `UVOIPTalker` 재생은 Online Subsystem/Client가 담당하고, 발화가 Guard에게 미치는 Gameplay 결과는 서버가 확정한다.
@@ -404,6 +408,8 @@ Client가 직접 확정할 수 없는 항목:
 - Laser Button Hold / Zone Access State
 - Guard Inspection Result
 - Extraction Result
+- Vent Unlock과 Loose-only / Full Escape 분기
+- Arrest Detention 이동, Inventory 압수와 Evidence World Pickup 생성
 - Team Result
 - Player Contribution 확정값
 - Inventory Item Mutation
@@ -414,6 +420,7 @@ Client가 직접 확정할 수 없는 항목:
 - Loot Value Quota
 - Carried / Secured Value
 - Contract Outcome
+- Player Vent Settlement
 - Player Escape Deposit
 
 Client Preview는 확정값으로 취급하지 않는다.
@@ -555,7 +562,8 @@ Audio
 - Stun 중에는 Movement, Look 또는 Action Lock 범위를 서버 상태와 동일하게 적용하고 남은 시간을 HUD에 표시한다.
 - Stun Presentation은 Vignette, 낮은 Desaturation, 짧은 Audio Low-pass 또는 Ring, Remote Pose / Nameplate Icon을 사용한다.
 - 강한 Blur, 지속 Camera Shake와 색상 하나에만 의존하는 경고는 사용하지 않는다.
-- Arrest는 Stun과 구분된 Cuffed / Disabled Presentation, Team Status, Rescue Prompt 또는 Final State를 가진다.
+- Arrest는 Stun 완료 뒤 서버가 확정한 Detention 이동으로 전환하며, Stun과 구분된 Cuffed / Disabled Presentation, Team Status, Rescue Prompt 또는 Final State를 가진다.
+- 체포된 Player의 Evidence Table 위치와 압수된 World Pickup은 월드 외형·상호작용 Prompt로 식별할 수 있어야 하며, 팀은 Player 구조 없이 Evidence만 회수하거나 구조 후 함께 회수할 수 있다.
 - Original Carry와 Heavy 상태는 HUD, Nameplate Icon, Movement / Footstep Audio와 Remote Carry Pose로 식별할 수 있어야 한다.
 - Escape 완료 Player는 Team Status에서 `ESCAPED`로 유지하고 남은 Crew 상태를 관찰한다.
 - 상태 해제, Arrest 해제, Match End와 Lobby Return에서 Post Process, Audio Filter, Input Lock과 Widget을 정리한다.
@@ -682,7 +690,7 @@ v1의 활성 Security Layer는 기존 Patrol Guard, CCTV와 고가 Painting용 C
 - CCTV는 서버가 Target Eligibility, View Cone, Line of Sight, Detection Build-up, Cooldown과 Alert Meter `+0.5` 요청을 검증한다.
 - CCTV Detection은 중복 Tick마다 Alert를 누적하지 않고 명시된 Build-up/Threshold/Cooldown과 사건별 One-shot 계약을 따른다.
 - CCTV 위치, View Cone과 실시간 Target은 Floor Plan, Minimap 또는 Radar에 표시하지 않는다.
-- v1에는 CCTV Hack, 영구 비활성화, 원격 조종과 Security Room을 추가하지 않는다.
+- v1에는 CCTV Hack, 영구 비활성화, 원격 조종과 Security Room Control Minigame을 추가하지 않는다. 다만 Guard 체포 흐름에 필요한 제한된 Detention / Evidence 공간은 포함한다.
 
 ### Cooperative Laser
 
@@ -707,6 +715,8 @@ v1의 활성 Security Layer는 기존 Patrol Guard, CCTV와 고가 Painting용 C
 - v1 Observation Cast는 Painting Display Case의 최초 Surface Forgery 진입에 사용한다.
 - Observation Cast 기본 시간은 `1.0초`다. Server가 시작·취소·완료와 Session Lock을 확정한다. Object Display Case 지원 경로는 Deferred 호환용으로만 보존한다.
 - Owning Client는 복제된 `ObservationCastEndServerTime`을 기준으로 ProgressBar만 매 Frame 갱신하며, 진행률 갱신을 위한 Tick RPC는 전송하지 않는다.
+- Escape Cast는 Contract InGame 시작 180초 뒤 활성 Vent에서만 시작할 수 있다. 개방 전 요청은 서버가 Inventory와 Player State를 변경하지 않고 거부한다.
+- 서버는 Cast 완료 시점의 Inventory를 다시 검증한다. Loose Loot가 하나 이상이면 Loose Loot만 Secured 처리하고 Player를 `Active`로 유지하며 Original과 Required Target은 Inventory에 남긴다. Loose Loot가 없으면 기존 Full Escape Deposit과 `Escaped` 전환을 수행한다.
 
 제거된 Gameplay Cast:
 
@@ -1128,7 +1138,12 @@ Session 종료, Cancel, Timeout, Arrest, Disconnect, Match End, Owner EndPlay �
 - Grid와 Weight가 허용하는 한 한 Player가 여러 Original을 동시에 보유할 수 있다.
 - `CarryingOriginal`과 `Heavy`는 Grid Item 목록과 총 Weight에서 파생되는 상태이며 별도 원본 소유 컨테이너가 아니다.
 - 원본 전용 `OriginalCarryEntry`, `CarryMode`, Inventory 우측 별도 카드와 아이템별 반복 출구 전달 흐름을 만들지 않는다.
-- Individual Player가 Shared Extraction을 완료하면 그 시점에 Grid가 보유한 모든 유효 Original과 Loose Loot를 한 번의 서버 Deposit으로 처리한다.
+- Vent는 Contract InGame 시작 180초 뒤 서버에서 활성화하며, 그 전의 상호작용과 Cast 요청은 Inventory / Secured Value / Player State를 변경하지 않고 거부한다.
+- 활성 Vent 상호작용 시 Grid에 Loose Loot가 하나 이상이면 유효 Loose Loot만 한 번의 서버 Deposit으로 처리한다. Player는 `Active`를 유지하고 모든 Original과 Required Target은 Grid에 남긴다.
+- 활성 Vent 상호작용 시 Grid에 Loose Loot가 없으면 기존 Full Escape를 실행해 남은 유효 Original을 Deposit하고 Player를 `Escaped`로 전환한다.
+- 체포 Transaction은 Stun 완료 뒤 서버가 Detention Anchor, Evidence Slot 수, Inventory Snapshot과 World Pickup 생성 가능성을 먼저 검증한 후 실행한다. 모든 미정산 Loose Loot와 Original을 기존 `BP_Loot` / `BP_DroppedOriginal` World Pickup으로 Evidence Table 주변에 생성하고, 동일 Snapshot을 Inventory에서 제거하고, Player를 Detention Anchor로 이동시킨 뒤 `Arrested`를 확정한다.
+- Evidence 생성, Inventory 제거, Detention 이동 또는 Arrest 확정 중 하나라도 실패하면 생성한 Pickup과 위치·Inventory 변경을 원복하고 부분 압수·복제 Item·유실을 남기지 않는다. 이미 Secured된 전리품은 체포 Transaction 대상이 아니다.
+- 압수된 Original은 Artifact / Required Target / Source Display Case 식별자를 보존하며, 압수된 Loose Loot는 ItemId / Quantity / Contract Value를 보존한다. 팀은 Arrested Player를 구조하지 않고 Evidence만 회수하거나 Player 구조와 Evidence 회수를 모두 선택할 수 있다.
 
 ## Value States
 
@@ -1137,14 +1152,15 @@ Carried Value
 - 현재 Active Player가 운반 중인 Original과 Loose Loot의 합계
 
 Secured Value
-- Escape Deposit가 완료되어 Match Result에 보존된 가치
+- Vent Loose Loot 중간 정산 또는 Full Escape Deposit가 완료되어 Match Result에 보존된 가치
 
 Required Quota
 - Contract Success에 필요한 Secured Value
 ```
 
-- Carried Value는 체포, Drop, Disconnect 또는 전원 실패 전에 Secured Value로 간주하지 않는다.
-- Individual Player가 Shared Extraction을 완료하면 그 Player의 유효 전리품을 Secured Value에 Deposit하고 Player를 `Escaped`로 전환한다.
+- Carried Value는 Vent 중간 정산 또는 Full Escape가 확정되기 전에는 Secured Value로 간주하지 않는다.
+- Loose Loot 중간 정산은 해당 Loose Loot만 Secured Value에 더하고 Player를 `Active`로 유지한다. Original과 Required Target은 이 분기에서 Secured 처리하지 않는다.
+- Full Escape는 남은 유효 Original을 Secured Value에 Deposit하고 Player를 `Escaped`로 전환한다.
 - 먼저 탈출한 Player는 다시 Match에 복귀하지 않는다.
 - 남은 Crew는 계속 다른 전리품을 확보하거나 탈출할 수 있다.
 - Required Target Original이 Secured되어야 Contract Success가 가능하다.
@@ -1176,6 +1192,7 @@ Contract Failed
 
 - 서툴더라도 Quality 70 이상인 Surface Replica는 서버 Validation을 통과하면 World에 배치한다. Object Assembly Replica 규칙은 Deferred 계약으로만 보존한다.
 - 실수는 가능한 한 즉시 Match Failure가 아니라 Guard Investigation, Alert, Drop, Rescue 또는 급한 탈출 상황을 만든다.
+- Arrest는 전리품을 즉시 삭제하는 실패가 아니라 Detention의 Player와 Evidence Table의 압수품 사이에 팀 선택을 만드는 Recovery State다.
 - Guard와 Museum Presentation은 진지하게 유지하고, 코미디는 Player 행동과 실제 Replica 결과에서 발생하게 한다.
 - 고정 Painter, Lookout, Carrier 역할을 강제하지 않는다.
 
@@ -1291,7 +1308,7 @@ Context 전환 시:
 | Widget Blueprint | Layout, Binding, Animation, Presentation |
 | ViewModel / C++ Widget | HUD, Nameplate, Map, Status, Result State Exposure와 Request Routing |
 | DataTable / DataAsset | Contract, Artifact, Template, Guard, Balance, Map Presentation, Scaling Data |
-| Map | Painting Case, Guard Route, CCTV Coverage, Laser Zone/Button 연결, Loot Spawn, Exit, Zone, Lighting, Navigation |
+| Map | Painting Case, Guard Route, CCTV Coverage, Laser Zone/Button 연결, Loot Spawn, Vent, Detention Anchor, Evidence Table/Slot Anchor, Zone, Lighting, Navigation |
 
 ## Canonical Actor Blueprint Shell Registry
 
@@ -1304,13 +1321,14 @@ Actor Blueprint 분리는 Component Topology, Collision Contract, Authority Stat
 | Dropped Original Recovery | `AHeistDroppedOriginalActor` | `BP_DroppedOriginal` | `ArtifactId` → `DT_ArtifactData`의 DisplayName / ItemGrade / ForgeryType, Category Mesh와 Grade Material은 공용 Shell Default |
 | Painting Display Case | `AHeistPaintingDisplayCaseActor` | `BP_PaintingDisplayCase` | `CaseId` / `ArtifactId` → `DT_ArtifactData` + `DT_ForgeryTemplate` |
 | Object Assembly Display Case (Deferred) | `AHeistObjectDisplayCaseActor` | `BP_ObjectDisplayCase` | `CaseId` / `ArtifactId` → `DT_ArtifactData` + `DT_ObjectAssemblyTemplate` + `DT_ObjectAssemblyPart` |
-| Shared Extraction | `AHeistVentActor` | `BP_Vent` | Map Instance Identity와 공통 Vent Presentation |
+| Vent Settlement / Shared Extraction | `AHeistVentActor` | `BP_Vent` | Map Instance Identity, 180초 개방과 Loose-only / Full Escape 공통 Presentation |
 | Loot Spawn Point | `AHeistLootSpawnPoint` | `BP_LootSpawnPoint` | Spawn Category / Zone / Transform |
 | Security Camera | `AHeistSecurityCameraActor` | `BP_SecurityCamera` | Map Instance Coverage/Transform과 공통 Security Presentation Asset 슬롯 |
 | Cooperative Laser Barrier | `AHeistLaserBarrierActor` | `BP_LaserBarrier` | Map Instance Painting Link/Transform과 공통 Security Presentation Asset 슬롯 |
 | Cooperative Laser Hold Button | `AHeistSecurityHoldButtonActor` | `BP_SecurityHoldButton` | Map Instance Laser Link/Transform과 공통 Security Presentation Asset 슬롯 |
 
 - Loose Loot와 Dropped Original은 외형이 유사해도 서버 상태와 회수 Transaction이 다르므로 서로 다른 공용 Shell을 유지한다.
+- Arrest Evidence는 새 전용 Pickup Actor를 만들지 않고 Loose Loot는 `BP_Loot`, Original은 `BP_DroppedOriginal`을 재사용한다. Map은 Detention Anchor 하나와 최대 Inventory 수용량을 감당하는 결정적 Evidence Slot Anchor를 제공한다.
 - CCTV, Laser Barrier와 Hold Button은 Sensor Volume, Trip Trigger, Hold Interaction이라는 Component/Collision/State/Interaction 계약이 서로 다르므로 각각 하나의 공용 Shell을 유지하며 외형별 Variant Blueprint를 만들지 않는다.
 - `BP_SecurityCamera`, `BP_LaserBarrier`, `BP_SecurityHoldButton`은 Class Defaults의 Mesh/Material/VFX/Audio 할당만 담당한다. 기본 Visibility와 Hold Button Transform은 C++ `ApplyPresentation()`이 소유하며, 실제 Animation/VFX/Audio 요구가 확정되기 전 이 세 Shell의 EventGraph를 구현하지 않는다.
 - Dropped Original은 작품별 원본 Mesh/Material을 재현하지 않는다. v1 Drawing Artifact는 작은 액자 공용 외형을 사용하며 Assembly Artifact의 작은 조각상 외형은 Deferred 호환용으로만 보존한다.
@@ -1338,6 +1356,8 @@ Actor Blueprint 분리는 Component Topology, Collision Contract, Authority Stat
 - Forgery 제출 제한 시간과 Contract Mission Time은 서로 다른 권한 데이터와 TextBlock을 사용한다.
 - Raw Enum, Data Row ID, Blueprint Class Name을 그대로 플레이어에게 노출하지 않는다.
 - Dropped Original 접근 Prompt는 `Required Target 여부 + 등급 + 작품 DisplayName + E 회수`를 표시한다.
+- Vent Prompt는 개방 전 남은 시간/잠금 상태, 개방 뒤 `전리품 정산`, Loose Loot가 없는 경우 `최종 탈출`을 구분하며 서버 확정 상태와 일치해야 한다.
+- Arrest Presentation은 Stun 완료, Detention 이동, 압수 완료와 Evidence 회수 가능 상태를 화면·월드·오디오 중 최소 두 채널로 전달한다.
 - 화면 제목, 버튼 동사, 키 라벨, 수량처럼 문맥이 이미 분명한 짧은 UI Label은 간결하게 유지할 수 있다.
 - `NSLOCTEXT` / `LOCTEXT` Namespace와 Key는 안정적으로 유지하고 원문만 한국어로 작성한다.
 - 영어를 포함한 추가 언어는 기존 Namespace와 Key를 사용하는 Localization Target 번역 리소스로 추가하며, 이를 위해 한국어 원문을 다시 영어로 되돌리지 않는다.
@@ -1350,6 +1370,8 @@ Actor Blueprint 분리는 Component Topology, Collision Contract, Authority Stat
 - Alert 변경
 - Lockdown 변경
 - Extraction 성공 판정
+- Vent 개방 시각과 Loose-only / Full Escape 분기 확정
+- Arrest Detention 이동, Inventory 압수와 Evidence Spawn 확정
 - Team Result 확정
 - Contract Assignment / Quota / Secured Value 확정
 - Map에서 Guard / Loot Sensor 정보를 생성
@@ -1413,7 +1435,7 @@ Smoke 및 Trap 관련 Blueprint와 C++ Class는 신규 Asset의 부모 또는 Da
 - Editor 작업이 필요하면 사용자용 Blueprint/Data/Map 절차를 현재 대화에서 제공한다.
 - `AGENTS.md` 외의 `.md` 파일은 사용자가 명시적으로 요청해도 만들지 않는다. Markdown 산출물이 필요하면 Notion Page 또는 현재 대화로 제공하고, GDD/TDD 변경은 DOCX에 반영한다.
 - Active Task, 구현 범위, Build/Asset/PIE 증거 또는 Resume Point가 실질적으로 바뀌고 사용자가 Notion 기록을 요청했으면 같은 작업 안에서 관련 Task/Test Log/결정 로그를 갱신하고 재조회한다.
-- Build, Blueprint Compile/Save, Automation, User PIE, Multiplayer와 Notion Write 증거를 서로 대체하지 않고 개별 상태로 기록한다.
+- Build, Blueprint Compile/Save, Automation, Headless, User PIE, Multiplayer, Steam Package와 Notion Write 증거를 서로 대체하지 않고 개별 상태로 기록한다.
 - Notion 쓰기가 실패하면 성공으로 보고하지 않고, 로컬 파일에 대신 기록하지 않는다.
 
 ## 구현 전 Deliverable Audit
@@ -1611,6 +1633,17 @@ Editor 작업 안내에는 다음만 포함한다.
 - `FAIL`
 - `BLOCKED`
 
+Vent / Arrest 계약은 최소한 다음을 별도 시나리오로 검증한다.
+
+- Vent `02:59` 이전 서버 거부와 Inventory / Secured Value / Player State 불변
+- Vent `03:00` 이후 Loose Loot 정산, Player `Active` 유지와 Original / Required Target 보존
+- Loose Loot가 없는 다음 Vent 상호작용의 Full Escape와 중복 Secured 방지
+- Guard Stun 완료 뒤 Detention 이동, 모든 미정산 Loose Loot / Original의 Evidence 생성과 `Arrested` 전환
+- Evidence Anchor 부족 또는 Spawn 실패 시 Inventory / 위치 / 상태 원복과 Duplicate Artifact 부재
+- 다른 Player가 Arrested Player 구조 전·후 Evidence를 회수할 수 있는지에 대한 2인 이상 PIE
+
+위 시나리오는 Source/Implementation, Build, Automation, Headless, User PIE와 Steam Package를 각각 구분해 보고한다. Automation 또는 Headless PASS는 Player-facing Prompt, World Pickup 가독성과 실제 2인 선택 동작의 User PIE PASS를 대체하지 않는다.
+
 PIE가 필요한 검증은 다음을 명시한다.
 
 - PIE Mode
@@ -1747,9 +1780,9 @@ DecisionScore =
 
 # 20. Product Direction
 
-현재 제품 방향은 Rev 15 — Main HUD Mission Readability And Server Alert Meter다.
+현재 제품 방향은 Rev 16 — Vent Settlement And Arrest Detention Recovery다.
 
-`2~4인 Lobby → Contract 확인 → Patrol Guard/CCTV 회피 → 선택적 Laser Cooperation → Surface Forgery → Original/Loose Loot Carry → Alert/Chase → Player별 Deposit → Outcome/Result → Lobby Return`의 단일 완주 흐름을 먼저 닫는다. Object Assembly는 기존 구현과 Asset Reference를 삭제하지 않되 v1 플레이 흐름과 Release Gate에서 제외한다.
+`2~4인 Lobby → Contract 확인 → Patrol Guard/CCTV 회피 → 선택적 Laser Cooperation → Surface Forgery → Original/Loose Loot Carry → 180초 Vent 개방 → Loose Loot 중간 정산 또는 Full Escape → Stun/Detention/Evidence Recovery → Outcome/Result → Lobby Return`의 단일 완주 흐름을 먼저 닫는다. Object Assembly는 기존 구현과 Asset Reference를 삭제하지 않되 v1 플레이 흐름과 Release Gate에서 제외한다.
 
 ## Product Completion Gate
 
@@ -1762,10 +1795,12 @@ DecisionScore =
 
 Build 성공이나 단일 함수 호출 성공만으로 기능 완료를 주장하지 않는다. Asset/Map 배치가 필요한 기능은 C++ 구현과 실제 Gameplay 검증을 구분해 설명한다.
 
-## Rev 15 Execution Priority
+## Rev 16 Execution Priority
 
 - 2인 미만 Start 거부, Lobby-only Join, InGame Join 거부, 2인 시작 후 1인 잔존 복구와 고정 Contract Snapshot을 먼저 검증한다.
 - Surface Painting만으로 Required Target / Quota / Secured Value와 Extraction / Result를 완주할 수 있게 닫는다.
+- Contract InGame 180초 뒤 Vent를 개방하고 Loose Loot 중간 정산과 기존 Full Escape를 서버 권한 단일 Cast에서 배타적으로 처리한다.
+- Guard Stun 완료 뒤 Detention 이동과 미정산 Loot/Original Evidence 압수를 원자적으로 처리하고 팀의 Evidence 회수 / Player 구조 선택을 2인 PIE로 검증한다.
 - 기존 Patrol Guard를 유지하고 CCTV와 고가 Painting용 Laser Cooperation을 서버 권한 Security Layer로 통합한다.
 - Main HUD는 Mission Time/Required Target, 10칸 Alert Meter, 고정 TeamCard 4개, Inventory 상태색과 QuickSlot 3개만 우선 노출하고 가치·점수·무게 숫자는 Inventory/Result로 이동한다.
 - Required Target과 최소 Quota 경로는 Laser 협동 또는 Deferred Object Assembly에만 의존하지 않게 한다.

@@ -12,14 +12,21 @@ EXPECTED = {
         "floor_count": 234,
         "vent_points": 3,
         "guards": 5,
-        "waypoints": 31,
+        "waypoints": 39,
         "cameras": 6,
         "lasers": 2,
-        "generated_lights": 10,
-        "ceiling_panels": 58,
+        "generated_lights": 12,
+        "ceiling_panels": 68,
         "ceiling_prefixes": ("LDV2_M01_Ceiling_",),
-        "laser_case_ids": ("Case_M01_Optional_HighValue", "Case_M01_Optional_11"),
-        "signature_labels": ("LDV2_M01_HeroPlinth", "LDV2_M01_Portal_00", "LDV2_M01_WarmLight_00"),
+        "laser_case_ids": ("Case_M01_Optional_HighValue", "Case_M01_Optional_09"),
+        "signature_labels": ("LDV2_M01_HeroPlinth", "LDV2_M01_Topology_Figure8_North", "LDV2_M01_Topology_Figure8_South"),
+        "signature_locations": {
+            "LDV2_M01_Topology_Figure8_North": (0.0, 1520.0),
+            "LDV2_M01_Topology_Figure8_South": (0.0, -1520.0),
+        },
+        "topology_door_labels": (),
+        "exit_visual_label": "LDV2_M01_VentEntry_A_Panel",
+        "minimum_target_exit_distance": 12000.0,
         "nav_scale": (72.0, 52.0, 10.0),
     },
     "M02": {
@@ -27,16 +34,30 @@ EXPECTED = {
         "half_x": 6400.0,
         "half_y": 5600.0,
         "floor_count": 224,
-        "vent_points": 2,
+        "vent_points": 3,
         "guards": 5,
-        "waypoints": 30,
+        "waypoints": 40,
         "cameras": 4,
         "lasers": 2,
         "generated_lights": 13,
-        "ceiling_panels": 60,
+        "ceiling_panels": 49,
         "ceiling_prefixes": ("LDV2_M02_Ceiling_",),
         "laser_case_ids": ("Case_M02_Optional_HighValue", "Case_M02_Optional_07"),
-        "signature_labels": ("LDV2_M02_MoonPool", "LDV2_M02_FoldingScreen_00A", "LDV2_M02_MoonCourtLight"),
+        "signature_labels": ("LDV2_M02_MoonPool", "LDV2_M02_Topology_Serpentine_Gate_A", "LDV2_M02_Topology_Serpentine_Gate_F"),
+        "signature_locations": {
+            "LDV2_M02_Topology_Serpentine_Gate_A": (-4000.0, -800.0),
+            "LDV2_M02_Topology_Serpentine_Gate_F": (4000.0, 800.0),
+        },
+        "topology_door_labels": (
+            "LDV2_M02_SerpentineGateA_05",
+            "LDV2_M02_SerpentineGateB_04",
+            "LDV2_M02_SerpentineGateC_03",
+            "LDV2_M02_SerpentineGateD_01",
+            "LDV2_M02_SerpentineGateE_05",
+            "LDV2_M02_SerpentineGateF_04",
+        ),
+        "exit_visual_label": "LDV2_M02_VentEntry_B_Panel",
+        "minimum_target_exit_distance": 3000.0,
         "nav_scale": (64.0, 56.0, 10.0),
     },
     "M03": {
@@ -46,14 +67,30 @@ EXPECTED = {
         "floor_count": 220,
         "vent_points": 3,
         "guards": 4,
-        "waypoints": 29,
+        "waypoints": 28,
         "cameras": 8,
         "lasers": 3,
-        "generated_lights": 13,
-        "ceiling_panels": 10,
+        "generated_lights": 14,
+        "ceiling_panels": 11,
         "ceiling_prefixes": ("LDV2_M03_GlassRoof_",),
         "laser_case_ids": ("Case_M03_Optional_HighValue", "Case_M03_Optional_08", "Case_M03_Optional_10"),
-        "signature_labels": ("LDV2_M03_SpinePortal_00", "LDV2_M03_RestorationTable_00", "LDV2_M03_EmergencyLight_00"),
+        "signature_labels": ("LDV2_M03_Topology_BraidedCrossing", "LDV2_M03_CrossingSuspendedFrame", "LDV2_M03_SpineGlassBaffle_00"),
+        "signature_locations": {
+            "LDV2_M03_Topology_BraidedCrossing": (400.0, 0.0),
+        },
+        "topology_door_labels": (
+            "LDV2_M03_SpineNorth_01",
+            "LDV2_M03_SpineNorth_06",
+            "LDV2_M03_SpineNorth_10",
+            "LDV2_M03_SpineNorth_15",
+            "LDV2_M03_SpineNorth_17",
+            "LDV2_M03_SpineSouth_03",
+            "LDV2_M03_SpineSouth_08",
+            "LDV2_M03_SpineSouth_13",
+            "LDV2_M03_SpineSouth_17",
+        ),
+        "exit_visual_label": "LDV2_M03_VentEntry_A_Panel",
+        "minimum_target_exit_distance": 14000.0,
         "nav_scale": (80.0, 44.0, 10.0),
     },
 }
@@ -75,6 +112,10 @@ def close_float(left, right, tolerance=0.1):
 
 def actor_label(value):
     return value.get_actor_label() if value else ""
+
+
+def actor_tags(value):
+    return {str(tag) for tag in (prop(value, "tags") or [])}
 
 
 def sampled_segment_aabb_clearance(start, end, origin, extent, sample_spacing=50.0):
@@ -107,6 +148,7 @@ for code, expected in EXPECTED.items():
 
     failures = []
     labels = [actor.get_actor_label() for actor in actors]
+    by_label = {actor.get_actor_label(): actor for actor in actors}
     if len(labels) != len(set(labels)):
         failures.append("duplicate actor labels")
 
@@ -172,6 +214,34 @@ for code, expected in EXPECTED.items():
         actor for actor in by_class.get("StaticMeshActor", [])
         if actor.get_actor_label().startswith(prefix)
     ]
+    static_transforms = {}
+    for actor in by_class.get("StaticMeshActor", []):
+        location = actor.get_actor_location()
+        rotation = actor.get_actor_rotation()
+        scale = actor.get_actor_scale3d()
+        components = actor.get_components_by_class(unreal.StaticMeshComponent)
+        mesh = prop(components[0], "static_mesh") if components else None
+        mesh_path = mesh.get_path_name() if mesh else ""
+        key = (
+            round(location.x, 1), round(location.y, 1), round(location.z, 1),
+            round(rotation.pitch, 1), round(rotation.yaw, 1), round(rotation.roll, 1),
+            round(scale.x, 3), round(scale.y, 3), round(scale.z, 3),
+            mesh_path,
+        )
+        static_transforms.setdefault(key, []).append(actor.get_actor_label())
+    duplicate_static_locations = [
+        {
+            "location": list(transform[0:3]),
+            "rotation": list(transform[3:6]),
+            "scale": list(transform[6:9]),
+            "mesh": transform[9],
+            "labels": sorted(group_labels),
+        }
+        for transform, group_labels in static_transforms.items()
+        if len(group_labels) > 1
+    ]
+    if duplicate_static_locations:
+        failures.append("duplicate StaticMeshActor locations: {}".format(len(duplicate_static_locations)))
     non_starter_meshes = []
     for actor in ldv2_static:
         for component in actor.get_components_by_class(unreal.StaticMeshComponent):
@@ -180,6 +250,26 @@ for code, expected in EXPECTED.items():
                 non_starter_meshes.append(actor.get_actor_label())
     if non_starter_meshes:
         failures.append("non-StarterContent LDV2 meshes: {}".format(len(set(non_starter_meshes))))
+
+    glass_visibility_failures = []
+    if code == "M03":
+        glass_actors = [
+            actor for actor in ldv2_static
+            if "GlassRoof_" in actor.get_actor_label()
+            or "SpineGlassBaffle_" in actor.get_actor_label()
+            or "GlassLaneDisplay_" in actor.get_actor_label()
+        ]
+        for actor in glass_actors:
+            for component in actor.get_components_by_class(unreal.StaticMeshComponent):
+                try:
+                    profile_name = str(component.get_collision_profile_name())
+                    response = component.get_collision_response_to_channel(unreal.CollisionChannel.ECC_VISIBILITY)
+                    if profile_name != "InvisibleWall" or response != unreal.CollisionResponseType.ECR_IGNORE:
+                        glass_visibility_failures.append(actor.get_actor_label())
+                except Exception:
+                    glass_visibility_failures.append(actor.get_actor_label() + ":query_failed")
+        if glass_visibility_failures:
+            failures.append("M03 glass blocks Visibility: {}".format(len(set(glass_visibility_failures))))
 
     floors = [actor for actor in ldv2_static if actor.get_actor_label().startswith(prefix + "Floor_")]
     if len(floors) != expected["floor_count"]:
@@ -218,9 +308,124 @@ for code, expected in EXPECTED.items():
     for required_label in required_spatial_labels:
         if required_label not in labels:
             failures.append("missing spatial marker {}".format(required_label))
+
+    evidence_table = by_label.get(prefix + "SecurityDesk")
+    if evidence_table:
+        if evidence_table.get_class().get_name() != "StaticMeshActor":
+            failures.append("SecurityDesk evidence table is not a StaticMeshActor")
+        table_components = evidence_table.get_components_by_class(unreal.StaticMeshComponent)
+        table_mesh = prop(table_components[0], "static_mesh") if table_components else None
+        if not table_mesh or not table_mesh.get_path_name().endswith("/SM_TableRound.SM_TableRound"):
+            failures.append("SecurityDesk evidence table mesh mismatch")
+        if "HeistEvidenceTableVisual" not in actor_tags(evidence_table):
+            failures.append("SecurityDesk missing HeistEvidenceTableVisual tag")
+
+    detention_anchors = sorted(
+        (
+            actor for actor in by_class.get("TargetPoint", [])
+            if actor.get_actor_label().startswith(prefix + "DetentionSpawn_")
+        ),
+        key=actor_label,
+    )
+    expected_detention_labels = {
+        prefix + "DetentionSpawn_{:02d}".format(index)
+        for index in range(1, 5)
+    }
+    if {actor.get_actor_label() for actor in detention_anchors} != expected_detention_labels:
+        failures.append("detention anchor label set mismatch")
+    if any("HeistDetentionSpawn" not in actor_tags(actor) for actor in detention_anchors):
+        failures.append("detention anchor missing HeistDetentionSpawn tag")
+    detention_locations = {
+        tuple(round(value, 1) for value in (actor.get_actor_location().x, actor.get_actor_location().y, actor.get_actor_location().z))
+        for actor in detention_anchors
+    }
+    if len(detention_locations) != 4:
+        failures.append("detention anchor locations are not four unique points")
+
+    evidence_anchors = sorted(
+        (
+            actor for actor in by_class.get("TargetPoint", [])
+            if actor.get_actor_label().startswith(prefix + "EvidenceSlot_")
+        ),
+        key=actor_label,
+    )
+    expected_evidence_labels = {
+        prefix + "EvidenceSlot_{:02d}".format(index)
+        for index in range(1, 26)
+    }
+    if {actor.get_actor_label() for actor in evidence_anchors} != expected_evidence_labels:
+        failures.append("evidence anchor label set mismatch")
+    required_evidence_tags = {"HeistEvidenceTableAnchor", "HeistEvidenceSlot"}
+    if any(not required_evidence_tags.issubset(actor_tags(actor)) for actor in evidence_anchors):
+        failures.append("evidence anchor missing table/slot tag contract")
+    evidence_locations = {
+        tuple(round(value, 1) for value in (actor.get_actor_location().x, actor.get_actor_location().y, actor.get_actor_location().z))
+        for actor in evidence_anchors
+    }
+    if len(evidence_locations) != 25:
+        failures.append("evidence anchor locations are not 25 unique points")
+    if evidence_table:
+        table_location = evidence_table.get_actor_location()
+        if any(
+            math.hypot(
+                actor.get_actor_location().x - table_location.x,
+                actor.get_actor_location().y - table_location.y,
+            ) > 200.0
+            for actor in evidence_anchors
+        ):
+            failures.append("evidence anchor outside SecurityDesk table footprint")
     for required_label in expected["signature_labels"]:
         if required_label not in labels:
             failures.append("missing map signature actor {}".format(required_label))
+    for signature_label, expected_xy in expected["signature_locations"].items():
+        actor = by_label.get(signature_label)
+        if actor is None:
+            continue
+        location = actor.get_actor_location()
+        if not close_float(location.x, expected_xy[0]) or not close_float(location.y, expected_xy[1]):
+            failures.append(
+                "topology signature location mismatch {}: ({:.1f},{:.1f})".format(
+                    signature_label, location.x, location.y
+                )
+            )
+
+    for door_label in expected["topology_door_labels"]:
+        actor = by_label.get(door_label)
+        if actor is None:
+            failures.append("missing topology door " + door_label)
+            continue
+        mesh_paths = [
+            str(prop(component, "static_mesh").get_path_name())
+            for component in actor.get_components_by_class(unreal.StaticMeshComponent)
+            if prop(component, "static_mesh")
+        ]
+        if not any("Wall_Door_400x400" in mesh_path for mesh_path in mesh_paths):
+            failures.append("topology opening is not a door mesh: " + door_label)
+
+    exit_actors = by_class.get("BP_Vent_C", [])
+    exit_visual = by_label.get(expected["exit_visual_label"])
+    exit_visual_distance = None
+    if len(exit_actors) == 1 and exit_visual is not None:
+        exit_location = exit_actors[0].get_actor_location()
+        visual_location = exit_visual.get_actor_location()
+        exit_visual_distance = math.hypot(exit_location.x - visual_location.x, exit_location.y - visual_location.y)
+        if exit_visual_distance > 100.0:
+            failures.append("gameplay exit is {:.1f}cm from its vent visual".format(exit_visual_distance))
+    elif exit_visual is None:
+        failures.append("missing gameplay exit vent visual " + expected["exit_visual_label"])
+
+    target_case = next((actor for actor in cases if str(prop(actor, "display_case_id")).endswith("_Target")), None)
+    target_exit_distance = None
+    if target_case is not None and len(exit_actors) == 1:
+        target_location = target_case.get_actor_location()
+        exit_location = exit_actors[0].get_actor_location()
+        target_exit_distance = math.hypot(target_location.x - exit_location.x, target_location.y - exit_location.y)
+        if target_exit_distance < expected["minimum_target_exit_distance"]:
+            failures.append(
+                "target-exit straight distance {:.1f}cm below {:.1f}cm".format(
+                    target_exit_distance, expected["minimum_target_exit_distance"]
+                )
+            )
 
     generated_lights = [
         actor for actor in by_class.get("PointLight", [])
@@ -306,6 +511,7 @@ for code, expected in EXPECTED.items():
         "failures": failures,
         "actor_count": len(actors),
         "ldv2_starter_static_mesh_actors": len(ldv2_static),
+        "duplicate_static_mesh_locations": duplicate_static_locations,
         "legacy_overlay_static_mesh_actors": len(legacy_static),
         "generated_lights": len(generated_lights),
         "ceiling_panels": len(ceiling_panels),
@@ -324,6 +530,13 @@ for code, expected in EXPECTED.items():
         "linked_laser_case_ids": sorted(linked_case_ids),
         "nav_scale": list(nav_scale),
         "security_detention_spatial_shell": all(label in labels for label in required_spatial_labels),
+        "detention_spawn_anchors": len(detention_anchors),
+        "evidence_table_anchors": len(evidence_anchors),
+        "exit_visual_distance_cm": None if exit_visual_distance is None else round(exit_visual_distance, 1),
+        "target_exit_straight_distance_cm": None if target_exit_distance is None else round(target_exit_distance, 1),
+        "topology_signature_count": sum(1 for label in expected["signature_labels"] if label in labels),
+        "topology_door_count": sum(1 for label in expected["topology_door_labels"] if label in labels),
+        "glass_visibility_failures": sorted(set(glass_visibility_failures)),
     }
     unreal.log_warning("MH_LEVEL_VERIFY=" + json.dumps(payload, ensure_ascii=True, sort_keys=True))
     all_failures.extend("{}: {}".format(code, failure) for failure in failures)

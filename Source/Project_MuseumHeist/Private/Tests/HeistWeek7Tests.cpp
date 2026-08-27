@@ -1,4 +1,4 @@
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_DEV_AUTOMATION_TESTS && WITH_EDITOR
 
 #include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameInstance.h"
@@ -12,6 +12,9 @@
 #include "InputCoreTypes.h"
 #include "InputMappingContext.h"
 #include "Misc/AutomationTest.h"
+#include "Misc/PackageName.h"
+#include "World/Actors/Loot/HeistLootActor.h"
+#include "World/Actors/Loot/HeistObjectDisplayCaseActor.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistWeek7ReadabilityContractTest, "ProjectMuseumHeist.W7.ReadabilityContract",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -82,6 +85,8 @@ bool FHeistWeek7VariationContractTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("DT_ForgeryTemplate uses FHeistForgeryTemplateRow"), IsValid(TemplateTable) && TemplateTable->GetRowStruct() == FHeistForgeryTemplateRow::StaticStruct());
 	TMap<FName, int32> TemplateCountByPool;
 	int32 InvalidTemplateCount = 0;
+	int32 MissingReferenceAssetCount = 0;
+	int32 MissingMaskAssetCount = 0;
 	if (IsValid(TemplateTable) && TemplateTable->GetRowStruct() == FHeistForgeryTemplateRow::StaticStruct())
 	{
 		for (const FName RowName : TemplateTable->GetRowNames())
@@ -97,6 +102,12 @@ bool FHeistWeek7VariationContractTest::RunTest(const FString& Parameters)
 					(Row->AllowedPalette.Num() == HeistSurfaceForgeryInventory::MediumPaletteCount && FMath::IsNearlyEqual(Row->ForgeryDuration, 40.0f) && Row->StrokeLimit == 5120) ||
 					(Row->AllowedPalette.Num() == HeistSurfaceForgeryInventory::HardPaletteCount && FMath::IsNearlyEqual(Row->ForgeryDuration, 45.0f) && Row->StrokeLimit == 6144);
 				const bool bMissingRequiredMask = Row->BackgroundFilterMode == EHeistForgeryBackgroundFilter::None && Row->ReferenceMask.IsNull();
+				const FSoftObjectPath ReferenceImagePath = Row->ReferenceImage.ToSoftObjectPath();
+				const FSoftObjectPath ReferenceMaskPath = Row->ReferenceMask.ToSoftObjectPath();
+				const bool bInvalidReferenceMaskPackage = !Row->ReferenceMask.IsNull() &&
+					(!ReferenceMaskPath.IsValid() || !FPackageName::DoesPackageExist(ReferenceMaskPath.GetLongPackageName()));
+				MissingReferenceAssetCount += !ReferenceImagePath.IsValid() || !FPackageName::DoesPackageExist(ReferenceImagePath.GetLongPackageName());
+				MissingMaskAssetCount += bMissingRequiredMask || bInvalidReferenceMaskPackage;
 				InvalidTemplateCount += !bRuntimeLookupValid || Row->ReferenceImage.IsNull() || bMissingRequiredMask || Row->ObservationDuration < 0.0f ||
 					!FMath::IsWithinInclusive(Row->ForgeryDuration, 20.0f, 45.0f) || Row->BrushSize <= 0.0f || !bValidDifficultyContract;
 			}
@@ -107,6 +118,8 @@ bool FHeistWeek7VariationContractTest::RunTest(const FString& Parameters)
 		}
 	}
 	TestEqual(TEXT("All Surface templates satisfy the runtime interaction contract"), InvalidTemplateCount, 0);
+	TestEqual(TEXT("All Surface reference image packages exist"), MissingReferenceAssetCount, 0);
+	TestEqual(TEXT("All Surface reference mask packages exist"), MissingMaskAssetCount, 0);
 	for (const FName PoolId : {FName(TEXT("M01")), FName(TEXT("M02")), FName(TEXT("M03"))})
 	{
 		const int32 TemplateCount = TemplateCountByPool.FindRef(PoolId);
@@ -156,6 +169,28 @@ bool FHeistWeek7BalanceContractTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
+	const TArray<TPair<FString, TSoftObjectPtr<UDataTable>>> RequiredDataTables = {
+		{TEXT("DT_ItemData"), Balance->ItemDataTable},
+		{TEXT("DT_LootData"), Balance->LootDataTable},
+		{TEXT("DT_ContractData"), Balance->ContractDataTable},
+		{TEXT("DT_MapPresentation"), Balance->MapPresentationDataTable},
+		{TEXT("DT_ArtifactData"), Balance->ArtifactDataTable},
+		{TEXT("DT_ForgeryTemplate"), Balance->ForgeryTemplateDataTable},
+		{TEXT("DT_ObjectAssemblyPart"), Balance->ObjectAssemblyPartDataTable},
+		{TEXT("DT_ObjectAssemblyTemplate"), Balance->ObjectAssemblyTemplateDataTable},
+		{TEXT("DT_UsableItemData"), Balance->UsableItemDataTable},
+		{TEXT("DT_SoundPingData"), Balance->SoundPingDataTable},
+		{TEXT("DT_GuardData"), Balance->GuardDataTable},
+	};
+	for (const TPair<FString, TSoftObjectPtr<UDataTable>>& RequiredDataTable : RequiredDataTables)
+	{
+		TestFalse(*FString::Printf(TEXT("%s is assigned"), *RequiredDataTable.Key), RequiredDataTable.Value.IsNull());
+		TestNotNull(*FString::Printf(TEXT("%s loads"), *RequiredDataTable.Key), RequiredDataTable.Value.LoadSynchronous());
+	}
+	TestFalse(TEXT("BP_Loot shell is assigned"), Balance->WorldLootActorClass.IsNull());
+	TestNotNull(TEXT("BP_Loot shell loads"), Balance->WorldLootActorClass.LoadSynchronous());
+	TestFalse(TEXT("BP_ObjectDisplayCase shell is assigned"), Balance->ObjectDisplayCaseActorClass.IsNull());
+	TestNotNull(TEXT("BP_ObjectDisplayCase shell loads"), Balance->ObjectDisplayCaseActorClass.LoadSynchronous());
 	const float ExpectedGuardMultipliers[] = {0.75f, 1.00f, 1.25f, 1.50f};
 	const float ExpectedDetectionMultipliers[] = {0.85f, 1.00f, 1.10f, 1.20f};
 	const float ExpectedInspectionMultipliers[] = {1.20f, 1.00f, 0.90f, 0.80f};
@@ -184,6 +219,7 @@ bool FHeistWeek7BalanceContractTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Alert reward penalty matches balance table"), FMath::IsNearlyEqual(Balance->AlertLevelRewardPenalty, 0.05f));
 	TestTrue(TEXT("Minimum stealth reward matches balance table"), FMath::IsNearlyEqual(Balance->MinimumStealthRewardMultiplier, 0.75f));
 	TestTrue(TEXT("Arrest reward penalty matches balance table"), FMath::IsNearlyEqual(Balance->ArrestRewardPenaltyPerPlayer, 0.10f));
+	TestTrue(TEXT("Vent settlement unlocks at 180 seconds"), FMath::IsNearlyEqual(Balance->VentUnlockTime, 180.0f));
 	return true;
 }
 

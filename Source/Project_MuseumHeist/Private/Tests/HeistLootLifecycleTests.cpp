@@ -984,9 +984,10 @@ bool EnqueueTwoPlayerLootLifecycleScenario(FAutomationTestBase* Test)
 			TotalValue += Fixture.LootDefinition.ScoreValue;
 			TotalWeight += Fixture.ItemDefinition.Weight;
 		}
-		Test->AddInfo(FString::Printf(TEXT("W6-011 inventory evidence: Rows=5 OccupiedArea=%d Capacity=20 Value=%d Weight=%.1f AuthorityOwnerFastArray=PASS NoOverlap=PASS"),
-			GridArea, TotalValue, TotalWeight));
-		return GridArea <= UHeistInventoryComponent::GridColumnCount * UHeistInventoryComponent::GridRowCount;
+		const int32 GridCapacity = UHeistInventoryComponent::GridColumnCount * UHeistInventoryComponent::GridRowCount;
+		Test->AddInfo(FString::Printf(TEXT("W6-011 inventory evidence: Rows=5 OccupiedArea=%d Capacity=%d Value=%d Weight=%.1f AuthorityOwnerFastArray=PASS NoOverlap=PASS"),
+			GridArea, GridCapacity, TotalValue, TotalWeight));
+		return GridArea <= GridCapacity;
 	}));
 	Test->AddCommand(new FHeistLootLifecycleActionCommand(Test, State, TEXT("open Shared Exit without seeding Result or Contract outcome"), []()
 	{
@@ -1026,7 +1027,7 @@ bool EnqueueTwoPlayerLootLifecycleScenario(FAutomationTestBase* Test)
 		AHeistVentActor* LocalExit = IsValid(OwningPlayerController) ? FindSharedExit(OwningPlayerController->GetWorld()) : nullptr;
 		return InvokeSingleActorServerRPC(OwningPlayerController, FName(TEXT("Server_RequestEscape")), LocalExit);
 	}));
-	Test->AddCommand(new FHeistLootLifecycleWaitCommand(Test, State, TEXT("five-row Shared Exit deposit, inventory clear and replication"), [State]()
+	Test->AddCommand(new FHeistLootLifecycleWaitCommand(Test, State, TEXT("five-row Vent settlement, inventory clear and active player replication"), [State]()
 	{
 		const int32 FinalFixtureIndex = State->Fixtures.Num() - 1;
 		const int32 ExpectedValue = GetExpectedValueThroughFixture(State, FinalFixtureIndex);
@@ -1045,9 +1046,27 @@ bool EnqueueTwoPlayerLootLifecycleScenario(FAutomationTestBase* Test)
 		{
 			const AHeistPlayerState* PlayerState = FindHeistPlayerStateById(World, LootCarrierPlayerId);
 			const AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
-			if (!IsValid(PlayerState) || !PlayerState->IsEscaped() || PlayerState->GetTotalLootScore() != 0 || !FMath::IsNearlyZero(PlayerState->GetTotalLootWeight()) ||
+			if (!IsValid(PlayerState) || PlayerState->IsEscaped() || PlayerState->GetTotalLootScore() != 0 || !FMath::IsNearlyZero(PlayerState->GetTotalLootWeight()) ||
 				PlayerState->GetContribution().SecuredLootValue != ExpectedValue || !IsValid(GameState) || GameState->GetContractSnapshot().SecuredValue != ExpectedValue ||
 				GameState->GetContractSnapshot().CarriedValue != 0)
+			{
+				return false;
+			}
+		}
+		return true;
+	}, 20.0));
+	Test->AddCommand(new FHeistLootLifecycleActionCommand(Test, State, TEXT("request final escape after Loose Loot settlement"), []()
+	{
+		AHeistPlayerController* OwningPlayerController = GetOwningPlayerControllerById(LootCarrierPlayerId);
+		AHeistVentActor* LocalExit = IsValid(OwningPlayerController) ? FindSharedExit(OwningPlayerController->GetWorld()) : nullptr;
+		return InvokeSingleActorServerRPC(OwningPlayerController, FName(TEXT("Server_RequestEscape")), LocalExit);
+	}));
+	Test->AddCommand(new FHeistLootLifecycleWaitCommand(Test, State, TEXT("final escape commits only after the second Vent interaction"), []()
+	{
+		for (UWorld* World : GetLootLifecyclePIEWorlds())
+		{
+			const AHeistPlayerState* PlayerState = FindHeistPlayerStateById(World, LootCarrierPlayerId);
+			if (!IsValid(PlayerState) || !PlayerState->IsEscaped())
 			{
 				return false;
 			}
@@ -1074,7 +1093,7 @@ bool EnqueueTwoPlayerLootLifecycleScenario(FAutomationTestBase* Test)
 			return false;
 		}
 		Test->AddInfo(FString::Printf(
-			TEXT("W6-011 lifecycle gate: Players=2 Map=M01 Rows=5 InitialPickups=5 Drops=5 Repickups=5 PickupFeedback=10 SharedShell=BP_Loot HostClientVisual=true InventoryGrid=5x5 Secured=%d InventoryEmpty=true ContractOutcomeSeed=false Result=PASS"),
+			TEXT("W6-011 lifecycle gate: Players=2 Map=M01 Rows=5 InitialPickups=5 Drops=5 Repickups=5 PickupFeedback=10 SharedShell=BP_Loot HostClientVisual=true InventoryGrid=5x5 VentSettlement=true SecondInteractionEscape=true Secured=%d InventoryEmpty=true ContractOutcomeSeed=false Result=PASS"),
 			ExpectedValue));
 		return true;
 	}));
