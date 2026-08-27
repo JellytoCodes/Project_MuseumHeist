@@ -230,7 +230,7 @@ AHeistObjectDisplayCaseActor* FindObjectCase(UWorld* World, const FName CaseId)
 	return nullptr;
 }
 
-AHeistVentActor* FindSharedExit(UWorld* World)
+AHeistVentActor* FindVentActor(UWorld* World)
 {
 	if (!IsValid(World))
 	{
@@ -2457,7 +2457,7 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 	{
 		return IsGuardChaseAndAlertReady(1);
 	}, 15.0));
-	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d stop Guard interference and open Shared Exit"), RunIndex), []()
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d stop Guard interference and open Vent"), RunIndex), []()
 	{
 		UWorld* ServerWorld = GetContractRunServerWorld();
 		AHeistPlayerController* HostPlayerController = GetOwningPlayerControllerById(1);
@@ -2475,13 +2475,13 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 		UHeistDebugFunctionLibrary::DebugDepositOpen(HostPlayerController);
 		return true;
 	}));
-	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d Shared Exit replicated open"), RunIndex), []()
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d Vent replicated open"), RunIndex), []()
 	{
 		for (UWorld* World : GetContractRunPIEWorlds())
 		{
 			const AHeistGameState* GameState = World->GetGameState<AHeistGameState>();
-			const AHeistVentActor* SharedExit = FindSharedExit(World);
-			if (!IsValid(GameState) || !GameState->IsEscapePhaseOpen() || !IsValid(SharedExit) || !SharedExit->IsVentActive())
+			const AHeistVentActor* VentActor = FindVentActor(World);
+			if (!IsValid(GameState) || !GameState->IsEscapePhaseOpen() || !IsValid(VentActor) || !VentActor->IsVentActive())
 			{
 				return false;
 			}
@@ -2492,46 +2492,48 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 	for (int32 PlayerId = 1; PlayerId <= State->PlayerCount; ++PlayerId)
 	{
 		Test->AddCommand(new FHeistContractRunActionCommand(Test, State,
-			FString::Printf(TEXT("run %d move player %d to Shared Exit"), RunIndex, PlayerId), [PlayerId]()
+			FString::Printf(TEXT("run %d move player %d to Vent"), RunIndex, PlayerId), [PlayerId]()
 		{
-			return TeleportServerPlayerIntoInteraction(PlayerId, FindSharedExit(GetContractRunServerWorld()));
+			return TeleportServerPlayerIntoInteraction(PlayerId, FindVentActor(GetContractRunServerWorld()));
 		}));
 		Test->AddCommand(new FHeistContractRunWaitCommand(Test, State,
-			FString::Printf(TEXT("run %d player %d Shared Exit overlap"), RunIndex, PlayerId), [PlayerId]()
+			FString::Printf(TEXT("run %d player %d Vent overlap"), RunIndex, PlayerId), [PlayerId]()
 		{
-			return IsServerPlayerOverlapping(PlayerId, FindSharedExit(GetContractRunServerWorld()));
+			return IsServerPlayerOverlapping(PlayerId, FindVentActor(GetContractRunServerWorld()));
 		}, 10.0));
 		Test->AddCommand(new FHeistContractRunActionCommand(Test, State,
 			FString::Printf(TEXT("run %d player %d request exit through server RPC"), RunIndex, PlayerId), [PlayerId]()
 		{
 			AHeistPlayerController* PlayerController = GetOwningPlayerControllerById(PlayerId);
-			AHeistVentActor* LocalExit = IsValid(PlayerController) ? FindSharedExit(PlayerController->GetWorld()) : nullptr;
-			return InvokeSingleActorServerRPC(PlayerController, FName(TEXT("Server_RequestEscape")), LocalExit);
+			AHeistVentActor* LocalVent = IsValid(PlayerController) ? FindVentActor(PlayerController->GetWorld()) : nullptr;
+			return InvokeSingleActorServerRPC(PlayerController, FName(TEXT("Server_RequestEscape")), LocalVent);
 		}));
 		Test->AddCommand(new FHeistContractRunWaitCommand(Test, State,
 			FString::Printf(TEXT("run %d player %d first Vent transaction committed"), RunIndex, PlayerId), [PlayerId, State]()
 		{
-			const AHeistGameState* GameState = GetContractRunServerWorld()->GetGameState<AHeistGameState>();
+			UWorld* ServerWorld = GetContractRunServerWorld();
+			const AHeistGameState* GameState = IsValid(ServerWorld) ? ServerWorld->GetGameState<AHeistGameState>() : nullptr;
 			const AHeistPlayerController* ServerPlayerController = GetServerPlayerControllerById(PlayerId);
 			const AHeistPlayerState* PlayerState = IsValid(ServerPlayerController) ? ServerPlayerController->GetPlayerState<AHeistPlayerState>() : nullptr;
 			const AHeistPlayerCharacter* Character = IsValid(ServerPlayerController) ? Cast<AHeistPlayerCharacter>(ServerPlayerController->GetPawn()) : nullptr;
 			const UHeistInventoryComponent* Inventory = IsValid(Character) ? Character->GetInventoryComponent() : nullptr;
-			if (!IsValid(GameState) || !IsValid(PlayerState))
+			if (!IsValid(GameState) || !IsValid(PlayerState) || !IsValid(Inventory))
 			{
 				return false;
 			}
 			if (PlayerId != 1)
 			{
-				return PlayerState->IsEscaped();
+				return PlayerState->IsEscaped() && Inventory->GetReplicatedInventory().Items.IsEmpty();
 			}
 
 			const FHeistContractSnapshot Contract = GameState->GetContractSnapshot();
-			const AHeistPaintingDisplayCaseActor* RequiredCase = FindPaintingCase(GetContractRunServerWorld(), Contract.RequiredTargetCaseId);
-			const AHeistPaintingDisplayCaseActor* HighValueCase = FindPaintingCase(GetContractRunServerWorld(), State->SelectedHighValuePaintingCaseId);
-			return !PlayerState->IsEscaped() && PlayerState->GetTotalLootScore() == 0 && IsValid(Inventory) && Inventory->IsCarryingOriginal() &&
+			const AHeistPaintingDisplayCaseActor* RequiredCase = FindPaintingCase(ServerWorld, Contract.RequiredTargetCaseId);
+			const AHeistPaintingDisplayCaseActor* HighValueCase = FindPaintingCase(ServerWorld, State->SelectedHighValuePaintingCaseId);
+			return !PlayerState->IsEscaped() && PlayerState->GetTotalLootScore() == 0 && Inventory->IsCarryingOriginal() &&
 				Inventory->GetOriginalArtifactCount() == 2 && HasOriginalForCase(PlayerId, RequiredCase) && HasOriginalForCase(PlayerId, HighValueCase) &&
 				PlayerState->GetContribution().SecuredLootValue == State->SelectedLootValue && Contract.SecuredValue == State->SelectedLootValue &&
-				!Contract.bRequiredTargetSecured;
+				Contract.CarriedValue == Inventory->GetOriginalArtifactValue() && !Contract.bRequiredTargetSecured &&
+				IsCrewStatusReplicated(PlayerId, EHeistCrewStatus::CarryingOriginal);
 		}, 15.0));
 		Test->AddCommand(new FHeistContractRunActionCommand(Test, State,
 			FString::Printf(TEXT("run %d player %d request final escape when settlement kept Original"), RunIndex, PlayerId), [PlayerId]()
@@ -2543,12 +2545,16 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 			{
 				return false;
 			}
+			if (PlayerId != 1)
+			{
+				return ServerPlayerState->IsEscaped();
+			}
 			if (ServerPlayerState->IsEscaped())
 			{
-				return true;
+				return false;
 			}
-			AHeistVentActor* LocalExit = FindSharedExit(PlayerController->GetWorld());
-			return InvokeSingleActorServerRPC(PlayerController, FName(TEXT("Server_RequestEscape")), LocalExit);
+			AHeistVentActor* LocalVent = FindVentActor(PlayerController->GetWorld());
+			return InvokeSingleActorServerRPC(PlayerController, FName(TEXT("Server_RequestEscape")), LocalVent);
 		}));
 		Test->AddCommand(new FHeistContractRunWaitCommand(Test, State,
 			FString::Printf(TEXT("run %d player %d final escape committed"), RunIndex, PlayerId), [PlayerId]()

@@ -252,7 +252,7 @@ int32 CountAvailableLootActorsByRow(UWorld* World, const FName RowId)
 	return Count;
 }
 
-AHeistVentActor* FindSharedExit(UWorld* World)
+AHeistVentActor* FindVentActor(UWorld* World)
 {
 	if (!IsValid(World))
 	{
@@ -633,7 +633,8 @@ bool CaptureLifecycleFixtures(FAutomationTestBase* Test, const TSharedRef<FHeist
 		TotalWeight += Fixture.ItemDefinition.Weight;
 		Fixtures.Add(MoveTemp(Fixture));
 	}
-	if (Fixtures.Num() != 5 || TotalGridArea > UHeistInventoryComponent::GridColumnCount * UHeistInventoryComponent::GridRowCount)
+	const int32 GridCapacity = UHeistInventoryComponent::GridColumnCount * UHeistInventoryComponent::GridRowCount;
+	if (Fixtures.Num() != 5 || TotalGridArea > GridCapacity)
 	{
 		return false;
 	}
@@ -664,8 +665,8 @@ bool CaptureLifecycleFixtures(FAutomationTestBase* Test, const TSharedRef<FHeist
 			*PinnedState->PendingFeedbackRowId.ToString(), *ExpectedMessage.ToString(), *Message.ToString(), DurationSeconds));
 	});
 
-	Test->AddInfo(FString::Printf(TEXT("W6-011 fixture: Map=M01 Players=2 Rows=5 GridArea=%d/20 Value=%d Weight=%.1f SharedShell=BP_Loot HostClientVisual=PASS"),
-		TotalGridArea, TotalValue, TotalWeight));
+	Test->AddInfo(FString::Printf(TEXT("W6-011 fixture: Map=M01 Players=2 Rows=5 GridArea=%d/%d Value=%d Weight=%.1f SharedShell=BP_Loot HostClientVisual=PASS"),
+		TotalGridArea, GridCapacity, TotalValue, TotalWeight));
 	return true;
 }
 
@@ -989,7 +990,7 @@ bool EnqueueTwoPlayerLootLifecycleScenario(FAutomationTestBase* Test)
 			GridArea, GridCapacity, TotalValue, TotalWeight));
 		return GridArea <= GridCapacity;
 	}));
-	Test->AddCommand(new FHeistLootLifecycleActionCommand(Test, State, TEXT("open Shared Exit without seeding Result or Contract outcome"), []()
+	Test->AddCommand(new FHeistLootLifecycleActionCommand(Test, State, TEXT("open Vent without seeding Result or Contract outcome"), []()
 	{
 		UWorld* ServerWorld = GetLootLifecycleServerWorld();
 		AHeistGameState* GameState = IsValid(ServerWorld) ? ServerWorld->GetGameState<AHeistGameState>() : nullptr;
@@ -1000,32 +1001,32 @@ bool EnqueueTwoPlayerLootLifecycleScenario(FAutomationTestBase* Test)
 		GameState->OpenEscapePhase();
 		return true;
 	}));
-	Test->AddCommand(new FHeistLootLifecycleWaitCommand(Test, State, TEXT("Shared Exit open on host and client"), []()
+	Test->AddCommand(new FHeistLootLifecycleWaitCommand(Test, State, TEXT("Vent open on host and client"), []()
 	{
 		for (UWorld* World : GetLootLifecyclePIEWorlds())
 		{
 			const AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
-			const AHeistVentActor* SharedExit = FindSharedExit(World);
-			if (!IsValid(GameState) || !GameState->IsEscapePhaseOpen() || !IsValid(SharedExit) || !SharedExit->IsVentActive())
+			const AHeistVentActor* VentActor = FindVentActor(World);
+			if (!IsValid(GameState) || !GameState->IsEscapePhaseOpen() || !IsValid(VentActor) || !VentActor->IsVentActive())
 			{
 				return false;
 			}
 		}
 		return true;
 	}, 15.0));
-	Test->AddCommand(new FHeistLootLifecycleActionCommand(Test, State, TEXT("move client carrier to Shared Exit"), []()
+	Test->AddCommand(new FHeistLootLifecycleActionCommand(Test, State, TEXT("move client carrier to Vent"), []()
 	{
-		return TeleportServerPlayerIntoInteraction(LootCarrierPlayerId, FindSharedExit(GetLootLifecycleServerWorld()));
+		return TeleportServerPlayerIntoInteraction(LootCarrierPlayerId, FindVentActor(GetLootLifecycleServerWorld()));
 	}));
-	Test->AddCommand(new FHeistLootLifecycleWaitCommand(Test, State, TEXT("client carrier Shared Exit overlap"), []()
+	Test->AddCommand(new FHeistLootLifecycleWaitCommand(Test, State, TEXT("client carrier Vent overlap"), []()
 	{
-		return IsServerPlayerOverlapping(LootCarrierPlayerId, FindSharedExit(GetLootLifecycleServerWorld()));
+		return IsServerPlayerOverlapping(LootCarrierPlayerId, FindVentActor(GetLootLifecycleServerWorld()));
 	}, 10.0));
 	Test->AddCommand(new FHeistLootLifecycleActionCommand(Test, State, TEXT("request client carrier escape through owning-client RPC"), []()
 	{
 		AHeistPlayerController* OwningPlayerController = GetOwningPlayerControllerById(LootCarrierPlayerId);
-		AHeistVentActor* LocalExit = IsValid(OwningPlayerController) ? FindSharedExit(OwningPlayerController->GetWorld()) : nullptr;
-		return InvokeSingleActorServerRPC(OwningPlayerController, FName(TEXT("Server_RequestEscape")), LocalExit);
+		AHeistVentActor* LocalVent = IsValid(OwningPlayerController) ? FindVentActor(OwningPlayerController->GetWorld()) : nullptr;
+		return InvokeSingleActorServerRPC(OwningPlayerController, FName(TEXT("Server_RequestEscape")), LocalVent);
 	}));
 	Test->AddCommand(new FHeistLootLifecycleWaitCommand(Test, State, TEXT("five-row Vent settlement, inventory clear and active player replication"), [State]()
 	{
@@ -1058,8 +1059,8 @@ bool EnqueueTwoPlayerLootLifecycleScenario(FAutomationTestBase* Test)
 	Test->AddCommand(new FHeistLootLifecycleActionCommand(Test, State, TEXT("request final escape after Loose Loot settlement"), []()
 	{
 		AHeistPlayerController* OwningPlayerController = GetOwningPlayerControllerById(LootCarrierPlayerId);
-		AHeistVentActor* LocalExit = IsValid(OwningPlayerController) ? FindSharedExit(OwningPlayerController->GetWorld()) : nullptr;
-		return InvokeSingleActorServerRPC(OwningPlayerController, FName(TEXT("Server_RequestEscape")), LocalExit);
+		AHeistVentActor* LocalVent = IsValid(OwningPlayerController) ? FindVentActor(OwningPlayerController->GetWorld()) : nullptr;
+		return InvokeSingleActorServerRPC(OwningPlayerController, FName(TEXT("Server_RequestEscape")), LocalVent);
 	}));
 	Test->AddCommand(new FHeistLootLifecycleWaitCommand(Test, State, TEXT("final escape commits only after the second Vent interaction"), []()
 	{
