@@ -10,6 +10,7 @@
 class UAIPerceptionComponent;
 class UAISenseConfig_Sight;
 class UStateTreeAIComponent;
+class AHeistPlayerCharacter;
 struct FHeistGuardDataRow;
 
 UCLASS()
@@ -67,6 +68,9 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardAIController : public AAIController
 	void ValidateCurrentChaseTarget();
 	void CompletePendingArrest();
 	void ClearPendingArrest(bool bClearStunTag);
+	bool IsArrestRetryBlocked(const AHeistPlayerCharacter* PlayerCharacter) const;
+	void BlockArrestRetry(AHeistPlayerCharacter* PlayerCharacter);
+	void ClearArrestRetryBlock(AHeistPlayerCharacter* PlayerCharacter);
 	void UpdateSightForGuardState(EHeistGuardState NewState);
 	void StartSightValidationTimer();
 	void ClearSightValidationTimer();
@@ -105,7 +109,8 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardAIController : public AAIController
 	FTimerHandle DetectionGraceTimerHandle;
 	FTimerHandle SightValidationTimerHandle;
 	FTimerHandle ArrestCompletionTimerHandle;
-	TWeakObjectPtr<class AHeistPlayerCharacter> PendingArrestTarget;
+	TWeakObjectPtr<AHeistPlayerCharacter> PendingArrestTarget;
+	TArray<TWeakObjectPtr<AHeistPlayerCharacter>> ArrestRetryBlockedTargets;
 	int32 GuardCaptureIncidentSequence = 0;
 
 #pragma endregion

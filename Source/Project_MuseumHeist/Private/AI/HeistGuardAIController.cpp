@@ -208,6 +208,7 @@ void AHeistGuardAIController::OnUnPossess()
 	ClearDetectionGrace(TEXT("GuardUnpossessed"));
 	ClearSightValidationTimer();
 	ClearPendingArrest(true);
+	ArrestRetryBlockedTargets.Reset();
 	GuardPerceptionComponent->OnTargetPerceptionUpdated.RemoveDynamic(this, &AHeistGuardAIController::HandleTargetPerceptionUpdated);
 
 	if (AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn()))
@@ -331,6 +332,7 @@ void AHeistGuardAIController::SetAutomaticSightEnabled(const bool bEnabled)
 	{
 		ClearDetectionGrace(TEXT("AutomaticSightDisabled"));
 		ClearSightValidationTimer();
+		ArrestRetryBlockedTargets.Reset();
 		if (IsValid(GuardPerceptionComponent))
 		{
 			GuardPerceptionComponent->SetSenseEnabled(UAISense_Sight::StaticClass(), false);
@@ -362,6 +364,10 @@ void AHeistGuardAIController::HandleTargetPerceptionUpdated(AActor* TargetActor,
 	if (!IsValid(GuardStateComponent))
 	{
 		return;
+	}
+	if (!Stimulus.WasSuccessfullySensed())
+	{
+		ClearArrestRetryBlock(Cast<AHeistPlayerCharacter>(TargetActor));
 	}
 
 	if (Stimulus.WasSuccessfullySensed())
@@ -428,6 +434,11 @@ bool AHeistGuardAIController::CanInitiallySeeTarget(const AActor* TargetActor, c
 	if (!IsValid(HeistPlayerState) || HeistPlayerState->IsEscaped() || HeistPlayerState->IsArrested())
 	{
 		OutRejectReason = TEXT("PlayerUnavailable");
+		return false;
+	}
+	if (IsArrestRetryBlocked(PlayerCharacter))
+	{
+		OutRejectReason = TEXT("ArrestRetryBlocked");
 		return false;
 	}
 
@@ -708,6 +719,10 @@ bool AHeistGuardAIController::TryArrestChaseTarget()
 	{
 		return false;
 	}
+	if (IsArrestRetryBlocked(PlayerCharacter))
+	{
+		return false;
+	}
 
 	const float Distance = FVector::Dist(GuardCharacter->GetActorLocation(), PlayerCharacter->GetActorLocation());
 	if (Distance > ArrestDistance)
@@ -766,7 +781,12 @@ void AHeistGuardAIController::CompletePendingArrest()
 			FString::Printf(TEXT("Guard arrest rejected: Guard=%s Player=%s Reason=%s Authority=%s"), *GetNameSafe(GuardCharacter), *GetNameSafe(PlayerCharacter),
 				ArrestRejectReason.IsNone() ? TEXT("InvalidContext") : *ArrestRejectReason.ToString(), HasAuthority() ? TEXT("true") : TEXT("false")),
 			EHeistDebugLevel::Warning);
+		BlockArrestRetry(PlayerCharacter);
 		ClearPendingArrest(true);
+		if (IsValid(GuardStateComponent) && GuardStateComponent->GetGuardState() == EHeistGuardState::ChasePlayer)
+		{
+			GuardStateComponent->EnterReturnToPatrol();
+		}
 		return;
 	}
 
@@ -796,6 +816,44 @@ void AHeistGuardAIController::ClearPendingArrest(const bool bClearStunTag)
 		}
 	}
 	PendingArrestTarget.Reset();
+}
+
+bool AHeistGuardAIController::IsArrestRetryBlocked(const AHeistPlayerCharacter* PlayerCharacter) const
+{
+	if (!IsValid(PlayerCharacter))
+	{
+		return false;
+	}
+
+	for (const TWeakObjectPtr<AHeistPlayerCharacter>& BlockedTarget : ArrestRetryBlockedTargets)
+	{
+		if (BlockedTarget.Get() == PlayerCharacter)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+void AHeistGuardAIController::BlockArrestRetry(AHeistPlayerCharacter* PlayerCharacter)
+{
+	if (!IsValid(PlayerCharacter) || IsArrestRetryBlocked(PlayerCharacter))
+	{
+		return;
+	}
+
+	ArrestRetryBlockedTargets.Emplace(PlayerCharacter);
+}
+
+void AHeistGuardAIController::ClearArrestRetryBlock(AHeistPlayerCharacter* PlayerCharacter)
+{
+	for (int32 Index = ArrestRetryBlockedTargets.Num() - 1; Index >= 0; --Index)
+	{
+		if (!ArrestRetryBlockedTargets[Index].IsValid() || ArrestRetryBlockedTargets[Index].Get() == PlayerCharacter)
+		{
+			ArrestRetryBlockedTargets.RemoveAtSwap(Index);
+		}
+	}
 }
 
 bool AHeistGuardAIController::TryGetAlertExitSurveillanceTarget(AActor*& OutTargetActor, float& OutAcceptanceRadius) const
@@ -919,6 +977,7 @@ void AHeistGuardAIController::HandleMatchPhaseChanged(const EHeistMatchPhase Pre
 	}
 	if (NewMatchPhase == EHeistMatchPhase::InGame)
 	{
+		ArrestRetryBlockedTargets.Reset();
 		const AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn());
 		const UHeistGuardStateComponent* GuardStateComponent = IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;
 		if (bStartStateTreeAutomatically && IsValid(GuardStateTreeComponent) && !GuardStateTreeComponent->IsRunning())
@@ -944,6 +1003,7 @@ void AHeistGuardAIController::HandleMatchPhaseChanged(const EHeistMatchPhase Pre
 	}
 	ClearDetectionGrace(TEXT("MatchEnded"));
 	ClearSightValidationTimer();
+	ArrestRetryBlockedTargets.Reset();
 	if (IsValid(GuardStateComponent))
 	{
 		GuardStateComponent->SetDisabled(true);
