@@ -186,6 +186,55 @@ MAPS = {
 }
 
 
+def resolve_level_codes(available_codes):
+    _, command_line_switches, command_line_parameters = unreal.SystemLibrary.parse_command_line(
+        unreal.SystemLibrary.get_command_line()
+    )
+    parameter_name = "MuseumLevelCodes"
+    normalized_parameter_name = parameter_name.casefold()
+    bare_switches = [
+        switch
+        for switch in command_line_switches
+        if str(switch).casefold() == normalized_parameter_name
+    ]
+    matching_values = [
+        value
+        for key, value in command_line_parameters.items()
+        if str(key).casefold() == normalized_parameter_name
+    ]
+
+    if bare_switches:
+        raise RuntimeError("-{} requires a non-empty comma-separated value".format(parameter_name))
+    if not matching_values:
+        return list(available_codes)
+    if len(matching_values) != 1:
+        raise RuntimeError("-{} was specified more than once".format(parameter_name))
+
+    requested_values = str(matching_values[0]).split(",")
+    if any(not value.strip() for value in requested_values):
+        raise RuntimeError("-{} contains an empty level code".format(parameter_name))
+
+    selected_codes = []
+    selected_set = set()
+    for value in requested_values:
+        code = value.strip().upper()
+        if code not in available_codes:
+            raise RuntimeError(
+                "Unknown level code '{}' in -{}. Expected one of: {}".format(
+                    code,
+                    parameter_name,
+                    ",".join(available_codes),
+                )
+            )
+        if code not in selected_set:
+            selected_codes.append(code)
+            selected_set.add(code)
+    return selected_codes
+
+
+selected_level_codes = resolve_level_codes(MAPS)
+
+
 actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
 assets = {name: unreal.load_asset(path) for name, path in STATIC_MESHES.items()}
 materials = {name: unreal.load_asset(path) for name, path in MATERIALS.items()}
@@ -931,7 +980,8 @@ def add_m03_geometry(builder):
     builder.point_light("LDV2_M03_CrossingLight", (400, 0, 520), (150, 220, 255), 1800.0, 1900.0)
 
 
-for code, config in MAPS.items():
+for code in selected_level_codes:
+    config = MAPS[code]
     builder = LevelBuilder(code, config)
     if REMOVE_LEGACY_ARCHITECTURE:
         builder.cleanup_legacy_static()
