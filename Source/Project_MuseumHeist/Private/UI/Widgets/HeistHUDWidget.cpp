@@ -4,8 +4,6 @@
 #include "Character/Components/HeistNoiseEmitterComponent.h"
 #include "Character/HeistPlayerCharacter.h"
 #include "Components/AudioComponent.h"
-#include "Components/HorizontalBox.h"
-#include "Components/HorizontalBoxSlot.h"
 #include "Components/Image.h"
 #include "Components/PanelWidget.h"
 #include "Components/TextBlock.h"
@@ -33,14 +31,6 @@ namespace
 const FName ArrestedFeedbackEvent(TEXT("Arrested"));
 const FName RescuedFeedbackEvent(TEXT("Rescued"));
 }
-
-#pragma region Construction
-
-UHeistHUDWidget::UHeistHUDWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
-{
-}
-
-#pragma endregion
 
 #pragma region Lifecycle
 
@@ -447,7 +437,6 @@ void UHeistHUDWidget::RefreshToolPresentation()
 }
 
 void UHeistHUDWidget::RefreshMissionPresentation()
-
 {
 	if (!IsValid(HUDViewModel))
 	{
@@ -508,7 +497,6 @@ void UHeistHUDWidget::RefreshHUDPresentation()
 	const float LocalLootWeight = HUDViewModel->GetLocalLootWeight();
 	const int32 ConnectedPlayerCount = HUDViewModel->GetConnectedPlayerCount();
 	const bool bLocalPlayerEscaped = HUDViewModel->IsLocalPlayerEscaped();
-	const bool bLocalPlayerArrested = HUDViewModel->IsLocalPlayerArrested();
 	const bool bEscapePhaseOpen = HUDViewModel->IsEscapePhaseOpen();
 	const bool bEscapeCastActive = HUDViewModel->IsEscapeCastActive();
 	const float EscapeCastEndServerTime = HUDViewModel->GetEscapeCastEndServerTime();
@@ -521,11 +509,15 @@ void UHeistHUDWidget::RefreshHUDPresentation()
 
 	if (IsValid(ActionText))
 	{
-		const FText ActionLabel =
-			bObservationCastActive ? NSLOCTEXT("HeistHUD", "ObservationCastAction", "관찰 중")
-								   : (bEscapeCastActive && LocalLootScore > 0 ? NSLOCTEXT("HeistHUD", "VentSettlementAction", "전리품 정산 중")
-																			 : (bEscapeCastActive ? NSLOCTEXT("HeistHUD", "VentEscapeAction", "최종 탈출 중")
-																								: NSLOCTEXT("HeistHUD", "ReadyAction", "준비")));
+		FText ActionLabel = NSLOCTEXT("HeistHUD", "ReadyAction", "준비");
+		if (bObservationCastActive)
+		{
+			ActionLabel = NSLOCTEXT("HeistHUD", "ObservationCastAction", "관찰 중");
+		}
+		else if (bEscapeCastActive)
+		{
+			ActionLabel = LocalLootScore > 0 ? NSLOCTEXT("HeistHUD", "VentSettlementAction", "전리품 정산 중") : NSLOCTEXT("HeistHUD", "VentEscapeAction", "최종 탈출 중");
+		}
 		ActionText->SetText(ActionLabel);
 	}
 
@@ -606,7 +598,6 @@ void UHeistHUDWidget::RefreshAlertStars()
 }
 
 void UHeistHUDWidget::ShowTransientEvent(const FText& EventText)
-
 {
 	if (EventText.IsEmpty() || !IsValid(AlertEventText))
 	{

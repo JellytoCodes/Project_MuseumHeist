@@ -68,7 +68,7 @@ bool FHeistWeek7InputAssetContractTest::RunTest(const FString& Parameters)
 	const UClass* ControllerClass = LoadClass<AHeistPlayerController>(nullptr, TEXT("/Game/Blueprints/Player/BP_HeistPlayerController.BP_HeistPlayerController_C"));
 	const AHeistPlayerController* ControllerCDO = IsValid(ControllerClass) ? Cast<AHeistPlayerController>(ControllerClass->GetDefaultObject()) : nullptr;
 	TestNotNull(TEXT("BP_HeistPlayerController CDO exists"), ControllerCDO);
-	TestTrue(TEXT("Controller W7 input defaults are assigned"), IsValid(ControllerCDO) && ControllerCDO->AreW7InputAssetsConfigured());
+	TestTrue(TEXT("Controller W7 input defaults are assigned"), IsValid(ControllerCDO) && ControllerCDO->AreInputAssetsConfiguredForDebug());
 	return true;
 }
 

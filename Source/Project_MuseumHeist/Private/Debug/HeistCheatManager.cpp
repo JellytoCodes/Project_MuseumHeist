@@ -3,14 +3,6 @@
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "GameFramework/PlayerController.h"
 
-#pragma region Construction
-
-UHeistCheatManager::UHeistCheatManager(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
-{
-}
-
-#pragma endregion
-
 #pragma region HUDDebug
 
 void UHeistCheatManager::HeistHUDDump()
@@ -88,8 +80,8 @@ void UHeistCheatManager::HeistSettingsDump()
 #endif
 }
 
-void UHeistCheatManager::HeistSettingsApply(const float FieldOfView, const float MouseSensitivity, const float MasterVolume, const int32 ResolutionWidth,
-											const int32 ResolutionHeight, const FString WindowMode)
+void UHeistCheatManager::HeistSettingsApply(const float FieldOfView, const float MouseSensitivity, const float MasterVolume, const int32 ResolutionWidth, const int32 ResolutionHeight,
+											const FString WindowMode)
 {
 #if !UE_BUILD_SHIPPING
 	UHeistDebugFunctionLibrary::DebugSettingsApply(GetOuterAPlayerController(), FieldOfView, MouseSensitivity, MasterVolume, ResolutionWidth, ResolutionHeight, WindowMode);
@@ -1087,13 +1079,12 @@ void UHeistCheatManager::HeistResultSeed(const bool bEscaped)
 #endif
 }
 
-void UHeistCheatManager::HeistContributionSeed(const int32 SurfaceForgeries, const float BestSurfaceQuality, const int32 Assemblies,
-	const float BestAssemblyQuality, const int32 ArtifactsRecovered, const float CarryTimeSeconds, const int32 SecuredLootValue,
-	const int32 GuardsDistracted, const int32 TeammatesRescued, const int32 AlarmsTriggered)
+void UHeistCheatManager::HeistContributionSeed(const int32 SurfaceForgeries, const float BestSurfaceQuality, const int32 Assemblies, const float BestAssemblyQuality, const int32 ArtifactsRecovered,
+											   const float CarryTimeSeconds, const int32 SecuredLootValue, const int32 GuardsDistracted, const int32 TeammatesRescued, const int32 AlarmsTriggered)
 {
 #if !UE_BUILD_SHIPPING
-	UHeistDebugFunctionLibrary::DebugContributionSeed(GetOuterAPlayerController(), SurfaceForgeries, BestSurfaceQuality, Assemblies,
-		BestAssemblyQuality, ArtifactsRecovered, CarryTimeSeconds, SecuredLootValue, GuardsDistracted, TeammatesRescued, AlarmsTriggered);
+	UHeistDebugFunctionLibrary::DebugContributionSeed(GetOuterAPlayerController(), SurfaceForgeries, BestSurfaceQuality, Assemblies, BestAssemblyQuality, ArtifactsRecovered, CarryTimeSeconds,
+													  SecuredLootValue, GuardsDistracted, TeammatesRescued, AlarmsTriggered);
 #endif
 }
 

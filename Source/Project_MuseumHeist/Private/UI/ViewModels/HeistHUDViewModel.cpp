@@ -5,14 +5,6 @@
 #include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerState.h"
 
-#pragma region Construction
-
-UHeistHUDViewModel::UHeistHUDViewModel(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
-{
-}
-
-#pragma endregion
-
 #pragma region Lifecycle
 
 void UHeistHUDViewModel::BeginDestroy()
@@ -141,8 +133,7 @@ void UHeistHUDViewModel::RefreshPresentationState()
 	UE_MVVM_SET_PROPERTY_VALUE(ObjectiveState, ActiveObjectiveState);
 
 	const int32 NewSecurityLevel = FMath::Clamp(FMath::FloorToInt(ActiveAlertMeterValue), 0, 10);
-	const FText NewAlertBannerText =
-		FText::Format(NSLOCTEXT("HeistHUD", "SecurityLevelFormat", "경계도 {0}/10"), FText::AsNumber(ActiveAlertMeterValue));
+	const FText NewAlertBannerText = FText::Format(NSLOCTEXT("HeistHUD", "SecurityLevelFormat", "경계도 {0}/10"), FText::AsNumber(ActiveAlertMeterValue));
 	FLinearColor NewAlertColor;
 	switch (ActiveAlertLevel)
 	{
@@ -173,18 +164,14 @@ void UHeistHUDViewModel::RefreshPresentationState()
 	UE_MVVM_SET_PROPERTY_VALUE(SecurityLevel, NewSecurityLevel);
 	UE_MVVM_SET_PROPERTY_VALUE(AlertBannerText, NewAlertBannerText);
 	UE_MVVM_SET_PROPERTY_VALUE(AlertColor, NewAlertColor);
-	UE_MVVM_SET_PROPERTY_VALUE(bLockdownCountdownVisible, false);
-	UE_MVVM_SET_PROPERTY_VALUE(LockdownCountdownEndServerTime, 0.0f);
 	UE_MVVM_SET_PROPERTY_VALUE(bSuspenseMusicActive, ActiveAlertLevel == EHeistAlertLevel::Suspicious || ActiveAlertLevel == EHeistAlertLevel::Searching);
 	UE_MVVM_SET_PROPERTY_VALUE(bAlarmMusicActive, ActiveAlertLevel == EHeistAlertLevel::Alarmed || ActiveAlertLevel == EHeistAlertLevel::Lockdown);
 
 	FString ArtifactDisplayName = ActiveObjectiveArtifactId.ToString();
 	ArtifactDisplayName.ReplaceInline(TEXT("_"), TEXT(" "));
-	const FText ArtifactLabel =
-		ActiveObjectiveArtifactId.IsNone() ? NSLOCTEXT("HeistHUD", "UnknownObjectiveArtifact", "목표 유물") : FText::FromString(ArtifactDisplayName);
+	const FText ArtifactLabel = ActiveObjectiveArtifactId.IsNone() ? NSLOCTEXT("HeistHUD", "UnknownObjectiveArtifact", "목표 유물") : FText::FromString(ArtifactDisplayName);
 	UE_MVVM_SET_PROPERTY_VALUE(ObservationReferenceText,
-							   bLocalObservationCastActive ? FText::Format(NSLOCTEXT("HeistHUD", "ObservationReferenceFormat", "참고 작품  {0}"), ArtifactLabel)
-														   : FText::GetEmpty());
+							   bLocalObservationCastActive ? FText::Format(NSLOCTEXT("HeistHUD", "ObservationReferenceFormat", "참고 작품  {0}"), ArtifactLabel) : FText::GetEmpty());
 
 	FText NewObjectiveStateText;
 	switch (ActiveObjectiveState)
@@ -463,16 +450,6 @@ const FText& UHeistHUDViewModel::GetAlertBannerText() const
 FLinearColor UHeistHUDViewModel::GetAlertColor() const
 {
 	return AlertColor;
-}
-
-bool UHeistHUDViewModel::IsLockdownCountdownVisible() const
-{
-	return bLockdownCountdownVisible;
-}
-
-float UHeistHUDViewModel::GetLockdownCountdownEndServerTime() const
-{
-	return LockdownCountdownEndServerTime;
 }
 
 bool UHeistHUDViewModel::IsSuspenseMusicActive() const

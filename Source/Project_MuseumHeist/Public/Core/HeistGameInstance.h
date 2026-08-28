@@ -19,13 +19,6 @@ class PROJECT_MUSEUMHEIST_API UHeistGameInstance : public UGameInstance
 {
 	GENERATED_BODY()
 
-#pragma region Construction
-
-  public:
-	UHeistGameInstance();
-
-#pragma endregion
-
 #pragma region Lifecycle
 
   public:
@@ -37,14 +30,13 @@ class PROJECT_MUSEUMHEIST_API UHeistGameInstance : public UGameInstance
 #pragma region SurfaceTemplateSelection
 
   public:
-	bool SelectSurfaceTemplatesForMatch(FName PoolId, const TArray<FName>& CandidateTemplateIds, int32 RequestedTemplateCount,
-		TArray<FName>& OutTemplateIds, int32& OutSelectionRevision, int32& OutBagCycle, int32& OutRemainingTemplateCount);
+	bool SelectSurfaceTemplatesForMatch(FName PoolId, const TArray<FName>& CandidateTemplateIds, int32 RequestedTemplateCount, TArray<FName>& OutTemplateIds, int32& OutSelectionRevision,
+										int32& OutBagCycle, int32& OutRemainingTemplateCount);
 	bool SelectSurfaceTemplateForMatch(FName PoolId, const TArray<FName>& CandidateTemplateIds, FName& OutTemplateId, int32& OutSelectionRevision, int32& OutBagCycle,
 									   int32& OutRemainingTemplateCount);
-	bool RunSurfaceTemplateShuffleBagSelfTestForDebug(int32 PoolSize, int32& OutDrawCount, int32& OutFirstCycleUniqueCount, int32& OutSecondCycleUniqueCount,
-		int32& OutRecentProtectionCheckCount, int32& OutRecentProtectionPassCount) const;
-	bool RunSurfaceTemplateMatchSelectionSelfTestForDebug(int32 PoolSize, int32 RequestedTemplateCount, int32& OutSelectedCount,
-		int32& OutUniqueCount, int32& OutBagCycle) const;
+	bool RunSurfaceTemplateShuffleBagSelfTestForDebug(int32 PoolSize, int32& OutDrawCount, int32& OutFirstCycleUniqueCount, int32& OutSecondCycleUniqueCount, int32& OutRecentProtectionCheckCount,
+													  int32& OutRecentProtectionPassCount) const;
+	bool RunSurfaceTemplateMatchSelectionSelfTestForDebug(int32 PoolSize, int32 RequestedTemplateCount, int32& OutSelectedCount, int32& OutUniqueCount, int32& OutBagCycle) const;
 	bool RunRandomMapShuffleBagSelfTestForDebug(int32& OutDrawCount, int32& OutFirstCycleUniqueCount, int32& OutSecondCycleUniqueCount) const;
 
   private:

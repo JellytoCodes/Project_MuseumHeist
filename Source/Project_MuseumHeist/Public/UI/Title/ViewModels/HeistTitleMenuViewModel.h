@@ -13,13 +13,6 @@ class PROJECT_MUSEUMHEIST_API UHeistTitleMenuViewModel : public UMVVMViewModelBa
 {
 	GENERATED_BODY()
 
-#pragma region Construction
-
-  public:
-	UHeistTitleMenuViewModel(const FObjectInitializer& ObjectInitializer);
-
-#pragma endregion
-
 #pragma region Lifecycle
 
   protected:

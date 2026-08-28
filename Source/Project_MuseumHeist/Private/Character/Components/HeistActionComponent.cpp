@@ -659,7 +659,7 @@ void UHeistActionComponent::ClearEscapeCastState()
 
 	if (!bObservationCastActive)
 	{
-		SetComponentTickEnabled(false);	
+		SetComponentTickEnabled(false);
 	}
 
 	if (AActor* OwnerActor = GetOwner())

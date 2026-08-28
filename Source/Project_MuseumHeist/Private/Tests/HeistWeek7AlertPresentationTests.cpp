@@ -268,16 +268,12 @@ bool IsAlertStageReadyOnAllPeers(const TSharedRef<FAlertPresentationAutomationSt
 		const UHeistHUDWidget* Widget = IsValid(HUD) ? HUD->GetMainHUDWidget() : nullptr;
 		const UTextBlock* AlertTitleWidget = IsValid(Widget) ? Cast<UTextBlock>(Widget->GetWidgetFromName(TEXT("AlertTitleText"))) : nullptr;
 		const UTextBlock* CountdownTextWidget = IsValid(Widget) ? Cast<UTextBlock>(Widget->GetWidgetFromName(TEXT("LockdownCountdownText"))) : nullptr;
-		if (!IsValid(GameState) || !FMath::IsNearlyEqual(GameState->GetAlertMeterValue(), State->ExpectedAlertMeterValue) ||
-			GameState->GetAlertLevel() != State->ExpectedAlertLevel || GameState->GetAlertNextTransitionServerTime() > 0.0f ||
-			GameState->GetAlertRevision() != State->ExpectedAlertRevision ||
-			GameState->GetLastAlertTriggerId() != State->ExpectedTriggerId || !IsValid(ViewModel) || ViewModel->GetAlertLevel() != State->ExpectedAlertLevel ||
-			!FMath::IsNearlyEqual(ViewModel->GetAlertMeterValue(), State->ExpectedAlertMeterValue) ||
+		if (!IsValid(GameState) || !FMath::IsNearlyEqual(GameState->GetAlertMeterValue(), State->ExpectedAlertMeterValue) || GameState->GetAlertLevel() != State->ExpectedAlertLevel ||
+			GameState->GetAlertRevision() != State->ExpectedAlertRevision || GameState->GetLastAlertTriggerId() != State->ExpectedTriggerId || !IsValid(ViewModel) ||
+			ViewModel->GetAlertLevel() != State->ExpectedAlertLevel || !FMath::IsNearlyEqual(ViewModel->GetAlertMeterValue(), State->ExpectedAlertMeterValue) ||
 			ViewModel->GetSecurityLevel() != ExpectedSecurityLevel || ViewModel->GetAlertBannerText().ToString() != ExpectedBanner ||
-			!ViewModel->GetAlertColor().Equals(ExpectedColor, KINDA_SMALL_NUMBER) || ViewModel->IsLockdownCountdownVisible() ||
-			!FMath::IsNearlyZero(ViewModel->GetLockdownCountdownEndServerTime()) ||
-			ViewModel->IsSuspenseMusicActive() != bExpectedSuspense || ViewModel->IsAlarmMusicActive() != bExpectedAlarm || !IsValid(Widget) ||
-			!IsValid(AlertTitleWidget) || AlertTitleWidget->GetText().ToString() != TEXT("경계도") || IsValid(CountdownTextWidget) ||
+			!ViewModel->GetAlertColor().Equals(ExpectedColor, KINDA_SMALL_NUMBER) || ViewModel->IsSuspenseMusicActive() != bExpectedSuspense || ViewModel->IsAlarmMusicActive() != bExpectedAlarm ||
+			!IsValid(Widget) || !IsValid(AlertTitleWidget) || AlertTitleWidget->GetText().ToString() != TEXT("경계도") || IsValid(CountdownTextWidget) ||
 			!Widget->AreAlertAudioAssetsAssignedForDebug() || !Widget->AreAlertAudioAssetsLoopingForDebug() || Widget->IsSuspenseMusicPlayingForDebug() != bExpectedSuspense ||
 			Widget->IsAlarmMusicPlayingForDebug() != bExpectedAlarm || !Widget->IsAlertPresentationContractSatisfied())
 		{
@@ -445,11 +441,9 @@ bool IsSurfaceSessionClosedForReason(const FName ExpectedCleanupReason)
 	const UHeistForgeryComponent* OwnerForgery = IsValid(OwnerCharacter) ? OwnerCharacter->GetForgeryComponent() : nullptr;
 	const AHeistHUD* HUD = IsValid(OwnerController) ? OwnerController->GetHUD<AHeistHUD>() : nullptr;
 	const UHeistForgeryWidget* Widget = IsValid(HUD) ? HUD->GetForgeryWidget() : nullptr;
-	return IsValid(ServerForgery) && !ServerForgery->IsSessionActive() && ServerForgery->GetLastCleanupReason() == ExpectedCleanupReason && IsValid(OwnerForgery) &&
-		!OwnerForgery->IsSessionActive() && IsValid(OwnerController) &&
-		OwnerController->GetLocalInputMode() == EHeistInputMode::Gameplay && OwnerController->IsLocalInputModeContractSatisfied() && !OwnerController->bShowMouseCursor &&
-		!OwnerController->IsMoveInputIgnored() && !OwnerController->IsLookInputIgnored() && IsValid(Widget) && !Widget->IsWidgetPresentationVisible() &&
-		Widget->IsAlertWarningContractSatisfied();
+	return IsValid(ServerForgery) && !ServerForgery->IsSessionActive() && ServerForgery->GetLastCleanupReason() == ExpectedCleanupReason && IsValid(OwnerForgery) && !OwnerForgery->IsSessionActive() &&
+		   IsValid(OwnerController) && OwnerController->GetLocalInputMode() == EHeistInputMode::Gameplay && OwnerController->IsLocalInputModeContractSatisfied() &&
+		   !OwnerController->bShowMouseCursor && !OwnerController->IsMoveInputIgnored() && !OwnerController->IsLookInputIgnored() && IsValid(Widget) && !Widget->IsWidgetPresentationVisible();
 }
 
 bool AreAlarmedReentryRequestsRejected(const TSharedRef<FAlertPresentationAutomationState>& State)

@@ -16,7 +16,6 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryFrameWidget : public UHeistUserWidg
 	GENERATED_BODY()
 
   public:
-	UHeistInventoryFrameWidget(const FObjectInitializer& ObjectInitializer);
 	UUniformGridPanel* GetInventoryGrid() const;
 	UCanvasPanel* GetItemOverlay() const;
 

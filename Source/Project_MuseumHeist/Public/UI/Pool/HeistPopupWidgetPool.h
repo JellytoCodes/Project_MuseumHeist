@@ -10,13 +10,6 @@ class PROJECT_MUSEUMHEIST_API UHeistPopupWidgetPool : public UObject
 {
 	GENERATED_BODY()
 
-#pragma region Construction
-
-  public:
-	UHeistPopupWidgetPool(const FObjectInitializer& ObjectInitializer);
-
-#pragma endregion
-
 #pragma region Lifecycle
 
   public:

@@ -75,12 +75,9 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 	UFUNCTION(BlueprintPure, Category = "Heist|Forgery|Drawing")
 	float GetDrawingTimeRemainingSeconds() const;
 	bool RequestSubmitCollectedStrokes();
-	bool IsAlertWarningContractSatisfied() const;
-	void DebugDumpAlertWarningState() const;
 
   private:
 	void RefreshForgeryPresentation();
-	bool TryForceCloseForAlert();
 	void ApplyStateVisibility(UWidget* TargetWidget, bool bVisible) const;
 
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Heist|Forgery", meta = (AllowPrivateAccess = "true"))
@@ -103,8 +100,8 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 	bool BeginLocalStroke(const FVector2D& NormalizedPoint);
 	bool AppendLocalStrokePoint(const FVector2D& NormalizedPoint);
 	bool EraseLocalStrokeSegments(const FVector2D& NormalizedPoint);
-	bool BuildDrawableStrokePayload(TArray<FVector2D>& OutNormalizedPoints, TArray<int32>& OutStrokePointCounts, TArray<uint8>& OutStrokePaletteIndices,
-		TArray<uint8>& OutStrokeBrushPresetIndices, int32& OutIgnoredShortStrokeCount, int32 MaximumTransportPointCount = 0) const;
+	bool BuildDrawableStrokePayload(TArray<FVector2D>& OutNormalizedPoints, TArray<int32>& OutStrokePointCounts, TArray<uint8>& OutStrokePaletteIndices, TArray<uint8>& OutStrokeBrushPresetIndices,
+									int32& OutIgnoredShortStrokeCount, int32 MaximumTransportPointCount = 0) const;
 	bool EnsureDrawingRasterResources();
 	bool ApplyDrawingRasterToSurfaceWidget();
 	void ReleaseDrawingRasterResources();
@@ -156,7 +153,6 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 	int32 LastObservedStrokeValidationRevision = INDEX_NONE;
 	int32 RejectedLocalDrawingRevision = INDEX_NONE;
 	int32 LastDisplayedDrawingTimeSeconds = INDEX_NONE;
-	bool bAlertExitRequested = false;
 
 	UFUNCTION()
 	void HandlePaletteButton1Clicked();
@@ -200,7 +196,6 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 #pragma endregion
 
 #pragma region Presentation
-
 
   private:
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))

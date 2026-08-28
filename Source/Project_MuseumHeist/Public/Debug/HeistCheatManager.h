@@ -9,10 +9,6 @@ UCLASS()
 class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 {
 	GENERATED_BODY()
-
-  public:
-	UHeistCheatManager(const FObjectInitializer& ObjectInitializer);
-
 #pragma region FirstPersonScaleDebug
 
   public:
@@ -237,9 +233,8 @@ class PROJECT_MUSEUMHEIST_API UHeistCheatManager : public UCheatManager
 	void HeistResultSeed(bool bEscaped = true);
 
 	UFUNCTION(Exec)
-	void HeistContributionSeed(int32 SurfaceForgeries = 2, float BestSurfaceQuality = 75.0f, int32 Assemblies = 1, float BestAssemblyQuality = 80.0f,
-		int32 ArtifactsRecovered = 1, float CarryTimeSeconds = 12.0f, int32 SecuredLootValue = 500, int32 GuardsDistracted = 2,
-		int32 TeammatesRescued = 1, int32 AlarmsTriggered = 1);
+	void HeistContributionSeed(int32 SurfaceForgeries = 2, float BestSurfaceQuality = 75.0f, int32 Assemblies = 1, float BestAssemblyQuality = 80.0f, int32 ArtifactsRecovered = 1,
+							   float CarryTimeSeconds = 12.0f, int32 SecuredLootValue = 500, int32 GuardsDistracted = 2, int32 TeammatesRescued = 1, int32 AlarmsTriggered = 1);
 
 	UFUNCTION(Exec)
 	void HeistContributionDump();

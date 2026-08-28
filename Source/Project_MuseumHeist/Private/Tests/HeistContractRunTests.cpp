@@ -535,12 +535,6 @@ bool IsOwningPaintingCaseRelevant(const int32 PlayerId, const FName CaseId)
 	return IsValid(PlayerController) && IsValid(FindPaintingCase(PlayerController->GetWorld(), CaseId));
 }
 
-bool IsOwningObjectCaseRelevant(const int32 PlayerId, const FName CaseId)
-{
-	const AHeistPlayerController* PlayerController = GetOwningPlayerControllerById(PlayerId);
-	return IsValid(PlayerController) && IsValid(FindObjectCase(PlayerController->GetWorld(), CaseId));
-}
-
 bool TeleportServerPlayerIntoInteraction(const int32 PlayerId, AActor* TargetActor)
 {
 	AHeistPlayerCharacter* Character = GetServerCharacterById(PlayerId);
@@ -1831,7 +1825,7 @@ bool IsWeek7SurfaceDangerCloseReady(const int32 PlayerId)
 		return false;
 	}
 	const UHeistForgeryWidget* Widget = HUD->GetForgeryWidget();
-	return IsValid(Widget) && Widget->IsAlertWarningContractSatisfied();
+	return IsValid(Widget) && !Widget->IsWidgetPresentationVisible();
 }
 
 class FHeistContractRunWaitCommand final : public IAutomationLatentCommand

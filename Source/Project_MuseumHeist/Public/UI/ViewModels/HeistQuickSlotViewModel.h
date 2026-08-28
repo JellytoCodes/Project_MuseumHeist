@@ -43,13 +43,6 @@ class PROJECT_MUSEUMHEIST_API UHeistQuickSlotViewModel : public UMVVMViewModelBa
 {
 	GENERATED_BODY()
 
-#pragma region Construction
-
-  public:
-	UHeistQuickSlotViewModel(const FObjectInitializer& ObjectInitializer);
-
-#pragma endregion
-
 #pragma region Lifecycle
 
   protected:

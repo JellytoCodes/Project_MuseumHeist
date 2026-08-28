@@ -7,7 +7,6 @@
 #include "Components/CanvasPanelSlot.h"
 #include "Components/TextBlock.h"
 #include "Engine/Font.h"
-#include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerController.h"
 #include "GameFramework/GameStateBase.h"
 #include "InputCoreTypes.h"
@@ -34,9 +33,8 @@ FLinearColor ResolveQualityColor(const float Score, const float MinimumScore)
 
 FLinearColor ResolvePieceColor(const int32 CandidateIndex, const bool bPlaced)
 {
-	static const FLinearColor Colors[] = {
-		FLinearColor(0.21f, 0.50f, 0.78f), FLinearColor(0.72f, 0.38f, 0.18f), FLinearColor(0.34f, 0.64f, 0.42f),
-		FLinearColor(0.62f, 0.35f, 0.70f), FLinearColor(0.74f, 0.62f, 0.20f), FLinearColor(0.28f, 0.62f, 0.66f)};
+	static const FLinearColor Colors[] = {FLinearColor(0.21f, 0.50f, 0.78f), FLinearColor(0.72f, 0.38f, 0.18f), FLinearColor(0.34f, 0.64f, 0.42f),
+										  FLinearColor(0.62f, 0.35f, 0.70f), FLinearColor(0.74f, 0.62f, 0.20f), FLinearColor(0.28f, 0.62f, 0.66f)};
 	FLinearColor Result = Colors[FMath::Abs(CandidateIndex) % UE_ARRAY_COUNT(Colors)];
 	Result.A = bPlaced ? 1.0f : 0.78f;
 	return Result;
@@ -68,11 +66,6 @@ void UHeistObjectAssemblyWidget::NativeDestruct()
 void UHeistObjectAssemblyWidget::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
-	if (TryForceCloseForAlert())
-	{
-		return;
-	}
-
 	RefreshCountdownPresentation();
 	if (IsValid(ObjectAssemblyViewModel) && ObjectAssemblyViewModel->IsDataReady())
 	{
@@ -176,9 +169,8 @@ FReply UHeistObjectAssemblyWidget::NativeOnMouseMove(const FGeometry& InGeometry
 	const FVector2D TileSize = ResolvePartTileSize(DraggedPartId);
 	const FVector2D CanvasPoint = AssemblyCanvas->GetCachedGeometry().AbsoluteToLocal(InMouseEvent.GetScreenSpacePosition());
 	const FVector2D RequestedPosition = CanvasPoint + DragOffset;
-	SetPartTilePosition(DraggedPartId,
-		FVector2D(FMath::Clamp(RequestedPosition.X, 0.0, FMath::Max(0.0, CanvasSize.X - TileSize.X)),
-			FMath::Clamp(RequestedPosition.Y, 0.0, FMath::Max(0.0, CanvasSize.Y - TileSize.Y))));
+	SetPartTilePosition(DraggedPartId, FVector2D(FMath::Clamp(RequestedPosition.X, 0.0, FMath::Max(0.0, CanvasSize.X - TileSize.X)),
+												 FMath::Clamp(RequestedPosition.Y, 0.0, FMath::Max(0.0, CanvasSize.Y - TileSize.Y))));
 	return FReply::Handled();
 }
 
@@ -224,7 +216,7 @@ void UHeistObjectAssemblyWidget::SetupObjectAssemblyWidget(UHeistObjectAssemblyV
 bool UHeistObjectAssemblyWidget::IsOwnerOnlyContractSatisfied() const
 {
 	return IsValid(ObjectAssemblyViewModel) && IsValid(PlayerController) && PlayerController == GetOwningPlayer() && PlayerController->IsLocalController() &&
-		ObjectAssemblyViewModel->IsOwnerOnlyContractSatisfied();
+		   ObjectAssemblyViewModel->IsOwnerOnlyContractSatisfied();
 }
 
 bool UHeistObjectAssemblyWidget::IsWidgetPresentationVisible() const
@@ -234,8 +226,7 @@ bool UHeistObjectAssemblyWidget::IsWidgetPresentationVisible() const
 
 bool UHeistObjectAssemblyWidget::IsCanvasReady() const
 {
-	return IsValid(AssemblyCanvas) && IsValid(ObjectAssemblyViewModel) && ObjectAssemblyViewModel->IsDataReady() &&
-		PartTiles.Num() == ObjectAssemblyViewModel->GetCandidatePartCount();
+	return IsValid(AssemblyCanvas) && IsValid(ObjectAssemblyViewModel) && ObjectAssemblyViewModel->IsDataReady() && PartTiles.Num() == ObjectAssemblyViewModel->GetCandidatePartCount();
 }
 
 int32 UHeistObjectAssemblyWidget::GetPartTileCount() const
@@ -262,7 +253,6 @@ void UHeistObjectAssemblyWidget::RefreshObjectAssemblyPresentation()
 	const bool bVisible = IsValid(ObjectAssemblyViewModel) && ObjectAssemblyViewModel->IsPresentationVisible();
 	if (!bVisible)
 	{
-		bAlertExitRequested = false;
 		DraggedPartId = NAME_None;
 		ClearPartTiles();
 		SetVisibility(ESlateVisibility::Collapsed);
@@ -270,32 +260,25 @@ void UHeistObjectAssemblyWidget::RefreshObjectAssemblyPresentation()
 		BP_RefreshObjectAssemblyPresentation(false, false, 0, 0);
 		return;
 	}
-	if (TryForceCloseForAlert())
-	{
-		return;
-	}
-
 	const bool bDataReady = ObjectAssemblyViewModel->IsDataReady();
 	SetVisibility(ESlateVisibility::Visible);
 	ApplyText(TitleText, NSLOCTEXT("HeistCommonForgeryUI", "AssemblyTitle", "조각 조립"));
 
 	const float MinimumScore = ObjectAssemblyViewModel->GetMinimumAcceptedQualityScore();
-	const FText PreviewQualityText = ObjectAssemblyViewModel->HasPreviewQuality()
-		? FText::Format(NSLOCTEXT("HeistCommonForgeryUI", "ExpectedScore", "예상 품질  {0}/100  ·  제출 가능 {1}+"),
-			FText::AsNumber(FMath::RoundToInt(ObjectAssemblyViewModel->GetPreviewQualityScore())), FText::AsNumber(FMath::RoundToInt(MinimumScore)))
-		: FText::Format(NSLOCTEXT("HeistCommonForgeryUI", "ExpectedScoreUnavailable", "예상 품질  --/100  ·  제출 가능 {0}+"),
-			FText::AsNumber(FMath::RoundToInt(MinimumScore)));
+	const FText PreviewQualityText =
+		ObjectAssemblyViewModel->HasPreviewQuality()
+			? FText::Format(NSLOCTEXT("HeistCommonForgeryUI", "ExpectedScore", "예상 품질  {0}/100  ·  제출 가능 {1}+"),
+							FText::AsNumber(FMath::RoundToInt(ObjectAssemblyViewModel->GetPreviewQualityScore())), FText::AsNumber(FMath::RoundToInt(MinimumScore)))
+			: FText::Format(NSLOCTEXT("HeistCommonForgeryUI", "ExpectedScoreUnavailable", "예상 품질  --/100  ·  제출 가능 {0}+"), FText::AsNumber(FMath::RoundToInt(MinimumScore)));
 	ApplyText(PreviewScoreText, PreviewQualityText);
 	if (IsValid(PreviewScoreText))
 	{
-		PreviewScoreText->SetColorAndOpacity(ObjectAssemblyViewModel->HasPreviewQuality()
-			? ResolveQualityColor(ObjectAssemblyViewModel->GetPreviewQualityScore(), MinimumScore)
-			: FLinearColor(0.72f, 0.76f, 0.82f));
+		PreviewScoreText->SetColorAndOpacity(ObjectAssemblyViewModel->HasPreviewQuality() ? ResolveQualityColor(ObjectAssemblyViewModel->GetPreviewQualityScore(), MinimumScore)
+																						  : FLinearColor(0.72f, 0.76f, 0.82f));
 	}
 	ApplyText(SubmitButtonLabel, NSLOCTEXT("HeistCommonForgeryUI", "SubmitButton", "제출"));
 	ApplyText(CancelButtonLabel, NSLOCTEXT("HeistCommonForgeryUI", "CancelButton", "취소"));
-	ApplyText(FooterHint, NSLOCTEXT("HeistObjectAssembly", "FooterHint",
-		"좌클릭 드래그 배치  |  휠 회전  |  우클릭 제거  |  R 초기화  |  Enter 제출  |  Esc 취소  |  주변 소리와 팀 음성 유지"));
+	ApplyText(FooterHint, NSLOCTEXT("HeistObjectAssembly", "FooterHint", "좌클릭 드래그 배치  |  휠 회전  |  우클릭 제거  |  R 초기화  |  Enter 제출  |  Esc 취소  |  주변 소리와 팀 음성 유지"));
 
 	if (IsValid(SubmitButton))
 	{
@@ -322,48 +305,15 @@ void UHeistObjectAssemblyWidget::RefreshCountdownPresentation()
 	const AGameStateBase* GameState = GetWorld() ? GetWorld()->GetGameState<AGameStateBase>() : nullptr;
 	const bool bHasAuthoritativeTime = IsValid(GameState) && ObjectAssemblyViewModel->GetSessionEndServerTime() > 0.0f;
 	const float ServerWorldTime = bHasAuthoritativeTime ? static_cast<float>(GameState->GetServerWorldTimeSeconds()) : 0.0f;
-	const int32 RemainingSeconds = bHasAuthoritativeTime
-		? FMath::Max(0, FMath::CeilToInt(ObjectAssemblyViewModel->GetSessionEndServerTime() - ServerWorldTime))
-		: INDEX_NONE;
+	const int32 RemainingSeconds = bHasAuthoritativeTime ? FMath::Max(0, FMath::CeilToInt(ObjectAssemblyViewModel->GetSessionEndServerTime() - ServerWorldTime)) : INDEX_NONE;
 	if (RemainingSeconds == LastDisplayedAssemblyTimeSeconds)
 	{
 		return;
 	}
 
 	LastDisplayedAssemblyTimeSeconds = RemainingSeconds;
-	const FText TimeText = RemainingSeconds == INDEX_NONE
-		? FText::FromString(TEXT("--:--"))
-		: FText::FromString(FString::Printf(TEXT("%02d:%02d"), RemainingSeconds / 60, RemainingSeconds % 60));
+	const FText TimeText = RemainingSeconds == INDEX_NONE ? FText::FromString(TEXT("--:--")) : FText::FromString(FString::Printf(TEXT("%02d:%02d"), RemainingSeconds / 60, RemainingSeconds % 60));
 	ApplyText(AssemblyTimeRemainingText, FText::Format(NSLOCTEXT("HeistCommonForgeryUI", "TimeRemaining", "남은 시간  {0}"), TimeText));
-}
-
-bool UHeistObjectAssemblyWidget::TryForceCloseForAlert()
-{
-	const bool bShouldClose = IsValid(ObjectAssemblyViewModel) && ObjectAssemblyViewModel->IsPresentationVisible() && ObjectAssemblyViewModel->IsDangerWarningVisible();
-	if (!bShouldClose || bAlertExitRequested)
-	{
-		return bShouldClose;
-	}
-
-	bAlertExitRequested = true;
-	DraggedPartId = NAME_None;
-	SetVisibility(ESlateVisibility::Collapsed);
-	if (IsValid(PlayerController))
-	{
-		PlayerController->RestoreGameplayInputAfterForcedForgeryClose();
-	}
-	UE_LOG(LogHeistUI, Log, TEXT("[%s] Object assembly screen force-closed: AlertLevel=%s ServerCleanupExpected=true"), *GetName(),
-		*UEnum::GetValueAsString(ObjectAssemblyViewModel->GetAlertLevel()));
-	return true;
-}
-
-bool UHeistObjectAssemblyWidget::IsAlertWarningContractSatisfied() const
-{
-	if (!IsValid(ObjectAssemblyViewModel))
-	{
-		return false;
-	}
-	return !ObjectAssemblyViewModel->IsDangerWarningVisible() || (bAlertExitRequested && !IsWidgetPresentationVisible());
 }
 
 void UHeistObjectAssemblyWidget::RebuildPartTiles()
@@ -382,10 +332,8 @@ void UHeistObjectAssemblyWidget::RebuildPartTiles()
 	for (int32 CandidateIndex = 0; CandidateIndex < CandidatePartIds.Num(); ++CandidateIndex)
 	{
 		const FName PartId = CandidatePartIds[CandidateIndex];
-		UBorder* PartTile = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(),
-			FName(*FString::Printf(TEXT("AssemblyPiece_%s"), *PartId.ToString())));
-		UTextBlock* PartLabel = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),
-			FName(*FString::Printf(TEXT("AssemblyPieceLabel_%s"), *PartId.ToString())));
+		UBorder* PartTile = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), FName(*FString::Printf(TEXT("AssemblyPiece_%s"), *PartId.ToString())));
+		UTextBlock* PartLabel = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), FName(*FString::Printf(TEXT("AssemblyPieceLabel_%s"), *PartId.ToString())));
 		if (!IsValid(PartTile) || !IsValid(PartLabel))
 		{
 			continue;
@@ -465,8 +413,7 @@ void UHeistObjectAssemblyWidget::RefreshPartTilePresentation()
 				if (Entry.PartId == PartId)
 				{
 					const FVector2D Anchor = ResolveSocketAnchorNormalized(Entry.SocketId);
-					Position = FVector2D(Anchor.X * CanvasSize.X - TileSize.X * 0.5,
-						Anchor.Y * (CanvasSize.Y * AssemblyWorkAreaRatio) - TileSize.Y * 0.5);
+					Position = FVector2D(Anchor.X * CanvasSize.X - TileSize.X * 0.5, Anchor.Y * (CanvasSize.Y * AssemblyWorkAreaRatio) - TileSize.Y * 0.5);
 					break;
 				}
 			}
@@ -497,8 +444,7 @@ FName UHeistObjectAssemblyWidget::ResolveClosestCompatibleSocket(const FName Par
 
 	const FVector2D CanvasSize = GetAssemblyCanvasSize();
 	const FVector2D WorkSize(CanvasSize.X, CanvasSize.Y * AssemblyWorkAreaRatio);
-	const FVector2D NormalizedPoint(FMath::Clamp(CanvasPoint.X / FMath::Max(1.0, WorkSize.X), 0.0, 1.0),
-		FMath::Clamp(CanvasPoint.Y / FMath::Max(1.0, WorkSize.Y), 0.0, 1.0));
+	const FVector2D NormalizedPoint(FMath::Clamp(CanvasPoint.X / FMath::Max(1.0, WorkSize.X), 0.0, 1.0), FMath::Clamp(CanvasPoint.Y / FMath::Max(1.0, WorkSize.Y), 0.0, 1.0));
 	FName ClosestSocketId = NAME_None;
 	double ClosestDistanceSquared = TNumericLimits<double>::Max();
 	for (const FName SocketId : ObjectAssemblyViewModel->GetCompatibleSocketIds(PartId))
@@ -548,8 +494,7 @@ FVector2D UHeistObjectAssemblyWidget::ResolveSocketAnchorNormalized(const FName 
 FVector2D UHeistObjectAssemblyWidget::ResolvePartTileSize(const FName PartId) const
 {
 	const FString PartName = PartId.ToString();
-	if (PartName.Contains(TEXT("Arm"), ESearchCase::IgnoreCase) || PartName.Contains(TEXT("Handle"), ESearchCase::IgnoreCase) ||
-		PartName.Contains(TEXT("Spout"), ESearchCase::IgnoreCase))
+	if (PartName.Contains(TEXT("Arm"), ESearchCase::IgnoreCase) || PartName.Contains(TEXT("Handle"), ESearchCase::IgnoreCase) || PartName.Contains(TEXT("Spout"), ESearchCase::IgnoreCase))
 	{
 		return FVector2D(118.0, 54.0);
 	}
@@ -557,8 +502,7 @@ FVector2D UHeistObjectAssemblyWidget::ResolvePartTileSize(const FName PartId) co
 	{
 		return FVector2D(140.0, 60.0);
 	}
-	if (PartName.Contains(TEXT("Head"), ESearchCase::IgnoreCase) || PartName.Contains(TEXT("Lid"), ESearchCase::IgnoreCase) ||
-		PartName.Contains(TEXT("Crest"), ESearchCase::IgnoreCase))
+	if (PartName.Contains(TEXT("Head"), ESearchCase::IgnoreCase) || PartName.Contains(TEXT("Lid"), ESearchCase::IgnoreCase) || PartName.Contains(TEXT("Crest"), ESearchCase::IgnoreCase))
 	{
 		return FVector2D(78.0, 78.0);
 	}
@@ -572,8 +516,7 @@ FVector2D UHeistObjectAssemblyWidget::ResolveTrayPosition(const int32 CandidateI
 	const int32 Column = CandidateIndex % ColumnCount;
 	const double RowWidth = FMath::Min(ColumnCount, FMath::Max(1, ObjectAssemblyViewModel->GetCandidatePartCount() - Row * ColumnCount)) * TrayCellWidth;
 	const double StartX = FMath::Max(12.0, (CanvasSize.X - RowWidth) * 0.5);
-	return FVector2D(StartX + Column * TrayCellWidth + (TrayCellWidth - TileSize.X) * 0.5,
-		CanvasSize.Y * AssemblyWorkAreaRatio + 10.0 + Row * TrayCellHeight + (TrayCellHeight - TileSize.Y) * 0.5);
+	return FVector2D(StartX + Column * TrayCellWidth + (TrayCellWidth - TileSize.X) * 0.5, CanvasSize.Y * AssemblyWorkAreaRatio + 10.0 + Row * TrayCellHeight + (TrayCellHeight - TileSize.Y) * 0.5);
 }
 
 FVector2D UHeistObjectAssemblyWidget::GetAssemblyCanvasSize() const

@@ -20,10 +20,6 @@
 #include "View/MVVMView.h"
 #include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 
-UHeistInventoryWidget::UHeistInventoryWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
-{
-}
-
 void UHeistInventoryWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
@@ -349,8 +345,8 @@ void UHeistInventoryWidget::RefreshItemOverlayLayout()
 			continue;
 		}
 
-		const FHeistInventoryItem* ConfirmedItem = ConfirmedInventoryItems.FindByPredicate(
-			[ItemWidget](const FHeistInventoryItem& InventoryItem) { return InventoryItem.InstanceId == ItemWidget->GetInstanceId(); });
+		const FHeistInventoryItem* ConfirmedItem =
+			ConfirmedInventoryItems.FindByPredicate([ItemWidget](const FHeistInventoryItem& InventoryItem) { return InventoryItem.InstanceId == ItemWidget->GetInstanceId(); });
 		UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(ItemWidget->Slot);
 		if (ConfirmedItem == nullptr || !IsValid(CanvasSlot))
 		{

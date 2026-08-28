@@ -5,10 +5,6 @@
 #include "UI/DragDrop/HeistInventoryDragDropOperation.h"
 #include "UI/Widgets/HeistInventoryWidget.h"
 
-UHeistInventorySlotWidget::UHeistInventorySlotWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
-{
-}
-
 void UHeistInventorySlotWidget::SetupSlot(const FIntPoint& InGridCoordinate, const bool bInOccupied, UHeistInventoryWidget* InInventoryWidget)
 {
 	GridCoordinate = InGridCoordinate;
@@ -71,8 +67,7 @@ void UHeistInventorySlotWidget::RefreshPresentation()
 {
 	if (IsValid(CoordinateText))
 	{
-		CoordinateText->SetText(FText::Format(NSLOCTEXT("HeistInventory", "SlotCoordinateFormat", "가방 칸 {0}, {1}"),
-											 FText::AsNumber(GridCoordinate.X), FText::AsNumber(GridCoordinate.Y)));
+		CoordinateText->SetText(FText::Format(NSLOCTEXT("HeistInventory", "SlotCoordinateFormat", "가방 칸 {0}, {1}"), FText::AsNumber(GridCoordinate.X), FText::AsNumber(GridCoordinate.Y)));
 	}
 
 	if (IsValid(OccupancyText))

@@ -47,7 +47,6 @@ class PROJECT_MUSEUMHEIST_API UHeistObjectAssemblyWidget : public UHeistUserWidg
 	void SetupObjectAssemblyWidget(UHeistObjectAssemblyViewModel* InObjectAssemblyViewModel, AHeistPlayerController* InPlayerController);
 	bool IsOwnerOnlyContractSatisfied() const;
 	bool IsWidgetPresentationVisible() const;
-	bool IsAlertWarningContractSatisfied() const;
 	bool IsCanvasReady() const;
 	int32 GetPartTileCount() const;
 
@@ -55,7 +54,6 @@ class PROJECT_MUSEUMHEIST_API UHeistObjectAssemblyWidget : public UHeistUserWidg
 	void BindActionButtons();
 	void RefreshObjectAssemblyPresentation();
 	void RefreshCountdownPresentation();
-	bool TryForceCloseForAlert();
 	void RebuildPartTiles();
 	void ClearPartTiles();
 	void RefreshPartTilePresentation();
@@ -81,7 +79,6 @@ class PROJECT_MUSEUMHEIST_API UHeistObjectAssemblyWidget : public UHeistUserWidg
 	int32 DisplayedSessionRevision = INDEX_NONE;
 	int32 DisplayedPreviewRevision = INDEX_NONE;
 	int32 LastDisplayedAssemblyTimeSeconds = INDEX_NONE;
-	bool bAlertExitRequested = false;
 
   protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|Object Assembly", meta = (DisplayName = "Object Assembly Sources Ready"))

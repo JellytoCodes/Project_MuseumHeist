@@ -2,7 +2,6 @@
 
 #include "Character/Components/HeistObjectAssemblyComponent.h"
 #include "Character/HeistPlayerCharacter.h"
-#include "Core/HeistGameState.h"
 #include "Core/HeistPlayerController.h"
 #include "Data/HeistGameBalanceDataAsset.h"
 #include "Engine/DataTable.h"
@@ -20,32 +19,10 @@ int32 WrapSelectionIndex(const int32 CurrentIndex, const int32 Delta, const int3
 	const int32 SafeCurrentIndex = FMath::Clamp(CurrentIndex, 0, Count - 1);
 	return (SafeCurrentIndex + Delta % Count + Count) % Count;
 }
-
-FLinearColor ResolveAssemblyAlertColor(const EHeistAlertLevel AlertLevel)
-{
-	switch (AlertLevel)
-	{
-	case EHeistAlertLevel::Suspicious:
-		return FLinearColor(1.0f, 0.68f, 0.12f);
-	case EHeistAlertLevel::Searching:
-		return FLinearColor(1.0f, 0.30f, 0.05f);
-	case EHeistAlertLevel::Alarmed:
-		return FLinearColor(1.0f, 0.04f, 0.02f);
-	case EHeistAlertLevel::Lockdown:
-		return FLinearColor(0.72f, 0.0f, 0.0f);
-	case EHeistAlertLevel::Quiet:
-	default:
-		return FLinearColor::White;
-	}
-}
 }
 
 void UHeistObjectAssemblyViewModel::BeginDestroy()
 {
-	if (IsValid(GameState))
-	{
-		GameState->GetAlertStateChangedDelegate().RemoveAll(this);
-	}
 	if (IsValid(ObjectAssemblyComponent))
 	{
 		ObjectAssemblyComponent->GetSessionStateChangedDelegate().RemoveAll(this);
@@ -54,27 +31,16 @@ void UHeistObjectAssemblyViewModel::BeginDestroy()
 	Super::BeginDestroy();
 }
 
-void UHeistObjectAssemblyViewModel::SetupViewModel(AHeistGameState* InGameState, UHeistObjectAssemblyComponent* InObjectAssemblyComponent,
-												   AHeistPlayerController* InPlayerController)
+void UHeistObjectAssemblyViewModel::SetupViewModel(UHeistObjectAssemblyComponent* InObjectAssemblyComponent, AHeistPlayerController* InPlayerController)
 {
-	if (GameState != InGameState && IsValid(GameState))
-	{
-		GameState->GetAlertStateChangedDelegate().RemoveAll(this);
-	}
 	if (ObjectAssemblyComponent != InObjectAssemblyComponent && IsValid(ObjectAssemblyComponent))
 	{
 		ObjectAssemblyComponent->GetSessionStateChangedDelegate().RemoveAll(this);
 	}
 
-	GameState = InGameState;
 	ObjectAssemblyComponent = InObjectAssemblyComponent;
 	PlayerController = InPlayerController;
 
-	if (IsValid(GameState))
-	{
-		GameState->GetAlertStateChangedDelegate().RemoveAll(this);
-		GameState->GetAlertStateChangedDelegate().AddUObject(this, &UHeistObjectAssemblyViewModel::HandleAlertStateChanged);
-	}
 	if (IsValid(ObjectAssemblyComponent))
 	{
 		ObjectAssemblyComponent->GetSessionStateChangedDelegate().RemoveAll(this);
@@ -128,7 +94,6 @@ void UHeistObjectAssemblyViewModel::RefreshPresentationState()
 	}
 
 	RefreshSelectionPresentation();
-	RefreshAlertPresentation();
 	PresentationChangedDelegate.Broadcast();
 }
 
@@ -140,12 +105,6 @@ FHeistObjectAssemblyPresentationChanged& UHeistObjectAssemblyViewModel::GetPrese
 void UHeistObjectAssemblyViewModel::HandleAssemblySessionStateChanged()
 {
 	RefreshPresentationState();
-}
-
-void UHeistObjectAssemblyViewModel::HandleAlertStateChanged(const EHeistAlertLevel, const EHeistAlertLevel, const int32, const FName)
-{
-	RefreshAlertPresentation();
-	PresentationChangedDelegate.Broadcast();
 }
 
 bool UHeistObjectAssemblyViewModel::LoadActiveTemplateData()
@@ -296,19 +255,6 @@ void UHeistObjectAssemblyViewModel::RefreshQualityPreview()
 	bHasPreviewQuality = bDataReady && !LocalAssemblyEntries.IsEmpty() &&
 		UHeistObjectAssemblyComponent::CalculateQualityPreview(ActiveTemplate, GetActiveArtifactId(), LocalAssemblyEntries, PreviewResult);
 	PreviewQualityScore = bHasPreviewQuality ? PreviewResult.QualityScore : 0.0f;
-}
-
-void UHeistObjectAssemblyViewModel::RefreshAlertPresentation()
-{
-	const EHeistAlertLevel NewAlertLevel = IsValid(GameState) ? GameState->GetAlertLevel() : EHeistAlertLevel::Quiet;
-	const bool bShowWarning = false;
-	const FText NewWarningText = FText::GetEmpty();
-	UE_MVVM_SET_PROPERTY_VALUE(AlertLevel, NewAlertLevel);
-	UE_MVVM_SET_PROPERTY_VALUE(bDangerWarningVisible, bShowWarning);
-	UE_MVVM_SET_PROPERTY_VALUE(DangerWarningText, NewWarningText);
-	UE_MVVM_SET_PROPERTY_VALUE(DangerWarningColor, ResolveAssemblyAlertColor(NewAlertLevel));
-	UE_MVVM_SET_PROPERTY_VALUE(bLockdownCountdownVisible, false);
-	UE_MVVM_SET_PROPERTY_VALUE(LockdownCountdownEndServerTime, 0.0f);
 }
 
 void UHeistObjectAssemblyViewModel::SetStatusMessage(const FText& NewStatusText)
@@ -842,34 +788,4 @@ const FText& UHeistObjectAssemblyViewModel::GetPlacementProgressText() const
 const FText& UHeistObjectAssemblyViewModel::GetStatusText() const
 {
 	return StatusText;
-}
-
-EHeistAlertLevel UHeistObjectAssemblyViewModel::GetAlertLevel() const
-{
-	return AlertLevel;
-}
-
-bool UHeistObjectAssemblyViewModel::IsDangerWarningVisible() const
-{
-	return bDangerWarningVisible;
-}
-
-const FText& UHeistObjectAssemblyViewModel::GetDangerWarningText() const
-{
-	return DangerWarningText;
-}
-
-FLinearColor UHeistObjectAssemblyViewModel::GetDangerWarningColor() const
-{
-	return DangerWarningColor;
-}
-
-bool UHeistObjectAssemblyViewModel::IsLockdownCountdownVisible() const
-{
-	return bLockdownCountdownVisible;
-}
-
-float UHeistObjectAssemblyViewModel::GetLockdownCountdownEndServerTime() const
-{
-	return LockdownCountdownEndServerTime;
 }

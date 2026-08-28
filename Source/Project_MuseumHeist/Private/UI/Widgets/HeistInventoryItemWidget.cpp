@@ -7,10 +7,6 @@
 #include "UI/DragDrop/HeistInventoryDragDropOperation.h"
 #include "UI/Widgets/HeistInventoryWidget.h"
 
-UHeistInventoryItemWidget::UHeistInventoryItemWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
-{
-}
-
 void UHeistInventoryItemWidget::SetupItem(const FHeistInventoryItem& InConfirmedItem, UTexture2D* InIcon, UHeistInventoryWidget* InInventoryWidget)
 {
 	ConfirmedItem = InConfirmedItem;

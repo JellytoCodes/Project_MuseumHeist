@@ -37,13 +37,6 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
 {
 	GENERATED_BODY()
 
-#pragma region Construction
-
-  public:
-	UHeistHUDViewModel(const FObjectInitializer& ObjectInitializer);
-
-#pragma endregion
-
 #pragma region Lifecycle
 
   protected:
@@ -116,8 +109,6 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
 	int32 GetSecurityLevel() const;
 	const FText& GetAlertBannerText() const;
 	FLinearColor GetAlertColor() const;
-	bool IsLockdownCountdownVisible() const;
-	float GetLockdownCountdownEndServerTime() const;
 	bool IsSuspenseMusicActive() const;
 	bool IsAlarmMusicActive() const;
 	const TArray<FHeistCrewStatusEntry>& GetCrewStatusEntries() const;
@@ -204,12 +195,6 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
 	FLinearColor AlertColor = FLinearColor(0.45f, 0.58f, 0.70f);
 
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
-	bool bLockdownCountdownVisible = false;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
-	float LockdownCountdownEndServerTime = 0.0f;
-
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Audio", meta = (AllowPrivateAccess = "true"))
 	bool bSuspenseMusicActive = false;
 
@@ -222,5 +207,4 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
 	TArray<TWeakObjectPtr<AHeistPlayerState>> BoundCrewPlayerStates;
 
 #pragma endregion
-
 };

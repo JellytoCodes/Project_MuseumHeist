@@ -4451,20 +4451,44 @@ void UHeistDebugFunctionLibrary::DebugAlertDump(APlayerController* PlayerControl
 	}
 
 	const EHeistAlertLevel AlertLevel = HeistGameState->GetAlertLevel();
-	const bool bTransitionExpected = AlertLevel == EHeistAlertLevel::Suspicious || AlertLevel == EHeistAlertLevel::Searching || AlertLevel == EHeistAlertLevel::Alarmed;
-	const bool bSnapshotValid = bTransitionExpected ? HeistGameState->GetAlertNextTransitionServerTime() > 0.0f : HeistGameState->GetAlertNextTransitionServerTime() <= 0.0f;
+	const float AlertMeterValue = HeistGameState->GetAlertMeterValue();
+	const UEnum* AlertLevelEnum = StaticEnum<EHeistAlertLevel>();
+	const UHeistGameBalanceDataAsset* BalanceData = GetDefault<UHeistGameBalanceDataAsset>();
+	EHeistAlertLevel ExpectedAlertLevel = EHeistAlertLevel::Quiet;
+	if (IsValid(BalanceData) && AlertMeterValue > KINDA_SMALL_NUMBER)
+	{
+		if (AlertMeterValue >= BalanceData->LockdownAlertMeterThreshold)
+		{
+			ExpectedAlertLevel = EHeistAlertLevel::Lockdown;
+		}
+		else if (AlertMeterValue >= BalanceData->AlarmedAlertMeterThreshold)
+		{
+			ExpectedAlertLevel = EHeistAlertLevel::Alarmed;
+		}
+		else if (AlertMeterValue >= BalanceData->SearchingAlertMeterThreshold)
+		{
+			ExpectedAlertLevel = EHeistAlertLevel::Searching;
+		}
+		else
+		{
+			ExpectedAlertLevel = EHeistAlertLevel::Suspicious;
+		}
+	}
+
+	const bool bMatchSnapshotExpected = HeistGameState->GetMatchPhase() == EHeistMatchPhase::InGame || HeistGameState->GetMatchPhase() == EHeistMatchPhase::End;
+	const bool bMetadataValid = !bMatchSnapshotExpected || (HeistGameState->GetAlertRevision() > 0 && !HeistGameState->GetLastAlertTriggerId().IsNone());
+	const bool bSnapshotValid = IsValid(BalanceData) && FMath::IsFinite(AlertMeterValue) && FMath::IsWithinInclusive(AlertMeterValue, 0.0f, BalanceData->AlertMeterMaximum) &&
+								IsValid(AlertLevelEnum) && AlertLevelEnum->IsValidEnumValue(static_cast<int64>(AlertLevel)) && AlertLevel == ExpectedAlertLevel && bMetadataValid;
 	const bool bAuthority = PlayerController->HasAuthority();
-	const bool bTimerValid = !bAuthority || !bTransitionExpected || (IsValid(HeistGameMode) && HeistGameMode->IsAlertTransitionTimerActive());
-	const bool bPassed = bSnapshotValid && bTimerValid;
+	const bool bImmediateLockdownValid =
+		AlertLevel != EHeistAlertLevel::Lockdown || (IsValid(BalanceData) && FMath::IsNearlyEqual(AlertMeterValue, BalanceData->AlertMeterMaximum) && HeistGameState->AreWorldInteractionsRestricted());
+	const bool bPassed = bSnapshotValid && bImmediateLockdownValid;
 	Message(
 		PlayerController,
-		FString::Printf(
-			TEXT(
-				"Global alert dump: Level=%s NextTransitionServerTime=%.2f Remaining=%.2f Revision=%d LastTrigger=%s TimerActive=%s ProcessedTriggers=%d Chain=Quiet>Suspicious>Searching>Alarmed>Lockdown Snapshot=%s Authority=%s Result=%s"),
-			*UEnum::GetValueAsString(AlertLevel), HeistGameState->GetAlertNextTransitionServerTime(), HeistGameState->GetAlertTransitionRemainingSeconds(), HeistGameState->GetAlertRevision(),
-			*HeistGameState->GetLastAlertTriggerId().ToString(), IsValid(HeistGameMode) && HeistGameMode->IsAlertTransitionTimerActive() ? TEXT("true") : TEXT("false"),
-			IsValid(HeistGameMode) ? HeistGameMode->GetProcessedAlertTriggerCount() : INDEX_NONE, bSnapshotValid ? TEXT("PASS") : TEXT("FAIL"), bAuthority ? TEXT("true") : TEXT("false"),
-			bPassed ? TEXT("PASS") : TEXT("FAIL")),
+		FString::Printf(TEXT("Global alert dump: Level=%s Meter=%.1f Revision=%d LastTrigger=%s ProcessedTriggers=%d TimedEscalation=false ImmediateLockdown=%s Snapshot=%s Authority=%s Result=%s"),
+						*UEnum::GetValueAsString(AlertLevel), AlertMeterValue, HeistGameState->GetAlertRevision(), *HeistGameState->GetLastAlertTriggerId().ToString(),
+						IsValid(HeistGameMode) ? HeistGameMode->GetProcessedAlertTriggerCount() : INDEX_NONE, bImmediateLockdownValid ? TEXT("PASS") : TEXT("FAIL"),
+						bSnapshotValid ? TEXT("PASS") : TEXT("FAIL"), bAuthority ? TEXT("true") : TEXT("false"), bPassed ? TEXT("PASS") : TEXT("FAIL")),
 		bPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning, true, 15.0f);
 
 	AHeistHUD* HeistHUD = Cast<AHeistHUD>(PlayerController->GetHUD());
@@ -4474,7 +4498,6 @@ void UHeistDebugFunctionLibrary::DebugAlertDump(APlayerController* PlayerControl
 	}
 
 	UHeistHUDWidget* HUDWidget = IsValid(HeistHUD) ? HeistHUD->GetMainHUDWidget() : nullptr;
-	UHeistForgeryWidget* ForgeryWidget = IsValid(HeistHUD) ? HeistHUD->GetForgeryWidget() : nullptr;
 	if (IsValid(HUDWidget))
 	{
 		HUDWidget->DebugDumpAlertPresentationState();
@@ -4482,15 +4505,6 @@ void UHeistDebugFunctionLibrary::DebugAlertDump(APlayerController* PlayerControl
 	else
 	{
 		Message(PlayerController, TEXT("Alert HUD presentation: Result=FAIL Reason=MissingHUDWidget"), EHeistDebugLevel::Warning, true);
-	}
-
-	if (IsValid(ForgeryWidget))
-	{
-		ForgeryWidget->DebugDumpAlertWarningState();
-	}
-	else
-	{
-		Message(PlayerController, TEXT("Forgery alert close: Result=FAIL Reason=MissingForgeryWidget"), EHeistDebugLevel::Warning, true);
 	}
 #endif
 }
@@ -4562,23 +4576,19 @@ void UHeistDebugFunctionLibrary::DebugLockdownDump(APlayerController* PlayerCont
 	}
 
 	const EHeistAlertLevel AlertLevel = HeistGameState->GetAlertLevel();
-	const bool bCountdownActive = HeistGameState->IsLockdownCountdownActive();
 	const bool bWorldRestricted = HeistGameState->AreWorldInteractionsRestricted();
-	const bool bAlarmedStateValid = AlertLevel == EHeistAlertLevel::Alarmed && bCountdownActive && !bWorldRestricted && HeistGameState->GetMatchPhase() == EHeistMatchPhase::InGame &&
-		HeistGameState->GetObjectiveState() != EHeistObjectiveState::Failed;
-	const bool bLockdownStateValid =
-		AlertLevel == EHeistAlertLevel::Lockdown && !bCountdownActive && bWorldRestricted && HeistGameState->GetMatchPhase() == EHeistMatchPhase::End &&
-		HeistGameState->GetObjectiveState() == EHeistObjectiveState::Failed && PlayerCount > 0 && ActiveActionCount == 0 && ActiveForgeryCount == 0 && OpenInventoryCount == 0 &&
-		MovementEnabledCount == 0 && !HeistGameState->IsEscapePhaseOpen() && VentCount > 0 && ActiveVentCount == 0 && AvailableInteractionCount == 0;
-	const bool bPassed = PlayerController->HasAuthority() && (bAlarmedStateValid || bLockdownStateValid);
+	const bool bLockdownStateValid = AlertLevel == EHeistAlertLevel::Lockdown && bWorldRestricted && HeistGameState->GetMatchPhase() == EHeistMatchPhase::End &&
+									 HeistGameState->GetObjectiveState() == EHeistObjectiveState::Failed && PlayerCount > 0 && ActiveActionCount == 0 && ActiveForgeryCount == 0 &&
+									 OpenInventoryCount == 0 && MovementEnabledCount == 0 && !HeistGameState->IsEscapePhaseOpen() && VentCount > 0 && ActiveVentCount == 0 &&
+									 AvailableInteractionCount == 0;
+	const bool bPassed = PlayerController->HasAuthority() && bLockdownStateValid;
 
 	Message(
 		PlayerController,
 		FString::Printf(
 			TEXT(
-				"Lockdown dump: Alert=%s CountdownActive=%s Remaining=%.2f LockdownActive=%s WorldRestricted=%s MatchPhase=%s Objective=%s EscapeOpen=%s Players=%d ActiveActions=%d ActiveForgeries=%d OpenInventories=%d MovementEnabled=%d Vents=%d ActiveVents=%d Interactables=%d AvailableInteractions=%d Authority=%s Result=%s"),
-			*UEnum::GetValueAsString(AlertLevel), bCountdownActive ? TEXT("true") : TEXT("false"), HeistGameState->GetLockdownCountdownRemainingSeconds(),
-			HeistGameState->IsLockdownActive() ? TEXT("true") : TEXT("false"), bWorldRestricted ? TEXT("true") : TEXT("false"),
+				"Lockdown dump: Alert=%s Immediate=true LockdownActive=%s WorldRestricted=%s MatchPhase=%s Objective=%s EscapeOpen=%s Players=%d ActiveActions=%d ActiveForgeries=%d OpenInventories=%d MovementEnabled=%d Vents=%d ActiveVents=%d Interactables=%d AvailableInteractions=%d Authority=%s Result=%s"),
+			*UEnum::GetValueAsString(AlertLevel), HeistGameState->IsLockdownActive() ? TEXT("true") : TEXT("false"), bWorldRestricted ? TEXT("true") : TEXT("false"),
 			*UEnum::GetValueAsString(HeistGameState->GetMatchPhase()), *UEnum::GetValueAsString(HeistGameState->GetObjectiveState()),
 			HeistGameState->IsEscapePhaseOpen() ? TEXT("true") : TEXT("false"), PlayerCount, ActiveActionCount, ActiveForgeryCount, OpenInventoryCount, MovementEnabledCount, VentCount,
 			ActiveVentCount, InteractableCount, AvailableInteractionCount, PlayerController->HasAuthority() ? TEXT("true") : TEXT("false"), bPassed ? TEXT("PASS") : TEXT("FAIL")),

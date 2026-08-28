@@ -5,14 +5,6 @@
 #include "Components/TextBlock.h"
 #include "Engine/Texture2D.h"
 
-#pragma region Construction
-
-UHeistQuickSlotWidget::UHeistQuickSlotWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
-{
-}
-
-#pragma endregion
-
 #pragma region Presentation
 
 void UHeistQuickSlotWidget::SetupHUDQuickSlot(const FHeistQuickSlotPresentation& InConfirmedPresentation, UTexture2D* InIcon)

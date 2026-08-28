@@ -197,10 +197,16 @@ void ApplyScorePresentation(UTextBlock* ScoreText, const TOptional<float> Score,
 }
 }
 
+#pragma region Construction
+
 UHeistForgeryWidget::UHeistForgeryWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 	SetIsFocusable(true);
 }
+
+#pragma endregion
+
+#pragma region Lifecycle
 
 void UHeistForgeryWidget::NativeConstruct()
 {
@@ -230,10 +236,6 @@ void UHeistForgeryWidget::NativeDestruct()
 void UHeistForgeryWidget::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
-	if (TryForceCloseForAlert())
-	{
-		return;
-	}
 	RefreshDrawingTimeRemaining();
 	UploadDrawingRasterTexture();
 
@@ -466,6 +468,10 @@ void UHeistForgeryWidget::NativeOnMouseCaptureLost(const FCaptureLostEvent& Capt
 	}
 }
 
+#pragma endregion
+
+#pragma region Setup
+
 void UHeistForgeryWidget::SetupForgeryWidget(UHeistForgeryViewModel* InForgeryViewModel)
 {
 	checkf(IsValid(InForgeryViewModel), TEXT("HeistForgeryWidget requires a valid Forgery ViewModel."));
@@ -695,15 +701,6 @@ void UHeistForgeryWidget::RefreshForgeryPresentation()
 	const bool bOwnerLocal = IsValid(OwningPlayerController) && OwningPlayerController->IsLocalController();
 	const bool bPresentationVisible = bOwnerLocal && IsValid(ForgeryViewModel) && ForgeryViewModel->IsPresentationVisible();
 
-	if (!bPresentationVisible)
-	{
-		bAlertExitRequested = false;
-	}
-	if (bPresentationVisible && TryForceCloseForAlert())
-	{
-		return;
-	}
-
 	SetVisibility(bPresentationVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 
 	const bool bDrawing = bPresentationVisible && ForgeryViewModel->IsDrawingVisible();
@@ -755,50 +752,9 @@ void UHeistForgeryWidget::RefreshForgeryPresentation()
 		   IsOwnerOnlyContractSatisfied() ? TEXT("PASS") : TEXT("FAIL"));
 }
 
-bool UHeistForgeryWidget::TryForceCloseForAlert()
-{
-	const bool bShouldClose = IsValid(ForgeryViewModel) && ForgeryViewModel->IsPresentationVisible() && ForgeryViewModel->IsDangerWarningVisible();
-	if (!bShouldClose || bAlertExitRequested)
-	{
-		return bShouldClose;
-	}
+#pragma endregion
 
-	bAlertExitRequested = true;
-	FinishPointerInteraction();
-	SetVisibility(ESlateVisibility::Collapsed);
-	if (AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(GetOwningPlayer()); IsValid(HeistPlayerController))
-	{
-		HeistPlayerController->RestoreGameplayInputAfterForcedForgeryClose();
-	}
-	UE_LOG(LogHeistUI, Log, TEXT("[%s] Forgery screen force-closed: AlertLevel=%s ServerCleanupExpected=true"), *GetName(),
-		*UEnum::GetValueAsString(ForgeryViewModel->GetAlertLevel()));
-	return true;
-}
-
-bool UHeistForgeryWidget::IsAlertWarningContractSatisfied() const
-{
-	if (!IsValid(ForgeryViewModel))
-	{
-		return false;
-	}
-	return !ForgeryViewModel->IsDangerWarningVisible() || (bAlertExitRequested && !IsWidgetPresentationVisible());
-}
-
-void UHeistForgeryWidget::DebugDumpAlertWarningState() const
-{
-	const bool bPassed = IsAlertWarningContractSatisfied();
-	const FString Message = FString::Printf(TEXT("[%s] Forgery alert close: Level=%s PresentationVisible=%s CloseRequested=%s Result=%s"), *GetName(),
-		IsValid(ForgeryViewModel) ? *UEnum::GetValueAsString(ForgeryViewModel->GetAlertLevel()) : TEXT("None"),
-		IsWidgetPresentationVisible() ? TEXT("true") : TEXT("false"), bAlertExitRequested ? TEXT("true") : TEXT("false"), bPassed ? TEXT("PASS") : TEXT("FAIL"));
-	if (bPassed)
-	{
-		UE_LOG(LogHeistUI, Log, TEXT("%s"), *Message);
-	}
-	else
-	{
-		UE_LOG(LogHeistUI, Error, TEXT("%s"), *Message);
-	}
-}
+#pragma region DrawingCanvas
 
 bool UHeistForgeryWidget::IsDrawingInputEnabled() const
 {
@@ -1873,3 +1829,5 @@ void UHeistForgeryWidget::ApplyStateVisibility(UWidget* TargetWidget, const bool
 		TargetWidget->SetVisibility(bVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	}
 }
+
+#pragma endregion

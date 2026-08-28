@@ -3,10 +3,6 @@
 #include "Character/Components/HeistInventoryComponent.h"
 #include "Core/HeistLogChannels.h"
 
-UHeistInventoryViewModel::UHeistInventoryViewModel(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
-{
-}
-
 void UHeistInventoryViewModel::BeginDestroy()
 {
 	if (IsValid(InventoryComponent))
@@ -67,8 +63,8 @@ void UHeistInventoryViewModel::RefreshConfirmedSnapshot()
 	}
 	UE_MVVM_SET_PROPERTY_VALUE(ItemCount, ConfirmedItemCount);
 	UE_MVVM_SET_PROPERTY_VALUE(TotalWeight, ConfirmedTotalWeight);
-	UE_LOG(LogHeistUI, Log, TEXT("Inventory grid presentation refreshed: GridItems=%d ItemCount=%d TotalWeight=%.1f OriginalItems=%d Result=PASS"), ConfirmedItems.Num(), ItemCount,
-		   TotalWeight, OriginalItemCount);
+	UE_LOG(LogHeistUI, Log, TEXT("Inventory grid presentation refreshed: GridItems=%d ItemCount=%d TotalWeight=%.1f OriginalItems=%d Result=PASS"), ConfirmedItems.Num(), ItemCount, TotalWeight,
+		   OriginalItemCount);
 	SnapshotChangedDelegate.Broadcast();
 }
 

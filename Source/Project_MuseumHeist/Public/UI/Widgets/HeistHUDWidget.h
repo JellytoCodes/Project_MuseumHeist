@@ -10,7 +10,6 @@ class UTextBlock;
 class UImage;
 class UHeistInteractionPromptWidget;
 class UHeistPopupWidgetPool;
-class UHeistUserWidgetBase;
 class UPanelWidget;
 class UWidget;
 class UAudioComponent;
@@ -24,13 +23,6 @@ UCLASS(Blueprintable)
 class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 {
 	GENERATED_BODY()
-
-#pragma region Construction
-
-  public:
-	UHeistHUDWidget(const FObjectInitializer& ObjectInitializer);
-
-#pragma endregion
 
 #pragma region Lifecycle
 
@@ -119,8 +111,14 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 	bool AreCrewStatusIconTexturesAssignedForDebug() const;
 	bool AreArrestAudioAssetsAssignedForDebug() const;
 	bool IsArrestFeedbackAudioActiveForDebug() const;
-	int32 GetArrestAudioPlayCountForDebug() const { return ArrestAudioPlayCount; }
-	int32 GetRescueAudioPlayCountForDebug() const { return RescueAudioPlayCount; }
+	int32 GetArrestAudioPlayCountForDebug() const
+	{
+		return ArrestAudioPlayCount;
+	}
+	int32 GetRescueAudioPlayCountForDebug() const
+	{
+		return RescueAudioPlayCount;
+	}
 
 #pragma endregion
 

@@ -8,14 +8,6 @@
 #include "TimerManager.h"
 #include "UI/Widgets/HeistUserWidgetBase.h"
 
-#pragma region Construction
-
-UHeistPopupWidgetPool::UHeistPopupWidgetPool(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
-{
-}
-
-#pragma endregion
-
 #pragma region Lifecycle
 
 void UHeistPopupWidgetPool::SetupPool(AHeistPlayerController* InPlayerController, UPanelWidget* InPopupLayer, TSubclassOf<UHeistUserWidgetBase> InPopupWidgetClass, const int32 InCapacity)

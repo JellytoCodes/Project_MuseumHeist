@@ -8,10 +8,6 @@
 #include "UI/Lobby/Widgets/HeistLobbyPlayerCardWidget.h"
 #include "View/MVVMView.h"
 
-UHeistLobbyWidget::UHeistLobbyWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
-{
-}
-
 void UHeistLobbyWidget::NativeConstruct()
 {
 	Super::NativeConstruct();

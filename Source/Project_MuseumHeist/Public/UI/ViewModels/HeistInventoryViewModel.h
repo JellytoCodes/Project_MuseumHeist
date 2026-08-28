@@ -13,13 +13,6 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryViewModel : public UMVVMViewModelBa
 {
 	GENERATED_BODY()
 
-#pragma region Construction
-
-  public:
-	UHeistInventoryViewModel(const FObjectInitializer& ObjectInitializer);
-
-#pragma endregion
-
 #pragma region Lifecycle
 
   protected:

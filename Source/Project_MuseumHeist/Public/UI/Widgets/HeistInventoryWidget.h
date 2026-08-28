@@ -22,13 +22,6 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryWidget : public UHeistUserWidgetBas
 {
 	GENERATED_BODY()
 
-#pragma region Construction
-
-  public:
-	UHeistInventoryWidget(const FObjectInitializer& ObjectInitializer);
-
-#pragma endregion
-
 #pragma region Lifecycle
 
   protected:
@@ -83,7 +76,7 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryWidget : public UHeistUserWidgetBas
   public:
 	bool CanPreviewItemDrop(int32 InstanceId, const FIntPoint& TargetGridPosition) const;
 
-	private:
+  private:
 	void RebuildConfirmedInventory(const TArray<FHeistInventoryItem>& ConfirmedItems, int32 GridColumns, int32 GridRows);
 	void RefreshItemOverlayLayout();
 	FVector2D ResolveInventoryCellSize() const;

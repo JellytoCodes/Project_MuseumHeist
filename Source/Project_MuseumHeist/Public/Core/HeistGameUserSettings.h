@@ -12,13 +12,6 @@ class PROJECT_MUSEUMHEIST_API UHeistGameUserSettings : public UGameUserSettings
 {
 	GENERATED_BODY()
 
-#pragma region Construction
-
-  public:
-	UHeistGameUserSettings(const FObjectInitializer& ObjectInitializer);
-
-#pragma endregion
-
 #pragma region Lifecycle
 
   public:

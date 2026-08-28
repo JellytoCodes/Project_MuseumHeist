@@ -14,7 +14,6 @@ STATIC_MESHES = {
     "cube": "/Game/Assets/StarterContent/Shapes/Shape_Cube",
     "glass_window": "/Game/Assets/StarterContent/Props/SM_GlassWindow",
     "door_frame": "/Game/Assets/StarterContent/Props/SM_DoorFrame",
-    "door": "/Game/Assets/StarterContent/Props/SM_Door",
     "couch": "/Game/Assets/StarterContent/Props/SM_Couch",
     "chair": "/Game/Assets/StarterContent/Props/SM_Chair",
     "table": "/Game/Assets/StarterContent/Props/SM_TableRound",
@@ -24,7 +23,6 @@ STATIC_MESHES = {
     "bush": "/Game/Assets/StarterContent/Props/SM_Bush",
     "wall_lamp": "/Game/Assets/StarterContent/Props/SM_Lamp_Wall",
     "ceiling_lamp": "/Game/Assets/StarterContent/Props/SM_Lamp_Ceiling",
-    "corner_frame": "/Game/Assets/StarterContent/Props/SM_CornerFrame",
     "pillar_frame": "/Game/Assets/StarterContent/Props/SM_PillarFrame",
     "window_frame": "/Game/Assets/StarterContent/Props/SM_WindowFrame",
 }

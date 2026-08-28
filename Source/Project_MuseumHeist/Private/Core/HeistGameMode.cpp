@@ -37,7 +37,7 @@
 
 namespace
 {
-const FLinearColor VerificationPlayerColors[] = {FLinearColor::Red, FLinearColor::Green, FLinearColor::Blue, FLinearColor::Yellow};
+const FLinearColor DefaultPlayerColors[] = {FLinearColor::Red, FLinearColor::Green, FLinearColor::Blue, FLinearColor::Yellow};
 constexpr int32 CommittedReplicaPaintingResolution = 256;
 
 bool BuildReplicaRecapPaintingThumbnail(const FHeistReplicaPaintingData& SourcePainting, FHeistReplicaRecapEntry& OutRecap)
@@ -92,8 +92,8 @@ bool BuildReplicaRecapPaintingThumbnail(const FHeistReplicaPaintingData& SourceP
 
 int32 FindLowestAvailableHeistPlayerId(const AHeistGameState* HeistGameState, const int32 MaxPlayerSlots)
 {
-	bool bOccupiedSlots[UE_ARRAY_COUNT(VerificationPlayerColors)] = {};
-	const int32 ClampedMaxPlayerSlots = FMath::Clamp(MaxPlayerSlots, 1, UE_ARRAY_COUNT(VerificationPlayerColors));
+	bool bOccupiedSlots[UE_ARRAY_COUNT(DefaultPlayerColors)] = {};
+	const int32 ClampedMaxPlayerSlots = FMath::Clamp(MaxPlayerSlots, 1, UE_ARRAY_COUNT(DefaultPlayerColors));
 
 	if (IsValid(HeistGameState))
 	{
@@ -379,12 +379,11 @@ void AHeistGameMode::RestartPlayer(AController* NewPlayer)
 	AHeistPlayerState* HeistPlayerState = NewPlayer ? NewPlayer->GetPlayerState<AHeistPlayerState>() : nullptr;
 	if (HeistPlayerState && HeistPlayerState->HeistPlayerId == INDEX_NONE)
 	{
-		const int32 MaxPlayerSlots =
-			IsValid(HeistGameInstance) ? HeistGameInstance->GetMaxPublicConnections() : UE_ARRAY_COUNT(VerificationPlayerColors);
+		const int32 MaxPlayerSlots = IsValid(HeistGameInstance) ? HeistGameInstance->GetMaxPublicConnections() : UE_ARRAY_COUNT(DefaultPlayerColors);
 		const int32 AssignedPlayerId = FindLowestAvailableHeistPlayerId(GetGameState<AHeistGameState>(), MaxPlayerSlots);
 		if (AssignedPlayerId != INDEX_NONE)
 		{
-			HeistPlayerState->InitializeVerificationIdentity(AssignedPlayerId, VerificationPlayerColors[AssignedPlayerId - 1]);
+			HeistPlayerState->InitializePlayerIdentity(AssignedPlayerId, DefaultPlayerColors[AssignedPlayerId - 1]);
 		}
 	}
 
@@ -1440,7 +1439,6 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 		: 0;
 	const int64 OptionalValueRequired = FMath::Max<int64>(0,
 		static_cast<int64>(LootValueQuota) - static_cast<int64>(TargetArtifactValue) - EligibleLooseLootValue);
-	TSet<AActor*> SelectedOptionalActors;
 	TArray<const FPlacedTargetCase*> SelectedOptionalCases;
 	FString SelectedOptionalCaseIds;
 	int32 SelectedOptionalValue = 0;
@@ -1449,13 +1447,12 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 		for (int32 Index = 0; Index < MaximumSelectableOptionalCount; ++Index)
 		{
 			const FPlacedTargetCase& SelectedCase = EligibleOptionalCases[Index];
-			SelectedOptionalActors.Add(SelectedCase.Actor);
 			SelectedOptionalCases.Add(&SelectedCase);
 			SelectedOptionalValue += SelectedCase.ArtifactValue;
 			SelectedOptionalCaseIds += SelectedOptionalCaseIds.IsEmpty() ? SelectedCase.CaseId.ToString() : FString::Printf(TEXT(",%s"), *SelectedCase.CaseId.ToString());
 		}
 	}
-	const bool bAuthoredOptionalMinimumSatisfied = SelectedOptionalActors.Num() >= MinimumOptionalExhibitCount;
+	const bool bAuthoredOptionalMinimumSatisfied = SelectedOptionalCases.Num() >= MinimumOptionalExhibitCount;
 	const int64 ReachableContractValue = static_cast<int64>(TargetArtifactValue) + SelectedOptionalValue + EligibleLooseLootValue;
 	const bool bReleaseQuotaReachable = bContractDefinitionValid && ReachableContractValue >= LootValueQuota;
 
@@ -1512,33 +1509,29 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 			}
 		}
 	}
-	const int32 ExpectedDeactivatedOptionalCaseCount = bObjectiveInitialized ? OptionalCases.Num() - SelectedOptionalActors.Num() : 0;
+	const int32 ExpectedDeactivatedOptionalCaseCount = bObjectiveInitialized ? OptionalCases.Num() - SelectedOptionalCases.Num() : 0;
 	const bool bOptionalDeactivationValid = DeactivatedOptionalCaseCount == ExpectedDeactivatedOptionalCaseCount;
-	const int32 ExpectedAssignedPaintingCaseCount = bObjectiveInitialized ? SelectedOptionalActors.Num() + 1 : 0;
+	const int32 ExpectedAssignedPaintingCaseCount = bObjectiveInitialized ? SelectedOptionalCases.Num() + 1 : 0;
 	const bool bTemplateAssignmentValid = AssignedPaintingCaseCount == ExpectedAssignedPaintingCaseCount;
 	const bool bReleasePaintingContentReady = bContractDefinitionValid && AvailableTemplateCount == ContractDefinition.MatchPaintingExhibitCount &&
 		SurfaceTemplateCatalogCount == ContractDefinition.SurfaceTemplateCatalogSize && ExpectedAssignedPaintingCaseCount == ContractDefinition.MatchPaintingExhibitCount;
 	const bool bInitializationPassed = bObjectiveInitialized && bOptionalDeactivationValid && bTemplateAssignmentValid;
 
-	const FString InitializationMessage =
-		FString::Printf(TEXT("Contract objective initialization: Contract=%s Map=%s Seed=%d StartPlayers=%d LivePlayers=%d StartPlayerSource=%s Quota=%d TargetValue=%d RequiresOptionalLoot=%s OptionalPaintingAuthored=%d OptionalPaintingEligible=%d OptionalPaintingInvalid=%d AuthoredOptionalMin=%d OptionalMax=%d OptionalValueRequired=%lld OptionalSelected=%d AuthoredOptionalMinSatisfied=%s OptionalSelectedValue=%d OptionalSelectedCases=%s SurfaceCatalogTarget=%d SurfaceCatalogActual=%d MatchPaintingTarget=%d MatchTemplatesSelected=%d PaintingCasesAssigned=%d TemplateAssignmentValid=%s ReleasePaintingContentReady=%s LooseLootEligible=%d LooseLootInvalid=%d LooseLootValue=%lld ReachableValue=%lld ReleaseQuotaReachable=%s OptionalDeactivated=%d OptionalDeactivationValid=%s DeferredObjectCases=%d DeferredObjectDeactivationFailures=%d DeferredObjectBoundary=%s TargetCase=%s CaseId=%s ArtifactId=%s Location=%s CaseState=%s CaseStateValid=%s ArtifactValid=%s ContractDefinitionValid=%s ContractFailure=%s ContractInitialized=%s ObjectiveState=%s Result=%s"),
-						*ContractDefinition.ContractId.ToString(), *MapId.ToString(), AssignmentSeed, PlayerCount, LivePlayerCount,
-						bUsesApprovedStartPlayerCount ? TEXT("LobbyApproval") : TEXT("DirectPIEOrAutomationFallback"), LootValueQuota, TargetArtifactValue,
-						bRequiredTargetNeedsOptionalLoot ? TEXT("true") : TEXT("false"),
-						OptionalCases.Num(), EligibleOptionalCases.Num(), InvalidOptionalCaseCount, MinimumOptionalExhibitCount, MaximumOptionalExhibitCount, OptionalValueRequired,
-						SelectedOptionalActors.Num(), bAuthoredOptionalMinimumSatisfied ? TEXT("true") : TEXT("false"), SelectedOptionalValue,
-						SelectedOptionalCaseIds.IsEmpty() ? TEXT("None") : *SelectedOptionalCaseIds,
-						ContractDefinition.SurfaceTemplateCatalogSize, SurfaceTemplateCatalogCount, RequestedPaintingExhibitCount, AvailableTemplateCount,
-						AssignedPaintingCaseCount, bTemplateAssignmentValid ? TEXT("true") : TEXT("false"), bReleasePaintingContentReady ? TEXT("true") : TEXT("false"),
-						EligibleLooseLootCount, InvalidLooseLootCount, EligibleLooseLootValue,
-						ReachableContractValue, bReleaseQuotaReachable ? TEXT("true") : TEXT("false"),
-						DeactivatedOptionalCaseCount, bOptionalDeactivationValid ? TEXT("true") : TEXT("false"),
-						DeferredObjectCaseCount, DeferredObjectDeactivationFailureCount, bDeferredObjectBoundaryApplied ? TEXT("true") : TEXT("false"),
-						*GetNameSafe(TargetDisplayCase.Actor), *TargetDisplayCase.CaseId.ToString(), *TargetArtifactId.ToString(), *TargetDisplayCase.Actor->GetActorLocation().ToCompactString(),
-						*TargetDisplayCase.CaseState, bCaseStateValid ? TEXT("true") : TEXT("false"), bArtifactValid ? TEXT("true") : TEXT("false"),
-						bContractDefinitionValid ? TEXT("true") : TEXT("false"), ContractFailureReason.IsEmpty() ? TEXT("None") : *ContractFailureReason,
-						bContractInitialized ? TEXT("true") : TEXT("false"),
-						*UEnum::GetValueAsString(HeistGameState->GetObjectiveState()), bInitializationPassed ? TEXT("PASS") : TEXT("FAIL"));
+	const FString InitializationMessage = FString::Printf(
+		TEXT(
+			"Contract objective initialization: Contract=%s Map=%s Seed=%d StartPlayers=%d LivePlayers=%d StartPlayerSource=%s Quota=%d TargetValue=%d RequiresOptionalLoot=%s OptionalPaintingAuthored=%d OptionalPaintingEligible=%d OptionalPaintingInvalid=%d AuthoredOptionalMin=%d OptionalMax=%d OptionalValueRequired=%lld OptionalSelected=%d AuthoredOptionalMinSatisfied=%s OptionalSelectedValue=%d OptionalSelectedCases=%s SurfaceCatalogTarget=%d SurfaceCatalogActual=%d MatchPaintingTarget=%d MatchTemplatesSelected=%d PaintingCasesAssigned=%d TemplateAssignmentValid=%s ReleasePaintingContentReady=%s LooseLootEligible=%d LooseLootInvalid=%d LooseLootValue=%lld ReachableValue=%lld ReleaseQuotaReachable=%s OptionalDeactivated=%d OptionalDeactivationValid=%s DeferredObjectCases=%d DeferredObjectDeactivationFailures=%d DeferredObjectBoundary=%s TargetCase=%s CaseId=%s ArtifactId=%s Location=%s CaseState=%s CaseStateValid=%s ArtifactValid=%s ContractDefinitionValid=%s ContractFailure=%s ContractInitialized=%s ObjectiveState=%s Result=%s"),
+		*ContractDefinition.ContractId.ToString(), *MapId.ToString(), AssignmentSeed, PlayerCount, LivePlayerCount,
+		bUsesApprovedStartPlayerCount ? TEXT("LobbyApproval") : TEXT("DirectPIEOrAutomationFallback"), LootValueQuota, TargetArtifactValue,
+		bRequiredTargetNeedsOptionalLoot ? TEXT("true") : TEXT("false"), OptionalCases.Num(), EligibleOptionalCases.Num(), InvalidOptionalCaseCount, MinimumOptionalExhibitCount,
+		MaximumOptionalExhibitCount, OptionalValueRequired, SelectedOptionalCases.Num(), bAuthoredOptionalMinimumSatisfied ? TEXT("true") : TEXT("false"), SelectedOptionalValue,
+		SelectedOptionalCaseIds.IsEmpty() ? TEXT("None") : *SelectedOptionalCaseIds, ContractDefinition.SurfaceTemplateCatalogSize, SurfaceTemplateCatalogCount, RequestedPaintingExhibitCount,
+		AvailableTemplateCount, AssignedPaintingCaseCount, bTemplateAssignmentValid ? TEXT("true") : TEXT("false"), bReleasePaintingContentReady ? TEXT("true") : TEXT("false"), EligibleLooseLootCount,
+		InvalidLooseLootCount, EligibleLooseLootValue, ReachableContractValue, bReleaseQuotaReachable ? TEXT("true") : TEXT("false"), DeactivatedOptionalCaseCount,
+		bOptionalDeactivationValid ? TEXT("true") : TEXT("false"), DeferredObjectCaseCount, DeferredObjectDeactivationFailureCount, bDeferredObjectBoundaryApplied ? TEXT("true") : TEXT("false"),
+		*GetNameSafe(TargetDisplayCase.Actor), *TargetDisplayCase.CaseId.ToString(), *TargetArtifactId.ToString(), *TargetDisplayCase.Actor->GetActorLocation().ToCompactString(),
+		*TargetDisplayCase.CaseState, bCaseStateValid ? TEXT("true") : TEXT("false"), bArtifactValid ? TEXT("true") : TEXT("false"), bContractDefinitionValid ? TEXT("true") : TEXT("false"),
+		ContractFailureReason.IsEmpty() ? TEXT("None") : *ContractFailureReason, bContractInitialized ? TEXT("true") : TEXT("false"), *UEnum::GetValueAsString(HeistGameState->GetObjectiveState()),
+		bInitializationPassed ? TEXT("PASS") : TEXT("FAIL"));
 	if (bInitializationPassed)
 	{
 		UE_LOG(LogHeist, Log, TEXT("%s"), *InitializationMessage);
@@ -1791,11 +1784,6 @@ bool AHeistGameMode::RequestNearestGuardInvestigation(const FVector& WorldLocati
 	OutDistance = FMath::Sqrt(NearestDistanceSquared);
 	OutReason = FName(TEXT("Assigned"));
 	return true;
-}
-
-bool AHeistGameMode::IsAlertTransitionTimerActive() const
-{
-	return false;
 }
 
 int32 AHeistGameMode::GetProcessedAlertTriggerCount() const

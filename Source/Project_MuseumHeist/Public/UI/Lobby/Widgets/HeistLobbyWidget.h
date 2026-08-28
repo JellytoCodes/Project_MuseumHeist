@@ -16,13 +16,6 @@ class PROJECT_MUSEUMHEIST_API UHeistLobbyWidget : public UHeistUserWidgetBase
 {
 	GENERATED_BODY()
 
-#pragma region Construction
-
-  public:
-	UHeistLobbyWidget(const FObjectInitializer& ObjectInitializer);
-
-#pragma endregion
-
 #pragma region Lifecycle
 
   protected:

@@ -2,14 +2,6 @@
 
 #include "Core/HeistGameState.h"
 
-#pragma region Construction
-
-UHeistResultViewModel::UHeistResultViewModel(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
-{
-}
-
-#pragma endregion
-
 #pragma region Lifecycle
 
 void UHeistResultViewModel::BeginDestroy()
@@ -61,11 +53,8 @@ void UHeistResultViewModel::RefreshResultData()
 	UE_MVVM_SET_PROPERTY_VALUE(PlayerResults, NewPlayerResults);
 	UE_MVVM_SET_PROPERTY_VALUE(TeamResult, NewTeamResult);
 	UE_MVVM_SET_PROPERTY_VALUE(OutcomeText, BuildOutcomeDisplayText(TeamResult.Outcome));
-	UE_MVVM_SET_PROPERTY_VALUE(OutcomeReasonText, TeamResult.Outcome == EHeistContractOutcome::Failed
-		? HeistContractOutcomeReasons::ToDisplayText(TeamResult.OutcomeReasonId)
-		: FText::GetEmpty());
-	UE_MVVM_SET_PROPERTY_VALUE(TeamRewardText,
-		FText::Format(NSLOCTEXT("HeistResult", "TeamRewardFormat", "팀 보상  {0}"), FText::AsNumber(TeamResult.TeamReward)));
+	UE_MVVM_SET_PROPERTY_VALUE(OutcomeReasonText, TeamResult.Outcome == EHeistContractOutcome::Failed ? HeistContractOutcomeReasons::ToDisplayText(TeamResult.OutcomeReasonId) : FText::GetEmpty());
+	UE_MVVM_SET_PROPERTY_VALUE(TeamRewardText, FText::Format(NSLOCTEXT("HeistResult", "TeamRewardFormat", "팀 보상  {0}"), FText::AsNumber(TeamResult.TeamReward)));
 	UE_MVVM_SET_PROPERTY_VALUE(ReplicaRecapText, BuildReplicaRecapSummaryText(TeamResult));
 
 	SnapshotChangedDelegate.Broadcast();
@@ -95,10 +84,22 @@ const TArray<FHeistReplicaRecapEntry>& UHeistResultViewModel::GetReplicaRecap() 
 	return TeamResult.ReplicaRecap;
 }
 
-const FText& UHeistResultViewModel::GetOutcomeText() const { return OutcomeText; }
-const FText& UHeistResultViewModel::GetOutcomeReasonText() const { return OutcomeReasonText; }
-const FText& UHeistResultViewModel::GetTeamRewardText() const { return TeamRewardText; }
-const FText& UHeistResultViewModel::GetReplicaRecapText() const { return ReplicaRecapText; }
+const FText& UHeistResultViewModel::GetOutcomeText() const
+{
+	return OutcomeText;
+}
+const FText& UHeistResultViewModel::GetOutcomeReasonText() const
+{
+	return OutcomeReasonText;
+}
+const FText& UHeistResultViewModel::GetTeamRewardText() const
+{
+	return TeamRewardText;
+}
+const FText& UHeistResultViewModel::GetReplicaRecapText() const
+{
+	return ReplicaRecapText;
+}
 
 FText UHeistResultViewModel::BuildOutcomeDisplayText(const EHeistContractOutcome Outcome)
 {
@@ -124,8 +125,7 @@ FText UHeistResultViewModel::BuildReplicaRecapSummaryText(const FHeistTeamResult
 		}
 		const TCHAR* TypeText = Recap.ForgeryType == EHeistForgeryType::Assembly ? TEXT("조립") : TEXT("그림");
 		const FString DisplayName = Recap.ArtifactDisplayName.IsEmpty() ? Recap.ArtifactId.ToString() : Recap.ArtifactDisplayName.ToString();
-		RecapLines += FString::Printf(TEXT("%s%s  |  %s  |  품질 %.0f"), Recap.bRequiredTarget ? TEXT("[필수 목표] ") : TEXT(""), *DisplayName, TypeText,
-			Recap.QualityScore);
+		RecapLines += FString::Printf(TEXT("%s%s  |  %s  |  품질 %.0f"), Recap.bRequiredTarget ? TEXT("[필수 목표] ") : TEXT(""), *DisplayName, TypeText, Recap.QualityScore);
 	}
 	return RecapLines.IsEmpty() ? NSLOCTEXT("HeistResult", "NoReplicaRecap", "기록된 복제품 없음") : FText::FromString(RecapLines);
 }

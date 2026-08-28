@@ -168,22 +168,21 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerState : public APlayerState
 #pragma region Debug
 
   public:
-	void DebugSetTotalLootScore(int32 InScore);
 	void DebugSetTotalLootWeight(float InWeight);
 	void DebugSetResultState(bool bInEscaped);
 
 #pragma endregion
 
-#pragma region Verification
+#pragma region PlayerIdentity
 
   public:
-	void InitializeVerificationIdentity(int32 InHeistPlayerId, const FLinearColor& InPlayerColor);
+	void InitializePlayerIdentity(int32 InHeistPlayerId, const FLinearColor& InPlayerColor);
 	FHeistPlayerIdentityChanged& GetPlayerIdentityChangedDelegate();
 
-	UPROPERTY(ReplicatedUsing = OnRep_HeistPlayerId, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Verification")
+	UPROPERTY(ReplicatedUsing = OnRep_HeistPlayerId, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Identity")
 	int32 HeistPlayerId = INDEX_NONE;
 
-	UPROPERTY(ReplicatedUsing = OnRep_PlayerColor, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Verification")
+	UPROPERTY(ReplicatedUsing = OnRep_PlayerColor, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Identity")
 	FLinearColor PlayerColor = FLinearColor::White;
 
   private:

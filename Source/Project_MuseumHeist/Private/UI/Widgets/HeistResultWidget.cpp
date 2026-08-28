@@ -16,14 +16,6 @@
 #include "UI/ViewModels/HeistResultViewModel.h"
 #include "View/MVVMView.h"
 
-#pragma region Construction
-
-UHeistResultWidget::UHeistResultWidget(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
-{
-}
-
-#pragma endregion
-
 #pragma region Lifecycle
 
 void UHeistResultWidget::NativeConstruct()
@@ -160,8 +152,8 @@ FText UHeistResultWidget::BuildReplicaCardTitle(const FHeistReplicaRecapEntry& R
 {
 	const FText DisplayName = ReplicaRecap.ArtifactDisplayName.IsEmpty() ? FText::FromName(ReplicaRecap.ArtifactId) : ReplicaRecap.ArtifactDisplayName;
 	return FText::Format(NSLOCTEXT("HeistResult", "ReplicaCardTitle", "{0}{1}  |  품질 {2}"),
-		ReplicaRecap.bRequiredTarget ? NSLOCTEXT("HeistResult", "RequiredReplicaPrefix", "[필수 목표] ") : FText::GetEmpty(), DisplayName,
-		FText::AsNumber(FMath::RoundToInt(ReplicaRecap.QualityScore)));
+						 ReplicaRecap.bRequiredTarget ? NSLOCTEXT("HeistResult", "RequiredReplicaPrefix", "[필수 목표] ") : FText::GetEmpty(), DisplayName,
+						 FText::AsNumber(FMath::RoundToInt(ReplicaRecap.QualityScore)));
 }
 
 FVector2D UHeistResultWidget::ResolveAssemblyRecapSocketAnchor(const FName SocketId)
@@ -199,8 +191,7 @@ FVector2D UHeistResultWidget::ResolveAssemblyRecapSocketAnchor(const FName Socke
 FVector2D UHeistResultWidget::ResolveAssemblyRecapPartSize(const FName PartId)
 {
 	const FString PartName = PartId.ToString();
-	if (PartName.Contains(TEXT("Arm"), ESearchCase::IgnoreCase) || PartName.Contains(TEXT("Handle"), ESearchCase::IgnoreCase) ||
-		PartName.Contains(TEXT("Spout"), ESearchCase::IgnoreCase))
+	if (PartName.Contains(TEXT("Arm"), ESearchCase::IgnoreCase) || PartName.Contains(TEXT("Handle"), ESearchCase::IgnoreCase) || PartName.Contains(TEXT("Spout"), ESearchCase::IgnoreCase))
 	{
 		return FVector2D(118.0, 54.0);
 	}
@@ -208,8 +199,7 @@ FVector2D UHeistResultWidget::ResolveAssemblyRecapPartSize(const FName PartId)
 	{
 		return FVector2D(140.0, 60.0);
 	}
-	if (PartName.Contains(TEXT("Head"), ESearchCase::IgnoreCase) || PartName.Contains(TEXT("Lid"), ESearchCase::IgnoreCase) ||
-		PartName.Contains(TEXT("Crest"), ESearchCase::IgnoreCase))
+	if (PartName.Contains(TEXT("Head"), ESearchCase::IgnoreCase) || PartName.Contains(TEXT("Lid"), ESearchCase::IgnoreCase) || PartName.Contains(TEXT("Crest"), ESearchCase::IgnoreCase))
 	{
 		return FVector2D(78.0, 78.0);
 	}
@@ -224,8 +214,7 @@ float UHeistResultWidget::ResolveAssemblyRecapPartAngle(const uint8 QuantizedOri
 bool UHeistResultWidget::DecodePaintingRecapPixels(const FHeistReplicaRecapEntry& ReplicaRecap, const FColor& BackgroundColor, TArray64<uint8>& OutTextureBytes)
 {
 	OutTextureBytes.Reset();
-	if (ReplicaRecap.ForgeryType != EHeistForgeryType::Drawing ||
-		ReplicaRecap.PaintingResolution != FHeistReplicaRecapEntry::PaintingThumbnailResolution ||
+	if (ReplicaRecap.ForgeryType != EHeistForgeryType::Drawing || ReplicaRecap.PaintingResolution != FHeistReplicaRecapEntry::PaintingThumbnailResolution ||
 		!FMath::IsWithinInclusive(ReplicaRecap.PaintingPalette.Num(), 2, FHeistReplicaRecapEntry::MaximumPaintingPaletteColors))
 	{
 		return false;
@@ -362,9 +351,7 @@ void UHeistResultWidget::RefreshContributionTablePresentation(const TArray<FHeis
 
 	if (IsValid(ContributionEmptyTextBlock))
 	{
-		ContributionEmptyTextBlock->SetVisibility(ContributionTableContainer->GetChildrenCount() == 0
-			? ESlateVisibility::SelfHitTestInvisible
-			: ESlateVisibility::Collapsed);
+		ContributionEmptyTextBlock->SetVisibility(ContributionTableContainer->GetChildrenCount() == 0 ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 	}
 }
 

@@ -801,11 +801,19 @@ void AHeistPlayerController::RefreshLocalInputModeFromPawn()
 		ApplyLocalInputMode(EHeistInputMode::Map);
 		return;
 	}
-	ApplyLocalInputMode((IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive()) ||
-								(IsValid(ObjectAssemblyComponent) && ObjectAssemblyComponent->IsSessionActive())
-							? EHeistInputMode::Forgery
-						: IsValid(InventoryComponent) && InventoryComponent->IsInventoryOpen() ? EHeistInputMode::Inventory
-																							   : EHeistInputMode::Gameplay);
+	const bool bForgeryInputActive = (IsValid(ForgeryComponent) && ForgeryComponent->IsSessionActive()) || (IsValid(ObjectAssemblyComponent) && ObjectAssemblyComponent->IsSessionActive());
+	if (bForgeryInputActive)
+	{
+		ApplyLocalInputMode(EHeistInputMode::Forgery);
+	}
+	else if (IsValid(InventoryComponent) && InventoryComponent->IsInventoryOpen())
+	{
+		ApplyLocalInputMode(EHeistInputMode::Inventory);
+	}
+	else
+	{
+		ApplyLocalInputMode(EHeistInputMode::Gameplay);
+	}
 }
 
 void AHeistPlayerController::ApplyLocalInputMode(const EHeistInputMode NewInputMode)
@@ -1180,7 +1188,7 @@ AActor* AHeistPlayerController::GetLocalSpectateTarget() const
 	return LocalSpectateTarget.Get();
 }
 
-bool AHeistPlayerController::AreW7InputAssetsConfigured() const
+bool AHeistPlayerController::AreInputAssetsConfiguredForDebug() const
 {
 	return IsValid(SprintInputAction) && IsValid(MapInputAction) && IsValid(GameplayInputMappingContext) && IsValid(MapInputMappingContext);
 }
@@ -1698,6 +1706,7 @@ bool AHeistPlayerController::IsCurrentLocalTutorialStep(const FName StepId) cons
 
 void AHeistPlayerController::DebugResetLocalTutorial()
 {
+#if !UE_BUILD_SHIPPING
 	UHeistGameUserSettings* Settings = UHeistGameUserSettings::GetHeistGameUserSettings();
 	if (IsValid(Settings))
 	{
@@ -1714,21 +1723,26 @@ void AHeistPlayerController::DebugResetLocalTutorial()
 	{
 		StopLocalTutorial(TEXT("DebugResetOutsideMatch"));
 	}
+#endif
 }
 
 void AHeistPlayerController::DebugAdvanceLocalTutorial()
 {
+#if !UE_BUILD_SHIPPING
 	if (!bLocalTutorialActive)
 	{
 		TryStartLocalTutorial(true);
 		return;
 	}
 	AdvanceLocalTutorial(TEXT("DebugAdvance"));
+#endif
 }
 
 void AHeistPlayerController::DebugSkipLocalTutorial()
 {
+#if !UE_BUILD_SHIPPING
 	CompleteLocalTutorial(TEXT("DebugSkip"));
+#endif
 }
 
 #pragma endregion
@@ -1878,14 +1892,6 @@ void AHeistPlayerController::RequestBeginObjectAssembly(AHeistObjectDisplayCaseA
 void AHeistPlayerController::RequestCancelObjectAssembly()
 {
 	Server_CancelObjectAssembly();
-}
-
-void AHeistPlayerController::RestoreGameplayInputAfterForcedForgeryClose()
-{
-	if (IsLocalController() && LocalInputMode == EHeistInputMode::Forgery)
-	{
-		ApplyLocalInputMode(EHeistInputMode::Gameplay);
-	}
 }
 
 void AHeistPlayerController::RequestSubmitObjectAssembly(const TArray<FHeistObjectAssemblyEntry>& Entries, const int32 ClientSessionRevision)
@@ -3016,7 +3022,9 @@ void AHeistPlayerController::DebugRequestAddInventoryItem(const FName ItemId)
 
 void AHeistPlayerController::DebugRequestThrowCoinAtWorldLocation(const FVector TargetWorldLocation)
 {
+#if !UE_BUILD_SHIPPING
 	Server_DebugRequestThrowCoinAtWorldLocation(TargetWorldLocation);
+#endif
 }
 
 void AHeistPlayerController::DebugRequestSpawnGuard(const float Distance)
@@ -3149,6 +3157,7 @@ void AHeistPlayerController::Server_DebugRequestForgeryScoreTest_Implementation(
 
 void AHeistPlayerController::Server_DebugRequestThrowCoinAtWorldLocation_Implementation(const FVector TargetWorldLocation)
 {
+#if !UE_BUILD_SHIPPING
 	FHeistGameplayRequestContext RequestContext;
 	const TCHAR* RejectReason = nullptr;
 	if (!TryBuildGameplayRequestContext(RequestContext, RejectReason))
@@ -3168,6 +3177,7 @@ void AHeistPlayerController::Server_DebugRequestThrowCoinAtWorldLocation_Impleme
 	{
 		LogThrowableUseRejected(EHeistQuickSlotType::Coin, FName(TEXT("Throwable_Coin")), RejectReason);
 	}
+#endif
 }
 
 void AHeistPlayerController::Server_DebugRequestSpawnGuard_Implementation(const float Distance)

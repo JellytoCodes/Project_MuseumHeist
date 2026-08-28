@@ -500,7 +500,7 @@ void AHeistPlayerState::CopyProperties(APlayerState* PlayerState)
 	AHeistPlayerState* NewHeistPlayerState = Cast<AHeistPlayerState>(PlayerState);
 	if (IsValid(NewHeistPlayerState) && HeistPlayerId >= 1 && HeistPlayerId <= 4)
 	{
-		NewHeistPlayerState->InitializeVerificationIdentity(HeistPlayerId, PlayerColor);
+		NewHeistPlayerState->InitializePlayerIdentity(HeistPlayerId, PlayerColor);
 	}
 }
 
@@ -624,20 +624,6 @@ void AHeistPlayerState::OnRep_TotalLootWeight()
 
 #pragma region Debug
 
-void AHeistPlayerState::DebugSetTotalLootScore(const int32 InScore)
-{
-#if !UE_BUILD_SHIPPING
-	if (!HasAuthority())
-	{
-		return;
-	}
-
-	TotalLootScore = FMath::Max(0, InScore);
-	ForceNetUpdate();
-	BroadcastLootTotalsChanged();
-#endif
-}
-
 void AHeistPlayerState::DebugSetTotalLootWeight(const float InWeight)
 {
 #if !UE_BUILD_SHIPPING
@@ -679,9 +665,9 @@ void AHeistPlayerState::DebugSetResultState(const bool bInEscaped)
 
 #pragma endregion
 
-#pragma region Verification
+#pragma region PlayerIdentity
 
-void AHeistPlayerState::InitializeVerificationIdentity(int32 InHeistPlayerId, const FLinearColor& InPlayerColor)
+void AHeistPlayerState::InitializePlayerIdentity(int32 InHeistPlayerId, const FLinearColor& InPlayerColor)
 {
 	check(HasAuthority());
 

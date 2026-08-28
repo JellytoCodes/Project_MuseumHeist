@@ -53,8 +53,7 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
   private:
 	void HandleMatchPhaseChanged(EHeistMatchPhase PreviousMatchPhase, EHeistMatchPhase NewMatchPhase);
 	void HandlePlayerConnectionsChanged(int32 ConnectedPlayerCount);
-	int32 DropDisconnectedPlayerLooseLoot(AHeistPlayerCharacter* ExitingCharacter, AHeistPlayerState* ExitingPlayerState,
-		UHeistInventoryComponent* InventoryComponent, int32& OutFailureCount);
+	int32 DropDisconnectedPlayerLooseLoot(AHeistPlayerCharacter* ExitingCharacter, AHeistPlayerState* ExitingPlayerState, UHeistInventoryComponent* InventoryComponent, int32& OutFailureCount);
 	int32 ClearMatchScopedTimers();
 
   public:
@@ -84,8 +83,8 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
   private:
 	void StartContractDurationTimer();
 	void HandleContractDurationTimerElapsed();
-	bool TryResolveContractOutcome(FName TerminalTrigger, bool bForceTerminal = false, bool bTreatAsCrewEscaped = false,
-		bool bTreatAsAllRemainingCrewArrested = false, bool bTreatAsAllCrewDisconnected = false);
+	bool TryResolveContractOutcome(FName TerminalTrigger, bool bForceTerminal = false, bool bTreatAsCrewEscaped = false, bool bTreatAsAllRemainingCrewArrested = false,
+								   bool bTreatAsAllCrewDisconnected = false);
 	bool BuildTeamResultSnapshot(EHeistContractOutcome Outcome, FName OutcomeReasonId, FHeistTeamResult& OutTeamResult) const;
 	bool FinalizeContractOutcome(EHeistContractOutcome Outcome, FName OutcomeReasonId, FName TerminalTrigger);
 
@@ -103,15 +102,14 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 	bool RequestSecurityIncident(const FVector& WorldLocation, FName IncidentId);
 	bool RequestForgeryTimeoutInvestigation(const FVector& WorldLocation, FName SourceId);
 	static bool TryConsumeOneShotSecurityId(TSet<FName>& InOutProcessedIds, FName SourceId);
-	bool IsAlertTransitionTimerActive() const;
 	int32 GetProcessedAlertTriggerCount() const;
 	int32 GetProcessedSecurityIncidentCount() const;
 	int32 GetProcessedGuardInvestigationCount() const;
 	int32 GetActiveMatchTimerCount() const;
 
   private:
-	bool RequestNearestGuardInvestigation(const FVector& WorldLocation, FName SourceId, float SearchRadius, AHeistGuardCharacter*& OutAssignedGuard, float& OutDistance,
-		bool& bOutDuplicate, FName& OutReason);
+	bool RequestNearestGuardInvestigation(const FVector& WorldLocation, FName SourceId, float SearchRadius, AHeistGuardCharacter*& OutAssignedGuard, float& OutDistance, bool& bOutDuplicate,
+										  FName& OutReason);
 	void InitializeAlertState();
 	bool ApplyAlertLevel(EHeistAlertLevel NewAlertLevel, FName TriggerId);
 	bool ApplyAlertMeterValue(float NewAlertMeterValue, FName TriggerId, bool* bOutLevelChanged = nullptr);

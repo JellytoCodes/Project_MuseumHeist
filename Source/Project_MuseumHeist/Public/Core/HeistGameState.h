@@ -25,13 +25,6 @@ class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
 {
 	GENERATED_BODY()
 
-#pragma region Construction
-
-  public:
-	AHeistGameState();
-
-#pragma endregion
-
 #pragma region PlayerConnections
 
   public:
@@ -172,8 +165,8 @@ class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
 	UFUNCTION(BlueprintPure, Category = "Heist|Contract")
 	FText GetContractOutcomeReasonText() const;
 
-	bool InitializeContractSnapshot(FName ContractId, FName MapId, float ContractEndServerTime, int32 AssignmentSeed, int32 ContractStartPlayerCount,
-		FName RequiredTargetArtifactId, const FText& RequiredTargetDisplayName, FName RequiredTargetCaseId, int32 LootValueQuota);
+	bool InitializeContractSnapshot(FName ContractId, FName MapId, float ContractEndServerTime, int32 AssignmentSeed, int32 ContractStartPlayerCount, FName RequiredTargetArtifactId,
+									const FText& RequiredTargetDisplayName, FName RequiredTargetCaseId, int32 LootValueQuota);
 	bool SetContractProgress(int32 CarriedValue, int32 SecuredValue, bool bRequiredTargetSecured);
 	bool RefreshContractCarriedValue();
 	bool CanCommitPlayerDeposit(const AHeistPlayerState* DepositingPlayerState, int32 DepositValue, bool bRequiredTargetDeposited, const TCHAR*& OutRejectReason) const;
@@ -205,18 +198,6 @@ class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
 	float GetAlertMeterValue() const;
 
 	UFUNCTION(BlueprintPure, Category = "Heist|Alert")
-	float GetAlertNextTransitionServerTime() const;
-
-	UFUNCTION(BlueprintPure, Category = "Heist|Alert")
-	float GetAlertTransitionRemainingSeconds() const;
-
-	UFUNCTION(BlueprintPure, Category = "Heist|Alert")
-	bool IsLockdownCountdownActive() const;
-
-	UFUNCTION(BlueprintPure, Category = "Heist|Alert")
-	float GetLockdownCountdownRemainingSeconds() const;
-
-	UFUNCTION(BlueprintPure, Category = "Heist|Alert")
 	bool IsLockdownActive() const;
 
 	UFUNCTION(BlueprintPure, Category = "Heist|Alert")
@@ -237,9 +218,6 @@ class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
 
 	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
 	float AlertMeterValue = 0.0f;
-
-	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
-	float AlertNextTransitionServerTime = 0.0f;
 
 	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
 	FName LastAlertTriggerId = NAME_None;

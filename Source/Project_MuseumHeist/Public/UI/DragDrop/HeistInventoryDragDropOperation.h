@@ -13,8 +13,6 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryDragDropOperation : public UDragDro
 	GENERATED_BODY()
 
   public:
-	UHeistInventoryDragDropOperation(const FObjectInitializer& ObjectInitializer);
-
 	UFUNCTION(BlueprintCallable, Category = "Heist|Inventory")
 	void SetupDragOperation(int32 InInstanceId, FIntPoint InSourceGridPosition, UImage* InDragVisualImage);
 

@@ -2,10 +2,6 @@
 
 #include "Character/Components/HeistInventoryComponent.h"
 
-UHeistQuickSlotViewModel::UHeistQuickSlotViewModel(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
-{
-}
-
 void UHeistQuickSlotViewModel::BeginDestroy()
 {
 	if (IsValid(InventoryComponent))

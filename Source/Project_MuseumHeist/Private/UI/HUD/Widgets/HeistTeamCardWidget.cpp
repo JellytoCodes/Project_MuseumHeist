@@ -225,8 +225,27 @@ void UHeistTeamCardWidget::RefreshVoicePresentation()
 		}
 	}
 
-	const FLinearColor MicColor = !bOccupied ? FLinearColor(0.32f, 0.32f, 0.32f) :
-		(bMuted ? FLinearColor(0.80f, 0.18f, 0.16f) : (bSpeaking ? FLinearColor(0.20f, 0.78f, 0.38f) : (bPushToTalkHeld ? FLinearColor(0.88f, 0.68f, 0.20f) : FLinearColor(0.72f, 0.72f, 0.72f))));
+	FLinearColor MicColor;
+	if (!bOccupied)
+	{
+		MicColor = FLinearColor(0.32f, 0.32f, 0.32f);
+	}
+	else if (bMuted)
+	{
+		MicColor = FLinearColor(0.80f, 0.18f, 0.16f);
+	}
+	else if (bSpeaking)
+	{
+		MicColor = FLinearColor(0.20f, 0.78f, 0.38f);
+	}
+	else if (bPushToTalkHeld)
+	{
+		MicColor = FLinearColor(0.88f, 0.68f, 0.20f);
+	}
+	else
+	{
+		MicColor = FLinearColor(0.72f, 0.72f, 0.72f);
+	}
 	if (IsValid(MicStatusImage))
 	{
 		MicStatusImage->SetColorAndOpacity(MicColor);

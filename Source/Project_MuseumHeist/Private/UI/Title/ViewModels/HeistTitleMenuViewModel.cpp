@@ -2,14 +2,6 @@
 
 #include "Core/HeistGameInstance.h"
 
-#pragma region Construction
-
-UHeistTitleMenuViewModel::UHeistTitleMenuViewModel(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
-{
-}
-
-#pragma endregion
-
 #pragma region Lifecycle
 
 void UHeistTitleMenuViewModel::BeginDestroy()
@@ -46,8 +38,7 @@ void UHeistTitleMenuViewModel::SetupViewModel(UHeistGameInstance* InGameInstance
 void UHeistTitleMenuViewModel::RefreshTitleMenuData()
 {
 	const bool bOperationPending = IsValid(GameInstance) && GameInstance->IsOnlineSessionOperationPending();
-	const bool bSessionActive = IsValid(GameInstance)
-		&& (GameInstance->IsHostingOnlineSession() || GameInstance->IsJoinedOnlineSession() || GameInstance->HasActiveNamedOnlineSession());
+	const bool bSessionActive = IsValid(GameInstance) && (GameInstance->IsHostingOnlineSession() || GameInstance->IsJoinedOnlineSession() || GameInstance->HasActiveNamedOnlineSession());
 	const bool bInTitleMenu = IsValid(GameInstance) && GameInstance->IsCurrentWorldTitleMenu();
 	const FText NewSessionErrorText = ResolveOnlineSessionFailureText();
 
@@ -167,8 +158,8 @@ FText UHeistTitleMenuViewModel::ResolveOnlineSessionFailureText() const
 	{
 		return NSLOCTEXT("HeistTitleMenu", "CreateFailed", "로비를 만들 수 없습니다. 다시 시도하세요.");
 	}
-	if (Failure == FName(TEXT("FindFailed")) || Failure == FName(TEXT("JoinRequestRejected")) || Failure == FName(TEXT("SessionNotJoinable"))
-		|| Failure == FName(TEXT("JoinFailed")) || Failure == FName(TEXT("JoinUnknownError")))
+	if (Failure == FName(TEXT("FindFailed")) || Failure == FName(TEXT("JoinRequestRejected")) || Failure == FName(TEXT("SessionNotJoinable")) || Failure == FName(TEXT("JoinFailed")) ||
+		Failure == FName(TEXT("JoinUnknownError")))
 	{
 		return NSLOCTEXT("HeistTitleMenu", "JoinFailed", "로비에 참가할 수 없습니다. 코드를 확인한 뒤 다시 시도하세요.");
 	}

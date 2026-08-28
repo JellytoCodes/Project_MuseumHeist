@@ -11,14 +11,6 @@
 #include "Sound/SoundClass.h"
 #include "Sound/SoundMix.h"
 
-#pragma region Construction
-
-UHeistGameUserSettings::UHeistGameUserSettings(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
-{
-}
-
-#pragma endregion
-
 #pragma region Lifecycle
 
 void UHeistGameUserSettings::ApplySettings(const bool bCheckForCommandLineOverrides)
@@ -50,8 +42,7 @@ void UHeistGameUserSettings::ValidateSettings()
 	Super::ValidateSettings();
 
 	FieldOfView = FMath::IsFinite(FieldOfView) ? FMath::Clamp(FieldOfView, MinimumFieldOfView, MaximumFieldOfView) : DefaultFieldOfView;
-	MouseSensitivity =
-		FMath::IsFinite(MouseSensitivity) ? FMath::Clamp(MouseSensitivity, MinimumMouseSensitivity, MaximumMouseSensitivity) : DefaultMouseSensitivity;
+	MouseSensitivity = FMath::IsFinite(MouseSensitivity) ? FMath::Clamp(MouseSensitivity, MinimumMouseSensitivity, MaximumMouseSensitivity) : DefaultMouseSensitivity;
 	MasterVolume = FMath::IsFinite(MasterVolume) ? FMath::Clamp(MasterVolume, MinimumMasterVolume, MaximumMasterVolume) : DefaultMasterVolume;
 }
 
@@ -81,8 +72,7 @@ float UHeistGameUserSettings::GetMouseSensitivity() const
 
 void UHeistGameUserSettings::SetMouseSensitivity(const float NewMouseSensitivity)
 {
-	MouseSensitivity =
-		FMath::IsFinite(NewMouseSensitivity) ? FMath::Clamp(NewMouseSensitivity, MinimumMouseSensitivity, MaximumMouseSensitivity) : DefaultMouseSensitivity;
+	MouseSensitivity = FMath::IsFinite(NewMouseSensitivity) ? FMath::Clamp(NewMouseSensitivity, MinimumMouseSensitivity, MaximumMouseSensitivity) : DefaultMouseSensitivity;
 }
 
 float UHeistGameUserSettings::GetMasterVolume() const
@@ -141,7 +131,8 @@ void UHeistGameUserSettings::GetSupportedScreenResolutions(TArray<FIntPoint>& Ou
 	OutResolutions.AddUnique(FIntPoint(1600, 900));
 	OutResolutions.AddUnique(FIntPoint(1920, 1080));
 	OutResolutions.RemoveAll([](const FIntPoint& Resolution) { return Resolution.X <= 0 || Resolution.Y <= 0; });
-	OutResolutions.Sort([](const FIntPoint& Left, const FIntPoint& Right)
+	OutResolutions.Sort(
+		[](const FIntPoint& Left, const FIntPoint& Right)
 		{
 			const int64 LeftPixels = static_cast<int64>(Left.X) * Left.Y;
 			const int64 RightPixels = static_cast<int64>(Right.X) * Right.Y;

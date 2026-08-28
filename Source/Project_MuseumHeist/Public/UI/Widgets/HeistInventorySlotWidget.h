@@ -15,13 +15,6 @@ class PROJECT_MUSEUMHEIST_API UHeistInventorySlotWidget : public UHeistUserWidge
 {
 	GENERATED_BODY()
 
-#pragma region Construction
-
-  public:
-	UHeistInventorySlotWidget(const FObjectInitializer& ObjectInitializer);
-
-#pragma endregion
-
 #pragma region Presentation
 
   public:

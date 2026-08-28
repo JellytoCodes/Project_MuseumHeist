@@ -7,7 +7,6 @@
 
 #include "HeistObjectAssemblyViewModel.generated.h"
 
-class AHeistGameState;
 class AHeistPlayerController;
 class UHeistObjectAssemblyComponent;
 class UStaticMesh;
@@ -35,29 +34,24 @@ class PROJECT_MUSEUMHEIST_API UHeistObjectAssemblyViewModel : public UMVVMViewMo
 #pragma region Setup
 
   public:
-	void SetupViewModel(AHeistGameState* InGameState, UHeistObjectAssemblyComponent* InObjectAssemblyComponent, AHeistPlayerController* InPlayerController);
+	void SetupViewModel(UHeistObjectAssemblyComponent* InObjectAssemblyComponent, AHeistPlayerController* InPlayerController);
 	void RefreshPresentationState();
 	FHeistObjectAssemblyPresentationChanged& GetPresentationChangedDelegate();
 
   private:
 	void HandleAssemblySessionStateChanged();
-	void HandleAlertStateChanged(EHeistAlertLevel PreviousAlertLevel, EHeistAlertLevel NewAlertLevel, int32 AlertRevision, FName TriggerId);
 	bool LoadActiveTemplateData();
 	void ClearLoadedTemplateData();
 	void ResetLocalAssemblyState();
 	void SyncSelectionFromSelectedPart();
 	void RefreshSelectionPresentation();
 	void RefreshQualityPreview();
-	void RefreshAlertPresentation();
 	void SetStatusMessage(const FText& NewStatusText);
 	const FHeistObjectAssemblyPartRow* FindPartDefinition(FName PartId) const;
 	const FHeistObjectAssemblyEntry* FindLocalEntry(FName PartId) const;
 	FHeistObjectAssemblyEntry* FindMutableLocalEntry(FName PartId);
 	static FText MakeIdentifierDisplayText(FName Identifier);
 	static FText MakePayloadReasonText(FName Reason);
-
-	UPROPERTY(Transient)
-	TObjectPtr<AHeistGameState> GameState;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UHeistObjectAssemblyComponent> ObjectAssemblyComponent;
@@ -145,12 +139,6 @@ class PROJECT_MUSEUMHEIST_API UHeistObjectAssemblyViewModel : public UMVVMViewMo
 	const FText& GetSelectedOrientationText() const;
 	const FText& GetPlacementProgressText() const;
 	const FText& GetStatusText() const;
-	EHeistAlertLevel GetAlertLevel() const;
-	bool IsDangerWarningVisible() const;
-	const FText& GetDangerWarningText() const;
-	FLinearColor GetDangerWarningColor() const;
-	bool IsLockdownCountdownVisible() const;
-	float GetLockdownCountdownEndServerTime() const;
 
   private:
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Object Assembly", meta = (AllowPrivateAccess = "true"))
@@ -179,24 +167,6 @@ class PROJECT_MUSEUMHEIST_API UHeistObjectAssemblyViewModel : public UMVVMViewMo
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Object Assembly", meta = (AllowPrivateAccess = "true"))
 	FText StatusText;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
-	EHeistAlertLevel AlertLevel = EHeistAlertLevel::Quiet;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
-	bool bDangerWarningVisible = false;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
-	FText DangerWarningText;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
-	FLinearColor DangerWarningColor = FLinearColor::White;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
-	bool bLockdownCountdownVisible = false;
-
-	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Alert", meta = (AllowPrivateAccess = "true"))
-	float LockdownCountdownEndServerTime = 0.0f;
 
 #pragma endregion
 };

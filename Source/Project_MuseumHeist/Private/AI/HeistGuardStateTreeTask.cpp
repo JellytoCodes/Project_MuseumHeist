@@ -59,6 +59,17 @@ void ResetMove(FHeistGuardStateTreeTaskInstanceData& InstanceData)
 	InstanceData.bMoveSucceeded = false;
 }
 
+void ResetTaskState(FHeistGuardStateTreeTaskInstanceData& InstanceData)
+{
+	ResetMove(InstanceData);
+	InstanceData.WaitRemaining = 0.0f;
+	InstanceData.WaitDuration = 0.0f;
+	InstanceData.PatrolScanBaseYaw = 0.0f;
+	InstanceData.MoveRetryCount = 0;
+	InstanceData.bPatrolScanActive = false;
+	InstanceData.Phase = static_cast<uint8>(EHeistGuardTaskPhase::Idle);
+}
+
 bool StartMove(FHeistGuardStateTreeTaskInstanceData& InstanceData, AHeistGuardAIController& Controller, AActor* TargetActor, const FVector& Destination, const float AcceptanceRadius)
 {
 	Controller.StopMovement();
@@ -275,13 +286,7 @@ FHeistGuardStateTreeTask::FHeistGuardStateTreeTask()
 EStateTreeRunStatus FHeistGuardStateTreeTask::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult&) const
 {
 	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
-	ResetMove(InstanceData);
-	InstanceData.WaitRemaining = 0.0f;
-	InstanceData.WaitDuration = 0.0f;
-	InstanceData.PatrolScanBaseYaw = 0.0f;
-	InstanceData.MoveRetryCount = 0;
-	InstanceData.bPatrolScanActive = false;
-	InstanceData.Phase = static_cast<uint8>(EHeistGuardTaskPhase::Idle);
+	ResetTaskState(InstanceData);
 
 	AHeistGuardAIController* Controller = ResolveController(Context);
 	UHeistGuardStateComponent* GuardStateComponent = ResolveGuardStateComponent(Controller);
@@ -534,11 +539,5 @@ void FHeistGuardStateTreeTask::ExitState(FStateTreeExecutionContext& Context, co
 		FinishPatrolScan(InstanceData, *Controller);
 		Controller->StopMovement();
 	}
-	ResetMove(InstanceData);
-	InstanceData.WaitRemaining = 0.0f;
-	InstanceData.WaitDuration = 0.0f;
-	InstanceData.PatrolScanBaseYaw = 0.0f;
-	InstanceData.MoveRetryCount = 0;
-	InstanceData.bPatrolScanActive = false;
-	InstanceData.Phase = static_cast<uint8>(EHeistGuardTaskPhase::Idle);
+	ResetTaskState(InstanceData);
 }

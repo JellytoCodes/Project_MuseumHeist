@@ -16,13 +16,6 @@ class PROJECT_MUSEUMHEIST_API UHeistQuickSlotWidget : public UHeistUserWidgetBas
 {
 	GENERATED_BODY()
 
-#pragma region Construction
-
-  public:
-	UHeistQuickSlotWidget(const FObjectInitializer& ObjectInitializer);
-
-#pragma endregion
-
 #pragma region Presentation
 
   public:

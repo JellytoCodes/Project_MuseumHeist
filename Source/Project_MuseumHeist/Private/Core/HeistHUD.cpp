@@ -483,10 +483,9 @@ void AHeistHUD::InitializeForgeryPresentation()
 		ForgeryViewModel = NewObject<UHeistForgeryViewModel>(this);
 	}
 
-	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	AHeistPlayerCharacter* HeistPlayerCharacter = HeistPlayerController->GetPawn<AHeistPlayerCharacter>();
 	UHeistForgeryComponent* ForgeryComponent = IsValid(HeistPlayerCharacter) ? HeistPlayerCharacter->GetForgeryComponent() : nullptr;
-	ForgeryViewModel->SetupViewModel(HeistGameState, ForgeryComponent);
+	ForgeryViewModel->SetupViewModel(ForgeryComponent);
 
 	if (!ForgeryWidgetClass)
 	{
@@ -534,11 +533,10 @@ void AHeistHUD::InitializeObjectAssemblyPresentation()
 		ObjectAssemblyViewModel = NewObject<UHeistObjectAssemblyViewModel>(this);
 	}
 
-	AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	AHeistPlayerCharacter* HeistPlayerCharacter = HeistPlayerController->GetPawn<AHeistPlayerCharacter>();
 	UHeistObjectAssemblyComponent* ObjectAssemblyComponent =
 		IsValid(HeistPlayerCharacter) ? HeistPlayerCharacter->GetObjectAssemblyComponent() : nullptr;
-	ObjectAssemblyViewModel->SetupViewModel(HeistGameState, ObjectAssemblyComponent, HeistPlayerController);
+	ObjectAssemblyViewModel->SetupViewModel(ObjectAssemblyComponent, HeistPlayerController);
 
 	if (!ObjectAssemblyWidgetClass)
 	{
