@@ -158,7 +158,10 @@ void AHeistPlayerCharacter::BeginPlay()
 	StatusComponent->GetStatusTagsChangedDelegate().AddUObject(this, &AHeistPlayerCharacter::HandleStatusStateForCrewStatus);
 	InventoryComponent->GetInventoryChangedDelegate().AddUObject(this, &AHeistPlayerCharacter::HandleInventoryStateForCrewStatus);
 	ForgeryComponent->GetSessionStateChangedDelegate().AddUObject(this, &AHeistPlayerCharacter::HandleForgeryStateForCrewStatus);
-	ObjectAssemblyComponent->GetSessionStateChangedDelegate().AddUObject(this, &AHeistPlayerCharacter::HandleAssemblyStateForCrewStatus);
+	if (HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled())
+	{
+		ObjectAssemblyComponent->GetSessionStateChangedDelegate().AddUObject(this, &AHeistPlayerCharacter::HandleAssemblyStateForCrewStatus);
+	}
 	RuntimeVoiceAttenuation = NewObject<USoundAttenuation>(this, TEXT("RuntimeVoiceAttenuation"));
 	checkf(IsValid(RuntimeVoiceAttenuation), TEXT("HeistPlayerCharacter failed to create RuntimeVoiceAttenuation"));
 	RuntimeVoiceAttenuation->Attenuation.bAttenuate = true;

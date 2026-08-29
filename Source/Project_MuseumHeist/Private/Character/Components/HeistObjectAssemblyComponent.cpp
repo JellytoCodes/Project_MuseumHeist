@@ -30,7 +30,7 @@ bool IsMaterialSelectionResolved(const FHeistObjectAssemblyPartRow& PartDefiniti
 UHeistObjectAssemblyComponent::UHeistObjectAssemblyComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
-	SetIsReplicatedByDefault(true);
+	SetIsReplicatedByDefault(HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled());
 }
 
 void UHeistObjectAssemblyComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)

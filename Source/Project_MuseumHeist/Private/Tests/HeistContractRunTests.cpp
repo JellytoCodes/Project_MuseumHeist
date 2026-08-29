@@ -25,6 +25,7 @@
 #include "Engine/Engine.h"
 #include "EngineUtils.h"
 #include "Inventory/HeistItemDataTypes.h"
+#include "Inventory/HeistInventoryTypes.h"
 #include "Misc/AutomationTest.h"
 #include "Settings/LevelEditorPlaySettings.h"
 #include "Tests/AutomationCommon.h"
@@ -55,7 +56,7 @@ struct FHeistContractRunAutomationState
 	int32 PlayerCount = 1;
 	FName MapId = FName(TEXT("M01"));
 	FHeistContractSnapshot FirstRunContract;
-	TArray<FName> SelectedObjectCaseIds;
+	int32 RuntimeLootFixtureRunIndex = INDEX_NONE;
 	FName SelectedHighValuePaintingCaseId = NAME_None;
 	FName SelectedLootActorName = NAME_None;
 	FName SelectedLootRowId = NAME_None;
@@ -207,22 +208,6 @@ AHeistPaintingDisplayCaseActor* FindPaintingCase(UWorld* World, const FName Case
 	for (TActorIterator<AHeistPaintingDisplayCaseActor> It(World); It; ++It)
 	{
 		if (IsValid(*It) && It->GetDisplayCaseId() == CaseId)
-		{
-			return *It;
-		}
-	}
-	return nullptr;
-}
-
-AHeistObjectDisplayCaseActor* FindObjectCase(UWorld* World, const FName CaseId)
-{
-	if (!IsValid(World) || CaseId.IsNone())
-	{
-		return nullptr;
-	}
-	for (TActorIterator<AHeistObjectDisplayCaseActor> It(World); It; ++It)
-	{
-		if (IsValid(*It) && It->GetObjectCaseId() == CaseId)
 		{
 			return *It;
 		}
@@ -1073,9 +1058,8 @@ bool CaptureAndValidateGameplayPreflight(FAutomationTestBase* Test, const TShare
 		return false;
 	}
 
-	TArray<FName> ObjectCaseIds;
 	int32 RequiredTargetCaseCount = 0;
-	int32 ActiveObjectCaseCount = 0;
+	int32 ObjectCaseCount = 0;
 	for (TActorIterator<AHeistPaintingDisplayCaseActor> It(ServerWorld); It; ++It)
 	{
 		if (IsValid(*It))
@@ -1087,18 +1071,10 @@ bool CaptureAndValidateGameplayPreflight(FAutomationTestBase* Test, const TShare
 	{
 		if (IsValid(*It))
 		{
-			ObjectCaseIds.Add(It->GetObjectCaseId());
-			ActiveObjectCaseCount += It->IsContractExhibitActive() ? 1 : 0;
-			RequiredTargetCaseCount += It->GetObjectCaseId() == ServerContract.RequiredTargetCaseId ? 1 : 0;
-			if (It->GetAssemblyState() != EHeistObjectAssemblyState::Secured || It->IsSessionLocked() || It->HasCommittedAssemblyResult() ||
-				It->HasReplicaPreview() || It->IsRegisteredForInspection())
-			{
-				return false;
-			}
+			++ObjectCaseCount;
 		}
 	}
-	ObjectCaseIds.Sort([](const FName Left, const FName Right) { return Left.LexicalLess(Right); });
-	if (HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled() || RequiredTargetCaseCount != 1 || ActiveObjectCaseCount != 0 ||
+	if (HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled() || RequiredTargetCaseCount != 1 || ObjectCaseCount != 0 ||
 		ServerContract.ContractStartPlayerCount != State->PlayerCount)
 	{
 		return false;
@@ -1202,34 +1178,50 @@ bool CaptureAndValidateGameplayPreflight(FAutomationTestBase* Test, const TShare
 	{
 		return false;
 	}
-	AHeistLootActor* SelectedLootActor = nullptr;
+	const FName RuntimeLootRowId(TEXT("Loot_JewelNecklace"));
+	AHeistLootActor* SelectedLootActor = State->RuntimeLootFixtureRunIndex == RunIndex
+		? FindLootActor(ServerWorld, State->SelectedLootActorName)
+		: nullptr;
 	FHeistItemDataRow SelectedItemDefinition;
 	FHeistLootDataRow SelectedLootDefinition;
-	int32 SelectedGridArea = MAX_int32;
-	for (TActorIterator<AHeistLootActor> It(ServerWorld); It; ++It)
+	if (State->RuntimeLootFixtureRunIndex != RunIndex)
 	{
-		AHeistLootActor* Candidate = *It;
-		FHeistItemDataRow CandidateItemDefinition;
-		FHeistLootDataRow CandidateLootDefinition;
-		if (!IsValid(Candidate) || !Candidate->IsLootAvailable() || Candidate->GetLootRowId().IsNone() || !IsValid(GameMode) ||
-			!GameMode->TryGetItemDefinition(Candidate->GetLootRowId(), CandidateItemDefinition) ||
-			!GameMode->TryGetLootDefinition(Candidate->GetLootRowId(), CandidateLootDefinition))
+		AHeistPlayerCharacter* FixtureOwner = GetServerCharacterById(1);
+		if (!IsValid(FixtureOwner) || !GameMode->TryGetItemDefinition(RuntimeLootRowId, SelectedItemDefinition) ||
+			!GameMode->TryGetLootDefinition(RuntimeLootRowId, SelectedLootDefinition) || SelectedItemDefinition.ItemType != EHeistItemType::Loot ||
+			!SelectedItemDefinition.bAvailableInV1 || SelectedLootDefinition.ScoreValue <= 0)
 		{
-			continue;
+			return false;
 		}
-		const int32 GridArea = CandidateItemDefinition.GridSize.X * CandidateItemDefinition.GridSize.Y;
-		if (!IsValid(SelectedLootActor) || GridArea < SelectedGridArea ||
-			(GridArea == SelectedGridArea && Candidate->GetFName().LexicalLess(SelectedLootActor->GetFName())))
+
+		FHeistLootDropRequest DropRequest;
+		DropRequest.DroppedBy = FixtureOwner;
+		DropRequest.ItemId = RuntimeLootRowId;
+		DropRequest.DropOrigin = FixtureOwner->GetActorLocation() + FVector(200.0f, 200.0f, 20.0f);
+		if (!GameMode->TrySpawnDroppedLoot(DropRequest, SelectedLootActor) || !IsValid(SelectedLootActor))
 		{
-			SelectedLootActor = Candidate;
-			SelectedItemDefinition = CandidateItemDefinition;
-			SelectedLootDefinition = CandidateLootDefinition;
-			SelectedGridArea = GridArea;
+			return false;
 		}
+		SelectedLootActor->ForceNetUpdate();
+		State->RuntimeLootFixtureRunIndex = RunIndex;
+		State->SelectedLootActorName = SelectedLootActor->GetFName();
+		State->SelectedLootRowId = RuntimeLootRowId;
+		State->SelectedLootValue = SelectedLootDefinition.ScoreValue;
+		return false;
 	}
-	if (!IsValid(SelectedLootActor) || SelectedLootDefinition.ScoreValue <= 0)
+	if (!IsValid(SelectedLootActor) || !SelectedLootActor->IsLootAvailable() || SelectedLootActor->GetLootRowId() != RuntimeLootRowId ||
+		!GameMode->TryGetItemDefinition(RuntimeLootRowId, SelectedItemDefinition) ||
+		!GameMode->TryGetLootDefinition(RuntimeLootRowId, SelectedLootDefinition) || SelectedLootDefinition.ScoreValue <= 0)
 	{
 		return false;
+	}
+	for (UWorld* World : GetContractRunPIEWorlds())
+	{
+		const AHeistLootActor* ReplicatedFixture = FindLootActor(World, State->SelectedLootActorName);
+		if (!IsValid(ReplicatedFixture) || !ReplicatedFixture->IsLootAvailable() || ReplicatedFixture->GetLootRowId() != RuntimeLootRowId)
+		{
+			return false;
+		}
 	}
 
 	TSet<int32> PlayerIds;
@@ -1270,7 +1262,6 @@ bool CaptureAndValidateGameplayPreflight(FAutomationTestBase* Test, const TShare
 		}
 	}
 
-	State->SelectedObjectCaseIds = MoveTemp(ObjectCaseIds);
 	State->SelectedHighValuePaintingCaseId = SelectedHighValuePaintingCase->GetDisplayCaseId();
 	State->SelectedLootActorName = SelectedLootActor->GetFName();
 	State->SelectedLootRowId = SelectedLootActor->GetLootRowId();
@@ -1279,10 +1270,10 @@ bool CaptureAndValidateGameplayPreflight(FAutomationTestBase* Test, const TShare
 	{
 		State->FirstRunContract = ServerContract;
 	}
-	Test->AddInfo(FString::Printf(TEXT("W6-010 preflight: Run=%d Players=%d Map=%s Seed=%d Target=%s DeferredObjectCases=%d ActiveObjectCases=0 Quota=%d SpawnSnapshot=PASS AssignmentSnapshotReplication=PASS ContributionReset=PASS InputLock=0"),
+	Test->AddInfo(FString::Printf(TEXT("W6-010 preflight: Run=%d Players=%d Map=%s Seed=%d Target=%s ReleaseMapObjectCases=0 ObjectAssembly=FeatureDisabled Quota=%d SpawnSnapshot=PASS AssignmentSnapshotReplication=PASS ContributionReset=PASS InputLock=0"),
 		RunIndex, State->PlayerCount, *ServerContract.MapId.ToString(), ServerContract.AssignmentSeed, *ServerContract.RequiredTargetCaseId.ToString(),
-		State->SelectedObjectCaseIds.Num(), ServerContract.LootValueQuota));
-	Test->AddInfo(FString::Printf(TEXT("W6-010 loose-loot fixture: Run=%d Actor=%s Row=%s Value=%d Grid=%dx%d Replication=PASS"), RunIndex,
+		ServerContract.LootValueQuota));
+	Test->AddInfo(FString::Printf(TEXT("W6-010 runtime loose-loot fixture: Run=%d Actor=%s Row=%s Value=%d Grid=%dx%d Replication=PASS"), RunIndex,
 		*State->SelectedLootActorName.ToString(), *State->SelectedLootRowId.ToString(), State->SelectedLootValue, SelectedItemDefinition.GridSize.X, SelectedItemDefinition.GridSize.Y));
 	Test->AddInfo(FString::Printf(TEXT("W8 release security fixture: Run=%d Map=%s FourStarCase=%s CCTV=1 Laser=1 HoldButton=1 Links=PASS Active=PASS"), RunIndex,
 		*State->MapId.ToString(), *State->SelectedHighValuePaintingCaseId.ToString()));
@@ -1382,39 +1373,27 @@ bool HasReplicatedLooseLootPickup(const TSharedRef<FHeistContractRunAutomationSt
 	return true;
 }
 
-bool ValidateDeferredObjectAssemblyAttempt(const int32 PlayerId, const FName CaseId)
+bool IsDeferredObjectAssemblyRuntimeInert(const int32 PlayerId)
 {
 	AHeistPlayerCharacter* Character = GetServerCharacterById(PlayerId);
-	AHeistPlayerState* PlayerState = IsValid(Character) ? Character->GetPlayerState<AHeistPlayerState>() : nullptr;
-	UHeistObjectAssemblyComponent* Assembly = IsValid(Character) ? Character->GetObjectAssemblyComponent() : nullptr;
-	AHeistObjectDisplayCaseActor* DisplayCase = FindObjectCase(GetContractRunServerWorld(), CaseId);
-	if (HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled() || !IsValid(Character) || !IsValid(PlayerState) || !IsValid(Assembly) || !IsValid(DisplayCase) ||
-		DisplayCase->IsContractExhibitActive() || DisplayCase->GetAssemblyState() != EHeistObjectAssemblyState::Secured || DisplayCase->IsSessionLocked() ||
-		DisplayCase->HasCommittedAssemblyResult() || DisplayCase->HasReplicaPreview() || Assembly->IsSessionActive() || Assembly->HasPendingReplicaReview())
+	const UHeistObjectAssemblyComponent* Assembly = IsValid(Character) ? Character->GetObjectAssemblyComponent() : nullptr;
+	if (HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled() || !IsValid(Character) || !IsValid(Assembly) || Assembly->IsSessionActive() ||
+		Assembly->HasPendingReplicaReview() || Assembly->GetActiveDisplayCase() != nullptr)
 	{
 		return false;
 	}
 
-	const EHeistObjectAssemblyState InitialCaseState = DisplayCase->GetAssemblyState();
-	const int32 InitialCaseRevision = DisplayCase->GetAssemblyRevision();
-	const int32 InitialSessionRevision = Assembly->GetSessionRevision();
-	const int32 InitialPayloadRevision = Assembly->GetPayloadValidationRevision();
-	const int32 InitialScoreRevision = Assembly->GetScoreRevision();
-	const FName InitialCleanupReason = Assembly->GetLastCleanupReason();
-
-	const bool bCaseSessionRejected = !DisplayCase->TryBeginSession(PlayerState);
-	const bool bComponentBeginRejected = !Assembly->TryBeginAssemblySession(DisplayCase, 30.0f);
-	const bool bActivationRejected = !DisplayCase->SetContractExhibitActive(true);
-	const bool bTransitionRejected = !DisplayCase->TryTransitionToAssemblyState(EHeistObjectAssemblyState::Observed);
-	const bool bOriginalTakeRejected = !DisplayCase->TryTakeOriginal(PlayerState);
-
-	return bCaseSessionRejected && bComponentBeginRejected && bActivationRejected && bTransitionRejected && bOriginalTakeRejected &&
-		!Assembly->IsSessionActive() && !Assembly->HasPendingReplicaReview() && Assembly->GetActiveDisplayCase() == nullptr &&
-		Assembly->GetSessionRevision() == InitialSessionRevision && Assembly->GetPayloadValidationRevision() == InitialPayloadRevision &&
-		Assembly->GetScoreRevision() == InitialScoreRevision && Assembly->GetLastCleanupReason() == InitialCleanupReason &&
-		!DisplayCase->IsContractExhibitActive() && DisplayCase->GetAssemblyState() == InitialCaseState && DisplayCase->GetAssemblyRevision() == InitialCaseRevision &&
-		!DisplayCase->IsSessionLocked() && !DisplayCase->HasCommittedAssemblyResult() && !DisplayCase->HasReplicaPreview() &&
-		DisplayCase->GetOriginalCarrier() == nullptr && !DisplayCase->IsOriginalSecuredAtExit();
+	for (UWorld* World : GetContractRunPIEWorlds())
+	{
+		for (TActorIterator<AHeistObjectDisplayCaseActor> It(World); It; ++It)
+		{
+			if (IsValid(*It))
+			{
+				return false;
+			}
+		}
+	}
+	return true;
 }
 
 int32 CountVisibleResultWidgets(UWorld* World)
@@ -1628,17 +1607,17 @@ bool IsGameplayContentReplicated(const int32 PlayerCount, const FName ExpectedMa
 		return false;
 	}
 	const int32 ExpectedActiveGuardCount = GameMode->GetDifficultyExpectedGuardCount();
-	int32 ServerActiveObjectCaseCount = 0;
+	int32 ServerObjectCaseCount = 0;
 	for (TActorIterator<AHeistObjectDisplayCaseActor> It(ServerWorld); It; ++It)
 	{
-		ServerActiveObjectCaseCount += IsValid(*It) && It->IsContractExhibitActive() ? 1 : 0;
+		ServerObjectCaseCount += IsValid(*It) ? 1 : 0;
 	}
 	int32 ServerActiveGuardCount = 0;
 	for (TActorIterator<AHeistGuardCharacter> It(ServerWorld); It; ++It)
 	{
 		ServerActiveGuardCount += IsValid(*It) && It->IsDifficultyActive() ? 1 : 0;
 	}
-	if (HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled() || ServerActiveObjectCaseCount != 0 || ServerActiveGuardCount != ExpectedActiveGuardCount)
+	if (HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled() || ServerObjectCaseCount != 0 || ServerActiveGuardCount != ExpectedActiveGuardCount)
 	{
 		return false;
 	}
@@ -1686,7 +1665,7 @@ FString DescribeGameplayContentReplication(const int32 PlayerCount)
 			}
 		}
 		WorldStates.Add(FString::Printf(
-			TEXT("World=%s NetMode=%d Phase=%s Players=%d Contract=%s Map=%s RequiredCase=%s RequiredCaseFound=%s ActiveObjectCases=%d TotalDeferredObjectCases=%d ExpectedActiveObjects=0 Guards=%d/%d ExpectedGuards=%d"),
+			TEXT("World=%s NetMode=%d Phase=%s Players=%d Contract=%s Map=%s RequiredCase=%s RequiredCaseFound=%s ActiveObjectCases=%d ReleaseMapObjectCases=%d ExpectedReleaseMapObjectCases=0 Guards=%d/%d ExpectedGuards=%d"),
 			*GetNameSafe(World), IsValid(World) ? static_cast<int32>(World->GetNetMode()) : INDEX_NONE,
 			IsValid(GameState) ? *UEnum::GetValueAsString(GameState->GetMatchPhase()) : TEXT("Missing"),
 			IsValid(GameState) ? GameState->PlayerArray.Num() : INDEX_NONE,
@@ -2404,20 +2383,9 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 	}, 10.0));
 
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State,
-		FString::Printf(TEXT("run %d Object Assembly is FeatureDisabled and leaves every authored Case unchanged"), RunIndex), [State]()
+		FString::Printf(TEXT("run %d Object Assembly is FeatureDisabled, inert, and absent from the release map"), RunIndex), []()
 	{
-		if (HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled())
-		{
-			return false;
-		}
-		for (const FName ObjectCaseId : State->SelectedObjectCaseIds)
-		{
-			if (!ValidateDeferredObjectAssemblyAttempt(1, ObjectCaseId))
-			{
-				return false;
-			}
-		}
-		return true;
+		return IsDeferredObjectAssemblyRuntimeInert(1);
 	}));
 
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d refresh carried value and trigger Guard Chase/Alert"), RunIndex), []()

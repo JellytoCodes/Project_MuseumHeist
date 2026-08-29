@@ -105,7 +105,7 @@ bool ResolveReplicaDefinitions(const FName ArtifactId, const FName FamilyId, FHe
 AHeistObjectDisplayCaseActor::AHeistObjectDisplayCaseActor()
 {
 	PrimaryActorTick.bCanEverTick = false;
-	bReplicates = true;
+	bReplicates = HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled();
 
 	ReplicaRootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("ObjectReplicaRoot"));
 	ReplicaRootComponent->SetupAttachment(RootComponent);
@@ -117,6 +117,8 @@ void AHeistObjectDisplayCaseActor::BeginPlay()
 	if (!HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled())
 	{
 		bContractExhibitActive = false;
+		ApplyContractExhibitActiveState();
+		return;
 	}
 	ApplyContractExhibitActiveState();
 

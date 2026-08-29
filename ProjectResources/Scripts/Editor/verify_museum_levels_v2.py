@@ -4,6 +4,15 @@ import math
 import unreal
 
 
+OBJECT_DISPLAY_CASE_ACTOR_TYPE = getattr(unreal, "HeistObjectDisplayCaseActor", None)
+
+
+def is_deferred_object_case(actor):
+    if OBJECT_DISPLAY_CASE_ACTOR_TYPE is not None and isinstance(actor, OBJECT_DISPLAY_CASE_ACTOR_TYPE):
+        return True
+    return actor.get_class().get_name() == "BP_ObjectDisplayCase_C"
+
+
 EXPECTED = {
     "M01": {
         "path": "/Game/Maps/M01_ClassicalPrototype",
@@ -246,6 +255,7 @@ for code in selected_level_codes:
     failures = []
     labels = [actor.get_actor_label() for actor in actors]
     by_label = {actor.get_actor_label(): actor for actor in actors}
+    deferred_object_cases = [actor for actor in actors if is_deferred_object_case(actor)]
     if len(labels) != len(set(labels)):
         failures.append("duplicate actor labels")
 
@@ -299,6 +309,16 @@ for code in selected_level_codes:
         actual = len(by_class.get(class_name, []))
         if actual != count:
             failures.append("{} count {} != {}".format(class_name, actual, count))
+    if deferred_object_cases:
+        failures.append("deferred object display case count {} != 0".format(len(deferred_object_cases)))
+
+    retired_loot_prefixes = ("W6_Loot_", "W8_RELEASE_{}_Loot_".format(code))
+    retired_loot = [
+        actor for actor in by_class.get("BP_Loot_C", [])
+        if actor.get_actor_label().startswith(retired_loot_prefixes)
+    ]
+    if retired_loot:
+        failures.append("retired authored loose-loot actors remain: {}".format(len(retired_loot)))
 
     prefix = "LDV2_{}_".format(code)
     legacy_static = [
@@ -857,6 +877,9 @@ for code in selected_level_codes:
         "floor_bounds_cm": list(bounds),
         "painting_cases": len(cases),
         "unique_case_ids": len(set(case_ids)),
+        "authored_loose_loot": len(by_class.get("BP_Loot_C", [])),
+        "retired_authored_loot": len(retired_loot),
+        "deferred_object_cases": len(deferred_object_cases),
         "vent_visual_points": len(vent_panels),
         "gameplay_exit_vents": len(by_class.get("BP_Vent_C", [])),
         "guards": len(by_class.get("BP_Guard_C", [])),

@@ -55,6 +55,21 @@ BLUEPRINTS = {
     "button": "/Game/Blueprints/World/Actors/Security/BP_SecurityHoldButton",
 }
 
+# Retire only the obsolete W6/W8 map fixtures. A future approved authored
+# loose-loot pass must not be erased merely because it uses the canonical shell.
+RETIRED_LOOT_LABEL_PREFIXES = (
+    "W6_Loot_",
+    "W8_RELEASE_{code}_Loot_",
+)
+
+OBJECT_DISPLAY_CASE_ACTOR_TYPE = getattr(unreal, "HeistObjectDisplayCaseActor", None)
+
+
+def is_deferred_object_case(actor):
+    if OBJECT_DISPLAY_CASE_ACTOR_TYPE is not None and isinstance(actor, OBJECT_DISPLAY_CASE_ACTOR_TYPE):
+        return True
+    return actor.get_class().get_name() == "BP_ObjectDisplayCase_C"
+
 # The broad Architecture/M##_ legacy-label migration already ran on 2026-08-27.
 # Keep it opt-in so a future hand-authored actor is never removed on a normal rebuild.
 REMOVE_LEGACY_ARCHITECTURE = False
@@ -336,6 +351,7 @@ class LevelBuilder:
         self.updated = 0
         self.legacy_removed = 0
         self.orphaned_removed = 0
+        self.release_disabled_removed = 0
         self.expected_labels = set()
         self.world = unreal.EditorLoadingAndSavingUtils.load_map(config["path"])
         if not self.world:
@@ -398,6 +414,30 @@ class LevelBuilder:
             self.by_label.pop(label, None)
             self.orphaned_removed += 1
         unreal.log_warning("MH_LEVEL_ORPHAN_CLEANUP={} removed={}".format(self.code, self.orphaned_removed))
+
+    def cleanup_release_disabled_content(self):
+        removed_labels = []
+        retired_loot_prefixes = tuple(prefix.format(code=self.code) for prefix in RETIRED_LOOT_LABEL_PREFIXES)
+        for actor in list(self.actors):
+            class_name = actor.get_class().get_name()
+            label = actor.get_actor_label()
+            is_retired_loot = class_name == "BP_Loot_C" and label.startswith(retired_loot_prefixes)
+            is_object_case = is_deferred_object_case(actor)
+            if not is_retired_loot and not is_object_case:
+                continue
+            if not actor_subsystem.destroy_actor(actor):
+                raise RuntimeError("Release-disabled actor cleanup failed: " + label)
+            self.actors.remove(actor)
+            self.by_label.pop(label, None)
+            removed_labels.append(label)
+            self.release_disabled_removed += 1
+        unreal.log_warning(
+            "MH_LEVEL_RELEASE_DISABLED_CLEANUP={} removed={} labels={}".format(
+                self.code,
+                self.release_disabled_removed,
+                ",".join(sorted(removed_labels)),
+            )
+        )
 
     def folder(self, actor, suffix):
         actor.set_folder_path(unreal.Name("LDV2/{}/{}".format(self.code, suffix)))
@@ -1097,6 +1137,7 @@ class LevelBuilder:
             "updated": self.updated,
             "legacy_removed": self.legacy_removed,
             "orphaned_removed": self.orphaned_removed,
+            "release_disabled_removed": self.release_disabled_removed,
             "expected_generated_labels": len(self.expected_labels),
             "actor_count": sum(class_counts.values()),
             "static_mesh_actors": class_counts.get("StaticMeshActor", 0),
@@ -1106,6 +1147,8 @@ class LevelBuilder:
             "lasers": class_counts.get("BP_LaserBarrier_C", 0),
             "laser_buttons": class_counts.get("BP_SecurityHoldButton_C", 0),
             "gameplay_vents": class_counts.get("BP_Vent_C", 0),
+            "authored_loose_loot": class_counts.get("BP_Loot_C", 0),
+            "deferred_object_cases": class_counts.get("BP_ObjectDisplayCase_C", 0),
             "target_size_cm": [self.config["half_x"] * 2, self.config["half_y"] * 2],
             "vent_visual_points": len(self.config["vent_entries"]),
         }
@@ -1339,6 +1382,7 @@ def build_selected_levels():
     for code in selected_level_codes:
         config = MAPS[code]
         builder = LevelBuilder(code, config)
+        builder.cleanup_release_disabled_content()
         if REMOVE_LEGACY_ARCHITECTURE:
             builder.cleanup_legacy_static()
         if code == "M01":

@@ -474,6 +474,23 @@ bool TryParseMatchPhase(const FString& PhaseName, EHeistMatchPhase& OutPhase)
 
 	return false;
 }
+
+#if !UE_BUILD_SHIPPING
+bool RejectDisabledObjectAssemblyMutation(APlayerController* PlayerController, const TCHAR* Operation)
+{
+	if (HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled())
+	{
+		return false;
+	}
+
+	UHeistDebugFunctionLibrary::Message(
+		PlayerController,
+		FString::Printf(TEXT("Object Assembly %s: Result=REJECTED Reason=FeatureDisabled"), Operation),
+		EHeistDebugLevel::Warning,
+		true);
+	return true;
+}
+#endif
 }
 
 #pragma endregion
@@ -1615,6 +1632,17 @@ void UHeistDebugFunctionLibrary::DebugOutcomeDump(APlayerController* PlayerContr
 void UHeistDebugFunctionLibrary::DebugObjectAssemblyHelp(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
+	if (!HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled())
+	{
+		Message(
+			PlayerController,
+			TEXT("Object Assembly runtime is disabled for v1. Read-only commands remain available: HeistObjectAssemblyDump | HeistObjectAssemblyUIDump | HeistObjectAssemblyReplicaDump | HeistObjectAssemblyContentValidate. Mutating Object Assembly commands reject with Reason=FeatureDisabled."),
+			EHeistDebugLevel::Info,
+			true,
+			12.0f);
+		return;
+	}
+
 	Message(
 		PlayerController,
 		TEXT(
@@ -1626,6 +1654,11 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyHelp(APlayerController* Play
 void UHeistDebugFunctionLibrary::DebugObjectAssemblySpawn(APlayerController* PlayerController, const float Distance)
 {
 #if !UE_BUILD_SHIPPING
+	if (RejectDisabledObjectAssemblyMutation(PlayerController, TEXT("spawn")))
+	{
+		return;
+	}
+
 	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(PlayerController->GetWorld()) || !IsValid(PlayerController->GetPawn()))
 	{
 		Message(PlayerController, TEXT("Object Assembly spawn: Result=REJECTED Reason=ListenServerAuthorityRequired"), EHeistDebugLevel::Warning, true);
@@ -1662,6 +1695,11 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblySpawn(APlayerController* Pla
 void UHeistDebugFunctionLibrary::DebugObjectAssemblySpawnFor(APlayerController* PlayerController, const int32 PlayerId, const float Distance)
 {
 #if !UE_BUILD_SHIPPING
+	if (RejectDisabledObjectAssemblyMutation(PlayerController, TEXT("spawn for")))
+	{
+		return;
+	}
+
 	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(PlayerController->GetWorld()))
 	{
 		Message(PlayerController, TEXT("Object Assembly spawn-for: Result=REJECTED Reason=ListenServerAuthorityRequired"), EHeistDebugLevel::Warning, true);
@@ -1706,6 +1744,11 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblySpawnFor(APlayerController* 
 void UHeistDebugFunctionLibrary::DebugObjectAssemblyContentSpawn(APlayerController* PlayerController, const FString& Family, const int32 Variant, const float Distance)
 {
 #if !UE_BUILD_SHIPPING
+	if (RejectDisabledObjectAssemblyMutation(PlayerController, TEXT("content spawn")))
+	{
+		return;
+	}
+
 	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(PlayerController->GetWorld()) || !IsValid(PlayerController->GetPawn()))
 	{
 		Message(PlayerController, TEXT("Object Assembly content spawn: Result=REJECTED Reason=ListenServerAuthorityRequired"), EHeistDebugLevel::Warning, true);
@@ -1756,6 +1799,11 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyContentSpawnFor(APlayerContr
 																	const int32 Variant, const float Distance)
 {
 #if !UE_BUILD_SHIPPING
+	if (RejectDisabledObjectAssemblyMutation(PlayerController, TEXT("content spawn for")))
+	{
+		return;
+	}
+
 	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(PlayerController->GetWorld()))
 	{
 		Message(PlayerController, TEXT("Object Assembly content spawn-for: Result=REJECTED Reason=ListenServerAuthorityRequired"), EHeistDebugLevel::Warning, true);
@@ -1819,6 +1867,11 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyContentSpawnFor(APlayerContr
 void UHeistDebugFunctionLibrary::DebugObjectAssemblyKickPlayer(APlayerController* PlayerController, const int32 PlayerId)
 {
 #if !UE_BUILD_SHIPPING
+	if (RejectDisabledObjectAssemblyMutation(PlayerController, TEXT("kick player")))
+	{
+		return;
+	}
+
 	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(PlayerController->GetWorld()))
 	{
 		Message(PlayerController, TEXT("Object Assembly kick player: Result=REJECTED Reason=ListenServerAuthorityRequired"), EHeistDebugLevel::Warning, true);
@@ -1848,6 +1901,11 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyKickPlayer(APlayerController
 void UHeistDebugFunctionLibrary::DebugObjectAssemblyBegin(APlayerController* PlayerController, const float DurationSeconds)
 {
 #if !UE_BUILD_SHIPPING
+	if (RejectDisabledObjectAssemblyMutation(PlayerController, TEXT("begin")))
+	{
+		return;
+	}
+
 	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
 	AHeistObjectDisplayCaseActor* DisplayCase = ResolveNearestObjectDisplayCase(PlayerController);
 	if (!IsValid(HeistPlayerController) || !IsValid(DisplayCase))
@@ -1868,6 +1926,11 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyBegin(APlayerController* Pla
 void UHeistDebugFunctionLibrary::DebugObjectAssemblyTest(APlayerController* PlayerController, const FString& Scenario)
 {
 #if !UE_BUILD_SHIPPING
+	if (RejectDisabledObjectAssemblyMutation(PlayerController, TEXT("test")))
+	{
+		return;
+	}
+
 	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
 	const UHeistObjectAssemblyComponent* ObjectAssemblyComponent = ResolveObjectAssemblyComponent(PlayerController);
 	if (!IsValid(HeistPlayerController) || !IsValid(ObjectAssemblyComponent) || !ObjectAssemblyComponent->IsSessionActive())
@@ -2112,6 +2175,11 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyUIDump(APlayerController* Pl
 void UHeistDebugFunctionLibrary::DebugObjectAssemblyCancel(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
+	if (RejectDisabledObjectAssemblyMutation(PlayerController, TEXT("cancel")))
+	{
+		return;
+	}
+
 	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
 	if (!IsValid(HeistPlayerController))
 	{
@@ -2127,6 +2195,11 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyCancel(APlayerController* Pl
 void UHeistDebugFunctionLibrary::DebugObjectAssemblyTimeout(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
+	if (RejectDisabledObjectAssemblyMutation(PlayerController, TEXT("timeout")))
+	{
+		return;
+	}
+
 	UHeistObjectAssemblyComponent* ObjectAssemblyComponent = ResolveObjectAssemblyComponent(PlayerController);
 	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(ObjectAssemblyComponent) || !ObjectAssemblyComponent->ForceTimeoutForDebug())
 	{
@@ -2360,6 +2433,11 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyContentValidate(APlayerContr
 void UHeistDebugFunctionLibrary::DebugObjectAssemblyReplicaRebuild(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
+	if (RejectDisabledObjectAssemblyMutation(PlayerController, TEXT("replica rebuild")))
+	{
+		return;
+	}
+
 	AHeistObjectDisplayCaseActor* DisplayCase = ResolveNearestReplicaObjectDisplayCase(PlayerController);
 	const bool bPassed = IsValid(DisplayCase) && DisplayCase->ForceReplicaRebuildForDebug();
 	Message(
@@ -2374,6 +2452,11 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyReplicaRebuild(APlayerContro
 void UHeistDebugFunctionLibrary::DebugObjectAssemblyTakeOriginal(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
+	if (RejectDisabledObjectAssemblyMutation(PlayerController, TEXT("take original")))
+	{
+		return;
+	}
+
 	AHeistPlayerController* HeistPlayerController = ResolveHeistPlayerController(PlayerController);
 	const UHeistObjectAssemblyComponent* ObjectAssemblyComponent = ResolveObjectAssemblyComponent(PlayerController);
 	AHeistObjectDisplayCaseActor* DisplayCase = ResolveNearestReplicaObjectDisplayCase(PlayerController);
@@ -2402,6 +2485,11 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyTakeOriginal(APlayerControll
 void UHeistDebugFunctionLibrary::DebugObjectAssemblyInspectionReady(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
+	if (RejectDisabledObjectAssemblyMutation(PlayerController, TEXT("inspection ready")))
+	{
+		return;
+	}
+
 	AHeistObjectDisplayCaseActor* DisplayCase = ResolveNearestReplicaObjectDisplayCase(PlayerController);
 	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(DisplayCase))
 	{
@@ -2427,6 +2515,11 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyInspectionReady(APlayerContr
 void UHeistDebugFunctionLibrary::DebugObjectAssemblyInspectionGate(APlayerController* PlayerController)
 {
 #if !UE_BUILD_SHIPPING
+	if (RejectDisabledObjectAssemblyMutation(PlayerController, TEXT("inspection gate")))
+	{
+		return;
+	}
+
 	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(PlayerController->GetWorld()))
 	{
 		Message(PlayerController, TEXT("Object Assembly inspection gate: Result=REJECTED Reason=ListenServerAuthorityRequired"), EHeistDebugLevel::Warning, true);
@@ -2492,6 +2585,11 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyInspectionGate(APlayerContro
 void UHeistDebugFunctionLibrary::DebugObjectAssemblyTestIsolation(APlayerController* PlayerController, const bool bEnabled)
 {
 #if !UE_BUILD_SHIPPING
+	if (RejectDisabledObjectAssemblyMutation(PlayerController, TEXT("test isolation")))
+	{
+		return;
+	}
+
 	UWorld* World = IsValid(PlayerController) ? PlayerController->GetWorld() : nullptr;
 	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(World))
 	{

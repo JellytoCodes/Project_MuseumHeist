@@ -11,6 +11,7 @@
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
 #include "Core/HeistLogChannels.h"
+#include "Core/HeistTypes.h"
 #include "UI/ViewModels/HeistHUDViewModel.h"
 #include "UI/ViewModels/HeistForgeryViewModel.h"
 #include "UI/ViewModels/HeistInventoryViewModel.h"
@@ -522,6 +523,11 @@ UHeistObjectAssemblyWidget* AHeistHUD::GetObjectAssemblyWidget() const
 
 void AHeistHUD::InitializeObjectAssemblyPresentation()
 {
+	if (!HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled())
+	{
+		return;
+	}
+
 	AHeistPlayerController* HeistPlayerController = Cast<AHeistPlayerController>(GetOwningPlayerController());
 	if (!HasAttachedLocalPlayer(HeistPlayerController))
 	{

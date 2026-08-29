@@ -17,6 +17,7 @@
 #include "Engine/StaticMesh.h"
 #include "EngineUtils.h"
 #include "Inventory/HeistItemDataTypes.h"
+#include "Inventory/HeistInventoryTypes.h"
 #include "Materials/MaterialInterface.h"
 #include "Misc/AutomationTest.h"
 #include "Settings/LevelEditorPlaySettings.h"
@@ -47,6 +48,7 @@ struct FHeistLootLifecycleAutomationState
 	EPlayNetMode OriginalNetMode = EPlayNetMode::PIE_Standalone;
 	bool bOriginalRunUnderOneProcess = true;
 	int32 OriginalClientCount = 1;
+	bool bRuntimeFixturesSpawned = false;
 	TArray<FHeistLootLifecycleFixture> Fixtures;
 	FName PendingFeedbackRowId = NAME_None;
 	int32 PendingFeedbackValue = 0;
@@ -236,20 +238,6 @@ AHeistLootActor* FindAvailableLootActorByRow(UWorld* World, const FName RowId, c
 		}
 	}
 	return nullptr;
-}
-
-int32 CountAvailableLootActorsByRow(UWorld* World, const FName RowId)
-{
-	int32 Count = 0;
-	if (!IsValid(World) || RowId.IsNone())
-	{
-		return Count;
-	}
-	for (TActorIterator<AHeistLootActor> It(World); It; ++It)
-	{
-		Count += IsValid(*It) && It->GetLootRowId() == RowId && It->IsLootAvailable() ? 1 : 0;
-	}
-	return Count;
 }
 
 AHeistVentActor* FindVentActor(UWorld* World)
@@ -602,28 +590,76 @@ bool CaptureLifecycleFixtures(FAutomationTestBase* Test, const TSharedRef<FHeist
 		return false;
 	}
 
-	TArray<FHeistLootLifecycleFixture> Fixtures;
+	AHeistPlayerCharacter* FixtureOwner = FindHeistCharacterById(ServerWorld, LootCarrierPlayerId);
+	if (!IsValid(FixtureOwner))
+	{
+		return false;
+	}
+
+	TArray<FHeistLootLifecycleFixture> Fixtures = State->Fixtures;
 	int32 TotalGridArea = 0;
 	int32 TotalValue = 0;
 	float TotalWeight = 0.0f;
-	for (const FName RowId : GetLifecycleLootRowIds())
+	if (!State->bRuntimeFixturesSpawned)
 	{
-		FHeistLootLifecycleFixture Fixture;
-		Fixture.RowId = RowId;
-		AHeistLootActor* ServerLootActor = FindAvailableLootActorByRow(ServerWorld, RowId);
-		if (!IsValid(ServerLootActor) || CountAvailableLootActorsByRow(ServerWorld, RowId) != 1 || !GameMode->TryGetItemDefinition(RowId, Fixture.ItemDefinition) ||
-			!GameMode->TryGetLootDefinition(RowId, Fixture.LootDefinition) || Fixture.ItemDefinition.ItemId != RowId || Fixture.LootDefinition.ItemId != RowId ||
-			Fixture.ItemDefinition.ItemType != EHeistItemType::Loot || !Fixture.ItemDefinition.bAvailableInV1 || Fixture.ItemDefinition.GridSize.X <= 0 ||
-			Fixture.ItemDefinition.GridSize.Y <= 0 || !FMath::IsFinite(Fixture.ItemDefinition.Weight) || Fixture.ItemDefinition.Weight <= 0.0f ||
-			Fixture.LootDefinition.ScoreValue <= 0)
+		Fixtures.Reset(GetLifecycleLootRowIds().Num());
+		TArray<TWeakObjectPtr<AHeistLootActor>> SpawnedFixtures;
+		for (int32 RowIndex = 0; RowIndex < GetLifecycleLootRowIds().Num(); ++RowIndex)
+		{
+			const FName RowId = GetLifecycleLootRowIds()[RowIndex];
+			FHeistLootLifecycleFixture Fixture;
+			Fixture.RowId = RowId;
+			if (!GameMode->TryGetItemDefinition(RowId, Fixture.ItemDefinition) || !GameMode->TryGetLootDefinition(RowId, Fixture.LootDefinition) ||
+				Fixture.ItemDefinition.ItemId != RowId || Fixture.LootDefinition.ItemId != RowId || Fixture.ItemDefinition.ItemType != EHeistItemType::Loot ||
+				!Fixture.ItemDefinition.bAvailableInV1 || Fixture.ItemDefinition.GridSize.X <= 0 || Fixture.ItemDefinition.GridSize.Y <= 0 ||
+				!FMath::IsFinite(Fixture.ItemDefinition.Weight) || Fixture.ItemDefinition.Weight <= 0.0f || Fixture.LootDefinition.ScoreValue <= 0)
+			{
+				for (const TWeakObjectPtr<AHeistLootActor>& SpawnedFixture : SpawnedFixtures)
+				{
+					if (SpawnedFixture.IsValid())
+					{
+						SpawnedFixture->Destroy();
+					}
+				}
+				return false;
+			}
+
+			FHeistLootDropRequest DropRequest;
+			DropRequest.DroppedBy = FixtureOwner;
+			DropRequest.ItemId = RowId;
+			DropRequest.DropOrigin = FixtureOwner->GetActorLocation() + FVector(150.0f + 125.0f * RowIndex, 150.0f, 20.0f);
+			AHeistLootActor* ServerLootActor = nullptr;
+			if (!GameMode->TrySpawnDroppedLoot(DropRequest, ServerLootActor) || !IsValid(ServerLootActor))
+			{
+				for (const TWeakObjectPtr<AHeistLootActor>& SpawnedFixture : SpawnedFixtures)
+				{
+					if (SpawnedFixture.IsValid())
+					{
+						SpawnedFixture->Destroy();
+					}
+				}
+				return false;
+			}
+			ServerLootActor->ForceNetUpdate();
+			SpawnedFixtures.Add(ServerLootActor);
+			Fixture.OriginalActorName = ServerLootActor->GetFName();
+			Fixtures.Add(MoveTemp(Fixture));
+		}
+		State->Fixtures = Fixtures;
+		State->bRuntimeFixturesSpawned = true;
+		return false;
+	}
+
+	for (FHeistLootLifecycleFixture& Fixture : Fixtures)
+	{
+		AHeistLootActor* ServerLootActor = FindLootActorByName(ServerWorld, Fixture.OriginalActorName);
+		if (!IsValid(ServerLootActor) || !ServerLootActor->IsLootAvailable() || ServerLootActor->GetLootRowId() != Fixture.RowId)
 		{
 			return false;
 		}
-		Fixture.OriginalActorName = ServerLootActor->GetFName();
 		for (UWorld* World : GetLootLifecyclePIEWorlds())
 		{
-			if (CountAvailableLootActorsByRow(World, RowId) != 1 ||
-				!IsLootWorldVisualResolved(FindLootActorByName(World, Fixture.OriginalActorName), Fixture.ItemDefinition, Fixture.LootDefinition, true))
+			if (!IsLootWorldVisualResolved(FindLootActorByName(World, Fixture.OriginalActorName), Fixture.ItemDefinition, Fixture.LootDefinition, true))
 			{
 				return false;
 			}
@@ -631,7 +667,6 @@ bool CaptureLifecycleFixtures(FAutomationTestBase* Test, const TSharedRef<FHeist
 		TotalGridArea += Fixture.ItemDefinition.GridSize.X * Fixture.ItemDefinition.GridSize.Y;
 		TotalValue += Fixture.LootDefinition.ScoreValue;
 		TotalWeight += Fixture.ItemDefinition.Weight;
-		Fixtures.Add(MoveTemp(Fixture));
 	}
 	const int32 GridCapacity = UHeistInventoryComponent::GridColumnCount * UHeistInventoryComponent::GridRowCount;
 	if (Fixtures.Num() != 5 || TotalGridArea > GridCapacity)
@@ -665,7 +700,7 @@ bool CaptureLifecycleFixtures(FAutomationTestBase* Test, const TSharedRef<FHeist
 			*PinnedState->PendingFeedbackRowId.ToString(), *ExpectedMessage.ToString(), *Message.ToString(), DurationSeconds));
 	});
 
-	Test->AddInfo(FString::Printf(TEXT("W6-011 fixture: Map=M01 Players=2 Rows=5 GridArea=%d/%d Value=%d Weight=%.1f SharedShell=BP_Loot HostClientVisual=PASS"),
+	Test->AddInfo(FString::Printf(TEXT("W6-011 runtime fixture: Map=M01 Players=2 Rows=5 GridArea=%d/%d Value=%d Weight=%.1f SharedShell=BP_Loot HostClientVisual=PASS"),
 		TotalGridArea, GridCapacity, TotalValue, TotalWeight));
 	return true;
 }
@@ -960,7 +995,7 @@ bool EnqueueTwoPlayerLootLifecycleScenario(FAutomationTestBase* Test)
 		UHeistGameInstance* GameInstance = IsValid(ServerWorld) ? Cast<UHeistGameInstance>(ServerWorld->GetGameInstance()) : nullptr;
 		return IsValid(GameInstance) && SetAllLootLifecycleLobbyPlayersReady(ServerWorld) && GameInstance->RequestStartSelectedGameplayMap();
 	}));
-	Test->AddCommand(new FHeistLootLifecycleWaitCommand(Test, State, TEXT("M01 two-player gameplay and five authored loot fixtures"), [Test, State]()
+	Test->AddCommand(new FHeistLootLifecycleWaitCommand(Test, State, TEXT("M01 two-player gameplay and five runtime loot fixtures"), [Test, State]()
 	{
 		return AreLootLifecycleWorldsReady(EHeistMatchPhase::InGame, true) && CaptureLifecycleFixtures(Test, State);
 	}, 75.0));

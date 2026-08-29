@@ -717,6 +717,11 @@ void AHeistPlayerController::RefreshLocalObjectAssemblyInputBinding()
 	{
 		return;
 	}
+	if (!HeistReleaseFeatures::IsObjectAssemblyRuntimeEnabled())
+	{
+		UnbindLocalObjectAssemblyInputState();
+		return;
+	}
 
 	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
 	UHeistObjectAssemblyComponent* ObjectAssemblyComponent =

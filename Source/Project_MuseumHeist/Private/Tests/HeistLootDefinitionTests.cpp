@@ -15,29 +15,29 @@
 
 namespace
 {
-bool HaveSameMaterialPaths(const FHeistLootDataRow& Left, const FHeistLootDataRow& Right)
-{
-	if (Left.WorldMaterials.Num() != Right.WorldMaterials.Num())
+	bool HaveSameMaterialPaths(const FHeistLootDataRow& Left, const FHeistLootDataRow& Right)
 	{
-		return false;
-	}
-
-	for (int32 MaterialIndex = 0; MaterialIndex < Left.WorldMaterials.Num(); ++MaterialIndex)
-	{
-		if (Left.WorldMaterials[MaterialIndex].ToSoftObjectPath() != Right.WorldMaterials[MaterialIndex].ToSoftObjectPath())
+		if (Left.WorldMaterials.Num() != Right.WorldMaterials.Num())
 		{
 			return false;
 		}
+
+		for (int32 MaterialIndex = 0; MaterialIndex < Left.WorldMaterials.Num(); ++MaterialIndex)
+		{
+			if (Left.WorldMaterials[MaterialIndex].ToSoftObjectPath() != Right.WorldMaterials[MaterialIndex].ToSoftObjectPath())
+			{
+				return false;
+			}
+		}
+
+		return true;
 	}
 
-	return true;
-}
-
-bool HaveSameWorldVisualSignature(const FHeistLootDataRow& Left, const FHeistLootDataRow& Right)
-{
-	return Left.WorldMesh.ToSoftObjectPath() == Right.WorldMesh.ToSoftObjectPath() && HaveSameMaterialPaths(Left, Right) &&
-		Left.WorldVisualRelativeTransform.Equals(Right.WorldVisualRelativeTransform, 0.0);
-}
+	bool HaveSameWorldVisualSignature(const FHeistLootDataRow& Left, const FHeistLootDataRow& Right)
+	{
+		return Left.WorldMesh.ToSoftObjectPath() == Right.WorldMesh.ToSoftObjectPath() && HaveSameMaterialPaths(Left, Right) &&
+			Left.WorldVisualRelativeTransform.Equals(Right.WorldVisualRelativeTransform, 0.0);
+	}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistInventoryGridContractTest, "ProjectMuseumHeist.Inventory.GridContract",
