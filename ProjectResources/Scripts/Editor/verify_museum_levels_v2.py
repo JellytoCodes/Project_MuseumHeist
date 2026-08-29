@@ -95,6 +95,49 @@ EXPECTED = {
     },
 }
 
+LOWER_WALL_Z = -12.0
+UPPER_WALL_Z = 388.0
+CEILING_Z = 812.0
+
+NIGHT_EXPECTED = {
+    "M01": {
+        "moon_rotation": (-20.0, -35.0, 0.0),
+        "moon_color": (150, 180, 255),
+        "moon_intensity": 0.50,
+        "sky_color": (125, 150, 210),
+        "sky_intensity": 0.26,
+        "fog_density": 0.008,
+        "fog_start_distance": 450.0,
+        "fog_max_opacity": 0.35,
+        "exposure_ev100": 1.50,
+        "bloom_intensity": 0.25,
+    },
+    "M02": {
+        "moon_rotation": (-15.0, 20.0, 0.0),
+        "moon_color": (125, 155, 235),
+        "moon_intensity": 0.40,
+        "sky_color": (95, 120, 185),
+        "sky_intensity": 0.20,
+        "fog_density": 0.014,
+        "fog_start_distance": 350.0,
+        "fog_max_opacity": 0.45,
+        "exposure_ev100": 1.00,
+        "bloom_intensity": 0.30,
+    },
+    "M03": {
+        "moon_rotation": (-24.0, -70.0, 0.0),
+        "moon_color": (165, 200, 255),
+        "moon_intensity": 0.55,
+        "sky_color": (125, 155, 215),
+        "sky_intensity": 0.24,
+        "fog_density": 0.006,
+        "fog_start_distance": 500.0,
+        "fog_max_opacity": 0.30,
+        "exposure_ev100": 1.75,
+        "bloom_intensity": 0.22,
+    },
+}
+
 
 def resolve_level_codes(available_codes):
     _, command_line_switches, command_line_parameters = unreal.SystemLibrary.parse_command_line(
@@ -157,6 +200,10 @@ def prop(obj, name):
 
 def close_float(left, right, tolerance=0.1):
     return abs(float(left) - float(right)) <= tolerance
+
+
+def color_tuple(value):
+    return (int(value.r), int(value.g), int(value.b)) if value is not None else ()
 
 
 def actor_label(value):
@@ -300,6 +347,58 @@ for code in selected_level_codes:
                 non_starter_meshes.append(actor.get_actor_label())
     if non_starter_meshes:
         failures.append("non-StarterContent LDV2 meshes: {}".format(len(set(non_starter_meshes))))
+
+    wall_folder = "LDV2/{}/Architecture/Walls".format(code)
+    lower_walls = [
+        actor
+        for actor in ldv2_static
+        if str(actor.get_folder_path()) == wall_folder
+        and not actor.get_actor_label().endswith("_Upper")
+    ]
+    upper_walls = [
+        actor
+        for actor in ldv2_static
+        if str(actor.get_folder_path()) == wall_folder
+        and actor.get_actor_label().endswith("_Upper")
+    ]
+    if not lower_walls:
+        failures.append("generated lower wall set is empty")
+    if len(upper_walls) != len(lower_walls):
+        failures.append(
+            "upper wall count {} != lower wall count {}".format(len(upper_walls), len(lower_walls))
+        )
+    for lower in lower_walls:
+        lower_label = lower.get_actor_label()
+        lower_location = lower.get_actor_location()
+        lower_scale = lower.get_actor_scale3d()
+        if not close_float(lower_location.z, LOWER_WALL_Z) or not close_float(lower_scale.z, 1.0):
+            failures.append("lower wall transform changed: " + lower_label)
+        upper = by_label.get(lower_label + "_Upper")
+        if upper is None:
+            failures.append("missing upper wall: " + lower_label)
+            continue
+        upper_location = upper.get_actor_location()
+        upper_scale = upper.get_actor_scale3d()
+        if (
+            not close_float(upper_location.x, lower_location.x)
+            or not close_float(upper_location.y, lower_location.y)
+            or not close_float(upper_location.z, UPPER_WALL_Z)
+            or not close_float(upper_scale.x, lower_scale.x)
+            or not close_float(upper_scale.y, lower_scale.y)
+            or not close_float(upper_scale.z, 1.0)
+        ):
+            failures.append("upper wall transform mismatch: " + upper.get_actor_label())
+        if "MuseumTallUpperWall" not in actor_tags(upper):
+            failures.append("upper wall tag missing: " + upper.get_actor_label())
+        lower_components = lower.get_components_by_class(unreal.StaticMeshComponent)
+        upper_components = upper.get_components_by_class(unreal.StaticMeshComponent)
+        lower_mesh = prop(lower_components[0], "static_mesh") if lower_components else None
+        upper_mesh = prop(upper_components[0], "static_mesh") if upper_components else None
+        lower_mesh_path = lower_mesh.get_path_name() if lower_mesh else ""
+        upper_mesh_path = upper_mesh.get_path_name() if upper_mesh else ""
+        expected_upper_mesh = "Wall_Window_400x400" if "Wall_Window_400x400" in lower_mesh_path else "Wall_400x400"
+        if expected_upper_mesh not in upper_mesh_path:
+            failures.append("upper wall mesh mismatch: " + upper.get_actor_label())
 
     glass_visibility_failures = []
     if code == "M03":
@@ -490,6 +589,191 @@ for code in selected_level_codes:
     ]
     if len(ceiling_panels) != expected["ceiling_panels"]:
         failures.append("ceiling panel count {} != {}".format(len(ceiling_panels), expected["ceiling_panels"]))
+    for ceiling_panel in ceiling_panels:
+        target_z = 1000.0 if code == "M03" and "GlassRoof_Crossing" in ceiling_panel.get_actor_label() else CEILING_Z
+        if not close_float(ceiling_panel.get_actor_location().z, target_z):
+            failures.append(
+                "ceiling height mismatch {}: {:.1f} != {:.1f}".format(
+                    ceiling_panel.get_actor_label(), ceiling_panel.get_actor_location().z, target_z
+                )
+            )
+
+    fixture_prefix = prefix + ("GalleryLamp_" if code == "M02" else "CeilingLamp_")
+    fixtures = [actor for actor in ldv2_static if actor.get_actor_label().startswith(fixture_prefix)]
+    for fixture in fixtures:
+        components = fixture.get_components_by_class(unreal.StaticMeshComponent)
+        material = components[0].get_material(0) if components else None
+        material_path = material.get_path_name() if material else ""
+        if "M_Lamp" not in material_path:
+            failures.append("lamp default emissive material missing: " + fixture.get_actor_label())
+
+    point_expectations = {}
+    if code == "M01":
+        for index in range(12):
+            point_expectations[prefix + "WarmLight_{:02d}".format(index)] = {
+                "z": 720.0,
+                "color": (255, 205, 145),
+                "intensity": 1600.0 if index == 0 else 1100.0,
+                "radius": 1650.0 if index == 0 else 1500.0,
+            }
+        for fixture in fixtures:
+            if not close_float(fixture.get_actor_location().z, 770.0):
+                failures.append("M01 ceiling fixture height mismatch: " + fixture.get_actor_label())
+        for actor in ldv2_static:
+            if actor.get_actor_label().startswith(prefix + "Skylight") and not close_float(actor.get_actor_location().z, 790.0):
+                failures.append("M01 skylight structure height mismatch: " + actor.get_actor_label())
+        for actor in ldv2_static:
+            if actor.get_actor_label().startswith(prefix + "RotundaPillar_") and not close_float(actor.get_actor_scale3d().z, 1.6):
+                failures.append("M01 rotunda pillar height mismatch: " + actor.get_actor_label())
+    elif code == "M02":
+        for index in range(12):
+            point_expectations[prefix + "WarmLight_{:02d}".format(index)] = {
+                "color": (255, 176, 105),
+                "intensity": 900.0 if index < 10 else 800.0,
+                "radius": 1050.0 if index < 10 else 900.0,
+            }
+        point_expectations[prefix + "MoonCourtLight"] = {
+            "z": 760.0,
+            "color": (145, 185, 255),
+            "intensity": 1500.0,
+            "radius": 2400.0,
+        }
+    else:
+        for index in range(9):
+            point_expectations[prefix + "SpineLight_{:02d}".format(index)] = {
+                "z": 715.0,
+                "color": (172, 216, 255),
+                "intensity": 1000.0,
+                "radius": 1500.0,
+            }
+        for index in range(4):
+            point_expectations[prefix + "EmergencyLight_{:02d}".format(index)] = {
+                "z": 240.0,
+                "color": (255, 72, 58),
+                "intensity": 500.0,
+                "radius": 850.0,
+            }
+        point_expectations[prefix + "CrossingLight"] = {
+            "z": 920.0,
+            "color": (150, 220, 255),
+            "intensity": 1600.0,
+            "radius": 2300.0,
+        }
+        for fixture in fixtures:
+            if not close_float(fixture.get_actor_location().z, 760.0):
+                failures.append("M03 ceiling fixture height mismatch: " + fixture.get_actor_label())
+        for index in range(12):
+            rib = by_label.get(prefix + "RoofRib_{:02d}".format(index))
+            expected_rib_z = 988.0 if index in (5, 6, 7) else 800.0
+            if rib is None or not close_float(rib.get_actor_location().z, expected_rib_z):
+                failures.append("M03 roof rib height mismatch: {:02d}".format(index))
+        for index in range(2):
+            rail = by_label.get(prefix + "RoofRail_{:02d}".format(index))
+            if rail is None or not close_float(rail.get_actor_location().z, 800.0):
+                failures.append("M03 roof rail height mismatch: {:02d}".format(index))
+        crossing = by_label.get(prefix + "Topology_BraidedCrossing")
+        frame = by_label.get(prefix + "CrossingSuspendedFrame")
+        if crossing is None or not close_float(crossing.get_actor_location().z, 905.0):
+            failures.append("M03 braided crossing height mismatch")
+        if frame is None or not close_float(frame.get_actor_location().z, 780.0):
+            failures.append("M03 suspended frame height mismatch")
+
+    for light_label, light_expected in point_expectations.items():
+        light = by_label.get(light_label)
+        component = light.get_component_by_class(unreal.PointLightComponent) if light else None
+        if component is None:
+            failures.append("missing generated point light: " + light_label)
+            continue
+        if "z" in light_expected and not close_float(light.get_actor_location().z, light_expected["z"]):
+            failures.append("point light height mismatch: " + light_label)
+        if color_tuple(prop(component, "light_color")) != light_expected["color"]:
+            failures.append("point light color mismatch: " + light_label)
+        if not close_float(prop(component, "intensity"), light_expected["intensity"]):
+            failures.append("point light intensity mismatch: " + light_label)
+        if not close_float(prop(component, "attenuation_radius"), light_expected["radius"]):
+            failures.append("point light radius mismatch: " + light_label)
+
+    night_expected = NIGHT_EXPECTED[code]
+    directional_lights = by_class.get("DirectionalLight", [])
+    sky_lights = by_class.get("SkyLight", [])
+    fog_actors = by_class.get("ExponentialHeightFog", [])
+    post_process_volumes = by_class.get("PostProcessVolume", [])
+    night_snapshot = {}
+    if len(directional_lights) != 1:
+        failures.append("DirectionalLight count {} != 1".format(len(directional_lights)))
+    else:
+        directional = directional_lights[0]
+        component = directional.get_component_by_class(unreal.DirectionalLightComponent)
+        rotation = directional.get_actor_rotation()
+        night_snapshot["directional_intensity"] = prop(component, "intensity")
+        night_snapshot["directional_color"] = list(color_tuple(prop(component, "light_color")))
+        if component is None:
+            failures.append("DirectionalLightComponent missing")
+        else:
+            if not close_float(prop(component, "intensity"), night_expected["moon_intensity"], 0.01):
+                failures.append("moon intensity mismatch")
+            if color_tuple(prop(component, "light_color")) != night_expected["moon_color"]:
+                failures.append("moon color mismatch")
+        if any(
+            not close_float(actual, target, 0.1)
+            for actual, target in zip(
+                (rotation.pitch, rotation.yaw, rotation.roll), night_expected["moon_rotation"]
+            )
+        ):
+            failures.append("moon rotation mismatch")
+    if len(sky_lights) != 1:
+        failures.append("SkyLight count {} != 1".format(len(sky_lights)))
+    else:
+        component = sky_lights[0].get_component_by_class(unreal.SkyLightComponent)
+        night_snapshot["sky_intensity"] = prop(component, "intensity")
+        night_snapshot["sky_color"] = list(color_tuple(prop(component, "light_color")))
+        if component is None:
+            failures.append("SkyLightComponent missing")
+        else:
+            if not close_float(prop(component, "intensity"), night_expected["sky_intensity"], 0.01):
+                failures.append("sky intensity mismatch")
+            if color_tuple(prop(component, "light_color")) != night_expected["sky_color"]:
+                failures.append("sky color mismatch")
+            if bool(prop(component, "real_time_capture")):
+                failures.append("SkyLight real-time capture must remain disabled")
+    if len(fog_actors) != 1:
+        failures.append("ExponentialHeightFog count {} != 1".format(len(fog_actors)))
+    else:
+        fog_actor = fog_actors[0]
+        component = fog_actor.get_component_by_class(unreal.ExponentialHeightFogComponent)
+        night_snapshot["fog_density"] = prop(component, "fog_density")
+        if component is None:
+            failures.append("ExponentialHeightFogComponent missing")
+        else:
+            if not close_float(fog_actor.get_actor_location().z, 0.0):
+                failures.append("fog height mismatch")
+            if not close_float(prop(component, "fog_density"), night_expected["fog_density"], 0.0001):
+                failures.append("fog density mismatch")
+            if not close_float(prop(component, "start_distance"), night_expected["fog_start_distance"], 0.1):
+                failures.append("fog start distance mismatch")
+            if not close_float(prop(component, "fog_max_opacity"), night_expected["fog_max_opacity"], 0.01):
+                failures.append("fog max opacity mismatch")
+            if bool(prop(component, "enable_volumetric_fog")):
+                failures.append("volumetric fog must remain disabled")
+    if len(post_process_volumes) != 1:
+        failures.append("PostProcessVolume count {} != 1".format(len(post_process_volumes)))
+    else:
+        post_process = post_process_volumes[0]
+        settings = prop(post_process, "settings")
+        exposure_min = prop(settings, "auto_exposure_min_brightness")
+        exposure_max = prop(settings, "auto_exposure_max_brightness")
+        night_snapshot["exposure_ev100"] = exposure_min
+        night_snapshot["bloom_intensity"] = prop(settings, "bloom_intensity")
+        if post_process.get_actor_label() != prefix + "NightPostProcess":
+            failures.append("night PostProcessVolume label mismatch")
+        if not bool(prop(post_process, "unbound")) or not close_float(prop(post_process, "blend_weight"), 1.0):
+            failures.append("night PostProcessVolume is not fully unbound")
+        if not bool(prop(settings, "override_auto_exposure_min_brightness")) or not bool(prop(settings, "override_auto_exposure_max_brightness")):
+            failures.append("night exposure override is disabled")
+        if not close_float(exposure_min, night_expected["exposure_ev100"], 0.01) or not close_float(exposure_max, night_expected["exposure_ev100"], 0.01):
+            failures.append("night exposure EV100 mismatch")
+        if not bool(prop(settings, "override_bloom_intensity")) or not close_float(prop(settings, "bloom_intensity"), night_expected["bloom_intensity"], 0.01):
+            failures.append("night bloom mismatch")
 
     waypoint_routes = {}
     for waypoint in by_class.get("HeistGuardWaypoint", []):
@@ -565,6 +849,11 @@ for code in selected_level_codes:
         "legacy_overlay_static_mesh_actors": len(legacy_static),
         "generated_lights": len(generated_lights),
         "ceiling_panels": len(ceiling_panels),
+        "ceiling_height_cm": CEILING_Z,
+        "lower_wall_panels": len(lower_walls),
+        "upper_wall_panels": len(upper_walls),
+        "upper_wall_base_z_cm": UPPER_WALL_Z,
+        "night_environment": night_snapshot,
         "floor_bounds_cm": list(bounds),
         "painting_cases": len(cases),
         "unique_case_ids": len(set(case_ids)),

@@ -59,6 +59,52 @@ BLUEPRINTS = {
 # Keep it opt-in so a future hand-authored actor is never removed on a normal rebuild.
 REMOVE_LEGACY_ARCHITECTURE = False
 
+LOWER_WALL_Z = -12.0
+UPPER_WALL_Z = 388.0
+CEILING_Z = 812.0
+
+NIGHT_PROFILES = {
+    "M01": {
+        "moon_rotation": (-20.0, -35.0, 0.0),
+        "moon_color": (150, 180, 255),
+        "moon_intensity": 0.50,
+        "sky_color": (125, 150, 210),
+        "sky_intensity": 0.26,
+        "fog_density": 0.008,
+        "fog_start_distance": 450.0,
+        "fog_max_opacity": 0.35,
+        "fog_color": (0.035, 0.050, 0.090),
+        "exposure_ev100": 1.50,
+        "bloom_intensity": 0.25,
+    },
+    "M02": {
+        "moon_rotation": (-15.0, 20.0, 0.0),
+        "moon_color": (125, 155, 235),
+        "moon_intensity": 0.40,
+        "sky_color": (95, 120, 185),
+        "sky_intensity": 0.20,
+        "fog_density": 0.014,
+        "fog_start_distance": 350.0,
+        "fog_max_opacity": 0.45,
+        "fog_color": (0.025, 0.040, 0.075),
+        "exposure_ev100": 1.00,
+        "bloom_intensity": 0.30,
+    },
+    "M03": {
+        "moon_rotation": (-24.0, -70.0, 0.0),
+        "moon_color": (165, 200, 255),
+        "moon_intensity": 0.55,
+        "sky_color": (125, 155, 215),
+        "sky_intensity": 0.24,
+        "fog_density": 0.006,
+        "fog_start_distance": 500.0,
+        "fog_max_opacity": 0.30,
+        "fog_color": (0.030, 0.050, 0.085),
+        "exposure_ev100": 1.75,
+        "bloom_intensity": 0.22,
+    },
+}
+
 
 MAPS = {
     "M01": {
@@ -264,6 +310,18 @@ def safe_set(target, property_name, value):
         return False
 
 
+def required_set(target, property_name, value):
+    try:
+        target.set_editor_property(property_name, value)
+    except Exception as exc:
+        target_name = target.get_name() if hasattr(target, "get_name") else type(target).__name__
+        raise RuntimeError(
+            "Required property failed: target={} property={} reason={}".format(
+                target_name, property_name, exc
+            )
+        )
+
+
 def set_transform(actor, location, yaw=0.0, scale=(1.0, 1.0, 1.0)):
     actor.set_actor_location(vec(location), False, False)
     actor.set_actor_rotation(rot(yaw), False)
@@ -377,6 +435,12 @@ class LevelBuilder:
         self.mark_generated(actor)
         return actor
 
+    def use_default_material(self, actor):
+        components = actor.get_components_by_class(unreal.StaticMeshComponent)
+        if not components:
+            raise RuntimeError("StaticMeshComponent missing for " + actor.get_actor_label())
+        components[0].set_material(0, None)
+
     def blueprint(self, label, class_name, location, yaw=0.0, folder="Gameplay"):
         actor = self.by_label.get(label)
         if actor is None:
@@ -421,12 +485,285 @@ class LevelBuilder:
             raise RuntimeError("PointLightComponent missing for " + label)
         safe_set(component, "intensity", float(intensity))
         safe_set(component, "attenuation_radius", float(radius))
-        safe_set(component, "light_color", unreal.Color(int(color[0]), int(color[1]), int(color[2]), 255))
+        safe_set(
+            component,
+            "light_color",
+            unreal.Color(r=int(color[0]), g=int(color[1]), b=int(color[2]), a=255),
+        )
         safe_set(component, "mobility", unreal.ComponentMobility.MOVABLE)
         safe_set(component, "cast_shadows", True)
         self.folder(actor, folder)
         self.mark_generated(actor)
         return actor
+
+    def require_actor(self, label):
+        actor = self.by_label.get(label)
+        if actor is None:
+            raise RuntimeError("Required actor missing: " + label)
+        return actor
+
+    def move_actor_z(self, actor, z):
+        location = actor.get_actor_location()
+        actor.set_actor_location(unreal.Vector(location.x, location.y, float(z)), False, False)
+
+    def configure_night_environment(self):
+        profile = NIGHT_PROFILES[self.code]
+
+        def single_actor(class_name):
+            matches = [actor for actor in self.actors if actor.get_class().get_name() == class_name]
+            if len(matches) != 1:
+                raise RuntimeError(
+                    "{} requires exactly one {}, found {}".format(self.code, class_name, len(matches))
+                )
+            return matches[0]
+
+        directional = single_actor("DirectionalLight")
+        directional.set_actor_rotation(
+            unreal.Rotator(
+                pitch=profile["moon_rotation"][0],
+                yaw=profile["moon_rotation"][1],
+                roll=profile["moon_rotation"][2],
+            ),
+            False,
+        )
+        directional_component = directional.get_component_by_class(unreal.DirectionalLightComponent)
+        if directional_component is None:
+            raise RuntimeError("DirectionalLightComponent missing in " + self.code)
+        required_set(directional_component, "intensity", profile["moon_intensity"])
+        required_set(
+            directional_component,
+            "light_color",
+            unreal.Color(
+                r=profile["moon_color"][0],
+                g=profile["moon_color"][1],
+                b=profile["moon_color"][2],
+                a=255,
+            ),
+        )
+        required_set(directional_component, "mobility", unreal.ComponentMobility.MOVABLE)
+        required_set(directional_component, "atmosphere_sun_light", True)
+
+        sky = single_actor("SkyLight")
+        sky_component = sky.get_component_by_class(unreal.SkyLightComponent)
+        if sky_component is None:
+            raise RuntimeError("SkyLightComponent missing in " + self.code)
+        required_set(sky_component, "intensity", profile["sky_intensity"])
+        required_set(
+            sky_component,
+            "light_color",
+            unreal.Color(
+                r=profile["sky_color"][0],
+                g=profile["sky_color"][1],
+                b=profile["sky_color"][2],
+                a=255,
+            ),
+        )
+        required_set(sky_component, "mobility", unreal.ComponentMobility.MOVABLE)
+        required_set(sky_component, "real_time_capture", False)
+
+        fog = single_actor("ExponentialHeightFog")
+        self.move_actor_z(fog, 0.0)
+        fog_component = fog.get_component_by_class(unreal.ExponentialHeightFogComponent)
+        if fog_component is None:
+            raise RuntimeError("ExponentialHeightFogComponent missing in " + self.code)
+        fog_color = profile["fog_color"]
+        required_set(fog_component, "fog_density", profile["fog_density"])
+        required_set(fog_component, "fog_height_falloff", 0.20)
+        required_set(fog_component, "start_distance", profile["fog_start_distance"])
+        required_set(fog_component, "fog_max_opacity", profile["fog_max_opacity"])
+        required_set(
+            fog_component,
+            "fog_inscattering_luminance",
+            unreal.LinearColor(r=fog_color[0], g=fog_color[1], b=fog_color[2], a=1.0),
+        )
+        required_set(
+            fog_component,
+            "directional_inscattering_luminance",
+            unreal.LinearColor(r=fog_color[0], g=fog_color[1], b=fog_color[2], a=1.0),
+        )
+        required_set(fog_component, "enable_volumetric_fog", False)
+
+        post_process_label = "LDV2_{}_NightPostProcess".format(self.code)
+        post_process = self.by_label.get(post_process_label)
+        other_post_process = [
+            actor
+            for actor in self.actors
+            if actor.get_class().get_name() == "PostProcessVolume" and actor is not post_process
+        ]
+        if other_post_process:
+            raise RuntimeError(
+                "{} has an unmanaged PostProcessVolume: {}".format(
+                    self.code,
+                    ",".join(actor.get_actor_label() for actor in other_post_process),
+                )
+            )
+        if post_process is None:
+            post_process = actor_subsystem.spawn_actor_from_class(
+                unreal.PostProcessVolume,
+                unreal.Vector(0.0, 0.0, 0.0),
+                unreal.Rotator(0.0, 0.0, 0.0),
+            )
+            if post_process is None:
+                raise RuntimeError("PostProcessVolume spawn failed in " + self.code)
+            post_process.set_actor_label(post_process_label)
+            self.register(post_process)
+            self.created += 1
+        else:
+            self.updated += 1
+        required_set(post_process, "unbound", True)
+        required_set(post_process, "blend_weight", 1.0)
+        settings = post_process.get_editor_property("settings")
+        required_set(settings, "override_auto_exposure_min_brightness", True)
+        required_set(settings, "override_auto_exposure_max_brightness", True)
+        required_set(settings, "override_auto_exposure_bias", True)
+        required_set(settings, "auto_exposure_min_brightness", profile["exposure_ev100"])
+        required_set(settings, "auto_exposure_max_brightness", profile["exposure_ev100"])
+        required_set(settings, "auto_exposure_bias", 0.0)
+        required_set(settings, "override_bloom_intensity", True)
+        required_set(settings, "bloom_intensity", profile["bloom_intensity"])
+        required_set(post_process, "settings", settings)
+        self.folder(post_process, "Lighting/Night")
+        self.mark_generated(post_process)
+
+        try:
+            sky_component.recapture_sky()
+        except Exception as exc:
+            unreal.log_warning("MH_SKYLIGHT_RECAPTURE_DEFERRED={} reason={}".format(self.code, exc))
+
+    def add_existing_upper_wall_layer(self):
+        wall_folder = "LDV2/{}/Architecture/Walls".format(self.code)
+        wall_prefix = "LDV2_{}_".format(self.code)
+        lower_walls = []
+        for actor in list(self.actors):
+            if actor.get_class().get_name() != "StaticMeshActor":
+                continue
+            label = actor.get_actor_label()
+            if label.endswith("_Upper") or not label.startswith(wall_prefix):
+                continue
+            if str(actor.get_folder_path()) != wall_folder:
+                continue
+            components = actor.get_components_by_class(unreal.StaticMeshComponent)
+            component = components[0] if components else None
+            mesh = component.get_editor_property("static_mesh") if component else None
+            mesh_path = mesh.get_path_name() if mesh else ""
+            if not any(name in mesh_path for name in ("Wall_400x400", "Wall_Door_400x400", "Wall_Window_400x400")):
+                continue
+            lower_walls.append((actor, component, mesh_path))
+
+        if not lower_walls:
+            raise RuntimeError("No generated lower walls found in " + self.code)
+
+        for lower, lower_component, mesh_path in lower_walls:
+            location = lower.get_actor_location()
+            rotation = lower.get_actor_rotation()
+            scale = lower.get_actor_scale3d()
+            upper = self.static(
+                lower.get_actor_label() + "_Upper",
+                "window_wall" if "Wall_Window_400x400" in mesh_path else "wall",
+                (location.x, location.y, UPPER_WALL_Z),
+                rotation.yaw,
+                (scale.x, scale.y, 1.0),
+                None,
+                "Architecture/Walls",
+            )
+            upper_component = upper.get_component_by_class(unreal.StaticMeshComponent)
+            if upper_component is None:
+                raise RuntimeError("Upper wall StaticMeshComponent missing: " + upper.get_actor_label())
+            upper_component.set_material(0, lower_component.get_material(0))
+            upper_component.set_collision_profile_name(lower_component.get_collision_profile_name())
+            self.add_tags(upper, "MuseumTallUpperWall")
+
+    def apply_existing_vertical_details(self):
+        prefix = "LDV2_{}_".format(self.code)
+
+        if self.code in ("M01", "M02"):
+            for label, actor in self.by_label.items():
+                if label.startswith(prefix + "Ceiling_"):
+                    self.move_actor_z(actor, CEILING_Z)
+
+        if self.code == "M01":
+            for label, actor in self.by_label.items():
+                if label.startswith(prefix + "RotundaPillar_"):
+                    scale = actor.get_actor_scale3d()
+                    actor.set_actor_scale3d(unreal.Vector(scale.x, scale.y, 1.6))
+                elif label.startswith(prefix + "Skylight"):
+                    self.move_actor_z(actor, 790.0)
+                elif label.startswith(prefix + "CeilingLamp_"):
+                    self.move_actor_z(actor, 770.0)
+                    self.use_default_material(actor)
+            for index in range(12):
+                label = prefix + "WarmLight_{:02d}".format(index)
+                actor = self.require_actor(label)
+                location = actor.get_actor_location()
+                self.point_light(
+                    label,
+                    (location.x, location.y, 720.0),
+                    (255, 205, 145),
+                    1600.0 if index == 0 else 1100.0,
+                    1650.0 if index == 0 else 1500.0,
+                )
+        elif self.code == "M02":
+            for label, actor in self.by_label.items():
+                if label.startswith(prefix + "GalleryLamp_"):
+                    self.use_default_material(actor)
+            for index in range(12):
+                label = prefix + "WarmLight_{:02d}".format(index)
+                actor = self.require_actor(label)
+                location = actor.get_actor_location()
+                self.point_light(
+                    label,
+                    (location.x, location.y, location.z),
+                    (255, 176, 105),
+                    900.0 if index < 10 else 800.0,
+                    1050.0 if index < 10 else 900.0,
+                )
+            moon_label = prefix + "MoonCourtLight"
+            moon = self.require_actor(moon_label)
+            moon_location = moon.get_actor_location()
+            self.point_light(moon_label, (moon_location.x, moon_location.y, 760.0), (145, 185, 255), 1500.0, 2400.0)
+        else:
+            for label, actor in self.by_label.items():
+                if label.startswith(prefix + "GlassRoof_"):
+                    self.move_actor_z(actor, 1000.0 if "GlassRoof_Crossing" in label else CEILING_Z)
+                elif label == prefix + "Topology_BraidedCrossing":
+                    self.move_actor_z(actor, 905.0)
+                elif label == prefix + "CrossingSuspendedFrame":
+                    self.move_actor_z(actor, 780.0)
+                elif label.startswith(prefix + "RoofRib_"):
+                    index = int(label.rsplit("_", 1)[1])
+                    self.move_actor_z(actor, 988.0 if index in (5, 6, 7) else 800.0)
+                elif label.startswith(prefix + "RoofRail_"):
+                    self.move_actor_z(actor, 800.0)
+                elif label.startswith(prefix + "CeilingLamp_"):
+                    self.move_actor_z(actor, 760.0)
+                    self.use_default_material(actor)
+            for index in range(9):
+                label = prefix + "SpineLight_{:02d}".format(index)
+                actor = self.require_actor(label)
+                location = actor.get_actor_location()
+                self.point_light(label, (location.x, location.y, 715.0), (172, 216, 255), 1000.0, 1500.0)
+            for index in range(4):
+                label = prefix + "EmergencyLight_{:02d}".format(index)
+                actor = self.require_actor(label)
+                location = actor.get_actor_location()
+                self.point_light(label, (location.x, location.y, location.z), (255, 72, 58), 500.0, 850.0)
+            crossing_label = prefix + "CrossingLight"
+            crossing = self.require_actor(crossing_label)
+            crossing_location = crossing.get_actor_location()
+            self.point_light(crossing_label, (crossing_location.x, crossing_location.y, 920.0), (150, 220, 255), 1600.0, 2300.0)
+
+    def apply_existing_vertical_night(self):
+        self.add_existing_upper_wall_layer()
+        self.apply_existing_vertical_details()
+        self.configure_night_environment()
+        unreal.log_warning(
+            "MH_VERTICAL_NIGHT_APPLIED={} upper_wall_z={} ceiling_z={} exposure_ev100={}".format(
+                self.code,
+                UPPER_WALL_Z,
+                CEILING_Z,
+                NIGHT_PROFILES[self.code]["exposure_ev100"],
+            )
+        )
 
     def portal(self, label, location, yaw=0.0, material_name=None, scale=(1.0, 1.0, 1.0), folder="Theme/Portals"):
         return self.static(label, "door_frame", location, yaw, scale, material_name, folder)
@@ -434,7 +771,7 @@ class LevelBuilder:
     def screen(self, label, location, yaw, length, material_name, height=2.2, folder="Theme/Partitions"):
         return self.static(label, "cube", location, yaw, (length / 100.0, 0.18, height), material_name, folder)
 
-    def ceiling_rect(self, label_prefix, center, size, material_name, max_tile_size=(1600.0, 1600.0), mesh_name="floor", z=412.0):
+    def ceiling_rect(self, label_prefix, center, size, material_name, max_tile_size=(1600.0, 1600.0), mesh_name="floor", z=CEILING_Z):
         count_x = max(1, int(math.ceil(float(size[0]) / float(max_tile_size[0]))))
         count_y = max(1, int(math.ceil(float(size[1]) / float(max_tile_size[1]))))
         tile_x = float(size[0]) / count_x
@@ -470,22 +807,38 @@ class LevelBuilder:
         index = 0
         for x in range(start_x, end_x + 1, 800):
             mesh_name = "door_wall" if x in doors else ("window_wall" if x in windows else "wall")
+            label = "LDV2_{}_{}_{:02d}".format(self.code, name, index)
             self.static(
-                "LDV2_{}_{}_{:02d}".format(self.code, name, index),
-                mesh_name, (x, y, -12), 0.0, (2.0, 1.0, 1.0),
+                label,
+                mesh_name, (x, y, LOWER_WALL_Z), 0.0, (2.0, 1.0, 1.0),
                 material_name, "Architecture/Walls",
             )
+            upper = self.static(
+                label + "_Upper",
+                "window_wall" if mesh_name == "window_wall" else "wall",
+                (x, y, UPPER_WALL_Z), 0.0, (2.0, 1.0, 1.0),
+                material_name, "Architecture/Walls",
+            )
+            self.add_tags(upper, "MuseumTallUpperWall")
             index += 1
 
     def wall_v(self, name, x, start_y, end_y, doors=(), windows=(), material_name=None):
         index = 0
         for y in range(start_y, end_y + 1, 800):
             mesh_name = "door_wall" if y in doors else ("window_wall" if y in windows else "wall")
+            label = "LDV2_{}_{}_{:02d}".format(self.code, name, index)
             self.static(
-                "LDV2_{}_{}_{:02d}".format(self.code, name, index),
-                mesh_name, (x, y, -12), 90.0, (2.0, 1.0, 1.0),
+                label,
+                mesh_name, (x, y, LOWER_WALL_Z), 90.0, (2.0, 1.0, 1.0),
                 material_name, "Architecture/Walls",
             )
+            upper = self.static(
+                label + "_Upper",
+                "window_wall" if mesh_name == "window_wall" else "wall",
+                (x, y, UPPER_WALL_Z), 90.0, (2.0, 1.0, 1.0),
+                material_name, "Architecture/Walls",
+            )
+            self.add_tags(upper, "MuseumTallUpperWall")
             index += 1
 
     def perimeter(self, use_glass=False):
@@ -795,7 +1148,7 @@ def add_m01_geometry(builder):
         rotunda_pillars.append((math.cos(angle) * 1700, math.sin(angle) * 950))
     rotunda_pillars.extend(((-2400, 0), (2400, 0), (0, -1250), (0, 1250)))
     for index, pos in enumerate(rotunda_pillars):
-        builder.static("LDV2_M01_RotundaPillar_{:02d}".format(index), "pillar", (pos[0], pos[1], -12), 0.0, (1.0, 1.0, 0.8), "gold" if index >= 8 else None, "Theme/Rotunda")
+        builder.static("LDV2_M01_RotundaPillar_{:02d}".format(index), "pillar", (pos[0], pos[1], -12), 0.0, (1.0, 1.0, 1.6), "gold" if index >= 8 else None, "Theme/Rotunda")
     builder.static("LDV2_M01_HeroPlinth", "platform", (0, 0, 0), 45.0, (1.65, 1.65, 4.0), "gold", "Theme/Rotunda")
     statue_specs = ((0, 0, 45.0, 2.6, 40), (-5600, 800, 90.0, 1.6, 0), (5200, 800, -90.0, 1.6, 0), (0, 3600, 180.0, 1.5, 0))
     for index, spec in enumerate(statue_specs):
@@ -815,18 +1168,19 @@ def add_m01_geometry(builder):
     for index, pos in enumerate(inner_portals):
         builder.portal("LDV2_M01_InnerPortal_{:02d}".format(index), (pos[0], pos[1], 0), pos[2], "gold", (1.0, 1.8, 1.05))
     for label, location, scale in (
-        ("SkylightRimNorth", (0, 1000, 390), (24.0, 0.18, 0.15)),
-        ("SkylightRimSouth", (0, -1000, 390), (24.0, 0.18, 0.15)),
-        ("SkylightRimWest", (-1200, 0, 390), (0.18, 20.0, 0.15)),
-        ("SkylightRimEast", (1200, 0, 390), (0.18, 20.0, 0.15)),
-        ("SkylightBeamX", (0, 0, 390), (24.0, 0.16, 0.15)),
-        ("SkylightBeamY", (0, 0, 390), (0.16, 20.0, 0.15)),
+        ("SkylightRimNorth", (0, 1000, 790), (24.0, 0.18, 0.15)),
+        ("SkylightRimSouth", (0, -1000, 790), (24.0, 0.18, 0.15)),
+        ("SkylightRimWest", (-1200, 0, 790), (0.18, 20.0, 0.15)),
+        ("SkylightRimEast", (1200, 0, 790), (0.18, 20.0, 0.15)),
+        ("SkylightBeamX", (0, 0, 790), (24.0, 0.16, 0.15)),
+        ("SkylightBeamY", (0, 0, 790), (0.16, 20.0, 0.15)),
     ):
         builder.static("LDV2_M01_{}".format(label), "cube", location, 0.0, scale, "gold", "Theme/RotundaCeiling")
     light_positions = ((0, 0), (-5600, 0), (5600, 0), (0, -3400), (0, 3400), (-4000, -2400), (4000, -2400), (-4000, 2400), (4000, 2400), (-5200, -4200), (-6000, 3600), (6000, 3600))
     for index, pos in enumerate(light_positions):
-        builder.static("LDV2_M01_CeilingLamp_{:02d}".format(index), "ceiling_lamp", (pos[0], pos[1], 370), 0.0, (0.8, 0.8, 0.8), "gold", "Lighting/Fixtures")
-        builder.point_light("LDV2_M01_WarmLight_{:02d}".format(index), (pos[0], pos[1], 320), (255, 205, 145), 1150.0 if index else 1900.0, 1350.0)
+        fixture = builder.static("LDV2_M01_CeilingLamp_{:02d}".format(index), "ceiling_lamp", (pos[0], pos[1], 770), 0.0, (0.8, 0.8, 0.8), None, "Lighting/Fixtures")
+        builder.use_default_material(fixture)
+        builder.point_light("LDV2_M01_WarmLight_{:02d}".format(index), (pos[0], pos[1], 720), (255, 205, 145), 1600.0 if index == 0 else 1100.0, 1650.0 if index == 0 else 1500.0)
 
 
 def add_m02_geometry(builder):
@@ -895,21 +1249,23 @@ def add_m02_geometry(builder):
         builder.portal("LDV2_M02_Portal_{:02d}".format(index), (pos[0], pos[1], 0), pos[2], "oak", (1.0, 1.8, 1.05))
     lamp_positions = ((-5200, -3200, 90), (-5200, 800, 90), (-4400, 3200, 90), (-2800, 4400, 180), (-1200, -3600, 0), (1200, 3600, 180), (2800, -3200, 0), (3600, 1600, 90), (5200, -1200, -90), (5200, 3000, -90))
     for index, pos in enumerate(lamp_positions):
-        builder.static("LDV2_M02_GalleryLamp_{:02d}".format(index), "wall_lamp", (pos[0], pos[1], 250), pos[2], (1.0, 1.0, 1.0), "copper", "Lighting/Fixtures")
+        fixture = builder.static("LDV2_M02_GalleryLamp_{:02d}".format(index), "wall_lamp", (pos[0], pos[1], 250), pos[2], (1.0, 1.0, 1.0), None, "Lighting/Fixtures")
+        builder.use_default_material(fixture)
         builder.point_light("LDV2_M02_WarmLight_{:02d}".format(index), (pos[0], pos[1], 230), (255, 176, 105), 900.0, 1050.0)
     for index, pos in enumerate(((-5050, -3500, 90), (-3850, -2850, 90)), start=len(lamp_positions)):
-        builder.static("LDV2_M02_GalleryLamp_{:02d}".format(index), "wall_lamp", (pos[0], pos[1], 230), pos[2], (1.0, 1.0, 1.0), "copper", "Lighting/Fixtures")
+        fixture = builder.static("LDV2_M02_GalleryLamp_{:02d}".format(index), "wall_lamp", (pos[0], pos[1], 230), pos[2], (1.0, 1.0, 1.0), None, "Lighting/Fixtures")
+        builder.use_default_material(fixture)
         builder.point_light("LDV2_M02_WarmLight_{:02d}".format(index), (pos[0], pos[1], 220), (255, 176, 105), 800.0, 900.0)
-    builder.point_light("LDV2_M02_MoonCourtLight", (-600, 800, 360), (145, 185, 255), 1900.0, 2100.0)
+    builder.point_light("LDV2_M02_MoonCourtLight", (-600, 800, 760), (145, 185, 255), 1500.0, 2400.0)
 
 
 def add_m03_geometry(builder):
     builder.floor_grid()
     builder.perimeter(True)
     mat = builder.config["wall_material"]
-    builder.ceiling_rect("LDV2_M03_GlassRoof_West", (-4400, 0), (7200, 2400), "glass", (1600.0, 2400.0), z=412.0)
-    builder.ceiling_rect("LDV2_M03_GlassRoof_Crossing", (400, 0), (2400, 2400), "glass", (1200.0, 2400.0), z=600.0)
-    builder.ceiling_rect("LDV2_M03_GlassRoof_East", (4800, 0), (6400, 2400), "glass", (1600.0, 2400.0), z=412.0)
+    builder.ceiling_rect("LDV2_M03_GlassRoof_West", (-4400, 0), (7200, 2400), "glass", (1600.0, 2400.0), z=CEILING_Z)
+    builder.ceiling_rect("LDV2_M03_GlassRoof_Crossing", (400, 0), (2400, 2400), "glass", (1200.0, 2400.0), z=1000.0)
+    builder.ceiling_rect("LDV2_M03_GlassRoof_East", (4800, 0), (6400, 2400), "glass", (1600.0, 2400.0), z=CEILING_Z)
     north_links = (-6400, -2400, 800, 4800, 6400)
     south_links = (-4800, -800, 3200, 6400)
     builder.wall_h("SpineNorth", 1200, -7200, 7200, doors=north_links, windows=(-5600, -4000, -800, 2400, 4000, 5600), material_name=mat)
@@ -927,8 +1283,8 @@ def add_m03_geometry(builder):
     builder.wall_h("SecurityNorth", -4000, 5600, 7200, doors=(6400,), material_name=mat)
     builder.wall_v("DetentionDivider", 6400, -4000, -2800, doors=(-3600,), material_name=mat)
     builder.security_detention_props(6000, -3500, -90.0)
-    builder.static("LDV2_M03_Topology_BraidedCrossing", "cube", (400, 0, 505), 45.0, (2.4, 2.4, 0.12), "tech", "Theme/BraidedCrossing")
-    builder.static("LDV2_M03_CrossingSuspendedFrame", "pillar_frame", (400, 0, 380), 90.0, (1.5, 1.5, 1.2), "nickel", "Theme/BraidedCrossing")
+    builder.static("LDV2_M03_Topology_BraidedCrossing", "cube", (400, 0, 905), 45.0, (2.4, 2.4, 0.12), "tech", "Theme/BraidedCrossing")
+    builder.static("LDV2_M03_CrossingSuspendedFrame", "pillar_frame", (400, 0, 780), 90.0, (1.5, 1.5, 1.2), "nickel", "Theme/BraidedCrossing")
     island_specs = (
         (-6800, -820, -12, 0.9, 2.5), (-5200, 820, 12, 1.0, 3.0),
         (-3600, 820, -8, 0.9, 2.5), (-2000, -820, 15, 1.05, 3.0),
@@ -965,34 +1321,41 @@ def add_m03_geometry(builder):
         builder.static("LDV2_M03_RestorationTable_{:02d}".format(index), "table", (spec[0], spec[1], 0), spec[2], (1.05, 1.05, 1.05), "nickel", "Theme/Backstage")
         builder.static("LDV2_M03_RestorationChair_{:02d}".format(index), "chair", (spec[0] + 260, spec[1] - 160, 0), spec[2] + 180.0, (0.85, 0.85, 0.85), None, "Theme/Backstage")
     for index, x in enumerate((-8000, -6400, -4800, -3200, -1600, 0, 800, 1600, 3200, 4800, 6400, 8000)):
-        roof_z = 588 if -800 <= x <= 1600 else 400
+        roof_z = 988 if -800 <= x <= 1600 else 800
         builder.static("LDV2_M03_RoofRib_{:02d}".format(index), "cube", (x, 0, roof_z), 0.0, (0.15, 24.0, 0.15), "nickel", "Theme/GlassRoof")
     for index, y in enumerate((-1200, 1200)):
-        builder.static("LDV2_M03_RoofRail_{:02d}".format(index), "cube", (0, y, 400), 0.0, (160.0, 0.15, 0.15), "nickel", "Theme/GlassRoof")
+        builder.static("LDV2_M03_RoofRail_{:02d}".format(index), "cube", (0, y, 800), 0.0, (160.0, 0.15, 0.15), "nickel", "Theme/GlassRoof")
     for index, x in enumerate((-6800, -5200, -3600, -2000, -400, 1400, 3000, 4600, 6200)):
         y = 0 if index % 2 == 0 else 180
-        builder.static("LDV2_M03_CeilingLamp_{:02d}".format(index), "ceiling_lamp", (x, y, 360), 0.0, (0.72, 0.72, 0.72), "nickel", "Lighting/Fixtures")
-        builder.point_light("LDV2_M03_SpineLight_{:02d}".format(index), (x, y, 315), (172, 216, 255), 1000.0, 1150.0)
+        fixture = builder.static("LDV2_M03_CeilingLamp_{:02d}".format(index), "ceiling_lamp", (x, y, 760), 0.0, (0.72, 0.72, 0.72), None, "Lighting/Fixtures")
+        builder.use_default_material(fixture)
+        builder.point_light("LDV2_M03_SpineLight_{:02d}".format(index), (x, y, 715), (172, 216, 255), 1000.0, 1500.0)
     for index, pos in enumerate(((-5600, -2600), (-800, -2600), (3600, -2600), (6000, -3000))):
-        builder.point_light("LDV2_M03_EmergencyLight_{:02d}".format(index), (pos[0], pos[1], 240), (255, 72, 58), 650.0, 800.0)
-    builder.point_light("LDV2_M03_CrossingLight", (400, 0, 520), (150, 220, 255), 1800.0, 1900.0)
+        builder.point_light("LDV2_M03_EmergencyLight_{:02d}".format(index), (pos[0], pos[1], 240), (255, 72, 58), 500.0, 850.0)
+    builder.point_light("LDV2_M03_CrossingLight", (400, 0, 920), (150, 220, 255), 1600.0, 2300.0)
 
 
-for code in selected_level_codes:
-    config = MAPS[code]
-    builder = LevelBuilder(code, config)
-    if REMOVE_LEGACY_ARCHITECTURE:
-        builder.cleanup_legacy_static()
-    if code == "M01":
-        add_m01_geometry(builder)
-    elif code == "M02":
-        add_m02_geometry(builder)
-    else:
-        add_m03_geometry(builder)
-    builder.configure_entry_exit_and_nav()
-    cases = builder.configure_cases()
-    builder.configure_guards()
-    builder.configure_cameras()
-    builder.configure_lasers(cases)
-    builder.cleanup_orphaned_generated()
-    builder.save()
+def build_selected_levels():
+    for code in selected_level_codes:
+        config = MAPS[code]
+        builder = LevelBuilder(code, config)
+        if REMOVE_LEGACY_ARCHITECTURE:
+            builder.cleanup_legacy_static()
+        if code == "M01":
+            add_m01_geometry(builder)
+        elif code == "M02":
+            add_m02_geometry(builder)
+        else:
+            add_m03_geometry(builder)
+        builder.configure_entry_exit_and_nav()
+        cases = builder.configure_cases()
+        builder.configure_guards()
+        builder.configure_cameras()
+        builder.configure_lasers(cases)
+        builder.configure_night_environment()
+        builder.cleanup_orphaned_generated()
+        builder.save()
+
+
+if __name__ == "__main__":
+    build_selected_levels()
