@@ -12,6 +12,7 @@
 #include "Engine/DataTable.h"
 #include "Engine/World.h"
 #include "GameFramework/GameStateBase.h"
+#include "Inventory/HeistItemDataTypes.h"
 #include "TimerManager.h"
 #include "UI/ViewModels/HeistHUDViewModel.h"
 #include "World/Actors/Escape/HeistVentActor.h"
@@ -22,23 +23,6 @@
 
 namespace
 {
-FText ResolveArtifactDisplayName(const FName ArtifactId)
-{
-	const UHeistGameBalanceDataAsset* BalanceData = GetDefault<UHeistGameBalanceDataAsset>();
-	UDataTable* ArtifactDataTable = IsValid(BalanceData) ? BalanceData->ArtifactDataTable.LoadSynchronous() : nullptr;
-	const FHeistArtifactDataRow* ArtifactDefinition = IsValid(ArtifactDataTable) && ArtifactDataTable->GetRowStruct() == FHeistArtifactDataRow::StaticStruct()
-		? ArtifactDataTable->FindRow<FHeistArtifactDataRow>(ArtifactId, TEXT("ResolveInteractionArtifactDisplayName"), false)
-		: nullptr;
-	if (ArtifactDefinition != nullptr && ArtifactDefinition->ArtifactId == ArtifactId && !ArtifactDefinition->DisplayName.IsEmpty())
-	{
-		return ArtifactDefinition->DisplayName;
-	}
-
-	FString FallbackName = ArtifactId.ToString();
-	FallbackName.ReplaceInline(TEXT("_"), TEXT(" "));
-	return FText::FromString(FallbackName);
-}
-
 FText ResolveGradeText(const EHeistLootGrade ItemGrade)
 {
 	switch (ItemGrade)
@@ -106,6 +90,7 @@ void UHeistInteractionPromptWidget::SetupInteractionPresentation(UHeistInteracti
 
 	InteractionComponent = InInteractionComponent;
 	HUDViewModel = InHUDViewModel;
+	CacheDisplayNames();
 	if (IsValid(AvailabilityText))
 	{
 		AvailabilityText->SetText(NSLOCTEXT("HeistInteraction", "InteractionPrompt", "[E] 상호작용"));
@@ -265,6 +250,60 @@ void UHeistInteractionPromptWidget::RefreshActionProgress()
 	}
 }
 
+void UHeistInteractionPromptWidget::CacheDisplayNames()
+{
+	ArtifactDisplayNames.Reset();
+	LootDisplayNames.Reset();
+
+	const UHeistGameBalanceDataAsset* BalanceData = GetDefault<UHeistGameBalanceDataAsset>();
+	UDataTable* ArtifactDataTable = IsValid(BalanceData) ? BalanceData->ArtifactDataTable.LoadSynchronous() : nullptr;
+	if (IsValid(ArtifactDataTable) && ArtifactDataTable->GetRowStruct() == FHeistArtifactDataRow::StaticStruct())
+	{
+		for (const FName RowId : ArtifactDataTable->GetRowNames())
+		{
+			const FHeistArtifactDataRow* Definition = ArtifactDataTable->FindRow<FHeistArtifactDataRow>(RowId, TEXT("CacheInteractionArtifactDisplayName"), false);
+			if (Definition != nullptr && Definition->ArtifactId == RowId && !Definition->DisplayName.IsEmpty())
+			{
+				ArtifactDisplayNames.Add(RowId, Definition->DisplayName);
+			}
+		}
+	}
+
+	UDataTable* ItemDataTable = IsValid(BalanceData) ? BalanceData->ItemDataTable.LoadSynchronous() : nullptr;
+	if (IsValid(ItemDataTable) && ItemDataTable->GetRowStruct() == FHeistItemDataRow::StaticStruct())
+	{
+		for (const FName RowId : ItemDataTable->GetRowNames())
+		{
+			const FHeistItemDataRow* Definition = ItemDataTable->FindRow<FHeistItemDataRow>(RowId, TEXT("CacheInteractionLootDisplayName"), false);
+			if (Definition != nullptr && Definition->ItemId == RowId && Definition->ItemType == EHeistItemType::Loot && !Definition->DisplayName.IsEmpty())
+			{
+				LootDisplayNames.Add(RowId, Definition->DisplayName);
+			}
+		}
+	}
+}
+
+FText UHeistInteractionPromptWidget::ResolveArtifactDisplayName(const FName ArtifactId) const
+{
+	if (const FText* DisplayName = ArtifactDisplayNames.Find(ArtifactId))
+	{
+		return *DisplayName;
+	}
+
+	FString FallbackName = ArtifactId.ToString();
+	FallbackName.ReplaceInline(TEXT("_"), TEXT(" "));
+	return FText::FromString(FallbackName);
+}
+
+FText UHeistInteractionPromptWidget::ResolveLootDisplayName(const FName ItemId) const
+{
+	if (const FText* DisplayName = LootDisplayNames.Find(ItemId))
+	{
+		return *DisplayName;
+	}
+	return NSLOCTEXT("HeistInteraction", "LootFallbackDisplayName", "전리품");
+}
+
 FText UHeistInteractionPromptWidget::ResolveTargetLabel(const AActor* TargetActor) const
 {
 	if (!IsValid(TargetActor))
@@ -280,9 +319,7 @@ FText UHeistInteractionPromptWidget::ResolveTargetLabel(const AActor* TargetActo
 			return NSLOCTEXT("HeistInteraction", "LootTarget", "획득");
 		}
 
-		FString LootDisplayName = LootRowId.ToString();
-		LootDisplayName.ReplaceInline(TEXT("_"), TEXT(" "));
-		return FText::Format(NSLOCTEXT("HeistInteraction", "NamedLootTarget", "{0} 획득"), FText::FromString(LootDisplayName));
+		return FText::Format(NSLOCTEXT("HeistInteraction", "NamedLootTarget", "{0} 획득"), ResolveLootDisplayName(LootRowId));
 	}
 
 	if (const AHeistDroppedOriginalActor* DroppedOriginal = Cast<AHeistDroppedOriginalActor>(TargetActor))

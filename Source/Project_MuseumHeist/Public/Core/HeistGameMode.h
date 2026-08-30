@@ -160,12 +160,15 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 	float GetSecurityCameraDetectionCooldownSeconds() const;
 	float GetSecurityLaserHoldDurationSeconds() const;
 	float GetSecurityLaserRearmGraceSeconds() const;
+	void GetMatchStartLooseLootCounts(int32& OutVaultLootCount, int32& OutExhibitionLootCount) const;
 	void DebugDumpPlayerCountDifficultyBaseline() const;
 	bool TrySpawnDroppedLoot(const FHeistLootDropRequest& DropRequest, AHeistLootActor*& OutDroppedLootActor) const;
 
   private:
 	void ValidateItemDataTables() const;
 	void InitializeSurfaceTemplateSelection();
+	bool InitializeMatchLooseLoot(int32 AssignmentSeed, int32& OutSpawnPointCount, int32& OutExpectedLootCount, int32& OutSpawnedLootCount);
+	void RollbackMatchLooseLoot(FName Reason);
 	bool GatherSurfaceTemplatePool(FName PoolId, TArray<FName>& OutTemplateIds) const;
 	void LockGuardsForPlayerCountResolution();
 	void SchedulePlayerCountGuardScaling();
@@ -182,6 +185,13 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 	float DifficultyAppliedDetectionMultiplier = 1.0f;
 	float DifficultyAppliedInspectionDurationMultiplier = 1.0f;
 	FTimerHandle GuardScalingTimerHandle;
+	bool bMatchLooseLootInitializationAttempted = false;
+	bool bMatchLooseLootInitialized = false;
+	int32 MatchLooseLootSpawnPointCount = 0;
+	int32 MatchLooseLootExpectedCount = 0;
+	int32 MatchLooseLootSpawnedCount = 0;
+	int32 MatchLooseLootSeed = 0;
+	TArray<TWeakObjectPtr<AHeistLootActor>> MatchLooseLootActors;
 
 #pragma endregion
 

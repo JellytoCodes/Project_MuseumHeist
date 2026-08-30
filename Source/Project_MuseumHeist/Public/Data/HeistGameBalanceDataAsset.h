@@ -59,6 +59,12 @@ class PROJECT_MUSEUMHEIST_API UHeistGameBalanceDataAsset : public UDataAsset
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Match", meta = (ClampMin = "0.0", Units = "s"))
 	float VentUnlockTime = 180.0f;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Loot|Match Start", meta = (ClampMin = "0"))
+	int32 MatchStartVaultLootCount = 1;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Loot|Match Start", meta = (ClampMin = "0"))
+	int32 MatchStartExhibitionLootCount = 4;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Alert", meta = (ClampMin = "0.5", ClampMax = "0.5"))
 	float AlertMeterStep = 0.5f;
 

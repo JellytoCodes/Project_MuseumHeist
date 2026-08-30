@@ -25,16 +25,21 @@
 #include "Tests/AutomationEditorCommon.h"
 #include "World/Actors/Escape/HeistVentActor.h"
 #include "World/Actors/Loot/HeistLootActor.h"
+#include "World/Spawn/HeistLootSpawnPoint.h"
 
 namespace HeistLootLifecycleTest
 {
 constexpr int32 LootCarrierPlayerId = 2;
+constexpr float CrossWorldLootLocationToleranceCm = 5.0f;
+const FName MatchSpawnedLooseLootTag(TEXT("HeistMatchSpawnedLooseLoot"));
 
 struct FHeistLootLifecycleFixture
 {
 	FName RowId = NAME_None;
 	FName OriginalActorName = NAME_None;
 	FName DroppedActorName = NAME_None;
+	FVector OriginalSpawnLocation = FVector::ZeroVector;
+	FVector DroppedSpawnLocation = FVector::ZeroVector;
 	FHeistItemDataRow ItemDefinition;
 	FHeistLootDataRow LootDefinition;
 	int32 InitialInstanceId = INDEX_NONE;
@@ -48,7 +53,9 @@ struct FHeistLootLifecycleAutomationState
 	EPlayNetMode OriginalNetMode = EPlayNetMode::PIE_Standalone;
 	bool bOriginalRunUnderOneProcess = true;
 	int32 OriginalClientCount = 1;
+	bool bMatchStartSupplyValidated = false;
 	bool bRuntimeFixturesSpawned = false;
+	FString LastCaptureWaitReason;
 	TArray<FHeistLootLifecycleFixture> Fixtures;
 	FName PendingFeedbackRowId = NAME_None;
 	int32 PendingFeedbackValue = 0;
@@ -224,6 +231,32 @@ AHeistLootActor* FindLootActorByName(UWorld* World, const FName ActorName)
 	return nullptr;
 }
 
+AHeistLootActor* FindLootActorByRowAndLocation(UWorld* World, const FName RowId, const FVector& ServerSpawnLocation)
+{
+	if (!IsValid(World) || RowId.IsNone())
+	{
+		return nullptr;
+	}
+
+	AHeistLootActor* ClosestMatch = nullptr;
+	float ClosestDistanceSquared = FMath::Square(CrossWorldLootLocationToleranceCm);
+	for (TActorIterator<AHeistLootActor> It(World); It; ++It)
+	{
+		AHeistLootActor* LootActor = *It;
+		if (!IsValid(LootActor) || LootActor->GetLootRowId() != RowId)
+		{
+			continue;
+		}
+		const float DistanceSquared = FVector::DistSquared(LootActor->GetActorLocation(), ServerSpawnLocation);
+		if (DistanceSquared <= ClosestDistanceSquared)
+		{
+			ClosestMatch = LootActor;
+			ClosestDistanceSquared = DistanceSquared;
+		}
+	}
+	return ClosestMatch;
+}
+
 AHeistLootActor* FindAvailableLootActorByRow(UWorld* World, const FName RowId, const FName ExcludedActorName = NAME_None)
 {
 	if (!IsValid(World) || RowId.IsNone())
@@ -232,7 +265,7 @@ AHeistLootActor* FindAvailableLootActorByRow(UWorld* World, const FName RowId, c
 	}
 	for (TActorIterator<AHeistLootActor> It(World); It; ++It)
 	{
-		if (IsValid(*It) && It->GetLootRowId() == RowId && It->GetFName() != ExcludedActorName && It->IsLootAvailable())
+		if (IsValid(*It) && It->GetLootRowId() == RowId && It->GetFName() != ExcludedActorName && !It->ActorHasTag(MatchSpawnedLooseLootTag) && It->IsLootAvailable())
 		{
 			return *It;
 		}
@@ -508,12 +541,13 @@ bool AreDroppedLootStateAndContractReplicated(const TSharedRef<FHeistLootLifecyc
 		return false;
 	}
 	Fixture.DroppedActorName = DroppedLootActor->GetFName();
+	Fixture.DroppedSpawnLocation = DroppedLootActor->GetActorLocation();
 	for (UWorld* World : GetLootLifecyclePIEWorlds())
 	{
 		const AHeistPlayerState* PlayerState = FindHeistPlayerStateById(World, LootCarrierPlayerId);
 		const AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
-		const AHeistLootActor* OriginalLootActor = FindLootActorByName(World, Fixture.OriginalActorName);
-		const AHeistLootActor* ReplicatedDroppedLootActor = FindLootActorByName(World, Fixture.DroppedActorName);
+		const AHeistLootActor* OriginalLootActor = FindLootActorByRowAndLocation(World, Fixture.RowId, Fixture.OriginalSpawnLocation);
+		const AHeistLootActor* ReplicatedDroppedLootActor = FindLootActorByRowAndLocation(World, Fixture.RowId, Fixture.DroppedSpawnLocation);
 		if (!IsValid(PlayerState) || PlayerState->GetTotalLootScore() != ExpectedValue || !FMath::IsNearlyEqual(PlayerState->GetTotalLootWeight(), ExpectedWeight) ||
 			!IsValid(GameState) || GameState->GetContractSnapshot().CarriedValue != ExpectedValue ||
 			!IsLootWorldVisualResolved(OriginalLootActor, Fixture.ItemDefinition, Fixture.LootDefinition, false) ||
@@ -525,8 +559,8 @@ bool AreDroppedLootStateAndContractReplicated(const TSharedRef<FHeistLootLifecyc
 	return true;
 }
 
-bool IsPickedActorAndFeedbackReplicated(const TSharedRef<FHeistLootLifecycleAutomationState>& State, const int32 FixtureIndex, const FName ActorName,
-	const int32 ExpectedFeedbackCount, const bool bCaptureInitialInstanceId)
+bool IsPickedActorAndFeedbackReplicated(const TSharedRef<FHeistLootLifecycleAutomationState>& State, const int32 FixtureIndex,
+	const FVector& ServerSpawnLocation, const int32 ExpectedFeedbackCount, const bool bCaptureInitialInstanceId)
 {
 	if (!State->Fixtures.IsValidIndex(FixtureIndex) || State->FeedbackCounts.FindRef(State->Fixtures[FixtureIndex].RowId) < ExpectedFeedbackCount ||
 		!AreHeldLootStateAndContractReplicated(State, FixtureIndex))
@@ -536,7 +570,8 @@ bool IsPickedActorAndFeedbackReplicated(const TSharedRef<FHeistLootLifecycleAuto
 	FHeistLootLifecycleFixture& Fixture = State->Fixtures[FixtureIndex];
 	for (UWorld* World : GetLootLifecyclePIEWorlds())
 	{
-		if (!IsLootWorldVisualResolved(FindLootActorByName(World, ActorName), Fixture.ItemDefinition, Fixture.LootDefinition, false))
+		if (!IsLootWorldVisualResolved(FindLootActorByRowAndLocation(World, Fixture.RowId, ServerSpawnLocation), Fixture.ItemDefinition,
+			Fixture.LootDefinition, false))
 		{
 			return false;
 		}
@@ -566,12 +601,21 @@ bool IsPickedActorAndFeedbackReplicated(const TSharedRef<FHeistLootLifecycleAuto
 
 bool CaptureLifecycleFixtures(FAutomationTestBase* Test, const TSharedRef<FHeistLootLifecycleAutomationState>& State)
 {
+	const auto WaitFor = [State](FString Reason)
+	{
+		if (State->LastCaptureWaitReason != Reason)
+		{
+			State->LastCaptureWaitReason = MoveTemp(Reason);
+			UE_LOG(LogTemp, Display, TEXT("W6-011 fixture capture waiting: %s"), *State->LastCaptureWaitReason);
+		}
+		return false;
+	};
 	UWorld* ServerWorld = GetLootLifecycleServerWorld();
 	AHeistGameMode* GameMode = IsValid(ServerWorld) ? ServerWorld->GetAuthGameMode<AHeistGameMode>() : nullptr;
 	const AHeistGameState* ServerGameState = IsValid(ServerWorld) ? ServerWorld->GetGameState<AHeistGameState>() : nullptr;
 	if (!IsValid(GameMode) || !IsValid(ServerGameState) || !ServerGameState->IsContractInitialized() || ServerGameState->GetContractSnapshot().MapId != FName(TEXT("M01")))
 	{
-		return false;
+		return WaitFor(TEXT("contract initialization"));
 	}
 	bool bFoundGuard = false;
 	for (TActorIterator<AHeistGuardCharacter> It(ServerWorld); It; ++It)
@@ -587,12 +631,117 @@ bool CaptureLifecycleFixtures(FAutomationTestBase* Test, const TSharedRef<FHeist
 	}
 	if (!bFoundGuard)
 	{
-		return false;
+		return WaitFor(TEXT("guard disable"));
 	}
 
 	AHeistPlayerCharacter* FixtureOwner = FindHeistCharacterById(ServerWorld, LootCarrierPlayerId);
 	if (!IsValid(FixtureOwner))
 	{
+		return WaitFor(TEXT("fixture owner"));
+	}
+
+	if (!State->bMatchStartSupplyValidated)
+	{
+		int32 ExpectedVaultLootCount = 0;
+		int32 ExpectedExhibitionLootCount = 0;
+		GameMode->GetMatchStartLooseLootCounts(ExpectedVaultLootCount, ExpectedExhibitionLootCount);
+		const int32 ExpectedMatchStartLootCount = ExpectedVaultLootCount + ExpectedExhibitionLootCount;
+		TArray<AHeistLootActor*> MatchStartLootActors;
+		int32 EnabledSpawnPointCount = 0;
+		for (TActorIterator<AHeistLootActor> It(ServerWorld); It; ++It)
+		{
+			AHeistLootActor* LootActor = *It;
+			if (IsValid(LootActor) && LootActor->ActorHasTag(FName(TEXT("HeistMatchSpawnedLooseLoot"))) && LootActor->IsLootAvailable())
+			{
+				MatchStartLootActors.Add(LootActor);
+			}
+		}
+		for (TActorIterator<AHeistLootSpawnPoint> It(ServerWorld); It; ++It)
+		{
+			EnabledSpawnPointCount += IsValid(*It) && It->IsSpawnEnabled() ? 1 : 0;
+		}
+		if (ExpectedMatchStartLootCount <= 0 || MatchStartLootActors.Num() != ExpectedMatchStartLootCount || EnabledSpawnPointCount < ExpectedMatchStartLootCount)
+		{
+			return WaitFor(FString::Printf(TEXT("match supply count expected=%d actors=%d spawnpoints=%d"), ExpectedMatchStartLootCount,
+				MatchStartLootActors.Num(), EnabledSpawnPointCount));
+		}
+
+		int32 VaultLootCount = 0;
+		int32 ExhibitionLootCount = 0;
+		for (AHeistLootActor* ServerLootActor : MatchStartLootActors)
+		{
+			FHeistItemDataRow ItemDefinition;
+			FHeistLootDataRow LootDefinition;
+			const FName RowId = ServerLootActor->GetLootRowId();
+			if (!GameMode->TryGetItemDefinition(RowId, ItemDefinition) || !GameMode->TryGetLootDefinition(RowId, LootDefinition) ||
+				ItemDefinition.ItemType != EHeistItemType::Loot || !ItemDefinition.bAvailableInV1 || LootDefinition.ScoreValue <= 0)
+			{
+				return WaitFor(FString::Printf(TEXT("match supply definition row=%s"), *RowId.ToString()));
+			}
+			if (LootDefinition.SpawnCategory == EHeistSpawnCategory::VaultFixed)
+			{
+				++VaultLootCount;
+			}
+			else if (LootDefinition.SpawnCategory == EHeistSpawnCategory::ExhibitionRoom)
+			{
+				++ExhibitionLootCount;
+			}
+			else
+			{
+				return WaitFor(FString::Printf(TEXT("match supply category row=%s"), *RowId.ToString()));
+			}
+			int32 MatchingSpawnPointCount = 0;
+			for (TActorIterator<AHeistLootSpawnPoint> It(ServerWorld); It; ++It)
+			{
+				AHeistLootSpawnPoint* SpawnPoint = *It;
+				if (IsValid(SpawnPoint) && SpawnPoint->GetSpawnCategory() == LootDefinition.SpawnCategory &&
+					FVector::DistSquared(SpawnPoint->GetActorLocation(), ServerLootActor->GetActorLocation()) <= 1.0f)
+				{
+					++MatchingSpawnPointCount;
+					if (!SpawnPoint->IsOccupied() || SpawnPoint->CanSpawnCategory(LootDefinition.SpawnCategory))
+					{
+						return WaitFor(FString::Printf(TEXT("match supply occupancy row=%s spawn=%s"), *RowId.ToString(), *GetNameSafe(SpawnPoint)));
+					}
+				}
+			}
+			if (MatchingSpawnPointCount != 1)
+			{
+				return WaitFor(FString::Printf(TEXT("match supply location row=%s matches=%d"), *RowId.ToString(), MatchingSpawnPointCount));
+			}
+			for (UWorld* World : GetLootLifecyclePIEWorlds())
+			{
+				const AHeistLootActor* ReplicatedLootActor = FindLootActorByRowAndLocation(World, RowId, ServerLootActor->GetActorLocation());
+				if (!IsLootWorldVisualResolved(ReplicatedLootActor, ItemDefinition, LootDefinition, true))
+				{
+					const UStaticMeshComponent* VisualMesh = IsValid(ReplicatedLootActor) ? ReplicatedLootActor->FindComponentByClass<UStaticMeshComponent>() : nullptr;
+					const USphereComponent* InteractionSphere = IsValid(ReplicatedLootActor) ? ReplicatedLootActor->FindComponentByClass<USphereComponent>() : nullptr;
+					UStaticMesh* ExpectedMesh = LootDefinition.WorldMesh.LoadSynchronous();
+					return WaitFor(FString::Printf(
+						TEXT("match supply visual row=%s actor=%s world=%s actualRow=%s score=%d/%d weight=%.2f/%.2f class=%s mesh=%s/%s transform=%s visible=%s collision=%d available=%s"),
+						*RowId.ToString(), *ServerLootActor->GetName(), *GetNameSafe(World),
+						IsValid(ReplicatedLootActor) ? *ReplicatedLootActor->GetLootRowId().ToString() : TEXT("Invalid"),
+						IsValid(ReplicatedLootActor) ? ReplicatedLootActor->GetScoreValue() : -1, LootDefinition.ScoreValue,
+						IsValid(ReplicatedLootActor) ? ReplicatedLootActor->GetWeightValue() : -1.0f, ItemDefinition.Weight,
+						*GetNameSafe(IsValid(ReplicatedLootActor) ? ReplicatedLootActor->GetClass() : nullptr),
+						*GetNameSafe(IsValid(VisualMesh) ? VisualMesh->GetStaticMesh() : nullptr), *GetNameSafe(ExpectedMesh),
+						IsValid(VisualMesh) && VisualMesh->GetRelativeTransform().Equals(LootDefinition.WorldVisualRelativeTransform, KINDA_SMALL_NUMBER)
+							? TEXT("PASS") : TEXT("FAIL"),
+						IsValid(VisualMesh) && VisualMesh->IsVisible() ? TEXT("true") : TEXT("false"),
+						IsValid(InteractionSphere) ? static_cast<int32>(InteractionSphere->GetCollisionEnabled()) : -1,
+						IsValid(ReplicatedLootActor) && ReplicatedLootActor->IsLootAvailable() ? TEXT("true") : TEXT("false")));
+				}
+			}
+		}
+		if (VaultLootCount != ExpectedVaultLootCount || ExhibitionLootCount != ExpectedExhibitionLootCount)
+		{
+			return WaitFor(FString::Printf(TEXT("match supply categories vault=%d/%d exhibition=%d/%d"), VaultLootCount, ExpectedVaultLootCount,
+				ExhibitionLootCount, ExpectedExhibitionLootCount));
+		}
+
+		State->bMatchStartSupplyValidated = true;
+		State->LastCaptureWaitReason.Reset();
+		Test->AddInfo(FString::Printf(TEXT("W6-011 match-start supply: Map=M01 Players=2 Loot=%d Vault=%d Exhibition=%d SpawnPointCategory=PASS HostClientVisual=PASS"),
+			ExpectedMatchStartLootCount, VaultLootCount, ExhibitionLootCount));
 		return false;
 	}
 
@@ -621,7 +770,7 @@ bool CaptureLifecycleFixtures(FAutomationTestBase* Test, const TSharedRef<FHeist
 						SpawnedFixture->Destroy();
 					}
 				}
-				return false;
+				return WaitFor(FString::Printf(TEXT("fixture definition row=%s"), *RowId.ToString()));
 			}
 
 			FHeistLootDropRequest DropRequest;
@@ -638,16 +787,17 @@ bool CaptureLifecycleFixtures(FAutomationTestBase* Test, const TSharedRef<FHeist
 						SpawnedFixture->Destroy();
 					}
 				}
-				return false;
+				return WaitFor(FString::Printf(TEXT("fixture spawn row=%s"), *RowId.ToString()));
 			}
 			ServerLootActor->ForceNetUpdate();
 			SpawnedFixtures.Add(ServerLootActor);
 			Fixture.OriginalActorName = ServerLootActor->GetFName();
+			Fixture.OriginalSpawnLocation = ServerLootActor->GetActorLocation();
 			Fixtures.Add(MoveTemp(Fixture));
 		}
 		State->Fixtures = Fixtures;
 		State->bRuntimeFixturesSpawned = true;
-		return false;
+		return WaitFor(TEXT("fixture replication"));
 	}
 
 	for (FHeistLootLifecycleFixture& Fixture : Fixtures)
@@ -655,13 +805,15 @@ bool CaptureLifecycleFixtures(FAutomationTestBase* Test, const TSharedRef<FHeist
 		AHeistLootActor* ServerLootActor = FindLootActorByName(ServerWorld, Fixture.OriginalActorName);
 		if (!IsValid(ServerLootActor) || !ServerLootActor->IsLootAvailable() || ServerLootActor->GetLootRowId() != Fixture.RowId)
 		{
-			return false;
+			return WaitFor(FString::Printf(TEXT("fixture server state row=%s actor=%s"), *Fixture.RowId.ToString(), *Fixture.OriginalActorName.ToString()));
 		}
 		for (UWorld* World : GetLootLifecyclePIEWorlds())
 		{
-			if (!IsLootWorldVisualResolved(FindLootActorByName(World, Fixture.OriginalActorName), Fixture.ItemDefinition, Fixture.LootDefinition, true))
+			if (!IsLootWorldVisualResolved(FindLootActorByRowAndLocation(World, Fixture.RowId, Fixture.OriginalSpawnLocation), Fixture.ItemDefinition,
+				Fixture.LootDefinition, true))
 			{
-				return false;
+				return WaitFor(FString::Printf(TEXT("fixture visual row=%s actor=%s world=%s"), *Fixture.RowId.ToString(),
+					*Fixture.OriginalActorName.ToString(), *GetNameSafe(World)));
 			}
 		}
 		TotalGridArea += Fixture.ItemDefinition.GridSize.X * Fixture.ItemDefinition.GridSize.Y;
@@ -671,15 +823,16 @@ bool CaptureLifecycleFixtures(FAutomationTestBase* Test, const TSharedRef<FHeist
 	const int32 GridCapacity = UHeistInventoryComponent::GridColumnCount * UHeistInventoryComponent::GridRowCount;
 	if (Fixtures.Num() != 5 || TotalGridArea > GridCapacity)
 	{
-		return false;
+		return WaitFor(FString::Printf(TEXT("fixture inventory rows=%d area=%d/%d"), Fixtures.Num(), TotalGridArea, GridCapacity));
 	}
 
 	AHeistPlayerController* FeedbackController = GetOwningPlayerControllerById(LootCarrierPlayerId);
 	if (!IsValid(FeedbackController))
 	{
-		return false;
+		return WaitFor(TEXT("feedback controller"));
 	}
 	State->Fixtures = MoveTemp(Fixtures);
+	State->LastCaptureWaitReason.Reset();
 	State->FeedbackController = FeedbackController;
 	const TSharedPtr<FHeistLootLifecycleAutomationState> SharedState = State;
 	const TWeakPtr<FHeistLootLifecycleAutomationState> WeakState = SharedState;
@@ -700,7 +853,7 @@ bool CaptureLifecycleFixtures(FAutomationTestBase* Test, const TSharedRef<FHeist
 			*PinnedState->PendingFeedbackRowId.ToString(), *ExpectedMessage.ToString(), *Message.ToString(), DurationSeconds));
 	});
 
-	Test->AddInfo(FString::Printf(TEXT("W6-011 runtime fixture: Map=M01 Players=2 Rows=5 GridArea=%d/%d Value=%d Weight=%.1f SharedShell=BP_Loot HostClientVisual=PASS"),
+	Test->AddInfo(FString::Printf(TEXT("W6-011 row lifecycle fixture: Map=M01 Players=2 Rows=5 GridArea=%d/%d Value=%d Weight=%.1f SharedShell=BP_Loot HostClientVisual=PASS"),
 		TotalGridArea, GridCapacity, TotalValue, TotalWeight));
 	return true;
 }
@@ -805,7 +958,9 @@ void AppendLootFixtureLifecycleCommands(FAutomationTestBase* Test, const TShared
 		}
 		const FHeistLootLifecycleFixture& Fixture = State->Fixtures[FixtureIndex];
 		AHeistPlayerController* OwningPlayerController = GetOwningPlayerControllerById(LootCarrierPlayerId);
-		AHeistLootActor* LocalLootActor = IsValid(OwningPlayerController) ? FindLootActorByName(OwningPlayerController->GetWorld(), Fixture.OriginalActorName) : nullptr;
+		AHeistLootActor* LocalLootActor = IsValid(OwningPlayerController)
+			? FindLootActorByRowAndLocation(OwningPlayerController->GetWorld(), Fixture.RowId, Fixture.OriginalSpawnLocation)
+			: nullptr;
 		State->PendingFeedbackRowId = Fixture.RowId;
 		State->PendingFeedbackValue = Fixture.LootDefinition.ScoreValue;
 		return InvokeSingleActorServerRPC(OwningPlayerController, FName(TEXT("Server_RequestLootPickup")), LocalLootActor);
@@ -814,7 +969,7 @@ void AppendLootFixtureLifecycleCommands(FAutomationTestBase* Test, const TShared
 		FString::Printf(TEXT("fixture %d initial pickup inventory, feedback and unavailable replication"), FixtureIndex + 1), [State, FixtureIndex]()
 	{
 		return State->Fixtures.IsValidIndex(FixtureIndex) &&
-			IsPickedActorAndFeedbackReplicated(State, FixtureIndex, State->Fixtures[FixtureIndex].OriginalActorName, 1, true);
+			IsPickedActorAndFeedbackReplicated(State, FixtureIndex, State->Fixtures[FixtureIndex].OriginalSpawnLocation, 1, true);
 	}, 15.0));
 
 	Test->AddCommand(new FHeistLootLifecycleActionCommand(Test, State, FString::Printf(TEXT("fixture %d open owning inventory for drop"), FixtureIndex + 1), []()
@@ -896,7 +1051,9 @@ void AppendLootFixtureLifecycleCommands(FAutomationTestBase* Test, const TShared
 		}
 		const FHeistLootLifecycleFixture& Fixture = State->Fixtures[FixtureIndex];
 		AHeistPlayerController* OwningPlayerController = GetOwningPlayerControllerById(LootCarrierPlayerId);
-		AHeistLootActor* LocalLootActor = IsValid(OwningPlayerController) ? FindLootActorByName(OwningPlayerController->GetWorld(), Fixture.DroppedActorName) : nullptr;
+		AHeistLootActor* LocalLootActor = IsValid(OwningPlayerController)
+			? FindLootActorByRowAndLocation(OwningPlayerController->GetWorld(), Fixture.RowId, Fixture.DroppedSpawnLocation)
+			: nullptr;
 		State->PendingFeedbackRowId = Fixture.RowId;
 		State->PendingFeedbackValue = Fixture.LootDefinition.ScoreValue;
 		return InvokeSingleActorServerRPC(OwningPlayerController, FName(TEXT("Server_RequestLootPickup")), LocalLootActor);
@@ -905,7 +1062,7 @@ void AppendLootFixtureLifecycleCommands(FAutomationTestBase* Test, const TShared
 		FString::Printf(TEXT("fixture %d re-pickup inventory, second feedback and unavailable replication"), FixtureIndex + 1), [State, FixtureIndex]()
 	{
 		return State->Fixtures.IsValidIndex(FixtureIndex) &&
-			IsPickedActorAndFeedbackReplicated(State, FixtureIndex, State->Fixtures[FixtureIndex].DroppedActorName, 2, false);
+			IsPickedActorAndFeedbackReplicated(State, FixtureIndex, State->Fixtures[FixtureIndex].DroppedSpawnLocation, 2, false);
 	}, 15.0));
 	Test->AddCommand(new FHeistLootLifecycleActionCommand(Test, State, FString::Printf(TEXT("record fixture %d lifecycle evidence"), FixtureIndex + 1),
 		[Test, State, FixtureIndex]()
@@ -995,7 +1152,7 @@ bool EnqueueTwoPlayerLootLifecycleScenario(FAutomationTestBase* Test)
 		UHeistGameInstance* GameInstance = IsValid(ServerWorld) ? Cast<UHeistGameInstance>(ServerWorld->GetGameInstance()) : nullptr;
 		return IsValid(GameInstance) && SetAllLootLifecycleLobbyPlayersReady(ServerWorld) && GameInstance->RequestStartSelectedGameplayMap();
 	}));
-	Test->AddCommand(new FHeistLootLifecycleWaitCommand(Test, State, TEXT("M01 two-player gameplay and five runtime loot fixtures"), [Test, State]()
+	Test->AddCommand(new FHeistLootLifecycleWaitCommand(Test, State, TEXT("M01 match-start supply and five row lifecycle fixtures"), [Test, State]()
 	{
 		return AreLootLifecycleWorldsReady(EHeistMatchPhase::InGame, true) && CaptureLifecycleFixtures(Test, State);
 	}, 75.0));
@@ -1129,7 +1286,7 @@ bool EnqueueTwoPlayerLootLifecycleScenario(FAutomationTestBase* Test)
 			return false;
 		}
 		Test->AddInfo(FString::Printf(
-			TEXT("W6-011 lifecycle gate: Players=2 Map=M01 Rows=5 InitialPickups=5 Drops=5 Repickups=5 PickupFeedback=10 SharedShell=BP_Loot HostClientVisual=true InventoryGrid=5x5 VentSettlement=true SecondInteractionEscape=true Secured=%d InventoryEmpty=true ContractOutcomeSeed=false Result=PASS"),
+			TEXT("W6-011 lifecycle gate: Players=2 Map=M01 Rows=5 MatchStartSupply=true SpawnPointCategory=true InitialPickups=5 Drops=5 Repickups=5 PickupFeedback=10 SharedShell=BP_Loot HostClientVisual=true InventoryGrid=5x5 VentSettlement=true SecondInteractionEscape=true Secured=%d InventoryEmpty=true ContractOutcomeSeed=false Result=PASS"),
 			ExpectedValue));
 		return true;
 	}));

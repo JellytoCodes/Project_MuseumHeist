@@ -40,7 +40,10 @@ class PROJECT_MUSEUMHEIST_API UHeistInteractionPromptWidget : public UHeistUserW
 	void RefreshPresentation();
 	void RefreshInteractionPrompt(bool bActionActive);
 	void RefreshActionProgress();
+	void CacheDisplayNames();
 	FText ResolveTargetLabel(const AActor* TargetActor) const;
+	FText ResolveArtifactDisplayName(FName ArtifactId) const;
+	FText ResolveLootDisplayName(FName ItemId) const;
 	float GetServerWorldTimeSeconds() const;
 
 	UPROPERTY(Transient)
@@ -89,6 +92,8 @@ class PROJECT_MUSEUMHEIST_API UHeistInteractionPromptWidget : public UHeistUserW
 	FName TrackedActionType = NAME_None;
 	float TrackedActionEndServerTime = 0.0f;
 	float TrackedActionDuration = 0.0f;
+	TMap<FName, FText> ArtifactDisplayNames;
+	TMap<FName, FText> LootDisplayNames;
 
 #pragma endregion
 };

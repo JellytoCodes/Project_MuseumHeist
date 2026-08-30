@@ -49,6 +49,7 @@ MATERIALS = {
 
 BLUEPRINTS = {
     "painting": "/Game/Blueprints/World/Actors/Loot/BP_PaintingDisplayCase",
+    "loot_spawn_point": "/Game/Blueprints/World/Actors/Loot/BP_LootSpawnPoint",
     "guard": "/Game/Blueprints/Guard/BP_Guard",
     "camera": "/Game/Blueprints/World/Actors/Security/BP_SecurityCamera",
     "laser": "/Game/Blueprints/World/Actors/Security/BP_LaserBarrier",
@@ -130,6 +131,20 @@ MAPS = {
         "wall_material": "m01_wall",
         "vent_entries": [(-6800, -1200, 90.0), (800, -4800, 0.0), (6800, 2400, 90.0)],
         "player_starts": [(-6200, -1650), (-6200, -1050), (-6600, -1650), (-6600, -1050)],
+        "loot_spawn_points": [
+            ("Exhibition_01", "ExhibitionRoom", -3770, -2370, 105, 45.0),
+            ("Exhibition_02", "ExhibitionRoom", -3600, 2400, 105, -45.0),
+            ("Exhibition_03", "ExhibitionRoom", 3800, -2400, 105, 135.0),
+            ("Exhibition_04", "ExhibitionRoom", 3600, 2400, 105, -135.0),
+            ("Exhibition_05", "ExhibitionRoom", -2800, 3900, 45, 0.0),
+            ("Exhibition_06", "ExhibitionRoom", 2800, -3900, 45, 180.0),
+            ("Exhibition_07", "ExhibitionRoom", 0, 2600, 45, 180.0),
+            ("Exhibition_08", "ExhibitionRoom", -4900, 2200, 45, 90.0),
+            ("Exhibition_09", "ExhibitionRoom", 4900, 2200, 45, -90.0),
+            ("Exhibition_10", "ExhibitionRoom", 0, -3400, 45, 0.0),
+            ("Vault_01", "VaultFixed", 5600, -2800, 90, 90.0),
+            ("Vault_02", "VaultFixed", 5600, 3200, 90, 0.0),
+        ],
         "exit": (-6800, -1200, 90.0),
         "nav_scale": (72.0, 52.0, 10.0),
         "cases": [
@@ -170,6 +185,20 @@ MAPS = {
         "wall_material": "m02_wall",
         "vent_entries": [(-6000, -3200, 90.0), (2400, 5200, 0.0), (6000, 800, 90.0)],
         "player_starts": [(-5400, -3450), (-5400, -2850), (-5800, -3450), (-5800, -2850)],
+        "loot_spawn_points": [
+            ("Exhibition_01", "ExhibitionRoom", -3200, -450, 45, 75.0),
+            ("Exhibition_02", "ExhibitionRoom", -3070, 890, 45, 20.0),
+            ("Exhibition_03", "ExhibitionRoom", -1680, 2920, 45, -20.0),
+            ("Exhibition_04", "ExhibitionRoom", -650, 3400, 45, 15.0),
+            ("Exhibition_05", "ExhibitionRoom", 980, -1990, 45, 20.0),
+            ("Exhibition_06", "ExhibitionRoom", 1910, -1650, 45, 75.0),
+            ("Exhibition_07", "ExhibitionRoom", 3050, 1200, 45, -15.0),
+            ("Exhibition_08", "ExhibitionRoom", 3310, 2270, 45, 70.0),
+            ("Exhibition_09", "ExhibitionRoom", -600, 800, 25, 0.0),
+            ("Exhibition_10", "ExhibitionRoom", -2800, -3600, 45, 0.0),
+            ("Vault_01", "VaultFixed", -5600, 3000, 90, -90.0),
+            ("Vault_02", "VaultFixed", 5600, -2600, 90, 90.0),
+        ],
         "exit": (2400, 5200, 0.0),
         "nav_scale": (64.0, 56.0, 10.0),
         "cases": [
@@ -209,6 +238,20 @@ MAPS = {
         "wall_material": "m03_wall",
         "vent_entries": [(-7600, 0, 90.0), (-2400, 4000, 0.0), (7200, -4000, 0.0)],
         "player_starts": [(-7000, -900), (-7000, -300), (-7000, 300), (-7000, 900)],
+        "loot_spawn_points": [
+            ("Exhibition_01", "ExhibitionRoom", -5000, -2200, 105, 15.0),
+            ("Exhibition_02", "ExhibitionRoom", -2630, -2370, 105, -12.0),
+            ("Exhibition_03", "ExhibitionRoom", 200, -2200, 105, 12.0),
+            ("Exhibition_04", "ExhibitionRoom", 2800, -2400, 105, -15.0),
+            ("Exhibition_05", "ExhibitionRoom", -6000, 3800, 45, 0.0),
+            ("Exhibition_06", "ExhibitionRoom", -800, 3400, 50, 0.0),
+            ("Exhibition_07", "ExhibitionRoom", 2000, 3800, 45, 0.0),
+            ("Exhibition_08", "ExhibitionRoom", 6000, 3800, 45, 0.0),
+            ("Exhibition_09", "ExhibitionRoom", -3600, -500, 45, 0.0),
+            ("Exhibition_10", "ExhibitionRoom", 3000, -500, 45, 0.0),
+            ("Vault_01", "VaultFixed", 6600, -2000, 90, 0.0),
+            ("Vault_02", "VaultFixed", 5000, 3900, 90, 0.0),
+        ],
         "exit": (-7600, 0, 90.0),
         "nav_scale": (80.0, 44.0, 10.0),
         "cases": [
@@ -922,6 +965,34 @@ class LevelBuilder:
             set_transform(navs[0], (0, 0, 250), 0.0, self.config["nav_scale"])
             self.folder(navs[0], "Gameplay/Navigation")
 
+    def configure_loot_spawn_points(self):
+        category_values = {
+            "ExhibitionRoom": unreal.HeistSpawnCategory.EXHIBITION_ROOM,
+            "VaultFixed": unreal.HeistSpawnCategory.VAULT_FIXED,
+        }
+        category_tags = {
+            "ExhibitionRoom": "HeistLootSpawnExhibitionRoom",
+            "VaultFixed": "HeistLootSpawnVaultFixed",
+        }
+        category_tag_names = set(category_tags.values())
+        for key, category_name, x, y, z, yaw in self.config["loot_spawn_points"]:
+            actor = self.blueprint(
+                "LDV2_{}_LootSpawn_{}".format(self.code, key),
+                "loot_spawn_point",
+                (x, y, z),
+                yaw,
+                "Gameplay/LootSpawnPoints",
+            )
+            required_set(actor, "spawn_category", category_values[category_name])
+            required_set(actor, "spawn_enabled", True)
+            required_set(actor, "occupancy_radius", 100.0)
+            tags = [tag for tag in actor.get_editor_property("tags") if str(tag) not in category_tag_names]
+            for tag_name in ("HeistLootSpawn", category_tags[category_name]):
+                tag = unreal.Name(tag_name)
+                if tag not in tags:
+                    tags.append(tag)
+            required_set(actor, "tags", tags)
+
     def case_artifact_id(self, case_key):
         if case_key == "Target":
             return "Artifact_Painting_{}".format(self.code)
@@ -1148,6 +1219,7 @@ class LevelBuilder:
             "laser_buttons": class_counts.get("BP_SecurityHoldButton_C", 0),
             "gameplay_vents": class_counts.get("BP_Vent_C", 0),
             "authored_loose_loot": class_counts.get("BP_Loot_C", 0),
+            "loot_spawn_points": class_counts.get("BP_LootSpawnPoint_C", 0),
             "deferred_object_cases": class_counts.get("BP_ObjectDisplayCase_C", 0),
             "target_size_cm": [self.config["half_x"] * 2, self.config["half_y"] * 2],
             "vent_visual_points": len(self.config["vent_entries"]),
@@ -1392,6 +1464,7 @@ def build_selected_levels():
         else:
             add_m03_geometry(builder)
         builder.configure_entry_exit_and_nav()
+        builder.configure_loot_spawn_points()
         cases = builder.configure_cases()
         builder.configure_guards()
         builder.configure_cameras()

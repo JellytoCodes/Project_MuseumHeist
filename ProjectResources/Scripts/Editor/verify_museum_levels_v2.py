@@ -20,6 +20,9 @@ EXPECTED = {
         "half_y": 5200.0,
         "floor_count": 234,
         "vent_points": 3,
+        "loot_spawn_points": 12,
+        "exhibition_loot_spawn_points": 10,
+        "vault_loot_spawn_points": 2,
         "guards": 5,
         "waypoints": 39,
         "cameras": 6,
@@ -44,6 +47,9 @@ EXPECTED = {
         "half_y": 5600.0,
         "floor_count": 224,
         "vent_points": 3,
+        "loot_spawn_points": 12,
+        "exhibition_loot_spawn_points": 10,
+        "vault_loot_spawn_points": 2,
         "guards": 5,
         "waypoints": 40,
         "cameras": 4,
@@ -75,6 +81,9 @@ EXPECTED = {
         "half_y": 4400.0,
         "floor_count": 220,
         "vent_points": 3,
+        "loot_spawn_points": 12,
+        "exhibition_loot_spawn_points": 10,
+        "vault_loot_spawn_points": 2,
         "guards": 4,
         "waypoints": 28,
         "cameras": 8,
@@ -198,6 +207,18 @@ selected_level_codes = resolve_level_codes(EXPECTED)
 
 MIN_CASE_GUARD_CLEARANCE_CM = 450.0
 MIN_GUARD_OBSTACLE_CLEARANCE_CM = 100.0
+MIN_LOOT_SPAWN_CLEARANCE_CM = 900.0
+MIN_LOOT_SPAWN_VENT_CLEARANCE_CM = 1400.0
+MIN_LOOT_SPAWN_BLOCKER_BOUNDS_CLEARANCE_CM = 100.0
+MIN_LOOT_SPAWN_CASE_CLEARANCE_CM = 350.0
+MIN_LOOT_SPAWN_SECURITY_CLEARANCE_CM = 300.0
+MIN_LOOT_SPAWN_GUARD_WAYPOINT_CLEARANCE_CM = 300.0
+
+KNOWN_LOOT_BLOCKER_SUFFIXES = {
+    "M01": ("HeroPlinth", "RotundaStatue_", "GalleryCouch_"),
+    "M02": ("FoldingScreen_",),
+    "M03": ("GlassLaneDisplay_", "SpineExhibit_"),
+}
 
 
 def prop(obj, name):
@@ -221,6 +242,32 @@ def actor_label(value):
 
 def actor_tags(value):
     return {str(tag) for tag in (prop(value, "tags") or [])}
+
+
+def actor_bounds_2d(value):
+    try:
+        origin, extent = value.get_actor_bounds(True, False)
+        return origin, extent
+    except Exception:
+        return None
+
+
+def point_aabb_clearance_2d(point, origin, extent):
+    delta_x = max(abs(point.x - origin.x) - extent.x, 0.0)
+    delta_y = max(abs(point.y - origin.y) - extent.y, 0.0)
+    return math.hypot(delta_x, delta_y)
+
+
+def minimum_actor_center_clearance(source_actors, target_actors):
+    closest = (float("inf"), "", "")
+    for source_actor in source_actors:
+        source_location = source_actor.get_actor_location()
+        for target_actor in target_actors:
+            target_location = target_actor.get_actor_location()
+            distance = math.hypot(source_location.x - target_location.x, source_location.y - target_location.y)
+            if distance < closest[0]:
+                closest = (distance, actor_label(source_actor), actor_label(target_actor))
+    return closest
 
 
 def sampled_segment_aabb_clearance(start, end, origin, extent, sample_spacing=50.0):
@@ -299,6 +346,7 @@ for code in selected_level_codes:
     class_expectations = {
         "PlayerStart": 4,
         "BP_Vent_C": 1,
+        "BP_LootSpawnPoint_C": expected["loot_spawn_points"],
         "BP_Guard_C": expected["guards"],
         "HeistGuardWaypoint": expected["waypoints"],
         "BP_SecurityCamera_C": expected["cameras"],
@@ -312,6 +360,9 @@ for code in selected_level_codes:
     if deferred_object_cases:
         failures.append("deferred object display case count {} != 0".format(len(deferred_object_cases)))
 
+    authored_loot = by_class.get("BP_Loot_C", [])
+    if authored_loot:
+        failures.append("authored BP_Loot count {} != 0".format(len(authored_loot)))
     retired_loot_prefixes = ("W6_Loot_", "W8_RELEASE_{}_Loot_".format(code))
     retired_loot = [
         actor for actor in by_class.get("BP_Loot_C", [])
@@ -467,6 +518,177 @@ for code in selected_level_codes:
         failures.append("vent visual panel count mismatch")
     if len(vent_slats) != expected["vent_points"] * 4:
         failures.append("vent visual slat count mismatch")
+
+    loot_spawn_points = sorted(by_class.get("BP_LootSpawnPoint_C", []), key=actor_label)
+    exhibition_loot_spawn_points = [
+        actor for actor in loot_spawn_points
+        if prop(actor, "spawn_category") == unreal.HeistSpawnCategory.EXHIBITION_ROOM
+    ]
+    vault_loot_spawn_points = [
+        actor for actor in loot_spawn_points
+        if prop(actor, "spawn_category") == unreal.HeistSpawnCategory.VAULT_FIXED
+    ]
+    expected_loot_spawn_labels = {
+        prefix + "LootSpawn_Exhibition_{:02d}".format(index)
+        for index in range(1, expected["exhibition_loot_spawn_points"] + 1)
+    }
+    expected_loot_spawn_labels.update(
+        prefix + "LootSpawn_Vault_{:02d}".format(index)
+        for index in range(1, expected["vault_loot_spawn_points"] + 1)
+    )
+    if {actor.get_actor_label() for actor in loot_spawn_points} != expected_loot_spawn_labels:
+        failures.append("loot spawn-point label set mismatch")
+    if len(exhibition_loot_spawn_points) != expected["exhibition_loot_spawn_points"]:
+        failures.append("ExhibitionRoom loot spawn-point count mismatch")
+    if len(vault_loot_spawn_points) != expected["vault_loot_spawn_points"]:
+        failures.append("VaultFixed loot spawn-point count mismatch")
+    if any(not bool(prop(actor, "spawn_enabled")) for actor in loot_spawn_points):
+        failures.append("disabled release loot spawn point")
+    if any(
+        prop(actor, "occupancy_radius") is None or not close_float(prop(actor, "occupancy_radius"), 100.0)
+        for actor in loot_spawn_points
+    ):
+        failures.append("loot spawn-point occupancy radius mismatch")
+    exhibition_label_prefix = prefix + "LootSpawn_Exhibition_"
+    vault_label_prefix = prefix + "LootSpawn_Vault_"
+    for actor in loot_spawn_points:
+        label = actor.get_actor_label()
+        category = prop(actor, "spawn_category")
+        tags = actor_tags(actor)
+        if label.startswith(exhibition_label_prefix):
+            if category != unreal.HeistSpawnCategory.EXHIBITION_ROOM:
+                failures.append("Exhibition label/category mismatch: " + label)
+            if (
+                not {"MuseumLevelGenerated", "HeistLootSpawn", "HeistLootSpawnExhibitionRoom"}.issubset(tags)
+                or "HeistLootSpawnVaultFixed" in tags
+            ):
+                failures.append("ExhibitionRoom loot spawn-point tag mismatch: " + label)
+        elif label.startswith(vault_label_prefix):
+            if category != unreal.HeistSpawnCategory.VAULT_FIXED:
+                failures.append("Vault label/category mismatch: " + label)
+            if (
+                not {"MuseumLevelGenerated", "HeistLootSpawn", "HeistLootSpawnVaultFixed"}.issubset(tags)
+                or "HeistLootSpawnExhibitionRoom" in tags
+            ):
+                failures.append("VaultFixed loot spawn-point tag mismatch: " + label)
+
+    loot_spawn_locations = [actor.get_actor_location() for actor in loot_spawn_points]
+    unique_loot_spawn_locations = {
+        (round(location.x, 1), round(location.y, 1), round(location.z, 1))
+        for location in loot_spawn_locations
+    }
+    if len(unique_loot_spawn_locations) != len(loot_spawn_points):
+        failures.append("loot spawn-point locations are not unique")
+    if bounds and any(
+        location.x < bounds[0] or location.x > bounds[1] or location.y < bounds[2] or location.y > bounds[3]
+        for location in loot_spawn_locations
+    ):
+        failures.append("loot spawn point outside floor bounds")
+
+    minimum_loot_spawn_clearance = min(
+        (
+            math.hypot(
+                loot_spawn_locations[left_index].x - loot_spawn_locations[right_index].x,
+                loot_spawn_locations[left_index].y - loot_spawn_locations[right_index].y,
+            )
+            for left_index in range(len(loot_spawn_locations))
+            for right_index in range(left_index + 1, len(loot_spawn_locations))
+        ),
+        default=float("inf"),
+    )
+    if minimum_loot_spawn_clearance < MIN_LOOT_SPAWN_CLEARANCE_CM:
+        failures.append(
+            "loot spawn-point clearance {:.1f}cm below {:.1f}cm".format(
+                minimum_loot_spawn_clearance,
+                MIN_LOOT_SPAWN_CLEARANCE_CM,
+            )
+        )
+    minimum_loot_spawn_vent_clearance = min(
+        (
+            math.hypot(
+                spawn_location.x - panel.get_actor_location().x,
+                spawn_location.y - panel.get_actor_location().y,
+            )
+            for spawn_location in loot_spawn_locations
+            for panel in vent_panels
+        ),
+        default=float("inf"),
+    )
+    if minimum_loot_spawn_vent_clearance < MIN_LOOT_SPAWN_VENT_CLEARANCE_CM:
+        failures.append(
+            "loot spawn-point vent clearance {:.1f}cm below {:.1f}cm".format(
+                minimum_loot_spawn_vent_clearance,
+                MIN_LOOT_SPAWN_VENT_CLEARANCE_CM,
+            )
+        )
+
+    known_loot_blocker_prefixes = tuple(prefix + suffix for suffix in KNOWN_LOOT_BLOCKER_SUFFIXES[code])
+    known_loot_blockers = [
+        actor for actor in ldv2_static
+        if actor.get_actor_label().startswith(known_loot_blocker_prefixes)
+    ]
+    minimum_loot_spawn_blocker_bounds_clearance = (float("inf"), "", "")
+    for blocker in known_loot_blockers:
+        blocker_bounds = actor_bounds_2d(blocker)
+        if blocker_bounds is None:
+            failures.append("known loot blocker bounds unavailable: " + blocker.get_actor_label())
+            continue
+        blocker_origin, blocker_extent = blocker_bounds
+        for spawn_point in loot_spawn_points:
+            distance = point_aabb_clearance_2d(spawn_point.get_actor_location(), blocker_origin, blocker_extent)
+            if distance < minimum_loot_spawn_blocker_bounds_clearance[0]:
+                minimum_loot_spawn_blocker_bounds_clearance = (
+                    distance,
+                    spawn_point.get_actor_label(),
+                    blocker.get_actor_label(),
+                )
+    if minimum_loot_spawn_blocker_bounds_clearance[0] < MIN_LOOT_SPAWN_BLOCKER_BOUNDS_CLEARANCE_CM:
+        failures.append(
+            "loot spawn-point blocker bounds clearance {:.1f}cm below {:.1f}cm: {} vs {}".format(
+                minimum_loot_spawn_blocker_bounds_clearance[0],
+                MIN_LOOT_SPAWN_BLOCKER_BOUNDS_CLEARANCE_CM,
+                minimum_loot_spawn_blocker_bounds_clearance[1],
+                minimum_loot_spawn_blocker_bounds_clearance[2],
+            )
+        )
+
+    minimum_loot_spawn_case_clearance = minimum_actor_center_clearance(loot_spawn_points, cases)
+    if minimum_loot_spawn_case_clearance[0] < MIN_LOOT_SPAWN_CASE_CLEARANCE_CM:
+        failures.append(
+            "loot spawn-point case clearance {:.1f}cm below {:.1f}cm: {} vs {}".format(
+                minimum_loot_spawn_case_clearance[0],
+                MIN_LOOT_SPAWN_CASE_CLEARANCE_CM,
+                minimum_loot_spawn_case_clearance[1],
+                minimum_loot_spawn_case_clearance[2],
+            )
+        )
+
+    security_actors = (
+        by_class.get("BP_LaserBarrier_C", [])
+        + by_class.get("BP_SecurityHoldButton_C", [])
+    )
+    minimum_loot_spawn_security_clearance = minimum_actor_center_clearance(loot_spawn_points, security_actors)
+    if minimum_loot_spawn_security_clearance[0] < MIN_LOOT_SPAWN_SECURITY_CLEARANCE_CM:
+        failures.append(
+            "loot spawn-point laser/button clearance {:.1f}cm below {:.1f}cm: {} vs {}".format(
+                minimum_loot_spawn_security_clearance[0],
+                MIN_LOOT_SPAWN_SECURITY_CLEARANCE_CM,
+                minimum_loot_spawn_security_clearance[1],
+                minimum_loot_spawn_security_clearance[2],
+            )
+        )
+
+    guard_waypoints = by_class.get("HeistGuardWaypoint", [])
+    minimum_loot_spawn_guard_waypoint_clearance = minimum_actor_center_clearance(loot_spawn_points, guard_waypoints)
+    if minimum_loot_spawn_guard_waypoint_clearance[0] < MIN_LOOT_SPAWN_GUARD_WAYPOINT_CLEARANCE_CM:
+        failures.append(
+            "loot spawn-point guard-waypoint clearance {:.1f}cm below {:.1f}cm: {} vs {}".format(
+                minimum_loot_spawn_guard_waypoint_clearance[0],
+                MIN_LOOT_SPAWN_GUARD_WAYPOINT_CLEARANCE_CM,
+                minimum_loot_spawn_guard_waypoint_clearance[1],
+                minimum_loot_spawn_guard_waypoint_clearance[2],
+            )
+        )
 
     required_spatial_labels = [
         prefix + "SecurityDesk",
@@ -878,6 +1100,36 @@ for code in selected_level_codes:
         "painting_cases": len(cases),
         "unique_case_ids": len(set(case_ids)),
         "authored_loose_loot": len(by_class.get("BP_Loot_C", [])),
+        "loot_spawn_points": len(loot_spawn_points),
+        "exhibition_loot_spawn_points": len(exhibition_loot_spawn_points),
+        "vault_loot_spawn_points": len(vault_loot_spawn_points),
+        "minimum_loot_spawn_clearance_cm": (
+            None if not math.isfinite(minimum_loot_spawn_clearance) else round(minimum_loot_spawn_clearance, 1)
+        ),
+        "minimum_loot_spawn_vent_clearance_cm": (
+            None if not math.isfinite(minimum_loot_spawn_vent_clearance) else round(minimum_loot_spawn_vent_clearance, 1)
+        ),
+        "known_loot_blockers": len(known_loot_blockers),
+        "minimum_loot_spawn_blocker_bounds_clearance_cm": (
+            None
+            if not math.isfinite(minimum_loot_spawn_blocker_bounds_clearance[0])
+            else round(minimum_loot_spawn_blocker_bounds_clearance[0], 1)
+        ),
+        "minimum_loot_spawn_case_clearance_cm": (
+            None
+            if not math.isfinite(minimum_loot_spawn_case_clearance[0])
+            else round(minimum_loot_spawn_case_clearance[0], 1)
+        ),
+        "minimum_loot_spawn_security_clearance_cm": (
+            None
+            if not math.isfinite(minimum_loot_spawn_security_clearance[0])
+            else round(minimum_loot_spawn_security_clearance[0], 1)
+        ),
+        "minimum_loot_spawn_guard_waypoint_clearance_cm": (
+            None
+            if not math.isfinite(minimum_loot_spawn_guard_waypoint_clearance[0])
+            else round(minimum_loot_spawn_guard_waypoint_clearance[0], 1)
+        ),
         "retired_authored_loot": len(retired_loot),
         "deferred_object_cases": len(deferred_object_cases),
         "vent_visual_points": len(vent_panels),

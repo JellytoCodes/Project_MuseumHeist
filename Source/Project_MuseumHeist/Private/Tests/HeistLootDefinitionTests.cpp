@@ -141,6 +141,9 @@ bool FHeistLootDefinitionTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
+	TestEqual(TEXT("Match start uses one Vault loot slot"), BalanceData->MatchStartVaultLootCount, 1);
+	TestEqual(TEXT("Match start uses four Exhibition loot slots"), BalanceData->MatchStartExhibitionLootCount, 4);
+	TestEqual(TEXT("Match start supplies five loose-loot actors"), BalanceData->MatchStartVaultLootCount + BalanceData->MatchStartExhibitionLootCount, 5);
 
 	UDataTable* ItemDataTable = BalanceData->ItemDataTable.LoadSynchronous();
 	UDataTable* LootDataTable = BalanceData->LootDataTable.LoadSynchronous();

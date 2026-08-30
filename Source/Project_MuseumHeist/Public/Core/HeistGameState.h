@@ -6,6 +6,7 @@
 
 #include "HeistGameState.generated.h"
 
+class AHeistGameMode;
 class AHeistPlayerState;
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistEscapePhaseStateChanged, bool);
@@ -183,8 +184,10 @@ class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
 
 	void BroadcastContractSnapshot(const TCHAR* ChangeSource);
 	void ClearContractSnapshot();
+	void RollbackContractInitialization(FName Reason);
 
 	FHeistContractSnapshotChanged ContractSnapshotChangedDelegate;
+	friend class AHeistGameMode;
 
 #pragma endregion
 

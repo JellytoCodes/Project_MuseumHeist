@@ -43,9 +43,12 @@
 #include "World/Actors/Security/HeistLaserBarrierActor.h"
 #include "World/Actors/Security/HeistSecurityCameraActor.h"
 #include "World/Actors/Security/HeistSecurityHoldButtonActor.h"
+#include "World/Spawn/HeistLootSpawnPoint.h"
 
 namespace HeistContractRunTest
 {
+constexpr float CrossWorldLootLocationToleranceCm = 5.0f;
+
 struct FHeistContractRunAutomationState
 {
 	bool bAborted = false;
@@ -56,10 +59,14 @@ struct FHeistContractRunAutomationState
 	int32 PlayerCount = 1;
 	FName MapId = FName(TEXT("M01"));
 	FHeistContractSnapshot FirstRunContract;
-	int32 RuntimeLootFixtureRunIndex = INDEX_NONE;
+	int32 MatchStartLootSelectionRunIndex = INDEX_NONE;
 	FName SelectedHighValuePaintingCaseId = NAME_None;
 	FName SelectedLootActorName = NAME_None;
 	FName SelectedLootRowId = NAME_None;
+	FVector SelectedLootActorLocation = FVector::ZeroVector;
+	FVector SelectedSecurityCameraLocation = FVector::ZeroVector;
+	FVector SelectedSecurityLaserLocation = FVector::ZeroVector;
+	FVector SelectedSecurityHoldButtonLocation = FVector::ZeroVector;
 	int32 SelectedLootValue = 0;
 	int32 SecurityDetectionRevisionBaseline = 0;
 	int32 SecurityIncidentCountBaseline = 0;
@@ -247,6 +254,23 @@ AHeistLootActor* FindLootActor(UWorld* World, const FName ActorName)
 	return nullptr;
 }
 
+AHeistLootActor* FindLootActorAtLocation(UWorld* World, const FName RowId, const FVector& ActorLocation)
+{
+	if (!IsValid(World) || RowId.IsNone())
+	{
+		return nullptr;
+	}
+	for (TActorIterator<AHeistLootActor> It(World); It; ++It)
+	{
+		if (IsValid(*It) && It->GetLootRowId() == RowId &&
+			FVector::DistSquared(It->GetActorLocation(), ActorLocation) <= FMath::Square(CrossWorldLootLocationToleranceCm))
+		{
+			return *It;
+		}
+	}
+	return nullptr;
+}
+
 template <typename TActorType>
 TActorType* FindOnlyActorOfType(UWorld* World)
 {
@@ -269,6 +293,53 @@ TActorType* FindOnlyActorOfType(UWorld* World)
 		Result = *It;
 	}
 	return Result;
+}
+
+template <typename TActorType>
+TActorType* FindActorOfTypeAtLocation(UWorld* World, const FVector& ActorLocation)
+{
+	if (!IsValid(World))
+	{
+		return nullptr;
+	}
+	for (TActorIterator<TActorType> It(World); It; ++It)
+	{
+		if (IsValid(*It) && FVector::DistSquared(It->GetActorLocation(), ActorLocation) <= FMath::Square(CrossWorldLootLocationToleranceCm))
+		{
+			return *It;
+		}
+	}
+	return nullptr;
+}
+
+FVector ResolveReleaseCameraDetectionLocation(const AHeistSecurityCameraActor* Camera)
+{
+	if (!IsValid(Camera))
+	{
+		return FVector::ZeroVector;
+	}
+	FVector DetectionLocation = Camera->GetActorLocation() + Camera->GetActorForwardVector() * 600.0f;
+	DetectionLocation.Z = 88.0f;
+	return DetectionLocation;
+}
+
+bool HasClearReleaseCameraTestLine(UWorld* World, const AHeistSecurityCameraActor* Camera)
+{
+	if (!IsValid(World) || !IsValid(Camera))
+	{
+		return false;
+	}
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(HeistReleaseCameraFixtureLOS), false);
+	QueryParams.AddIgnoredActor(Camera);
+	for (TActorIterator<AHeistPlayerCharacter> It(World); It; ++It)
+	{
+		if (IsValid(*It))
+		{
+			QueryParams.AddIgnoredActor(*It);
+		}
+	}
+	const FVector TargetEyeLocation = ResolveReleaseCameraDetectionLocation(Camera) + FVector(0.0f, 0.0f, 64.0f);
+	return !World->LineTraceTestByChannel(Camera->GetActorLocation(), TargetEyeLocation, ECC_Visibility, QueryParams);
 }
 
 bool TeleportServerPlayerToLocation(const int32 PlayerId, const FVector& Destination)
@@ -429,10 +500,69 @@ bool IsLaserRearmingReplicated()
 	return true;
 }
 
+bool IsReleaseCameraDetectionReplicated(const TSharedRef<FHeistContractRunAutomationState>& State, const int32 ExpectedRevision, const int32 ExpectedPlayerId)
+{
+	for (UWorld* World : GetContractRunPIEWorlds())
+	{
+		const AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
+		const AHeistSecurityCameraActor* Camera = FindActorOfTypeAtLocation<AHeistSecurityCameraActor>(World, State->SelectedSecurityCameraLocation);
+		const AHeistPlayerState* DetectedPlayerState = IsValid(Camera) ? Camera->GetLastDetectedPlayerState() : nullptr;
+		if (!IsValid(GameState) || GameState->GetAlertLevel() < EHeistAlertLevel::Suspicious || !IsValid(Camera) ||
+			Camera->GetDetectionRevision() != ExpectedRevision || !IsValid(DetectedPlayerState) || DetectedPlayerState->HeistPlayerId != ExpectedPlayerId)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+bool IsReleaseSecurityHoldStateReplicated(const TSharedRef<FHeistContractRunAutomationState>& State, const bool bExpectedHolding,
+	const bool bExpectedBypass, const bool bExpectedBeamActive)
+{
+	for (UWorld* World : GetContractRunPIEWorlds())
+	{
+		const AHeistSecurityHoldButtonActor* Button =
+			FindActorOfTypeAtLocation<AHeistSecurityHoldButtonActor>(World, State->SelectedSecurityHoldButtonLocation);
+		const AHeistLaserBarrierActor* Laser = FindActorOfTypeAtLocation<AHeistLaserBarrierActor>(World, State->SelectedSecurityLaserLocation);
+		const AHeistPlayerState* Holder = IsValid(Button) ? Button->GetHolderPlayerState() : nullptr;
+		if (!IsValid(Button) || !IsValid(Laser) || Button->IsHoldActive() != bExpectedHolding || Button->IsBypassActive() != bExpectedBypass ||
+			Laser->IsBeamActive() != bExpectedBeamActive || (bExpectedHolding && (!IsValid(Holder) || Holder->HeistPlayerId != 1)) ||
+			(!bExpectedHolding && IsValid(Holder)))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+bool IsReleaseLaserRearmingReplicated(const TSharedRef<FHeistContractRunAutomationState>& State)
+{
+	for (UWorld* World : GetContractRunPIEWorlds())
+	{
+		const AHeistSecurityHoldButtonActor* Button =
+			FindActorOfTypeAtLocation<AHeistSecurityHoldButtonActor>(World, State->SelectedSecurityHoldButtonLocation);
+		const AHeistLaserBarrierActor* Laser = FindActorOfTypeAtLocation<AHeistLaserBarrierActor>(World, State->SelectedSecurityLaserLocation);
+		if (!IsValid(Button) || Button->IsHoldActive() || Button->IsBypassActive() || !IsValid(Laser) || Laser->IsBeamActive() || !Laser->IsRearming())
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+bool IsOwningReleaseSecurityChainRelevant(const int32 PlayerId, const TSharedRef<FHeistContractRunAutomationState>& State)
+{
+	const AHeistPlayerController* PlayerController = GetOwningPlayerControllerById(PlayerId);
+	return IsValid(PlayerController) &&
+		IsValid(FindActorOfTypeAtLocation<AHeistLaserBarrierActor>(PlayerController->GetWorld(), State->SelectedSecurityLaserLocation)) &&
+		IsValid(FindActorOfTypeAtLocation<AHeistSecurityHoldButtonActor>(PlayerController->GetWorld(), State->SelectedSecurityHoldButtonLocation));
+}
+
 bool PrepareReleaseSecurityInteraction(const TSharedRef<FHeistContractRunAutomationState>& State)
 {
 	UWorld* ServerWorld = GetContractRunServerWorld();
-	const AHeistSecurityCameraActor* Camera = FindOnlyActorOfType<AHeistSecurityCameraActor>(ServerWorld);
+	const AHeistSecurityCameraActor* Camera =
+		FindActorOfTypeAtLocation<AHeistSecurityCameraActor>(ServerWorld, State->SelectedSecurityCameraLocation);
 	const AHeistGameMode* GameMode = IsValid(ServerWorld) ? ServerWorld->GetAuthGameMode<AHeistGameMode>() : nullptr;
 	if (!IsValid(Camera) || !IsValid(GameMode))
 	{
@@ -440,6 +570,7 @@ bool PrepareReleaseSecurityInteraction(const TSharedRef<FHeistContractRunAutomat
 	}
 
 	int32 ActiveGuardCount = 0;
+	bool bInvestigationGuardPositioned = false;
 	for (TActorIterator<AHeistGuardCharacter> It(ServerWorld); It; ++It)
 	{
 		AHeistGuardCharacter* Guard = *It;
@@ -451,6 +582,14 @@ bool PrepareReleaseSecurityInteraction(const TSharedRef<FHeistContractRunAutomat
 		}
 		GuardController->SetAutomaticSightEnabled(false);
 		GuardState->EnterPatrol();
+		if (!bInvestigationGuardPositioned && GuardController->CanAcceptSecurityInvestigation())
+		{
+			FVector GuardLocation = Camera->GetActorLocation() + Camera->GetActorRightVector() * 400.0f;
+			GuardLocation.Z = 88.0f;
+			Guard->SetActorLocation(GuardLocation, false, nullptr, ETeleportType::TeleportPhysics);
+			Guard->ForceNetUpdate();
+			bInvestigationGuardPositioned = true;
+		}
 		++ActiveGuardCount;
 	}
 
@@ -459,7 +598,7 @@ bool PrepareReleaseSecurityInteraction(const TSharedRef<FHeistContractRunAutomat
 	State->SecurityInvestigationCountBaseline = GameMode->GetProcessedGuardInvestigationCount();
 	const AHeistGameState* GameState = ServerWorld->GetGameState<AHeistGameState>();
 	State->SecurityAlertMeterBaseline = IsValid(GameState) ? GameState->GetAlertMeterValue() : 0.0f;
-	return ActiveGuardCount > 0;
+	return ActiveGuardCount > 0 && bInvestigationGuardPositioned;
 }
 
 bool IsReleaseSecurityDetectionReady(const TSharedRef<FHeistContractRunAutomationState>& State)
@@ -470,7 +609,7 @@ bool IsReleaseSecurityDetectionReady(const TSharedRef<FHeistContractRunAutomatio
 	return IsValid(GameMode) && GameMode->GetProcessedSecurityIncidentCount() == State->SecurityIncidentCountBaseline + 1 &&
 		GameMode->GetProcessedGuardInvestigationCount() == State->SecurityInvestigationCountBaseline + 1 &&
 		IsValid(GameState) && FMath::IsNearlyEqual(GameState->GetAlertMeterValue(), State->SecurityAlertMeterBaseline + 0.5f) &&
-		IsCameraDetectionReplicated(State->SecurityDetectionRevisionBaseline + 1, 2);
+		IsReleaseCameraDetectionReplicated(State, State->SecurityDetectionRevisionBaseline + 1, 2);
 }
 
 bool IsReleaseSecurityIncidentOneShot(const TSharedRef<FHeistContractRunAutomationState>& State)
@@ -478,21 +617,26 @@ bool IsReleaseSecurityIncidentOneShot(const TSharedRef<FHeistContractRunAutomati
 	UWorld* ServerWorld = GetContractRunServerWorld();
 	const AHeistGameMode* GameMode = IsValid(ServerWorld) ? ServerWorld->GetAuthGameMode<AHeistGameMode>() : nullptr;
 	const AHeistGameState* GameState = IsValid(ServerWorld) ? ServerWorld->GetGameState<AHeistGameState>() : nullptr;
-	const AHeistSecurityCameraActor* Camera = FindOnlyActorOfType<AHeistSecurityCameraActor>(ServerWorld);
+	const AHeistSecurityCameraActor* Camera =
+		FindActorOfTypeAtLocation<AHeistSecurityCameraActor>(ServerWorld, State->SelectedSecurityCameraLocation);
 	return IsValid(GameMode) && IsValid(Camera) && Camera->GetDetectionRevision() == State->SecurityDetectionRevisionBaseline + 1 &&
 		GameMode->GetProcessedSecurityIncidentCount() == State->SecurityIncidentCountBaseline + 1 &&
 		GameMode->GetProcessedGuardInvestigationCount() == State->SecurityInvestigationCountBaseline + 1 && IsValid(GameState) &&
 		FMath::IsNearlyEqual(GameState->GetAlertMeterValue(), State->SecurityAlertMeterBaseline + 0.5f);
 }
 
-bool ResetReleaseSecurityAfterCamera()
+bool ResetReleaseSecurityAfterCamera(const TSharedRef<FHeistContractRunAutomationState>& State)
 {
 	UWorld* ServerWorld = GetContractRunServerWorld();
 	AHeistGameState* GameState = IsValid(ServerWorld) ? ServerWorld->GetGameState<AHeistGameState>() : nullptr;
-	if (!IsValid(GameState) || !GameState->SetAlertSnapshot(0.0f, EHeistAlertLevel::Quiet, FName(TEXT("W8ReleaseCameraReset"))))
+	const AHeistGameMode* GameMode = IsValid(ServerWorld) ? ServerWorld->GetAuthGameMode<AHeistGameMode>() : nullptr;
+	if (!IsValid(GameState) || !IsValid(GameMode) || !GameState->SetAlertSnapshot(0.0f, EHeistAlertLevel::Quiet, FName(TEXT("W8ReleaseCameraReset"))))
 	{
 		return false;
 	}
+	State->SecurityIncidentCountBaseline = GameMode->GetProcessedSecurityIncidentCount();
+	State->SecurityInvestigationCountBaseline = GameMode->GetProcessedGuardInvestigationCount();
+	State->SecurityAlertMeterBaseline = 0.0f;
 
 	bool bFoundActiveGuard = false;
 	for (TActorIterator<AHeistGuardCharacter> It(ServerWorld); It; ++It)
@@ -508,10 +652,10 @@ bool ResetReleaseSecurityAfterCamera()
 	return bFoundActiveGuard;
 }
 
-bool IsOwningLootActorRelevant(const int32 PlayerId, const FName ActorName)
+bool IsOwningLootActorRelevant(const int32 PlayerId, const FName RowId, const FVector& ActorLocation)
 {
 	const AHeistPlayerController* PlayerController = GetOwningPlayerControllerById(PlayerId);
-	return IsValid(PlayerController) && IsValid(FindLootActor(PlayerController->GetWorld(), ActorName));
+	return IsValid(PlayerController) && IsValid(FindLootActorAtLocation(PlayerController->GetWorld(), RowId, ActorLocation));
 }
 
 bool IsOwningPaintingCaseRelevant(const int32 PlayerId, const FName CaseId)
@@ -996,7 +1140,7 @@ bool IsWeek7ArrestReplicated(const int32 TargetPlayerId)
 	const UHeistHUDWidget* MainHUDWidget = IsValid(HUD) ? HUD->GetMainHUDWidget() : nullptr;
 	return IsValid(OwningCharacter) && IsValid(MainHUDWidget) && !OwningCharacter->IsLocalStunPostProcessEnabledForDebug() &&
 		!OwningCharacter->IsStunSoundMixPushedForDebug() && MainHUDWidget->IsLocalCrewStatusPresentationContractSatisfied() &&
-		MainHUDWidget->GetArrestAudioPlayCountForDebug() >= 1;
+		MainHUDWidget->AreArrestAudioAssetsAssignedForDebug();
 }
 
 bool MoveWeek7RescuerIntoRange(const int32 RescuerPlayerId, const int32 TargetPlayerId)
@@ -1039,7 +1183,7 @@ bool IsWeek7RescueComplete(const int32 TargetPlayerId)
 	const UHeistHUDWidget* MainHUDWidget = IsValid(HUD) ? HUD->GetMainHUDWidget() : nullptr;
 	return IsValid(OwningController) && IsValid(OwningCharacter) && IsValid(MainHUDWidget) &&
 		!OwningCharacter->IsLocalStunPostProcessEnabledForDebug() && !OwningCharacter->IsStunSoundMixPushedForDebug() &&
-		MainHUDWidget->IsLocalCrewStatusPresentationContractSatisfied() && MainHUDWidget->GetRescueAudioPlayCountForDebug() >= 1 &&
+		MainHUDWidget->IsLocalCrewStatusPresentationContractSatisfied() && MainHUDWidget->AreArrestAudioAssetsAssignedForDebug() &&
 		!OwningController->IsMoveInputIgnored() && !OwningController->IsLookInputIgnored();
 }
 
@@ -1155,75 +1299,130 @@ bool CaptureAndValidateGameplayPreflight(FAutomationTestBase* Test, const TShare
 	}
 	AHeistLaserBarrierActor* ReleaseLaser = nullptr;
 	AHeistSecurityHoldButtonActor* ReleaseHoldButton = nullptr;
+	AHeistSecurityCameraActor* ReleaseCamera = nullptr;
 	int32 ReleaseLaserCount = 0;
 	int32 ReleaseHoldButtonCount = 0;
 	int32 ReleaseCameraCount = 0;
 	for (TActorIterator<AHeistLaserBarrierActor> It(ServerWorld); It; ++It)
 	{
-		ReleaseLaser = *It;
-		++ReleaseLaserCount;
+		if (IsValid(*It) && It->GetProtectedPaintingCase() == SelectedHighValuePaintingCase)
+		{
+			ReleaseLaser = *It;
+			++ReleaseLaserCount;
+		}
 	}
 	for (TActorIterator<AHeistSecurityHoldButtonActor> It(ServerWorld); It; ++It)
 	{
-		ReleaseHoldButton = *It;
-		++ReleaseHoldButtonCount;
+		if (IsValid(*It) && It->GetLinkedLaserBarrier() == ReleaseLaser)
+		{
+			ReleaseHoldButton = *It;
+			++ReleaseHoldButtonCount;
+		}
 	}
+	double ClosestCameraDistanceSquared = TNumericLimits<double>::Max();
 	for (TActorIterator<AHeistSecurityCameraActor> It(ServerWorld); It; ++It)
 	{
+		if (!IsValid(*It))
+		{
+			continue;
+		}
 		++ReleaseCameraCount;
+		if (!HasClearReleaseCameraTestLine(ServerWorld, *It))
+		{
+			continue;
+		}
+		const double DistanceSquared = FVector::DistSquared(It->GetActorLocation(), SelectedHighValuePaintingCase->GetActorLocation());
+		if (DistanceSquared < ClosestCameraDistanceSquared)
+		{
+			ClosestCameraDistanceSquared = DistanceSquared;
+			ReleaseCamera = *It;
+		}
 	}
-	if (!IsValid(SelectedHighValuePaintingCase) || ReleaseLaserCount != 1 || ReleaseHoldButtonCount != 1 || ReleaseCameraCount != 1 ||
-		!IsValid(ReleaseLaser) || !IsValid(ReleaseHoldButton) || ReleaseLaser->GetProtectedPaintingCase() != SelectedHighValuePaintingCase ||
-		ReleaseHoldButton->GetLinkedLaserBarrier() != ReleaseLaser)
+	if (!IsValid(SelectedHighValuePaintingCase) || ReleaseLaserCount != 1 || ReleaseHoldButtonCount != 1 || ReleaseCameraCount < 1 ||
+		!IsValid(ReleaseLaser) || !IsValid(ReleaseHoldButton) || !IsValid(ReleaseCamera) ||
+		ReleaseLaser->GetProtectedPaintingCase() != SelectedHighValuePaintingCase || ReleaseHoldButton->GetLinkedLaserBarrier() != ReleaseLaser ||
+		!ReleaseLaser->IsBarrierEnabled() || !ReleaseLaser->IsBeamActive())
 	{
 		return false;
 	}
-	const FName RuntimeLootRowId(TEXT("Loot_JewelNecklace"));
-	AHeistLootActor* SelectedLootActor = State->RuntimeLootFixtureRunIndex == RunIndex
+	AHeistLootActor* SelectedLootActor = State->MatchStartLootSelectionRunIndex == RunIndex
 		? FindLootActor(ServerWorld, State->SelectedLootActorName)
 		: nullptr;
 	FHeistItemDataRow SelectedItemDefinition;
 	FHeistLootDataRow SelectedLootDefinition;
-	if (State->RuntimeLootFixtureRunIndex != RunIndex)
+	if (State->MatchStartLootSelectionRunIndex != RunIndex)
 	{
-		AHeistPlayerCharacter* FixtureOwner = GetServerCharacterById(1);
-		if (!IsValid(FixtureOwner) || !GameMode->TryGetItemDefinition(RuntimeLootRowId, SelectedItemDefinition) ||
-			!GameMode->TryGetLootDefinition(RuntimeLootRowId, SelectedLootDefinition) || SelectedItemDefinition.ItemType != EHeistItemType::Loot ||
+		int32 ExpectedVaultLootCount = 0;
+		int32 ExpectedExhibitionLootCount = 0;
+		GameMode->GetMatchStartLooseLootCounts(ExpectedVaultLootCount, ExpectedExhibitionLootCount);
+		const int32 ExpectedMatchLootCount = ExpectedVaultLootCount + ExpectedExhibitionLootCount;
+		TArray<AHeistLootActor*> MatchStartLootActors;
+		for (TActorIterator<AHeistLootActor> It(ServerWorld); It; ++It)
+		{
+			AHeistLootActor* LootActor = *It;
+			if (IsValid(LootActor) && LootActor->ActorHasTag(FName(TEXT("HeistMatchSpawnedLooseLoot"))) && LootActor->IsLootAvailable())
+			{
+				MatchStartLootActors.Add(LootActor);
+			}
+		}
+		if (ExpectedMatchLootCount <= 0 || MatchStartLootActors.Num() != ExpectedMatchLootCount)
+		{
+			return false;
+		}
+		MatchStartLootActors.Sort([](const AHeistLootActor& Left, const AHeistLootActor& Right)
+		{
+			const FString LeftRowId = Left.GetLootRowId().ToString();
+			const FString RightRowId = Right.GetLootRowId().ToString();
+			return LeftRowId != RightRowId ? LeftRowId < RightRowId : Left.GetPathName() < Right.GetPathName();
+		});
+		for (AHeistLootActor* LootActor : MatchStartLootActors)
+		{
+			FHeistLootDataRow LootDefinition;
+			if (!GameMode->TryGetLootDefinition(LootActor->GetLootRowId(), LootDefinition))
+			{
+				return false;
+			}
+			int32 MatchingSpawnPointCount = 0;
+			for (TActorIterator<AHeistLootSpawnPoint> It(ServerWorld); It; ++It)
+			{
+				AHeistLootSpawnPoint* SpawnPoint = *It;
+				if (IsValid(SpawnPoint) && SpawnPoint->GetSpawnCategory() == LootDefinition.SpawnCategory &&
+					FVector::DistSquared(SpawnPoint->GetActorLocation(), LootActor->GetActorLocation()) <= 1.0f)
+				{
+					++MatchingSpawnPointCount;
+					if (!SpawnPoint->IsOccupied() || SpawnPoint->CanSpawnCategory(LootDefinition.SpawnCategory))
+					{
+						return false;
+					}
+				}
+			}
+			if (MatchingSpawnPointCount != 1)
+			{
+				return false;
+			}
+		}
+
+		SelectedLootActor = MatchStartLootActors[0];
+		const FName SelectedRowId = SelectedLootActor->GetLootRowId();
+		if (!GameMode->TryGetItemDefinition(SelectedRowId, SelectedItemDefinition) ||
+			!GameMode->TryGetLootDefinition(SelectedRowId, SelectedLootDefinition) || SelectedItemDefinition.ItemType != EHeistItemType::Loot ||
 			!SelectedItemDefinition.bAvailableInV1 || SelectedLootDefinition.ScoreValue <= 0)
 		{
 			return false;
 		}
-
-		FHeistLootDropRequest DropRequest;
-		DropRequest.DroppedBy = FixtureOwner;
-		DropRequest.ItemId = RuntimeLootRowId;
-		DropRequest.DropOrigin = FixtureOwner->GetActorLocation() + FVector(200.0f, 200.0f, 20.0f);
-		if (!GameMode->TrySpawnDroppedLoot(DropRequest, SelectedLootActor) || !IsValid(SelectedLootActor))
-		{
-			return false;
-		}
-		SelectedLootActor->ForceNetUpdate();
-		State->RuntimeLootFixtureRunIndex = RunIndex;
+		State->MatchStartLootSelectionRunIndex = RunIndex;
 		State->SelectedLootActorName = SelectedLootActor->GetFName();
-		State->SelectedLootRowId = RuntimeLootRowId;
+		State->SelectedLootRowId = SelectedRowId;
+		State->SelectedLootActorLocation = SelectedLootActor->GetActorLocation();
 		State->SelectedLootValue = SelectedLootDefinition.ScoreValue;
 		return false;
 	}
-	if (!IsValid(SelectedLootActor) || !SelectedLootActor->IsLootAvailable() || SelectedLootActor->GetLootRowId() != RuntimeLootRowId ||
-		!GameMode->TryGetItemDefinition(RuntimeLootRowId, SelectedItemDefinition) ||
-		!GameMode->TryGetLootDefinition(RuntimeLootRowId, SelectedLootDefinition) || SelectedLootDefinition.ScoreValue <= 0)
+	if (!IsValid(SelectedLootActor) || !SelectedLootActor->IsLootAvailable() || SelectedLootActor->GetLootRowId() != State->SelectedLootRowId ||
+		!GameMode->TryGetItemDefinition(State->SelectedLootRowId, SelectedItemDefinition) ||
+		!GameMode->TryGetLootDefinition(State->SelectedLootRowId, SelectedLootDefinition) || SelectedLootDefinition.ScoreValue <= 0)
 	{
 		return false;
 	}
-	for (UWorld* World : GetContractRunPIEWorlds())
-	{
-		const AHeistLootActor* ReplicatedFixture = FindLootActor(World, State->SelectedLootActorName);
-		if (!IsValid(ReplicatedFixture) || !ReplicatedFixture->IsLootAvailable() || ReplicatedFixture->GetLootRowId() != RuntimeLootRowId)
-		{
-			return false;
-		}
-	}
-
 	TSet<int32> PlayerIds;
 	TArray<FVector> SpawnLocations;
 	for (FConstPlayerControllerIterator It = ServerWorld->GetPlayerControllerIterator(); It; ++It)
@@ -1265,6 +1464,10 @@ bool CaptureAndValidateGameplayPreflight(FAutomationTestBase* Test, const TShare
 	State->SelectedHighValuePaintingCaseId = SelectedHighValuePaintingCase->GetDisplayCaseId();
 	State->SelectedLootActorName = SelectedLootActor->GetFName();
 	State->SelectedLootRowId = SelectedLootActor->GetLootRowId();
+	State->SelectedLootActorLocation = SelectedLootActor->GetActorLocation();
+	State->SelectedSecurityCameraLocation = ReleaseCamera->GetActorLocation();
+	State->SelectedSecurityLaserLocation = ReleaseLaser->GetActorLocation();
+	State->SelectedSecurityHoldButtonLocation = ReleaseHoldButton->GetActorLocation();
 	State->SelectedLootValue = SelectedLootDefinition.ScoreValue;
 	if (RunIndex == 1)
 	{
@@ -1273,10 +1476,10 @@ bool CaptureAndValidateGameplayPreflight(FAutomationTestBase* Test, const TShare
 	Test->AddInfo(FString::Printf(TEXT("W6-010 preflight: Run=%d Players=%d Map=%s Seed=%d Target=%s ReleaseMapObjectCases=0 ObjectAssembly=FeatureDisabled Quota=%d SpawnSnapshot=PASS AssignmentSnapshotReplication=PASS ContributionReset=PASS InputLock=0"),
 		RunIndex, State->PlayerCount, *ServerContract.MapId.ToString(), ServerContract.AssignmentSeed, *ServerContract.RequiredTargetCaseId.ToString(),
 		ServerContract.LootValueQuota));
-	Test->AddInfo(FString::Printf(TEXT("W6-010 runtime loose-loot fixture: Run=%d Actor=%s Row=%s Value=%d Grid=%dx%d Replication=PASS"), RunIndex,
+	Test->AddInfo(FString::Printf(TEXT("W6-010 match-start loose loot: Run=%d Actor=%s Row=%s Value=%d Grid=%dx%d Source=BP_LootSpawnPoint AuthorityPlacement=PASS"), RunIndex,
 		*State->SelectedLootActorName.ToString(), *State->SelectedLootRowId.ToString(), State->SelectedLootValue, SelectedItemDefinition.GridSize.X, SelectedItemDefinition.GridSize.Y));
-	Test->AddInfo(FString::Printf(TEXT("W8 release security fixture: Run=%d Map=%s FourStarCase=%s CCTV=1 Laser=1 HoldButton=1 Links=PASS Active=PASS"), RunIndex,
-		*State->MapId.ToString(), *State->SelectedHighValuePaintingCaseId.ToString()));
+	Test->AddInfo(FString::Printf(TEXT("W8 release security fixture: Run=%d Map=%s FourStarCase=%s AuthoredCCTV=%d SelectedLaserChain=1 Links=PASS Active=PASS"), RunIndex,
+		*State->MapId.ToString(), *State->SelectedHighValuePaintingCaseId.ToString(), ReleaseCameraCount));
 	Test->AddInfo(FString::Printf(
 		TEXT("W7-001 guard balance: Run=%d Players=%d AuthoredAlive=%d SupplementalAlive=%d GuardMultiplier=%.2f DetectionMultiplier=%.2f InspectionMultiplier=%.2f "
 			 "ExpectedActive=%d ActualActive=%d DetectionGrace=%.3f InspectionDuration=%.3f AuthorityRuntimeProfile=PASS"),
@@ -1364,7 +1567,7 @@ bool HasReplicatedLooseLootPickup(const TSharedRef<FHeistContractRunAutomationSt
 	}
 	for (UWorld* World : GetContractRunPIEWorlds())
 	{
-		const AHeistLootActor* LootActor = FindLootActor(World, State->SelectedLootActorName);
+		const AHeistLootActor* LootActor = FindLootActorAtLocation(World, State->SelectedLootRowId, State->SelectedLootActorLocation);
 		if (IsValid(LootActor) && LootActor->IsLootAvailable())
 		{
 			return false;
@@ -1571,28 +1774,70 @@ bool IsReleaseSecurityContentReady(UWorld* World)
 	{
 		return false;
 	}
-	AHeistLaserBarrierActor* Laser = nullptr;
-	AHeistSecurityHoldButtonActor* HoldButton = nullptr;
+	TSet<const AHeistLaserBarrierActor*> Lasers;
+	TSet<const AHeistLaserBarrierActor*> LinkedLasers;
 	int32 LaserCount = 0;
+	int32 ActiveLaserCount = 0;
 	int32 HoldButtonCount = 0;
 	int32 CameraCount = 0;
 	for (TActorIterator<AHeistLaserBarrierActor> It(World); It; ++It)
 	{
-		Laser = *It;
+		const AHeistLaserBarrierActor* Laser = *It;
+		const AHeistPaintingDisplayCaseActor* ProtectedCase = IsValid(Laser) ? Laser->GetProtectedPaintingCase() : nullptr;
+		if (!IsValid(Laser) || !IsValid(ProtectedCase) || !ProtectedCase->IsContractExhibitActive())
+		{
+			return false;
+		}
+		Lasers.Add(Laser);
+		ActiveLaserCount += Laser->IsBarrierEnabled() && Laser->IsBeamActive() ? 1 : 0;
 		++LaserCount;
 	}
 	for (TActorIterator<AHeistSecurityHoldButtonActor> It(World); It; ++It)
 	{
-		HoldButton = *It;
+		const AHeistSecurityHoldButtonActor* HoldButton = *It;
+		const AHeistLaserBarrierActor* LinkedLaser = IsValid(HoldButton) ? HoldButton->GetLinkedLaserBarrier() : nullptr;
+		if (!IsValid(HoldButton) || !Lasers.Contains(LinkedLaser) || LinkedLasers.Contains(LinkedLaser))
+		{
+			return false;
+		}
+		LinkedLasers.Add(LinkedLaser);
 		++HoldButtonCount;
 	}
 	for (TActorIterator<AHeistSecurityCameraActor> It(World); It; ++It)
 	{
+		if (!IsValid(*It) || !It->IsCameraEnabled())
+		{
+			return false;
+		}
 		++CameraCount;
 	}
-	const AHeistPaintingDisplayCaseActor* ProtectedCase = IsValid(Laser) ? Laser->GetProtectedPaintingCase() : nullptr;
-	return LaserCount == 1 && HoldButtonCount == 1 && CameraCount == 1 && IsValid(Laser) && IsValid(HoldButton) && IsValid(ProtectedCase) &&
-		ProtectedCase->IsContractExhibitActive() && HoldButton->GetLinkedLaserBarrier() == Laser && Laser->IsBarrierEnabled() && Laser->IsBeamActive();
+	return LaserCount > 0 && ActiveLaserCount > 0 && HoldButtonCount == LaserCount && LinkedLasers.Num() == LaserCount && CameraCount > 0;
+}
+
+FString DescribeReleaseSecurityContent(UWorld* World)
+{
+	TArray<FString> LaserStates;
+	TArray<FString> ButtonStates;
+	int32 EnabledCameraCount = 0;
+	int32 CameraCount = 0;
+	for (TActorIterator<AHeistLaserBarrierActor> It(World); It; ++It)
+	{
+		const AHeistPaintingDisplayCaseActor* ProtectedCase = IsValid(*It) ? It->GetProtectedPaintingCase() : nullptr;
+		LaserStates.Add(FString::Printf(TEXT("%s:Case=%s,Active=%s,Enabled=%s,Beam=%s"), *GetNameSafe(*It), *GetNameSafe(ProtectedCase),
+			IsValid(ProtectedCase) && ProtectedCase->IsContractExhibitActive() ? TEXT("true") : TEXT("false"),
+			IsValid(*It) && It->IsBarrierEnabled() ? TEXT("true") : TEXT("false"), IsValid(*It) && It->IsBeamActive() ? TEXT("true") : TEXT("false")));
+	}
+	for (TActorIterator<AHeistSecurityHoldButtonActor> It(World); It; ++It)
+	{
+		ButtonStates.Add(FString::Printf(TEXT("%s:Laser=%s"), *GetNameSafe(*It), *GetNameSafe(IsValid(*It) ? It->GetLinkedLaserBarrier() : nullptr)));
+	}
+	for (TActorIterator<AHeistSecurityCameraActor> It(World); It; ++It)
+	{
+		++CameraCount;
+		EnabledCameraCount += IsValid(*It) && It->IsCameraEnabled() ? 1 : 0;
+	}
+	return FString::Printf(TEXT("SecurityReady=%s Cameras=%d/%d Lasers=[%s] Buttons=[%s]"), IsReleaseSecurityContentReady(World) ? TEXT("true") : TEXT("false"),
+		EnabledCameraCount, CameraCount, *FString::Join(LaserStates, TEXT("; ")), *FString::Join(ButtonStates, TEXT("; ")));
 }
 
 bool IsGameplayContentReplicated(const int32 PlayerCount, const FName ExpectedMapId)
@@ -1622,11 +1867,15 @@ bool IsGameplayContentReplicated(const int32 PlayerCount, const FName ExpectedMa
 		return false;
 	}
 	const FHeistContractSnapshot ServerContract = ServerGameState->GetContractSnapshot();
+	if (!IsReleaseSecurityContentReady(ServerWorld))
+	{
+		return false;
+	}
 	for (UWorld* World : GetContractRunPIEWorlds())
 	{
 		const AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
 		if (!IsValid(GameState) || GameState->GetMatchPhase() != EHeistMatchPhase::InGame || !GameState->GetContractSnapshot().IsInitialized() ||
-			GameState->GetContractSnapshot().MapId != ExpectedMapId || !(GameState->GetContractSnapshot() == ServerContract) || !IsReleaseSecurityContentReady(World))
+			GameState->GetContractSnapshot().MapId != ExpectedMapId || !(GameState->GetContractSnapshot() == ServerContract))
 		{
 			return false;
 		}
@@ -1644,6 +1893,8 @@ FString DescribeGameplayContentReplication(const int32 PlayerCount)
 	{
 		const AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
 		const FHeistContractSnapshot Contract = IsValid(GameState) ? GameState->GetContractSnapshot() : FHeistContractSnapshot();
+		const AHeistGameState* ServerGameState = IsValid(ServerWorld) ? ServerWorld->GetGameState<AHeistGameState>() : nullptr;
+		const bool bContractMatchesServer = IsValid(ServerGameState) && Contract == ServerGameState->GetContractSnapshot();
 		int32 ActiveObjectCaseCount = 0;
 		int32 TotalObjectCaseCount = 0;
 		for (TActorIterator<AHeistObjectDisplayCaseActor> It(World); It; ++It)
@@ -1665,16 +1916,18 @@ FString DescribeGameplayContentReplication(const int32 PlayerCount)
 			}
 		}
 		WorldStates.Add(FString::Printf(
-			TEXT("World=%s NetMode=%d Phase=%s Players=%d Contract=%s Map=%s RequiredCase=%s RequiredCaseFound=%s ActiveObjectCases=%d ReleaseMapObjectCases=%d ExpectedReleaseMapObjectCases=0 Guards=%d/%d ExpectedGuards=%d"),
+			TEXT("World=%s NetMode=%d Phase=%s Players=%d Contract=%s ContractEqual=%s Map=%s RequiredCase=%s RequiredCaseFound=%s ActiveObjectCases=%d ReleaseMapObjectCases=%d ExpectedReleaseMapObjectCases=0 Guards=%d/%d ExpectedGuards=%d"),
 			*GetNameSafe(World), IsValid(World) ? static_cast<int32>(World->GetNetMode()) : INDEX_NONE,
 			IsValid(GameState) ? *UEnum::GetValueAsString(GameState->GetMatchPhase()) : TEXT("Missing"),
 			IsValid(GameState) ? GameState->PlayerArray.Num() : INDEX_NONE,
-			Contract.IsInitialized() ? TEXT("Initialized") : TEXT("Missing"), *Contract.MapId.ToString(), *Contract.RequiredTargetCaseId.ToString(),
+			Contract.IsInitialized() ? TEXT("Initialized") : TEXT("Missing"), bContractMatchesServer ? TEXT("true") : TEXT("false"),
+			*Contract.MapId.ToString(), *Contract.RequiredTargetCaseId.ToString(),
 			IsValid(FindPaintingCase(World, Contract.RequiredTargetCaseId)) ? TEXT("true") : TEXT("false"), ActiveObjectCaseCount,
 			TotalObjectCaseCount, ActiveGuardCount, TotalGuardCount, ExpectedActiveGuardCount));
 	}
-	return FString::Printf(TEXT("W6-010 gameplay readiness diagnostic: authority owns exact Case/Guard counts; client actor totals are informational because distance relevancy applies. GameMode=%s GuardScalingApplied=%s %s"), *GetNameSafe(GameMode),
-		IsValid(GameMode) && GameMode->IsPlayerCountGuardScalingApplied() ? TEXT("true") : TEXT("false"), *FString::Join(WorldStates, TEXT(" | ")));
+	return FString::Printf(TEXT("W6-010 gameplay readiness diagnostic: authority owns exact Case/Guard counts; client actor totals are informational because distance relevancy applies. GameMode=%s GuardScalingApplied=%s %s %s"), *GetNameSafe(GameMode),
+		IsValid(GameMode) && GameMode->IsPlayerCountGuardScalingApplied() ? TEXT("true") : TEXT("false"),
+		*DescribeReleaseSecurityContent(ServerWorld), *FString::Join(WorldStates, TEXT(" | ")));
 }
 
 bool IsGameplayResetClean(const int32 PlayerCount, const FName ExpectedMapId)
@@ -1934,14 +2187,13 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 		{
 			return true;
 		}
-		const AHeistSecurityCameraActor* Camera = FindOnlyActorOfType<AHeistSecurityCameraActor>(GetContractRunServerWorld());
+		const AHeistSecurityCameraActor* Camera =
+			FindActorOfTypeAtLocation<AHeistSecurityCameraActor>(GetContractRunServerWorld(), State->SelectedSecurityCameraLocation);
 		if (!IsValid(Camera))
 		{
 			return false;
 		}
-		FVector DetectionLocation = Camera->GetActorLocation() + Camera->GetActorForwardVector() * 600.0f;
-		DetectionLocation.Z = 88.0f;
-		return TeleportServerPlayerToLocation(2, DetectionLocation);
+		return TeleportServerPlayerToLocation(2, ResolveReleaseCameraDetectionLocation(Camera));
 	}));
 	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d placed CCTV detection, Alert, and Guard investigation"), RunIndex), [State, RunIndex]()
 	{
@@ -1953,7 +2205,8 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 		{
 			return true;
 		}
-		const AHeistSecurityCameraActor* Camera = FindOnlyActorOfType<AHeistSecurityCameraActor>(GetContractRunServerWorld());
+		const AHeistSecurityCameraActor* Camera =
+			FindActorOfTypeAtLocation<AHeistSecurityCameraActor>(GetContractRunServerWorld(), State->SelectedSecurityCameraLocation);
 		if (!IsValid(Camera))
 		{
 			return false;
@@ -1969,17 +2222,39 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 	}));
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d reset Alert after placed CCTV evidence"), RunIndex), [State, RunIndex]()
 	{
-		return State->PlayerCount != 2 || RunIndex != 1 || ResetReleaseSecurityAfterCamera();
+		return State->PlayerCount != 2 || RunIndex != 1 || ResetReleaseSecurityAfterCamera(State);
 	}));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d move non-holder near placed Laser replication area"), RunIndex), [State, RunIndex]()
+	{
+		if (State->PlayerCount != 2 || RunIndex != 1)
+		{
+			return true;
+		}
+		const AHeistLaserBarrierActor* Laser =
+			FindActorOfTypeAtLocation<AHeistLaserBarrierActor>(GetContractRunServerWorld(), State->SelectedSecurityLaserLocation);
+		if (!IsValid(Laser))
+		{
+			return false;
+		}
+		FVector ObserverLocation = Laser->GetActorLocation() - Laser->GetActorForwardVector() * 600.0f;
+		ObserverLocation.Z = 88.0f;
+		return TeleportServerPlayerToLocation(2, ObserverLocation);
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d placed Laser chain relevant to non-holder peer"), RunIndex), [State, RunIndex]()
+	{
+		return State->PlayerCount != 2 || RunIndex != 1 || IsOwningReleaseSecurityChainRelevant(2, State);
+	}, 8.0));
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d move player 1 into placed Hold Button interaction"), RunIndex), [State, RunIndex]()
 	{
 		return State->PlayerCount != 2 || RunIndex != 1 ||
-			TeleportServerPlayerIntoInteraction(1, FindOnlyActorOfType<AHeistSecurityHoldButtonActor>(GetContractRunServerWorld()));
+			TeleportServerPlayerIntoInteraction(1,
+				FindActorOfTypeAtLocation<AHeistSecurityHoldButtonActor>(GetContractRunServerWorld(), State->SelectedSecurityHoldButtonLocation));
 	}));
 	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d player 1 overlaps placed Hold Button"), RunIndex), [State, RunIndex]()
 	{
 		return State->PlayerCount != 2 || RunIndex != 1 ||
-			IsServerPlayerOverlapping(1, FindOnlyActorOfType<AHeistSecurityHoldButtonActor>(GetContractRunServerWorld()));
+			IsServerPlayerOverlapping(1,
+				FindActorOfTypeAtLocation<AHeistSecurityHoldButtonActor>(GetContractRunServerWorld(), State->SelectedSecurityHoldButtonLocation));
 	}, 5.0));
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d begin placed Security Hold through server RPC"), RunIndex), [State, RunIndex]()
 	{
@@ -1989,13 +2264,13 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 		}
 		AHeistPlayerController* OwningController = GetOwningPlayerControllerById(1);
 		AHeistSecurityHoldButtonActor* LocalButton = IsValid(OwningController)
-			? FindOnlyActorOfType<AHeistSecurityHoldButtonActor>(OwningController->GetWorld())
+			? FindActorOfTypeAtLocation<AHeistSecurityHoldButtonActor>(OwningController->GetWorld(), State->SelectedSecurityHoldButtonLocation)
 			: nullptr;
 		return InvokeSingleActorServerRPC(OwningController, FName(TEXT("Server_RequestBeginSecurityHold")), LocalButton);
 	}));
 	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d placed Hold bypasses Laser on both peers"), RunIndex), [State, RunIndex]()
 	{
-		return State->PlayerCount != 2 || RunIndex != 1 || IsSecurityHoldStateReplicated(true, true, false);
+		return State->PlayerCount != 2 || RunIndex != 1 || IsReleaseSecurityHoldStateReplicated(State, true, true, false);
 	}, 8.0));
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d non-holder crosses placed bypassed Laser"), RunIndex), [State, RunIndex]()
 	{
@@ -2003,7 +2278,8 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 		{
 			return true;
 		}
-		const AHeistLaserBarrierActor* Laser = FindOnlyActorOfType<AHeistLaserBarrierActor>(GetContractRunServerWorld());
+		const AHeistLaserBarrierActor* Laser =
+			FindActorOfTypeAtLocation<AHeistLaserBarrierActor>(GetContractRunServerWorld(), State->SelectedSecurityLaserLocation);
 		return IsValid(Laser) && TeleportServerPlayerToLocation(2, Laser->GetActorLocation());
 	}));
 	Test->AddCommand(new FWaitLatentCommand(0.75f));
@@ -2015,9 +2291,9 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 		}
 		UWorld* ServerWorld = GetContractRunServerWorld();
 		const AHeistGameMode* GameMode = IsValid(ServerWorld) ? ServerWorld->GetAuthGameMode<AHeistGameMode>() : nullptr;
-		return IsValid(GameMode) && IsSecurityHoldStateReplicated(true, true, false) &&
-			GameMode->GetProcessedSecurityIncidentCount() == State->SecurityIncidentCountBaseline + 1 &&
-			GameMode->GetProcessedGuardInvestigationCount() == State->SecurityInvestigationCountBaseline + 1;
+		return IsValid(GameMode) && IsReleaseSecurityHoldStateReplicated(State, true, true, false) &&
+			GameMode->GetProcessedSecurityIncidentCount() == State->SecurityIncidentCountBaseline &&
+			GameMode->GetProcessedGuardInvestigationCount() == State->SecurityInvestigationCountBaseline;
 	}));
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d clear non-holder before placed Hold release"), RunIndex), [State, RunIndex]()
 	{
@@ -2025,7 +2301,8 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 		{
 			return true;
 		}
-		const AHeistSecurityCameraActor* Camera = FindOnlyActorOfType<AHeistSecurityCameraActor>(GetContractRunServerWorld());
+		const AHeistSecurityCameraActor* Camera =
+			FindActorOfTypeAtLocation<AHeistSecurityCameraActor>(GetContractRunServerWorld(), State->SelectedSecurityCameraLocation);
 		if (!IsValid(Camera))
 		{
 			return false;
@@ -2042,17 +2319,17 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 		}
 		AHeistPlayerController* OwningController = GetOwningPlayerControllerById(1);
 		AHeistSecurityHoldButtonActor* LocalButton = IsValid(OwningController)
-			? FindOnlyActorOfType<AHeistSecurityHoldButtonActor>(OwningController->GetWorld())
+			? FindActorOfTypeAtLocation<AHeistSecurityHoldButtonActor>(OwningController->GetWorld(), State->SelectedSecurityHoldButtonLocation)
 			: nullptr;
 		return InvokeSingleActorServerRPC(OwningController, FName(TEXT("Server_RequestEndSecurityHold")), LocalButton);
 	}));
 	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d placed Laser rearm grace replicated"), RunIndex), [State, RunIndex]()
 	{
-		return State->PlayerCount != 2 || RunIndex != 1 || IsLaserRearmingReplicated();
+		return State->PlayerCount != 2 || RunIndex != 1 || IsReleaseLaserRearmingReplicated(State);
 	}, 3.0));
 	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d placed Laser fully rearmed"), RunIndex), [State, RunIndex]()
 	{
-		return State->PlayerCount != 2 || RunIndex != 1 || IsSecurityHoldStateReplicated(false, false, true);
+		return State->PlayerCount != 2 || RunIndex != 1 || IsReleaseSecurityHoldStateReplicated(State, false, false, true);
 	}, 5.0));
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d record placed security evidence"), RunIndex), [Test, State, RunIndex]()
 	{
@@ -2194,12 +2471,14 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 	}, 10.0));
 	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d shared loose-loot relevant to owning peer"), RunIndex), [State]()
 	{
-		return IsOwningLootActorRelevant(1, State->SelectedLootActorName);
+		return IsOwningLootActorRelevant(1, State->SelectedLootRowId, State->SelectedLootActorLocation);
 	}, 10.0));
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d request loose-loot pickup through server RPC"), RunIndex), [State]()
 	{
 		AHeistPlayerController* PlayerController = GetOwningPlayerControllerById(1);
-		AHeistLootActor* LocalLootActor = IsValid(PlayerController) ? FindLootActor(PlayerController->GetWorld(), State->SelectedLootActorName) : nullptr;
+		AHeistLootActor* LocalLootActor = IsValid(PlayerController)
+			? FindLootActorAtLocation(PlayerController->GetWorld(), State->SelectedLootRowId, State->SelectedLootActorLocation)
+			: nullptr;
 		return InvokeSingleActorServerRPC(PlayerController, FName(TEXT("Server_RequestLootPickup")), LocalLootActor);
 	}));
 	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d loose loot carried and unavailable on every peer"), RunIndex), [State]()
@@ -2393,25 +2672,37 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 		UWorld* ServerWorld = GetContractRunServerWorld();
 		AHeistGameState* GameState = IsValid(ServerWorld) ? ServerWorld->GetGameState<AHeistGameState>() : nullptr;
 		AHeistPlayerController* HostPlayerController = GetOwningPlayerControllerById(1);
+		AHeistPlayerCharacter* ChaseTarget = GetServerCharacterById(1);
 		if (!IsValid(GameState) || !GameState->RefreshContractCarriedValue() || GameState->GetContractSnapshot().CarriedValue < GameState->GetContractSnapshot().LootValueQuota ||
-			!IsValid(HostPlayerController) || !HostPlayerController->HasAuthority())
+			!IsValid(HostPlayerController) || !HostPlayerController->HasAuthority() || !IsValid(ChaseTarget))
 		{
 			return false;
 		}
-		bool bFoundGuard = false;
+		bool bChaseStarted = false;
 		for (TActorIterator<AHeistGuardCharacter> It(ServerWorld); It; ++It)
 		{
 			if (UHeistGuardStateComponent* GuardState = IsValid(*It) && It->IsDifficultyActive() ? It->GetGuardStateComponent() : nullptr; IsValid(GuardState))
 			{
 				GuardState->SetDisabled(false);
-				bFoundGuard = true;
+				if (!bChaseStarted)
+				{
+					AHeistGuardAIController* GuardController = Cast<AHeistGuardAIController>(It->GetController());
+					FVector GuardLocation = ChaseTarget->GetActorLocation() + ChaseTarget->GetActorRightVector() * 500.0f;
+					GuardLocation.Z = 88.0f;
+					It->SetActorLocation(GuardLocation, false, nullptr, ETeleportType::TeleportPhysics);
+					It->ForceNetUpdate();
+					if (IsValid(GuardController))
+					{
+						GuardController->SetAutomaticSightEnabled(false);
+					}
+					bChaseStarted = GuardState->EnterChasePlayer(ChaseTarget);
+				}
 			}
 		}
-		if (!bFoundGuard)
+		if (!bChaseStarted)
 		{
 			return false;
 		}
-		UHeistDebugFunctionLibrary::DebugGuardSetState(HostPlayerController, TEXT("Chase"), 0.0f);
 		UHeistDebugFunctionLibrary::DebugAlertRequest(HostPlayerController, TEXT("Alarmed"));
 		return true;
 	}));

@@ -568,6 +568,22 @@ void AHeistGameState::ClearContractSnapshot()
 	BroadcastContractSnapshot(TEXT("ServerCleared"));
 }
 
+void AHeistGameState::RollbackContractInitialization(const FName Reason)
+{
+	if (!HasAuthority())
+	{
+		UE_LOG(LogHeistNetwork, Warning, TEXT("Contract initialization rollback rejected: GameState=%s Reason=NotAuthority"), *GetNameSafe(this));
+		return;
+	}
+
+	ClearContractSnapshot();
+	SetObjectiveSnapshot(NAME_None, NAME_None, EHeistObjectiveState::Inactive, nullptr);
+	TeamResult = FHeistTeamResult();
+	PlayerResults.Reset();
+	ForceNetUpdate();
+	UE_LOG(LogHeistNetwork, Warning, TEXT("Contract initialization rolled back: GameState=%s Reason=%s"), *GetNameSafe(this), *Reason.ToString());
+}
+
 #pragma endregion
 
 #pragma region Alert
