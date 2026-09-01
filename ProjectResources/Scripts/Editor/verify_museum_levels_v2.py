@@ -113,6 +113,62 @@ EXPECTED = {
     },
 }
 
+
+def asset_object_path(package_path):
+    asset_name = package_path.rsplit("/", 1)[-1]
+    return "{}.{}".format(package_path, asset_name)
+
+
+M01_MAPASSET_CONTRACT = {}
+for index in range(8):
+    M01_MAPASSET_CONTRACT["LDV2_M01_GalleryCouch_{:02d}".format(index)] = asset_object_path(
+        "/Game/Assets/MapAssets/Showcase/Meshes/SM_Long_Bench_01a"
+    )
+for index in range(4):
+    M01_MAPASSET_CONTRACT["LDV2_M01_ReadingTable_{:02d}".format(index)] = asset_object_path(
+        "/Game/Assets/MapAssets/Showcase/Meshes/SM_Display_Stand_01c"
+    )
+    M01_MAPASSET_CONTRACT["LDV2_M01_Art_TitleCard_{:02d}".format(index)] = asset_object_path(
+        "/Game/Assets/MapAssets/Showcase/Meshes/SM_Title_Card_01a"
+    )
+    M01_MAPASSET_CONTRACT["LDV2_M01_Art_NorthBackdrop_{:02d}".format(index)] = asset_object_path(
+        "/Game/Assets/MapAssets/Showcase/Meshes/SM_Display_Wall_400_01a"
+    )
+    M01_MAPASSET_CONTRACT["LDV2_M01_Art_NorthStageLight_{:02d}".format(index)] = asset_object_path(
+        "/Game/Assets/MapAssets/Showcase/Meshes/SM_Stage_Lights_01a"
+    )
+for index in range(3):
+    M01_MAPASSET_CONTRACT["LDV2_M01_SecurityChair_{:02d}".format(index)] = asset_object_path(
+        "/Game/Assets/MapAssets/ConferenceRoom/Meshes/Chairs/SM_Office_Chair"
+    )
+for index, mesh_name in enumerate(
+    ("SM_Shelving_01", "SM_Shelving_01", "SM_Shelving_02", "SM_Shelving_01", "SM_Shelving_01")
+):
+    M01_MAPASSET_CONTRACT["LDV2_M01_EvidenceRack_{:02d}".format(index)] = asset_object_path(
+        "/Game/Assets/MapAssets/ConferenceRoom/Meshes/Shelving/{}".format(mesh_name)
+    )
+M01_MAPASSET_CONTRACT.update(
+    {
+        "LDV2_M01_SecurityConsole": asset_object_path(
+            "/Game/Assets/MapAssets/ConferenceRoom/Meshes/Tables/SM_Office_Table"
+        ),
+        "LDV2_M01_SecurityConsoleComputer": asset_object_path(
+            "/Game/Assets/MapAssets/ConferenceRoom/Meshes/Office_equip/SM_Computer"
+        ),
+        "LDV2_M01_SecurityConsolePhone": asset_object_path(
+            "/Game/Assets/MapAssets/ConferenceRoom/Meshes/Office_equip/SM_Phone"
+        ),
+    }
+)
+
+M01_NO_COLLISION_MAPASSET_LABELS = {
+    label
+    for label in M01_MAPASSET_CONTRACT
+    if label.startswith("LDV2_M01_Art_")
+    or label.startswith("LDV2_M01_SecurityConsoleC")
+    or label == "LDV2_M01_SecurityConsolePhone"
+}
+
 LOWER_WALL_Z = -12.0
 UPPER_WALL_Z = 388.0
 CEILING_Z = 812.0
@@ -204,6 +260,17 @@ def resolve_level_codes(available_codes):
 
 
 selected_level_codes = resolve_level_codes(EXPECTED)
+editor_override_codes = globals().get("MUSEUM_LEVEL_CODES_OVERRIDE")
+if editor_override_codes is not None:
+    normalized_override_codes = [str(code).strip().upper() for code in editor_override_codes]
+    invalid_override_codes = [code for code in normalized_override_codes if code not in EXPECTED]
+    if not normalized_override_codes or invalid_override_codes:
+        raise RuntimeError(
+            "Invalid MUSEUM_LEVEL_CODES_OVERRIDE: {}".format(
+                ",".join(invalid_override_codes or normalized_override_codes)
+            )
+        )
+    selected_level_codes = list(dict.fromkeys(normalized_override_codes))
 
 MIN_CASE_GUARD_CLEARANCE_CM = 450.0
 MIN_GUARD_OBSTACLE_CLEARANCE_CM = 100.0
@@ -410,14 +477,49 @@ for code in selected_level_codes:
     ]
     if duplicate_static_locations:
         failures.append("duplicate StaticMeshActor locations: {}".format(len(duplicate_static_locations)))
-    non_starter_meshes = []
+    starter_ldv2_static = []
+    mapasset_ldv2_static = []
+    unexpected_non_starter_meshes = []
     for actor in ldv2_static:
-        for component in actor.get_components_by_class(unreal.StaticMeshComponent):
-            mesh = prop(component, "static_mesh")
-            if not mesh or not mesh.get_path_name().startswith("/Game/Assets/StarterContent/"):
-                non_starter_meshes.append(actor.get_actor_label())
-    if non_starter_meshes:
-        failures.append("non-StarterContent LDV2 meshes: {}".format(len(set(non_starter_meshes))))
+        components = actor.get_components_by_class(unreal.StaticMeshComponent)
+        mesh = prop(components[0], "static_mesh") if components else None
+        mesh_path = mesh.get_path_name() if mesh else ""
+        label = actor.get_actor_label()
+        if mesh_path.startswith("/Game/Assets/StarterContent/"):
+            starter_ldv2_static.append(actor)
+            continue
+        expected_mapasset_path = M01_MAPASSET_CONTRACT.get(label) if code == "M01" else None
+        if expected_mapasset_path and mesh_path == expected_mapasset_path:
+            mapasset_ldv2_static.append(actor)
+            continue
+        unexpected_non_starter_meshes.append(label)
+    if unexpected_non_starter_meshes:
+        failures.append(
+            "unexpected non-StarterContent LDV2 meshes: {}".format(
+                len(set(unexpected_non_starter_meshes))
+            )
+        )
+
+    if code == "M01":
+        actual_mapasset_labels = {actor.get_actor_label() for actor in mapasset_ldv2_static}
+        expected_mapasset_labels = set(M01_MAPASSET_CONTRACT)
+        if actual_mapasset_labels != expected_mapasset_labels:
+            failures.append(
+                "M01 MapAssets label set mismatch: missing={} unexpected={}".format(
+                    sorted(expected_mapasset_labels - actual_mapasset_labels),
+                    sorted(actual_mapasset_labels - expected_mapasset_labels),
+                )
+            )
+        for label in M01_NO_COLLISION_MAPASSET_LABELS:
+            actor = by_label.get(label)
+            if actor is None:
+                continue
+            components = actor.get_components_by_class(unreal.StaticMeshComponent)
+            collision_profile = (
+                str(components[0].get_collision_profile_name()) if components else ""
+            )
+            if collision_profile != "NoCollision":
+                failures.append("M01 visual MapAsset collision enabled: " + label)
 
     wall_folder = "LDV2/{}/Architecture/Walls".format(code)
     lower_walls = [
@@ -1086,7 +1188,9 @@ for code in selected_level_codes:
         "pass": not failures,
         "failures": failures,
         "actor_count": len(actors),
-        "ldv2_starter_static_mesh_actors": len(ldv2_static),
+        "ldv2_static_mesh_actors": len(ldv2_static),
+        "ldv2_starter_static_mesh_actors": len(starter_ldv2_static),
+        "ldv2_mapasset_static_mesh_actors": len(mapasset_ldv2_static),
         "duplicate_static_mesh_locations": duplicate_static_locations,
         "legacy_overlay_static_mesh_actors": len(legacy_static),
         "generated_lights": len(generated_lights),

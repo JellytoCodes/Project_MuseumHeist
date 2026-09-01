@@ -53,6 +53,9 @@ ProjectResources/SourceArt/**/*.png
 ProjectResources/SourceArt/**/*.tga
 !ProjectResources/SourceArt/UI/Title/*.png
 
+# Locally acquired third-party environment packs
+/Content/Assets/MapAssets/
+
 # Binary Files
 Binaries/*
 Plugins/*/Binaries/*

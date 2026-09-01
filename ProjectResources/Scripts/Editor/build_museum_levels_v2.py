@@ -27,6 +27,23 @@ STATIC_MESHES = {
     "window_frame": "/Game/Assets/StarterContent/Props/SM_WindowFrame",
 }
 
+# These third-party meshes are intentionally loaded only for an M01 build.
+# MapAssets is a local content boundary, so a missing package must stop the
+# authored art pass instead of silently saving a StarterContent fallback.
+M01_ART_STATIC_MESHES = {
+    "m01_showcase_wall_400": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Display_Wall_400_01a",
+    "m01_showcase_long_bench": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Long_Bench_01a",
+    "m01_showcase_display_stand": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Display_Stand_01c",
+    "m01_showcase_title_card": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Title_Card_01a",
+    "m01_showcase_stage_light": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Stage_Lights_01a",
+    "m01_conference_office_table": "/Game/Assets/MapAssets/ConferenceRoom/Meshes/Tables/SM_Office_Table",
+    "m01_conference_office_chair": "/Game/Assets/MapAssets/ConferenceRoom/Meshes/Chairs/SM_Office_Chair",
+    "m01_conference_shelving_01": "/Game/Assets/MapAssets/ConferenceRoom/Meshes/Shelving/SM_Shelving_01",
+    "m01_conference_shelving_02": "/Game/Assets/MapAssets/ConferenceRoom/Meshes/Shelving/SM_Shelving_02",
+    "m01_conference_computer": "/Game/Assets/MapAssets/ConferenceRoom/Meshes/Office_equip/SM_Computer",
+    "m01_conference_phone": "/Game/Assets/MapAssets/ConferenceRoom/Meshes/Office_equip/SM_Phone",
+}
+
 MATERIALS = {
     "m01_floor": "/Game/Assets/StarterContent/Materials/M_Rock_Marble_Polished",
     "m01_wall": "/Game/Assets/StarterContent/Materials/M_Basic_Wall",
@@ -335,10 +352,46 @@ def resolve_level_codes(available_codes):
 
 
 selected_level_codes = resolve_level_codes(MAPS)
+editor_override_codes = globals().get("MUSEUM_LEVEL_CODES_OVERRIDE")
+if editor_override_codes is not None:
+    normalized_override_codes = [str(code).strip().upper() for code in editor_override_codes]
+    invalid_override_codes = [code for code in normalized_override_codes if code not in MAPS]
+    if not normalized_override_codes or invalid_override_codes:
+        raise RuntimeError(
+            "Invalid MUSEUM_LEVEL_CODES_OVERRIDE: {}".format(
+                ",".join(invalid_override_codes or normalized_override_codes)
+            )
+        )
+    selected_level_codes = list(dict.fromkeys(normalized_override_codes))
 
 
 actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
 assets = {name: unreal.load_asset(path) for name, path in STATIC_MESHES.items()}
+if "M01" in selected_level_codes:
+    m01_art_assets = {
+        name: unreal.load_asset(path)
+        for name, path in M01_ART_STATIC_MESHES.items()
+    }
+    missing_m01_art_assets = sorted(
+        M01_ART_STATIC_MESHES[name]
+        for name, asset in m01_art_assets.items()
+        if asset is None
+    )
+    if missing_m01_art_assets:
+        raise RuntimeError(
+            "M01 MapAssets load failed: " + ",".join(missing_m01_art_assets)
+        )
+    invalid_m01_art_assets = sorted(
+        M01_ART_STATIC_MESHES[name]
+        for name, asset in m01_art_assets.items()
+        if not isinstance(asset, unreal.StaticMesh)
+    )
+    if invalid_m01_art_assets:
+        raise RuntimeError(
+            "M01 MapAssets are not StaticMesh assets: " + ",".join(invalid_m01_art_assets)
+        )
+    assets.update(m01_art_assets)
+    unreal.log_warning("MH_M01_ART_ASSETS_LOADED={}".format(len(m01_art_assets)))
 materials = {name: unreal.load_asset(path) for name, path in MATERIALS.items()}
 blueprint_classes = {name: unreal.EditorAssetLibrary.load_blueprint_class(path) for name, path in BLUEPRINTS.items()}
 waypoint_class = unreal.load_class(None, "/Script/Project_MuseumHeist.HeistGuardWaypoint")
@@ -492,7 +545,17 @@ class LevelBuilder:
             actor.set_actor_label(label)
             self.by_label[label] = actor
 
-    def static(self, label, mesh_name, location, yaw=0.0, scale=(1.0, 1.0, 1.0), material_name=None, folder="Architecture"):
+    def static(
+        self,
+        label,
+        mesh_name,
+        location,
+        yaw=0.0,
+        scale=(1.0, 1.0, 1.0),
+        material_name=None,
+        folder="Architecture",
+        collision_profile=None,
+    ):
         actor = self.by_label.get(label)
         if actor is None:
             actor = actor_subsystem.spawn_actor_from_class(unreal.StaticMeshActor, vec(location), rot(yaw))
@@ -511,8 +574,10 @@ class LevelBuilder:
         # Persist collision through map saves and later navigation rebuilds.
         # InvisibleWall keeps Pawn blocking while allowing the interaction
         # visibility channel to pass through the M03 glass partitions.
-        collision_profile = "InvisibleWall" if material_name == "glass" else "BlockAll"
-        component.set_collision_profile_name(unreal.Name(collision_profile))
+        resolved_collision_profile = collision_profile
+        if resolved_collision_profile is None:
+            resolved_collision_profile = "InvisibleWall" if material_name == "glass" else "BlockAll"
+        component.set_collision_profile_name(unreal.Name(resolved_collision_profile))
         set_transform(actor, location, yaw, scale)
         self.folder(actor, folder)
         self.mark_generated(actor)
@@ -522,7 +587,9 @@ class LevelBuilder:
         components = actor.get_components_by_class(unreal.StaticMeshComponent)
         if not components:
             raise RuntimeError("StaticMeshComponent missing for " + actor.get_actor_label())
-        components[0].set_material(0, None)
+        component = components[0]
+        for material_index in range(component.get_num_materials()):
+            component.set_material(material_index, None)
 
     def blueprint(self, label, class_name, location, yaw=0.0, folder="Gameplay"):
         actor = self.by_label.get(label)
@@ -1150,14 +1217,72 @@ class LevelBuilder:
             "SecurityDetention",
         )
         self.add_tags(evidence_table, "HeistEvidenceTableVisual")
+        chair_mesh = "m01_conference_office_chair" if self.code == "M01" else "chair"
         for index, offset in enumerate((-240, 0, 240)):
-            self.static("LDV2_{}_SecurityChair_{:02d}".format(self.code, index), "chair", (origin_x + offset, origin_y - 260, 0), yaw + 180.0, (1.0, 1.0, 1.0), None, "SecurityDetention")
-        for index in range(5):
-            for tier, height in enumerate((100, 190, 280)):
-                label = "LDV2_{}_EvidenceRack_{:02d}".format(self.code, index)
-                if tier:
-                    label += "_Tier_{:02d}".format(tier)
-                self.static(label, "shelf", (origin_x - 700 + index * 300, origin_y + 520, height), yaw, (1.0, 0.85, 1.0), None, "SecurityDetention")
+            chair = self.static(
+                "LDV2_{}_SecurityChair_{:02d}".format(self.code, index),
+                chair_mesh,
+                (origin_x + offset, origin_y - 260, 0),
+                yaw + 180.0,
+                (1.0, 1.0, 1.0),
+                None,
+                "SecurityDetention",
+            )
+            if self.code == "M01":
+                self.use_default_material(chair)
+
+        if self.code == "M01":
+            shelving_meshes = (
+                "m01_conference_shelving_01",
+                "m01_conference_shelving_01",
+                "m01_conference_shelving_02",
+                "m01_conference_shelving_01",
+                "m01_conference_shelving_01",
+            )
+            for index, mesh_name in enumerate(shelving_meshes):
+                rack = self.static(
+                    "LDV2_{}_EvidenceRack_{:02d}".format(self.code, index),
+                    mesh_name,
+                    (origin_x - 620 + index * 310, origin_y + 650, 0),
+                    0.0,
+                    (1.0, 1.0, 1.0),
+                    None,
+                    "SecurityDetention",
+                )
+                self.use_default_material(rack)
+
+            console = self.static(
+                "LDV2_M01_SecurityConsole",
+                "m01_conference_office_table",
+                (origin_x, origin_y - 720, 0),
+                0.0,
+                (1.0, 1.0, 1.0),
+                None,
+                "SecurityDetention/Office",
+            )
+            self.use_default_material(console)
+            for label_suffix, mesh_name, offset, prop_yaw in (
+                ("Computer", "m01_conference_computer", (-55, 0, 121), 180.0),
+                ("Phone", "m01_conference_phone", (70, -5, 121), 180.0),
+            ):
+                prop_actor = self.static(
+                    "LDV2_M01_SecurityConsole{}".format(label_suffix),
+                    mesh_name,
+                    (origin_x + offset[0], origin_y - 720 + offset[1], offset[2]),
+                    prop_yaw,
+                    (1.0, 1.0, 1.0),
+                    None,
+                    "SecurityDetention/OfficeProps",
+                    "NoCollision",
+                )
+                self.use_default_material(prop_actor)
+        else:
+            for index in range(5):
+                for tier, height in enumerate((100, 190, 280)):
+                    label = "LDV2_{}_EvidenceRack_{:02d}".format(self.code, index)
+                    if tier:
+                        label += "_Tier_{:02d}".format(tier)
+                    self.static(label, "shelf", (origin_x - 700 + index * 300, origin_y + 520, height), yaw, (1.0, 0.85, 1.0), None, "SecurityDetention")
         for index in range(5):
             self.static("LDV2_{}_DetentionBar_{:02d}".format(self.code, index), "pillar", (origin_x + 700, origin_y - 500 + index * 220, -12), yaw, (0.65, 0.65, 0.75), "steel", "SecurityDetention")
 
@@ -1271,11 +1396,83 @@ def add_m01_geometry(builder):
     for index, pos in enumerate(((-5650, -2450, 25), (-5650, 50, -20))):
         builder.static("LDV2_M01_EntryPlinth_{:02d}".format(index), "platform", (pos[0], pos[1], 0), pos[2], (0.8, 0.8, 3.0), "gold", "Theme/EntryGallery")
         builder.static("LDV2_M01_EntryStatue_{:02d}".format(index), "statue", (pos[0], pos[1], 30), pos[2], (1.4, 1.4, 1.4), None, "Theme/EntryGallery")
-    couch_specs = ((-6000, -200, 90), (-5200, 2200, 90), (5600, 0, -90), (5200, 2200, -90), (-2000, -3600, 0), (2800, -3600, 180), (-2800, 3600, 0), (2000, 3600, 180))
+    # Showcase benches replace the StarterContent couches. The imported bench
+    # is long on local Y, so its yaw is chosen per corridor orientation.
+    couch_specs = (
+        (-6000, -200, 0),
+        (-5200, 2200, 0),
+        (5600, 0, 0),
+        (5200, 2200, 0),
+        (-2000, -3600, 90),
+        (2800, -3600, 90),
+        (-2800, 3600, 90),
+        (2000, 3600, 90),
+    )
     for index, pos in enumerate(couch_specs):
-        builder.static("LDV2_M01_GalleryCouch_{:02d}".format(index), "couch", (pos[0], pos[1], 0), pos[2], (0.9, 0.9, 0.9), None, "Theme/Galleries")
+        bench = builder.static(
+            "LDV2_M01_GalleryCouch_{:02d}".format(index),
+            "m01_showcase_long_bench",
+            (pos[0], pos[1], 0),
+            pos[2],
+            (1.0, 1.0, 1.0),
+            None,
+            "Theme/Galleries/Seating",
+        )
+        builder.use_default_material(bench)
     for index, pos in enumerate(((-3800, -2400, 45), (-3600, 2400, -45), (3800, -2400, 135), (3600, 2400, -135))):
-        builder.static("LDV2_M01_ReadingTable_{:02d}".format(index), "table", (pos[0], pos[1], 0), pos[2], (1.05, 1.05, 1.05), None, "Theme/Galleries")
+        stand = builder.static(
+            "LDV2_M01_ReadingTable_{:02d}".format(index),
+            "m01_showcase_display_stand",
+            (pos[0], pos[1], 0),
+            pos[2],
+            (1.0, 1.0, 1.0),
+            None,
+            "Theme/Galleries/LootDisplays",
+        )
+        builder.use_default_material(stand)
+        card_offset_radians = math.radians(pos[2])
+        card = builder.static(
+            "LDV2_M01_Art_TitleCard_{:02d}".format(index),
+            "m01_showcase_title_card",
+            (
+                pos[0] + math.cos(card_offset_radians) * 36.0,
+                pos[1] + math.sin(card_offset_radians) * 36.0,
+                102.0,
+            ),
+            pos[2],
+            (1.0, 1.0, 1.0),
+            None,
+            "Theme/Galleries/LootDisplays",
+            "NoCollision",
+        )
+        builder.use_default_material(card)
+
+    # A single north Wing receives a contemporary exhibition treatment. The
+    # wall modules sit flush against the existing perimeter and remain visual
+    # only, preserving the authored Figure-8 collision and guard sight routes.
+    for index, x in enumerate((-3600, -1200, 1200, 3600)):
+        backdrop = builder.static(
+            "LDV2_M01_Art_NorthBackdrop_{:02d}".format(index),
+            "m01_showcase_wall_400",
+            (x, 5125, 0),
+            0.0,
+            (1.0, 1.0, 1.0),
+            None,
+            "Theme/NorthSpecialExhibition",
+            "NoCollision",
+        )
+        builder.use_default_material(backdrop)
+        stage_light = builder.static(
+            "LDV2_M01_Art_NorthStageLight_{:02d}".format(index),
+            "m01_showcase_stage_light",
+            (x, 4350, 720),
+            180.0,
+            (1.0, 1.0, 1.0),
+            None,
+            "Lighting/NorthSpecialExhibition",
+            "NoCollision",
+        )
+        builder.use_default_material(stage_light)
     portal_specs = ((-6000, -3200, 0), (-6000, 3200, 0), (-4400, 1600, 90), (-3600, -1600, 90), (3600, -1600, 90), (4400, 1600, 90), (5200, -3200, 0), (6000, 3200, 0))
     for index, pos in enumerate(portal_specs):
         builder.portal("LDV2_M01_Portal_{:02d}".format(index), (pos[0], pos[1], 0), pos[2], "gold", (1.0, 1.8, 1.05))
