@@ -28,13 +28,13 @@ EXPECTED = {
         "cameras": 6,
         "lasers": 2,
         "generated_lights": 12,
-        "ceiling_panels": 68,
-        "ceiling_prefixes": ("LDV2_M01_Ceiling_",),
+        "ceiling_panels": 234,
+        "ceiling_prefixes": ("LDV2_M01_CeilingTile_",),
         "laser_case_ids": ("Case_M01_Optional_HighValue", "Case_M01_Optional_09"),
         "signature_labels": ("LDV2_M01_HeroPlinth", "LDV2_M01_Topology_Figure8_North", "LDV2_M01_Topology_Figure8_South"),
         "signature_locations": {
-            "LDV2_M01_Topology_Figure8_North": (0.0, 1520.0),
-            "LDV2_M01_Topology_Figure8_South": (0.0, -1520.0),
+            "LDV2_M01_Topology_Figure8_North": (0.0, 1520.0, 2.0),
+            "LDV2_M01_Topology_Figure8_South": (0.0, -1520.0, 2.0),
         },
         "topology_door_labels": (),
         "exit_visual_label": "LDV2_M01_VentEntry_A_Panel",
@@ -119,7 +119,133 @@ def asset_object_path(package_path):
     return "{}.{}".format(package_path, asset_name)
 
 
+M01_HALF_X = 7200
+M01_HALF_Y = 5200
+M01_CEILING_Z = 812.0
+M01_WALL_LAYER_HEIGHT = M01_CEILING_Z * 0.5
+M01_WALL_SCALE_Z = M01_WALL_LAYER_HEIGHT / 400.0
+M01_FLOOR_TILE_SCALE = 800.0 / 1500.0
+
+M01_ASSET_PATHS = {
+    "floor": "/Game/Assets/MapAssets/Showcase/Meshes/SM_F_Floor_01a",
+    "wall_200": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Display_Wall_200_01a",
+    "wall_400": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Display_Wall_400_01a",
+    "door_frame": "/Game/Assets/MapAssets/ConferenceRoom/Meshes/Walls/SM_Wall_Frame_door",
+    "structural_beam": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Structural_Beam_01b",
+    "hero_stage": "/Game/Assets/MapAssets/Showcase/Meshes/SM_F_Platform_01a",
+    "stage_light": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Stage_Lights_01a",
+}
+
 M01_MAPASSET_CONTRACT = {}
+M01_STRUCTURAL_CONTRACT = {}
+
+
+def add_m01_structural_contract(label, asset_key, location, rotation, scale, collision_profile):
+    M01_MAPASSET_CONTRACT[label] = asset_object_path(M01_ASSET_PATHS[asset_key])
+    M01_STRUCTURAL_CONTRACT[label] = {
+        "location": tuple(float(value) for value in location),
+        "rotation": tuple(float(value) for value in rotation),
+        "scale": tuple(float(value) for value in scale),
+        "collision": collision_profile,
+    }
+
+
+floor_index = 0
+for x in range(-M01_HALF_X, M01_HALF_X, 800):
+    for y in range(-M01_HALF_Y, M01_HALF_Y, 800):
+        add_m01_structural_contract(
+            "LDV2_M01_Floor_{:03d}".format(floor_index),
+            "floor",
+            (x, y, 0.0),
+            (0.0, 0.0, 0.0),
+            (M01_FLOOR_TILE_SCALE, M01_FLOOR_TILE_SCALE, 1.0),
+            "BlockAll",
+        )
+        floor_index += 1
+
+ceiling_index = 0
+for x in range(-M01_HALF_X, M01_HALF_X, 800):
+    for y in range(-M01_HALF_Y + 800, M01_HALF_Y + 1, 800):
+        add_m01_structural_contract(
+            "LDV2_M01_CeilingTile_{:03d}".format(ceiling_index),
+            "floor",
+            (x, y, M01_CEILING_Z),
+            (0.0, 0.0, 180.0),
+            (M01_FLOOR_TILE_SCALE, M01_FLOOR_TILE_SCALE, 1.0),
+            "NoCollision",
+        )
+        ceiling_index += 1
+
+
+def add_m01_wall_contract(base_label, asset_key, origin, yaw, upper):
+    label = base_label + ("_Upper" if upper else "")
+    add_m01_structural_contract(
+        label,
+        asset_key,
+        (origin[0], origin[1], M01_WALL_LAYER_HEIGHT if upper else 0.0),
+        (0.0, yaw, 0.0),
+        (1.0, 1.0, M01_WALL_SCALE_Z),
+        "BlockAll",
+    )
+
+
+for side_name, y in (("North", M01_HALF_Y), ("South", -M01_HALF_Y)):
+    for index, x in enumerate(range(-M01_HALF_X + 400, M01_HALF_X + 1, 400)):
+        base_label = "LDV2_M01_Perimeter{}_{:03d}".format(side_name, index)
+        add_m01_wall_contract(base_label, "wall_400", (x, y), 0.0, False)
+        add_m01_wall_contract(base_label, "wall_400", (x, y), 0.0, True)
+for side_name, x in (("West", -M01_HALF_X), ("East", M01_HALF_X)):
+    for index, y in enumerate(range(-M01_HALF_Y + 400, M01_HALF_Y + 1, 400)):
+        base_label = "LDV2_M01_Perimeter{}_{:03d}".format(side_name, index)
+        add_m01_wall_contract(base_label, "wall_400", (x, y), 90.0, False)
+        add_m01_wall_contract(base_label, "wall_400", (x, y), 90.0, True)
+
+M01_INTERIOR_WALL_RUNS = (
+    ("h", "NorthLoopInnerWest", 1600, -6000, -2000, (-4400,)),
+    ("h", "NorthLoopInnerEast", 1600, 2000, 6000, (4400,)),
+    ("h", "SouthLoopInnerWest", -1600, -6000, -2000, (-3600,)),
+    ("h", "SouthLoopInnerEast", -1600, 2000, 6000, (3600,)),
+    ("v", "RotundaWestNeck", -2400, -800, 800, (0,)),
+    ("v", "RotundaEastNeck", 2400, -800, 800, (0,)),
+    ("h", "WestLoopNorthGate", 3200, -6800, -4400, (-6000,)),
+    ("h", "WestLoopSouthGate", -3200, -6800, -4400, (-5200,)),
+    ("h", "EastTargetNorthGate", 3200, 4400, 6800, (6000,)),
+    ("h", "EastTargetSouthGate", -3200, 4400, 6800, (5200,)),
+    ("v", "SecurityEast", -4400, -4800, -3200, (-4000,)),
+    ("v", "DetentionDivider", -6000, -4800, -3200, (-4000,)),
+)
+
+for orientation, name, fixed, start, end, doors in M01_INTERIOR_WALL_RUNS:
+    for cell_index, center in enumerate(range(start, end + 1, 800)):
+        is_door = center in doors
+        lower_asset_key = "wall_200" if is_door else "wall_400"
+        lower_origins = (center - 200, center + 400) if is_door else (center, center + 400)
+        upper_origins = (center, center + 400)
+        for part_index, (lower_origin, upper_origin) in enumerate(zip(lower_origins, upper_origins)):
+            base_label = "LDV2_M01_{}_{:02d}_{}".format(name, cell_index, chr(ord("A") + part_index))
+            if orientation == "h":
+                add_m01_wall_contract(base_label, lower_asset_key, (lower_origin, fixed), 0.0, False)
+                add_m01_wall_contract(base_label, "wall_400", (upper_origin, fixed), 0.0, True)
+            else:
+                add_m01_wall_contract(base_label, lower_asset_key, (fixed, lower_origin), 90.0, False)
+                add_m01_wall_contract(base_label, "wall_400", (fixed, upper_origin), 90.0, True)
+        if is_door:
+            frame_label = "LDV2_M01_{}_{:02d}_DoorFrame".format(name, cell_index)
+            if orientation == "h":
+                frame_location = (center - 200.0, fixed, 0.0)
+                frame_yaw = 90.0
+            else:
+                frame_location = (fixed, center + 200.0, 0.0)
+                frame_yaw = 0.0
+            add_m01_structural_contract(
+                frame_label,
+                "door_frame",
+                frame_location,
+                (0.0, frame_yaw, 0.0),
+                (1.0, 4.0 / 3.0, M01_WALL_SCALE_Z),
+                "NoCollision",
+            )
+
 for index in range(8):
     M01_MAPASSET_CONTRACT["LDV2_M01_GalleryCouch_{:02d}".format(index)] = asset_object_path(
         "/Game/Assets/MapAssets/Showcase/Meshes/SM_Long_Bench_01a"
@@ -130,9 +256,6 @@ for index in range(4):
     )
     M01_MAPASSET_CONTRACT["LDV2_M01_Art_TitleCard_{:02d}".format(index)] = asset_object_path(
         "/Game/Assets/MapAssets/Showcase/Meshes/SM_Title_Card_01a"
-    )
-    M01_MAPASSET_CONTRACT["LDV2_M01_Art_NorthBackdrop_{:02d}".format(index)] = asset_object_path(
-        "/Game/Assets/MapAssets/Showcase/Meshes/SM_Display_Wall_400_01a"
     )
     M01_MAPASSET_CONTRACT["LDV2_M01_Art_NorthStageLight_{:02d}".format(index)] = asset_object_path(
         "/Game/Assets/MapAssets/Showcase/Meshes/SM_Stage_Lights_01a"
@@ -160,14 +283,35 @@ M01_MAPASSET_CONTRACT.update(
         ),
     }
 )
+for index in range(12):
+    M01_MAPASSET_CONTRACT["LDV2_M01_RotundaPillar_{:02d}".format(index)] = asset_object_path(
+        M01_ASSET_PATHS["structural_beam"]
+    )
+    M01_MAPASSET_CONTRACT["LDV2_M01_CeilingLamp_{:02d}".format(index)] = asset_object_path(
+        M01_ASSET_PATHS["stage_light"]
+    )
+M01_MAPASSET_CONTRACT["LDV2_M01_HeroPlinth"] = asset_object_path(M01_ASSET_PATHS["hero_stage"])
 
 M01_NO_COLLISION_MAPASSET_LABELS = {
+    label
+    for label, contract in M01_STRUCTURAL_CONTRACT.items()
+    if contract["collision"] == "NoCollision"
+}
+M01_NO_COLLISION_MAPASSET_LABELS.update(
+    {
     label
     for label in M01_MAPASSET_CONTRACT
     if label.startswith("LDV2_M01_Art_")
     or label.startswith("LDV2_M01_SecurityConsoleC")
     or label == "LDV2_M01_SecurityConsolePhone"
-}
+    or label.startswith("LDV2_M01_CeilingLamp_")
+    }
+)
+
+if len(M01_STRUCTURAL_CONTRACT) != 936:
+    raise RuntimeError("M01 structural contract count {} != 936".format(len(M01_STRUCTURAL_CONTRACT)))
+if len(M01_MAPASSET_CONTRACT) != 992:
+    raise RuntimeError("M01 MapAssets contract count {} != 992".format(len(M01_MAPASSET_CONTRACT)))
 
 LOWER_WALL_Z = -12.0
 UPPER_WALL_Z = 388.0
@@ -183,7 +327,7 @@ NIGHT_EXPECTED = {
         "fog_density": 0.008,
         "fog_start_distance": 450.0,
         "fog_max_opacity": 0.35,
-        "exposure_ev100": 1.50,
+        "exposure_ev100": 4.00,
         "bloom_intensity": 0.25,
     },
     "M02": {
@@ -297,6 +441,11 @@ def prop(obj, name):
 
 def close_float(left, right, tolerance=0.1):
     return abs(float(left) - float(right)) <= tolerance
+
+
+def close_angle(left, right, tolerance=0.1):
+    delta = (float(left) - float(right) + 180.0) % 360.0 - 180.0
+    return abs(delta) <= tolerance
 
 
 def color_tuple(value):
@@ -510,6 +659,50 @@ for code in selected_level_codes:
                     sorted(actual_mapasset_labels - expected_mapasset_labels),
                 )
             )
+        actual_structural_labels = {
+            label for label in M01_STRUCTURAL_CONTRACT if label in by_label
+        }
+        if actual_structural_labels != set(M01_STRUCTURAL_CONTRACT):
+            failures.append(
+                "M01 structural label set mismatch: missing={}".format(
+                    sorted(set(M01_STRUCTURAL_CONTRACT) - actual_structural_labels)
+                )
+            )
+        for label, contract in M01_STRUCTURAL_CONTRACT.items():
+            actor = by_label.get(label)
+            if actor is None:
+                continue
+            location = actor.get_actor_location()
+            rotation = actor.get_actor_rotation()
+            scale = actor.get_actor_scale3d()
+            expected_location = contract["location"]
+            expected_rotation = contract["rotation"]
+            expected_scale = contract["scale"]
+            if any(
+                not close_float(actual, expected)
+                for actual, expected in zip(
+                    (location.x, location.y, location.z),
+                    expected_location,
+                )
+            ):
+                failures.append("M01 structural location mismatch: " + label)
+            if any(
+                not close_angle(actual, expected)
+                for actual, expected in zip(
+                    (rotation.pitch, rotation.yaw, rotation.roll),
+                    expected_rotation,
+                )
+            ):
+                failures.append("M01 structural rotation mismatch: " + label)
+            if any(
+                not close_float(actual, expected, 0.001)
+                for actual, expected in zip((scale.x, scale.y, scale.z), expected_scale)
+            ):
+                failures.append("M01 structural scale mismatch: " + label)
+            components = actor.get_components_by_class(unreal.StaticMeshComponent)
+            collision_profile = str(components[0].get_collision_profile_name()) if components else ""
+            if collision_profile != contract["collision"]:
+                failures.append("M01 structural collision mismatch: " + label)
         for label in M01_NO_COLLISION_MAPASSET_LABELS:
             actor = by_label.get(label)
             if actor is None:
@@ -540,11 +733,29 @@ for code in selected_level_codes:
         failures.append(
             "upper wall count {} != lower wall count {}".format(len(upper_walls), len(lower_walls))
         )
+    if code == "M01" and (len(lower_walls) != 228 or len(upper_walls) != 228):
+        failures.append(
+            "M01 wall module count lower={} upper={} expected=228/228".format(
+                len(lower_walls), len(upper_walls)
+            )
+        )
+    if code == "M01":
+        door_frame_folder = "LDV2/M01/Architecture/DoorFrames"
+        door_frames = [
+            actor
+            for actor in ldv2_static
+            if str(actor.get_folder_path()) == door_frame_folder
+        ]
+        if len(door_frames) != 12:
+            failures.append("M01 door frame count {} != 12".format(len(door_frames)))
+    expected_lower_wall_z = 0.0 if code == "M01" else LOWER_WALL_Z
+    expected_upper_wall_z = M01_WALL_LAYER_HEIGHT if code == "M01" else UPPER_WALL_Z
+    expected_wall_scale_z = M01_WALL_SCALE_Z if code == "M01" else 1.0
     for lower in lower_walls:
         lower_label = lower.get_actor_label()
         lower_location = lower.get_actor_location()
         lower_scale = lower.get_actor_scale3d()
-        if not close_float(lower_location.z, LOWER_WALL_Z) or not close_float(lower_scale.z, 1.0):
+        if not close_float(lower_location.z, expected_lower_wall_z) or not close_float(lower_scale.z, expected_wall_scale_z):
             failures.append("lower wall transform changed: " + lower_label)
         upper = by_label.get(lower_label + "_Upper")
         if upper is None:
@@ -553,12 +764,12 @@ for code in selected_level_codes:
         upper_location = upper.get_actor_location()
         upper_scale = upper.get_actor_scale3d()
         if (
-            not close_float(upper_location.x, lower_location.x)
-            or not close_float(upper_location.y, lower_location.y)
-            or not close_float(upper_location.z, UPPER_WALL_Z)
+            (code != "M01" and not close_float(upper_location.x, lower_location.x))
+            or (code != "M01" and not close_float(upper_location.y, lower_location.y))
+            or not close_float(upper_location.z, expected_upper_wall_z)
             or not close_float(upper_scale.x, lower_scale.x)
             or not close_float(upper_scale.y, lower_scale.y)
-            or not close_float(upper_scale.z, 1.0)
+            or not close_float(upper_scale.z, expected_wall_scale_z)
         ):
             failures.append("upper wall transform mismatch: " + upper.get_actor_label())
         if "MuseumTallUpperWall" not in actor_tags(upper):
@@ -569,9 +780,14 @@ for code in selected_level_codes:
         upper_mesh = prop(upper_components[0], "static_mesh") if upper_components else None
         lower_mesh_path = lower_mesh.get_path_name() if lower_mesh else ""
         upper_mesh_path = upper_mesh.get_path_name() if upper_mesh else ""
-        expected_upper_mesh = "Wall_Window_400x400" if "Wall_Window_400x400" in lower_mesh_path else "Wall_400x400"
-        if expected_upper_mesh not in upper_mesh_path:
-            failures.append("upper wall mesh mismatch: " + upper.get_actor_label())
+        if code == "M01":
+            expected_upper_mesh = asset_object_path(M01_ASSET_PATHS["wall_400"])
+            if upper_mesh_path != expected_upper_mesh:
+                failures.append("M01 upper wall mesh mismatch: " + upper.get_actor_label())
+        else:
+            expected_upper_mesh = "Wall_Window_400x400" if "Wall_Window_400x400" in lower_mesh_path else "Wall_400x400"
+            if expected_upper_mesh not in upper_mesh_path:
+                failures.append("upper wall mesh mismatch: " + upper.get_actor_label())
 
     glass_visibility_failures = []
     if code == "M03":
@@ -597,14 +813,28 @@ for code in selected_level_codes:
     if len(floors) != expected["floor_count"]:
         failures.append("floor tile count {} != {}".format(len(floors), expected["floor_count"]))
     if floors:
-        centers_x = [actor.get_actor_location().x for actor in floors]
-        centers_y = [actor.get_actor_location().y for actor in floors]
-        bounds = (
-            min(centers_x) - 400.0,
-            max(centers_x) + 400.0,
-            min(centers_y) - 400.0,
-            max(centers_y) + 400.0,
-        )
+        if code == "M01":
+            expected_floor_xy = {
+                (float(x), float(y))
+                for x in range(-M01_HALF_X, M01_HALF_X, 800)
+                for y in range(-M01_HALF_Y, M01_HALF_Y, 800)
+            }
+            actual_floor_xy = {
+                (round(actor.get_actor_location().x, 1), round(actor.get_actor_location().y, 1))
+                for actor in floors
+            }
+            if actual_floor_xy != expected_floor_xy:
+                failures.append("M01 floor origin grid mismatch")
+            bounds = (-M01_HALF_X, M01_HALF_X, -M01_HALF_Y, M01_HALF_Y)
+        else:
+            centers_x = [actor.get_actor_location().x for actor in floors]
+            centers_y = [actor.get_actor_location().y for actor in floors]
+            bounds = (
+                min(centers_x) - 400.0,
+                max(centers_x) + 400.0,
+                min(centers_y) - 400.0,
+                max(centers_y) + 400.0,
+            )
         expected_bounds = (-expected["half_x"], expected["half_x"], -expected["half_y"], expected["half_y"])
         if any(not close_float(actual, target) for actual, target in zip(bounds, expected_bounds)):
             failures.append("floor bounds {} != {}".format(bounds, expected_bounds))
@@ -875,7 +1105,11 @@ for code in selected_level_codes:
         if actor is None:
             continue
         location = actor.get_actor_location()
-        if not close_float(location.x, expected_xy[0]) or not close_float(location.y, expected_xy[1]):
+        if (
+            not close_float(location.x, expected_xy[0])
+            or not close_float(location.y, expected_xy[1])
+            or (len(expected_xy) > 2 and not close_float(location.z, expected_xy[2]))
+        ):
             failures.append(
                 "topology signature location mismatch {}: ({:.1f},{:.1f})".format(
                     signature_label, location.x, location.y
@@ -944,12 +1178,13 @@ for code in selected_level_codes:
 
     fixture_prefix = prefix + ("GalleryLamp_" if code == "M02" else "CeilingLamp_")
     fixtures = [actor for actor in ldv2_static if actor.get_actor_label().startswith(fixture_prefix)]
-    for fixture in fixtures:
-        components = fixture.get_components_by_class(unreal.StaticMeshComponent)
-        material = components[0].get_material(0) if components else None
-        material_path = material.get_path_name() if material else ""
-        if "M_Lamp" not in material_path:
-            failures.append("lamp default emissive material missing: " + fixture.get_actor_label())
+    if code != "M01":
+        for fixture in fixtures:
+            components = fixture.get_components_by_class(unreal.StaticMeshComponent)
+            material = components[0].get_material(0) if components else None
+            material_path = material.get_path_name() if material else ""
+            if "M_Lamp" not in material_path:
+                failures.append("lamp default emissive material missing: " + fixture.get_actor_label())
 
     point_expectations = {}
     if code == "M01":
@@ -961,14 +1196,23 @@ for code in selected_level_codes:
                 "radius": 1650.0 if index == 0 else 1500.0,
             }
         for fixture in fixtures:
-            if not close_float(fixture.get_actor_location().z, 770.0):
+            if not close_float(fixture.get_actor_location().z, 720.0):
                 failures.append("M01 ceiling fixture height mismatch: " + fixture.get_actor_label())
         for actor in ldv2_static:
             if actor.get_actor_label().startswith(prefix + "Skylight") and not close_float(actor.get_actor_location().z, 790.0):
                 failures.append("M01 skylight structure height mismatch: " + actor.get_actor_label())
         for actor in ldv2_static:
-            if actor.get_actor_label().startswith(prefix + "RotundaPillar_") and not close_float(actor.get_actor_scale3d().z, 1.6):
-                failures.append("M01 rotunda pillar height mismatch: " + actor.get_actor_label())
+            if actor.get_actor_label().startswith(prefix + "RotundaPillar_"):
+                components = actor.get_components_by_class(unreal.StaticMeshComponent)
+                mesh = prop(components[0], "static_mesh") if components else None
+                mesh_bounds = mesh.get_bounding_box() if mesh else None
+                resolved_height = (
+                    0.0
+                    if mesh_bounds is None
+                    else (mesh_bounds.max.z - mesh_bounds.min.z) * actor.get_actor_scale3d().z
+                )
+                if not close_float(resolved_height, CEILING_Z):
+                    failures.append("M01 rotunda pillar height mismatch: " + actor.get_actor_label())
     elif code == "M02":
         for index in range(12):
             point_expectations[prefix + "WarmLight_{:02d}".format(index)] = {
@@ -1191,6 +1435,11 @@ for code in selected_level_codes:
         "ldv2_static_mesh_actors": len(ldv2_static),
         "ldv2_starter_static_mesh_actors": len(starter_ldv2_static),
         "ldv2_mapasset_static_mesh_actors": len(mapasset_ldv2_static),
+        "m01_structural_mapasset_actors": (
+            len([label for label in M01_STRUCTURAL_CONTRACT if label in by_label])
+            if code == "M01"
+            else 0
+        ),
         "duplicate_static_mesh_locations": duplicate_static_locations,
         "legacy_overlay_static_mesh_actors": len(legacy_static),
         "generated_lights": len(generated_lights),
@@ -1198,7 +1447,7 @@ for code in selected_level_codes:
         "ceiling_height_cm": CEILING_Z,
         "lower_wall_panels": len(lower_walls),
         "upper_wall_panels": len(upper_walls),
-        "upper_wall_base_z_cm": UPPER_WALL_Z,
+        "upper_wall_base_z_cm": expected_upper_wall_z,
         "night_environment": night_snapshot,
         "floor_bounds_cm": list(bounds),
         "painting_cases": len(cases),

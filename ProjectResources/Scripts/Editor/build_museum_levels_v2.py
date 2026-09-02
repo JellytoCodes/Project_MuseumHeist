@@ -31,7 +31,11 @@ STATIC_MESHES = {
 # MapAssets is a local content boundary, so a missing package must stop the
 # authored art pass instead of silently saving a StarterContent fallback.
 M01_ART_STATIC_MESHES = {
+    "m01_showcase_floor": "/Game/Assets/MapAssets/Showcase/Meshes/SM_F_Floor_01a",
+    "m01_showcase_wall_200": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Display_Wall_200_01a",
     "m01_showcase_wall_400": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Display_Wall_400_01a",
+    "m01_showcase_structural_beam_400": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Structural_Beam_01b",
+    "m01_showcase_hero_stage": "/Game/Assets/MapAssets/Showcase/Meshes/SM_F_Platform_01a",
     "m01_showcase_long_bench": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Long_Bench_01a",
     "m01_showcase_display_stand": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Display_Stand_01c",
     "m01_showcase_title_card": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Title_Card_01a",
@@ -42,6 +46,7 @@ M01_ART_STATIC_MESHES = {
     "m01_conference_shelving_02": "/Game/Assets/MapAssets/ConferenceRoom/Meshes/Shelving/SM_Shelving_02",
     "m01_conference_computer": "/Game/Assets/MapAssets/ConferenceRoom/Meshes/Office_equip/SM_Computer",
     "m01_conference_phone": "/Game/Assets/MapAssets/ConferenceRoom/Meshes/Office_equip/SM_Phone",
+    "m01_conference_door_frame": "/Game/Assets/MapAssets/ConferenceRoom/Meshes/Walls/SM_Wall_Frame_door",
 }
 
 MATERIALS = {
@@ -96,6 +101,10 @@ LOWER_WALL_Z = -12.0
 UPPER_WALL_Z = 388.0
 CEILING_Z = 812.0
 
+M01_WALL_LAYER_HEIGHT = CEILING_Z * 0.5
+M01_WALL_SCALE_Z = M01_WALL_LAYER_HEIGHT / 400.0
+M01_FLOOR_TILE_SCALE = 800.0 / 1500.0
+
 NIGHT_PROFILES = {
     "M01": {
         "moon_rotation": (-20.0, -35.0, 0.0),
@@ -107,7 +116,7 @@ NIGHT_PROFILES = {
         "fog_start_distance": 450.0,
         "fog_max_opacity": 0.35,
         "fog_color": (0.035, 0.050, 0.090),
-        "exposure_ev100": 1.50,
+        "exposure_ev100": 4.00,
         "bloom_intensity": 0.25,
     },
     "M02": {
@@ -390,6 +399,32 @@ if "M01" in selected_level_codes:
         raise RuntimeError(
             "M01 MapAssets are not StaticMesh assets: " + ",".join(invalid_m01_art_assets)
         )
+
+    m01_shell_bounds_contract = {
+        "m01_showcase_floor": ((0.0, 0.0, -1.5), (1500.0, 1500.0, 0.0)),
+        "m01_showcase_wall_200": ((-200.0, -25.0, 0.0), (0.0, 25.0, 400.0)),
+        "m01_showcase_wall_400": ((-400.0, -25.0, 0.0), (0.0, 25.0, 400.0)),
+        "m01_conference_door_frame": ((-12.6, -300.0, 0.0), (12.6, 0.0, 400.0)),
+    }
+    invalid_m01_shell_bounds = []
+    for name, (expected_min, expected_max) in m01_shell_bounds_contract.items():
+        bounds = m01_art_assets[name].get_bounding_box()
+        actual_values = (
+            bounds.min.x,
+            bounds.min.y,
+            bounds.min.z,
+            bounds.max.x,
+            bounds.max.y,
+            bounds.max.z,
+        )
+        expected_values = expected_min + expected_max
+        if any(abs(float(actual) - float(expected)) > 0.2 for actual, expected in zip(actual_values, expected_values)):
+            invalid_m01_shell_bounds.append(
+                "{} actual={} expected={}".format(name, actual_values, expected_values)
+            )
+    if invalid_m01_shell_bounds:
+        raise RuntimeError("M01 MapAssets bounds contract failed: " + "; ".join(invalid_m01_shell_bounds))
+
     assets.update(m01_art_assets)
     unreal.log_warning("MH_M01_ART_ASSETS_LOADED={}".format(len(m01_art_assets)))
 materials = {name: unreal.load_asset(path) for name, path in MATERIALS.items()}
@@ -940,6 +975,157 @@ class LevelBuilder:
                     "Architecture/Ceiling",
                 )
 
+    def m01_centered_bottom_static(
+        self,
+        label,
+        mesh_name,
+        center,
+        bottom_z,
+        yaw=0.0,
+        scale=(1.0, 1.0, 1.0),
+        folder="Theme",
+        collision_profile=None,
+    ):
+        mesh_bounds = assets[mesh_name].get_bounding_box()
+        local_center_x = (mesh_bounds.min.x + mesh_bounds.max.x) * 0.5 * scale[0]
+        local_center_y = (mesh_bounds.min.y + mesh_bounds.max.y) * 0.5 * scale[1]
+        radians = math.radians(float(yaw))
+        rotated_center_x = math.cos(radians) * local_center_x - math.sin(radians) * local_center_y
+        rotated_center_y = math.sin(radians) * local_center_x + math.cos(radians) * local_center_y
+        actor = self.static(
+            label,
+            mesh_name,
+            (
+                float(center[0]) - rotated_center_x,
+                float(center[1]) - rotated_center_y,
+                float(bottom_z) - mesh_bounds.min.z * scale[2],
+            ),
+            yaw,
+            scale,
+            None,
+            folder,
+            collision_profile,
+        )
+        self.use_default_material(actor)
+        return actor
+
+    def m01_floor_grid(self):
+        index = 0
+        for x in range(-self.config["half_x"], self.config["half_x"], 800):
+            for y in range(-self.config["half_y"], self.config["half_y"], 800):
+                actor = self.static(
+                    "LDV2_M01_Floor_{:03d}".format(index),
+                    "m01_showcase_floor",
+                    (x, y, 0.0),
+                    0.0,
+                    (M01_FLOOR_TILE_SCALE, M01_FLOOR_TILE_SCALE, 1.0),
+                    None,
+                    "Architecture/Floor",
+                )
+                self.use_default_material(actor)
+                index += 1
+
+    def m01_ceiling_grid(self):
+        index = 0
+        for x in range(-self.config["half_x"], self.config["half_x"], 800):
+            for y in range(-self.config["half_y"] + 800, self.config["half_y"] + 1, 800):
+                actor = self.static(
+                    "LDV2_M01_CeilingTile_{:03d}".format(index),
+                    "m01_showcase_floor",
+                    (x, y, CEILING_Z),
+                    0.0,
+                    (M01_FLOOR_TILE_SCALE, M01_FLOOR_TILE_SCALE, 1.0),
+                    None,
+                    "Architecture/Ceiling",
+                    "NoCollision",
+                )
+                actor.set_actor_rotation(unreal.Rotator(pitch=0.0, yaw=0.0, roll=180.0), False)
+                self.use_default_material(actor)
+                index += 1
+
+    def m01_wall_piece(self, label, mesh_name, origin, yaw, upper=False):
+        actor = self.static(
+            label + ("_Upper" if upper else ""),
+            mesh_name,
+            (origin[0], origin[1], M01_WALL_LAYER_HEIGHT if upper else 0.0),
+            yaw,
+            (1.0, 1.0, M01_WALL_SCALE_Z),
+            None,
+            "Architecture/Walls",
+        )
+        self.use_default_material(actor)
+        if upper:
+            self.add_tags(actor, "MuseumTallUpperWall")
+        return actor
+
+    def m01_door_frame(self, label, center, horizontal):
+        if horizontal:
+            location = (center[0] - 200.0, center[1], 0.0)
+            yaw = 90.0
+        else:
+            location = (center[0], center[1] + 200.0, 0.0)
+            yaw = 0.0
+        actor = self.static(
+            label,
+            "m01_conference_door_frame",
+            location,
+            yaw,
+            (1.0, 4.0 / 3.0, M01_WALL_SCALE_Z),
+            None,
+            "Architecture/DoorFrames",
+            "NoCollision",
+        )
+        self.use_default_material(actor)
+        return actor
+
+    def m01_wall_h(self, name, y, start_x, end_x, doors=()):
+        for cell_index, center_x in enumerate(range(start_x, end_x + 1, 800)):
+            is_door = center_x in doors
+            lower_mesh = "m01_showcase_wall_200" if is_door else "m01_showcase_wall_400"
+            lower_origins = (center_x - 200, center_x + 400) if is_door else (center_x, center_x + 400)
+            upper_origins = (center_x, center_x + 400)
+            for part_index, (lower_x, upper_x) in enumerate(zip(lower_origins, upper_origins)):
+                base_label = "LDV2_M01_{}_{:02d}_{}".format(name, cell_index, chr(ord("A") + part_index))
+                self.m01_wall_piece(base_label, lower_mesh, (lower_x, y), 0.0, False)
+                self.m01_wall_piece(base_label, "m01_showcase_wall_400", (upper_x, y), 0.0, True)
+            if is_door:
+                self.m01_door_frame(
+                    "LDV2_M01_{}_{:02d}_DoorFrame".format(name, cell_index),
+                    (center_x, y),
+                    True,
+                )
+
+    def m01_wall_v(self, name, x, start_y, end_y, doors=()):
+        for cell_index, center_y in enumerate(range(start_y, end_y + 1, 800)):
+            is_door = center_y in doors
+            lower_mesh = "m01_showcase_wall_200" if is_door else "m01_showcase_wall_400"
+            lower_origins = (center_y - 200, center_y + 400) if is_door else (center_y, center_y + 400)
+            upper_origins = (center_y, center_y + 400)
+            for part_index, (lower_y, upper_y) in enumerate(zip(lower_origins, upper_origins)):
+                base_label = "LDV2_M01_{}_{:02d}_{}".format(name, cell_index, chr(ord("A") + part_index))
+                self.m01_wall_piece(base_label, lower_mesh, (x, lower_y), 90.0, False)
+                self.m01_wall_piece(base_label, "m01_showcase_wall_400", (x, upper_y), 90.0, True)
+            if is_door:
+                self.m01_door_frame(
+                    "LDV2_M01_{}_{:02d}_DoorFrame".format(name, cell_index),
+                    (x, center_y),
+                    False,
+                )
+
+    def m01_perimeter(self):
+        half_x = self.config["half_x"]
+        half_y = self.config["half_y"]
+        for side_name, y in (("North", half_y), ("South", -half_y)):
+            for index, x in enumerate(range(-half_x + 400, half_x + 1, 400)):
+                base_label = "LDV2_M01_Perimeter{}_{:03d}".format(side_name, index)
+                self.m01_wall_piece(base_label, "m01_showcase_wall_400", (x, y), 0.0, False)
+                self.m01_wall_piece(base_label, "m01_showcase_wall_400", (x, y), 0.0, True)
+        for side_name, x in (("West", -half_x), ("East", half_x)):
+            for index, y in enumerate(range(-half_y + 400, half_y + 1, 400)):
+                base_label = "LDV2_M01_Perimeter{}_{:03d}".format(side_name, index)
+                self.m01_wall_piece(base_label, "m01_showcase_wall_400", (x, y), 90.0, False)
+                self.m01_wall_piece(base_label, "m01_showcase_wall_400", (x, y), 90.0, True)
+
     def floor_grid(self):
         half_x = self.config["half_x"]
         half_y = self.config["half_y"]
@@ -1355,42 +1541,59 @@ class LevelBuilder:
 
 
 def add_m01_geometry(builder):
-    builder.floor_grid()
-    builder.perimeter(False)
-    mat = builder.config["wall_material"]
-    builder.ceiling_rect("LDV2_M01_Ceiling_West", (-4200, 0), (6000, 10400), mat)
-    builder.ceiling_rect("LDV2_M01_Ceiling_East", (4200, 0), (6000, 10400), mat)
-    builder.ceiling_rect("LDV2_M01_Ceiling_North", (0, 3100), (2400, 4200), mat)
-    builder.ceiling_rect("LDV2_M01_Ceiling_South", (0, -3100), (2400, 4200), mat)
+    builder.m01_floor_grid()
+    builder.m01_perimeter()
+    builder.m01_ceiling_grid()
 
     # Two broad gallery loops share the always-visible Rotunda instead of forming one rectangular ring.
-    builder.wall_h("NorthLoopInnerWest", 1600, -6000, -2000, doors=(-4400,), material_name=mat)
-    builder.wall_h("NorthLoopInnerEast", 1600, 2000, 6000, doors=(4400,), material_name=mat)
-    builder.wall_h("SouthLoopInnerWest", -1600, -6000, -2000, doors=(-3600,), material_name=mat)
-    builder.wall_h("SouthLoopInnerEast", -1600, 2000, 6000, doors=(3600,), material_name=mat)
-    builder.wall_v("RotundaWestNeck", -2400, -800, 800, doors=(0,), material_name=mat)
-    builder.wall_v("RotundaEastNeck", 2400, -800, 800, doors=(0,), material_name=mat)
-    builder.wall_h("WestLoopNorthGate", 3200, -6800, -4400, doors=(-6000,), material_name=mat)
-    builder.wall_h("WestLoopSouthGate", -3200, -6800, -4400, doors=(-5200,), material_name=mat)
-    builder.wall_h("EastTargetNorthGate", 3200, 4400, 6800, doors=(6000,), material_name=mat)
-    builder.wall_h("EastTargetSouthGate", -3200, 4400, 6800, doors=(5200,), material_name=mat)
-    builder.wall_v("SecurityEast", -4400, -5200 + 400, -3200, doors=(-4000,), material_name=mat)
+    builder.m01_wall_h("NorthLoopInnerWest", 1600, -6000, -2000, doors=(-4400,))
+    builder.m01_wall_h("NorthLoopInnerEast", 1600, 2000, 6000, doors=(4400,))
+    builder.m01_wall_h("SouthLoopInnerWest", -1600, -6000, -2000, doors=(-3600,))
+    builder.m01_wall_h("SouthLoopInnerEast", -1600, 2000, 6000, doors=(3600,))
+    builder.m01_wall_v("RotundaWestNeck", -2400, -800, 800, doors=(0,))
+    builder.m01_wall_v("RotundaEastNeck", 2400, -800, 800, doors=(0,))
+    builder.m01_wall_h("WestLoopNorthGate", 3200, -6800, -4400, doors=(-6000,))
+    builder.m01_wall_h("WestLoopSouthGate", -3200, -6800, -4400, doors=(-5200,))
+    builder.m01_wall_h("EastTargetNorthGate", 3200, 4400, 6800, doors=(6000,))
+    builder.m01_wall_h("EastTargetSouthGate", -3200, 4400, 6800, doors=(5200,))
+    builder.m01_wall_v("SecurityEast", -4400, -5200 + 400, -3200, doors=(-4000,))
     # WestLoopSouthGate is also the security-room north wall; do not stack a
     # second identical wall run at the same transform.
-    builder.wall_v("DetentionDivider", -6000, -4800, -3200, doors=(-4000,), material_name=mat)
+    builder.m01_wall_v("DetentionDivider", -6000, -4800, -3200, doors=(-4000,))
     builder.security_detention_props(-5200, -4200, 90.0)
 
-    builder.static("LDV2_M01_Topology_Figure8_North", "cube", (0, 1520, -20), 0.0, (24.0, 0.08, 0.04), "gold", "Theme/Figure8Inlay")
-    builder.static("LDV2_M01_Topology_Figure8_South", "cube", (0, -1520, -20), 0.0, (24.0, 0.08, 0.04), "gold", "Theme/Figure8Inlay")
+    builder.static("LDV2_M01_Topology_Figure8_North", "cube", (0, 1520, 2.0), 0.0, (24.0, 0.08, 0.04), "gold", "Theme/Figure8Inlay", "NoCollision")
+    builder.static("LDV2_M01_Topology_Figure8_South", "cube", (0, -1520, 2.0), 0.0, (24.0, 0.08, 0.04), "gold", "Theme/Figure8Inlay", "NoCollision")
     rotunda_pillars = []
     for index in range(8):
         angle = math.radians(22.5 + index * 45.0)
         rotunda_pillars.append((math.cos(angle) * 1700, math.sin(angle) * 950))
     rotunda_pillars.extend(((-2400, 0), (2400, 0), (0, -1250), (0, 1250)))
+    beam_bounds = assets["m01_showcase_structural_beam_400"].get_bounding_box()
+    beam_height = float(beam_bounds.max.z - beam_bounds.min.z)
+    if beam_height <= 0.0:
+        raise RuntimeError("M01 structural beam has invalid height")
+    rotunda_beam_scale_z = CEILING_Z / beam_height
     for index, pos in enumerate(rotunda_pillars):
-        builder.static("LDV2_M01_RotundaPillar_{:02d}".format(index), "pillar", (pos[0], pos[1], -12), 0.0, (1.0, 1.0, 1.6), "gold" if index >= 8 else None, "Theme/Rotunda")
-    builder.static("LDV2_M01_HeroPlinth", "platform", (0, 0, 0), 45.0, (1.65, 1.65, 4.0), "gold", "Theme/Rotunda")
-    statue_specs = ((0, 0, 45.0, 2.6, 40), (-5600, 800, 90.0, 1.6, 0), (5200, 800, -90.0, 1.6, 0), (0, 3600, 180.0, 1.5, 0))
+        builder.m01_centered_bottom_static(
+            "LDV2_M01_RotundaPillar_{:02d}".format(index),
+            "m01_showcase_structural_beam_400",
+            pos,
+            0.0,
+            0.0,
+            (1.0, 1.0, rotunda_beam_scale_z),
+            "Theme/Rotunda",
+        )
+    builder.m01_centered_bottom_static(
+        "LDV2_M01_HeroPlinth",
+        "m01_showcase_hero_stage",
+        (0.0, 0.0),
+        0.0,
+        45.0,
+        (0.85, 0.85, 1.0),
+        "Theme/Rotunda",
+    )
+    statue_specs = ((0, 0, 45.0, 2.6, 55), (-5600, 800, 90.0, 1.6, 0), (5200, 800, -90.0, 1.6, 0), (0, 3600, 180.0, 1.5, 0))
     for index, spec in enumerate(statue_specs):
         builder.static("LDV2_M01_RotundaStatue_{:02d}".format(index), "statue", (spec[0], spec[1], spec[4]), spec[2], (spec[3], spec[3], spec[3]), None, "Theme/Rotunda" if index == 0 else "Theme/GalleryLandmarks")
     for index, pos in enumerate(((-5650, -2450, 25), (-5650, 50, -20))):
@@ -1447,21 +1650,9 @@ def add_m01_geometry(builder):
         )
         builder.use_default_material(card)
 
-    # A single north Wing receives a contemporary exhibition treatment. The
-    # wall modules sit flush against the existing perimeter and remain visual
-    # only, preserving the authored Figure-8 collision and guard sight routes.
+    # The complete shell now uses the Showcase wall kit. These four fixtures
+    # keep the north wing readable without stacking a second wall skin.
     for index, x in enumerate((-3600, -1200, 1200, 3600)):
-        backdrop = builder.static(
-            "LDV2_M01_Art_NorthBackdrop_{:02d}".format(index),
-            "m01_showcase_wall_400",
-            (x, 5125, 0),
-            0.0,
-            (1.0, 1.0, 1.0),
-            None,
-            "Theme/NorthSpecialExhibition",
-            "NoCollision",
-        )
-        builder.use_default_material(backdrop)
         stage_light = builder.static(
             "LDV2_M01_Art_NorthStageLight_{:02d}".format(index),
             "m01_showcase_stage_light",
@@ -1473,12 +1664,6 @@ def add_m01_geometry(builder):
             "NoCollision",
         )
         builder.use_default_material(stage_light)
-    portal_specs = ((-6000, -3200, 0), (-6000, 3200, 0), (-4400, 1600, 90), (-3600, -1600, 90), (3600, -1600, 90), (4400, 1600, 90), (5200, -3200, 0), (6000, 3200, 0))
-    for index, pos in enumerate(portal_specs):
-        builder.portal("LDV2_M01_Portal_{:02d}".format(index), (pos[0], pos[1], 0), pos[2], "gold", (1.0, 1.8, 1.05))
-    inner_portals = ((-2400, 0, 0), (2400, 0, 0))
-    for index, pos in enumerate(inner_portals):
-        builder.portal("LDV2_M01_InnerPortal_{:02d}".format(index), (pos[0], pos[1], 0), pos[2], "gold", (1.0, 1.8, 1.05))
     for label, location, scale in (
         ("SkylightRimNorth", (0, 1000, 790), (24.0, 0.18, 0.15)),
         ("SkylightRimSouth", (0, -1000, 790), (24.0, 0.18, 0.15)),
@@ -1490,7 +1675,16 @@ def add_m01_geometry(builder):
         builder.static("LDV2_M01_{}".format(label), "cube", location, 0.0, scale, "gold", "Theme/RotundaCeiling")
     light_positions = ((0, 0), (-5600, 0), (5600, 0), (0, -3400), (0, 3400), (-4000, -2400), (4000, -2400), (-4000, 2400), (4000, 2400), (-5200, -4200), (-6000, 3600), (6000, 3600))
     for index, pos in enumerate(light_positions):
-        fixture = builder.static("LDV2_M01_CeilingLamp_{:02d}".format(index), "ceiling_lamp", (pos[0], pos[1], 770), 0.0, (0.8, 0.8, 0.8), None, "Lighting/Fixtures")
+        fixture = builder.static(
+            "LDV2_M01_CeilingLamp_{:02d}".format(index),
+            "m01_showcase_stage_light",
+            (pos[0], pos[1], 720),
+            180.0,
+            (0.75, 0.75, 0.75),
+            None,
+            "Lighting/Fixtures",
+            "NoCollision",
+        )
         builder.use_default_material(fixture)
         builder.point_light("LDV2_M01_WarmLight_{:02d}".format(index), (pos[0], pos[1], 720), (255, 205, 145), 1600.0 if index == 0 else 1100.0, 1650.0 if index == 0 else 1500.0)
 
