@@ -556,7 +556,8 @@ bool AHeistObjectDisplayCaseActor::TryTakeOriginal(AHeistPlayerState* Requesting
 		UnbindOriginalCarrierDelegate();
 		OriginalCarrier = nullptr;
 		FHeistInventoryItem RolledBackItem;
-		checkf(InventoryComponent->TryRemoveOriginalArtifactForSourceCase(RequestingPlayerState, this, RolledBackItem), TEXT("Object original grid rollback must succeed."));
+		const bool bRolledBack = InventoryComponent->TryRemoveOriginalArtifactForSourceCase(RequestingPlayerState, this, RolledBackItem);
+		checkf(bRolledBack, TEXT("Object original grid rollback must succeed."));
 		BroadcastOriginalCarrySnapshot(FName(TEXT("Take")), FName(TEXT("OriginalRemovedTransitionFailed")), false);
 		return false;
 	}

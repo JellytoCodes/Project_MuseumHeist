@@ -500,6 +500,129 @@ def sampled_segment_aabb_clearance(start, end, origin, extent, sample_spacing=50
     return minimum
 
 
+def resolve_guard_navigation_mode():
+    # check: query when navigation is ready; strict: NOT_TESTED also blocks the run.
+    _, switches, parameters = unreal.SystemLibrary.parse_command_line(unreal.SystemLibrary.get_command_line())
+    name = "museumguardnavigation"
+    if any(str(switch).casefold() == name for switch in switches):
+        raise RuntimeError("-MuseumGuardNavigation requires check, strict or off")
+    values = [value for key, value in parameters.items() if str(key).casefold() == name]
+    if len(values) > 1:
+        raise RuntimeError("-MuseumGuardNavigation was specified more than once")
+    mode = globals().get("MUSEUM_GUARD_NAVIGATION_MODE_OVERRIDE", values[0] if values else "check")
+    mode = str(mode).strip().casefold()
+    if mode not in ("check", "strict", "off"):
+        raise RuntimeError("Invalid MuseumGuardNavigation mode: " + mode)
+    return mode
+
+
+def verify_guard_navigation(world, guards, waypoint_routes, mode):
+    result = {
+        "mode": mode,
+        "status": "NOT_TESTED",
+        "reason": "NavigationNotRequested",
+        "expected_segments": 0,
+        "checked_segments": 0,
+        "failed_segments": [],
+    }
+    if mode == "off":
+        return result
+
+    segments = []
+    for guard in sorted(guards, key=actor_label):
+        patrol_components = [
+            component for component in guard.get_components_by_class(unreal.ActorComponent)
+            if component.get_class().get_name() == "HeistPatrolPathComponent"
+        ]
+        route_id = str(prop(patrol_components[0], "patrol_route_id")) if len(patrol_components) == 1 else ""
+        route = waypoint_routes.get(route_id, [])
+        if not route:
+            result["failed_segments"].append({"guard": actor_label(guard), "route": route_id, "reason": "MissingPatrolRoute"})
+            continue
+        loop_patrol = prop(patrol_components[0], "loop_patrol")
+        if loop_patrol is None:
+            result.update(reason="PatrolLoopConfigurationUnavailable", guard=actor_label(guard))
+            return result
+        segments.append((guard, route_id, guard, route[0]))
+        segments.extend((guard, route_id, start, end) for start, end in zip(route, route[1:]))
+        # AdvanceWaypoint uses ping-pong, not a last-to-first wraparound.
+        if loop_patrol:
+            segments.extend((guard, route_id, end, start) for start, end in zip(route, route[1:]))
+    result["expected_segments"] = len(segments)
+    if result["failed_segments"] or not segments:
+        result.update(status="FAIL", reason="InvalidPatrolRouteConfiguration")
+        return result
+
+    try:
+        navigation = unreal.NavigationSystemV1.get_navigation_system(world)
+        if navigation is None:
+            result["reason"] = "MissingNavigationSystem"
+            return result
+        nav_data = prop(navigation, "main_nav_data")
+        if nav_data is None:
+            result["reason"] = "MissingNavigationData"
+            return result
+        # UE uses MainNavData for a single supported agent. Multiple agents need
+        # agent-specific projection and can assert if the pawn has no matching data.
+        supported_agents = prop(navigation, "supported_agents")
+        if supported_agents is None or len(supported_agents) > 1:
+            result["reason"] = "NavigationAgentSelectionUnavailable"
+            return result
+        if unreal.NavigationSystemV1.is_navigation_being_built_or_locked(world):
+            result["reason"] = "NavigationBuildingOrLocked"
+            return result
+
+        # UE Python maps bool + FVector out to FVector on success, None on failure.
+        # Probe nearby nav without rebuilding, relocating actors or saving the map.
+        locations = {}
+        for _, _, start, end in segments:
+            for actor in (start, end):
+                actor_path = actor.get_path_name()
+                if actor_path not in locations:
+                    locations[actor_path] = unreal.NavigationSystemV1.project_point_to_navigation(
+                        world, actor.get_actor_location(), nav_data, None, unreal.Vector(50.0, 50.0, 200.0)
+                    )
+        if all(location is None for location in locations.values()):
+            result["reason"] = "NoQueryableNavigationAtRoutePoints"
+            return result
+
+        for guard, route_id, start, end in segments:
+            segment = {
+                "guard": actor_label(guard),
+                "route": route_id,
+                "from": actor_label(start),
+                "to": actor_label(end),
+            }
+            start_location = locations[start.get_path_name()]
+            end_location = locations[end.get_path_name()]
+            if start_location is None or end_location is None:
+                segment["reason"] = "EndpointOffNavigation"
+                result["failed_segments"].append(segment)
+                continue
+            path = unreal.NavigationSystemV1.find_path_to_location_synchronously(
+                world, start_location, end_location, guard
+            )
+            result["checked_segments"] += 1
+            if path is None or not path.is_valid() or path.is_partial():
+                segment["reason"] = "MissingPath" if path is None else "InvalidOrPartialPath"
+                result["failed_segments"].append(segment)
+
+        # A dirty/locked nav graph cannot certify paths even if earlier queries succeeded.
+        if unreal.NavigationSystemV1.is_navigation_being_built_or_locked(world):
+            result["reason"] = "NavigationChangedDuringQueries"
+            return result
+    except Exception as error:
+        result.update(reason="NavigationQueryUnavailable", error=str(error))
+        return result
+
+    result.update(
+        status="FAIL" if result["failed_segments"] else "PASS",
+        reason="UnreachablePatrolSegments" if result["failed_segments"] else "AllPatrolSegmentsReachable",
+    )
+    return result
+
+
+guard_navigation_mode = resolve_guard_navigation_mode()
 actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
 all_failures = []
 
@@ -1368,7 +1491,7 @@ for code in selected_level_codes:
         route_id = str(prop(waypoint, "patrol_route_id"))
         waypoint_routes.setdefault(route_id, []).append(waypoint)
     for route_id in waypoint_routes:
-        waypoint_routes[route_id].sort(key=lambda actor: int(prop(actor, "patrol_order") or 0))
+        waypoint_routes[route_id].sort(key=lambda actor: (int(prop(actor, "patrol_order") or 0), actor.get_name()))
     guard_obstacles = [
         actor for actor in ldv2_static
         if "FoldingScreen_" in actor.get_actor_label()
@@ -1402,6 +1525,11 @@ for code in selected_level_codes:
         nav_scale = (round(scale.x, 2), round(scale.y, 2), round(scale.z, 2))
         if any(not close_float(actual, target) for actual, target in zip(nav_scale, expected["nav_scale"])):
             failures.append("nav scale {} != {}".format(nav_scale, expected["nav_scale"]))
+
+    guard_navigation = verify_guard_navigation(world, by_class.get("BP_Guard_C", []), waypoint_routes, guard_navigation_mode)
+    if guard_navigation["status"] == "FAIL" or (guard_navigation_mode == "strict" and guard_navigation["status"] != "PASS"):
+        failures.append("guard navigation {}: {}".format(guard_navigation["status"], guard_navigation["reason"]))
+    unreal.log_warning("MH_GUARD_NAV_VERIFY=" + json.dumps({"map": expected["path"], **guard_navigation}, sort_keys=True))
 
     linked_case_labels = []
     linked_case_ids = []
@@ -1491,6 +1619,8 @@ for code in selected_level_codes:
         "guard_waypoints": len(by_class.get("HeistGuardWaypoint", [])),
         "minimum_case_guard_clearance_cm": round(minimum_case_guard_clearance[0], 1),
         "minimum_guard_obstacle_clearance_cm": None if minimum_guard_obstacle_clearance[0] is None else round(minimum_guard_obstacle_clearance[0], 1),
+        "guard_navigation": guard_navigation,
+        "verification_scope": "structure_and_guard_navigation" if guard_navigation["status"] == "PASS" else "structure_only",
         "cameras": len(by_class.get("BP_SecurityCamera_C", [])),
         "lasers": len(by_class.get("BP_LaserBarrier_C", [])),
         "linked_laser_cases": linked_case_labels,

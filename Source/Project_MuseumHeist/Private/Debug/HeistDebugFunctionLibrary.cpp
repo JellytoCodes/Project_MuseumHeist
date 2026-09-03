@@ -46,6 +46,7 @@
 #include "Misc/App.h"
 #include "Misc/ConfigCacheIni.h"
 #include "Misc/Paths.h"
+#include "Navigation/PathFollowingComponent.h"
 #include "World/Actors/Escape/HeistVentActor.h"
 #include "World/Actors/Loot/HeistDroppedOriginalActor.h"
 #include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
@@ -6475,14 +6476,25 @@ void UHeistDebugFunctionLibrary::DebugGuardPatrolPathResolved(const UObject* Wor
 }
 
 void UHeistDebugFunctionLibrary::DebugGuardMoveStalled(const UObject* WorldContextObject, const UObject* GuardActor, const EHeistGuardState GuardState, const FVector& Destination,
-													   const float NoProgressSeconds, const uint8 RetryCount)
+	const float NoProgressSeconds, const uint8 RetryCount, const uint8 PathFollowingStatus, const bool bPartialPath, const EHeistGuardState RecoveryState,
+	const bool bRetryMoveRequested, const bool bPatrolWaitStarted)
 {
 #if UE_BUILD_SHIPPING
 	return;
 #else
+	const AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GuardActor);
+	const UHeistPatrolPathComponent* PatrolPath = IsValid(GuardCharacter) ? GuardCharacter->GetPatrolPathComponent() : nullptr;
+	const FVector CurrentLocation = IsValid(GuardCharacter) ? GuardCharacter->GetActorLocation() : FVector::ZeroVector;
+	const FName RouteId = IsValid(PatrolPath) ? PatrolPath->GetPatrolRouteId() : NAME_None;
+	const int32 WaypointIndex = IsValid(PatrolPath) ? PatrolPath->GetCurrentWaypointIndex() : INDEX_NONE;
+	const TCHAR* Recovery = bRetryMoveRequested ? TEXT("RepathRequested") : bPatrolWaitStarted ? TEXT("PatrolWait")
+		: RecoveryState != GuardState ? TEXT("StateTransition") : TEXT("StopMovement");
 	Message(WorldContextObject,
-			FString::Printf(TEXT("Guard move stalled: Guard=%s State=%s Destination=(%.1f,%.1f,%.1f) NoProgress=%.2f Retry=%d Recovery=StopAndRepath"),
-							*GetNameSafe(GuardActor), *UEnum::GetValueAsString(GuardState), Destination.X, Destination.Y, Destination.Z, NoProgressSeconds, RetryCount),
+			FString::Printf(TEXT("Guard move stalled: Guard=%s State=%s CurrentLocation=(%.1f,%.1f,%.1f) Destination=(%.1f,%.1f,%.1f) NoProgress=%.2f Retry=%d PathFollowingStatus=%s PartialPath=%s RouteId=%s WaypointIndex=%d Recovery=%s RecoveryState=%s"),
+				*GetNameSafe(GuardActor), *UEnum::GetValueAsString(GuardState), CurrentLocation.X, CurrentLocation.Y, CurrentLocation.Z,
+				Destination.X, Destination.Y, Destination.Z, NoProgressSeconds, RetryCount,
+				*UEnum::GetValueAsString(static_cast<EPathFollowingStatus::Type>(PathFollowingStatus)), bPartialPath ? TEXT("true") : TEXT("false"),
+				*RouteId.ToString(), WaypointIndex, Recovery, *UEnum::GetValueAsString(RecoveryState)),
 			EHeistDebugLevel::Warning);
 #endif
 }

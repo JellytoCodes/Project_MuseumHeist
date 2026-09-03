@@ -823,8 +823,9 @@ bool UHeistInventoryComponent::TryCommitPlayerDeposit(AHeistPlayerState* Deposit
 	{
 		const FHeistInventoryItem& InventoryItem = ReplicatedInventory.Items[ItemIndex].InventoryItem;
 		FHeistItemDataRow ItemDefinition;
-		const bool bDepositedItem = (DepositScope == EHeistDepositScope::FullEscape && InventoryItem.IsOriginalArtifact()) ||
-			(TryGetItemDefinition(InventoryItem.ItemId, ItemDefinition) && ItemDefinition.ItemType == EHeistItemType::Loot);
+		const bool bDepositedItem = InventoryItem.IsOriginalArtifact()
+			? DepositScope == EHeistDepositScope::FullEscape
+			: (TryGetItemDefinition(InventoryItem.ItemId, ItemDefinition) && ItemDefinition.ItemType == EHeistItemType::Loot);
 		if (bDepositedItem)
 		{
 			ClearQuickSlotReferences(InventoryItem.InstanceId);

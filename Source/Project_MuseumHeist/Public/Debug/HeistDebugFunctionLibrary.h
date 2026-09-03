@@ -168,7 +168,7 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 											 const TCHAR* Decision, const TCHAR* Rule, int32 CoinPriority, EHeistSoundPingType PreviousCandidateType, int32 PreviousCandidatePriority);
 	static void DebugGuardPatrolPathResolved(const UObject* WorldContextObject, const UObject* GuardActor, FName RouteId, int32 WaypointCount);
 	static void DebugGuardMoveStalled(const UObject* WorldContextObject, const UObject* GuardActor, EHeistGuardState GuardState, const FVector& Destination, float NoProgressSeconds,
-									  uint8 RetryCount);
+									  uint8 RetryCount, uint8 PathFollowingStatus, bool bPartialPath, EHeistGuardState RecoveryState, bool bRetryMoveRequested, bool bPatrolWaitStarted);
 	static void DebugGuardInvestigateConfirmationStarted(const UObject* WorldContextObject, const UObject* GuardActor, const FVector& InvestigateLocation, float DurationSeconds);
 	static void DebugGuardSearchTimerStarted(const UObject* WorldContextObject, const UObject* GuardActor, const FVector& SearchLocation, float DurationSeconds);
 	static void DebugGuardSecurityInvestigationRequest(const UObject* WorldContextObject, const UObject* GuardActor, FName SourceId, const FVector& InvestigateLocation,

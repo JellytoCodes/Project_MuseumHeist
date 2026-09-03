@@ -424,6 +424,15 @@ EStateTreeRunStatus FHeistGuardStateTreeTask::Tick(FStateTreeExecutionContext& C
 		return EStateTreeRunStatus::Running;
 	}
 
+#if !UE_BUILD_SHIPPING
+	bool bMoveStalled = false;
+	FVector StalledDestination = FVector::ZeroVector;
+	float StalledNoProgressSeconds = 0.0f;
+	uint8 StalledRetryCount = 0;
+	uint8 StalledPathStatus = static_cast<uint8>(EPathFollowingStatus::Idle);
+	bool bStalledPartialPath = false;
+#endif
+
 	if (!InstanceData.bMoveFinished)
 	{
 		const UPathFollowingComponent* PathFollowingComponent = Controller->GetPathFollowingComponent();
@@ -444,8 +453,14 @@ EStateTreeRunStatus FHeistGuardStateTreeTask::Tick(FStateTreeExecutionContext& C
 				return EStateTreeRunStatus::Running;
 			}
 
-			UHeistDebugFunctionLibrary::DebugGuardMoveStalled(Controller, GuardCharacter, GuardState, InstanceData.MoveDestination, InstanceData.MoveNoProgressSeconds,
-															 InstanceData.MoveRetryCount);
+#if !UE_BUILD_SHIPPING
+			bMoveStalled = true;
+			StalledDestination = InstanceData.MoveDestination;
+			StalledNoProgressSeconds = InstanceData.MoveNoProgressSeconds;
+			StalledRetryCount = InstanceData.MoveRetryCount;
+			StalledPathStatus = static_cast<uint8>(PathFollowingComponent->GetStatus());
+			bStalledPartialPath = PathFollowingComponent->HasPartialPath();
+#endif
 			Controller->StopMovement();
 			InstanceData.bMoveFinished = true;
 			InstanceData.bMoveSucceeded = false;
@@ -527,6 +542,16 @@ EStateTreeRunStatus FHeistGuardStateTreeTask::Tick(FStateTreeExecutionContext& C
 	default:
 		break;
 	}
+
+#if !UE_BUILD_SHIPPING
+	if (bMoveStalled)
+	{
+		const EHeistGuardTaskPhase RecoveryPhase = static_cast<EHeistGuardTaskPhase>(InstanceData.Phase);
+		UHeistDebugFunctionLibrary::DebugGuardMoveStalled(Controller, GuardCharacter, GuardState, StalledDestination, StalledNoProgressSeconds, StalledRetryCount,
+			StalledPathStatus, bStalledPartialPath, GuardStateComponent->GetGuardState(), RecoveryPhase == EHeistGuardTaskPhase::Moving,
+			RecoveryPhase == EHeistGuardTaskPhase::Waiting);
+	}
+#endif
 
 	return EStateTreeRunStatus::Running;
 }

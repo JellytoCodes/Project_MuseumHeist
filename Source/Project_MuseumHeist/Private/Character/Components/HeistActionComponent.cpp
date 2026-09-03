@@ -523,8 +523,9 @@ void UHeistActionComponent::HandleEscapeCastTimerElapsed()
 				(IsValid(ObjectSourceCase) && ObjectSourceCase->CommitOriginalDepositForCarrier(HeistPlayerState, OriginalItem));
 			checkf(bOriginalSourceCommitted, TEXT("Validated Original deposit source must commit after inventory deposit."));
 		}
-		checkf(HeistGameState->CommitPlayerDeposit(HeistPlayerState, CommittedDeposit.GetTotalValue(), CommittedDeposit.ContainsRequiredTarget()),
-			   TEXT("Validated Contract deposit must commit after inventory deposit."));
+		const bool bContractDepositCommitted =
+			HeistGameState->CommitPlayerDeposit(HeistPlayerState, CommittedDeposit.GetTotalValue(), CommittedDeposit.ContainsRequiredTarget());
+		checkf(bContractDepositCommitted, TEXT("Validated Contract deposit must commit after inventory deposit."));
 	}
 
 	if (bMidRunSettlement)

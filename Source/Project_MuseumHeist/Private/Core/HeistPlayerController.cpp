@@ -2079,8 +2079,11 @@ void AHeistPlayerController::Server_RequestLootPickup_Implementation(AHeistLootA
 		return;
 	}
 
-	checkf(RequestContext.PlayerState->AddLootScoreAndWeight(ScoreDelta, WeightDelta), TEXT("Validated loot score and weight must apply after inventory commit"));
-	checkf(TargetLootActor->CommitPickupReservation(RequestContext.Character), TEXT("Reserved loot must commit after inventory and score/weight commit"));
+	// Gameplay commits must execute even when Shipping compiles out checkf.
+	const bool bLootTotalsCommitted = RequestContext.PlayerState->AddLootScoreAndWeight(ScoreDelta, WeightDelta);
+	checkf(bLootTotalsCommitted, TEXT("Validated loot score and weight must apply after inventory commit"));
+	const bool bPickupCommitted = TargetLootActor->CommitPickupReservation(RequestContext.Character);
+	checkf(bPickupCommitted, TEXT("Reserved loot must commit after inventory and score/weight commit"));
 	if (AHeistGameState* MutableHeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr)
 	{
 		MutableHeistGameState->RefreshContractCarriedValue();
@@ -2138,7 +2141,8 @@ void AHeistPlayerController::Server_RequestDroppedOriginalPickup_Implementation(
 		return;
 	}
 
-	checkf(TargetDroppedOriginal->CommitPickupReservation(RequestContext.Character), TEXT("Reserved Dropped Original must commit after source-case claim."));
+	const bool bPickupCommitted = TargetDroppedOriginal->CommitPickupReservation(RequestContext.Character);
+	checkf(bPickupCommitted, TEXT("Reserved Dropped Original must commit after source-case claim."));
 	UE_LOG(LogHeistNetwork, Log,
 		   TEXT("Dropped Original pickup committed: Actor=%s Source=%s Artifact=%s Value=%d Weight=%.1f Required=%s PlayerId=%d Distance=%.1f Authority=true Result=PASS"),
 		   *GetNameSafe(TargetDroppedOriginal), *GetNameSafe(SourceDisplayCase), *TargetDroppedOriginal->GetArtifactId().ToString(), TargetDroppedOriginal->GetArtifactValue(),
@@ -2363,7 +2367,8 @@ void AHeistPlayerController::Server_RequestTakeOriginal_Implementation(AHeistPai
 	}
 
 	FHeistInventoryItem OriginalItem;
-	checkf(RequestContext.InventoryComponent->TryGetOriginalArtifactForSourceCase(TargetDisplayCase, OriginalItem), TEXT("Accepted painting Original must exist in the inventory grid."));
+	const bool bOriginalItemFound = RequestContext.InventoryComponent->TryGetOriginalArtifactForSourceCase(TargetDisplayCase, OriginalItem);
+	checkf(bOriginalItemFound, TEXT("Accepted painting Original must exist in the inventory grid."));
 	UHeistDebugFunctionLibrary::Message(
 		this, FString::Printf(TEXT("Original take request accepted: Case=%s Artifact=%s PlayerId=%d CarryWeight=%.1f PreviousWeight=%.1f TotalWeight=%.1f State=%s Authority=true Result=PASS"),
 							  *GetNameSafe(TargetDisplayCase), *OriginalItem.ItemId.ToString(), RequestContext.PlayerState->HeistPlayerId, OriginalItem.Weight, PreviousWeight,
@@ -2419,7 +2424,8 @@ void AHeistPlayerController::Server_RequestTakeObjectOriginal_Implementation(AHe
 	}
 
 	FHeistInventoryItem OriginalItem;
-	checkf(RequestContext.InventoryComponent->TryGetOriginalArtifactForSourceCase(TargetDisplayCase, OriginalItem), TEXT("Accepted object Original must exist in the inventory grid."));
+	const bool bOriginalItemFound = RequestContext.InventoryComponent->TryGetOriginalArtifactForSourceCase(TargetDisplayCase, OriginalItem);
+	checkf(bOriginalItemFound, TEXT("Accepted object Original must exist in the inventory grid."));
 	UHeistDebugFunctionLibrary::Message(
 		this,
 		FString::Printf(
@@ -2866,8 +2872,8 @@ void AHeistPlayerController::Server_RequestDropInventoryItem_Implementation(cons
 	}
 
 	checkf(RemovedItem.ItemId == DropRequest.ItemId, TEXT("Validated inventory drop item changed during commit."));
-	checkf(RequestContext.PlayerState->RemoveLootScoreAndWeight(LootDefinition.ScoreValue, ItemDefinition.Weight),
-		   TEXT("Validated loot score and weight removal must succeed after inventory commit."));
+	const bool bLootTotalsCommitted = RequestContext.PlayerState->RemoveLootScoreAndWeight(LootDefinition.ScoreValue, ItemDefinition.Weight);
+	checkf(bLootTotalsCommitted, TEXT("Validated loot score and weight removal must succeed after inventory commit."));
 	if (AHeistGameState* MutableHeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr)
 	{
 		MutableHeistGameState->RefreshContractCarriedValue();
@@ -3144,7 +3150,8 @@ void AHeistPlayerController::Server_DebugRequestAddInventoryItem_Implementation(
 			return;
 		}
 
-		checkf(RequestContext.PlayerState->AddLootScoreAndWeight(LootDefinition.ScoreValue, ItemDefinition.Weight), TEXT("Validated debug Loot totals must commit."));
+		const bool bLootTotalsCommitted = RequestContext.PlayerState->AddLootScoreAndWeight(LootDefinition.ScoreValue, ItemDefinition.Weight);
+		checkf(bLootTotalsCommitted, TEXT("Validated debug Loot totals must commit."));
 		if (AHeistGameState* HeistGameState = GetWorld()->GetGameState<AHeistGameState>())
 		{
 			HeistGameState->RefreshContractCarriedValue();
