@@ -143,7 +143,7 @@ bool FHeistResultScreenPresentationTest::RunTest(const FString& Parameters)
 	Recap.bRequiredTarget = true;
 
 	TestEqual(TEXT("Success outcome is player-facing Korean"), UHeistResultViewModel::BuildOutcomeDisplayText(EHeistContractOutcome::Success).ToString(), FString(TEXT("임무 성공")));
-	TestEqual(TEXT("Partial haul uses the lightweight success heading"), UHeistResultViewModel::BuildOutcomeDisplayText(EHeistContractOutcome::PartialHaul).ToString(), FString(TEXT("임무 성공")));
+	TestEqual(TEXT("Partial haul is distinct from full success"), UHeistResultViewModel::BuildOutcomeDisplayText(EHeistContractOutcome::PartialHaul).ToString(), FString(TEXT("부분 성공")));
 	TestEqual(TEXT("Failure outcome is player-facing Korean"), UHeistResultViewModel::BuildOutcomeDisplayText(EHeistContractOutcome::Failed).ToString(), FString(TEXT("임무 실패")));
 
 	const FString RecapSummary = UHeistResultViewModel::BuildReplicaRecapSummaryText(TeamResult).ToString();

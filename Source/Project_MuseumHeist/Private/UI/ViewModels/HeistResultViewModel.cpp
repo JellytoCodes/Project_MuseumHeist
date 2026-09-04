@@ -103,9 +103,13 @@ const FText& UHeistResultViewModel::GetReplicaRecapText() const
 
 FText UHeistResultViewModel::BuildOutcomeDisplayText(const EHeistContractOutcome Outcome)
 {
-	if (Outcome == EHeistContractOutcome::Success || Outcome == EHeistContractOutcome::PartialHaul)
+	if (Outcome == EHeistContractOutcome::Success)
 	{
 		return NSLOCTEXT("HeistResult", "OutcomeSuccess", "임무 성공");
+	}
+	if (Outcome == EHeistContractOutcome::PartialHaul)
+	{
+		return NSLOCTEXT("HeistResult", "OutcomePartialHaul", "부분 성공");
 	}
 	if (Outcome == EHeistContractOutcome::Failed)
 	{
