@@ -341,6 +341,20 @@ foreach ($assetDefinition in $assetDefinitions)
     }
     else
     {
+        $sourceUrl = [string]$manifestTemplate.source_url
+        if ([string]::IsNullOrWhiteSpace([string]$manifestTemplate.rights))
+        {
+            $failures.Add("Missing rights metadata for $($assetDefinition.template_id).")
+        }
+
+        $sourceUrlIsSearchPage =
+            $sourceUrl -match '^https?://commons\.wikimedia\.org/wiki/Special:MediaSearch(?:\?|$)' -or
+            $sourceUrl -match '^https?://(?:www\.)?metmuseum\.org/art/collection/search\?'
+        if ($sourceUrlIsSearchPage)
+        {
+            $failures.Add("Source URL is a search page for $($assetDefinition.template_id); use the direct source record.")
+        }
+
         $manifestPalette = @($manifestTemplate.palette_srgb | ForEach-Object { $_.ToUpperInvariant() })
         $assetPalette = @($assetDefinition.palette_srgb | ForEach-Object { $_.ToUpperInvariant() })
         $manifestContract =
