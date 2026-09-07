@@ -6,7 +6,11 @@ param(
 	[ValidateSet('', 'Development', 'Shipping')]
 	[string]$ExpectedConfiguration = '',
 
-	[string]$ExpectedVersion = ''
+	[string]$ExpectedVersion = '',
+
+	[string]$ExpectedGitCommit = '',
+
+	[switch]$RequireClean
 )
 
 $ErrorActionPreference = 'Stop'
@@ -43,15 +47,39 @@ if ($null -ne $buildInfoFile) {
 	}
 }
 
+$configuration = ''
 if ($null -ne $buildInfo) {
-	if (-not [string]::IsNullOrWhiteSpace($ExpectedConfiguration) -and $buildInfo.configuration -ne $ExpectedConfiguration) {
-		Add-Failure ("Configuration mismatch. Expected={0} Actual={1}" -f $ExpectedConfiguration, $buildInfo.configuration)
+	$configurationProperty = $buildInfo.PSObject.Properties['configuration']
+	if ($null -ne $configurationProperty) {
+		$configuration = [string]$configurationProperty.Value
+	}
+	if ($configuration -notin @('Development', 'Shipping')) {
+		Add-Failure ("BuildInfo.json has an unsupported configuration: {0}" -f $configuration)
+	}
+	if (-not [string]::IsNullOrWhiteSpace($ExpectedConfiguration) -and $configuration -ne $ExpectedConfiguration) {
+		Add-Failure ("Configuration mismatch. Expected={0} Actual={1}" -f $ExpectedConfiguration, $configuration)
 	}
 	if (-not [string]::IsNullOrWhiteSpace($ExpectedVersion) -and $buildInfo.projectVersion -ne $ExpectedVersion) {
 		Add-Failure ("Version mismatch. Expected={0} Actual={1}" -f $ExpectedVersion, $buildInfo.projectVersion)
 	}
 	if ([string]::IsNullOrWhiteSpace([string]$buildInfo.projectVersion)) {
 		Add-Failure 'BuildInfo.json has an empty projectVersion.'
+	}
+	if (-not [string]::IsNullOrWhiteSpace($ExpectedGitCommit)) {
+		$gitCommitProperty = $buildInfo.PSObject.Properties['gitCommit']
+		$actualGitCommit = if ($null -ne $gitCommitProperty) { [string]$gitCommitProperty.Value } else { '' }
+		if ($actualGitCommit -ne $ExpectedGitCommit) {
+			Add-Failure ("Git commit mismatch. Expected={0} Actual={1}" -f $ExpectedGitCommit, $actualGitCommit)
+		}
+	}
+	if ($RequireClean) {
+		$gitDirtyProperty = $buildInfo.PSObject.Properties['gitDirty']
+		if ($null -eq $gitDirtyProperty -or $gitDirtyProperty.Value -isnot [bool]) {
+			Add-Failure 'BuildInfo.json must contain a boolean gitDirty value when RequireClean is specified.'
+		}
+		elseif ($gitDirtyProperty.Value) {
+			Add-Failure 'Package was built from a dirty working tree.'
+		}
 	}
 }
 
@@ -90,7 +118,6 @@ $shippingRuntimeExecutables = @(
 	Get-ChildItem -LiteralPath $resolvedPackageRoot -Recurse -File -Filter 'Project_MuseumHeist-Win64-Shipping.exe'
 )
 
-$configuration = if ($null -ne $buildInfo) { [string]$buildInfo.configuration } else { $ExpectedConfiguration }
 if ($configuration -eq 'Development') {
 	if ($developmentRuntimeExecutables.Count -eq 0) {
 		Add-Failure 'Development runtime executable is missing.'
@@ -131,3 +158,5 @@ Write-Output ("Packaging validation: Root={0} Configuration={1} Version={2} Exec
 	$buildInfo.configuration,
 	$buildInfo.projectVersion,
 	$gameExecutable.FullName)
+
+exit 0

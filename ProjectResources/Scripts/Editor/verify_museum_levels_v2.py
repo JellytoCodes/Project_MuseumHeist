@@ -523,6 +523,7 @@ def verify_guard_navigation(world, guards, waypoint_routes, mode):
         "reason": "NavigationNotRequested",
         "expected_segments": 0,
         "checked_segments": 0,
+        "already_at_goal_segments": 0,
         "failed_segments": [],
     }
     if mode == "off":
@@ -558,10 +559,8 @@ def verify_guard_navigation(world, guards, waypoint_routes, mode):
         if navigation is None:
             result["reason"] = "MissingNavigationSystem"
             return result
-        nav_data = prop(navigation, "main_nav_data")
-        if nav_data is None:
-            result["reason"] = "MissingNavigationData"
-            return result
+        # MainNavData is not exposed to Python in UE 5.8; None from prop() cannot
+        # distinguish an inaccessible property from a missing navigation object.
         # UE uses MainNavData for a single supported agent. Multiple agents need
         # agent-specific projection and can assert if the pawn has no matching data.
         supported_agents = prop(navigation, "supported_agents")
@@ -573,14 +572,15 @@ def verify_guard_navigation(world, guards, waypoint_routes, mode):
             return result
 
         # UE Python maps bool + FVector out to FVector on success, None on failure.
-        # Probe nearby nav without rebuilding, relocating actors or saving the map.
+        # NavData=None resolves existing default data with DontCreate. The actual
+        # projection/path results below establish availability without rebuild/save.
         locations = {}
         for _, _, start, end in segments:
             for actor in (start, end):
                 actor_path = actor.get_path_name()
                 if actor_path not in locations:
                     locations[actor_path] = unreal.NavigationSystemV1.project_point_to_navigation(
-                        world, actor.get_actor_location(), nav_data, None, unreal.Vector(50.0, 50.0, 200.0)
+                        world, actor.get_actor_location(), None, None, unreal.Vector(50.0, 50.0, 200.0)
                     )
         if all(location is None for location in locations.values()):
             result["reason"] = "NoQueryableNavigationAtRoutePoints"
@@ -598,6 +598,18 @@ def verify_guard_navigation(world, guards, waypoint_routes, mode):
             if start_location is None or end_location is None:
                 segment["reason"] = "EndpointOffNavigation"
                 result["failed_segments"].append(segment)
+                continue
+            # AAIController returns AlreadyAtGoal before finding a path when the
+            # guard is placed exactly at its first waypoint. A one-point path is
+            # not FNavigationPath::IsValid, so count this narrow case separately.
+            original_start, original_end = start.get_actor_location(), end.get_actor_location()
+            if (start == guard
+                    and math.hypot(original_start.x - original_end.x, original_start.y - original_end.y) <= 0.01
+                    and all(abs(a - b) <= 0.01 for a, b in zip(
+                        (start_location.x, start_location.y, start_location.z),
+                        (end_location.x, end_location.y, end_location.z)))):
+                result["checked_segments"] += 1
+                result["already_at_goal_segments"] += 1
                 continue
             path = unreal.NavigationSystemV1.find_path_to_location_synchronously(
                 world, start_location, end_location, guard
@@ -862,6 +874,26 @@ for code in selected_level_codes:
                 len(lower_walls), len(upper_walls)
             )
         )
+    if code == "M03":
+        tail_label = "LDV2_M03_HighValueAirlockNorth_02"
+        north_airlock_labels = {
+            actor_label(actor) for actor in lower_walls + upper_walls
+            if actor_label(actor).startswith("LDV2_M03_HighValueAirlockNorth_")
+        }
+        if north_airlock_labels != {tail_label, tail_label + "_Upper"}:
+            failures.append("M03 north airlock must reuse SpineSouth doorway with only its 400cm end wall")
+        for label in (tail_label, tail_label + "_Upper"):
+            tail = by_label.get(label)
+            if tail is None:
+                continue
+            location, scale = tail.get_actor_location(), tail.get_actor_scale3d()
+            component = tail.get_component_by_class(unreal.StaticMeshComponent)
+            mesh = prop(component, "static_mesh") if component else None
+            if (not close_float(location.x, 7600.0) or not close_float(location.y, -1200.0)
+                    or any(not close_float(value, 1.0) for value in (scale.x, scale.y, scale.z))
+                    or not close_float(tail.get_actor_rotation().yaw, 0.0)
+                    or mesh is None or mesh.get_name() != "Wall_400x400"):
+                failures.append("M03 north airlock end wall transform/mesh mismatch: " + label)
     if code == "M01":
         door_frame_folder = "LDV2/M01/Architecture/DoorFrames"
         door_frames = [
@@ -948,18 +980,27 @@ for code in selected_level_codes:
             }
             if actual_floor_xy != expected_floor_xy:
                 failures.append("M01 floor origin grid mismatch")
-            bounds = (-M01_HALF_X, M01_HALF_X, -M01_HALF_Y, M01_HALF_Y)
-        else:
-            centers_x = [actor.get_actor_location().x for actor in floors]
-            centers_y = [actor.get_actor_location().y for actor in floors]
-            bounds = (
-                min(centers_x) - 400.0,
-                max(centers_x) + 400.0,
-                min(centers_y) - 400.0,
-                max(centers_y) + 400.0,
+        floor_corners = []
+        for floor in floors:
+            component = floor.get_component_by_class(unreal.StaticMeshComponent)
+            mesh = prop(component, "static_mesh") if component else None
+            if mesh is None:
+                failures.append("floor static mesh missing: " + actor_label(floor))
+                continue
+            local_bounds = mesh.get_bounding_box()
+            transform = component.get_world_transform()
+            floor_corners.extend(
+                transform.transform_location(unreal.Vector(x, y, z))
+                for x in (local_bounds.min.x, local_bounds.max.x)
+                for y in (local_bounds.min.y, local_bounds.max.y)
+                for z in (local_bounds.min.z, local_bounds.max.z)
             )
+        bounds = (
+            min(point.x for point in floor_corners), max(point.x for point in floor_corners),
+            min(point.y for point in floor_corners), max(point.y for point in floor_corners),
+        ) if floor_corners else ()
         expected_bounds = (-expected["half_x"], expected["half_x"], -expected["half_y"], expected["half_y"])
-        if any(not close_float(actual, target) for actual, target in zip(bounds, expected_bounds)):
+        if len(bounds) != 4 or any(not close_float(actual, target) for actual, target in zip(bounds, expected_bounds)):
             failures.append("floor bounds {} != {}".format(bounds, expected_bounds))
     else:
         bounds = ()

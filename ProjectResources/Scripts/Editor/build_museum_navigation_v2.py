@@ -56,6 +56,13 @@ def tick(delta_seconds):
             state["phase"] = "building"
             world = editor_subsystem.get_editor_world()
             unreal.AutomationLibrary.finish_loading_before_screenshot()
+            nav_meshes = unreal.GameplayStatics.get_all_actors_of_class(world, unreal.RecastNavMesh)
+            if len(nav_meshes) != 1:
+                quit_editor("MH_LEVEL_NAV_BUILD_EXPECTED_SINGLE_RECAST=" + map_path, True)
+                return
+            # The default 1.3 simplifies voxel corners into chords that cut into
+            # the guard capsule clearance. Preserve the authored agent dimensions.
+            nav_meshes[0].set_editor_property("max_simplification_error", 0.1)
             unreal.SystemLibrary.execute_console_command(world, "BUILDPATHS")
             if not level_subsystem.save_current_level():
                 quit_editor("MH_LEVEL_NAV_BUILD_SAVE_FAILED=" + map_path, True)

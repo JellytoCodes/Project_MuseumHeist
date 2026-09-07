@@ -13,6 +13,15 @@ param(
 
 	[string]$OutputRoot = '',
 
+	[ValidateSet('', 'Development', 'Shipping')]
+	[string]$ExpectedConfiguration = '',
+
+	[string]$ExpectedVersion = '',
+
+	[string]$ExpectedGitCommit = '',
+
+	[switch]$RequireClean,
+
 	[switch]$Clean
 )
 
@@ -41,7 +50,7 @@ function Assert-PathWithinRoot {
 $projectRoot = Get-NormalizedPath -Path (Join-Path $PSScriptRoot '..\..\..')
 $resolvedPackageRoot = (Resolve-Path -LiteralPath $PackageRoot).Path
 $validator = Join-Path $PSScriptRoot 'ValidatePackage.ps1'
-& $validator -PackageRoot $resolvedPackageRoot
+& $validator -PackageRoot $resolvedPackageRoot -ExpectedConfiguration $ExpectedConfiguration -ExpectedVersion $ExpectedVersion -ExpectedGitCommit $ExpectedGitCommit -RequireClean:$RequireClean
 if ($LASTEXITCODE -ne 0) {
 	throw "Package validation failed with exit code $LASTEXITCODE."
 }

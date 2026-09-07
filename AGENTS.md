@@ -107,7 +107,7 @@ Project_MuseumHeist는 Unreal Engine 5.8 C++ 기반의 **2~4인 온라인 협동
 3. `Museum_Heist_GDD.docx`
    - 제품 비전, 재미의 근거, Player Experience, Contract Run, Level/Art/Audio 방향과 Balance 의도
 
-Notion의 `Museum Heist — Project Leaderboard`와 연결된 `주차별 작업보드`, `Test Log`, `결정 로그`는 프로젝트 진행·검증·의사결정 기록의 Live Source of Truth다. 새 작업은 `AGENTS.md`를 읽은 직후 Notion 작업보드의 `진행중`/`검토중` Task와 사용자가 지정한 Task를 반드시 라이브 조회한다. 로컬 진행 캐시, Inbox, Handoff 또는 Roadmap Markdown은 운영하지 않는다.
+Notion의 [Museum Heist — Project Leaderboard](https://app.notion.com/p/3831d26a5dfb81bfa7edeb4974818714)와 연결된 `주차별 작업보드`, `Test Log`, `결정 로그`는 프로젝트 진행·검증·의사결정 기록의 Live Source of Truth다. 새 작업은 `AGENTS.md` 전체 → [Museum Heist — 현재 이어가기](https://app.notion.com/p/3c71d26a5dfb81e98fe6cd14c2cfd6d6) → 라이브 작업보드의 `진행중`/`검토중` 및 사용자 지정 Task → 실제 Git·코드·에셋 순서로 확인한다. 이어가기 페이지는 탐색용 요약이며 Task 상태와 현재 구현 증거를 대체하지 않는다. 로컬 진행 캐시, Inbox, Handoff 또는 Roadmap Markdown은 운영하지 않는다.
 
 Notion은 진행 상태의 권한을 가지지만 Gameplay Rule, Authority, Data Contract와 구현 사실을 덮어쓰지 않는다. Notion Task 내용이 AGENTS/GDD/TDD 또는 현재 코드와 충돌하면 어느 한쪽을 추측으로 동기화하지 않고 차이를 보고한다. Notion 연결 또는 조회가 실패하면 현재 대화에서 실패를 보고하고 Task 완료·우선순위·다음 작업을 확정하지 않는다. 실패를 우회하기 위한 로컬 Markdown 캐시는 만들지 않는다.
 

@@ -2677,7 +2677,8 @@ void AHeistGameMode::ApplyPlayerCountGuardScaling()
 		}
 		else
 		{
-			SpawnTransform.SetLocation(ProjectedLocation.Location);
+			SpawnTransform.SetLocation(ProjectedLocation.Location
+				+ FVector::UpVector * SourceGuard->GetSimpleCollisionHalfHeight());
 			++NavigationProjectedSpawnCount;
 		}
 		AHeistGuardCharacter* SupplementalGuard = GetWorld()->SpawnActorDeferred<AHeistGuardCharacter>(

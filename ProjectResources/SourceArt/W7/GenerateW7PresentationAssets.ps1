@@ -1,8 +1,15 @@
 param(
-	[string]$OutputDirectory = (Join-Path $PSScriptRoot 'Generated')
+	[string]$OutputDirectory = (Join-Path $PSScriptRoot 'Generated'),
+	[switch]$VentFeedbackOnly,
+	[switch]$FloorPlanOnly
 )
 
 $ErrorActionPreference = 'Stop'
+
+if ($VentFeedbackOnly -and $FloorPlanOnly)
+{
+	throw 'VentFeedbackOnly and FloorPlanOnly cannot be used together.'
+}
 
 Add-Type -AssemblyName System.Drawing
 
@@ -14,141 +21,68 @@ if (-not (Test-Path -LiteralPath $OutputDirectory))
 function New-FloorPlanTexture
 {
 	param(
-		[string]$MapId,
+		[pscustomobject]$Geometry,
 		[System.Drawing.Color]$AccentColor,
 		[System.Drawing.Color]$SecondaryColor
 	)
 
 	$width = 1024
 	$height = 640
-	$bitmap = [System.Drawing.Bitmap]::new($width, $height)
-	$graphics = [System.Drawing.Graphics]::FromImage($bitmap)
-	$graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
-	$graphics.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAliasGridFit
-
-	$background = [System.Drawing.Color]::FromArgb(255, 9, 19, 31)
-	$graphics.Clear($background)
-
-	$minorGridPen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(28, $AccentColor), 1.0)
-	$majorGridPen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(52, $AccentColor), 1.0)
-	for ($x = 32; $x -lt $width; $x += 32)
+	$spanX = [double]$Geometry.worldMax[0] - [double]$Geometry.worldMin[0]
+	$spanY = [double]$Geometry.worldMax[1] - [double]$Geometry.worldMin[1]
+	$resources = @()
+	try
 	{
-		$graphics.DrawLine(($x % 128 -eq 0) ? $majorGridPen : $minorGridPen, $x, 0, $x, $height)
+		$bitmap = [System.Drawing.Bitmap]::new($width, $height)
+		$resources += $bitmap
+		$graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+		$resources += $graphics
+		$graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+		$graphics.Clear([System.Drawing.Color]::FromArgb(255, 9, 19, 31))
+
+		$floorBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(46, $AccentColor))
+		$resources += $floorBrush
+		$wallBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(225, $AccentColor))
+		$resources += $wallBrush
+		$wallEdgePen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(150, $SecondaryColor), 1.0)
+		$resources += $wallEdgePen
+		$doorBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(255, 238, 194, 91))
+		$resources += $doorBrush
+
+		foreach ($layer in @('floors', 'doors', 'walls'))
+		{
+			$brush = switch ($layer)
+			{
+				'floors' { $floorBrush }
+				'walls' { $wallBrush }
+				'doors' { $doorBrush }
+			}
+			foreach ($shape in $Geometry.$layer)
+			{
+				$points = [System.Drawing.PointF[]]@(foreach ($point in $shape.polygon)
+				{
+					# Match PositiveY WorldMin/WorldMax projection and UV * CanvasSize; no texture inset.
+					$u = ([double]$point[0] - [double]$Geometry.worldMin[0]) / $spanX
+					$v = 1.0 - ([double]$point[1] - [double]$Geometry.worldMin[1]) / $spanY
+					[System.Drawing.PointF]::new([single]($u * $width), [single]($v * $height))
+				})
+				$graphics.FillPolygon($brush, $points)
+				if ($layer -eq 'walls')
+				{
+					$graphics.DrawPolygon($wallEdgePen, $points)
+				}
+			}
+		}
+
+		$outputPath = Join-Path $OutputDirectory ("T_FloorPlan_{0}.png" -f $Geometry.mapId)
+		$bitmap.Save($outputPath, [System.Drawing.Imaging.ImageFormat]::Png)
 	}
-	for ($y = 32; $y -lt $height; $y += 32)
+	finally
 	{
-		$graphics.DrawLine(($y % 128 -eq 0) ? $majorGridPen : $minorGridPen, 0, $y, $width, $y)
-	}
-
-	$roomFill = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(46, $AccentColor))
-	$roomFillSecondary = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(36, $SecondaryColor))
-	$wallPen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(225, $AccentColor), 8.0)
-	$innerPen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(150, $SecondaryColor), 3.0)
-	$doorPen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(255, 238, 194, 91), 5.0)
-
-	$titleFont = [System.Drawing.Font]::new('Malgun Gothic', 24, [System.Drawing.FontStyle]::Bold)
-	$roomFont = [System.Drawing.Font]::new('Malgun Gothic', 17, [System.Drawing.FontStyle]::Bold)
-	$smallFont = [System.Drawing.Font]::new('Malgun Gothic', 12, [System.Drawing.FontStyle]::Regular)
-	$titleBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(245, 231, 244, 255))
-	$textBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(238, $AccentColor))
-	$mutedBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(190, $SecondaryColor))
-
-	$graphics.DrawString("$MapId 박물관 도면", $titleFont, $titleBrush, 42, 24)
-
-	switch ($MapId)
-	{
-		'M01'
+		for ($resourceIndex = $resources.Count - 1; $resourceIndex -ge 0; --$resourceIndex)
 		{
-			$northLoop = [System.Drawing.Rectangle]::new(150, 92, 714, 208)
-			$southLoop = [System.Drawing.Rectangle]::new(150, 340, 714, 208)
-			$westVent = [System.Drawing.Rectangle]::new(66, 248, 110, 144)
-			$eastWing = [System.Drawing.Rectangle]::new(848, 218, 110, 204)
-			foreach ($room in @($northLoop, $southLoop, $westVent, $eastWing))
-			{
-				$graphics.FillRectangle($roomFill, $room)
-				$graphics.DrawRectangle($wallPen, $room)
-			}
-			$graphics.FillEllipse($roomFillSecondary, 422, 216, 180, 208)
-			$graphics.DrawEllipse($wallPen, 422, 216, 180, 208)
-			$graphics.DrawLine($doorPen, 150, 270, 150, 330)
-			$graphics.DrawLine($doorPen, 864, 270, 864, 330)
-			$graphics.DrawLine($doorPen, 474, 216, 550, 216)
-			$graphics.DrawLine($doorPen, 474, 424, 550, 424)
-			$graphics.DrawString('북측 순환 회랑', $roomFont, $textBrush, 402, 144)
-			$graphics.DrawString('남측 순환 회랑', $roomFont, $textBrush, 402, 476)
-			$graphics.DrawString('로툰다', $roomFont, $mutedBrush, 472, 304)
-			$graphics.DrawString('귀환 벤트', $smallFont, $mutedBrush, 78, 304)
-			$graphics.DrawString('타깃 윙', $smallFont, $mutedBrush, 872, 304)
+			$resources[$resourceIndex].Dispose()
 		}
-		'M02'
-		{
-			$body = [System.Drawing.Rectangle]::new(70, 82, 884, 476)
-			$graphics.FillRectangle($roomFill, $body)
-			$graphics.DrawRectangle($wallPen, $body)
-			$serpentineWalls = @(
-				@(206, 184, 206, 548), @(334, 82, 334, 438), @(462, 184, 462, 548),
-				@(590, 82, 590, 438), @(718, 184, 718, 548), @(846, 82, 846, 438)
-			)
-			foreach ($wall in $serpentineWalls)
-			{
-				$graphics.DrawLine($wallPen, $wall[0], $wall[1], $wall[2], $wall[3])
-			}
-			foreach ($shortcut in @(@(206, 338), @(334, 248), @(462, 386), @(590, 232), @(718, 366), @(846, 244)))
-			{
-				$graphics.DrawLine($doorPen, $shortcut[0], $shortcut[1] - 24, $shortcut[0], $shortcut[1] + 24)
-			}
-			$graphics.FillEllipse($roomFillSecondary, 382, 214, 176, 128)
-			$graphics.DrawEllipse($innerPen, 382, 214, 176, 128)
-			$graphics.DrawString('진입', $smallFont, $mutedBrush, 86, 506)
-			$graphics.DrawString('비대칭 달빛 정원', $roomFont, $textBrush, 394, 258)
-			$graphics.DrawString('S자 안전 동선', $roomFont, $textBrush, 420, 494)
-			$graphics.DrawString('감시 지름길', $smallFont, $mutedBrush, 694, 132)
-			$graphics.DrawString('배출 벤트', $smallFont, $mutedBrush, 720, 92)
-		}
-		'M03'
-		{
-			$northLane = [System.Drawing.Rectangle]::new(70, 104, 884, 126)
-			$centralLane = [System.Drawing.Rectangle]::new(70, 258, 884, 124)
-			$southLane = [System.Drawing.Rectangle]::new(70, 410, 884, 126)
-			foreach ($room in @($northLane, $centralLane, $southLane))
-			{
-				$graphics.FillRectangle(($room.Y -eq 258) ? $roomFill : $roomFillSecondary, $room)
-				$graphics.DrawRectangle($wallPen, $room)
-			}
-			foreach ($x in @(150, 390, 600, 824))
-			{
-				$graphics.DrawLine($doorPen, $x, 230, $x, 258)
-			}
-			foreach ($x in @(260, 506, 724, 900))
-			{
-				$graphics.DrawLine($doorPen, $x, 382, $x, 410)
-			}
-			$graphics.DrawRectangle($innerPen, 474, 238, 92, 164)
-			$graphics.DrawString('북측 유리 레인', $roomFont, $textBrush, 418, 146)
-			$graphics.DrawString('중앙 스파인', $roomFont, $textBrush, 420, 278)
-			$graphics.DrawString('남측 복원 레인', $roomFont, $textBrush, 412, 452)
-			$graphics.DrawString('엇갈린 교차', $smallFont, $mutedBrush, 478, 342)
-			$graphics.DrawString('진입/귀환 벤트', $smallFont, $mutedBrush, 78, 302)
-			$graphics.DrawString('타깃', $smallFont, $mutedBrush, 900, 146)
-		}
-		default
-		{
-			throw "Unknown floor plan MapId: $MapId"
-		}
-	}
-
-	$graphics.DrawString('N', $roomFont, $titleBrush, 936, 48)
-	$graphics.DrawLine($wallPen, 947, 86, 947, 122)
-	$graphics.DrawLine($wallPen, 947, 86, 934, 104)
-	$graphics.DrawLine($wallPen, 947, 86, 960, 104)
-	$graphics.DrawString('고정 도면 · 실제 위치는 마커로 갱신', $smallFont, $mutedBrush, 42, 596)
-
-	$outputPath = Join-Path $OutputDirectory ("T_FloorPlan_{0}.png" -f $MapId)
-	$bitmap.Save($outputPath, [System.Drawing.Imaging.ImageFormat]::Png)
-
-	foreach ($resource in @($minorGridPen, $majorGridPen, $roomFill, $roomFillSecondary, $wallPen, $innerPen, $doorPen, $titleFont, $roomFont, $smallFont, $titleBrush, $textBrush, $mutedBrush, $graphics, $bitmap))
-	{
-		$resource.Dispose()
 	}
 }
 
@@ -353,7 +287,7 @@ function New-HeistCueWave
 {
 	param(
 		[string]$FileName,
-		[ValidateSet('Arrested', 'Rescue', 'CarryFootstep', 'HeavyFootstep')]
+		[ValidateSet('Arrested', 'Rescue', 'CarryFootstep', 'HeavyFootstep', 'VentOpened', 'VentSettlement')]
 		[string]$Mode
 	)
 
@@ -363,6 +297,8 @@ function New-HeistCueWave
 		'Rescue' { 0.85 }
 		'CarryFootstep' { 0.32 }
 		'HeavyFootstep' { 0.46 }
+		'VentOpened' { 0.70 }
+		'VentSettlement' { 0.72 }
 	}
 	$sampleRate = 48000
 	$channels = 2
@@ -446,6 +382,33 @@ function New-HeistCueWave
 					$left = ($thump + $contact) * 0.64
 					$right = (0.96 * $thump + 0.78 * $contact) * 0.62
 				}
+				'VentOpened'
+				{
+					# A restrained single bell identifies access opening; it has no loop metadata.
+					$bellEnvelope = (1.0 - [Math]::Exp(-250.0 * $t)) * [Math]::Exp(-7.5 * $t)
+					$signal = [Math]::Sin(2.0 * [Math]::PI * 523.25 * $t)
+					$signal += 0.18 * [Math]::Sin(2.0 * [Math]::PI * 1046.50 * $t)
+					$left = $signal * $bellEnvelope * 0.36
+					$right = $left
+				}
+				'VentSettlement'
+				{
+					# Two rising sine bells confirm a secured deposit without borrowing the rescue cue.
+					$signal = 0.0
+					foreach ($note in @(@(0.00, 659.25), @(0.16, 987.77)))
+					{
+						$noteTime = $t - $note[0]
+						if ($noteTime -ge 0.0)
+						{
+							$bellEnvelope = (1.0 - [Math]::Exp(-250.0 * $noteTime)) * [Math]::Exp(-8.5 * $noteTime)
+							$bell = [Math]::Sin(2.0 * [Math]::PI * $note[1] * $noteTime)
+							$bell += 0.10 * [Math]::Sin(4.0 * [Math]::PI * $note[1] * $noteTime)
+							$signal += 0.30 * $bellEnvelope * $bell
+						}
+					}
+					$left = $signal
+					$right = $signal
+				}
 			}
 
 			$left *= $edgeEnvelope
@@ -461,9 +424,127 @@ function New-HeistCueWave
 	}
 }
 
-New-FloorPlanTexture -MapId 'M01' -AccentColor ([System.Drawing.Color]::FromArgb(255, 75, 210, 236)) -SecondaryColor ([System.Drawing.Color]::FromArgb(255, 128, 162, 205))
-New-FloorPlanTexture -MapId 'M02' -AccentColor ([System.Drawing.Color]::FromArgb(255, 130, 170, 255)) -SecondaryColor ([System.Drawing.Color]::FromArgb(255, 173, 137, 226))
-New-FloorPlanTexture -MapId 'M03' -AccentColor ([System.Drawing.Color]::FromArgb(255, 91, 232, 181)) -SecondaryColor ([System.Drawing.Color]::FromArgb(255, 103, 181, 209))
+if ($VentFeedbackOnly)
+{
+	New-HeistCueWave -FileName 'SW_HeistVentOpened.wav' -Mode 'VentOpened'
+	New-HeistCueWave -FileName 'SW_HeistVentSettlement.wav' -Mode 'VentSettlement'
+	Write-Host "Generated only Vent feedback sources in $OutputDirectory"
+	return
+}
+
+# Geometry is exported from placed floor/wall/door footprints in world XY.
+# Each maps entry has mapId, worldMin:[x,y], worldMax:[x,y], and floors/walls/doors
+# arrays of {label,polygon:[[x,y],...]}. Labels are provenance only, never raster text.
+$floorPlanGeometryPath = Join-Path $PSScriptRoot 'FloorPlanGeometry.json'
+if (-not (Test-Path -LiteralPath $floorPlanGeometryPath -PathType Leaf))
+{
+	throw "Missing floor-plan geometry: $floorPlanGeometryPath. Existing PNGs were not changed."
+}
+$floorPlanGeometry = Get-Content -Raw -LiteralPath $floorPlanGeometryPath | ConvertFrom-Json
+$geometryMaps = @($floorPlanGeometry.maps)
+if ($geometryMaps.Count -ne 3)
+{
+	throw 'Floor-plan geometry must contain exactly M01, M02 and M03. Existing PNGs were not changed.'
+}
+$mapPresentationPath = Join-Path $PSScriptRoot '../../DataTableImports/DT_MapPresentation.json'
+$mapPresentationRows = @(Get-Content -Raw -LiteralPath $mapPresentationPath | ConvertFrom-Json)
+$geometryByMap = @{}
+
+# Validate all maps before the first PNG write, including bounds shared with C++ marker projection.
+foreach ($mapId in @('M01', 'M02', 'M03'))
+{
+	$geometryMatches = @($geometryMaps | Where-Object { $_.mapId -ceq $mapId })
+	if ($geometryMatches.Count -ne 1)
+	{
+		throw "Floor-plan geometry requires exactly one $mapId entry. Existing PNGs were not changed."
+	}
+	$mapGeometry = $geometryMatches[0]
+	foreach ($bound in @('worldMin', 'worldMax'))
+	{
+		if ($mapGeometry.$bound -isnot [System.Array] -or $mapGeometry.$bound.Count -ne 2)
+		{
+			throw "$mapId $bound must be a numeric [x,y] pair."
+		}
+		foreach ($coordinate in $mapGeometry.$bound)
+		{
+			if ($null -eq $coordinate -or $coordinate -is [bool] -or $coordinate -is [string] -or $coordinate -isnot [System.ValueType] -or
+				[double]::IsNaN([double]$coordinate) -or [double]::IsInfinity([double]$coordinate))
+			{
+				throw "$mapId $bound contains a non-finite or non-numeric coordinate."
+			}
+		}
+	}
+	if ([double]$mapGeometry.worldMax[0] -le [double]$mapGeometry.worldMin[0] -or
+		[double]$mapGeometry.worldMax[1] -le [double]$mapGeometry.worldMin[1])
+	{
+		throw "$mapId world bounds must have positive X and Y spans."
+	}
+	$presentationMatches = @($mapPresentationRows | Where-Object { $_.Name -ceq $mapId -and $_.MapId -ceq $mapId })
+	if ($presentationMatches.Count -ne 1 -or $presentationMatches[0].MapNorthAxis -cne 'PositiveY')
+	{
+		throw "$mapId requires one PositiveY DT_MapPresentation row."
+	}
+	$presentation = $presentationMatches[0]
+	if ([Math]::Abs([double]$mapGeometry.worldMin[0] - [double]$presentation.WorldMin.X) -gt 0.01 -or
+		[Math]::Abs([double]$mapGeometry.worldMin[1] - [double]$presentation.WorldMin.Y) -gt 0.01 -or
+		[Math]::Abs([double]$mapGeometry.worldMax[0] - [double]$presentation.WorldMax.X) -gt 0.01 -or
+		[Math]::Abs([double]$mapGeometry.worldMax[1] - [double]$presentation.WorldMax.Y) -gt 0.01)
+	{
+		throw "$mapId geometry bounds differ from DT_MapPresentation. Existing PNGs were not changed."
+	}
+
+	foreach ($layer in @('floors', 'walls', 'doors'))
+	{
+		if ($mapGeometry.$layer -isnot [System.Array] -or ($layer -ne 'doors' -and $mapGeometry.$layer.Count -eq 0))
+		{
+			throw "$mapId $layer must be an array; floors and walls must not be empty."
+		}
+		foreach ($shape in $mapGeometry.$layer)
+		{
+			if ($shape.polygon -isnot [System.Array] -or $shape.polygon.Count -lt 3)
+			{
+				throw "$mapId $layer polygon requires at least three [x,y] points."
+			}
+			foreach ($point in $shape.polygon)
+			{
+				if ($point -isnot [System.Array] -or $point.Count -ne 2)
+				{
+					throw "$mapId $layer polygon contains an invalid [x,y] point."
+				}
+				foreach ($coordinate in $point)
+				{
+					if ($null -eq $coordinate -or $coordinate -is [bool] -or $coordinate -is [string] -or $coordinate -isnot [System.ValueType] -or
+						[double]::IsNaN([double]$coordinate) -or [double]::IsInfinity([double]$coordinate))
+					{
+						throw "$mapId $layer polygon contains a non-finite or non-numeric coordinate."
+					}
+				}
+			}
+			$twiceArea = 0.0
+			for ($pointIndex = 0; $pointIndex -lt $shape.polygon.Count; ++$pointIndex)
+			{
+				$a = $shape.polygon[$pointIndex]
+				$b = $shape.polygon[($pointIndex + 1) % $shape.polygon.Count]
+				$twiceArea += [double]$a[0] * [double]$b[1] - [double]$b[0] * [double]$a[1]
+			}
+			if ([double]::IsNaN($twiceArea) -or [double]::IsInfinity($twiceArea) -or [Math]::Abs($twiceArea) -le 0.0001)
+			{
+				throw "$mapId $layer polygon is degenerate."
+			}
+		}
+	}
+	$geometryByMap[$mapId] = $mapGeometry
+}
+
+New-FloorPlanTexture -Geometry $geometryByMap['M01'] -AccentColor ([System.Drawing.Color]::FromArgb(255, 75, 210, 236)) -SecondaryColor ([System.Drawing.Color]::FromArgb(255, 128, 162, 205))
+New-FloorPlanTexture -Geometry $geometryByMap['M02'] -AccentColor ([System.Drawing.Color]::FromArgb(255, 130, 170, 255)) -SecondaryColor ([System.Drawing.Color]::FromArgb(255, 173, 137, 226))
+New-FloorPlanTexture -Geometry $geometryByMap['M03'] -AccentColor ([System.Drawing.Color]::FromArgb(255, 91, 232, 181)) -SecondaryColor ([System.Drawing.Color]::FromArgb(255, 103, 181, 209))
+
+if ($FloorPlanOnly)
+{
+	Write-Host "Generated only world-aligned Floor Plan sources in $OutputDirectory"
+	return
+}
 
 New-HeistLoopWave -FileName 'SW_HeistSuspenseLoop.wav' -Mode 'Suspense'
 New-HeistLoopWave -FileName 'SW_HeistAlarmLoop.wav' -Mode 'Alarm'
@@ -477,5 +558,7 @@ New-HeistCueWave -FileName 'SW_HeistArrested.wav' -Mode 'Arrested'
 New-HeistCueWave -FileName 'SW_HeistRescue.wav' -Mode 'Rescue'
 New-HeistCueWave -FileName 'SW_HeistCarryFootstep.wav' -Mode 'CarryFootstep'
 New-HeistCueWave -FileName 'SW_HeistHeavyFootstep.wav' -Mode 'HeavyFootstep'
+New-HeistCueWave -FileName 'SW_HeistVentOpened.wav' -Mode 'VentOpened'
+New-HeistCueWave -FileName 'SW_HeistVentSettlement.wav' -Mode 'VentSettlement'
 
 Write-Host "Generated W7 presentation sources in $OutputDirectory"

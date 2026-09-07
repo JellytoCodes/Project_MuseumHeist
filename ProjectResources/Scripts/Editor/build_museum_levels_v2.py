@@ -241,7 +241,7 @@ MAPS = {
             ("17", 1200, -2600, 0.0), ("18", 3000, 600, -90.0),
         ],
         "guard_routes": [
-            [(-5000, -3000), (-4000, -3200), (-3600, -1800), (-4400, -200), (-3600, 1200), (-4200, 3400), (-2400, 3800), (0, 3600), (1600, 3400), (3600, 3000), (4200, 1400), (3600, 0), (4200, -1800), (3400, -3600), (1600, -3600), (-600, -3600), (-2600, -3000)],
+            [(-5000, -3000), (-4200, -3200), (-3600, -1800), (-4400, -200), (-3600, 1200), (-4200, 3400), (-2600, 3800), (0, 3600), (1600, 3400), (3600, 3000), (4200, 1400), (3600, 0), (4200, -1800), (3400, -3600), (1600, -3600), (-600, -3600), (-2600, -3000)],
             [(-1800, -600), (-1800, 1000), (-1200, 2200), (0, 2400), (1000, 1600), (1000, 200), (0, -600)],
             [(4800, -2800), (3600, -2200), (5200, -200), (4200, 800), (4600, 2200), (3400, 3800)],
             [(-5000, -2800), (-4200, -1400), (-4600, 0), (-3800, 1200), (-5000, 2400), (-3800, 3800)],
@@ -296,8 +296,8 @@ MAPS = {
         "guard_routes": [
             [(-6600, 0), (-5200, -400), (-3600, 400), (-2400, -500), (-400, 400), (1000, -400), (2800, 400), (4200, -500), (6200, 0)],
             [(-6200, 2200), (-5000, 2400), (-3400, 2600), (-1000, 2400), (1200, 2600), (2600, 2400), (4400, 2400), (6000, 1800)],
-            [(-6200, -2600), (-4400, -2400), (-2400, -2600), (-400, -2400), (2000, -2600), (3600, -2400), (5600, -2200)],
-            [(5200, -3400), (7400, -3800), (7400, -2800), (5000, -2600)],
+            [(-6200, -2600), (-4400, -2400), (-2400, -2600), (-400, -2400), (2000, -2600), (3600, -2400), (5400, -2200)],
+            [(5000, -3400), (7400, -3800), (7400, -2800), (5000, -2600)],
         ],
         "cameras": [
             (-6400, -2200, 315, 30), (-5200, 2400, 315, -35),
@@ -1129,12 +1129,15 @@ class LevelBuilder:
     def floor_grid(self):
         half_x = self.config["half_x"]
         half_y = self.config["half_y"]
+        floor_bounds = assets["floor"].get_bounding_box()
+        floor_center_x = (floor_bounds.min.x + floor_bounds.max.x) * 0.5 * 2.0
+        floor_center_y = (floor_bounds.min.y + floor_bounds.max.y) * 0.5 * 2.0
         index = 0
         for x in range(-half_x + 400, half_x, 800):
             for y in range(-half_y + 400, half_y, 800):
                 self.static(
                     "LDV2_{}_Floor_{:03d}".format(self.code, index),
-                    "floor", (x, y, -12), 0.0, (2.0, 2.0, 1.0),
+                    "floor", (x - floor_center_x, y - floor_center_y, -12), 0.0, (2.0, 2.0, 1.0),
                     self.config["floor_material"], "Architecture/Floor",
                 )
                 index += 1
@@ -1143,16 +1146,21 @@ class LevelBuilder:
         index = 0
         for x in range(start_x, end_x + 1, 800):
             mesh_name = "door_wall" if x in doors else ("window_wall" if x in windows else "wall")
+            mesh_bounds = assets[mesh_name].get_bounding_box()
+            wall_origin_x = x - (mesh_bounds.min.x + mesh_bounds.max.x) * 0.5 * 2.0
+            upper_mesh_name = "window_wall" if mesh_name == "window_wall" else "wall"
+            upper_bounds = assets[upper_mesh_name].get_bounding_box()
+            upper_origin_x = x - (upper_bounds.min.x + upper_bounds.max.x) * 0.5 * 2.0
             label = "LDV2_{}_{}_{:02d}".format(self.code, name, index)
             self.static(
                 label,
-                mesh_name, (x, y, LOWER_WALL_Z), 0.0, (2.0, 1.0, 1.0),
+                mesh_name, (wall_origin_x, y, LOWER_WALL_Z), 0.0, (2.0, 1.0, 1.0),
                 material_name, "Architecture/Walls",
             )
             upper = self.static(
                 label + "_Upper",
-                "window_wall" if mesh_name == "window_wall" else "wall",
-                (x, y, UPPER_WALL_Z), 0.0, (2.0, 1.0, 1.0),
+                upper_mesh_name,
+                (upper_origin_x, y, UPPER_WALL_Z), 0.0, (2.0, 1.0, 1.0),
                 material_name, "Architecture/Walls",
             )
             self.add_tags(upper, "MuseumTallUpperWall")
@@ -1162,16 +1170,21 @@ class LevelBuilder:
         index = 0
         for y in range(start_y, end_y + 1, 800):
             mesh_name = "door_wall" if y in doors else ("window_wall" if y in windows else "wall")
+            mesh_bounds = assets[mesh_name].get_bounding_box()
+            wall_origin_y = y - (mesh_bounds.min.x + mesh_bounds.max.x) * 0.5 * 2.0
+            upper_mesh_name = "window_wall" if mesh_name == "window_wall" else "wall"
+            upper_bounds = assets[upper_mesh_name].get_bounding_box()
+            upper_origin_y = y - (upper_bounds.min.x + upper_bounds.max.x) * 0.5 * 2.0
             label = "LDV2_{}_{}_{:02d}".format(self.code, name, index)
             self.static(
                 label,
-                mesh_name, (x, y, LOWER_WALL_Z), 90.0, (2.0, 1.0, 1.0),
+                mesh_name, (x, wall_origin_y, LOWER_WALL_Z), 90.0, (2.0, 1.0, 1.0),
                 material_name, "Architecture/Walls",
             )
             upper = self.static(
                 label + "_Upper",
-                "window_wall" if mesh_name == "window_wall" else "wall",
-                (x, y, UPPER_WALL_Z), 90.0, (2.0, 1.0, 1.0),
+                upper_mesh_name,
+                (x, upper_origin_y, UPPER_WALL_Z), 90.0, (2.0, 1.0, 1.0),
                 material_name, "Architecture/Walls",
             )
             self.add_tags(upper, "MuseumTallUpperWall")
@@ -1784,7 +1797,15 @@ def add_m03_geometry(builder):
         builder.wall_v("NorthBay_{:02d}".format(index), x, 2000, 3600, doors=(north_door,), material_name=mat)
         builder.wall_v("SouthBay_{:02d}".format(index), x, -3600, -2000, doors=(south_door,), material_name=mat)
     builder.wall_v("HighValueAirlockWest", 6000, -2800, -1200, doors=(-2000,), material_name=mat)
-    builder.wall_h("HighValueAirlockNorth", -1200, 6000, 7600, doors=(6800,), material_name=mat)
+    # SpineSouth already supplies the north boundary and its x=6400 doorway.
+    # Only close its final 400cm to the perimeter; a second wall run blocks that door.
+    for upper, z in ((False, LOWER_WALL_Z), (True, UPPER_WALL_Z)):
+        tail = builder.static(
+            "LDV2_M03_HighValueAirlockNorth_02" + ("_Upper" if upper else ""),
+            "wall", (7600, -1200, z), 0.0, (1.0, 1.0, 1.0), mat, "Architecture/Walls",
+        )
+        if upper:
+            builder.add_tags(tail, "MuseumTallUpperWall")
     builder.wall_v("SecurityWest", 5200, -4000, -2800, doors=(-3600,), material_name=mat)
     builder.wall_h("SecurityNorth", -4000, 5600, 7200, doors=(6400,), material_name=mat)
     builder.wall_v("DetentionDivider", 6400, -4000, -2800, doors=(-3600,), material_name=mat)
