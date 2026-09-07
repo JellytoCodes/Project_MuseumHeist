@@ -41,6 +41,9 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 
   private:
 	void SetupPopupFeedbackPresentation();
+	void SetupVentFeedbackPresentation();
+	void HandleVentFeedback(bool bSettlement);
+	void StopVentFeedbackAudio();
 	void ResolveInteractionChildWidgets();
 	void ResolveCrosshairWidgets();
 	void RefreshCrosshairPresentation(AActor* TargetActor, bool bAvailable);
@@ -80,6 +83,9 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHeistPlayerController> TutorialPlayerController;
+
+	UPROPERTY(Transient)
+	TObjectPtr<AHeistPlayerController> VentFeedbackPlayerController;
 
   protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Heist|HUD", meta = (DisplayName = "HUD Sources Ready"))
@@ -302,6 +308,12 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Crew|Audio", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<USoundBase> RescuedSound;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Vent|Audio", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USoundBase> VentOpenedSound;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Vent|Audio", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USoundBase> VentSettlementSound;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UAudioComponent> SuspenseMusicComponent;
 
@@ -310,6 +322,9 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 
 	UPROPERTY(Transient)
 	TObjectPtr<UAudioComponent> ArrestFeedbackAudioComponent;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAudioComponent> VentFeedbackAudioComponent;
 
 	EHeistAlertLevel LastAppliedAudioAlertLevel = EHeistAlertLevel::Quiet;
 	EHeistCrewStatus LastPresentedLocalCrewStatus = EHeistCrewStatus::Active;

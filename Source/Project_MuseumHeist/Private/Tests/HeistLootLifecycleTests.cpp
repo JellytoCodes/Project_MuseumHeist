@@ -57,9 +57,13 @@ struct FHeistLootLifecycleAutomationState
 	bool bRuntimeFixturesSpawned = false;
 	FString LastCaptureWaitReason;
 	TArray<FHeistLootLifecycleFixture> Fixtures;
+	TArray<TWeakObjectPtr<AHeistLootActor>> VentPriorityFixtureActors;
 	FName PendingFeedbackRowId = NAME_None;
 	int32 PendingFeedbackValue = 0;
 	TMap<FName, int32> FeedbackCounts;
+	int32 PendingSettlementFeedbackValue = 0;
+	int32 SettlementFeedbackCount = 0;
+	float ScheduledVentUnlockServerTime = -1.0f;
 	TArray<FString> UnexpectedFeedback;
 	FDelegateHandle FeedbackHandle;
 	TWeakObjectPtr<AHeistPlayerController> FeedbackController;
@@ -833,6 +837,7 @@ bool CaptureLifecycleFixtures(FAutomationTestBase* Test, const TSharedRef<FHeist
 	}
 	State->Fixtures = MoveTemp(Fixtures);
 	State->LastCaptureWaitReason.Reset();
+	State->ScheduledVentUnlockServerTime = ServerGameState->GetEscapePhaseUnlockServerTime();
 	State->FeedbackController = FeedbackController;
 	const TSharedPtr<FHeistLootLifecycleAutomationState> SharedState = State;
 	const TWeakPtr<FHeistLootLifecycleAutomationState> WeakState = SharedState;
@@ -841,6 +846,13 @@ bool CaptureLifecycleFixtures(FAutomationTestBase* Test, const TSharedRef<FHeist
 		const TSharedPtr<FHeistLootLifecycleAutomationState> PinnedState = WeakState.Pin();
 		if (!PinnedState.IsValid())
 		{
+			return;
+		}
+		const FText ExpectedSettlementMessage =
+			FText::Format(NSLOCTEXT("HeistFeedback", "VentSettlementCommitted", "전리품 {0} 정산 완료 · 계속 탐색할 수 있습니다"), FText::AsNumber(PinnedState->PendingSettlementFeedbackValue));
+		if (PinnedState->PendingSettlementFeedbackValue > 0 && DurationSeconds > 0.0f && Message.ToString() == ExpectedSettlementMessage.ToString())
+		{
+			++PinnedState->SettlementFeedbackCount;
 			return;
 		}
 		const FText ExpectedMessage = FText::Format(NSLOCTEXT("HeistFeedback", "LootPickupAccepted", "전리품 획득 +{0}"), FText::AsNumber(PinnedState->PendingFeedbackValue));
@@ -1130,6 +1142,21 @@ bool EnqueueTwoPlayerLootLifecycleScenario(FAutomationTestBase* Test)
 		return AreLootLifecycleWorldsReady(EHeistMatchPhase::Lobby, false) && IsValid(GameInstance) && GameInstance->IsHostingOnlineSession() &&
 			GameInstance->HasActiveNamedOnlineSession();
 	}, 60.0));
+	Test->AddCommand(new FHeistLootLifecycleWaitCommand(
+		Test, State, TEXT("Lobby has no scheduled Vent deadline on host or client"),
+		[]()
+		{
+			for (UWorld* World : GetLootLifecyclePIEWorlds())
+			{
+				const AHeistGameState* GameState = World->GetGameState<AHeistGameState>();
+				if (!IsValid(GameState) || GameState->GetEscapePhaseUnlockServerTime() != -1.0f)
+				{
+					return false;
+				}
+			}
+			return true;
+		},
+		10.0));
 	Test->AddCommand(new FHeistLootLifecycleActionCommand(Test, State, TEXT("select M01"), []()
 	{
 		AHeistPlayerController* HostPlayerController = GetOwningPlayerControllerById(1);
@@ -1156,6 +1183,119 @@ bool EnqueueTwoPlayerLootLifecycleScenario(FAutomationTestBase* Test)
 	{
 		return AreLootLifecycleWorldsReady(EHeistMatchPhase::InGame, true) && CaptureLifecycleFixtures(Test, State);
 	}, 75.0));
+	Test->AddCommand(new FHeistLootLifecycleWaitCommand(
+		Test, State, TEXT("InGame scheduled Vent deadline replicates before actual opening"),
+		[State]()
+		{
+			UWorld* ServerWorld = GetLootLifecycleServerWorld();
+			const AHeistGameState* ServerGameState = IsValid(ServerWorld) ? ServerWorld->GetGameState<AHeistGameState>() : nullptr;
+			if (!IsValid(ServerGameState))
+			{
+				return false;
+			}
+			const float RemainingSeconds = State->ScheduledVentUnlockServerTime - ServerGameState->GetServerWorldTimeSeconds();
+			if (RemainingSeconds <= 0.0f || RemainingSeconds > ServerGameState->GetEscapePhaseDelaySeconds())
+			{
+				return false;
+			}
+			for (UWorld* World : GetLootLifecyclePIEWorlds())
+			{
+				const AHeistGameState* GameState = World->GetGameState<AHeistGameState>();
+				if (!IsValid(GameState) || GameState->IsEscapePhaseOpen() || GameState->GetEscapePhaseOpenTimeSeconds() != -1.0f ||
+					!FMath::IsNearlyEqual(GameState->GetEscapePhaseUnlockServerTime(), State->ScheduledVentUnlockServerTime))
+				{
+					return false;
+				}
+			}
+			return true;
+		},
+		10.0));
+	Test->AddCommand(new FHeistLootLifecycleActionCommand(Test, State, TEXT("move carrier into locked Vent overlap"),
+														  []() { return TeleportServerPlayerIntoInteraction(LootCarrierPlayerId, FindVentActor(GetLootLifecycleServerWorld())); }));
+	Test->AddCommand(new FHeistLootLifecycleWaitCommand(
+		Test, State, TEXT("locked Vent offers presentation without becoming an available target"),
+		[]()
+		{
+			for (UWorld* World : GetLootLifecyclePIEWorlds())
+			{
+				AHeistPlayerCharacter* Character = FindHeistCharacterById(World, LootCarrierPlayerId);
+				AHeistVentActor* Vent = FindVentActor(World);
+				UHeistInteractionComponent* Interaction = IsValid(Character) ? Character->GetInteractionComponent() : nullptr;
+				if (!IsValid(Interaction) || !IsValid(Vent) || !Interaction->IsActorOverlappingInteractionArea(Vent))
+				{
+					return false;
+				}
+				Interaction->RefreshInteractionTarget();
+				if (Interaction->GetLockedVentForPresentation() != Vent || Interaction->GetCurrentInteractionTarget() != nullptr || Interaction->HasValidInteractionTarget() ||
+					Vent->CanUseVent(Character))
+				{
+					return false;
+				}
+			}
+			return true;
+		},
+		10.0));
+	Test->AddCommand(new FHeistLootLifecycleActionCommand(Test, State, TEXT("move existing Loot fixture into the locked Vent overlap"),
+														  [State]()
+														  {
+															  if (!State->Fixtures.IsValidIndex(0))
+															  {
+																  return false;
+															  }
+															  // Loose Loot movement does not replicate. Stage only the test overlap geometry in each world,
+															  // then restore it before the production pickup/drop/RPC lifecycle continues.
+															  for (UWorld* World : GetLootLifecyclePIEWorlds())
+															  {
+																  AHeistPlayerCharacter* Character = FindHeistCharacterById(World, LootCarrierPlayerId);
+																  AHeistLootActor* Loot = FindLootActorByRowAndLocation(World, State->Fixtures[0].RowId, State->Fixtures[0].OriginalSpawnLocation);
+																  if (!IsValid(Character) || !IsValid(Loot) ||
+																	  !Loot->SetActorLocation(Character->GetActorLocation(), false, nullptr, ETeleportType::TeleportPhysics))
+																  {
+																	  return false;
+																  }
+																  State->VentPriorityFixtureActors.Add(Loot);
+															  }
+															  return true;
+														  }));
+	Test->AddCommand(new FHeistLootLifecycleWaitCommand(
+		Test, State, TEXT("available Loot takes priority over locked Vent presentation on host and client"),
+		[State]()
+		{
+			for (UWorld* World : GetLootLifecyclePIEWorlds())
+			{
+				AHeistPlayerCharacter* Character = FindHeistCharacterById(World, LootCarrierPlayerId);
+				AHeistVentActor* Vent = FindVentActor(World);
+				UHeistInteractionComponent* Interaction = IsValid(Character) ? Character->GetInteractionComponent() : nullptr;
+				if (!IsValid(Interaction) || !IsValid(Vent) || !Interaction->IsActorOverlappingInteractionArea(Vent))
+				{
+					return false;
+				}
+				Interaction->RefreshInteractionTarget();
+				const AHeistLootActor* Target = Cast<AHeistLootActor>(Interaction->GetCurrentInteractionTarget());
+				if (!IsValid(Target) || Target->GetLootRowId() != State->Fixtures[0].RowId || !Interaction->HasValidInteractionTarget() || Interaction->GetLockedVentForPresentation() != nullptr ||
+					Vent->CanUseVent(Character))
+				{
+					return false;
+				}
+			}
+			return true;
+		},
+		10.0));
+	Test->AddCommand(new FHeistLootLifecycleActionCommand(Test, State, TEXT("restore Loot fixture after locked Vent priority check"),
+														  [State]()
+														  {
+															  for (const TWeakObjectPtr<AHeistLootActor>& FixtureActor : State->VentPriorityFixtureActors)
+															  {
+																  AHeistLootActor* Loot = FixtureActor.Get();
+																  if (!IsValid(Loot) ||
+																	  !Loot->SetActorLocation(State->Fixtures[0].OriginalSpawnLocation, false, nullptr, ETeleportType::TeleportPhysics))
+																  {
+																	  return false;
+																  }
+															  }
+															  State->VentPriorityFixtureActors.Reset();
+															  return true;
+														  }));
 
 	for (int32 FixtureIndex = 0; FixtureIndex < GetLifecycleLootRowIds().Num(); ++FixtureIndex)
 	{
@@ -1182,44 +1322,105 @@ bool EnqueueTwoPlayerLootLifecycleScenario(FAutomationTestBase* Test)
 			GridArea, GridCapacity, TotalValue, TotalWeight));
 		return GridArea <= GridCapacity;
 	}));
-	Test->AddCommand(new FHeistLootLifecycleActionCommand(Test, State, TEXT("open Vent without seeding Result or Contract outcome"), []()
-	{
-		UWorld* ServerWorld = GetLootLifecycleServerWorld();
-		AHeistGameState* GameState = IsValid(ServerWorld) ? ServerWorld->GetGameState<AHeistGameState>() : nullptr;
-		if (!IsValid(GameState) || !GameState->HasAuthority())
+	Test->AddCommand(new FHeistLootLifecycleActionCommand(Test, State, TEXT("reinitialize Vent deadline without seeding Result or Contract outcome"),
+														  [Test, State]()
+														  {
+															  UWorld* ServerWorld = GetLootLifecycleServerWorld();
+															  AHeistGameState* GameState = IsValid(ServerWorld) ? ServerWorld->GetGameState<AHeistGameState>() : nullptr;
+															  if (!IsValid(GameState) || !GameState->HasAuthority())
+															  {
+																  return false;
+															  }
+															  const float InitializationServerTime = GameState->GetServerWorldTimeSeconds();
+															  GameState->InitializeEscapePhase(180.0f);
+															  State->ScheduledVentUnlockServerTime = GameState->GetEscapePhaseUnlockServerTime();
+															  if (!Test->TestTrue(TEXT("InGame initialization schedules opening 180 seconds from the current server time"),
+																				  FMath::IsNearlyEqual(State->ScheduledVentUnlockServerTime, InitializationServerTime + 180.0f)))
+															  {
+																  return false;
+															  }
+															  return true;
+														  }));
+	Test->AddCommand(new FHeistLootLifecycleActionCommand(Test, State, TEXT("move client carrier to Vent before opening"),
+														  []() { return TeleportServerPlayerIntoInteraction(LootCarrierPlayerId, FindVentActor(GetLootLifecycleServerWorld())); }));
+	Test->AddCommand(new FHeistLootLifecycleWaitCommand(
+		Test, State, TEXT("stationary carrier overlaps locked Vent on host and owning client"),
+		[State]()
 		{
-			return false;
-		}
-		GameState->OpenEscapePhase();
-		return true;
-	}));
-	Test->AddCommand(new FHeistLootLifecycleWaitCommand(Test, State, TEXT("Vent open on host and client"), []()
-	{
-		for (UWorld* World : GetLootLifecyclePIEWorlds())
-		{
-			const AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
-			const AHeistVentActor* VentActor = FindVentActor(World);
-			if (!IsValid(GameState) || !GameState->IsEscapePhaseOpen() || !IsValid(VentActor) || !VentActor->IsVentActive())
+			const TArray<UWorld*> Worlds = GetLootLifecyclePIEWorlds();
+			if (Worlds.Num() != 2)
 			{
 				return false;
 			}
-		}
-		return true;
-	}, 15.0));
-	Test->AddCommand(new FHeistLootLifecycleActionCommand(Test, State, TEXT("move client carrier to Vent"), []()
-	{
-		return TeleportServerPlayerIntoInteraction(LootCarrierPlayerId, FindVentActor(GetLootLifecycleServerWorld()));
-	}));
-	Test->AddCommand(new FHeistLootLifecycleWaitCommand(Test, State, TEXT("client carrier Vent overlap"), []()
-	{
-		return IsServerPlayerOverlapping(LootCarrierPlayerId, FindVentActor(GetLootLifecycleServerWorld()));
-	}, 10.0));
-	Test->AddCommand(new FHeistLootLifecycleActionCommand(Test, State, TEXT("request client carrier escape through owning-client RPC"), []()
-	{
-		AHeistPlayerController* OwningPlayerController = GetOwningPlayerControllerById(LootCarrierPlayerId);
-		AHeistVentActor* LocalVent = IsValid(OwningPlayerController) ? FindVentActor(OwningPlayerController->GetWorld()) : nullptr;
-		return InvokeSingleActorServerRPC(OwningPlayerController, FName(TEXT("Server_RequestEscape")), LocalVent);
-	}));
+			for (UWorld* World : Worlds)
+			{
+				const AHeistGameState* GameState = World->GetGameState<AHeistGameState>();
+				const AHeistPlayerCharacter* Character = FindHeistCharacterById(World, LootCarrierPlayerId);
+				const AHeistVentActor* Vent = FindVentActor(World);
+				const UHeistInteractionComponent* Interaction = IsValid(Character) ? Character->GetInteractionComponent() : nullptr;
+				if (!IsValid(GameState) || GameState->IsEscapePhaseOpen() || !FMath::IsNearlyEqual(GameState->GetEscapePhaseUnlockServerTime(), State->ScheduledVentUnlockServerTime) ||
+					!IsValid(Vent) || Vent->IsVentActive() || !IsValid(Interaction) || !Interaction->IsActorOverlappingInteractionArea(Vent))
+				{
+					return false;
+				}
+			}
+			AHeistPlayerController* OwningPlayerController = GetOwningPlayerControllerById(LootCarrierPlayerId);
+			const AHeistPlayerCharacter* OwningCharacter = IsValid(OwningPlayerController) ? OwningPlayerController->GetPawn<AHeistPlayerCharacter>() : nullptr;
+			const UHeistInteractionComponent* OwningInteraction = IsValid(OwningCharacter) ? OwningCharacter->GetInteractionComponent() : nullptr;
+			const AHeistVentActor* OwningVent = IsValid(OwningPlayerController) ? FindVentActor(OwningPlayerController->GetWorld()) : nullptr;
+			return IsValid(OwningInteraction) && IsValid(OwningVent) && OwningInteraction->GetCurrentInteractionTarget() == nullptr && OwningInteraction->GetLockedVentForPresentation() == OwningVent;
+		},
+		10.0));
+	Test->AddCommand(new FHeistLootLifecycleActionCommand(Test, State, TEXT("open Vent while carrier remains inside its overlap"),
+														  []()
+														  {
+															  UWorld* ServerWorld = GetLootLifecycleServerWorld();
+															  AHeistGameState* GameState = IsValid(ServerWorld) ? ServerWorld->GetGameState<AHeistGameState>() : nullptr;
+															  if (!IsValid(GameState) || !GameState->HasAuthority())
+															  {
+																  return false;
+															  }
+															  GameState->OpenEscapePhase();
+															  return true;
+														  }));
+	Test->AddCommand(new FHeistLootLifecycleWaitCommand(
+		Test, State, TEXT("Vent opening preserves its deadline and automatically selects it for the stationary owning client"),
+		[State]()
+		{
+			const TArray<UWorld*> Worlds = GetLootLifecyclePIEWorlds();
+			if (Worlds.Num() != 2)
+			{
+				return false;
+			}
+			for (UWorld* World : Worlds)
+			{
+				const AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
+				const AHeistVentActor* VentActor = FindVentActor(World);
+				if (!IsValid(GameState) || !GameState->IsEscapePhaseOpen() || !IsValid(VentActor) || !VentActor->IsVentActive() || GameState->GetEscapePhaseOpenTimeSeconds() < 0.0f ||
+					GameState->GetEscapePhaseOpenTimeSeconds() >= State->ScheduledVentUnlockServerTime ||
+					!FMath::IsNearlyEqual(GameState->GetEscapePhaseUnlockServerTime(), State->ScheduledVentUnlockServerTime))
+				{
+					return false;
+				}
+			}
+			AHeistPlayerController* OwningPlayerController = GetOwningPlayerControllerById(LootCarrierPlayerId);
+			const AHeistPlayerCharacter* OwningCharacter = IsValid(OwningPlayerController) ? OwningPlayerController->GetPawn<AHeistPlayerCharacter>() : nullptr;
+			const UHeistInteractionComponent* OwningInteraction = IsValid(OwningCharacter) ? OwningCharacter->GetInteractionComponent() : nullptr;
+			const AHeistVentActor* OwningVent = IsValid(OwningPlayerController) ? FindVentActor(OwningPlayerController->GetWorld()) : nullptr;
+			// Do not refresh the target here: replication must update an already overlapping owner without movement or new input.
+			return IsValid(OwningInteraction) && IsValid(OwningVent) && OwningInteraction->IsActorOverlappingInteractionArea(OwningVent) &&
+				   OwningInteraction->GetCurrentInteractionTarget() == OwningVent && OwningInteraction->GetLockedVentForPresentation() == nullptr;
+		},
+		15.0));
+	Test->AddCommand(new FHeistLootLifecycleActionCommand(Test, State, TEXT("request client carrier escape through owning-client RPC"),
+														  [State]()
+														  {
+															  State->PendingFeedbackRowId = NAME_None;
+															  State->PendingSettlementFeedbackValue = GetExpectedValueThroughFixture(State, State->Fixtures.Num() - 1);
+															  AHeistPlayerController* OwningPlayerController = GetOwningPlayerControllerById(LootCarrierPlayerId);
+															  AHeistVentActor* LocalVent = IsValid(OwningPlayerController) ? FindVentActor(OwningPlayerController->GetWorld()) : nullptr;
+															  return InvokeSingleActorServerRPC(OwningPlayerController, FName(TEXT("Server_RequestEscape")), LocalVent);
+														  }));
 	Test->AddCommand(new FHeistLootLifecycleWaitCommand(Test, State, TEXT("five-row Vent settlement, inventory clear and active player replication"), [State]()
 	{
 		const int32 FinalFixtureIndex = State->Fixtures.Num() - 1;
@@ -1248,6 +1449,9 @@ bool EnqueueTwoPlayerLootLifecycleScenario(FAutomationTestBase* Test)
 		}
 		return true;
 	}, 20.0));
+	Test->AddCommand(new FHeistLootLifecycleWaitCommand(
+		Test, State, TEXT("successful Loose Loot settlement produces exactly one owner popup"), [State]() { return State->SettlementFeedbackCount == 1 && State->UnexpectedFeedback.IsEmpty(); },
+		10.0));
 	Test->AddCommand(new FHeistLootLifecycleActionCommand(Test, State, TEXT("request final escape after Loose Loot settlement"), []()
 	{
 		AHeistPlayerController* OwningPlayerController = GetOwningPlayerControllerById(LootCarrierPlayerId);
@@ -1266,6 +1470,7 @@ bool EnqueueTwoPlayerLootLifecycleScenario(FAutomationTestBase* Test)
 		}
 		return true;
 	}, 20.0));
+	Test->AddCommand(new FWaitLatentCommand(0.25f));
 	Test->AddCommand(new FHeistLootLifecycleActionCommand(Test, State, TEXT("record W6-011 two-player lifecycle PASS evidence"), [Test, State]()
 	{
 		const int32 FinalFixtureIndex = State->Fixtures.Num() - 1;
@@ -1277,6 +1482,10 @@ bool EnqueueTwoPlayerLootLifecycleScenario(FAutomationTestBase* Test)
 				return false;
 			}
 		}
+		if (!Test->TestEqual(TEXT("Final escape does not duplicate the Loose Loot settlement popup"), State->SettlementFeedbackCount, 1))
+		{
+			return false;
+		}
 		if (State->UnexpectedFeedback.Num() > 0)
 		{
 			for (const FString& UnexpectedMessage : State->UnexpectedFeedback)
@@ -1286,7 +1495,8 @@ bool EnqueueTwoPlayerLootLifecycleScenario(FAutomationTestBase* Test)
 			return false;
 		}
 		Test->AddInfo(FString::Printf(
-			TEXT("W6-011 lifecycle gate: Players=2 Map=M01 Rows=5 MatchStartSupply=true SpawnPointCategory=true InitialPickups=5 Drops=5 Repickups=5 PickupFeedback=10 SharedShell=BP_Loot HostClientVisual=true InventoryGrid=5x5 VentSettlement=true SecondInteractionEscape=true Secured=%d InventoryEmpty=true ContractOutcomeSeed=false Result=PASS"),
+			TEXT(
+				"W6-011 lifecycle gate: Players=2 Map=M01 Rows=5 MatchStartSupply=true SpawnPointCategory=true InitialPickups=5 Drops=5 Repickups=5 PickupFeedback=10 SharedShell=BP_Loot HostClientVisual=true InventoryGrid=5x5 LockedVentPresentation=true LootTargetPriority=true VentSettlement=true SettlementFeedback=1 SecondInteractionEscape=true Secured=%d InventoryEmpty=true ContractOutcomeSeed=false Result=PASS"),
 			ExpectedValue));
 		return true;
 	}));
@@ -1301,6 +1511,43 @@ bool EnqueueTwoPlayerLootLifecycleScenario(FAutomationTestBase* Test)
 		State->FeedbackController.Reset();
 		return true;
 	}, true));
+	Test->AddCommand(new FHeistLootLifecycleActionCommand(Test, State, TEXT("leaving InGame clears the scheduled Vent deadline"),
+														  [Test]()
+														  {
+															  UWorld* ServerWorld = GetLootLifecycleServerWorld();
+															  AHeistGameState* GameState = IsValid(ServerWorld) ? ServerWorld->GetGameState<AHeistGameState>() : nullptr;
+															  if (!IsValid(GameState) || !GameState->SetMatchPhase(EHeistMatchPhase::End))
+															  {
+																  return false;
+															  }
+															  if (!Test->TestEqual(TEXT("Ending the match clears the previous InGame deadline"), GameState->GetEscapePhaseUnlockServerTime(), -1.0f))
+															  {
+																  return false;
+															  }
+															  GameState->InitializeEscapePhase(180.0f);
+															  return Test->TestEqual(TEXT("Initialization outside InGame cannot schedule a new Vent deadline"),
+																					 GameState->GetEscapePhaseUnlockServerTime(), -1.0f);
+														  }));
+	Test->AddCommand(new FHeistLootLifecycleWaitCommand(
+		Test, State, TEXT("cleared Vent deadline replicates after leaving InGame"),
+		[]()
+		{
+			const TArray<UWorld*> Worlds = GetLootLifecyclePIEWorlds();
+			if (Worlds.Num() != 2)
+			{
+				return false;
+			}
+			for (UWorld* World : Worlds)
+			{
+				const AHeistGameState* GameState = World->GetGameState<AHeistGameState>();
+				if (!IsValid(GameState) || GameState->GetMatchPhase() != EHeistMatchPhase::End || GameState->GetEscapePhaseUnlockServerTime() != -1.0f)
+				{
+					return false;
+				}
+			}
+			return true;
+		},
+		10.0));
 	Test->AddCommand(new FEndPlayMapCommand());
 	Test->AddCommand(new FWaitLatentCommand(1.0f));
 	Test->AddCommand(new FHeistLootLifecycleActionCommand(Test, State, TEXT("restore editor play settings"), [State]()

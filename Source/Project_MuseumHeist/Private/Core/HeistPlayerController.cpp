@@ -463,6 +463,10 @@ void AHeistPlayerController::HandleEscapePhasePresentationChanged(const bool bEs
 	if (bEscapePhaseOpen)
 	{
 		NotifyLocalTutorialMilestone(TEXT("Extraction"), TEXT("EscapePhaseOpened"));
+		if (IsLocalController())
+		{
+			VentFeedbackRequestedDelegate.Broadcast(false);
+		}
 	}
 }
 
@@ -3545,7 +3549,22 @@ FHeistPopupFeedbackRequested& AHeistPlayerController::GetPopupFeedbackRequestedD
 	return PopupFeedbackRequestedDelegate;
 }
 
-void AHeistPlayerController::Client_ReceivePopupFeedback_Implementation(const FText& Message, const float DurationSeconds)
+FHeistVentFeedbackRequested& AHeistPlayerController::GetVentFeedbackRequestedDelegate()
+{
+	return VentFeedbackRequestedDelegate;
+}
+
+void AHeistPlayerController::NotifyVentSettlementCommitted(const int32 DepositValue)
+{
+	if (!HasAuthority() || DepositValue < 0)
+	{
+		return;
+	}
+
+	Client_ReceivePopupFeedback(FText::Format(NSLOCTEXT("HeistFeedback", "VentSettlementCommitted", "전리품 {0} 정산 완료 · 계속 탐색할 수 있습니다"), FText::AsNumber(DepositValue)), 3.0f, true);
+}
+
+void AHeistPlayerController::Client_ReceivePopupFeedback_Implementation(const FText& Message, const float DurationSeconds, const bool bVentSettlement)
 {
 	if (Message.IsEmpty())
 	{
@@ -3554,6 +3573,10 @@ void AHeistPlayerController::Client_ReceivePopupFeedback_Implementation(const FT
 
 	const float SafeDuration = FMath::Max(0.1f, DurationSeconds);
 	PopupFeedbackRequestedDelegate.Broadcast(Message, SafeDuration);
+	if (bVentSettlement)
+	{
+		VentFeedbackRequestedDelegate.Broadcast(true);
+	}
 	UE_LOG(LogHeistUI, Log, TEXT("[%s] Popup feedback received: Message=%s Duration=%.2f Local=%s"), *GetName(), *Message.ToString(), SafeDuration, IsLocalController() ? TEXT("true") : TEXT("false"));
 }
 
@@ -3564,7 +3587,7 @@ void AHeistPlayerController::SendPopupFeedback(const FText& Message, const float
 		return;
 	}
 
-	Client_ReceivePopupFeedback(Message, FMath::Max(0.1f, DurationSeconds));
+	Client_ReceivePopupFeedback(Message, FMath::Max(0.1f, DurationSeconds), false);
 }
 
 void AHeistPlayerController::SendPopupFeedbackForRejection(const TCHAR* RequestName, const TCHAR* Reason)

@@ -6,6 +6,7 @@
 #include "Core/HeistCollisionChannels.h"
 #include "Core/HeistLogChannels.h"
 #include "World/Interaction/HeistInteractable.h"
+#include "World/Actors/Escape/HeistVentActor.h"
 
 #pragma region Construction
 
@@ -115,6 +116,33 @@ bool UHeistInteractionComponent::HasValidInteractionTarget() const
 	AActor* TargetActor = CurrentInteractionTarget.Get();
 	IHeistInteractable* Interactable = Cast<IHeistInteractable>(TargetActor);
 	return Interactable != nullptr && IsActorOverlappingInteractionArea(TargetActor) && Interactable->CanInteract(OwnerCharacter);
+}
+
+AHeistVentActor* UHeistInteractionComponent::GetLockedVentForPresentation() const
+{
+	if (!CanOwnerInteract() || HasValidInteractionTarget())
+	{
+		return nullptr;
+	}
+
+	AHeistVentActor* BestVent = nullptr;
+	float BestDistanceSquared = TNumericLimits<float>::Max();
+	for (const TWeakObjectPtr<AActor>& CandidatePtr : OverlappingInteractionActors)
+	{
+		AHeistVentActor* Vent = Cast<AHeistVentActor>(CandidatePtr.Get());
+		if (!IsValid(Vent) || !IsActorOverlappingInteractionArea(Vent) || !Vent->CanShowLockedPrompt(OwnerCharacter))
+		{
+			continue;
+		}
+
+		const float DistanceSquared = FVector::DistSquared(OwnerCharacter->GetActorLocation(), Vent->GetActorLocation());
+		if (!IsValid(BestVent) || DistanceSquared < BestDistanceSquared || (FMath::IsNearlyEqual(DistanceSquared, BestDistanceSquared) && Vent->GetName().Compare(BestVent->GetName()) < 0))
+		{
+			BestVent = Vent;
+			BestDistanceSquared = DistanceSquared;
+		}
+	}
+	return BestVent;
 }
 
 bool UHeistInteractionComponent::IsActorOverlappingInteractionArea(const AActor* TargetActor) const

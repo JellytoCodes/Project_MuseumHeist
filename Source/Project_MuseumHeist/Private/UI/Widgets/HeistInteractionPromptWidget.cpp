@@ -139,14 +139,21 @@ void UHeistInteractionPromptWidget::RefreshPresentation()
 void UHeistInteractionPromptWidget::RefreshInteractionPrompt(const bool bActionActive)
 {
 	AActor* TargetActor = nullptr;
+	AHeistVentActor* LockedVent = nullptr;
 	bool bAvailable = false;
 	if (IsValid(InteractionComponent))
 	{
 		TargetActor = InteractionComponent->GetCurrentInteractionTarget();
 		bAvailable = IsValid(TargetActor) && InteractionComponent->HasValidInteractionTarget();
+		if (!bAvailable)
+		{
+			LockedVent = InteractionComponent->GetLockedVentForPresentation();
+			TargetActor = LockedVent;
+		}
 	}
 
-	const bool bVisible = bAvailable && !bActionActive;
+	const bool bLockedVent = IsValid(LockedVent);
+	const bool bVisible = (bAvailable || bLockedVent) && !bActionActive;
 	if (IsValid(InteractionPromptContainer))
 	{
 		InteractionPromptContainer->SetVisibility(bVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
@@ -163,7 +170,20 @@ void UHeistInteractionPromptWidget::RefreshInteractionPrompt(const bool bActionA
 	}
 	if (IsValid(TargetText))
 	{
-		TargetText->SetText(ResolveTargetLabel(TargetActor));
+		if (bLockedVent)
+		{
+			const int32 RemainingSeconds = FMath::CeilToInt(LockedVent->GetUnlockTimeRemaining());
+			TargetText->SetText(RemainingSeconds > 0 ? FText::Format(NSLOCTEXT("HeistInteraction", "VentLockedCountdown", "벤트 잠김 · 개방까지 {0}초"), FText::AsNumber(RemainingSeconds))
+													 : NSLOCTEXT("HeistInteraction", "VentUnlockPending", "벤트 개방 대기 중"));
+		}
+		else
+		{
+			TargetText->SetText(ResolveTargetLabel(TargetActor));
+		}
+	}
+	if (IsValid(AvailabilityText))
+	{
+		AvailabilityText->SetText(bLockedVent ? NSLOCTEXT("HeistInteraction", "VentLockedHint", "개방 후 사용할 수 있습니다") : NSLOCTEXT("HeistInteraction", "InteractionPrompt", "[E] 상호작용"));
 	}
 	if (IsValid(KeyText))
 	{
@@ -171,8 +191,10 @@ void UHeistInteractionPromptWidget::RefreshInteractionPrompt(const bool bActionA
 		const AHeistObjectDisplayCaseActor* ObjectCase = Cast<AHeistObjectDisplayCaseActor>(TargetActor);
 		const bool bPaintingReviewReady = IsValid(PaintingCase) && PaintingCase->IsReplicaReviewReadyFor(GetOwningPlayerPawn());
 		const bool bObjectReviewReady = IsValid(ObjectCase) && ObjectCase->IsReplicaReviewReadyFor(GetOwningPlayerPawn());
-		KeyText->SetText(bPaintingReviewReady ? NSLOCTEXT("HeistInteraction", "PaintingReplicaReviewKeys", "E 교체·회수  |  R 다시 그리기")
-										: bObjectReviewReady ? NSLOCTEXT("HeistInteraction", "ObjectReplicaReviewKeys", "E 교체·회수  |  R 다시 조립") : InteractionKeyLabel);
+		KeyText->SetText(bLockedVent			? FText::GetEmpty()
+						 : bPaintingReviewReady ? NSLOCTEXT("HeistInteraction", "PaintingReplicaReviewKeys", "E 교체·회수  |  R 다시 그리기")
+						 : bObjectReviewReady	? NSLOCTEXT("HeistInteraction", "ObjectReplicaReviewKeys", "E 교체·회수  |  R 다시 조립")
+												: InteractionKeyLabel);
 	}
 }
 

@@ -474,6 +474,7 @@ Client Preview는 확정값으로 취급하지 않는다.
 - Character Yaw는 Controller Yaw를 따른다.
 - Interaction은 Player Capsule과 각 Actor의 Interaction Collision 사이 `BeginOverlap / EndOverlap` 후보 관리로 처리한다.
 - Interaction Target은 현재 Overlap 중이고 `CanInteract`를 만족하는 Actor 가운데 가장 가까운 대상으로 선택한다.
+- 유효한 Interaction Target이 없을 때만 기존 Overlap 집합의 잠긴 Vent를 안내 전용으로 표시한다. 안내 대상은 요청 가능한 Interaction Target으로 승격하지 않는다.
 - Interaction Target 탐색을 위한 실시간 Line Trace 또는 주기적 Trace Scan을 사용하지 않는다.
 - Flashlight Direction은 Camera Forward를 기준으로 한다.
 - Coin Throw Direction은 Camera Forward 또는 검증된 Camera Target을 기준으로 한다.

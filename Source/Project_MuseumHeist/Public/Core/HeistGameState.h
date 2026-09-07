@@ -279,6 +279,7 @@ class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
   public:
 	bool IsEscapePhaseOpen() const;
 	float GetEscapePhaseDelaySeconds() const;
+	float GetEscapePhaseUnlockServerTime() const;
 	float GetEscapePhaseOpenTimeSeconds() const;
 	void InitializeEscapePhase(float InDelaySeconds);
 	void OpenEscapePhase();
@@ -290,6 +291,9 @@ class PROJECT_MUSEUMHEIST_API AHeistGameState : public AGameStateBase
 
 	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Escape", meta = (AllowPrivateAccess = "true"))
 	float EscapePhaseDelaySeconds = 0.0f;
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Escape", meta = (AllowPrivateAccess = "true"))
+	float EscapePhaseUnlockServerTime = -1.0f;
 
 	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Escape", meta = (AllowPrivateAccess = "true"))
 	float EscapePhaseOpenTimeSeconds = -1.0f;

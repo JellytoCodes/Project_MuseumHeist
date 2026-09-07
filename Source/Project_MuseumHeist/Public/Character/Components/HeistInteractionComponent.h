@@ -7,6 +7,7 @@
 
 class AActor;
 class AHeistPlayerCharacter;
+class AHeistVentActor;
 class UPrimitiveComponent;
 struct FHitResult;
 
@@ -37,6 +38,7 @@ class PROJECT_MUSEUMHEIST_API UHeistInteractionComponent : public UActorComponen
 	bool RefreshInteractionTarget();
 	AActor* GetCurrentInteractionTarget() const;
 	bool HasValidInteractionTarget() const;
+	AHeistVentActor* GetLockedVentForPresentation() const;
 	bool IsActorOverlappingInteractionArea(const AActor* TargetActor) const;
 	FHeistInteractionTargetChanged& GetInteractionTargetChangedDelegate();
 

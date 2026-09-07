@@ -1,9 +1,11 @@
 #include "World/Actors/Escape/HeistVentActor.h"
 
 #include "Character/HeistPlayerCharacter.h"
+#include "Character/Components/HeistInteractionComponent.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistLogChannels.h"
 #include "Engine/World.h"
+#include "GameFramework/PlayerController.h"
 #include "Net/UnrealNetwork.h"
 
 #pragma region Construction
@@ -76,6 +78,7 @@ void AHeistVentActor::RefreshVentActiveState()
 
 	bVentActive = bShouldBeActive;
 	ForceNetUpdate();
+	RefreshLocalInteractionTarget();
 
 	UE_LOG(LogHeist, Log, TEXT("Vent active state changed: Vent=%s IsActive=%s RequiresEscapePhase=%s ManuallyEnabled=%s WorldRestricted=%s"), *GetNameSafe(this),
 		   bVentActive ? TEXT("true") : TEXT("false"), bRequiresEscapePhase ? TEXT("true") : TEXT("false"), bVentManuallyEnabled ? TEXT("true") : TEXT("false"),
@@ -84,6 +87,7 @@ void AHeistVentActor::RefreshVentActiveState()
 
 void AHeistVentActor::OnRep_VentActive()
 {
+	RefreshLocalInteractionTarget();
 	UE_LOG(LogHeistNetwork, Log, TEXT("Vent active state replicated: Vent=%s IsActive=%s"), *GetNameSafe(this), bVentActive ? TEXT("true") : TEXT("false"));
 }
 
@@ -99,6 +103,25 @@ bool AHeistVentActor::CanInteract(const AActor* Interactor) const
 bool AHeistVentActor::CanUseVent(const AHeistPlayerCharacter* RequestingCharacter) const
 {
 	return IsValid(this) && !IsActorBeingDestroyed() && bVentActive && IsValid(RequestingCharacter) && Super::CanInteract(RequestingCharacter);
+}
+
+bool AHeistVentActor::CanShowLockedPrompt(const AHeistPlayerCharacter* RequestingCharacter) const
+{
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	return IsValid(this) && !IsActorBeingDestroyed() && bVentManuallyEnabled && bRequiresEscapePhase && !bVentActive && IsValid(RequestingCharacter) && Super::CanInteract(RequestingCharacter) &&
+		   IsValid(HeistGameState) && HeistGameState->GetMatchPhase() == EHeistMatchPhase::InGame && !HeistGameState->IsEscapePhaseOpen() && GetUnlockTimeRemaining() >= 0.0f;
+}
+
+float AHeistVentActor::GetUnlockTimeRemaining() const
+{
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	if (!IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame)
+	{
+		return -1.0f;
+	}
+
+	const float UnlockServerTime = HeistGameState->GetEscapePhaseUnlockServerTime();
+	return FMath::IsFinite(UnlockServerTime) && UnlockServerTime >= 0.0f ? FMath::Max(UnlockServerTime - HeistGameState->GetServerWorldTimeSeconds(), 0.0f) : -1.0f;
 }
 
 #pragma endregion
@@ -128,6 +151,30 @@ void AHeistVentActor::BindToGameState()
 	BoundGameState = HeistGameState;
 	EscapePhaseStateChangedHandle = HeistGameState->GetEscapePhaseStateChangedDelegate().AddUObject(this, &AHeistVentActor::HandleEscapePhaseStateChanged);
 	AlertStateChangedHandle = HeistGameState->GetAlertStateChangedDelegate().AddUObject(this, &AHeistVentActor::HandleAlertStateChanged);
+}
+
+void AHeistVentActor::RefreshLocalInteractionTarget()
+{
+	UWorld* World = GetWorld();
+	if (!IsValid(World))
+	{
+		return;
+	}
+
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	{
+		APlayerController* PlayerController = It->Get();
+		if (IsValid(PlayerController) && PlayerController->IsLocalController())
+		{
+			if (AHeistPlayerCharacter* Character = PlayerController->GetPawn<AHeistPlayerCharacter>())
+			{
+				if (UHeistInteractionComponent* Interaction = Character->GetInteractionComponent())
+				{
+					Interaction->RefreshInteractionTarget();
+				}
+			}
+		}
+	}
 }
 
 void AHeistVentActor::HandleEscapePhaseStateChanged(bool)

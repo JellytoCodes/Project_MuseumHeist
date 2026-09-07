@@ -6,6 +6,11 @@
 
 #include "HeistInventoryViewModel.generated.h"
 
+class AGameStateBase;
+class AHeistGameState;
+class UWorld;
+struct FHeistContractSnapshot;
+
 DECLARE_MULTICAST_DELEGATE(FHeistInventorySnapshotChanged);
 
 UCLASS(BlueprintType)
@@ -28,9 +33,16 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryViewModel : public UMVVMViewModelBa
 	FHeistInventorySnapshotChanged& GetSnapshotChangedDelegate();
 
   private:
+	void HandleGameStateSet(AGameStateBase* InGameState);
+	void HandleContractSnapshotChanged(const FHeistContractSnapshot& ContractSnapshot);
+
 	UPROPERTY(Transient)
 	TObjectPtr<UHeistInventoryComponent> InventoryComponent;
 
+	UPROPERTY(Transient)
+	TObjectPtr<AHeistGameState> GameState;
+
+	TWeakObjectPtr<UWorld> BoundWorld;
 	FHeistInventorySnapshotChanged SnapshotChangedDelegate;
 
 #pragma endregion
@@ -44,6 +56,9 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryViewModel : public UMVVMViewModelBa
 	int32 GetGridRowCount() const;
 	int32 GetItemCount() const;
 	float GetTotalWeight() const;
+	int32 GetRequiredQuota() const;
+	int32 GetCarriedValue() const;
+	int32 GetSecuredValue() const;
 
   private:
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Inventory", meta = (AllowPrivateAccess = "true"))
@@ -63,6 +78,15 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryViewModel : public UMVVMViewModelBa
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Inventory", meta = (AllowPrivateAccess = "true"))
 	float TotalWeight = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Inventory|Contract", meta = (AllowPrivateAccess = "true"))
+	int32 RequiredQuota = 0;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Inventory|Contract", meta = (AllowPrivateAccess = "true"))
+	int32 CarriedValue = 0;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Inventory|Contract", meta = (AllowPrivateAccess = "true"))
+	int32 SecuredValue = 0;
 
 #pragma endregion
 };

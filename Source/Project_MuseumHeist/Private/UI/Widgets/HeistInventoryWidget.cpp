@@ -32,6 +32,12 @@ void UHeistInventoryWidget::NativeConstruct()
 		CloseButton->OnClicked.RemoveDynamic(this, &UHeistInventoryWidget::HandleCloseButtonClicked);
 		CloseButton->OnClicked.AddDynamic(this, &UHeistInventoryWidget::HandleCloseButtonClicked);
 	}
+	if (IsValid(InventoryViewModel))
+	{
+		InventoryViewModel->GetSnapshotChangedDelegate().RemoveAll(this);
+		InventoryViewModel->GetSnapshotChangedDelegate().AddUObject(this, &UHeistInventoryWidget::RefreshVisibilityFromConfirmedSnapshot);
+		RefreshVisibilityFromConfirmedSnapshot();
+	}
 }
 
 void UHeistInventoryWidget::NativeDestruct()
@@ -122,6 +128,10 @@ void UHeistInventoryWidget::SetupInventoryWidget(UHeistInventoryViewModel* InInv
 	checkf(IsValid(InInventoryViewModel), TEXT("HeistInventoryWidget requires a valid InventoryViewModel"));
 	checkf(IsValid(InPlayerController), TEXT("HeistInventoryWidget requires a valid HeistPlayerController"));
 
+	if (InventoryViewModel != InInventoryViewModel && IsValid(InventoryViewModel))
+	{
+		InventoryViewModel->GetSnapshotChangedDelegate().RemoveAll(this);
+	}
 	InventoryViewModel = InInventoryViewModel;
 	PlayerController = InPlayerController;
 	InventoryViewModel->GetSnapshotChangedDelegate().RemoveAll(this);
@@ -165,11 +175,24 @@ void UHeistInventoryWidget::RefreshVisibilityFromConfirmedSnapshot()
 				WeightState = NSLOCTEXT("HeistInventory", "WeightStateMedium", "중간");
 			}
 
-			InventorySummaryText->SetText(FText::Format(NSLOCTEXT("HeistInventory", "WeightStateFormat", "배낭 상태: {0}"), WeightState));
+			if (InventoryViewModel->GetRequiredQuota() > 0)
+			{
+				InventorySummaryText->SetText(FText::Format(NSLOCTEXT("HeistInventory", "WeightStateFormat", "배낭 상태: {0}\n계약 목표: {1} · 팀 운반 가치: {2} · 확보 가치: {3}"), WeightState,
+															FText::AsNumber(InventoryViewModel->GetRequiredQuota()), FText::AsNumber(InventoryViewModel->GetCarriedValue()),
+															FText::AsNumber(InventoryViewModel->GetSecuredValue())));
+			}
+			else
+			{
+				InventorySummaryText->SetText(FText::Format(NSLOCTEXT("HeistInventory", "ContractSummaryPending", "배낭 상태: {0}\n계약 정보를 기다리는 중"), WeightState));
+			}
 		}
 
-		BP_RefreshConfirmedInventory(ConfirmedItems, GridColumns, GridRows);
-		RebuildConfirmedInventory(ConfirmedItems, GridColumns, GridRows);
+		if (ConfirmedInventoryItems != ConfirmedItems || ConfirmedGridColumns != GridColumns || ConfirmedGridRows != GridRows || InventorySlotWidgets.Num() != GridColumns * GridRows ||
+			InventoryItemWidgets.Num() != ConfirmedItems.Num())
+		{
+			BP_RefreshConfirmedInventory(ConfirmedItems, GridColumns, GridRows);
+			RebuildConfirmedInventory(ConfirmedItems, GridColumns, GridRows);
+		}
 	}
 }
 

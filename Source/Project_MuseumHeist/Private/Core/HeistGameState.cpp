@@ -119,6 +119,10 @@ bool AHeistGameState::SetMatchPhase(const EHeistMatchPhase NewMatchPhase)
 
 	const EHeistMatchPhase PreviousMatchPhase = MatchPhase;
 	MatchPhase = NewMatchPhase;
+	if (NewMatchPhase != EHeistMatchPhase::InGame)
+	{
+		EscapePhaseUnlockServerTime = -1.0f;
+	}
 	if (NewMatchPhase == EHeistMatchPhase::Lobby)
 	{
 		ClearContractSnapshot();
@@ -764,6 +768,11 @@ float AHeistGameState::GetEscapePhaseOpenTimeSeconds() const
 	return EscapePhaseOpenTimeSeconds;
 }
 
+float AHeistGameState::GetEscapePhaseUnlockServerTime() const
+{
+	return EscapePhaseUnlockServerTime;
+}
+
 void AHeistGameState::InitializeEscapePhase(float InDelaySeconds)
 {
 	if (!HasAuthority())
@@ -776,6 +785,7 @@ void AHeistGameState::InitializeEscapePhase(float InDelaySeconds)
 	bEscapePhaseOpen = false;
 	EscapePhaseDelaySeconds = FMath::Max(0.0f, InDelaySeconds);
 	EscapePhaseOpenTimeSeconds = -1.0f;
+	EscapePhaseUnlockServerTime = MatchPhase == EHeistMatchPhase::InGame && ContractSnapshot.Outcome == EHeistContractOutcome::None ? GetServerWorldTimeSeconds() + EscapePhaseDelaySeconds : -1.0f;
 	ForceNetUpdate();
 
 	if (bWasEscapePhaseOpen)
@@ -1088,6 +1098,7 @@ void AHeistGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(AHeistGameState, OriginalCarrierCandidate);
 	DOREPLIFETIME(AHeistGameState, ObjectiveRevision);
 	DOREPLIFETIME(AHeistGameState, EscapePhaseDelaySeconds);
+	DOREPLIFETIME(AHeistGameState, EscapePhaseUnlockServerTime);
 	DOREPLIFETIME(AHeistGameState, EscapePhaseOpenTimeSeconds);
 	DOREPLIFETIME(AHeistGameState, PlayerResults);
 	DOREPLIFETIME(AHeistGameState, TeamResult);

@@ -55,6 +55,8 @@ class PROJECT_MUSEUMHEIST_API AHeistVentActor : public AHeistInteractableActor
   public:
 	virtual bool CanInteract(const AActor* Interactor) const override;
 	bool CanUseVent(const AHeistPlayerCharacter* RequestingCharacter) const;
+	bool CanShowLockedPrompt(const AHeistPlayerCharacter* RequestingCharacter) const;
+	float GetUnlockTimeRemaining() const;
 
 #pragma endregion
 
@@ -69,6 +71,7 @@ class PROJECT_MUSEUMHEIST_API AHeistVentActor : public AHeistInteractableActor
 
   private:
 	void BindToGameState();
+	void RefreshLocalInteractionTarget();
 	void HandleEscapePhaseStateChanged(bool bIsEscapePhaseOpen);
 	void HandleAlertStateChanged(EHeistAlertLevel PreviousAlertLevel, EHeistAlertLevel NewAlertLevel, int32 AlertRevision, FName TriggerId);
 

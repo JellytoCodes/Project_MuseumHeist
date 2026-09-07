@@ -6,6 +6,7 @@
 #include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameMode.h"
 #include "Core/HeistGameState.h"
+#include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
 #include "Data/HeistGameBalanceDataAsset.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
@@ -531,6 +532,10 @@ void UHeistActionComponent::HandleEscapeCastTimerElapsed()
 	if (bMidRunSettlement)
 	{
 		ClearEscapeCastState();
+		if (AHeistPlayerController* HeistController = Cast<AHeistPlayerController>(HeistCharacter->GetController()))
+		{
+			HeistController->NotifyVentSettlementCommitted(DepositPreview.LooseLootValue);
+		}
 		UHeistDebugFunctionLibrary::Message(
 			this,
 			FString::Printf(TEXT("Vent settlement committed: PlayerId=%d ItemCount=%d DepositValue=%d SecuredTotal=%d Escaped=false Authority=true Result=PASS"),

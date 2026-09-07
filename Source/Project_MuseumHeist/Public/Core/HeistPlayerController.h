@@ -25,6 +25,7 @@ class UInputMappingContext;
 struct FInputActionValue;
 
 DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistPopupFeedbackRequested, const FText&, float);
+DECLARE_MULTICAST_DELEGATE_OneParam(FHeistVentFeedbackRequested, bool);
 DECLARE_MULTICAST_DELEGATE(FHeistTutorialPresentationChanged);
 
 UCLASS()
@@ -508,16 +509,19 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 
   public:
 	FHeistPopupFeedbackRequested& GetPopupFeedbackRequestedDelegate();
+	FHeistVentFeedbackRequested& GetVentFeedbackRequestedDelegate();
+	void NotifyVentSettlementCommitted(int32 DepositValue);
 
   private:
 	UFUNCTION(Client, Reliable)
-	void Client_ReceivePopupFeedback(const FText& Message, float DurationSeconds);
+	void Client_ReceivePopupFeedback(const FText& Message, float DurationSeconds, bool bVentSettlement = false);
 
 	void SendPopupFeedback(const FText& Message, float DurationSeconds = 2.0f);
 	void SendPopupFeedbackForRejection(const TCHAR* RequestName, const TCHAR* Reason);
 	static FText ResolvePopupFeedbackText(const TCHAR* RequestName, const TCHAR* Reason);
 
 	FHeistPopupFeedbackRequested PopupFeedbackRequestedDelegate;
+	FHeistVentFeedbackRequested VentFeedbackRequestedDelegate;
 
 #pragma endregion
 

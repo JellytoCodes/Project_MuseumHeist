@@ -67,6 +67,10 @@ void UHeistHUDWidget::NativeDestruct()
 	{
 		TutorialPlayerController->GetTutorialPresentationChangedDelegate().RemoveAll(this);
 	}
+	if (IsValid(VentFeedbackPlayerController))
+	{
+		VentFeedbackPlayerController->GetVentFeedbackRequestedDelegate().RemoveAll(this);
+	}
 	ResetHiddenPresentationState();
 	Super::NativeDestruct();
 }
@@ -132,6 +136,7 @@ void UHeistHUDWidget::SetupHUDWidget(UHeistHUDViewModel* InHUDViewModel, UHeistI
 	RefreshCrosshairPresentation(IsValid(InteractionComponent) ? InteractionComponent->GetCurrentInteractionTarget() : nullptr,
 								 IsValid(InteractionComponent) && InteractionComponent->HasValidInteractionTarget());
 	SetupPopupFeedbackPresentation();
+	SetupVentFeedbackPresentation();
 	SetupTutorialPresentation();
 	RefreshToolPresentation();
 	RefreshHUDPresentation();
@@ -344,6 +349,50 @@ void UHeistHUDWidget::SetupPopupFeedbackPresentation()
 		PopupWidgetPool = NewObject<UHeistPopupWidgetPool>(this);
 	}
 	PopupWidgetPool->SetupPool(OwningPlayerController, PopupFeedbackLayer, PopupFeedbackWidgetClass, PopupFeedbackCapacity);
+}
+
+void UHeistHUDWidget::SetupVentFeedbackPresentation()
+{
+	if (IsValid(VentFeedbackPlayerController))
+	{
+		VentFeedbackPlayerController->GetVentFeedbackRequestedDelegate().RemoveAll(this);
+	}
+	StopVentFeedbackAudio();
+	VentFeedbackPlayerController = Cast<AHeistPlayerController>(GetOwningPlayer());
+	if (IsValid(VentFeedbackPlayerController))
+	{
+		VentFeedbackPlayerController->GetVentFeedbackRequestedDelegate().AddUObject(this, &UHeistHUDWidget::HandleVentFeedback);
+	}
+}
+
+void UHeistHUDWidget::HandleVentFeedback(const bool bSettlement)
+{
+	const AHeistGameState* GameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	if (!IsValid(GameState) || GameState->GetMatchPhase() != EHeistMatchPhase::InGame || GameState->GetContractSnapshot().Outcome != EHeistContractOutcome::None)
+	{
+		return;
+	}
+
+	if (!bSettlement)
+	{
+		ShowTransientEvent(NSLOCTEXT("HeistHUD", "VentOpened", "벤트가 개방되었습니다 · 전리품을 정산할 수 있습니다"));
+	}
+	StopVentFeedbackAudio();
+	USoundBase* Sound = bSettlement ? VentSettlementSound.Get() : VentOpenedSound.Get();
+	if (IsValid(Sound))
+	{
+		VentFeedbackAudioComponent = UGameplayStatics::SpawnSound2D(this, Sound, 1.0f, 1.0f, 0.0f, nullptr, false, false);
+	}
+}
+
+void UHeistHUDWidget::StopVentFeedbackAudio()
+{
+	if (IsValid(VentFeedbackAudioComponent))
+	{
+		VentFeedbackAudioComponent->Stop();
+		VentFeedbackAudioComponent->DestroyComponent();
+	}
+	VentFeedbackAudioComponent = nullptr;
 }
 
 void UHeistHUDWidget::ResolveInteractionChildWidgets()
@@ -807,6 +856,7 @@ void UHeistHUDWidget::ResetHiddenPresentationState()
 {
 	StopAlertAudioLayers();
 	StopArrestFeedbackAudio();
+	StopVentFeedbackAudio();
 	LastAppliedAudioAlertLevel = EHeistAlertLevel::Quiet;
 	LastPresentedLocalCrewStatus = EHeistCrewStatus::Active;
 	bLocalCrewStatusPresentationInitialized = false;
@@ -845,13 +895,14 @@ bool UHeistHUDWidget::IsHiddenPresentationStateReset() const
 {
 	const bool bAlertAudioStopped = !bAlertAudioInitialized && !IsValid(SuspenseMusicComponent) && !IsValid(AlarmMusicComponent);
 	const bool bArrestAudioStopped = !IsValid(ArrestFeedbackAudioComponent);
+	const bool bVentAudioStopped = !IsValid(VentFeedbackAudioComponent);
 	const bool bAlertTextReset = !IsValid(AlertText) || (AlertText->GetVisibility() == ESlateVisibility::Collapsed && AlertText->GetText().IsEmpty());
 	const bool bMissionTimerReset = LastDisplayedMissionSeconds == INDEX_NONE && (!IsValid(MissionTimeText) || MissionTimeText->GetText().IsEmpty());
 	const bool bEventReset = TransientEventHideWorldTime <= 0.0f &&
 		(!IsValid(AlertEventText) || (AlertEventText->GetVisibility() == ESlateVisibility::Collapsed && AlertEventText->GetText().IsEmpty()));
 	const bool bTransitionStateReset = !bLocalCrewStatusPresentationInitialized && LastPresentedLocalCrewStatus == EHeistCrewStatus::Active && LastArrestFeedbackEvent.IsNone() &&
 		ArrestAudioPlayCount == 0 && RescueAudioPlayCount == 0;
-	return bAlertAudioStopped && bArrestAudioStopped && bAlertTextReset && bMissionTimerReset && bEventReset && bTransitionStateReset;
+	return bAlertAudioStopped && bArrestAudioStopped && bVentAudioStopped && bAlertTextReset && bMissionTimerReset && bEventReset && bTransitionStateReset;
 }
 
 void UHeistHUDWidget::DebugDumpFirstPersonHUDState() const
