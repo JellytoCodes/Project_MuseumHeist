@@ -353,12 +353,16 @@ void UHeistHUDWidget::SetupPopupFeedbackPresentation()
 
 void UHeistHUDWidget::SetupVentFeedbackPresentation()
 {
+	AHeistPlayerController* OwningPlayerController = Cast<AHeistPlayerController>(GetOwningPlayer());
 	if (IsValid(VentFeedbackPlayerController))
 	{
 		VentFeedbackPlayerController->GetVentFeedbackRequestedDelegate().RemoveAll(this);
 	}
-	StopVentFeedbackAudio();
-	VentFeedbackPlayerController = Cast<AHeistPlayerController>(GetOwningPlayer());
+	if (VentFeedbackPlayerController != OwningPlayerController)
+	{
+		StopVentFeedbackAudio();
+	}
+	VentFeedbackPlayerController = OwningPlayerController;
 	if (IsValid(VentFeedbackPlayerController))
 	{
 		VentFeedbackPlayerController->GetVentFeedbackRequestedDelegate().AddUObject(this, &UHeistHUDWidget::HandleVentFeedback);

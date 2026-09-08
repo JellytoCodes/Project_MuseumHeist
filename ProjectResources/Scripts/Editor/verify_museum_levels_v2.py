@@ -525,6 +525,14 @@ def verify_guard_navigation(world, guards, waypoint_routes, mode):
         "checked_segments": 0,
         "already_at_goal_segments": 0,
         "failed_segments": [],
+        "path_scope": "ProjectedPatrolEndpointsAndNavigationGraph",
+        "recast_settings": {"status": "NOT_TESTED"},
+        "capsule_start_occupancy": {
+            "status": "NOT_TESTED", "checked_guards": 0, "failed_guards": [],
+            "scope": "SavedGuardCapsulesAgainstWorldGeometry_AuthoredGuardsIgnored",
+        },
+        "capsule_path_sweeps": "NOT_TESTED",
+        "natural_patrol": "NOT_TESTED",
     }
     if mode == "off":
         return result
@@ -555,6 +563,52 @@ def verify_guard_navigation(world, guards, waypoint_routes, mode):
         return result
 
     try:
+        if mode == "strict":
+            nav_meshes = unreal.GameplayStatics.get_all_actors_of_class(world, unreal.RecastNavMesh)
+            simplification_errors = [float(mesh.get_editor_property("max_simplification_error")) for mesh in nav_meshes]
+            settings_match = (len(nav_meshes) == 1 and math.isfinite(simplification_errors[0])
+                              and abs(simplification_errors[0] - 0.1) <= 0.00001)
+            result["recast_settings"] = {
+                "status": "PASS" if settings_match else "FAIL", "count": len(nav_meshes),
+                "max_simplification_errors": simplification_errors, "expected_max_simplification_error": 0.1,
+            }
+            if not settings_match:
+                result.update(status="FAIL", reason="SavedRecastSettingsMismatch")
+                return result
+
+            # Check the actual authored capsule, including an AlreadyAtGoal start.
+            # This is a stationary world-geometry query, not a path sweep or PIE.
+            occupancy = result["capsule_start_occupancy"]
+            for guard in guards:
+                capsule = guard.get_component_by_class(unreal.CapsuleComponent)
+                if capsule is None:
+                    occupancy["failed_guards"].append({"guard": actor_label(guard), "reason": "MissingCapsule"})
+                    continue
+                center = capsule.get_world_location()
+                radius = float(capsule.get_scaled_capsule_radius())
+                half_height = float(capsule.get_scaled_capsule_half_height())
+                if (not all(math.isfinite(value) for value in (center.x, center.y, center.z, radius, half_height))
+                        or radius <= 0.0 or half_height < radius):
+                    occupancy["failed_guards"].append({"guard": actor_label(guard), "reason": "InvalidCapsuleDimensions"})
+                    continue
+                hit = unreal.SystemLibrary.capsule_trace_single_by_profile(
+                    world, center, center, radius, half_height, capsule.get_collision_profile_name(),
+                    False, guards, unreal.DrawDebugTrace.NONE, True,
+                )
+                occupancy["checked_guards"] += 1
+                hit_fields = hit.to_dict() if hit is not None else {}
+                if hit_fields.get("blocking_hit"):
+                    hit_actor = hit_fields.get("hit_actor")
+                    occupancy["failed_guards"].append({
+                        "guard": actor_label(guard), "reason": "SavedGuardCapsuleBlocked",
+                        "hit_actor": actor_label(hit_actor) if hit_actor else None,
+                        "initial_overlap": bool(hit_fields.get("initial_overlap")),
+                    })
+            occupancy["status"] = "FAIL" if occupancy["failed_guards"] else "PASS"
+            if occupancy["status"] != "PASS":
+                result.update(status="FAIL", reason="SavedGuardCapsuleOccupancyFailed")
+                return result
+
         navigation = unreal.NavigationSystemV1.get_navigation_system(world)
         if navigation is None:
             result["reason"] = "MissingNavigationSystem"
@@ -1661,7 +1715,10 @@ for code in selected_level_codes:
         "minimum_case_guard_clearance_cm": round(minimum_case_guard_clearance[0], 1),
         "minimum_guard_obstacle_clearance_cm": None if minimum_guard_obstacle_clearance[0] is None else round(minimum_guard_obstacle_clearance[0], 1),
         "guard_navigation": guard_navigation,
-        "verification_scope": "structure_and_guard_navigation" if guard_navigation["status"] == "PASS" else "structure_only",
+        "verification_scope": (
+            "structure_guard_path_graph_and_start_capsule_occupancy" if guard_navigation_mode == "strict"
+            else "structure_and_guard_path_graph"
+        ) if guard_navigation["status"] == "PASS" else "structure_only",
         "cameras": len(by_class.get("BP_SecurityCamera_C", [])),
         "lasers": len(by_class.get("BP_LaserBarrier_C", [])),
         "linked_laser_cases": linked_case_labels,

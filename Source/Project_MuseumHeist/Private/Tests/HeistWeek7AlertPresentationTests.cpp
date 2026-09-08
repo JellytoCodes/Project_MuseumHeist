@@ -10,6 +10,7 @@
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
 #include "Core/HeistTypes.h"
+#include "Components/AudioComponent.h"
 #include "Components/TextBlock.h"
 #include "Editor.h"
 #include "Engine/Engine.h"
@@ -21,6 +22,7 @@
 #include "UI/ViewModels/HeistHUDViewModel.h"
 #include "UI/Widgets/HeistForgeryWidget.h"
 #include "UI/Widgets/HeistHUDWidget.h"
+#include "UObject/UnrealType.h"
 #include "World/Actors/Loot/HeistObjectDisplayCaseActor.h"
 #include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 
@@ -725,6 +727,117 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistWeek7AlertPresentationFourPlayerTest, "Pr
 bool FHeistWeek7AlertPresentationFourPlayerTest::RunTest(const FString& Parameters)
 {
 	return HeistWeek7AlertPresentationTest::EnqueueFourPlayerAlertScenario(this);
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistVentFeedbackAudioLifecycleTest, "ProjectMuseumHeist.Audio.VentFeedbackLifecycleTwoPlayer",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHeistVentFeedbackAudioLifecycleTest::RunTest(const FString& Parameters)
+{
+	using namespace HeistWeek7AlertPresentationTest;
+	if (!IsValid(GEngine) || !GEngine->UseSound())
+	{
+		AddError(TEXT("Vent audio lifecycle requires sound enabled; run this separate audio test without -nosound."));
+		return false;
+	}
+
+	const TSharedRef<FAlertPresentationAutomationState> State = MakeShared<FAlertPresentationAutomationState>();
+	AddCommand(new FEditorLoadMap(TEXT("/Game/Maps/M01_ClassicalPrototype")));
+	AddCommand(new FAlertActionCommand(this, State, TEXT("configure two-player Vent audio PIE"), [State]()
+	{
+		ULevelEditorPlaySettings* PlaySettings = GetMutableDefault<ULevelEditorPlaySettings>();
+		if (!IsValid(PlaySettings))
+		{
+			return false;
+		}
+		PlaySettings->GetPlayNetMode(State->OriginalNetMode);
+		PlaySettings->GetRunUnderOneProcess(State->bOriginalRunUnderOneProcess);
+		PlaySettings->GetPlayNumberOfClients(State->OriginalClientCount);
+		State->bCapturedPlaySettings = true;
+		PlaySettings->SetRunUnderOneProcess(true);
+		PlaySettings->SetPlayNetMode(EPlayNetMode::PIE_ListenServer);
+		PlaySettings->SetPlayNumberOfClients(2);
+		return true;
+	}));
+	AddCommand(new FStartPIECommand(false));
+	AddCommand(new FAlertWaitCommand(this, State, TEXT("two-player InGame host HUD for Vent audio"), []()
+	{
+		UWorld* World = GetServerWorld();
+		const AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
+		const AHeistPlayerController* Controller = GetLocalController(World);
+		const AHeistHUD* HUD = IsValid(Controller) ? Controller->GetHUD<AHeistHUD>() : nullptr;
+		const UHeistHUDWidget* Widget = IsValid(HUD) ? HUD->GetMainHUDWidget() : nullptr;
+		return GetPIEWorlds().Num() == 2 && IsValid(GameState) && GameState->PlayerArray.Num() == 2 &&
+			GameState->GetMatchPhase() == EHeistMatchPhase::InGame && GameState->IsContractInitialized() &&
+			GameState->GetContractSnapshot().Outcome == EHeistContractOutcome::None && IsValid(Controller) && Controller->HasAuthority() &&
+			IsValid(Widget) && Widget->GetVisibility() == ESlateVisibility::Visible;
+	}, 60.0));
+	AddCommand(new FAlertActionCommand(this, State, TEXT("Vent feedback survives HUD rebind and cleans up on hide"), [this]()
+	{
+		UWorld* World = GetServerWorld();
+		AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
+		AHeistPlayerController* Controller = GetLocalController(World);
+		AHeistHUD* HUD = IsValid(Controller) ? Controller->GetHUD<AHeistHUD>() : nullptr;
+		UHeistHUDWidget* Widget = IsValid(HUD) ? HUD->GetMainHUDWidget() : nullptr;
+		const FObjectPropertyBase* AudioProperty = FindFProperty<FObjectPropertyBase>(UHeistHUDWidget::StaticClass(), TEXT("VentFeedbackAudioComponent"));
+		if (!TestTrue(TEXT("Host world permits audio and has an audio device"), IsValid(World) && World->bAllowAudioPlayback && World->GetAudioDeviceRaw() != nullptr) ||
+			!TestNotNull(TEXT("Host GameState exists"), GameState) || !TestNotNull(TEXT("Host HUD widget exists"), Widget) ||
+			!TestNotNull(TEXT("Vent audio component is observable through its existing property"), AudioProperty))
+		{
+			return false;
+		}
+
+		const auto ReadVentAudio = [Widget, AudioProperty]()
+		{
+			return Cast<UAudioComponent>(AudioProperty->GetObjectPropertyValue_InContainer(Widget));
+		};
+		Controller->NotifyVentSettlementCommitted(1);
+		UAudioComponent* InitialAudio = ReadVentAudio();
+		if (!TestTrue(TEXT("Actual settlement feedback starts a registered, playing audio component"),
+			IsValid(InitialAudio) && InitialAudio->IsRegistered() && InitialAudio->IsPlaying()))
+		{
+			return false;
+		}
+
+		// Player result changes invoke ShowMainHUD and SetupHUDWidget for the same controller.
+		GameState->RebuildPlayerResults();
+		bool bPassed = TestTrue(TEXT("Player result refresh preserves the same registered and playing Vent component"),
+			ReadVentAudio() == InitialAudio && IsValid(InitialAudio) && InitialAudio->IsRegistered() && InitialAudio->IsPlaying());
+		HUD->HideMainHUD();
+		bPassed &= TestTrue(TEXT("Hiding the HUD clears the Vent reference and releases the previous component"),
+			ReadVentAudio() == nullptr && (!IsValid(InitialAudio) || (!InitialAudio->IsRegistered() && !InitialAudio->IsPlaying())) &&
+			Widget->IsHiddenPresentationStateReset());
+		bPassed &= TestTrue(TEXT("Showing the HUD restores the existing visible widget"), HUD->ShowMainHUD() && HUD->GetMainHUDWidget() == Widget &&
+			Widget->GetVisibility() == ESlateVisibility::Visible);
+		Controller->NotifyVentSettlementCommitted(1);
+		UAudioComponent* RestoredAudio = ReadVentAudio();
+		bPassed &= TestTrue(TEXT("Restored HUD receives a new settlement feedback component"), IsValid(RestoredAudio) && RestoredAudio != InitialAudio &&
+			RestoredAudio->IsRegistered() && RestoredAudio->IsPlaying());
+		HUD->HideMainHUD();
+		bPassed &= TestTrue(TEXT("Restored Vent feedback is released on the next hide"), ReadVentAudio() == nullptr &&
+			(!IsValid(RestoredAudio) || (!RestoredAudio->IsRegistered() && !RestoredAudio->IsPlaying())) && Widget->IsHiddenPresentationStateReset());
+		bPassed &= TestTrue(TEXT("HUD is visible again after lifecycle validation"), HUD->ShowMainHUD());
+		return bPassed;
+	}));
+	AddCommand(new FEndPlayMapCommand());
+	AddCommand(new FWaitLatentCommand(1.0f));
+	AddCommand(new FAlertActionCommand(this, State, TEXT("restore play settings after Vent audio test"), [State]()
+	{
+		if (!State->bCapturedPlaySettings)
+		{
+			return true;
+		}
+		ULevelEditorPlaySettings* PlaySettings = GetMutableDefault<ULevelEditorPlaySettings>();
+		if (!IsValid(PlaySettings))
+		{
+			return false;
+		}
+		PlaySettings->SetRunUnderOneProcess(State->bOriginalRunUnderOneProcess);
+		PlaySettings->SetPlayNetMode(State->OriginalNetMode);
+		PlaySettings->SetPlayNumberOfClients(State->OriginalClientCount);
+		return true;
+	}, true));
+	return true;
 }
 
 #endif

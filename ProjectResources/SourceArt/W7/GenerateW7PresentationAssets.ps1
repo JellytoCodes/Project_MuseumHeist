@@ -1,7 +1,8 @@
 param(
 	[string]$OutputDirectory = (Join-Path $PSScriptRoot 'Generated'),
 	[switch]$VentFeedbackOnly,
-	[switch]$FloorPlanOnly
+	[switch]$FloorPlanOnly,
+	[string]$EditorExecutable
 )
 
 $ErrorActionPreference = 'Stop'
@@ -84,6 +85,62 @@ function New-FloorPlanTexture
 			$resources[$resourceIndex].Dispose()
 		}
 	}
+}
+
+function Confirm-CurrentFloorPlanGeometry
+{
+	param([string]$GeometryPath, [string]$ExpectedSourceHash)
+
+	$projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../..'))
+	$projectPath = Join-Path $projectRoot 'Project_MuseumHeist.uproject'
+	$verificationScript = Join-Path $projectRoot 'ProjectResources/Scripts/Editor/export_floor_plan_geometry.py'
+	$editorPath = $EditorExecutable
+	if ([string]::IsNullOrWhiteSpace($editorPath))
+	{
+		$engineAssociation = (Get-Content -Raw -LiteralPath $projectPath | ConvertFrom-Json).EngineAssociation
+		$engineInstallation = Get-ItemProperty -LiteralPath "HKLM:\SOFTWARE\EpicGames\Unreal Engine\$engineAssociation" -ErrorAction SilentlyContinue
+		if ($engineInstallation.InstalledDirectory)
+		{
+			$editorPath = Join-Path $engineInstallation.InstalledDirectory 'Engine/Binaries/Win64/UnrealEditor-Cmd.exe'
+		}
+	}
+	if ([string]::IsNullOrWhiteSpace($editorPath) -or -not (Test-Path -LiteralPath $editorPath -PathType Leaf))
+	{
+		throw 'Current floor-plan geometry requires Unreal Editor verification. Supply -EditorExecutable with the UnrealEditor-Cmd.exe path. Existing PNGs were not changed.'
+	}
+	$editorPath = (Resolve-Path -LiteralPath $editorPath).Path
+	$verificationId = [guid]::NewGuid().ToString('N')
+	$reportPath = Join-Path ([IO.Path]::GetTempPath()) "MuseumHeist-FloorPlanVerify-$verificationId.json"
+	$logPath = Join-Path ([IO.Path]::GetTempPath()) "MuseumHeist-FloorPlanVerify-$verificationId.log"
+	# Start-Process joins ArgumentList into one native command line. Quote each path.
+	foreach ($path in @($projectPath, $verificationScript, $reportPath, $logPath))
+	{
+		if ($path.Contains('"')) { throw 'Unreal verification paths cannot contain a double quote.' }
+	}
+	$arguments = @(
+		('"' + $projectPath + '"'), '-Unattended', '-NullRHI', '-NoSound', '-NoSplash',
+		('-ExecutePythonScript="' + $verificationScript + '"'), '-MuseumFloorPlanMode=verify',
+		('-MuseumFloorPlanReport="' + $reportPath + '"'), '-MuseumFloorPlanQuit', ('-abslog="' + $logPath + '"')
+	)
+	Write-Host "Checking current map geometry in a read-only Editor process. Log: $logPath"
+	# Wait only for this Editor. Start-Process -Wait also waits for descendants,
+	# including shared Zen services that can outlive the verification process.
+	$verificationProcess = Start-Process -FilePath $editorPath -ArgumentList $arguments -WindowStyle Hidden -PassThru
+	$verificationProcess.WaitForExit()
+	if ($verificationProcess.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $reportPath -PathType Leaf))
+	{
+		throw "Floor-plan Editor verification failed (exit $($verificationProcess.ExitCode)). Existing PNGs were not changed. See $logPath"
+	}
+	$report = Get-Content -Raw -LiteralPath $reportPath | ConvertFrom-Json
+	if ($report.status -cne 'PASS' -or $report.mode -cne 'verify' -or $report.packages_saved -ne $false -or
+		$report.map_hashes_unchanged -ne $true -or $report.maps -ne 3 -or
+		$report.current_geometry_sha256 -cne $report.saved_geometry_sha256 -or
+		$report.source_file_sha256 -ine $ExpectedSourceHash -or
+		(Get-FileHash -LiteralPath $GeometryPath -Algorithm SHA256).Hash -ine $ExpectedSourceHash)
+	{
+		throw "Current map geometry verification did not pass, or source JSON changed during verification. Existing PNGs were not changed. See $reportPath"
+	}
+	Write-Host "Current map geometry verified: $($report.current_geometry_sha256). Report: $reportPath"
 }
 
 function New-HeistLoopWave
@@ -440,6 +497,7 @@ if (-not (Test-Path -LiteralPath $floorPlanGeometryPath -PathType Leaf))
 {
 	throw "Missing floor-plan geometry: $floorPlanGeometryPath. Existing PNGs were not changed."
 }
+$floorPlanSourceHash = (Get-FileHash -LiteralPath $floorPlanGeometryPath -Algorithm SHA256).Hash
 $floorPlanGeometry = Get-Content -Raw -LiteralPath $floorPlanGeometryPath | ConvertFrom-Json
 $geometryMaps = @($floorPlanGeometry.maps)
 if ($geometryMaps.Count -ne 3)
@@ -535,6 +593,8 @@ foreach ($mapId in @('M01', 'M02', 'M03'))
 	}
 	$geometryByMap[$mapId] = $mapGeometry
 }
+
+Confirm-CurrentFloorPlanGeometry -GeometryPath $floorPlanGeometryPath -ExpectedSourceHash $floorPlanSourceHash
 
 New-FloorPlanTexture -Geometry $geometryByMap['M01'] -AccentColor ([System.Drawing.Color]::FromArgb(255, 75, 210, 236)) -SecondaryColor ([System.Drawing.Color]::FromArgb(255, 128, 162, 205))
 New-FloorPlanTexture -Geometry $geometryByMap['M02'] -AccentColor ([System.Drawing.Color]::FromArgb(255, 130, 170, 255)) -SecondaryColor ([System.Drawing.Color]::FromArgb(255, 173, 137, 226))

@@ -1,0 +1,4411 @@
+{
+  "schemaVersion": 1,
+  "scopeRoot": "Content/Assets/MapAssets",
+  "files": [
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MF/MF_Dirt.uasset",
+      "sizeBytes": 53325,
+      "sha256": "4074649e1c3c43b32556193d3a47ca2174bb6f4a6c6caa0fa0e244fa4eaa6c77"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MF/MF_Remap_Values.uasset",
+      "sizeBytes": 14021,
+      "sha256": "19a7db05d70595b52d24d0245f8757c34c30398b8836a95e8882cfb087c24de5"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MF/MF_Simple_Transform.uasset",
+      "sizeBytes": 12017,
+      "sha256": "d57c8d5148b0a72c2bb3f5e3417b1a86b88f935365a004a130813e8348c74a50"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Apha_Cage.uasset",
+      "sizeBytes": 17438,
+      "sha256": "39b82f26c777d19071250f81306df453e5df9358262d8286e147156bf5edb2e4"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Art.uasset",
+      "sizeBytes": 13479,
+      "sha256": "cf59b09db7febaef9fd4441cd28e3e5af541fe2fd944af53661311aa701a3684"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Art_02.uasset",
+      "sizeBytes": 14359,
+      "sha256": "e9e64319ecf6888241343a7975e4d845f2e49a2b2088801e741e76dab4b7fc4a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Art_03.uasset",
+      "sizeBytes": 14497,
+      "sha256": "1ed11b1c69bf20052cadb4375b35cd9dc8f4880bf9d0f4d586f88a2e08897cf4"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Bar_Chairs.uasset",
+      "sizeBytes": 13492,
+      "sha256": "62fc0fb58e5e574550d024f5ee071776dc43cb46bab1d759240937329681671e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Bar_Tables.uasset",
+      "sizeBytes": 11851,
+      "sha256": "ed3431a0eccc9d4b797588075148d77fcd70ef90d3a143b4a97eff49646c3c3a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Bean_Bag_01.uasset",
+      "sizeBytes": 11593,
+      "sha256": "b8ab968136204f8b5cb302c9a9653afcba6efc3e6ec1a92a5016174137689e61"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Bean_Bag_02.uasset",
+      "sizeBytes": 13129,
+      "sha256": "a26dc5f50021bb9bb71ebe69fbeada223f3ad3b81f35c8ff792a0e966c6dec2e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Bean_Bag_03.uasset",
+      "sizeBytes": 11660,
+      "sha256": "c3cdf236453a3593c2e2335f748d4ec0353ef73c70f872f01f1572639dfafbb4"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Big_Plants.uasset",
+      "sizeBytes": 13667,
+      "sha256": "49599d4a6662fff125da625b1fe94d936dda4de8cc6cc1755ec866bb02bc4aa9"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Black_Pipe.uasset",
+      "sizeBytes": 12481,
+      "sha256": "dff8885ac7eddbaf9c51add8d038359b2d68f671f339f04f09c801879f707a37"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Borders.uasset",
+      "sizeBytes": 11703,
+      "sha256": "5ef022c77a685903b7d5482cf09adec927d6a59fd939a7cab3bc4198dda2aa7b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_BricksWithConcrete_02.uasset",
+      "sizeBytes": 20965,
+      "sha256": "d5d884eac39dcc038cca03d30679af3db0154ba170707407f860116746287574"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_BricksWithConcrete_03.uasset",
+      "sizeBytes": 19406,
+      "sha256": "1c1660d9e538654005ec7015b1ef99d72df7bbcfb1c1d6be87e95f401e55830f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Carpet_01.uasset",
+      "sizeBytes": 11868,
+      "sha256": "f9372c0cf5abc18dba715c9a4614c093dac00fb2261c664efb7d412e48d40604"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Carpet_02.uasset",
+      "sizeBytes": 13206,
+      "sha256": "d598a88d34e25b0a2a2c117346eba44f26b05e8ceb79ff1060af9f66540782aa"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Carpet_03.uasset",
+      "sizeBytes": 12181,
+      "sha256": "f5fc2323c08820e813d59bf4ee4e4719c2a73f13528ba4ed13ebb910315287d4"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Carpet_04.uasset",
+      "sizeBytes": 15223,
+      "sha256": "0ba5b6832bb6e2d7cc32812b86ff4c0535a8790958bb1f71bedc1ce4c85072bf"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Celing_Set.uasset",
+      "sizeBytes": 15825,
+      "sha256": "e9527490d4928220c2fa2c55f8c70392773eceddcb49c389790007d7ae1090ae"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Chair.uasset",
+      "sizeBytes": 13335,
+      "sha256": "8f2205f55e23bcaa0abd402da33c8b8cacc6bbab560e12122f1721052d394f62"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Column.uasset",
+      "sizeBytes": 13902,
+      "sha256": "d6fa2f0b034596a47669d66be2c0103292dfa65e8c75e85caa45bb05f704db81"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Cooler.uasset",
+      "sizeBytes": 14197,
+      "sha256": "7835d0f1c0d23c4327d0b3db89baaed247b9e8d1bd859e61c3538fa650ff3a49"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Couch.uasset",
+      "sizeBytes": 12535,
+      "sha256": "912f8a3a6073c9c841fb749b99f83ddaccdcbcb8e6e1042dff654f1d55295db7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Crankle_Chair.uasset",
+      "sizeBytes": 11447,
+      "sha256": "996be5744138edb015c5fffc816e721526b2d33879c9e5ec7a90fe344316408e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Cups.uasset",
+      "sizeBytes": 13816,
+      "sha256": "ed598bf2f44ad76715614274e86693f3b2ecea24c1d26afc0544972a56c41b7f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Desk.uasset",
+      "sizeBytes": 13302,
+      "sha256": "52e26365de6f36da6fae51250dff1398f9979aa9fd11bc13050319a767c7c2e5"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Door_Man.uasset",
+      "sizeBytes": 12706,
+      "sha256": "f691f672562747107ff574506e4bf0ad6c95418958907dec168ca416c90c522c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Door_Woman.uasset",
+      "sizeBytes": 11370,
+      "sha256": "248afffcc02afa82adb53abafb6d8ae0ed931f49c0c42c0803926b8ec85cf479"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Kitchen_Cabinets_01.uasset",
+      "sizeBytes": 12208,
+      "sha256": "f67decc6c45d988f311a07ce7d1e9e18c3d44d1ee7c19a7e60017a68f900146b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Kitchen_Cabinets_02.uasset",
+      "sizeBytes": 11884,
+      "sha256": "050caf86d3fb01aeb353cfe403c0d407ef10996417a8a17bb86c78acc1c720bf"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Kitchen_Cabinets_03.uasset",
+      "sizeBytes": 11656,
+      "sha256": "ce7dfced51424b267e9525a41b182c7ea069de00d17c680af924226a0fec673e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Kitchen_Cabinets_04.uasset",
+      "sizeBytes": 12092,
+      "sha256": "0d69794d0893f059a5d0fb875e600e8f8cfe6b98b8d817829e6a5004ee4eeb79"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Kitchen_Wall.uasset",
+      "sizeBytes": 20047,
+      "sha256": "8cc5a1d73f4403bc631d55793ced4e7325c7134b1d30ab31e6c2b43708bb421d"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Kitchen_floor.uasset",
+      "sizeBytes": 14398,
+      "sha256": "441ae8cf24a45114ea4a25eec0e6e17ef478c25417d921e504b02d9ff064f3c1"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Kitchen_stuff.uasset",
+      "sizeBytes": 12354,
+      "sha256": "9a5ee7f02cc60cbacdfd043e0c969f381160abe77994b5c16d2e906c9cd00178"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Lamp.uasset",
+      "sizeBytes": 14005,
+      "sha256": "f059da98ffd853eaf1c9c7e6ce8ef1ec509b54352437f6bf17421d7e68fbfe79"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Lamp_Floor.uasset",
+      "sizeBytes": 19185,
+      "sha256": "8bae9026205d3112763b40fd1e91eec69f814a61dee94f0b7a8b5e8b93b51c86"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Linoleum.uasset",
+      "sizeBytes": 15175,
+      "sha256": "654246011ab88221bc5ecaac3f23f01216fc994857144545d4e4ae9e95db0318"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Logo.uasset",
+      "sizeBytes": 17224,
+      "sha256": "2ecf537c22c70ccdbe3fb283fb80227a33f7c7db52e3bd52f6b01518c479907e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Main_Table.uasset",
+      "sizeBytes": 13460,
+      "sha256": "9e874154f03485d1bfc0349620cee54fe24be7ab6debea3863793bea96bfc54e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Monstera.uasset",
+      "sizeBytes": 11817,
+      "sha256": "17cada1c267f1475e9923f9fbabb6dd0e9d8d216f1f4b6bfceb39ba17830b686"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Monstera_Leaf.uasset",
+      "sizeBytes": 17612,
+      "sha256": "79a0095d6dbcb0d8252a7447d4de7bec866a1c91b138800d4087ae726d67ba37"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Mortal_Wall_Paint.uasset",
+      "sizeBytes": 10873,
+      "sha256": "cbae915d8365cf28bd8fef24cc65dccaf155c329da1249cf41c8f3d4f7bb35da"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Office_Chair.uasset",
+      "sizeBytes": 12977,
+      "sha256": "0899d091eaeee38aefba1647e460a408d5bc35d9da33c7fbed722ebcae849d81"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Office_Tools.uasset",
+      "sizeBytes": 13647,
+      "sha256": "29e5a378083158f19794417757153c5e7aac8c1350df8d5f5c8cfa345be9d465"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Office_equip.uasset",
+      "sizeBytes": 13834,
+      "sha256": "d3afbf8ce97b3caa5dde2504dd7925d3e1a475de53f4569a82cab5f596acd416"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Office_table.uasset",
+      "sizeBytes": 12391,
+      "sha256": "1daa87074e6f597f02ed359495ffc78fe3fb69424afbbf03f57e54b32cbffa17"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Palette_Table_01.uasset",
+      "sizeBytes": 11456,
+      "sha256": "46706e76bd083f5a776984788e8a449f36aee343962df1301a1a61491441c054"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Palette_Table_02.uasset",
+      "sizeBytes": 14570,
+      "sha256": "57913f8861cbb1d6bf2659e988b44d38f7947920cb5c905260788434aa57866a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Palm_Leaf.uasset",
+      "sizeBytes": 15966,
+      "sha256": "0f84bd925cba53c67862eb8f05188bfb7667477ac13dfb5cd37e902fb5c8a717"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Parquet.uasset",
+      "sizeBytes": 13180,
+      "sha256": "04831434efe58684b9a91584110581592b42c6bd6e966855a0da702012f418c9"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_ParquetHerringbone.uasset",
+      "sizeBytes": 12235,
+      "sha256": "da05cd2d3261aed827bd2eb8cb901c81be3d1d88f00f271659304b0e1ef0755d"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Pipes.uasset",
+      "sizeBytes": 14093,
+      "sha256": "8390c40084689057d096487eb8b9933269a088adb9906d13432f59404196a54b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Plants.uasset",
+      "sizeBytes": 11947,
+      "sha256": "d1799aab56606b81afe5348e811584a48efd14ffc5447421abfd2fe226cb710f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Round_Chair.uasset",
+      "sizeBytes": 11002,
+      "sha256": "7579987b2584ad098bc801279331bbed75af1f709d99d368d275da8bb7b5bf98"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_SM_Soccer_Table.uasset",
+      "sizeBytes": 11899,
+      "sha256": "bad0d7ab959633db6d6f8bd8f9ed67ea04379b17f73028b4f56b77bcf9d76493"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Shelving_01.uasset",
+      "sizeBytes": 14630,
+      "sha256": "4fd7831e3aab51069605e3e27982e7d8d0d9c01320ea1106d340c63812f2ed61"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Shelving_02.uasset",
+      "sizeBytes": 14554,
+      "sha256": "af014d88cba7e3f9d03899f9920d9ad6b5131cd059998224f8d85fa3abe2d17a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Shelving_03.uasset",
+      "sizeBytes": 15551,
+      "sha256": "04a35e5e0c6fbfa1959faf94abb7bf36beb8f27f0b7e706726801485141986a6"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Shelving_Stuff.uasset",
+      "sizeBytes": 16783,
+      "sha256": "5aa0e3e6d538b5182075ab894a031654ddcaee966a01a67761c7430facd7f7c8"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Sofa.uasset",
+      "sizeBytes": 10605,
+      "sha256": "45bba1840166ce96e43835b398805c88a402414af3501fe462d3fd7e46c63d0b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_TV.uasset",
+      "sizeBytes": 13587,
+      "sha256": "f05a5061501b708a236fbae8435479c84ca749fd9caeeda56fd022e4ffb0c075"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Table_Glass.uasset",
+      "sizeBytes": 18240,
+      "sha256": "a269191e9001e80393e600b52d95dd099fc14b1cbd97274ef18fff040910c306"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Trash.uasset",
+      "sizeBytes": 13180,
+      "sha256": "43cddf1a8a26b1719fd0df4d693676f6a6321ed50a22613c8fd46ab3ada20b8c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Walls.uasset",
+      "sizeBytes": 16605,
+      "sha256": "e27e9c76786f22ec779283c3cc3df40a044d32f6976d33d8f10678fadf2121b3"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Window.uasset",
+      "sizeBytes": 12739,
+      "sha256": "9516b7065377e8e6898891130f19b1f405aa94b838568100431c71f8c1e2d25f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Window_Glass.uasset",
+      "sizeBytes": 15769,
+      "sha256": "f75e68421fb0637813d15a84f1f08495ac7548cf1c4c7ac3da207581be225352"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_Work_Table.uasset",
+      "sizeBytes": 12492,
+      "sha256": "8c69c4891ab32bc9eea94e407d9a8f94834ee44b3213ec6202d4cbb764e1c7d5"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_door_Entrance.uasset",
+      "sizeBytes": 13046,
+      "sha256": "0f828c625a03ce9efdc7337433ef9b21b91fa7c867db396ee45c4ec002da432d"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MI/MI_tiling_wood.uasset",
+      "sizeBytes": 11648,
+      "sha256": "bd62238680bf2367761a7f62aae419e21cd276834fc93ee02ad0305c9855528b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MM/MM_Apha_Texture.uasset",
+      "sizeBytes": 30054,
+      "sha256": "544ede5211bd64895336322e9bbc3c798d5e98c324ecbecf21be98bebd518d7e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MM/MM_Assets.uasset",
+      "sizeBytes": 35423,
+      "sha256": "91d7eb3385a83dd88dc8f7b0d6bdedab414d4e0dd5824588e0a93b0d8714c19b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MM/MM_Default.uasset",
+      "sizeBytes": 9145,
+      "sha256": "2ac64082ff59656c7a2b68fa7c4f18a4d0bd2b2035fdc4ada972929267b51a6e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MM/MM_Glass.uasset",
+      "sizeBytes": 64832,
+      "sha256": "2b6d4c2d4e4f078d70217d1fc56dbe9a09f34899308a124cefc23d0d41368619"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MM/MM_Mixed_textures.uasset",
+      "sizeBytes": 56410,
+      "sha256": "daa23ebd28bb41bfe4e4b2137d0eceffe06d01e75bb8348ea4ec557877110082"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MM/MM_Repeating_texture.uasset",
+      "sizeBytes": 42838,
+      "sha256": "15c147806f65cf51d1912f23c9f82c7e9d21c98f55bcce253c48fa5a8acd655f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Materials/MM/MM_Walls.uasset",
+      "sizeBytes": 87083,
+      "sha256": "a63e8a87f9a85d7fb0b7c47c01041d49c00d8768484049648022a2d52fbca45b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Art_01/SM_Art_01.uasset",
+      "sizeBytes": 23117,
+      "sha256": "3cacac4472b0624c83b33994b610f2fd05d5247a9b96e0a64a69ceeca071929f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Art_01/SM_Art_02.uasset",
+      "sizeBytes": 21350,
+      "sha256": "75b9163489b580af4a74299a0de97fad305445475f4cc0e15e57fe1815753dec"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Art_01/SM_Art_03.uasset",
+      "sizeBytes": 23367,
+      "sha256": "a37e53b0d1ccf6e354b56d4d3f7c9fc78ad175f918a6a8947ca3062b8fda0779"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Art_01/SM_Art_04.uasset",
+      "sizeBytes": 20888,
+      "sha256": "786b85e4ca138c46334230fccc85f2c2a5b9ee4ab528e5ebe6aecb29d5b0c977"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Art_02/SM_Art_02_01.uasset",
+      "sizeBytes": 22725,
+      "sha256": "b6880b836b9b42641ba79557c59fb638e9e6ea7e975fa4e92798a453f99b1539"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Art_02/SM_Art_02_02.uasset",
+      "sizeBytes": 23282,
+      "sha256": "4a11b98816d0877d2c0c5a63a06ab597655e283bf094992e7c61c2ee4da0d244"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Art_02/SM_Art_02_03.uasset",
+      "sizeBytes": 22159,
+      "sha256": "b1479d9f43773776fd8e9058cba3ca24dcd5abb5c9d2328db34de2993751e300"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Art_02/SM_Art_02_04.uasset",
+      "sizeBytes": 22719,
+      "sha256": "0dc1edf971188ea948ee1cd0f269d2be15ace4dd3242a4df4aa45f645e63d023"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Art_03/SM_Art_03_01.uasset",
+      "sizeBytes": 23229,
+      "sha256": "eedad6d5d448dfe161077ff4853a723a6d6d7c028dc4006cdb5cbab09a70243c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Art_03/SM_Art_03_02.uasset",
+      "sizeBytes": 23769,
+      "sha256": "be51c55a2421a161ac930d9b1765b6c22fa272cdc71b14cc42e89d61890f01db"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Assets/SM_Cooler.uasset",
+      "sizeBytes": 95266,
+      "sha256": "bd09410a1b6a3e518aa078d8cadd68c6781f69b16f79ce7fc0989af1fcc338f8"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Assets/SM_Desk.uasset",
+      "sizeBytes": 76182,
+      "sha256": "9b87907f725264413f06e622cc5ecd0f71f67d36af75ad051fcd42000f6a7796"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Assets/SM_Trash_Station.uasset",
+      "sizeBytes": 39120,
+      "sha256": "a8dcadff691cf3e0100de2e1bf4db6c4d02a1fb6de4a53ea6d27bafd48951a5a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Assets/SM_Trash_bin.uasset",
+      "sizeBytes": 22779,
+      "sha256": "31a77e080a63d2f1aeb756797d0b11482fb77b7210619facfa5097d3ad1a0be7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Bean_Bag/SM_Bean_Bag_01.uasset",
+      "sizeBytes": 92605,
+      "sha256": "2d6cf71bd0f37b31f691d898389ecc2ba053c2932a56e9ef672f57f2e3206022"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Bean_Bag/SM_Bean_Bag_02.uasset",
+      "sizeBytes": 93043,
+      "sha256": "186d983ddaebee490959c0c90159d5378040c910c57d19e8b4e1a1b5fd509d76"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Bean_Bag/SM_Bean_Bag_03.uasset",
+      "sizeBytes": 73927,
+      "sha256": "266e5335881f177fdb4fc6ae00b5715ca54e857d793302e2cba1bcd70a5b4703"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Big_Plants/SM_Big_Monstera.uasset",
+      "sizeBytes": 98602,
+      "sha256": "ce279a7da293a5c19be4e51715f0a8a5505423b7dba4322d49169a28ac206020"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Big_Plants/SM_Palm.uasset",
+      "sizeBytes": 60626,
+      "sha256": "7e6c4d683c459e6fbb5b967992caa3246059a3639aa20aac744035788df52834"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Black_Pipes/SM_Celling_Pipe_01.uasset",
+      "sizeBytes": 23405,
+      "sha256": "958378f0bb3ddbe69d92ae7a3351b487e6e1d56a12829b36018bb748ecfd2833"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Black_Pipes/SM_Celling_Pipe_02.uasset",
+      "sizeBytes": 27740,
+      "sha256": "c05cc98206ae16f20d5092853f6560413335d7c800df257a87f172dec0024e6c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Black_Pipes/SM_Celling_Pipe_03.uasset",
+      "sizeBytes": 36372,
+      "sha256": "1dacf261a010461f8cd85da1a99759bfe1c619bc450336db2351cd1c360b849a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Black_Pipes/SM_Celling_Pipe_04.uasset",
+      "sizeBytes": 34381,
+      "sha256": "696cbb47136620b34574174cc6b999e554d512d3262853690bd6fadc5a7f54b6"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Borders/SM_Border_01.uasset",
+      "sizeBytes": 19066,
+      "sha256": "ecfd030919c23d9193e2402932ea97157a642fde699ed9666dc242dd6c700f94"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Borders/SM_Border_02.uasset",
+      "sizeBytes": 19177,
+      "sha256": "266b1afcb09134f44134a1c8069156dbd62446116df3b515810a8b2268323e42"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Borders/SM_Border_03.uasset",
+      "sizeBytes": 19259,
+      "sha256": "de8b46402e076e8431e910ecdad442637b301597fc499a8a5c5a07bc2f2b3fb1"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Borders/SM_Border_04.uasset",
+      "sizeBytes": 19562,
+      "sha256": "66422297be5346a866a4fb1a73fcbecd2331489193da3f582b24b4b0477443d7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Borders/SM_Border_05.uasset",
+      "sizeBytes": 19891,
+      "sha256": "b87aa1f3f2f1856e8824042c06e89ffb4961367c773a31e1f66cd7c36befd6c1"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Borders/SM_Border_06.uasset",
+      "sizeBytes": 19900,
+      "sha256": "1900057d2398b14c0a5ddd393334ea0b12f782b0dbb4d75141443b7c9b4bc5e8"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Carpet/SM_Carpet_01.uasset",
+      "sizeBytes": 19754,
+      "sha256": "7479b45834f6fead0c49f52f3e95523262ab70ddf3fa19a2bd0c77f0fbe186a8"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Carpet/SM_Carpet_02.uasset",
+      "sizeBytes": 19310,
+      "sha256": "2a8b64d83e36c2f917e44ee39ca2d7a7d1d9a9c0790b2e0856e917fc2d511160"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Carpet/SM_Carpet_03.uasset",
+      "sizeBytes": 20268,
+      "sha256": "0c4f3262dcb58b009b4cc2b71cb00d7a5df6a925f99582a99274242e288ec0e8"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Carpet/SM_Carpet_04.uasset",
+      "sizeBytes": 20969,
+      "sha256": "b2d591d1c36381a041ba96579ac706fc64ce3a019c34510c9f40889cd860c4c6"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Chairs/SM_Bar_stool.uasset",
+      "sizeBytes": 45835,
+      "sha256": "4fa40f537f48e604dc483c0e0ac6c18e7f672e153c084f304333e5ec1a70d3b0"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Chairs/SM_Chair.uasset",
+      "sizeBytes": 100591,
+      "sha256": "20d264f72551ebb8c4d7fa728a4eacf610562b6e24142ad47c85403be79df576"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Chairs/SM_Couch.uasset",
+      "sizeBytes": 265216,
+      "sha256": "b4882261327c6b0fa6d752aebef67efd69a962b568d7ecce8b21955ae0e8f8cc"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Chairs/SM_Crankle_Chair.uasset",
+      "sizeBytes": 42081,
+      "sha256": "6c3e7ab0a8629eeb138b1180ea6344b8f3d991e4c181a54373694f85a4038d38"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Chairs/SM_Dining_chair_01.uasset",
+      "sizeBytes": 64388,
+      "sha256": "984d6798c788da35661db774f4b397962500fa5ecbcf22982e9bc0394b2b1015"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Chairs/SM_Dining_chair_02.uasset",
+      "sizeBytes": 68180,
+      "sha256": "a4bd7b4c4a2474f55654668a53b2208ecba08ada3ec5e96fcce3246b046b4ad5"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Chairs/SM_Office_Chair.uasset",
+      "sizeBytes": 185435,
+      "sha256": "d6eb1f7204922df71f2e12f0ff25b7c92564857e8247b2f489305eb62b190ab1"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Chairs/SM_Sofa.uasset",
+      "sizeBytes": 26256,
+      "sha256": "6d318eb109c0fbb3262fe56558b58a1a8a9dbdf3a5c8828039a57ca2931f82d2"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Chairs/SM_round_chair.uasset",
+      "sizeBytes": 65581,
+      "sha256": "6038a61ed2cad950ec266402dae7e2147624c908f34173c06170f08133756868"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Cups/SM_Coffee_Cup_01.uasset",
+      "sizeBytes": 34855,
+      "sha256": "873b875305661e96401f28e28afbea5daa7571b98fdf0ae6dfaadbcf343eb763"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Cups/SM_Coffee_Cup_02.uasset",
+      "sizeBytes": 34825,
+      "sha256": "288b24d752ca831148afdf4ea685dc700f3e33aa4b4596ee88df4f123ceecf85"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Cups/SM_Crackers.uasset",
+      "sizeBytes": 32490,
+      "sha256": "67e1c72cb36a955b250d9a4e09aed2c3dd6a7a231bd73b3306a3d7daebdb2ab4"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Cups/SM_Glass.uasset",
+      "sizeBytes": 21577,
+      "sha256": "729989864d0c77306feae8ed61cc5efc89f52e5b38745794e220f38d14862bf5"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Cups/SM_Tee_Cup_01.uasset",
+      "sizeBytes": 36533,
+      "sha256": "f8051e83ec26fceb908e873a794b0ff014cf7942399b17d9ef00e7c64530575d"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Cups/SM_Tee_Cup_02.uasset",
+      "sizeBytes": 42480,
+      "sha256": "bcc05c513ae00b0efa04fdcd138e76f6472997ee0c03dea0398005fc842a44cd"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Cups/SM_Tee_Cup_03.uasset",
+      "sizeBytes": 36614,
+      "sha256": "709d9d244b9c39e26336d46f31bc5cee62a9a4b607fc14c5e935816d59e0068a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Doors/SM_Door_Entrance.uasset",
+      "sizeBytes": 35241,
+      "sha256": "19f72fbbf4ce5d97dea392ae2a7ebba0488e07f4ea77973c9f43cdf3d8fc9ef6"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Doors/SM_Door_Man.uasset",
+      "sizeBytes": 30904,
+      "sha256": "3d9177d4c5468afa3168593cc1a834cff8817a4d92fc6a8c40410d4904fd486c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Doors/SM_Door_Woman.uasset",
+      "sizeBytes": 30980,
+      "sha256": "72228216a478d68a429597f89443b8d70f68c010e9b4dedc951d82e9e3b80ca1"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Floor/SM_Floor_01.uasset",
+      "sizeBytes": 22000,
+      "sha256": "1113cdfb89c6c620f1f36178b607daae8049795dd669f0f042ef73fa334923b4"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Floor/SM_Floor_02.uasset",
+      "sizeBytes": 21821,
+      "sha256": "de075b49c4c37a163430ffa8903f57c06e2693d2dda1c1721a70b11dc478c3a7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Floor/SM_Floor_03.uasset",
+      "sizeBytes": 20519,
+      "sha256": "f1ae3925b0fa04360a4f0d2c81f7c237d1fd0cef6399819ea24db44e3d250a4e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Kitchen_Cabinets/SM_Kitchen_Cabinets_01.uasset",
+      "sizeBytes": 27749,
+      "sha256": "792d39db01183f069d787227a1c89642679e2fce5179b1714c9425c7bb0411c1"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Kitchen_Cabinets/SM_Kitchen_Cabinets_02.uasset",
+      "sizeBytes": 31677,
+      "sha256": "17e4185571bafc8008e693c1cc5f7195e7cae54716046dde44abb1bae6d453b7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Kitchen_Cabinets/SM_Kitchen_Cabinets_03.uasset",
+      "sizeBytes": 29671,
+      "sha256": "4705b47ef1b775f1b02c1e782ac3b051ea8f14c3b0bb89bf114d93fd0ce91ec2"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Kitchen_Cabinets/SM_Kitchen__Cabinets_04.uasset",
+      "sizeBytes": 34467,
+      "sha256": "baef414a298defbd172039025445c26bd0a582cc33981f35dbc8b291f5952fd1"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Kitchen_stuff/SM_Coffee_Machine.uasset",
+      "sizeBytes": 67945,
+      "sha256": "0f0a8bb324ddd3873bc29adeca4410bc676c030bd97b7b7f3af16cd1a5a8dc40"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Kitchen_stuff/SM_Coffee_art.uasset",
+      "sizeBytes": 23918,
+      "sha256": "cf8ef32365abaa9a993be800fccaf55c03c57ddcd144df65135634cbe85650c9"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Kitchen_stuff/SM_Crackers.uasset",
+      "sizeBytes": 30142,
+      "sha256": "a5db5fb872505c615f73bf30489e4f4aeee61d87b58a7baf35e7bc9bd9b3effb"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Kitchen_stuff/SM_Croissant_01.uasset",
+      "sizeBytes": 39811,
+      "sha256": "827a67226d30ceec33a0c4da63e82d604a804e0f68ee55328599636f506ec640"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Kitchen_stuff/SM_Croissant_02.uasset",
+      "sizeBytes": 39900,
+      "sha256": "df9773e7831bfe7fcc600e95a0265975c2dd7b2adc0c085899c1de53738d550b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Kitchen_stuff/SM_Cup_01.uasset",
+      "sizeBytes": 31904,
+      "sha256": "831dbda259b1f142acf36749110b2f222cdc1290f110683ef519780845fd7e6e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Kitchen_stuff/SM_Cup_02.uasset",
+      "sizeBytes": 32228,
+      "sha256": "34382628f18f47a591e9c943360063305b7b96dd786744d8ae524af90dc65747"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Kitchen_stuff/SM_Cup_03.uasset",
+      "sizeBytes": 32606,
+      "sha256": "1a50cb518ec1ca4912a837141ae090c40977eb0b471f642e077d7b4d3448ab36"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Kitchen_stuff/SM_Dish_01.uasset",
+      "sizeBytes": 31877,
+      "sha256": "8ab1bf72437d09273c22ddf1392fbe5d7aeb8215ca26f566ef73a318721fa380"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Kitchen_stuff/SM_Dish_02.uasset",
+      "sizeBytes": 31684,
+      "sha256": "d0738e59adfb32558cf3a99dc76cc963ca761ad30bee673d452e684e6921a92a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Kitchen_stuff/SM_Dish_03.uasset",
+      "sizeBytes": 32310,
+      "sha256": "378baca26c890611b2d84ed7e20e2b9d20e041aeda92d0828b0fc27660fb2156"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Kitchen_stuff/SM_Donut_01.uasset",
+      "sizeBytes": 35949,
+      "sha256": "d2ea4c770364d41f1af505cde5fbb5d706a033963809e0b4dbc6c35e8f4a0a4c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Kitchen_stuff/SM_Donut_02.uasset",
+      "sizeBytes": 35925,
+      "sha256": "897b71d35d47ab025db8cb0f62d95d57cb65da488eff1402505b533ea78684af"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Kitchen_stuff/SM_Donut_03.uasset",
+      "sizeBytes": 35971,
+      "sha256": "ce0b3ce74921d99882e4c61428be6d356077c0e7adc47f4f83eb53fc638e987f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Kitchen_stuff/SM_Food_Tray_01.uasset",
+      "sizeBytes": 41997,
+      "sha256": "035add63f7b96560f7d8021a54486578581a04013244ab6575f832f2dc32f80c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Kitchen_stuff/SM_Food_Tray_02.uasset",
+      "sizeBytes": 42044,
+      "sha256": "1a2e41b29f56abb81fdae7a0a8e0f4a75c2292fce9f1dd0ec875293bffdb172c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Kitchen_stuff/SM_Jar_01.uasset",
+      "sizeBytes": 33008,
+      "sha256": "0dd3ac4b7e6cf7f020e63ee9fa91f73714ad92d682507f21885b2c4cbdaaa4d5"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Kitchen_stuff/SM_Jar_02.uasset",
+      "sizeBytes": 33841,
+      "sha256": "126d4c66d2f27bfde4d03cf34fba061ca7a3fa81d4854d62a3a8f316bae2a9b8"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Lamps/SM_Lamp.uasset",
+      "sizeBytes": 45823,
+      "sha256": "5b7b64191709d58869fe424ad1aed74063eac3e4b4681c3a6fa30226f674b043"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Lamps/SM_Lamp_floor.uasset",
+      "sizeBytes": 41529,
+      "sha256": "ff80b20a35531310f0519b08fe4a8cb1f7ebd528b96a0f8de3a0fdead3b4a0f2"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Logo/SM_Logo.uasset",
+      "sizeBytes": 58079,
+      "sha256": "c95e698dd12e5a15c66fbf3b75951dcfc6ca743ee2e2037a33d8d6f03a879956"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Office_Tools/SM_Clipboard_01.uasset",
+      "sizeBytes": 42243,
+      "sha256": "eec6155848080c536370e99b6b0049a6b73c542a1bd2aff1a8905defd2b0ba6a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Office_Tools/SM_Clipboard_02.uasset",
+      "sizeBytes": 44605,
+      "sha256": "3a7c68ff4893e1c68cef1e4340fb98e0517c9a9beef62e7bf501bc8f7c1c15c5"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Office_Tools/SM_Folder_01.uasset",
+      "sizeBytes": 34327,
+      "sha256": "5e7df6d0aca684d4937b4e1e9e4e72420250c0ab12f64b3bf9e4bdfe408e843d"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Office_Tools/SM_Folder_02.uasset",
+      "sizeBytes": 34547,
+      "sha256": "9fa8cca0549a5f3754e1d44c41bb934c3c0a941d13e43ad749c351cc3bc8b70a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Office_Tools/SM_Paper_02.uasset",
+      "sizeBytes": 26746,
+      "sha256": "aa32ece9a276dc8c3107947e1a5881d0c1a3c01e5f93ffe82d988dabf3a77729"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Office_Tools/SM_Papper_01.uasset",
+      "sizeBytes": 21327,
+      "sha256": "cf6f301cf535cad610ab2beb7afaf824205ec61a26c4ff1e94e4cac484fb5cfa"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Office_Tools/SM_Pen_01.uasset",
+      "sizeBytes": 33589,
+      "sha256": "11713e7a3c84a6760cdf482e1c2e118d726cd7d5042513bfa2ac106858765a5f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Office_Tools/SM_Pen_02.uasset",
+      "sizeBytes": 27100,
+      "sha256": "fbb58a78db8ec750fb22bb31f9bde256a6a04303d4b422ce7d45f2b813d824cf"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Office_Tools/SM_Pen_03.uasset",
+      "sizeBytes": 31370,
+      "sha256": "9c874f33737074791b54a41cf69a03c44cb612c6fbecfd5c7be910fb35f8a142"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Office_Tools/SM_Pensil_Cup.uasset",
+      "sizeBytes": 29197,
+      "sha256": "35b422ef9e9bebd6a91624c2ba7b7d5e841928e442e12d2fe1c9c4145d44ddc3"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Office_equip/SM_Computer.uasset",
+      "sizeBytes": 40347,
+      "sha256": "3e9007029150e4761915791e9b10af562cbfdeda6a0a76cdcc882879826017b2"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Office_equip/SM_Notebook.uasset",
+      "sizeBytes": 27578,
+      "sha256": "dd4ff17958d3ebcdef0fea4a0badf81998426abb3b82dee48101b8badb339af9"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Office_equip/SM_Phone.uasset",
+      "sizeBytes": 35381,
+      "sha256": "7b2332840c64d78708180e51b87a18373423c2b3d619520272f169610464fd60"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Pipes/SM_Pipe_01.uasset",
+      "sizeBytes": 33392,
+      "sha256": "909eec3edcd9e010312c847ca60849c625c713b8fda08274973e2dd23801f58b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Pipes/SM_Pipe_02.uasset",
+      "sizeBytes": 41947,
+      "sha256": "21e825cf26831715c800dd52520aed12ab997c8a976c9133008e3e5265aecf63"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Pipes/SM_Pipe_03.uasset",
+      "sizeBytes": 39632,
+      "sha256": "3771f642e772b789f1da10d2cf66887460287b2b0b2cfb8c82c937cfac37c7cb"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Pipes/SM_Pipe_04.uasset",
+      "sizeBytes": 30117,
+      "sha256": "6353451a44917131593a60176984c8f9034f7f4db25d7825af6806d45dafadc4"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Pipes/SM_Pipe_05.uasset",
+      "sizeBytes": 37918,
+      "sha256": "fffbb5f2b7248999828cdfd488bcac69713661500df42514bfcae5eb306ee18d"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Pipes/SM_Pipe_06.uasset",
+      "sizeBytes": 26651,
+      "sha256": "24bba9ff46684121ac40b9388d4436745ce2a1f7f916349d8f6101be29f74870"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Pipes/SM_Pipe_07.uasset",
+      "sizeBytes": 31785,
+      "sha256": "9fbb2d7ecabd8772985055dc3e50fc5032bcdc4d7ac25528d61cc1f3631b6748"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Plants/SM_Monstera.uasset",
+      "sizeBytes": 71798,
+      "sha256": "aaea3bd223440a5223af92c282578078de439e51896723d3214e98e0faa3cc90"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Plants/SM_Plant_01.uasset",
+      "sizeBytes": 60204,
+      "sha256": "52777c3409b44d2744f6e3b022def419fb2fe486449f1421f0073ab88c0ca267"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Plants/SM_Plant_02.uasset",
+      "sizeBytes": 36146,
+      "sha256": "5202b1cec5d9b46152a57f5d37521b51d392cd7fe3fa899b6705889c6df7f4be"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Plants/SM_Plant_03.uasset",
+      "sizeBytes": 67481,
+      "sha256": "bc5a6e5f72e7930ca93f3526c8f4d722185c5aa1d417eccb924d9958428dc26b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Plants/SM_Plant_04.uasset",
+      "sizeBytes": 64426,
+      "sha256": "0b14e1df5c9323725d18738c3209c7b9f6dc9530d6c9dacba5436d3477332a8e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Shelving/SM_Shelving_01.uasset",
+      "sizeBytes": 46439,
+      "sha256": "3b2bb3b85e3fde3cd2624bec7cc7175e655b7f702c9bf689e59aaf9a45a6dfe1"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Shelving/SM_Shelving_02.uasset",
+      "sizeBytes": 63716,
+      "sha256": "a82cafa0cda1f6a0ddaef2e6e545ea9fb66f036ca6001037832949a2c7bc6876"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Shelving/SM_Shelving_03.uasset",
+      "sizeBytes": 46097,
+      "sha256": "0f2032925356b9749a03518c5902c7cb01c9e7fbda16b54629c67c9e6240248d"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Shelving_Stuff/SM_Book_01.uasset",
+      "sizeBytes": 30251,
+      "sha256": "8339570db74622751253c064ee6ad26edda1f0b0210ff9ac975f5c726a602e27"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Shelving_Stuff/SM_Book_02.uasset",
+      "sizeBytes": 30127,
+      "sha256": "fe18924741299fa8c3595fb797ad62bfa3ec8cbdcdea9d7897f36ea6a048566d"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Shelving_Stuff/SM_Book_03.uasset",
+      "sizeBytes": 30164,
+      "sha256": "29c2f07bddbd5f6c43d8304aa4827ebf6c34061ab7acc7cb14db9cc2a0c1d208"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Shelving_Stuff/SM_Book_04.uasset",
+      "sizeBytes": 30189,
+      "sha256": "a60fe04a52817e7ea43cabf68b5c3148a4724496468d8ee9b36f043b85945ff7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Shelving_Stuff/SM_Book_05.uasset",
+      "sizeBytes": 43549,
+      "sha256": "ada009919223664c7f6ce34eb7a0c2bf92f8230ca4d9dfc64cfff7ba7fc87049"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Shelving_Stuff/SM_Box.uasset",
+      "sizeBytes": 19915,
+      "sha256": "4b15c5d97a8fdb32227197d91ef9cb684a552f26a871e608577142e093a712ac"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Shelving_Stuff/SM_Candle.uasset",
+      "sizeBytes": 32663,
+      "sha256": "844bda0dbaba0b8ef8a61f3a7b4e98a07734cb03d2889d3ed6b545c8d5c469ab"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Shelving_Stuff/SM_Frame_01.uasset",
+      "sizeBytes": 27740,
+      "sha256": "51d0a64de05ae142223627e0cd1f04b0b768f8b0bd4a8437c3fa520df3ebbef9"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Shelving_Stuff/SM_Frame_02.uasset",
+      "sizeBytes": 27616,
+      "sha256": "11354438b21b56a6a2f8e36596846f3bb45e2e8439fb07a86d36f887ffd57d05"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Shelving_Stuff/SM_Frame_03.uasset",
+      "sizeBytes": 28529,
+      "sha256": "f50ed84772fcb8d92b95b089558e3e5e728bab78b6cb2ab832d1f972157ee414"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Shelving_Stuff/SM_Frame_04.uasset",
+      "sizeBytes": 28188,
+      "sha256": "d8546567927c35aee97dbd56012ea56dde8182ee47fab70eff5352d004bb7778"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Shelving_Stuff/SM_Magazine_01.uasset",
+      "sizeBytes": 20310,
+      "sha256": "bd1081cd68434be08b81465ee63700b3509a447c956b255f927939f36c5bd26e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Shelving_Stuff/SM_Magazine_02.uasset",
+      "sizeBytes": 20612,
+      "sha256": "0c4b879f0204a1be75aa6902ee3a5ac0ac2d26a20f8ad92846216680e34eb845"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Shelving_Stuff/SM_Magazine_03.uasset",
+      "sizeBytes": 19002,
+      "sha256": "9ba460eada016187310f6fcc87984d7c3e7bd4a39e9db1c4e846d9cb7c2efd2e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Shelving_Stuff/SM_Magazine_04.uasset",
+      "sizeBytes": 22626,
+      "sha256": "1bc95270de8f78d30b0507d08c21699590ec1389dd8bb02862649bf125ea696a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Shelving_Stuff/SM_Vase_01.uasset",
+      "sizeBytes": 35025,
+      "sha256": "f90b5266808e0e04e2a6181bdaf528a23595d411a1f035ae1fe1e70d376c773a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Shelving_Stuff/SM_Vase_02.uasset",
+      "sizeBytes": 28194,
+      "sha256": "771ddb23ea8914f8611947f7d086a9c7c20a175abfcc900449856892e675712f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Shelving_Stuff/SM_Vase_03.uasset",
+      "sizeBytes": 33852,
+      "sha256": "d14c528560877a863e5156538fe1eafc4aee1e32a09a2525a49970f5bde3a0f3"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Shelving_Stuff/SM_Vase_04.uasset",
+      "sizeBytes": 27721,
+      "sha256": "f49dac4dcf6c59079d36bfdd915ca22a8212b7d62aee5df8d12b06d668f5e4d8"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Shelving_Stuff/SM_Vase_05.uasset",
+      "sizeBytes": 37296,
+      "sha256": "69470568ce1f645158d518f8228531f9ac7200d081b5021cdcfb53c485c286ae"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Shelving_Stuff/SM_Vase_06.uasset",
+      "sizeBytes": 29555,
+      "sha256": "24488f3f716e44c3b4ac9d4beb1b0cba3c2cac5eceac3c75005df6cc65ec4193"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Soccer_Table/SM_Soccer_Table.uasset",
+      "sizeBytes": 154454,
+      "sha256": "ef104d8e27e8b9a46ac8749527ebec27ed6f3a2788b4b4c6647f1c130e131c64"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/TV/SM_TV.uasset",
+      "sizeBytes": 30178,
+      "sha256": "fe5f756b61fb46f9c1728a0910deabe52992f5f95da28ea00f01c619d4c80db8"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Tables/SM_Bar_Table.uasset",
+      "sizeBytes": 31302,
+      "sha256": "e884b8d8abfa52d06bd52cb4e5c1f5fc7efe9dede3a3e419e3c6b6c96f92c469"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Tables/SM_Kitchen_Table.uasset",
+      "sizeBytes": 28456,
+      "sha256": "b31a980cd0770622430eb0d811eb4caf279b95fb644896ebe4781916a0788a42"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Tables/SM_Main_Table.uasset",
+      "sizeBytes": 43151,
+      "sha256": "43be048033cd6751560e6d12d809263520e2a3cf41013952a1ee687440e79401"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Tables/SM_Office_Table.uasset",
+      "sizeBytes": 39374,
+      "sha256": "fbae63697ba788bb5cc25c288316931da369a335850239d6282da7984d8bd718"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Tables/SM_Palette_Table_01.uasset",
+      "sizeBytes": 30320,
+      "sha256": "2d49b1efd885ccc0f0de1a169d2d39178ae1e394f79f61368fcd5f123d9fe26e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Tables/SM_Palette_Table_02.uasset",
+      "sizeBytes": 42926,
+      "sha256": "bbe1d1d2f63ee680a3636a74f46b41678797e6b172d433f1d69fcae7b2c4be52"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Tables/SM_Work_table.uasset",
+      "sizeBytes": 22017,
+      "sha256": "b3478ed89746e8d7cb53e33989fd60189159d7ff5b2d7a38237fb97872003669"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Walls/SM_Wall_Big_Win.uasset",
+      "sizeBytes": 66457,
+      "sha256": "20a1fb3b0e1504a641ccce2d5506ffb4febe69a093ff430858272b551c5ea605"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Walls/SM_Wall_Column_01.uasset",
+      "sizeBytes": 30454,
+      "sha256": "ab5c981900a5e80d7582302b5cd323a7a819f83d830d851d0053e93725101af0"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Walls/SM_Wall_Column_02.uasset",
+      "sizeBytes": 25778,
+      "sha256": "fdba2a803f4abc26d40b24d1601a834beb11d0cbadb662e2e3408acb0c0d9701"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Walls/SM_Wall_Corner.uasset",
+      "sizeBytes": 26785,
+      "sha256": "2f5131cabd75c45e792aa6252ca2a12627256613e7f279b095050eea777ffaa4"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Walls/SM_Wall_Frame_door.uasset",
+      "sizeBytes": 30613,
+      "sha256": "5927c920431ed4a5420e9a0d7d3d76729bc8744397cc6cf851613e1168f3e2c3"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Walls/SM_Wall_Glass.uasset",
+      "sizeBytes": 62843,
+      "sha256": "5a6f5b724eddae15ea48c3eaa5ac9acff265d6e3abeea2385169ddb992120375"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Walls/SM_Wall_Glass_door.uasset",
+      "sizeBytes": 72344,
+      "sha256": "04ccb38c6a9648a61699ebaf113bafe94d95e190744c5acea9d48532f44b4a84"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Walls/SM_Wall_Square_01.uasset",
+      "sizeBytes": 22198,
+      "sha256": "6559c7b75616ded0233d217f84ad5821c8a0c85cc8351ee0adb0176eb90245eb"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Meshes/Walls/SM_Wall_Square_02.uasset",
+      "sizeBytes": 20502,
+      "sha256": "b4da18d9f865e498c55ba88751a8242e090bb739314daebae80d674a11fe92e3"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Art_01/T_ART_BC.uasset",
+      "sizeBytes": 2684139,
+      "sha256": "86dffda16685133c6a8c7a078b07b34a3276e0b7a11713132fdbd19b81e2660a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Art_01/T_ART_N_01.uasset",
+      "sizeBytes": 4554865,
+      "sha256": "8a0feceac04aa24d50f69c0ae4af230f0c4fbbb90a8f728f2d161afa0795276b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Art_01/T_ART_ORM.uasset",
+      "sizeBytes": 2299911,
+      "sha256": "d4e649d69cc2fd0ebc5aa3b2c6f5576103c58e688b7937a7cea7d084413e1c5a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Art_02/T_Art02_BC.uasset",
+      "sizeBytes": 6587656,
+      "sha256": "5828500ac96a54e000669fa74c6cae6fae74508ff47e2a679511be098d286b33"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Art_02/T_Art02_ORM.uasset",
+      "sizeBytes": 3579079,
+      "sha256": "f4511f270fe74621b9c1f3e2d04ae53f1be0b6a0d5abc01db914b31c3e602722"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Art_02/T_Art_N_02.uasset",
+      "sizeBytes": 7897796,
+      "sha256": "322d342cd217409aef7578c280dd5b272be2f8df85b3c29545e8f58159dddcb1"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Art_03/T_Art03_BC.uasset",
+      "sizeBytes": 32392489,
+      "sha256": "09c63f86fbc869f808410a6c1286cbfe100a13527d0d4bf24f8605888ff0798f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Art_03/T_Art_N_03_png.uasset",
+      "sizeBytes": 49242337,
+      "sha256": "8856edc0bcfe128f5c407d29381b15c06f541edd39a051180f2150b81b05cfcb"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Art_03/T_Art_R.uasset",
+      "sizeBytes": 12295257,
+      "sha256": "114ab5306450e9a618556d379fe669f285d58f6020cab4ca6eeba53610af1a11"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Bar_Chairs/T_Bar_Chairs_BC.uasset",
+      "sizeBytes": 4078354,
+      "sha256": "ec018e3050f5ffb5b8e1aeacf383295987864b4373369569290349c194ae6177"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Bar_Chairs/T_Bar_Chairs_N.uasset",
+      "sizeBytes": 7622344,
+      "sha256": "42d1e7f0d9f93a0ee89f59d5a0f12c16ab6a1fed3dca8a8a8d1b2ebe702a44eb"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Bar_Chairs/T_Bar_Chairs_ORM.uasset",
+      "sizeBytes": 4648938,
+      "sha256": "fb6fc5e1b887f57a9e698a763f9f2bf0ce6e615aa61c9d858ed891e0ed3f25c7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Bar_Tables/T_Bar_Tables_BC.uasset",
+      "sizeBytes": 4616723,
+      "sha256": "bb2dc2a1ac22078e769e170595217ba706960bfbc3a9970fe7f35effb10a8327"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Bar_Tables/T_Bar_Tables_N.uasset",
+      "sizeBytes": 4995509,
+      "sha256": "0a375b27f04135cfe73f8f8a0cc7b9a6d4f2cbd3e9b3705cf6444f7d07a656bc"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Bar_Tables/T_Bar_Tables_ORM.uasset",
+      "sizeBytes": 4492737,
+      "sha256": "3881d2b2818b28a3d06cf56a9f2cf8fd70d505b1aceaf03ef35fb3affc763e94"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Bean_Bag/T_Bean_Bag01_N.uasset",
+      "sizeBytes": 9011011,
+      "sha256": "cd2ddcd6b86f1765e8736c0c63586ce2c56a0e101c350dabb03f4eef24775240"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Bean_Bag/T_Bean_Bag01_R.uasset",
+      "sizeBytes": 1581660,
+      "sha256": "104c1edb84177170f3e8d14470b36c04699e4a1fc12a89006275b21c35a1b41b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Bean_Bag/T_Bean_Bag02_N.uasset",
+      "sizeBytes": 7389792,
+      "sha256": "f71382bf243f98404fb4894c2ea878a799925ccba2f3f3f67e50807ce5990d70"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Bean_Bag/T_Bean_Bag02_R.uasset",
+      "sizeBytes": 1947988,
+      "sha256": "220cbe4aadab2f4a2c8ba3b6b7d1f6f02d90af80549ef0a50af5fa279134b249"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Bean_Bag/T_Bean_Bag03_N.uasset",
+      "sizeBytes": 8668273,
+      "sha256": "48bb52c930304d30ff792d52e33bdbd308a2ed9d557876afb2bd7a72c823668c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Bean_Bag/T_Bean_Bag03_R.uasset",
+      "sizeBytes": 1902435,
+      "sha256": "fa367b9903f4d1fd093589d7455004c4cf87513bc00505c1327e4874425bc45b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Bean_Bag/T_Bean_Bag_01_BC.uasset",
+      "sizeBytes": 4029882,
+      "sha256": "dd3abbb5a6db5b3fdc9b146f0f0c6bf0de7e1ad4c33ce42b993661c5dceed622"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Bean_Bag/T_Bean_Bag_02_BC.uasset",
+      "sizeBytes": 2968235,
+      "sha256": "751a59f226934793029998bd5d9512289b5b47585496099fc6b816dab5354573"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Bean_Bag/T_Bean_Bag_03_BC.uasset",
+      "sizeBytes": 5136396,
+      "sha256": "887dda123a08029a23d68d9ca67df35b7c6149722a60d975157842e7c25038da"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Big_Plants/T_Big_Plants_BC.uasset",
+      "sizeBytes": 5621444,
+      "sha256": "71ae7fb3a0eeeff2e5fb42633baa61f456fe6943766abece2cc561c3ffcab625"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Big_Plants/T_Big_Plants_N.uasset",
+      "sizeBytes": 6572891,
+      "sha256": "bc3f83f82f388d854bbef1d1728a0012de2c0f6ed4110b7cc025007cb45019c7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Big_Plants/T_Big_Plants_R.uasset",
+      "sizeBytes": 1813899,
+      "sha256": "e2e0d4c0fbc991246f9075579209f1497b67548f0ac1efc7324418c03c5cacb2"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Black_Pipes/T_Black_Pipe_BC.uasset",
+      "sizeBytes": 4360794,
+      "sha256": "98e9c8194fa030e5e1098f8dd100000d0df0f86856d55012ce3a6391f98989e7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Black_Pipes/T_Black_Pipe_N.uasset",
+      "sizeBytes": 8047579,
+      "sha256": "f042697c558369f448b0a04bae2d39ab90365ff449df181a920e9db9f27ec9cf"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Black_Pipes/T_Black_Pipe_ORM.uasset",
+      "sizeBytes": 4074753,
+      "sha256": "9f2b94a757c94018f8271a1b6ef385ec5fe87a53ac7bea7a4e4dcf63f0116f38"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Borders/T_Borders_BC.uasset",
+      "sizeBytes": 9199007,
+      "sha256": "4d63d51c9a38a816a557768078189b6d5a09c3e7897dcdc0a91db18f937c1f55"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Borders/T_Borders_N.uasset",
+      "sizeBytes": 10350,
+      "sha256": "c470d8c19dce381f46ad745a90473078cd593a8959f19fa682c8c93327025a0b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Borders/T_Borders_R.uasset",
+      "sizeBytes": 2119459,
+      "sha256": "f656e31247aa252b19ee6faa377f35e723c91665d043033d1d2ce4a3d0e0a080"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Bricks/T_Brick_BC.uasset",
+      "sizeBytes": 8587310,
+      "sha256": "65a3cb1bc92b7f0e2ab627e99ad6f5bcbbe329b235ebe02920cef0a2f68d66f2"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Bricks/T_Brick_N.uasset",
+      "sizeBytes": 11701163,
+      "sha256": "0b69df6c6b1b33c00da0d41ec8b91fed7fcf77d184b80dfb3b0830bd64a31578"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Bricks/T_Brick_ORM.uasset",
+      "sizeBytes": 3643526,
+      "sha256": "47c43436c96b90659c638994cc258481a01e005d16cefa3c366ac208cba9a9fe"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Carpet_01/T_Carpet_01_BC.uasset",
+      "sizeBytes": 3477867,
+      "sha256": "6d24c0c00dfc0f53169c4918672e62e801c459a01483eda073c0cfb92cb9c2e7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Carpet_01/T_Carpet_01_N.uasset",
+      "sizeBytes": 13374775,
+      "sha256": "ca2221eceed1bb871e7250b1e26accbe5ee9071c4170fff4faefd747cf800842"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Carpet_01/T_Carpet_01_R.uasset",
+      "sizeBytes": 2529249,
+      "sha256": "c8b511514872e4b8013a588a5e87d7a548cc257008ba217f70e2f68fa900f3d1"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Carpet_02/T_Carpet_02_BC.uasset",
+      "sizeBytes": 3388778,
+      "sha256": "dd1b2e0d16f207a53077899f005a2b3a197bf3d2d28db92178ea00b224ef15cc"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Carpet_02/T_Carpet_N_02.uasset",
+      "sizeBytes": 13494340,
+      "sha256": "ec10526ef709d5a7c6ac0d31a66e004f17baa7423734efbe9bc6c04897c66aa7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Carpet_02/T_Carpet_R_02.uasset",
+      "sizeBytes": 3374770,
+      "sha256": "247080bd714029f0b174195eae5050db7b96684ea6eb36d4edb1102e5561fdaf"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Carpet_03/T_Carpet_02_BC.uasset",
+      "sizeBytes": 6109628,
+      "sha256": "4bd0b2710f93e0884a133051cc73f671f91fc87ca5098ecfd21aeb842c5f4717"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Carpet_03/T_Carpet_02_N.uasset",
+      "sizeBytes": 13417884,
+      "sha256": "74f14a4bb71e95cd7ecd41534664f725113627d54a2a66dca7ce947c872ea42b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Carpet_03/T_Carpet_02_R.uasset",
+      "sizeBytes": 2546432,
+      "sha256": "b79b016500f474957a79196bcab7c50c3a0f0852d0a56dea91eba76af1c62065"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Carpet_04/T_Carpet_04_BC.uasset",
+      "sizeBytes": 5420608,
+      "sha256": "8a9e0630d1ecf25ae14e33b06d4a17ffc80fb61d2040907582467c2814c22fca"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Carpet_04/T_Carpet_04_R.uasset",
+      "sizeBytes": 21383,
+      "sha256": "2e55445bcee3fd5741d6893473374fa530f4d0b559709dca5d0115f73cb9eb32"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Carpet_04/T_Carpet_N_04.uasset",
+      "sizeBytes": 9369585,
+      "sha256": "6398242d8498147fdce6944d6af03edb181a55f62b5ec5549e1b59429abedad4"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Carpet_Marble/T_Carpet_Marble_BC.uasset",
+      "sizeBytes": 4637014,
+      "sha256": "2669ff42e0972b831f5311e810f76a940f73c65ddec943f4c42fd5f6efa9c461"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Carpet_Marble/T_Carpet_Marble_N.uasset",
+      "sizeBytes": 9358610,
+      "sha256": "a0881bb245d262d7ad7f71a86b27ed015dfe9da75335c32e31098a617c6b1f96"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Carpet_Marble/T_Carpet_Marble_R.uasset",
+      "sizeBytes": 1587394,
+      "sha256": "acafb0b2fc5d30ca25884893d296c7ac651781144770bcd847af7f79a7b06dbc"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_CeilingPlaster/T_CeilingPlaster_BC.uasset",
+      "sizeBytes": 4401050,
+      "sha256": "995e5779052b32c2e9440c2fae9bf13d127791efb44212606fa7ce7b42f2a6c5"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_CeilingPlaster/T_CeilingPlaster_N.uasset",
+      "sizeBytes": 7211901,
+      "sha256": "3a4ac5e8f6b775723d86e6f4004f748571aa4f2d51be45528b0c71cc219dfb3f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_CeilingPlaster/T_CeilingPlaster_ORM.uasset",
+      "sizeBytes": 3578235,
+      "sha256": "6867850b91db7952240f7d784f6d4967893dc41ce03de2cc6a71bb334999c161"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_CeilingPlaster/T_CeilingPlaster_R.uasset",
+      "sizeBytes": 1852241,
+      "sha256": "4546f7fa34310b0efc91796ec026dc3e09fd453bec3646fd980f8797d25dfe7a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Chair/T_Chair_BC.uasset",
+      "sizeBytes": 3901274,
+      "sha256": "dc889012a0698e5381b676f196c73d1c96b07fe80bd3486f66b8aa227a7c59fb"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Chair/T_Chair_N.uasset",
+      "sizeBytes": 5261523,
+      "sha256": "10ee837bd4977d183acd0b8fd2d1efcfaa992bc1f3c903092077f6abbb21d211"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Chair/T_Chair_ORM.uasset",
+      "sizeBytes": 3064698,
+      "sha256": "b394ef5011a39aa0bdd1349d49cde00891fafb7cc7bb5ceb9d3c213b7063f55f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Concrete/T_Plaster_BC.uasset",
+      "sizeBytes": 7976328,
+      "sha256": "fbf0ea1d67168121291667007649c334c260797ff1996cbc1835b799e3648fad"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Concrete/T_Plaster_N.uasset",
+      "sizeBytes": 9289416,
+      "sha256": "5ccaa2abb5c4b83e55c42c33f6ba1aa27236c11cc4be7223dbac746a862bf4d3"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Concrete/T_Plaster_R.uasset",
+      "sizeBytes": 2274985,
+      "sha256": "33d98f97be7de019e70d61adce31c50f6441fc20d7b858c115b02b30643c6e11"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_ConcreteBrick/T_ConcreteBrick_BC.uasset",
+      "sizeBytes": 3644650,
+      "sha256": "59ede7fa1f2b0ff9378f5ff3acf2aac7e39040cb6778e6816b11d916229c5ff7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_ConcreteBrick/T_ConcreteBrick_N.uasset",
+      "sizeBytes": 9325787,
+      "sha256": "1d8949292d803f2fba02a594a74cb47cc6c984e87c533901f9add0a64a07fb6f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_ConcreteBrick/T_ConcreteBrick_ORM.uasset",
+      "sizeBytes": 3313699,
+      "sha256": "4b5c7e004b57203ad580ed178a0b454660f91ab6d839897e1c201c2f63063477"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Cooler/T_Cooler_BC.uasset",
+      "sizeBytes": 2461434,
+      "sha256": "c1a5294a1c94bda4471baa98e61d9a67d02e5bf8a0972461560fe92d3d20c989"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Cooler/T_Cooler_N.uasset",
+      "sizeBytes": 536243,
+      "sha256": "a4dfd12b2e649e71689e45f8004fa1d430d010e3ade82a5fcee07634ee9610ed"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Cooler/T_Cooler_OP.uasset",
+      "sizeBytes": 259239,
+      "sha256": "adc61ff368da9395a62b2f5e45b0b2371e416d1d9c89522deeb379c2283e1ad7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Cooler/T_Cooler_ORM.uasset",
+      "sizeBytes": 1775424,
+      "sha256": "313c9f49e7e97b681b94d9331014c21404d0938e7b7ad2c93665d3dc932d993b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Couch/T_Couch_BC.uasset",
+      "sizeBytes": 4332987,
+      "sha256": "996c8534e37f6cbb18cfdfff09edd6b30ff2e9d6b5e476aa8870a10e218453ce"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Couch/T_Couch_N.uasset",
+      "sizeBytes": 5697350,
+      "sha256": "2d80d2e30f5c25ee7412988dcdda3831807741fde28969f01a5cfaa9afcb93c5"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Couch/T_Couch_ORM.uasset",
+      "sizeBytes": 3137809,
+      "sha256": "047d4548cf2f6926ec606fd9a595401c51152641cde0fa6da53db2db11fcb768"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Crankle_Chair/T_Crankle_Chair_BC.uasset",
+      "sizeBytes": 4523636,
+      "sha256": "6c4b9aba859dbdb28f692c5c3064020ff8d9dce2bdb413f114f404c3155b8e41"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Crankle_Chair/T_Crankle_Chair_N.uasset",
+      "sizeBytes": 9742293,
+      "sha256": "d82171dd57ee01bb6460a3f560c12e7f11f20081b06ae51c59cedaec8aef2ece"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Crankle_Chair/T_Crankle_Chair_ORM.uasset",
+      "sizeBytes": 5310794,
+      "sha256": "438bb09b7b88a98ffdb60689283c7c2e9131a72cc020812bde8deb3c06c0fafd"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Cups/T_Cups_BC.uasset",
+      "sizeBytes": 3826923,
+      "sha256": "a72278a74f29e10199679562a0a48349ba3778e00ff9a4861f676efbaf399f53"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Cups/T_Cups_N.uasset",
+      "sizeBytes": 2533953,
+      "sha256": "a74864c1a1e37d293ee2c280c9dc000878bbf1cd429ce54b79b52dd296c17a89"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Cups/T_Cups_ORM.uasset",
+      "sizeBytes": 1890233,
+      "sha256": "e49d563e48d22cc6b9e49d6144f5efa24317deba3c5352e090d960c7d4a9d6b1"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Default/T_Default_BC.uasset",
+      "sizeBytes": 10393,
+      "sha256": "061ec8bd736894cb63068182824ddf29bff070faac01c460d4566be220d08b49"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Default/T_Default_N.uasset",
+      "sizeBytes": 10634,
+      "sha256": "2e5fe2153aa6115aa72e8ca6b240e934a8c93fe8d9af5211d8ecbf64b34a4e45"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Default/T_Default_ORM.uasset",
+      "sizeBytes": 10264,
+      "sha256": "8f823432c2e447114c9cd7eaa71789886686ea76073df848f60777d7d06765a5"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Default/T_Dirt_Mask.uasset",
+      "sizeBytes": 3865347,
+      "sha256": "70ed6ecb07fa92205af19dcdf8c307b53358f3b9a178166303dd0ed520aaffca"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Desk/T_Desk_BC.uasset",
+      "sizeBytes": 3507403,
+      "sha256": "a5b1d6f3dec05dee5240b1f7d415aec846d36c498867baa1159290164b5e654f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Desk/T_Desk_N.uasset",
+      "sizeBytes": 818600,
+      "sha256": "a5b6b7640338f3a0e1e2f4d61dbe2ef78723e306b9644d566892078265b7de08"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Desk/T_Desk_ORM.uasset",
+      "sizeBytes": 4697229,
+      "sha256": "4d75b3dc0b617b806b0f212fee1f93df2239d8849403fa4ccbc90e684a1eda46"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Door_01/T_Door02_BC.uasset",
+      "sizeBytes": 5722458,
+      "sha256": "263a295d3f19f78ab8c330a06f65e0ee93b7f7f3eb5af88c94fc6c871b7c82e0"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Door_01/T_Door_N_02.uasset",
+      "sizeBytes": 7800161,
+      "sha256": "c2b0137ba864a62d028de14c0aab97dc2a78101acfce462c85fb29b374bf9219"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Door_01/T_Door_ORM_02.uasset",
+      "sizeBytes": 3075657,
+      "sha256": "51ac4faf8accfc2e730d3b00a2035f08df5242f6515d2d21b6b4682563b4d994"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Door_02/T_Door02_ORM.uasset",
+      "sizeBytes": 3918169,
+      "sha256": "51282de0c4a68c367a3244f3d61d3808c16abef476e8f1e590b1951c52e1004d"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Door_02/T_Door_02_BC.uasset",
+      "sizeBytes": 5851180,
+      "sha256": "77348234bf8a9dc5542f36510f9b3c362b373bf50ad10f48dbd6f647ab09a0ac"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Door_02/T_Door_02_N.uasset",
+      "sizeBytes": 7797931,
+      "sha256": "c1d734c3d8e96d5bf64f84e903ec98c707333ea0ff4f0f29120196acd961e6b5"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Door_03/T_Door_03_BC.uasset",
+      "sizeBytes": 5524164,
+      "sha256": "99da7f11209dab55383d7a2ddaebb035ad48205630507223109fa13b01f30219"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Door_03/T_Door_03_N.uasset",
+      "sizeBytes": 6543380,
+      "sha256": "a8aebc9526d2d5582b7f39f37575597a1762ab8404750b2dde1ff4ecba771b50"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Door_03/T_Door_Main_ORM.uasset",
+      "sizeBytes": 3198019,
+      "sha256": "cab5955e8b7a418a764ad3305f1c503b511030ca52bcef3cb543a8126b5c18f1"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Glass/T_Glass_BC_01.uasset",
+      "sizeBytes": 3603604,
+      "sha256": "d5ac241940cb66a406a6b794881826d9960c7a254565691131005ca09b734e37"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Glass/T_Glass_BC_02.uasset",
+      "sizeBytes": 457530,
+      "sha256": "4171160611b28f27493328ae25573cd269f4f7f47f3efa7babc325c0acdcef7d"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Glass/T_Glass_R.uasset",
+      "sizeBytes": 647598,
+      "sha256": "72ad90cff09abe13415cbdbe246c44fd2677e9b7c18a3ff9dfa9a3fa35ff4e20"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_GoldPaint/T_GoldPaint_BC.uasset",
+      "sizeBytes": 6239984,
+      "sha256": "9e6b1bdc2cace2e98720c49f2d87a37b5723bb2b7e8f00f0dffe7011f41c465d"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_GoldPaint/T_GoldPaint_N.uasset",
+      "sizeBytes": 10726919,
+      "sha256": "80abde2c9d608a320b8c34c674ff5badd744384d922814f710d17abc5faead79"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_GoldPaint/T_GoldPaint_R.uasset",
+      "sizeBytes": 3842827,
+      "sha256": "794f7e4732153c7d52eed74ce0f7397d778b4aec11e49de66ff8f270de726e10"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Kitchen_Cabinets_01/T_Kitchen_Cabinets01_BC.uasset",
+      "sizeBytes": 199301,
+      "sha256": "0550f0c7b758acfda725d400f7f776abe15e567dd538ffa205be3acd2748b15f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Kitchen_Cabinets_01/T_Kitchen_Cabinets01_N.uasset",
+      "sizeBytes": 4120464,
+      "sha256": "cbcb03475deb5f0a73db1d7320717f2067dea1276e489028c22565cc6111730f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Kitchen_Cabinets_01/T_Kitchen_Cabinets_01_ORM.uasset",
+      "sizeBytes": 678061,
+      "sha256": "88dd7b829cf735db476782d94705fa36a43f0b3eebd119ac0b6582aacebbe731"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Kitchen_Cabinets_02/T_Kitchen_Cabinets02_BC.uasset",
+      "sizeBytes": 1331103,
+      "sha256": "9ea2b02030800f84794e3cd12edbc2237eb316f85accb27a4caa84baae2d197b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Kitchen_Cabinets_02/T_Kitchen_Cabinets02_N.uasset",
+      "sizeBytes": 2707004,
+      "sha256": "26dea4ac6cadba2b231a304fff05b88d18517c81db1fd2a1527457337cf61cd3"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Kitchen_Cabinets_02/T_Kitchen_Cabinets02_ORM.uasset",
+      "sizeBytes": 1125857,
+      "sha256": "e3e1d908e2b8e06c22b31c0627a6e2086a6946441d736b668f9252982ebb8c5c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Kitchen_Cabinets_03/T_Kitchen_Cabinets03_BC.uasset",
+      "sizeBytes": 703553,
+      "sha256": "6b717fd6ccf0f8c7d28c6330454acabef1ddda89dd65a5794a97c4200863331b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Kitchen_Cabinets_03/T_Kitchen_Cabinets03_N.uasset",
+      "sizeBytes": 3962102,
+      "sha256": "cb21e350ad639736de7e52d9a091ec4f395db9abc837b360c6734a197951d576"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Kitchen_Cabinets_03/T_Kitchen_Cabinets03_ORM.uasset",
+      "sizeBytes": 2967985,
+      "sha256": "26268bdb719ab856b581770ca6907d53d5f1cef3ebefbe70807e6b59c74e1996"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Kitchen_Cabinets_04/T_Kitchen_Cabinets04_BC.uasset",
+      "sizeBytes": 2112966,
+      "sha256": "970aa1c0ed6eceb60cd1fbbde2391f05e485f5adf63072664e89fdc5f1c55858"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Kitchen_Cabinets_04/T_Kitchen_Cabinets04_N.uasset",
+      "sizeBytes": 3968157,
+      "sha256": "83ead5eecad4a91c7579f989199d57dbac48233d2e99207ad6541de3eac3d28e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Kitchen_Cabinets_04/T_Kitchen_Cabinets04_ORM.uasset",
+      "sizeBytes": 3523395,
+      "sha256": "176d0fc6f54768a960bf10d49ab2b7cfb974602d29d218b6216e3c028c6c6c1c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Kitchen_stuff/T_Kitchen_Stuff_BC.uasset",
+      "sizeBytes": 2227040,
+      "sha256": "fb6878913868ca086f1d733c1920b26c36a7a23d494f9d08b34857d725acbb30"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Kitchen_stuff/T_Kitchen_Stuff_N.uasset",
+      "sizeBytes": 3581947,
+      "sha256": "d16c18fa6f2797cb7fd366629772913c7eed71f4bc1153845c0777a38728e317"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Kitchen_stuff/T_Kitchen_Stuff_ORM.uasset",
+      "sizeBytes": 5320293,
+      "sha256": "b1f475bd0d126520a71d902c6d851794637966fc7668e6e5f56773d547ffb346"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Lamp/T_Lamp_BC.uasset",
+      "sizeBytes": 2229660,
+      "sha256": "7f2048d3031d1033f02699fa47604561a10765dd377de1e79c9b7d6a0362924d"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Lamp/T_Lamp_E.uasset",
+      "sizeBytes": 171431,
+      "sha256": "be27a5bc0147b39e699f7996e0828707c9ca3b7e288f49c51c4c47f27bb57497"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Lamp/T_Lamp_N.uasset",
+      "sizeBytes": 2940178,
+      "sha256": "bcd731b2aa9ab87f65c379abfae5997447ed75ad94d759ba22fc54361b70be49"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Lamp/T_Lamp_ORM.uasset",
+      "sizeBytes": 1979801,
+      "sha256": "5eb0869bd8e9da78dfbfb86e681d8449bfe8e811fc17f99bd934ef44f1cf1d4c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Lamp_Floor/T_Lamp_floor_BC.uasset",
+      "sizeBytes": 1597828,
+      "sha256": "c23e97838dbc209a7cec638d988a7370d338906f01ac674d7705fa79a1ba0b00"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Lamp_Floor/T_Lamp_floor_E.uasset",
+      "sizeBytes": 14121,
+      "sha256": "dd8c3a70f547e5f94ea524b071e0bd12345d5b9f01bbce7e0e7c4934662804aa"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Lamp_Floor/T_Lamp_floor_N.uasset",
+      "sizeBytes": 4570844,
+      "sha256": "9c052c6c97fc8c37185fcbe68e464e99db39b9d20bb475d3ab9946ed26316e7d"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Lamp_Floor/T_Lamp_floor_ORM.uasset",
+      "sizeBytes": 2644012,
+      "sha256": "ff675e967a80b19abe7e492d915876eabf8c7f24a335e4900cd519dae1d079ca"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Linoleum/T_Linoleum_BC.uasset",
+      "sizeBytes": 10423024,
+      "sha256": "9fe5b42f3e13252905e6b34a8122cb4dcae02842bbe1aaa67d0a4712ae2ab625"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Linoleum/T_Linoleum_N.uasset",
+      "sizeBytes": 301708,
+      "sha256": "591004cd432c62650e3fa3deb0227433428cbc53ae79a1c659e023a20198bd40"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Linoleum/T_Linoleum_ORM.uasset",
+      "sizeBytes": 583698,
+      "sha256": "58f75406e66a7b5c78ee3a28a204eb52e3425088325857027f72587c773bf8d9"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Logo/T_Logo_BC.uasset",
+      "sizeBytes": 18449,
+      "sha256": "2ed9216d54198abea5891763ba22358ad9c9ea0058037776277869298c9f8b35"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Logo/T_Logo_E.uasset",
+      "sizeBytes": 1074154,
+      "sha256": "005996fc4279b6fce9f8f377766a4f29597af4718e5be269ca57c66d8311dee2"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Logo/T_Logo_N.uasset",
+      "sizeBytes": 5129499,
+      "sha256": "4d4dc74ed27cbd05fc84474622ef91aafa334124b6b267cdde16c9d7b7e6eb54"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Logo/T_Logo_ORM.uasset",
+      "sizeBytes": 2765896,
+      "sha256": "a76ce7f4d9fa0311221f4d5f8f10d3942c2d99bb56ae435499130cf28a7c0fe6"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Monstera/T_Monstera_BC.uasset",
+      "sizeBytes": 2982005,
+      "sha256": "81df43553e0e59149f5b1461783c121c6c7c6f1b4100b53da095684a0a365ea1"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Monstera/T_Monstera_Leaf_BC.uasset",
+      "sizeBytes": 2051893,
+      "sha256": "c99b4cca0c3b4a264e02266d4d5dd179e5ed12bd4418d26a37415316a7e1b731"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Monstera/T_Monstera_Leaf_N.uasset",
+      "sizeBytes": 4332447,
+      "sha256": "f80f785ce248043ddffefe4e7c017354d19fba82afa72b2186976d0f300870b0"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Monstera/T_Monstera_Leaf_ORM.uasset",
+      "sizeBytes": 1762983,
+      "sha256": "c15137a19b8cd9fe0016fc2e14bc4f403eb169b24579957048cff9dec936b52f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Monstera/T_Monstera_N.uasset",
+      "sizeBytes": 8607092,
+      "sha256": "d801f9eaa8615088a1f9581b0b7105265eac225040668e0b28c5ec4d4cc7f41e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Monstera/T_Monstera_R.uasset",
+      "sizeBytes": 2142842,
+      "sha256": "4e3a25a0212947e4ffdbbbe6d214d63fd394e05699c41ef7d123a273088a36e7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Office_Chair/T_Office_Chair_BC.uasset",
+      "sizeBytes": 5105659,
+      "sha256": "eed332a6d15f9d7f0668e09e1bb6a579208a2f8d73de7967f823b9a2e3e3012e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Office_Chair/T_Office_Chair_N.uasset",
+      "sizeBytes": 8340474,
+      "sha256": "45c279061958817bd1fc8db932516582fe92769c364e5676847296b273a12546"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Office_Chair/T_Table_chair_ORM.uasset",
+      "sizeBytes": 3678142,
+      "sha256": "a0dd7b26712de9b475502fc6fd76599bd6fbd8d55b35b5ab7b4aee0750120c45"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Office_Table/T_Office_Table_BC.uasset",
+      "sizeBytes": 3529278,
+      "sha256": "47f8ab29cdda32f04c6f67a951bd812edf0492570adc54fb8d0a06072d61e1bb"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Office_Table/T_Office_Table_N.uasset",
+      "sizeBytes": 7361265,
+      "sha256": "bad0a6e1a4946484ddcf79f067e34ade742b35f132e8a3578e156d5242dcd284"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Office_Table/T_Office_Table_ORM.uasset",
+      "sizeBytes": 3328540,
+      "sha256": "4b91df3f077c6c4f5c82971101011814f1282cdd2470f3d4dbed65b7bde8536d"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Office_Tools/T_Office_Tools_BC.uasset",
+      "sizeBytes": 3655512,
+      "sha256": "070c2e8759ec3ac4552ae147b178e39668de6f5e0d9bd290e7d490f8f6819edf"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Office_Tools/T_Office_Tools_N.uasset",
+      "sizeBytes": 3842840,
+      "sha256": "3ea9827b3ac9ee36ff03929c415379a3d47f864b4d40a13295224287cf8837af"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Office_Tools/T_Office_Tools_ORM.uasset",
+      "sizeBytes": 2911590,
+      "sha256": "8a76854c6dbb10fc36210ce68328ee8b5f6b85f1e9f8506a9f5294dfcc2a4487"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Office_equip/T_Computer_BC.uasset",
+      "sizeBytes": 1482342,
+      "sha256": "b10cbf38f9efd15ba74bd9336b6050dd46020830e885305ae9b795666d8cf893"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Office_equip/T_Computer_E.uasset",
+      "sizeBytes": 29552,
+      "sha256": "2412d0b3f68a506ff743d68296e4e7a9cb2e96ee14864b9d77f305af652b4163"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Office_equip/T_Computer_N.uasset",
+      "sizeBytes": 5096650,
+      "sha256": "5163c9b6db875e8de375c7a37fcb23a4fe136647499d1e74f24b9488867846fe"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Office_equip/T_Computer_ORM.uasset",
+      "sizeBytes": 3281743,
+      "sha256": "8dfa22fa6eaf70b380748b86253c8b687461342ccd55be85a351ee653a842f70"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Or_wood/T_OrWood_BC.uasset",
+      "sizeBytes": 8394295,
+      "sha256": "d4f09fb8a3cd2e8afdb0a9356e5ae612b436eaad56d5ae96fd67b7797b627529"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Or_wood/T_OrWood_N.uasset",
+      "sizeBytes": 6375245,
+      "sha256": "e2cd31795a44dedf9a5a57dd743bb507af5f07c17b3b5ece6d4f43a5c30a35b9"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Or_wood/T_OrWood_R.uasset",
+      "sizeBytes": 3380861,
+      "sha256": "fb753f8425c73f299f6eb4330ebef21de1db066b6c4da3ddaa30c8232783def0"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Palette_Table_01/T_Palette_Table_01_BC.uasset",
+      "sizeBytes": 7759388,
+      "sha256": "02710f957bd8402dd343f0fc034a4fe5456861d0ae11b26219c0530d079f21e3"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Palette_Table_01/T_Palette_Table_01_N.uasset",
+      "sizeBytes": 7611790,
+      "sha256": "2e8efa73eac22649c0bb5421e26d20470f7861bd056d140b0717ab3faed0dbdc"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Palette_Table_01/T_Palette_Table_01_ORM.uasset",
+      "sizeBytes": 3841228,
+      "sha256": "39aae926e667bb929042d86974a417dd0e9d753f4401834992996abfe03e9dda"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Palette_Table_02/T_Palette_Table_02_ORM.uasset",
+      "sizeBytes": 4086678,
+      "sha256": "634756731b03c4dfca46b7cf13035986ca8e480cd785dc6bccec8fddba609bcd"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Palette_Table_02/T_palette_table_02_BC.uasset",
+      "sizeBytes": 5773121,
+      "sha256": "9ae2d49141e0fc95ff548b67561e09fc702345533fbefc33679a0dd4ec346432"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Palette_Table_02/T_palette_table_02_N.uasset",
+      "sizeBytes": 6928453,
+      "sha256": "aed97ded558f622f26c2fb8187d846c8f45ccb721be7066c116b750c17e31dbd"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Palm/T_Palm_BC.uasset",
+      "sizeBytes": 1731063,
+      "sha256": "9a5126e4f5cb64727531f9120db301ae22809105d97adcf06ac89c9cf9063cb5"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Palm/T_Palm_N.uasset",
+      "sizeBytes": 4395599,
+      "sha256": "33bd28a7e398044f8d886e095a6f4682282ea1079994cf6c878be719f9edb3d0"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Palm/T_Palm_R.uasset",
+      "sizeBytes": 1268673,
+      "sha256": "633f494738d199948c6d1876baa728a968b167f5be78c8bafcaa880502fbc0bb"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Parquet/T_Parquet_BC.uasset",
+      "sizeBytes": 8775121,
+      "sha256": "379a9b0b6c433d169221fe0af7ff1512d055e82be085c87f622b242f435d8f26"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Parquet/T_Parquet_N.uasset",
+      "sizeBytes": 7900747,
+      "sha256": "03e0017b3ab23dcbd70e46f69f5f8963b0d83c8f9c8c16f22fa12ef188c8b294"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Parquet/T_Parquet_R.uasset",
+      "sizeBytes": 3838081,
+      "sha256": "b9914e93f8e7d8c73ceb5098ebd94b8dc849ffb8948233c206d375db145d124d"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_ParquetHerringbone/T_ParquetHerringbone_BC.uasset",
+      "sizeBytes": 6608533,
+      "sha256": "bd467e8576fd2029f98435b596dbb40c96605575e9aa81a33b2ecd8757686721"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_ParquetHerringbone/T_ParquetHerringbone_N.uasset",
+      "sizeBytes": 8486344,
+      "sha256": "62a469b36aa8123c500044adeb16f014d3bc22267dab0ae699cf0ca71fe370f2"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_ParquetHerringbone/T_ParquetHerringbone_R.uasset",
+      "sizeBytes": 2129659,
+      "sha256": "82a31b393ae77258696249aac6441115b9fc3115ca2e81d2faa620be0410e494"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Pipes/T_Pipes_BC.uasset",
+      "sizeBytes": 2116867,
+      "sha256": "784deff3c541f79fee2903ae303a524db8d23a2bd990c371cfc6f58da262f596"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Pipes/T_Pipes_N.uasset",
+      "sizeBytes": 3427364,
+      "sha256": "199a6985ab80992830195b651f024dda0e14726a4bfd136b34383ac47c24b0e8"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Pipes/T_Pipes_ORM.uasset",
+      "sizeBytes": 6205266,
+      "sha256": "30c32290fe139478aeee85fb0d3b8fd105239e1d16e8a1c999849adfe21b796d"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Plants/T_Plants_BC.uasset",
+      "sizeBytes": 5166998,
+      "sha256": "dd57e8ff2dd8297c33fe1116289e6c4c35f9a6f264990dab3ef6df23d554d7f2"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Plants/T_Plants_N.uasset",
+      "sizeBytes": 6449454,
+      "sha256": "a4f5d5d5fb30f414e7137efb491df41745d502c90439dd1bbd50da5622f5776f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Plants/T_Plants_R.uasset",
+      "sizeBytes": 2107515,
+      "sha256": "385e126bdaaa6b26a69020798f6cff778792b966efcb3b96dfc5ea125acce0c4"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Plaster_Fine_02/T_Plaster_Fine02_BC.uasset",
+      "sizeBytes": 6134802,
+      "sha256": "688c1ee53aea8190b6819f4c45ba33eb06a02155bcf3a4bd5e0e79683f583733"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Plaster_Fine_02/T_Plaster_Fine02_N.uasset",
+      "sizeBytes": 11321391,
+      "sha256": "abda997a46a00d8c1aa684ac9f6e504a281d2aa5e252686e820512f632ecd0cf"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Plaster_Fine_02/T_Plaster_Fine02_ORM.uasset",
+      "sizeBytes": 2231975,
+      "sha256": "132c8ea94c72605f6e2896ffff06ba24bd82f569a607990c48014bdad3afabf8"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Plaster_fine_01/T_Plaster_fine01_BC.uasset",
+      "sizeBytes": 3490306,
+      "sha256": "3878a801534cfd5678c0852f0ae5ca954e891c3a946abd269209ea778d707e59"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Plaster_fine_01/T_Plaster_fine01_N.uasset",
+      "sizeBytes": 11321349,
+      "sha256": "ab02fc07f8186daef66500e8ece54fc709ef33609489b2b058b3a1810c744404"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Plaster_fine_01/T_Plaster_fine01_ORM.uasset",
+      "sizeBytes": 1552212,
+      "sha256": "c320ed0755b107d87d6e3a0aa4f9f948bb9a7b5a9ee14f9e6608c6d327bc19cd"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Round_chair/T_Round_chair_BC.uasset",
+      "sizeBytes": 3570052,
+      "sha256": "e5e6a310d2280a74e533cab440351abadb25f884254485f23307cab069f4aff9"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Round_chair/T_Round_chair_N.uasset",
+      "sizeBytes": 7232042,
+      "sha256": "21dfeb43708d4cbc4f14362a3eb2a27ae6c13a8ff1081f7e61418e6647d9aba0"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Round_chair/T_Round_chair_ORM.uasset",
+      "sizeBytes": 4685531,
+      "sha256": "4873858ed2c447d33647f88611b8f823b078342aa3fd3cfdb3cb08b897b4b347"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Shelving_01/T_Shelving_01_BC.uasset",
+      "sizeBytes": 5463193,
+      "sha256": "eafa6d5221a25508974fc9d3fdefd18ab0e3eb4499b18c0fcb45bc92d05a3ad7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Shelving_01/T_Shelving_01_N.uasset",
+      "sizeBytes": 5734368,
+      "sha256": "983762ece556b8e89d62185920a8a83a262cf0c59d07bd6a0f3d88ec84586579"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Shelving_01/T_Shelving_01_ORM.uasset",
+      "sizeBytes": 3619654,
+      "sha256": "2284fc34bd66b439d2452deb006bab7ee3a8d2b58bd49b3bf67343f7768d430c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Shelving_01/T_Shelving_01_R.uasset",
+      "sizeBytes": 2069074,
+      "sha256": "b50af2ad4d6481630e2cf4ea3551ce157f85033ef8cdc71849e518a52b799aaf"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Shelving_02/T_Shelving_02_BC.uasset",
+      "sizeBytes": 5377532,
+      "sha256": "afe59cd3331ac4c0ee2fc171f5e96014d20861206f2b613cd08169ad95f7df9c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Shelving_02/T_Shelving_02_N.uasset",
+      "sizeBytes": 6610658,
+      "sha256": "fecb17723508083cd0ec9d844da50617d3d997ef89aa311cd9471bcfa6c425ab"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Shelving_02/T_Shelving_02_ORM.uasset",
+      "sizeBytes": 3788240,
+      "sha256": "654e9e885069b71ff68b76b57dee892c6d6025257608c6ec6cf90ffc593ecc4a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Shelving_03/T_Shelving_03_BC.uasset",
+      "sizeBytes": 3913771,
+      "sha256": "681f054a6fa9c7cf2c9065d571a027e160b70ba292615bf8dc65c053b709d624"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Shelving_03/T_Shelving_03_N.uasset",
+      "sizeBytes": 5892321,
+      "sha256": "28c11f44d2f12a554b8f4481db16bc2a3581ba294cf6699b6432ced983811f53"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Shelving_03/T_Shelving_03_ORM.uasset",
+      "sizeBytes": 3448243,
+      "sha256": "814d9c2256bffdfca2427b7c582831a47cb18bfd817519c6494c3af6deb62b5e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Shelving_Stuff/T_Shelving_Stuff_BC.uasset",
+      "sizeBytes": 3217071,
+      "sha256": "ac18f1ddd398080fa3e0eb7b8b60d24ff03a42ce9919a39e98810d0148e2494f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Shelving_Stuff/T_Shelving_Stuff_N.uasset",
+      "sizeBytes": 5418208,
+      "sha256": "e7333e726066ed6213086356fd5b9e39150ee8f40dc249735538856a93cd1101"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Shelving_Stuff/T_Shelving_Stuff_ORM.uasset",
+      "sizeBytes": 5947866,
+      "sha256": "24c0bbe8b27d1f20f4d9fb5193cb22b8e293bfcf054738a07133015906f1df92"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Soccer_Table/T_Soccer_Table_BC.uasset",
+      "sizeBytes": 4809178,
+      "sha256": "70316f933450cd821b5dd6e637cee17937bd8f8c5b319390d10b39e3390d73d3"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Soccer_Table/T_Soccer_Table_N.uasset",
+      "sizeBytes": 8516993,
+      "sha256": "66f1550329224896fe0daacb177b37244265cf354fa8a98c51ee39783901071f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Soccer_Table/T_Soccer_Table_ORM.uasset",
+      "sizeBytes": 5421580,
+      "sha256": "d301516f263e203eb18faea8a879e224244d15e74332ec80409476842ef8e9f5"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Sofa/T_Sofa_BC.uasset",
+      "sizeBytes": 6827526,
+      "sha256": "00ab3924b6010e5091f6dce4577d82a50a1e42bc11346fd81249be682640f6b4"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Sofa/T_Sofa_ORM.uasset",
+      "sizeBytes": 1649122,
+      "sha256": "c2dccd17c0294f48881170c369188ab97dd9a2fb00cf66b86bc0dbd12aa12fe3"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_TV/T_TV_BC.uasset",
+      "sizeBytes": 675274,
+      "sha256": "a9b55ff52dd8b94a45625deb60d9018b872864fd71c1b341cedc37e356f68912"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_TV/T_TV_E.uasset",
+      "sizeBytes": 12124,
+      "sha256": "d1eb9f505f33d23dae90156fc1787de419bc8cbe41fa4f34f261565daab1deb3"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_TV/T_TV_N.uasset",
+      "sizeBytes": 4034778,
+      "sha256": "da9d2efca48cafb51616c1356b17fc4f7cbd5982d6969fcb878888d2f1f5e294"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_TV/T_TV_ORM.uasset",
+      "sizeBytes": 2479020,
+      "sha256": "eecc2b3e9afbb19c575e8de512b7158bac9ec5a71a865d41b8254df38c2377ea"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Table_01/T_Table_down_BC.uasset",
+      "sizeBytes": 1316656,
+      "sha256": "f59db3e54b2e0ace6e9bf9d6e542f0f51d836e30bfdef1fc0b31ab67429f404c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Table_01/T_Table_down_N.uasset",
+      "sizeBytes": 7306489,
+      "sha256": "03382eb4b095b3f2572e4064a54bc67ad66c52703ed929093e2eecae2de7f6d2"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Table_01/T_Table_down_ORM.uasset",
+      "sizeBytes": 2440428,
+      "sha256": "b5209b340019be135a8bdca3e53a290fa4c382dcefe66d65c2b83a82989a1352"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Tiles_Kitchen/T_Tiles_Kitchen_BC.uasset",
+      "sizeBytes": 5472740,
+      "sha256": "193313cb4fb5594fb422669c7255c7d936ac2dfb67bc14b458afca1594ed8cbc"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Tiles_Kitchen/T_Tiles_Kitchen_N.uasset",
+      "sizeBytes": 5920405,
+      "sha256": "e90e816b78510961316c56e75e9f038c05a099c05b063f36dab1d27f9fc73117"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Tiles_Kitchen/T_Tiles_Kitchen_ORM.uasset",
+      "sizeBytes": 2870540,
+      "sha256": "a4d8e68a7a31a0b9b6f7ae331b7e55931d54cc6bdd4ff03edce12a6ea85f962c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Tiling_Wood/T_Tiling_Wood_BC.uasset",
+      "sizeBytes": 7351956,
+      "sha256": "2e5f4f35b01afd9897a76e8c6147ec45d8aeae31cd4fef045db21c93481a2dc7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Tiling_Wood/T_Tiling_Wood_N.uasset",
+      "sizeBytes": 5897882,
+      "sha256": "bd2ad5f46b7970b8f26c5a621d007858a55663de8bc3fc00d15fc46fb17589b4"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Tiling_Wood/T_Tiling_Wood_R.uasset",
+      "sizeBytes": 1347971,
+      "sha256": "e88165ae597e9e48793bc04b8e9a34d5a5d848264b08638b257acaafab7529fb"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Trash/T_Trash_BC.uasset",
+      "sizeBytes": 2316668,
+      "sha256": "a907d3b5e681747574cc7a3814f5a69a04fa625ef81816717c407a4fe73eaad7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Trash/T_Trash_N.uasset",
+      "sizeBytes": 5212532,
+      "sha256": "060cc74731a8621cc9d57a860cf538b07c3ef965fdd02bfd7328b1d12bbb6857"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Trash/T_Trash_ORM.uasset",
+      "sizeBytes": 3962501,
+      "sha256": "a200248bb786fbadabaced66e2e0a676653802d8277ff23a0adca92cc8c51b35"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Window/T_BrWood_BC.uasset",
+      "sizeBytes": 7352309,
+      "sha256": "dea6f96ffd9b83da57c7f21d8e75c32d4730c9173fbf4a6ef15eefbd848a387d"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Window/T_BrWood_N.uasset",
+      "sizeBytes": 5897847,
+      "sha256": "141ce840bff43c5bb17125e4046912b57825e1239d874df7435f8e00e57dba95"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Window/T_BrWood_R.uasset",
+      "sizeBytes": 1347936,
+      "sha256": "9c71eb854da7a8cd6089a5c440947772d23865fa25dd3f08eeda379556119b0d"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Work_Table/T_Work_Table_BC.uasset",
+      "sizeBytes": 7060686,
+      "sha256": "40218b48404a873c6f72b57ec4b9ba092706451449567fb40fb94c765fe4a67c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Work_Table/T_Work_Table_N.uasset",
+      "sizeBytes": 6650343,
+      "sha256": "61b9c46a30eb157fce8ea3c75839417efe2075fab552118a3951b8cd5e917587"
+    },
+    {
+      "path": "Content/Assets/MapAssets/ConferenceRoom/Textures/T_Work_Table/T_Work_Table_ORM.uasset",
+      "sizeBytes": 3325721,
+      "sha256": "a2432d273d79cb0b18d65e376a6cd920be49abb101e161a773bec057042818c3"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/EpicContent/Textures/TX_Paintings_01a_NRM.uasset",
+      "sizeBytes": 9576829,
+      "sha256": "c30e3fd99549457c8804194972fd10831fde8c82a876367d13cdca3cf880be04"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Functions/MF_CRTSimulation_01a.uasset",
+      "sizeBytes": 85565,
+      "sha256": "e7c50ed72e1aff19ddb8310d24862d95be3b227f92378b3c518e545f57a8807a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Functions/MF_Detail_Normal_01a.uasset",
+      "sizeBytes": 50706,
+      "sha256": "f5591799195c42afc4b249743f128e49093415834fd5655ac5cdf75419faf73a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Functions/MF_Iridescence.uasset",
+      "sizeBytes": 74493,
+      "sha256": "a460d3e781ba8e716bc344f31534441efa3a56c8588584b154b49089c6fa0ce8"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Functions/MF_Normal_Intensity_01a.uasset",
+      "sizeBytes": 46852,
+      "sha256": "b5a73056cfb0993b5ecfd8c29947ff805bdd283b31036750e764b6cef45bb256"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Functions/MatLayerBlend_AddBaseColor.uasset",
+      "sizeBytes": 87180,
+      "sha256": "849516486ae9019858ff9d9de26d9b7ff6917cba342c4d091c7d7dffe59112b0"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Acessories_Trim_01a.uasset",
+      "sizeBytes": 96007,
+      "sha256": "0d804416ad051839ceaeafe84d0e1977fcd59c5f95e7580f2974725b9247fc83"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Art_01a.uasset",
+      "sizeBytes": 148325,
+      "sha256": "809c603500cebea9359dc6c9a1080b8ace591d38c1e6a28ff4481516ce216d49"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Bench_01a.uasset",
+      "sizeBytes": 123595,
+      "sha256": "83249b7b8c006d1faeb2546bc56bc7866021a1279d9fdfe818cba46a912b9f79"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Bowl_01a.uasset",
+      "sizeBytes": 143499,
+      "sha256": "c37b3efaaa28f884b5bc5c6b6eb3d02e86fe314bcae98cac04c61dfc9d30db73"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Bust_01a.uasset",
+      "sizeBytes": 121754,
+      "sha256": "c9a5897462cfb4a1c987cb98ba3a7cecbe6dead26de84353147076ac057afedf"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Canvas_01a.uasset",
+      "sizeBytes": 125558,
+      "sha256": "9136351928c3adabb6f6b0eeced5125f6ec541a6c3839d14faeb0f4e960b4a4a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Canvas_02a.uasset",
+      "sizeBytes": 142325,
+      "sha256": "1d05057ace01bb5a2d16ce48aa37cd5c11b2f787a770b6e60ea9cc6657c4e77a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Canvas_03a.uasset",
+      "sizeBytes": 117762,
+      "sha256": "75a4d3d87e9e9e7bbb6446fe43b7b545f6a918f4270827487ae03c7ebc9dc350"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Canvas_04a.uasset",
+      "sizeBytes": 132014,
+      "sha256": "adaf52feee3ad7a103e22dd0d9e0befd12c328b25fa1e805d7f7a3d81cf50369"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Canvas_05a.uasset",
+      "sizeBytes": 132969,
+      "sha256": "adc94295607490986a65736e2548a3ef2f091a2a3f6126738337ffff7d88c34d"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Canvas_06a.uasset",
+      "sizeBytes": 137037,
+      "sha256": "29258672fafe833525784dbff96eb0b70c9cc98f9ac00d386afcab51761263d0"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Canvas_07a.uasset",
+      "sizeBytes": 128253,
+      "sha256": "1d624a78f9fd0ded6fa34fdacacc0e69497d5e3483ed4832fb4fd8f1aba9507e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_CarPaint_Black_01a.uasset",
+      "sizeBytes": 111534,
+      "sha256": "f689bd695b5f7b732eab033b504700e433c3dd1f693224860fbd43622b5801cb"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_CarPaint_Red_Metallic_01a.uasset",
+      "sizeBytes": 149231,
+      "sha256": "3dcb78d90a78bdfa43d55f7d62f2220691fd38b99721fabf2b5a5d4413fab8d3"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_CarPaint_White.uasset",
+      "sizeBytes": 106376,
+      "sha256": "b09f70b03a7bcd5b19bd794e87f37d3cd5af1194b4e8a6950988e038e31581b5"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_CarPaint_Yellow_Metallic_01a.uasset",
+      "sizeBytes": 130129,
+      "sha256": "0797ff46d4d19a71aa7455752e4eb6b84b69081ade41d0553ce94223947118f8"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Car_Black_Glass_01a.uasset",
+      "sizeBytes": 117273,
+      "sha256": "99319a5011eb1d08a7128bfc7f9cb48d7945e1026966bdbd7fcdc46613fa5521"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Car_Chrome_02a.uasset",
+      "sizeBytes": 118153,
+      "sha256": "86d6287954b31b4ff125f229b72098853e5fb58585ca067eba66d1b2b0fd7e07"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Car_Frosted_Metal_01a.uasset",
+      "sizeBytes": 104141,
+      "sha256": "ff2ba2ed93c3ff2170b0cfdb20d70eec08164d370347fd2d3c97f51a36edd7e2"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Car_Headlights_01b.uasset",
+      "sizeBytes": 121607,
+      "sha256": "38f60c9095b916adcd6eda20517c0f5b18fe951a41ce349ae0327a5e7e5e80aa"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Car_Metal_02a.uasset",
+      "sizeBytes": 111875,
+      "sha256": "155912557ed85e1dc6269c3a47905698cdd6263082f7f2bd30f17f71746004f2"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Car_Metal_05a.uasset",
+      "sizeBytes": 116808,
+      "sha256": "cd74931d551318255c237fe63cf658c7dc36865a52debac062997a137437c3e6"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Car_Metal_06a.uasset",
+      "sizeBytes": 116004,
+      "sha256": "bf8fcce54cedd667bc5d52830598b970b125a0b7843c629f7e5a409037515745"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Car_Miror.uasset",
+      "sizeBytes": 116167,
+      "sha256": "ae890dde6d5aa3f2509edd10196c3ba74ab7a9ca12ce865e8f981bd7e9cbb477"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Car_Plastic_03a.uasset",
+      "sizeBytes": 96743,
+      "sha256": "b95ab0e01eb261db3f0b009f0db9849cc9016a1f1226fae716abfe290ffb7679"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Car_Plastic_Pattern_01a.uasset",
+      "sizeBytes": 170258,
+      "sha256": "596f689fc340f1e46236ddaf6a930886dda4e627b910ec3875233df2cfe6537c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Car_Plastic_Satin_01a.uasset",
+      "sizeBytes": 107659,
+      "sha256": "fb3bb4df5df5be7dbe6fc2c6197112dde31f0809c8d0a148108e5f1a4981fbef"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Car_Steel_01a.uasset",
+      "sizeBytes": 108775,
+      "sha256": "3c4936d56a359a9e10da24261c2742ea3e4351ab7ac444d2556cd29979e7cebd"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Card_01a.uasset",
+      "sizeBytes": 84292,
+      "sha256": "e838c28d99ec010a4c67b51536f3033412cb0b3136eb690a3dfa4f39808482a2"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Chalice_01a.uasset",
+      "sizeBytes": 143007,
+      "sha256": "f2637d95c48b417be59ab36ba203c94371b87bfe338c15a220bd8193989dce0a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Chalice_02a.uasset",
+      "sizeBytes": 132044,
+      "sha256": "2c08ada38d50ace7a10125d9a7ece65398fd379cbe1a9d42a312b02e076fa2f6"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Clay_Pot_01a.uasset",
+      "sizeBytes": 145412,
+      "sha256": "35c49acf98b7d55b7ecafc7a38e90024786d37c8242832d343d119634d979ee2"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Clay_Pot_02a.uasset",
+      "sizeBytes": 142366,
+      "sha256": "fcc016134f19d819febdf33ad40406420ff76c6c41c4fce71586d5c5c562ce70"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Crown_01a.uasset",
+      "sizeBytes": 147161,
+      "sha256": "691bdfded74b6ca1e97e55fa0203c9efd6221551927abb11f5c75f7e21fcaa7e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Dagger_01a.uasset",
+      "sizeBytes": 136260,
+      "sha256": "98a0046a44c2abce09c56153bcd07ec41c48e33471f3c404c024a9caaecf8211"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Emissive_01b.uasset",
+      "sizeBytes": 65361,
+      "sha256": "eeb51b94bd450d44025fd4585fd7da3da9f68a4483517262c4685ddfa0b9d9be"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Emissive_01d.uasset",
+      "sizeBytes": 76427,
+      "sha256": "5c37b0926ae8d8ad7387daaa0e470dc07e893975eb5bca2c63856b0e26aa71e3"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Emissive_01e.uasset",
+      "sizeBytes": 28934,
+      "sha256": "559a41569106c60b413731f0ad3c78121086836d217e6561aaaf0e74244f2aa7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Fire_Extinguisher_01a.uasset",
+      "sizeBytes": 129018,
+      "sha256": "f1b3152c7ddaa31ec0613cedcfbd5200c2ecbdf0e0bf581b3572cc17de27493c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Floor_01a.uasset",
+      "sizeBytes": 110826,
+      "sha256": "fb18b63a55db231c1f611ae3cbd680e461a745b19dcfb46af21a7050768b2068"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Floor_02a.uasset",
+      "sizeBytes": 88875,
+      "sha256": "88f22e518f66602611af65e57f722f3d517162d52c0c489436d69a93b4d177b4"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Floor_02c.uasset",
+      "sizeBytes": 101412,
+      "sha256": "d634a4155c51e59fa4a6dd28a7825465797b0bfc42a248dfb6570468861c4742"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Floor_03a.uasset",
+      "sizeBytes": 79577,
+      "sha256": "b7f4c13a2ce4f4449e253f7124496b7d71537522ce3440fe0b8621226fa8448b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Floor_04a.uasset",
+      "sizeBytes": 145695,
+      "sha256": "d0ddff5b6b3b31118832d1527ff19db9bfa49fe0100712216ef3829b275f303f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Floor_04b.uasset",
+      "sizeBytes": 100446,
+      "sha256": "544754c12720eb99261fdbe06c1dc89046a2fa6b7a5a59b4b665551298d0ce6f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Geode_01a.uasset",
+      "sizeBytes": 148619,
+      "sha256": "50a329f734a8e61600f3f3a415806362a934763637e3b7988fdee1c94d380b01"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Glass_01a.uasset",
+      "sizeBytes": 109044,
+      "sha256": "6a2a66b0f215a2afd83bbba0adca6d6e63a3daf311f69ce5aacd57d4078ffc4b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_LM_Dress_01a.uasset",
+      "sizeBytes": 144212,
+      "sha256": "2aaf9a846f2b6dabe0db9e3ba7d4e1e1744bb9e4c93266aee202e02cb2d2b1dc"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_LM_Dress_02a.uasset",
+      "sizeBytes": 168543,
+      "sha256": "58f8eae0aa730a908a35118501b5c7babbaf98cb6a3b59e783d6120279373319"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Lane_Divider_01a.uasset",
+      "sizeBytes": 124067,
+      "sha256": "41b0c5bc1903c1c3ba937255910bbe99b082ddc841a134f0145c94e8fca3e66b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Mannequin_01a.uasset",
+      "sizeBytes": 112702,
+      "sha256": "294e381847c8edf9af62f9a04d471e19642b8fb06ee917d6f0ff9b21fa6a48a1"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Mannequin_01b.uasset",
+      "sizeBytes": 119809,
+      "sha256": "1319a6a52b55239e0463957e5c27c97b947e641b6138bcbd1493eb34d35acf47"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Mannequin_01e.uasset",
+      "sizeBytes": 122467,
+      "sha256": "dff21374ec98a62885453ff03529097ce01a820d55ec64b6d7488401a19d0bec"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Metal_Panels_01a.uasset",
+      "sizeBytes": 90441,
+      "sha256": "c4f861b2eed9a3d7ab3c006646c64e0da8ecd87c3fc8454a9796d1515969a503"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Metal_Panels_01b.uasset",
+      "sizeBytes": 103677,
+      "sha256": "14ca10811d85ee393ed8c961f487235638e0abc419c9a9e7c8f53184a31d820b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Outfit_01a.uasset",
+      "sizeBytes": 130923,
+      "sha256": "e6e8998954eed0f7d9e1161a08ad248a2f2284ff387636c81c74faf5057f137b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Outfit_01b.uasset",
+      "sizeBytes": 136017,
+      "sha256": "7d3d48c073a4e3abad06ff5837ce4e032c5acc0ad7cec7cc38b1370d44f7c3f6"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Outfit_01c.uasset",
+      "sizeBytes": 161061,
+      "sha256": "7ee5d511d2b489b0151250bb6df294709bad47def09d4dd47cfc6fa988c1ddee"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Outfit_01d.uasset",
+      "sizeBytes": 147600,
+      "sha256": "0f923ed26e7fce7428c577a7288392d30517404db81dfbd73539c662fe9299f8"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Outfit_02a.uasset",
+      "sizeBytes": 131014,
+      "sha256": "13cf9e61ad8de70181164306f38f8b87cac1c877cb899e533ae4674660228f7f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Outfit_02b.uasset",
+      "sizeBytes": 146323,
+      "sha256": "095135a36e2d87758d55f2b8457ec985a9fa88fa837b8a958c0ca76964a15eb4"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Outfit_02c.uasset",
+      "sizeBytes": 129570,
+      "sha256": "e0496010f2efd704867020bf66a8d0cc7dd792aba1b60a2febeb8bf0581891f7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Outfit_02d.uasset",
+      "sizeBytes": 157818,
+      "sha256": "2721f2b7fdc78348f5aab1d021b00893318122ee2f67d09862f69479818ccd98"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Outfit_03a.uasset",
+      "sizeBytes": 172468,
+      "sha256": "0c1e7d6418b8f36dfe088f2f2078ebfe2432e985cd59a19bdd27cfe1ce2ecf63"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Outfit_03b.uasset",
+      "sizeBytes": 161421,
+      "sha256": "c00246be3ccc9fbe37d471cb0dd331243a267f991c92ddcd1f0324eeb554f787"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Outfit_03c.uasset",
+      "sizeBytes": 148340,
+      "sha256": "22f86f146e1360604e76ba4dbf16974fec0b3ba79f49a2d227dbe189c9557bc9"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Painting_01a.uasset",
+      "sizeBytes": 152465,
+      "sha256": "0418d7a2c4db66cb93985e1eb0dd3a51a417c3aec127540f89cf628cc7863917"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Painting_14a.uasset",
+      "sizeBytes": 132837,
+      "sha256": "befda0e6277d584921df7eca467798d39439af500d0f9fc0fa6c0bed66c5b537"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Panel_Screen_01a.uasset",
+      "sizeBytes": 82935,
+      "sha256": "fea05cb1727dd1f9661dccb94516b13359142c3aad08012f77860695f13be675"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Panel_Screen_01b.uasset",
+      "sizeBytes": 70111,
+      "sha256": "06434e37560d9819f8aacfef7022039e68029e4a43a43f18a6182d756bdab2d8"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Panel_Screen_01c.uasset",
+      "sizeBytes": 93570,
+      "sha256": "ef90a7e19f0f44c893d22218d64910176da612b1a6223ad89f379509164f6935"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Panels_Black_01a.uasset",
+      "sizeBytes": 99635,
+      "sha256": "23439b5438c6e9cec33b0f27420e80e1601ded74fcc907320f5cc2e6262d596a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Panels_White_01a.uasset",
+      "sizeBytes": 85779,
+      "sha256": "0d3df68017cd0a644a7d1f520a70ae9eb99f052a1847c77fb937a4dad812e90c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Plaster_01a.uasset",
+      "sizeBytes": 90463,
+      "sha256": "de5bea26f732fe83299dc8eab3323624ce8a3718ab243a6b2b5da66a7f2bb1af"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Plaster_01b.uasset",
+      "sizeBytes": 91129,
+      "sha256": "115f18496c144a4ce008cf0d473696322fdfc09952bb993a773a9911a1930823"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Reflector_Red_01a.uasset",
+      "sizeBytes": 131652,
+      "sha256": "9134b8383f19e222b07dd4fdc46e25beebc6142a0eeb476bed6898786e37ae01"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Reflector_White_01a.uasset",
+      "sizeBytes": 116673,
+      "sha256": "0ce51f19cea7e42e7a782df62b41a1b177d70fbe3818178c6b979a9e2c38b760"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Rubber_01a.uasset",
+      "sizeBytes": 102991,
+      "sha256": "90e6a60237f8b6b9f5e3cf06a3c36c58e68b9d15fc0b36bacfbf9f18a7b49d6e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Screens_01a.uasset",
+      "sizeBytes": 99696,
+      "sha256": "309948e719f2e40ca6fd22f0219ec51da9fbeb661c5657b6d64d3a28e896e79c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Stage_Lights_01a.uasset",
+      "sizeBytes": 126753,
+      "sha256": "c584833a8a55ae418d5becd9a3b88130414ae22216c3694e2057a23934912929"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Statue_01a.uasset",
+      "sizeBytes": 149020,
+      "sha256": "912a8331874f4b755ada5b8fff5f6673ce6d36546eb47c74144adb6d501869a2"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Statue_02a.uasset",
+      "sizeBytes": 139609,
+      "sha256": "77b69e9a13507d3ab0eba57b965affbf0b4a07b025e1b6def071096348286c4c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Statue_03a.uasset",
+      "sizeBytes": 132015,
+      "sha256": "10d53c919e9bac24dc1fe143953e95bdf7ad35ef4f983ee6ed523527fe2bf4ee"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Statue_08a.uasset",
+      "sizeBytes": 144971,
+      "sha256": "152a91fbd152cb03622f87fba3a4b10c2c2115c7518cc62a678187fa1d56bb6a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Statue_09a.uasset",
+      "sizeBytes": 137597,
+      "sha256": "a6588407e50c733faac97fc8a94fa25a96f99414389c4a24bb5102873d583d31"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Surface_01a.uasset",
+      "sizeBytes": 82910,
+      "sha256": "cf4f6ddd6f84f964a9dcdb74998753aaa289f128a13f16728e59c123bfac9144"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Taillights_01a.uasset",
+      "sizeBytes": 114109,
+      "sha256": "6f59124d4f1757898454d6bf045a32013dc25a05dc9251e6dcb398b480f8bd5b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Transparent_Plastic_01a.uasset",
+      "sizeBytes": 133307,
+      "sha256": "8337fb2159331b60050dcfdfca13189a4325a144a4d44b519dde69b02439cc4a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Transparent_Plastic_01b.uasset",
+      "sizeBytes": 129235,
+      "sha256": "9e2a5f8b4b3b0f3bc35ed3039450a50f9f8c2500091ef2e763d4bfc77d94ec3c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Trims_01a.uasset",
+      "sizeBytes": 118726,
+      "sha256": "4c9b170a8e92ea88d4d535fcef356f6a977079e3bf82e97c431f98771c5a8bfd"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Trims_01b.uasset",
+      "sizeBytes": 123329,
+      "sha256": "46a8a07630cb01eccfcd1afa2b6cee09bc176929a80de1e24b26d8bc25076323"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Trims_01c.uasset",
+      "sizeBytes": 136125,
+      "sha256": "7245a92f4d82a744de6657ec6a0e022f68a5f40d7b0d64a10f5dfea6416c65d7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Trims_01d.uasset",
+      "sizeBytes": 145729,
+      "sha256": "78f46ea1cf7e74078aec6264917fb3f117c0af4df4c8e6b371947830bd309a4c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Urn_01a.uasset",
+      "sizeBytes": 148952,
+      "sha256": "3b85e090a05e2fbd0662829f68d568dbe3e28e875e3024dac4c35dc2f17b294b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Urn_02a.uasset",
+      "sizeBytes": 138854,
+      "sha256": "ac99652026e1550d6d82bdabc57301d4326cfa5cafed9f3e63beff6411488b9c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Wall_Art_01a.uasset",
+      "sizeBytes": 139019,
+      "sha256": "f5eb2d2cab08f6ca96568d976aeed640ce1e1da222bd25ce78bf2f2f136e7b98"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Wall_Art_02a.uasset",
+      "sizeBytes": 146640,
+      "sha256": "4b0fde34294d4bd60546da421ad264dc9f29e5d5fe69f060fd40a3b876208169"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Wall_Skull_01a.uasset",
+      "sizeBytes": 125023,
+      "sha256": "c075c776cb9da7d42e3d8696df559538ad3c334f1a0f51dc0352e3bb94a14525"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Instance/MI_Water_Pot_01a.uasset",
+      "sizeBytes": 144712,
+      "sha256": "9c0005eae1770ebc795c1a2e1f3fbb6ad470a677704a20fb0e158e9876f7c44f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Layers/ML_Blend_01a.uasset",
+      "sizeBytes": 78401,
+      "sha256": "1c7eb29bd6983dbcff36fdef506df65b6054b031b9de5493c0cd3298a37dca74"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Layers/ML_LayerBasic_01a.uasset",
+      "sizeBytes": 106531,
+      "sha256": "1dc7626ada1c57aeae584f52b71ba377da2664db22005bd1aa59ac3147455234"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Layers/ML_LayerBasic_FancyPurple_01a.uasset",
+      "sizeBytes": 79688,
+      "sha256": "4406f49ad436cdfdb502ca49a1164762c81e40cb6785f1455bfb60dd1ab5ba8b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Layers/ML_LayerBasic_Gold_01a.uasset",
+      "sizeBytes": 101362,
+      "sha256": "957ead39bbdeddaaab13d30e8badfb21e4afd64fbaecbe59f0c7c8ba0c29c859"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Layers/ML_LayerBasic_Metal_01a.uasset",
+      "sizeBytes": 101988,
+      "sha256": "8274ebd68b596aff0dcac22746c3e38d4486bf96fb0dad0cfd962d67d0935dd7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Layers/ML_LayerBasic_OrangeLeather_01a.uasset",
+      "sizeBytes": 77330,
+      "sha256": "b02e4214020274f0788774f9e22b61f9ff844982c212cfa68a9e535318c83deb"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Layers/ML_LayerBasic_Straps_01a.uasset",
+      "sizeBytes": 81791,
+      "sha256": "4bac4b30cc8993c26dff884ab60acc48d43e5c79e6f5bbc845d3841f5f255903"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Masters/MI_Steel_Beams_01a.uasset",
+      "sizeBytes": 110902,
+      "sha256": "4c01a6503beb415e863836a82353018d628261fd588c3dda3e61b661c5f500c7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Masters/MM_Assets.uasset",
+      "sizeBytes": 86033,
+      "sha256": "31a6abe7a1581c4650a06323e9dad417f05d9d942d7fc442676765b7785c8953"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Masters/MM_Car_Plastic_01a.uasset",
+      "sizeBytes": 168305,
+      "sha256": "4365def7eb52c944f50a41b1ac4b981f30b0b778beb1c1e8608e3c1f1950f6bd"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Masters/MM_Emissive.uasset",
+      "sizeBytes": 47783,
+      "sha256": "7e120a9590562e2469a60e32bc3c683880967506edeec1e2b33b1a0acb938dc6"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Masters/MM_Glass_01a.uasset",
+      "sizeBytes": 144471,
+      "sha256": "9632026651411f60a07c43da2c4ea5f63d13bd18c90d761be5fdfd681d6a2efd"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Masters/MM_Mannequin_01a.uasset",
+      "sizeBytes": 125233,
+      "sha256": "e1836e4a946384bc6aedbb95ac3a254fca21aac236d0641186246b93f573491f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Masters/MM_MasterMaterial_01a.uasset",
+      "sizeBytes": 142533,
+      "sha256": "e3145847546ab3fc9b524ced61cf18c8067b10b7eef5a4e5632e1506590a278f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Masters/MM_Master_Material_01a.uasset",
+      "sizeBytes": 148683,
+      "sha256": "0b08b405692aabe3b45e5c456c5e7cc0bee85060ae746941c9c17da944d57855"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Masters/MM_MaterialLayer_01a.uasset",
+      "sizeBytes": 103415,
+      "sha256": "332cecf2394cd2d9f134baefec25ab93476ffe9a1636c6e6115cf0217352cc17"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Masters/MM_Metal_01a.uasset",
+      "sizeBytes": 115359,
+      "sha256": "11f212a5ed7f5a35175ca768147c8a7006cacc1d1b1d791870b56b292698a758"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Masters/MM_Paintings_01a.uasset",
+      "sizeBytes": 157998,
+      "sha256": "fc3f48990e5854f793bec3bfdff55c65f831b33dedad8e2f237834127f23d5b1"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Masters/MM_Panel_Screen_01a.uasset",
+      "sizeBytes": 136203,
+      "sha256": "50f4430b6d6670dcf0641e4a734ce3496611430d3b142cf59bd35d81f75c18ae"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Masters/MM_Panels_01a.uasset",
+      "sizeBytes": 106471,
+      "sha256": "4a61b6215a96e41d0460b1ff77a3d6c08ffc50c54eeeeb650fbe95589c1cc087"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Masters/MM_Rubber_01a.uasset",
+      "sizeBytes": 103972,
+      "sha256": "f1970ff3e437e504ea7b5322bcf0b24fc89b6d70a2cbcfafb37794fa13fe7dfb"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Masters/MM_Screens_01a.uasset",
+      "sizeBytes": 193455,
+      "sha256": "940be453f408b910bf7cf57cd6733e349df6bd1cba02b53350c5f587bfbc31c9"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Materials/Masters/M_Surface_Basic.uasset",
+      "sizeBytes": 121546,
+      "sha256": "4a2ca6031bac8de9dcb174cca223de9243686066f53d386a9055c40e2f7f173e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Art_01a.uasset",
+      "sizeBytes": 128832,
+      "sha256": "cba0addec10fa213b125852b6f1c6552cb466b8a372422d6db05f96b0f8c6039"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Art_01b.uasset",
+      "sizeBytes": 100831,
+      "sha256": "eef56a32d920d430589501dececbb619a7a4eb3ad4b2c7ad8389ac307be94bb3"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Art_01c.uasset",
+      "sizeBytes": 132848,
+      "sha256": "3d6290f0c3350482bea7fe896b4feafc7ed52e0158643ad6b6050bed1bfb7c21"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Bowl_01a.uasset",
+      "sizeBytes": 151511,
+      "sha256": "bb1b64c07066b7e34452e018617d1f3f6bc489cdfde3c184e16d91220575163e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Bust_01a.uasset",
+      "sizeBytes": 118028,
+      "sha256": "c4ac79ee3bc012460fab0695886e986712382ac3b58bd1602a0f2017b4564563"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Canvas_Painting_01a.uasset",
+      "sizeBytes": 30730,
+      "sha256": "9e54b912b84816718e82bbc3c4b28024380cd0aebc68196c75eadb8d96088aad"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Canvas_Painting_02a.uasset",
+      "sizeBytes": 31575,
+      "sha256": "79f049205d08e590a751325507fc22ce5641bbe88b16c4f1b779e7067b38a7b9"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Canvas_Painting_03a.uasset",
+      "sizeBytes": 30008,
+      "sha256": "72d37eba72154fb6f1de0e683eda9f9d18b369216d9cfeb063148c61d2312c72"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Canvas_Painting_04a.uasset",
+      "sizeBytes": 29438,
+      "sha256": "e2ab2fc55c9d5c179af5d87b8782342035673806295b5c46556eced08f559650"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Canvas_Painting_05a.uasset",
+      "sizeBytes": 29440,
+      "sha256": "031883bd3469a138d6dcc499f624c3d3d6c21681d9f23ec22145b5c4c27a38d3"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Canvas_Painting_06a.uasset",
+      "sizeBytes": 27991,
+      "sha256": "2d303a73360315236eec199c58b1d696600ec97ee6fac73fa8ac14dc5aa46a0a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Canvas_Painting_07a.uasset",
+      "sizeBytes": 30592,
+      "sha256": "d42cae850d6b8636a9873ec6b05d1ebd8e63e6e6fdba8b0a12c6c2ada3177b5b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Car_01a.uasset",
+      "sizeBytes": 2829481,
+      "sha256": "298d0a85e3b9a2921d645d44b5abbdfb694c7ef1b342d256e1d8be39a331f2db"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Car_Display_01a.uasset",
+      "sizeBytes": 77458,
+      "sha256": "a2ffcf003c102db0958b4d78b478451f25b4680047f5db5f1bc359055a942b73"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Car_Display_01b.uasset",
+      "sizeBytes": 52630,
+      "sha256": "756621b064c23f03c0d00c8b96321c4fda63468024114be4cc4fdb194552e38b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Car_Display_01c.uasset",
+      "sizeBytes": 30619,
+      "sha256": "461542a97524b8e74b586c066fc076fdcf95fd0f3347ce055f480cf2d8fa9510"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Car_Logo_01a.uasset",
+      "sizeBytes": 150729,
+      "sha256": "13abc94caf3467c2a6a664534c513509fbbb13eed06dc60049954546a0880ab4"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Car_Tire_01a.uasset",
+      "sizeBytes": 1181278,
+      "sha256": "25342a87358c02f336f677e7538a71d4f627e566a3993c5ad52eed79f994a17e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Chalice_01a.uasset",
+      "sizeBytes": 76274,
+      "sha256": "f3e085b93187be7395e9882f883eb4bdf5dc3c2aa3e0698d4f7bd527e6ef4bc3"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Chalice_02a.uasset",
+      "sizeBytes": 79678,
+      "sha256": "8503254d2332f04b9565322ff2f25dbf5e305c1416246f4bb66a383656930975"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Clay_Pot_01a.uasset",
+      "sizeBytes": 76275,
+      "sha256": "6b5dec6ee20d99c5b9a66f3a08818c848c64ad4e9564b71f2a30e8518ee371f6"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Clay_Pot_02a.uasset",
+      "sizeBytes": 75844,
+      "sha256": "cd9992172bef374267a2732d2681753b0bf1a7c5d0a9704ce46ccef3eda30606"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Crown_01a.uasset",
+      "sizeBytes": 116095,
+      "sha256": "a5e70db0b585d609827ff86bdf70e93b9618323c1870c8960629ca66d1660b1a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Dagger_01a.uasset",
+      "sizeBytes": 51828,
+      "sha256": "81bc48d598a8b49d7697ae07329a9ac6cd88167ca46ddaa5dcacb3683d9c05fd"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Deko_Painting_01a.uasset",
+      "sizeBytes": 277994,
+      "sha256": "e3c05555c980fb738d3cd12c9e36089804fd920c5d14b81f507f9534939c8b0c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Display_Stand_01a.uasset",
+      "sizeBytes": 31001,
+      "sha256": "8e23f31bbfc81ddea19b0c6b270a7b7015c21515b5ce984765c62d651aad82ea"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Display_Stand_01b.uasset",
+      "sizeBytes": 35730,
+      "sha256": "cd6bb98b847a857e5475afb6efef83651eadf0ab53e23f14c22870cc73feb7bf"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Display_Stand_01c.uasset",
+      "sizeBytes": 31037,
+      "sha256": "5f31fbfdd21cab739da664e7ac2fb54f4e2c478e7f807f6299b7cfd3f0705d97"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Display_Stand_01d.uasset",
+      "sizeBytes": 36281,
+      "sha256": "0a84650efa5e80246d2d04eaceefde159774726447985157dc648b661851c1aa"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Display_Wall_100_01a.uasset",
+      "sizeBytes": 28617,
+      "sha256": "031373e4a72edbd2e89e3a176d3525c56953429dd5954516c62e2a9df03bd805"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Display_Wall_200_01a.uasset",
+      "sizeBytes": 28504,
+      "sha256": "cf74aeb1c3daa9a4376d660a7b62acc5d956fc1b8edc624aa002666427dd8423"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Display_Wall_300_01a.uasset",
+      "sizeBytes": 28625,
+      "sha256": "0aa6b7dd7b709f30b3a3cc45d4b25ba1674d0549f68477c6ebb61c6068e54e9d"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Display_Wall_400_01a.uasset",
+      "sizeBytes": 27387,
+      "sha256": "f07d8375cdfe369a2e39f666052cc3da92841d5b948c714b0c4877dd4f448dcd"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Display_Wall_Bend_400_01a.uasset",
+      "sizeBytes": 77064,
+      "sha256": "a96609783eaca9a5b00e2ad82efd64a99752db96343ff70ea331dafee136f7d7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Display_Wall_Corner_01a.uasset",
+      "sizeBytes": 30535,
+      "sha256": "4adac5de19e2ebd6af3b7876744c15a07db1f9262760c91d6a7d2b2afebe7d78"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Display_Wall_Corner_01b.uasset",
+      "sizeBytes": 31731,
+      "sha256": "b00154a62b912861040cad9705dedc3dd2da12228500415624e6523dbea00136"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Door_01a.uasset",
+      "sizeBytes": 127770,
+      "sha256": "84cbe97b7bde5f25c32d5166c3028ead981511d75710abd7eb252ccfb1f49e66"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Door_01b.uasset",
+      "sizeBytes": 164759,
+      "sha256": "a5acac0f118be683b3c04c16ff183ce188a0201266b23a5549982bdc8d471fd9"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Drop_Ceiling_01a.uasset",
+      "sizeBytes": 54143,
+      "sha256": "6b1372a63d02160b9e9304f4ac686bfef11585bbefcfcbb0154465910ed9af9e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_F_Ceiling_Droplights_01a.uasset",
+      "sizeBytes": 224481,
+      "sha256": "9adbd0c2fe9008c92db6780bda97faab58ee241cf05024293ad3ffb6745eeec6"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_F_Ceiling_Droplights_01b.uasset",
+      "sizeBytes": 440503,
+      "sha256": "4116131d8f602c394d8f17fb120261b46cce8926a9f19080d11788cbcc7515da"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_F_Ceiling_Droplights_01c.uasset",
+      "sizeBytes": 65670,
+      "sha256": "aeddce9153f0cf012426e2e633818004d3b518c4ab865aaaac02151d4013b2ec"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_F_Display_Stand_01a.uasset",
+      "sizeBytes": 148887,
+      "sha256": "7175557959f4a8d5c8ad843b28558594a209f0c1856ede0a6a897d56156e7b26"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_F_Floor_01a.uasset",
+      "sizeBytes": 33540,
+      "sha256": "4b0e04f540c1eac15c38937784ec5952a02818edbf98f1391d91ffd5b38f79b7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_F_Light_Wall_01a.uasset",
+      "sizeBytes": 38283,
+      "sha256": "59b74865319715f8c8290252ea9cce5c00a3c3859e21a088691096ab2e13edaf"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_F_Light_Wall_End_01a.uasset",
+      "sizeBytes": 38720,
+      "sha256": "eb908728d90101c44ab22d55f1360d9db044f61b366d332952e2eefbecfd1737"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_F_Platform_01a.uasset",
+      "sizeBytes": 45299,
+      "sha256": "647c38d6e22cb428e00eb1af7a28342608beadd240e443bea11c9ca98d62649b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_F_Platform_01b.uasset",
+      "sizeBytes": 45262,
+      "sha256": "c5bd812848ad6883b9cded622fcf4221ccafb3a23c96fc85f9817e1de4327db1"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_F_Platform_01c.uasset",
+      "sizeBytes": 45605,
+      "sha256": "b32fe5380bda6cf33004bbf7aeaea6012869f462fd550af0796fa5573e68f641"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_F_Platform_01e.uasset",
+      "sizeBytes": 45031,
+      "sha256": "da891dc7e79a0db5cacd11f19576c52ab041212d1c3f80c8c783a5b3eec08b71"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Fire_Extinguisher_01a.uasset",
+      "sizeBytes": 99856,
+      "sha256": "52e62de8e84487f44ce8304e412a16201bfb28aaa230be6646f1449a15b4d40e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Floor_1500_01a.uasset",
+      "sizeBytes": 23281,
+      "sha256": "1dea801f3ba507b16109bc2484b4d9f9383274a51dd60c546bd2d3a650345b4c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Floor_Panel_01a.uasset",
+      "sizeBytes": 27401,
+      "sha256": "6cd3593bacc58fd488b3d13217f56f93e831586df1c4714817bfc5c96baa87f2"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Floor_Panel_01b.uasset",
+      "sizeBytes": 25248,
+      "sha256": "998377c88592d67b18bdc56d61e38e41ca1ef6c69311c236cd8475960516eaad"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Floor_Panel_01c.uasset",
+      "sizeBytes": 27443,
+      "sha256": "59f5ce36a518dca473f80c74a8a23e9c7d4e5c24c41e095f2cada95323c86188"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Floor_Panel_01d.uasset",
+      "sizeBytes": 25323,
+      "sha256": "f15815e49a08c5872fb683f2ded91b00ba27c8a459db4aa49c5250027fa74ce6"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Floor_Panel_01e.uasset",
+      "sizeBytes": 27346,
+      "sha256": "35d5237e6b346b76638e917e636bcb2dcee56214e022a672e2c0c3957cf2dbb4"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Floor_Panel_01f.uasset",
+      "sizeBytes": 27406,
+      "sha256": "35b00070eb7b2308b68a6d750f79d66cead02bcb20c244f589307c883491773c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Floor_Panel_01g.uasset",
+      "sizeBytes": 27392,
+      "sha256": "9bc884430fb71ed6ddddddcb26069dd67d11f7852ce53957a672bbb866df9fe6"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Gallery_Sign_01a.uasset",
+      "sizeBytes": 287829,
+      "sha256": "a32fc19c3acd54047c79e723630a1f76f3b3876098bb4d70dd52177aa19d8857"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Gallery_Sign_02a.uasset",
+      "sizeBytes": 221995,
+      "sha256": "928b847e407fc7a0bdc59edfa6f5c46fa9eef82a3fcc06f8f6c3e39aedc11ce5"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Gallery_Sign_03a.uasset",
+      "sizeBytes": 231392,
+      "sha256": "c452540736ab1a68501082b80c59828578a30f1d3660d8d3d3a54f257eab940c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Gallery_Sign_04a.uasset",
+      "sizeBytes": 125723,
+      "sha256": "7f6543f8d2a330efca7f7a145418f4224f6ef02d99a87af457b835116477cdec"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Geode_01a.uasset",
+      "sizeBytes": 95591,
+      "sha256": "69702d495ae55c070ca2915d9c647efa5275655dd7ea50470358e5a397bfa858"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Lane_Divider_01a.uasset",
+      "sizeBytes": 81155,
+      "sha256": "b57d8c8c8817c8ed5a47a7410c142e35f31f573a6a4f2de913c09a776a75fa3d"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Lane_Divider_01b.uasset",
+      "sizeBytes": 44762,
+      "sha256": "e7d39e85d754e3a92b083a2f7ea75ab778bf97d4ec514b2f99e8df123fe41900"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Lane_Divider_01c.uasset",
+      "sizeBytes": 53916,
+      "sha256": "5d84fefc2bf5d8878a9a53751d92a229b52e0825f5d0946862d1d4d8df1cfa8e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_LightSupport_01a.uasset",
+      "sizeBytes": 25806,
+      "sha256": "2877291cf2e3464233eaad435f0133babd4f6efcbf9232a254f55e1d08f08d19"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_LightSupport_01b.uasset",
+      "sizeBytes": 34224,
+      "sha256": "c051f7d1f32a10a411aa7ef3c4249fe5d222f5fbe1bb43fe340bdf4db405e14e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Light_01c.uasset",
+      "sizeBytes": 25648,
+      "sha256": "f2c2364d599daa44186995e7fb0f009052788c22baa5791ff61b96e9b97f12b7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Long_Bench_01a.uasset",
+      "sizeBytes": 339050,
+      "sha256": "825d5fac06756d1878a2de0e6773c0293770f42ce3bee3f7d00c40b90a161bde"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Mannequin_01a.uasset",
+      "sizeBytes": 946898,
+      "sha256": "824d0d70e80dac7edc348c04d09f7dd07cfd8d4877079a45e70e80d972e6cadd"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Mannequin_01b.uasset",
+      "sizeBytes": 1276089,
+      "sha256": "6a5cf265b65f8ac1d0637172c99cfaef4e3e98638de0c87104ad6a3b9e942d82"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Mannequin_01c.uasset",
+      "sizeBytes": 1264373,
+      "sha256": "a08a19351e6a79cc21b3b61bb49956f29f4fa5e71ee5f66d1b5fd9d6e0ad2833"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Mannequin_01d.uasset",
+      "sizeBytes": 1280808,
+      "sha256": "93c0ef129732297930b5e2d47e4cc18703915ca7bb052bec11b4ca4f8b8ae8eb"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Mannequin_01e.uasset",
+      "sizeBytes": 843757,
+      "sha256": "3762184bb3e689f8d7c3241b68981a8bd9450c953f5491ba9a36298640f6bf51"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Outfit_01a.uasset",
+      "sizeBytes": 84801,
+      "sha256": "4c5ef19c34ccda8058bb858f59dd6b6b653dccb9cd6879397d3269118433f93a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Outfit_01b.uasset",
+      "sizeBytes": 388830,
+      "sha256": "06550c0cf7665002f67b7b0a6ce06fae21710236047bb9e086aa6849c2a7ca7c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Outfit_01c.uasset",
+      "sizeBytes": 1211602,
+      "sha256": "0331970cb41c89b32b04eccd14f529fc0bd7326473778ec39253f0504f37fad6"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Outfit_01d.uasset",
+      "sizeBytes": 1097051,
+      "sha256": "813d6c77f84281c8b28d066f16f572db220c0da7ef3631c979526e23485be733"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Outfit_02a.uasset",
+      "sizeBytes": 1474276,
+      "sha256": "99864a9b961c48f2b1426940fb72d74eb124eda86b318a5e986ca55cbcfeb08c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Outfit_02b.uasset",
+      "sizeBytes": 344595,
+      "sha256": "ab374977214b7ca1f7132c63d46fa1a3b186a5c299b7d2dd3464035611547004"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Outfit_02c.uasset",
+      "sizeBytes": 424274,
+      "sha256": "daab8ad6f7162fc3d3c64045a454f291b47c7e8fd06d4b4a46f8916b6b0ca25a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Outfit_02d.uasset",
+      "sizeBytes": 908555,
+      "sha256": "34e05c93234f3ae7cf54b38c56c914717a1296886edc2c581aab8f529e92e45b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Outfit_03a.uasset",
+      "sizeBytes": 7798736,
+      "sha256": "49b8701d832f290a56007f120a11d9d3d33d844b3f968c2621efeceb21b8ce83"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Outfit_03b.uasset",
+      "sizeBytes": 2146529,
+      "sha256": "da6a8c103958c902ff9ba20224014247a78906e637f7b6700955620ec4cf5d85"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Outfit_03c.uasset",
+      "sizeBytes": 1933820,
+      "sha256": "ee714931b7b0d3c1ba75b19ee5231adf2ef59e8dc7983513fdffc5c5624c852f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Outfit_04a.uasset",
+      "sizeBytes": 623666,
+      "sha256": "65f7a52dc6d267a55a1b2fd8c82e70ce8c97187b58cef62874facd1a1a5abb94"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Outfit_05a.uasset",
+      "sizeBytes": 502017,
+      "sha256": "26bf6f1301638c159d383a4936cb17cc5b2bdf3a33da8ff4a7e063dc3702ff49"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Painting_01a.uasset",
+      "sizeBytes": 26793,
+      "sha256": "4eb6bb7eeaca2819f64b6a929af5f948337170f2db7482c5bf488c58b8e0df20"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Platform_01a.uasset",
+      "sizeBytes": 154159,
+      "sha256": "8b57625039be50f5e4d9b6f86b726e91f3787817b561a8c42e218931bb5ad90a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Platform_01b.uasset",
+      "sizeBytes": 162369,
+      "sha256": "c306671b474b461a873d6f6d4d026a82a81000202ab19cbe4443f7d58b8fe68d"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Platform_01c.uasset",
+      "sizeBytes": 93719,
+      "sha256": "4fb77415316ccd2b55159a64eb763558319b4e6ce4f7446a5e3edabd048d41f6"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Platform_01d.uasset",
+      "sizeBytes": 156706,
+      "sha256": "b9ea97144641be8c3f930e827742fd6a0d1744a45c86b1e2c27bc3bd176899e6"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Platform_01e.uasset",
+      "sizeBytes": 156616,
+      "sha256": "d0be13e6c3bbe615309a297011cd82dec0587411b45987eff463eac390deec7f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Platform_02a.uasset",
+      "sizeBytes": 127009,
+      "sha256": "ab9f3ae36dc040f374bcc909291de49583af26f3e557101e905bb0979ec94808"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Platform_03a.uasset",
+      "sizeBytes": 74456,
+      "sha256": "0b6f217b43fd68c531157d2bd99b2289a6e4aafa79c99eb380c16d9d2a26c865"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Platform_03b.uasset",
+      "sizeBytes": 62398,
+      "sha256": "1f0825480945435abe9ed9f6fb0cde7c50f8843ca43cc3212fef33251e7dba5b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Platform_03c.uasset",
+      "sizeBytes": 62205,
+      "sha256": "933f0670ae4c928448eff9a348c976494ccfa31a5d385e2297ea20d659555b73"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Platform_03d.uasset",
+      "sizeBytes": 62253,
+      "sha256": "2d0d5fd1a1d7939f685f3e77caa9e075b7c1e0b3ab67da5cab848b756215b8d9"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Roof_01a.uasset",
+      "sizeBytes": 1662823,
+      "sha256": "0bece6f7cd73d6b6e747c4fa6283844540eb3fdd97aff3cc7d50412baefd663a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Spotlight_01a.uasset",
+      "sizeBytes": 62155,
+      "sha256": "fe7b18b7fd9007d491735d0336d1730f6691b21b7f8321aebfff4b52da37bd5e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Stage_Lights_01a.uasset",
+      "sizeBytes": 327596,
+      "sha256": "df4247451fbb0adff75f1d2b360d38d076a1c59955310bcc27fdcb5de27b8e28"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Stage_Lights_01b.uasset",
+      "sizeBytes": 208747,
+      "sha256": "6cea4cc0fbcfcc1accf4021b689e863d95a9146d79e331c84b557907bb7f08db"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Stage_Lights_01c.uasset",
+      "sizeBytes": 110789,
+      "sha256": "be535be2e91badaa528834aa53069ff0db8e8d04d3158531ea0a0245335405e9"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Stage_Lights_01d.uasset",
+      "sizeBytes": 300410,
+      "sha256": "2cc393d682191c86785b62cba573ad4e419ab64651be7e9c7146cb43b6160803"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Statue_01a.uasset",
+      "sizeBytes": 79625,
+      "sha256": "84f0f733fde3b9db1f525b69338e9a0937ab893b9a70942fe95373c224bb505e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Statue_02a.uasset",
+      "sizeBytes": 132085,
+      "sha256": "65cad8b1874735cc36a6a24ff0b5a4886bed06975652457c41e9e3d2f569a897"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Statue_03.uasset",
+      "sizeBytes": 178050,
+      "sha256": "28a2bbd87c8d511658d13beec6e916247ab3254b223128f3f1ec0e4631f90d49"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Statue_08.uasset",
+      "sizeBytes": 87374,
+      "sha256": "aba7a759a053ef2bf32054344a1b8b91b204cd0151d5a6f482e3f97dcdcd84cb"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Statue_09.uasset",
+      "sizeBytes": 135292,
+      "sha256": "23f10411649440d1f63ff727b06748f6a6752a358836c2bf5f4617d4359d42c9"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Structural_Beam_01a.uasset",
+      "sizeBytes": 87373,
+      "sha256": "91bb2a65d0d0e27d13d94f3dfe7345cf5f1b408155490396d900b8f541f99af9"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Structural_Beam_01b.uasset",
+      "sizeBytes": 105582,
+      "sha256": "d270bef63d692ea744727a726680aaef342b0c720e8e87862d323e8c1efa3813"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Structural_Beam_01c.uasset",
+      "sizeBytes": 215283,
+      "sha256": "723c3f6a3776f50512b666608a4a89b5f5b37981f303120c63a88466c667d850"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Structural_Beam_01e.uasset",
+      "sizeBytes": 158650,
+      "sha256": "2a6523095b000f01548d7d482ebf813ed71a7f5011bd075e90f517914927f780"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Title_Card_01a.uasset",
+      "sizeBytes": 28786,
+      "sha256": "f06e61f8805b16da9d7a19d147329f521eea223b8a0f83c3cc6d3ced9c482435"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Urn_01a.uasset",
+      "sizeBytes": 218308,
+      "sha256": "7b6336760455f75f07bfdd6ddd27b1a5290f4e0375ef674c9233bf1a87b82e12"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Urn_02a.uasset",
+      "sizeBytes": 136654,
+      "sha256": "9e377c1d961cdcb20c8fe3c5a5ebb2d33b92d68fbc1e8366e8c51748876776f9"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_WallSkull_01a.uasset",
+      "sizeBytes": 154497,
+      "sha256": "c981256753be23f43457944571e0f6c5669fd821405f8419f2b620bf90415595"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Wall_1500_01a.uasset",
+      "sizeBytes": 24623,
+      "sha256": "2cb6f4a13325f1e6a16e8bb3c1dbe5ed10669ee0ad041c1da13c58ad73bd6744"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Wall_Art_01a.uasset",
+      "sizeBytes": 61228,
+      "sha256": "09a408cba624bc5da6c8806bfed215786af11ea77db3afd52689ed683fff6278"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Wall_Art_02a.uasset",
+      "sizeBytes": 105438,
+      "sha256": "39141c5272ffd686c036d221002005907c38362113cf8c36c30a15ec27d03bea"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Meshes/SM_Water_Pot_01a.uasset",
+      "sizeBytes": 79069,
+      "sha256": "c33c94aa2924c55ad0205d0c3d929a83ff7c4be40cef94b9eaf7e13641f8852a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_Automotive_Chrome_01_ALB.uasset",
+      "sizeBytes": 4426555,
+      "sha256": "4720cb45a750485f283f5fb1e83c74f3e69227c2ce2cfa3b6f9d65622b05eafe"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_Automotive_Chrome_01_NRM.uasset",
+      "sizeBytes": 4713501,
+      "sha256": "88cfeaa9223128c359a7c16ede053ea3e370705c934630029b9a7691df19a2ff"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_Automotive_Chrome_02_RMA.uasset",
+      "sizeBytes": 2707732,
+      "sha256": "7d79b9c9c7a9de0e756db852f066d7b449ed386cd2d30de879fc7a45f728757b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_Automotive_Honeycomb_02_NRM.uasset",
+      "sizeBytes": 7290011,
+      "sha256": "d53a26fbfb39fe8188b2fb562a35ba46bee330a85b5e1b52b83c334ca0f366c5"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_Automotive_Interior_Plastic_03_NRM.uasset",
+      "sizeBytes": 4526723,
+      "sha256": "3927c87d816ce6e01d18e0f87d4c3b6126c242f056c6c30f08b755940c93e47c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_Automotive_Interior_Plastic_03_RMA.uasset",
+      "sizeBytes": 4498371,
+      "sha256": "a2ca294cb40c0a27f65cda20109f364de935df2920c37f06dc3b897043046675"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_Automotive_Leather_Stitch_03_ALB.uasset",
+      "sizeBytes": 3795167,
+      "sha256": "b335e0e8243449c6d44829901ca8dfccd96375b0c2dc82f3753b6bfc158344e2"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_Automotive_Leather_Stitch_03_NRM.uasset",
+      "sizeBytes": 9698688,
+      "sha256": "3dfd9f86fbb304be1cc8d237e1b097651affcbafc7568e8ce04180b56785d427"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_Automotive_Leather_Stitch_03_RMA.uasset",
+      "sizeBytes": 4175541,
+      "sha256": "8d60783d25f86c7f09a171b35abb33b458179b0ca0948272af8ec4a95368d41a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_Automotive_Sharp_Fabric_01_NRM.uasset",
+      "sizeBytes": 3940592,
+      "sha256": "efb9aa3edc53520aea89329d2eb6ed1f14b60809a419e0f8218b657376f17393"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_Automotive_Sharp_Fabric_01_RMA.uasset",
+      "sizeBytes": 2411029,
+      "sha256": "fe1d3b70423bab5ac5582787e89e385923ced311f181ca4afe48cf82c27d4bac"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_Brushed_Metal_01a_M.uasset",
+      "sizeBytes": 9752990,
+      "sha256": "a8ffdd8cae7a9541ef37da9ef91241c89d6694f2d3048a80c4117a49c7ac7d80"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_Floor_01a_ALB.uasset",
+      "sizeBytes": 20745084,
+      "sha256": "d9109cfaa1f65b8fb361ba570da8e9ac4d01bed4c92bc001d4233cd5814793fe"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_Floor_01a_NRM.uasset",
+      "sizeBytes": 1790278,
+      "sha256": "2b32bb8606ccc43a21d15b7186c0225145469909aba0b3d2e2e2eb1fa3e3eb5d"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_Floor_01a_RMA.uasset",
+      "sizeBytes": 8876885,
+      "sha256": "4e6bf1262ea638e65a4f8e90aec1cc1ae0b63fc22c24cd921e693b72854c29bd"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_Floor_01b_ALB.uasset",
+      "sizeBytes": 17029764,
+      "sha256": "3a712cbfe4dac3ca0a8ef38332a045ce2c80df10f268dbd634852527da63b190"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_Floor_02a_RMA.uasset",
+      "sizeBytes": 2549721,
+      "sha256": "d7407a1f856826b506e72e75ad8be06db75859b9aa5944553dfa03df2b63e67a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_MediumWaves_01a_NRM.uasset",
+      "sizeBytes": 1035610,
+      "sha256": "05b3188d346338d886a967861580cb13281c7f7bd457b64d8ac5d918a24534b6"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_Metal_Panels_01a_ALB.uasset",
+      "sizeBytes": 2931282,
+      "sha256": "c12b2ebecebe1c495570dd0c6dea9851e8cef0d7ea7424398e1a46796827964d"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_Metal_Panels_01a_NRM.uasset",
+      "sizeBytes": 3586816,
+      "sha256": "01651de88aef5f266808ed2e9f8db269604d2b7f6bdb45caeedc93a1552dae8e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_MicroWaves_01a_NRM.uasset",
+      "sizeBytes": 678049,
+      "sha256": "e7a3861e1392e6a8ad7244ad9a27422c60b67f89c33249a809e7eb776146349f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_Panels_01a_NRM.uasset",
+      "sizeBytes": 13116,
+      "sha256": "42ea7a1ab52a8f17735f950e03619ca9451033b601f3533ecdf51a8d143bd703"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_Plaster_01a_ALB.uasset",
+      "sizeBytes": 6130554,
+      "sha256": "948bae7e2835dd3a371204839e8b563513e66fdd8d59c8e878a00b2321fdff06"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_Plaster_01a_NRM.uasset",
+      "sizeBytes": 6969854,
+      "sha256": "f5f06ddf8e2efac591e47e94ecdd49e367da4d3a9eab615473966cd40274318f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_SimLines_01a.uasset",
+      "sizeBytes": 327073,
+      "sha256": "ff76517f04cedf356cd75ec2d7d4d14f2a6626abd84c23b08f375bb815221842"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_Structural_Beam_01a_ALB.uasset",
+      "sizeBytes": 4657909,
+      "sha256": "a8b0d15c8151d9911a3ef3155a7b0c6420bad815d2b92ff46004068c60622240"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_Structural_Beam_01a_RMA.uasset",
+      "sizeBytes": 2049093,
+      "sha256": "4f4c2ee6398fc069e707582debcaaf6e799f42e667ec48af2dd18eef4100e8ed"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_Wood_Panel_01a_ALB.uasset",
+      "sizeBytes": 102979364,
+      "sha256": "cad33b261dc9b26cfd6a465254aa5956068d49c320344026ad618b300f5a5f54"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_Wood_Panel_01a_NRM.uasset",
+      "sizeBytes": 94893952,
+      "sha256": "9b928d4a61c0d5d474b0229f15a9b31d3da9965676022265012429627d2d9301"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Tileable/TX_Wood_Panel_01a_RMA.uasset",
+      "sizeBytes": 33936996,
+      "sha256": "9f22d66ccff390f00491ad711a03ba1b936a786fbf87d5e1b4f2eaee323149f2"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/SM_Outfit_01a_M1.uasset",
+      "sizeBytes": 120126,
+      "sha256": "f9784956c1d249076fb51779869d8040b7f40bab2dc024334f7d2da7b1ac7b78"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/SM_Outfit_01a_NRM.uasset",
+      "sizeBytes": 11306251,
+      "sha256": "6b139b764f0b9acf5f3e9668a6fa60a929f4135242e99e10c518520a979a595a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/SM_Outfit_01b_NRM.uasset",
+      "sizeBytes": 7216148,
+      "sha256": "f955753cccb36216f40cf42c0c203a730ad007efe13135a11cd79a0770348c3e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/SM_Outfit_01c_M1.uasset",
+      "sizeBytes": 104241,
+      "sha256": "7feff1a94533d2fc722d1f3507b35f532d6db5b5cf07754f1f49f9cc7257c9eb"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/SM_Outfit_01c_M2.uasset",
+      "sizeBytes": 23323,
+      "sha256": "7c3855bf36de578c44ad19ffc2b4a9fc6e2f21fcba931fed7d92c610f9cbb56a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/SM_Outfit_01d_M1.uasset",
+      "sizeBytes": 170359,
+      "sha256": "60613f84b657df5f45d1aae86f9fead29365a0bb3eea84f55d72c2e15a881fe0"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/SM_Outfit_01d_M2.uasset",
+      "sizeBytes": 21290,
+      "sha256": "fcbed8ef8d324168dc61cb6999ddd99b374a7b775261e9ca63dee84e1c3c8991"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/SM_Outfit_01d_NRM.uasset",
+      "sizeBytes": 11306251,
+      "sha256": "36b24286e3f28b3a0182a3def02a520e78a850accc0df82a47bba63f3021bf07"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/SM_Outfit_02a_M1.uasset",
+      "sizeBytes": 302700,
+      "sha256": "a7a44b6ea441be89b8abc78cdfddbe978ad5044ccaeb1e4be3c16699de6fc807"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/SM_Outfit_02a_M2.uasset",
+      "sizeBytes": 312235,
+      "sha256": "a874b726ee360a78124929ac8a8727cb0e0ae62cd81f4dce761ea8b1bb3be790"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/SM_Outfit_02a_NRM.uasset",
+      "sizeBytes": 6174676,
+      "sha256": "3462ae5bffb4e17ecc042fabd7ea7c12937f773c4f509c14c1730f0973e98d73"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/SM_Outfit_02b_M1.uasset",
+      "sizeBytes": 94570,
+      "sha256": "7675c67e85bd8bd5beaa840caece8a4010dbc1718fd15f7dbefed1b4db6a2541"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/SM_Outfit_02b_NRM.uasset",
+      "sizeBytes": 788618,
+      "sha256": "4a467d7ff06c8ca91cff59d91863ca746deb20be847f12c7245ee300c7aafcb4"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/SM_Outfit_02c_M1.uasset",
+      "sizeBytes": 121818,
+      "sha256": "5643a067c9e9c8ac8fedd3c65235ac34d3e4c66bdb98791ac3be4518211946aa"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/SM_Outfit_02c_NRM.uasset",
+      "sizeBytes": 2048900,
+      "sha256": "5350e6f2b6c9ef8dac03092f9ffa3f0ed25ac75b06f7ca2a13df18d3fd8e85db"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/SM_Outfit_02d_M1.uasset",
+      "sizeBytes": 158431,
+      "sha256": "415cd7b6b9ffc04661b33d735c621fd1941619ae8554aa7828701670336ec76e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/SM_Outfit_02d_M2.uasset",
+      "sizeBytes": 26384,
+      "sha256": "0f26e1c502a01091748841a1e3efa032dd711445d8550becd395fa65caa40779"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/SM_Outfit_02d_NRM.uasset",
+      "sizeBytes": 2782460,
+      "sha256": "142537834900dc92df30f55bf4ff96eddba9e5b0fdc3e2e28455cd9ea2d61f9e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/SM_Outfit_03a_M1.uasset",
+      "sizeBytes": 612439,
+      "sha256": "74fd4cd0b35d648d23841589e9ab5c047f54b283002099cfcec8d7ea2b7893ad"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/SM_Outfit_03a_M2.uasset",
+      "sizeBytes": 29573,
+      "sha256": "3fc1ec2bbb8c72678c86d3fe0d355415f1cd37f6a66655bd03f41fb4070bc4c9"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/SM_Outfit_03a_NRM.uasset",
+      "sizeBytes": 7241267,
+      "sha256": "869edfdd2601583ee570a1665f40fca7a45f04814cc517c6bf7d1a131c934114"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/SM_Outfit_03b_M1.uasset",
+      "sizeBytes": 713248,
+      "sha256": "7031f8976d56d573f7bda89e5463bc5ddb5928b62a5f239e89ca02d671684cc7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/SM_Outfit_03b_M2.uasset",
+      "sizeBytes": 43443,
+      "sha256": "3d6319622d4914c6cd6dd66384c121d14a88d9ee9fd98c84afeca721a2ca6dcd"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/SM_Outfit_03b_NRM.uasset",
+      "sizeBytes": 3031343,
+      "sha256": "819e213e8f4258c154b8359b3d46c63f51d2b6d4d12947466b0ada0947579ec5"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/SM_Outfit_03c_M1.uasset",
+      "sizeBytes": 341663,
+      "sha256": "d6a63248d1cf69e3805b530e901b78aeaa2f0c014eddee39e2a24a393b92c672"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/SM_Outfit_03c_M2.uasset",
+      "sizeBytes": 69724,
+      "sha256": "99e4581e03d3ceff329ec3969945ad84f2215d122745a386714d1622d8fd5bb7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/SM_Outfit_03c_NRM.uasset",
+      "sizeBytes": 3777291,
+      "sha256": "d88173bb2ef0816f42103efbd4b75ed21dc5668f272314b2b871a2dcce59e41f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Acessories_Trim_01a_ALB.uasset",
+      "sizeBytes": 200693,
+      "sha256": "f958a14c286a1a05aaa8634a532e43e72e0435efa76b36bd928b402f5fe046b0"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Acessories_Trim_01a_NRM.uasset",
+      "sizeBytes": 2800772,
+      "sha256": "b88350731684ee658779d6fe76ce87370045ca899cd8a169d568a7f5304b602d"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Acessories_Trim_01a_RMA.uasset",
+      "sizeBytes": 951308,
+      "sha256": "307e06014ed1dbc2c17de9f86cb66d6b99a5f741a6b86c3090e72d79585d1831"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Art_01a_ALB.uasset",
+      "sizeBytes": 6908929,
+      "sha256": "f664230ca282026486ec409316ee57b13a36bf714b09d21e0745d6e0e142fff2"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Art_01a_NRM.uasset",
+      "sizeBytes": 6053237,
+      "sha256": "607c855ec6b3658ed6b6cb6cf4b4474695f982b9cbafeb2ccae7474a9adc7620"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Art_01a_RMA.uasset",
+      "sizeBytes": 5769887,
+      "sha256": "f09cf6bec7a5e2a20fb043ce3b140670da2d3fe9e0580ac2e6ee31b3e5ddfe42"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Bench_01a_ALB.uasset",
+      "sizeBytes": 4160029,
+      "sha256": "7aa520a9f4f6ffe643c1ce01452bbe776093e09166e02aa5126044fad6609572"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Bench_01a_NRM.uasset",
+      "sizeBytes": 4567642,
+      "sha256": "33e54bf0d2ad90d836feae6b8b40177c7b67b92364edc580eba866e3eb93d0b2"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Bench_01a_RMA.uasset",
+      "sizeBytes": 2692737,
+      "sha256": "e2c6e22bdf5b15806419bedab5d861fcf4925be6178fcd1d0ec7264c166c7ca3"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Bowl_01a_ALB.uasset",
+      "sizeBytes": 4932776,
+      "sha256": "2137f05321aabde867f36305a9627cff0db94b76122631923a1fdff49fe7c3ed"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Bowl_01a_NRM.uasset",
+      "sizeBytes": 6515071,
+      "sha256": "6d5eb15592525041c59e0b531a7231ecfe7e47de6fcbeccb887c49eddfa535a3"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Bowl_01a_RMA.uasset",
+      "sizeBytes": 6641387,
+      "sha256": "fa4effc4bff6ae94c0ac46bc61d65a32b2731c667f2608bf4c326764e28dbfa8"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Bust_01a_ALB.uasset",
+      "sizeBytes": 5924982,
+      "sha256": "4011a77ad15bae062962ed27191fde5eacb94ffee95ab687ec1f14d3294ac0c9"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Bust_01a_NRM.uasset",
+      "sizeBytes": 2881807,
+      "sha256": "164bd01d942a92318405db5fa500e572122bde99d8c530d201b527bb4902ec1a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Bust_01a_RMA.uasset",
+      "sizeBytes": 3642220,
+      "sha256": "4faf048cf3cca1c0a9e62385db6e897527d262bb267d7cfa00a8bfa651c1db12"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Canvas_Painting_01a_ALB.uasset",
+      "sizeBytes": 4650228,
+      "sha256": "b60703dfb5bbed8afbbaec7ac1910dcb71603ade13a2226594a1c7b843354496"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Canvas_Painting_01a_NRM.uasset",
+      "sizeBytes": 5263526,
+      "sha256": "00f59ef0cb318fd467e72e99a04d8c5ec626c553e919ea0329cce904b2b85e05"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Canvas_Painting_01a_RMA.uasset",
+      "sizeBytes": 1968143,
+      "sha256": "4e6de602547615bfcea0faf7bd883e29faf9b4dadc3d28dff4eb42698dbb08dc"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Canvas_Painting_02a_ALB.uasset",
+      "sizeBytes": 5599716,
+      "sha256": "31df60776238855afe3e0294376e1611ad8945b738f989231a699be8c9c870be"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Canvas_Painting_02a_NRM.uasset",
+      "sizeBytes": 6168571,
+      "sha256": "a5e7ea9adcb33e137db45709c414528b15d6296b5ba3bcfdf9e4e023a7650347"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Canvas_Painting_02a_RMA.uasset",
+      "sizeBytes": 5543884,
+      "sha256": "f16a36f2449e0bce894061a5677e4d71ef3a75c0cb8989fac4e432e8ebc2b3e1"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Canvas_Painting_03a_ALB.uasset",
+      "sizeBytes": 4952505,
+      "sha256": "5949f29846556743af64c75d508d5a36583cbcaf280d3b6530b26e5faa6d7b59"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Canvas_Painting_03a_NRM.uasset",
+      "sizeBytes": 6086626,
+      "sha256": "56d25f7efc0c6ee42d8813b3727393e47821ebaa157da5239cdad8f97019d994"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Canvas_Painting_03a_RMA.uasset",
+      "sizeBytes": 3120180,
+      "sha256": "6ab0b05ebc7803d0c13dc394063ddddb8a4d8b0a1b8fb6c488c84ffe94c67787"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Canvas_Painting_04a_ALB.uasset",
+      "sizeBytes": 4392873,
+      "sha256": "d45103b19b68ee259e4431d654750fe9e1d2b097a77a71b18e05c053def78984"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Canvas_Painting_04a_NRM.uasset",
+      "sizeBytes": 2990029,
+      "sha256": "af652598471a671cb2ab62871ba9fd269e6bd3650ad927ad38317ac15b248ef8"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Canvas_Painting_04a_RMA.uasset",
+      "sizeBytes": 2289527,
+      "sha256": "192d1e97e58bc68ff2dd0121e382786edd617a3363c1b3020d840f71e210e539"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Canvas_Painting_05a_ALB.uasset",
+      "sizeBytes": 3802373,
+      "sha256": "a4a09c2ae42b041f8b4ccd51eb89dc87d9a2f38e82f225d15abe6251d8647257"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Canvas_Painting_05a_NRM.uasset",
+      "sizeBytes": 4238814,
+      "sha256": "143754dbc80aff1e2907688ec0aa6d3e958b0ba198168f1d41930806e5c3d409"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Canvas_Painting_05a_RMA.uasset",
+      "sizeBytes": 2731113,
+      "sha256": "471161ee6e9b2052a99e11621504caa9d5a4d51bd80875bc7c9f0fd27fc6a763"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Canvas_Painting_06a_ALB.uasset",
+      "sizeBytes": 7635004,
+      "sha256": "d5021b6c5c0f12314ec60efa114f46ae1f667c2e71951153450f6ccea49b923e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Canvas_Painting_06a_NRM.uasset",
+      "sizeBytes": 9445702,
+      "sha256": "5ea85ec2f336a10ff084fae5fea3e4abc3a7db51577cabdb2df053d393e95702"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Canvas_Painting_06a_RMA.uasset",
+      "sizeBytes": 4057946,
+      "sha256": "52fc31dfff5714d25899e94e710b620e7b45ef735663b62f263c7929b38346ab"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Canvas_Painting_07a_ALB.uasset",
+      "sizeBytes": 6161182,
+      "sha256": "e2d875edf87cc03366b8908316004f7f6a1b201f16f011fd8b19a81b237ec3fc"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Canvas_Painting_07a_NRM.uasset",
+      "sizeBytes": 2297139,
+      "sha256": "34e089e4216c2d6fb18a3869768c1ac2e09e3933b6176105ca27388207ae9e4b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Canvas_Painting_07a_RMA.uasset",
+      "sizeBytes": 4063076,
+      "sha256": "9d1237396ca7b64f9917b64435064bc45816842ac2adf0bbbcddc1887c7dd34f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Chalice_01a_ALB.uasset",
+      "sizeBytes": 6188483,
+      "sha256": "be22e43db28000dacd37340c6f938391b431decdfef1cfa4ebf909eee4cab4ef"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Chalice_01a_NRM.uasset",
+      "sizeBytes": 6119721,
+      "sha256": "c8e5e349df2d01031d57ca1fc69640fe0947756564f31ccc0542fe39d10351da"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Chalice_01a_RMA.uasset",
+      "sizeBytes": 7533984,
+      "sha256": "b72650b6817fffc55a180118531328480388c921857b8e478c2dc4bdc4fec1ee"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Chalice_02a_ALB.uasset",
+      "sizeBytes": 6267015,
+      "sha256": "ef741d7e7d28bd43b0fdcf38022d8d2607a2e57a539f9679cedfe1eee416bc60"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Chalice_02a_NRM.uasset",
+      "sizeBytes": 3689955,
+      "sha256": "24e28a0580f3ed2b468519ce3ccce49fcd6d0247a04afedfe34bc30437d5b0f3"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Chalice_02a_RMA.uasset",
+      "sizeBytes": 4635376,
+      "sha256": "6c2a0564a71e7c3e2f5b959dcecbe85612fabd036f34607effdaf7cb2afbcc7e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Clay_Pot_01a_ALB.uasset",
+      "sizeBytes": 6323795,
+      "sha256": "42ef5747fd4a34d16107cf69f72e0ef09429aa85c0c771fd511a645d04be6fb4"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Clay_Pot_01a_NRM.uasset",
+      "sizeBytes": 6048278,
+      "sha256": "acb488e070e45b8373b38f23f3fbdf1ca94e68341a998318d10ddbe532baa369"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Clay_Pot_01a_RMA.uasset",
+      "sizeBytes": 4829497,
+      "sha256": "ee270938008831525a75b0ab572bad2e02d299fa5884e2665c7863f5f70543c7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Clay_Pot_02a_ALB.uasset",
+      "sizeBytes": 6813428,
+      "sha256": "3902337434ca7ed99bc3cd6f2ee4212ec52a29ea12ed5fb57e904ae65df221d7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Clay_Pot_02a_NRM.uasset",
+      "sizeBytes": 6798144,
+      "sha256": "f44046dc46037ccb9f0ffb7b7444162c624c15c425ffacaf23ea325136dccf31"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Clay_Pot_02a_RMA.uasset",
+      "sizeBytes": 5055789,
+      "sha256": "44825bc94def30a9af48da18daa2886a2d64c90a3f8c301cb838821541146ad0"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Crown_01a_ALB.uasset",
+      "sizeBytes": 4778616,
+      "sha256": "3a730baf7e1daafc7df62268d891c77303988589e1347b2e86d69117e1cde066"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Crown_01a_NRM.uasset",
+      "sizeBytes": 5342619,
+      "sha256": "fa4e2d142e1824c95de60bc703e30d09e1a4c2e168b7fae8bcdc8332ce28582d"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Crown_01a_RMA.uasset",
+      "sizeBytes": 3750273,
+      "sha256": "3a83189d47957e304f3c8ed9bb6008d7d4cb916073ad834b2f98e3358027f8cb"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Dagger_01_ALB.uasset",
+      "sizeBytes": 5506222,
+      "sha256": "02266d21f70c9dd0e2b63b16bed8c01f92b125a4329b8f33f18685116c889219"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Dagger_01_NRM.uasset",
+      "sizeBytes": 6372679,
+      "sha256": "93a8fc3dba60e4e8d47b0d34d8090d337ca5c8bab8532e42682870ef3f61f171"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Dagger_01_RMA.uasset",
+      "sizeBytes": 5077562,
+      "sha256": "d02893d996d043feb189945c333b9aad55e7f180d4902ce511fdaa9b81b09d00"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Dress_01a_M.uasset",
+      "sizeBytes": 83566,
+      "sha256": "d192bb30cf6d901df9f1b0de16f1503bb766ac2c6ca15cae6b47b22553b8e4dc"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Dress_01a_NRM.uasset",
+      "sizeBytes": 4676702,
+      "sha256": "5e3638440ec0e34ded7cd035419e5d0e7eca8df0bbe9c36721f6e59f94fe4576"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Dress_02a_M.uasset",
+      "sizeBytes": 382600,
+      "sha256": "fd9f4e3306f9596eb30b0713d2cb8d3436cd5f0b927eb6d96af1e7a1ccdd6c74"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Dress_02a_NRM.uasset",
+      "sizeBytes": 5759776,
+      "sha256": "6eb35fcc72e47a75924bc6c638c39ac173e8000756f7d621b60c77e14fd3636b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Fire_Extinguisher_01a_ALB.uasset",
+      "sizeBytes": 20983754,
+      "sha256": "4b1e3c0d2af6a8c03680646378f6da1569549f4973289b799caf6ce2df40b152"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Fire_Extinguisher_01a_NRM.uasset",
+      "sizeBytes": 21590446,
+      "sha256": "e3f80c51feeaa57f94acb1fbf6fa90498911b439889c3a9e8a5820f1c5599a05"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Fire_Extinguisher_01a_RMA.uasset",
+      "sizeBytes": 14554329,
+      "sha256": "021f9375c255c213e705ea57c4a1ab2f69577d867227020d684a60c74b58b535"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Geode_01a_ALB.uasset",
+      "sizeBytes": 5301595,
+      "sha256": "98d4ecb4e1f2a92bb802ce1abb259d8952dd95f4a05ad96ad5f3488564a09acd"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Geode_01a_NRM.uasset",
+      "sizeBytes": 8982729,
+      "sha256": "537f8d28608e6e837b5dc302cf450c5eeca77738b070028bb626a6b5b7d68941"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Geode_01a_RMA.uasset",
+      "sizeBytes": 3371261,
+      "sha256": "67e0b4d03e4f965e919011ca84ea4216f22525d4cf8e460949958ded236c1b68"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Lane_Divider_01a_ALB.uasset",
+      "sizeBytes": 2063294,
+      "sha256": "a7f1b47c0d1b7bc933143bd43d4f376286ca32067f6154158c40375b3e6159fc"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Lane_Divider_01a_NRM.uasset",
+      "sizeBytes": 4722620,
+      "sha256": "b8d05eac2e520814e9507c299651cca384efc0bdbfe454ff3bc6c78ef424d412"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Lane_Divider_01a_RMA.uasset",
+      "sizeBytes": 2197638,
+      "sha256": "89ac5cba9432b0679530baf16bd2ed889ad0ca022b96257f9cbad346d2ffd78e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Light_01a_EMM.uasset",
+      "sizeBytes": 11949,
+      "sha256": "082f05b4b38c0bfbf6b25bd09618e0864de48aadf7636d23eabb7c578996be6a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Mannequin_01a_AO.uasset",
+      "sizeBytes": 5584680,
+      "sha256": "e76bbdd0b4917d9eb13a63c123d0d669bfdba3372fb7a4da6660cb85548b96f9"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Mannequin_01a_NRM.uasset",
+      "sizeBytes": 7196864,
+      "sha256": "5d7fea0542a7f6f831c884f79e6c426536eb98b9a81201c6ab9622c37cecdd98"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Mannequin_01b_AO.uasset",
+      "sizeBytes": 6076508,
+      "sha256": "5169f8f94a702e6b366638d8df6df41963dbf20e2f27ab4be98a8e0c8859e7f8"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Mannequin_01b_NRM.uasset",
+      "sizeBytes": 7846503,
+      "sha256": "cc24e9fe5c9ee0e2ef7a5280ea1f0271a8504954c6422d4366a0506f6ec51d1b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Mannequin_01e_AO.uasset",
+      "sizeBytes": 5794841,
+      "sha256": "8f74b1131edbbc4acbe0240c700247ae7074bc122900a70091bff9bcdf1fa004"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Mannequin_01e_NRM.uasset",
+      "sizeBytes": 7720526,
+      "sha256": "cb9eda3fcda2128d5a55d7a24efc926679f449ab33204a76589bbbcf5a656d24"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Painting_01a_ALB.uasset",
+      "sizeBytes": 6309404,
+      "sha256": "67e3e08a36d66c19c114c4e9d86c9fdb18a51b62ec6a7b304c28c6843df271b5"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Painting_01a_NRM.uasset",
+      "sizeBytes": 6741487,
+      "sha256": "9ab498a262bb8f26655c9d83d32bcae6eaa6bb80e961e023d7689f8afe8df6b7"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Painting_01a_RMA.uasset",
+      "sizeBytes": 5937420,
+      "sha256": "165edeb762448ea8b111271b37fb01f556d8344e7d440aeff5086104e3e84c31"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Painting_14a_ALB.uasset",
+      "sizeBytes": 12819229,
+      "sha256": "98d47e777348b9b799a936374b02e0f7f9a8600944e10e3e1800476c082ab1e1"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Stage_Lights_01a_ALB.uasset",
+      "sizeBytes": 1401353,
+      "sha256": "919a6dc1b37c56f942ece7b5021b6c0812ae3cd66dc69c784df13b627b6931ce"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Stage_Lights_01a_EMM.uasset",
+      "sizeBytes": 14392,
+      "sha256": "947dc26e173830717055c6832326172b7ec7bc207b268cb70a8d6351e9e58c5f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Stage_Lights_01a_NRM.uasset",
+      "sizeBytes": 4776555,
+      "sha256": "15b93f93c7b598673368d1333ae2f892fb9945d97e1b92fb40af2c56fd7dfc5f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Stage_Lights_01a_RMA.uasset",
+      "sizeBytes": 4228089,
+      "sha256": "c5c94688426f02b257d85d8d7c73ee70c04dfce64921d9a876aa481a2bf5a2b6"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Statue_01a_ALB.uasset",
+      "sizeBytes": 6650829,
+      "sha256": "f1ec88ac91aebd6519705fcc8c2c7d3d0421702c622b3c4e189898dfe673f169"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Statue_01a_NRM.uasset",
+      "sizeBytes": 6546816,
+      "sha256": "3796884d22e9f0175c1413b9a2b29bd5c22374f061611cc6bc053e4df40b075b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Statue_01a_RMA.uasset",
+      "sizeBytes": 7407514,
+      "sha256": "608ac6542211ecf43351e447b1807edd8f66cbc4c7256c6ceba8429077802d10"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Statue_02a_ALB.uasset",
+      "sizeBytes": 5250333,
+      "sha256": "fc6cc2ca71e886b2fa7cf59fa75f24d2fed781c3f9fd4dec673d75dec84fe819"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Statue_02a_NRM.uasset",
+      "sizeBytes": 5012131,
+      "sha256": "bfabea2bb284985defdb53bbee301f7b99db3361574235ce20bfca7b5cbb5ef5"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Statue_02a_RMA.uasset",
+      "sizeBytes": 6677490,
+      "sha256": "8ef0720cc2e9a243031a21cc84ba9d4bf311e3f686ad58fbee596d4b56e8e52e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Statue_03a_ALB.uasset",
+      "sizeBytes": 4826840,
+      "sha256": "b6d12fbaac14545466150362b140573ec8c8c2aee5921283f2e58ba75228a83c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Statue_03a_NRM.uasset",
+      "sizeBytes": 3470189,
+      "sha256": "f8b145c21a7985664b8ab09b4aeaf7deb0131146bab4ccbd32ae3c78c564cc65"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Statue_03a_RMA.uasset",
+      "sizeBytes": 2979589,
+      "sha256": "e5896c9f09f34bd6714a57ce2d1bcf342d1487878367aad47c1a92e8dc62558b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Statue_08a_ALB.uasset",
+      "sizeBytes": 4130407,
+      "sha256": "f6d6178fb8365dd0f6c8781fd21ad6e333c19277d2fd94c9bef7fda06834d8d8"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Statue_08a_NRM.uasset",
+      "sizeBytes": 2833960,
+      "sha256": "440453116bc71017c479061a62390554d959342968c0b118b066e9aa13c604a8"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Statue_08a_RMA.uasset",
+      "sizeBytes": 3928651,
+      "sha256": "ac8109aa914bb3733cfe33d34059c73d82cfaa36b5b66e2ba4912824ca208c19"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Statue_09a_ALB.uasset",
+      "sizeBytes": 5563897,
+      "sha256": "b368e6aa1cbe714c8cfecb52e49dc53a024648b6ab7a7ad02186980413be6f38"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Statue_09a_NRM.uasset",
+      "sizeBytes": 3950889,
+      "sha256": "c4335273604944d651a75a08ec9fe8ac7f6d8242f498a6db5dced0892d878ba5"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Statue_09a_RMA.uasset",
+      "sizeBytes": 7470115,
+      "sha256": "3d47d4811b28395d3c8959818b135f214fe855262e7a96db761aab962306d2f4"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Trims_01a_M1.uasset",
+      "sizeBytes": 13076701,
+      "sha256": "bb5a5ff1af7d0da09e309294c02f505cb15bdc789a1f600a2c2f5374d3f32075"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Trims_01a_M2.uasset",
+      "sizeBytes": 19222,
+      "sha256": "2a3c6095d1cefff488e869f7e652dbbb46ab57a66435bdb25f5386847551ec32"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Trims_01a_NRM.uasset",
+      "sizeBytes": 5837286,
+      "sha256": "d7c1752c13b0041cca7535ed6a63ffe96f405d0dd7a6d48cdfd8aa4a4a02b9e3"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Urn_01a_ALB.uasset",
+      "sizeBytes": 7586613,
+      "sha256": "d7cf750e5580743cc31b67efadc4536ad2ece3417c91bc0b4d6ee7db2b6eb39b"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Urn_01a_NRM.uasset",
+      "sizeBytes": 8285714,
+      "sha256": "f5e53756a4faa11450b70c995e2a9a9b3de6691111a023e89de48203def380ee"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Urn_01a_RMA.uasset",
+      "sizeBytes": 6408387,
+      "sha256": "e917d194d9412c248bf20edf6de3d43efdd8f02dbd49bbe369f0836dd0fddd02"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Urn_02a_ALB.uasset",
+      "sizeBytes": 7441979,
+      "sha256": "cff41cfc30907d3539e7590ac6393d6c76e886f8c10f678ed5aec0e4b01f4bc2"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Urn_02a_NRM.uasset",
+      "sizeBytes": 5359567,
+      "sha256": "96d61a522ef8f45e561e8a77ef8c232800c1942fab25146b30123bc3e549aa61"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Urn_02a_RMA.uasset",
+      "sizeBytes": 7793070,
+      "sha256": "a290c70e03867bab77c4b1d8f2041fcff218f84aa7a2195fe574abfb10e062ae"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Wall_Art_01a_NRM.uasset",
+      "sizeBytes": 9634129,
+      "sha256": "5056983ff8219a8adc051b62cb652d7154d914dfa2d67e09775ec4ebb1e8829a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Wall_Art_01a_RMA.uasset",
+      "sizeBytes": 2480613,
+      "sha256": "34575cd4f2a218c0a0af6e44a274dfec11ea8b03d2c8ec99d90f2b4064740712"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Wall_Art_01b_ALB.uasset",
+      "sizeBytes": 1955256,
+      "sha256": "2ba32687fa15dd084b9e24d6cc1977cbd9cd5722193797587a85bfe89917949d"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Wall_Art_02a_ALB.uasset",
+      "sizeBytes": 3859599,
+      "sha256": "c7a18f6b57150f1bef86f95c3231dbbf10c40bdf1c535ce9fadd62f589671a50"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Wall_Art_02a_NRM.uasset",
+      "sizeBytes": 4455539,
+      "sha256": "8b43ee60fde083b649dceb68c24767a07bf9313c564afbb1bb3c569ccac13c65"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Wall_Art_02a_RMA.uasset",
+      "sizeBytes": 3262407,
+      "sha256": "c0b86e1be076f483813c71b6283562a36f3ec54dd71e9a1fa682a78913d87738"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Wall_Skull_01a_ALB.uasset",
+      "sizeBytes": 6575329,
+      "sha256": "4486179f2d24771e9b42bf5a6508ba59c3c5fd61425d2cca528b2b231b2b6cc3"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Wall_Skull_01a_NRM.uasset",
+      "sizeBytes": 6338598,
+      "sha256": "b1b67bf4b920867db16432c36a77acc5139c81ae0b133479b595f6b359aec14e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Wall_Skull_01a_RMA.uasset",
+      "sizeBytes": 7478613,
+      "sha256": "e2f2fe05b800a72ee9f2bd8491fabffb482d7bbca8e5ae674468cdc124d75c35"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Water_Pot_01a_ALB.uasset",
+      "sizeBytes": 6671239,
+      "sha256": "c49587311e14d4a501129cb5f916a4a4e9d811e873d69ab329a15a6053c1172c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Water_Pot_01a_NRM.uasset",
+      "sizeBytes": 6054380,
+      "sha256": "a991016db18c09e255dea6a936fe8f9918e8cbd71c9be2ef9ea4f4d578fdc01f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Unique/TX_Water_Pot_01a_RMA.uasset",
+      "sizeBytes": 7675910,
+      "sha256": "7fdaa09d83f73883ad1ef17d1c9edd4becfafa78b65c2981542e326c22b0350f"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Utility/TX_Fill_01_ALB.uasset",
+      "sizeBytes": 4657,
+      "sha256": "a2833e20e0aace45facb01a85a9c5863ebdfe4ac0d2d947dbbc7b9692a89129a"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Utility/TX_Fill_01_M.uasset",
+      "sizeBytes": 5075,
+      "sha256": "1a03b32a6f88c9ed1216cbc2413f7bfbbc87a3249fccb2b530bc56aedf6c459e"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Utility/TX_Fill_01_NRM.uasset",
+      "sizeBytes": 5027,
+      "sha256": "8855d9dd4f6494f21e56a0a630bb2deab50849e9c609379e9bf0d91723e005ff"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Utility/TX_Fill_01_RMA.uasset",
+      "sizeBytes": 4829,
+      "sha256": "9fdf209770f80455b4cb778c94fefd4b1696eedafbaad188452ca4390ad0e1f8"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Utility/TX_Glass_01a_M.uasset",
+      "sizeBytes": 1001358,
+      "sha256": "9c726958bc617feead6fe9cd8f1774f9773528f1b8f113b0c9cd22e24ed9db1c"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Utility/TX_Light_Panel_01a_M.uasset",
+      "sizeBytes": 6794043,
+      "sha256": "6720752724d287817006f8c4f9817d0c4ff3e0f8fe97231ed890fd3156977413"
+    },
+    {
+      "path": "Content/Assets/MapAssets/Showcase/Textures/Utility/TX_Micro_Detail_01a_M.uasset",
+      "sizeBytes": 573168,
+      "sha256": "6404b2f3bfcb39eb46ed3e8a80f9cf11b121ea5081d90967426286fd61dd782d"
+    }
+  ]
+}

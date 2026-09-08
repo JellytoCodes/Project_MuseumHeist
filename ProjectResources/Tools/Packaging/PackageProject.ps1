@@ -20,6 +20,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+. (Join-Path $PSScriptRoot 'PackageProvenance.ps1')
 
 function Get-NormalizedPath {
 	param([Parameter(Mandatory = $true)][string]$Path)
@@ -131,6 +132,11 @@ if ($PlanOnly) {
 	exit 0
 }
 
+$externalContentLockPath = Join-Path $PSScriptRoot 'ExternalContentLock.json'
+$externalLockBefore = Assert-PackageExternalContent -ProjectRoot $projectRoot -LockPath $externalContentLockPath
+$inputBefore = Get-PackageSourceSnapshot -ProjectRoot $projectRoot -OutputPath $archiveDirectory
+$inputCapturedUtc = [DateTime]::UtcNow.ToString('o')
+
 if (Test-Path -LiteralPath $archiveDirectory) {
 	if (-not $Clean) {
 		throw "Package output already exists. Re-run with -Clean after confirming the target: $archiveDirectory"
@@ -141,11 +147,19 @@ if (Test-Path -LiteralPath $archiveDirectory) {
 
 New-Item -ItemType Directory -Path $archiveDirectory -Force | Out-Null
 
+Write-Output ("Packaging inputs captured: GitCommit={0} GitDirty={1} SourceInputSha256={2} ExternalContentLockSha256={3}" -f
+	$inputBefore.GitCommit, $inputBefore.GitDirty, $inputBefore.InputSha256, $externalLockBefore)
+
 Write-Output ("Packaging start: Version={0} Configuration={1} Output={2}" -f $projectVersion, $Configuration, $archiveDirectory)
 & $runUat @uatArguments
 if ($LASTEXITCODE -ne 0) {
 	throw "RunUAT failed with exit code $LASTEXITCODE."
 }
+
+$externalLockAfter = Assert-PackageExternalContent -ProjectRoot $projectRoot -LockPath $externalContentLockPath
+$inputAfter = Get-PackageSourceSnapshot -ProjectRoot $projectRoot -OutputPath $archiveDirectory
+Assert-PackageInputsUnchanged -Before $inputBefore -After $inputAfter -ExternalLockBefore $externalLockBefore -ExternalLockAfter $externalLockAfter
+Write-Output 'Packaging input verification: Git revision, source contents, and locked external contents unchanged Result=PASS'
 
 $gameExecutable = Get-ChildItem -LiteralPath $archiveDirectory -Recurse -File -Filter 'Project_MuseumHeist.exe' |
 	Where-Object { $_.FullName -notmatch '[\\/]Project_MuseumHeist[\\/]Binaries[\\/]Win64[\\/]Project_MuseumHeist\.exe$' } |
@@ -158,34 +172,26 @@ if ($Configuration -eq 'Development' -and $SteamAppId -gt 0) {
 	Set-Content -LiteralPath (Join-Path $gameExecutable.DirectoryName 'steam_appid.txt') -Value $SteamAppId -Encoding ASCII
 }
 
-$gitCommit = 'unknown'
-$gitDirty = $true
-if (Get-Command git -ErrorAction SilentlyContinue) {
-	$resolvedCommit = (& git -C $projectRoot rev-parse --short=12 HEAD 2>$null)
-	if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($resolvedCommit)) {
-		$gitCommit = $resolvedCommit.Trim()
-	}
-	$workingTreeStatus = (& git -C $projectRoot status --porcelain 2>$null)
-	if ($LASTEXITCODE -eq 0) {
-		$gitDirty = -not [string]::IsNullOrWhiteSpace(($workingTreeStatus -join [Environment]::NewLine))
-	}
-}
-
 $buildInfo = [ordered]@{
-	schemaVersion = 1
+	schemaVersion = 2
 	project = 'Project_MuseumHeist'
 	displayName = 'Museum Heist'
 	projectVersion = $projectVersion
 	configuration = $Configuration
 	platform = 'Win64'
-	gitCommit = $gitCommit
-	gitDirty = $gitDirty
+	gitCommit = $inputBefore.GitCommit
+	gitCommitFull = $inputBefore.GitCommitFull
+	gitDirty = $inputBefore.GitDirty
+	sourceInputSha256 = $inputBefore.InputSha256
+	externalContentLockSha256 = $externalLockBefore
+	inputCapturedUtc = $inputCapturedUtc
 	createdUtc = [DateTime]::UtcNow.ToString('o')
 	steamAppId = if ($Configuration -eq 'Development') { $SteamAppId } else { 0 }
 	maps = $mapsToCook
 }
 
 $buildInfoPath = Join-Path $gameExecutable.DirectoryName 'BuildInfo.json'
+Copy-Item -LiteralPath $externalContentLockPath -Destination (Join-Path $gameExecutable.DirectoryName 'ExternalContentLock.json')
 $buildInfo | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $buildInfoPath -Encoding UTF8
 
 $validator = Join-Path $PSScriptRoot 'ValidatePackage.ps1'

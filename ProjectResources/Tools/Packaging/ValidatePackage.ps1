@@ -81,6 +81,34 @@ if ($null -ne $buildInfo) {
 			Add-Failure 'Package was built from a dirty working tree.'
 		}
 	}
+	$schemaVersionProperty = $buildInfo.PSObject.Properties['schemaVersion']
+	if ($null -eq $schemaVersionProperty -or
+		($schemaVersionProperty.Value -isnot [int] -and $schemaVersionProperty.Value -isnot [long]) -or
+		$schemaVersionProperty.Value -notin @(1, 2)) {
+		Add-Failure 'BuildInfo.json requires a supported numeric schemaVersion (1 or 2).'
+	}
+	elseif ($schemaVersionProperty.Value -eq 2) {
+		foreach ($fingerprintName in @('sourceInputSha256', 'externalContentLockSha256')) {
+			$fingerprint = $buildInfo.PSObject.Properties[$fingerprintName]
+			if ($null -eq $fingerprint -or [string]$fingerprint.Value -notmatch '^[0-9a-f]{64}$') {
+				Add-Failure ("BuildInfo.json requires a SHA256 {0} for schemaVersion 2." -f $fingerprintName)
+			}
+		}
+		$fullCommit = $buildInfo.PSObject.Properties['gitCommitFull']
+		$shortCommit = $buildInfo.PSObject.Properties['gitCommit']
+		if ($null -eq $fullCommit -or [string]$fullCommit.Value -notmatch '^(?:[0-9a-f]{40}|[0-9a-f]{64})$' -or $null -eq $shortCommit -or
+			([string]$fullCommit.Value).Substring(0, 12) -ne [string]$shortCommit.Value) {
+			Add-Failure 'BuildInfo.json requires consistent full and short Git revisions for schemaVersion 2.'
+		}
+		$externalLockFile = Join-Path $buildInfoFile.DirectoryName 'ExternalContentLock.json'
+		$lockFingerprint = $buildInfo.PSObject.Properties['externalContentLockSha256']
+		if (-not (Test-Path -LiteralPath $externalLockFile -PathType Leaf)) {
+			Add-Failure 'SchemaVersion 2 package is missing ExternalContentLock.json.'
+		}
+		elseif ($null -eq $lockFingerprint -or (Get-FileHash -LiteralPath $externalLockFile -Algorithm SHA256).Hash -ne [string]$lockFingerprint.Value) {
+			Add-Failure 'ExternalContentLock.json does not match the BuildInfo.json fingerprint.'
+		}
+	}
 }
 
 $requiredArtifactPatterns = [ordered]@{

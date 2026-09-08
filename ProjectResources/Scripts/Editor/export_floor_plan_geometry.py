@@ -1,4 +1,9 @@
-"""Read authored map geometry; write source JSON only, never save Unreal packages."""
+"""Export or verify authored floor-plan geometry without saving Unreal packages.
+
+-MuseumFloorPlanMode=verify compares current maps with the existing source JSON.
+-MuseumFloorPlanReport=<path> writes the verification result for the PNG generator.
+-MuseumFloorPlanQuit closes a dedicated verification editor when finished.
+"""
 
 import hashlib
 import json
@@ -219,12 +224,54 @@ def export_geometry():
     return {"maps": maps}
 
 
-before = map_hashes()
-try:
-    geometry = export_geometry()
-finally:
-    if before != map_hashes():
-        raise RuntimeError("Map files changed during read-only geometry export")
-OUTPUT.write_text(json.dumps(geometry, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-unreal.log_warning("MH_FLOOR_PLAN_GEOMETRY_EXPORT_COMPLETE=" + json.dumps({
-    "maps": len(geometry["maps"]), "output": str(OUTPUT), "map_hashes_unchanged": True}, sort_keys=True))
+def geometry_fingerprint(geometry):
+    # The geometry, not package bytes, determines staleness. Rebuilding only
+    # navigation changes .umap hashes without changing this fingerprint.
+    return hashlib.sha256(json.dumps(
+        geometry, sort_keys=True, separators=(",", ":"), allow_nan=False,
+    ).encode("utf-8")).hexdigest()
+
+
+def run():
+    _, switches, parameters = unreal.SystemLibrary.parse_command_line(unreal.SystemLibrary.get_command_line())
+    parameters = {str(key).casefold(): str(value) for key, value in parameters.items()}
+    mode = parameters.get("museumfloorplanmode", "export").casefold()
+    report_path = parameters.get("museumfloorplanreport")
+    quit_when_done = "museumfloorplanquit" in {str(value).casefold() for value in switches}
+    report = {"status": "FAIL", "mode": mode, "source": str(OUTPUT), "packages_saved": False}
+    try:
+        if mode not in ("export", "verify"):
+            raise RuntimeError("MuseumFloorPlanMode must be export or verify")
+        before = map_hashes()
+        try:
+            geometry = export_geometry()
+        finally:
+            if before != map_hashes():
+                raise RuntimeError("Map files changed during read-only geometry inspection")
+        report.update(maps=len(geometry["maps"]), map_hashes_unchanged=True,
+                      current_geometry_sha256=geometry_fingerprint(geometry))
+        if mode == "verify":
+            saved_bytes = OUTPUT.read_bytes()
+            saved = json.loads(saved_bytes.decode("utf-8-sig"))
+            report.update(source_file_sha256=hashlib.sha256(saved_bytes).hexdigest(),
+                          saved_geometry_sha256=geometry_fingerprint(saved))
+            if report["current_geometry_sha256"] != report["saved_geometry_sha256"]:
+                raise RuntimeError("Current map geometry differs from FloorPlanGeometry.json; run geometry export first")
+        else:
+            OUTPUT.write_text(json.dumps(geometry, ensure_ascii=False, indent=2, allow_nan=False) + "\n", encoding="utf-8")
+        report["status"] = "PASS"
+        unreal.log_warning("MH_FLOOR_PLAN_GEOMETRY_" + mode.upper() + "_COMPLETE=" + json.dumps(report, sort_keys=True))
+    except Exception as error:
+        report["error"] = str(error)
+        unreal.log_error("MH_FLOOR_PLAN_GEOMETRY_FAILED=" + json.dumps(report, sort_keys=True))
+        raise
+    finally:
+        try:
+            if report_path:
+                Path(report_path).write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        finally:
+            if quit_when_done:
+                unreal.SystemLibrary.quit_editor()
+
+
+run()
