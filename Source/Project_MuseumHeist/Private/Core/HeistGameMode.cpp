@@ -348,6 +348,12 @@ void AHeistGameMode::HandlePlayerConnectionsChanged(const int32 ConnectedPlayerC
 		return;
 	}
 
+	// Logout runs before the engine removes the departing PlayerState from PlayerArray.
+	if (TryResolveContractOutcome(FName(TEXT("PlayerDisconnected"))))
+	{
+		return;
+	}
+
 	bPlayerCountGuardScalingApplied = false;
 	SchedulePlayerCountGuardScaling();
 	UE_LOG(LogHeistAI, Log, TEXT("Player-count guard rescale scheduled: ConnectedPlayers=%d Debounce=0.50 Authority=true"), ConnectedPlayerCount);
@@ -513,7 +519,6 @@ void AHeistGameMode::Logout(AController* Exiting)
 			HeistGameState->RefreshContractCarriedValue();
 		}
 		bAnyPlayerEscapedThisMatch |= bExitingPlayerEscaped;
-		TryResolveContractOutcome(FName(TEXT("PlayerDisconnected")));
 	}
 }
 

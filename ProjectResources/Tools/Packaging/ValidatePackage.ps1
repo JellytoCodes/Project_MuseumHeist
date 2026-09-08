@@ -24,17 +24,20 @@ function Add-Failure {
 	$script:failures.Add($Message)
 }
 
-$gameExecutable = Get-ChildItem -LiteralPath $resolvedPackageRoot -Recurse -File -Filter 'Project_MuseumHeist.exe' |
-	Where-Object { $_.FullName -notmatch '[\\/]Project_MuseumHeist[\\/]Binaries[\\/]Win64[\\/]Project_MuseumHeist\.exe$' } |
-	Select-Object -First 1
-if ($null -eq $gameExecutable) {
-	Add-Failure 'Project_MuseumHeist bootstrap executable is missing.'
+$bootstrapExecutables = @(Get-ChildItem -LiteralPath $resolvedPackageRoot -Recurse -File -Filter 'Project_MuseumHeist.exe' |
+	Where-Object { $_.FullName -notmatch '[\\/]Project_MuseumHeist[\\/]Binaries[\\/]Win64[\\/]Project_MuseumHeist\.exe$' })
+if ($bootstrapExecutables.Count -ne 1) {
+	Write-Output ("Packaging validation failure: Expected exactly one bootstrap executable; found {0}." -f $bootstrapExecutables.Count)
+	Write-Output ("Packaging validation: Root={0} Failures=1 Result=FAIL" -f $resolvedPackageRoot)
+	exit 1
 }
+$gameExecutable = $bootstrapExecutables[0]
+$resolvedPackageRoot = $gameExecutable.DirectoryName
 
-$buildInfoFile = Get-ChildItem -LiteralPath $resolvedPackageRoot -Recurse -File -Filter 'BuildInfo.json' |
-	Select-Object -First 1
+$buildInfoPath = Join-Path $resolvedPackageRoot 'BuildInfo.json'
+$buildInfoFile = if (Test-Path -LiteralPath $buildInfoPath -PathType Leaf) { Get-Item -LiteralPath $buildInfoPath } else { $null }
 if ($null -eq $buildInfoFile) {
-	Add-Failure 'BuildInfo.json is missing.'
+	Add-Failure 'BuildInfo.json is missing beside the bootstrap executable.'
 }
 
 $buildInfo = $null

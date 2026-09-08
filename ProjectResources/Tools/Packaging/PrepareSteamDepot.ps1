@@ -55,8 +55,12 @@ if ($LASTEXITCODE -ne 0) {
 	throw "Package validation failed with exit code $LASTEXITCODE."
 }
 
-$gameExecutable = Get-ChildItem -LiteralPath $resolvedPackageRoot -Recurse -File -Filter 'Project_MuseumHeist.exe' |
-	Select-Object -First 1
+$bootstrapExecutables = @(Get-ChildItem -LiteralPath $resolvedPackageRoot -Recurse -File -Filter 'Project_MuseumHeist.exe' |
+	Where-Object { $_.FullName -notmatch '[\\/]Project_MuseumHeist[\\/]Binaries[\\/]Win64[\\/]Project_MuseumHeist\.exe$' })
+if ($bootstrapExecutables.Count -ne 1) {
+	throw "Expected exactly one validated bootstrap executable; found $($bootstrapExecutables.Count)."
+}
+$gameExecutable = $bootstrapExecutables[0]
 $buildInfoFile = Join-Path $gameExecutable.DirectoryName 'BuildInfo.json'
 $buildInfo = Get-Content -LiteralPath $buildInfoFile -Raw | ConvertFrom-Json
 

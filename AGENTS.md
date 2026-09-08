@@ -979,10 +979,8 @@ Penalty 또는 Diagnostic Field가 Final Score에 직접 적용되지 않는 경
 
 ## Cleanup
 
-Forgery 종료 시 반드시 복원한다.
+Forgery 화면을 닫을 때 아래 입력과 화면 상태를 복원한다. Submit 성공으로 `ReplicaReady`에 진입한 경우 Painting Display Case Lock과 Forgery Owner는 검토·교체를 위해 유지한다. Cancel, Timeout, Arrest, Disconnect, Match End 등 실제 Session 정리 경로에서는 Lock과 Owner도 해제한다.
 
-- Painting Display Case Lock
-- Forgery Owner
 - Movement
 - Look
 - Interaction
@@ -1467,8 +1465,8 @@ Output Log
 ## 구현과 검증 경계
 
 - C++ 수정과 정적 검사가 끝났다는 사실은 Build 성공이나 기능 완료를 뜻하지 않는다.
-- Build 성공은 사용자가 해당 코드 Revision을 Build한 뒤 성공을 전달한 경우에만 확인된 것으로 취급한다.
-- Build 성공 뒤 C++를 다시 수정했다면 이전 Build 증거는 현재 코드에 유효하지 않으므로 다시 Build를 요청한다.
+- Build 성공은 해당 코드 Revision의 실제 Build 결과와 로그로 확인한다. 기본 담당은 사용자이며, 사용자가 현재 작업의 Build 자동화를 명시적으로 위임하면 Codex가 실행하고 Revision, Target, 결과와 로그를 기록할 수 있다.
+- Build 성공 뒤 C++를 다시 수정했다면 이전 Build 증거는 현재 코드에 유효하지 않으므로 같은 담당 범위에서 다시 Build한다.
 - 필요한 Blueprint/Data/Map 작업은 사용자가 Compile/Save 또는 임시 테스트 배치까지 확인한다.
 - Build 성공만으로 Editor 구성이나 Runtime 동작을 확인한 것으로 취급하지 않는다.
 - 멀티플레이, Ownership, Replication 동작은 사용자가 실행한 Server/Client 절차와 Output Log를 근거로 판정한다.
@@ -1542,7 +1540,7 @@ Editor 작업이 필요한 경우 위 Checklist 없이 바로 PIE 명령부터 �
 - Debug Command 실행
 - Output Log 제출
 
-Codex는 Unreal C++ Build를 직접 실행하지 않는다.
+기본적으로 Unreal C++ Build와 Editor 작업은 사용자가 실행한다. 사용자가 현재 작업의 Build 또는 Editor 자동화를 명시적으로 위임한 경우에는 Codex가 해당 범위의 Build, Editor 검사와 Automation을 실행할 수 있다. 이 결과는 User PIE와 별도로 기록하며 자연스러운 플레이·클라이언트별 수동 입력의 PASS를 대체하지 않는다. 위임받지 않은 사용자 Editor를 임의 종료하지 않으며 `.uasset` 수정 경로와 `.umap` 명시적 수정 승인 규칙은 그대로 적용한다.
 
 사용자가 Build를 실행하고 오류가 발생하면 전체 오류 위치와 메시지를 전달한다. Codex는 해당 로그를 근거로 코드를 수정한다.
 
@@ -1619,6 +1617,10 @@ Editor 작업 안내에는 다음만 포함한다.
 - `HeistBuildDump`는 Development Package에서 Version, Configuration, Platform, Cooked Runtime, Online Subsystem과 Session Build Id를 검증한다.
 - Editor Archive Directory를 Development와 Shipping에 재사용해 이전 Runtime Binary 또는 Log가 섞인 폴더는 Steam Depot 후보로 사용하지 않는다.
 - `ValidatePackage.ps1`는 Development / Shipping Runtime Binary 혼합을 실패 처리하고 UE 5.8 Prerequisite의 `UEPrereqSetup_x64.exe` 또는 `vc_redist.x64.exe`를 허용한다.
+- 신규 Package의 `BuildInfo.json`은 schema 2로 Full Git Revision, Dirty 상태, Source 입력 SHA와 External Content Lock SHA를 기록한다. UAT 전후 Git 상태와 입력 파일 지문이 달라지면 Package 생성을 실패 처리한다.
+- Git에서 제외된 외부 Content는 `ExternalContentLock.json`의 경로·크기·SHA로 고정하며 Package에 같은 Lock을 동봉한다. 동봉 Lock과 BuildInfo의 일치 검사는 Package 내부 증거이고 현재 Checkout의 재검증이나 라이선스 승인 증거가 아니다.
+- Validator는 단일 Bootstrap 실행 파일의 Package Root를 확정하고 그 아래의 BuildInfo, Runtime, Pak/IoStore와 필수 DLL을 함께 검증한다. 여러 Package의 파일을 합쳐 PASS 처리하거나 모호한 Root에서 Depot 후보를 만들지 않는다.
+- UAT가 Editor Target을 다시 Build할 수 있으므로 프로젝트 Editor를 사용하는 검사와 Packaging은 동시에 실행하지 않는다.
 - Steam Depot VDF는 `preview=1` 후보만 생성하며 Upload와 SetLive는 자동 수행하지 않는다.
 
 ---
@@ -1644,6 +1646,8 @@ Vent / Arrest 계약은 최소한 다음을 별도 시나리오로 검증한다.
 - 다른 Player가 Arrested Player 구조 전·후 Evidence를 회수할 수 있는지에 대한 2인 이상 PIE
 
 위 시나리오는 Source/Implementation, Build, Automation, Headless, User PIE와 Steam Package를 각각 구분해 보고한다. Automation 또는 Headless PASS는 Player-facing Prompt, World Pickup 가독성과 실제 2인 선택 동작의 User PIE PASS를 대체하지 않는다.
+
+Navigation 검사는 준비된 World에서 수행한다. Strict 검사 기준은 Map당 RecastNavMesh 1개, `max_simplification_error=0.1`, Guard 시작 Capsule의 Radius/HalfHeight를 각각 1 cm 줄인 점유 검사와 Partial Path가 없는 경로 Graph다. 1 cm는 바닥 접촉 허용 오차이며 Runtime Capsule 크기를 바꾸지 않는다. Nav 준비 전 Graph와 Capsule은 `NOT_TESTED`로 남긴다. 전체 경로 Capsule Sweep과 자연 순찰 관찰은 별도 증거로 기록한다. 상세 검사와 Floor Plan 생성 계약은 TDD를 따른다.
 
 PIE가 필요한 검증은 다음을 명시한다.
 
@@ -1763,7 +1767,8 @@ DecisionScore =
 |---|---|---|
 | 탐색 | 확장 후보이며 Target 확인 | 작업: Surface Forgery / Laser Cooperation |
 | 작업 | P0/P1/P2 발동 | 탈출 준비 |
-| 작업 | Submit 성공 | 휴대 / 교체 완료 |
+| 작업 | Submit 성공 | Gameplay 복귀 / ReplicaReady 검토 |
+| ReplicaReady 검토 | E 교체 승인 | 휴대 / 교체 완료 |
 | 탈출 준비 | Exit 승인 | 탈출 실행 |
 | 탈출 실행 | Deposit 성공 | Player 정산 또는 Team Result 대기 |
 | 탈출 실행 | Route 차단 또는 재추적 | 재판단 |

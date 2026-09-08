@@ -9,6 +9,7 @@
 #include "Character/Components/HeistInventoryComponent.h"
 #include "Character/Components/HeistNoiseEmitterComponent.h"
 #include "Character/Components/HeistObjectAssemblyComponent.h"
+#include "Character/Components/HeistStatusComponent.h"
 #include "Character/Components/HeistVisionComponent.h"
 #include "Character/HeistPlayerCharacter.h"
 #include "Components/InputComponent.h"
@@ -16,6 +17,7 @@
 #include "Core/HeistGameUserSettings.h"
 #include "Core/HeistGameMode.h"
 #include "Core/HeistGameState.h"
+#include "Core/HeistGameplayTags.h"
 #include "Core/HeistHUD.h"
 #include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerState.h"
@@ -3724,6 +3726,13 @@ bool AHeistPlayerController::TryBuildGameplayRequestContext(FHeistGameplayReques
 	if (HeistPlayerState->IsArrested())
 	{
 		OutRejectReason = TEXT("PlayerArrested");
+		return false;
+	}
+
+	const UHeistStatusComponent* StatusComponent = HeistCharacter->GetStatusComponent();
+	if (IsValid(StatusComponent) && StatusComponent->HasStatusTag(FHeistGameplayTags::Get().Event_Player_Stunned))
+	{
+		OutRejectReason = TEXT("Stunned");
 		return false;
 	}
 

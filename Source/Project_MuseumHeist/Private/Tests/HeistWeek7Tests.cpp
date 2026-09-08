@@ -1,18 +1,25 @@
 #if WITH_DEV_AUTOMATION_TESTS && WITH_EDITOR
 
 #include "Character/HeistPlayerCharacter.h"
+#include "Character/Components/HeistActionComponent.h"
+#include "Character/Components/HeistForgeryComponent.h"
 #include "Core/HeistGameInstance.h"
 #include "Core/HeistGameMode.h"
+#include "Core/HeistGameState.h"
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistTypes.h"
 #include "Data/HeistArtifactDataTypes.h"
 #include "Data/HeistGameBalanceDataAsset.h"
 #include "Engine/DataTable.h"
+#include "Engine/World.h"
 #include "InputAction.h"
 #include "InputCoreTypes.h"
 #include "InputMappingContext.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/PackageName.h"
+#include "Misc/ScopeExit.h"
+#include "UI/ViewModels/HeistHUDViewModel.h"
+#include "UObject/UnrealType.h"
 #include "World/Actors/Loot/HeistLootActor.h"
 #include "World/Actors/Loot/HeistObjectDisplayCaseActor.h"
 
@@ -220,6 +227,119 @@ bool FHeistWeek7BalanceContractTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Minimum stealth reward matches balance table"), FMath::IsNearlyEqual(Balance->MinimumStealthRewardMultiplier, 0.75f));
 	TestTrue(TEXT("Arrest reward penalty matches balance table"), FMath::IsNearlyEqual(Balance->ArrestRewardPenaltyPerPlayer, 0.10f));
 	TestTrue(TEXT("Vent settlement unlocks at 180 seconds"), FMath::IsNearlyEqual(Balance->VentUnlockTime, 180.0f));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistObservationReferenceTest, "ProjectMuseumHeist.W7.ObservationReference",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHeistObservationReferenceTest::RunTest(const FString& Parameters)
+{
+	// Exercise the real HUD and RepNotify callbacks in an isolated world. This verifies
+	// presentation convergence for either snapshot order, not multiplayer transport.
+	const UWorld::InitializationValues WorldValues = UWorld::InitializationValues().AllowAudioPlayback(false).CreateNavigation(false)
+		.CreateAISystem(false).ShouldSimulatePhysics(false).SetTransactional(false);
+	UWorld* World = UWorld::CreateWorld(EWorldType::EditorPreview, false, NAME_None, nullptr, true, ERHIFeatureLevel::Num, &WorldValues);
+	if (!TestNotNull(TEXT("Transient HUD test world exists"), World))
+	{
+		return false;
+	}
+	UHeistHUDViewModel* ViewModel = nullptr;
+	ON_SCOPE_EXIT
+	{
+		if (IsValid(ViewModel))
+		{
+			ViewModel->GetPresentationChangedDelegate().Clear();
+			ViewModel->ConditionalBeginDestroy();
+		}
+		World->DestroyWorld(false);
+	};
+
+	FActorSpawnParameters SpawnParameters;
+	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	AHeistPlayerCharacter* FirstCharacter = World->SpawnActor<AHeistPlayerCharacter>(FVector::ZeroVector, FRotator::ZeroRotator, SpawnParameters);
+	AHeistPlayerCharacter* SecondCharacter = World->SpawnActor<AHeistPlayerCharacter>(FVector(500.0f, 0.0f, 0.0f), FRotator::ZeroRotator, SpawnParameters);
+	AHeistGameState* GameState = World->SpawnActor<AHeistGameState>();
+	if (!TestNotNull(TEXT("First local component owner exists"), FirstCharacter) || !TestNotNull(TEXT("Replacement component owner exists"), SecondCharacter) ||
+		!TestNotNull(TEXT("Objective GameState exists"), GameState))
+	{
+		return false;
+	}
+	UHeistActionComponent* FirstAction = FirstCharacter->GetActionComponent();
+	UHeistForgeryComponent* FirstForgery = FirstCharacter->GetForgeryComponent();
+	UHeistActionComponent* SecondAction = SecondCharacter->GetActionComponent();
+	UHeistForgeryComponent* SecondForgery = SecondCharacter->GetForgeryComponent();
+	const FBoolProperty* CastActiveProperty = FindFProperty<FBoolProperty>(UHeistActionComponent::StaticClass(), TEXT("bObservationCastActive"));
+	const FBoolProperty* ReferenceProperty = FindFProperty<FBoolProperty>(UHeistActionComponent::StaticClass(), TEXT("bObservationReferenceAvailable"));
+	const FBoolProperty* PreparedProperty = FindFProperty<FBoolProperty>(UHeistForgeryComponent::StaticClass(), TEXT("bTemplatePrepared"));
+	const FNameProperty* ArtifactProperty = FindFProperty<FNameProperty>(UHeistForgeryComponent::StaticClass(), TEXT("ActiveArtifactId"));
+	UFunction* ActionNotify = FirstAction->FindFunction(TEXT("OnRep_ObservationCastActive"));
+	UFunction* ForgeryNotify = FirstForgery->FindFunction(TEXT("OnRep_SessionRevision"));
+	if (!TestTrue(TEXT("Existing replicated snapshot fields and RepNotify callbacks are available"),
+		CastActiveProperty && ReferenceProperty && PreparedProperty && ArtifactProperty && ActionNotify && ForgeryNotify))
+	{
+		return false;
+	}
+	const auto ReceiveAction = [CastActiveProperty, ReferenceProperty, ActionNotify](UHeistActionComponent* Component, const bool bActive)
+	{
+		CastActiveProperty->SetPropertyValue_InContainer(Component, bActive);
+		ReferenceProperty->SetPropertyValue_InContainer(Component, bActive);
+		Component->ProcessEvent(ActionNotify, nullptr);
+	};
+	const auto ReceiveTemplate = [PreparedProperty, ArtifactProperty, ForgeryNotify](UHeistForgeryComponent* Component, const FName ArtifactId)
+	{
+		PreparedProperty->SetPropertyValue_InContainer(Component, !ArtifactId.IsNone());
+		ArtifactProperty->SetPropertyValue_InContainer(Component, ArtifactId);
+		Component->ProcessEvent(ForgeryNotify, nullptr);
+	};
+	const FName RequiredArtifact(TEXT("Required_A"));
+	const FName ObservedArtifact(TEXT("Observed_B"));
+	GameState->SetObjectiveSnapshot(RequiredArtifact, TEXT("RequiredCase"), EHeistObjectiveState::Available, nullptr);
+	ViewModel = NewObject<UHeistHUDViewModel>();
+	ViewModel->SetupViewModel(GameState, nullptr, FirstAction);
+
+	ReceiveAction(FirstAction, true);
+	TestTrue(TEXT("Action arriving before the template keeps the cast visible"), ViewModel->IsObservationCastActive());
+	TestFalse(TEXT("An unprepared reference stays hidden"), ViewModel->IsObservationReferenceVisible());
+	TestTrue(TEXT("Missing template does not substitute the contract target"), ViewModel->GetObservationReferenceArtifactId().IsNone() && ViewModel->GetObservationReferenceText().IsEmpty());
+	ReceiveTemplate(FirstForgery, ObservedArtifact);
+	TestTrue(TEXT("Late template notification reveals the reference without another Action event"), ViewModel->IsObservationReferenceVisible());
+	TestEqual(TEXT("Observing B references B"), ViewModel->GetObservationReferenceArtifactId(), ObservedArtifact);
+	TestTrue(TEXT("Reference text names B and not required A"), ViewModel->GetObservationReferenceText().ToString().Contains(TEXT("Observed B")) &&
+		!ViewModel->GetObservationReferenceText().ToString().Contains(TEXT("Required A")));
+	TestEqual(TEXT("Contract objective remains A while observing B"), ViewModel->GetObjectiveArtifactId(), RequiredArtifact);
+	TestTrue(TEXT("Contract text remains A"), ViewModel->GetObjectiveStateText().ToString().Contains(TEXT("Required A")));
+
+	ReceiveAction(FirstAction, false);
+	TestTrue(TEXT("Cancellation immediately clears the reference before template cleanup arrives"), !ViewModel->IsObservationReferenceVisible() &&
+		ViewModel->GetObservationReferenceArtifactId().IsNone() && ViewModel->GetObservationReferenceText().IsEmpty());
+	ReceiveTemplate(FirstForgery, NAME_None);
+	ReceiveTemplate(FirstForgery, ObservedArtifact);
+	TestFalse(TEXT("Template arriving before the Action does not reveal an inactive cast"), ViewModel->IsObservationReferenceVisible());
+	ReceiveAction(FirstAction, true);
+	TestTrue(TEXT("Action notification reveals the already prepared reference"), ViewModel->IsObservationReferenceVisible());
+	TestEqual(TEXT("Template-first order also references B"), ViewModel->GetObservationReferenceArtifactId(), ObservedArtifact);
+
+	int32 RefreshCount = 0;
+	ViewModel->GetPresentationChangedDelegate().AddLambda([&RefreshCount]() { ++RefreshCount; });
+	ViewModel->SetupViewModel(GameState, nullptr, FirstAction);
+	ViewModel->SetupViewModel(GameState, nullptr, FirstAction);
+	RefreshCount = 0;
+	ReceiveTemplate(FirstForgery, ObservedArtifact);
+	TestEqual(TEXT("Repeated Setup subscribes to the template only once"), RefreshCount, 1);
+	ViewModel->SetupViewModel(GameState, nullptr, SecondAction);
+	RefreshCount = 0;
+	ReceiveAction(FirstAction, false);
+	ReceiveTemplate(FirstForgery, NAME_None);
+	TestEqual(TEXT("Rebinding removes both previous component subscriptions"), RefreshCount, 0);
+	ReceiveTemplate(SecondForgery, ObservedArtifact);
+	ReceiveAction(SecondAction, true);
+	TestTrue(TEXT("Replacement local components drive the reference"), ViewModel->IsObservationReferenceVisible() &&
+		ViewModel->GetObservationReferenceArtifactId() == ObservedArtifact);
+	ViewModel->GetPresentationChangedDelegate().Clear();
+	ViewModel->ConditionalBeginDestroy();
+	TestFalse(TEXT("HUD destruction unbinds Action"), SecondAction->GetActionStateChangedDelegate().IsBoundToObject(ViewModel));
+	TestFalse(TEXT("HUD destruction unbinds template"), SecondForgery->GetSessionStateChangedDelegate().IsBoundToObject(ViewModel));
 	return true;
 }
 

@@ -40,8 +40,8 @@ void AHeistGameState::AddPlayerState(APlayerState* PlayerState)
 void AHeistGameState::RemovePlayerState(APlayerState* PlayerState)
 {
 	Super::RemovePlayerState(PlayerState);
-	PlayerConnectionsChangedDelegate.Broadcast(GetConnectedPlayerCount());
 	RefreshContractCarriedValue();
+	PlayerConnectionsChangedDelegate.Broadcast(GetConnectedPlayerCount());
 }
 
 int32 AHeistGameState::GetConnectedPlayerCount() const

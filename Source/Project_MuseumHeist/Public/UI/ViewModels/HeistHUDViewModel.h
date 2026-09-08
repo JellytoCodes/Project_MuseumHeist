@@ -75,6 +75,9 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
 	UPROPERTY(Transient)
 	TObjectPtr<UHeistActionComponent> ActionComponent;
 
+	UPROPERTY(Transient)
+	TObjectPtr<class UHeistForgeryComponent> ForgeryComponent;
+
 	FHeistHUDPresentationChanged PresentationChangedDelegate;
 
 #pragma endregion

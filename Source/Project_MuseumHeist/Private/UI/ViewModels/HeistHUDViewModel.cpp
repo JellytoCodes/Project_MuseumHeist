@@ -1,6 +1,8 @@
 #include "UI/ViewModels/HeistHUDViewModel.h"
 
 #include "Character/Components/HeistActionComponent.h"
+#include "Character/Components/HeistForgeryComponent.h"
+#include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerState.h"
@@ -31,6 +33,10 @@ void UHeistHUDViewModel::BeginDestroy()
 	{
 		ActionComponent->GetActionStateChangedDelegate().RemoveAll(this);
 	}
+	if (IsValid(ForgeryComponent))
+	{
+		ForgeryComponent->GetSessionStateChangedDelegate().RemoveAll(this);
+	}
 
 	Super::BeginDestroy();
 }
@@ -41,6 +47,8 @@ void UHeistHUDViewModel::BeginDestroy()
 
 void UHeistHUDViewModel::SetupViewModel(AHeistGameState* InGameState, AHeistPlayerState* InLocalPlayerState, UHeistActionComponent* InActionComponent)
 {
+	const AHeistPlayerCharacter* LocalCharacter = IsValid(InActionComponent) ? Cast<AHeistPlayerCharacter>(InActionComponent->GetOwner()) : nullptr;
+	UHeistForgeryComponent* InForgeryComponent = IsValid(LocalCharacter) ? LocalCharacter->GetForgeryComponent() : nullptr;
 	if (GameState != InGameState && IsValid(GameState))
 	{
 		GameState->GetPlayerConnectionsChangedDelegate().RemoveAll(this);
@@ -62,10 +70,15 @@ void UHeistHUDViewModel::SetupViewModel(AHeistGameState* InGameState, AHeistPlay
 	{
 		ActionComponent->GetActionStateChangedDelegate().RemoveAll(this);
 	}
+	if (ForgeryComponent != InForgeryComponent && IsValid(ForgeryComponent))
+	{
+		ForgeryComponent->GetSessionStateChangedDelegate().RemoveAll(this);
+	}
 
 	GameState = InGameState;
 	LocalPlayerState = InLocalPlayerState;
 	ActionComponent = InActionComponent;
+	ForgeryComponent = InForgeryComponent;
 
 	if (IsValid(GameState))
 	{
@@ -98,6 +111,11 @@ void UHeistHUDViewModel::SetupViewModel(AHeistGameState* InGameState, AHeistPlay
 		ActionComponent->GetActionStateChangedDelegate().RemoveAll(this);
 		ActionComponent->GetActionStateChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandleActionStateChanged);
 	}
+	if (IsValid(ForgeryComponent))
+	{
+		ForgeryComponent->GetSessionStateChangedDelegate().RemoveAll(this);
+		ForgeryComponent->GetSessionStateChangedDelegate().AddUObject(this, &UHeistHUDViewModel::RefreshPresentationState);
+	}
 
 	RefreshPresentationState();
 }
@@ -126,8 +144,11 @@ void UHeistHUDViewModel::RefreshPresentationState()
 	UE_MVVM_SET_PROPERTY_VALUE(ObservationCastEndServerTime, bLocalObservationCastActive ? ActionComponent->GetObservationCastEndServerTime() : 0.0f);
 	// This ViewModel is constructed from the locally owned PlayerState and ActionComponent.
 	// Remote players can replicate the cast state, but their HUD never consumes this instance.
-	UE_MVVM_SET_PROPERTY_VALUE(bObservationReferenceVisible, bLocalObservationCastActive && ActionComponent->ShouldShowObservationReference());
-	UE_MVVM_SET_PROPERTY_VALUE(ObservationReferenceArtifactId, bLocalObservationCastActive ? ActiveObjectiveArtifactId : NAME_None);
+	// Action and template snapshots may arrive in either order; both delegates refresh this view.
+	const FName ObservedArtifactId = bLocalObservationCastActive && ActionComponent->ShouldShowObservationReference() &&
+		IsValid(ForgeryComponent) && ForgeryComponent->HasPreparedForgeryTemplate() ? ForgeryComponent->GetActiveArtifactId() : NAME_None;
+	UE_MVVM_SET_PROPERTY_VALUE(bObservationReferenceVisible, !ObservedArtifactId.IsNone());
+	UE_MVVM_SET_PROPERTY_VALUE(ObservationReferenceArtifactId, ObservedArtifactId);
 	UE_MVVM_SET_PROPERTY_VALUE(ObjectiveArtifactId, ActiveObjectiveArtifactId);
 	UE_MVVM_SET_PROPERTY_VALUE(ObjectiveCaseId, ActiveObjectiveCaseId);
 	UE_MVVM_SET_PROPERTY_VALUE(ObjectiveState, ActiveObjectiveState);
@@ -170,8 +191,11 @@ void UHeistHUDViewModel::RefreshPresentationState()
 	FString ArtifactDisplayName = ActiveObjectiveArtifactId.ToString();
 	ArtifactDisplayName.ReplaceInline(TEXT("_"), TEXT(" "));
 	const FText ArtifactLabel = ActiveObjectiveArtifactId.IsNone() ? NSLOCTEXT("HeistHUD", "UnknownObjectiveArtifact", "목표 유물") : FText::FromString(ArtifactDisplayName);
+	FString ObservedArtifactDisplayName = ObservedArtifactId.ToString();
+	ObservedArtifactDisplayName.ReplaceInline(TEXT("_"), TEXT(" "));
 	UE_MVVM_SET_PROPERTY_VALUE(ObservationReferenceText,
-							   bLocalObservationCastActive ? FText::Format(NSLOCTEXT("HeistHUD", "ObservationReferenceFormat", "참고 작품  {0}"), ArtifactLabel) : FText::GetEmpty());
+							   !ObservedArtifactId.IsNone() ? FText::Format(NSLOCTEXT("HeistHUD", "ObservationReferenceFormat", "참고 작품  {0}"),
+								   FText::FromString(ObservedArtifactDisplayName)) : FText::GetEmpty());
 
 	FText NewObjectiveStateText;
 	switch (ActiveObjectiveState)

@@ -117,8 +117,8 @@ $infoPath = Join-Path $packageRoot 'BuildInfo.json'
 $info = [ordered]@{ schemaVersion = 1; projectVersion = '0.0.1'; configuration = 'Development'; gitCommit = 'aaaaaaaaaaaa'; gitDirty = $false }
 function Save-FixtureInfo { $info | ConvertTo-Json | Set-Content -LiteralPath $infoPath -Encoding utf8 }
 function Invoke-FixtureValidator {
-	param([int]$ExpectedExit = 0, [string]$ExpectedText = 'Result=PASS')
-	$output = & (Get-Process -Id $PID).Path -NoProfile -File (Join-Path $packagingRoot 'ValidatePackage.ps1') -PackageRoot $packageRoot -ExpectedConfiguration Development -ExpectedVersion 0.0.1 -ExpectedGitCommit aaaaaaaaaaaa -RequireClean 2>&1
+	param([int]$ExpectedExit = 0, [string]$ExpectedText = 'Result=PASS', [string]$Root = $packageRoot)
+	$output = & (Get-Process -Id $PID).Path -NoProfile -File (Join-Path $packagingRoot 'ValidatePackage.ps1') -PackageRoot $Root -ExpectedConfiguration Development -ExpectedVersion 0.0.1 -ExpectedGitCommit aaaaaaaaaaaa -RequireClean 2>&1
 	Assert-Fixture ($LASTEXITCODE -eq $ExpectedExit) ("Validator exit mismatch: {0}" -f ($output -join "`n"))
 	Assert-Fixture (($output -join "`n") -like "*$ExpectedText*") 'Expected validation result was absent.'
 }
@@ -183,6 +183,27 @@ Test-Fixture 'prepare_depot_preserves_schema2_provenance' {
 	$depotInfo = Get-Content -LiteralPath (Join-Path $candidateOutput 'MuseumHeist-0.0.1-Development-Windows/DepotCandidate.json') -Raw | ConvertFrom-Json
 	Assert-Fixture $depotInfo.previewOnly 'Depot fixture must remain preview-only.'
 }
+$splitPackageRoot = Join-Path $ResultDirectory 'split-package'
+$splitBootstrap = Join-Path $splitPackageRoot 'A'
+$splitPayload = Join-Path $splitPackageRoot 'B'
+New-Item -ItemType Directory -Path $splitBootstrap, $splitPayload -Force | Out-Null
+foreach ($name in @('Project_MuseumHeist.exe', 'BuildInfo.json', 'ExternalContentLock.json', 'steam_appid.txt')) {
+	Copy-Item -LiteralPath (Join-Path $packageRoot $name) -Destination $splitBootstrap
+}
+foreach ($name in @('Project_MuseumHeist', 'content.pak', 'content.utoc', 'content.ucas', 'steam_api64.dll', 'opencv_world_fixture.dll', 'vc_redist.x64.exe')) {
+	Copy-Item -LiteralPath (Join-Path $packageRoot $name) -Destination $splitPayload -Recurse
+}
+Test-Fixture 'split_package_payload_is_not_combined' { Invoke-FixtureValidator -Root $splitPackageRoot -ExpectedExit 1 -ExpectedText 'Pak artifact is missing' }
+$splitCandidateOutput = Join-Path $ResultDirectory 'split-depot'
+Test-Fixture 'prepare_depot_rejects_split_package_before_writing' {
+	$output = & (Get-Process -Id $PID).Path -NoProfile -File (Join-Path $packagingRoot 'PrepareSteamDepot.ps1') -PackageRoot $splitPackageRoot -AppId 480 -DepotId 4801 -OutputRoot $splitCandidateOutput 2>&1
+	Assert-Fixture ($LASTEXITCODE -ne 0) 'Prepare accepted a split package.'
+	Assert-Fixture (-not (Test-Path -LiteralPath $splitCandidateOutput)) 'Prepare wrote an invalid candidate.'
+}
+Move-Item -LiteralPath (Join-Path $splitBootstrap 'BuildInfo.json') -Destination $splitPayload
+Test-Fixture 'build_info_must_be_beside_bootstrap' { Invoke-FixtureValidator -Root $splitPackageRoot -ExpectedExit 1 -ExpectedText 'BuildInfo.json is missing beside the bootstrap' }
+Copy-Item -LiteralPath (Join-Path $packageRoot 'Project_MuseumHeist.exe') -Destination $splitPayload
+Test-Fixture 'multiple_bootstraps_are_ambiguous' { Invoke-FixtureValidator -Root $splitPackageRoot -ExpectedExit 1 -ExpectedText 'Expected exactly one bootstrap executable; found 2' }
 $fakeEngine = Join-Path $ResultDirectory 'engine'
 $batchDirectory = Join-Path $fakeEngine 'Engine/Build/BatchFiles'
 New-Item -ItemType Directory -Path $batchDirectory -Force | Out-Null

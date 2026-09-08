@@ -199,27 +199,53 @@ $expectedResolution =
     }
 
 $candidateDirectory = Join-Path $resolvedSourceRoot "Candidates"
+$validCandidateCount = 0
 if (-not (Test-Path -LiteralPath $candidateDirectory -PathType Container))
 {
     $failures.Add("Missing candidate source directory: $candidateDirectory")
 }
 elseif ($expectedResolution -gt 0)
 {
-    foreach ($candidateFile in @(Get-ChildItem -LiteralPath $candidateDirectory -Filter "*.png" -File))
+    foreach ($manifestTemplate in @($manifest.templates))
     {
+        $candidateSourceFile = [string]$manifestTemplate.candidate_source_file
+        if ([string]::IsNullOrWhiteSpace($candidateSourceFile))
+        {
+            $metadataPath = Join-Path $resolvedSourceRoot "$($manifestTemplate.slot).asset.json"
+            if (Test-Path -LiteralPath $metadataPath -PathType Leaf)
+            {
+                $metadata = Get-Content -LiteralPath $metadataPath -Raw -Encoding UTF8 | ConvertFrom-Json
+                $candidateSourceFile = [string]$metadata.candidate_source_file
+            }
+        }
+        if ([string]::IsNullOrWhiteSpace($candidateSourceFile))
+        {
+            $failures.Add("Candidate source_file is not declared for $($manifestTemplate.template_id).")
+            continue
+        }
+        $candidatePath = Join-Path $resolvedSourceRoot $candidateSourceFile
+        if (-not (Test-Path -LiteralPath $candidatePath -PathType Leaf))
+        {
+            $failures.Add("Missing candidate image for $($manifestTemplate.template_id): $candidatePath")
+            continue
+        }
         $candidateImage = $null
         try
         {
-            $candidateImage = [System.Drawing.Image]::FromFile($candidateFile.FullName)
+            $candidateImage = [System.Drawing.Image]::FromFile($candidatePath)
             if ($candidateImage.Width -ne $expectedResolution -or $candidateImage.Height -ne $expectedResolution)
             {
                 $failures.Add(
-                    "Candidate resolution contract failed for $($candidateFile.Name): Expected=$($expectedResolution)x$expectedResolution Actual=$($candidateImage.Width)x$($candidateImage.Height)")
+                    "Candidate resolution contract failed for $($candidateSourceFile): Expected=$($expectedResolution)x$expectedResolution Actual=$($candidateImage.Width)x$($candidateImage.Height)")
+            }
+            else
+            {
+                ++$validCandidateCount
             }
         }
         catch
         {
-            $failures.Add("Candidate image could not be read: $($candidateFile.FullName) Error=$($_.Exception.Message)")
+            $failures.Add("Candidate image could not be read: $candidatePath Error=$($_.Exception.Message)")
         }
         finally
         {
@@ -245,6 +271,22 @@ if ($assetDefinitions.Count -ne 40)
 {
     $failures.Add("Source pack must contain exactly 40 asset metadata files; found $($assetDefinitions.Count).")
 }
+$assetByTemplateId = @{}
+foreach ($assetDefinition in $assetDefinitions)
+{
+    if ([string]::IsNullOrWhiteSpace($assetDefinition.template_id))
+    {
+        $failures.Add("Asset metadata contains an empty TemplateId.")
+    }
+    elseif ($assetByTemplateId.ContainsKey($assetDefinition.template_id))
+    {
+        $failures.Add("Duplicate asset metadata TemplateId: $($assetDefinition.template_id)")
+    }
+    else
+    {
+        $assetByTemplateId[$assetDefinition.template_id] = $assetDefinition
+    }
+}
 
 $manifestByTemplateId = @{}
 if ($null -ne $manifest)
@@ -262,6 +304,10 @@ if ($null -ne $manifest)
         else
         {
             $manifestByTemplateId[$manifestTemplate.template_id] = $manifestTemplate
+            if (-not $assetByTemplateId.ContainsKey($manifestTemplate.template_id))
+            {
+                $failures.Add("Missing asset metadata for source manifest TemplateId: $($manifestTemplate.template_id)")
+            }
         }
     }
 }
@@ -305,7 +351,7 @@ $validDataRowCount = 0
 $emptySubmitPrerequisiteDataContractCount = 0
 $fullFillAntiFillDataContractCount = 0
 
-foreach ($assetDefinition in $assetDefinitions)
+foreach ($assetDefinition in @($assetByTemplateId.Values | Sort-Object template_id))
 {
     if ($assetDefinition.category -eq $firstCategoryName)
     {
@@ -585,7 +631,7 @@ else
 }
 Write-Output (
     "Surface forgery source pack validation: Pool=$PoolId Templates=$($assetDefinitions.Count) $firstCategoryName=$firstCategoryCount $secondCategoryName=$secondCategoryCount " +
-    "Easy=$easyCount Medium=$mediumCount Hard=$hardCount References=$validReferenceCount Masks=$validMaskCount Palettes=$validPaletteCount " +
+    "Easy=$easyCount Medium=$mediumCount Hard=$hardCount Candidates=$validCandidateCount References=$validReferenceCount Masks=$validMaskCount Palettes=$validPaletteCount " +
     "DataRows=$validDataRowCount EmptySubmitPrerequisiteData=$emptySubmitPrerequisiteResult FullFillAntiFillData=$fullFillAntiFillResult " +
     "ArtifactDefault=$artifactDefaultResult Invalid=$($failures.Count) Result=$resultText")
 

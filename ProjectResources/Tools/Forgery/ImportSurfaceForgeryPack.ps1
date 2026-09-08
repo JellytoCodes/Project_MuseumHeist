@@ -9,7 +9,7 @@ $projectFile = Join-Path $projectRoot "Project_MuseumHeist.uproject"
 $dataTableSource = Join-Path $projectRoot "ProjectResources\DataTableImports\DT_ForgeryTemplateRow.json"
 $savedDirectory = Join-Path $projectRoot "Saved\Codex"
 $temporaryPythonPath = Join-Path $savedDirectory "ImportSurfaceForgeryPack.py"
-$importLogPath = Join-Path $savedDirectory "SurfaceForgeryImport.log"
+$importLogPath = Join-Path $savedDirectory ("SurfaceForgeryImport-{0}.log" -f [Guid]::NewGuid().ToString("N"))
 $derivedDataCacheDirectory = Join-Path $savedDirectory "DerivedDataCache"
 
 foreach ($requiredPath in @($UnrealEditorCmd, $projectFile, $dataTableSource))
@@ -49,8 +49,6 @@ texture_records = []
 for pool_id in ("M01", "M02", "M03"):
     source_directory = os.path.join(project_root, "ProjectResources", "SourceArt", "Forgery", pool_id)
     destination_path = "/Game/Data/Forgery/Textures/" + pool_id
-    if unreal.EditorAssetLibrary.does_directory_exist(destination_path):
-        unreal.EditorAssetLibrary.delete_directory(destination_path)
     if not unreal.EditorAssetLibrary.does_directory_exist(destination_path):
         if not unreal.EditorAssetLibrary.make_directory(destination_path):
             raise RuntimeError("Failed to create generated texture directory: " + destination_path)
@@ -159,6 +157,11 @@ try
     if ($LASTEXITCODE -ne 0)
     {
         throw "Unreal asset import failed with exit code $LASTEXITCODE. Log=$importLogPath"
+    }
+    if (-not (Test-Path -LiteralPath $importLogPath -PathType Leaf) -or
+        -not (Select-String -LiteralPath $importLogPath -SimpleMatch "SurfaceForgeryImport Result=PASS Resolution=1024x1024 Textures=240 DataRows=120" -Quiet))
+    {
+        throw "Unreal asset import did not confirm 240 textures and 120 DataTable rows. Log=$importLogPath"
     }
 }
 finally

@@ -3,8 +3,10 @@
 #include "Character/HeistPlayerCharacter.h"
 #include "Character/Components/HeistInventoryComponent.h"
 #include "Character/Components/HeistObjectAssemblyComponent.h"
+#include "Character/Components/HeistStatusComponent.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistGameMode.h"
+#include "Core/HeistGameplayTags.h"
 #include "Core/HeistPlayerState.h"
 #include "Data/HeistArtifactDataTypes.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
@@ -1171,6 +1173,12 @@ bool UHeistForgeryComponent::TryConfirmReplicaSwap()
 		return false;
 	}
 
+	const UHeistStatusComponent* StatusComponent = HeistCharacter->GetStatusComponent();
+	if (IsValid(StatusComponent) && StatusComponent->HasStatusTag(FHeistGameplayTags::Get().Event_Player_Stunned))
+	{
+		return false;
+	}
+
 	int32 AddedInventoryInstanceId = INDEX_NONE;
 	FName RejectReason = NAME_None;
 	bHandlingCaseSessionCallback = true;
@@ -1201,6 +1209,18 @@ bool UHeistForgeryComponent::TryRestartForgeryFromPreview()
 		return false;
 	}
 
+	const UHeistStatusComponent* StatusComponent = HeistCharacter->GetStatusComponent();
+	if (IsValid(StatusComponent) && StatusComponent->HasStatusTag(FHeistGameplayTags::Get().Event_Player_Stunned))
+	{
+		return false;
+	}
+	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	if (IsValid(HeistGameState) &&
+		(HeistGameState->GetAlertLevel() == EHeistAlertLevel::Alarmed || HeistGameState->GetAlertLevel() == EHeistAlertLevel::Lockdown))
+	{
+		return false;
+	}
+
 	FName RejectReason = NAME_None;
 	bHandlingCaseSessionCallback = true;
 	const bool bRestarted = TargetDisplayCase->TryRestartForgeryFromPreview(HeistPlayerState, RejectReason);
@@ -1217,7 +1237,6 @@ bool UHeistForgeryComponent::TryRestartForgeryFromPreview()
 	++ForgeryScoreRevision;
 	bSessionActive = true;
 	const float SafeDurationSeconds = FMath::Max(1.0f, ActiveSessionDurationSeconds > 0.0f ? ActiveSessionDurationSeconds : TemplateForgeryDuration);
-	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	const float ServerWorldTime = IsValid(HeistGameState) ? HeistGameState->GetServerWorldTimeSeconds() : (GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f);
 	SessionEndServerTime = ServerWorldTime + SafeDurationSeconds;
 	++SessionRevision;
