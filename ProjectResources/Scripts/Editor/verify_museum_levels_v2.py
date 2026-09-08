@@ -530,6 +530,7 @@ def verify_guard_navigation(world, guards, waypoint_routes, mode):
         "capsule_start_occupancy": {
             "status": "NOT_TESTED", "checked_guards": 0, "failed_guards": [],
             "scope": "SavedGuardCapsulesAgainstWorldGeometry_AuthoredGuardsIgnored",
+            "query_inset_cm": 1.0,
         },
         "capsule_path_sweeps": "NOT_TESTED",
         "natural_patrol": "NOT_TESTED",
@@ -576,39 +577,6 @@ def verify_guard_navigation(world, guards, waypoint_routes, mode):
                 result.update(status="FAIL", reason="SavedRecastSettingsMismatch")
                 return result
 
-            # Check the actual authored capsule, including an AlreadyAtGoal start.
-            # This is a stationary world-geometry query, not a path sweep or PIE.
-            occupancy = result["capsule_start_occupancy"]
-            for guard in guards:
-                capsule = guard.get_component_by_class(unreal.CapsuleComponent)
-                if capsule is None:
-                    occupancy["failed_guards"].append({"guard": actor_label(guard), "reason": "MissingCapsule"})
-                    continue
-                center = capsule.get_world_location()
-                radius = float(capsule.get_scaled_capsule_radius())
-                half_height = float(capsule.get_scaled_capsule_half_height())
-                if (not all(math.isfinite(value) for value in (center.x, center.y, center.z, radius, half_height))
-                        or radius <= 0.0 or half_height < radius):
-                    occupancy["failed_guards"].append({"guard": actor_label(guard), "reason": "InvalidCapsuleDimensions"})
-                    continue
-                hit = unreal.SystemLibrary.capsule_trace_single_by_profile(
-                    world, center, center, radius, half_height, capsule.get_collision_profile_name(),
-                    False, guards, unreal.DrawDebugTrace.NONE, True,
-                )
-                occupancy["checked_guards"] += 1
-                hit_fields = hit.to_dict() if hit is not None else {}
-                if hit_fields.get("blocking_hit"):
-                    hit_actor = hit_fields.get("hit_actor")
-                    occupancy["failed_guards"].append({
-                        "guard": actor_label(guard), "reason": "SavedGuardCapsuleBlocked",
-                        "hit_actor": actor_label(hit_actor) if hit_actor else None,
-                        "initial_overlap": bool(hit_fields.get("initial_overlap")),
-                    })
-            occupancy["status"] = "FAIL" if occupancy["failed_guards"] else "PASS"
-            if occupancy["status"] != "PASS":
-                result.update(status="FAIL", reason="SavedGuardCapsuleOccupancyFailed")
-                return result
-
         navigation = unreal.NavigationSystemV1.get_navigation_system(world)
         if navigation is None:
             result["reason"] = "MissingNavigationSystem"
@@ -624,6 +592,43 @@ def verify_guard_navigation(world, guards, waypoint_routes, mode):
         if unreal.NavigationSystemV1.is_navigation_being_built_or_locked(world):
             result["reason"] = "NavigationBuildingOrLocked"
             return result
+
+        if mode == "strict":
+            # Check the actual authored capsule, including an AlreadyAtGoal start.
+            # This is a stationary world-geometry query, not a path sweep or PIE.
+            # Match the contract automation's 1cm inset for normal surface contact.
+            # Wait for world/navigation readiness before certifying physics queries.
+            occupancy = result["capsule_start_occupancy"]
+            for guard in guards:
+                capsule = guard.get_component_by_class(unreal.CapsuleComponent)
+                if capsule is None:
+                    occupancy["failed_guards"].append({"guard": actor_label(guard), "reason": "MissingCapsule"})
+                    continue
+                center = capsule.get_world_location()
+                radius = float(capsule.get_scaled_capsule_radius())
+                half_height = float(capsule.get_scaled_capsule_half_height())
+                if (not all(math.isfinite(value) for value in (center.x, center.y, center.z, radius, half_height))
+                        or radius <= 0.0 or half_height < radius):
+                    occupancy["failed_guards"].append({"guard": actor_label(guard), "reason": "InvalidCapsuleDimensions"})
+                    continue
+                hit = unreal.SystemLibrary.capsule_trace_single_by_profile(
+                    world, center, center, max(0.1, radius - occupancy["query_inset_cm"]),
+                    max(0.1, half_height - occupancy["query_inset_cm"]), capsule.get_collision_profile_name(),
+                    False, guards, unreal.DrawDebugTrace.NONE, True,
+                )
+                occupancy["checked_guards"] += 1
+                hit_fields = hit.to_dict() if hit is not None else {}
+                if hit_fields.get("blocking_hit"):
+                    hit_actor = hit_fields.get("hit_actor")
+                    occupancy["failed_guards"].append({
+                        "guard": actor_label(guard), "reason": "SavedGuardCapsuleBlocked",
+                        "hit_actor": actor_label(hit_actor) if hit_actor else None,
+                        "initial_overlap": bool(hit_fields.get("initial_overlap")),
+                    })
+            occupancy["status"] = "FAIL" if occupancy["failed_guards"] else "PASS"
+            if occupancy["status"] != "PASS":
+                result.update(status="FAIL", reason="SavedGuardCapsuleOccupancyFailed")
+                return result
 
         # UE Python maps bool + FVector out to FVector on success, None on failure.
         # NavData=None resolves existing default data with DontCreate. The actual
