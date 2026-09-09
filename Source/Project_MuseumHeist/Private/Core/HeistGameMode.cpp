@@ -343,7 +343,7 @@ void AHeistGameMode::HandleMatchPhaseChanged(const EHeistMatchPhase PreviousMatc
 void AHeistGameMode::HandlePlayerConnectionsChanged(const int32 ConnectedPlayerCount)
 {
 	const AHeistGameState* HeistGameState = GetGameState<AHeistGameState>();
-	if (!HasAuthority() || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame)
+	if (!HasAuthority() || !IsValid(GetWorld()) || GetWorld()->bIsTearingDown || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame)
 	{
 		return;
 	}
@@ -430,8 +430,8 @@ void AHeistGameMode::HandlePlayerPawnLeavingGame(AHeistPlayerController* Exiting
 	AHeistPlayerState* ExitingPlayerState = IsValid(ExitingController) ? ExitingController->GetPlayerState<AHeistPlayerState>() : nullptr;
 	AHeistPlayerCharacter* ExitingCharacter = IsValid(ExitingController) ? Cast<AHeistPlayerCharacter>(ExitingController->GetPawn()) : nullptr;
 	UHeistInventoryComponent* InventoryComponent = IsValid(ExitingCharacter) ? ExitingCharacter->GetInventoryComponent() : nullptr;
-	if (!HasAuthority() || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame || !HeistGameState->IsContractInitialized() ||
-		!IsValid(ExitingPlayerState) || !IsValid(ExitingCharacter) || !IsValid(InventoryComponent))
+	if (!HasAuthority() || !IsValid(GetWorld()) || GetWorld()->bIsTearingDown || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame ||
+		!HeistGameState->IsContractInitialized() || !IsValid(ExitingPlayerState) || !IsValid(ExitingCharacter) || !IsValid(InventoryComponent))
 	{
 		return;
 	}
@@ -447,6 +447,13 @@ void AHeistGameMode::HandlePlayerPawnLeavingGame(AHeistPlayerController* Exiting
 
 void AHeistGameMode::Logout(AController* Exiting)
 {
+	// Whole-world teardown cannot recover pickups or settle a continuing run. Actor EndPlay owns its cleanup.
+	if (UWorld* World = GetWorld(); IsValid(World) && World->bIsTearingDown)
+	{
+		Super::Logout(Exiting);
+		return;
+	}
+
 	AHeistPlayerState* ExitingPlayerState = IsValid(Exiting) ? Exiting->GetPlayerState<AHeistPlayerState>() : nullptr;
 	const bool bExitingPlayerEscaped = IsValid(ExitingPlayerState) && ExitingPlayerState->IsEscaped();
 	if (HasAuthority() && IsValid(ExitingPlayerState))

@@ -1868,11 +1868,7 @@ void UHeistDebugFunctionLibrary::DebugObjectAssemblyContentSpawnFor(APlayerContr
 void UHeistDebugFunctionLibrary::DebugObjectAssemblyKickPlayer(APlayerController* PlayerController, const int32 PlayerId)
 {
 #if !UE_BUILD_SHIPPING
-	if (RejectDisabledObjectAssemblyMutation(PlayerController, TEXT("kick player")))
-	{
-		return;
-	}
-
+	// This historical command is shared multiplayer cleanup, independent of Object Assembly.
 	if (!IsValid(PlayerController) || !PlayerController->HasAuthority() || !IsValid(PlayerController->GetWorld()))
 	{
 		Message(PlayerController, TEXT("Object Assembly kick player: Result=REJECTED Reason=ListenServerAuthorityRequired"), EHeistDebugLevel::Warning, true);
