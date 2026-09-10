@@ -15,6 +15,7 @@
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Core/HeistCollisionChannels.h"
+#include "Core/HeistGameMode.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistGameplayTags.h"
 #include "Core/HeistLogChannels.h"
@@ -183,6 +184,22 @@ void AHeistPlayerCharacter::BeginPlay()
 		*FirstPersonCamera->GetAttachSocketName().ToString(), *FirstPersonCamera->GetRelativeLocation().ToCompactString(), FirstPersonCamera->FieldOfView,
 		FirstPersonCamera->bUsePawnControlRotation ? TEXT("true") : TEXT("false"), bUseControllerRotationYaw ? TEXT("true") : TEXT("false"),
 		GetCharacterMovement()->bOrientRotationToMovement ? TEXT("true") : TEXT("false"), GetMesh()->IsVisible() ? TEXT("true") : TEXT("false"), GetMesh()->CastShadow ? TEXT("true") : TEXT("false"));
+}
+
+void AHeistPlayerCharacter::Destroyed()
+{
+	// Kick destroys the pawn first. Recover its inventory before Super unpossesses it.
+	if (HasAuthority())
+	{
+		AHeistPlayerController* PlayerController = Cast<AHeistPlayerController>(GetController());
+		AHeistGameMode* GameMode = GetWorld() != nullptr ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
+		if (IsValid(GameMode) && IsValid(PlayerController))
+		{
+			GameMode->HandlePlayerPawnLeavingGame(PlayerController);
+		}
+	}
+
+	Super::Destroyed();
 }
 
 void AHeistPlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)

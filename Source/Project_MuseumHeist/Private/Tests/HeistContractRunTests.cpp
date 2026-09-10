@@ -673,9 +673,10 @@ bool IsOwningPaintingCaseRelevant(const int32 PlayerId, const FName CaseId)
 	return IsValid(PlayerController) && IsValid(FindPaintingCase(PlayerController->GetWorld(), CaseId));
 }
 
-bool TeleportServerPlayerIntoInteraction(const int32 PlayerId, AActor* TargetActor)
+bool TeleportServerPlayerIntoInteraction(AHeistPlayerCharacter* Character, AActor* TargetActor)
 {
-	AHeistPlayerCharacter* Character = GetServerCharacterById(PlayerId);
+	const AHeistPlayerState* PlayerState = IsValid(Character) ? Character->GetPlayerState<AHeistPlayerState>() : nullptr;
+	const int32 PlayerId = IsValid(PlayerState) ? PlayerState->HeistPlayerId : INDEX_NONE;
 	UWorld* World = IsValid(Character) ? Character->GetWorld() : nullptr;
 	UCharacterMovementComponent* Movement = IsValid(Character) ? Character->GetCharacterMovement() : nullptr;
 	const UCapsuleComponent* Capsule = IsValid(Character) ? Character->GetCapsuleComponent() : nullptr;
@@ -755,6 +756,11 @@ bool TeleportServerPlayerIntoInteraction(const int32 PlayerId, AActor* TargetAct
 		   SupportedCandidateCount == 0 ? TEXT("NoWalkableSupportCandidateOverlappingInteractionSphere") : TEXT("NoCollisionFreePlacementOverlappingInteractionSphere"),
 		   *FString::Join(RejectedCandidates, TEXT("; ")));
 	return false;
+}
+
+bool TeleportServerPlayerIntoInteraction(const int32 PlayerId, AActor* TargetActor)
+{
+	return TeleportServerPlayerIntoInteraction(GetServerCharacterById(PlayerId), TargetActor);
 }
 
 bool IsServerPlayerOverlapping(const int32 PlayerId, const AActor* TargetActor)
@@ -3292,6 +3298,529 @@ bool EnqueueTwoRunContractScenario(FAutomationTestBase* Test, const int32 Player
 	return true;
 }
 
+bool EnqueueCarrierDisconnectScenario(FAutomationTestBase* Test, const bool bUseKick)
+{
+	const TSharedRef<FHeistContractRunAutomationState> State = MakeShared<FHeistContractRunAutomationState>();
+	State->PlayerCount = 2;
+	struct FCarrierDisconnectState
+	{
+		TWeakObjectPtr<UWorld> ServerWorld;
+		TSet<TWeakObjectPtr<AHeistLootActor>> ExistingLoot;
+		TWeakObjectPtr<AHeistLootActor> DroppedLoot;
+		TWeakObjectPtr<AHeistDroppedOriginalActor> DroppedOriginal;
+		FHeistInventoryItem Original;
+		float LooseWeight = 0.0f;
+	};
+	const auto Carrier = MakeShared<FCarrierDisconnectState>();
+	const auto GetHost = [Carrier]() { return GetContractRunLocalHeistPlayerController(Carrier->ServerWorld.Get()); };
+	const auto CountLooseItems = [State](const UHeistInventoryComponent* Inventory)
+	{
+		int32 Quantity = 0;
+		if (IsValid(Inventory))
+		{
+			for (const FHeistInventoryFastArrayItem& Entry : Inventory->GetReplicatedInventory().Items)
+			{
+				if (!Entry.InventoryItem.IsOriginalArtifact() && Entry.InventoryItem.ItemId == State->SelectedLootRowId)
+				{
+					Quantity += Entry.InventoryItem.Quantity;
+				}
+			}
+		}
+		return Quantity;
+	};
+	const auto CheckContractAssignment = [Test, State](const FHeistContractSnapshot& Contract)
+	{
+		bool bPassed = Test->TestEqual(TEXT("Carrier exit preserves public StartPlayers=2"), Contract.ContractStartPlayerCount, 2);
+		bPassed &= Test->TestEqual(TEXT("Carrier exit preserves quota"), Contract.LootValueQuota, State->FirstRunContract.LootValueQuota);
+		bPassed &= Test->TestEqual(TEXT("Carrier exit preserves assignment seed"), Contract.AssignmentSeed, State->FirstRunContract.AssignmentSeed);
+		bPassed &= Test->TestEqual(TEXT("Carrier exit preserves Required Artifact"), Contract.RequiredTargetArtifactId, State->FirstRunContract.RequiredTargetArtifactId);
+		bPassed &= Test->TestEqual(TEXT("Carrier exit preserves Required Case"), Contract.RequiredTargetCaseId, State->FirstRunContract.RequiredTargetCaseId);
+		return bPassed;
+	};
+	Test->AddCommand(new FEditorLoadMap(TEXT("/Game/Maps/TitleMenuMap")));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("configure carrier-disconnect two-player PIE"), [State]()
+	{
+		ULevelEditorPlaySettings* PlaySettings = GetMutableDefault<ULevelEditorPlaySettings>();
+		if (!IsValid(PlaySettings))
+		{
+			return false;
+		}
+		PlaySettings->GetPlayNetMode(State->OriginalNetMode);
+		PlaySettings->GetRunUnderOneProcess(State->bOriginalRunUnderOneProcess);
+		PlaySettings->GetPlayNumberOfClients(State->OriginalClientCount);
+		State->bCapturedPlaySettings = true;
+		PlaySettings->SetRunUnderOneProcess(true);
+		PlaySettings->SetPlayNetMode(EPlayNetMode::PIE_ListenServer);
+		PlaySettings->SetPlayNumberOfClients(2);
+		return true;
+	}));
+	Test->AddCommand(new FStartPIECommand(false));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("carrier-disconnect title worlds"), []()
+	{
+		const TArray<UWorld*> Worlds = GetContractRunPIEWorlds();
+		return Worlds.Num() == 2 && !Worlds.ContainsByPredicate([](UWorld* World) { return !IsValid(GetContractRunLocalHeistPlayerController(World)); });
+	}, 45.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("carrier-disconnect host online session"), []()
+	{
+		UWorld* World = GetContractRunServerWorld();
+		UHeistGameInstance* Instance = IsValid(World) ? Cast<UHeistGameInstance>(World->GetGameInstance()) : nullptr;
+		return IsValid(Instance) && Instance->RequestHostSession();
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("carrier-disconnect normal Lobby and travel ACKs"), []()
+	{
+		UWorld* World = GetContractRunServerWorld();
+		const UHeistGameInstance* Instance = IsValid(World) ? Cast<UHeistGameInstance>(World->GetGameInstance()) : nullptr;
+		return AreContractRunWorldsReady(2, EHeistMatchPhase::Lobby, false) && IsValid(Instance) && Instance->IsHostingOnlineSession() && Instance->HasActiveNamedOnlineSession();
+	}, 60.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("carrier-disconnect select M01"), []()
+	{
+		AHeistPlayerController* Host = GetOwningPlayerControllerById(1);
+		if (!IsValid(Host))
+		{
+			return false;
+		}
+		Host->RequestSetLobbyMapSelection(FName(TEXT("M01")));
+		return true;
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("carrier-disconnect map selection"), []()
+	{
+		UWorld* World = GetContractRunServerWorld();
+		const UHeistGameInstance* Instance = IsValid(World) ? Cast<UHeistGameInstance>(World->GetGameInstance()) : nullptr;
+		return IsValid(Instance) && Instance->GetSelectedMapId() == FName(TEXT("M01")) && !Instance->IsMapSelectionUpdatePending();
+	}, 15.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("carrier-disconnect ready and start"), []()
+	{
+		UWorld* World = GetContractRunServerWorld();
+		UHeistGameInstance* Instance = IsValid(World) ? Cast<UHeistGameInstance>(World->GetGameInstance()) : nullptr;
+		return IsValid(Instance) && SetAllContractRunLobbyPlayersReady(World) && Instance->RequestStartSelectedGameplayMap();
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("carrier-disconnect public contract and initial guard scaling"), []()
+	{
+		UWorld* World = GetContractRunServerWorld();
+		const AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
+		const AHeistGameMode* GameMode = IsValid(World) ? World->GetAuthGameMode<AHeistGameMode>() : nullptr;
+		return AreContractRunWorldsReady(2, EHeistMatchPhase::InGame, true) && IsValid(GameState) && GameState->IsContractInitialized() &&
+			GameState->GetContractSnapshot().ContractStartPlayerCount == 2 && IsValid(GameMode) && GameMode->IsPlayerCountGuardScalingApplied() &&
+			GameMode->GetDifficultyAppliedPlayerCount() == 2;
+	}, 60.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("isolate carrier recovery and select real match loot"), [State, Carrier]()
+	{
+		UWorld* World = GetContractRunServerWorld();
+		AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
+		if (!IsValid(GameState))
+		{
+			return false;
+		}
+		Carrier->ServerWorld = World;
+		State->FirstRunContract = GameState->GetContractSnapshot();
+		for (TActorIterator<AHeistGuardCharacter> It(World); It; ++It)
+		{
+			if (UHeistGuardStateComponent* GuardState = It->GetGuardStateComponent(); IsValid(GuardState))
+			{
+				GuardState->SetDisabled(true);
+			}
+		}
+		for (TActorIterator<AHeistSecurityCameraActor> It(World); It; ++It)
+		{
+			It->Destroy();
+		}
+		GameState->SetAlertSnapshot(0.0f, EHeistAlertLevel::Quiet, FName(TEXT("W9CarrierDisconnectSetup")));
+		TArray<AHeistLootActor*> Candidates;
+		for (TActorIterator<AHeistLootActor> It(World); It; ++It)
+		{
+			Carrier->ExistingLoot.Add(*It);
+			if (It->ActorHasTag(FName(TEXT("HeistMatchSpawnedLooseLoot"))) && It->IsLootAvailable() && It->GetScoreValue() > 0)
+			{
+				Candidates.Add(*It);
+			}
+		}
+		Candidates.Sort([](const AHeistLootActor& Left, const AHeistLootActor& Right)
+		{
+			const FString LeftRow = Left.GetLootRowId().ToString();
+			const FString RightRow = Right.GetLootRowId().ToString();
+			return LeftRow != RightRow ? LeftRow < RightRow : Left.GetPathName() < Right.GetPathName();
+		});
+		if (Candidates.IsEmpty())
+		{
+			return false;
+		}
+		AHeistLootActor* Loot = Candidates[0];
+		State->SelectedLootActorName = Loot->GetFName();
+		State->SelectedLootRowId = Loot->GetLootRowId();
+		State->SelectedLootActorLocation = Loot->GetActorLocation();
+		State->SelectedLootValue = Loot->GetScoreValue();
+		Carrier->LooseWeight = Loot->GetWeightValue();
+		return TeleportServerPlayerIntoInteraction(2, FindPaintingCase(World, State->FirstRunContract.RequiredTargetCaseId));
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("carrier Required Case relevance and overlap"), [State]()
+	{
+		return IsOwningPaintingCaseRelevant(2, State->FirstRunContract.RequiredTargetCaseId) &&
+			IsServerPlayerOverlapping(2, FindPaintingCase(GetContractRunServerWorld(), State->FirstRunContract.RequiredTargetCaseId));
+	}, 10.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("carrier actual observation RPC"), [State]()
+	{
+		AHeistPlayerController* Owner = GetOwningPlayerControllerById(2);
+		return IsValid(Owner) && InvokeSingleActorServerRPC(Owner, FName(TEXT("Server_RequestObservation")), FindPaintingCase(Owner->GetWorld(), State->FirstRunContract.RequiredTargetCaseId));
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("carrier Drawing session replicated"),
+		[State]() { return IsSurfaceSessionReady(2, State->FirstRunContract.RequiredTargetCaseId); }, 15.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("carrier reference-matched Surface Submit RPC"), []() { return SubmitReferenceMatchedSurface(2); }));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("carrier actual Replica preview"),
+		[State]() { return HasSurfaceReplicaPreview(2, State->FirstRunContract.RequiredTargetCaseId); }, 20.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("carrier confirms Required Original swap"), []()
+	{
+		AHeistPlayerController* Owner = GetOwningPlayerControllerById(2);
+		if (!IsValid(Owner))
+		{
+			return false;
+		}
+		Owner->RequestConfirmForgeryReplicaSwap();
+		return true;
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("carrier Original inventory replicated"), [State, Carrier]()
+	{
+		for (AHeistPlayerCharacter* Character : {GetServerCharacterById(2), GetOwningCharacterById(2)})
+		{
+			const UHeistInventoryComponent* Inventory = IsValid(Character) ? Character->GetInventoryComponent() : nullptr;
+			AHeistPaintingDisplayCaseActor* DisplayCase = IsValid(Character) ? FindPaintingCase(Character->GetWorld(), State->FirstRunContract.RequiredTargetCaseId) : nullptr;
+			FHeistInventoryItem Original;
+			if (!IsValid(Inventory) || !IsValid(DisplayCase) || Inventory->GetOriginalArtifactCount() != 1 ||
+				!Inventory->TryGetOriginalArtifactForSourceCase(DisplayCase, Original) || !Original.HasValidOriginalData() ||
+				Original.ItemId != State->FirstRunContract.RequiredTargetArtifactId || DisplayCase->GetOriginalCarrier() != Character->GetPlayerState<AHeistPlayerState>())
+			{
+				return false;
+			}
+			if (Character->HasAuthority())
+			{
+				Carrier->Original = Original;
+			}
+		}
+		return true;
+	}, 15.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("carrier moves to real Loose Loot"), [State]()
+	{ return TeleportServerPlayerIntoInteraction(2, FindLootActor(GetContractRunServerWorld(), State->SelectedLootActorName)); }));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("carrier Loose Loot relevance and overlap"), [State]()
+	{
+		return IsOwningLootActorRelevant(2, State->SelectedLootRowId, State->SelectedLootActorLocation) &&
+			IsServerPlayerOverlapping(2, FindLootActor(GetContractRunServerWorld(), State->SelectedLootActorName));
+	}, 10.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("carrier real Loose Loot pickup RPC"), [State]()
+	{
+		AHeistPlayerController* Owner = GetOwningPlayerControllerById(2);
+		return IsValid(Owner) && InvokeSingleActorServerRPC(Owner, FName(TEXT("Server_RequestLootPickup")),
+			FindLootActorAtLocation(Owner->GetWorld(), State->SelectedLootRowId, State->SelectedLootActorLocation));
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("carrier holds exactly one Original and one Loose Loot on server and owner"), [State, Carrier, CountLooseItems]()
+	{
+		if (!HasReplicatedLooseLootPickup(State, 2))
+		{
+			return false;
+		}
+		for (AHeistPlayerCharacter* Character : {GetServerCharacterById(2), GetOwningCharacterById(2)})
+		{
+			const UHeistInventoryComponent* Inventory = IsValid(Character) ? Character->GetInventoryComponent() : nullptr;
+			const AHeistPlayerState* PlayerState = IsValid(Character) ? Character->GetPlayerState<AHeistPlayerState>() : nullptr;
+			const AHeistGameState* GameState = IsValid(Character) ? Character->GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+			if (!IsValid(Inventory) || !IsValid(PlayerState) || !IsValid(GameState) || Inventory->GetOriginalArtifactCount() != 1 || CountLooseItems(Inventory) != 1 ||
+				PlayerState->GetTotalLootScore() != State->SelectedLootValue || !FMath::IsNearlyEqual(PlayerState->GetTotalLootWeight(), Carrier->Original.Weight + Carrier->LooseWeight) ||
+				GameState->GetContractSnapshot().CarriedValue != Carrier->Original.ContractValue + State->SelectedLootValue || GameState->GetContractSnapshot().SecuredValue != 0)
+			{
+				return false;
+			}
+		}
+		return true;
+	}, 15.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("close actual carrier connection"), [Test, Carrier, GetHost, bUseKick]()
+	{
+		AHeistPlayerController* ServerController = GetServerPlayerControllerById(2);
+		AHeistPlayerController* Client = GetOwningPlayerControllerById(2);
+		UNetConnection* Connection = IsValid(ServerController) ? ServerController->GetNetConnection() : nullptr;
+		UNetDriver* Driver = IsValid(Client) ? Client->GetNetDriver() : nullptr;
+		AHeistPlayerController* Host = GetHost();
+		if (!IsValid(Connection) || !IsValid(Driver) || !IsValid(Host) || Client->GetNetMode() != NM_Client || !Carrier->ServerWorld.IsValid())
+		{
+			return false;
+		}
+		Test->AddExpectedErrorPlain(FString::Printf(TEXT("UEngine::BroadcastNetworkFailure: FailureType = ConnectionLost, ErrorString = Your connection to the host has been lost., Driver = %s"),
+			*Driver->GetDescription()), EAutomationExpectedErrorFlags::Exact, 1);
+		if (bUseKick)
+		{
+			UHeistDebugFunctionLibrary::DebugObjectAssemblyKickPlayer(Host, 2);
+		}
+		else
+		{
+			ServerController->Destroy();
+		}
+		return Test->TestTrue(TEXT("Carrier network close starts asynchronously"), Connection->IsClosingOrClosed());
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("carrier PlayerState removed from original listen server"), [Carrier]()
+	{
+		UWorld* World = Carrier->ServerWorld.Get();
+		const AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
+		return IsValid(GameState) && GameState->GetConnectedPlayerCount() == 1 && FindPlayerStateById(World, 2) == nullptr;
+	}, 15.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("carrier drops preserve both items exactly once"), [Test, State, Carrier, CheckContractAssignment]()
+	{
+		UWorld* World = Carrier->ServerWorld.Get();
+		const AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
+		AHeistPaintingDisplayCaseActor* DisplayCase = FindPaintingCase(World, State->FirstRunContract.RequiredTargetCaseId);
+		if (!IsValid(GameState) || !IsValid(DisplayCase))
+		{
+			return false;
+		}
+		bool bPassed = CheckContractAssignment(GameState->GetContractSnapshot());
+		bPassed &= Test->TestEqual(TEXT("Active teammate keeps the contract InGame"), GameState->GetMatchPhase(), EHeistMatchPhase::InGame);
+		bPassed &= Test->TestEqual(TEXT("Departed carrier value leaves the carried snapshot"), GameState->GetContractSnapshot().CarriedValue, 0);
+		bPassed &= Test->TestEqual(TEXT("Disconnect grants no secured value"), GameState->GetContractSnapshot().SecuredValue, 0);
+		bPassed &= Test->TestFalse(TEXT("Dropped Required Target is unsecured"), GameState->GetContractSnapshot().bRequiredTargetSecured);
+		bPassed &= Test->TestNull(TEXT("Original carrier reference is released"), DisplayCase->GetOriginalCarrier());
+		bPassed &= Test->TestFalse(TEXT("Carrier exit leaves no Case lock"), DisplayCase->IsSessionLocked());
+		int32 OriginalDrops = 0;
+		int32 LooseDrops = 0;
+		for (TActorIterator<AHeistDroppedOriginalActor> It(World); It; ++It)
+		{
+			if (It->IsDropAvailable())
+			{
+				++OriginalDrops;
+				Carrier->DroppedOriginal = *It;
+				bPassed &= Test->TestTrue(TEXT("Original drop keeps source Case"), It->GetSourceDisplayCase() == DisplayCase);
+				bPassed &= Test->TestEqual(TEXT("Original drop keeps Artifact"), It->GetArtifactId(), Carrier->Original.ItemId);
+				bPassed &= Test->TestEqual(TEXT("Original drop keeps value"), It->GetArtifactValue(), Carrier->Original.ContractValue);
+				bPassed &= Test->TestTrue(TEXT("Original drop keeps weight"), FMath::IsNearlyEqual(It->GetWeight(), Carrier->Original.Weight));
+				bPassed &= Test->TestTrue(TEXT("Original drop keeps Required Target flag"), It->IsRequiredTarget());
+			}
+		}
+		for (TActorIterator<AHeistLootActor> It(World); It; ++It)
+		{
+			if (!Carrier->ExistingLoot.Contains(TWeakObjectPtr<AHeistLootActor>(*It)))
+			{
+				++LooseDrops;
+				Carrier->DroppedLoot = *It;
+				bPassed &= Test->TestTrue(TEXT("Disconnected Loose Loot is available"), It->IsLootAvailable());
+				bPassed &= Test->TestEqual(TEXT("Loose Loot drop keeps item row"), It->GetLootRowId(), State->SelectedLootRowId);
+				bPassed &= Test->TestEqual(TEXT("Loose Loot drop keeps value"), It->GetScoreValue(), State->SelectedLootValue);
+				bPassed &= Test->TestTrue(TEXT("Loose Loot drop keeps weight"), FMath::IsNearlyEqual(It->GetWeightValue(), Carrier->LooseWeight));
+			}
+		}
+		bPassed &= Test->TestEqual(TEXT("Carrier disconnect creates exactly one Original drop"), OriginalDrops, 1);
+		bPassed &= Test->TestEqual(TEXT("Carrier disconnect creates exactly one Loose Loot drop"), LooseDrops, 1);
+		AHeistLootActor* SourceLoot = FindLootActor(World, State->SelectedLootActorName);
+		bPassed &= Test->TestTrue(TEXT("Original Loose Loot spawn does not become available again"), IsValid(SourceLoot) && !SourceLoot->IsLootAvailable());
+		return bPassed;
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("carrier-disconnect guard rescale completes"), [Carrier]()
+	{
+		UWorld* World = Carrier->ServerWorld.Get();
+		const AHeistGameMode* GameMode = IsValid(World) ? World->GetAuthGameMode<AHeistGameMode>() : nullptr;
+		return IsValid(GameMode) && GameMode->IsPlayerCountGuardScalingApplied() && GameMode->GetDifficultyAppliedPlayerCount() == 1;
+	}, 10.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("isolate guards after carrier exit rescaling"), [Carrier]()
+	{
+		UWorld* World = Carrier->ServerWorld.Get();
+		if (!IsValid(World))
+		{
+			return false;
+		}
+		for (TActorIterator<AHeistGuardCharacter> It(World); It; ++It)
+		{
+			if (UHeistGuardStateComponent* GuardState = It->GetGuardStateComponent(); IsValid(GuardState))
+			{
+				GuardState->SetDisabled(true);
+			}
+		}
+		return true;
+	}));
+	for (const bool bOriginal : {true, false})
+	{
+		Test->AddCommand(new FHeistContractRunActionCommand(Test, State, bOriginal ? TEXT("host moves to dropped Original") : TEXT("host moves to dropped Loose Loot"), [Carrier, GetHost, bOriginal]()
+		{
+			AHeistPlayerController* Host = GetHost();
+			AActor* Target = bOriginal ? static_cast<AActor*>(Carrier->DroppedOriginal.Get()) : static_cast<AActor*>(Carrier->DroppedLoot.Get());
+			return IsValid(Host) && TeleportServerPlayerIntoInteraction(Host->GetPawn<AHeistPlayerCharacter>(), Target);
+		}));
+		Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, bOriginal ? TEXT("host actual Original overlap") : TEXT("host actual Loose Loot overlap"), [Carrier, GetHost, bOriginal]()
+		{
+			AHeistPlayerController* Host = GetHost();
+			AHeistPlayerCharacter* Character = IsValid(Host) ? Host->GetPawn<AHeistPlayerCharacter>() : nullptr;
+			UHeistInteractionComponent* Interaction = IsValid(Character) ? Character->GetInteractionComponent() : nullptr;
+			AActor* Target = bOriginal ? static_cast<AActor*>(Carrier->DroppedOriginal.Get()) : static_cast<AActor*>(Carrier->DroppedLoot.Get());
+			return IsValid(Target) && IsValid(Interaction) && Interaction->IsActorOverlappingInteractionArea(Target);
+		}, 10.0));
+		Test->AddCommand(new FHeistContractRunActionCommand(Test, State, bOriginal ? TEXT("host picks up Original through one RPC") : TEXT("host picks up Loose Loot through RPC twice"), [Carrier, GetHost, bOriginal]()
+		{
+			AHeistPlayerController* Host = GetHost();
+			// Original pickup destroys its actor; only the persistent Loose Loot actor can be replayed here.
+			const int32 RequestCount = bOriginal ? 1 : 2;
+			for (int32 Attempt = 0; Attempt < RequestCount; ++Attempt)
+			{
+				const bool bInvoked = bOriginal
+					? InvokeSingleActorServerRPC(Host, FName(TEXT("Server_RequestDroppedOriginalPickup")), Carrier->DroppedOriginal.Get())
+					: InvokeSingleActorServerRPC(Host, FName(TEXT("Server_RequestLootPickup")), Carrier->DroppedLoot.Get());
+				if (!bInvoked)
+				{
+					return false;
+				}
+			}
+			return true;
+		}));
+		Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, bOriginal ? TEXT("Original pickup commits once") : TEXT("Loose Loot pickup commits once"), [Carrier, GetHost, bOriginal, CountLooseItems]()
+		{
+			AHeistPlayerController* Host = GetHost();
+			AHeistPlayerCharacter* Character = IsValid(Host) ? Host->GetPawn<AHeistPlayerCharacter>() : nullptr;
+			const UHeistInventoryComponent* Inventory = IsValid(Character) ? Character->GetInventoryComponent() : nullptr;
+			return IsValid(Inventory) && (bOriginal
+				? (!Carrier->DroppedOriginal.IsValid() || !Carrier->DroppedOriginal->IsDropAvailable()) && Inventory->GetOriginalArtifactCount() == 1
+				: Carrier->DroppedLoot.IsValid() && !Carrier->DroppedLoot->IsLootAvailable() && CountLooseItems(Inventory) == 1);
+		}, 10.0));
+	}
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("host inventory conserves recovered value weight and footprint"), [Test, State, Carrier, GetHost, CountLooseItems, CheckContractAssignment]()
+	{
+		AHeistPlayerController* Host = GetHost();
+		AHeistPlayerCharacter* Character = IsValid(Host) ? Host->GetPawn<AHeistPlayerCharacter>() : nullptr;
+		const UHeistInventoryComponent* Inventory = IsValid(Character) ? Character->GetInventoryComponent() : nullptr;
+		const AHeistPlayerState* PlayerState = IsValid(Host) ? Host->GetPlayerState<AHeistPlayerState>() : nullptr;
+		const AHeistGameState* GameState = Carrier->ServerWorld.IsValid() ? Carrier->ServerWorld->GetGameState<AHeistGameState>() : nullptr;
+		AHeistPaintingDisplayCaseActor* DisplayCase = FindPaintingCase(Carrier->ServerWorld.Get(), State->FirstRunContract.RequiredTargetCaseId);
+		FHeistInventoryItem RecoveredOriginal;
+		if (!IsValid(Inventory) || !IsValid(PlayerState) || !IsValid(GameState) || !IsValid(DisplayCase) ||
+			!Inventory->TryGetOriginalArtifactForSourceCase(DisplayCase, RecoveredOriginal))
+		{
+			return false;
+		}
+		bool bPassed = CheckContractAssignment(GameState->GetContractSnapshot());
+		bPassed &= Test->TestEqual(TEXT("Host has exactly one recovered Original"), Inventory->GetOriginalArtifactCount(), 1);
+		bPassed &= Test->TestEqual(TEXT("Host has exactly one recovered Loose Loot"), CountLooseItems(Inventory), 1);
+		bPassed &= Test->TestEqual(TEXT("Recovered Original keeps Artifact ID"), RecoveredOriginal.ItemId, Carrier->Original.ItemId);
+		bPassed &= Test->TestTrue(TEXT("Recovered Original keeps source Case"), RecoveredOriginal.SourceDisplayCase == Carrier->Original.SourceDisplayCase);
+		bPassed &= Test->TestEqual(TEXT("Recovered Original keeps value"), RecoveredOriginal.ContractValue, Carrier->Original.ContractValue);
+		bPassed &= Test->TestTrue(TEXT("Recovered Original keeps weight"), FMath::IsNearlyEqual(RecoveredOriginal.Weight, Carrier->Original.Weight));
+		bPassed &= Test->TestEqual(TEXT("Recovered Original keeps template inventory footprint"), RecoveredOriginal.BaseGridSize, Carrier->Original.BaseGridSize);
+		bPassed &= Test->TestTrue(TEXT("Recovered Original remains Required Target"), RecoveredOriginal.bRequiredTarget);
+		bPassed &= Test->TestTrue(TEXT("Case now names the surviving carrier"), DisplayCase->GetOriginalCarrier() == PlayerState);
+		bPassed &= Test->TestEqual(TEXT("Duplicate pickup requests award Loose Loot only once"), PlayerState->GetTotalLootScore(), State->SelectedLootValue);
+		bPassed &= Test->TestTrue(TEXT("Host total weight equals both recovered items"), FMath::IsNearlyEqual(PlayerState->GetTotalLootWeight(), Carrier->Original.Weight + Carrier->LooseWeight));
+		bPassed &= Test->TestEqual(TEXT("Recovered carried value equals both items"), GameState->GetContractSnapshot().CarriedValue, Carrier->Original.ContractValue + State->SelectedLootValue);
+		bPassed &= Test->TestEqual(TEXT("Recovery has not secured value yet"), GameState->GetContractSnapshot().SecuredValue, 0);
+		return bPassed;
+	}));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("open Vent through existing server diagnostic"), [GetHost]()
+	{
+		AHeistPlayerController* Host = GetHost();
+		if (!IsValid(Host))
+		{
+			return false;
+		}
+		UHeistDebugFunctionLibrary::DebugDepositOpen(Host);
+		return true;
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("surviving host Vent opens"), [Carrier]()
+	{
+		UWorld* World = Carrier->ServerWorld.Get();
+		const AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
+		const AHeistVentActor* Vent = FindVentActor(World);
+		return IsValid(GameState) && GameState->IsEscapePhaseOpen() && IsValid(Vent) && Vent->IsVentActive();
+	}, 15.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("host moves into actual Vent interaction"), [Carrier, GetHost]()
+	{
+		AHeistPlayerController* Host = GetHost();
+		return IsValid(Host) && TeleportServerPlayerIntoInteraction(Host->GetPawn<AHeistPlayerCharacter>(), FindVentActor(Carrier->ServerWorld.Get()));
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("host actual Vent overlap"), [Carrier, GetHost]()
+	{
+		AHeistPlayerController* Host = GetHost();
+		AHeistPlayerCharacter* Character = IsValid(Host) ? Host->GetPawn<AHeistPlayerCharacter>() : nullptr;
+		const UHeistInteractionComponent* Interaction = IsValid(Character) ? Character->GetInteractionComponent() : nullptr;
+		return IsValid(Interaction) && Interaction->IsActorOverlappingInteractionArea(FindVentActor(Carrier->ServerWorld.Get()));
+	}, 10.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("host settles recovered Loose Loot through Vent RPC"), [Carrier, GetHost]()
+	{ return InvokeSingleActorServerRPC(GetHost(), FName(TEXT("Server_RequestEscape")), FindVentActor(Carrier->ServerWorld.Get())); }));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("Loose-only settlement preserves the recovered Original"), [State, Carrier, GetHost, CountLooseItems]()
+	{
+		AHeistPlayerController* Host = GetHost();
+		AHeistPlayerCharacter* Character = IsValid(Host) ? Host->GetPawn<AHeistPlayerCharacter>() : nullptr;
+		const UHeistInventoryComponent* Inventory = IsValid(Character) ? Character->GetInventoryComponent() : nullptr;
+		const AHeistPlayerState* PlayerState = IsValid(Host) ? Host->GetPlayerState<AHeistPlayerState>() : nullptr;
+		const AHeistGameState* GameState = Carrier->ServerWorld.IsValid() ? Carrier->ServerWorld->GetGameState<AHeistGameState>() : nullptr;
+		return IsValid(Inventory) && IsValid(PlayerState) && IsValid(GameState) && !PlayerState->IsEscaped() && PlayerState->GetTotalLootScore() == 0 &&
+			CountLooseItems(Inventory) == 0 && Inventory->GetOriginalArtifactCount() == 1 && FMath::IsNearlyEqual(PlayerState->GetTotalLootWeight(), Carrier->Original.Weight) &&
+			PlayerState->GetContribution().SecuredLootValue == State->SelectedLootValue && GameState->GetMatchPhase() == EHeistMatchPhase::InGame &&
+			GameState->GetContractSnapshot().SecuredValue == State->SelectedLootValue && GameState->GetContractSnapshot().CarriedValue == Carrier->Original.ContractValue &&
+			!GameState->GetContractSnapshot().bRequiredTargetSecured;
+	}, 15.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("host escapes with recovered Original through Vent RPC"), [Carrier, GetHost]()
+	{ return InvokeSingleActorServerRPC(GetHost(), FName(TEXT("Server_RequestEscape")), FindVentActor(Carrier->ServerWorld.Get())); }));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("host final escape commits"), [GetHost]()
+	{
+		AHeistPlayerController* Host = GetHost();
+		const AHeistPlayerState* PlayerState = IsValid(Host) ? Host->GetPlayerState<AHeistPlayerState>() : nullptr;
+		return IsValid(PlayerState) && PlayerState->IsEscaped();
+	}, 15.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("repeat final Vent request without a second award"), [Carrier, GetHost]()
+	{ return InvokeSingleActorServerRPC(GetHost(), FName(TEXT("Server_RequestEscape")), FindVentActor(Carrier->ServerWorld.Get())); }));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("carrier recovery final conservation evidence"), [Test, State, Carrier, GetHost, CheckContractAssignment, bUseKick]()
+	{
+		UWorld* World = Carrier->ServerWorld.Get();
+		AHeistPlayerController* Host = GetHost();
+		AHeistPlayerCharacter* Character = IsValid(Host) ? Host->GetPawn<AHeistPlayerCharacter>() : nullptr;
+		const UHeistInventoryComponent* Inventory = IsValid(Character) ? Character->GetInventoryComponent() : nullptr;
+		const AHeistPlayerState* PlayerState = IsValid(Host) ? Host->GetPlayerState<AHeistPlayerState>() : nullptr;
+		const AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
+		const AHeistGameMode* GameMode = IsValid(World) ? World->GetAuthGameMode<AHeistGameMode>() : nullptr;
+		if (!IsValid(Inventory) || !IsValid(PlayerState) || !IsValid(GameState) || !IsValid(GameMode))
+		{
+			return false;
+		}
+		const FHeistContractSnapshot& Contract = GameState->GetContractSnapshot();
+		bool bPassed = CheckContractAssignment(Contract);
+		bPassed &= Test->TestEqual(TEXT("Surviving crew escape ends the contract"), GameState->GetMatchPhase(), EHeistMatchPhase::End);
+		bPassed &= Test->TestEqual(TEXT("Both recovered values are secured exactly once"), Contract.SecuredValue, Carrier->Original.ContractValue + State->SelectedLootValue);
+		bPassed &= Test->TestEqual(TEXT("Final carried value is empty"), Contract.CarriedValue, 0);
+		bPassed &= Test->TestTrue(TEXT("Recovered Required Target is secured"), Contract.bRequiredTargetSecured);
+		bPassed &= Test->TestTrue(TEXT("Final inventory is empty"), Inventory->GetReplicatedInventory().Items.IsEmpty());
+		bPassed &= Test->TestEqual(TEXT("Loose settlement contribution is counted once"), PlayerState->GetContribution().SecuredLootValue, State->SelectedLootValue);
+		bPassed &= Test->TestEqual(TEXT("Final loose score is empty"), PlayerState->GetTotalLootScore(), 0);
+		bPassed &= Test->TestTrue(TEXT("Final carried weight is empty"), FMath::IsNearlyZero(PlayerState->GetTotalLootWeight()));
+		bPassed &= Test->TestEqual(TEXT("Ended carrier recovery has no match timers"), GameMode->GetActiveMatchTimerCount(), 0);
+		int32 AvailableOriginals = 0;
+		int32 AvailableRecoveryLoot = 0;
+		for (TActorIterator<AHeistDroppedOriginalActor> It(World); It; ++It)
+		{
+			AvailableOriginals += It->IsDropAvailable() ? 1 : 0;
+		}
+		for (TActorIterator<AHeistLootActor> It(World); It; ++It)
+		{
+			AvailableRecoveryLoot += !Carrier->ExistingLoot.Contains(TWeakObjectPtr<AHeistLootActor>(*It)) && It->IsLootAvailable() ? 1 : 0;
+		}
+		bPassed &= Test->TestEqual(TEXT("No duplicate Original remains in the world"), AvailableOriginals, 0);
+		bPassed &= Test->TestEqual(TEXT("No duplicate recovered Loose Loot remains in the world"), AvailableRecoveryLoot, 0);
+		if (bPassed)
+		{
+			Test->AddInfo(FString::Printf(TEXT("W9 carrier disconnect: Path=%s StartPlayers=2 Original=%d Loose=%d Secured=%d DropCount=1+1 OriginalPickupRequests=1 LoosePickupRequests=2 DuplicateAwards=0 Footprint=%s Result=PASS UserPIE=false SteamGate=false"),
+				bUseKick ? TEXT("Kick") : TEXT("ConnectionClose"), Carrier->Original.ContractValue, State->SelectedLootValue, Contract.SecuredValue, *Carrier->Original.BaseGridSize.ToString()));
+		}
+		return bPassed;
+	}));
+	Test->AddCommand(new FEndPlayMapCommand());
+	Test->AddCommand(new FWaitLatentCommand(1.0f));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("restore carrier-disconnect PIE settings"), [State]()
+	{
+		if (!State->bCapturedPlaySettings)
+		{
+			return true;
+		}
+		ULevelEditorPlaySettings* PlaySettings = GetMutableDefault<ULevelEditorPlaySettings>();
+		if (!IsValid(PlaySettings))
+		{
+			return false;
+		}
+		PlaySettings->SetRunUnderOneProcess(State->bOriginalRunUnderOneProcess);
+		PlaySettings->SetPlayNetMode(State->OriginalNetMode);
+		PlaySettings->SetPlayNumberOfClients(State->OriginalClientCount);
+		return true;
+	}, true));
+	return true;
+}
+
 bool EnqueueSurfaceOwnerDisconnectScenario(FAutomationTestBase* Test, const bool bDisconnectWithPreview)
 {
 	const TSharedRef<FHeistContractRunAutomationState> State = MakeShared<FHeistContractRunAutomationState>();
@@ -3599,6 +4128,383 @@ bool EnqueueSurfaceOwnerDisconnectScenario(FAutomationTestBase* Test, const bool
 		PlaySettings->SetRunUnderOneProcess(State->bOriginalRunUnderOneProcess);
 		PlaySettings->SetPlayNetMode(State->OriginalNetMode);
 		PlaySettings->SetPlayNumberOfClients(State->OriginalClientCount);
+		return true;
+	}, true));
+	return true;
+}
+
+bool EnqueueStaleSurfaceSubmitScenario(FAutomationTestBase* Test, const bool bRestartFromPreview)
+{
+	struct FStaleSurfaceSubmitState
+	{
+		TArray<FVector2D> Points;
+		TArray<int32> StrokePointCounts;
+		TArray<uint8> PaletteIndices;
+		TArray<uint8> BrushPresetIndices;
+		int32 OldSessionRevision = 0;
+		int32 NewSessionRevision = 0;
+		int32 CaseRevision = 0;
+		int32 ValidationRevision = 0;
+		int32 ScoreRevision = 0;
+		float SessionEndServerTime = 0.0f;
+		FHeistForgeryResult AuthoritativeScore;
+		FHeistForgeryResult CaseScore;
+		FName TemplateId;
+	};
+	const auto Submission = MakeShared<FStaleSurfaceSubmitState>();
+	const TSharedRef<FHeistContractRunAutomationState> State = MakeShared<FHeistContractRunAutomationState>();
+	State->PlayerCount = 2;
+	Test->AddCommand(new FEditorLoadMap(TEXT("/Game/Maps/TitleMenuMap")));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("configure stale-submit listen-server PIE"), [State]()
+	{
+		ULevelEditorPlaySettings* Settings = GetMutableDefault<ULevelEditorPlaySettings>();
+		if (!IsValid(Settings))
+		{
+			return false;
+		}
+		Settings->GetPlayNetMode(State->OriginalNetMode);
+		Settings->GetRunUnderOneProcess(State->bOriginalRunUnderOneProcess);
+		Settings->GetPlayNumberOfClients(State->OriginalClientCount);
+		State->bCapturedPlaySettings = true;
+		Settings->SetRunUnderOneProcess(true);
+		Settings->SetPlayNetMode(EPlayNetMode::PIE_ListenServer);
+		Settings->SetPlayNumberOfClients(2);
+		return true;
+	}));
+	Test->AddCommand(new FStartPIECommand(false));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("stale-submit title worlds"), []()
+	{
+		const TArray<UWorld*> Worlds = GetContractRunPIEWorlds();
+		return Worlds.Num() == 2 && !Worlds.ContainsByPredicate([](UWorld* World) { return !IsValid(GetContractRunLocalHeistPlayerController(World)); });
+	}, 45.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("stale-submit host session"), []()
+	{
+		UWorld* World = GetContractRunServerWorld();
+		UHeistGameInstance* Instance = IsValid(World) ? Cast<UHeistGameInstance>(World->GetGameInstance()) : nullptr;
+		return IsValid(Instance) && Instance->RequestHostSession();
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("stale-submit two-player lobby and travel ACKs"), []()
+	{
+		UWorld* World = GetContractRunServerWorld();
+		const UHeistGameInstance* Instance = IsValid(World) ? Cast<UHeistGameInstance>(World->GetGameInstance()) : nullptr;
+		return AreContractRunWorldsReady(2, EHeistMatchPhase::Lobby, false) && IsValid(Instance) && Instance->IsHostingOnlineSession() && Instance->HasActiveNamedOnlineSession();
+	}, 60.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("stale-submit select M01"), []()
+	{
+		AHeistPlayerController* Host = GetOwningPlayerControllerById(1);
+		if (!IsValid(Host))
+		{
+			return false;
+		}
+		Host->RequestSetLobbyMapSelection(FName(TEXT("M01")));
+		return true;
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("stale-submit map selection"), []()
+	{
+		UWorld* World = GetContractRunServerWorld();
+		const UHeistGameInstance* Instance = IsValid(World) ? Cast<UHeistGameInstance>(World->GetGameInstance()) : nullptr;
+		return IsValid(Instance) && Instance->GetSelectedMapId() == FName(TEXT("M01")) && !Instance->IsMapSelectionUpdatePending();
+	}, 15.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("stale-submit normal lobby start"), []()
+	{
+		UWorld* World = GetContractRunServerWorld();
+		UHeistGameInstance* Instance = IsValid(World) ? Cast<UHeistGameInstance>(World->GetGameInstance()) : nullptr;
+		return IsValid(Instance) && SetAllContractRunLobbyPlayersReady(World) && Instance->RequestStartSelectedGameplayMap();
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("stale-submit public two-player contract"), []()
+	{
+		UWorld* World = GetContractRunServerWorld();
+		const AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
+		const AHeistGameMode* GameMode = IsValid(World) ? World->GetAuthGameMode<AHeistGameMode>() : nullptr;
+		return AreContractRunWorldsReady(2, EHeistMatchPhase::InGame, true) && IsValid(GameState) && GameState->IsContractInitialized() &&
+			   GameState->GetContractSnapshot().ContractStartPlayerCount == 2 && IsValid(GameMode) && GameMode->IsPlayerCountGuardScalingApplied() &&
+			   GameMode->GetDifficultyAppliedPlayerCount() == 2;
+	}, 60.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("isolate session revisions and place client at Required Target"), [Test, State]()
+	{
+		UWorld* World = GetContractRunServerWorld();
+		AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
+		if (!IsValid(GameState))
+		{
+			return false;
+		}
+		State->FirstRunContract = GameState->GetContractSnapshot();
+		AHeistPaintingDisplayCaseActor* DisplayCase = FindPaintingCase(World, State->FirstRunContract.RequiredTargetCaseId);
+		UClass* PaintingShell = LoadClass<AHeistPaintingDisplayCaseActor>(nullptr, TEXT("/Game/Blueprints/World/Actors/Loot/BP_PaintingDisplayCase.BP_PaintingDisplayCase_C"));
+		if (!Test->TestNotNull(TEXT("Required Target uses the presentation Blueprint"), PaintingShell) || !IsValid(DisplayCase) || !DisplayCase->IsA(PaintingShell))
+		{
+			return false;
+		}
+		for (TActorIterator<AHeistGuardCharacter> It(World); It; ++It)
+		{
+			if (UHeistGuardStateComponent* GuardState = It->GetGuardStateComponent(); IsValid(GuardState))
+			{
+				GuardState->SetDisabled(true);
+			}
+		}
+		for (TActorIterator<AHeistSecurityCameraActor> It(World); It; ++It)
+		{
+			It->Destroy();
+		}
+		GameState->SetAlertSnapshot(0.0f, EHeistAlertLevel::Quiet, FName(TEXT("W9StaleSubmitSetup")));
+		return TeleportServerPlayerIntoInteraction(2, DisplayCase);
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("stale-submit client case relevance and overlap"), [State]()
+	{
+		return IsOwningPaintingCaseRelevant(2, State->FirstRunContract.RequiredTargetCaseId) &&
+			   IsServerPlayerOverlapping(2, FindPaintingCase(GetContractRunServerWorld(), State->FirstRunContract.RequiredTargetCaseId));
+	}, 10.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("stale-submit client observation RPC"), [State]()
+	{
+		AHeistPlayerController* Owner = GetOwningPlayerControllerById(2);
+		return IsValid(Owner) && Owner->GetNetMode() == NM_Client &&
+			   InvokeSingleActorServerRPC(Owner, FName(TEXT("Server_RequestObservation")), FindPaintingCase(Owner->GetWorld(), State->FirstRunContract.RequiredTargetCaseId));
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("first client Drawing session replicated"),
+		[State]() { return IsSurfaceSessionReady(2, State->FirstRunContract.RequiredTargetCaseId); }, 15.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("capture valid strokes and their original session revision"), [Submission]()
+	{
+		const AHeistPlayerCharacter* Character = GetOwningCharacterById(2);
+		const UHeistForgeryComponent* Forgery = IsValid(Character) ? Character->GetForgeryComponent() : nullptr;
+		FHeistForgeryResult Preview;
+		if (!IsValid(Forgery) || !Forgery->BuildReferenceMatchedStrokePayloadForAutomation(Submission->Points, Submission->StrokePointCounts, Submission->PaletteIndices,
+			Submission->BrushPresetIndices, Preview) || Preview.SimilarityScore < HeistReplicaAcceptance::MinimumQualityScore)
+		{
+			return false;
+		}
+		Submission->OldSessionRevision = Forgery->GetSessionRevision();
+		Submission->TemplateId = Forgery->GetActiveTemplateId();
+		return true;
+	}));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("cancel Drawing or submit the first preview through owning-client RPC"), [Submission, bRestartFromPreview]()
+	{
+		AHeistPlayerController* Owner = GetOwningPlayerControllerById(2);
+		if (!IsValid(Owner))
+		{
+			return false;
+		}
+		if (bRestartFromPreview)
+		{
+			Owner->RequestSubmitForgeryStrokes(Submission->Points, Submission->StrokePointCounts, Submission->PaletteIndices, Submission->BrushPresetIndices, Submission->OldSessionRevision);
+		}
+		else
+		{
+			Owner->RequestCancelForgery();
+		}
+		return true;
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("cancel or preview transition reaches server and owning client"), [State, bRestartFromPreview]()
+	{
+		for (const AHeistPlayerCharacter* Character : {GetServerCharacterById(2), GetOwningCharacterById(2)})
+		{
+			const UHeistForgeryComponent* Forgery = IsValid(Character) ? Character->GetForgeryComponent() : nullptr;
+			const AHeistPaintingDisplayCaseActor* DisplayCase = IsValid(Character) ? FindPaintingCase(Character->GetWorld(), State->FirstRunContract.RequiredTargetCaseId) : nullptr;
+			if (!IsValid(Forgery) || Forgery->IsSessionActive() || !IsValid(DisplayCase) || DisplayCase->HasReplicaPreview() != bRestartFromPreview ||
+				DisplayCase->HasReplicaPaintingData() != bRestartFromPreview || Forgery->HasPendingReplicaReview() != bRestartFromPreview ||
+				DisplayCase->GetDisplayCaseState() != (bRestartFromPreview ? EHeistDisplayCaseState::ReplicaReady : EHeistDisplayCaseState::Secured) ||
+				DisplayCase->IsSessionLocked() != bRestartFromPreview || (!bRestartFromPreview && DisplayCase->GetSessionOwner() != nullptr))
+			{
+				return false;
+			}
+		}
+		const AHeistPlayerController* Owner = GetOwningPlayerControllerById(2);
+		return IsValid(Owner) && Owner->GetLocalInputMode() == EHeistInputMode::Gameplay && Owner->IsLocalInputModeContractSatisfied();
+	}, 20.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("client starts a fresh Drawing on the same case"), [State, bRestartFromPreview]()
+	{
+		AHeistPlayerController* Owner = GetOwningPlayerControllerById(2);
+		if (!IsValid(Owner) || !IsServerPlayerOverlapping(2, FindPaintingCase(GetContractRunServerWorld(), State->FirstRunContract.RequiredTargetCaseId)))
+		{
+			return false;
+		}
+		if (bRestartFromPreview)
+		{
+			Owner->RequestRestartForgeryFromPreview();
+			return true;
+		}
+		return InvokeSingleActorServerRPC(Owner, FName(TEXT("Server_RequestObservation")), FindPaintingCase(Owner->GetWorld(), State->FirstRunContract.RequiredTargetCaseId));
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("fresh revision and cleared score reach the owning client"), [State, Submission]()
+	{
+		if (!IsSurfaceSessionReady(2, State->FirstRunContract.RequiredTargetCaseId))
+		{
+			return false;
+		}
+		const UHeistForgeryComponent* ServerForgery = GetServerCharacterById(2)->GetForgeryComponent();
+		const UHeistForgeryComponent* ClientForgery = GetOwningCharacterById(2)->GetForgeryComponent();
+		const AHeistPaintingDisplayCaseActor* ServerCase = FindPaintingCase(GetContractRunServerWorld(), State->FirstRunContract.RequiredTargetCaseId);
+		const AHeistPaintingDisplayCaseActor* ClientCase = FindPaintingCase(GetOwningCharacterById(2)->GetWorld(), State->FirstRunContract.RequiredTargetCaseId);
+		return ServerForgery->GetSessionRevision() > Submission->OldSessionRevision && ServerForgery->GetActiveTemplateId() == Submission->TemplateId &&
+			   ClientForgery->GetForgeryScoreRevision() == ServerForgery->GetForgeryScoreRevision() && !ClientForgery->HasAuthoritativeForgeryResult() &&
+			   IsValid(ServerCase) && IsValid(ClientCase) && ClientCase->GetSessionRevision() == ServerCase->GetSessionRevision() &&
+			   ClientCase->GetDisplayCaseState() == EHeistDisplayCaseState::ForgeryInProgress && !ClientCase->HasReplicaPreview() && !ClientCase->HasReplicaPaintingData();
+	}, 15.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("snapshot the new session and replay the old submit RPC"), [Submission]()
+	{
+		AHeistPlayerController* Owner = GetOwningPlayerControllerById(2);
+		const AHeistPlayerCharacter* Character = GetServerCharacterById(2);
+		const UHeistForgeryComponent* Forgery = IsValid(Character) ? Character->GetForgeryComponent() : nullptr;
+		const AHeistPaintingDisplayCaseActor* DisplayCase = IsValid(Forgery) ? Forgery->GetActiveDisplayCase() : nullptr;
+		if (!IsValid(Owner) || !IsValid(DisplayCase))
+		{
+			return false;
+		}
+		Submission->NewSessionRevision = Forgery->GetSessionRevision();
+		Submission->CaseRevision = DisplayCase->GetSessionRevision();
+		Submission->ValidationRevision = Forgery->GetStrokeValidationRevision();
+		Submission->ScoreRevision = Forgery->GetForgeryScoreRevision();
+		Submission->SessionEndServerTime = Forgery->GetSessionEndServerTime();
+		Submission->AuthoritativeScore = Forgery->GetAuthoritativeForgeryResult();
+		Submission->CaseScore = DisplayCase->GetCommittedForgeryResult();
+		// Replay a complete valid payload after the lifecycle transition; only its revision is stale.
+		Owner->RequestSubmitForgeryStrokes(Submission->Points, Submission->StrokePointCounts, Submission->PaletteIndices, Submission->BrushPresetIndices, Submission->OldSessionRevision);
+		return true;
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("exact stale-revision rejection reaches server and owner"), [Submission]()
+	{
+		for (const AHeistPlayerCharacter* Character : {GetServerCharacterById(2), GetOwningCharacterById(2)})
+		{
+			const UHeistForgeryComponent* Forgery = IsValid(Character) ? Character->GetForgeryComponent() : nullptr;
+			if (!IsValid(Forgery) || Forgery->GetStrokeValidationRevision() != Submission->ValidationRevision + 1 || Forgery->WasLastStrokeValidationAccepted() ||
+				Forgery->GetLastStrokeValidationReason() != FName(TEXT("SessionRevisionMismatch")))
+			{
+				return false;
+			}
+		}
+		return true;
+	}, 10.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("old submit preserves the new session, case, score and inventory"), [Test, State, Submission]()
+	{
+		bool bPassed = true;
+		for (const AHeistPlayerCharacter* Character : {GetServerCharacterById(2), GetOwningCharacterById(2)})
+		{
+			const UHeistForgeryComponent* Forgery = IsValid(Character) ? Character->GetForgeryComponent() : nullptr;
+			const UHeistInventoryComponent* Inventory = IsValid(Character) ? Character->GetInventoryComponent() : nullptr;
+			const AHeistPaintingDisplayCaseActor* DisplayCase = IsValid(Character) ? FindPaintingCase(Character->GetWorld(), State->FirstRunContract.RequiredTargetCaseId) : nullptr;
+			const AHeistGameState* GameState = IsValid(Character) ? Character->GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+			if (!IsValid(Forgery) || !IsValid(Inventory) || !IsValid(DisplayCase) || !IsValid(GameState))
+			{
+				return false;
+			}
+			bPassed &= Test->TestTrue(TEXT("New Drawing remains active"), Forgery->IsSessionActive());
+			bPassed &= Test->TestFalse(TEXT("Old request cannot begin Submit"), Forgery->IsSubmitPending());
+			bPassed &= Test->TestEqual(TEXT("New session revision is unchanged"), Forgery->GetSessionRevision(), Submission->NewSessionRevision);
+			bPassed &= Test->TestEqual(TEXT("New deadline is unchanged"), Forgery->GetSessionEndServerTime(), Submission->SessionEndServerTime);
+			bPassed &= Test->TestEqual(TEXT("New active template is unchanged"), Forgery->GetActiveTemplateId(), Submission->TemplateId);
+			bPassed &= Test->TestTrue(TEXT("New session retains its case"), Forgery->GetActiveDisplayCase() == DisplayCase);
+			bPassed &= Test->TestFalse(TEXT("Old payload is not staged"), Forgery->HasValidatedStrokePayload());
+			bPassed &= Test->TestEqual(TEXT("No stale points were accepted"), Forgery->GetValidatedPointCount(), 0);
+			bPassed &= Test->TestEqual(TEXT("No stale strokes were accepted"), Forgery->GetValidatedStrokeCount(), 0);
+			bPassed &= Test->TestEqual(TEXT("No stale payload bytes were accepted"), Forgery->GetValidatedPayloadBytes(), 0);
+			bPassed &= Test->TestFalse(TEXT("Old request does not produce an authoritative score"), Forgery->HasAuthoritativeForgeryResult());
+			bPassed &= Test->TestEqual(TEXT("Score revision is unchanged"), Forgery->GetForgeryScoreRevision(), Submission->ScoreRevision);
+			bPassed &= Test->TestTrue(TEXT("Authoritative score snapshot is unchanged"), Forgery->GetAuthoritativeForgeryResult() == Submission->AuthoritativeScore);
+			bPassed &= Test->TestTrue(TEXT("Case score snapshot is unchanged"), DisplayCase->GetCommittedForgeryResult() == Submission->CaseScore);
+			bPassed &= Test->TestEqual(TEXT("Case revision is unchanged"), DisplayCase->GetSessionRevision(), Submission->CaseRevision);
+			bPassed &= Test->TestEqual(TEXT("Case remains Drawing"), DisplayCase->GetDisplayCaseState(), EHeistDisplayCaseState::ForgeryInProgress);
+			bPassed &= Test->TestTrue(TEXT("New owner lock is preserved"), DisplayCase->IsSessionLocked() && DisplayCase->GetSessionOwner() == Character->GetPlayerState<AHeistPlayerState>());
+			bPassed &= Test->TestFalse(TEXT("Old request cannot create a preview"), DisplayCase->HasReplicaPreview());
+			bPassed &= Test->TestFalse(TEXT("Old request cannot create a painting raster"), DisplayCase->HasReplicaPaintingData());
+			bPassed &= Test->TestNull(TEXT("Original has no carrier yet"), DisplayCase->GetOriginalCarrier());
+			bPassed &= Test->TestEqual(TEXT("Old request cannot award an Original"), Inventory->GetOriginalArtifactCount(), 0);
+			bPassed &= Test->TestEqual(TEXT("Contract stays InGame"), GameState->GetMatchPhase(), EHeistMatchPhase::InGame);
+			bPassed &= Test->TestTrue(TEXT("Contract snapshot is unchanged"), GameState->GetContractSnapshot() == State->FirstRunContract);
+		}
+		const AHeistPlayerController* Owner = GetOwningPlayerControllerById(2);
+		return bPassed && IsValid(Owner) && Owner->GetLocalInputMode() == EHeistInputMode::Forgery && Owner->IsLocalInputModeContractSatisfied();
+	}));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("submit the same valid strokes with the current revision"), [Submission]()
+	{
+		AHeistPlayerController* Owner = GetOwningPlayerControllerById(2);
+		if (!IsValid(Owner))
+		{
+			return false;
+		}
+		Owner->RequestSubmitForgeryStrokes(Submission->Points, Submission->StrokePointCounts, Submission->PaletteIndices, Submission->BrushPresetIndices, Submission->NewSessionRevision);
+		return true;
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("current revision produces an accepted preview on server and owner"), [State, Submission]()
+	{
+		for (const AHeistPlayerCharacter* Character : {GetServerCharacterById(2), GetOwningCharacterById(2)})
+		{
+			const UHeistForgeryComponent* Forgery = IsValid(Character) ? Character->GetForgeryComponent() : nullptr;
+			const AHeistPaintingDisplayCaseActor* DisplayCase = IsValid(Character) ? FindPaintingCase(Character->GetWorld(), State->FirstRunContract.RequiredTargetCaseId) : nullptr;
+			if (!IsValid(Forgery) || !IsValid(DisplayCase) || !Forgery->WasLastStrokeValidationAccepted() || Forgery->GetLastStrokeValidationReason() != FName(TEXT("Accepted")) ||
+				Forgery->GetForgeryScoreRevision() <= Submission->ScoreRevision || !Forgery->HasAuthoritativeForgeryResult() || !Forgery->HasPendingReplicaReview() ||
+				DisplayCase->GetDisplayCaseState() != EHeistDisplayCaseState::ReplicaReady || !DisplayCase->HasReplicaPreview() || !DisplayCase->HasReplicaPaintingData() ||
+				DisplayCase->GetCommittedForgeryResult().SimilarityScore < HeistReplicaAcceptance::MinimumQualityScore)
+			{
+				return false;
+			}
+		}
+		return true;
+	}, 20.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("client confirms the current replica"), []()
+	{
+		AHeistPlayerController* Owner = GetOwningPlayerControllerById(2);
+		if (!IsValid(Owner))
+		{
+			return false;
+		}
+		Owner->RequestConfirmForgeryReplicaSwap();
+		return true;
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("one Original and completed session replicate after the current confirm"), [State]()
+	{
+		for (const AHeistPlayerCharacter* Character : {GetServerCharacterById(2), GetOwningCharacterById(2)})
+		{
+			const UHeistForgeryComponent* Forgery = IsValid(Character) ? Character->GetForgeryComponent() : nullptr;
+			const UHeistInventoryComponent* Inventory = IsValid(Character) ? Character->GetInventoryComponent() : nullptr;
+			const AHeistPaintingDisplayCaseActor* DisplayCase = IsValid(Character) ? FindPaintingCase(Character->GetWorld(), State->FirstRunContract.RequiredTargetCaseId) : nullptr;
+			const AHeistGameState* GameState = IsValid(Character) ? Character->GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+			FHeistInventoryItem Original;
+			if (!IsValid(Forgery) || !IsValid(Inventory) || !IsValid(DisplayCase) || !IsValid(GameState) || Inventory->GetOriginalArtifactCount() != 1 ||
+				!Inventory->TryGetOriginalArtifactForSourceCase(DisplayCase, Original) || !Original.HasValidOriginalData() || Original.ItemId != State->FirstRunContract.RequiredTargetArtifactId ||
+				DisplayCase->GetDisplayCaseState() != EHeistDisplayCaseState::OriginalRemoved || DisplayCase->GetOriginalCarrier() != Character->GetPlayerState<AHeistPlayerState>() ||
+				DisplayCase->IsSessionLocked() || DisplayCase->GetSessionOwner() != nullptr || DisplayCase->HasReplicaPreview() || !DisplayCase->HasReplicaPaintingData() ||
+				Forgery->IsSessionActive() || Forgery->HasPendingReplicaReview() || Forgery->GetActiveDisplayCase() != nullptr || Forgery->GetSessionEndServerTime() != 0.0f ||
+				GameState->GetContractSnapshot().CarriedValue != Original.ContractValue || GameState->GetMatchPhase() != EHeistMatchPhase::InGame)
+			{
+				return false;
+			}
+		}
+		const AHeistPlayerController* Owner = GetOwningPlayerControllerById(2);
+		return IsValid(Owner) && Owner->GetLocalInputMode() == EHeistInputMode::Gameplay && Owner->IsLocalInputModeContractSatisfied();
+	}, 15.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("record stale-submit evidence"), [Test, State, Submission, bRestartFromPreview]()
+	{
+		UWorld* World = GetContractRunServerWorld();
+		const AHeistPaintingDisplayCaseActor* DisplayCase = FindPaintingCase(World, State->FirstRunContract.RequiredTargetCaseId);
+		int32 DroppedOriginalCount = 0;
+		for (TActorIterator<AHeistDroppedOriginalActor> It(World); It; ++It)
+		{
+			DroppedOriginalCount += It->GetSourceDisplayCase() == DisplayCase && It->IsDropAvailable() ? 1 : 0;
+		}
+		if (!Test->TestEqual(TEXT("Current Original has no duplicate world pickup"), DroppedOriginalCount, 0))
+		{
+			return false;
+		}
+		Test->AddInfo(FString::Printf(TEXT("W9 stale Surface submit: LobbyStartPlayers=2 Transition=%s OldRevision=%d NewRevision=%d OwningClientRPC=PASS "
+			"ServerAndOwnerReject=SessionRevisionMismatch SessionCaseScorePreserved=PASS LatestSubmitConfirm=PASS Originals=1 UserPIE=false SteamGate=false"),
+			bRestartFromPreview ? TEXT("ReplicaPreviewRestart") : TEXT("CancelReobserve"), Submission->OldSessionRevision, Submission->NewSessionRevision));
+		return true;
+	}));
+	Test->AddCommand(new FEndPlayMapCommand());
+	Test->AddCommand(new FWaitLatentCommand(1.0f));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("restore editor settings after stale submit"), [State]()
+	{
+		if (!State->bCapturedPlaySettings)
+		{
+			return true;
+		}
+		ULevelEditorPlaySettings* Settings = GetMutableDefault<ULevelEditorPlaySettings>();
+		if (!IsValid(Settings))
+		{
+			return false;
+		}
+		Settings->SetRunUnderOneProcess(State->bOriginalRunUnderOneProcess);
+		Settings->SetPlayNetMode(State->OriginalNetMode);
+		Settings->SetPlayNumberOfClients(State->OriginalClientCount);
 		return true;
 	}, true));
 	return true;
@@ -3962,6 +4868,22 @@ bool FHeistSandBoxSecurityCooperationTest::RunTest(const FString& Parameters)
 	return HeistContractRunTest::EnqueueSandBoxSecurityCooperationScenario(this);
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistCarrierKickDisconnectTest, "ProjectMuseumHeist.W9.CarrierDisconnect.Kick",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHeistCarrierKickDisconnectTest::RunTest(const FString& Parameters)
+{
+	return HeistContractRunTest::EnqueueCarrierDisconnectScenario(this, true);
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistCarrierConnectionCloseTest, "ProjectMuseumHeist.W9.CarrierDisconnect.ConnectionClose",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHeistCarrierConnectionCloseTest::RunTest(const FString& Parameters)
+{
+	return HeistContractRunTest::EnqueueCarrierDisconnectScenario(this, false);
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistSurfaceDrawingOwnerDisconnectTest, "ProjectMuseumHeist.W9.SurfaceOwnerDisconnect.Drawing",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
@@ -3976,6 +4898,20 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistSurfacePreviewOwnerDisconnectTest, "Proje
 bool FHeistSurfacePreviewOwnerDisconnectTest::RunTest(const FString& Parameters)
 {
 	return HeistContractRunTest::EnqueueSurfaceOwnerDisconnectScenario(this, true);
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistSurfaceStaleSubmitAfterCancelTwoPlayerTest, "ProjectMuseumHeist.W9.SurfaceStaleSubmitAfterCancelTwoPlayer", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHeistSurfaceStaleSubmitAfterCancelTwoPlayerTest::RunTest(const FString& Parameters)
+{
+	return HeistContractRunTest::EnqueueStaleSurfaceSubmitScenario(this, false);
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistSurfaceStaleSubmitAfterPreviewRestartTwoPlayerTest, "ProjectMuseumHeist.W9.SurfaceStaleSubmitAfterPreviewRestartTwoPlayer", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHeistSurfaceStaleSubmitAfterPreviewRestartTwoPlayerTest::RunTest(const FString& Parameters)
+{
+	return HeistContractRunTest::EnqueueStaleSurfaceSubmitScenario(this, true);
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistAuthorityRaceGatesTwoPlayerTest, "ProjectMuseumHeist.W9.AuthorityRaceGatesTwoPlayer", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

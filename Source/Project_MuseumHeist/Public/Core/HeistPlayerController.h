@@ -49,7 +49,6 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	virtual void OnPossess(APawn* InPawn) override;
 	virtual void OnRep_Pawn() override;
 	virtual void OnRep_PlayerState() override;
-	virtual void PawnLeavingGame() override;
 	virtual void SetupInputComponent() override;
 
   private:

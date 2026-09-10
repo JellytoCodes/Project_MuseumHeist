@@ -137,19 +137,6 @@ void AHeistPlayerController::BeginPlay()
 	UpdateFlashlightAimDirection();
 }
 
-void AHeistPlayerController::PawnLeavingGame()
-{
-	if (HasAuthority())
-	{
-		if (AHeistGameMode* HeistGameMode = GetWorld() != nullptr ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr)
-		{
-			HeistGameMode->HandlePlayerPawnLeavingGame(this);
-		}
-	}
-
-	Super::PawnLeavingGame();
-}
-
 void AHeistPlayerController::ResetLocalHeldInteractionInputState()
 {
 	bLocalObservationInputHeld = false;
