@@ -1,0 +1,738 @@
+{
+  "schema_version": 1,
+  "units": "cm",
+  "derivation": "Authored game adaptations of observed installations, not official museum pattern names. Mirroring does not create a new pattern.",
+  "references": {
+    "barnes": {
+      "title": "The Barnes Collection",
+      "url": "https://www.barnesfoundation.org/whats-on/collection",
+      "observation": "Dense ensembles, multiple registers and mixed sizes; gallery photographs visually inspected."
+    },
+    "moma_serial": {
+      "title": "MoMA Serial and Singular 2015",
+      "url": "https://www.moma.org/explore/inside_out/2015/04/29/serial-singular-andy-warhols-campbells-soup-cans/",
+      "observation": "Eye-level sequence, wall wrapping and two-row grid; installation photographs visually inspected."
+    },
+    "moma_rothko": {
+      "title": "MoMA Focus Ad Reinhardt and Mark Rothko 2008",
+      "url": "https://www.moma.org/calendar/exhibitions/74/installation_images/2880",
+      "observation": "Variable sizes with low common datum, long viewing distances and separate wall planes; photograph visually inspected."
+    },
+    "wallace": {
+      "title": "The Wallace Collection Great Gallery by Purcell",
+      "url": "https://purcellarchitecture.com/project/the-wallace-collection/",
+      "observation": "Large lower painting and smaller upper registers; doorway-framed views; photograph visually inspected."
+    }
+  },
+  "patterns": {
+    "Solo": {
+      "label": "단독 여백형",
+      "slots": [
+        [
+          0,
+          160,
+          170
+        ]
+      ],
+      "reference": "moma_rothko"
+    },
+    "Pendant": {
+      "label": "동등한 2점형",
+      "slots": [
+        [
+          -140,
+          160,
+          132
+        ],
+        [
+          140,
+          160,
+          132
+        ]
+      ],
+      "reference": "wallace"
+    },
+    "Triptych": {
+      "label": "동일 높이 3점 연작",
+      "slots": [
+        [
+          -170,
+          160,
+          120
+        ],
+        [
+          0,
+          160,
+          120
+        ],
+        [
+          170,
+          160,
+          120
+        ]
+      ],
+      "reference": "moma_serial"
+    },
+    "Serial": {
+      "label": "긴 5점 연속형",
+      "slots": [
+        [
+          -360,
+          160,
+          100
+        ],
+        [
+          -180,
+          160,
+          100
+        ],
+        [
+          0,
+          160,
+          100
+        ],
+        [
+          180,
+          160,
+          100
+        ],
+        [
+          360,
+          160,
+          100
+        ]
+      ],
+      "reference": "moma_serial"
+    },
+    "Grid": {
+      "label": "2단 3열 격자형",
+      "slots": [
+        [
+          -140,
+          160,
+          96
+        ],
+        [
+          0,
+          160,
+          96
+        ],
+        [
+          140,
+          160,
+          96
+        ],
+        [
+          -140,
+          290,
+          96
+        ],
+        [
+          0,
+          290,
+          96
+        ],
+        [
+          140,
+          290,
+          96
+        ]
+      ],
+      "reference": "moma_serial"
+    },
+    "Vertical": {
+      "label": "세로 2단형",
+      "slots": [
+        [
+          0,
+          160,
+          138
+        ],
+        [
+          0,
+          325,
+          106
+        ]
+      ],
+      "reference": "wallace"
+    },
+    "Salon": {
+      "label": "크기 혼합 살롱형",
+      "slots": [
+        [
+          -180,
+          160,
+          116
+        ],
+        [
+          0,
+          170,
+          158
+        ],
+        [
+          175,
+          156,
+          110
+        ],
+        [
+          -185,
+          304,
+          94
+        ],
+        [
+          5,
+          320,
+          106
+        ],
+        [
+          164,
+          292,
+          84
+        ]
+      ],
+      "reference": "barnes"
+    },
+    "SideStack": {
+      "label": "큰 작품 옆 세로 쌍형",
+      "slots": [
+        [
+          0,
+          160,
+          152
+        ],
+        [
+          205,
+          119,
+          84
+        ],
+        [
+          205,
+          254,
+          108
+        ]
+      ],
+      "reference": "barnes"
+    },
+    "Baseline": {
+      "label": "하단 기준선형",
+      "slots": [
+        [
+          -200,
+          190,
+          164
+        ],
+        [
+          0,
+          152,
+          88
+        ],
+        [
+          160,
+          171,
+          126
+        ]
+      ],
+      "reference": "moma_rothko"
+    },
+    "Asymmetric": {
+      "label": "비대칭 균형형",
+      "slots": [
+        [
+          0,
+          160,
+          130
+        ],
+        [
+          -225,
+          203,
+          166
+        ],
+        [
+          225,
+          128,
+          90
+        ],
+        [
+          198,
+          295,
+          98
+        ]
+      ],
+      "reference": "barnes"
+    },
+    "TwinPairs": {
+      "label": "여백으로 나눈 두 쌍형",
+      "slots": [
+        [
+          -330,
+          160,
+          114
+        ],
+        [
+          -165,
+          160,
+          114
+        ],
+        [
+          190,
+          160,
+          114
+        ],
+        [
+          355,
+          160,
+          114
+        ]
+      ],
+      "reference": "moma_serial"
+    },
+    "Corner": {
+      "label": "코너를 잇는 2벽형",
+      "slots": [],
+      "reference": "moma_rothko"
+    }
+  },
+  "maps": {
+    "M01": {
+      "cases": {
+        "Target": {
+          "pattern": "Solo",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "HighValue": {
+          "pattern": "Salon",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "01": {
+          "pattern": "Serial",
+          "active_slot": 1,
+          "mirror": 1
+        },
+        "02": {
+          "pattern": "Vertical",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "03": {
+          "pattern": "Triptych",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "04": {
+          "pattern": "Grid",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "05": {
+          "pattern": "TwinPairs",
+          "active_slot": 1,
+          "mirror": 1
+        },
+        "06": {
+          "pattern": "SideStack",
+          "active_slot": 0,
+          "mirror": -1
+        },
+        "07": {
+          "pattern": "Baseline",
+          "active_slot": 1,
+          "mirror": 1
+        },
+        "08": {
+          "pattern": "Pendant",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "09": {
+          "pattern": "Pendant",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "10": {
+          "pattern": "Solo",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "11": {
+          "pattern": "Serial",
+          "active_slot": 1,
+          "mirror": 1
+        },
+        "12": {
+          "pattern": "Grid",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "13": {
+          "pattern": "Vertical",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "14": {
+          "pattern": "Pendant",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "15": {
+          "pattern": "Triptych",
+          "active_slot": 0,
+          "mirror": -1
+        },
+        "16": {
+          "pattern": "Baseline",
+          "active_slot": 1,
+          "mirror": 1
+        },
+        "17": {
+          "pattern": "SideStack",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "18": {
+          "pattern": "Asymmetric",
+          "active_slot": 0,
+          "mirror": 1
+        }
+      },
+      "decorative_groups": [
+        {
+          "id": "SouthStudy",
+          "pattern": "Salon",
+          "anchor": [
+            -3500,
+            -5200,
+            90
+          ]
+        },
+        {
+          "id": "NorthFocus",
+          "pattern": "Solo",
+          "anchor": [
+            5500,
+            5200,
+            -90
+          ]
+        },
+        {
+          "id": "NorthwestCorner",
+          "pattern": "Corner",
+          "pieces": [
+            [
+              -7200,
+              4800,
+              0,
+              136
+            ],
+            [
+              -6780,
+              5200,
+              -90,
+              164
+            ]
+          ]
+        }
+      ],
+      "expected_active": 20,
+      "expected_decorative": 55
+    },
+    "M02": {
+      "cases": {
+        "Target": {
+          "pattern": "Solo",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "HighValue": {
+          "pattern": "Pendant",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "01": {
+          "pattern": "Serial",
+          "active_slot": 1,
+          "mirror": 1
+        },
+        "02": {
+          "pattern": "Salon",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "03": {
+          "pattern": "TwinPairs",
+          "active_slot": 1,
+          "mirror": 1
+        },
+        "04": {
+          "pattern": "Grid",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "05": {
+          "pattern": "Triptych",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "06": {
+          "pattern": "Vertical",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "07": {
+          "pattern": "Asymmetric",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "08": {
+          "pattern": "SideStack",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "09": {
+          "pattern": "Baseline",
+          "active_slot": 1,
+          "mirror": 1
+        },
+        "10": {
+          "pattern": "Pendant",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "11": {
+          "pattern": "Serial",
+          "active_slot": 1,
+          "mirror": 1
+        },
+        "12": {
+          "pattern": "Grid",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "13": {
+          "pattern": "Solo",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "14": {
+          "pattern": "Vertical",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "15": {
+          "pattern": "Baseline",
+          "active_slot": 1,
+          "mirror": 1
+        },
+        "16": {
+          "pattern": "Triptych",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "17": {
+          "pattern": "Asymmetric",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "18": {
+          "pattern": "SideStack",
+          "active_slot": 0,
+          "mirror": 1
+        }
+      },
+      "decorative_groups": [
+        {
+          "id": "NorthSequence",
+          "pattern": "Serial",
+          "anchor": [
+            -5000,
+            5600,
+            -90
+          ]
+        },
+        {
+          "id": "SouthScrolls",
+          "pattern": "Vertical",
+          "anchor": [
+            5000,
+            -5600,
+            90
+          ]
+        },
+        {
+          "id": "NorthwestCorner",
+          "pattern": "Corner",
+          "pieces": [
+            [
+              -6400,
+              5150,
+              0,
+              136
+            ],
+            [
+              -5960,
+              5600,
+              -90,
+              164
+            ]
+          ]
+        }
+      ],
+      "expected_active": 20,
+      "expected_decorative": 57
+    },
+    "M03": {
+      "cases": {
+        "Target": {
+          "pattern": "Solo",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "HighValue": {
+          "pattern": "Pendant",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "01": {
+          "pattern": "Salon",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "02": {
+          "pattern": "TwinPairs",
+          "active_slot": 1,
+          "mirror": 1
+        },
+        "03": {
+          "pattern": "Triptych",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "04": {
+          "pattern": "Vertical",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "05": {
+          "pattern": "Solo",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "06": {
+          "pattern": "Grid",
+          "active_slot": 1,
+          "mirror": 1
+        },
+        "07": {
+          "pattern": "Solo",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "08": {
+          "pattern": "Solo",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "09": {
+          "pattern": "SideStack",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "10": {
+          "pattern": "Solo",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "11": {
+          "pattern": "Solo",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "12": {
+          "pattern": "Grid",
+          "active_slot": 1,
+          "mirror": 1
+        },
+        "13": {
+          "pattern": "Solo",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "14": {
+          "pattern": "Solo",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "15": {
+          "pattern": "Serial",
+          "active_slot": 1,
+          "mirror": 1
+        },
+        "16": {
+          "pattern": "Grid",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "17": {
+          "pattern": "Asymmetric",
+          "active_slot": 0,
+          "mirror": 1
+        },
+        "18": {
+          "pattern": "Baseline",
+          "active_slot": 1,
+          "mirror": 1
+        }
+      },
+      "decorative_groups": [
+        {
+          "id": "NorthGrid",
+          "pattern": "Grid",
+          "anchor": [
+            -5600,
+            4400,
+            -90
+          ]
+        },
+        {
+          "id": "WestPairs",
+          "pattern": "TwinPairs",
+          "anchor": [
+            -8000,
+            -1050,
+            0
+          ]
+        },
+        {
+          "id": "EastFocus",
+          "pattern": "Solo",
+          "anchor": [
+            7200,
+            4400,
+            -90
+          ]
+        },
+        {
+          "id": "NorthwestCorner",
+          "pattern": "Corner",
+          "pieces": [
+            [
+              -8000,
+              3950,
+              0,
+              136
+            ],
+            [
+              -7900,
+              4400,
+              -90,
+              136
+            ]
+          ]
+        }
+      ],
+      "expected_active": 20,
+      "expected_decorative": 51
+    }
+  }
+}

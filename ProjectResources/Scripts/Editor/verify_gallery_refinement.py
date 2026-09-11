@@ -3,6 +3,11 @@
 Call verify_gallery(world, code, authored_actors) after SIE navigation settles.
 Authored transforms are used so moving guards cannot hide placement defects.
 """
+import json
+import math
+import runpy
+from pathlib import Path
+
 import unreal
 
 
@@ -26,6 +31,82 @@ def intersects_beam(a, b, trigger, padding):
     return True
 
 
+def verify_hanging(world, code, actors, ignored):
+    source = Path(unreal.Paths.project_dir()) / "ProjectResources/Scripts/Editor/refine_museum_galleries.py"
+    authoring = runpy.run_path(str(source))
+    layout = authoring["hanging_layout"]()
+    groups = authoring["hanging_groups"](code, layout)
+    walls = []
+    for actor in actors:
+        folder = str(actor.get_folder_path())
+        if folder.endswith(("/Architecture/Walls", "/Architecture/GalleryPartitions")):
+            o, e = actor.get_actor_bounds(False)
+            walls.append((actor, o, e))
+    by_label = {a.get_actor_label(): a for a in actors}
+    failures, actual, samples = [], [], 0
+    for group in groups:
+        for slot, piece in enumerate(group["pieces"]):
+            active, size = piece["active"], piece["size"]
+            suffix = "Secure_" + group["id"] if active else "Print_{}_{:02d}".format(group["id"], slot)
+            label = "LDV2_{}_Painting_{}".format(code, group["id"]) if active else "LDV2_{}_Gallery_{}".format(code, suffix)
+            actor = by_label.get(label)
+            if actor is None:
+                failures.append(label + ": missing authored piece")
+                continue
+            components = actor.get_components_by_class(unreal.StaticMeshComponent)
+            component = next(c for c in components if c.get_name() == "OriginalVisualComponent") if active else components[0]
+            center, n, t = component.get_world_location(), component.get_up_vector(), component.get_forward_vector()
+            sx, sy = component.get_world_scale().x * 100, component.get_world_scale().y * 100
+            px, py = authoring["mount_surface"](walls, piece["x"], piece["y"], piece["facing"])[:2]
+            expected_n = unreal.Vector(math.cos(math.radians(piece["facing"])), math.sin(math.radians(piece["facing"])), 0)
+            delta = center - unreal.Vector(px, py, piece["z"])
+            if abs(delta.dot(t)) > 0.2 or abs(delta.z) > 0.2 or not 0 <= delta.dot(expected_n) <= 8:
+                failures.append(label + ": saved layout position mismatch")
+            if (n - expected_n).length() > 0.01 or component.get_right_vector().z > -0.99:
+                failures.append(label + ": saved facing/upright mismatch")
+            if abs(sx - (size - (10 if active else 2))) > 0.2 or abs(sx - sy) > 0.2:
+                failures.append(label + ": saved square artwork size mismatch")
+            for tag in ("MuseumHangingPattern_" + group["pattern"], "MuseumHangingGroup_" + group["id"], "MuseumHangingSlot_" + str(slot)):
+                if not actor.actor_has_tag(tag): failures.append(label + ": grouping metadata mismatch")
+            # Check saved frame rails, not only source slots or tags.
+            for side, along, dz in (("Top", 0, size/2), ("Bottom", 0, -size/2), ("Left", -size/2, 0), ("Right", size/2, 0)):
+                rail = by_label.get("LDV2_{}_Gallery_{}_{}".format(code, suffix, side))
+                if rail is None:
+                    failures.append(label + ": frame rail missing " + side)
+                    continue
+                o, e = rail.get_actor_bounds(False)
+                expected = unreal.Vector(px, py, piece["z"] + dz) + expected_n * 6 + unreal.Vector(-expected_n.y, expected_n.x, 0) * along
+                if (o - expected).length() > 0.3: failures.append(label + ": frame rail misplaced " + side)
+            if active:
+                panel = by_label.get("LDV2_{}_Gallery_{}_SecurityPanel".format(code, suffix))
+                if panel is None or abs(panel.get_actor_bounds(False)[0].z - (160-size/2-22)) > 0.2:
+                    failures.append(label + ": security panel position")
+            half = size/2 + (4 if active else 1.5)
+            # A wall's bounds can contain a window opening. Sample the face as
+            # well as its perimeter instead of accepting bounding-box coverage.
+            for along, up in ((u * half, v * half) for u in (-1, -0.5, 0, 0.5, 1)
+                              for v in (-1, -0.5, 0, 0.5, 1)):
+                point = center + t * along + unreal.Vector(0, 0, up)
+                hit = unreal.SystemLibrary.line_trace_single(world, point + n*20, point-n*40,
+                    unreal.TraceTypeQuery.TRACE_TYPE_QUERY1, True, ignored, unreal.DrawDebugTrace.NONE, True)
+                if hit and hit.to_dict().get("blocking_hit"): samples += 1
+                else: failures.append(label + ": frame extends beyond supporting wall")
+            actual.append(dict(label=label, center=center, normal=n, tangent=t, size=size, group=group["id"]))
+    for i, p in enumerate(actual):
+        for q in actual[:i]:
+            delta = p["center"] - q["center"]
+            if (p["normal"]-q["normal"]).length() > 0.01 or abs(delta.dot(p["normal"])) > 40: continue
+            # Include the lower security panel separately via the authored clearance.
+            gap = (p["size"]+q["size"])/2 + 18
+            if abs(delta.dot(p["tangent"])) < gap-0.2 and abs(delta.z) < gap-0.2:
+                failures.append(p["label"] + ": overlaps/insufficient separation from " + q["label"])
+    patterns = sorted({g["pattern"] for g in groups})
+    if len(patterns) < 10: failures.append("Fewer than ten authored geometrically verified patterns")
+    return dict(status="FAIL" if failures else "PASS", failures=failures, patterns=patterns,
+                group_count=len(groups), pieces_checked=len(actual), support_samples=samples,
+                decorative_only_groups=sum(not any(p["active"] for p in g["pieces"]) for g in groups))
+
+
 def verify_gallery(world, code, authored_actors):
     failures, exhibits, approaches = [], [], {}
     cases = [a for a in authored_actors if isinstance(a, unreal.HeistPaintingDisplayCaseActor)]
@@ -42,8 +123,9 @@ def verify_gallery(world, code, authored_actors):
     profile = capsule.get_collision_profile_name()
     start = next(a for a in authored_actors if isinstance(a, unreal.PlayerStart)).get_actor_location()
     nav_start = unreal.NavigationSystemV1.project_point_to_navigation(world, start, None, None, unreal.Vector(50, 50, 200))
-    if len(cases) != 20 or len(decorative) != 40:
-        failures.append("Expected 20 active cases and 40 decorative paintings")
+    layout = json.loads((Path(unreal.Paths.project_dir()) / "ProjectResources/SourceArt/Gallery/HangingLayouts.json").read_text(encoding="utf-8"))
+    if len(cases) != 20 or len(decorative) != layout["maps"][code]["expected_decorative"]:
+        failures.append("Active/decorative count differs from authored hanging layout")
     for actor in decorative:
         comp = actor.get_component_by_class(unreal.StaticMeshComponent)
         if isinstance(actor, unreal.HeistInteractableActor) or comp.get_collision_enabled() != unreal.CollisionEnabled.NO_COLLISION:
@@ -69,7 +151,8 @@ def verify_gallery(world, code, authored_actors):
                 (original.get_forward_vector(), replica.get_forward_vector()),
                 (original.get_world_scale(), replica.get_world_scale()))):
             failures.append(label + ": original/replica plane mismatch")
-        for along, up in ((0, 0), (-60, -60), (-60, 60), (60, -60), (60, 60)):
+        edge = original.get_world_scale().x * 50 + 9
+        for along, up in ((0, 0), (-edge, -edge), (-edge, edge), (edge, -edge), (edge, edge)):
             point = center + tangent * along + unreal.Vector(0, 0, up)
             hit = unreal.SystemLibrary.line_trace_single(world, point + normal * 20, point - normal * 40,
                 unreal.TraceTypeQuery.TRACE_TYPE_QUERY1, True, ignored, unreal.DrawDebugTrace.NONE, True)
@@ -141,7 +224,9 @@ def verify_gallery(world, code, authored_actors):
         egress.append(row)
         if not complete or crosses:
             failures.append(case.get_actor_label() + ": independent laser egress failed")
-    return {"status": "FAIL" if failures else "PASS", "failures": failures,
+    hanging = verify_hanging(world, code, authored_actors, ignored)
+    failures.extend(hanging["failures"])
+    return {"status": "FAIL" if failures else "PASS", "failures": failures, "hanging": hanging,
             "active_cases": len(cases), "decorative_paintings": len(decorative), "exhibits": exhibits,
             "sight_lines_blocked": blocked, "sight_lines_checked": len(rays[code]),
             "independent_laser_egress": egress, "user_pie": "NOT_TESTED"}

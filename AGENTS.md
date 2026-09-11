@@ -782,6 +782,7 @@ Escape 취소 조건:
 - 선택된 Reference Image는 해당 Assignment를 받은 Painting Case의 Original World Visual에만 적용한다.
 - 일반 전시 그림은 상호작용하지 않는 Map StaticMesh Presentation으로 배치하며 활성 Painting 20개, Case/Artifact Identity, Quota와 Template Pool에 포함하지 않는다.
 - 탈취 가능한 작품은 두꺼운 프레임과 하단 보안 패널, 일반 전시물은 얇은 프레임으로 접근 전에 구별한다. 색상만으로 구분하거나 일반 전시물에 행동 Prompt를 추가하지 않는다.
+- 전시 배치는 실제 미술관 사례를 참고해 맵별 최소 10종의 구별되는 구성을 사용한다. 좌우 반전·그림 교체·미세 간격 변경을 별도 패턴으로 세지 않으며, 일반 작품만 있는 독립 전시와 다양한 크기를 포함한다. 모든 탈취 대상에 같은 수의 일반 작품을 붙이거나 항상 중앙·최대 크기로 배치하지 않는다.
 - 액자는 실제 벽 또는 바닥에 지지된 독립 전시벽에 설치하고 정면 관람 공간을 확보한다. 설치 높이·면 방향·시야 차단·Navigation과 Floor Plan 정합성은 Map 저장 후 재검증한다.
 - 비활성 Case 또는 다른 Case의 Original World Visual을 현재 Assignment로 덮어쓰지 않는다.
 - Lobby 복귀 또는 Contract Clear 시 Original World Visual은 Blueprint가 지정한 기준 Material로 복원한다.

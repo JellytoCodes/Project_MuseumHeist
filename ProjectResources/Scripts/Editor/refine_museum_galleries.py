@@ -189,9 +189,9 @@ def mount_surface(walls, x, y, facing, required=True):
 def print_materials(code):
     root = Path(unreal.Paths.project_dir()).resolve()
     rows = json.loads((root / "ProjectResources/DataTableImports/DT_ForgeryTemplateRow.json").read_text(encoding="utf-8-sig"))
-    rows = [row for row in rows if row["SurfacePoolId"] == code][:8]
-    if len(rows) != 8:
-        raise RuntimeError("Expected eight existing references for gallery prints: " + code)
+    rows = [row for row in rows if row["SurfacePoolId"] == code]
+    if len(rows) != 40:
+        raise RuntimeError("Expected forty existing references for gallery prints: " + code)
     parent = unreal.load_asset("/Game/Assets/Art/SurfaceForgery/Materials/M_HeistPaintingSurface")
     folder = "/Game/Assets/Art/SurfaceForgery/Materials/GalleryPrints"
     result = []
@@ -235,69 +235,119 @@ def frame(builder, name, xy, facing, width, height, center_z, active):
             (xy[0] + n[0] * 6 + t[0] * along, xy[1] + n[1] * 6 + t[1] * along, z),
             (8 if active else 3, length, tall), material, facing, folder, "NoCollision")
     if active:
-        box(builder, name + "_SecurityPanel", (xy[0] + n[0] * 8, xy[1] + n[1] * 8, 68),
+        bottom = center_z - height * 0.5
+        box(builder, name + "_SecurityPanel", (xy[0] + n[0] * 8, xy[1] + n[1] * 8, bottom - 22),
             (8, 48, 20), "burnished", facing, folder, "NoCollision")
         # Two physical mounting clamps distinguish it even without colour/lighting.
         for sign in (-1, 1):
             box(builder, name + "_Clamp_" + str(sign),
-                (xy[0] + n[0] * 10 + t[0] * 27 * sign, xy[1] + n[1] * 10 + t[1] * 27 * sign, 86),
+                (xy[0] + n[0] * 10 + t[0] * 27 * sign, xy[1] + n[1] * 10 + t[1] * 27 * sign, bottom - 5),
                 (12, 9, 18), material, facing, folder, "NoCollision")
+
+
+def hanging_layout():
+    path = Path(unreal.Paths.project_dir()).resolve() / "ProjectResources/SourceArt/Gallery/HangingLayouts.json"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def hanging_groups(code, layout):
+    """Resolve authored slots, preserving the gameplay anchor of every active case."""
+    config = layout["maps"][code]
+    groups = []
+    for key, x, y, facing in MOUNTS[code]:
+        entry = config["cases"][key]
+        groups.append((key, entry, x, y, facing, True))
+    for entry in config["decorative_groups"]:
+        x, y, facing = entry.get("anchor", (0, 0, 0))
+        groups.append(("General_" + entry["id"], entry, x, y, facing, False))
+    result = []
+    for key, entry, x, y, facing, active in groups:
+        pattern = entry["pattern"]
+        if pattern == "Corner":
+            pieces = [dict(x=x, y=y, z=160, facing=facing, size=size, active=False)
+                      for x, y, facing, size in entry["pieces"]]
+        else:
+            slots = layout["patterns"][pattern]["slots"]
+            active_slot = entry.get("active_slot", 0)
+            base_u, base_z, _ = slots[active_slot] if active else (0, 160, 0)
+            angle = math.radians(facing)
+            tx, ty = -math.sin(angle), math.cos(angle)
+            mirror = entry.get("mirror", 1)
+            pieces = [dict(x=x + tx * (u - base_u) * mirror,
+                           y=y + ty * (u - base_u) * mirror, z=z - base_z + 160,
+                           facing=facing, size=size, active=active and slot == active_slot)
+                      for slot, (u, z, size) in enumerate(slots)]
+        result.append(dict(id=key, pattern=pattern, pieces=pieces))
+    return result
 
 
 def refine_exhibits(builder, cases, walls):
     materials = print_materials(builder.code)
     plane_mesh = unreal.load_asset("/Engine/BasicShapes/Plane")
-    report = []
-    for index, (key, x, y, facing) in enumerate(MOUNTS[builder.code]):
-        px, py, n, tangent, wall = mount_surface(walls, x, y, facing)
-        actor = cases[key]
-        actor.set_actor_location(unreal.Vector(px, py, 0), False, False)
-        actor.set_actor_rotation(unreal.Rotator(yaw=facing + 180), False)
-        components = {component.get_name(): component for component in actor.get_components_by_class(unreal.StaticMeshComponent)}
-        backing = components["VisualMeshComponent"]
-        backing.set_editor_property("relative_location", unreal.Vector(0, -70, 90))
-        backing.set_editor_property("relative_rotation", unreal.Rotator(yaw=90))
-        backing.set_editor_property("relative_scale3d", unreal.Vector(0.35, 0.35, 0.35))
-        # Original and Replica share the exact visual plane. Runtime assignment
-        # still replaces the Original texture using the existing server snapshot.
-        for name in ("OriginalVisualComponent", "ReplicaVisualComponent"):
-            component = components[name]
-            component.set_editor_property("relative_location", unreal.Vector(200, 12, 200))
-            component.set_editor_property("relative_rotation", unreal.Rotator(roll=90))
-            component.set_editor_property("relative_scale3d", unreal.Vector(3.8, 3.8, 1))
-        components["OriginalVisualComponent"].set_material(0, materials[index % len(materials)])
-        builder.add_tags(actor, "MuseumMountedPainting")
-        frame(builder, "Secure_" + key, (px, py), facing, 142, 142, 160, True)
-        light = builder.point_light("LDV2_{}_ExhibitLight_{}".format(builder.code, key),
-                                    (px + n[0] * 100, py + n[1] * 100, 280),
-                                    (255, 221, 180), 350, 1800, "Lighting/Exhibits")
-        light.get_component_by_class(unreal.PointLightComponent).set_editor_property("cast_shadows", False)
-        decorative = []
-        for sign in (-1, 1):
-            dx, dy = x + tangent[0] * sign * 150, y + tangent[1] * sign * 150
-            support = mount_surface(walls, dx, dy, facing, required=False)
-            if support is None:
-                continue
-            qx, qy = support[:2]
-            suffix = "Print_{}_{}".format(key, "A" if sign < 0 else "B")
-            print_actor = box(builder, suffix, (qx + n[0] * 2, qy + n[1] * 2, 160),
-                              (1, 76, 76), "m01_wall", facing, "Theme/Exhibits/Decorative", "NoCollision")
-            component = print_actor.get_component_by_class(unreal.StaticMeshComponent)
-            component.set_editor_property("static_mesh", plane_mesh)
-            component.set_material(0, materials[(index + (2 if sign < 0 else 5)) % len(materials)])
-            print_actor.set_actor_location(unreal.Vector(qx + n[0] * 2, qy + n[1] * 2, 160), False, False)
-            print_actor.set_actor_rotation(unreal.Rotator(yaw=facing - 90, roll=90), False)
-            print_actor.set_actor_scale3d(unreal.Vector(0.76, 0.76, 1))
-            builder.add_tags(print_actor, "MuseumDecorativePainting")
-            frame(builder, suffix, (qx, qy), facing, 78, 78, 160, False)
-            decorative.append(print_actor.get_actor_label())
-        report.append({"case": actor.get_actor_label(), "wall": wall.get_actor_label(),
-                       "location": [px, py, 0], "facing": facing, "decorative": decorative})
+    report, print_index = [], 0
+    for group_index, group in enumerate(hanging_groups(builder.code, hanging_layout())):
+        group_report = dict(id=group["id"], pattern=group["pattern"], pieces=[])
+        for slot, piece in enumerate(group["pieces"]):
+            x, y, z, facing, size = (piece[k] for k in ("x", "y", "z", "facing", "size"))
+            px, py, n, tangent, wall = mount_surface(walls, x, y, facing)
+            active = piece["active"]
+            if active:
+                actor = cases[group["id"]]
+                actor.set_actor_location(unreal.Vector(px, py, 0), False, False)
+                actor.set_actor_rotation(unreal.Rotator(yaw=facing + 180), False)
+                components = {c.get_name(): c for c in actor.get_components_by_class(unreal.StaticMeshComponent)}
+                backing = components["VisualMeshComponent"]
+                # Both picture planes are children of the backing. Scale the entire
+                # shell around its picture centre, retaining the original aspect ratio.
+                ratio = (size - 10) / 133.0
+                backing.set_editor_property("relative_location", unreal.Vector(0, -70 * ratio, 160 - 70 * ratio))
+                backing.set_editor_property("relative_rotation", unreal.Rotator(yaw=90))
+                backing.set_editor_property("relative_scale3d", unreal.Vector(*([0.35 * ratio] * 3)))
+                for name in ("OriginalVisualComponent", "ReplicaVisualComponent"):
+                    component = components[name]
+                    component.set_editor_property("relative_location", unreal.Vector(200, 12, 200))
+                    component.set_editor_property("relative_rotation", unreal.Rotator(roll=90))
+                    component.set_editor_property("relative_scale3d", unreal.Vector(3.8, 3.8, 1))
+                components["OriginalVisualComponent"].set_material(0, materials[group_index % len(materials)])
+                builder.add_tags(actor, "MuseumMountedPainting")
+                suffix = "Secure_" + group["id"]
+                light = builder.point_light("LDV2_{}_ExhibitLight_{}".format(builder.code, group["id"]),
+                    (px + n[0] * 100, py + n[1] * 100, 280), (255, 221, 180), 350, 1800, "Lighting/Exhibits")
+                light.get_component_by_class(unreal.PointLightComponent).set_editor_property("cast_shadows", False)
+            else:
+                suffix = "Print_{}_{:02d}".format(group["id"], slot)
+                actor = box(builder, suffix, (px + n[0] * 2, py + n[1] * 2, z),
+                    (1, size - 2, size - 2), "m01_wall", facing, "Theme/Exhibits/Decorative", "NoCollision")
+                component = actor.get_component_by_class(unreal.StaticMeshComponent)
+                component.set_editor_property("static_mesh", plane_mesh)
+                if print_index % len(materials) == group_index % len(materials):
+                    print_index += 1
+                component.set_material(0, materials[print_index % len(materials)])
+                print_index += 1
+                actor.set_actor_location(unreal.Vector(px + n[0] * 2, py + n[1] * 2, z), False, False)
+                actor.set_actor_rotation(unreal.Rotator(yaw=facing - 90, roll=90), False)
+                actor.set_actor_scale3d(unreal.Vector((size - 2) / 100, (size - 2) / 100, 1))
+                builder.add_tags(actor, "MuseumDecorativePainting")
+            tags = [tag for tag in actor.get_editor_property("tags")
+                    if not str(tag).startswith(("MuseumHangingPattern_", "MuseumHangingGroup_", "MuseumHangingSlot_"))]
+            actor.set_editor_property("tags", tags)
+            builder.add_tags(actor, "MuseumHangingPattern_" + group["pattern"],
+                             "MuseumHangingGroup_" + group["id"], "MuseumHangingSlot_" + str(slot))
+            frame(builder, suffix, (px, py), facing, size, size, z, active)
+            group_report["pieces"].append(dict(label=actor.get_actor_label(), wall=wall.get_actor_label(),
+                size_cm=size, center=[px, py, z], facing=facing, active=active))
+            if group["id"].startswith("General_"):
+                light = builder.point_light("LDV2_{}_GalleryLight_{}_{:02d}".format(builder.code, group["id"], slot),
+                    (px + n[0] * 100, py + n[1] * 100, min(z + size * 0.5 + 35, 360)),
+                    (255, 230, 200), 180, 1300, "Lighting/Exhibits")
+                light.get_component_by_class(unreal.PointLightComponent).set_editor_property("cast_shadows", False)
+        report.append(group_report)
     path = Path(unreal.Paths.project_saved_dir()) / "Automation/GalleryRefinement"
     path.mkdir(parents=True, exist_ok=True)
     (path / (builder.code + "_mounts.json")).write_text(json.dumps(report, indent=2), encoding="utf-8")
-    unreal.log_warning("MH_GALLERY_REFINEMENT={} paintings={} decorative={}".format(
-        builder.code, len(report), sum(len(row["decorative"]) for row in report)))
+    unreal.log_warning("MH_GALLERY_REFINEMENT={} groups={} decorative={} patterns={}".format(
+        builder.code, len(report), sum(not p["active"] for g in report for p in g["pieces"]),
+        len({row["pattern"] for row in report})))
 
 
 def refine_gallery(builder, cases):
