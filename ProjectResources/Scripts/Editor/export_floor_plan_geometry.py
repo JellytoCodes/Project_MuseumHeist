@@ -196,6 +196,9 @@ def export_geometry():
             elif code == "M03" and label.startswith(prefix + "SpineGlassBaffle_") and folder == "LDV2/M03/Theme/PublicSpine":
                 walls.append(footprint(actor))
                 fixed_partitions.append(label)
+            elif folder == "LDV2/" + code + "/Architecture/GalleryPartitions":
+                walls.append(footprint(actor))
+                fixed_partitions.append(label)
         if not floors or not walls or not doors:
             raise RuntimeError(code + " empty geometry category")
         floor_points = [point for floor in floors for point in floor["polygon"]]

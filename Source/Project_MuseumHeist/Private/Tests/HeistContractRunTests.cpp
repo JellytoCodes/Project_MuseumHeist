@@ -12,6 +12,7 @@
 #include "Character/HeistPlayerCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/SceneComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Core/HeistGameInstance.h"
@@ -33,6 +34,8 @@
 #include "Inventory/HeistItemDataTypes.h"
 #include "Inventory/HeistInventoryTypes.h"
 #include "Misc/AutomationTest.h"
+#include "NavigationPath.h"
+#include "NavigationSystem.h"
 #include "Settings/LevelEditorPlaySettings.h"
 #include "Tests/AutomationCommon.h"
 #include "Tests/AutomationEditorCommon.h"
@@ -692,7 +695,22 @@ bool TeleportServerPlayerIntoInteraction(AHeistPlayerCharacter* Character, AActo
 	const float CapsuleRadius = Capsule->GetScaledCapsuleRadius();
 	const float CapsuleHalfLineLength = FMath::Max(0.0f, CapsuleHalfHeight - CapsuleRadius);
 	const float MaxOffset = FMath::Max(0.0f, InteractionRadius + CapsuleRadius - 5.0f);
-	TArray<FVector> Offsets = {FVector::ZeroVector};
+	TArray<FVector> Offsets;
+	if (TargetActor->IsA<AHeistPaintingDisplayCaseActor>())
+	{
+		// Approach the visible painting face before trying its wall-mounted origin.
+		// Collision adjustment alone can leave a player between the wall and NavMesh.
+		TInlineComponentArray<USceneComponent*> Components(TargetActor);
+		for (const USceneComponent* Component : Components)
+		{
+			if (Component->GetFName() == FName(TEXT("OriginalVisualComponent")))
+			{
+				Offsets.Add(Component->GetUpVector().GetSafeNormal2D() * FMath::Min(120.0f, MaxOffset * 0.6f));
+				break;
+			}
+		}
+	}
+	Offsets.Add(FVector::ZeroVector);
 	const FVector Directions[] = {FVector(1, 0, 0), FVector(-1, 0, 0), FVector(0, 1, 0), FVector(0, -1, 0), FVector(1, 1, 0), FVector(1, -1, 0), FVector(-1, 1, 0), FVector(-1, -1, 0)};
 	for (const float RingFraction : {0.5f, 0.8f, 1.0f})
 	{
@@ -3019,9 +3037,41 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 				if (!bChaseStarted)
 				{
 					AHeistGuardAIController* GuardController = Cast<AHeistGuardAIController>(It->GetController());
-					FVector GuardLocation = ChaseTarget->GetActorLocation() + ChaseTarget->GetActorRightVector() * 500.0f;
-					GuardLocation.Z = 88.0f;
-					It->SetActorLocation(GuardLocation, false, nullptr, ETeleportType::TeleportPhysics);
+					// Wall-mounted exhibits invalidate the old unchecked 500cm side offset.
+					// Keep the Chase/replication assertions, but place its fixture on a complete path.
+					const UCapsuleComponent* GuardCapsule = It->GetCapsuleComponent();
+					const FVector Right = ChaseTarget->GetActorRightVector();
+					const FVector Forward = ChaseTarget->GetActorForwardVector();
+					bool bGuardPlaced = false;
+					for (const FVector& Direction : {Right, -Right, Forward, -Forward})
+					{
+						const FVector Candidate = ChaseTarget->GetActorLocation() + Direction * 500.0f;
+						FVector Projected;
+						if (!IsValid(GuardCapsule) || !UNavigationSystemV1::K2_ProjectPointToNavigation(
+								ServerWorld, Candidate, Projected, nullptr, nullptr, FVector(50.0f, 50.0f, 200.0f)))
+						{
+							UE_LOG(LogTemp, Display, TEXT("W6-010 chase fixture rejected: Candidate=%s Reason=OffNavigation"), *Candidate.ToString());
+							continue;
+						}
+						UNavigationPath* Path = UNavigationSystemV1::FindPathToLocationSynchronously(ServerWorld, Projected, ChaseTarget->GetActorLocation(), *It);
+						if (!IsValid(Path) || !Path->IsValid() || Path->IsPartial())
+						{
+							continue;
+						}
+						const FVector GuardLocation = Projected + FVector(0.0f, 0.0f, GuardCapsule->GetScaledCapsuleHalfHeight() + 2.5f);
+						if (It->TeleportTo(GuardLocation, It->GetActorRotation(), false, false))
+						{
+							It->GetCharacterMovement()->StopMovementImmediately();
+							bGuardPlaced = true;
+							UE_LOG(LogTemp, Display, TEXT("W6-010 chase fixture placed: Guard=%s Target=%s CompletePath=true"),
+								   *It->GetActorLocation().ToString(), *ChaseTarget->GetActorLocation().ToString());
+							break;
+						}
+					}
+					if (!bGuardPlaced)
+					{
+						return false;
+					}
 					It->ForceNetUpdate();
 					if (IsValid(GuardController))
 					{

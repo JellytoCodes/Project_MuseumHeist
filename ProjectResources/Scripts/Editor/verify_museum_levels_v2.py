@@ -27,7 +27,7 @@ EXPECTED = {
         "waypoints": 39,
         "cameras": 6,
         "lasers": 2,
-        "generated_lights": 12,
+        "generated_lights": 38,
         "ceiling_panels": 234,
         "ceiling_prefixes": ("LDV2_M01_CeilingTile_",),
         "laser_case_ids": ("Case_M01_Optional_HighValue", "Case_M01_Optional_09"),
@@ -54,7 +54,7 @@ EXPECTED = {
         "waypoints": 40,
         "cameras": 4,
         "lasers": 2,
-        "generated_lights": 13,
+        "generated_lights": 39,
         "ceiling_panels": 49,
         "ceiling_prefixes": ("LDV2_M02_Ceiling_",),
         "laser_case_ids": ("Case_M02_Optional_HighValue", "Case_M02_Optional_07"),
@@ -88,7 +88,7 @@ EXPECTED = {
         "waypoints": 28,
         "cameras": 8,
         "lasers": 3,
-        "generated_lights": 14,
+        "generated_lights": 40,
         "ceiling_panels": 11,
         "ceiling_prefixes": ("LDV2_M03_GlassRoof_",),
         "laser_case_ids": ("Case_M03_Optional_HighValue", "Case_M03_Optional_08", "Case_M03_Optional_10"),
@@ -830,6 +830,10 @@ for code in selected_level_codes:
         label = actor.get_actor_label()
         if mesh_path.startswith("/Game/Assets/StarterContent/"):
             starter_ldv2_static.append(actor)
+            continue
+        if ("MuseumDecorativePainting" in actor_tags(actor)
+                and mesh_path == "/Engine/BasicShapes/Plane.Plane"
+                and str(components[0].get_collision_profile_name()) == "NoCollision"):
             continue
         expected_mapasset_path = M01_MAPASSET_CONTRACT.get(label) if code == "M01" else None
         if expected_mapasset_path and mesh_path == expected_mapasset_path:
