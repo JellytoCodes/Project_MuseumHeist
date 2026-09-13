@@ -14,7 +14,7 @@
 #include "GameFramework/PlayerStart.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SceneComponent.h"
-#include "Components/SphereComponent.h"
+#include "Components/ShapeComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Core/HeistGameInstance.h"
 #include "Core/HeistGameMode.h"
@@ -689,9 +689,9 @@ bool TeleportServerPlayerIntoInteraction(AHeistPlayerCharacter* Character, AActo
 		return false;
 	}
 	Movement->StopMovementImmediately();
-	const USphereComponent* InteractionSphere = TargetActor->FindComponentByClass<USphereComponent>();
-	const FVector Center = IsValid(InteractionSphere) ? InteractionSphere->GetComponentLocation() : TargetActor->GetActorLocation();
-	const float InteractionRadius = IsValid(InteractionSphere) ? InteractionSphere->GetScaledSphereRadius() : 150.0f;
+	const UShapeComponent* InteractionShape = TargetActor->FindComponentByClass<UShapeComponent>();
+	const FVector Center = IsValid(InteractionShape) ? InteractionShape->GetComponentLocation() : TargetActor->GetActorLocation();
+	const float InteractionRadius = IsValid(InteractionShape) ? InteractionShape->Bounds.SphereRadius : 150.0f;
 	const float CapsuleHalfHeight = Capsule->GetScaledCapsuleHalfHeight();
 	const float CapsuleRadius = Capsule->GetScaledCapsuleRadius();
 	const float CapsuleHalfLineLength = FMath::Max(0.0f, CapsuleHalfHeight - CapsuleRadius);
@@ -764,6 +764,12 @@ bool TeleportServerPlayerIntoInteraction(AHeistPlayerCharacter* Character, AActo
 			RejectedCandidates.Add(FString::Printf(TEXT("Destination=%s Resolved=%s Reason=CollisionAdjustmentOutsideInteraction"), *Destination.ToString(), *ResolvedLocation.ToString()));
 			continue;
 		}
+		const UHeistInteractionComponent* Interaction = Character->GetInteractionComponent();
+		if (!IsValid(Interaction) || !Interaction->IsActorOverlappingInteractionArea(TargetActor))
+		{
+			RejectedCandidates.Add(FString::Printf(TEXT("Destination=%s Reason=OutsideInteractionShape"), *ResolvedLocation.ToString()));
+			continue;
+		}
 		Movement->StopMovementImmediately();
 		Character->ForceNetUpdate();
 		UE_LOG(LogTemp, Display, TEXT("W6-010 interaction placement: PlayerId=%d Target=%s Requested=%s Resolved=%s Support=%s"), PlayerId, *GetNameSafe(TargetActor), *Destination.ToString(),
@@ -772,7 +778,7 @@ bool TeleportServerPlayerIntoInteraction(AHeistPlayerCharacter* Character, AActo
 	}
 	UE_LOG(LogTemp, Error, TEXT("W6-010 interaction placement failed: PlayerId=%d Target=%s Center=%s Radius=%.1f SupportedCandidates=%d Reason=%s Candidates=[%s]"), PlayerId,
 		   *GetNameSafe(TargetActor), *Center.ToString(), InteractionRadius, SupportedCandidateCount,
-		   SupportedCandidateCount == 0 ? TEXT("NoWalkableSupportCandidateOverlappingInteractionSphere") : TEXT("NoCollisionFreePlacementOverlappingInteractionSphere"),
+		   SupportedCandidateCount == 0 ? TEXT("NoWalkableSupportCandidateOverlappingInteractionShape") : TEXT("NoCollisionFreePlacementOverlappingInteractionShape"),
 		   *FString::Join(RejectedCandidates, TEXT("; ")));
 	return false;
 }

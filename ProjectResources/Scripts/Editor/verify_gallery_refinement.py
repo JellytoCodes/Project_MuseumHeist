@@ -64,7 +64,7 @@ def verify_hanging(world, code, actors, ignored):
                 failures.append(label + ": saved layout position mismatch")
             if (n - expected_n).length() > 0.01 or component.get_right_vector().z > -0.99:
                 failures.append(label + ": saved facing/upright mismatch")
-            if abs(sx - (size - (10 if active else 2))) > 0.2 or abs(sx - sy) > 0.2:
+            if abs(sx - (size - (15 if active else 3))) > 0.2 or abs(sx - sy) > 0.2:
                 failures.append(label + ": saved square artwork size mismatch")
             for tag in ("MuseumHangingPattern_" + group["pattern"], "MuseumHangingGroup_" + group["id"], "MuseumHangingSlot_" + str(slot)):
                 if not actor.actor_has_tag(tag): failures.append(label + ": grouping metadata mismatch")
@@ -91,15 +91,23 @@ def verify_hanging(world, code, actors, ignored):
                     unreal.TraceTypeQuery.TRACE_TYPE_QUERY1, True, ignored, unreal.DrawDebugTrace.NONE, True)
                 if hit and hit.to_dict().get("blocking_hit"): samples += 1
                 else: failures.append(label + ": frame extends beyond supporting wall")
-            actual.append(dict(label=label, center=center, normal=n, tangent=t, size=size, group=group["id"]))
+            actual.append(dict(label=label, center=center, normal=n, tangent=t, size=size, active=active, group=group["id"]))
     for i, p in enumerate(actual):
         for q in actual[:i]:
             delta = p["center"] - q["center"]
             if (p["normal"]-q["normal"]).length() > 0.01 or abs(delta.dot(p["normal"])) > 40: continue
-            # Include the lower security panel separately via the authored clearance.
-            gap = (p["size"]+q["size"])/2 + 18
-            if abs(delta.dot(p["tangent"])) < gap-0.2 and abs(delta.z) < gap-0.2:
-                failures.append(p["label"] + ": overlaps/insufficient separation from " + q["label"])
+            # Test actual frame and security-panel rectangles, including 4 cm breathing room.
+            def rectangles(piece, x, z):
+                half = piece['size']/2 + (4 if piece['active'] else 1.5)
+                rects = [(x-half,z-half,x+half,z+half)]
+                if piece['active']:
+                    bottom=z-piece['size']/2
+                    rects.append((x-24,bottom-32,x+24,bottom-12))
+                return rects
+            for a in rectangles(p,delta.dot(p['tangent']),delta.z):
+                for b in rectangles(q,0,0):
+                    if min(a[2],b[2])-max(a[0],b[0])>-3.8 and min(a[3],b[3])-max(a[1],b[1])>-3.8:
+                        failures.append(p['label']+': frame/panel clearance from '+q['label'])
     patterns = sorted({g["pattern"] for g in groups})
     if len(patterns) < 10: failures.append("Fewer than ten authored geometrically verified patterns")
     return dict(status="FAIL" if failures else "PASS", failures=failures, patterns=patterns,
@@ -162,7 +170,7 @@ def verify_gallery(world, code, authored_actors):
                 row["support_samples"] += 1
             else:
                 failures.append(label + ": unsupported picture surface " + str((along, up)))
-        front = actor.get_actor_location() + normal * 120
+        front = actor.get_actor_location() + normal * 70
         front.z = half + 3
         hit = unreal.SystemLibrary.capsule_trace_single_by_profile(world, front, front, radius - 1, half - 1,
             profile, False, ignored, unreal.DrawDebugTrace.NONE, True)
@@ -176,10 +184,15 @@ def verify_gallery(world, code, authored_actors):
         row["reachable"] = bool(path and path.is_valid() and not path.is_partial())
         if not row["reachable"]:
             failures.append(label + ": no complete path from player start to interaction approach")
-        sphere = actor.get_component_by_class(unreal.SphereComponent)
-        row["interaction_radius_cm"] = sphere.get_scaled_sphere_radius()
-        if sphere.get_scaled_sphere_radius() + radius < 120:
-            failures.append(label + ": approach outside interaction overlap")
+        box = actor.get_component_by_class(unreal.BoxComponent)
+        if box is None or actor.get_component_by_class(unreal.SphereComponent) is not None:
+            failures.append(label + ': expected only a Box interaction component')
+        else:
+            extent = box.get_scaled_box_extent()
+            offset = box.get_editor_property('relative_location')
+            row['interaction_box_half_extent_cm'] = [extent.x,extent.y,extent.z]
+            if (extent-unreal.Vector(60,60,80)).length()>.1 or (offset-unreal.Vector(-70,0,100)).length()>.1:
+                failures.append(label + ': Box extent/offset mismatch')
         exhibits.append(row)
     rays = {
         "M01": [((-3900, 1800), (3900, 1800)), ((-3900, -1800), (3900, -1800))],

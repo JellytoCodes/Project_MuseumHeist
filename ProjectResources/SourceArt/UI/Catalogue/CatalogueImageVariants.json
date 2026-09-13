@@ -1,0 +1,589 @@
+{
+  "generator": "OpenAI built-in image_gen",
+  "draw_as": "Image",
+  "brush_margin": 0,
+  "processing": "Remove edge-connected preview matte, crop, uniformly fit into final canvas. No nine-slice, anisotropic resize, or baked stretching.",
+  "font_display_dpi": 72,
+  "font_render_dpi": 96,
+  "font_display_size_unit": 4,
+  "sources": {
+    "Field": {
+      "file": "FieldSourceV2.png",
+      "generated_file": "exec-e9add85e-eea3-4550-bf9c-e783af6fef9f.png",
+      "crop": [
+        18,
+        287,
+        1924,
+        512
+      ],
+      "sha256": "1a93ee4ac1001bec4b0eb254f85eefe8a6d5f8b712c405b90f019711aa487695"
+    },
+    "PanelLandscape": {
+      "file": "PanelLandscapeSourceV2.png",
+      "generated_file": "exec-bb9940c0-b51a-466e-9143-d6bfb3a016b0.png",
+      "crop": [
+        12,
+        95,
+        1524,
+        929
+      ],
+      "sha256": "81e177c5b3aef09f084392fea00a518ac2c565b73f21f47899cca566e8914188"
+    },
+    "PanelPortrait": {
+      "file": "PanelPortraitSourceV2.png",
+      "generated_file": "exec-699d06d9-4abe-42f7-8412-21dd2c58189d.png",
+      "crop": [
+        25,
+        27,
+        1095,
+        1375
+      ],
+      "sha256": "cdf906d2c0c50db951b3553fafb33cada59737b88b5c8134580262dbb858ae79"
+    },
+    "PanelWide": {
+      "file": "PanelWideSourceV2.png",
+      "generated_file": "exec-58371209-06ff-4f4a-a27f-4ff43d3e9f88.png",
+      "crop": [
+        8,
+        130,
+        2040,
+        637
+      ],
+      "sha256": "66b16048b296c023bf896e6d330bd828c784b89076ede73fa286a8455272a5a6"
+    },
+    "PanelStrip": {
+      "file": "PanelStripSourceV2.png",
+      "generated_file": "exec-457ef277-f63d-476b-8a42-aba7e37f7955.png",
+      "crop": [
+        0,
+        106,
+        2172,
+        617
+      ],
+      "sha256": "4a8edfe42c97447d2c0d75a00aacf3c156a4e547b434d721eee4560e94180b2b"
+    },
+    "PanelCard": {
+      "file": "PanelCardSourceV2.png",
+      "generated_file": "exec-00340ba5-2da7-47a2-8e49-514a482c99d9.png",
+      "crop": [
+        12,
+        68,
+        1362,
+        1074
+      ],
+      "sha256": "897eddc6568fdaf8b17d6068aa12d2a2f72e4ec1139386bea4a4149531ead237"
+    }
+  },
+  "textures": {
+    "T_Catalogue_Field": {
+      "size": [
+        688,
+        80
+      ],
+      "source_size": [
+        1906,
+        225
+      ],
+      "uniform_fit_size": [
+        678,
+        80
+      ],
+      "sha256": "611b030a9b6a074f430182bfa6a04fb477514d04b415811e8fdf7d5f073e7805"
+    },
+    "T_Catalogue_SettingsPanel": {
+      "size": [
+        1360,
+        752
+      ],
+      "source_size": [
+        1512,
+        834
+      ],
+      "uniform_fit_size": [
+        1360,
+        750
+      ],
+      "sha256": "286d492fd362f4cf3cd49a2cc94d9e18ff70896d5bbe717005030b2edb8a0633"
+    },
+    "T_Catalogue_JoinPanel": {
+      "size": [
+        1008,
+        560
+      ],
+      "source_size": [
+        1512,
+        834
+      ],
+      "uniform_fit_size": [
+        1008,
+        556
+      ],
+      "sha256": "44c0bc2a22a8f97976c119d5f812b2859916f52dc9309c1afc7f4ba9b19b493a"
+    },
+    "T_Catalogue_MapPanel": {
+      "size": [
+        1920,
+        1080
+      ],
+      "source_size": [
+        1512,
+        834
+      ],
+      "uniform_fit_size": [
+        1512,
+        834
+      ],
+      "sha256": "0b0fa1eda51ebf063f332e5a43c88b4d2dd80908d58accb68addb0323d971e7f"
+    },
+    "T_Catalogue_InventoryPanel": {
+      "size": [
+        768,
+        960
+      ],
+      "source_size": [
+        1070,
+        1348
+      ],
+      "uniform_fit_size": [
+        762,
+        960
+      ],
+      "sha256": "a8194ba21ffe15ada5d3e835f0bc2ba9712fe55aa06b8fe0ec53f64bf3204bb2"
+    },
+    "T_Catalogue_RewardPanel": {
+      "size": [
+        540,
+        700
+      ],
+      "source_size": [
+        1070,
+        1348
+      ],
+      "uniform_fit_size": [
+        540,
+        680
+      ],
+      "sha256": "cb911c0c844ebd565ebab6c50ce7e90a979e7b0f1881c4faecbc1cc0cd40aa7e"
+    },
+    "T_Catalogue_RecapPanel": {
+      "size": [
+        1400,
+        352
+      ],
+      "source_size": [
+        2032,
+        507
+      ],
+      "uniform_fit_size": [
+        1400,
+        349
+      ],
+      "sha256": "fa4b78944712f1f31512b94e62a0d5b1a095c2706e2cd34bb215c9bdd8db9991"
+    },
+    "T_Catalogue_ContributionPanel": {
+      "size": [
+        1400,
+        328
+      ],
+      "source_size": [
+        2172,
+        511
+      ],
+      "uniform_fit_size": [
+        1394,
+        328
+      ],
+      "sha256": "6f94e6561b92e96512575ae9ac8e35e94f36301159dbb57db075bf6a66c13bc8"
+    },
+    "T_Catalogue_PlayerPanel": {
+      "size": [
+        400,
+        300
+      ],
+      "source_size": [
+        1350,
+        1006
+      ],
+      "uniform_fit_size": [
+        400,
+        298
+      ],
+      "sha256": "62a6d6e8bf81ee72fa784b7d2a4d16fac0140e058406e24778893582d1ed3023"
+    },
+    "T_Catalogue_HUDMissionPanel": {
+      "size": [
+        304,
+        208
+      ],
+      "source_size": [
+        1350,
+        1006
+      ],
+      "uniform_fit_size": [
+        279,
+        208
+      ],
+      "sha256": "46252deba8974a06c8d474604e3277c8ba79c5dea066d8d5cefcabb1ae147286"
+    },
+    "T_Catalogue_HUDAlertPanel": {
+      "size": [
+        344,
+        112
+      ],
+      "source_size": [
+        2032,
+        507
+      ],
+      "uniform_fit_size": [
+        344,
+        86
+      ],
+      "sha256": "683f7ece6eeb54fa8e11a56e0b87fd70e963909963f2439ae3a00bf6a86ec42e"
+    },
+    "T_Catalogue_HUDTeamPanel": {
+      "size": [
+        304,
+        80
+      ],
+      "source_size": [
+        2032,
+        507
+      ],
+      "uniform_fit_size": [
+        304,
+        76
+      ],
+      "sha256": "94a6370822d8a1b80ffe71f8480832b1c3e36c11c4285eec30959d746c930380"
+    },
+    "T_Catalogue_HUDTutorialPanel": {
+      "size": [
+        800,
+        200
+      ],
+      "source_size": [
+        2032,
+        507
+      ],
+      "uniform_fit_size": [
+        800,
+        200
+      ],
+      "sha256": "5f211e6427946e5b6314df8f42e54c901cf8f37a54d6d79557a22a41c4869d03"
+    },
+    "T_Catalogue_HUDSlotPanel": {
+      "size": [
+        88,
+        88
+      ],
+      "source_size": [
+        1024,
+        1024
+      ],
+      "uniform_fit_size": [
+        88,
+        88
+      ],
+      "sha256": "715f348e2729ac4c583ae1b18e737b722ef4cc0ba3a48c8058b1b8511c5018ff"
+    },
+    "T_Catalogue_Button_Normal_384x108": {
+      "size": [
+        384,
+        108
+      ],
+      "source_size": [
+        512,
+        144
+      ],
+      "uniform_fit_size": [
+        384,
+        108
+      ],
+      "sha256": "59fcefa6e8e4e67855c163868d7e7868f0771258069aa7c612ab4803525ac0c5"
+    },
+    "T_Catalogue_Button_Primary_384x108": {
+      "size": [
+        384,
+        108
+      ],
+      "source_size": [
+        512,
+        144
+      ],
+      "uniform_fit_size": [
+        384,
+        108
+      ],
+      "sha256": "9e9a286f97cb53d9668803c445e4b0ba0380fed122b4d70241d218f26ee77514"
+    },
+    "T_Catalogue_Button_Pressed_384x108": {
+      "size": [
+        384,
+        108
+      ],
+      "source_size": [
+        512,
+        144
+      ],
+      "uniform_fit_size": [
+        384,
+        108
+      ],
+      "sha256": "f3fba91f18b0c628f42b48ec6128f365428af6d5562c92723319836dbab01957"
+    },
+    "T_Catalogue_Button_Normal_224x64": {
+      "size": [
+        224,
+        64
+      ],
+      "source_size": [
+        512,
+        144
+      ],
+      "uniform_fit_size": [
+        224,
+        63
+      ],
+      "sha256": "2e30c3f6374a5307cd45d049c9809a872dd4c58e028b971963755c83c97b9fac"
+    },
+    "T_Catalogue_Button_Primary_224x64": {
+      "size": [
+        224,
+        64
+      ],
+      "source_size": [
+        512,
+        144
+      ],
+      "uniform_fit_size": [
+        224,
+        63
+      ],
+      "sha256": "91d13c22f67b15b2df54c860bd5e5b03f038a0bf449e6fc68653850c2d8e01fa"
+    },
+    "T_Catalogue_Button_Pressed_224x64": {
+      "size": [
+        224,
+        64
+      ],
+      "source_size": [
+        512,
+        144
+      ],
+      "uniform_fit_size": [
+        224,
+        63
+      ],
+      "sha256": "1261220319b975aaf96161aaf7cc6e92e282660c2895b7c0ae8e20bdb8e5e8fe"
+    },
+    "T_Catalogue_Button_Normal_256x72": {
+      "size": [
+        256,
+        72
+      ],
+      "source_size": [
+        512,
+        144
+      ],
+      "uniform_fit_size": [
+        256,
+        72
+      ],
+      "sha256": "a65218ffa19e62dba9b525268aff4ba85b6d1a9f0816ebf265fa389fcb545bbc"
+    },
+    "T_Catalogue_Button_Primary_256x72": {
+      "size": [
+        256,
+        72
+      ],
+      "source_size": [
+        512,
+        144
+      ],
+      "uniform_fit_size": [
+        256,
+        72
+      ],
+      "sha256": "b3b480b989571637baf58fa60764ea00e610dcad1d5a93ec67d171674ba52b6a"
+    },
+    "T_Catalogue_Button_Pressed_256x72": {
+      "size": [
+        256,
+        72
+      ],
+      "source_size": [
+        512,
+        144
+      ],
+      "uniform_fit_size": [
+        256,
+        72
+      ],
+      "sha256": "72a22a0cf7ba33973e4eae0dfcf51113dc4c85eb8bd3dca6abc9bc6e1afffd3e"
+    },
+    "T_Catalogue_Button_Normal_128x36": {
+      "size": [
+        128,
+        36
+      ],
+      "source_size": [
+        512,
+        144
+      ],
+      "uniform_fit_size": [
+        128,
+        36
+      ],
+      "sha256": "46945aef83e6bcc981b79da931d245e75a86ea9044db379944295576fabc721c"
+    },
+    "T_Catalogue_Button_Primary_128x36": {
+      "size": [
+        128,
+        36
+      ],
+      "source_size": [
+        512,
+        144
+      ],
+      "uniform_fit_size": [
+        128,
+        36
+      ],
+      "sha256": "c7d1878cf4e54379449b18e98eb6cc49584ce3c7c27c2cc0c5243f105145f950"
+    },
+    "T_Catalogue_Button_Pressed_128x36": {
+      "size": [
+        128,
+        36
+      ],
+      "source_size": [
+        512,
+        144
+      ],
+      "uniform_fit_size": [
+        128,
+        36
+      ],
+      "sha256": "e51bafb5ec56e271886775aa524131a4c570f670c18cc3461ccbd7e15392664e"
+    },
+    "T_Catalogue_Button_Normal_200x56": {
+      "size": [
+        200,
+        56
+      ],
+      "source_size": [
+        512,
+        144
+      ],
+      "uniform_fit_size": [
+        199,
+        56
+      ],
+      "sha256": "a5f5d09ff29710b8f227255281eb15a8ea05232e038564caf1f50a84e046111a"
+    },
+    "T_Catalogue_Button_Primary_200x56": {
+      "size": [
+        200,
+        56
+      ],
+      "source_size": [
+        512,
+        144
+      ],
+      "uniform_fit_size": [
+        199,
+        56
+      ],
+      "sha256": "671fe3b83947aaed138ea002037e166640391fc72a69b0c6dc97072761510c05"
+    },
+    "T_Catalogue_Button_Pressed_200x56": {
+      "size": [
+        200,
+        56
+      ],
+      "source_size": [
+        512,
+        144
+      ],
+      "uniform_fit_size": [
+        199,
+        56
+      ],
+      "sha256": "4450b676bf6f3e0355671e1db169c554f5e0f005080df2b01d2919557e89bbe4"
+    },
+    "T_Catalogue_Button_Normal_144x40": {
+      "size": [
+        144,
+        40
+      ],
+      "source_size": [
+        512,
+        144
+      ],
+      "uniform_fit_size": [
+        142,
+        40
+      ],
+      "sha256": "225f666425ecdd0c9d33cbe347a47bdf6473833e630930a15b221143c5bd8230"
+    },
+    "T_Catalogue_Button_Primary_144x40": {
+      "size": [
+        144,
+        40
+      ],
+      "source_size": [
+        512,
+        144
+      ],
+      "uniform_fit_size": [
+        142,
+        40
+      ],
+      "sha256": "22f25e8afd2f0db5d0572cab6902641444e2c71e0521670f814de93ae254d885"
+    },
+    "T_Catalogue_Button_Pressed_144x40": {
+      "size": [
+        144,
+        40
+      ],
+      "source_size": [
+        512,
+        144
+      ],
+      "uniform_fit_size": [
+        142,
+        40
+      ],
+      "sha256": "b3afa951c3d6fddd265deb143108b641d3f4eccd4b96878d4595d0e9fff56a7a"
+    },
+    "T_Catalogue_Header_240x68": {
+      "size": [
+        240,
+        68
+      ],
+      "source_size": [
+        512,
+        144
+      ],
+      "uniform_fit_size": [
+        240,
+        68
+      ],
+      "sha256": "18676ea4828ceccdf7a2b3c92bf868ee6ae9a72834c0cdec19a8c5f0c56bbd9b"
+    },
+    "T_Catalogue_Header_256x72": {
+      "size": [
+        256,
+        72
+      ],
+      "source_size": [
+        512,
+        144
+      ],
+      "uniform_fit_size": [
+        256,
+        72
+      ],
+      "sha256": "134904f897c4c1a3c4b64352bf5058fbf15e2345d285cda29701eac3a9ee9ced"
+    }
+  }
+}

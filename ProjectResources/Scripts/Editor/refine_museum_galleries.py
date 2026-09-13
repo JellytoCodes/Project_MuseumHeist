@@ -313,12 +313,22 @@ def refine_exhibits(builder, cases, walls):
                 actor.set_actor_rotation(unreal.Rotator(yaw=facing + 180), False)
                 components = {c.get_name(): c for c in actor.get_components_by_class(unreal.StaticMeshComponent)}
                 backing = components["VisualMeshComponent"]
+                # Existing map instances still serialize the old Sphere-root attachment.
+                backing.attach_to_component(actor.root_component, '', unreal.AttachmentRule.KEEP_RELATIVE,
+                    unreal.AttachmentRule.KEEP_RELATIVE, unreal.AttachmentRule.KEEP_RELATIVE, False)
                 # Both picture planes are children of the backing. Scale the entire
                 # shell around its picture centre, retaining the original aspect ratio.
-                ratio = (size - 10) / 133.0
+                ratio = (size - 15) / 133.0
                 backing.set_editor_property("relative_location", unreal.Vector(0, -70 * ratio, z - 70 * ratio))
                 backing.set_editor_property("relative_rotation", unreal.Rotator(yaw=90))
                 backing.set_editor_property("relative_scale3d", unreal.Vector(*([0.35 * ratio] * 3)))
+                interaction = actor.get_component_by_class(unreal.BoxComponent)
+                if interaction is None:
+                    raise RuntimeError("Painting requires the native front Box: " + actor.get_actor_label())
+                interaction.set_editor_property("relative_location", unreal.Vector(-70, 0, 100))
+                interaction.set_editor_property("relative_rotation", unreal.Rotator())
+                interaction.set_editor_property("relative_scale3d", unreal.Vector(1, 1, 1))
+                interaction.set_box_extent(unreal.Vector(60, 60, 80), True)
                 for name in ("OriginalVisualComponent", "ReplicaVisualComponent"):
                     component = components[name]
                     component.set_editor_property("relative_location", unreal.Vector(200, 12, 200))
@@ -333,7 +343,7 @@ def refine_exhibits(builder, cases, walls):
             else:
                 suffix = "Print_{}_{:02d}".format(group["id"], slot)
                 actor = box(builder, suffix, (px + n[0] * 2, py + n[1] * 2, z),
-                    (1, size - 2, size - 2), "m01_wall", facing, "Theme/Exhibits/Decorative", "NoCollision")
+                    (1, size - 3, size - 3), "m01_wall", facing, "Theme/Exhibits/Decorative", "NoCollision")
                 component = actor.get_component_by_class(unreal.StaticMeshComponent)
                 component.set_editor_property("static_mesh", plane_mesh)
                 if print_index % len(materials) == group_index % len(materials):
@@ -342,7 +352,7 @@ def refine_exhibits(builder, cases, walls):
                 print_index += 1
                 actor.set_actor_location(unreal.Vector(px + n[0] * 2, py + n[1] * 2, z), False, False)
                 actor.set_actor_rotation(unreal.Rotator(yaw=facing - 90, roll=90), False)
-                actor.set_actor_scale3d(unreal.Vector((size - 2) / 100, (size - 2) / 100, 1))
+                actor.set_actor_scale3d(unreal.Vector((size - 3) / 100, (size - 3) / 100, 1))
                 builder.add_tags(actor, "MuseumDecorativePainting")
             tags = [tag for tag in actor.get_editor_property("tags")
                     if not str(tag).startswith(("MuseumHangingPattern_", "MuseumHangingGroup_", "MuseumHangingSlot_"))]

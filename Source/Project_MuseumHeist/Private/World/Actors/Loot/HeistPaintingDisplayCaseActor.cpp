@@ -2,6 +2,7 @@
 
 #include "Character/HeistPlayerCharacter.h"
 #include "Character/Components/HeistInventoryComponent.h"
+#include "Components/BoxComponent.h"
 #include "Components/PrimitiveComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Core/HeistGameMode.h"
@@ -94,10 +95,20 @@ bool FHeistReplicaPaintingData::NetSerialize(FArchive& Ar, UPackageMap*, bool& b
 const FName AHeistPaintingDisplayCaseActor::OriginalVisualComponentTag(TEXT("OriginalVisual"));
 const FName AHeistPaintingDisplayCaseActor::ReplicaVisualComponentTag(TEXT("ReplicaVisual"));
 
-AHeistPaintingDisplayCaseActor::AHeistPaintingDisplayCaseActor()
+AHeistPaintingDisplayCaseActor::AHeistPaintingDisplayCaseActor(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer.SetDefaultSubobjectClass<UBoxComponent>(TEXT("InteractionCollision")))
 {
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
+
+	// Keep the wall anchor and artwork independent of the smaller, front-facing interaction volume.
+	USceneComponent* PaintingRoot = CreateDefaultSubobject<USceneComponent>(TEXT("PaintingRoot"));
+	SetRootComponent(PaintingRoot);
+	InteractionCollision->SetupAttachment(PaintingRoot);
+	InteractionCollision->SetRelativeLocation(FVector(-70.0f, 0.0f, 100.0f));
+	CastChecked<UBoxComponent>(InteractionCollision)->InitBoxExtent(FVector(60.0f, 60.0f, 80.0f));
+	InteractionCollision->SetCanEverAffectNavigation(false);
+	VisualMeshComponent->SetupAttachment(PaintingRoot);
 
 	OriginalVisualComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("OriginalVisualComponent"));
 	OriginalVisualComponent->SetupAttachment(VisualMeshComponent);

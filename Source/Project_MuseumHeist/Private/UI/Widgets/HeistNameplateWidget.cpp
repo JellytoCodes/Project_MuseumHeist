@@ -10,6 +10,7 @@
 #include "Components/Widget.h"
 #include "Core/HeistPlayerState.h"
 #include "Engine/Texture2D.h"
+#include "Engine/UserInterfaceSettings.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -18,7 +19,7 @@ namespace
 FSlateFontInfo MakeNameplateFont(const int32 Size)
 {
 	static UObject* BodyFont = LoadObject<UObject>(nullptr, TEXT("/Game/Assets/UI/Fonts/Catalogue/F_NanumGothic_Regular_Font.F_NanumGothic_Regular_Font"));
-	return FSlateFontInfo(BodyFont, Size);
+	return FSlateFontInfo(BodyFont, GetDefault<UUserInterfaceSettings>()->ConvertFontSizeFromDisplayToNative(Size));
 }
 }
 
@@ -26,9 +27,6 @@ TSharedRef<SWidget> UHeistNameplateWidget::RebuildWidget()
 {
 	if (IsValid(WidgetTree) && !IsValid(WidgetTree->RootWidget))
 	{
-		UBorder* RootBorder = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("NameplateBorder"));
-		RootBorder->SetBrushColor(FLinearColor(0.016f, 0.014f, 0.012f, 0.80f));
-		RootBorder->SetPadding(FMargin(8.0f, 4.0f));
 		UHorizontalBox* ContentRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("NameplateContentRow"));
 		CrewStatusBadge = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("CrewStatusBadge"));
 		CrewStatusBadge->SetPadding(FMargin(8.0f, 4.0f));
@@ -61,8 +59,7 @@ TSharedRef<SWidget> UHeistNameplateWidget::RebuildWidget()
 			TextSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 			TextSlot->SetVerticalAlignment(VAlign_Center);
 		}
-		RootBorder->SetContent(ContentRow);
-		WidgetTree->RootWidget = RootBorder;
+		WidgetTree->RootWidget = ContentRow;
 	}
 	return Super::RebuildWidget();
 }

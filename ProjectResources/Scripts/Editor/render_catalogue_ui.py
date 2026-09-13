@@ -1,6 +1,6 @@
 import unreal,json,time,traceback,hashlib
 from pathlib import Path
-out=Path('D:/Dev/UE5.8/Project_MuseumHeist/Saved/Screenshots/CatalogueUI');out.mkdir(exist_ok=True)
+out=Path('D:/Dev/UE5.8/Project_MuseumHeist/Saved/Screenshots/CatalogueImageFix');out.mkdir(exist_ok=True)
 root=Path('D:/Dev/UE5.8/Project_MuseumHeist')
 paths=sorted((root/'Content/Blueprints/UI').rglob('WBP_*.uasset'))
 before={str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}
@@ -13,10 +13,18 @@ items=[]
 state={'t':time.time(),'cb':None,'phase':'start','errors':[]}
 widget_cache={}
 populated=set()
+tick_original={}
+
+def freeze_fixture_tick(klass):
+    cdo=unreal.get_default_object(klass)
+    if cdo not in tick_original:
+        tick_original[cdo]=cdo.get_editor_property('tick_frequency')
+        cdo.set_editor_property('tick_frequency',unreal.WidgetTickFrequency.NEVER)
 
 def make_widget(asset):
     path='/Game/Blueprints/UI/'+asset
     klass=unreal.load_class(None,path+'.'+asset.split('/')[-1]+'_C')
+    freeze_fixture_tick(klass)
     return unreal.get_default_object(unreal.WidgetLibrary).call_method('Create',(unreal.EditorLevelLibrary.get_game_world(),klass,None))
 
 def widgets(widget):
@@ -49,7 +57,6 @@ def fixture(key,widget):
     elif key.endswith('WBP_HeistHUD'):
         txt('MissionTimeText','14:32');txt('RequiredTargetNameText','황금빛 초상');txt('InteractionPromptText','[E] 작품 관찰')
     elif key.endswith('WBP_Inventory'):
-        txt('InventorySummaryText','배낭 상태: 가벼움\n확보 가치 $8,400  /  계약 할당량 $24,000')
         if key not in populated:
             grid=ws['InventoryGrid'];grid.clear_children()
             grid.set_editor_property('min_desired_slot_width',128);grid.set_editor_property('min_desired_slot_height',128)
@@ -58,9 +65,17 @@ def fixture(key,widget):
                 slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_FILL);slot.set_vertical_alignment(unreal.VerticalAlignment.V_ALIGN_FILL)
             populated.add(key)
     elif key.endswith('WBP_HeistForgery'):
+        if key not in populated:
+            # NativeTick owns timer visibility, so provide transient presentation state.
+            view_model=unreal.new_object(unreal.HeistForgeryViewModel,outer=widget)
+            view_model.set_editor_property('drawing_visible',True)
+            view_model.set_editor_property('presentation_visible',True)
+            widget.set_editor_property('forgery_view_model',view_model)
+            populated.add(key)
         for n in ['DrawingContainer','DrawingTimeRemainingText','SubmitButton','CancelButton']:
             if n in ws:ws[n].set_visibility(unreal.SlateVisibility.VISIBLE)
         txt('DrawingTimeRemainingText','남은 시간  00:32')
+        for n in ['SubmitButton','CancelButton']:ws[n].set_is_enabled(True)
         for i in range(1,10):
             n='PaletteButton'+str(i)
             if n in ws:ws[n].set_visibility(unreal.SlateVisibility.VISIBLE if i<=5 else unreal.SlateVisibility.COLLAPSED)
@@ -85,10 +100,11 @@ def fixture(key,widget):
                 cw['ReplicaImage'].set_brush_from_texture(unreal.load_asset('/Game/Data/Forgery/Textures/T_Forgery_SunArchWave'));cw['ReplicaImage'].set_visibility(unreal.SlateVisibility.VISIBLE)
             populated.add(key)
 def finish():
+    for cdo,tick in tick_original.items():cdo.set_editor_property('tick_frequency',tick)
     after={str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}
     (out/'asset-hashes.json').write_text(json.dumps({'before':before,'after':after,'unchanged':before==after},indent=2),encoding='utf-8')
     unreal.unregister_slate_post_tick_callback(state['cb'])
-    (out/'render-complete.json').write_text(json.dumps({'screens':len(items),'visual_fixture':True,'errors':state['errors']}),encoding='utf-8')
+    (out/'render-complete.json').write_text(json.dumps({'screens':len(items),'visual_fixture':True,'cdo_tick_override_requested':True,'forgery_transient_view_model':True,'errors':state['errors']}),encoding='utf-8')
 def tick(dt):
     if state['phase']=='export':
         for key,a,wc,widget in items:
@@ -111,11 +127,8 @@ def tick(dt):
                 wc.set_draw_size(unreal.Vector2D(1920,1080))
                 wc.set_background_color(unreal.LinearColor(0.08,0.08,0.08,1))
                 klass=unreal.load_class(None,path+'.'+key.split('/')[-1]+'_C')
-                cdo=unreal.get_default_object(klass);original_tick=cdo.get_editor_property('tick_frequency')
-                try:
-                    if key.endswith('WBP_HeistForgery'):cdo.set_editor_property('tick_frequency',unreal.WidgetTickFrequency.NEVER)
-                    widget=unreal.get_default_object(unreal.WidgetLibrary).call_method('Create',(world,klass,None))
-                finally:cdo.set_editor_property('tick_frequency',original_tick)
+                freeze_fixture_tick(klass)
+                widget=unreal.get_default_object(unreal.WidgetLibrary).call_method('Create',(world,klass,None))
                 wc.set_widget(widget);widget.set_visibility(unreal.SlateVisibility.VISIBLE);wc.request_render_update()
                 items.append((key,a,wc,widget))
             state.update(phase='export',t=time.time());return
@@ -126,7 +139,7 @@ def tick(dt):
                     w=widgets(widget)['DrawingTimeRemainingText']
                     (out/'forgery-timer-fixture.json').write_text(json.dumps({'visibility':str(w.get_visibility()),'opacity':w.get_render_opacity(),'text':str(w.get_text()),'geometry':str(w.get_cached_geometry()),'tick':str(widget.get_editor_property('tick_frequency'))}),encoding='utf-8')
                 rt=wc.get_render_target();unreal.log_warning('UIREVIEW '+key+' RT '+str(rt))
-                if rt:unreal.RenderingLibrary.export_render_target(world,rt,str(out),key.split('/')[-1]+'.png')
+                if rt:unreal.RenderingLibrary.export_render_target(world,rt,str(out),key.split('/')[-1]+'.exr')
             state.update(phase='finish',t=time.time());unreal.EditorLevelLibrary.editor_end_play();return
         finish()
     except:

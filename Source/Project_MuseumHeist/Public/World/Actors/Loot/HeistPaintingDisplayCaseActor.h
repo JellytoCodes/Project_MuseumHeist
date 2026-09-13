@@ -63,7 +63,7 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 	GENERATED_BODY()
 
   public:
-	AHeistPaintingDisplayCaseActor();
+	AHeistPaintingDisplayCaseActor(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
   protected:
 	virtual void BeginPlay() override;

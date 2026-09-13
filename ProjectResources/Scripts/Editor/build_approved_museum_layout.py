@@ -99,9 +99,11 @@ def build():
             bounds = [a,f-t/2,b,f+t/2] if wall["axis"] == "h" else [f-t/2,a,f+t/2,b]
             actor = box(wall["id"], bounds, 0, wall["height"], wall_material, "Architecture/Walls")
             builder.add_tags(actor, "MuseumPlanWall_"+wall["id"])
-            # Trim shares the wall footprint: it cannot reduce an authored opening.
-            box(wall["id"]+"_Skirt", bounds, .02, .16, trim, "Architecture/Trim", "NoCollision")
-            box(wall["id"]+"_Cornice", bounds, wall_height-.18, .12, trim, "Architecture/Trim", "NoCollision")
+            # Project only the depth beyond plaster; preserve opening endpoints and height.
+            trim_depth = t * 1.15
+            trim_bounds = [a,f-trim_depth/2,b,f+trim_depth/2] if wall["axis"] == "h" else [f-trim_depth/2,a,f+trim_depth/2,b]
+            box(wall["id"]+"_Skirt", trim_bounds, .02, .16, trim, "Architecture/Trim", "NoCollision")
+            box(wall["id"]+"_Cornice", trim_bounds, wall_height-.18, .12, trim, "Architecture/Trim", "NoCollision")
         for door in plan["doors"]:
             x,y = door["xy"]; width=door["width"]; depth=.4
             bounds = [x-width/2,y-depth/2,x+width/2,y+depth/2] if door["axis"]=="h" else [x-depth/2,y-width/2,x+depth/2,y+width/2]

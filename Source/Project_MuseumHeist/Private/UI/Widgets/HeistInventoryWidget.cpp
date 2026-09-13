@@ -1,11 +1,8 @@
 #include "UI/Widgets/HeistInventoryWidget.h"
 
-#include "Character/Components/HeistNoiseEmitterComponent.h"
-#include "Character/HeistPlayerCharacter.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/Button.h"
-#include "Components/TextBlock.h"
 #include "Components/UniformGridPanel.h"
 #include "Components/UniformGridSlot.h"
 #include "Core/HeistPlayerController.h"
@@ -157,35 +154,6 @@ void UHeistInventoryWidget::RefreshVisibilityFromConfirmedSnapshot()
 		const TArray<FHeistInventoryItem>& ConfirmedItems = InventoryViewModel->GetItems();
 		const int32 GridColumns = InventoryViewModel->GetGridColumnCount();
 		const int32 GridRows = InventoryViewModel->GetGridRowCount();
-		if (IsValid(InventorySummaryText))
-		{
-			const AHeistPlayerCharacter* OwningCharacter = IsValid(PlayerController) ? Cast<AHeistPlayerCharacter>(PlayerController->GetPawn()) : nullptr;
-			const UHeistNoiseEmitterComponent* NoiseEmitter = IsValid(OwningCharacter) ? OwningCharacter->GetNoiseEmitterComponent() : GetDefault<UHeistNoiseEmitterComponent>();
-			const float MediumWeightThreshold = IsValid(NoiseEmitter) ? FMath::Max(0.0f, NoiseEmitter->GetMediumWeightThreshold()) : 5.0f;
-			const float HeavyWeightThreshold = IsValid(NoiseEmitter) ? FMath::Max(MediumWeightThreshold, NoiseEmitter->GetHeavyWeightThreshold()) : 10.0f;
-			const float TotalWeight = FMath::Max(0.0f, InventoryViewModel->GetTotalWeight());
-
-			FText WeightState = NSLOCTEXT("HeistInventory", "WeightStateLight", "가벼움");
-			if (TotalWeight >= HeavyWeightThreshold)
-			{
-				WeightState = NSLOCTEXT("HeistInventory", "WeightStateHeavy", "무거움");
-			}
-			else if (TotalWeight >= MediumWeightThreshold)
-			{
-				WeightState = NSLOCTEXT("HeistInventory", "WeightStateMedium", "중간");
-			}
-
-			if (InventoryViewModel->GetRequiredQuota() > 0)
-			{
-				InventorySummaryText->SetText(FText::Format(NSLOCTEXT("HeistInventory", "WeightStateFormat", "배낭 상태: {0}\n계약 목표: {1} · 팀 운반 가치: {2} · 확보 가치: {3}"), WeightState,
-															FText::AsNumber(InventoryViewModel->GetRequiredQuota()), FText::AsNumber(InventoryViewModel->GetCarriedValue()),
-															FText::AsNumber(InventoryViewModel->GetSecuredValue())));
-			}
-			else
-			{
-				InventorySummaryText->SetText(FText::Format(NSLOCTEXT("HeistInventory", "ContractSummaryPending", "배낭 상태: {0}\n계약 정보를 기다리는 중"), WeightState));
-			}
-		}
 
 		if (ConfirmedInventoryItems != ConfirmedItems || ConfirmedGridColumns != GridColumns || ConfirmedGridRows != GridRows || InventorySlotWidgets.Num() != GridColumns * GridRows ||
 			InventoryItemWidgets.Num() != ConfirmedItems.Num())

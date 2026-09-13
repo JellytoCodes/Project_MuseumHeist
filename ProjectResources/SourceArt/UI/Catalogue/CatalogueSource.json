@@ -7,7 +7,6 @@
   "processing": "sprite isolation, transparent matte, padded resizing; foreground illustration preserved",
   "texture_size_unit": 4,
   "widget_layout_unit": 4,
-  "font_size_unit": 4,
   "fonts": {
     "NanumGothic": "https://github.com/google/fonts/tree/main/ofl/nanumgothic",
     "NanumMyeongjo": "https://github.com/google/fonts/tree/main/ofl/nanummyeongjo",
@@ -155,5 +154,8 @@
       ],
       "sha256": "2ce0eda5973328a446e256480efde49a1369ad81360870640138fb5f599c0719"
     }
-  }
+  },
+  "font_display_size_unit": 4,
+  "font_display_dpi": 72,
+  "font_render_dpi": 96
 }

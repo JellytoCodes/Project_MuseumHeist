@@ -13,7 +13,6 @@ class UDataTable;
 class UHeistInventoryFrameWidget;
 class UHeistInventoryItemWidget;
 class UHeistInventorySlotWidget;
-class UTextBlock;
 class UTexture2D;
 class UUniformGridPanel;
 
@@ -127,9 +126,6 @@ class PROJECT_MUSEUMHEIST_API UHeistInventoryWidget : public UHeistUserWidgetBas
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UButton> CloseButton;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
-	TObjectPtr<UTextBlock> InventorySummaryText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UHeistInventoryFrameWidget> InventoryFrameWidget;

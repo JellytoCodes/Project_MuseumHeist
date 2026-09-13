@@ -139,7 +139,9 @@ ProjectResources/
 Blueprint Shell/Presentation 운용은 별도 문서로 분리하지 않고 아래 규칙을 AGENTS 본문 규칙으로 통합해 적용한다.
 
 - `WBP_` 계열 UI는 Layout, Animation, Color, Icon, Binding 중심으로 운영하고, 상태/값 확정은 C++ ViewModel과 게임 규칙이 소유한다.
-- 승인된 전시 도록 UI는 `/Game/Assets/UI/Catalogue` 텍스처와 `/Game/Assets/UI/Fonts/Catalogue` 글꼴을 사용한다. 작성하는 위젯 크기, 오프셋, 패딩, 아이콘 크기와 폰트 크기는 4의 배수로 맞춘다. 단위 없는 앵커·정렬·DPI 배율과 월드 좌표에서 투영되는 동적 위치는 별도로 유지한다.
+- 승인된 전시 도록 UI는 `/Game/Assets/UI/Catalogue` 텍스처와 `/Game/Assets/UI/Fonts/Catalogue` 글꼴을 사용한다. 작성하는 위젯 크기, 오프셋, 패딩과 아이콘 크기는 4의 배수로 맞춘다. 폰트는 UMG 에디터에 표시되는 크기를 4의 배수로 정하고 프로젝트 Font Resolution을 적용해 내부 `FSlateFontInfo::Size`로 변환한다. 72 DPI 표시 기준에서는 표시 크기 × 72 / 96을 저장하며 내부값을 다시 4의 배수로 반올림하지 않는다. 단위 없는 앵커·정렬·DPI 배율과 월드 좌표에서 투영되는 동적 위치는 별도로 유지한다.
+- 도록 텍스처를 사용하는 스타일은 `Draw As = Image`, Brush `Margin = 0`으로 설정한다. 버튼·입력칸·패널의 종횡비에 맞는 전체 이미지를 사용하고 원본 비율을 보존한다. 작품·프로필 이미지는 ScaleBox 등으로 비율을 유지하며 비정방형 Inventory 점유 크기나 드래그 영역에 그림 자체를 늘리지 않는다.
+- 머리 위 Nameplate에는 바깥 배경 Border를 사용하지 않는다. 이름·상태 행과 CrewStatusBadge는 유지한다. Inventory의 배낭 상태·계약 가치 요약 위젯과 표시 바인딩은 제거하고 Grid와 닫기를 유지한다.
 - Nameplate는 Remote Player에 한해 항상 표시하며, 동일 Map에 대한 상태 아이콘은 v1 활성 Team Status 상태값(`Active`, `Forging`, `CarryingOriginal`, `Heavy`, `Stunned`, `Arrested`, `Escaped`)과 동기화한다. `Assembling`은 Deferred Object Assembly 호환 상태로만 보존하며 v1 플레이 중 새로 진입시키지 않는다.
 - Floor Plan Map은 Owner-only Full-Screen으로 운영한다. Guard 위치, 시야 Cone, SoundPing, 미탐색 Loose Loot/숨겨진 Spawn은 기본 표시하지 않는다.
 - Move/Look/Mouse Capture 전환은 Owner-only Surface Forgery, Inventory, Map 진입 시 각각 입력 정책이 일치해야 한다. Deferred Object Assembly 입력 정책은 재활성화 전까지 회귀 보존만 한다.
@@ -785,6 +787,7 @@ Escape 취소 조건:
 - 탈취 가능한 작품은 두꺼운 프레임과 하단 보안 패널, 일반 전시물은 얇은 프레임으로 접근 전에 구별한다. 색상만으로 구분하거나 일반 전시물에 행동 Prompt를 추가하지 않는다.
 - 전시 배치는 실제 미술관 사례를 참고해 맵별 최소 10종의 구별되는 구성을 사용한다. 좌우 반전·그림 교체·미세 간격 변경을 별도 패턴으로 세지 않으며, 일반 작품만 있는 독립 전시와 다양한 크기를 포함한다. 모든 탈취 대상에 같은 수의 일반 작품을 붙이거나 항상 중앙·최대 크기로 배치하지 않는다.
 - 액자는 실제 벽 또는 바닥에 지지된 독립 전시벽에 설치하고 정면 관람 공간을 확보한다. 설치 높이·면 방향·시야 차단·Navigation과 Floor Plan 정합성은 Map 저장 후 재검증한다.
+- Painting 외형과 프레임은 기존 배치도 대비 1.5배로 확대하고 군집 간격·높이를 함께 맞춘다. Painting 상호작용은 외형과 분리된 전면 Box를 사용하며 다른 Interactable의 Sphere를 일괄 변경하지 않는다. 벽 상·하단 몰딩은 벽 두께의 1.15배로 돌출해 동일 평면 겹침을 피한다.
 - 비활성 Case 또는 다른 Case의 Original World Visual을 현재 Assignment로 덮어쓰지 않는다.
 - Lobby 복귀 또는 Contract Clear 시 Original World Visual은 Blueprint가 지정한 기준 Material로 복원한다.
 

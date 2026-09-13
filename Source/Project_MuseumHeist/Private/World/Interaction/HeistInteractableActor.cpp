@@ -7,13 +7,17 @@
 
 #pragma region Construction
 
-AHeistInteractableActor::AHeistInteractableActor()
+AHeistInteractableActor::AHeistInteractableActor(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
 {
 	PrimaryActorTick.bCanEverTick = false;
 
-	InteractionCollision = CreateDefaultSubobject<USphereComponent>(TEXT("InteractionCollision"));
+	InteractionCollision = CreateDefaultSubobject<UShapeComponent, USphereComponent>(TEXT("InteractionCollision"));
 	SetRootComponent(InteractionCollision);
-	InteractionCollision->InitSphereRadius(50.0f);
+	if (USphereComponent* Sphere = Cast<USphereComponent>(InteractionCollision))
+	{
+		Sphere->InitSphereRadius(50.0f);
+	}
 	InteractionCollision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	InteractionCollision->SetGenerateOverlapEvents(true);
 

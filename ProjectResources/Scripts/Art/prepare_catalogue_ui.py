@@ -87,7 +87,7 @@ for family, files in {
 metadata={'generator':'OpenAI built-in image_gen','approved_concepts':[
     'exec-06256363-c79e-4c6e-8926-79b694e2da75.png','exec-4bb493ce-a3ac-41e7-8104-340a4130f603.png'],
     'processing':'sprite isolation, transparent matte, padded resizing; foreground illustration preserved',
-    'texture_size_unit':4,'widget_layout_unit':4,'font_size_unit':4,
+    'texture_size_unit':4,'widget_layout_unit':4,'font_display_size_unit':4,'font_display_dpi':72,'font_render_dpi':96,
     'fonts':{'NanumGothic':'https://github.com/google/fonts/tree/main/ofl/nanumgothic','NanumMyeongjo':'https://github.com/google/fonts/tree/main/ofl/nanummyeongjo','license':'SIL Open Font License 1.1; original OFL files staged by RuntimeDependencies'},'textures':{}}
 for p in OUT.glob('T_*.png'):
     im=Image.open(p)

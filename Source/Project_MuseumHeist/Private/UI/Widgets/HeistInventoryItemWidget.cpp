@@ -2,6 +2,8 @@
 
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Components/Image.h"
+#include "Components/ScaleBox.h"
+#include "Components/SizeBox.h"
 #include "Engine/Texture2D.h"
 #include "Input/Reply.h"
 #include "UI/DragDrop/HeistInventoryDragDropOperation.h"
@@ -16,7 +18,7 @@ void UHeistInventoryItemWidget::SetupItem(const FHeistInventoryItem& InConfirmed
 	{
 		if (IsValid(InIcon))
 		{
-			PlaceholderIcon->SetBrushFromTexture(InIcon, false);
+			PlaceholderIcon->SetBrushFromTexture(InIcon, true);
 		}
 		PlaceholderIcon->SetColorAndOpacity(FLinearColor::White);
 	}
@@ -54,18 +56,29 @@ void UHeistInventoryItemWidget::NativeOnDragDetected(const FGeometry& InGeometry
 
 	UHeistInventoryDragDropOperation* InventoryOperation = NewObject<UHeistInventoryDragDropOperation>(this);
 	UImage* DragVisualImage = nullptr;
+	USizeBox* DragVisualBounds = nullptr;
 	if (IsValid(PlaceholderIcon))
 	{
 		DragVisualImage = NewObject<UImage>(InventoryOperation);
 		FSlateBrush DragVisualBrush = PlaceholderIcon->GetBrush();
 		const FVector2D DragVisualSize = InGeometry.GetLocalSize();
-		DragVisualBrush.ImageSize = DragVisualSize;
 		DragVisualImage->SetBrush(DragVisualBrush);
-		DragVisualImage->SetDesiredSizeOverride(DragVisualSize);
 		DragVisualImage->SetVisibility(ESlateVisibility::HitTestInvisible);
+		UScaleBox* ArtworkFit = NewObject<UScaleBox>(InventoryOperation);
+		ArtworkFit->SetStretch(EStretch::ScaleToFit);
+		ArtworkFit->SetContent(DragVisualImage);
+		DragVisualBounds = NewObject<USizeBox>(InventoryOperation);
+		DragVisualBounds->SetWidthOverride(DragVisualSize.X);
+		DragVisualBounds->SetHeightOverride(DragVisualSize.Y);
+		DragVisualBounds->SetContent(ArtworkFit);
+		DragVisualBounds->SetVisibility(ESlateVisibility::HitTestInvisible);
 	}
 
 	InventoryOperation->SetupDragOperation(ConfirmedItem.InstanceId, ConfirmedItem.GridPosition, DragVisualImage);
+	if (IsValid(DragVisualBounds))
+	{
+		InventoryOperation->DefaultDragVisual = DragVisualBounds;
+	}
 	InventoryOperation->Pivot = EDragPivot::CenterCenter;
 	OutOperation = InventoryOperation;
 }

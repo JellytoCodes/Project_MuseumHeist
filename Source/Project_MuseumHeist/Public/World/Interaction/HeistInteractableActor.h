@@ -6,7 +6,7 @@
 
 #include "HeistInteractableActor.generated.h"
 
-class USphereComponent;
+class UShapeComponent;
 class UStaticMeshComponent;
 
 UCLASS()
@@ -17,7 +17,7 @@ class PROJECT_MUSEUMHEIST_API AHeistInteractableActor : public AActor, public IH
 #pragma region Construction
 
   public:
-	AHeistInteractableActor();
+	AHeistInteractableActor(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 #pragma endregion
 
@@ -32,7 +32,7 @@ class PROJECT_MUSEUMHEIST_API AHeistInteractableActor : public AActor, public IH
 
   protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Interaction")
-	TObjectPtr<USphereComponent> InteractionCollision;
+	TObjectPtr<UShapeComponent> InteractionCollision;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Visual")
 	TObjectPtr<UStaticMeshComponent> VisualMeshComponent;

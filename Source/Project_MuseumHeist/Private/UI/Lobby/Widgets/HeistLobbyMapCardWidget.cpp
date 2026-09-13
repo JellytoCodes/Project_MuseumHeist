@@ -41,6 +41,7 @@ namespace
 		MapBrush.SetResourceObject(Thumbnail);
 		MapBrush.ImageSize = FVector2D(Thumbnail->GetSizeX(), Thumbnail->GetSizeY());
 		MapBrush.DrawAs = ESlateBrushDrawType::Image;
+		MapBrush.Margin = FMargin(0.0f);
 		MapBrush.TintColor = FSlateColor(FLinearColor::White);
 
 		ButtonStyle.SetNormal(MapBrush);

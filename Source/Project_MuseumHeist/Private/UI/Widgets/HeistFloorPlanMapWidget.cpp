@@ -17,6 +17,7 @@
 #include "Data/HeistGameBalanceDataAsset.h"
 #include "Engine/DataTable.h"
 #include "Engine/Texture2D.h"
+#include "Engine/UserInterfaceSettings.h"
 #include "EngineUtils.h"
 #include "World/Actors/Loot/HeistDroppedOriginalActor.h"
 #include "World/Actors/Loot/HeistObjectDisplayCaseActor.h"
@@ -27,7 +28,7 @@ namespace
 FSlateFontInfo MakeFloorPlanFont(const int32 Size)
 {
 	static UObject* BodyFont = LoadObject<UObject>(nullptr, TEXT("/Game/Assets/UI/Fonts/Catalogue/F_NanumGothic_Regular_Font.F_NanumGothic_Regular_Font"));
-	return FSlateFontInfo(BodyFont, Size);
+	return FSlateFontInfo(BodyFont, GetDefault<UUserInterfaceSettings>()->ConvertFontSizeFromDisplayToNative(Size));
 }
 
 bool HasRequiredMapWidgets(const UImage* FloorPlanImage, const UOverlay* MapOverlay, const UCanvasPanel* StaticMarkerContainer,
