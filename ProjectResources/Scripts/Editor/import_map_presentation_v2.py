@@ -9,14 +9,14 @@ SOURCE_PATH = os.path.abspath(
     os.path.join(unreal.Paths.project_dir(), "ProjectResources", "DataTableImports", "DT_MapPresentation.json")
 )
 EXPECTED_BOUNDS = {
-    "M01": ((-7200.0, -5200.0), (7200.0, 5200.0)),
-    "M02": ((-6400.0, -5600.0), (6400.0, 5600.0)),
-    "M03": ((-8000.0, -4400.0), (8000.0, 4400.0)),
+    "M01": ((-4200.0, -3200.0), (4200.0, 3200.0)),
+    "M02": ((-3600.0, -3200.0), (3600.0, 3200.0)),
+    "M03": ((-4800.0, -2800.0), (4800.0, 2800.0)),
 }
 EXPECTED_EXITS = {
-    "M01": (-6800.0, -1200.0),
-    "M02": (2400.0, 5200.0),
-    "M03": (-7600.0, 0.0),
+    "M01": (-3900.0, 400.0),
+    "M02": (-3400.0, -1800.0),
+    "M03": (-4500.0, -1000.0),
 }
 FLOOR_PLAN_SOURCE_DIRECTORY = os.path.abspath(
     os.path.join(unreal.Paths.project_dir(), "ProjectResources", "SourceArt", "W7", "Generated")

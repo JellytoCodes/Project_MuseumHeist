@@ -1,0 +1,159 @@
+{
+  "generator": "OpenAI built-in image_gen",
+  "approved_concepts": [
+    "exec-06256363-c79e-4c6e-8926-79b694e2da75.png",
+    "exec-4bb493ce-a3ac-41e7-8104-340a4130f603.png"
+  ],
+  "processing": "sprite isolation, transparent matte, padded resizing; foreground illustration preserved",
+  "texture_size_unit": 4,
+  "widget_layout_unit": 4,
+  "font_size_unit": 4,
+  "fonts": {
+    "NanumGothic": "https://github.com/google/fonts/tree/main/ofl/nanumgothic",
+    "NanumMyeongjo": "https://github.com/google/fonts/tree/main/ofl/nanummyeongjo",
+    "license": "SIL Open Font License 1.1; original OFL files staged by RuntimeDependencies"
+  },
+  "textures": {
+    "T_Catalogue_Backdrop": {
+      "origin": "OpenAI image_gen",
+      "size": [
+        1920,
+        1080
+      ],
+      "alpha": null,
+      "sha256": "19b0e2f26c4f4cacaaebce7db9b7d72f5f84c4a3274840c55e3903da781436a9"
+    },
+    "T_Catalogue_Button_Normal": {
+      "origin": "OpenAI image_gen",
+      "size": [
+        512,
+        144
+      ],
+      "alpha": [
+        0,
+        255
+      ],
+      "sha256": "7b4ae5cb0cff2bf7292f82d632238a5805eb4e38adcdc565a27a2901bab8a859"
+    },
+    "T_Catalogue_Button_Pressed": {
+      "origin": "OpenAI image_gen",
+      "size": [
+        512,
+        144
+      ],
+      "alpha": [
+        0,
+        255
+      ],
+      "sha256": "b512c2eedf9c14c1bc107519cac44e3f2e7dda76596a5e9a41facf1086208854"
+    },
+    "T_Catalogue_Button_Primary": {
+      "origin": "OpenAI image_gen",
+      "size": [
+        512,
+        144
+      ],
+      "alpha": [
+        0,
+        255
+      ],
+      "sha256": "b85018f238de652b90beea68fce6cebfcb5f8e22077c18a227603b8b4a4f240c"
+    },
+    "T_Catalogue_Chevron": {
+      "origin": "native geometric control",
+      "size": [
+        32,
+        32
+      ],
+      "alpha": [
+        0,
+        255
+      ],
+      "sha256": "74a326adc5943268d2077510dbb574c763b1330de165425d1e6298ab7e88a19e"
+    },
+    "T_Catalogue_Header": {
+      "origin": "OpenAI image_gen",
+      "size": [
+        512,
+        144
+      ],
+      "alpha": [
+        0,
+        255
+      ],
+      "sha256": "6ae06541de7c56a1f3f77d1a3f152513fc202ed07f1f87bf79d765071f2edfe9"
+    },
+    "T_Catalogue_Logo": {
+      "origin": "OpenAI image_gen",
+      "size": [
+        1024,
+        576
+      ],
+      "alpha": [
+        0,
+        255
+      ],
+      "sha256": "7525a2f082ef60f227399e3052d83709f5301f2e8ba895812650f2a914d7d684"
+    },
+    "T_Catalogue_Map_M01": {
+      "origin": "Unreal current-map scene capture",
+      "size": [
+        1280,
+        720
+      ],
+      "alpha": [
+        255,
+        255
+      ],
+      "sha256": "96ebc9287fee70a3dded82588c1fe4655825f8adba79925f51c4a0679206c1f5"
+    },
+    "T_Catalogue_Map_M02": {
+      "origin": "Unreal current-map scene capture",
+      "size": [
+        1280,
+        720
+      ],
+      "alpha": [
+        255,
+        255
+      ],
+      "sha256": "7046dc401e454f780455f6b8420e7926d3e4ea7f052b6063ab30f6dcb0f833bc"
+    },
+    "T_Catalogue_Map_M03": {
+      "origin": "Unreal current-map scene capture",
+      "size": [
+        1280,
+        720
+      ],
+      "alpha": [
+        255,
+        255
+      ],
+      "sha256": "17f08b79d8d65f468217b700f0c6d4b4cafdb789251c1fdc067228dcbd21729f"
+    },
+    "T_Catalogue_Panel": {
+      "origin": "OpenAI image_gen",
+      "size": [
+        1024,
+        1024
+      ],
+      "alpha": [
+        0,
+        255
+      ],
+      "sha256": "105e96d1dc8dbe42db89d84e70ef04f80294e3e91b31984abfb7cebe3f980ac8"
+    },
+    "T_Catalogue_Thumb": {
+      "origin": "native geometric control",
+      "size": [
+        32,
+        32
+      ],
+      "alpha": [
+        0,
+        255
+      ],
+      "sha256": "2ce0eda5973328a446e256480efde49a1369ad81360870640138fb5f599c0719"
+    }
+  }
+}

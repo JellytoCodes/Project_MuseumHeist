@@ -34,7 +34,7 @@ void UHeistQuickSlotWidget::RefreshPresentation()
 	}
 	if (IsValid(SlotBackground))
 	{
-		SlotBackground->SetBrushColor(ConfirmedPresentation.bAssigned ? FLinearColor(0.08f, 0.24f, 0.32f, 0.96f) : FLinearColor(0.05f, 0.07f, 0.09f, 0.88f));
+		SlotBackground->SetBrushColor(ConfirmedPresentation.bAssigned ? FLinearColor(0.24f, 0.20f, 0.14f, 0.96f) : FLinearColor(0.04f, 0.035f, 0.028f, 0.88f));
 	}
 }
 

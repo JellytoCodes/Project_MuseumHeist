@@ -52,6 +52,7 @@
 ProjectResources/SourceArt/**/*.png
 ProjectResources/SourceArt/**/*.tga
 !ProjectResources/SourceArt/UI/Title/*.png
+!ProjectResources/SourceArt/UI/Catalogue/*.png
 
 # Locally acquired third-party environment packs
 /Content/Assets/MapAssets/

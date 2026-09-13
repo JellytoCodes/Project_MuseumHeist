@@ -315,7 +315,7 @@ void UHeistResultWidget::RefreshReplicaRecapPresentation(const TArray<FHeistRepl
 		}
 		ReplicaCard->ApplyReplicaEntry(ReplicaEntry, ReplicaTexture);
 		UHorizontalBoxSlot* CardSlot = ReplicaRecapVisualContainer->AddChildToHorizontalBox(ReplicaCard);
-		CardSlot->SetPadding(FMargin(0.0f, 0.0f, 10.0f, 0.0f));
+		CardSlot->SetPadding(FMargin(0.0f, 0.0f, 12.0f, 0.0f));
 		CardSlot->SetVerticalAlignment(VAlign_Center);
 		++AddedReplicaCount;
 	}
@@ -345,7 +345,7 @@ void UHeistResultWidget::RefreshContributionTablePresentation(const TArray<FHeis
 		if (IsValid(PlayerRow))
 		{
 			PlayerRow->ApplyPlayerResult(PlayerResults[PlayerIndex]);
-			ContributionTableContainer->AddChildToVerticalBox(PlayerRow)->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 2.0f));
+			ContributionTableContainer->AddChildToVerticalBox(PlayerRow)->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 4.0f));
 		}
 	}
 

@@ -39,13 +39,13 @@ function New-FloorPlanTexture
 		$graphics = [System.Drawing.Graphics]::FromImage($bitmap)
 		$resources += $graphics
 		$graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
-		$graphics.Clear([System.Drawing.Color]::FromArgb(255, 9, 19, 31))
+		$graphics.Clear([System.Drawing.Color]::FromArgb(255, 20, 18, 16))
 
 		$floorBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(46, $AccentColor))
 		$resources += $floorBrush
 		$wallBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(225, $AccentColor))
 		$resources += $wallBrush
-		$wallEdgePen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(150, $SecondaryColor), 1.0)
+		$wallEdgePen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(150, $SecondaryColor), 4.0)
 		$resources += $wallEdgePen
 		$doorBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(255, 238, 194, 91))
 		$resources += $doorBrush
@@ -596,9 +596,9 @@ foreach ($mapId in @('M01', 'M02', 'M03'))
 
 Confirm-CurrentFloorPlanGeometry -GeometryPath $floorPlanGeometryPath -ExpectedSourceHash $floorPlanSourceHash
 
-New-FloorPlanTexture -Geometry $geometryByMap['M01'] -AccentColor ([System.Drawing.Color]::FromArgb(255, 75, 210, 236)) -SecondaryColor ([System.Drawing.Color]::FromArgb(255, 128, 162, 205))
-New-FloorPlanTexture -Geometry $geometryByMap['M02'] -AccentColor ([System.Drawing.Color]::FromArgb(255, 130, 170, 255)) -SecondaryColor ([System.Drawing.Color]::FromArgb(255, 173, 137, 226))
-New-FloorPlanTexture -Geometry $geometryByMap['M03'] -AccentColor ([System.Drawing.Color]::FromArgb(255, 91, 232, 181)) -SecondaryColor ([System.Drawing.Color]::FromArgb(255, 103, 181, 209))
+New-FloorPlanTexture -Geometry $geometryByMap['M01'] -AccentColor ([System.Drawing.Color]::FromArgb(255, 224, 213, 190)) -SecondaryColor ([System.Drawing.Color]::FromArgb(255, 156, 144, 120))
+New-FloorPlanTexture -Geometry $geometryByMap['M02'] -AccentColor ([System.Drawing.Color]::FromArgb(255, 224, 213, 190)) -SecondaryColor ([System.Drawing.Color]::FromArgb(255, 156, 144, 120))
+New-FloorPlanTexture -Geometry $geometryByMap['M03'] -AccentColor ([System.Drawing.Color]::FromArgb(255, 224, 213, 190)) -SecondaryColor ([System.Drawing.Color]::FromArgb(255, 156, 144, 120))
 
 if ($FloorPlanOnly)
 {

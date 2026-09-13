@@ -79,7 +79,7 @@ def verify_hanging(world, code, actors, ignored):
                 if (o - expected).length() > 0.3: failures.append(label + ": frame rail misplaced " + side)
             if active:
                 panel = by_label.get("LDV2_{}_Gallery_{}_SecurityPanel".format(code, suffix))
-                if panel is None or abs(panel.get_actor_bounds(False)[0].z - (160-size/2-22)) > 0.2:
+                if panel is None or abs(panel.get_actor_bounds(False)[0].z - (piece["z"]-size/2-22)) > 0.2:
                     failures.append(label + ": security panel position")
             half = size/2 + (4 if active else 1.5)
             # A wall's bounds can contain a window opening. Sample the face as
@@ -123,8 +123,8 @@ def verify_gallery(world, code, authored_actors):
     profile = capsule.get_collision_profile_name()
     start = next(a for a in authored_actors if isinstance(a, unreal.PlayerStart)).get_actor_location()
     nav_start = unreal.NavigationSystemV1.project_point_to_navigation(world, start, None, None, unreal.Vector(50, 50, 200))
-    layout = json.loads((Path(unreal.Paths.project_dir()) / "ProjectResources/SourceArt/Gallery/HangingLayouts.json").read_text(encoding="utf-8"))
-    if len(cases) != 20 or len(decorative) != layout["maps"][code]["expected_decorative"]:
+    plan = next(m for m in json.loads((Path(unreal.Paths.project_dir()) / "ProjectResources/SourceArt/Gallery/MuseumLevelLayout.json").read_text(encoding="utf-8"))["maps"] if m["id"] == code)
+    if len(cases) != 20 or len(decorative) != sum(not p["active"] for p in plan["paintings"]):
         failures.append("Active/decorative count differs from authored hanging layout")
     for actor in decorative:
         comp = actor.get_component_by_class(unreal.StaticMeshComponent)
@@ -143,7 +143,8 @@ def verify_gallery(world, code, authored_actors):
         vertical = original.get_right_vector()
         row = {"case": label, "height_cm": round(center.z, 2), "support_samples": 0}
         # Engine Plane's V axis runs down the image, so local +Y must point down.
-        if abs(center.z - 160) > 0.1 or vertical.z > -0.99:
+        expected_piece = next(p for p in plan["paintings"] if p.get("case_key") == label.split("_Painting_")[-1])
+        if abs(center.z - expected_piece["z"] * 100) > 0.1 or vertical.z > -0.99:
             failures.append(label + ": height or upright orientation")
         if any((a - b).length() > 0.01 for a, b in (
                 (original.get_world_location(), replica.get_world_location()),
@@ -181,9 +182,9 @@ def verify_gallery(world, code, authored_actors):
             failures.append(label + ": approach outside interaction overlap")
         exhibits.append(row)
     rays = {
-        "M01": [((-5500, 4000), (5500, 4000)), ((-3500, -4000), (3500, -4000)), ((-6200, -1200), (-2600, -1200))],
-        "M02": [((-5000, -2000), (-5000, 3200)), ((-1900, 0), (2000, 0))],
-        "M03": [((-7000, -400), (7000, -400)), ((-7000, 400), (7000, 400))],
+        "M01": [((-3900, 1800), (3900, 1800)), ((-3900, -1800), (3900, -1800))],
+        "M02": [((-3300, -2500), (-1000, 200)), ((-2500, -800), (2500, -800))],
+        "M03": [((-4500, -400), (4500, -400)), ((-4500, 400), (4500, 400))],
     }
     blocked = 0
     for a, b in rays[code]:
@@ -195,12 +196,28 @@ def verify_gallery(world, code, authored_actors):
             failures.append("Long sight line remains open: " + str((a, b)))
     # Demonstrate a complete path to the Vent that avoids the active beam,
     # including the player's horizontal capsule radius. No collision/nav edits.
-    detours = {
-        "M01": {"HighValue": [(5000, -4500)], "09": [(5000, 2300)]},
-        "M02": {"HighValue": [(-3800, 3400)], "07": []},
-        "M03": {"HighValue": [(6800, -2600), (7200, -3000), (7600, -4200), (4000, -4300)], "08": [(1200, -2800)],
-                "10": [(4800, 3800), (2000, 3400), (2000, 2400)]},
-    }
+    detours = {}
+    # Derive an alternate room sequence with this alarm doorway excluded. The
+    # engine still verifies every segment against saved navmesh and beam volume.
+    import collections
+    for laser in plan["lasers"]:
+        case_key = plan["case_mapping"][laser["cases"][0]]
+        vent_room = next(r["id"] for r in plan["rooms"].values()
+                         if r["bounds"][0] < plan["vent"][0] < r["bounds"][2]
+                         and r["bounds"][1] < plan["vent"][1] < r["bounds"][3])
+        queue = collections.deque([(laser["room"], [])]); visited = set()
+        while queue:
+            room, doors = queue.popleft()
+            if room == vent_room:
+                detours[case_key] = [(v[0]*100,v[1]*100) for v in doors]
+                break
+            if room in visited: continue
+            visited.add(room)
+            for door in plan["doors"]:
+                if door["id"] == laser["door"] or room not in door["rooms"]: continue
+                other = next(r for r in door["rooms"] if r != room)
+                queue.append((other, doors + [door["xy"]]))
+        if case_key not in detours: raise RuntimeError("No alternate authored door chain: " + case_key)
     exit_actor = next(a for a in authored_actors if a.get_class().get_name() == "BP_Vent_C")
     exit_point = unreal.NavigationSystemV1.project_point_to_navigation(world, exit_actor.get_actor_location(), None, None, unreal.Vector(100, 100, 200))
     egress = []
@@ -208,7 +225,7 @@ def verify_gallery(world, code, authored_actors):
         case = barrier.get_editor_property("protected_painting_case")
         key = case.get_actor_label().split("_Painting_")[-1]
         points = [approaches[case.get_actor_label()]]
-        for x, y in detours[code][key]:
+        for x, y in detours[key]:
             points.append(unreal.NavigationSystemV1.project_point_to_navigation(world, unreal.Vector(x, y, 95), None, None, unreal.Vector(50, 50, 200)))
         points.append(exit_point)
         trigger = barrier.get_component_by_class(unreal.BoxComponent)

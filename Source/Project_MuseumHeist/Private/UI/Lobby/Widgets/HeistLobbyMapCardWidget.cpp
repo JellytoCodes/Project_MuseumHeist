@@ -15,15 +15,15 @@ namespace
 		const TCHAR* TexturePath = nullptr;
 		if (MapId == FName(TEXT("M01")))
 		{
-			TexturePath = TEXT("/Game/Assets/UI/Map/T_FloorPlan_M01.T_FloorPlan_M01");
+			TexturePath = TEXT("/Game/Assets/UI/Catalogue/T_Catalogue_Map_M01.T_Catalogue_Map_M01");
 		}
 		else if (MapId == FName(TEXT("M02")))
 		{
-			TexturePath = TEXT("/Game/Assets/UI/Map/T_FloorPlan_M02.T_FloorPlan_M02");
+			TexturePath = TEXT("/Game/Assets/UI/Catalogue/T_Catalogue_Map_M02.T_Catalogue_Map_M02");
 		}
 		else if (MapId == FName(TEXT("M03")))
 		{
-			TexturePath = TEXT("/Game/Assets/UI/Map/T_FloorPlan_M03.T_FloorPlan_M03");
+			TexturePath = TEXT("/Game/Assets/UI/Catalogue/T_Catalogue_Map_M03.T_Catalogue_Map_M03");
 		}
 
 		return TexturePath ? LoadObject<UTexture2D>(nullptr, TexturePath) : nullptr;

@@ -139,6 +139,7 @@ ProjectResources/
 Blueprint Shell/Presentation 운용은 별도 문서로 분리하지 않고 아래 규칙을 AGENTS 본문 규칙으로 통합해 적용한다.
 
 - `WBP_` 계열 UI는 Layout, Animation, Color, Icon, Binding 중심으로 운영하고, 상태/값 확정은 C++ ViewModel과 게임 규칙이 소유한다.
+- 승인된 전시 도록 UI는 `/Game/Assets/UI/Catalogue` 텍스처와 `/Game/Assets/UI/Fonts/Catalogue` 글꼴을 사용한다. 작성하는 위젯 크기, 오프셋, 패딩, 아이콘 크기와 폰트 크기는 4의 배수로 맞춘다. 단위 없는 앵커·정렬·DPI 배율과 월드 좌표에서 투영되는 동적 위치는 별도로 유지한다.
 - Nameplate는 Remote Player에 한해 항상 표시하며, 동일 Map에 대한 상태 아이콘은 v1 활성 Team Status 상태값(`Active`, `Forging`, `CarryingOriginal`, `Heavy`, `Stunned`, `Arrested`, `Escaped`)과 동기화한다. `Assembling`은 Deferred Object Assembly 호환 상태로만 보존하며 v1 플레이 중 새로 진입시키지 않는다.
 - Floor Plan Map은 Owner-only Full-Screen으로 운영한다. Guard 위치, 시야 Cone, SoundPing, 미탐색 Loose Loot/숨겨진 Spawn은 기본 표시하지 않는다.
 - Move/Look/Mouse Capture 전환은 Owner-only Surface Forgery, Inventory, Map 진입 시 각각 입력 정책이 일치해야 한다. Deferred Object Assembly 입력 정책은 재활성화 전까지 회귀 보존만 한다.

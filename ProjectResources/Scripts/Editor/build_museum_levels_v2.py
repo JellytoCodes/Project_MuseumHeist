@@ -1275,6 +1275,9 @@ class LevelBuilder:
             required_set(actor, "tags", tags)
 
     def case_artifact_id(self, case_key):
+        assigned = self.config.get("case_artifacts", {}).get(case_key)
+        if assigned:
+            return assigned
         if case_key == "Target":
             return "Artifact_Painting_{}".format(self.code)
         if case_key == "HighValue":
@@ -1906,4 +1909,8 @@ def build_selected_levels():
 
 
 if __name__ == "__main__":
-    build_selected_levels()
+    approved = Path(unreal.Paths.project_dir()).resolve() / "ProjectResources/SourceArt/Gallery/MuseumLevelLayout.json"
+    if approved.is_file():
+        runpy.run_path(str(approved.parents[2] / "Scripts/Editor/build_approved_museum_layout.py"), run_name="__main__")
+    else:
+        build_selected_levels()

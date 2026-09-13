@@ -24,10 +24,10 @@
 
 namespace
 {
-FSlateFontInfo MakeFloorPlanTenadaFont(const int32 Size)
+FSlateFontInfo MakeFloorPlanFont(const int32 Size)
 {
-	static UObject* TenadaFont = LoadObject<UObject>(nullptr, TEXT("/Game/Assets/UI/Fonts/F_TENADA.F_TENADA"));
-	return FSlateFontInfo(TenadaFont, Size);
+	static UObject* BodyFont = LoadObject<UObject>(nullptr, TEXT("/Game/Assets/UI/Fonts/Catalogue/F_NanumGothic_Regular_Font.F_NanumGothic_Regular_Font"));
+	return FSlateFontInfo(BodyFont, Size);
 }
 
 bool HasRequiredMapWidgets(const UImage* FloorPlanImage, const UOverlay* MapOverlay, const UCanvasPanel* StaticMarkerContainer,
@@ -42,8 +42,8 @@ TSharedRef<SWidget> UHeistFloorPlanMapWidget::RebuildWidget()
 	if (IsValid(WidgetTree) && !IsValid(WidgetTree->RootWidget))
 	{
 		UBorder* RootBorder = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("MapRootBorder"));
-		RootBorder->SetBrushColor(FLinearColor(0.015f, 0.025f, 0.045f, 0.97f));
-		RootBorder->SetPadding(FMargin(48.0f, 30.0f));
+		RootBorder->SetBrushColor(FLinearColor(0.016f, 0.014f, 0.012f, 0.97f));
+		RootBorder->SetPadding(FMargin(48.0f, 32.0f));
 
 		UVerticalBox* Layout = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("MapLayout"));
 		MapTitleText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("MapTitleText"));
@@ -57,9 +57,9 @@ TSharedRef<SWidget> UHeistFloorPlanMapWidget::RebuildWidget()
 		MapTitleText->SetJustification(ETextJustify::Center);
 		LegendText->SetJustification(ETextJustify::Center);
 		MapHintText->SetJustification(ETextJustify::Center);
-		MapTitleText->SetFont(MakeFloorPlanTenadaFont(34));
-		LegendText->SetFont(MakeFloorPlanTenadaFont(17));
-		MapHintText->SetFont(MakeFloorPlanTenadaFont(16));
+		MapTitleText->SetFont(MakeFloorPlanFont(32));
+		LegendText->SetFont(MakeFloorPlanFont(20));
+		MapHintText->SetFont(MakeFloorPlanFont(16));
 		LegendText->SetAutoWrapText(true);
 		MapHintText->SetAutoWrapText(true);
 
@@ -280,7 +280,7 @@ void UHeistFloorPlanMapWidget::RefreshMapPresentation()
 	}
 	if (IsValid(LegendText))
 	{
-		LegendText->SetText(NSLOCTEXT("HeistMap", "Legend", "나 · 팀원 · 출구 · 구역 · 목표 전시관 · 발견한 목표 · 떨어진 원본"));
+		LegendText->SetText(NSLOCTEXT("HeistMap", "CatalogueLegend", "● 나/팀원   ↗ 출구   ◆ 목표 전시관   ★ 발견한 목표   ◇ 떨어진 원본   ○ 탈출   ! 체포"));
 	}
 	if (IsValid(MapHintText))
 	{
@@ -422,7 +422,7 @@ UTextBlock* UHeistFloorPlanMapWidget::CreateMarkerWidget(UCanvasPanel* ParentCon
 
 	UTextBlock* Marker = NewObject<UTextBlock>(ParentContainer);
 	Marker->SetJustification(ETextJustify::Center);
-	Marker->SetFont(MakeFloorPlanTenadaFont(17));
+	Marker->SetFont(MakeFloorPlanFont(20));
 	if (UCanvasPanelSlot* MarkerSlot = ParentContainer->AddChildToCanvas(Marker))
 	{
 		MarkerSlot->SetAnchors(FAnchors(0.0f, 0.0f));
@@ -439,7 +439,20 @@ void UHeistFloorPlanMapWidget::ApplyMarkerPresentation(UTextBlock* Marker, const
 	{
 		return;
 	}
-	Marker->SetText(Label);
+	const TCHAR* Symbol = TEXT("");
+	switch (MarkerType)
+	{
+	case EHeistFloorPlanMarkerType::LocalPlayer:
+	case EHeistFloorPlanMarkerType::Teammate: Symbol = TEXT("●"); break;
+	case EHeistFloorPlanMarkerType::Exit: Symbol = TEXT("↗"); break;
+	case EHeistFloorPlanMarkerType::TargetGallery: Symbol = TEXT("◆"); break;
+	case EHeistFloorPlanMarkerType::DiscoveredTarget: Symbol = TEXT("★"); break;
+	case EHeistFloorPlanMarkerType::DroppedOriginal: Symbol = TEXT("◇"); break;
+	case EHeistFloorPlanMarkerType::EscapedTeammate: Symbol = TEXT("○"); break;
+	case EHeistFloorPlanMarkerType::ArrestedTeammate: Symbol = TEXT("!"); break;
+	default: break;
+	}
+	Marker->SetText(*Symbol ? FText::Format(NSLOCTEXT("HeistMap", "CatalogueMarker", "{0} {1}"), FText::FromString(Symbol), Label) : Label);
 	Marker->SetColorAndOpacity(FSlateColor(ResolveMarkerColor(MarkerType, CustomColor)));
 	Marker->SetVisibility(ESlateVisibility::HitTestInvisible);
 	if (UCanvasPanelSlot* MarkerSlot = Cast<UCanvasPanelSlot>(Marker->Slot))

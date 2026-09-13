@@ -15,10 +15,10 @@
 
 namespace
 {
-FSlateFontInfo MakeNameplateTenadaFont(const int32 Size)
+FSlateFontInfo MakeNameplateFont(const int32 Size)
 {
-	static UObject* TenadaFont = LoadObject<UObject>(nullptr, TEXT("/Game/Assets/UI/Fonts/F_TENADA.F_TENADA"));
-	return FSlateFontInfo(TenadaFont, Size);
+	static UObject* BodyFont = LoadObject<UObject>(nullptr, TEXT("/Game/Assets/UI/Fonts/Catalogue/F_NanumGothic_Regular_Font.F_NanumGothic_Regular_Font"));
+	return FSlateFontInfo(BodyFont, Size);
 }
 }
 
@@ -27,17 +27,17 @@ TSharedRef<SWidget> UHeistNameplateWidget::RebuildWidget()
 	if (IsValid(WidgetTree) && !IsValid(WidgetTree->RootWidget))
 	{
 		UBorder* RootBorder = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("NameplateBorder"));
-		RootBorder->SetBrushColor(FLinearColor(0.01f, 0.02f, 0.04f, 0.72f));
-		RootBorder->SetPadding(FMargin(8.0f, 3.0f));
+		RootBorder->SetBrushColor(FLinearColor(0.016f, 0.014f, 0.012f, 0.80f));
+		RootBorder->SetPadding(FMargin(8.0f, 4.0f));
 		UHorizontalBox* ContentRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("NameplateContentRow"));
 		CrewStatusBadge = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("CrewStatusBadge"));
-		CrewStatusBadge->SetPadding(FMargin(6.0f, 2.0f));
+		CrewStatusBadge->SetPadding(FMargin(8.0f, 4.0f));
 		CrewStatusIconText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("CrewStatusIconText"));
 		CrewStatusIconText->SetJustification(ETextJustify::Center);
-		CrewStatusIconText->SetFont(MakeNameplateTenadaFont(18));
+		CrewStatusIconText->SetFont(MakeNameplateFont(20));
 		CrewStatusIconText->SetColorAndOpacity(FSlateColor(FLinearColor::White));
 		CrewStatusIconImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("CrewStatusIconImage"));
-		CrewStatusIconImage->SetDesiredSizeOverride(FVector2D(18.0f, 18.0f));
+		CrewStatusIconImage->SetDesiredSizeOverride(FVector2D(20.0f, 20.0f));
 		CrewStatusIconImage->SetColorAndOpacity(FLinearColor::White);
 		CrewStatusIconImage->SetVisibility(ESlateVisibility::Collapsed);
 		CrewStatusBadge->SetContent(CrewStatusIconText);
@@ -46,8 +46,8 @@ TSharedRef<SWidget> UHeistNameplateWidget::RebuildWidget()
 		CrewStatusText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("CrewStatusText"));
 		PlayerNameText->SetJustification(ETextJustify::Center);
 		CrewStatusText->SetJustification(ETextJustify::Center);
-		PlayerNameText->SetFont(MakeNameplateTenadaFont(18));
-		CrewStatusText->SetFont(MakeNameplateTenadaFont(14));
+		PlayerNameText->SetFont(MakeNameplateFont(20));
+		CrewStatusText->SetFont(MakeNameplateFont(16));
 		TextColumn->AddChildToVerticalBox(PlayerNameText);
 		TextColumn->AddChildToVerticalBox(CrewStatusText);
 		if (UHorizontalBoxSlot* BadgeSlot = ContentRow->AddChildToHorizontalBox(CrewStatusBadge))
@@ -227,7 +227,7 @@ void UHeistNameplateWidget::ResolveStatusIconWidgets()
 	if (!IsValid(CrewStatusIconImage) && IsValid(CrewStatusBadge))
 	{
 		CrewStatusIconImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("CrewStatusIconImage"));
-		CrewStatusIconImage->SetDesiredSizeOverride(FVector2D(18.0f, 18.0f));
+		CrewStatusIconImage->SetDesiredSizeOverride(FVector2D(20.0f, 20.0f));
 		CrewStatusIconImage->SetColorAndOpacity(FLinearColor::White);
 		CrewStatusIconImage->SetVisibility(ESlateVisibility::Collapsed);
 	}

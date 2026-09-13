@@ -199,6 +199,12 @@ def export_geometry():
             elif folder == "LDV2/" + code + "/Architecture/GalleryPartitions":
                 walls.append(footprint(actor))
                 fixed_partitions.append(label)
+            elif folder == "LDV2/" + code + "/Architecture/ApprovedDoors":
+                # Measured lintel footprint spans the complete opening. The
+                # lintel is above the walkable slice, not a wall at eye level.
+                doors.append(footprint(actor))
+                _, extent = actor.get_actor_bounds(False)
+                door_widths.append(round(max(extent.x, extent.y) * 2, 3))
         if not floors or not walls or not doors:
             raise RuntimeError(code + " empty geometry category")
         floor_points = [point for floor in floors for point in floor["polygon"]]

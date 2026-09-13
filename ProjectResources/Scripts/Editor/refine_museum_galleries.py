@@ -204,6 +204,9 @@ def print_materials(code):
             raise RuntimeError("Missing existing print reference: " + texture_path)
         name = "MI_GalleryPrint_{}_{:02d}".format(code, index + 1)
         material = unreal.load_asset(folder + "/" + name)
+        if material is not None and material.get_editor_property("parent") == parent and unreal.MaterialEditingLibrary.get_material_instance_texture_parameter_value(material, "PaintingTexture") == texture:
+            result.append(material)
+            continue
         if material is None:
             material = unreal.AssetToolsHelpers.get_asset_tools().create_asset(
                 name, folder, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
@@ -252,6 +255,19 @@ def hanging_layout():
 
 def hanging_groups(code, layout):
     """Resolve authored slots, preserving the gameplay anchor of every active case."""
+    approved = Path(unreal.Paths.project_dir()).resolve() / "ProjectResources/SourceArt/Gallery/MuseumLevelLayout.json"
+    if approved.is_file():
+        plan = next(m for m in json.loads(approved.read_text(encoding="utf-8"))["maps"] if m["id"] == code)
+        result = []
+        for group in plan["groups"]:
+            paintings = [p for p in plan["paintings"] if p["group"] == group["id"]]
+            active = next((p for p in paintings if p["active"]), None)
+            key = active["case_key"] if active else "General_" + group["id"]
+            pieces = [dict(x=p["xy"][0] * 100, y=p["xy"][1] * 100, z=p["z"] * 100,
+                           facing=math.degrees(math.atan2(p["normal"][1], p["normal"][0])),
+                           size=p["size"] * 100, active=p["active"]) for p in paintings]
+            result.append(dict(id=key, pattern=group["pattern"], pieces=pieces))
+        return result
     config = layout["maps"][code]
     groups = []
     for key, x, y, facing in MOUNTS[code]:
@@ -300,7 +316,7 @@ def refine_exhibits(builder, cases, walls):
                 # Both picture planes are children of the backing. Scale the entire
                 # shell around its picture centre, retaining the original aspect ratio.
                 ratio = (size - 10) / 133.0
-                backing.set_editor_property("relative_location", unreal.Vector(0, -70 * ratio, 160 - 70 * ratio))
+                backing.set_editor_property("relative_location", unreal.Vector(0, -70 * ratio, z - 70 * ratio))
                 backing.set_editor_property("relative_rotation", unreal.Rotator(yaw=90))
                 backing.set_editor_property("relative_scale3d", unreal.Vector(*([0.35 * ratio] * 3)))
                 for name in ("OriginalVisualComponent", "ReplicaVisualComponent"):

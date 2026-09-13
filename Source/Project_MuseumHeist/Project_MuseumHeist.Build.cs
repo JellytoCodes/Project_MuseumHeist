@@ -7,6 +7,7 @@ public class Project_MuseumHeist : ModuleRules
 	public Project_MuseumHeist(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+		RuntimeDependencies.Add("$(ProjectDir)/ProjectResources/SourceArt/UI/Fonts/Nanum/*-OFL.txt", StagedFileType.NonUFS);
 
 		PublicDependencyModuleNames.AddRange(new string[]
 		{

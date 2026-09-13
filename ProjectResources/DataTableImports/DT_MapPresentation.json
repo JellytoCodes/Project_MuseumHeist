@@ -4,20 +4,75 @@
     "MapId": "M01",
     "MapDisplayName": "고전 미술관",
     "FloorPlanTexture": "Texture2D'/Game/Assets/UI/Map/T_FloorPlan_M01.T_FloorPlan_M01'",
-    "WorldMin": { "X": -7200.0, "Y": -5200.0 },
-    "WorldMax": { "X": 7200.0, "Y": 5200.0 },
+    "WorldMin": {
+      "X": -4200,
+      "Y": -3200
+    },
+    "WorldMax": {
+      "X": 4200,
+      "Y": 3200
+    },
     "MapNorthAxis": "PositiveY",
     "ZoneAnchors": [
-      { "ZoneId": "Zone_West", "DisplayName": "서측 진입 회랑", "WorldLocation": { "X": -5600.0, "Y": 0.0 } },
-      { "ZoneId": "Zone_Rotunda", "DisplayName": "중앙 로툰다", "WorldLocation": { "X": 0.0, "Y": 0.0 } },
-      { "ZoneId": "Zone_NorthLoop", "DisplayName": "북측 순환 회랑", "WorldLocation": { "X": 0.0, "Y": 3400.0 } },
-      { "ZoneId": "Zone_SouthLoop", "DisplayName": "남측 순환 회랑", "WorldLocation": { "X": 0.0, "Y": -3400.0 } },
-      { "ZoneId": "Zone_East", "DisplayName": "동측 타깃 윙", "WorldLocation": { "X": 5600.0, "Y": 1600.0 } },
-      { "ZoneId": "Zone_Security", "DisplayName": "경비·구금 구역", "WorldLocation": { "X": -5400.0, "Y": -4200.0 } }
+      {
+        "ZoneId": "Zone_V",
+        "DisplayName": "침투·정산 전실",
+        "WorldLocation": {
+          "X": -3400,
+          "Y": 0
+        }
+      },
+      {
+        "ZoneId": "Zone_H",
+        "DisplayName": "중앙 Rotunda",
+        "WorldLocation": {
+          "X": 0,
+          "Y": 0
+        }
+      },
+      {
+        "ZoneId": "Zone_N4",
+        "DisplayName": "풍경 연작",
+        "WorldLocation": {
+          "X": 1900,
+          "Y": 1900
+        }
+      },
+      {
+        "ZoneId": "Zone_S3",
+        "DisplayName": "낭만주의 회화",
+        "WorldLocation": {
+          "X": 0,
+          "Y": -1900
+        }
+      },
+      {
+        "ZoneId": "Zone_EV",
+        "DisplayName": "증거 보관실",
+        "WorldLocation": {
+          "X": 3400,
+          "Y": 500
+        }
+      },
+      {
+        "ZoneId": "Zone_DT",
+        "DisplayName": "구금실",
+        "WorldLocation": {
+          "X": 3400,
+          "Y": -500
+        }
+      }
     ],
-    "ContractTargetGalleryZoneId": "Zone_East",
+    "ContractTargetGalleryZoneId": "Zone_N4",
     "DefaultExitAnchors": [
-      { "ExitId": "Exit_Main", "DisplayName": "진입·배출 벤트", "WorldLocation": { "X": -6800.0, "Y": -1200.0 } }
+      {
+        "ExitId": "Exit_Main",
+        "DisplayName": "진입·배출 벤트",
+        "WorldLocation": {
+          "X": -3900,
+          "Y": 400
+        }
+      }
     ]
   },
   {
@@ -25,20 +80,75 @@
     "MapId": "M02",
     "MapDisplayName": "월야 미술관",
     "FloorPlanTexture": "Texture2D'/Game/Assets/UI/Map/T_FloorPlan_M02.T_FloorPlan_M02'",
-    "WorldMin": { "X": -6400.0, "Y": -5600.0 },
-    "WorldMax": { "X": 6400.0, "Y": 5600.0 },
+    "WorldMin": {
+      "X": -3600,
+      "Y": -3200
+    },
+    "WorldMax": {
+      "X": 3600,
+      "Y": 3200
+    },
     "MapNorthAxis": "PositiveY",
     "ZoneAnchors": [
-      { "ZoneId": "Zone_Entry", "DisplayName": "남서 Vent 전실", "WorldLocation": { "X": -5200.0, "Y": -3200.0 } },
-      { "ZoneId": "Zone_West", "DisplayName": "서측 Serpentine", "WorldLocation": { "X": -4000.0, "Y": 800.0 } },
-      { "ZoneId": "Zone_MoonCourt", "DisplayName": "비대칭 달빛 정원", "WorldLocation": { "X": -600.0, "Y": 800.0 } },
-      { "ZoneId": "Zone_North", "DisplayName": "북측 S자 Gallery", "WorldLocation": { "X": 0.0, "Y": 4200.0 } },
-      { "ZoneId": "Zone_East", "DisplayName": "동측 타깃 윙", "WorldLocation": { "X": 5000.0, "Y": 2200.0 } },
-      { "ZoneId": "Zone_Security", "DisplayName": "경비·구금 구역", "WorldLocation": { "X": 4800.0, "Y": -4500.0 } }
+      {
+        "ZoneId": "Zone_V",
+        "DisplayName": "굴절 진입 전실",
+        "WorldLocation": {
+          "X": -2800,
+          "Y": -2000
+        }
+      },
+      {
+        "ZoneId": "Zone_G",
+        "DisplayName": "Moon Garden",
+        "WorldLocation": {
+          "X": 0,
+          "Y": 200
+        }
+      },
+      {
+        "ZoneId": "Zone_E2",
+        "DisplayName": "계절 회화",
+        "WorldLocation": {
+          "X": 2500,
+          "Y": 900
+        }
+      },
+      {
+        "ZoneId": "Zone_S3",
+        "DisplayName": "두루마리 전시",
+        "WorldLocation": {
+          "X": 500,
+          "Y": -2000
+        }
+      },
+      {
+        "ZoneId": "Zone_EV",
+        "DisplayName": "증거 보관실",
+        "WorldLocation": {
+          "X": 3100,
+          "Y": -1600
+        }
+      },
+      {
+        "ZoneId": "Zone_DT",
+        "DisplayName": "구금실",
+        "WorldLocation": {
+          "X": 3100,
+          "Y": -2400
+        }
+      }
     ],
-    "ContractTargetGalleryZoneId": "Zone_East",
+    "ContractTargetGalleryZoneId": "Zone_E2",
     "DefaultExitAnchors": [
-      { "ExitId": "Exit_Main", "DisplayName": "북측 배출 벤트", "WorldLocation": { "X": 2400.0, "Y": 5200.0 } }
+      {
+        "ExitId": "Exit_Main",
+        "DisplayName": "진입·배출 벤트",
+        "WorldLocation": {
+          "X": -3400,
+          "Y": -1800
+        }
+      }
     ]
   },
   {
@@ -46,21 +156,75 @@
     "MapId": "M03",
     "MapDisplayName": "유리 온실 박물관",
     "FloorPlanTexture": "Texture2D'/Game/Assets/UI/Map/T_FloorPlan_M03.T_FloorPlan_M03'",
-    "WorldMin": { "X": -8000.0, "Y": -4400.0 },
-    "WorldMax": { "X": 8000.0, "Y": 4400.0 },
+    "WorldMin": {
+      "X": -4800,
+      "Y": -2800
+    },
+    "WorldMax": {
+      "X": 4800,
+      "Y": 2800
+    },
     "MapNorthAxis": "PositiveY",
     "ZoneAnchors": [
-      { "ZoneId": "Zone_WestSpine", "DisplayName": "서측 스파인", "WorldLocation": { "X": -5200.0, "Y": 0.0 } },
-      { "ZoneId": "Zone_CentralSpine", "DisplayName": "중앙 스파인", "WorldLocation": { "X": 0.0, "Y": 0.0 } },
-      { "ZoneId": "Zone_EastSpine", "DisplayName": "동측 스파인", "WorldLocation": { "X": 5200.0, "Y": 0.0 } },
-      { "ZoneId": "Zone_GlassLane", "DisplayName": "유리 전시 레인", "WorldLocation": { "X": 0.0, "Y": 3400.0 } },
-      { "ZoneId": "Zone_EastGlass", "DisplayName": "동측 타깃 유리 레인", "WorldLocation": { "X": 6000.0, "Y": 2400.0 } },
-      { "ZoneId": "Zone_Restoration", "DisplayName": "복원 작업 레인", "WorldLocation": { "X": 0.0, "Y": -2400.0 } },
-      { "ZoneId": "Zone_Security", "DisplayName": "경비·구금 구역", "WorldLocation": { "X": 6000.0, "Y": -3500.0 } }
+      {
+        "ZoneId": "Zone_V",
+        "DisplayName": "반입·정산 전실",
+        "WorldLocation": {
+          "X": -4100,
+          "Y": -1600
+        }
+      },
+      {
+        "ZoneId": "Zone_C2",
+        "DisplayName": "격자 홀",
+        "WorldLocation": {
+          "X": -100,
+          "Y": 0
+        }
+      },
+      {
+        "ZoneId": "Zone_N4",
+        "DisplayName": "색면 전시",
+        "WorldLocation": {
+          "X": 2100,
+          "Y": 1600
+        }
+      },
+      {
+        "ZoneId": "Zone_S2",
+        "DisplayName": "보존 아카이브",
+        "WorldLocation": {
+          "X": -600,
+          "Y": -1600
+        }
+      },
+      {
+        "ZoneId": "Zone_EV",
+        "DisplayName": "증거 보관실",
+        "WorldLocation": {
+          "X": 4300,
+          "Y": -1200
+        }
+      },
+      {
+        "ZoneId": "Zone_DT",
+        "DisplayName": "구금실",
+        "WorldLocation": {
+          "X": 4300,
+          "Y": -2000
+        }
+      }
     ],
-    "ContractTargetGalleryZoneId": "Zone_EastGlass",
+    "ContractTargetGalleryZoneId": "Zone_N4",
     "DefaultExitAnchors": [
-      { "ExitId": "Exit_Main", "DisplayName": "서측 진입·배출 벤트", "WorldLocation": { "X": -7600.0, "Y": 0.0 } }
+      {
+        "ExitId": "Exit_Main",
+        "DisplayName": "진입·배출 벤트",
+        "WorldLocation": {
+          "X": -4500,
+          "Y": -1000
+        }
+      }
     ]
   }
 ]

@@ -77,7 +77,7 @@ void UHeistInventorySlotWidget::RefreshPresentation()
 
 	if (IsValid(SlotBackground))
 	{
-		FLinearColor SlotColor = bOccupied ? FLinearColor(0.10f, 0.16f, 0.22f, 0.90f) : FLinearColor(0.04f, 0.07f, 0.10f, 0.85f);
+		FLinearColor SlotColor = bOccupied ? FLinearColor(0.18f, 0.15f, 0.10f, 0.90f) : FLinearColor(0.035f, 0.03f, 0.024f, 0.85f);
 		if (bDropPreviewVisible)
 		{
 			SlotColor = bDropPreviewValid ? FLinearColor(0.06f, 0.55f, 0.20f, 0.95f) : FLinearColor(0.70f, 0.06f, 0.08f, 0.95f);

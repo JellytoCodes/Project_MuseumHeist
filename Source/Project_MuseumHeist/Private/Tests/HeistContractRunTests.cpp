@@ -11,6 +11,7 @@
 #include "Character/Components/HeistStatusComponent.h"
 #include "Character/HeistPlayerCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/PlayerStart.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/SphereComponent.h"
@@ -1423,6 +1424,7 @@ bool CaptureAndValidateGameplayPreflight(FAutomationTestBase* Test, const TShare
 		return false;
 	}
 	AHeistPaintingDisplayCaseActor* SelectedHighValuePaintingCase = nullptr;
+	const FName PrimaryHighValueCaseId(*FString::Printf(TEXT("Case_%s_Optional_HighValue"), *State->MapId.ToString()));
 	for (TActorIterator<AHeistPaintingDisplayCaseActor> It(ServerWorld); It; ++It)
 	{
 		AHeistPaintingDisplayCaseActor* Candidate = *It;
@@ -1435,11 +1437,12 @@ bool CaptureAndValidateGameplayPreflight(FAutomationTestBase* Test, const TShare
 		{
 			continue;
 		}
-		if (IsValid(SelectedHighValuePaintingCase))
+		// Release maps contain several protected FourStar works. Keep the
+		// scripted cooperation fixture deterministic without rejecting the rest.
+		if (Candidate->GetDisplayCaseId() == PrimaryHighValueCaseId)
 		{
-			return false;
+			SelectedHighValuePaintingCase = Candidate;
 		}
-		SelectedHighValuePaintingCase = Candidate;
 	}
 	AHeistLaserBarrierActor* ReleaseLaser = nullptr;
 	AHeistSecurityHoldButtonActor* ReleaseHoldButton = nullptr;
@@ -1449,6 +1452,19 @@ bool CaptureAndValidateGameplayPreflight(FAutomationTestBase* Test, const TShare
 	int32 ReleaseCameraCount = 0;
 	for (TActorIterator<AHeistLaserBarrierActor> It(ServerWorld); It; ++It)
 	{
+		if (!IsValid(*It) || !It->IsBarrierEnabled() || !It->IsBeamActive())
+		{
+			return false;
+		}
+		int32 LinkedButtonCount = 0;
+		for (TActorIterator<AHeistSecurityHoldButtonActor> ButtonIt(ServerWorld); ButtonIt; ++ButtonIt)
+		{
+			LinkedButtonCount += IsValid(*ButtonIt) && ButtonIt->GetLinkedLaserBarrier() == *It ? 1 : 0;
+		}
+		if (LinkedButtonCount != 1)
+		{
+			return false;
+		}
 		if (IsValid(*It) && It->GetProtectedPaintingCase() == SelectedHighValuePaintingCase)
 		{
 			ReleaseLaser = *It;
@@ -3092,7 +3108,7 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 	{
 		return IsGuardChaseAndAlertReady(1);
 	}, 15.0));
-	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d stop Guard interference and open Vent"), RunIndex), []()
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d regroup crew at entry, stop Guard interference and open Vent"), RunIndex), [State]()
 	{
 		UWorld* ServerWorld = GetContractRunServerWorld();
 		AHeistPlayerController* HostPlayerController = GetOwningPlayerControllerById(1);
@@ -3106,6 +3122,50 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 			{
 				GuardState->SetDisabled(true);
 			}
+		}
+		// Earlier scripted forgery leaves teammates at different exhibits. Regroup
+		// them before the deposit assertions so an abandoned teammate cannot keep
+		// raising CCTV incidents during another player's escape cast.
+		TArray<APlayerStart*> EntryStarts;
+		for (TActorIterator<APlayerStart> It(ServerWorld); It; ++It)
+		{
+			EntryStarts.Add(*It);
+		}
+		EntryStarts.Sort([](const APlayerStart& Left, const APlayerStart& Right)
+		{
+			return Left.GetName() < Right.GetName();
+		});
+		if (EntryStarts.Num() < State->PlayerCount)
+		{
+			UE_LOG(LogTemp, Error, TEXT("W6-010 regroup failed: Starts=%d Players=%d"), EntryStarts.Num(), State->PlayerCount);
+			return false;
+		}
+		TSet<APlayerStart*> UsedEntryStarts;
+		for (int32 PlayerId = 1; PlayerId <= State->PlayerCount; ++PlayerId)
+		{
+			AHeistPlayerCharacter* Character = GetServerCharacterById(PlayerId);
+			bool bPlaced = false;
+			for (APlayerStart* Entry : EntryStarts)
+			{
+				// Idle participants may still occupy an authored start. Select a
+				// collision-free start instead of assuming its player-number owner.
+				if (IsValid(Character) && !UsedEntryStarts.Contains(Entry) &&
+					Character->TeleportTo(Entry->GetActorLocation(), Entry->GetActorRotation(), false, false))
+				{
+					UsedEntryStarts.Add(Entry);
+					bPlaced = true;
+					UE_LOG(LogTemp, Display, TEXT("W6-010 regroup placed: PlayerId=%d Start=%s Resolved=%s"),
+						PlayerId, *Entry->GetName(), *Character->GetActorLocation().ToString());
+					break;
+				}
+			}
+			if (!bPlaced)
+			{
+				UE_LOG(LogTemp, Error, TEXT("W6-010 regroup failed: PlayerId=%d Reason=NoFreeAuthoredStart"), PlayerId);
+				return false;
+			}
+			Character->GetCharacterMovement()->StopMovementImmediately();
+			Character->ForceNetUpdate();
 		}
 		UHeistDebugFunctionLibrary::DebugDepositOpen(HostPlayerController);
 		return true;
