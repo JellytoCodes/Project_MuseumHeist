@@ -146,7 +146,44 @@ def verify_layout(world, code, actors):
             clear=clear and not bool(hit and hit.to_dict().get("blocking_hit"))
         camera_checks.append(dict(id=c["id"],transform_matches=transform_matches,coverage_matches=coverage_matches,centerline_clear=clear))
         if not clear:failures.append(c["id"]+": doorway blocks CCTV centerline at player eye height")
+    security_checks = []
+    wing = plan.get("security_wing")
+    if wing:
+        for anchor in plan["detention_starts"]:
+            reachable("SecurityRescue_"+anchor["id"], *anchor["xy"])
+        ex,ey = plan["evidence"]
+        # Side/rear table approaches remain reachable independently of rescue;
+        # the entrance-facing side can deliberately sit behind the baffle.
+        for i,(dx,dy) in enumerate(((2.4,0),(-2.4,0),(0,-2.4))):
+            reachable("SecurityEvidence_"+str(i), ex+dx, ey+dy)
+        for door_id in wing["close"]:
+            wall = next(w for w in plan["walls"] if w["id"]=="SEC_CLOSED_"+door_id)
+            f,mid = wall["fixed"], (wall["start"]+wall["end"])/2
+            a,b = ((mid,f-.7),(mid,f+.7)) if wall["axis"]=="h" else ((f-.7,mid),(f+.7,mid))
+            hit = unreal.SystemLibrary.line_trace_single(world,unreal.Vector(a[0]*100,a[1]*100,170),
+                unreal.Vector(b[0]*100,b[1]*100,170),unreal.TraceTypeQuery.TRACE_TYPE_QUERY1,
+                False,ignored,unreal.DrawDebugTrace.NONE,True)
+            blocked = bool(hit and hit.to_dict().get("blocking_hit"))
+            security_checks.append(dict(id=door_id,closed_portal_blocks=blocked))
+            if not blocked: failures.append(door_id+": closed security shortcut is open")
+        entry = next(d for d in plan["doors"] if d["id"]==wing["entry"])
+        hit = unreal.SystemLibrary.line_trace_single(world,unreal.Vector(*[v*100 for v in entry["xy"]],170),
+            unreal.Vector(ex*100,ey*100,170),unreal.TraceTypeQuery.TRACE_TYPE_QUERY1,
+            False,ignored,unreal.DrawDebugTrace.NONE,True)
+        blocked = bool(hit and hit.to_dict().get("blocking_hit"))
+        security_checks.append(dict(id="EntryToEvidence",direct_sight_blocked=blocked))
+        if not blocked: failures.append("Security entrance reveals evidence directly")
+        source = nav(unreal.Vector(wing["approach"][0]*100,wing["approach"][1]*100,half+3))
+        for anchor in plan["detention_starts"]:
+            dest = nav(unreal.Vector(anchor["xy"][0]*100,anchor["xy"][1]*100,half+3))
+            for direction,a,b in (("in",source,dest),("out",dest,source)):
+                path = unreal.NavigationSystemV1.find_path_to_location_synchronously(world,a,b) if a and b else None
+                valid = bool(path and path.is_valid() and not path.is_partial())
+                security_checks.append(dict(id=anchor["id"],direction=direction,complete_path=valid,
+                    distance_m=round(path.get_path_length()/100,2) if valid else None))
+                if not valid: failures.append("Security rescue route unavailable: "+anchor["id"]+direction)
     return dict(status="FAIL" if failures else "PASS",failures=failures,wall_segments=len(plan["walls"]),
+                security_wing=security_checks,
                 doors=door_checks,destinations=destinations,player_capsule_cm=[radius,half],
                 room_count=len(plan["rooms"]),evidence_slots=sum(a.actor_has_tag("HeistEvidenceSlot") for a in actors),
                 camera_sightlines=camera_checks, runtime_lasers=laser_checks)

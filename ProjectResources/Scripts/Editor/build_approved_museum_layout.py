@@ -236,6 +236,7 @@ def build():
         x0,y0,x1,y1=plan["bounds"]
         nav.set_actor_scale3d(unreal.Vector((x1-x0)*50/extent.x,(y1-y0)*50/extent.y,500/extent.z))
         nav.set_actor_location(unreal.Vector(0,0,250),False,False)
+        runpy.run_path(str(ROOT / "ProjectResources/Scripts/Editor/apply_security_wings.py"))["decorate"](builder, plan)
         builder.configure_night_environment()
         night = runpy.run_path(str(ROOT / "ProjectResources/Scripts/Editor/apply_museum_night_lighting.py"))
         night["apply_lighting"](plan)
