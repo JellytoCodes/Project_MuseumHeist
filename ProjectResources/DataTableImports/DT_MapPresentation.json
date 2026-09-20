@@ -5,12 +5,12 @@
     "MapDisplayName": "고전 미술관",
     "FloorPlanTexture": "Texture2D'/Game/Assets/UI/Map/T_FloorPlan_M01.T_FloorPlan_M01'",
     "WorldMin": {
-      "X": -4200,
-      "Y": -3200
+      "X": -6000.0,
+      "Y": -4400.0
     },
     "WorldMax": {
-      "X": 4200,
-      "Y": 3200
+      "X": 6000.0,
+      "Y": 4400.0
     },
     "MapNorthAxis": "PositiveY",
     "ZoneAnchors": [
@@ -18,48 +18,48 @@
         "ZoneId": "Zone_V",
         "DisplayName": "침투·정산 전실",
         "WorldLocation": {
-          "X": -3400,
-          "Y": 0
+          "X": -4857.143,
+          "Y": 0.0
         }
       },
       {
         "ZoneId": "Zone_H",
         "DisplayName": "중앙 Rotunda",
         "WorldLocation": {
-          "X": 0,
-          "Y": 0
+          "X": 0.0,
+          "Y": 0.0
         }
       },
       {
         "ZoneId": "Zone_N4",
         "DisplayName": "풍경 연작",
         "WorldLocation": {
-          "X": 1900,
-          "Y": 1900
+          "X": 2714.286,
+          "Y": 2612.5
         }
       },
       {
         "ZoneId": "Zone_S3",
         "DisplayName": "낭만주의 회화",
         "WorldLocation": {
-          "X": 0,
-          "Y": -1900
+          "X": 0.0,
+          "Y": -2612.5
         }
       },
       {
         "ZoneId": "Zone_EV",
         "DisplayName": "증거 보관실",
         "WorldLocation": {
-          "X": 3400,
-          "Y": 500
+          "X": 4857.143,
+          "Y": 687.5
         }
       },
       {
         "ZoneId": "Zone_DT",
         "DisplayName": "구금실",
         "WorldLocation": {
-          "X": 3400,
-          "Y": -500
+          "X": 4857.143,
+          "Y": -687.5
         }
       }
     ],
@@ -69,8 +69,8 @@
         "ExitId": "Exit_Main",
         "DisplayName": "진입·배출 벤트",
         "WorldLocation": {
-          "X": -3900,
-          "Y": 400
+          "X": -5571.429,
+          "Y": 550.0
         }
       }
     ]
@@ -81,12 +81,12 @@
     "MapDisplayName": "월야 미술관",
     "FloorPlanTexture": "Texture2D'/Game/Assets/UI/Map/T_FloorPlan_M02.T_FloorPlan_M02'",
     "WorldMin": {
-      "X": -3600,
-      "Y": -3200
+      "X": -5400.0,
+      "Y": -4400.0
     },
     "WorldMax": {
-      "X": 3600,
-      "Y": 3200
+      "X": 5400.0,
+      "Y": 4400.0
     },
     "MapNorthAxis": "PositiveY",
     "ZoneAnchors": [
@@ -94,48 +94,48 @@
         "ZoneId": "Zone_V",
         "DisplayName": "굴절 진입 전실",
         "WorldLocation": {
-          "X": -2800,
-          "Y": -2000
+          "X": -4200.0,
+          "Y": -2750.0
         }
       },
       {
         "ZoneId": "Zone_G",
         "DisplayName": "Moon Garden",
         "WorldLocation": {
-          "X": 0,
-          "Y": 200
+          "X": 0.0,
+          "Y": 275.0
         }
       },
       {
         "ZoneId": "Zone_E2",
         "DisplayName": "계절 회화",
         "WorldLocation": {
-          "X": 2500,
-          "Y": 900
+          "X": 3750.0,
+          "Y": 1237.5
         }
       },
       {
         "ZoneId": "Zone_S3",
         "DisplayName": "두루마리 전시",
         "WorldLocation": {
-          "X": 500,
-          "Y": -2000
+          "X": 750.0,
+          "Y": -2750.0
         }
       },
       {
         "ZoneId": "Zone_EV",
         "DisplayName": "증거 보관실",
         "WorldLocation": {
-          "X": 3100,
-          "Y": -1600
+          "X": 4650.0,
+          "Y": -2200.0
         }
       },
       {
         "ZoneId": "Zone_DT",
         "DisplayName": "구금실",
         "WorldLocation": {
-          "X": 3100,
-          "Y": -2400
+          "X": 4650.0,
+          "Y": -3300.0
         }
       }
     ],
@@ -145,8 +145,8 @@
         "ExitId": "Exit_Main",
         "DisplayName": "진입·배출 벤트",
         "WorldLocation": {
-          "X": -3400,
-          "Y": -1800
+          "X": -5100.0,
+          "Y": -2475.0
         }
       }
     ]
@@ -157,12 +157,12 @@
     "MapDisplayName": "유리 온실 박물관",
     "FloorPlanTexture": "Texture2D'/Game/Assets/UI/Map/T_FloorPlan_M03.T_FloorPlan_M03'",
     "WorldMin": {
-      "X": -4800,
-      "Y": -2800
+      "X": -6600.0,
+      "Y": -4000.0
     },
     "WorldMax": {
-      "X": 4800,
-      "Y": 2800
+      "X": 6600.0,
+      "Y": 4000.0
     },
     "MapNorthAxis": "PositiveY",
     "ZoneAnchors": [
@@ -170,48 +170,48 @@
         "ZoneId": "Zone_V",
         "DisplayName": "반입·정산 전실",
         "WorldLocation": {
-          "X": -4100,
-          "Y": -1600
+          "X": -5637.5,
+          "Y": -2285.714
         }
       },
       {
         "ZoneId": "Zone_C2",
         "DisplayName": "격자 홀",
         "WorldLocation": {
-          "X": -100,
-          "Y": 0
+          "X": -137.5,
+          "Y": 0.0
         }
       },
       {
         "ZoneId": "Zone_N4",
         "DisplayName": "색면 전시",
         "WorldLocation": {
-          "X": 2100,
-          "Y": 1600
+          "X": 2887.5,
+          "Y": 2285.714
         }
       },
       {
         "ZoneId": "Zone_S2",
         "DisplayName": "보존 아카이브",
         "WorldLocation": {
-          "X": -600,
-          "Y": -1600
+          "X": -825.0,
+          "Y": -2285.714
         }
       },
       {
         "ZoneId": "Zone_EV",
         "DisplayName": "증거 보관실",
         "WorldLocation": {
-          "X": 4300,
-          "Y": -1200
+          "X": 5912.5,
+          "Y": -1714.2855000000002
         }
       },
       {
         "ZoneId": "Zone_DT",
         "DisplayName": "구금실",
         "WorldLocation": {
-          "X": 4300,
-          "Y": -2000
+          "X": 5912.5,
+          "Y": -2857.1425
         }
       }
     ],
@@ -221,8 +221,8 @@
         "ExitId": "Exit_Main",
         "DisplayName": "진입·배출 벤트",
         "WorldLocation": {
-          "X": -4500,
-          "Y": -1000
+          "X": -6187.5,
+          "Y": -1428.571
         }
       }
     ]

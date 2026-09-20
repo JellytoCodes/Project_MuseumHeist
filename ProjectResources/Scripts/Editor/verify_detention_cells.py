@@ -15,6 +15,8 @@ ACTORS=unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
 EDITOR=unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem)
 STATE=dict(index=0,phase='load',time=0,busy=False,callback=None)
 REPORT=dict(maps=[],captures=[])
+_, SWITCHES, _ = unreal.SystemLibrary.parse_command_line(unreal.SystemLibrary.get_command_line())
+AUDIT_ONLY = 'detentionauditonly' in {str(s).lower() for s in SWITCHES}
 
 def audit(plan):
     code=plan['id']; world=EDITOR.get_editor_world(); actors=ACTORS.get_all_level_actors()
@@ -66,6 +68,9 @@ def tick(_):
             STATE.update(phase='audit',time=time.monotonic());return
         if STATE['phase']=='audit':
             audit(plan)
+            if AUDIT_ONLY:
+                STATE.update(index=STATE['index']+1,phase='load',time=time.monotonic())
+                return
             x,y=plan['security_wing']['opening']
             position=unreal.Vector((x-1.2)*100,(y+1.1)*100,170)
             rotation=unreal.Rotator(yaw=-42)

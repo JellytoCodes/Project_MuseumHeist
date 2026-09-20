@@ -200,7 +200,10 @@ def verify_gallery(world, code, authored_actors):
         "M03": [((-4500, -400), (4500, -400)), ((-4500, 400), (4500, 400))],
     }
     blocked = 0
+    scale = plan.get('exploration_spacing', {}).get('scale_xy', (1, 1))
     for a, b in rays[code]:
+        a = tuple(v*s for v,s in zip(a,scale))
+        b = tuple(v*s for v,s in zip(b,scale))
         hit = unreal.SystemLibrary.line_trace_single(world, unreal.Vector(*a, 170), unreal.Vector(*b, 170),
             unreal.TraceTypeQuery.TRACE_TYPE_QUERY1, True, ignored, unreal.DrawDebugTrace.NONE, True)
         if hit and hit.to_dict().get("blocking_hit"):

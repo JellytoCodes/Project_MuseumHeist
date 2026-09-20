@@ -1,3 +1,7 @@
+"""Import floor-plan sources with UnrealEditor-Cmd -run=pythonscript -script=<this file>.
+
+Commandlet mode avoids a Slate teardown failure after unattended texture imports.
+"""
 import json
 import os
 
@@ -8,16 +12,10 @@ DATA_TABLE_PATH = "/Game/Data/DataTable/DT_MapPresentation"
 SOURCE_PATH = os.path.abspath(
     os.path.join(unreal.Paths.project_dir(), "ProjectResources", "DataTableImports", "DT_MapPresentation.json")
 )
-EXPECTED_BOUNDS = {
-    "M01": ((-4200.0, -3200.0), (4200.0, 3200.0)),
-    "M02": ((-3600.0, -3200.0), (3600.0, 3200.0)),
-    "M03": ((-4800.0, -2800.0), (4800.0, 2800.0)),
-}
-EXPECTED_EXITS = {
-    "M01": (-3900.0, 400.0),
-    "M02": (-3400.0, -1800.0),
-    "M03": (-4500.0, -1000.0),
-}
+with open(os.path.join(unreal.Paths.project_dir(), 'ProjectResources/SourceArt/Gallery/MuseumLevelLayout.json'), encoding='utf-8') as source:
+    PLANS = json.load(source)['maps']
+EXPECTED_BOUNDS = {p['id']: (tuple(v*100 for v in p['bounds'][:2]), tuple(v*100 for v in p['bounds'][2:])) for p in PLANS}
+EXPECTED_EXITS = {p['id']: tuple(v*100 for v in p['vent']) for p in PLANS}
 FLOOR_PLAN_SOURCE_DIRECTORY = os.path.abspath(
     os.path.join(unreal.Paths.project_dir(), "ProjectResources", "SourceArt", "W7", "Generated")
 )

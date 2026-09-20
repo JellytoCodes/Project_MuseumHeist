@@ -43,6 +43,7 @@ report = {"status": "NOT_TESTED", "scope": "SavedGuardStartsAndRoutes_StrictVeri
           "map_sha256_before": map_hashes(), "maps": [], "packages_saved": False,
           "navigation_rebuild_requested": False, "user_pie": "NOT_TESTED",
           "override": "Append all PIE guard counterparts to native capsule ActorsToIgnore; every other argument unchanged"}
+report['layout_sha256'] = hashlib.sha256((ROOT/'ProjectResources/SourceArt/Gallery/MuseumLevelLayout.json').read_bytes()).hexdigest()
 
 
 class SystemLibraryProxy:

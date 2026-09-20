@@ -15,12 +15,13 @@ import traceback
 import unreal
 
 ROOT = Path(unreal.Paths.project_dir()).resolve()
-SOURCE = ROOT / "ProjectResources/SourceArt/Gallery/MuseumLevelLayout.json"
+_, switches, parameters = unreal.SystemLibrary.parse_command_line(unreal.SystemLibrary.get_command_line())
+parameters = {str(k).casefold(): str(v) for k,v in parameters.items()}
+SOURCE = Path(parameters.get('museummovementlayout', str(ROOT / "ProjectResources/SourceArt/Gallery/MuseumLevelLayout.json")))
 PLANS = json.loads(SOURCE.read_text(encoding="utf-8"))["maps"]
 MAPS = ("M01_ClassicalPrototype", "M02_MoonlitPrototype", "M03_GlasshousePrototype")
-_, switches, _ = unreal.SystemLibrary.parse_command_line(unreal.SystemLibrary.get_command_line())
 SIGHTLINES = "museummovementsightlines" in {str(v).casefold() for v in switches}
-OUT = ROOT / "Saved/Automation/MuseumMovement" / ("sightlines.json" if SIGHTLINES else "native-paths.json")
+OUT = Path(parameters.get('museummovementreport', str(ROOT / "Saved/Automation/MuseumMovement" / ("sightlines.json" if SIGHTLINES else "native-paths.json"))))
 OUT.parent.mkdir(parents=True, exist_ok=True)
 editor = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem)
 levels = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
