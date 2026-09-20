@@ -3,6 +3,9 @@
 #include "Character/Components/HeistInteractionComponent.h"
 #include "Character/HeistPlayerCharacter.h"
 #include "Components/ProgressBar.h"
+#include "Components/Image.h"
+#include "Components/CanvasPanelSlot.h"
+#include "World/Actors/Security/HeistDetentionDoorActor.h"
 #include "Components/TextBlock.h"
 #include "Components/Widget.h"
 #include "Core/HeistLogChannels.h"
@@ -55,6 +58,7 @@ UHeistInteractionPromptWidget::UHeistInteractionPromptWidget(const FObjectInitia
 void UHeistInteractionPromptWidget::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+	RefreshDetentionTiming();
 
 	if (IsValid(HUDViewModel) && (HUDViewModel->IsObservationCastActive() || HUDViewModel->IsEscapeCastActive()))
 	{
@@ -178,12 +182,17 @@ void UHeistInteractionPromptWidget::RefreshInteractionPrompt(const bool bActionA
 		}
 		else
 		{
-			TargetText->SetText(ResolveTargetLabel(TargetActor));
+			const AHeistDetentionDoorActor* Door = Cast<AHeistDetentionDoorActor>(TargetActor);
+			TargetText->SetText(Door ? NSLOCTEXT("HeistDetention", "Door", "구금실 철창문") : ResolveTargetLabel(TargetActor));
 		}
 	}
 	if (IsValid(AvailabilityText))
 	{
 		AvailabilityText->SetText(bLockedVent ? NSLOCTEXT("HeistInteraction", "VentLockedHint", "개방 후 사용할 수 있습니다") : NSLOCTEXT("HeistInteraction", "InteractionPrompt", "[E] 상호작용"));
+	}
+	if (const AHeistDetentionDoorActor* Door = Cast<AHeistDetentionDoorActor>(TargetActor); Door && AvailabilityText)
+	{
+		AvailabilityText->SetText(Door->GetPrompt(Cast<AHeistPlayerCharacter>(GetOwningPlayerPawn())));
 	}
 	if (IsValid(KeyText))
 	{
@@ -400,3 +409,26 @@ float UHeistInteractionPromptWidget::GetServerWorldTimeSeconds() const
 }
 
 #pragma endregion
+
+void UHeistInteractionPromptWidget::RefreshDetentionTiming()
+{
+	const AHeistDetentionDoorActor* Door = IsValid(InteractionComponent) ? Cast<AHeistDetentionDoorActor>(InteractionComponent->GetCurrentInteractionTarget()) : nullptr;
+	const APawn* Pawn = GetOwningPlayerPawn();
+	const bool bShow = Door && Pawn && Door->GetOperator() == Pawn->GetPlayerState() && !Door->IsOpen();
+	if (DetentionTimingContainer) DetentionTimingContainer->SetVisibility(bShow ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	if (!bShow) return;
+	if (DetentionTimingWindow)
+	{
+		DetentionTimingWindow->SetVisibility(Door->IsRescueOperation() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+		if (UCanvasPanelSlot* TimingSlot = Cast<UCanvasPanelSlot>(DetentionTimingWindow->Slot))
+		{
+			const float Width = FMath::FloorToFloat(320.0f * Door->GetSuccessWindowWidth() / 8.0f) * 8.0f;
+			TimingSlot->SetSize(FVector2D(Width,16));
+			TimingSlot->SetPosition(FVector2D(224.0f - Width * 0.5f,4));
+		}
+	}
+	if (DetentionTimingCursor)
+	{
+		if (UCanvasPanelSlot* TimingSlot = Cast<UCanvasPanelSlot>(DetentionTimingCursor->Slot)) TimingSlot->SetPosition(FVector2D(316.0f * Door->GetTimingProgress(),0));
+	}
+}

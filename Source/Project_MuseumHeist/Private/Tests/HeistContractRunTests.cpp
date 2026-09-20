@@ -23,6 +23,8 @@
 #include "Core/HeistHUD.h"
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
+#include "UObject/StructOnScope.h"
+#include "World/Actors/Security/HeistDetentionDoorActor.h"
 #include "Core/HeistTypes.h"
 #include "Data/HeistArtifactDataTypes.h"
 #include "Data/HeistGameBalanceDataAsset.h"
@@ -1275,6 +1277,17 @@ bool MoveWeek7RescuerIntoRange(const int32 RescuerPlayerId, const int32 TargetPl
 {
 	AHeistPlayerCharacter* Rescuer = GetServerCharacterById(RescuerPlayerId);
 	AHeistPlayerCharacter* Target = GetServerCharacterById(TargetPlayerId);
+	const AHeistPlayerState* TargetState = Target ? Target->GetPlayerState<AHeistPlayerState>() : nullptr;
+	if (IsValid(Rescuer) && TargetState && TargetState->GetDetentionDoor())
+	{
+		const AHeistDetentionDoorActor* Door = TargetState->GetDetentionDoor();
+		FVector Location = Door->GetActorLocation() + Door->GetActorRightVector() * 80.0f;
+		Location.Z = Target->GetActorLocation().Z;
+		Rescuer->SetActorLocation(Location, false, nullptr, ETeleportType::TeleportPhysics);
+		Rescuer->GetCharacterMovement()->StopMovementImmediately();
+		Rescuer->ForceNetUpdate();
+		return true;
+	}
 	if (!IsValid(Rescuer) || !IsValid(Target) || !Target->IsRescueInteractionAvailable())
 	{
 		return false;
@@ -1288,6 +1301,21 @@ bool RequestWeek7Rescue(const int32 RescuerPlayerId, const int32 TargetPlayerId)
 {
 	AHeistPlayerController* RescuerController = GetOwningPlayerControllerById(RescuerPlayerId);
 	AHeistPlayerCharacter* LocalTarget = IsValid(RescuerController) ? FindHeistCharacterById(RescuerController->GetWorld(), TargetPlayerId) : nullptr;
+	const AHeistPlayerState* TargetState = LocalTarget ? LocalTarget->GetPlayerState<AHeistPlayerState>() : nullptr;
+	if (TargetState && TargetState->GetDetentionDoor())
+	{
+		AHeistDetentionDoorActor* Door = TargetState->GetDetentionDoor();
+		UFunction* Function = RescuerController->FindFunction(TEXT("Server_RequestDetentionDoor"));
+		if (!Function) return false;
+		FStructOnScope Parameters(Function);
+		FObjectProperty* DoorProperty = FindFProperty<FObjectProperty>(Function, TEXT("Door"));
+		FIntProperty* RevisionProperty = FindFProperty<FIntProperty>(Function, TEXT("Revision"));
+		if (!DoorProperty || !RevisionProperty) return false;
+		DoorProperty->SetObjectPropertyValue_InContainer(Parameters.GetStructMemory(), Door);
+		RevisionProperty->SetPropertyValue_InContainer(Parameters.GetStructMemory(), Door->GetRevision());
+		RescuerController->ProcessEvent(Function, Parameters.GetStructMemory());
+		return true;
+	}
 	return InvokeSingleActorServerRPC(RescuerController, FName(TEXT("Server_RequestRescuePlayer")), LocalTarget);
 }
 
@@ -2758,7 +2786,9 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 	}));
 	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d Rescue overlap"), RunIndex), [State]()
 	{
-		return State->PlayerCount == 1 || IsServerPlayerOverlapping(1, GetServerCharacterById(2));
+		const AHeistPlayerState* TargetState = FindPlayerStateById(GetContractRunServerWorld(), 2);
+		const AActor* RescueTarget = TargetState && TargetState->GetDetentionDoor() ? static_cast<AActor*>(TargetState->GetDetentionDoor()) : GetServerCharacterById(2);
+		return State->PlayerCount == 1 || IsServerPlayerOverlapping(1, RescueTarget);
 	}, 10.0));
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d request teammate Rescue through server RPC"), RunIndex), [State]()
 	{

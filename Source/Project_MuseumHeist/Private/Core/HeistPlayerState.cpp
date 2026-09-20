@@ -1,4 +1,5 @@
 #include "Core/HeistPlayerState.h"
+#include "World/Actors/Security/HeistDetentionDoorActor.h"
 
 #include "Character/HeistPlayerCharacter.h"
 #include "Character/Components/HeistActionComponent.h"
@@ -12,6 +13,7 @@
 #include "Core/HeistGameplayTags.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
 #include "Net/UnrealNetwork.h"
+#include "TimerManager.h"
 
 #pragma region ScoreAndWeight
 
@@ -274,7 +276,7 @@ void AHeistPlayerState::DebugSetContributionState(const FHeistPlayerContribution
 void AHeistPlayerState::CommitContributionMutation()
 {
 	Contribution.bEscaped = bEscaped;
-	Contribution.bArrested = bArrested;
+	Contribution.bArrested = bArrested || IsProtectedByDetention();
 	ForceNetUpdate();
 }
 
@@ -354,6 +356,27 @@ void AHeistPlayerState::OnRep_Escaped()
 
 #pragma region ArrestState
 
+void AHeistPlayerState::SetDetentionDoor(AHeistDetentionDoorActor* Door)
+{
+	if (!HasAuthority()) return;
+	DetentionDoor = Door;
+	CommitContributionMutation();
+	RefreshCrewStatus();
+	if (AHeistGameState* State = GetWorld()->GetGameState<AHeistGameState>()) State->RebuildPlayerResults();
+	OnRep_DetentionDoor();
+	ForceNetUpdate();
+}
+
+bool AHeistPlayerState::IsProtectedByDetention() const
+{
+	return IsValid(DetentionDoor) && DetentionDoor->IsPlayerContained(this);
+}
+
+void AHeistPlayerState::OnRep_DetentionDoor()
+{
+	if (AHeistPlayerCharacter* Character = Cast<AHeistPlayerCharacter>(GetPawn())) Character->ApplyPlayerStateGameplayRestrictions();
+}
+
 bool AHeistPlayerState::IsArrested() const
 {
 	return bArrested;
@@ -367,6 +390,60 @@ bool AHeistPlayerState::MarkArrested(AActor* ArrestingGuard)
 bool AHeistPlayerState::ClearArrested()
 {
 	return SetArrestedInternal(false, nullptr);
+}
+
+bool AHeistPlayerState::IsDetentionRecoveryPending() const
+{
+	// Keep the player unresolved even if the deadline has passed but the timer has not run yet.
+	return bArrested && !bEscaped && DetentionReleaseServerTime >= 0.0f;
+}
+
+float AHeistPlayerState::GetDetentionRemainingSeconds() const
+{
+	const AHeistGameState* GameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
+	return IsDetentionRecoveryPending() && IsValid(GameState)
+		? FMath::Max(0.0f, DetentionReleaseServerTime - GameState->GetServerWorldTimeSeconds()) : 0.0f;
+}
+
+void AHeistPlayerState::CancelDetentionRecovery()
+{
+	GetWorldTimerManager().ClearTimer(DetentionRestraintTimerHandle);
+	if (DetentionGameState.IsValid())
+	{
+		DetentionGameState->GetMatchPhaseChangedDelegate().RemoveAll(this);
+	}
+	DetentionGameState.Reset();
+	DetentionReleaseServerTime = -1.0f;
+}
+
+void AHeistPlayerState::HandleDetentionRestraintElapsed()
+{
+	const AHeistGameState* GameState = DetentionGameState.Get();
+	if (HasAuthority() && bArrested && !bEscaped && IsValid(GetPawn()) && IsValid(GameState) &&
+		GameState->GetMatchPhase() == EHeistMatchPhase::InGame)
+	{
+		ClearArrested();
+	}
+	else
+	{
+		CancelDetentionRecovery();
+	}
+}
+
+void AHeistPlayerState::HandleDetentionMatchPhaseChanged(EHeistMatchPhase PreviousPhase, EHeistMatchPhase NewPhase)
+{
+	if (NewPhase != EHeistMatchPhase::InGame)
+	{
+		// Preserve the final arrested result. A late timer must not reopen input after End.
+		CancelDetentionRecovery();
+		ForceNetUpdate();
+	}
+}
+
+void AHeistPlayerState::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	CancelDetentionRecovery();
+	Super::EndPlay(EndPlayReason);
 }
 
 FHeistPlayerArrestStateChanged& AHeistPlayerState::GetArrestStateChangedDelegate()
@@ -395,7 +472,21 @@ bool AHeistPlayerState::SetArrestedInternal(const bool bNewArrested, AActor* Arr
 		return false;
 	}
 
+	CancelDetentionRecovery();
 	bArrested = bNewArrested;
+	if (bArrested)
+	{
+		AHeistGameState* GameState = GetWorld()->GetGameState<AHeistGameState>();
+		if (IsValid(GameState) && GameState->GetMatchPhase() == EHeistMatchPhase::InGame)
+		{
+			const AHeistGameMode* GameMode = GetWorld()->GetAuthGameMode<AHeistGameMode>();
+			const float Duration = IsValid(GameMode) ? GameMode->GetDetentionRestraintDurationSeconds() : 5.0f;
+			DetentionReleaseServerTime = GameState->GetServerWorldTimeSeconds() + Duration;
+			DetentionGameState = GameState;
+			GameState->GetMatchPhaseChangedDelegate().AddUObject(this, &AHeistPlayerState::HandleDetentionMatchPhaseChanged);
+			GetWorldTimerManager().SetTimer(DetentionRestraintTimerHandle, this, &AHeistPlayerState::HandleDetentionRestraintElapsed, Duration, false);
+		}
+	}
 	RefreshCrewStatus();
 	CommitContributionMutation();
 	AHeistPlayerCharacter* HeistPlayerCharacter = Cast<AHeistPlayerCharacter>(GetPawn());
@@ -515,6 +606,8 @@ void AHeistPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME_CONDITION(AHeistPlayerState, TotalLootWeight, COND_OwnerOnly);
 	DOREPLIFETIME(AHeistPlayerState, bEscaped);
 	DOREPLIFETIME(AHeistPlayerState, bArrested);
+	DOREPLIFETIME(AHeistPlayerState, DetentionDoor);
+	DOREPLIFETIME(AHeistPlayerState, DetentionReleaseServerTime);
 	DOREPLIFETIME(AHeistPlayerState, Contribution);
 	DOREPLIFETIME(AHeistPlayerState, CrewStatus);
 }
@@ -567,7 +660,7 @@ EHeistCrewStatus AHeistPlayerState::ResolveCrewStatusFromPawn() const
 	{
 		return EHeistCrewStatus::Escaped;
 	}
-	if (bArrested)
+	if (bArrested || IsProtectedByDetention())
 	{
 		return EHeistCrewStatus::Arrested;
 	}

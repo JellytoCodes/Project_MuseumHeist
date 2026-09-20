@@ -17,6 +17,10 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardWaypoint : public AActor
 
 	FName GetPatrolRouteId() const;
 	int32 GetPatrolOrder() const;
+	float GetWaitDurationOverride() const { return WaitDurationOverride; }
+
+	UPROPERTY(EditAnywhere, Category="Heist|AI|Patrol", meta=(ClampMin="-1.0"))
+	float WaitDurationOverride = -1.0f;
 
   private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|AI|Patrol", meta = (AllowPrivateAccess = "true"))

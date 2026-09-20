@@ -10,6 +10,7 @@ class AHeistPlayerCharacter;
 class AHeistObjectDisplayCaseActor;
 class AHeistPaintingDisplayCaseActor;
 class AHeistSecurityHoldButtonActor;
+class AHeistDetentionDoorActor;
 class AHeistGuardCharacter;
 class AHeistGameState;
 class AHeistLootActor;
@@ -204,6 +205,9 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	void HandleInteractReleased();
 	bool bLocalObservationInputHeld = false;
 	TWeakObjectPtr<AHeistSecurityHoldButtonActor> LocalSecurityHoldButton;
+	TWeakObjectPtr<AHeistDetentionDoorActor> LocalDetentionDoor;
+	UFUNCTION(Server, Reliable) void Server_RequestDetentionDoor(AHeistDetentionDoorActor* Door, int32 Revision);
+	UFUNCTION(Server, Reliable) void Server_ReleaseDetentionDoor(AHeistDetentionDoorActor* Door, bool bCancelLatch);
 
 #pragma endregion
 

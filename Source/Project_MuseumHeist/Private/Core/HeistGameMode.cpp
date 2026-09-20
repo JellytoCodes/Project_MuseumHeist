@@ -1,4 +1,5 @@
 #include "Core/HeistGameMode.h"
+#include "World/Actors/Security/HeistDetentionDoorActor.h"
 
 #include "AI/HeistGuardAIController.h"
 #include "AI/HeistGuardCharacter.h"
@@ -806,6 +807,20 @@ bool AHeistGameMode::TryCompletePlayerArrest(AHeistPlayerCharacter* ArrestedChar
 		return false;
 	}
 
+	const int32 DetentionSpawnIndex = FMath::Clamp(ArrestedPlayerState->HeistPlayerId - 1, 0, DetentionSpawns.Num() - 1);
+	const FTransform DetentionTransform = DetentionSpawns[DetentionSpawnIndex]->GetActorTransform();
+	AHeistDetentionDoorActor* DetentionDoor = nullptr;
+	for (TActorIterator<AHeistDetentionDoorActor> It(GetWorld()); It; ++It)
+	{
+		if (!It->ContainsLocation(DetentionTransform.GetLocation())) continue;
+		if (DetentionDoor || !It->CanSecureCell())
+		{
+			OutRejectReason = TEXT("DetentionDoorUnavailable");
+			return false;
+		}
+		DetentionDoor = *It;
+	}
+
 	FHeistArrestConfiscationPayload ConfiscationPreview;
 	const TCHAR* InventoryRejectReason = nullptr;
 	if (!InventoryComponent->TryBuildArrestConfiscationPayload(ConfiscationPreview, InventoryRejectReason))
@@ -910,8 +925,7 @@ bool AHeistGameMode::TryCompletePlayerArrest(AHeistPlayerCharacter* ArrestedChar
 	}
 
 	const FTransform PreviousPlayerTransform = ArrestedCharacter->GetActorTransform();
-	const int32 DetentionSpawnIndex = FMath::Clamp(ArrestedPlayerState->HeistPlayerId - 1, 0, DetentionSpawns.Num() - 1);
-	const FTransform DetentionTransform = DetentionSpawns[DetentionSpawnIndex]->GetActorTransform();
+
 	if (!ArrestedCharacter->SetActorLocationAndRotation(DetentionTransform.GetLocation(), DetentionTransform.Rotator(), false, nullptr, ETeleportType::TeleportPhysics))
 	{
 		RollbackEvidenceActors();
@@ -946,6 +960,7 @@ bool AHeistGameMode::TryCompletePlayerArrest(AHeistPlayerCharacter* ArrestedChar
 		}
 	}
 
+	if (DetentionDoor) DetentionDoor->SecureForArrest(ArrestedPlayerState);
 	const bool bArrestCommitted = ArrestedPlayerState->MarkArrested(ArrestingGuard);
 	checkf(bArrestCommitted, TEXT("Validated Arrest transaction must commit after evidence staging, teleport, Inventory mutation and carrier release."));
 	if (!bArrestCommitted)
@@ -2633,6 +2648,9 @@ void AHeistGameMode::ApplyPlayerCountGuardScaling()
 	}
 	AuthoredGuards.Sort([](const AHeistGuardCharacter& Left, const AHeistGuardCharacter& Right)
 	{
+		const bool bLeftDetention = Left.ActorHasTag(TEXT("HeistDetentionPatrol"));
+		const bool bRightDetention = Right.ActorHasTag(TEXT("HeistDetentionPatrol"));
+		if (bLeftDetention != bRightDetention) return bLeftDetention;
 		return Left.GetPathName() < Right.GetPathName();
 	});
 	SupplementalGuards.Sort([](const AHeistGuardCharacter& Left, const AHeistGuardCharacter& Right)
@@ -2669,7 +2687,9 @@ void AHeistGameMode::ApplyPlayerCountGuardScaling()
 	UNavigationSystemV1* NavigationSystem = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
 	for (int32 SupplementalIndex = SupplementalGuards.Num(); SupplementalIndex < RequestedSupplementalCount && !AuthoredGuards.IsEmpty(); ++SupplementalIndex)
 	{
-		AHeistGuardCharacter* SourceGuard = AuthoredGuards[SupplementalIndex % AuthoredGuards.Num()];
+		// Extra difficulty guards must not duplicate the one dedicated cell patrol.
+		const int32 SourceOffset = AuthoredGuards.Num() > 1 && AuthoredGuards[0]->ActorHasTag(TEXT("HeistDetentionPatrol")) ? 1 : 0;
+		AHeistGuardCharacter* SourceGuard = AuthoredGuards[SourceOffset + SupplementalIndex % (AuthoredGuards.Num() - SourceOffset)];
 		const float Separation = FMath::Max(150.0f, SourceGuard->GetSimpleCollisionRadius() * 3.0f);
 		FTransform SpawnTransform = SourceGuard->GetActorTransform();
 		SpawnTransform.AddToTranslation(SourceGuard->GetActorRightVector() * Separation * static_cast<float>(SupplementalIndex + 1));
@@ -2778,6 +2798,13 @@ float AHeistGameMode::GetGuardCaptureAlertIncrease() const
 	return IsValid(BalanceData) && FMath::IsFinite(BalanceData->GuardCaptureAlertIncrease)
 		? FMath::Clamp(BalanceData->GuardCaptureAlertIncrease, 0.5f, 10.0f)
 		: 1.0f;
+}
+
+float AHeistGameMode::GetDetentionRestraintDurationSeconds() const
+{
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	return IsValid(BalanceData) && FMath::IsFinite(BalanceData->DetentionRestraintDurationSeconds)
+		? FMath::Max(1.0f, BalanceData->DetentionRestraintDurationSeconds) : 5.0f;
 }
 
 float AHeistGameMode::GetSecurityCameraEvaluationIntervalSeconds() const

@@ -59,6 +59,8 @@ public class Project_MuseumHeist : ModuleRules
 		if (Target.bBuildEditor)
 		{
 			PrivateDependencyModuleNames.Add("UnrealEd");
+			// Deterministic overlap tests flush the real Chaos query scene.
+			PrivateDependencyModuleNames.Add("PhysicsCore");
 			DynamicallyLoadedModuleNames.Add("OnlineSubsystemNull");
 		}
 	}

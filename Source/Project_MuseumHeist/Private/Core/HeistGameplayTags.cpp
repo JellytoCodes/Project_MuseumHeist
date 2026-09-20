@@ -49,6 +49,7 @@ void FHeistGameplayTags::InitializeNativeGameplayTags()
 	HEIST_ADD_NATIVE_TAG(Event_SoundPing_GlassBreak, "Event.SoundPing.GlassBreak", "Glass break sound ping.");
 	HEIST_ADD_NATIVE_TAG(Event_SoundPing_CoinImpact, "Event.SoundPing.CoinImpact", "Coin impact sound ping.");
 	HEIST_ADD_NATIVE_TAG(Event_SoundPing_StunHit, "Event.SoundPing.StunHit", "Stun hit sound ping.");
+	HEIST_ADD_NATIVE_TAG(Event_SoundPing_DetentionLock, "Event.SoundPing.DetentionLock", "Failed detention latch attempt.");
 	HEIST_ADD_NATIVE_TAG(Event_SoundPing_Voice, "Event.SoundPing.Voice", "Player speech sound ping.");
 	HEIST_ADD_NATIVE_TAG(Event_Vent_Opened, "Event.Vent.Opened", "Vent extraction phase opened.");
 	HEIST_ADD_NATIVE_TAG(Event_Vent_Used, "Event.Vent.Used", "Vent escape completed.");

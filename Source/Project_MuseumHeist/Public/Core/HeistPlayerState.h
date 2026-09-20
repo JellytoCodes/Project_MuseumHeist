@@ -6,6 +6,8 @@
 
 #include "HeistPlayerState.generated.h"
 
+class AHeistDetentionDoorActor;
+
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerEscapeStateChanged, bool);
 DECLARE_MULTICAST_DELEGATE_OneParam(FHeistPlayerArrestStateChanged, bool);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistLootTotalsChanged, int32, float);
@@ -94,12 +96,31 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerState : public APlayerState
 
   public:
 	bool IsArrested() const;
+	AHeistDetentionDoorActor* GetDetentionDoor() const { return DetentionDoor; }
+	void SetDetentionDoor(AHeistDetentionDoorActor* Door);
+	bool IsProtectedByDetention() const;
 	bool MarkArrested(AActor* ArrestingGuard);
 	bool ClearArrested();
+	bool IsDetentionRecoveryPending() const;
+	float GetDetentionRemainingSeconds() const;
 	FHeistPlayerArrestStateChanged& GetArrestStateChangedDelegate();
+
+  protected:
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
   private:
 	bool SetArrestedInternal(bool bNewArrested, AActor* ArrestingGuard);
+	void CancelDetentionRecovery();
+	void HandleDetentionRestraintElapsed();
+	void HandleDetentionMatchPhaseChanged(EHeistMatchPhase PreviousPhase, EHeistMatchPhase NewPhase);
+	UPROPERTY(ReplicatedUsing=OnRep_DetentionDoor)
+	TObjectPtr<AHeistDetentionDoorActor> DetentionDoor;
+	UFUNCTION() void OnRep_DetentionDoor();
+	FTimerHandle DetentionRestraintTimerHandle;
+	TWeakObjectPtr<class AHeistGameState> DetentionGameState;
+
+	UPROPERTY(Replicated)
+	float DetentionReleaseServerTime = -1.0f;
 
 	UPROPERTY(ReplicatedUsing = OnRep_Arrested, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Arrest", meta = (AllowPrivateAccess = "true"))
 	bool bArrested = false;

@@ -1,4 +1,5 @@
 #include "Core/HeistPlayerController.h"
+#include "World/Actors/Security/HeistDetentionDoorActor.h"
 
 #include "AI/HeistGuardAIController.h"
 #include "AI/HeistGuardCharacter.h"
@@ -555,6 +556,10 @@ bool AHeistPlayerController::ToggleFloorPlanMap()
 	}
 	if (HeistHUD->ShowFloorPlanMap())
 	{
+		const AHeistPlayerState* DetainedPlayer = GetPlayerState<AHeistPlayerState>();
+		AHeistDetentionDoorActor* Door = LocalDetentionDoor.IsValid() ? LocalDetentionDoor.Get() : (DetainedPlayer ? DetainedPlayer->GetDetentionDoor() : nullptr);
+		if (Door) Server_ReleaseDetentionDoor(Door, true);
+		LocalDetentionDoor.Reset();
 		RequestSetSprintRequested(false);
 		ApplyLocalInputMode(EHeistInputMode::Map);
 		return LocalInputMode == EHeistInputMode::Map && IsLocalInputModeContractSatisfied();
@@ -1376,6 +1381,13 @@ void AHeistPlayerController::HandleInteractPressed()
 
 	NotifyLocalTutorialMilestone(TEXT("ProximityInteraction"), TEXT("ValidInteractionInput"));
 
+	if (AHeistDetentionDoorActor* Door = Cast<AHeistDetentionDoorActor>(InteractionComponent->GetCurrentInteractionTarget()))
+	{
+		LocalDetentionDoor = Door;
+		Server_RequestDetentionDoor(Door, Door->GetRevision());
+		return;
+	}
+
 	AHeistSecurityHoldButtonActor* TargetSecurityButton = Cast<AHeistSecurityHoldButtonActor>(InteractionComponent->GetCurrentInteractionTarget());
 	if (TargetSecurityButton != nullptr)
 	{
@@ -1452,6 +1464,12 @@ void AHeistPlayerController::HandleInteractPressed()
 
 void AHeistPlayerController::HandleInteractReleased()
 {
+	if (AHeistDetentionDoorActor* Door = LocalDetentionDoor.Get())
+	{
+		Server_ReleaseDetentionDoor(Door, false);
+		LocalDetentionDoor.Reset();
+		return;
+	}
 	if (AHeistSecurityHoldButtonActor* HeldSecurityButton = LocalSecurityHoldButton.Get())
 	{
 		Server_RequestEndSecurityHold(HeldSecurityButton);
@@ -2283,6 +2301,20 @@ void AHeistPlayerController::Server_CancelObservation_Implementation()
 	}
 
 	HeistCharacter->GetActionComponent()->CancelObservationRequest(TEXT("InputReleased"));
+}
+
+void AHeistPlayerController::Server_RequestDetentionDoor_Implementation(AHeistDetentionDoorActor* Door, int32 Revision)
+{
+	FHeistGameplayRequestContext Context;
+	const TCHAR* Reason = nullptr;
+	if (IsValid(Door) && TryBuildGameplayRequestContext(Context, Reason)) Door->TryUse(Context.Character, Revision);
+}
+
+void AHeistPlayerController::Server_ReleaseDetentionDoor_Implementation(AHeistDetentionDoorActor* Door, bool bCancelLatch)
+{
+	if (!IsValid(Door)) return;
+	if (bCancelLatch) Door->CancelForPlayer(GetPawn<AHeistPlayerCharacter>());
+	else Door->ReleaseRescue(GetPawn<AHeistPlayerCharacter>());
 }
 
 void AHeistPlayerController::Server_RequestBeginSecurityHold_Implementation(AHeistSecurityHoldButtonActor* TargetButton)

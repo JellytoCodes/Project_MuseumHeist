@@ -435,7 +435,7 @@ void AHeistPlayerCharacter::ApplyPlayerStateGameplayRestrictions()
 	SetActorHiddenInGame(bEscaped);
 	if (IsValid(RescueInteractionTarget))
 	{
-		RescueInteractionTarget->SetCollisionEnabled(bArrested && !bEscaped ? ECollisionEnabled::QueryOnly : ECollisionEnabled::NoCollision);
+		RescueInteractionTarget->SetCollisionEnabled(bArrested && !bEscaped && !HeistPlayerState->GetDetentionDoor() ? ECollisionEnabled::QueryOnly : ECollisionEnabled::NoCollision);
 	}
 
 	if (bEscaped)
@@ -928,7 +928,7 @@ bool AHeistPlayerCharacter::CanInteract(const AActor* Interactor) const
 	const AHeistPlayerState* RescuingPlayerState = IsValid(RescuingCharacter) ? RescuingCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
 	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	return IsValid(RescuingCharacter) && RescuingCharacter != this && IsValid(TargetPlayerState) && IsValid(RescuingPlayerState) &&
-		TargetPlayerState->IsArrested() && !TargetPlayerState->IsEscaped() && !RescuingPlayerState->IsArrested() && !RescuingPlayerState->IsEscaped() &&
+		TargetPlayerState->IsArrested() && !TargetPlayerState->GetDetentionDoor() && !TargetPlayerState->IsEscaped() && !RescuingPlayerState->IsArrested() && !RescuingPlayerState->IsEscaped() &&
 		IsValid(HeistGameState) && HeistGameState->GetMatchPhase() == EHeistMatchPhase::InGame && !HeistGameState->AreWorldInteractionsRestricted();
 }
 
@@ -948,7 +948,7 @@ void AHeistPlayerCharacter::Interact(AActor* Interactor)
 bool AHeistPlayerCharacter::IsRescueInteractionAvailable() const
 {
 	const AHeistPlayerState* TargetPlayerState = GetPlayerState<AHeistPlayerState>();
-	return IsValid(TargetPlayerState) && TargetPlayerState->IsArrested() && !TargetPlayerState->IsEscaped() && IsValid(RescueInteractionTarget) &&
+	return IsValid(TargetPlayerState) && TargetPlayerState->IsArrested() && !TargetPlayerState->GetDetentionDoor() && !TargetPlayerState->IsEscaped() && IsValid(RescueInteractionTarget) &&
 		RescueInteractionTarget->GetCollisionEnabled() == ECollisionEnabled::QueryOnly;
 }
 

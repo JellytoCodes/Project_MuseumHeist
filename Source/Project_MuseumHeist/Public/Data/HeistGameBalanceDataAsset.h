@@ -59,6 +59,9 @@ class PROJECT_MUSEUMHEIST_API UHeistGameBalanceDataAsset : public UDataAsset
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Match", meta = (ClampMin = "0.0", Units = "s"))
 	float VentUnlockTime = 180.0f;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Arrest", meta = (ClampMin = "1.0", Units = "s"))
+	float DetentionRestraintDurationSeconds = 5.0f;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Loot|Match Start", meta = (ClampMin = "0"))
 	int32 MatchStartVaultLootCount = 1;
 

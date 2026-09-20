@@ -92,6 +92,8 @@ float UHeistPatrolPathComponent::GetAcceptanceRadius() const
 
 float UHeistPatrolPathComponent::GetWaypointWaitDuration() const
 {
+	const AHeistGuardWaypoint* Waypoint = GetCurrentWaypoint();
+	if (IsValid(Waypoint) && Waypoint->GetWaitDurationOverride() >= 0.0f) return Waypoint->GetWaitDurationOverride();
 	return FMath::Max(0.0f, WaypointWaitDuration);
 }
 

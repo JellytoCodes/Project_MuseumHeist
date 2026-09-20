@@ -331,6 +331,7 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 	bool bAlertAudioInitialized = false;
 	bool bLocalCrewStatusPresentationInitialized = false;
 	int32 LastDisplayedMissionSeconds = INDEX_NONE;
+	int32 LastDisplayedDetentionSeconds = INDEX_NONE;
 	FName LastPresentedAlertTriggerId = NAME_None;
 	float TransientEventHideWorldTime = 0.0f;
 	FName LastArrestFeedbackEvent = NAME_None;

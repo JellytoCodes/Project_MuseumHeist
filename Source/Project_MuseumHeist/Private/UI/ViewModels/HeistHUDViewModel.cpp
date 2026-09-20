@@ -376,6 +376,11 @@ bool UHeistHUDViewModel::IsEscapePhaseOpen() const
 	return bEscapePhaseOpen;
 }
 
+float UHeistHUDViewModel::GetLocalDetentionRemainingSeconds() const
+{
+	return IsValid(LocalPlayerState) ? LocalPlayerState->GetDetentionRemainingSeconds() : 0.0f;
+}
+
 bool UHeistHUDViewModel::IsEscapeCastActive() const
 {
 	return bEscapeCastActive;

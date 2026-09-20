@@ -155,6 +155,7 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 	float GetDifficultyAppliedInspectionDurationMultiplier() const;
 	float GetGuardPerceptionRangeMultiplier() const;
 	float GetGuardCaptureAlertIncrease() const;
+	float GetDetentionRestraintDurationSeconds() const;
 	float GetSecurityCameraEvaluationIntervalSeconds() const;
 	float GetSecurityCameraDetectionBuildUpSeconds() const;
 	float GetSecurityCameraDetectionCooldownSeconds() const;

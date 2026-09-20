@@ -11,6 +11,7 @@
 #include "Core/HeistGameState.h"
 #include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerController.h"
+#include "Core/HeistPlayerState.h"
 #include "Engine/Texture2D.h"
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerController.h"
@@ -271,7 +272,7 @@ void UHeistHUDWidget::ApplyLocalCrewStatusPresentation(const EHeistCrewStatus Cr
 		else if (PreviousStatus == EHeistCrewStatus::Arrested)
 		{
 			PlayArrestFeedbackAudio(RescuedSound, RescuedFeedbackEvent);
-			ShowTransientEvent(NSLOCTEXT("HeistHUD", "EventRescued", "팀원이 구조했습니다"));
+			ShowTransientEvent(NSLOCTEXT("HeistHUD", "EventRestraintReleased", "구속이 풀렸습니다 · 탈출을 시도하세요"));
 		}
 		else if (CrewStatus == EHeistCrewStatus::Escaped)
 		{
@@ -663,6 +664,28 @@ void UHeistHUDWidget::ShowTransientEvent(const FText& EventText)
 
 void UHeistHUDWidget::RefreshTransientEvent()
 {
+	if (IsValid(AlertEventText) && IsValid(HUDViewModel) && HUDViewModel->IsLocalPlayerArrested())
+	{
+		const int32 Seconds = FMath::CeilToInt(HUDViewModel->GetLocalDetentionRemainingSeconds());
+		if (LastDisplayedDetentionSeconds != Seconds)
+		{
+			AlertEventText->SetText(FText::Format(NSLOCTEXT("HeistHUD", "DetentionCountdown", "구속 해제까지 {0}초 · 동료가 구조할 수 있습니다"), FText::AsNumber(Seconds)));
+			LastDisplayedDetentionSeconds = Seconds;
+		}
+		AlertEventText->SetVisibility(ESlateVisibility::HitTestInvisible);
+		return;
+	}
+	const APawn* LocalPawn = GetOwningPlayerPawn();
+	const AHeistPlayerState* LocalPlayer = LocalPawn ? LocalPawn->GetPlayerState<AHeistPlayerState>() : nullptr;
+	if (IsValid(AlertEventText) && LocalPlayer && LocalPlayer->IsProtectedByDetention())
+	{
+		if (LastDisplayedDetentionSeconds != INDEX_NONE) PlayArrestFeedbackAudio(RescuedSound, RescuedFeedbackEvent);
+		LastDisplayedDetentionSeconds = INDEX_NONE;
+		AlertEventText->SetText(NSLOCTEXT("HeistHUD", "CellEscapeAvailable", "조작 가능 · 철창문에서 걸쇠 3개를 해제하세요"));
+		AlertEventText->SetVisibility(ESlateVisibility::HitTestInvisible);
+		return;
+	}
+	LastDisplayedDetentionSeconds = INDEX_NONE;
 	if (!IsValid(AlertEventText) || AlertEventText->GetVisibility() == ESlateVisibility::Collapsed || TransientEventHideWorldTime <= 0.0f || !IsValid(GetWorld()))
 	{
 		return;
@@ -868,6 +891,7 @@ void UHeistHUDWidget::ResetHiddenPresentationState()
 	LastPresentedAlertTriggerId = NAME_None;
 	TransientEventHideWorldTime = 0.0f;
 	LastArrestFeedbackEvent = NAME_None;
+	LastDisplayedDetentionSeconds = INDEX_NONE;
 	ArrestAudioPlayCount = 0;
 	RescueAudioPlayCount = 0;
 

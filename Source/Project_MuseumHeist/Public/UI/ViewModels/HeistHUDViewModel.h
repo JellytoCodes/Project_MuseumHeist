@@ -91,6 +91,7 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
 	int32 GetConnectedPlayerCount() const;
 	bool IsLocalPlayerEscaped() const;
 	bool IsLocalPlayerArrested() const;
+	float GetLocalDetentionRemainingSeconds() const;
 	bool IsEscapePhaseOpen() const;
 	bool IsEscapeCastActive() const;
 	float GetEscapeCastEndServerTime() const;

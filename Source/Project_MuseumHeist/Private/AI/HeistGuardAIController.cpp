@@ -433,7 +433,7 @@ bool AHeistGuardAIController::CanInitiallySeeTarget(const AActor* TargetActor, c
 
 	const AHeistPlayerCharacter* PlayerCharacter = Cast<AHeistPlayerCharacter>(TargetActor);
 	const AHeistPlayerState* HeistPlayerState = IsValid(PlayerCharacter) ? PlayerCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
-	if (!IsValid(HeistPlayerState) || HeistPlayerState->IsEscaped() || HeistPlayerState->IsArrested())
+	if (!IsValid(HeistPlayerState) || HeistPlayerState->IsEscaped() || HeistPlayerState->IsArrested() || HeistPlayerState->IsProtectedByDetention())
 	{
 		OutRejectReason = TEXT("PlayerUnavailable");
 		return false;
@@ -717,7 +717,7 @@ bool AHeistGuardAIController::TryArrestChaseTarget()
 	AHeistPlayerCharacter* PlayerCharacter = IsValid(GuardStateComponent) ? Cast<AHeistPlayerCharacter>(GuardStateComponent->GetChaseTarget()) : nullptr;
 	AHeistPlayerState* HeistPlayerState = IsValid(PlayerCharacter) ? PlayerCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
 	if (!HasAuthority() || !IsValid(GuardCharacter) || !IsValid(GuardStateComponent) || GuardStateComponent->GetGuardState() != EHeistGuardState::ChasePlayer || !IsValid(HeistPlayerState) ||
-		HeistPlayerState->IsEscaped() || HeistPlayerState->IsArrested())
+		HeistPlayerState->IsEscaped() || HeistPlayerState->IsArrested() || HeistPlayerState->IsProtectedByDetention())
 	{
 		return false;
 	}
@@ -771,7 +771,7 @@ void AHeistGuardAIController::CompletePendingArrest()
 	AHeistPlayerState* HeistPlayerState = IsValid(PlayerCharacter) ? PlayerCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
 	const bool bContextValid = HasAuthority() && IsValid(GuardCharacter) && IsValid(GuardStateComponent) && IsValid(PlayerCharacter) && IsValid(HeistPlayerState) &&
 							   GuardStateComponent->GetGuardState() == EHeistGuardState::ChasePlayer && GuardStateComponent->GetChaseTarget() == PlayerCharacter && !HeistPlayerState->IsEscaped() &&
-							   !HeistPlayerState->IsArrested() && FVector::Dist(GuardCharacter->GetActorLocation(), PlayerCharacter->GetActorLocation()) <= ArrestDistance + 25.0f;
+							   !HeistPlayerState->IsArrested() && !HeistPlayerState->IsProtectedByDetention() && FVector::Dist(GuardCharacter->GetActorLocation(), PlayerCharacter->GetActorLocation()) <= ArrestDistance + 25.0f;
 	const float CaptureDistance = bContextValid ? FVector::Dist(GuardCharacter->GetActorLocation(), PlayerCharacter->GetActorLocation()) : 0.0f;
 	AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
 	FName ArrestRejectReason = NAME_None;

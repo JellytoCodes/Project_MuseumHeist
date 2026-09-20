@@ -10,6 +10,7 @@ class UHeistInteractionComponent;
 class UProgressBar;
 class UTextBlock;
 class UWidget;
+class UImage;
 
 UCLASS(Blueprintable)
 class PROJECT_MUSEUMHEIST_API UHeistInteractionPromptWidget : public UHeistUserWidgetBase
@@ -38,6 +39,10 @@ class PROJECT_MUSEUMHEIST_API UHeistInteractionPromptWidget : public UHeistUserW
 
   private:
 	void RefreshPresentation();
+	void RefreshDetentionTiming();
+	UPROPERTY(BlueprintReadOnly, meta=(BindWidgetOptional, AllowPrivateAccess="true")) TObjectPtr<UWidget> DetentionTimingContainer;
+	UPROPERTY(BlueprintReadOnly, meta=(BindWidgetOptional, AllowPrivateAccess="true")) TObjectPtr<UImage> DetentionTimingWindow;
+	UPROPERTY(BlueprintReadOnly, meta=(BindWidgetOptional, AllowPrivateAccess="true")) TObjectPtr<UImage> DetentionTimingCursor;
 	void RefreshInteractionPrompt(bool bActionActive);
 	void RefreshActionProgress();
 	void CacheDisplayNames();

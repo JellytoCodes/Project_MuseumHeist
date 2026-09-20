@@ -52,7 +52,7 @@ def decorate(builder, plan):
                 box('SEC_Floor_'+key+'_'+str(ix)+'_'+str(iy),[x+.02,y+.02,min(x+4,x1)-.02,min(y+4,y1)-.02],.04,.02,'m03_floor')
 
     # Low opaque sill defines the map/collision footprint; narrow bars leave the
-    # detained crew visible from inside the security wing, with a side opening.
+    # detained crew visible from inside the security wing, with a locked door at the side.
     x0,y0,x1,y1=wing['grille']
     count=math.ceil((x1-x0)/.32)
     for i in range(count+1):
@@ -96,6 +96,8 @@ def decorate(builder, plan):
     light=builder.point_light('LDV2_'+plan['id']+'_SecurityHoldingLight',
         (gx*100,gy*100,260),(150,190,230),{'M01':110,'M02':35,'M03':45}[plan['id']],700,'Lighting/Security')
     light.get_component_by_class(unreal.PointLightComponent).set_editor_property('cast_shadows',False)
+
+    runpy.run_path(str(ROOT/'ProjectResources/Scripts/Editor/apply_detention_cells.py'))['decorate'](builder,plan)
 
 
 def apply():

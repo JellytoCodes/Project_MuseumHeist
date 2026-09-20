@@ -208,7 +208,7 @@ bool AHeistSecurityCameraActor::IsEligibleTarget(const AHeistPlayerCharacter* Pl
 		[HeistPlayerState](const TObjectPtr<APlayerState>& Candidate) { return Candidate.Get() == HeistPlayerState; });
 	if (!HasAuthority() || !bCameraEnabled || !IsValid(HeistGameState) || HeistGameState->GetMatchPhase() != EHeistMatchPhase::InGame ||
 		!IsValid(PlayerCharacter) || !IsValid(HeistPlayerState) || !bConnectedPlayerState || HeistPlayerState->GetCrewStatus() == EHeistCrewStatus::Stunned ||
-		HeistPlayerState->IsEscaped() || HeistPlayerState->IsArrested())
+		HeistPlayerState->IsEscaped() || HeistPlayerState->IsArrested() || HeistPlayerState->IsProtectedByDetention())
 	{
 		return false;
 	}

@@ -1,0 +1,10 @@
+{
+  "origin": "Original deterministic procedural synthesis; no external recordings",
+  "script": "ProjectResources/Scripts/Art/generate_detention_audio.py",
+  "sample_rate": 48000,
+  "sounds": [
+    "SW_DetentionLatch",
+    "SW_DetentionFailure",
+    "SW_DetentionOpen"
+  ]
+}

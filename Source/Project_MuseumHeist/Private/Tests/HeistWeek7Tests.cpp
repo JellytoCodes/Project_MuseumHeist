@@ -1,17 +1,26 @@
 #if WITH_DEV_AUTOMATION_TESTS && WITH_EDITOR
 
 #include "Character/HeistPlayerCharacter.h"
+#include "Character/Components/HeistInteractionComponent.h"
+#include "Components/BoxComponent.h"
+#include "Components/CapsuleComponent.h"
+#include "World/Actors/Security/HeistDetentionDoorActor.h"
 #include "Character/Components/HeistActionComponent.h"
 #include "Character/Components/HeistForgeryComponent.h"
 #include "Core/HeistGameInstance.h"
 #include "Core/HeistGameMode.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistPlayerController.h"
+#include "Core/HeistPlayerState.h"
 #include "Core/HeistTypes.h"
 #include "Data/HeistArtifactDataTypes.h"
 #include "Data/HeistGameBalanceDataAsset.h"
 #include "Engine/DataTable.h"
 #include "Engine/World.h"
+#include "Engine/Engine.h"
+#include "Physics/Experimental/PhysScene_Chaos.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "TimerManager.h"
 #include "InputAction.h"
 #include "InputCoreTypes.h"
 #include "InputMappingContext.h"
@@ -340,6 +349,200 @@ bool FHeistObservationReferenceTest::RunTest(const FString& Parameters)
 	ViewModel->ConditionalBeginDestroy();
 	TestFalse(TEXT("HUD destruction unbinds Action"), SecondAction->GetActionStateChangedDelegate().IsBoundToObject(ViewModel));
 	TestFalse(TEXT("HUD destruction unbinds template"), SecondForgery->GetSessionStateChangedDelegate().IsBoundToObject(ViewModel));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistDetentionRecoveryTest, "ProjectMuseumHeist.W7.DetentionRecovery",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHeistDetentionRecoveryTest::RunTest(const FString& Parameters)
+{
+	const UWorld::InitializationValues WorldValues = UWorld::InitializationValues().AllowAudioPlayback(false).CreateNavigation(false)
+		.CreateAISystem(false).ShouldSimulatePhysics(false).SetTransactional(false);
+	UWorld* World = UWorld::CreateWorld(EWorldType::EditorPreview, false, NAME_None, nullptr, true, ERHIFeatureLevel::Num, &WorldValues);
+	if (!TestNotNull(TEXT("Detention test world exists"), World))
+	{
+		return false;
+	}
+	ON_SCOPE_EXIT { World->DestroyWorld(false); };
+	AHeistGameState* GameState = World->SpawnActor<AHeistGameState>();
+	World->SetGameState(GameState);
+	GameState->SetMatchPhase(EHeistMatchPhase::InGame);
+	FActorSpawnParameters SpawnParameters;
+	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	AHeistPlayerCharacter* Character = World->SpawnActor<AHeistPlayerCharacter>(FVector(1200, 1600, 100), FRotator::ZeroRotator, SpawnParameters);
+	AHeistPlayerState* Player = World->SpawnActor<AHeistPlayerState>();
+	AHeistPlayerState* Teammate = World->SpawnActor<AHeistPlayerState>();
+	if (!TestTrue(TEXT("Detention actors exist"), IsValid(Character) && IsValid(Player) && IsValid(Teammate)))
+	{
+		return false;
+	}
+	Character->SetPlayerState(Player);
+	GameState->AddPlayerState(Player);
+	GameState->AddPlayerState(Teammate);
+	const FVector DetentionLocation = Character->GetActorLocation();
+	// Tick only this world's real timer manager; no test-only release entry point.
+	const auto AdvanceTimers = [World](float Seconds)
+	{
+		++GFrameCounter;
+		World->GetTimerManager().Tick(Seconds);
+	};
+	AdvanceTimers(0.01f);
+	TestTrue(TEXT("Arrest starts"), Player->MarkArrested(nullptr));
+	TestTrue(TEXT("Default restraint is 5 seconds"), FMath::IsNearlyEqual(Player->GetDetentionRemainingSeconds(), 5.0f));
+	TestTrue(TEXT("Arrest disables movement"), Character->GetCharacterMovement()->MovementMode == MOVE_None);
+	Teammate->MarkArrested(nullptr);
+	TestTrue(TEXT("All crew are arrested"), GameState->AreAllRemainingCrewMembersArrested());
+	TestFalse(TEXT("Recoverable arrest is not a terminal all-crew result"), GameState->AreAllCrewMembersResolved());
+	AdvanceTimers(4.0f);
+	TestTrue(TEXT("Movement remains locked before deadline"), Player->IsArrested() && Character->GetCharacterMovement()->MovementMode == MOVE_None);
+	AdvanceTimers(1.1f);
+	TestFalse(TEXT("Real timer clears arrest after deadline"), Player->IsArrested());
+	TestFalse(TEXT("Release clears pending recovery"), Player->IsDetentionRecoveryPending());
+	TestTrue(TEXT("Release restores walking"), Character->GetCharacterMovement()->MovementMode == MOVE_Walking);
+	TestEqual(TEXT("Player must leave detention physically"), Character->GetActorLocation(), DetentionLocation);
+	TestFalse(TEXT("Release is not extraction"), Player->IsEscaped());
+	TestEqual(TEXT("Release grants no confiscated loot"), Player->GetTotalLootScore(), 0);
+	TestEqual(TEXT("Crew status becomes active"), Player->GetCrewStatus(), EHeistCrewStatus::Active);
+
+	Player->MarkArrested(nullptr);
+	AdvanceTimers(2.0f);
+	TestTrue(TEXT("Teammate rescue can clear arrest early"), Player->ClearArrested());
+	TestFalse(TEXT("Early rescue removes timer state"), Player->IsDetentionRecoveryPending());
+	Player->MarkArrested(nullptr);
+	AdvanceTimers(3.1f);
+	TestTrue(TEXT("Previous arrest deadline cannot release a new arrest"), Player->IsArrested());
+	AdvanceTimers(2.0f);
+	TestFalse(TEXT("New arrest releases at its own deadline"), Player->IsArrested());
+
+	Player->MarkArrested(nullptr);
+	GameState->SetMatchPhase(EHeistMatchPhase::End);
+	TestFalse(TEXT("End cancels recovery"), Player->IsDetentionRecoveryPending());
+	AdvanceTimers(6.0f);
+	TestTrue(TEXT("No timer unlocks movement after match end"), Player->IsArrested() && Character->GetCharacterMovement()->MovementMode == MOVE_None);
+	TestTrue(TEXT("Final arrest result is preserved"), GameState->AreAllCrewMembersResolved());
+	Player->ClearArrested();
+	Teammate->ClearArrested();
+	GameState->SetMatchPhase(EHeistMatchPhase::InGame);
+	Player->MarkArrested(nullptr);
+	GameState->SetMatchPhase(EHeistMatchPhase::Lobby);
+	GameState->SetMatchPhase(EHeistMatchPhase::InGame);
+	AdvanceTimers(6.0f);
+	TestTrue(TEXT("Lobby transition cancels old release even after returning to InGame"), Player->IsArrested() && !Player->IsDetentionRecoveryPending());
+	return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistDetentionDoorTest, "ProjectMuseumHeist.W7.DetentionDoor",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHeistDetentionDoorTest::RunTest(const FString& Parameters)
+{
+	const UWorld::InitializationValues Values = UWorld::InitializationValues().AllowAudioPlayback(false).CreateNavigation(false)
+		.CreateAISystem(false).ShouldSimulatePhysics(false).SetTransactional(false);
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, NAME_None, nullptr, true, ERHIFeatureLevel::Num, &Values);
+	GEngine->CreateNewWorldContext(EWorldType::Game).SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	ON_SCOPE_EXIT { GEngine->DestroyWorldContext(World); World->DestroyWorld(false); };
+	AHeistGameState* State = World->SpawnActor<AHeistGameState>();
+	World->SetGameState(State);
+	State->SetMatchPhase(EHeistMatchPhase::InGame);
+	FActorSpawnParameters Spawn;
+	Spawn.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	AHeistPlayerCharacter* Character = World->SpawnActor<AHeistPlayerCharacter>(FVector(0,-80,0), FRotator::ZeroRotator, Spawn);
+	AHeistPlayerState* Player = World->SpawnActor<AHeistPlayerState>();
+	Character->SetPlayerState(Player);
+	State->AddPlayerState(Player);
+	AHeistDetentionDoorActor* Door = World->SpawnActor<AHeistDetentionDoorActor>(FVector::ZeroVector, FRotator::ZeroRotator, Spawn);
+	Character->DispatchBeginPlay();
+	Door->DispatchBeginPlay();
+	World->SetBegunPlay(true);
+	World->GetPhysicsScene()->Flush();
+	World->GetPhysicsScene()->Flush();
+	Character->GetCapsuleComponent()->UpdateOverlaps();
+	Door->SecureForArrest(Player);
+	Player->MarkArrested(nullptr);
+	const auto Advance = [World](float Seconds)
+	{
+		World->TimeSeconds += Seconds;
+		++GFrameCounter;
+		World->GetTimerManager().Tick(Seconds);
+	};
+	Advance(.01f);
+	TestFalse(TEXT("Restrained prisoner cannot operate the lock"), Door->TryUse(Character, Door->GetRevision()));
+	Advance(5.1f);
+	TestFalse(TEXT("Five seconds restores input"), Player->IsArrested());
+	TestFalse(TEXT("Input recovery does not open the cell"), Door->IsOpen());
+	TestEqual(TEXT("Recovered but contained crew remains counted as detained"), State->GetArrestedCrewCount(), 1);
+	TestFalse(TEXT("All-contained crew may still attempt escape"), State->AreAllCrewMembersResolved());
+	TestTrue(TEXT("Result contribution retains detention"), Player->GetContribution().bArrested);
+	TestTrue(TEXT("Closed cell protects its occupant from reacquisition"), Player->IsProtectedByDetention());
+	TestEqual(TEXT("Crew remains detained after input recovery"), Player->GetCrewStatus(), EHeistCrewStatus::Arrested);
+	const UPrimitiveComponent* InteractionBox = Cast<UPrimitiveComponent>(Door->GetRootComponent());
+	const UCapsuleComponent* Capsule = Character->GetCapsuleComponent();
+	AddInfo(FString::Printf(TEXT("Overlap fixture: DoorPos=%s CapsulePos=%s RootBounds=%s RootPhysics=%d CapsulePhysics=%d RootChannel=%d CapsuleChannel=%d RootResponse=%d CapsuleResponse=%d RootOverlap=%d CapsuleOverlap=%d InteractionBegun=%d"),
+		*InteractionBox->GetComponentLocation().ToString(), *Capsule->GetComponentLocation().ToString(), *InteractionBox->Bounds.BoxExtent.ToString(), InteractionBox->IsPhysicsStateCreated(), Capsule->IsPhysicsStateCreated(),
+		(int32)InteractionBox->GetCollisionObjectType(),(int32)Capsule->GetCollisionObjectType(),(int32)InteractionBox->GetCollisionResponseToChannel(Capsule->GetCollisionObjectType()),(int32)Capsule->GetCollisionResponseToChannel(InteractionBox->GetCollisionObjectType()),InteractionBox->GetGenerateOverlapEvents(),Capsule->GetGenerateOverlapEvents(),Character->GetInteractionComponent()->HasBegunPlay()));
+	TestTrue(TEXT("Real capsule overlaps door interaction box"), Character->GetInteractionComponent()->IsActorOverlappingInteractionArea(Door));
+	if (!TestTrue(TEXT("Prisoner starts latch sequence"), Door->TryUse(Character, Door->GetRevision()))) return false;
+	const int32 StaleRevision = Door->GetRevision();
+	Advance(4.7f);
+	TestTrue(TEXT("First timed press accepted"), Door->TryUse(Character, Door->GetRevision()));
+	TestEqual(TEXT("First latch completed"), Door->GetCompletedLatches(), 1);
+	TestFalse(TEXT("Stale request cannot advance a new round"), Door->TryUse(Character, StaleRevision));
+	int32 NoiseCount = 0;
+	State->GetSoundPingEventReportedDelegate().AddLambda([&NoiseCount](const FHeistSoundPingEvent& Event, int32*)
+	{
+		if (Event.PingType == EHeistSoundPingType::DetentionLock) ++NoiseCount;
+	});
+	Advance(.8f);
+	Door->TryUse(Character, Door->GetRevision());
+	TestEqual(TEXT("Mistimed press emits guard noise"), NoiseCount, 1);
+	TestEqual(TEXT("Mistake preserves previously completed latch"), Door->GetCompletedLatches(), 1);
+	Character->SetActorLocation(FVector(0,-260,0));
+	Advance(.2f);
+	TestNull(TEXT("Moving cancels lock operation"), Door->GetOperator());
+	TestEqual(TEXT("Moving preserves completed latch"), Door->GetCompletedLatches(), 1);
+	Character->SetActorLocation(FVector(0,-80,0));
+	World->GetPhysicsScene()->Flush();
+	Character->GetCapsuleComponent()->UpdateOverlaps();
+	Door->TryUse(Character, Door->GetRevision());
+	Advance(4.7f);
+	Door->TryUse(Character, Door->GetRevision());
+	TestEqual(TEXT("Second latch completed"), Door->GetCompletedLatches(), 2);
+	Advance(4.7f);
+	Door->TryUse(Character, Door->GetRevision());
+	TestTrue(TEXT("Third timed latch opens the door"), Door->IsOpen());
+	TestNull(TEXT("Opening clears detention association"), Player->GetDetentionDoor());
+	TestEqual(TEXT("Opened cell restores active crew count"), State->GetActiveCrewCount(), 1);
+	TestFalse(TEXT("Opening clears contribution detention"), Player->GetContribution().bArrested);
+	TestFalse(TEXT("Released player loses protection"), Player->IsProtectedByDetention());
+	TestFalse(TEXT("Door opening never extracts the player"), Player->IsEscaped());
+	TestFalse(TEXT("Opened door rejects replay"), Door->TryUse(Character, Door->GetRevision()));
+
+	Door->SecureForArrest(Player);
+	TestEqual(TEXT("New arrest resets latches"), Door->GetCompletedLatches(), 0);
+	Character->SetActorLocation(FVector(0,80,0));
+	World->GetPhysicsScene()->Flush();
+	Character->GetCapsuleComponent()->UpdateOverlaps();
+	TestFalse(TEXT("Protection never extends outside cell bounds"), Player->IsProtectedByDetention());
+	Advance(.2f);
+	Door->TryUse(Character, Door->GetRevision());
+	Advance(1.0f);
+	Door->ReleaseRescue(Character);
+	Advance(1.2f);
+	TestFalse(TEXT("Releasing rescue early keeps door locked"), Door->IsOpen());
+	Door->TryUse(Character, Door->GetRevision());
+	Advance(2.1f);
+	TestTrue(TEXT("Outside hold opens after two seconds"), Door->IsOpen());
+	Door->SecureForArrest(Player);
+	Advance(.2f);
+	Door->TryUse(Character, Door->GetRevision());
+	State->SetMatchPhase(EHeistMatchPhase::End);
+	Advance(3.0f);
+	TestFalse(TEXT("Match end cancels pending rescue"), Door->IsOpen());
+	TestNull(TEXT("Match end clears lock operator"), Door->GetOperator());
+	State->GetSoundPingEventReportedDelegate().Clear();
 	return true;
 }
 

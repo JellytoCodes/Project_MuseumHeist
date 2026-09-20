@@ -566,7 +566,7 @@ Audio
 - Stun 중에는 Movement, Look 또는 Action Lock 범위를 서버 상태와 동일하게 적용하고 남은 시간을 HUD에 표시한다.
 - Stun Presentation은 Vignette, 낮은 Desaturation, 짧은 Audio Low-pass 또는 Ring, Remote Pose / Nameplate Icon을 사용한다.
 - 강한 Blur, 지속 Camera Shake와 색상 하나에만 의존하는 경고는 사용하지 않는다.
-- Arrest는 Stun 완료 뒤 서버가 확정한 Detention 이동으로 전환하며, Stun과 구분된 Cuffed / Disabled Presentation, Team Status, Rescue Prompt 또는 Final State를 가진다.
+- Arrest는 Stun 완료 뒤 서버가 확정한 Detention 이동으로 전환하며, Stun과 구분된 Cuffed / Disabled Presentation, Team Status, Rescue Prompt를 가진다. 구금 후 기본 5초가 지나면 서버가 구속을 해제해 구금실 안에서 이동·시점·상호작용을 복원하고 잠긴 철창문에서 세 걸쇠 타이밍 해제로 탈출을 시도할 수 있게 한다. 닫힌 구금실 내부에서는 구금 상태 표시와 Guard/CCTV 시야 면제를 유지한다. 팀원의 바깥 잠금장치 2초 Hold는 문을 개방하고 구속을 해제하며 압수품은 Evidence에 유지한다. HUD는 남은 시간과 해제 안내를 표시하고 기존 해제 소리를 재사용한다.
 - 체포된 Player의 Evidence Table 위치와 압수된 World Pickup은 월드 외형·상호작용 Prompt로 식별할 수 있어야 하며, 팀은 Player 구조 없이 Evidence만 회수하거나 구조 후 함께 회수할 수 있다.
 - Original Carry와 Heavy 상태는 HUD, Nameplate Icon, Movement / Footstep Audio와 Remote Carry Pose로 식별할 수 있어야 한다.
 - Escape 완료 Player는 Team Status에서 `ESCAPED`로 유지하고 남은 Crew 상태를 관찰한다.
@@ -1188,7 +1188,7 @@ Partial Haul
 
 Contract Failed
 - Required Target 미반출
-- 전원 체포 또는 다른 Terminal Failure
+- 회복 가능한 구금자가 없는 전원 체포 또는 다른 Terminal Failure
 ```
 
 - 모든 Crew 탈출, 일부 Arrest, Alert Level, 승인된 실제 Replica와 Extra Value는 별도 Recap으로 표시한다.
@@ -1199,7 +1199,8 @@ Contract Failed
 
 - 서툴더라도 Quality 70 이상인 Surface Replica는 서버 Validation을 통과하면 World에 배치한다. Object Assembly Replica 규칙은 Deferred 계약으로만 보존한다.
 - 실수는 가능한 한 즉시 Match Failure가 아니라 Guard Investigation, Alert, Drop, Rescue 또는 급한 탈출 상황을 만든다.
-- Arrest는 전리품을 즉시 삭제하는 실패가 아니라 Detention의 Player와 Evidence Table의 압수품 사이에 팀 선택을 만드는 Recovery State다.
+- 구금실은 압수품 보관 공간과 철창문으로 분리한다. 각 Map의 기존 경비 한 명은 구금실 바깥과 인접 복도를 순찰하며 철창 안 구금자는 시야만으로 재체포하지 않는다. 잠금 실패는 현재 걸쇠만 초기화하고 금속음과 Guard 조사로 피드백하며, 완료 걸쇠는 작업 중단 후에도 보존한다. 문 개방 후 이탈과 Evidence 회수는 별도 행동이다.
+- Arrest는 전리품을 즉시 삭제하는 실패가 아니라 Detention의 Player와 Evidence Table의 압수품 사이에 팀 선택을 만드는 Recovery State다. 구속 해제 예정자가 있으면 전원 체포만으로 Match를 종료하지 않는다. Lockdown과 Match Timer 만료는 그대로 종료한다. 조기 구조, Match End/Lobby Return과 EndPlay는 구속 Timer를 정리하며 재체포에 이전 Timer를 재사용하지 않는다.
 - Guard와 Museum Presentation은 진지하게 유지하고, 코미디는 Player 행동과 실제 Replica 결과에서 발생하게 한다.
 - 고정 Painter, Lookout, Carrier 역할을 강제하지 않는다.
 
@@ -1332,6 +1333,7 @@ Actor Blueprint 분리는 Component Topology, Collision Contract, Authority Stat
 | Loot Spawn Point | `AHeistLootSpawnPoint` | `BP_LootSpawnPoint` | Spawn Category / Zone / Transform |
 | Security Camera | `AHeistSecurityCameraActor` | `BP_SecurityCamera` | Map Instance Coverage/Transform과 공통 Security Presentation Asset 슬롯 |
 | Cooperative Laser Barrier | `AHeistLaserBarrierActor` | `BP_LaserBarrier` | Map Instance Painting Link/Transform과 공통 Security Presentation Asset 슬롯 |
+| Detention Cell Door | `AHeistDetentionDoorActor` | `BP_DetentionDoor` | Cell Bounds, 문 충돌, 서버 3단계 잠금 해제와 외부 구조 |
 | Cooperative Laser Hold Button | `AHeistSecurityHoldButtonActor` | `BP_SecurityHoldButton` | Map Instance Laser Link/Transform과 공통 Security Presentation Asset 슬롯 |
 
 - Loose Loot와 Dropped Original은 외형이 유사해도 서버 상태와 회수 Transaction이 다르므로 서로 다른 공용 Shell을 유지한다.
