@@ -54,6 +54,7 @@ void AHeistDetentionDoorActor::BeginPlay()
 void AHeistDetentionDoorActor::EndPlay(const EEndPlayReason::Type Reason)
 {
 	GetWorldTimerManager().ClearTimer(ValidationTimer);
+	GetWorldTimerManager().ClearTimer(PendingCloseTimer);
 	if (BoundGameState.IsValid()) BoundGameState->GetMatchPhaseChangedDelegate().RemoveAll(this);
 	Super::EndPlay(Reason);
 }
@@ -90,12 +91,41 @@ bool AHeistDetentionDoorActor::CanSecureCell() const
 void AHeistDetentionDoorActor::SecureForArrest(AHeistPlayerState* Player)
 {
 	if (!HasAuthority() || !IsValid(Player)) return;
-	CancelOperation();
-	bOpen = false;
-	CompletedLatches = 0;
-	++Revision;
+	// An additional inmate must not reset another player's active lock round.
+	if (bOpen && !bClosePending)
+	{
+		CancelOperation();
+		CompletedLatches = 0;
+		bClosePending = true;
+		GetWorldTimerManager().SetTimer(PendingCloseTimer, this, &AHeistDetentionDoorActor::TryClosePendingCell, 0.1f, true);
+	}
 	Player->SetDetentionDoor(this);
+	if (bClosePending) TryClosePendingCell();
 	ApplyPresentation();
+	ForceNetUpdate();
+}
+
+void AHeistDetentionDoorActor::TryClosePendingCell()
+{
+	if (!HasAuthority() || !bClosePending) return;
+	const AHeistGameState* State = GetWorld()->GetGameState<AHeistGameState>();
+	TArray<AHeistPlayerState*> Occupants;
+	for (TActorIterator<AHeistPlayerState> It(GetWorld()); It; ++It)
+	{
+		if (It->GetDetentionDoor() != this) continue;
+		if (State && State->PlayerArray.Contains(*It) && IsValid(It->GetPawn()) && ContainsLocation(It->GetPawn()->GetActorLocation()))
+			Occupants.Add(*It);
+		else
+			It->SetDetentionDoor(nullptr);
+	}
+	if (!Occupants.IsEmpty() && !CanSecureCell()) return;
+	bClosePending = false;
+	GetWorldTimerManager().ClearTimer(PendingCloseTimer);
+	if (Occupants.IsEmpty()) return;
+	bOpen = false;
+	++Revision;
+	ApplyPresentation();
+	for (AHeistPlayerState* Occupant : Occupants) Occupant->SetDetentionDoor(this);
 	ForceNetUpdate();
 }
 
@@ -105,9 +135,7 @@ bool AHeistDetentionDoorActor::CanInteract(const AActor* Interactor) const
 	const AHeistPlayerState* Player = IsValid(Character) ? Character->GetPlayerState<AHeistPlayerState>() : nullptr;
 	const AHeistGameState* State = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	return Super::CanInteract(Interactor) && !bOpen && IsValid(Player) && IsValid(State) && State->GetMatchPhase() == EHeistMatchPhase::InGame &&
-		State->PlayerArray.Contains(Player) && Character->CanPerformGameplayActions() && !Character->GetInventoryComponent()->IsInventoryOpen() &&
-		(!IsValid(Operator) || Operator == Player) &&
-		(!ContainsLocation(Character->GetActorLocation()) || Player->GetDetentionDoor() == this);
+		State->PlayerArray.Contains(Player) && Character->CanPerformGameplayActions() && !Character->GetInventoryComponent()->IsInventoryOpen();
 }
 
 void AHeistDetentionDoorActor::Interact(AActor* Interactor)
@@ -120,8 +148,17 @@ bool AHeistDetentionDoorActor::TryUse(AHeistPlayerCharacter* Character, int32 Ex
 	if (!HasAuthority() || ExpectedRevision != Revision || !CanInteract(Character) ||
 		!Character->GetInteractionComponent()->IsActorOverlappingInteractionArea(this)) return false;
 	const float Now = ServerTime();
-	if (Now - LastAttemptServerTime < 0.15f) return false;
+	AHeistPlayerState* Player = Character->GetPlayerState<AHeistPlayerState>();
+	if (LastAttemptPlayer == Player && Now - LastAttemptServerTime < 0.15f) return false;
+	if (IsValid(Operator) && !IsOperatorValid()) CancelOperation();
+	if (IsValid(Operator) && Operator != Player)
+	{
+		// Only an outside rescuer can take over an inside latch operation.
+		if (bOutsideRescue || ContainsLocation(Character->GetActorLocation())) return false;
+		CancelOperation();
+	}
 	LastAttemptServerTime = Now;
+	LastAttemptPlayer = Player;
 	if (!IsValid(Operator))
 	{
 		Operator = Character->GetPlayerState<AHeistPlayerState>();
@@ -135,7 +172,12 @@ bool AHeistDetentionDoorActor::TryUse(AHeistPlayerCharacter* Character, int32 Ex
 		return true;
 	}
 	if (!IsOperatorValid() || bOutsideRescue || Now < RoundStartServerTime) return false;
-	const float Progress = GetTimingProgress();
+	// Use server-measured ping; clients never supply a rewind time or a success result.
+	const float PingMs = Player->GetPingInMilliseconds();
+	const float TransitSeconds = FMath::IsFinite(PingMs) ? FMath::Clamp(PingMs * 0.0005f, 0.0f, 0.25f) : 0.0f;
+	const float InputTime = Now - TransitSeconds;
+	if (InputTime < RoundStartServerTime) return false;
+	const float Progress = FMath::Fmod((InputTime - RoundStartServerTime) / LatchPeriodSeconds, 1.0f);
 	const bool bSuccess = FMath::Abs(Progress - GetSuccessWindowCenter()) <= GetSuccessWindowWidth() * 0.5f;
 	if (bSuccess)
 	{
@@ -200,6 +242,8 @@ void AHeistDetentionDoorActor::CancelOperation()
 void AHeistDetentionDoorActor::OpenCell()
 {
 	AHeistPlayerState* Rescuer = bOutsideRescue ? Operator.Get() : nullptr;
+	bClosePending = false;
+	GetWorldTimerManager().ClearTimer(PendingCloseTimer);
 	bOpen = true;
 	CancelOperation();
 	ApplyPresentation();
@@ -228,6 +272,13 @@ float AHeistDetentionDoorActor::GetSuccessWindowWidth() const
 
 FText AHeistDetentionDoorActor::GetPrompt(const AHeistPlayerCharacter* Character) const
 {
+	if (IsValid(Operator) && IsValid(Character) && Operator != Character->GetPlayerState())
+	{
+		if (!bOutsideRescue && !ContainsLocation(Character->GetActorLocation()))
+			return NSLOCTEXT("HeistDetention", "TakeOver", "[E] 2초 유지 · 동료 구조 인계");
+		return bOutsideRescue ? NSLOCTEXT("HeistDetention", "OtherRescuing", "동료가 철창문을 여는 중") :
+			FText::Format(NSLOCTEXT("HeistDetention", "OtherLatches", "동료가 잠금 해제 중 · 걸쇠 {0}/3"), FText::AsNumber(CompletedLatches));
+	}
 	if (IsValid(Operator) && bOutsideRescue) return NSLOCTEXT("HeistDetention", "Rescuing", "[E] 유지 · 철창문 여는 중");
 	if (IsValid(Operator)) return FText::Format(NSLOCTEXT("HeistDetention", "Latches", "걸쇠 {0}/3 · 초록 구간에서 [E]"), FText::AsNumber(CompletedLatches));
 	return IsValid(Character) && ContainsLocation(Character->GetActorLocation()) ?
@@ -247,7 +298,12 @@ void AHeistDetentionDoorActor::OnRep_State()
 
 void AHeistDetentionDoorActor::HandlePhaseChanged(EHeistMatchPhase Previous, EHeistMatchPhase Current)
 {
-	if (Current != EHeistMatchPhase::InGame) CancelOperation();
+	if (Current != EHeistMatchPhase::InGame)
+	{
+		CancelOperation();
+		bClosePending = false;
+		GetWorldTimerManager().ClearTimer(PendingCloseTimer);
+	}
 }
 
 void AHeistDetentionDoorActor::MulticastSound_Implementation(uint8 Event)

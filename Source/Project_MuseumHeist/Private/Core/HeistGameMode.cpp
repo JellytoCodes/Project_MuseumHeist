@@ -813,7 +813,7 @@ bool AHeistGameMode::TryCompletePlayerArrest(AHeistPlayerCharacter* ArrestedChar
 	for (TActorIterator<AHeistDetentionDoorActor> It(GetWorld()); It; ++It)
 	{
 		if (!It->ContainsLocation(DetentionTransform.GetLocation())) continue;
-		if (DetentionDoor || !It->CanSecureCell())
+		if (DetentionDoor)
 		{
 			OutRejectReason = TEXT("DetentionDoorUnavailable");
 			return false;

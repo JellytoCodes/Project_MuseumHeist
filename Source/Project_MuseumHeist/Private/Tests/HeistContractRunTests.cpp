@@ -2780,25 +2780,7 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 	{
 		return State->PlayerCount == 1 || IsWeek7ArrestReplicated(2);
 	}, 15.0));
-	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d move teammate into Rescue range"), RunIndex), [State]()
-	{
-		return State->PlayerCount == 1 || MoveWeek7RescuerIntoRange(1, 2);
-	}));
-	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d Rescue overlap"), RunIndex), [State]()
-	{
-		const AHeistPlayerState* TargetState = FindPlayerStateById(GetContractRunServerWorld(), 2);
-		const AActor* RescueTarget = TargetState && TargetState->GetDetentionDoor() ? static_cast<AActor*>(TargetState->GetDetentionDoor()) : GetServerCharacterById(2);
-		return State->PlayerCount == 1 || IsServerPlayerOverlapping(1, RescueTarget);
-	}, 10.0));
-	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d request teammate Rescue through server RPC"), RunIndex), [State]()
-	{
-		return State->PlayerCount == 1 || RequestWeek7Rescue(1, 2);
-	}));
-	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d Rescue restores Active/input"), RunIndex), [State]()
-	{
-		return State->PlayerCount == 1 || IsWeek7RescueComplete(2);
-	}, 15.0));
-	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d disable autonomous Guard interference"), RunIndex), []()
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d isolate lock operation after real Guard arrest"), RunIndex), []()
 	{
 		UWorld* ServerWorld = GetContractRunServerWorld();
 		if (!IsValid(ServerWorld))
@@ -2816,6 +2798,93 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 		}
 		return bFoundGuard;
 	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d five-second release keeps cell locked on every peer"), RunIndex), [State]()
+	{
+		if (State->PlayerCount == 1) return true;
+		for (UWorld* World : GetContractRunPIEWorlds())
+		{
+			const AHeistPlayerState* Player = FindPlayerStateById(World, 2);
+			if (!Player || Player->IsArrested() || !Player->GetDetentionDoor() || Player->GetDetentionDoor()->IsOpen() ||
+				Player->GetCrewStatus() != EHeistCrewStatus::Arrested) return false;
+		}
+		const AHeistPlayerController* Owner = GetOwningPlayerControllerById(2);
+		return Owner && !Owner->IsMoveInputIgnored() && !Owner->IsLookInputIgnored();
+	}, 10.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("move recovered inmate to inside lock"), [State]()
+	{
+		if (State->PlayerCount == 1) return true;
+		AHeistPlayerCharacter* Inmate = GetServerCharacterById(2);
+		const AHeistPlayerState* Player = Inmate ? Inmate->GetPlayerState<AHeistPlayerState>() : nullptr;
+		AHeistDetentionDoorActor* Door = Player ? Player->GetDetentionDoor() : nullptr;
+		if (!Door) return false;
+		FVector Location = Door->GetActorLocation() - Door->GetActorRightVector() * 80.0f;
+		Location.Z = Inmate->GetActorLocation().Z;
+		Inmate->SetActorLocation(Location, false, nullptr, ETeleportType::TeleportPhysics);
+		Inmate->GetCharacterMovement()->StopMovementImmediately();
+		Inmate->ForceNetUpdate();
+		return true;
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("inside lock overlap reaches owning client"), [State]()
+	{
+		if (State->PlayerCount == 1) return true;
+		AHeistPlayerCharacter* Owner = GetOwningCharacterById(2);
+		const AHeistPlayerState* Player = Owner ? Owner->GetPlayerState<AHeistPlayerState>() : nullptr;
+		return Player && Player->GetDetentionDoor() && Owner->GetInteractionComponent()->IsActorOverlappingInteractionArea(Player->GetDetentionDoor());
+	}, 10.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("remote inmate starts lock through owned RPC"), [State]()
+	{
+		return State->PlayerCount == 1 || RequestWeek7Rescue(2, 2);
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("inside operator replicates to all peers"), [State]()
+	{
+		if (State->PlayerCount == 1) return true;
+		for (UWorld* World : GetContractRunPIEWorlds())
+		{
+			const AHeistPlayerState* Player = FindPlayerStateById(World, 2);
+			const AHeistDetentionDoorActor* Door = Player ? Player->GetDetentionDoor() : nullptr;
+			if (!Door || Door->GetOperator() != Player || Door->IsRescueOperation()) return false;
+		}
+		return true;
+	}, 10.0));
+	if (RunIndex == 1)
+	{
+		for (int32 Latch = 0; Latch < 3; ++Latch)
+		{
+			Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("remote latch %d timing window"), Latch + 1), [State, Latch]()
+			{
+				if (State->PlayerCount == 1) return true;
+				AHeistPlayerCharacter* Owner = GetOwningCharacterById(2);
+				const AHeistPlayerState* Player = Owner ? Owner->GetPlayerState<AHeistPlayerState>() : nullptr;
+				const AHeistDetentionDoorActor* Door = Player ? Player->GetDetentionDoor() : nullptr;
+				return Door && Door->GetCompletedLatches() == Latch && Door->GetTimingProgress() >= .69f && Door->GetTimingProgress() <= .73f;
+			}, 15.0));
+			Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("remote inmate presses timed lock through owned RPC"), [State]()
+			{
+				return State->PlayerCount == 1 || RequestWeek7Rescue(2, 2);
+			}));
+		}
+	}
+	else
+	{
+		Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d move teammate into Rescue range"), RunIndex), [State]()
+		{
+			return State->PlayerCount == 1 || MoveWeek7RescuerIntoRange(1, 2);
+		}));
+		Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d Rescue overlap"), RunIndex), [State]()
+		{
+			const AHeistPlayerState* TargetState = FindPlayerStateById(GetContractRunServerWorld(), 2);
+			const AActor* RescueTarget = TargetState && TargetState->GetDetentionDoor() ? static_cast<AActor*>(TargetState->GetDetentionDoor()) : GetServerCharacterById(2);
+			return State->PlayerCount == 1 || IsServerPlayerOverlapping(1, RescueTarget);
+		}, 10.0));
+		Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d request teammate Rescue through server RPC"), RunIndex), [State]()
+		{
+			return State->PlayerCount == 1 || RequestWeek7Rescue(1, 2);
+		}));
+	}
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d cell opening restores Active/input"), RunIndex), [State]()
+	{
+		return State->PlayerCount == 1 || IsWeek7RescueComplete(2);
+	}, 15.0));
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d seed Heavy presentation weight"), RunIndex), []()
 	{
 		AHeistPlayerState* PlayerState = FindPlayerStateById(GetContractRunServerWorld(), 1);

@@ -1380,6 +1380,11 @@ void AHeistPlayerController::HandleInteractPressed()
 	}
 
 	NotifyLocalTutorialMilestone(TEXT("ProximityInteraction"), TEXT("ValidInteractionInput"));
+	if (AHeistDetentionDoorActor* PreviousDoor = LocalDetentionDoor.Get(); PreviousDoor && PreviousDoor != InteractionComponent->GetCurrentInteractionTarget())
+	{
+		Server_ReleaseDetentionDoor(PreviousDoor, true);
+		LocalDetentionDoor.Reset();
+	}
 
 	if (AHeistDetentionDoorActor* Door = Cast<AHeistDetentionDoorActor>(InteractionComponent->GetCurrentInteractionTarget()))
 	{
@@ -1467,7 +1472,8 @@ void AHeistPlayerController::HandleInteractReleased()
 	if (AHeistDetentionDoorActor* Door = LocalDetentionDoor.Get())
 	{
 		Server_ReleaseDetentionDoor(Door, false);
-		LocalDetentionDoor.Reset();
+		// Keep the latch reference so Map can cancel a non-inmate's operation too.
+		if (Door->IsRescueOperation()) LocalDetentionDoor.Reset();
 		return;
 	}
 	if (AHeistSecurityHoldButtonActor* HeldSecurityButton = LocalSecurityHoldButton.Get())

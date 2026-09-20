@@ -1199,7 +1199,7 @@ Contract Failed
 
 - 서툴더라도 Quality 70 이상인 Surface Replica는 서버 Validation을 통과하면 World에 배치한다. Object Assembly Replica 규칙은 Deferred 계약으로만 보존한다.
 - 실수는 가능한 한 즉시 Match Failure가 아니라 Guard Investigation, Alert, Drop, Rescue 또는 급한 탈출 상황을 만든다.
-- 구금실은 압수품 보관 공간과 철창문으로 분리한다. 각 Map의 기존 경비 한 명은 구금실 바깥과 인접 복도를 순찰하며 철창 안 구금자는 시야만으로 재체포하지 않는다. 잠금 실패는 현재 걸쇠만 초기화하고 금속음과 Guard 조사로 피드백하며, 완료 걸쇠는 작업 중단 후에도 보존한다. 문 개방 후 이탈과 Evidence 회수는 별도 행동이다.
+- 구금실은 압수품 보관 공간과 철창문으로 분리한다. 각 Map의 기존 경비 한 명은 구금실 바깥과 인접 복도를 순찰하며 철창 안 구금자는 시야만으로 재체포하지 않는다. 잠금 실패는 현재 걸쇠만 초기화하고 금속음과 Guard 조사로 피드백하며, 완료 걸쇠는 작업 중단과 추가 수감 후에도 보존한다. 내부에 갇힌 동료도 잠금을 해제할 수 있고 바깥 구조는 내부 작업을 인계받는다. 문턱 점유는 체포를 취소하지 않으며 통로가 비면 안전하게 닫는다. 문 개방 후 이탈과 Evidence 회수는 별도 행동이다.
 - Arrest는 전리품을 즉시 삭제하는 실패가 아니라 Detention의 Player와 Evidence Table의 압수품 사이에 팀 선택을 만드는 Recovery State다. 구속 해제 예정자가 있으면 전원 체포만으로 Match를 종료하지 않는다. Lockdown과 Match Timer 만료는 그대로 종료한다. 조기 구조, Match End/Lobby Return과 EndPlay는 구속 Timer를 정리하며 재체포에 이전 Timer를 재사용하지 않는다.
 - Guard와 Museum Presentation은 진지하게 유지하고, 코미디는 Player 행동과 실제 Replica 결과에서 발생하게 한다.
 - 고정 Painter, Lookout, Carrier 역할을 강제하지 않는다.

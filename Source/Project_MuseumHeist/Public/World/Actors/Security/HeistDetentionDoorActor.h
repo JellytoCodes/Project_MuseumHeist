@@ -67,6 +67,7 @@ protected:
 private:
 	bool IsOperatorValid() const;
 	void ValidateOperation();
+	void TryClosePendingCell();
 	void CancelOperation();
 	void OpenCell();
 	void ApplyPresentation();
@@ -83,6 +84,9 @@ private:
 	UPROPERTY(Replicated) float RoundStartServerTime = 0.0f;
 	FVector OperationOrigin = FVector::ZeroVector;
 	float LastAttemptServerTime = -1.0f;
+	TWeakObjectPtr<AHeistPlayerState> LastAttemptPlayer;
 	FTimerHandle ValidationTimer;
+	FTimerHandle PendingCloseTimer;
+	bool bClosePending = false;
 	TWeakObjectPtr<AHeistGameState> BoundGameState;
 };

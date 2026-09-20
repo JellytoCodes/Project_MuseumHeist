@@ -535,7 +535,11 @@ bool FHeistDetentionDoorTest::RunTest(const FString& Parameters)
 	Door->TryUse(Character, Door->GetRevision());
 	Advance(2.1f);
 	TestTrue(TEXT("Outside hold opens after two seconds"), Door->IsOpen());
+	Character->SetActorLocation(FVector(0,-80,0));
 	Door->SecureForArrest(Player);
+	Character->SetActorLocation(FVector(0,80,0));
+	World->GetPhysicsScene()->Flush();
+	Character->GetCapsuleComponent()->UpdateOverlaps();
 	Advance(.2f);
 	Door->TryUse(Character, Door->GetRevision());
 	State->SetMatchPhase(EHeistMatchPhase::End);
@@ -543,6 +547,138 @@ bool FHeistDetentionDoorTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("Match end cancels pending rescue"), Door->IsOpen());
 	TestNull(TEXT("Match end clears lock operator"), Door->GetOperator());
 	State->GetSoundPingEventReportedDelegate().Clear();
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistDetentionConcurrentTest, "ProjectMuseumHeist.W7.DetentionConcurrent",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHeistDetentionConcurrentTest::RunTest(const FString& Parameters)
+{
+	const UWorld::InitializationValues Values = UWorld::InitializationValues().AllowAudioPlayback(false).CreateNavigation(false)
+		.CreateAISystem(false).ShouldSimulatePhysics(false).SetTransactional(false);
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, NAME_None, nullptr, true, ERHIFeatureLevel::Num, &Values);
+	GEngine->CreateNewWorldContext(World->WorldType).SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	ON_SCOPE_EXIT { GEngine->DestroyWorldContext(World); World->DestroyWorld(false); };
+	AHeistGameState* State = World->SpawnActor<AHeistGameState>();
+	World->SetGameState(State);
+	State->SetMatchPhase(EHeistMatchPhase::InGame);
+	FActorSpawnParameters Spawn;
+	Spawn.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	AHeistPlayerCharacter* Crew[3];
+	AHeistPlayerState* Players[3];
+	for (int32 Index = 0; Index < 3; ++Index)
+	{
+		Crew[Index] = World->SpawnActor<AHeistPlayerCharacter>(FVector(-60 + Index * 60, -80, 0), FRotator::ZeroRotator, Spawn);
+		Players[Index] = World->SpawnActor<AHeistPlayerState>();
+		Crew[Index]->SetPlayerState(Players[Index]);
+		State->AddPlayerState(Players[Index]);
+		Crew[Index]->DispatchBeginPlay();
+	}
+	AHeistDetentionDoorActor* Door = World->SpawnActor<AHeistDetentionDoorActor>(FVector::ZeroVector, FRotator::ZeroRotator, Spawn);
+	Door->DispatchBeginPlay();
+	World->SetBegunPlay(true);
+	const auto Move = [World](AHeistPlayerCharacter* Character, FVector Location)
+	{
+		Character->SetActorLocation(Location);
+		World->GetPhysicsScene()->Flush();
+		World->GetPhysicsScene()->Flush();
+		Character->GetCapsuleComponent()->UpdateOverlaps();
+	};
+	const auto Advance = [World](float Seconds)
+	{
+		World->TimeSeconds += Seconds;
+		++GFrameCounter;
+		World->GetTimerManager().Tick(Seconds);
+	};
+	for (AHeistPlayerCharacter* Character : Crew) Move(Character, Character->GetActorLocation());
+	Advance(.01f);
+	Door->SecureForArrest(Players[0]);
+	TestTrue(TEXT("First inmate starts"), Door->TryUse(Crew[0], Door->GetRevision()));
+	Advance(4.7f);
+	Door->TryUse(Crew[0], Door->GetRevision());
+	const int32 FirstRoundRevision = Door->GetRevision();
+	Door->SecureForArrest(Players[1]);
+	TestEqual(TEXT("Additional inmate preserves completed latch"), Door->GetCompletedLatches(), 1);
+	TestEqual(TEXT("Additional inmate preserves round revision"), Door->GetRevision(), FirstRoundRevision);
+	TestTrue(TEXT("Additional inmate preserves operator"), Door->GetOperator() == Players[0]);
+	TestTrue(TEXT("Busy door remains a presentation target"), Door->CanInteract(Crew[2]));
+	TestFalse(TEXT("Another inside player cannot steal operation"), Door->TryUse(Crew[2], Door->GetRevision()));
+	Move(Crew[1], FVector(0,80,0));
+	TestTrue(TEXT("Outside rescuer takes over immediately"), Door->TryUse(Crew[1], Door->GetRevision()));
+	TestTrue(TEXT("Takeover belongs to distinct outside player"), Door->GetOperator() == Players[1] && Door->IsRescueOperation());
+	TestFalse(TEXT("Previous operator's in-flight revision is rejected"), Door->TryUse(Crew[0], FirstRoundRevision));
+	TestFalse(TEXT("Inside player cannot steal outside rescue"), Door->TryUse(Crew[2], Door->GetRevision()));
+	Advance(.6f);
+	Door->ReleaseRescue(Crew[1]);
+	TestFalse(TEXT("Early rescue release keeps door closed"), Door->IsOpen());
+	TestEqual(TEXT("Interrupted rescue preserves latch"), Door->GetCompletedLatches(), 1);
+	TestTrue(TEXT("Inmate resumes after interrupted rescue"), Door->TryUse(Crew[0], Door->GetRevision()));
+	TestTrue(TEXT("Outside rescue can take over resumed lock"), Door->TryUse(Crew[1], Door->GetRevision()));
+	Advance(2.1f);
+	TestTrue(TEXT("Distinct rescuer opens after hold"), Door->IsOpen());
+
+	Move(Crew[1], FVector(0,0,0));
+	Door->SecureForArrest(Players[0]);
+	Players[0]->MarkArrested(nullptr);
+	TestTrue(TEXT("Blocked threshold delays closure instead of aborting detention"), Door->IsOpen());
+	TestTrue(TEXT("Detention is associated while closure waits"), Players[0]->GetDetentionDoor() == Door);
+	Advance(5.1f);
+	TestFalse(TEXT("Blocked threshold never extends five-second restraint"), Players[0]->IsArrested());
+	TestTrue(TEXT("Door remains open while occupied"), Door->IsOpen());
+	Move(Crew[1], FVector(0,200,0));
+	Advance(.2f);
+	TestFalse(TEXT("Door closes only after threshold clears"), Door->IsOpen());
+	TestTrue(TEXT("Delayed close updates contained crew status"), Players[0]->GetCrewStatus() == EHeistCrewStatus::Arrested);
+	TestNull(TEXT("Visitor receives no arrest association"), Players[2]->GetDetentionDoor());
+	State->RemovePlayerState(Players[0]);
+	Players[0]->SetDetentionDoor(nullptr);
+	TestTrue(TEXT("Visitor can unlock after actual inmate disconnects"), Door->TryUse(Crew[2], Door->GetRevision()));
+	for (int32 Latch = 0; Latch < 3; ++Latch)
+	{
+		Advance(4.7f);
+		TestTrue(TEXT("Visitor completes timed latch"), Door->TryUse(Crew[2], Door->GetRevision()));
+	}
+	TestTrue(TEXT("Visitor can escape without arrest registration"), Door->IsOpen());
+	State->AddPlayerState(Players[0]);
+	Move(Crew[1], FVector(0,0,0));
+	Door->SecureForArrest(Players[0]);
+	Move(Crew[0], FVector(-300,200,0));
+	Move(Crew[1], FVector(0,200,0));
+	Advance(.2f);
+	TestTrue(TEXT("All detainees leaving cancels delayed closure"), Door->IsOpen());
+	TestNull(TEXT("Departure clears pending detention reference"), Players[0]->GetDetentionDoor());
+	Move(Crew[0], FVector(-60,-80,0));
+	Advance(.2f);
+	TestTrue(TEXT("Canceled closure cannot close behind a returning visitor"), Door->IsOpen());
+
+	Door->SecureForArrest(Players[0]);
+	Players[0]->SetCompressedPing(100); // 400 ms RTT, 200 ms server-side transit estimate.
+	TestTrue(TEXT("Delayed player's operation starts"), Door->TryUse(Crew[0], Door->GetRevision()));
+	Advance(.6f);
+	TestFalse(TEXT("Compensation cannot reach before round start"), Door->TryUse(Crew[0], Door->GetRevision()));
+	Advance(4.7f); // Arrival progress .80; input estimate .7667, within the first .56-.84 window.
+	TestTrue(TEXT("First delayed latch accepted"), Door->TryUse(Crew[0], Door->GetRevision()));
+	TestEqual(TEXT("First delayed latch advances"), Door->GetCompletedLatches(), 1);
+	Advance(5.45f); // Arrival .825 is outside second window; estimated .7917 is inside.
+	Door->TryUse(Crew[0], Door->GetRevision());
+	TestEqual(TEXT("Second latch uses bounded transit compensation"), Door->GetCompletedLatches(), 2);
+	Players[0]->SetCompressedPing(250); // A one-second RTT must never rewind more than 250 ms.
+	Advance(5.42f); // Arrival .82, bounded estimate .7783: outside third window ending .77.
+	Door->TryUse(Crew[0], Door->GetRevision());
+	TestEqual(TEXT("High ping cannot enlarge rewind beyond cap"), Door->GetCompletedLatches(), 2);
+	Door->CancelForPlayer(Crew[0]);
+	Players[0]->SetCompressedPing(0);
+	Move(Crew[1], FVector(0,80,0));
+	Door->TryUse(Crew[1], Door->GetRevision());
+	Advance(2.1f);
+	Move(Crew[1], FVector(0,0,0));
+	Door->SecureForArrest(Players[0]);
+	State->SetMatchPhase(EHeistMatchPhase::End);
+	Move(Crew[1], FVector(0,200,0));
+	Advance(.2f);
+	TestTrue(TEXT("Match End cancels deferred door closure"), Door->IsOpen());
 	return true;
 }
 
