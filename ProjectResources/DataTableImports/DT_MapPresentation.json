@@ -176,10 +176,10 @@
       },
       {
         "ZoneId": "Zone_C2",
-        "DisplayName": "격자 홀",
+        "DisplayName": "격자 전시실",
         "WorldLocation": {
-          "X": -137.5,
-          "Y": 0.0
+          "X": -487.5,
+          "Y": -446.42850000000004
         }
       },
       {

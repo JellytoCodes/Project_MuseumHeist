@@ -19,6 +19,7 @@ MAPS = ['M01_ClassicalPrototype', 'M02_MoonlitPrototype', 'M03_GlasshousePrototy
 def run():
     _, _, parameters = unreal.SystemLibrary.parse_command_line(unreal.SystemLibrary.get_command_line())
     parameters = {str(k).lower(): str(v) for k,v in parameters.items()}
+    output = Path(parameters.get('museumexpansionreportdirectory', str(OUT)))
     stage = parameters.get('museumexpansionstage', 'build')
     if stage == 'build':
         table = unreal.load_asset('/Game/Data/DataTable/DT_MapPresentation')
@@ -27,7 +28,7 @@ def run():
         builder = runpy.run_path(str(ROOT/'ProjectResources/Scripts/Editor/build_approved_museum_layout.py'))
         builder['rebuild_saved_navigation'](builder['build']())
     elif stage == 'promote':
-        report = json.loads((OUT/'review-verification.json').read_text(encoding='utf-8'))
+        report = json.loads((output/'review-verification.json').read_text(encoding='utf-8'))
         assert report['status'] == 'PASS', 'Review geometry/navigation must pass before promotion'
         assert len(report['maps']) == 3
         assert report['layout_sha256'] == hashlib.sha256((ROOT/'ProjectResources/SourceArt/Gallery/MuseumLevelLayout.json').read_bytes()).hexdigest(), 'Layout changed after validation'

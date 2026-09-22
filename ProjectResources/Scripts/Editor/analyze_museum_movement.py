@@ -5,6 +5,7 @@ It uses static complete capsule-clear paths; active beams are excluded unless
 the scenario explicitly supplies a second player holding their button.
 """
 import collections
+import argparse
 import hashlib
 import heapq
 import itertools
@@ -13,15 +14,25 @@ import math
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-OUT = ROOT / "Saved/Automation/MuseumMovement"
-native = json.loads((OUT / "native-paths.json").read_text(encoding="utf-8"))
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--native', type=Path, default=ROOT/'Saved/Automation/MuseumMovement/native-paths.json')
+parser.add_argument('--layout', type=Path, default=ROOT/'ProjectResources/SourceArt/Gallery/MuseumLevelLayout.json')
+parser.add_argument('--output', type=Path, default=ROOT/'Saved/Automation/MuseumMovement')
+parser.add_argument('--historical', action='store_true', help='Explicit comparison of archived geometry; do not validate against current map files')
+args = parser.parse_args()
+OUT = args.output
+OUT.mkdir(parents=True, exist_ok=True)
+native = json.loads(args.native.read_text(encoding="utf-8"))
 assert native["status"] == "PASS" and native["map_files_unchanged"]
-plans = json.loads((ROOT / "ProjectResources/SourceArt/Gallery/MuseumLevelLayout.json").read_text(encoding="utf-8"))["maps"]
+assert native['layout_sha256'] == hashlib.sha256(args.layout.read_bytes()).hexdigest(), 'Stale layout/path pairing'
+if not args.historical:
+    assert all(hashlib.sha256((ROOT/'Content/Maps'/(name+'.umap')).read_bytes()).hexdigest() == value for name,value in native['map_sha256_after'].items()), 'Re-export paths after map edits'
+plans = json.loads(args.layout.read_text(encoding="utf-8"))["maps"]
 artifacts = {r["ArtifactId"]:r for r in json.loads((ROOT / "ProjectResources/DataTableImports/DT_ArtifactDataRow.json").read_text(encoding="utf-8"))}
 profiles = {r["GuardProfileId"]:r for r in json.loads((ROOT / "ProjectResources/DataTableImports/DT_GuardData.json").read_text(encoding="utf-8"))}
 contract = json.loads((ROOT / "ProjectResources/DataTableImports/DT_ContractDataRow.json").read_text(encoding="utf-8"))[0]
 result = dict(scope="Native paths plus deterministic movement/work schedule", maps=[],
-    native_sha256=hashlib.sha256((OUT/"native-paths.json").read_bytes()).hexdigest(),
+    native_sha256=hashlib.sha256(args.native.read_bytes()).hexdigest(), historical=args.historical,
     assumptions={"forgery_seconds":40, "observation_seconds":1, "laser_activation_seconds":3, "escape_seconds":2,
        "max_paintings_per_player":3, "vent_unlock_seconds":180, "player_routes_ignore_guard_and_cctv":True,
        "excluded":"search/learning, drawing failure, UI handling, acceleration/cornering, noise, alert/chase, rescue and human coordination",
@@ -195,8 +206,12 @@ for m,p in zip(native['maps'],plans):
         s=model.finalize(tracks);s.update(label=str(count)+'인 분산 · Laser 없이 할당량',quota=quota)
         row['scenarios']['split'+str(count)]=s
     # Team rescue travel only, work/AI excluded.
-    t=model.track();model.move(t,'Detention');model.move(t,'Evidence')
-    row['scenarios']['rescue']=model.finalize([t],False);row['scenarios']['rescue']['label']='구금실→증거→Vent · 이동만'
+    try:
+        t=model.track();model.move(t,'Detention');model.move(t,'Evidence')
+        row['scenarios']['rescue']=model.finalize([t],False);row['scenarios']['rescue']['label']='구금실→증거→Vent · 이동만'
+    except ValueError:
+        row['scenarios']['rescue']=dict(label='닫힌 구금실: 문 개방 후 별도 경로 측정 필요',
+            status='NOT_MODELED_CLOSED_CELL',tracks=[],total_distance_m=0,arrival_seconds=0,finish_seconds=0,value=0)
     for laser in p['lasers']:
         button='B'+laser['id'][1:];art=laser['cases'][0]
         closed=model.path(button,art);opened=model.path(button,art,(laser['id'],))

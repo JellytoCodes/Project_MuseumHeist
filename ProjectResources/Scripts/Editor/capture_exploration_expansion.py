@@ -7,7 +7,10 @@ from pathlib import Path
 import unreal
 
 ROOT=Path(unreal.Paths.project_dir()).resolve()
-OUT=ROOT/'Saved/Automation/ExplorationExpansion/Views'
+_, SWITCHES, PARAMS=unreal.SystemLibrary.parse_command_line(unreal.SystemLibrary.get_command_line())
+PARAMS={str(k).lower():str(v) for k,v in PARAMS.items()}
+CIRCULATION='museumcapturecirculation' in {str(s).lower() for s in SWITCHES}
+OUT=Path(PARAMS.get('museumcapturedirectory',str(ROOT/'Saved/Automation/ExplorationExpansion/Views')))
 OUT.mkdir(parents=True,exist_ok=True)
 PLANS=json.loads((ROOT/'ProjectResources/SourceArt/Gallery/MuseumLevelLayout.json').read_text(encoding='utf-8'))['maps']
 MAPS={'M01':'M01_ClassicalPrototype','M02':'M02_MoonlitPrototype','M03':'M03_GlasshousePrototype'}
@@ -34,9 +37,14 @@ def tick(_):
         plan=PLANS[STATE['index']];code=plan['id'];path=OUT/(code+'.png')
         if STATE['phase']=='load':
             assert unreal.EditorLoadingAndSavingUtils.load_map('/Game/Maps/'+MAPS[code])
-            room=plan['rooms'][ROOMS[code]];x0,y0,x1,y1=room['bounds']
-            position=unreal.Vector((x1-4)*100,(y0+4)*100,170)
-            target=next(p for p in plan['paintings'] if p['active'] and p['room']==room['id'])['xy']
+            if CIRCULATION:
+                view={'M01':([-34,-7],[-34,6]),'M02':([-18,-10],[-18,19]),'M03':([-43,-5.7],[-43,8])}[code]
+                position=unreal.Vector(view[0][0]*100,view[0][1]*100,170)
+                target=view[1]
+            else:
+                room=plan['rooms'][ROOMS[code]];x0,y0,x1,y1=room['bounds']
+                position=unreal.Vector((x1-4)*100,(y0+4)*100,170)
+                target=next(p for p in plan['paintings'] if p['active'] and p['room']==room['id'])['xy']
             yaw=math.degrees(math.atan2(target[1]*100-position.y,target[0]*100-position.x))
             rotation=unreal.Rotator(yaw=yaw)
             EDITOR.set_level_viewport_camera_info(position,rotation)
