@@ -37,6 +37,17 @@ def hashes():
 report = dict(status="RUNNING", map_sha256_before=hashes(), layout_sha256=hashlib.sha256(SOURCE.read_bytes()).hexdigest(),
               maps=[], user_pie="NOT_TESTED", packages_saved=False, nav_rebuilt=False,
               scope="Native navigation and static geometry sweeps; no character locomotion or detection simulation")
+balance = unreal.load_asset('/Game/Data/DataAsset/DA_GameBalance')
+report['security_balance'] = {k: balance.get_editor_property(k) for k in (
+    'guard_perception_range_multiplier', 'security_camera_evaluation_interval_seconds',
+    'security_camera_detection_build_up_seconds', 'security_camera_detection_cooldown_seconds',
+    'security_laser_hold_duration_seconds', 'security_laser_rearm_grace_seconds',
+    'security_incident_alert_increase')}
+report['player_count_difficulty'] = [{k: r.get_editor_property(k) for k in (
+    'player_count', 'guard_count_multiplier', 'detection_multiplier')}
+    for r in balance.get_editor_property('player_count_difficulty_baselines')]
+report['guard_profiles'] = json.loads(unreal.DataTableFunctionLibrary.export_data_table_to_json_string(
+    unreal.load_asset('/Game/Data/DataTable/DT_GuardData')))
 
 
 def xyz(v):
@@ -135,7 +146,9 @@ def begin_queries(world):
         key = "L%02d" % (i+1)
         state["barriers"].append((key, box))
         row["lasers"].append(dict(id=key, origin=xyz(box.get_world_location()), extent=xyz(box.get_scaled_box_extent()),
-                                  forward=xyz(box.get_forward_vector()*100), right=xyz(box.get_right_vector()*100)))
+            forward=xyz(box.get_forward_vector()*100), right=xyz(box.get_right_vector()*100),
+            components=[c.get_class().get_name() for c in a.get_components_by_class(unreal.ActorComponent)],
+            trip_effect=str(prop(a,'trip_effect')), beam_mesh=str(prop(prop(a,'beam_visual_component'),'static_mesh'))))
     for i, a in enumerate(sorted([a for a in authored if a.get_class().get_name() == "BP_SecurityCamera_C"], key=lambda a: a.get_actor_label())):
         sensor = prop(a, "sensor_origin_component")
         box = prop(a, "detection_volume_component")
@@ -197,6 +210,12 @@ def guard_queries():
             path_points += result.get("points",[]) if not path_points else result.get("points",[])[1:]
             blocked += result.get("blocking_actors",[])
         row["guards"].append(dict(id="R%02d"%(i+1), actor=guard.get_actor_label(), route_id=route_id,
+            actor_path=guard.get_path_name(), detention=guard.actor_has_tag('HeistDetentionPatrol'),
+            ping_pong=prop(patrol,'loop_patrol'), capsule_half_m=cap.get_scaled_capsule_half_height()/100,
+            waypoint_paths=[s.get('points',[]) for s in segments],
+            waypoint_waits=[max(0,prop(a,'wait_duration_override')) if prop(a,'wait_duration_override',-1)>=0
+                else prop(patrol,'waypoint_wait_duration') for a in waypoints],
+            look_around_enabled=prop(patrol,'look_around_at_waypoints'), look_turn_rate=prop(patrol,'look_around_turn_rate'),
             profile=str(prop(guard,"guard_profile_id")), waypoint_wait_seconds=prop(patrol,"waypoint_wait_duration"),
             look_around_degrees=prop(patrol,"look_around_yaw_angle"), start=xyz(guard.get_actor_location()),
             points=path_points, waypoint_count=len(waypoints), length_m=round(sum(s.get("length_m",0) for s in segments),3),
