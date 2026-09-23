@@ -108,6 +108,8 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
 	float GetAlertMeterValue() const;
 	float GetMissionEndServerTime() const;
 	const FText& GetRequiredTargetDisplayName() const;
+	const FText& GetContractValueText() const { return ContractValueText; }
+	static FText BuildContractValueText(const FHeistContractSnapshot& Snapshot);
 	bool IsRequiredTargetAcquired() const;
 	FName GetLastAlertTriggerId() const;
 	int32 GetSecurityLevel() const;
@@ -183,6 +185,9 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Mission", meta = (AllowPrivateAccess = "true"))
 	FText RequiredTargetDisplayName;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Mission", meta = (AllowPrivateAccess = "true"))
+	FText ContractValueText;
 
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|Mission", meta = (AllowPrivateAccess = "true"))
 	bool bRequiredTargetAcquired = false;

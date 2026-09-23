@@ -120,6 +120,17 @@ void UHeistHUDViewModel::SetupViewModel(AHeistGameState* InGameState, AHeistPlay
 	RefreshPresentationState();
 }
 
+FText UHeistHUDViewModel::BuildContractValueText(const FHeistContractSnapshot& Snapshot)
+{
+	if (!Snapshot.IsInitialized())
+	{
+		return FText::GetEmpty();
+	}
+	const int64 TotalValue = static_cast<int64>(FMath::Max(0, Snapshot.CarriedValue)) + FMath::Max(0, Snapshot.SecuredValue);
+	return FText::Format(NSLOCTEXT("HeistHUD", "ContractValueProgress", "운반·확보 {0} / {1}"),
+		FText::AsNumber(TotalValue), FText::AsNumber(Snapshot.LootValueQuota));
+}
+
 void UHeistHUDViewModel::RefreshPresentationState()
 {
 	RefreshCrewStatusEntries();
@@ -180,6 +191,7 @@ void UHeistHUDViewModel::RefreshPresentationState()
 	UE_MVVM_SET_PROPERTY_VALUE(AlertMeterValue, ActiveAlertMeterValue);
 	UE_MVVM_SET_PROPERTY_VALUE(MissionEndServerTime, ContractSnapshot.ContractEndServerTime);
 	UE_MVVM_SET_PROPERTY_VALUE(RequiredTargetDisplayName, ContractSnapshot.RequiredTargetDisplayName);
+	UE_MVVM_SET_PROPERTY_VALUE(ContractValueText, BuildContractValueText(ContractSnapshot));
 	UE_MVVM_SET_PROPERTY_VALUE(bRequiredTargetAcquired, IsValid(GameState) && (IsValid(GameState->GetOriginalCarrierCandidate()) || ContractSnapshot.bRequiredTargetSecured));
 	UE_MVVM_SET_PROPERTY_VALUE(LastAlertTriggerId, IsValid(GameState) ? GameState->GetLastAlertTriggerId() : NAME_None);
 	UE_MVVM_SET_PROPERTY_VALUE(SecurityLevel, NewSecurityLevel);

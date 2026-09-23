@@ -167,6 +167,9 @@ class PROJECT_MUSEUMHEIST_API UHeistGameInstance : public UGameInstance
 	bool RunOnlineSessionCancelTestForDebug();
 
   private:
+	friend class FHeistOnlineSessionRecoveryTest;
+	void RecoverUnresponsiveOnlineSession(FName FailureReason, bool bAwaitCreateOrJoin);
+	void CleanupRetiredOnlineSession(FName SessionName);
 	bool RefreshOnlineSessionInterface();
 	bool BeginCreateSession();
 	bool BeginDestroySession(FName LeaveReason, bool bWasHosting, FName PreservedFailure = NAME_None);
@@ -238,6 +241,11 @@ class PROJECT_MUSEUMHEIST_API UHeistGameInstance : public UGameInstance
 	float OnlineSessionTravelTimeoutSeconds = 30.0f;
 
 	IOnlineSessionPtr OnlineSessionInterface;
+	FName LocalOnlineSessionName = FName(TEXT("HeistSession"));
+	TSet<FName> RetiredOnlineSessionNames;
+	FDelegateHandle RetiredCreateDelegateHandle;
+	FDelegateHandle RetiredJoinDelegateHandle;
+	FDelegateHandle RetiredDestroyDelegateHandle;
 	TSharedPtr<FOnlineSessionSearch> ActiveSessionSearch;
 	FDelegateHandle CreateSessionDelegateHandle;
 	FDelegateHandle FindSessionsDelegateHandle;

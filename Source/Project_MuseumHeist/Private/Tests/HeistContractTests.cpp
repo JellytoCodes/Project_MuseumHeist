@@ -4,6 +4,7 @@
 #include "Data/HeistArtifactDataTypes.h"
 #include "Data/HeistContractDataTypes.h"
 #include "Misc/AutomationTest.h"
+#include "UI/ViewModels/HeistHUDViewModel.h"
 #include "World/Actors/Loot/HeistObjectDisplayCaseActor.h"
 #include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 
@@ -100,6 +101,17 @@ bool FHeistContractSnapshotTest::RunTest(const FString& Parameters)
 	Snapshot.Revision = 1;
 
 	TestTrue(TEXT("Populated snapshot is initialized"), Snapshot.IsInitialized());
+	TestTrue(TEXT("Mission value is hidden before contract initialization"), UHeistHUDViewModel::BuildContractValueText(FHeistContractSnapshot()).IsEmpty());
+	Snapshot.CarriedValue = 3000;
+	Snapshot.SecuredValue = 1000;
+	const FText BeforeSettlement = UHeistHUDViewModel::BuildContractValueText(Snapshot);
+	TestTrue(TEXT("Mission shows combined progress against quota"), BeforeSettlement.ToString().Contains(FText::AsNumber(4000).ToString()));
+	TestFalse(TEXT("Carried value reaching quota never grants success"), Snapshot.IsSuccessConditionMet());
+	Snapshot.CarriedValue = 0;
+	Snapshot.SecuredValue = 4000;
+	TestTrue(TEXT("Settlement does not double count displayed value"), BeforeSettlement.EqualTo(UHeistHUDViewModel::BuildContractValueText(Snapshot)));
+	Snapshot.SecuredValue = 0;
+	TestFalse(TEXT("Confiscation/drop updates mission progress"), BeforeSettlement.EqualTo(UHeistHUDViewModel::BuildContractValueText(Snapshot)));
 	FHeistContractSnapshot MissingStartPlayerCount = Snapshot;
 	MissingStartPlayerCount.ContractStartPlayerCount = 0;
 	TestFalse(TEXT("Contract start player count is required"), MissingStartPlayerCount.IsInitialized());

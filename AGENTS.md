@@ -436,7 +436,7 @@ Client Preview는 확정값으로 취급하지 않는다.
 - Editor PIE는 로컬 다중 인스턴스 검증을 위해 `OnlineSubsystemNull`을 사용한다.
 - 비 Editor 실행과 패키지 빌드는 기본 `OnlineSubsystemSteam`을 사용한다.
 - Editor `OnlineSubsystemNull` 검증은 구현 검증용이며 Steam 최종 PASS를 대체하지 않는다.
-- Online Session의 로컬 이름은 PIE가 선점하는 `GameSession`과 분리된 `HeistSession`을 사용한다.
+- Online Session의 기본 로컬 이름은 PIE가 선점하는 `GameSession`과 분리된 `HeistSession`을 사용한다. 응답이 끊긴 요청을 복구할 때만 고유 접미사를 붙여 이전 요청과 분리하며, 이전 이름의 늦은 완료는 정리에만 사용한다.
 - Session은 최대 4인 Listen Server, Presence와 Lobby 참가를 사용하며 공개 지원 인원은 2~4인이다. Join In Progress는 Lobby/ReadyCountdown까지만 허용하고 InGame 이후에는 허용하지 않는다.
 - Voice는 `V` Hold Push-to-Talk만 지원한다. Open Mic은 v1.0 범위에 포함하지 않는다.
 - Lobby와 Result에서는 거리 제한 없는 Team Voice를 사용하고, InGame에서는 Character 위치에 부착된 Proximity Voice를 사용한다.
@@ -978,9 +978,9 @@ Penalty 또는 Diagnostic Field가 Final Score에 직접 적용되지 않는 경
 
 ## Main HUD Presentation
 
-- 좌측 상단은 `미션`, 서버 `ContractEndServerTime`에서 계산한 `MM : SS`, 필수 목표 작품명만 표시한다. 남은 시간이 60초 미만이면 시간 Text만 빨간색으로 바꾼다.
+- 좌측 상단은 `미션`, 서버 `ContractEndServerTime`에서 계산한 `MM : SS`, 필수 목표 작품명과 `운반·확보 현재 / 목표` 한 줄을 표시한다. 현재는 서버 Snapshot의 팀 Carried + Secured 합이며 실제 반출 완료를 뜻하지 않는다. 남은 시간이 60초 미만이면 시간 Text만 빨간색으로 바꾼다.
 - 현재 v1 Contract는 Required Target 하나만 확정한다. UI는 향후 목록 확장 가능한 Container를 사용할 수 있지만 Runtime에서는 작품명 한 행만 표시하며 미획득은 회색, Secured는 초록색이다.
-- Main HUD에 Carried/Secured/Quota, Loot Value, 예상 점수와 Weight 숫자를 표시하지 않는다. 이 값의 상세는 Inventory와 Result가 소유한다.
+- Main HUD는 미션 영역의 합산 가치/할당량 한 줄 외에 개별 Carried/Secured 상세, 예상 점수와 Weight 숫자를 표시하지 않는다. Inventory 요약은 복구하지 않으며 최종 Secured/Quota 상세는 Result가 소유한다.
 - 좌측 하단은 Inventory Icon과 `[TAB]`만 배치하고 현재 Carry Weight를 Heavy Threshold로 정규화한 초록→빨강 색상으로 상태만 전달한다.
 - 우측 하단은 고정 `WBP_QuickSlot` 세 개를 배치하며 각 Slot은 Item Image, Count와 Key Label만 표시한다. HUD Mode에서는 ItemId, Assignment Text와 Clear Button을 표시하지 않는다.
 - 기존 Interaction Prompt, Action Progress, Popup Pool, Stun/Arrest Overlay와 Crosshair 책임은 유지하며 Main HUD 개편을 이유로 재구성하지 않는다.

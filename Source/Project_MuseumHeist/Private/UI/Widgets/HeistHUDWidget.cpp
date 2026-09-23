@@ -500,6 +500,12 @@ void UHeistHUDWidget::RefreshMissionPresentation()
 	{
 		MissionTitleText->SetText(NSLOCTEXT("HeistHUD", "MissionTitle", "미션"));
 	}
+	if (IsValid(ContractValueText))
+	{
+		const FText& ValueText = HUDViewModel->GetContractValueText();
+		ContractValueText->SetText(ValueText);
+		ContractValueText->SetVisibility(ValueText.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	}
 	if (IsValid(RequiredTargetNameText))
 	{
 		const FText TargetName = HUDViewModel->GetRequiredTargetDisplayName().IsEmpty()
@@ -888,6 +894,11 @@ void UHeistHUDWidget::ResetHiddenPresentationState()
 	LastPresentedLocalCrewStatus = EHeistCrewStatus::Active;
 	bLocalCrewStatusPresentationInitialized = false;
 	LastDisplayedMissionSeconds = INDEX_NONE;
+	if (IsValid(ContractValueText))
+	{
+		ContractValueText->SetText(FText::GetEmpty());
+		ContractValueText->SetVisibility(ESlateVisibility::Collapsed);
+	}
 	LastPresentedAlertTriggerId = NAME_None;
 	TransientEventHideWorldTime = 0.0f;
 	LastArrestFeedbackEvent = NAME_None;
