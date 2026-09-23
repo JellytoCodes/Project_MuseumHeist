@@ -148,11 +148,6 @@ def camera_sees(c, point, t, capsule_half):
     delta=[center[i]-c['origin'][i] for i in range(3)]
     distance=math.sqrt(sum(v*v for v in delta))
     if distance>c['range_m'] or distance<1e-8:return False
-    volume=c['volume'];local=[center[i]-volume['origin'][i] for i in range(3)]
-    for axis,extent in zip(volume['axes'],volume['extent']):
-        # Capsule support on OBB axes; conservative candidate-volume approximation.
-        support=.34+(capsule_half-.34)*abs(axis[2])
-        if abs(sum(a*b for a,b in zip(local,axis)))>extent+support:return False
     angle=math.radians(math.sin(t/c['sweep_period']*2*math.pi)*c['sweep_half_angle'])
     u,v=c['up'],c['forward'];cross=[u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]]
     dot=sum(a*b for a,b in zip(u,v))
@@ -313,7 +308,7 @@ def analyze():
         'Static native geometry LOS, 0.5 m spatial sampling, 0.05 s modeled time; not full character simulation.',
         'Guard waypoint-center ping-pong motion at quiet speed; acceleration, acceptance radius, avoidance and movement turn lag excluded.',
         'Guard eye uses capsule half height plus profile BaseEyeHeight. Player standing eye assumed 1.65 m above path floor.',
-        'CCTV uses saved cone/range/sweep and continuous build-up; candidate volume uses conservative capsule support test.',
+        'CCTV models saved Sight cone/range/sweep and continuous build-up without Box gating; Perception scheduling latency is not modeled.',
         'Guard grace is approximated per player; runtime selects one nearest visible target and has perception update latency.',
         '32 initial phase cases are sensitivity cases, not empirical detection probability. Extra 3/4-player guards reuse runtime-selected source routes with phase uncertainty.',
         'First visual detection terminates route qualification. Noise/investigation/chase/capture/alert feedback and rescue are NOT simulated; no complete match-time prediction.',

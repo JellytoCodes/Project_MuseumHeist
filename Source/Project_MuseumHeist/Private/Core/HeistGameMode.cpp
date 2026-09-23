@@ -2818,7 +2818,14 @@ float AHeistGameMode::GetSecurityCameraDetectionBuildUpSeconds() const
 {
 	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
 	return IsValid(BalanceData) && FMath::IsFinite(BalanceData->SecurityCameraDetectionBuildUpSeconds) ?
-		FMath::Clamp(BalanceData->SecurityCameraDetectionBuildUpSeconds, 1.2f, 1.5f) : 1.35f;
+		FMath::Clamp(BalanceData->SecurityCameraDetectionBuildUpSeconds, 1.8f, 2.25f) : 2.025f;
+}
+
+float AHeistGameMode::GetSecurityCameraResumeDelaySeconds() const
+{
+	const UHeistGameBalanceDataAsset* BalanceData = ResolveGameBalanceData();
+	return IsValid(BalanceData) && FMath::IsFinite(BalanceData->SecurityCameraResumeDelaySeconds) ?
+		FMath::Max(0.0f, BalanceData->SecurityCameraResumeDelaySeconds) : 1.5f;
 }
 
 float AHeistGameMode::GetSecurityCameraDetectionCooldownSeconds() const

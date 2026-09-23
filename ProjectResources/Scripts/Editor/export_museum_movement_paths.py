@@ -151,13 +151,11 @@ def begin_queries(world):
             trip_effect=str(prop(a,'trip_effect')), beam_mesh=str(prop(prop(a,'beam_visual_component'),'static_mesh'))))
     for i, a in enumerate(sorted([a for a in authored if a.get_class().get_name() == "BP_SecurityCamera_C"], key=lambda a: a.get_actor_label())):
         sensor = prop(a, "sensor_origin_component")
-        box = prop(a, "detection_volume_component")
         row["cameras"].append(dict(id="C%02d"%(i+1), origin=xyz(sensor.get_world_location()),
             forward=xyz(sensor.get_forward_vector()*100), up=xyz(sensor.get_up_vector()*100),
             range_m=prop(a, "detection_range")/100, half_angle=prop(a, "detection_half_angle_degrees"),
             sweep_half_angle=prop(a, "sweep_half_angle_degrees"), sweep_period=prop(a, "sweep_period_seconds"),
-            volume=dict(origin=xyz(box.get_world_location()), extent=xyz(box.get_scaled_box_extent()),
-                axes=[xyz(box.get_forward_vector()*100), xyz(box.get_right_vector()*100), xyz(box.get_up_vector()*100)])))
+            sensor_type="ai_perception_sight"))
     state["jobs"] = [] if SIGHTLINES else list(itertools.combinations(state["nav_nodes"], 2))
     state["job"] = 0
     state["guard_actors"] = sorted([a for a in authored if isinstance(a, unreal.HeistGuardCharacter)], key=lambda a: a.get_actor_label())

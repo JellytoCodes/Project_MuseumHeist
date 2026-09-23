@@ -692,7 +692,11 @@ v1의 활성 Security Layer는 기존 Patrol Guard, CCTV와 고가 Painting용 C
 ### CCTV
 
 - CCTV는 서버가 Target Eligibility, View Cone, Line of Sight, Detection Build-up, Cooldown과 Alert Meter `+0.5` 요청을 검증한다.
+- CCTV는 AActor에 부착한 AI Perception Sight로 감지하며 Box Collision/Overlap 후보 수집을 사용하지 않는다. 렌즈 시점과 메시 Sweep 방향을 일치시키고 서버 InGame에서 현재 보이는 대상만 누적한다. 시야 상실 시 누적을 지우며 기억된 대상을 발각으로 취급하지 않는다.
+- CCTV Spot Light는 같은 시점·거리·반각·회전을 표현하고 서버가 복제한 발각 누적에 따라 흰색에서 붉은색으로 바뀐다. 완전 발각은 0.75초 붉은 표시를 유지한다. 조명은 Presentation이며 빛의 감쇠·표면 밝기를 감지 판정으로 사용하지 않는다.
 - CCTV Detection은 중복 Tick마다 Alert를 누적하지 않고 명시된 Build-up/Threshold/Cooldown과 사건별 One-shot 계약을 따른다.
+- CCTV 발각 누적은 기본 2.025초(허용 1.8~2.25초)다. 기존 대비 감지 거리를 2/3로 줄인 맵 배치값과 같은 조명 거리를 사용하며 시야각은 유지한다.
+- CCTV는 유효 Player 첫 포착 시 회전을 멈춘다. 한 명이라도 시야에 남으면 Cooldown과 무관하게 정지를 유지하며, 모두 사라지면 1.5초 뒤 같은 각도·진행 방향에서 회전을 재개한다. 대기 중 재포착하면 복귀를 취소한다. 정지와 회전 재개는 서버가 확정하고 Client에 복제한다.
 - CCTV 위치, View Cone과 실시간 Target은 Floor Plan, Minimap 또는 Radar에 표시하지 않는다.
 - v1에는 CCTV Hack, 영구 비활성화, 원격 조종과 Security Room Control Minigame을 추가하지 않는다. 다만 Guard 체포 흐름에 필요한 제한된 Detention / Evidence 공간은 포함한다.
 
@@ -1338,7 +1342,7 @@ Actor Blueprint 분리는 Component Topology, Collision Contract, Authority Stat
 
 - Loose Loot와 Dropped Original은 외형이 유사해도 서버 상태와 회수 Transaction이 다르므로 서로 다른 공용 Shell을 유지한다.
 - Arrest Evidence는 새 전용 Pickup Actor를 만들지 않고 Loose Loot는 `BP_Loot`, Original은 `BP_DroppedOriginal`을 재사용한다. Map은 Detention Anchor 하나와 최대 Inventory 수용량을 감당하는 결정적 Evidence Slot Anchor를 제공한다.
-- CCTV, Laser Barrier와 Hold Button은 Sensor Volume, Trip Trigger, Hold Interaction이라는 Component/Collision/State/Interaction 계약이 서로 다르므로 각각 하나의 공용 Shell을 유지하며 외형별 Variant Blueprint를 만들지 않는다.
+- CCTV, Laser Barrier와 Hold Button은 Sight Perception, Trip Trigger, Hold Interaction이라는 Component/Collision/State/Interaction 계약이 서로 다르므로 각각 하나의 공용 Shell을 유지하며 외형별 Variant Blueprint를 만들지 않는다.
 - `BP_SecurityCamera`, `BP_LaserBarrier`, `BP_SecurityHoldButton`은 Class Defaults의 Mesh/Material/VFX/Audio 할당만 담당한다. 기본 Visibility와 Hold Button Transform은 C++ `ApplyPresentation()`이 소유하며, 실제 Animation/VFX/Audio 요구가 확정되기 전 이 세 Shell의 EventGraph를 구현하지 않는다.
 - Dropped Original은 작품별 원본 Mesh/Material을 재현하지 않는다. v1 Drawing Artifact는 작은 액자 공용 외형을 사용하며 Assembly Artifact의 작은 조각상 외형은 Deferred 호환용으로만 보존한다.
 - `DT_ArtifactData`는 Dropped Original을 위한 개별 Mesh, Material 또는 Actor Class를 소유하지 않는다. 작품 차이는 DisplayName과 ItemGrade로 식별한다.

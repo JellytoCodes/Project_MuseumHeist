@@ -159,6 +159,7 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 	float GetSecurityCameraEvaluationIntervalSeconds() const;
 	float GetSecurityCameraDetectionBuildUpSeconds() const;
 	float GetSecurityCameraDetectionCooldownSeconds() const;
+	float GetSecurityCameraResumeDelaySeconds() const;
 	float GetSecurityLaserHoldDurationSeconds() const;
 	float GetSecurityLaserRearmGraceSeconds() const;
 	void GetMatchStartLooseLootCounts(int32& OutVaultLootCount, int32& OutExhibitionLootCount) const;

@@ -104,11 +104,14 @@ class PROJECT_MUSEUMHEIST_API UHeistGameBalanceDataAsset : public UDataAsset
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Security|CCTV", meta = (ClampMin = "0.05", Units = "s"))
 	float SecurityCameraEvaluationIntervalSeconds = 0.15f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Security|CCTV", meta = (ClampMin = "1.2", ClampMax = "1.5", Units = "s"))
-	float SecurityCameraDetectionBuildUpSeconds = 1.35f;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Security|CCTV", meta = (ClampMin = "1.8", ClampMax = "2.25", Units = "s"))
+	float SecurityCameraDetectionBuildUpSeconds = 2.025f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Security|CCTV", meta = (ClampMin = "0.0", Units = "s"))
 	float SecurityCameraDetectionCooldownSeconds = 4.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Security|CCTV", meta = (ClampMin = "0.0", Units = "s"))
+	float SecurityCameraResumeDelaySeconds = 1.5f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Security|Laser", meta = (ClampMin = "2.0", ClampMax = "5.0", Units = "s"))
 	float SecurityLaserHoldDurationSeconds = 3.0f;

@@ -1,20 +1,23 @@
 #include "World/Actors/Security/HeistSecurityCameraActor.h"
 
 #include "Character/HeistPlayerCharacter.h"
-#include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"
+#include "Components/SpotLightComponent.h"
 #include "Components/StaticMeshComponent.h"
-#include "Core/HeistCollisionChannels.h"
 #include "Core/HeistGameMode.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistPlayerState.h"
 #include "Engine/World.h"
 #include "Net/UnrealNetwork.h"
+#include "Perception/AIPerceptionComponent.h"
+#include "Perception/AISenseConfig_Sight.h"
+#include "Perception/AISense_Sight.h"
 #include "TimerManager.h"
 
 AHeistSecurityCameraActor::AHeistSecurityCameraActor()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bStartWithTickEnabled = false;
 	bReplicates = true;
 	SetReplicateMovement(false);
 	SetNetUpdateFrequency(10.0f);
@@ -30,23 +33,44 @@ AHeistSecurityCameraActor::AHeistSecurityCameraActor()
 	VisualMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	VisualMeshComponent->SetGenerateOverlapEvents(false);
 
-	DetectionVolumeComponent = CreateDefaultSubobject<UBoxComponent>(TEXT("DetectionVolumeComponent"));
-	DetectionVolumeComponent->SetupAttachment(SceneRootComponent);
-	DetectionVolumeComponent->InitBoxExtent(FVector(900.0f, 900.0f, 300.0f));
-	DetectionVolumeComponent->SetRelativeLocation(FVector(900.0f, 0.0f, 0.0f));
-	DetectionVolumeComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	DetectionVolumeComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
-	DetectionVolumeComponent->SetGenerateOverlapEvents(true);
+	SightLightComponent = CreateDefaultSubobject<USpotLightComponent>(TEXT("SightLightComponent"));
+	SightLightComponent->SetupAttachment(SensorOriginComponent);
+	SightLightComponent->SetMobility(EComponentMobility::Movable);
+	SightLightComponent->SetIntensityUnits(ELightUnits::Lumens);
+	SightLightComponent->SetIntensity(1800.0f);
+	SightLightComponent->SetIndirectLightingIntensity(0.0f);
+	SightLightComponent->SetVolumetricScatteringIntensity(0.0f);
+	SightLightComponent->SetCastShadows(true);
+	ConfigureSightLight();
+
+	CameraPerceptionComponent = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("CameraPerceptionComponent"));
+	CameraSightConfig = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("CameraSightConfig"));
+	CameraSightConfig->SetStartsEnabled(false);
+	CameraSightConfig->SightRadius = DetectionRange;
+	CameraSightConfig->LoseSightRadius = DetectionRange;
+	CameraSightConfig->PeripheralVisionAngleDegrees = DetectionHalfAngleDegrees;
+	CameraSightConfig->AutoSuccessRangeFromLastSeenLocation = FAISystem::InvalidRange;
+	CameraSightConfig->DetectionByAffiliation.bDetectEnemies = true;
+	CameraSightConfig->DetectionByAffiliation.bDetectFriendlies = true;
+	CameraSightConfig->DetectionByAffiliation.bDetectNeutrals = true;
+	CameraPerceptionComponent->ConfigureSense(*CameraSightConfig);
+	CameraPerceptionComponent->SetDominantSense(UAISense_Sight::StaticClass());
 }
 
 void AHeistSecurityCameraActor::BeginPlay()
 {
 	Super::BeginPlay();
 
-	DetectionVolumeComponent->SetCollisionObjectType(ECC_WorldDynamic);
-	DetectionVolumeComponent->SetCollisionResponseToChannel(HeistCollisionChannels::Player, ECR_Overlap);
-	DetectionVolumeComponent->OnComponentBeginOverlap.AddDynamic(this, &AHeistSecurityCameraActor::HandleDetectionVolumeBeginOverlap);
-	DetectionVolumeComponent->OnComponentEndOverlap.AddDynamic(this, &AHeistSecurityCameraActor::HandleDetectionVolumeEndOverlap);
+	InitialVisualRelativeRotation = VisualMeshComponent->GetRelativeRotation().Quaternion();
+	ConfigureSightLight();
+	CameraPerceptionComponent->OnTargetPerceptionUpdated.AddUniqueDynamic(this, &AHeistSecurityCameraActor::HandleTargetPerceptionUpdated);
+	if (HasAuthority())
+	{
+		CameraSightConfig->SightRadius = FMath::Max(100.0f, DetectionRange);
+		CameraSightConfig->LoseSightRadius = CameraSightConfig->SightRadius;
+		CameraSightConfig->PeripheralVisionAngleDegrees = FMath::Clamp(DetectionHalfAngleDegrees, 1.0f, 89.0f);
+		CameraPerceptionComponent->ConfigureSense(*CameraSightConfig);
+	}
 
 	if (HasAuthority())
 	{
@@ -74,12 +98,39 @@ void AHeistSecurityCameraActor::EndPlay(const EEndPlayReason::Type EndPlayReason
 		BoundGameState->GetMatchPhaseChangedDelegate().RemoveAll(this);
 		BoundGameState.Reset();
 	}
-	if (IsValid(DetectionVolumeComponent))
-	{
-		DetectionVolumeComponent->OnComponentBeginOverlap.RemoveAll(this);
-		DetectionVolumeComponent->OnComponentEndOverlap.RemoveAll(this);
-	}
+	CameraPerceptionComponent->OnTargetPerceptionUpdated.RemoveAll(this);
 	Super::EndPlay(EndPlayReason);
+}
+
+void AHeistSecurityCameraActor::GetActorEyesViewPoint(FVector& OutLocation, FRotator& OutRotation) const
+{
+	OutLocation = IsValid(SensorOriginComponent) ? SensorOriginComponent->GetComponentLocation() : GetActorLocation();
+	OutRotation = ResolveSensorForward().Rotation();
+}
+
+void AHeistSecurityCameraActor::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	// Preserve the authored mesh orientation while showing the same sweep used by Sight.
+	VisualMeshComponent->SetRelativeRotation(FQuat(FVector::UpVector, FMath::DegreesToRadians(GetResolvedSweepYawDegrees())) * InitialVisualRelativeRotation);
+	SightLightComponent->SetWorldRotation(ResolveSensorForward().Rotation());
+	const bool bConfirmed = GetWorld()->GetTimeSeconds() < ConfirmedLightHoldUntil;
+	DisplayedLightRisk = bConfirmed ? 1.0f : FMath::FInterpTo(DisplayedLightRisk, GetDetectionProgress(), DeltaSeconds, 12.0f);
+	SightLightComponent->SetLightColor(FMath::Lerp(IdleLightColor, AlertLightColor, DisplayedLightRisk));
+}
+
+void AHeistSecurityCameraActor::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+	ConfigureSightLight();
+}
+
+void AHeistSecurityCameraActor::ConfigureSightLight()
+{
+	SightLightComponent->SetAttenuationRadius(FMath::Max(100.0f, DetectionRange));
+	SightLightComponent->SetOuterConeAngle(FMath::Clamp(DetectionHalfAngleDegrees, 1.0f, 89.0f));
+	SightLightComponent->SetInnerConeAngle(SightLightComponent->OuterConeAngle * 0.9f);
+	SightLightComponent->SetLightColor(IdleLightColor);
 }
 
 bool AHeistSecurityCameraActor::IsCameraEnabled() const
@@ -105,8 +156,14 @@ AHeistPlayerState* AHeistSecurityCameraActor::GetLastDetectedPlayerState() const
 float AHeistSecurityCameraActor::GetResolvedSweepYawDegrees() const
 {
 	const float SafePeriod = FMath::Max(0.1f, SweepPeriodSeconds);
-	const float ElapsedSeconds = FMath::Max(0.0f, ResolveServerWorldTimeSeconds() - SweepEpochServerTime);
+	const float SweepTime = IsSweepPaused() ? SweepPausedServerTime : ResolveServerWorldTimeSeconds();
+	const float ElapsedSeconds = FMath::Max(0.0f, SweepTime - SweepEpochServerTime);
 	return FMath::Sin((ElapsedSeconds / SafePeriod) * UE_TWO_PI) * FMath::Clamp(SweepHalfAngleDegrees, 0.0f, 90.0f);
+}
+
+bool AHeistSecurityCameraActor::IsSweepPaused() const
+{
+	return SweepPausedServerTime >= 0.0f;
 }
 
 void AHeistSecurityCameraActor::StartAuthorityEvaluation()
@@ -116,8 +173,11 @@ void AHeistSecurityCameraActor::StartAuthorityEvaluation()
 		return;
 	}
 
-	bCameraEnabled = true;
+	GetWorldTimerManager().ClearTimer(SweepResumeTimerHandle);
+	SweepPausedServerTime = -1.0f;
 	SweepEpochServerTime = ResolveServerWorldTimeSeconds();
+	bCameraEnabled = true;
+	CameraPerceptionComponent->SetSenseEnabled(UAISense_Sight::StaticClass(), true);
 	DetectionCooldownEndServerTime = 0.0f;
 	const float SafeInterval = ResolveEvaluationIntervalSeconds();
 	GetWorldTimerManager().SetTimer(DetectionEvaluationTimerHandle, this, &AHeistSecurityCameraActor::EvaluateDetectionCandidates, SafeInterval, true, SafeInterval);
@@ -130,9 +190,17 @@ void AHeistSecurityCameraActor::StopAuthorityEvaluation(const bool bResetReplica
 	if (IsValid(GetWorld()))
 	{
 		GetWorldTimerManager().ClearTimer(DetectionEvaluationTimerHandle);
+		GetWorldTimerManager().ClearTimer(SweepResumeTimerHandle);
 	}
 	DetectionEvaluationTimerHandle.Invalidate();
-	OverlappingPlayers.Reset();
+	SweepResumeTimerHandle.Invalidate();
+	if (HasAuthority() && bResetReplicatedState)
+	{
+		bCameraEnabled = false;
+		SweepPausedServerTime = -1.0f;
+	}
+	CameraPerceptionComponent->SetSenseEnabled(UAISense_Sight::StaticClass(), false);
+	CameraPerceptionComponent->ForgetAll();
 	DetectionBuildUpByPlayer.Reset();
 	DetectionCooldownEndServerTime = 0.0f;
 
@@ -160,20 +228,22 @@ void AHeistSecurityCameraActor::EvaluateDetectionCandidates()
 	const float SafeInterval = ResolveEvaluationIntervalSeconds();
 	const float SafeBuildUp = ResolveDetectionBuildUpSeconds();
 	const bool bCooldownActive = Now < DetectionCooldownEndServerTime;
-	TArray<TWeakObjectPtr<AHeistPlayerCharacter>> StalePlayers;
+	TArray<AActor*> VisibleActors;
+	CameraPerceptionComponent->GetCurrentlyPerceivedActors(UAISense_Sight::StaticClass(), VisibleActors);
+	UpdateSweepPauseState(VisibleActors);
+	for (auto It = DetectionBuildUpByPlayer.CreateIterator(); It; ++It)
+	{
+		if (!It.Key().IsValid() || !VisibleActors.Contains(It.Key().Get())) It.RemoveCurrent();
+	}
 	AHeistPlayerCharacter* ConfirmedTarget = nullptr;
 
-	for (const TWeakObjectPtr<AHeistPlayerCharacter>& PlayerPtr : OverlappingPlayers)
+	for (AActor* VisibleActor : VisibleActors)
 	{
-		AHeistPlayerCharacter* PlayerCharacter = PlayerPtr.Get();
-		if (!IsValid(PlayerCharacter) || !DetectionVolumeComponent->IsOverlappingActor(PlayerCharacter))
-		{
-			StalePlayers.Add(PlayerPtr);
-			continue;
-		}
+		AHeistPlayerCharacter* PlayerCharacter = Cast<AHeistPlayerCharacter>(VisibleActor);
+		if (!IsValid(PlayerCharacter)) continue;
 
-		float& BuildUp = DetectionBuildUpByPlayer.FindOrAdd(PlayerPtr);
-		if (bCooldownActive || !IsEligibleTarget(PlayerCharacter) || !HasDetectionLineOfSight(PlayerCharacter))
+		float& BuildUp = DetectionBuildUpByPlayer.FindOrAdd(PlayerCharacter);
+		if (bCooldownActive || !IsEligibleTarget(PlayerCharacter))
 		{
 			BuildUp = 0.0f;
 			continue;
@@ -187,17 +257,60 @@ void AHeistSecurityCameraActor::EvaluateDetectionCandidates()
 		}
 	}
 
-	for (const TWeakObjectPtr<AHeistPlayerCharacter>& StalePlayer : StalePlayers)
-	{
-		OverlappingPlayers.Remove(StalePlayer);
-		DetectionBuildUpByPlayer.Remove(StalePlayer);
-	}
-
 	if (IsValid(ConfirmedTarget))
 	{
 		CommitDetection(ConfirmedTarget);
 	}
 	RefreshReplicatedDetectionProgress();
+}
+
+void AHeistSecurityCameraActor::UpdateSweepPauseState(const TArray<AActor*>& VisibleActors)
+{
+	if (!HasAuthority() || !bCameraEnabled) return;
+	const bool bHasVisibleTarget = VisibleActors.ContainsByPredicate([this](const AActor* Actor)
+	{
+		return IsEligibleTarget(Cast<AHeistPlayerCharacter>(Actor));
+	});
+	if (bHasVisibleTarget)
+	{
+		GetWorldTimerManager().ClearTimer(SweepResumeTimerHandle);
+		if (!IsSweepPaused())
+		{
+			SweepPausedServerTime = ResolveServerWorldTimeSeconds();
+			ForceNetUpdate();
+			ApplyPresentation();
+		}
+	}
+	else if (IsSweepPaused() && !GetWorldTimerManager().IsTimerActive(SweepResumeTimerHandle))
+	{
+		const AHeistGameMode* GameMode = GetWorld()->GetAuthGameMode<AHeistGameMode>();
+		const float Delay = IsValid(GameMode) ? GameMode->GetSecurityCameraResumeDelaySeconds() : 1.5f;
+		if (Delay <= 0.0f)
+		{
+			ResumeSweepAfterSightLoss();
+		}
+		else
+		{
+			GetWorldTimerManager().SetTimer(SweepResumeTimerHandle, this, &AHeistSecurityCameraActor::ResumeSweepAfterSightLoss, Delay, false);
+		}
+	}
+}
+
+void AHeistSecurityCameraActor::ResumeSweepAfterSightLoss()
+{
+	if (!HasAuthority() || !bCameraEnabled || !IsSweepPaused()) return;
+	TArray<AActor*> VisibleActors;
+	CameraPerceptionComponent->GetCurrentlyPerceivedActors(UAISense_Sight::StaticClass(), VisibleActors);
+	if (VisibleActors.ContainsByPredicate([this](const AActor* Actor)
+	{
+		return IsEligibleTarget(Cast<AHeistPlayerCharacter>(Actor));
+	})) return;
+
+	// Preserve both the sine phase and its direction, including across long holds.
+	SweepEpochServerTime += FMath::Max(0.0f, ResolveServerWorldTimeSeconds() - SweepPausedServerTime);
+	SweepPausedServerTime = -1.0f;
+	ForceNetUpdate();
+	ApplyPresentation();
 }
 
 bool AHeistSecurityCameraActor::IsEligibleTarget(const AHeistPlayerCharacter* PlayerCharacter) const
@@ -213,31 +326,7 @@ bool AHeistSecurityCameraActor::IsEligibleTarget(const AHeistPlayerCharacter* Pl
 		return false;
 	}
 
-	const FVector ToTarget = PlayerCharacter->GetActorLocation() - SensorOriginComponent->GetComponentLocation();
-	const float Distance = ToTarget.Size();
-	if (Distance <= KINDA_SMALL_NUMBER || Distance > FMath::Max(100.0f, DetectionRange))
-	{
-		return false;
-	}
-
-	const float MinimumDot = FMath::Cos(FMath::DegreesToRadians(FMath::Clamp(DetectionHalfAngleDegrees, 1.0f, 89.0f)));
-	return FVector::DotProduct(ResolveSensorForward(), ToTarget / Distance) >= MinimumDot;
-}
-
-bool AHeistSecurityCameraActor::HasDetectionLineOfSight(const AHeistPlayerCharacter* PlayerCharacter) const
-{
-	if (!IsValid(GetWorld()) || !IsValid(PlayerCharacter))
-	{
-		return false;
-	}
-
-	FVector TargetLocation;
-	FRotator TargetRotation;
-	PlayerCharacter->GetActorEyesViewPoint(TargetLocation, TargetRotation);
-	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(HeistSecurityCameraLOS), false);
-	QueryParams.AddIgnoredActor(this);
-	QueryParams.AddIgnoredActor(PlayerCharacter);
-	return !GetWorld()->LineTraceTestByChannel(SensorOriginComponent->GetComponentLocation(), TargetLocation, ECC_Visibility, QueryParams);
+	return true;
 }
 
 FVector AHeistSecurityCameraActor::ResolveSensorForward() const
@@ -262,7 +351,7 @@ float AHeistSecurityCameraActor::ResolveEvaluationIntervalSeconds() const
 float AHeistSecurityCameraActor::ResolveDetectionBuildUpSeconds() const
 {
 	const AHeistGameMode* HeistGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<AHeistGameMode>() : nullptr;
-	return IsValid(HeistGameMode) ? HeistGameMode->GetSecurityCameraDetectionBuildUpSeconds() : 1.35f;
+	return IsValid(HeistGameMode) ? HeistGameMode->GetSecurityCameraDetectionBuildUpSeconds() : 2.025f;
 }
 
 float AHeistSecurityCameraActor::ResolveDetectionCooldownSeconds() const
@@ -319,6 +408,21 @@ void AHeistSecurityCameraActor::RefreshReplicatedDetectionProgress()
 
 void AHeistSecurityCameraActor::ApplyPresentation()
 {
+	SetActorTickEnabled(bCameraEnabled && GetNetMode() != NM_DedicatedServer);
+	SightLightComponent->SetVisibility(bCameraEnabled && GetNetMode() != NM_DedicatedServer);
+	if (!bCameraEnabled)
+	{
+		ConfirmedLightHoldUntil = 0.0f;
+		DisplayedLightRisk = 0.0f;
+		SightLightComponent->SetLightColor(IdleLightColor);
+	}
+	else if (AppliedDetectionRevision != INDEX_NONE && ConfirmedDetectionRevision > AppliedDetectionRevision)
+	{
+		// Confirmation resets build-up, so preserve a short red signal independently of it.
+		ConfirmedLightHoldUntil = GetWorld()->GetTimeSeconds() + 0.75f;
+		DisplayedLightRisk = 1.0f;
+		SightLightComponent->SetLightColor(AlertLightColor);
+	}
 	if (bAppliedCameraEnabled == bCameraEnabled && bAppliedTrackingAnyTarget == bTrackingAnyTarget &&
 		AppliedDetectionProgressByte == DetectionProgressByte && AppliedDetectionRevision == ConfirmedDetectionRevision &&
 		AppliedDetectedPlayerState.Get() == LastDetectedPlayerState.Get() && FMath::IsNearlyEqual(AppliedSweepEpochServerTime, SweepEpochServerTime))
@@ -356,28 +460,19 @@ void AHeistSecurityCameraActor::HandleMatchPhaseChanged(const EHeistMatchPhase, 
 	}
 }
 
-void AHeistSecurityCameraActor::HandleDetectionVolumeBeginOverlap(UPrimitiveComponent*, AActor* OtherActor, UPrimitiveComponent*, int32, bool, const FHitResult&)
+void AHeistSecurityCameraActor::HandleTargetPerceptionUpdated(AActor* TargetActor, FAIStimulus Stimulus)
 {
-	if (HasAuthority())
+	if (!HasAuthority() || !bCameraEnabled || Stimulus.Type != UAISense::GetSenseID<UAISense_Sight>()) return;
+	if (AHeistPlayerCharacter* Player = Cast<AHeistPlayerCharacter>(TargetActor))
 	{
-		if (AHeistPlayerCharacter* PlayerCharacter = Cast<AHeistPlayerCharacter>(OtherActor))
+		if (!Stimulus.WasSuccessfullySensed())
 		{
-			OverlappingPlayers.Add(PlayerCharacter);
-			DetectionBuildUpByPlayer.FindOrAdd(PlayerCharacter) = 0.0f;
-		}
-	}
-}
-
-void AHeistSecurityCameraActor::HandleDetectionVolumeEndOverlap(UPrimitiveComponent*, AActor* OtherActor, UPrimitiveComponent*, int32)
-{
-	if (HasAuthority())
-	{
-		if (AHeistPlayerCharacter* PlayerCharacter = Cast<AHeistPlayerCharacter>(OtherActor))
-		{
-			OverlappingPlayers.Remove(PlayerCharacter);
-			DetectionBuildUpByPlayer.Remove(PlayerCharacter);
+			DetectionBuildUpByPlayer.Remove(Player);
 			RefreshReplicatedDetectionProgress();
 		}
+		TArray<AActor*> VisibleActors;
+		CameraPerceptionComponent->GetCurrentlyPerceivedActors(UAISense_Sight::StaticClass(), VisibleActors);
+		UpdateSweepPauseState(VisibleActors);
 	}
 }
 
@@ -396,4 +491,5 @@ void AHeistSecurityCameraActor::GetLifetimeReplicatedProps(TArray<FLifetimePrope
 	DOREPLIFETIME(AHeistSecurityCameraActor, ConfirmedDetectionRevision);
 	DOREPLIFETIME(AHeistSecurityCameraActor, LastDetectedPlayerState);
 	DOREPLIFETIME(AHeistSecurityCameraActor, SweepEpochServerTime);
+	DOREPLIFETIME(AHeistSecurityCameraActor, SweepPausedServerTime);
 }

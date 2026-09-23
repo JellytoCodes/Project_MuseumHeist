@@ -1390,7 +1390,7 @@ class LevelBuilder:
                 self.updated += 1
             else:
                 actor = self.blueprint(label, "camera", (x, y, z), yaw, "Gameplay/CCTV")
-            safe_set(actor, "detection_range", 1800.0)
+            safe_set(actor, "detection_range", 1200.0)
             safe_set(actor, "detection_half_angle_degrees", 35.0)
             safe_set(actor, "sweep_half_angle_degrees", 35.0)
             safe_set(actor, "sweep_period_seconds", 6.0)

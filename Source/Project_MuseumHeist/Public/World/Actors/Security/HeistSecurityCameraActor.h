@@ -8,13 +8,14 @@
 class AHeistGameState;
 class AHeistPlayerCharacter;
 class AHeistPlayerState;
-class UBoxComponent;
+class UAIPerceptionComponent;
+class UAISenseConfig_Sight;
 class UNiagaraSystem;
 class USceneComponent;
 class USoundBase;
+class USpotLightComponent;
 class UStaticMeshComponent;
-class UPrimitiveComponent;
-struct FHitResult;
+struct FAIStimulus;
 
 enum class EHeistMatchPhase : uint8;
 
@@ -27,6 +28,9 @@ class PROJECT_MUSEUMHEIST_API AHeistSecurityCameraActor : public AActor
 
   public:
 	AHeistSecurityCameraActor();
+	virtual void GetActorEyesViewPoint(FVector& OutLocation, FRotator& OutRotation) const override;
+	virtual void Tick(float DeltaSeconds) override;
+	virtual void OnConstruction(const FTransform& Transform) override;
 
 #pragma endregion
 
@@ -56,12 +60,17 @@ class PROJECT_MUSEUMHEIST_API AHeistSecurityCameraActor : public AActor
 	UFUNCTION(BlueprintPure, Category = "Heist|Security|Camera")
 	float GetResolvedSweepYawDegrees() const;
 
+	UFUNCTION(BlueprintPure, Category = "Heist|Security|Camera")
+	bool IsSweepPaused() const;
+
   private:
+	friend class FHeistCCTVPerceptionTest;
 	void StartAuthorityEvaluation();
 	void StopAuthorityEvaluation(bool bResetReplicatedState);
 	void EvaluateDetectionCandidates();
+	void UpdateSweepPauseState(const TArray<AActor*>& VisibleActors);
+	void ResumeSweepAfterSightLoss();
 	bool IsEligibleTarget(const AHeistPlayerCharacter* PlayerCharacter) const;
-	bool HasDetectionLineOfSight(const AHeistPlayerCharacter* PlayerCharacter) const;
 	FVector ResolveSensorForward() const;
 	float ResolveServerWorldTimeSeconds() const;
 	float ResolveEvaluationIntervalSeconds() const;
@@ -70,14 +79,11 @@ class PROJECT_MUSEUMHEIST_API AHeistSecurityCameraActor : public AActor
 	void CommitDetection(AHeistPlayerCharacter* PlayerCharacter);
 	void RefreshReplicatedDetectionProgress();
 	void ApplyPresentation();
+	void ConfigureSightLight();
 	void HandleMatchPhaseChanged(EHeistMatchPhase PreviousMatchPhase, EHeistMatchPhase NewMatchPhase);
 
 	UFUNCTION()
-	void HandleDetectionVolumeBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32 OtherBodyIndex,
-									   bool bFromSweep, const FHitResult& SweepResult);
-
-	UFUNCTION()
-	void HandleDetectionVolumeEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, int32 OtherBodyIndex);
+	void HandleTargetPerceptionUpdated(AActor* TargetActor, FAIStimulus Stimulus);
 
 	UFUNCTION()
 	void OnRep_SecurityCameraState();
@@ -99,19 +105,25 @@ class PROJECT_MUSEUMHEIST_API AHeistSecurityCameraActor : public AActor
 	TObjectPtr<USceneComponent> SensorOriginComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Security|Camera")
-	TObjectPtr<UBoxComponent> DetectionVolumeComponent;
+	TObjectPtr<UAIPerceptionComponent> CameraPerceptionComponent;
+
+	UPROPERTY()
+	TObjectPtr<UAISenseConfig_Sight> CameraSightConfig;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Security|Camera")
 	TObjectPtr<UStaticMeshComponent> VisualMeshComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Security|Camera")
+	TObjectPtr<USpotLightComponent> SightLightComponent;
 
 #pragma endregion
 
 #pragma region Configuration
 
   protected:
-	/** Broad-phase overlap volume remains map-authored; the server still validates range, angle, and LOS. */
+	/** Map-authored range/angle configure server Sight; no collision volume bounds the cone. */
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Heist|Security|Camera|Coverage", meta = (ClampMin = "100.0", Units = "cm"))
-	float DetectionRange = 1800.0f;
+	float DetectionRange = 1200.0f;
 
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Heist|Security|Camera|Coverage", meta = (ClampMin = "1.0", ClampMax = "89.0", Units = "deg"))
 	float DetectionHalfAngleDegrees = 35.0f;
@@ -121,6 +133,12 @@ class PROJECT_MUSEUMHEIST_API AHeistSecurityCameraActor : public AActor
 
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Heist|Security|Camera|Sweep", meta = (ClampMin = "0.1", Units = "s"))
 	float SweepPeriodSeconds = 6.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Security|Camera|Presentation")
+	FLinearColor IdleLightColor = FLinearColor::White;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Security|Camera|Presentation")
+	FLinearColor AlertLightColor = FLinearColor(1.0f, 0.02f, 0.01f);
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Security|Camera|Assets")
 	TObjectPtr<USoundBase> TrackingLoopSound;
@@ -154,6 +172,10 @@ class PROJECT_MUSEUMHEIST_API AHeistSecurityCameraActor : public AActor
 	UPROPERTY(ReplicatedUsing = OnRep_SecurityCameraState, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|Security|Camera", meta = (AllowPrivateAccess = "true"))
 	float SweepEpochServerTime = 0.0f;
 
+	/** Negative while sweeping; otherwise freezes the shared sweep clock at first sight. */
+	UPROPERTY(ReplicatedUsing = OnRep_SecurityCameraState)
+	float SweepPausedServerTime = -1.0f;
+
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 #pragma endregion
@@ -161,10 +183,13 @@ class PROJECT_MUSEUMHEIST_API AHeistSecurityCameraActor : public AActor
 #pragma region Runtime
 
   private:
-	TSet<TWeakObjectPtr<AHeistPlayerCharacter>> OverlappingPlayers;
 	TMap<TWeakObjectPtr<AHeistPlayerCharacter>, float> DetectionBuildUpByPlayer;
+	FQuat InitialVisualRelativeRotation = FQuat::Identity;
+	float DisplayedLightRisk = 0.0f;
+	float ConfirmedLightHoldUntil = 0.0f;
 	TWeakObjectPtr<AHeistGameState> BoundGameState;
 	FTimerHandle DetectionEvaluationTimerHandle;
+	FTimerHandle SweepResumeTimerHandle;
 	float DetectionCooldownEndServerTime = 0.0f;
 	bool bAppliedCameraEnabled = false;
 	bool bAppliedTrackingAnyTarget = false;

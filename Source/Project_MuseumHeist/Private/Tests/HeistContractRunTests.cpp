@@ -333,6 +333,7 @@ FVector ResolveReleaseCameraDetectionLocation(const AHeistSecurityCameraActor* C
 	{
 		return FVector::ZeroVector;
 	}
+	// First sight now pauses the sweep, allowing full buildup at its center.
 	FVector DetectionLocation = Camera->GetActorLocation() + Camera->GetActorForwardVector() * 600.0f;
 	DetectionLocation.Z = 88.0f;
 	return DetectionLocation;
@@ -2610,10 +2611,26 @@ void AppendGameplayRunCommands(FAutomationTestBase* Test, const TSharedRef<FHeis
 		{
 			return false;
 		}
+		for (UWorld* World : GetContractRunPIEWorlds())
+		{
+			const AHeistSecurityCameraActor* Peer = FindActorOfTypeAtLocation<AHeistSecurityCameraActor>(World, State->SelectedSecurityCameraLocation);
+			if (!IsValid(Peer) || !Peer->IsSweepPaused() ||
+				!FMath::IsNearlyEqual(Peer->GetResolvedSweepYawDegrees(), Camera->GetResolvedSweepYawDegrees(), .1f)) return false;
+		}
 		FVector SafeLocation = Camera->GetActorLocation() - Camera->GetActorForwardVector() * 800.0f;
 		SafeLocation.Z = 88.0f;
 		return TeleportServerPlayerToLocation(2, SafeLocation);
 	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, FString::Printf(TEXT("run %d CCTV sweep resumes on server and client"), RunIndex), [State, RunIndex]()
+	{
+		if (State->PlayerCount != 2 || RunIndex != 1) return true;
+		for (UWorld* World : GetContractRunPIEWorlds())
+		{
+			const AHeistSecurityCameraActor* Camera = FindActorOfTypeAtLocation<AHeistSecurityCameraActor>(World, State->SelectedSecurityCameraLocation);
+			if (!IsValid(Camera) || Camera->IsSweepPaused()) return false;
+		}
+		return true;
+	}, 5.0));
 	Test->AddCommand(new FWaitLatentCommand(0.75f));
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, FString::Printf(TEXT("run %d placed CCTV incident remains one-shot"), RunIndex), [State, RunIndex]()
 	{

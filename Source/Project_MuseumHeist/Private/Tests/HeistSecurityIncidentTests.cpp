@@ -69,7 +69,7 @@ bool FHeistSecurityIncidentPolicyTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("Forgery timeout keeps its independent positive nearby-guard radius"), BalanceDefaults->ForgeryTimeoutInvestigationRadius > 0.0f);
 		TestTrue(TEXT("CCTV evaluation interval is positive"), BalanceDefaults->SecurityCameraEvaluationIntervalSeconds > 0.0f);
 		TestTrue(TEXT("CCTV build-up stays inside the Rev14 range"),
-			FMath::IsWithinInclusive(BalanceDefaults->SecurityCameraDetectionBuildUpSeconds, 1.2f, 1.5f));
+			FMath::IsWithinInclusive(BalanceDefaults->SecurityCameraDetectionBuildUpSeconds, 1.8f, 2.25f));
 		TestTrue(TEXT("Laser hold duration stays inside the Rev14 range"),
 			FMath::IsWithinInclusive(BalanceDefaults->SecurityLaserHoldDurationSeconds, 2.0f, 5.0f));
 		TestTrue(TEXT("Laser rearm grace is non-negative"), BalanceDefaults->SecurityLaserRearmGraceSeconds >= 0.0f);
