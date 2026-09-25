@@ -54,6 +54,13 @@ ProjectResources/SourceArt/**/*.tga
 !ProjectResources/SourceArt/UI/Title/*.png
 !ProjectResources/SourceArt/UI/Catalogue/*.png
 
+# Procedurally generated audio sources (recreate before reimport).
+# Keep generators, source metadata, and imported Content assets tracked.
+# W7 generator: ProjectResources/SourceArt/W7/GenerateW7PresentationAssets.ps1
+# Detention generator: ProjectResources/Scripts/Art/generate_detention_audio.py
+/ProjectResources/SourceArt/W7/Generated/*.wav
+/ProjectResources/SourceArt/Audio/Detention/*.wav
+
 # Locally acquired third-party environment packs
 /Content/Assets/MapAssets/
 
