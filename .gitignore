@@ -105,3 +105,56 @@ Plugins/**/Binaries/*
 Plugins/**/Intermediate/*
 
 # End of https://www.toptal.com/developers/gitignore/api/unrealengine
+
+### Project_MuseumHeist local/generated files ###
+# UBT-generated solutions live at the project root. Keep tool project files trackable.
+/*.slnx
+
+# Per-user IDE state and local indexing caches (keep shared editor configuration).
+*.user
+*.DotSettings.user
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/shelf/
+/.vscode/ipch/
+/.cache/clangd/
+/compile_commands.json
+
+# Compiler/linker debug and incremental-build outputs.
+*.pdb
+*.ipdb
+*.iobj
+*.ilk
+
+# Python caches and local environments used by ProjectResources scripts/tools.
+# Do not ignore *.pyd: a tool may require a prebuilt Python extension.
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Generated package/depot roots from the repository's packaging scripts.
+# These rules must stay after the Build icon/mobile-image exceptions above.
+/Build/Packages/
+/Build/SteamCandidate/
+
+# Local agent review/render outputs; retain the shared AGENTS.md instructions.
+/.agents/
+/.codex-doc-review/
+/.codex-render-*/
+
+# OS metadata and temporary editor/Office files.
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+*.stackdump
+*.tmp
+*.temp
+*.swp
+*.swo
+~$*.docx
