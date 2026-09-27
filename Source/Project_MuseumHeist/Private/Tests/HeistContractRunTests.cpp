@@ -709,7 +709,7 @@ bool TeleportServerPlayerIntoInteraction(AHeistPlayerCharacter* Character, AActo
 		{
 			if (Component->GetFName() == FName(TEXT("OriginalVisualComponent")))
 			{
-				Offsets.Add(Component->GetUpVector().GetSafeNormal2D() * FMath::Min(120.0f, MaxOffset * 0.6f));
+				Offsets.Add((Center - Component->GetComponentLocation()).GetSafeNormal2D() * FMath::Min(120.0f, MaxOffset * 0.6f));
 				break;
 			}
 		}

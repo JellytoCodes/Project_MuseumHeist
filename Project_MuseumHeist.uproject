@@ -95,6 +95,10 @@
 		{
 			"Name": "SocketSubsystemSteamIP",
 			"Enabled": true
+		},
+		{
+			"Name": "PCG",
+			"Enabled": true
 		}
 	]
 }

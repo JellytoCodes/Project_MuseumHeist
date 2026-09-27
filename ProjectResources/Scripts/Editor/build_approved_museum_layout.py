@@ -1,3 +1,11 @@
+# Retired: canonical maps now contain user-authored StaticMesh environments.
+# Fail before imports, asset writes, review copies, or actor mutation.
+raise RuntimeError(
+    "Retired procedural map authoring: preserve the current M01/M02/M03 maps. "
+    "Use audit_authored_museum_maps.py for read-only inspection. "
+    "Do not rebuild from MuseumLevelLayout.json or promote LayoutReview copies."
+)
+
 """Author the approved measured floor plans through Unreal Editor only.
 
 Build review copies first. Promotion is an explicit second Editor operation after

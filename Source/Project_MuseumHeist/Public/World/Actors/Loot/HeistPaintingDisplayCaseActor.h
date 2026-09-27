@@ -63,6 +63,7 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 	GENERATED_BODY()
 
   public:
+	friend class FHeistCanvasMaterialTransitionTest;
 	AHeistPaintingDisplayCaseActor(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
   protected:
@@ -131,8 +132,6 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|DisplayCase|Visual", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UStaticMeshComponent> OriginalVisualComponent;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|DisplayCase|Visual", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UStaticMeshComponent> ReplicaVisualComponent;
 
 	static const FName OriginalVisualComponentTag;
 	static const FName ReplicaVisualComponentTag;
@@ -187,7 +186,7 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 	UPROPERTY(ReplicatedUsing = OnRep_OriginalVisualRevision, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Original|Visual", meta = (AllowPrivateAccess = "true"))
 	int32 OriginalVisualRevision = 0;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Original|Visual", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|DisplayCase|Original|Visual", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UMaterialInterface> OriginalPaintingMaterial;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Original|Visual", meta = (AllowPrivateAccess = "true"))
@@ -304,7 +303,7 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 	UPROPERTY(ReplicatedUsing = OnRep_ReplicaPaintingData, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Replica|Painting", meta = (AllowPrivateAccess = "true"))
 	FHeistReplicaPaintingData ReplicaPaintingData;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Replica|Painting", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|DisplayCase|Replica|Painting", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UMaterialInterface> ReplicaPaintingMaterial;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Replica|Painting", meta = (AllowPrivateAccess = "true"))
@@ -343,7 +342,6 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> ReplicaPaintingDynamicMaterial;
 
-	FTransform ReplicaBaselineRelativeTransform = FTransform::Identity;
 	int32 AppliedReplicaVisualTier = INDEX_NONE;
 	int32 AppliedReplicaPaintingRevision = 0;
 	bool bReplicaVisualBaselineCaptured = false;

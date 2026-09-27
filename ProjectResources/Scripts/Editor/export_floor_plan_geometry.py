@@ -12,6 +12,14 @@ from pathlib import Path
 import unreal
 
 
+raise RuntimeError(
+    "Floor-plan exporter requires adaptation to the user-authored StaticMesh maps. "
+    "Its LDV2 label/folder filters omit current architecture; do not regenerate "
+    "FloorPlanGeometry.json or textures from this obsolete extractor. "
+    "Use audit_authored_museum_maps.py to inspect the saved maps."
+)
+
+
 PROJECT = Path(unreal.Paths.project_dir()).resolve()
 SOURCE_ROWS = PROJECT / "ProjectResources/DataTableImports/DT_MapPresentation.json"
 OUTPUT = PROJECT / "ProjectResources/SourceArt/W7/FloorPlanGeometry.json"

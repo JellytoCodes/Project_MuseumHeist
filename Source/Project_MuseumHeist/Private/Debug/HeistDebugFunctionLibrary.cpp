@@ -1159,7 +1159,7 @@ void UHeistDebugFunctionLibrary::DebugDisplayCaseDump(APlayerController* PlayerC
 							DisplayCase->HasAuthority() ? TEXT("true") : TEXT("false"), DisplayCase->GetIsReplicated() ? TEXT("true") : TEXT("false")),
 			EHeistDebugLevel::Info, true, 10.0f);
 
-	const bool bHasRequiredVisualComponents = OriginalComponentCount > 0 && ReplicaComponentCount > 0;
+	const bool bHasRequiredVisualComponents = OriginalComponentCount == 1 && ReplicaComponentCount == 0;
 	Message(PlayerController,
 			FString::Printf(
 				TEXT("Display case placeholder visual: Case=%s State=%s OriginalVisible=%s ReplicaVisible=%s OriginalComponents=%d ReplicaComponents=%d ComponentsMatch=%s Authority=%s Result=%s"),

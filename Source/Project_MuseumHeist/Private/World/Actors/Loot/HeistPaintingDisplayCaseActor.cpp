@@ -117,14 +117,6 @@ AHeistPaintingDisplayCaseActor::AHeistPaintingDisplayCaseActor(const FObjectInit
 	OriginalVisualComponent->SetGenerateOverlapEvents(false);
 	OriginalVisualComponent->SetCanEverAffectNavigation(false);
 
-	ReplicaVisualComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ReplicaVisualComponent"));
-	ReplicaVisualComponent->SetupAttachment(VisualMeshComponent);
-	ReplicaVisualComponent->ComponentTags.Add(ReplicaVisualComponentTag);
-	ReplicaVisualComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	ReplicaVisualComponent->SetGenerateOverlapEvents(false);
-	ReplicaVisualComponent->SetCanEverAffectNavigation(false);
-	ReplicaVisualComponent->SetVisibility(false);
-	ReplicaVisualComponent->SetHiddenInGame(true);
 }
 
 void AHeistPaintingDisplayCaseActor::BeginPlay()
@@ -261,28 +253,13 @@ void AHeistPaintingDisplayCaseActor::GetPlaceholderVisualDebugState(bool& OutExp
 	OutReplicaComponentCount = 0;
 	OutComponentsMatchExpectedState = true;
 
-	TInlineComponentArray<UPrimitiveComponent*> PrimitiveComponents(this);
-	for (const UPrimitiveComponent* PrimitiveComponent : PrimitiveComponents)
-	{
-		if (!IsValid(PrimitiveComponent))
-		{
-			continue;
-		}
+	const bool bCanvasVisible = OutExpectedOriginalVisible || OutExpectedReplicaVisible;
+	OutOriginalComponentCount = IsValid(OriginalVisualComponent) ? 1 : 0;
+	// One canvas serves both logical states; there is no separate replica mesh.
+	OutComponentsMatchExpectedState = IsValid(OriginalVisualComponent) &&
+		OriginalVisualComponent->IsVisible() == bCanvasVisible &&
+		(!OriginalVisualComponent->bHiddenInGame) == bCanvasVisible;
 
-		if (PrimitiveComponent->ComponentHasTag(OriginalVisualComponentTag))
-		{
-			++OutOriginalComponentCount;
-			OutComponentsMatchExpectedState &= PrimitiveComponent->IsVisible() == OutExpectedOriginalVisible && (!PrimitiveComponent->bHiddenInGame) == OutExpectedOriginalVisible;
-		}
-
-		if (PrimitiveComponent->ComponentHasTag(ReplicaVisualComponentTag))
-		{
-			++OutReplicaComponentCount;
-			OutComponentsMatchExpectedState &= PrimitiveComponent->IsVisible() == OutExpectedReplicaVisible && (!PrimitiveComponent->bHiddenInGame) == OutExpectedReplicaVisible;
-		}
-	}
-
-	OutComponentsMatchExpectedState &= OutOriginalComponentCount == 1 && OutReplicaComponentCount == 1;
 }
 
 bool AHeistPaintingDisplayCaseActor::CanTransitionToDisplayCaseState(const EHeistDisplayCaseState NewState) const
@@ -417,38 +394,24 @@ void AHeistPaintingDisplayCaseActor::RefreshPlaceholderVisualState()
 {
 	const bool bOriginalVisible = ShouldDisplayOriginalPlaceholder();
 	const bool bReplicaVisible = ShouldDisplayReplicaPlaceholder();
-	int32 OriginalComponentCount = 0;
-	int32 ReplicaComponentCount = 0;
-
-	TInlineComponentArray<UPrimitiveComponent*> PrimitiveComponents(this);
-	for (UPrimitiveComponent* PrimitiveComponent : PrimitiveComponents)
+	if (IsValid(OriginalVisualComponent))
 	{
-		if (!IsValid(PrimitiveComponent))
-		{
-			continue;
-		}
-
-		if (PrimitiveComponent->ComponentHasTag(OriginalVisualComponentTag))
-		{
-			++OriginalComponentCount;
-			PrimitiveComponent->SetVisibility(bOriginalVisible, true);
-			PrimitiveComponent->SetHiddenInGame(!bOriginalVisible, true);
-		}
-
-		if (PrimitiveComponent->ComponentHasTag(ReplicaVisualComponentTag))
-		{
-			++ReplicaComponentCount;
-			PrimitiveComponent->SetVisibility(bReplicaVisible, true);
-			PrimitiveComponent->SetHiddenInGame(!bReplicaVisible, true);
-		}
+		const bool bCanvasVisible = bOriginalVisible || bReplicaVisible;
+		OriginalVisualComponent->SetVisibility(bCanvasVisible, true);
+		OriginalVisualComponent->SetHiddenInGame(!bCanvasVisible, true);
+	}
+	BP_ApplyPlaceholderVisualState(DisplayCaseState, bOriginalVisible, bReplicaVisible);
+	// State and image payload can replicate in either order. Reapply the selected
+	// material even when its texture revision has already been cached.
+	if (bReplicaVisible)
+	{
+		RefreshReplicaWorldVisual();
+	}
+	else if (bOriginalVisible)
+	{
+		RefreshOriginalPaintingVisual();
 	}
 
-	BP_ApplyPlaceholderVisualState(DisplayCaseState, bOriginalVisible, bReplicaVisible);
-
-	UE_LOG(LogHeistNetwork, Log,
-		   TEXT("Display case placeholder visual applied: Case=%s State=%s OriginalVisible=%s ReplicaVisible=%s OriginalComponents=%d ReplicaComponents=%d Authority=%s Result=%s"), *GetNameSafe(this),
-		   *UEnum::GetValueAsString(DisplayCaseState), bOriginalVisible ? TEXT("true") : TEXT("false"), bReplicaVisible ? TEXT("true") : TEXT("false"), OriginalComponentCount, ReplicaComponentCount,
-		   HasAuthority() ? TEXT("true") : TEXT("false"), OriginalComponentCount == 1 && ReplicaComponentCount == 1 ? TEXT("PASS") : TEXT("INVALID_COMPONENT_COUNT"));
 }
 
 #pragma endregion
@@ -589,6 +552,10 @@ void AHeistPaintingDisplayCaseActor::RefreshOriginalPaintingVisual()
 	}
 	if (AppliedOriginalVisualRevision == OriginalVisualRevision && IsValid(OriginalPaintingDynamicMaterial) && bOriginalPaintingTextureParameterApplied)
 	{
+		if (ShouldDisplayOriginalPlaceholder())
+		{
+			OriginalVisualComponent->SetMaterial(0, OriginalPaintingDynamicMaterial);
+		}
 		return;
 	}
 	bOriginalPaintingTextureParameterApplied = false;
@@ -608,10 +575,15 @@ void AHeistPaintingDisplayCaseActor::RefreshOriginalPaintingVisual()
 	}
 
 	OriginalPaintingDynamicMaterial->SetTextureParameterValue(OriginalPaintingTextureParameter, ReferenceTexture);
+	OriginalPaintingDynamicMaterial->SetScalarParameterValue(TEXT("PaintingAspect"),
+		static_cast<float>(ReferenceTexture->GetSizeX()) / FMath::Max(ReferenceTexture->GetSizeY(), 1));
 	bOriginalPaintingTextureParameterApplied = OriginalPaintingDynamicMaterial->K2_GetTextureParameterValue(OriginalPaintingTextureParameter) == ReferenceTexture;
 	if (bOriginalPaintingTextureParameterApplied)
 	{
-		OriginalVisualComponent->SetMaterial(0, OriginalPaintingDynamicMaterial);
+		if (ShouldDisplayOriginalPlaceholder())
+		{
+			OriginalVisualComponent->SetMaterial(0, OriginalPaintingDynamicMaterial);
+		}
 		AppliedOriginalVisualRevision = OriginalVisualRevision;
 	}
 	BP_ApplyOriginalPaintingVisual(OriginalVisualTemplateId, ReferenceTexture, bOriginalPaintingTextureParameterApplied);
@@ -622,7 +594,7 @@ void AHeistPaintingDisplayCaseActor::ResetOriginalPaintingVisual()
 	bOriginalPaintingTextureParameterApplied = false;
 	AppliedOriginalVisualRevision = 0;
 	OriginalPaintingDynamicMaterial = nullptr;
-	if (IsValid(OriginalVisualComponent) && IsValid(OriginalPaintingBaselineMaterial))
+	if (ShouldDisplayOriginalPlaceholder() && IsValid(OriginalVisualComponent) && IsValid(OriginalPaintingBaselineMaterial))
 	{
 		OriginalVisualComponent->SetMaterial(0, OriginalPaintingBaselineMaterial.Get());
 	}
@@ -707,7 +679,7 @@ void AHeistPaintingDisplayCaseActor::GetReplicaWorldVisualDebugState(bool& OutRe
 																	 bool& OutUsingTierMaterial, bool& OutUsingTransformFallback, bool& OutCustomPrimitiveDataApplied, bool& OutContractPassed) const
 {
 	OutReplicaExpectedVisible = ShouldDisplayReplicaPlaceholder();
-	OutHasReplicaMesh = IsValid(ReplicaVisualComponent) && IsValid(ReplicaVisualComponent->GetStaticMesh());
+	OutHasReplicaMesh = IsValid(OriginalVisualComponent) && IsValid(OriginalVisualComponent->GetStaticMesh());
 	OutExpectedTier = GetReplicaVisualTier();
 	OutAppliedTier = AppliedReplicaVisualTier;
 	OutTierName = ResolveReplicaVisualTierName(OutExpectedTier);
@@ -719,7 +691,8 @@ void AHeistPaintingDisplayCaseActor::GetReplicaWorldVisualDebugState(bool& OutRe
 		(CommittedForgeryResult.bReplicaPlaced || DisplayCaseState == EHeistDisplayCaseState::ReplicaReady);
 	const bool bTierValid = FMath::IsWithinInclusive(OutExpectedTier, ReplicaTierPoor, ReplicaTierExcellent) && OutAppliedTier == OutExpectedTier && !OutTierName.IsNone();
 	const bool bVisibleStateMatches =
-		IsValid(ReplicaVisualComponent) && ReplicaVisualComponent->IsVisible() == OutReplicaExpectedVisible && (!ReplicaVisualComponent->bHiddenInGame) == OutReplicaExpectedVisible;
+		IsValid(OriginalVisualComponent) && OriginalVisualComponent->IsVisible() == (OutReplicaExpectedVisible || ShouldDisplayOriginalPlaceholder()) &&
+		(!OriginalVisualComponent->bHiddenInGame) == (OutReplicaExpectedVisible || ShouldDisplayOriginalPlaceholder());
 	const bool bPresentationPathValid = IsValid(ReplicaPaintingMaterial) ? bReplicaPaintingTextureParameterApplied : OutUsingTierMaterial || OutUsingTransformFallback;
 	const bool bStateVisibilityContract = HasReplicaPreview() ? !OutReplicaExpectedVisible : OutReplicaExpectedVisible;
 
@@ -767,19 +740,18 @@ void AHeistPaintingDisplayCaseActor::GetReplicaPaintingDebugState(int32& OutReso
 
 void AHeistPaintingDisplayCaseActor::CaptureReplicaVisualBaseline()
 {
-	if (bReplicaVisualBaselineCaptured || !IsValid(ReplicaVisualComponent))
+	if (bReplicaVisualBaselineCaptured || !IsValid(OriginalVisualComponent))
 	{
 		return;
 	}
 
-	ReplicaBaselineRelativeTransform = ReplicaVisualComponent->GetRelativeTransform();
-	ReplicaBaselineMaterial = ReplicaVisualComponent->GetMaterial(0);
+	ReplicaBaselineMaterial = OriginalVisualComponent->GetMaterial(0);
 	bReplicaVisualBaselineCaptured = true;
 }
 
 void AHeistPaintingDisplayCaseActor::RefreshReplicaWorldVisual()
 {
-	if (!IsValid(ReplicaVisualComponent))
+	if (!IsValid(OriginalVisualComponent))
 	{
 		return;
 	}
@@ -794,10 +766,9 @@ void AHeistPaintingDisplayCaseActor::RefreshReplicaWorldVisual()
 	if (!bHasCommittedForgeryResult)
 	{
 		ResetReplicaPaintingResources();
-		if (bReplicaVisualBaselineCaptured)
+		if (ShouldDisplayOriginalPlaceholder())
 		{
-			ReplicaVisualComponent->SetRelativeTransform(ReplicaBaselineRelativeTransform);
-			ReplicaVisualComponent->SetMaterial(0, ReplicaBaselineMaterial.Get());
+			RefreshOriginalPaintingVisual();
 		}
 		return;
 	}
@@ -806,60 +777,29 @@ void AHeistPaintingDisplayCaseActor::RefreshReplicaWorldVisual()
 	UMaterialInterface* TierMaterial = ResolveReplicaTierMaterial(AppliedReplicaVisualTier);
 	const bool bHasPaintingMaterial = IsValid(ReplicaPaintingMaterial);
 	bUsingReplicaTierMaterial = !bHasPaintingMaterial && IsValid(TierMaterial);
-	bUsingReplicaTransformFallback = !bHasPaintingMaterial && !bUsingReplicaTierMaterial;
-
-	if (bHasPaintingMaterial)
+	// Canvas geometry is authored; quality never tilts or shrinks the mesh.
+	if (ShouldDisplayReplicaPlaceholder())
 	{
-		ReplicaVisualComponent->SetMaterial(0, ReplicaPaintingMaterial.Get());
-		ReplicaVisualComponent->SetRelativeTransform(ReplicaBaselineRelativeTransform);
-	}
-	else if (bUsingReplicaTierMaterial)
-	{
-		ReplicaVisualComponent->SetMaterial(0, TierMaterial);
-		ReplicaVisualComponent->SetRelativeTransform(ReplicaBaselineRelativeTransform);
-	}
-	else
-	{
-		ReplicaVisualComponent->SetMaterial(0, ReplicaBaselineMaterial.Get());
-
-		float RollOffset = 0.0f;
-		float UniformScaleMultiplier = 1.0f;
-		switch (AppliedReplicaVisualTier)
+		if (bHasPaintingMaterial)
 		{
-		case ReplicaTierPoor:
-			RollOffset = -12.0f;
-			UniformScaleMultiplier = 0.88f;
-			break;
-		case ReplicaTierFair:
-			RollOffset = 8.0f;
-			UniformScaleMultiplier = 0.94f;
-			break;
-		case ReplicaTierGood:
-			RollOffset = -5.0f;
-			UniformScaleMultiplier = 0.97f;
-			break;
-		default:
-			break;
+			OriginalVisualComponent->SetMaterial(0, ReplicaPaintingMaterial.Get());
 		}
-
-		FTransform TierTransform = ReplicaBaselineRelativeTransform;
-		FRotator TierRotation = TierTransform.Rotator();
-		TierRotation.Roll += RollOffset;
-		TierTransform.SetRotation(TierRotation.Quaternion());
-		TierTransform.SetScale3D(ReplicaBaselineRelativeTransform.GetScale3D() * UniformScaleMultiplier);
-		ReplicaVisualComponent->SetRelativeTransform(TierTransform);
+		else if (bUsingReplicaTierMaterial)
+		{
+			OriginalVisualComponent->SetMaterial(0, TierMaterial);
+		}
 	}
 
-	ReplicaVisualComponent->SetCustomPrimitiveDataFloat(ReplicaScorePrimitiveDataIndex, FMath::Clamp(CommittedForgeryResult.SimilarityScore / 100.0f, 0.0f, 1.0f));
-	ReplicaVisualComponent->SetCustomPrimitiveDataFloat(ReplicaCoveragePrimitiveDataIndex, FMath::Clamp(CommittedForgeryResult.CoverageScore / 100.0f, 0.0f, 1.0f));
-	ReplicaVisualComponent->SetCustomPrimitiveDataFloat(ReplicaColorAccuracyPrimitiveDataIndex, FMath::Clamp(CommittedForgeryResult.ColorAccuracyScore / 100.0f, 0.0f, 1.0f));
-	ReplicaVisualComponent->SetCustomPrimitiveDataFloat(ReplicaTierPrimitiveDataIndex, static_cast<float>(AppliedReplicaVisualTier));
+	OriginalVisualComponent->SetCustomPrimitiveDataFloat(ReplicaScorePrimitiveDataIndex, FMath::Clamp(CommittedForgeryResult.SimilarityScore / 100.0f, 0.0f, 1.0f));
+	OriginalVisualComponent->SetCustomPrimitiveDataFloat(ReplicaCoveragePrimitiveDataIndex, FMath::Clamp(CommittedForgeryResult.CoverageScore / 100.0f, 0.0f, 1.0f));
+	OriginalVisualComponent->SetCustomPrimitiveDataFloat(ReplicaColorAccuracyPrimitiveDataIndex, FMath::Clamp(CommittedForgeryResult.ColorAccuracyScore / 100.0f, 0.0f, 1.0f));
+	OriginalVisualComponent->SetCustomPrimitiveDataFloat(ReplicaTierPrimitiveDataIndex, static_cast<float>(AppliedReplicaVisualTier));
 	bReplicaVisualCustomPrimitiveDataApplied = true;
 
 	const FName TierName = ResolveReplicaVisualTierName(AppliedReplicaVisualTier);
 	BP_ApplyReplicaWorldVisual(AppliedReplicaVisualTier, TierName, CommittedForgeryResult.SimilarityScore, CommittedForgeryResult.CoverageScore, CommittedForgeryResult.ColorAccuracyScore,
 							   CommittedForgeryResult.TemplateId, bUsingReplicaTierMaterial);
-	// Blueprint may add frame polish or replace a presentation material.
+	// Blueprint may replace a presentation material.
 	// Apply the authoritative painting texture last so the submitted image
 	// remains the final material on the replica surface.
 	RefreshReplicaPaintingTexture();
@@ -876,7 +816,7 @@ void AHeistPaintingDisplayCaseActor::RefreshReplicaWorldVisual()
 
 void AHeistPaintingDisplayCaseActor::RefreshReplicaPaintingTexture()
 {
-	if (!IsValid(ReplicaVisualComponent) || !HasReplicaPaintingData())
+	if (!IsValid(OriginalVisualComponent) || !HasReplicaPaintingData())
 	{
 		return;
 	}
@@ -902,8 +842,12 @@ void AHeistPaintingDisplayCaseActor::RefreshReplicaPaintingTexture()
 	}
 
 	ReplicaPaintingDynamicMaterial->SetTextureParameterValue(ReplicaPaintingTextureParameter, ReplicaPaintingTexture);
+	ReplicaPaintingDynamicMaterial->SetScalarParameterValue(TEXT("PaintingAspect"), 1.0f);
 	bReplicaPaintingTextureParameterApplied = ReplicaPaintingDynamicMaterial->K2_GetTextureParameterValue(ReplicaPaintingTextureParameter) == ReplicaPaintingTexture;
-	ReplicaVisualComponent->SetMaterial(0, ReplicaPaintingDynamicMaterial);
+	if (ShouldDisplayReplicaPlaceholder())
+	{
+		OriginalVisualComponent->SetMaterial(0, ReplicaPaintingDynamicMaterial);
+	}
 	AppliedReplicaPaintingRevision = ReplicaPaintingData.Revision;
 }
 

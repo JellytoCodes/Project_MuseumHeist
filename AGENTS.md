@@ -158,6 +158,19 @@ Blueprint Shell/Presentation 운용은 별도 문서로 분리하지 않고 아�
 - GDD와 TDD의 TOC는 Word Field로 유지하고 구조 변경 후 갱신한다.
 - 깨진 문자, `[확인 필요]`, 임시 Placeholder 문구를 구현 근거로 사용하지 않는다. Git 이력 또는 상위 Source에서 복구한 뒤 반영한다.
 
+## 2C. Authored Map Preservation
+
+- Actor 위치의 소수점은 0 방향으로 절삭한다. 회전과 스케일은 정수화하지 않는다.
+- Painting은 Showcase `SM_Canvas_Painting_01a~07a`를 사용하며 한 표시 메시의 재질로 원본/Replica를 전환한다. 그림 UV 영역만 치환하고 프레임 재질은 보존한다. 월드 그림은 흰 매트 여백을 넣지 않고 중앙 Cover UV로 비율을 유지하며 앞면을 채운다.
+- 에디터용 공용 바닥 PCG를 허용한다. Grid 범위·간격, Seed, Mesh 목록을 조정해 재사용하고 저장된 인스턴스를 사용한다. 방·복도 재생성 및 런타임 랜덤 생성은 금지한다.
+
+- `/Game/Maps/M01_ClassicalPrototype`, `M02_MoonlitPrototype`, `M03_GlasshousePrototype`의 사용자 작성 배치가 공간 구성의 기준이다. 과거 `Review/*_LayoutReview` 사본이나 `MuseumLevelLayout.json`으로 본 맵을 재생성·덮어쓰지 않는다.
+- 벽·문·바닥·몰딩·가구는 맵 컨셉에 맞는 기존 StaticMesh 모듈을 먼저 확인하고 사용한다. 기본 Cube를 늘리거나 여러 조각으로 조립해 완성된 환경 에셋을 대체하지 않는다. 블록아웃 신규 작성은 사용자가 요청한 경우에만 한다.
+- 메시 이름에 Cube가 있다는 이유만으로 외부 팩의 완성 에셋을 제거하지 않는다. Painting 이미지용 Plane, 보이지 않는 Collision, 기능성 Blueprint 내부 부품도 환경 블록아웃과 구분한다.
+- 기존 Actor Label과 LDV2 폴더는 사용자 수정 후에도 남을 수 있다. Label/접두사만으로 구형 배치라 판단하거나 일괄 삭제하지 않는다. 실제 Mesh, Transform, 기능 참조와 사용자 변경을 확인한다.
+- 중단된 절차형 맵 생성 도구는 실행을 차단한다. 새 맵 감사는 `audit_authored_museum_maps.py`처럼 저장하지 않는 Editor 조회로 수행한다. 기존 배치도·평면도·동선 시뮬레이션 결과는 현재 맵을 다시 추출·검증하기 전까지 과거 증거다.
+- 외부 에셋 팩을 반입할 때 프로젝트 `.uproject`, Config, GameInstance/GameMode, 입력과 패키징 설정을 샘플 프로젝트 것으로 교체하지 않는다. 필요한 Content와 의존성만 반입한다.
+
 ---
 
 # 3. Core Loop
@@ -259,7 +272,7 @@ Title Menu
 - Noise Trap
 - 플레이어 설치형 Trap
 - Trap Placement Cast
-- PCG
+- 런타임 절차형 맵 생성 (에디터용 바닥 타일 PCG는 허용)
 - Security Room Hacking / Global CCTV Disable / Remote Control Minigame
 - Cinematic
 - 추가 맵
@@ -1321,6 +1334,8 @@ Context 전환 시:
 | ViewModel / C++ Widget | HUD, Nameplate, Map, Status, Result State Exposure와 Request Routing |
 | DataTable / DataAsset | Contract, Artifact, Template, Guard, Balance, Map Presentation, Scaling Data |
 | Map | Painting Case, Guard Route, CCTV Coverage, Laser Zone/Button 연결, Loot Spawn, Vent, Detention Anchor, Evidence Table/Slot Anchor, Zone, Lighting, Navigation |
+
+- 환경 조명은 `BP_HeistLightFixture`(Actor 부모)의 FixtureMesh 1개·KeySpot 1개로 관리한다. 주변 PointLight/Accent를 흡수하거나 추가 LightComponent를 묶지 않는다. Showcase Droplights 01a/01b/01c는 작품 구성에 맞춰 작품 바로 위 천장에 배치하고 작품을 조준한다. Drop Ceiling 01a는 통로 천장에만 배치한다. 종류의 무작위·순환 배치는 금지한다. 밝기는 이번 재배치 전 환경 광원의 0.5배를 기준으로 보존하고 재실행으로 중복 감산하지 않는다. Rule·Replication과 보안 장치의 기능성 Light는 변경하지 않는다.
 
 ## Canonical Actor Blueprint Shell Registry
 
