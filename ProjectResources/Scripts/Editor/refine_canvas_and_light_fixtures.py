@@ -41,7 +41,7 @@ def data_object(handle):
 def component_handle(handles,typ):
  return next(h for h in handles if isinstance(data_object(h),typ))
 
-def material_cover():
+def material_contain():
  master=unreal.load_asset(ASSET_DIR+'/M_HeistCanvas');backup(ASSET_DIR+'/M_HeistCanvas')
  visited=set();changed=0
  def walk(node):
@@ -49,7 +49,9 @@ def material_cover():
   if not node or node.get_path_name() in visited:return
   visited.add(node.get_path_name())
   if isinstance(node,unreal.MaterialExpressionCustom) and 'CanvasAspect/max(PaintingAspect' in node.get_editor_property('code'):
-   node.modify();node.set_editor_property('code','float a=CanvasAspect/max(PaintingAspect,0.001); return (P-0.5)*float2(min(a,1),min(1/a,1))+0.5;');changed+=1
+   node.modify();node.set_editor_property('code','float a=CanvasAspect/max(PaintingAspect,0.001); return (P-0.5)*float2(max(a,1),max(1/a,1))+0.5;');changed+=1
+  if isinstance(node,unreal.MaterialExpressionConstant3Vector) and abs(node.constant.r-.94)<.001 and abs(node.constant.g-.92)<.001:
+   node.modify();node.set_editor_property('constant',unreal.LinearColor(0,0,0,1))
   for child in ML.get_inputs_for_material_expression(master,node):walk(child)
  walk(ML.get_material_property_input_node(master,unreal.MaterialProperty.MP_BASE_COLOR))
  assert changed==1,changed

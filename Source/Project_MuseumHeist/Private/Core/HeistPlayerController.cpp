@@ -342,6 +342,7 @@ void AHeistPlayerController::SetupInputComponent()
 	// Keep R available only while the controller is back in Gameplay mode.
 	FInputKeyBinding& ReplicaRedrawBinding = InputComponent->BindKey(EKeys::R, IE_Pressed, this, &AHeistPlayerController::HandleReplicaRedraw);
 	ReplicaRedrawBinding.bConsumeInput = false;
+	InputComponent->BindKey(GetFlashlightToggleKey(), IE_Pressed, this, &AHeistPlayerController::RequestToggleFlashlight);
 	FInputKeyBinding& VoicePressedBinding = InputComponent->BindKey(EKeys::V, IE_Pressed, this, &AHeistPlayerController::HandleVoicePushToTalkPressed);
 	VoicePressedBinding.bConsumeInput = false;
 	FInputKeyBinding& VoiceReleasedBinding = InputComponent->BindKey(EKeys::V, IE_Released, this, &AHeistPlayerController::HandleVoicePushToTalkReleased);
@@ -3018,6 +3019,28 @@ void AHeistPlayerController::Server_UpdateFlashlightAimDirection_Implementation(
 	UHeistVisionComponent* VisionComponent = HeistCharacter->GetVisionComponent();
 	checkf(IsValid(VisionComponent), TEXT("HeistPlayerCharacter requires HeistVisionComponent"));
 	VisionComponent->UpdateFlashlightAimDirection(RequestedDirection);
+}
+
+FKey AHeistPlayerController::GetFlashlightToggleKey()
+{
+	return EKeys::F;
+}
+
+void AHeistPlayerController::RequestToggleFlashlight()
+{
+	if (!IsLocalController() || LocalInputMode != EHeistInputMode::Gameplay) return;
+	UpdateFlashlightAimDirection();
+	Server_ToggleFlashlight();
+}
+
+void AHeistPlayerController::Server_ToggleFlashlight_Implementation()
+{
+	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
+	const AHeistGameState* GameState = GetWorld()->GetGameState<AHeistGameState>();
+	if (!HasAuthority() || !IsValid(HeistCharacter) || HeistCharacter->GetController() != this ||
+		!IsValid(GameState) || GameState->GetMatchPhase() != EHeistMatchPhase::InGame || !HeistCharacter->CanPerformGameplayActions()) return;
+	UHeistVisionComponent* Vision = HeistCharacter->GetVisionComponent();
+	if (IsValid(Vision)) Vision->SetFlashlightEnabled(!Vision->IsFlashlightEnabled());
 }
 
 void AHeistPlayerController::Server_SetSprintRequested_Implementation(const bool bRequested)

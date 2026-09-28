@@ -878,17 +878,17 @@
           "ceiling_confirmed": true
         },
         {
-          "label": "M01_ArtLight_29",
+          "label": "M01_ArtLight_29A",
           "purpose": "Artwork",
-          "mesh": "SM_F_Ceiling_Droplights_01a",
+          "mesh": "SM_F_Ceiling_Droplights_01b",
           "location": [
-            3855,
-            2971,
+            3857,
+            2888,
             480
           ],
           "target": [
-            3741.1632106707566,
-            2970.996417848395,
+            3743.535863632638,
+            2887.5071742350424,
             189.92118719916317
           ],
           "normal": [
@@ -896,12 +896,41 @@
             0.0,
             1.110223037584573e-16
           ],
-          "width": 409.97848722670506,
-          "height": 233.84235996647217,
+          "width": 243.00000000000003,
+          "height": 233.8423599664722,
           "hang": 90,
           "yaw": 90.0,
           "paintings": [
-            "LDV2_M01_Gallery_Print_HighValue_01",
+            "LDV2_M01_Gallery_Print_HighValue_01"
+          ],
+          "baseline_intensity": 220.0,
+          "source_tag": "Source_LDV2_M01_NightArt_G09_0",
+          "ceiling_confirmed": true
+        },
+        {
+          "label": "M01_ArtLight_29B",
+          "purpose": "Artwork",
+          "mesh": "SM_F_Ceiling_Droplights_01a",
+          "location": [
+            3875,
+            3098,
+            480
+          ],
+          "target": [
+            3738.790557708875,
+            3098.4928325944875,
+            150.5722882456572
+          ],
+          "normal": [
+            1.0,
+            0.0,
+            1.110223037584573e-16
+          ],
+          "width": 154.9856577345199,
+          "height": 73.14457649131441,
+          "hang": 90,
+          "yaw": 90.0,
+          "paintings": [
             "LDV2_M01_Gallery_Print_HighValue_02"
           ],
           "baseline_intensity": 220.0,

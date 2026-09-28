@@ -483,6 +483,12 @@ UHeistInteractionPromptWidget* UHeistHUDWidget::ResolveInteractionChildWidget(co
 
 void UHeistHUDWidget::RefreshToolPresentation()
 {
+	if (IsValid(FlashlightStatusText) && IsValid(HUDViewModel))
+	{
+		FlashlightStatusText->SetText(HUDViewModel->GetFlashlightStatusText());
+		FlashlightStatusText->SetColorAndOpacity(FSlateColor(HUDViewModel->IsFlashlightEnabled()
+			? FLinearColor(0.92f, 0.82f, 0.64f) : FLinearColor(0.65f, 0.63f, 0.57f)));
+	}
 	if (IsValid(ToolText))
 	{
 		ToolText->SetVisibility(ESlateVisibility::Collapsed);

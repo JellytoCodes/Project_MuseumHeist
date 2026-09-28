@@ -154,75 +154,91 @@
   {
     "Name": "M03",
     "MapId": "M03",
-    "MapDisplayName": "유리 온실 박물관",
+    "MapDisplayName": "글래스하우스 갤러리",
     "FloorPlanTexture": "Texture2D'/Game/Assets/UI/Map/T_FloorPlan_M03.T_FloorPlan_M03'",
     "WorldMin": {
-      "X": -6600.0,
-      "Y": -4000.0
+      "X": -2700,
+      "Y": -1900
     },
     "WorldMax": {
-      "X": 6600.0,
-      "Y": 4000.0
+      "X": 2800,
+      "Y": 1900
     },
     "MapNorthAxis": "PositiveY",
     "ZoneAnchors": [
       {
         "ZoneId": "Zone_V",
-        "DisplayName": "반입·정산 전실",
+        "DisplayName": "침입·정산",
         "WorldLocation": {
-          "X": -5637.5,
-          "Y": -2285.714
+          "X": -1700,
+          "Y": -1450
         }
       },
       {
-        "ZoneId": "Zone_C2",
-        "DisplayName": "격자 전시실",
+        "ZoneId": "Zone_H",
+        "DisplayName": "중앙 갤러리",
         "WorldLocation": {
-          "X": -487.5,
-          "Y": -446.42850000000004
+          "X": -450,
+          "Y": -450
         }
       },
       {
-        "ZoneId": "Zone_N4",
-        "DisplayName": "색면 전시",
+        "ZoneId": "Zone_A",
+        "DisplayName": "전시실 A",
         "WorldLocation": {
-          "X": 2887.5,
-          "Y": 2285.714
+          "X": -1600,
+          "Y": 800
         }
       },
       {
-        "ZoneId": "Zone_S2",
-        "DisplayName": "보존 아카이브",
+        "ZoneId": "Zone_B",
+        "DisplayName": "전시실 B",
         "WorldLocation": {
-          "X": -825.0,
-          "Y": -2285.714
+          "X": -400,
+          "Y": 1100
+        }
+      },
+      {
+        "ZoneId": "Zone_C",
+        "DisplayName": "전시실 C",
+        "WorldLocation": {
+          "X": 750,
+          "Y": 800
+        }
+      },
+      {
+        "ZoneId": "Zone_HV",
+        "DisplayName": "고가 전시실",
+        "WorldLocation": {
+          "X": 2200,
+          "Y": -450
         }
       },
       {
         "ZoneId": "Zone_EV",
-        "DisplayName": "증거 보관실",
+        "DisplayName": "압수품 보관실",
         "WorldLocation": {
-          "X": 5912.5,
-          "Y": -1714.2855000000002
+          "X": 1950,
+          "Y": 500
         }
       },
       {
         "ZoneId": "Zone_DT",
         "DisplayName": "구금실",
         "WorldLocation": {
-          "X": 5912.5,
-          "Y": -2857.1425
+          "X": 2450,
+          "Y": 500
         }
       }
     ],
-    "ContractTargetGalleryZoneId": "Zone_N4",
+    "ContractTargetGalleryZoneId": "Zone_C",
     "DefaultExitAnchors": [
       {
         "ExitId": "Exit_Main",
         "DisplayName": "진입·배출 벤트",
         "WorldLocation": {
-          "X": -6187.5,
-          "Y": -1428.571
+          "X": -1320,
+          "Y": -1670
         }
       }
     ]

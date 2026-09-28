@@ -143,6 +143,8 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	void ApplyLocalUserSettings();
 	float GetLocalMouseSensitivity() const;
 	EHeistInputMode GetLocalInputMode() const;
+	static FKey GetFlashlightToggleKey();
+	void RequestToggleFlashlight();
 	bool IsLocalInputMappingContextActive(EHeistInputMode InputMode) const;
 	int32 GetActiveHeistInputMappingContextCount() const;
 	bool IsLocalInputModeContractSatisfied() const;
@@ -422,6 +424,10 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 
 	UFUNCTION(Server, Reliable)
 	void Server_SetSprintRequested(bool bRequested);
+
+	UFUNCTION(Server, Reliable)
+	void Server_ToggleFlashlight();
+	friend class FHeistFlashlightLifecycleTest;
 
 	UFUNCTION(Server, Reliable)
 	void Server_SetVoicePushToTalk(bool bHeld);

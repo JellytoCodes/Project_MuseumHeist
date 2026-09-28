@@ -2,6 +2,8 @@
 
 #include "Character/Components/HeistActionComponent.h"
 #include "Character/Components/HeistForgeryComponent.h"
+#include "Character/Components/HeistVisionComponent.h"
+#include "Core/HeistPlayerController.h"
 #include "Character/HeistPlayerCharacter.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistLogChannels.h"
@@ -38,6 +40,7 @@ void UHeistHUDViewModel::BeginDestroy()
 		ForgeryComponent->GetSessionStateChangedDelegate().RemoveAll(this);
 	}
 
+	if (IsValid(VisionComponent)) VisionComponent->GetFlashlightStateChangedDelegate().RemoveAll(this);
 	Super::BeginDestroy();
 }
 
@@ -49,6 +52,13 @@ void UHeistHUDViewModel::SetupViewModel(AHeistGameState* InGameState, AHeistPlay
 {
 	const AHeistPlayerCharacter* LocalCharacter = IsValid(InActionComponent) ? Cast<AHeistPlayerCharacter>(InActionComponent->GetOwner()) : nullptr;
 	UHeistForgeryComponent* InForgeryComponent = IsValid(LocalCharacter) ? LocalCharacter->GetForgeryComponent() : nullptr;
+	UHeistVisionComponent* InVisionComponent = IsValid(LocalCharacter) ? LocalCharacter->GetVisionComponent() : nullptr;
+	if (IsValid(VisionComponent)) VisionComponent->GetFlashlightStateChangedDelegate().RemoveAll(this);
+	VisionComponent = InVisionComponent;
+	if (IsValid(VisionComponent))
+	{
+		VisionComponent->GetFlashlightStateChangedDelegate().AddUObject(this, &UHeistHUDViewModel::RefreshPresentationState);
+	}
 	if (GameState != InGameState && IsValid(GameState))
 	{
 		GameState->GetPlayerConnectionsChangedDelegate().RemoveAll(this);
@@ -133,6 +143,10 @@ FText UHeistHUDViewModel::BuildContractValueText(const FHeistContractSnapshot& S
 
 void UHeistHUDViewModel::RefreshPresentationState()
 {
+	UE_MVVM_SET_PROPERTY_VALUE(bFlashlightEnabled, IsValid(VisionComponent) && VisionComponent->IsFlashlightEnabled());
+	UE_MVVM_SET_PROPERTY_VALUE(FlashlightStatusText, FText::Format(
+		bFlashlightEnabled ? NSLOCTEXT("HeistHUD", "FlashlightOn", "[{0}] 손전등 ON") : NSLOCTEXT("HeistHUD", "FlashlightOff", "[{0}] 손전등 OFF"),
+		AHeistPlayerController::GetFlashlightToggleKey().GetDisplayName()));
 	RefreshCrewStatusEntries();
 	UE_MVVM_SET_PROPERTY_VALUE(LocalLootScore, IsValid(LocalPlayerState) ? LocalPlayerState->GetTotalLootScore() : 0);
 	UE_MVVM_SET_PROPERTY_VALUE(LocalLootWeight, IsValid(LocalPlayerState) ? LocalPlayerState->GetTotalLootWeight() : 0.0f);

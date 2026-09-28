@@ -10,6 +10,7 @@
 #include "Core/HeistPlayerState.h"
 #include "Data/HeistArtifactDataTypes.h"
 #include "Net/UnrealNetwork.h"
+#include "NiagaraComponent.h"
 #include "TimerManager.h"
 #include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 
@@ -35,11 +36,63 @@ AHeistLaserBarrierActor::AHeistLaserBarrierActor()
 	BeamVisualComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	BeamVisualComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
 	BeamVisualComponent->SetGenerateOverlapEvents(false);
+
+	for (int32 Index = 0; Index < 3; ++Index)
+	{
+		UNiagaraComponent* Beam = CreateDefaultSubobject<UNiagaraComponent>(*FString::Printf(TEXT("LaserBeam%d"), Index + 1));
+		Beam->SetupAttachment(BeamTriggerComponent);
+		Beam->SetAutoActivate(false);
+		Beam->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Beam->SetGenerateOverlapEvents(false);
+		BeamEffectComponents.Add(Beam);
+	}
+}
+
+void AHeistLaserBarrierActor::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+	ConfigureBeamEffects();
+	// Editor preview only. BeginPlay and replicated state own gameplay visibility.
+	SetBeamEffectsActive(GetWorld() && !GetWorld()->IsGameWorld());
+}
+
+void AHeistLaserBarrierActor::ConfigureBeamEffects()
+{
+	const FVector Extent = BeamTriggerComponent->GetUnscaledBoxExtent();
+	for (int32 Index = 0; Index < BeamEffectComponents.Num(); ++Index)
+	{
+		UNiagaraComponent* Beam = BeamEffectComponents[Index];
+		if (!IsValid(Beam)) continue;
+		if (Beam->GetAsset() != BeamEffect) Beam->SetAsset(BeamEffect);
+		Beam->SetRelativeLocation(FVector(0, 0, (Index - 1) * Extent.Z * (2.0 / 3.0)));
+		Beam->SetRelativeRotation(FRotator::ZeroRotator);
+		Beam->SetRelativeScale3D(FVector::OneVector);
+		// The authored system uses local-space Vec3 endpoints. Parent scale is applied once.
+		Beam->SetVariableVec3(TEXT("User.BeamStart"), FVector(0, -Extent.Y, 0));
+		Beam->SetVariableVec3(TEXT("User.BeamEnd"), FVector(0, Extent.Y, 0));
+		Beam->SetVariableFloat(TEXT("User.BeamWidth"), FMath::Max(0.1f, BeamWidth));
+		Beam->SetSystemFixedBounds(FBox(FVector(-16, -Extent.Y - 16, -16), FVector(16, Extent.Y + 16, 16)));
+	}
+}
+
+void AHeistLaserBarrierActor::SetBeamEffectsActive(const bool bActive)
+{
+	const bool bHasEffect = IsValid(BeamEffect);
+	for (UNiagaraComponent* Beam : BeamEffectComponents)
+	{
+		if (!IsValid(Beam)) continue;
+		const bool bShow = bActive && bHasEffect && GetNetMode() != NM_DedicatedServer;
+		Beam->SetVisibility(bShow);
+		if (bShow && !Beam->IsActive()) Beam->Activate(true);
+		else if (!bShow && Beam->IsActive()) Beam->DeactivateImmediate();
+	}
+	if (IsValid(BeamVisualComponent)) BeamVisualComponent->SetVisibility(bActive && !bHasEffect, true);
 }
 
 void AHeistLaserBarrierActor::BeginPlay()
 {
 	Super::BeginPlay();
+	ConfigureBeamEffects();
 
 	BeamTriggerComponent->SetCollisionObjectType(ECC_WorldDynamic);
 	BeamTriggerComponent->SetCollisionResponseToChannel(HeistCollisionChannels::Player, ECR_Overlap);
@@ -248,11 +301,8 @@ void AHeistLaserBarrierActor::ApplyPresentation()
 	bAppliedRearmGraceActive = bRearmGraceActive;
 	AppliedSecurityRevision = SecurityRevision;
 	AppliedBypassHolderPlayerState = BypassHolderPlayerState;
-	if (IsValid(BeamVisualComponent))
-	{
-		BeamVisualComponent->SetVisibility(IsBeamActive(), true);
-	}
 	BP_ApplyLaserBarrierPresentation(bBarrierEnabled, IsBeamActive(), bRearmGraceActive, SecurityRevision, BypassHolderPlayerState.Get());
+	SetBeamEffectsActive(IsBeamActive());
 }
 
 void AHeistLaserBarrierActor::ScheduleConfigurationRefresh()

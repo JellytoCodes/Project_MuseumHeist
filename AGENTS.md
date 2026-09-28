@@ -160,8 +160,16 @@ Blueprint Shell/Presentation 운용은 별도 문서로 분리하지 않고 아�
 
 ## 2C. Authored Map Preservation
 
-- Actor 위치의 소수점은 0 방향으로 절삭한다. 회전과 스케일은 정수화하지 않는다.
-- Painting은 Showcase `SM_Canvas_Painting_01a~07a`를 사용하며 한 표시 메시의 재질로 원본/Replica를 전환한다. 그림 UV 영역만 치환하고 프레임 재질은 보존한다. 월드 그림은 흰 매트 여백을 넣지 않고 중앙 Cover UV로 비율을 유지하며 앞면을 채운다.
+- 2026-09-27 사용자 승인 M03 재구성은 기존 배치 보존의 명시적 예외다. `/Game/AIUE5_vol10_01/maps/AIUE_vol10_01` 원본과 M01/M02는 보존하고, 승인한 약 53×36m 평면(35×13m 원본 홀, 북측 A/B/C 전시실, 외곽 직원 통로, 동측 고가실·경비실·압수품실·철창 구금실)을 M03 출시 경로에 적용한다. 건축·바닥·가구·설치물은 해당 갤러리 팩 메시를 사용한다. 기존 상부 외벽 절단 메시 `/Game/Assets/Environment/M03Gallery/SM_GalleryUpperFacade`는 현재 M03 참조를 유지하며, 이 경로가 추가 복제의 포괄적 허용을 뜻하지 않는다. 기본 Cube로 환경을 대체하지 않는다.
+- M03 재구성은 기존 Painting 공용 Shell·Showcase 캔버스·20개 Case Identity와 40개 Template Pool, 보안 장치의 기능성 Blueprint를 유지한다. 장식 작품은 비상호작용으로 배치하고 최소 10종 전시 구도를 사용한다. 기존 4종 조명 Blueprint의 메시·SpotLight 단일 구성과 기본 크기는 유지한다. 기존 절차형 맵 생성기를 재활성화하지 않으며, 승인한 M03 전용 적용 도구만 사용한다.
+
+- Actor 위치의 소수점은 0 방향으로 절삭한다. 회전은 유지한다.
+- 레벨 배치 스케일은 액자에 한정하지 않는다. 벽·바닥·천장·문·기둥·몰딩·가구·조명·전시품·게임플레이 Actor를 포함한 모든 배치의 Scale3D 각 축을 소수점 한 자리(0.1 단위, 예: 0.6 / 1.0 / 1.2 / 2.4)로 작성한다. 배치 크기를 결정하는 Blueprint/StaticMesh Component의 RelativeScale3D와 PCG/ISM 인스턴스에도 같은 규칙을 적용하며, Actor 대신 하위 컴포넌트에 긴 소수점 배율을 숨겨 우회하지 않는다.
+- Painting Actor와 표시 메시는 균등 배율로 종횡비를 보존한다. 건축 모듈은 축별 배율을 사용할 수 있지만 각 축은 동일하게 0.1 단위를 지킨다. 배치 스크립트도 목표 길이를 메시 Bounds로 나눈 정밀 배율을 그대로 저장하지 않는다. 규칙에 맞는 모듈 크기·수량·배치 간격을 먼저 선택하고 그 배율에서 실제 치수와 접합을 확인한다.
+- 기존 배치를 교정할 때는 전체 스케일을 일괄 반올림해 저장하지 않는다. 0 배율·벽 틈·겹침·문폭·바닥/천장 접합과 충돌을 확인하며 구역별로 수정한다. 런타임 계산 결과나 부동소수점 표현 오차를 제거하려고 매 프레임 Transform을 반올림하지 않는다.
+- 배치 스케일을 단순하게 보이게 하려고 메시를 배율·치수별로 복제하거나 정점/Build Scale에 배율을 구워 넣지 않는다. 기존 원본 메시의 배율·수량·위치로 조정한다. 원본 에셋 자체를 변형해 다른 배치에 영향을 주거나 Actor/Component 배율을 겹쳐 정밀 배율을 우회하지 않는다. 메시 절단·파생 에셋은 해당 형상 변경이 명시적으로 승인된 경우에만 허용한다.
+- 에셋 복제·절단 사본·파생 에셋 생성이 필요하면 실행 전에 목적, 원본, 생성 경로와 개수를 사용자에게 제시하고 명시적 승인을 받는다. 일반적인 맵 개선·재구성 요청을 에셋 복제 승인으로 해석하지 않는다. 기존 에셋을 여러 Actor가 참조하는 배치는 에셋 복제와 구분한다. 불필요한 사본은 참조를 원본으로 이관하고 참조가 없음을 검증한 뒤 Unreal Editor 경로로 삭제한다.
+- Painting은 Showcase `SM_Canvas_Painting_01a~07a`를 사용하며 한 표시 메시의 재질로 원본/Replica를 전환한다. 그림 UV 영역만 치환하고 프레임 재질은 보존한다. 월드 그림은 원본/Replica 모두 종횡비와 전체 구도를 보존하는 Contain UV를 사용한다. 액자 비율 차이로 남는 영역은 현재 그림의 검정 바탕색으로 채우며 흰 매트, 비균등 이미지 늘림과 중앙 Cover 잘림을 사용하지 않는다. 관찰·랜덤 작품 배정·Replica 교체 후에도 같은 표시 규칙을 유지한다.
 - 에디터용 공용 바닥 PCG를 허용한다. Grid 범위·간격, Seed, Mesh 목록을 조정해 재사용하고 저장된 인스턴스를 사용한다. 방·복도 재생성 및 런타임 랜덤 생성은 금지한다.
 
 - `/Game/Maps/M01_ClassicalPrototype`, `M02_MoonlitPrototype`, `M03_GlasshousePrototype`의 사용자 작성 배치가 공간 구성의 기준이다. 과거 `Review/*_LayoutReview` 사본이나 `MuseumLevelLayout.json`으로 본 맵을 재생성·덮어쓰지 않는다.
@@ -493,6 +501,7 @@ Client Preview는 확정값으로 취급하지 않는다.
 - 유효한 Interaction Target이 없을 때만 기존 Overlap 집합의 잠긴 Vent를 안내 전용으로 표시한다. 안내 대상은 요청 가능한 Interaction Target으로 승격하지 않는다.
 - Interaction Target 탐색을 위한 실시간 Line Trace 또는 주기적 Trace Scan을 사용하지 않는다.
 - Flashlight Direction은 Camera Forward를 기준으로 한다.
+- 손전등은 `F` 토글, 기본 OFF다. 서버가 점등 상태를 확정·복제하고 PlayerOverlay에 `[F] 손전등 ON/OFF`를 표시한다. Blueprint는 카메라에 부착된 SpotLight를 구성한다. UI 입력 중에는 토글하지 않으며 기절·구금·탈출·UnPossessed·InGame 종료 시 OFF로 정리한다. 배터리와 손전등 전용 Guard 감지 규칙은 추가하지 않는다.
 - Coin Throw Direction은 Camera Forward 또는 검증된 Camera Target을 기준으로 한다.
 - Top-Down Gameplay Camera를 사용하지 않는다.
 - SpringArm Gameplay Camera를 사용하지 않는다.
@@ -722,6 +731,7 @@ v1의 활성 Security Layer는 기존 Patrol Guard, CCTV와 고가 Painting용 C
 - Button Holder와 Zone 진입자는 일시적인 협동 행동만 나누며 고정 Class, 전용 능력 또는 영구 Role을 부여하지 않는다.
 - v1 Required Target은 Laser 뒤에 배치하지 않는다. 2인 시작 후 1명만 남아도 Required Target과 최소 Quota 경로를 완료할 수 있어야 한다.
 - Laser는 물리 Collision으로 이동을 막지 않는다. 활성 Beam을 통과하면 사건당 Alert Meter `+0.5`와 근처 Guard 1회 조사만 발생시키며 Stun이나 Damage를 직접 적용하지 않는다.
+- Laser 경보 판정은 서버 Box QueryOnly Overlap을 유지하고 Niagara는 복제된 활성 상태의 시각 표현만 담당한다. Niagara 파티클 Collision을 Gameplay Authority로 사용하지 않는다.
 - Hold 해제 뒤 기본 Rearm Grace는 0.75초다. Map은 독립적인 Egress를 제공하고, Laser가 복구돼도 Zone 안 Player를 가두거나 피할 수 없는 즉시 피해를 주지 않는다.
 
 ---
@@ -1335,11 +1345,11 @@ Context 전환 시:
 | DataTable / DataAsset | Contract, Artifact, Template, Guard, Balance, Map Presentation, Scaling Data |
 | Map | Painting Case, Guard Route, CCTV Coverage, Laser Zone/Button 연결, Loot Spawn, Vent, Detention Anchor, Evidence Table/Slot Anchor, Zone, Lighting, Navigation |
 
-- 환경 조명은 `BP_HeistLightFixture`(Actor 부모)의 FixtureMesh 1개·KeySpot 1개로 관리한다. 주변 PointLight/Accent를 흡수하거나 추가 LightComponent를 묶지 않는다. Showcase Droplights 01a/01b/01c는 작품 구성에 맞춰 작품 바로 위 천장에 배치하고 작품을 조준한다. Drop Ceiling 01a는 통로 천장에만 배치한다. 종류의 무작위·순환 배치는 금지한다. 밝기는 이번 재배치 전 환경 광원의 0.5배를 기준으로 보존하고 재실행으로 중복 감산하지 않는다. Rule·Replication과 보안 장치의 기능성 Light는 변경하지 않는다.
+- 환경 조명은 사용자 승인에 따라 메시별 Actor Blueprint 4종 `BP_HeistLight_Droplights_01a/01b/01c`, `BP_HeistLight_DropCeiling_01a`로 관리한다. 각 Blueprint는 FixtureMesh 1개·KeySpot 1개와 고정된 메시 크기·천장 부착점·광원 시작점을 소유한다. 개별 배치마다 Blueprint를 생성하거나 메시 Transform을 덮어쓰지 않는다. 주변 PointLight/Accent를 흡수하지 않는다. Droplights 3종은 작품 구성에 맞춰 작품 바로 위 천장에 배치하고 작품을 조준하며 Drop Ceiling은 통로에만 배치한다. 종류의 무작위·순환 배치는 금지한다. 기존 절반 밝기를 유지하고 재실행으로 중복 감산하지 않는다. Rule·Replication과 보안 장치의 기능성 Light는 변경하지 않는다.
 
 ## Canonical Actor Blueprint Shell Registry
 
-Mesh, Material, Texture, Icon, Relative Visual Transform 또는 밸런스 값만 다른 콘텐츠를 위해 Actor Blueprint를 추가하지 않는다.
+Mesh, Material, Texture, Icon, Relative Visual Transform 또는 밸런스 값만 다른 콘텐츠를 위해 Actor Blueprint를 추가하지 않는다. 사용자 승인 환경 조명 4종은 천장 부착 기준을 타입별로 고정하기 위한 명시적 예외이며 Gameplay Shell에는 확장하지 않는다.
 Actor Blueprint 분리는 Component Topology, Collision Contract, Authority State Machine 또는 Interaction Lifecycle이 실제로 다를 때만 허용한다.
 
 | Gameplay Family | C++ Parent | Canonical Blueprint Shell | Variant Data Source |

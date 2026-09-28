@@ -34,6 +34,9 @@ def prepare_blueprint():
  mesh=next(data_object(h) for h in handles if isinstance(data_object(h),unreal.StaticMeshComponent))
  spot=next(data_object(h) for h in handles if isinstance(data_object(h),unreal.SpotLightComponent))
  mesh.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION);setp(mesh,'cast_shadow',False)
+ m=unreal.load_asset('/Game/Assets/MapAssets/Showcase/Meshes/SM_Drop_Ceiling_01a');b=m.get_bounding_box();scale=76/(b.max.z-b.min.z)
+ mesh.set_static_mesh(m);mesh.set_relative_scale3d(unreal.Vector(scale,scale,scale))
+ mesh.set_relative_location(unreal.Vector(-(b.min.x+b.max.x)*scale/2,-(b.min.y+b.max.y)*scale/2,-b.max.z*scale),False,True)
  setp(spot,'intensity',22.0);setp(spot,'attenuation_radius',650.0)
  setp(spot,'inner_cone_angle',30.0);setp(spot,'outer_cone_angle',44.0)
  spot.set_relative_location(unreal.Vector(0,0,-80),False,True)
@@ -74,6 +77,7 @@ def configure(a,s,source):
  return dict(actor=s['label'],purpose=s['purpose'],mesh=s['mesh'],baseline=s['baseline_intensity'],intensity=spot.intensity,outer_cone=outer,location=s['location'],target=s['target'],paintings=s['paintings'],ceiling_confirmed=s['ceiling_confirmed'])
 
 def run():
+ raise RuntimeError('Retired one-shell lighting placement. Four fixture types are maintained by apply_art_detail.py.')
  for name in PLAN['maps']:backup('/Game/Maps/'+name,'.umap')
  bp=prepare_blueprint();report={}
  for name,row in PLAN['maps'].items():

@@ -78,6 +78,9 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
 	UPROPERTY(Transient)
 	TObjectPtr<class UHeistForgeryComponent> ForgeryComponent;
 
+	UPROPERTY(Transient)
+	TObjectPtr<class UHeistVisionComponent> VisionComponent;
+
 	FHeistHUDPresentationChanged PresentationChangedDelegate;
 
 #pragma endregion
@@ -86,6 +89,8 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
 
   public:
 	int32 GetLocalLootScore() const;
+	bool IsFlashlightEnabled() const { return bFlashlightEnabled; }
+	const FText& GetFlashlightStatusText() const { return FlashlightStatusText; }
 	float GetLocalLootWeight() const;
 	int32 GetLocalPlayerId() const;
 	int32 GetConnectedPlayerCount() const;
@@ -120,6 +125,12 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDViewModel : public UMVVMViewModelBase
 	const TArray<FHeistCrewStatusEntry>& GetCrewStatusEntries() const;
 
   private:
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|HUD", meta = (AllowPrivateAccess = "true"))
+	bool bFlashlightEnabled = false;
+
+	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|HUD", meta = (AllowPrivateAccess = "true"))
+	FText FlashlightStatusText;
+
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Category = "Heist|HUD", meta = (AllowPrivateAccess = "true"))
 	int32 LocalLootScore = 0;
 

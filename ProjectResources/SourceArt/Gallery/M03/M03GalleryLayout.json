@@ -1,0 +1,1316 @@
+{
+  "map": "/Game/Maps/M03_GlasshousePrototype",
+  "source": "/Game/AIUE5_vol10_01/maps/AIUE_vol10_01",
+  "rooms": [
+    {
+      "name": "Hall",
+      "bounds": [
+        8,
+        20,
+        43,
+        33
+      ],
+      "ceiling": null
+    },
+    {
+      "name": "A",
+      "bounds": [
+        8,
+        8,
+        20,
+        20
+      ],
+      "ceiling": 500
+    },
+    {
+      "name": "B",
+      "bounds": [
+        20,
+        8,
+        32,
+        20
+      ],
+      "ceiling": 500
+    },
+    {
+      "name": "C",
+      "bounds": [
+        32,
+        8,
+        43,
+        20
+      ],
+      "ceiling": 500
+    },
+    {
+      "name": "StaffNorth",
+      "bounds": [
+        4,
+        4,
+        47,
+        8
+      ],
+      "ceiling": 400
+    },
+    {
+      "name": "StaffWest",
+      "bounds": [
+        4,
+        8,
+        8,
+        40
+      ],
+      "ceiling": 400
+    },
+    {
+      "name": "StaffEast",
+      "bounds": [
+        43,
+        8,
+        47,
+        33
+      ],
+      "ceiling": 400
+    },
+    {
+      "name": "Entry",
+      "bounds": [
+        8,
+        33,
+        18,
+        40
+      ],
+      "ceiling": 400
+    },
+    {
+      "name": "Guard",
+      "bounds": [
+        47,
+        8,
+        57,
+        14
+      ],
+      "ceiling": 400
+    },
+    {
+      "name": "Evidence",
+      "bounds": [
+        47,
+        14,
+        52,
+        20
+      ],
+      "ceiling": 400
+    },
+    {
+      "name": "Cell",
+      "bounds": [
+        52,
+        14,
+        57,
+        20
+      ],
+      "ceiling": 400
+    },
+    {
+      "name": "Vault",
+      "bounds": [
+        47,
+        20,
+        57,
+        33
+      ],
+      "ceiling": 500
+    }
+  ],
+  "walls": [
+    {
+      "name": "WestExterior_End",
+      "a": [
+        4,
+        4
+      ],
+      "b": [
+        4,
+        40
+      ],
+      "height": 400,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "NorthExterior_End",
+      "a": [
+        4,
+        4
+      ],
+      "b": [
+        47,
+        4
+      ],
+      "height": 500,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "EastStaffOuter_End",
+      "a": [
+        47,
+        4
+      ],
+      "b": [
+        47,
+        8
+      ],
+      "height": 400,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "NorthSecurity_End",
+      "a": [
+        47,
+        8
+      ],
+      "b": [
+        57,
+        8
+      ],
+      "height": 400,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "EastExterior_End",
+      "a": [
+        57,
+        8
+      ],
+      "b": [
+        57,
+        33
+      ],
+      "height": 500,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "SouthHall_00",
+      "a": [
+        8,
+        33
+      ],
+      "b": [
+        12,
+        33
+      ],
+      "height": 595,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "SouthHall_Door00_Lintel",
+      "a": [
+        12,
+        33
+      ],
+      "b": [
+        14,
+        33
+      ],
+      "height": 295,
+      "bottom": 300,
+      "thickness": 24
+    },
+    {
+      "name": "SouthHall_End",
+      "a": [
+        14,
+        33
+      ],
+      "b": [
+        43,
+        33
+      ],
+      "height": 595,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "SouthEast_End",
+      "a": [
+        43,
+        33
+      ],
+      "b": [
+        57,
+        33
+      ],
+      "height": 500,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "EntrySouth_End",
+      "a": [
+        4,
+        40
+      ],
+      "b": [
+        18,
+        40
+      ],
+      "height": 400,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "EntryEast_End",
+      "a": [
+        18,
+        33
+      ],
+      "b": [
+        18,
+        40
+      ],
+      "height": 400,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "HallWest_00",
+      "a": [
+        8,
+        20
+      ],
+      "b": [
+        8,
+        25
+      ],
+      "height": 595,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "HallWest_Door00_Lintel",
+      "a": [
+        8,
+        25
+      ],
+      "b": [
+        8,
+        27
+      ],
+      "height": 295,
+      "bottom": 300,
+      "thickness": 24
+    },
+    {
+      "name": "HallWest_End",
+      "a": [
+        8,
+        27
+      ],
+      "b": [
+        8,
+        33
+      ],
+      "height": 595,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "AnnexWest_End",
+      "a": [
+        8,
+        8
+      ],
+      "b": [
+        8,
+        20
+      ],
+      "height": 500,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "EntryWest_00",
+      "a": [
+        8,
+        33
+      ],
+      "b": [
+        8,
+        36
+      ],
+      "height": 400,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "EntryWest_Door00_Lintel",
+      "a": [
+        8,
+        36
+      ],
+      "b": [
+        8,
+        38
+      ],
+      "height": 100,
+      "bottom": 300,
+      "thickness": 24
+    },
+    {
+      "name": "EntryWest_End",
+      "a": [
+        8,
+        38
+      ],
+      "b": [
+        8,
+        40
+      ],
+      "height": 400,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "AnnexNorth_00",
+      "a": [
+        8,
+        8
+      ],
+      "b": [
+        13,
+        8
+      ],
+      "height": 500,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "AnnexNorth_Door00_Lintel",
+      "a": [
+        13,
+        8
+      ],
+      "b": [
+        15,
+        8
+      ],
+      "height": 200,
+      "bottom": 300,
+      "thickness": 24
+    },
+    {
+      "name": "AnnexNorth_01",
+      "a": [
+        15,
+        8
+      ],
+      "b": [
+        27,
+        8
+      ],
+      "height": 500,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "AnnexNorth_Door01_Lintel",
+      "a": [
+        27,
+        8
+      ],
+      "b": [
+        29,
+        8
+      ],
+      "height": 200,
+      "bottom": 300,
+      "thickness": 24
+    },
+    {
+      "name": "AnnexNorth_End",
+      "a": [
+        29,
+        8
+      ],
+      "b": [
+        43,
+        8
+      ],
+      "height": 500,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "A_B_00",
+      "a": [
+        20,
+        8
+      ],
+      "b": [
+        20,
+        15
+      ],
+      "height": 500,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "A_B_Door00_Lintel",
+      "a": [
+        20,
+        15
+      ],
+      "b": [
+        20,
+        17
+      ],
+      "height": 200,
+      "bottom": 300,
+      "thickness": 24
+    },
+    {
+      "name": "A_B_End",
+      "a": [
+        20,
+        17
+      ],
+      "b": [
+        20,
+        20
+      ],
+      "height": 500,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "B_C_00",
+      "a": [
+        32,
+        8
+      ],
+      "b": [
+        32,
+        11
+      ],
+      "height": 500,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "B_C_Door00_Lintel",
+      "a": [
+        32,
+        11
+      ],
+      "b": [
+        32,
+        13
+      ],
+      "height": 200,
+      "bottom": 300,
+      "thickness": 24
+    },
+    {
+      "name": "B_C_End",
+      "a": [
+        32,
+        13
+      ],
+      "b": [
+        32,
+        20
+      ],
+      "height": 500,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "HallNorth_00",
+      "a": [
+        8,
+        20
+      ],
+      "b": [
+        11,
+        20
+      ],
+      "height": 595,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "HallNorth_Door00_Lintel",
+      "a": [
+        11,
+        20
+      ],
+      "b": [
+        13,
+        20
+      ],
+      "height": 295,
+      "bottom": 300,
+      "thickness": 24
+    },
+    {
+      "name": "HallNorth_End",
+      "a": [
+        13,
+        20
+      ],
+      "b": [
+        43,
+        20
+      ],
+      "height": 595,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "AnnexEast_00",
+      "a": [
+        43,
+        8
+      ],
+      "b": [
+        43,
+        15
+      ],
+      "height": 500,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "AnnexEast_Door00_Lintel",
+      "a": [
+        43,
+        15
+      ],
+      "b": [
+        43,
+        17
+      ],
+      "height": 200,
+      "bottom": 300,
+      "thickness": 24
+    },
+    {
+      "name": "AnnexEast_End",
+      "a": [
+        43,
+        17
+      ],
+      "b": [
+        43,
+        20
+      ],
+      "height": 500,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "HallEast_00",
+      "a": [
+        43,
+        20
+      ],
+      "b": [
+        43,
+        25
+      ],
+      "height": 595,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "HallEast_Door00_Lintel",
+      "a": [
+        43,
+        25
+      ],
+      "b": [
+        43,
+        27
+      ],
+      "height": 295,
+      "bottom": 300,
+      "thickness": 24
+    },
+    {
+      "name": "HallEast_End",
+      "a": [
+        43,
+        27
+      ],
+      "b": [
+        43,
+        33
+      ],
+      "height": 595,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "SecurityEntry_00",
+      "a": [
+        47,
+        8
+      ],
+      "b": [
+        47,
+        10
+      ],
+      "height": 400,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "SecurityEntry_Door00_Lintel",
+      "a": [
+        47,
+        10
+      ],
+      "b": [
+        47,
+        12
+      ],
+      "height": 100,
+      "bottom": 300,
+      "thickness": 24
+    },
+    {
+      "name": "SecurityEntry_01",
+      "a": [
+        47,
+        12
+      ],
+      "b": [
+        47,
+        16
+      ],
+      "height": 400,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "SecurityEntry_Door01_Lintel",
+      "a": [
+        47,
+        16
+      ],
+      "b": [
+        47,
+        18
+      ],
+      "height": 100,
+      "bottom": 300,
+      "thickness": 24
+    },
+    {
+      "name": "SecurityEntry_End",
+      "a": [
+        47,
+        18
+      ],
+      "b": [
+        47,
+        20
+      ],
+      "height": 400,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "VaultEntry_00",
+      "a": [
+        47,
+        20
+      ],
+      "b": [
+        47,
+        25
+      ],
+      "height": 500,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "VaultEntry_Door00_Lintel",
+      "a": [
+        47,
+        25
+      ],
+      "b": [
+        47,
+        27
+      ],
+      "height": 200,
+      "bottom": 300,
+      "thickness": 24
+    },
+    {
+      "name": "VaultEntry_End",
+      "a": [
+        47,
+        27
+      ],
+      "b": [
+        47,
+        33
+      ],
+      "height": 500,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "GuardEvidence_End",
+      "a": [
+        47,
+        14
+      ],
+      "b": [
+        57,
+        14
+      ],
+      "height": 400,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "SecurityVault_End",
+      "a": [
+        47,
+        20
+      ],
+      "b": [
+        57,
+        20
+      ],
+      "height": 500,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "EvidenceCell_00",
+      "a": [
+        52,
+        14
+      ],
+      "b": [
+        52,
+        16.1
+      ],
+      "height": 400,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "EvidenceCell_Door00_Lintel",
+      "a": [
+        52,
+        16.1
+      ],
+      "b": [
+        52,
+        17.9
+      ],
+      "height": 100,
+      "bottom": 300,
+      "thickness": 24
+    },
+    {
+      "name": "EvidenceCell_End",
+      "a": [
+        52,
+        17.9
+      ],
+      "b": [
+        52,
+        20
+      ],
+      "height": 400,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "HallPartition",
+      "a": [
+        23.5,
+        23
+      ],
+      "b": [
+        23.5,
+        30
+      ],
+      "height": 450,
+      "bottom": 0,
+      "thickness": 40
+    },
+    {
+      "name": "HallEndNorth",
+      "a": [
+        33.5,
+        20
+      ],
+      "b": [
+        33.5,
+        24.5
+      ],
+      "height": 495,
+      "bottom": 0,
+      "thickness": 40
+    },
+    {
+      "name": "HallEndSouth",
+      "a": [
+        33.5,
+        29
+      ],
+      "b": [
+        33.5,
+        33
+      ],
+      "height": 495,
+      "bottom": 0,
+      "thickness": 40
+    },
+    {
+      "name": "SpecialExhibition_L1",
+      "a": [
+        25,
+        14
+      ],
+      "b": [
+        29,
+        14
+      ],
+      "height": 320,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "SpecialExhibition_L2",
+      "a": [
+        29,
+        14
+      ],
+      "b": [
+        29,
+        16
+      ],
+      "height": 320,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "IndependentExhibit",
+      "a": [
+        9.7,
+        27
+      ],
+      "b": [
+        9.7,
+        31
+      ],
+      "height": 320,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "VaultAlcove_North",
+      "a": [
+        55,
+        24.58
+      ],
+      "b": [
+        57,
+        24.58
+      ],
+      "height": 320,
+      "bottom": 0,
+      "thickness": 24
+    },
+    {
+      "name": "VaultAlcove_South",
+      "a": [
+        55,
+        28.42
+      ],
+      "b": [
+        57,
+        28.42
+      ],
+      "height": 320,
+      "bottom": 0,
+      "thickness": 24
+    }
+  ],
+  "doors": [
+    {
+      "name": "SouthHall_Door00",
+      "a": [
+        12,
+        33
+      ],
+      "b": [
+        14,
+        33
+      ],
+      "width": 200.0,
+      "clear_height": 300
+    },
+    {
+      "name": "HallWest_Door00",
+      "a": [
+        8,
+        25
+      ],
+      "b": [
+        8,
+        27
+      ],
+      "width": 200.0,
+      "clear_height": 300
+    },
+    {
+      "name": "EntryWest_Door00",
+      "a": [
+        8,
+        36
+      ],
+      "b": [
+        8,
+        38
+      ],
+      "width": 200.0,
+      "clear_height": 300
+    },
+    {
+      "name": "AnnexNorth_Door00",
+      "a": [
+        13,
+        8
+      ],
+      "b": [
+        15,
+        8
+      ],
+      "width": 200.0,
+      "clear_height": 300
+    },
+    {
+      "name": "AnnexNorth_Door01",
+      "a": [
+        27,
+        8
+      ],
+      "b": [
+        29,
+        8
+      ],
+      "width": 200.0,
+      "clear_height": 300
+    },
+    {
+      "name": "A_B_Door00",
+      "a": [
+        20,
+        15
+      ],
+      "b": [
+        20,
+        17
+      ],
+      "width": 200.0,
+      "clear_height": 300
+    },
+    {
+      "name": "B_C_Door00",
+      "a": [
+        32,
+        11
+      ],
+      "b": [
+        32,
+        13
+      ],
+      "width": 200.0,
+      "clear_height": 300
+    },
+    {
+      "name": "HallNorth_Door00",
+      "a": [
+        11,
+        20
+      ],
+      "b": [
+        13,
+        20
+      ],
+      "width": 200.0,
+      "clear_height": 300
+    },
+    {
+      "name": "AnnexEast_Door00",
+      "a": [
+        43,
+        15
+      ],
+      "b": [
+        43,
+        17
+      ],
+      "width": 200.0,
+      "clear_height": 300
+    },
+    {
+      "name": "HallEast_Door00",
+      "a": [
+        43,
+        25
+      ],
+      "b": [
+        43,
+        27
+      ],
+      "width": 200.0,
+      "clear_height": 300
+    },
+    {
+      "name": "SecurityEntry_Door00",
+      "a": [
+        47,
+        10
+      ],
+      "b": [
+        47,
+        12
+      ],
+      "width": 200.0,
+      "clear_height": 300
+    },
+    {
+      "name": "SecurityEntry_Door01",
+      "a": [
+        47,
+        16
+      ],
+      "b": [
+        47,
+        18
+      ],
+      "width": 200.0,
+      "clear_height": 300
+    },
+    {
+      "name": "VaultEntry_Door00",
+      "a": [
+        47,
+        25
+      ],
+      "b": [
+        47,
+        27
+      ],
+      "width": 200.0,
+      "clear_height": 300
+    },
+    {
+      "name": "EvidenceCell_Door00",
+      "a": [
+        52,
+        16.1
+      ],
+      "b": [
+        52,
+        17.9
+      ],
+      "width": 179.99999999999972,
+      "clear_height": 300
+    }
+  ],
+  "routes": [
+    [
+      [
+        15,
+        25
+      ],
+      [
+        20.5,
+        25
+      ],
+      [
+        20.5,
+        31
+      ],
+      [
+        26,
+        31
+      ],
+      [
+        29.5,
+        27
+      ],
+      [
+        37,
+        27
+      ],
+      [
+        40,
+        30
+      ],
+      [
+        37,
+        27
+      ],
+      [
+        29.5,
+        27
+      ],
+      [
+        26,
+        31
+      ],
+      [
+        20.5,
+        31
+      ],
+      [
+        15,
+        31
+      ]
+    ],
+    [
+      [
+        12,
+        14
+      ],
+      [
+        16,
+        16
+      ],
+      [
+        23,
+        16
+      ],
+      [
+        23,
+        12
+      ],
+      [
+        35,
+        12
+      ],
+      [
+        38,
+        15
+      ],
+      [
+        35,
+        12
+      ],
+      [
+        23,
+        12
+      ],
+      [
+        23,
+        16
+      ],
+      [
+        16,
+        16
+      ]
+    ],
+    [
+      [
+        6,
+        27
+      ],
+      [
+        6,
+        6
+      ],
+      [
+        14,
+        6
+      ],
+      [
+        22,
+        6
+      ],
+      [
+        28,
+        6
+      ],
+      [
+        37,
+        6
+      ],
+      [
+        45,
+        6
+      ],
+      [
+        45,
+        12
+      ],
+      [
+        45,
+        6
+      ],
+      [
+        28,
+        6
+      ],
+      [
+        14,
+        6
+      ],
+      [
+        6,
+        6
+      ]
+    ],
+    [
+      [
+        45,
+        14.5
+      ],
+      [
+        45,
+        17
+      ],
+      [
+        49,
+        17
+      ],
+      [
+        50.5,
+        17
+      ],
+      [
+        49,
+        17
+      ],
+      [
+        45,
+        17
+      ],
+      [
+        45,
+        22
+      ],
+      [
+        45,
+        17
+      ]
+    ]
+  ]
+}

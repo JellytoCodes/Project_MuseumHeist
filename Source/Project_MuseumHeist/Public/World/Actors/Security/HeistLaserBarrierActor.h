@@ -11,6 +11,7 @@ class AHeistPlayerCharacter;
 class AHeistPlayerState;
 class UBoxComponent;
 class UNiagaraSystem;
+class UNiagaraComponent;
 class USceneComponent;
 class USoundBase;
 class UStaticMeshComponent;
@@ -29,6 +30,7 @@ class PROJECT_MUSEUMHEIST_API AHeistLaserBarrierActor : public AActor
 
   public:
 	AHeistLaserBarrierActor();
+	virtual void OnConstruction(const FTransform& Transform) override;
 
 #pragma endregion
 
@@ -71,6 +73,9 @@ class PROJECT_MUSEUMHEIST_API AHeistLaserBarrierActor : public AActor
 	void CompleteRearm();
 	void CommitTrip(AHeistPlayerCharacter* PlayerCharacter);
 	void ApplyPresentation();
+	void ConfigureBeamEffects();
+	void SetBeamEffectsActive(bool bActive);
+	friend class FHeistLaserNiagaraTest;
 	void ScheduleConfigurationRefresh();
 	void RefreshRuntimeConfiguration();
 	void HandleMatchPhaseChanged(EHeistMatchPhase PreviousMatchPhase, EHeistMatchPhase NewMatchPhase);
@@ -108,11 +113,20 @@ class PROJECT_MUSEUMHEIST_API AHeistLaserBarrierActor : public AActor
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Security|Laser")
 	TObjectPtr<UStaticMeshComponent> BeamVisualComponent;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Security|Laser")
+	TArray<TObjectPtr<UNiagaraComponent>> BeamEffectComponents;
+
 #pragma endregion
 
 #pragma region Configuration
 
   protected:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Security|Laser|Assets")
+	TObjectPtr<UNiagaraSystem> BeamEffect;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Security|Laser|Assets", meta = (ClampMin = "0.1", Units = "cm"))
+	float BeamWidth = 3.6f;
+
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Heist|Security|Laser|Link")
 	TObjectPtr<AHeistPaintingDisplayCaseActor> ProtectedPaintingCase;
 

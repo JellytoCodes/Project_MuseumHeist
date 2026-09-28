@@ -234,6 +234,7 @@ void AHeistPlayerCharacter::PawnClientRestart()
 
 void AHeistPlayerCharacter::UnPossessed()
 {
+	if (IsValid(VisionComponent)) VisionComponent->SetFlashlightEnabled(false);
 	if (BoundPresentationPlayerState.IsValid())
 	{
 		BoundPresentationPlayerState->GetCrewStatusChangedDelegate().RemoveAll(this);
@@ -416,6 +417,7 @@ void AHeistPlayerCharacter::ApplyPlayerStateGameplayRestrictions()
 	const bool bEscaped = HeistPlayerState->IsEscaped();
 	const bool bArrested = HeistPlayerState->IsArrested();
 	const bool bStunned = IsValid(StatusComponent) && StatusComponent->HasStatusTag(FHeistGameplayTags::Get().Event_Player_Stunned);
+	if ((bEscaped || bArrested || bStunned) && IsValid(VisionComponent)) VisionComponent->SetFlashlightEnabled(false);
 
 	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
 	{
@@ -599,6 +601,7 @@ void AHeistPlayerCharacter::HandlePresentationMatchPhaseChanged(const EHeistMatc
 	RefreshVoiceTalkerSettings();
 	if (NewMatchPhase != EHeistMatchPhase::InGame)
 	{
+		if (IsValid(VisionComponent)) VisionComponent->SetFlashlightEnabled(false);
 		ResetCrewStatusPresentation();
 		return;
 	}

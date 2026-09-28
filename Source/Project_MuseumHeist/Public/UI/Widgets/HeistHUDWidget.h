@@ -135,6 +135,9 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 	TObjectPtr<UTextBlock> ToolText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> FlashlightStatusText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> WeightText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
