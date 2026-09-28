@@ -60,8 +60,19 @@ bool FHeistContractDefinitionTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Three-player maximum optional exhibits"), Definition.ResolveMaximumOptionalExhibitCount(3), 19);
 	TestEqual(TEXT("Per-map Surface template catalog target"), Definition.SurfaceTemplateCatalogSize, 40);
 	TestEqual(TEXT("Per-match Painting exhibit target"), Definition.MatchPaintingExhibitCount, 20);
+	TestEqual(TEXT("M01 retains twenty exhibits"), Definition.ResolveMatchPaintingExhibitCount(TEXT("M01")), 20);
+	TestEqual(TEXT("M02 retains twenty exhibits"), Definition.ResolveMatchPaintingExhibitCount(TEXT("M02")), 20);
+	TestEqual(TEXT("M03 selects twelve exhibits"), Definition.ResolveMatchPaintingExhibitCount(TEXT("M03")), 12);
+	TestEqual(TEXT("Unknown map uses the default count"), Definition.ResolveMatchPaintingExhibitCount(NAME_None), 20);
 
 	FHeistContractDataRow InvalidDefinition = Definition;
+	InvalidDefinition.MapPaintingExhibitCounts.Add(TEXT("M03"), 41);
+	TestFalse(TEXT("Map override cannot exceed the catalog"), InvalidDefinition.IsRuntimeDefinitionValid(&FailureReason));
+	InvalidDefinition.MapPaintingExhibitCounts.Add(TEXT("M03"), 0);
+	TestFalse(TEXT("Empty map assignment is rejected"), InvalidDefinition.IsRuntimeDefinitionValid(&FailureReason));
+	InvalidDefinition.MapPaintingExhibitCounts.Add(TEXT("M03"), 5);
+	TestFalse(TEXT("Map override reserves required and minimum optional exhibits"), InvalidDefinition.IsRuntimeDefinitionValid(&FailureReason));
+	InvalidDefinition = Definition;
 	InvalidDefinition.PlayerCountQuotaMultipliers = {1.0f, 1.6f, 1.5f, 2.8f};
 	TestFalse(TEXT("Decreasing player quota is rejected"), InvalidDefinition.IsRuntimeDefinitionValid(&FailureReason));
 	TestEqual(TEXT("Decreasing quota failure reason"), FailureReason, FString(TEXT("NonMonotonicResolvedQuota")));

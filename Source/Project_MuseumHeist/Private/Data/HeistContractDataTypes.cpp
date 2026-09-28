@@ -10,6 +10,12 @@ int32 ResolvePlayerCountIndex(const int32 PlayerCount)
 }
 }
 
+int32 FHeistContractDataRow::ResolveMatchPaintingExhibitCount(const FName MapId) const
+{
+	const int32* Override = MapPaintingExhibitCounts.Find(MapId);
+	return Override ? *Override : MatchPaintingExhibitCount;
+}
+
 int32 FHeistContractDataRow::ResolveLootValueQuota(const int32 PlayerCount) const
 {
 	const int32 PlayerCountIndex = ResolvePlayerCountIndex(PlayerCount);
@@ -68,6 +74,20 @@ bool FHeistContractDataRow::IsRuntimeDefinitionValid(FString* OutFailureReason) 
 	if (!FMath::IsWithinInclusive(MatchDurationSeconds, 900.0f, 1500.0f))
 	{
 		return Fail(TEXT("MatchDurationOutsideTargetRange"));
+	}
+	for (const TPair<FName, int32>& Entry : MapPaintingExhibitCounts)
+	{
+		if (Entry.Key.IsNone() || Entry.Value <= 0 || Entry.Value > SurfaceTemplateCatalogSize)
+		{
+			return Fail(TEXT("InvalidMapPaintingExhibitCount"));
+		}
+		for (const int32 MinimumExhibits : MinimumOptionalExhibits)
+		{
+			if (MinimumExhibits >= Entry.Value)
+			{
+				return Fail(TEXT("MapPaintingCountBelowOptionalMinimum"));
+			}
+		}
 	}
 	if (ExtractionRuleId.IsNone())
 	{

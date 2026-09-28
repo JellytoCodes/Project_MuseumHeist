@@ -2812,14 +2812,25 @@ void UHeistDebugFunctionLibrary::DebugSurfaceTemplateDump(APlayerController* Pla
 		OriginalVisualReadyCount == ActivePaintingCaseCount && AssignedPaintingCaseCount == ActivePaintingCaseCount &&
 		UniqueAssignedTemplateIds.Num() == ActivePaintingCaseCount;
 	const bool bContractPassed = bSnapshotValid && bPreparedTemplateAligned && bOriginalVisualAligned;
-	const bool bContentCardinalityReady = PoolSize == 40 && ActivePaintingCaseCount == 20;
+	const UHeistGameBalanceDataAsset* BalanceData = GetDefault<UHeistGameBalanceDataAsset>();
+	FHeistContractDataRow Definition = BalanceData->DefaultContractDefinition;
+	if (const UDataTable* ContractTable = BalanceData->ContractDataTable.LoadSynchronous())
+	{
+		if (const FHeistContractDataRow* Row = ContractTable->FindRow<FHeistContractDataRow>(
+			HeistGameState->GetContractSnapshot().ContractId, TEXT("DebugSurfaceTemplateDump"), false))
+		{
+			Definition = *Row;
+		}
+	}
+	const int32 ExpectedPaintingCount = Definition.ResolveMatchPaintingExhibitCount(PoolId);
+	const bool bContentCardinalityReady = PoolSize == Definition.SurfaceTemplateCatalogSize && ActivePaintingCaseCount == ExpectedPaintingCount;
 	const FName PreparedTemplateId = IsValid(ForgeryComponent) ? ForgeryComponent->GetActiveTemplateId() : NAME_None;
 	Message(
 		PlayerController,
 		FString::Printf(
 			TEXT(
-				"Surface template dump: Pool=%s Template=%s PoolSize=%d ExpectedPoolSize=40 ActivePaintings=%d ExpectedActivePaintings=20 AssignedPaintings=%d UniqueAssignments=%d ContentCardinality=%s BagCycle=%d Remaining=%d Revision=%d PreparedTemplate=%s PreparedAligned=%s ActiveTargetCase=%s TargetCaseMatches=%d OriginalVisualReady=%d OriginalVisualTemplate=%s OriginalVisualRevision=%d OriginalVisualContract=%s Authority=%s Snapshot=%s Result=%s"),
-			*PoolId.ToString(), *TemplateId.ToString(), PoolSize, ActivePaintingCaseCount, AssignedPaintingCaseCount, UniqueAssignedTemplateIds.Num(),
+				"Surface template dump: Pool=%s Template=%s PoolSize=%d ExpectedPoolSize=%d ActivePaintings=%d ExpectedActivePaintings=%d AssignedPaintings=%d UniqueAssignments=%d ContentCardinality=%s BagCycle=%d Remaining=%d Revision=%d PreparedTemplate=%s PreparedAligned=%s ActiveTargetCase=%s TargetCaseMatches=%d OriginalVisualReady=%d OriginalVisualTemplate=%s OriginalVisualRevision=%d OriginalVisualContract=%s Authority=%s Snapshot=%s Result=%s"),
+			*PoolId.ToString(), *TemplateId.ToString(), PoolSize, Definition.SurfaceTemplateCatalogSize, ActivePaintingCaseCount, ExpectedPaintingCount, AssignedPaintingCaseCount, UniqueAssignedTemplateIds.Num(),
 			bContentCardinalityReady ? TEXT("READY") : TEXT("INCOMPLETE"), BagCycle, RemainingCount,
 			SelectionRevision, *PreparedTemplateId.ToString(), bPreparedTemplateAligned ? TEXT("true") : TEXT("false"), *ActiveTargetCaseId.ToString(), OriginalCaseCount,
 			OriginalVisualReadyCount, *OriginalVisualTemplateId.ToString(), OriginalVisualRevision, bOriginalVisualAligned ? TEXT("PASS") : TEXT("FAIL"),

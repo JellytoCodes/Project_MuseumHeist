@@ -160,8 +160,12 @@ Blueprint Shell/Presentation 운용은 별도 문서로 분리하지 않고 아�
 
 ## 2C. Authored Map Preservation
 
-- 2026-09-27 사용자 승인 M03 재구성은 기존 배치 보존의 명시적 예외다. `/Game/AIUE5_vol10_01/maps/AIUE_vol10_01` 원본과 M01/M02는 보존하고, 승인한 약 53×36m 평면(35×13m 원본 홀, 북측 A/B/C 전시실, 외곽 직원 통로, 동측 고가실·경비실·압수품실·철창 구금실)을 M03 출시 경로에 적용한다. 건축·바닥·가구·설치물은 해당 갤러리 팩 메시를 사용한다. 기존 상부 외벽 절단 메시 `/Game/Assets/Environment/M03Gallery/SM_GalleryUpperFacade`는 현재 M03 참조를 유지하며, 이 경로가 추가 복제의 포괄적 허용을 뜻하지 않는다. 기본 Cube로 환경을 대체하지 않는다.
-- M03 재구성은 기존 Painting 공용 Shell·Showcase 캔버스·20개 Case Identity와 40개 Template Pool, 보안 장치의 기능성 Blueprint를 유지한다. 장식 작품은 비상호작용으로 배치하고 최소 10종 전시 구도를 사용한다. 기존 4종 조명 Blueprint의 메시·SpotLight 단일 구성과 기본 크기는 유지한다. 기존 절차형 맵 생성기를 재활성화하지 않으며, 승인한 M03 전용 적용 도구만 사용한다.
+- 2026-09-27 사용자 승인 M03 재구성은 기존 배치 보존의 명시적 예외다. `/Game/AIUE5_vol10_01/maps/AIUE_vol10_01` 원본과 M01/M02는 보존하고, 2026-09-28 추가 승인에 따라 약 106×72m로 확장한다. 35×13m 원본 홀과 A/B/C·경비실·압수품실·철창 구금실은 유지하고, 서·동·남·북 전시 구역과 연결 회랑을 기존 갤러리 메시로 배치한다. 전체 Actor 배율 일괄 확대는 하지 않는다. 건축·바닥·가구·설치물은 해당 갤러리 팩 메시를 사용한다. 기존 상부 외벽 절단 메시 `/Game/Assets/Environment/M03Gallery/SM_GalleryUpperFacade`는 현재 M03 참조를 유지하며, 이 경로가 추가 복제의 포괄적 허용을 뜻하지 않는다. 기본 Cube로 환경을 대체하지 않는다.
+- M03은 사용자 승인에 따라 상호작용 Painting 12개와 비상호작용 장식 48개, 총 60개를 배치한다. Required Target과 레이저 보호 작품의 기존 Identity·기능 참조를 유지한다. Showcase 캔버스 03a·04a·05a만 사용한다. M03 액자는 소형·중형·대형 정수 균등 스케일 세 단계만 사용한다: 03a/05a는 2/3/4, 04a는 4/6/8. 상호작용 Actor와 Box는 Scale 1을 유지하고 표시 메시만 해당 정수 배율을 적용한다. 대형은 천장 여유를 검증한 홀·북측 높은 전시실에 배치한다. 실제 벽면의 끝·출입구·천장·다른 액자와의 간섭을 검증해 분산한다. 40종 Template Pool에서 M03은 12종, M01/M02는 기존 20종을 선택한다. 기존 4종 조명 Blueprint의 메시·SpotLight 단일 구성과 기본 크기는 유지한다. 기존 절차형 맵 생성기를 재활성화하지 않으며, 승인한 M03 전용 적용 도구만 사용한다.
+
+- M03 천장 설치 기준은 Z=800cm로 통일한다. 겹치는 기존 천장 모듈은 플리커 방지를 위한 2cm 층차를 허용한다. 벽 상단·중앙 홀 지붕·트러스도 함께 맞추되 낮은 전시 파티션은 유지한다. 4종 조명 Blueprint의 메시 크기는 유지하고 Actor는 수직으로 매단다. 작품등의 긴 축은 벽과 평행하게, KeySpot은 작품 전체의 밝기가 고르게 분포하도록 중심에서 조준을 시작해 필요 시 하향 보정한다. 실제 메시 Bounds와 플레이어 시점에서 작품 가림·벽 간섭을 검증한다.
+
+- M03 환경 조명은 Candelas와 inverse-square 감쇠를 사용한다. 작품 60개 모두 담당 조명을 지정하고 상호작용 여부로 목표 밝기를 나누지 않는다. 작품 표면 5×5 직접광 근사, 복잡 충돌 가림 검사와 실제 Lit 화면을 구분해 검증한다. 보정은 M03 인스턴스에만 적용하며 M01/M02와 공용 Blueprint의 값은 변경하지 않는다. M03 천장 전등 92개는 4 Candelas, CCTV 8개는 2 Candelas, PostProcess Ambient Cubemap Intensity는 0.005로 설정한다. Directional/Sky는 기존 야간 값을 유지한다. 반복 적용으로 다시 반감하지 않으며 CCTV 감지 범위·위험 색상은 유지한다. 고정 노출을 유지하고 기존 Engine Ambient Cubemap을 PostProcess에서 약하게 적용해 무조명 통로의 바닥·벽·출입구를 구분한다. M03 FixtureMesh의 Affect Dynamic Indirect Lighting과 PostProcess의 Lumen GI Screen Traces를 끄고 패널 발광 표시는 유지하며, 주변 국소 조명은 SpotLight가 담당한다. 프로젝트 VSM OnePassProjection MaxLightsPerPixel=32는 조명 중첩 경고에 대한 별도 보정이다. 검증은 작품뿐 아니라 어두운 복도와 CCTV 주변의 실제 Lit 화면을 포함하며 자동 캡처 품질 단계를 명시한다.
 
 - Actor 위치의 소수점은 0 방향으로 절삭한다. 회전은 유지한다.
 - 레벨 배치 스케일은 액자에 한정하지 않는다. 벽·바닥·천장·문·기둥·몰딩·가구·조명·전시품·게임플레이 Actor를 포함한 모든 배치의 Scale3D 각 축을 소수점 한 자리(0.1 단위, 예: 0.6 / 1.0 / 1.2 / 2.4)로 작성한다. 배치 크기를 결정하는 Blueprint/StaticMesh Component의 RelativeScale3D와 PCG/ISM 인스턴스에도 같은 규칙을 적용하며, Actor 대신 하위 컴포넌트에 긴 소수점 배율을 숨겨 우회하지 않는다.
@@ -224,7 +228,7 @@ Title Menu
 - Surface Forgery Template 카탈로그 120개
   - M01 / M02 / M03 각 40개
 - MatchStart Server-selected Surface Template Pool / Shuffle Bag
-  - 선택된 Map의 40개 중 20개를 중복 없이 활성 Painting Exhibit에 배정
+  - 선택된 Map의 40개 중 M01/M02는 20개, M03은 12개를 중복 없이 활성 Painting Exhibit에 배정
 - Painting Display Case State Machine
 - Observation Cast
 - Owner-only Full-Screen Drawing Forgery
@@ -500,7 +504,7 @@ Client Preview는 확정값으로 취급하지 않는다.
 - Interaction Target은 현재 Overlap 중이고 `CanInteract`를 만족하는 Actor 가운데 가장 가까운 대상으로 선택한다.
 - 유효한 Interaction Target이 없을 때만 기존 Overlap 집합의 잠긴 Vent를 안내 전용으로 표시한다. 안내 대상은 요청 가능한 Interaction Target으로 승격하지 않는다.
 - Interaction Target 탐색을 위한 실시간 Line Trace 또는 주기적 Trace Scan을 사용하지 않는다.
-- Flashlight Direction은 Camera Forward를 기준으로 한다.
+- Flashlight Direction은 Camera Forward를 기준으로 한다. 공용 손전등은 12 Candelas, Inner/Outer Cone 반각 16/27도로 설정한다. 이전 8/14도 대비 같은 거리의 광폭을 약 2배로 넓히며 Attenuation Radius 1500cm는 유지한다. 소등 잔광을 줄이기 위해 Indirect Lighting Intensity와 Volumetric Scattering Intensity는 0으로 두고 Visibility로 즉시 전환한다.
 - 손전등은 `F` 토글, 기본 OFF다. 서버가 점등 상태를 확정·복제하고 PlayerOverlay에 `[F] 손전등 ON/OFF`를 표시한다. Blueprint는 카메라에 부착된 SpotLight를 구성한다. UI 입력 중에는 토글하지 않으며 기절·구금·탈출·UnPossessed·InGame 종료 시 OFF로 정리한다. 배터리와 손전등 전용 Guard 감지 규칙은 추가하지 않는다.
 - Coin Throw Direction은 Camera Forward 또는 검증된 Camera Target을 기준으로 한다.
 - Top-Down Gameplay Camera를 사용하지 않는다.
@@ -802,15 +806,15 @@ Escape 취소 조건:
 - 서버는 현재 Map의 Eligible Exhibit Case와 Contract Definition으로 매치별 Exhibit Assignment를 확정한다.
 - Required Target Case는 반드시 하나 지정한다.
 - Optional Painting Case는 `ContractStartPlayerCount`와 Loot Value Quota가 요구하는 수량만 활성화한다. Object Case는 v1 Assignment에서 제외한다.
-- Surface Template 카탈로그는 M01/M02/M03마다 40개를 유지한다. MatchStart 서버는 선택된 Map Pool의 40개 중 20개를 Draw해 Required Target을 포함한 활성 Painting Exhibit 20개에 하나씩 배정하며, 같은 Match Assignment 안에서 같은 Template을 중복 사용하지 않는다.
+- Surface Template 카탈로그는 M01/M02/M03마다 40개를 유지한다. MatchStart 서버는 선택된 Map Pool에서 계약 데이터가 정한 수량(M01/M02 20개, M03 12개)을 Draw해 Required Target을 포함한 활성 Painting Exhibit에 하나씩 배정하며, 같은 Match Assignment 안에서 같은 Template을 중복 사용하지 않는다.
 - `AHeistPaintingDisplayCaseActor`가 Case별 Assigned TemplateId, ReferenceImage와 AssignmentRevision을 복제한다. Forgery 준비는 GameState의 단일 선택값을 전체 Case에 공용하지 않고 상호작용한 Case의 배정값을 검증해 사용한다.
-- 개발 중 유효 Template 또는 배치 Painting Case가 부족하면 서버는 `min(20, 유효 Template 수, 유효 Painting Case 수)`만 안전하게 배정하고 `INCOMPLETE`로 기록할 수 있다. 이 Fallback은 Release 완료 증거가 아니며 Release Gate는 맵별 40개 카탈로그와 활성 Painting Exhibit 20개를 모두 요구한다.
+- 개발 중 유효 Template 또는 배치 Painting Case가 부족하면 서버는 `min(맵별 계약 수량, 유효 Template 수, 유효 Painting Case 수)`만 안전하게 배정하고 `INCOMPLETE`로 기록할 수 있다. 이 Fallback은 Release 완료 증거가 아니며 Release Gate는 맵별 40개 카탈로그와 M01/M02 활성 Painting Exhibit 20개, M03 활성 Painting Exhibit 12개를 요구한다.
 - Shuffle Bag 재충전 시 직전 Cycle의 최근 3개 Template을 첫 선택 후보에서 제외한다.
 - Object Assembly Template의 별도 Family Pool과 Shuffle Bag 코드는 Deferred 호환용으로 보존하되 v1 Assignment에서 실행하지 않는다.
 - Assignment는 `CaseId`, `ArtifactId`, `ForgeryType`, `TemplateId`, `ArtifactValue`, `bRequiredTarget`을 포함하며 v1의 `ForgeryType`은 Surface만 선택한다.
 - Assignment Snapshot과 Contract Snapshot은 모든 Client에 복제한다.
 - 선택된 Reference Image는 해당 Assignment를 받은 Painting Case의 Original World Visual에만 적용한다.
-- 일반 전시 그림은 상호작용하지 않는 Map StaticMesh Presentation으로 배치하며 활성 Painting 20개, Case/Artifact Identity, Quota와 Template Pool에 포함하지 않는다.
+- 일반 전시 그림은 상호작용하지 않는 Map StaticMesh Presentation으로 배치하며 활성 Painting 수량(M01/M02 20개, M03 12개), Case/Artifact Identity, Quota와 Template Pool에 포함하지 않는다.
 - 탈취 가능한 작품은 두꺼운 프레임과 하단 보안 패널, 일반 전시물은 얇은 프레임으로 접근 전에 구별한다. 색상만으로 구분하거나 일반 전시물에 행동 Prompt를 추가하지 않는다.
 - 전시 배치는 실제 미술관 사례를 참고해 맵별 최소 10종의 구별되는 구성을 사용한다. 좌우 반전·그림 교체·미세 간격 변경을 별도 패턴으로 세지 않으며, 일반 작품만 있는 독립 전시와 다양한 크기를 포함한다. 모든 탈취 대상에 같은 수의 일반 작품을 붙이거나 항상 중앙·최대 크기로 배치하지 않는다.
 - 액자는 실제 벽 또는 바닥에 지지된 독립 전시벽에 설치하고 정면 관람 공간을 확보한다. 설치 높이·면 방향·시야 차단·Navigation과 Floor Plan 정합성은 Map 저장 후 재검증한다.

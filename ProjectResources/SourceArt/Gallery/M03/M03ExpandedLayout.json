@@ -1,0 +1,681 @@
+{
+  "source_sha256": "0b293b76deb395bd816f79f1d467e3760d02bc49ced0b3b4e7d980e61d7f3a45",
+  "outer_m": [
+    -52.8,
+    -36,
+    52.8,
+    36
+  ],
+  "floor_grid": {
+    "columns": 16,
+    "rows": 12,
+    "step_cm": [
+      660,
+      600
+    ],
+    "scale": [
+      1,
+      0.9,
+      4
+    ]
+  },
+  "rooms": [
+    {
+      "name": "WestSouth",
+      "bounds": [
+        -52.8,
+        -18,
+        -30,
+        -2
+      ],
+      "ceiling": 800,
+      "decorations": 3
+    },
+    {
+      "name": "WestNorth",
+      "bounds": [
+        -52.8,
+        2,
+        -30,
+        18
+      ],
+      "ceiling": 800,
+      "decorations": 3
+    },
+    {
+      "name": "WestCross",
+      "bounds": [
+        -52.8,
+        -2,
+        -26,
+        2
+      ],
+      "ceiling": 800,
+      "decorations": 0
+    },
+    {
+      "name": "WestSpineS",
+      "bounds": [
+        -30,
+        -18,
+        -26,
+        -2
+      ],
+      "ceiling": 800,
+      "decorations": 0
+    },
+    {
+      "name": "WestSpineN",
+      "bounds": [
+        -30,
+        2,
+        -26,
+        18
+      ],
+      "ceiling": 800,
+      "decorations": 0
+    },
+    {
+      "name": "EastSouth",
+      "bounds": [
+        31,
+        -18,
+        52.8,
+        -2
+      ],
+      "ceiling": 800,
+      "decorations": 2
+    },
+    {
+      "name": "EastNorth",
+      "bounds": [
+        31,
+        2,
+        52.8,
+        18
+      ],
+      "ceiling": 800,
+      "decorations": 2
+    },
+    {
+      "name": "EastCross",
+      "bounds": [
+        27,
+        -2,
+        52.8,
+        2
+      ],
+      "ceiling": 800,
+      "decorations": 0
+    },
+    {
+      "name": "EastSpineS",
+      "bounds": [
+        27,
+        -18,
+        31,
+        -2
+      ],
+      "ceiling": 800,
+      "decorations": 0
+    },
+    {
+      "name": "EastSpineN",
+      "bounds": [
+        27,
+        2,
+        31,
+        18
+      ],
+      "ceiling": 800,
+      "decorations": 0
+    },
+    {
+      "name": "ServiceLink",
+      "bounds": [
+        17,
+        14,
+        27,
+        18
+      ],
+      "ceiling": 800,
+      "decorations": 0
+    },
+    {
+      "name": "NorthWest",
+      "bounds": [
+        -52.8,
+        18,
+        -29,
+        32
+      ],
+      "ceiling": 800,
+      "decorations": 3
+    },
+    {
+      "name": "NorthWestMiddle",
+      "bounds": [
+        -29,
+        18,
+        -5,
+        32
+      ],
+      "ceiling": 800,
+      "decorations": 3
+    },
+    {
+      "name": "NorthGrand",
+      "bounds": [
+        -5,
+        18,
+        19,
+        32
+      ],
+      "ceiling": 800,
+      "decorations": 4
+    },
+    {
+      "name": "NorthTarget",
+      "bounds": [
+        19,
+        18,
+        43,
+        32
+      ],
+      "ceiling": 800,
+      "decorations": 3
+    },
+    {
+      "name": "NorthEnd",
+      "bounds": [
+        43,
+        18,
+        52.8,
+        32
+      ],
+      "ceiling": 800,
+      "decorations": 2
+    },
+    {
+      "name": "NorthService",
+      "bounds": [
+        -52.8,
+        32,
+        52.8,
+        36
+      ],
+      "ceiling": 800,
+      "decorations": 0
+    },
+    {
+      "name": "SouthEntry",
+      "bounds": [
+        -52.8,
+        -36,
+        -33,
+        -18
+      ],
+      "ceiling": 800,
+      "decorations": 2
+    },
+    {
+      "name": "SouthWest",
+      "bounds": [
+        -33,
+        -36,
+        -9,
+        -22
+      ],
+      "ceiling": 800,
+      "decorations": 3
+    },
+    {
+      "name": "SouthMiddle",
+      "bounds": [
+        -9,
+        -36,
+        15,
+        -22
+      ],
+      "ceiling": 800,
+      "decorations": 3
+    },
+    {
+      "name": "SouthEast",
+      "bounds": [
+        15,
+        -36,
+        39,
+        -22
+      ],
+      "ceiling": 800,
+      "decorations": 3
+    },
+    {
+      "name": "SouthEnd",
+      "bounds": [
+        39,
+        -36,
+        52.8,
+        -18
+      ],
+      "ceiling": 800,
+      "decorations": 2
+    },
+    {
+      "name": "SouthService",
+      "bounds": [
+        -33,
+        -22,
+        39,
+        -18
+      ],
+      "ceiling": 800,
+      "decorations": 0
+    },
+    {
+      "name": "SouthVest",
+      "bounds": [
+        -12,
+        -18,
+        27,
+        -11
+      ],
+      "ceiling": 800,
+      "decorations": 0
+    }
+  ],
+  "doors": [
+    {
+      "axis": 1,
+      "plane": -2,
+      "center": -40,
+      "width": 2.4
+    },
+    {
+      "axis": 1,
+      "plane": 2,
+      "center": -43,
+      "width": 2.4
+    },
+    {
+      "axis": 1,
+      "plane": -2,
+      "center": -28,
+      "width": 4
+    },
+    {
+      "axis": 1,
+      "plane": 2,
+      "center": -28,
+      "width": 4
+    },
+    {
+      "axis": 1,
+      "plane": 18,
+      "center": -42,
+      "width": 2.4
+    },
+    {
+      "axis": 1,
+      "plane": -18,
+      "center": -42,
+      "width": 2.4
+    },
+    {
+      "axis": 1,
+      "plane": 18,
+      "center": -28,
+      "width": 3
+    },
+    {
+      "axis": 1,
+      "plane": -18,
+      "center": -28,
+      "width": 4
+    },
+    {
+      "axis": 1,
+      "plane": -2,
+      "center": 42,
+      "width": 2.4
+    },
+    {
+      "axis": 1,
+      "plane": 2,
+      "center": 42,
+      "width": 2.4
+    },
+    {
+      "axis": 1,
+      "plane": -2,
+      "center": 29,
+      "width": 4
+    },
+    {
+      "axis": 1,
+      "plane": 2,
+      "center": 29,
+      "width": 4
+    },
+    {
+      "axis": 1,
+      "plane": 18,
+      "center": 29,
+      "width": 3
+    },
+    {
+      "axis": 1,
+      "plane": -18,
+      "center": 29,
+      "width": 4
+    },
+    {
+      "axis": 0,
+      "plane": 27,
+      "center": 16,
+      "width": 2.4
+    },
+    {
+      "axis": 0,
+      "plane": -29,
+      "center": 23,
+      "width": 2.4
+    },
+    {
+      "axis": 0,
+      "plane": -5,
+      "center": 27,
+      "width": 2.4
+    },
+    {
+      "axis": 0,
+      "plane": 19,
+      "center": 22,
+      "width": 2.4
+    },
+    {
+      "axis": 0,
+      "plane": 43,
+      "center": 27,
+      "width": 2.4
+    },
+    {
+      "axis": 1,
+      "plane": 32,
+      "center": -43,
+      "width": 2.4
+    },
+    {
+      "axis": 1,
+      "plane": 32,
+      "center": -17,
+      "width": 2.4
+    },
+    {
+      "axis": 1,
+      "plane": 32,
+      "center": 7,
+      "width": 2.4
+    },
+    {
+      "axis": 1,
+      "plane": 32,
+      "center": 31,
+      "width": 2.4
+    },
+    {
+      "axis": 1,
+      "plane": 32,
+      "center": 48,
+      "width": 2.4
+    },
+    {
+      "axis": 0,
+      "plane": -33,
+      "center": -29,
+      "width": 2.4
+    },
+    {
+      "axis": 0,
+      "plane": -9,
+      "center": -31,
+      "width": 2.4
+    },
+    {
+      "axis": 0,
+      "plane": 15,
+      "center": -26,
+      "width": 2.4
+    },
+    {
+      "axis": 0,
+      "plane": 39,
+      "center": -30,
+      "width": 2.4
+    },
+    {
+      "axis": 0,
+      "plane": -33,
+      "center": -20,
+      "width": 3.2
+    },
+    {
+      "axis": 0,
+      "plane": 39,
+      "center": -20,
+      "width": 3.2
+    },
+    {
+      "axis": 1,
+      "plane": -22,
+      "center": -21,
+      "width": 2.4
+    },
+    {
+      "axis": 1,
+      "plane": -22,
+      "center": 3,
+      "width": 2.4
+    },
+    {
+      "axis": 1,
+      "plane": -22,
+      "center": 27,
+      "width": 2.4
+    },
+    {
+      "axis": 1,
+      "plane": -18,
+      "center": 3,
+      "width": 2.4
+    },
+    {
+      "axis": 0,
+      "plane": 27,
+      "center": -14.5,
+      "width": 2.4
+    }
+  ],
+  "core_portals": [
+    {
+      "axis": 0,
+      "plane": -26,
+      "center": 0,
+      "width": 2.4
+    },
+    {
+      "axis": 0,
+      "plane": 27,
+      "center": 0,
+      "width": 2.4
+    },
+    {
+      "axis": 1,
+      "plane": 18,
+      "center": -18,
+      "width": 2.4
+    },
+    {
+      "axis": 1,
+      "plane": 18,
+      "center": 6,
+      "width": 2.4
+    },
+    {
+      "axis": 1,
+      "plane": -18,
+      "center": -17,
+      "width": 2.4
+    },
+    {
+      "axis": 0,
+      "plane": -12,
+      "center": -14.5,
+      "width": 2.4
+    },
+    {
+      "axis": 1,
+      "plane": -11,
+      "center": 0,
+      "width": 2.4
+    },
+    {
+      "axis": 0,
+      "plane": 17,
+      "center": 16,
+      "width": 2.4
+    }
+  ],
+  "cases": [
+    {
+      "case": "Case_M03_Target",
+      "room": "NorthTarget",
+      "tier": 3,
+      "axis": 1,
+      "plane": 18,
+      "center": 38
+    },
+    {
+      "case": "Case_M03_Optional_01",
+      "room": "NorthGrand",
+      "tier": 3,
+      "axis": 1,
+      "plane": 18,
+      "center": 13
+    },
+    {
+      "case": "Case_M03_Optional_03",
+      "room": "WestSouth",
+      "tier": 2,
+      "axis": 0,
+      "plane": -52.8,
+      "center": -10
+    },
+    {
+      "case": "Case_M03_Optional_04",
+      "room": "WestNorth",
+      "tier": 2,
+      "axis": 0,
+      "plane": -52.8,
+      "center": 10
+    },
+    {
+      "case": "Case_M03_Optional_07",
+      "room": "SouthWest",
+      "tier": 2,
+      "axis": 1,
+      "plane": -36,
+      "center": -22
+    },
+    {
+      "case": "Case_M03_Optional_08",
+      "room": "EastNorth",
+      "tier": 2,
+      "axis": 0,
+      "plane": 52.8,
+      "center": 10
+    },
+    {
+      "case": "Case_M03_Optional_10",
+      "room": "SouthMiddle",
+      "tier": 2,
+      "axis": 1,
+      "plane": -36,
+      "center": 3
+    },
+    {
+      "case": "Case_M03_Optional_12",
+      "room": "SouthEast",
+      "tier": 2,
+      "axis": 1,
+      "plane": -36,
+      "center": 27
+    },
+    {
+      "case": "Case_M03_Optional_14",
+      "room": "NorthWest",
+      "tier": 2,
+      "axis": 0,
+      "plane": -52.8,
+      "center": 25
+    },
+    {
+      "case": "Case_M03_Optional_16",
+      "room": "NorthWestMiddle",
+      "tier": 2,
+      "axis": 1,
+      "plane": 32,
+      "center": -24
+    },
+    {
+      "case": "Case_M03_Optional_17",
+      "room": "Hall",
+      "tier": 2,
+      "axis": 1,
+      "plane": -11,
+      "center": 9
+    },
+    {
+      "case": "Case_M03_Optional_HighValue",
+      "room": "EastSouth",
+      "tier": 2,
+      "axis": 0,
+      "plane": 52.8,
+      "center": -10
+    }
+  ],
+  "core_decorations": {
+    "Hall": 4,
+    "A": 2,
+    "B": 2,
+    "C": 2
+  },
+  "large_decorations": [
+    {
+      "room": "Hall",
+      "variant": 3
+    },
+    {
+      "room": "NorthGrand",
+      "variant": 4
+    },
+    {
+      "room": "NorthTarget",
+      "variant": 5
+    },
+    {
+      "room": "NorthGrand",
+      "variant": 3
+    }
+  ],
+  "ceiling_mount_cm": 800,
+  "ceiling_overlap_step_cm": 2,
+  "fixture_policy": {
+    "upright": true,
+    "art_long_axis_parallel_wall": true,
+    "spot_aim_independent": true,
+    "preserve_blueprint_mesh_scale": true,
+    "preserve_intensity": true
+  }
+}

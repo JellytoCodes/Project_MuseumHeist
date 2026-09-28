@@ -24,14 +24,15 @@ light.set_editor_property('mobility', unreal.ComponentMobility.MOVABLE)
 light.set_editor_property('relative_location', unreal.Vector(20, 8, -8))
 light.set_editor_property('relative_rotation', unreal.Rotator())
 light.set_editor_property('intensity_units', unreal.LightUnits.CANDELAS)
-light.set_editor_property('intensity', 800.0)
+light.set_editor_property('intensity', 12.0)
 light.set_editor_property('attenuation_radius', 1500.0)
-light.set_editor_property('inner_cone_angle', 30.0)
-light.set_editor_property('outer_cone_angle', 45.0)
+light.set_editor_property('inner_cone_angle', 16.0)
+light.set_editor_property('outer_cone_angle', 27.0)
+light.set_editor_property('indirect_lighting_intensity', 0.0)
 light.set_editor_property('use_temperature', True)
 light.set_editor_property('temperature', 4800.0)
 light.set_editor_property('cast_shadows', True)
-light.set_editor_property('volumetric_scattering_intensity', 0.2)
+light.set_editor_property('volumetric_scattering_intensity', 0.0)
 light.set_editor_property('visible', False)
 unreal.BlueprintEditorLibrary.compile_blueprint(bp)
 assert unreal.EditorAssetLibrary.save_loaded_asset(bp)
@@ -64,7 +65,8 @@ out = Path(unreal.Paths.project_saved_dir()) / 'Flashlight'
 out.mkdir(exist_ok=True)
 (out / 'asset-application.json').write_text(json.dumps({
     'character': bp.get_path_name(), 'hud': hud.get_path_name(),
-    'light_tag': 'Flashlight', 'attachment': 'FirstPersonCamera', 'intensity_cd': 800,
-    'radius_cm': 1500, 'inner_half_angle': 30, 'outer_half_angle': 45,
+    'light_tag': 'Flashlight', 'attachment': 'FirstPersonCamera', 'intensity_cd': 12,
+    'radius_cm': 1500, 'inner_half_angle': 16, 'outer_half_angle': 27,
+    'indirect_lighting_intensity': 0, 'volumetric_scattering_intensity': 0,
     'default_on': False, 'hud_size': [264, 32], 'hud_offset': [-24, -132],
     'font_displayed': 20, 'font_stored': 15, 'compiled_saved': True}, indent=2), encoding='utf-8')

@@ -157,21 +157,21 @@
     "MapDisplayName": "글래스하우스 갤러리",
     "FloorPlanTexture": "Texture2D'/Game/Assets/UI/Map/T_FloorPlan_M03.T_FloorPlan_M03'",
     "WorldMin": {
-      "X": -2700,
-      "Y": -1900
+      "X": -5400,
+      "Y": -3700
     },
     "WorldMax": {
-      "X": 2800,
-      "Y": 1900
+      "X": 5400,
+      "Y": 3700
     },
     "MapNorthAxis": "PositiveY",
     "ZoneAnchors": [
       {
         "ZoneId": "Zone_V",
-        "DisplayName": "침입·정산",
+        "DisplayName": "진입·정산",
         "WorldLocation": {
-          "X": -1700,
-          "Y": -1450
+          "X": -4500,
+          "Y": -3200
         }
       },
       {
@@ -179,7 +179,7 @@
         "DisplayName": "중앙 갤러리",
         "WorldLocation": {
           "X": -450,
-          "Y": -450
+          "Y": -500
         }
       },
       {
@@ -195,7 +195,7 @@
         "DisplayName": "전시실 B",
         "WorldLocation": {
           "X": -400,
-          "Y": 1100
+          "Y": 800
         }
       },
       {
@@ -207,16 +207,32 @@
         }
       },
       {
-        "ZoneId": "Zone_HV",
-        "DisplayName": "고가 전시실",
+        "ZoneId": "Zone_NE",
+        "DisplayName": "북동 핵심 전시실",
         "WorldLocation": {
-          "X": 2200,
-          "Y": -450
+          "X": 3100,
+          "Y": 2500
+        }
+      },
+      {
+        "ZoneId": "Zone_HV",
+        "DisplayName": "동측 고가실",
+        "WorldLocation": {
+          "X": 4200,
+          "Y": -1050
+        }
+      },
+      {
+        "ZoneId": "Zone_EN",
+        "DisplayName": "동측 전시실",
+        "WorldLocation": {
+          "X": 4200,
+          "Y": 950
         }
       },
       {
         "ZoneId": "Zone_EV",
-        "DisplayName": "압수품 보관실",
+        "DisplayName": "압수품",
         "WorldLocation": {
           "X": 1950,
           "Y": 500
@@ -229,16 +245,80 @@
           "X": 2450,
           "Y": 500
         }
+      },
+      {
+        "ZoneId": "Zone_WS",
+        "DisplayName": "서측 전시실",
+        "WorldLocation": {
+          "X": -4200,
+          "Y": -1100
+        }
+      },
+      {
+        "ZoneId": "Zone_WN",
+        "DisplayName": "서측 전시실",
+        "WorldLocation": {
+          "X": -4200,
+          "Y": 950
+        }
+      },
+      {
+        "ZoneId": "Zone_NW",
+        "DisplayName": "북서 전시실",
+        "WorldLocation": {
+          "X": -4100,
+          "Y": 2500
+        }
+      },
+      {
+        "ZoneId": "Zone_NM",
+        "DisplayName": "북측 전시실",
+        "WorldLocation": {
+          "X": -1700,
+          "Y": 2500
+        }
+      },
+      {
+        "ZoneId": "Zone_NG",
+        "DisplayName": "대형 작품실",
+        "WorldLocation": {
+          "X": 700,
+          "Y": 2500
+        }
+      },
+      {
+        "ZoneId": "Zone_SW",
+        "DisplayName": "남서 전시실",
+        "WorldLocation": {
+          "X": -2100,
+          "Y": -2900
+        }
+      },
+      {
+        "ZoneId": "Zone_SM",
+        "DisplayName": "남측 전시실",
+        "WorldLocation": {
+          "X": 300,
+          "Y": -2900
+        }
+      },
+      {
+        "ZoneId": "Zone_SE",
+        "DisplayName": "남동 전시실",
+        "WorldLocation": {
+          "X": 2700,
+          "Y": -2900
+        }
       }
     ],
-    "ContractTargetGalleryZoneId": "Zone_C",
+    "ContractTargetGalleryZoneId": "Zone_NE",
     "DefaultExitAnchors": [
       {
         "ExitId": "Exit_Main",
         "DisplayName": "진입·배출 벤트",
         "WorldLocation": {
-          "X": -1320,
-          "Y": -1670
+          "X": -4900,
+          "Y": -3400
         }
       }
     ]

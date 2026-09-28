@@ -1,0 +1,76 @@
+{
+  "source_map_sha256": "6f7b932c863b6a9ee1b7eba7d78092d1574fddf84cae361d40fb14fe1fbb9888",
+  "intensity_multiplier": 0.5,
+  "expected_lights": 102,
+  "postprocess_actor": "PostProcessVolume_0",
+  "postprocess": {
+    "color_gamma_shadows": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "color_offset_shadows": [
+      0.0006,
+      0.0009,
+      0.0012,
+      0
+    ],
+    "color_correction_shadows_max": 0.035,
+    "vignette_intensity": 0.3,
+    "film_toe": 0.53
+  },
+  "readability_correction": {
+    "source_map_sha256": "bf91328f14a158a9033b15fd6a3b6a3ba104c4c27ab13d72b3d0896575020dae",
+    "cctv_intensity_cd": 20.0,
+    "ambient_cubemap": "/Engine/MapTemplates/Sky/DaylightAmbientCubemap",
+    "ambient_cubemap_intensity": 0.16,
+    "ambient_cubemap_tint": [
+      0.65,
+      0.75,
+      1.0,
+      1.0
+    ]
+  },
+  "ambient_dimming": {
+    "source_map_sha256": "b43283c642dcc57c12b9bd5629a07cce577c6e052f81293f29f0472482697b00",
+    "ambient_cubemap_intensity": 0.05,
+    "notes": "User PIE feedback: ambient fill at 0.16 reveals too much. Reduce only this fill to approximately one third, using the simple authored value 0.05. CCTV stays at 20 cd and all other lighting/exposure stays unchanged. This is an intensity ratio, not an exact screen luminance or visibility-distance guarantee."
+  },
+  "low_light_tuning": {
+    "source_map_sha256": "e4687d022248b148e6ca9813deda02f725511578fb5baf0c235166bffdb39f44",
+    "cctv_intensity_cd": 5.0,
+    "ambient_cubemap_intensity": 0.02,
+    "notes": "User-requested M03 values: CCTV 5 cd and ambient fill 0.02. All other lights, exposure, detection and placement remain unchanged."
+  },
+  "wall_lighting": {
+    "source_map_sha256": "ec553de7cbf7d77fa1132021a01baadbc22dd8c3d7521fa7fbfc64db2806eae2",
+    "cctv_intensity_cd": 2.0,
+    "fixture_intensity_cd": 10.0,
+    "ambient_cubemap_intensity": 0.005,
+    "fixture_indirect_lighting": false,
+    "lumen": {
+      "lumen_final_gather_screen_traces": false
+    },
+    "vsm_max_lights_per_pixel": 32
+  },
+  "notes": "Earlier profiles are historical. Current M03 ceiling lights are 4 cd, CCTV 2 cd, ambient 0.005. Current shared player flashlight uses flashlight_refinement: 12 cd, inner/outer half angles 16/27 degrees. No duplicated assets.",
+  "fixture_flashlight_tuning": {
+    "source_map_sha256": "d7ed0f8142ae30856a914640d9631aa36d760ce76f085cf7d0e23f93e3117541",
+    "fixture_intensity_cd": 4.0,
+    "flashlight": {
+      "intensity": 4.0,
+      "inner_cone_angle": 8.0,
+      "outer_cone_angle": 14.0,
+      "indirect_lighting_intensity": 0.0,
+      "volumetric_scattering_intensity": 0.0
+    },
+    "notes": "Only M03 fixture intensities change. CCTV and ambient remain user-saved values. Shared player flashlight beam width is about one quarter at equal distance; attenuation radius stays 1500 cm. Direct-only flashlight avoids delayed indirect/fog lighting."
+  },
+  "flashlight_refinement": {
+    "intensity_cd": 12.0,
+    "inner_half_angle": 16.0,
+    "outer_half_angle": 27.0,
+    "notes": "Shared player flashlight only. Roughly twice previous 8/14 degree beam width at equal distance. Radius 1500 cm, indirect/fog zero. M03 fixtures remain 4 cd."
+  }
+}

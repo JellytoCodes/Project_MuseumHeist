@@ -1,0 +1,2851 @@
+{
+  "source_map_sha256": "6743593197037307d1aae1d53ecc0b1559cea627495e7117d359cf00e891675c",
+  "target_mean_direct_lux_proxy": 0.6,
+  "minimum_uniformity": 0.5,
+  "sample_inset": 0.08,
+  "grid": 5,
+  "fixtures": [
+    {
+      "painting": "StaticMeshActor_2232",
+      "label": "LDV2_M03_Gallery_Print_01_03",
+      "room": "NorthTarget",
+      "fixture_actor": "BP_HeistLight_Droplights_01a_C_29",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        3709,
+        2190,
+        804
+      ],
+      "yaw": 0,
+      "source": [
+        3709.0,
+        2190.0,
+        685.255419921875
+      ],
+      "aim": [
+        3709.079559326172,
+        3171.6009616851807,
+        -280.73769012478726
+      ],
+      "inner": 29.2,
+      "outer": 64.0,
+      "radius": 2400,
+      "candela": 89.3,
+      "model_ratio": 0.5929754037614622,
+      "offset_from_wall": 981,
+      "actor": "BP_HeistLight_Droplights_01a_C_29",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2237",
+      "label": "LDV2_M03_Gallery_Print_01_04",
+      "room": "NorthGrand",
+      "fixture_actor": "BP_HeistLight_Droplights_01a_C_28",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        1309,
+        2166,
+        802
+      ],
+      "yaw": 0,
+      "source": [
+        1309.0,
+        2166.0,
+        683.255419921875
+      ],
+      "aim": [
+        1309.427001953125,
+        3159.4797897338867,
+        29.11486785568667
+      ],
+      "inner": 17.8,
+      "outer": 50.6,
+      "radius": 2400,
+      "candela": 88.5,
+      "model_ratio": 0.6017153272768085,
+      "offset_from_wall": 994,
+      "actor": "BP_HeistLight_Droplights_01a_C_28",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "BP_PaintingDisplayCase_C_1",
+      "label": "LDV2_M03_Painting_01",
+      "room": "NorthGrand",
+      "fixture_actor": "BP_HeistLight_Droplights_01c_C_5",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01c",
+      "actor_location": [
+        1300,
+        2830,
+        802
+      ],
+      "yaw": 0,
+      "source": [
+        1300.0,
+        2830.0,
+        686.67421875
+      ],
+      "aim": [
+        1300.0000000000005,
+        1836.1997337341309,
+        29.11486785568667
+      ],
+      "inner": 17.8,
+      "outer": 50.6,
+      "radius": 2400,
+      "candela": 88.8,
+      "model_ratio": 0.5991974032245757,
+      "offset_from_wall": 994,
+      "actor": "BP_HeistLight_Droplights_01c_C_5",
+      "mesh_relative": {
+        "location": [
+          3.9584472656250003,
+          -25.503271484375002,
+          -108.32047729492189
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_1691",
+      "label": "LDV2_M03_Gallery_Print_01_01",
+      "room": "Hall",
+      "fixture_actor": "BP_HeistLight_Droplights_01a_C_27",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        -656,
+        -80,
+        800
+      ],
+      "yaw": 0,
+      "source": [
+        -656.0,
+        -80.0,
+        681.255419921875
+      ],
+      "aim": [
+        -712.0,
+        -1070.3581619262695,
+        -291.834944328613
+      ],
+      "inner": 31.7,
+      "outer": 53.3,
+      "radius": 2400,
+      "candela": 88.3,
+      "model_ratio": 0.5808065035701828,
+      "offset_from_wall": 991,
+      "actor": "BP_HeistLight_Droplights_01a_C_27",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2227",
+      "label": "LDV2_M03_Gallery_Print_01_02",
+      "room": "NorthGrand",
+      "fixture_actor": "BP_HeistLight_Droplights_01a_C_30",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        90,
+        2188,
+        802
+      ],
+      "yaw": 0,
+      "source": [
+        90.0,
+        2188.0,
+        683.255419921875
+      ],
+      "aim": [
+        90.0,
+        3167.3581619262695,
+        -77.22594609916439
+      ],
+      "inner": 20.5,
+      "outer": 53.7,
+      "radius": 2400,
+      "candela": 89.9,
+      "model_ratio": 0.6033838464936757,
+      "offset_from_wall": 980,
+      "actor": "BP_HeistLight_Droplights_01a_C_30",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "BP_PaintingDisplayCase_C_7",
+      "label": "LDV2_M03_Painting_Target",
+      "room": "NorthTarget",
+      "fixture_actor": "BP_HeistLight_Droplights_01b_C_11",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01b",
+      "actor_location": [
+        3800,
+        2811,
+        804
+      ],
+      "yaw": 0,
+      "source": [
+        3800.0,
+        2811.0,
+        685.1734741210937
+      ],
+      "aim": [
+        3800.0,
+        1831.9336013793945,
+        -77.22594609916439
+      ],
+      "inner": 20.5,
+      "outer": 53.7,
+      "radius": 2400,
+      "candela": 89.9,
+      "model_ratio": 0.6040450283188715,
+      "offset_from_wall": 980,
+      "actor": "BP_HeistLight_Droplights_01b_C_11",
+      "mesh_relative": {
+        "location": [
+          -34.042333984375,
+          -20.798599243164062,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2454",
+      "label": "LDV2_M03_Gallery_Print_12_03",
+      "room": "WestSouth",
+      "fixture_actor": "BP_HeistLight_Droplights_01a_C_2",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        -4657,
+        -954,
+        800
+      ],
+      "yaw": 0,
+      "source": [
+        -4657.0,
+        -954.0,
+        681.255419921875
+      ],
+      "aim": [
+        -4656.690330505371,
+        -224.04927873611453,
+        -310.9844694363885
+      ],
+      "inner": 25.7,
+      "outer": 59.0,
+      "radius": 2000,
+      "candela": 63.9,
+      "model_ratio": 0.60747423245199,
+      "offset_from_wall": 730,
+      "actor": "BP_HeistLight_Droplights_01a_C_2",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "BP_PaintingDisplayCase_C_0",
+      "label": "LDV2_M03_Painting_HighValue",
+      "room": "EastSouth",
+      "fixture_actor": "BP_HeistLight_Droplights_01a_C_26",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        4524,
+        -1000,
+        800
+      ],
+      "yaw": 90,
+      "source": [
+        4524.0,
+        -1000.0,
+        681.255419921875
+      ],
+      "aim": [
+        5253.9507212638855,
+        -1000.0,
+        -310.9844694363885
+      ],
+      "inner": 25.7,
+      "outer": 59.0,
+      "radius": 2000,
+      "candela": 63.9,
+      "model_ratio": 0.6074742324519906,
+      "offset_from_wall": 730,
+      "actor": "BP_HeistLight_Droplights_01a_C_26",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "BP_PaintingDisplayCase_C_12",
+      "label": "LDV2_M03_Painting_12",
+      "room": "SouthEast",
+      "fixture_actor": "BP_HeistLight_Droplights_01a_C_25",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        2700,
+        -2843,
+        800
+      ],
+      "yaw": 0,
+      "source": [
+        2700.0,
+        -2843.0,
+        681.255419921875
+      ],
+      "aim": [
+        2700.0,
+        -3572.9507212638855,
+        -310.9844694363885
+      ],
+      "inner": 25.7,
+      "outer": 59.0,
+      "radius": 2000,
+      "candela": 63.9,
+      "model_ratio": 0.60747423245199,
+      "offset_from_wall": 730,
+      "actor": "BP_HeistLight_Droplights_01a_C_25",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2444",
+      "label": "LDV2_M03_Gallery_Print_12_01",
+      "room": "B",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        -256,
+        1006,
+        800
+      ],
+      "yaw": 90,
+      "source": [
+        -256.0,
+        1006.0,
+        681.255419921875
+      ],
+      "aim": [
+        -967.609842300415,
+        1006.0702514648438,
+        -318.70691154241973
+      ],
+      "inner": 25.0,
+      "outer": 57.3,
+      "radius": 1900,
+      "candela": 62.3,
+      "model_ratio": 0.6146535254643258,
+      "offset_from_wall": 712,
+      "actor": "BP_HeistLight_Droplights_01a_C_11",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "BP_PaintingDisplayCase_C_4",
+      "label": "LDV2_M03_Painting_04",
+      "room": "WestNorth",
+      "fixture_actor": "BP_HeistLight_Droplights_01a_C_22",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        -4532,
+        1000,
+        800
+      ],
+      "yaw": 90,
+      "source": [
+        -4532.0,
+        1000.0,
+        681.255419921875
+      ],
+      "aim": [
+        -5244.100199699402,
+        1000.0000000000005,
+        -318.70691154241973
+      ],
+      "inner": 25.0,
+      "outer": 57.3,
+      "radius": 1900,
+      "candela": 62.3,
+      "model_ratio": 0.6146535254643261,
+      "offset_from_wall": 712,
+      "actor": "BP_HeistLight_Droplights_01a_C_22",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "BP_PaintingDisplayCase_C_16",
+      "label": "LDV2_M03_Painting_16",
+      "room": "NorthWestMiddle",
+      "fixture_actor": "BP_HeistLight_Droplights_01b_C_15",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01b",
+      "actor_location": [
+        -2400,
+        2453,
+        804
+      ],
+      "yaw": 0,
+      "source": [
+        -2400.0,
+        2453.0,
+        685.1734741210937
+      ],
+      "aim": [
+        -2400.0,
+        3165.100199699402,
+        -318.70691154241973
+      ],
+      "inner": 25.0,
+      "outer": 57.3,
+      "radius": 1900,
+      "candela": 62.3,
+      "model_ratio": 0.6145472267599177,
+      "offset_from_wall": 712,
+      "actor": "BP_HeistLight_Droplights_01b_C_15",
+      "mesh_relative": {
+        "location": [
+          -34.042333984375,
+          -20.798599243164062,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2249",
+      "label": "LDV2_M03_Gallery_Print_02_01",
+      "room": "WestSouth",
+      "fixture_actor": "BP_HeistLight_Droplights_01b_C_16",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01b",
+      "actor_location": [
+        -3705,
+        -999,
+        800
+      ],
+      "yaw": 90,
+      "source": [
+        -3705.0,
+        -999.0,
+        681.1734741210937
+      ],
+      "aim": [
+        -3027.481378555298,
+        -999.0,
+        -331.87922624333487
+      ],
+      "inner": 24.7,
+      "outer": 56.5,
+      "radius": 1900,
+      "candela": 60.9,
+      "model_ratio": 0.6002855626526169,
+      "offset_from_wall": 677,
+      "actor": "BP_HeistLight_Droplights_01b_C_16",
+      "mesh_relative": {
+        "location": [
+          -34.042333984375,
+          -20.798599243164062,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2254",
+      "label": "LDV2_M03_Gallery_Print_02_02",
+      "room": "WestNorth",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        -3705,
+        999,
+        800
+      ],
+      "yaw": 90,
+      "source": [
+        -3705.0,
+        999.0,
+        681.255419921875
+      ],
+      "aim": [
+        -3027.481378555298,
+        999.0,
+        -331.87922624333487
+      ],
+      "inner": 24.7,
+      "outer": 56.5,
+      "radius": 1900,
+      "candela": 60.9,
+      "model_ratio": 0.6001658450013585,
+      "offset_from_wall": 677,
+      "actor": "BP_HeistLight_Droplights_01a_C_12",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2264",
+      "label": "LDV2_M03_Gallery_Print_02_04",
+      "room": "EastSouth",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        4189,
+        -1092,
+        800
+      ],
+      "yaw": 0,
+      "source": [
+        4189.0,
+        -1092.0,
+        681.255419921875
+      ],
+      "aim": [
+        4189.0,
+        -1769.5186214447021,
+        -331.87922624333487
+      ],
+      "inner": 24.7,
+      "outer": 56.5,
+      "radius": 1900,
+      "candela": 60.9,
+      "model_ratio": 0.6001658450013583,
+      "offset_from_wall": 677,
+      "actor": "BP_HeistLight_Droplights_01a_C_13",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2281",
+      "label": "LDV2_M03_Gallery_Print_03_01",
+      "room": "EastNorth",
+      "fixture_actor": "BP_HeistLight_Droplights_01a_C_31",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        4189,
+        1093,
+        800
+      ],
+      "yaw": 0,
+      "source": [
+        4189.0,
+        1093.0,
+        681.255419921875
+      ],
+      "aim": [
+        4189.0,
+        1770.5186214447021,
+        -331.87922624333487
+      ],
+      "inner": 24.7,
+      "outer": 56.5,
+      "radius": 1900,
+      "candela": 60.9,
+      "model_ratio": 0.6001658450013583,
+      "offset_from_wall": 677,
+      "actor": "BP_HeistLight_Droplights_01a_C_31",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2286",
+      "label": "LDV2_M03_Gallery_Print_03_02",
+      "room": "NorthWest",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        -3584,
+        2493,
+        800
+      ],
+      "yaw": 0,
+      "source": [
+        -3584.0,
+        2493.0,
+        681.255419921875
+      ],
+      "aim": [
+        -3584.0,
+        3170.518621444702,
+        -331.87922624333487
+      ],
+      "inner": 24.7,
+      "outer": 56.5,
+      "radius": 1900,
+      "candela": 60.9,
+      "model_ratio": 0.6001658450013585,
+      "offset_from_wall": 677,
+      "actor": "BP_HeistLight_Droplights_01a_C_14",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2291",
+      "label": "LDV2_M03_Gallery_Print_03_03",
+      "room": "NorthWestMiddle",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        -1089,
+        2493,
+        804
+      ],
+      "yaw": 0,
+      "source": [
+        -1089.0,
+        2493.0,
+        685.255419921875
+      ],
+      "aim": [
+        -1089.0,
+        3170.518621444702,
+        -331.87922624333487
+      ],
+      "inner": 24.7,
+      "outer": 56.5,
+      "radius": 1900,
+      "candela": 60.9,
+      "model_ratio": 0.6001658450013585,
+      "offset_from_wall": 677,
+      "actor": "BP_HeistLight_Droplights_01a_C_15",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2303",
+      "label": "LDV2_M03_Gallery_Print_04_01",
+      "room": "NorthGrand",
+      "fixture_actor": "BP_HeistLight_Droplights_01c_C_7",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01c",
+      "actor_location": [
+        885,
+        2715,
+        802
+      ],
+      "yaw": 90,
+      "source": [
+        885.0,
+        2715.0,
+        686.67421875
+      ],
+      "aim": [
+        1870.5186214447021,
+        2559.250706070862,
+        315.03101717847267
+      ],
+      "inner": 23.4,
+      "outer": 54.1,
+      "radius": 2400,
+      "candela": 84.8,
+      "model_ratio": 0.6277400675790585,
+      "offset_from_wall": 985,
+      "actor": "BP_HeistLight_Droplights_01c_C_7",
+      "mesh_relative": {
+        "location": [
+          3.9584472656250003,
+          -25.503271484375002,
+          -108.32047729492189
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2327",
+      "label": "LDV2_M03_Gallery_Print_05_02",
+      "room": "NorthTarget",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        2490,
+        2493,
+        804
+      ],
+      "yaw": 0,
+      "source": [
+        2490.0,
+        2493.0,
+        685.255419921875
+      ],
+      "aim": [
+        2490.0,
+        3170.518621444702,
+        -331.87922624333487
+      ],
+      "inner": 24.7,
+      "outer": 56.5,
+      "radius": 1900,
+      "candela": 60.9,
+      "model_ratio": 0.6001658450013585,
+      "offset_from_wall": 677,
+      "actor": "BP_HeistLight_Droplights_01a_C_16",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2332",
+      "label": "LDV2_M03_Gallery_Print_05_03",
+      "room": "NorthEnd",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        4573,
+        2499,
+        800
+      ],
+      "yaw": 90,
+      "source": [
+        4573.0,
+        2499.0,
+        681.255419921875
+      ],
+      "aim": [
+        5250.518621444702,
+        2499.0,
+        -331.87922624333487
+      ],
+      "inner": 24.7,
+      "outer": 56.5,
+      "radius": 1900,
+      "candela": 60.9,
+      "model_ratio": 0.6001658450013585,
+      "offset_from_wall": 677,
+      "actor": "BP_HeistLight_Droplights_01a_C_17",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2349",
+      "label": "LDV2_M03_Gallery_Print_06_02",
+      "room": "SouthWest",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        -1489,
+        -2905,
+        804
+      ],
+      "yaw": 0,
+      "source": [
+        -1489.0,
+        -2905.0,
+        685.255419921875
+      ],
+      "aim": [
+        -1489.0,
+        -2227.481378555298,
+        -331.87922624333487
+      ],
+      "inner": 24.7,
+      "outer": 56.5,
+      "radius": 1900,
+      "candela": 60.9,
+      "model_ratio": 0.6001658450013585,
+      "offset_from_wall": 677,
+      "actor": "BP_HeistLight_Droplights_01a_C_18",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2417",
+      "label": "LDV2_M03_Gallery_Print_11_01",
+      "room": "SouthEnd",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        4573,
+        -2699,
+        802
+      ],
+      "yaw": 90,
+      "source": [
+        4573.0,
+        -2699.0,
+        683.255419921875
+      ],
+      "aim": [
+        5250.518621444702,
+        -2699.0,
+        -331.87922624333487
+      ],
+      "inner": 24.7,
+      "outer": 56.5,
+      "radius": 1900,
+      "candela": 60.9,
+      "model_ratio": 0.6001658450013585,
+      "offset_from_wall": 677,
+      "actor": "BP_HeistLight_Droplights_01a_C_19",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2422",
+      "label": "LDV2_M03_Gallery_Print_11_02",
+      "room": "Hall",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        -1029,
+        -503,
+        800
+      ],
+      "yaw": 0,
+      "source": [
+        -1029.0,
+        -503.0,
+        681.255419921875
+      ],
+      "aim": [
+        -1029.0,
+        174.51862144470215,
+        -331.87922624333487
+      ],
+      "inner": 24.7,
+      "outer": 56.5,
+      "radius": 1900,
+      "candela": 60.9,
+      "model_ratio": 0.600165845001358,
+      "offset_from_wall": 677,
+      "actor": "BP_HeistLight_Droplights_01a_C_20",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2427",
+      "label": "LDV2_M03_Gallery_Print_11_03",
+      "room": "A",
+      "fixture_actor": "BP_HeistLight_Droplights_01a_C_1",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        -1496,
+        799,
+        800
+      ],
+      "yaw": 90,
+      "source": [
+        -1496.0,
+        799.0,
+        681.255419921875
+      ],
+      "aim": [
+        -2173.518621444702,
+        799.0,
+        -331.87922624333487
+      ],
+      "inner": 24.7,
+      "outer": 56.5,
+      "radius": 1900,
+      "candela": 60.9,
+      "model_ratio": 0.6001658450013585,
+      "offset_from_wall": 677,
+      "actor": "BP_HeistLight_Droplights_01a_C_1",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2449",
+      "label": "LDV2_M03_Gallery_Print_12_02",
+      "room": "C",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        749,
+        902,
+        800
+      ],
+      "yaw": 0,
+      "source": [
+        749.0,
+        902.0,
+        681.255419921875
+      ],
+      "aim": [
+        749.0,
+        224.48137855529785,
+        -331.87922624333487
+      ],
+      "inner": 24.7,
+      "outer": 56.5,
+      "radius": 1900,
+      "candela": 60.9,
+      "model_ratio": 0.6001658450013581,
+      "offset_from_wall": 677,
+      "actor": "BP_HeistLight_Droplights_01a_C_21",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2459",
+      "label": "LDV2_M03_Gallery_Print_12_04",
+      "room": "WestNorth",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        -3443,
+        1168,
+        800
+      ],
+      "yaw": 0,
+      "source": [
+        -3443.0,
+        1168.0,
+        681.255419921875
+      ],
+      "aim": [
+        -3636.0,
+        228.48137855529785,
+        -265.90980642102636
+      ],
+      "inner": 22.8,
+      "outer": 56.7,
+      "radius": 2400,
+      "candela": 88.4,
+      "model_ratio": 0.6098961515805991,
+      "offset_from_wall": 940,
+      "actor": "BP_HeistLight_Droplights_01a_C_33",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2464",
+      "label": "LDV2_M03_Gallery_Print_12_05",
+      "room": "EastSouth",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        3806,
+        -999,
+        800
+      ],
+      "yaw": 90,
+      "source": [
+        3806.0,
+        -999.0,
+        681.255419921875
+      ],
+      "aim": [
+        3128.481378555298,
+        -999.0,
+        -331.87922624333487
+      ],
+      "inner": 24.7,
+      "outer": 56.5,
+      "radius": 1900,
+      "candela": 60.9,
+      "model_ratio": 0.6001658450013585,
+      "offset_from_wall": 677,
+      "actor": "BP_HeistLight_Droplights_01a_C_34",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2563",
+      "label": "LDV2_M03_Gallery_Print_10_01",
+      "room": "SouthMiddle",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        909,
+        -2905,
+        802
+      ],
+      "yaw": 0,
+      "source": [
+        909.0,
+        -2905.0,
+        683.255419921875
+      ],
+      "aim": [
+        909.0,
+        -2227.481378555298,
+        -331.87922624333487
+      ],
+      "inner": 24.7,
+      "outer": 56.5,
+      "radius": 1900,
+      "candela": 60.9,
+      "model_ratio": 0.6001658450013585,
+      "offset_from_wall": 677,
+      "actor": "BP_HeistLight_Droplights_01a_C_35",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2568",
+      "label": "LDV2_M03_Gallery_Print_10_02",
+      "room": "SouthEast",
+      "fixture_actor": "BP_HeistLight_Droplights_01a_C_0",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        3309,
+        -2905,
+        800
+      ],
+      "yaw": 0,
+      "source": [
+        3309.0,
+        -2905.0,
+        681.255419921875
+      ],
+      "aim": [
+        3309.0,
+        -2227.481378555298,
+        -331.87922624333487
+      ],
+      "inner": 24.7,
+      "outer": 56.5,
+      "radius": 1900,
+      "candela": 60.9,
+      "model_ratio": 0.6001658450013585,
+      "offset_from_wall": 677,
+      "actor": "BP_HeistLight_Droplights_01a_C_0",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "BP_DisplayCase_C_0",
+      "label": "LDV2_M03_Painting_07",
+      "room": "SouthWest",
+      "fixture_actor": "BP_HeistLight_Droplights_01a_C_23",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        -2200,
+        -2893,
+        804
+      ],
+      "yaw": 0,
+      "source": [
+        -2200.0,
+        -2893.0,
+        685.255419921875
+      ],
+      "aim": [
+        -2200.0,
+        -3570.299798965454,
+        -331.87922624333487
+      ],
+      "inner": 24.7,
+      "outer": 56.5,
+      "radius": 1900,
+      "candela": 60.9,
+      "model_ratio": 0.6008049559089519,
+      "offset_from_wall": 677,
+      "actor": "BP_HeistLight_Droplights_01a_C_23",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "BP_PaintingDisplayCase_C_3",
+      "label": "LDV2_M03_Painting_03",
+      "room": "WestSouth",
+      "fixture_actor": "BP_HeistLight_Droplights_01b_C_12",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01b",
+      "actor_location": [
+        -4411,
+        -1000,
+        800
+      ],
+      "yaw": 90,
+      "source": [
+        -4411.0,
+        -1000.0,
+        681.1734741210937
+      ],
+      "aim": [
+        -5250.299798965454,
+        -1000.0,
+        -141.19636483872773
+      ],
+      "inner": 24.4,
+      "outer": 47.0,
+      "radius": 2100,
+      "candela": 70.2,
+      "model_ratio": 0.6018471722841087,
+      "offset_from_wall": 839,
+      "actor": "BP_HeistLight_Droplights_01b_C_12",
+      "mesh_relative": {
+        "location": [
+          -34.042333984375,
+          -20.798599243164062,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "BP_PaintingDisplayCase_C_8",
+      "label": "LDV2_M03_Painting_08",
+      "room": "EastNorth",
+      "fixture_actor": "BP_HeistLight_Droplights_01b_C_13",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01b",
+      "actor_location": [
+        4574,
+        1000,
+        800
+      ],
+      "yaw": 90,
+      "source": [
+        4574.0,
+        1000.0,
+        681.1734741210937
+      ],
+      "aim": [
+        5251.299798965454,
+        1000.0,
+        -331.87922624333487
+      ],
+      "inner": 24.7,
+      "outer": 56.5,
+      "radius": 1900,
+      "candela": 60.9,
+      "model_ratio": 0.6009249917373687,
+      "offset_from_wall": 677,
+      "actor": "BP_HeistLight_Droplights_01b_C_13",
+      "mesh_relative": {
+        "location": [
+          -34.042333984375,
+          -20.798599243164062,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "BP_PaintingDisplayCase_C_10",
+      "label": "LDV2_M03_Painting_10",
+      "room": "SouthMiddle",
+      "fixture_actor": "BP_HeistLight_Droplights_01a_C_24",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        300,
+        -2893,
+        802
+      ],
+      "yaw": 0,
+      "source": [
+        300.0,
+        -2893.0,
+        683.255419921875
+      ],
+      "aim": [
+        300.0,
+        -3570.299798965454,
+        -331.87922624333487
+      ],
+      "inner": 24.7,
+      "outer": 56.5,
+      "radius": 1900,
+      "candela": 60.9,
+      "model_ratio": 0.6008049559089519,
+      "offset_from_wall": 677,
+      "actor": "BP_HeistLight_Droplights_01a_C_24",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "BP_PaintingDisplayCase_C_14",
+      "label": "LDV2_M03_Painting_14",
+      "room": "NorthWest",
+      "fixture_actor": "BP_HeistLight_Droplights_01b_C_14",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01b",
+      "actor_location": [
+        -4573,
+        2500,
+        800
+      ],
+      "yaw": 90,
+      "source": [
+        -4573.0,
+        2500.0,
+        681.1734741210937
+      ],
+      "aim": [
+        -5250.299798965454,
+        2500.0,
+        -331.87922624333487
+      ],
+      "inner": 24.7,
+      "outer": 56.5,
+      "radius": 1900,
+      "candela": 60.9,
+      "model_ratio": 0.6009249917373687,
+      "offset_from_wall": 677,
+      "actor": "BP_HeistLight_Droplights_01b_C_14",
+      "mesh_relative": {
+        "location": [
+          -34.042333984375,
+          -20.798599243164062,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "BP_PaintingDisplayCase_C_17",
+      "label": "LDV2_M03_Painting_17",
+      "room": "Hall",
+      "fixture_actor": "BP_HeistLight_Droplights_01c_C_6",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01c",
+      "actor_location": [
+        900,
+        -388,
+        800
+      ],
+      "yaw": 0,
+      "source": [
+        900.0,
+        -388.0,
+        684.67421875
+      ],
+      "aim": [
+        900.0,
+        -1074.299798965454,
+        -196.75071172580462
+      ],
+      "inner": 20.2,
+      "outer": 54.5,
+      "radius": 1900,
+      "candela": 61.9,
+      "model_ratio": 0.6028231726239585,
+      "offset_from_wall": 686,
+      "actor": "BP_HeistLight_Droplights_01c_C_6",
+      "mesh_relative": {
+        "location": [
+          3.9584472656250003,
+          -25.503271484375002,
+          -108.32047729492189
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2524",
+      "label": "LDV2_M03_Gallery_Print_16_01",
+      "room": "NorthWestMiddle",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        -908,
+        2233,
+        804
+      ],
+      "yaw": 90,
+      "source": [
+        -908.0,
+        2233.0,
+        685.255419921875
+      ],
+      "aim": [
+        -522.6995191574097,
+        2233.460220336914,
+        -426.5385359822856
+      ],
+      "inner": 15.2,
+      "outer": 47.2,
+      "radius": 1500,
+      "candela": 52.8,
+      "model_ratio": 0.6013521455442025,
+      "offset_from_wall": 385,
+      "actor": "BP_HeistLight_Droplights_01a_C_36",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2590",
+      "label": "LDV2_M03_Gallery_Print_18_03",
+      "room": "SouthMiddle",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        -309,
+        -2608,
+        802
+      ],
+      "yaw": 0,
+      "source": [
+        -309.0,
+        -2608.0,
+        683.255419921875
+      ],
+      "aim": [
+        -308.460220336914,
+        -2222.6995191574097,
+        -426.5385359822856
+      ],
+      "inner": 15.2,
+      "outer": 47.2,
+      "radius": 1500,
+      "candela": 52.8,
+      "model_ratio": 0.6013521455442025,
+      "offset_from_wall": 385,
+      "actor": "BP_HeistLight_Droplights_01a_C_37",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2366",
+      "label": "LDV2_M03_Gallery_Print_Target_02",
+      "room": "Hall",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        -45,
+        -193,
+        800
+      ],
+      "yaw": 0,
+      "source": [
+        -45.0,
+        -193.0,
+        681.255419921875
+      ],
+      "aim": [
+        -45.28649902343747,
+        173.73989486694333,
+        -376.5627909944151
+      ],
+      "inner": 13.5,
+      "outer": 41.4,
+      "radius": 1500,
+      "candela": 54.8,
+      "model_ratio": 0.6039483964572079,
+      "offset_from_wall": 367,
+      "actor": "BP_HeistLight_Droplights_01a_C_38",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2378",
+      "label": "LDV2_M03_Gallery_Print_HighValue_01",
+      "room": "WestNorth",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        -3588,
+        1403,
+        800
+      ],
+      "yaw": 0,
+      "source": [
+        -3588.0,
+        1403.0,
+        681.255419921875
+      ],
+      "aim": [
+        -3588.2864990234375,
+        1769.7398948669434,
+        -376.5627909944151
+      ],
+      "inner": 13.5,
+      "outer": 41.4,
+      "radius": 1500,
+      "candela": 54.8,
+      "model_ratio": 0.6039483964572064,
+      "offset_from_wall": 367,
+      "actor": "BP_HeistLight_Droplights_01a_C_39",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2388",
+      "label": "LDV2_M03_Gallery_Print_HighValue_03",
+      "room": "NorthWestMiddle",
+      "fixture_actor": "BP_HeistLight_Droplights_01a_C_9",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        -2502,
+        2762,
+        804
+      ],
+      "yaw": 90,
+      "source": [
+        -2502.0,
+        2762.0,
+        685.255419921875
+      ],
+      "aim": [
+        -2868.7398948669434,
+        2761.7135009765625,
+        -376.5627909944151
+      ],
+      "inner": 13.5,
+      "outer": 41.4,
+      "radius": 1500,
+      "candela": 54.8,
+      "model_ratio": 0.6039483964572064,
+      "offset_from_wall": 367,
+      "actor": "BP_HeistLight_Droplights_01a_C_9",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2393",
+      "label": "LDV2_M03_Gallery_Print_HighValue_04",
+      "room": "SouthWest",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        -1456,
+        -3202,
+        804
+      ],
+      "yaw": 0,
+      "source": [
+        -1456.0,
+        -3202.0,
+        685.255419921875
+      ],
+      "aim": [
+        -1455.7135009765625,
+        -3568.7398948669434,
+        -376.5627909944151
+      ],
+      "inner": 13.5,
+      "outer": 41.4,
+      "radius": 1500,
+      "candela": 54.8,
+      "model_ratio": 0.6039483964572064,
+      "offset_from_wall": 367,
+      "actor": "BP_HeistLight_Droplights_01a_C_40",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2541",
+      "label": "LDV2_M03_Gallery_Print_17_01",
+      "room": "NorthGrand",
+      "fixture_actor": "BP_HeistLight_Droplights_01a_C_4",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        346,
+        2234,
+        802
+      ],
+      "yaw": 90,
+      "source": [
+        346.0,
+        2234.0,
+        683.255419921875
+      ],
+      "aim": [
+        -468.73989486694336,
+        2233.7135009765625,
+        11.858856581285863
+      ],
+      "inner": 23.8,
+      "outer": 44.1,
+      "radius": 2100,
+      "candela": 66.9,
+      "model_ratio": 0.6354568461063826,
+      "offset_from_wall": 815,
+      "actor": "BP_HeistLight_Droplights_01a_C_4",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2585",
+      "label": "LDV2_M03_Gallery_Print_18_02",
+      "room": "SouthWest",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        -2708,
+        -2595,
+        804
+      ],
+      "yaw": 0,
+      "source": [
+        -2708.0,
+        -2595.0,
+        685.255419921875
+      ],
+      "aim": [
+        -2708.2864990234375,
+        -2228.2601051330566,
+        -376.5627909944151
+      ],
+      "inner": 13.5,
+      "outer": 41.4,
+      "radius": 1500,
+      "candela": 54.8,
+      "model_ratio": 0.6039483964572064,
+      "offset_from_wall": 367,
+      "actor": "BP_HeistLight_Droplights_01a_C_41",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2600",
+      "label": "LDV2_M03_Gallery_Print_General_G21_01",
+      "room": "SouthEast",
+      "fixture_actor": "BP_HeistLight_Droplights_01a_C_6",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        2090,
+        -2595,
+        800
+      ],
+      "yaw": 0,
+      "source": [
+        2090.0,
+        -2595.0,
+        681.255419921875
+      ],
+      "aim": [
+        2089.7135009765625,
+        -2228.2601051330566,
+        -376.5627909944151
+      ],
+      "inner": 13.5,
+      "outer": 41.4,
+      "radius": 1500,
+      "candela": 54.8,
+      "model_ratio": 0.6039483964572064,
+      "offset_from_wall": 367,
+      "actor": "BP_HeistLight_Droplights_01a_C_6",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2620",
+      "label": "LDV2_M03_Gallery_Print_General_G22_00",
+      "room": "A",
+      "fixture_actor": "BP_HeistLight_Droplights_01a_C_7",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        -1683,
+        1006,
+        800
+      ],
+      "yaw": 90,
+      "source": [
+        -1683.0,
+        1006.0,
+        681.255419921875
+      ],
+      "aim": [
+        -1024.2601051330566,
+        1006.2864990234376,
+        -138.73842046468428
+      ],
+      "inner": 20.5,
+      "outer": 41.3,
+      "radius": 1800,
+      "candela": 55.0,
+      "model_ratio": 0.6003910483638629,
+      "offset_from_wall": 658,
+      "actor": "BP_HeistLight_Droplights_01a_C_7",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2344",
+      "label": "LDV2_M03_Gallery_Print_06_01",
+      "room": "SouthEntry",
+      "fixture_actor": "BP_HeistLight_Droplights_01a_C_32",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        -4289,
+        -3206,
+        800
+      ],
+      "yaw": 0,
+      "source": [
+        -4289.0,
+        -3206.0,
+        681.255419921875
+      ],
+      "aim": [
+        -4289.0,
+        -3572.6790809631348,
+        -376.5627909944151
+      ],
+      "inner": 13.5,
+      "outer": 41.4,
+      "radius": 1500,
+      "candela": 56.6,
+      "model_ratio": 0.6008570491806083,
+      "offset_from_wall": 367,
+      "actor": "BP_HeistLight_Droplights_01a_C_32",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2361",
+      "label": "LDV2_M03_Gallery_Print_Target_01",
+      "room": "SouthEast",
+      "fixture_actor": "BP_HeistLight_Droplights_01a_C_10",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        2009,
+        -3206,
+        800
+      ],
+      "yaw": 0,
+      "source": [
+        2009.0,
+        -3206.0,
+        681.255419921875
+      ],
+      "aim": [
+        2009.0,
+        -3572.6790809631348,
+        -376.5627909944151
+      ],
+      "inner": 13.5,
+      "outer": 41.4,
+      "radius": 1500,
+      "candela": 56.6,
+      "model_ratio": 0.600857049180607,
+      "offset_from_wall": 367,
+      "actor": "BP_HeistLight_Droplights_01a_C_10",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2383",
+      "label": "LDV2_M03_Gallery_Print_HighValue_02",
+      "room": "NorthWest",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        -4752,
+        2192,
+        800
+      ],
+      "yaw": 0,
+      "source": [
+        -4752.0,
+        2192.0,
+        681.255419921875
+      ],
+      "aim": [
+        -4752.0,
+        1825.3209190368652,
+        -376.5627909944151
+      ],
+      "inner": 13.5,
+      "outer": 41.4,
+      "radius": 1500,
+      "candela": 56.6,
+      "model_ratio": 0.6008570491806083,
+      "offset_from_wall": 367,
+      "actor": "BP_HeistLight_Droplights_01a_C_42",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2398",
+      "label": "LDV2_M03_Gallery_Print_HighValue_05",
+      "room": "SouthMiddle",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        992,
+        -3206,
+        802
+      ],
+      "yaw": 0,
+      "source": [
+        992.0,
+        -3206.0,
+        683.255419921875
+      ],
+      "aim": [
+        992.0,
+        -3572.6790809631348,
+        -376.5627909944151
+      ],
+      "inner": 13.5,
+      "outer": 41.4,
+      "radius": 1500,
+      "candela": 56.6,
+      "model_ratio": 0.600857049180607,
+      "offset_from_wall": 367,
+      "actor": "BP_HeistLight_Droplights_01a_C_43",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2500",
+      "label": "LDV2_M03_Gallery_Print_14_01",
+      "room": "EastNorth",
+      "fixture_actor": "BP_HeistLight_Droplights_01a_C_3",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        3492,
+        999,
+        800
+      ],
+      "yaw": 90,
+      "source": [
+        3492.0,
+        999.0,
+        681.255419921875
+      ],
+      "aim": [
+        3125.3209190368652,
+        999.0,
+        -376.5627909944151
+      ],
+      "inner": 13.5,
+      "outer": 41.4,
+      "radius": 1500,
+      "candela": 56.6,
+      "model_ratio": 0.600857049180607,
+      "offset_from_wall": 367,
+      "actor": "BP_HeistLight_Droplights_01a_C_3",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2512",
+      "label": "LDV2_M03_Gallery_Print_15_01",
+      "room": "NorthWest",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        -3539,
+        2192,
+        800
+      ],
+      "yaw": 0,
+      "source": [
+        -3539.0,
+        2192.0,
+        681.255419921875
+      ],
+      "aim": [
+        -3539.0,
+        1825.3209190368652,
+        -376.5627909944151
+      ],
+      "inner": 13.5,
+      "outer": 41.4,
+      "radius": 1500,
+      "candela": 56.6,
+      "model_ratio": 0.600857049180607,
+      "offset_from_wall": 367,
+      "actor": "BP_HeistLight_Droplights_01a_C_44",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2546",
+      "label": "LDV2_M03_Gallery_Print_17_02",
+      "room": "NorthTarget",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        2363,
+        2751,
+        804
+      ],
+      "yaw": 90,
+      "source": [
+        2363.0,
+        2751.0,
+        685.255419921875
+      ],
+      "aim": [
+        1925.3209190368652,
+        2715.0,
+        -308.1113546330321
+      ],
+      "inner": 13.2,
+      "outer": 46.6,
+      "radius": 1600,
+      "candela": 54.9,
+      "model_ratio": 0.6162160140488157,
+      "offset_from_wall": 438,
+      "actor": "BP_HeistLight_Droplights_01a_C_45",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2551",
+      "label": "LDV2_M03_Gallery_Print_17_03",
+      "room": "NorthEnd",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        4789,
+        2192,
+        800
+      ],
+      "yaw": 0,
+      "source": [
+        4789.0,
+        2192.0,
+        681.255419921875
+      ],
+      "aim": [
+        4789.0,
+        1825.3209190368652,
+        -376.5627909944151
+      ],
+      "inner": 13.5,
+      "outer": 41.4,
+      "radius": 1500,
+      "candela": 56.6,
+      "model_ratio": 0.6008570491806083,
+      "offset_from_wall": 367,
+      "actor": "BP_HeistLight_Droplights_01a_C_46",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2580",
+      "label": "LDV2_M03_Gallery_Print_18_01",
+      "room": "SouthEntry",
+      "fixture_actor": "BP_HeistLight_Droplights_01a_C_5",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        -4886,
+        -2699,
+        800
+      ],
+      "yaw": 90,
+      "source": [
+        -4886.0,
+        -2699.0,
+        681.255419921875
+      ],
+      "aim": [
+        -5252.679080963135,
+        -2699.0,
+        -376.5627909944151
+      ],
+      "inner": 13.5,
+      "outer": 41.4,
+      "radius": 1500,
+      "candela": 56.6,
+      "model_ratio": 0.600857049180607,
+      "offset_from_wall": 367,
+      "actor": "BP_HeistLight_Droplights_01a_C_5",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2605",
+      "label": "LDV2_M03_Gallery_Print_General_G21_02",
+      "room": "SouthEnd",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        4549,
+        -2191,
+        802
+      ],
+      "yaw": 0,
+      "source": [
+        4549.0,
+        -2191.0,
+        683.255419921875
+      ],
+      "aim": [
+        4549.0,
+        -1824.3209190368652,
+        -376.5627909944151
+      ],
+      "inner": 13.5,
+      "outer": 41.4,
+      "radius": 1500,
+      "candela": 56.6,
+      "model_ratio": 0.6008570491806083,
+      "offset_from_wall": 367,
+      "actor": "BP_HeistLight_Droplights_01a_C_47",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2615",
+      "label": "LDV2_M03_Gallery_Print_General_G21_04",
+      "room": "Hall",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        828,
+        -652,
+        800
+      ],
+      "yaw": 0,
+      "source": [
+        828.0,
+        -652.0,
+        681.255419921875
+      ],
+      "aim": [
+        828.0,
+        177.67908096313477,
+        -205.50683049062854
+      ],
+      "inner": 28.0,
+      "outer": 39.2,
+      "radius": 2100,
+      "candela": 70.9,
+      "model_ratio": 0.6584190554836841,
+      "offset_from_wall": 830,
+      "actor": "BP_HeistLight_Droplights_01a_C_48",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2625",
+      "label": "LDV2_M03_Gallery_Print_General_G22_01",
+      "room": "B",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        -189,
+        591,
+        800
+      ],
+      "yaw": 90,
+      "source": [
+        -189.0,
+        591.0,
+        681.255419921875
+      ],
+      "aim": [
+        177.67908096313477,
+        591.0,
+        -376.5627909944151
+      ],
+      "inner": 13.5,
+      "outer": 41.4,
+      "radius": 1500,
+      "candela": 56.6,
+      "model_ratio": 0.6008570491806099,
+      "offset_from_wall": 367,
+      "actor": "BP_HeistLight_Droplights_01a_C_49",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2635",
+      "label": "LDV2_M03_Gallery_Print_General_G22_03",
+      "room": "C",
+      "fixture_actor": null,
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        749,
+        716,
+        800
+      ],
+      "yaw": 0,
+      "source": [
+        749.0,
+        716.0,
+        681.255419921875
+      ],
+      "aim": [
+        749.0,
+        1377.6790809631348,
+        -436.3396980055179
+      ],
+      "inner": 26.3,
+      "outer": 54.8,
+      "radius": 1800,
+      "candela": 58.0,
+      "model_ratio": 0.6390088518623023,
+      "offset_from_wall": 662,
+      "actor": "BP_HeistLight_Droplights_01a_C_50",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    },
+    {
+      "painting": "StaticMeshActor_2640",
+      "label": "LDV2_M03_Gallery_Print_General_G22_04",
+      "room": "WestSouth",
+      "fixture_actor": "BP_HeistLight_Droplights_01a_C_8",
+      "blueprint": "/Game/Blueprints/Environment/BP_HeistLight_Droplights_01a",
+      "actor_location": [
+        -3585,
+        -1406,
+        800
+      ],
+      "yaw": 0,
+      "source": [
+        -3585.0,
+        -1406.0,
+        681.255419921875
+      ],
+      "aim": [
+        -3585.0,
+        -1772.6790809631348,
+        -376.5627909944151
+      ],
+      "inner": 13.5,
+      "outer": 41.4,
+      "radius": 1500,
+      "candela": 56.6,
+      "model_ratio": 0.600857049180607,
+      "offset_from_wall": 367,
+      "actor": "BP_HeistLight_Droplights_01a_C_8",
+      "mesh_relative": {
+        "location": [
+          -20.908605957031252,
+          -25.255358886718753,
+          -113.9733154296875
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.1
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          -0.0
+        ]
+      }
+    }
+  ],
+  "passage_candela": 6,
+  "temperature": 4100,
+  "inverse_squared": true,
+  "notes": "Base uniformity pass before the approved 0.5 night intensity multiplier. Apply the referenced night profile once afterward; it also covers CCTV, Directional/Sky and PostProcess. No asset duplication.",
+  "passage_moves": {
+    "BP_HeistLight_DropCeiling_01a_C_15": [
+      -2100,
+      -3100,
+      804
+    ],
+    "BP_HeistLight_DropCeiling_01a_C_30": [
+      300,
+      -3100,
+      802
+    ],
+    "BP_HeistLight_DropCeiling_01a_C_31": [
+      2700,
+      -3000,
+      800
+    ]
+  },
+  "night_adjustment_profile": "ProjectResources/SourceArt/Gallery/M03/M03NightLighting.json"
+}

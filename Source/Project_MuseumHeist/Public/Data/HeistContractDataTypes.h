@@ -40,6 +40,10 @@ struct PROJECT_MUSEUMHEIST_API FHeistContractDataRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Contract|Surface", meta = (ClampMin = "1"))
 	int32 MatchPaintingExhibitCount = 20;
 
+	/** Map-specific authored exhibit counts; absent maps use MatchPaintingExhibitCount. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Contract|Surface")
+	TMap<FName, int32> MapPaintingExhibitCounts = {{FName(TEXT("M03")), 12}};
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Contract", meta = (ClampMin = "900.0", ClampMax = "1500.0", Units = "s"))
 	float MatchDurationSeconds = 1200.0f;
 
@@ -47,6 +51,7 @@ struct PROJECT_MUSEUMHEIST_API FHeistContractDataRow : public FTableRowBase
 	FName ExtractionRuleId = FName(TEXT("IndividualDeposit_SharedExit"));
 
 	int32 ResolveLootValueQuota(int32 PlayerCount) const;
+	int32 ResolveMatchPaintingExhibitCount(FName MapId) const;
 	int32 ResolveMinimumOptionalExhibitCount(int32 PlayerCount) const;
 	int32 ResolveMaximumOptionalExhibitCount(int32 PlayerCount) const;
 	bool IsRuntimeDefinitionValid(FString* OutFailureReason = nullptr) const;

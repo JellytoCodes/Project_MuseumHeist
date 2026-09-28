@@ -1483,7 +1483,7 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 	const int32 AssignmentRevision = HeistGameState->GetSurfaceTemplateSelectionRevision();
 	const int32 AvailableTemplateCount = SelectedSurfaceTemplateIdsForMatch.Num();
 	const int32 SurfaceTemplateCatalogCount = HeistGameState->GetSurfaceTemplatePoolSize();
-	const int32 RequestedPaintingExhibitCount = bContractDefinitionValid ? ContractDefinition.MatchPaintingExhibitCount : 0;
+	const int32 RequestedPaintingExhibitCount = bContractDefinitionValid ? ContractDefinition.ResolveMatchPaintingExhibitCount(MapId) : 0;
 	const int32 MaximumTemplateBackedOptionalCount = FMath::Max(0, FMath::Min(RequestedPaintingExhibitCount, AvailableTemplateCount) - 1);
 	const bool bOptionalAssignmentValid = MinimumOptionalExhibitCount <= MaximumOptionalExhibitCount && AssignmentRevision > 0 && AvailableTemplateCount > 0;
 	const int32 MaximumSelectableOptionalCount = bOptionalAssignmentValid
@@ -1565,8 +1565,8 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 	const bool bOptionalDeactivationValid = DeactivatedOptionalCaseCount == ExpectedDeactivatedOptionalCaseCount;
 	const int32 ExpectedAssignedPaintingCaseCount = bObjectiveInitialized ? SelectedOptionalCases.Num() + 1 : 0;
 	const bool bTemplateAssignmentValid = AssignedPaintingCaseCount == ExpectedAssignedPaintingCaseCount;
-	const bool bReleasePaintingContentReady = bContractDefinitionValid && AvailableTemplateCount == ContractDefinition.MatchPaintingExhibitCount &&
-		SurfaceTemplateCatalogCount == ContractDefinition.SurfaceTemplateCatalogSize && ExpectedAssignedPaintingCaseCount == ContractDefinition.MatchPaintingExhibitCount;
+	const bool bReleasePaintingContentReady = bContractDefinitionValid && AvailableTemplateCount == RequestedPaintingExhibitCount &&
+		SurfaceTemplateCatalogCount == ContractDefinition.SurfaceTemplateCatalogSize && ExpectedAssignedPaintingCaseCount == RequestedPaintingExhibitCount;
 	const bool bInitializationPassed = bObjectiveInitialized && bOptionalDeactivationValid && bTemplateAssignmentValid;
 	if (!bInitializationPassed && bContractInitialized)
 	{
@@ -2296,8 +2296,8 @@ void AHeistGameMode::InitializeSurfaceTemplateSelection()
 	const FName ContractId = IsValid(BalanceData) ? BalanceData->DefaultContractDefinition.ContractId : NAME_None;
 	FHeistContractDataRow ContractDefinition;
 	const int32 RequestedTemplateCount = TryGetContractDefinition(ContractId, ContractDefinition)
-		? ContractDefinition.MatchPaintingExhibitCount
-		: FHeistContractDataRow().MatchPaintingExhibitCount;
+		? ContractDefinition.ResolveMatchPaintingExhibitCount(PoolId)
+		: FHeistContractDataRow().ResolveMatchPaintingExhibitCount(PoolId);
 	int32 SelectionRevision = 0;
 	int32 BagCycle = 0;
 	int32 RemainingTemplateCount = 0;

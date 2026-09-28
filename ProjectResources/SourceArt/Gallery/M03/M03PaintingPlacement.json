@@ -1,0 +1,3843 @@
+{
+  "source_map_sha256": "df0f3f96cece9d29cb74b99035d78e094a1b4ce70111e1d39a98be94f8f7ed73",
+  "paintings": [
+    {
+      "name": "BP_PaintingDisplayCase_C_8",
+      "label": "LDV2_M03_Painting_08",
+      "case_id": "Case_M03_Optional_08",
+      "old": {
+        "center": [
+          2684.0,
+          -450.00000000000006,
+          185.0
+        ],
+        "normal": [
+          -0.9999999999999996,
+          1.224646799147353e-16,
+          0.0
+        ],
+        "horizontal": [
+          -1.224646799147353e-16,
+          -0.9999999999999996,
+          0.0
+        ],
+        "width": 175.742391,
+        "height": 92.31448160000001
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Painting_08.MI_LDV2_M03_Painting_08",
+      "surface": {
+        "room": "Vault",
+        "axis": 1,
+        "sign": -1,
+        "plane": 188,
+        "lo": 1752,
+        "hi": 2648,
+        "top": 500,
+        "labels": [
+          "M03G_SecurityVault_End_00",
+          "M03G_SecurityVault_End_01",
+          "M03G_SecurityVault_End_02"
+        ],
+        "id": 46
+      },
+      "center": [
+        2385.5193098,
+        185,
+        245.0250874
+      ],
+      "variant": 3,
+      "scale": 3.4,
+      "width": 524.9613804,
+      "height": 440.0501748,
+      "factor": 2.9871073075362906
+    },
+    {
+      "name": "BP_PaintingDisplayCase_C_0",
+      "label": "LDV2_M03_Painting_HighValue",
+      "case_id": "Case_M03_Optional_HighValue",
+      "old": {
+        "center": [
+          2400.0,
+          -1084.0,
+          155.0
+        ],
+        "normal": [
+          -2.220446049250313e-16,
+          1.0,
+          0.0
+        ],
+        "horizontal": [
+          -1.0,
+          -2.220446049250313e-16,
+          0.0
+        ],
+        "width": 121.23182400000002,
+        "height": 116.66311040000001
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Painting_HighValue.MI_LDV2_M03_Painting_HighValue",
+      "surface": {
+        "room": "Vault",
+        "axis": 1,
+        "sign": 1,
+        "plane": -1087,
+        "lo": 1752,
+        "hi": 2648,
+        "top": 500,
+        "labels": [
+          "M03G_SouthEast_End_01",
+          "M03G_SouthEast_End_02",
+          "M03G_SouthEast_End_03"
+        ],
+        "id": 45
+      },
+      "center": [
+        2466.152264,
+        -1084,
+        235
+      ],
+      "variant": 5,
+      "scale": 2.4,
+      "width": 363.695472,
+      "height": 349.9893312,
+      "factor": 2.9999999999999996
+    },
+    {
+      "name": "BP_PaintingDisplayCase_C_7",
+      "label": "LDV2_M03_Painting_Target",
+      "case_id": "Case_M03_Target",
+      "old": {
+        "center": [
+          526.4063052,
+          1384.0,
+          227.97992795
+        ],
+        "normal": [
+          -2.220446049250313e-16,
+          -0.9999999999999998,
+          0.0
+        ],
+        "horizontal": [
+          0.9999999999999998,
+          -2.220446049250313e-16,
+          0.0
+        ],
+        "width": 199.5936948,
+        "height": 94.1970792
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Painting_Target.MI_LDV2_M03_Painting_Target",
+      "surface": {
+        "room": "Hall",
+        "axis": 1,
+        "sign": -1,
+        "plane": 188,
+        "lo": 410,
+        "hi": 1248,
+        "top": 595,
+        "labels": [
+          "M03G_HallNorth_End_00",
+          "M03G_HallNorth_End_01",
+          "M03G_HallNorth_End_02",
+          "M03G_HallNorth_End_03",
+          "M03G_HallNorth_End_04",
+          "M03G_HallNorth_End_05",
+          "M03G_HallNorth_End_06"
+        ],
+        "id": 5
+      },
+      "center": [
+        829.0,
+        185,
+        277.3817179
+      ],
+      "variant": 3,
+      "scale": 3.9,
+      "width": 602.1615834,
+      "height": 504.7634358,
+      "factor": 3.0169369027583133
+    },
+    {
+      "name": "BP_PaintingDisplayCase_C_1",
+      "label": "LDV2_M03_Painting_01",
+      "case_id": "Case_M03_Optional_01",
+      "old": {
+        "center": [
+          -1569.6487150000003,
+          184.0,
+          185.0
+        ],
+        "normal": [
+          -2.220446049250313e-16,
+          -0.9999999999999998,
+          0.0
+        ],
+        "horizontal": [
+          0.9999999999999998,
+          -2.220446049250313e-16,
+          -2.736911063134408e-48
+        ],
+        "width": 159.76581,
+        "height": 83.922256
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Painting_01.MI_LDV2_M03_Painting_01",
+      "surface": {
+        "room": "Hall",
+        "axis": 1,
+        "sign": -1,
+        "plane": 188,
+        "lo": -1664,
+        "hi": 290,
+        "top": 595,
+        "labels": [
+          "M03G_HallNorth_End_00",
+          "M03G_HallNorth_End_01",
+          "M03G_HallNorth_End_02",
+          "M03G_HallNorth_End_03",
+          "M03G_HallNorth_End_04",
+          "M03G_HallNorth_End_05",
+          "M03G_HallNorth_End_06"
+        ],
+        "id": 4
+      },
+      "center": [
+        -1424.78705,
+        185,
+        264.48905719999993
+      ],
+      "variant": 4,
+      "scale": 6.8,
+      "width": 478.4259,
+      "height": 478.9781143999999,
+      "factor": 2.9980013521040574
+    },
+    {
+      "name": "BP_PaintingDisplayCase_C_10",
+      "label": "LDV2_M03_Painting_10",
+      "case_id": "Case_M03_Optional_10",
+      "old": {
+        "center": [
+          -2184.0000000000005,
+          594.8395331000002,
+          184.99999999999997
+        ],
+        "normal": [
+          1.0,
+          -2.449293598294705e-16,
+          6.747006683667535e-80
+        ],
+        "horizontal": [
+          2.449293598294705e-16,
+          1.0,
+          -2.7369110631344068e-48
+        ],
+        "width": 154.400406,
+        "height": 129.426522
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Painting_10.MI_LDV2_M03_Painting_10",
+      "surface": {
+        "room": "A",
+        "axis": 0,
+        "sign": 1,
+        "plane": -2187,
+        "lo": 252,
+        "hi": 1348,
+        "top": 500,
+        "labels": [
+          "M03G_AnnexWest_End_02",
+          "M03G_AnnexWest_End_01",
+          "M03G_AnnexWest_End_00"
+        ],
+        "id": 14
+      },
+      "center": [
+        -2184,
+        483.600609,
+        235
+      ],
+      "variant": 3,
+      "scale": 3.0,
+      "width": 463.20121800000004,
+      "height": 388.27956600000005,
+      "factor": 3.0
+    },
+    {
+      "name": "BP_DisplayCase_C_0",
+      "label": "LDV2_M03_Painting_07",
+      "case_id": "Case_M03_Optional_07",
+      "old": {
+        "center": [
+          -1950.0,
+          1384.0,
+          185.0
+        ],
+        "normal": [
+          -6.661338147750941e-16,
+          -1.0000000000000009,
+          0.0
+        ],
+        "horizontal": [
+          -1.0000000000000009,
+          6.661338147750941e-16,
+          0.0
+        ],
+        "width": 149.23607249999998,
+        "height": 149.236077
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Painting_07.MI_LDV2_M03_Painting_07",
+      "surface": {
+        "room": "A",
+        "axis": 0,
+        "sign": 1,
+        "plane": -2187,
+        "lo": 252,
+        "hi": 1348,
+        "top": 500,
+        "labels": [
+          "M03G_AnnexWest_End_02",
+          "M03G_AnnexWest_End_01",
+          "M03G_AnnexWest_End_00"
+        ],
+        "id": 14
+      },
+      "center": [
+        -2184,
+        1124.1194113,
+        235
+      ],
+      "variant": 3,
+      "scale": 2.9,
+      "width": 447.7611774,
+      "height": 375.3369138,
+      "factor": 3.0003547828451698
+    },
+    {
+      "name": "BP_PaintingDisplayCase_C_14",
+      "label": "LDV2_M03_Painting_14",
+      "case_id": "Case_M03_Optional_14",
+      "old": {
+        "center": [
+          -984.0,
+          1050.0000000000002,
+          144.6180385
+        ],
+        "normal": [
+          0.9999999999999998,
+          -2.220446049250313e-16,
+          0.0
+        ],
+        "horizontal": [
+          -2.220446049250313e-16,
+          -0.9999999999999998,
+          0.0
+        ],
+        "width": 149.23607249999998,
+        "height": 149.236077
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Painting_14.MI_LDV2_M03_Painting_14",
+      "surface": {
+        "room": "B",
+        "axis": 0,
+        "sign": 1,
+        "plane": -987,
+        "lo": 726,
+        "hi": 1348,
+        "top": 500,
+        "labels": [
+          "M03G_A_B_00_01",
+          "M03G_A_B_00_00"
+        ],
+        "id": 20
+      },
+      "center": [
+        -984,
+        1037.0,
+        235
+      ],
+      "variant": 3,
+      "scale": 2.9,
+      "width": 447.7611774,
+      "height": 375.3369138,
+      "factor": 3.0003547828451698
+    },
+    {
+      "name": "BP_PaintingDisplayCase_C_4",
+      "label": "LDV2_M03_Painting_04",
+      "case_id": "Case_M03_Optional_04",
+      "old": {
+        "center": [
+          14.100857000000104,
+          -1084.0,
+          185.0
+        ],
+        "normal": [
+          -2.220446049250313e-16,
+          1.0,
+          0.0
+        ],
+        "horizontal": [
+          -1.0,
+          -2.220446049250313e-16,
+          -2.7369110631344083e-48
+        ],
+        "width": 147.749175,
+        "height": 147.9197118
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Painting_04.MI_LDV2_M03_Painting_04",
+      "surface": {
+        "room": "Hall",
+        "axis": 1,
+        "sign": 1,
+        "plane": -1087,
+        "lo": -1569,
+        "hi": 290,
+        "top": 595,
+        "labels": [
+          "M03G_SouthHall_End_00",
+          "M03G_SouthHall_End_01",
+          "M03G_SouthHall_End_02",
+          "M03G_SouthHall_End_03",
+          "M03G_SouthHall_End_04",
+          "M03G_SouthHall_End_05",
+          "M03G_SouthHall_End_06"
+        ],
+        "id": 0
+      },
+      "center": [
+        68.3762375,
+        -1084,
+        246.87956769999997
+      ],
+      "variant": 4,
+      "scale": 6.3,
+      "width": 443.247525,
+      "height": 443.75913539999993,
+      "factor": 3.0
+    },
+    {
+      "name": "BP_PaintingDisplayCase_C_16",
+      "label": "LDV2_M03_Painting_16",
+      "case_id": "Case_M03_Optional_16",
+      "old": {
+        "center": [
+          1284.0,
+          1236.3280789999997,
+          219.1657776
+        ],
+        "normal": [
+          -1.0000000000000002,
+          2.220446049250313e-16,
+          0.0
+        ],
+        "horizontal": [
+          2.220446049250313e-16,
+          1.0000000000000002,
+          0.0
+        ],
+        "width": 136.0690432,
+        "height": 96.08504640000001
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Painting_16.MI_LDV2_M03_Painting_16",
+      "surface": {
+        "room": "C",
+        "axis": 0,
+        "sign": -1,
+        "plane": 1288,
+        "lo": 726,
+        "hi": 1348,
+        "top": 500,
+        "labels": [
+          "M03G_AnnexEast_00_01",
+          "M03G_AnnexEast_00_00"
+        ],
+        "id": 27
+      },
+      "center": [
+        1285,
+        1037.0,
+        235
+      ],
+      "variant": 4,
+      "scale": 5.8,
+      "width": 408.06915000000004,
+      "height": 408.54015639999994,
+      "factor": 3.0024474839549686
+    },
+    {
+      "name": "BP_PaintingDisplayCase_C_3",
+      "label": "LDV2_M03_Painting_03",
+      "case_id": "Case_M03_Optional_03",
+      "old": {
+        "center": [
+          -1034.6826265600002,
+          -1084.0,
+          185.0
+        ],
+        "normal": [
+          -2.220446049250313e-16,
+          1.0,
+          0.0
+        ],
+        "horizontal": [
+          -1.0,
+          -2.220446049250313e-16,
+          0.0
+        ],
+        "width": 123.52032480000001,
+        "height": 103.54121760000001
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Painting_03.MI_LDV2_M03_Painting_03",
+      "surface": {
+        "room": "Hall",
+        "axis": 1,
+        "sign": 1,
+        "plane": -1087,
+        "lo": -1569,
+        "hi": 290,
+        "top": 595,
+        "labels": [
+          "M03G_SouthHall_End_00",
+          "M03G_SouthHall_End_01",
+          "M03G_SouthHall_End_02",
+          "M03G_SouthHall_End_03",
+          "M03G_SouthHall_End_04",
+          "M03G_SouthHall_End_05",
+          "M03G_SouthHall_End_06"
+        ],
+        "id": 0
+      },
+      "center": [
+        -1383.7195128,
+        -1084,
+        235
+      ],
+      "variant": 3,
+      "scale": 2.4,
+      "width": 370.5609744,
+      "height": 310.6236528,
+      "factor": 3.0
+    },
+    {
+      "name": "BP_PaintingDisplayCase_C_17",
+      "label": "LDV2_M03_Painting_17",
+      "case_id": "Case_M03_Optional_17",
+      "old": {
+        "center": [
+          913.789229,
+          216.0,
+          185.44997544
+        ],
+        "normal": [
+          -2.220446049250313e-16,
+          1.0,
+          0.0
+        ],
+        "horizontal": [
+          -1.0,
+          -2.220446049250313e-16,
+          -2.7369110631344083e-48
+        ],
+        "width": 123.52032480000001,
+        "height": 103.54121760000001
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Painting_17.MI_LDV2_M03_Painting_17",
+      "surface": {
+        "room": "C",
+        "axis": 1,
+        "sign": 1,
+        "plane": 212,
+        "lo": 252,
+        "hi": 1248,
+        "top": 500,
+        "labels": [
+          "M03G_HallNorth_End_04",
+          "M03G_HallNorth_End_05",
+          "M03G_HallNorth_End_06"
+        ],
+        "id": 26
+      },
+      "center": [
+        1062.7195128,
+        215,
+        235
+      ],
+      "variant": 3,
+      "scale": 2.4,
+      "width": 370.5609744,
+      "height": 310.6236528,
+      "factor": 3.0
+    },
+    {
+      "name": "BP_PaintingDisplayCase_C_12",
+      "label": "LDV2_M03_Painting_12",
+      "case_id": "Case_M03_Optional_12",
+      "old": {
+        "center": [
+          -786.328079,
+          1384.0,
+          136.91606009999998
+        ],
+        "normal": [
+          -2.220446049250313e-16,
+          -0.9999999999999998,
+          0.0
+        ],
+        "horizontal": [
+          0.9999999999999998,
+          -2.220446049250313e-16,
+          -2.736911063134408e-48
+        ],
+        "width": 121.23182400000002,
+        "height": 116.66311040000001
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Painting_12.MI_LDV2_M03_Painting_12",
+      "surface": {
+        "room": "B",
+        "axis": 1,
+        "sign": -1,
+        "plane": 1388,
+        "lo": -947,
+        "hi": -330,
+        "top": 500,
+        "labels": [
+          "M03G_AnnexNorth_01_01",
+          "M03G_AnnexNorth_01_02"
+        ],
+        "id": 19
+      },
+      "center": [
+        -765.1522640000001,
+        1385,
+        235
+      ],
+      "variant": 5,
+      "scale": 2.4,
+      "width": 363.695472,
+      "height": 349.9893312,
+      "factor": 2.9999999999999996
+    },
+    {
+      "name": "StaticMeshActor_2361",
+      "label": "LDV2_M03_Gallery_Print_Target_01",
+      "case_id": null,
+      "old": {
+        "center": [
+          750.0,
+          1383.60614,
+          141.617808
+        ],
+        "normal": [
+          -2.220446049250313e-16,
+          -1.0000000000000002,
+          0.0
+        ],
+        "horizontal": [
+          1.0000000000000002,
+          -2.220446049250313e-16,
+          -0.0
+        ],
+        "width": 154.400406,
+        "height": 129.426522
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_Target_01.MI_LDV2_M03_Gallery_Print_Target_01",
+      "surface": {
+        "room": "C",
+        "axis": 1,
+        "sign": -1,
+        "plane": 1388,
+        "lo": 252,
+        "hi": 1248,
+        "top": 500,
+        "labels": [
+          "M03G_AnnexNorth_End_00",
+          "M03G_AnnexNorth_End_01",
+          "M03G_AnnexNorth_End_02",
+          "M03G_AnnexNorth_End_03"
+        ],
+        "id": 24
+      },
+      "center": [
+        1016.3993909999999,
+        1385,
+        235
+      ],
+      "variant": 3,
+      "scale": 3.0,
+      "width": 463.20121800000004,
+      "height": 388.27956600000005,
+      "factor": 3.0
+    },
+    {
+      "name": "StaticMeshActor_2640",
+      "label": "LDV2_M03_Gallery_Print_General_G22_04",
+      "case_id": null,
+      "old": {
+        "center": [
+          2059.8829,
+          1383.9174045,
+          189.961114
+        ],
+        "normal": [
+          -2.220446049250313e-16,
+          -1.0000000000000002,
+          0.0
+        ],
+        "horizontal": [
+          1.0000000000000002,
+          -2.220446049250313e-16,
+          -0.0
+        ],
+        "width": 159.76581,
+        "height": 83.922256
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_General_G22_04.MI_LDV2_M03_Gallery_Print_General_G22_04",
+      "surface": {
+        "room": "B",
+        "axis": 0,
+        "sign": -1,
+        "plane": 188,
+        "lo": 252,
+        "hi": 872,
+        "top": 500,
+        "labels": [
+          "M03G_B_C_End_01",
+          "M03G_B_C_End_00"
+        ],
+        "id": 21
+      },
+      "center": [
+        185,
+        632.6793706999999,
+        235
+      ],
+      "variant": 3,
+      "scale": 3.1,
+      "width": 478.6412586,
+      "height": 401.22221820000004,
+      "factor": 2.9958929172643387
+    },
+    {
+      "name": "StaticMeshActor_2227",
+      "label": "LDV2_M03_Gallery_Print_01_02",
+      "case_id": null,
+      "old": {
+        "center": [
+          -1209.1171,
+          183.91740449999998,
+          184.961114
+        ],
+        "normal": [
+          -2.220446049250313e-16,
+          -1.0000000000000002,
+          0.0
+        ],
+        "horizontal": [
+          1.0000000000000002,
+          -2.220446049250313e-16,
+          -0.0
+        ],
+        "width": 159.76581,
+        "height": 83.922256
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_01_02.MI_LDV2_M03_Gallery_Print_01_02",
+      "surface": {
+        "room": "A",
+        "axis": 1,
+        "sign": 1,
+        "plane": 212,
+        "lo": -1664,
+        "hi": -1051,
+        "top": 500,
+        "labels": [
+          "M03G_HallNorth_End_00",
+          "M03G_HallNorth_End_01"
+        ],
+        "id": 18
+      },
+      "center": [
+        -1290.3206293,
+        215,
+        235
+      ],
+      "variant": 3,
+      "scale": 3.1,
+      "width": 478.6412586,
+      "height": 401.22221820000004,
+      "factor": 2.9958929172643387
+    },
+    {
+      "name": "StaticMeshActor_2303",
+      "label": "LDV2_M03_Gallery_Print_04_01",
+      "case_id": null,
+      "old": {
+        "center": [
+          -213.77436400000002,
+          -1083.300481,
+          184.9144485
+        ],
+        "normal": [
+          2.220446049250313e-16,
+          1.0000000000000002,
+          0.0
+        ],
+        "horizontal": [
+          -1.0000000000000002,
+          2.220446049250313e-16,
+          0.0
+        ],
+        "width": 151.53978,
+        "height": 145.828888
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_04_01.MI_LDV2_M03_Gallery_Print_04_01",
+      "surface": {
+        "room": "Entry",
+        "axis": 0,
+        "sign": -1,
+        "plane": -1211,
+        "lo": -1747,
+        "hi": -1151,
+        "top": 400,
+        "labels": [
+          "M03G_EntryEast_End_01",
+          "M03G_EntryEast_End_00"
+        ],
+        "id": 42
+      },
+      "center": [
+        -1214,
+        -1449.0,
+        200.3315431
+      ],
+      "variant": 3,
+      "scale": 2.9,
+      "width": 447.7611774,
+      "height": 375.3369138,
+      "factor": 2.9547434831962933
+    },
+    {
+      "name": "StaticMeshActor_2332",
+      "label": "LDV2_M03_Gallery_Print_05_03",
+      "case_id": null,
+      "old": {
+        "center": [
+          -672.0825955,
+          -246.88289999999995,
+          359.961114
+        ],
+        "normal": [
+          -0.9999999999999996,
+          1.224646799147353e-16,
+          0.0
+        ],
+        "horizontal": [
+          -1.224646799147353e-16,
+          -0.9999999999999996,
+          0.0
+        ],
+        "width": 159.76581,
+        "height": 83.922256
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_05_03.MI_LDV2_M03_Gallery_Print_05_03",
+      "surface": {
+        "room": "Hall",
+        "axis": 1,
+        "sign": -1,
+        "plane": 188,
+        "lo": -1664,
+        "hi": 290,
+        "top": 595,
+        "labels": [
+          "M03G_HallNorth_End_00",
+          "M03G_HallNorth_End_01",
+          "M03G_HallNorth_End_02",
+          "M03G_HallNorth_End_03",
+          "M03G_HallNorth_End_04",
+          "M03G_HallNorth_End_05",
+          "M03G_HallNorth_End_06"
+        ],
+        "id": 4
+      },
+      "center": [
+        -881.2534706999998,
+        185,
+        235
+      ],
+      "variant": 3,
+      "scale": 3.1,
+      "width": 478.6412586,
+      "height": 401.22221820000004,
+      "factor": 2.9958929172643387
+    },
+    {
+      "name": "StaticMeshActor_2459",
+      "label": "LDV2_M03_Gallery_Print_12_04",
+      "case_id": null,
+      "old": {
+        "center": [
+          -599.8359565,
+          1383.005219,
+          290.248783
+        ],
+        "normal": [
+          -2.220446049250313e-16,
+          -1.0000000000000002,
+          0.0
+        ],
+        "horizontal": [
+          1.0000000000000002,
+          -2.220446049250313e-16,
+          -0.0
+        ],
+        "width": 166.328079,
+        "height": 78.497566
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_12_04.MI_LDV2_M03_Gallery_Print_12_04",
+      "surface": {
+        "room": "B",
+        "axis": 1,
+        "sign": 1,
+        "plane": 212,
+        "lo": -947,
+        "hi": 148,
+        "top": 500,
+        "labels": [
+          "M03G_HallNorth_End_01",
+          "M03G_HallNorth_End_02",
+          "M03G_HallNorth_End_03",
+          "M03G_HallNorth_End_04"
+        ],
+        "id": 22
+      },
+      "center": [
+        -699.9593504,
+        215,
+        235
+      ],
+      "variant": 3,
+      "scale": 3.2,
+      "width": 494.08129920000005,
+      "height": 414.16487040000004,
+      "factor": 2.9705224888697237
+    },
+    {
+      "name": "StaticMeshActor_2383",
+      "label": "LDV2_M03_Gallery_Print_HighValue_02",
+      "case_id": null,
+      "old": {
+        "center": [
+          2039.15236085,
+          -1083.3046970999999,
+          144.3239047
+        ],
+        "normal": [
+          2.220446049250313e-16,
+          1.0000000000000002,
+          0.0
+        ],
+        "horizontal": [
+          -1.0000000000000002,
+          2.220446049250313e-16,
+          0.0
+        ],
+        "width": 149.6952711,
+        "height": 70.64780940000001
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_HighValue_02.MI_LDV2_M03_Gallery_Print_HighValue_02",
+      "surface": {
+        "room": "StaffEast",
+        "axis": 0,
+        "sign": -1,
+        "plane": 1688,
+        "lo": -1047,
+        "hi": -544,
+        "top": 400,
+        "labels": [
+          "M03G_VaultEntry_End_01",
+          "M03G_VaultEntry_End_00"
+        ],
+        "id": 35
+      },
+      "center": [
+        1685,
+        -795.5,
+        200.3315431
+      ],
+      "variant": 3,
+      "scale": 2.9,
+      "width": 447.7611774,
+      "height": 375.3369138,
+      "factor": 2.991151117264652
+    },
+    {
+      "name": "StaticMeshActor_2427",
+      "label": "LDV2_M03_Gallery_Print_11_03",
+      "case_id": null,
+      "old": {
+        "center": [
+          -1015.57433595,
+          795.10539,
+          184.7650026
+        ],
+        "normal": [
+          -0.9999999999999996,
+          1.224646799147353e-16,
+          0.0
+        ],
+        "horizontal": [
+          -1.224646799147353e-16,
+          -0.9999999999999996,
+          0.0
+        ],
+        "width": 143.789229,
+        "height": 75.5300304
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_11_03.MI_LDV2_M03_Gallery_Print_11_03",
+      "surface": {
+        "room": "StaffNorth",
+        "axis": 1,
+        "sign": 1,
+        "plane": 1412,
+        "lo": -1468,
+        "hi": -330,
+        "top": 400,
+        "labels": [
+          "M03G_AnnexNorth_01_00",
+          "M03G_AnnexNorth_01_01",
+          "M03G_AnnexNorth_01_02"
+        ],
+        "id": 30
+      },
+      "center": [
+        -1251.8394316,
+        1415,
+        206.8028692
+      ],
+      "variant": 3,
+      "scale": 2.8,
+      "width": 432.3211368,
+      "height": 362.3942616,
+      "factor": 3.00663088470973
+    },
+    {
+      "name": "StaticMeshActor_2500",
+      "label": "LDV2_M03_Gallery_Print_14_01",
+      "case_id": null,
+      "old": {
+        "center": [
+          -983.60614,
+          1050.0,
+          317.61780799999997
+        ],
+        "normal": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "horizontal": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "width": 154.400406,
+        "height": 129.426522
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_14_01.MI_LDV2_M03_Gallery_Print_14_01",
+      "surface": {
+        "room": "A",
+        "axis": 0,
+        "sign": -1,
+        "plane": -1011,
+        "lo": 726,
+        "hi": 1348,
+        "top": 500,
+        "labels": [
+          "M03G_A_B_00_01",
+          "M03G_A_B_00_00"
+        ],
+        "id": 17
+      },
+      "center": [
+        -1014,
+        1037.0,
+        235
+      ],
+      "variant": 3,
+      "scale": 3.0,
+      "width": 463.20121800000004,
+      "height": 388.27956600000005,
+      "factor": 3.0
+    },
+    {
+      "name": "StaticMeshActor_2625",
+      "label": "LDV2_M03_Gallery_Print_General_G22_01",
+      "case_id": null,
+      "old": {
+        "center": [
+          -2183.300481,
+          -1239.225636,
+          189.9144485
+        ],
+        "normal": [
+          1.0,
+          0.0,
+          1.110223037584573e-16
+        ],
+        "horizontal": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "width": 151.53978,
+        "height": 145.828888
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_General_G22_01.MI_LDV2_M03_Gallery_Print_General_G22_01",
+      "surface": {
+        "room": "StaffWest",
+        "axis": 0,
+        "sign": -1,
+        "plane": -2211,
+        "lo": -1371,
+        "hi": -544,
+        "top": 400,
+        "labels": [
+          "M03G_EntryWest_00_00",
+          "M03G_HallWest_End_01",
+          "M03G_HallWest_End_00"
+        ],
+        "id": 33
+      },
+      "center": [
+        -2214,
+        -1147.1194113,
+        200.3315431
+      ],
+      "variant": 3,
+      "scale": 2.9,
+      "width": 447.7611774,
+      "height": 375.3369138,
+      "factor": 2.9547434831962933
+    },
+    {
+      "name": "StaticMeshActor_2254",
+      "label": "LDV2_M03_Gallery_Print_02_02",
+      "case_id": null,
+      "old": {
+        "center": [
+          122.77436400000003,
+          183.300481,
+          143.9144485
+        ],
+        "normal": [
+          -2.220446049250313e-16,
+          -1.0000000000000002,
+          0.0
+        ],
+        "horizontal": [
+          1.0000000000000002,
+          -2.220446049250313e-16,
+          -0.0
+        ],
+        "width": 151.53978,
+        "height": 145.828888
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_02_02.MI_LDV2_M03_Gallery_Print_02_02",
+      "surface": {
+        "room": "StaffEast",
+        "axis": 0,
+        "sign": 1,
+        "plane": 1312,
+        "lo": -261,
+        "hi": 470,
+        "top": 400,
+        "labels": [
+          "M03G_HallEast_00_01",
+          "M03G_HallEast_00_00",
+          "M03G_AnnexEast_End_00"
+        ],
+        "id": 39
+      },
+      "center": [
+        1315,
+        104.5,
+        200.3315431
+      ],
+      "variant": 3,
+      "scale": 2.9,
+      "width": 447.7611774,
+      "height": 375.3369138,
+      "factor": 2.9547434831962933
+    },
+    {
+      "name": "StaticMeshActor_2237",
+      "label": "LDV2_M03_Gallery_Print_01_04",
+      "case_id": null,
+      "old": {
+        "center": [
+          -2013.60614,
+          -860.0,
+          189.617808
+        ],
+        "normal": [
+          1.0,
+          0.0,
+          1.110223037584573e-16
+        ],
+        "horizontal": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "width": 154.400406,
+        "height": 129.426522
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_01_04.MI_LDV2_M03_Gallery_Print_01_04",
+      "surface": {
+        "room": "Hall",
+        "axis": 0,
+        "sign": 1,
+        "plane": -2187,
+        "lo": -1047,
+        "hi": -544,
+        "top": 595,
+        "labels": [
+          "M03G_HallWest_End_01",
+          "M03G_HallWest_End_00"
+        ],
+        "id": 2
+      },
+      "center": [
+        -2184,
+        -776.177275,
+        257.44526139999994
+      ],
+      "variant": 4,
+      "scale": 6.6,
+      "width": 464.35455,
+      "height": 464.8905227999999,
+      "factor": 3.0109410644943506
+    },
+    {
+      "name": "StaticMeshActor_2605",
+      "label": "LDV2_M03_Gallery_Print_General_G21_02",
+      "case_id": null,
+      "old": {
+        "center": [
+          799.8829000000001,
+          183.91740449999998,
+          189.961114
+        ],
+        "normal": [
+          -2.220446049250313e-16,
+          -1.0000000000000002,
+          0.0
+        ],
+        "horizontal": [
+          1.0000000000000002,
+          -2.220446049250313e-16,
+          -0.0
+        ],
+        "width": 159.76581,
+        "height": 83.922256
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_General_G21_02.MI_LDV2_M03_Gallery_Print_General_G21_02",
+      "surface": {
+        "room": "C",
+        "axis": 1,
+        "sign": 1,
+        "plane": 212,
+        "lo": 252,
+        "hi": 1248,
+        "top": 500,
+        "labels": [
+          "M03G_HallNorth_End_04",
+          "M03G_HallNorth_End_05",
+          "M03G_HallNorth_End_06"
+        ],
+        "id": 26
+      },
+      "center": [
+        532.2195128000001,
+        215,
+        235
+      ],
+      "variant": 3,
+      "scale": 3.1,
+      "width": 478.6412586,
+      "height": 401.22221820000004,
+      "factor": 2.9958929172643387
+    },
+    {
+      "name": "StaticMeshActor_2563",
+      "label": "LDV2_M03_Gallery_Print_10_01",
+      "case_id": null,
+      "old": {
+        "center": [
+          -2183.0985147,
+          799.8745875,
+          184.9598559
+        ],
+        "normal": [
+          1.0,
+          0.0,
+          1.110223037584573e-16
+        ],
+        "horizontal": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "width": 147.749175,
+        "height": 147.9197118
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_10_01.MI_LDV2_M03_Gallery_Print_10_01",
+      "surface": {
+        "room": "StaffWest",
+        "axis": 0,
+        "sign": -1,
+        "plane": -2211,
+        "lo": -261,
+        "hi": 1365,
+        "top": 400,
+        "labels": [
+          "M03G_HallWest_00_01",
+          "M03G_HallWest_00_00",
+          "M03G_AnnexWest_End_02",
+          "M03G_AnnexWest_End_01",
+          "M03G_AnnexWest_End_00"
+        ],
+        "id": 34
+      },
+      "center": [
+        -2214,
+        1141.1194113,
+        200.3315431
+      ],
+      "variant": 3,
+      "scale": 2.9,
+      "width": 447.7611774,
+      "height": 375.3369138,
+      "factor": 3.0270555016048917
+    },
+    {
+      "name": "StaticMeshActor_2546",
+      "label": "LDV2_M03_Gallery_Print_17_02",
+      "case_id": null,
+      "old": {
+        "center": [
+          651.1053899999999,
+          215.57433595000003,
+          282.7650026
+        ],
+        "normal": [
+          2.220446049250313e-16,
+          1.0000000000000002,
+          0.0
+        ],
+        "horizontal": [
+          -1.0000000000000002,
+          2.220446049250313e-16,
+          0.0
+        ],
+        "width": 143.789229,
+        "height": 75.5300304
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_17_02.MI_LDV2_M03_Gallery_Print_17_02",
+      "surface": {
+        "room": "StaffNorth",
+        "axis": 1,
+        "sign": 1,
+        "plane": 1412,
+        "lo": -59,
+        "hi": 1257,
+        "top": 400,
+        "labels": [
+          "M03G_AnnexNorth_End_00",
+          "M03G_AnnexNorth_End_01",
+          "M03G_AnnexNorth_End_02",
+          "M03G_AnnexNorth_End_03"
+        ],
+        "id": 31
+      },
+      "center": [
+        1040.8394316,
+        1415,
+        206.8028692
+      ],
+      "variant": 3,
+      "scale": 2.8,
+      "width": 432.3211368,
+      "height": 362.3942616,
+      "factor": 3.00663088470973
+    },
+    {
+      "name": "StaticMeshActor_2568",
+      "label": "LDV2_M03_Gallery_Print_10_02",
+      "case_id": null,
+      "old": {
+        "center": [
+          -2183.300481,
+          1004.774364,
+          184.9144485
+        ],
+        "normal": [
+          1.0,
+          0.0,
+          1.110223037584573e-16
+        ],
+        "horizontal": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "width": 151.53978,
+        "height": 145.828888
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_10_02.MI_LDV2_M03_Gallery_Print_10_02",
+      "surface": {
+        "room": "StaffWest",
+        "axis": 0,
+        "sign": -1,
+        "plane": -2211,
+        "lo": -261,
+        "hi": 1365,
+        "top": 400,
+        "labels": [
+          "M03G_HallWest_00_01",
+          "M03G_HallWest_00_00",
+          "M03G_AnnexWest_End_02",
+          "M03G_AnnexWest_End_01",
+          "M03G_AnnexWest_End_00"
+        ],
+        "id": 34
+      },
+      "center": [
+        -2214,
+        628.3582339,
+        200.3315431
+      ],
+      "variant": 3,
+      "scale": 2.9,
+      "width": 447.7611774,
+      "height": 375.3369138,
+      "factor": 2.9547434831962933
+    },
+    {
+      "name": "StaticMeshActor_2393",
+      "label": "LDV2_M03_Gallery_Print_HighValue_04",
+      "case_id": null,
+      "old": {
+        "center": [
+          2219.10539,
+          -1083.42566405,
+          309.7650026
+        ],
+        "normal": [
+          2.220446049250313e-16,
+          1.0000000000000002,
+          0.0
+        ],
+        "horizontal": [
+          -1.0000000000000002,
+          2.220446049250313e-16,
+          0.0
+        ],
+        "width": 143.789229,
+        "height": 75.5300304
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_HighValue_04.MI_LDV2_M03_Gallery_Print_HighValue_04",
+      "surface": {
+        "room": "Vault",
+        "axis": 1,
+        "sign": 1,
+        "plane": -1087,
+        "lo": 1752,
+        "hi": 2648,
+        "top": 500,
+        "labels": [
+          "M03G_SouthEast_End_01",
+          "M03G_SouthEast_End_02",
+          "M03G_SouthEast_End_03"
+        ],
+        "id": 45
+      },
+      "center": [
+        1985.6522639999998,
+        -1084,
+        239.83577189999997
+      ],
+      "variant": 4,
+      "scale": 6.1,
+      "width": 429.176175,
+      "height": 429.67154379999994,
+      "factor": 2.9882039620645013
+    },
+    {
+      "name": "StaticMeshActor_2249",
+      "label": "LDV2_M03_Gallery_Print_02_01",
+      "case_id": null,
+      "old": {
+        "center": [
+          -99.12541249999998,
+          183.0985147,
+          142.9598559
+        ],
+        "normal": [
+          -2.220446049250313e-16,
+          -1.0000000000000002,
+          0.0
+        ],
+        "horizontal": [
+          1.0000000000000002,
+          -2.220446049250313e-16,
+          -0.0
+        ],
+        "width": 147.749175,
+        "height": 147.9197118
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_02_01.MI_LDV2_M03_Gallery_Print_02_01",
+      "surface": {
+        "room": "StaffNorth",
+        "axis": 1,
+        "sign": 1,
+        "plane": 1412,
+        "lo": -59,
+        "hi": 1257,
+        "top": 400,
+        "labels": [
+          "M03G_AnnexNorth_End_00",
+          "M03G_AnnexNorth_End_01",
+          "M03G_AnnexNorth_End_02",
+          "M03G_AnnexNorth_End_03"
+        ],
+        "id": 31
+      },
+      "center": [
+        164.8805887,
+        1415,
+        200.3315431
+      ],
+      "variant": 3,
+      "scale": 2.9,
+      "width": 447.7611774,
+      "height": 375.3369138,
+      "factor": 3.0270555016048917
+    },
+    {
+      "name": "StaticMeshActor_2615",
+      "label": "LDV2_M03_Gallery_Print_General_G21_04",
+      "case_id": null,
+      "old": {
+        "center": [
+          -2183.60614,
+          -1560.0,
+          189.617808
+        ],
+        "normal": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "horizontal": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "width": 154.400406,
+        "height": 129.426522
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_General_G21_04.MI_LDV2_M03_Gallery_Print_General_G21_04",
+      "surface": {
+        "room": "B",
+        "axis": 1,
+        "sign": 1,
+        "plane": 212,
+        "lo": -947,
+        "hi": 148,
+        "top": 500,
+        "labels": [
+          "M03G_HallNorth_End_01",
+          "M03G_HallNorth_End_02",
+          "M03G_HallNorth_End_03",
+          "M03G_HallNorth_End_04"
+        ],
+        "id": 22
+      },
+      "center": [
+        -119.95935039999995,
+        215,
+        235
+      ],
+      "variant": 3,
+      "scale": 3.0,
+      "width": 463.20121800000004,
+      "height": 388.27956600000005,
+      "factor": 3.0
+    },
+    {
+      "name": "StaticMeshActor_2232",
+      "label": "LDV2_M03_Gallery_Print_01_03",
+      "case_id": null,
+      "old": {
+        "center": [
+          -1029.69366155,
+          183.01040790000002,
+          184.77265865
+        ],
+        "normal": [
+          -1.224646799147353e-16,
+          -0.9999999999999996,
+          0.0
+        ],
+        "horizontal": [
+          -0.9999999999999996,
+          1.224646799147353e-16,
+          0.0
+        ],
+        "width": 153.07767360000003,
+        "height": 108.0956772
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_01_03.MI_LDV2_M03_Gallery_Print_01_03",
+      "surface": {
+        "room": "C",
+        "axis": 0,
+        "sign": 1,
+        "plane": 212,
+        "lo": 252,
+        "hi": 872,
+        "top": 500,
+        "labels": [
+          "M03G_B_C_End_01",
+          "M03G_B_C_End_00"
+        ],
+        "id": 25
+      },
+      "center": [
+        215,
+        479.30967,
+        243.743332
+      ],
+      "variant": 5,
+      "scale": 3.0,
+      "width": 454.61934,
+      "height": 437.486664,
+      "factor": 2.9698605244546905
+    },
+    {
+      "name": "StaticMeshActor_2417",
+      "label": "LDV2_M03_Gallery_Print_11_01",
+      "case_id": null,
+      "old": {
+        "center": [
+          -1015.6953029,
+          1134.1523608500002,
+          184.3239047
+        ],
+        "normal": [
+          -0.9999999999999996,
+          1.224646799147353e-16,
+          0.0
+        ],
+        "horizontal": [
+          -1.224646799147353e-16,
+          -0.9999999999999996,
+          0.0
+        ],
+        "width": 149.6952711,
+        "height": 70.64780940000001
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_11_01.MI_LDV2_M03_Gallery_Print_11_01",
+      "surface": {
+        "room": "StaffNorth",
+        "axis": 1,
+        "sign": 1,
+        "plane": 1412,
+        "lo": -1468,
+        "hi": -330,
+        "top": 400,
+        "labels": [
+          "M03G_AnnexNorth_01_00",
+          "M03G_AnnexNorth_01_01",
+          "M03G_AnnexNorth_01_02"
+        ],
+        "id": 30
+      },
+      "center": [
+        -746.7982744999998,
+        1415,
+        200.3315431
+      ],
+      "variant": 3,
+      "scale": 2.9,
+      "width": 447.7611774,
+      "height": 375.3369138,
+      "factor": 2.991151117264652
+    },
+    {
+      "name": "StaticMeshActor_2449",
+      "label": "LDV2_M03_Gallery_Print_12_02",
+      "case_id": null,
+      "old": {
+        "center": [
+          -413.1610875,
+          1383.0415133,
+          135.9160601
+        ],
+        "normal": [
+          -2.220446049250313e-16,
+          -1.0000000000000002,
+          0.0
+        ],
+        "horizontal": [
+          1.0000000000000002,
+          -2.220446049250313e-16,
+          -0.0
+        ],
+        "width": 133.677825,
+        "height": 133.8321202
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_12_02.MI_LDV2_M03_Gallery_Print_12_02",
+      "surface": {
+        "room": "StaffEast",
+        "axis": 0,
+        "sign": 1,
+        "plane": 1312,
+        "lo": 726,
+        "hi": 1365,
+        "top": 400,
+        "labels": [
+          "M03G_AnnexEast_00_01",
+          "M03G_AnnexEast_00_00"
+        ],
+        "id": 40
+      },
+      "center": [
+        1315,
+        926.7205278,
+        219.74552139999997
+      ],
+      "variant": 3,
+      "scale": 2.6,
+      "width": 401.4410556,
+      "height": 336.50895720000005,
+      "factor": 2.999586758396136
+    },
+    {
+      "name": "StaticMeshActor_2264",
+      "label": "LDV2_M03_Gallery_Print_02_04",
+      "case_id": null,
+      "old": {
+        "center": [
+          -99.94891900000006,
+          183.45267575,
+          316.773998
+        ],
+        "normal": [
+          -1.224646799147353e-16,
+          -0.9999999999999996,
+          0.0
+        ],
+        "horizontal": [
+          -0.9999999999999996,
+          1.224646799147353e-16,
+          0.0
+        ],
+        "width": 149.23607249999998,
+        "height": 149.236077
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_02_04.MI_LDV2_M03_Gallery_Print_02_04",
+      "surface": {
+        "room": "Entry",
+        "axis": 1,
+        "sign": 1,
+        "plane": -1787,
+        "lo": -2147,
+        "hi": -1251,
+        "top": 400,
+        "labels": [
+          "M03G_EntrySouth_End_01",
+          "M03G_EntrySouth_End_02",
+          "M03G_EntrySouth_End_03"
+        ],
+        "id": 41
+      },
+      "center": [
+        -1474.8805887,
+        -1784,
+        200.3315431
+      ],
+      "variant": 3,
+      "scale": 2.9,
+      "width": 447.7611774,
+      "height": 375.3369138,
+      "factor": 3.0003547828451698
+    },
+    {
+      "name": "StaticMeshActor_2366",
+      "label": "LDV2_M03_Gallery_Print_Target_02",
+      "case_id": null,
+      "old": {
+        "center": [
+          972.8745875,
+          1383.0985147,
+          227.9598559
+        ],
+        "normal": [
+          -2.220446049250313e-16,
+          -1.0000000000000002,
+          0.0
+        ],
+        "horizontal": [
+          1.0000000000000002,
+          -2.220446049250313e-16,
+          -0.0
+        ],
+        "width": 147.749175,
+        "height": 147.9197118
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_Target_02.MI_LDV2_M03_Gallery_Print_Target_02",
+      "surface": {
+        "room": "C",
+        "axis": 1,
+        "sign": -1,
+        "plane": 1388,
+        "lo": 252,
+        "hi": 1248,
+        "top": 500,
+        "labels": [
+          "M03G_AnnexNorth_End_00",
+          "M03G_AnnexNorth_End_01",
+          "M03G_AnnexNorth_End_02",
+          "M03G_AnnexNorth_End_03"
+        ],
+        "id": 24
+      },
+      "center": [
+        473.6237625,
+        1385,
+        246.87956769999997
+      ],
+      "variant": 4,
+      "scale": 6.3,
+      "width": 443.247525,
+      "height": 443.75913539999993,
+      "factor": 3.0
+    },
+    {
+      "name": "StaticMeshActor_2512",
+      "label": "LDV2_M03_Gallery_Print_15_01",
+      "case_id": null,
+      "old": {
+        "center": [
+          183.0985147,
+          420.12541250000004,
+          184.9598559
+        ],
+        "normal": [
+          -0.9999999999999996,
+          1.224646799147353e-16,
+          0.0
+        ],
+        "horizontal": [
+          -1.224646799147353e-16,
+          -0.9999999999999996,
+          0.0
+        ],
+        "width": 147.749175,
+        "height": 147.9197118
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_15_01.MI_LDV2_M03_Gallery_Print_15_01",
+      "surface": {
+        "room": "StaffEast",
+        "axis": 0,
+        "sign": 1,
+        "plane": 1312,
+        "lo": -1047,
+        "hi": -544,
+        "top": 400,
+        "labels": [
+          "M03G_HallEast_End_01",
+          "M03G_HallEast_End_00"
+        ],
+        "id": 38
+      },
+      "center": [
+        1315,
+        -767.8805887,
+        200.3315431
+      ],
+      "variant": 3,
+      "scale": 2.9,
+      "width": 447.7611774,
+      "height": 375.3369138,
+      "factor": 3.0270555016048917
+    },
+    {
+      "name": "StaticMeshActor_2327",
+      "label": "LDV2_M03_Gallery_Print_05_02",
+      "case_id": null,
+      "old": {
+        "center": [
+          -672.2441693000001,
+          -571.0476756,
+          295.7890648
+        ],
+        "normal": [
+          -1.0000000000000002,
+          2.220446049250313e-16,
+          0.0
+        ],
+        "horizontal": [
+          2.220446049250313e-16,
+          1.0000000000000002,
+          0.0
+        ],
+        "width": 139.28700099999998,
+        "height": 139.28700519999998
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_05_02.MI_LDV2_M03_Gallery_Print_05_02",
+      "surface": {
+        "room": "Hall",
+        "axis": 0,
+        "sign": -1,
+        "plane": -669,
+        "lo": -773,
+        "hi": -127,
+        "top": 446,
+        "labels": [
+          "M03G_HallPartition_01",
+          "M03G_HallPartition_00"
+        ],
+        "id": 8
+      },
+      "center": [
+        -672,
+        -564.5594519,
+        235
+      ],
+      "variant": 3,
+      "scale": 2.7,
+      "width": 416.88109620000006,
+      "height": 349.45160940000005,
+      "factor": 2.9929647464342217
+    },
+    {
+      "name": "StaticMeshActor_2349",
+      "label": "LDV2_M03_Gallery_Print_06_02",
+      "case_id": null,
+      "old": {
+        "center": [
+          1283.884912,
+          -995.0,
+          184.4942464
+        ],
+        "normal": [
+          -0.9999999999999996,
+          1.224646799147353e-16,
+          0.0
+        ],
+        "horizontal": [
+          -1.224646799147353e-16,
+          -0.9999999999999996,
+          0.0
+        ],
+        "width": 123.52032480000001,
+        "height": 103.54121760000001
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_06_02.MI_LDV2_M03_Gallery_Print_06_02",
+      "surface": {
+        "room": "Vault",
+        "axis": 0,
+        "sign": 1,
+        "plane": 1712,
+        "lo": -1047,
+        "hi": -544,
+        "top": 500,
+        "labels": [
+          "M03G_VaultEntry_End_01",
+          "M03G_VaultEntry_End_00"
+        ],
+        "id": 47
+      },
+      "center": [
+        1715,
+        -729.2804872,
+        235
+      ],
+      "variant": 3,
+      "scale": 2.4,
+      "width": 370.5609744,
+      "height": 310.6236528,
+      "factor": 3.0
+    },
+    {
+      "name": "StaticMeshActor_2281",
+      "label": "LDV2_M03_Gallery_Print_03_01",
+      "case_id": null,
+      "old": {
+        "center": [
+          -1189.8278564,
+          -1083.3425848,
+          184.7979188
+        ],
+        "normal": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "horizontal": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "width": 136.0690432,
+        "height": 96.08504640000001
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_03_01.MI_LDV2_M03_Gallery_Print_03_01",
+      "surface": {
+        "room": "StaffWest",
+        "axis": 0,
+        "sign": 1,
+        "plane": -2587,
+        "lo": -1747,
+        "hi": 1365,
+        "top": 400,
+        "labels": [
+          "M03G_WestExterior_End_08",
+          "M03G_WestExterior_End_07",
+          "M03G_WestExterior_End_06",
+          "M03G_WestExterior_End_05",
+          "M03G_WestExterior_End_04",
+          "M03G_WestExterior_End_03",
+          "M03G_WestExterior_End_02",
+          "M03G_WestExterior_End_01"
+        ],
+        "id": 32
+      },
+      "center": [
+        -2584,
+        -1546.2794721999999,
+        219.74552139999997
+      ],
+      "variant": 3,
+      "scale": 2.6,
+      "width": 401.4410556,
+      "height": 336.50895720000005,
+      "factor": 2.950274699954677
+    },
+    {
+      "name": "StaticMeshActor_2524",
+      "label": "LDV2_M03_Gallery_Print_16_01",
+      "case_id": null,
+      "old": {
+        "center": [
+          1283.2403848,
+          1049.3805088,
+          150.33155879999998
+        ],
+        "normal": [
+          -0.9999999999999996,
+          1.224646799147353e-16,
+          0.0
+        ],
+        "horizontal": [
+          -1.224646799147353e-16,
+          -0.9999999999999996,
+          0.0
+        ],
+        "width": 121.23182400000002,
+        "height": 116.66311040000001
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_16_01.MI_LDV2_M03_Gallery_Print_16_01",
+      "surface": {
+        "room": "StaffNorth",
+        "axis": 1,
+        "sign": -1,
+        "plane": 1788,
+        "lo": -2547,
+        "hi": 1648,
+        "top": 400,
+        "labels": [
+          "M03G_NorthExterior_End_00",
+          "M03G_NorthExterior_End_01",
+          "M03G_NorthExterior_End_02",
+          "M03G_NorthExterior_End_03",
+          "M03G_NorthExterior_End_04",
+          "M03G_NorthExterior_End_05",
+          "M03G_NorthExterior_End_06",
+          "M03G_NorthExterior_End_07",
+          "M03G_NorthExterior_End_08",
+          "M03G_NorthExterior_End_09"
+        ],
+        "id": 28
+      },
+      "center": [
+        1466.152264,
+        1785,
+        213.0053344
+      ],
+      "variant": 5,
+      "scale": 2.4,
+      "width": 363.695472,
+      "height": 349.9893312,
+      "factor": 2.9999999999999996
+    },
+    {
+      "name": "StaticMeshActor_1691",
+      "label": "LDV2_M03_Gallery_Print_01_01",
+      "case_id": null,
+      "old": {
+        "center": [
+          -1388.9523244000002,
+          183.7558307,
+          184.7890648
+        ],
+        "normal": [
+          -1.224646799147353e-16,
+          -0.9999999999999996,
+          0.0
+        ],
+        "horizontal": [
+          -0.9999999999999996,
+          1.224646799147353e-16,
+          0.0
+        ],
+        "width": 139.28700099999998,
+        "height": 139.28700519999998
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_01_01.MI_LDV2_M03_Gallery_Print_01_01",
+      "surface": {
+        "room": "StaffWest",
+        "axis": 0,
+        "sign": -1,
+        "plane": -2211,
+        "lo": -261,
+        "hi": 1365,
+        "top": 400,
+        "labels": [
+          "M03G_HallWest_00_01",
+          "M03G_HallWest_00_00",
+          "M03G_AnnexWest_End_02",
+          "M03G_AnnexWest_End_01",
+          "M03G_AnnexWest_End_00"
+        ],
+        "id": 34
+      },
+      "center": [
+        -2214,
+        131.03709709999995,
+        213.27419529999997
+      ],
+      "variant": 3,
+      "scale": 2.7,
+      "width": 416.88109620000006,
+      "height": 349.45160940000005,
+      "factor": 2.9929647464342217
+    },
+    {
+      "name": "StaticMeshActor_2388",
+      "label": "LDV2_M03_Gallery_Print_HighValue_03",
+      "case_id": null,
+      "old": {
+        "center": [
+          2399.9591352,
+          -1083.3621406,
+          304.8191984
+        ],
+        "normal": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "horizontal": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "width": 119.38885799999998,
+        "height": 119.3888616
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_HighValue_03.MI_LDV2_M03_Gallery_Print_HighValue_03",
+      "surface": {
+        "room": "Vault",
+        "axis": 0,
+        "sign": 1,
+        "plane": 1712,
+        "lo": -261,
+        "hi": 148,
+        "top": 500,
+        "labels": [
+          "M03G_VaultEntry_00_01",
+          "M03G_VaultEntry_00_00"
+        ],
+        "id": 48
+      },
+      "center": [
+        1715,
+        -81.59028749999999,
+        235
+      ],
+      "variant": 4,
+      "scale": 5.1,
+      "width": 358.819425,
+      "height": 359.23358579999996,
+      "factor": 3.0089371905025346
+    },
+    {
+      "name": "StaticMeshActor_2635",
+      "label": "LDV2_M03_Gallery_Print_General_G22_03",
+      "case_id": null,
+      "old": {
+        "center": [
+          1899.0408648,
+          1383.3621406,
+          189.8191984
+        ],
+        "normal": [
+          -1.224646799147353e-16,
+          -0.9999999999999996,
+          0.0
+        ],
+        "horizontal": [
+          -0.9999999999999996,
+          1.224646799147353e-16,
+          0.0
+        ],
+        "width": 119.38885799999998,
+        "height": 119.3888616
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_General_G22_03.MI_LDV2_M03_Gallery_Print_General_G22_03",
+      "surface": {
+        "room": "StaffEast",
+        "axis": 0,
+        "sign": -1,
+        "plane": 1688,
+        "lo": -261,
+        "hi": 160,
+        "top": 400,
+        "labels": [
+          "M03G_VaultEntry_00_01",
+          "M03G_VaultEntry_00_00"
+        ],
+        "id": 36
+      },
+      "center": [
+        1685,
+        -83.4395331,
+        235
+      ],
+      "variant": 3,
+      "scale": 2.3,
+      "width": 355.1209338,
+      "height": 297.6810006,
+      "factor": 2.974489655406849
+    },
+    {
+      "name": "StaticMeshActor_2541",
+      "label": "LDV2_M03_Gallery_Print_17_01",
+      "case_id": null,
+      "old": {
+        "center": [
+          650.9591352,
+          215.6378594,
+          128.8191984
+        ],
+        "normal": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "horizontal": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "width": 119.38885799999998,
+        "height": 119.3888616
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_17_01.MI_LDV2_M03_Gallery_Print_17_01",
+      "surface": {
+        "room": "Entry",
+        "axis": 1,
+        "sign": 1,
+        "plane": -1787,
+        "lo": -2147,
+        "hi": -1251,
+        "top": 400,
+        "labels": [
+          "M03G_EntrySouth_End_01",
+          "M03G_EntrySouth_End_02",
+          "M03G_EntrySouth_End_03"
+        ],
+        "id": 41
+      },
+      "center": [
+        -1943.1708899000002,
+        -1784,
+        208.38320710000002
+      ],
+      "variant": 4,
+      "scale": 5.1,
+      "width": 358.819425,
+      "height": 359.23358579999996,
+      "factor": 3.0089371905025346
+    },
+    {
+      "name": "StaticMeshActor_2291",
+      "label": "LDV2_M03_Gallery_Print_03_03",
+      "case_id": null,
+      "old": {
+        "center": [
+          -1564.8389125,
+          -1083.0415133,
+          184.9160601
+        ],
+        "normal": [
+          2.220446049250313e-16,
+          1.0000000000000002,
+          0.0
+        ],
+        "horizontal": [
+          -1.0000000000000002,
+          2.220446049250313e-16,
+          0.0
+        ],
+        "width": 133.677825,
+        "height": 133.8321202
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_03_03.MI_LDV2_M03_Gallery_Print_03_03",
+      "surface": {
+        "room": "StaffWest",
+        "axis": 0,
+        "sign": 1,
+        "plane": -2587,
+        "lo": -1747,
+        "hi": 1365,
+        "top": 400,
+        "labels": [
+          "M03G_WestExterior_End_08",
+          "M03G_WestExterior_End_07",
+          "M03G_WestExterior_End_06",
+          "M03G_WestExterior_End_05",
+          "M03G_WestExterior_End_04",
+          "M03G_WestExterior_End_03",
+          "M03G_WestExterior_End_02",
+          "M03G_WestExterior_End_01"
+        ],
+        "id": 32
+      },
+      "center": [
+        -2584,
+        -1079.8384165999996,
+        219.74552139999997
+      ],
+      "variant": 3,
+      "scale": 2.6,
+      "width": 401.4410556,
+      "height": 336.50895720000005,
+      "factor": 2.999586758396136
+    },
+    {
+      "name": "StaticMeshActor_2551",
+      "label": "LDV2_M03_Gallery_Print_17_03",
+      "case_id": null,
+      "old": {
+        "center": [
+          913.6506256499999,
+          215.3252383,
+          337.82317895
+        ],
+        "normal": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "horizontal": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "width": 119.0604128,
+        "height": 84.0744156
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_17_03.MI_LDV2_M03_Gallery_Print_17_03",
+      "surface": {
+        "room": "A",
+        "axis": 1,
+        "sign": -1,
+        "plane": 1388,
+        "lo": -1468,
+        "hi": -1051,
+        "top": 500,
+        "labels": [
+          "M03G_AnnexNorth_01_00",
+          "M03G_AnnexNorth_01_01"
+        ],
+        "id": 16
+      },
+      "center": [
+        -1228.5604669,
+        1385,
+        235
+      ],
+      "variant": 3,
+      "scale": 2.3,
+      "width": 355.1209338,
+      "height": 297.6810006,
+      "factor": 2.9826953010530803
+    },
+    {
+      "name": "StaticMeshActor_2454",
+      "label": "LDV2_M03_Gallery_Print_12_03",
+      "case_id": null,
+      "old": {
+        "center": [
+          -785.3805087999999,
+          1383.2403848,
+          290.3315588
+        ],
+        "normal": [
+          -2.220446049250313e-16,
+          -1.0000000000000002,
+          0.0
+        ],
+        "horizontal": [
+          1.0000000000000002,
+          -2.220446049250313e-16,
+          -0.0
+        ],
+        "width": 121.23182400000002,
+        "height": 116.66311040000001
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_12_03.MI_LDV2_M03_Gallery_Print_12_03",
+      "surface": {
+        "room": "A",
+        "axis": 1,
+        "sign": -1,
+        "plane": 1388,
+        "lo": -2147,
+        "hi": -1739,
+        "top": 500,
+        "labels": [
+          "M03G_AnnexNorth_00_00",
+          "M03G_AnnexNorth_00_01"
+        ],
+        "id": 15
+      },
+      "center": [
+        -1920.847736,
+        1385,
+        235
+      ],
+      "variant": 5,
+      "scale": 2.4,
+      "width": 363.695472,
+      "height": 349.9893312,
+      "factor": 2.9999999999999996
+    },
+    {
+      "name": "StaticMeshActor_2585",
+      "label": "LDV2_M03_Gallery_Print_18_02",
+      "case_id": null,
+      "old": {
+        "center": [
+          215.0154881,
+          649.8032375,
+          184.8722643
+        ],
+        "normal": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "horizontal": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "width": 119.606475,
+        "height": 119.74452859999998
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_18_02.MI_LDV2_M03_Gallery_Print_18_02",
+      "surface": {
+        "room": "StaffNorth",
+        "axis": 1,
+        "sign": -1,
+        "plane": 1788,
+        "lo": -2547,
+        "hi": 1648,
+        "top": 400,
+        "labels": [
+          "M03G_NorthExterior_End_00",
+          "M03G_NorthExterior_End_01",
+          "M03G_NorthExterior_End_02",
+          "M03G_NorthExterior_End_03",
+          "M03G_NorthExterior_End_04",
+          "M03G_NorthExterior_End_05",
+          "M03G_NorthExterior_End_06",
+          "M03G_NorthExterior_End_07",
+          "M03G_NorthExterior_End_08",
+          "M03G_NorthExterior_End_09"
+        ],
+        "id": 28
+      },
+      "center": [
+        1039.8948155,
+        1785,
+        208.38320710000002
+      ],
+      "variant": 4,
+      "scale": 5.1,
+      "width": 358.819425,
+      "height": 359.23358579999996,
+      "factor": 3.0
+    },
+    {
+      "name": "StaticMeshActor_2464",
+      "label": "LDV2_M03_Gallery_Print_12_05",
+      "case_id": null,
+      "old": {
+        "center": [
+          -412.9557298000001,
+          1383.05898565,
+          289.8041316
+        ],
+        "normal": [
+          -1.224646799147353e-16,
+          -0.9999999999999996,
+          0.0
+        ],
+        "horizontal": [
+          -0.9999999999999996,
+          1.224646799147353e-16,
+          0.0
+        ],
+        "width": 129.3379295,
+        "height": 129.3379334
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_12_05.MI_LDV2_M03_Gallery_Print_12_05",
+      "surface": {
+        "room": "StaffNorth",
+        "axis": 1,
+        "sign": -1,
+        "plane": 1788,
+        "lo": -2547,
+        "hi": 1648,
+        "top": 400,
+        "labels": [
+          "M03G_NorthExterior_End_00",
+          "M03G_NorthExterior_End_01",
+          "M03G_NorthExterior_End_02",
+          "M03G_NorthExterior_End_03",
+          "M03G_NorthExterior_End_04",
+          "M03G_NorthExterior_End_05",
+          "M03G_NorthExterior_End_06",
+          "M03G_NorthExterior_End_07",
+          "M03G_NorthExterior_End_08",
+          "M03G_NorthExterior_End_09"
+        ],
+        "id": 28
+      },
+      "center": [
+        602.4845955,
+        1785,
+        226.2168475
+      ],
+      "variant": 3,
+      "scale": 2.5,
+      "width": 386.001015,
+      "height": 323.566305,
+      "factor": 2.9844377813446648
+    },
+    {
+      "name": "StaticMeshActor_2286",
+      "label": "LDV2_M03_Gallery_Print_03_02",
+      "case_id": null,
+      "old": {
+        "center": [
+          -1409.0,
+          -1083.884912,
+          184.4942464
+        ],
+        "normal": [
+          2.220446049250313e-16,
+          1.0000000000000002,
+          0.0
+        ],
+        "horizontal": [
+          -1.0000000000000002,
+          2.220446049250313e-16,
+          0.0
+        ],
+        "width": 123.52032480000001,
+        "height": 103.54121760000001
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_03_02.MI_LDV2_M03_Gallery_Print_03_02",
+      "surface": {
+        "room": "Hall",
+        "axis": 1,
+        "sign": 1,
+        "plane": -1087,
+        "lo": -1569,
+        "hi": 290,
+        "top": 595,
+        "labels": [
+          "M03G_SouthHall_End_00",
+          "M03G_SouthHall_End_01",
+          "M03G_SouthHall_End_02",
+          "M03G_SouthHall_End_03",
+          "M03G_SouthHall_End_04",
+          "M03G_SouthHall_End_05",
+          "M03G_SouthHall_End_06"
+        ],
+        "id": 0
+      },
+      "center": [
+        -948.1585384000001,
+        -1084,
+        235
+      ],
+      "variant": 3,
+      "scale": 2.4,
+      "width": 370.5609744,
+      "height": 310.6236528,
+      "factor": 3.0
+    },
+    {
+      "name": "StaticMeshActor_2422",
+      "label": "LDV2_M03_Gallery_Print_11_02",
+      "case_id": null,
+      "old": {
+        "center": [
+          -1015.6378594,
+          964.9591352,
+          184.8191984
+        ],
+        "normal": [
+          -1.0000000000000002,
+          2.220446049250313e-16,
+          0.0
+        ],
+        "horizontal": [
+          2.220446049250313e-16,
+          1.0000000000000002,
+          0.0
+        ],
+        "width": 119.38885799999998,
+        "height": 119.3888616
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_11_02.MI_LDV2_M03_Gallery_Print_11_02",
+      "surface": {
+        "room": "StaffWest",
+        "axis": 0,
+        "sign": 1,
+        "plane": -2587,
+        "lo": -1747,
+        "hi": 1365,
+        "top": 400,
+        "labels": [
+          "M03G_WestExterior_End_08",
+          "M03G_WestExterior_End_07",
+          "M03G_WestExterior_End_06",
+          "M03G_WestExterior_End_05",
+          "M03G_WestExterior_End_04",
+          "M03G_WestExterior_End_03",
+          "M03G_WestExterior_End_02",
+          "M03G_WestExterior_End_01"
+        ],
+        "id": 32
+      },
+      "center": [
+        -2584,
+        1187.4395331,
+        235
+      ],
+      "variant": 3,
+      "scale": 2.3,
+      "width": 355.1209338,
+      "height": 297.6810006,
+      "factor": 2.974489655406849
+    },
+    {
+      "name": "StaticMeshActor_2620",
+      "label": "LDV2_M03_Gallery_Print_General_G22_00",
+      "case_id": null,
+      "old": {
+        "center": [
+          -2183.9845119,
+          -1399.1967625,
+          189.8722643
+        ],
+        "normal": [
+          1.0,
+          0.0,
+          1.110223037584573e-16
+        ],
+        "horizontal": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "width": 119.606475,
+        "height": 119.74452859999998
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_General_G22_00.MI_LDV2_M03_Gallery_Print_General_G22_00",
+      "surface": {
+        "room": "StaffWest",
+        "axis": 0,
+        "sign": 1,
+        "plane": -2587,
+        "lo": -1747,
+        "hi": 1365,
+        "top": 400,
+        "labels": [
+          "M03G_WestExterior_End_08",
+          "M03G_WestExterior_End_07",
+          "M03G_WestExterior_End_06",
+          "M03G_WestExterior_End_05",
+          "M03G_WestExterior_End_04",
+          "M03G_WestExterior_End_03",
+          "M03G_WestExterior_End_02",
+          "M03G_WestExterior_End_01"
+        ],
+        "id": 32
+      },
+      "center": [
+        -2584,
+        -634.7081762999996,
+        208.38320710000002
+      ],
+      "variant": 4,
+      "scale": 5.1,
+      "width": 358.819425,
+      "height": 359.23358579999996,
+      "factor": 3.0
+    },
+    {
+      "name": "StaticMeshActor_2590",
+      "label": "LDV2_M03_Gallery_Print_18_03",
+      "case_id": null,
+      "old": {
+        "center": [
+          215.7596152,
+          793.6194912,
+          184.33155879999998
+        ],
+        "normal": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "horizontal": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "width": 121.23182400000002,
+        "height": 116.66311040000001
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_18_03.MI_LDV2_M03_Gallery_Print_18_03",
+      "surface": {
+        "room": "StaffNorth",
+        "axis": 1,
+        "sign": -1,
+        "plane": 1788,
+        "lo": -2547,
+        "hi": 1648,
+        "top": 400,
+        "labels": [
+          "M03G_NorthExterior_End_00",
+          "M03G_NorthExterior_End_01",
+          "M03G_NorthExterior_End_02",
+          "M03G_NorthExterior_End_03",
+          "M03G_NorthExterior_End_04",
+          "M03G_NorthExterior_End_05",
+          "M03G_NorthExterior_End_06",
+          "M03G_NorthExterior_End_07",
+          "M03G_NorthExterior_End_08",
+          "M03G_NorthExterior_End_09"
+        ],
+        "id": 28
+      },
+      "center": [
+        162.63635199999993,
+        1785,
+        213.0053344
+      ],
+      "variant": 5,
+      "scale": 2.4,
+      "width": 363.695472,
+      "height": 349.9893312,
+      "factor": 2.9999999999999996
+    },
+    {
+      "name": "StaticMeshActor_2398",
+      "label": "LDV2_M03_Gallery_Print_HighValue_05",
+      "case_id": null,
+      "old": {
+        "center": [
+          2039.65062565,
+          -1083.6747617,
+          279.82317895
+        ],
+        "normal": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "horizontal": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "width": 119.0604128,
+        "height": 84.0744156
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_HighValue_05.MI_LDV2_M03_Gallery_Print_HighValue_05",
+      "surface": {
+        "room": "Hall",
+        "axis": 0,
+        "sign": -1,
+        "plane": 1288,
+        "lo": -1047,
+        "hi": -544,
+        "top": 595,
+        "labels": [
+          "M03G_HallEast_End_01",
+          "M03G_HallEast_End_00"
+        ],
+        "id": 6
+      },
+      "center": [
+        1285,
+        -869.4395331000001,
+        235
+      ],
+      "variant": 3,
+      "scale": 2.3,
+      "width": 355.1209338,
+      "height": 297.6810006,
+      "factor": 2.9826953010530803
+    },
+    {
+      "name": "StaticMeshActor_2444",
+      "label": "LDV2_M03_Gallery_Print_12_01",
+      "case_id": null,
+      "old": {
+        "center": [
+          -600.0,
+          1383.884912,
+          136.4942464
+        ],
+        "normal": [
+          -2.220446049250313e-16,
+          -1.0000000000000002,
+          0.0
+        ],
+        "horizontal": [
+          1.0000000000000002,
+          -2.220446049250313e-16,
+          -0.0
+        ],
+        "width": 123.52032480000001,
+        "height": 103.54121760000001
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_12_01.MI_LDV2_M03_Gallery_Print_12_01",
+      "surface": {
+        "room": "StaffNorth",
+        "axis": 1,
+        "sign": -1,
+        "plane": 1788,
+        "lo": -2547,
+        "hi": 1648,
+        "top": 400,
+        "labels": [
+          "M03G_NorthExterior_End_00",
+          "M03G_NorthExterior_End_01",
+          "M03G_NorthExterior_End_02",
+          "M03G_NorthExterior_End_03",
+          "M03G_NorthExterior_End_04",
+          "M03G_NorthExterior_End_05",
+          "M03G_NorthExterior_End_06",
+          "M03G_NorthExterior_End_07",
+          "M03G_NorthExterior_End_08",
+          "M03G_NorthExterior_End_09"
+        ],
+        "id": 28
+      },
+      "center": [
+        -270.6567715000001,
+        1785,
+        201.33941130000002
+      ],
+      "variant": 4,
+      "scale": 5.3,
+      "width": 372.890775,
+      "height": 373.32117739999995,
+      "factor": 3.0223461442841018
+    },
+    {
+      "name": "StaticMeshActor_2600",
+      "label": "LDV2_M03_Gallery_Print_General_G21_01",
+      "case_id": null,
+      "old": {
+        "center": [
+          639.0408648,
+          183.3621406,
+          189.8191984
+        ],
+        "normal": [
+          -1.224646799147353e-16,
+          -0.9999999999999996,
+          0.0
+        ],
+        "horizontal": [
+          -0.9999999999999996,
+          1.224646799147353e-16,
+          0.0
+        ],
+        "width": 119.38885799999998,
+        "height": 119.3888616
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_General_G21_01.MI_LDV2_M03_Gallery_Print_General_G21_01",
+      "surface": {
+        "room": "Hall",
+        "axis": 0,
+        "sign": 1,
+        "plane": 370,
+        "lo": -213,
+        "hi": 148,
+        "top": 495,
+        "labels": [
+          "M03G_HallEndNorth_01",
+          "M03G_HallEndNorth_00"
+        ],
+        "id": 11
+      },
+      "center": [
+        373,
+        -31.409712500000012,
+        235
+      ],
+      "variant": 4,
+      "scale": 5.1,
+      "width": 358.819425,
+      "height": 359.23358579999996,
+      "factor": 3.0089371905025346
+    },
+    {
+      "name": "StaticMeshActor_2580",
+      "label": "LDV2_M03_Gallery_Print_18_01",
+      "case_id": null,
+      "old": {
+        "center": [
+          215.11508800000001,
+          449.0,
+          184.4942464
+        ],
+        "normal": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "horizontal": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "width": 123.52032480000001,
+        "height": 103.54121760000001
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_18_01.MI_LDV2_M03_Gallery_Print_18_01",
+      "surface": {
+        "room": "Hall",
+        "axis": 1,
+        "sign": -1,
+        "plane": 188,
+        "lo": -1664,
+        "hi": 290,
+        "top": 595,
+        "labels": [
+          "M03G_HallNorth_End_00",
+          "M03G_HallNorth_End_01",
+          "M03G_HallNorth_End_02",
+          "M03G_HallNorth_End_03",
+          "M03G_HallNorth_End_04",
+          "M03G_HallNorth_End_05",
+          "M03G_HallNorth_End_06"
+        ],
+        "id": 4
+      },
+      "center": [
+        104.71951279999999,
+        185,
+        235
+      ],
+      "variant": 3,
+      "scale": 2.4,
+      "width": 370.5609744,
+      "height": 310.6236528,
+      "factor": 3.0
+    },
+    {
+      "name": "StaticMeshActor_2378",
+      "label": "LDV2_M03_Gallery_Print_HighValue_01",
+      "case_id": null,
+      "old": {
+        "center": [
+          2219.3805088,
+          -1083.2403848,
+          169.33155879999998
+        ],
+        "normal": [
+          2.220446049250313e-16,
+          1.0000000000000002,
+          0.0
+        ],
+        "horizontal": [
+          -1.0000000000000002,
+          2.220446049250313e-16,
+          0.0
+        ],
+        "width": 121.23182400000002,
+        "height": 116.66311040000001
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_HighValue_01.MI_LDV2_M03_Gallery_Print_HighValue_01",
+      "surface": {
+        "room": "Hall",
+        "axis": 1,
+        "sign": 1,
+        "plane": -1087,
+        "lo": 410,
+        "hi": 1248,
+        "top": 595,
+        "labels": [
+          "M03G_SouthHall_End_00",
+          "M03G_SouthHall_End_01",
+          "M03G_SouthHall_End_02",
+          "M03G_SouthHall_End_03",
+          "M03G_SouthHall_End_04",
+          "M03G_SouthHall_End_05",
+          "M03G_SouthHall_End_06"
+        ],
+        "id": 1
+      },
+      "center": [
+        1065.07245,
+        -1084,
+        235
+      ],
+      "variant": 4,
+      "scale": 5.2,
+      "width": 365.85510000000005,
+      "height": 366.2773816,
+      "factor": 3.02129729236772
+    },
+    {
+      "name": "StaticMeshActor_2344",
+      "label": "LDV2_M03_Gallery_Print_06_01",
+      "case_id": null,
+      "old": {
+        "center": [
+          1283.6747617,
+          -799.3493743500001,
+          184.82317895
+        ],
+        "normal": [
+          -1.0000000000000002,
+          2.220446049250313e-16,
+          0.0
+        ],
+        "horizontal": [
+          2.220446049250313e-16,
+          1.0000000000000002,
+          0.0
+        ],
+        "width": 119.0604128,
+        "height": 84.0744156
+      },
+      "material": "/Game/Assets/Art/SurfaceForgery/Materials/Canvas/Prints/MI_LDV2_M03_Gallery_Print_06_01.MI_LDV2_M03_Gallery_Print_06_01",
+      "surface": {
+        "room": "Hall",
+        "axis": 0,
+        "sign": -1,
+        "plane": 1288,
+        "lo": -261,
+        "hi": 148,
+        "top": 595,
+        "labels": [
+          "M03G_HallEast_00_01",
+          "M03G_HallEast_00_00"
+        ],
+        "id": 7
+      },
+      "center": [
+        1285,
+        -56.5,
+        235
+      ],
+      "variant": 3,
+      "scale": 2.3,
+      "width": 355.1209338,
+      "height": 297.6810006,
+      "factor": 2.9826953010530803
+    }
+  ],
+  "failed": [],
+  "surfaces": [
+    {
+      "room": "Hall",
+      "axis": 1,
+      "sign": 1,
+      "plane": -1087,
+      "lo": -1569,
+      "hi": 290,
+      "top": 595,
+      "labels": [
+        "M03G_SouthHall_End_00",
+        "M03G_SouthHall_End_01",
+        "M03G_SouthHall_End_02",
+        "M03G_SouthHall_End_03",
+        "M03G_SouthHall_End_04",
+        "M03G_SouthHall_End_05",
+        "M03G_SouthHall_End_06"
+      ],
+      "id": 0
+    },
+    {
+      "room": "Hall",
+      "axis": 1,
+      "sign": 1,
+      "plane": -1087,
+      "lo": 410,
+      "hi": 1248,
+      "top": 595,
+      "labels": [
+        "M03G_SouthHall_End_00",
+        "M03G_SouthHall_End_01",
+        "M03G_SouthHall_End_02",
+        "M03G_SouthHall_End_03",
+        "M03G_SouthHall_End_04",
+        "M03G_SouthHall_End_05",
+        "M03G_SouthHall_End_06"
+      ],
+      "id": 1
+    },
+    {
+      "room": "Hall",
+      "axis": 0,
+      "sign": 1,
+      "plane": -2187,
+      "lo": -1047,
+      "hi": -544,
+      "top": 595,
+      "labels": [
+        "M03G_HallWest_End_01",
+        "M03G_HallWest_End_00"
+      ],
+      "id": 2
+    },
+    {
+      "room": "Hall",
+      "axis": 0,
+      "sign": 1,
+      "plane": -2187,
+      "lo": -261,
+      "hi": 148,
+      "top": 595,
+      "labels": [
+        "M03G_HallWest_00_01",
+        "M03G_HallWest_00_00"
+      ],
+      "id": 3
+    },
+    {
+      "room": "Hall",
+      "axis": 1,
+      "sign": -1,
+      "plane": 188,
+      "lo": -1664,
+      "hi": 290,
+      "top": 595,
+      "labels": [
+        "M03G_HallNorth_End_00",
+        "M03G_HallNorth_End_01",
+        "M03G_HallNorth_End_02",
+        "M03G_HallNorth_End_03",
+        "M03G_HallNorth_End_04",
+        "M03G_HallNorth_End_05",
+        "M03G_HallNorth_End_06"
+      ],
+      "id": 4
+    },
+    {
+      "room": "Hall",
+      "axis": 1,
+      "sign": -1,
+      "plane": 188,
+      "lo": 410,
+      "hi": 1248,
+      "top": 595,
+      "labels": [
+        "M03G_HallNorth_End_00",
+        "M03G_HallNorth_End_01",
+        "M03G_HallNorth_End_02",
+        "M03G_HallNorth_End_03",
+        "M03G_HallNorth_End_04",
+        "M03G_HallNorth_End_05",
+        "M03G_HallNorth_End_06"
+      ],
+      "id": 5
+    },
+    {
+      "room": "Hall",
+      "axis": 0,
+      "sign": -1,
+      "plane": 1288,
+      "lo": -1047,
+      "hi": -544,
+      "top": 595,
+      "labels": [
+        "M03G_HallEast_End_01",
+        "M03G_HallEast_End_00"
+      ],
+      "id": 6
+    },
+    {
+      "room": "Hall",
+      "axis": 0,
+      "sign": -1,
+      "plane": 1288,
+      "lo": -261,
+      "hi": 148,
+      "top": 595,
+      "labels": [
+        "M03G_HallEast_00_01",
+        "M03G_HallEast_00_00"
+      ],
+      "id": 7
+    },
+    {
+      "room": "Hall",
+      "axis": 0,
+      "sign": -1,
+      "plane": -669,
+      "lo": -773,
+      "hi": -127,
+      "top": 446,
+      "labels": [
+        "M03G_HallPartition_01",
+        "M03G_HallPartition_00"
+      ],
+      "id": 8
+    },
+    {
+      "room": "Hall",
+      "axis": 0,
+      "sign": 1,
+      "plane": -629,
+      "lo": -773,
+      "hi": -127,
+      "top": 446,
+      "labels": [
+        "M03G_HallPartition_01",
+        "M03G_HallPartition_00"
+      ],
+      "id": 9
+    },
+    {
+      "room": "Hall",
+      "axis": 0,
+      "sign": -1,
+      "plane": 330,
+      "lo": -213,
+      "hi": 148,
+      "top": 495,
+      "labels": [
+        "M03G_HallEndNorth_01",
+        "M03G_HallEndNorth_00"
+      ],
+      "id": 10
+    },
+    {
+      "room": "Hall",
+      "axis": 0,
+      "sign": 1,
+      "plane": 370,
+      "lo": -213,
+      "hi": 148,
+      "top": 495,
+      "labels": [
+        "M03G_HallEndNorth_01",
+        "M03G_HallEndNorth_00"
+      ],
+      "id": 11
+    },
+    {
+      "room": "Hall",
+      "axis": 0,
+      "sign": -1,
+      "plane": -2041,
+      "lo": -866,
+      "hi": -534,
+      "top": 347,
+      "labels": [
+        "M03G_IndependentExhibit_00"
+      ],
+      "id": 12
+    },
+    {
+      "room": "Hall",
+      "axis": 0,
+      "sign": 1,
+      "plane": -2017,
+      "lo": -866,
+      "hi": -534,
+      "top": 347,
+      "labels": [
+        "M03G_IndependentExhibit_00"
+      ],
+      "id": 13
+    },
+    {
+      "room": "A",
+      "axis": 0,
+      "sign": 1,
+      "plane": -2187,
+      "lo": 252,
+      "hi": 1348,
+      "top": 500,
+      "labels": [
+        "M03G_AnnexWest_End_02",
+        "M03G_AnnexWest_End_01",
+        "M03G_AnnexWest_End_00"
+      ],
+      "id": 14
+    },
+    {
+      "room": "A",
+      "axis": 1,
+      "sign": -1,
+      "plane": 1388,
+      "lo": -2147,
+      "hi": -1739,
+      "top": 500,
+      "labels": [
+        "M03G_AnnexNorth_00_00",
+        "M03G_AnnexNorth_00_01"
+      ],
+      "id": 15
+    },
+    {
+      "room": "A",
+      "axis": 1,
+      "sign": -1,
+      "plane": 1388,
+      "lo": -1468,
+      "hi": -1051,
+      "top": 500,
+      "labels": [
+        "M03G_AnnexNorth_01_00",
+        "M03G_AnnexNorth_01_01"
+      ],
+      "id": 16
+    },
+    {
+      "room": "A",
+      "axis": 0,
+      "sign": -1,
+      "plane": -1011,
+      "lo": 726,
+      "hi": 1348,
+      "top": 500,
+      "labels": [
+        "M03G_A_B_00_01",
+        "M03G_A_B_00_00"
+      ],
+      "id": 17
+    },
+    {
+      "room": "A",
+      "axis": 1,
+      "sign": 1,
+      "plane": 212,
+      "lo": -1664,
+      "hi": -1051,
+      "top": 500,
+      "labels": [
+        "M03G_HallNorth_End_00",
+        "M03G_HallNorth_End_01"
+      ],
+      "id": 18
+    },
+    {
+      "room": "B",
+      "axis": 1,
+      "sign": -1,
+      "plane": 1388,
+      "lo": -947,
+      "hi": -330,
+      "top": 500,
+      "labels": [
+        "M03G_AnnexNorth_01_01",
+        "M03G_AnnexNorth_01_02"
+      ],
+      "id": 19
+    },
+    {
+      "room": "B",
+      "axis": 0,
+      "sign": 1,
+      "plane": -987,
+      "lo": 726,
+      "hi": 1348,
+      "top": 500,
+      "labels": [
+        "M03G_A_B_00_01",
+        "M03G_A_B_00_00"
+      ],
+      "id": 20
+    },
+    {
+      "room": "B",
+      "axis": 0,
+      "sign": -1,
+      "plane": 188,
+      "lo": 252,
+      "hi": 872,
+      "top": 500,
+      "labels": [
+        "M03G_B_C_End_01",
+        "M03G_B_C_End_00"
+      ],
+      "id": 21
+    },
+    {
+      "room": "B",
+      "axis": 1,
+      "sign": 1,
+      "plane": 212,
+      "lo": -947,
+      "hi": 148,
+      "top": 500,
+      "labels": [
+        "M03G_HallNorth_End_01",
+        "M03G_HallNorth_End_02",
+        "M03G_HallNorth_End_03",
+        "M03G_HallNorth_End_04"
+      ],
+      "id": 22
+    },
+    {
+      "room": "B",
+      "axis": 1,
+      "sign": 1,
+      "plane": 812,
+      "lo": -465,
+      "hi": -133,
+      "top": 297,
+      "labels": [
+        "M03G_SpecialExhibition_L1_00"
+      ],
+      "id": 23
+    },
+    {
+      "room": "C",
+      "axis": 1,
+      "sign": -1,
+      "plane": 1388,
+      "lo": 252,
+      "hi": 1248,
+      "top": 500,
+      "labels": [
+        "M03G_AnnexNorth_End_00",
+        "M03G_AnnexNorth_End_01",
+        "M03G_AnnexNorth_End_02",
+        "M03G_AnnexNorth_End_03"
+      ],
+      "id": 24
+    },
+    {
+      "room": "C",
+      "axis": 0,
+      "sign": 1,
+      "plane": 212,
+      "lo": 252,
+      "hi": 872,
+      "top": 500,
+      "labels": [
+        "M03G_B_C_End_01",
+        "M03G_B_C_End_00"
+      ],
+      "id": 25
+    },
+    {
+      "room": "C",
+      "axis": 1,
+      "sign": 1,
+      "plane": 212,
+      "lo": 252,
+      "hi": 1248,
+      "top": 500,
+      "labels": [
+        "M03G_HallNorth_End_04",
+        "M03G_HallNorth_End_05",
+        "M03G_HallNorth_End_06"
+      ],
+      "id": 26
+    },
+    {
+      "room": "C",
+      "axis": 0,
+      "sign": -1,
+      "plane": 1288,
+      "lo": 726,
+      "hi": 1348,
+      "top": 500,
+      "labels": [
+        "M03G_AnnexEast_00_01",
+        "M03G_AnnexEast_00_00"
+      ],
+      "id": 27
+    },
+    {
+      "room": "StaffNorth",
+      "axis": 1,
+      "sign": -1,
+      "plane": 1788,
+      "lo": -2547,
+      "hi": 1648,
+      "top": 400,
+      "labels": [
+        "M03G_NorthExterior_End_00",
+        "M03G_NorthExterior_End_01",
+        "M03G_NorthExterior_End_02",
+        "M03G_NorthExterior_End_03",
+        "M03G_NorthExterior_End_04",
+        "M03G_NorthExterior_End_05",
+        "M03G_NorthExterior_End_06",
+        "M03G_NorthExterior_End_07",
+        "M03G_NorthExterior_End_08",
+        "M03G_NorthExterior_End_09"
+      ],
+      "id": 28
+    },
+    {
+      "room": "StaffNorth",
+      "axis": 1,
+      "sign": 1,
+      "plane": 1412,
+      "lo": -2160,
+      "hi": -1739,
+      "top": 400,
+      "labels": [
+        "M03G_AnnexNorth_00_00",
+        "M03G_AnnexNorth_00_01"
+      ],
+      "id": 29
+    },
+    {
+      "room": "StaffNorth",
+      "axis": 1,
+      "sign": 1,
+      "plane": 1412,
+      "lo": -1468,
+      "hi": -330,
+      "top": 400,
+      "labels": [
+        "M03G_AnnexNorth_01_00",
+        "M03G_AnnexNorth_01_01",
+        "M03G_AnnexNorth_01_02"
+      ],
+      "id": 30
+    },
+    {
+      "room": "StaffNorth",
+      "axis": 1,
+      "sign": 1,
+      "plane": 1412,
+      "lo": -59,
+      "hi": 1257,
+      "top": 400,
+      "labels": [
+        "M03G_AnnexNorth_End_00",
+        "M03G_AnnexNorth_End_01",
+        "M03G_AnnexNorth_End_02",
+        "M03G_AnnexNorth_End_03"
+      ],
+      "id": 31
+    },
+    {
+      "room": "StaffWest",
+      "axis": 0,
+      "sign": 1,
+      "plane": -2587,
+      "lo": -1747,
+      "hi": 1365,
+      "top": 400,
+      "labels": [
+        "M03G_WestExterior_End_08",
+        "M03G_WestExterior_End_07",
+        "M03G_WestExterior_End_06",
+        "M03G_WestExterior_End_05",
+        "M03G_WestExterior_End_04",
+        "M03G_WestExterior_End_03",
+        "M03G_WestExterior_End_02",
+        "M03G_WestExterior_End_01"
+      ],
+      "id": 32
+    },
+    {
+      "room": "StaffWest",
+      "axis": 0,
+      "sign": -1,
+      "plane": -2211,
+      "lo": -1371,
+      "hi": -544,
+      "top": 400,
+      "labels": [
+        "M03G_EntryWest_00_00",
+        "M03G_HallWest_End_01",
+        "M03G_HallWest_End_00"
+      ],
+      "id": 33
+    },
+    {
+      "room": "StaffWest",
+      "axis": 0,
+      "sign": -1,
+      "plane": -2211,
+      "lo": -261,
+      "hi": 1365,
+      "top": 400,
+      "labels": [
+        "M03G_HallWest_00_01",
+        "M03G_HallWest_00_00",
+        "M03G_AnnexWest_End_02",
+        "M03G_AnnexWest_End_01",
+        "M03G_AnnexWest_End_00"
+      ],
+      "id": 34
+    },
+    {
+      "room": "StaffEast",
+      "axis": 0,
+      "sign": -1,
+      "plane": 1688,
+      "lo": -1047,
+      "hi": -544,
+      "top": 400,
+      "labels": [
+        "M03G_VaultEntry_End_01",
+        "M03G_VaultEntry_End_00"
+      ],
+      "id": 35
+    },
+    {
+      "room": "StaffEast",
+      "axis": 0,
+      "sign": -1,
+      "plane": 1688,
+      "lo": -261,
+      "hi": 160,
+      "top": 400,
+      "labels": [
+        "M03G_VaultEntry_00_01",
+        "M03G_VaultEntry_00_00"
+      ],
+      "id": 36
+    },
+    {
+      "room": "StaffEast",
+      "axis": 0,
+      "sign": -1,
+      "plane": 1688,
+      "lo": 633,
+      "hi": 965,
+      "top": 400,
+      "labels": [
+        "M03G_SecurityEntry_01_00"
+      ],
+      "id": 37
+    },
+    {
+      "room": "StaffEast",
+      "axis": 0,
+      "sign": 1,
+      "plane": 1312,
+      "lo": -1047,
+      "hi": -544,
+      "top": 400,
+      "labels": [
+        "M03G_HallEast_End_01",
+        "M03G_HallEast_End_00"
+      ],
+      "id": 38
+    },
+    {
+      "room": "StaffEast",
+      "axis": 0,
+      "sign": 1,
+      "plane": 1312,
+      "lo": -261,
+      "hi": 470,
+      "top": 400,
+      "labels": [
+        "M03G_HallEast_00_01",
+        "M03G_HallEast_00_00",
+        "M03G_AnnexEast_End_00"
+      ],
+      "id": 39
+    },
+    {
+      "room": "StaffEast",
+      "axis": 0,
+      "sign": 1,
+      "plane": 1312,
+      "lo": 726,
+      "hi": 1365,
+      "top": 400,
+      "labels": [
+        "M03G_AnnexEast_00_01",
+        "M03G_AnnexEast_00_00"
+      ],
+      "id": 40
+    },
+    {
+      "room": "Entry",
+      "axis": 1,
+      "sign": 1,
+      "plane": -1787,
+      "lo": -2147,
+      "hi": -1251,
+      "top": 400,
+      "labels": [
+        "M03G_EntrySouth_End_01",
+        "M03G_EntrySouth_End_02",
+        "M03G_EntrySouth_End_03"
+      ],
+      "id": 41
+    },
+    {
+      "room": "Entry",
+      "axis": 0,
+      "sign": -1,
+      "plane": -1211,
+      "lo": -1747,
+      "hi": -1151,
+      "top": 400,
+      "labels": [
+        "M03G_EntryEast_End_01",
+        "M03G_EntryEast_End_00"
+      ],
+      "id": 42
+    },
+    {
+      "room": "Vault",
+      "axis": 0,
+      "sign": -1,
+      "plane": 2688,
+      "lo": -1047,
+      "hi": -693,
+      "top": 500,
+      "labels": [
+        "M03G_EastExterior_End_05",
+        "M03G_EastExterior_End_04",
+        "M03G_EastExterior_End_03",
+        "M03G_EastExterior_End_02"
+      ],
+      "id": 43
+    },
+    {
+      "room": "Vault",
+      "axis": 0,
+      "sign": -1,
+      "plane": 2688,
+      "lo": -205,
+      "hi": 148,
+      "top": 500,
+      "labels": [
+        "M03G_EastExterior_End_05",
+        "M03G_EastExterior_End_04",
+        "M03G_EastExterior_End_03",
+        "M03G_EastExterior_End_02"
+      ],
+      "id": 44
+    },
+    {
+      "room": "Vault",
+      "axis": 1,
+      "sign": 1,
+      "plane": -1087,
+      "lo": 1752,
+      "hi": 2648,
+      "top": 500,
+      "labels": [
+        "M03G_SouthEast_End_01",
+        "M03G_SouthEast_End_02",
+        "M03G_SouthEast_End_03"
+      ],
+      "id": 45
+    },
+    {
+      "room": "Vault",
+      "axis": 1,
+      "sign": -1,
+      "plane": 188,
+      "lo": 1752,
+      "hi": 2648,
+      "top": 500,
+      "labels": [
+        "M03G_SecurityVault_End_00",
+        "M03G_SecurityVault_End_01",
+        "M03G_SecurityVault_End_02"
+      ],
+      "id": 46
+    },
+    {
+      "room": "Vault",
+      "axis": 0,
+      "sign": 1,
+      "plane": 1712,
+      "lo": -1047,
+      "hi": -544,
+      "top": 500,
+      "labels": [
+        "M03G_VaultEntry_End_01",
+        "M03G_VaultEntry_End_00"
+      ],
+      "id": 47
+    },
+    {
+      "room": "Vault",
+      "axis": 0,
+      "sign": 1,
+      "plane": 1712,
+      "lo": -261,
+      "hi": 148,
+      "top": 500,
+      "labels": [
+        "M03G_VaultEntry_00_01",
+        "M03G_VaultEntry_00_00"
+      ],
+      "id": 48
+    }
+  ],
+  "removed": [
+    "StaticMeshActor_2259",
+    "StaticMeshActor_2269",
+    "StaticMeshActor_2322",
+    "StaticMeshActor_2432",
+    "StaticMeshActor_2476",
+    "StaticMeshActor_2481",
+    "StaticMeshActor_2529",
+    "StaticMeshActor_2595",
+    "StaticMeshActor_2610",
+    "StaticMeshActor_2630",
+    "BP_PaintingDisplayCase_C_2",
+    "BP_PaintingDisplayCase_C_5",
+    "BP_PaintingDisplayCase_C_6",
+    "BP_PaintingDisplayCase_C_9",
+    "BP_PaintingDisplayCase_C_11",
+    "BP_PaintingDisplayCase_C_13",
+    "BP_PaintingDisplayCase_C_15",
+    "BP_PaintingDisplayCase_C_18"
+  ]
+}
