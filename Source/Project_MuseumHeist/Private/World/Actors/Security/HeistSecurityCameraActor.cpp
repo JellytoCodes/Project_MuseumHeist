@@ -36,8 +36,8 @@ AHeistSecurityCameraActor::AHeistSecurityCameraActor()
 	SightLightComponent = CreateDefaultSubobject<USpotLightComponent>(TEXT("SightLightComponent"));
 	SightLightComponent->SetupAttachment(SensorOriginComponent);
 	SightLightComponent->SetMobility(EComponentMobility::Movable);
-	SightLightComponent->SetIntensityUnits(ELightUnits::Lumens);
-	SightLightComponent->SetIntensity(1800.0f);
+	SightLightComponent->SetIntensityUnits(ELightUnits::Candelas);
+	SightLightComponent->SetIntensity(2.0f);
 	SightLightComponent->SetIndirectLightingIntensity(0.0f);
 	SightLightComponent->SetVolumetricScatteringIntensity(0.0f);
 	SightLightComponent->SetCastShadows(true);
@@ -127,6 +127,8 @@ void AHeistSecurityCameraActor::OnConstruction(const FTransform& Transform)
 
 void AHeistSecurityCameraActor::ConfigureSightLight()
 {
+	// This light communicates Sight coverage; floor highlights must not obscure it.
+	SightLightComponent->SetSpecularScale(0.0f);
 	SightLightComponent->SetAttenuationRadius(FMath::Max(100.0f, DetectionRange));
 	SightLightComponent->SetOuterConeAngle(FMath::Clamp(DetectionHalfAngleDegrees, 1.0f, 89.0f));
 	SightLightComponent->SetInnerConeAngle(SightLightComponent->OuterConeAngle * 0.9f);

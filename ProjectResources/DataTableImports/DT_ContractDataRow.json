@@ -9,7 +9,7 @@
 	"MaximumOptionalExhibits": [19, 19, 19, 19],
 	"SurfaceTemplateCatalogSize": 40,
 	"MatchPaintingExhibitCount": 20,
-	"MapPaintingExhibitCounts": {"M03": 12},
+	"MapPaintingExhibitCounts": {"M01": 12, "M02": 12, "M03": 12},
     "MatchDurationSeconds": 1200.0,
     "ExtractionRuleId": "IndividualDeposit_SharedExit"
   }

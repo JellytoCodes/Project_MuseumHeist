@@ -71,11 +71,13 @@ class PROJECT_MUSEUMHEIST_API AHeistLaserBarrierActor : public AActor
 	bool IsRuntimeConfigurationValid() const;
 	bool IsEligibleEntrant(const AHeistPlayerCharacter* PlayerCharacter) const;
 	void CompleteRearm();
+	void TripOverlappingPlayers();
 	void CommitTrip(AHeistPlayerCharacter* PlayerCharacter);
 	void ApplyPresentation();
 	void ConfigureBeamEffects();
 	void SetBeamEffectsActive(bool bActive);
 	friend class FHeistLaserNiagaraTest;
+	friend class FHeistLaserContactTest;
 	void ScheduleConfigurationRefresh();
 	void RefreshRuntimeConfiguration();
 	void HandleMatchPhaseChanged(EHeistMatchPhase PreviousMatchPhase, EHeistMatchPhase NewMatchPhase);
@@ -175,7 +177,7 @@ class PROJECT_MUSEUMHEIST_API AHeistLaserBarrierActor : public AActor
 #pragma region Runtime
 
   private:
-	TSet<TWeakObjectPtr<AHeistPlayerCharacter>> PlayersInsideBeam;
+	TSet<TWeakObjectPtr<AHeistPlayerCharacter>> TrippedPlayersInsideBeam;
 	TWeakObjectPtr<AHeistGameState> BoundGameState;
 	FTimerHandle RearmTimerHandle;
 	FTimerHandle ConfigurationRefreshTimerHandle;

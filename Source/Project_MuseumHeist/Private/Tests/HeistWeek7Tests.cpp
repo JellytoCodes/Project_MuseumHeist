@@ -7,6 +7,8 @@
 #include "World/Actors/Security/HeistDetentionDoorActor.h"
 #include "Character/Components/HeistActionComponent.h"
 #include "Character/Components/HeistForgeryComponent.h"
+#include "Character/Components/HeistInventoryComponent.h"
+#include "AI/HeistGuardCharacter.h"
 #include "Core/HeistGameInstance.h"
 #include "Core/HeistGameMode.h"
 #include "Core/HeistGameState.h"
@@ -18,6 +20,8 @@
 #include "Engine/DataTable.h"
 #include "Engine/World.h"
 #include "Engine/Engine.h"
+#include "Engine/GameInstance.h"
+#include "EngineUtils.h"
 #include "Physics/Experimental/PhysScene_Chaos.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "TimerManager.h"
@@ -31,6 +35,9 @@
 #include "UObject/UnrealType.h"
 #include "World/Actors/Loot/HeistLootActor.h"
 #include "World/Actors/Loot/HeistObjectDisplayCaseActor.h"
+#include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
+#include "World/Actors/Loot/HeistDroppedOriginalActor.h"
+#include "UObject/StructOnScope.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistWeek7ReadabilityContractTest, "ProjectMuseumHeist.W7.ReadabilityContract",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -680,6 +687,327 @@ bool FHeistDetentionConcurrentTest::RunTest(const FString& Parameters)
 	Advance(.2f);
 	TestTrue(TEXT("Match End cancels deferred door closure"), Door->IsOpen());
 	return true;
+}
+
+namespace
+{
+bool RunArrestEvidenceRecovery(FAutomationTestBase& Test, const bool bTeammateRecovery, const bool bCheckRejectedTransactions)
+{
+	// Exercise the authoritative transaction and pickup RPC handlers in an isolated
+	// world. Forgery and natural Guard discovery are covered by separate scenarios.
+	const UWorld::InitializationValues Values = UWorld::InitializationValues().AllowAudioPlayback(false).CreateNavigation(false)
+		.CreateAISystem(false).ShouldSimulatePhysics(false).SetTransactional(false);
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, NAME_None, nullptr, true, ERHIFeatureLevel::Num, &Values);
+	if (!Test.TestNotNull(TEXT("Evidence transaction world exists"), World)) return false;
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	UGameInstance* GameInstance = NewObject<UGameInstance>(GEngine);
+	World->SetGameInstance(GameInstance);
+	Context.OwningGameInstance = GameInstance;
+	ON_SCOPE_EXIT { GEngine->DestroyWorldContext(World); World->DestroyWorld(false); };
+	FURL URL;
+	URL.AddOption(TEXT("game=/Script/Project_MuseumHeist.HeistGameMode"));
+	if (!Test.TestTrue(TEXT("World creates the production GameMode"), World->SetGameMode(URL))) return false;
+	World->InitializeActorsForPlay(URL);
+	AHeistGameMode* Mode = World->GetAuthGameMode<AHeistGameMode>();
+	AHeistGameState* State = World->GetGameState<AHeistGameState>();
+	if (!Test.TestTrue(TEXT("Authority GameMode and GameState exist"), IsValid(Mode) && IsValid(State))) return false;
+	State->SetMatchPhase(EHeistMatchPhase::InGame);
+	const FName TemplateId(TEXT("Template_M01_Portrait_01"));
+	// Objective carrier changes reapply the GameState selection. Initialize it as
+	// a real match does, so taking the Required Target cannot clear its grid template.
+	if (!Test.TestTrue(TEXT("Match Surface template selection initializes"),
+		State->InitializeSurfaceTemplateSelection(TEXT("M01"), TemplateId, 40, 1, 39, 1))) return false;
+	FActorSpawnParameters Spawn;
+	Spawn.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	AHeistPlayerCharacter* Crew[2] = {};
+	AHeistPlayerController* Controllers[2] = {};
+	AHeistPlayerState* Players[2] = {};
+	for (int32 Index = 0; Index < 2; ++Index)
+	{
+		Crew[Index] = World->SpawnActor<AHeistPlayerCharacter>(FVector(800 + Index * 2400, 0, 100), FRotator::ZeroRotator, Spawn);
+		Controllers[Index] = World->SpawnActor<AHeistPlayerController>();
+		if (!Test.TestTrue(TEXT("Evidence crew and controller spawn"), IsValid(Crew[Index]) && IsValid(Controllers[Index]))) return false;
+		if (!Controllers[Index]->GetPlayerState<AHeistPlayerState>()) Controllers[Index]->InitPlayerState();
+		Players[Index] = Controllers[Index]->GetPlayerState<AHeistPlayerState>();
+		if (!Test.TestNotNull(TEXT("Controller owns a production PlayerState"), Players[Index])) return false;
+		Players[Index]->HeistPlayerId = Index + 1;
+		State->AddPlayerState(Players[Index]);
+		Controllers[Index]->Possess(Crew[Index]);
+		Crew[Index]->DispatchBeginPlay();
+	}
+	AHeistPaintingDisplayCaseActor* Painting = World->SpawnActor<AHeistPaintingDisplayCaseActor>(Crew[0]->GetActorLocation(), FRotator::ZeroRotator, Spawn);
+	AHeistDetentionDoorActor* Door = World->SpawnActor<AHeistDetentionDoorActor>(FVector(0, 0, 100), FRotator::ZeroRotator, Spawn);
+	AHeistGuardCharacter* Guard = World->SpawnActorDeferred<AHeistGuardCharacter>(AHeistGuardCharacter::StaticClass(), FTransform(FVector(5000, 0, 100)),
+		nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+	if (!Test.TestTrue(TEXT("Arrest source, cell and guard exist"), IsValid(Painting) && IsValid(Door) && IsValid(Guard))) return false;
+	UClass* DroppedOriginalClass = LoadClass<AHeistDroppedOriginalActor>(nullptr,
+		TEXT("/Game/Blueprints/World/Actors/Loot/BP_DroppedOriginal.BP_DroppedOriginal_C"));
+	const FClassProperty* DropClassProperty = FindFProperty<FClassProperty>(AHeistPaintingDisplayCaseActor::StaticClass(), TEXT("DroppedOriginalActorClass"));
+	if (!Test.TestTrue(TEXT("Production dropped Original shell and assignment exist"), IsValid(DroppedOriginalClass) && DropClassProperty)) return false;
+	DropClassProperty->SetObjectPropertyValue_InContainer(Painting, DroppedOriginalClass);
+	Guard->AutoPossessAI = EAutoPossessAI::Disabled;
+	Guard->FinishSpawning(FTransform(FVector(5000, 0, 100)));
+	Door->DispatchBeginPlay();
+	Painting->DispatchBeginPlay();
+	World->SetBegunPlay(true);
+	const auto Advance = [World](const float Seconds)
+	{
+		World->TimeSeconds += Seconds;
+		++GFrameCounter;
+		World->GetTimerManager().Tick(Seconds);
+	};
+	const auto Move = [World](AHeistPlayerCharacter* Character, const FVector& Location)
+	{
+		Character->SetActorLocation(Location, false, nullptr, ETeleportType::TeleportPhysics);
+		Character->GetCharacterMovement()->StopMovementImmediately();
+		World->GetPhysicsScene()->Flush();
+		Character->GetCapsuleComponent()->UpdateOverlaps();
+	};
+	const auto Pickup = [](AHeistPlayerController* Controller, const FName FunctionName, AActor* Target)
+	{
+		UFunction* Function = Controller->FindFunction(FunctionName);
+		if (!Function) return false;
+		FStructOnScope Parameters(Function);
+		for (TFieldIterator<FObjectProperty> It(Function); It; ++It)
+		{
+			if (It->HasAnyPropertyFlags(CPF_Parm) && !It->HasAnyPropertyFlags(CPF_ReturnParm))
+			{
+				It->SetObjectPropertyValue_InContainer(Parameters.GetStructMemory(), Target);
+				Controller->ProcessEvent(Function, Parameters.GetStructMemory());
+				return true;
+			}
+		}
+		return false;
+	};
+	const auto EvidenceCount = [World]()
+	{
+		int32 Count = 0;
+		for (TActorIterator<AActor> It(World); It; ++It)
+			if (It->ActorHasTag(TEXT("HeistArrestEvidence"))) ++Count;
+		return Count;
+	};
+	AActor* Detention = World->SpawnActor<AActor>(FVector(0, -80, 100), FRotator::ZeroRotator, Spawn);
+	if (!Test.TestNotNull(TEXT("Detention anchor exists"), Detention)) return false;
+	// Bare anchor actors have no root; use the same explicit scene root that map anchors provide.
+	USceneComponent* AnchorRoot = NewObject<USceneComponent>(Detention);
+	Detention->SetRootComponent(AnchorRoot);
+	AnchorRoot->RegisterComponent();
+	Detention->SetActorLocation(FVector(0, -80, 100));
+	Detention->Tags.Add(TEXT("HeistDetentionSpawn"));
+	if (!Test.TestTrue(TEXT("Anchor belongs to the cell"), Door->ContainsLocation(Detention->GetActorLocation()))) return false;
+	if (!Test.TestTrue(TEXT("Contract initializes for two crew"), State->InitializeContractSnapshot(TEXT("Contract_ArrestEvidence"), TEXT("M01"),
+		3600.0f, 9412, 2, Painting->GetTargetArtifactId(), FText::FromString(TEXT("Evidence Original")), Painting->GetDisplayCaseId(), 12000))) return false;
+	constexpr int32 PreviouslySecuredValue = 137;
+	State->SetContractProgress(0, PreviouslySecuredValue, false);
+	if (!Test.TestTrue(TEXT("Painting uses a release drawing template"), Painting->SetAssignedSurfaceTemplate(TEXT("M01"), TemplateId, 1))) return false;
+	const FEnumProperty* CaseState = FindFProperty<FEnumProperty>(AHeistPaintingDisplayCaseActor::StaticClass(), TEXT("DisplayCaseState"));
+	if (!Test.TestNotNull(TEXT("Fixture can start after approved Replica swap"), CaseState)) return false;
+	CaseState->GetUnderlyingProperty()->SetIntPropertyValue(CaseState->ContainerPtrToValuePtr<void>(Painting), static_cast<int64>(EHeistDisplayCaseState::OriginalAvailable));
+	if (!Test.TestTrue(TEXT("Production Original take succeeds"), Painting->TryTakeOriginal(Players[0]))) return false;
+	if (!Test.TestEqual(TEXT("Taking Required Target preserves the selected grid template"), Painting->GetOriginalVisualTemplateId(), TemplateId)) return false;
+	FHeistInventoryItem Original;
+	if (!Test.TestTrue(TEXT("Original is in the carrier grid"), Crew[0]->GetInventoryComponent()->TryGetFirstOriginalArtifact(Original))) return false;
+	FHeistLootDataRow LooseDefinition;
+	if (!Test.TestTrue(TEXT("Loose Loot definition exists"), Mode->TryGetLootDefinition(TEXT("Loot_AncientSword"), LooseDefinition))) return false;
+	for (int32 Index = 0; Index < 2; ++Index)
+	{
+		FHeistLootDropRequest Request;
+		Request.DroppedBy = Crew[0];
+		Request.ItemId = LooseDefinition.ItemId;
+		Request.SourceInstanceId = Index + 1;
+		Request.DropOrigin = Crew[0]->GetActorLocation();
+		AHeistLootActor* Loot = nullptr;
+		if (!Test.TestTrue(TEXT("Loose Loot fixture spawns through GameMode"), Mode->TrySpawnDroppedLoot(Request, Loot))) return false;
+		Move(Crew[0], Loot->GetActorLocation());
+		if (!Test.TestTrue(TEXT("Loot has a real interaction overlap"), Crew[0]->GetInteractionComponent()->IsActorOverlappingInteractionArea(Loot))) return false;
+		if (!Test.TestTrue(TEXT("Owned Loot pickup handler exists"), Pickup(Controllers[0], TEXT("Server_RequestLootPickup"), Loot))) return false;
+		if (!Test.TestFalse(TEXT("Initial Loot pickup commits availability"), Loot->IsLootAvailable())) return false;
+	}
+	FHeistArrestConfiscationPayload Before;
+	const TCHAR* InventoryReason = nullptr;
+	if (!Test.TestTrue(TEXT("Mixed Original and Loose snapshot is valid"), Crew[0]->GetInventoryComponent()->TryBuildArrestConfiscationPayload(Before, InventoryReason))) return false;
+	Test.TestEqual(TEXT("Snapshot has one Original"), Before.GetOriginalItemCount(), 1);
+	Test.TestEqual(TEXT("Snapshot stages one Original and two Loose actors"), Before.GetWorldActorCount(), 3);
+	const int32 ExpectedCarriedValue = Original.ContractValue + 2 * LooseDefinition.ScoreValue;
+	Test.TestEqual(TEXT("Contract counts the mixed carried cargo"), State->GetContractSnapshot().CarriedValue, ExpectedCarriedValue);
+	Test.TestEqual(TEXT("Loose score excludes Original value"), Players[0]->GetTotalLootScore(), 2 * LooseDefinition.ScoreValue);
+	const FTransform BeforeTransform = Crew[0]->GetActorTransform();
+	const float BeforeWeight = Players[0]->GetTotalLootWeight();
+	FName RejectReason;
+	if (bCheckRejectedTransactions)
+	{
+		Test.TestFalse(TEXT("Missing Evidence rejects the whole transaction"), Mode->TryCompletePlayerArrest(Crew[0], Guard, RejectReason));
+		Test.TestEqual(TEXT("Rejection identifies missing Evidence anchor"), RejectReason, FName(TEXT("MissingEvidenceTableAnchor")));
+		FHeistArrestConfiscationPayload After;
+		Test.TestTrue(TEXT("Missing anchor preserves inventory snapshot"), Crew[0]->GetInventoryComponent()->TryBuildArrestConfiscationPayload(After, InventoryReason) && After.Matches(Before));
+		Test.TestTrue(TEXT("Missing anchor preserves position"), Crew[0]->GetActorTransform().Equals(BeforeTransform));
+		Test.TestFalse(TEXT("Missing anchor never arrests"), Players[0]->IsArrested());
+		Test.TestEqual(TEXT("Missing anchor creates no Evidence"), EvidenceCount(), 0);
+	}
+	for (int32 Index = 0; Index < 3; ++Index)
+	{
+		AActor* Slot = World->SpawnActor<AActor>();
+		USceneComponent* Root = NewObject<USceneComponent>(Slot);
+		Slot->SetRootComponent(Root);
+		Root->RegisterComponent();
+		Slot->SetActorLocation(FVector(2000 + 200 * Index, 0, 100));
+		Slot->Tags.Add(TEXT("HeistEvidenceSlot"));
+	}
+	if (bCheckRejectedTransactions)
+	{
+		const FObjectProperty* BalanceProperty = FindFProperty<FObjectProperty>(AHeistGameMode::StaticClass(), TEXT("GameBalanceDataAsset"));
+		if (!Test.TestNotNull(TEXT("Spawn failure fixture can override transient balance"), BalanceProperty)) return false;
+		UObject* PreviousBalance = BalanceProperty->GetObjectPropertyValue_InContainer(Mode);
+		UHeistGameBalanceDataAsset* Balance = DuplicateObject<UHeistGameBalanceDataAsset>(PreviousBalance ? CastChecked<UHeistGameBalanceDataAsset>(PreviousBalance) : GetDefault<UHeistGameBalanceDataAsset>(), Mode);
+		Balance->WorldLootActorClass.Reset();
+		BalanceProperty->SetObjectPropertyValue_InContainer(Mode, Balance);
+		const bool bAccepted = Mode->TryCompletePlayerArrest(Crew[0], Guard, RejectReason);
+		BalanceProperty->SetObjectPropertyValue_InContainer(Mode, PreviousBalance);
+		Test.TestFalse(TEXT("Loose spawn failure rejects staged Original and whole transaction"), bAccepted);
+		Test.TestEqual(TEXT("Failure identifies Loose Evidence spawning"), RejectReason, FName(TEXT("LootEvidenceSpawnFailed")));
+		FHeistArrestConfiscationPayload After;
+		Test.TestTrue(TEXT("Spawn failure preserves mixed inventory"), Crew[0]->GetInventoryComponent()->TryBuildArrestConfiscationPayload(After, InventoryReason) && After.Matches(Before));
+		Test.TestTrue(TEXT("Spawn failure preserves position"), Crew[0]->GetActorTransform().Equals(BeforeTransform));
+		Test.TestTrue(TEXT("Spawn failure preserves weight"), FMath::IsNearlyEqual(Players[0]->GetTotalLootWeight(), BeforeWeight));
+		Test.TestTrue(TEXT("Spawn failure preserves Original carrier"), Painting->GetOriginalCarrier() == Players[0]);
+		Test.TestFalse(TEXT("Spawn failure never arrests"), Players[0]->IsArrested());
+		Test.TestEqual(TEXT("Staged Original is destroyed on rollback"), EvidenceCount(), 0);
+		Test.TestEqual(TEXT("Rollback preserves carried contract value"), State->GetContractSnapshot().CarriedValue, ExpectedCarriedValue);
+		Test.TestEqual(TEXT("Rollback preserves secured value"), State->GetContractSnapshot().SecuredValue, PreviouslySecuredValue);
+	}
+	// Prime this world's TimerManager before the arrest creates its restraint timer.
+	Advance(.01f);
+	if (!Test.TestTrue(TEXT("Mixed-cargo arrest commits"), Mode->TryCompletePlayerArrest(Crew[0], Guard, RejectReason))) return false;
+	Test.TestTrue(TEXT("Arrest is committed after confiscation"), Players[0]->IsArrested());
+	Test.TestTrue(TEXT("Player moves to authored detention anchor"), Crew[0]->GetActorLocation().Equals(Detention->GetActorLocation()));
+	Test.TestTrue(TEXT("Closed cell is associated with the prisoner"), Players[0]->GetDetentionDoor() == Door && !Door->IsOpen());
+	Test.TestEqual(TEXT("Only one batch of Evidence exists"), EvidenceCount(), 3);
+	Test.TestEqual(TEXT("Arrest clears Loose score"), Players[0]->GetTotalLootScore(), 0);
+	Test.TestTrue(TEXT("Arrest clears carried weight"), FMath::IsNearlyZero(Players[0]->GetTotalLootWeight()));
+	Test.TestEqual(TEXT("Arrest clears Original inventory"), Crew[0]->GetInventoryComponent()->GetOriginalArtifactCount(), 0);
+	Test.TestNull(TEXT("Arrest releases the source carrier"), Painting->GetOriginalCarrier());
+	Test.TestEqual(TEXT("Arrest removes carried contract value"), State->GetContractSnapshot().CarriedValue, 0);
+	Test.TestEqual(TEXT("Arrest never changes previously secured value"), State->GetContractSnapshot().SecuredValue, PreviouslySecuredValue);
+	Test.TestFalse(TEXT("Confiscation is not Required Target extraction"), State->GetContractSnapshot().bRequiredTargetSecured);
+	Test.TestFalse(TEXT("Repeated arrest request cannot spawn duplicates"), Mode->TryCompletePlayerArrest(Crew[0], Guard, RejectReason));
+	Test.TestEqual(TEXT("Repeated arrest leaves exactly three Evidence actors"), EvidenceCount(), 3);
+	AHeistDroppedOriginalActor* EvidenceOriginal = nullptr;
+	TArray<AHeistLootActor*> EvidenceLoose;
+	for (TActorIterator<AActor> It(World); It; ++It)
+	{
+		if (!It->ActorHasTag(TEXT("HeistArrestEvidence"))) continue;
+		if (AHeistDroppedOriginalActor* Drop = Cast<AHeistDroppedOriginalActor>(*It)) EvidenceOriginal = Drop;
+		else if (AHeistLootActor* Loot = Cast<AHeistLootActor>(*It)) EvidenceLoose.Add(Loot);
+	}
+	if (!Test.TestTrue(TEXT("Evidence contains one Original and two Loose pickups"), IsValid(EvidenceOriginal) && EvidenceLoose.Num() == 2)) return false;
+	Test.TestEqual(TEXT("Evidence preserves Artifact identity"), EvidenceOriginal->GetArtifactId(), Original.ItemId);
+	Test.TestEqual(TEXT("Evidence preserves Original contract value"), EvidenceOriginal->GetArtifactValue(), Original.ContractValue);
+	Test.TestTrue(TEXT("Evidence preserves Original weight"), FMath::IsNearlyEqual(EvidenceOriginal->GetWeight(), Original.Weight));
+	Test.TestTrue(TEXT("Evidence preserves Required Target and source case"), EvidenceOriginal->IsRequiredTarget() && EvidenceOriginal->GetSourceDisplayCase() == Painting);
+	const int32 Recoverer = bTeammateRecovery ? 1 : 0;
+	const auto RecoverOriginal = [&]()
+	{
+		Move(Crew[Recoverer], EvidenceOriginal->GetActorLocation());
+		if (!Test.TestTrue(TEXT("Original Evidence has a real interaction overlap"), Crew[Recoverer]->GetInteractionComponent()->IsActorOverlappingInteractionArea(EvidenceOriginal))) return false;
+		Pickup(Controllers[Recoverer], TEXT("Server_RequestDroppedOriginalPickup"), EvidenceOriginal);
+		if (!Test.TestEqual(TEXT("Recovery grants exactly one Original"), Crew[Recoverer]->GetInventoryComponent()->GetOriginalArtifactCount(), 1)) return false;
+		Pickup(Controllers[Recoverer], TEXT("Server_RequestDroppedOriginalPickup"), EvidenceOriginal);
+		Pickup(Controllers[1 - Recoverer], TEXT("Server_RequestDroppedOriginalPickup"), EvidenceOriginal);
+		Test.TestEqual(TEXT("Replayed and competing requests never duplicate the Original"), Crew[0]->GetInventoryComponent()->GetOriginalArtifactCount() + Crew[1]->GetInventoryComponent()->GetOriginalArtifactCount(), 1);
+		Test.TestTrue(TEXT("Recovery assigns the source carrier"), Painting->GetOriginalCarrier() == Players[Recoverer]);
+		return true;
+	};
+	if (bTeammateRecovery)
+	{
+		if (!RecoverOriginal()) return false;
+		Test.TestTrue(TEXT("Teammate can recover Original while owner remains restrained"), Players[0]->IsArrested() && !Door->IsOpen());
+		Test.TestEqual(TEXT("Pre-rescue recovery counts Original as carried"), State->GetContractSnapshot().CarriedValue, Original.ContractValue);
+		Move(Crew[1], FVector(0, 80, 100));
+		if (!Test.TestTrue(TEXT("Teammate begins outside rescue hold"), Door->TryUse(Crew[1], Door->GetRevision()))) return false;
+		Advance(2.1f);
+	}
+	else
+	{
+		Advance(5.1f);
+		Test.TestFalse(TEXT("Timer releases restraint for self-escape"), Players[0]->IsArrested());
+		Move(Crew[0], FVector(0, -80, 100));
+		if (!Test.TestTrue(TEXT("Recovered inmate starts inside latch sequence"), Door->TryUse(Crew[0], Door->GetRevision()))) return false;
+		for (int32 Latch = 0; Latch < 3; ++Latch)
+		{
+			Advance(4.7f);
+			if (!Test.TestTrue(TEXT("Timed inmate press is accepted"), Door->TryUse(Crew[0], Door->GetRevision()))) return false;
+		}
+	}
+	if (!Test.TestTrue(TEXT("Self-escape or teammate rescue opens cell"), Door->IsOpen() && !Players[0]->IsArrested() && Players[0]->GetDetentionDoor() == nullptr)) return false;
+	Test.TestEqual(TEXT("Opening never returns Loose Loot automatically"), Players[0]->GetTotalLootScore(), 0);
+	Test.TestEqual(TEXT("Opening never returns Original automatically"), Crew[0]->GetInventoryComponent()->GetOriginalArtifactCount(), 0);
+	Test.TestTrue(TEXT("Opening preserves unclaimed Loose Evidence"), EvidenceLoose[0]->IsLootAvailable() && EvidenceLoose[1]->IsLootAvailable());
+	if (!bTeammateRecovery && !RecoverOriginal()) return false;
+	for (AHeistLootActor* Loot : EvidenceLoose)
+	{
+		Test.TestEqual(TEXT("Loose Evidence preserves Item identity"), Loot->GetLootRowId(), LooseDefinition.ItemId);
+		Test.TestEqual(TEXT("Loose Evidence preserves contract value"), Loot->GetScoreValue(), LooseDefinition.ScoreValue);
+		Move(Crew[Recoverer], Loot->GetActorLocation());
+		if (!Test.TestTrue(TEXT("Loose Evidence has a real interaction overlap"), Crew[Recoverer]->GetInteractionComponent()->IsActorOverlappingInteractionArea(Loot))) return false;
+		Pickup(Controllers[Recoverer], TEXT("Server_RequestLootPickup"), Loot);
+		Pickup(Controllers[Recoverer], TEXT("Server_RequestLootPickup"), Loot);
+		Pickup(Controllers[1 - Recoverer], TEXT("Server_RequestLootPickup"), Loot);
+		Test.TestFalse(TEXT("Recovered Loose Evidence is unavailable"), Loot->IsLootAvailable());
+	}
+	Test.TestEqual(TEXT("Recovered Loose quantity/value is not duplicated"), Players[Recoverer]->GetTotalLootScore(), 2 * LooseDefinition.ScoreValue);
+	Test.TestTrue(TEXT("Recovered cargo restores its exact total weight"), FMath::IsNearlyEqual(Players[Recoverer]->GetTotalLootWeight(), BeforeWeight));
+	Test.TestEqual(TEXT("Recovery restores exact carried contract value"), State->GetContractSnapshot().CarriedValue, ExpectedCarriedValue);
+	Test.TestEqual(TEXT("Recovery preserves secured value"), State->GetContractSnapshot().SecuredValue, PreviouslySecuredValue);
+	Test.TestFalse(TEXT("Recovery does not secure Required Target"), State->GetContractSnapshot().bRequiredTargetSecured);
+	FHeistArrestConfiscationPayload Recovered;
+	Test.TestTrue(TEXT("Recovered inventory preserves confiscated counts and value"),
+		Crew[Recoverer]->GetInventoryComponent()->TryBuildArrestConfiscationPayload(Recovered, InventoryReason) && Recovered.GetOriginalItemCount() == 1 &&
+		Recovered.GetWorldActorCount() == Before.GetWorldActorCount() && Recovered.LooseLootValue == Before.LooseLootValue);
+	int32 RecoveredLooseQuantity = 0;
+	for (const FHeistInventoryItem& Item : Recovered.ConfiscatedItems)
+	{
+		if (Item.IsOriginalArtifact())
+		{
+			Test.TestTrue(TEXT("Recovered Original preserves Artifact, Required Target and source identity"),
+				Item.ItemId == Original.ItemId && Item.bRequiredTarget == Original.bRequiredTarget && Item.SourceDisplayCase == Original.SourceDisplayCase &&
+				Item.ContractValue == Original.ContractValue && FMath::IsNearlyEqual(Item.Weight, Original.Weight));
+		}
+		else
+		{
+			Test.TestEqual(TEXT("Recovered Loose inventory preserves Item identity"), Item.ItemId, LooseDefinition.ItemId);
+			RecoveredLooseQuantity += Item.Quantity;
+		}
+	}
+	Test.TestEqual(TEXT("Recovered Loose inventory contains exactly two units"), RecoveredLooseQuantity, 2);
+	Test.TestEqual(TEXT("Other crew receives no duplicate Loot value"), Players[1 - Recoverer]->GetTotalLootScore(), 0);
+	Test.TestFalse(TEXT("Recovery does not extract either player"), Players[0]->IsEscaped() || Players[1]->IsEscaped());
+	Test.AddInfo(FString::Printf(TEXT("Arrest Evidence flow: Recovery=%s RejectedTransactions=%s Original=1 Loose=2 Carried=%d Secured=%d DuplicateRequests=Checked NaturalGuardDiscovery=NotTested NetworkReplication=NotTested"),
+		bTeammateRecovery ? TEXT("TeammateBeforeAndAfterRescue") : TEXT("SelfAfterLatchEscape"), bCheckRejectedTransactions ? TEXT("Checked") : TEXT("NotRequested"),
+		State->GetContractSnapshot().CarriedValue, State->GetContractSnapshot().SecuredValue));
+	return !Test.HasAnyErrors();
+}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistArrestEvidenceSelfRecoveryTest, "ProjectMuseumHeist.W7.ArrestEvidence.SelfRecovery",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHeistArrestEvidenceSelfRecoveryTest::RunTest(const FString& Parameters)
+{
+	return RunArrestEvidenceRecovery(*this, false, false);
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistArrestEvidenceTeammateRecoveryTest, "ProjectMuseumHeist.W7.ArrestEvidence.TeammateRecovery",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHeistArrestEvidenceTeammateRecoveryTest::RunTest(const FString& Parameters)
+{
+	return RunArrestEvidenceRecovery(*this, true, false);
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistArrestEvidenceRollbackTest, "ProjectMuseumHeist.W7.ArrestEvidence.Rollback",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHeistArrestEvidenceRollbackTest::RunTest(const FString& Parameters)
+{
+	return RunArrestEvidenceRecovery(*this, false, true);
 }
 
 #endif

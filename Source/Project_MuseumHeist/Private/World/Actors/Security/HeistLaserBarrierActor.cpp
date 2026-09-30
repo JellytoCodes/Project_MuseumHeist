@@ -125,7 +125,7 @@ void AHeistLaserBarrierActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	}
 	RearmTimerHandle.Invalidate();
 	ConfigurationRefreshTimerHandle.Invalidate();
-	PlayersInsideBeam.Reset();
+	TrippedPlayersInsideBeam.Reset();
 	if (BoundGameState.IsValid())
 	{
 		BoundGameState->GetMatchPhaseChangedDelegate().RemoveAll(this);
@@ -219,6 +219,7 @@ void AHeistLaserBarrierActor::ForceRestoreDefaultState()
 		return;
 	}
 
+	const bool bWasBeamActive = IsBeamActive();
 	GetWorldTimerManager().ClearTimer(RearmTimerHandle);
 	bRearmGraceActive = false;
 	BypassHolderPlayerState = nullptr;
@@ -227,6 +228,10 @@ void AHeistLaserBarrierActor::ForceRestoreDefaultState()
 	++SecurityRevision;
 	ForceNetUpdate();
 	ApplyPresentation();
+	if (!bWasBeamActive && IsBeamActive())
+	{
+		TripOverlappingPlayers();
+	}
 }
 
 bool AHeistLaserBarrierActor::IsRuntimeConfigurationValid() const
@@ -265,14 +270,35 @@ void AHeistLaserBarrierActor::CompleteRearm()
 	ForceRestoreDefaultState();
 }
 
-void AHeistLaserBarrierActor::CommitTrip(AHeistPlayerCharacter* PlayerCharacter)
+void AHeistLaserBarrierActor::TripOverlappingPlayers()
 {
-	AHeistPlayerState* TrippedPlayerState = IsValid(PlayerCharacter) ? PlayerCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
-	if (!HasAuthority() || !IsValid(TrippedPlayerState))
+	if (!HasAuthority() || !IsBeamActive() || !IsValid(BeamTriggerComponent))
 	{
 		return;
 	}
 
+	TArray<AActor*> OverlappingPlayers;
+	BeamTriggerComponent->GetOverlappingActors(OverlappingPlayers, AHeistPlayerCharacter::StaticClass());
+	for (AActor* Actor : OverlappingPlayers)
+	{
+		AHeistPlayerCharacter* PlayerCharacter = Cast<AHeistPlayerCharacter>(Actor);
+		if (IsEligibleEntrant(PlayerCharacter))
+		{
+			CommitTrip(PlayerCharacter);
+		}
+	}
+}
+
+void AHeistLaserBarrierActor::CommitTrip(AHeistPlayerCharacter* PlayerCharacter)
+{
+	AHeistPlayerState* TrippedPlayerState = IsValid(PlayerCharacter) ? PlayerCharacter->GetPlayerState<AHeistPlayerState>() : nullptr;
+	if (!HasAuthority() || !IsValid(TrippedPlayerState) || TrippedPlayersInsideBeam.Contains(PlayerCharacter))
+	{
+		return;
+	}
+
+	// Record trips, not harmless bypass entries, until the whole actor leaves the beam.
+	TrippedPlayersInsideBeam.Add(PlayerCharacter);
 	++TripSequence;
 	++SecurityRevision;
 	LastTrippedPlayerState = TrippedPlayerState;
@@ -334,6 +360,7 @@ void AHeistLaserBarrierActor::RefreshRuntimeConfiguration()
 		return;
 	}
 
+	const bool bWasBeamActive = IsBeamActive();
 	GetWorldTimerManager().ClearTimer(RearmTimerHandle);
 	bBarrierEnabled = bShouldEnable;
 	bBeamActive = bShouldEnable;
@@ -342,6 +369,10 @@ void AHeistLaserBarrierActor::RefreshRuntimeConfiguration()
 	++SecurityRevision;
 	ForceNetUpdate();
 	ApplyPresentation();
+	if (!bWasBeamActive && IsBeamActive())
+	{
+		TripOverlappingPlayers();
+	}
 }
 
 void AHeistLaserBarrierActor::HandleMatchPhaseChanged(const EHeistMatchPhase, const EHeistMatchPhase NewMatchPhase)
@@ -360,7 +391,7 @@ void AHeistLaserBarrierActor::HandleMatchPhaseChanged(const EHeistMatchPhase, co
 
 	GetWorldTimerManager().ClearTimer(ConfigurationRefreshTimerHandle);
 	GetWorldTimerManager().ClearTimer(RearmTimerHandle);
-	PlayersInsideBeam.Reset();
+	TrippedPlayersInsideBeam.Reset();
 	bBarrierEnabled = false;
 	bBeamActive = false;
 	bRearmGraceActive = false;
@@ -383,12 +414,11 @@ void AHeistLaserBarrierActor::HandleContractSnapshotChanged(const FHeistContract
 void AHeistLaserBarrierActor::HandleBeamBeginOverlap(UPrimitiveComponent*, AActor* OtherActor, UPrimitiveComponent*, int32, bool, const FHitResult&)
 {
 	AHeistPlayerCharacter* PlayerCharacter = Cast<AHeistPlayerCharacter>(OtherActor);
-	if (!IsEligibleEntrant(PlayerCharacter) || PlayersInsideBeam.Contains(PlayerCharacter))
+	if (!IsEligibleEntrant(PlayerCharacter))
 	{
 		return;
 	}
 
-	PlayersInsideBeam.Add(PlayerCharacter);
 	AHeistPlayerState* PlayerState = PlayerCharacter->GetPlayerState<AHeistPlayerState>();
 	const bool bHolderTriedToUseOwnBypass = !bBeamActive && IsValid(BypassHolderPlayerState) && BypassHolderPlayerState.Get() == PlayerState;
 	if (bBeamActive || bHolderTriedToUseOwnBypass)
@@ -403,7 +433,10 @@ void AHeistLaserBarrierActor::HandleBeamEndOverlap(UPrimitiveComponent*, AActor*
 	{
 		if (AHeistPlayerCharacter* PlayerCharacter = Cast<AHeistPlayerCharacter>(OtherActor))
 		{
-			PlayersInsideBeam.Remove(PlayerCharacter);
+			if (!BeamTriggerComponent->IsOverlappingActor(PlayerCharacter))
+			{
+				TrippedPlayersInsideBeam.Remove(PlayerCharacter);
+			}
 		}
 	}
 }

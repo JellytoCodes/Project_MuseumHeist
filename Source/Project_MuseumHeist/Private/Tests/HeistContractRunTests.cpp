@@ -87,6 +87,11 @@ struct FHeistContractRunAutomationState
 	int32 SecurityIncidentCountBaseline = 0;
 	int32 SecurityInvestigationCountBaseline = 0;
 	float SecurityAlertMeterBaseline = 0.0f;
+	FHeistInventoryItem ArrestEvidenceOriginal;
+	TArray<FVector> ArrestEvidenceInitialLootLocations;
+	TArray<FVector> ArrestEvidenceLootLocations;
+	int32 ArrestEvidenceSecuredValue = 0;
+	float ArrestEvidenceLooseWeight = 0.0f;
 	TMap<TWeakObjectPtr<AHeistPlayerCharacter>, int32> CrewStatusFootstepBaselines;
 };
 
@@ -4742,6 +4747,347 @@ bool EnqueueStaleSurfaceSubmitScenario(FAutomationTestBase* Test, const bool bRe
 	return true;
 }
 
+void AppendSandBoxArrestEvidenceCommands(FAutomationTestBase* Test, const TSharedRef<FHeistContractRunAutomationState>& State)
+{
+	constexpr int32 CarrierId = 1;
+	constexpr int32 RecovererId = 2;
+	const auto CountLoose = [State](const UHeistInventoryComponent* Inventory)
+	{
+		int32 Quantity = 0;
+		if (IsValid(Inventory))
+			for (const FHeistInventoryFastArrayItem& Entry : Inventory->GetReplicatedInventory().Items)
+				if (!Entry.InventoryItem.IsOriginalArtifact() && Entry.InventoryItem.ItemId == State->SelectedLootRowId)
+					Quantity += Entry.InventoryItem.Quantity;
+		return Quantity;
+	};
+	const auto FindOriginal = [State](UWorld* World) -> AHeistDroppedOriginalActor*
+	{
+		AHeistPaintingDisplayCaseActor* Case = FindPaintingCase(World, State->FirstRunContract.RequiredTargetCaseId);
+		for (TActorIterator<AHeistDroppedOriginalActor> It(World); It; ++It)
+			if (It->GetSourceDisplayCase() == Case && It->GetArtifactId() == State->ArrestEvidenceOriginal.ItemId)
+				return *It;
+		return nullptr;
+	};
+	const auto CargoMatches = [State, CountLoose](const int32 PlayerId, const int32 OriginalCount, const int32 LooseCount)
+	{
+		// Inventory and score/weight are OwnerOnly: inspect authority and this player's owner.
+		for (const AHeistPlayerCharacter* Character : {GetServerCharacterById(PlayerId), GetOwningCharacterById(PlayerId)})
+		{
+			const UHeistInventoryComponent* Inventory = IsValid(Character) ? Character->GetInventoryComponent() : nullptr;
+			const AHeistPlayerState* Player = IsValid(Character) ? Character->GetPlayerState<AHeistPlayerState>() : nullptr;
+			if (!IsValid(Inventory) || !IsValid(Player) || Inventory->GetOriginalArtifactCount() != OriginalCount || CountLoose(Inventory) != LooseCount ||
+				Player->GetTotalLootScore() != LooseCount * State->SelectedLootValue ||
+				!FMath::IsNearlyEqual(Player->GetTotalLootWeight(), OriginalCount * State->ArrestEvidenceOriginal.Weight + LooseCount * State->ArrestEvidenceLooseWeight))
+				return false;
+			if (OriginalCount > 0)
+			{
+				FHeistInventoryItem Original;
+				if (!Inventory->TryGetOriginalArtifactForSourceCase(FindPaintingCase(Character->GetWorld(), State->FirstRunContract.RequiredTargetCaseId), Original) ||
+					!Original.HasValidOriginalData() || Original.ItemId != State->ArrestEvidenceOriginal.ItemId ||
+					Original.ContractValue != State->ArrestEvidenceOriginal.ContractValue || Original.BaseGridSize != State->ArrestEvidenceOriginal.BaseGridSize ||
+					!FMath::IsNearlyEqual(Original.Weight, State->ArrestEvidenceOriginal.Weight) || !Original.bRequiredTarget)
+					return false;
+			}
+		}
+		return true;
+	};
+	const auto ContractMatches = [State](const int32 CarriedValue)
+	{
+		for (UWorld* World : GetContractRunPIEWorlds())
+		{
+			const AHeistGameState* GameState = World->GetGameState<AHeistGameState>();
+			if (!IsValid(GameState)) return false;
+			const FHeistContractSnapshot Contract = GameState->GetContractSnapshot();
+			if (Contract.RequiredTargetCaseId != State->FirstRunContract.RequiredTargetCaseId || Contract.RequiredTargetArtifactId != State->FirstRunContract.RequiredTargetArtifactId ||
+				Contract.CarriedValue != CarriedValue || Contract.SecuredValue != State->ArrestEvidenceSecuredValue || Contract.bRequiredTargetSecured)
+				return false;
+		}
+		return true;
+	};
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("prepare Sandbox mixed-cargo evidence contract"), [State]()
+	{
+		UWorld* World = GetContractRunServerWorld();
+		AHeistGameState* GameState = IsValid(World) ? World->GetGameState<AHeistGameState>() : nullptr;
+		AHeistGameMode* Mode = IsValid(World) ? World->GetAuthGameMode<AHeistGameMode>() : nullptr;
+		AHeistPaintingDisplayCaseActor* Case = FindPaintingCase(World, TEXT("Case_M01_Target"));
+		AHeistPlayerController* ClientOwner = GetOwningPlayerControllerById(RecovererId);
+		FHeistLootDataRow Definition;
+		FHeistItemDataRow ItemDefinition;
+		if (!IsValid(GameState) || !IsValid(Mode) || !IsValid(Case) || World->GetNetMode() != NM_ListenServer ||
+			!IsValid(ClientOwner) || ClientOwner->GetNetMode() != NM_Client || !Mode->TryGetLootDefinition(TEXT("Loot_AncientSword"), Definition) ||
+			!Mode->TryGetItemDefinition(TEXT("Loot_AncientSword"), ItemDefinition)) return false;
+		State->FirstRunContract = GameState->GetContractSnapshot();
+		State->ArrestEvidenceSecuredValue = State->FirstRunContract.SecuredValue;
+		State->SelectedLootRowId = TEXT("Loot_AncientSword");
+		State->SelectedLootValue = Definition.ScoreValue;
+		State->ArrestEvidenceLooseWeight = ItemDefinition.Weight;
+		return GameState->SetAlertSnapshot(0.0f, EHeistAlertLevel::Quiet, TEXT("W8ArrestEvidenceSetup")) &&
+			TeleportServerPlayerIntoInteraction(CarrierId, Case);
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("cargo carrier overlaps Required Target"), [State]()
+	{
+		return IsServerPlayerOverlapping(CarrierId, FindPaintingCase(GetContractRunServerWorld(), State->FirstRunContract.RequiredTargetCaseId));
+	}, 10.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("cargo carrier observes through owned RPC"), [State]()
+	{
+		AHeistPlayerController* Owner = GetOwningPlayerControllerById(CarrierId);
+		return IsValid(Owner) && InvokeSingleActorServerRPC(Owner, TEXT("Server_RequestObservation"), FindPaintingCase(Owner->GetWorld(), State->FirstRunContract.RequiredTargetCaseId));
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("cargo Surface session ready"), [State]()
+	{
+		return IsSurfaceSessionReady(CarrierId, State->FirstRunContract.RequiredTargetCaseId);
+	}, 15.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("cargo reference-matched Surface submission"), []() { return SubmitReferenceMatchedSurface(CarrierId); }));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("cargo Replica preview ready"), [State]()
+	{
+		return HasSurfaceReplicaPreview(CarrierId, State->FirstRunContract.RequiredTargetCaseId);
+	}, 20.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("cargo carrier confirms actual Original swap"), []()
+	{
+		AHeistPlayerController* Owner = GetOwningPlayerControllerById(CarrierId);
+		if (!IsValid(Owner)) return false;
+		Owner->RequestConfirmForgeryReplicaSwap();
+		return true;
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("cargo Original acquired"), [State]()
+	{
+		return HasOriginalForCase(CarrierId, FindPaintingCase(GetContractRunServerWorld(), State->FirstRunContract.RequiredTargetCaseId));
+	}, 10.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("capture Original and spawn two production Loose Loot fixtures"), [State]()
+	{
+		UWorld* World = GetContractRunServerWorld();
+		AHeistPlayerCharacter* Character = GetServerCharacterById(CarrierId);
+		AHeistGameMode* Mode = IsValid(World) ? World->GetAuthGameMode<AHeistGameMode>() : nullptr;
+		if (!IsValid(Character) || !IsValid(Mode) || !Character->GetInventoryComponent()->TryGetOriginalArtifactForSourceCase(
+			FindPaintingCase(World, State->FirstRunContract.RequiredTargetCaseId), State->ArrestEvidenceOriginal)) return false;
+		for (int32 Index = 0; Index < 2; ++Index)
+		{
+			FHeistLootDropRequest Request;
+			Request.DroppedBy = Character;
+			Request.ItemId = State->SelectedLootRowId;
+			Request.DropOrigin = Character->GetActorLocation() + FVector(300 + Index * 200, 0, 0);
+			AHeistLootActor* Loot = nullptr;
+			if (!Mode->TrySpawnDroppedLoot(Request, Loot) || !IsValid(Loot)) return false;
+			State->ArrestEvidenceInitialLootLocations.Add(Loot->GetActorLocation());
+		}
+		return true;
+	}));
+	for (int32 Index = 0; Index < 2; ++Index)
+	{
+		Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("carrier moves into Loose Loot overlap"), [State, Index]()
+		{
+			return TeleportServerPlayerIntoInteraction(CarrierId, FindLootActorAtLocation(GetContractRunServerWorld(), State->SelectedLootRowId, State->ArrestEvidenceInitialLootLocations[Index]));
+		}));
+		Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("carrier actual Loose Loot overlap"), [State, Index]()
+		{
+			return IsServerPlayerOverlapping(CarrierId, FindLootActorAtLocation(GetContractRunServerWorld(), State->SelectedLootRowId, State->ArrestEvidenceInitialLootLocations[Index]));
+		}, 10.0));
+		Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("carrier picks up Loose Loot through RPC"), [State, Index]()
+		{
+			AHeistPlayerController* Owner = GetOwningPlayerControllerById(CarrierId);
+			return IsValid(Owner) && InvokeSingleActorServerRPC(Owner, TEXT("Server_RequestLootPickup"), FindLootActorAtLocation(Owner->GetWorld(), State->SelectedLootRowId, State->ArrestEvidenceInitialLootLocations[Index]));
+		}));
+	}
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("one Original and two Loose cargo values replicated"), [State, CargoMatches, ContractMatches]()
+	{
+		return CargoMatches(CarrierId, 1, 2) && CargoMatches(RecovererId, 0, 0) &&
+			ContractMatches(State->ArrestEvidenceOriginal.ContractValue + 2 * State->SelectedLootValue);
+	}, 10.0, [State, CountLoose]()
+	{
+		TArray<FString> Peers;
+		for (UWorld* World : GetContractRunPIEWorlds())
+		{
+			const AHeistGameState* GameState = World->GetGameState<AHeistGameState>();
+			for (const int32 PlayerId : {CarrierId, RecovererId})
+			{
+				const AHeistPlayerCharacter* Character = FindHeistCharacterById(World, PlayerId);
+				const UHeistInventoryComponent* Inventory = IsValid(Character) ? Character->GetInventoryComponent() : nullptr;
+				const AHeistPlayerState* Player = FindPlayerStateById(World, PlayerId);
+				Peers.Add(FString::Printf(TEXT("World=%s NetMode=%d Player=%d PrivateValuesRelevant=%s Original=%d Loose=%d Score=%d Weight=%.2f Carried=%d Secured=%d"),
+					*World->GetName(), static_cast<int32>(World->GetNetMode()), PlayerId,
+					IsValid(Character) && (Character->HasAuthority() || Character->IsLocallyControlled()) ? TEXT("true") : TEXT("false"),
+					IsValid(Inventory) ? Inventory->GetOriginalArtifactCount() : INDEX_NONE, CountLoose(Inventory),
+					IsValid(Player) ? Player->GetTotalLootScore() : INDEX_NONE, IsValid(Player) ? Player->GetTotalLootWeight() : -1.0f,
+					IsValid(GameState) ? GameState->GetContractSnapshot().CarriedValue : INDEX_NONE,
+					IsValid(GameState) ? GameState->GetContractSnapshot().SecuredValue : INDEX_NONE));
+			}
+		}
+		return FString::Printf(TEXT("W8 mixed cargo diagnostic: ExpectedOriginal=1 Loose=2 Score=%d Weight=%.2f Carried=%d Secured=%d %s"),
+			2 * State->SelectedLootValue, State->ArrestEvidenceOriginal.Weight + 2 * State->ArrestEvidenceLooseWeight,
+			State->ArrestEvidenceOriginal.ContractValue + 2 * State->SelectedLootValue, State->ArrestEvidenceSecuredValue, *FString::Join(Peers, TEXT(" | ")));
+	}));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("prepare transient Sandbox detention/evidence anchors if unauthored"), []()
+	{
+		UWorld* World = GetContractRunServerWorld();
+		AHeistPlayerCharacter* Character = GetServerCharacterById(CarrierId);
+		if (!IsValid(World) || !IsValid(Character)) return false;
+		bool bHasDetention = false, bHasEvidence = false;
+		for (TActorIterator<AActor> It(World); It; ++It)
+		{
+			bHasDetention |= It->ActorHasTag(TEXT("HeistDetentionSpawn"));
+			bHasEvidence |= It->ActorHasTag(TEXT("HeistEvidenceSlot")) || It->ActorHasTag(TEXT("HeistEvidenceTableAnchor"));
+		}
+		FActorSpawnParameters Spawn;
+		Spawn.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		const FVector Base = Character->GetActorLocation();
+		const auto Anchor = [World, Spawn](const FName Tag, const FVector& Location)
+		{
+			AActor* Actor = World->SpawnActor<AActor>(FVector::ZeroVector, FRotator::ZeroRotator, Spawn);
+			if (!IsValid(Actor)) return false;
+			USceneComponent* Root = NewObject<USceneComponent>(Actor);
+			Actor->SetRootComponent(Root);
+			Root->RegisterComponent();
+			Actor->SetActorLocation(Location);
+			Actor->Tags.Add(Tag);
+			return true;
+		};
+		// These actors exist only in the PIE world. The authored Sandbox/map assets are never saved.
+		if (!bHasDetention)
+		{
+			UClass* DoorClass = LoadClass<AHeistDetentionDoorActor>(nullptr, TEXT("/Game/Blueprints/World/Actors/Security/BP_DetentionDoor.BP_DetentionDoor_C"));
+			AHeistDetentionDoorActor* Door = IsValid(DoorClass) ? World->SpawnActor<AHeistDetentionDoorActor>(DoorClass, Base + FVector(0, 80, 0), FRotator::ZeroRotator, Spawn) : nullptr;
+			if (!IsValid(Door) || !Door->ContainsLocation(Base) || !Anchor(TEXT("HeistDetentionSpawn"), Base)) return false;
+		}
+		if (!bHasEvidence)
+			for (int32 Index = 0; Index < 3; ++Index)
+				if (!Anchor(TEXT("HeistEvidenceSlot"), Base + FVector(500 + Index * 200, 500, 0))) return false;
+		return true;
+	}));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("mixed cargo actual Guard contact starts Stun"), []() { return BeginWeek7GuardStun(CarrierId); }));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("mixed cargo Guard Stun replicated"), []() { return IsWeek7StunPresentationReady(CarrierId); }, 5.0));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("mixed cargo Stun completes arrest on both peers"), []() { return IsWeek7ArrestReplicated(CarrierId); }, 10.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("capture exactly three Evidence actors and isolate Guard after arrest"), [Test, State, FindOriginal]()
+	{
+		UWorld* World = GetContractRunServerWorld();
+		AHeistDroppedOriginalActor* Original = FindOriginal(World);
+		int32 Count = 0;
+		for (TActorIterator<AActor> It(World); It; ++It)
+		{
+			if (!It->ActorHasTag(TEXT("HeistArrestEvidence"))) continue;
+			++Count;
+			if (AHeistLootActor* Loot = Cast<AHeistLootActor>(*It)) State->ArrestEvidenceLootLocations.Add(Loot->GetActorLocation());
+		}
+		for (TActorIterator<AHeistGuardCharacter> It(World); It; ++It)
+			if (UHeistGuardStateComponent* GuardState = It->GetGuardStateComponent(); IsValid(GuardState)) GuardState->SetDisabled(true);
+		return Test->TestEqual(TEXT("Arrest stages exactly one Original and two Loose actors"), Count, 3) &&
+			IsValid(Original) && Original->ActorHasTag(TEXT("HeistArrestEvidence")) && State->ArrestEvidenceLootLocations.Num() == 2;
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("Evidence identity availability and confiscated cargo replicated"), [State, CargoMatches, ContractMatches, FindOriginal]()
+	{
+		if (!CargoMatches(CarrierId, 0, 0) || !CargoMatches(RecovererId, 0, 0) || !ContractMatches(0)) return false;
+		for (UWorld* World : GetContractRunPIEWorlds())
+		{
+			const AHeistPlayerState* Player = FindPlayerStateById(World, CarrierId);
+			AHeistPaintingDisplayCaseActor* Case = FindPaintingCase(World, State->FirstRunContract.RequiredTargetCaseId);
+			AHeistDroppedOriginalActor* Original = FindOriginal(World);
+			if (!IsValid(Player) || !IsValid(Case) || !IsValid(Original) || !Original->IsDropAvailable() || !Original->IsRequiredTarget() ||
+				Original->GetArtifactValue() != State->ArrestEvidenceOriginal.ContractValue || !FMath::IsNearlyEqual(Original->GetWeight(), State->ArrestEvidenceOriginal.Weight) ||
+				IsValid(Case->GetOriginalCarrier()) ||
+				!IsValid(Player->GetDetentionDoor()) || Player->GetDetentionDoor()->IsOpen()) return false;
+			for (const FVector& Location : State->ArrestEvidenceLootLocations)
+			{
+				const AHeistLootActor* Loot = FindLootActorAtLocation(World, State->SelectedLootRowId, Location);
+				if (!IsValid(Loot) || !Loot->IsLootAvailable() || Loot->GetScoreValue() != State->SelectedLootValue ||
+					!FMath::IsNearlyEqual(Loot->GetWeightValue(), State->ArrestEvidenceLooseWeight)) return false;
+			}
+		}
+		return true;
+	}, 10.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("client teammate approaches Original Evidence before opening cell"), [FindOriginal]()
+	{
+		return TeleportServerPlayerIntoInteraction(RecovererId, FindOriginal(GetContractRunServerWorld()));
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("Original Evidence relevant and overlapping client recoverer"), [FindOriginal]()
+	{
+		AHeistPlayerController* Owner = GetOwningPlayerControllerById(RecovererId);
+		return IsValid(Owner) && IsValid(FindOriginal(Owner->GetWorld())) && IsServerPlayerOverlapping(RecovererId, FindOriginal(GetContractRunServerWorld()));
+	}, 10.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("client teammate picks up Original Evidence through owned RPC"), [FindOriginal]()
+	{
+		AHeistPlayerController* Owner = GetOwningPlayerControllerById(RecovererId);
+		return IsValid(Owner) && InvokeSingleActorServerRPC(Owner, TEXT("Server_RequestDroppedOriginalPickup"), FindOriginal(Owner->GetWorld()));
+	}));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("Original recovery replicates once while cell stays closed"), [State, CargoMatches, ContractMatches, FindOriginal]()
+	{
+		if (!CargoMatches(RecovererId, 1, 0) || !CargoMatches(CarrierId, 0, 0) || !ContractMatches(State->ArrestEvidenceOriginal.ContractValue)) return false;
+		for (UWorld* World : GetContractRunPIEWorlds())
+		{
+			const AHeistPlayerState* Prisoner = FindPlayerStateById(World, CarrierId);
+			const AHeistPlayerState* Recoverer = FindPlayerStateById(World, RecovererId);
+			const AHeistPaintingDisplayCaseActor* Case = FindPaintingCase(World, State->FirstRunContract.RequiredTargetCaseId);
+			if (!IsValid(Prisoner) || !IsValid(Recoverer) || !IsValid(Case) || Case->GetOriginalCarrier() != Recoverer || IsValid(FindOriginal(World)) ||
+				!IsValid(Prisoner->GetDetentionDoor()) || Prisoner->GetDetentionDoor()->IsOpen()) return false;
+		}
+		return true;
+	}, 10.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("client teammate moves outside detention door"), []() { return MoveWeek7RescuerIntoRange(RecovererId, CarrierId); }));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("client detention door relevance and rescue overlap"), []()
+	{
+		const AHeistPlayerState* Server = FindPlayerStateById(GetContractRunServerWorld(), CarrierId);
+		AHeistPlayerController* Owner = GetOwningPlayerControllerById(RecovererId);
+		const AHeistPlayerState* Local = IsValid(Owner) ? FindPlayerStateById(Owner->GetWorld(), CarrierId) : nullptr;
+		return IsValid(Server) && IsValid(Local) && IsValid(Local->GetDetentionDoor()) && IsServerPlayerOverlapping(RecovererId, Server->GetDetentionDoor());
+	}, 10.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("client teammate starts two-second rescue through owned RPC"), []() { return RequestWeek7Rescue(RecovererId, CarrierId); }));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("rescued carrier Active/input replicated"), []() { return IsWeek7RescueComplete(CarrierId); }, 10.0));
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("rescue never returns confiscated cargo automatically"), [State, CargoMatches, ContractMatches]()
+	{
+		return CargoMatches(CarrierId, 0, 0) && CargoMatches(RecovererId, 1, 0) && ContractMatches(State->ArrestEvidenceOriginal.ContractValue);
+	}, 5.0));
+	for (int32 Index = 0; Index < 2; ++Index)
+	{
+		Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("client teammate approaches Loose Evidence"), [State, Index]()
+		{
+			return TeleportServerPlayerIntoInteraction(RecovererId, FindLootActorAtLocation(GetContractRunServerWorld(), State->SelectedLootRowId, State->ArrestEvidenceLootLocations[Index]));
+		}));
+		Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("Loose Evidence client relevance and real overlap"), [State, Index]()
+		{
+			return IsOwningLootActorRelevant(RecovererId, State->SelectedLootRowId, State->ArrestEvidenceLootLocations[Index]) &&
+				IsServerPlayerOverlapping(RecovererId, FindLootActorAtLocation(GetContractRunServerWorld(), State->SelectedLootRowId, State->ArrestEvidenceLootLocations[Index]));
+		}, 10.0));
+		Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("client repeats Loose Evidence pickup RPC twice"), [State, Index]()
+		{
+			AHeistPlayerController* Owner = GetOwningPlayerControllerById(RecovererId);
+			AHeistLootActor* Loot = IsValid(Owner) ? FindLootActorAtLocation(Owner->GetWorld(), State->SelectedLootRowId, State->ArrestEvidenceLootLocations[Index]) : nullptr;
+			return InvokeSingleActorServerRPC(Owner, TEXT("Server_RequestLootPickup"), Loot) && InvokeSingleActorServerRPC(Owner, TEXT("Server_RequestLootPickup"), Loot);
+		}));
+		Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("Loose Evidence pickup replicates exactly once"), [State, Index, CargoMatches, ContractMatches]()
+		{
+			if (!CargoMatches(RecovererId, 1, Index + 1) || !ContractMatches(State->ArrestEvidenceOriginal.ContractValue + (Index + 1) * State->SelectedLootValue)) return false;
+			for (UWorld* World : GetContractRunPIEWorlds())
+			{
+				const AHeistLootActor* Loot = FindLootActorAtLocation(World, State->SelectedLootRowId, State->ArrestEvidenceLootLocations[Index]);
+				if (!IsValid(Loot) || Loot->IsLootAvailable()) return false;
+			}
+			return true;
+		}, 10.0));
+	}
+	Test->AddCommand(new FHeistContractRunWaitCommand(Test, State, TEXT("final recovered cargo score weight carrier and values agree on both peers"), [State, CargoMatches, ContractMatches, FindOriginal]()
+	{
+		if (!CargoMatches(CarrierId, 0, 0) || !CargoMatches(RecovererId, 1, 2) ||
+			!ContractMatches(State->ArrestEvidenceOriginal.ContractValue + 2 * State->SelectedLootValue)) return false;
+		for (UWorld* World : GetContractRunPIEWorlds())
+		{
+			const AHeistPlayerState* Carrier = FindPlayerStateById(World, CarrierId);
+			const AHeistPlayerState* Recoverer = FindPlayerStateById(World, RecovererId);
+			const AHeistPaintingDisplayCaseActor* Case = FindPaintingCase(World, State->FirstRunContract.RequiredTargetCaseId);
+			if (!IsValid(Carrier) || !IsValid(Recoverer) || !IsValid(Case) || Case->GetOriginalCarrier() != Recoverer || IsValid(FindOriginal(World))) return false;
+			for (const FVector& Location : State->ArrestEvidenceInitialLootLocations)
+			{
+				const AHeistLootActor* Loot = FindLootActorAtLocation(World, State->SelectedLootRowId, Location);
+				if (!IsValid(Loot) || Loot->IsLootAvailable()) return false;
+			}
+		}
+		return true;
+	}, 10.0));
+	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("record two-peer mixed arrest Evidence recovery"), [Test, State]()
+	{
+		Test->AddInfo(FString::Printf(TEXT("W8 arrest evidence replication: Map=SandBoxMap NetMode=ListenServer Players=2 ContractStartPlayerCount=1 DirectPIEFallback=true Carrier=HostPlayer1 Recoverer=ClientPlayer2 Original=1 Loose=2 Carried=%d Secured=%d EvidenceActorReplication=PASS OwnerInventoryReplication=PASS ClientPickupRPC=PASS DuplicateLoosePickup=PASS ClientRescueRPC=PASS GuardContact=Teleported NaturalUserPIE=NotTested Steam=NotTested Result=PASS"),
+			State->ArrestEvidenceOriginal.ContractValue + 2 * State->SelectedLootValue, State->ArrestEvidenceSecuredValue));
+		return true;
+	}));
+}
+
 bool EnqueueSandBoxSecurityCooperationScenario(FAutomationTestBase* Test)
 {
 	const TSharedRef<FHeistContractRunAutomationState> State = MakeShared<FHeistContractRunAutomationState>();
@@ -4890,6 +5236,7 @@ bool EnqueueSandBoxSecurityCooperationScenario(FAutomationTestBase* Test)
 			State->SecurityIncidentCountBaseline + 1, State->SecurityInvestigationCountBaseline + 1));
 		return true;
 	}));
+	AppendSandBoxArrestEvidenceCommands(Test, State);
 	Test->AddCommand(new FEndPlayMapCommand());
 	Test->AddCommand(new FWaitLatentCommand(1.0f));
 	Test->AddCommand(new FHeistContractRunActionCommand(Test, State, TEXT("restore editor play settings after W8 Sandbox security test"), [State]()

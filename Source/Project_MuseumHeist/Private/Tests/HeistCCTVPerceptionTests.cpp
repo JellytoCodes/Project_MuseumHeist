@@ -66,6 +66,7 @@ bool FHeistCCTVPerceptionTest::RunTest(const FString& Parameters)
 	};
 	TestNull(TEXT("CCTV no longer owns a Box collision"), Camera->FindComponentByClass<UBoxComponent>());
 	TestTrue(TEXT("Active CCTV shows its light"), Camera->SightLightComponent->IsVisible());
+	TestEqual(TEXT("Coverage light does not add a misleading floor specular highlight"), Camera->SightLightComponent->SpecularScale, 0.f);
 	TestTrue(TEXT("Light radius matches Sight range"), FMath::IsNearlyEqual(Camera->SightLightComponent->AttenuationRadius, 1200.f));
 	TestTrue(TEXT("Light angle uses placed camera override"), FMath::IsNearlyEqual(Camera->SightLightComponent->OuterConeAngle, 70.f));
 	TestTrue(TEXT("Idle light is white"), Camera->SightLightComponent->GetLightColor().Equals(FLinearColor::White, .01f));
@@ -183,6 +184,65 @@ bool FHeistCCTVPerceptionTest::RunTest(const FString& Parameters)
 	State->RemovePlayerState(PS);
 	Advance(1.8f);
 	TestFalse(TEXT("Disconnected player state no longer holds the camera"), Camera->IsSweepPaused());
+
+	// Reproduce a high corridor installation with its authored downward pitch. The
+	// real Sight test uses the character's capsule centre, not the lit floor point.
+	State->SetMatchPhase(EHeistMatchPhase::Lobby);
+	Camera->Destroy();
+	State->AddPlayerState(PS);
+	const FTransform CorridorTransform(FRotator(-15.f, 0.f, 0.f), FVector(0.f, 0.f, 370.f));
+	Camera = World->SpawnActorDeferred<AHeistSecurityCameraActor>(AHeistSecurityCameraActor::StaticClass(),
+		CorridorTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+	if (!TestNotNull(TEXT("Corridor camera fixture spawns"), Camera)) return false;
+	Camera->DetectionRange = 900.f;
+	Camera->DetectionHalfAngleDegrees = 30.f;
+	Camera->SweepHalfAngleDegrees = 0.f;
+	Camera->FinishSpawning(CorridorTransform);
+	State->SetMatchPhase(EHeistMatchPhase::InGame);
+	Player->SetActorLocation(FVector(600.f, 0.f, 90.f));
+	Advance(.3f);
+	Camera->GetActorEyesViewPoint(Eye, Rotation);
+	TestTrue(TEXT("High camera retains its downward Sight pitch"), FMath::IsNearlyEqual(Rotation.Pitch, -15.f, .001f));
+	TestTrue(TEXT("High camera light starts at the same lens"), Eye.Equals(Camera->SightLightComponent->GetComponentLocation(), .001f));
+	TestTrue(TEXT("High camera light shares the pitched Sight direction"), Rotation.Vector().Equals(Camera->SightLightComponent->GetForwardVector(), .001f));
+	TestTrue(TEXT("Corridor camera light retains the 30 degree half cone"), FMath::IsNearlyEqual(Camera->SightLightComponent->OuterConeAngle, 30.f));
+	TestTrue(TEXT("Corridor camera light retains the 900 cm spherical range"), FMath::IsNearlyEqual(Camera->SightLightComponent->AttenuationRadius, 900.f));
+	TestTrue(TEXT("High pitched camera sees standing capsule centre ahead"), SeesPlayer());
+	Player->SetActorLocation(FVector(600.f, 300.f, 90.f));
+	Advance(.3f);
+	TestTrue(TEXT("Standing target inside the pitched 30 degree cone is visible"), SeesPlayer());
+	Player->SetActorLocation(FVector(600.f, 400.f, 90.f));
+	Advance(.3f);
+	TestFalse(TEXT("Standing target beyond the pitched lateral cone edge is invisible"), SeesPlayer());
+	TestEqual(TEXT("Crossing the narrow cone edge clears accumulated detection"), Camera->GetDetectionProgress(), 0.f);
+	Player->SetActorLocation(FVector(200.f, 0.f, 90.f));
+	Advance(.3f);
+	TestFalse(TEXT("Close floor target below the high camera's vertical cone is invisible"), SeesPlayer());
+	Player->SetActorLocation(FVector(840.f, 0.f, 90.f));
+	Advance(.3f);
+	TestTrue(TEXT("Standing target within the true 3D range remains visible"), SeesPlayer());
+	Player->SetActorLocation(FVector(860.f, 0.f, 90.f));
+	Advance(.3f);
+	TestFalse(TEXT("900 cm Sight cutoff uses 3D distance even when XY distance is shorter"), SeesPlayer());
+	TestEqual(TEXT("True range loss clears accumulated detection"), Camera->GetDetectionProgress(), 0.f);
+
+	AActor* CentreBlocker = World->SpawnActor<AActor>();
+	UBoxComponent* CentreBlockerBox = NewObject<UBoxComponent>(CentreBlocker);
+	CentreBlocker->SetRootComponent(CentreBlockerBox);
+	CentreBlockerBox->SetBoxExtent(FVector(25.f, 120.f, 15.f));
+	CentreBlockerBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	CentreBlockerBox->SetCollisionResponseToAllChannels(ECR_Ignore);
+	CentreBlockerBox->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+	CentreBlockerBox->RegisterComponent();
+	CentreBlocker->SetActorLocation(FVector(300.f, 0.f, 230.f));
+	Player->SetActorLocation(FVector(600.f, 0.f, 90.f));
+	Advance(.6f);
+	TestFalse(TEXT("High camera loses a target when its capsule centre LOS is blocked"), SeesPlayer());
+	TestEqual(TEXT("Centre LOS blocker cannot trigger a corridor detection incident"), Camera->GetDetectionRevision(), 0);
+	CentreBlocker->Destroy();
+	Advance(.6f);
+	TestTrue(TEXT("Removing the centre LOS blocker reacquires the corridor target"), SeesPlayer());
+	TestTrue(TEXT("Reacquisition starts fresh partial buildup rather than an instant incident"), Camera->GetDetectionProgress() > 0.f && Camera->GetDetectionRevision() == 0);
 	return true;
 }
 

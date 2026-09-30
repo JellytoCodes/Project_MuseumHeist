@@ -7,6 +7,61 @@ TOOLS=unreal.AssetToolsHelpers.get_asset_tools()
 BP='/Game/Blueprints/Environment/BP_FloorTilePCG'
 GRAPH='/Game/Assets/PCG/PCG_FloorTiles'
 
+def ensure_floor_bounds(bp):
+    """Keep one non-generated primitive available for PCG bounds in saved games."""
+    sub=unreal.get_engine_subsystem(unreal.SubobjectDataSubsystem)
+    lib=unreal.SubobjectDataBlueprintFunctionLibrary
+    handles=sub.k2_gather_subobject_data_for_blueprint(bp)
+    # SCS gathering lists child handles twice; count distinct component templates.
+    boxes=list({o.get_path_name():o for h in handles
+                for o in [lib.get_object(lib.get_data(h))]
+                if isinstance(o,unreal.BoxComponent)
+                and o.get_name().startswith('FloorBounds')}.values())
+    assert len(boxes)<=1,'Duplicate FloorBounds components'
+    ext=unreal.get_default_object(bp.generated_class()).get_editor_property('GridExtents')
+    bp.modify()
+    if not boxes:
+        parent=next(h for h in handles
+                    if isinstance(lib.get_object(lib.get_data(h)),unreal.SceneComponent)
+                    and lib.is_default_scene_root(lib.get_data(h)))
+        handle,reason=sub.add_new_subobject(unreal.AddNewSubobjectParams(
+            parent_handle=parent,new_class=unreal.BoxComponent,blueprint_context=bp))
+        assert not str(reason),reason
+        assert sub.rename_subobject(handle,'FloorBounds')
+        boxes=[lib.get_object(lib.get_data(handle))]
+    box=boxes[0];box.modify()
+    box.set_editor_properties(dict(is_editor_only=False,can_ever_affect_navigation=False,
+        generate_overlap_events=False,hidden_in_game=True,
+        relative_location=unreal.Vector(0,0,0),relative_rotation=unreal.Rotator(0,0,0),
+        relative_scale3d=unreal.Vector(1,1,1),
+        component_tags=[tag for tag in box.component_tags if str(tag)!='PCG Generated Component']))
+    box.set_collision_profile_name('NoCollision')
+    box.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
+    box.set_box_extent(unreal.Vector(ext.x,ext.y,max(50,ext.z)),False)
+    return box
+
+def sync_floor_bounds(actor):
+    """Match a placed floor's persistent bounds to its existing grid parameters."""
+    boxes=[c for c in actor.get_components_by_class(unreal.BoxComponent)
+           if c.get_name().startswith('FloorBounds')]
+    assert len(boxes)==1,'FloorBounds component missing or duplicated'
+    ext=actor.get_editor_property('GridExtents')
+    actor.modify();box=boxes[0];box.modify()
+    box.set_editor_properties(dict(is_editor_only=False,can_ever_affect_navigation=False,
+        generate_overlap_events=False,hidden_in_game=True,
+        relative_location=unreal.Vector(0,0,0),relative_rotation=unreal.Rotator(0,0,0),
+        relative_scale3d=unreal.Vector(1,1,1),
+        component_tags=[tag for tag in box.component_tags if str(tag)!='PCG Generated Component']))
+    # Editing a Blueprint component can reconstruct its owner's components.
+    boxes=[c for c in actor.get_components_by_class(unreal.BoxComponent)
+           if c.get_name().startswith('FloorBounds')]
+    assert len(boxes)==1,'FloorBounds component lost after reconstruction'
+    box=boxes[0];box.modify()
+    box.set_collision_profile_name('NoCollision')
+    box.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
+    box.set_box_extent(unreal.Vector(ext.x,ext.y,max(50,ext.z)),False)
+    return box
+
 def make():
     bp=unreal.load_asset(BP) if EL.does_asset_exist(BP) else BL.create_blueprint_asset_with_parent(BP,unreal.Actor)
     assert bp
@@ -37,6 +92,7 @@ def make():
     default.set_editor_property('GridExtents',unreal.Vector(6000,4400,0))
     default.set_editor_property('CellSize',unreal.Vector(400,400,100))
     default.set_editor_property('TilePivotOffset',unreal.Vector(-200,-200,0))
+    ensure_floor_bounds(bp)
     graph=unreal.load_asset(GRAPH) if EL.does_asset_exist(GRAPH) else TOOLS.create_asset('PCG_FloorTiles','/Game/Assets/PCG',unreal.PCGGraph,unreal.PCGGraphFactory())
     for existing_node in list(graph.nodes):graph.remove_node(existing_node)
     def node(cls,title,x,y):
