@@ -41,6 +41,9 @@ class PROJECT_MUSEUMHEIST_API UHeistTeamCardWidget : public UHeistUserWidgetBase
 	TObjectPtr<UTextBlock> PlayerNameText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UImage> PlayerColorMarker;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UImage> StatusIcon;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))

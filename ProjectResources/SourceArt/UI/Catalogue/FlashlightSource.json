@@ -1,0 +1,103 @@
+{
+  "name": "T_Catalogue_Flashlight",
+  "origin": "Original native geometric UI icon authored for this project",
+  "size": [
+    512,
+    256
+  ],
+  "atlas_states": [
+    "OFF left half",
+    "ON right half"
+  ],
+  "geometry": {
+    "body": [
+      [
+        52,
+        164
+      ],
+      [
+        112,
+        104
+      ],
+      [
+        136,
+        128
+      ],
+      [
+        76,
+        188
+      ]
+    ],
+    "head": [
+      [
+        104,
+        88
+      ],
+      [
+        144,
+        72
+      ],
+      [
+        180,
+        108
+      ],
+      [
+        144,
+        144
+      ]
+    ],
+    "cap": [
+      [
+        40,
+        172
+      ],
+      [
+        56,
+        156
+      ],
+      [
+        84,
+        184
+      ],
+      [
+        68,
+        200
+      ]
+    ],
+    "on_rays": [
+      [
+        [
+          152,
+          40
+        ],
+        [
+          164,
+          20
+        ]
+      ],
+      [
+        [
+          188,
+          68
+        ],
+        [
+          216,
+          52
+        ]
+      ],
+      [
+        [
+          200,
+          108
+        ],
+        [
+          232,
+          108
+        ]
+      ]
+    ]
+  },
+  "source_sha256": "90b5df56d73432cca68d347f8212d6125cd9e3d7998fae56fded93459dd3a623",
+  "asset_count": 1,
+  "derivative_of_existing_asset": false
+}

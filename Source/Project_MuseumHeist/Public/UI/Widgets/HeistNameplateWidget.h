@@ -45,6 +45,9 @@ class PROJECT_MUSEUMHEIST_API UHeistNameplateWidget : public UHeistUserWidgetBas
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> PlayerNameText;
 
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UImage> PlayerColorMarker;
+
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> CrewStatusText;
 

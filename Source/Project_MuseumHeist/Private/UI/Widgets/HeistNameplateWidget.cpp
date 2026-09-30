@@ -16,6 +16,8 @@
 
 namespace
 {
+const FLinearColor NameplateNameColor(0.92f, 0.92f, 0.88f);
+
 FSlateFontInfo MakeNameplateFont(const int32 Size)
 {
 	static UObject* BodyFont = LoadObject<UObject>(nullptr, TEXT("/Game/Assets/UI/Fonts/Catalogue/F_NanumGothic_Regular_Font.F_NanumGothic_Regular_Font"));
@@ -28,6 +30,8 @@ TSharedRef<SWidget> UHeistNameplateWidget::RebuildWidget()
 	if (IsValid(WidgetTree) && !IsValid(WidgetTree->RootWidget))
 	{
 		UHorizontalBox* ContentRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("NameplateContentRow"));
+		PlayerColorMarker = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("PlayerColorMarker"));
+		PlayerColorMarker->SetDesiredSizeOverride(FVector2D(12.0f, 12.0f));
 		CrewStatusBadge = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("CrewStatusBadge"));
 		CrewStatusBadge->SetPadding(FMargin(8.0f, 4.0f));
 		CrewStatusIconText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("CrewStatusIconText"));
@@ -48,6 +52,12 @@ TSharedRef<SWidget> UHeistNameplateWidget::RebuildWidget()
 		CrewStatusText->SetFont(MakeNameplateFont(16));
 		TextColumn->AddChildToVerticalBox(PlayerNameText);
 		TextColumn->AddChildToVerticalBox(CrewStatusText);
+		if (UHorizontalBoxSlot* MarkerSlot = ContentRow->AddChildToHorizontalBox(PlayerColorMarker))
+		{
+			MarkerSlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
+			MarkerSlot->SetVerticalAlignment(VAlign_Center);
+			MarkerSlot->SetPadding(FMargin(0.0f, 0.0f, 8.0f, 0.0f));
+		}
 		if (UHorizontalBoxSlot* BadgeSlot = ContentRow->AddChildToHorizontalBox(CrewStatusBadge))
 		{
 			BadgeSlot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
@@ -119,7 +129,8 @@ bool UHeistNameplateWidget::IsPresentationContractSatisfied() const
 		CrewStatusIconText->GetText().ToString() == HeistCrewStatus::ToIconGlyph(PlayerState->GetCrewStatus()).ToString() &&
 		(!IsValid(CrewStatusIconImage) || CrewStatusIconImage->GetVisibility() == ESlateVisibility::Collapsed);
 	return PlayerNameText->GetText().ToString() == PlayerState->GetHeistDisplayName().ToString() &&
-		PlayerNameText->GetColorAndOpacity().GetSpecifiedColor().Equals(PlayerState->PlayerColor) &&
+		PlayerNameText->GetColorAndOpacity().GetSpecifiedColor().Equals(NameplateNameColor) &&
+		(!IsValid(PlayerColorMarker) || PlayerColorMarker->GetColorAndOpacity().Equals(PlayerState->PlayerColor)) &&
 		CrewStatusText->GetText().ToString() == HeistCrewStatus::ToCompactText(PlayerState->GetCrewStatus()).ToString() &&
 		CrewStatusText->GetColorAndOpacity().GetSpecifiedColor().Equals(ExpectedStatusColor) &&
 		CrewStatusBadge->GetBrushColor().Equals(ExpectedStatusColor) &&
@@ -162,7 +173,11 @@ void UHeistNameplateWidget::RefreshPresentation()
 	if (IsValid(PlayerNameText))
 	{
 		PlayerNameText->SetText(PlayerState->GetHeistDisplayName());
-		PlayerNameText->SetColorAndOpacity(FSlateColor(PlayerState->PlayerColor));
+		PlayerNameText->SetColorAndOpacity(FSlateColor(NameplateNameColor));
+	}
+	if (IsValid(PlayerColorMarker))
+	{
+		PlayerColorMarker->SetColorAndOpacity(PlayerState->PlayerColor);
 	}
 	if (IsValid(CrewStatusText))
 	{

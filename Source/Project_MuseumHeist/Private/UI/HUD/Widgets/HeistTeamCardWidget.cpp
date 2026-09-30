@@ -47,7 +47,12 @@ void UHeistTeamCardWidget::ApplyCrewData(const FHeistCrewStatusEntry& CrewEntry,
 	if (IsValid(PlayerNameText))
 	{
 		PlayerNameText->SetText(bOccupied ? CrewEntry.PlayerName : FText::GetEmpty());
-		PlayerNameText->SetColorAndOpacity(FSlateColor(CrewEntry.PlayerColor));
+		PlayerNameText->SetColorAndOpacity(FSlateColor(FLinearColor(0.92f, 0.92f, 0.88f)));
+	}
+	if (IsValid(PlayerColorMarker))
+	{
+		PlayerColorMarker->SetColorAndOpacity(CrewEntry.PlayerColor);
+		PlayerColorMarker->SetVisibility(bOccupied ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	}
 	if (IsValid(StatusText))
 	{
@@ -86,6 +91,10 @@ void UHeistTeamCardWidget::ApplyEmptySlot(const int32 InPlayerSlot)
 	if (IsValid(PlayerNameText))
 	{
 		PlayerNameText->SetText(FText::GetEmpty());
+	}
+	if (IsValid(PlayerColorMarker))
+	{
+		PlayerColorMarker->SetVisibility(ESlateVisibility::Collapsed);
 	}
 	if (IsValid(StatusText))
 	{

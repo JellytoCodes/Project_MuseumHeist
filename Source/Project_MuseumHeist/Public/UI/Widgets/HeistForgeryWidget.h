@@ -9,6 +9,7 @@ class UTextBlock;
 class UWidget;
 class UImage;
 class UButton;
+class UProgressBar;
 class UTexture2D;
 struct FSlateBrush;
 
@@ -218,6 +219,9 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryWidget : public UHeistUserWidgetBase
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> PreviewScoreText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UProgressBar> PreviewQualityBar;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> TitleText;

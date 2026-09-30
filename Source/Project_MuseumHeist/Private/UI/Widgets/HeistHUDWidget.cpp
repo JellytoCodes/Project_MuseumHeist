@@ -483,11 +483,31 @@ UHeistInteractionPromptWidget* UHeistHUDWidget::ResolveInteractionChildWidget(co
 
 void UHeistHUDWidget::RefreshToolPresentation()
 {
-	if (IsValid(FlashlightStatusText) && IsValid(HUDViewModel))
+	if (IsValid(HUDViewModel))
 	{
-		FlashlightStatusText->SetText(HUDViewModel->GetFlashlightStatusText());
-		FlashlightStatusText->SetColorAndOpacity(FSlateColor(HUDViewModel->IsFlashlightEnabled()
-			? FLinearColor(0.92f, 0.82f, 0.64f) : FLinearColor(0.65f, 0.63f, 0.57f)));
+		const bool bFlashlightEnabled = HUDViewModel->IsFlashlightEnabled();
+		const FLinearColor FlashlightColor = bFlashlightEnabled
+			? FLinearColor(0.92f, 0.82f, 0.64f) : FLinearColor(0.65f, 0.63f, 0.57f);
+		if (IsValid(FlashlightStatusText))
+		{
+			FlashlightStatusText->SetText(bFlashlightEnabled
+				? NSLOCTEXT("HeistHUD", "FlashlightOnShort", "ON") : NSLOCTEXT("HeistHUD", "FlashlightOffShort", "OFF"));
+			FlashlightStatusText->SetColorAndOpacity(FSlateColor(FlashlightColor));
+		}
+		if (IsValid(FlashlightIcon))
+		{
+			FSlateBrush FlashlightBrush = FlashlightIcon->GetBrush();
+			FlashlightBrush.DrawAs = ESlateBrushDrawType::Image;
+			FlashlightBrush.Margin = FMargin(0.0f);
+			FlashlightBrush.SetImageSize(FVector2f(48.0f, 48.0f));
+			FlashlightBrush.TintColor = FSlateColor(FLinearColor::White);
+			FlashlightBrush.SetUVRegion(FBox2f(FVector2f(bFlashlightEnabled ? 0.5f : 0.0f, 0.0f),
+				FVector2f(bFlashlightEnabled ? 1.0f : 0.5f, 1.0f)));
+			FlashlightIcon->SetBrush(FlashlightBrush);
+			FlashlightIcon->SetColorAndOpacity(FlashlightColor);
+			FlashlightIcon->SetOpacity(bFlashlightEnabled ? 1.0f : 0.4f);
+			FlashlightIcon->SetToolTipText(HUDViewModel->GetFlashlightStatusText());
+		}
 	}
 	if (IsValid(ToolText))
 	{
@@ -519,8 +539,8 @@ void UHeistHUDWidget::RefreshMissionPresentation()
 			: HUDViewModel->GetRequiredTargetDisplayName();
 		RequiredTargetNameText->SetText(TargetName);
 		RequiredTargetNameText->SetColorAndOpacity(FSlateColor(HUDViewModel->IsRequiredTargetAcquired()
-			? FLinearColor(0.25f, 0.78f, 0.34f)
-			: FLinearColor(0.52f, 0.52f, 0.52f)));
+			? FLinearColor(0.48f, 0.82f, 0.60f)
+			: FLinearColor(0.80f, 0.82f, 0.82f)));
 	}
 
 	const UWorld* World = GetWorld();
@@ -637,9 +657,28 @@ void UHeistHUDWidget::RefreshAlertStars()
 	{
 		return;
 	}
+	FLinearColor AlertColor(0.88f, 0.86f, 0.80f);
+	switch (HUDViewModel->GetAlertLevel())
+	{
+	case EHeistAlertLevel::Suspicious:
+		AlertColor = FLinearColor(0.84f, 0.68f, 0.36f);
+		break;
+	case EHeistAlertLevel::Searching:
+		AlertColor = FLinearColor(0.96f, 0.60f, 0.24f);
+		break;
+	case EHeistAlertLevel::Alarmed:
+		AlertColor = FLinearColor(0.96f, 0.34f, 0.28f);
+		break;
+	case EHeistAlertLevel::Lockdown:
+		AlertColor = FLinearColor(0.98f, 0.20f, 0.16f);
+		break;
+	default:
+		break;
+	}
 	if (IsValid(AlertTitleText))
 	{
 		AlertTitleText->SetText(NSLOCTEXT("HeistHUD", "AlertTitle", "경계도"));
+		AlertTitleText->SetColorAndOpacity(FSlateColor(AlertColor));
 	}
 
 	const TArray<UImage*> AlertStars = {AlertStar01.Get(), AlertStar02.Get(), AlertStar03.Get(), AlertStar04.Get(), AlertStar05.Get(), AlertStar06.Get(), AlertStar07.Get(),
@@ -658,7 +697,7 @@ void UHeistHUDWidget::RefreshAlertStars()
 		{
 			StarImage->SetBrushFromTexture(StarTexture, false);
 		}
-		StarImage->SetColorAndOpacity(FLinearColor::White);
+		StarImage->SetColorAndOpacity(FilledAmount >= 0.5f ? AlertColor : FLinearColor(0.36f, 0.38f, 0.38f));
 		StarImage->SetVisibility(ESlateVisibility::HitTestInvisible);
 	}
 }
@@ -769,11 +808,13 @@ void UHeistHUDWidget::RefreshHUDQuickSlots()
 		if (SlotIndex == 0 && CoinPresentation != nullptr)
 		{
 			QuickSlotWidget->SetupHUDQuickSlot(*CoinPresentation, CoinQuickSlotIcon);
+			QuickSlotWidget->SetVisibility(ESlateVisibility::HitTestInvisible);
 		}
 		else
 		{
 			FHeistQuickSlotPresentation EmptyPresentation;
 			QuickSlotWidget->SetupHUDQuickSlot(EmptyPresentation, nullptr);
+			QuickSlotWidget->SetVisibility(ESlateVisibility::Collapsed);
 		}
 	}
 }
@@ -954,7 +995,9 @@ void UHeistHUDWidget::DebugDumpFirstPersonHUDState() const
 {
 	const bool bCrosshairReady = IsValid(CrosshairContainer) && IsValid(CrosshairIdleIndicator) && IsValid(CrosshairFocusIndicator);
 	const bool bCenterPromptReady = IsValid(InteractionPromptWidget) && IsValid(ActionProgressWidget);
-	const bool bToolReady = IsValid(HUDQuickSlot1) && IsValid(HUDQuickSlot2) && IsValid(HUDQuickSlot3);
+	const bool bToolReady = IsValid(HUDQuickSlot1) &&
+		(!IsValid(HUDQuickSlot2) || HUDQuickSlot2->GetVisibility() == ESlateVisibility::Collapsed) &&
+		(!IsValid(HUDQuickSlot3) || HUDQuickSlot3->GetVisibility() == ESlateVisibility::Collapsed);
 	const bool bStatusReady = IsValid(InventoryShortcutIcon) && IsValid(InventoryShortcutKeyText);
 	const bool bObjectiveReady = IsValid(MissionTitleText) && IsValid(MissionTimeText) && IsValid(RequiredTargetNameText) && IsValid(HUDViewModel) &&
 		!HUDViewModel->GetRequiredTargetDisplayName().IsEmpty();

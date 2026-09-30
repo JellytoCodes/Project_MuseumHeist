@@ -1,4 +1,5 @@
-"""Apply the approved catalogue presentation to existing WBP shells in the Editor."""
+"""Apply exhibition-label presentation to existing WBP shells, without new assets."""
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -7,9 +8,17 @@ import unreal
 ROOT=Path(unreal.Paths.project_dir()).resolve()
 TOOLS=unreal.get_default_object(unreal.UMGToolSet)
 WHITE=unreal.LinearColor(1,1,1,1)
-IVORY=unreal.LinearColor(0.82,0.76,0.64,1)
-INK=unreal.LinearColor(0.016,0.014,0.012,1)
-MUTED=unreal.LinearColor(0.42,0.40,0.35,1)
+IVORY=unreal.LinearColor(.90,.88,.81,1)
+INK=unreal.LinearColor(.012,.016,.020,1)
+MUTED=unreal.LinearColor(.52,.56,.58,1)
+GOLD=unreal.LinearColor(.58,.43,.22,1)
+EDGE=unreal.LinearColor(.12,.15,.17,1)
+SURFACE=unreal.LinearColor(.025,.031,.038,.96)
+OUT=ROOT/'Saved/Automation/UIUX20260930/Apply'
+OUT.mkdir(parents=True,exist_ok=True)
+MAP_PATHS=sorted((ROOT/'Content/Maps').rglob('*.umap'))
+MAP_BEFORE={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in MAP_PATHS}
+ASSETS_BEFORE=sorted(str(p.relative_to(ROOT)) for p in (ROOT/'Content').rglob('*.uasset'))
 BODY=unreal.load_asset('/Game/Assets/UI/Fonts/Catalogue/F_NanumGothic_Regular_Font')
 BOLD=unreal.load_asset('/Game/Assets/UI/Fonts/Catalogue/F_NanumGothic_Bold_Font')
 TITLE=unreal.load_asset('/Game/Assets/UI/Fonts/Catalogue/F_NanumMyeongjo_Bold_Font')
@@ -21,55 +30,77 @@ FONT_NATIVE_PER_DISPLAY=72.0/96.0
 CURRENT_ALREADY_FIXED=False
 
 def q(v):
-    return float(math.floor(float(v)/4+0.5)*4)
+    return int(math.floor(float(v)/4+0.5)*4)
 
 def margin(l=0,t=None,r=None,b=None):
     return unreal.Margin(l,l if t is None else t,l if r is None else r,l if b is None else b)
 
 def sc(c): return unreal.SlateColor(specified_color=c)
 
-def brush(key=None,color=WHITE,size=(256,64)):
+def brush(key=None,color=WHITE,size=(256,64),outline=None):
+    assert all(int(v)==v and int(v)%4==0 for v in size)
     b=unreal.WidgetLibrary.make_brush_from_texture(TEX.get(key),int(size[0]),int(size[1]))
+    # MakeBrushFromTexture returns a zero-size brush when no texture is given.
+    # Native controls such as Slider use ImageSize to arrange their handle.
+    image_size=b.get_editor_property('image_size')
+    image_size.set_editor_property('x',size[0]);image_size.set_editor_property('y',size[1])
+    b.set_editor_property('image_size',image_size)
     b.set_editor_property('tint_color',sc(color))
     b.set_editor_property('draw_as',unreal.SlateBrushDrawType.IMAGE)
     b.set_editor_property('margin',margin(0))
+    if key is None:
+        b.set_editor_property('draw_as',unreal.SlateBrushDrawType.ROUNDED_BOX)
+        s=b.get_editor_property('outline_settings')
+        s.set_editor_property('corner_radii',unreal.Vector4(4,4,4,4))
+        s.set_editor_property('rounding_type',unreal.SlateBrushRoundingType.FIXED_RADIUS)
+        s.set_editor_property('width',4 if outline else 0)
+        s.set_editor_property('color',sc(outline or unreal.LinearColor(0,0,0,0)))
+        b.set_editor_property('outline_settings',s)
     return b
 
 def font(w,size=None,kind=None):
     f=w.get_editor_property('font')
     f.set_editor_property('font_object',kind or BODY)
     f.set_editor_property('typeface_font_name','Default')
+    f.set_editor_property('letter_spacing',0)
     displayed=f.size/FONT_NATIVE_PER_DISPLAY if CURRENT_ALREADY_FIXED else f.size
-    f.set_editor_property('size',q(size if size is not None else max(16,displayed))*FONT_NATIVE_PER_DISPLAY)
+    f.set_editor_property('size',int(q(size if size is not None else max(20,displayed))*FONT_NATIVE_PER_DISPLAY))
     outline=f.get_editor_property('outline_settings');outline.set_editor_property('outline_size',0);f.set_editor_property('outline_settings',outline)
     w.set_editor_property('font',f)
 
 def label(w,size=None,heading=False,color=IVORY):
-    font(w,size,TITLE if heading else BODY)
+    font(w,size,BOLD if heading else BODY)
     w.set_color_and_opacity(sc(color))
 
 def button_style(existing=None,primary=False):
     s=existing or unreal.ButtonStyle()
-    s.set_editor_property('normal',brush('Button_Primary' if primary else 'Button_Normal'))
-    s.set_editor_property('hovered',brush('Button_Primary'))
-    s.set_editor_property('pressed',brush('Button_Pressed'))
-    s.set_editor_property('disabled',brush('Button_Normal',unreal.LinearColor(.5,.5,.5,.72)))
-    for key,col in [('normal_foreground',INK if primary else IVORY),('hovered_foreground',INK),('pressed_foreground',IVORY),('disabled_foreground',MUTED)]:
+    s.set_editor_property('normal',brush(color=GOLD if primary else SURFACE,outline=None if primary else EDGE))
+    s.set_editor_property('hovered',brush(color=unreal.LinearColor(.74,.57,.30,1) if primary else unreal.LinearColor(.09,.12,.14,1),outline=IVORY))
+    s.set_editor_property('pressed',brush(color=unreal.LinearColor(.40,.29,.14,1) if primary else INK,outline=GOLD))
+    s.set_editor_property('disabled',brush(color=unreal.LinearColor(.03,.035,.04,.60)))
+    for key,col in [('normal_foreground',INK if primary else IVORY),('hovered_foreground',INK if primary else IVORY),('pressed_foreground',IVORY),('disabled_foreground',MUTED)]:
         s.set_editor_property(key,sc(col))
-    s.set_editor_property('normal_padding',margin(20,8,20,8))
-    s.set_editor_property('pressed_padding',margin(20,12,20,4))
+    s.set_editor_property('normal_padding',margin(20,12,20,12))
+    s.set_editor_property('pressed_padding',margin(20,12,20,12))
     return s
 
 def style_button(w,primary=False):
     s=button_style(w.get_editor_property('widget_style'),primary)
     if 'Brush' in w.get_name() or w.get_name()=='CloseButton':
-        s.set_editor_property('normal_padding',margin(4));s.set_editor_property('pressed_padding',margin(4,8,4,0))
+        s.set_editor_property('normal_padding',margin(4));s.set_editor_property('pressed_padding',margin(4))
     w.set_style(s)
     w.set_background_color(WHITE)
     w.set_color_and_opacity(WHITE)
     # Let the authored button state choose the text colour on ivory hover surfaces.
     def inherit(child):
         if isinstance(child,unreal.TextBlock):
+            # Old minimum widths and fill slots survive a font/style change.
+            # Centre the actual text, rather than only the enclosing button.
+            child.set_editor_property('min_desired_width',0)
+            child.set_editor_property('justification',unreal.TextJustify.CENTER)
+            child.set_editor_property('auto_wrap_text',False)
+            child.set_editor_property('wrap_text_at',0)
+            font(child,kind=BOLD)
             child.set_color_and_opacity(unreal.SlateColor(color_use_rule=unreal.SlateColorStylingMode.USE_COLOR_FOREGROUND))
         if isinstance(child,unreal.PanelWidget):
             for c in child.get_all_children(): inherit(c)
@@ -78,11 +109,10 @@ def style_button(w,primary=False):
         inherit(c)
 
 def panel(w,light=False):
-    w.set_brush(brush('Header' if light else 'Panel',size=(256,256) if not light else (256,64)))
-    w.set_brush_color(WHITE)
+    flat(w,SURFACE)
 
-def flat(w,color=unreal.LinearColor(.014,.013,.011,.92)):
-    w.set_brush(brush(None,color,size=(4,4)))
+def flat(w,color=SURFACE,outline=None):
+    w.set_brush(brush(None,color,size=(4,4),outline=outline))
     w.set_brush_color(WHITE)
 
 def box(w,width,height=None):
@@ -111,11 +141,10 @@ def tab_title(bp,w,width=240,height=68):
     else:
         wrapper=TOOLS.call_method('WrapWidgets',(bp,[w],unreal.Border.static_class()))[0].widget
         wrapper=TOOLS.call_method('RenameWidget',(bp,wrapper,title_name)).widget
-    wrapper.set_brush(brush(f'Header_{width}x{height}',size=(width,height)))
-    wrapper.set_brush_color(WHITE);wrapper.set_padding(margin(24,8,24,8))
-    w.set_editor_property('justification',unreal.TextJustify.CENTER)
+    flat(wrapper,unreal.LinearColor(0,0,0,0));wrapper.set_padding(margin(0))
+    w.set_editor_property('justification',unreal.TextJustify.LEFT)
     w.set_editor_property('min_desired_width',160)
-    label(w,32,True,INK)
+    label(w,36,True,IVORY)
     fixed_bounds(bp,wrapper,width,height)
     if isinstance(wrapper.get_parent(),unreal.SizeBox):wrapper.get_parent().slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_LEFT)
     if isinstance(wrapper.slot,unreal.VerticalBoxSlot):wrapper.slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_LEFT)
@@ -151,19 +180,19 @@ def quantize(w):
 def controls(w):
     if isinstance(w,unreal.Slider):
         s=w.get_editor_property('widget_style')
-        for key in ['normal_thumb_image','hovered_thumb_image','disabled_thumb_image']:
-            s.set_editor_property(key,brush('Thumb',size=(24,24)))
+        for key,color in [('normal_thumb_image',IVORY),('hovered_thumb_image',GOLD),('disabled_thumb_image',MUTED)]:
+            s.set_editor_property(key,brush(color=color,size=(16,24)))
         for key in ['normal_bar_image','hovered_bar_image','disabled_bar_image']:
-            s.set_editor_property(key,brush(None,unreal.LinearColor(.34,.31,.25,1),size=(4,4)))
+            s.set_editor_property(key,brush(color=EDGE,size=(4,4)))
         s.set_editor_property('bar_thickness',4)
         w.set_editor_property('widget_style',s)
         w.set_slider_handle_color(WHITE);w.set_slider_bar_color(WHITE)
     elif isinstance(w,unreal.ComboBoxString):
-        font(w,20)
+        font(w,24)
         s=w.get_editor_property('widget_style');cb=s.combo_button_style
-        bs=button_style(cb.button_style);bs.set_editor_property('normal_padding',margin(0));bs.set_editor_property('pressed_padding',margin(0,4,0,0));cb.set_editor_property('button_style',bs)
+        bs=button_style(cb.button_style);bs.set_editor_property('normal_padding',margin(0));bs.set_editor_property('pressed_padding',margin(0));cb.set_editor_property('button_style',bs)
         cb.set_editor_property('down_arrow_image',brush('Chevron',size=(24,24)))
-        cb.set_editor_property('menu_border_brush',brush(None,INK,size=(4,4)))
+        cb.set_editor_property('menu_border_brush',brush(color=SURFACE,size=(4,4),outline=EDGE))
         cb.set_editor_property('menu_border_padding',margin(8))
         cb.set_editor_property('content_padding',margin(0))
         cb.set_editor_property('down_arrow_padding',margin(8,0,24,0))
@@ -173,7 +202,7 @@ def controls(w):
         s.set_editor_property('menu_row_padding',margin(8))
         w.set_editor_property('widget_style',s)
         w.set_editor_property('foreground_color',sc(IVORY))
-        w.set_editor_property('content_padding',margin(48,0,24,0))
+        w.set_editor_property('content_padding',margin(24,0,24,0))
         w.set_editor_property('max_list_height',320)
         row=w.get_editor_property('item_style')
         for key in ['even_row_background_brush','odd_row_background_brush']:
@@ -184,9 +213,9 @@ def controls(w):
         w.set_editor_property('item_style',row)
     elif isinstance(w,unreal.EditableTextBox):
         s=w.get_editor_property('widget_style')
-        for key in ['background_image_normal','background_image_hovered','background_image_focused','background_image_read_only']:
-            s.set_editor_property(key,brush('Button_Normal'))
-        s.set_editor_property('padding',margin(48,8,32,8))
+        for key,color in [('normal',EDGE),('hovered',GOLD),('focused',IVORY),('read_only',EDGE)]:
+            s.set_editor_property('background_image_'+key,brush(color=INK,outline=color))
+        s.set_editor_property('padding',margin(24,12,24,12))
         s.set_editor_property('foreground_color',sc(IVORY))
         s.set_editor_property('focused_foreground_color',sc(IVORY))
         s.set_editor_property('read_only_foreground_color',sc(IVORY))
@@ -194,7 +223,7 @@ def controls(w):
         ts=s.text_style;ts.set_editor_property('font',fs);ts.set_editor_property('color_and_opacity',sc(IVORY));s.set_editor_property('text_style',ts)
         w.set_editor_property('widget_style',s)
 
-def apply_screen(bp,key,ws):
+def apply_existing_layout(bp,key,ws):
     W=lambda name:ws[name]
     if key=='WBP_TitleMenu':
         W('Image_113').set_brush(brush('Backdrop',size=(1920,1080)))
@@ -391,6 +420,295 @@ def apply_screen(bp,key,ws):
         pos(W('TeamRewardTextBlock'),0,-136,672,32,anchor=(.5,1),align=(.5,1))
         W('ReplicaRecapScrollBox').set_editor_property('scrollbar_thickness',unreal.Vector2D(8,8))
 
+def add_widget(bp,cls,name,parent,index=-1):
+    current={str(i.widget_name):i.widget for i in TOOLS.call_method('GetWidgets',(bp,)).widgets if i.widget}
+    return current.get(name) or TOOLS.call_method('AddWidget',(bp,cls.static_class(),name,parent,index)).widget
+
+def apply_screen(bp,key,ws):
+    if key=='WBP_TitleMenu' and 'GameSubtitleText' not in ws:
+        ws['GameSubtitleText']=add_widget(bp,unreal.TextBlock,'GameSubtitleText',ws['TitleRoot'])
+    apply_existing_layout(bp,key,ws)
+    W=lambda name:ws[name]
+    if key=='WBP_TitleMenu':
+        W('Image_113').set_brush(brush('Backdrop',unreal.LinearColor(.48,.48,.48,1),(1920,1080)))
+        bg=add_widget(bp,unreal.Border,'HeistMenuShade',W('TitleRoot'),1)
+        flat(bg,unreal.LinearColor(.012,.016,.020,.94));bg.set_visibility(unreal.SlateVisibility.HIT_TEST_INVISIBLE)
+        pos(bg,0,0,640,1080)
+        W('LogoImage').set_brush(brush('Logo',size=(448,252)));pos(W('LogoImage'),80,64,448,252)
+        label(W('GameSubtitleText'),24,color=MUTED);pos(W('GameSubtitleText'),96,328,448,40)
+        rule=add_widget(bp,unreal.Image,'HeistMenuRule',W('TitleRoot'))
+        rule.set_brush(brush(color=GOLD));rule.set_visibility(unreal.SlateVisibility.HIT_TEST_INVISIBLE);pos(rule,96,396,80,4)
+        pos(W('TitleMenuColumn'),96,444,448,448)
+        for n in ['HostSessionSize','JoinSessionSize','SettingsSize','QuitGameSize']:box(W(n),448,72)
+        for n in ['HostSessionButtonText','JoinSessionButtonText','SettingsButtonText','QuitGameButtonText']:font(W(n),28,BOLD)
+        for n,w in ws.items():
+            if isinstance(w,unreal.Spacer):w.set_size(unreal.Vector2D(4,24 if n!='Spacer_185' else 4))
+    elif key=='WBP_Settings':
+        box(W('SettingsPanelSize'),1184,752);W('SettingsPanel').set_padding(margin(48,32,48,32))
+        label(W('SettingsTitleText'),36,True);fixed_bounds(bp,W('SettingsColumn'),1088,688)
+        W('SettingsColumn').get_parent().slot.set_padding(margin(48,32,48,32))
+        for prefix in ['FOV','Sensitivity','Volume','Resolution','WindowMode']:
+            label_box=W(prefix+'RowLabelSize');box(label_box,240,64)
+            label_box.slot.set_padding(margin(0,0,24,0))
+            label_box.get_child_at(0).slot.set_vertical_alignment(unreal.VerticalAlignment.V_ALIGN_CENTER)
+            label_box.get_child_at(0).slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_LEFT)
+            if prefix in ['FOV','Sensitivity','Volume']:
+                box(W(prefix+'RowSliderSize'),688,64);box(W(prefix+'RowValueSize'),112,64)
+                W(prefix+'RowSliderSize').slot.set_padding(margin(0,0,24,0))
+                W(prefix+'RowValueSize').slot.set_padding(margin(0))
+                value=W(prefix+'RowValueSize').get_child_at(0)
+                value.slot.set_vertical_alignment(unreal.VerticalAlignment.V_ALIGN_CENTER)
+                value.slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_RIGHT)
+                value.set_editor_property('justification',unreal.TextJustify.RIGHT)
+            else:
+                box(W(prefix+'RowComboSize'),824,64);W(prefix+'RowComboSize').slot.set_padding(margin(0))
+        for n in ['FOVRowLabel','SensitivityRowLabel','VolumeRowLabel','ResolutionRowLabel','WindowModeRowLabel']:label(W(n),24)
+        for n in ['FOVValueText','MouseSensitivityValueText','MasterVolumeValueText']:label(W(n),24,True)
+        for n in ['RestoreDefaultSettingsButtonSize','ApplySettingsButtonSize','SettingsCloseButtonSize']:
+            W(n).slot.set_padding(margin(16 if n!='RestoreDefaultSettingsButtonSize' else 0,0,0,0))
+    elif key=='WBP_SessionJoin':
+        box(W('SessionJoinPanelSize'),832,560);W('SessionJoinPanel').set_padding(margin(48,32,48,32))
+        W('SessionJoinColumn').slot.set_padding(margin(48,32,48,32))
+        label(W('SessionJoinTitleText'),36,True);fixed_bounds(bp,W('JoinCodeInput'),736,64)
+        W('JoinCodeInput').get_parent().slot.set_padding(margin(0))
+        W('JoinCodeLabelText').slot.set_padding(margin(0))
+        W('JoinCodeLabelText').set_editor_property('justification',unreal.TextJustify.LEFT)
+        W('JoinCodeInput').set_editor_property('minimum_desired_width',640)
+        for n in ['JoinCloseSize','RetrySessionSize','CancelSessionSize']:box(W(n),208,56)
+        box(W('SubmitJoinSessionSize'),256,64)
+        W('SubmitJoinSessionSize').slot.set_padding(margin(0))
+        W('SubmitJoinSessionSize').slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_CENTER)
+    elif key=='WBP_HeistHUD':
+        pos(W('MissionPanel'),32,32,304,208);W('MissionPanel').set_padding(margin(16,12,16,12))
+        flat(W('MissionPanel'),unreal.LinearColor(.012,.016,.020,.60))
+        label(W('MissionTitleText'),20,True,MUTED);label(W('MissionTimeText'),40,True)
+        label(W('RequiredTargetLabelText'),16,color=MUTED);label(W('RequiredTargetNameText'),24,True)
+        pos(W('AlertMeterPanel'),0,32,448,128,anchor=(.5,0),align=(.5,0));flat(W('AlertMeterPanel'),unreal.LinearColor(0,0,0,0))
+        W('AlertMeterPanel').set_padding(margin(16,8,16,8));label(W('AlertTitleText'),20,True,MUTED);label(W('AlertEventText'),20)
+        W('AlertEventText').set_editor_property('auto_wrap_text',True);W('AlertEventText').set_editor_property('wrap_text_at',416)
+        W('AlertStarRow').slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_CENTER)
+        pos(W('TeamCardsPanel'),-32,32,272,304,anchor=(1,0),align=(1,0))
+        pos(W('HUDQuickSlotRow'),-32,-32,152,64,anchor=(1,1),align=(1,1));W('Spacer_1').set_size(unreal.Vector2D(16,4))
+        box(W('SizeBox_0'),64,64);flat(W('Border_0'),unreal.LinearColor(.012,.016,.020,.60))
+        W('InventoryShortcutIcon').slot.set_padding(margin(20,24,20,12))
+        if 'FlashlightStatusText' in ws:
+            # One original atlas, two visually distinct states; keep the bound
+            # status node and add a separate static key cue.
+            row=add_widget(bp,unreal.HorizontalBox,'FlashlightControlRow',W('HUDCanvas'))
+            pos(row,-32,-112,160,48,anchor=(1,1),align=(1,1))
+            icon=add_widget(bp,unreal.Image,'FlashlightIcon',row,0)
+            icon.set_brush(brush('Flashlight',size=(48,48)));fixed_bounds(bp,icon,48,48)
+            icon.get_parent().slot.set_padding(margin(0,0,12,0))
+            key_text=add_widget(bp,unreal.TextBlock,'FlashlightKeyText',row)
+            key_text.set_text('[F]');label(key_text,20,True);fixed_bounds(bp,key_text,40,48)
+            key_text.slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_CENTER)
+            key_text.slot.set_vertical_alignment(unreal.VerticalAlignment.V_ALIGN_CENTER)
+            status=W('FlashlightStatusText')
+            if status.get_parent()!=row and status.get_parent().get_parent()!=row:
+                status=TOOLS.call_method('MoveWidget',(bp,status,row,-1)).widget
+            status.set_text('OFF');label(status,20,color=MUTED);fixed_bounds(bp,status,48,48)
+            status.set_editor_property('justification',unreal.TextJustify.CENTER)
+            status.slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_CENTER)
+            status.slot.set_vertical_alignment(unreal.VerticalAlignment.V_ALIGN_CENTER)
+        pos(W('InteractionPromptWidget'),0,-112,448,80,anchor=(.5,1),align=(.5,.5))
+        pos(W('ActionProgressWidget'),0,-208,384,64,anchor=(.5,1),align=(.5,.5))
+        pos(W('PopupFeedbackLayer'),0,-24,640,0,anchor=(.5,.5),align=(.5,0))
+        label(W('TutorialBodyText'),24);label(W('TutorialProgressText'),20,color=MUTED)
+    elif key=='WBP_TeamCard':
+        box(W('SizeBox_0'),272,64);W('TeamCardBorder').set_padding(margin(12,8,12,8));flat(W('TeamCardBorder'),unreal.LinearColor(.012,.016,.020,.60))
+        fixed_bounds(bp,W('ProfileImage_AspectFit'),40,40);image_size(W('ProfileImage'),40,40)
+        marker=add_widget(bp,unreal.Image,'PlayerColorMarker',W('TeamCardRow'),0)
+        marker.set_brush(brush(color=WHITE,size=(12,12)));fixed_bounds(bp,marker,12,12)
+        marker.get_parent().slot.set_padding(margin(0,0,8,0));marker.set_visibility(unreal.SlateVisibility.HIT_TEST_INVISIBLE)
+        for n in ['StatusIcon','MicStatusImage']:image_size(W(n),16,16)
+        label(W('PlayerNameText'),20,True);label(W('StatusText'),20);W('Spacer').set_size(unreal.Vector2D(8,4))
+    elif key=='WBP_HeistNameplate':
+        marker=add_widget(bp,unreal.Image,'PlayerColorMarker',W('NameplateContentRow'),1)
+        marker.set_brush(brush(color=WHITE,size=(12,12)));fixed_bounds(bp,marker,12,12)
+        marker.get_parent().slot.set_padding(margin(4,0,8,0));marker.set_visibility(unreal.SlateVisibility.HIT_TEST_INVISIBLE)
+        flat(W('CrewStatusBadge'),unreal.LinearColor(.012,.016,.020,.72));W('CrewStatusBadge').set_padding(margin(4))
+        label(W('PlayerNameText'),24,True);label(W('CrewStatusText'),20)
+    elif key=='WBP_QuickSlot':
+        box(W('SizeBox_0'),64,64);W('PlaceholderIcon_AspectFit').slot.set_padding(margin(20,24,20,12));image_size(W('PlaceholderIcon'),24,24)
+    elif key=='WBP_LobbyPlayerCard':
+        box(W('PlayerCardSizeBox'),388,248);W('PlayerCardBorder').set_padding(margin(24));box(W('ProfileImageSizeBox'),64,64);box(W('SizeBox_0'),280,56)
+        label(W('PlayerSlotText'),20,True,MUTED);label(W('PlayerNameText'),24,True)
+        W('PlayerNameText').set_editor_property('justification',unreal.TextJustify.CENTER)
+        W('PlayerNameText').set_editor_property('min_desired_width',0)
+        W('PlayerNameText').slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_FILL)
+        for n in ['Spacer_133','Spacer_1','Spacer']:W(n).set_size(unreal.Vector2D(4,12))
+    elif key=='WBP_LobbyMapCard':
+        # Runtime replaces these brushes with the map thumbnail. Keep the
+        # authored fallback and outline dimensions on the same four-pixel grid.
+        W('SelectMapButton').set_style(button_style())
+        box(W('MapCardSizeBox'),388,220)
+        # Do not resize the outer card when sizing its thumbnail.
+        thumbnail_size=W('SelectMapButton').get_parent()
+        if thumbnail_size==W('MapCardSizeBox'):
+            thumbnail_size=TOOLS.call_method('WrapWidgets',(bp,[W('SelectMapButton')],unreal.SizeBox.static_class()))[0].widget
+            TOOLS.call_method('RenameWidget',(bp,thumbnail_size,'MapThumbnailSize'))
+        box(thumbnail_size,384,216)
+        thumbnail_size.slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_CENTER)
+        thumbnail_size.slot.set_vertical_alignment(unreal.VerticalAlignment.V_ALIGN_CENTER)
+        W('SelectMapButton').slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_FILL)
+        W('SelectMapButton').slot.set_vertical_alignment(unreal.VerticalAlignment.V_ALIGN_FILL)
+    elif key=='WBP_Lobby':
+        W('LobbyRootBorder').set_brush(brush('Backdrop',unreal.LinearColor(.12,.12,.12,1),(1920,1080)))
+        W('LobbyRootBorder').set_padding(margin(0));label(W('LobbyTitleText'),36,True)
+        W('LobbyRootBorder').set_editor_property('horizontal_alignment',unreal.HorizontalAlignment.H_ALIGN_CENTER)
+        W('LobbyRootBorder').set_editor_property('vertical_alignment',unreal.VerticalAlignment.V_ALIGN_CENTER)
+        fixed_bounds(bp,W('LobbyContent'),1600,844)
+        for child in W('LobbyContent').get_all_children():
+            child.slot.set_size(unreal.SlateChildSize(0,unreal.SlateSizeRule.AUTOMATIC))
+            child.slot.set_padding(margin(0))
+            child.slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_FILL)
+        fixed_bounds(bp,W('LobbyHeaderRow'),1600,72)
+        W('Spacer_7').set_size(unreal.Vector2D(4,64))
+        for n in ['Spacer_2','Spacer_4','Spacer_5']:W(n).set_size(unreal.Vector2D(16,4))
+        W('PlayerCardsRow').slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_LEFT)
+        label(W('JoinCodeLabel'),20,color=MUTED);label(W('JoinCodeText'),28,True)
+        box(W('LeaveSessionSize'),192,56);box(W('PlayerCountSize'),96,56)
+        W('MapSection').slot.set_padding(margin(0,64,0,0))
+        title=W('MapSectionTitle');fixed_bounds(bp,title,1600,40)
+        title.get_parent().slot.set_padding(margin(0,0,0,24));title.slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_LEFT)
+        title.slot.set_vertical_alignment(unreal.VerticalAlignment.V_ALIGN_CENTER)
+        for n in ['MapRandomCard','MapM01Card','MapM02Card','MapM03Card']:W(n).slot.set_padding(margin(0,0,0 if n=='MapM03Card' else 16,0))
+        W('MapHorizontalScrollBox').set_editor_property('always_show_scrollbar',False)
+        W('Spacer_6').set_size(unreal.Vector2D(4,40));box(W('SizeBox_0'),320,72)
+        W('SizeBox_0').slot.set_padding(margin(0));W('SizeBox_0').slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_CENTER)
+    elif key=='WBP_Inventory':
+        pos(W('InventoryPanel'),0,0,768,848,anchor=(.5,.5),align=(.5,.5));W('InventoryPanel').set_padding(margin(32))
+        pos(W('InventoryFrameWidget'),0,32,640,640,anchor=(.5,.5),align=(.5,.5))
+        label(W('InventoryTitleText'),36,True)
+        if 'BackgroundBlur_73' in ws:W('BackgroundBlur_73').set_editor_property('blur_strength',4)
+    elif key=='WBP_InventoryFrame':
+        for n,w in ws.items():
+            if n.startswith('GridCell') and isinstance(w,unreal.Border):flat(w,unreal.LinearColor(.035,.044,.052,1),EDGE)
+    elif key=='WBP_InventorySlot':
+        flat(W('SlotBackground'),WHITE,EDGE)
+        W('SlotBackground').set_brush_color(unreal.LinearColor(.04,.05,.06,.96))
+    elif key=='WBP_InventoryItem':
+        flat(W('ItemBackground'),unreal.LinearColor(.018,.023,.029,.96),GOLD);W('ItemBackground').set_padding(margin(8))
+        W('PlaceholderIcon').set_color_and_opacity(WHITE)
+    elif key=='WBP_HeistForgery':
+        flat(W('FullScreenBackground'),INK);flat(W('DrawingContainer'),unreal.LinearColor(.035,.044,.052,1),EDGE);W('DrawingContainer').set_padding(margin(16))
+        label(W('TitleText'),32,True);label(W('DrawingTimeRemainingText'),28,True,GOLD)
+        pos(W('VerticalBox_0'),0,20,960,108,anchor=(.5,0),align=(.5,0))
+        pos(W('VerticalBox_0'),0,20,960,128,anchor=(.5,0),align=(.5,0))
+        label(W('PreviewScoreText'),20,True);W('PreviewScoreText').set_text('예상 완성도 · 보완 필요')
+        W('PreviewScoreText').set_editor_property('justification',unreal.TextJustify.CENTER)
+        bar=add_widget(bp,unreal.ProgressBar,'PreviewQualityBar',W('VerticalBox_0'))
+        fixed_bounds(bp,bar,400,12);bar.get_parent().slot.set_padding(margin(0))
+        bar_style=bar.get_editor_property('widget_style')
+        bar_style.set_editor_property('background_image',brush(color=EDGE,size=(4,4)))
+        bar_style.set_editor_property('fill_image',brush(color=WHITE,size=(4,4)))
+        bar.set_editor_property('widget_style',bar_style);bar.set_percent(0)
+        pos(W('DrawingContent'),0,0,144,720,anchor=(.5,.5),align=(.5,.5))
+        pos(W('DrawingContainer'),448,28,832,832,anchor=(0,.5),align=(.5,.5))
+        pos(W('ReferenceImage'),-448,28,800,800,anchor=(1,.5),align=(.5,.5))
+        for name,text,x,anchor in [('HeistCanvasLabel','복제 작업',48,(0,0)),('HeistReferenceLabel','관찰한 원본',-848,(1,0))]:
+            w=add_widget(bp,unreal.TextBlock,name,W('RootCanvas'));w.set_text(text);label(w,20,True,MUTED);pos(w,x,128,800,32,anchor=anchor)
+        label(W('BrushSizeLabel_1'),20,True,MUTED);label(W('BrushSizeLabel'),20,True,MUTED)
+        for n,w in ws.items():
+            if n.startswith('PaletteButton') and isinstance(w,unreal.Button):fixed_bounds(bp,w,144,48)
+            elif n.startswith('Brush') and isinstance(w,unreal.Button):fixed_bounds(bp,w,144,48)
+            elif isinstance(w,unreal.Spacer) and w.get_parent()==W('DrawingContent'):w.set_size(unreal.Vector2D(4,8))
+        for name in ['SubmitButton','CancelButton']:fixed_bounds(bp,W(name),224,64)
+        pos(W('FooterActionRow'),0,-28,480,64,anchor=(.5,1),align=(.5,1))
+        label(W('FooterHint'),20,color=MUTED);pos(W('FooterHint'),0,-4,1808,24,anchor=(.5,1),align=(.5,1))
+    elif key=='WBP_HeistFloorPlanMap':
+        W('MapBackdropImage').set_brush(brush(color=SURFACE));W('MapSurfaceBackdrop').set_brush(brush(color=INK))
+        W('MapLayout').slot.set_padding(margin(96,40,96,32));label(W('MapTitleText'),36,True);label(W('MapHintText'),20,color=MUTED)
+    elif key=='WBP_ActionProgress':
+        box(W('SizeBox_0'),384,64);W('ActionProgressContainer').set_padding(margin(16,8,16,8));W('ActionProgressBar').set_fill_color_and_opacity(GOLD);label(W('ActionTypeText'),20,True)
+    elif key=='WBP_HeistPopupFeedback':
+        fixed_bounds(bp,W('PopupContainer'),640,80);label(W('PopupText'),24,True);W('PopupText').set_editor_property('wrap_text_at',592)
+    elif key=='WBP_InteractionPrompt':
+        fixed_bounds(bp,W('InteractionPromptContainer'),448,80);W('InteractionPromptContainer').set_padding(margin(16,8,16,8))
+        label(W('TargetText'),24,True);W('TargetText').set_editor_property('wrap_text_at',416);label(W('AvailabilityText'),20)
+    elif key=='WBP_ResultReplicaCard':
+        box(W('ReplicaImageSize'),224,224);W('ArtifactNameText').set_editor_property('min_desired_width',272);W('ArtifactNameText').set_editor_property('wrap_text_at',272)
+        badge=ws.get('RequiredTargetBadge')
+        if badge is None:
+            overlay=W('ReplicaImageSize').get_parent()
+            if not isinstance(overlay,unreal.Overlay):
+                overlay=TOOLS.call_method('WrapWidgets',(bp,[W('ReplicaImageSize')],unreal.Overlay.static_class()))[0].widget
+            badge=add_widget(bp,unreal.TextBlock,'RequiredTargetBadge',overlay)
+            badge.set_text('필수 목표')
+        elif not isinstance(badge.get_parent(),unreal.Overlay):
+            overlay=TOOLS.call_method('WrapWidgets',(bp,[W('ReplicaImageSize')],unreal.Overlay.static_class()))[0].widget
+            badge=TOOLS.call_method('MoveWidget',(bp,badge,overlay,-1)).widget
+        else:
+            overlay=badge.get_parent()
+            tree=TOOLS.call_method('GetWidgets',(bp,)).widgets[0].widget.get_outer()
+            if badge.get_outer()!=tree:
+                # Repair the earlier raw AddChild operation through the Editor
+                # move API, which also transfers the widget to the correct tree.
+                badge=TOOLS.call_method('MoveWidget',(bp,badge,overlay.get_parent(),-1)).widget
+                badge=TOOLS.call_method('MoveWidget',(bp,badge,overlay,-1)).widget
+        badge.slot.set_padding(margin(8));badge.slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_LEFT)
+        badge.slot.set_vertical_alignment(unreal.VerticalAlignment.V_ALIGN_TOP)
+        label(W('ArtifactNameText'),24,True);label(W('QualityText'),20);label(badge,20,True,GOLD)
+    elif key=='WBP_ResultPlayerRow':
+        W('PlayerResultRowRoot').set_padding(margin(8,8,8,8));flat(W('PlayerResultRowRoot'))
+        W('PlayerResultRowRoot').set_editor_property('horizontal_alignment',unreal.HorizontalAlignment.H_ALIGN_CENTER)
+        box(W('ProfileImageSize'),48,48);W('ProfileImageSize').slot.set_padding(margin(0))
+        profile=unreal.load_asset('/Game/Assets/UI/Common/Monochrome/T_UIProfile_EmptyPlayer_Monochrome_2048')
+        assert profile,'Missing existing player profile fallback'
+        W('ProfileImage').set_brush_from_texture(profile,False)
+        cdo=unreal.get_default_object(bp.generated_class())
+        cdo.modify();cdo.set_editor_property('default_profile_texture',profile)
+        for name,width in [('PlayerNameText',448),('PlayerStateText',96),('SurfaceForgeryCountText',96),
+                           ('BestSurfaceQualityText',112),('ArtifactsRecoveredText',112),('SecuredLootValueText',160),
+                           ('GuardsDistractedText',112),('TeammatesRescuedText',112),('AlarmsTriggeredText',112)]:
+            fixed_bounds(bp,W(name),width,48);W(name).get_parent().slot.set_padding(margin(0))
+            W(name).set_editor_property('min_desired_width',0)
+            W(name).set_editor_property('justification',unreal.TextJustify.LEFT if name=='PlayerNameText' else unreal.TextJustify.CENTER)
+            W(name).slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_FILL)
+            W(name).slot.set_vertical_alignment(unreal.VerticalAlignment.V_ALIGN_CENTER)
+            if name=='PlayerNameText':W(name).slot.set_padding(margin(16,0,16,0))
+        for w in ws.values():
+            if isinstance(w,unreal.TextBlock):label(w,20)
+    elif key=='WBP_Result':
+        flat(W('ResultBackdrop'),INK);label(W('OutcomeTextBlock'),48,True);label(W('OutcomeReasonTextBlock'),24);label(W('TeamRewardTextBlock'),40,True,GOLD)
+        pos(W('OutcomeTextBlock'),0,40,1400,64,anchor=(.5,0),align=(.5,0))
+        pos(W('OutcomeReasonTextBlock'),0,112,1400,48,anchor=(.5,0),align=(.5,0))
+        pos(W('TeamRewardTextBlock'),0,184,1400,64,anchor=(.5,0),align=(.5,0))
+        W('ReplicaRecapScrollBox').slot.set_padding(margin(24,8,24,8))
+        W('ReplicaRecapScrollBox').set_editor_property('always_show_scrollbar',False)
+        W('ContributionTablePanel').set_padding(margin(24,8,24,8))
+        recap=W('ReplicaRecapVisualContainer')
+        if not isinstance(recap.get_parent(),unreal.Border):
+            recap_center=TOOLS.call_method('WrapWidgets',(bp,[recap],unreal.Border.static_class()))[0].widget
+            TOOLS.call_method('RenameWidget',(bp,recap_center,'ReplicaRecapCenter'))
+            recap_size=TOOLS.call_method('WrapWidgets',(bp,[recap_center],unreal.SizeBox.static_class()))[0].widget
+            TOOLS.call_method('RenameWidget',(bp,recap_size,'ReplicaRecapViewportWidth'))
+        else:
+            recap_center=recap.get_parent();recap_size=recap_center.get_parent()
+        flat(recap_center,unreal.LinearColor(0,0,0,0));recap_center.set_padding(margin(0))
+        recap_center.set_editor_property('horizontal_alignment',unreal.HorizontalAlignment.H_ALIGN_CENTER)
+        recap_center.set_editor_property('vertical_alignment',unreal.VerticalAlignment.V_ALIGN_CENTER)
+        recap.slot.set_padding(margin(0));recap_size.set_min_desired_width(1488)
+        pos(W('ReplicaRecapVisualPanel'),0,264,1536,352,anchor=(.5,0),align=(.5,0))
+        pos(W('ContributionTablePanel'),0,680,1600,288,anchor=(.5,0),align=(.5,0))
+        pos(W('ContributionTableHeader'),0,628,1408,40,anchor=(.5,0),align=(.5,0))
+        for name,x in [('RewardDetailsButton',-220),('ReturnToLobbyButton',220)]:
+            if name in ws:pos(W(name),x,1008,256,64,anchor=(.5,0),align=(.5,.5))
+        for name,width in [('HeaderProfile',48),('HeaderPlayer',448),('HeaderState',96),('HeaderDrawing',96),
+                           ('HeaderBestQuality',112),('HeaderOriginals',112),('HeaderSecured',160),
+                           ('HeaderGuards',112),('HeaderRescues',112),('HeaderAlarms',112)]:
+            if name in ws:
+                fixed_bounds(bp,W(name),width,40);W(name).get_parent().slot.set_padding(margin(0))
+                W(name).set_editor_property('min_desired_width',0)
+                W(name).set_editor_property('justification',unreal.TextJustify.LEFT if name=='HeaderPlayer' else unreal.TextJustify.CENTER)
+                W(name).slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_FILL)
+                W(name).slot.set_vertical_alignment(unreal.VerticalAlignment.V_ALIGN_CENTER)
+                if name=='HeaderPlayer':W(name).slot.set_padding(margin(16,0,16,0))
+        for n,w in ws.items():
+            if isinstance(w,unreal.TextBlock) and n.startswith('Header'):label(w,20,True,MUTED)
+    elif key=='WBP_ResultRewardDetail':
+        box(W('SizeBox_0'),640,816);W('RewardDetailRoot').set_padding(margin(32));label(W('RewardDetailTitle'),32,True)
+
 def fixed_bounds(bp,w,width,height):
     if isinstance(w.slot,unreal.CanvasPanelSlot):
         w.slot.set_auto_size(False);w.slot.set_size(unreal.Vector2D(width,height));return
@@ -416,66 +734,21 @@ def fit_image(bp,w):
     if isinstance(texture,unreal.Texture2D):w.set_brush_from_texture(texture,True)
 
 def image_presentation(bp,key,ws):
-    panels={'SettingsPanel':('SettingsPanel',(1360,752)), 'SessionJoinPanel':('JoinPanel',(1008,560)),
-        'MapRootBorder':('MapPanel',(1920,1080)), 'InventoryPanel':('InventoryPanel',(768,960)),
-        'RewardDetailRoot':('RewardPanel',(540,700)), 'ReplicaRecapVisualPanel':('RecapPanel',(1400,352)),
-        'ContributionTablePanel':('ContributionPanel',(1400,328)), 'PlayerCardBorder':('PlayerPanel',(400,300)),
-        'MissionPanel':('HUDMissionPanel',(304,208)), 'AlertMeterPanel':('HUDAlertPanel',(344,112)),
-        'TeamCardBorder':('HUDTeamPanel',(304,80)), 'TutorialCardContainer':('HUDTutorialPanel',(800,200))}
-    panels.update({'ActionProgressContainer':('Field',(516,60)), 'PopupContainer':('Field',(688,80)),
-                   'InteractionPromptContainer':('Field',(688,80))})
-    if key=='WBP_HeistHUD':panels['Border_0']=('HUDSlotPanel',(88,88))
-    if key=='WBP_QuickSlot':
-        for name,w in ws.items():
-            if isinstance(w,unreal.Border):panels[name]=('HUDSlotPanel',(88,88))
     for name,w in ws.items():
-        if isinstance(w,unreal.Border):
-            if name in panels:
-                texture,size=panels[name];w.set_brush(brush(texture,size=size));w.set_brush_color(WHITE)
-            elif name not in ['DrawingContainer','DrawingSurface','CrewStatusBadge','LobbyRootBorder'] and not name.endswith('_CatalogueTab'):
-                # Content-sized utility surfaces have no decorative frame to deform.
-                b=w.get_editor_property('background')
-                if b.get_editor_property('resource_object'):flat(w)
-        if isinstance(w,unreal.Button) and not name.startswith('PaletteButton') and name!='SelectMapButton':
-            if key=='WBP_TitleMenu':size=(384,108)
-            elif name in ['CloseButton','CopyJoinCodeButton']:size=(128,36)
-            elif name=='LeaveSessionButton':size=(200,56)
-            elif name.startswith('Brush'):size=(144,40)
-            elif name in ['SubmitJoinSessionButton','StartGameButton','ReadyButton','SubmitButton','CancelButton','ReturnToLobbyButton','RewardDetailsButton']:size=(256,72)
-            else:size=(224,64)
-            fixed_bounds(bp,w,*size)
-            s=w.get_editor_property('widget_style')
-            primary=name in ['HostSessionButton','ApplySettingsButton','SubmitJoinSessionButton','StartGameButton','SubmitButton']
-            for state,art in [('normal','Primary' if primary else 'Normal'),('hovered','Primary'),('pressed','Pressed'),('disabled','Normal')]:
-                tint=unreal.LinearColor(.5,.5,.5,.72) if state=='disabled' else WHITE
-                s.set_editor_property(state,brush(f'Button_{art}_{size[0]}x{size[1]}',tint,size))
-            w.set_style(s)
-        if isinstance(w,unreal.ComboBoxString):
-            s=w.get_editor_property('widget_style');cb=s.combo_button_style;bs=cb.button_style
-            for state in ['normal','hovered','pressed','disabled']:bs.set_editor_property(state,brush('Field',size=(688,80)))
-            cb.set_editor_property('button_style',bs);s.set_editor_property('combo_button_style',cb);w.set_editor_property('widget_style',s)
-        if isinstance(w,unreal.EditableTextBox):
-            fixed_bounds(bp,w,688,80)
-            s=w.get_editor_property('widget_style')
-            for state in ['normal','hovered','focused','read_only']:s.set_editor_property('background_image_'+state,brush('Field',size=(688,80)))
-            w.set_editor_property('widget_style',s)
-        if isinstance(w,unreal.Image) and name in ['PlaceholderIcon','ProfileImage','MapThumbnailImage','ReplicaImage','ReferenceImage']:
-            fit_image(bp,w)
+        if isinstance(w,unreal.Image):
+            b=w.get_editor_property('brush')
+            if isinstance(b.get_editor_property('resource_object'),unreal.Texture2D):
+                b.set_editor_property('draw_as',unreal.SlateBrushDrawType.IMAGE)
+                b.set_editor_property('margin',margin(0));w.set_brush(b)
+            if name in ['PlaceholderIcon','ProfileImage','MapThumbnailImage','ReplicaImage','ReferenceImage']:fit_image(bp,w)
         if isinstance(w,unreal.TextBlock) and name in ['PlayerNameText','NameText']:
             w.set_editor_property('text_overflow_policy',unreal.TextOverflowPolicy.ELLIPSIS)
             w.set_clipping(unreal.WidgetClipping.CLIP_TO_BOUNDS)
     if key=='WBP_HeistNameplate':
-        ws['CrewStatusBadge'].set_padding(margin(4))
         for name in ['PlayerNameText','CrewStatusText']:
             ws[name].set_editor_property('justification',unreal.TextJustify.LEFT)
             ws[name].set_editor_property('auto_wrap_text',False)
             ws[name].set_editor_property('wrap_text_at',0)
-    if key=='WBP_HeistHUD':
-        ws['AlertMeterPanel'].slot.set_size(unreal.Vector2D(344,112))
-        pos(ws['InteractionPromptWidget'],0,-224,688,80,anchor=(.5,1),align=(.5,.5))
-        pos(ws['ActionProgressWidget'],0,-136,516,60,anchor=(.5,1),align=(.5,.5))
-        pos(ws['PopupFeedbackLayer'],0,0,688,0,anchor=(.5,.5),align=(.5,0))
-    if key=='WBP_Settings':fixed_bounds(bp,ws['SettingsColumn'],944,688)
 
 paths=sorted(unreal.EditorAssetLibrary.list_assets('/Game/Blueprints/UI',recursive=True,include_folder=False))
 results=[]
@@ -518,7 +791,7 @@ for path in paths:
             bg.set_visibility(unreal.SlateVisibility.HIT_TEST_INVISIBLE)
     ws={str(i.widget_name):i.widget for i in TOOLS.call_method('GetWidgets',(bp,)).widgets if i.widget}
     for name,w in ws.items():
-        w.modify();quantize(w)
+        w.modify();quantize(w);w.set_render_scale(unreal.Vector2D(1,1))
         if isinstance(w,unreal.TextBlock):
             label(w,heading=('Title' in name or name=='MapNameText'))
         elif isinstance(w,unreal.Border):
@@ -537,11 +810,20 @@ for path in paths:
             style_button(w,name in ['HostSessionButton','ApplySettingsButton','SubmitJoinSessionButton','StartGameButton','SubmitButton'])
     image_presentation(bp,key,final_ws)
     unreal.EditorAssetLibrary.set_metadata_tag(bp,'CatalogueFontDisplayDPI','72')
+    unreal.EditorAssetLibrary.set_metadata_tag(bp,'HeistUIDesign','ExhibitionLabelV2')
+    owned_tree=TOOLS.call_method('GetWidgets',(bp,)).widgets[0].widget.get_outer()
+    assert all(w.get_outer()==owned_tree for w in final_ws.values()),'Foreign widget tree in '+path
     ok=TOOLS.call_method('CompileWidgetBlueprint',(bp,))
     if not ok:raise RuntimeError('Compile failed '+path)
     unreal.EditorAssetLibrary.save_loaded_asset(bp)
     descriptions[path]=TOOLS.call_method('GetWidgetDescription',(bp,None,-1)).description
     results.append({'asset':path,'widgets':len(final_ws),'compiled':bool(ok)})
     unreal.log_warning('CATALOGUE APPLIED '+key)
-(ROOT/'Saved/Logs/CatalogueApply.json').write_text(json.dumps(results,indent=2),encoding='utf-8')
-(ROOT/'Saved/Logs/CatalogueWidgetDescriptions.json').write_text(json.dumps(descriptions,ensure_ascii=False,indent=2),encoding='utf-8')
+(OUT/'apply-assets.json').write_text(json.dumps(results,indent=2),encoding='utf-8')
+(OUT/'widget-descriptions.json').write_text(json.dumps(descriptions,ensure_ascii=False,indent=2),encoding='utf-8')
+
+MAP_AFTER={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in MAP_PATHS}
+ASSETS_AFTER=sorted(str(p.relative_to(ROOT)) for p in (ROOT/'Content').rglob('*.uasset'))
+assert MAP_BEFORE==MAP_AFTER,'UI application changed a map'
+assert ASSETS_BEFORE==ASSETS_AFTER,'UI application created an asset'
+(OUT/'preservation.json').write_text(json.dumps({'maps_unchanged':True,'new_assets':0,'active_widgets':len(results)},indent=2),encoding='utf-8')

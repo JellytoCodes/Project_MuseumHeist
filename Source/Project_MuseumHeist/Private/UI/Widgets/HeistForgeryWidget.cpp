@@ -3,6 +3,7 @@
 #include "Components/Border.h"
 #include "Components/Button.h"
 #include "Components/Image.h"
+#include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Components/Widget.h"
 #include "Core/HeistLogChannels.h"
@@ -36,6 +37,30 @@ constexpr float MaximumDrawingSurfaceAspectError = 0.02f;
 // the painter on its own power-of-two supersampled canvas.
 constexpr int32 DrawingRasterResolution = 1024;
 constexpr int32 DrawingRasterBytesPerPixel = 4;
+
+void ApplyFixedSizeSelectionStyle(UButton* Button, const FLinearColor& FillColor, const bool bSelected)
+{
+	const FButtonStyle& CurrentStyle = Button->GetStyle();
+	FButtonStyle SelectionStyle = CurrentStyle;
+	for (FSlateBrush* Brush : {&SelectionStyle.Normal, &SelectionStyle.Hovered, &SelectionStyle.Pressed, &SelectionStyle.Disabled})
+	{
+		Brush->SetResourceObject(nullptr);
+		Brush->DrawAs = ESlateBrushDrawType::RoundedBox;
+		Brush->Margin = FMargin(0.0f);
+		Brush->TintColor = FSlateColor(FillColor);
+		Brush->OutlineSettings = FSlateBrushOutlineSettings(4.0f,
+			FSlateColor(bSelected ? FLinearColor(0.92f, 0.82f, 0.60f) : FLinearColor(0.24f, 0.26f, 0.26f)), 4.0f);
+		Brush->OutlineSettings.bUseBrushTransparency = true;
+	}
+	if (SelectionStyle.Normal != CurrentStyle.Normal || SelectionStyle.Hovered != CurrentStyle.Hovered ||
+		SelectionStyle.Pressed != CurrentStyle.Pressed || SelectionStyle.Disabled != CurrentStyle.Disabled)
+	{
+		Button->SetStyle(SelectionStyle);
+	}
+	Button->SetBackgroundColor(FLinearColor::White);
+	Button->SetRenderOpacity(1.0f);
+	Button->SetRenderScale(FVector2D(1.0f, 1.0f));
+}
 
 void ResetRasterToOpaqueBlack(TArray64<uint8>& RasterBytes)
 {
@@ -150,50 +175,39 @@ void ResamplePolylineToPointCount(TArray<FVector2D>& Points, const int32 TargetP
 	Points = MoveTemp(ResampledPoints);
 }
 
-FLinearColor ResolveScoreTextColor(const float Score)
+FLinearColor ResolveScoreTextColor(const float Score, const float MinimumScore, const bool bCanSubmit)
 {
 	if (!FMath::IsFinite(Score))
 	{
 		return FLinearColor(0.72f, 0.76f, 0.82f);
 	}
-	if (Score >= 90.0f)
+	if (bCanSubmit)
 	{
-		return FLinearColor(0.25f, 0.95f, 0.42f);
+		return FLinearColor(0.32f, 0.78f, 0.48f);
 	}
-	if (Score >= 70.0f)
-	{
-		return FLinearColor(0.65f, 0.90f, 0.25f);
-	}
-	if (Score >= 50.0f)
-	{
-		return FLinearColor(1.0f, 0.75f, 0.15f);
-	}
-	if (Score >= 30.0f)
-	{
-		return FLinearColor(1.0f, 0.40f, 0.10f);
-	}
-	return FLinearColor(1.0f, 0.18f, 0.15f);
+	const float ProgressToMinimum = FMath::Clamp(Score / FMath::Max(1.0f, MinimumScore), 0.0f, 1.0f);
+	return FMath::Lerp(FLinearColor(0.82f, 0.22f, 0.18f), FLinearColor(0.94f, 0.60f, 0.22f), ProgressToMinimum);
 }
 
-void ApplyScorePresentation(UTextBlock* ScoreText, const TOptional<float> Score, const float MinimumScore)
+void ApplyScorePresentation(UTextBlock* ScoreText, UProgressBar* QualityBar, const TOptional<float> Score,
+	const float MinimumScore, const bool bCanSubmit)
 {
-	if (!IsValid(ScoreText))
+	const bool bHasScore = Score.IsSet() && FMath::IsFinite(Score.GetValue());
+	const float ClampedScore = bHasScore ? FMath::Clamp(Score.GetValue(), 0.0f, 100.0f) : 0.0f;
+	const FLinearColor QualityColor = bHasScore
+		? ResolveScoreTextColor(ClampedScore, MinimumScore, bCanSubmit) : FLinearColor(0.72f, 0.76f, 0.82f);
+	if (IsValid(ScoreText))
 	{
-		return;
+		ScoreText->SetText(bCanSubmit
+			? NSLOCTEXT("HeistForgery", "PreviewReady", "예상 완성도 · 제출 가능")
+			: NSLOCTEXT("HeistForgery", "PreviewNeedsWork", "예상 완성도 · 보완 필요"));
+		ScoreText->SetColorAndOpacity(FSlateColor(QualityColor));
 	}
-
-	if (!Score.IsSet() || !FMath::IsFinite(Score.GetValue()))
+	if (IsValid(QualityBar))
 	{
-		ScoreText->SetText(FText::Format(NSLOCTEXT("HeistForgery", "UnavailableScore", "예상 품질  --/100  ·  제출 가능 {0}+"),
-			FText::AsNumber(FMath::RoundToInt(MinimumScore))));
-		ScoreText->SetColorAndOpacity(FLinearColor(0.72f, 0.76f, 0.82f));
-		return;
+		QualityBar->SetPercent(ClampedScore / 100.0f);
+		QualityBar->SetFillColorAndOpacity(QualityColor);
 	}
-
-	const float ClampedScore = FMath::Clamp(Score.GetValue(), 0.0f, 100.0f);
-	ScoreText->SetText(FText::Format(NSLOCTEXT("HeistForgery", "ScoreFormat", "예상 품질  {0}/100  ·  제출 가능 {1}+"),
-		FText::AsNumber(FMath::RoundToInt(ClampedScore)), FText::AsNumber(FMath::RoundToInt(MinimumScore))));
-	ScoreText->SetColorAndOpacity(ResolveScoreTextColor(ClampedScore));
 }
 }
 
@@ -1403,7 +1417,6 @@ void UHeistForgeryWidget::MarkPreviewScoreDirty(const bool bLocalDrawingChanged)
 void UHeistForgeryWidget::RefreshLocalPreviewScore()
 {
 	PreviewScoreUpdateAccumulator = 0.0f;
-	const float MinimumScore = IsValid(ForgeryViewModel) ? ForgeryViewModel->GetMinimumAcceptedQualityScore() : HeistReplicaAcceptance::MinimumQualityScore;
 	TArray<FVector2D> NormalizedPoints;
 	TArray<int32> StrokePointCounts;
 	TArray<uint8> StrokePaletteIndices;
@@ -1413,7 +1426,6 @@ void UHeistForgeryWidget::RefreshLocalPreviewScore()
 	{
 		bPreviewScoreDirty = false;
 		LocalPreviewScore.Reset();
-		ApplyScorePresentation(PreviewScoreText, TOptional<float>(), MinimumScore);
 		RefreshCommonActionPresentation();
 		return;
 	}
@@ -1430,14 +1442,12 @@ void UHeistForgeryWidget::RefreshLocalPreviewScore()
 		// stroke change retries without generating RPC or log traffic.
 		bPreviewScoreDirty = false;
 		LocalPreviewScore.Reset();
-		ApplyScorePresentation(PreviewScoreText, TOptional<float>(), MinimumScore);
 		RefreshCommonActionPresentation();
 		return;
 	}
 
 	bPreviewScoreDirty = false;
 	LocalPreviewScore = ForgeryPreviewResult.SimilarityScore;
-	ApplyScorePresentation(PreviewScoreText, LocalPreviewScore, MinimumScore);
 	RefreshCommonActionPresentation();
 }
 
@@ -1558,6 +1568,9 @@ void UHeistForgeryWidget::RefreshCommonActionPresentation()
 		CancelButton->SetVisibility(bDrawingVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 		CancelButton->SetIsEnabled(bDrawingVisible);
 	}
+	ApplyScorePresentation(PreviewScoreText, PreviewQualityBar, LocalPreviewScore,
+		IsValid(ForgeryViewModel) ? ForgeryViewModel->GetMinimumAcceptedQualityScore() : HeistReplicaAcceptance::MinimumQualityScore,
+		CanSubmitCurrentDrawing());
 	RefreshBrushPresetButtons();
 }
 
@@ -1580,9 +1593,7 @@ void UHeistForgeryWidget::RefreshPaletteButtons()
 			if (bAvailable)
 			{
 				const bool bSelected = PaletteIndex == ActivePaletteIndex;
-				Button->SetBackgroundColor((*Palette)[PaletteIndex]);
-				Button->SetRenderOpacity(bSelected ? 1.0f : 0.65f);
-				Button->SetRenderScale(bSelected ? FVector2D(1.10, 1.10) : FVector2D(1.0, 1.0));
+				ApplyFixedSizeSelectionStyle(Button, (*Palette)[PaletteIndex], bSelected);
 			}
 		}
 		if (IsValid(Label))
@@ -1632,8 +1643,7 @@ void UHeistForgeryWidget::RefreshBrushPresetButtons()
 		if (IsValid(Buttons[PresetIndex]))
 		{
 			const bool bSelected = ActiveBrushPresetIndex == PresetIndex;
-			Buttons[PresetIndex]->SetRenderOpacity(bSelected ? 1.0f : 0.50f);
-			Buttons[PresetIndex]->SetRenderScale(bSelected ? FVector2D(1.12f, 1.12f) : FVector2D(1.0f, 1.0f));
+			ApplyFixedSizeSelectionStyle(Buttons[PresetIndex], FLinearColor(0.08f, 0.09f, 0.10f), bSelected);
 		}
 	}
 }
@@ -1736,8 +1746,6 @@ void UHeistForgeryWidget::ResetLocalStrokePreview()
 	PreviewScoreUpdateAccumulator = 0.0f;
 	bPreviewScoreDirty = false;
 	LocalPreviewScore.Reset();
-	ApplyScorePresentation(PreviewScoreText, TOptional<float>(),
-		IsValid(ForgeryViewModel) ? ForgeryViewModel->GetMinimumAcceptedQualityScore() : HeistReplicaAcceptance::MinimumQualityScore);
 	RefreshCommonActionPresentation();
 	RefreshDrawingFeedback();
 	InvalidateLayoutAndVolatility();
@@ -1800,6 +1808,10 @@ void UHeistForgeryWidget::RefreshDrawingFeedback()
 	if (IsValid(PreviewScoreText))
 	{
 		PreviewScoreText->SetVisibility(bDrawingVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+	if (IsValid(PreviewQualityBar))
+	{
+		PreviewQualityBar->SetVisibility(bDrawingVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	}
 }
 
