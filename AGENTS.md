@@ -139,12 +139,13 @@ ProjectResources/
 Blueprint Shell/Presentation 운용은 별도 문서로 분리하지 않고 아래 규칙을 AGENTS 본문 규칙으로 통합해 적용한다.
 
 - `WBP_` 계열 UI는 Layout, Animation, Color, Icon, Binding 중심으로 운영하고, 상태/값 확정은 C++ ViewModel과 게임 규칙이 소유한다.
-- 2026-09-30 사용자 승인 UI 개편은 박물관 전시 라벨과 침입자의 간결한 작전 도구를 기준으로 한다. 기존 `/Game/Assets/UI/Catalogue` 텍스처·아이콘과 `/Game/Assets/UI/Fonts/Catalogue` 글꼴을 재사용하고 먹색·아이보리·절제된 금색을 유지한다. 큰 장식 프레임을 반복하지 않으며 HUD는 작은 미션 묶음, 간결한 상태 행과 얇은 구분선으로 월드 시야를 확보한다. 메뉴·로비·위조·인벤토리·결과는 같은 글꼴·간격 체계를 사용하고 실제 작품을 시각적 중심에 둔다. UI 개편을 에셋 복제·신규 Gameplay·정보 공개 변경 승인으로 해석하지 않는다.
-- 작성하는 위젯 크기, 간격, 오프셋, 패딩과 아이콘 크기는 소수점 없는 4의 배수로 맞춘다. 폰트는 UMG 에디터에 표시되는 크기를 소수점 없는 4의 배수로 정하고 프로젝트 Font Resolution을 적용해 내부 `FSlateFontInfo::Size`로 변환한다. 72 DPI 표시 기준에서는 표시 크기 × 72 / 96을 저장하며 내부값을 다시 4의 배수로 반올림하지 않는다. 단위 없는 앵커·정렬·색·불투명도·진행 막대의 동적 비율·DPI 배율과 월드 좌표에서 투영되는 동적 위치는 별도로 유지한다.
+- 2026-10-01 사용자 승인 UI 개편은 협동 잠입 중 목표와 팀 상태를 빠르게 읽는 간결한 구성을 기준으로 한다. 기존 `/Game/Assets/UI/Catalogue` 아이콘과 `/Game/Assets/UI/Fonts/Catalogue` 글꼴을 재사용하고 밝은 중립색 문자·먹색 받침·얇은 구분선을 사용한다. 금색과 상태색은 선택·위험·준비 여부의 작은 강조로 제한하며 큰 장식 프레임과 질감 패널을 반복하지 않는다. HUD는 작은 미션 묶음과 간결한 상태 행으로 월드 시야를 확보한다. 메뉴·로비·위조·인벤토리·결과는 같은 글꼴·간격 체계를 사용하고 실제 작품을 시각적 중심에 둔다. UI 개편을 에셋 복제·신규 Gameplay·정보 공개 변경 승인으로 해석하지 않는다.
+- 작성하는 위젯 크기, 간격, 오프셋, 패딩과 아이콘 크기는 소수점 없는 4의 배수로 맞춘다. 기준 Geometry와 전체 비례 Fit은 TDD 3.3의 공통 UI 계약을 따르며 기존 프로젝트 DPI 설정을 임의 변경하거나 같은 배율을 중복 적용하지 않는다. 폰트는 UMG 에디터에 표시되는 크기를 소수점 없는 4의 배수로 정하고 프로젝트 Font Resolution을 적용해 내부 `FSlateFontInfo::Size`로 변환한다. 72 DPI 표시 기준에서는 표시 크기 × 72 / 96을 저장하며 내부값을 다시 4의 배수로 반올림하지 않는다. 단위 없는 앵커·정렬·색·불투명도·진행 막대의 동적 비율·DPI 배율과 월드 좌표에서 투영되는 동적 위치는 별도로 유지한다.
 - 도록 텍스처를 사용하는 스타일은 `Draw As = Image`, Brush `Margin = 0`으로 설정한다. 버튼·입력칸·패널의 종횡비에 맞는 전체 이미지를 사용하고 원본 비율을 보존한다. 작품·프로필 이미지는 ScaleBox 등으로 비율을 유지하며 비정방형 Inventory 점유 크기나 드래그 영역에 그림 자체를 늘리지 않는다.
 - 머리 위 Nameplate에는 바깥 배경 Border를 사용하지 않는다. 이름·상태 행과 CrewStatusBadge는 유지한다. Inventory의 배낭 상태·계약 가치 요약 위젯과 표시 바인딩은 제거하고 Grid와 닫기를 유지한다.
-- 팀원 이름은 밝은 중립색으로 표시하고 플레이어 구분색은 작은 표식에 적용한다. Crew Status는 기존 Icon/Text로 구분하며 고정 TeamCard 4개와 빈 Team Slot의 구조를 유지하되 간결한 행으로 표시한다. 위조 팔레트는 원래 색과 고정 크기를 유지하고 선택은 외곽선으로 표시한다. 결과 화면은 계약 성패·팀 확보 가치·실제 Replica를 우선하며 기존 상세 보기로 세부 내역을 확인한다.
+- 팀원 이름은 밝은 중립색으로 표시하고 플레이어 구분색은 작은 표식에 적용한다. Crew Status는 기존 Icon/Text로 구분하며 고정 TeamCard 4개와 빈 Team Slot의 구조를 유지하되 좌측 중단의 간결한 행으로 표시한다. 활동·상태 문구는 이름보다 작게 표시한다. 위조 팔레트는 원래 색과 고정 크기를 유지하고 선택은 외곽선으로 표시한다. 결과 화면은 계약 성패·팀 확보 가치·실제 Replica를 우선한다. 기본 표는 플레이어·상태·확보 가치·최고 품질 네 열이며 나머지 기존 기여 내역은 상세 보기로 전환한다.
 - 2026-09-30 추가 사용자 승인 UI/UX 교정은 기존 WBP에서 수행한다. 로비·결과·환경설정의 항목·헤더와 대응 행은 공통 열 시작점과 문자 정렬을 유지한다. 결과의 긴 플레이어 이름에는 상태·가치 열과 겹치지 않는 충분한 폭을 우선 배정한다. 버튼의 Content Slot 가로·세로 정렬과 Label Justification은 중앙이며 좌우·상하 패딩은 대칭으로 둔다. 로비의 모든 플레이어 카드는 같은 크기의 카드와 정사각 프로필 이미지를 사용하고 좌우 패딩·바깥 여백을 대칭으로 통일해 같은 중심축에 정렬한다. 손전등은 아이콘과 `[F] ON/OFF`를 함께 표시한다. 기존 아이콘이 없을 때 공용 원본 손전등 아이콘 1종만 작성하며, 에셋 사본이나 추가 Blueprint는 만들지 않는다.
+- 2026-10-01 추가 사용자 승인에 따라 로비의 침입 장소는 이름 왼쪽·썸네일 오른쪽의 세로 스크롤 목록으로 표시한다. `무작위`의 물음표 썸네일 다음 `M01`, `M02`, `M03` 순이며 약 세 행을 보여 아래 맵을 스크롤로 찾게 한다. 상세 배치 치수는 TDD 3.3의 화면 목록을 따른다. 고정 팀 슬롯 4개의 이름 아래 준비 상태를 표시하고 준비·준비 취소와 Host 게임 시작은 공통 하단 영역에 둔다. 기존 Map 선택 요청·Host 권한·복제를 유지한다. 맵 썸네일·에셋을 복제하거나 새 Gameplay 선택 상태를 만들지 않는다.
 - Nameplate는 Remote Player에 한해 항상 표시하며, 동일 Map에 대한 상태 아이콘은 v1 활성 Team Status 상태값(`Active`, `Forging`, `CarryingOriginal`, `Heavy`, `Stunned`, `Arrested`, `Escaped`)과 동기화한다. `Assembling`은 Deferred Object Assembly 호환 상태로만 보존하며 v1 플레이 중 새로 진입시키지 않는다.
 - Floor Plan Map은 Owner-only Full-Screen으로 운영한다. Guard 위치, 시야 Cone, SoundPing, 미탐색 Loose Loot/숨겨진 Spawn은 기본 표시하지 않는다.
 - Move/Look/Mouse Capture 전환은 Owner-only Surface Forgery, Inventory, Map 진입 시 각각 입력 정책이 일치해야 한다. Deferred Object Assembly 입력 정책은 재활성화 전까지 회귀 보존만 한다.
@@ -381,8 +382,8 @@ Smoke 및 Trap 계열 기능은 Stretch 목록에 포함하지 않는다.
 - Surface Forgery와 Object Assembly는 서로의 Template Row를 공유하지 않는다.
 - Surface Forgery와 Object Assembly는 서로의 제출 Payload와 Replica Data를 공유하지 않는다.
 - Surface Forgery와 Object Assembly는 서로의 State Machine과 상세 Result를 공유하지 않는다.
-- Object Assembly 재활성화 시 두 방식은 Owner-only Input Mode, 한글 중심 Mode Title, 제출 기준 충족을 색으로 구분하는 단일 작품 유사도 진행 표시, Timer, Submit/Cancel, 통합 하단 안내와 서버가 확정한 최종 0~100 Quality Score/Replica 승인 Gate만 공유할 수 있다.
-- 작업 방법은 Tutorial과 통합 하단 안내가 담당하며, Surface 작업 화면과 보존 중인 Object 작업 화면에 별도 `InstructionText`와 `ModeStatusText`를 만들지 않는다.
+- Object Assembly 재활성화 시 두 방식은 Owner-only Input Mode, 한글 중심 Mode Title, 제출 기준 충족을 색으로 구분하는 단일 작품 유사도 진행 표시, Timer, Submit/Cancel, 기존 버튼·키 안내와 서버가 확정한 최종 0~100 Quality Score/Replica 승인 Gate만 공유할 수 있다.
+- 작업 방법 설명은 Tutorial이 담당하며 기존 버튼·키 안내와 조작을 유지한다. Surface 작업 화면과 보존 중인 Object 작업 화면에 별도 `InstructionText`와 `ModeStatusText`를 만들지 않는다.
 - `AHeistDisplayCaseActor`는 제거됐다. `BP_PaintingDisplayCase`는 `AHeistPaintingDisplayCaseActor`를 직접 부모로 사용한다.
 - Painting 전시품은 `BP_PaintingDisplayCase` 공용 Shell만 사용한다.
 - `AHeistSculptureDisplayCaseActor`는 제거됐다. Sculpture / Ceramic 전시품은 `AHeistObjectDisplayCaseActor`만 사용한다.
@@ -900,13 +901,13 @@ Escape 취소 조건:
 - Brush Size 선택 변경은 변경 이후 새로 시작하는 Stroke에만 적용한다. 이미 그린 Stroke의 굵기, Local Preview, 서버 Score와 Replica 굵기는 변경하지 않으며 Eraser 반경에도 영향을 주지 않는다.
 - Surface Forgery의 WBP Drawing Surface 크기와 내부 Painter 해상도는 분리한다. Drawing Surface는 정사각형 Responsive Layout을 사용하며 `400×400`, `800×800` 같은 특정 Slate Unit 크기를 C++ 계약으로 고정하지 않는다.
 - Surface Forgery의 화면 Drawing은 현재 Brush로 전체 Stroke를 다시 그리는 Vector Line 방식이 아니라 `1024×1024` Local Palette Raster에 Pointer Segment를 순서대로 누적하는 Painter 방식으로 표시한다.
-- Pointer 입력은 실제 Drawing Surface Geometry에서 정규화하고, Local Palette Raster Texture는 같은 `DrawingSurface`의 UMG `Image` 또는 `Border` Brush에 직접 연결한다. 부모 Widget의 `NativePaint`에서 별도 DrawElement 좌표를 재구성하지 않으며 DPI Scale, PIE Window 크기와 WBP Layout 크기가 바뀌어도 입력과 표시 좌표가 일치해야 한다.
+- Pointer 입력은 실제 Drawing Surface Geometry에서 정규화하고, Local Palette Raster Texture는 같은 `DrawingSurface`의 UMG `Image` 또는 `Border` Brush에 직접 연결한다. 화면 Canvas의 표시 크기와 판정 Raster 해상도는 분리한다. 부모 Widget의 `NativePaint`에서 별도 DrawElement 좌표를 재구성하지 않으며 DPI Scale, PIE Window 크기와 WBP Layout 크기가 바뀌어도 입력과 표시 좌표가 일치해야 한다.
 - Drawing Pointer의 Mouse Capture는 Button Down에서 한 번 획득하고 Button Up, Surface 이탈, UI 종료 또는 실제 Capture Lost까지 유지한다. Pointer Move마다 Capture를 다시 요청해 하나의 Drag를 여러 Stroke로 분할하지 않는다.
 - Local Painter는 모든 Pointer Segment를 연속 Capsule로 누적하고, 서버 전송용 Polyline은 입력 중 고정 간격으로 별도 샘플링한다. 로컬 Stroke와 화면 Raster는 전송 Point Budget과 무관하게 계속 유지하며, 제출 시에만 로컬 데이터를 변경하지 않는 전송용 복사본을 단순화한다. 전송 Point Budget에 도달했다는 이유로 화면 붓칠이 중단되거나 이미 그린 결과와 예상 점수가 감소해서는 안 된다.
 - Local Palette Raster는 나중에 칠한 색이 이전 픽셀을 덮어쓴다. 따라서 소/중/대 Brush는 이미 칠한 영역의 크기를 다시 해석하지 않으며, 뒤에 사용한 작은 Brush도 앞서 사용한 큰 Brush 위에 정상 합성돼야 한다.
 - Local Palette Raster와 최종 서버 Palette Raster는 모두 Canvas 경계에서 Brush Stamp를 Clamp한다. Brush 중심이 가장자리에 있어도 색 픽셀이 Drawing Surface 밖으로 표시되거나 판정 데이터 밖으로 기록되어서는 안 된다.
 - Surface Forgery UI는 현재 Palette, Drawing Content 안의 시각적 소/중/대 Brush 선택, 남은 시간과 `작품 유사도` 라벨·진행 막대 하나를 표시한다. 막대 비율은 기존 C++ Local Preview 점수 / 100을 0~1로 Clamp하며 70 미만에서는 붉은색에서 주황색으로 변한다. 70점 기준과 기존 Submit 활성 조건을 모두 만족할 때만 초록색을 사용한다. 라벨은 상태와 무관하게 `작품 유사도`로 고정하고 별도 상태 문구는 표시하지 않는다. 갱신 전의 이전 예상 점수가 70 이상이어도 입력 변경·제출 대기·서버 기준 미달 거부로 Submit이 비활성이면 초록색을 유지하지 않는다. 예상 점수 숫자와 70+ 문구, 별도 Quality Requirement, 서버 점수, Point Budget, Payload Byte와 Score Raster Resolution은 일반 UI에 표시하지 않는다. UI 표현 변경으로 Evaluator, Local Preview 갱신 주기, Submit의 70점 기준, 서버 최종 Quality Score와 정산을 바꾸지 않는다.
-- Draw/Erase/Reset/Submit/Cancel 조작 안내는 하단 한 줄로 통합하고 별도 Drawing Hint와 Footer Hint로 나누지 않는다.
+- Draw/Erase/Reset/Submit/Cancel 조작과 기존 버튼·키 안내를 유지한다. 활성 Surface의 `FooterHint`는 `Collapsed`로 유지하고 중복 Drawing Hint를 추가하지 않는다.
 - Surface Forgery의 서버 Score와 Replica Palette Raster는 `256×256`을 사용한다. 더 큰 Reference Image는 이 판정 해상도로 정규화한다.
 - Reference Image는 직접 제작한 단순한 이미지를 사용한다.
 - Template별 Palette는 2~8색으로 제한한다.
@@ -1004,7 +1005,7 @@ Penalty 또는 Diagnostic Field가 Final Score에 직접 적용되지 않는 경
 ## Alert Presentation
 
 - v1 활성 `UHeistHUDViewModel`과 `UHeistForgeryViewModel`은 `AHeistGameState`의 복제 Alert Meter Snapshot만 읽는다. 보존 중인 `UHeistObjectAssemblyViewModel`도 자체 Alert를 확정하지 않는다.
-- Main HUD 중앙 상단은 고정 10칸 Indicator를 사용한다. 각 칸은 외곽 여백이 없는 단색 `Empty/Half/Full` 별 이미지 중 하나를 사용해 `0.0~10.0`을 `0.5` 단위로 표현한다.
+- Main HUD 좌측 상단 미션 묶음 아래에 얇은 경계 막대 10칸을 배치한다. 각 칸의 단색 `Empty/Half/Full` 표시로 `0.0~10.0`을 기존 `0.5` 단위로 표현한다. 표시 형태·위치 변경은 서버 Snapshot, 사건별 증가량과 위험 단계 판정을 변경하지 않는다.
 - Indicator 아래 단일 Event TextBlock은 CCTV 발각, Laser 접촉, Guard 포획, Stun, Arrest 같은 마지막 사건을 짧게 표시하고 자동으로 숨긴다.
 - Guard 포획은 `+1.0`, CCTV 완전 발각과 Laser 접촉은 각각 `+0.5`다. Forgery Quality, Guard Replica 검사, Forgery Timeout과 Voice SoundPing은 Alert Meter를 변경하지 않는다.
 - Owner-only Surface Forgery 화면에는 Security Level Indicator, Alert Warning 또는 Lockdown Countdown을 중복 표시하지 않는다. Deferred Object Widget에도 같은 Presentation 원칙을 보존한다.
@@ -1018,11 +1019,12 @@ Penalty 또는 Diagnostic Field가 Final Score에 직접 적용되지 않는 경
 ## Main HUD Presentation
 
 - 좌측 상단은 `미션`, 서버 `ContractEndServerTime`에서 계산한 `MM : SS`, 필수 목표 작품명과 `운반·확보 현재 / 목표` 한 줄을 표시한다. 현재는 서버 Snapshot의 팀 Carried + Secured 합이며 실제 반출 완료를 뜻하지 않는다. 남은 시간이 60초 미만이면 시간 Text만 빨간색으로 바꾼다.
-- 현재 v1 Contract는 Required Target 하나만 확정한다. UI는 향후 목록 확장 가능한 Container를 사용할 수 있지만 Runtime에서는 작품명 한 행만 표시하며 미획득은 밝은 아이보리, Secured는 초록색이다.
+- 현재 v1 Contract는 Required Target 하나만 확정한다. UI는 향후 목록 확장 가능한 Container를 사용할 수 있지만 Runtime에서는 작품명 한 행만 표시하며 미획득은 밝은 중립색, Secured는 초록색이다.
+- 팀 상태는 좌측 중단에 고정 `WBP_TeamCard` 4개로 표시한다. 정사각 Profile, 중립색 Name, 작은 Crew Status Icon/Text와 Mic 상태를 같은 열에 정렬하며 빈 Slot도 유지한다. 팀 위치·시야 같은 정보를 새로 공개하지 않는다.
 - Main HUD는 미션 영역의 합산 가치/할당량 한 줄 외에 개별 Carried/Secured 상세, 예상 점수와 Weight 숫자를 표시하지 않는다. Inventory 요약은 복구하지 않으며 최종 Secured/Quota 상세는 Result가 소유한다.
 - Inventory 안내는 도구 영역에 Icon과 `[TAB]`만 배치하고 현재 Carry Weight를 Heavy Threshold로 정규화한 초록→빨강 색상으로 상태만 전달한다.
-- 우측 하단은 기존 `WBP_QuickSlot`의 데이터·입력 계약을 유지하며 활성 Coin 한 칸만 Image, Count와 `[Q]`로 표시한다. 사용하지 않는 두 Slot은 레이아웃에서 접는다. 손전등 아이콘·`[F] ON/OFF`와 Inventory `[TAB]` 상태 안내는 같은 도구 영역의 간결한 키 안내로 정돈한다. HUD Mode에서는 ItemId, Assignment Text와 Clear Button을 표시하지 않는다.
-- 기존 Interaction Prompt, Action Progress, Popup Pool, Stun/Arrest Overlay와 Crosshair 책임은 유지하며 Main HUD 개편을 이유로 재구성하지 않는다.
+- 우측 하단은 손전등 아이콘·`[F] ON/OFF`, 활성 Coin 한 칸의 Image·Count·`[Q]`, Inventory `[TAB]` 상태 안내 순으로 정돈한다. 기존 `WBP_QuickSlot`의 데이터·입력 계약을 유지하고 사용하지 않는 두 Slot은 레이아웃에서 접는다. HUD Mode에서는 ItemId, Assignment Text와 Clear Button을 표시하지 않는다.
+- 작품 관찰은 중앙 아래 작은 `[E]` 힌트로 표시한다. 기존 Interaction Prompt의 상황별 문구·키, Action Progress, Popup Pool, Stun/Arrest Overlay와 Crosshair 책임은 유지하며 Main HUD 개편을 이유로 재구성하지 않는다.
 
 ## Cleanup
 
@@ -1133,9 +1135,9 @@ Material Match: 10%
 
 ## Shared Forgery UI Contract
 
-- 활성 Surface Forgery는 `한글 Mode Title → 작품 유사도 라벨·진행 막대 → 남은 시간 → Submit / Cancel → 통합 하단 안내` 정보 순서를 사용한다. Object Assembly는 Deferred 상태를 유지하며 재활성화 시 같은 표시 규칙을 적용한다. 진행 막대의 길이와 기준 충족 색은 Local Preview를 표현할 뿐 서버 확정 점수를 대신하지 않는다.
-- 별도 `InstructionText`와 `ModeStatusText`는 사용하지 않으며 작업 방법 설명은 Tutorial과 통합 하단 안내로 이관한다.
-- Submit Label과 `Enter`, Cancel Label과 `Escape`, `남은 시간 {0}` 표기, 기준 미달 상태의 Button Disabled 의미를 두 모드에서 일치시킨다.
+- 활성 Surface Forgery는 `한글 Mode Title → 작품 유사도 라벨·진행 막대 → 남은 시간 → Submit / Cancel` 정보 순서를 사용한다. 복제 작업은 왼쪽, 팔레트는 가운데, 관찰한 원본은 오른쪽이며 남은 시간은 머리글 오른쪽, 작품 유사도는 원본 위쪽에 둔다. Object Assembly는 Deferred 상태를 유지하며 재활성화 시 같은 표시 규칙을 적용한다. 진행 막대의 길이와 기준 충족 색은 Local Preview를 표현할 뿐 서버 확정 점수를 대신하지 않는다.
+- 별도 `InstructionText`와 `ModeStatusText`는 사용하지 않으며 작업 방법 설명은 Tutorial이 담당한다. 활성 Surface의 `FooterHint`는 `Collapsed`로 유지하고 기존 버튼·키 안내와 조작은 보존한다.
+- Submit Label과 `Enter`, Cancel Label과 `Escape`, 기준 미달 상태의 Button Disabled 의미는 공통 계약으로 유지한다. 활성 Surface의 남은 시간은 머리글 오른쪽에 `MM:SS`만 표시하며, Deferred Object Assembly는 기존 `남은 시간 {0}` 표시를 보존한다.
 - Palette/시각적 Brush/Erase와 2D Part Tray/Canvas Drag/승인된 회전은 모드별 작업 영역으로 유지한다.
 - `QualityRequirementText`, 별도 서버 점수, `TemplateNameText`, `AssemblyStatusText`, 작업 화면 전용 Alert Warning/Lockdown Countdown은 두 WBP 공통 계약에 포함하지 않는다.
 - Local Preview는 반응성 안내일 뿐이며 서버 최종 Quality와 승인 결과를 대체하지 않는다.

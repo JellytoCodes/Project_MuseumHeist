@@ -7,9 +7,6 @@
 
 namespace
 {
-	constexpr float UnselectedMapOpacity = 0.6f;
-	constexpr float SelectedMapOpacity = 1.0f;
-
 	UTexture2D* LoadMapThumbnail(const FName MapId)
 	{
 		const TCHAR* TexturePath = nullptr;
@@ -28,27 +25,6 @@ namespace
 
 		return TexturePath ? LoadObject<UTexture2D>(nullptr, TexturePath) : nullptr;
 	}
-
-	void ApplyMapThumbnailToButton(UButton* Button, UTexture2D* Thumbnail)
-	{
-		if (!IsValid(Button) || !IsValid(Thumbnail))
-		{
-			return;
-		}
-
-		FButtonStyle ButtonStyle = Button->GetStyle();
-		FSlateBrush MapBrush = ButtonStyle.Normal;
-		MapBrush.SetResourceObject(Thumbnail);
-		MapBrush.ImageSize = FVector2D(Thumbnail->GetSizeX(), Thumbnail->GetSizeY());
-		MapBrush.DrawAs = ESlateBrushDrawType::Image;
-		MapBrush.Margin = FMargin(0.0f);
-		MapBrush.TintColor = FSlateColor(FLinearColor::White);
-
-		ButtonStyle.SetNormal(MapBrush);
-		ButtonStyle.SetHovered(MapBrush);
-		ButtonStyle.SetPressed(MapBrush);
-		Button->SetStyle(ButtonStyle);
-	}
 }
 
 void UHeistLobbyMapCardWidget::NativeConstruct()
@@ -57,8 +33,8 @@ void UHeistLobbyMapCardWidget::NativeConstruct()
 	if (IsValid(SelectMapButton))
 	{
 		SelectMapButton->OnClicked.AddUniqueDynamic(this, &UHeistLobbyMapCardWidget::HandleSelectMapClicked);
-		ApplyMapThumbnailToButton(SelectMapButton, MapThumbnail);
 	}
+	RefreshMapThumbnail();
 }
 
 void UHeistLobbyMapCardWidget::NativeDestruct()
@@ -73,10 +49,7 @@ void UHeistLobbyMapCardWidget::NativeDestruct()
 void UHeistLobbyMapCardWidget::ConfigureMapCard(const FName InMapId, const FText& InMapDisplayName)
 {
 	MapId = InMapId;
-	if (UTexture2D* Thumbnail = LoadMapThumbnail(MapId))
-	{
-		SetMapThumbnail(Thumbnail);
-	}
+	SetMapThumbnail(LoadMapThumbnail(MapId));
 	if (IsValid(MapNameText))
 	{
 		MapNameText->SetText(InMapDisplayName);
@@ -86,7 +59,22 @@ void UHeistLobbyMapCardWidget::ConfigureMapCard(const FName InMapId, const FText
 void UHeistLobbyMapCardWidget::SetMapThumbnail(UTexture2D* InMapThumbnail)
 {
 	MapThumbnail = InMapThumbnail;
-	ApplyMapThumbnailToButton(SelectMapButton, MapThumbnail);
+	RefreshMapThumbnail();
+}
+
+void UHeistLobbyMapCardWidget::RefreshMapThumbnail()
+{
+	const bool bRandomMap = MapId == FName(TEXT("Random"));
+	if (IsValid(MapThumbnailImage))
+	{
+		MapThumbnailImage->SetBrushFromTexture(MapThumbnail, true);
+		MapThumbnailImage->SetVisibility(!bRandomMap && IsValid(MapThumbnail) ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
+	}
+	if (IsValid(RandomQuestionText))
+	{
+		RandomQuestionText->SetText(NSLOCTEXT("HeistLobby", "RandomMapQuestion", "?"));
+		RandomQuestionText->SetVisibility(bRandomMap ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
 }
 
 void UHeistLobbyMapCardWidget::ApplySelectionState(const bool bSelected, const bool bCanSelect)
@@ -94,11 +82,19 @@ void UHeistLobbyMapCardWidget::ApplySelectionState(const bool bSelected, const b
 	if (IsValid(SelectMapButton))
 	{
 		SelectMapButton->SetIsEnabled(bCanSelect);
-		SelectMapButton->SetRenderOpacity(bSelected ? SelectedMapOpacity : UnselectedMapOpacity);
+		SelectMapButton->SetRenderOpacity(1.0f);
 	}
 	if (IsValid(SelectedCheckImage))
 	{
 		SelectedCheckImage->SetVisibility(bSelected ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
+	}
+	if (IsValid(SelectionBackground))
+	{
+		SelectionBackground->SetRenderOpacity(bSelected ? 1.0f : 0.0f);
+	}
+	if (IsValid(MapThumbnailImage))
+	{
+		MapThumbnailImage->SetColorAndOpacity(bSelected ? SelectedThumbnailTint : ThumbnailTint);
 	}
 }
 

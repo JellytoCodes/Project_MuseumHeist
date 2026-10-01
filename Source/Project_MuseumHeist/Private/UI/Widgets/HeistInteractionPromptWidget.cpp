@@ -189,6 +189,11 @@ void UHeistInteractionPromptWidget::RefreshInteractionPrompt(const bool bActionA
 	if (IsValid(AvailabilityText))
 	{
 		AvailabilityText->SetText(bLockedVent ? NSLOCTEXT("HeistInteraction", "VentLockedHint", "개방 후 사용할 수 있습니다") : NSLOCTEXT("HeistInteraction", "InteractionPrompt", "[E] 상호작용"));
+		if (bUseCompactPrompt)
+		{
+			AvailabilityText->SetVisibility(bLockedVent || Cast<AHeistDetentionDoorActor>(TargetActor)
+				? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		}
 	}
 	if (const AHeistDetentionDoorActor* Door = Cast<AHeistDetentionDoorActor>(TargetActor); Door && AvailabilityText)
 	{
@@ -201,9 +206,21 @@ void UHeistInteractionPromptWidget::RefreshInteractionPrompt(const bool bActionA
 		const bool bPaintingReviewReady = IsValid(PaintingCase) && PaintingCase->IsReplicaReviewReadyFor(GetOwningPlayerPawn());
 		const bool bObjectReviewReady = IsValid(ObjectCase) && ObjectCase->IsReplicaReviewReadyFor(GetOwningPlayerPawn());
 		KeyText->SetText(bLockedVent			? FText::GetEmpty()
+						 : bUseCompactPrompt ? InteractionKeyLabel
 						 : bPaintingReviewReady ? NSLOCTEXT("HeistInteraction", "PaintingReplicaReviewKeys", "E 교체·회수  |  R 다시 그리기")
 						 : bObjectReviewReady	? NSLOCTEXT("HeistInteraction", "ObjectReplicaReviewKeys", "E 교체·회수  |  R 다시 조립")
 												: InteractionKeyLabel);
+		if (bUseCompactPrompt && IsValid(AvailabilityText) && (bPaintingReviewReady || bObjectReviewReady))
+		{
+			AvailabilityText->SetText(bPaintingReviewReady
+				? NSLOCTEXT("HeistInteraction", "CompactPaintingRedrawKeys", "R 다시 그리기")
+				: NSLOCTEXT("HeistInteraction", "CompactObjectRedrawKeys", "R 다시 조립"));
+			AvailabilityText->SetVisibility(ESlateVisibility::HitTestInvisible);
+		}
+	}
+	if (bUseCompactPrompt && IsValid(InteractionKeyContainer))
+	{
+		InteractionKeyContainer->SetVisibility(bLockedVent ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 	}
 }
 

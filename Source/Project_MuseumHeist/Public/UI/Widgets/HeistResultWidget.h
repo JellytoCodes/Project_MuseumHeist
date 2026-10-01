@@ -12,6 +12,8 @@ class UTexture2D;
 class UHorizontalBox;
 class UBorder;
 class UVerticalBox;
+class USizeBox;
+class UWidget;
 class UHeistResultPlayerRowWidget;
 class UHeistResultReplicaCardWidget;
 class UHeistResultRewardDetailWidget;
@@ -74,6 +76,7 @@ class PROJECT_MUSEUMHEIST_API UHeistResultWidget : public UHeistUserWidgetBase
 	void RefreshRewardDetailPresentation(const FHeistTeamResult& TeamResult);
 	void RefreshReplicaRecapPresentation(const TArray<FHeistReplicaRecapEntry>& ReplicaRecap);
 	void RefreshContributionTablePresentation(const TArray<FHeistPlayerResult>& PlayerResults);
+	void HandleDetailVisibilityChanged(bool bVisible);
 
 	UFUNCTION()
 	void HandleReturnToLobbyClicked();
@@ -95,6 +98,18 @@ class PROJECT_MUSEUMHEIST_API UHeistResultWidget : public UHeistUserWidgetBase
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> TeamRewardTextBlock;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UWidget> CoopResultOutcomeIcon;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UWidget> CoopResultSuccessCheck;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UWidget> CoopResultFailedCross;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<USizeBox> CoopResultDetailHeaderSize;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> ReplicaRecapTextBlock;

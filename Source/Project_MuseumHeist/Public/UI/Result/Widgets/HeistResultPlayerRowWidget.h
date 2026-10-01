@@ -9,6 +9,7 @@
 class UImage;
 class UTextBlock;
 class UTexture2D;
+class USizeBox;
 
 UCLASS(Blueprintable)
 class PROJECT_MUSEUMHEIST_API UHeistResultPlayerRowWidget : public UHeistUserWidgetBase
@@ -20,11 +21,15 @@ class PROJECT_MUSEUMHEIST_API UHeistResultPlayerRowWidget : public UHeistUserWid
 
   public:
 	void ApplyPlayerResult(const FHeistPlayerResult& PlayerResult);
+	void SetDetailedPresentation(bool bVisible);
 
 	UFUNCTION(BlueprintPure, Category = "Heist|Result")
 	static FText BuildPlayerStateText(const FHeistPlayerResult& PlayerResult);
 
   private:
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<USizeBox> CoopResultDetailFieldsSize;
+
 	void RefreshProfileImage();
 	void RetryProfileImageLoad();
 	bool TryLoadSteamProfileImage();

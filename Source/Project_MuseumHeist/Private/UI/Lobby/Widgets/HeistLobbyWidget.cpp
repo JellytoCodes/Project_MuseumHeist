@@ -3,6 +3,7 @@
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
 #include "HAL/PlatformApplicationMisc.h"
+#include "InputCoreTypes.h"
 #include "UI/Lobby/ViewModels/HeistLobbyViewModel.h"
 #include "UI/Lobby/Widgets/HeistLobbyMapCardWidget.h"
 #include "UI/Lobby/Widgets/HeistLobbyPlayerCardWidget.h"
@@ -11,6 +12,7 @@
 void UHeistLobbyWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+	SetIsFocusable(true);
 
 	if (IsValid(CopyJoinCodeButton))
 	{
@@ -23,6 +25,10 @@ void UHeistLobbyWidget::NativeConstruct()
 	if (IsValid(StartGameButton))
 	{
 		StartGameButton->OnClicked.AddUniqueDynamic(this, &UHeistLobbyWidget::HandleStartGameClicked);
+	}
+	if (IsValid(GlobalReadyButton))
+	{
+		GlobalReadyButton->OnClicked.AddUniqueDynamic(this, &UHeistLobbyWidget::HandleGlobalReadyClicked);
 	}
 
 	ConfigureChildWidgets();
@@ -47,9 +53,23 @@ void UHeistLobbyWidget::NativeDestruct()
 	{
 		StartGameButton->OnClicked.RemoveDynamic(this, &UHeistLobbyWidget::HandleStartGameClicked);
 	}
+	if (IsValid(GlobalReadyButton))
+	{
+		GlobalReadyButton->OnClicked.RemoveDynamic(this, &UHeistLobbyWidget::HandleGlobalReadyClicked);
+	}
 	UnbindChildWidgetDelegates();
 
 	Super::NativeDestruct();
+}
+
+FReply UHeistLobbyWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
+{
+	if (InKeyEvent.GetKey() == EKeys::Escape && IsValid(LobbyViewModel) && LobbyViewModel->CanRequestLeaveSession())
+	{
+		HandleLeaveSessionClicked();
+		return FReply::Handled();
+	}
+	return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
 }
 
 void UHeistLobbyWidget::SetupLobbyWidget(UHeistLobbyViewModel* InLobbyViewModel)
@@ -113,6 +133,14 @@ void UHeistLobbyWidget::HandleStartGameClicked()
 void UHeistLobbyWidget::HandlePlayerReadyRequested(const int32 PlayerSlot)
 {
 	if (IsValid(LobbyViewModel) && PlayerSlot == LobbyViewModel->GetLocalPlayerId())
+	{
+		LobbyViewModel->RequestToggleLocalReady();
+	}
+}
+
+void UHeistLobbyWidget::HandleGlobalReadyClicked()
+{
+	if (IsValid(LobbyViewModel))
 	{
 		LobbyViewModel->RequestToggleLocalReady();
 	}
@@ -228,6 +256,18 @@ void UHeistLobbyWidget::RefreshLobbyPresentation()
 	}
 
 	const bool bCanToggleReady = LobbyViewModel->CanToggleLocalReady();
+	if (IsValid(GlobalReadyButton))
+	{
+		GlobalReadyButton->SetIsEnabled(bCanToggleReady);
+	}
+	if (IsValid(GlobalReadyButtonLabel))
+	{
+		FHeistLobbyPlayerCardData LocalPlayerCard;
+		const bool bLocalReady = LobbyViewModel->TryGetPlayerCardData(LobbyViewModel->GetLocalPlayerId(), LocalPlayerCard) && LocalPlayerCard.bReady;
+		GlobalReadyButtonLabel->SetText(bLocalReady
+			? NSLOCTEXT("HeistLobby", "CancelLocalReady", "준비 취소")
+			: NSLOCTEXT("HeistLobby", "ConfirmLocalReady", "준비"));
+	}
 	int32 PlayerSlot = 1;
 	for (UHeistLobbyPlayerCardWidget* PlayerCard : {PlayerCard1.Get(), PlayerCard2.Get(), PlayerCard3.Get(), PlayerCard4.Get()})
 	{
@@ -242,6 +282,12 @@ void UHeistLobbyWidget::RefreshLobbyPresentation()
 	const FName SelectedMapId = LobbyViewModel->GetSelectedMapId();
 	const bool bRandomSelection = LobbyViewModel->IsRandomMapSelection();
 	const bool bCanSelectMap = LobbyViewModel->CanSelectMap();
+	if (IsValid(SelectedMapText))
+	{
+		SelectedMapText->SetText(bRandomSelection
+			? NSLOCTEXT("HeistLobby", "RandomMapName", "무작위")
+			: FText::FromName(SelectedMapId));
+	}
 	if (IsValid(MapRandomCard))
 	{
 		MapRandomCard->ApplySelectionState(bRandomSelection, bCanSelectMap);

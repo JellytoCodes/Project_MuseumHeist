@@ -1,6 +1,5 @@
 #include "UI/Widgets/HeistQuickSlotWidget.h"
 
-#include "Components/Border.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "Engine/Texture2D.h"
@@ -25,16 +24,13 @@ void UHeistQuickSlotWidget::RefreshPresentation()
 {
 	if (IsValid(KeyLabelText))
 	{
-		KeyLabelText->SetText(ConfirmedPresentation.KeyLabel);
+		KeyLabelText->SetText(ConfirmedPresentation.KeyLabel.IsEmpty() ? FText::GetEmpty()
+			: FText::Format(NSLOCTEXT("HeistQuickSlot", "BracketedKeyLabel", "[{0}]"), ConfirmedPresentation.KeyLabel));
 	}
 	if (IsValid(CountText))
 	{
 		CountText->SetText(FText::AsNumber(ConfirmedPresentation.Quantity));
 		CountText->SetVisibility(ConfirmedPresentation.bAssigned ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-	}
-	if (IsValid(SlotBackground))
-	{
-		SlotBackground->SetBrushColor(ConfirmedPresentation.bAssigned ? FLinearColor(0.24f, 0.20f, 0.14f, 0.96f) : FLinearColor(0.04f, 0.035f, 0.028f, 0.88f));
 	}
 }
 

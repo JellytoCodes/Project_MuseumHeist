@@ -19,6 +19,22 @@ namespace
 constexpr int32 TeamCardMaxSteamAvatarRetryCount = 10;
 constexpr float TeamCardSteamAvatarRetrySeconds = 0.5f;
 constexpr float RemoteVoiceSpeakingThreshold = 0.02f;
+
+FLinearColor TeamStatusColor(const EHeistCrewStatus Status)
+{
+	switch (Status)
+	{
+	case EHeistCrewStatus::Heavy:
+		return FLinearColor::FromSRGBColor(FColor(214, 182, 129));
+	case EHeistCrewStatus::Stunned:
+	case EHeistCrewStatus::Arrested:
+		return FLinearColor::FromSRGBColor(FColor(229, 139, 130));
+	case EHeistCrewStatus::Escaped:
+		return FLinearColor::FromSRGBColor(FColor(157, 188, 167));
+	default:
+		return FLinearColor::FromSRGBColor(FColor(146, 155, 152));
+	}
+}
 }
 
 void UHeistTeamCardWidget::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
@@ -42,12 +58,16 @@ void UHeistTeamCardWidget::ApplyCrewData(const FHeistCrewStatusEntry& CrewEntry,
 	OwningHeistPlayerController = InOwningPlayerController;
 	PlatformUserId = CrewEntry.PlatformUserId;
 	CrewStatus = CrewEntry.Status;
-	SetVisibility(bOccupied ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
+	SetVisibility(ESlateVisibility::HitTestInvisible);
 
 	if (IsValid(PlayerNameText))
 	{
-		PlayerNameText->SetText(bOccupied ? CrewEntry.PlayerName : FText::GetEmpty());
-		PlayerNameText->SetColorAndOpacity(FSlateColor(FLinearColor(0.92f, 0.92f, 0.88f)));
+		PlayerNameText->SetText(bOccupied ? CrewEntry.PlayerName : NSLOCTEXT("HeistTeamCard", "EmptySlot", "빈 슬롯"));
+		PlayerNameText->SetRenderOpacity(bOccupied ? 1.0f : 0.65f);
+	}
+	if (IsValid(ProfileImage))
+	{
+		ProfileImage->SetOpacity(bOccupied ? 1.0f : 0.28f);
 	}
 	if (IsValid(PlayerColorMarker))
 	{
@@ -57,7 +77,7 @@ void UHeistTeamCardWidget::ApplyCrewData(const FHeistCrewStatusEntry& CrewEntry,
 	if (IsValid(StatusText))
 	{
 		StatusText->SetText(bOccupied ? HeistCrewStatus::ToDisplayText(CrewStatus) : NSLOCTEXT("HeistTeamCard", "EmptyStatus", "대기 중"));
-		StatusText->SetColorAndOpacity(FSlateColor(bOccupied ? HeistCrewStatus::GetPresentationColor(CrewStatus) : FLinearColor(0.45f, 0.45f, 0.45f)));
+		StatusText->SetColorAndOpacity(FSlateColor(TeamStatusColor(CrewStatus)));
 	}
 	if (IsValid(StatusIcon))
 	{
@@ -87,10 +107,15 @@ void UHeistTeamCardWidget::ApplyEmptySlot(const int32 InPlayerSlot)
 	PlatformUserId.Reset();
 	LoadedProfileTexture = nullptr;
 	CrewStatus = EHeistCrewStatus::Active;
-	SetVisibility(ESlateVisibility::Hidden);
+	SetVisibility(ESlateVisibility::HitTestInvisible);
 	if (IsValid(PlayerNameText))
 	{
-		PlayerNameText->SetText(FText::GetEmpty());
+		PlayerNameText->SetText(NSLOCTEXT("HeistTeamCard", "EmptySlot", "빈 슬롯"));
+		PlayerNameText->SetRenderOpacity(0.65f);
+	}
+	if (IsValid(ProfileImage))
+	{
+		ProfileImage->SetOpacity(0.28f);
 	}
 	if (IsValid(PlayerColorMarker))
 	{
@@ -98,8 +123,8 @@ void UHeistTeamCardWidget::ApplyEmptySlot(const int32 InPlayerSlot)
 	}
 	if (IsValid(StatusText))
 	{
-		StatusText->SetText(NSLOCTEXT("HeistTeamCard", "WaitingForPlayer", "플레이어 대기 중"));
-		StatusText->SetColorAndOpacity(FSlateColor(FLinearColor(0.45f, 0.45f, 0.45f)));
+		StatusText->SetText(NSLOCTEXT("HeistTeamCard", "EmptyStatus", "대기 중"));
+		StatusText->SetColorAndOpacity(FSlateColor(TeamStatusColor(EHeistCrewStatus::Active)));
 	}
 	if (IsValid(StatusIcon))
 	{
@@ -120,6 +145,7 @@ void UHeistTeamCardWidget::RefreshProfileImage()
 	{
 		ProfileImage->SetBrushFromTexture(DefaultProfileTexture, false);
 	}
+	ProfileImage->SetVisibility(IsValid(DefaultProfileTexture) ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
 	if (!bOccupied || PlatformUserId.IsEmpty() || TryLoadSteamProfileImage())
 	{
 		return;
@@ -200,6 +226,7 @@ bool UHeistTeamCardWidget::TryLoadSteamProfileImage()
 	LoadedProfileTexture->SRGB = true;
 	LoadedProfileTexture->UpdateResource();
 	ProfileImage->SetBrushFromTexture(LoadedProfileTexture, false);
+	ProfileImage->SetVisibility(ESlateVisibility::HitTestInvisible);
 	return true;
 #else
 	return false;
@@ -241,19 +268,19 @@ void UHeistTeamCardWidget::RefreshVoicePresentation()
 	}
 	else if (bMuted)
 	{
-		MicColor = FLinearColor(0.80f, 0.18f, 0.16f);
+		MicColor = FLinearColor::FromSRGBColor(FColor(116, 128, 122));
 	}
 	else if (bSpeaking)
 	{
-		MicColor = FLinearColor(0.20f, 0.78f, 0.38f);
+		MicColor = FLinearColor::FromSRGBColor(FColor(237, 236, 231));
 	}
 	else if (bPushToTalkHeld)
 	{
-		MicColor = FLinearColor(0.88f, 0.68f, 0.20f);
+		MicColor = FLinearColor::FromSRGBColor(FColor(164, 170, 169));
 	}
 	else
 	{
-		MicColor = FLinearColor(0.72f, 0.72f, 0.72f);
+		MicColor = FLinearColor::FromSRGBColor(FColor(116, 128, 122));
 	}
 	if (IsValid(MicStatusImage))
 	{

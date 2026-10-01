@@ -1,9 +1,9 @@
 """Render transient UI fixtures in a dedicated Editor; never save packages.
 
-Existing WBP shells receive a 1920x1080 SizeBox/ScaleBox wrapper in Editor memory
-and are compiled without saving. This reproduces ScaleToFit at both target
-resolutions with actual Slate font rasterization. The dedicated process discards
-the wrappers on exit. These are presentation fixtures, not natural input or Steam QA.
+By default, legacy shells receive an unsaved 1920x1080 SizeBox/ScaleBox wrapper.
+USE_SAVED_DESIGN_FIT instead requires the existing saved 1280x720 WBP wrapper
+and adds no render-only layout. Both paths use actual Slate font rasterization.
+These are presentation fixtures, not natural input or Steam QA.
 """
 import hashlib
 import json
@@ -29,6 +29,8 @@ CASES = [(a, 'Default') for a in ASSETS] + [
 if 'RENDER_ASSETS' in globals():
     ASSETS = [a for a in ASSETS if a in RENDER_ASSETS]
     CASES = [c for c in CASES if c[0] in RENDER_ASSETS]
+if 'RENDER_CASES' in globals():
+    CASES = RENDER_CASES
 PALETTE = [unreal.LinearColor(*c) for c in [
     (.82, .74, .57, 1), (.74, .45, .11, 1), (.10, .24, .28, 1),
     (.025, .06, .06, 1), (.42, .10, .065, 1)]]
@@ -88,6 +90,13 @@ def make_widget(asset, world):
 
 
 def prepare_design_canvases():
+    if globals().get('USE_SAVED_DESIGN_FIT', False):
+        tools = unreal.get_default_object(unreal.UMGToolSet)
+        for asset in ASSETS:
+            bp = unreal.load_asset('/Game/Blueprints/UI/'+asset)
+            names = {str(i.widget_name) for i in tools.call_method('GetWidgets', (bp,)).widgets}
+            assert {'HeistConceptDesignSize', 'HeistConceptViewportFit'} <= names, asset+' missing saved viewport fit'
+        return
     # WidgetTree has protected Python access. Use the Editor's existing UMG
     # API to wrap each loaded shell in memory only. Never save these packages;
     # the dedicated render process discards the wrappers on exit.
@@ -366,8 +375,8 @@ def finish(error=None):
         'screens': state['screens'], 'expected_screens': len(CASES)*len(RESOLUTIONS),
         'visual_fixture': True, 'natural_input_tested': False, 'steam_tested': False,
         'temporary_blank_map_sie': True, 'package_save_requested': False, 'assets_unchanged': BEFORE == after,
-        'design_size': [1920, 1080],
-        'scaling': 'Existing WBP shells wrapped in Editor memory with SizeBox1920x1080/ScaleBoxScaleToFit and compiled without saving; discarded on Editor exit',
+        'design_size': [1280, 720] if globals().get('USE_SAVED_DESIGN_FIT', False) else [1920, 1080],
+        'scaling': 'Saved WBP SizeBox1280x720/ScaleBoxScaleToFit; no render-only layout wrapper' if globals().get('USE_SAVED_DESIGN_FIT', False) else 'Existing WBP shells wrapped in Editor memory with SizeBox1920x1080/ScaleBoxScaleToFit and compiled without saving; discarded on Editor exit',
         'tick_policy': 'Read-only actual tick records; native ticks enabled; post-tick display fixture reapplied',
         'instance_ticks': state['instance_ticks'],
         'native_selection': state['native_selection'], 'errors': state['errors'],
@@ -389,6 +398,8 @@ def tick(delta):
             world = unreal.EditorLevelLibrary.get_game_world()
             for asset, variant, actor, component, widget in items:
                 fixture(asset, variant, widget, world)
+                if 'FIXTURE_CALLBACK' in globals():
+                    FIXTURE_CALLBACK(asset, variant, widget, world, widgets(widget))
                 component.request_render_update()
         if time.monotonic()-state['t'] < 4:
             return
@@ -418,6 +429,8 @@ def tick(delta):
                             'instance': w.get_path_name(), 'nested': True,
                             'instance_tick': str(w.get_editor_property('tick_frequency'))})
                 fixture(asset, variant, widget, world, first=True)
+                if 'FIXTURE_CALLBACK' in globals():
+                    FIXTURE_CALLBACK(asset, variant, widget, world, widgets(widget))
                 component.request_render_update()
                 items.append((asset, variant, actor, component, widget))
             state.update(phase='render', t=time.monotonic())

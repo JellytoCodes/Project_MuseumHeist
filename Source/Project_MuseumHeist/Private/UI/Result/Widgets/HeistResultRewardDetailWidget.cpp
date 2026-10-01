@@ -81,16 +81,23 @@ void UHeistResultRewardDetailWidget::ApplyTeamResult(const FHeistTeamResult& Tea
 void UHeistResultRewardDetailWidget::ShowDetail()
 {
 	SetVisibility(ESlateVisibility::Visible);
+	DetailVisibilityChangedDelegate.Broadcast(true);
 }
 
 void UHeistResultRewardDetailWidget::HideDetail()
 {
 	SetVisibility(ESlateVisibility::Collapsed);
+	DetailVisibilityChangedDelegate.Broadcast(false);
 }
 
 bool UHeistResultRewardDetailWidget::IsDetailVisible() const
 {
 	return GetVisibility() == ESlateVisibility::Visible;
+}
+
+FHeistResultDetailVisibilityChanged& UHeistResultRewardDetailWidget::GetDetailVisibilityChangedDelegate()
+{
+	return DetailVisibilityChangedDelegate;
 }
 
 void UHeistResultRewardDetailWidget::HandleCloseClicked()

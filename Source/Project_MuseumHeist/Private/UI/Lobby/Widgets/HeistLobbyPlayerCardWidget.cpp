@@ -55,7 +55,8 @@ void UHeistLobbyPlayerCardWidget::ApplyPlayerData(const FHeistLobbyPlayerCardDat
 
 	if (IsValid(PlayerNameText))
 	{
-		PlayerNameText->SetText(bOccupied ? PlayerCardData.PlayerName : FText::GetEmpty());
+		PlayerNameText->SetText(bOccupied ? PlayerCardData.PlayerName : NSLOCTEXT("HeistLobby", "PlayerSlotWaiting", "참가 대기"));
+		PlayerNameText->SetRenderOpacity(bOccupied ? 1.0f : 0.45f);
 	}
 	if (IsValid(ReadyButton))
 	{
@@ -64,6 +65,13 @@ void UHeistLobbyPlayerCardWidget::ApplyPlayerData(const FHeistLobbyPlayerCardDat
 	if (IsValid(ReadyCheckImage))
 	{
 		ReadyCheckImage->SetVisibility(bOccupied && PlayerCardData.bReady ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
+	}
+	if (IsValid(ReadyStatusText))
+	{
+		ReadyStatusText->SetText(bOccupied && PlayerCardData.bReady
+			? NSLOCTEXT("HeistLobby", "PlayerReadyStatus", "준비 완료")
+			: NSLOCTEXT("HeistLobby", "PlayerNotReadyStatus", "준비 대기"));
+		ReadyStatusText->SetRenderOpacity(bOccupied && PlayerCardData.bReady ? 1.0f : 0.65f);
 	}
 
 	if (!bOccupied || PreviousPlatformUserId != PlatformUserId)
@@ -99,6 +107,7 @@ void UHeistLobbyPlayerCardWidget::RefreshProfileImage()
 	{
 		ProfileImage->SetBrushFromTexture(DefaultProfileTexture, true);
 	}
+	ProfileImage->SetVisibility(IsValid(DefaultProfileTexture) ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
 	if (!bOccupied || PlatformUserId.IsEmpty())
 	{
 		return;
@@ -190,6 +199,7 @@ bool UHeistLobbyPlayerCardWidget::TryLoadSteamProfileImage()
 	LoadedProfileTexture->SRGB = true;
 	LoadedProfileTexture->UpdateResource();
 	ProfileImage->SetBrushFromTexture(LoadedProfileTexture, true);
+	ProfileImage->SetVisibility(ESlateVisibility::HitTestInvisible);
 	return true;
 #else
 	return false;

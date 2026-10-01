@@ -9,6 +9,8 @@
 class UButton;
 class UTextBlock;
 
+DECLARE_MULTICAST_DELEGATE_OneParam(FHeistResultDetailVisibilityChanged, bool);
+
 UCLASS(Blueprintable)
 class PROJECT_MUSEUMHEIST_API UHeistResultRewardDetailWidget : public UHeistUserWidgetBase
 {
@@ -23,8 +25,11 @@ class PROJECT_MUSEUMHEIST_API UHeistResultRewardDetailWidget : public UHeistUser
 	void ShowDetail();
 	void HideDetail();
 	bool IsDetailVisible() const;
+	FHeistResultDetailVisibilityChanged& GetDetailVisibilityChangedDelegate();
 
   private:
+	FHeistResultDetailVisibilityChanged DetailVisibilityChangedDelegate;
+
 	UFUNCTION()
 	void HandleCloseClicked();
 

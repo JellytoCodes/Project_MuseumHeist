@@ -29,6 +29,8 @@ class PROJECT_MUSEUMHEIST_API UHeistLobbyMapCardWidget : public UHeistUserWidget
 	FHeistLobbyMapCardSelected& GetMapSelectedDelegate();
 
   private:
+	void RefreshMapThumbnail();
+
 	UFUNCTION()
 	void HandleSelectMapClicked();
 
@@ -39,7 +41,22 @@ class PROJECT_MUSEUMHEIST_API UHeistLobbyMapCardWidget : public UHeistUserWidget
 	TObjectPtr<UTextBlock> MapNameText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UImage> MapThumbnailImage;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> RandomQuestionText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UImage> SelectedCheckImage;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UImage> SelectionBackground;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lobby|Presentation", meta = (AllowPrivateAccess = "true"))
+	FLinearColor ThumbnailTint = FLinearColor::White;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lobby|Presentation", meta = (AllowPrivateAccess = "true"))
+	FLinearColor SelectedThumbnailTint = FLinearColor::White;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Lobby|Presentation", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UTexture2D> MapThumbnail;

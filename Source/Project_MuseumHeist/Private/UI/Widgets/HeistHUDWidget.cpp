@@ -487,7 +487,8 @@ void UHeistHUDWidget::RefreshToolPresentation()
 	{
 		const bool bFlashlightEnabled = HUDViewModel->IsFlashlightEnabled();
 		const FLinearColor FlashlightColor = bFlashlightEnabled
-			? FLinearColor(0.92f, 0.82f, 0.64f) : FLinearColor(0.65f, 0.63f, 0.57f);
+			? FLinearColor::FromSRGBColor(FColor(237, 236, 231))
+			: FLinearColor::FromSRGBColor(FColor(164, 170, 169));
 		if (IsValid(FlashlightStatusText))
 		{
 			FlashlightStatusText->SetText(bFlashlightEnabled
@@ -499,13 +500,12 @@ void UHeistHUDWidget::RefreshToolPresentation()
 			FSlateBrush FlashlightBrush = FlashlightIcon->GetBrush();
 			FlashlightBrush.DrawAs = ESlateBrushDrawType::Image;
 			FlashlightBrush.Margin = FMargin(0.0f);
-			FlashlightBrush.SetImageSize(FVector2f(48.0f, 48.0f));
 			FlashlightBrush.TintColor = FSlateColor(FLinearColor::White);
 			FlashlightBrush.SetUVRegion(FBox2f(FVector2f(bFlashlightEnabled ? 0.5f : 0.0f, 0.0f),
 				FVector2f(bFlashlightEnabled ? 1.0f : 0.5f, 1.0f)));
 			FlashlightIcon->SetBrush(FlashlightBrush);
 			FlashlightIcon->SetColorAndOpacity(FlashlightColor);
-			FlashlightIcon->SetOpacity(bFlashlightEnabled ? 1.0f : 0.4f);
+			FlashlightIcon->SetOpacity(1.0f);
 			FlashlightIcon->SetToolTipText(HUDViewModel->GetFlashlightStatusText());
 		}
 	}
@@ -528,9 +528,13 @@ void UHeistHUDWidget::RefreshMissionPresentation()
 	}
 	if (IsValid(ContractValueText))
 	{
-		const FText& ValueText = HUDViewModel->GetContractValueText();
+		const FText& ValueText = IsValid(ContractValueLabel) ? HUDViewModel->GetContractValueAmountsText() : HUDViewModel->GetContractValueText();
 		ContractValueText->SetText(ValueText);
 		ContractValueText->SetVisibility(ValueText.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+		if (IsValid(ContractValueLabel))
+		{
+			ContractValueLabel->SetVisibility(ValueText.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+		}
 	}
 	if (IsValid(RequiredTargetNameText))
 	{
@@ -675,6 +679,11 @@ void UHeistHUDWidget::RefreshAlertStars()
 	default:
 		break;
 	}
+	if (bUseRectangularAlertIndicators)
+	{
+		AlertColor = FLinearColor::FromSRGBColor(HUDViewModel->GetAlertLevel() == EHeistAlertLevel::Quiet
+			? FColor(164, 170, 169) : FColor(214, 182, 129));
+	}
 	if (IsValid(AlertTitleText))
 	{
 		AlertTitleText->SetText(NSLOCTEXT("HeistHUD", "AlertTitle", "경계도"));
@@ -684,6 +693,11 @@ void UHeistHUDWidget::RefreshAlertStars()
 	const TArray<UImage*> AlertStars = {AlertStar01.Get(), AlertStar02.Get(), AlertStar03.Get(), AlertStar04.Get(), AlertStar05.Get(), AlertStar06.Get(), AlertStar07.Get(),
 		AlertStar08.Get(), AlertStar09.Get(), AlertStar10.Get()};
 	const float MeterValue = FMath::Clamp(HUDViewModel->GetAlertMeterValue(), 0.0f, 10.0f);
+	if (IsValid(AlertValueText))
+	{
+		AlertValueText->SetText(FText::Format(NSLOCTEXT("HeistHUD", "AlertValue", "{0} / 10"), FText::AsNumber(FMath::FloorToInt(MeterValue))));
+		AlertValueText->SetColorAndOpacity(FSlateColor(AlertColor));
+	}
 	for (int32 StarIndex = 0; StarIndex < AlertStars.Num(); ++StarIndex)
 	{
 		UImage* StarImage = AlertStars[StarIndex];
@@ -692,12 +706,28 @@ void UHeistHUDWidget::RefreshAlertStars()
 			continue;
 		}
 		const float FilledAmount = MeterValue - static_cast<float>(StarIndex);
-		UTexture2D* StarTexture = FilledAmount >= 1.0f ? FullAlertStarTexture.Get() : (FilledAmount >= 0.5f ? HalfAlertStarTexture.Get() : EmptyAlertStarTexture.Get());
-		if (IsValid(StarTexture))
+		if (bUseRectangularAlertIndicators)
 		{
-			StarImage->SetBrushFromTexture(StarTexture, false);
+			FSlateBrush SegmentBrush = StarImage->GetBrush();
+			SegmentBrush.SetResourceObject(nullptr);
+			SegmentBrush.DrawAs = ESlateBrushDrawType::Image;
+			SegmentBrush.Margin = FMargin(0.0f);
+			SegmentBrush.TintColor = FSlateColor(FLinearColor::White);
+			StarImage->SetBrush(SegmentBrush);
+			StarImage->SetRenderTransformPivot(FVector2D(0.0f, 0.5f));
+			StarImage->SetRenderScale(FVector2D(FilledAmount >= 1.0f ? 1.0f : (FilledAmount >= 0.5f ? 0.5f : 0.0f), 1.0f));
+			StarImage->SetColorAndOpacity(FLinearColor::FromSRGBColor(FColor(196, 202, 198)));
 		}
-		StarImage->SetColorAndOpacity(FilledAmount >= 0.5f ? AlertColor : FLinearColor(0.36f, 0.38f, 0.38f));
+		else
+		{
+			UTexture2D* StarTexture = FilledAmount >= 1.0f ? FullAlertStarTexture.Get() : (FilledAmount >= 0.5f ? HalfAlertStarTexture.Get() : EmptyAlertStarTexture.Get());
+			if (IsValid(StarTexture))
+			{
+				StarImage->SetBrushFromTexture(StarTexture, false);
+			}
+			StarImage->SetRenderScale(FVector2D(1.0f, 1.0f));
+			StarImage->SetColorAndOpacity(FilledAmount >= 0.5f ? AlertColor : FLinearColor(0.36f, 0.38f, 0.38f));
+		}
 		StarImage->SetVisibility(ESlateVisibility::HitTestInvisible);
 	}
 }
@@ -771,7 +801,7 @@ void UHeistHUDWidget::RefreshInventoryShortcutPresentation()
 {
 	if (IsValid(InventoryShortcutKeyText))
 	{
-		InventoryShortcutKeyText->SetText(NSLOCTEXT("HeistHUD", "InventoryShortcut", "TAB"));
+		InventoryShortcutKeyText->SetText(NSLOCTEXT("HeistHUD", "InventoryShortcutBracketed", "[TAB]"));
 	}
 	if (!IsValid(InventoryShortcutIcon) || !IsValid(HUDViewModel))
 	{
@@ -782,9 +812,9 @@ void UHeistHUDWidget::RefreshInventoryShortcutPresentation()
 	const UHeistNoiseEmitterComponent* NoiseEmitter = IsValid(OwningCharacter) ? OwningCharacter->GetNoiseEmitterComponent() : nullptr;
 	const float HeavyThreshold = IsValid(NoiseEmitter) ? FMath::Max(1.0f, NoiseEmitter->GetHeavyWeightThreshold()) : 10.0f;
 	const float WeightRatio = FMath::Clamp(HUDViewModel->GetLocalLootWeight() / HeavyThreshold, 0.0f, 1.0f);
-	const FLinearColor LightColor(0.22f, 0.78f, 0.34f);
-	const FLinearColor MediumColor(0.94f, 0.72f, 0.18f);
-	const FLinearColor HeavyColor(0.90f, 0.14f, 0.10f);
+	const FLinearColor LightColor = FLinearColor::FromSRGBColor(FColor(164, 170, 169));
+	const FLinearColor MediumColor = FLinearColor::FromSRGBColor(FColor(214, 182, 129));
+	const FLinearColor HeavyColor = FLinearColor::FromSRGBColor(FColor(229, 139, 130));
 	const FLinearColor InventoryColor = WeightRatio < 0.5f
 		? FLinearColor::LerpUsingHSV(LightColor, MediumColor, WeightRatio * 2.0f)
 		: FLinearColor::LerpUsingHSV(MediumColor, HeavyColor, (WeightRatio - 0.5f) * 2.0f);
@@ -946,6 +976,14 @@ void UHeistHUDWidget::ResetHiddenPresentationState()
 		ContractValueText->SetText(FText::GetEmpty());
 		ContractValueText->SetVisibility(ESlateVisibility::Collapsed);
 	}
+	if (IsValid(ContractValueLabel))
+	{
+		ContractValueLabel->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	if (IsValid(AlertValueText))
+	{
+		AlertValueText->SetText(FText::GetEmpty());
+	}
 	LastPresentedAlertTriggerId = NAME_None;
 	TransientEventHideWorldTime = 0.0f;
 	LastArrestFeedbackEvent = NAME_None;
@@ -1096,8 +1134,8 @@ bool UHeistHUDWidget::IsAlertPresentationContractSatisfied() const
 {
 	const TArray<UImage*> AlertStars = {AlertStar01.Get(), AlertStar02.Get(), AlertStar03.Get(), AlertStar04.Get(), AlertStar05.Get(), AlertStar06.Get(), AlertStar07.Get(),
 		AlertStar08.Get(), AlertStar09.Get(), AlertStar10.Get()};
-	if (!IsValid(HUDViewModel) || !IsValid(AlertTitleText) || AlertStars.Contains(nullptr) || !IsValid(EmptyAlertStarTexture) || !IsValid(HalfAlertStarTexture) ||
-		!IsValid(FullAlertStarTexture) || !IsValid(SuspenseMusic) || !IsValid(AlarmMusic))
+	const bool bVisualAssetsReady = bUseRectangularAlertIndicators || (IsValid(EmptyAlertStarTexture) && IsValid(HalfAlertStarTexture) && IsValid(FullAlertStarTexture));
+	if (!IsValid(HUDViewModel) || !IsValid(AlertTitleText) || AlertStars.Contains(nullptr) || !bVisualAssetsReady || !IsValid(SuspenseMusic) || !IsValid(AlarmMusic))
 	{
 		return false;
 	}

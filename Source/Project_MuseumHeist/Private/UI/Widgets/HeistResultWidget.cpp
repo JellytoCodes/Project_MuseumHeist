@@ -4,9 +4,11 @@
 #include "Components/Button.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
+#include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
+#include "Components/Widget.h"
 #include "Core/HeistGameInstance.h"
 #include "Core/HeistPlayerController.h"
 #include "Engine/Texture2D.h"
@@ -37,8 +39,11 @@ void UHeistResultWidget::NativeConstruct()
 	}
 	if (IsValid(RewardDetailWidget))
 	{
+		RewardDetailWidget->GetDetailVisibilityChangedDelegate().RemoveAll(this);
+		RewardDetailWidget->GetDetailVisibilityChangedDelegate().AddUObject(this, &UHeistResultWidget::HandleDetailVisibilityChanged);
 		RewardDetailWidget->HideDetail();
 	}
+	HandleDetailVisibilityChanged(false);
 }
 
 void UHeistResultWidget::NativeDestruct()
@@ -54,6 +59,10 @@ void UHeistResultWidget::NativeDestruct()
 	if (IsValid(ResultViewModel))
 	{
 		ResultViewModel->GetSnapshotChangedDelegate().RemoveAll(this);
+	}
+	if (IsValid(RewardDetailWidget))
+	{
+		RewardDetailWidget->GetDetailVisibilityChangedDelegate().RemoveAll(this);
 	}
 	ReplicaRecapTextures.Reset();
 
@@ -100,6 +109,7 @@ void UHeistResultWidget::ResetHiddenPresentationState()
 	{
 		RewardDetailWidget->HideDetail();
 	}
+	HandleDetailVisibilityChanged(false);
 	if (IsValid(ReplicaRecapVisualContainer))
 	{
 		ReplicaRecapVisualContainer->ClearChildren();
@@ -264,13 +274,25 @@ void UHeistResultWidget::RefreshResultPresentation()
 	}
 	if (IsValid(OutcomeReasonTextBlock))
 	{
-		const FText& OutcomeReason = ResultViewModel->GetOutcomeReasonText();
+		const FText OutcomeReason = ResultViewModel->GetOutcomeReasonText().IsEmpty() && ResultViewModel->GetTeamResult().bRequiredTargetSecured
+			? NSLOCTEXT("HeistResult", "RecapRequiredTargetSecured", "필수 목표 반출 완료")
+			: ResultViewModel->GetOutcomeReasonText();
 		OutcomeReasonTextBlock->SetText(OutcomeReason);
 		OutcomeReasonTextBlock->SetVisibility(OutcomeReason.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::SelfHitTestInvisible);
 	}
 	if (IsValid(TeamRewardTextBlock))
 	{
-		TeamRewardTextBlock->SetText(ResultViewModel->GetTeamRewardText());
+		TeamRewardTextBlock->SetText(FText::Format(NSLOCTEXT("HeistResult", "SecuredValueSummary", "${0}"),
+			FText::AsNumber(ResultViewModel->GetTeamResult().SecuredValue)));
+	}
+	const bool bContractFailed = ResultViewModel->GetTeamResult().Outcome == EHeistContractOutcome::Failed;
+	if (IsValid(CoopResultSuccessCheck))
+	{
+		CoopResultSuccessCheck->SetVisibility(bContractFailed ? ESlateVisibility::Collapsed : ESlateVisibility::SelfHitTestInvisible);
+	}
+	if (IsValid(CoopResultFailedCross))
+	{
+		CoopResultFailedCross->SetVisibility(bContractFailed ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 	}
 	RefreshRewardDetailPresentation(ResultViewModel->GetTeamResult());
 	ReplicaRecapTextures.Reset();
@@ -301,6 +323,7 @@ void UHeistResultWidget::RefreshReplicaRecapPresentation(const TArray<FHeistRepl
 	}
 
 	int32 AddedReplicaCount = 0;
+	UHorizontalBoxSlot* PreviousCardSlot = nullptr;
 	for (const FHeistReplicaRecapEntry& ReplicaEntry : ReplicaRecap)
 	{
 		if (ReplicaEntry.ForgeryType != EHeistForgeryType::Drawing || !ReplicaEntry.HasPaintingVisualPayload() || !ReplicaCardWidgetClass)
@@ -315,8 +338,13 @@ void UHeistResultWidget::RefreshReplicaRecapPresentation(const TArray<FHeistRepl
 		}
 		ReplicaCard->ApplyReplicaEntry(ReplicaEntry, ReplicaTexture);
 		UHorizontalBoxSlot* CardSlot = ReplicaRecapVisualContainer->AddChildToHorizontalBox(ReplicaCard);
-		CardSlot->SetPadding(FMargin(0.0f, 0.0f, 12.0f, 0.0f));
-		CardSlot->SetVerticalAlignment(VAlign_Center);
+		if (IsValid(PreviousCardSlot))
+		{
+			PreviousCardSlot->SetPadding(FMargin(0.0f, 0.0f, 24.0f, 0.0f));
+		}
+		CardSlot->SetPadding(FMargin(0.0f));
+		CardSlot->SetVerticalAlignment(VAlign_Top);
+		PreviousCardSlot = CardSlot;
 		++AddedReplicaCount;
 	}
 
@@ -345,6 +373,7 @@ void UHeistResultWidget::RefreshContributionTablePresentation(const TArray<FHeis
 		if (IsValid(PlayerRow))
 		{
 			PlayerRow->ApplyPlayerResult(PlayerResults[PlayerIndex]);
+			PlayerRow->SetDetailedPresentation(IsRewardDetailVisible());
 			ContributionTableContainer->AddChildToVerticalBox(PlayerRow)->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 4.0f));
 		}
 	}
@@ -367,7 +396,32 @@ void UHeistResultWidget::HandleRewardDetailsClicked()
 {
 	if (IsValid(RewardDetailWidget))
 	{
-		RewardDetailWidget->ShowDetail();
+		if (RewardDetailWidget->IsDetailVisible())
+		{
+			RewardDetailWidget->HideDetail();
+		}
+		else
+		{
+			RewardDetailWidget->ShowDetail();
+		}
+	}
+}
+
+void UHeistResultWidget::HandleDetailVisibilityChanged(const bool bVisible)
+{
+	if (IsValid(CoopResultDetailHeaderSize))
+	{
+		CoopResultDetailHeaderSize->SetVisibility(bVisible ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+	}
+	if (IsValid(ContributionTableContainer))
+	{
+		for (UWidget* Child : ContributionTableContainer->GetAllChildren())
+		{
+			if (UHeistResultPlayerRowWidget* PlayerRow = Cast<UHeistResultPlayerRowWidget>(Child))
+			{
+				PlayerRow->SetDetailedPresentation(bVisible);
+			}
+		}
 	}
 }
 

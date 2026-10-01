@@ -2,6 +2,7 @@
 
 #include "Components/Button.h"
 #include "Components/ComboBoxString.h"
+#include "Components/ProgressBar.h"
 #include "Components/Slider.h"
 #include "Components/TextBlock.h"
 #include "Core/HeistGameUserSettings.h"
@@ -242,6 +243,19 @@ void UHeistSettingsWidget::RefreshSettingsControls()
 
 void UHeistSettingsWidget::RefreshSettingsValueTexts()
 {
+	const auto RefreshValueFill = [](UProgressBar* Fill, const USlider* Slider)
+	{
+		if (IsValid(Fill) && IsValid(Slider))
+		{
+			const float Range = Slider->GetMaxValue() - Slider->GetMinValue();
+			const float Percent = Range > 0.0f ? (Slider->GetValue() - Slider->GetMinValue()) / Range : 0.0f;
+			Fill->SetPercent(FMath::Clamp(Percent, 0.0f, 1.0f));
+		}
+	};
+	RefreshValueFill(FOVValueFill, FOVSlider);
+	RefreshValueFill(MouseSensitivityValueFill, MouseSensitivitySlider);
+	RefreshValueFill(MasterVolumeValueFill, MasterVolumeSlider);
+
 	if (IsValid(FOVValueText) && IsValid(FOVSlider))
 	{
 		FOVValueText->SetText(FText::FromString(FString::Printf(TEXT("%.0f"), FOVSlider->GetValue())));

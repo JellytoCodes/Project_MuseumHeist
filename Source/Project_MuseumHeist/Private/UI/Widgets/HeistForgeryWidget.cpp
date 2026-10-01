@@ -48,8 +48,8 @@ void ApplyFixedSizeSelectionStyle(UButton* Button, const FLinearColor& FillColor
 		Brush->DrawAs = ESlateBrushDrawType::RoundedBox;
 		Brush->Margin = FMargin(0.0f);
 		Brush->TintColor = FSlateColor(FillColor);
-		Brush->OutlineSettings = FSlateBrushOutlineSettings(4.0f,
-			FSlateColor(bSelected ? FLinearColor(0.92f, 0.82f, 0.60f) : FLinearColor(0.24f, 0.26f, 0.26f)), 4.0f);
+		Brush->OutlineSettings = FSlateBrushOutlineSettings(0.0f,
+			FSlateColor(FLinearColor::FromSRGBColor(FColor(237, 236, 231))), bSelected ? 4.0f : 0.0f);
 		Brush->OutlineSettings.bUseBrushTransparency = true;
 	}
 	if (SelectionStyle.Normal != CurrentStyle.Normal || SelectionStyle.Hovered != CurrentStyle.Hovered ||
@@ -179,14 +179,14 @@ FLinearColor ResolveScoreTextColor(const float Score, const float MinimumScore, 
 {
 	if (!FMath::IsFinite(Score))
 	{
-		return FLinearColor(0.72f, 0.76f, 0.82f);
+		return FLinearColor::FromSRGBColor(FColor(164, 170, 169));
 	}
 	if (bCanSubmit)
 	{
-		return FLinearColor(0.32f, 0.78f, 0.48f);
+		return FLinearColor::FromSRGBColor(FColor(157, 188, 167));
 	}
-	const float ProgressToMinimum = FMath::Clamp(Score / FMath::Max(1.0f, MinimumScore), 0.0f, 1.0f);
-	return FMath::Lerp(FLinearColor(0.82f, 0.22f, 0.18f), FLinearColor(0.94f, 0.60f, 0.22f), ProgressToMinimum);
+	return FLinearColor::FromSRGBColor(Score >= FMath::Min(50.0f, MinimumScore)
+		? FColor(214, 182, 129) : FColor(229, 139, 130));
 }
 
 void ApplyScorePresentation(UTextBlock* ScoreText, UProgressBar* QualityBar, const TOptional<float> Score,
@@ -195,11 +195,11 @@ void ApplyScorePresentation(UTextBlock* ScoreText, UProgressBar* QualityBar, con
 	const bool bHasScore = Score.IsSet() && FMath::IsFinite(Score.GetValue());
 	const float ClampedScore = bHasScore ? FMath::Clamp(Score.GetValue(), 0.0f, 100.0f) : 0.0f;
 	const FLinearColor QualityColor = bHasScore
-		? ResolveScoreTextColor(ClampedScore, MinimumScore, bCanSubmit) : FLinearColor(0.72f, 0.76f, 0.82f);
+		? ResolveScoreTextColor(ClampedScore, MinimumScore, bCanSubmit) : FLinearColor::FromSRGBColor(FColor(164, 170, 169));
 	if (IsValid(ScoreText))
 	{
 		ScoreText->SetText(NSLOCTEXT("HeistForgery", "PreviewNeedsWork", "작품 유사도"));
-		ScoreText->SetColorAndOpacity(FSlateColor(FLinearColor(0.72f, 0.76f, 0.82f)));
+		ScoreText->SetColorAndOpacity(FSlateColor(FLinearColor::FromSRGBColor(FColor(164, 170, 169))));
 	}
 	if (IsValid(QualityBar))
 	{
@@ -1505,6 +1505,11 @@ void UHeistForgeryWidget::BindActionButtons()
 		CancelButton->OnClicked.RemoveAll(this);
 		CancelButton->OnClicked.AddDynamic(this, &UHeistForgeryWidget::HandleCancelClicked);
 	}
+	if (IsValid(ResetDrawingButton))
+	{
+		ResetDrawingButton->OnClicked.RemoveAll(this);
+		ResetDrawingButton->OnClicked.AddDynamic(this, &UHeistForgeryWidget::HandleResetDrawingClicked);
+	}
 	if (IsValid(BrushSmallButton))
 	{
 		BrushSmallButton->OnClicked.RemoveAll(this);
@@ -1565,6 +1570,11 @@ void UHeistForgeryWidget::RefreshCommonActionPresentation()
 	{
 		CancelButton->SetVisibility(bDrawingVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 		CancelButton->SetIsEnabled(bDrawingVisible);
+	}
+	if (IsValid(ResetDrawingButton))
+	{
+		ResetDrawingButton->SetVisibility(bDrawingVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		ResetDrawingButton->SetIsEnabled(IsDrawingInputEnabled());
 	}
 	ApplyScorePresentation(PreviewScoreText, PreviewQualityBar, LocalPreviewScore,
 		IsValid(ForgeryViewModel) ? ForgeryViewModel->GetMinimumAcceptedQualityScore() : HeistReplicaAcceptance::MinimumQualityScore,
@@ -1641,7 +1651,14 @@ void UHeistForgeryWidget::RefreshBrushPresetButtons()
 		if (IsValid(Buttons[PresetIndex]))
 		{
 			const bool bSelected = ActiveBrushPresetIndex == PresetIndex;
-			ApplyFixedSizeSelectionStyle(Buttons[PresetIndex], FLinearColor(0.08f, 0.09f, 0.10f), bSelected);
+			const FLinearColor Fill = FLinearColor::FromSRGBColor(bSelected ? FColor(237, 236, 231) : FColor(16, 20, 22));
+			ApplyFixedSizeSelectionStyle(Buttons[PresetIndex], Fill, false);
+			FButtonStyle Style = Buttons[PresetIndex]->GetStyle();
+			const FSlateColor Foreground(FLinearColor::FromSRGBColor(bSelected ? FColor(16, 20, 22) : FColor(237, 236, 231)));
+			Style.NormalForeground = Foreground;
+			Style.HoveredForeground = Foreground;
+			Style.PressedForeground = Foreground;
+			Buttons[PresetIndex]->SetStyle(Style);
 		}
 	}
 }
@@ -1689,6 +1706,11 @@ void UHeistForgeryWidget::HandlePaletteButton8Clicked()
 void UHeistForgeryWidget::HandleSubmitClicked()
 {
 	RequestSubmitCollectedStrokes();
+}
+
+void UHeistForgeryWidget::HandleResetDrawingClicked()
+{
+	ResetDrawingCanvas();
 }
 
 void UHeistForgeryWidget::HandleCancelClicked()
@@ -1780,12 +1802,12 @@ void UHeistForgeryWidget::RefreshDrawingTimeRemaining()
 	}
 	if (RemainingSeconds == INDEX_NONE)
 	{
-		DrawingTimeRemainingText->SetText(NSLOCTEXT("HeistCommonForgeryUI", "TimePending", "남은 시간  --:--"));
+		DrawingTimeRemainingText->SetText(NSLOCTEXT("HeistCommonForgeryUI", "TimePendingCompact", "--:--"));
 		return;
 	}
 
 	const FText TimeText = FText::FromString(FString::Printf(TEXT("%02d:%02d"), RemainingSeconds / 60, RemainingSeconds % 60));
-	DrawingTimeRemainingText->SetText(FText::Format(NSLOCTEXT("HeistCommonForgeryUI", "TimeRemaining", "남은 시간  {0}"), TimeText));
+	DrawingTimeRemainingText->SetText(TimeText);
 }
 
 void UHeistForgeryWidget::RefreshDrawingFeedback()
@@ -1801,7 +1823,7 @@ void UHeistForgeryWidget::RefreshDrawingFeedback()
 	{
 		FooterHint->SetText(NSLOCTEXT("HeistForgery", "DrawingCanvasHint",
 			"좌클릭 그리기  |  우클릭 지우기  |  [ ] 붓 크기  |  R 초기화  |  Enter 제출  |  Esc 취소  |  주변 소리와 팀 음성 유지"));
-		FooterHint->SetVisibility(bDrawingVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		FooterHint->SetVisibility(ESlateVisibility::Collapsed);
 	}
 	if (IsValid(PreviewScoreText))
 	{

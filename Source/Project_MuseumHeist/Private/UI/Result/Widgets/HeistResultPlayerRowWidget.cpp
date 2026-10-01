@@ -1,6 +1,7 @@
 #include "UI/Result/Widgets/HeistResultPlayerRowWidget.h"
 
 #include "Components/Image.h"
+#include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Engine/Texture2D.h"
 #include "Engine/World.h"
@@ -71,6 +72,14 @@ void UHeistResultPlayerRowWidget::ApplyPlayerResult(const FHeistPlayerResult& Pl
 	}
 
 	RefreshProfileImage();
+}
+
+void UHeistResultPlayerRowWidget::SetDetailedPresentation(const bool bVisible)
+{
+	if (IsValid(CoopResultDetailFieldsSize))
+	{
+		CoopResultDetailFieldsSize->SetVisibility(bVisible ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+	}
 }
 
 FText UHeistResultPlayerRowWidget::BuildPlayerStateText(const FHeistPlayerResult& PlayerResult)

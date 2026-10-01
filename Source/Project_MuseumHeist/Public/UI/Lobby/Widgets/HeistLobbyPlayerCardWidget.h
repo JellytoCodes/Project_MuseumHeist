@@ -51,6 +51,9 @@ class PROJECT_MUSEUMHEIST_API UHeistLobbyPlayerCardWidget : public UHeistUserWid
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget, AllowPrivateAccess = "true"))
 	TObjectPtr<UImage> ReadyCheckImage;
 
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> ReadyStatusText;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Lobby", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UTexture2D> DefaultProfileTexture;
 

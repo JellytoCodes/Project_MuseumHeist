@@ -7,6 +7,7 @@
 
 class UButton;
 class UComboBoxString;
+class UProgressBar;
 class USlider;
 class UTextBlock;
 
@@ -78,6 +79,15 @@ class PROJECT_MUSEUMHEIST_API UHeistSettingsWidget : public UHeistUserWidgetBase
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<USlider> MasterVolumeSlider;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UProgressBar> FOVValueFill;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UProgressBar> MouseSensitivityValueFill;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UProgressBar> MasterVolumeValueFill;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UComboBoxString> ResolutionComboBox;
