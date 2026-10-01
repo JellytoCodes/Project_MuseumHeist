@@ -198,10 +198,8 @@ void ApplyScorePresentation(UTextBlock* ScoreText, UProgressBar* QualityBar, con
 		? ResolveScoreTextColor(ClampedScore, MinimumScore, bCanSubmit) : FLinearColor(0.72f, 0.76f, 0.82f);
 	if (IsValid(ScoreText))
 	{
-		ScoreText->SetText(bCanSubmit
-			? NSLOCTEXT("HeistForgery", "PreviewReady", "예상 완성도 · 제출 가능")
-			: NSLOCTEXT("HeistForgery", "PreviewNeedsWork", "예상 완성도 · 보완 필요"));
-		ScoreText->SetColorAndOpacity(FSlateColor(QualityColor));
+		ScoreText->SetText(NSLOCTEXT("HeistForgery", "PreviewNeedsWork", "작품 유사도"));
+		ScoreText->SetColorAndOpacity(FSlateColor(FLinearColor(0.72f, 0.76f, 0.82f)));
 	}
 	if (IsValid(QualityBar))
 	{

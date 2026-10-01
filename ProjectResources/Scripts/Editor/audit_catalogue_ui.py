@@ -2,7 +2,7 @@
 import hashlib,json,re
 from pathlib import Path
 import unreal
-out=Path(unreal.Paths.project_saved_dir()).resolve()/'Automation/UIUX20260930/CatalogueAudit.json'
+out=Path(unreal.Paths.project_saved_dir()).resolve()/'Automation'/globals().get('QA_FOLDER','UIUX20260930')/'CatalogueAudit.json'
 out.parent.mkdir(parents=True,exist_ok=True)
 root=Path(unreal.Paths.project_dir()).resolve()
 files=sorted(set(list((root/'Content/Blueprints/UI').rglob('*.uasset'))+list((root/'Content/Assets/UI').rglob('*.uasset'))+list((root/'Content/Maps').rglob('*.umap'))))
@@ -84,6 +84,7 @@ for path in unreal.EditorAssetLibrary.list_assets('/Game/Blueprints/UI',recursiv
         report['contracts']['hud_panels_native']=all(ws[n].get_editor_property('background').get_editor_property('resource_object') is None for n in ['MissionPanel','AlertMeterPanel','TutorialCardContainer','Border_0'])
     if bp.get_name()=='WBP_HeistForgery':
         report['contracts']['preview_completion_bar']=isinstance(ws.get('PreviewQualityBar'),unreal.ProgressBar)
+        report['contracts']['preview_fixed_similarity_label']=str(ws['PreviewScoreText'].get_text())=='작품 유사도'
         report['contracts']['no_preview_numeric_clutter']='70+' not in str(ws['PreviewScoreText'].get_text()) and '/100' not in str(ws['PreviewScoreText'].get_text())
         w=ws['DrawingSurfaceSizeBox'];report['contracts']['drawing_800_square']=w.get_editor_property('width_override')==800 and w.get_editor_property('height_override')==800
     if bp.get_name()=='WBP_Settings':
@@ -92,7 +93,15 @@ for path in unreal.EditorAssetLibrary.list_assets('/Game/Blueprints/UI',recursiv
     if bp.get_name()=='WBP_SessionJoin':
         report['contracts']['join_submit_symmetric_padding']=ws['SubmitJoinSessionSize'].slot.get_editor_property('padding').left==ws['SubmitJoinSessionSize'].slot.get_editor_property('padding').right==0
     if bp.get_name()=='WBP_Lobby':
-        report['contracts']['lobby_common_width']=ws['LobbyContent'].get_parent().get_editor_property('width_override')==1600 and all(ws[n].get_editor_property('size').x==16 for n in ['Spacer_2','Spacer_4','Spacer_5'])
+        report['contracts']['lobby_common_width']=ws['LobbyContent'].get_parent().get_editor_property('width_override')==1352 and all(ws[n].get_editor_property('size').x==24 for n in ['Spacer_2','Spacer_4','Spacer_5'])
+    if bp.get_name()=='WBP_LobbyPlayerCard':
+        report['contracts']['lobby_square_card']=ws['PlayerCardSizeBox'].get_editor_property('width_override')==ws['PlayerCardSizeBox'].get_editor_property('height_override')==320
+        report['contracts']['lobby_square_profile']=ws['ProfileImageSizeBox'].get_editor_property('width_override')==ws['ProfileImageSizeBox'].get_editor_property('height_override')==112 and ws['ProfileImage_AspectFit'].get_editor_property('stretch')==unreal.Stretch.SCALE_TO_FIT
+        report['contracts']['lobby_symmetric_content_padding']=all(getattr(ws['PlayerCardContent'].slot.get_editor_property('padding'),p)==24 for p in ['left','top','right','bottom'])
+        report['contracts']['lobby_ready_check_24']=ws['ReadyCheckImage'].get_parent().get_editor_property('width_override')==ws['ReadyCheckImage'].get_parent().get_editor_property('height_override')==24
+        report['contracts']['lobby_name_ellipsis']=ws['PlayerNameText'].get_editor_property('text_overflow_policy')==unreal.TextOverflowPolicy.ELLIPSIS and ws['PlayerNameText'].get_editor_property('justification')==unreal.TextJustify.LEFT and ws['PlayerNameText'].slot.get_editor_property('horizontal_alignment')==unreal.HorizontalAlignment.H_ALIGN_CENTER
+    if bp.get_name()=='WBP_LobbyMapCard':
+        report['contracts']['lobby_map_aspect_16_9']=ws['MapThumbnailSize'].get_editor_property('width_override')==320 and ws['MapThumbnailSize'].get_editor_property('height_override')==180
     if bp.get_name() in ['WBP_ResultPlayerRow','WBP_Result']:
         names=['PlayerNameText','PlayerStateText','SurfaceForgeryCountText','BestSurfaceQualityText','ArtifactsRecoveredText','SecuredLootValueText','GuardsDistractedText','TeammatesRescuedText','AlarmsTriggeredText'] if bp.get_name()=='WBP_ResultPlayerRow' else ['HeaderPlayer','HeaderState','HeaderDrawing','HeaderBestQuality','HeaderOriginals','HeaderSecured','HeaderGuards','HeaderRescues','HeaderAlarms']
         result_columns[bp.get_name()]=[ws[n].get_parent().get_editor_property('width_override') for n in names]
@@ -117,7 +126,7 @@ report['contracts']['font_packages_saved']=all((font_dir/(n+s+'.uasset')).is_fil
 report['contracts']['textured_brushes_audited']=report['brushes_checked']>0
 report['contracts']['native_brushes_audited']=report['native_brushes_checked']>0
 report['contracts']['result_columns_match']=result_columns.get('WBP_ResultPlayerRow')==result_columns.get('WBP_Result')==[448,96,96,112,112,160,112,112,112]
-report['layout_metrics']={'result_column_widths':result_columns,'lobby_group_width':1600,'lobby_card_width':388,'lobby_gap':16,'settings_row_width':1088,'geometry_source':'saved authored slots; raster alignment reviewed separately'}
+report['layout_metrics']={'result_column_widths':result_columns,'lobby_group_width':1352,'lobby_card_width':320,'lobby_profile_size':112,'lobby_gap':24,'settings_row_width':1088,'geometry_source':'saved authored slots; raster alignment reviewed separately'}
 after={str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in files}
 report['contracts']['assets_unchanged']=before==after
 report['asset_hashes']={'before':before,'after':after}

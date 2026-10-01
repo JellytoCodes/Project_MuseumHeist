@@ -14,7 +14,7 @@ MUTED=unreal.LinearColor(.52,.56,.58,1)
 GOLD=unreal.LinearColor(.58,.43,.22,1)
 EDGE=unreal.LinearColor(.12,.15,.17,1)
 SURFACE=unreal.LinearColor(.025,.031,.038,.96)
-OUT=ROOT/'Saved/Automation/UIUX20260930/Apply'
+OUT=ROOT/'Saved/Automation'/globals().get('QA_FOLDER','UIUX20260930')/'Apply'
 OUT.mkdir(parents=True,exist_ok=True)
 MAP_PATHS=sorted((ROOT/'Content/Maps').rglob('*.umap'))
 MAP_BEFORE={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in MAP_PATHS}
@@ -293,8 +293,10 @@ def apply_existing_layout(bp,key,ws):
         label(W('ReadyButtonLabel'),20);image_size(W('ReadyCheckImage'),24,24)
         W('ReadyButtonLabel').slot.set_size(unreal.SlateChildSize(0,unreal.SlateSizeRule.AUTOMATIC))
         W('ReadyButtonLabel').slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_CENTER)
-        W('ReadyCheckImage').slot.set_size(unreal.SlateChildSize(0,unreal.SlateSizeRule.AUTOMATIC))
-        W('ReadyCheckImage').slot.set_padding(margin(8,0,0,0))
+        check=W('ReadyCheckImage')
+        check_slot=check.get_parent().slot if isinstance(check.get_parent(),unreal.SizeBox) else check.slot
+        check_slot.set_size(unreal.SlateChildSize(0,unreal.SlateSizeRule.AUTOMATIC))
+        check_slot.set_padding(margin(8,0,0,0))
         for n in ['Spacer_133','Spacer_1','Spacer']:W(n).set_size(unreal.Vector2D(4,8))
     elif key=='WBP_LobbyMapCard':
         box(W('MapCardSizeBox'),384,216);label(W('MapNameText'),24,True)
@@ -531,23 +533,49 @@ def apply_screen(bp,key,ws):
     elif key=='WBP_QuickSlot':
         box(W('SizeBox_0'),64,64);W('PlaceholderIcon_AspectFit').slot.set_padding(margin(20,24,20,12));image_size(W('PlaceholderIcon'),24,24)
     elif key=='WBP_LobbyPlayerCard':
-        box(W('PlayerCardSizeBox'),388,248);W('PlayerCardBorder').set_padding(margin(24));box(W('ProfileImageSizeBox'),64,64);box(W('SizeBox_0'),280,56)
+        box(W('PlayerCardSizeBox'),320,320)
+        W('PlayerCardBorder').set_padding(margin(24))
+        # BorderSlot rebuilds the content padding: update the actual slot too.
+        W('PlayerCardContent').slot.set_padding(margin(24))
+        W('PlayerCardContent').slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_FILL)
+        W('PlayerCardContent').slot.set_vertical_alignment(unreal.VerticalAlignment.V_ALIGN_CENTER)
+        for child in W('PlayerCardContent').get_all_children():
+            child.slot.set_size(unreal.SlateChildSize(0,unreal.SlateSizeRule.AUTOMATIC))
+            child.slot.set_padding(margin(0))
+        fixed_bounds(bp,W('PlayerSlotText'),272,24)
+        box(W('ProfileImageSizeBox'),112,112)
+        W('ProfileImageSizeBox').slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_CENTER)
+        W('ProfileImageSizeBox').slot.set_vertical_alignment(unreal.VerticalAlignment.V_ALIGN_CENTER)
+        W('ProfileImage').set_color_and_opacity(WHITE)
+        fixed_bounds(bp,W('PlayerNameText'),272,32)
+        box(W('SizeBox_0'),272,56)
+        W('SizeBox_0').slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_CENTER)
+        fixed_bounds(bp,W('ReadyCheckImage'),24,24)
+        W('ReadyCheckImage').get_parent().slot.set_padding(margin(8,0,0,0))
+        image_size(W('ReadyCheckImage'),24,24)
         label(W('PlayerSlotText'),20,True,MUTED);label(W('PlayerNameText'),24,True)
-        W('PlayerNameText').set_editor_property('justification',unreal.TextJustify.CENTER)
+        # Slate disables single-line ellipsis for centered text. Center the
+        # widget in its bounds instead, keeping long names readable from left.
+        W('PlayerNameText').set_editor_property('justification',unreal.TextJustify.LEFT)
         W('PlayerNameText').set_editor_property('min_desired_width',0)
-        W('PlayerNameText').slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_FILL)
-        for n in ['Spacer_133','Spacer_1','Spacer']:W(n).set_size(unreal.Vector2D(4,12))
+        W('PlayerNameText').set_editor_property('auto_wrap_text',False)
+        W('PlayerNameText').set_editor_property('wrap_text_at',0)
+        W('PlayerNameText').slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_CENTER)
+        W('PlayerNameText').slot.set_vertical_alignment(unreal.VerticalAlignment.V_ALIGN_CENTER)
+        W('PlayerSlotText').slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_FILL)
+        W('PlayerSlotText').slot.set_vertical_alignment(unreal.VerticalAlignment.V_ALIGN_CENTER)
+        for n,height in [('Spacer_133',8),('Spacer_1',12),('Spacer',16)]:W(n).set_size(unreal.Vector2D(4,height))
     elif key=='WBP_LobbyMapCard':
         # Runtime replaces these brushes with the map thumbnail. Keep the
         # authored fallback and outline dimensions on the same four-pixel grid.
         W('SelectMapButton').set_style(button_style())
-        box(W('MapCardSizeBox'),388,220)
+        box(W('MapCardSizeBox'),320,184)
         # Do not resize the outer card when sizing its thumbnail.
         thumbnail_size=W('SelectMapButton').get_parent()
         if thumbnail_size==W('MapCardSizeBox'):
             thumbnail_size=TOOLS.call_method('WrapWidgets',(bp,[W('SelectMapButton')],unreal.SizeBox.static_class()))[0].widget
             TOOLS.call_method('RenameWidget',(bp,thumbnail_size,'MapThumbnailSize'))
-        box(thumbnail_size,384,216)
+        box(thumbnail_size,320,180)
         thumbnail_size.slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_CENTER)
         thumbnail_size.slot.set_vertical_alignment(unreal.VerticalAlignment.V_ALIGN_CENTER)
         W('SelectMapButton').slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_FILL)
@@ -557,24 +585,25 @@ def apply_screen(bp,key,ws):
         W('LobbyRootBorder').set_padding(margin(0));label(W('LobbyTitleText'),36,True)
         W('LobbyRootBorder').set_editor_property('horizontal_alignment',unreal.HorizontalAlignment.H_ALIGN_CENTER)
         W('LobbyRootBorder').set_editor_property('vertical_alignment',unreal.VerticalAlignment.V_ALIGN_CENTER)
-        fixed_bounds(bp,W('LobbyContent'),1600,844)
+        fixed_bounds(bp,W('LobbyContent'),1352,816)
         for child in W('LobbyContent').get_all_children():
             child.slot.set_size(unreal.SlateChildSize(0,unreal.SlateSizeRule.AUTOMATIC))
             child.slot.set_padding(margin(0))
             child.slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_FILL)
-        fixed_bounds(bp,W('LobbyHeaderRow'),1600,72)
-        W('Spacer_7').set_size(unreal.Vector2D(4,64))
-        for n in ['Spacer_2','Spacer_4','Spacer_5']:W(n).set_size(unreal.Vector2D(16,4))
+        fixed_bounds(bp,W('LobbyHeaderRow'),1352,72)
+        W('Spacer_7').set_size(unreal.Vector2D(4,32))
+        for n in ['Spacer_2','Spacer_4','Spacer_5']:W(n).set_size(unreal.Vector2D(24,4))
         W('PlayerCardsRow').slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_LEFT)
         label(W('JoinCodeLabel'),20,color=MUTED);label(W('JoinCodeText'),28,True)
         box(W('LeaveSessionSize'),192,56);box(W('PlayerCountSize'),96,56)
-        W('MapSection').slot.set_padding(margin(0,64,0,0))
-        title=W('MapSectionTitle');fixed_bounds(bp,title,1600,40)
+        W('MapSection').slot.set_padding(margin(0,40,0,0))
+        title=W('MapSectionTitle');fixed_bounds(bp,title,1352,40)
         title.get_parent().slot.set_padding(margin(0,0,0,24));title.slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_LEFT)
         title.slot.set_vertical_alignment(unreal.VerticalAlignment.V_ALIGN_CENTER)
-        for n in ['MapRandomCard','MapM01Card','MapM02Card','MapM03Card']:W(n).slot.set_padding(margin(0,0,0 if n=='MapM03Card' else 16,0))
+        for n in ['MapRandomCard','MapM01Card','MapM02Card','MapM03Card']:W(n).slot.set_padding(margin(0,0,0 if n=='MapM03Card' else 24,0))
         W('MapHorizontalScrollBox').set_editor_property('always_show_scrollbar',False)
-        W('Spacer_6').set_size(unreal.Vector2D(4,40));box(W('SizeBox_0'),320,72)
+        W('MapHorizontalScrollBox').set_scroll_bar_visibility(unreal.SlateVisibility.COLLAPSED)
+        W('Spacer_6').set_size(unreal.Vector2D(4,32));box(W('SizeBox_0'),320,72)
         W('SizeBox_0').slot.set_padding(margin(0));W('SizeBox_0').slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_CENTER)
     elif key=='WBP_Inventory':
         pos(W('InventoryPanel'),0,0,768,848,anchor=(.5,.5),align=(.5,.5));W('InventoryPanel').set_padding(margin(32))
@@ -595,7 +624,7 @@ def apply_screen(bp,key,ws):
         label(W('TitleText'),32,True);label(W('DrawingTimeRemainingText'),28,True,GOLD)
         pos(W('VerticalBox_0'),0,20,960,108,anchor=(.5,0),align=(.5,0))
         pos(W('VerticalBox_0'),0,20,960,128,anchor=(.5,0),align=(.5,0))
-        label(W('PreviewScoreText'),20,True);W('PreviewScoreText').set_text('예상 완성도 · 보완 필요')
+        label(W('PreviewScoreText'),20,True,unreal.LinearColor(.72,.76,.82,1));W('PreviewScoreText').set_text('작품 유사도')
         W('PreviewScoreText').set_editor_property('justification',unreal.TextJustify.CENTER)
         bar=add_widget(bp,unreal.ProgressBar,'PreviewQualityBar',W('VerticalBox_0'))
         fixed_bounds(bp,bar,400,12);bar.get_parent().slot.set_padding(margin(0))
@@ -758,6 +787,7 @@ for path in paths:
     bp=unreal.load_asset(path)
     if not isinstance(bp,unreal.WidgetBlueprint):continue
     key=bp.get_name()
+    if 'UI_ASSET_FILTER' in globals() and key not in UI_ASSET_FILTER:continue
     if 'ObjectAssembly' in key:continue
     CURRENT_ALREADY_FIXED=unreal.EditorAssetLibrary.get_metadata_tag(bp,'CatalogueFontDisplayDPI')=='72'
     bp.modify()

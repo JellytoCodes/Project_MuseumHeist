@@ -13,7 +13,7 @@ from pathlib import Path
 import unreal
 
 ROOT = Path(unreal.Paths.project_dir()).resolve()
-OUT = ROOT / 'Saved/Automation/UIUX20260930/Visual'
+OUT = ROOT / 'Saved/Automation' / globals().get('QA_FOLDER', 'UIUX20260930') / 'Visual'
 OUT.mkdir(parents=True, exist_ok=True)
 RESOLUTIONS = [(1920, 1080), (1280, 720)]
 ASSETS = ['Title/WBP_TitleMenu', 'Lobby/WBP_Lobby', 'HUD/WBP_HeistHUD',
@@ -24,7 +24,11 @@ CASES = [(a, 'Default') for a in ASSETS] + [
     ('HUD/WBP_HeistHUD', 'LongNames'), ('HUD/WBP_HeistHUD', 'Alert'),
     ('HUD/WBP_HeistHUD', 'Tutorial'), ('Forgery/WBP_HeistForgery', 'PaletteSelected5'),
     ('Forgery/WBP_HeistForgery', 'NeedsWork'), ('Forgery/WBP_HeistForgery', 'AlmostReady'),
-    ('Title/WBP_SessionJoin', 'Error'), ('Result/WBP_Result', 'Partial')]
+    ('Title/WBP_SessionJoin', 'Error'), ('Result/WBP_Result', 'Partial'),
+    ('Lobby/WBP_Lobby', 'TwoPlayers')]
+if 'RENDER_ASSETS' in globals():
+    ASSETS = [a for a in ASSETS if a in RENDER_ASSETS]
+    CASES = [c for c in CASES if c[0] in RENDER_ASSETS]
 PALETTE = [unreal.LinearColor(*c) for c in [
     (.82, .74, .57, 1), (.74, .45, .11, 1), (.10, .24, .28, 1),
     (.025, .06, .06, 1), (.42, .10, .065, 1)]]
@@ -198,14 +202,16 @@ def fixture(asset, variant, widget, world, first=False):
         visible(ws, 'CancelSessionSize', False)
     elif asset.endswith('WBP_Lobby'):
         txt(ws, 'JoinCodeText', 'MUSE24')
-        txt(ws, 'PlayerCountText', '4 / 4')
+        txt(ws, 'PlayerCountText', '2 / 4' if variant == 'TwoPlayers' else '4 / 4')
         for i in range(1, 5):
             child = ws.get('PlayerCard'+str(i))
             if child:
                 cw = widgets(child)
-                txt(cw, 'PlayerNameText', '진품을들고달리는플레이어' if i == 1 else 'PLAYER '+str(i))
-                visible(cw, 'ReadyCheckImage', i != 4)
-                txt(cw, 'ReadyButtonLabel', '준비 완료' if i != 4 else '준비')
+                occupied = variant != 'TwoPlayers' or i <= 2
+                txt(cw, 'PlayerNameText', ('진품을들고달리는플레이어123456' if i == 1 else 'PLAYER '+str(i)) if occupied else '')
+                # Hidden preserves the fixed check slot just like ApplyPlayerData.
+                cw['ReadyCheckImage'].set_visibility(unreal.SlateVisibility.VISIBLE if occupied and i != 4 else unreal.SlateVisibility.HIDDEN)
+                txt(cw, 'ReadyButtonLabel', '준비 완료' if occupied and i != 4 else '준비')
                 if 'ReadyButton' in cw:
                     cw['ReadyButton'].set_is_enabled(i == 1)
     elif asset.endswith('WBP_HeistHUD'):
@@ -281,10 +287,10 @@ def fixture(asset, variant, widget, world, first=False):
         txt(ws, 'DrawingTimeRemainingText', '남은 시간  00:32')
         score = 24 if variant == 'NeedsWork' else 62 if variant == 'AlmostReady' else 78
         ready = score >= 70
-        txt(ws, 'PreviewScoreText', '예상 완성도 · 제출 가능' if ready else '예상 완성도 · 보완 필요')
+        txt(ws, 'PreviewScoreText', '작품 유사도')
         ratio = min(score/70, 1)
         color = unreal.LinearColor(.32,.78,.48,1) if ready else unreal.LinearColor(.82+(.94-.82)*ratio,.22+(.60-.22)*ratio,.18+(.22-.18)*ratio,1)
-        ws['PreviewScoreText'].set_color_and_opacity(unreal.SlateColor(color))
+        ws['PreviewScoreText'].set_color_and_opacity(unreal.SlateColor(unreal.LinearColor(.72,.76,.82,1)))
         ws['PreviewQualityBar'].set_percent(score/100)
         ws['PreviewQualityBar'].set_fill_color_and_opacity(color)
         visible(ws, 'PreviewQualityBar')

@@ -144,7 +144,7 @@ Blueprint Shell/Presentation 운용은 별도 문서로 분리하지 않고 아�
 - 도록 텍스처를 사용하는 스타일은 `Draw As = Image`, Brush `Margin = 0`으로 설정한다. 버튼·입력칸·패널의 종횡비에 맞는 전체 이미지를 사용하고 원본 비율을 보존한다. 작품·프로필 이미지는 ScaleBox 등으로 비율을 유지하며 비정방형 Inventory 점유 크기나 드래그 영역에 그림 자체를 늘리지 않는다.
 - 머리 위 Nameplate에는 바깥 배경 Border를 사용하지 않는다. 이름·상태 행과 CrewStatusBadge는 유지한다. Inventory의 배낭 상태·계약 가치 요약 위젯과 표시 바인딩은 제거하고 Grid와 닫기를 유지한다.
 - 팀원 이름은 밝은 중립색으로 표시하고 플레이어 구분색은 작은 표식에 적용한다. Crew Status는 기존 Icon/Text로 구분하며 고정 TeamCard 4개와 빈 Team Slot의 구조를 유지하되 간결한 행으로 표시한다. 위조 팔레트는 원래 색과 고정 크기를 유지하고 선택은 외곽선으로 표시한다. 결과 화면은 계약 성패·팀 확보 가치·실제 Replica를 우선하며 기존 상세 보기로 세부 내역을 확인한다.
-- 2026-09-30 추가 사용자 승인 UI/UX 교정은 기존 WBP에서 수행한다. 로비·결과·환경설정의 항목·헤더와 대응 행은 공통 열 시작점과 문자 정렬을 유지한다. 결과의 긴 플레이어 이름에는 상태·가치 열과 겹치지 않는 충분한 폭을 우선 배정한다. 버튼의 Content Slot 가로·세로 정렬과 Label Justification은 중앙이며 좌우·상하 패딩은 대칭으로 둔다. 손전등은 아이콘과 `[F] ON/OFF`를 함께 표시한다. 기존 아이콘이 없을 때 공용 원본 손전등 아이콘 1종만 작성하며, 에셋 사본이나 추가 Blueprint는 만들지 않는다.
+- 2026-09-30 추가 사용자 승인 UI/UX 교정은 기존 WBP에서 수행한다. 로비·결과·환경설정의 항목·헤더와 대응 행은 공통 열 시작점과 문자 정렬을 유지한다. 결과의 긴 플레이어 이름에는 상태·가치 열과 겹치지 않는 충분한 폭을 우선 배정한다. 버튼의 Content Slot 가로·세로 정렬과 Label Justification은 중앙이며 좌우·상하 패딩은 대칭으로 둔다. 로비의 모든 플레이어 카드는 같은 크기의 카드와 정사각 프로필 이미지를 사용하고 좌우 패딩·바깥 여백을 대칭으로 통일해 같은 중심축에 정렬한다. 손전등은 아이콘과 `[F] ON/OFF`를 함께 표시한다. 기존 아이콘이 없을 때 공용 원본 손전등 아이콘 1종만 작성하며, 에셋 사본이나 추가 Blueprint는 만들지 않는다.
 - Nameplate는 Remote Player에 한해 항상 표시하며, 동일 Map에 대한 상태 아이콘은 v1 활성 Team Status 상태값(`Active`, `Forging`, `CarryingOriginal`, `Heavy`, `Stunned`, `Arrested`, `Escaped`)과 동기화한다. `Assembling`은 Deferred Object Assembly 호환 상태로만 보존하며 v1 플레이 중 새로 진입시키지 않는다.
 - Floor Plan Map은 Owner-only Full-Screen으로 운영한다. Guard 위치, 시야 Cone, SoundPing, 미탐색 Loose Loot/숨겨진 Spawn은 기본 표시하지 않는다.
 - Move/Look/Mouse Capture 전환은 Owner-only Surface Forgery, Inventory, Map 진입 시 각각 입력 정책이 일치해야 한다. Deferred Object Assembly 입력 정책은 재활성화 전까지 회귀 보존만 한다.
@@ -381,7 +381,7 @@ Smoke 및 Trap 계열 기능은 Stretch 목록에 포함하지 않는다.
 - Surface Forgery와 Object Assembly는 서로의 Template Row를 공유하지 않는다.
 - Surface Forgery와 Object Assembly는 서로의 제출 Payload와 Replica Data를 공유하지 않는다.
 - Surface Forgery와 Object Assembly는 서로의 State Machine과 상세 Result를 공유하지 않는다.
-- Object Assembly 재활성화 시 두 방식은 Owner-only Input Mode, 한글 중심 Mode Title, 제출 기준 충족을 색으로 구분하는 단일 예상 완성도 진행 표시, Timer, Submit/Cancel, 통합 하단 안내와 서버가 확정한 최종 0~100 Quality Score/Replica 승인 Gate만 공유할 수 있다.
+- Object Assembly 재활성화 시 두 방식은 Owner-only Input Mode, 한글 중심 Mode Title, 제출 기준 충족을 색으로 구분하는 단일 작품 유사도 진행 표시, Timer, Submit/Cancel, 통합 하단 안내와 서버가 확정한 최종 0~100 Quality Score/Replica 승인 Gate만 공유할 수 있다.
 - 작업 방법은 Tutorial과 통합 하단 안내가 담당하며, Surface 작업 화면과 보존 중인 Object 작업 화면에 별도 `InstructionText`와 `ModeStatusText`를 만들지 않는다.
 - `AHeistDisplayCaseActor`는 제거됐다. `BP_PaintingDisplayCase`는 `AHeistPaintingDisplayCaseActor`를 직접 부모로 사용한다.
 - Painting 전시품은 `BP_PaintingDisplayCase` 공용 Shell만 사용한다.
@@ -905,7 +905,7 @@ Escape 취소 조건:
 - Local Painter는 모든 Pointer Segment를 연속 Capsule로 누적하고, 서버 전송용 Polyline은 입력 중 고정 간격으로 별도 샘플링한다. 로컬 Stroke와 화면 Raster는 전송 Point Budget과 무관하게 계속 유지하며, 제출 시에만 로컬 데이터를 변경하지 않는 전송용 복사본을 단순화한다. 전송 Point Budget에 도달했다는 이유로 화면 붓칠이 중단되거나 이미 그린 결과와 예상 점수가 감소해서는 안 된다.
 - Local Palette Raster는 나중에 칠한 색이 이전 픽셀을 덮어쓴다. 따라서 소/중/대 Brush는 이미 칠한 영역의 크기를 다시 해석하지 않으며, 뒤에 사용한 작은 Brush도 앞서 사용한 큰 Brush 위에 정상 합성돼야 한다.
 - Local Palette Raster와 최종 서버 Palette Raster는 모두 Canvas 경계에서 Brush Stamp를 Clamp한다. Brush 중심이 가장자리에 있어도 색 픽셀이 Drawing Surface 밖으로 표시되거나 판정 데이터 밖으로 기록되어서는 안 된다.
-- Surface Forgery UI는 현재 Palette, Drawing Content 안의 시각적 소/중/대 Brush 선택, 남은 시간과 `예상 완성도` 라벨·진행 막대 하나를 표시한다. 막대 비율은 기존 C++ Local Preview 점수 / 100을 0~1로 Clamp하며 70 미만에서는 붉은색에서 주황색으로 변한다. 70점 기준과 기존 Submit 활성 조건을 모두 만족할 때만 초록색과 `제출 가능`을 사용하며 그 외에는 `보완 필요`로 표시한다. 갱신 전의 이전 예상 점수가 70 이상이어도 입력 변경·제출 대기·서버 기준 미달 거부로 Submit이 비활성이면 초록색을 유지하지 않는다. 예상 점수 숫자와 70+ 문구, 별도 Quality Requirement, 서버 점수, Point Budget, Payload Byte와 Score Raster Resolution은 일반 UI에 표시하지 않는다. UI 표현 변경으로 Evaluator, Local Preview 갱신 주기, Submit의 70점 기준, 서버 최종 Quality Score와 정산을 바꾸지 않는다.
+- Surface Forgery UI는 현재 Palette, Drawing Content 안의 시각적 소/중/대 Brush 선택, 남은 시간과 `작품 유사도` 라벨·진행 막대 하나를 표시한다. 막대 비율은 기존 C++ Local Preview 점수 / 100을 0~1로 Clamp하며 70 미만에서는 붉은색에서 주황색으로 변한다. 70점 기준과 기존 Submit 활성 조건을 모두 만족할 때만 초록색을 사용한다. 라벨은 상태와 무관하게 `작품 유사도`로 고정하고 별도 상태 문구는 표시하지 않는다. 갱신 전의 이전 예상 점수가 70 이상이어도 입력 변경·제출 대기·서버 기준 미달 거부로 Submit이 비활성이면 초록색을 유지하지 않는다. 예상 점수 숫자와 70+ 문구, 별도 Quality Requirement, 서버 점수, Point Budget, Payload Byte와 Score Raster Resolution은 일반 UI에 표시하지 않는다. UI 표현 변경으로 Evaluator, Local Preview 갱신 주기, Submit의 70점 기준, 서버 최종 Quality Score와 정산을 바꾸지 않는다.
 - Draw/Erase/Reset/Submit/Cancel 조작 안내는 하단 한 줄로 통합하고 별도 Drawing Hint와 Footer Hint로 나누지 않는다.
 - Surface Forgery의 서버 Score와 Replica Palette Raster는 `256×256`을 사용한다. 더 큰 Reference Image는 이 판정 해상도로 정규화한다.
 - Reference Image는 직접 제작한 단순한 이미지를 사용한다.
@@ -939,7 +939,7 @@ Escape 취소 조건:
 
 서버와 Local Preview는 동일한 C++ Evaluator를 사용한다.
 
-Local Preview의 전체 `256×256` OpenCV 평가는 Pointer Drawing / Erase 입력 중 최대 `1.25초` 간격으로만 실행하고, Pointer Release 뒤에는 `0.12초` 이내의 다음 Tick에서 갱신한다. 입력 Event마다 갱신 타이머를 다시 시작해 장시간 점수가 고정되게 하지 않는다. UI는 서버 확정값과 구분하기 위해 `예상 완성도` 라벨과 진행 막대를 사용한다.
+Local Preview의 전체 `256×256` OpenCV 평가는 Pointer Drawing / Erase 입력 중 최대 `1.25초` 간격으로만 실행하고, Pointer Release 뒤에는 `0.12초` 이내의 다음 Tick에서 갱신한다. 입력 Event마다 갱신 타이머를 다시 시작해 장시간 점수가 고정되게 하지 않는다. UI는 서버 확정값과 구분하기 위해 `작품 유사도` 라벨과 진행 막대를 사용한다.
 
 Local Preview 평가와 진단 로그 억제는 클라이언트 반응성 정책일 뿐이며, Submit 시 서버 권한 최종 평가는 생략하거나 저해상도로 대체하지 않는다.
 
@@ -1133,9 +1133,9 @@ Material Match: 10%
 
 ## Shared Forgery UI Contract
 
-- 활성 Surface Forgery는 `한글 Mode Title → 예상 완성도 라벨·진행 막대 → 남은 시간 → Submit / Cancel → 통합 하단 안내` 정보 순서를 사용한다. Object Assembly는 Deferred 상태를 유지하며 재활성화 시 같은 표시 규칙을 적용한다. 진행 막대의 길이와 기준 충족 색은 Local Preview를 표현할 뿐 서버 확정 점수를 대신하지 않는다.
+- 활성 Surface Forgery는 `한글 Mode Title → 작품 유사도 라벨·진행 막대 → 남은 시간 → Submit / Cancel → 통합 하단 안내` 정보 순서를 사용한다. Object Assembly는 Deferred 상태를 유지하며 재활성화 시 같은 표시 규칙을 적용한다. 진행 막대의 길이와 기준 충족 색은 Local Preview를 표현할 뿐 서버 확정 점수를 대신하지 않는다.
 - 별도 `InstructionText`와 `ModeStatusText`는 사용하지 않으며 작업 방법 설명은 Tutorial과 통합 하단 안내로 이관한다.
-- Submit Label과 `Enter`, Cancel Label과 `Escape`, `남은 시간 {0}` 표기, 기준 미달 상태 문구와 Button Disabled 의미를 두 모드에서 일치시킨다.
+- Submit Label과 `Enter`, Cancel Label과 `Escape`, `남은 시간 {0}` 표기, 기준 미달 상태의 Button Disabled 의미를 두 모드에서 일치시킨다.
 - Palette/시각적 Brush/Erase와 2D Part Tray/Canvas Drag/승인된 회전은 모드별 작업 영역으로 유지한다.
 - `QualityRequirementText`, 별도 서버 점수, `TemplateNameText`, `AssemblyStatusText`, 작업 화면 전용 Alert Warning/Lockdown Countdown은 두 WBP 공통 계약에 포함하지 않는다.
 - Local Preview는 반응성 안내일 뿐이며 서버 최종 Quality와 승인 결과를 대체하지 않는다.
