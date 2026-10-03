@@ -177,10 +177,10 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 	void RefreshOriginalPaintingVisual();
 	void ResetOriginalPaintingVisual();
 
-	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Original|Visual", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(ReplicatedUsing = OnRep_OriginalVisualRevision, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Original|Visual", meta = (AllowPrivateAccess = "true"))
 	FName OriginalVisualTemplateId = NAME_None;
 
-	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Original|Visual", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(ReplicatedUsing = OnRep_OriginalVisualRevision, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Original|Visual", meta = (AllowPrivateAccess = "true"))
 	TSoftObjectPtr<UTexture2D> OriginalReferenceImage;
 
 	UPROPERTY(ReplicatedUsing = OnRep_OriginalVisualRevision, VisibleInstanceOnly, BlueprintReadOnly, Category = "Heist|DisplayCase|Original|Visual", meta = (AllowPrivateAccess = "true"))

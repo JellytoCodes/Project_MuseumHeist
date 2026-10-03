@@ -1310,6 +1310,8 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 		AActor* Actor = nullptr;
 		FName CaseId = NAME_None;
 		FName ArtifactId = NAME_None;
+		FName RegionId = NAME_None;
+		bool bRegionTagValid = false;
 		FString CaseState;
 		bool bCaseStateValid = false;
 		bool bArtifactValid = false;
@@ -1334,6 +1336,17 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 		Candidate.ArtifactId = ArtifactId;
 		Candidate.CaseState = CaseState;
 		Candidate.bCaseStateValid = bCaseStateValid;
+		int32 RegionTagCount = 0;
+		for (const FName Tag : Actor->Tags)
+		{
+			const FString RegionTag = Tag.ToString();
+			if (RegionTag.StartsWith(TEXT("HeistExhibitRegion_")) && RegionTag.Len() > 19)
+			{
+				Candidate.RegionId = Tag;
+				++RegionTagCount;
+			}
+		}
+		Candidate.bRegionTagValid = RegionTagCount == 1;
 		FHeistArtifactDataRow ArtifactDefinition;
 		Candidate.bArtifactValid = !ArtifactId.IsNone() && TryGetArtifactDefinition(ArtifactId, ArtifactDefinition) &&
 			ArtifactDefinition.ForgeryType == EHeistForgeryType::Drawing;
@@ -1413,13 +1426,16 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 		InitializeMatchLooseLoot(AssignmentSeed, LootSpawnPointCount, ExpectedMatchLooseLootCount, SpawnedMatchLooseLootCount);
 
 	int32 InvalidOptionalCaseCount = 0;
+	int32 InvalidRegionCaseCount = TargetDisplayCase.bRegionTagValid ? 0 : 1;
 	TSet<FName> UniqueOptionalCaseIds;
 	TArray<FPlacedTargetCase> EligibleOptionalCases;
 	EligibleOptionalCases.Reserve(OptionalCases.Num());
 	for (FPlacedTargetCase& OptionalCase : OptionalCases)
 	{
+		InvalidRegionCaseCount += OptionalCase.bRegionTagValid ? 0 : 1;
 		const bool bIdentityValid = !OptionalCase.CaseId.IsNone() && !OptionalCase.ArtifactId.IsNone() && !UniqueOptionalCaseIds.Contains(OptionalCase.CaseId);
-		if (!bIdentityValid || !OptionalCase.bArtifactValid || !OptionalCase.bCaseStateValid)
+		if (!bIdentityValid || !OptionalCase.bArtifactValid || !OptionalCase.bCaseStateValid ||
+			(bUsesReleaseMatchLootSupply && !OptionalCase.bRegionTagValid))
 		{
 			++InvalidOptionalCaseCount;
 			continue;
@@ -1494,12 +1510,40 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 	TArray<const FPlacedTargetCase*> SelectedOptionalCases;
 	FString SelectedOptionalCaseIds;
 	int32 SelectedOptionalValue = 0;
+	TMap<FName, int32> SelectedRegionCounts;
+	SelectedRegionCounts.Add(TargetDisplayCase.RegionId, 1);
 	if (bOptionalAssignmentValid)
 	{
 		for (int32 Index = 0; Index < MaximumSelectableOptionalCount; ++Index)
 		{
-			const FPlacedTargetCase& SelectedCase = EligibleOptionalCases[Index];
+			const FPlacedTargetCase* SelectedCasePointer = nullptr;
+			int32 MinimumRegionCount = MAX_int32;
+			for (const FPlacedTargetCase& Candidate : EligibleOptionalCases)
+			{
+				if (SelectedOptionalCases.Contains(&Candidate))
+				{
+					continue;
+				}
+				// Preserve the existing linked high-value exhibit before balancing regions.
+				if (Index == 0 && FourStarOptionalIndex != INDEX_NONE)
+				{
+					SelectedCasePointer = &Candidate;
+					break;
+				}
+				const int32 RegionCount = SelectedRegionCounts.FindRef(Candidate.RegionId);
+				if (RegionCount < MinimumRegionCount)
+				{
+					MinimumRegionCount = RegionCount;
+					SelectedCasePointer = &Candidate;
+				}
+			}
+			if (SelectedCasePointer == nullptr)
+			{
+				break;
+			}
+			const FPlacedTargetCase& SelectedCase = *SelectedCasePointer;
 			SelectedOptionalCases.Add(&SelectedCase);
+			++SelectedRegionCounts.FindOrAdd(SelectedCase.RegionId);
 			SelectedOptionalValue += SelectedCase.ArtifactValue;
 			SelectedOptionalCaseIds += SelectedOptionalCaseIds.IsEmpty() ? SelectedCase.CaseId.ToString() : FString::Printf(TEXT(",%s"), *SelectedCase.CaseId.ToString());
 		}
@@ -1508,14 +1552,23 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 	const int64 ReachableContractValue = static_cast<int64>(TargetArtifactValue) + SelectedOptionalValue + EligibleLooseLootValue;
 	const bool bReleaseQuotaReachable = bContractDefinitionValid && ReachableContractValue >= LootValueQuota;
 
+	TArray<FName> DecorativeTemplateIds;
+	const bool bDecorativePoolValid = GatherSurfaceTemplatePool(HeistGameState->GetSurfaceTemplatePoolId(), DecorativeTemplateIds) && !DecorativeTemplateIds.IsEmpty();
 	const bool bContractInitialized = bArtifactValid && bCaseStateValid && bContractDefinitionValid && bRequiredTargetNeedsOptionalLoot && bMatchLooseLootReady &&
 		bOptionalAssignmentValid && bReleaseQuotaReachable && bDeferredObjectBoundaryApplied && !MapId.IsNone() &&
+		bDecorativePoolValid && (!bUsesReleaseMatchLootSupply || TargetDisplayCase.bRegionTagValid) &&
 		HeistGameState->InitializeContractSnapshot(ContractDefinition.ContractId, MapId, ContractEndServerTime, AssignmentSeed, PlayerCount, TargetArtifactId,
 			TargetDisplayCase.ArtifactDisplayName, TargetDisplayCase.CaseId, LootValueQuota);
 	const bool bObjectiveInitialized = bContractInitialized &&
 		HeistGameState->SetObjectiveSnapshot(TargetArtifactId, TargetDisplayCase.CaseId, EHeistObjectiveState::Available, nullptr);
 	int32 DeactivatedOptionalCaseCount = 0;
 	int32 AssignedPaintingCaseCount = 0;
+	int32 AssignedDecorativeCaseCount = 0;
+	FRandomStream DecorativeRandom(AssignmentSeed ^ 0x4D485044);
+	OptionalCases.Sort([](const FPlacedTargetCase& Left, const FPlacedTargetCase& Right)
+	{
+		return Left.CaseId != Right.CaseId ? Left.CaseId.ToString() < Right.CaseId.ToString() : GetPathNameSafe(Left.Actor) < GetPathNameSafe(Right.Actor);
+	});
 	if (bObjectiveInitialized)
 	{
 		if (AHeistPaintingDisplayCaseActor* PaintingTargetCase = Cast<AHeistPaintingDisplayCaseActor>(TargetDisplayCase.Actor))
@@ -1551,7 +1604,11 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 				}
 				else
 				{
-					PaintingCase->ClearAssignedSurfaceTemplate();
+					const FName DecorativeTemplate = DecorativeTemplateIds[DecorativeRandom.RandRange(0, DecorativeTemplateIds.Num() - 1)];
+					if (bActivationApplied && PaintingCase->SetAssignedSurfaceTemplate(HeistGameState->GetSurfaceTemplatePoolId(), DecorativeTemplate, AssignmentRevision))
+					{
+						++AssignedDecorativeCaseCount;
+					}
 				}
 			}
 
@@ -1565,9 +1622,11 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 	const bool bOptionalDeactivationValid = DeactivatedOptionalCaseCount == ExpectedDeactivatedOptionalCaseCount;
 	const int32 ExpectedAssignedPaintingCaseCount = bObjectiveInitialized ? SelectedOptionalCases.Num() + 1 : 0;
 	const bool bTemplateAssignmentValid = AssignedPaintingCaseCount == ExpectedAssignedPaintingCaseCount;
+	const bool bDecorativeAssignmentValid = AssignedDecorativeCaseCount == ExpectedDeactivatedOptionalCaseCount;
 	const bool bReleasePaintingContentReady = bContractDefinitionValid && AvailableTemplateCount == RequestedPaintingExhibitCount &&
-		SurfaceTemplateCatalogCount == ContractDefinition.SurfaceTemplateCatalogSize && ExpectedAssignedPaintingCaseCount == RequestedPaintingExhibitCount;
-	const bool bInitializationPassed = bObjectiveInitialized && bOptionalDeactivationValid && bTemplateAssignmentValid;
+		SurfaceTemplateCatalogCount == ContractDefinition.SurfaceTemplateCatalogSize && ExpectedAssignedPaintingCaseCount == RequestedPaintingExhibitCount &&
+		OptionalCases.Num() + 1 == 60 && InvalidOptionalCaseCount == 0 && InvalidRegionCaseCount == 0 && bDecorativeAssignmentValid;
+	const bool bInitializationPassed = bObjectiveInitialized && bOptionalDeactivationValid && bTemplateAssignmentValid && bDecorativeAssignmentValid;
 	if (!bInitializationPassed && bContractInitialized)
 	{
 		int32 ExhibitRollbackFailureCount = 0;
@@ -1612,14 +1671,21 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 		*TargetDisplayCase.CaseState, bCaseStateValid ? TEXT("true") : TEXT("false"), bArtifactValid ? TEXT("true") : TEXT("false"), bContractDefinitionValid ? TEXT("true") : TEXT("false"),
 		ContractFailureReason.IsEmpty() ? TEXT("None") : *ContractFailureReason, bContractInitialized ? TEXT("true") : TEXT("false"), *UEnum::GetValueAsString(HeistGameState->GetObjectiveState()),
 		bInitializationPassed ? TEXT("PASS") : TEXT("FAIL"));
-	if (bInitializationPassed)
+	UHeistDebugFunctionLibrary::Message(this, InitializationMessage, bInitializationPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Error);
+	TArray<FName> RegionIds;
+	SelectedRegionCounts.GenerateKeyArray(RegionIds);
+	RegionIds.Sort(FNameLexicalLess());
+	TArray<FString> RegionCounts;
+	for (const FName RegionId : RegionIds)
 	{
-		UE_LOG(LogHeist, Log, TEXT("%s"), *InitializationMessage);
+		RegionCounts.Add(FString::Printf(TEXT("%s:%d"), *RegionId.ToString(), SelectedRegionCounts.FindRef(RegionId)));
 	}
-	else
-	{
-		UE_LOG(LogHeist, Error, TEXT("%s"), *InitializationMessage);
-	}
+	UHeistDebugFunctionLibrary::Message(this, FString::Printf(
+		TEXT("Painting exhibition assignment: Candidates=%d Active=%d Decorative=%d Catalog=%d InvalidRegions=%d RegionCounts=[%s] RequiredCase=%s DecorationValid=%s Result=%s"),
+		OptionalCases.Num() + 1, AssignedPaintingCaseCount, AssignedDecorativeCaseCount, DecorativeTemplateIds.Num(), InvalidRegionCaseCount,
+		*FString::Join(RegionCounts, TEXT(",")), *TargetDisplayCase.CaseId.ToString(), bDecorativeAssignmentValid ? TEXT("true") : TEXT("false"),
+		bInitializationPassed ? (bReleasePaintingContentReady ? TEXT("PASS") : TEXT("INCOMPLETE")) : TEXT("FAIL")),
+		bInitializationPassed && bReleasePaintingContentReady ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning);
 }
 
 #pragma endregion
@@ -3056,9 +3122,10 @@ bool AHeistGameMode::InitializeMatchLooseLoot(const int32 AssignmentSeed, int32&
 	{
 		AHeistLootSpawnPoint* SpawnPoint = nullptr;
 		FName ItemId = NAME_None;
+		bool bActive = true;
 	};
 	TArray<FPlannedMatchLoot> PlannedLoot;
-	PlannedLoot.Reserve(MatchLooseLootExpectedCount);
+	PlannedLoot.Reserve(MatchLooseLootSpawnPointCount);
 	const auto Shuffle = [](TArray<AHeistLootSpawnPoint*>& SpawnPoints, FRandomStream& Random)
 	{
 		for (int32 Index = SpawnPoints.Num() - 1; Index > 0; --Index)
@@ -3112,6 +3179,51 @@ bool AHeistGameMode::InitializeMatchLooseLoot(const int32 AssignmentSeed, int32&
 	{
 		return RejectInitialization(TEXT("WeightedSelectionFailed"));
 	}
+	// Selection above retains the active supply's existing seed and weighted draws.
+	// A separate stream fills unused fixed stations without affecting contract loot.
+	FRandomStream DecorationRandom(AssignmentSeed ^ 0x4445434F);
+	const auto AppendDecorations = [&PlannedLoot, &DecorationRandom](const int32 ActiveCount, const TArray<AHeistLootSpawnPoint*>& SpawnPoints,
+		const TArray<FMatchLooseLootDefinition>& Definitions)
+	{
+		if (ActiveCount >= SpawnPoints.Num())
+		{
+			return true;
+		}
+		float TotalWeight = 0.0f;
+		for (const FMatchLooseLootDefinition& Definition : Definitions)
+		{
+			TotalWeight += Definition.SpawnWeight;
+		}
+		if (Definitions.IsEmpty() || !FMath::IsFinite(TotalWeight) || TotalWeight <= 0.0f)
+		{
+			return false;
+		}
+		for (int32 Index = ActiveCount; Index < SpawnPoints.Num(); ++Index)
+		{
+			const float SelectionValue = DecorationRandom.FRand() * TotalWeight;
+			float AccumulatedWeight = 0.0f;
+			const FMatchLooseLootDefinition* SelectedDefinition = &Definitions.Last();
+			for (const FMatchLooseLootDefinition& Definition : Definitions)
+			{
+				AccumulatedWeight += Definition.SpawnWeight;
+				if (SelectionValue < AccumulatedWeight)
+				{
+					SelectedDefinition = &Definition;
+					break;
+				}
+			}
+			FPlannedMatchLoot& Entry = PlannedLoot.AddDefaulted_GetRef();
+			Entry.SpawnPoint = SpawnPoints[Index];
+			Entry.ItemId = SelectedDefinition->ItemId;
+			Entry.bActive = false;
+		}
+		return true;
+	};
+	if (!AppendDecorations(VaultLootCount, VaultSpawnPoints, VaultDefinitions) ||
+		!AppendDecorations(ExhibitionLootCount, ExhibitionSpawnPoints, ExhibitionDefinitions))
+	{
+		return RejectInitialization(TEXT("DecorationSelectionFailed"));
+	}
 
 	TArray<AHeistLootActor*> StagedLootActors;
 	StagedLootActors.Reserve(PlannedLoot.Num());
@@ -3135,6 +3247,7 @@ bool AHeistGameMode::InitializeMatchLooseLoot(const int32 AssignmentSeed, int32&
 		}
 
 		const FTransform SpawnTransform = PlannedEntry.SpawnPoint->GetActorTransform();
+		const bool bLocked = PlannedEntry.SpawnPoint->GetSpawnCategory() == EHeistSpawnCategory::ExhibitionRoom;
 		AHeistLootActor* DeferredLootActor = World->SpawnActorDeferred<AHeistLootActor>(
 			LootActorClass, SpawnTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
 		AHeistLootActor* StagedLootActor = nullptr;
@@ -3142,9 +3255,12 @@ bool AHeistGameMode::InitializeMatchLooseLoot(const int32 AssignmentSeed, int32&
 		{
 			DeferredLootActor->Tags.AddUnique(MatchSpawnedLooseLootTag);
 			DeferredLootActor->InitializeLootData(LootDataTable, PlannedEntry.ItemId);
+			DeferredLootActor->InitializeExhibitionLoot(PlannedEntry.bActive, bLocked);
 			StagedLootActor = Cast<AHeistLootActor>(UGameplayStatics::FinishSpawningActor(DeferredLootActor, SpawnTransform));
 		}
-		if (!IsValid(StagedLootActor) || StagedLootActor->GetLootRowId() != PlannedEntry.ItemId || !StagedLootActor->IsLootAvailable() ||
+		if (!IsValid(StagedLootActor) || StagedLootActor->GetLootRowId() != PlannedEntry.ItemId ||
+			StagedLootActor->IsLootAvailable() != PlannedEntry.bActive || !StagedLootActor->IsExhibitionPresentation() ||
+			StagedLootActor->IsExhibitionLootActive() != PlannedEntry.bActive || StagedLootActor->IsExhibitionCaseOpen() == bLocked ||
 			StagedLootActor->GetScoreValue() <= 0)
 		{
 			if (IsValid(DeferredLootActor))
@@ -3159,7 +3275,10 @@ bool AHeistGameMode::InitializeMatchLooseLoot(const int32 AssignmentSeed, int32&
 		StagedLootActors.Add(StagedLootActor);
 	}
 
-	MatchLooseLootSpawnedCount = StagedLootActors.Num();
+	MatchLooseLootSpawnedCount = StagedLootActors.CountByPredicate([](const AHeistLootActor* LootActor)
+	{
+		return IsValid(LootActor) && LootActor->IsExhibitionLootActive();
+	});
 	OutSpawnedLootCount = MatchLooseLootSpawnedCount;
 	bMatchLooseLootInitialized = MatchLooseLootSpawnedCount == MatchLooseLootExpectedCount;
 	if (!bMatchLooseLootInitialized)
@@ -3171,20 +3290,23 @@ bool AHeistGameMode::InitializeMatchLooseLoot(const int32 AssignmentSeed, int32&
 	}
 	for (AHeistLootActor* StagedLootActor : StagedLootActors)
 	{
-		MatchLooseLootActors.Add(StagedLootActor);
+		if (StagedLootActor->IsExhibitionLootActive())
+		{
+			MatchLooseLootActors.Add(StagedLootActor);
+		}
 	}
-	UE_LOG(LogHeistInventory, Log,
-		TEXT("Match-start loose loot initialized: Seed=%d SpawnPoints=%d Vault=%d Exhibition=%d Spawned=%d Result=PASS"), AssignmentSeed,
-		MatchLooseLootSpawnPointCount, VaultLootCount, ExhibitionLootCount, MatchLooseLootSpawnedCount);
+	UHeistDebugFunctionLibrary::Message(this, FString::Printf(
+		TEXT("Match-start loose loot initialized: Seed=%d SpawnPoints=%d Vault=%d Exhibition=%d Spawned=%d Decoration=%d Result=PASS"), AssignmentSeed,
+		MatchLooseLootSpawnPointCount, VaultLootCount, ExhibitionLootCount, MatchLooseLootSpawnedCount, StagedLootActors.Num() - MatchLooseLootSpawnedCount));
 	return bMatchLooseLootInitialized;
 }
 
 void AHeistGameMode::RollbackMatchLooseLoot(const FName Reason)
 {
 	int32 DestroyedActorCount = 0;
-	for (const TWeakObjectPtr<AHeistLootActor>& MatchLootActor : MatchLooseLootActors)
+	for (TActorIterator<AHeistLootActor> It(GetWorld()); It; ++It)
 	{
-		if (AHeistLootActor* LootActor = MatchLootActor.Get(); IsValid(LootActor))
+		if (AHeistLootActor* LootActor = *It; IsValid(LootActor) && LootActor->ActorHasTag(MatchSpawnedLooseLootTag))
 		{
 			DestroyedActorCount += LootActor->Destroy() ? 1 : 0;
 		}

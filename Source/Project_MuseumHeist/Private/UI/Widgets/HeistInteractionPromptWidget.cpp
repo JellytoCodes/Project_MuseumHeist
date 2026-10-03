@@ -188,16 +188,21 @@ void UHeistInteractionPromptWidget::RefreshInteractionPrompt(const bool bActionA
 	}
 	if (IsValid(AvailabilityText))
 	{
+		const AHeistLootActor* LootCase = Cast<AHeistLootActor>(TargetActor);
 		AvailabilityText->SetText(bLockedVent ? NSLOCTEXT("HeistInteraction", "VentLockedHint", "개방 후 사용할 수 있습니다") : NSLOCTEXT("HeistInteraction", "InteractionPrompt", "[E] 상호작용"));
 		if (bUseCompactPrompt)
 		{
-			AvailabilityText->SetVisibility(bLockedVent || Cast<AHeistDetentionDoorActor>(TargetActor)
+			AvailabilityText->SetVisibility(bLockedVent || Cast<AHeistDetentionDoorActor>(TargetActor) || (LootCase && LootCase->IsExhibitionPresentation())
 				? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 		}
 	}
 	if (const AHeistDetentionDoorActor* Door = Cast<AHeistDetentionDoorActor>(TargetActor); Door && AvailabilityText)
 	{
 		AvailabilityText->SetText(Door->GetPrompt(Cast<AHeistPlayerCharacter>(GetOwningPlayerPawn())));
+	}
+	if (const AHeistLootActor* LootCase = Cast<AHeistLootActor>(TargetActor); LootCase && LootCase->IsExhibitionPresentation() && AvailabilityText)
+	{
+		AvailabilityText->SetText(LootCase->GetCasePrompt(Cast<AHeistPlayerCharacter>(GetOwningPlayerPawn())));
 	}
 	if (IsValid(KeyText))
 	{
@@ -429,23 +434,30 @@ float UHeistInteractionPromptWidget::GetServerWorldTimeSeconds() const
 
 void UHeistInteractionPromptWidget::RefreshDetentionTiming()
 {
-	const AHeistDetentionDoorActor* Door = IsValid(InteractionComponent) ? Cast<AHeistDetentionDoorActor>(InteractionComponent->GetCurrentInteractionTarget()) : nullptr;
+	const AActor* Target = IsValid(InteractionComponent) ? InteractionComponent->GetCurrentInteractionTarget() : nullptr;
+	const AHeistDetentionDoorActor* Door = Cast<AHeistDetentionDoorActor>(Target);
+	const AHeistLootActor* LootCase = Cast<AHeistLootActor>(Target);
 	const APawn* Pawn = GetOwningPlayerPawn();
-	const bool bShow = Door && Pawn && Door->GetOperator() == Pawn->GetPlayerState() && !Door->IsOpen();
+	const bool bShowDoor = Door && Pawn && Door->GetOperator() == Pawn->GetPlayerState() && !Door->IsOpen();
+	const bool bShowCase = LootCase && Pawn && LootCase->GetCaseOperator() == Pawn->GetPlayerState() && !LootCase->IsExhibitionCaseOpen();
+	const bool bShow = bShowDoor || bShowCase;
 	if (DetentionTimingContainer) DetentionTimingContainer->SetVisibility(bShow ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	if (!bShow) return;
+	const float WindowWidth = bShowCase ? LootCase->GetCaseSuccessWindowWidth() : Door->GetSuccessWindowWidth();
+	const float WindowCenter = bShowCase ? LootCase->GetCaseSuccessWindowCenter() : Door->GetSuccessWindowCenter();
+	const float Progress = bShowCase ? LootCase->GetCaseTimingProgress() : Door->GetTimingProgress();
 	if (DetentionTimingWindow)
 	{
-		DetentionTimingWindow->SetVisibility(Door->IsRescueOperation() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+		DetentionTimingWindow->SetVisibility(bShowDoor && Door->IsRescueOperation() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 		if (UCanvasPanelSlot* TimingSlot = Cast<UCanvasPanelSlot>(DetentionTimingWindow->Slot))
 		{
-			const float Width = FMath::FloorToFloat(320.0f * Door->GetSuccessWindowWidth() / 8.0f) * 8.0f;
+			const float Width = FMath::FloorToFloat(320.0f * WindowWidth / 8.0f) * 8.0f;
 			TimingSlot->SetSize(FVector2D(Width,16));
-			TimingSlot->SetPosition(FVector2D(224.0f - Width * 0.5f,4));
+			TimingSlot->SetPosition(FVector2D(320.0f * WindowCenter - Width * 0.5f,4));
 		}
 	}
 	if (DetentionTimingCursor)
 	{
-		if (UCanvasPanelSlot* TimingSlot = Cast<UCanvasPanelSlot>(DetentionTimingCursor->Slot)) TimingSlot->SetPosition(FVector2D(316.0f * Door->GetTimingProgress(),0));
+		if (UCanvasPanelSlot* TimingSlot = Cast<UCanvasPanelSlot>(DetentionTimingCursor->Slot)) TimingSlot->SetPosition(FVector2D(316.0f * Progress,0));
 	}
 }

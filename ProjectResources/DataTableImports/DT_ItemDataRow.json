@@ -28,7 +28,7 @@
   {
     "Name": "Loot_AncientSword",
     "ItemId": "Loot_AncientSword",
-    "DisplayName": "고대 검",
+    "DisplayName": "고대 단검",
     "CategoryTag": "Item.Loot.AncientSword",
     "ItemType": "Loot",
     "GridSize": "(X=1,Y=3)",
@@ -54,7 +54,7 @@
   {
     "Name": "Loot_GoldenVase",
     "ItemId": "Loot_GoldenVase",
-    "DisplayName": "황금 화병",
+    "DisplayName": "도자기 화병",
     "CategoryTag": "Item.Loot.GoldenVase",
     "ItemType": "Loot",
     "GridSize": "(X=2,Y=1)",
@@ -72,6 +72,19 @@
     "ItemType": "Loot",
     "GridSize": "(X=1,Y=1)",
     "Weight": 1.0,
+    "bCanRotate": false,
+    "bCanUseQuickSlot": false,
+    "bAvailableInV1": true,
+    "Icon": ""
+  },
+  {
+    "Name": "Loot_SmallSculpture",
+    "ItemId": "Loot_SmallSculpture",
+    "DisplayName": "작은 조각상",
+    "CategoryTag": "Item.Loot.SmallSculpture",
+    "ItemType": "Loot",
+    "GridSize": "(X=2,Y=2)",
+    "Weight": 3.0,
     "bCanRotate": false,
     "bCanUseQuickSlot": false,
     "bAvailableInV1": true,

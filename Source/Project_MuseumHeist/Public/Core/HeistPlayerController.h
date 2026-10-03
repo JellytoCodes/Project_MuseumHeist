@@ -208,8 +208,12 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	bool bLocalObservationInputHeld = false;
 	TWeakObjectPtr<AHeistSecurityHoldButtonActor> LocalSecurityHoldButton;
 	TWeakObjectPtr<AHeistDetentionDoorActor> LocalDetentionDoor;
+	TWeakObjectPtr<AHeistLootActor> LocalLootCase;
+	TWeakObjectPtr<AHeistLootActor> ServerActiveLootCase;
 	UFUNCTION(Server, Reliable) void Server_RequestDetentionDoor(AHeistDetentionDoorActor* Door, int32 Revision);
 	UFUNCTION(Server, Reliable) void Server_ReleaseDetentionDoor(AHeistDetentionDoorActor* Door, bool bCancelLatch);
+	UFUNCTION(Server, Reliable) void Server_RequestLootCase(AHeistLootActor* LootCase, int32 Revision);
+	UFUNCTION(Server, Reliable) void Server_CancelLootCase(AHeistLootActor* LootCase);
 
 #pragma endregion
 

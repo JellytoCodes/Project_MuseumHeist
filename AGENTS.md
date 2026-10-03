@@ -166,12 +166,18 @@ Blueprint Shell/Presentation 운용은 별도 문서로 분리하지 않고 아�
 
 ## 2C. Authored Map Preservation
 
+- 2026-10-03 사용자 승인 전시 변주는 M01/M02/M03의 기존 그림 60곳을 모두 기존 공용 `BP_PaintingDisplayCase` 후보로 전환한다. 위치·회전·승인된 정수 표시 크기, 맵 컨셉·동선·벽·천장·조명은 유지하고 활성 여부와 그림 재질만 섞는다. 기존 Required Target의 CaseId·Artifact Identity·위치 및 Protected Case/Button 연결을 보존한다. 서버는 매치마다 Target 1개와 지역에 분산한 Optional 11개를 활성화하고 나머지 48개도 그림 장식으로 항상 표시한다. cooked `HeistExhibitRegion_*` Actor Tag로 지역을 구분하고 기존 FourStar 우선 선정 순서를 유지한다. 추가 일반 후보에는 기존 2/3 Star 정의만 재사용한다. 활성 12개는 맵별 40종에서 중복 없이 배정하고, 비활성 48개는 같은 Seed로 재질을 배정하되 중복을 허용하며 Selected Template Pool·Quota·Recap에서 제외한다. 기존 `bContractExhibitActive`와 RepNotify를 재사용하고 비활성 Case의 상호작용·Gameplay Collision만 차단한다. 비활성 보호 Case의 연결 Laser는 휴면이며 선정된 보호 Case의 Laser/Button 작동과 미선정 휴면을 따로 검증한다. 기존 에셋·공용 Blueprint 종류를 복제하거나 방·복도를 재생성하지 않는다.
+
+- 2026-10-03 사용자 승인 조각상·공예품 획득은 기존 `BP_Loot`의 전시 케이스 타이밍 개방 후 기존 Loose Loot Pickup이다. 기존 후보 12개 중 Vault 1개와 Exhibition 4개, 총 5개만 활성화하고 나머지 7개는 가시 장식·Pickup 불가·가치 합계 제외로 유지한다. 선택된 Exhibition만 Locked로 시작한다. E로 시작해 기존 6초 주기와 28/20/14% 성공 구간 폭, 단계 대기 0.5초를 사용하는 세 걸쇠를 E 타이밍 입력으로 해제하며 구간 중심은 걸쇠마다 서버가 랜덤으로 정한다. 한 케이스는 한 작업자만 소유하고 Controller의 서버 현재 케이스 Weak Pointer 하나로 단일 Session을 관리한다. Local Weak Pointer는 입력용이며 다른 작업자의 소유권 탈취 요청은 거부한다. 이탈·기절·체포·UI 전환·Match End·Disconnect는 작업 소유권을 해제하고 완료 걸쇠는 보존해 동료가 이어받는다. 서버가 거리·상태·Phase·작업자·Revision·시각을 검증하며 Client는 성공·판정 시각을 확정하지 않는다. 왕복 지연 절반 보정은 최대 0.25초다. 실패는 현재 걸쇠만 재시작하고 기존 금속 실패음·GuardNoise 경로의 `DisplayCaseLock` 타입·태그를 사용하며 `DetentionLock`과 같은 우선순위 1이다. 세 걸쇠 완료 뒤 Open을 복제하고 다음 E에서 기존 5×5 Grid·Weight 검사로 Pickup한다. 공간·무게 부족 시 열린 케이스와 전리품을 유지한다. Vault·압수품·바닥 Drop은 잠금 없이 즉시 Pickup한다. 기존 구금 타이밍 HUD와 메시·재질을 재사용하며 `Object Assembly` Deferred 상태는 유지한다.
+
+- 전리품 외형은 기본 Shapes 대신 기존 팩 메시를 재사용한다. 왕관·휴대용 회화·고대 검·화병의 Item Identity·가치·Grid·Carry Weight는 유지하며 고대 검은 `SM_Dagger`의 고대 단검, 화병은 `SM_ClayPot`의 도자기 화병으로 표시한다. 목걸이는 정의를 보존하되 `SpawnWeight=0`으로 활성 출현에서 제외한다. 신규 Loose Loot Row `Loot_SmallSculpture`는 `Item.Loot.SmallSculpture`, 표시명 `작은 조각상`, 가치 700·SpawnWeight 1.2·Grid 2×2·Carry Weight 3.0을 사용하고 기존 `SM_Bust_01a`를 균등 표시 Scale 0.7(약 42cm)로 재사용한다. 신규 메시·재질·파생 Blueprint를 만들지 않는다.
+
 - 2026-09-30 추가 사용자 승인에 따라 M02 중앙 정원의 전용 천장 조명 3개는 40cd를 사용한다. 식재의 윤곽과 높이 층을 식별하는 국소 조명이며, 아래 공통 전등 4cd 규칙의 해당 인스턴스 한정 예외다. 정원 조준은 KeySpot의 RelativeRotation 에디터 속성으로 저장하고 맵 재로드 후 목표 방향을 검증한다. 주변 작품등·통로등, CCTV, 환경광과 고정 노출은 유지한다.
 
-- 2026-09-30 사용자 승인에 따라 좌표·배율·그림 표시·야간 라이팅·에디터 바닥 PCG 규칙을 M01/M02/M03에 공통 적용한다. 2026-09-30 추가 사용자 승인에 따라 M01/M02의 천장 유효 높이와 작품 크기·수량을 M03에 맞춘다. 세 맵 각각 상호작용 12개·장식 48개, 총 60개이며 Showcase 03a·04a·05a의 아래 정수 크기 세 단계를 공통 적용한다. M01 천장 하단은 Z=800cm, 바닥 상면이 Z=10cm인 M02는 Z=810cm로 맞춘다. 기존 외벽 상단·몰딩과 조명 접점도 함께 교정하되 방/복도 평면, 맵 컨셉, Required Target과 레이저 보호 작품의 Identity·연결을 보존한다. 전등은 4cd, CCTV는 2cd, Ambient Cubemap은 0.005, 노출은 고정 기준으로 적용하며 Directional/Sky와 맵 고유 색감은 보존한다. 아래의 과거 M03 인스턴스 한정 규정은 이번 공통 적용 범위에서는 이 승인으로 대체한다. M02 목재 바닥과 M03 갤러리 바닥은 기존 메시·재질·높이·외곽을 보존해 같은 공용 PCG로 관리한다. 공용 PCG의 TileScale은 0.1 단위로 작성하고 저장된 인스턴스를 사용한다. 기존 에셋을 복제하거나 방·복도를 재생성하지 않는다.
+- 2026-09-30 사용자 승인에 따라 좌표·배율·그림 표시·야간 라이팅·에디터 바닥 PCG 규칙을 M01/M02/M03에 공통 적용한다. 2026-09-30 추가 사용자 승인에 따라 M01/M02의 천장 유효 높이와 작품 크기·수량을 M03에 맞춘다. 세 맵 각각 그림 60곳을 유지하고 현재 승인 전시 후보 중 매치마다 12개 활성·48개 가시 장식으로 정하며 Showcase 03a·04a·05a의 아래 정수 크기 세 단계를 공통 적용한다. M01 천장 하단은 Z=800cm, 바닥 상면이 Z=10cm인 M02는 Z=810cm로 맞춘다. 기존 외벽 상단·몰딩과 조명 접점도 함께 교정하되 방/복도 평면, 맵 컨셉, Required Target과 레이저 보호 작품의 Identity·연결을 보존한다. 전등은 4cd, CCTV는 2cd, Ambient Cubemap은 0.005, 노출은 고정 기준으로 적용하며 Directional/Sky와 맵 고유 색감은 보존한다. 아래의 과거 M03 인스턴스 한정 규정은 이번 공통 적용 범위에서는 이 승인으로 대체한다. M02 목재 바닥과 M03 갤러리 바닥은 기존 메시·재질·높이·외곽을 보존해 같은 공용 PCG로 관리한다. 공용 PCG의 TileScale은 0.1 단위로 작성하고 저장된 인스턴스를 사용한다. 기존 에셋을 복제하거나 방·복도를 재생성하지 않는다.
 
 - 2026-09-27 사용자 승인 M03 재구성은 기존 배치 보존의 명시적 예외다. `/Game/AIUE5_vol10_01/maps/AIUE_vol10_01` 원본과 M01/M02는 보존하고, 2026-09-28 추가 승인에 따라 약 106×72m로 확장한다. 35×13m 원본 홀과 A/B/C·경비실·압수품실·철창 구금실은 유지하고, 서·동·남·북 전시 구역과 연결 회랑을 기존 갤러리 메시로 배치한다. 전체 Actor 배율 일괄 확대는 하지 않는다. 건축·바닥·가구·설치물은 해당 갤러리 팩 메시를 사용한다. 기존 상부 외벽 절단 메시 `/Game/Assets/Environment/M03Gallery/SM_GalleryUpperFacade`는 현재 M03 참조를 유지하며, 이 경로가 추가 복제의 포괄적 허용을 뜻하지 않는다. 기본 Cube로 환경을 대체하지 않는다.
-- M03은 사용자 승인에 따라 상호작용 Painting 12개와 비상호작용 장식 48개, 총 60개를 배치한다. Required Target과 레이저 보호 작품의 기존 Identity·기능 참조를 유지한다. Showcase 캔버스 03a·04a·05a만 사용한다. M03 액자는 소형·중형·대형 정수 균등 스케일 세 단계만 사용한다: 03a/05a는 2/3/4, 04a는 4/6/8. 상호작용 Actor와 Box는 Scale 1을 유지하고 표시 메시만 해당 정수 배율을 적용한다. 대형은 천장 여유를 검증한 홀·북측 높은 전시실에 배치한다. 실제 벽면의 끝·출입구·천장·다른 액자와의 간섭을 검증해 분산한다. 40종 Template Pool에서 세 맵 각각 12종을 선택한다. 기존 4종 조명 Blueprint의 메시·SpotLight 단일 구성과 기본 크기는 유지한다. 기존 절차형 맵 생성기를 재활성화하지 않으며, 승인한 M03 전용 적용 도구만 사용한다.
+- M03은 사용자 승인에 따라 기존 Painting 위치 60곳을 전시 후보로 유지하고 매치마다 활성 12개와 가시 장식 48개를 정한다. Required Target과 레이저 보호 작품의 기존 Identity·기능 참조를 유지한다. Showcase 캔버스 03a·04a·05a만 사용한다. M03 액자는 소형·중형·대형 정수 균등 스케일 세 단계만 사용한다: 03a/05a는 2/3/4, 04a는 4/6/8. 상호작용 Actor와 Box는 Scale 1을 유지하고 표시 메시만 해당 정수 배율을 적용한다. 대형은 천장 여유를 검증한 홀·북측 높은 전시실에 배치한다. 기존 위치의 실제 벽면 끝·출입구·천장·다른 액자 간섭을 검증하며 새 위치로 재분산하지 않는다. 40종 Template Pool에서 세 맵 각각 활성 12종을 선택한다. 기존 4종 조명 Blueprint의 메시·SpotLight 단일 구성과 기본 크기는 유지한다. 기존 절차형 맵 생성기를 재활성화하지 않으며, 승인한 전시 후보 적용 도구만 사용한다.
 
 - M03 천장 설치 기준은 Z=800cm로 통일한다. 겹치는 기존 천장 모듈은 플리커 방지를 위한 2cm 층차를 허용한다. 벽 상단·중앙 홀 지붕·트러스도 함께 맞추되 낮은 전시 파티션은 유지한다. 4종 조명 Blueprint의 메시 크기는 유지하고 Actor는 수직으로 매단다. 작품등의 긴 축은 벽과 평행하게, KeySpot은 작품 전체의 밝기가 고르게 분포하도록 중심에서 조준을 시작해 필요 시 하향 보정한다. 실제 메시 Bounds와 플레이어 시점에서 작품 가림·벽 간섭을 검증한다.
 
@@ -816,7 +822,7 @@ Escape 취소 조건:
 
 - 서버는 현재 Map의 Eligible Exhibit Case와 Contract Definition으로 매치별 Exhibit Assignment를 확정한다.
 - Required Target Case는 반드시 하나 지정한다.
-- Optional Painting Case는 `ContractStartPlayerCount`와 Loot Value Quota가 요구하는 수량만 활성화한다. Object Case는 v1 Assignment에서 제외한다.
+- Optional Painting Case는 기존 60개 후보 중 서버가 지역에 분산한 11개를 고르고 기존 Required Target 하나를 포함해 매치마다 12개를 활성화한다. Object Case는 v1 Assignment에서 제외한다.
 - Surface Template 카탈로그는 M01/M02/M03마다 40개를 유지한다. MatchStart 서버는 선택된 Map Pool에서 계약 데이터가 정한 수량(세 맵 각각 12개)을 Draw해 Required Target을 포함한 활성 Painting Exhibit에 하나씩 배정하며, 같은 Match Assignment 안에서 같은 Template을 중복 사용하지 않는다.
 - `AHeistPaintingDisplayCaseActor`가 Case별 Assigned TemplateId, ReferenceImage와 AssignmentRevision을 복제한다. Forgery 준비는 GameState의 단일 선택값을 전체 Case에 공용하지 않고 상호작용한 Case의 배정값을 검증해 사용한다.
 - 개발 중 유효 Template 또는 배치 Painting Case가 부족하면 서버는 `min(맵별 계약 수량, 유효 Template 수, 유효 Painting Case 수)`만 안전하게 배정하고 `INCOMPLETE`로 기록할 수 있다. 이 Fallback은 Release 완료 증거가 아니며 Release Gate는 맵별 40개 카탈로그와 세 맵 각각 활성 Painting Exhibit 12개를 요구한다.
@@ -824,9 +830,9 @@ Escape 취소 조건:
 - Object Assembly Template의 별도 Family Pool과 Shuffle Bag 코드는 Deferred 호환용으로 보존하되 v1 Assignment에서 실행하지 않는다.
 - Assignment는 `CaseId`, `ArtifactId`, `ForgeryType`, `TemplateId`, `ArtifactValue`, `bRequiredTarget`을 포함하며 v1의 `ForgeryType`은 Surface만 선택한다.
 - Assignment Snapshot과 Contract Snapshot은 모든 Client에 복제한다.
-- 선택된 Reference Image는 해당 Assignment를 받은 Painting Case의 Original World Visual에만 적용한다.
-- 일반 전시 그림은 상호작용하지 않는 Map StaticMesh Presentation으로 배치하며 활성 Painting 수량(세 맵 각각 12개), Case/Artifact Identity, Quota와 Template Pool에 포함하지 않는다.
-- 탈취 가능한 작품은 두꺼운 프레임과 하단 보안 패널, 일반 전시물은 얇은 프레임으로 접근 전에 구별한다. 색상만으로 구분하거나 일반 전시물에 행동 Prompt를 추가하지 않는다.
+- 활성 Case의 Reference Image는 해당 Assignment를 받은 Case의 Original World Visual에 적용하며 비활성 48개는 서버 Seed 기반 장식 재질을 별도로 배정한다. 비활성 그림은 활성 Shuffle Bag과 계약 Snapshot에 포함하지 않는다.
+- 일반 전시 그림도 기존 공용 Painting Case 후보로 표시한다. 미선정 48개는 메시·재질을 숨기지 않고 상호작용·Gameplay Collision만 차단하며 활성 Painting 수량, Quota, Selected Template Pool과 Recap에 포함하지 않는다. 기존 `bContractExhibitActive`와 RepNotify를 재사용한다.
+- 이번 매치의 탈취 가능한 작품은 기존 프레임과 하단 보안 패널로 접근 전에 구별한다. 색상만으로 구분하거나 미선정 일반 전시물에 행동 Prompt를 추가하지 않는다.
 - 전시 배치는 실제 미술관 사례를 참고해 맵별 최소 10종의 구별되는 구성을 사용한다. 좌우 반전·그림 교체·미세 간격 변경을 별도 패턴으로 세지 않으며, 일반 작품만 있는 독립 전시와 다양한 크기를 포함한다. 모든 탈취 대상에 같은 수의 일반 작품을 붙이거나 항상 중앙·최대 크기로 배치하지 않는다.
 - 액자는 실제 벽 또는 바닥에 지지된 독립 전시벽에 설치하고 정면 관람 공간을 확보한다. 설치 높이·면 방향·시야 차단·Navigation과 Floor Plan 정합성은 Map 저장 후 재검증한다.
 - Painting 외형과 프레임은 기존 배치도 대비 1.5배로 확대하고 군집 간격·높이를 함께 맞춘다. Painting 상호작용은 외형과 분리된 전면 Box를 사용하며 다른 Interactable의 Sphere를 일괄 변경하지 않는다. 벽 상·하단 몰딩은 벽 두께의 1.15배로 돌출해 동일 평면 겹침을 피한다.
@@ -1268,7 +1274,7 @@ Guard Noise Candidate 우선순위는 다음과 같다.
 
 ```text
 0 StunHit
-1 GlassBreak / ReplicaSwap
+1 GlassBreak / ReplicaSwap / DetentionLock / DisplayCaseLock
 2 CoinImpact
 3 Voice
 4 Footstep

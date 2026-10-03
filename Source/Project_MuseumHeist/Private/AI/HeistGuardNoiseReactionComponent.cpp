@@ -194,6 +194,7 @@ int32 UHeistGuardNoiseReactionComponent::ResolveCandidatePriority(const EHeistSo
 		return 0;
 	case EHeistSoundPingType::ReplicaSwap:
 	case EHeistSoundPingType::DetentionLock:
+	case EHeistSoundPingType::DisplayCaseLock:
 	case EHeistSoundPingType::GlassBreak:
 		return 1;
 	case EHeistSoundPingType::CoinImpact:

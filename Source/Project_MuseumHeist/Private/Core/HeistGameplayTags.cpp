@@ -35,6 +35,7 @@ void FHeistGameplayTags::InitializeNativeGameplayTags()
 	HEIST_ADD_NATIVE_TAG(Item_Loot_AncientSword, "Item.Loot.AncientSword", "Ancient Sword loot.");
 	HEIST_ADD_NATIVE_TAG(Item_Loot_GoldenVase, "Item.Loot.GoldenVase", "Golden Vase loot.");
 	HEIST_ADD_NATIVE_TAG(Item_Loot_JewelNecklace, "Item.Loot.JewelNecklace", "Jewel Necklace loot.");
+	HEIST_ADD_NATIVE_TAG(Item_Loot_SmallSculpture, "Item.Loot.SmallSculpture", "Small sculpture loot.");
 	HEIST_ADD_NATIVE_TAG(Item_Throwable, "Item.Throwable", "Throwable item category.");
 	HEIST_ADD_NATIVE_TAG(Item_Throwable_Coin, "Item.Throwable.Coin", "Coin throwable item.");
 
@@ -50,6 +51,7 @@ void FHeistGameplayTags::InitializeNativeGameplayTags()
 	HEIST_ADD_NATIVE_TAG(Event_SoundPing_CoinImpact, "Event.SoundPing.CoinImpact", "Coin impact sound ping.");
 	HEIST_ADD_NATIVE_TAG(Event_SoundPing_StunHit, "Event.SoundPing.StunHit", "Stun hit sound ping.");
 	HEIST_ADD_NATIVE_TAG(Event_SoundPing_DetentionLock, "Event.SoundPing.DetentionLock", "Failed detention latch attempt.");
+	HEIST_ADD_NATIVE_TAG(Event_SoundPing_DisplayCaseLock, "Event.SoundPing.DisplayCaseLock", "Failed exhibition case latch attempt.");
 	HEIST_ADD_NATIVE_TAG(Event_SoundPing_Voice, "Event.SoundPing.Voice", "Player speech sound ping.");
 	HEIST_ADD_NATIVE_TAG(Event_Vent_Opened, "Event.Vent.Opened", "Vent extraction phase opened.");
 	HEIST_ADD_NATIVE_TAG(Event_Vent_Used, "Event.Vent.Used", "Vent escape completed.");

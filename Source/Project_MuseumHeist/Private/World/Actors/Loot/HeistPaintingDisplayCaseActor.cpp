@@ -217,9 +217,20 @@ bool AHeistPaintingDisplayCaseActor::SetContractExhibitActive(const bool bActive
 
 void AHeistPaintingDisplayCaseActor::ApplyContractExhibitActiveState()
 {
-	SetActorHiddenInGame(!bContractExhibitActive);
-	SetActorEnableCollision(bContractExhibitActive);
-	SetActorTickEnabled(bContractExhibitActive);
+	// Every authored location remains a visible exhibit; only contract gameplay is gated.
+	SetActorHiddenInGame(false);
+	SetActorEnableCollision(true);
+	if (IsValid(InteractionCollision))
+	{
+		InteractionCollision->SetCollisionEnabled(bContractExhibitActive ? ECollisionEnabled::QueryOnly : ECollisionEnabled::NoCollision);
+		InteractionCollision->SetGenerateOverlapEvents(bContractExhibitActive);
+	}
+	if (!bContractExhibitActive)
+	{
+		ClearInspectionDelayTimer();
+	}
+	RefreshInspectionRegistration();
+	RefreshPlaceholderVisualState();
 }
 
 void AHeistPaintingDisplayCaseActor::OnRep_ContractExhibitActive()
@@ -236,12 +247,12 @@ EHeistDisplayCaseState AHeistPaintingDisplayCaseActor::GetDisplayCaseState() con
 
 bool AHeistPaintingDisplayCaseActor::ShouldDisplayOriginalPlaceholder() const
 {
-	return ShouldDisplayOriginalPlaceholderForState(DisplayCaseState);
+	return !bContractExhibitActive || ShouldDisplayOriginalPlaceholderForState(DisplayCaseState);
 }
 
 bool AHeistPaintingDisplayCaseActor::ShouldDisplayReplicaPlaceholder() const
 {
-	return ShouldDisplayReplicaPlaceholderForState(DisplayCaseState);
+	return bContractExhibitActive && ShouldDisplayReplicaPlaceholderForState(DisplayCaseState);
 }
 
 void AHeistPaintingDisplayCaseActor::GetPlaceholderVisualDebugState(bool& OutExpectedOriginalVisible, bool& OutExpectedReplicaVisible, int32& OutOriginalComponentCount,
@@ -411,6 +422,15 @@ void AHeistPaintingDisplayCaseActor::RefreshPlaceholderVisualState()
 	{
 		RefreshOriginalPaintingVisual();
 	}
+	TInlineComponentArray<UPrimitiveComponent*> Components(this);
+	for (UPrimitiveComponent* Component : Components)
+	{
+		if (Component->ComponentHasTag(TEXT("HeistExhibitSecurityPanel")))
+		{
+			Component->SetVisibility(bContractExhibitActive, true);
+			Component->SetHiddenInGame(!bContractExhibitActive, true);
+		}
+	}
 
 }
 
@@ -545,12 +565,14 @@ bool AHeistPaintingDisplayCaseActor::IsActiveObjectiveTargetCase() const
 
 void AHeistPaintingDisplayCaseActor::RefreshOriginalPaintingVisual()
 {
-	if (!bContractExhibitActive || !IsValid(OriginalVisualComponent) || OriginalVisualTemplateId.IsNone() || OriginalVisualRevision <= 0 || OriginalReferenceImage.IsNull())
+	if (!IsValid(OriginalVisualComponent) || OriginalVisualTemplateId.IsNone() || OriginalVisualRevision <= 0 || OriginalReferenceImage.IsNull())
 	{
 		ResetOriginalPaintingVisual();
 		return;
 	}
-	if (AppliedOriginalVisualRevision == OriginalVisualRevision && IsValid(OriginalPaintingDynamicMaterial) && bOriginalPaintingTextureParameterApplied)
+	UTexture2D* ReferenceTexture = OriginalReferenceImage.LoadSynchronous();
+	if (AppliedOriginalVisualRevision == OriginalVisualRevision && IsValid(OriginalPaintingDynamicMaterial) && bOriginalPaintingTextureParameterApplied &&
+		OriginalPaintingDynamicMaterial->K2_GetTextureParameterValue(OriginalPaintingTextureParameter) == ReferenceTexture)
 	{
 		if (ShouldDisplayOriginalPlaceholder())
 		{
@@ -560,7 +582,6 @@ void AHeistPaintingDisplayCaseActor::RefreshOriginalPaintingVisual()
 	}
 	bOriginalPaintingTextureParameterApplied = false;
 
-	UTexture2D* ReferenceTexture = OriginalReferenceImage.LoadSynchronous();
 	UMaterialInterface* MaterialSource = IsValid(OriginalPaintingMaterial) ? OriginalPaintingMaterial.Get()
 																		 : (IsValid(ReplicaPaintingMaterial) ? ReplicaPaintingMaterial.Get() : OriginalPaintingBaselineMaterial.Get());
 	if (!IsValid(ReferenceTexture) || !IsValid(MaterialSource))
@@ -603,14 +624,7 @@ void AHeistPaintingDisplayCaseActor::ResetOriginalPaintingVisual()
 
 void AHeistPaintingDisplayCaseActor::OnRep_OriginalVisualRevision()
 {
-	if (OriginalVisualRevision > 0)
-	{
-		RefreshOriginalPaintingVisual();
-	}
-	else
-	{
-		ResetOriginalPaintingVisual();
-	}
+	RefreshPlaceholderVisualState();
 }
 
 #pragma endregion
@@ -1540,7 +1554,7 @@ void AHeistPaintingDisplayCaseActor::RefreshInspectionRegistration()
 		DisplayCaseState == EHeistDisplayCaseState::ReplicaPlaced || DisplayCaseState == EHeistDisplayCaseState::OriginalAvailable || DisplayCaseState == EHeistDisplayCaseState::OriginalRemoved;
 	const AHeistGameState* HeistGameState = GetWorld() ? GetWorld()->GetGameState<AHeistGameState>() : nullptr;
 	const bool bMatchInGame = IsValid(HeistGameState) && HeistGameState->GetMatchPhase() == EHeistMatchPhase::InGame;
-	const bool bShouldRegister = bMatchInGame && bHasCommittedForgeryResult && CommittedForgeryResult.bReplicaPlaced && bEligibleState && HasInspectionDelayElapsed();
+	const bool bShouldRegister = bContractExhibitActive && bMatchInGame && bHasCommittedForgeryResult && CommittedForgeryResult.bReplicaPlaced && bEligibleState && HasInspectionDelayElapsed();
 	if (bRegisteredForInspection == bShouldRegister)
 	{
 		return;

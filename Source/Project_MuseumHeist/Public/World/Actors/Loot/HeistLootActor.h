@@ -8,6 +8,11 @@
 #include "HeistLootActor.generated.h"
 
 class AHeistLootActor;
+class AHeistPlayerCharacter;
+class AHeistPlayerState;
+class AHeistGameState;
+class USoundBase;
+class USoundAttenuation;
 
 DECLARE_MULTICAST_DELEGATE_TwoParams(FHeistLootPickupCommitted, AHeistLootActor*, AActor*);
 
@@ -27,6 +32,7 @@ class PROJECT_MUSEUMHEIST_API AHeistLootActor : public AHeistInteractableActor
 
   protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 #pragma endregion
 
@@ -39,6 +45,7 @@ class PROJECT_MUSEUMHEIST_API AHeistLootActor : public AHeistInteractableActor
 	float GetWeightValue() const;
 	EHeistLootGrade GetLootGrade() const;
 	bool IsLootAvailable() const;
+	bool IsPickupReady() const;
 
   private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Heist|Loot", meta = (AllowPrivateAccess = "true"))
@@ -58,6 +65,84 @@ class PROJECT_MUSEUMHEIST_API AHeistLootActor : public AHeistInteractableActor
 
 	UPROPERTY(ReplicatedUsing = OnRep_IsAvailable, VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Loot", meta = (AllowPrivateAccess = "true"))
 	bool bIsAvailable = true;
+
+#pragma endregion
+
+#pragma region ExhibitionCase
+
+  public:
+	void InitializeExhibitionLoot(bool bInActive, bool bInLocked = true);
+	bool IsExhibitionPresentation() const { return bExhibitionPresentation; }
+	bool IsExhibitionLootActive() const { return bExhibitionLootActive; }
+	bool IsExhibitionCaseOpen() const { return bCaseOpen; }
+	int32 GetCaseRevision() const { return CaseRevision; }
+	int32 GetCompletedCaseLatches() const { return CompletedCaseLatches; }
+	AHeistPlayerState* GetCaseOperator() const { return CaseOperator; }
+	float GetCaseTimingProgress() const;
+	float GetCaseSuccessWindowWidth() const;
+	float GetCaseSuccessWindowCenter() const { return CaseSuccessWindowCenter; }
+	FText GetCasePrompt(const AHeistPlayerCharacter* Character) const;
+	bool TryUseExhibitionCase(AHeistPlayerCharacter* Character, int32 ExpectedRevision);
+	void CancelExhibitionCaseForPlayer(AHeistPlayerCharacter* Character);
+
+  protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Heist|Loot|Case")
+	TObjectPtr<UStaticMeshComponent> CaseShell;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Heist|Loot|Case")
+	TObjectPtr<USoundBase> CaseLatchSound;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Heist|Loot|Case")
+	TObjectPtr<USoundBase> CaseFailureSound;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Heist|Loot|Case")
+	TObjectPtr<USoundBase> CaseOpenSound;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Heist|Loot|Case")
+	TObjectPtr<USoundAttenuation> CaseSoundAttenuation;
+
+  private:
+	UPROPERTY(ReplicatedUsing = OnRep_CaseState)
+	bool bExhibitionPresentation = false;
+
+	UPROPERTY(ReplicatedUsing = OnRep_CaseState)
+	bool bExhibitionLootActive = true;
+
+	UPROPERTY(ReplicatedUsing = OnRep_CaseState)
+	bool bCaseOpen = true;
+
+	UPROPERTY(Replicated)
+	int32 CompletedCaseLatches = 0;
+
+	UPROPERTY(Replicated)
+	int32 CaseRevision = 0;
+
+	UPROPERTY(Replicated)
+	TObjectPtr<AHeistPlayerState> CaseOperator;
+
+	UPROPERTY(Replicated)
+	float CaseRoundStartServerTime = 0.0f;
+
+	UPROPERTY(Replicated)
+	float CaseSuccessWindowCenter = 0.70f;
+
+	FVector CaseOperationOrigin;
+	float LastCaseAttemptServerTime = -1.0f;
+	TWeakObjectPtr<AHeistPlayerState> LastCaseAttemptPlayer;
+	TWeakObjectPtr<AHeistGameState> CaseGameState;
+	FTimerHandle CaseValidationTimer;
+	float GetCaseServerTime() const;
+	bool IsCaseOperatorValid() const;
+	void ValidateCaseOperation();
+	void CancelCaseOperation();
+	void StartCaseRound(float Now);
+	void HandleCaseMatchPhaseChanged(EHeistMatchPhase Previous, EHeistMatchPhase Current);
+
+	UFUNCTION()
+	void OnRep_CaseState();
+
+	UFUNCTION(NetMulticast, Unreliable)
+	void MulticastCaseSound(uint8 Event);
 
 #pragma endregion
 

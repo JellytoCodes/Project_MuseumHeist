@@ -805,7 +805,8 @@ enum class EHeistSoundPingType : uint8
 	StunHit,
 	ReplicaSwap,
 	Voice,
-	DetentionLock
+	DetentionLock,
+	DisplayCaseLock
 };
 
 USTRUCT(BlueprintType)

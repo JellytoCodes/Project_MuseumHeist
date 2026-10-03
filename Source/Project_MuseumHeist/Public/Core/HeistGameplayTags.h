@@ -27,6 +27,7 @@ struct PROJECT_MUSEUMHEIST_API FHeistGameplayTags
 	FGameplayTag Item_Loot_AncientSword;
 	FGameplayTag Item_Loot_GoldenVase;
 	FGameplayTag Item_Loot_JewelNecklace;
+	FGameplayTag Item_Loot_SmallSculpture;
 	FGameplayTag Item_Throwable;
 	FGameplayTag Item_Throwable_Coin;
 
@@ -43,6 +44,7 @@ struct PROJECT_MUSEUMHEIST_API FHeistGameplayTags
 	FGameplayTag Event_SoundPing_StunHit;
 	FGameplayTag Event_SoundPing_Voice;
 	FGameplayTag Event_SoundPing_DetentionLock;
+	FGameplayTag Event_SoundPing_DisplayCaseLock;
 	FGameplayTag Event_Vent_Opened;
 	FGameplayTag Event_Vent_Used;
 	FGameplayTag Event_Match_Started;

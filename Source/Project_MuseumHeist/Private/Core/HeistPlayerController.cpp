@@ -140,6 +140,13 @@ void AHeistPlayerController::BeginPlay()
 
 void AHeistPlayerController::ResetLocalHeldInteractionInputState()
 {
+	if (HasAuthority())
+	{
+		if (AHeistLootActor* LootCase = ServerActiveLootCase.Get()) LootCase->CancelExhibitionCaseForPlayer(GetPawn<AHeistPlayerCharacter>());
+		ServerActiveLootCase.Reset();
+	}
+	if (IsLocalController() && LocalLootCase.IsValid()) Server_CancelLootCase(LocalLootCase.Get());
+	LocalLootCase.Reset();
 	bLocalObservationInputHeld = false;
 	LocalSecurityHoldButton.Reset();
 }
@@ -826,6 +833,11 @@ void AHeistPlayerController::ApplyLocalInputMode(const EHeistInputMode NewInputM
 	{
 		return;
 	}
+	if (NewInputMode != EHeistInputMode::Gameplay && LocalLootCase.IsValid())
+	{
+		Server_CancelLootCase(LocalLootCase.Get());
+		LocalLootCase.Reset();
+	}
 
 	if (LocalInputMode == NewInputMode && IsLocalInputModeContractSatisfied())
 	{
@@ -1381,6 +1393,11 @@ void AHeistPlayerController::HandleInteractPressed()
 	}
 
 	NotifyLocalTutorialMilestone(TEXT("ProximityInteraction"), TEXT("ValidInteractionInput"));
+	if (AHeistLootActor* PreviousCase = LocalLootCase.Get(); PreviousCase && PreviousCase != InteractionComponent->GetCurrentInteractionTarget())
+	{
+		Server_CancelLootCase(PreviousCase);
+		LocalLootCase.Reset();
+	}
 	if (AHeistDetentionDoorActor* PreviousDoor = LocalDetentionDoor.Get(); PreviousDoor && PreviousDoor != InteractionComponent->GetCurrentInteractionTarget())
 	{
 		Server_ReleaseDetentionDoor(PreviousDoor, true);
@@ -1419,7 +1436,16 @@ void AHeistPlayerController::HandleInteractPressed()
 	AHeistLootActor* TargetLootActor = Cast<AHeistLootActor>(InteractionComponent->GetCurrentInteractionTarget());
 	if (TargetLootActor != nullptr)
 	{
-		Server_RequestLootPickup(TargetLootActor);
+		if (TargetLootActor->IsExhibitionPresentation() && !TargetLootActor->IsExhibitionCaseOpen())
+		{
+			LocalLootCase = TargetLootActor;
+			Server_RequestLootCase(TargetLootActor, TargetLootActor->GetCaseRevision());
+		}
+		else
+		{
+			LocalLootCase.Reset();
+			Server_RequestLootPickup(TargetLootActor);
+		}
 		return;
 	}
 
@@ -2067,6 +2093,11 @@ void AHeistPlayerController::Server_RequestLootPickup_Implementation(AHeistLootA
 		LogLootPickupRejected(TargetLootActor, TEXT("AlreadyTaken"), Distance);
 		return;
 	}
+	if (!TargetLootActor->IsPickupReady())
+	{
+		LogLootPickupRejected(TargetLootActor, TEXT("DisplayCaseLocked"), Distance);
+		return;
+	}
 
 	if (!CanUseHeistInteraction(TargetLootActor, RequestContext.Character))
 	{
@@ -2322,6 +2353,32 @@ void AHeistPlayerController::Server_ReleaseDetentionDoor_Implementation(AHeistDe
 	if (!IsValid(Door)) return;
 	if (bCancelLatch) Door->CancelForPlayer(GetPawn<AHeistPlayerCharacter>());
 	else Door->ReleaseRescue(GetPawn<AHeistPlayerCharacter>());
+}
+
+void AHeistPlayerController::Server_RequestLootCase_Implementation(AHeistLootActor* LootCase, const int32 Revision)
+{
+	FHeistGameplayRequestContext Context;
+	const TCHAR* Reason = nullptr;
+	if (!TryBuildGameplayRequestContext(Context, Reason) || !IsValid(LootCase) || !LootCase->IsExhibitionPresentation() ||
+		LootCase->IsExhibitionCaseOpen() || LootCase->GetCaseRevision() != Revision || !LootCase->CanInteract(Context.Character) ||
+		!Context.Character->GetInteractionComponent()->IsActorOverlappingInteractionArea(LootCase) ||
+		(IsValid(LootCase->GetCaseOperator()) && LootCase->GetCaseOperator() != Context.PlayerState)) return;
+	if (AHeistLootActor* PreviousCase = ServerActiveLootCase.Get(); PreviousCase && PreviousCase != LootCase)
+	{
+		PreviousCase->CancelExhibitionCaseForPlayer(Context.Character);
+		ServerActiveLootCase.Reset();
+	}
+	if (LootCase->TryUseExhibitionCase(Context.Character, Revision))
+	{
+		ServerActiveLootCase = LootCase->GetCaseOperator() == Context.PlayerState ? LootCase : nullptr;
+	}
+}
+
+void AHeistPlayerController::Server_CancelLootCase_Implementation(AHeistLootActor* LootCase)
+{
+	if (!IsValid(LootCase)) return;
+	LootCase->CancelExhibitionCaseForPlayer(GetPawn<AHeistPlayerCharacter>());
+	if (ServerActiveLootCase.Get() == LootCase) ServerActiveLootCase.Reset();
 }
 
 void AHeistPlayerController::Server_RequestBeginSecurityHold_Implementation(AHeistSecurityHoldButtonActor* TargetButton)

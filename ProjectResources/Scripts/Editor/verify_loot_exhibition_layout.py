@@ -14,10 +14,11 @@ from pathlib import Path
 import time
 import traceback
 import unreal
+import os
 
 
 ROOT = Path(unreal.Paths.project_dir()).resolve()
-OUT = ROOT / "Saved/Automation/LooseLootExhibition20261003"
+OUT = ROOT / os.environ.get("MH_LOOT_QA_OUTPUT", "Saved/Automation/LooseLootExhibition20261003")
 PLAN = ROOT / "ProjectResources/SourceArt/Gallery/LooseLootExhibitionLayout.json"
 EDITOR = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem)
 LEVELS = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
@@ -182,6 +183,7 @@ def runtime_supply(world, entry, actors, balance, row_definitions):
     loot = [actor for actor in unreal.GameplayStatics.get_all_actors_of_class(world, unreal.HeistLootActor)
             if actor.actor_has_tag("HeistMatchSpawnedLooseLoot")]
     checks, category_counts = [], {"VaultFixed": 0, "ExhibitionRoom": 0}
+    active_count = 0
     row_lookup = {row["Name"]: row for row in row_definitions}
     anchors = [actors[station["spawn_actor"]] for station in entry["stations"]]
     for actor in loot:
@@ -189,21 +191,27 @@ def runtime_supply(world, entry, actors, balance, row_definitions):
         row = row_lookup.get(row_id)
         matches = [anchor for anchor in anchors if (actor.get_actor_location() - anchor.get_actor_location()).length() <= 1]
         resolved_category = row["SpawnCategory"] if row else "Unknown"
-        category_counts[resolved_category] = category_counts.get(resolved_category, 0) + 1
+        active = bool(actor.get_editor_property("exhibition_loot_active"))
+        active_count += int(active)
+        if active:
+            category_counts[resolved_category] = category_counts.get(resolved_category, 0) + 1
         mesh = actor.get_component_by_class(unreal.StaticMeshComponent)
         visible_mesh = bool(row and mesh and mesh.static_mesh
                             and mesh.static_mesh.get_path_name() == mesh_path(row["WorldMesh"]) and mesh.is_visible())
         valid = bool(row and len(matches) == 1 and station_category(matches[0]) == resolved_category
                      and actor.get_editor_property("is_available") and int(actor.get_editor_property("score_value")) == row["ScoreValue"]
-                     and visible_mesh)
+                     and actor.get_editor_property("exhibition_presentation")
+                     and actor.get_editor_property("case_open") == (resolved_category == "VaultFixed") and visible_mesh)
         checks.append({"actor": name(actor), "row": row_id, "category": resolved_category,
+                       "active": active, "case_open": bool(actor.get_editor_property("case_open")),
                        "matching_anchor": name(matches[0]) if len(matches) == 1 else None,
                        "mesh_resolved_visible": visible_mesh, "pass": valid})
-    valid = (vault == 1 and exhibition == 4 and len(loot) == vault + exhibition
+    valid = (vault == 1 and exhibition == 4 and len(loot) == len(anchors) and active_count == vault + exhibition
              and category_counts.get("VaultFixed") == vault and category_counts.get("ExhibitionRoom") == exhibition
              and status(checks) == "PASS")
     return {"status": "PASS" if valid else "FAIL", "balance_source": balance.get_path_name(),
             "counts": {"vault": vault, "exhibition": exhibition}, "actual_loot_count": len(loot),
+            "active_loot_count": active_count, "decorative_loot_count": len(loot)-active_count,
             "actual_categories": category_counts, "checks": checks}
 
 
@@ -280,7 +288,7 @@ def test_rows_and_approaches(world, entry, actors, balance, mode):
         destroy_probe(probe)
     expected = sum(sum(row["SpawnCategory"] == station_category(actors[station["spawn_actor"]]) for row in definitions)
                    for station in entry["stations"])
-    return ({"status": "PASS" if status(row_checks) == "PASS" and len(row_checks) == 42 else "FAIL",
+    return ({"status": "PASS" if status(row_checks) == "PASS" and len(row_checks) == expected else "FAIL",
              "expected_combinations": expected, "actual_combinations": len(row_checks), "checks": row_checks},
             {"status": status(overlap_checks), "capsule_source": template.get_path_name(),
              "capsule_source_kind": "ActualRuntimePawn" if live_pawns else "DefaultPawnClassCDO",

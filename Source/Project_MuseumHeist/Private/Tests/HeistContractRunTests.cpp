@@ -15,6 +15,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/ShapeComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Core/HeistGameInstance.h"
 #include "Core/HeistGameMode.h"
@@ -1557,20 +1558,52 @@ bool CaptureAndValidateGameplayPreflight(FAutomationTestBase* Test, const TShare
 		GameMode->GetMatchStartLooseLootCounts(ExpectedVaultLootCount, ExpectedExhibitionLootCount);
 		const int32 ExpectedMatchLootCount = ExpectedVaultLootCount + ExpectedExhibitionLootCount;
 		TArray<AHeistLootActor*> MatchStartLootActors;
+		int32 DisplayCount = 0, DecorativeCount = 0, ActiveLockedExhibitionCount = 0, ActiveOpenVaultCount = 0;
 		for (TActorIterator<AHeistLootActor> It(ServerWorld); It; ++It)
 		{
 			AHeistLootActor* LootActor = *It;
-			if (IsValid(LootActor) && LootActor->ActorHasTag(FName(TEXT("HeistMatchSpawnedLooseLoot"))) && LootActor->IsLootAvailable())
+			if (!IsValid(LootActor) || !LootActor->ActorHasTag(FName(TEXT("HeistMatchSpawnedLooseLoot"))))
 			{
+				continue;
+			}
+			++DisplayCount;
+			FHeistLootDataRow Definition;
+			const UStaticMeshComponent* Visual = LootActor->FindComponentByClass<UStaticMeshComponent>();
+			if (!LootActor->IsExhibitionPresentation() || !GameMode->TryGetLootDefinition(LootActor->GetLootRowId(), Definition) ||
+				!IsValid(Visual) || !Visual->IsVisible() || Visual->bHiddenInGame || LootActor->IsHidden())
+			{
+				return false;
+			}
+			if (LootActor->IsExhibitionLootActive())
+			{
+				if (!LootActor->IsLootAvailable()) return false;
+				if (Definition.SpawnCategory == EHeistSpawnCategory::VaultFixed)
+				{
+					if (!LootActor->IsExhibitionCaseOpen()) return false;
+					++ActiveOpenVaultCount;
+				}
+				else
+				{
+					if (LootActor->IsExhibitionCaseOpen()) return false;
+					++ActiveLockedExhibitionCount;
+				}
 				MatchStartLootActors.Add(LootActor);
 			}
+			else
+			{
+				if (LootActor->IsLootAvailable()) return false;
+				++DecorativeCount;
+			}
 		}
-		if (ExpectedMatchLootCount <= 0 || MatchStartLootActors.Num() != ExpectedMatchLootCount)
+		if (ExpectedMatchLootCount != 5 || MatchStartLootActors.Num() != ExpectedMatchLootCount || DisplayCount != 12 || DecorativeCount != 7 ||
+			ActiveOpenVaultCount != ExpectedVaultLootCount || ActiveLockedExhibitionCount != ExpectedExhibitionLootCount)
 		{
 			return false;
 		}
 		MatchStartLootActors.Sort([](const AHeistLootActor& Left, const AHeistLootActor& Right)
 		{
+			// Existing direct-pickup fixture uses the open Vault; Exhibition opening has its own input tests.
+			if (Left.IsExhibitionCaseOpen() != Right.IsExhibitionCaseOpen()) return Left.IsExhibitionCaseOpen();
 			const FString LeftRowId = Left.GetLootRowId().ToString();
 			const FString RightRowId = Right.GetLootRowId().ToString();
 			return LeftRowId != RightRowId ? LeftRowId < RightRowId : Left.GetPathName() < Right.GetPathName();
@@ -2071,6 +2104,56 @@ bool IsGameplayContentReplicated(const int32 PlayerCount, const FName ExpectedMa
 		return false;
 	}
 	const FHeistContractSnapshot ServerContract = ServerGameState->GetContractSnapshot();
+	TSet<FName> CandidateIds, ActiveTemplates, CandidateRegions, ActiveRegions;
+	int32 PaintingCount = 0, ActivePaintingCount = 0;
+	for (TActorIterator<AHeistPaintingDisplayCaseActor> It(ServerWorld); It; ++It)
+	{
+		AHeistPaintingDisplayCaseActor* Case = *It;
+		if (!IsValid(Case) || Case->GetDisplayCaseId().IsNone() || CandidateIds.Contains(Case->GetDisplayCaseId()) || Case->IsHidden()) return false;
+		CandidateIds.Add(Case->GetDisplayCaseId());
+		++PaintingCount;
+		FName RegionId = NAME_None;
+		int32 RegionTagCount = 0;
+		for (const FName Tag : Case->Tags)
+		{
+			const FString Text = Tag.ToString();
+			if (Text.StartsWith(TEXT("HeistExhibitRegion_")) && Text.Len() > 19) { RegionId = Tag; ++RegionTagCount; }
+		}
+		if (RegionTagCount != 1) return false;
+		CandidateRegions.Add(RegionId);
+		FName TemplateId;
+		int32 Revision = 0;
+		bool bLoaded = false, bMaterial = false, bApplied = false, bContractPassed = false;
+		Case->GetOriginalPaintingVisualDebugState(TemplateId, Revision, bLoaded, bMaterial, bApplied, bContractPassed);
+		FHeistForgeryTemplateRow Template;
+		if (Revision != ServerGameState->GetSurfaceTemplateSelectionRevision() || !bLoaded || !bMaterial || !bApplied ||
+			!GameMode->TryGetForgeryTemplateDefinition(TemplateId, Template) || Template.SurfacePoolId != ExpectedMapId) return false;
+		const bool bActive = Case->IsContractExhibitActive();
+		if (bContractPassed != bActive) return false;
+		const UShapeComponent* Interaction = Case->FindComponentByClass<UShapeComponent>();
+		if (!IsValid(Interaction) || Interaction->GetCollisionEnabled() != (bActive ? ECollisionEnabled::QueryOnly : ECollisionEnabled::NoCollision)) return false;
+		bool bFoundPanel = false;
+		TInlineComponentArray<UPrimitiveComponent*> Components(Case);
+		for (const UPrimitiveComponent* Component : Components)
+		{
+			if (Component->ComponentHasTag(TEXT("HeistExhibitSecurityPanel")))
+			{
+				bFoundPanel = true;
+				if (Component->IsVisible() != bActive || Component->bHiddenInGame == bActive) return false;
+			}
+		}
+		if (!bFoundPanel) return false;
+		if (bActive)
+		{
+			if (ActiveTemplates.Contains(TemplateId)) return false;
+			ActiveTemplates.Add(TemplateId);
+			ActiveRegions.Add(RegionId);
+			++ActivePaintingCount;
+		}
+	}
+	const AHeistPaintingDisplayCaseActor* RequiredCase = FindPaintingCase(ServerWorld, ServerContract.RequiredTargetCaseId);
+	if (PaintingCount != 60 || ActivePaintingCount != 12 || !IsValid(RequiredCase) || !RequiredCase->IsContractExhibitActive() ||
+		RequiredCase->GetTargetArtifactId() != ServerContract.RequiredTargetArtifactId || ActiveRegions.Num() < FMath::Min(CandidateRegions.Num(), 11)) return false;
 	if (!IsReleaseSecurityContentReady(ServerWorld))
 	{
 		return false;

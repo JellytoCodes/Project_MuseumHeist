@@ -6,10 +6,8 @@
     "ScoreValue": 1000,
     "SpawnCategory": "VaultFixed",
     "SpawnWeight": 0.4,
-    "WorldMesh": "StaticMesh'/Game/Assets/StarterContent/Shapes/Shape_Torus.Shape_Torus'",
-    "WorldMaterials": [
-      "Material'/Game/Assets/StarterContent/Materials/M_Metal_Gold.M_Metal_Gold'"
-    ],
+    "WorldMesh": "StaticMesh'/Game/Assets/MapAssets/Showcase/Meshes/SM_Crown_01a.SM_Crown_01a'",
+    "WorldMaterials": [],
     "WorldVisualRelativeTransform": {
       "Rotation": {
         "X": 0,
@@ -23,9 +21,9 @@
         "Z": 0
       },
       "Scale3D": {
-        "X": 0.4,
-        "Y": 0.4,
-        "Z": 0.2
+        "X": 1.0,
+        "Y": 1.0,
+        "Z": 1.0
       }
     }
   },
@@ -36,26 +34,24 @@
     "ScoreValue": 350,
     "SpawnCategory": "ExhibitionRoom",
     "SpawnWeight": 1.0,
-    "WorldMesh": "StaticMesh'/Game/Assets/StarterContent/Shapes/Shape_Plane.Shape_Plane'",
-    "WorldMaterials": [
-      "Material'/Game/Assets/StarterContent/Materials/M_Wood_Walnut.M_Wood_Walnut'"
-    ],
+    "WorldMesh": "StaticMesh'/Game/Assets/MapAssets/Showcase/Meshes/SM_Deko_Painting_01a.SM_Deko_Painting_01a'",
+    "WorldMaterials": [],
     "WorldVisualRelativeTransform": {
       "Rotation": {
-        "X": -0.7071067811865476,
+        "X": 0,
         "Y": 0,
         "Z": 0,
-        "W": 0.7071067811865477
+        "W": 1
       },
       "Translation": {
         "X": 0,
         "Y": 0,
-        "Z": 25
+        "Z": 17
       },
       "Scale3D": {
-        "X": 0.5,
-        "Y": 0.5,
-        "Z": 0.5
+        "X": 0.3,
+        "Y": 0.3,
+        "Z": 0.3
       }
     }
   },
@@ -66,26 +62,24 @@
     "ScoreValue": 450,
     "SpawnCategory": "ExhibitionRoom",
     "SpawnWeight": 0.8,
-    "WorldMesh": "StaticMesh'/Game/Assets/StarterContent/Shapes/Shape_NarrowCapsule.Shape_NarrowCapsule'",
-    "WorldMaterials": [
-      "Material'/Game/Assets/StarterContent/Materials/M_Metal_Burnished_Steel.M_Metal_Burnished_Steel'"
-    ],
+    "WorldMesh": "StaticMesh'/Game/Assets/MapAssets/Showcase/Meshes/SM_Dagger_01a.SM_Dagger_01a'",
+    "WorldMaterials": [],
     "WorldVisualRelativeTransform": {
       "Rotation": {
         "X": 0,
-        "Y": -0.7071067811865476,
+        "Y": 0,
         "Z": 0,
-        "W": 0.7071067811865477
+        "W": 1
       },
       "Translation": {
-        "X": 35,
+        "X": 0,
         "Y": 0,
-        "Z": 3
+        "Z": 1
       },
       "Scale3D": {
-        "X": 0.1,
-        "Y": 0.1,
-        "Z": 0.7
+        "X": 0.5,
+        "Y": 0.5,
+        "Z": 0.5
       }
     }
   },
@@ -96,10 +90,8 @@
     "ScoreValue": 600,
     "SpawnCategory": "ExhibitionRoom",
     "SpawnWeight": 0.6,
-    "WorldMesh": "StaticMesh'/Game/Assets/StarterContent/Shapes/Shape_Cylinder.Shape_Cylinder'",
-    "WorldMaterials": [
-      "Material'/Game/Assets/StarterContent/Materials/M_Metal_Copper.M_Metal_Copper'"
-    ],
+    "WorldMesh": "StaticMesh'/Game/Assets/MapAssets/Showcase/Meshes/SM_Clay_Pot_01a.SM_Clay_Pot_01a'",
+    "WorldMaterials": [],
     "WorldVisualRelativeTransform": {
       "Rotation": {
         "X": 0,
@@ -113,9 +105,9 @@
         "Z": 0
       },
       "Scale3D": {
-        "X": 0.3,
-        "Y": 0.3,
-        "Z": 0.6
+        "X": 0.5,
+        "Y": 0.5,
+        "Z": 0.5
       }
     }
   },
@@ -125,7 +117,7 @@
     "LootGrade": "ThreeStar",
     "ScoreValue": 700,
     "SpawnCategory": "ExhibitionRoom",
-    "SpawnWeight": 1.2,
+    "SpawnWeight": 0.0,
     "WorldMesh": "StaticMesh'/Game/Assets/StarterContent/Shapes/Shape_Pipe_180.Shape_Pipe_180'",
     "WorldMaterials": [
       "Material'/Game/Assets/StarterContent/Materials/M_Metal_Chrome.M_Metal_Chrome'"
@@ -146,6 +138,34 @@
         "X": 0.4,
         "Y": 0.4,
         "Z": 0.1
+      }
+    }
+  },
+  {
+    "Name": "Loot_SmallSculpture",
+    "ItemId": "Loot_SmallSculpture",
+    "LootGrade": "ThreeStar",
+    "ScoreValue": 700,
+    "SpawnCategory": "ExhibitionRoom",
+    "SpawnWeight": 1.2,
+    "WorldMesh": "StaticMesh'/Game/Assets/MapAssets/Showcase/Meshes/SM_Bust_01a.SM_Bust_01a'",
+    "WorldMaterials": [],
+    "WorldVisualRelativeTransform": {
+      "Rotation": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0,
+        "W": 1
+      },
+      "Translation": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "Scale3D": {
+        "X": 0.7,
+        "Y": 0.7,
+        "Z": 0.7
       }
     }
   }
