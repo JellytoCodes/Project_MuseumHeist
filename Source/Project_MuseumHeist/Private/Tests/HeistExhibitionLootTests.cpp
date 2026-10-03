@@ -29,7 +29,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHeistExhibitionLootSecurityTest, "ProjectMuseu
 
 bool FHeistExhibitionLootSecurityTest::RunTest(const FString& Parameters)
 {
-	// Production BP_Loot and owned RPC handlers in an isolated authority world.
+	// Production BP_Loot and server RPC handlers in an isolated authority world.
 	// This proves transaction/state rules, not replicated visuals or natural input.
 	const UWorld::InitializationValues Values = UWorld::InitializationValues().AllowAudioPlayback(false).CreateNavigation(false)
 		.CreateAISystem(false).ShouldSimulatePhysics(false).SetTransactional(false);
@@ -68,6 +68,9 @@ bool FHeistExhibitionLootSecurityTest::RunTest(const FString& Parameters)
 		State->AddPlayerState(Players[Index]);
 		Controllers[Index]->Possess(Crew[Index]);
 		Crew[Index]->DispatchBeginPlay();
+		if (!TestTrue(TEXT("Request context has matching Controller, Pawn and PlayerState ownership"),
+			Controllers[Index]->GetPawn() == Crew[Index] && Crew[Index]->GetController() == Controllers[Index] &&
+			Crew[Index]->GetPlayerState() == Players[Index] && Players[Index]->GetPawn() == Crew[Index])) return false;
 	}
 	World->SetBegunPlay(true);
 	const auto Advance = [World](const float Seconds)
@@ -113,6 +116,22 @@ bool FHeistExhibitionLootSecurityTest::RunTest(const FString& Parameters)
 	AHeistLootActor* Vault = SpawnLoot(FVector(0, 0, 100), true, true, false);
 	AHeistLootActor* WorldDrop = SpawnLoot(FVector(0, 0, 100), false, true, false);
 	if (!TestTrue(TEXT("All production case variants spawn"), IsValid(Locked) && IsValid(Other) && IsValid(Inactive) && IsValid(Vault) && IsValid(WorldDrop))) return false;
+	const auto HasExpectedGlass = [](const AHeistLootActor* Loot, const bool bVisible)
+	{
+		TArray<UStaticMeshComponent*> Components;
+		Loot->GetComponents(Components);
+		int32 Panes = 0;
+		for (const UStaticMeshComponent* Component : Components)
+		{
+			if (!Component->GetName().StartsWith(TEXT("CaseGlass"))) continue;
+			++Panes;
+			if (!IsValid(Component->GetStaticMesh()) || Component->IsVisible() != bVisible ||
+				Component->GetCollisionEnabled() != ECollisionEnabled::NoCollision) return false;
+		}
+		return Panes == 5;
+	};
+	TestTrue(TEXT("Locked active and decorative cases show the common glass enclosure"), HasExpectedGlass(Locked, true) && HasExpectedGlass(Inactive, true));
+	TestTrue(TEXT("Vault and world drops have no glass enclosure"), HasExpectedGlass(Vault, false) && HasExpectedGlass(WorldDrop, false));
 	Move(Crew[0], Locked->GetActorLocation());
 	Move(Crew[1], Locked->GetActorLocation() + FVector(0, 20, 0));
 	Advance(0.01f);
@@ -160,6 +179,7 @@ bool FHeistExhibitionLootSecurityTest::RunTest(const FString& Parameters)
 	TestNull(TEXT("Starting another case cancels the former server session"), Locked->GetCaseOperator());
 	TestTrue(TEXT("Only the new case remains owned"), Other->GetCaseOperator() == Players[0]);
 	Invoke(Controllers[0], TEXT("Server_CancelLootCase"), Other);
+	if (!TestNull(TEXT("Owner cancel RPC releases its active case"), Other->GetCaseOperator())) return false;
 	Invoke(Controllers[1], TEXT("Server_RequestLootCase"), Locked, Locked->GetCaseRevision());
 	if (!TestTrue(TEXT("Teammate resumes preserved progress"), Locked->GetCaseOperator() == Players[1] && Locked->GetCompletedCaseLatches() == 1)) return false;
 	for (int32 Latch = 1; Latch < 3; ++Latch)
@@ -169,6 +189,7 @@ bool FHeistExhibitionLootSecurityTest::RunTest(const FString& Parameters)
 		if (!TestEqual(TEXT("Each accepted round completes exactly one latch"), Locked->GetCompletedCaseLatches(), Latch + 1)) return false;
 	}
 	TestTrue(TEXT("Third success opens without auto pickup"), Locked->IsExhibitionCaseOpen() && Locked->IsPickupReady());
+	TestTrue(TEXT("Opening hides every glass pane without hiding the loot"), HasExpectedGlass(Locked, false));
 	TestNull(TEXT("Opening releases case operator"), Locked->GetCaseOperator());
 	TestEqual(TEXT("Opening has not awarded value"), Players[1]->GetTotalLootScore(), 0);
 	UHeistInventoryComponent* Inventory = Crew[1]->GetInventoryComponent();
@@ -196,7 +217,22 @@ bool FHeistExhibitionLootSecurityTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Exactly one grid entry commits"), Inventory->GetReplicatedInventory().Items.Num(), 1);
 	Move(Crew[0], Other->GetActorLocation());
 	Advance(0.2f);
+	Players[0]->ExactPing = 6000.0f;
 	Invoke(Controllers[0], TEXT("Server_RequestLootCase"), Other, Other->GetCaseRevision());
+	if (!TestTrue(TEXT("Latency boundary fixture actually starts"), Other->GetCaseOperator() == Players[0])) return false;
+	const float RightEdgeInputProgress = Other->GetCaseSuccessWindowCenter() + Other->GetCaseSuccessWindowWidth() * 0.5f - 0.005f;
+	// Rewind by 0.25s puts this just inside the right edge. No rewind places it
+	// outside; uncapped 3s half-RTT also places it outside the first latch window.
+	Advance(0.5f + RightEdgeInputProgress * 6.0f + 0.25f);
+	Invoke(Controllers[0], TEXT("Server_RequestLootCase"), Other, Other->GetCaseRevision());
+	if (!TestEqual(TEXT("Measured half-RTT is applied and clamped to 0.25 seconds"), Other->GetCompletedCaseLatches(), 1)) return false;
+	Players[0]->ExactPing = 0.0f;
+	Invoke(Controllers[0], TEXT("Server_CancelLootCase"), Other);
+	if (!TestNull(TEXT("Owner cancel RPC releases latency fixture"), Other->GetCaseOperator())) return false;
+	TestEqual(TEXT("Owner cancellation preserves completed latch"), Other->GetCompletedCaseLatches(), 1);
+	Advance(0.2f);
+	Invoke(Controllers[0], TEXT("Server_RequestLootCase"), Other, Other->GetCaseRevision());
+	if (!TestTrue(TEXT("Distance cancellation fixture actually starts"), Other->GetCaseOperator() == Players[0])) return false;
 	Move(Crew[0], Other->GetActorLocation() + FVector(200, 0, 0));
 	Advance(0.2f);
 	TestNull(TEXT("Distance/overlap loss cancels ownership"), Other->GetCaseOperator());
@@ -205,6 +241,7 @@ bool FHeistExhibitionLootSecurityTest::RunTest(const FString& Parameters)
 	Move(Crew[0], Other->GetActorLocation());
 	Advance(0.2f);
 	Invoke(Controllers[0], TEXT("Server_RequestLootCase"), Other, Other->GetCaseRevision());
+	if (!TestTrue(TEXT("Inventory cancellation fixture actually starts"), Other->GetCaseOperator() == Players[0])) return false;
 	Crew[0]->GetInventoryComponent()->TrySetInventoryOpen(true);
 	Advance(0.2f);
 	TestNull(TEXT("Inventory UI transition cancels ownership"), Other->GetCaseOperator());
@@ -213,24 +250,28 @@ bool FHeistExhibitionLootSecurityTest::RunTest(const FString& Parameters)
 	Crew[0]->GetInventoryComponent()->TrySetInventoryOpen(false);
 	Advance(0.2f);
 	Invoke(Controllers[0], TEXT("Server_RequestLootCase"), Other, Other->GetCaseRevision());
+	if (!TestTrue(TEXT("Stun cancellation fixture actually starts"), Other->GetCaseOperator() == Players[0])) return false;
 	Crew[0]->GetStatusComponent()->ApplyTimedStatusTag(FHeistGameplayTags::Get().Event_Player_Stunned, 10.0f);
 	Advance(0.2f);
 	TestNull(TEXT("Stun cancels ownership"), Other->GetCaseOperator());
 	Crew[0]->GetStatusComponent()->ClearStatusTag(FHeistGameplayTags::Get().Event_Player_Stunned);
 	Advance(0.2f);
 	Invoke(Controllers[0], TEXT("Server_RequestLootCase"), Other, Other->GetCaseRevision());
+	if (!TestTrue(TEXT("Roster-removal fixture actually starts"), Other->GetCaseOperator() == Players[0])) return false;
 	State->RemovePlayerState(Players[0]);
 	Advance(0.2f);
-	TestNull(TEXT("Leaving the crew array releases disconnected operator"), Other->GetCaseOperator());
+	TestNull(TEXT("Leaving the crew array releases the operator"), Other->GetCaseOperator());
 	State->AddPlayerState(Players[0]);
 	Advance(0.2f);
 	Invoke(Controllers[0], TEXT("Server_RequestLootCase"), Other, Other->GetCaseRevision());
+	if (!TestTrue(TEXT("Match-End cancellation fixture actually starts"), Other->GetCaseOperator() == Players[0])) return false;
 	State->SetMatchPhase(EHeistMatchPhase::End);
 	TestNull(TEXT("Match End synchronously clears operation"), Other->GetCaseOperator());
 	Invoke(Controllers[0], TEXT("Server_RequestLootCase"), Other, Other->GetCaseRevision());
 	TestNull(TEXT("Post-match RPC cannot start operation"), Other->GetCaseOperator());
 	State->GetSoundPingEventReportedDelegate().Clear();
-	AddInfo(TEXT("Canonical BP_Loot authority case: Locked/Inactive bypass, stale revision, ownership, timed latches, case GuardNoise, teammate resume, Open then Pickup, full-grid rollback, duplicate pickup, distance/UI/Stun/Disconnect/End cancellation verified. User PIE/replication/Steam not exercised."));
+	if (!HasAnyErrors())
+		AddInfo(TEXT("Canonical BP_Loot server authority fixture: Locked/Inactive bypass, stale revision, Controller/Pawn/PlayerState context, exclusive case ownership, timed latches, case GuardNoise, teammate resume, Open then Pickup, full-grid rollback, duplicate pickup, 0.25s half-RTT bound, distance/Inventory/Stun/roster-removal/End cancellation PASS. Map input, network RPC ownership transport, actual Disconnect, User PIE/replication/Steam not exercised."));
 	return true;
 }
 

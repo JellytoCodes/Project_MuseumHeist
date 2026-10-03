@@ -72,8 +72,11 @@ class PROJECT_MUSEUMHEIST_API AHeistLootActor : public AHeistInteractableActor
 
   public:
 	void InitializeExhibitionLoot(bool bInActive, bool bInLocked = true);
+	UFUNCTION(BlueprintPure, Category = "Heist|Loot|Case")
 	bool IsExhibitionPresentation() const { return bExhibitionPresentation; }
+	UFUNCTION(BlueprintPure, Category = "Heist|Loot|Case")
 	bool IsExhibitionLootActive() const { return bExhibitionLootActive; }
+	UFUNCTION(BlueprintPure, Category = "Heist|Loot|Case")
 	bool IsExhibitionCaseOpen() const { return bCaseOpen; }
 	int32 GetCaseRevision() const { return CaseRevision; }
 	int32 GetCompletedCaseLatches() const { return CompletedCaseLatches; }

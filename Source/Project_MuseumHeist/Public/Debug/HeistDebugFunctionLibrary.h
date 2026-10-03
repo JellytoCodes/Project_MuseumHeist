@@ -71,6 +71,11 @@ class PROJECT_MUSEUMHEIST_API UHeistDebugFunctionLibrary : public UBlueprintFunc
 	static void DebugLootPickupRequestReceived(const UObject* WorldContextObject, const UObject* Character, const UObject* TargetLootActor);
 	static void DebugLootPickupRequestRejected(const UObject* WorldContextObject, const UObject* TargetLootActor, const TCHAR* Reason, float Distance = -1.0f);
 	static void DebugLootPickupRequestAccepted(const UObject* WorldContextObject, const UObject* TargetLootActor, FName ItemId, int32 InstanceId, float Distance);
+	static void DebugPaintingExhibitionAssignment(const UObject* WorldContextObject, int32 CandidateCount, int32 ActiveCount, int32 DecorativeCount,
+		int32 CatalogCount, int32 InvalidRegionCount, const TMap<FName, int32>& SelectedRegionCounts, FName RequiredCaseId,
+		bool bDecorationValid, bool bInitializationPassed, bool bReleaseContentReady);
+	static void DebugMatchLooseLootInitialized(const UObject* WorldContextObject, int32 AssignmentSeed, int32 SpawnPointCount, int32 VaultLootCount,
+		int32 ExhibitionLootCount, int32 SpawnedCount, int32 DecorationCount);
 
 	static void DebugEscapeRequestRejected(const UObject* WorldContextObject, const UObject* TargetVentActor, const TCHAR* Reason, float Distance = -1.0f);
 	static void DebugEscapeRequestAccepted(const UObject* WorldContextObject, const UObject* Character, const UObject* TargetVentActor, float Distance);

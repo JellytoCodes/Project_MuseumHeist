@@ -191,7 +191,7 @@ def runtime_supply(world, entry, actors, balance, row_definitions):
         row = row_lookup.get(row_id)
         matches = [anchor for anchor in anchors if (actor.get_actor_location() - anchor.get_actor_location()).length() <= 1]
         resolved_category = row["SpawnCategory"] if row else "Unknown"
-        active = bool(actor.get_editor_property("exhibition_loot_active"))
+        active = actor.is_exhibition_loot_active()
         active_count += int(active)
         if active:
             category_counts[resolved_category] = category_counts.get(resolved_category, 0) + 1
@@ -200,10 +200,10 @@ def runtime_supply(world, entry, actors, balance, row_definitions):
                             and mesh.static_mesh.get_path_name() == mesh_path(row["WorldMesh"]) and mesh.is_visible())
         valid = bool(row and len(matches) == 1 and station_category(matches[0]) == resolved_category
                      and actor.get_editor_property("is_available") and int(actor.get_editor_property("score_value")) == row["ScoreValue"]
-                     and actor.get_editor_property("exhibition_presentation")
-                     and actor.get_editor_property("case_open") == (resolved_category == "VaultFixed") and visible_mesh)
+                     and actor.is_exhibition_presentation()
+                     and actor.is_exhibition_case_open() == (resolved_category == "VaultFixed") and visible_mesh)
         checks.append({"actor": name(actor), "row": row_id, "category": resolved_category,
-                       "active": active, "case_open": bool(actor.get_editor_property("case_open")),
+                       "active": active, "case_open": actor.is_exhibition_case_open(),
                        "matching_anchor": name(matches[0]) if len(matches) == 1 else None,
                        "mesh_resolved_visible": visible_mesh, "pass": valid})
     valid = (vault == 1 and exhibition == 4 and len(loot) == len(anchors) and active_count == vault + exhibition

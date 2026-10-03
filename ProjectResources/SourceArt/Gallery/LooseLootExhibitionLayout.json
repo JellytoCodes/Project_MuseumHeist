@@ -2,8 +2,8 @@
   "schema_version": 1,
   "units": "cm,degrees",
   "purpose": "Developer Loose Loot exhibition layout; does not reveal undiscovered loot in the player floor plan.",
-  "runtime_rule": "Existing category-weighted random selection and count remain unchanged. Markers are candidates, not guaranteed spawned loot.",
-  "world_visual_scope": "Existing WorldMesh identities retained; only base contact, simple scales and facing corrected.",
+  "runtime_rule": "All 12 existing stations display cases. Server selects Vault1 and Exhibition4 as active; other 7 remain decoration. Positions are fixed.",
+  "world_visual_scope": "Existing original pack meshes, shared BP_Loot case shell; no per-instance asset copies. Active case must be opened before pickup.",
   "maps": [
     {
       "code": "M01",
@@ -41,7 +41,7 @@
             1,
             0
           ],
-          "focus_painting": "StaticMeshActor_1142",
+          "focus_painting": "BP_PaintingDisplayCase_C_1",
           "composition": "Placed beside painting edge, without direct footprint overlap."
         },
         {
@@ -75,7 +75,7 @@
             -1,
             0
           ],
-          "focus_painting": "StaticMeshActor_1159",
+          "focus_painting": "BP_PaintingDisplayCase_C_6",
           "composition": "Placed beside painting edge, without direct footprint overlap."
         },
         {
@@ -177,7 +177,7 @@
             1,
             0
           ],
-          "focus_painting": "StaticMeshActor_1483",
+          "focus_painting": "BP_PaintingDisplayCase_C_53",
           "composition": "Placed beside painting edge, without direct footprint overlap."
         },
         {
@@ -211,7 +211,7 @@
             -1,
             0
           ],
-          "focus_painting": "StaticMeshActor_1313",
+          "focus_painting": "BP_PaintingDisplayCase_C_35",
           "composition": "남쪽 벽과 Print_08_02 사이의 공간에 전시대를 벽과 평행하게 배치. 받침-벽 여유16cm, 받침-그림 여유10cm. 서쪽에서 접근."
         },
         {
@@ -245,7 +245,7 @@
             1,
             0
           ],
-          "focus_painting": "StaticMeshActor_1335",
+          "focus_painting": "BP_PaintingDisplayCase_C_37",
           "composition": "Placed beside painting edge, without direct footprint overlap."
         },
         {
@@ -279,7 +279,7 @@
             0,
             1
           ],
-          "focus_painting": "StaticMeshActor_1371",
+          "focus_painting": "BP_PaintingDisplayCase_C_40",
           "composition": "Placed beside painting edge, without direct footprint overlap."
         },
         {
@@ -313,7 +313,7 @@
             0,
             1
           ],
-          "focus_painting": "StaticMeshActor_1400",
+          "focus_painting": "BP_PaintingDisplayCase_C_43",
           "composition": "Placed beside painting edge, without direct footprint overlap."
         },
         {
@@ -381,7 +381,7 @@
             0,
             1
           ],
-          "focus_painting": "StaticMeshActor_1439",
+          "focus_painting": "BP_PaintingDisplayCase_C_48",
           "composition": "Placed beside painting edge, without direct footprint overlap."
         },
         {
@@ -490,7 +490,7 @@
             1,
             0
           ],
-          "focus_painting": "StaticMeshActor_1088",
+          "focus_painting": "BP_PaintingDisplayCase_C_13",
           "composition": "Placed beside painting edge, without direct footprint overlap."
         },
         {
@@ -558,7 +558,7 @@
             0,
             1
           ],
-          "focus_painting": "StaticMeshActor_1568",
+          "focus_painting": "BP_PaintingDisplayCase_C_21",
           "composition": "Placed beside painting edge, without direct footprint overlap."
         },
         {
@@ -592,7 +592,7 @@
             0,
             1
           ],
-          "focus_painting": "StaticMeshActor_2392",
+          "focus_painting": "BP_PaintingDisplayCase_C_51",
           "composition": "Placed beside painting edge, without direct footprint overlap."
         },
         {
@@ -626,7 +626,7 @@
             0,
             1
           ],
-          "focus_painting": "StaticMeshActor_2221",
+          "focus_painting": "BP_PaintingDisplayCase_C_31",
           "composition": "Placed beside painting edge, without direct footprint overlap."
         },
         {
@@ -660,7 +660,7 @@
             0,
             -1
           ],
-          "focus_painting": "StaticMeshActor_2270",
+          "focus_painting": "BP_PaintingDisplayCase_C_37",
           "composition": "Placed beside painting edge, without direct footprint overlap."
         },
         {
@@ -694,7 +694,7 @@
             -1,
             0
           ],
-          "focus_painting": "StaticMeshActor_2282",
+          "focus_painting": "BP_PaintingDisplayCase_C_38",
           "composition": "Placed beside painting edge, without direct footprint overlap."
         },
         {
@@ -728,7 +728,7 @@
             0,
             1
           ],
-          "focus_painting": "StaticMeshActor_2412",
+          "focus_painting": "BP_PaintingDisplayCase_C_55",
           "composition": "Placed beside painting edge, without direct footprint overlap."
         },
         {
@@ -762,7 +762,7 @@
             1,
             0
           ],
-          "focus_painting": "StaticMeshActor_2338",
+          "focus_painting": "BP_PaintingDisplayCase_C_44",
           "composition": "Placed beside painting edge, without direct footprint overlap."
         },
         {
@@ -905,7 +905,7 @@
             0,
             -1
           ],
-          "focus_painting": "StaticMeshActor_2378",
+          "focus_painting": "BP_PaintingDisplayCase_C_28",
           "composition": "Placed beside painting edge, without direct footprint overlap."
         },
         {
@@ -1007,7 +1007,7 @@
             0,
             -1
           ],
-          "focus_painting": "StaticMeshActor_2232",
+          "focus_painting": "BP_PaintingDisplayCase_C_6",
           "composition": "Placed beside painting edge, without direct footprint overlap."
         },
         {
@@ -1143,7 +1143,7 @@
             0,
             -1
           ],
-          "focus_painting": "StaticMeshActor_2635",
+          "focus_painting": "BP_PaintingDisplayCase_C_57",
           "composition": "Move existing Table_02 and anchor from security room into adjacent central gallery; root-authorized exception. Placed beside painting edge, without direct footprint overlap."
         },
         {

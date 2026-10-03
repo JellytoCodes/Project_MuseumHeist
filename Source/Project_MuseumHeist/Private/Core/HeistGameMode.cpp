@@ -33,6 +33,7 @@
 #include "World/Actors/Loot/HeistObjectDisplayCaseActor.h"
 #include "World/Actors/Loot/HeistPaintingDisplayCaseActor.h"
 #include "World/Actors/Security/HeistSecurityHoldButtonActor.h"
+#include "World/Actors/Security/HeistLaserBarrierActor.h"
 #include "World/Spawn/HeistLootSpawnPoint.h"
 
 #pragma region InternalHelpers
@@ -1460,8 +1461,25 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 	{
 		EligibleOptionalCases.Swap(Index, AssignmentRandom.RandRange(0, Index));
 	}
-	const int32 FourStarOptionalIndex = EligibleOptionalCases.IndexOfByPredicate(
-		[](const FPlacedTargetCase& OptionalCase) { return OptionalCase.ItemGrade == EHeistLootGrade::FourStar; });
+	TSet<const AActor*> ProtectedOptionalActors;
+	for (TActorIterator<AHeistLaserBarrierActor> LaserIterator(GetWorld()); LaserIterator; ++LaserIterator)
+	{
+		if (IsValid(*LaserIterator) && IsValid(LaserIterator->GetProtectedPaintingCase()))
+		{
+			ProtectedOptionalActors.Add(LaserIterator->GetProtectedPaintingCase());
+		}
+	}
+	int32 FourStarOptionalIndex = EligibleOptionalCases.IndexOfByPredicate(
+		[&ProtectedOptionalActors](const FPlacedTargetCase& OptionalCase)
+		{
+			return OptionalCase.ItemGrade == EHeistLootGrade::FourStar && ProtectedOptionalActors.Contains(OptionalCase.Actor);
+		});
+	// Keep the legacy sandbox assignment when it has no authored security chain.
+	if (FourStarOptionalIndex == INDEX_NONE && !bUsesReleaseMatchLootSupply)
+	{
+		FourStarOptionalIndex = EligibleOptionalCases.IndexOfByPredicate(
+			[](const FPlacedTargetCase& OptionalCase) { return OptionalCase.ItemGrade == EHeistLootGrade::FourStar; });
+	}
 	if (FourStarOptionalIndex > 0)
 	{
 		EligibleOptionalCases.Swap(0, FourStarOptionalIndex);
@@ -1501,7 +1519,8 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 	const int32 SurfaceTemplateCatalogCount = HeistGameState->GetSurfaceTemplatePoolSize();
 	const int32 RequestedPaintingExhibitCount = bContractDefinitionValid ? ContractDefinition.ResolveMatchPaintingExhibitCount(MapId) : 0;
 	const int32 MaximumTemplateBackedOptionalCount = FMath::Max(0, FMath::Min(RequestedPaintingExhibitCount, AvailableTemplateCount) - 1);
-	const bool bOptionalAssignmentValid = MinimumOptionalExhibitCount <= MaximumOptionalExhibitCount && AssignmentRevision > 0 && AvailableTemplateCount > 0;
+	const bool bOptionalAssignmentValid = MinimumOptionalExhibitCount <= MaximumOptionalExhibitCount && AssignmentRevision > 0 && AvailableTemplateCount > 0 &&
+		(!bUsesReleaseMatchLootSupply || FourStarOptionalIndex != INDEX_NONE);
 	const int32 MaximumSelectableOptionalCount = bOptionalAssignmentValid
 		? FMath::Min(EligibleOptionalCases.Num(), MaximumTemplateBackedOptionalCount)
 		: 0;
@@ -1672,20 +1691,9 @@ void AHeistGameMode::InitializeContractFromPlacedTargetCase()
 		ContractFailureReason.IsEmpty() ? TEXT("None") : *ContractFailureReason, bContractInitialized ? TEXT("true") : TEXT("false"), *UEnum::GetValueAsString(HeistGameState->GetObjectiveState()),
 		bInitializationPassed ? TEXT("PASS") : TEXT("FAIL"));
 	UHeistDebugFunctionLibrary::Message(this, InitializationMessage, bInitializationPassed ? EHeistDebugLevel::Info : EHeistDebugLevel::Error);
-	TArray<FName> RegionIds;
-	SelectedRegionCounts.GenerateKeyArray(RegionIds);
-	RegionIds.Sort(FNameLexicalLess());
-	TArray<FString> RegionCounts;
-	for (const FName RegionId : RegionIds)
-	{
-		RegionCounts.Add(FString::Printf(TEXT("%s:%d"), *RegionId.ToString(), SelectedRegionCounts.FindRef(RegionId)));
-	}
-	UHeistDebugFunctionLibrary::Message(this, FString::Printf(
-		TEXT("Painting exhibition assignment: Candidates=%d Active=%d Decorative=%d Catalog=%d InvalidRegions=%d RegionCounts=[%s] RequiredCase=%s DecorationValid=%s Result=%s"),
-		OptionalCases.Num() + 1, AssignedPaintingCaseCount, AssignedDecorativeCaseCount, DecorativeTemplateIds.Num(), InvalidRegionCaseCount,
-		*FString::Join(RegionCounts, TEXT(",")), *TargetDisplayCase.CaseId.ToString(), bDecorativeAssignmentValid ? TEXT("true") : TEXT("false"),
-		bInitializationPassed ? (bReleasePaintingContentReady ? TEXT("PASS") : TEXT("INCOMPLETE")) : TEXT("FAIL")),
-		bInitializationPassed && bReleasePaintingContentReady ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning);
+	UHeistDebugFunctionLibrary::DebugPaintingExhibitionAssignment(this, OptionalCases.Num() + 1, AssignedPaintingCaseCount,
+		AssignedDecorativeCaseCount, DecorativeTemplateIds.Num(), InvalidRegionCaseCount, SelectedRegionCounts, TargetDisplayCase.CaseId,
+		bDecorativeAssignmentValid, bInitializationPassed, bReleasePaintingContentReady);
 }
 
 #pragma endregion
@@ -3275,10 +3283,14 @@ bool AHeistGameMode::InitializeMatchLooseLoot(const int32 AssignmentSeed, int32&
 		StagedLootActors.Add(StagedLootActor);
 	}
 
-	MatchLooseLootSpawnedCount = StagedLootActors.CountByPredicate([](const AHeistLootActor* LootActor)
+	MatchLooseLootSpawnedCount = 0;
+	for (const AHeistLootActor* LootActor : StagedLootActors)
 	{
-		return IsValid(LootActor) && LootActor->IsExhibitionLootActive();
-	});
+		if (IsValid(LootActor) && LootActor->IsExhibitionLootActive())
+		{
+			++MatchLooseLootSpawnedCount;
+		}
+	}
 	OutSpawnedLootCount = MatchLooseLootSpawnedCount;
 	bMatchLooseLootInitialized = MatchLooseLootSpawnedCount == MatchLooseLootExpectedCount;
 	if (!bMatchLooseLootInitialized)
@@ -3295,9 +3307,8 @@ bool AHeistGameMode::InitializeMatchLooseLoot(const int32 AssignmentSeed, int32&
 			MatchLooseLootActors.Add(StagedLootActor);
 		}
 	}
-	UHeistDebugFunctionLibrary::Message(this, FString::Printf(
-		TEXT("Match-start loose loot initialized: Seed=%d SpawnPoints=%d Vault=%d Exhibition=%d Spawned=%d Decoration=%d Result=PASS"), AssignmentSeed,
-		MatchLooseLootSpawnPointCount, VaultLootCount, ExhibitionLootCount, MatchLooseLootSpawnedCount, StagedLootActors.Num() - MatchLooseLootSpawnedCount));
+	UHeistDebugFunctionLibrary::DebugMatchLooseLootInitialized(this, AssignmentSeed, MatchLooseLootSpawnPointCount, VaultLootCount,
+		ExhibitionLootCount, MatchLooseLootSpawnedCount, StagedLootActors.Num() - MatchLooseLootSpawnedCount);
 	return bMatchLooseLootInitialized;
 }
 

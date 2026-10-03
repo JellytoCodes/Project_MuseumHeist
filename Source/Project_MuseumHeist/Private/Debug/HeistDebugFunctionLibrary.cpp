@@ -5407,6 +5407,42 @@ void UHeistDebugFunctionLibrary::DebugLootPickupRequestAccepted(const UObject* W
 #endif
 }
 
+void UHeistDebugFunctionLibrary::DebugPaintingExhibitionAssignment(const UObject* WorldContextObject, const int32 CandidateCount, const int32 ActiveCount,
+	const int32 DecorativeCount, const int32 CatalogCount, const int32 InvalidRegionCount, const TMap<FName, int32>& SelectedRegionCounts,
+	const FName RequiredCaseId, const bool bDecorationValid, const bool bInitializationPassed, const bool bReleaseContentReady)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	TArray<FName> RegionIds;
+	SelectedRegionCounts.GenerateKeyArray(RegionIds);
+	RegionIds.Sort(FNameLexicalLess());
+	TArray<FString> RegionCounts;
+	for (const FName RegionId : RegionIds)
+	{
+		RegionCounts.Add(FString::Printf(TEXT("%s:%d"), *RegionId.ToString(), SelectedRegionCounts.FindRef(RegionId)));
+	}
+	Message(WorldContextObject, FString::Printf(
+		TEXT("Painting exhibition assignment: Candidates=%d Active=%d Decorative=%d Catalog=%d InvalidRegions=%d RegionCounts=[%s] RequiredCase=%s DecorationValid=%s Result=%s"),
+		CandidateCount, ActiveCount, DecorativeCount, CatalogCount, InvalidRegionCount, *FString::Join(RegionCounts, TEXT(",")),
+		*RequiredCaseId.ToString(), bDecorationValid ? TEXT("true") : TEXT("false"),
+		bInitializationPassed ? (bReleaseContentReady ? TEXT("PASS") : TEXT("INCOMPLETE")) : TEXT("FAIL")),
+		bInitializationPassed && bReleaseContentReady ? EHeistDebugLevel::Info : EHeistDebugLevel::Warning);
+#endif
+}
+
+void UHeistDebugFunctionLibrary::DebugMatchLooseLootInitialized(const UObject* WorldContextObject, const int32 AssignmentSeed, const int32 SpawnPointCount,
+	const int32 VaultLootCount, const int32 ExhibitionLootCount, const int32 SpawnedCount, const int32 DecorationCount)
+{
+#if UE_BUILD_SHIPPING
+	return;
+#else
+	Message(WorldContextObject, FString::Printf(
+		TEXT("Match-start loose loot initialized: Seed=%d SpawnPoints=%d Vault=%d Exhibition=%d Spawned=%d Decoration=%d Result=PASS"),
+		AssignmentSeed, SpawnPointCount, VaultLootCount, ExhibitionLootCount, SpawnedCount, DecorationCount));
+#endif
+}
+
 void UHeistDebugFunctionLibrary::DebugEscapeRequestRejected(const UObject* WorldContextObject, const UObject* TargetVentActor, const TCHAR* Reason, const float Distance)
 {
 #if UE_BUILD_SHIPPING

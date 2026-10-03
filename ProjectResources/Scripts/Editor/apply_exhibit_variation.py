@@ -41,6 +41,14 @@ def preserved(a):
             value=a.get_editor_property(prop)
             row['links'][prop]=value.get_name() if value else None
         except Exception: pass
+    if isinstance(a,unreal.HeistLaserBarrierActor):
+        target=a.get_protected_painting_case()
+        row['links']['verified_protected_case']=target.get_name() if target else None
+        assert target, a.get_name()+' missing protected painting'
+    if isinstance(a,unreal.HeistSecurityHoldButtonActor):
+        laser=a.get_linked_laser_barrier()
+        row['links']['verified_linked_laser']=laser.get_name() if laser else None
+        assert laser, a.get_name()+' missing linked laser'
     row['lights']=[dict(name=c.get_name(),transform=transform(c.get_relative_transform()),
         intensity=float(c.get_editor_property('intensity')),visible=c.is_visible())
         for c in a.get_components_by_class(unreal.LightComponent)]
@@ -76,6 +84,40 @@ def panel_position(a,p):
     panel.set_world_rotation(unreal.MathLibrary.make_rot_from_z(p['normal']),False,True)
     panel.set_relative_scale3d(unreal.Vector(.2,.2,.2))
 
+def configure_loot_case_glass():
+    # Reuse one existing glass pane mesh in the common BP. Functional BP parts
+    # stay separate from authored furniture; no mesh cut, copy or derived asset.
+    loot=unreal.load_asset(LOOT)
+    loot.modify()
+    unreal.BlueprintEditorLibrary.compile_blueprint(loot)
+    lib=unreal.SubobjectDataBlueprintFunctionLibrary
+    objects=[(h,lib.get_object(lib.get_data(h))) for h in SUB.k2_gather_subobject_data_for_blueprint(loot)]
+    parent=next(h for h,c in objects if c.get_name()=='CaseShell')
+    shell=next(c for h,c in objects if h==parent)
+    shell.modify();shell.set_static_mesh(None)
+    shell.set_relative_transform(unreal.Transform(),False,True)
+    pane=unreal.load_asset('/Game/Assets/StarterContent/Props/SM_GlassWindow')
+    glass=unreal.load_asset('/Game/Assets/MapAssets/Showcase/Materials/Instance/MI_Glass_01a')
+    specs=[('Front',(20,20,0),unreal.Rotator(),(.1,.4,.4)),
+           ('Back',(-20,20,0),unreal.Rotator(),(.1,.4,.4)),
+           ('Left',(-20,-20,0),unreal.Rotator(yaw=90),(.1,.4,.4)),
+           ('Right',(-20,20,0),unreal.Rotator(yaw=90),(.1,.4,.4)),
+           ('Top',(-20,20,80),unreal.Rotator(pitch=-90),(.1,.4,.2))]
+    for label,location,rotation,scale in specs:
+        name='CaseGlass'+label
+        component=next((c for h,c in objects if c.get_name().startswith(name)),None)
+        if component is None:
+            handle,reason=SUB.add_new_subobject(unreal.AddNewSubobjectParams(parent_handle=parent,new_class=unreal.StaticMeshComponent,blueprint_context=loot))
+            assert lib.is_handle_valid(handle),str(reason)
+            assert SUB.rename_subobject(handle,name)
+            component=lib.get_object(lib.get_data(handle))
+        component.modify();component.set_static_mesh(pane);component.set_material(0,glass)
+        component.set_relative_transform(unreal.Transform(location=unreal.Vector(*location),rotation=rotation,scale=unreal.Vector(*scale)),False,True)
+        component.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
+        component.set_editor_properties(dict(generate_overlap_events=False,mobility=unreal.ComponentMobility.MOVABLE,cast_shadow=False,visible=False))
+    unreal.BlueprintEditorLibrary.compile_blueprint(loot)
+    assert EL.save_loaded_asset(loot)
+
 def configure_shells():
     bp=unreal.load_asset(PAINTING)
     unreal.BlueprintEditorLibrary.compile_blueprint(bp)
@@ -83,18 +125,20 @@ def configure_shells():
         c=unreal.SubobjectDataBlueprintFunctionLibrary.get_object(unreal.SubobjectDataBlueprintFunctionLibrary.get_data(h))
         if isinstance(c,unreal.StaticMeshComponent) and c.get_name().startswith('SecurityPanelVisual'):
             c.modify(); c.set_editor_property('component_tags',[PANEL_TAG])
-    bp.modify(); assert EL.save_loaded_asset(bp)
+    bp.modify(); unreal.BlueprintEditorLibrary.compile_blueprint(bp)
+    assert EL.save_loaded_asset(bp)
     loot=unreal.load_asset(LOOT)
     unreal.BlueprintEditorLibrary.compile_blueprint(loot)
     cdo=unreal.get_default_object(loot.generated_class())
     shell=next(c for c in cdo.get_components_by_class(unreal.StaticMeshComponent) if c.get_name()=='CaseShell')
-    shell.modify(); shell.set_static_mesh(unreal.load_asset('/Game/Assets/MapAssets/Showcase/Meshes/SM_F_Display_Stand_01a'))
-    shell.set_relative_transform(unreal.Transform(scale=unreal.Vector(.2,.2,.2)),False,True)
+    shell.modify(); shell.set_static_mesh(None)
+    shell.set_relative_transform(unreal.Transform(),False,True)
     shell.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
     door=unreal.get_default_object(unreal.load_asset(BASE+'Security/BP_DetentionDoor').generated_class())
     for dst,src in (('case_latch_sound','latch_sound'),('case_failure_sound','failure_sound'),('case_open_sound','open_sound'),('case_sound_attenuation','sound_attenuation')):
         cdo.set_editor_property(dst,door.get_editor_property(src))
     loot.modify(); assert EL.save_loaded_asset(loot)
+    configure_loot_case_glass()
     return bp.generated_class()
 
 def main():
