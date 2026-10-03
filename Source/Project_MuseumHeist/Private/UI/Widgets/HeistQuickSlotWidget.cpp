@@ -2,18 +2,19 @@
 
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
-#include "Engine/Texture2D.h"
 
 #pragma region Presentation
 
-void UHeistQuickSlotWidget::SetupHUDQuickSlot(const FHeistQuickSlotPresentation& InConfirmedPresentation, UTexture2D* InIcon)
+void UHeistQuickSlotWidget::SetupHUDQuickSlot(const FHeistQuickSlotPresentation& InConfirmedPresentation, UObject* InIcon)
 {
 	ConfirmedPresentation = InConfirmedPresentation;
 	if (IsValid(PlaceholderIcon))
 	{
 		if (IsValid(InIcon))
 		{
-			PlaceholderIcon->SetBrushFromTexture(InIcon);
+			FSlateBrush IconBrush = PlaceholderIcon->GetBrush();
+			IconBrush.SetResourceObject(InIcon);
+			PlaceholderIcon->SetBrush(IconBrush);
 		}
 		PlaceholderIcon->SetOpacity(ConfirmedPresentation.bAssigned ? 1.0f : 0.22f);
 	}
@@ -24,8 +25,7 @@ void UHeistQuickSlotWidget::RefreshPresentation()
 {
 	if (IsValid(KeyLabelText))
 	{
-		KeyLabelText->SetText(ConfirmedPresentation.KeyLabel.IsEmpty() ? FText::GetEmpty()
-			: FText::Format(NSLOCTEXT("HeistQuickSlot", "BracketedKeyLabel", "[{0}]"), ConfirmedPresentation.KeyLabel));
+		KeyLabelText->SetText(ConfirmedPresentation.KeyLabel);
 	}
 	if (IsValid(CountText))
 	{

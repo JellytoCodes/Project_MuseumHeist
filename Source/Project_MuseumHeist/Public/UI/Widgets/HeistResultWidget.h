@@ -72,6 +72,8 @@ class PROJECT_MUSEUMHEIST_API UHeistResultWidget : public UHeistUserWidgetBase
 #pragma region Presentation
 
   private:
+	bool bContributionDetailsVisible = false;
+
 	void RefreshResultPresentation();
 	void RefreshRewardDetailPresentation(const FHeistTeamResult& TeamResult);
 	void RefreshReplicaRecapPresentation(const TArray<FHeistReplicaRecapEntry>& ReplicaRecap);
@@ -107,6 +109,9 @@ class PROJECT_MUSEUMHEIST_API UHeistResultWidget : public UHeistUserWidgetBase
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UWidget> CoopResultFailedCross;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<USizeBox> CoopResultCompactHeaderSize;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<USizeBox> CoopResultDetailHeaderSize;

@@ -9,7 +9,6 @@
 #include "Components/VerticalBox.h"
 #include "Components/Widget.h"
 #include "Core/HeistPlayerState.h"
-#include "Engine/Texture2D.h"
 #include "Engine/UserInterfaceSettings.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
@@ -120,11 +119,11 @@ bool UHeistNameplateWidget::IsPresentationContractSatisfied() const
 	}
 
 	const FLinearColor ExpectedStatusColor = HeistCrewStatus::GetPresentationColor(PlayerState->GetCrewStatus());
-	const UTexture2D* ExpectedIconTexture = ResolveStatusIconTexture(PlayerState->GetCrewStatus());
-	const bool bTexturePresentationValid = IsValid(ExpectedIconTexture) && IsValid(CrewStatusIconImage) && CrewStatusBadge->GetContent() == CrewStatusIconImage &&
+	const UObject* ExpectedIconResource = ResolveStatusIconResource(PlayerState->GetCrewStatus());
+	const bool bResourcePresentationValid = IsValid(ExpectedIconResource) && IsValid(CrewStatusIconImage) && CrewStatusBadge->GetContent() == CrewStatusIconImage &&
 		CrewStatusIconImage->GetVisibility() != ESlateVisibility::Collapsed && CrewStatusIconImage->GetVisibility() != ESlateVisibility::Hidden &&
-		CrewStatusIconImage->GetBrush().GetResourceObject() == ExpectedIconTexture && CrewStatusIconText->GetVisibility() == ESlateVisibility::Collapsed;
-	const bool bGlyphPresentationValid = !IsValid(ExpectedIconTexture) && CrewStatusBadge->GetContent() == CrewStatusIconText &&
+		CrewStatusIconImage->GetBrush().GetResourceObject() == ExpectedIconResource && CrewStatusIconText->GetVisibility() == ESlateVisibility::Collapsed;
+	const bool bGlyphPresentationValid = !IsValid(ExpectedIconResource) && CrewStatusBadge->GetContent() == CrewStatusIconText &&
 		CrewStatusIconText->GetVisibility() != ESlateVisibility::Collapsed && CrewStatusIconText->GetVisibility() != ESlateVisibility::Hidden &&
 		CrewStatusIconText->GetText().ToString() == HeistCrewStatus::ToIconGlyph(PlayerState->GetCrewStatus()).ToString() &&
 		(!IsValid(CrewStatusIconImage) || CrewStatusIconImage->GetVisibility() == ESlateVisibility::Collapsed);
@@ -134,7 +133,7 @@ bool UHeistNameplateWidget::IsPresentationContractSatisfied() const
 		CrewStatusText->GetText().ToString() == HeistCrewStatus::ToCompactText(PlayerState->GetCrewStatus()).ToString() &&
 		CrewStatusText->GetColorAndOpacity().GetSpecifiedColor().Equals(ExpectedStatusColor) &&
 		CrewStatusBadge->GetBrushColor().Equals(ExpectedStatusColor) &&
-		(bTexturePresentationValid || bGlyphPresentationValid);
+		(bResourcePresentationValid || bGlyphPresentationValid);
 }
 
 bool UHeistNameplateWidget::AreStatusIconTexturesAssignedForDebug() const
@@ -189,9 +188,11 @@ void UHeistNameplateWidget::RefreshPresentation()
 		CrewStatusBadge->SetBrushColor(HeistCrewStatus::GetPresentationColor(PlayerState->GetCrewStatus()));
 	}
 	const EHeistCrewStatus CrewStatus = PlayerState->GetCrewStatus();
-	if (UTexture2D* StatusIconTexture = ResolveStatusIconTexture(CrewStatus); IsValid(StatusIconTexture) && IsValid(CrewStatusIconImage))
+	if (UObject* StatusIconResource = ResolveStatusIconResource(CrewStatus); IsValid(StatusIconResource) && IsValid(CrewStatusIconImage))
 	{
-		CrewStatusIconImage->SetBrushFromTexture(StatusIconTexture, true);
+		FSlateBrush IconBrush = CrewStatusIconImage->GetBrush();
+		IconBrush.SetResourceObject(StatusIconResource);
+		CrewStatusIconImage->SetBrush(IconBrush);
 		CrewStatusIconImage->SetColorAndOpacity(FLinearColor::White);
 		CrewStatusIconImage->SetVisibility(ESlateVisibility::HitTestInvisible);
 		if (IsValid(CrewStatusBadge) && CrewStatusBadge->GetContent() != CrewStatusIconImage)
@@ -245,7 +246,7 @@ void UHeistNameplateWidget::ResolveStatusIconWidgets()
 	}
 }
 
-UTexture2D* UHeistNameplateWidget::ResolveStatusIconTexture(const EHeistCrewStatus CrewStatus) const
+UObject* UHeistNameplateWidget::ResolveStatusIconResource(const EHeistCrewStatus CrewStatus) const
 {
 	switch (CrewStatus)
 	{

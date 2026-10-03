@@ -81,12 +81,14 @@ void UHeistTeamCardWidget::ApplyCrewData(const FHeistCrewStatusEntry& CrewEntry,
 	}
 	if (IsValid(StatusIcon))
 	{
-		UTexture2D* IconTexture = ResolveStatusIcon();
-		if (IsValid(IconTexture))
+		UObject* IconResource = ResolveStatusIcon();
+		if (IsValid(IconResource))
 		{
-			StatusIcon->SetBrushFromTexture(IconTexture, false);
+			FSlateBrush IconBrush = StatusIcon->GetBrush();
+			IconBrush.SetResourceObject(IconResource);
+			StatusIcon->SetBrush(IconBrush);
 		}
-		StatusIcon->SetVisibility(IsValid(IconTexture) ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		StatusIcon->SetVisibility(IsValid(IconResource) ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	}
 
 	if (!bOccupied || PreviousPlatformUserId != PlatformUserId)
@@ -143,7 +145,9 @@ void UHeistTeamCardWidget::RefreshProfileImage()
 	}
 	if (IsValid(DefaultProfileTexture))
 	{
-		ProfileImage->SetBrushFromTexture(DefaultProfileTexture, false);
+		FSlateBrush ProfileBrush = ProfileImage->GetBrush();
+		ProfileBrush.SetResourceObject(DefaultProfileTexture);
+		ProfileImage->SetBrush(ProfileBrush);
 	}
 	ProfileImage->SetVisibility(IsValid(DefaultProfileTexture) ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
 	if (!bOccupied || PlatformUserId.IsEmpty() || TryLoadSteamProfileImage())
@@ -289,7 +293,7 @@ void UHeistTeamCardWidget::RefreshVoicePresentation()
 	}
 }
 
-UTexture2D* UHeistTeamCardWidget::ResolveStatusIcon() const
+UObject* UHeistTeamCardWidget::ResolveStatusIcon() const
 {
 	switch (CrewStatus)
 	{

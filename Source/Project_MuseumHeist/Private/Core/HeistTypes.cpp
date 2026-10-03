@@ -289,13 +289,13 @@ FText ToDisplayText(const EHeistCrewStatus Status)
 	case EHeistCrewStatus::Assembling:
 		return NSLOCTEXT("HeistCrewStatus", "Assembling", "조립 중");
 	case EHeistCrewStatus::CarryingOriginal:
-		return NSLOCTEXT("HeistCrewStatus", "CarryingOriginal", "원본 운반");
+		return NSLOCTEXT("HeistCrewStatus", "CarryingOriginal", "원본 운반 중");
 	case EHeistCrewStatus::Heavy:
 		return NSLOCTEXT("HeistCrewStatus", "Heavy", "과적");
 	case EHeistCrewStatus::Stunned:
 		return NSLOCTEXT("HeistCrewStatus", "Stunned", "기절");
 	case EHeistCrewStatus::Arrested:
-		return NSLOCTEXT("HeistCrewStatus", "Arrested", "체포");
+		return NSLOCTEXT("HeistCrewStatus", "Arrested", "구금 중");
 	case EHeistCrewStatus::Escaped:
 		return NSLOCTEXT("HeistCrewStatus", "Escaped", "탈출");
 	case EHeistCrewStatus::Active:
@@ -319,7 +319,7 @@ FText ToCompactText(const EHeistCrewStatus Status)
 	case EHeistCrewStatus::Stunned:
 		return NSLOCTEXT("HeistCrewStatus", "StunnedCompact", "기절");
 	case EHeistCrewStatus::Arrested:
-		return NSLOCTEXT("HeistCrewStatus", "ArrestedCompact", "체포");
+		return NSLOCTEXT("HeistCrewStatus", "ArrestedCompact", "구금 중");
 	case EHeistCrewStatus::Escaped:
 		return NSLOCTEXT("HeistCrewStatus", "EscapedCompact", "탈출");
 	case EHeistCrewStatus::Active:

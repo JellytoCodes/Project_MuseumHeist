@@ -142,9 +142,9 @@ bool FHeistResultScreenPresentationTest::RunTest(const FString& Parameters)
 	Recap.QualityScore = 84.0f;
 	Recap.bRequiredTarget = true;
 
-	TestEqual(TEXT("Success outcome is player-facing Korean"), UHeistResultViewModel::BuildOutcomeDisplayText(EHeistContractOutcome::Success).ToString(), FString(TEXT("임무 성공")));
+	TestEqual(TEXT("Success outcome is player-facing Korean"), UHeistResultViewModel::BuildOutcomeDisplayText(EHeistContractOutcome::Success).ToString(), FString(TEXT("미션 성공")));
 	TestEqual(TEXT("Partial haul is distinct from full success"), UHeistResultViewModel::BuildOutcomeDisplayText(EHeistContractOutcome::PartialHaul).ToString(), FString(TEXT("부분 성공")));
-	TestEqual(TEXT("Failure outcome is player-facing Korean"), UHeistResultViewModel::BuildOutcomeDisplayText(EHeistContractOutcome::Failed).ToString(), FString(TEXT("임무 실패")));
+	TestEqual(TEXT("Failure outcome is player-facing Korean"), UHeistResultViewModel::BuildOutcomeDisplayText(EHeistContractOutcome::Failed).ToString(), FString(TEXT("미션 실패")));
 
 	const FString RecapSummary = UHeistResultViewModel::BuildReplicaRecapSummaryText(TeamResult).ToString();
 	TestTrue(TEXT("Replica recap identifies required target and actual type/quality"), RecapSummary.Contains(TEXT("필수 목표")) &&
@@ -258,7 +258,7 @@ bool FHeistPlayerContributionDataContractTest::RunTest(const FString& Parameters
 	TestEqual(TEXT("Escaped player state is explicit"), UHeistResultPlayerRowWidget::BuildPlayerStateText(ReplicatedCopy).ToString(), FString(TEXT("탈출")));
 	ReplicatedCopy.bEscaped = false;
 	ReplicatedCopy.bArrested = true;
-	TestEqual(TEXT("Arrested player state is not collapsed into unresolved"), UHeistResultPlayerRowWidget::BuildPlayerStateText(ReplicatedCopy).ToString(), FString(TEXT("체포")));
+	TestEqual(TEXT("Arrested player state is not collapsed into unresolved"), UHeistResultPlayerRowWidget::BuildPlayerStateText(ReplicatedCopy).ToString(), FString(TEXT("구금 중")));
 
 	FHeistPlayerContribution InvalidContribution = Contribution;
 	InvalidContribution.BestSurfaceQuality = 100.1f;

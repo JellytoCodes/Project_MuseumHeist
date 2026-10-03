@@ -21,6 +21,7 @@ class PROJECT_MUSEUMHEIST_API UHeistSettingsWidget : public UHeistUserWidgetBase
   protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
+	virtual FReply NativeOnPreviewKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 
 #pragma endregion
 

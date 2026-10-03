@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Loose Loot 전시 배치</title>
+  <style>
+    :root { color-scheme:light dark; --background:light-dark(#ffffff,#11161c); --foreground:light-dark(#202830,#e6ebf1); --card:light-dark(#f4f6f8,#1a212a); --muted:light-dark(#e8edf2,#252f3b); --muted-foreground:light-dark(#586675,#a9b5c4); --border:light-dark(#ccd5df,#3b4858); --primary:light-dark(#27384b,#dbe5f0); --primary-foreground:light-dark(#ffffff,#172330); --viz-series-1:light-dark(#295caf,#9bbcff); --viz-series-2:light-dark(#85612d,#d5b578); }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--background); color:var(--foreground); font:14px/1.5 "Segoe UI","Malgun Gothic",sans-serif; }
+    main { max-width:1200px; margin:0 auto; padding:24px; }
+    h3 { margin:0; font-size:20px; font-weight:500; }
+    button,select { font:inherit; }
+    button { cursor:pointer; }
+    button:focus-visible,select:focus-visible { outline:2px solid var(--viz-series-1); outline-offset:3px; }
+    .nav,.viz-controls,.viz-row { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+    .btn,.nav-link { padding:8px 16px; border:1px solid var(--border); border-radius:4px; background:transparent; color:var(--foreground); }
+    .btn[aria-pressed="true"],.nav-link[aria-selected="true"] { background:var(--primary); color:var(--primary-foreground); border-color:var(--primary); }
+    .form-select { padding:8px 12px; border:1px solid var(--border); border-radius:4px; background:var(--background); color:var(--foreground); }
+    .card { padding:16px; background:var(--card); border:1px solid var(--border); border-radius:4px; }
+    .text-small { font-size:12px; }
+    .text-muted { color:var(--muted-foreground); }
+    .cursor-interaction { cursor:pointer; }
+    @media (max-width:480px) { main { padding:16px; } }
+  </style>
+</head>
+<body>
+<main>
+<div id="loot-exhibition-review">
+  <style>
+    #loot-exhibition-review { width:100%; }
+    #loot-exhibition-review .review-heading { display:flex; flex-wrap:wrap; align-items:baseline; gap:8px 20px; padding-right:90px; }
+    #loot-exhibition-review .review-controls { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin:16px 0; }
+    #loot-exhibition-review .legend { display:flex; flex-wrap:wrap; gap:8px 20px; align-items:center; margin:12px 0; }
+    #loot-exhibition-review .legend-item { display:inline-flex; align-items:center; gap:6px; }
+    #loot-exhibition-review .swatch-wall { width:18px; height:6px; background:var(--muted-foreground); opacity:.55; }
+    #loot-exhibition-review .swatch-painting { width:18px; height:3px; background:var(--viz-series-2); }
+    #loot-exhibition-review .swatch-station { width:10px; height:10px; background:var(--viz-series-1); border-radius:50%; }
+    #loot-exhibition-review .swatch-vault { width:10px; height:10px; background:var(--viz-series-1); }
+    #loot-exhibition-review .map-surface { width:100%; min-width:0; }
+    #loot-exhibition-review .layout-svg { display:block; width:100%; color:var(--foreground); overflow:visible; }
+    #loot-exhibition-review .layout-svg .wall { fill:var(--muted-foreground); opacity:.45; }
+    #loot-exhibition-review .layout-svg .painting { fill:var(--viz-series-2); opacity:.58; }
+    #loot-exhibition-review .layout-svg .painting.active { opacity:1; }
+    #loot-exhibition-review .layout-svg .support { fill:var(--muted); stroke:var(--border); stroke-width:1; }
+    #loot-exhibition-review .layout-svg .station { fill:var(--viz-series-1); }
+    #loot-exhibition-review .layout-svg .station.selected { stroke:var(--foreground); stroke-width:2; }
+    #loot-exhibition-review .layout-svg .station-number { fill:var(--background); font-size:12px; font-weight:500; text-anchor:middle; dominant-baseline:central; pointer-events:none; }
+    #loot-exhibition-review .layout-svg .anchor-dot { fill:var(--foreground); }
+    #loot-exhibition-review .layout-svg .leader { stroke:var(--muted-foreground); stroke-width:1; opacity:.55; }
+    #loot-exhibition-review .layout-svg .approach { stroke:var(--viz-series-1); stroke-width:2; fill:none; }
+    #loot-exhibition-review .layout-svg .axis-note { fill:var(--muted-foreground); font-size:12px; }
+    #loot-exhibition-review .selection { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin:12px 0; }
+    #loot-exhibition-review .selection select { max-width:100%; }
+    #loot-exhibition-review .detail { margin-top:12px; }
+    #loot-exhibition-review .detail-heading { display:flex; flex-wrap:wrap; align-items:baseline; gap:8px 16px; }
+    #loot-exhibition-review .detail-heading strong { font-weight:500; }
+    #loot-exhibition-review .detail dl { display:grid; grid-template-columns:100px minmax(0,1fr); gap:8px 16px; margin:12px 0 0; }
+    #loot-exhibition-review .detail dt { color:var(--muted-foreground); }
+    #loot-exhibition-review .detail dd { margin:0; overflow-wrap:anywhere; }
+    #loot-exhibition-review .capture-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)); gap:16px; margin-top:16px; }
+    #loot-exhibition-review .capture-grid figure { margin:0; min-width:0; }
+    #loot-exhibition-review .capture-grid img { width:100%; height:auto; display:block; }
+    #loot-exhibition-review .capture-grid figcaption { margin-top:8px; overflow-wrap:anywhere; }
+    #loot-exhibition-review .evidence { margin-top:12px; overflow-wrap:anywhere; }
+    @media (max-width:480px) { #loot-exhibition-review .review-heading { padding-right:0; } #loot-exhibition-review .detail dl { grid-template-columns:76px minmax(0,1fr); } }
+  </style>
+  <div class="review-heading"><h3>Loose Loot 전시 배치</h3><span class="text-small text-muted">개발 배치도 · 실제 World Bounds XY 투영</span></div>
+  <div class="review-controls">
+    <div class="nav nav-pills" role="tablist" aria-label="박물관 맵">
+      <button class="nav-link active" type="button" role="tab" id="loot-tab-m01" aria-controls="loot-map-panel" aria-selected="true" data-map="M01">M01</button>
+      <button class="nav-link" type="button" role="tab" id="loot-tab-m02" aria-controls="loot-map-panel" aria-selected="false" data-map="M02">M02</button>
+      <button class="nav-link" type="button" role="tab" id="loot-tab-m03" aria-controls="loot-map-panel" aria-selected="false" data-map="M03">M03</button>
+    </div>
+    <div class="viz-controls" aria-label="배치 시점">
+      <button class="btn" type="button" id="loot-before" aria-pressed="false">변경 전</button>
+      <button class="btn" type="button" id="loot-after" aria-pressed="true">변경 후</button>
+    </div>
+  </div>
+  <div id="loot-map-panel" role="tabpanel" aria-labelledby="loot-tab-m01">
+    <div class="viz-row"><span id="loot-runtime-counts"></span><span id="loot-map-status" class="text-small text-muted"></span></div>
+    <div class="map-surface"><svg id="loot-layout-svg" class="layout-svg" role="img" aria-label="실제 박물관 벽, 작품과 전리품 후보 진열 위치"></svg></div>
+    <div class="legend text-small">
+      <span class="legend-item"><span class="swatch-wall"></span>벽</span>
+      <span class="legend-item"><span class="swatch-painting"></span>작품</span>
+      <span class="legend-item"><span class="swatch-station"></span>전시실 후보</span>
+      <span class="legend-item"><span class="swatch-vault"></span>Vault 후보</span>
+      <span class="text-muted">원점: 작은 점 · 접근: 선택한 진열대의 화살표</span>
+    </div>
+    <div class="selection"><label for="loot-station" class="form-label">진열 위치</label><select id="loot-station" class="form-select" aria-label="진열 위치 선택"></select></div>
+    <div class="detail card" aria-live="polite">
+      <div class="detail-heading"><strong id="loot-detail-title"></strong><span id="loot-detail-category" class="text-small text-muted"></span></div>
+      <dl id="loot-detail-fields"></dl>
+    </div>
+    <div class="capture-grid" id="loot-captures"></div>
+    <div class="evidence text-small text-muted" id="loot-evidence"></div>
+  </div>
+  <script type="application/json" id="loot-layout-data">__LOOT_LAYOUT_DATA__</script>
+  <script>
+  (() => {
+    const root = document.getElementById('loot-exhibition-review');
+    const data = JSON.parse(root.querySelector('#loot-layout-data').textContent);
+    const svg = root.querySelector('#loot-layout-svg'), panel = root.querySelector('#loot-map-panel');
+    const select = root.querySelector('#loot-station');
+    const NS = 'http://www.w3.org/2000/svg';
+    let code = 'M01', mode = 'after', selected = 1, previousPositions = new Map(), previousMap = '';
+    const stored = window.openai?.widgetState?.privateContent;
+    if (stored && data.maps.some(map => map.code === stored.code)) { code = stored.code; mode = stored.mode === 'before' ? 'before' : 'after'; selected = Math.min(12, Math.max(1, Number(stored.selected) || 1)); }
+    const make = (tag, attributes, parent = svg) => { const element = document.createElementNS(NS, tag); for (const [key,value] of Object.entries(attributes)) element.setAttribute(key,value); parent.appendChild(element); return element; };
+    const number = value => Number(value).toLocaleString('ko-KR',{maximumFractionDigits:1});
+    const coordinate = value => value.map(number).join(', ') + ' cm';
+    const shortMesh = value => (value || '없음').split('/').pop().split('.')[0];
+    const persist = () => { if (window.openai?.setWidgetState) window.openai.setWidgetState({modelContent:{map:code,view:mode,station:selected},privateContent:{code,mode,selected}}).catch(()=>{}); };
+    const map = () => data.maps.find(row => row.code === code);
+    function detail() {
+      const current = map(), station = current.stations.find(row => row.number === selected);
+      const backing = mode === 'before' ? station.support_before : station.support_after;
+      root.querySelector('#loot-detail-title').textContent = String(station.number).padStart(2,'0') + ' · ' + (mode === 'before' ? '변경 전' : current.after_measured ? '저장 후' : '배치 계획');
+      root.querySelector('#loot-detail-category').textContent = station.category === 'VaultFixed' ? 'VaultFixed 후보' : 'ExhibitionRoom 후보';
+      const mesh = mode === 'before' ? backing?.components[0]?.mesh : station.mesh;
+      const supportLocation=backing?.location ?? [station.after[0],station.after[1],station.floor_z];
+      const fields = [['앵커',station.name + ' · (' + coordinate(station[mode]) + ')'],['받침',station.support_name + ' · ' + shortMesh(mesh)],['받침 위치',coordinate(supportLocation)],['배율', (mode === 'before' && backing ? backing.scale : station.scale).map(number).join(' / ')],['접근점',mode === 'after' ? coordinate(station.approach) : '변경 후 계획에서 지정'],['가까운 작품',station.focus_label]];
+      const dl = root.querySelector('#loot-detail-fields'); dl.replaceChildren();
+      for (const [label,value] of fields) { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent=label; dd.textContent=value; dl.append(dt,dd); }
+      select.value = String(selected);
+    }
+    function draw() {
+      const current = map(), geometry = current[mode+'_geometry'];
+      const width = Math.max(280, root.querySelector('.map-surface').getBoundingClientRect().width);
+      const height = width < 480 ? 350 : 480, padding = 24;
+      svg.setAttribute('viewBox',`0 0 ${width} ${height}`); svg.setAttribute('height',height);
+      svg.replaceChildren();
+      const title = make('title',{}); title.textContent = `${code}, ${mode==='before'?'변경 전':current.after_measured?'저장 후':'배치 계획'}, 전리품 후보 진열대 12개`;
+      const desc = make('desc',{}); desc.textContent = '얇은 작품 표시와 실제 벽의 월드 경계 투영. 번호를 선택하면 해당 진열대의 좌표와 받침, 접근점을 확인합니다. 모든 번호는 후보 위치이며 매치에서 모두 생성되는 수량이 아닙니다.';
+      const [x0,y0,x1,y1] = current.bounds, scale = Math.min((width-2*padding)/(x1-x0),(height-2*padding)/(y1-y0));
+      const offsetX = (width-(x1-x0)*scale)/2, offsetY = (height-(y1-y0)*scale)/2;
+      const project = p => [offsetX+(p[0]-x0)*scale,offsetY+(y1-p[1])*scale];
+      function rectangle(bounds,attributes) { const a=project([bounds[0],bounds[3]]), b=project([bounds[2],bounds[1]]); return make('rect',{x:a[0],y:a[1],width:Math.max(.8,b[0]-a[0]),height:Math.max(.8,b[1]-a[1]),...attributes}); }
+      for (const bounds of geometry.walls) rectangle(bounds,{class:'wall'});
+      for (const painting of geometry.paintings) rectangle(painting.rect,{class:'painting'+(painting.active?' active':''),'data-tooltip':painting.label});
+      for (const station of current.stations) { const backing = mode==='before'?station.support_before:station.support_after; for (const component of backing?.components||[]) rectangle(component.rect,{class:'support'}); }
+      const focused = current.stations.find(row => row.number===selected);
+      if (mode==='after') {
+        const a=project(focused.approach), b=project(focused.after), delta=[b[0]-a[0],b[1]-a[1]], length=Math.hypot(...delta)||1;
+        const tip=[b[0]-delta[0]*5/length,b[1]-delta[1]*5/length], back=[tip[0]-delta[0]*6/length,tip[1]-delta[1]*6/length];
+        make('path',{d:`M${a[0]},${a[1]} L${tip[0]},${tip[1]} M${back[0]-delta[1]*4/length},${back[1]+delta[0]*4/length} L${tip[0]},${tip[1]} L${back[0]+delta[1]*4/length},${back[1]-delta[0]*4/length}`,class:'approach'});
+        make('circle',{cx:a[0],cy:a[1],r:3,fill:'var(--viz-series-1)'});
+      }
+      const used=[], nextPositions=new Map();
+      for (const station of current.stations) {
+        const anchor=project(station[mode]); let pin=anchor.slice();
+        for (let attempt=0;attempt<24 && used.some(p=>Math.hypot(p[0]-pin[0],p[1]-pin[1])<29);attempt++) { const angle=attempt*2.4, radius=18+Math.floor(attempt/5)*8; pin=[Math.max(16,Math.min(width-16,anchor[0]+Math.cos(angle)*radius)),Math.max(16,Math.min(height-16,anchor[1]+Math.sin(angle)*radius))]; }
+        used.push(pin); nextPositions.set(station.number,pin);
+        if (Math.hypot(anchor[0]-pin[0],anchor[1]-pin[1])>2) make('line',{x1:anchor[0],y1:anchor[1],x2:pin[0],y2:pin[1],class:'leader'});
+        make('circle',{cx:anchor[0],cy:anchor[1],r:2,class:'anchor-dot'});
+        const group=make('g',{transform:`translate(${pin[0]},${pin[1]})`,class:'cursor-interaction','data-tooltip':String(station.number).padStart(2,'0')+' · '+station.label});
+        make('circle',{cx:0,cy:0,r:16,fill:'transparent'},group);
+        if(station.category==='VaultFixed') make('rect',{x:-11,y:-11,width:22,height:22,class:'station'+(station.number===selected?' selected':'')},group);
+        else make('circle',{cx:0,cy:0,r:12,class:'station'+(station.number===selected?' selected':'')},group);
+        const label=make('text',{x:0,y:0,class:'station-number'},group); label.textContent=station.number;
+        group.addEventListener('click',()=>{selected=station.number;detail();draw();persist();});
+        const old=previousMap===code?previousPositions.get(station.number):null;
+        if(old && !window.matchMedia('(prefers-reduced-motion: reduce)').matches && Math.hypot(old[0]-pin[0],old[1]-pin[1])>1) { const start=performance.now(); function move(now) { const t=Math.min(1,(now-start)/180), smooth=t*t*(3-2*t); group.setAttribute('transform',`translate(${old[0]+(pin[0]-old[0])*smooth},${old[1]+(pin[1]-old[1])*smooth})`); if(t<1)requestAnimationFrame(move); } requestAnimationFrame(move); }
+      }
+      previousPositions=nextPositions; previousMap=code;
+      const rulerLength=1000*scale, ruleY=height-9, ruleX=padding;
+      make('path',{d:`M${ruleX},${ruleY-3} V${ruleY} H${ruleX+rulerLength} V${ruleY-3}`,stroke:'var(--muted-foreground)',fill:'none','stroke-width':1});
+      const ruleLabel=make('text',{x:ruleX+rulerLength+6,y:ruleY+3,class:'axis-note'}); ruleLabel.textContent='10 m';
+      const axis=make('text',{x:width-padding,y:17,class:'axis-note','text-anchor':'end'}); axis.textContent='+Y ↑   +X →';
+    }
+    function render() {
+      const current=map();
+      for (const button of root.querySelectorAll('[data-map]')) { const active=button.dataset.map===code; button.setAttribute('aria-selected',String(active)); button.classList.toggle('active',active); }
+      panel.setAttribute('aria-labelledby','loot-tab-'+code.toLowerCase()); panel.hidden=false;
+      root.querySelector('#loot-before').setAttribute('aria-pressed',String(mode==='before'));
+      root.querySelector('#loot-after').setAttribute('aria-pressed',String(mode==='after'));
+      root.querySelector('#loot-after').textContent=current.after_measured?'변경 후':'배치 계획';
+      const counts=data.runtime_counts; root.querySelector('#loot-runtime-counts').textContent=`후보 12개 · 매치 생성 Vault ${counts.vault ?? 1} + 전시실 ${counts.exhibition ?? 4}${counts.verified?' (SIE 확인)':' (기존 기본값)'}`;
+      root.querySelector('#loot-map-status').textContent=current.map+' · '+(mode==='before'?'수정 전 저장 맵':current.after_measured?'수정 후 저장 맵':'적용 전 계획');
+      select.replaceChildren(); for(const station of current.stations) { const option=document.createElement('option'); option.value=station.number; option.textContent=String(station.number).padStart(2,'0')+' · '+(station.category==='VaultFixed'?'Vault':'전시실')+' · '+station.label.split('LootSpawn_').pop(); select.append(option); }
+      const captures=root.querySelector('#loot-captures'); captures.replaceChildren();
+      for(const capture of current.captures) { const figure=document.createElement('figure'), image=document.createElement('img'), caption=document.createElement('figcaption'); image.src=capture.data;image.alt=code+' 실제 저장 캡처 '+capture.name; caption.className='text-small text-muted'; caption.textContent=capture.name+' · '+capture.context+(capture.flashlight_cd!=null?' · 손전등 '+capture.flashlight_cd+' cd':''); figure.append(image,caption); captures.append(figure); }
+      root.querySelector('#loot-evidence').textContent=`기준 ${current.before_hash.slice(0,12)}${current.after_hash?' → 저장 후 '+current.after_hash.slice(0,12):' · 저장 후 스냅샷 미수집'} · 캡처·배치 검증과 자연 User PIE는 별도 증거`;
+      detail();draw();
+    }
+    for(const button of root.querySelectorAll('[data-map]'))button.addEventListener('click',()=>{code=button.dataset.map;selected=1;render();persist();});
+    root.querySelector('#loot-before').addEventListener('click',()=>{mode='before';render();persist();});
+    root.querySelector('#loot-after').addEventListener('click',()=>{mode='after';render();persist();});
+    select.addEventListener('change',()=>{selected=Number(select.value);detail();draw();persist();});
+    new ResizeObserver(()=>draw()).observe(root.querySelector('.map-surface'));
+    window.addEventListener('openai:set_globals',event=>{const state=event.detail?.globals?.widgetState?.privateContent;if(state&&data.maps.some(row=>row.code===state.code)){code=state.code;mode=state.mode==='before'?'before':'after';selected=Math.min(12,Math.max(1,Number(state.selected)||1));render();}});
+    render();
+  })();
+  </script>
+</div>
+</main>
+</body>
+</html>

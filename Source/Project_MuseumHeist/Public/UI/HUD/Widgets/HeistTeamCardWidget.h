@@ -32,7 +32,7 @@ class PROJECT_MUSEUMHEIST_API UHeistTeamCardWidget : public UHeistUserWidgetBase
 	bool TryLoadSteamProfileImage();
 	void ClearProfileImageRetry();
 	void RefreshVoicePresentation();
-	UTexture2D* ResolveStatusIcon() const;
+	UObject* ResolveStatusIcon() const;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UImage> ProfileImage;
@@ -52,26 +52,26 @@ class PROJECT_MUSEUMHEIST_API UHeistTeamCardWidget : public UHeistUserWidgetBase
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UImage> MicStatusImage;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|TeamCard", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UTexture2D> DefaultProfileTexture;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|TeamCard", meta = (AllowPrivateAccess = "true", AllowedClasses = "/Script/Engine.Texture2D,/Script/Engine.MaterialInterface"))
+	TObjectPtr<UObject> DefaultProfileTexture;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|TeamCard|Status", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UTexture2D> ForgingStatusIcon;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|TeamCard|Status", meta = (AllowPrivateAccess = "true", AllowedClasses = "/Script/Engine.Texture2D,/Script/Engine.MaterialInterface"))
+	TObjectPtr<UObject> ForgingStatusIcon;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|TeamCard|Status", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UTexture2D> CarryingOriginalStatusIcon;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|TeamCard|Status", meta = (AllowPrivateAccess = "true", AllowedClasses = "/Script/Engine.Texture2D,/Script/Engine.MaterialInterface"))
+	TObjectPtr<UObject> CarryingOriginalStatusIcon;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|TeamCard|Status", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UTexture2D> HeavyStatusIcon;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|TeamCard|Status", meta = (AllowPrivateAccess = "true", AllowedClasses = "/Script/Engine.Texture2D,/Script/Engine.MaterialInterface"))
+	TObjectPtr<UObject> HeavyStatusIcon;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|TeamCard|Status", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UTexture2D> StunnedStatusIcon;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|TeamCard|Status", meta = (AllowPrivateAccess = "true", AllowedClasses = "/Script/Engine.Texture2D,/Script/Engine.MaterialInterface"))
+	TObjectPtr<UObject> StunnedStatusIcon;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|TeamCard|Status", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UTexture2D> ArrestedStatusIcon;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|TeamCard|Status", meta = (AllowPrivateAccess = "true", AllowedClasses = "/Script/Engine.Texture2D,/Script/Engine.MaterialInterface"))
+	TObjectPtr<UObject> ArrestedStatusIcon;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|TeamCard|Status", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UTexture2D> EscapedStatusIcon;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|TeamCard|Status", meta = (AllowPrivateAccess = "true", AllowedClasses = "/Script/Engine.Texture2D,/Script/Engine.MaterialInterface"))
+	TObjectPtr<UObject> EscapedStatusIcon;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTexture2D> LoadedProfileTexture;

@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Core/HeistTypes.h"
+#include "Styling/SlateBrush.h"
 #include "UI/Widgets/HeistUserWidgetBase.h"
 
 #include "HeistHUDWidget.generated.h"
@@ -61,7 +62,7 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 	void ResolveCrewPresentationWidgets();
 	void ApplyLocalCrewStatusPresentation(EHeistCrewStatus CrewStatus);
 	EHeistCrewStatus ResolveLocalCrewStatus() const;
-	UTexture2D* ResolveStatusIconTexture(EHeistCrewStatus CrewStatus) const;
+	UObject* ResolveStatusIconResource(EHeistCrewStatus CrewStatus) const;
 	void SetupTutorialPresentation();
 	void RefreshTutorialPresentation();
 	void ApplyAlertAudioLayers();
@@ -140,6 +141,12 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UImage> FlashlightIcon;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Flashlight|Visual", meta = (AllowPrivateAccess = "true"))
+	FSlateBrush FlashlightOnBrush;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Flashlight|Visual", meta = (AllowPrivateAccess = "true"))
+	FSlateBrush FlashlightOffBrush;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> WeightText;
@@ -297,8 +304,8 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Alert|Visual", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UTexture2D> FullAlertStarTexture;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|QuickSlot|Visual", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UTexture2D> CoinQuickSlotIcon;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|QuickSlot|Visual", meta = (AllowPrivateAccess = "true", AllowedClasses = "/Script/Engine.Texture2D,/Script/Engine.MaterialInterface"))
+	TObjectPtr<UObject> CoinQuickSlotIcon;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Alert|Audio", meta = (ClampMin = "0.0", ClampMax = "1.0", AllowPrivateAccess = "true"))
 	float SuspenseMusicVolume = 0.55f;
@@ -309,17 +316,17 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Alert|Audio", meta = (ClampMin = "0.0", ClampMax = "5.0", AllowPrivateAccess = "true"))
 	float AlertMusicFadeSeconds = 0.35f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Crew|Icons", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UTexture2D> StunnedStatusIcon;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Crew|Icons", meta = (AllowPrivateAccess = "true", AllowedClasses = "/Script/Engine.Texture2D,/Script/Engine.MaterialInterface"))
+	TObjectPtr<UObject> StunnedStatusIcon;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Crew|Icons", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UTexture2D> ArrestedStatusIcon;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Crew|Icons", meta = (AllowPrivateAccess = "true", AllowedClasses = "/Script/Engine.Texture2D,/Script/Engine.MaterialInterface"))
+	TObjectPtr<UObject> ArrestedStatusIcon;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Crew|Icons", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UTexture2D> CarryingOriginalStatusIcon;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Crew|Icons", meta = (AllowPrivateAccess = "true", AllowedClasses = "/Script/Engine.Texture2D,/Script/Engine.MaterialInterface"))
+	TObjectPtr<UObject> CarryingOriginalStatusIcon;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Crew|Icons", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UTexture2D> HeavyStatusIcon;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Crew|Icons", meta = (AllowPrivateAccess = "true", AllowedClasses = "/Script/Engine.Texture2D,/Script/Engine.MaterialInterface"))
+	TObjectPtr<UObject> HeavyStatusIcon;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Crew|Audio", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<USoundBase> ArrestedSound;

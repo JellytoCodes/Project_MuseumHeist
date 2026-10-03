@@ -105,7 +105,7 @@ FText UHeistResultViewModel::BuildOutcomeDisplayText(const EHeistContractOutcome
 {
 	if (Outcome == EHeistContractOutcome::Success)
 	{
-		return NSLOCTEXT("HeistResult", "OutcomeSuccess", "임무 성공");
+		return NSLOCTEXT("HeistResult", "OutcomeSuccess", "미션 성공");
 	}
 	if (Outcome == EHeistContractOutcome::PartialHaul)
 	{
@@ -113,7 +113,7 @@ FText UHeistResultViewModel::BuildOutcomeDisplayText(const EHeistContractOutcome
 	}
 	if (Outcome == EHeistContractOutcome::Failed)
 	{
-		return NSLOCTEXT("HeistResult", "OutcomeFailed", "임무 실패");
+		return NSLOCTEXT("HeistResult", "OutcomeFailed", "미션 실패");
 	}
 	return FText::GetEmpty();
 }
@@ -129,7 +129,7 @@ FText UHeistResultViewModel::BuildReplicaRecapSummaryText(const FHeistTeamResult
 		}
 		const TCHAR* TypeText = Recap.ForgeryType == EHeistForgeryType::Assembly ? TEXT("조립") : TEXT("그림");
 		const FString DisplayName = Recap.ArtifactDisplayName.IsEmpty() ? Recap.ArtifactId.ToString() : Recap.ArtifactDisplayName.ToString();
-		RecapLines += FString::Printf(TEXT("%s%s  |  %s  |  품질 %.0f"), Recap.bRequiredTarget ? TEXT("[필수 목표] ") : TEXT(""), *DisplayName, TypeText, Recap.QualityScore);
+		RecapLines += FString::Printf(TEXT("%s%s  |  %s  |  유사도 %.0f"), Recap.bRequiredTarget ? TEXT("[필수 목표] ") : TEXT(""), *DisplayName, TypeText, Recap.QualityScore);
 	}
 	return RecapLines.IsEmpty() ? NSLOCTEXT("HeistResult", "NoReplicaRecap", "기록된 복제품 없음") : FText::FromString(RecapLines);
 }

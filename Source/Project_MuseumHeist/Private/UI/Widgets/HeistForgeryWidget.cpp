@@ -1551,7 +1551,7 @@ void UHeistForgeryWidget::RefreshCommonActionPresentation()
 	}
 	if (IsValid(TitleText))
 	{
-		TitleText->SetText(NSLOCTEXT("HeistCommonForgeryUI", "SurfaceTitle", "그림 위조"));
+		TitleText->SetText(NSLOCTEXT("HeistCommonForgeryUI", "SurfaceTitle", "위조품 제작"));
 	}
 	if (IsValid(SubmitButtonLabel))
 	{
@@ -1822,7 +1822,7 @@ void UHeistForgeryWidget::RefreshDrawingFeedback()
 	if (IsValid(FooterHint))
 	{
 		FooterHint->SetText(NSLOCTEXT("HeistForgery", "DrawingCanvasHint",
-			"좌클릭 그리기  |  우클릭 지우기  |  [ ] 붓 크기  |  R 초기화  |  Enter 제출  |  Esc 취소  |  주변 소리와 팀 음성 유지"));
+			"좌클릭 그리기  |  우클릭 지우기  |  [ ] 붓 크기  |  R 전체 지우기  |  Enter 제출  |  Esc 취소  |  주변 소리와 팀 음성 유지"));
 		FooterHint->SetVisibility(ESlateVisibility::Collapsed);
 	}
 	if (IsValid(PreviewScoreText))

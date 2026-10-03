@@ -137,7 +137,7 @@ FText UHeistHUDViewModel::BuildContractValueText(const FHeistContractSnapshot& S
 		return FText::GetEmpty();
 	}
 	const int64 TotalValue = static_cast<int64>(FMath::Max(0, Snapshot.CarriedValue)) + FMath::Max(0, Snapshot.SecuredValue);
-	return FText::Format(bIncludeLabel ? NSLOCTEXT("HeistHUD", "ContractValueProgress", "운반·확보 {0} / {1}")
+	return FText::Format(bIncludeLabel ? NSLOCTEXT("HeistHUD", "ContractValueProgress", "전리품 가치 {0} / {1}")
 		: NSLOCTEXT("HeistHUD", "ContractValueAmounts", "{0} / {1}"),
 		FText::AsNumber(TotalValue), FText::AsNumber(Snapshot.LootValueQuota));
 }

@@ -10,7 +10,6 @@ class AHeistPlayerState;
 class UBorder;
 class UImage;
 class UTextBlock;
-class UTexture2D;
 class UWidget;
 class SWidget;
 
@@ -35,7 +34,7 @@ class PROJECT_MUSEUMHEIST_API UHeistNameplateWidget : public UHeistUserWidgetBas
   private:
 	void RefreshPresentation();
 	void ResolveStatusIconWidgets();
-	UTexture2D* ResolveStatusIconTexture(EHeistCrewStatus CrewStatus) const;
+	UObject* ResolveStatusIconResource(EHeistCrewStatus CrewStatus) const;
 	void HandleIdentityChanged(int32 PlayerId);
 	void HandleCrewStatusChanged(EHeistCrewStatus CrewStatus);
 
@@ -63,17 +62,17 @@ class PROJECT_MUSEUMHEIST_API UHeistNameplateWidget : public UHeistUserWidgetBas
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UImage> CrewStatusIconImage;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Nameplate|Icons", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UTexture2D> StunnedStatusIcon;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Nameplate|Icons", meta = (AllowPrivateAccess = "true", AllowedClasses = "/Script/Engine.Texture2D,/Script/Engine.MaterialInterface"))
+	TObjectPtr<UObject> StunnedStatusIcon;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Nameplate|Icons", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UTexture2D> ArrestedStatusIcon;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Nameplate|Icons", meta = (AllowPrivateAccess = "true", AllowedClasses = "/Script/Engine.Texture2D,/Script/Engine.MaterialInterface"))
+	TObjectPtr<UObject> ArrestedStatusIcon;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Nameplate|Icons", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UTexture2D> CarryingOriginalStatusIcon;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Nameplate|Icons", meta = (AllowPrivateAccess = "true", AllowedClasses = "/Script/Engine.Texture2D,/Script/Engine.MaterialInterface"))
+	TObjectPtr<UObject> CarryingOriginalStatusIcon;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Nameplate|Icons", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UTexture2D> HeavyStatusIcon;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Nameplate|Icons", meta = (AllowPrivateAccess = "true", AllowedClasses = "/Script/Engine.Texture2D,/Script/Engine.MaterialInterface"))
+	TObjectPtr<UObject> HeavyStatusIcon;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Heist|Nameplate", meta = (ClampMin = "0.0", Units = "cm"))
 	float MaximumVisibleDistance = 2500.0f;

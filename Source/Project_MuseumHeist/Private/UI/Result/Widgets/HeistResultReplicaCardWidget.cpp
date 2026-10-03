@@ -17,7 +17,7 @@ void UHeistResultReplicaCardWidget::ApplyReplicaEntry(const FHeistReplicaRecapEn
 	}
 	if (IsValid(QualityText))
 	{
-		QualityText->SetText(FText::Format(NSLOCTEXT("HeistResult", "ReplicaQuality", "품질 {0}"),
+		QualityText->SetText(FText::Format(NSLOCTEXT("HeistResult", "ReplicaQuality", "유사도 {0}"),
 			FText::AsNumber(FMath::RoundToInt(ReplicaEntry.QualityScore))));
 	}
 	if (IsValid(RequiredTargetBadge))

@@ -1,0 +1,327 @@
+{
+  "modules": {
+    "keycap": {
+      "name": "WBP_HeistKeycap",
+      "image": "공용 키캡 이미지",
+      "content": "NamedSlot에 키 TextBlock",
+      "rule": "높이 32 / 단일 키 폭 32 / 긴 키 폭 64"
+    },
+    "panel": {
+      "name": "WBP_HeistPanel",
+      "image": "신규 단순 프레임 · 9-slice 시안",
+      "content": "NamedSlot에 부모가 작성한 Box/Grid",
+      "rule": "여백 16/24, 화면별 WBP 복제 없음. 기존 Catalogue 이미지는 Image 표시 유지"
+    },
+    "buttonVisual": {
+      "name": "기존 UButton + 공용 외형",
+      "image": "공용 버튼 상태 이미지",
+      "content": "아이콘과 Label을 중앙 정렬",
+      "rule": "기존 UButton 클릭·활성화 바인딩 유지"
+    }
+  },
+  "screens": {
+    "hud": {
+      "rootTree": "WBP_HeistHUD\n└─ CanvasPanel · 화면 앵커\n   ├─ 미션 그룹 VerticalBox\n   ├─ 팀 그룹 VerticalBox → WBP_TeamCard ×4\n   ├─ 장비 그룹 HorizontalBox\n   └─ 기존 Interaction / Progress / Feedback",
+      "components": {
+        "mission": {
+          "label": "미션·경계도",
+          "module": "공용 Panel + VerticalBox",
+          "tree": "CanvasSlot · 좌상단\n└─ WBP_HeistPanel · Compact\n   └─ NamedSlot_Content\n      └─ VerticalBox\n         ├─ HorizontalBox · 미션 / 남은 시간\n         ├─ HorizontalBox · 목표 Image / 이름\n         ├─ HorizontalBox · 가치 Label / 값\n         └─ VerticalBox · 경계 게이지 / 이벤트",
+          "geometry": "위치 32,32 · 폭 352 · 여백 16 · 그룹 간격 8/12",
+          "imageRoles": [
+            "공용 패널 프레임",
+            "목표 아이콘 · 신규 시안"
+          ],
+          "reuse": "설정·로비와 같은 Panel, HUD Compact 규격 선택",
+          "dynamic": "목표·시간·가치·경계도는 기존 ViewModel. 경계 10칸은 UMG 게이지."
+        },
+        "crew": {
+          "label": "좌측 팀 상태",
+          "module": "기존 WBP_TeamCard ×4",
+          "tree": "CanvasSlot · 좌측 중단\n└─ VerticalBox\n   └─ WBP_TeamCard ×4\n      └─ HorizontalBox\n         ├─ Image · 프로필\n         ├─ VerticalBox\n         │  ├─ TextBlock · 이름\n         │  └─ HorizontalBox · 상태 Image / 작은 문구\n         └─ Image · 마이크",
+          "geometry": "카드 높이 56 · 프로필 32 · 이름 16 · 상태 12",
+          "imageRoles": [
+            "프로필 아이콘 · 신규 시안",
+            "상태·마이크 아이콘 · 신규 시안"
+          ],
+          "reuse": "고정 4개 팀 슬롯. 기존 TeamCard의 한 규격을 공유",
+          "dynamic": "이름·상태·음성만 변경. 이름은 중립색, 구분색은 작은 표식."
+        },
+        "tools": {
+          "label": "장비·단축키",
+          "module": "HorizontalBox + 공용 Keycap",
+          "tree": "CanvasSlot · 우하단\n└─ HorizontalBox\n   ├─ HorizontalBox · 손전등 Image / Keycap F / ON·OFF\n   ├─ WBP_QuickSlot · 동전 Image / 수량 / Keycap Q\n   └─ HorizontalBox · 가방 Image / Keycap TAB",
+          "geometry": "아이콘 24 · 키캡 높이 32 · 부품 간격 8 · 그룹 간격 24",
+          "imageRoles": [
+            "손전등 ON/OFF · 신규 아이콘 시안",
+            "동전 아이콘 · 신규 시안",
+            "가방 아이콘 · 신규 시안",
+            "키캡 배경"
+          ],
+          "reuse": "같은 Keycap을 위조·로비·결과·설정에서 사용",
+          "dynamic": "키·ON/OFF·수량은 Text. 손전등 ON/OFF 아이콘은 기존 상태에 따라 선택."
+        },
+        "interaction": {
+          "label": "상호작용 안내",
+          "module": "기존 InteractionPrompt + Keycap",
+          "tree": "기존 중앙 하단 앵커\n└─ HorizontalBox\n   ├─ WBP_HeistKeycap · E\n   └─ TextBlock · 작품 관찰",
+          "geometry": "키캡 32 · 간격 8 · 문자 16",
+          "imageRoles": [
+            "키캡 배경"
+          ],
+          "reuse": "장비·위조 키캡과 동일",
+          "dynamic": "기존 상호작용 가능 여부와 대상 이름만 반영."
+        }
+      }
+    },
+    "lobby": {
+      "rootTree": "WBP_Lobby\n└─ Overlay · 맵 배경 Image\n   └─ VerticalBox\n      ├─ Header HorizontalBox\n      ├─ 공용 Panel → Main HorizontalBox\n      │  ├─ 맵 목록 VerticalBox → ScrollBox\n      │  └─ 플레이어 목록 VerticalBox\n      └─ Footer HorizontalBox · 준비 / 시작",
+      "components": {
+        "maplist": {
+          "label": "침입 장소 목록",
+          "module": "기존 WBP_LobbyMapCard",
+          "tree": "VerticalBox\n├─ HorizontalBox · 제목 / 선택 맵\n└─ ScrollBox · 약 3행 높이\n   └─ VerticalBox\n      └─ WBP_LobbyMapCard ×4\n         └─ 기존 SelectMapButton\n            └─ HorizontalBox\n               ├─ TextBlock · 이름 Fill\n               └─ Image · 썸네일",
+          "geometry": "행 높이 112 · 썸네일 160×88 · 여백 12/16",
+          "imageRoles": [
+            "맵 썸네일 · 기존 이미지",
+            "무작위 ? 썸네일 · PNG 시안"
+          ],
+          "reuse": "무작위/M01/M02/M03 모두 같은 MapCard",
+          "dynamic": "기존 Host 선택·복제 유지. 목록만 스크롤."
+        },
+        "roster": {
+          "label": "플레이어 카드",
+          "module": "기존 WBP_LobbyPlayerCard ×4",
+          "tree": "VerticalBox\n└─ WBP_LobbyPlayerCard ×4\n   └─ HorizontalBox\n      ├─ SizeBox → ScaleBox → 프로필 Image\n      ├─ VerticalBox\n      │  ├─ HorizontalBox · 이름 / 방장\n      │  └─ HorizontalBox · 체크 Image / 준비 문구\n      └─ Image · 마이크",
+          "geometry": "카드 높이 80 · 프로필 48×48 · 간격 16",
+          "imageRoles": [
+            "프로필 아이콘 · 신규 시안",
+            "준비 체크 · 신규 아이콘 시안",
+            "마이크 아이콘 · 신규 시안"
+          ],
+          "reuse": "플레이어별 카드·상태별 WBP 사본 없음",
+          "dynamic": "이름·준비·Host 표시만 전달. 빈 슬롯도 같은 크기."
+        },
+        "buttons": {
+          "label": "준비·시작 버튼",
+          "module": "기존 UButton + 공용 외형",
+          "tree": "Footer HorizontalBox\n├─ Keycap ESC / 나가기\n├─ Fill 공간\n├─ GlobalReadyButton\n└─ StartGameButton\n   ├─ Style · 공용 버튼 이미지\n   └─ Label · 중앙 정렬",
+          "geometry": "버튼 높이 48 · 좌우 여백 24 · 간격 16",
+          "imageRoles": [
+            "버튼 공용 이미지",
+            "키캡 배경"
+          ],
+          "reuse": "위조 제출·설정 적용·타이틀 버튼과 공용 외형",
+          "dynamic": "기존 Ready·Host 권한·클릭 연결 유지."
+        }
+      }
+    },
+    "forgery": {
+      "rootTree": "WBP_HeistForgery\n└─ VerticalBox\n   ├─ Header HorizontalBox · 제목 / 타이머\n   ├─ Work HorizontalBox\n   │  ├─ Drawing VerticalBox\n   │  ├─ Palette VerticalBox\n   │  └─ Reference VerticalBox\n   └─ Footer HorizontalBox · 키 안내 / 취소 / 제출",
+      "components": {
+        "similarity": {
+          "label": "작품 유사도 세트",
+          "module": "기존 WBP의 VerticalBox",
+          "tree": "Reference VerticalBox\n└─ Similarity VerticalBox\n   ├─ TextBlock · 작품 유사도\n   └─ ProgressBar\n      ├─ UMG Track\n      └─ UMG Fill · 유사도에 따른 색상",
+          "geometry": "라벨·막대 왼쪽 끝 동일 · 간격 8 · 막대 높이 8",
+          "imageRoles": [],
+          "reuse": "2개 요소를 한 그룹으로 배치. 별도 WBP 사본 불필요",
+          "dynamic": "점수·70+·제출 가능 문구 없음. 색상과 진행 비율만 갱신."
+        },
+        "timer": {
+          "label": "남은 시간",
+          "module": "HorizontalBox",
+          "tree": "Header HorizontalBox\n└─ Timer HorizontalBox\n   ├─ Image · 공용 시계\n   └─ TextBlock · 남은 시간",
+          "geometry": "아이콘 24 · 문자 24 · 간격 8",
+          "imageRoles": [
+            "시계 아이콘 · PNG 제작 예정"
+          ],
+          "reuse": "시간 표시에 같은 시계 이미지 사용",
+          "dynamic": "타이머 값은 기존 ViewModel."
+        },
+        "drawing": {
+          "label": "위조품 영역",
+          "module": "기존 DrawingSurface",
+          "tree": "Drawing VerticalBox\n├─ TextBlock · 위조품\n└─ SizeBox · 정사각 영역\n   └─ 기존 DrawingSurface\n      └─ Image/Brush · 동적 Raster Texture",
+          "geometry": "정사각 표시 영역 · 원본 비율 보존",
+          "imageRoles": [
+            "복제 작품 · 동적 Raster Texture"
+          ],
+          "reuse": "기존 그리기 표면과 입력 계약 유지",
+          "dynamic": "그림 자체는 런타임 텍스처. 입력은 실제 DrawingSurface Geometry."
+        },
+        "palette": {
+          "label": "팔레트·붓",
+          "module": "VerticalBox + HorizontalBox",
+          "tree": "Palette VerticalBox\n├─ 기존 PaletteButton ×8\n├─ TextBlock · 붓 크기\n└─ HorizontalBox · 소 / 중 / 대",
+          "geometry": "팔레트 고정 크기 · 간격 8 · 붓 버튼 중앙 정렬",
+          "imageRoles": [],
+          "reuse": "기존 팔레트 유지. 이미지로 전체 UI를 굽지 않음",
+          "dynamic": "원래 색·선택 외곽선 유지. 버튼만 선택 상태 변경."
+        },
+        "reference": {
+          "label": "원본",
+          "module": "Image + ScaleBox",
+          "tree": "Reference VerticalBox\n├─ Similarity 그룹\n├─ TextBlock · 원본\n└─ SizeBox → ScaleBox\n   └─ ReferenceImage",
+          "geometry": "정사각 기준 영역 · Contain · 이미지 비율 보존",
+          "imageRoles": [
+            "원본 작품 이미지"
+          ],
+          "reuse": "현재 작품의 ReferenceImage를 사용",
+          "dynamic": "작품 배정에 따라 텍스처만 변경."
+        },
+        "buttons": {
+          "label": "위조 하단 조작",
+          "module": "공용 Keycap + 버튼 외형",
+          "tree": "Footer HorizontalBox\n├─ 키 안내 그룹\n│  └─ Keycap R / 전체 지우기\n├─ Fill 공간\n├─ 기존 CancelButton\n└─ 기존 SubmitButton",
+          "geometry": "버튼 높이 48 · 키캡 32 · 간격 16",
+          "imageRoles": [
+            "키캡 배경",
+            "버튼 공용 이미지"
+          ],
+          "reuse": "설정·로비·결과와 같은 버튼 규격",
+          "dynamic": "기존 제출 가능 조건·클릭 연결 유지."
+        }
+      }
+    },
+    "settings": {
+      "rootTree": "WBP_Settings\n└─ VerticalBox\n   ├─ Header HorizontalBox · 제목 / 닫기\n   ├─ 공용 Panel → 설정 Rows VerticalBox\n   ├─ Action HorizontalBox · 기본값 / 적용\n   └─ Keycap ESC / 닫기",
+      "components": {
+        "settingsrows": {
+          "label": "설정 행 정렬",
+          "module": "공용 Panel + 같은 열 규격",
+          "tree": "WBP_HeistPanel\n└─ NamedSlot_Content\n   └─ VerticalBox\n      └─ Row HorizontalBox\n         ├─ Label · 고정 폭\n         ├─ Slider/ComboBox · Fill\n         └─ Value · 고정 폭, 오른쪽 정렬",
+          "geometry": "행 높이 64 · Label 폭 192 · 값 폭 80 · 간격 16",
+          "imageRoles": [
+            "공용 패널 프레임"
+          ],
+          "reuse": "각 행의 열 시작점을 공유",
+          "dynamic": "시야각·감도·음량 값은 기존 설정 값. 조작 컨트롤은 UMG 유지."
+        },
+        "buttons": {
+          "label": "설정 버튼",
+          "module": "공용 버튼 외형",
+          "tree": "HorizontalBox\n├─ RestoreDefaultSettingsButton\n└─ ApplySettingsButton\n   └─ 중앙 정렬 Label",
+          "geometry": "버튼 높이 48 · 간격 16 · 대칭 패딩",
+          "imageRoles": [
+            "버튼 공용 이미지",
+            "키캡 배경"
+          ],
+          "reuse": "같은 버튼 외형·규격 적용",
+          "dynamic": "기존 적용·취소·기본값 동작 유지."
+        }
+      }
+    },
+    "inventory": {
+      "rootTree": "WBP_Inventory\n└─ VerticalBox\n   ├─ Header HorizontalBox · 제목 / 닫기\n   └─ 기존 WBP_InventoryFrame\n      └─ Overlay\n         ├─ InventoryGrid · 5×5\n         └─ ItemOverlay · Canvas 유지",
+      "components": {
+        "grid": {
+          "label": "5×5 슬롯 프레임",
+          "module": "기존 InventoryFrame / Slot",
+          "tree": "기존 InventoryFrame Border\n└─ InventoryOverlay\n   ├─ InventoryGrid\n   │  └─ WBP_InventorySlot ×25\n   │     └─ 기존 SlotBackground · 이미지 Brush\n   └─ ItemOverlay · Canvas",
+          "geometry": "5×5 · 슬롯 간격 4 · 전체 여백 8",
+          "imageRoles": [
+            "슬롯 공용 프레임"
+          ],
+          "reuse": "슬롯 25개가 하나의 WBP·프레임 이미지를 공유",
+          "dynamic": "점유·드롭 상태의 기존 Tint 갱신 유지. 배낭/계약 요약 없음."
+        },
+        "items": {
+          "label": "아이템 이미지·배치",
+          "module": "기존 InventoryItem + Canvas",
+          "tree": "ItemOverlay · Canvas\n└─ 기존 WBP_InventoryItem\n   └─ SizeBox · 점유 영역\n      └─ Overlay\n         ├─ ScaleBox → Item Image\n         └─ TextBlock · 수량",
+          "geometry": "아이템 점유 크기와 표시 비율 분리",
+          "imageRoles": [
+            "작품 이미지",
+            "동전 아이콘 · 신규 시안"
+          ],
+          "reuse": "같은 InventoryItem을 데이터만 바꿔 사용",
+          "dynamic": "Grid 배치·드래그 좌표 기능이 있어 Canvas 유지."
+        },
+        "buttons": {
+          "label": "가방 닫기",
+          "module": "공용 Keycap",
+          "tree": "Header HorizontalBox\n├─ TextBlock · 가방\n├─ Fill 공간\n└─ HorizontalBox · Keycap TAB / 닫기",
+          "geometry": "키캡 높이 32 · 긴 키 폭 64 · 간격 8",
+          "imageRoles": [
+            "키캡 배경"
+          ],
+          "reuse": "HUD의 TAB과 동일 Keycap",
+          "dynamic": "기존 Inventory 종료·입력 복귀 동작 유지."
+        }
+      }
+    },
+    "result": {
+      "rootTree": "WBP_Result\n└─ VerticalBox\n   ├─ Header HorizontalBox · 미션 결과 / 팀 가치\n   ├─ 제작한 위조품 목록\n   ├─ 요약 / 상세 선택\n   ├─ 상호배타 결과 내용\n   └─ Footer HorizontalBox · 로비",
+      "components": {
+        "resultsummary": {
+          "label": "미션 결과·팀 가치",
+          "module": "HorizontalBox",
+          "tree": "Header HorizontalBox\n├─ VerticalBox · 제목 / 미션 결과\n├─ Fill 공간\n└─ VerticalBox · 팀 확보 가치 Label / 값",
+          "geometry": "두 그룹 같은 기준선 · 제목 32 · 값 40",
+          "imageRoles": [],
+          "reuse": "문자·숫자는 동적 표시, 결과 전체를 이미지로 만들지 않음",
+          "dynamic": "미션 성공/부분 성공/실패와 팀 가치 전달."
+        },
+        "replicas": {
+          "label": "제작한 위조품 카드",
+          "module": "기존 WBP_ResultReplicaCard",
+          "tree": "HorizontalBox\n└─ WBP_ResultReplicaCard ×4\n   └─ VerticalBox\n      ├─ ScaleBox → ReplicaImage\n      ├─ HorizontalBox · 필수 목표 / 작품 이름\n      └─ TextBlock · 유사도",
+          "geometry": "이미지 비율 유지 · 카드 간격 16 · Caption 동일 높이",
+          "imageRoles": [
+            "위조품 작품 이미지"
+          ],
+          "reuse": "작품별 WBP·이미지 사본 생성 없음",
+          "dynamic": "실제 제출 Replica와 이름·유사도를 표시."
+        },
+        "contributions": {
+          "label": "기본 기여 4열",
+          "module": "기존 ResultPlayerRow",
+          "tree": "TableHeader HorizontalBox\n└─ 플레이어 / 상태 / 확보 가치 / 최고 유사도\nContributionTableContainer VerticalBox\n└─ WBP_ResultPlayerRow\n   └─ 동일 4열 HorizontalBox",
+          "geometry": "행 높이 48 · 이름 폭 우선 · 숫자 오른쪽 정렬",
+          "imageRoles": [],
+          "reuse": "헤더와 행의 열 규격 공유. 기존 동적 Row 한 인스턴스 유지",
+          "dynamic": "긴 이름과 4명 데이터가 겹치지 않게 표시."
+        },
+        "details": {
+          "label": "상세 내역 전환",
+          "module": "기존 상세 그룹",
+          "tree": "기존 상세 보기 선택\n├─ 요약 콘텐츠 · Collapsed\n└─ 상세 콘텐츠 · Visible\n   └─ Grid · 기여 항목 / 값\n      └─ 기존 PlayerRow의 상세 필드",
+          "geometry": "기본 헤더와 대응 행 같은 열 시작점",
+          "imageRoles": [],
+          "reuse": "동일 행·데이터를 유지해 상세 표시만 전환",
+          "dynamic": "기본 표와 상세 표가 같은 위치에 동시에 표시되지 않음."
+        },
+        "buttons": {
+          "label": "로비 복귀",
+          "module": "공용 버튼 외형 + Keycap",
+          "tree": "Footer HorizontalBox\n├─ Keycap ESC / 로비\n├─ Fill 공간\n└─ 기존 ReturnToLobbyButton",
+          "geometry": "버튼 높이 48 · 대칭 여백 24",
+          "imageRoles": [
+            "버튼 공용 이미지",
+            "키캡 배경"
+          ],
+          "reuse": "다른 화면과 같은 버튼·키캡",
+          "dynamic": "기존 로비 복귀 연결 유지."
+        }
+      }
+    },
+    "title": {
+      "rootTree": "WBP_TitleMenu\n└─ Overlay\n   ├─ 기존 맵 배경 Image\n   └─ 메뉴 VerticalBox\n      ├─ Logo\n      ├─ 방 만들기 버튼\n      ├─ 참가 코드 입력 / 참가 버튼\n      ├─ 환경설정 버튼\n      └─ 종료 버튼",
+      "components": {
+        "titlemenu": {
+          "label": "타이틀 메뉴 부품",
+          "module": "공용 버튼 외형",
+          "tree": "Menu VerticalBox\n├─ 기존 HostSessionButton\n├─ HorizontalBox\n│  ├─ 참가 코드 입력\n│  └─ 기존 JoinSessionButton\n├─ 기존 SettingsButton\n└─ 기존 QuitGameButton",
+          "geometry": "버튼 288×56 · 간격 12 · 문자 중앙 정렬",
+          "imageRoles": [
+            "버튼 공용 이미지",
+            "맵 배경 이미지"
+          ],
+          "reuse": "로비·설정·위조와 같은 버튼 외형",
+          "dynamic": "기존 세션 입력·메뉴 동작 유지. 배경은 장소 이미지."
+        }
+      }
+    }
+  }
+}

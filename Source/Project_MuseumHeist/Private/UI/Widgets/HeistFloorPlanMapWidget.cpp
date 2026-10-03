@@ -281,7 +281,7 @@ void UHeistFloorPlanMapWidget::RefreshMapPresentation()
 	}
 	if (IsValid(LegendText))
 	{
-		LegendText->SetText(NSLOCTEXT("HeistMap", "CatalogueLegend", "● 나/팀원   ↗ 출구   ◆ 목표 전시관   ★ 발견한 목표   ◇ 떨어진 원본   ○ 탈출   ! 체포"));
+		LegendText->SetText(NSLOCTEXT("HeistMap", "CatalogueLegend", "● 나/팀원   ↗ 출구   ◆ 목표 전시관   ★ 발견한 목표   ◇ 떨어진 원본   ○ 탈출   ! 구금 중"));
 	}
 	if (IsValid(MapHintText))
 	{
@@ -309,7 +309,7 @@ void UHeistFloorPlanMapWidget::RefreshMapPresentation()
 		}
 		else if (HeistPlayerState->IsArrested())
 		{
-			MarkerLabel = FText::Format(NSLOCTEXT("HeistMap", "ArrestedMarker", "{0} · 체포"), MarkerLabel);
+			MarkerLabel = FText::Format(NSLOCTEXT("HeistMap", "ArrestedMarker", "{0} · 구금 중"), MarkerLabel);
 			MarkerType = EHeistFloorPlanMarkerType::ArrestedTeammate;
 		}
 

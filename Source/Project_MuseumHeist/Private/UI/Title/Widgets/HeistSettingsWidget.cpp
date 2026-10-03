@@ -6,6 +6,7 @@
 #include "Components/Slider.h"
 #include "Components/TextBlock.h"
 #include "Core/HeistGameUserSettings.h"
+#include "InputCoreTypes.h"
 #include "UI/Title/ViewModels/HeistSettingsViewModel.h"
 #include "View/MVVMView.h"
 
@@ -14,6 +15,7 @@
 void UHeistSettingsWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+	SetIsFocusable(true);
 
 	if (IsValid(SettingsCloseButton))
 	{
@@ -77,6 +79,16 @@ void UHeistSettingsWidget::NativeDestruct()
 	Super::NativeDestruct();
 }
 
+FReply UHeistSettingsWidget::NativeOnPreviewKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
+{
+	if (IsVisible() && InKeyEvent.GetKey() == EKeys::Escape)
+	{
+		CloseSettings();
+		return FReply::Handled();
+	}
+	return Super::NativeOnPreviewKeyDown(InGeometry, InKeyEvent);
+}
+
 #pragma endregion
 
 #pragma region ViewModel
@@ -114,11 +126,31 @@ void UHeistSettingsWidget::OpenSettings()
 	}
 	SetVisibility(ESlateVisibility::Visible);
 	RefreshSettingsControls();
+	if (GetOwningLocalPlayer() && GetOwningPlayer())
+	{
+		SetUserFocus(GetOwningPlayer());
+	}
 }
 
 void UHeistSettingsWidget::CloseSettings()
 {
+	const bool bWasVisible = IsVisible();
 	SetVisibility(ESlateVisibility::Collapsed);
+	if (bWasVisible && GetOwningLocalPlayer() && GetOwningPlayer())
+	{
+		if (UUserWidget* ParentWidget = GetTypedOuter<UUserWidget>(); IsValid(ParentWidget))
+		{
+			if (ParentWidget->IsFocusable())
+			{
+				ParentWidget->SetUserFocus(GetOwningPlayer());
+			}
+			else if (UButton* ParentSettingsButton = Cast<UButton>(ParentWidget->GetWidgetFromName(TEXT("SettingsButton")));
+				IsValid(ParentSettingsButton) && ParentSettingsButton->GetIsFocusable())
+			{
+				ParentSettingsButton->SetUserFocus(GetOwningPlayer());
+			}
+		}
+	}
 }
 
 #pragma endregion

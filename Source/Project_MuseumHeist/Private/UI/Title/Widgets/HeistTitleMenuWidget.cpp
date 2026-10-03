@@ -1,6 +1,7 @@
 #include "UI/Title/Widgets/HeistTitleMenuWidget.h"
 
 #include "Components/Button.h"
+#include "Components/EditableTextBox.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "UI/Title/ViewModels/HeistSettingsViewModel.h"
 #include "UI/Title/ViewModels/HeistTitleMenuViewModel.h"
@@ -128,6 +129,10 @@ void UHeistTitleMenuWidget::HandleJoinSessionClicked()
 	{
 		SettingsWidget->CloseSettings();
 	}
+	if (IsValid(TitleJoinCodeInput))
+	{
+		TitleMenuViewModel->RequestJoinSessionByCode(TitleJoinCodeInput->GetText().ToString());
+	}
 	if (IsValid(SessionJoinWidget))
 	{
 		SessionJoinWidget->OpenSessionJoin();
@@ -173,6 +178,10 @@ void UHeistTitleMenuWidget::RefreshTitleMenuPresentation()
 	if (IsValid(JoinSessionButton))
 	{
 		JoinSessionButton->SetIsEnabled(TitleMenuViewModel->CanRequestJoinSession());
+	}
+	if (IsValid(TitleJoinCodeInput))
+	{
+		TitleJoinCodeInput->SetIsEnabled(TitleMenuViewModel->CanRequestJoinSession());
 	}
 	if (IsValid(SettingsButton))
 	{

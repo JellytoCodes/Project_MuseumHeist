@@ -225,7 +225,7 @@ EHeistCrewStatus UHeistHUDWidget::ResolveLocalCrewStatus() const
 	return LocalEntry != nullptr ? LocalEntry->Status : EHeistCrewStatus::Active;
 }
 
-UTexture2D* UHeistHUDWidget::ResolveStatusIconTexture(const EHeistCrewStatus CrewStatus) const
+UObject* UHeistHUDWidget::ResolveStatusIconResource(const EHeistCrewStatus CrewStatus) const
 {
 	switch (CrewStatus)
 	{
@@ -497,12 +497,11 @@ void UHeistHUDWidget::RefreshToolPresentation()
 		}
 		if (IsValid(FlashlightIcon))
 		{
-			FSlateBrush FlashlightBrush = FlashlightIcon->GetBrush();
+			FSlateBrush FlashlightBrush = bFlashlightEnabled ? FlashlightOnBrush : FlashlightOffBrush;
+			FlashlightBrush.SetImageSize(FlashlightIcon->GetBrush().GetImageSize());
 			FlashlightBrush.DrawAs = ESlateBrushDrawType::Image;
 			FlashlightBrush.Margin = FMargin(0.0f);
 			FlashlightBrush.TintColor = FSlateColor(FLinearColor::White);
-			FlashlightBrush.SetUVRegion(FBox2f(FVector2f(bFlashlightEnabled ? 0.5f : 0.0f, 0.0f),
-				FVector2f(bFlashlightEnabled ? 1.0f : 0.5f, 1.0f)));
 			FlashlightIcon->SetBrush(FlashlightBrush);
 			FlashlightIcon->SetColorAndOpacity(FlashlightColor);
 			FlashlightIcon->SetOpacity(1.0f);
@@ -801,7 +800,7 @@ void UHeistHUDWidget::RefreshInventoryShortcutPresentation()
 {
 	if (IsValid(InventoryShortcutKeyText))
 	{
-		InventoryShortcutKeyText->SetText(NSLOCTEXT("HeistHUD", "InventoryShortcutBracketed", "[TAB]"));
+		InventoryShortcutKeyText->SetText(NSLOCTEXT("HeistHUD", "InventoryShortcutBracketed", "TAB"));
 	}
 	if (!IsValid(InventoryShortcutIcon) || !IsValid(HUDViewModel))
 	{

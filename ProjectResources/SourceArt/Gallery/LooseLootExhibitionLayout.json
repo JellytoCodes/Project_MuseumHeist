@@ -1,0 +1,1254 @@
+{
+  "schema_version": 1,
+  "units": "cm,degrees",
+  "purpose": "Developer Loose Loot exhibition layout; does not reveal undiscovered loot in the player floor plan.",
+  "runtime_rule": "Existing category-weighted random selection and count remain unchanged. Markers are candidates, not guaranteed spawned loot.",
+  "world_visual_scope": "Existing WorldMesh identities retained; only base contact, simple scales and facing corrected.",
+  "maps": [
+    {
+      "code": "M01",
+      "map": "M01_ClassicalPrototype",
+      "expected_before_sha256": "10b28d9e76f56e70eb47c01832ab797148e95ca06d961d43731961604f219214",
+      "stations": [
+        {
+          "id": "Exhibition_01",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_0",
+          "spawn_label": "LDV2_M01_LootSpawn_Exhibition_01",
+          "support_actor": "StaticMeshActor_1943",
+          "support_label": "LDV2_M01_Gallery_LootPedestal_Exhibition_01",
+          "expected_support_mesh": "/Game/Assets/StarterContent/Shapes/Shape_Cube.Shape_Cube",
+          "mesh": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Display_Stand_01c",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "location": [
+            -5820,
+            1940,
+            101
+          ],
+          "floor_z": 0,
+          "yaw": 90,
+          "anchor_yaw": 270,
+          "approach": [
+            -5749,
+            1940,
+            96
+          ],
+          "approach_normal": [
+            1,
+            0
+          ],
+          "focus_painting": "StaticMeshActor_1142",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Exhibition_02",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_1",
+          "spawn_label": "LDV2_M01_LootSpawn_Exhibition_02",
+          "support_actor": "StaticMeshActor_1944",
+          "support_label": "LDV2_M01_Gallery_LootPedestal_Exhibition_02",
+          "expected_support_mesh": "/Game/Assets/StarterContent/Shapes/Shape_Cube.Shape_Cube",
+          "mesh": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Display_Stand_01c",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "location": [
+            -1880,
+            2070,
+            101
+          ],
+          "floor_z": 0,
+          "yaw": 90,
+          "anchor_yaw": 90,
+          "approach": [
+            -1951,
+            2070,
+            96
+          ],
+          "approach_normal": [
+            -1,
+            0
+          ],
+          "focus_painting": "StaticMeshActor_1159",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Exhibition_03",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_2",
+          "spawn_label": "LDV2_M01_LootSpawn_Exhibition_03",
+          "support_actor": "StaticMeshActor_1945",
+          "support_label": "LDV2_M01_Gallery_LootPedestal_Exhibition_03",
+          "expected_support_mesh": "/Game/Assets/StarterContent/Shapes/Shape_Cube.Shape_Cube",
+          "mesh": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Display_Stand_01c",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "location": [
+            -1870,
+            -1210,
+            101
+          ],
+          "floor_z": 0,
+          "yaw": 0,
+          "anchor_yaw": 0,
+          "approach": [
+            -1870,
+            -1139,
+            96
+          ],
+          "approach_normal": [
+            0,
+            1
+          ],
+          "focus_painting": "BP_PaintingDisplayCase_C_4",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Exhibition_04",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_3",
+          "spawn_label": "LDV2_M01_LootSpawn_Exhibition_04",
+          "support_actor": "StaticMeshActor_1946",
+          "support_label": "LDV2_M01_Gallery_LootPedestal_Exhibition_04",
+          "expected_support_mesh": "/Game/Assets/StarterContent/Shapes/Shape_Cube.Shape_Cube",
+          "mesh": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Display_Stand_01c",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "location": [
+            -1400,
+            1560,
+            101
+          ],
+          "floor_z": 0,
+          "yaw": 0,
+          "anchor_yaw": 0,
+          "approach": [
+            -1400,
+            1631,
+            96
+          ],
+          "approach_normal": [
+            0,
+            1
+          ],
+          "focus_painting": null,
+          "composition": "No painting inside immediate original bay; preserve room and align with its existing exhibition wall."
+        },
+        {
+          "id": "Exhibition_05",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_4",
+          "spawn_label": "LDV2_M01_LootSpawn_Exhibition_05",
+          "support_actor": "StaticMeshActor_1947",
+          "support_label": "LDV2_M01_Gallery_LootPedestal_Exhibition_05",
+          "expected_support_mesh": "/Game/Assets/StarterContent/Shapes/Shape_Cube.Shape_Cube",
+          "mesh": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Display_Stand_01c",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "location": [
+            1870,
+            1660,
+            101
+          ],
+          "floor_z": 0,
+          "yaw": 90,
+          "anchor_yaw": 270,
+          "approach": [
+            1941,
+            1660,
+            96
+          ],
+          "approach_normal": [
+            1,
+            0
+          ],
+          "focus_painting": "StaticMeshActor_1483",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Exhibition_06",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_5",
+          "spawn_label": "LDV2_M01_LootSpawn_Exhibition_06",
+          "support_actor": "StaticMeshActor_1948",
+          "support_label": "LDV2_M01_Gallery_LootPedestal_Exhibition_06",
+          "expected_support_mesh": "/Game/Assets/StarterContent/Shapes/Shape_Cube.Shape_Cube",
+          "mesh": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Display_Stand_01c",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "location": [
+            5820,
+            1450,
+            101
+          ],
+          "floor_z": 0,
+          "yaw": 90,
+          "anchor_yaw": 90,
+          "approach": [
+            5749,
+            1450,
+            96
+          ],
+          "approach_normal": [
+            -1,
+            0
+          ],
+          "focus_painting": "StaticMeshActor_1313",
+          "composition": "남쪽 벽과 Print_08_02 사이의 공간에 전시대를 벽과 평행하게 배치. 받침-벽 여유16cm, 받침-그림 여유10cm. 서쪽에서 접근."
+        },
+        {
+          "id": "Exhibition_07",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_6",
+          "spawn_label": "LDV2_M01_LootSpawn_Exhibition_07",
+          "support_actor": "StaticMeshActor_1949",
+          "support_label": "LDV2_M01_Gallery_LootPedestal_Exhibition_07",
+          "expected_support_mesh": "/Game/Assets/StarterContent/Shapes/Shape_Cube.Shape_Cube",
+          "mesh": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Display_Stand_01c",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "location": [
+            -5820,
+            -3640,
+            101
+          ],
+          "floor_z": 0,
+          "yaw": 90,
+          "anchor_yaw": 270,
+          "approach": [
+            -5749,
+            -3640,
+            96
+          ],
+          "approach_normal": [
+            1,
+            0
+          ],
+          "focus_painting": "StaticMeshActor_1335",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Exhibition_08",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_7",
+          "spawn_label": "LDV2_M01_LootSpawn_Exhibition_08",
+          "support_actor": "StaticMeshActor_1950",
+          "support_label": "LDV2_M01_Gallery_LootPedestal_Exhibition_08",
+          "expected_support_mesh": "/Game/Assets/StarterContent/Shapes/Shape_Cube.Shape_Cube",
+          "mesh": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Display_Stand_01c",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "location": [
+            -3410,
+            -3670,
+            101
+          ],
+          "floor_z": 0,
+          "yaw": 0,
+          "anchor_yaw": 0,
+          "approach": [
+            -3410,
+            -3599,
+            96
+          ],
+          "approach_normal": [
+            0,
+            1
+          ],
+          "focus_painting": "StaticMeshActor_1371",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Exhibition_09",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_8",
+          "spawn_label": "LDV2_M01_LootSpawn_Exhibition_09",
+          "support_actor": "StaticMeshActor_1951",
+          "support_label": "LDV2_M01_Gallery_LootPedestal_Exhibition_09",
+          "expected_support_mesh": "/Game/Assets/StarterContent/Shapes/Shape_Cube.Shape_Cube",
+          "mesh": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Display_Stand_01c",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "location": [
+            -615,
+            -3670,
+            101
+          ],
+          "floor_z": 0,
+          "yaw": 0,
+          "anchor_yaw": 0,
+          "approach": [
+            -615,
+            -3599,
+            96
+          ],
+          "approach_normal": [
+            0,
+            1
+          ],
+          "focus_painting": "StaticMeshActor_1400",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Exhibition_10",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_9",
+          "spawn_label": "LDV2_M01_LootSpawn_Exhibition_10",
+          "support_actor": "StaticMeshActor_1952",
+          "support_label": "LDV2_M01_Gallery_LootPedestal_Exhibition_10",
+          "expected_support_mesh": "/Game/Assets/StarterContent/Shapes/Shape_Cube.Shape_Cube",
+          "mesh": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Display_Stand_01c",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "location": [
+            1870,
+            280,
+            101
+          ],
+          "floor_z": 0,
+          "yaw": 90,
+          "anchor_yaw": 270,
+          "approach": [
+            1941,
+            280,
+            96
+          ],
+          "approach_normal": [
+            1,
+            0
+          ],
+          "focus_painting": "BP_PaintingDisplayCase_C_16",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Vault_01",
+          "category": "VaultFixed",
+          "spawn_actor": "BP_LootSpawnPoint_C_10",
+          "spawn_label": "LDV2_M01_LootSpawn_Vault_01",
+          "support_actor": "StaticMeshActor_1953",
+          "support_label": "LDV2_M01_Gallery_LootPedestal_Vault_01",
+          "expected_support_mesh": "/Game/Assets/StarterContent/Shapes/Shape_Cube.Shape_Cube",
+          "mesh": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Display_Stand_01a",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "location": [
+            2100,
+            -3660,
+            101
+          ],
+          "floor_z": 0,
+          "yaw": 0,
+          "anchor_yaw": 0,
+          "approach": [
+            2100,
+            -3589,
+            96
+          ],
+          "approach_normal": [
+            0,
+            1
+          ],
+          "focus_painting": "StaticMeshActor_1439",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Vault_02",
+          "category": "VaultFixed",
+          "spawn_actor": "BP_LootSpawnPoint_C_11",
+          "spawn_label": "LDV2_M01_LootSpawn_Vault_02",
+          "support_actor": "StaticMeshActor_1954",
+          "support_label": "LDV2_M01_Gallery_LootPedestal_Vault_02",
+          "expected_support_mesh": "/Game/Assets/StarterContent/Shapes/Shape_Cube.Shape_Cube",
+          "mesh": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Display_Stand_01a",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "location": [
+            5700,
+            -3690,
+            101
+          ],
+          "floor_z": 0,
+          "yaw": 0,
+          "anchor_yaw": 0,
+          "approach": [
+            5700,
+            -3619,
+            96
+          ],
+          "approach_normal": [
+            0,
+            1
+          ],
+          "focus_painting": null,
+          "composition": "No painting inside immediate original bay; preserve room and align with its existing exhibition wall."
+        }
+      ]
+    },
+    {
+      "code": "M02",
+      "map": "M02_MoonlitPrototype",
+      "expected_before_sha256": "e8caf70813893c8fee4ab7728b635d8aa950b2bf09472533d1a50eb8b8175017",
+      "stations": [
+        {
+          "id": "Exhibition_01",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_0",
+          "spawn_label": "LDV2_M02_LootSpawn_Exhibition_01",
+          "support_actor": "StaticMeshActor_2437",
+          "support_label": "LDV2_M02_Gallery_LootPedestal_Exhibition_01",
+          "expected_support_mesh": "/Game/Assets/StarterContent/Shapes/Shape_Cube.Shape_Cube",
+          "mesh": "/Game/Assets/MapAssets/PCMHall/Meshes/Prop/SM_TABLE_A",
+          "scale": [
+            0.8,
+            0.8,
+            2
+          ],
+          "location": [
+            -5230,
+            -1040,
+            93
+          ],
+          "floor_z": 10,
+          "yaw": 90,
+          "anchor_yaw": 270,
+          "approach": [
+            -5153,
+            -1040,
+            106
+          ],
+          "approach_normal": [
+            1,
+            0
+          ],
+          "focus_painting": "BP_PaintingDisplayCase_C_7",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Exhibition_02",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_1",
+          "spawn_label": "LDV2_M02_LootSpawn_Exhibition_02",
+          "support_actor": "StaticMeshActor_2438",
+          "support_label": "LDV2_M02_Gallery_LootPedestal_Exhibition_02",
+          "expected_support_mesh": "/Game/Assets/StarterContent/Shapes/Shape_Cube.Shape_Cube",
+          "mesh": "/Game/Assets/MapAssets/PCMHall/Meshes/Prop/SM_TABLE_A",
+          "scale": [
+            0.8,
+            0.8,
+            2
+          ],
+          "location": [
+            -5230,
+            1660,
+            93
+          ],
+          "floor_z": 10,
+          "yaw": 90,
+          "anchor_yaw": 270,
+          "approach": [
+            -5153,
+            1660,
+            106
+          ],
+          "approach_normal": [
+            1,
+            0
+          ],
+          "focus_painting": "StaticMeshActor_1088",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Exhibition_03",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_2",
+          "spawn_label": "LDV2_M02_LootSpawn_Exhibition_03",
+          "support_actor": "StaticMeshActor_2439",
+          "support_label": "LDV2_M02_Gallery_LootPedestal_Exhibition_03",
+          "expected_support_mesh": "/Game/Assets/StarterContent/Shapes/Shape_Cube.Shape_Cube",
+          "mesh": "/Game/Assets/MapAssets/PCMHall/Meshes/Prop/SM_TABLE_A",
+          "scale": [
+            0.8,
+            0.8,
+            2
+          ],
+          "location": [
+            -5230,
+            2440,
+            93
+          ],
+          "floor_z": 10,
+          "yaw": 90,
+          "anchor_yaw": 270,
+          "approach": [
+            -5153,
+            2440,
+            106
+          ],
+          "approach_normal": [
+            1,
+            0
+          ],
+          "focus_painting": null,
+          "composition": "No painting inside immediate original bay; preserve room and align with its existing exhibition wall."
+        },
+        {
+          "id": "Exhibition_04",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_3",
+          "spawn_label": "LDV2_M02_LootSpawn_Exhibition_04",
+          "support_actor": "StaticMeshActor_2440",
+          "support_label": "LDV2_M02_Gallery_LootPedestal_Exhibition_04",
+          "expected_support_mesh": "/Game/Assets/StarterContent/Shapes/Shape_Cube.Shape_Cube",
+          "mesh": "/Game/Assets/MapAssets/PCMHall/Meshes/Prop/SM_TABLE_A",
+          "scale": [
+            0.8,
+            0.8,
+            2
+          ],
+          "location": [
+            -665,
+            2360,
+            93
+          ],
+          "floor_z": 10,
+          "yaw": 0,
+          "anchor_yaw": 0,
+          "approach": [
+            -665,
+            2437,
+            106
+          ],
+          "approach_normal": [
+            0,
+            1
+          ],
+          "focus_painting": "StaticMeshActor_1568",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Exhibition_05",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_4",
+          "spawn_label": "LDV2_M02_LootSpawn_Exhibition_05",
+          "support_actor": "StaticMeshActor_2441",
+          "support_label": "LDV2_M02_Gallery_LootPedestal_Exhibition_05",
+          "expected_support_mesh": "/Game/Assets/StarterContent/Shapes/Shape_Cube.Shape_Cube",
+          "mesh": "/Game/Assets/MapAssets/PCMHall/Meshes/Prop/SM_TABLE_A",
+          "scale": [
+            0.8,
+            0.8,
+            2
+          ],
+          "location": [
+            2010,
+            2360,
+            93
+          ],
+          "floor_z": 10,
+          "yaw": 0,
+          "anchor_yaw": 0,
+          "approach": [
+            2010,
+            2437,
+            106
+          ],
+          "approach_normal": [
+            0,
+            1
+          ],
+          "focus_painting": "StaticMeshActor_2392",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Exhibition_06",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_5",
+          "spawn_label": "LDV2_M02_LootSpawn_Exhibition_06",
+          "support_actor": "StaticMeshActor_2442",
+          "support_label": "LDV2_M02_Gallery_LootPedestal_Exhibition_06",
+          "expected_support_mesh": "/Game/Assets/StarterContent/Shapes/Shape_Cube.Shape_Cube",
+          "mesh": "/Game/Assets/MapAssets/PCMHall/Meshes/Prop/SM_TABLE_A",
+          "scale": [
+            0.8,
+            0.8,
+            2
+          ],
+          "location": [
+            4870,
+            2360,
+            93
+          ],
+          "floor_z": 10,
+          "yaw": 0,
+          "anchor_yaw": 0,
+          "approach": [
+            4870,
+            2437,
+            106
+          ],
+          "approach_normal": [
+            0,
+            1
+          ],
+          "focus_painting": "StaticMeshActor_2221",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Exhibition_07",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_6",
+          "spawn_label": "LDV2_M02_LootSpawn_Exhibition_07",
+          "support_actor": "StaticMeshActor_2443",
+          "support_label": "LDV2_M02_Gallery_LootPedestal_Exhibition_07",
+          "expected_support_mesh": "/Game/Assets/StarterContent/Shapes/Shape_Cube.Shape_Cube",
+          "mesh": "/Game/Assets/MapAssets/PCMHall/Meshes/Prop/SM_TABLE_A",
+          "scale": [
+            0.8,
+            0.8,
+            2
+          ],
+          "location": [
+            3190,
+            2030,
+            93
+          ],
+          "floor_z": 10,
+          "yaw": 0,
+          "anchor_yaw": 180,
+          "approach": [
+            3190,
+            1953,
+            106
+          ],
+          "approach_normal": [
+            0,
+            -1
+          ],
+          "focus_painting": "StaticMeshActor_2270",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Exhibition_08",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_7",
+          "spawn_label": "LDV2_M02_LootSpawn_Exhibition_08",
+          "support_actor": "StaticMeshActor_2444",
+          "support_label": "LDV2_M02_Gallery_LootPedestal_Exhibition_08",
+          "expected_support_mesh": "/Game/Assets/StarterContent/Shapes/Shape_Cube.Shape_Cube",
+          "mesh": "/Game/Assets/MapAssets/PCMHall/Meshes/Prop/SM_TABLE_A",
+          "scale": [
+            0.8,
+            0.8,
+            2
+          ],
+          "location": [
+            3730,
+            -1320,
+            93
+          ],
+          "floor_z": 10,
+          "yaw": 90,
+          "anchor_yaw": 90,
+          "approach": [
+            3653,
+            -1320,
+            106
+          ],
+          "approach_normal": [
+            -1,
+            0
+          ],
+          "focus_painting": "StaticMeshActor_2282",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Exhibition_09",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_8",
+          "spawn_label": "LDV2_M02_LootSpawn_Exhibition_09",
+          "support_actor": "StaticMeshActor_2445",
+          "support_label": "LDV2_M02_Gallery_LootPedestal_Exhibition_09",
+          "expected_support_mesh": "/Game/Assets/StarterContent/Shapes/Shape_Cube.Shape_Cube",
+          "mesh": "/Game/Assets/MapAssets/PCMHall/Meshes/Prop/SM_TABLE_A",
+          "scale": [
+            0.8,
+            0.8,
+            2
+          ],
+          "location": [
+            -2350,
+            -3680,
+            93
+          ],
+          "floor_z": 10,
+          "yaw": 0,
+          "anchor_yaw": 0,
+          "approach": [
+            -2350,
+            -3603,
+            106
+          ],
+          "approach_normal": [
+            0,
+            1
+          ],
+          "focus_painting": "StaticMeshActor_2412",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Exhibition_10",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_9",
+          "spawn_label": "LDV2_M02_LootSpawn_Exhibition_10",
+          "support_actor": "StaticMeshActor_2446",
+          "support_label": "LDV2_M02_Gallery_LootPedestal_Exhibition_10",
+          "expected_support_mesh": "/Game/Assets/StarterContent/Shapes/Shape_Cube.Shape_Cube",
+          "mesh": "/Game/Assets/MapAssets/PCMHall/Meshes/Prop/SM_TABLE_A",
+          "scale": [
+            0.8,
+            0.8,
+            2
+          ],
+          "location": [
+            -435,
+            -3670,
+            93
+          ],
+          "floor_z": 10,
+          "yaw": 90,
+          "anchor_yaw": 270,
+          "approach": [
+            -358,
+            -3670,
+            106
+          ],
+          "approach_normal": [
+            1,
+            0
+          ],
+          "focus_painting": "StaticMeshActor_2338",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Vault_01",
+          "category": "VaultFixed",
+          "spawn_actor": "BP_LootSpawnPoint_C_10",
+          "spawn_label": "LDV2_M02_LootSpawn_Vault_01",
+          "support_actor": "StaticMeshActor_2447",
+          "support_label": "LDV2_M02_Gallery_LootPedestal_Vault_01",
+          "expected_support_mesh": "/Game/Assets/StarterContent/Shapes/Shape_Cube.Shape_Cube",
+          "mesh": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Display_Stand_01a",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "location": [
+            3650,
+            -3670,
+            111
+          ],
+          "floor_z": 10,
+          "yaw": 0,
+          "anchor_yaw": 0,
+          "approach": [
+            3650,
+            -3599,
+            106
+          ],
+          "approach_normal": [
+            0,
+            1
+          ],
+          "focus_painting": "BP_PaintingDisplayCase_C_2",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Vault_02",
+          "category": "VaultFixed",
+          "spawn_actor": "BP_LootSpawnPoint_C_11",
+          "spawn_label": "LDV2_M02_LootSpawn_Vault_02",
+          "support_actor": "StaticMeshActor_2448",
+          "support_label": "LDV2_M02_Gallery_LootPedestal_Vault_02",
+          "expected_support_mesh": "/Game/Assets/StarterContent/Shapes/Shape_Cube.Shape_Cube",
+          "mesh": "/Game/Assets/MapAssets/Showcase/Meshes/SM_Display_Stand_01a",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "location": [
+            -2300,
+            -1460,
+            111
+          ],
+          "floor_z": 10,
+          "yaw": 0,
+          "anchor_yaw": 0,
+          "approach": [
+            -2300,
+            -1389,
+            106
+          ],
+          "approach_normal": [
+            0,
+            1
+          ],
+          "focus_painting": null,
+          "composition": "No painting inside immediate original bay; preserve room and align with its existing exhibition wall."
+        }
+      ]
+    },
+    {
+      "code": "M03",
+      "map": "M03_GlasshousePrototype",
+      "expected_before_sha256": "4c97910c474f8f3be220010aaa2cba085ec285625308dd630598c0164171811b",
+      "stations": [
+        {
+          "id": "Exhibition_01",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_0",
+          "spawn_label": "LDV2_M03_LootSpawn_Exhibition_01",
+          "support_actor": "StaticMeshActor_1263",
+          "support_label": "M03G_Bench_00",
+          "expected_support_mesh": "/Game/AIUE5_vol10_01/Mesh/SM_AI_vol10_01_bench_1_1.SM_AI_vol10_01_bench_1_1",
+          "mesh": "/Game/AIUE5_vol10_01/Mesh/SM_AI_vol10_01_table_1_1",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "location": [
+            -5130,
+            -1360,
+            76
+          ],
+          "floor_z": 0,
+          "yaw": 90,
+          "anchor_yaw": 270,
+          "approach": [
+            -5059,
+            -1360,
+            96
+          ],
+          "approach_normal": [
+            1,
+            0
+          ],
+          "focus_painting": "BP_PaintingDisplayCase_C_3",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Exhibition_02",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_1",
+          "spawn_label": "LDV2_M03_LootSpawn_Exhibition_02",
+          "support_actor": "StaticMeshActor_1264",
+          "support_label": "M03G_Bench_01",
+          "expected_support_mesh": "/Game/AIUE5_vol10_01/Mesh/SM_AI_vol10_01_bench_1_1.SM_AI_vol10_01_bench_1_1",
+          "mesh": "/Game/AIUE5_vol10_01/Mesh/SM_AI_vol10_01_table_1_1",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "location": [
+            -3330,
+            1630,
+            76
+          ],
+          "floor_z": 0,
+          "yaw": 0,
+          "anchor_yaw": 180,
+          "approach": [
+            -3330,
+            1559,
+            96
+          ],
+          "approach_normal": [
+            0,
+            -1
+          ],
+          "focus_painting": "StaticMeshActor_2378",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Exhibition_03",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_2",
+          "spawn_label": "LDV2_M03_LootSpawn_Exhibition_03",
+          "support_actor": "StaticMeshActor_1265",
+          "support_label": "M03G_Bench_02",
+          "expected_support_mesh": "/Game/AIUE5_vol10_01/Mesh/SM_AI_vol10_01_bench_1_1.SM_AI_vol10_01_bench_1_1",
+          "mesh": "/Game/AIUE5_vol10_01/Mesh/SM_AI_vol10_01_table_1_1",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "location": [
+            -2070,
+            3020,
+            76
+          ],
+          "floor_z": 0,
+          "yaw": 0,
+          "anchor_yaw": 180,
+          "approach": [
+            -2070,
+            2949,
+            96
+          ],
+          "approach_normal": [
+            0,
+            -1
+          ],
+          "focus_painting": "BP_PaintingDisplayCase_C_16",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Exhibition_04",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_3",
+          "spawn_label": "LDV2_M03_LootSpawn_Exhibition_04",
+          "support_actor": "StaticMeshActor_1266",
+          "support_label": "M03G_Bench_03",
+          "expected_support_mesh": "/Game/AIUE5_vol10_01/Mesh/SM_AI_vol10_01_bench_1_1.SM_AI_vol10_01_bench_1_1",
+          "mesh": "/Game/AIUE5_vol10_01/Mesh/SM_AI_vol10_01_table_1_1",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "location": [
+            900,
+            1990,
+            76
+          ],
+          "floor_z": 0,
+          "yaw": 0,
+          "anchor_yaw": 0,
+          "approach": [
+            900,
+            2061,
+            96
+          ],
+          "approach_normal": [
+            0,
+            1
+          ],
+          "focus_painting": "BP_PaintingDisplayCase_C_1",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Exhibition_05",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_4",
+          "spawn_label": "LDV2_M03_LootSpawn_Exhibition_05",
+          "support_actor": "StaticMeshActor_1267",
+          "support_label": "M03G_Bench_04",
+          "expected_support_mesh": "/Game/AIUE5_vol10_01/Mesh/SM_AI_vol10_01_bench_1_1.SM_AI_vol10_01_bench_1_1",
+          "mesh": "/Game/AIUE5_vol10_01/Mesh/SM_AI_vol10_01_table_1_1",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "location": [
+            3290,
+            3030,
+            76
+          ],
+          "floor_z": 0,
+          "yaw": 0,
+          "anchor_yaw": 180,
+          "approach": [
+            3290,
+            2959,
+            96
+          ],
+          "approach_normal": [
+            0,
+            -1
+          ],
+          "focus_painting": "StaticMeshActor_2232",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Exhibition_06",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_5",
+          "spawn_label": "LDV2_M03_LootSpawn_Exhibition_06",
+          "support_actor": "StaticMeshActor_88",
+          "support_label": "M03G_LootTable_05",
+          "expected_support_mesh": "/Game/AIUE5_vol10_01/Mesh/SM_AI_vol10_01_table_1_1.SM_AI_vol10_01_table_1_1",
+          "mesh": "/Game/AIUE5_vol10_01/Mesh/SM_AI_vol10_01_table_1_1",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "location": [
+            -2550,
+            -3410,
+            76
+          ],
+          "floor_z": 0,
+          "yaw": 0,
+          "anchor_yaw": 0,
+          "approach": [
+            -2550,
+            -3339,
+            96
+          ],
+          "approach_normal": [
+            0,
+            1
+          ],
+          "focus_painting": "BP_DisplayCase_C_0",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Exhibition_07",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_6",
+          "spawn_label": "LDV2_M03_LootSpawn_Exhibition_07",
+          "support_actor": "StaticMeshActor_89",
+          "support_label": "M03G_LootTable_06",
+          "expected_support_mesh": "/Game/AIUE5_vol10_01/Mesh/SM_AI_vol10_01_table_1_1.SM_AI_vol10_01_table_1_1",
+          "mesh": "/Game/AIUE5_vol10_01/Mesh/SM_AI_vol10_01_table_1_1",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "location": [
+            -40,
+            -3410,
+            76
+          ],
+          "floor_z": 0,
+          "yaw": 0,
+          "anchor_yaw": 0,
+          "approach": [
+            -40,
+            -3339,
+            96
+          ],
+          "approach_normal": [
+            0,
+            1
+          ],
+          "focus_painting": "BP_PaintingDisplayCase_C_10",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Exhibition_08",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_7",
+          "spawn_label": "LDV2_M03_LootSpawn_Exhibition_08",
+          "support_actor": "StaticMeshActor_90",
+          "support_label": "M03G_LootTable_07",
+          "expected_support_mesh": "/Game/AIUE5_vol10_01/Mesh/SM_AI_vol10_01_table_1_1.SM_AI_vol10_01_table_1_1",
+          "mesh": "/Game/AIUE5_vol10_01/Mesh/SM_AI_vol10_01_table_1_1",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "location": [
+            3070,
+            -3410,
+            76
+          ],
+          "floor_z": 0,
+          "yaw": 0,
+          "anchor_yaw": 0,
+          "approach": [
+            3070,
+            -3339,
+            96
+          ],
+          "approach_normal": [
+            0,
+            1
+          ],
+          "focus_painting": "BP_PaintingDisplayCase_C_12",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Exhibition_09",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_8",
+          "spawn_label": "LDV2_M03_LootSpawn_Exhibition_09",
+          "support_actor": "StaticMeshActor_1275",
+          "support_label": "M03G_Table_02",
+          "expected_support_mesh": "/Game/AIUE5_vol10_01/Mesh/SM_AI_vol10_01_table_1_1.SM_AI_vol10_01_table_1_1",
+          "mesh": "/Game/AIUE5_vol10_01/Mesh/SM_AI_vol10_01_table_1_1",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "location": [
+            1050,
+            1240,
+            76
+          ],
+          "floor_z": 0,
+          "yaw": 0,
+          "anchor_yaw": 180,
+          "approach": [
+            1050,
+            1169,
+            96
+          ],
+          "approach_normal": [
+            0,
+            -1
+          ],
+          "focus_painting": "StaticMeshActor_2635",
+          "composition": "Move existing Table_02 and anchor from security room into adjacent central gallery; root-authorized exception. Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Exhibition_10",
+          "category": "ExhibitionRoom",
+          "spawn_actor": "BP_LootSpawnPoint_C_9",
+          "spawn_label": "LDV2_M03_LootSpawn_Exhibition_10",
+          "support_actor": "StaticMeshActor_91",
+          "support_label": "M03G_LootTable_09",
+          "expected_support_mesh": "/Game/AIUE5_vol10_01/Mesh/SM_AI_vol10_01_table_1_1.SM_AI_vol10_01_table_1_1",
+          "mesh": "/Game/AIUE5_vol10_01/Mesh/SM_AI_vol10_01_table_1_1",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "location": [
+            550,
+            -940,
+            76
+          ],
+          "floor_z": 0,
+          "yaw": 0,
+          "anchor_yaw": 0,
+          "approach": [
+            550,
+            -869,
+            96
+          ],
+          "approach_normal": [
+            0,
+            1
+          ],
+          "focus_painting": "BP_PaintingDisplayCase_C_17",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Vault_01",
+          "category": "VaultFixed",
+          "spawn_actor": "BP_LootSpawnPoint_C_10",
+          "spawn_label": "LDV2_M03_LootSpawn_Vault_01",
+          "support_actor": "StaticMeshActor_92",
+          "support_label": "M03G_LootTable_10",
+          "expected_support_mesh": "/Game/AIUE5_vol10_01/Mesh/SM_AI_vol10_01_table_1_1.SM_AI_vol10_01_table_1_1",
+          "mesh": "/Game/AIUE5_vol10_01/Mesh/SM_AI_vol10_01_table_1_1",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "location": [
+            5100,
+            -1360,
+            76
+          ],
+          "floor_z": 0,
+          "yaw": 90,
+          "anchor_yaw": 90,
+          "approach": [
+            5029,
+            -1360,
+            96
+          ],
+          "approach_normal": [
+            -1,
+            0
+          ],
+          "focus_painting": "BP_PaintingDisplayCase_C_0",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        },
+        {
+          "id": "Vault_02",
+          "category": "VaultFixed",
+          "spawn_actor": "BP_LootSpawnPoint_C_11",
+          "spawn_label": "LDV2_M03_LootSpawn_Vault_02",
+          "support_actor": "StaticMeshActor_93",
+          "support_label": "M03G_LootTable_11",
+          "expected_support_mesh": "/Game/AIUE5_vol10_01/Mesh/SM_AI_vol10_01_table_1_1.SM_AI_vol10_01_table_1_1",
+          "mesh": "/Game/AIUE5_vol10_01/Mesh/SM_AI_vol10_01_table_1_1",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "location": [
+            5100,
+            1380,
+            76
+          ],
+          "floor_z": 0,
+          "yaw": 90,
+          "anchor_yaw": 90,
+          "approach": [
+            5029,
+            1380,
+            96
+          ],
+          "approach_normal": [
+            -1,
+            0
+          ],
+          "focus_painting": "BP_PaintingDisplayCase_C_8",
+          "composition": "Placed beside painting edge, without direct footprint overlap."
+        }
+      ]
+    }
+  ]
+}

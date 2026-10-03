@@ -9,7 +9,6 @@
 class UBorder;
 class UImage;
 class UTextBlock;
-class UTexture2D;
 
 UCLASS(Blueprintable)
 class PROJECT_MUSEUMHEIST_API UHeistQuickSlotWidget : public UHeistUserWidgetBase
@@ -19,7 +18,7 @@ class PROJECT_MUSEUMHEIST_API UHeistQuickSlotWidget : public UHeistUserWidgetBas
 #pragma region Presentation
 
   public:
-	void SetupHUDQuickSlot(const FHeistQuickSlotPresentation& InConfirmedPresentation, UTexture2D* InIcon);
+	void SetupHUDQuickSlot(const FHeistQuickSlotPresentation& InConfirmedPresentation, UObject* InIcon);
 
   private:
 	void RefreshPresentation();

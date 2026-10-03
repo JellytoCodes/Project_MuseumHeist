@@ -40,7 +40,6 @@ void UHeistResultWidget::NativeConstruct()
 	if (IsValid(RewardDetailWidget))
 	{
 		RewardDetailWidget->GetDetailVisibilityChangedDelegate().RemoveAll(this);
-		RewardDetailWidget->GetDetailVisibilityChangedDelegate().AddUObject(this, &UHeistResultWidget::HandleDetailVisibilityChanged);
 		RewardDetailWidget->HideDetail();
 	}
 	HandleDetailVisibilityChanged(false);
@@ -64,6 +63,7 @@ void UHeistResultWidget::NativeDestruct()
 	{
 		RewardDetailWidget->GetDetailVisibilityChangedDelegate().RemoveAll(this);
 	}
+	bContributionDetailsVisible = false;
 	ReplicaRecapTextures.Reset();
 
 	Super::NativeDestruct();
@@ -123,7 +123,7 @@ void UHeistResultWidget::ResetHiddenPresentationState()
 
 bool UHeistResultWidget::IsHiddenPresentationStateReset() const
 {
-	const bool bDetailsReset = !IsValid(RewardDetailWidget) || !RewardDetailWidget->IsDetailVisible();
+	const bool bDetailsReset = !bContributionDetailsVisible && (!IsValid(RewardDetailWidget) || !RewardDetailWidget->IsDetailVisible());
 	const bool bReplicaReset = !IsValid(ReplicaRecapVisualContainer) || ReplicaRecapVisualContainer->GetChildrenCount() == 0;
 	const bool bContributionReset = !IsValid(ContributionTableContainer) || ContributionTableContainer->GetChildrenCount() == 0;
 	return bDetailsReset && bReplicaReset && bContributionReset && ReplicaRecapTextures.IsEmpty();
@@ -131,7 +131,7 @@ bool UHeistResultWidget::IsHiddenPresentationStateReset() const
 
 bool UHeistResultWidget::IsRewardDetailVisible() const
 {
-	return IsValid(RewardDetailWidget) && RewardDetailWidget->IsDetailVisible();
+	return bContributionDetailsVisible;
 }
 
 UTexture2D* UHeistResultWidget::CreatePaintingRecapTexture(const FHeistReplicaRecapEntry& ReplicaRecap, const FLinearColor BackgroundColor)
@@ -161,7 +161,7 @@ UTexture2D* UHeistResultWidget::CreatePaintingRecapTexture(const FHeistReplicaRe
 FText UHeistResultWidget::BuildReplicaCardTitle(const FHeistReplicaRecapEntry& ReplicaRecap)
 {
 	const FText DisplayName = ReplicaRecap.ArtifactDisplayName.IsEmpty() ? FText::FromName(ReplicaRecap.ArtifactId) : ReplicaRecap.ArtifactDisplayName;
-	return FText::Format(NSLOCTEXT("HeistResult", "ReplicaCardTitle", "{0}{1}  |  품질 {2}"),
+	return FText::Format(NSLOCTEXT("HeistResult", "ReplicaCardTitle", "{0}{1}  |  유사도 {2}"),
 						 ReplicaRecap.bRequiredTarget ? NSLOCTEXT("HeistResult", "RequiredReplicaPrefix", "[필수 목표] ") : FText::GetEmpty(), DisplayName,
 						 FText::AsNumber(FMath::RoundToInt(ReplicaRecap.QualityScore)));
 }
@@ -306,6 +306,7 @@ void UHeistResultWidget::RefreshRewardDetailPresentation(const FHeistTeamResult&
 	if (IsValid(RewardDetailWidget))
 	{
 		RewardDetailWidget->ApplyTeamResult(TeamResult);
+		RewardDetailWidget->HideDetail();
 	}
 }
 
@@ -340,7 +341,7 @@ void UHeistResultWidget::RefreshReplicaRecapPresentation(const TArray<FHeistRepl
 		UHorizontalBoxSlot* CardSlot = ReplicaRecapVisualContainer->AddChildToHorizontalBox(ReplicaCard);
 		if (IsValid(PreviousCardSlot))
 		{
-			PreviousCardSlot->SetPadding(FMargin(0.0f, 0.0f, 24.0f, 0.0f));
+			PreviousCardSlot->SetPadding(FMargin(0.0f, 0.0f, 16.0f, 0.0f));
 		}
 		CardSlot->SetPadding(FMargin(0.0f));
 		CardSlot->SetVerticalAlignment(VAlign_Top);
@@ -374,7 +375,7 @@ void UHeistResultWidget::RefreshContributionTablePresentation(const TArray<FHeis
 		{
 			PlayerRow->ApplyPlayerResult(PlayerResults[PlayerIndex]);
 			PlayerRow->SetDetailedPresentation(IsRewardDetailVisible());
-			ContributionTableContainer->AddChildToVerticalBox(PlayerRow)->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 4.0f));
+			ContributionTableContainer->AddChildToVerticalBox(PlayerRow)->SetPadding(FMargin(0.0f));
 		}
 	}
 
@@ -394,21 +395,16 @@ void UHeistResultWidget::HandleReturnToLobbyClicked()
 
 void UHeistResultWidget::HandleRewardDetailsClicked()
 {
-	if (IsValid(RewardDetailWidget))
-	{
-		if (RewardDetailWidget->IsDetailVisible())
-		{
-			RewardDetailWidget->HideDetail();
-		}
-		else
-		{
-			RewardDetailWidget->ShowDetail();
-		}
-	}
+	HandleDetailVisibilityChanged(!bContributionDetailsVisible);
 }
 
 void UHeistResultWidget::HandleDetailVisibilityChanged(const bool bVisible)
 {
+	bContributionDetailsVisible = bVisible;
+	if (IsValid(CoopResultCompactHeaderSize))
+	{
+		CoopResultCompactHeaderSize->SetVisibility(bVisible ? ESlateVisibility::Collapsed : ESlateVisibility::SelfHitTestInvisible);
+	}
 	if (IsValid(CoopResultDetailHeaderSize))
 	{
 		CoopResultDetailHeaderSize->SetVisibility(bVisible ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);

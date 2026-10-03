@@ -10,7 +10,11 @@ namespace
 	UTexture2D* LoadMapThumbnail(const FName MapId)
 	{
 		const TCHAR* TexturePath = nullptr;
-		if (MapId == FName(TEXT("M01")))
+		if (MapId == FName(TEXT("Random")))
+		{
+			TexturePath = TEXT("/Game/Assets/UI/Heist/T_Heist_RandomMap.T_Heist_RandomMap");
+		}
+		else if (MapId == FName(TEXT("M01")))
 		{
 			TexturePath = TEXT("/Game/Assets/UI/Catalogue/T_Catalogue_Map_M01.T_Catalogue_Map_M01");
 		}
@@ -68,12 +72,12 @@ void UHeistLobbyMapCardWidget::RefreshMapThumbnail()
 	if (IsValid(MapThumbnailImage))
 	{
 		MapThumbnailImage->SetBrushFromTexture(MapThumbnail, true);
-		MapThumbnailImage->SetVisibility(!bRandomMap && IsValid(MapThumbnail) ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
+		MapThumbnailImage->SetVisibility(IsValid(MapThumbnail) ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
 	}
 	if (IsValid(RandomQuestionText))
 	{
 		RandomQuestionText->SetText(NSLOCTEXT("HeistLobby", "RandomMapQuestion", "?"));
-		RandomQuestionText->SetVisibility(bRandomMap ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		RandomQuestionText->SetVisibility(bRandomMap && !IsValid(MapThumbnail) ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	}
 }
 

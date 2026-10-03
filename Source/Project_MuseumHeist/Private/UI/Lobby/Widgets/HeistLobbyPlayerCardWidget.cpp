@@ -70,7 +70,7 @@ void UHeistLobbyPlayerCardWidget::ApplyPlayerData(const FHeistLobbyPlayerCardDat
 	{
 		ReadyStatusText->SetText(bOccupied && PlayerCardData.bReady
 			? NSLOCTEXT("HeistLobby", "PlayerReadyStatus", "준비 완료")
-			: NSLOCTEXT("HeistLobby", "PlayerNotReadyStatus", "준비 대기"));
+			: NSLOCTEXT("HeistLobby", "PlayerNotReadyStatus", "준비 안 됨"));
 		ReadyStatusText->SetRenderOpacity(bOccupied && PlayerCardData.bReady ? 1.0f : 0.65f);
 	}
 
@@ -105,7 +105,9 @@ void UHeistLobbyPlayerCardWidget::RefreshProfileImage()
 
 	if (IsValid(DefaultProfileTexture))
 	{
-		ProfileImage->SetBrushFromTexture(DefaultProfileTexture, true);
+		FSlateBrush ProfileBrush = ProfileImage->GetBrush();
+		ProfileBrush.SetResourceObject(DefaultProfileTexture);
+		ProfileImage->SetBrush(ProfileBrush);
 	}
 	ProfileImage->SetVisibility(IsValid(DefaultProfileTexture) ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
 	if (!bOccupied || PlatformUserId.IsEmpty())

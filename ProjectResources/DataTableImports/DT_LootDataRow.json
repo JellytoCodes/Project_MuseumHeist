@@ -7,8 +7,27 @@
     "SpawnCategory": "VaultFixed",
     "SpawnWeight": 0.4,
     "WorldMesh": "StaticMesh'/Game/Assets/StarterContent/Shapes/Shape_Torus.Shape_Torus'",
-    "WorldMaterials": ["Material'/Game/Assets/StarterContent/Materials/M_Metal_Gold.M_Metal_Gold'"],
-    "WorldVisualRelativeTransform": "(Rotation=(Pitch=0,Yaw=0,Roll=0),Translation=(X=0,Y=0,Z=24),Scale3D=(X=0.42,Y=0.42,Z=0.24))"
+    "WorldMaterials": [
+      "Material'/Game/Assets/StarterContent/Materials/M_Metal_Gold.M_Metal_Gold'"
+    ],
+    "WorldVisualRelativeTransform": {
+      "Rotation": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0,
+        "W": 1
+      },
+      "Translation": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "Scale3D": {
+        "X": 0.4,
+        "Y": 0.4,
+        "Z": 0.2
+      }
+    }
   },
   {
     "Name": "Loot_Painting",
@@ -18,8 +37,27 @@
     "SpawnCategory": "ExhibitionRoom",
     "SpawnWeight": 1.0,
     "WorldMesh": "StaticMesh'/Game/Assets/StarterContent/Shapes/Shape_Plane.Shape_Plane'",
-    "WorldMaterials": ["Material'/Game/Assets/StarterContent/Materials/M_Wood_Walnut.M_Wood_Walnut'"],
-    "WorldVisualRelativeTransform": "(Rotation=(Pitch=90,Yaw=0,Roll=0),Translation=(X=0,Y=0,Z=45),Scale3D=(X=0.70,Y=0.50,Z=0.08))"
+    "WorldMaterials": [
+      "Material'/Game/Assets/StarterContent/Materials/M_Wood_Walnut.M_Wood_Walnut'"
+    ],
+    "WorldVisualRelativeTransform": {
+      "Rotation": {
+        "X": -0.7071067811865476,
+        "Y": 0,
+        "Z": 0,
+        "W": 0.7071067811865477
+      },
+      "Translation": {
+        "X": 0,
+        "Y": 0,
+        "Z": 25
+      },
+      "Scale3D": {
+        "X": 0.5,
+        "Y": 0.5,
+        "Z": 0.5
+      }
+    }
   },
   {
     "Name": "Loot_AncientSword",
@@ -29,8 +67,27 @@
     "SpawnCategory": "ExhibitionRoom",
     "SpawnWeight": 0.8,
     "WorldMesh": "StaticMesh'/Game/Assets/StarterContent/Shapes/Shape_NarrowCapsule.Shape_NarrowCapsule'",
-    "WorldMaterials": ["Material'/Game/Assets/StarterContent/Materials/M_Metal_Burnished_Steel.M_Metal_Burnished_Steel'"],
-    "WorldVisualRelativeTransform": "(Rotation=(Pitch=90,Yaw=0,Roll=0),Translation=(X=0,Y=0,Z=18),Scale3D=(X=0.14,Y=0.14,Z=0.75))"
+    "WorldMaterials": [
+      "Material'/Game/Assets/StarterContent/Materials/M_Metal_Burnished_Steel.M_Metal_Burnished_Steel'"
+    ],
+    "WorldVisualRelativeTransform": {
+      "Rotation": {
+        "X": 0,
+        "Y": -0.7071067811865476,
+        "Z": 0,
+        "W": 0.7071067811865477
+      },
+      "Translation": {
+        "X": 35,
+        "Y": 0,
+        "Z": 3
+      },
+      "Scale3D": {
+        "X": 0.1,
+        "Y": 0.1,
+        "Z": 0.7
+      }
+    }
   },
   {
     "Name": "Loot_GoldenVase",
@@ -40,8 +97,27 @@
     "SpawnCategory": "ExhibitionRoom",
     "SpawnWeight": 0.6,
     "WorldMesh": "StaticMesh'/Game/Assets/StarterContent/Shapes/Shape_Cylinder.Shape_Cylinder'",
-    "WorldMaterials": ["Material'/Game/Assets/StarterContent/Materials/M_Metal_Copper.M_Metal_Copper'"],
-    "WorldVisualRelativeTransform": "(Rotation=(Pitch=0,Yaw=0,Roll=0),Translation=(X=0,Y=0,Z=28),Scale3D=(X=0.32,Y=0.32,Z=0.56))"
+    "WorldMaterials": [
+      "Material'/Game/Assets/StarterContent/Materials/M_Metal_Copper.M_Metal_Copper'"
+    ],
+    "WorldVisualRelativeTransform": {
+      "Rotation": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0,
+        "W": 1
+      },
+      "Translation": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "Scale3D": {
+        "X": 0.3,
+        "Y": 0.3,
+        "Z": 0.6
+      }
+    }
   },
   {
     "Name": "Loot_JewelNecklace",
@@ -51,7 +127,26 @@
     "SpawnCategory": "ExhibitionRoom",
     "SpawnWeight": 1.2,
     "WorldMesh": "StaticMesh'/Game/Assets/StarterContent/Shapes/Shape_Pipe_180.Shape_Pipe_180'",
-    "WorldMaterials": ["Material'/Game/Assets/StarterContent/Materials/M_Metal_Chrome.M_Metal_Chrome'"],
-    "WorldVisualRelativeTransform": "(Rotation=(Pitch=0,Yaw=0,Roll=0),Translation=(X=0,Y=0,Z=12),Scale3D=(X=0.36,Y=0.36,Z=0.08))"
+    "WorldMaterials": [
+      "Material'/Game/Assets/StarterContent/Materials/M_Metal_Chrome.M_Metal_Chrome'"
+    ],
+    "WorldVisualRelativeTransform": {
+      "Rotation": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0,
+        "W": 1
+      },
+      "Translation": {
+        "X": 0,
+        "Y": 0,
+        "Z": 0
+      },
+      "Scale3D": {
+        "X": 0.4,
+        "Y": 0.4,
+        "Z": 0.1
+      }
+    }
   }
 ]

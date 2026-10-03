@@ -28,6 +28,9 @@ class PROJECT_MUSEUMHEIST_API UHeistResultPlayerRowWidget : public UHeistUserWid
 
   private:
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<USizeBox> CoopResultCompactFieldsSize;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<USizeBox> CoopResultDetailFieldsSize;
 
 	void RefreshProfileImage();
@@ -40,6 +43,9 @@ class PROJECT_MUSEUMHEIST_API UHeistResultPlayerRowWidget : public UHeistUserWid
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> PlayerNameText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UTextBlock> DetailPlayerNameText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> PlayerStateText;
@@ -65,8 +71,8 @@ class PROJECT_MUSEUMHEIST_API UHeistResultPlayerRowWidget : public UHeistUserWid
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UTextBlock> AlarmsTriggeredText;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Result", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UTexture2D> DefaultProfileTexture;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Result", meta = (AllowPrivateAccess = "true", AllowedClasses = "/Script/Engine.Texture2D,/Script/Engine.MaterialInterface"))
+	TObjectPtr<UObject> DefaultProfileTexture;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTexture2D> LoadedProfileTexture;

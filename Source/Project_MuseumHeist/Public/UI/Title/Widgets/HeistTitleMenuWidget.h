@@ -6,6 +6,7 @@
 #include "HeistTitleMenuWidget.generated.h"
 
 class UButton;
+class UEditableTextBox;
 
 UCLASS(Blueprintable)
 class PROJECT_MUSEUMHEIST_API UHeistTitleMenuWidget : public UHeistUserWidgetBase
@@ -58,6 +59,9 @@ class PROJECT_MUSEUMHEIST_API UHeistTitleMenuWidget : public UHeistUserWidgetBas
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UButton> JoinSessionButton;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
+	TObjectPtr<UEditableTextBox> TitleJoinCodeInput;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional, AllowPrivateAccess = "true"))
 	TObjectPtr<UButton> SettingsButton;

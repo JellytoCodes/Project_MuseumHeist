@@ -36,6 +36,10 @@ void UHeistResultPlayerRowWidget::ApplyPlayerResult(const FHeistPlayerResult& Pl
 	{
 		PlayerNameText->SetText(DisplayName);
 	}
+	if (IsValid(DetailPlayerNameText))
+	{
+		DetailPlayerNameText->SetText(DisplayName);
+	}
 	if (IsValid(PlayerStateText))
 	{
 		PlayerStateText->SetText(BuildPlayerStateText(PlayerResult));
@@ -76,6 +80,10 @@ void UHeistResultPlayerRowWidget::ApplyPlayerResult(const FHeistPlayerResult& Pl
 
 void UHeistResultPlayerRowWidget::SetDetailedPresentation(const bool bVisible)
 {
+	if (IsValid(CoopResultCompactFieldsSize))
+	{
+		CoopResultCompactFieldsSize->SetVisibility(bVisible ? ESlateVisibility::Collapsed : ESlateVisibility::SelfHitTestInvisible);
+	}
 	if (IsValid(CoopResultDetailFieldsSize))
 	{
 		CoopResultDetailFieldsSize->SetVisibility(bVisible ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
@@ -90,7 +98,7 @@ FText UHeistResultPlayerRowWidget::BuildPlayerStateText(const FHeistPlayerResult
 	}
 	if (PlayerResult.bArrested)
 	{
-		return NSLOCTEXT("HeistResult", "PlayerResultArrested", "체포");
+		return NSLOCTEXT("HeistResult", "PlayerResultArrested", "구금 중");
 	}
 	return NSLOCTEXT("HeistResult", "PlayerResultUnresolved", "미탈출");
 }
@@ -104,7 +112,9 @@ void UHeistResultPlayerRowWidget::RefreshProfileImage()
 	}
 	if (IsValid(DefaultProfileTexture))
 	{
-		ProfileImage->SetBrushFromTexture(DefaultProfileTexture, true);
+		FSlateBrush ProfileBrush = ProfileImage->GetBrush();
+		ProfileBrush.SetResourceObject(DefaultProfileTexture);
+		ProfileImage->SetBrush(ProfileBrush);
 	}
 	if (PlatformUserId.IsEmpty() || TryLoadSteamProfileImage())
 	{
