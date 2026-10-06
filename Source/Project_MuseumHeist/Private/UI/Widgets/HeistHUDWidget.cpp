@@ -42,7 +42,7 @@ void UHeistHUDWidget::NativeTick(const FGeometry& MyGeometry, const float InDelt
 	{
 		return;
 	}
-	RefreshMissionPresentation();
+	RefreshMissionTimePresentation();
 	RefreshTransientEvent();
 }
 
@@ -546,6 +546,15 @@ void UHeistHUDWidget::RefreshMissionPresentation()
 			: FLinearColor(0.80f, 0.82f, 0.82f)));
 	}
 
+	RefreshMissionTimePresentation();
+}
+
+void UHeistHUDWidget::RefreshMissionTimePresentation()
+{
+	if (!IsValid(HUDViewModel))
+	{
+		return;
+	}
 	const UWorld* World = GetWorld();
 	const AGameStateBase* WorldGameState = IsValid(World) ? World->GetGameState() : nullptr;
 	const float EndServerTime = HUDViewModel->GetMissionEndServerTime();

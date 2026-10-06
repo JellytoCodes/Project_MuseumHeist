@@ -103,10 +103,10 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryComponent : public UActorComponent
 	void RecordStrokeValidationResult(bool bAccepted, FName Reason);
 	void ResetStrokeTransportState(bool bResetLastValidation);
 	bool TryCalculateAndStageForgeryScore(FName& OutRejectReason);
-	bool BuildReplicaPaintingData(FHeistReplicaPaintingData& OutPaintingData) const;
+	bool BuildReplicaPaintingData(const TArray<uint8>& SubmittedPaletteMap, FHeistReplicaPaintingData& OutPaintingData) const;
 	bool CalculateForgeryScore(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices,
 							   const TArray<uint8>& StrokeBrushPresetIndices, FHeistForgeryResult& OutResult, int32& OutReferenceMaskPixels, int32& OutSubmittedMaskPixels,
-							   bool bEmitOpenCVMetricsLog) const;
+							   bool bEmitOpenCVMetricsLog, TArray<uint8>* OutSubmittedPaletteMap = nullptr) const;
 	bool BuildScoringReferenceCache() const;
 	void ResetScoringReferenceCache() const;
 	void ResetForgeryScoreState();

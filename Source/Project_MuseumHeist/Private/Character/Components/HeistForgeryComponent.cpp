@@ -1870,9 +1870,10 @@ bool UHeistForgeryComponent::TryCalculateAndStageForgeryScore(FName& OutRejectRe
 	FHeistForgeryResult CalculatedResult;
 	int32 CalculatedReferenceMaskPixels = 0;
 	int32 CalculatedSubmittedMaskPixels = 0;
+	TArray<uint8> SubmittedPaletteMap;
 	const double ScoreCalculationStartSeconds = FPlatformTime::Seconds();
 	if (!CalculateForgeryScore(ValidatedStrokePoints, ValidatedStrokePointCounts, ValidatedStrokePaletteIndices, ValidatedStrokeBrushPresetIndices, CalculatedResult,
-							   CalculatedReferenceMaskPixels, CalculatedSubmittedMaskPixels, true))
+							   CalculatedReferenceMaskPixels, CalculatedSubmittedMaskPixels, true, &SubmittedPaletteMap))
 	{
 		OutRejectReason = FName(TEXT("ScoreCalculationFailed"));
 		UHeistDebugFunctionLibrary::DebugForgeryScoreCalculationRejected(this, FName(TEXT("MaskDecodeOrScoreContractFailed")));
@@ -1896,7 +1897,7 @@ bool UHeistForgeryComponent::TryCalculateAndStageForgeryScore(FName& OutRejectRe
 	}
 
 	FHeistReplicaPaintingData PaintingData;
-	if (!BuildReplicaPaintingData(PaintingData))
+	if (!BuildReplicaPaintingData(SubmittedPaletteMap, PaintingData))
 	{
 		OutRejectReason = FName(TEXT("ReplicaPaintingDataBuildFailed"));
 		UHeistDebugFunctionLibrary::DebugForgeryPaintingDataBuildRejected(this, FName(TEXT("PaletteRasterPackingFailed")));
@@ -1941,7 +1942,7 @@ bool UHeistForgeryComponent::TryCalculateAndStageForgeryScore(FName& OutRejectRe
 	return true;
 }
 
-bool UHeistForgeryComponent::BuildReplicaPaintingData(FHeistReplicaPaintingData& OutPaintingData) const
+bool UHeistForgeryComponent::BuildReplicaPaintingData(const TArray<uint8>& SubmittedPaletteMap, FHeistReplicaPaintingData& OutPaintingData) const
 {
 	OutPaintingData = FHeistReplicaPaintingData();
 	if (ValidatedStrokePoints.IsEmpty() || ValidatedStrokePointCounts.IsEmpty() || ValidatedStrokePaletteIndices.Num() != ValidatedStrokePointCounts.Num() ||
@@ -1949,9 +1950,6 @@ bool UHeistForgeryComponent::BuildReplicaPaintingData(FHeistReplicaPaintingData&
 	{
 		return false;
 	}
-
-	TArray<uint8> SubmittedPaletteMap;
-	RasterizeForgeryPaletteStrokes(ValidatedStrokePoints, ValidatedStrokePointCounts, ValidatedStrokePaletteIndices, ValidatedStrokeBrushPresetIndices, SubmittedPaletteMap);
 
 	const int32 ExpectedPixelCount = ForgeryScoreGridResolution * ForgeryScoreGridResolution;
 	if (SubmittedPaletteMap.Num() != ExpectedPixelCount)
@@ -2049,11 +2047,15 @@ void UHeistForgeryComponent::ResetScoringReferenceCache() const
 
 bool UHeistForgeryComponent::CalculateForgeryScore(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices,
 												   const TArray<uint8>& StrokeBrushPresetIndices, FHeistForgeryResult& OutResult, int32& OutReferenceMaskPixels,
-												   int32& OutSubmittedMaskPixels, const bool bEmitOpenCVMetricsLog) const
+												   int32& OutSubmittedMaskPixels, const bool bEmitOpenCVMetricsLog, TArray<uint8>* OutSubmittedPaletteMap) const
 {
 	OutResult = FHeistForgeryResult();
 	OutReferenceMaskPixels = 0;
 	OutSubmittedMaskPixels = 0;
+	if (OutSubmittedPaletteMap != nullptr)
+	{
+		OutSubmittedPaletteMap->Reset();
+	}
 	if (!GetOwner() || ActiveArtifactId.IsNone() || ActiveTemplateId.IsNone() || ReferenceImageAsset.IsNull() ||
 		(TemplateBackgroundFilterMode == EHeistForgeryBackgroundFilter::None && ReferenceMaskAsset.IsNull()) || NormalizedPoints.IsEmpty() || StrokePointCounts.IsEmpty() ||
 		StrokePaletteIndices.Num() != StrokePointCounts.Num() || StrokeBrushPresetIndices.Num() != StrokePointCounts.Num() || !FMath::IsWithinInclusive(TemplateAllowedPalette.Num(), 2, 8) ||
@@ -2169,6 +2171,11 @@ bool UHeistForgeryComponent::CalculateForgeryScore(const TArray<FVector2D>& Norm
 	OutResult.ExtraStrokePenalty = RoundScore(ExtraStrokePenaltyPoints);
 	OutResult.CompletionTime = RoundScore(CompletionTime);
 	OutResult.bReplicaPlaced = false;
+	if (OutSubmittedPaletteMap != nullptr)
+	{
+		// Pack the exact server-scored raster without replaying the strokes.
+		*OutSubmittedPaletteMap = MoveTemp(SubmittedPaletteMap);
+	}
 	return true;
 }
 

@@ -10,7 +10,9 @@ class UHeistGameBalanceDataAsset;
 class UHeistInventoryComponent;
 class UDataTable;
 class AHeistGuardCharacter;
+class AHeistGameState;
 class AHeistLootActor;
+class AHeistLootSpawnPoint;
 class AHeistPlayerCharacter;
 class AHeistPlayerController;
 class AHeistPlayerState;
@@ -51,6 +53,10 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 	virtual void Logout(AController* Exiting) override;
 
   private:
+	struct FPlacedTargetCase;
+	struct FMatchLooseLootDefinition;
+	struct FPlannedMatchLoot;
+
 	void HandleMatchPhaseChanged(EHeistMatchPhase PreviousMatchPhase, EHeistMatchPhase NewMatchPhase);
 	void HandlePlayerConnectionsChanged(int32 ConnectedPlayerCount);
 	int32 DropDisconnectedPlayerLooseLoot(AHeistPlayerCharacter* ExitingCharacter, AHeistPlayerState* ExitingPlayerState, UHeistInventoryComponent* InventoryComponent, int32& OutFailureCount);
@@ -170,6 +176,17 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 	void ValidateItemDataTables() const;
 	void InitializeSurfaceTemplateSelection();
 	bool InitializeMatchLooseLoot(int32 AssignmentSeed, int32& OutSpawnPointCount, int32& OutExpectedLootCount, int32& OutSpawnedLootCount);
+	bool GatherMatchLootSpawnPoints(TArray<AHeistLootSpawnPoint*>& VaultSpawnPoints, TArray<AHeistLootSpawnPoint*>& ExhibitionSpawnPoints,
+		const TCHAR*& OutRejectReason) const;
+	bool GatherMatchLootDefinitions(const UDataTable* LootDataTable, TArray<FMatchLooseLootDefinition>& VaultDefinitions,
+		TArray<FMatchLooseLootDefinition>& ExhibitionDefinitions, int32& ReleaseLootRowCount, const TCHAR*& OutRejectReason) const;
+	static bool AppendMatchLootCategoryPlan(int32 SpawnCount, TArray<AHeistLootSpawnPoint*>& SpawnPoints, const TArray<FMatchLooseLootDefinition>& Definitions,
+		FRandomStream& Random, TArray<FPlannedMatchLoot>& PlannedLoot);
+	static bool AppendMatchLootDecorations(int32 ActiveCount, const TArray<AHeistLootSpawnPoint*>& SpawnPoints,
+		const TArray<FMatchLooseLootDefinition>& Definitions, FRandomStream& DecorationRandom, TArray<FPlannedMatchLoot>& PlannedLoot);
+	static void DestroyStagedMatchLoot(TArray<AHeistLootActor*>& StagedLootActors);
+	bool SpawnPlannedMatchLoot(const TArray<FPlannedMatchLoot>& PlannedLoot, UDataTable* LootDataTable, UClass* LootActorClass,
+		TArray<AHeistLootActor*>& StagedLootActors, const TCHAR*& OutRejectReason);
 	void RollbackMatchLooseLoot(FName Reason);
 	bool GatherSurfaceTemplatePool(FName PoolId, TArray<FName>& OutTemplateIds) const;
 	void LockGuardsForPlayerCountResolution();
@@ -218,6 +235,18 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 
   private:
 	void InitializeContractFromPlacedTargetCase();
+	void GatherPlacedContractCases(TArray<FPlacedTargetCase>& MatchingTargetCases, TArray<FPlacedTargetCase>& OptionalCases, int32& DeferredObjectCaseCount,
+		int32& DeferredObjectDeactivationFailureCount);
+	int32 BuildEligibleOptionalContractCases(TArray<FPlacedTargetCase>& OptionalCases, bool bUsesReleaseMatchLootSupply, int32 AssignmentSeed,
+		TArray<FPlacedTargetCase>& EligibleOptionalCases, int32& InvalidOptionalCaseCount, int32& InvalidRegionCaseCount);
+	static void SelectOptionalContractCases(const TArray<FPlacedTargetCase>& EligibleOptionalCases, int32 MaximumSelectableOptionalCount,
+		int32 FourStarOptionalIndex, TArray<const FPlacedTargetCase*>& SelectedOptionalCases, TMap<FName, int32>& SelectedRegionCounts, int32& SelectedOptionalValue,
+		FString& SelectedOptionalCaseIds);
+	void ApplyContractExhibitAssignments(const FPlacedTargetCase& TargetDisplayCase, const TArray<FPlacedTargetCase>& OptionalCases,
+		const TArray<const FPlacedTargetCase*>& SelectedOptionalCases, const TArray<FName>& DecorativeTemplateIds, AHeistGameState* HeistGameState,
+		int32 AssignmentRevision, FRandomStream& DecorativeRandom, int32& DeactivatedOptionalCaseCount, int32& AssignedPaintingCaseCount,
+		int32& AssignedDecorativeCaseCount);
+	static int32 RollbackContractExhibits(const FPlacedTargetCase& TargetDisplayCase, const TArray<FPlacedTargetCase>& OptionalCases);
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Objective",
 			  meta = (AllowPrivateAccess = "true", ToolTip = "Optional explicit target case id. When None, the map's single DisplayCaseId ending in _Target is selected."))

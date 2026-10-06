@@ -51,6 +51,7 @@ class PROJECT_MUSEUMHEIST_API UHeistHUDWidget : public UHeistUserWidgetBase
 	void RefreshCrosshairPresentation(AActor* TargetActor, bool bAvailable);
 	void RefreshToolPresentation();
 	void RefreshMissionPresentation();
+	void RefreshMissionTimePresentation();
 	void RefreshAlertPresentation();
 	void RefreshAlertStars();
 	void RefreshTransientEvent();
