@@ -33,6 +33,21 @@
 // IWYU pragma: end_keep
 #endif
 
+#if WITH_OPENCV
+// Private implementation data: keep OpenCV types out of the component header.
+struct FHeistOpenCVReferenceCache
+{
+	cv::Mat MorphologyKernel;
+	cv::Mat ShapeMask;
+	cv::Mat DistanceMap;
+	cv::Mat Bgr;
+	cv::Mat Histogram;
+	TArray<FLinearColor> Palette;
+	int32 PixelCount = 0;
+	int32 ShapePixelCount = 0;
+};
+#endif
+
 namespace
 {
 constexpr int32 MinimumSubmittedStrokePointCount = 2;
@@ -659,78 +674,79 @@ void RasterizeForgeryPaletteStrokes(const TArray<FVector2D>& NormalizedPoints, c
 }
 
 #if WITH_OPENCV
-bool BuildOpenCVBinaryMasks(const TArray<uint8>& ReferenceMask, const TArray<uint8>& SubmittedPaletteMap, cv::Mat& OutReferenceMask, cv::Mat& OutSubmittedMask)
+bool BuildOpenCVBinaryMask(const TArray<uint8>& PixelMap, const bool bPaletteMap, cv::Mat& OutMask)
 {
 	const int32 ExpectedPixelCount = ForgeryScoreGridResolution * ForgeryScoreGridResolution;
-	if (ReferenceMask.Num() != ExpectedPixelCount || SubmittedPaletteMap.Num() != ExpectedPixelCount)
+	if (PixelMap.Num() != ExpectedPixelCount)
 	{
 		return false;
 	}
 
-	OutReferenceMask = cv::Mat::zeros(ForgeryScoreGridResolution, ForgeryScoreGridResolution, CV_8UC1);
-	OutSubmittedMask = cv::Mat::zeros(ForgeryScoreGridResolution, ForgeryScoreGridResolution, CV_8UC1);
+	OutMask = cv::Mat::zeros(ForgeryScoreGridResolution, ForgeryScoreGridResolution, CV_8UC1);
 	for (int32 PixelIndex = 0; PixelIndex < ExpectedPixelCount; ++PixelIndex)
 	{
-		OutReferenceMask.data[PixelIndex] = ReferenceMask[PixelIndex] != 0 ? 255 : 0;
-		OutSubmittedMask.data[PixelIndex] = SubmittedPaletteMap[PixelIndex] != EmptyPaletteIndex ? 255 : 0;
+		OutMask.data[PixelIndex] = (bPaletteMap ? PixelMap[PixelIndex] != EmptyPaletteIndex : PixelMap[PixelIndex] != 0) ? 255 : 0;
 	}
 	return true;
 }
 
-bool BuildOpenCVPaletteImages(const TArray<uint8>& ReferencePaletteMap, const TArray<uint8>& SubmittedPaletteMap, const TArray<FLinearColor>& Palette, cv::Mat& OutReferenceBgr,
-							  cv::Mat& OutSubmittedBgr, cv::Mat& OutReferenceHistogram, cv::Mat& OutSubmittedHistogram)
+bool BuildOpenCVPaletteImage(const TArray<uint8>& PaletteMap, const TArray<FLinearColor>& Palette, cv::Mat& OutBgr, cv::Mat& OutHistogram)
 {
 	const int32 ExpectedPixelCount = ForgeryScoreGridResolution * ForgeryScoreGridResolution;
-	if (ReferencePaletteMap.Num() != ExpectedPixelCount || SubmittedPaletteMap.Num() != ExpectedPixelCount || !FMath::IsWithinInclusive(Palette.Num(), 2, 8))
+	if (PaletteMap.Num() != ExpectedPixelCount || !FMath::IsWithinInclusive(Palette.Num(), 2, 8))
 	{
 		return false;
 	}
 
 	const cv::Scalar NeutralBackground(127, 127, 127);
-	OutReferenceBgr = cv::Mat(ForgeryScoreGridResolution, ForgeryScoreGridResolution, CV_8UC3, NeutralBackground);
-	OutSubmittedBgr = cv::Mat(ForgeryScoreGridResolution, ForgeryScoreGridResolution, CV_8UC3, NeutralBackground);
-	OutReferenceHistogram = cv::Mat::zeros(1, Palette.Num(), CV_32F);
-	OutSubmittedHistogram = cv::Mat::zeros(1, Palette.Num(), CV_32F);
-
+	OutBgr = cv::Mat(ForgeryScoreGridResolution, ForgeryScoreGridResolution, CV_8UC3, NeutralBackground);
+	OutHistogram = cv::Mat::zeros(1, Palette.Num(), CV_32F);
 	for (int32 PixelIndex = 0; PixelIndex < ExpectedPixelCount; ++PixelIndex)
 	{
-		const uint8 ReferencePaletteIndex = ReferencePaletteMap[PixelIndex];
-		const uint8 SubmittedPaletteIndex = SubmittedPaletteMap[PixelIndex];
-		if (ReferencePaletteIndex != EmptyPaletteIndex)
+		const uint8 PaletteIndex = PaletteMap[PixelIndex];
+		if (PaletteIndex != EmptyPaletteIndex)
 		{
-			if (!Palette.IsValidIndex(ReferencePaletteIndex))
+			if (!Palette.IsValidIndex(PaletteIndex))
 			{
 				return false;
 			}
-			const FColor Color = Palette[ReferencePaletteIndex].ToFColorSRGB();
-			OutReferenceBgr.at<cv::Vec3b>(PixelIndex / ForgeryScoreGridResolution, PixelIndex % ForgeryScoreGridResolution) = cv::Vec3b(Color.B, Color.G, Color.R);
-			OutReferenceHistogram.at<float>(0, ReferencePaletteIndex) += 1.0f;
-		}
-
-		if (SubmittedPaletteIndex != EmptyPaletteIndex)
-		{
-			if (!Palette.IsValidIndex(SubmittedPaletteIndex))
-			{
-				return false;
-			}
-			const FColor Color = Palette[SubmittedPaletteIndex].ToFColorSRGB();
-			OutSubmittedBgr.at<cv::Vec3b>(PixelIndex / ForgeryScoreGridResolution, PixelIndex % ForgeryScoreGridResolution) = cv::Vec3b(Color.B, Color.G, Color.R);
-			OutSubmittedHistogram.at<float>(0, SubmittedPaletteIndex) += 1.0f;
+			const FColor Color = Palette[PaletteIndex].ToFColorSRGB();
+			OutBgr.at<cv::Vec3b>(PixelIndex / ForgeryScoreGridResolution, PixelIndex % ForgeryScoreGridResolution) = cv::Vec3b(Color.B, Color.G, Color.R);
+			OutHistogram.at<float>(0, PaletteIndex) += 1.0f;
 		}
 	}
-
-	cv::normalize(OutReferenceHistogram, OutReferenceHistogram, 1.0, 0.0, cv::NORM_L1);
-	cv::normalize(OutSubmittedHistogram, OutSubmittedHistogram, 1.0, 0.0, cv::NORM_L1);
+	cv::normalize(OutHistogram, OutHistogram, 1.0, 0.0, cv::NORM_L1);
 	return true;
 }
 
-float CalculateOpenCVDistanceSimilarity(const cv::Mat& SourceMask, const cv::Mat& TargetMask)
+void BuildOpenCVDistanceMap(const cv::Mat& ShapeMask, cv::Mat& OutDistanceMap)
 {
-	cv::Mat InvertedTargetMask;
-	cv::bitwise_not(TargetMask, InvertedTargetMask);
-	cv::Mat DistanceMap;
-	cv::distanceTransform(InvertedTargetMask, DistanceMap, cv::DIST_L2, cv::DIST_MASK_5);
+	cv::Mat InvertedMask;
+	cv::bitwise_not(ShapeMask, InvertedMask);
+	cv::distanceTransform(InvertedMask, OutDistanceMap, cv::DIST_L2, cv::DIST_MASK_5);
+}
 
+bool BuildOpenCVReferenceCache(const TArray<uint8>& ReferenceMask, const TArray<uint8>& ReferencePaletteMap, const TArray<FLinearColor>& Palette,
+	FHeistOpenCVReferenceCache& OutCache)
+{
+	OutCache = FHeistOpenCVReferenceCache();
+	cv::Mat BinaryMask;
+	if (!BuildOpenCVBinaryMask(ReferenceMask, false, BinaryMask) ||
+		!BuildOpenCVPaletteImage(ReferencePaletteMap, Palette, OutCache.Bgr, OutCache.Histogram))
+	{
+		return false;
+	}
+	OutCache.MorphologyKernel = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(OpenCVMorphologyKernelSize, OpenCVMorphologyKernelSize));
+	cv::morphologyEx(BinaryMask, OutCache.ShapeMask, cv::MORPH_CLOSE, OutCache.MorphologyKernel);
+	BuildOpenCVDistanceMap(OutCache.ShapeMask, OutCache.DistanceMap);
+	OutCache.PixelCount = cv::countNonZero(BinaryMask);
+	OutCache.ShapePixelCount = cv::countNonZero(OutCache.ShapeMask);
+	OutCache.Palette = Palette;
+	return true;
+}
+
+float CalculateOpenCVDistanceSimilarity(const cv::Mat& SourceMask, const cv::Mat& DistanceMap)
+{
 	double SimilarityTotal = 0.0;
 	int32 SampleCount = 0;
 	for (int32 Y = 0; Y < SourceMask.rows; ++Y)
@@ -752,32 +768,51 @@ float CalculateOpenCVDistanceSimilarity(const cv::Mat& SourceMask, const cv::Mat
 	return SampleCount > 0 ? static_cast<float>(SimilarityTotal / SampleCount) : 0.0f;
 }
 
-bool CalculateOpenCVForgeryMetrics(const TArray<uint8>& ReferenceMask, const TArray<uint8>& ReferencePaletteMap, const TArray<uint8>& SubmittedPaletteMap, const TArray<FLinearColor>& Palette,
-								   FOpenCVForgeryMetrics& OutMetrics)
+bool CalculateOpenCVForgeryMetrics(const TArray<uint8>& ReferenceMask, const TArray<uint8>& ReferencePaletteMap, const TArray<uint8>& SubmittedPaletteMap,
+	const TArray<FLinearColor>& Palette, FOpenCVForgeryMetrics& OutMetrics, const FHeistOpenCVReferenceCache* ReferenceCache = nullptr)
 {
 	OutMetrics = FOpenCVForgeryMetrics();
-	cv::Mat ReferenceBinaryMask;
-	cv::Mat SubmittedBinaryMask;
-	if (!BuildOpenCVBinaryMasks(ReferenceMask, SubmittedPaletteMap, ReferenceBinaryMask, SubmittedBinaryMask))
+	const int32 ExpectedPixelCount = ForgeryScoreGridResolution * ForgeryScoreGridResolution;
+	if (ReferenceMask.Num() != ExpectedPixelCount || ReferencePaletteMap.Num() != ExpectedPixelCount ||
+		SubmittedPaletteMap.Num() != ExpectedPixelCount || !FMath::IsWithinInclusive(Palette.Num(), 2, 8))
 	{
 		return false;
 	}
 
-	OutMetrics.ReferencePixelCount = cv::countNonZero(ReferenceBinaryMask);
+	// The uncached path is retained for the existing scoring self-test.
+	FHeistOpenCVReferenceCache LocalReferenceCache;
+	if (ReferenceCache == nullptr)
+	{
+		if (!BuildOpenCVReferenceCache(ReferenceMask, ReferencePaletteMap, Palette, LocalReferenceCache))
+		{
+			return false;
+		}
+		ReferenceCache = &LocalReferenceCache;
+	}
+	if (ReferenceCache->Palette != Palette)
+	{
+		return false;
+	}
+
+	cv::Mat SubmittedBinaryMask;
+	if (!BuildOpenCVBinaryMask(SubmittedPaletteMap, true, SubmittedBinaryMask))
+	{
+		return false;
+	}
+	OutMetrics.ReferencePixelCount = ReferenceCache->PixelCount;
 	OutMetrics.SubmittedPixelCount = cv::countNonZero(SubmittedBinaryMask);
 	if (OutMetrics.ReferencePixelCount <= 0 || OutMetrics.SubmittedPixelCount <= 0)
 	{
 		return false;
 	}
 
-	const cv::Mat MorphologyKernel = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(OpenCVMorphologyKernelSize, OpenCVMorphologyKernelSize));
-	cv::Mat ReferenceShapeMask;
+	const cv::Mat& ReferenceShapeMask = ReferenceCache->ShapeMask;
 	cv::Mat SubmittedShapeMask;
-	cv::morphologyEx(ReferenceBinaryMask, ReferenceShapeMask, cv::MORPH_CLOSE, MorphologyKernel);
-	cv::morphologyEx(SubmittedBinaryMask, SubmittedShapeMask, cv::MORPH_CLOSE, MorphologyKernel);
-
-	OutMetrics.ReferenceCoverage = CalculateOpenCVDistanceSimilarity(ReferenceShapeMask, SubmittedShapeMask);
-	OutMetrics.SubmittedPrecision = CalculateOpenCVDistanceSimilarity(SubmittedShapeMask, ReferenceShapeMask);
+	cv::morphologyEx(SubmittedBinaryMask, SubmittedShapeMask, cv::MORPH_CLOSE, ReferenceCache->MorphologyKernel);
+	cv::Mat SubmittedDistanceMap;
+	BuildOpenCVDistanceMap(SubmittedShapeMask, SubmittedDistanceMap);
+	OutMetrics.ReferenceCoverage = CalculateOpenCVDistanceSimilarity(ReferenceShapeMask, SubmittedDistanceMap);
+	OutMetrics.SubmittedPrecision = CalculateOpenCVDistanceSimilarity(SubmittedShapeMask, ReferenceCache->DistanceMap);
 	const float ShapeSimilarityTotal = OutMetrics.ReferenceCoverage + OutMetrics.SubmittedPrecision;
 	OutMetrics.BidirectionalShapeSimilarity = ShapeSimilarityTotal > UE_SMALL_NUMBER ? 2.0f * OutMetrics.ReferenceCoverage * OutMetrics.SubmittedPrecision / ShapeSimilarityTotal : 0.0f;
 
@@ -785,7 +820,7 @@ bool CalculateOpenCVForgeryMetrics(const TArray<uint8>& ReferenceMask, const TAr
 	cv::Mat UnionMask;
 	cv::bitwise_and(ReferenceShapeMask, SubmittedShapeMask, IntersectionMask);
 	cv::bitwise_or(ReferenceShapeMask, SubmittedShapeMask, UnionMask);
-	const int32 ReferenceShapePixels = cv::countNonZero(ReferenceShapeMask);
+	const int32 ReferenceShapePixels = ReferenceCache->ShapePixelCount;
 	const int32 SubmittedShapePixels = cv::countNonZero(SubmittedShapeMask);
 	const int32 IntersectionPixels = cv::countNonZero(IntersectionMask);
 	const int32 UnionPixels = cv::countNonZero(UnionMask);
@@ -795,11 +830,11 @@ bool CalculateOpenCVForgeryMetrics(const TArray<uint8>& ReferenceMask, const TAr
 	const int32 ShapePixelTotal = ReferenceShapePixels + SubmittedShapePixels;
 	OutMetrics.MaskDiceSimilarity = ShapePixelTotal > 0 ? 2.0f * IntersectionPixels / ShapePixelTotal : 0.0f;
 
-	cv::Mat ReferenceBgr;
+	const cv::Mat& ReferenceBgr = ReferenceCache->Bgr;
+	const cv::Mat& ReferenceHistogram = ReferenceCache->Histogram;
 	cv::Mat SubmittedBgr;
-	cv::Mat ReferenceHistogram;
 	cv::Mat SubmittedHistogram;
-	if (!BuildOpenCVPaletteImages(ReferencePaletteMap, SubmittedPaletteMap, Palette, ReferenceBgr, SubmittedBgr, ReferenceHistogram, SubmittedHistogram))
+	if (!BuildOpenCVPaletteImage(SubmittedPaletteMap, Palette, SubmittedBgr, SubmittedHistogram))
 	{
 		return false;
 	}
@@ -856,6 +891,7 @@ void UHeistForgeryComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		}
 	}
 
+	ResetScoringReferenceCache();
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -1991,10 +2027,22 @@ bool UHeistForgeryComponent::BuildReplicaPaintingData(const TArray<uint8>& Submi
 	return true;
 }
 
+bool UHeistForgeryComponent::IsScoringReferenceCacheValid() const
+{
+	const int32 ExpectedPixelCount = ForgeryScoreGridResolution * ForgeryScoreGridResolution;
+	const bool bRasterValid = CachedScoringTemplateId == ActiveTemplateId && CachedReferenceMask.Num() == ExpectedPixelCount &&
+		CachedReferencePaletteMap.Num() == ExpectedPixelCount;
+#if WITH_OPENCV
+	return bRasterValid && CachedOpenCVReference.IsValid() && CachedOpenCVReference->Palette == TemplateAllowedPalette;
+#else
+	return bRasterValid;
+#endif
+}
+
 bool UHeistForgeryComponent::BuildScoringReferenceCache() const
 {
 	const int32 ExpectedPixelCount = ForgeryScoreGridResolution * ForgeryScoreGridResolution;
-	if (CachedScoringTemplateId == ActiveTemplateId && CachedReferenceMask.Num() == ExpectedPixelCount && CachedReferencePaletteMap.Num() == ExpectedPixelCount)
+	if (IsScoringReferenceCacheValid())
 	{
 		return true;
 	}
@@ -2034,8 +2082,20 @@ bool UHeistForgeryComponent::BuildScoringReferenceCache() const
 		BuildLowResolutionBackgroundFilteredMask(SourceColors, ImageWidth, ImageHeight, TemplateBackgroundFilterMode, TemplateBackgroundColorTolerance, CachedReferenceMask);
 	}
 	BuildLowResolutionReferencePaletteMap(SourceColors, ImageWidth, ImageHeight, CachedReferenceMask, TemplateAllowedPalette, CachedReferencePaletteMap);
+	if (CachedReferenceMask.Num() != ExpectedPixelCount || CachedReferencePaletteMap.Num() != ExpectedPixelCount)
+	{
+		return false;
+	}
+#if WITH_OPENCV
+	TSharedPtr<FHeistOpenCVReferenceCache> PreparedReference = MakeShared<FHeistOpenCVReferenceCache>();
+	if (!BuildOpenCVReferenceCache(CachedReferenceMask, CachedReferencePaletteMap, TemplateAllowedPalette, *PreparedReference))
+	{
+		return false;
+	}
+	CachedOpenCVReference = MoveTemp(PreparedReference);
+#endif
 	CachedScoringTemplateId = ActiveTemplateId;
-	return CachedReferenceMask.Num() == ExpectedPixelCount && CachedReferencePaletteMap.Num() == ExpectedPixelCount;
+	return true;
 }
 
 void UHeistForgeryComponent::ResetScoringReferenceCache() const
@@ -2043,6 +2103,7 @@ void UHeistForgeryComponent::ResetScoringReferenceCache() const
 	CachedScoringTemplateId = NAME_None;
 	CachedReferenceMask.Reset();
 	CachedReferencePaletteMap.Reset();
+	CachedOpenCVReference.Reset();
 }
 
 bool UHeistForgeryComponent::CalculateForgeryScore(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices,
@@ -2067,8 +2128,7 @@ bool UHeistForgeryComponent::CalculateForgeryScore(const TArray<FVector2D>& Norm
 		return false;
 	}
 
-	const int32 ExpectedScorePixelCount = ForgeryScoreGridResolution * ForgeryScoreGridResolution;
-	bLastScoringReferenceCacheHit = CachedScoringTemplateId == ActiveTemplateId && CachedReferenceMask.Num() == ExpectedScorePixelCount && CachedReferencePaletteMap.Num() == ExpectedScorePixelCount;
+	bLastScoringReferenceCacheHit = IsScoringReferenceCacheValid();
 	LastOpenCVScoringMilliseconds = 0.0;
 	const double ReferenceScoringStartSeconds = FPlatformTime::Seconds();
 	if (!BuildScoringReferenceCache())
@@ -2086,7 +2146,7 @@ bool UHeistForgeryComponent::CalculateForgeryScore(const TArray<FVector2D>& Norm
 #if WITH_OPENCV
 	FOpenCVForgeryMetrics OpenCVMetrics;
 	const double OpenCVScoringStartSeconds = FPlatformTime::Seconds();
-	if (!CalculateOpenCVForgeryMetrics(ReferenceMask, ReferencePaletteMap, SubmittedPaletteMap, TemplateAllowedPalette, OpenCVMetrics))
+	if (!CalculateOpenCVForgeryMetrics(ReferenceMask, ReferencePaletteMap, SubmittedPaletteMap, TemplateAllowedPalette, OpenCVMetrics, CachedOpenCVReference.Get()))
 	{
 		LastOpenCVScoringMilliseconds = (FPlatformTime::Seconds() - OpenCVScoringStartSeconds) * 1000.0;
 		return false;
@@ -2238,6 +2298,25 @@ bool UHeistForgeryComponent::RunOpenCVScoringSelfTestForDebug(FString& OutSummar
 							 CalculateOpenCVForgeryMetrics(ReferenceMask, ReferencePaletteMap, WrongColorPaletteMap, TestPalette, WrongColorMetrics) &&
 							 CalculateOpenCVForgeryMetrics(ReferenceMask, ReferencePaletteMap, SingleColorPaletteMap, TestPalette, SingleColorMetrics) &&
 							 CalculateOpenCVForgeryMetrics(ReferenceMask, ReferencePaletteMap, FilledPaletteMap, TestPalette, FilledMetrics);
+	FHeistOpenCVReferenceCache TestReferenceCache;
+	bool bCacheEquivalent = bCalculated && BuildOpenCVReferenceCache(ReferenceMask, ReferencePaletteMap, TestPalette, TestReferenceCache);
+	const TArray<uint8>* TestSubmissions[] = {&ExactPaletteMap, &ShiftedPaletteMap, &WrongColorPaletteMap, &SingleColorPaletteMap, &FilledPaletteMap, &EmptyPaletteMap};
+	const FOpenCVForgeryMetrics* ExpectedMetrics[] = {&ExactMetrics, &ShiftedMetrics, &WrongColorMetrics, &SingleColorMetrics, &FilledMetrics, &EmptyMetrics};
+	for (int32 TestIndex = 0; bCacheEquivalent && TestIndex < UE_ARRAY_COUNT(TestSubmissions); ++TestIndex)
+	{
+		FOpenCVForgeryMetrics CachedMetrics;
+		const bool bCachedCalculated = CalculateOpenCVForgeryMetrics(ReferenceMask, ReferencePaletteMap, *TestSubmissions[TestIndex], TestPalette, CachedMetrics, &TestReferenceCache);
+		const FOpenCVForgeryMetrics& Expected = *ExpectedMetrics[TestIndex];
+		const bool bExpectedCalculated = TestSubmissions[TestIndex] != &EmptyPaletteMap;
+		bCacheEquivalent = bCachedCalculated == bExpectedCalculated &&
+			CachedMetrics.ReferencePixelCount == Expected.ReferencePixelCount && CachedMetrics.SubmittedPixelCount == Expected.SubmittedPixelCount &&
+			CachedMetrics.ReferenceCoverage == Expected.ReferenceCoverage && CachedMetrics.SubmittedPrecision == Expected.SubmittedPrecision &&
+			CachedMetrics.BidirectionalShapeSimilarity == Expected.BidirectionalShapeSimilarity && CachedMetrics.MaskPrecision == Expected.MaskPrecision &&
+			CachedMetrics.MaskRecall == Expected.MaskRecall && CachedMetrics.MaskIntersectionOverUnion == Expected.MaskIntersectionOverUnion &&
+			CachedMetrics.MaskDiceSimilarity == Expected.MaskDiceSimilarity && CachedMetrics.StructuralColorSimilarity == Expected.StructuralColorSimilarity &&
+			CachedMetrics.HistogramColorSimilarity == Expected.HistogramColorSimilarity && CachedMetrics.ColorSimilarity == Expected.ColorSimilarity;
+	}
+
 	const float FilledAreaRatio = bCalculated ? static_cast<float>(FilledMetrics.SubmittedPixelCount) / ExactMetrics.ReferencePixelCount : 0.0f;
 	const auto CalculateOpenCVOnlyScore = [](const FOpenCVForgeryMetrics& Metrics)
 	{
@@ -2262,7 +2341,7 @@ bool UHeistForgeryComponent::RunOpenCVScoringSelfTestForDebug(FString& OutSummar
 	const bool bFullFillAntiFillTriggered = bCalculated && FilledAreaRatio > TestMaximumPaintToReferenceRatio;
 	const float FilledUncappedScore = bCalculated ? CalculateOpenCVOnlyScore(FilledMetrics) : 100.0f;
 	const float FilledScore = bFullFillAntiFillTriggered ? FMath::Min(FilledUncappedScore, TestOverpaintScoreCap) : FilledUncappedScore;
-	const bool bContractPassed = bEmptyRejected && bCalculated && ExactMetrics.BidirectionalShapeSimilarity >= 0.999f && ExactMetrics.MaskDiceSimilarity >= 0.999f && ExactMetrics.ColorSimilarity >= 0.999f &&
+	const bool bContractPassed = bCacheEquivalent && bEmptyRejected && bCalculated && ExactMetrics.BidirectionalShapeSimilarity >= 0.999f && ExactMetrics.MaskDiceSimilarity >= 0.999f && ExactMetrics.ColorSimilarity >= 0.999f &&
 								 ExactScore >= 99.9f && ShiftedMetrics.BidirectionalShapeSimilarity < ExactMetrics.BidirectionalShapeSimilarity && ShiftedMetrics.BidirectionalShapeSimilarity > 0.0f &&
 								 ShiftedMetrics.MaskDiceSimilarity < ExactMetrics.MaskDiceSimilarity && ShiftedScore < ExactScore && WrongColorMetrics.BidirectionalShapeSimilarity >= 0.999f &&
 								 WrongColorMetrics.ColorSimilarity < ExactMetrics.ColorSimilarity && WrongColorScore < ExactScore &&
@@ -2272,12 +2351,12 @@ bool UHeistForgeryComponent::RunOpenCVScoringSelfTestForDebug(FString& OutSummar
 
 	OutSummary = FString::Printf(
 		TEXT(
-			"Calculated=%s EmptyRejected=%s EmptySubmittedPixels=%d ExactDistance=%.4f ExactDice=%.4f ExactColor=%.4f ExactScore=%.2f ShiftedDistance=%.4f ShiftedDice=%.4f ShiftedScore=%.2f WrongColor=%.4f WrongColorScore=%.2f SingleHistogram=%.4f SingleColor=%.4f SingleScore=%.2f FillPrecision=%.4f FillDice=%.4f FillAreaRatio=%.2f FullFillAntiFill=%s FillScore=%.2f Contract=%s"),
+			"Calculated=%s EmptyRejected=%s EmptySubmittedPixels=%d ExactDistance=%.4f ExactDice=%.4f ExactColor=%.4f ExactScore=%.2f ShiftedDistance=%.4f ShiftedDice=%.4f ShiftedScore=%.2f WrongColor=%.4f WrongColorScore=%.2f SingleHistogram=%.4f SingleColor=%.4f SingleScore=%.2f FillPrecision=%.4f FillDice=%.4f FillAreaRatio=%.2f FullFillAntiFill=%s FillScore=%.2f ReferenceCacheParity=%s Contract=%s"),
 		bCalculated ? TEXT("true") : TEXT("false"), bEmptyRejected ? TEXT("true") : TEXT("false"), EmptyMetrics.SubmittedPixelCount,
 		ExactMetrics.BidirectionalShapeSimilarity, ExactMetrics.MaskDiceSimilarity, ExactMetrics.ColorSimilarity, ExactScore,
 		ShiftedMetrics.BidirectionalShapeSimilarity, ShiftedMetrics.MaskDiceSimilarity, ShiftedScore, WrongColorMetrics.ColorSimilarity, WrongColorScore, SingleColorMetrics.HistogramColorSimilarity,
 		SingleColorMetrics.ColorSimilarity, SingleColorScore, FilledMetrics.MaskPrecision, FilledMetrics.MaskDiceSimilarity, FilledAreaRatio,
-		bFullFillAntiFillTriggered ? TEXT("true") : TEXT("false"), FilledScore,
+		bFullFillAntiFillTriggered ? TEXT("true") : TEXT("false"), FilledScore, bCacheEquivalent ? TEXT("PASS") : TEXT("FAIL"),
 		bContractPassed ? TEXT("PASS") : TEXT("FAIL"));
 	return bContractPassed;
 #else

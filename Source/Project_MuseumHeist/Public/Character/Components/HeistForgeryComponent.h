@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Templates/SharedPointer.h"
 #include "Components/ActorComponent.h"
 #include "Core/HeistTypes.h"
 #include "Data/HeistArtifactDataTypes.h"
@@ -11,6 +12,7 @@ class AHeistPaintingDisplayCaseActor;
 class AHeistPlayerState;
 class UTexture2D;
 struct FHeistReplicaPaintingData;
+struct FHeistOpenCVReferenceCache;
 
 DECLARE_MULTICAST_DELEGATE(FHeistForgerySessionStateChanged);
 
@@ -107,6 +109,7 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryComponent : public UActorComponent
 	bool CalculateForgeryScore(const TArray<FVector2D>& NormalizedPoints, const TArray<int32>& StrokePointCounts, const TArray<uint8>& StrokePaletteIndices,
 							   const TArray<uint8>& StrokeBrushPresetIndices, FHeistForgeryResult& OutResult, int32& OutReferenceMaskPixels, int32& OutSubmittedMaskPixels,
 							   bool bEmitOpenCVMetricsLog, TArray<uint8>* OutSubmittedPaletteMap = nullptr) const;
+	bool IsScoringReferenceCacheValid() const;
 	bool BuildScoringReferenceCache() const;
 	void ResetScoringReferenceCache() const;
 	void ResetForgeryScoreState();
@@ -257,6 +260,7 @@ class PROJECT_MUSEUMHEIST_API UHeistForgeryComponent : public UActorComponent
 	mutable FName CachedScoringTemplateId = NAME_None;
 	mutable TArray<uint8> CachedReferenceMask;
 	mutable TArray<uint8> CachedReferencePaletteMap;
+	mutable TSharedPtr<FHeistOpenCVReferenceCache> CachedOpenCVReference;
 	mutable bool bLastScoringReferenceCacheHit = false;
 	mutable double LastScoringReferenceMilliseconds = 0.0;
 	mutable double LastOpenCVScoringMilliseconds = 0.0;
