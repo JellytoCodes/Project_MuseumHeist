@@ -4,7 +4,8 @@
 
 기준일: 2026-08-27 (2~4인 출시 범위 / 180초 Vent 개방·Loose Loot 중간 정산 / Stun→Detention 체포·Evidence 회수 선택 / 0~10 Server Alert Meter / Surface-only v1 반영)
 엔진: Unreal Engine 5.8
-현재 목표: 2026-09-20 Final RC / 프로젝트 마무리
+현재 목표: 출시 차단 문제 해결과 현행 콘텐츠 확정 후 Final RC / 새 출시일 미정
+일정 기준: 2026-10-07 사용자 요청에 따라 기존 2026-09-20 목표는 지난 계획의 이력으로 구분한다. 현재 남은 단계와 일정은 Notion의 [Museum Heist — 출시 정리와 남은 단계](https://app.notion.com/p/3f21d26a5dfb8189a6c2ed4da630b5e1)를 확인한다. 문서 갱신이나 날짜 경과는 Feature Lock 또는 Release Gate 통과를 뜻하지 않는다.
 
 이 문서는 프로젝트 엔지니어링 정책의 최상위 Source of Truth다.
 
@@ -165,6 +166,10 @@ Blueprint Shell/Presentation 운용은 별도 문서로 분리하지 않고 아�
 - 깨진 문자, `[확인 필요]`, 임시 Placeholder 문구를 구현 근거로 사용하지 않는다. Git 이력 또는 상위 Source에서 복구한 뒤 반영한다.
 
 ## 2C. Authored Map Preservation
+
+- 2026-10-08 사용자 승인 Nav 수리는 기존 전시·건축 배치를 보존하고 M01 Route03 Point04/Point13을 `(0,-2600,25)`에서 `(0,-2200,25)`로, M02 경비 5명의 Actor Z를 `91`에서 `99`로 보정한다. 순찰 RouteId·순서·수량·대기·회전·배율과 캡슐 크기는 유지한다. 명시적 Nav 재빌드 후 기존 strict 기준으로 저장·재로드를 검사하며 경로 Capsule Sweep과 자연 순찰 증거는 별도로 기록한다. M03은 저장하지 않고 회귀 검사한다. 이를 다른 Actor 이동이나 맵 재생성 승인으로 확대하지 않는다.
+
+- 2026-10-07 사용자 승인 전체 전시 배치는 최종 `museum-full-level-layout.json` 시안의 M01/M02/M03 각 10개 전시 묶음과 5개 관람·휴식·안내 묶음을 기존 맵에 적용하는 한정 예외다. 일반 그림은 M01 8곳·M02 10곳·M03 7곳, 총 25곳과 맵별 Exhibition 유물 후보 10곳 및 기존 받침만 시안에 따라 이동하고, 전시벽·받침·관상물·벤치·테이블·화분은 지정된 기존 원본 에셋을 여러 Actor가 참조해 배치한다. M01 A8은 방 중앙 전시대·양옆 벤치·뒤쪽 화분과 해당 경유점의 남쪽 우회를 포함한다. 외곽·기존 방/회랑·외벽·문·바닥·천장·M02 정원과 맵 고유 컨셉은 유지하며 Required Target·Protected Painting·Laser·Button의 위치·Identity·연결과 Vent·Detention·Evidence Anchor를 보존한다. 세 맵 각각 그림 후보 60개/매치 활성 12개, 유물 후보 12개/매치 활성 5개의 기존 계약은 유지한다. 위 이동 범위에서만 과거 위치 보존 규칙을 대체하며 새 Gameplay, 정보 공개 확대, 방/복도 재생성, 원본 변형·복제·파생 에셋 생성은 허용하지 않는다. 정수 cm 위치·0.1 단위 배율과 승인된 액자 크기를 적용하고, 실제 메시·충돌·Nav·전체 순찰·작업 접근·시야는 저장·재로드한 맵에서 기존 검증 계약에 따라 확인한다.
 
 - 2026-10-03 사용자 승인 전시 변주는 M01/M02/M03의 기존 그림 60곳을 모두 기존 공용 `BP_PaintingDisplayCase` 후보로 전환한다. 위치·회전·승인된 정수 표시 크기, 맵 컨셉·동선·벽·천장·조명은 유지하고 활성 여부와 그림 재질만 섞는다. 기존 Required Target의 CaseId·Artifact Identity·위치 및 Protected Case/Button 연결을 보존한다. 서버는 매치마다 Target 1개와 지역에 분산한 Optional 11개를 활성화하고 나머지 48개도 그림 장식으로 항상 표시한다. cooked `HeistExhibitRegion_*` Actor Tag로 지역을 구분한다. 서버는 기존 Laser가 연결된 FourStar 후보 중 한 개를 첫 Optional로 우선 선정하고 나머지 Optional 10개는 지역 분산 Seed 기반으로 선정한다. Laser 연결이 없는 FourStar는 우선 후보 조건을 충족하지 않으며 기존 보호 Case/Button 연결을 유지하고 새 Laser를 만들지 않는다. 추가 일반 후보에는 기존 일반 Artifact 정의·등급·가치를 그대로 재사용한다. 활성 12개는 맵별 40종에서 중복 없이 배정하고, 비활성 48개는 같은 Seed로 재질을 배정하되 중복을 허용하며 Selected Template Pool·Quota·Recap에서 제외한다. 기존 `bContractExhibitActive`와 RepNotify를 재사용하고 비활성 Case의 상호작용·Gameplay Collision만 차단한다. 비활성 보호 Case의 연결 Laser는 휴면이며 선정된 보호 Case의 Laser/Button 작동과 미선정 휴면을 따로 검증한다. 기존 에셋·공용 Blueprint 종류를 복제하거나 방·복도를 재생성하지 않는다.
 
@@ -1182,7 +1187,7 @@ Session 종료, Cancel, Timeout, Arrest, Disconnect, Match End, Owner EndPlay �
 - v1 Required Target은 Painting Exhibit만 선택한다. Object Assembly Exhibit 선택 계약은 Deferred Expansion 재승인 전 실행하지 않는다.
 - Required Target의 Artifact Value는 Loot Value Quota에 포함된다.
 - Quota는 Required Target만 훔쳐서는 일반적으로 달성할 수 없도록 Data Validation한다.
-- `ContractStartPlayerCount`가 증가하면 Quota와 활성 Optional Painting 수를 Data로 조정한다.
+- Loot Value Quota는 `ContractStartPlayerCount` 기준 Data로 조정한다. 현행 M01/M02/M03의 활성 작품 수는 2C의 공통 계약인 Target 1개와 Optional 11개, 총 12개를 유지하며 인원 증가에 따라 Optional 수를 늘리지 않는다.
 - Forgery Time 자체는 Player Count에 따라 크게 늘리지 않는다.
 
 ## Grid Inventory And Original Acquisition
@@ -1878,6 +1883,6 @@ Build 성공이나 단일 함수 호출 성공만으로 기능 완료를 주장�
 - 세 맵을 Release Shape로 만든 뒤 신규 Gameplay Feature를 잠근다.
 - Object Assembly 콘텐츠 확장과 Player-facing 재활성화는 v1 Release Gate 이후 별도 승인 없이는 진행하지 않는다.
 - 그다음 QA, RC, 외부 테스트와 Final Release Gate를 진행한다.
-- Public Release 목표일 `2026-09-20`을 유지하되 RC Gate가 실패하면 날짜 때문에 통과시키지 않는다.
+- 기존 Public Release 목표일 `2026-09-20`은 지난 계획의 이력이며 새 출시일은 미정이다. 최신 콘텐츠의 실제 검증 결과로 QA·RC·외부 테스트·최종 동일 Hash Gate를 판단하고, 새 일정은 Notion에서 관리한다. 날짜 때문에 Gate를 통과시키지 않는다.
 
 제품 경험과 밸런스 의도는 `Museum_Heist_GDD.docx`, 구현 계약은 `Museum_Heist_TDD.docx`를 확인한다.
