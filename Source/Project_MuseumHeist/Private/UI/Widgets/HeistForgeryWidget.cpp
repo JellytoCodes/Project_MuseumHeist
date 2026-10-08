@@ -914,12 +914,73 @@ bool UHeistForgeryWidget::EraseLocalStrokeSegments(const FVector2D& NormalizedPo
 	const FVector2D CanvasAspectScale(SurfaceSize.X / MinimumSurfaceDimension, SurfaceSize.Y / MinimumSurfaceDimension);
 	const FVector2D EraserPoint = NormalizedPoint * CanvasAspectScale;
 	const double EraseRadiusSquared = FMath::Square(GetNormalizedEraseRadius());
+	// A miss leaves LocalStrokes unchanged. Avoid building fragments only to
+	// discard them; keep the existing hit path and its stroke metadata intact.
+	int32 FirstAffectedStrokeIndex = INDEX_NONE;
+	int32 FirstAffectedPointIndex = INDEX_NONE;
+	for (int32 StrokeIndex = 0; StrokeIndex < LocalStrokes.Num(); ++StrokeIndex)
+	{
+		const TArray<FVector2D>& Stroke = LocalStrokes[StrokeIndex].Points;
+		if (Stroke.IsEmpty())
+		{
+			continue;
+		}
+		if (FVector2D::DistSquared(EraserPoint, Stroke[0] * CanvasAspectScale) <= EraseRadiusSquared)
+		{
+			FirstAffectedStrokeIndex = StrokeIndex;
+			FirstAffectedPointIndex = 0;
+			break;
+		}
+		for (int32 PointIndex = 1; PointIndex < Stroke.Num(); ++PointIndex)
+		{
+			const FVector2D SegmentStart = Stroke[PointIndex - 1] * CanvasAspectScale;
+			const FVector2D SegmentEnd = Stroke[PointIndex] * CanvasAspectScale;
+			if (GetPointToSegmentDistanceSquared(EraserPoint, SegmentStart, SegmentEnd) <= EraseRadiusSquared ||
+				FVector2D::DistSquared(EraserPoint, SegmentEnd) <= EraseRadiusSquared)
+			{
+				FirstAffectedStrokeIndex = StrokeIndex;
+				FirstAffectedPointIndex = PointIndex;
+				break;
+			}
+		}
+		if (FirstAffectedStrokeIndex != INDEX_NONE)
+		{
+			break;
+		}
+	}
+	if (FirstAffectedStrokeIndex == INDEX_NONE)
+	{
+		return false;
+	}
+
 	TArray<FHeistLocalForgeryStroke> UpdatedStrokes;
 	UpdatedStrokes.Reserve(LocalStrokes.Num());
 	int32 AffectedStrokeCount = 0;
 
-	for (const FHeistLocalForgeryStroke& StrokeData : LocalStrokes)
+	// The prefix was already tested. Reproduce the old untouched fragments
+	// without repeating its geometry checks, including their painted metadata.
+	for (int32 StrokeIndex = 0; StrokeIndex < FirstAffectedStrokeIndex; ++StrokeIndex)
 	{
+		const FHeistLocalForgeryStroke& StrokeData = LocalStrokes[StrokeIndex];
+		if (StrokeData.Points.Num() == 1)
+		{
+			UpdatedStrokes.Add(StrokeData);
+		}
+		else if (StrokeData.Points.Num() >= 2)
+		{
+			FHeistLocalForgeryStroke Fragment;
+			Fragment.PaletteIndex = StrokeData.PaletteIndex;
+			Fragment.BrushPresetIndex = StrokeData.BrushPresetIndex;
+			Fragment.Points = StrokeData.Points;
+			Fragment.LastPaintedPoint = Fragment.Points.Last();
+			Fragment.bHasPaintedPoint = true;
+			UpdatedStrokes.Add(MoveTemp(Fragment));
+		}
+	}
+
+	for (int32 StrokeIndex = FirstAffectedStrokeIndex; StrokeIndex < LocalStrokes.Num(); ++StrokeIndex)
+	{
+		const FHeistLocalForgeryStroke& StrokeData = LocalStrokes[StrokeIndex];
 		const TArray<FVector2D>& Stroke = StrokeData.Points;
 		if (Stroke.IsEmpty())
 		{
@@ -965,18 +1026,27 @@ bool UHeistForgeryWidget::EraseLocalStrokeSegments(const FVector2D& NormalizedPo
 			CurrentFragment.Reset();
 		};
 
-		const FVector2D FirstEraserSpacePoint = Stroke[0] * CanvasAspectScale;
-		const bool bFirstPointInside = FVector2D::DistSquared(EraserPoint, FirstEraserSpacePoint) <= EraseRadiusSquared;
-		if (bFirstPointInside)
+		int32 FirstSegmentIndex = 1;
+		if (StrokeIndex == FirstAffectedStrokeIndex && FirstAffectedPointIndex > 0)
 		{
-			bStrokeAffected = true;
+			CurrentFragment.Append(Stroke.GetData(), FirstAffectedPointIndex);
+			FirstSegmentIndex = FirstAffectedPointIndex;
 		}
 		else
 		{
-			CurrentFragment.Add(Stroke[0]);
+			const FVector2D FirstEraserSpacePoint = Stroke[0] * CanvasAspectScale;
+			const bool bFirstPointInside = FVector2D::DistSquared(EraserPoint, FirstEraserSpacePoint) <= EraseRadiusSquared;
+			if (bFirstPointInside)
+			{
+				bStrokeAffected = true;
+			}
+			else
+			{
+				CurrentFragment.Add(Stroke[0]);
+			}
 		}
 
-		for (int32 PointIndex = 1; PointIndex < Stroke.Num(); ++PointIndex)
+		for (int32 PointIndex = FirstSegmentIndex; PointIndex < Stroke.Num(); ++PointIndex)
 		{
 			const FVector2D SegmentStart = Stroke[PointIndex - 1] * CanvasAspectScale;
 			const FVector2D SegmentEnd = Stroke[PointIndex] * CanvasAspectScale;
@@ -1046,9 +1116,8 @@ bool UHeistForgeryWidget::BuildDrawableStrokePayload(TArray<FVector2D>& OutNorma
 	OutStrokeBrushPresetIndices.Reset();
 	OutIgnoredShortStrokeCount = 0;
 
-	TArray<FHeistLocalForgeryStroke> PayloadStrokes;
-	PayloadStrokes.Reserve(LocalStrokes.Num());
-
+	int32 DrawableStrokeCount = 0;
+	int32 OriginalPointCount = 0;
 	for (const FHeistLocalForgeryStroke& Stroke : LocalStrokes)
 	{
 		if (Stroke.Points.Num() < 2)
@@ -1057,33 +1126,45 @@ bool UHeistForgeryWidget::BuildDrawableStrokePayload(TArray<FVector2D>& OutNorma
 			continue;
 		}
 
-		PayloadStrokes.Add(Stroke);
+		++DrawableStrokeCount;
+		OriginalPointCount += Stroke.Points.Num();
 	}
-	if (PayloadStrokes.IsEmpty())
+	if (DrawableStrokeCount == 0)
 	{
 		return false;
 	}
-	if (MaximumTransportPointCount > 0 && PayloadStrokes.Num() * 2 > MaximumTransportPointCount)
+	if (MaximumTransportPointCount > 0 && DrawableStrokeCount * 2 > MaximumTransportPointCount)
 	{
 		UE_LOG(LogHeistUI, Warning,
 			TEXT("[%s] Forgery transport copy rejected: Strokes=%d MinimumPoints=%d TransportLimit=%d LocalRasterChanged=false Reason=InsufficientPointBudget Result=FAIL"),
-			*GetName(), PayloadStrokes.Num(), PayloadStrokes.Num() * 2, MaximumTransportPointCount);
+			*GetName(), DrawableStrokeCount, DrawableStrokeCount * 2, MaximumTransportPointCount);
 		return false;
 	}
 
-	const auto CountPayloadPoints = [&PayloadStrokes]()
-	{
-		int32 PointCount = 0;
-		for (const FHeistLocalForgeryStroke& Stroke : PayloadStrokes)
-		{
-			PointCount += Stroke.Points.Num();
-		}
-		return PointCount;
-	};
-
-	const int32 OriginalPointCount = CountPayloadPoints();
+	TArray<FHeistLocalForgeryStroke> PayloadStrokes;
+	const TArray<FHeistLocalForgeryStroke>* StrokesToSerialize = &LocalStrokes;
+	int32 PayloadPointCount = OriginalPointCount;
 	if (MaximumTransportPointCount > 0 && OriginalPointCount > MaximumTransportPointCount)
 	{
+		// Only the budgeted transport path needs a mutable simplification copy.
+		PayloadStrokes.Reserve(DrawableStrokeCount);
+		for (const FHeistLocalForgeryStroke& Stroke : LocalStrokes)
+		{
+			if (Stroke.Points.Num() >= 2)
+			{
+				PayloadStrokes.Add(Stroke);
+			}
+		}
+		const auto CountPayloadPoints = [&PayloadStrokes]()
+		{
+			int32 PointCount = 0;
+			for (const FHeistLocalForgeryStroke& Stroke : PayloadStrokes)
+			{
+				PointCount += Stroke.Points.Num();
+			}
+			return PointCount;
+		};
+
 		constexpr float SimplificationTolerances[] = {0.00125f, 0.0025f, 0.004f, 0.006f, 0.01f, 0.015f, 0.025f};
 		for (const float Tolerance : SimplificationTolerances)
 		{
@@ -1122,14 +1203,20 @@ bool UHeistForgeryWidget::BuildDrawableStrokePayload(TArray<FVector2D>& OutNorma
 		{
 			return false;
 		}
+		PayloadPointCount = TransportPointCount;
+		StrokesToSerialize = &PayloadStrokes;
 	}
 
-	OutNormalizedPoints.Reserve(CountPayloadPoints());
-	OutStrokePointCounts.Reserve(PayloadStrokes.Num());
-	OutStrokePaletteIndices.Reserve(PayloadStrokes.Num());
-	OutStrokeBrushPresetIndices.Reserve(PayloadStrokes.Num());
-	for (const FHeistLocalForgeryStroke& Stroke : PayloadStrokes)
+	OutNormalizedPoints.Reserve(PayloadPointCount);
+	OutStrokePointCounts.Reserve(DrawableStrokeCount);
+	OutStrokePaletteIndices.Reserve(DrawableStrokeCount);
+	OutStrokeBrushPresetIndices.Reserve(DrawableStrokeCount);
+	for (const FHeistLocalForgeryStroke& Stroke : *StrokesToSerialize)
 	{
+		if (Stroke.Points.Num() < 2)
+		{
+			continue;
+		}
 		OutStrokePointCounts.Add(Stroke.Points.Num());
 		OutStrokePaletteIndices.Add(Stroke.PaletteIndex);
 		OutStrokeBrushPresetIndices.Add(Stroke.BrushPresetIndex);

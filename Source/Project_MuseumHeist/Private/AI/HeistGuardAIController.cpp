@@ -566,14 +566,24 @@ void AHeistGuardAIController::TryAcquireSightTarget()
 	for (TActorIterator<AHeistPlayerCharacter> It(GetWorld()); It; ++It)
 	{
 		AHeistPlayerCharacter* CandidateTarget = *It;
-		const TCHAR* RejectReason = nullptr;
-		AActor* BlockingActor = nullptr;
-		if (!IsValid(CandidateTarget) || !CanInitiallySeeTarget(CandidateTarget, RejectReason, BlockingActor))
+		if (!IsValid(CandidateTarget))
 		{
 			continue;
 		}
 
 		const float CandidateDistanceSquared = FVector::DistSquared(GuardCharacter->GetActorLocation(), CandidateTarget->GetActorLocation());
+		if (CandidateDistanceSquared >= BestDistanceSquared)
+		{
+			continue;
+		}
+
+		const TCHAR* RejectReason = nullptr;
+		AActor* BlockingActor = nullptr;
+		if (!CanInitiallySeeTarget(CandidateTarget, RejectReason, BlockingActor))
+		{
+			continue;
+		}
+
 		if (CandidateDistanceSquared < BestDistanceSquared)
 		{
 			BestTarget = CandidateTarget;
@@ -945,9 +955,13 @@ bool AHeistGuardAIController::RequestSecurityInvestigation(const FVector& WorldL
 	return bAccepted;
 }
 
-void AHeistGuardAIController::HandleAlertStateChanged(const EHeistAlertLevel, const EHeistAlertLevel NewLevel, const int32, const FName)
+void AHeistGuardAIController::HandleAlertStateChanged(const EHeistAlertLevel PreviousLevel, const EHeistAlertLevel NewLevel, const int32, const FName)
 {
-	ApplyAlertModifiers(NewLevel);
+	// Meter-only snapshots keep the same profile modifiers and Sight configuration.
+	if (PreviousLevel != NewLevel)
+	{
+		ApplyAlertModifiers(NewLevel);
+	}
 
 	const AHeistGuardCharacter* GuardCharacter = Cast<AHeistGuardCharacter>(GetPawn());
 	const UHeistGuardStateComponent* GuardStateComponent = IsValid(GuardCharacter) ? GuardCharacter->GetGuardStateComponent() : nullptr;

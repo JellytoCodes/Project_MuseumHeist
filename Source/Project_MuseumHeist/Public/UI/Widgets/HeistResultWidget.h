@@ -66,6 +66,16 @@ class PROJECT_MUSEUMHEIST_API UHeistResultWidget : public UHeistUserWidgetBase
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UTexture2D>> ReplicaRecapTextures;
+	TArray<FHeistReplicaRecapEntry> ReplicaRecapTextureData;
+	TArray<FColor> ReplicaRecapTextureBackgroundColors;
+	TArray<FHeistReplicaRecapEntry> AppliedReplicaRecap;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UHeistResultReplicaCardWidget>> ReplicaRecapCards;
+	TArray<TWeakObjectPtr<UTexture2D>> ReplicaRecapCardTextures;
+	TWeakObjectPtr<UHorizontalBox> AppliedReplicaRecapContainer;
+	TWeakObjectPtr<UClass> AppliedReplicaCardWidgetClass;
+	bool bReplicaRecapPresentationApplied = false;
+	void ResetReplicaRecapPresentationCache();
 
 #pragma endregion
 

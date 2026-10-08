@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Inventory/HeistItemDataTypes.h"
 
 #include "HeistNoiseEmitterComponent.generated.h"
 
@@ -12,6 +13,7 @@ class PROJECT_MUSEUMHEIST_API UHeistNoiseEmitterComponent : public UActorCompone
 
   public:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
   public:
@@ -27,6 +29,11 @@ class PROJECT_MUSEUMHEIST_API UHeistNoiseEmitterComponent : public UActorCompone
   private:
 	bool TryEmitFootstepNoise();
 	float ResolveLootWeightBonus(float TotalLootWeight) const;
+	void InvalidateFootstepDefinitions();
+	TWeakObjectPtr<class AHeistGameMode> CachedSoundPingGameMode;
+	TWeakObjectPtr<class UDataTable> CachedSoundPingTable;
+	FHeistSoundPingDataRow CachedFootstepDefinitions[2];
+	bool bCachedFootstepDefinitionValid[2] = {false, false};
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Heist|Noise", meta = (AllowPrivateAccess = "true", ClampMin = "0.0", Units = "cm/s"))
 	float MinimumFootstepSpeed = 10.0f;

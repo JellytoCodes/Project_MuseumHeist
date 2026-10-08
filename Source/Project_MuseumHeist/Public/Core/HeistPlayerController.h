@@ -132,6 +132,11 @@ class PROJECT_MUSEUMHEIST_API AHeistPlayerController : public APlayerController
 	EHeistInputMode LocalInputMode = EHeistInputMode::Gameplay;
 	bool bLocalForgerySessionActive = false;
 	bool bLocalObjectAssemblySessionActive = false;
+	FTimerHandle LocalFlashlightAimTimerHandle;
+	TWeakObjectPtr<AHeistPlayerCharacter> LastFlashlightAimPawn;
+	FVector LastSentFlashlightAimDirection = FVector::ForwardVector;
+	FVector LastObservedFlashlightAimDirection = FVector::ForwardVector;
+	double LastFlashlightAimSendTime = -1.0;
 
   public:
 	bool ToggleFloorPlanMap();

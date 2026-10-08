@@ -2221,6 +2221,18 @@ UDataTable* AHeistGameMode::GetObjectAssemblyTemplateDataTable() const
 	return ResolvedBalanceData->ObjectAssemblyTemplateDataTable.LoadSynchronous();
 }
 
+UDataTable* AHeistGameMode::GetSoundPingDataTable() const
+{
+	const UHeistGameBalanceDataAsset* ResolvedBalanceData = ResolveGameBalanceData();
+	if (!IsValid(ResolvedBalanceData))
+	{
+		return nullptr;
+	}
+
+	UDataTable* SoundPingDataTable = ResolvedBalanceData->SoundPingDataTable.Get();
+	return IsValid(SoundPingDataTable) ? SoundPingDataTable : ResolvedBalanceData->SoundPingDataTable.LoadSynchronous();
+}
+
 bool AHeistGameMode::TryGetItemDefinition(const FName ItemId, FHeistItemDataRow& OutItemDefinition) const
 {
 	OutItemDefinition = FHeistItemDataRow();
@@ -2628,8 +2640,7 @@ bool AHeistGameMode::TryGetSoundPingDefinition(const FName SoundPingId, FHeistSo
 		return false;
 	}
 
-	const UHeistGameBalanceDataAsset* ResolvedBalanceData = IsValid(GameBalanceDataAsset) ? GameBalanceDataAsset.Get() : GetDefault<UHeistGameBalanceDataAsset>();
-	const UDataTable* SoundPingDataTable = ResolvedBalanceData->SoundPingDataTable.LoadSynchronous();
+	const UDataTable* SoundPingDataTable = GetSoundPingDataTable();
 	if (!IsValid(SoundPingDataTable) || SoundPingDataTable->GetRowStruct() != FHeistSoundPingDataRow::StaticStruct())
 	{
 		return false;

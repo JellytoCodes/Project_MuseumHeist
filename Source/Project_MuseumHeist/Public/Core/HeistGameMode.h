@@ -139,6 +139,7 @@ class PROJECT_MUSEUMHEIST_API AHeistGameMode : public AGameModeBase
 	UDataTable* GetForgeryTemplateDataTable() const;
 	UDataTable* GetObjectAssemblyPartDataTable() const;
 	UDataTable* GetObjectAssemblyTemplateDataTable() const;
+	UDataTable* GetSoundPingDataTable() const;
 	bool TryGetItemDefinition(FName ItemId, FHeistItemDataRow& OutItemDefinition) const;
 	bool TryGetContractDefinition(FName ContractId, FHeistContractDataRow& OutContractDefinition) const;
 	bool TryGetArtifactDefinition(FName ArtifactId, FHeistArtifactDataRow& OutArtifactDefinition) const;

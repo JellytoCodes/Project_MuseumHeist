@@ -94,6 +94,7 @@ void UHeistInteractionPromptWidget::SetupInteractionPresentation(UHeistInteracti
 
 	InteractionComponent = InInteractionComponent;
 	HUDViewModel = InHUDViewModel;
+	LastDisplayedActionSeconds = INDEX_NONE;
 	CacheDisplayNames();
 	if (IsValid(AvailabilityText))
 	{
@@ -148,7 +149,8 @@ void UHeistInteractionPromptWidget::RefreshInteractionPrompt(const bool bActionA
 	if (IsValid(InteractionComponent))
 	{
 		TargetActor = InteractionComponent->GetCurrentInteractionTarget();
-		bAvailable = IsValid(TargetActor) && InteractionComponent->HasValidInteractionTarget();
+		// GetCurrentInteractionTarget already validates availability and overlap.
+		bAvailable = IsValid(TargetActor);
 		if (!bAvailable)
 		{
 			LockedVent = InteractionComponent->GetLockedVentForPresentation();
@@ -174,35 +176,39 @@ void UHeistInteractionPromptWidget::RefreshInteractionPrompt(const bool bActionA
 	}
 	if (IsValid(TargetText))
 	{
+		FText TargetLabel;
 		if (bLockedVent)
 		{
 			const int32 RemainingSeconds = FMath::CeilToInt(LockedVent->GetUnlockTimeRemaining());
-			TargetText->SetText(RemainingSeconds > 0 ? FText::Format(NSLOCTEXT("HeistInteraction", "VentLockedCountdown", "벤트 잠김 · 개방까지 {0}초"), FText::AsNumber(RemainingSeconds))
-													 : NSLOCTEXT("HeistInteraction", "VentUnlockPending", "벤트 개방 대기 중"));
+			TargetLabel = RemainingSeconds > 0 ? FText::Format(NSLOCTEXT("HeistInteraction", "VentLockedCountdown", "벤트 잠김 · 개방까지 {0}초"), FText::AsNumber(RemainingSeconds))
+				: NSLOCTEXT("HeistInteraction", "VentUnlockPending", "벤트 개방 대기 중");
 		}
 		else
 		{
 			const AHeistDetentionDoorActor* Door = Cast<AHeistDetentionDoorActor>(TargetActor);
-			TargetText->SetText(Door ? NSLOCTEXT("HeistDetention", "Door", "구금실 철창문") : ResolveTargetLabel(TargetActor));
+			TargetLabel = Door ? NSLOCTEXT("HeistDetention", "Door", "구금실 철창문") : ResolveTargetLabel(TargetActor);
+		}
+		if (!TargetText->GetText().EqualTo(TargetLabel))
+		{
+			TargetText->SetText(TargetLabel);
 		}
 	}
+	const AHeistDetentionDoorActor* DetentionDoor = Cast<AHeistDetentionDoorActor>(TargetActor);
+	const AHeistLootActor* LootCase = Cast<AHeistLootActor>(TargetActor);
+	FText AvailabilityLabel = bLockedVent ? NSLOCTEXT("HeistInteraction", "VentLockedHint", "개방 후 사용할 수 있습니다")
+		: NSLOCTEXT("HeistInteraction", "InteractionPrompt", "[E] 상호작용");
+	ESlateVisibility AvailabilityVisibility = bLockedVent || DetentionDoor || (LootCase && LootCase->IsExhibitionPresentation())
+		? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed;
 	if (IsValid(AvailabilityText))
 	{
-		const AHeistLootActor* LootCase = Cast<AHeistLootActor>(TargetActor);
-		AvailabilityText->SetText(bLockedVent ? NSLOCTEXT("HeistInteraction", "VentLockedHint", "개방 후 사용할 수 있습니다") : NSLOCTEXT("HeistInteraction", "InteractionPrompt", "[E] 상호작용"));
-		if (bUseCompactPrompt)
+		if (DetentionDoor)
 		{
-			AvailabilityText->SetVisibility(bLockedVent || Cast<AHeistDetentionDoorActor>(TargetActor) || (LootCase && LootCase->IsExhibitionPresentation())
-				? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+			AvailabilityLabel = DetentionDoor->GetPrompt(Cast<AHeistPlayerCharacter>(GetOwningPlayerPawn()));
 		}
-	}
-	if (const AHeistDetentionDoorActor* Door = Cast<AHeistDetentionDoorActor>(TargetActor); Door && AvailabilityText)
-	{
-		AvailabilityText->SetText(Door->GetPrompt(Cast<AHeistPlayerCharacter>(GetOwningPlayerPawn())));
-	}
-	if (const AHeistLootActor* LootCase = Cast<AHeistLootActor>(TargetActor); LootCase && LootCase->IsExhibitionPresentation() && AvailabilityText)
-	{
-		AvailabilityText->SetText(LootCase->GetCasePrompt(Cast<AHeistPlayerCharacter>(GetOwningPlayerPawn())));
+		if (LootCase && LootCase->IsExhibitionPresentation())
+		{
+			AvailabilityLabel = LootCase->GetCasePrompt(Cast<AHeistPlayerCharacter>(GetOwningPlayerPawn()));
+		}
 	}
 	if (IsValid(KeyText))
 	{
@@ -210,17 +216,32 @@ void UHeistInteractionPromptWidget::RefreshInteractionPrompt(const bool bActionA
 		const AHeistObjectDisplayCaseActor* ObjectCase = Cast<AHeistObjectDisplayCaseActor>(TargetActor);
 		const bool bPaintingReviewReady = IsValid(PaintingCase) && PaintingCase->IsReplicaReviewReadyFor(GetOwningPlayerPawn());
 		const bool bObjectReviewReady = IsValid(ObjectCase) && ObjectCase->IsReplicaReviewReadyFor(GetOwningPlayerPawn());
-		KeyText->SetText(bLockedVent			? FText::GetEmpty()
+		const FText KeyLabel = bLockedVent			? FText::GetEmpty()
 						 : bUseCompactPrompt ? InteractionKeyLabel
 						 : bPaintingReviewReady ? NSLOCTEXT("HeistInteraction", "PaintingReplicaReviewKeys", "E 교체·회수  |  R 다시 그리기")
 						 : bObjectReviewReady	? NSLOCTEXT("HeistInteraction", "ObjectReplicaReviewKeys", "E 교체·회수  |  R 다시 조립")
-												: InteractionKeyLabel);
+												: InteractionKeyLabel;
+		if (!KeyText->GetText().EqualTo(KeyLabel))
+		{
+			KeyText->SetText(KeyLabel);
+		}
 		if (bUseCompactPrompt && IsValid(AvailabilityText) && (bPaintingReviewReady || bObjectReviewReady))
 		{
-			AvailabilityText->SetText(bPaintingReviewReady
+			AvailabilityLabel = bPaintingReviewReady
 				? NSLOCTEXT("HeistInteraction", "CompactPaintingRedrawKeys", "R 다시 그리기")
-				: NSLOCTEXT("HeistInteraction", "CompactObjectRedrawKeys", "R 다시 조립"));
-			AvailabilityText->SetVisibility(ESlateVisibility::HitTestInvisible);
+				: NSLOCTEXT("HeistInteraction", "CompactObjectRedrawKeys", "R 다시 조립");
+			AvailabilityVisibility = ESlateVisibility::HitTestInvisible;
+		}
+	}
+	if (IsValid(AvailabilityText))
+	{
+		if (!AvailabilityText->GetText().EqualTo(AvailabilityLabel))
+		{
+			AvailabilityText->SetText(AvailabilityLabel);
+		}
+		if (bUseCompactPrompt)
+		{
+			AvailabilityText->SetVisibility(AvailabilityVisibility);
 		}
 	}
 	if (bUseCompactPrompt && IsValid(InteractionKeyContainer))
@@ -271,24 +292,34 @@ void UHeistInteractionPromptWidget::RefreshActionProgress()
 	}
 	if (IsValid(ActionTypeText))
 	{
-		ActionTypeText->SetText(bObservationActive ? NSLOCTEXT("HeistInteraction", "ObservationAction", "관찰 중")
+		const FText ActionLabel = bObservationActive ? NSLOCTEXT("HeistInteraction", "ObservationAction", "관찰 중")
 												  : (bEscapeActive && bVentSettlement ? NSLOCTEXT("HeistInteraction", "VentSettlementAction", "전리품 정산 중")
-																				 : (bEscapeActive ? NSLOCTEXT("HeistInteraction", "VentEscapeAction", "최종 탈출 중") : FText::GetEmpty())));
+																					 : (bEscapeActive ? NSLOCTEXT("HeistInteraction", "VentEscapeAction", "최종 탈출 중") : FText::GetEmpty()));
+		if (!ActionTypeText->GetText().EqualTo(ActionLabel))
+		{
+			ActionTypeText->SetText(ActionLabel);
+		}
 	}
 	if (IsValid(ActionProgressBar))
 	{
 		ActionProgressBar->SetPercent(CompletionRatio);
 	}
-	if (IsValid(ActionRemainingText))
+	const int32 RemainingWholeSeconds = FMath::CeilToInt(RemainingSeconds);
+	if (IsValid(ActionRemainingText) && LastDisplayedActionSeconds != RemainingWholeSeconds)
 	{
+		LastDisplayedActionSeconds = RemainingWholeSeconds;
 		ActionRemainingText->SetText(FText::Format(NSLOCTEXT("HeistInteraction", "RemainingFormat", "{0}초"),
-												  FText::AsNumber(FMath::CeilToInt(RemainingSeconds))));
+												  FText::AsNumber(RemainingWholeSeconds)));
 	}
 	if (IsValid(CancelHintText))
 	{
-		CancelHintText->SetText(
+		const FText CancelLabel =
 			bObservationActive ? NSLOCTEXT("HeistInteraction", "ObservationCancelHint", "E를 놓거나 이동, 피해 또는 체포 상태가 되면 관찰이 취소됩니다.")
-							   : (bEscapeActive ? NSLOCTEXT("HeistInteraction", "VentCancelHint", "이동하거나 피해를 받으면 벤트 사용이 취소됩니다.") : FText::GetEmpty()));
+							   : (bEscapeActive ? NSLOCTEXT("HeistInteraction", "VentCancelHint", "이동하거나 피해를 받으면 벤트 사용이 취소됩니다.") : FText::GetEmpty());
+		if (!CancelHintText->GetText().EqualTo(CancelLabel))
+		{
+			CancelHintText->SetText(CancelLabel);
+		}
 	}
 
 	const bool bReferenceVisible = bObservationActive && HUDViewModel->IsObservationReferenceVisible();

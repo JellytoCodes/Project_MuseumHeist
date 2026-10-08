@@ -698,6 +698,12 @@ bool BuildOpenCVPaletteImage(const TArray<uint8>& PaletteMap, const TArray<FLine
 		return false;
 	}
 
+	FColor PaletteColors[8];
+	for (int32 PaletteIndex = 0; PaletteIndex < Palette.Num(); ++PaletteIndex)
+	{
+		PaletteColors[PaletteIndex] = Palette[PaletteIndex].ToFColorSRGB();
+	}
+
 	const cv::Scalar NeutralBackground(127, 127, 127);
 	OutBgr = cv::Mat(ForgeryScoreGridResolution, ForgeryScoreGridResolution, CV_8UC3, NeutralBackground);
 	OutHistogram = cv::Mat::zeros(1, Palette.Num(), CV_32F);
@@ -710,7 +716,7 @@ bool BuildOpenCVPaletteImage(const TArray<uint8>& PaletteMap, const TArray<FLine
 			{
 				return false;
 			}
-			const FColor Color = Palette[PaletteIndex].ToFColorSRGB();
+			const FColor& Color = PaletteColors[PaletteIndex];
 			OutBgr.at<cv::Vec3b>(PixelIndex / ForgeryScoreGridResolution, PixelIndex % ForgeryScoreGridResolution) = cv::Vec3b(Color.B, Color.G, Color.R);
 			OutHistogram.at<float>(0, PaletteIndex) += 1.0f;
 		}

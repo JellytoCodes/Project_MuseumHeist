@@ -50,6 +50,10 @@ void UHeistHUDViewModel::BeginDestroy()
 
 void UHeistHUDViewModel::SetupViewModel(AHeistGameState* InGameState, AHeistPlayerState* InLocalPlayerState, UHeistActionComponent* InActionComponent)
 {
+	if (GameState != InGameState || LocalPlayerState != InLocalPlayerState)
+	{
+		UnbindCrewPlayerStates();
+	}
 	const AHeistPlayerCharacter* LocalCharacter = IsValid(InActionComponent) ? Cast<AHeistPlayerCharacter>(InActionComponent->GetOwner()) : nullptr;
 	UHeistForgeryComponent* InForgeryComponent = IsValid(LocalCharacter) ? LocalCharacter->GetForgeryComponent() : nullptr;
 	UHeistVisionComponent* InVisionComponent = IsValid(LocalCharacter) ? LocalCharacter->GetVisionComponent() : nullptr;
@@ -280,8 +284,26 @@ void UHeistHUDViewModel::UnbindCrewPlayerStates()
 
 void UHeistHUDViewModel::RefreshCrewStatusEntries()
 {
-	UnbindCrewPlayerStates();
+	int32 CrewIndex = 0;
+	bool bCrewBindingsChanged = false;
+	if (IsValid(GameState))
+	{
+		for (APlayerState* PlayerStateBase : GameState->PlayerArray)
+		{
+			if (AHeistPlayerState* PlayerState = Cast<AHeistPlayerState>(PlayerStateBase); IsValid(PlayerState))
+			{
+				bCrewBindingsChanged |= !BoundCrewPlayerStates.IsValidIndex(CrewIndex) || BoundCrewPlayerStates[CrewIndex].Get() != PlayerState;
+				++CrewIndex;
+			}
+		}
+	}
+	bCrewBindingsChanged |= CrewIndex != BoundCrewPlayerStates.Num();
+	if (bCrewBindingsChanged)
+	{
+		UnbindCrewPlayerStates();
+	}
 	TArray<FHeistCrewStatusEntry> NewEntries;
+	NewEntries.Reserve(4);
 	if (IsValid(GameState))
 	{
 		for (APlayerState* PlayerStateBase : GameState->PlayerArray)
@@ -291,9 +313,15 @@ void UHeistHUDViewModel::RefreshCrewStatusEntries()
 			{
 				continue;
 			}
-			PlayerState->GetPlayerIdentityChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandlePlayerIdentityChanged);
-			PlayerState->GetCrewStatusChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandleCrewStatusChanged);
-			BoundCrewPlayerStates.Add(PlayerState);
+			if (bCrewBindingsChanged)
+			{
+				// SetupViewModel can already bind the local identity delegate.
+				PlayerState->GetPlayerIdentityChangedDelegate().RemoveAll(this);
+				PlayerState->GetCrewStatusChangedDelegate().RemoveAll(this);
+				PlayerState->GetPlayerIdentityChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandlePlayerIdentityChanged);
+				PlayerState->GetCrewStatusChangedDelegate().AddUObject(this, &UHeistHUDViewModel::HandleCrewStatusChanged);
+				BoundCrewPlayerStates.Add(PlayerState);
+			}
 			if (PlayerState->HeistPlayerId < 1 || PlayerState->HeistPlayerId > 4)
 			{
 				continue;

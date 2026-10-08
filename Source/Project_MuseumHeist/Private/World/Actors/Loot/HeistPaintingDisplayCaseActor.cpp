@@ -187,6 +187,8 @@ void AHeistPaintingDisplayCaseActor::EndPlay(const EEndPlayReason::Type EndPlayR
 	OriginalPaintingDynamicMaterial = nullptr;
 	OriginalPaintingBaselineMaterial = nullptr;
 	ResetReplicaPaintingResources();
+	ValidatedReplicaPaintingData = FHeistReplicaPaintingData();
+	bReplicaPaintingValidationCached = false;
 
 	Super::EndPlay(EndPlayReason);
 }
@@ -835,10 +837,18 @@ void AHeistPaintingDisplayCaseActor::RefreshReplicaPaintingTexture()
 		return;
 	}
 
-	if (!IsValid(ReplicaPaintingTexture) || AppliedReplicaPaintingRevision != ReplicaPaintingData.Revision)
+	FColor BackgroundColor = ReplicaPaintingBackgroundColor.ToFColorSRGB();
+	BackgroundColor.A = 255;
+	if (!IsValid(ReplicaPaintingTexture) || AppliedReplicaPaintingPayloadGeneration != ReplicaPaintingPayloadGeneration ||
+		AppliedReplicaPaintingBackgroundColor != BackgroundColor)
 	{
 		ResetReplicaPaintingResources();
 		ReplicaPaintingTexture = BuildReplicaPaintingTexture();
+		if (IsValid(ReplicaPaintingTexture))
+		{
+			AppliedReplicaPaintingPayloadGeneration = ReplicaPaintingPayloadGeneration;
+			AppliedReplicaPaintingBackgroundColor = BackgroundColor;
+		}
 	}
 	if (!IsValid(ReplicaPaintingTexture))
 	{
@@ -849,7 +859,10 @@ void AHeistPaintingDisplayCaseActor::RefreshReplicaPaintingTexture()
 		return;
 	}
 
-	ReplicaPaintingDynamicMaterial = UMaterialInstanceDynamic::Create(ReplicaPaintingMaterial, this);
+	if (!IsValid(ReplicaPaintingDynamicMaterial) || ReplicaPaintingDynamicMaterial->Parent != ReplicaPaintingMaterial)
+	{
+		ReplicaPaintingDynamicMaterial = UMaterialInstanceDynamic::Create(ReplicaPaintingMaterial, this);
+	}
 	if (!IsValid(ReplicaPaintingDynamicMaterial))
 	{
 		return;
@@ -911,6 +924,7 @@ void AHeistPaintingDisplayCaseActor::ResetReplicaPaintingResources()
 	ReplicaPaintingDynamicMaterial = nullptr;
 	ReplicaPaintingTexture = nullptr;
 	AppliedReplicaPaintingRevision = 0;
+	AppliedReplicaPaintingPayloadGeneration = INDEX_NONE;
 	bReplicaPaintingTextureParameterApplied = false;
 }
 
@@ -1188,6 +1202,8 @@ void AHeistPaintingDisplayCaseActor::ResetReplicaPreviewData()
 	++CommittedForgeryRevision;
 	ReplicaPaintingData = FHeistReplicaPaintingData();
 	ReplicaPaintingData.Revision = CommittedForgeryRevision;
+	ValidatedReplicaPaintingData = FHeistReplicaPaintingData();
+	bReplicaPaintingValidationCached = false;
 	RefreshReplicaWorldVisual();
 }
 
@@ -1225,6 +1241,17 @@ void AHeistPaintingDisplayCaseActor::Multicast_PlayReplicaSwapFeedback_Implement
 bool AHeistPaintingDisplayCaseActor::ValidateReplicaPaintingData(const FHeistReplicaPaintingData& PaintingData, FName& OutRejectReason) const
 {
 	OutRejectReason = NAME_None;
+	const bool bActorPayload = &PaintingData == &ReplicaPaintingData;
+	if (bActorPayload && bReplicaPaintingValidationCached && ValidatedReplicaPaintingData.Revision == PaintingData.Revision &&
+		ValidatedReplicaPaintingData.Resolution == PaintingData.Resolution && ValidatedReplicaPaintingData.Palette == PaintingData.Palette &&
+		ValidatedReplicaPaintingData.PackedPaletteIndices == PaintingData.PackedPaletteIndices)
+	{
+		return true;
+	}
+	if (bActorPayload)
+	{
+		bReplicaPaintingValidationCached = false;
+	}
 	if (PaintingData.Resolution != ReplicaPaintingResolution)
 	{
 		OutRejectReason = FName(TEXT("PaintingResolutionMismatch"));
@@ -1253,6 +1280,12 @@ bool AHeistPaintingDisplayCaseActor::ValidateReplicaPaintingData(const FHeistRep
 			OutRejectReason = FName(TEXT("PaintingPaletteIndexOutOfBounds"));
 			return false;
 		}
+	}
+	if (bActorPayload)
+	{
+		ValidatedReplicaPaintingData = PaintingData;
+		bReplicaPaintingValidationCached = true;
+		++ReplicaPaintingPayloadGeneration;
 	}
 	return true;
 }

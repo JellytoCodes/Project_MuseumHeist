@@ -103,6 +103,7 @@ class PROJECT_MUSEUMHEIST_API UHeistInteractionPromptWidget : public UHeistUserW
 	FName TrackedActionType = NAME_None;
 	float TrackedActionEndServerTime = 0.0f;
 	float TrackedActionDuration = 0.0f;
+	int32 LastDisplayedActionSeconds = INDEX_NONE;
 	TMap<FName, FText> ArtifactDisplayNames;
 	TMap<FName, FText> LootDisplayNames;
 

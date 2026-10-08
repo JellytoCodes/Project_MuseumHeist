@@ -154,8 +154,8 @@ void UHeistHUDWidget::RefreshCrewStatusPresentation()
 	ApplyLocalCrewStatusPresentation(LocalCrewStatus);
 
 	AHeistPlayerController* OwningHeistController = Cast<AHeistPlayerController>(GetOwningPlayer());
-	const TArray<UHeistTeamCardWidget*> TeamCards = {TeamCard1.Get(), TeamCard2.Get(), TeamCard3.Get(), TeamCard4.Get()};
-	for (int32 SlotIndex = 0; SlotIndex < TeamCards.Num(); ++SlotIndex)
+	UHeistTeamCardWidget* const TeamCards[] = {TeamCard1.Get(), TeamCard2.Get(), TeamCard3.Get(), TeamCard4.Get()};
+	for (int32 SlotIndex = 0; SlotIndex < UE_ARRAY_COUNT(TeamCards); ++SlotIndex)
 	{
 		UHeistTeamCardWidget* TeamCard = TeamCards[SlotIndex];
 		if (!IsValid(TeamCard))
@@ -698,7 +698,7 @@ void UHeistHUDWidget::RefreshAlertStars()
 		AlertTitleText->SetColorAndOpacity(FSlateColor(AlertColor));
 	}
 
-	const TArray<UImage*> AlertStars = {AlertStar01.Get(), AlertStar02.Get(), AlertStar03.Get(), AlertStar04.Get(), AlertStar05.Get(), AlertStar06.Get(), AlertStar07.Get(),
+	UImage* const AlertStars[] = {AlertStar01.Get(), AlertStar02.Get(), AlertStar03.Get(), AlertStar04.Get(), AlertStar05.Get(), AlertStar06.Get(), AlertStar07.Get(),
 		AlertStar08.Get(), AlertStar09.Get(), AlertStar10.Get()};
 	const float MeterValue = FMath::Clamp(HUDViewModel->GetAlertMeterValue(), 0.0f, 10.0f);
 	if (IsValid(AlertValueText))
@@ -706,7 +706,7 @@ void UHeistHUDWidget::RefreshAlertStars()
 		AlertValueText->SetText(FText::Format(NSLOCTEXT("HeistHUD", "AlertValue", "{0} / 10"), FText::AsNumber(FMath::FloorToInt(MeterValue))));
 		AlertValueText->SetColorAndOpacity(FSlateColor(AlertColor));
 	}
-	for (int32 StarIndex = 0; StarIndex < AlertStars.Num(); ++StarIndex)
+	for (int32 StarIndex = 0; StarIndex < UE_ARRAY_COUNT(AlertStars); ++StarIndex)
 	{
 		UImage* StarImage = AlertStars[StarIndex];
 		if (!IsValid(StarImage))
@@ -831,12 +831,12 @@ void UHeistHUDWidget::RefreshInventoryShortcutPresentation()
 
 void UHeistHUDWidget::RefreshHUDQuickSlots()
 {
-	const TArray<UHeistQuickSlotWidget*> QuickSlotWidgets = {HUDQuickSlot1.Get(), HUDQuickSlot2.Get(), HUDQuickSlot3.Get()};
+	UHeistQuickSlotWidget* const QuickSlotWidgets[] = {HUDQuickSlot1.Get(), HUDQuickSlot2.Get(), HUDQuickSlot3.Get()};
 	const FHeistQuickSlotPresentation* CoinPresentation = IsValid(QuickSlotViewModel)
 		? QuickSlotViewModel->GetQuickSlotPresentations().FindByPredicate(
 			[](const FHeistQuickSlotPresentation& Presentation) { return Presentation.SlotType == EHeistQuickSlotType::Coin; })
 		: nullptr;
-	for (int32 SlotIndex = 0; SlotIndex < QuickSlotWidgets.Num(); ++SlotIndex)
+	for (int32 SlotIndex = 0; SlotIndex < UE_ARRAY_COUNT(QuickSlotWidgets); ++SlotIndex)
 	{
 		UHeistQuickSlotWidget* QuickSlotWidget = QuickSlotWidgets[SlotIndex];
 		if (!IsValid(QuickSlotWidget))
@@ -1013,8 +1013,8 @@ void UHeistHUDWidget::ResetHiddenPresentationState()
 		AlertEventText->SetText(FText::GetEmpty());
 		AlertEventText->SetVisibility(ESlateVisibility::Collapsed);
 	}
-	const TArray<UHeistTeamCardWidget*> TeamCards = {TeamCard1.Get(), TeamCard2.Get(), TeamCard3.Get(), TeamCard4.Get()};
-	for (int32 SlotIndex = 0; SlotIndex < TeamCards.Num(); ++SlotIndex)
+	UHeistTeamCardWidget* const TeamCards[] = {TeamCard1.Get(), TeamCard2.Get(), TeamCard3.Get(), TeamCard4.Get()};
+	for (int32 SlotIndex = 0; SlotIndex < UE_ARRAY_COUNT(TeamCards); ++SlotIndex)
 	{
 		if (IsValid(TeamCards[SlotIndex]))
 		{

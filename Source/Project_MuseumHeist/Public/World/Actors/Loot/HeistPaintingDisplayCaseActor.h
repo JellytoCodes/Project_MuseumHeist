@@ -344,6 +344,12 @@ class PROJECT_MUSEUMHEIST_API AHeistPaintingDisplayCaseActor : public AHeistInte
 
 	int32 AppliedReplicaVisualTier = INDEX_NONE;
 	int32 AppliedReplicaPaintingRevision = 0;
+	int32 AppliedReplicaPaintingPayloadGeneration = INDEX_NONE;
+	FColor AppliedReplicaPaintingBackgroundColor;
+	// Only successful validation of this actor's actual payload is reused.
+	mutable FHeistReplicaPaintingData ValidatedReplicaPaintingData;
+	mutable int32 ReplicaPaintingPayloadGeneration = 0;
+	mutable bool bReplicaPaintingValidationCached = false;
 	bool bReplicaVisualBaselineCaptured = false;
 	bool bUsingReplicaTierMaterial = false;
 	bool bUsingReplicaTransformFallback = false;

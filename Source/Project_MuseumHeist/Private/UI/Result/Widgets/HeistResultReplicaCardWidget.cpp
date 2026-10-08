@@ -26,7 +26,8 @@ void UHeistResultReplicaCardWidget::ApplyReplicaEntry(const FHeistReplicaRecapEn
 	}
 	if (IsValid(ReplicaImage))
 	{
-		if (IsValid(ReplicaTexture))
+		if (IsValid(ReplicaTexture) && (ReplicaImage->GetBrush().GetResourceObject() != ReplicaTexture ||
+			ReplicaImage->GetBrush().ImageSize.X != ReplicaTexture->GetSizeX() || ReplicaImage->GetBrush().ImageSize.Y != ReplicaTexture->GetSizeY()))
 		{
 			ReplicaImage->SetBrushFromTexture(ReplicaTexture, true);
 		}

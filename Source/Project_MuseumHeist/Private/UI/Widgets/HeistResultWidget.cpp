@@ -64,7 +64,7 @@ void UHeistResultWidget::NativeDestruct()
 		RewardDetailWidget->GetDetailVisibilityChangedDelegate().RemoveAll(this);
 	}
 	bContributionDetailsVisible = false;
-	ReplicaRecapTextures.Reset();
+	ResetReplicaRecapPresentationCache();
 
 	Super::NativeDestruct();
 }
@@ -76,6 +76,10 @@ void UHeistResultWidget::NativeDestruct()
 void UHeistResultWidget::SetupResultWidget(UHeistResultViewModel* InResultViewModel)
 {
 	checkf(IsValid(InResultViewModel), TEXT("HeistResultWidget requires a valid HeistResultViewModel"));
+	if (ResultViewModel != InResultViewModel)
+	{
+		ResetReplicaRecapPresentationCache();
+	}
 
 	if (IsValid(ResultViewModel))
 	{
@@ -118,7 +122,20 @@ void UHeistResultWidget::ResetHiddenPresentationState()
 	{
 		ContributionTableContainer->ClearChildren();
 	}
+	ResetReplicaRecapPresentationCache();
+}
+
+void UHeistResultWidget::ResetReplicaRecapPresentationCache()
+{
 	ReplicaRecapTextures.Reset();
+	ReplicaRecapTextureData.Reset();
+	ReplicaRecapTextureBackgroundColors.Reset();
+	ReplicaRecapCards.Reset();
+	ReplicaRecapCardTextures.Reset();
+	AppliedReplicaRecap.Reset();
+	AppliedReplicaRecapContainer.Reset();
+	AppliedReplicaCardWidgetClass.Reset();
+	bReplicaRecapPresentationApplied = false;
 }
 
 bool UHeistResultWidget::IsHiddenPresentationStateReset() const
@@ -136,8 +153,22 @@ bool UHeistResultWidget::IsRewardDetailVisible() const
 
 UTexture2D* UHeistResultWidget::CreatePaintingRecapTexture(const FHeistReplicaRecapEntry& ReplicaRecap, const FLinearColor BackgroundColor)
 {
+	FColor BackgroundPixel = BackgroundColor.ToFColorSRGB();
+	BackgroundPixel.A = 255;
+	for (int32 TextureIndex = 0; TextureIndex < ReplicaRecapTextures.Num(); ++TextureIndex)
+	{
+		const FHeistReplicaRecapEntry& CachedData = ReplicaRecapTextureData[TextureIndex];
+		UTexture2D* CachedTexture = ReplicaRecapTextures[TextureIndex];
+		if (IsValid(CachedTexture) && CachedTexture->GetSizeX() == ReplicaRecap.PaintingResolution && CachedTexture->GetSizeY() == ReplicaRecap.PaintingResolution &&
+			CachedData.ForgeryType == ReplicaRecap.ForgeryType && CachedData.PaintingResolution == ReplicaRecap.PaintingResolution &&
+			CachedData.PaintingPalette == ReplicaRecap.PaintingPalette && CachedData.PaintingPackedPaletteIndices == ReplicaRecap.PaintingPackedPaletteIndices &&
+			CachedData.AssemblyEntries == ReplicaRecap.AssemblyEntries && ReplicaRecapTextureBackgroundColors[TextureIndex] == BackgroundPixel)
+		{
+			return CachedTexture;
+		}
+	}
 	TArray64<uint8> TextureBytes;
-	if (!DecodePaintingRecapPixels(ReplicaRecap, BackgroundColor.ToFColorSRGB(), TextureBytes))
+	if (!DecodePaintingRecapPixels(ReplicaRecap, BackgroundPixel, TextureBytes))
 	{
 		return nullptr;
 	}
@@ -155,6 +186,8 @@ UTexture2D* UHeistResultWidget::CreatePaintingRecapTexture(const FHeistReplicaRe
 	Texture->NeverStream = true;
 	Texture->UpdateResource();
 	ReplicaRecapTextures.Add(Texture);
+	ReplicaRecapTextureData.Add(ReplicaRecap);
+	ReplicaRecapTextureBackgroundColors.Add(BackgroundPixel);
 	return Texture;
 }
 
@@ -295,7 +328,6 @@ void UHeistResultWidget::RefreshResultPresentation()
 		CoopResultFailedCross->SetVisibility(bContractFailed ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 	}
 	RefreshRewardDetailPresentation(ResultViewModel->GetTeamResult());
-	ReplicaRecapTextures.Reset();
 	RefreshReplicaRecapPresentation(ResultViewModel->GetReplicaRecap());
 	RefreshContributionTablePresentation(ResultViewModel->GetPlayerResults());
 	BP_RefreshReplicaRecap(ResultViewModel->GetReplicaRecap());
@@ -316,14 +348,58 @@ void UHeistResultWidget::RefreshReplicaRecapPresentation(const TArray<FHeistRepl
 	{
 		return;
 	}
+	bool bCanReuseCards = bReplicaRecapPresentationApplied && AppliedReplicaRecapContainer.Get() == ReplicaRecapVisualContainer &&
+		AppliedReplicaCardWidgetClass.Get() == ReplicaCardWidgetClass.Get() && AppliedReplicaRecap.Num() == ReplicaRecap.Num() &&
+		ReplicaRecapVisualContainer->GetChildrenCount() == ReplicaRecapCards.Num() && ReplicaRecapCards.Num() == ReplicaRecapCardTextures.Num();
+	for (int32 EntryIndex = 0; bCanReuseCards && EntryIndex < ReplicaRecap.Num(); ++EntryIndex)
+	{
+		// The shared equality deliberately tolerates score differences; a card's rounded score must remain exact.
+		bCanReuseCards = AppliedReplicaRecap[EntryIndex] == ReplicaRecap[EntryIndex] && AppliedReplicaRecap[EntryIndex].QualityScore == ReplicaRecap[EntryIndex].QualityScore;
+	}
+	for (int32 CardIndex = 0; bCanReuseCards && CardIndex < ReplicaRecapCards.Num(); ++CardIndex)
+	{
+		bCanReuseCards = IsValid(ReplicaRecapCards[CardIndex]) && ReplicaRecapVisualContainer->GetChildAt(CardIndex) == ReplicaRecapCards[CardIndex] &&
+			ReplicaRecapCardTextures[CardIndex].IsValid() &&
+			ReplicaRecapCardTextures[CardIndex]->GetSizeX() == FHeistReplicaRecapEntry::PaintingThumbnailResolution &&
+			ReplicaRecapCardTextures[CardIndex]->GetSizeY() == FHeistReplicaRecapEntry::PaintingThumbnailResolution;
+	}
+	if (bCanReuseCards)
+	{
+		if (IsValid(ReplicaRecapVisualPanel))
+		{
+			ReplicaRecapVisualPanel->SetVisibility(ESlateVisibility::Visible);
+		}
+		if (IsValid(ReplicaRecapEmptyTextBlock))
+		{
+			ReplicaRecapEmptyTextBlock->SetVisibility(ReplicaRecapCards.IsEmpty() ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+		}
+		int32 CardIndex = 0;
+		for (const FHeistReplicaRecapEntry& ReplicaEntry : ReplicaRecap)
+		{
+			if (ReplicaEntry.ForgeryType == EHeistForgeryType::Drawing && ReplicaEntry.HasPaintingVisualPayload() && ReplicaCardWidgetClass)
+			{
+				ReplicaRecapCards[CardIndex]->ApplyReplicaEntry(ReplicaEntry, ReplicaRecapCardTextures[CardIndex].Get());
+				++CardIndex;
+			}
+		}
+		return;
+	}
 
 	ReplicaRecapVisualContainer->ClearChildren();
+	// Card layout/labels can change while the submitted pixels remain identical.
+	ReplicaRecapCards.Reset();
+	ReplicaRecapCardTextures.Reset();
+	AppliedReplicaRecap.Reset();
+	AppliedReplicaRecapContainer.Reset();
+	AppliedReplicaCardWidgetClass.Reset();
+	bReplicaRecapPresentationApplied = false;
 	if (IsValid(ReplicaRecapVisualPanel))
 	{
 		ReplicaRecapVisualPanel->SetVisibility(ESlateVisibility::Visible);
 	}
 
 	int32 AddedReplicaCount = 0;
+	bool bAllReplicaCardsBuilt = true;
 	UHorizontalBoxSlot* PreviousCardSlot = nullptr;
 	for (const FHeistReplicaRecapEntry& ReplicaEntry : ReplicaRecap)
 	{
@@ -335,9 +411,12 @@ void UHeistResultWidget::RefreshReplicaRecapPresentation(const TArray<FHeistRepl
 		UHeistResultReplicaCardWidget* ReplicaCard = CreateWidget<UHeistResultReplicaCardWidget>(GetWorld(), ReplicaCardWidgetClass);
 		if (!IsValid(ReplicaTexture) || !IsValid(ReplicaCard))
 		{
+			bAllReplicaCardsBuilt = false;
 			continue;
 		}
 		ReplicaCard->ApplyReplicaEntry(ReplicaEntry, ReplicaTexture);
+		ReplicaRecapCards.Add(ReplicaCard);
+		ReplicaRecapCardTextures.Add(ReplicaTexture);
 		UHorizontalBoxSlot* CardSlot = ReplicaRecapVisualContainer->AddChildToHorizontalBox(ReplicaCard);
 		if (IsValid(PreviousCardSlot))
 		{
@@ -352,6 +431,13 @@ void UHeistResultWidget::RefreshReplicaRecapPresentation(const TArray<FHeistRepl
 	if (IsValid(ReplicaRecapEmptyTextBlock))
 	{
 		ReplicaRecapEmptyTextBlock->SetVisibility(AddedReplicaCount == 0 ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+	}
+	if (bAllReplicaCardsBuilt)
+	{
+		AppliedReplicaRecap = ReplicaRecap;
+		AppliedReplicaRecapContainer = ReplicaRecapVisualContainer;
+		AppliedReplicaCardWidgetClass = ReplicaCardWidgetClass.Get();
+		bReplicaRecapPresentationApplied = true;
 	}
 }
 

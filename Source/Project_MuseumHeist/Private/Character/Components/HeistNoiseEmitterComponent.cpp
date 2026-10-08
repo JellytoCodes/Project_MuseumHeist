@@ -7,6 +7,7 @@
 #include "Core/HeistLogChannels.h"
 #include "Core/HeistPlayerState.h"
 #include "Debug/HeistDebugFunctionLibrary.h"
+#include "Engine/DataTable.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Inventory/HeistItemDataTypes.h"
 
@@ -36,6 +37,24 @@ void UHeistNoiseEmitterComponent::TickComponent(const float DeltaTime, const ELe
 	TryEmitFootstepNoise();
 }
 
+void UHeistNoiseEmitterComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (UDataTable* PreviousTable = CachedSoundPingTable.Get())
+	{
+		PreviousTable->OnDataTableChanged().RemoveAll(this);
+	}
+	CachedSoundPingGameMode.Reset();
+	CachedSoundPingTable.Reset();
+	InvalidateFootstepDefinitions();
+	Super::EndPlay(EndPlayReason);
+}
+
+void UHeistNoiseEmitterComponent::InvalidateFootstepDefinitions()
+{
+	bCachedFootstepDefinitionValid[0] = false;
+	bCachedFootstepDefinitionValid[1] = false;
+}
+
 bool UHeistNoiseEmitterComponent::TryEmitFootstepNoise()
 {
 	AHeistPlayerCharacter* Character = Cast<AHeistPlayerCharacter>(GetOwner());
@@ -61,13 +80,35 @@ bool UHeistNoiseEmitterComponent::TryEmitFootstepNoise()
 
 	const float MaximumSpeed = FMath::Max(MinimumFootstepSpeed, MovementComponent->GetMaxSpeed());
 	const bool bRunning = Character->IsSprinting();
-	const FName SoundPingId = bRunning ? FName(TEXT("Ping_Footstep_Run")) : FName(TEXT("Ping_Footstep_Walk"));
-	FHeistSoundPingDataRow SoundPingDefinition;
-	if (!HeistGameMode->TryGetSoundPingDefinition(SoundPingId, SoundPingDefinition))
+	static const FName WalkSoundPingId(TEXT("Ping_Footstep_Walk"));
+	static const FName RunSoundPingId(TEXT("Ping_Footstep_Run"));
+	const FName SoundPingId = bRunning ? RunSoundPingId : WalkSoundPingId;
+	UDataTable* SoundPingTable = HeistGameMode->GetSoundPingDataTable();
+	if (!IsValid(SoundPingTable) || CachedSoundPingGameMode.Get() != HeistGameMode || CachedSoundPingTable.Get() != SoundPingTable)
 	{
-		UHeistDebugFunctionLibrary::DebugSoundPingDefinitionRejected(this, SoundPingId, TEXT("MissingFootstepDefinition"));
-		return false;
+		if (UDataTable* PreviousTable = CachedSoundPingTable.Get())
+		{
+			PreviousTable->OnDataTableChanged().RemoveAll(this);
+		}
+		CachedSoundPingGameMode = HeistGameMode;
+		CachedSoundPingTable = SoundPingTable;
+		InvalidateFootstepDefinitions();
+		if (IsValid(SoundPingTable))
+		{
+			SoundPingTable->OnDataTableChanged().AddUObject(this, &UHeistNoiseEmitterComponent::InvalidateFootstepDefinitions);
+		}
 	}
+	const int32 FootstepDefinitionIndex = bRunning ? 1 : 0;
+	if (!bCachedFootstepDefinitionValid[FootstepDefinitionIndex])
+	{
+		if (!HeistGameMode->TryGetSoundPingDefinition(SoundPingId, CachedFootstepDefinitions[FootstepDefinitionIndex]))
+		{
+			UHeistDebugFunctionLibrary::DebugSoundPingDefinitionRejected(this, SoundPingId, TEXT("MissingFootstepDefinition"));
+			return false;
+		}
+		bCachedFootstepDefinitionValid[FootstepDefinitionIndex] = true;
+	}
+	const FHeistSoundPingDataRow& SoundPingDefinition = CachedFootstepDefinitions[FootstepDefinitionIndex];
 
 	const float ServerTime = HeistGameState->GetServerWorldTimeSeconds();
 	const float RefreshInterval = FMath::Max(0.0f, SoundPingDefinition.RefreshInterval);

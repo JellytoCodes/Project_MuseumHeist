@@ -92,6 +92,10 @@ TSharedRef<SWidget> UHeistFloorPlanMapWidget::RebuildWidget()
 
 bool UHeistFloorPlanMapWidget::SetupMap(AHeistGameState* InGameState, AHeistPlayerController* InPlayerController, const bool bLogFailure)
 {
+	if (GameState != InGameState || PlayerController != InPlayerController)
+	{
+		CachedRequiredTarget.Reset();
+	}
 	GameState = InGameState;
 	PlayerController = InPlayerController;
 	const bool bResolved = ResolveMapPresentation(bLogFailure);
@@ -187,6 +191,11 @@ bool UHeistFloorPlanMapWidget::ResolveMapPresentation(const bool bLogFailure)
 	const bool bStaticDefinitionChanged = ResolvedMapId != RequestedMapId ||
 		MapPresentation.FloorPlanTexture.ToSoftObjectPath() != Row->FloorPlanTexture.ToSoftObjectPath() || StaticMarkerWidgets.IsEmpty();
 	MapPresentation = *Row;
+	bStaticMarkerPositionsInitialized = false;
+	if (ResolvedMapId != RequestedMapId)
+	{
+		CachedRequiredTarget.Reset();
+	}
 	ResolvedMapId = RequestedMapId;
 	ResolvedFloorPlanTexture = FloorPlanTexture;
 	bMapPresentationReady = true;
@@ -194,6 +203,18 @@ bool UHeistFloorPlanMapWidget::ResolveMapPresentation(const bool bLogFailure)
 	if (bStaticDefinitionChanged)
 	{
 		RebuildStaticMarkers();
+	}
+	if (IsValid(MapTitleText))
+	{
+		MapTitleText->SetText(FText::Format(NSLOCTEXT("HeistMap", "Title", "박물관 도면 · {0}"), MapPresentation.MapDisplayName));
+	}
+	if (IsValid(LegendText))
+	{
+		LegendText->SetText(NSLOCTEXT("HeistMap", "CatalogueLegend", "● 나/팀원   ↗ 출구   ◆ 목표 전시관   ★ 발견한 목표   ◇ 떨어진 원본   ○ 탈출   ! 구금 중"));
+	}
+	if (IsValid(MapHintText))
+	{
+		MapHintText->SetText(NSLOCTEXT("HeistMap", "Hint", "경비·시야·소리·미발견 전리품은 표시하지 않습니다.  M: 닫기"));
 	}
 	return true;
 }
@@ -204,6 +225,8 @@ void UHeistFloorPlanMapWidget::ResetMapPresentation()
 	ResolvedMapId = NAME_None;
 	ResolvedFloorPlanTexture = nullptr;
 	MapPresentation = FHeistMapPresentationRow();
+	CachedRequiredTarget.Reset();
+	bStaticMarkerPositionsInitialized = false;
 	StaticMarkerWidgets.Reset();
 	StaticMarkerWorldLocations.Reset();
 	DynamicMarkerPool.Reset();
@@ -224,6 +247,7 @@ void UHeistFloorPlanMapWidget::ResetMapPresentation()
 
 void UHeistFloorPlanMapWidget::RebuildStaticMarkers()
 {
+	bStaticMarkerPositionsInitialized = false;
 	StaticMarkerWidgets.Reset();
 	StaticMarkerWorldLocations.Reset();
 	if (!IsValid(StaticMarkerContainer))
@@ -249,6 +273,13 @@ void UHeistFloorPlanMapWidget::RebuildStaticMarkers()
 
 void UHeistFloorPlanMapWidget::RefreshStaticMarkerPositions()
 {
+	const FVector2D CanvasSize = IsValid(StaticMarkerContainer) ? StaticMarkerContainer->GetCachedGeometry().GetLocalSize() : FVector2D::ZeroVector;
+	if (bStaticMarkerPositionsInitialized && CanvasSize == LastStaticMarkerCanvasSize)
+	{
+		return;
+	}
+	LastStaticMarkerCanvasSize = CanvasSize;
+	bStaticMarkerPositionsInitialized = true;
 	const int32 MarkerCount = FMath::Min(StaticMarkerWidgets.Num(), StaticMarkerWorldLocations.Num());
 	for (int32 MarkerIndex = 0; MarkerIndex < MarkerCount; ++MarkerIndex)
 	{
@@ -273,19 +304,6 @@ void UHeistFloorPlanMapWidget::RefreshMapPresentation()
 		{
 			return;
 		}
-	}
-
-	if (IsValid(MapTitleText))
-	{
-		MapTitleText->SetText(FText::Format(NSLOCTEXT("HeistMap", "Title", "박물관 도면 · {0}"), MapPresentation.MapDisplayName));
-	}
-	if (IsValid(LegendText))
-	{
-		LegendText->SetText(NSLOCTEXT("HeistMap", "CatalogueLegend", "● 나/팀원   ↗ 출구   ◆ 목표 전시관   ★ 발견한 목표   ◇ 떨어진 원본   ○ 탈출   ! 구금 중"));
-	}
-	if (IsValid(MapHintText))
-	{
-		MapHintText->SetText(NSLOCTEXT("HeistMap", "Hint", "경비·시야·소리·미발견 전리품은 표시하지 않습니다.  M: 닫기"));
 	}
 
 	RefreshStaticMarkerPositions();
@@ -320,24 +338,46 @@ void UHeistFloorPlanMapWidget::RefreshMapPresentation()
 	if (!Contract.RequiredTargetCaseId.IsNone() && !Contract.bRequiredTargetSecured)
 	{
 		bool bFoundExactTarget = false;
-		for (TActorIterator<AHeistPaintingDisplayCaseActor> It(GetWorld()); It && !bFoundExactTarget; ++It)
+		AActor* CachedTarget = CachedRequiredTarget.Get();
+		if (IsValid(CachedTarget) && CachedTarget->GetWorld() == GetWorld())
 		{
-			if (IsValid(*It) && It->GetDisplayCaseId() == Contract.RequiredTargetCaseId &&
-				ShouldShowExactPaintingTarget(It->GetDisplayCaseState(), Contract.bRequiredTargetSecured))
+			const AHeistPaintingDisplayCaseActor* Painting = Cast<AHeistPaintingDisplayCaseActor>(CachedTarget);
+			const AHeistObjectDisplayCaseActor* Object = Cast<AHeistObjectDisplayCaseActor>(CachedTarget);
+			bFoundExactTarget = Painting
+				? Painting->GetDisplayCaseId() == Contract.RequiredTargetCaseId && ShouldShowExactPaintingTarget(Painting->GetDisplayCaseState(), Contract.bRequiredTargetSecured)
+				: Object && Object->GetObjectCaseId() == Contract.RequiredTargetCaseId && ShouldShowExactObjectTarget(Object->GetAssemblyState(), Contract.bRequiredTargetSecured);
+			if (bFoundExactTarget)
 			{
-				AddDynamicMarker(It->GetActorLocation(), NSLOCTEXT("HeistMap", "DiscoveredTargetMarker", "발견한 목표"),
+				AddDynamicMarker(CachedTarget->GetActorLocation(), NSLOCTEXT("HeistMap", "DiscoveredTargetMarker", "발견한 목표"),
 					EHeistFloorPlanMarkerType::DiscoveredTarget);
-				bFoundExactTarget = true;
 			}
 		}
-		for (TActorIterator<AHeistObjectDisplayCaseActor> It(GetWorld()); It && !bFoundExactTarget; ++It)
+		if (!bFoundExactTarget)
 		{
-			if (IsValid(*It) && It->GetObjectCaseId() == Contract.RequiredTargetCaseId &&
-				ShouldShowExactObjectTarget(It->GetAssemblyState(), Contract.bRequiredTargetSecured))
+			for (TActorIterator<AHeistPaintingDisplayCaseActor> It(GetWorld()); It && !bFoundExactTarget; ++It)
 			{
-				AddDynamicMarker(It->GetActorLocation(), NSLOCTEXT("HeistMap", "DiscoveredTargetMarker", "발견한 목표"),
-					EHeistFloorPlanMarkerType::DiscoveredTarget);
-				bFoundExactTarget = true;
+				if (IsValid(*It) && It->GetDisplayCaseId() == Contract.RequiredTargetCaseId &&
+					ShouldShowExactPaintingTarget(It->GetDisplayCaseState(), Contract.bRequiredTargetSecured))
+				{
+					CachedRequiredTarget = *It;
+					AddDynamicMarker(It->GetActorLocation(), NSLOCTEXT("HeistMap", "DiscoveredTargetMarker", "발견한 목표"),
+						EHeistFloorPlanMarkerType::DiscoveredTarget);
+					bFoundExactTarget = true;
+				}
+			}
+		}
+		if (!bFoundExactTarget)
+		{
+			for (TActorIterator<AHeistObjectDisplayCaseActor> It(GetWorld()); It && !bFoundExactTarget; ++It)
+			{
+				if (IsValid(*It) && It->GetObjectCaseId() == Contract.RequiredTargetCaseId &&
+					ShouldShowExactObjectTarget(It->GetAssemblyState(), Contract.bRequiredTargetSecured))
+				{
+					CachedRequiredTarget = *It;
+					AddDynamicMarker(It->GetActorLocation(), NSLOCTEXT("HeistMap", "DiscoveredTargetMarker", "발견한 목표"),
+						EHeistFloorPlanMarkerType::DiscoveredTarget);
+					bFoundExactTarget = true;
+				}
 			}
 		}
 	}
@@ -453,7 +493,11 @@ void UHeistFloorPlanMapWidget::ApplyMarkerPresentation(UTextBlock* Marker, const
 	case EHeistFloorPlanMarkerType::ArrestedTeammate: Symbol = TEXT("!"); break;
 	default: break;
 	}
-	Marker->SetText(*Symbol ? FText::Format(NSLOCTEXT("HeistMap", "CatalogueMarker", "{0} {1}"), FText::FromString(Symbol), Label) : Label);
+	const FText MarkerLabel = *Symbol ? FText::Format(NSLOCTEXT("HeistMap", "CatalogueMarker", "{0} {1}"), FText::FromString(Symbol), Label) : Label;
+	if (!Marker->GetText().EqualTo(MarkerLabel))
+	{
+		Marker->SetText(MarkerLabel);
+	}
 	Marker->SetColorAndOpacity(FSlateColor(ResolveMarkerColor(MarkerType, CustomColor)));
 	Marker->SetVisibility(ESlateVisibility::HitTestInvisible);
 	if (UCanvasPanelSlot* MarkerSlot = Cast<UCanvasPanelSlot>(Marker->Slot))

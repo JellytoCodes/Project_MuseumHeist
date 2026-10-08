@@ -54,6 +54,8 @@
 namespace
 {
 constexpr double ForgeryPointQuantizationMaximum = 65535.0;
+constexpr double FlashlightAimSendInterval = 0.05;
+constexpr double FlashlightAimHeartbeatInterval = 0.5;
 
 bool TryPackForgeryPoint(const FVector2D& NormalizedPoint, uint32& OutPackedPoint)
 {
@@ -171,7 +173,10 @@ void AHeistPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().ClearTimer(LocalTutorialStepTimerHandle);
+		World->GetTimerManager().ClearTimer(LocalFlashlightAimTimerHandle);
 	}
+	LastFlashlightAimPawn.Reset();
+	LastFlashlightAimSendTime = -1.0;
 	UnbindLocalForgeryInputState();
 	UnbindLocalObjectAssemblyInputState();
 	UnbindMatchPhasePresentationState();
@@ -193,6 +198,12 @@ void AHeistPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void AHeistPlayerController::PostSeamlessTravel()
 {
 	Super::PostSeamlessTravel();
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(LocalFlashlightAimTimerHandle);
+	}
+	LastFlashlightAimPawn.Reset();
+	LastFlashlightAimSendTime = -1.0;
 
 	ResetLocalHeldInteractionInputState();
 	ResetLocalVoicePushToTalk(false);
@@ -238,6 +249,7 @@ void AHeistPlayerController::RefreshLocalPresentationAfterSeamlessTravel()
 
 void AHeistPlayerController::OnPossess(APawn* InPawn)
 {
+	LastFlashlightAimSendTime = -1.0;
 	ResetLocalHeldInteractionInputState();
 	ResetLocalVoicePushToTalk(true);
 	UnbindLocalForgeryInputState();
@@ -253,6 +265,7 @@ void AHeistPlayerController::OnPossess(APawn* InPawn)
 void AHeistPlayerController::OnRep_Pawn()
 {
 	Super::OnRep_Pawn();
+	LastFlashlightAimSendTime = -1.0;
 	ResetLocalHeldInteractionInputState();
 	ResetLocalVoicePushToTalk(true);
 	RefreshLocalInputModeFromPawn();
@@ -1215,6 +1228,17 @@ void AHeistPlayerController::UpdateFlashlightAimDirection()
 	{
 		return;
 	}
+	UWorld* World = GetWorld();
+	if (!IsValid(World))
+	{
+		return;
+	}
+	if (!World->GetTimerManager().IsTimerActive(LocalFlashlightAimTimerHandle))
+	{
+		// Keep a final stationary aim update and recover lost unreliable packets.
+		World->GetTimerManager().SetTimer(LocalFlashlightAimTimerHandle, this, &AHeistPlayerController::UpdateFlashlightAimDirection,
+			static_cast<float>(FlashlightAimSendInterval), true);
+	}
 
 	AHeistPlayerCharacter* HeistCharacter = GetPawn<AHeistPlayerCharacter>();
 	if (!IsValid(HeistCharacter))
@@ -1242,7 +1266,26 @@ void AHeistPlayerController::UpdateFlashlightAimDirection()
 	VisionComponent->UpdateFlashlightAimDirection(CameraForward);
 	if (!HasAuthority())
 	{
-		Server_UpdateFlashlightAimDirection(CameraForward);
+		const double CurrentTime = World->GetTimeSeconds();
+		const bool bNewPawnOrClockReset = LastFlashlightAimPawn.Get() != HeistCharacter || CurrentTime < LastFlashlightAimSendTime;
+		const bool bFirstUpdate = bNewPawnOrClockReset || LastFlashlightAimSendTime < 0.0;
+		if (!VisionComponent->IsFlashlightEnabled() && !bFirstUpdate)
+		{
+			return;
+		}
+		const bool bAimStopped = CameraForward.Equals(LastObservedFlashlightAimDirection, UE_DOUBLE_SMALL_NUMBER);
+		const bool bDirectionChanged = !CameraForward.Equals(LastSentFlashlightAimDirection, 0.001f);
+		const bool bFinalDirectionPending = bAimStopped && !CameraForward.Equals(LastSentFlashlightAimDirection, UE_DOUBLE_SMALL_NUMBER);
+		const double TimeSinceLastSend = CurrentTime - LastFlashlightAimSendTime;
+		LastObservedFlashlightAimDirection = CameraForward;
+		if (bFirstUpdate || (TimeSinceLastSend >= FlashlightAimSendInterval &&
+			(bDirectionChanged || bFinalDirectionPending || TimeSinceLastSend >= FlashlightAimHeartbeatInterval)))
+		{
+			Server_UpdateFlashlightAimDirection(CameraForward);
+			LastFlashlightAimPawn = HeistCharacter;
+			LastSentFlashlightAimDirection = CameraForward;
+			LastFlashlightAimSendTime = CurrentTime;
+		}
 	}
 }
 
@@ -3086,6 +3129,7 @@ FKey AHeistPlayerController::GetFlashlightToggleKey()
 void AHeistPlayerController::RequestToggleFlashlight()
 {
 	if (!IsLocalController() || LocalInputMode != EHeistInputMode::Gameplay) return;
+	LastFlashlightAimSendTime = -1.0;
 	UpdateFlashlightAimDirection();
 	Server_ToggleFlashlight();
 }

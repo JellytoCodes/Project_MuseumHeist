@@ -59,11 +59,17 @@ bool UHeistInteractionComponent::RefreshInteractionTarget()
 
 	AActor* BestTarget = nullptr;
 	float BestDistanceSquared = TNumericLimits<float>::Max();
+	TArray<UPrimitiveComponent*> OverlappingComponents;
+	if (const UCapsuleComponent* OwnerCapsule = OwnerCharacter->GetCapsuleComponent(); IsValid(OwnerCapsule))
+	{
+		OwnerCapsule->GetOverlappingComponents(OverlappingComponents);
+	}
 	TArray<TWeakObjectPtr<AActor>> StaleCandidates;
 	for (const TWeakObjectPtr<AActor>& CandidatePtr : OverlappingInteractionActors)
 	{
 		AActor* Candidate = CandidatePtr.Get();
-		if (!IsActorOverlappingInteractionArea(Candidate))
+		if (!IsValid(Candidate) || !OverlappingComponents.ContainsByPredicate(
+			[this, Candidate](const UPrimitiveComponent* Component) { return IsInteractionCollisionComponent(Component, Candidate); }))
 		{
 			StaleCandidates.Add(CandidatePtr);
 			continue;

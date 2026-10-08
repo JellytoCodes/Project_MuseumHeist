@@ -7,6 +7,7 @@
 
 #include "HeistFloorPlanMapWidget.generated.h"
 
+class AActor;
 class AHeistGameState;
 class AHeistPlayerController;
 class UCanvasPanel;
@@ -87,6 +88,9 @@ class PROJECT_MUSEUMHEIST_API UHeistFloorPlanMapWidget : public UHeistUserWidget
 	TArray<TObjectPtr<UTextBlock>> DynamicMarkerPool;
 
 	TArray<FVector2D> StaticMarkerWorldLocations;
+	TWeakObjectPtr<AActor> CachedRequiredTarget;
+	FVector2D LastStaticMarkerCanvasSize = FVector2D::ZeroVector;
+	bool bStaticMarkerPositionsInitialized = false;
 	FHeistMapPresentationRow MapPresentation;
 	FName ResolvedMapId = NAME_None;
 	int32 ActiveDynamicMarkerCount = 0;
