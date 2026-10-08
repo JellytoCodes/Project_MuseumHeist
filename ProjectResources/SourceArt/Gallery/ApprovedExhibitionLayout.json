@@ -178,9 +178,119 @@
       }
     },
     "current_map_sha256": {
-      "M01": "89c9f4d243bf53e788ed22d43a461768355601ba1e98b5a23db10b9a1e856a89",
-      "M02": "16e31cc9f8cd9fde4b3828347da95843ed82f3e992a6c81793083a6ea1617190",
-      "M03": "2c0c73d20e01d3dae804735ce43f2e3df4480310f793158fff270f8b3e9aa19b"
+      "M01": "7a011fd96a0c15d9673d835c879af0433f0e023797a40025e33c2a31719aad83",
+      "M02": "3a8ba22aabe96c62aa521c94be333fb2856e2f8e32814a5cc2914634b3c25ce8",
+      "M03": "6c398a2fdee8507e1426ff3c5e17113e1668b592209ec3300806df43cd8f1935"
+    },
+    "security_layout": {
+      "date": "2026-10-08",
+      "source": "ProjectResources/SourceArt/Gallery/MuseumSecurityLayout.json",
+      "baseline_commit": "c93325245767c7a5c6ebb3f56e375ffc2202ac86",
+      "map_sha256": {
+        "M01": "7a011fd96a0c15d9673d835c879af0433f0e023797a40025e33c2a31719aad83",
+        "M02": "3a8ba22aabe96c62aa521c94be333fb2856e2f8e32814a5cc2914634b3c25ce8",
+        "M03": "6c398a2fdee8507e1426ff3c5e17113e1668b592209ec3300806df43cd8f1935"
+      },
+      "save_reload": "PASS",
+      "strict_navigation": "PASS",
+      "capsule_sweeps": "PASS",
+      "reports": [
+        "Saved/Automation/SecurityLayout20261008/security_apply.json",
+        "Saved/Automation/SecurityLayout20261008/security_mounts.json",
+        "Saved/Automation/SecurityLayout20261008/runtime_fixture.json",
+        "Saved/Automation/DetentionSentry20261008/apply.json",
+        "Saved/Automation/DetentionSentry20261008/runtime_fixture.json"
+      ],
+      "authored_guards": {
+        "M01": 9,
+        "M02": 9,
+        "M03": 9
+      },
+      "cameras": {
+        "M01": 14,
+        "M02": 12,
+        "M03": 16
+      },
+      "user_pie": "NOT_TESTED",
+      "online_multiplayer": "NOT_TESTED",
+      "latest_stage": "detention_sentry_stage",
+      "detention_sentry": {
+        "date": "2026-10-08",
+        "report": "Saved/Automation/DetentionSentry20261008/apply.json",
+        "report_sha256": "1a36a575bf9c2902b2d14788d8c11968abefb6454289442992a0f32225924702",
+        "saved_reload": "PASS",
+        "prior_actors_unchanged": true,
+        "scope": "One existing BP_Guard Medium resident and one single waypoint per map; existing detention patrol and all prior actors preserved",
+        "authored_guards_per_map": 9,
+        "guard_breakdown": {
+          "field_patrol": 7,
+          "existing_detention_patrol": 1,
+          "detention_sentry": 1
+        },
+        "strict_segments": 357,
+        "physical_sweep_subsegments": 1238,
+        "final_map_sha256": {
+          "M01": "7a011fd96a0c15d9673d835c879af0433f0e023797a40025e33c2a31719aad83",
+          "M02": "3a8ba22aabe96c62aa521c94be333fb2856e2f8e32814a5cc2914634b3c25ce8",
+          "M03": "6c398a2fdee8507e1426ff3c5e17113e1668b592209ec3300806df43cd8f1935"
+        },
+        "maps": [
+          {
+            "code": "M01",
+            "resident_actor": "BP_Guard_C_8",
+            "waypoint_actor": "HeistGuardWaypoint_0",
+            "location": [
+              5915,
+              -160,
+              89
+            ],
+            "profile": "Guard_Alert_Medium",
+            "prior_actor_count": 832
+          },
+          {
+            "code": "M02",
+            "resident_actor": "BP_Guard_C_8",
+            "waypoint_actor": "HeistGuardWaypoint_15",
+            "location": [
+              5220,
+              -2720,
+              99
+            ],
+            "profile": "Guard_Alert_Medium",
+            "prior_actor_count": 1447
+          },
+          {
+            "code": "M03",
+            "resident_actor": "BP_Guard_C_8",
+            "waypoint_actor": "HeistGuardWaypoint_16",
+            "location": [
+              1750,
+              350,
+              90
+            ],
+            "profile": "Guard_Alert_Medium",
+            "prior_actor_count": 944
+          }
+        ],
+        "runtime": {
+          "status": "PASS",
+          "report": "Saved/Automation/DetentionSentry20261008/runtime_fixture.json",
+          "report_sha256": "ba27aa48a46bbe41c1dc4a4f693dbc9efdcc9382f0d9c67e649fa3066e10a02a",
+          "diagnostic_local_fixtures": 9,
+          "active_guards_by_players": {
+            "2": 9,
+            "3": 11,
+            "4": 14
+          },
+          "four_player_observation_seconds_per_map": 75,
+          "normal_lobby": "NOT_TESTED",
+          "user_pie": "NOT_TESTED",
+          "network_clients": "NOT_TESTED",
+          "natural_contract_completion": "NOT_TESTED"
+        },
+        "user_pie": "NOT_TESTED",
+        "network_clients": "NOT_TESTED"
+      }
     }
   },
   "maps": {
