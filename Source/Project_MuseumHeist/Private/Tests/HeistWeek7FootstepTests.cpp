@@ -2,14 +2,17 @@
 
 #include "AI/HeistGuardAIController.h"
 #include "AI/HeistGuardCharacter.h"
+#include "AI/HeistGuardNoiseReactionComponent.h"
 #include "AI/HeistGuardStateComponent.h"
 #include "Character/HeistPlayerCharacter.h"
+#include "Components/CapsuleComponent.h"
 #include "Core/HeistGameMode.h"
 #include "Core/HeistGameState.h"
 #include "Core/HeistPlayerController.h"
 #include "Core/HeistPlayerState.h"
 #include "Editor.h"
 #include "Engine/Engine.h"
+#include "Engine/World.h"
 #include "EngineUtils.h"
 #include "EnhancedPlayerInput.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -207,7 +210,12 @@ bool PositionGuardForFootstep(const TSharedRef<FFootstepAutomationState>& State)
 	AHeistGuardCharacter* Guard = State->SelectedGuard.Get();
 	AHeistGuardAIController* GuardController = IsValid(Guard) ? Cast<AHeistGuardAIController>(Guard->GetController()) : nullptr;
 	UHeistGuardStateComponent* GuardState = IsValid(Guard) ? Guard->GetGuardStateComponent() : nullptr;
-	if (!IsValid(ServerCharacter) || !IsValid(Guard) || !IsValid(GuardController) || !IsValid(GuardState))
+	const UHeistGuardNoiseReactionComponent* NoiseReaction = IsValid(Guard) ? Guard->GetNoiseReactionComponent() : nullptr;
+	const UCapsuleComponent* GuardCapsule = IsValid(Guard) ? Guard->GetCapsuleComponent() : nullptr;
+	const UCapsuleComponent* PlayerCapsule = IsValid(ServerCharacter) ? ServerCharacter->GetCapsuleComponent() : nullptr;
+	UWorld* World = IsValid(Guard) ? Guard->GetWorld() : nullptr;
+	if (!IsValid(ServerCharacter) || !IsValid(Guard) || !IsValid(GuardController) || !IsValid(GuardState) || !IsValid(NoiseReaction) ||
+		!IsValid(GuardCapsule) || !IsValid(PlayerCapsule) || !IsValid(World))
 	{
 		return false;
 	}
@@ -219,10 +227,43 @@ bool PositionGuardForFootstep(const TSharedRef<FFootstepAutomationState>& State)
 		return false;
 	}
 
-	const FVector GuardLocation = ServerCharacter->GetActorLocation() + FVector(0.0f, 250.0f, 0.0f);
-	Guard->SetActorLocation(GuardLocation, false, nullptr, ETeleportType::TeleportPhysics);
-	Guard->ForceNetUpdate();
-	return true;
+	// The event radius is not the effective hearing radius. Stay inside the current
+	// production multipliers with room for movement, while keeping both capsules apart.
+	const float EffectiveRadius = FMath::Min(State->ExpectedWalkRadius, State->ExpectedSprintRadius) *
+		NoiseReaction->GetPerceptionRangeMultiplier() * NoiseReaction->GetAlertNoiseRadiusMultiplier();
+	const float MinimumSeparation = GuardCapsule->GetScaledCapsuleRadius() + PlayerCapsule->GetScaledCapsuleRadius() + 16.0f;
+	const float PlacementDistance = FMath::Max(MinimumSeparation, EffectiveRadius * 0.5f);
+	if (!FMath::IsFinite(EffectiveRadius) || PlacementDistance + 16.0f >= EffectiveRadius)
+	{
+		return false;
+	}
+
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(HeistFootstepGuardFixture), false);
+	QueryParams.AddIgnoredActor(Guard);
+	const FCollisionShape Shape = FCollisionShape::MakeCapsule(FMath::Max(0.1f, GuardCapsule->GetScaledCapsuleRadius() - 1.0f),
+		FMath::Max(0.1f, GuardCapsule->GetScaledCapsuleHalfHeight() - 1.0f));
+	const FVector PlayerLocation = PlayerCapsule->GetComponentLocation();
+	for (const FVector& Direction : {ServerCharacter->GetActorRightVector(), -ServerCharacter->GetActorRightVector(),
+		ServerCharacter->GetActorForwardVector(), -ServerCharacter->GetActorForwardVector()})
+	{
+		FVector GuardLocation = PlayerLocation + Direction.GetSafeNormal2D() * PlacementDistance;
+		GuardLocation.Z = PlayerLocation.Z - PlayerCapsule->GetScaledCapsuleHalfHeight() + GuardCapsule->GetScaledCapsuleHalfHeight() + 2.0f;
+		if (FVector::DistSquared(GuardLocation, PlayerLocation) >= FMath::Square(EffectiveRadius - 16.0f) ||
+			World->OverlapBlockingTestByChannel(GuardLocation, GuardCapsule->GetComponentQuat(), GuardCapsule->GetCollisionObjectType(), Shape, QueryParams))
+		{
+			continue;
+		}
+		Guard->SetActorLocation(GuardLocation, false, nullptr, ETeleportType::TeleportPhysics);
+		if (!Guard->GetActorLocation().Equals(GuardLocation, 1.0f))
+		{
+			continue;
+		}
+		Guard->ForceNetUpdate();
+		UE_LOG(LogTemp, Display, TEXT("W7-008 guard fixture: EffectiveRadius=%.1f Separation=%.1f CapsuleClear=true Placement=%s"),
+			EffectiveRadius, FVector::Dist(GuardLocation, PlayerLocation), *GuardLocation.ToString());
+		return true;
+	}
+	return false;
 }
 
 bool ConfigureGuardsAndCapture(const TSharedRef<FFootstepAutomationState>& State)

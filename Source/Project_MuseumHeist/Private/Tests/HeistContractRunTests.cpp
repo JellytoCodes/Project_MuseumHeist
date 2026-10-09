@@ -603,6 +603,24 @@ bool PrepareReleaseSecurityInteraction(const TSharedRef<FHeistContractRunAutomat
 		return false;
 	}
 
+	// Keep this single-camera incident fixture isolated from overlapping authored coverage.
+	// Only transient server PIE actors move; the next map travel restores authored placement.
+	// Camera detection uses its timer, so disabling the presentation tick would not isolate it.
+	for (TActorIterator<AHeistSecurityCameraActor> It(ServerWorld); It; ++It)
+	{
+		AHeistSecurityCameraActor* OtherCamera = *It;
+		if (!IsValid(OtherCamera) || OtherCamera == Camera)
+		{
+			continue;
+		}
+		const FVector IsolatedLocation = OtherCamera->GetActorLocation() + FVector(0.0f, 0.0f, 1000000.0f);
+		OtherCamera->SetActorLocation(IsolatedLocation, false, nullptr, ETeleportType::TeleportPhysics);
+		if (!OtherCamera->GetActorLocation().Equals(IsolatedLocation, 1.0f))
+		{
+			return false;
+		}
+	}
+
 	int32 ActiveGuardCount = 0;
 	bool bInvestigationGuardPositioned = false;
 	for (TActorIterator<AHeistGuardCharacter> It(ServerWorld); It; ++It)

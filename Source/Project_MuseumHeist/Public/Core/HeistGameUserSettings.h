@@ -16,6 +16,7 @@ class PROJECT_MUSEUMHEIST_API UHeistGameUserSettings : public UGameUserSettings
 
   public:
 	virtual void ApplySettings(bool bCheckForCommandLineOverrides) override;
+	virtual void ApplyNonResolutionSettings() override;
 	virtual void LoadSettings(bool bForceReload = false) override;
 	virtual void SetToDefaults() override;
 	virtual void ValidateSettings() override;
@@ -25,6 +26,8 @@ class PROJECT_MUSEUMHEIST_API UHeistGameUserSettings : public UGameUserSettings
 #pragma region Settings
 
   public:
+	static constexpr int32 FixedGraphicsQualityLevel = 1;
+	static constexpr float FixedResolutionQuality = 100.0f;
 	static constexpr float MinimumFieldOfView = 70.0f;
 	static constexpr float MaximumFieldOfView = 110.0f;
 	static constexpr float DefaultFieldOfView = 90.0f;

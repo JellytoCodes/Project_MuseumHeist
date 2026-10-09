@@ -21,7 +21,7 @@ class PROJECT_MUSEUMHEIST_API AHeistGuardAIController : public AAIController
 #pragma region Construction
 
   public:
-	AHeistGuardAIController();
+	AHeistGuardAIController(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 #pragma endregion
 

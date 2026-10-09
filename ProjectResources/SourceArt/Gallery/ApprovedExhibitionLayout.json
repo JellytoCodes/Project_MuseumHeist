@@ -178,9 +178,9 @@
       }
     },
     "current_map_sha256": {
-      "M01": "7a011fd96a0c15d9673d835c879af0433f0e023797a40025e33c2a31719aad83",
-      "M02": "3a8ba22aabe96c62aa521c94be333fb2856e2f8e32814a5cc2914634b3c25ce8",
-      "M03": "6c398a2fdee8507e1426ff3c5e17113e1668b592209ec3300806df43cd8f1935"
+      "M01": "f4cfd6b03ca492daac4f986603a5d43bbb8069e8b33a07338d239e3fc13bb504",
+      "M02": "20dd54107daffbcfd089c9229b3cac9d080898a80ef9b53001a77dce119ee1eb",
+      "M03": "abec3672e31448b07a8f4c6435c10d5710bd3c5edb593b5a21d5dd41d97654de"
     },
     "security_layout": {
       "date": "2026-10-08",
@@ -291,6 +291,54 @@
         "user_pie": "NOT_TESTED",
         "network_clients": "NOT_TESTED"
       }
+    },
+    "simulation_vent_repair": {
+      "approved_date_kst": "2026-10-09",
+      "scope": "M03 Vent interaction center repair; other actors and security layout unchanged",
+      "map_sha_before": "6c398a2fdee8507e1426ff3c5e17113e1668b592209ec3300806df43cd8f1935",
+      "map_sha_after": "277212e66c3faf75ecc577db05bec319c24e1e501c84be50a612b8ec8f55a1ce",
+      "actor": "BP_Vent_C_0",
+      "collision_center_before": [
+        -4900.0,
+        -3400.0,
+        255.0
+      ],
+      "collision_center_after": [
+        -4900.0,
+        -3400.0,
+        175.0
+      ],
+      "radius_cm": 50,
+      "visible_mesh_world_z": 255,
+      "visible_mesh_float_cleanup_max_cm": 0.1,
+      "saved_reload_preservation": "PASS",
+      "runtime_validation": "PASS",
+      "runtime_validation_scope": "Actual two-player M03 PIE worlds, two scripted contract runs through grounded Vent settlement/extraction, result and lobby return; NullRHI, not human play or Steam",
+      "runtime_evidence": "Saved/Automation/OptimizationFix20261009/MediumStartupRegression/index.json",
+      "runtime_test": "ProjectMuseumHeist.ContractRun.M03.TwoPlayerTwoRuns"
+    },
+    "cctv_work_access_stage": {
+      "date": "2026-10-09",
+      "status": "PASS",
+      "source": "ProjectResources/SourceArt/Gallery/MuseumSecurityLayout.json",
+      "json_pointer": "/applied/cctv_work_access_stage",
+      "current_map_sha256": {
+        "M01": "f4cfd6b03ca492daac4f986603a5d43bbb8069e8b33a07338d239e3fc13bb504",
+        "M02": "20dd54107daffbcfd089c9229b3cac9d080898a80ef9b53001a77dce119ee1eb",
+        "M03": "abec3672e31448b07a8f4c6435c10d5710bd3c5edb593b5a21d5dd41d97654de"
+      },
+      "report": {
+        "path": "Saved/Automation/CCTVWorkAccess20261009/apply.json",
+        "sha256": "4cf52ff323700465c9821404fdb4f9383e181b9f5b1fe07937a43be78c59ff3c"
+      },
+      "guard_and_exhibition_placement_changed": false,
+      "painting_candidates_per_map": 60,
+      "loot_candidates_per_map": 12,
+      "static_safe_stances_total": 216,
+      "scope": "Latest camera orientation stage only; previous full-layout, Nav, security, detention and Vent stage records retain historical provenance.",
+      "native_runtime_camera_detection": "PASS_LOCAL_DIAGNOSTIC_GUARDS_ISOLATED",
+      "user_pie": "NOT_TESTED",
+      "steam": "NOT_TESTED"
     }
   },
   "maps": {

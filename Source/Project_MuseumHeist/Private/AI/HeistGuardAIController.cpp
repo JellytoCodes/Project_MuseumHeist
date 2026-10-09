@@ -17,6 +17,7 @@
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "Inventory/HeistItemDataTypes.h"
+#include "Navigation/CrowdFollowingComponent.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
 #include "Perception/AISense_Sight.h"
@@ -133,7 +134,8 @@ bool ApplyCaseInspectionResult(AActor* Candidate, AActor* InspectingGuard)
 
 #pragma region Construction
 
-AHeistGuardAIController::AHeistGuardAIController()
+AHeistGuardAIController::AHeistGuardAIController(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer.SetDefaultSubobjectClass<UCrowdFollowingComponent>(TEXT("PathFollowingComponent")))
 {
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = false;
@@ -199,6 +201,10 @@ void AHeistGuardAIController::OnUnPossess()
 	}
 
 	StopMovement();
+	if (UCrowdFollowingComponent* CrowdFollowing = Cast<UCrowdFollowingComponent>(GetPathFollowingComponent()))
+	{
+		CrowdFollowing->SetCrowdSimulationState(ECrowdSimulationState::Disabled);
+	}
 	AbortInspection(FName(TEXT("GuardUnpossessed")));
 	if (InspectionTarget.IsValid())
 	{
@@ -1370,6 +1376,17 @@ void AHeistGuardAIController::HandleGuardStateChanged(const EHeistGuardState Pre
 	}
 
 	StopMovement();
+	if (UCrowdFollowingComponent* CrowdFollowing = Cast<UCrowdFollowingComponent>(GetPathFollowingComponent()))
+	{
+		const AHeistGuardCharacter* Guard = Cast<AHeistGuardCharacter>(GetPawn());
+		const ECrowdSimulationState CrowdState = !Guard || !Guard->IsDifficultyActive() || NewState == EHeistGuardState::Disabled
+			? ECrowdSimulationState::Disabled
+			: (NewState == EHeistGuardState::Stunned ? ECrowdSimulationState::ObstacleOnly : ECrowdSimulationState::Enabled);
+		// The engine requires an idle move before changing registration. A stunned
+		// visible guard stays an obstacle; hidden difficulty slots unregister.
+		CrowdFollowing->SetCrowdSimulationState(CrowdState);
+		CrowdFollowing->UpdateCrowdAgentParams();
+	}
 	if (PreviousState == EHeistGuardState::ChasePlayer && NewState != EHeistGuardState::ChasePlayer)
 	{
 		ClearPendingArrest(true);

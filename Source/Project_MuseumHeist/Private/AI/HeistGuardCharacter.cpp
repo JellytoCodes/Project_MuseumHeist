@@ -212,6 +212,12 @@ void AHeistGuardCharacter::ApplyDifficultyActivationPresentation()
 	SetActorEnableCollision(bDifficultyActive);
 	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement(); IsValid(MovementComponent))
 	{
+		if (HasAuthority())
+		{
+			// CrowdFollowing owns navigation-aware steering; do not run RVO as a
+			// second solver over the same solid character movement.
+			MovementComponent->SetAvoidanceEnabled(false);
+		}
 		if (bDifficultyActive)
 		{
 			if (MovementComponent->MovementMode == MOVE_None)

@@ -145,6 +145,7 @@ void UHeistGameInstance::Init()
 	Super::Init();
 	if (UHeistGameUserSettings* Settings = UHeistGameUserSettings::GetHeistGameUserSettings())
 	{
+		Settings->ApplyNonResolutionSettings();
 		Settings->ApplyMasterVolumeToActiveAudioDevices();
 	}
 	DefaultSelectedMapId = SelectedMapId;

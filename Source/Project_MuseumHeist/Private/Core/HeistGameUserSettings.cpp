@@ -6,7 +6,9 @@
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
+#include "HAL/IConsoleManager.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Scalability.h"
 #include "Sound/AudioSettings.h"
 #include "Sound/SoundClass.h"
 #include "Sound/SoundMix.h"
@@ -21,6 +23,18 @@ void UHeistGameUserSettings::ApplySettings(const bool bCheckForCommandLineOverri
 	ApplySettingsToLocalPlayers();
 }
 
+void UHeistGameUserSettings::ApplyNonResolutionSettings()
+{
+	Super::ApplyNonResolutionSettings();
+	// GameEngine and GameInstance apply settings before the engine is marked initialized.
+	// Super validates the fixed policy but skips its scalability CVar application at that stage.
+	if (!GEngine->IsInitialized() && bEnableScalabilitySettings)
+	{
+		Scalability::SetQualityLevels(ScalabilityQuality);
+		IConsoleManager::Get().CallAllConsoleVariableSinks();
+	}
+}
+
 void UHeistGameUserSettings::LoadSettings(const bool bForceReload)
 {
 	Super::LoadSettings(bForceReload);
@@ -32,6 +46,8 @@ void UHeistGameUserSettings::LoadSettings(const bool bForceReload)
 void UHeistGameUserSettings::SetToDefaults()
 {
 	Super::SetToDefaults();
+	SetOverallScalabilityLevel(FixedGraphicsQualityLevel);
+	ScalabilityQuality.ResolutionQuality = FixedResolutionQuality;
 	FieldOfView = DefaultFieldOfView;
 	MouseSensitivity = DefaultMouseSensitivity;
 	MasterVolume = DefaultMasterVolume;
@@ -40,6 +56,9 @@ void UHeistGameUserSettings::SetToDefaults()
 void UHeistGameUserSettings::ValidateSettings()
 {
 	Super::ValidateSettings();
+	SetOverallScalabilityLevel(FixedGraphicsQualityLevel);
+	// The Medium preset also lowers resolution scale; keep the selected output resolution at 100%.
+	ScalabilityQuality.ResolutionQuality = FixedResolutionQuality;
 
 	FieldOfView = FMath::IsFinite(FieldOfView) ? FMath::Clamp(FieldOfView, MinimumFieldOfView, MaximumFieldOfView) : DefaultFieldOfView;
 	MouseSensitivity = FMath::IsFinite(MouseSensitivity) ? FMath::Clamp(MouseSensitivity, MinimumMouseSensitivity, MaximumMouseSensitivity) : DefaultMouseSensitivity;

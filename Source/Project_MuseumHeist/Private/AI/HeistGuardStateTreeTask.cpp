@@ -142,7 +142,9 @@ bool StartPatrolMove(FHeistGuardStateTreeTaskInstanceData& InstanceData, AHeistG
 	}
 
 	AHeistGuardWaypoint* Waypoint = PatrolPath->GetCurrentWaypoint();
-	const bool bMoveStarted = IsValid(Waypoint) && StartMove(InstanceData, Controller, Waypoint, Waypoint->GetActorLocation(), PatrolPath->GetAcceptanceRadius());
+	// Waypoints are stationary markers, not agents. Project their position onto
+	// navigation so a marker above the floor cannot fail the feet-height reach test.
+	const bool bMoveStarted = IsValid(Waypoint) && StartMove(InstanceData, Controller, nullptr, Waypoint->GetActorLocation(), PatrolPath->GetAcceptanceRadius());
 	return bMoveStarted;
 }
 
@@ -204,7 +206,7 @@ bool StartReturnMove(FHeistGuardStateTreeTaskInstanceData& InstanceData, AHeistG
 		return false;
 	}
 
-	return StartMove(InstanceData, Controller, Waypoint, Waypoint->GetActorLocation(), PatrolPath->GetAcceptanceRadius());
+	return StartMove(InstanceData, Controller, nullptr, Waypoint->GetActorLocation(), PatrolPath->GetAcceptanceRadius());
 }
 
 void AwaitAuthoritativeStateChange(FHeistGuardStateTreeTaskInstanceData& InstanceData)
